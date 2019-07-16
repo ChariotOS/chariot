@@ -3,8 +3,9 @@
 #ifndef __MOBO_MACHINE_
 #define __MOBO_MACHINE_
 
-#include <string>
 #include <stdlib.h>
+#include <string>
+#include "dev_mgr.h"
 
 namespace mobo {
 
@@ -34,8 +35,12 @@ class driver {
  private:
   machine *m_machine = nullptr;
 
+ protected:
+  // every driver has a device manager for port io
+  device_manager dev_mgr;
+
  public:
-  virtual ~driver() {};
+  virtual ~driver(){};
   void set_machine(machine *);
   virtual void attach_memory(size_t, void *) = 0;
 

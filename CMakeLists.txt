@@ -12,6 +12,9 @@ add_executable(mobo
 	src/machine.cpp
 	src/kvmdriver.cpp
 	src/main.cpp
+	src/dev_mgr.cpp
+
+	src/devices/debug.cpp
 	)
 
 target_link_libraries(mobo -lcapstone)
