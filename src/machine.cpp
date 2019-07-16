@@ -1,10 +1,14 @@
+#include <mobo/dev_mgr.h>
 #include <mobo/machine.h>
 #include <stdio.h>
 #include <sys/mman.h>
 
 using namespace mobo;
 
+static int init_devices();
+
 mobo::machine::machine(driver &d) : m_driver(d) {
+  init_devices();
   // init some machine state
 }
 
@@ -30,9 +34,28 @@ void machine::allocate_ram(size_t nbytes) {
 
 void machine::load_elf(std::string file) { return m_driver.load_elf(file); }
 
-void machine::run() {
-  return m_driver.run();
-}
+void machine::run() { return m_driver.run(); }
 
 // setter for a machine
 void driver::set_machine(machine *m) { m_machine = m; }
+
+
+// This is a butchering of the section system, but it works
+static int init_devices() {
+  extern mobo::device_info __start__mobo_devices[];
+  extern mobo::device_info __stop__mobo_devices[];
+  mobo::device_info *dev = __start__mobo_devices;
+
+  int i = 0;
+  while (dev != __stop__mobo_devices) {
+    if (dev->init != nullptr) {
+      printf("Device %s with init at %p\n", dev->name, dev->init);
+    }
+    dev = &(__start__mobo_devices[++i]);
+  }
+  return 0;
+}
+
+int nothing_device_init(mobo::device_manager *man) { return 0; }
+
+mobo_device_register("Generic", nothing_device_init)

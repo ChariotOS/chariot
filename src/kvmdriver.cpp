@@ -116,6 +116,8 @@ void kvmdriver::load_elf(std::string &file) {
 
 
 
+    std::cout << psec->get_name() << std::endl;
+
     // I *think* that a multiboot header lives in .boot sections
     if (psec->get_name() == ".boot") {
       multiboot_data = psec->get_data();
@@ -131,6 +133,7 @@ void kvmdriver::load_elf(std::string &file) {
       memcpy(dst, data, size);
     }
   }
+  exit(0);
 
   // set the cpu0.rip to the entrypoint parsed from the elf
   auto cpufd = cpus[0].cpufd;
