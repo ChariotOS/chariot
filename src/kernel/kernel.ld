@@ -1,16 +1,34 @@
 /* Simple linker script for the JOS kernel.
    See the GNU ld 'info' manual ("info ld") to learn the syntax. */
 
-OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386")
-OUTPUT_ARCH(i386)
 ENTRY(_start)
 
 SECTIONS
 {
 
 	. = 0x1000;
-	.text : AT(0x1000) {
-		*(.text .text.*)
+
+	.boot : {
+		*(.mbhdr)
+		_loadStart = .;
+		*(.boot)
+		. = ALIGN(4096);
+		pml4 = .;
+		. += 0x1000;
+		pdpt = .;
+		. += 0x1000;
+		pd = .;
+		. += 0x1000;
+
+		boot_stack_start = .;
+		. += 0x200000;  /* we start out with a 2M stack */
+		boot_stack_end = .;
+	}
+
+
+	.text ALIGN(0x1000) : {
+		*(.text*)
+		*(.gnu.linkonce.t*)
 	}
 
 	.rodata : {
