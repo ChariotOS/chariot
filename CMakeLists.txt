@@ -7,14 +7,18 @@ add_compile_options(
   "-g"
 )
 
+
 include_directories ("${PROJECT_SOURCE_DIR}/include")
+
+
+file( GLOB DEVICES src/devices/*.cpp )
+
 add_executable(mobo
 	src/machine.cpp
 	src/kvmdriver.cpp
 	src/main.cpp
 	src/dev_mgr.cpp
-
-	src/devices/debug.cpp
+	${DEVICES}
 	)
 
 target_link_libraries(mobo -lcapstone)

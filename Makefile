@@ -14,13 +14,11 @@ build:
 
 CFLAGS=-fno-stack-protector -nostdlib -nostartfiles -nodefaultlibs -nostdinc -ffreestanding -fno-builtin $(CWARNINGS) $(CINCLUDES)
 
-LDFLAGS := -z max-page-size=0x1000
 
 kern:
-	@nasm -f elf64 -w-zext-reloc -o build/kernel.o src/kernel/boot.asm
-
-	@$(CC) -c -o build/ckern.o $(CFLAGS) src/kernel/boot.c
-	@ld -T src/kernel/kernel.ld build/kernel.o build/ckern.o -o build/kernel.elf
+	nasm -f elf64 -w-zext-reloc -o build/kernel.o src/kernel/boot.asm
+	$(CC) -O3 -fPIC -c -o build/ckern.o $(CFLAGS) src/kernel/boot.c
+	ld -T src/kernel/kernel.ld build/kernel.o build/ckern.o -o build/kernel.elf
 
 
 clean:

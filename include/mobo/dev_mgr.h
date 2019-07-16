@@ -34,6 +34,9 @@ struct device_info {
   int (*init)(device_manager *);
 };
 
+
+int port_io_nop(mobo::port_t, void *, int, void *);
+
 };  // namespace mobo
 
 #define mobo_device_register(name, init_dev_fn)                                \

@@ -23,12 +23,20 @@ void device_manager::hook_io(port_t port, port_io_handler_fn in,
 }
 
 int device_manager::handle_io(port_t port, bool in, void *data, uint32_t len) {
-  if (io_handlers.count(port) == 0) return 0;
+  if (io_handlers.count(port) == 0) {
+    printf("unhandled port 0x%04x\n", port);
+    return 0;
+  }
 
   auto &handle = io_handlers[port];
 
   if (in) return handle.in(port, data, len, handle.data);
   return handle.out(port, data, len, handle.data);
+}
+
+
+int mobo::port_io_nop(mobo::port_t, void *, int, void *) {
+  return 0;
 }
 
 // This is a butchering of the section system, but it works

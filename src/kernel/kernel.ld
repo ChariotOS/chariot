@@ -5,9 +5,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-
 	. = 0x1000;
-
 	.boot : {
 		*(.mbhdr)
 		_loadStart = .;
@@ -45,6 +43,7 @@ SECTIONS
 	.bss : {
 		*(.bss)
 	}
+
 
 	/DISCARD/ : {
 		*(.eh_frame .note.GNU-stack)

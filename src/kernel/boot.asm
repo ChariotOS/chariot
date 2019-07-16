@@ -2,24 +2,26 @@ global _start
 global start
 
 
-extern pml4
-extern pd
-extern pdpt
-extern boot_stack_end
 
+;; The basic page table is setup as follows:
+;; pml4[0] -> pdpt[0] -> pd
+;; which with 2mb pages, maps the first GB of ram
+extern pml4 ;; level 4 page table
+extern pdpt ;; level 3 page dir
+extern pd ;; level 2 page dir
+          ;; where is level 1? idk lol
 
+extern boot_stack_end ;; static memory from the binary where the stack begins
 extern kmain ;; c entry point
 
 section .mbhdr
 align 8
-
 
 ;; TODO(put multiboot header here for true mb support)
 
 section .boot
 
 [bits 16]
-
 start:
 _start:
 	cli ; disable interrupts
@@ -37,7 +39,7 @@ _start:
 
 ;; the 32bit protected mode gdt was loaded, now we need to go about setting up
 ;; paging for the 64bit long mode
-bits 32
+[bits 32]
 gdt1_loaded:
 	mov eax, 0x10
 	mov ds, ax
@@ -63,11 +65,18 @@ bits 64
 	mov fs, ax
 	mov gs, ax
 
-	mov rsp, boot_stack_end-1
 
-	xor eax, eax
+	;; setup the stack
+	mov rsp, boot_stack_end - 1
+	mov rbp, rsp
 	call kmain
+
+	;; just move a special value into eax, so we can see in the state dumps
+	;; that we got here.
+	mov eax, 0xfafafefe;
+spin:
 	hlt
+	jmp spin
 
 
 bits 32
@@ -88,12 +97,13 @@ paging_longmode_setup:
 	mov ecx, 512
 	mov edx, pd
 	mov eax, 0x83 ;; set PS bit also, (PDE -> 2MB page)
+	;; starting at 0x00
 
 .write_pde:
 
 	mov [edx], eax
 	add eax, 0x200000
-	add edx, 0x8
+	add edx, 0x8 ;; shift the dst by 8 bytes (size of addr)
 	loop .write_pde
 
 	;; put pml4 address in cr3

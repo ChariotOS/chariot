@@ -191,9 +191,6 @@ void kvmdriver::run(void) {
     }
 
     if (stat == KVM_EXIT_IO) {
-      dev_mgr.handle_io(run->io.port, run->io.direction == KVM_EXIT_IO_IN, (void*)((char *)run + run->io.data_offset), run->io.size);
-
-      continue;
 
 
 
@@ -218,13 +215,17 @@ void kvmdriver::run(void) {
       }
 
 
+      dev_mgr.handle_io(run->io.port, run->io.direction == KVM_EXIT_IO_IN, (void*)((char *)run + run->io.data_offset), run->io.size);
+
+      continue;
+
       fprintf(stderr, "Unhandled port io %s to %04x\n", run->io.direction == KVM_EXIT_IO_OUT ? "out" : "in", run->io.port);
     }
 
     if (stat == KVM_EXIT_INTERNAL_ERROR) {
       if (run->internal.suberror == KVM_INTERNAL_ERROR_EMULATION) {
         fprintf(stderr, "emulation failure\n");
-        cpus[0].dump_state(stderr, (char *)this->mem);
+        cpus[0].dump_state(stderr);
         return;
       }
       printf("kvm internal error: suberror %d\n", run->internal.suberror);
@@ -238,7 +239,7 @@ void kvmdriver::run(void) {
     break;
   }
 
-  cpus[0].dump_state(stdout, (char*)mem);
+  cpus[0].dump_state(stdout);
 }
 
 static inline void host_cpuid(struct cpuid_regs *regs) {
@@ -353,7 +354,7 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
 #define GET(name) \
   *(uint64_t *)(((char *)&regs) + offsetof(struct kvm_regs, name))
 
-#define REGFMT "%-16" PRIx64
+#define REGFMT "%016" PRIx64
   fprintf(out,
           "RAX=" REGFMT " RBX=" REGFMT " RCX=" REGFMT " RDX=" REGFMT
           "\n"
@@ -391,8 +392,8 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
   fprintf(out, "IDT=     %016" PRIx64 " %08x\n", (size_t)sregs.idt.base,
           (int)sregs.idt.limit);
 
-  fprintf(out, "CR0=%08x CR2=%016" PRIx64 " CR3=%016" PRIx64 " CR4=%08x\n",
-          (int)sregs.cr0, (size_t)sregs.cr2, (size_t)sregs.cr3, (int)sregs.cr4);
+  fprintf(out, "CR0=%016" PRIx64 " CR2=%016" PRIx64 " CR3=%016" PRIx64 " CR4=%08x\n",
+          (size_t)sregs.cr0, (size_t)sregs.cr2, (size_t)sregs.cr3, (int)sregs.cr4);
 
   fprintf(out, "EFER=%016" PRIx64 "\n", (size_t)sregs.efer);
 
