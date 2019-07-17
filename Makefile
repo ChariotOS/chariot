@@ -22,8 +22,19 @@ KERNEL=build/kernel.elf
 AFLAGS=-f elf64 -w-zext-reloc
 
 CINCLUDES=-Ikernel/include/
-CWARNINGS=-Wall -Wextra
-CFLAGS=-fno-stack-protector -nostdlib -fpermissive -nostartfiles -nodefaultlibs -nostdinc -ffreestanding -fno-builtin $(CWARNINGS) $(CINCLUDES)
+
+
+
+COMMON_FLAGS := $(CINCLUDES) -fno-omit-frame-pointer \
+			   -ffreestanding \
+			   -fno-stack-protector \
+			   -fno-strict-aliasing \
+         -fno-strict-overflow \
+			   -mno-red-zone \
+			   -mcmodel=large -O3
+
+CFLAGS:=   $(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
+
 DFLAGS=-g -DDEBUG -O0
 
 

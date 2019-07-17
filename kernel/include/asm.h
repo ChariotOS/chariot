@@ -48,7 +48,9 @@
 #define CR4_OSXSAVE (1 << 18)
 #define CR4_SMEP (1 << 20)
 
-struct nk_regs {
+
+// a struct that holds all the registers
+struct regs_s {
   u64 r15;
   u64 r14;
   u64 r13;
@@ -72,22 +74,16 @@ struct nk_regs {
   u64 rsp;
   u64 ss;
 };
+typedef struct regs_s regs_t;
+
 
 #define PAUSE_WHILE(x)     \
   while ((x)) {            \
     asm volatile("pause"); \
   }
 
-#ifndef NAUT_CONFIG_XEON_PHI
-#define mbarrier() asm volatile("mfence" ::: "memory")
-#else
-#define mbarrier()
-#endif
-
 #define BARRIER_WHILE(x) \
-  while ((x)) {          \
-    mbarrier();          \
-  }
+  while ((x)) {}
 
 static inline u64 read_cr0(void) {
   u64 ret;
@@ -179,17 +175,12 @@ static inline uint64_t __attribute__((always_inline)) rdtsc(void) {
   return lo | ((uint64_t)(hi) << 32);
 }
 
-#ifdef NAUT_CONFIG_XEON_PHI
-#define rdtscp() rdtsc
-#else
-
 static inline uint64_t rdtscp(void) {
   uint32_t lo, hi;
   asm volatile("rdtscp" : "=a"(lo), "=d"(hi));
   return lo | ((uint64_t)(hi) << 32);
 }
 
-#endif
 
 static inline uint64_t read_rflags(void) {
   uint64_t ret;
