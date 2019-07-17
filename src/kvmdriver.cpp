@@ -19,6 +19,36 @@
 
 using namespace mobo;
 
+
+
+
+#define DEFINE_KVM_EXIT_REASON(reason) [reason] = #reason
+
+const char *kvm_exit_reasons[] = {
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_UNKNOWN),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_EXCEPTION),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_IO),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_HYPERCALL),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_DEBUG),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_HLT),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_MMIO),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_IRQ_WINDOW_OPEN),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_SHUTDOWN),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_FAIL_ENTRY),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_INTR),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_SET_TPR),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_TPR_ACCESS),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_S390_SIEIC),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_S390_RESET),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_DCR),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_NMI),
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_INTERNAL_ERROR),
+#ifdef CONFIG_PPC64
+	DEFINE_KVM_EXIT_REASON(KVM_EXIT_PAPR_HCALL),
+#endif
+};
+#undef DEFINE_KVM_EXIT_REASON
+
 struct cpuid_regs {
   int eax;
   int ebx;
@@ -83,7 +113,6 @@ void kvmdriver::init_cpus(void) {
     };
     ioctl(vcpufd, KVM_SET_REGS, &regs);
 
-
     struct kvm_sregs sregs;
     ioctl(vcpufd, KVM_GET_SREGS, &sregs);
     sregs.cs.base = 0;
@@ -101,7 +130,6 @@ void kvmdriver::init_cpus(void) {
 void kvmdriver::load_elf(std::string &file) {
   char *memory = (char *)mem;  // grab a char buffer reference to the mem
 
-
   ELFIO::elfio reader;
   reader.load(file);
 
@@ -109,15 +137,49 @@ void kvmdriver::load_elf(std::string &file) {
 
   auto entry = reader.get_entry();
 
+  /*
+    printf("segments: \n");
+    auto segc = reader.segments.size();
+    for (int i = 0; i < segc; i++) {
+      auto seg = reader.segments[i];
+      printf("  %3d: %016zx %016zx %d\n", i, seg->get_virtual_address(),
+    seg->get_physical_address(), seg->get_sections_num());
+    }
+
+    printf("sections: \n");
+    // auto prog_header = reader.get_
+
+    */
   auto secc = reader.sections.size();
   for (int i = 0; i < secc; i++) {
     auto psec = reader.sections[i];
     auto type = psec->get_type();
 
+    // std::cout << psec->get_name() << std::endl;
+
+    /*
+    if (psec->get_type() == SHT_SYMTAB) {
+      const ELFIO::symbol_section_accessor symbols(reader, psec);
+      for (unsigned int j = 0; j < symbols.get_symbols_num(); j++) {
+        std::string name;
+        ELFIO::Elf64_Addr value;
+        ELFIO::Elf_Xword size;
+        unsigned char bind;
+        unsigned char type;
+        ELFIO::Elf_Half section_index;
+        unsigned char other;
+        symbols.get_symbol(j, name, value, size, bind, type, section_index,
+                           other);
+        printf("  %3d: %016zx %5lu %s\n", j, value, size, name.c_str());
+      }
+    }
+    */
     // I *think* that a multiboot header lives in .boot sections
     if (psec->get_name() == ".boot") {
       multiboot_data = psec->get_data();
     }
+
+    if (psec->get_name() == ".comment") continue;
 
     if (type == SHT_PROGBITS) {
       auto size = psec->get_size();
@@ -126,6 +188,10 @@ void kvmdriver::load_elf(std::string &file) {
 
       const char *data = psec->get_data();
       char *dst = memory + psec->get_address();
+
+      // printf("   loading %lu bytes to %016lx\n", psec->get_size(),
+      // psec->get_address());
+
       memcpy(dst, data, size);
     }
   }
@@ -159,8 +225,8 @@ void kvmdriver::run(void) {
 
   auto &cpufd = cpus[0].cpufd;
   auto run = cpus[0].kvm_run;
-  size_t ind = 0;
-  size_t start = 0;
+  //size_t ind = 0;
+  //size_t start = 0;
 
   struct kvm_regs regs;
 
@@ -168,6 +234,10 @@ void kvmdriver::run(void) {
 
   while (1) {
     ioctl(cpufd, KVM_RUN, NULL);
+
+
+
+    // printf("Exited: %s\n", kvm_exit_reasons[run->exit_reason]);
 
     int stat = run->exit_reason;
     if (stat == KVM_EXIT_MMIO) {
@@ -181,45 +251,24 @@ void kvmdriver::run(void) {
     }
 
     if (stat == KVM_EXIT_SHUTDOWN) {
-      printf("SHUTDOWN\n");
+      printf("SHUTDOWN (probably a triple fault, lol)\n");
+
+      cpus[0].dump_state(stderr, (char *)this->mem);
+      return;
       break;
     }
 
     if (stat == KVM_EXIT_HLT) {
-      printf("HALT\n");
       break;
     }
 
     if (stat == KVM_EXIT_IO) {
+      // printf("%04x %p %d %d %d\n", run->io.port, (char *)run + run->io.data_offset, run->io.direction, run->io.size, run->io.count);
 
-
-
-      if (run->io.direction == KVM_EXIT_IO_OUT && run->io.port == 0x3f) {
-        ioctl(cpufd, KVM_GET_REGS, &regs);
-        cpus[0].dump_state(stdout);
-        continue;
-      }
-
-      if (run->io.direction == KVM_EXIT_IO_OUT && run->io.port == 0xfd) {
-        ioctl(cpufd, KVM_GET_REGS, &regs);
-        start = (regs.rdx << 32) | regs.rax;
-        continue;
-      }
-
-      if (run->io.direction == KVM_EXIT_IO_OUT && run->io.port == 0xfe) {
-        ioctl(cpufd, KVM_GET_REGS, &regs);
-        size_t tsc = (regs.rdx << 32) | regs.rax;
-        printf("%zu,%zu\n", ind++, tsc - start);
-        // fflush(stdout);
-        continue;
-      }
-
-
-      dev_mgr.handle_io(run->io.port, run->io.direction == KVM_EXIT_IO_IN, (void*)((char *)run + run->io.data_offset), run->io.size);
-
+      dev_mgr.handle_io(run->io.port, run->io.direction == KVM_EXIT_IO_IN,
+                        (void *)((char *)run + run->io.data_offset),
+                        run->io.size);
       continue;
-
-      fprintf(stderr, "Unhandled port io %s to %04x\n", run->io.direction == KVM_EXIT_IO_OUT ? "out" : "in", run->io.port);
     }
 
     if (stat == KVM_EXIT_INTERNAL_ERROR) {
@@ -239,7 +288,7 @@ void kvmdriver::run(void) {
     break;
   }
 
-  cpus[0].dump_state(stdout);
+  // cpus[0].dump_state(stdout);
 }
 
 static inline void host_cpuid(struct cpuid_regs *regs) {
@@ -392,8 +441,10 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
   fprintf(out, "IDT=     %016" PRIx64 " %08x\n", (size_t)sregs.idt.base,
           (int)sregs.idt.limit);
 
-  fprintf(out, "CR0=%016" PRIx64 " CR2=%016" PRIx64 " CR3=%016" PRIx64 " CR4=%08x\n",
-          (size_t)sregs.cr0, (size_t)sregs.cr2, (size_t)sregs.cr3, (int)sregs.cr4);
+  fprintf(out,
+          "CR0=%016" PRIx64 " CR2=%016" PRIx64 " CR3=%016" PRIx64 " CR4=%08x\n",
+          (size_t)sregs.cr0, (size_t)sregs.cr2, (size_t)sregs.cr3,
+          (int)sregs.cr4);
 
   fprintf(out, "EFER=%016" PRIx64 "\n", (size_t)sregs.efer);
 

@@ -5,7 +5,10 @@ ENTRY(_start)
 
 SECTIONS
 {
-	. = 0x1000;
+	
+
+  . = 0x1000;
+
 	.boot : {
 		*(.mbhdr)
 		_loadStart = .;
@@ -16,13 +19,12 @@ SECTIONS
 		pdpt = .;
 		. += 0x1000;
 		pd = .;
-		. += 0x1000;
+		. += 0x1000; 
 
 		boot_stack_start = .;
 		. += 0x200000;  /* we start out with a 2M stack */
 		boot_stack_end = .;
 	}
-
 
 	.text ALIGN(0x1000) : {
 		*(.text*)
@@ -48,4 +50,6 @@ SECTIONS
 	/DISCARD/ : {
 		*(.eh_frame .note.GNU-stack)
 	}
+
+	kernel_end = .;
 }
