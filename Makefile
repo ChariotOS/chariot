@@ -31,7 +31,7 @@ COMMON_FLAGS := $(CINCLUDES) -fno-omit-frame-pointer \
 			   -fno-strict-aliasing \
          -fno-strict-overflow \
 			   -mno-red-zone \
-			   -mcmodel=large -O3
+			   -mcmodel=large -O3 -fno-tree-vectorize
 
 CFLAGS:=   $(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
 
@@ -74,10 +74,14 @@ iso: kern
 	cp build/kernel.elf build/iso/boot
 	grub-mkrescue -o kernel.iso build/iso
 
-clean:
-	@rm -rf build
-	@rm -f $(COBJECTS)
-	@rm -f $(AOBJECTS)
+
+klean:
+	rm -r $(KERNEL)
+	rm -f $(COBJECTS)
+	rm -f $(AOBJECTS)
+
+clean: klean
+	rm -rf build
 
 
 qemu: iso

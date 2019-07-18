@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <mobo/kvmdriver.h>
+#include <mobo/kvm.h>
 #include <stdio.h>
 #include <stdexcept>
 
@@ -19,32 +19,29 @@
 
 using namespace mobo;
 
-
-
-
 #define DEFINE_KVM_EXIT_REASON(reason) [reason] = #reason
 
 const char *kvm_exit_reasons[] = {
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_UNKNOWN),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_EXCEPTION),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_IO),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_HYPERCALL),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_DEBUG),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_HLT),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_MMIO),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_IRQ_WINDOW_OPEN),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_SHUTDOWN),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_FAIL_ENTRY),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_INTR),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_SET_TPR),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_TPR_ACCESS),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_S390_SIEIC),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_S390_RESET),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_DCR),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_NMI),
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_INTERNAL_ERROR),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_UNKNOWN),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_EXCEPTION),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_IO),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_HYPERCALL),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_DEBUG),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_HLT),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_MMIO),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_IRQ_WINDOW_OPEN),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_SHUTDOWN),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_FAIL_ENTRY),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_INTR),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_SET_TPR),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_TPR_ACCESS),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_S390_SIEIC),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_S390_RESET),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_DCR),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_NMI),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_INTERNAL_ERROR),
 #ifdef CONFIG_PPC64
-	DEFINE_KVM_EXIT_REASON(KVM_EXIT_PAPR_HCALL),
+    DEFINE_KVM_EXIT_REASON(KVM_EXIT_PAPR_HCALL),
 #endif
 };
 #undef DEFINE_KVM_EXIT_REASON
@@ -58,7 +55,7 @@ struct cpuid_regs {
 #define MAX_KVM_CPUID_ENTRIES 100
 static void filter_cpuid(struct kvm_cpuid2 *);
 
-kvmdriver::kvmdriver(int kvmfd, int ncpus) : kvmfd(kvmfd), ncpus(ncpus) {
+kvm::kvm(int kvmfd, int ncpus) : kvmfd(kvmfd), ncpus(ncpus) {
   assert(ncpus == 1);  // for now...
 
   int ret;
@@ -81,9 +78,9 @@ kvmdriver::kvmdriver(int kvmfd, int ncpus) : kvmfd(kvmfd), ncpus(ncpus) {
   init_cpus();
 }
 
-mobo::kvmdriver::~kvmdriver() {}
+mobo::kvm::~kvm() {}
 
-void kvmdriver::init_cpus(void) {
+void kvm::init_cpus(void) {
   int kvm_run_size = ioctl(kvmfd, KVM_GET_VCPU_MMAP_SIZE, nullptr);
 
   // get cpuid info
@@ -127,71 +124,26 @@ void kvmdriver::init_cpus(void) {
   free(kvm_cpuid);
 }
 
-void kvmdriver::load_elf(std::string &file) {
+void kvm::load_elf(std::string &file) {
   char *memory = (char *)mem;  // grab a char buffer reference to the mem
 
   ELFIO::elfio reader;
   reader.load(file);
 
-  const char *multiboot_data = nullptr;
 
   auto entry = reader.get_entry();
 
-  /*
-    printf("segments: \n");
-    auto segc = reader.segments.size();
-    for (int i = 0; i < segc; i++) {
-      auto seg = reader.segments[i];
-      printf("  %3d: %016zx %016zx %d\n", i, seg->get_virtual_address(),
-    seg->get_physical_address(), seg->get_sections_num());
-    }
-
-    printf("sections: \n");
-    // auto prog_header = reader.get_
-
-    */
   auto secc = reader.sections.size();
   for (int i = 0; i < secc; i++) {
     auto psec = reader.sections[i];
     auto type = psec->get_type();
-
-    // std::cout << psec->get_name() << std::endl;
-
-    /*
-    if (psec->get_type() == SHT_SYMTAB) {
-      const ELFIO::symbol_section_accessor symbols(reader, psec);
-      for (unsigned int j = 0; j < symbols.get_symbols_num(); j++) {
-        std::string name;
-        ELFIO::Elf64_Addr value;
-        ELFIO::Elf_Xword size;
-        unsigned char bind;
-        unsigned char type;
-        ELFIO::Elf_Half section_index;
-        unsigned char other;
-        symbols.get_symbol(j, name, value, size, bind, type, section_index,
-                           other);
-        printf("  %3d: %016zx %5lu %s\n", j, value, size, name.c_str());
-      }
-    }
-    */
-    // I *think* that a multiboot header lives in .boot sections
-    if (psec->get_name() == ".boot") {
-      multiboot_data = psec->get_data();
-    }
-
     if (psec->get_name() == ".comment") continue;
 
     if (type == SHT_PROGBITS) {
       auto size = psec->get_size();
-
       if (size == 0) continue;
-
       const char *data = psec->get_data();
       char *dst = memory + psec->get_address();
-
-      // printf("   loading %lu bytes to %016lx\n", psec->get_size(),
-      // psec->get_address());
-
       memcpy(dst, data, size);
     }
   }
@@ -204,29 +156,50 @@ void kvmdriver::load_elf(std::string &file) {
   ioctl(cpufd, KVM_SET_REGS, &regs);
 }
 
-void kvmdriver::attach_memory(size_t size, void *mem) {
-  // take the memory and store it as a segment
-  this->mem = mem;
-  this->memsize = size;
 
+void kvm::attach_bank(ram_bank &&bnk) {
   struct kvm_userspace_memory_region code_region = {
-      .slot = 0,
-      .guest_phys_addr = 0x0,
-      .memory_size = memsize,
-      .userspace_addr = (uint64_t)mem,
+      .slot = (uint32_t)ram.size(),
+      .guest_phys_addr = bnk.guest_phys_addr,
+      .memory_size = bnk.size,
+      .userspace_addr = (uint64_t)bnk.host_addr,
   };
-
   ioctl(vmfd, KVM_SET_USER_MEMORY_REGION, &code_region);
+  ram.push_back(std::move(bnk));
 }
 
-void kvmdriver::run(void) {
-  // wowee
-  //
 
+void kvm::init_ram(size_t nbytes) {
+  this->mem =mmap(NULL, nbytes, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS,
+              -1, 0);
+  this->memsize = nbytes;
+
+  if (nbytes < KVM_32BIT_GAP_START) {
+    ram_bank bnk;
+    bnk.guest_phys_addr = 0x0000;
+    bnk.size = nbytes;
+    bnk.host_addr = this->mem;
+    attach_bank(std::move(bnk));
+  } else {
+    // we need to break up the ram to support the PCI Hole
+    ram_bank bnk1;
+    bnk1.host_addr = this->mem;
+    bnk1.guest_phys_addr = 0x0000;
+    bnk1.size = KVM_32BIT_GAP_START;
+    attach_bank(std::move(bnk1));
+
+    /* Second RAM range from 4GB to the end of RAM: */
+    ram_bank bnk2;
+    bnk2.guest_phys_addr = KVM_32BIT_MAX_MEM_SIZE;
+    bnk2.host_addr = (char *)this->mem + bnk2.guest_phys_addr;
+    bnk2.size = nbytes - bnk2.guest_phys_addr;
+    attach_bank(std::move(bnk2));
+  }
+}
+
+void kvm::run(void) {
   auto &cpufd = cpus[0].cpufd;
   auto run = cpus[0].kvm_run;
-  //size_t ind = 0;
-  //size_t start = 0;
 
   struct kvm_regs regs;
 
@@ -235,10 +208,9 @@ void kvmdriver::run(void) {
   while (1) {
     ioctl(cpufd, KVM_RUN, NULL);
 
-
+    // cpus[0].dump_state(stderr);
 
     // printf("Exited: %s\n", kvm_exit_reasons[run->exit_reason]);
-
     int stat = run->exit_reason;
     if (stat == KVM_EXIT_MMIO) {
       void *addr = (void *)run->mmio.phys_addr;
@@ -263,8 +235,6 @@ void kvmdriver::run(void) {
     }
 
     if (stat == KVM_EXIT_IO) {
-      // printf("%04x %p %d %d %d\n", run->io.port, (char *)run + run->io.data_offset, run->io.direction, run->io.size, run->io.count);
-
       dev_mgr.handle_io(run->io.port, run->io.direction == KVM_EXIT_IO_IN,
                         (void *)((char *)run + run->io.data_offset),
                         run->io.size);
@@ -288,7 +258,7 @@ void kvmdriver::run(void) {
     break;
   }
 
-  // cpus[0].dump_state(stdout);
+  cpus[0].dump_state(stdout);
 }
 
 static inline void host_cpuid(struct cpuid_regs *regs) {

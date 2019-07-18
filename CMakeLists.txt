@@ -15,7 +15,7 @@ file( GLOB DEVICES src/devices/*.cpp )
 
 add_executable(mobo
 	src/machine.cpp
-	src/kvmdriver.cpp
+	src/kvm.cpp
 	src/main.cpp
 	src/dev_mgr.cpp
 	${DEVICES}

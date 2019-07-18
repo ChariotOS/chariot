@@ -5,6 +5,8 @@
 
 #include "types.h"
 
+#define BOOTCODE __attribute__ ((__section__(".boot")))
+
 #define RFLAGS_CF (1 << 0)
 #define RFLAGS_PF (1 << 2)
 #define RFLAGS_AF (1 << 4)

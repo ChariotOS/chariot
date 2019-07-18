@@ -3,23 +3,13 @@ global start
 
 
 
-;; The basic page table is setup as follows:
-;; pml4[0] -> pdpt[0] -> pd
-;; which with 2mb pages, maps the first GB of ram
-extern pml4 ;; level 4 page table
-extern pdpt ;; level 3 page dir
-extern pd ;; level 2 page dir
-          ;; where is level 1? idk lol
-
-
-
 extern p4_table
 extern p3_table
 extern p2_table
 extern p1_table
 
 extern boot_stack_end ;; static memory from the binary where the stack begins
-extern kmain ;; c entry point
+extern low_main ;; c entry point
 
 ;; TODO(put multiboot header here for true mb support)
 
@@ -43,7 +33,6 @@ start:
 _start:
 	cli ; disable interrupts
 
-
 	mov eax, gdtr32
 	lgdt [eax] ; load GDT register with start address of Global Descriptor Table
 	mov eax, cr0
@@ -65,56 +54,17 @@ gdt1_loaded:
 	mov esp, boot_stack_end - 1
 	mov ebp, esp
 
+	;; id map the first 512 pages of ram, so lowkern can work with paging enabled
+	call map_lowkern_basic
+
 	;; setup and initialize basic paging
-	call paging_longmode_setup
+	call initialize_longmode_and_paging
 
 	;; now our long mode GDT
 	mov eax, gdtr64
 	lgdt [eax]
 
 	jmp 0x8:gdt2_loaded
-
-
-
-
-.LOOP:
-	out 0xff, ax
-	push    20                                      ; 0067 _ 6A, 14
-	call    fib32                                     ; 0069 _ E8, FFFFFFFC(rel)
-	add     esp, 4                                  ; 006E _ 83. C4, 04
-	out 0xee, ax
-
-	jmp .LOOP
-
-
-
-fib32:
-	push    edi
-	push    esi
-	mov     ecx, dword [esp + 12]
-	cmp     ecx, 2
-	jge     .LBB0_2
-	mov     eax, ecx
-	pop     esi
-	pop     edi
-	ret
-.LBB0_2:
-	xor     esi, esi
-	mov     eax, 1
-	mov     edx, 2
-.LBB0_3:
-	mov     edi, eax
-	mov     eax, esi
-	inc     edx
-	add     eax, edi
-	cmp     edx, ecx
-	mov     esi, edi
-	jbe     .LBB0_3
-	pop     esi
-	pop     edi
-	ret
-; fib End of function
-
 
 
 
@@ -130,11 +80,15 @@ gdt2_loaded:
 	mov fs, ax
 	mov gs, ax
 
+
 	;; Reset the stack to the initial state
 	mov rsp, boot_stack_end - 1
 	mov rbp, rsp
+
+
 	;; and call the c code in boot.c
-	call kmain
+	call low_main
+	hlt
 	;; Ideally, we would not get here, but if we do we simply hlt spin
 
 	;; just move a special value into eax, so we can see in the state dumps
@@ -146,9 +100,12 @@ gdt2_loaded:
 	jmp .spin
 
 
-bits 32
-paging_longmode_setup:
 
+
+
+bits 32
+
+map_lowkern_basic:
 	;; recursively map p4 to itself (osdev told me to)
 	mov eax, p4_table
 	or eax, 0b11 ; present + writable
@@ -182,6 +139,12 @@ paging_longmode_setup:
 	add edx, 0x8 ;; shift the dst by 8 bytes (size of addr)
 	loop .write_pde
 
+	xor eax, eax
+	ret
+
+
+initialize_longmode_and_paging:
+
 	;; put pml4 address in cr3
 	mov eax, p4_table
 	mov cr3, eax
@@ -191,18 +154,16 @@ paging_longmode_setup:
 	or eax, 1 << 5
 	mov cr4, eax
 
-
 	;; enable lme bit in MSR
 	mov ecx, 0xC0000080          ; Set the C-register to 0xC0000080, which is the EFER MSR.
 	rdmsr                        ; Read from the model-specific register.
 	or eax, 1 << 8               ; Set the LM-bit which is the 9th bit (bit 8).
 	wrmsr                        ; Write to the model-specific register.
 
-	;; paging enable
+	;; paging enable (set the 31st bit of cr0)
 	mov eax, cr0
 	or eax, 1 << 31
-	mov cr0, eax                 ; Set control register 0 to the A-register.
-
+	mov cr0, eax
 
 	;; make sure we are in "normal cache mode"
 	mov ebx, ~(3 << 29)
