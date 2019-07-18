@@ -32,16 +32,6 @@ SECTIONS
 
 		p1_table = .;
 		. += 0x1000;
-
-
-
-		pml4 = .;
-		. += 0x1000;
-		pdpt = .;
-		. += 0x1000;
-		pd = .;
-		. += 0x1000; 
-
 		boot_stack_start = .;
 		. += 0x1000;  /* we start out with a 1K stack */
 		boot_stack_end = .;
@@ -49,7 +39,6 @@ SECTIONS
 
 
 	low_kern_end = .;
-
 	. = ALIGN(0x1000);
 
 	high_kern_start = .;
@@ -58,6 +47,8 @@ SECTIONS
 		*(.text*)
 		*(.gnu.linkonce.t*)
 	}
+
+
 
 	.rodata : {
 		*(.rodata .rodata.* .gnu.linkonce.r.*)
@@ -81,6 +72,14 @@ SECTIONS
 
 	. = ALIGN(0x1000);
 	. += 0x1000;
+
+
+
+	bitmap_metadata = .;
+	. += 0x1000;
+	bitmap_start = .;
+	. += 0x1000 * 0x1000 * 8;
+	bitmap_end = .;
 
 
 	high_kern_end = .;

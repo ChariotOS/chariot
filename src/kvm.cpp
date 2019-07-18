@@ -428,7 +428,7 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
 
     uint8_t *code = (uint8_t *)mem + regs.rip;
     if (cs_open(CS_ARCH_X86, CS_MODE_64, &handle) != CS_ERR_OK) return;
-    count = cs_disasm(handle, code + regs.rip, 100, regs.rip, 0, &insn);
+    count = cs_disasm(handle, code, -1, regs.rip, 0, &insn);
     if (count > 0) {
       size_t j;
       for (j = 0; j < count; j++) {

@@ -9,7 +9,7 @@ extern p2_table
 extern p1_table
 
 extern boot_stack_end ;; static memory from the binary where the stack begins
-extern low_main ;; c entry point
+extern kmain ;; c entry point
 
 ;; TODO(put multiboot header here for true mb support)
 
@@ -58,7 +58,9 @@ gdt1_loaded:
 	call map_lowkern_basic
 
 	;; setup and initialize basic paging
-	call initialize_longmode_and_paging
+	call longmode_setup
+	call paging_setup
+
 
 	;; now our long mode GDT
 	mov eax, gdtr64
@@ -87,7 +89,7 @@ gdt2_loaded:
 
 
 	;; and call the c code in boot.c
-	call low_main
+	call kmain
 	hlt
 	;; Ideally, we would not get here, but if we do we simply hlt spin
 
@@ -143,8 +145,8 @@ map_lowkern_basic:
 	ret
 
 
-initialize_longmode_and_paging:
 
+longmode_setup:
 	;; put pml4 address in cr3
 	mov eax, p4_table
 	mov cr3, eax
@@ -159,6 +161,10 @@ initialize_longmode_and_paging:
 	rdmsr                        ; Read from the model-specific register.
 	or eax, 1 << 8               ; Set the LM-bit which is the 9th bit (bit 8).
 	wrmsr                        ; Write to the model-specific register.
+	ret
+
+
+paging_setup:
 
 	;; paging enable (set the 31st bit of cr0)
 	mov eax, cr0
@@ -168,7 +174,6 @@ initialize_longmode_and_paging:
 	;; make sure we are in "normal cache mode"
 	mov ebx, ~(3 << 29)
 	and eax, ebx
-
 	ret
 
 

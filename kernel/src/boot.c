@@ -47,10 +47,3 @@ int kmain(void) {
 }
 
 
-// low_main is called by the low kernel. It's job is to setup the basic
-// bitmap allocator and id map all of the kernel code
-int low_main(void) BOOTCODE;
-int low_main(void) {
-  kmain();
-  return 0xfafa;
-}

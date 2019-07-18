@@ -19,9 +19,9 @@ extern char high_kern_end;
 static char *kernel_heap_lo = NULL;
 static char *kernel_heap_hi = NULL;
 
-static char *bitmap_metadata = NULL;
-static char *bitmap_start = NULL;
-static char *bitmap_end = NULL;
+extern char bitmap_metadata;
+extern char bitmap_start;
+extern char bitmap_end;
 
 // Use sparingly
 static void *next_page(void) {
@@ -35,19 +35,19 @@ static void init_bitmap(void) {
   printk("%lu entries\n", entries);
   printk("%lu bytes\n", entries * 4096);
 
-  bitmap_start = kernel_heap_hi;
-  kernel_heap_hi += entries * 4096;
-  bitmap_end = kernel_heap_hi;
+  // bitmap_start = kernel_heap_hi;
+  // kernel_heap_hi += entries * 4096;
+  // bitmap_end = kernel_heap_hi;
 
   // we need to clear the bitmap, as no pages are allocated
-  for (int i = 0; i < 4096; i++) bitmap_start[i] = 0xff;
+  for (int i = 0; i < 4096; i++) (&bitmap_start)[i] = 0xff;
 }
 
 int init_mem(void) {
   kernel_heap_lo = &high_kern_end;
   kernel_heap_hi = kernel_heap_lo;
 
-  bitmap_metadata = next_page();
+  // bitmap_metadata = next_page();
 
   init_bitmap();
 
@@ -85,15 +85,15 @@ void *alloc_page(void) {
   print_bitmap_md();
   void *addr = NULL;
   for (int i = 0; i < 4096; i++) {
-    unsigned char val = bitmap_start[i];
+    unsigned char val = (&bitmap_start)[i];
 
     for (int o = 7; o >= 0; o--) {
       bool set = (val >> o) & 1;
       // the page we are looking at is free, so use it
       if (set) {
         // set the bit to set
-        bitmap_start[i] = val & ~(1 << o);
-        addr = bitmap_start + (i * 8 * 4096) + (4096 * (7 - o));
+        (&bitmap_start)[i] = val & ~(1 << o);
+        addr = &bitmap_start + (i * 8 * 4096) + (4096 * (7 - o));
         goto FOUND;
       }
     }
@@ -108,7 +108,7 @@ FOUND:
 }
 
 void free_page(void *p) {
-  if (p < (void *)bitmap_start || p > (void *)bitmap_end) {
+  if (p < (void *)&bitmap_start || p > (void *)&bitmap_end) {
     printk("PAGE NOT OWNED BY BITMAP\n");
     return;
   };
@@ -116,13 +116,13 @@ void free_page(void *p) {
   BIT_DEBUG("FREEING:\n");
   print_bitmap_md();
 
-  u64 ind = ((char *)p - bitmap_start) / 4096;
+  u64 ind = ((char *)p - &bitmap_start) / 4096;
 
   int bit = 7 - (ind & 0xf);
   int byte = ind & ~0xf;
 
-  char old = bitmap_start[byte];
-  bitmap_start[byte] = old | (1 << bit);
+  char old = (&bitmap_start)[byte];
+  (&bitmap_start)[byte] = old | (1 << bit);
 
   print_bitmap_md();
   BIT_DEBUG("\n\n");
