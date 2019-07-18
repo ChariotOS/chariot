@@ -70,7 +70,7 @@ $(KERNEL): $(CSOURCES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
 
 iso: kern
 	mkdir -p build/iso/boot/grub
-	cp grub.cfg build/iso/boot/grub
+	cp kernel/grub.cfg build/iso/boot/grub
 	cp build/kernel.elf build/iso/boot
 	grub-mkrescue -o kernel.iso build/iso
 
@@ -78,3 +78,10 @@ clean:
 	@rm -rf build
 	@rm -f $(COBJECTS)
 	@rm -f $(AOBJECTS)
+
+
+qemu: iso
+		qemu-system-x86_64 \
+			-nographic \
+			-cdrom kernel.iso \
+			-m 2048 \

@@ -11,12 +11,32 @@ extern pdpt ;; level 3 page dir
 extern pd ;; level 2 page dir
           ;; where is level 1? idk lol
 
+
+
+extern p4_table
+extern p3_table
+extern p2_table
+extern p1_table
+
 extern boot_stack_end ;; static memory from the binary where the stack begins
 extern kmain ;; c entry point
 
 ;; TODO(put multiboot header here for true mb support)
 
+multiboot_hdr:
+
+
 section .boot
+MAGIC_NUMBER equ 0x1BADB002     ; define the magic number constant
+FLAGS        equ 0x0            ; multiboot flags
+CHECKSUM     equ -MAGIC_NUMBER  ; calculate the checksum
+																; (magic number + checksum + flags should equal 0)
+align 4                         ; the code must be 4 byte aligned
+		dd MAGIC_NUMBER             ; write the magic number to the machine code,
+		dd FLAGS                    ; the flags,
+		dd CHECKSUM                 ; and the checksum
+
+
 
 [bits 16]
 start:
@@ -128,33 +148,42 @@ gdt2_loaded:
 
 bits 32
 paging_longmode_setup:
-	;; PML4[0] -> PDPT
-	mov eax, pdpt
-	or eax, 0x3
-	mov ebx, pml4
-	mov [ebx], eax
 
-	;; PDPT[0] -> PDT
-	mov eax, pd
-	or eax, 0x3
-	mov ebx, pdpt
-	mov [ebx], eax
+	;; recursively map p4 to itself (osdev told me to)
+	mov eax, p4_table
+	or eax, 0b11 ; present + writable
+	mov [p4_table + 511 * 8], eax
 
-	;; ident map the first GB
+	;; p4_table[0] -> p3_table
+	mov eax, p3_table
+	or eax, 0x3
+	mov [p4_table], eax
+
+	;; p3_table[0] -> p2_table
+	mov eax, p2_table
+	or eax, 0x3
+	mov [p3_table], eax
+
+	;; p2_table[0] -> p1_table
+	mov eax, p1_table
+	or eax, 0x3
+	mov [p2_table], eax
+
+	;; ident map the first 512 pages
 	mov ecx, 512
-	mov edx, pd
-	mov eax, 0x83 ;; set PS bit also, (PDE -> 2MB page)
+	mov edx, p1_table
+	mov eax, 0x3
 	;; starting at 0x00
 
 .write_pde:
 
 	mov [edx], eax
-	add eax, 0x200000
+	add eax, 4096
 	add edx, 0x8 ;; shift the dst by 8 bytes (size of addr)
 	loop .write_pde
 
 	;; put pml4 address in cr3
-	mov eax, pml4
+	mov eax, p4_table
 	mov cr3, eax
 
 	;; enable PAE

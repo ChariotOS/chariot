@@ -1,13 +1,15 @@
 #include <asm.h>
 #include <printk.h>
 #include <types.h>
-
+#include <serial.h>
 
 // most (if not all) of this code is taken from https://github.com/mpaland/printf
 
 #define IO_PORT_PUTCHAR 0xfad
 
-void putchar(char c) { outb(c, IO_PORT_PUTCHAR); }
+void putchar(char c) {
+  serial_send(SERIAL_PORT_A, c);
+}
 int puts(char* s) {
   int i;
   for (i = 0; s[i] != '\0'; i++) outb(s[i], IO_PORT_PUTCHAR);

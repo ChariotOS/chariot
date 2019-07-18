@@ -9,11 +9,32 @@ SECTIONS
 
   . = 0x1000;
 
+	low_kern_start = .;
+
 	.boot : {
 		*(.mbhdr)
 		_loadStart = .;
 		*(.boot)
 		. = ALIGN(4096);
+
+
+
+		p4_table = .;
+		. += 0x1000;
+
+
+		p3_table = .;
+		. += 0x1000;
+
+
+		p2_table = .;
+		. += 0x1000;
+
+		p1_table = .;
+		. += 0x1000;
+
+
+
 		pml4 = .;
 		. += 0x1000;
 		pdpt = .;
@@ -22,11 +43,18 @@ SECTIONS
 		. += 0x1000; 
 
 		boot_stack_start = .;
-		. += 0x200000;  /* we start out with a 2M stack */
+		. += 0x1000;  /* we start out with a 1K stack */
 		boot_stack_end = .;
 	}
 
-	.text ALIGN(0x1000) : {
+
+	low_kern_end = .;
+
+	. = ALIGN(0x1000);
+
+	high_kern_start = .;
+
+	.text : {
 		*(.text*)
 		*(.gnu.linkonce.t*)
 	}
@@ -51,5 +79,9 @@ SECTIONS
 		*(.eh_frame .note.GNU-stack)
 	}
 
-	kernel_end = .;
+	. = ALIGN(0x1000);
+	. += 0x1000;
+
+
+	high_kern_end = .;
 }
