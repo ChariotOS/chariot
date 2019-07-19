@@ -17,21 +17,16 @@ SECTIONS
 		*(.boot)
 		. = ALIGN(4096);
 
-
-
 		p4_table = .;
 		. += 0x1000;
-
-
 		p3_table = .;
 		. += 0x1000;
-
-
 		p2_table = .;
 		. += 0x1000;
-
 		p1_table = .;
 		. += 0x1000;
+
+
 		boot_stack_start = .;
 		. += 0x1000;  /* we start out with a 1K stack */
 		boot_stack_end = .;

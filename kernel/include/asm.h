@@ -6,6 +6,8 @@
 #include "types.h"
 
 #define BOOTCODE __attribute__ ((__section__(".boot")))
+#define __packed __attribute__((packed))
+
 
 #define RFLAGS_CF (1 << 0)
 #define RFLAGS_PF (1 << 2)
@@ -49,6 +51,13 @@
 #define CR4_PCIDE (1 << 17)
 #define CR4_OSXSAVE (1 << 18)
 #define CR4_SMEP (1 << 20)
+
+
+
+static inline void memset(void *buf, char c, size_t len) {
+  char *m = (char*)buf;
+  for (int i = 0; i < len; i++) m[i] = c;
+}
 
 
 // a struct that holds all the registers

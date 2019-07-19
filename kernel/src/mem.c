@@ -13,7 +13,9 @@
  * a page is used somewhere
  */
 
-// end of the kernel code
+extern char low_kern_start;
+extern char low_kern_end;
+extern char high_kern_start;
 extern char high_kern_end;
 
 static char *kernel_heap_lo = NULL;
@@ -31,15 +33,7 @@ static void *next_page(void) {
 }
 
 static void init_bitmap(void) {
-  u64 entries = 4096 * 8;  // 1 bit for every page
-  printk("%lu entries\n", entries);
-  printk("%lu bytes\n", entries * 4096);
-
-  // bitmap_start = kernel_heap_hi;
-  // kernel_heap_hi += entries * 4096;
-  // bitmap_end = kernel_heap_hi;
-
-  // we need to clear the bitmap, as no pages are allocated
+  // simply clear out the bitmap
   for (int i = 0; i < 4096; i++) (&bitmap_start)[i] = 0xff;
 }
 
@@ -47,16 +41,40 @@ int init_mem(void) {
   kernel_heap_lo = &high_kern_end;
   kernel_heap_hi = kernel_heap_lo;
 
-  // bitmap_metadata = next_page();
-
   init_bitmap();
+  // now that we have a basic bitmap allocator, we need to setup the
+  // new paging system. To do this, we need to allocate a new p4_table,
+  // and id map the entire kernel code/memory into it
+
+  // allocate the p4_table
+  u64 *p4_table = alloc_page();
+  for (int i = 0; i < 512; i++) p4_table[i] = 0;
+  // recursively map the page directory
+  p4_table[511] = (u64)p4_table | 0x3;
+  printk("New p4: %p\n", p4_table);
+
+  // id map the lowkern
+  for (char *p = &low_kern_start; p <= &low_kern_end; p += 4096) {
+    map_page_into(p4_table, p, p);
+  }
+  // id map the high kern
+  for (char *p = &high_kern_start; p <= &high_kern_end; p += 4096) {
+    map_page_into(p4_table, p, p);
+  }
+
+  for (int i = 0; i < 512; i++) {
+    if (p4_table[i] != 0) {
+      printk("%4d %p\n", i, p4_table[i]);
+    }
+  }
+
+  printk("\n\n");
+
+  write_cr3((u64)p4_table);
+  tlb_flush();
 
   return 0;
 }
-
-
-
-
 
 // #define DEBUG_BITMAP_ALLOCATOR
 #ifndef DEBUG_BITMAP_ALLOCATOR
@@ -69,7 +87,7 @@ void print_bitmap_md(void) {
 #ifdef DEBUG_BITMAP_ALLOCATOR
   printk("  ");
   for (int i = 0; i < 8; i++) {
-    unsigned char val = bitmap_start[i];
+    unsigned char val = (&bitmap_start)[i];
     for (int o = 7; o >= 0; o--) {
       bool set = (val >> o) & 1;
       printk("%d", set);
