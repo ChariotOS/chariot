@@ -1,5 +1,6 @@
 #include <mobo/dev_mgr.h>
 
+/*
 static int debug_io(bool in, mobo::port_t p, void *data, int sz, void *) {
   char *buf = (char *)data;
   printf("[%s] %4x : (%d) ", in ? "IN " : "OUT", p, sz);
@@ -74,3 +75,4 @@ static int debug_dev_init(mobo::device_manager *dm) {
 }
 
 mobo_device_register("debug", debug_dev_init);
+*/

@@ -34,12 +34,13 @@ static void *next_page(void) {
 
 static void init_bitmap(void) {
   // simply clear out the bitmap
-  for (int i = 0; i < 4096; i++) (&bitmap_start)[i] = 0xff;
+  for (int i = 0; i < 4096; i++) (&bitmap_metadata)[i] = 0xff;
 }
 
 int init_mem(void) {
   kernel_heap_lo = &high_kern_end;
   kernel_heap_hi = kernel_heap_lo;
+
 
   init_bitmap();
   // now that we have a basic bitmap allocator, we need to setup the
@@ -51,7 +52,14 @@ int init_mem(void) {
   for (int i = 0; i < 512; i++) p4_table[i] = 0;
   // recursively map the page directory
   p4_table[511] = (u64)p4_table | 0x3;
-  printk("New p4: %p\n", p4_table);
+  // printk("New p4: %p\n", p4_table);
+
+
+  for  (int i = 0; i < 4; i++) {
+    void *va = (void*)((u64)0x200000 * i);
+    map_page_into(p4_table, va, va);
+  }
+
 
   // id map the lowkern
   for (char *p = &low_kern_start; p <= &low_kern_end; p += 4096) {
@@ -61,15 +69,6 @@ int init_mem(void) {
   for (char *p = &high_kern_start; p <= &high_kern_end; p += 4096) {
     map_page_into(p4_table, p, p);
   }
-
-  for (int i = 0; i < 512; i++) {
-    if (p4_table[i] != 0) {
-      printk("%4d %p\n", i, p4_table[i]);
-    }
-  }
-
-  printk("\n\n");
-
   write_cr3((u64)p4_table);
   tlb_flush();
 
@@ -103,14 +102,14 @@ void *alloc_page(void) {
   print_bitmap_md();
   void *addr = NULL;
   for (int i = 0; i < 4096; i++) {
-    unsigned char val = (&bitmap_start)[i];
+    unsigned char val = (&bitmap_metadata)[i];
 
     for (int o = 7; o >= 0; o--) {
       bool set = (val >> o) & 1;
       // the page we are looking at is free, so use it
       if (set) {
         // set the bit to set
-        (&bitmap_start)[i] = val & ~(1 << o);
+        (&bitmap_metadata)[i] = val & ~(1 << o);
         addr = &bitmap_start + (i * 8 * 4096) + (4096 * (7 - o));
         goto FOUND;
       }

@@ -56,18 +56,6 @@ struct serial8250_device {
 
 #define DEVICE_COUNT 4
 
-// Some initial devices, tty 0-3
-static struct serial8250_device devices[DEVICE_COUNT] = {
-    /* ttyS0 */
-    [0] = {.id = 0, .iobase = 0x3f8, .irq = 4, SERIAL_REGS_SETTING},
-    /* ttyS1 */
-    [1] = {.id = 1, .iobase = 0x2f8, .irq = 3, SERIAL_REGS_SETTING},
-    /* ttyS2 */
-    [2] = {.id = 2, .iobase = 0x3e8, .irq = 4, SERIAL_REGS_SETTING},
-    /* ttyS3 */
-    [3] = {.id = 3, .iobase = 0x2e8, .irq = 3, SERIAL_REGS_SETTING},
-};
-
 static void serial8250_flush_tx(struct serial8250_device *dev) {
   dev->lsr |= UART_LSR_TEMT | UART_LSR_THRE;
   if (dev->txcnt) {
@@ -79,80 +67,74 @@ static void serial8250_flush_tx(struct serial8250_device *dev) {
   }
 }
 
+static void serial8250_rx(struct serial8250_device *dev, void *data) {
+  if (dev->rxdone == dev->rxcnt) return;
 
+  // Break issued
+  if (dev->lsr & UART_LSR_BI) {
+    dev->lsr &= ~UART_LSR_BI;
+    ioport_write<char>(data, 0);
+    return;
+  }
 
-
-static void serial8250_rx(struct serial8250_device *dev, void *data)
-{
-	if (dev->rxdone == dev->rxcnt)
-		return;
-
-	/* Break issued ? */
-	if (dev->lsr & UART_LSR_BI) {
-		dev->lsr &= ~UART_LSR_BI;
-		ioport_write<char>(data, 0);
-		return;
-	}
-
-	ioport_write<char>(data, dev->rxbuf[dev->rxdone++]);
-	if (dev->rxcnt == dev->rxdone) {
-		dev->lsr &= ~UART_LSR_DR;
-		dev->rxcnt = dev->rxdone = 0;
-	}
+  ioport_write<char>(data, dev->rxbuf[dev->rxdone++]);
+  if (dev->rxcnt == dev->rxdone) {
+    dev->lsr &= ~UART_LSR_DR;
+    dev->rxcnt = dev->rxdone = 0;
+  }
 }
 
 static int serial_in(mobo::port_t port, void *data, int sz, void *_dp) {
   auto *dev = (struct serial8250_device *)_dp;
 
+  uint16_t offset;
+  bool ret = true;
 
-	uint16_t offset;
-	bool ret = true;
+  dev->mutex.lock();
 
-	dev->mutex.lock();
+  offset = port - dev->iobase;
 
-	offset = port - dev->iobase;
+  switch (offset) {
+    case UART_RX:
+      if (dev->lcr & UART_LCR_DLAB)
+	ioport_write<char>(data, dev->dll);
+      else
+	serial8250_rx(dev, data);
+      break;
+    case UART_IER:
+      if (dev->lcr & UART_LCR_DLAB)
+	ioport_write<char>(data, dev->dlm);
+      else
+	ioport_write<char>(data, dev->ier);
+      break;
+    case UART_IIR:
+      ioport_write<char>(data, dev->iir | UART_IIR_TYPE_BITS);
+      break;
+    case UART_LCR:
+      ioport_write<char>(data, dev->lcr);
+      break;
+    case UART_MCR:
+      ioport_write<char>(data, dev->mcr);
+      break;
+    case UART_LSR:
+      ioport_write<char>(data, dev->lsr);
+      break;
+    case UART_MSR:
+      ioport_write<char>(data, dev->msr);
+      break;
+    case UART_SCR:
+      ioport_write<char>(data, dev->scr);
+      break;
+    default:
+      ret = false;
+      break;
+  }
 
-	switch (offset) {
-	case UART_RX:
-		if (dev->lcr & UART_LCR_DLAB)
-			ioport_write<char>(data, dev->dll);
-		else
-			serial8250_rx(dev, data);
-		break;
-	case UART_IER:
-		if (dev->lcr & UART_LCR_DLAB)
-			ioport_write<char>(data, dev->dlm);
-		else
-			ioport_write<char>(data, dev->ier);
-		break;
-	case UART_IIR:
-		ioport_write<char>(data, dev->iir | UART_IIR_TYPE_BITS);
-		break;
-	case UART_LCR:
-		ioport_write<char>(data, dev->lcr);
-		break;
-	case UART_MCR:
-		ioport_write<char>(data, dev->mcr);
-		break;
-	case UART_LSR:
-		ioport_write<char>(data, dev->lsr);
-		break;
-	case UART_MSR:
-		ioport_write<char>(data, dev->msr);
-		break;
-	case UART_SCR:
-		ioport_write<char>(data, dev->scr);
-		break;
-	default:
-		ret = false;
-		break;
-	}
-
-	// serial8250_update_irq(vcpu->kvm, dev);
+  // serial8250_update_irq(vcpu->kvm, dev);
 
   dev->mutex.unlock();
 
-	return ret;
+  return ret;
 }
 
 static int serial_out(mobo::port_t port, void *data, int sz, void *_dp) {
@@ -167,34 +149,34 @@ static int serial_out(mobo::port_t port, void *data, int sz, void *_dp) {
   switch (offset) {
     case UART_TX:
       if (dev->lcr & UART_LCR_DLAB) {
-        dev->dll = ioport_read<char>(data);
-        break;
+	dev->dll = ioport_read<char>(data);
+	break;
       }
 
-      /* Loopback mode */
+      // Loopback mode
       if (dev->mcr & UART_MCR_LOOP) {
-        if (dev->rxcnt < FIFO_LEN) {
-          dev->rxbuf[dev->rxcnt++] = *addr;
-          dev->lsr |= UART_LSR_DR;
-        }
-        break;
+	if (dev->rxcnt < FIFO_LEN) {
+	  dev->rxbuf[dev->rxcnt++] = *addr;
+	  dev->lsr |= UART_LSR_DR;
+	}
+	break;
       }
 
       if (dev->txcnt < FIFO_LEN) {
-        dev->txbuf[dev->txcnt++] = *addr;
-        dev->lsr &= ~UART_LSR_TEMT;
-        if (dev->txcnt == FIFO_LEN / 2) dev->lsr &= ~UART_LSR_THRE;
-        serial8250_flush_tx(dev);
+	dev->txbuf[dev->txcnt++] = *addr;
+	dev->lsr &= ~UART_LSR_TEMT;
+	if (dev->txcnt == FIFO_LEN / 2) dev->lsr &= ~UART_LSR_THRE;
+	serial8250_flush_tx(dev);
       } else {
-        /* Should never happpen */
-        dev->lsr &= ~(UART_LSR_TEMT | UART_LSR_THRE);
+	// Should never happpen
+	dev->lsr &= ~(UART_LSR_TEMT | UART_LSR_THRE);
       }
       break;
     case UART_IER:
       if (!(dev->lcr & UART_LCR_DLAB))
-        dev->ier = ioport_read<char>(data) & 0x0f;
+	dev->ier = ioport_read<char>(data) & 0x0f;
       else
-        dev->dlm = ioport_read<char>(data);
+	dev->dlm = ioport_read<char>(data);
       break;
     case UART_FCR:
       dev->fcr = ioport_read<char>(data);
@@ -206,10 +188,10 @@ static int serial_out(mobo::port_t port, void *data, int sz, void *_dp) {
       dev->mcr = ioport_read<char>(data);
       break;
     case UART_LSR:
-      /* Factory test */
+      // Factory test
       break;
     case UART_MSR:
-      /* Not used */
+      // Not used
       break;
     case UART_SCR:
       dev->scr = ioport_read<char>(data);
@@ -225,6 +207,7 @@ static int serial_out(mobo::port_t port, void *data, int sz, void *_dp) {
   return ret;
 }
 
+/*
 static int serial_init(mobo::device_manager *dm) {
   int i;
   for (i = 0; i < DEVICE_COUNT; i++) {
@@ -234,5 +217,50 @@ static int serial_init(mobo::device_manager *dm) {
   }
   return 0;
 }
+*/
 
-mobo_device_register("serial8250", serial_init);
+
+
+
+class serial8250 : public mobo::device {
+ private:
+  struct serial8250_device devices[DEVICE_COUNT] = {
+      [0] = {.id = 0, .iobase = 0x3f8, .irq = 4, SERIAL_REGS_SETTING},
+      [1] = {.id = 1, .iobase = 0x2f8, .irq = 3, SERIAL_REGS_SETTING},
+      [2] = {.id = 2, .iobase = 0x3e8, .irq = 4, SERIAL_REGS_SETTING},
+      [3] = {.id = 3, .iobase = 0x2e8, .irq = 3, SERIAL_REGS_SETTING},
+  };
+
+  inline struct serial8250_device *get_dev_from_port(mobo::port_t p) {
+    for (auto &dev : devices) {
+      if ((p & 0xff0) == (dev.iobase & 0xff0)) {
+        return &dev;
+      }
+    }
+    return nullptr;
+  }
+
+ public:
+  virtual std::vector<mobo::port_t> get_ports(void) {
+    std::vector<mobo::port_t> ports;
+
+    int i;
+    for (i = 0; i < DEVICE_COUNT; i++) {
+      struct serial8250_device *dev = &devices[i];
+      for (int i = 0; i < 8; i++) ports.push_back(dev->iobase + i);
+    }
+    return ports;
+  }
+
+  virtual int in(mobo::vcpu *, mobo::port_t port, int sz, void *data) {
+    auto dev = get_dev_from_port(port);
+    return serial_in(port, data, sz, (void*)dev);
+  }
+
+  virtual int out(mobo::vcpu *, mobo::port_t port, int sz, void *data) {
+    auto dev = get_dev_from_port(port);
+    return serial_out(port, data, sz, (void*)dev);
+  }
+};
+
+MOBO_REGISTER_DEVICE(serial8250);

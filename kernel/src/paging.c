@@ -35,23 +35,20 @@ u64 *alloc_page_dir(void) {
 
 void map_page_into(u64 *p4, void *va, void *pa) {
   u64 *table = (u64 *)((u64)p4 & ~0xfff);
-
   for (int i = 3; i > 0; i--) {
     // the index within the current table
+    // this is some spooky math, but look at the PN_INDEX macros at the
+    // top of this file for more information
     int ind = ((((u64)va / 0x1000) >> (9 * i)) & 0777);
-    bool new = false;
-
     if (i != 0 && (table[ind] & 1) == 0) {
       u64 *new_table = alloc_page_dir();
+      // printk("alloc for %d level\n", i);
       table[ind] = (u64)new_table | 0x3;
-      new = true;
     }
-
     table = (u64 *)(table[ind] & ~0xfff);
   }
 
   table[((u64)va / 0x1000) & 0777] = (u64)pa | 0x3;
-  // printk("\n");
 }
 
 // map a page in the current p4_table env
@@ -59,3 +56,28 @@ void map_page(void *va, void *pa) {
   u64 *p4 = (u64 *)read_cr3();
   map_page_into(p4, va, pa);
 }
+
+static void do_print_page_dir(u64 *p, int lvl) {
+  if (lvl == 0) {
+    for (int i = 0; i < 512; i++) {
+      u64 pa = p[i];
+      if ((pa & 1) == 0) continue;
+      printk("\t\t\t\t%p\n", pa & ~0xfff);
+    }
+    return;
+  }
+
+
+  for (int i = 0; i < 512; i++) {
+      u64 pa = p[i];
+
+      if ((pa & 1) == 0) continue;
+      for (int j = lvl - 4; j > 0; j--) printk("\t");
+      printk("%p\n", pa);
+      // do_print_page_dir((u64*)pa, lvl - 1);
+  }
+
+
+}
+
+void print_page_dir(u64 *p4) { do_print_page_dir(p4, 4); }

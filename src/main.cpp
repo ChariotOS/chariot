@@ -1,11 +1,17 @@
+// #include <mobo/jit.h>
 #include <mobo/kvm.h>
 
+#include <capstone/capstone.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <iostream>
+
 
 using namespace mobo;
 
+
 int main(int argc, char *argv[]) {
+
   int kvmfd = open("/dev/kvm", O_RDWR);
 
   std::string binary = argv[1];
@@ -19,3 +25,4 @@ int main(int argc, char *argv[]) {
   vmm.run();
   return 0;
 }
+

@@ -5,14 +5,13 @@ ENTRY(_start)
 
 SECTIONS
 {
-	
 
   . = 0x1000;
 
 	low_kern_start = .;
 
 	.boot : {
-		*(.mbhdr)
+		*(.multiboot)
 		_loadStart = .;
 		*(.boot)
 		. = ALIGN(4096);
@@ -26,15 +25,19 @@ SECTIONS
 		p1_table = .;
 		. += 0x1000;
 
-
-		boot_stack_start = .;
-		. += 0x1000;  /* we start out with a 1K stack */
-		boot_stack_end = .;
 	}
+
+
+	boot_stack_start = .;
+	. += 0x4000;  /* we start out with a 4 pages of stack */
+	boot_stack_end = .;
+
 
 
 	low_kern_end = .;
 	. = ALIGN(0x1000);
+
+	. = 0x00100000;
 
 	high_kern_start = .;
 

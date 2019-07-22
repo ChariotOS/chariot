@@ -5,6 +5,7 @@
 
 #include <linux/kvm.h>
 #include <mobo/dev_mgr.h>
+#include <mobo/vcpu.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
@@ -21,12 +22,22 @@
 
 namespace mobo {
 
-struct kvm_vcpu {
+struct kvm_vcpu : public mobo::vcpu {
   int cpufd = -1;
   int index = 0;
   struct kvm_run *kvm_run;
 
   void dump_state(FILE *, char *mem = nullptr);
+
+  // GPR
+  virtual void read_regs(regs &);
+  virtual void write_regs(regs &);
+  // SPR
+  virtual void read_sregs(sregs &);
+  virtual void write_sregs(sregs &);
+  // FPR
+  virtual void read_fregs(fpu_regs &);
+  virtual void write_fregs(fpu_regs &);
 };
 
 // a memory bank represents a segment of memory in the kvm CPU
@@ -61,6 +72,7 @@ class kvm {
   void init_ram(size_t);
   void run(void);
 };
+
 }  // namespace mobo
 
 #endif

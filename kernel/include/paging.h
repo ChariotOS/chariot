@@ -13,5 +13,7 @@ void map_page_into(u64 *p4, void *va, void *pa);
 void map_page(void *va, void *pa);
 
 
+// given a 4th level page table, print it out :)
+void print_page_dir(u64 *);
 
 #endif

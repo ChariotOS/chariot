@@ -130,7 +130,6 @@ void kvm::load_elf(std::string &file) {
   ELFIO::elfio reader;
   reader.load(file);
 
-
   auto entry = reader.get_entry();
 
   auto secc = reader.sections.size();
@@ -149,13 +148,11 @@ void kvm::load_elf(std::string &file) {
   }
 
   // set the cpu0.rip to the entrypoint parsed from the elf
-  auto cpufd = cpus[0].cpufd;
-  struct kvm_regs regs;
-  ioctl(cpufd, KVM_GET_REGS, &regs);
+  mobo::regs regs;
+  cpus[0].read_regs(regs);
   regs.rip = entry;
-  ioctl(cpufd, KVM_SET_REGS, &regs);
+  cpus[0].write_regs(regs);
 }
-
 
 void kvm::attach_bank(ram_bank &&bnk) {
   struct kvm_userspace_memory_region code_region = {
@@ -168,12 +165,15 @@ void kvm::attach_bank(ram_bank &&bnk) {
   ram.push_back(std::move(bnk));
 }
 
-
 void kvm::init_ram(size_t nbytes) {
-  this->mem =mmap(NULL, nbytes, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS,
-              -1, 0);
+  this->mem = mmap(NULL, nbytes, PROT_READ | PROT_WRITE,
+                   MAP_SHARED | MAP_ANONYMOUS, -1, 0);
   this->memsize = nbytes;
 
+  // Setup the PCI hole if needed... Basically map the region of memory
+  // differently if it needs to have a hole in it. The memory is still just one
+  // region of memory, except we seperate the region using kvm's
+  // USER_MEMORY_REGION system
   if (nbytes < KVM_32BIT_GAP_START) {
     ram_bank bnk;
     bnk.guest_phys_addr = 0x0000;
@@ -201,23 +201,24 @@ void kvm::run(void) {
   auto &cpufd = cpus[0].cpufd;
   auto run = cpus[0].kvm_run;
 
-  struct kvm_regs regs;
+  mobo::regs regs;
 
-  ioctl(cpufd, KVM_GET_REGS, &regs);
+  cpus[0].read_regs(regs);
 
   while (1) {
     ioctl(cpufd, KVM_RUN, NULL);
-
     // cpus[0].dump_state(stderr);
 
     // printf("Exited: %s\n", kvm_exit_reasons[run->exit_reason]);
     int stat = run->exit_reason;
+
     if (stat == KVM_EXIT_MMIO) {
+      printf("[MMIO] ");
       void *addr = (void *)run->mmio.phys_addr;
       if (run->mmio.is_write) {
-        printf("mmio write %p\n", addr);
+        printf("write %p\n", addr);
       } else {
-        printf("mmio read  %p\n", addr);
+        printf("read  %p\n", addr);
       }
       continue;
     }
@@ -235,9 +236,9 @@ void kvm::run(void) {
     }
 
     if (stat == KVM_EXIT_IO) {
-      dev_mgr.handle_io(run->io.port, run->io.direction == KVM_EXIT_IO_IN,
-                        (void *)((char *)run + run->io.data_offset),
-                        run->io.size);
+      dev_mgr.handle_io(
+          nullptr, run->io.port, run->io.direction == KVM_EXIT_IO_IN,
+          (void *)((char *)run + run->io.data_offset), run->io.size);
       continue;
     }
 
@@ -251,14 +252,14 @@ void kvm::run(void) {
       return;
     }
 
-    ioctl(cpufd, KVM_GET_REGS, &regs);
+    cpus[0].read_regs(regs);
 
     printf("unhandled exit: %d at rip = %p\n", run->exit_reason,
            (void *)regs.rip);
     break;
   }
 
-  cpus[0].dump_state(stdout);
+  cpus[0].dump_state(stdout, (char *)this->mem);
 }
 
 static inline void host_cpuid(struct cpuid_regs *regs) {
@@ -358,16 +359,14 @@ static void filter_cpuid(struct kvm_cpuid2 *kvm_cpuid) {
 #define ID_MASK 0x00200000
 
 static void cpu_dump_seg_cache(kvm_vcpu *cpu, FILE *out, const char *name,
-                               struct kvm_segment const &seg) {
-  fprintf(out, "%-3s=%04x %016" PRIx64 " %08x ", name, seg.selector,
+                               mobo::segment const &seg) {
+  fprintf(out, "%-3s=%04x %016" PRIx64 " %08x    ", name, seg.selector,
           (size_t)seg.base, seg.limit);
-
-  fprintf(out, "\n");
 }
 
 void kvm_vcpu::dump_state(FILE *out, char *mem) {
-  struct kvm_regs regs;
-  ioctl(cpufd, KVM_GET_REGS, &regs);
+  mobo::regs regs;
+  read_regs(regs);
 
   unsigned int eflags = regs.rflags;
 #define GET(name) \
@@ -392,19 +391,21 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
           eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-',
           eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
 
-  struct kvm_sregs sregs;
+  mobo::sregs sregs;
+  read_sregs(sregs);
 
-  ioctl(cpufd, KVM_GET_SREGS, &sregs);
-
-  fprintf(out, "    sel  base             limit\n");
-  cpu_dump_seg_cache(this, out, "ES", sregs.cs);
+  cpu_dump_seg_cache(this, out, "ES", sregs.es);
   cpu_dump_seg_cache(this, out, "CS", sregs.cs);
-  cpu_dump_seg_cache(this, out, "SS", sregs.cs);
-  cpu_dump_seg_cache(this, out, "DS", sregs.cs);
-  cpu_dump_seg_cache(this, out, "FS", sregs.cs);
-  cpu_dump_seg_cache(this, out, "GS", sregs.cs);
+  fprintf(out, "\n");
+  cpu_dump_seg_cache(this, out, "SS", sregs.ss);
+  cpu_dump_seg_cache(this, out, "DS", sregs.ds);
+  fprintf(out, "\n");
+  cpu_dump_seg_cache(this, out, "FS", sregs.fs);
+  cpu_dump_seg_cache(this, out, "GS", sregs.gs);
+  fprintf(out, "\n");
   cpu_dump_seg_cache(this, out, "LDT", sregs.ldt);
   cpu_dump_seg_cache(this, out, "TR", sregs.tr);
+  fprintf(out, "\n");
 
   fprintf(out, "GDT=     %016" PRIx64 " %08x\n", (size_t)sregs.gdt.base,
           (int)sregs.gdt.limit);
@@ -417,6 +418,29 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
           (int)sregs.cr4);
 
   fprintf(out, "EFER=%016" PRIx64 "\n", (size_t)sregs.efer);
+
+  struct kvm_fpu fpu;
+
+  ioctl(cpufd, KVM_GET_FPU, &fpu);
+
+  {
+    int written = 0;
+    for (int i = 0; i < 16; i++) {
+      fprintf(out, "XMM%-2d=", i);
+
+      for (int j = 0; j < 16; j++) {
+        fprintf(out, "%02x", fpu.xmm[i][j]);
+      }
+      written++;
+
+      if (written == 2) {
+        fprintf(out, "\n");
+        written = 0;
+      } else {
+        fprintf(out, " ");
+      }
+    }
+  }
 
   fprintf(out, "\n");
 
@@ -445,3 +469,158 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
   }
 #undef GET
 }
+
+
+
+void kvm_vcpu::read_regs(regs &r) {
+  struct kvm_regs regs;
+  ioctl(cpufd, KVM_GET_REGS, &regs);
+
+  r.rax = regs.rax;
+  r.rbx = regs.rbx;
+  r.rcx = regs.rcx;
+  r.rdx = regs.rdx;
+
+  r.rsi = regs.rsi;
+  r.rdi = regs.rdi;
+  r.rsp = regs.rsp;
+  r.rbp = regs.rbp;
+
+  r.r8 = regs.r8;
+  r.r9 = regs.r8;
+  r.r10 = regs.r10;
+  r.r11 = regs.r11;
+  r.r12 = regs.r12;
+  r.r13 = regs.r13;
+  r.r14 = regs.r14;
+  r.r15 = regs.r15;
+
+  r.rip = regs.rip;
+  r.rflags = regs.rflags;
+}
+
+
+void kvm_vcpu::write_regs(regs &regs) {
+  struct kvm_regs r;
+  r.rax = regs.rax;
+  r.rbx = regs.rbx;
+  r.rcx = regs.rcx;
+  r.rdx = regs.rdx;
+
+  r.rsi = regs.rsi;
+  r.rdi = regs.rdi;
+  r.rsp = regs.rsp;
+  r.rbp = regs.rbp;
+
+  r.r8 = regs.r8;
+  r.r9 = regs.r8;
+  r.r10 = regs.r10;
+  r.r11 = regs.r11;
+  r.r12 = regs.r12;
+  r.r13 = regs.r13;
+  r.r14 = regs.r14;
+  r.r15 = regs.r15;
+
+  r.rip = regs.rip;
+  r.rflags = regs.rflags;
+  ioctl(cpufd, KVM_SET_REGS, &r);
+}
+
+void kvm_vcpu::read_sregs(sregs &r) {
+  struct kvm_sregs sr;
+
+  ioctl(cpufd, KVM_GET_SREGS, &sr);
+
+  static auto copy_segment = [](auto &dst, auto &src) {
+    dst.base = src.base;
+    dst.limit = src.limit;
+    dst.selector = src.selector;
+    dst.type = src.type;
+    dst.present = src.present;
+    dst.dpl = src.dpl;
+    dst.db = src.db;
+    dst.s = src.s;
+    dst.l = src.l;
+    dst.g = src.g;
+    dst.avl = src.avl;
+    dst.unusable = src.unusable;
+    // dont need to copy padding
+  };
+
+  copy_segment(r.cs, sr.cs);
+  copy_segment(r.ds, sr.ds);
+  copy_segment(r.es, sr.es);
+  copy_segment(r.fs, sr.fs);
+  copy_segment(r.gs, sr.gs);
+  copy_segment(r.ss, sr.ss);
+  copy_segment(r.tr, sr.tr);
+
+  r.gdt.base = sr.gdt.base;
+  r.gdt.limit = sr.gdt.limit;
+
+  r.idt.base = sr.idt.base;
+  r.idt.limit = sr.idt.limit;
+
+  r.cr0 = sr.cr0;
+  r.cr2 = sr.cr2;
+  r.cr3 = sr.cr3;
+  r.cr4 = sr.cr4;
+  r.cr8 = sr.cr8;
+
+  r.efer = sr.efer;
+  r.apic_base = sr.apic_base;
+  for (int i = 0; i < (NR_INTERRUPTS + 63) / 64; i++) {
+    r.interrupt_bitmap[i] = sr.interrupt_bitmap[i];
+  }
+}
+void kvm_vcpu::write_sregs(sregs &sr) {
+  struct kvm_sregs r;
+
+  static auto copy_segment = [](auto &dst, auto &src) {
+    dst.base = src.base;
+    dst.limit = src.limit;
+    dst.selector = src.selector;
+    dst.type = src.type;
+    dst.present = src.present;
+    dst.dpl = src.dpl;
+    dst.db = src.db;
+    dst.s = src.s;
+    dst.l = src.l;
+    dst.g = src.g;
+    dst.avl = src.avl;
+    dst.unusable = src.unusable;
+    // dont need to copy padding
+  };
+
+  copy_segment(r.cs, sr.cs);
+  copy_segment(r.ds, sr.ds);
+  copy_segment(r.es, sr.es);
+  copy_segment(r.fs, sr.fs);
+  copy_segment(r.gs, sr.gs);
+  copy_segment(r.ss, sr.ss);
+  copy_segment(r.tr, sr.tr);
+
+  r.gdt.base = sr.gdt.base;
+  r.gdt.limit = sr.gdt.limit;
+
+  r.idt.base = sr.idt.base;
+  r.idt.limit = sr.idt.limit;
+
+  r.cr0 = sr.cr0;
+  r.cr2 = sr.cr2;
+  r.cr3 = sr.cr3;
+  r.cr4 = sr.cr4;
+  r.cr8 = sr.cr8;
+
+  r.efer = sr.efer;
+  r.apic_base = sr.apic_base;
+  for (int i = 0; i < (NR_INTERRUPTS + 63) / 64; i++) {
+    r.interrupt_bitmap[i] = sr.interrupt_bitmap[i];
+  }
+
+  ioctl(cpufd, KVM_SET_SREGS, &sr);
+}
+
+void kvm_vcpu::read_fregs(fpu_regs &r) {}
+void kvm_vcpu::write_fregs(fpu_regs &r) {}
+

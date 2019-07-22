@@ -4,46 +4,47 @@
 #define __MOBO_DEVMGR_
 
 #include <functional>
+#include <vector>
 
 namespace mobo {
 
-using port_t = uint16_t;
-// a port io handler returns the length, takes a port dst len and private data
-using port_io_handler_fn = std::function<int(port_t, void *, uint32_t, void *)>;
+class vcpu;
 
-struct io_handler {
-  uint16_t port;
-  port_io_handler_fn in;
-  port_io_handler_fn out;
-  void *data = nullptr;  // data is user data, whatever they want
+using port_t = uint16_t;
+
+class device {
+ public:
+  virtual std::vector<port_t> get_ports(void);
+  // initialize... duh
+  virtual void init(void);
+  virtual int in(mobo::vcpu *, port_t, int, void *);
+  virtual int out(mobo::vcpu *, port_t, int, void *);
 };
 
 class device_manager {
-  std::unordered_map<port_t, io_handler> io_handlers;
+  std::unordered_map<port_t, device *> io_handlers;
+  std::vector<device *> devices;
 
  public:
   device_manager();
-  void hook_io(port_t, port_io_handler_fn, port_io_handler_fn,
-               void *data = nullptr);
 
-  int handle_io(port_t, bool, void *, uint32_t);
+  int handle_io(vcpu *, port_t, bool, void *, uint32_t);
 };
 
 struct device_info {
   char *name;
-  int (*init)(device_manager *);
+  std::function<device *()> create;
 };
-
 
 int port_io_nop(mobo::port_t, void *, int, void *);
 
 };  // namespace mobo
 
-#define mobo_device_register(name, init_dev_fn)                                \
-  static char _mobo_device_name[] = name;                                      \
+#define MOBO_REGISTER_DEVICE(cls)                                              \
+  static char _mobo_device_name[] = #cls;                                      \
   static struct mobo::device_info _mobo_device __attribute__((__used__))       \
       __attribute__(                                                           \
           (unused, __section__("_mobo_devices"), aligned(sizeof(void *)))) = { \
-          _mobo_device_name, init_dev_fn};
+          _mobo_device_name, []() { return new cls(); }};
 
 #endif
