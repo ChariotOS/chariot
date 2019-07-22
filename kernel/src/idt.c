@@ -1,21 +1,15 @@
 #include <asm.h>
 #include <idt.h>
+#include <mem.h>
+#include <paging.h>
 #include <printk.h>
 #include <types.h>
 
-u64 idt_handler_table[NUM_IDT_ENTRIES];
-u64 idt_state_table[NUM_IDT_ENTRIES];
-
-struct gate_desc64 idt64[NUM_IDT_ENTRIES];
-
-struct idt_desc idt_descriptor = {
-    .base_addr = (uint64_t)&idt64,
-    .size = (NUM_IDT_ENTRIES * 16) - 1,
-};
+// struct gatedesc idt[NUM_IDT_ENTRIES];
 
 #define EXCP_NAME 0
 #define EXCP_MNEMONIC 1
-const char* excp_codes[NUM_EXCEPTIONS][2] = {
+const char *excp_codes[NUM_EXCEPTIONS][2] = {
     {"Divide By Zero", "#DE"},
     {"Debug", "#DB"},
     {"Non-maskable Interrupt", "N/A"},
@@ -50,41 +44,124 @@ const char* excp_codes[NUM_EXCEPTIONS][2] = {
     {"Reserved", "N/A"},
 };
 
-int idt_assign_entry(u64 entry, u64 handler_addr, u64 state_addr) {
-  if (entry >= NUM_IDT_ENTRIES) {
-    printk("Assigning invalid IDT entry\n");
-    return -1;
+// Set up a normal interrupt/trap gate descriptor.
+// - istrap: 1 for a trap (= exception) gate, 0 for an interrupt gate.
+//   interrupt gate clears FL_IF, trap gate leaves FL_IF alone
+// - sel: Code segment selector for interrupt/trap handler
+// - off: Offset in code segment for interrupt/trap handler
+// - dpl: Descriptor Privilege Level -
+//        the privilege level required for software to invoke
+//        this interrupt/trap gate explicitly using an int instruction.
+#define SETGATE(gate, istrap, sel, off, d)        \
+  {                                               \
+    (gate).off_15_0 = (u32)(off)&0xffff;          \
+    (gate).cs = (sel);                            \
+    (gate).args = 0;                              \
+    (gate).rsv1 = 0;                              \
+    (gate).type = (istrap) ? STS_TG32 : STS_IG32; \
+    (gate).s = 0;                                 \
+    (gate).dpl = (d);                             \
+    (gate).p = 1;                                 \
+    (gate).off_31_16 = (u32)(off) >> 16;          \
   }
 
-  if (!handler_addr) {
-    printk("attempt to assign null handler\n");
-    return -1;
-  }
+extern void *vectors[];  // in vectors.S: array of 256 entry pointers
 
-  idt_handler_table[entry] = handler_addr;
-  idt_state_table[entry] = state_addr;
-
-  return 0;
+static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
+  u64 addr = (u64)kva;
+  n *= 4;
+  trap = trap ? 0x8F00 : 0x8E00;  // TRAP vs INTERRUPT gate;
+  idt[n + 0] = (addr & 0xFFFF) | ((SEG_KCODE << 3) << 16);
+  idt[n + 1] = (addr & 0xFFFF0000) | trap | ((pl & 3) << 13);  // P=1 DPL=pl
+  idt[n + 2] = addr >> 32;
+  idt[n + 3] = 0;
 }
 
 void init_idt(void) {
-  /*
-  u32 i;
+  u32 *idt = alloc_page();
 
-  u64 irq_start = (u64)&early_irq_handlers;
-  u64 excp_start = (u64)&early_excp_handlers;
+  // clear out the IDT
+  memset(idt, 0, 4096);
 
-  // clear the IDT out
-  memset(&idt64, 0, sizeof(struct gate_desc64) * NUM_IDT_ENTRIES);
+  // and fill it up with the correct vectors
+  for (int n = 0; n < 256; n++) mkgate(idt, n, vectors[n], 0, 0);
+  //printk("idt=%p\n", idt);
+  lidt(idt, 4096);
+}
 
-  for (i = 0; i < NUM_EXCEPTIONS; i++) {
-    set_intr_gate(idt64, i, (void*)(excp_start + i * 16));
-    idt_assign_entry(i, (ulong_t)null_excp_handler, 0);
+struct trapframe {
+  u64 rax;  // rax
+  u64 rbx;
+  u64 rcx;
+  u64 rdx;
+  u64 rbp;
+  u64 rsi;
+  u64 rdi;
+  u64 r8;
+  u64 r9;
+  u64 r10;
+  u64 r11;
+  u64 r12;
+  u64 r13;
+  u64 r14;
+  u64 r15;
+
+  u64 trapno;
+  u64 err;
+
+  u64 eip;  // rip
+  u64 cs;
+  u64 eflags;  // rflags
+  u64 esp;     // rsp
+  u64 ds;      // ss
+};
+
+
+
+// Processor-defined:
+#define TRAP_DIVIDE         0      // divide error
+#define TRAP_DEBUG          1      // debug exception
+#define TRAP_NMI            2      // non-maskable interrupt
+#define TRAP_BRKPT          3      // breakpoint
+#define TRAP_OFLOW          4      // overflow
+#define TRAP_BOUND          5      // bounds check
+#define TRAP_ILLOP          6      // illegal opcode
+#define TRAP_DEVICE         7      // device not available
+#define TRAP_DBLFLT         8      // double fault
+// #define TRAP_COPROC      9      // reserved (not used since 486)
+#define TRAP_TSS           10      // invalid task switch segment
+#define TRAP_SEGNP         11      // segment not present
+#define TRAP_STACK         12      // stack exception
+#define TRAP_GPFLT         13      // general protection fault
+#define TRAP_PGFLT         14      // page fault
+// #define TRAP_RES        15      // reserved
+#define TRAP_FPERR         16      // floating point error
+#define TRAP_ALIGN         17      // aligment check
+#define TRAP_MCHK          18      // machine check
+#define TRAP_SIMDERR       19      // SIMD floating point error
+// where the trap handler throws us. It is up to this function to sort out
+// which trap handler to hand off to
+void trap(struct trapframe *tf) {
+
+
+
+  if (tf->trapno == TRAP_ILLOP) {
+    printk("ILLEGAL INSTRUCION %016x\n", tf->err);
+    halt();
   }
 
-  for (i = 32; i < NUM_IDT_ENTRIES; i++) {
-    set_intr_gate(idt64, i, (void*)(irq_start + (i - 32) * 16));
-    idt_assign_entry(i, (ulong_t)null_irq_handler, 0);
+  // PAGE FAULT
+  if (tf->trapno == TRAP_PGFLT) {
+    void *addr = (void *)read_cr2();
+    map_page(addr, addr);
+    return;
   }
-  */
+
+
+  printk("\n");
+  printk(" +++ %s +++ \n", excp_codes[tf->trapno][EXCP_NAME]);
+  printk(" +++ UNHANDLED TRAP +++\n");
+  printk("\n");
+  lidt(0, 0);  // die
+  while (1) halt();
 }

@@ -32,12 +32,8 @@ SECTIONS
 	. += 0x4000;  /* we start out with a 4 pages of stack */
 	boot_stack_end = .;
 
-
-
 	low_kern_end = .;
 	. = ALIGN(0x1000);
-
-	. = 0x00100000;
 
 	high_kern_start = .;
 

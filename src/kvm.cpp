@@ -419,9 +419,8 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
 
   fprintf(out, "EFER=%016" PRIx64 "\n", (size_t)sregs.efer);
 
-  struct kvm_fpu fpu;
-
-  ioctl(cpufd, KVM_GET_FPU, &fpu);
+  fpu_regs fpu;
+  read_fregs(fpu);
 
   {
     int written = 0;
@@ -621,6 +620,58 @@ void kvm_vcpu::write_sregs(sregs &sr) {
   ioctl(cpufd, KVM_SET_SREGS, &sr);
 }
 
-void kvm_vcpu::read_fregs(fpu_regs &r) {}
-void kvm_vcpu::write_fregs(fpu_regs &r) {}
+void kvm_vcpu::read_fregs(fpu_regs &dst) {
+  
+  struct kvm_fpu src;
+
+  ioctl(cpufd, KVM_GET_FPU, &src);
+
+
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 16; j++) {
+      dst.fpr[i][j] = src.fpr[i][j];
+    }
+  }
+
+  dst.fcw = src.fcw;
+  dst.fsw = src.fsw;
+  dst.ftwx = src.ftwx;
+  dst.last_opcode = src.last_opcode;
+  dst.last_ip = src.last_ip;
+  dst.last_dp = src.last_dp;
+  for (int i = 0; i < 16; i++) {
+    for (int j = 0; j < 16; j++) {
+      dst.xmm[i][j] = src.xmm[i][j];
+    }
+  }
+  dst.mxcsr = dst.mxcsr;
+
+}
+void kvm_vcpu::write_fregs(fpu_regs &src) {
+
+  struct kvm_fpu dst;
+
+
+
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 16; j++) {
+      dst.fpr[i][j] = src.fpr[i][j];
+    }
+  }
+
+  dst.fcw = src.fcw;
+  dst.fsw = src.fsw;
+  dst.ftwx = src.ftwx;
+  dst.last_opcode = src.last_opcode;
+  dst.last_ip = src.last_ip;
+  dst.last_dp = src.last_dp;
+  for (int i = 0; i < 16; i++) {
+    for (int j = 0; j < 16; j++) {
+      dst.xmm[i][j] = src.xmm[i][j];
+    }
+  }
+  dst.mxcsr = dst.mxcsr;
+
+  ioctl(cpufd, KVM_SET_FPU, &dst);
+}
 

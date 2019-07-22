@@ -26,34 +26,33 @@ u64 strlen(const char *str) {
 }
 
 extern int kernel_end;
+// in src/arch/x86/sse.asm
+extern void enable_sse();
 
 int kmain(void) {
 
-
-  char *addr = (void *)0xB8000;
-
-  *(addr++) = 'O';
-  *(addr++) = 0x0f;
-  *(addr++) = 'K';
-  *(addr++) = 0x0f;
-
   serial_install();
 
-
-
-
-  // printk("%s\n", MOBO_WELCOME);
-
-  init_idt();
 
   // at this point, we are still mapped with the 2mb large pages.
   // init_mem will replace this with a more fine-grained 4k page system by
   // mapping kernel memory 1:1
   init_mem();
 
-  // printk("bye!\n");
+  init_idt();
 
-  // simply spin... :)
+
+  // now that we have interupts working, enable sse! (fpu)
+  enable_sse();
+
+
+  /*
+  char *c = NULL;
+  printk("%02x\n", *c);
+  */
+
+
+  // simply hltspin
   while (1) halt();
   return 0;
 }

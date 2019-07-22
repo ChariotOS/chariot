@@ -56,13 +56,11 @@ struct fpu_regs {
 	u16 fcw;
 	u16 fsw;
 	u8  ftwx;  /* in fxsave format */
-	u8  pad1;
 	u16 last_opcode;
 	u64 last_ip;
 	u64 last_dp;
 	u8  xmm[16][16];
 	u32 mxcsr;
-	u32 pad2;
 };
 
 

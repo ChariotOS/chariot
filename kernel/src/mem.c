@@ -55,18 +55,8 @@ int init_mem(void) {
   // printk("New p4: %p\n", p4_table);
 
 
-  for  (int i = 0; i < 4; i++) {
-    void *va = (void*)((u64)0x200000 * i);
-    map_page_into(p4_table, va, va);
-  }
-
-
-  // id map the lowkern
-  for (char *p = &low_kern_start; p <= &low_kern_end; p += 4096) {
-    map_page_into(p4_table, p, p);
-  }
   // id map the high kern
-  for (char *p = &high_kern_start; p <= &high_kern_end; p += 4096) {
+  for (char *p = &low_kern_start; p <= &high_kern_end; p += 4096) {
     map_page_into(p4_table, p, p);
   }
   write_cr3((u64)p4_table);

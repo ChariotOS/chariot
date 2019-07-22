@@ -30,7 +30,6 @@ int device_manager::handle_io(vcpu * cpu, port_t port, bool in, void *data, uint
 
   auto *dev = io_handlers[port];
 
-
   if (in) return dev->in(cpu, port, len, data);
   return dev->out(cpu, port, len, data);
 }
