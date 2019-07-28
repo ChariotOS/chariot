@@ -6,13 +6,14 @@ ENTRY(_start)
 SECTIONS
 {
 
-  . = 0x1000;
+  . = 0x4000;
 
 	low_kern_start = .;
 
 	.boot : {
-		*(.multiboot)
+		*(.mbhdr)
 		_loadStart = .;
+
 		*(.boot)
 		. = ALIGN(4096);
 
@@ -26,6 +27,10 @@ SECTIONS
 		. += 0x1000;
 
 	}
+
+	. = ALIGN(0x1000);
+	idt_block = .;
+	. += 0x1000;
 
 
 	boot_stack_start = .;

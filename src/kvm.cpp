@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <inttypes.h>  // PRIx64
 #include <linux/kvm.h>
+#include <mobo/memwriter.h>
+#include <mobo/multiboot.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -14,8 +16,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <algorithm>
 #include <elfio/elfio.hpp>
 #include <iostream>
+#include <chrono>
 
 using namespace mobo;
 
@@ -78,7 +82,15 @@ kvm::kvm(int kvmfd, int ncpus) : kvmfd(kvmfd), ncpus(ncpus) {
   init_cpus();
 }
 
-mobo::kvm::~kvm() {}
+mobo::kvm::~kvm() {
+  // need to close the vmfd, and all cpu fds
+  for (auto cpu : cpus) {
+    close(cpu.cpufd);
+  }
+  close(vmfd);
+  munmap(mem, memsize);
+
+}
 
 void kvm::init_cpus(void) {
   int kvm_run_size = ioctl(kvmfd, KVM_GET_VCPU_MMAP_SIZE, nullptr);
@@ -124,12 +136,13 @@ void kvm::init_cpus(void) {
   free(kvm_cpuid);
 }
 
-void kvm::load_elf(std::string &file) {
+// TODO: abstract the loading of an elf file to a general function that takes
+//       some memory and a starting vcpu
+void kvm::load_elf(std::string file) {
   char *memory = (char *)mem;  // grab a char buffer reference to the mem
 
   ELFIO::elfio reader;
   reader.load(file);
-
   auto entry = reader.get_entry();
 
   auto secc = reader.sections.size();
@@ -147,11 +160,138 @@ void kvm::load_elf(std::string &file) {
     }
   }
 
-  // set the cpu0.rip to the entrypoint parsed from the elf
-  mobo::regs regs;
-  cpus[0].read_regs(regs);
-  regs.rip = entry;
-  cpus[0].write_regs(regs);
+  bool found_multiboot = false;
+  struct multiboot_header mbhdr;
+  // map the file into memory and attempt to parse a multiboot2_hdr from it
+  {
+    int fd = open(file.c_str(), O_RDONLY);
+
+    // die if the file is not found
+    if (fd == -1)
+      throw std::runtime_error("file not found when loading the elf");
+
+    struct stat sb;
+    fstat(fd, &sb);
+    auto size = sb.st_size;
+
+    char *bin = (char *)mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
+    u32 search_len = std::min((size_t)size, (size_t)MULTIBOOT_SEARCH);
+
+    // arbitrarially on the 5th page
+    u64 mbd = 0x5000;
+
+    // now scan the binary for the multiboot2 header
+    for (int i = 0; i < search_len; i += MULTIBOOT_HEADER_ALIGN) {
+      u32 val = *(u32 *)(bin + i);
+      if (val != MULTIBOOT2_HEADER_MAGIC) continue;
+
+      // we found a thing that looks like a multiboot 2 header,
+      // check the checksum to make sure it is a real header
+      memcpy(&mbhdr, bin + i, sizeof(mbhdr));
+
+      u32 checksum = -(mbhdr.magic + mbhdr.architecture + mbhdr.header_length);
+      if (checksum != mbhdr.checksum) continue;
+
+      found_multiboot = true;
+      break;
+    }
+
+    if (!found_multiboot)
+      throw std::runtime_error("no multiboot2 header found!");
+
+    // printf("magic:    %08x\n", mbhdr.magic);
+    // printf("arch:     %u\n", mbhdr.arch);
+    // printf("length:   %u\n", mbhdr.length);
+
+    if (mbhdr.architecture != 0)
+      throw std::runtime_error("only i386 multiboot arch is supported\n");
+
+    // setup the memory information at the mbd
+    {
+      // create a memory writer to the part of memory that represents the mbd
+      memwriter hdr(memory + mbd);
+
+      hdr.write<u32>(0);
+      hdr.write<u32>(0);
+
+      struct multiboot_tag_mmap tag;
+      tag.type = MULTIBOOT_TAG_TYPE_MMAP;
+      tag.entry_size = sizeof(struct multiboot_mmap_entry);
+
+      std::vector<struct multiboot_mmap_entry> entries;
+
+      for (auto bank : this->ram) {
+        struct multiboot_mmap_entry entry;
+
+        entry.addr = bank.guest_phys_addr;
+        entry.len = bank.size;
+        entry.type = MULTIBOOT_MEMORY_AVAILABLE;
+        entry.zero = 0;
+        entries.push_back(entry);
+      }
+
+      tag.size =
+          sizeof(struct multiboot_tag_mmap) + (tag.entry_size * entries.size());
+      hdr.write(tag);
+      for (auto e : entries) {
+        hdr.write(e);
+      }
+
+      // write the size
+      *(u32 *)(memory + mbd) = hdr.get_written();
+    }
+
+    // setup general purpose registers
+    {
+      struct regs r;
+      cpus[0].read_regs(r);
+      r.rax = 0x36d76289;
+      r.rbx = mbd;  // TODO: The physical address of the multiboot information
+
+      r.rip = entry;
+
+      r.rflags &= ~(1 << 17);
+      r.rflags &= ~(1 << 9);
+
+      cpus[0].write_regs(r);
+    }
+
+    // setup the special registers
+    {
+      sregs sr;
+      cpus[0].read_sregs(sr);
+
+      auto init_seg = [](mobo::segment &seg) {
+        seg.present = 1;
+        seg.base = 0;
+        seg.db = 1;
+        seg.g = 1;
+        seg.selector = 0x10;
+        seg.limit = 0xFFFFFFF;
+        seg.type = 0x3;
+      };
+
+      init_seg(sr.cs);
+      sr.cs.selector = 0x08;
+      sr.cs.type = 0x0a;
+      sr.cs.s = 1;
+      init_seg(sr.ds);
+      init_seg(sr.es);
+      init_seg(sr.fs);
+      init_seg(sr.gs);
+      init_seg(sr.ss);
+
+      // clear bit 31, set bit 0
+      sr.cr0 &= ~(1 << 31);
+      sr.cr0 |= (1 << 0);
+
+      cpus[0].write_sregs(sr);
+    }
+
+    // unmap the memory and close the fd
+    munmap(bin, size);
+    close(fd);
+  }
 }
 
 void kvm::attach_bank(ram_bank &&bnk) {
@@ -197,6 +337,8 @@ void kvm::init_ram(size_t nbytes) {
   }
 }
 
+// #define RECORD_VMEXIT_LIFETIME
+
 void kvm::run(void) {
   auto &cpufd = cpus[0].cpufd;
   auto run = cpus[0].kvm_run;
@@ -206,8 +348,17 @@ void kvm::run(void) {
   cpus[0].read_regs(regs);
 
   while (1) {
+#ifdef RECORD_VMEXIT_LIFETIME
+    auto start = std::chrono::high_resolution_clock::now();
+#endif
     ioctl(cpufd, KVM_RUN, NULL);
-    // cpus[0].dump_state(stderr);
+#ifdef RECORD_VMEXIT_LIFETIME
+    auto end = std::chrono::high_resolution_clock::now();
+
+    auto dur =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    printf("ran for %lu us\n", dur.count());
+#endif
 
     // printf("Exited: %s\n", kvm_exit_reasons[run->exit_reason]);
     int stat = run->exit_reason;
@@ -252,6 +403,12 @@ void kvm::run(void) {
       return;
     }
 
+    if (stat == KVM_EXIT_FAIL_ENTRY) {
+      printf("failed to enter: %llu\n",
+             run->fail_entry.hardware_entry_failure_reason);
+      return;
+    }
+
     cpus[0].read_regs(regs);
 
     printf("unhandled exit: %d at rip = %p\n", run->exit_reason,
@@ -259,7 +416,7 @@ void kvm::run(void) {
     break;
   }
 
-  cpus[0].dump_state(stdout, (char *)this->mem);
+  // cpus[0].dump_state(stdout, (char *)this->mem);
 }
 
 static inline void host_cpuid(struct cpuid_regs *regs) {
@@ -360,8 +517,9 @@ static void filter_cpuid(struct kvm_cpuid2 *kvm_cpuid) {
 
 static void cpu_dump_seg_cache(kvm_vcpu *cpu, FILE *out, const char *name,
                                mobo::segment const &seg) {
-  fprintf(out, "%-3s=%04x %016" PRIx64 " %08x    ", name, seg.selector,
-          (size_t)seg.base, seg.limit);
+  fprintf(out, "%-3s=%04x %016" PRIx64 " %08x %d %02x %02x  %02x\n", name,
+          seg.selector, (size_t)seg.base, seg.limit, seg.present, seg.db,
+          seg.dpl, seg.type);
 }
 
 void kvm_vcpu::dump_state(FILE *out, char *mem) {
@@ -394,18 +552,15 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
   mobo::sregs sregs;
   read_sregs(sregs);
 
+  fprintf(out, "    sel  base             limit    p db dpl type\n");
   cpu_dump_seg_cache(this, out, "ES", sregs.es);
   cpu_dump_seg_cache(this, out, "CS", sregs.cs);
-  fprintf(out, "\n");
   cpu_dump_seg_cache(this, out, "SS", sregs.ss);
   cpu_dump_seg_cache(this, out, "DS", sregs.ds);
-  fprintf(out, "\n");
   cpu_dump_seg_cache(this, out, "FS", sregs.fs);
   cpu_dump_seg_cache(this, out, "GS", sregs.gs);
-  fprintf(out, "\n");
   cpu_dump_seg_cache(this, out, "LDT", sregs.ldt);
   cpu_dump_seg_cache(this, out, "TR", sregs.tr);
-  fprintf(out, "\n");
 
   fprintf(out, "GDT=     %016" PRIx64 " %08x\n", (size_t)sregs.gdt.base,
           (int)sregs.gdt.limit);
@@ -443,6 +598,7 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
 
   fprintf(out, "\n");
 
+  return;
   if (mem != nullptr) {
     printf("Code:\n");
     csh handle;
@@ -468,8 +624,6 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
   }
 #undef GET
 }
-
-
 
 void kvm_vcpu::read_regs(regs &r) {
   struct kvm_regs regs;
@@ -497,7 +651,6 @@ void kvm_vcpu::read_regs(regs &r) {
   r.rip = regs.rip;
   r.rflags = regs.rflags;
 }
-
 
 void kvm_vcpu::write_regs(regs &regs) {
   struct kvm_regs r;
@@ -621,11 +774,9 @@ void kvm_vcpu::write_sregs(sregs &sr) {
 }
 
 void kvm_vcpu::read_fregs(fpu_regs &dst) {
-  
   struct kvm_fpu src;
 
   ioctl(cpufd, KVM_GET_FPU, &src);
-
 
   for (int i = 0; i < 8; i++) {
     for (int j = 0; j < 16; j++) {
@@ -645,13 +796,9 @@ void kvm_vcpu::read_fregs(fpu_regs &dst) {
     }
   }
   dst.mxcsr = dst.mxcsr;
-
 }
 void kvm_vcpu::write_fregs(fpu_regs &src) {
-
   struct kvm_fpu dst;
-
-
 
   for (int i = 0; i < 8; i++) {
     for (int j = 0; j < 16; j++) {

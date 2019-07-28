@@ -31,7 +31,7 @@ COMMON_FLAGS := $(CINCLUDES) -fno-omit-frame-pointer \
 			   -fno-strict-aliasing \
          -fno-strict-overflow \
 			   -mno-red-zone \
-			   -mcmodel=large -O3 -fno-tree-vectorize
+			   -mcmodel=large -O0 -fno-tree-vectorize
 
 CFLAGS:=   $(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
 
@@ -44,7 +44,16 @@ DFLAGS=-g -DDEBUG -O0
 
 # By default, build the example kernel using make and the vmm using cmake
 default: build $(KERNEL)
-	@cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug && make -j --no-print-directory
+	@#cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug && make -j --no-print-directory
+	@stack build
+
+
+run: build $(KERNEL)
+	@stack run
+
+hs_lib:
+	stack build
+	stack exec perl opts.pl mobo
 
 
 kern: build $(KERNEL)

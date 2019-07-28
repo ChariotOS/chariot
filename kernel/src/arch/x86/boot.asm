@@ -1,27 +1,7 @@
 global _start
 global start
 
-
-; Declare constants for the multiboot header.
-MBALIGN  equ  1 << 0            ; align loaded modules on page boundaries
-MEMINFO  equ  1 << 1            ; provide memory map
-FLAGS    equ  MBALIGN | MEMINFO ; this is the Multiboot 'flag' field
-MAGIC    equ  0x1BADB002        ; 'magic number' lets bootloader find the header
-CHECKSUM equ -(MAGIC + FLAGS)   ; checksum of above, to prove we are multiboot
- 
-; Declare a multiboot header that marks the program as a kernel. These are magic
-; values that are documented in the multiboot standard. The bootloader will
-; search for this signature in the first 8 KiB of the kernel file, aligned at a
-; 32-bit boundary. The signature is in its own section so the header can be
-; forced to be within the first 8 KiB of the kernel file.
-section .multiboot
-align 4
-	dd MAGIC
-	dd FLAGS
-	dd CHECKSUM
-
-
-
+;; starting page tables, statically allocated in the elf
 extern p4_table
 extern p3_table
 extern p2_table
@@ -30,19 +10,42 @@ extern p1_table
 extern boot_stack_end ;; static memory from the binary where the stack begins
 extern kmain ;; c entry point
 
+;; Multiboot header
+section .mbhdr
+align 8
+header_start:
+    dd 0xe85250d6                ;; magic number (multiboot 2)
+    dd 0                         ;; architecture 0 (protected mode i386)
+    dd header_end - header_start ;; header length
+		;; checksum
+    dd 0x100000000 - (0xe85250d6 + 0 + (header_end - header_start))
+
+    ; optional multiboot tags
+
+    ; required end tag
+    dw 0    ; type
+    dw 0    ; flags
+    dd 8    ; size
+header_end:
+
+
 
 section .boot
 
-[bits 16]
+[bits 32]
 start:
 _start:
+
+
 	cli ; disable interrupts
+
 
 	mov eax, gdtr32
 	lgdt [eax] ; load GDT register with start address of Global Descriptor Table
-	mov eax, cr0
-	or al, 1       ; set PE (Protection Enable) bit in CR0 (Control Register 0)
-	mov cr0, eax
+
+	; mov eax, cr0
+	; or al, 1       ; set PE (Protection Enable) bit in CR0 (Control Register 0)
+	; mov cr0, eax
 
 	;; Perform a long-jump to the 32 bit protected mode
 	jmp 0x8:gdt1_loaded
@@ -77,7 +80,7 @@ gdt1_loaded:
 
 
 
-bits 64
+[bits 64]
 gdt2_loaded:
 	;; now that we are here, the second gdt is loaded and we are in 64bit long mode
 	;; and paging is enabled.

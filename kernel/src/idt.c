@@ -65,6 +65,10 @@ const char *excp_codes[NUM_EXCEPTIONS][2] = {
     (gate).off_31_16 = (u32)(off) >> 16;          \
   }
 
+extern u32 idt_block;
+
+static u32 *idt;
+
 extern void *vectors[];  // in vectors.S: array of 256 entry pointers
 
 static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
@@ -78,10 +82,7 @@ static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
 }
 
 void init_idt(void) {
-  u32 *idt = alloc_page();
-
-  // clear out the IDT
-  memset(idt, 0, 4096);
+  u32 *idt = &idt_block;
 
   // and fill it up with the correct vectors
   for (int n = 0; n < 256; n++) mkgate(idt, n, vectors[n], 0, 0);
@@ -143,8 +144,6 @@ struct trapframe {
 // which trap handler to hand off to
 void trap(struct trapframe *tf) {
 
-
-
   if (tf->trapno == TRAP_ILLOP) {
     printk("ILLEGAL INSTRUCION %016x\n", tf->err);
     halt();
@@ -153,6 +152,7 @@ void trap(struct trapframe *tf) {
   // PAGE FAULT
   if (tf->trapno == TRAP_PGFLT) {
     void *addr = (void *)read_cr2();
+    printk("PAGE FAULT %p\n", addr);
     map_page(addr, addr);
     return;
   }

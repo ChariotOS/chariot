@@ -9,48 +9,41 @@
 #include <serial.h>
 #include <types.h>
 
-#define MOBO_WELCOME                     \
-  "___  ______________  _____    \n"     \
-  "|  \\/  |  _  | ___ \\|  _  |   \n"   \
-  "| .  . | | | | |_/ /| | | |   \n"     \
-  "| |\\/| | | | | ___ \\| | | |   \n"   \
-  "| |  | \\ \\_/ / |_/ /\\ \\_/ /   \n" \
-  "\\_|  |_/\\___/\\____/  \\___/    \n" \
-  "                              \n"
-
-u64 strlen(const char *str) {
-  const char *s;
-  for (s = str; *s; ++s)
-    ;
-  return (s - str);
-}
 
 extern int kernel_end;
+
+
+
+u64 fib(u64 n) {
+  if (n < 2) return 1;
+
+  return fib(n-1) + fib(n-2);
+}
+
+
 // in src/arch/x86/sse.asm
 extern void enable_sse();
 
 int kmain(void) {
-
   serial_install();
-
+  init_idt();
 
   // at this point, we are still mapped with the 2mb large pages.
   // init_mem will replace this with a more fine-grained 4k page system by
   // mapping kernel memory 1:1
   init_mem();
 
-  init_idt();
-
-
   // now that we have interupts working, enable sse! (fpu)
   enable_sse();
 
+  // finally, enable interrupts
+  sti();
 
-  /*
-  char *c = NULL;
-  printk("%02x\n", *c);
-  */
 
+  fib(30);
+
+  // go do the thing
+  printk("hello from inside the kernel\n");
 
   // simply hltspin
   while (1) halt();

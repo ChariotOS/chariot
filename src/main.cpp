@@ -4,25 +4,35 @@
 #include <capstone/capstone.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <chrono>
 #include <iostream>
-
 
 using namespace mobo;
 
+extern "C" int mobo_square(int x) {
+  printf("hello, I am a nice meme\n");
+  return x * x;
+}
 
-int main(int argc, char *argv[]) {
+int run_vm(std::string path) {
 
-  int kvmfd = open("/dev/kvm", O_RDWR);
 
-  std::string binary = argv[1];
-  // create a vmm
-  kvm vmm(kvmfd, 1);
-  // give it some ram
-  vmm.init_ram(256 * 1024l * 1024l);
-  // load the kernel elf
-  vmm.load_elf(binary);
-  // run the vm
-  vmm.run();
+  static int kvmfd = open("/dev/kvm", O_RDWR);
+  try {
+    // create a vmm
+    kvm vmm(kvmfd, 1);
+    // give it some ram (256 mb)
+    vmm.init_ram(7 * 1024l * 1024l);
+    // load the kernel elf
+    vmm.load_elf(path);
+    // run the vm
+    vmm.run();
+  } catch (...) {
+    return -1;
+  }
+
   return 0;
 }
+
+extern "C" int mobo_run_vm(char *binary) { return run_vm(binary); }
 

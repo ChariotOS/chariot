@@ -67,7 +67,7 @@ class kvm {
  public:
   kvm(int kvmfd, int ncpus);
   ~kvm(void);
-  void load_elf(std::string &);
+  void load_elf(std::string);
 
   void init_ram(size_t);
   void run(void);
