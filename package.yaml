@@ -35,6 +35,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     # add C++ sources to the haskell library using the normal FFI stuff
+    include-dirs: include
     c-sources:
     - src/kvm.cpp
     - src/main.cpp
