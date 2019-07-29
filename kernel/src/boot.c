@@ -39,8 +39,9 @@ int kmain(void) {
   // finally, enable interrupts
   sti();
 
+  // fib(30);
+  // for (int i = 0; true; i++) printk("%016x ", i);
 
-  fib(30);
 
   // go do the thing
   printk("hello from inside the kernel\n");

@@ -117,9 +117,11 @@ void kvm::init_cpus(void) {
     auto *run = (struct kvm_run *)mmap(
         NULL, kvm_run_size, PROT_READ | PROT_WRITE, MAP_SHARED, vcpufd, 0);
 
-    struct kvm_regs regs = {
-        .rflags = 0x2,
-    };
+    struct kvm_regs regs;
+
+    ioctl(vcpufd, KVM_GET_REGS, &regs);
+    // memset(&regs, 0, sizeof(regs));
+    regs.rflags = 0x2;
     ioctl(vcpufd, KVM_SET_REGS, &regs);
 
     struct kvm_sregs sregs;
@@ -130,8 +132,12 @@ void kvm::init_cpus(void) {
     kvm_vcpu cpu;
     cpu.cpufd = vcpufd;
     cpu.kvm_run = run;
+
+    //cpu.dump_state(stdout);
     cpus.push_back(cpu);
   }
+
+
 
   free(kvm_cpuid);
 }
@@ -199,10 +205,6 @@ void kvm::load_elf(std::string file) {
     if (!found_multiboot)
       throw std::runtime_error("no multiboot2 header found!");
 
-    // printf("magic:    %08x\n", mbhdr.magic);
-    // printf("arch:     %u\n", mbhdr.arch);
-    // printf("length:   %u\n", mbhdr.length);
-
     if (mbhdr.architecture != 0)
       throw std::runtime_error("only i386 multiboot arch is supported\n");
 
@@ -241,18 +243,17 @@ void kvm::load_elf(std::string file) {
       *(u32 *)(memory + mbd) = hdr.get_written();
     }
 
+
+
     // setup general purpose registers
     {
       struct regs r;
       cpus[0].read_regs(r);
       r.rax = 0x36d76289;
       r.rbx = mbd;  // TODO: The physical address of the multiboot information
-
       r.rip = entry;
-
       r.rflags &= ~(1 << 17);
       r.rflags &= ~(1 << 9);
-
       cpus[0].write_regs(r);
     }
 
@@ -287,6 +288,8 @@ void kvm::load_elf(std::string file) {
 
       cpus[0].write_sregs(sr);
     }
+
+
 
     // unmap the memory and close the fd
     munmap(bin, size);
@@ -335,6 +338,7 @@ void kvm::init_ram(size_t nbytes) {
     bnk2.size = nbytes - bnk2.guest_phys_addr;
     attach_bank(std::move(bnk2));
   }
+
 }
 
 // #define RECORD_VMEXIT_LIFETIME
@@ -351,7 +355,7 @@ void kvm::run(void) {
 #ifdef RECORD_VMEXIT_LIFETIME
     auto start = std::chrono::high_resolution_clock::now();
 #endif
-    ioctl(cpufd, KVM_RUN, NULL);
+    int res = ioctl(cpufd, KVM_RUN, NULL);
 #ifdef RECORD_VMEXIT_LIFETIME
     auto end = std::chrono::high_resolution_clock::now();
 
@@ -362,6 +366,8 @@ void kvm::run(void) {
 
     // printf("Exited: %s\n", kvm_exit_reasons[run->exit_reason]);
     int stat = run->exit_reason;
+
+
 
     if (stat == KVM_EXIT_MMIO) {
       printf("[MMIO] ");
@@ -380,6 +386,14 @@ void kvm::run(void) {
       cpus[0].dump_state(stderr, (char *)this->mem);
       return;
       break;
+    }
+
+    if (stat == KVM_EXIT_INTR) {
+      printf("interrupt: %d\n", run->exit_reason);
+      printf("errno: %d\n", errno);
+      printf("res: %d\n", res);
+      continue;
+      // return;
     }
 
     if (stat == KVM_EXIT_HLT) {
@@ -413,7 +427,7 @@ void kvm::run(void) {
 
     printf("unhandled exit: %d at rip = %p\n", run->exit_reason,
            (void *)regs.rip);
-    break;
+    return;
   }
 
   // cpus[0].dump_state(stdout, (char *)this->mem);
@@ -598,13 +612,12 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
 
   fprintf(out, "\n");
 
-  return;
+  /*
   if (mem != nullptr) {
     printf("Code:\n");
     csh handle;
     cs_insn *insn;
     size_t count;
-
     uint8_t *code = (uint8_t *)mem + regs.rip;
     if (cs_open(CS_ARCH_X86, CS_MODE_64, &handle) != CS_ERR_OK) return;
     count = cs_disasm(handle, code, -1, regs.rip, 0, &insn);
@@ -622,6 +635,7 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
 
     cs_close(&handle);
   }
+  */
 #undef GET
 }
 

@@ -31,9 +31,8 @@ executables:
     main:                Main.hs
     source-dirs:         src/lang
     ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
+    - -g
+      # - -j
     # add C++ sources to the haskell library using the normal FFI stuff
     include-dirs: include
     c-sources:
@@ -42,10 +41,7 @@ executables:
     - src/machine.cpp
     - src/dev_mgr.cpp
     - src/devices/serial.cpp
-    cc-options: -std=c++17
-
-
-
+    cc-options: -std=c++17 -g
 
 #extra-lib-dirs: build
 ##extra-libraries:

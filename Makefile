@@ -4,6 +4,15 @@ LD = ld
 
 
 
+
+VMM_CPP_FILES:=$(shell find src | grep "\.cpp")
+VMM_HS_FILES:=$(shell find src | grep "\.hs")
+VMM_INCLUDE_FILES:=$(shell find include)
+
+
+FILEDEPS:=$(VMM_CPP_FILES) $(VMM_HS_FILES) $(VMM_INCLUDE_FILES)
+
+
 STRUCTURE := $(shell find kernel/src -type d)
 CODEFILES := $(addsuffix /*,$(STRUCTURE))
 CODEFILES := $(wildcard $(CODEFILES))
@@ -33,34 +42,32 @@ COMMON_FLAGS := $(CINCLUDES) -fno-omit-frame-pointer \
 			   -mno-red-zone \
 			   -mcmodel=large -O0 -fno-tree-vectorize
 
-CFLAGS:=   $(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
+CFLAGS:= $(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
 
 DFLAGS=-g -DDEBUG -O0
 
 
 
-# COMMON_FLAGS := -nostdlib -nostdinc -fno-builtin -fno-stack-protector -Wall -Wextra -c
-# CFLAGS := $(COMMON_FLAGS) -Wall -static -fno-common -Wstrict-overflow=5
-
-# By default, build the example kernel using make and the vmm using cmake
-default: build $(KERNEL)
-	@#cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug && make -j --no-print-directory
+# By default, build the example kernel using make and the vmm using stack
+default: build $(KERNEL) $(FILEDEPS)
 	@stack build
+	@cp $$(find . | grep "/bin/mobo") build/
 
 
-run: build $(KERNEL)
-	@stack run
-
-hs_lib:
-	stack build
-	stack exec perl opts.pl mobo
-
-
-kern: build $(KERNEL)
+fast: build $(KERNEL) $(FILEDEPS)
+	@stack build --fast
+	@cp $$(find . | grep "/bin/mobo") build/
 
 build:
 	@mkdir -p build
 
+
+
+
+
+
+# test kernel related build tools
+kern: build $(KERNEL)
 
 
 %.o: %.c

@@ -32,6 +32,7 @@ import LLVM.Module
 import qualified LLVM.Relocation as Reloc
 import Numeric (showHex)
 import System.IO.Unsafe
+import System.Environment
 import Text.Printf
 
 data Expr
@@ -105,7 +106,7 @@ foreign import ccall unsafe "mobo_run_vm" moboRunVM :: CString -> Int
 
 data VMResult
     = VMOkay
-    | VMUnhandledException Int
+    | VMUnhandledException
     deriving (Show)
 
 runVM :: String -> VMResult
@@ -116,10 +117,11 @@ runVM path =
                 return $ moboRunVM cpath
      in case runResult of
             0 -> VMOkay
-            _ -> VMUnhandledException runResult
+            _ -> VMUnhandledException
 
 main :: IO ()
 main = do
+    args <- getArgs
     print $ runVM "build/kernel.elf"
 
 
