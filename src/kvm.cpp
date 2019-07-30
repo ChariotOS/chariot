@@ -129,6 +129,12 @@ void kvm::init_cpus(void) {
     cpu.cpufd = vcpufd;
     cpu.kvm_run = run;
 
+
+
+    ioctl(vcpufd, KVM_GET_REGS, &cpu.initial_regs);
+    ioctl(vcpufd, KVM_GET_SREGS, &cpu.initial_sregs);
+    ioctl(vcpufd, KVM_GET_FPU, &cpu.initial_fpu);
+
     // cpu.dump_state(stdout);
     cpus.push_back(cpu);
   }
@@ -373,6 +379,7 @@ void kvm::run(void) {
       printf("SHUTDOWN (probably a triple fault, lol)\n");
 
       cpus[0].dump_state(stderr, (char *)this->mem);
+      throw std::runtime_error("triple fault");
       return;
       break;
     }
@@ -487,6 +494,15 @@ static void filter_cpuid(struct kvm_cpuid2 *kvm_cpuid) {
         /* Keep the CPUID function as -is */
         break;
     };
+  }
+}
+
+
+
+void kvm::reset(void) {
+  dev_mgr.reset();
+  for (auto &cpu : cpus) {
+    cpu.reset();
   }
 }
 
@@ -622,6 +638,13 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
   }
   */
 #undef GET
+}
+
+
+void kvm_vcpu::reset(void) {
+  ioctl(cpufd, KVM_SET_REGS, &initial_regs);
+  ioctl(cpufd, KVM_SET_SREGS, &initial_sregs);
+  ioctl(cpufd, KVM_SET_FPU, &initial_fpu);
 }
 
 void kvm_vcpu::read_regs(regs &r) {
@@ -832,3 +855,7 @@ void *kvm_vcpu::translate_address(u64 gva) {
 
   return mem + tr.physical_address;
 }
+
+
+
+

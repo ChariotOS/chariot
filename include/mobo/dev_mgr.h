@@ -45,6 +45,8 @@ class device_manager {
   void add_device(device *);
 
   int handle_io(vcpu *, port_t, bool, void *, uint32_t);
+
+  void reset();
 };
 
 struct device_info {

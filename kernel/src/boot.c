@@ -45,9 +45,8 @@ int kmain(void) {
   sti();
   // printk("yeet\n");
 
-  char *msg = "hello world, this is a long message\n";
 
-  write(stdout, msg, strlen(msg));
+  printk("hello\n");
 
   // simply hltspin
   while (1) halt();

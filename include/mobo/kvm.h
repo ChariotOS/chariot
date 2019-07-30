@@ -31,6 +31,10 @@ struct kvm_vcpu : public mobo::vcpu {
 
   struct kvm_run *kvm_run;
 
+  struct kvm_regs initial_regs;
+  struct kvm_sregs initial_sregs;
+  struct kvm_fpu initial_fpu;
+
 
   // GPR
   virtual void read_regs(regs &);
@@ -45,6 +49,7 @@ struct kvm_vcpu : public mobo::vcpu {
   virtual void dump_state(FILE *, char *mem = nullptr);
 
   virtual void *translate_address(u64 gva);
+  virtual void reset(void);
 };
 
 // a memory bank represents a segment of memory in the kvm CPU
@@ -78,6 +83,8 @@ class kvm {
 
   void init_ram(size_t);
   void run(void);
+
+  void reset();
 };
 
 }  // namespace mobo

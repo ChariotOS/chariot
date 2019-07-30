@@ -14,6 +14,16 @@ device_registration_manager::device_registration_manager(
   device_regstrations.push_back(this);
 }
 
+void device_manager::reset(void) {
+  devices.clear();
+  mmio_devices.clear();
+  io_handlers.clear();
+  for (auto dr : device_regstrations) {
+    device *d = dr->creator();
+    add_device(d);
+  }
+}
+
 void device_manager::add_device(device *d) {
   // device *d = dev->create();
   auto ports = d->get_ports();
@@ -25,10 +35,7 @@ void device_manager::add_device(device *d) {
 }
 
 device_manager::device_manager() {
-  for (auto dr : device_regstrations) {
-    device *d = dr->creator();
-    add_device(d);
-  }
+  reset();
 }
 
 int device_manager::handle_io(vcpu *cpu, port_t port, bool in, void *data,

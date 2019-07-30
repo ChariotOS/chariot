@@ -96,7 +96,10 @@ klean:
 	rm -f $(COBJECTS)
 	rm -f $(AOBJECTS)
 
+
 clean: klean
+	rm -rf $(shell find . -type f | grep "mobo\$$")
+	rm -rf $(shell find . | grep "\.o\$$")
 	rm -rf build
 
 

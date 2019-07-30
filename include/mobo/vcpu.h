@@ -77,6 +77,9 @@ class vcpu {
   // translate a guest virtual address into the host address
   virtual void *translate_address(u64 gva) = 0;
 
+  // used to reset vm state. CPUS must manage this on their own
+  virtual void reset(void) = 0;
+
   // read a string starting from gva until a nullptr
   std::string read_string(u64 gva);
 
