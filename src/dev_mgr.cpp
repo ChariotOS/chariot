@@ -17,6 +17,7 @@ device_registration_manager::device_registration_manager(
 void device_manager::add_device(device *d) {
   // device *d = dev->create();
   auto ports = d->get_ports();
+  d->init();
   for (auto p : ports) {
     io_handlers[p] = d;
   }
@@ -26,13 +27,7 @@ void device_manager::add_device(device *d) {
 device_manager::device_manager() {
   for (auto dr : device_regstrations) {
     device *d = dr->creator();
-    auto ports = d->get_ports();
-
-    for (auto p : ports) {
-      io_handlers[p] = d;
-    }
-
-    devices.push_back(d);
+    add_device(d);
   }
 }
 

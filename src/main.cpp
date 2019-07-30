@@ -8,6 +8,8 @@
 #include <iostream>
 #include <signal.h>
 
+#include <fcntl.h>
+
 using namespace mobo;
 
 extern "C" int mobo_square(int x) {
@@ -16,7 +18,6 @@ extern "C" int mobo_square(int x) {
 }
 
 int run_vm(std::string path) {
-
 
   static int kvmfd = open("/dev/kvm", O_RDWR);
 

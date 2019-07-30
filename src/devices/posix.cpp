@@ -2,16 +2,37 @@
 
 #include <mobo/vcpu.h>
 #include <stdint.h>
-#include <mutex>
-
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
+#include <mutex>
+#include <unordered_map>
 
 class posix_interface : public mobo::device {
  private:
+  std::unordered_map<int, int> fd_alias;
+
+  int add_next_fd(int fd) {
+    for (int i = 0; true; i++) {
+      if (fd_alias.count(i) == 0) {
+        fd_alias[i] = fd;
+        return i;
+      }
+    }
+    return -1;
+  }
+
  public:
   virtual std::vector<mobo::port_t> get_ports(void) { return {0xfafa}; }
+
+  virtual void init(void) {
+    fd_alias.clear();
+
+    fd_alias[fileno(stdin)] = fileno(stdin);
+    fd_alias[fileno(stdout)] = fileno(stdout);
+    fd_alias[fileno(stderr)] = fileno(stderr);
+  }
 
   virtual int in(mobo::vcpu *, mobo::port_t port, int sz, void *data) {
     return -1;
@@ -36,17 +57,35 @@ class posix_interface : public mobo::device {
     }
 
     try {
+      // write
+      if (args[0] == 0x04) {
+        // read virtual fd
+        int vfd = args[1];
+        u64 data_gva = args[2];
+        size_t count = args[3];
+        // unfortunately, to write we need to copy the data into a buffer that
+        // linux can understand
+        char *buf = new char[count];
+        mobo::guest_array<char> mem(cpu, data_gva);
+
+        for (int i = 0; i < count; i++) buf[i] = mem[i];
+
+        if (fd_alias.count(vfd) == 0) {
+          result = -1;
+          goto do_return;
+        }
+
+        result = ::write(fd_alias[vfd], buf, count);
+        delete[] buf;
+        goto do_return;
+      }
+
       // open
       if (args[0] == 0x05) {
+        // read the string from the virtual machine
         std::string filename = cpu->read_string(args[1]);
-        int flags = args[2];
-        int options = args[3];
-        printf("filename: %s\n", filename.c_str());
-        printf("flags: %d\n", flags);
-        printf("options: %o\n", options);
-
-
-        // result = open(filename, flags, options);
+        int fd = ::open(filename.c_str(), args[2], args[3]);
+        result = add_next_fd(fd);
         goto do_return;
       }
 

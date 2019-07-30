@@ -303,7 +303,7 @@ void kvm::init_ram(size_t nbytes) {
   this->memsize = nbytes;
 
   for (auto &cpu : cpus) {
-    cpu.mem = (char*)mem;
+    cpu.mem = (char *)mem;
     cpu.memsize = nbytes;
   }
 
@@ -345,15 +345,6 @@ void kvm::run(void) {
   cpus[0].read_regs(regs);
 
   while (1) {
-    /*
-        struct kvm_guest_debug debug = {
-                .control	= KVM_GUESTDBG_ENABLE | KVM_GUESTDBG_SINGLESTEP,
-        };
-
-        if (ioctl(cpufd, KVM_SET_GUEST_DEBUG, &debug) < 0) {
-                printf("KVM_SET_GUEST_DEBUG failed\n");
-  }
-  */
 
     int err = ioctl(cpufd, KVM_RUN, NULL);
 
@@ -362,15 +353,10 @@ void kvm::run(void) {
       return;
     }
 
-    if (err < 0) {
-      continue;
-    }
-    // printf("Exited: %s\n", kvm_exit_reasons[run->exit_reason]);
     int stat = run->exit_reason;
 
-    if (stat == KVM_EXIT_DEBUG) {
-      continue;
-    }
+    if (err < 0) continue;
+    if (stat == KVM_EXIT_DEBUG) continue;
 
     if (stat == KVM_EXIT_MMIO) {
       printf("[MMIO] ");
@@ -845,5 +831,4 @@ void *kvm_vcpu::translate_address(u64 gva) {
   if (!tr.valid) return nullptr;
 
   return mem + tr.physical_address;
-
 }

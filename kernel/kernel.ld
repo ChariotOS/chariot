@@ -34,7 +34,7 @@ SECTIONS
 
 
 	boot_stack_start = .;
-	. += 0x4000;  /* we start out with a 4 pages of stack */
+	. += 0xf000;  /* we start out with a 4 pages of stack */
 	boot_stack_end = .;
 
 	low_kern_end = .;

@@ -68,7 +68,6 @@ gdt1_loaded:
 	call paging_setup
 
 
-
 	;; now our long mode GDT
 	mov eax, gdtr64
 	lgdt [eax]
@@ -89,16 +88,15 @@ gdt2_loaded:
 	mov fs, ax
 	mov gs, ax
 
-
 	;; Reset the stack to the initial state
 	mov rsp, boot_stack_end - 1
 	mov rbp, rsp
-
 
 	;; and call the c code in boot.c
 	call kmain
 	hlt
 	;; Ideally, we would not get here, but if we do we simply hlt spin
+
 
 	;; just move a special value into eax, so we can see in the state dumps
 	;; that we got here.

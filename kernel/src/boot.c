@@ -8,6 +8,7 @@
 #include <printk.h>
 #include <serial.h>
 #include <types.h>
+#include <posix.h>
 
 extern int kernel_end;
 
@@ -17,23 +18,13 @@ u64 fib(u64 n) {
   return fib(n - 1) + fib(n - 2);
 }
 
-#define O_RDONLY 00
-#define O_WRONLY 01
-#define O_RDWR 02
-#define O_CREAT 0100
-#define O_APPEND 02000
-
-// do_posix_syscall expects 6 ints and returns one int
-extern int do_posix_syscall(u64 args[6]);
-
-int open(char *filename, int flags, int opts) {
-  u64 args[6];
-  args[0] = 0x05; // sys_open
-  args[1] = (u64)filename;
-  args[2] = flags;
-  args[3] = opts;
-  return do_posix_syscall(args);
+static u64 strlen(char *str) {
+  u64 i = 0;
+  for (i = 0; str[i] != '\0'; i++)
+    ;
+  return i;
 }
+
 
 // in src/arch/x86/sse.asm
 extern void enable_sse();
@@ -52,15 +43,11 @@ int kmain(void) {
 
   // finally, enable interrupts
   sti();
+  // printk("yeet\n");
 
-  int res = open("foo bar baz", O_CREAT | O_APPEND, 0666);
-  printk("res: %d\n", res);
+  char *msg = "hello world, this is a long message\n";
 
-  // fib(30);
-  // for (int i = 0; true; i++) printk("%016x ", i);
-
-  // go do the thing
-  printk("hello from inside the kernel\n");
+  write(stdout, msg, strlen(msg));
 
   // simply hltspin
   while (1) halt();
