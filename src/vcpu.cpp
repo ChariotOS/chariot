@@ -6,14 +6,14 @@ std::string vcpu::read_string(u64 gva) {
   std::string str;
 
 
-  unsigned char buf[100];
+  unsigned char buf[8000];
 
 
-  int read = read_guest(gva, buf, 100);
+  int read = read_guest(gva, buf, 8000);
   printf("read %d\n", read);
 
 
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < read; i++) {
     printf("%02x ", buf[i]);
   }
   printf("\n");
@@ -27,8 +27,12 @@ int vcpu::read_guest(u64 gva, void *buf, size_t len) {
   // offset within the page
   int offset = gva & 0xfff;
 
+  u64 hpn;
+
   // host page number
-  u64 hpn = ((u64)translate_address(gpn << 12)) >> 12;
+  void *found = translate_address(gpn << 12);
+  if (found == nullptr) return 0;
+  hpn = ((u64)found) >> 12;
 
   int i;
   for (i = 0; i < len; i++) {
@@ -43,8 +47,10 @@ int vcpu::read_guest(u64 gva, void *buf, size_t len) {
     if (offset >= 4096) {
       gpn += 1;
       offset = 0;
-      hpn = ((u64)translate_address(gpn << 12)) >> 12;
-      printf("%lx\n", hpn);
+
+      found = translate_address(gpn << 12);
+      if (found == nullptr) return i;
+      hpn = ((u64)found) >> 12;
     }
   }
 

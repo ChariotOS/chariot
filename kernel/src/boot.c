@@ -56,7 +56,7 @@ int kmain(void) {
 
   char filename[8000];
   for (int i = 0; i < 8000; i++) {
-    filename[i] = 'A';
+    filename[i] = i;
   }
   filename[8000-1] = '\0';
 
