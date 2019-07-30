@@ -53,14 +53,7 @@ int kmain(void) {
   // finally, enable interrupts
   sti();
 
-
-  char filename[8000];
-  for (int i = 0; i < 8000; i++) {
-    filename[i] = i;
-  }
-  filename[8000-1] = '\0';
-
-  int res = open(filename, O_CREAT | O_APPEND, 0666);
+  int res = open("foo bar baz", O_CREAT | O_APPEND, 0666);
   printk("res: %d\n", res);
 
   // fib(30);
