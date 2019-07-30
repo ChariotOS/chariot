@@ -36,7 +36,7 @@ section .boot
 start:
 _start:
 	cli ; disable interrupts
-
+	hlt
 
 	mov eax, gdtr32
 	lgdt [eax] ; load GDT register with start address of Global Descriptor Table

@@ -25,13 +25,17 @@ int run_vm(std::string path) {
   try {
 
     while (true) {
-
-
-
       // load the kernel elf
       vmm.load_elf(path);
+
+      auto start = std::chrono::high_resolution_clock::now();
       // run the vm
       vmm.run();
+
+      auto end = std::chrono::high_resolution_clock::now();
+
+      auto dur = std::chrono::duration_cast<std::chrono::microseconds>(end-start);
+      printf("%ldus\n", dur.count());
       vmm.reset();
     }
   } catch (std::exception &ex) {
