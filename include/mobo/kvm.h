@@ -25,9 +25,12 @@ namespace mobo {
 struct kvm_vcpu : public mobo::vcpu {
   int cpufd = -1;
   int index = 0;
+
+  char *mem;
+  size_t memsize;
+
   struct kvm_run *kvm_run;
 
-  void dump_state(FILE *, char *mem = nullptr);
 
   // GPR
   virtual void read_regs(regs &);
@@ -38,6 +41,10 @@ struct kvm_vcpu : public mobo::vcpu {
   // FPR
   virtual void read_fregs(fpu_regs &);
   virtual void write_fregs(fpu_regs &);
+
+  virtual void dump_state(FILE *, char *mem = nullptr);
+
+  virtual void *translate_address(u64 gva);
 };
 
 // a memory bank represents a segment of memory in the kvm CPU

@@ -122,6 +122,8 @@ runVM path =
 main :: IO ()
 main = do
     args <- getArgs
-    print $ runVM "build/kernel.elf"
+    case runVM (head args) of
+        VMOkay -> return ()
+        res@_ -> print res
 
 

@@ -17,9 +17,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <algorithm>
+#include <chrono>
 #include <elfio/elfio.hpp>
 #include <iostream>
-#include <chrono>
 
 using namespace mobo;
 
@@ -89,12 +89,10 @@ mobo::kvm::~kvm() {
   }
   close(vmfd);
   munmap(mem, memsize);
-
 }
 
 void kvm::init_cpus(void) {
   int kvm_run_size = ioctl(kvmfd, KVM_GET_VCPU_MMAP_SIZE, nullptr);
-
   // get cpuid info
   struct kvm_cpuid2 *kvm_cpuid;
 
@@ -117,11 +115,9 @@ void kvm::init_cpus(void) {
     auto *run = (struct kvm_run *)mmap(
         NULL, kvm_run_size, PROT_READ | PROT_WRITE, MAP_SHARED, vcpufd, 0);
 
-    struct kvm_regs regs;
-
-    ioctl(vcpufd, KVM_GET_REGS, &regs);
-    // memset(&regs, 0, sizeof(regs));
-    regs.rflags = 0x2;
+    struct kvm_regs regs = {
+        .rflags = 0x2,
+    };
     ioctl(vcpufd, KVM_SET_REGS, &regs);
 
     struct kvm_sregs sregs;
@@ -133,11 +129,9 @@ void kvm::init_cpus(void) {
     cpu.cpufd = vcpufd;
     cpu.kvm_run = run;
 
-    //cpu.dump_state(stdout);
+    // cpu.dump_state(stdout);
     cpus.push_back(cpu);
   }
-
-
 
   free(kvm_cpuid);
 }
@@ -224,7 +218,6 @@ void kvm::load_elf(std::string file) {
 
       for (auto bank : this->ram) {
         struct multiboot_mmap_entry entry;
-
         entry.addr = bank.guest_phys_addr;
         entry.len = bank.size;
         entry.type = MULTIBOOT_MEMORY_AVAILABLE;
@@ -242,8 +235,6 @@ void kvm::load_elf(std::string file) {
       // write the size
       *(u32 *)(memory + mbd) = hdr.get_written();
     }
-
-
 
     // setup general purpose registers
     {
@@ -289,8 +280,6 @@ void kvm::load_elf(std::string file) {
       cpus[0].write_sregs(sr);
     }
 
-
-
     // unmap the memory and close the fd
     munmap(bin, size);
     close(fd);
@@ -312,6 +301,11 @@ void kvm::init_ram(size_t nbytes) {
   this->mem = mmap(NULL, nbytes, PROT_READ | PROT_WRITE,
                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
   this->memsize = nbytes;
+
+  for (auto &cpu : cpus) {
+    cpu.mem = (char*)mem;
+    cpu.memsize = nbytes;
+  }
 
   // Setup the PCI hole if needed... Basically map the region of memory
   // differently if it needs to have a hole in it. The memory is still just one
@@ -338,7 +332,6 @@ void kvm::init_ram(size_t nbytes) {
     bnk2.size = nbytes - bnk2.guest_phys_addr;
     attach_bank(std::move(bnk2));
   }
-
 }
 
 // #define RECORD_VMEXIT_LIFETIME
@@ -352,22 +345,32 @@ void kvm::run(void) {
   cpus[0].read_regs(regs);
 
   while (1) {
-#ifdef RECORD_VMEXIT_LIFETIME
-    auto start = std::chrono::high_resolution_clock::now();
-#endif
-    int res = ioctl(cpufd, KVM_RUN, NULL);
-#ifdef RECORD_VMEXIT_LIFETIME
-    auto end = std::chrono::high_resolution_clock::now();
+    /*
+        struct kvm_guest_debug debug = {
+                .control	= KVM_GUESTDBG_ENABLE | KVM_GUESTDBG_SINGLESTEP,
+        };
 
-    auto dur =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    printf("ran for %lu us\n", dur.count());
-#endif
+        if (ioctl(cpufd, KVM_SET_GUEST_DEBUG, &debug) < 0) {
+                printf("KVM_SET_GUEST_DEBUG failed\n");
+  }
+  */
 
+    int err = ioctl(cpufd, KVM_RUN, NULL);
+
+    if (err < 0 && (errno != EINTR && errno != EAGAIN)) {
+      printf("KVM_RUN failed\n");
+      return;
+    }
+
+    if (err < 0) {
+      continue;
+    }
     // printf("Exited: %s\n", kvm_exit_reasons[run->exit_reason]);
     int stat = run->exit_reason;
 
-
+    if (stat == KVM_EXIT_DEBUG) {
+      continue;
+    }
 
     if (stat == KVM_EXIT_MMIO) {
       printf("[MMIO] ");
@@ -389,11 +392,7 @@ void kvm::run(void) {
     }
 
     if (stat == KVM_EXIT_INTR) {
-      printf("interrupt: %d\n", run->exit_reason);
-      printf("errno: %d\n", errno);
-      printf("res: %d\n", res);
       continue;
-      // return;
     }
 
     if (stat == KVM_EXIT_HLT) {
@@ -402,7 +401,7 @@ void kvm::run(void) {
 
     if (stat == KVM_EXIT_IO) {
       dev_mgr.handle_io(
-          nullptr, run->io.port, run->io.direction == KVM_EXIT_IO_IN,
+          &cpus[0], run->io.port, run->io.direction == KVM_EXIT_IO_IN,
           (void *)((char *)run + run->io.data_offset), run->io.size);
       continue;
     }
@@ -836,3 +835,15 @@ void kvm_vcpu::write_fregs(fpu_regs &src) {
   ioctl(cpufd, KVM_SET_FPU, &dst);
 }
 
+void *kvm_vcpu::translate_address(u64 gva) {
+  struct kvm_translation tr;
+
+  tr.linear_address = gva;
+
+  ioctl(cpufd, KVM_TRANSLATE, &tr);
+
+  if (!tr.valid) return nullptr;
+
+  return mem + tr.physical_address;
+
+}

@@ -40,7 +40,9 @@ executables:
     - src/main.cpp
     - src/machine.cpp
     - src/dev_mgr.cpp
+    - src/vcpu.cpp
     - src/devices/serial.cpp
+    - src/devices/posix.cpp
     cc-options: -std=c++17 -g
 
 #extra-lib-dirs: build

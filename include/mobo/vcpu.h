@@ -76,6 +76,16 @@ class vcpu {
   // FPR
   virtual void read_fregs(fpu_regs&) = 0;
   virtual void write_fregs(fpu_regs&) = 0;
+  virtual void dump_state(FILE *, char * = nullptr) = 0;
+
+  // translate a guest virtual address into the host address
+  virtual void *translate_address(u64 gva) = 0;
+
+
+  // read a string starting from gva until a nullptr
+  std::string read_string(u64 gva);
+
+  int read_guest(u64 gva, void *buf, size_t len);
 };
 
 };  // namespace mobo

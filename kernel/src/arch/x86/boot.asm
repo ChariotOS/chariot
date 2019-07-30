@@ -35,8 +35,6 @@ section .boot
 [bits 32]
 start:
 _start:
-
-
 	cli ; disable interrupts
 
 

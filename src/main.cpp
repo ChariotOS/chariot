@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <chrono>
 #include <iostream>
+#include <signal.h>
 
 using namespace mobo;
 
@@ -15,6 +16,8 @@ extern "C" int mobo_square(int x) {
 }
 
 int run_vm(std::string path) {
+
+
   static int kvmfd = open("/dev/kvm", O_RDWR);
 
   try {
@@ -34,5 +37,6 @@ int run_vm(std::string path) {
   return 0;
 }
 
+// haskell FFI function
 extern "C" int mobo_run_vm(char *binary) { return run_vm(binary); }
 
