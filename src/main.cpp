@@ -3,43 +3,44 @@
 
 #include <capstone/capstone.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <chrono>
 #include <iostream>
-#include <signal.h>
 
 #include <fcntl.h>
 
 using namespace mobo;
 
 int run_vm(std::string path) {
-
   static int kvmfd = open("/dev/kvm", O_RDWR);
 
-
-  // create a vmm
-  kvm vmm(kvmfd, 1);
-  // give it some ram (256 mb)
-  vmm.init_ram(256 * 1024l * 1024l);
+  // int i = 0;
 
   try {
 
-    while (true) {
-      // load the kernel elf
-      vmm.load_elf(path);
+    // create a vmm
+    kvm vmm(kvmfd, 1);
+    // give it some ram (256 mb)
+    vmm.init_ram(1024 * 1024l * 1024l);
 
-      auto start = std::chrono::high_resolution_clock::now();
-      // run the vm
-      vmm.run();
+    // load the kernel elf
+    vmm.load_elf(path);
 
-      auto end = std::chrono::high_resolution_clock::now();
+    // auto start = std::chrono::high_resolution_clock::now();
 
-      auto dur = std::chrono::duration_cast<std::chrono::microseconds>(end-start);
-      printf("%ldus\n", dur.count());
-      vmm.reset();
-    }
+    // run the vm
+    vmm.run();
+
+    /*
+    auto dur = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::high_resolution_clock::now() - start);
+    printf("%d,%ld\n", i++, dur.count());
+    */
+
+    vmm.reset();
   } catch (std::exception &ex) {
-    printf("ex: %s\n", ex.what());
+    fprintf(stderr, "ex: %s\n", ex.what());
     return -1;
   }
 

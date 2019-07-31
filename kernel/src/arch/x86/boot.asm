@@ -36,7 +36,6 @@ section .boot
 start:
 _start:
 	cli ; disable interrupts
-	hlt
 
 	mov eax, gdtr32
 	lgdt [eax] ; load GDT register with start address of Global Descriptor Table
@@ -65,7 +64,10 @@ gdt1_loaded:
 
 	;; setup and initialize basic paging
 	call longmode_setup
+
 	call paging_setup
+
+
 
 
 	;; now our long mode GDT
@@ -79,6 +81,7 @@ gdt1_loaded:
 
 [bits 64]
 gdt2_loaded:
+
 	;; now that we are here, the second gdt is loaded and we are in 64bit long mode
 	;; and paging is enabled.
 	mov eax, 0x10

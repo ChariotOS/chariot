@@ -84,8 +84,9 @@ kvm::kvm(int kvmfd, int ncpus) : kvmfd(kvmfd), ncpus(ncpus) {
 
 mobo::kvm::~kvm() {
   // need to close the vmfd, and all cpu fds
-  for (auto cpu : cpus) {
+  for (auto &cpu : cpus) {
     close(cpu.cpufd);
+    munmap(cpu.kvm_run, cpu.run_size);
   }
   close(vmfd);
   munmap(mem, memsize);
@@ -106,11 +107,14 @@ void kvm::init_cpus(void) {
   filter_cpuid(kvm_cpuid);
 
   for (int i = 0; i < ncpus; i++) {
-    int vcpufd = ioctl(vmfd, KVM_CREATE_VCPU, nullptr);
+    int vcpufd = ioctl(vmfd, KVM_CREATE_VCPU, i);
 
     // init the cpuid
-    if (ioctl(vcpufd, KVM_SET_CPUID2, kvm_cpuid) < 0)
+    int cpuid_err = ioctl(vcpufd, KVM_SET_CPUID2, kvm_cpuid);
+    if (cpuid_err != 0) {
+      printf("%d %d\n", cpuid_err, errno);
       throw std::runtime_error("KVM_SET_CPUID2 failed");
+    }
 
     auto *run = (struct kvm_run *)mmap(
         NULL, kvm_run_size, PROT_READ | PROT_WRITE, MAP_SHARED, vcpufd, 0);
@@ -128,8 +132,7 @@ void kvm::init_cpus(void) {
     kvm_vcpu cpu;
     cpu.cpufd = vcpufd;
     cpu.kvm_run = run;
-
-
+    cpu.run_size = kvm_run_size;
 
     ioctl(vcpufd, KVM_GET_REGS, &cpu.initial_regs);
     ioctl(vcpufd, KVM_GET_SREGS, &cpu.initial_sregs);
@@ -351,7 +354,7 @@ void kvm::run(void) {
   cpus[0].read_regs(regs);
 
   while (1) {
-
+    halted = false;
     int err = ioctl(cpufd, KVM_RUN, NULL);
 
     if (err < 0 && (errno != EINTR && errno != EAGAIN)) {
@@ -376,7 +379,10 @@ void kvm::run(void) {
     }
 
     if (stat == KVM_EXIT_SHUTDOWN) {
+      shutdown = true;
       printf("SHUTDOWN (probably a triple fault, lol)\n");
+
+      printf("%d\n", run->internal.suberror);
 
       cpus[0].dump_state(stderr, (char *)this->mem);
       throw std::runtime_error("triple fault");
@@ -389,6 +395,7 @@ void kvm::run(void) {
     }
 
     if (stat == KVM_EXIT_HLT) {
+      halted = true;
       break;
     }
 
@@ -410,8 +417,12 @@ void kvm::run(void) {
     }
 
     if (stat == KVM_EXIT_FAIL_ENTRY) {
+      /*
       printf("failed to enter: %llu\n",
              run->fail_entry.hardware_entry_failure_reason);
+             */
+      shutdown = true;
+      halted = true;
       return;
     }
 
@@ -422,7 +433,7 @@ void kvm::run(void) {
     return;
   }
 
-  // cpus[0].dump_state(stdout, (char *)this->mem);
+  cpus[0].dump_state(stdout, (char *)this->mem);
 }
 
 static inline void host_cpuid(struct cpuid_regs *regs) {
@@ -496,8 +507,6 @@ static void filter_cpuid(struct kvm_cpuid2 *kvm_cpuid) {
     };
   }
 }
-
-
 
 void kvm::reset(void) {
   dev_mgr.reset();
@@ -613,7 +622,6 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
 
   fprintf(out, "\n");
 
-  /*
   if (mem != nullptr) {
     printf("Code:\n");
     csh handle;
@@ -626,7 +634,7 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
       size_t j;
       for (j = 0; j < count; j++) {
         if (j > 5) break;
-        printf("0x%" PRIx64 ":\t%s\t\t%s\n", insn[j].address, insn[j].mnemonic,
+        printf("0x%" PRIx64 ":\t%s %s\n", insn[j].address, insn[j].mnemonic,
                insn[j].op_str);
       }
 
@@ -636,10 +644,8 @@ void kvm_vcpu::dump_state(FILE *out, char *mem) {
 
     cs_close(&handle);
   }
-  */
 #undef GET
 }
-
 
 void kvm_vcpu::reset(void) {
   ioctl(cpufd, KVM_SET_REGS, &initial_regs);
@@ -855,7 +861,4 @@ void *kvm_vcpu::translate_address(u64 gva) {
 
   return mem + tr.physical_address;
 }
-
-
-
 

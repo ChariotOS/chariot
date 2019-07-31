@@ -43,10 +43,9 @@ int kmain(void) {
 
   // finally, enable interrupts
   sti();
-  // printk("yeet\n");
 
+  printk("hello, from the kernel\n");
 
-  printk("hello\n");
 
   // simply hltspin
   while (1) halt();

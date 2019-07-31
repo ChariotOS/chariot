@@ -45,6 +45,8 @@ executables:
     - src/devices/posix.cpp
     cc-options: -std=c++17 -g
 
+    extra-libraries: capstone
+
 #extra-lib-dirs: build
 ##extra-libraries:
 #  - mobo_rt

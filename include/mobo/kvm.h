@@ -30,6 +30,7 @@ struct kvm_vcpu : public mobo::vcpu {
   size_t memsize;
 
   struct kvm_run *kvm_run;
+  size_t run_size = 0;
 
   struct kvm_regs initial_regs;
   struct kvm_sregs initial_sregs;
@@ -77,6 +78,10 @@ class kvm {
   void attach_bank(ram_bank &&);
 
  public:
+
+  bool halted = false;
+  bool shutdown = false;
+
   kvm(int kvmfd, int ncpus);
   ~kvm(void);
   void load_elf(std::string);
