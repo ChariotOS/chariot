@@ -37,6 +37,10 @@ start:
 _start:
 	cli ; disable interrupts
 
+
+	mov edi, ebx
+	mov esi, eax
+
 	mov eax, gdtr32
 	lgdt [eax] ; load GDT register with start address of Global Descriptor Table
 
@@ -94,6 +98,9 @@ gdt2_loaded:
 	;; Reset the stack to the initial state
 	mov rsp, boot_stack_end - 1
 	mov rbp, rsp
+
+
+
 
 	;; and call the c code in boot.c
 	call kmain

@@ -62,10 +62,6 @@ build:
 	@mkdir -p build
 
 
-
-
-
-
 # test kernel related build tools
 kern: build $(KERNEL)
 
@@ -79,22 +75,26 @@ kern: build $(KERNEL)
 	@echo " AS " $<
 	@$(AS) $(AFLAGS) -o $@ $<
 
-$(KERNEL): $(CSOURCES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
+$(KERNEL): build/fs.img $(CSOURCES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
 	@echo " LD " $@
 	@$(LD) $(LDFLAGS) $(AOBJECTS) $(COBJECTS) -T kernel/kernel.ld -o $@
 
+
+build/fs.img:
+	dd if=/dev/zero of=$@ bs=10M count=1
 
 iso: kern
 	mkdir -p build/iso/boot/grub
 	cp kernel/grub.cfg build/iso/boot/grub
 	cp build/kernel.elf build/iso/boot
-	grub-mkrescue -o kernel.iso build/iso
+	grub-mkrescue -o build/kernel.iso build/iso
 
 
 klean:
-	rm -r $(KERNEL)
 	rm -f $(COBJECTS)
 	rm -f $(AOBJECTS)
+	rm -rf $(shell find kernel | grep "\.o\$$")
+	rm -r $(KERNEL)
 
 
 clean: klean
@@ -104,7 +104,8 @@ clean: klean
 
 
 qemu: iso
-		qemu-system-x86_64 \
+		@qemu-system-x86_64 \
 			-nographic \
-			-cdrom kernel.iso \
-			-m 2048 \
+			-cdrom build/kernel.iso \
+			-m 8G \
+			-drive file=build/fs.img,format=raw,if=virtio \

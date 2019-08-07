@@ -6,7 +6,7 @@ ENTRY(_start)
 SECTIONS
 {
 
-  . = 0x4000;
+  . = 1M;
 
 	low_kern_start = .;
 
@@ -74,11 +74,11 @@ SECTIONS
 
 
 
-	bitmap_metadata = .;
-	. += 0x1000;
-	bitmap_start = .;
-	. += 0x1000 * 0x1000 * 8;
-	bitmap_end = .;
+	/* allocate pages for the "boot heap" which is
+	 * used to allocate boot-time objects.
+	 */
+	bootheap_start = .;
+	. += 0x1000 * 64;
 
 
 	high_kern_end = .;

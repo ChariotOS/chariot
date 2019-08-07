@@ -5,13 +5,13 @@
 
 
 void serial_enable(int device) {
-	outb(0x00, device + 1);
-	outb(0x80, device + 3); /* Enable divisor mode */
-	outb(0x03, device + 0); /* Div Low:  03 Set the port to 38400 bps */
-	outb(0x00, device + 1); /* Div High: 00 */
-	outb(0x03, device + 3);
-	outb(0xC7, device + 2);
-	outb(0x0B, device + 4);
+	outb(device + 1, 0x00);
+	outb(device + 3, 0x80); /* Enable divisor mode */
+	outb(device + 0, 0x03); /* Div Low:  03 Set the port to 38400 bps */
+	outb(device + 1, 0x00); /* Div High: 00 */
+	outb(device + 3, 0x03);
+	outb(device + 2, 0xC7);
+	outb(device + 4, 0x0B);
 }
 
 void
@@ -39,7 +39,7 @@ int serial_transmit_empty(int device) {
 
 void serial_send(int device, char out) {
 	while (serial_transmit_empty(device) == 0);
-	outb(out, device);
+	outb(device, out);
 }
 
 void serial_string(int device, char * out) {

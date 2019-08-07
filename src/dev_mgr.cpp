@@ -41,7 +41,7 @@ device_manager::device_manager() {
 int device_manager::handle_io(vcpu *cpu, port_t port, bool in, void *data,
                               uint32_t len) {
   if (io_handlers.count(port) == 0) {
-    // printf("unhandled port 0x%04x\n", port);
+    printf("unhandled port 0x%04x %s\n", port, in ? "in" : "out");
     return 0;
   }
 

@@ -67,8 +67,6 @@ const char *excp_codes[NUM_EXCEPTIONS][2] = {
 
 extern u32 idt_block;
 
-static u32 *idt;
-
 extern void *vectors[];  // in vectors.S: array of 256 entry pointers
 
 static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
@@ -83,10 +81,9 @@ static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
 
 void init_idt(void) {
   u32 *idt = &idt_block;
-
-  // and fill it up with the correct vectors
+  // fill up the idt with the correct trap vectors.
   for (int n = 0; n < 256; n++) mkgate(idt, n, vectors[n], 0, 0);
-  //printk("idt=%p\n", idt);
+  // and load the idt into the processor. It is a page in memory
   lidt(idt, 4096);
 }
 
@@ -117,51 +114,73 @@ struct trapframe {
   u64 ds;      // ss
 };
 
-
-
 // Processor-defined:
-#define TRAP_DIVIDE         0      // divide error
-#define TRAP_DEBUG          1      // debug exception
-#define TRAP_NMI            2      // non-maskable interrupt
-#define TRAP_BRKPT          3      // breakpoint
-#define TRAP_OFLOW          4      // overflow
-#define TRAP_BOUND          5      // bounds check
-#define TRAP_ILLOP          6      // illegal opcode
-#define TRAP_DEVICE         7      // device not available
-#define TRAP_DBLFLT         8      // double fault
+#define TRAP_DIVIDE 0  // divide error
+#define TRAP_DEBUG 1   // debug exception
+#define TRAP_NMI 2     // non-maskable interrupt
+#define TRAP_BRKPT 3   // breakpoint
+#define TRAP_OFLOW 4   // overflow
+#define TRAP_BOUND 5   // bounds check
+#define TRAP_ILLOP 6   // illegal opcode
+#define TRAP_DEVICE 7  // device not available
+#define TRAP_DBLFLT 8  // double fault
 // #define TRAP_COPROC      9      // reserved (not used since 486)
-#define TRAP_TSS           10      // invalid task switch segment
-#define TRAP_SEGNP         11      // segment not present
-#define TRAP_STACK         12      // stack exception
-#define TRAP_GPFLT         13      // general protection fault
-#define TRAP_PGFLT         14      // page fault
+#define TRAP_TSS 10    // invalid task switch segment
+#define TRAP_SEGNP 11  // segment not present
+#define TRAP_STACK 12  // stack exception
+#define TRAP_GPFLT 13  // general protection fault
+#define TRAP_PGFLT 14  // page fault
 // #define TRAP_RES        15      // reserved
-#define TRAP_FPERR         16      // floating point error
-#define TRAP_ALIGN         17      // aligment check
-#define TRAP_MCHK          18      // machine check
-#define TRAP_SIMDERR       19      // SIMD floating point error
+#define TRAP_FPERR 16    // floating point error
+#define TRAP_ALIGN 17    // aligment check
+#define TRAP_MCHK 18     // machine check
+#define TRAP_SIMDERR 19  // SIMD floating point error
+
+u64 ticks = 0;
 // where the trap handler throws us. It is up to this function to sort out
 // which trap handler to hand off to
 void trap(struct trapframe *tf) {
-
-  if (tf->trapno == TRAP_ILLOP) {
-    printk("ILLEGAL INSTRUCION %016x\n", tf->err);
-    halt();
-  }
+  extern void pic_send_eoi(void);
 
   // PAGE FAULT
   if (tf->trapno == TRAP_PGFLT) {
-    void *addr = (void *)read_cr2();
+    void *addr = (void *)(read_cr2() & ~0xFFF);
     printk("PAGE FAULT %p\n", addr);
     map_page(addr, addr);
     return;
   }
 
+  if (tf->trapno >= 32) {
+    ticks++;
+    // if (ticks % 100 == 0) printk("%d\n", ticks);
+    // send the end of interrupt to the PIC
+    pic_send_eoi();
+    return;
+  }
+
+
+
+#define INDENT "   "
+  printk("+++++++++++++ !!! +++++++++++++\n");
+  printk("\n");
+  printk(INDENT "KERNEL PANIC\n");
+  printk("\n");
+
+  printk(INDENT "CPU EXCEPTION: %s\n", excp_codes[tf->trapno][EXCP_NAME]);
+  printk(INDENT "the system was running for %d ticks\n", ticks);
 
   printk("\n");
-  printk(" +++ %s +++ \n", excp_codes[tf->trapno][EXCP_NAME]);
-  printk(" +++ UNHANDLED TRAP +++\n");
+
+  printk(INDENT "RAX=%016x RBX=%016x RCX=%016x RDX=%016x\n", tf->rax, tf->rbx, tf->rcx, tf->rdx);
+  printk(INDENT "RDI=%016x RSI=%016x RBP=%016x RSP=%016x\n", tf->rdi, tf->rsi, tf->rbp, (u64)tf);
+  printk(INDENT "INT=%016x ERR=%016x EIP=%016x RSP=%016x\n", tf->trapno, tf->err, tf->eip, (u64)tf);
+
   printk("\n");
+
+  printk(INDENT "SYSTEM HALTED\n");
+  printk("\n");
+  printk("+++++++++++++ !!! +++++++++++++\n");
+
   lidt(0, 0);  // die
   while (1) halt();
 }

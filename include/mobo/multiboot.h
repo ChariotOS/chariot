@@ -25,7 +25,7 @@
 #ifndef MULTIBOOT_HEADER
 #define MULTIBOOT_HEADER 1
 
-#include <mobo/types.h>
+#include "types.h"
 
 /* How many bytes from the start of the file we search for the header.  */
 #define MULTIBOOT_SEARCH 32768
@@ -390,6 +390,62 @@ struct multiboot_tag_hrt {
   multiboot_uint8_t hrt_int_vec;
   multiboot_uint8_t reserved[7];
 } __attribute__((packed));
+
+struct RSDPDescriptor {
+ char Signature[8];
+ uint8_t Checksum;
+ char OEMID[6];
+ uint8_t Revision;
+ uint32_t RsdtAddress;
+} __attribute__ ((packed));
+
+struct RSDPDescriptor20 {
+ struct RSDPDescriptor firstPart;
+ uint32_t Length;
+ uint64_t XsdtAddress;
+ uint8_t ExtendedChecksum;
+ uint8_t reserved[3];
+} __attribute__ ((packed));
+
+
+
+#define SFI_SYST_SIG 0x54535953 // "SYST"
+#define SFI_CPUS_SIG 0x53555043 // "CPUS"
+#define SFI_APIC_SIG 0x43495041 // "APIC"
+#define SFI_MMAP_SIG 0x50414d4d // "MMAP"
+#define SFI_FREQ_SIG 0x51455246 // "FREQ"
+#define SFI_MTMR_SIG 0x524d544d // "MTMR"
+#define SFI_MRTC_SIG 0x4352544d // "MTRC"
+#define SFI_DEVS_SIG 0x53564544 // "DEVS"
+#define SFI_WAKE_SIG 0x454b4157 // "WAKE"
+#define SFI_GPIO_SIG 0x4f495047 // "GPIO"
+#define SFI_OEM_SIG  "OEM"
+
+
+
+#define AP_TRAMPOLINE_ADDR 0xf000 
+#define AP_BOOT_STACK_ADDR 0x1000
+#define AP_INFO_AREA       0x2000
+
+#define BASE_MEM_LAST_KILO 0x9fc00
+#define BIOS_ROM_BASE      0xf0000
+#define BIOS_ROM_END       0xfffff
+
+
+
+
+struct ACPISDTHeader {
+  uint32_t Signature;
+  uint32_t Length;
+  uint8_t Revision;
+  uint8_t Checksum;
+  char OEMID[6];
+  char OEMTableID[8];
+  uint32_t OEMRevision;
+  uint32_t CreatorID;
+  uint32_t CreatorRevision;
+};
+
 
 #endif /* ! ASM_FILE */
 

@@ -37,6 +37,9 @@ struct kvm_vcpu : public mobo::vcpu {
   struct kvm_fpu initial_fpu;
 
 
+struct kvm_coalesced_mmio_ring *ring;
+
+
   // GPR
   virtual void read_regs(regs &);
   virtual void write_regs(regs &);
@@ -88,6 +91,12 @@ class kvm {
 
   void init_ram(size_t);
   void run(void);
+
+
+  void handle_coalesced_mmio(kvm_vcpu &cpu);
+
+
+  bool emulate_mmio(kvm_vcpu &cpu, u64 phys_addr, u8 *data, u32 len, bool is_write);
 
   void reset();
 };

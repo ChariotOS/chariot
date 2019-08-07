@@ -63,6 +63,8 @@ class device_registration_manager {
   device_registration_manager(const char *, std::function<device *()>);
 };
 
+
+
 };  // namespace mobo
 
 #define MOBO_REGISTER_DEVICE(cls)                                  \

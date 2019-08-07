@@ -5,10 +5,10 @@ print('extern alltraps')
 for i in range(0, 256):
     print('global vector{}'.format(i))
     print('vector{}:'.format(i))
-    #if not (i == 8 or (i >= 10 and i <= 14) or i == 17):
-    #    print('  push {}'.format(i))
+    if not (i == 8 or (i >= 10 and i <= 14) or i == 17):
+        print('  push {}'.format(i))
     print('  push {}'.format(i))
-    print('  jmp alltraps')
+    print('  jmp alltraps\n')
 
 print('\n; vector table')
 print('section .data')

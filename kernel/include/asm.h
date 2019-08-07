@@ -225,17 +225,19 @@ static inline uint32_t inl(uint16_t port) {
   return ret;
 }
 
-static inline void outb(uint8_t val, uint16_t port) {
+static inline void outb(uint16_t port, uint8_t val) {
   asm volatile("outb %0, %1" ::"a"(val), "dN"(port));
 }
 
-static inline void outw(uint16_t val, uint16_t port) {
+static inline void outw(uint16_t port, uint16_t val) {
   asm volatile("outw %0, %1" ::"a"(val), "dN"(port));
 }
 
-static inline void outl(uint32_t val, uint16_t port) {
+static inline void outl(uint16_t port, uint32_t val) {
   asm volatile("outl %0, %1" ::"a"(val), "dN"(port));
 }
+
+
 
 static inline void sti(void) { asm volatile("sti" : : : "memory"); }
 
@@ -258,6 +260,15 @@ static inline uint64_t read_rflags(void) {
   uint64_t ret;
   asm volatile("pushfq; popq %0" : "=a"(ret));
   return ret;
+}
+
+
+
+static inline u32 popcnt(u64 val) {
+  u64 count = 0;
+
+  asm volatile("popcnt %0, %1" : "=a"(count) : "dN"(val));
+  return count;
 }
 
 static inline void halt(void) { asm volatile("hlt"); }

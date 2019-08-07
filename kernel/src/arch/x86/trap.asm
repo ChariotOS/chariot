@@ -6,7 +6,7 @@ extern trap
 
 global alltraps
 alltraps:
-  ; Build trap frame.
+	; Build trap frame.
   push r15
   push r14
   push r13
@@ -23,7 +23,7 @@ alltraps:
   push rbx
   push rax
 
-  mov  rdi, rsp ; frame in arg1
+  mov rdi, rsp ; frame in arg1
   call trap
 
 	;; Return falls through to trapret...

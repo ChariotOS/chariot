@@ -21,6 +21,10 @@
 #include <elfio/elfio.hpp>
 #include <iostream>
 
+#include <mobo/acpi.h>
+
+#define PAGE_SIZE 4096
+
 using namespace mobo;
 
 #define DEFINE_KVM_EXIT_REASON(reason) [reason] = #reason
@@ -50,6 +54,24 @@ const char *kvm_exit_reasons[] = {
 };
 #undef DEFINE_KVM_EXIT_REASON
 
+uint8_t solve_checksum(char *data, int len) {
+  uint8_t checksum = 0x00;
+  for (int i = 0; i < len; i++) {
+    checksum += data[i];
+  }
+  return 0x00 - checksum;
+}
+
+template <typename T>
+uint8_t solve_checksum(T *table) {
+  return solve_checksum((char *)table, sizeof(T));
+}
+
+void die_perror(const char *s) {
+  perror(s);
+  exit(1);
+}
+
 struct cpuid_regs {
   int eax;
   int ebx;
@@ -58,6 +80,50 @@ struct cpuid_regs {
 };
 #define MAX_KVM_CPUID_ENTRIES 100
 static void filter_cpuid(struct kvm_cpuid2 *);
+
+int kvm_check_extension(int kvmfd, unsigned int extension) {
+  int ret;
+
+  ret = ioctl(kvmfd, KVM_CHECK_EXTENSION, extension);
+  if (ret < 0) {
+    ret = 0;
+  }
+
+  return ret;
+}
+
+static int kvm_arch_set_tsc_khz(int kvmfd) {
+  int r;
+
+  size_t tsc_khz = kvm_check_extension(kvmfd, KVM_CAP_GET_TSC_KHZ)
+                       ? ioctl(kvmfd, KVM_GET_TSC_KHZ)
+                       : 0;
+
+  printf("%zu\n", tsc_khz);
+
+  r = kvm_check_extension(kvmfd, KVM_CAP_TSC_CONTROL)
+          ? ioctl(kvmfd, KVM_SET_TSC_KHZ, tsc_khz)
+          : -ENOTSUP;
+  if (r < 0) {
+    /* When KVM_SET_TSC_KHZ fails, it's an error only if the current
+     * TSC frequency doesn't match the one we want.
+     */
+    int cur_freq = kvm_check_extension(kvmfd, KVM_CAP_GET_TSC_KHZ)
+                       ? ioctl(kvmfd, KVM_GET_TSC_KHZ)
+                       : -ENOTSUP;
+    if (cur_freq <= 0 || cur_freq != tsc_khz) {
+      printf(
+          "TSC frequency mismatch between "
+          "VM (%" PRId64
+          " kHz) and host (%d kHz), "
+          "and TSC scaling unavailable",
+          tsc_khz, cur_freq);
+      return r;
+    }
+  }
+
+  return 0;
+}
 
 kvm::kvm(int kvmfd, int ncpus) : kvmfd(kvmfd), ncpus(ncpus) {
   assert(ncpus == 1);  // for now...
@@ -79,7 +145,48 @@ kvm::kvm(int kvmfd, int ncpus) : kvmfd(kvmfd), ncpus(ncpus) {
   // KVM gives us a handle to this VM in the form of a file descriptor:
   vmfd = ioctl(kvmfd, KVM_CREATE_VM, (unsigned long)0);
 
+  // setup a bunch of nice default stuffs
+
+  ret = ioctl(vmfd, KVM_SET_TSS_ADDR, 0xfffbd000);
+  if (ret < 0) die_perror("KVM_SET_TSS_ADDR ioctl");
+
+  // enable the default programmable interrupt timer
+  struct kvm_pit_config pit_config = {
+      .flags = 1,
+  };
+
+  ret = ioctl(vmfd, KVM_CREATE_PIT2, &pit_config);
+  if (ret < 0) die_perror("KVM_CREATE_PIT2 ioctl");
+
+  // create the irq chip
+  ret = ioctl(vmfd, KVM_CREATE_IRQCHIP, nullptr);
+  if (ret < 0) die_perror("KVM_CREATE_IRQCHIP ioctl");
+
+  // ret = kvm_arch_set_tsc_khz(kvmfd);
+  // if (ret < 0) die_perror("kvm_set_tsc failed");
+
+  // initialize the CPUs after we setup the guff above
   init_cpus();
+
+  return;
+
+  cpus[0].dump_state(stdout);
+
+  struct kvm_xsave save;
+
+  ioctl(cpus[0].cpufd, KVM_CAP_XSAVE, &save);
+
+  int written = 0;
+  for (int i = 0; i < 1024; i++) {
+    printf("%08x ", save.region[i]);
+    written++;
+    if (written == 8) {
+      written = 0;
+      printf("\n");
+    }
+  }
+  printf("\n");
+  exit(0);
 }
 
 mobo::kvm::~kvm() {
@@ -134,6 +241,12 @@ void kvm::init_cpus(void) {
     cpu.kvm_run = run;
     cpu.run_size = kvm_run_size;
 
+    int coalesced_offset =
+        ioctl(kvmfd, KVM_CHECK_EXTENSION, KVM_CAP_COALESCED_MMIO);
+    if (coalesced_offset)
+      cpu.ring = reinterpret_cast<struct kvm_coalesced_mmio_ring *>(
+          (char *)cpu.kvm_run + (coalesced_offset * 4096));
+
     ioctl(vcpufd, KVM_GET_REGS, &cpu.initial_regs);
     ioctl(vcpufd, KVM_GET_SREGS, &cpu.initial_sregs);
     ioctl(vcpufd, KVM_GET_FPU, &cpu.initial_fpu);
@@ -186,9 +299,6 @@ void kvm::load_elf(std::string file) {
     char *bin = (char *)mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
     u32 search_len = std::min((size_t)size, (size_t)MULTIBOOT_SEARCH);
 
-    // arbitrarially on the 5th page
-    u64 mbd = 0x5000;
-
     // now scan the binary for the multiboot2 header
     for (int i = 0; i < search_len; i += MULTIBOOT_HEADER_ALIGN) {
       u32 val = *(u32 *)(bin + i);
@@ -211,6 +321,56 @@ void kvm::load_elf(std::string file) {
     if (mbhdr.architecture != 0)
       throw std::runtime_error("only i386 multiboot arch is supported\n");
 
+    // write the rsdt information
+    u64 rsdt_ptr = 0x000E0000;
+
+    // write the MP table
+    {
+      memwriter mem(memory + BASE_MEM_LAST_KILO);
+
+      auto *mp_fps = mem.alloc<struct mp_floating_pointer_structure>();
+
+      auto *mp_conf = mem.alloc<struct mp_configuration_table>();
+
+      mp_fps->signature = *(uint32_t *)"_MP_";
+      mp_fps->configuration_table = mem.to_guest(memory, mp_conf);
+      mp_fps->length = 1;
+      mp_fps->mp_specification_revision = 14;
+      mp_fps->checksum = 0;
+      mp_fps->default_configuration = 0;
+      mp_fps->features = 0;
+      // solve the checksum for this table
+      mp_fps->checksum = solve_checksum(mp_fps);
+
+      mp_conf->length = sizeof(struct mp_configuration_table);
+      mp_conf->entry_count = 0;
+      mp_conf->signature = *(uint32_t *)"PCMP";
+
+      std::vector<struct mp_entry_processor> procs;
+      for (auto cpu : cpus) {
+        struct mp_entry_processor proc;
+
+        proc.type = 0;
+        proc.local_apic_id = cpu.index;
+        proc.local_apic_version = 1;  // idk lol, going with 1
+
+        // the last part here is marking the first processor (proc 0) as the
+        // bootstrap proc
+        proc.flags = (0 /* base flags */) & (cpu.index == 0 ? 1 : 0);
+        procs.push_back(proc);
+      }
+
+      mp_conf->length += procs.size() * sizeof(struct mp_entry_processor);
+      mp_conf->entry_count += procs.size();
+
+      for (auto proc : procs) {
+        mem.write(proc);
+      }
+
+      mp_conf->checksum = solve_checksum((char *)mp_conf, mp_conf->length);
+    }
+
+    u64 mbd = 0x000F0000;
     // setup the memory information at the mbd
     {
       // create a memory writer to the part of memory that represents the mbd
@@ -240,6 +400,33 @@ void kvm::load_elf(std::string file) {
       for (auto e : entries) {
         hdr.write(e);
       }
+
+      // write information about RSDP i guess
+      struct RSDPDescriptor rsdp;
+
+      auto sig = "RSD PTR ";
+      memcpy(rsdp.Signature, sig, 8);
+      // checksum starts at 0
+      rsdp.Checksum = 0x00;
+
+      auto OEMID = "MOBOVM";
+      memcpy(rsdp.OEMID, OEMID, 6);
+
+      rsdp.Revision = 1;
+
+      rsdp.RsdtAddress = rsdt_ptr;
+
+      // finally solve the checksum
+      uint8_t checksum = 0;
+      char *rsdp_buf = (char *)(void *)&rsdp;
+      for (int i = 0; i < sizeof(RSDPDescriptor); i++) checksum += rsdp_buf[i];
+
+      rsdp.Checksum = 0x00 - checksum;
+
+      // and write the information
+      hdr.write<u32>(14);
+      hdr.write<u32>(sizeof(RSDPDescriptor20) + 2 * sizeof(u32));
+      hdr.write<RSDPDescriptor>(rsdp);
 
       // write the size
       *(u32 *)(memory + mbd) = hdr.get_written();
@@ -306,6 +493,22 @@ void kvm::attach_bank(ram_bank &&bnk) {
   ram.push_back(std::move(bnk));
 }
 
+// the default usable regions of memory. Stolen from QEMU because I dont know
+// what to do here.
+struct {
+  u64 start, end;
+} memory_map_ranges[] = {
+    {0x00000000, 0x0009fc00},
+    {0x0009fc00, 0x000a0000},
+    {0x000f0000, 0x00100000},
+    {0x00100000, 0xbffe0000},
+    {0xbffe0000, 0xc0000000},
+    {0xfeffc000, 0xff000000},
+    {0xfffc0000, 0x100000000},
+    // to the end of memory
+    {0x100000000, 0xFFFFFFFFFFFF},
+};
+
 void kvm::init_ram(size_t nbytes) {
   this->mem = mmap(NULL, nbytes, PROT_READ | PROT_WRITE,
                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
@@ -315,6 +518,36 @@ void kvm::init_ram(size_t nbytes) {
     cpu.mem = (char *)mem;
     cpu.memsize = nbytes;
   }
+
+  // go through all the regions of usable memory, and map them nicely.
+  /*
+  u64 off = 0;
+  u64 size = 0;
+  for (int i = 0; i < 7; i++) {
+    bool done = false;
+    off = memory_map_ranges[i].start;
+    size = memory_map_ranges[i].end - off;
+
+    u64 mem_left = nbytes - off;
+
+    if (mem_left <= size) {
+      size = mem_left;
+      done = true;
+    }
+
+    ram_bank bnk;
+    bnk.guest_phys_addr = off;
+    bnk.size = size;
+    bnk.host_addr = (char *)this->mem + off;
+    attach_bank(std::move(bnk));
+
+    printf("%zu\n", size);
+
+    if (done) break;
+  }
+
+  return;
+  */
 
   // Setup the PCI hole if needed... Basically map the region of memory
   // differently if it needs to have a hole in it. The memory is still just one
@@ -341,6 +574,8 @@ void kvm::init_ram(size_t nbytes) {
     bnk2.size = nbytes - bnk2.guest_phys_addr;
     attach_bank(std::move(bnk2));
   }
+
+  madvise(mem, memsize, MADV_MERGEABLE);
 }
 
 // #define RECORD_VMEXIT_LIFETIME
@@ -353,87 +588,122 @@ void kvm::run(void) {
 
   cpus[0].read_regs(regs);
 
-  while (1) {
+  while (!halted && !shutdown) {
     halted = false;
     int err = ioctl(cpufd, KVM_RUN, NULL);
+
+    int stat = run->exit_reason;
 
     if (err < 0 && (errno != EINTR && errno != EAGAIN)) {
       printf("KVM_RUN failed\n");
       return;
     }
 
-    int stat = run->exit_reason;
-
     if (err < 0) continue;
-    if (stat == KVM_EXIT_DEBUG) continue;
 
-    if (stat == KVM_EXIT_MMIO) {
-      printf("[MMIO] ");
-      void *addr = (void *)run->mmio.phys_addr;
-      if (run->mmio.is_write) {
-        printf("write %p\n", addr);
-      } else {
-        printf("read  %p\n", addr);
+    switch (stat) {
+      case KVM_EXIT_INTR:
+      case KVM_EXIT_DEBUG:
+        continue;
+
+      case KVM_EXIT_MMIO: {
+        // go through the coalesced MMIO ring FIRST
+        handle_coalesced_mmio(cpus[0]);
+
+        bool ret = emulate_mmio(cpus[0], run->mmio.phys_addr, run->mmio.data,
+                                run->mmio.len, run->mmio.is_write);
+
+        if (!ret) goto panic_kvm;
+
+        goto continue_running;
       }
-      continue;
-    }
 
-    if (stat == KVM_EXIT_SHUTDOWN) {
-      shutdown = true;
-      printf("SHUTDOWN (probably a triple fault, lol)\n");
+      case KVM_EXIT_SHUTDOWN: {
+        shutdown = true;
+        printf("SHUTDOWN (probably a triple fault, lol)\n");
 
-      printf("%d\n", run->internal.suberror);
+        printf("%d\n", run->internal.suberror);
 
-      cpus[0].dump_state(stderr, (char *)this->mem);
-      throw std::runtime_error("triple fault");
-      return;
-      break;
-    }
-
-    if (stat == KVM_EXIT_INTR) {
-      continue;
-    }
-
-    if (stat == KVM_EXIT_HLT) {
-      halted = true;
-      break;
-    }
-
-    if (stat == KVM_EXIT_IO) {
-      dev_mgr.handle_io(
-          &cpus[0], run->io.port, run->io.direction == KVM_EXIT_IO_IN,
-          (void *)((char *)run + run->io.data_offset), run->io.size);
-      continue;
-    }
-
-    if (stat == KVM_EXIT_INTERNAL_ERROR) {
-      if (run->internal.suberror == KVM_INTERNAL_ERROR_EMULATION) {
-        fprintf(stderr, "emulation failure\n");
-        cpus[0].dump_state(stderr);
+        cpus[0].dump_state(stderr, (char *)this->mem);
+        throw std::runtime_error("triple fault");
         return;
       }
-      printf("kvm internal error: suberror %d\n", run->internal.suberror);
-      return;
+
+      case KVM_EXIT_HLT: {
+        halted = true;
+        break;
+      }
+
+      case KVM_EXIT_IO: {
+        if (run->io.port == 0xE817) {
+          shutdown = true;
+          halted = true;
+          return;
+        }
+        dev_mgr.handle_io(
+            &cpus[0], run->io.port, run->io.direction == KVM_EXIT_IO_IN,
+            (void *)((char *)run + run->io.data_offset), run->io.size);
+        goto continue_running;
+      }
+
+      case KVM_EXIT_INTERNAL_ERROR: {
+        if (run->internal.suberror == KVM_INTERNAL_ERROR_EMULATION) {
+          fprintf(stderr, "emulation failure\n");
+          cpus[0].dump_state(stderr);
+          return;
+        }
+        printf("kvm internal error: suberror %d\n", run->internal.suberror);
+        return;
+      }
+
+      case KVM_EXIT_FAIL_ENTRY: {
+        shutdown = true;
+        halted = true;
+        return;
+      }
+
+      default: {
+        cpus[0].read_regs(regs);
+
+        printf("unhandled exit: %d at rip = %p\n", run->exit_reason,
+               (void *)regs.rip);
+        halted = true;
+        shutdown = false;
+        return;
+      }
     }
 
-    if (stat == KVM_EXIT_FAIL_ENTRY) {
-      /*
-      printf("failed to enter: %llu\n",
-             run->fail_entry.hardware_entry_failure_reason);
-             */
-      shutdown = true;
-      halted = true;
-      return;
-    }
-
-    cpus[0].read_regs(regs);
-
-    printf("unhandled exit: %d at rip = %p\n", run->exit_reason,
-           (void *)regs.rip);
-    return;
+  continue_running:
+    handle_coalesced_mmio(cpus[0]);
   }
 
+panic_kvm:
+
+  printf("KVM PANIC!\n");
   cpus[0].dump_state(stdout, (char *)this->mem);
+  return;
+}
+
+void kvm::handle_coalesced_mmio(kvm_vcpu &cpu) {
+  if (cpu.ring) {
+    while (cpu.ring->first != cpu.ring->last) {
+      struct kvm_coalesced_mmio *m;
+      m = &cpu.ring->coalesced_mmio[cpu.ring->first];
+      printf("[COA] ");
+      emulate_mmio(cpu, m->phys_addr, m->data, m->len, 1);
+      cpu.ring->first = (cpu.ring->first + 1) % KVM_COALESCED_MMIO_MAX;
+    }
+  }
+}
+
+bool kvm::emulate_mmio(kvm_vcpu &cpu, u64 phys_addr, u8 *data, u32 len,
+                       bool is_write) {
+  if (is_write) {
+    printf("write %p\n", (void *)phys_addr);
+  } else {
+    printf("read  %p\n", (void *)phys_addr);
+  }
+  return true;
 }
 
 static inline void host_cpuid(struct cpuid_regs *regs) {

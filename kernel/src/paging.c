@@ -10,21 +10,33 @@
 #define P2_INDEX(addr) ((((u64)addr / 0x1000) >> 9) & 0777)
 #define P1_INDEX(addr) ((((u64)addr / 0x1000) >> 0) & 0777)
 
+
+
 // Converts a virtual address into its physical address
 //    This is some scary code lol
-void *get_physaddr(void *va) {
+struct page_mapping do_pagewalk(void *va) {
+
+#define INVALID_PAGE_MAPPING ((struct page_mapping){.pa = 0, .valid = false})
   // cr3 contains a pointer to p4
   u64 *p4_table = (u64 *)read_cr3();
   // read the p4 table to get the p3 table
   u64 p3_table = p4_table[P4_INDEX(va)];
-  if ((p3_table & 1) == 0) return PGERR;  // check for active
+  if ((p3_table & 1) == 0) return INVALID_PAGE_MAPPING;  // check for active
   u64 p2_table = ((u64 *)(p3_table & ~0xfff))[P3_INDEX(va)];
-  if ((p2_table & 1) == 0) return PGERR;  // check for active
+  if ((p2_table & 1) == 0) return INVALID_PAGE_MAPPING;  // check for active
   u64 p1_table = ((u64 *)(p2_table & ~0xfff))[P2_INDEX(va)];
-  if ((p1_table & 1) == 0) return PGERR;  // check for active
+  if ((p1_table & 1) == 0) return INVALID_PAGE_MAPPING;  // check for active
   u64 pa = ((u64 *)(p1_table & ~0xfff))[P1_INDEX(va)];
-  if ((pa & 1) == 0) return PGERR;  // check for active
-  return (void *)((pa & ~0xfff) | ((u64)va & 0xfff));
+  if ((pa & 1) == 0) return INVALID_PAGE_MAPPING;  // check for active
+
+
+  struct page_mapping pm;
+  pm.valid = true;
+  pm.pa = (void *)((pa & ~0xfff) | ((u64)va & 0xfff));
+
+  return pm;
+
+#undef INVALID_PAGE_MAPPING
 }
 
 u64 *alloc_page_dir(void) {
@@ -42,18 +54,19 @@ void map_page_into(u64 *p4, void *va, void *pa) {
     int ind = ((((u64)va / 0x1000) >> (9 * i)) & 0777);
     if (i != 0 && (table[ind] & 1) == 0) {
       u64 *new_table = alloc_page_dir();
-      // printk("alloc for %d level\n", i);
       table[ind] = (u64)new_table | 0x3;
     }
     table = (u64 *)(table[ind] & ~0xfff);
   }
 
-  table[((u64)va / 0x1000) & 0777] = (u64)pa | 0x3;
+  u64 ind = ((u64)va / 0x1000) & 0777;
+  table[ind] = (u64)pa | 0x3;
 }
 
 // map a page in the current p4_table env
 void map_page(void *va, void *pa) {
   u64 *p4 = (u64 *)read_cr3();
+  printk("mapping from %p to %p (CR3 = %p)\n", va, pa, p4);
   map_page_into(p4, va, pa);
 }
 
