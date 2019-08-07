@@ -34,7 +34,7 @@ SECTIONS
 
 
 	boot_stack_start = .;
-	. += 0xf000;  /* we start out with a 4 pages of stack */
+	. += 0xf000;
 	boot_stack_end = .;
 
 	low_kern_end = .;
@@ -46,8 +46,6 @@ SECTIONS
 		*(.text*)
 		*(.gnu.linkonce.t*)
 	}
-
-
 
 	.rodata : {
 		*(.rodata .rodata.* .gnu.linkonce.r.*)
@@ -64,15 +62,11 @@ SECTIONS
 		*(.bss)
 	}
 
-
 	/DISCARD/ : {
 		*(.eh_frame .note.GNU-stack)
 	}
 
 	. = ALIGN(0x1000);
-	. += 0x1000;
-
-
 
 	/* allocate pages for the "boot heap" which is
 	 * used to allocate boot-time objects.

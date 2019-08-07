@@ -139,8 +139,10 @@ int init_pci(void) {
         read_device_descriptor(desc, bus, dev, func);
         if (!desc->valid) continue;
 
+        /*
         printk("%02x.%02x.%1x: %04x:%04x\n", bus, dev, func, desc->vendor_id,
                desc->device_id);
+               */
 
         for (int barnum = 0; barnum < 6; barnum++) {
           struct pci_bar bar = pci_get_bar(bus, dev, func, barnum);

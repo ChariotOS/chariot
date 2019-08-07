@@ -69,7 +69,6 @@ int kmain(u64 mbd, u64 magic) {
   // mapping kernel memory 1:1
   init_mem(mbd);
 
-
   // now that we have a decent programming enviroment, we can go through and
   // register all the kernel modules
   // NOTE: kernel module init code should not do any work outside of registering

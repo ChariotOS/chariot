@@ -12,6 +12,13 @@
 
 
 
+static inline void flush_tlb_single(u64 addr)
+{
+   __asm__ volatile("invlpg (%0)" ::"r" (addr) : "memory");
+}
+
+
+
 // Converts a virtual address into its physical address
 //    This is some scary code lol
 struct page_mapping do_pagewalk(void *va) {
@@ -39,6 +46,11 @@ struct page_mapping do_pagewalk(void *va) {
 #undef INVALID_PAGE_MAPPING
 }
 
+
+void *v2p(void *va) {
+  return do_pagewalk(va).pa;
+}
+
 u64 *alloc_page_dir(void) {
   u64 *new_table = alloc_id_page();
   for (int i = 0; i < 512; i++) new_table[i] = 0;
@@ -46,6 +58,7 @@ u64 *alloc_page_dir(void) {
 }
 
 void map_page_into(u64 *p4, void *va, void *pa) {
+
   u64 *table = (u64 *)((u64)p4 & ~0xfff);
   for (int i = 3; i > 0; i--) {
     // the index within the current table
@@ -58,9 +71,15 @@ void map_page_into(u64 *p4, void *va, void *pa) {
     }
     table = (u64 *)(table[ind] & ~0xfff);
   }
-
   u64 ind = ((u64)va / 0x1000) & 0777;
+
+  if (table[ind] & 1) {
+    // printk("remapping\n");
+  }
+
   table[ind] = (u64)pa | 0x3;
+
+  flush_tlb_single((u64)va);
 }
 
 // map a page in the current p4_table env

@@ -151,13 +151,13 @@ map_lowkern_basic:
 	;; ident map the first 512 pages
 	mov ecx, 512
 	mov edx, p1_table
-	mov eax, 0x83
+	mov eax, 0x3
 	;; starting at 0x00
 
 .write_pde:
 
 	mov [edx], eax
-	add eax, 0x200000
+	add eax, 4096 ; 0x200000
 	add edx, 0x8 ;; shift the dst by 8 bytes (size of addr)
 	loop .write_pde
 
@@ -168,7 +168,7 @@ map_lowkern_basic:
 
 longmode_setup:
 	;; put pml4 address in cr3
-	mov eax, p2_table
+	mov eax, p4_table
 	mov cr3, eax
 
 	;; enable PAE

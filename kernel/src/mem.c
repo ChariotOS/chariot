@@ -146,34 +146,30 @@ int init_mem(u64 mbd) {
   printk("detected %lu bytes of usable memory (%lu pages)\n",
          mm_info.usable_ram, mm_info.usable_ram / 4096);
 
-  // initialize dynamic memory first, before we have smaller pages
-  init_dyn_mm();
-
   // now that we have a basic bitmap allocator, we need to setup the
   // new paging system. To do this, we need to allocate a new p4_table,
   // and id map the entire kernel code/memory into it
-
   id_map_kernel_code();
+
+  // initialize dynamic memory first, before we have smaller pages
+  init_dyn_mm();
 
   return 0;
 }
 
-bool still_on_boot_pages = true;
-
 void *alloc_id_page() {
   void *pa = (void *)(ppn_alloc() << 12);
-
-  if (!still_on_boot_pages) {
-    printk("%p\n", pa);
-    map_page(pa, pa);
-  }
-
+  map_page(pa, pa);
   return pa;
 }
 
 void id_map_kernel_code(void) {
-  for (char *p = 0; p <= &high_kern_end; p += 4096) ppn_reserve((u64)p >> 12);
+  for (char *p = 0; p <= &high_kern_end; p += 4096) {
+    ppn_reserve((u64)p >> 12);
+    map_page(p, p);
+  }
 
+  return;
   // allocate the p4_table
   u64 *p4_table = (u64 *)(ppn_alloc() << 12);
 
@@ -187,40 +183,16 @@ void id_map_kernel_code(void) {
   for (char *p = 0; p <= &high_kern_end; p += 4096) {
     map_page_into(p4_table, p, p);
   }
-  still_on_boot_pages = false;
-  write_cr3((u64)p4_table);
-  tlb_flush();
+  // write_cr3((u64)v2p(p4_table));
+  // tlb_flush();
+
 }
-
-u8 *kheap_lo_ptr = NULL;
-u8 *kheap_hi_ptr = NULL;
-
-/**
- * ksbrk - shift the end of the heap further.
- * NOTE: This is *very* inefficient
- */
-void *ksbrk(u64 inc) {
-  // if inc is negative, NOP
-  if (inc < 0) return kheap_hi_ptr;
-
-  u32 new_pages = inc / 4096;
-  if (ALIGN(inc, 4096) != inc) new_pages++;
-
-  // printk("sbrk: %ld\n", inc);
-  // printk("%d new pages\n", new_pages);
-
-  return kheap_hi_ptr;
-}
-
-uint64_t sbreakc = 0;
 
 typedef struct free_header_s {
   struct free_header_s *prev;
   struct free_header_s *next;
   struct free_header_s *perf_ptr;
 } free_header_t;
-
-free_header_t *small_blocks = NULL;
 
 typedef u64 blk_t;
 
@@ -236,9 +208,6 @@ typedef u64 blk_t;
 
 #define OVERHEAD (ALIGN(sizeof(free_header_t)))
 
-// define some linked list operations
-#define ll_fwd(name) ((name) = (name)->next)
-
 #define GET_FREE_HEADER(blk) ((free_header_t *)((char *)blk + HEADER_SIZE))
 #define ADJ_SIZE(given) ((given < OVERHEAD) ? OVERHEAD : ALIGN(given))
 #define GET_BLK(header) ((blk_t *)((char *)(header)-HEADER_SIZE))
@@ -250,18 +219,43 @@ typedef u64 blk_t;
 
 #define NEXT_BLK(blk) (blk_t *)((char *)(blk) + GET_SIZE(blk) + HEADER_SIZE)
 
-void init_dyn_mm(void) {
-  kheap_lo_ptr = (u8 *)round_up((u64)bootheap_hi + 4096, 4096);
+static u8 *kheap_start = NULL;
+static u64 kheap_size = 0;
 
-  kheap_hi_ptr = kheap_lo_ptr;
+void *kheap_lo(void) { return kheap_start; }
+void *kheap_hi(void) { return kheap_start + kheap_size; }
 
-  free_header_t *bp = ksbrk(OVERHEAD);
-  bp->next = bp;
-  bp->prev = bp;
+#define PGROUNDUP(x) round_up(x, 4096)
+
+void print_heap(void) {
+  uint64_t i = 0;
+  blk_t *c = kheap_lo() + OVERHEAD;
+  for (; (void *)c < kheap_hi(); c = NEXT_BLK(c)) {
+    i++;
+    printk("%c%ld ", IS_FREE(c) ? ' ' : '#', GET_SIZE(c));
+  }
+
+  printk("\n");
 }
 
-void *kheap_lo(void) { return kheap_lo_ptr; }
-void *kheap_hi(void) { return kheap_hi_ptr; }
+/**
+ * ksbrk - shift the end of the heap further.
+ */
+void *ksbrk(u64 inc) {
+  u64 oldsz = kheap_size;
+  u64 newsz = oldsz + inc;
+
+  if (inc == 0) {
+    return kheap_start + oldsz;
+  }
+
+  for (u64 a = PGROUNDUP(oldsz); a < newsz; a += 4096) {
+    void *pa = (void *)(ppn_alloc() << 12);
+    map_page(kheap_start + a, pa);
+  }
+  kheap_size = newsz;
+  return kheap_start + oldsz;
+}
 
 /**
  * returns if two blocks are adjacent or not
@@ -269,18 +263,11 @@ void *kheap_hi(void) { return kheap_hi_ptr; }
 static bool adjacent(blk_t *a, blk_t *b) { return (NEXT_BLK(a) == b); }
 
 free_header_t *find_fit(size_t size) {
-  if (size <= 128 && small_blocks != NULL) {
-    free_header_t *ptr = small_blocks;
-    small_blocks = ptr->perf_ptr;
-    return ptr;
-  }
   free_header_t *bp = kheap_lo();
   bp = bp->next;
   while (bp != kheap_lo()) {
     blk_t *blk = GET_BLK(bp);
-    if (GET_SIZE(blk) >= size) {
-      return bp;
-    }
+    if (GET_SIZE(blk) >= size) return bp;
     bp = bp->next;
   }
   // nothing was found, return NULL instead I guess.
@@ -300,11 +287,6 @@ static blk_t *mm_split(blk_t *blk, size_t size) {
 }
 
 static void *mm_malloc(size_t size) {
-  if (size == 112) size = 128;
-  if (size == 448) size = 512;
-  if (size == 2040) size = 2048;
-  if (size == 4072) size = 4096;
-
   // the user lied to us, the real size they want is is aligned.
   size = ADJ_SIZE(size);
 
@@ -313,15 +295,12 @@ static void *mm_malloc(size_t size) {
   blk_t *blk;
 
   if (fit == NULL) {
-    // there wasn't a valid spot for this allocation. Noone likes it.
-    // it'll make a new spot, with blackjack
+    // there wasn't a valid spot for this allocation. Expand the kheap
     blk = ksbrk(HEADER_SIZE + size);
-    sbreakc++;
     SET_SIZE(blk, size);
   } else {
     // there was a spot in the heap for the node, but it might be too big,
     // so I'll have to split the block
-    //
     blk = GET_BLK(fit);
     blk_t *split_block = mm_split(blk, size);
 
@@ -335,10 +314,6 @@ static void *mm_malloc(size_t size) {
   }
 
   SET_USED(blk);
-#ifdef DEBUG
-  printf("MALLOC\n");
-  print_heap();
-#endif
   return (char *)blk + HEADER_SIZE;
 }
 
@@ -380,7 +355,6 @@ static inline blk_t *attempt_free_fusion(blk_t *this_blk) {
   return this_blk;
 }
 
-// hopefully tail call optimized...
 static blk_t *get_next_free(blk_t *curr) {
   curr = NEXT_BLK(curr);
   while (1) {
@@ -394,12 +368,6 @@ static void mm_free(void *ptr) {
   blk_t *blk = GET_BLK(ptr);
   free_header_t *this = ptr;
   blk_t *next_free = get_next_free(blk);
-
-#ifdef DEBUG
-  printf("FREEING\n");
-  print_heap();
-#endif
-
   // if we were at the end of the heap...
   if (next_free == NULL) {
     this->next = kheap_lo();
@@ -451,3 +419,16 @@ static void *mm_realloc(void *ptr, size_t size) {
   return new;
 }
 
+void init_dyn_mm(void) {
+  // the kheap starts, virtually, after the last physical page.
+  kheap_start = (u8 *)((u64)mm_info.last_pfn << 12);
+  kheap_size = 0;
+
+  free_header_t *bp = ksbrk(OVERHEAD);
+  bp->next = bp;
+  bp->prev = bp;
+
+  current_malloc = mm_malloc;
+  current_free = mm_free;
+  current_realloc = mm_realloc;
+}
