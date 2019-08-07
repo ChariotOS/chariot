@@ -58,7 +58,6 @@ static struct bitmap_dir *find_bitmap_dir(u64 ppn) {
 
   // check for the active bit
   if ((((u64)page_dirs[ind]) & 1) == 0) {
-    printk("allocating a new ppage dir\n");
     // allocate the table
     dir = bmalloc(sizeof(struct bitmap_dir));
     // zero it out
@@ -78,7 +77,6 @@ struct bitmap *find_bitmap(u64 ppn) {
 
   // check for the active bit
   if ((((u64)page_dir->maps[ind]) & 1) == 0) {
-    printk("allocating a new bitmap table\n");
     // allocate the table
     bmtable = bmalloc(sizeof(struct bitmap));
     for (int i = 0; i < 4096; i++) {
@@ -138,9 +136,16 @@ void ppn_release(u64 ppn) {
   map->map[byte] &= ~(1 << obit);
 }
 
+// 512 ppns are saved on a stack when freed.
+i64 free_ppn_ind = -1;
+static u64 free_ppn_stack[512];
+
 // allocate a physical page number that hasn't been used yet.
 u64 ppn_alloc(void) {
   // TODO: take from the stack
+  if (free_ppn_ind >= 0) {
+    return free_ppn_stack[--free_ppn_ind];
+  }
 
   for (u64 ppn = 0; true; ppn += PAGES_PER_BITMAP) {
     struct bitmap *map = find_bitmap(ppn);
@@ -166,7 +171,10 @@ u64 ppn_alloc(void) {
 }
 
 void ppn_free(u64 ppn) {
+  if (free_ppn_ind < 511) {
+    free_ppn_stack[free_ppn_ind++] = ppn;
+    return;
+  }
   // TODO: store the ppn in a stack of some sort
   ppn_release(ppn);
 }
-

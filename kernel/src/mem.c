@@ -74,8 +74,6 @@ void *kmalloc(u64 size) { return current_malloc(size); }
 void kfree(void *ptr) { current_free(ptr); }
 void *krealloc(void *ptr, u64 newsize) { return current_realloc(ptr, newsize); }
 
-static void init_bitmap(void);
-
 // just 128 memory regions. Any more and idk what to do
 static struct mem_map_entry memory_map[128];
 static struct mmap_info mm_info;
@@ -148,8 +146,6 @@ int init_mem(u64 mbd) {
   printk("detected %lu bytes of usable memory (%lu pages)\n",
          mm_info.usable_ram, mm_info.usable_ram / 4096);
 
-  init_bitmap();
-
   // initialize dynamic memory first, before we have smaller pages
   init_dyn_mm();
 
@@ -162,116 +158,36 @@ int init_mem(u64 mbd) {
   return 0;
 }
 
-typedef u8 page_t[4096];
+bool still_on_boot_pages = true;
 
-/**
- * the physical bitmap allocator is a simple singly-linked list
- * of phys_bitmap structures. Unfortunately, these structures must live
- * at the start of each region they represent, so they absorb an entire page
- * in the region they control.
- */
-struct phys_bitmap {
-  // how many pages are availible. Purely an optimization to avoid searching in
-  // a full region
-  u32 nfree;
+void *alloc_id_page() {
+  void *pa = (void *)(ppn_alloc() << 12);
 
-  // how many pages this bitmap controls
-  u32 pagec;  // in pages
-  // a pointer to the begining of the region. To access a pointer to the nth
-  // page, use `region + n`
-  page_t *pagev;
-  struct phys_bitmap *next;
-
-  // the size of this field varies and is based on pagec. It's length can be
-  // solved with:
-  //    length = pagec / sizeof(u32);
-  u32 *bits;
-};
-
-// one pbitmap for every memory region. Ideally this would live somewhere else.
-static struct phys_bitmap *pmaps = NULL;
-
-// starting at bit 0, set the nth bit
-static void write_pbitmap_bit(struct phys_bitmap *pbm, u32 n, bool state) {
-  u32 *seg = pbm->bits + (n >> 5);
-  *seg = *seg | ((state & 1) << (n & 0x11111));
-}
-
-static bool read_pbitmap_bit(struct phys_bitmap *pbm, u32 n) {
-  return (*(pbm->bits + (n >> 5)) & (1 << (n & 0x11111))) != 0;
-}
-
-void *alloc_page(void) {
-  for (struct phys_bitmap *map = pmaps; map != NULL; map = map->next) {
-    if (map->nfree != 0) {
-      for (int i = 0; i < map->pagec; i++) {
-        if (read_pbitmap_bit(map, i) == false) {
-          write_pbitmap_bit(map, i, true);
-          return map->pagev + i;
-        }
-      }
-    }
+  if (!still_on_boot_pages) {
+    printk("%p\n", pa);
+    map_page(pa, pa);
   }
-  printk("not found\n");
-  return NULL;
-}
 
-void free_page(void *p) { return; }
-
-static void init_bitmap(void) {
-  // we need to walk over every mem_map_entry we know, and add
-  // a phys_bitmap where it would be best. The big difficulty of this operation
-  // is to correctly surround the kernel code.
-
-  // because we are building a linked list, we need a fake starter node
-  struct phys_bitmap *prev = NULL;
-
-  for (int i = 0; i < mm_info.num_regions; i++) {
-    u8 *lo = (u8 *)memory_map[i].addr;
-    u8 *hi = lo + memory_map[i].len;
-
-    // if the region starts before the kernel code, shift the start to be after
-    // the kernel code
-    if (lo <= (u8 *)&low_kern_start)
-      lo = (u8 *)round_up((u64)&high_kern_end, 4096);
-
-    if (lo >= hi) continue;
-
-    u64 size = hi - lo;
-    u32 pagec = size / 4096;
-
-    struct phys_bitmap *next = bootheap_malloc(sizeof(struct phys_bitmap));
-
-    next->bits = bootheap_malloc(pagec / 8);
-
-    lo = (u8 *)round_up((u64)lo, 4096);
-
-    next->nfree = pagec;
-    next->pagec = pagec;
-    next->pagev = (page_t *)lo;
-    next->next = NULL;
-
-    if (pmaps == NULL) {
-      pmaps = next;
-    }
-
-    if (prev != NULL) prev->next = next;
-    prev = next;
-  }
+  return pa;
 }
 
 void id_map_kernel_code(void) {
+  for (char *p = 0; p <= &high_kern_end; p += 4096) ppn_reserve((u64)p >> 12);
+
   // allocate the p4_table
-  u64 *p4_table = alloc_page();
+  u64 *p4_table = (u64 *)(ppn_alloc() << 12);
+
   for (int i = 0; i < 512; i++) p4_table[i] = 0;
+  map_page_into(p4_table, p4_table, p4_table);
+
   // recursively map the page directory
   p4_table[511] = (u64)p4_table | 0x3;
-  // printk("New p4: %p\n", p4_table);
 
   // id map the high kern
-  for (char *p = &low_kern_start; p <= &high_kern_end; p += 4096) {
+  for (char *p = 0; p <= &high_kern_end; p += 4096) {
     map_page_into(p4_table, p, p);
   }
+  still_on_boot_pages = false;
   write_cr3((u64)p4_table);
   tlb_flush();
 }
@@ -284,14 +200,14 @@ u8 *kheap_hi_ptr = NULL;
  * NOTE: This is *very* inefficient
  */
 void *ksbrk(u64 inc) {
-  printk("sbrk: %ld\n", inc);
   // if inc is negative, NOP
   if (inc < 0) return kheap_hi_ptr;
 
   u32 new_pages = inc / 4096;
   if (ALIGN(inc, 4096) != inc) new_pages++;
 
-  printk("%d new pages\n", new_pages);
+  // printk("sbrk: %ld\n", inc);
+  // printk("%d new pages\n", new_pages);
 
   return kheap_hi_ptr;
 }

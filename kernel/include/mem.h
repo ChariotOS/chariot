@@ -19,13 +19,6 @@ struct mmap_info {
 
 int init_mem(u64 mbd);
 
-// API for the low bitmap allocator. The region this allocates to
-// is between the low kernel and the high kernel.
-// The code for this lives in the low kernel
-void *alloc_page(void);
-void free_page(void *);
-
-
 void *memcpy(void *dest, const void *src, u64 n);
 
 
@@ -40,6 +33,8 @@ void *krealloc(void *ptr, u64 newsize);
 void *ksbrk(u64 inc);
 void *kheap_lo();
 void *kheap_hi();
+
+void *alloc_id_page(void);;
 
 
 // check if a physical page is used or not

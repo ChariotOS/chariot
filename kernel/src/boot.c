@@ -64,10 +64,6 @@ int kmain(u64 mbd, u64 magic) {
   init_idt();
   // now that we have interupts working, enable sse! (fpu)
   enable_sse();
-
-
-
-
   // at this point, we are still mapped with the 2mb large pages.
   // init_mem will replace this with a more fine-grained 4k page system by
   // mapping kernel memory 1:1
@@ -91,12 +87,12 @@ int kmain(u64 mbd, u64 magic) {
   // and set the interval, or whatever
   set_pit_freq(100);
 
+
   // finally, enable interrupts
   // NOT WORKING, WILL CAUSE DBLFLT INTR
   sti();
 
   // now try and exit.
-
   // write to the mobo exit port (special port)
   outb(0xE817, 0);
 

@@ -40,7 +40,7 @@ struct page_mapping do_pagewalk(void *va) {
 }
 
 u64 *alloc_page_dir(void) {
-  u64 *new_table = alloc_page();
+  u64 *new_table = alloc_id_page();
   for (int i = 0; i < 512; i++) new_table[i] = 0;
   return new_table;
 }
@@ -66,7 +66,7 @@ void map_page_into(u64 *p4, void *va, void *pa) {
 // map a page in the current p4_table env
 void map_page(void *va, void *pa) {
   u64 *p4 = (u64 *)read_cr3();
-  printk("mapping from %p to %p (CR3 = %p)\n", va, pa, p4);
+  // printk("mapping from %p to %p (CR3 = %p)\n", va, pa, p4);
   map_page_into(p4, va, pa);
 }
 
