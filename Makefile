@@ -1,4 +1,5 @@
 CC = gcc
+CXX = g++
 AS = nasm
 LD = ld
 
@@ -13,14 +14,16 @@ VMM_INCLUDE_FILES:=$(shell find include)
 FILEDEPS:=$(VMM_CPP_FILES) $(VMM_HS_FILES) $(VMM_INCLUDE_FILES)
 
 
-STRUCTURE := $(shell find kernel/src -type d)
+STRUCTURE := $(shell find kernel -type d)
 CODEFILES := $(addsuffix /*,$(STRUCTURE))
 CODEFILES := $(wildcard $(CODEFILES))
 
 
 CSOURCES:=$(filter %.c,$(CODEFILES))
-# CSOURCES:=$(wildcard kernel/src/*.c)
-COBJECTS:=$(CSOURCES:%.c=%.o)
+CPPSOURCES:=$(filter %.cpp,$(CODEFILES))
+
+COBJECTS:=$(CSOURCES:%.c=%.c.o)
+COBJECTS+=$(CPPSOURCES:%.cpp=%.cpp.o)
 
 # ASOURCES:=$(wildcard kernel/src/*.asm)
 ASOURCES:=$(filter %.asm,$(CODEFILES))
@@ -36,6 +39,7 @@ CINCLUDES=-Ikernel/include/
 
 COMMON_FLAGS := $(CINCLUDES) -fno-omit-frame-pointer \
 			   -ffreestanding \
+				 -fpermissive \
 			   -fno-stack-protector \
 			   -fno-strict-aliasing \
          -fno-strict-overflow \
@@ -43,6 +47,8 @@ COMMON_FLAGS := $(CINCLUDES) -fno-omit-frame-pointer \
 			   -mcmodel=large -O0 -fno-tree-vectorize
 
 CFLAGS:= $(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
+
+CPPFLAGS:= -fno-rtti -fno-exceptions -fno-omit-frame-pointer
 
 DFLAGS=-g -DDEBUG -O0
 
@@ -62,20 +68,28 @@ build:
 	@mkdir -p build
 
 
+
+
+
+
 # test kernel related build tools
 kern: build $(KERNEL)
 
 
-%.o: %.c
+%.c.o: %.c
 	@echo " CC " $<
 	@$(CC) $(CFLAGS) -o $@ -c $<
+
+%.cpp.o: %.cpp
+	@echo " CX " $<
+	@$(CXX) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
 
 
 %.ao: %.asm
 	@echo " AS " $<
 	@$(AS) $(AFLAGS) -o $@ $<
 
-$(KERNEL): build/fs.img $(CSOURCES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
+$(KERNEL): build/fs.img $(CODEFILES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
 	@echo " LD " $@
 	@$(LD) $(LDFLAGS) $(AOBJECTS) $(COBJECTS) -T kernel/kernel.ld -o $@
 
@@ -91,8 +105,8 @@ iso: kern
 
 
 klean:
-	rm -f $(COBJECTS)
-	rm -f $(AOBJECTS)
+	rm -rf $(COBJECTS)
+	rm -rf $(AOBJECTS)
 	rm -rf $(shell find kernel | grep "\.o\$$")
 	rm -r $(KERNEL)
 

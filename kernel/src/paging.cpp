@@ -52,7 +52,7 @@ void *v2p(void *va) {
 }
 
 u64 *alloc_page_dir(void) {
-  u64 *new_table = alloc_id_page();
+  auto new_table = (u64*)alloc_id_page();
   for (int i = 0; i < 512; i++) new_table[i] = 0;
   return new_table;
 }

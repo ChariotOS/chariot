@@ -9,7 +9,7 @@ int stderr = 2;
 
 
 // do_posix_syscall expects 6 ints and returns one int
-extern int __posix_syscall(u64 args[6]);
+extern "C" int __posix_syscall(u64 args[6]);
 
 int syscall(int n, ...) {
   va_list ap;

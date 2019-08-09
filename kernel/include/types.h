@@ -13,9 +13,9 @@ typedef unsigned int u32;
 typedef signed long i64;
 typedef unsigned long u64;
 
-typedef unsigned long size_t;
-typedef long ssize_t;
-typedef unsigned long off_t;
+typedef u64 size_t;
+typedef i64 ssize_t;
+typedef u64 off_t;
 
 // typedef unsigned long long uint64_t;
 typedef unsigned long uint64_t;
@@ -53,5 +53,10 @@ typedef long intptr_t;
 #ifndef false
 #define false 0
 #endif
+
+
+
+#define PGSIZE 4096
+
 
 #endif

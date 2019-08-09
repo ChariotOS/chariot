@@ -139,13 +139,13 @@ struct trapframe {
 u64 ticks = 0;
 // where the trap handler throws us. It is up to this function to sort out
 // which trap handler to hand off to
-void trap(struct trapframe *tf) {
+extern "C" void trap(struct trapframe *tf) {
   extern void pic_send_eoi(void);
 
   // PAGE FAULT
   if (tf->trapno == TRAP_PGFLT) {
     void *addr = (void *)(read_cr2() & ~0xFFF);
-    printk("PAGE FAULT %p\n", addr);
+    printk("PGFLT %p\n", addr);
     map_page(addr, addr);
     return;
   }
@@ -178,8 +178,10 @@ void trap(struct trapframe *tf) {
   printk("\n");
 
   printk(INDENT "SYSTEM HALTED\n");
+
   printk("\n");
   printk("+++++++++++++ !!! +++++++++++++\n");
+  panic("see above\n");
 
   lidt(0, 0);  // die
   while (1) halt();

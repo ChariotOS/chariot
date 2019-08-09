@@ -117,7 +117,7 @@
 
 static inline void memset(void *buf, char c, size_t len) {
   char *m = (char*)buf;
-  for (int i = 0; i < len; i++) m[i] = c;
+  for (size_t i = 0; i < len; i++) m[i] = c;
 }
 
 

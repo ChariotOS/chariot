@@ -3,7 +3,6 @@
 
 #include <asm.h>
 
-
 struct mem_map_entry {
   uint64_t addr;
   uint64_t len;
@@ -30,22 +29,10 @@ void kfree(void *ptr);
 void *krealloc(void *ptr, u64 newsize);
 
 // increase the kernel heap
-void *ksbrk(u64 inc);
+void *ksbrk(i64 inc);
 void *kheap_lo();
 void *kheap_hi();
 
-void *alloc_id_page(void);;
-
-
-// check if a physical page is used or not
-bool ppn_check(u64 ppn);
-// USE WITH CAUTION
-void ppn_reserve(u64 ppn);
-void ppn_release(u64 ppn);
-
-
-// allocate and free ppns. This is the primary API
-u64 ppn_alloc(void);
-void ppn_free(u64);
+void *alloc_id_page(void);
 
 #endif
