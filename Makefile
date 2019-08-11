@@ -4,7 +4,7 @@ AS = nasm
 LD = ld
 
 
-
+.PHONY: fs
 
 VMM_CPP_FILES:=$(shell find src | grep "\.cpp")
 VMM_HS_FILES:=$(shell find src | grep "\.hs")
@@ -38,6 +38,8 @@ CINCLUDES=-Ikernel/include/
 
 
 COMMON_FLAGS := $(CINCLUDES) -fno-omit-frame-pointer \
+				 -Wno-unused-functions \
+				 -Wno-sign-compare\
 			   -ffreestanding \
 				 -fpermissive \
 			   -fno-stack-protector \
@@ -48,7 +50,7 @@ COMMON_FLAGS := $(CINCLUDES) -fno-omit-frame-pointer \
 
 CFLAGS:= $(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
 
-CPPFLAGS:= -fno-rtti -fno-exceptions -fno-omit-frame-pointer
+CPPFLAGS:= -std=c++17 -fno-rtti -fno-exceptions -fno-omit-frame-pointer
 
 DFLAGS=-g -DDEBUG -O0
 
@@ -95,7 +97,17 @@ $(KERNEL): build/fs.img $(CODEFILES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
 
 
 build/fs.img:
-	dd if=/dev/zero of=$@ bs=10M count=1
+	dd if=/dev/urandom of=$@ bs=512M count=1
+	chmod 666 $@
+	mkfs.ext2 $@
+	mkdir -p build/mnt
+	sudo mount -o loop build/fs.img build/mnt
+	sudo cp -r mnt/. build/mnt/
+	sudo umount build/mnt
+
+fs:
+	rm -rf build/fs.img
+	make build/fs.img
 
 iso: kern
 	mkdir -p build/iso/boot/grub
@@ -105,6 +117,7 @@ iso: kern
 
 
 klean:
+	rm -rf build/fs.img
 	rm -rf $(COBJECTS)
 	rm -rf $(AOBJECTS)
 	rm -rf $(shell find kernel | grep "\.o\$$")
@@ -122,4 +135,4 @@ qemu: iso
 			-nographic \
 			-cdrom build/kernel.iso \
 			-m 8G \
-			-drive file=build/fs.img,format=raw,if=virtio \
+			-drive file=build/fs.img,if=ide

@@ -44,6 +44,32 @@
 
 
 
+struct trapframe {
+  u64 rax;  // rax
+  u64 rbx;
+  u64 rcx;
+  u64 rdx;
+  u64 rbp;
+  u64 rsi;
+  u64 rdi;
+  u64 r8;
+  u64 r9;
+  u64 r10;
+  u64 r11;
+  u64 r12;
+  u64 r13;
+  u64 r14;
+  u64 r15;
+
+  u64 trapno;
+  u64 err;
+
+  u64 eip;  // rip
+  u64 cs;
+  u64 eflags;  // rflags
+  u64 esp;     // rsp
+  u64 ds;      // ss
+};
 
 
 struct gatedesc {
@@ -64,5 +90,15 @@ struct idt_desc {
 } __packed;
 
 void init_idt(void);
+
+
+typedef void (*interrupt_handler_t) (int intr, struct trapframe *);
+
+void interrupt_register(int i, interrupt_handler_t handler);
+void interrupt_enable(int i);
+void interrupt_disable(int i);
+void interrupt_block();
+void interrupt_unblock();
+void interrupt_wait();
 
 #endif

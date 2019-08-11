@@ -31,9 +31,6 @@ extern char low_kern_end;
 extern char high_kern_start;
 extern char high_kern_end;
 
-static char *kernel_heap_lo = NULL;
-static char *kernel_heap_hi = NULL;
-
 // the boot heap is a static heap, where you cannot free.
 extern u8 bootheap_start;
 u64 bootheap_alloc_count = 0;
@@ -147,16 +144,9 @@ int init_mem(u64 mbd) {
     auto *end = start + region.len;
 
     if (end < kend) continue;
-    if (start < kend) {
-      start = kend + PGSIZE;
-    }
+    if (start < kend) start = kend + PGSIZE;
 
     phys::free_range(start, end);
-    /*
-    for (u8 *p = start; p + PGSIZE <= end; p += PGSIZE) {
-      map_page(p, p);
-    }
-    */
   }
 
   // initialize dynamic memory first, before we have smaller pages
@@ -165,8 +155,9 @@ int init_mem(u64 mbd) {
   return 0;
 }
 
-void *alloc_id_page() { return phys::alloc(); }
-
+void *alloc_id_page() {
+  return phys::alloc();
+}
 
 static u8 *kheap_start = NULL;
 static u64 kheap_size = 0;
@@ -210,9 +201,6 @@ void init_dyn_mm(void) {
   current_malloc = mm_malloc;
   current_free = mm_free;
   current_realloc = mm_realloc;
-  /*
-
-
   mm_init();
-  */
+
 }

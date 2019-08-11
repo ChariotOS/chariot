@@ -26,9 +26,15 @@ class vec {
 
   inline ~vec() {
     if (m_data != nullptr) {
+      // go through and call the dtor on all the elements
+      for (auto &el : *this) {
+        el.~T();
+      }
       kfree(m_data);
     }
   }
+
+
   inline explicit vec(int count) {
     reserve(count);
     len = cap;
@@ -44,7 +50,7 @@ class vec {
     reserve(v.capacity());
     clear();
     for (auto &e : v) {
-      push_back(e);
+      push(e);
     }
     return *this;
   }
@@ -92,14 +98,14 @@ class vec {
     cap = new_cap;
   }
 
-  inline void push_back(const T &value) {
+  inline void push(const T &value) {
     if (len == cap) {
       reserve(cap * 2);
     }
     m_data[len++] = value;
   }
 
-  inline void pop_back(void) {
+  inline void pop(void) {
     if (len > 0) len--;
   }
 };

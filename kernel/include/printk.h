@@ -29,6 +29,13 @@ inline void panic(const char* fmt, T&&... args) {
     ;
 }
 
+#define assert(val)                          \
+  do {                                       \
+    if (!(val)) {                              \
+      panic("assertion failed: %s\n", #val); \
+    }                                        \
+  } while (0);
+
 class scope_logger {
  public:
   template <typename... T>

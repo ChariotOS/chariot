@@ -2,9 +2,7 @@
 #include <printk.h>
 #include <types.h>
 
-void *mem_sbrk(i32 b) {
-  return ksbrk(b);
-}
+void *mem_sbrk(i32 b) { return ksbrk(b); }
 
 uint64_t sbreakc = 0;
 
@@ -51,7 +49,7 @@ static inline void *heap_start(void) { return kheap_lo(); }
 #define ANSI_COLOR_RESET "\x1b[0m"
 void print_heap(void) {
   uint64_t i = 0;
-  auto *c = (blk_t*)((u8*)kheap_lo() + OVERHEAD);
+  auto *c = (blk_t *)((u8 *)kheap_lo() + OVERHEAD);
 
   char size_buf[50];
   printk("[%16s] ", human_size((u64)kheap_hi() - (u64)c, size_buf));
@@ -109,10 +107,6 @@ static blk_t *mm_split(blk_t *blk, size_t size) {
 }
 
 void *mm_malloc(size_t size) {
-
-
-  print_heap();
-
   // the user lied to us, the real size they want is is aligned.
   size = ADJ_SIZE(size);
 
@@ -143,7 +137,7 @@ void *mm_malloc(size_t size) {
   }
 
   SET_USED(blk);
-  void *ptr = (u8*)blk + HEADER_SIZE;
+  void *ptr = (u8 *)blk + HEADER_SIZE;
   memset(ptr, 0, size);
   return (char *)blk + HEADER_SIZE;
 }
@@ -154,6 +148,10 @@ static inline blk_t *attempt_free_fusion(blk_t *this_blk) {
   free_header_t *fh = GET_FREE_HEADER(this_blk);
   free_header_t *p = fh->prev;
   free_header_t *n = fh->next;
+
+  // avoid mucking up the kheap_lo and causing a PGFLT
+  if (fh->prev == kheap_lo()) return this_blk;
+
   blk_t *prev_blk = GET_BLK(p);
   blk_t *next_blk = GET_BLK(n);
   if (adjacent(prev_blk, this_blk) && adjacent(this_blk, next_blk)) {
@@ -209,7 +207,6 @@ void mm_free(void *ptr) {
     blk = attempt_free_fusion(blk);
     SET_FREE(blk);
   } else {
-
     free_header_t *succ = GET_FREE_HEADER(next_free);
     self->next = succ;
     self->prev = succ->prev;
@@ -230,7 +227,7 @@ void mm_free(void *ptr) {
 }
 
 void *mm_realloc(void *ptr, size_t size) {
-  print_heap();
+  // print_heap();
 
   size = ALIGN(size);
 

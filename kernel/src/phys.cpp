@@ -64,17 +64,15 @@ void *phys::alloc(void) {
 
   // decrement the number of freed pages
   kmem.nfree--;
+
   return r;
 }
 
 void phys::free(void *v) {
-  frame *r;
-
   if ((u64)v % PGSIZE) panic("phys::free requires page aligned address");
-
   if (v < high_kern_end) panic("phys::free cannot free below the kernel's end");
 
-  r = tmp_map_frame((frame*)v);
+  frame *r = tmp_map_frame((frame*)v);
   r->next = kmem.freelist;
   r->page_len = 1;
   kmem.freelist = (frame *)v;
@@ -96,15 +94,17 @@ void phys::free_range(void *vstart, void *vend) {
     panic("zero free_range\n");
   }
 
-  fr->page_len = pl;
+  frame *df = tmp_map_frame(fr);
+
+  df->page_len = pl;
   if (kmem.freelist == NULL) {
-    fr->next = kmem.freelist;
+    df->next = kmem.freelist;
     kmem.freelist = fr;
   } else {
-    fr->next = kmem.freelist->next;
+    df->next = kmem.freelist->next;
     kmem.freelist->next = fr;
   }
-  kmem.nfree += fr->page_len;
+  kmem.nfree += df->page_len;
 }
 
 

@@ -2,6 +2,8 @@
 #define __align(n) __attribute__((aligned(n)))
 
 #include <asm.h>
+#include <dev/ata.h>
+#include <dev/serial.h>
 #include <idt.h>
 #include <mem.h>
 #include <module.h>
@@ -10,15 +12,17 @@
 #include <pit.h>
 #include <posix.h>
 #include <printk.h>
-#include <serial.h>
 #include <types.h>
-#include <virtio_mmio.h>
 #include "../../include/mobo/multiboot.h"
 
 #include <device.h>
 #include <phys.h>
-
+#include <asm.h>
+#include <func.h>
+#include <ptr.h>
 #include <vec.h>
+#include <fs/ext2.h>
+#include <string.h>
 
 extern int kernel_end;
 
@@ -71,6 +75,17 @@ func_ptr _fini_array_start[0] __attribute__((used, section(".fini_array"),
 
                                              */
 
+
+
+class Foo {
+  public:
+    ~Foo() {
+      printk("Foo dtor\n");
+    }
+};
+
+
+
 extern "C" int kmain(u64 mbd, u64 magic) {
   // initialize the serial "driver"
   serial_install();
@@ -83,20 +98,11 @@ extern "C" int kmain(u64 mbd, u64 magic) {
   // mapping kernel memory 1:1
   init_mem(mbd);
 
-
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
 
-  int i = 0;
-
-  char buf[50];
-  while (true) {
-    void *p = phys::alloc();
-    printk("%5d %p (%s)\n", i++, p, human_size(phys::nfree() * PGSIZE, buf));
-    phys::free(p);
-    continue;
-  }
-
+  // initialize the PCI subsystem
+  pci::init();
 
   // now that we have a decent programming enviroment, we can go through and
   // register all the kernel modules
@@ -105,20 +111,60 @@ extern "C" int kmain(u64 mbd, u64 magic) {
   //       no complex things like processes or devices.
   initialize_kernel_modules();
 
-  // Enumerate PCI devices and assign drivers
-  init_pci();
-
-  assign_drivers();
-
   // initialize the programmable interrupt timer
   init_pit();
   // and set the interval, or whatever
   set_pit_freq(100);
 
   // finally, enable interrupts
-  // NOT WORKING, WILL CAUSE DBLFLT INTR
   sti();
 
+  {
+    auto drive = dev::ata(0x1F0, true);
+
+    if (drive.identify()) {
+      auto fs = fs::ext2(drive);
+      fs.init();
+    }
+  }
+
+
+  return 0;
+
+  pci::walk_devices([&](pci::device* dev) {
+    if (dev->is_device(0x8086, 0x7010)) {
+      printk("82371SB PIIX3 IDE\n");
+
+      u16 port = 0;
+
+      for (int i = 0; i < 6; i++) {
+        auto bar = dev->get_bar(i);
+
+        if (bar.valid && bar.type == pci::bar_type::BAR_PIO) {
+          port = (u16)bar.addr;
+        }
+      }
+
+
+
+
+      auto drive = make_unique<dev::ata>(port, true);
+
+      if (drive->identify()) {
+        printk("%d sectors\n", drive->sector_count());
+
+        auto buf = new char[512];
+
+        for (int i = 0; i < drive->sector_count(); i++) {
+          drive->read(i, 4096, buf);
+        }
+
+        delete[] buf;
+      }
+    }
+  });
+
+  printk("got here\n");
   // now try and exit.
   // write to the mobo exit port (special port)
   outb(0xE817, 0);

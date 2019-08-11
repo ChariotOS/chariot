@@ -1,6 +1,6 @@
 #include <asm.h>
 #include <printk.h>
-#include <serial.h>
+#include <dev/serial.h>
 #include <types.h>
 
 // define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H ...) to include the

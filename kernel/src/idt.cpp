@@ -2,6 +2,7 @@
 #include <idt.h>
 #include <mem.h>
 #include <paging.h>
+#include <pit.h>
 #include <printk.h>
 #include <types.h>
 
@@ -65,55 +66,6 @@ const char *excp_codes[NUM_EXCEPTIONS][2] = {
     (gate).off_31_16 = (u32)(off) >> 16;          \
   }
 
-extern u32 idt_block;
-
-extern void *vectors[];  // in vectors.S: array of 256 entry pointers
-
-static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
-  u64 addr = (u64)kva;
-  n *= 4;
-  trap = trap ? 0x8F00 : 0x8E00;  // TRAP vs INTERRUPT gate;
-  idt[n + 0] = (addr & 0xFFFF) | ((SEG_KCODE << 3) << 16);
-  idt[n + 1] = (addr & 0xFFFF0000) | trap | ((pl & 3) << 13);  // P=1 DPL=pl
-  idt[n + 2] = addr >> 32;
-  idt[n + 3] = 0;
-}
-
-void init_idt(void) {
-  u32 *idt = &idt_block;
-  // fill up the idt with the correct trap vectors.
-  for (int n = 0; n < 256; n++) mkgate(idt, n, vectors[n], 0, 0);
-  // and load the idt into the processor. It is a page in memory
-  lidt(idt, 4096);
-}
-
-struct trapframe {
-  u64 rax;  // rax
-  u64 rbx;
-  u64 rcx;
-  u64 rdx;
-  u64 rbp;
-  u64 rsi;
-  u64 rdi;
-  u64 r8;
-  u64 r9;
-  u64 r10;
-  u64 r11;
-  u64 r12;
-  u64 r13;
-  u64 r14;
-  u64 r15;
-
-  u64 trapno;
-  u64 err;
-
-  u64 eip;  // rip
-  u64 cs;
-  u64 eflags;  // rflags
-  u64 esp;     // rsp
-  u64 ds;      // ss
-};
-
 // Processor-defined:
 #define TRAP_DIVIDE 0  // divide error
 #define TRAP_DEBUG 1   // debug exception
@@ -137,29 +89,59 @@ struct trapframe {
 #define TRAP_SIMDERR 19  // SIMD floating point error
 
 u64 ticks = 0;
-// where the trap handler throws us. It is up to this function to sort out
-// which trap handler to hand off to
-extern "C" void trap(struct trapframe *tf) {
-  extern void pic_send_eoi(void);
 
-  // PAGE FAULT
-  if (tf->trapno == TRAP_PGFLT) {
-    void *addr = (void *)(read_cr2() & ~0xFFF);
-    printk("PGFLT %p\n", addr);
-    map_page(addr, addr);
-    return;
+extern u32 idt_block;
+
+extern void *vectors[];  // in vectors.S: array of 256 entry pointers
+
+static interrupt_handler_t interrupt_handler_table[48];
+static uint32_t interrupt_count[48];
+static uint8_t interrupt_spurious[48];
+
+static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
+  u64 addr = (u64)kva;
+  n *= 4;
+  trap = trap ? 0x8F00 : 0x8E00;  // TRAP vs INTERRUPT gate;
+  idt[n + 0] = (addr & 0xFFFF) | ((SEG_KCODE << 3) << 16);
+  idt[n + 1] = (addr & 0xFFFF0000) | trap | ((pl & 3) << 13);  // P=1 DPL=pl
+  idt[n + 2] = addr >> 32;
+  idt[n + 3] = 0;
+}
+
+static void interrupt_acknowledge(int i) {
+  if (i < 32) {
+    /* do nothing */
+  } else {
+    pic_ack(i - 32);
   }
+}
 
-  if (tf->trapno >= 32) {
-    ticks++;
-    // if (ticks % 100 == 0) printk("%d\n", ticks);
-    // send the end of interrupt to the PIC
-    pic_send_eoi();
-    return;
+void interrupt_block() { asm("cli"); }
+
+void interrupt_unblock() { asm("sti"); }
+
+void interrupt_wait() {
+  asm("sti");
+  asm("hlt");
+}
+
+void interrupt_enable(int i) {
+  if (i < 32) {
+    /* do nothing */
+  } else {
+    pic_enable(i - 32);
   }
+}
 
+void interrupt_disable(int i) {
+  if (i < 32) {
+    /* do nothing */
+  } else {
+    pic_disable(i - 32);
+  }
+}
 
-
+static void unknown_exception(int i, struct trapframe *tf) {
 #define INDENT "   "
   printk("+++++++++++++ !!! +++++++++++++\n");
   printk("\n");
@@ -171,9 +153,12 @@ extern "C" void trap(struct trapframe *tf) {
 
   printk("\n");
 
-  printk(INDENT "RAX=%016x RBX=%016x RCX=%016x RDX=%016x\n", tf->rax, tf->rbx, tf->rcx, tf->rdx);
-  printk(INDENT "RDI=%016x RSI=%016x RBP=%016x RSP=%016x\n", tf->rdi, tf->rsi, tf->rbp, (u64)tf);
-  printk(INDENT "INT=%016x ERR=%016x EIP=%016x RSP=%016x\n", tf->trapno, tf->err, tf->eip, (u64)tf);
+  printk(INDENT "RAX=%016x RBX=%016x RCX=%016x RDX=%016x\n", tf->rax, tf->rbx,
+         tf->rcx, tf->rdx);
+  printk(INDENT "RDI=%016x RSI=%016x RBP=%016x RSP=%016x\n", tf->rdi, tf->rsi,
+         tf->rbp, (u64)tf);
+  printk(INDENT "INT=%016x ERR=%016x EIP=%016x RSP=%016x\n", tf->trapno,
+         tf->err, tf->eip, (u64)tf);
 
   printk("\n");
 
@@ -185,4 +170,68 @@ extern "C" void trap(struct trapframe *tf) {
 
   lidt(0, 0);  // die
   while (1) halt();
+}
+
+static void pgfault_handle(int i, struct trapframe *tf) {
+  void *addr = (void *)(read_cr2() & ~0xFFF);
+  printk("PGFLT %p\n", addr);
+  map_page(addr, addr);
+  return;
+}
+
+
+static void tick_handle(int i, struct trapframe *tf) {
+  ticks++;
+  return;
+}
+
+static void unknown_hardware(int i, struct trapframe *tf) {
+  if (!interrupt_spurious[i]) {
+    printk("interrupt: spurious interrupt %d\n", i);
+  }
+  interrupt_spurious[i]++;
+}
+
+void interrupt_register(int i, interrupt_handler_t handler) {
+  interrupt_handler_table[i] = handler;
+}
+
+void init_idt(void) {
+  u32 *idt = (u32 *)&idt_block;
+  // fill up the idt with the correct trap vectors.
+  for (int n = 0; n < 256; n++) mkgate(idt, n, vectors[n], 0, 0);
+
+  int i;
+  for (i = 32; i < 48; i++) {
+    interrupt_disable(i);
+    interrupt_acknowledge(i);
+  }
+  for (i = 0; i < 32; i++) {
+    interrupt_handler_table[i] = unknown_exception;
+    interrupt_spurious[i] = 0;
+    interrupt_count[i] = 0;
+  }
+  for (i = 32; i < 48; i++) {
+    interrupt_handler_table[i] = unknown_hardware;
+    interrupt_spurious[i] = 0;
+    interrupt_count[i] = 0;
+  }
+
+  interrupt_register(TRAP_PGFLT, pgfault_handle);
+  interrupt_register(32, tick_handle);
+
+  interrupt_unblock();
+  // and load the idt into the processor. It is a page in memory
+  lidt(idt, 4096);
+}
+
+// where the trap handler throws us. It is up to this function to sort out
+// which trap handler to hand off to
+extern "C" void trap(struct trapframe *tf) {
+  extern void pic_send_eoi(void);
+
+  int i = tf->trapno;
+  (interrupt_handler_table[i])(i, tf);
+  interrupt_acknowledge(i);
+  interrupt_count[i]++;
 }

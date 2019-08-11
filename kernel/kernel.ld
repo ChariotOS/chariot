@@ -31,12 +31,11 @@ SECTIONS
 	. = ALIGN(0x1000);
 	idt_block = .;
 	. += 0x1000;
-	'
+
 
 	/* address which is mapped when working with physical memory */
 	phys_mem_scratch = .;
 	. += 0x1000;
-
 
 	boot_stack_start = .;
 	. += 0xf000;

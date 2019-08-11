@@ -1,0 +1,52 @@
+#ifndef __FILESYSTEM_H__
+#define __FILESYSTEM_H__
+
+#include <fs/inode.h>
+#include <ptr.h>
+#include <string.h>
+#include <types.h>
+
+namespace fs {
+
+class inode;
+
+struct directory_entry {
+  u32 inode;
+  string name;
+};
+
+// abstract filesystem class. All filesystems must extend from this
+class filesystem {
+ public:
+  virtual ~filesystem();
+
+  // getters
+  inline u32 id() const { return m_fsid; }
+  inline bool readonly(void) const { return m_readonly; }
+
+  virtual bool init(void) = 0;
+
+  // return the root inode
+  virtual inode_id root_inode(void) const = 0;
+
+  virtual ref<inode> get_inode(u32 index) = 0;
+
+  /*
+  struct directory_entry {
+    directory_entry(const char *name, inode
+  };
+  */
+
+ protected:
+  // TODO: put a lock in here.
+
+  // must be called by subclasses
+  filesystem();
+
+ private:
+  u32 m_fsid = 0;
+  bool m_readonly = false;
+};
+}  // namespace fs
+
+#endif
