@@ -109,6 +109,12 @@ void *operator new(size_t size) { return kmalloc(size); }
 
 void *operator new[](size_t size) { return kmalloc(size); }
 
+template <typename T>
+void *operator new(size_t size, T*&dst) {
+  dst = kmalloc(size);
+  return dst;
+}
+
 void operator delete(void *ptr) { kfree(ptr); }
 
 void operator delete[](void *ptr) { kfree(ptr); }

@@ -18,7 +18,7 @@ class func<Out(In...)> {
   }
 
   template <typename T>
-  func(T t) {
+  func(T &&t) {
     operator=(move(t));
   }
 

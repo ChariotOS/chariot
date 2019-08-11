@@ -38,7 +38,7 @@ SECTIONS
 	. += 0x1000;
 
 	boot_stack_start = .;
-	. += 0xf000;
+	. += 0x1000 * 10;
 	boot_stack_end = .;
 
 

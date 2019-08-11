@@ -15,14 +15,15 @@
 #include <types.h>
 #include "../../include/mobo/multiboot.h"
 
-#include <device.h>
-#include <phys.h>
 #include <asm.h>
-#include <func.h>
-#include <ptr.h>
-#include <vec.h>
+#include <device.h>
 #include <fs/ext2.h>
+#include <fs/file.h>
+#include <func.h>
+#include <phys.h>
+#include <ptr.h>
 #include <string.h>
+#include <vec.h>
 
 extern int kernel_end;
 
@@ -55,36 +56,32 @@ void initialize_kernel_modules(void) {
   }
 }
 
-/*
-typedef void (*func_ptr)(void);
-extern func_ptr _init_array_start[0], _init_array_end[0];
-extern func_ptr _fini_array_start[0], _fini_array_end[0];
-*/
+/* These magic symbols are provided by the linker.  */
+extern void (*__preinit_array_start[])(void) __attribute__((weak));
+extern void (*__preinit_array_end[])(void) __attribute__((weak));
+extern void (*__init_array_start[])(void) __attribute__((weak));
+extern void (*__init_array_end[])(void) __attribute__((weak));
 
 static void call_global_constructors(void) {
-  /*
-  for (func_ptr* func = _init_array_start; func != _init_array_end; func++)
-    (*func)();
-    */
+  size_t count;
+  size_t i;
+
+  count = __preinit_array_end - __preinit_array_start;
+  for (i = 0; i < count; i++) __preinit_array_start[i]();
+
+  // _init();
+
+  count = __init_array_end - __init_array_start;
+  for (i = 0; i < count; i++) __init_array_start[i]();
 }
-/*
-func_ptr _init_array_start[0] __attribute__((used, section(".init_array"),
-                                             aligned(sizeof(func_ptr)))) = {};
-func_ptr _fini_array_start[0] __attribute__((used, section(".fini_array"),
-                                             aligned(sizeof(func_ptr)))) = {};
-
-                                             */
-
-
 
 class Foo {
-  public:
-    ~Foo() {
-      printk("Foo dtor\n");
-    }
+ public:
+  Foo() { printk("Foo ctor\n"); }
+  ~Foo() { printk("Foo dtor\n"); }
 };
 
-
+Foo f;
 
 extern "C" int kmain(u64 mbd, u64 magic) {
   // initialize the serial "driver"
@@ -125,46 +122,26 @@ extern "C" int kmain(u64 mbd, u64 magic) {
     if (drive.identify()) {
       auto fs = fs::ext2(drive);
       fs.init();
+
+      auto test = [&](const char* path) {
+        auto inode = fs.open(string(path), 0);
+        if (inode) {
+          printk("found '%s' at inode %d\n", path, inode->index());
+        } else {
+          printk("Could not find inode\n");
+        }
+      };
+
+      test("/");
+      test("/kernel");
+      test("/kernel/src/");
+      test("/kernel/src/fs/");
+      test("/kernel/src/fs/ext2.cpp");
+      test("/kernel/src/fs/ext2.cpp/foo");
     }
   }
 
-
-  return 0;
-
-  pci::walk_devices([&](pci::device* dev) {
-    if (dev->is_device(0x8086, 0x7010)) {
-      printk("82371SB PIIX3 IDE\n");
-
-      u16 port = 0;
-
-      for (int i = 0; i < 6; i++) {
-        auto bar = dev->get_bar(i);
-
-        if (bar.valid && bar.type == pci::bar_type::BAR_PIO) {
-          port = (u16)bar.addr;
-        }
-      }
-
-
-
-
-      auto drive = make_unique<dev::ata>(port, true);
-
-      if (drive->identify()) {
-        printk("%d sectors\n", drive->sector_count());
-
-        auto buf = new char[512];
-
-        for (int i = 0; i < drive->sector_count(); i++) {
-          drive->read(i, 4096, buf);
-        }
-
-        delete[] buf;
-      }
-    }
-  });
-
-  printk("got here\n");
+  printk("done!\n");
   // now try and exit.
   // write to the mobo exit port (special port)
   outb(0xE817, 0);

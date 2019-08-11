@@ -187,13 +187,14 @@ static inline blk_t *attempt_free_fusion(blk_t *this_blk) {
 blk_t *get_next_free(blk_t *curr) {
   curr = NEXT_BLK(curr);
   while (1) {
-    if ((void *)curr > kheap_hi()) return NULL;
+    if ((void *)curr >= kheap_hi()) return NULL;
     if (IS_FREE(curr)) return curr;
     curr = NEXT_BLK(curr);
   }
 }
 
 void mm_free(void *ptr) {
+  if (ptr == nullptr) return;
   blk_t *blk = GET_BLK(ptr);
   auto *self = (free_header_t *)ptr;
   blk_t *next_free = get_next_free(blk);
@@ -227,7 +228,6 @@ void mm_free(void *ptr) {
 }
 
 void *mm_realloc(void *ptr, size_t size) {
-  // print_heap();
 
   size = ALIGN(size);
 

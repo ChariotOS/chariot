@@ -41,12 +41,11 @@ COMMON_FLAGS := $(CINCLUDES) -fno-omit-frame-pointer \
 				 -Wno-unused-functions \
 				 -Wno-sign-compare\
 			   -ffreestanding \
-				 -fpermissive \
 			   -fno-stack-protector \
 			   -fno-strict-aliasing \
          -fno-strict-overflow \
 			   -mno-red-zone \
-			   -mcmodel=large -O0 -fno-tree-vectorize
+			   -mcmodel=large -O3 -fno-tree-vectorize
 
 CFLAGS:= $(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
 
@@ -103,6 +102,7 @@ build/fs.img:
 	mkdir -p build/mnt
 	sudo mount -o loop build/fs.img build/mnt
 	sudo cp -r mnt/. build/mnt/
+	sudo cp -r kernel build/mnt/kernel
 	sudo umount build/mnt
 
 fs:
@@ -120,8 +120,9 @@ klean:
 	rm -rf build/fs.img
 	rm -rf $(COBJECTS)
 	rm -rf $(AOBJECTS)
+	rm -rf $(KERNEL)
 	rm -rf $(shell find kernel | grep "\.o\$$")
-	rm -r $(KERNEL)
+	rm -rf $(shell find kernel | grep "\.ao\$$")
 
 
 clean: klean

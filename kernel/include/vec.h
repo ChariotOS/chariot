@@ -34,7 +34,6 @@ class vec {
     }
   }
 
-
   inline explicit vec(int count) {
     reserve(count);
     len = cap;
@@ -52,6 +51,18 @@ class vec {
     for (auto &e : v) {
       push(e);
     }
+    return *this;
+  }
+
+  // copy assignment
+  inline vec &operator=(vec<T> &&v) {
+    m_data = v.m_data;
+    len = v.len;
+    cap = v.cap;
+
+    v.m_data = nullptr;
+    v.len = 0;
+    v.cap = 0;
     return *this;
   }
 
@@ -89,10 +100,10 @@ class vec {
 
   inline void reserve(u32 new_cap) {
     if (m_data == nullptr) {
-      m_data = kmalloc(sizeof(T) * new_cap);
+      m_data = (T*)kmalloc(sizeof(T) * new_cap);
     } else {
       if (new_cap <= cap) return;
-      m_data = krealloc(m_data, sizeof(T) * new_cap);
+      m_data = (T*)krealloc(m_data, sizeof(T) * new_cap);
     }
 
     cap = new_cap;
@@ -100,7 +111,10 @@ class vec {
 
   inline void push(const T &value) {
     if (len == cap) {
-      reserve(cap * 2);
+      if (cap < 10) {
+        reserve(10);
+      } else
+        reserve(cap * 2);
     }
     m_data[len++] = value;
   }

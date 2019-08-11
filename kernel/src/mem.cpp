@@ -173,6 +173,7 @@ void *kheap_hi(void) { return kheap_start + kheap_size; }
 void *ksbrk(i64 inc) {
   u64 oldsz = kheap_size;
   u64 newsz = oldsz + inc;
+
   if (inc == 0) return kheap_start + oldsz;
 
   i64 a = PGROUNDUP(oldsz);
@@ -183,6 +184,7 @@ void *ksbrk(i64 inc) {
   u8 *p = (u8 *)kheap_start + oldsz;
   memset(p, 0, newsz - oldsz);
   kheap_size = newsz;
+
   return kheap_start + oldsz;
 }
 

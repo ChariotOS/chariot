@@ -7,6 +7,15 @@
 // Standard information and structures for EXT2
 #define EXT2_SIGNATURE 0xEF53
 
+
+// #define DEBUG_EXT2
+
+#ifdef DEBUG_EXT2
+#define INFO(fmt, args...) printk("[EXT2] " fmt, ##args)
+#else
+#define INFO(fmt, args...)
+#endif
+
 struct [[gnu::packed]] fs::ext2::superblock {
   uint32_t inodes;
   uint32_t blocks;
@@ -144,23 +153,6 @@ bool fs::ext2::init(void) {
   work_buf = kmalloc(blocksize);
   inode_buf = kmalloc(blocksize);
 
-  traverse_dir(2, [&](auto d) {
-    printk("%5d: \"%s\"", d.inode, d.name.get());
-
-    ext2_inode_info inode;
-    read_inode(inode, d.inode);
-    {
-      char buf[20];
-      printk(" %s", human_size(inode.size, buf));
-    }
-
-    auto blks = blocks_for_inode(inode);
-    printk(" %d blocks", blks.size());
-
-    printk("\n");
-    return true;
-  });
-
   return true;
 }
 
@@ -247,7 +239,6 @@ bool fs::ext2::write_block(u32 block, const void *buf) {
   return dev.write(block * blocksize, blocksize, buf);
 }
 
-
 void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,
                                func<bool(void *)> callback) {
   for (auto b : blks) {
@@ -282,7 +273,7 @@ void fs::ext2::traverse_dir(u32 inode,
 }
 
 void fs::ext2::traverse_dir(ext2_inode_info &inode,
-                            func<bool(fs::directory_entry)> &callback) {
+                            func<bool(fs::directory_entry)> callback) {
   // vec<u32> blocks = read_dir(inode);
 
   void *buffer = kmalloc(blocksize);
@@ -323,8 +314,6 @@ vec<fs::directory_entry> fs::ext2::read_dir(ext2_inode_info &inode) {
   return entries;
 }
 
-
-
 int fs::ext2::read_file(u32 inode, u32 off, u32 len, u8 *buf) {
   ext2_inode_info info;
   read_inode(info, inode);
@@ -337,12 +326,9 @@ int fs::ext2::read_file(ext2_inode_info &inode, u32 off, u32 len, u8 *buf) {
 }
 
 // TODO
-fs::inode_id fs::ext2::root_inode() const { return {}; }
-
-// TODO
 ref<fs::inode> fs::ext2::get_inode(u32 index) {
   auto in = make_ref<fs::ext2_inode>(*this, index);
-  read_inode(in.get(), index);
+  read_inode(in->info, index);
   return in;
 }
 
@@ -410,3 +396,62 @@ vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
   return list;
 }
 
+ref<fs::inode> fs::ext2::open(fs::path path, u32 flags) {
+  if (!path.is_root()) {
+    printk("ext2::open requires absolute paths (\"%s\")\n",
+           path.to_string().get());
+    return {};
+  }
+
+  INFO("looking for %s\n", path.to_string().get());
+
+  // starting at the root node (always 2)
+  u32 inode = 2;
+  ext2_inode_info info;
+
+  for (int i = 0; i < path.len(); i++) {
+
+    // read the node's info
+    read_inode(info, inode);
+    const string &name = path[i];
+
+
+    INFO("============================\n");
+    INFO("searching %d for %s\n", inode, name.get());
+    INFO("\n");
+
+    u16 type = info.type & 0xF000;
+
+    INFO("type=%04x\n", info.type);
+
+
+    if (type == 0x4000 /*directory*/) {
+      auto contents = read_dir(info);
+      bool found = false;
+
+      for (auto &file : contents) {
+        if (file.name == name) {
+          INFO("%s@%d\n", file.name.get(), file.inode);
+          inode = file.inode;
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        return {};
+      }
+
+    } else if (type == 0x8000 /*regular file*/) {
+      INFO("regular file!\n");
+      return {};
+    }
+  }
+
+
+  INFO("============================\n");
+  // construct the inode object and return it
+  auto res = make_ref<fs::ext2_inode>(*this, inode);
+  res->info = info;
+  return res;
+}

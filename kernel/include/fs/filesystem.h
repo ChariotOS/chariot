@@ -5,6 +5,7 @@
 #include <ptr.h>
 #include <string.h>
 #include <types.h>
+#include <fs/file.h> // fs::path
 
 namespace fs {
 
@@ -26,10 +27,12 @@ class filesystem {
 
   virtual bool init(void) = 0;
 
-  // return the root inode
-  virtual inode_id root_inode(void) const = 0;
-
   virtual ref<inode> get_inode(u32 index) = 0;
+
+  // opens a file options
+  ref<fs::inode> open(string s, u32 flags);
+  virtual ref<fs::inode> open(fs::path, u32 flags) = 0;
+
 
   /*
   struct directory_entry {

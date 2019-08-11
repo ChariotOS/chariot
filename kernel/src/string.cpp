@@ -32,6 +32,35 @@ string::string(const string& s) {
 
 string::~string() { delete[] data; }
 
+
+
+vec<string> string::split(char c, bool include_empty) {
+  vec<string> tokens;
+  string token = "";
+
+  string &self = *this;
+
+  for (int i = 0; i < len(); i++) {
+    if (self[i] == c) {
+      if (token.len() == 0 && !include_empty) {
+        continue;
+      } else {
+        tokens.push(token);
+        token = "";
+        continue;
+      }
+    } else {
+      token += self[i];
+    }
+  }
+
+  if (token.len() != 0 || include_empty) {
+    tokens.push(token);
+  }
+
+  return tokens;
+}
+
 unsigned string::len() const { return length; }
 
 int string::index(char c) const {

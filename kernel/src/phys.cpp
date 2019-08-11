@@ -26,11 +26,13 @@ u64 phys::nfree(void) {
   return kmem.nfree;
 }
 
+/*
 static void print_freelist() {
   for (frame *f = kmem.freelist; f != NULL; f = f->next) {
   }
   printk("\n");
 }
+*/
 
 frame *tmp_map_frame(frame *fr) {
   map_page(phys_mem_scratch, fr);

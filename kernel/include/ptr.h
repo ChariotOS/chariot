@@ -4,18 +4,13 @@
 #include <printk.h>
 #include <template_lib.h>
 
-template <typename T>
-struct unique_ptr_deleter {
-  void operator()(T* resource) const { delete resource; }
-};
 
 // Takes in a default deleter. unique_ptr_deleters operator will be invoked by
 // default.
-template <typename T, typename deleter = unique_ptr_deleter<T>>
+template <typename T>
 class unique_ptr {
  private:
   T* m_ptr = nullptr;
-  deleter operator_delete;
 
  public:
   // Safely constructs resource. Operator new is called by the user. Once
@@ -28,11 +23,20 @@ class unique_ptr {
 
   // destroys the resource when object goes out of scope. This will either call
   // the default delete operator or a user-defined one.
-  ~unique_ptr() noexcept { operator_delete(m_ptr); }
+  ~unique_ptr() noexcept { delete m_ptr; }
   // Disables the copy/ctor and copy assignment operator. We cannot have two
   // copies exist or it'll bypass the RAII concept.
   unique_ptr(const unique_ptr<T>&) noexcept = delete;
   unique_ptr& operator=(const unique_ptr&) noexcept = delete;
+
+  template <typename U>
+  unique_ptr(const unique_ptr<U>&) = delete;
+
+
+
+  template <typename U>
+  unique_ptr& operator=(const unique_ptr<U>&) = delete;
+
 
  public:
   // Allows move-semantics. While the unique_ptr cannot be copied it can be
@@ -66,7 +70,7 @@ class unique_ptr {
   // returns a pointer to the resource
   T* get() const noexcept { return m_ptr; }
   // swaps the resources
-  void swap(unique_ptr<T, deleter>& resource_ptr) noexcept {
+  void swap(unique_ptr<T>& resource_ptr) noexcept {
     ::swap(m_ptr, resource_ptr.m_ptr);
   }
   // replaces the resource. the old one is destroyed and a new one will take
@@ -77,7 +81,7 @@ class unique_ptr {
       panic("An invalid pointer was passed, resources will not be swapped");
     }
 
-    operator_delete(m_ptr);
+    delete m_ptr;
 
     m_ptr = nullptr;
 
@@ -311,7 +315,7 @@ class ref {
   friend class ref;
 
  private:
-  T* px;                //!< Native pointer
+  T* px;         //!< Native pointer
   ref_count pn;  //!< Reference counter
 };
 
@@ -357,8 +361,7 @@ bool operator>(const ref<T>& l,
 template <class T, class U>
 ref<T> static_pointer_cast(const ref<U>& ptr)  // never throws
 {
-  return ref<T>(
-      ptr, static_cast<typename ref<T>::element_type*>(ptr.get()));
+  return ref<T>(ptr, static_cast<typename ref<T>::element_type*>(ptr.get()));
 }
 
 // dynamic cast of ref
@@ -372,8 +375,6 @@ ref<T> dynamic_pointer_cast(const ref<U>& ptr)  // never throws
     return ref<T>();
   }
 }
-
-
 
 template <typename T, typename... Args>
 ref<T> make_ref(Args&&... args) {

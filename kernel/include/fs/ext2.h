@@ -74,12 +74,12 @@ class ext2 final : public filesystem {
   ~ext2(void);
 
   virtual bool init(void);
-  // return the root inode
-  virtual inode_id root_inode(void) const;
   virtual ref<inode> get_inode(u32 index);
 
   int read_file(u32 inode, u32 off, u32 len, u8 *buf);
 
+
+  virtual ref<fs::inode> open(fs::path, u32 flags);
 
  private:
   bool read_block(u32 block, void *buf);
@@ -89,21 +89,18 @@ class ext2 final : public filesystem {
   bool read_inode(ext2_inode_info *dst, u32 inode);
   bool read_inode(ext2_inode_info &dst, u32 inode);
 
-
   bool write_inode(ext2_inode *dst, u32 inode);
   bool write_inode(ext2_inode_info *dst, u32 inode);
   bool write_inode(ext2_inode_info &dst, u32 inode);
-  
 
   // must free the result of this.
   void *read_entire(ext2_inode_info &inode);
-
 
   vec<fs::directory_entry> read_dir(u32 inode);
   vec<fs::directory_entry> read_dir(ext2_inode_info &inode);
   void traverse_dir(u32 inode, func<bool(fs::directory_entry)> callback);
   void traverse_dir(ext2_inode_info &inode,
-                    func<bool(fs::directory_entry)> &callback);
+                    func<bool(fs::directory_entry)> callback);
   void traverse_blocks(vec<u32>, void *, func<bool(void *)> callback);
 
   // entrypoint to read a file
@@ -118,7 +115,7 @@ class ext2 final : public filesystem {
 
   superblock *sb = nullptr;
 
-  // how many byte a block is made up of
+  // how many bytes a block is made up of
   u32 blocksize = 0;
 
   // how many blockgroups are in the filesystem

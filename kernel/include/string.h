@@ -1,6 +1,8 @@
 #ifndef __STRING_H__
 #define __STRING_H__
 
+#include <vec.h>
+
 class string {
   char* data;      /*!< The ASCII characters that comprise the string */
   unsigned length; /*!< The number of characters allocated in data */
@@ -20,7 +22,13 @@ class string {
 
   int index(char c) const;
 
-  inline const char* get() { return data; }
+  inline const char* get() const { return data; }
+
+
+
+
+  // split a string on a character c
+  vec<string> split(char c, bool include_empty = false);
 
   char operator[](unsigned j) const;
   char& operator[](unsigned j);

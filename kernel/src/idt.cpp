@@ -90,7 +90,7 @@ const char *excp_codes[NUM_EXCEPTIONS][2] = {
 
 u64 ticks = 0;
 
-extern u32 idt_block;
+extern u32 idt_block[];
 
 extern void *vectors[];  // in vectors.S: array of 256 entry pointers
 
@@ -174,7 +174,7 @@ static void unknown_exception(int i, struct trapframe *tf) {
 
 static void pgfault_handle(int i, struct trapframe *tf) {
   void *addr = (void *)(read_cr2() & ~0xFFF);
-  printk("PGFLT %p\n", addr);
+  panic("PGFLT %p\n", addr);
   map_page(addr, addr);
   return;
 }

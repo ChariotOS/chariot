@@ -134,7 +134,7 @@ void pci::init(void) {
         for (int barnum = 0; barnum < 6; barnum++) {
           struct pci_bar bar = pci_get_bar(bus, dev, func, barnum);
           if (bar.addr && (bar.type == bar_in_out)) {
-            desc->port_base = (u32)bar.addr;
+            desc->port_base = (u32)(u64)bar.addr;
           }
         }
 
