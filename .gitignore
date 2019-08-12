@@ -6,3 +6,4 @@ mobo.cabal
 .ghc*
 .stack-work
 mobo
+.DS_Store
