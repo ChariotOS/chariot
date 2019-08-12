@@ -104,6 +104,14 @@
 #define STS_IG32 0xE  // 32-bit Interrupt Gate
 #define STS_TG32 0xF  // 32-bit Trap Gate
 
+
+static inline void *memcpy(void *dst, const void *src, size_t n) {
+  for (int i = 0; i < n; i++) {
+    ((char*)dst)[i] = ((char *)src)[i];
+  }
+  return dst;
+}
+
 static inline void memset(void *buf, char c, size_t len) {
   char *m = (char *)buf;
   for (size_t i = 0; i < len; i++) m[i] = c;

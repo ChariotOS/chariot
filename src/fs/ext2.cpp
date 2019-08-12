@@ -8,7 +8,7 @@
 #define EXT2_SIGNATURE 0xEF53
 
 
-// #define DEBUG_EXT2
+#define DEBUG_EXT2
 
 #ifdef DEBUG_EXT2
 #define INFO(fmt, args...) printk("[EXT2] " fmt, ##args)
@@ -403,7 +403,8 @@ ref<fs::inode> fs::ext2::open(fs::path path, u32 flags) {
     return {};
   }
 
-  INFO("looking for %s\n", path.to_string().get());
+
+  // INFO("looking for %s\n", path.to_string().get());
 
   // starting at the root node (always 2)
   u32 inode = 2;
@@ -416,13 +417,13 @@ ref<fs::inode> fs::ext2::open(fs::path path, u32 flags) {
     const string &name = path[i];
 
 
-    INFO("============================\n");
-    INFO("searching %d for %s\n", inode, name.get());
-    INFO("\n");
+    // INFO("============================\n");
+    // INFO("searching %d for %s\n", inode, name.get());
+    // INFO("\n");
 
     u16 type = info.type & 0xF000;
 
-    INFO("type=%04x\n", info.type);
+    // INFO("type=%04x\n", info.type);
 
 
     if (type == 0x4000 /*directory*/) {
@@ -431,7 +432,7 @@ ref<fs::inode> fs::ext2::open(fs::path path, u32 flags) {
 
       for (auto &file : contents) {
         if (file.name == name) {
-          INFO("%s@%d\n", file.name.get(), file.inode);
+          // INFO("%s@%d\n", file.name.get(), file.inode);
           inode = file.inode;
           found = true;
           break;
@@ -449,7 +450,7 @@ ref<fs::inode> fs::ext2::open(fs::path path, u32 flags) {
   }
 
 
-  INFO("============================\n");
+  // INFO("============================\n");
   // construct the inode object and return it
   auto res = make_ref<fs::ext2_inode>(*this, inode);
   res->info = info;

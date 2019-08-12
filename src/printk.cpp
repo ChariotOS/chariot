@@ -84,7 +84,12 @@
 
 #define IO_PORT_PUTCHAR 0xfad
 
-void putchar(char c) { serial_send(SERIAL_PORT_A, c); }
+extern void vga_writechar(char c);
+
+void putchar(char c) {
+  vga_writechar(c);
+  serial_send(SERIAL_PORT_A, c);
+}
 int puts(char* s) {
   int i;
   for (i = 0; s[i] != '\0'; i++) outb(IO_PORT_PUTCHAR, s[i]);

@@ -32,11 +32,11 @@ header_end:
 
 section .boot
 
+
 [bits 32]
 start:
 _start:
 	cli ; disable interrupts
-
 
 	mov edi, ebx
 	mov esi, eax

@@ -1,0 +1,6 @@
+ata0-master: type=cdrom, path=build/kernel.iso, status=inserted
+boot: cdrom
+com1: enabled=1, mode=file, dev=/dev/stdout
+cpu: count=1
+cpuid: level=6, mmx=1, level=6, x86_64=1, 1g_pages=1
+megs: 2048

@@ -3,7 +3,7 @@
 #include <phys.h>
 #include <printk.h>
 #include <types.h>
-#include "../../include/mobo/multiboot.h"
+#include <multiboot.h>
 
 #define MAX_MMAP_ENTRIES 128
 
@@ -19,12 +19,6 @@
 
 #define ALIGN(x, a) (((x) + (a)-1) & ~((a)-1))
 
-void *memcpy(void *dest, const void *src, u64 n) {
-  for (u32 i = 0; i < n; i++) {
-    ((u8 *)dest)[i] = ((u8 *)src)[i];
-  }
-  return dest;
-}
 
 extern char low_kern_start;
 extern char low_kern_end;

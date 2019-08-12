@@ -3,18 +3,12 @@ CXX = g++
 AS = nasm
 LD = ld
 
-
 .PHONY: fs
 
-VMM_CPP_FILES:=$(shell find src | grep "\.cpp")
-VMM_HS_FILES:=$(shell find src | grep "\.hs")
-VMM_INCLUDE_FILES:=$(shell find include)
 
 
-FILEDEPS:=$(VMM_CPP_FILES) $(VMM_HS_FILES) $(VMM_INCLUDE_FILES)
 
-
-STRUCTURE := $(shell find kernel -type d)
+STRUCTURE := $(shell find src -type d)
 CODEFILES := $(addsuffix /*,$(STRUCTURE))
 CODEFILES := $(wildcard $(CODEFILES))
 
@@ -33,7 +27,7 @@ KERNEL=build/kernel.elf
 
 AFLAGS=-f elf64 -w-zext-reloc
 
-CINCLUDES=-Ikernel/include/
+CINCLUDES=-I./include/
 
 
 
@@ -45,7 +39,8 @@ COMMON_FLAGS := $(CINCLUDES) -fno-omit-frame-pointer \
 			   -fno-strict-aliasing \
          -fno-strict-overflow \
 			   -mno-red-zone \
-			   -mcmodel=large -O3 -fno-tree-vectorize
+			   -mcmodel=large -O3 -fno-tree-vectorize \
+				 -DGITREVISION=$(shell git rev-parse --short HEAD)
 
 CFLAGS:= $(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
 
@@ -55,27 +50,12 @@ DFLAGS=-g -DDEBUG -O0
 
 
 
-# By default, build the example kernel using make and the vmm using stack
-default: build $(KERNEL) $(FILEDEPS)
-	@stack build
-	@cp $$(find . | grep "/bin/mobo") build/
-
-
-fast: build $(KERNEL) $(FILEDEPS)
-	@stack build --fast
-	@cp $$(find . | grep "/bin/mobo") build/
+default: iso
 
 build:
 	@mkdir -p build
 
-
-
-
-
-
-# test kernel related build tools
 kern: build $(KERNEL)
-
 
 %.c.o: %.c
 	@echo " CC " $<
@@ -92,7 +72,7 @@ kern: build $(KERNEL)
 
 $(KERNEL): build/fs.img $(CODEFILES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
 	@echo " LD " $@
-	@$(LD) $(LDFLAGS) $(AOBJECTS) $(COBJECTS) -T kernel/kernel.ld -o $@
+	@$(LD) $(LDFLAGS) $(AOBJECTS) $(COBJECTS) -T kernel.ld -o $@
 
 
 build/fs.img:
@@ -102,7 +82,7 @@ build/fs.img:
 	mkdir -p build/mnt
 	sudo mount -o loop build/fs.img build/mnt
 	sudo cp -r mnt/. build/mnt/
-	sudo cp -r kernel build/mnt/kernel
+	sudo cp -r src build/mnt/kernel
 	sudo umount build/mnt
 
 fs:
@@ -111,7 +91,7 @@ fs:
 
 iso: kern
 	mkdir -p build/iso/boot/grub
-	cp kernel/grub.cfg build/iso/boot/grub
+	cp ./grub.cfg build/iso/boot/grub
 	cp build/kernel.elf build/iso/boot
 	grub-mkrescue -o build/kernel.iso build/iso
 
@@ -132,8 +112,19 @@ clean: klean
 
 
 qemu: iso
-		@qemu-system-x86_64 \
-			-nographic \
-			-cdrom build/kernel.iso \
-			-m 8G \
-			-drive file=build/fs.img,if=ide
+	@qemu-system-x86_64 \
+		-serial stdio \
+		-cdrom build/kernel.iso \
+		-m 8G \
+		-drive file=build/fs.img,if=ide
+
+qemu-nox: iso
+	@qemu-system-x86_64 \
+		-nographic \
+		-cdrom build/kernel.iso \
+		-m 8G \
+		-drive file=build/fs.img,if=ide
+
+
+bochs: iso
+	@bochs -f bochsrc
