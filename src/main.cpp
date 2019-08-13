@@ -76,7 +76,6 @@ static void call_global_constructors(void) {
   for (i = 0; i < count; i++) __init_array_start[i]();
 }
 
-
 static const char* splash(void) {
   static const char* msgs[] = {
       "Nick's Operating System",
@@ -93,21 +92,9 @@ static const char* splash(void) {
   return msgs[rdtsc() % (sizeof(msgs) / sizeof(msgs[0]))];
 }
 
-#define NOS_WELCOME               \
-  "             ____  _____\n"    \
-  "      ____  / __ \\/ ___/\n"   \
-  "     / __ \\/ / / /\\__ \\ \n" \
-  "    / / / / /_/ /___/ / \n"    \
-  "   /_/ /_/\\____//____/  \n"   \
-  "                        \n"
-
-#ifndef GIT_REVISION
-#define GIT_REVISION "NO-GIT"
-#endif
+extern "C" void call_with_new_stack(void*, void*);
 
 [[noreturn]] void kmain2(void) {
-
-
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
 
@@ -126,22 +113,24 @@ static const char* splash(void) {
   // and set the interval, or whatever
   set_pit_freq(100);
 
-
-
+  /*
   char buf[40];
   while (true) {
-    printk("%p [%s left]\n", kmalloc(LARGE_PAGE_SIZE), human_size(phys::bytes_free(), buf));
+    printk("%p [%s left]\n", kmalloc(LARGE_PAGE_SIZE),
+  human_size(phys::bytes_free(), buf));
   }
+  */
 
+  /*
   vec<string> nums;
   for (u64 i = 0; true; i++) {
-    string s = "hello, world\n";
-    nums.push(s);
+    printk("%d\n", i);
+    nums.push("hlelo");
   }
+  */
 
   // finally, enable interrupts
   sti();
-
 
   // print_heap();
   auto drive = dev::ata(0x1F0, true);
@@ -149,35 +138,42 @@ static const char* splash(void) {
   if (drive.identify()) {
     auto fs = fs::ext2(drive);
     if (fs.init()) {
-      auto test = [&](const char* path) {
+
+
+      auto test = [&](const char *path) {
         auto inode = fs.open(string(path), 0);
         if (inode) {
-          printk("found '%s' at inode %d\n", path, inode->index());
+          printk("'%s' found at %d\n", path, inode->index());
         } else {
-          printk("Could not find inode\n");
+          printk("'%s' not found\n", path);
         }
       };
 
+
       test("/");
-      test("/kernel");
       test("/kernel/");
-      test("/kernel/fs/");
+      test("/kernel/fs");
       test("/kernel/fs/ext2.cpp");
-      test("/kernel/fs/ext2.cpp/foo");
     }
   }
 
   // spin forever
-  printk("no more work. spinning.\n");
+  printk("\n\nno more work. spinning.\n");
   while (1) {
   }
-
-  printk("done\n");
-  while (1)
-    ;
 }
 
-extern "C" void call_with_new_stack(void*, void*);
+#define NOS_WELCOME               \
+  "             ____  _____\n"    \
+  "      ____  / __ \\/ ___/\n"   \
+  "     / __ \\/ / / /\\__ \\ \n" \
+  "    / / / / /_/ /___/ / \n"    \
+  "   /_/ /_/\\____//____/  \n"   \
+  "                        \n"
+
+#ifndef GIT_REVISION
+#define GIT_REVISION "NO-GIT"
+#endif
 
 extern "C" int kmain(u64 mbd, u64 magic) {
   // initialize the serial "driver"
@@ -189,11 +185,11 @@ extern "C" int kmain(u64 mbd, u64 magic) {
 
   init_idt();
 
-  printk(NOS_WELCOME);
+  // printk(NOS_WELCOME);
   printk("   Nick Wanninger (c) 2019 | Illinois Institute of Technology\n");
   printk("   nOS: %s\n", splash());
   printk("   git: %s\n", GIT_REVISION);
-  printk("\n\n");
+  printk("\n");
 
   // now that we have interupts working, enable sse! (fpu)
   enable_sse();
@@ -205,7 +201,6 @@ extern "C" int kmain(u64 mbd, u64 magic) {
 #define STKSIZE (4096 * 8)
   void* new_stack = (void*)((u64)kmalloc(STKSIZE) + STKSIZE);
 
-  printk("new_stack = %p\n", new_stack);
   call_with_new_stack(new_stack, p2v(kmain2));
 
   return 0;

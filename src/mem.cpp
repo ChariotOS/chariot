@@ -72,7 +72,7 @@ void init_mmap(u64 mbd) {
     memory_map[n].len = end - start;
     memory_map[n].type = mmap->type;
 
-    printk("mmap[%u] - [%p - %p] <%lu bytes>\n", n, start, end, end - start);
+    // printk("mmap[%u] - [%p - %p] <%lu bytes>\n", n, start, end, end - start);
 
     if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) {
       mm_info.usable_ram += mmap->len;
@@ -92,8 +92,9 @@ int init_mem(u64 mbd) {
   // go detect all the ram in the system
   init_mmap(mbd);
 
-  printk("detected %lu bytes of usable memory (%lu pages)\n",
-         mm_info.usable_ram, mm_info.usable_ram / 4096);
+  char buf[20];
+  printk("Detected %s of usable memory (%lu pages)\n",
+         human_size(mm_info.usable_ram, buf), mm_info.usable_ram / 4096);
 
   auto *kend = (u8 *)&high_kern_end;
 
@@ -154,7 +155,7 @@ void init_dyn_mm(void) {
 
   // ksbrk(0);
 
-  // mm_init();
+  mm_init();
 }
 
 void init_kernel_virtual_memory() {
@@ -181,7 +182,9 @@ void init_kernel_virtual_memory() {
   kheap_size = 0;
 
   ksbrk(0);
-  printk("here\n");
+
+
+  mm_init();
 
   use_kernel_vm = true;
   tlb_flush();  // flush out the TLB
@@ -195,8 +198,12 @@ extern void *mm_malloc(size_t size);
 extern void mm_free(void *ptr);
 extern void *mm_realloc(void *ptr, size_t size);
 
+
+
+
 void *kmalloc(u64 size) {
-  auto ptr = malloc(size);
+  auto ptr = mm_malloc(size);
+  // printk("malloc (%zu) = %p\n", size, ptr);
   return ptr;
 }
 void kfree(void *ptr) {
@@ -206,10 +213,10 @@ void kfree(void *ptr) {
     printk("invalid address passed into free: %p\n", ptr);
   }
   // printk("free(%p)\n", ptr);
-  free(ptr);
+  mm_free(ptr);
 }
 
 void *krealloc(void *ptr, u64 newsize) {
   // printk("realloc(%p, %zu)\n", ptr, newsize);
-  return realloc(ptr, newsize);
+  return mm_realloc(ptr, newsize);
 }

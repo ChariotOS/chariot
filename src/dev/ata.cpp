@@ -6,10 +6,17 @@
 
 
 
-#define ATA_TRACE
+// #define DEBUG
+// #define DO_TRACE
 
-#ifdef ATA_TRACE
-#define TRACE printk("ATA:  [TRACE]: (%d) %s\n", __LINE__, __PRETTY_FUNCTION__)
+#ifdef DEBUG
+#define INFO(fmt, args...) printk("[ATA] " fmt, ##args)
+#else
+#define INFO(fmt, args...)
+#endif
+
+#ifdef DO_TRACE
+#define TRACE INFO("TRACE: (%d) %s\n", __LINE__, __PRETTY_FUNCTION__)
 #else
 #define TRACE
 #endif

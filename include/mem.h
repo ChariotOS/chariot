@@ -14,17 +14,19 @@ struct mmap_info {
   uint64_t total_mem; /* includes I/O holes etc. */
   uint32_t last_pfn;
   uint32_t num_regions;
-  uint64_t nbytes; // how many bytes
+  uint64_t nbytes;  // how many bytes
 };
 
 extern bool use_kernel_vm;
 
 #define KERNEL_VIRTUAL_BASE 0xffff880000000000
 
-#define v2p(addr) (void*)((u64)(addr) & ~(u64)KERNEL_VIRTUAL_BASE)
-#define p2v(addr) (void*)((u64)(addr) | (u64)KERNEL_VIRTUAL_BASE)
+#define v2p(addr) (void *)((u64)(addr) & ~(u64)KERNEL_VIRTUAL_BASE)
+#define p2v(addr) (void *)((u64)(addr) | (u64)KERNEL_VIRTUAL_BASE)
 
 
+// placement new
+inline void *operator new(size_t, void *ptr) { return ptr; }
 
 int init_mem(u64 mbd);
 
@@ -40,8 +42,6 @@ void *krealloc(void *ptr, u64 newsize);
 void *ksbrk(i64 inc);
 void *kheap_lo();
 void *kheap_hi();
-
-
 
 void init_kernel_virtual_memory();
 

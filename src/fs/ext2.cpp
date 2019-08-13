@@ -7,20 +7,21 @@
 // Standard information and structures for EXT2
 #define EXT2_SIGNATURE 0xEF53
 
-#define EXT2_TRACE
 
-#ifdef EXT2_TRACE
-#define TRACE printk("EXT2: [TRACE]: (%d) %s\n", __LINE__, __PRETTY_FUNCTION__)
-#else
-#define TRACE
-#endif
+// #define EXT2_DEBUG
+// #define EXT2_TRACE
 
-// #define DEBUG_EXT2
 
-#ifdef DEBUG_EXT2
+#ifdef EXT2_DEBUG
 #define INFO(fmt, args...) printk("[EXT2] " fmt, ##args)
 #else
 #define INFO(fmt, args...)
+#endif
+
+#ifdef EXT2_TRACE
+#define TRACE INFO("TRACE: (%d) %s\n", __LINE__, __PRETTY_FUNCTION__)
+#else
+#define TRACE
 #endif
 
 struct [[gnu::packed]] fs::ext2::superblock {
@@ -373,7 +374,7 @@ vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
 
   vec<u32> list;
 
-  list.reserve(block_count);
+  list.ensure_capacity(block_count);
 
   u32 blocks_remaining = block_count;
 

@@ -1,8 +1,62 @@
 #ifndef __TEMPLATE_LIB_H__
 #define __TEMPLATE_LIB_H__
 
+#include <printk.h>
+
 typedef decltype(nullptr) nullptr_t;
 
+template <typename T>
+struct GenericTraits {
+  static constexpr bool is_trivial() { return false; }
+  static bool equals(const T& a, const T& b) { return a == b; }
+};
+
+template <typename T>
+struct Traits : public GenericTraits<T> {};
+
+template <>
+struct Traits<int> : public GenericTraits<int> {
+  static constexpr bool is_trivial() { return true; }
+  static unsigned hash(int i) {
+    return 0;  // TODO
+  }
+  static void dump(int i) { printk("%d", i); }
+};
+
+template <>
+struct Traits<unsigned> : public GenericTraits<unsigned> {
+  static constexpr bool is_trivial() { return true; }
+  static unsigned hash(unsigned u) {
+    return 0;  // TODO
+  }
+  static void dump(unsigned u) { printk("%u", u); }
+};
+
+template <>
+struct Traits<u16> : public GenericTraits<u16> {
+  static constexpr bool is_trivial() { return true; }
+  static unsigned hash(u16 u) {
+    return 0;  // TODO
+  }
+  static void dump(u16 u) { printk("%u", u); }
+};
+
+template <>
+struct Traits<char> : public GenericTraits<char> {
+  static constexpr bool is_trivial() { return true; }
+  static unsigned hash(char c) { return 0; }
+  static void dump(char c) { printk("%c", c); }
+};
+
+template <typename T>
+struct Traits<T*> {
+  static unsigned hash(const T* p) {
+    return 0;  // int_hash((unsigned)(__PTRDIFF_TYPE__)p);
+  }
+  static constexpr bool is_trivial() { return true; }
+  static void dump(const T* p) { printk("%p", p); }
+  static bool equals(const T* a, const T* b) { return a == b; }
+};
 
 template <typename T>
 T&& move(T& arg) {
