@@ -7,13 +7,13 @@
 #include <idt.h>
 #include <mem.h>
 #include <module.h>
+#include <multiboot.h>
 #include <paging.h>
 #include <pci.h>
 #include <pit.h>
 #include <posix.h>
 #include <printk.h>
 #include <types.h>
-#include <multiboot.h>
 
 #include <asm.h>
 #include <device.h>
@@ -24,6 +24,7 @@
 #include <ptr.h>
 #include <string.h>
 #include <vec.h>
+#include <vga.h>
 
 extern int kernel_end;
 
@@ -81,6 +82,8 @@ class Foo {
   ~Foo() { printk("Foo dtor\n"); }
 };
 
+extern void print_heap(void);
+
 Foo f;
 
 extern "C" void play_sound(uint32_t nFrequence) {
@@ -104,9 +107,15 @@ extern "C" void play_sound(uint32_t nFrequence) {
 
 static const char* splash(void) {
   static const char* msgs[] = {
-      "Nick's Operating System", "Neat Operating System",
-      "Nifty Operating System",  "New Operating System",
-      "GNU Terry Pratchett",   "Nitrous Oxide",
+      "Nick's Operating System",
+      "Neat Operating System",
+      "Nifty Operating System",
+      "New Operating System",
+      "GNU Terry Pratchett",
+      "Nitrous Oxide",
+      "Now open source!",
+      "Not officially sanctioned!",
+      "WOW!",
   };
   // not the best way to randomly seed this stuff, but what am I going to do.
   return msgs[rdtsc() % (sizeof(msgs) / sizeof(msgs[0]))];
@@ -120,29 +129,25 @@ static const char* splash(void) {
   "   /_/ /_/\\____//____/  \n"   \
   "                        \n"
 
-
 #ifndef GIT_REVISION
 #define GIT_REVISION "NO-GIT"
 #endif
-extern void vga_init(void);
-extern "C" int kmain(u64 mbd, u64 magic) {
-  // initialize the serial "driver"
-  serial_install();
-  vga_init();
 
-  init_idt();
+[[noreturn]] void kmain2(void) {
+  u64 addr = 0;
+  paging::map(addr + KERNEL_VIRTUAL_BASE, addr, paging::pgsize::page);
+  paging::map(addr, addr, paging::pgsize::page);
 
-  printk("Welcome to\n");
-  printk(NOS_WELCOME);
-  printk("   nOS: %s\n", splash());
-  printk("   git: %s\n", GIT_REVISION);
+  tlb_flush();
 
-  // now that we have interupts working, enable sse! (fpu)
-  enable_sse();
-  // at this point, we are still mapped with the 2mb large pages.
-  // init_mem will replace this with a more fine-grained 4k page system by
-  // mapping kernel memory 1:1
-  init_mem(mbd);
+  addr++;
+
+  auto* dst = (u8*)(addr + KERNEL_VIRTUAL_BASE);
+
+  dst[0] = 0xFA;
+  printk("%02x\n", *(u8*)addr);
+  dst[0] = 0xFE;
+  printk("%02x\n", *(u8*)addr);
 
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
@@ -162,16 +167,21 @@ extern "C" int kmain(u64 mbd, u64 magic) {
   // and set the interval, or whatever
   set_pit_freq(100);
 
+  int i;
+  printk("%p\n", &i);
+  while (1) {
+    phys::alloc();
+  }
+
   // finally, enable interrupts
   sti();
 
-  if (0) {
-    auto drive = dev::ata(0x1F0, true);
+  // print_heap();
+  auto drive = dev::ata(0x1F0, true);
 
-    if (drive.identify()) {
-      auto fs = fs::ext2(drive);
-      fs.init();
-
+  if (drive.identify()) {
+    auto fs = fs::ext2(drive);
+    if (fs.init()) {
       auto test = [&](const char* path) {
         auto inode = fs.open(string(path), 0);
         if (inode) {
@@ -183,24 +193,57 @@ extern "C" int kmain(u64 mbd, u64 magic) {
 
       test("/");
       test("/kernel");
-      test("/kernel/src/");
-      test("/kernel/src/fs/");
-      test("/kernel/src/fs/ext2.cpp");
-      test("/kernel/src/fs/ext2.cpp/foo");
+      test("/kernel/");
+      test("/kernel/fs/");
+      test("/kernel/fs/ext2.cpp");
+      test("/kernel/fs/ext2.cpp/foo");
     }
   }
 
-  play_sound(1000);
-
-  printk("done!\n");
-
-  // now try and exit.
-  // write to the mobo exit port (special port)
-  // outb(0xE817, 0);
-
-  // simply hltspin
+  // spin forever
+  printk("no more work. spinning.\n");
   while (1) {
   }
+
+  printk("done\n");
+  while (1)
+    ;
+}
+
+extern "C" void call_with_new_stack(void*, void*);
+
+extern "C" int kmain(u64 mbd, u64 magic) {
+  // initialize the serial "driver"
+  serial_install();
+  vga::init();
+
+  vga::set_color(vga::color::white, vga::color::black);
+  vga::clear_screen();
+
+  init_idt();
+
+  printk(NOS_WELCOME);
+  printk("   Nick Wanninger (c) 2019 | Illinois Institute of Technology\n");
+  printk("   nOS: %s\n", splash());
+  printk("   git: %s\n", GIT_REVISION);
+  printk("\n\n");
+
+  // now that we have interupts working, enable sse! (fpu)
+  enable_sse();
+
+  // at this point, we are still mapped with the 2mb large pages.
+  // init_mem will replace this with a more fine-grained 4k page system by
+  // mapping kernel memory 1:1
+
+  init_mem(mbd);
+
+  init_kernel_virtual_memory();
+
+#define STKSIZE (4096 * 8)
+  void* new_stack = (void*)((u64)kmalloc(STKSIZE) + STKSIZE);
+
+  call_with_new_stack(new_stack, (void*)kmain2);
+
   return 0;
 }
 

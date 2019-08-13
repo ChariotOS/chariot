@@ -158,6 +158,13 @@ typedef struct regs_s regs_t;
   while ((x)) {          \
   }
 
+
+static inline u64 read_rsp(void) {
+  u64 ret;
+  asm volatile("mov %%rsp, %0" : "=r"(ret));
+  return ret;
+}
+
 static inline u64 read_cr0(void) {
   u64 ret;
   asm volatile("mov %%cr0, %0" : "=r"(ret));

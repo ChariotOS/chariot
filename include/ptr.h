@@ -4,7 +4,6 @@
 #include <printk.h>
 #include <template_lib.h>
 
-
 // Takes in a default deleter. unique_ptr_deleters operator will be invoked by
 // default.
 template <typename T>
@@ -32,20 +31,25 @@ class unique_ptr {
   template <typename U>
   unique_ptr(const unique_ptr<U>&) = delete;
 
-
-
   template <typename U>
   unique_ptr& operator=(const unique_ptr<U>&) = delete;
-
 
  public:
   // Allows move-semantics. While the unique_ptr cannot be copied it can be
   // safely moved.
-  unique_ptr(unique_ptr&& move) noexcept { move.swap(*this); }
+  unique_ptr(unique_ptr<T>&& move) noexcept { move.swap(*this); }
   // ptr = std::move(resource)
-  unique_ptr& operator=(unique_ptr&& move) noexcept {
+  unique_ptr<T>& operator=(unique_ptr<T>&& move) noexcept {
     move.swap(*this);
     return *this;
+  }
+
+  template <typename U>
+  unique_ptr(unique_ptr<U>&& other) noexcept {
+    if (this != static_cast<void*>(&other)) {
+      delete m_ptr;
+      m_ptr = other.leak_ptr();
+    }
   }
 
   template <typename U>
@@ -69,6 +73,7 @@ class unique_ptr {
   T* release() noexcept { return exchange(m_ptr, nullptr); }
   // returns a pointer to the resource
   T* get() const noexcept { return m_ptr; }
+
   // swaps the resources
   void swap(unique_ptr<T>& resource_ptr) noexcept {
     ::swap(m_ptr, resource_ptr.m_ptr);

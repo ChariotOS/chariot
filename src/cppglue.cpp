@@ -105,7 +105,10 @@ extern "C" uint64_t _Unwind_GetDataRelBase(struct _Unwind_Context *context) {
   return 0;
 }
 
-void *operator new(size_t size) { return kmalloc(size); }
+void *operator new(size_t size) {
+  // printk("operator new %zu\n", size);
+  return kmalloc(size);
+}
 
 void *operator new[](size_t size) { return kmalloc(size); }
 
@@ -123,6 +126,11 @@ void operator delete(void *ptr, size_t s) { kfree(ptr); }
 
 void operator delete[](void *ptr, size_t s) { kfree(ptr); }
 
+
+
+extern "C" void __stack_chk_fail(void) {
+  panic("stack pointer smashed!\n");
+}
 /*
 namespace std {
 

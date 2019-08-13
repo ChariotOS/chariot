@@ -6,7 +6,6 @@ pic_send_eoi:
 	mov al, 0x20
 	out 0x20, al ; Send the EOI to the PIC
 	ret
-	
 
 global pic_enable
 pic_enable:
@@ -40,3 +39,12 @@ pic_enable:
 	mov al, ah
 	out 0x40, al    ;send high byte
 	ret
+
+
+
+
+;; new stack in rdi, func in rsi
+global call_with_new_stack
+call_with_new_stack:
+	mov rsp, rdi
+	call rsi

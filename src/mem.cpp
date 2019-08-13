@@ -1,9 +1,9 @@
 #include <mem.h>
+#include <multiboot.h>
 #include <paging.h>
 #include <phys.h>
 #include <printk.h>
 #include <types.h>
-#include <multiboot.h>
 
 #define MAX_MMAP_ENTRIES 128
 
@@ -19,6 +19,8 @@
 
 #define ALIGN(x, a) (((x) + (a)-1) & ~((a)-1))
 
+
+bool use_kernel_vm = false;
 
 extern char low_kern_start;
 extern char low_kern_end;
@@ -50,13 +52,29 @@ void *bootheap_realloc(void *p, u64 ns) {
   }
 }
 
-static void *(*current_malloc)(u64) = &bootheap_malloc;
-static void (*current_free)(void *) = &bootheap_free;
-static void *(*current_realloc)(void *, u64) = &bootheap_realloc;
 
-void *kmalloc(u64 size) { return current_malloc(size); }
-void kfree(void *ptr) { current_free(ptr); }
-void *krealloc(void *ptr, u64 newsize) { return current_realloc(ptr, newsize); }
+extern "C" void *malloc(size_t size);
+extern "C" void free(void *ptr);
+extern "C" void *realloc(void *ptr, size_t size);
+
+
+extern void *mm_malloc(size_t size);
+extern void mm_free(void *ptr);
+extern void *mm_realloc(void *ptr, size_t size);
+
+void *kmalloc(u64 size) {
+  auto ptr = malloc(size);
+  // printk("malloc(%zu) = %p\n", size, ptr);
+  return ptr;
+}
+void kfree(void *ptr) {
+  // printk("free(%p)\n", ptr);
+  free(ptr);
+}
+void *krealloc(void *ptr, u64 newsize) {
+  // printk("realloc(%p, %zu)\n", ptr, newsize);
+  return realloc(ptr, newsize);
+}
 
 // just 128 memory regions. Any more and idk what to do
 static struct mem_map_entry memory_map[128];
@@ -120,16 +138,17 @@ void init_mmap(u64 mbd) {
   }
 }
 
-void init_dyn_mm(void);
 
 int init_mem(u64 mbd) {
   // go detect all the ram in the system
   init_mmap(mbd);
 
+
   printk("detected %lu bytes of usable memory (%lu pages)\n",
          mm_info.usable_ram, mm_info.usable_ram / 4096);
 
   auto *kend = (u8 *)&high_kern_end;
+
 
   // setup memory regions
   for (int i = 0; i < mm_info.num_regions; i++) {
@@ -143,14 +162,17 @@ int init_mem(u64 mbd) {
     phys::free_range(start, end);
   }
 
-  // initialize dynamic memory first, before we have smaller pages
-  init_dyn_mm();
-
   return 0;
 }
 
+
+
+
 void *alloc_id_page() {
-  return phys::alloc();
+  auto pa = phys::alloc();
+
+  map_page(pa, pa);
+  return pa;
 }
 
 static u8 *kheap_start = NULL;
@@ -165,6 +187,8 @@ void *kheap_hi(void) { return kheap_start + kheap_size; }
  * ksbrk - shift the end of the heap further.
  */
 void *ksbrk(i64 inc) {
+  printk("SBRK\n");
+  // printk("sbrk %d: %p (%zu)\n", inc, kheap_start + kheap_size, kheap_size);
   u64 oldsz = kheap_size;
   u64 newsz = oldsz + inc;
 
@@ -175,28 +199,44 @@ void *ksbrk(i64 inc) {
     void *pa = phys::alloc();
     map_page(kheap_start + a, pa);
   }
-  u8 *p = (u8 *)kheap_start + oldsz;
-  memset(p, 0, newsz - oldsz);
   kheap_size = newsz;
-
   return kheap_start + oldsz;
 }
 
-extern void *mm_malloc(size_t size);
-extern void mm_free(void *ptr);
-extern void *mm_realloc(void *ptr, size_t size);
+extern "C" void *sbrk(i64 inc) { return ksbrk(inc); }
+
 extern int mm_init(void);
 
 void init_dyn_mm(void) {
   // the kheap starts, virtually, after the last physical page.
-  kheap_start = (u8 *)((u64)mm_info.last_pfn << 12);
+
+  // ksbrk(0);
+
+  // mm_init();
+}
+
+
+void init_kernel_virtual_memory() {
+
+
+  char buf[50];
+
+
+  printk("has: %s\n", human_size(mm_info.total_mem, buf));
+  u64 base = KERNEL_VIRTUAL_BASE;
+
+  u64 page_step = HUGE_PAGE_SIZE;
+  auto page_size = paging::pgsize::large;
+
+  u64 i = 0;
+
+  for (;true; i += page_step) {
+    if (i > mm_info.total_mem) break;
+    paging::map(base + i, i, page_size);
+  }
+
+  printk("mapped: %s\n", human_size(i, buf));
+
+  kheap_start = (u8 *)i + base;
   kheap_size = 0;
-
-  ksbrk(0);
-
-  current_malloc = mm_malloc;
-  current_free = mm_free;
-  current_realloc = mm_realloc;
-  mm_init();
-
 }

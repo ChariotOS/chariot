@@ -2,6 +2,7 @@
 #include <printk.h>
 #include <dev/serial.h>
 #include <types.h>
+#include <vga.h>
 
 // define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H ...) to include the
 // printf_config.h header file
@@ -84,10 +85,9 @@
 
 #define IO_PORT_PUTCHAR 0xfad
 
-extern void vga_writechar(char c);
 
 void putchar(char c) {
-  vga_writechar(c);
+  vga::putchar(c);
   serial_send(SERIAL_PORT_A, c);
 }
 int puts(char* s) {

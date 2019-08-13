@@ -29,7 +29,7 @@ class filesystem {
 
   virtual ref<inode> get_inode(u32 index) = 0;
 
-  // opens a file options
+  // opens a file with 'flags' options
   ref<fs::inode> open(string s, u32 flags);
   virtual ref<fs::inode> open(fs::path, u32 flags) = 0;
 

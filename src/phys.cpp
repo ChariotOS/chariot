@@ -1,4 +1,5 @@
 #include <asm.h>
+#include <mem.h>
 #include <paging.h>
 #include <phys.h>
 #include <printk.h>
@@ -21,10 +22,7 @@ static struct {
   u64 nfree;
 } kmem;
 
-
-u64 phys::nfree(void) {
-  return kmem.nfree;
-}
+u64 phys::nfree(void) { return kmem.nfree; }
 
 /*
 static void print_freelist() {
@@ -34,18 +32,28 @@ static void print_freelist() {
 }
 */
 
-frame *tmp_map_frame(frame *fr) {
-  map_page(phys_mem_scratch, fr);
-  return (frame *)phys_mem_scratch;
+static frame *working_addr(frame *fr) {
+  if (use_kernel_vm) {
+    return (frame *)((void*)(use_kernel_vm ? (u64)((void*)(fr)) + KERNEL_VIRTUAL_BASE : (u64)(fr)));
+  } else {
+    map_page(phys_mem_scratch, fr);
+    return (frame *)phys_mem_scratch;
+  }
 }
 
 // physical memory allocator implementation
 void *phys::alloc(void) {
   frame *r = kmem.freelist;
 
+
+  char buf[50];
+
+
+  printk("has: %s\n", human_size(kmem.nfree * 4096, buf));
+
   if (r == nullptr) panic("out of memory");
 
-  frame *f = tmp_map_frame(r);
+  frame *f = working_addr(r);
 
   if (f->page_len > 1) {
     auto n = (frame *)((char *)r + PGSIZE);
@@ -55,13 +63,13 @@ void *phys::alloc(void) {
 
     kmem.freelist = n;
 
-    n = tmp_map_frame(n);
+    n = working_addr(n);
     n->next = new_next;
     n->page_len = new_len;
   } else {
     kmem.freelist = f->next;
   }
-  f = tmp_map_frame(r);
+  f = working_addr(r);
   memset(f, 0, PGSIZE);
 
   // decrement the number of freed pages
@@ -74,7 +82,7 @@ void phys::free(void *v) {
   if ((u64)v % PGSIZE) panic("phys::free requires page aligned address");
   if (v < high_kern_end) panic("phys::free cannot free below the kernel's end");
 
-  frame *r = tmp_map_frame((frame*)v);
+  frame *r = working_addr((frame *)v);
   r->next = kmem.freelist;
   r->page_len = 1;
   kmem.freelist = (frame *)v;
@@ -96,7 +104,7 @@ void phys::free_range(void *vstart, void *vend) {
     panic("zero free_range\n");
   }
 
-  frame *df = tmp_map_frame(fr);
+  frame *df = working_addr(fr);
 
   df->page_len = pl;
   if (kmem.freelist == NULL) {
@@ -108,5 +116,4 @@ void phys::free_range(void *vstart, void *vend) {
   }
   kmem.nfree += df->page_len;
 }
-
 

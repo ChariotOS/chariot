@@ -93,7 +93,7 @@ SECTIONS
 	 * used to allocate boot-time objects.
 	 */
 	bootheap_start = .;
-	. += 0x1000 * 64;
+	/* . += 0x1000 * 64; */
 
 
 	high_kern_end = .;

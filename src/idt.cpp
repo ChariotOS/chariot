@@ -5,6 +5,7 @@
 #include <pit.h>
 #include <printk.h>
 #include <types.h>
+#include <vga.h>
 
 // struct gatedesc idt[NUM_IDT_ENTRIES];
 
@@ -141,44 +142,57 @@ void interrupt_disable(int i) {
   }
 }
 
+
+#ifndef GIT_REVISION
+#define GIT_REVISION "NO-GIT"
+#endif
+
 static void unknown_exception(int i, struct trapframe *tf) {
-#define INDENT "   "
-  printk("+++++++++++++ !!! +++++++++++++\n");
+  auto color = vga::make_color(vga::color::white, vga::color::blue);
+  vga::clear_screen(vga::make_entry(' ', color));
+  vga::set_color(vga::color::white, vga::color::blue);
+
+
+#define INDENT "                  "
+#define BORDER INDENT "+========================================+\n"
+
+
+  for (int i = 0; i < 4; i++) printk("\n");
+
+  printk(BORDER);
   printk("\n");
-  printk(INDENT "KERNEL PANIC\n");
+  printk(INDENT "             ! KERNEL PANIC !\n");
   printk("\n");
 
   printk(INDENT "CPU EXCEPTION: %s\n", excp_codes[tf->trapno][EXCP_NAME]);
   printk(INDENT "the system was running for %d ticks\n", ticks);
 
   printk("\n");
-
-  printk(INDENT "RAX=%016x RBX=%016x RCX=%016x RDX=%016x\n", tf->rax, tf->rbx,
-         tf->rcx, tf->rdx);
-  printk(INDENT "RDI=%016x RSI=%016x RBP=%016x RSP=%016x\n", tf->rdi, tf->rsi,
-         tf->rbp, (u64)tf);
-  printk(INDENT "INT=%016x ERR=%016x EIP=%016x RSP=%016x\n", tf->trapno,
-         tf->err, tf->eip, (u64)tf);
+  printk(INDENT "Stats for nerds:\n");
+  printk(INDENT "INT=%016x  ERR=%016x\n", tf->trapno,
+         tf->err);
+  printk(INDENT "ESP=%016x  EIP=%016x\n", tf->esp, tf->eip);
+  printk("\n");
+  printk(INDENT "SYSTEM HALTED. File a bug report please:\n");
+  printk(INDENT "  repo: github.com/nickwanninger/nOS\n");
 
   printk("\n");
-
-  printk(INDENT "SYSTEM HALTED\n");
-
+  printk(INDENT " %s\n", GIT_REVISION);
   printk("\n");
-  printk("+++++++++++++ !!! +++++++++++++\n");
-  panic("see above\n");
+  printk(BORDER);
 
   lidt(0, 0);  // die
-  while (1) halt();
+  while (1) {};
 }
 
 static void pgfault_handle(int i, struct trapframe *tf) {
   void *addr = (void *)(read_cr2() & ~0xFFF);
-  panic("PGFLT %p\n", addr);
+  printk("EIP: %p\n", tf->eip);
+  printk("ERR: %p\n", tf->err);
+  panic("PGFLT %p\n", read_cr2());
   map_page(addr, addr);
   return;
 }
-
 
 static void tick_handle(int i, struct trapframe *tf) {
   ticks++;

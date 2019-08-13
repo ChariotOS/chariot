@@ -14,13 +14,21 @@ struct mmap_info {
   uint64_t total_mem; /* includes I/O holes etc. */
   uint32_t last_pfn;
   uint32_t num_regions;
+  uint64_t nbytes; // how many bytes
 };
+
+extern bool use_kernel_vm;
+
+#define KERNEL_VIRTUAL_BASE 0xffffe90000000000
+
+#define v2p(addr) (void*)((u64)(addr) - KERNEL_VIRTUAL_BASE)
+#define p2v(addr) (void*)((u64)(addr) + KERNEL_VIRTUAL_BASE)
+
+
 
 int init_mem(u64 mbd);
 
-void *memcpy(void *dest, const void *src, u64 n);
-
-
+// void *memcpy(void *dest, const void *src, u64 n);
 
 // kernel dynamic memory allocation functions
 // NOTE: all of the internals of this API will change, but the API will not
@@ -34,5 +42,8 @@ void *kheap_lo();
 void *kheap_hi();
 
 void *alloc_id_page(void);
+
+
+void init_kernel_virtual_memory();
 
 #endif

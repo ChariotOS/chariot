@@ -7,8 +7,15 @@
 // Standard information and structures for EXT2
 #define EXT2_SIGNATURE 0xEF53
 
+#define EXT2_TRACE
 
-#define DEBUG_EXT2
+#ifdef EXT2_TRACE
+#define TRACE printk("EXT2: [TRACE]: (%d) %s\n", __LINE__, __PRETTY_FUNCTION__)
+#else
+#define TRACE
+#endif
+
+// #define DEBUG_EXT2
 
 #ifdef DEBUG_EXT2
 #define INFO(fmt, args...) printk("[EXT2] " fmt, ##args)
@@ -110,21 +117,26 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-fs::ext2_inode::ext2_inode(fs::ext2 &fs, u32 index) : inode(fs, index) {}
+fs::ext2_inode::ext2_inode(fs::ext2 &fs, u32 index) : inode(fs, index) {
+  TRACE;
+}
 
 fs::ext2_inode::~ext2_inode() {
+  TRACE;
   // TODO
 }
 
-fs::ext2::ext2(dev::blk_dev &dev) : filesystem(/*super*/), dev(dev) {}
+fs::ext2::ext2(dev::blk_dev &dev) : filesystem(/*super*/), dev(dev) { TRACE; }
 
 fs::ext2::~ext2(void) {
-  if (sb != nullptr) kfree(sb);
+  TRACE;
+  if (sb != nullptr) delete sb;
   if (work_buf != nullptr) kfree(work_buf);
   if (inode_buf != nullptr) kfree(inode_buf);
 }
 
 bool fs::ext2::init(void) {
+  TRACE;
   sb = new superblock();
   // read the superblock
   bool res = dev.read(1024, 1024, sb);
@@ -157,10 +169,12 @@ bool fs::ext2::init(void) {
 }
 
 bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {
+  TRACE;
   return read_inode(&dst, inode);
 }
 
 bool fs::ext2::read_inode(ext2_inode_info *dst, u32 inode) {
+  TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
 
   // now that we have which BGF the inode is in, load that desc
@@ -184,6 +198,7 @@ bool fs::ext2::read_inode(ext2_inode_info *dst, u32 inode) {
 }
 
 bool fs::ext2::read_inode(ext2_inode *dst, u32 inode) {
+  TRACE;
   return read_inode(&dst->info, inode);
 }
 
@@ -194,14 +209,17 @@ bool fs::ext2::read_inode(ext2_inode *dst, u32 inode) {
  */
 
 bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
+  TRACE;
   return read_inode(&src, inode);
 }
 
 bool fs::ext2::write_inode(ext2_inode *src, u32 inode) {
+  TRACE;
   return read_inode(&src->info, inode);
 }
 
 bool fs::ext2::write_inode(ext2_inode_info *src, u32 inode) {
+  TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
 
   // now that we have which BGF the inode is in, load that desc
@@ -232,15 +250,19 @@ bool fs::ext2::write_inode(ext2_inode_info *src, u32 inode) {
  */
 
 bool fs::ext2::read_block(u32 block, void *buf) {
-  return dev.read(block * blocksize, blocksize, buf);
+  TRACE;
+  assert(dev.read(block * blocksize, blocksize, buf));
+  return true;
 }
 
 bool fs::ext2::write_block(u32 block, const void *buf) {
+  TRACE;
   return dev.write(block * blocksize, blocksize, buf);
 }
 
 void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,
                                func<bool(void *)> callback) {
+  TRACE;
   for (auto b : blks) {
     read_block(b, buf);
     if (!callback(buf)) return;
@@ -248,6 +270,7 @@ void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,
 }
 
 void *fs::ext2::read_entire(ext2_inode_info &inode) {
+  TRACE;
   u32 block_count = inode.size / blocksize;
   if (inode.size % blocksize != 0) block_count++;
 
@@ -267,6 +290,7 @@ void *fs::ext2::read_entire(ext2_inode_info &inode) {
 
 void fs::ext2::traverse_dir(u32 inode,
                             func<bool(fs::directory_entry)> callback) {
+  TRACE;
   ext2_inode_info i;
   read_inode(i, inode);
   traverse_dir(i, callback);
@@ -274,6 +298,7 @@ void fs::ext2::traverse_dir(u32 inode,
 
 void fs::ext2::traverse_dir(ext2_inode_info &inode,
                             func<bool(fs::directory_entry)> callback) {
+  TRACE;
   // vec<u32> blocks = read_dir(inode);
 
   void *buffer = kmalloc(blocksize);
@@ -283,9 +308,8 @@ void fs::ext2::traverse_dir(ext2_inode_info &inode,
       if (entry->inode != 0) {
         fs::directory_entry ent;
         ent.inode = entry->inode;
-        ent.name = "";
-
-        for (u32 i = 0; i < entry->namelength; i++) ent.name += entry->name[i];
+        for (u32 i = 0; i < entry->namelength; i++)
+          ent.name.push(entry->name[i]);
         if (!callback(ent)) break;
       }
       entry = (ext2_dir *)((char *)entry + entry->size);
@@ -297,24 +321,25 @@ void fs::ext2::traverse_dir(ext2_inode_info &inode,
 }
 
 vec<fs::directory_entry> fs::ext2::read_dir(u32 inode) {
+  TRACE;
   ext2_inode_info info;
   read_inode(info, inode);
   return read_dir(info);
 }
 
 vec<fs::directory_entry> fs::ext2::read_dir(ext2_inode_info &inode) {
+  TRACE;
   vec<fs::directory_entry> entries;
 
-  func<bool(fs::directory_entry)> f = [&](fs::directory_entry ent) -> bool {
-    entries.push(ent);
+  traverse_dir(inode, [&](fs::directory_entry ent) -> bool {
+    entries.push(move(ent));
     return true;
-  };
-
-  traverse_dir(inode, f);
+  });
   return entries;
 }
 
 int fs::ext2::read_file(u32 inode, u32 off, u32 len, u8 *buf) {
+  TRACE;
   ext2_inode_info info;
   read_inode(info, inode);
 
@@ -322,23 +347,27 @@ int fs::ext2::read_file(u32 inode, u32 off, u32 len, u8 *buf) {
 }
 
 int fs::ext2::read_file(ext2_inode_info &inode, u32 off, u32 len, u8 *buf) {
+  TRACE;
   return 0;
 }
 
 // TODO
 ref<fs::inode> fs::ext2::get_inode(u32 index) {
+  TRACE;
   auto in = make_ref<fs::ext2_inode>(*this, index);
   read_inode(in->info, index);
   return in;
 }
 
 vec<u32> fs::ext2::blocks_for_inode(u32 inode) {
+  TRACE;
   ext2_inode_info info;
   read_inode(info, inode);
   return blocks_for_inode(info);
 }
 
 vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
+  TRACE;
   u32 block_count = inode.size / blocksize;
   if (inode.size % blocksize != 0) block_count++;
 
@@ -397,34 +426,31 @@ vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
 }
 
 ref<fs::inode> fs::ext2::open(fs::path path, u32 flags) {
+  TRACE;
   if (!path.is_root()) {
     printk("ext2::open requires absolute paths (\"%s\")\n",
            path.to_string().get());
     return {};
   }
 
-
-  // INFO("looking for %s\n", path.to_string().get());
+  INFO("looking for %s\n", path.to_string().get());
 
   // starting at the root node (always 2)
   u32 inode = 2;
   ext2_inode_info info;
 
   for (int i = 0; i < path.len(); i++) {
-
     // read the node's info
     read_inode(info, inode);
     const string &name = path[i];
 
-
-    // INFO("============================\n");
-    // INFO("searching %d for %s\n", inode, name.get());
-    // INFO("\n");
+    INFO("============================\n");
+    INFO("searching %d for %s\n", inode, name.get());
+    INFO("\n");
 
     u16 type = info.type & 0xF000;
 
-    // INFO("type=%04x\n", info.type);
-
+    INFO("type=%04x\n", info.type);
 
     if (type == 0x4000 /*directory*/) {
       auto contents = read_dir(info);
@@ -432,7 +458,7 @@ ref<fs::inode> fs::ext2::open(fs::path path, u32 flags) {
 
       for (auto &file : contents) {
         if (file.name == name) {
-          // INFO("%s@%d\n", file.name.get(), file.inode);
+          INFO("%s@%d\n", file.name.get(), file.inode);
           inode = file.inode;
           found = true;
           break;
@@ -448,7 +474,6 @@ ref<fs::inode> fs::ext2::open(fs::path path, u32 flags) {
       return {};
     }
   }
-
 
   // INFO("============================\n");
   // construct the inode object and return it

@@ -39,13 +39,13 @@ class vec {
     len = cap;
   }
 
-  inline vec(vec<T> &o) {
+  inline vec(const vec<T> &o) {
     reserve(o.capacity());
     *this = o;
   }
 
   // copy assignment
-  inline vec &operator=(vec<T> &v) {
+  inline vec &operator=(const vec<T> &v) {
     reserve(v.capacity());
     clear();
     for (auto &e : v) {
@@ -54,7 +54,7 @@ class vec {
     return *this;
   }
 
-  // copy assignment
+  // move assignment
   inline vec &operator=(vec<T> &&v) {
     m_data = v.m_data;
     len = v.len;
@@ -81,6 +81,9 @@ class vec {
   const T *data(void) const { return m_data; }
 
   inline void clear(void) {
+    for (auto &e : *this) {
+      e.~T();
+    }
     len = 0;
     memset(m_data, 0, sizeof(T) * cap);
   }
@@ -100,10 +103,10 @@ class vec {
 
   inline void reserve(u32 new_cap) {
     if (m_data == nullptr) {
-      m_data = (T*)kmalloc(sizeof(T) * new_cap);
+      m_data = (T *)kmalloc(sizeof(T) * new_cap);
     } else {
       if (new_cap <= cap) return;
-      m_data = (T*)krealloc(m_data, sizeof(T) * new_cap);
+      m_data = (T *)krealloc(m_data, sizeof(T) * new_cap);
     }
 
     cap = new_cap;
@@ -116,7 +119,20 @@ class vec {
       } else
         reserve(cap * 2);
     }
+    // printk("");
     m_data[len++] = value;
+  }
+
+  inline void push(T &&value) {
+    // printk("this one\n");
+    if (len >= cap) {
+      if (cap < 10) {
+        reserve(10);
+      } else
+        reserve(cap * 2);
+    }
+    // printk("%p\n", m_data);
+    m_data[len++] = move(value);
   }
 
   inline void pop(void) {

@@ -124,9 +124,9 @@ bits 32
 
 
 
-;; The startup sequence of the kernel identity maps with 2MB pages, just so we can
+;; The startup sequence of the kernel identity maps with 4kb pages, just so we can
 ;; have all the things we need mapped right away. We will later replace this basic
-;; mapping with a better one, when we are in C
+;; mapping with a better one when we are in C
 map_lowkern_basic:
 	;; recursively map p4 to itself (osdev told me to)
 	mov eax, p4_table
@@ -157,7 +157,7 @@ map_lowkern_basic:
 .write_pde:
 
 	mov [edx], eax
-	add eax, 4096 ; 0x200000
+	add eax, 4096
 	add edx, 0x8 ;; shift the dst by 8 bytes (size of addr)
 	loop .write_pde
 
@@ -167,7 +167,6 @@ map_lowkern_basic:
 
 
 longmode_setup:
-	;; put pml4 address in cr3
 	mov eax, p4_table
 	mov cr3, eax
 

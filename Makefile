@@ -16,14 +16,15 @@ CODEFILES := $(wildcard $(CODEFILES))
 CSOURCES:=$(filter %.c,$(CODEFILES))
 CPPSOURCES:=$(filter %.cpp,$(CODEFILES))
 
-COBJECTS:=$(CSOURCES:%.c=%.c.o)
-COBJECTS+=$(CPPSOURCES:%.cpp=%.cpp.o)
+COBJECTS:=$(CSOURCES:%.c=build/%.c.o)
+COBJECTS+=$(CPPSOURCES:%.cpp=build/%.cpp.o)
 
 # ASOURCES:=$(wildcard kernel/src/*.asm)
 ASOURCES:=$(filter %.asm,$(CODEFILES))
-AOBJECTS:=$(ASOURCES:%.asm=%.ao)
+AOBJECTS:=$(ASOURCES:%.asm=build/%.asm.o)
 
 KERNEL=build/kernel.elf
+ROOTFS=build/root.img
 
 AFLAGS=-f elf64 -w-zext-reloc
 
@@ -31,16 +32,13 @@ CINCLUDES=-I./include/
 
 
 
-COMMON_FLAGS := $(CINCLUDES) -fno-omit-frame-pointer \
-				 -Wno-unused-functions \
+COMMON_FLAGS := $(CINCLUDES)  \
+				 -fPIC \
 				 -Wno-sign-compare\
 			   -ffreestanding \
-			   -fno-stack-protector \
-			   -fno-strict-aliasing \
-         -fno-strict-overflow \
 			   -mno-red-zone \
 			   -mcmodel=large -O3 -fno-tree-vectorize \
-				 -DGITREVISION=$(shell git rev-parse --short HEAD)
+				 -DGIT_REVISION=\"$(shell git rev-parse HEAD)\"
 
 CFLAGS:= $(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
 
@@ -50,80 +48,70 @@ DFLAGS=-g -DDEBUG -O0
 
 
 
-default: iso
+
+default: $(KERNEL)
 
 build:
 	@mkdir -p build
 
-kern: build $(KERNEL)
 
-%.c.o: %.c
-	@echo " CC " $<
+build/%.c.o: %.c
+	@mkdir -p $(dir $@)
+	@echo " CC  " $<
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
-%.cpp.o: %.cpp
-	@echo " CX " $<
+build/%.cpp.o: %.cpp
+	@mkdir -p $(dir $@)
+	@echo " CXX " $<
 	@$(CXX) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
 
 
-%.ao: %.asm
-	@echo " AS " $<
+build/%.asm.o: %.asm
+	@mkdir -p $(dir $@)
+	@echo " ASM " $<
 	@$(AS) $(AFLAGS) -o $@ $<
 
-$(KERNEL): build/fs.img $(CODEFILES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
-	@echo " LD " $@
+$(KERNEL): $(CODEFILES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
+	@echo " LNK " $@
 	@$(LD) $(LDFLAGS) $(AOBJECTS) $(COBJECTS) -T kernel.ld -o $@
 
 
-build/fs.img:
+$(ROOTFS):
 	dd if=/dev/urandom of=$@ bs=512M count=1
 	chmod 666 $@
 	mkfs.ext2 $@
 	mkdir -p build/mnt
-	sudo mount -o loop build/fs.img build/mnt
+	sudo mount -o loop $(ROOTFS) build/mnt
 	sudo cp -r mnt/. build/mnt/
 	sudo cp -r src build/mnt/kernel
 	sudo umount build/mnt
 
 fs:
-	rm -rf build/fs.img
-	make build/fs.img
+	rm -rf $(ROOTFS)
+	make $(ROOTFS)
 
-iso: kern
+iso: $(KERNEL)
 	mkdir -p build/iso/boot/grub
 	cp ./grub.cfg build/iso/boot/grub
 	cp build/kernel.elf build/iso/boot
 	grub-mkrescue -o build/kernel.iso build/iso
 
 
-klean:
-	rm -rf build/fs.img
-	rm -rf $(COBJECTS)
-	rm -rf $(AOBJECTS)
-	rm -rf $(KERNEL)
-	rm -rf $(shell find kernel | grep "\.o\$$")
-	rm -rf $(shell find kernel | grep "\.ao\$$")
-
-
-clean: klean
-	rm -rf $(shell find . -type f | grep "mobo\$$")
-	rm -rf $(shell find . | grep "\.o\$$")
+clean:
 	rm -rf build
 
 
-qemu: iso
-	@qemu-system-x86_64 \
-		-serial stdio \
-		-cdrom build/kernel.iso \
-		-m 8G \
-		-drive file=build/fs.img,if=ide
+QEMUOPTS=-cdrom build/kernel.iso\
+				 -m 8G \
+				 -drive file=$(ROOTFS),if=ide
 
-qemu-nox: iso
-	@qemu-system-x86_64 \
-		-nographic \
-		-cdrom build/kernel.iso \
-		-m 8G \
-		-drive file=build/fs.img,if=ide
+qemu: iso $(ROOTFS)
+	@qemu-system-x86_64 $(QEMUOPTS) \
+		-serial stdio
+
+qemu-nox: iso $(ROOTFS)
+	@qemu-system-x86_64 $(QEMUOPTS) \
+		-nographic
 
 
 bochs: iso

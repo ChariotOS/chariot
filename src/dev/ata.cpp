@@ -2,6 +2,17 @@
 #include <idt.h>
 #include <module.h>
 #include <printk.h>
+#include <mem.h>
+
+
+
+#define ATA_TRACE
+
+#ifdef ATA_TRACE
+#define TRACE printk("ATA:  [TRACE]: (%d) %s\n", __LINE__, __PRETTY_FUNCTION__)
+#else
+#define TRACE
+#endif
 
 #define ATA_IRQ0 (32 + 14)
 #define ATA_IRQ1 (32 + 15)
@@ -9,6 +20,7 @@
 #define ATA_IRQ3 (32 + 9)
 
 dev::ata::ata(u16 portbase, bool master) {
+  TRACE;
   sector_size = 512;
   this->master = master;
 
@@ -24,12 +36,17 @@ dev::ata::ata(u16 portbase, bool master) {
 }
 
 dev::ata::~ata() {
-  delete[] id_buf;
+  TRACE;
+  kfree(id_buf);
 }
 
-void dev::ata::select_device() { device_port.out(master ? 0xA0 : 0xB0); }
+void dev::ata::select_device() {
+  TRACE;
+  device_port.out(master ? 0xA0 : 0xB0); 
+}
 
 bool dev::ata::identify() {
+  TRACE;
   // select the correct device
   select_device();
   // clear the HOB bit, idk what that is.
@@ -65,7 +82,7 @@ bool dev::ata::identify() {
     return false;
   }
 
-  id_buf = new u16[256];
+  id_buf = (u16*)kmalloc(sizeof(u16) * 256);
   for (u16 i = 0; i < 256; i++) {
     id_buf[i] = data_port.in();
   }
@@ -80,6 +97,8 @@ bool dev::ata::identify() {
 }
 
 bool dev::ata::read_block(u32 sector, u8* data) {
+  TRACE;
+
   if (sector & 0xF0000000) return false;
 
   // select the correct device, and put bits of the address
@@ -114,6 +133,7 @@ bool dev::ata::read_block(u32 sector, u8* data) {
 }
 
 bool dev::ata::write_block(u32 sector, const u8* buf) {
+  TRACE;
   if (sector & 0xF0000000) return false;
 
   // select the correct device, and put bits of the address
@@ -139,6 +159,7 @@ bool dev::ata::write_block(u32 sector, const u8* buf) {
 }
 
 bool dev::ata::flush(void) {
+  TRACE;
   device_port.out(master ? 0xE0 : 0xF0);
   command_port.out(0xE7);
 
@@ -151,6 +172,7 @@ bool dev::ata::flush(void) {
 }
 
 u8 dev::ata::wait(void) {
+  TRACE;
   u8 status = command_port.in();
   while (((status & 0x80) == 0x80) && ((status & 0x01) != 0x01)) {
     status = command_port.in();
@@ -158,13 +180,18 @@ u8 dev::ata::wait(void) {
   return status;
 }
 
-u64 dev::ata::sector_count(void) { return n_sectors; }
+u64 dev::ata::sector_count(void) {
+  TRACE;
+  return n_sectors;
+}
 
 u64 dev::ata::block_size() {
+  TRACE;
   return sector_size;
 }
 
 static void ata_interrupt(int intr, trapframe* fr) {
+  // TRACE;
   // printk("ata_interrupt\n");
 }
 
