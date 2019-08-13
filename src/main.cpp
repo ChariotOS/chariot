@@ -242,7 +242,7 @@ extern "C" int kmain(u64 mbd, u64 magic) {
 #define STKSIZE (4096 * 8)
   void* new_stack = (void*)((u64)kmalloc(STKSIZE) + STKSIZE);
 
-  call_with_new_stack(new_stack, (void*)kmain2);
+  call_with_new_stack(new_stack, p2v(kmain2));
 
   return 0;
 }
