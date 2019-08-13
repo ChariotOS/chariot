@@ -76,34 +76,6 @@ static void call_global_constructors(void) {
   for (i = 0; i < count; i++) __init_array_start[i]();
 }
 
-class Foo {
- public:
-  Foo() { printk("Foo ctor\n"); }
-  ~Foo() { printk("Foo dtor\n"); }
-};
-
-extern void print_heap(void);
-
-Foo f;
-
-extern "C" void play_sound(uint32_t nFrequence) {
-  uint32_t Div;
-  uint8_t tmp;
-
-  // Set the PIT to the desired frequency
-  Div = 1193180 / nFrequence;
-
-  printk("%d\n", Div);
-  outb(0x43, 0xb6);
-  outb(0x42, (uint8_t)(Div));
-  outb(0x42, (uint8_t)(Div >> 8));
-
-  // And play the sound using the PC speaker
-  tmp = inb(0x61);
-  if (tmp != (tmp | 3)) {
-    outb(0x61, tmp | 3);
-  }
-}
 
 static const char* splash(void) {
   static const char* msgs[] = {
@@ -134,20 +106,7 @@ static const char* splash(void) {
 #endif
 
 [[noreturn]] void kmain2(void) {
-  u64 addr = 0;
-  paging::map(addr + KERNEL_VIRTUAL_BASE, addr, paging::pgsize::page);
-  paging::map(addr, addr, paging::pgsize::page);
 
-  tlb_flush();
-
-  addr++;
-
-  auto* dst = (u8*)(addr + KERNEL_VIRTUAL_BASE);
-
-  dst[0] = 0xFA;
-  printk("%02x\n", *(u8*)addr);
-  dst[0] = 0xFE;
-  printk("%02x\n", *(u8*)addr);
 
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
@@ -167,14 +126,22 @@ static const char* splash(void) {
   // and set the interval, or whatever
   set_pit_freq(100);
 
-  int i;
-  printk("%p\n", &i);
-  while (1) {
-    phys::alloc();
+
+
+  char buf[40];
+  while (true) {
+    printk("%p [%s left]\n", kmalloc(LARGE_PAGE_SIZE), human_size(phys::bytes_free(), buf));
+  }
+
+  vec<string> nums;
+  for (u64 i = 0; true; i++) {
+    string s = "hello, world\n";
+    nums.push(s);
   }
 
   // finally, enable interrupts
   sti();
+
 
   // print_heap();
   auto drive = dev::ata(0x1F0, true);
@@ -231,10 +198,6 @@ extern "C" int kmain(u64 mbd, u64 magic) {
   // now that we have interupts working, enable sse! (fpu)
   enable_sse();
 
-  // at this point, we are still mapped with the 2mb large pages.
-  // init_mem will replace this with a more fine-grained 4k page system by
-  // mapping kernel memory 1:1
-
   init_mem(mbd);
 
   init_kernel_virtual_memory();
@@ -242,6 +205,7 @@ extern "C" int kmain(u64 mbd, u64 magic) {
 #define STKSIZE (4096 * 8)
   void* new_stack = (void*)((u64)kmalloc(STKSIZE) + STKSIZE);
 
+  printk("new_stack = %p\n", new_stack);
   call_with_new_stack(new_stack, p2v(kmain2));
 
   return 0;

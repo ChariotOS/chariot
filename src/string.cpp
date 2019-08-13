@@ -49,6 +49,7 @@ string::string() {
 }
 
 string::string(const char* s) {
+printk("from %p\n", s);
   m_buf = nullptr;
   m_len = 0;
   m_cap = 0;

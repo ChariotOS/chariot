@@ -186,11 +186,11 @@ static void unknown_exception(int i, struct trapframe *tf) {
 }
 
 static void pgfault_handle(int i, struct trapframe *tf) {
-  void *addr = (void *)(read_cr2() & ~0xFFF);
+  // void *addr = (void *)(read_cr2() & ~0xFFF);
   printk("EIP: %p\n", tf->eip);
   printk("ERR: %p\n", tf->err);
   panic("PGFLT %p\n", read_cr2());
-  map_page(addr, addr);
+  // paging::map_page(addr, addr);
   return;
 }
 

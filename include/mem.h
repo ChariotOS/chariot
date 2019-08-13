@@ -19,10 +19,10 @@ struct mmap_info {
 
 extern bool use_kernel_vm;
 
-#define KERNEL_VIRTUAL_BASE 0xffffe90000000000
+#define KERNEL_VIRTUAL_BASE 0xffff880000000000
 
-#define v2p(addr) (void*)((u64)(addr) - KERNEL_VIRTUAL_BASE)
-#define p2v(addr) (void*)((u64)(addr) + KERNEL_VIRTUAL_BASE)
+#define v2p(addr) (void*)((u64)(addr) & ~(u64)KERNEL_VIRTUAL_BASE)
+#define p2v(addr) (void*)((u64)(addr) | (u64)KERNEL_VIRTUAL_BASE)
 
 
 
@@ -41,7 +41,6 @@ void *ksbrk(i64 inc);
 void *kheap_lo();
 void *kheap_hi();
 
-void *alloc_id_page(void);
 
 
 void init_kernel_virtual_memory();

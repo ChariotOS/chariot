@@ -24,6 +24,8 @@ static struct {
 
 u64 phys::nfree(void) { return kmem.nfree; }
 
+u64 phys::bytes_free(void) { return nfree() << 12; }
+
 /*
 static void print_freelist() {
   for (frame *f = kmem.freelist; f != NULL; f = f->next) {
@@ -33,23 +35,21 @@ static void print_freelist() {
 */
 
 static frame *working_addr(frame *fr) {
-  if (use_kernel_vm) {
-    return (frame *)((void*)(use_kernel_vm ? (u64)((void*)(fr)) + KERNEL_VIRTUAL_BASE : (u64)(fr)));
+  // printk("working addr: %p\n", fr);
+  if (false && use_kernel_vm) {
+    fr = (frame *)p2v(fr);
   } else {
-    map_page(phys_mem_scratch, fr);
-    return (frame *)phys_mem_scratch;
+    paging::map((u64)phys_mem_scratch, (u64)fr);
+    fr = (frame *)phys_mem_scratch;
   }
+  // printk("---------------------------------------------------- %p\n", fr);
+
+  return fr;
 }
 
 // physical memory allocator implementation
 void *phys::alloc(void) {
   frame *r = kmem.freelist;
-
-
-  char buf[50];
-
-
-  printk("has: %s\n", human_size(kmem.nfree * 4096, buf));
 
   if (r == nullptr) panic("out of memory");
 
@@ -70,6 +70,7 @@ void *phys::alloc(void) {
     kmem.freelist = f->next;
   }
   f = working_addr(r);
+
   memset(f, 0, PGSIZE);
 
   // decrement the number of freed pages

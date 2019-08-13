@@ -34,11 +34,12 @@ SECTIONS
 
 
 	/* address which is mapped when working with physical memory */
+	. = ALIGN(0x1000);
 	phys_mem_scratch = .;
 	. += 0x1000;
 
 	boot_stack_start = .;
-	. += 0x1000 * 10;
+	. += 0x1000 * 3;
 	boot_stack_end = .;
 
 

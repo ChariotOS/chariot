@@ -16,16 +16,6 @@
 #define PTE_PS          0x080   // Page Size
 #define PTE_G           0x100   // Global Mapping (dont flush from tlb)
 
-struct page_mapping {
-  void *pa;
-  bool valid;
-};
-// Converts a virtual address into its physical address
-//    This is some scary code lol
-struct page_mapping do_pagewalk(void *va);
-
-void map_page_into(u64 *p4, void *va, void *pa, u16 flags = 0);
-void map_page(void *va, void *pa, u16 flags = 0);
 
 
 #define PAGE_SIZE 0x1000
@@ -34,20 +24,21 @@ void map_page(void *va, void *pa, u16 flags = 0);
 
 namespace paging {
 
-
   enum class pgsize : u8 {
     page = 0,
     large = 1,
     huge = 3,
+    unknown = 4
   };
 
-
-
-  u64 *find_mapping(u64 *p4, u64 va, u64 pa, pgsize size, u16 flags);
+  u64 *find_mapping(u64 *p4, u64 va, u64 pa, pgsize size);
 
 
   void map_into(u64 *p4, u64 va, u64 pa, pgsize size, u16 flags);
   void map(u64 va, u64 pa, pgsize size = pgsize::page, u16 flags = PTE_W | PTE_P);
+
+
+  u64 get_physical(u64 va);
 };
 
 #endif

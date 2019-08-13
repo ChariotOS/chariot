@@ -17,6 +17,9 @@ namespace phys {
   void free_range(void *, void*);
 
   u64 nfree(void);
+
+
+  u64 bytes_free(void);
 };
 
 #endif

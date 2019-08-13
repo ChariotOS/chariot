@@ -128,10 +128,6 @@ bits 32
 ;; have all the things we need mapped right away. We will later replace this basic
 ;; mapping with a better one when we are in C
 map_lowkern_basic:
-	;; recursively map p4 to itself (osdev told me to)
-	mov eax, p4_table
-	or eax, 0b11 ; present + writable
-	mov [p4_table + 511 * 8], eax
 
 	;; p4_table[0] -> p3_table
 	mov eax, p3_table

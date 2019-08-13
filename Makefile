@@ -102,7 +102,7 @@ clean:
 
 
 QEMUOPTS=-cdrom build/kernel.iso\
-				 -m 8G \
+				 -m 4G \
 				 -drive file=$(ROOTFS),if=ide
 
 qemu: iso $(ROOTFS)
