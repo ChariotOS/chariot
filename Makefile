@@ -103,14 +103,14 @@ clean:
 
 QEMUOPTS=-cdrom build/kernel.iso\
 				 -m 4G \
-				 -drive file=$(ROOTFS),if=ide
+				 -hda $(ROOTFS)
 
 qemu: iso $(ROOTFS)
-	@qemu-system-x86_64 $(QEMUOPTS) \
+	qemu-system-x86_64 $(QEMUOPTS) \
 		-serial stdio
 
 qemu-nox: iso $(ROOTFS)
-	@qemu-system-x86_64 $(QEMUOPTS) \
+	qemu-system-x86_64 $(QEMUOPTS) \
 		-nographic
 
 

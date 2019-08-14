@@ -7,10 +7,8 @@
 // Standard information and structures for EXT2
 #define EXT2_SIGNATURE 0xEF53
 
-
 // #define EXT2_DEBUG
 // #define EXT2_TRACE
-
 
 #ifdef EXT2_DEBUG
 #define INFO(fmt, args...) printk("[EXT2] " fmt, ##args)
@@ -406,23 +404,31 @@ vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
     kfree(array_block);
   };
 
-  process_block_array(inode.singly_block,
-                      [&](unsigned entry) { list.push(entry); });
+  // process the singly linked block
+  process_block_array(inode.singly_block, [&](unsigned entry) {
+    list.push(entry);
+    --blocks_remaining;
+  });
 
   if (!blocks_remaining) return list;
 
   process_block_array(inode.doubly_block, [&](unsigned entry) {
-    process_block_array(entry, [&](unsigned entry) { list.push(entry); });
+    process_block_array(entry, [&](unsigned entry) {
+      list.push(entry);
+      --blocks_remaining;
+    });
   });
 
   if (!blocks_remaining) return list;
 
   process_block_array(inode.triply_block, [&](unsigned entry) {
     process_block_array(entry, [&](unsigned entry) {
-      process_block_array(entry, [&](unsigned entry) { list.push(entry); });
+      process_block_array(entry, [&](unsigned entry) {
+        list.push(entry);
+        --blocks_remaining;
+      });
     });
   });
-
   return list;
 }
 

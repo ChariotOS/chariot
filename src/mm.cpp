@@ -2,7 +2,6 @@
 #include <printk.h>
 #include <types.h>
 
-void *mem_sbrk(i32 b) { return ksbrk(b); }
 
 uint64_t sbreakc = 0;
 
@@ -69,7 +68,7 @@ static bool adjacent(blk_t *a, blk_t *b) { return (NEXT_BLK(a) == b); }
  * mm_init - initialize the malloc package.
  */
 int mm_init(void) {
-  auto *bp = (free_header_t *)mem_sbrk(OVERHEAD);
+  auto *bp = (free_header_t *)ksbrk(OVERHEAD);
   bp->next = bp;
   bp->prev = bp;
   return 0;
@@ -117,7 +116,7 @@ void *mm_malloc(size_t size) {
   if (fit == NULL) {
     // there wasn't a valid spot for this allocation. Noone likes it.
     // it'll make a new spot, with blackjack
-    blk = (blk_t *)mem_sbrk(HEADER_SIZE + size);
+    blk = (blk_t *)ksbrk(HEADER_SIZE + size);
     sbreakc++;
     SET_SIZE(blk, size);
   } else {
@@ -237,7 +236,7 @@ void *mm_realloc(void *ptr, size_t size) {
   // Expand into wilderness if the block is at the end of memory
   if ((void *)NEXT_BLK(blk) > kheap_hi()) {
     size_t growth_size = size - old_size;
-    mem_sbrk(growth_size);
+    ksbrk(growth_size);
     SET_SIZE(blk, size);
     return ptr;
   }

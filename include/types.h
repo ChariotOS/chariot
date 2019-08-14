@@ -29,6 +29,8 @@ typedef short sint16_t;
 typedef unsigned char uint8_t;
 typedef char sint8_t;
 
+typedef u64 time_t;
+
 typedef u64 addr_t;
 
 #ifndef __cplusplus

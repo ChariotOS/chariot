@@ -1,10 +1,8 @@
 #include <dev/ata.h>
 #include <idt.h>
+#include <mem.h>
 #include <module.h>
 #include <printk.h>
-#include <mem.h>
-
-
 
 // #define DEBUG
 // #define DO_TRACE
@@ -49,7 +47,7 @@ dev::ata::~ata() {
 
 void dev::ata::select_device() {
   TRACE;
-  device_port.out(master ? 0xA0 : 0xB0); 
+  device_port.out(master ? 0xA0 : 0xB0);
 }
 
 bool dev::ata::identify() {
@@ -90,9 +88,7 @@ bool dev::ata::identify() {
   }
 
   id_buf = (u16*)kmalloc(sizeof(u16) * 256);
-  for (u16 i = 0; i < 256; i++) {
-    id_buf[i] = data_port.in();
-  }
+  for (u16 i = 0; i < 256; i++) id_buf[i] = data_port.in();
 
   u8 C = id_buf[1];
   u8 H = id_buf[3];
@@ -204,10 +200,10 @@ static void ata_interrupt(int intr, trapframe* fr) {
 
 void ata_init(void) {
   interrupt_register(ATA_IRQ0, ata_interrupt);
-	interrupt_enable(ATA_IRQ0);
+  interrupt_enable(ATA_IRQ0);
 
-	interrupt_register(ATA_IRQ1, ata_interrupt);
-	interrupt_enable(ATA_IRQ1);
+  interrupt_register(ATA_IRQ1, ata_interrupt);
+  interrupt_enable(ATA_IRQ1);
 }
 
 module_init("ata", ata_init);

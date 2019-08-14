@@ -5,6 +5,21 @@
 #include <printk.h>
 #include <types.h>
 
+// #define MEM_DEBUG
+// #define MEM_TRACE
+
+#ifdef MEM_DEBUG
+#define INFO(fmt, args...) printk("[MEM] " fmt, ##args)
+#else
+#define INFO(fmt, args...)
+#endif
+
+#ifdef MEM_TRACE
+#define TRACE INFO("TRACE: (%d) %s\n", __LINE__, __PRETTY_FUNCTION__)
+#else
+#define TRACE
+#endif
+
 #define MAX_MMAP_ENTRIES 128
 
 /*
@@ -35,7 +50,7 @@ void init_mmap(u64 mbd) {
   uint32_t n = 0;
 
   if (mbd & 7) {
-    printk("ERROR: Unaligned multiboot info struct\n");
+    panic("ERROR: Unaligned multiboot info struct\n");
   }
 
   tag = (struct multiboot_tag *)(mbd + 8);
@@ -45,10 +60,13 @@ void init_mmap(u64 mbd) {
   }
 
   if (tag->type != MULTIBOOT_TAG_TYPE_MMAP) {
-    printk("ERROR: no mmap tag found\n");
+    panic("ERROR: no mmap tag found\n");
     while (1)
       ;
   }
+
+
+  printk("Memory Map:\n");
 
   multiboot_memory_map_t *mmap;
 
@@ -72,7 +90,8 @@ void init_mmap(u64 mbd) {
     memory_map[n].len = end - start;
     memory_map[n].type = mmap->type;
 
-    // printk("mmap[%u] - [%p - %p] <%lu bytes>\n", n, start, end, end - start);
+    char buf[25];
+    printk("[%p:%p] (%s)\n", start, end, human_size(end - start, buf));
 
     if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) {
       mm_info.usable_ram += mmap->len;
@@ -92,8 +111,10 @@ int init_mem(u64 mbd) {
   // go detect all the ram in the system
   init_mmap(mbd);
 
+#ifdef MEM_DEBUG
   char buf[20];
-  printk("Detected %s of usable memory (%lu pages)\n",
+#endif
+  INFO("Detected %s of usable memory (%lu pages)\n",
          human_size(mm_info.usable_ram, buf), mm_info.usable_ram / 4096);
 
   auto *kend = (u8 *)&high_kern_end;
@@ -146,7 +167,6 @@ void *ksbrk(i64 inc) {
   return kheap_start + oldsz;
 }
 
-extern "C" void *sbrk(i64 inc) { return ksbrk(inc); }
 
 extern int mm_init(void);
 
@@ -183,7 +203,6 @@ void init_kernel_virtual_memory() {
 
   ksbrk(0);
 
-
   mm_init();
 
   use_kernel_vm = true;
@@ -198,9 +217,6 @@ extern void *mm_malloc(size_t size);
 extern void mm_free(void *ptr);
 extern void *mm_realloc(void *ptr, size_t size);
 
-
-
-
 void *kmalloc(u64 size) {
   auto ptr = mm_malloc(size);
   // printk("malloc (%zu) = %p\n", size, ptr);
@@ -208,6 +224,7 @@ void *kmalloc(u64 size) {
 }
 void kfree(void *ptr) {
   auto p = (u64)ptr;
+  if (ptr == NULL) return;
 
   if (!(p >= (u64)kheap_lo() && p < (u64)kheap_hi())) {
     printk("invalid address passed into free: %p\n", ptr);

@@ -38,7 +38,7 @@ u64 *alloc_page_dir(void) {
   }
 
   INFO("%p\n", va);
-  // for (int i = 0; i < 512; i++) va[i] = 0;
+  for (int i = 0; i < 512; i++) va[i] = 0;
   return new_table;
 }
 
