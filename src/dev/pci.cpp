@@ -72,6 +72,7 @@ static struct pci_bar pci_get_bar(u16 bus, u16 dev, u16 func, u32 barnum) {
   bar.type = (bar_val & 0x1) ? bar_in_out : bar_memory_mapping;
 
   if (bar.type == bar_memory_mapping) {
+
     switch ((bar_val >> 1) & 0x3) {
       case 0:  // 32 bit mode
       case 1:  // 20 bit mode
@@ -79,6 +80,7 @@ static struct pci_bar pci_get_bar(u16 bus, u16 dev, u16 func, u32 barnum) {
         break;
     }
 
+    bar.addr = (u8*)(bar_val & ~0xF);
     bar.prefetchable = ((bar_val >> 3) & 0x1) == 0x1;
     // dunno
   } else {

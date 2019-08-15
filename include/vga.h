@@ -53,4 +53,24 @@ void clear_screen(uint16_t val);
 void clear_screen(char, vga::color);
 void clear_screen();
 
+
+
+class vesa {
+
+
+  public:
+
+    vesa();
+
+
+  private:
+    int m_framebuffer_width = 0;
+    int m_framebuffer_height = 0;
+
+    u64 m_framebuffer_address = 0;
+
+
+    u64 find_framebuffer_address();
+};
+
 };  // namespace vga

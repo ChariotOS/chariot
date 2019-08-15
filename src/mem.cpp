@@ -178,6 +178,8 @@ void init_dyn_mm(void) {
   mm_init();
 }
 
+
+
 void init_kernel_virtual_memory() {
   char buf[50];
 
@@ -190,8 +192,7 @@ void init_kernel_virtual_memory() {
   u64 i = 0;
 
   for (; true; i += page_step) {
-    if (i > mm_info.total_mem + page_step) break;
-
+    if (i > mm_info.total_mem) break;
     // printk("mapping %p to %p\n", (u64)p2v(i), i);
     paging::map((u64)p2v(i), i, page_size, PTE_W | PTE_P);
   }

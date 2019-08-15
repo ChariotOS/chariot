@@ -105,6 +105,12 @@
 #define STS_TG32 0xF  // 32-bit Trap Gate
 
 
+
+
+#define for_range(var, start, end) for (auto var = start; var < (end); var++)
+
+
+
 static inline void *memcpy(void *dst, const void *src, size_t n) {
   for (int i = 0; i < n; i++) {
     ((char*)dst)[i] = ((char *)src)[i];

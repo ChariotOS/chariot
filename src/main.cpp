@@ -105,7 +105,7 @@ void do_drive_thing(u64 addr, bool master) {
       }
     };
 
-    test("/");
+    test("/hello_symlink");
     // test("/kernel/");
     // test("/kernel/fs");
     // test("/kernel/fs/ext2.cpp");
@@ -134,13 +134,19 @@ void do_drive_thing(u64 addr, bool master) {
   // finally, enable interrupts
   sti();
 
-
   for (u16 addr = 0x1F0; addr <= 0x1F7; addr++) {
-  do_drive_thing(addr, true);
-  do_drive_thing(addr, false);
+    do_drive_thing(addr, true);
+    do_drive_thing(addr, false);
   }
 
-  // print_heap();
+  /*
+  auto* pml4 = (u64*)read_cr3();
+  for_range(i, 0, 512) {
+    if (pml4[i])
+      printk("%3d: %p\n", i, pml4[i]);
+  }
+  */
+
 
   // spin forever
   printk("\n\nno more work. spinning.\n");
@@ -148,7 +154,7 @@ void do_drive_thing(u64 addr, bool master) {
   }
 }
 
-#define NOS_WELCOME               \
+#define NOS_WELCOME             \
   "           ____  _____\n"    \
   "    ____  / __ \\/ ___/\n"   \
   "   / __ \\/ / / /\\__ \\ \n" \

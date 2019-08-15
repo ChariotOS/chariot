@@ -52,6 +52,14 @@ class filesystem {
   u32 m_fsid = 0;
   bool m_readonly = false;
 };
+
+
+
+
+int mount(string path, filesystem &);
+fs::inode open(string s, u32 flags, u32 opts = 0);
+
+
 }  // namespace fs
 
 #endif

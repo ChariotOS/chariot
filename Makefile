@@ -102,7 +102,7 @@ clean:
 
 
 QEMUOPTS=-cdrom build/kernel.iso\
-				 -m 4G \
+				 -m 6G \
 				 -hda $(ROOTFS)
 
 qemu: iso $(ROOTFS)

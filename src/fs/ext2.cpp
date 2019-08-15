@@ -7,7 +7,7 @@
 // Standard information and structures for EXT2
 #define EXT2_SIGNATURE 0xEF53
 
-// #define EXT2_DEBUG
+#define EXT2_DEBUG
 // #define EXT2_TRACE
 
 #ifdef EXT2_DEBUG
@@ -457,9 +457,13 @@ ref<fs::inode> fs::ext2::open(fs::path path, u32 flags) {
 
     u16 type = info.type & 0xF000;
 
-    INFO("type=%04x\n", info.type);
+    INFO("type=%04x\n", type);
+
+
+
 
     if (type == 0x4000 /*directory*/) {
+      INFO("DIR\n");
       auto contents = read_dir(info);
       bool found = false;
 
@@ -477,14 +481,19 @@ ref<fs::inode> fs::ext2::open(fs::path path, u32 flags) {
       }
 
     } else if (type == 0x8000 /*regular file*/) {
+      INFO("FILE\n");
       INFO("regular file!\n");
       return {};
     }
   }
 
+  // check if the file is a symlink
+
   // INFO("============================\n");
   // construct the inode object and return it
   auto res = make_ref<fs::ext2_inode>(*this, inode);
   res->info = info;
+
+  printk("type: %04x\n", res->info.type);
   return res;
 }
