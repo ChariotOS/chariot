@@ -40,9 +40,9 @@ COMMON_FLAGS := $(CINCLUDES)  \
 			   -mcmodel=large -O3 -fno-tree-vectorize \
 				 -DGIT_REVISION=\"$(shell git rev-parse HEAD)\"
 
-CFLAGS:= $(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
+CFLAGS:=$(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
 
-CPPFLAGS:= -std=c++17 -fno-rtti -fno-exceptions -fno-omit-frame-pointer
+CPPFLAGS:=$(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions -fno-omit-frame-pointer
 
 DFLAGS=-g -DDEBUG -O0
 
@@ -63,7 +63,7 @@ build/%.c.o: %.c
 build/%.cpp.o: %.cpp
 	@mkdir -p $(dir $@)
 	@echo " CXX " $<
-	@$(CXX) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+	@$(CXX) $(CPPFLAGS) -o $@ -c $<
 
 
 build/%.asm.o: %.asm
