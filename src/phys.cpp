@@ -18,7 +18,7 @@ struct frame {
 
 static struct {
   int use_lock;
-  frame *freelist = NULL;
+  frame *freelist;
   u64 nfree;
 } kmem;
 
