@@ -55,10 +55,14 @@ SECTIONS
 		*(.gnu.linkonce.t*)
 	}
 
-	/* Include the list of initialization functions sorted. */
+
+
+
+	. = ALIGN(4);
 	.init_array : {
-		KEEP (*(SORT(.init_array.*)))
-		KEEP (*(.init_array))
+		__init_array_start = .;
+		KEEP (*(.init_array*))
+		__init_array_end = .;
 	}
 
 	/* Include the list of termination functions sorted. */

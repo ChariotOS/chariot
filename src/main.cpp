@@ -7,7 +7,6 @@
 #include <idt.h>
 #include <mem.h>
 #include <module.h>
-#include <multiboot.h>
 #include <paging.h>
 #include <pci.h>
 #include <pit.h>
@@ -50,39 +49,13 @@ void initialize_kernel_modules(void) {
   }
 }
 
-/* These magic symbols are provided by the linker.  */
-extern void (*__preinit_array_start[])(void) __attribute__((weak));
-extern void (*__preinit_array_end[])(void) __attribute__((weak));
-extern void (*__init_array_start[])(void) __attribute__((weak));
-extern void (*__init_array_end[])(void) __attribute__((weak));
+typedef void (*func_ptr)(void);
+
+extern "C" func_ptr __init_array_start[0], __init_array_end[0];
 
 static void call_global_constructors(void) {
-  size_t count;
-  size_t i;
-
-  count = __preinit_array_end - __preinit_array_start;
-  for (i = 0; i < count; i++) __preinit_array_start[i]();
-
-  // _init();
-
-  count = __init_array_end - __init_array_start;
-  for (i = 0; i < count; i++) __init_array_start[i]();
-}
-
-static const char* splash(void) {
-  static const char* msgs[] = {
-      "Nick's Operating System",
-      "Neat Operating System",
-      "Nifty Operating System",
-      "New Operating System",
-      "GNU Terry Pratchett",
-      "Nitrous Oxide",
-      "Now open source!",
-      "Not officially sanctioned!",
-      "WOW!",
-  };
-  // not the best way to randomly seed this stuff, but what am I going to do.
-  return msgs[rdtsc() % (sizeof(msgs) / sizeof(msgs[0]))];
+  for (func_ptr* func = __init_array_start; func != __init_array_end; func++)
+    (*func)();
 }
 
 extern "C" void call_with_new_stack(void*, void*);
@@ -100,17 +73,21 @@ void do_drive_thing(u64 addr, bool master) {
       auto inode = fs.open(string(path), 0);
       if (inode) {
         printk("'%s' found at %d\n", path, inode->index());
+        // auto md = inode->metadata();
+        // printk("mode = %03o\n", md.mode);
       } else {
         printk("'%s' not found\n", path);
       }
     };
 
-    test("/hello_symlink");
-    // test("/kernel/");
+    test("/");
+    test("/kernel/");
     // test("/kernel/fs");
     // test("/kernel/fs/ext2.cpp");
   }
 }
+
+
 
 [[noreturn]] void kmain2(void) {
   // now that we have a stable memory manager, call the C++ global constructors
@@ -131,6 +108,7 @@ void do_drive_thing(u64 addr, bool master) {
   // and set the interval, or whatever
   set_pit_freq(100);
 
+
   // finally, enable interrupts
   sti();
 
@@ -138,15 +116,6 @@ void do_drive_thing(u64 addr, bool master) {
     do_drive_thing(addr, true);
     do_drive_thing(addr, false);
   }
-
-  /*
-  auto* pml4 = (u64*)read_cr3();
-  for_range(i, 0, 512) {
-    if (pml4[i])
-      printk("%3d: %p\n", i, pml4[i]);
-  }
-  */
-
 
   // spin forever
   printk("\n\nno more work. spinning.\n");
@@ -177,20 +146,17 @@ extern "C" int kmain(u64 mbd, u64 magic) {
   vga::set_color(vga::color::white, vga::color::black);
   vga::clear_screen();
 
-  init_idt();
-
   printk(NOS_WELCOME);
   printk("Nick Wanninger (c) 2019 | Illinois Institute of Technology\n");
-  printk("nOS: %s\n", splash());
   printk("git: %s\n", GIT_REVISION);
   printk("\n");
+
+  init_idt();
 
   // now that we have interupts working, enable sse! (fpu)
   enable_sse();
 
   init_mem(mbd);
-
-  printk("CMOS reports %02x drives\n", dev::CMOS::read(0x11));
 
   init_kernel_virtual_memory();
 
@@ -198,6 +164,7 @@ extern "C" int kmain(u64 mbd, u64 magic) {
   void* new_stack = (void*)((u64)kmalloc(STKSIZE) + STKSIZE);
 
   call_with_new_stack(new_stack, p2v(kmain2));
+  printk("should not have gotten back here\n");
 
   return 0;
 }
