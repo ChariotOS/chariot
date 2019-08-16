@@ -55,9 +55,8 @@ struct pci_bar {
 
 
 static struct pci_bar pci_get_bar(u16 bus, u16 dev, u16 func, u32 barnum) {
-  struct pci_bar bar = {
-      .addr = NULL,
-  };
+  struct pci_bar bar;
+  bar.addr = nullptr;
 
   u32 headertype = pci::read(bus, dev, func, 0x0E) & 0x7F;
 

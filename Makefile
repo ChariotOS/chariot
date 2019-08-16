@@ -1,9 +1,12 @@
-CC = gcc
-CXX = g++
+CC = $(X86_64_ELF_TOOLCHAIN)gcc
+CXX = $(X86_64_ELF_TOOLCHAIN)g++
 AS = nasm
-LD = ld
+LD = $(X86_64_ELF_TOOLCHAIN)ld
+
+GRUB = $(GRUB_PREFIX)grub-mkrescue
 
 .PHONY: fs
+
 
 
 
@@ -77,7 +80,7 @@ $(KERNEL): $(CODEFILES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
 
 
 $(ROOTFS):
-	dd if=/dev/urandom of=$@ bs=512M count=1
+	dd if=/dev/urandom of=$@ bs=1m count=30
 	chmod 666 $@
 	mkfs.ext2 $@
 	mkdir -p build/mnt
@@ -94,7 +97,7 @@ iso: $(KERNEL)
 	mkdir -p build/iso/boot/grub
 	cp ./grub.cfg build/iso/boot/grub
 	cp build/kernel.elf build/iso/boot
-	grub-mkrescue -o build/kernel.iso build/iso
+	$(GRUB) -o build/kernel.iso build/iso
 
 
 clean:
