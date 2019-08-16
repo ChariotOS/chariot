@@ -20,7 +20,7 @@
 #define TRACE
 #endif
 
-#define MAX_MMAP_ENTRIES 128
+#define MAX_MMAP_ENTRIES 64
 
 /*
  * Round x up to the nearest y aligned boundary.  y must be a power of two.
@@ -41,40 +41,29 @@ extern char low_kern_end;
 extern char high_kern_start;
 extern char high_kern_end;
 
-// just 128 memory regions. Any more and idk what to do
-static struct mem_map_entry memory_map[128];
+// just 64 memory regions. Any more and idk what to do
+static struct mem_map_entry memory_map[MAX_MMAP_ENTRIES];
 static struct mmap_info mm_info;
 
+multiboot_info_t *multiboot_info_ptr;
+
 void init_mmap(u64 mbd) {
-  struct multiboot_tag *tag;
+  multiboot_info_ptr = (multiboot_info_t *)mbd;
+
   uint32_t n = 0;
 
   if (mbd & 7) {
     panic("ERROR: Unaligned multiboot info struct\n");
   }
 
-  tag = (struct multiboot_tag *)(mbd + 8);
-  while (tag->type != MULTIBOOT_TAG_TYPE_MMAP) {
-    tag = (struct multiboot_tag *)((multiboot_uint8_t *)tag +
-                                   ((tag->size + 7) & ~7));
-  }
+  for (auto *mmap =
+           (multiboot_memory_map_t *)(u64)multiboot_info_ptr->mmap_addr;
+       (unsigned long)mmap <
+       multiboot_info_ptr->mmap_addr + multiboot_info_ptr->mmap_length;
+       mmap = (multiboot_memory_map_t *)((unsigned long)mmap + mmap->size +
+                                         sizeof(mmap->size))) {
+    if (mmap->type != MULTIBOOT_MEMORY_AVAILABLE) continue;
 
-  if (tag->type != MULTIBOOT_TAG_TYPE_MMAP) {
-    panic("ERROR: no mmap tag found\n");
-    while (1)
-      ;
-  }
-
-
-  printk("Memory Map:\n");
-
-  multiboot_memory_map_t *mmap;
-
-  for (mmap = ((struct multiboot_tag_mmap *)tag)->entries;
-       (multiboot_uint8_t *)mmap < (multiboot_uint8_t *)tag + tag->size;
-       mmap = (multiboot_memory_map_t *)((u64)mmap +
-                                         ((struct multiboot_tag_mmap *)tag)
-                                             ->entry_size)) {
     if (n > MAX_MMAP_ENTRIES) {
       printk("Reached memory region limit!\n");
       while (1)
@@ -113,9 +102,9 @@ int init_mem(u64 mbd) {
 
 #ifdef MEM_DEBUG
   char buf[20];
-#endif
   INFO("Detected %s of usable memory (%lu pages)\n",
-         human_size(mm_info.usable_ram, buf), mm_info.usable_ram / 4096);
+       human_size(mm_info.usable_ram, buf), mm_info.usable_ram / 4096);
+#endif
 
   auto *kend = (u8 *)&high_kern_end;
 
@@ -167,7 +156,6 @@ void *ksbrk(i64 inc) {
   return kheap_start + oldsz;
 }
 
-
 extern int mm_init(void);
 
 void init_dyn_mm(void) {
@@ -177,8 +165,6 @@ void init_dyn_mm(void) {
 
   mm_init();
 }
-
-
 
 void init_kernel_virtual_memory() {
   char buf[50];

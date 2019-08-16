@@ -1,3 +1,4 @@
+
 global _start
 global start
 
@@ -10,22 +11,25 @@ extern p1_table
 extern boot_stack_end ;; static memory from the binary where the stack begins
 extern kmain ;; c entry point
 
+
+; Declare constants for the multiboot header.
+MBALIGN  equ  1 << 0            ; align loaded modules on page boundaries
+MEMINFO  equ  1 << 1            ; provide memory map
+FLAGS    equ  MBALIGN | MEMINFO ; this is the Multiboot 'flag' field
+MAGIC    equ  0x1BADB002        ; 'magic number' lets bootloader find the header
+CHECKSUM equ -(MAGIC + FLAGS)   ; checksum of above, to prove we are multiboot
+
+
+
+
 ;; Multiboot header
 section .mbhdr
 align 8
 header_start:
-    dd 0xe85250d6                ;; magic number (multiboot 2)
-    dd 0                         ;; architecture 0 (protected mode i386)
-    dd header_end - header_start ;; header length
-		;; checksum
-    dd 0x100000000 - (0xe85250d6 + 0 + (header_end - header_start))
-
-    ; optional multiboot tags
-
-    ; required end tag
-    dw 0    ; type
-    dw 0    ; flags
-    dd 8    ; size
+align 4
+	dd MAGIC
+	dd FLAGS
+	dd CHECKSUM
 header_end:
 
 
