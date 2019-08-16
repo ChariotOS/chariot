@@ -70,7 +70,9 @@ class unique_ptr {
   explicit operator bool() const noexcept { return this->m_ptr; }
   // releases the ownership of the resource. The user is now responsible for
   // memory clean-up.
-  T* release() noexcept { return exchange(m_ptr, nullptr); }
+  T* release() noexcept {
+    return exchange(m_ptr, nullptr);
+  }
   // returns a pointer to the resource
   T* get() const noexcept { return m_ptr; }
 
@@ -385,5 +387,83 @@ template <typename T, typename... Args>
 ref<T> make_ref(Args&&... args) {
   return ref<T>(new T(forward<Args>(args)...));
 }
+
+
+
+
+
+
+
+
+
+
+
+template<class T>
+constexpr auto call_will_be_destroyed_if_present(T* object) -> decltype(object->will_be_destroyed(), TrueType {})
+{
+    object->will_be_destroyed();
+    return {};
+}
+
+constexpr auto call_will_be_destroyed_if_present(...) -> FalseType
+{
+    return {};
+}
+
+template<class T>
+constexpr auto call_one_ref_left_if_present(T* object) -> decltype(object->one_ref_left(), TrueType {})
+{
+    object->one_ref_left();
+    return {};
+}
+
+constexpr auto call_one_ref_left_if_present(...) -> FalseType
+{
+    return {};
+}
+
+class refcount_base {
+public:
+    void ref()
+    {
+        assert(m_ref_count);
+        ++m_ref_count;
+    }
+
+    int ref_count() const
+    {
+        return m_ref_count;
+    }
+
+protected:
+    refcount_base() {}
+    ~refcount_base()
+    {
+        assert(!m_ref_count);
+    }
+
+    void deref_base()
+    {
+        assert(m_ref_count);
+        --m_ref_count;
+    }
+
+    int m_ref_count { 1 };
+};
+
+template<typename T>
+class refcounted : public refcount_base {
+public:
+    void deref()
+    {
+        deref_base();
+        if (m_ref_count == 0) {
+            call_will_be_destroyed_if_present(static_cast<T*>(this));
+            delete static_cast<T*>(this);
+        } else if (m_ref_count == 1) {
+            call_one_ref_left_if_present(static_cast<T*>(this));
+        }
+    }
+};
 
 #endif

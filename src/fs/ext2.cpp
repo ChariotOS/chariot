@@ -7,7 +7,7 @@
 // Standard information and structures for EXT2
 #define EXT2_SIGNATURE 0xEF53
 
-#define EXT2_DEBUG
+// #define EXT2_DEBUG
 // #define EXT2_TRACE
 
 #ifdef EXT2_DEBUG
@@ -116,14 +116,6 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-fs::ext2_inode::ext2_inode(fs::ext2 &fs, u32 index) : inode(fs, index) {
-  TRACE;
-}
-
-fs::ext2_inode::~ext2_inode() {
-  TRACE;
-  // TODO
-}
 
 fs::ext2::ext2(dev::blk_dev &dev) : filesystem(/*super*/), dev(dev) { TRACE; }
 
@@ -494,6 +486,53 @@ ref<fs::inode> fs::ext2::open(fs::path path, u32 flags) {
   auto res = make_ref<fs::ext2_inode>(*this, inode);
   res->info = info;
 
-  printk("type: %04x\n", res->info.type);
   return res;
+}
+
+
+
+fs::ext2_inode::ext2_inode(fs::ext2 &fs, u32 index) : inode(fs, index) {
+  TRACE;
+}
+
+fs::ext2_inode::~ext2_inode() {
+  TRACE;
+  // TODO
+}
+
+fs::inode_metadata fs::ext2_inode::metadata(void) {
+  fs::inode_metadata md;
+
+  md.size = info.size;
+  md.mode = info.type & 0xFFF;
+
+  auto type = (info.type) & 0xF000;
+
+  md.type = inode_type::unknown;
+  if (type == 0x1) md.type = inode_type::fifo;
+  if (type == 0x2) md.type = inode_type::char_dev;
+  if (type == 0x4) md.type = inode_type::dir;
+  if (type == 0x6) md.type = inode_type::block_dev;
+  if (type == 0x8) md.type = inode_type::file;
+  if (type == 0xA) md.type = inode_type::symlink;
+  if (type == 0xC) md.type = inode_type::unix_socket;
+
+  md.mode = info.type & 0xFFF;
+
+  md.uid = info.uid;
+  md.gid = info.gid;
+  md.link_count = info.hardlinks;
+
+  md.atime = info.last_access;
+  md.ctime = info.create_time;
+  md.mtime = info.last_modif;
+  md.dtime = info.delete_time;
+  md.block_size = fs().block_size();
+
+
+  md.block_count = md.size / md.block_size;
+  if (md.size % md.block_size != 0) md.block_count++;
+
+
+  return md;
 }

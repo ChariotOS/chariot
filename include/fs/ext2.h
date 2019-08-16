@@ -63,6 +63,8 @@ class ext2_inode : public inode {
   explicit ext2_inode(ext2 &fs, u32 index);
   virtual ~ext2_inode() override;
 
+  virtual inode_metadata metadata(void) override;
+
  protected:
   ext2_inode_info info;
 };
@@ -80,6 +82,9 @@ class ext2 final : public filesystem {
 
 
   virtual ref<fs::inode> open(fs::path, u32 flags);
+  inline virtual u64 block_size(void) {
+    return blocksize;
+  }
 
  private:
   bool read_block(u32 block, void *buf);
