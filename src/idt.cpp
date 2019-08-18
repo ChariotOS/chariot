@@ -175,7 +175,7 @@ static void unknown_exception(int i, struct trapframe *tf) {
   printk(INDENT "CR2=%016x  CR3=%016x\n", read_cr2(), read_cr3());
   printk("\n");
   printk(INDENT "SYSTEM HALTED. File a bug report please:\n");
-  printk(INDENT "  repo: github.com/nickwanninger/nOS\n");
+  printk(INDENT "  repo: github.com/nickwanninger/chariot\n");
 
   printk("\n");
   printk(INDENT " %s\n", GIT_REVISION);

@@ -1,8 +1,8 @@
 # Memory management / map
 
-The memory management for the kernel in nOS is quite simple. When booting, the
+The memory management for the kernel in chariot is quite simple. When booting, the
 kernel puts itself into paging long mode by mapping the first 512 pages 1:1 using
-4k pages. As soon as possible, the kernel sets up real mappings. Like linux, nOS
+4k pages. As soon as possible, the kernel sets up real mappings. Like linux, chariot
 uses very high virtual addresses for physical mappings. Kernel virtual memory starts
 at the virtual address 0xffff880000000000, and any physical page accesses must be
 offset by that address.
