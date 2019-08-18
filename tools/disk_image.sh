@@ -23,7 +23,7 @@ echo "using grub-install at ${grub}"
 
 
 diskimage=build/disk.img
-mkdir -p build
+
 
 echo "setting up disk image..."
 dd if=/dev/zero of=$diskimage bs=1M count=${DISK_SIZE:-50} status=none || die "couldn't create disk image"

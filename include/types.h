@@ -1,6 +1,7 @@
 #ifndef __TYPES_H__
 #define __TYPES_H__
 
+
 typedef signed char i8;
 typedef unsigned char u8;
 
@@ -41,7 +42,6 @@ typedef u8 bool;
 typedef unsigned long uintptr_t;
 typedef long intptr_t;
 
-//#define NULL ((void *)0)
 #ifndef NULL
 #define NULL 0
 #endif

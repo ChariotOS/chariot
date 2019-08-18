@@ -17,6 +17,7 @@
 #include <asm.h>
 #include <dev/CMOS.h>
 #include <dev/RTC.h>
+#include <dev/mbr.h>
 #include <device.h>
 #include <fs/ext2.h>
 #include <fs/file.h>
@@ -61,33 +62,75 @@ static void call_global_constructors(void) {
 extern "C" void call_with_new_stack(void*, void*);
 
 void do_drive_thing(u64 addr, bool master) {
-  auto drive = dev::ata(addr, master);
+  auto drive = make_ref<dev::ata>(addr, master);
 
-  if (!drive.identify()) {
-    // printk("%04x %d not a drive\n", addr, master);
+  if (!drive->identify()) return;
+
+  auto mbr = dev::mbr(drive);
+
+  if (!mbr.parse()) {
+    printk("failed to parse\n");
     return;
   }
-  auto fs = fs::ext2(drive);
-  if (fs.init()) {
-    auto test = [&](const char* path) {
-      auto inode = fs.open(string(path), 0);
-      if (inode) {
-        printk("'%s' found at %d\n", path, inode->index());
-        // auto md = inode->metadata();
-        // printk("mode = %03o\n", md.mode);
-      } else {
-        printk("'%s' not found\n", path);
-      }
-    };
 
-    test("/");
-    test("/kernel/");
-    // test("/kernel/fs");
-    // test("/kernel/fs/ext2.cpp");
+  printk("read!\n");
+
+  printk("%d partitions\n", mbr.part_count());
+
+  for_range(i, 0, mbr.part_count()) {
+    auto part = mbr.partition(i);
+
+    auto fs = fs::ext2(*part);
+
+    if (!fs.init()) {
+      printk("failed to parse ext2\n");
+    }
   }
 }
 
+extern "C" u8 initrd_start[];
+extern "C" u8 initrd_end[];
 
+struct tar_header {
+  char filename[100];
+  char mode[8];
+  char uid[8];
+  char gid[8];
+  char size[12];
+  char mtime[12];
+  char chksum[8];
+  char typeflag[1];
+};
+
+// idk what this does
+unsigned int getsize(const char* in) {
+  unsigned int size = 0;
+  unsigned int j;
+  unsigned int count = 1;
+
+  for (j = 11; j > 0; j--, count *= 8) size += ((in[j - 1] - '0') * count);
+
+  return size;
+}
+static void parse_initrd(void) {
+
+  vec<tar_header *> headers;
+  auto address = (u64)initrd_start;
+
+  for (u32 i = 0;; i++) {
+    struct tar_header* header = (struct tar_header*)address;
+    if (header->filename[0] == '\0') break;
+    unsigned int size = getsize(header->size);
+    headers.push(header);
+    address += ((size / 512) + 1) * 512;
+    if (size % 512) address += 512;
+  }
+
+
+  for (auto &h : headers) {
+    printk("%s\n", h->filename);
+  }
+}
 
 [[noreturn]] void kmain2(void) {
   // now that we have a stable memory manager, call the C++ global constructors
@@ -108,14 +151,17 @@ void do_drive_thing(u64 addr, bool master) {
   // and set the interval, or whatever
   set_pit_freq(100);
 
-
   // finally, enable interrupts
   sti();
 
+  // parse_initrd();
+
+  /*
   for (u16 addr = 0x1F0; addr <= 0x1F7; addr++) {
     do_drive_thing(addr, true);
     do_drive_thing(addr, false);
   }
+  */
 
   // spin forever
   printk("\n\nno more work. spinning.\n");
@@ -123,6 +169,8 @@ void do_drive_thing(u64 addr, bool master) {
   }
 }
 
+
+extern "C" char chariot_welcome_start[];
 #define NOS_WELCOME             \
   "           ____  _____\n"    \
   "    ____  / __ \\/ ___/\n"   \
@@ -137,6 +185,9 @@ void do_drive_thing(u64 addr, bool master) {
 
 extern void rtc_init(void);
 
+#define WASTE_TIME_PRINTING_WELCOME
+
+
 extern "C" int kmain(u64 mbd, u64 magic) {
   rtc_init();  // initialize the clock
   // initialize the serial "driver"
@@ -146,8 +197,10 @@ extern "C" int kmain(u64 mbd, u64 magic) {
   vga::set_color(vga::color::white, vga::color::black);
   vga::clear_screen();
 
-  printk(NOS_WELCOME);
-  printk("Nick Wanninger (c) 2019 | Illinois Institute of Technology\n");
+
+#ifdef WASTE_TIME_PRINTING_WELCOME
+  printk("%s\n", chariot_welcome_start);
+#endif
   printk("git: %s\n", GIT_REVISION);
   printk("\n");
 

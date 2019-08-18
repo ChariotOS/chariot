@@ -107,7 +107,7 @@ void vga::set_color(enum vga::color fg, enum vga::color bg) {
 
 void vga::init(void) {
   vga_x = vga_y = 0;
-  vga_attr = vga::make_color(color::white, color::blue);
+  vga_attr = vga::make_color(color::white, color::black);
   vga::clear_screen(vga::make_entry(' ', vga_attr));
   vga::set_cursor(vga_x, vga_y);
 }
