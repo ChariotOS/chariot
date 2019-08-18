@@ -45,15 +45,15 @@ typedef long intptr_t;
 #ifndef NULL
 #define NULL 0
 #endif
-#define FALSE 0
-#define TRUE 1
+#define FALSE ((bool)0)
+#define TRUE ((bool)1)
 
 #ifndef true
-#define true 1
+#define true TRUE
 #endif
 
 #ifndef false
-#define false 0
+#define false FALSE
 #endif
 
 

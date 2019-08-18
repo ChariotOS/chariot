@@ -27,6 +27,7 @@
 #include <string.h>
 #include <vec.h>
 #include <vga.h>
+#include <map.h>
 
 extern int kernel_end;
 
@@ -139,12 +140,6 @@ static void parse_initrd(void) {
   // initialize the PCI subsystem
   pci::init();
 
-  // now that we have a decent programming enviroment, we can go through and
-  // register all the kernel modules
-  // NOTE: kernel module init code should not do any work outside of registering
-  //       andlers, as the enviroment they are run in is fairly minimal and have
-  //       no complex things like processes or devices.
-  initialize_kernel_modules();
 
   // initialize the programmable interrupt timer
   init_pit();
@@ -153,6 +148,21 @@ static void parse_initrd(void) {
 
   // finally, enable interrupts
   sti();
+
+
+  // now that we have a decent programming enviroment, we can go through and
+  // register all the kernel modules
+  // NOTE: kernel module init code should not do any work outside of registering
+  //       andlers, as the enviroment they are run in is fairly minimal and have
+  //       no complex things like processes or devices.
+  initialize_kernel_modules();
+
+  map<int, int> m;
+
+  m[0] = 1;
+  m[1] = 2;
+
+  printk("%d %d\n", m[0], m[1]);
 
   // parse_initrd();
 
@@ -171,13 +181,6 @@ static void parse_initrd(void) {
 
 
 extern "C" char chariot_welcome_start[];
-#define NOS_WELCOME             \
-  "           ____  _____\n"    \
-  "    ____  / __ \\/ ___/\n"   \
-  "   / __ \\/ / / /\\__ \\ \n" \
-  "  / / / / /_/ /___/ / \n"    \
-  " /_/ /_/\\____//____/  \n"   \
-  "                      \n"
 
 #ifndef GIT_REVISION
 #define GIT_REVISION "NO-GIT"

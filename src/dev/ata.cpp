@@ -3,6 +3,8 @@
 #include <mem.h>
 #include <module.h>
 #include <printk.h>
+#include <ptr.h>
+#include <fs/devfs.h>
 
 // #define DEBUG
 // #define DO_TRACE
@@ -198,12 +200,34 @@ static void ata_interrupt(int intr, trapframe* fr) {
   // printk("ata_interrupt\n");
 }
 
+
+static bool find_disk(u16 addr, char id, bool master) {
+
+    auto drive = make_unique<dev::ata>(addr, master);
+
+    if (drive->identify()) {
+      string name = string::format("hd%c", id);
+      printk("found disk %s\n", name.get());
+
+      fs::devfs::register_device(name, move(drive));
+      return true;
+    }
+    return false;
+}
+
 void ata_init(void) {
   interrupt_register(ATA_IRQ0, ata_interrupt);
   interrupt_enable(ATA_IRQ0);
 
   interrupt_register(ATA_IRQ1, ata_interrupt);
   interrupt_enable(ATA_IRQ1);
+
+
+  char id = 'a';
+
+  // try to load hda
+  if (find_disk(0x1F0, id, true)) id++;
+  if (find_disk(0x1F0, id, false)) id++;
 }
 
 module_init("ata", ata_init);

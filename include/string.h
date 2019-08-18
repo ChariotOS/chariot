@@ -1,5 +1,6 @@
 #pragma once
 
+#include <template_lib.h>
 #include <vec.h>
 
 class string_checker;
@@ -76,3 +77,19 @@ bool operator>=(const string& lhs, const string& rhs);
 bool operator>=(const string& lhs, const char* rhs);
 bool operator>=(const char* lhs, const string& rhs);
 
+
+
+template <>
+struct Traits<string> : public GenericTraits<string> {
+  static u64 hash(const string &s) {
+    const i64 p = 31;
+    const i64 m = 1e9 + 9;
+    i64 hash_value = 0;
+    i64 p_pow = 1;
+    for (char c : s) {
+        hash_value = (hash_value + (c - 'a' + 1) * p_pow) % m;
+        p_pow = (p_pow * p) % m;
+    }
+    return hash_value;
+  }
+};
