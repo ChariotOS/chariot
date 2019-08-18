@@ -3,6 +3,7 @@
 #include <dev/serial.h>
 #include <types.h>
 #include <vga.h>
+#include <string.h>
 
 // define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H ...) to include the
 // printf_config.h header file
@@ -111,7 +112,7 @@ const char *human_size(uint64_t bytes, char *buf)
 			dblBytes = bytes / 1024.0;
 	}
 
-	sprintk(buf, "%.02lf %s", dblBytes, suffix[i]);
+	sprintk(buf, "%.03lf %s", dblBytes, suffix[i]);
 	return buf;
 }
 
@@ -950,3 +951,24 @@ int fctprintf(void (*out)(char character, void* arg), void* arg,
   return ret;
 }
 
+
+//typedef void (*out_fct_type)(char character, void* buffer, size_t idx,
+                             // size_t maxlen);
+
+static void string_out_fct(char c, void *buf, size_t idx, size_t maxlen) {
+  auto *s = (string *)buf;
+  s->push(c);
+
+}
+
+string string::format(const char *fmt, ...) {
+  string dst;
+
+  va_list va;
+  va_start(va, fmt);
+  _vsnprintf(string_out_fct, (char*)&dst,
+                             (size_t)-1, fmt, va);
+  va_end(va);
+
+  return dst;
+}

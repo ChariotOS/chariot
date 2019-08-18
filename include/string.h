@@ -1,7 +1,4 @@
-
-
-#ifndef __STRING_H__
-#define __STRING_H__
+#pragma once
 
 #include <vec.h>
 
@@ -51,6 +48,10 @@ class string {
   string& operator+=(const string& s);
 
   void push(char c);
+
+
+  // implemented in printk.cpp
+  static string format(const char *fmt, ...);
 };
 
 string operator+(const string& lhs, const string& rhs);
@@ -75,4 +76,3 @@ bool operator>=(const string& lhs, const string& rhs);
 bool operator>=(const string& lhs, const char* rhs);
 bool operator>=(const char* lhs, const string& rhs);
 
-#endif
