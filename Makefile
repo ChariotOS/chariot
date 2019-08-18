@@ -74,13 +74,17 @@ build/%.asm.o: %.asm
 	@echo " ASM " $<
 	@$(AS) $(AFLAGS) -o $@ $<
 
-$(KERNEL): $(CODEFILES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
+$(KERNEL): build/initrd.tar $(CODEFILES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
 	@echo " LNK " $@
 	@$(LD) $(LDFLAGS) $(AOBJECTS) $(COBJECTS) -T kernel.ld -o $@
 
 
+build/initrd.tar: build
+	@#tar cvf $@ mnt
+
+
 $(ROOTFS):
-	dd if=/dev/urandom of=$@ bs=1m count=30
+	dd if=/dev/urandom of=$@ bs=1M count=30
 	chmod 666 $@
 	mkfs.ext2 $@
 	mkdir -p build/mnt
@@ -104,9 +108,7 @@ clean:
 	rm -rf build
 
 
-QEMUOPTS=-cdrom build/kernel.iso\
-				 -m 6G \
-				 -hda $(ROOTFS)
+QEMUOPTS=-cdrom build/kernel.iso -m 2G -hda $(ROOTFS)
 
 qemu: iso $(ROOTFS)
 	qemu-system-x86_64 $(QEMUOPTS) \
