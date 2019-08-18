@@ -10,9 +10,14 @@ namespace fs {
 class filesystem;
 struct inode_metadata;
 
-class inode {
+/**
+ * a vnode is a virtual inode.
+ *
+ * Each filesystem implements their own vnode for their use cases.
+ */
+class vnode {
  public:
-  virtual ~inode();
+  virtual ~vnode();
 
   inline u32 index(void) const { return m_index; }
 
@@ -24,14 +29,38 @@ class inode {
   virtual inode_metadata metadata(void) = 0;
 
  protected:
-  inode(filesystem &fs, u32 index);
+  vnode(filesystem &fs, u32 index);
 
  private:
   filesystem &m_fs;
   u32 m_index = 0;
 };
 
-struct inode_id {};
+using vnoderef = ref<vnode>;
+
+// an inode is a simple struct that just contains the fs_id and the inode index
+// within that filesystem. it is mostly used internally when referencing an
+// inode without a backing datastructure. For example, when walking a directory,
+// you may not need to create the full-on vnode structure on the heap when all
+// you need is a simple inode index.
+//
+// Because of this, inodes need to be able to lookup or 'reify' themselves into
+// the full-on vnode.
+class inode {
+ public:
+  inode(u32 fsid, u32 index);
+  inode(const filesystem &fs, u32 index);
+
+  // will panic if the filesystem is not found
+  filesystem &fs(void);
+  u32 index(void);
+  // turn get the vnode for this inode
+  vnoderef reify(void);
+
+ private:
+  u32 m_fsid;
+  u32 m_index;
+};
 
 enum class inode_type : u8 {
   unknown = 0,
@@ -45,21 +74,18 @@ enum class inode_type : u8 {
 };
 
 struct inode_metadata {
-  inode_id inode;
-  off_t size{0};
+  off_t size = 0;
   inode_type type;
-  u32 mode{0};
-  u32 uid{0};
-  u32 gid{0};
-  u32 link_count{0};
-  time_t atime{0};
-  time_t ctime{0};
-  time_t mtime{0};
-  time_t dtime{0};
-  u32 block_count{0};
-  u32 block_size{0};
-  unsigned major_device{0};
-  unsigned minor_device{0};
+  u32 mode = 0;
+  u32 uid = 0;
+  u32 gid = 0;
+  u32 link_count = 0;
+  time_t atime = 0;
+  time_t ctime = 0;
+  time_t mtime = 0;
+  time_t dtime = 0;
+  u32 block_count = 0;
+  u32 block_size = 0;
 };
 
 }  // namespace fs

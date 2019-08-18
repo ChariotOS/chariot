@@ -343,7 +343,7 @@ int fs::ext2::read_file(ext2_inode_info &inode, u32 off, u32 len, u8 *buf) {
 }
 
 // TODO
-ref<fs::inode> fs::ext2::get_inode(u32 index) {
+fs::vnoderef fs::ext2::get_inode(u32 index) {
   TRACE;
   auto in = make_ref<fs::ext2_inode>(*this, index);
   read_inode(in->info, index);
@@ -424,7 +424,7 @@ vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
   return list;
 }
 
-ref<fs::inode> fs::ext2::open(fs::path path, u32 flags) {
+fs::vnoderef fs::ext2::open(fs::path path, u32 flags) {
   TRACE;
   if (!path.is_root()) {
     printk("ext2::open requires absolute paths (\"%s\")\n",
@@ -491,7 +491,7 @@ ref<fs::inode> fs::ext2::open(fs::path path, u32 flags) {
 
 
 
-fs::ext2_inode::ext2_inode(fs::ext2 &fs, u32 index) : inode(fs, index) {
+fs::ext2_inode::ext2_inode(fs::ext2 &fs, u32 index) : vnode(fs, index) {
   TRACE;
 }
 

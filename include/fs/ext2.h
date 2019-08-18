@@ -56,7 +56,7 @@ struct [[gnu::packed]] ext2_inode_info {
   uint8_t ossv2[12];
 };
 
-class ext2_inode : public inode {
+class ext2_inode : public vnode {
   friend class ext2;
 
  public:
@@ -76,12 +76,12 @@ class ext2 final : public filesystem {
   ~ext2(void);
 
   virtual bool init(void);
-  virtual ref<inode> get_inode(u32 index);
+  virtual vnoderef get_inode(u32 index);
 
   int read_file(u32 inode, u32 off, u32 len, u8 *buf);
 
 
-  virtual ref<fs::inode> open(fs::path, u32 flags);
+  virtual vnoderef open(fs::path, u32 flags);
   inline virtual u64 block_size(void) {
     return blocksize;
   }

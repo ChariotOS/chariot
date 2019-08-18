@@ -11,8 +11,6 @@ namespace fs {
 
 using mode_t = u32;
 
-class inode;
-
 struct directory_entry {
   u32 inode;
   string name;
@@ -29,12 +27,12 @@ class filesystem {
 
   virtual bool init(void) = 0;
 
-  virtual ref<inode> get_inode(u32 index) = 0;
+  virtual vnoderef get_inode(u32 index) = 0;
   virtual u64 block_size(void) = 0;
 
   // opens a file with 'flags' options
-  ref<fs::inode> open(string s, u32 flags);
-  virtual ref<fs::inode> open(fs::path, u32 flags) = 0;
+  vnoderef open(string s, u32 flags);
+  virtual vnoderef open(fs::path, u32 flags) = 0;
 
  protected:
   // TODO: put a lock in here.
@@ -48,7 +46,7 @@ class filesystem {
 };
 
 int mount(string path, filesystem &);
-ref<fs::inode> open(string s, u32 flags, u32 opts = 0);
+ref<fs::vnode> open(string s, u32 flags, u32 opts = 0);
 
 }  // namespace fs
 
