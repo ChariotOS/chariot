@@ -25,7 +25,7 @@ struct mbr_header {
   u16 mbr_signature;
 } __attribute__((packed));
 
-dev::mbr::mbr(ref<dev::blk_dev> disk) : m_disk(disk) {}
+dev::mbr::mbr(dev::blk_dev &disk) : m_disk(disk) {}
 
 dev::mbr::~mbr() {
   if (hdr != nullptr) {
@@ -36,16 +36,14 @@ dev::mbr::~mbr() {
 bool dev::mbr::parse(void) {
   hdr = (struct mbr_header *)kmalloc(sizeof(mbr_header));
 
-  if (!m_disk->read_block(0, (u8 *)hdr)) {
+  if (!m_disk.read_block(0, (u8 *)hdr)) {
     return false;
   }
 
   if (hdr->mbr_signature != MBR_SIGNATURE) {
-    printk("MBRPartitionTable::initialize: bad mbr signature %04X\n",
-           hdr->mbr_signature);
+    // printk("dev::mbr::parse: bad mbr signature %04X\n", hdr->mbr_signature);
     return false;
   }
-
 
   for_range(i, 0, 4) {
     auto &entry = hdr->entry[i];
@@ -53,11 +51,7 @@ bool dev::mbr::parse(void) {
     u32 offset = entry.offset;
 
     if (offset == 0) continue;
-
-    printk("%d %d\n", entry.offset, entry.length);
-
-
-    m_partitions.push(make_ref<dev::partition>(m_disk, offset));
+    m_partitions.push({.off = offset, .len = entry.length});
   }
 
   // parse succeeded
@@ -66,7 +60,10 @@ bool dev::mbr::parse(void) {
 
 u32 dev::mbr::part_count(void) { return m_partitions.size(); }
 
-ref<dev::blk_dev> dev::mbr::partition(u32 index) {
+unique_ptr<dev::blk_dev> dev::mbr::partition(u32 index) {
   assert(index < part_count());
-  return m_partitions[index];
+
+  auto info = m_partitions[index];
+
+  return make_unique<dev::partition>(m_disk, info.off, info.len);
 }

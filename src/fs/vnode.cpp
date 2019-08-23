@@ -1,5 +1,5 @@
 #include <fs/filesystem.h>
-#include <fs/inode.h>
+#include <fs/vnode.h>
 
 fs::vnode::vnode(fs::filesystem &fs, u32 index) : m_fs(fs), m_index(index) {}
 fs::vnode::~vnode(void) {}

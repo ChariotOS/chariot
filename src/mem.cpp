@@ -56,12 +56,16 @@ void init_mmap(u64 mbd) {
     panic("ERROR: Unaligned multiboot info struct\n");
   }
 
+
+  printk("Memory Map:\n");
+
   for (auto *mmap =
            (multiboot_memory_map_t *)(u64)multiboot_info_ptr->mmap_addr;
        (unsigned long)mmap <
        multiboot_info_ptr->mmap_addr + multiboot_info_ptr->mmap_length;
        mmap = (multiboot_memory_map_t *)((unsigned long)mmap + mmap->size +
                                          sizeof(mmap->size))) {
+
     if (mmap->type != MULTIBOOT_MEMORY_AVAILABLE) continue;
 
     if (n > MAX_MMAP_ENTRIES) {
@@ -75,16 +79,18 @@ void init_mmap(u64 mbd) {
     start = round_up(mmap->addr, 4096);
     end = round_down(mmap->addr + mmap->len, 4096);
 
+
+
     memory_map[n].addr = start;
     memory_map[n].len = end - start;
     memory_map[n].type = mmap->type;
 
-    char buf[25];
-    printk("[%p:%p] (%s)\n", start, end, human_size(end - start, buf));
+    printk("  [%p:%p] (%zuB)\n", start, end, end - start);
 
     if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) {
       mm_info.usable_ram += mmap->len;
     }
+
 
     if (end > (mm_info.last_pfn << 12)) {
       mm_info.last_pfn = end >> 12;
@@ -169,8 +175,7 @@ void init_dyn_mm(void) {
 void init_kernel_virtual_memory() {
   char buf[50];
 
-  // printk("\n\n\n\n\n");
-  printk("has: %s\n", human_size(mm_info.total_mem, buf));
+  INFO("has: %s\n", human_size(mm_info.total_mem, buf));
 
   u64 page_step = HUGE_PAGE_SIZE;
   auto page_size = paging::pgsize::huge;
@@ -179,11 +184,10 @@ void init_kernel_virtual_memory() {
 
   for (; true; i += page_step) {
     if (i > mm_info.total_mem) break;
-    // printk("mapping %p to %p\n", (u64)p2v(i), i);
     paging::map((u64)p2v(i), i, page_size, PTE_W | PTE_P);
   }
 
-  printk("mapped %s into high kernel memory\n", human_size(i, buf));
+  INFO("mapped %s into high kernel memory\n", human_size(i, buf));
 
   kheap_start = (u8 *)p2v(i);
   kheap_size = 0;
@@ -205,22 +209,22 @@ extern void mm_free(void *ptr);
 extern void *mm_realloc(void *ptr, size_t size);
 
 void *kmalloc(u64 size) {
+  // TODO: lock the allocator
   auto ptr = mm_malloc(size);
-  // printk("malloc (%zu) = %p\n", size, ptr);
   return ptr;
 }
 void kfree(void *ptr) {
+  // TODO: lock the allocator
   auto p = (u64)ptr;
   if (ptr == NULL) return;
 
   if (!(p >= (u64)kheap_lo() && p < (u64)kheap_hi())) {
     printk("invalid address passed into free: %p\n", ptr);
   }
-  // printk("free(%p)\n", ptr);
   mm_free(ptr);
 }
 
 void *krealloc(void *ptr, u64 newsize) {
-  // printk("realloc(%p, %zu)\n", ptr, newsize);
+  // TODO: lock the allocator
   return mm_realloc(ptr, newsize);
 }

@@ -22,20 +22,16 @@
 #include <fs/ext2.h>
 #include <fs/file.h>
 #include <func.h>
+#include <map.h>
 #include <phys.h>
 #include <ptr.h>
+#include <smp.h>
 #include <string.h>
+#include <uuid.h>
 #include <vec.h>
 #include <vga.h>
-#include <map.h>
 
 extern int kernel_end;
-
-u64 fib(u64 n) {
-  if (n < 2) return 1;
-
-  return fib(n - 1) + fib(n - 2);
-}
 
 // in src/arch/x86/sse.asm
 extern "C" void enable_sse();
@@ -67,79 +63,76 @@ void do_drive_thing(u64 addr, bool master) {
 
   if (!drive->identify()) return;
 
-  auto mbr = dev::mbr(drive);
+  auto buf = kmalloc(drive->block_size());
 
-  if (!mbr.parse()) {
-    printk("failed to parse\n");
-    return;
+  drive->read_block(2, (u8*)buf);
+
+
+  printk("\nPIO:");
+
+  for (int i = 0; i < drive->block_size(); i++) {
+    if (i % 24 == 0) printk("\n");
+    u8 c = ((u8*)buf)[i];
+    printk("%02x ", c);
   }
 
-  printk("read!\n");
 
-  printk("%d partitions\n", mbr.part_count());
+  printk("\nDMA:");
 
-  for_range(i, 0, mbr.part_count()) {
-    auto part = mbr.partition(i);
+  drive->read_block_dma(2, (u8*)buf);
 
-    auto fs = fs::ext2(*part);
+  for (int i = 0; i < drive->block_size(); i++) {
+    if (i % 24 == 0) printk("\n");
+    u8 c = ((u8*)buf)[i];
+    printk("%02x ", c);
+  }
 
-    if (!fs.init()) {
-      printk("failed to parse ext2\n");
+  auto fs = fs::ext2(*drive);
+
+  if (!fs.init()) {
+    printk("failed to init ext2\n");
+  }
+  /*
+    auto mbr = dev::mbr(drive);
+
+    if (!mbr.parse()) {
+      printk("failed to parse\n");
+      return;
     }
-  }
+
+    printk("read!\n");
+
+    printk("%d partitions\n", mbr.part_count());
+
+    for_range(i, 0, mbr.part_count()) {
+      auto part = mbr.partition(i);
+
+      auto fs = fs::ext2(*part);
+
+      if (!fs.init()) {
+        printk("failed to parse ext2\n");
+      }
+    }
+    */
 }
 
-extern "C" u8 initrd_start[];
-extern "C" u8 initrd_end[];
-
-struct tar_header {
-  char filename[100];
-  char mode[8];
-  char uid[8];
-  char gid[8];
-  char size[12];
-  char mtime[12];
-  char chksum[8];
-  char typeflag[1];
-};
-
-// idk what this does
-unsigned int getsize(const char* in) {
-  unsigned int size = 0;
-  unsigned int j;
-  unsigned int count = 1;
-
-  for (j = 11; j > 0; j--, count *= 8) size += ((in[j - 1] - '0') * count);
-
-  return size;
-}
-static void parse_initrd(void) {
-
-  vec<tar_header *> headers;
-  auto address = (u64)initrd_start;
-
-  for (u32 i = 0;; i++) {
-    struct tar_header* header = (struct tar_header*)address;
-    if (header->filename[0] == '\0') break;
-    unsigned int size = getsize(header->size);
-    headers.push(header);
-    address += ((size / 512) + 1) * 512;
-    if (size % 512) address += 512;
-  }
-
-
-  for (auto &h : headers) {
-    printk("%s\n", h->filename);
-  }
+string disk_name(u64 index) { return string::format("disk%d", index); }
+string disk_name_part(u64 index, u64 part) {
+  return string::format("disk%dp%d", index, part);
 }
 
 [[noreturn]] void kmain2(void) {
+
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
 
+  // initialize smp
+  if (!smp::init()) {
+    panic("smp failed!\n");
+  }
+
   // initialize the PCI subsystem
   pci::init();
-
 
   // initialize the programmable interrupt timer
   init_pit();
@@ -149,7 +142,6 @@ static void parse_initrd(void) {
   // finally, enable interrupts
   sti();
 
-
   // now that we have a decent programming enviroment, we can go through and
   // register all the kernel modules
   // NOTE: kernel module init code should not do any work outside of registering
@@ -157,28 +149,13 @@ static void parse_initrd(void) {
   //       no complex things like processes or devices.
   initialize_kernel_modules();
 
-  map<int, int> m;
-
-  m[0] = 1;
-  m[1] = 2;
-
-  printk("%d %d\n", m[0], m[1]);
-
-  // parse_initrd();
-
-  /*
-  for (u16 addr = 0x1F0; addr <= 0x1F7; addr++) {
-    do_drive_thing(addr, true);
-    do_drive_thing(addr, false);
-  }
-  */
+  // do_drive_thing(0x1F0, true);
 
   // spin forever
   printk("\n\nno more work. spinning.\n");
   while (1) {
   }
 }
-
 
 extern "C" char chariot_welcome_start[];
 
@@ -190,7 +167,6 @@ extern void rtc_init(void);
 
 #define WASTE_TIME_PRINTING_WELCOME
 
-
 extern "C" int kmain(u64 mbd, u64 magic) {
   rtc_init();  // initialize the clock
   // initialize the serial "driver"
@@ -199,7 +175,6 @@ extern "C" int kmain(u64 mbd, u64 magic) {
 
   vga::set_color(vga::color::white, vga::color::black);
   vga::clear_screen();
-
 
 #ifdef WASTE_TIME_PRINTING_WELCOME
   printk("%s\n", chariot_welcome_start);
@@ -214,12 +189,21 @@ extern "C" int kmain(u64 mbd, u64 magic) {
 
   init_mem(mbd);
 
+
   init_kernel_virtual_memory();
+
 
 #define STKSIZE (4096 * 8)
   void* new_stack = (void*)((u64)kmalloc(STKSIZE) + STKSIZE);
 
-  call_with_new_stack(new_stack, p2v(kmain2));
+
+  void *new_main = p2v(kmain2);
+
+  printk("new_main = %p\n", new_main);
+
+
+  call_with_new_stack(new_stack, new_main);
+  // ??
   printk("should not have gotten back here\n");
 
   return 0;

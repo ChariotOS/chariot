@@ -2,7 +2,7 @@
 #define __FILESYSTEM_H__
 
 #include <fs/file.h>  // fs::path
-#include <fs/inode.h>
+#include <fs/vnode.h>
 #include <ptr.h>
 #include <string.h>
 #include <types.h>

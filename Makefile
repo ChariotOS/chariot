@@ -33,15 +33,14 @@ AFLAGS=-f elf64 -w-zext-reloc
 
 CINCLUDES=-I./include/
 
-
-
 COMMON_FLAGS := $(CINCLUDES)  \
 				 -fPIC \
 				 -Wno-sign-compare\
 			   -ffreestanding \
 			   -mno-red-zone \
-			   -mcmodel=large -O3 -fno-tree-vectorize \
+				 -O3 -fno-tree-vectorize \
 				 -DGIT_REVISION=\"$(shell git rev-parse HEAD)\"
+
 
 CFLAGS:=$(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
 
@@ -104,11 +103,14 @@ iso: $(KERNEL)
 	$(GRUB) -o build/kernel.iso build/iso
 
 
+klean:
+	rm -f $(COBJECTS) build/initrd.tar $(AOBJECTS) $(KERNEL)
+
 clean:
 	rm -rf build
 
 
-QEMUOPTS=-cdrom build/kernel.iso -m 2G -hda $(ROOTFS)
+QEMUOPTS=-hda build/kernel.iso -smp 4 -m 8G -hdb $(ROOTFS)
 
 qemu: iso $(ROOTFS)
 	qemu-system-x86_64 $(QEMUOPTS) \

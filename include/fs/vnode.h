@@ -1,8 +1,9 @@
-#ifndef __INODE_H__
-#define __INODE_H__
+#ifndef __VNODE_H__
+#define __VNODE_H__
 
 #include <ptr.h>
 #include <types.h>
+
 
 namespace fs {
 

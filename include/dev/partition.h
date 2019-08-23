@@ -11,15 +11,16 @@ namespace dev {
  */
 class partition : public dev::blk_dev {
  public:
-  partition(ref<dev::blk_dev> disk, u32 offset);
+  partition(dev::blk_dev &disk, u32 offset, u32 len);
   virtual ~partition();
   virtual u64 block_size(void);
   virtual bool read_block(u32 index, u8* buf);
   virtual bool write_block(u32 index, const u8* buf);
 
  protected:
-  ref<dev::blk_dev> m_disk;
+  dev::blk_dev &m_disk;
   u32 m_offset;
+  u32 m_len;
 };
 
 };  // namespace dev

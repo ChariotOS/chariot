@@ -2,22 +2,24 @@
 #include <fs/filesystem.h>
 #include <string.h>
 
+#define DEVFS_REG_WALK_PARTS (1 << 0)
+
 namespace fs {
 
 class devfs {
  public:
   /**
    * register a device under a certain name, passing ownership to devfs
-   *Access hereon out is through `dev::device&`
+   * Access here-on out is through `dev::device&`. walk_partitions will, on a
+   * disk device, attempt to recursively read partitions from the device
    */
-  static void register_device(string name, unique_ptr<dev::device>);
+  static void register_device(string name, unique_ptr<dev::device>,
+                              u32 flags = 0);
 
-  static bool device_exists(string name);
-  // WARNING: will panic when the device could not be found. Use after
-  // devfs::device_exists every time unless writing code internal to
-  // devfs. We could also implement exceptions to handle failures here,
-  // but I dont really want to right now
-  static dev::device& get_device(string name);
+  // return the device at the name. Return null if it was not found.
+  // NOTICE: DO NOT STORE THE RESULT OF THIS FUNCTION ANYWHERE IN SMART
+  // POINTERS. ONLY USE THE RAW POINTER OR A REFERENCE WHEN IT IS DEEMED VALID
+  static dev::device *get_device(string name);
 };
 
 };  // namespace fs

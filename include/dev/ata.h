@@ -2,8 +2,8 @@
 #define __ATA_DRIVER_H__
 
 #include <asm.h>
-#include <types.h>
 #include <dev/blk_dev.h>
+#include <types.h>
 
 class byte_port {
  private:
@@ -44,6 +44,14 @@ class ata : public dev::blk_dev {
   byte_port command_port;
   byte_port control_port;
 
+  struct pdrt {
+    u64 offset;
+    u16 size{0};
+    u16 end_of_table{0};
+  };
+
+  pdrt m_pdrt;
+
   bool master;
   u16 sector_size;
 
@@ -66,11 +74,14 @@ class ata : public dev::blk_dev {
   virtual bool write_block(u32 sector, const u8* data);
   virtual u64 block_size(void);
 
+  bool read_block_dma(u32 sector, u8* data);
+  bool write_block_dma(u32 sector, const u8* data);
+
   // flush the internal buffer on the disk
   bool flush();
 
   u64 sector_count(void);
 };
-};  // namespace drivers
+};  // namespace dev
 
 #endif

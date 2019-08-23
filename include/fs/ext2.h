@@ -3,7 +3,7 @@
 
 #include <dev/blk_dev.h>
 #include <fs/filesystem.h>
-#include <fs/inode.h>
+#include <fs/vnode.h>
 #include <func.h>
 #include <vec.h>
 

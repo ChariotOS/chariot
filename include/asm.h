@@ -346,4 +346,16 @@ static inline double ceil(double x) {
   return i;
 }
 
+
+
+static inline u32 compare_and_swap(volatile u32 *mem, u32 newval, u32 oldval) {
+  u32 ret;
+  asm volatile("cmpxchgl %2, %1"
+      : "=a"(ret), "+m"(mem)
+      : "r"(newval), "0"(oldval)
+      : "cc", "memory");
+  return ret;
+}
+
+
 #endif

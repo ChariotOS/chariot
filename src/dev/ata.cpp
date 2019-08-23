@@ -1,10 +1,10 @@
 #include <dev/ata.h>
+#include <fs/devfs.h>
 #include <idt.h>
 #include <mem.h>
 #include <module.h>
 #include <printk.h>
 #include <ptr.h>
-#include <fs/devfs.h>
 
 // #define DEBUG
 // #define DO_TRACE
@@ -104,6 +104,8 @@ bool dev::ata::identify() {
 bool dev::ata::read_block(u32 sector, u8* data) {
   TRACE;
 
+  // printk("read block %d\n", sector);
+
   if (sector & 0xF0000000) return false;
 
   // select the correct device, and put bits of the address
@@ -139,6 +141,9 @@ bool dev::ata::read_block(u32 sector, u8* data) {
 
 bool dev::ata::write_block(u32 sector, const u8* buf) {
   TRACE;
+
+  printk("write block %d\n", sector);
+
   if (sector & 0xF0000000) return false;
 
   // select the correct device, and put bits of the address
@@ -195,24 +200,66 @@ u64 dev::ata::block_size() {
   return sector_size;
 }
 
+
+
+bool dev::ata::read_block_dma(u32 sector, u8* data) {
+  TRACE;
+
+  if (sector & 0xF0000000) return false;
+
+  // select the correct device, and put bits of the address
+  device_port.out((master ? 0xE0 : 0xF0) | ((sector & 0x0F000000) >> 24));
+  error_port.out(0);
+  // read a single sector
+  sector_count_port.out(1);
+
+  lba_low_port.out((sector & 0x00FF));
+  lba_mid_port.out((sector & 0xFF00) >> 8);
+  lba_high_port.out((sector & 0xFF0000) >> 16);
+
+
+
+
+  // read command
+  command_port.out(0x20);
+
+  u8 status = wait();
+  if (status & 0x1) {
+    printk("error reading ATA drive\n");
+    return false;
+  }
+
+  auto* buf = (char*)data;
+
+  for (u16 i = 0; i < sector_size; i += 2) {
+    u16 d = data_port.in();
+
+    buf[i] = d & 0xFF;
+    buf[i + 1] = (d >> 8) & 0xFF;
+  }
+
+  return true;
+
+}
+bool dev::ata::write_block_dma(u32 sector, const u8* data) { return false; }
+
+
+
 static void ata_interrupt(int intr, trapframe* fr) {
-  // TRACE;
-  // printk("ata_interrupt\n");
+  // INFO("interrupt: err=%d\n", fr->err);
 }
 
+static bool find_disk(u16 addr, int id, bool master) {
+  auto drive = make_unique<dev::ata>(addr, master);
 
-static bool find_disk(u16 addr, char id, bool master) {
+  if (drive->identify()) {
+    string name = string::format("disk%d", id);
+    INFO("found disk %s\n", name.get());
 
-    auto drive = make_unique<dev::ata>(addr, master);
-
-    if (drive->identify()) {
-      string name = string::format("hd%c", id);
-      printk("found disk %s\n", name.get());
-
-      fs::devfs::register_device(name, move(drive));
-      return true;
-    }
-    return false;
+    fs::devfs::register_device(name, move(drive), DEVFS_REG_WALK_PARTS);
+    return true;
+  }
+  return false;
 }
 
 void ata_init(void) {
@@ -222,12 +269,9 @@ void ata_init(void) {
   interrupt_register(ATA_IRQ1, ata_interrupt);
   interrupt_enable(ATA_IRQ1);
 
-
-  char id = 'a';
-
-  // try to load hda
-  if (find_disk(0x1F0, id, true)) id++;
-  if (find_disk(0x1F0, id, false)) id++;
+  // try to load hard disks at their expected locations
+  find_disk(0x1F0, 0, true);
+  find_disk(0x1F0, 1, false);
 }
 
 module_init("ata", ata_init);
