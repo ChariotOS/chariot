@@ -61,9 +61,11 @@ class ext2_inode : public vnode {
 
  public:
   explicit ext2_inode(ext2 &fs, u32 index);
-  virtual ~ext2_inode() override;
+  virtual ~ext2_inode();
 
-  virtual inode_metadata metadata(void) override;
+  virtual inode_metadata metadata(void);
+
+  virtual int add_dir_entry(ref<vnode> node, const string &name, u32 mode);
 
  protected:
   ext2_inode_info info;

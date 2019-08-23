@@ -199,9 +199,6 @@ extern "C" int kmain(u64 mbd, u64 magic) {
 
   void *new_main = p2v(kmain2);
 
-  printk("new_main = %p\n", new_main);
-
-
   call_with_new_stack(new_stack, new_main);
   // ??
   printk("should not have gotten back here\n");

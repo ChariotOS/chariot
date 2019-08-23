@@ -2,6 +2,7 @@
 #include <dev/blk_dev.h>
 #include <fs/ext2.h>
 #include <mem.h>
+#include <errno.h>
 #include <string.h>
 
 // Standard information and structures for EXT2
@@ -498,6 +499,11 @@ fs::ext2_inode::ext2_inode(fs::ext2 &fs, u32 index) : vnode(fs, index) {
 fs::ext2_inode::~ext2_inode() {
   TRACE;
   // TODO
+}
+
+
+int fs::ext2_inode::add_dir_entry(ref<vnode> node, const string &name, u32 mode) {
+  return -EPERM;
 }
 
 fs::inode_metadata fs::ext2_inode::metadata(void) {
