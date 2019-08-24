@@ -1,5 +1,14 @@
+#include <asm.h>
 #include <printk.h>
 #include <string.h>
+
+static size_t strlen(const char* str) {
+  const char* s;
+
+  for (s = str; *s; ++s)
+    ;
+  return (s - str);
+}
 
 #define INIT_STRING       \
   if (m_buf == nullptr) { \
@@ -149,9 +158,7 @@ string& string::operator=(const string& s) {
 
 string& string::operator=(const char* s) {
   CHECK;
-  u32 len = 0;
-  for (; s[len] != '\0'; len++) {
-  }
+  u32 len = strlen(s);
   reserve(len + 1);
   m_len = len;
   memcpy(m_buf, s, len);
@@ -191,6 +198,9 @@ void string::reserve(u32 new_cap) {
  */
 void string::push(char c) {
   CHECK;
+
+
+  if (c == '\0') return;
   INIT_STRING;
 
   if (m_len + 2 >= m_cap) reserve(m_cap * 2);
@@ -220,6 +230,7 @@ string operator+(const string& lhs, const char* rhs) {
 string operator+(const char* lhs, const string& rhs) {
   return string(lhs) += rhs;
 }
+
 
 bool operator==(const string& lhs, const string& rhs) {
   if (lhs.len() != rhs.len()) return false;

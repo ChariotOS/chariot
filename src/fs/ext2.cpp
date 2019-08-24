@@ -1,8 +1,8 @@
 #include <asm.h>
 #include <dev/blk_dev.h>
+#include <errno.h>
 #include <fs/ext2.h>
 #include <mem.h>
-#include <errno.h>
 #include <string.h>
 
 // Standard information and structures for EXT2
@@ -117,7 +117,6 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-
 fs::ext2::ext2(dev::blk_dev &dev) : filesystem(/*super*/), dev(dev) { TRACE; }
 
 fs::ext2::~ext2(void) {
@@ -156,6 +155,8 @@ bool fs::ext2::init(void) {
   // allocate a block for the work_buf
   work_buf = kmalloc(blocksize);
   inode_buf = kmalloc(blocksize);
+
+  m_root_inode = get_inode(2);
 
   return true;
 }
@@ -343,6 +344,8 @@ int fs::ext2::read_file(ext2_inode_info &inode, u32 off, u32 len, u8 *buf) {
   return 0;
 }
 
+fs::vnoderef fs::ext2::get_root_inode(void) { return m_root_inode; }
+
 // TODO
 fs::vnoderef fs::ext2::get_inode(u32 index) {
   TRACE;
@@ -450,10 +453,9 @@ fs::vnoderef fs::ext2::open(fs::path path, u32 flags) {
 
     u16 type = info.type & 0xF000;
 
+    printk("type=%d\n", type);
+
     INFO("type=%04x\n", type);
-
-
-
 
     if (type == 0x4000 /*directory*/) {
       INFO("DIR\n");
@@ -490,8 +492,6 @@ fs::vnoderef fs::ext2::open(fs::path path, u32 flags) {
   return res;
 }
 
-
-
 fs::ext2_inode::ext2_inode(fs::ext2 &fs, u32 index) : vnode(fs, index) {
   TRACE;
 }
@@ -501,9 +501,18 @@ fs::ext2_inode::~ext2_inode() {
   // TODO
 }
 
+bool fs::ext2_inode::walk_dir_impl(func<bool(const string &, ref<vnode>)> &cb) {
+  auto *efs = static_cast<ext2 *>(&fs());
 
-int fs::ext2_inode::add_dir_entry(ref<vnode> node, const string &name, u32 mode) {
-  return -EPERM;
+  efs->traverse_dir(this->info, [&](fs::directory_entry de) -> bool {
+    return cb(de.name, efs->get_inode(de.inode));
+  });
+  return false;
+}
+
+int fs::ext2_inode::add_dir_entry(ref<vnode> node, const string &name,
+                                  u32 mode) {
+  return -ENOTIMPL;
 }
 
 fs::inode_metadata fs::ext2_inode::metadata(void) {
@@ -512,7 +521,7 @@ fs::inode_metadata fs::ext2_inode::metadata(void) {
   md.size = info.size;
   md.mode = info.type & 0xFFF;
 
-  auto type = (info.type) & 0xF000;
+  auto type = ((info.type) & 0xF000) >> 12;
 
   md.type = inode_type::unknown;
   if (type == 0x1) md.type = inode_type::fifo;
@@ -535,10 +544,8 @@ fs::inode_metadata fs::ext2_inode::metadata(void) {
   md.dtime = info.delete_time;
   md.block_size = fs().block_size();
 
-
   md.block_count = md.size / md.block_size;
   if (md.size % md.block_size != 0) md.block_count++;
-
 
   return md;
 }

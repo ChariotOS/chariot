@@ -4,6 +4,7 @@
 #include <ptr.h>
 #include <string.h>
 #include <types.h>
+#include <func.h>
 
 namespace fs {
 
@@ -64,6 +65,9 @@ class vnode {
 
 
 
+  bool walk_dir(func<bool(const string&, ref<vnode>)> cb);
+
+
   // add a file to the directory that this vnode points to
   // Error examples:
   //  -ENOTDIR - not a directory
@@ -74,6 +78,8 @@ class vnode {
 
  protected:
   vnode(filesystem &fs, u32 index);
+
+  virtual bool walk_dir_impl(func<bool(const string&, ref<vnode>)>& cb) = 0;
 
  private:
   filesystem &m_fs;

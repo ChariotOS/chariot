@@ -19,6 +19,7 @@
 #include <dev/RTC.h>
 #include <dev/mbr.h>
 #include <device.h>
+#include <fs/devfs.h>
 #include <fs/ext2.h>
 #include <fs/file.h>
 #include <func.h>
@@ -58,71 +59,80 @@ static void call_global_constructors(void) {
 
 extern "C" void call_with_new_stack(void*, void*);
 
-void do_drive_thing(u64 addr, bool master) {
-  auto drive = make_ref<dev::ata>(addr, master);
-
-  if (!drive->identify()) return;
-
-  auto buf = kmalloc(drive->block_size());
-
-  drive->read_block(2, (u8*)buf);
+static void print_tree(fs::vnoderef& node, int depth = 0) {
+  node->walk_dir([&](const string& name, fs::vnoderef vn) -> bool {
 
 
-  printk("\nPIO:");
 
-  for (int i = 0; i < drive->block_size(); i++) {
-    if (i % 24 == 0) printk("\n");
-    u8 c = ((u8*)buf)[i];
-    printk("%02x ", c);
+    for (int i = 0; i < depth; i++) {
+      printk("|");
+      if (i == depth-1) {
+        printk(" - ");
+      } else {
+        printk("   ");
+      }
+    }
+
+
+    auto md = vn->metadata();
+
+    printk("%-16.16s     ", name.get());
+    printk("sz=%zu ", md.size);
+    printk("gid=%d uid=%d ", md.gid, md.uid);
+    printk("links=%d ", md.link_count);
+    printk("blksz=%d ", md.block_size);
+    printk("\n");
+
+
+    if (name == "." || name == "..") return true;
+
+
+    if (vn->index() != node->index()) {
+      if (vn->is_dir()) {
+        print_tree(vn, depth + 1);
+      }
+    }
+
+    // printk("%5d: %s\n", vn->index(), name.get());
+    return true;
+  });
+}
+
+void do_drive_thing(string dev_name) {
+  auto* dev = fs::devfs::get_device(dev_name);
+
+  if (dev == nullptr) {
+    printk("couldnt find device\n");
+    return;
+  }
+  if (!dev->is_blk_device()) {
+    printk("is not blk device\n");
+    return;
   }
 
-
-  printk("\nDMA:");
-
-  drive->read_block_dma(2, (u8*)buf);
-
-  for (int i = 0; i < drive->block_size(); i++) {
-    if (i % 24 == 0) printk("\n");
-    u8 c = ((u8*)buf)[i];
-    printk("%02x ", c);
-  }
+  auto drive = static_cast<dev::blk_dev*>(dev);
 
   auto fs = fs::ext2(*drive);
 
   if (!fs.init()) {
     printk("failed to init ext2\n");
   }
-  /*
-    auto mbr = dev::mbr(drive);
 
-    if (!mbr.parse()) {
-      printk("failed to parse\n");
-      return;
-    }
+  auto root = fs.get_root_inode();
 
-    printk("read!\n");
+  if (!root) {
+    printk("failed to get root node\n");
+    return;
+  }
+  if (!root->is_dir()) {
+    printk("root isn't dir\n");
+    return;
+  }
 
-    printk("%d partitions\n", mbr.part_count());
-
-    for_range(i, 0, mbr.part_count()) {
-      auto part = mbr.partition(i);
-
-      auto fs = fs::ext2(*part);
-
-      if (!fs.init()) {
-        printk("failed to parse ext2\n");
-      }
-    }
-    */
-}
-
-string disk_name(u64 index) { return string::format("disk%d", index); }
-string disk_name_part(u64 index, u64 part) {
-  return string::format("disk%dp%d", index, part);
+  print_tree(root);
 }
 
 [[noreturn]] void kmain2(void) {
-
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
 
@@ -142,17 +152,13 @@ string disk_name_part(u64 index, u64 part) {
   // finally, enable interrupts
   sti();
 
-  // now that we have a decent programming enviroment, we can go through and
-  // register all the kernel modules
-  // NOTE: kernel module init code should not do any work outside of registering
-  //       andlers, as the enviroment they are run in is fairly minimal and have
-  //       no complex things like processes or devices.
   initialize_kernel_modules();
 
+  do_drive_thing("disk1");
   // do_drive_thing(0x1F0, true);
 
   // spin forever
-  printk("\n\nno more work. spinning.\n");
+  printk("no more work. spinning.\n");
   while (1) {
   }
 }
@@ -189,15 +195,12 @@ extern "C" int kmain(u64 mbd, u64 magic) {
 
   init_mem(mbd);
 
-
   init_kernel_virtual_memory();
-
 
 #define STKSIZE (4096 * 8)
   void* new_stack = (void*)((u64)kmalloc(STKSIZE) + STKSIZE);
 
-
-  void *new_main = p2v(kmain2);
+  void* new_main = p2v(kmain2);
 
   call_with_new_stack(new_stack, new_main);
   // ??

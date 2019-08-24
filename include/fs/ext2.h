@@ -69,6 +69,7 @@ class ext2_inode : public vnode {
 
  protected:
   ext2_inode_info info;
+  virtual bool walk_dir_impl(func<bool(const string&, ref<vnode>)>& cb);
 };
 
 class ext2 final : public filesystem {
@@ -78,6 +79,8 @@ class ext2 final : public filesystem {
   ~ext2(void);
 
   virtual bool init(void);
+
+  virtual vnoderef get_root_inode(void);
   virtual vnoderef get_inode(u32 index);
 
   int read_file(u32 inode, u32 off, u32 len, u8 *buf);
@@ -88,7 +91,9 @@ class ext2 final : public filesystem {
     return blocksize;
   }
 
- private:
+ protected:
+
+  friend class ext2_inode;
   bool read_block(u32 block, void *buf);
   bool write_block(u32 block, const void *buf);
 
@@ -135,6 +140,8 @@ class ext2 final : public filesystem {
   // allocations when doing general maintainence
   void *work_buf = nullptr;
   void *inode_buf = nullptr;
+
+  vnoderef m_root_inode {};
 };
 }  // namespace fs
 

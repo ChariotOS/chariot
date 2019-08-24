@@ -3,6 +3,7 @@
 #include <idt.h>
 #include <mem.h>
 #include <module.h>
+#include <pci.h>
 #include <printk.h>
 #include <ptr.h>
 
@@ -200,8 +201,6 @@ u64 dev::ata::block_size() {
   return sector_size;
 }
 
-
-
 bool dev::ata::read_block_dma(u32 sector, u8* data) {
   TRACE;
 
@@ -216,9 +215,6 @@ bool dev::ata::read_block_dma(u32 sector, u8* data) {
   lba_low_port.out((sector & 0x00FF));
   lba_mid_port.out((sector & 0xFF00) >> 8);
   lba_high_port.out((sector & 0xFF0000) >> 16);
-
-
-
 
   // read command
   command_port.out(0x20);
@@ -239,11 +235,8 @@ bool dev::ata::read_block_dma(u32 sector, u8* data) {
   }
 
   return true;
-
 }
 bool dev::ata::write_block_dma(u32 sector, const u8* data) { return false; }
-
-
 
 static void ata_interrupt(int intr, trapframe* fr) {
   // INFO("interrupt: err=%d\n", fr->err);
@@ -268,6 +261,16 @@ void ata_init(void) {
 
   interrupt_register(ATA_IRQ1, ata_interrupt);
   interrupt_enable(ATA_IRQ1);
+
+  /*
+  int index = 0;
+  // find disks using the pci subsystem
+  pci::walk_devices([&](pci::device* dev) -> void {
+    if (dev->is_device(0x8086, 0x7010) || dev->is_device(0x8086, 0x7111)) {
+      printk("bar: %016x\n", dev->get_bar(0));
+    }
+  });
+  */
 
   // try to load hard disks at their expected locations
   find_disk(0x1F0, 0, true);

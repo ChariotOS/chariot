@@ -28,6 +28,7 @@ class filesystem {
   virtual bool init(void) = 0;
 
   virtual vnoderef get_inode(u32 index) = 0;
+  virtual vnoderef get_root_inode() = 0;
   virtual u64 block_size(void) = 0;
 
   // opens a file with 'flags' options
