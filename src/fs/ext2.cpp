@@ -244,8 +244,7 @@ bool fs::ext2::write_inode(ext2_inode_info *src, u32 inode) {
 
 bool fs::ext2::read_block(u32 block, void *buf) {
   TRACE;
-  assert(dev.read(block * blocksize, blocksize, buf));
-  return true;
+  return dev.read(block * blocksize, blocksize, buf);
 }
 
 bool fs::ext2::write_block(u32 block, const void *buf) {
@@ -307,8 +306,7 @@ void fs::ext2::traverse_dir(ext2_inode_info &inode,
       }
       entry = (ext2_dir *)((char *)entry + entry->size);
     }
-    return true;
-  });
+    return true; });
 
   kfree(buffer);
 }
@@ -548,4 +546,75 @@ fs::inode_metadata fs::ext2_inode::metadata(void) {
   if (md.size % md.block_size != 0) md.block_count++;
 
   return md;
+}
+
+off_t fs::ext2_inode::block_for_byte(off_t b) {
+  auto *efs = static_cast<ext2 *>(&fs());
+
+  auto blksz = efs->block_size();
+
+  off_t blk_ind = b % blksz;
+
+  printk("blk_ind = %d\n", blk_ind);
+
+  off_t block = 0;
+
+  if (blk_ind < 12) {
+    block = info.dbp[blk_ind];
+  } else {
+    blk_ind = -ENOTIMPL;
+  }
+
+  // info.singly_block[blk_ind];
+
+  return block;
+}
+
+ssize_t fs::ext2_inode::read(off_t off, size_t nbytes, void *dst) {
+  if (is_dir()) return -EISDIR;
+
+
+  auto *efs = static_cast<ext2 *>(&fs());
+
+  // TODO cache the blocks somewhere
+  auto blks = efs->blocks_for_inode(index());
+
+  if (blks.size() == 0) return 0;
+
+  ssize_t offset = off;
+  if (offset > info.size) return 0;
+
+  // how many bytes have been read
+  ssize_t nread = 0;
+
+  auto bsize = efs->block_size();
+
+  off_t first_blk_ind = offset / bsize;
+  off_t last_blk_ind = (offset + nbytes) / bsize;
+
+  off_t offset_into_first_block = offset % bsize;
+
+  // TODO: lock the FS. We now want to own the efs->work_buf
+  auto *out = (u8 *)dst;
+
+  int remaining_count = min((off_t)nbytes, (off_t)size() - off);
+
+  for (int bi = first_blk_ind; remaining_count && bi <= last_blk_ind; ++bi) {
+    auto *buf = (u8 *)efs->work_buf;
+
+    if (!efs->read_block(blks[bi], buf)) {
+      printk("ext2fs: read_bytes: read_block(%u) failed (lbi: %u)\n", blks[bi],
+             bi);
+      return -EIO;
+    }
+
+    int offset_into_block = (bi == first_blk_ind) ? offset_into_first_block : 0;
+    int num_bytes_to_copy = min(bsize - offset_into_block, remaining_count);
+    memcpy(out, buf + offset_into_block, num_bytes_to_copy);
+    remaining_count -= num_bytes_to_copy;
+    nread += num_bytes_to_copy;
+    out += num_bytes_to_copy;
+  }
+
+  return nread;
 }

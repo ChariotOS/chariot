@@ -17,6 +17,7 @@
 #include <asm.h>
 #include <dev/CMOS.h>
 #include <dev/RTC.h>
+#include <dev/blk_cache.h>
 #include <dev/mbr.h>
 #include <device.h>
 #include <fs/devfs.h>
@@ -59,41 +60,41 @@ static void call_global_constructors(void) {
 
 extern "C" void call_with_new_stack(void*, void*);
 
-static void print_tree(fs::vnoderef& node, int depth = 0) {
+static void walk_tree(fs::vnoderef& node, int depth = 0) {
+  if (depth == 0) {
+    printk("/\n");
+    depth++;
+  }
   node->walk_dir([&](const string& name, fs::vnoderef vn) -> bool {
+    if (name == "." || name == "..") return true;
 
-
-
+    /*
     for (int i = 0; i < depth; i++) {
       printk("|");
-      if (i == depth-1) {
+      if (i == depth - 1) {
         printk(" - ");
       } else {
         printk("   ");
       }
     }
+    */
 
+    auto sz = 20;
 
-    auto md = vn->metadata();
+    printk("%-20s\t", name.get());
 
-    printk("%-16.16s     ", name.get());
-    printk("sz=%zu ", md.size);
-    printk("gid=%d uid=%d ", md.gid, md.uid);
-    printk("links=%d ", md.link_count);
-    printk("blksz=%d ", md.block_size);
+    for (int i = 0; i < sz; i++) {
+      char dst = 0;
+
+      int read = vn->read(i, 1, &dst);
+      if (read <= 0) break;
+      printk("%02x ", dst);
+    }
     printk("\n");
 
+    if (vn->index() != node->index())
+      if (vn->is_dir()) walk_tree(vn, depth + 1);
 
-    if (name == "." || name == "..") return true;
-
-
-    if (vn->index() != node->index()) {
-      if (vn->is_dir()) {
-        print_tree(vn, depth + 1);
-      }
-    }
-
-    // printk("%5d: %s\n", vn->index(), name.get());
     return true;
   });
 }
@@ -105,17 +106,20 @@ void do_drive_thing(string dev_name) {
     printk("couldnt find device\n");
     return;
   }
-  if (!dev->is_blk_device()) {
+
+  auto drive = dev->to_blk_dev();
+  if (drive == nullptr) {
     printk("is not blk device\n");
     return;
   }
 
-  auto drive = static_cast<dev::blk_dev*>(dev);
+  auto cache = dev::blk_cache(*drive, 64);
 
-  auto fs = fs::ext2(*drive);
+  auto fs = fs::ext2(cache);
 
   if (!fs.init()) {
     printk("failed to init ext2\n");
+    return;
   }
 
   auto root = fs.get_root_inode();
@@ -129,7 +133,7 @@ void do_drive_thing(string dev_name) {
     return;
   }
 
-  print_tree(root);
+  walk_tree(root);
 }
 
 [[noreturn]] void kmain2(void) {
@@ -137,25 +141,25 @@ void do_drive_thing(string dev_name) {
   call_global_constructors();
 
   // initialize smp
-  if (!smp::init()) {
-    panic("smp failed!\n");
-  }
+  if (!smp::init()) panic("smp failed!\n");
 
   // initialize the PCI subsystem
   pci::init();
 
   // initialize the programmable interrupt timer
   init_pit();
+
   // and set the interval, or whatever
   set_pit_freq(100);
 
   // finally, enable interrupts
   sti();
 
+  // walk the kernel modules and run their init function
   initialize_kernel_modules();
 
+  // walk the disk
   do_drive_thing("disk1");
-  // do_drive_thing(0x1F0, true);
 
   // spin forever
   printk("no more work. spinning.\n");
@@ -173,7 +177,7 @@ extern void rtc_init(void);
 
 #define WASTE_TIME_PRINTING_WELCOME
 
-extern "C" int kmain(u64 mbd, u64 magic) {
+extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   rtc_init();  // initialize the clock
   // initialize the serial "driver"
   serial_install();
@@ -204,8 +208,9 @@ extern "C" int kmain(u64 mbd, u64 magic) {
 
   call_with_new_stack(new_stack, new_main);
   // ??
-  printk("should not have gotten back here\n");
+  panic("should not have gotten back here\n");
 
-  return 0;
+  while (1)
+    ;
 }
 

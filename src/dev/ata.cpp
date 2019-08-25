@@ -105,6 +105,7 @@ bool dev::ata::identify() {
 bool dev::ata::read_block(u32 sector, u8* data) {
   TRACE;
 
+
   // printk("read block %d\n", sector);
 
   if (sector & 0xF0000000) return false;

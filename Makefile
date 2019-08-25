@@ -89,7 +89,8 @@ $(ROOTFS):
 	mkdir -p build/mnt
 	sudo mount -o loop $(ROOTFS) build/mnt
 	sudo cp -r mnt/. build/mnt/
-	sudo cp -r src build/mnt/kernel
+	sudo cp -r src build/mnt/src
+	sudo cp -r include build/mnt/include
 	sudo umount build/mnt
 
 fs:

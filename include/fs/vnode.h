@@ -64,6 +64,8 @@ class vnode {
   virtual inode_metadata metadata(void) = 0;
 
 
+  virtual ssize_t read(off_t, size_t, void *) = 0;
+
 
   bool walk_dir(func<bool(const string&, ref<vnode>)> cb);
 

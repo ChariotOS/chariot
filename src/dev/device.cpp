@@ -1,4 +1,9 @@
-#include <device.h>
+#include <dev/device.h>
+#include <dev/blk_dev.h>
 
-// enumerate the devices and look for drivers
-void assign_drivers() {}
+dev::blk_dev *dev::device::to_blk_dev(void) {
+  if (is_blk_device()) {
+    return static_cast<dev::blk_dev*>(this);
+  }
+  return nullptr;
+}

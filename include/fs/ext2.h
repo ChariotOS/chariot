@@ -66,8 +66,12 @@ class ext2_inode : public vnode {
   virtual inode_metadata metadata(void);
 
   virtual int add_dir_entry(ref<vnode> node, const string &name, u32 mode);
+  virtual ssize_t read(off_t, size_t, void *);
 
  protected:
+
+
+  off_t block_for_byte(off_t b);
   ext2_inode_info info;
   virtual bool walk_dir_impl(func<bool(const string&, ref<vnode>)>& cb);
 };
