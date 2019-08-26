@@ -91,6 +91,10 @@ const char *excp_codes[NUM_EXCEPTIONS][2] = {
 
 u64 ticks = 0;
 
+u64 get_ticks(void) {
+  return ticks;
+}
+
 extern u32 idt_block[];
 
 extern void *vectors[];  // in vectors.S: array of 256 entry pointers

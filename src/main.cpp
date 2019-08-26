@@ -79,18 +79,27 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
     }
     */
 
-    auto sz = 20;
+    constexpr auto sz = 32;
 
-    printk("%-20s\t", name.get());
+#define DUMP_TO_SERIAL
 
-    for (int i = 0; i < sz; i++) {
-      char dst = 0;
+#ifdef DUMP_TO_SERIAL
+    printk("\n\n%-20s\n", name.get());
+#endif
 
-      int read = vn->read(i, 1, &dst);
-      if (read <= 0) break;
-      printk("%02x ", dst);
-    }
-    printk("\n");
+    char buf[sz];
+
+    int nread = 0;
+    int off = 0;
+    do {
+      nread = vn->read(off, sz, buf);
+      off += sz;
+#ifdef DUMP_TO_SERIAL
+      printk("\t%6d: ", off);
+      for_range(i, 0, nread) { printk("%02x ", (u8)buf[i]); }
+      printk("\n");
+#endif
+    } while (nread >= sz);
 
     if (vn->index() != node->index())
       if (vn->is_dir()) walk_tree(vn, depth + 1);
@@ -158,8 +167,11 @@ void do_drive_thing(string dev_name) {
   // walk the kernel modules and run their init function
   initialize_kernel_modules();
 
+
+  u64 start = get_ticks();
   // walk the disk
   do_drive_thing("disk1");
+  printk("%zu ticks\n", get_ticks() - start);
 
   // spin forever
   printk("no more work. spinning.\n");

@@ -257,6 +257,7 @@ struct bar {
   bool valid;
   u8 *addr;
   u32 size;
+  u32 raw;
 };
 
 class device {
@@ -302,6 +303,7 @@ class device {
 
     panic("invalid PCI write of size %d\n", sizeof(T));
   }
+  void enable_bus_mastering(void);
 };
 
 void init();

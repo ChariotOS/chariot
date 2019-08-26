@@ -101,4 +101,6 @@ void interrupt_block();
 void interrupt_unblock();
 void interrupt_wait();
 
+u64 get_ticks(void);
+
 #endif

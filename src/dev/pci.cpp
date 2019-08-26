@@ -3,6 +3,35 @@
 #include <pci.h>
 #include <printk.h>
 
+#define PCI_VENDOR_ID 0x00            // word
+#define PCI_DEVICE_ID 0x02            // word
+#define PCI_COMMAND 0x04              // word
+#define PCI_STATUS 0x06               // word
+#define PCI_REVISION_ID 0x08          // byte
+#define PCI_PROG_IF 0x09              // byte
+#define PCI_SUBCLASS 0x0a             // byte
+#define PCI_CLASS 0x0b                // byte
+#define PCI_CACHE_LINE_SIZE 0x0c      // byte
+#define PCI_LATENCY_TIMER 0x0d        // byte
+#define PCI_HEADER_TYPE 0x0e          // byte
+#define PCI_BIST 0x0f                 // byte
+#define PCI_BAR0 0x10                 // u32
+#define PCI_BAR1 0x14                 // u32
+#define PCI_BAR2 0x18                 // u32
+#define PCI_BAR3 0x1C                 // u32
+#define PCI_BAR4 0x20                 // u32
+#define PCI_BAR5 0x24                 // u32
+#define PCI_SUBSYSTEM_ID 0x2C         // u16
+#define PCI_SUBSYSTEM_VENDOR_ID 0x2E  // u16
+#define PCI_INTERRUPT_LINE 0x3C       // byte
+#define PCI_SECONDARY_BUS 0x19        // byte
+#define PCI_HEADER_TYPE_DEVICE 0
+#define PCI_HEADER_TYPE_BRIDGE 1
+#define PCI_TYPE_BRIDGE 0x0604
+#define PCI_ADDRESS_PORT 0xCF8
+#define PCI_VALUE_PORT 0xCFC
+#define PCI_NONE 0xFFFF
+
 static u32 pci_cmd_port = 0xCF8;
 static u32 pci_data_port = 0xCFC;
 
@@ -47,13 +76,6 @@ struct pci_bar {
   enum bar_type type;
 };
 
-
-
-
-
-
-
-
 static struct pci_bar pci_get_bar(u16 bus, u16 dev, u16 func, u32 barnum) {
   struct pci_bar bar;
   bar.addr = nullptr;
@@ -71,7 +93,6 @@ static struct pci_bar pci_get_bar(u16 bus, u16 dev, u16 func, u32 barnum) {
   bar.type = (bar_val & 0x1) ? bar_in_out : bar_memory_mapping;
 
   if (bar.type == bar_memory_mapping) {
-
     switch ((bar_val >> 1) & 0x3) {
       case 0:  // 32 bit mode
       case 1:  // 20 bit mode
@@ -79,7 +100,7 @@ static struct pci_bar pci_get_bar(u16 bus, u16 dev, u16 func, u32 barnum) {
         break;
     }
 
-    bar.addr = (u8*)(bar_val & ~0xF);
+    bar.addr = (u8 *)(bar_val & ~0xF);
     bar.prefetchable = ((bar_val >> 3) & 0x1) == 0x1;
     // dunno
   } else {
@@ -153,22 +174,25 @@ void pci::walk_devices(func<void(device *)> fn) {
   }
 }
 
-
 u32 pci::device::get_address(u32 off) {
   return get_pci_addr(bus, dev, func, off);
 }
 
 bool pci::device::is_device(u16 v, u16 d) {
-
   return vendor_id == v && device_id == d;
 }
 
+void pci::device::enable_bus_mastering(void) {
+  auto value = read<u16>(PCI_COMMAND);
+  value |= (1 << 2);
+  value |= (1 << 0);
+  write<u16>(PCI_COMMAND, value);
+}
 
 pci::bar pci::device::get_bar(int barnum) {
   pci::bar bar;
   bar.valid = false;
   bar.addr = NULL;
-
 
   auto headertype = read<u32>(0x0E) & 0x7F;
 
@@ -180,11 +204,11 @@ pci::bar pci::device::get_bar(int barnum) {
 
   bar.valid = true;
 
-
   u64 bar_val = read<u32>(0x10 + 4 * barnum);
+  bar.raw = bar_val;
 
   bar.type = (bar_val & 0x1) ? bar_type::BAR_PIO : bar_type::BAR_MMIO;
-  
+
   if (bar.type == bar_type::BAR_MMIO) {
     switch ((bar_val >> 1) & 0x3) {
       case 0:  // 32 bit mode
@@ -199,8 +223,6 @@ pci::bar pci::device::get_bar(int barnum) {
     bar.addr = (u8 *)(bar_val & ~0x3);
     bar.prefetchable = false;
   }
-
-
 
   return bar;
 }
