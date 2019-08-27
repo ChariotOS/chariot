@@ -56,9 +56,12 @@
 #define BMR_STATUS_INT 0x4
 #define BMR_STATUS_ERR 0x2
 
+/*
+ * TODO: determine if we need this function
 static void wait_400ns(u16 io_base) {
   for (int i = 0; i < 4; ++i) inb(io_base + ATA_REG_ALTSTATUS);
 }
+*/
 
 // for the interrupts...
 u16 primary_master_status = 0;

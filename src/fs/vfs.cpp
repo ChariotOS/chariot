@@ -57,19 +57,23 @@ int vfs::mount_root(unique_ptr<fs::filesystem> fs) {
 fs::vnoderef vfs::open(string spath, int opts, int mode) {
   fs::path p = spath;
 
+
+  fs::vnoderef curr = {};
+
   if (!p.is_root()) {
+    // TODO: use the current processes' CWD as root, and walk from there.
     panic("fs::vfs::open should always receive a rooted path. '%s'\n",
           spath.get());
+  } else {
+  curr = root_mountpoint.m_fs->get_root_inode();
   }
-
-  auto curr = root_mountpoint.m_fs->get_root_inode();
 
   // start out assuming we've found the file, for `open("/", ...);` cases
   bool found = true;
 
   for (int i = 0; i < p.len(); i++) {
     // if we are on the last directory of the path
-    // bool last = i == p.len()-1;
+    bool last = i == p.len()-1;
 
     auto &targ = p[i];
 
@@ -84,7 +88,10 @@ fs::vnoderef vfs::open(string spath, int opts, int mode) {
       return true;
     });
     if (!contained) {
+      if (last && (opts & O_CREAT)) {
       // TODO: check for O_CREAT and last
+        printk("NOT FOUND AT LAST, WOULD CREATE\n");
+      }
       return {};
     }
   }

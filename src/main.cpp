@@ -10,7 +10,6 @@
 #include <paging.h>
 #include <pci.h>
 #include <pit.h>
-#include <posix.h>
 #include <printk.h>
 #include <types.h>
 
@@ -69,8 +68,8 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
   node->walk_dir([&](const string& name, fs::vnoderef vn) -> bool {
     if (name == "." || name == "..") return true;
 
-    #define DUMP_TO_SERIAL
-    // #define READ_FILES
+#define DUMP_TO_SERIAL
+      // #define READ_FILES
 
 #ifdef DUMP_TO_SERIAL
 
@@ -87,8 +86,6 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
 #ifdef DUMP_TO_SERIAL
     printk("%-20s %p\n", name.get(), vn.get());
 #endif
-
-
 
 #ifdef READ_FILES
     constexpr auto sz = 512;
@@ -197,7 +194,7 @@ void init_rootvfs(string dev_name) {
   }
 
   // spin forever
-  printk("no more work. spinning.\n");
+  printk("\n\nno more work. spinning.\n");
   while (1) {
   }
 }

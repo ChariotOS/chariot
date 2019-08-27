@@ -173,7 +173,10 @@ void init_dyn_mm(void) {
 }
 
 void init_kernel_virtual_memory() {
+
+#ifdef MEM_DEBUF
   char buf[50];
+#endif
 
   INFO("has: %s\n", human_size(mm_info.total_mem, buf));
 
