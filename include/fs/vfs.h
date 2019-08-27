@@ -25,30 +25,35 @@
  * filesystem access
  */
 
-namespace fs {
-
-
 class vfs {
  public:
-  class mount {
+  class mountpoint {
    public:
-    mount(unique_ptr<fs::filesystem>);
+    mountpoint(unique_ptr<fs::filesystem>, fs::vnoderef host);
+    mountpoint();
 
     fs::inode host() const;
-    fs::inode guest() const;
+    fs::inode guest();
 
     string absolute_path() const;
 
-   private:
-    // The directory which the filesystem is mounted into
-    fs::inode m_host;
-    // the guest root inode
-    fs::inode m_guest;
+    bool operator==(const mountpoint &);
+
+   protected:
+    friend class vfs;
+
+    unique_ptr<fs::filesystem> m_fs = {};
+    fs::vnoderef m_host = {};
   };
 
+  // mount a filesystem into a host vnode
+  static int mount(unique_ptr<fs::filesystem>, fs::vnoderef host);
+
+  static int mount_root(unique_ptr<fs::filesystem>);
+
+  static fs::vnoderef open(string path, int opts, int mode = 0000);
 
  private:
   vfs();  // private constructor. use static methods
 };
 
-};  // namespace fs

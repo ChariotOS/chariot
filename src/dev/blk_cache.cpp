@@ -1,6 +1,9 @@
 #include <dev/blk_cache.h>
 #include <printk.h>
 
+
+static int used = 0;
+
 dev::blk_cache::blk_cache(dev::blk_dev& disk, u32 cache_size)
     : m_disk(disk), m_cache_size(cache_size) {
   lines = new cache_line[cache_size];
@@ -23,35 +26,51 @@ void dev::blk_cache::evict(u32 cache_ind) {
 }
 
 bool dev::blk_cache::read_block(u32 sector, u8* buf) {
+
+  // static int nread = 0;
+
   // TODO: lock!
   auto cind = sector % m_cache_size;
 
+  // printk("read(%6d) %6d@%-6d ...", nread++, sector, cind);
+
   auto& line = lines[cind];
 
-  if (line.valid == false || line.data == nullptr || line.sector != sector) {
+  if (!line.valid || line.data == nullptr || line.sector != sector) {
     evict(cind);
     line.sector = sector;
 
     if (line.data == nullptr) {
       line.data = kmalloc(block_size());
+      used++;
     }
     line.valid = m_disk.read_block(sector, (u8*)line.data);
+    // printk(" ###");
+  } else {
+    // printk("    ");
   }
 
+  if (line.valid) {
+    memcpy(buf, line.data, block_size());
+    // printk(" OK %d\n", used);
+  } else {
+    // printk("\n");
+  }
 
-  memcpy(buf, line.data, block_size());
   return line.valid;
 }
-bool dev::blk_cache::write_block(u32 index, const u8* buf) {
+bool dev::blk_cache::write_block(u32 sector, const u8* buf) {
   // TODO: lock!
+  auto cind = sector % m_cache_size;
+
+  printk("write %6d@%6d ...", sector, cind);
 
   // evict the line until real write caching works
-  evict(index % m_cache_size);
+  evict(cind);
 
   // write thru
-  return m_disk.write_block(index, buf);
+  return m_disk.write_block(sector, buf);
 }
-
 
 dev::blk_cache::cache_line::cache_line(void) {
   valid = false;

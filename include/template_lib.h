@@ -48,6 +48,16 @@ struct Traits<char> : public GenericTraits<char> {
   static void dump(char c) { printk("%c", c); }
 };
 
+
+template <>
+struct Traits<u64> : public GenericTraits<u64> {
+  static constexpr bool is_trivial() { return true; }
+  static size_t hash(u64 u) {
+    return u;  // TODO
+  }
+  static void dump(unsigned u) { printk("%u", u); }
+};
+
 template <typename T>
 struct Traits<T*> {
   static unsigned hash(const T* p) {

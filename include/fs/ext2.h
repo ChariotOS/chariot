@@ -73,7 +73,7 @@ class ext2_inode : public vnode {
 
   off_t block_for_byte(off_t b);
   ext2_inode_info info;
-  virtual bool walk_dir_impl(func<bool(const string&, ref<vnode>)>& cb);
+  virtual bool walk_dir_impl(func<bool(const string&, u32)> cb);
 };
 
 class ext2 final : public filesystem {

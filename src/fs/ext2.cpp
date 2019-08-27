@@ -306,7 +306,8 @@ void fs::ext2::traverse_dir(ext2_inode_info &inode,
       }
       entry = (ext2_dir *)((char *)entry + entry->size);
     }
-    return true; });
+    return true;
+  });
 
   kfree(buffer);
 }
@@ -499,11 +500,11 @@ fs::ext2_inode::~ext2_inode() {
   // TODO
 }
 
-bool fs::ext2_inode::walk_dir_impl(func<bool(const string &, ref<vnode>)> &cb) {
+bool fs::ext2_inode::walk_dir_impl(func<bool(const string &, u32)> cb) {
   auto *efs = static_cast<ext2 *>(&fs());
 
   efs->traverse_dir(this->info, [&](fs::directory_entry de) -> bool {
-    return cb(de.name, efs->get_inode(de.inode));
+    return cb(de.name, de.inode);
   });
   return false;
 }
@@ -572,7 +573,6 @@ off_t fs::ext2_inode::block_for_byte(off_t b) {
 
 ssize_t fs::ext2_inode::read(off_t off, size_t nbytes, void *dst) {
   if (is_dir()) return -EISDIR;
-
 
   auto *efs = static_cast<ext2 *>(&fs());
 

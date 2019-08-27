@@ -81,7 +81,7 @@ class vnode {
  protected:
   vnode(filesystem &fs, u32 index);
 
-  virtual bool walk_dir_impl(func<bool(const string&, ref<vnode>)>& cb) = 0;
+  virtual bool walk_dir_impl(func<bool(const string&, u32)> cb) = 0;
 
  private:
   filesystem &m_fs;

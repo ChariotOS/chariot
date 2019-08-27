@@ -23,6 +23,7 @@
 #include <fs/devfs.h>
 #include <fs/ext2.h>
 #include <fs/file.h>
+#include <fs/vfs.h>
 #include <func.h>
 #include <map.h>
 #include <phys.h>
@@ -68,7 +69,11 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
   node->walk_dir([&](const string& name, fs::vnoderef vn) -> bool {
     if (name == "." || name == "..") return true;
 
-    /*
+    #define DUMP_TO_SERIAL
+    // #define READ_FILES
+
+#ifdef DUMP_TO_SERIAL
+
     for (int i = 0; i < depth; i++) {
       printk("|");
       if (i == depth - 1) {
@@ -77,20 +82,21 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
         printk("   ");
       }
     }
-    */
-
-    constexpr auto sz = 32;
-
-#define DUMP_TO_SERIAL
-
-#ifdef DUMP_TO_SERIAL
-    printk("\n\n%-20s\n", name.get());
 #endif
 
+#ifdef DUMP_TO_SERIAL
+    printk("%-20s %p\n", name.get(), vn.get());
+#endif
+
+
+
+#ifdef READ_FILES
+    constexpr auto sz = 512;
     char buf[sz];
 
     int nread = 0;
     int off = 0;
+
     do {
       nread = vn->read(off, sz, buf);
       off += sz;
@@ -100,6 +106,7 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
       printk("\n");
 #endif
     } while (nread >= sz);
+#endif
 
     if (vn->index() != node->index())
       if (vn->is_dir()) walk_tree(vn, depth + 1);
@@ -108,41 +115,52 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
   });
 }
 
-void do_drive_thing(string dev_name) {
+void init_rootvfs(string dev_name) {
   auto* dev = fs::devfs::get_device(dev_name);
 
   if (dev == nullptr) {
-    printk("couldnt find device\n");
+    panic("couldnt find root device\n");
     return;
   }
 
   auto drive = dev->to_blk_dev();
   if (drive == nullptr) {
-    printk("is not blk device\n");
+    panic("root device is not blk device\n");
     return;
   }
 
-  auto cache = dev::blk_cache(*drive, 64);
+  // auto cache = dev::blk_cache(*drive, 64);
 
-  auto fs = fs::ext2(cache);
+  auto rootfs = make_unique<fs::ext2>(*drive);
 
-  if (!fs.init()) {
+  if (!rootfs->init()) {
     printk("failed to init ext2\n");
     return;
   }
 
-  auto root = fs.get_root_inode();
-
-  if (!root) {
-    printk("failed to get root node\n");
-    return;
-  }
-  if (!root->is_dir()) {
-    printk("root isn't dir\n");
-    return;
+  if (vfs::mount_root(move(rootfs)) > 0) {
+    panic("failed to mount rootfs");
   }
 
-  walk_tree(root);
+  // auto root = fs.get_root_inode();
+
+  /*
+    if (!root) {
+      printk("failed to get root node\n");
+      return;
+    }
+    if (!root->is_dir()) {
+      printk("root isn't dir\n");
+      return;
+    }
+
+    do {
+      u64 start = get_ticks();
+      walk_tree(root);
+
+      printk("%zu ticks\n", get_ticks() - start);
+    } while (0);
+    */
 }
 
 [[noreturn]] void kmain2(void) {
@@ -167,11 +185,16 @@ void do_drive_thing(string dev_name) {
   // walk the kernel modules and run their init function
   initialize_kernel_modules();
 
+  // setup the root vfs
+  init_rootvfs("disk1");
 
-  u64 start = get_ticks();
-  // walk the disk
-  do_drive_thing("disk1");
-  printk("%zu ticks\n", get_ticks() - start);
+  auto fp = vfs::open("/src/arch/x86", O_RDWR, 0666);
+
+  if (!fp) {
+    printk("failed to open dir\n");
+  } else {
+    walk_tree(fp);
+  }
 
   // spin forever
   printk("no more work. spinning.\n");
