@@ -1,11 +1,11 @@
 #ifndef __ext2_H__
 #define __ext2_H__
 
+#include <dev/blk_cache.h>
 #include <dev/blk_dev.h>
 #include <fs/filesystem.h>
 #include <fs/vnode.h>
 #include <func.h>
-#include <dev/blk_cache.h>
 #include <vec.h>
 
 /*
@@ -68,13 +68,21 @@ class ext2_inode : public vnode {
 
   virtual int add_dir_entry(ref<vnode> node, const string &name, u32 mode);
   virtual ssize_t read(off_t, size_t, void *);
+  virtual ssize_t write(off_t, size_t, void *);
+
+  // return the block size of the fs
+  int block_size();
 
  protected:
 
 
+  int cached_path[4] = {0, 0, 0, 0};
+  u32 *blk_bufs[4] = {NULL, NULL, NULL, NULL};
+
+  ssize_t do_rw(off_t, size_t, void *, bool is_write);
   off_t block_for_byte(off_t b);
   ext2_inode_info info;
-  virtual bool walk_dir_impl(func<bool(const string&, u32)> cb);
+  virtual bool walk_dir_impl(func<bool(const string &, u32)> cb);
 };
 
 class ext2 final : public filesystem {
@@ -90,13 +98,7 @@ class ext2 final : public filesystem {
 
   int read_file(u32 inode, u32 off, u32 len, u8 *buf);
 
-
-  virtual vnoderef open(fs::path, u32 flags);
-  inline virtual u64 block_size(void) {
-    return blocksize;
-  }
-
- protected:
+  inline virtual u64 block_size(void) { return blocksize; }
 
   friend class ext2_inode;
   bool read_block(u32 block, void *buf);
@@ -126,8 +128,80 @@ class ext2 final : public filesystem {
   vec<u32> blocks_for_inode(u32 inode);
   vec<u32> blocks_for_inode(ext2_inode_info &inode);
 
-  // internal. Defined in src/fs/ext2.cpp
-  struct superblock;
+  struct [[gnu::packed]] superblock {
+    uint32_t inodes;
+    uint32_t blocks;
+    uint32_t reserved_for_root;
+    uint32_t unallocatedblocks;
+    uint32_t unallocatedinodes;
+    uint32_t superblock_id;
+    uint32_t blocksize_hint;     // shift by 1024 to the left
+    uint32_t fragmentsize_hint;  // shift by 1024 to left
+    uint32_t blocks_in_blockgroup;
+    uint32_t frags_in_blockgroup;
+    uint32_t inodes_in_blockgroup;
+    uint32_t last_mount;
+    uint32_t last_write;
+    uint16_t mounts_since_last_check;
+    uint16_t max_mounts_since_last_check;
+    uint16_t ext2_sig;  // 0xEF53
+    uint16_t state;
+    uint16_t op_on_err;
+    uint16_t minor_version;
+    uint32_t last_check;
+    uint32_t max_time_in_checks;
+    uint32_t os_id;
+    uint32_t major_version;
+    uint16_t uuid;
+    uint16_t gid;
+
+    u32 s_first_ino;              /* First non-reserved inode */
+    u16 s_inode_size;             /* size of inode structure */
+    u16 s_block_group_nr;         /* block group # of this superblock */
+    u32 s_feature_compat;         /* compatible feature set */
+    u32 s_feature_incompat;       /* incompatible feature set */
+    u32 s_feature_ro_compat;      /* readonly-compatible feature set */
+    u8 s_uuid[16];                /* 128-bit uuid for volume */
+    char s_volume_name[16];       /* volume name */
+    char s_last_mounted[64];      /* directory where last mounted */
+    u32 s_algorithm_usage_bitmap; /* For compression */
+    /*
+     * Performance hints.  Directory preallocation should only
+     * happen if the EXT2_FEATURE_COMPAT_DIR_PREALLOC flag is on.
+     */
+    u8 s_prealloc_blocks;      /* Nr of blocks to try to preallocate*/
+    u8 s_prealloc_dir_blocks;  /* Nr to preallocate for dirs */
+    u16 s_reserved_gdt_blocks; /* Per group table for online growth */
+    /*
+     * Journaling support valid if EXT2_FEATURE_COMPAT_HAS_JOURNAL set.
+     */
+    u8 s_journal_uuid[16]; /* uuid of journal superblock */
+    u32 s_journal_inum;    /* inode number of journal file */
+    u32 s_journal_dev;     /* device number of journal file */
+    u32 s_last_orphan;     /* start of list of inodes to delete */
+    u32 s_hash_seed[4];    /* HTREE hash seed */
+    u8 s_def_hash_version; /* Default hash version to use */
+    u8 s_jnl_backup_type;  /* Default type of journal backup */
+    u16 s_desc_size;       /* Group desc. size: INCOMPAT_64BIT */
+    u32 s_default_mount_opts;
+    u32 s_first_meta_bg;      /* First metablock group */
+    u32 s_mkfs_time;          /* When the filesystem was created */
+    u32 s_jnl_blocks[17];     /* Backup of the journal inode */
+    u32 s_blocks_count_hi;    /* Blocks count high 32bits */
+    u32 s_r_blocks_count_hi;  /* Reserved blocks count high 32 bits*/
+    u32 s_free_blocks_hi;     /* Free blocks count */
+    u16 s_min_extra_isize;    /* All inodes have at least # bytes */
+    u16 s_want_extra_isize;   /* New inodes should reserve # bytes */
+    u32 s_flags;              /* Miscellaneous flags */
+    u16 s_raid_stride;        /* RAID stride */
+    u16 s_mmp_interval;       /* # seconds to wait in MMP checking */
+    u64 s_mmp_block;          /* Block for multi-mount protection */
+    u32 s_raid_stripe_width;  /* blocks on all data disks (N*stride)*/
+    u8 s_log_groups_per_flex; /* FLEX_BG group size */
+    u8 s_reserved_char_pad;
+    u16 s_reserved_pad;  /* Padding to next 32bits */
+    u32 s_reserved[162]; /* Padding to the end of the block */
+  };
   dev::blk_dev &dev;
 
   superblock *sb = nullptr;
@@ -146,7 +220,7 @@ class ext2 final : public filesystem {
   void *work_buf = nullptr;
   void *inode_buf = nullptr;
 
-  vnoderef m_root_inode {};
+  vnoderef m_root_inode{};
 
   dev::blk_cache disk_cache;
 };

@@ -83,15 +83,7 @@ build/initrd.tar: build
 
 
 $(ROOTFS):
-	dd if=/dev/urandom of=$@ bs=1M count=30
-	chmod 666 $@
-	mkfs.ext2 $@
-	mkdir -p build/mnt
-	sudo mount -o loop $(ROOTFS) build/mnt
-	sudo cp -r mnt/. build/mnt/
-	sudo cp -r src build/mnt/src
-	sudo cp -r include build/mnt/include
-	sudo umount build/mnt
+	./sync.sh
 
 fs:
 	rm -rf $(ROOTFS)

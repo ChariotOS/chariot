@@ -13,7 +13,3 @@ fs::filesystem::filesystem(void) {
 
 fs::filesystem::~filesystem(void) {}
 
-ref<fs::vnode> fs::filesystem::open(string path, u32 flags) {
-  fs::path p = path;
-  return open(p, flags);
-}

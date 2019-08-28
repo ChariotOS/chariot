@@ -136,10 +136,13 @@ static void dump_file(const char* name) {
   printk("open %s\n", name);
   auto node = vfs::open(name, O_RDWR, 0666);
 
+#define N 16
   if (node) {
-    auto* buf = node->read_entire();
-    hexdump(buf, node->size(), 16);
-    kfree(buf);
+    u8 buf[N];
+    for (int i = 0; i < node->size(); i += N) {
+      int n = node->read(i, N, buf);
+      hexdump(buf, n, N);
+    }
   }
 }
 
@@ -171,7 +174,8 @@ static void dump_file(const char* name) {
   // setup the root vfs
   init_rootvfs("disk1");
 
-  dump_file("/src/arch/x86/boot.asm");
+  // dump_file("/src/fs/ext2/inode.cpp");
+  dump_file("/misc/o95.wav");
 
   // spin forever
   printk("\n\nno more work. spinning.\n");

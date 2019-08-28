@@ -31,10 +31,6 @@ class filesystem {
   virtual vnoderef get_root_inode() = 0;
   virtual u64 block_size(void) = 0;
 
-  // opens a file with 'flags' options
-  vnoderef open(string s, u32 flags);
-  virtual vnoderef open(fs::path, u32 flags) = 0;
-
  protected:
   // TODO: put a lock in here.
 
