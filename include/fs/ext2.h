@@ -5,6 +5,7 @@
 #include <fs/filesystem.h>
 #include <fs/vnode.h>
 #include <func.h>
+#include <dev/blk_cache.h>
 #include <vec.h>
 
 /*
@@ -146,6 +147,8 @@ class ext2 final : public filesystem {
   void *inode_buf = nullptr;
 
   vnoderef m_root_inode {};
+
+  dev::blk_cache disk_cache;
 };
 }  // namespace fs
 

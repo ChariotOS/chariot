@@ -9,7 +9,6 @@ static u32 next_fsid = 0;
 fs::filesystem::filesystem(void) {
   // TODO: take a lock
   m_fsid = next_fsid++;
-  printk("m_fsid == %d\n", m_fsid);
 }
 
 fs::filesystem::~filesystem(void) {}

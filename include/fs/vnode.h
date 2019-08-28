@@ -78,6 +78,10 @@ class vnode {
   //  -... - use your brain
   virtual int add_dir_entry(ref<vnode> node, const string &name, u32 mode) = 0;
 
+
+  // read the entire file into a buffer which needs to be freed by the caller
+  u8 *read_entire(void);
+
  protected:
   vnode(filesystem &fs, u32 index);
 

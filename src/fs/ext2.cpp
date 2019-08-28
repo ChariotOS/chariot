@@ -117,7 +117,10 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-fs::ext2::ext2(dev::blk_dev &dev) : filesystem(/*super*/), dev(dev) { TRACE; }
+
+#define EXT2_CACHE_SIZE 128
+
+fs::ext2::ext2(dev::blk_dev &dev) : filesystem(/*super*/), dev(dev), disk_cache(dev, 64) { TRACE; }
 
 fs::ext2::~ext2(void) {
   TRACE;
@@ -244,12 +247,12 @@ bool fs::ext2::write_inode(ext2_inode_info *src, u32 inode) {
 
 bool fs::ext2::read_block(u32 block, void *buf) {
   TRACE;
-  return dev.read(block * blocksize, blocksize, buf);
+  return disk_cache.read(block * blocksize, blocksize, buf);
 }
 
 bool fs::ext2::write_block(u32 block, const void *buf) {
   TRACE;
-  return dev.write(block * blocksize, blocksize, buf);
+  return disk_cache.write(block * blocksize, blocksize, buf);
 }
 
 void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,

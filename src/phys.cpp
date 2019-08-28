@@ -35,15 +35,12 @@ static void print_freelist() {
 */
 
 static frame *working_addr(frame *fr) {
-  // printk("working addr: %p\n", fr);
-  if (false && use_kernel_vm) {
+  if (use_kernel_vm) {
     fr = (frame *)p2v(fr);
   } else {
     paging::map((u64)phys_mem_scratch, (u64)fr);
     fr = (frame *)phys_mem_scratch;
   }
-  // printk("---------------------------------------------------- %p\n", fr);
-
   return fr;
 }
 

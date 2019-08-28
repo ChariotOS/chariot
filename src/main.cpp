@@ -12,6 +12,7 @@
 #include <pit.h>
 #include <printk.h>
 #include <types.h>
+#include <util.h>
 
 #include <asm.h>
 #include <dev/CMOS.h>
@@ -61,10 +62,6 @@ static void call_global_constructors(void) {
 extern "C" void call_with_new_stack(void*, void*);
 
 static void walk_tree(fs::vnoderef& node, int depth = 0) {
-  if (depth == 0) {
-    printk("/\n");
-    depth++;
-  }
   node->walk_dir([&](const string& name, fs::vnoderef vn) -> bool {
     if (name == "." || name == "..") return true;
 
@@ -130,39 +127,28 @@ void init_rootvfs(string dev_name) {
 
   auto rootfs = make_unique<fs::ext2>(*drive);
 
-  if (!rootfs->init()) {
-    printk("failed to init ext2\n");
-    return;
+  if (!rootfs->init()) panic("failed to init ext2 on root disk\n");
+
+  if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
+}
+
+static void dump_file(const char* name) {
+  printk("open %s\n", name);
+  auto node = vfs::open(name, O_RDWR, 0666);
+
+  if (node) {
+    auto* buf = node->read_entire();
+    hexdump(buf, node->size(), 16);
+    kfree(buf);
   }
-
-  if (vfs::mount_root(move(rootfs)) > 0) {
-    panic("failed to mount rootfs");
-  }
-
-  // auto root = fs.get_root_inode();
-
-  /*
-    if (!root) {
-      printk("failed to get root node\n");
-      return;
-    }
-    if (!root->is_dir()) {
-      printk("root isn't dir\n");
-      return;
-    }
-
-    do {
-      u64 start = get_ticks();
-      walk_tree(root);
-
-      printk("%zu ticks\n", get_ticks() - start);
-    } while (0);
-    */
 }
 
 [[noreturn]] void kmain2(void) {
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
+
+
+  // now we want to clear out the initial mapping of the boot pages
 
   // initialize smp
   if (!smp::init()) panic("smp failed!\n");
@@ -185,13 +171,7 @@ void init_rootvfs(string dev_name) {
   // setup the root vfs
   init_rootvfs("disk1");
 
-  auto fp = vfs::open("/src/arch/x86", O_RDWR, 0666);
-
-  if (!fp) {
-    printk("failed to open dir\n");
-  } else {
-    walk_tree(fp);
-  }
+  dump_file("/src/arch/x86/boot.asm");
 
   // spin forever
   printk("\n\nno more work. spinning.\n");
@@ -207,7 +187,7 @@ extern "C" char chariot_welcome_start[];
 
 extern void rtc_init(void);
 
-#define WASTE_TIME_PRINTING_WELCOME
+// #define WASTE_TIME_PRINTING_WELCOME
 
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   rtc_init();  // initialize the clock

@@ -14,49 +14,28 @@ struct GenericTraits {
 template <typename T>
 struct Traits : public GenericTraits<T> {};
 
-template <>
-struct Traits<int> : public GenericTraits<int> {
+template <typename T>
+struct IntegerTraits : public GenericTraits<T> {
   static constexpr bool is_trivial() { return true; }
-  static unsigned hash(int i) {
-    return 0;  // TODO
-  }
-  static void dump(int i) { printk("%d", i); }
+  static u64 hash(T c) { return c; }
+  static int cmp(T a, T b) { return a - b; }
 };
 
-template <>
-struct Traits<unsigned> : public GenericTraits<unsigned> {
-  static constexpr bool is_trivial() { return true; }
-  static unsigned hash(unsigned u) {
-    return 0;  // TODO
-  }
-  static void dump(unsigned u) { printk("%u", u); }
-};
+#define DEF_INT_TRAITS(T) \
+  template <>             \
+  struct Traits<T> : public IntegerTraits<T> {};
 
-template <>
-struct Traits<u16> : public GenericTraits<u16> {
-  static constexpr bool is_trivial() { return true; }
-  static unsigned hash(u16 u) {
-    return 0;  // TODO
-  }
-  static void dump(u16 u) { printk("%u", u); }
-};
+DEF_INT_TRAITS(i8);
+DEF_INT_TRAITS(u8);
 
-template <>
-struct Traits<char> : public GenericTraits<char> {
-  static constexpr bool is_trivial() { return true; }
-  static unsigned hash(char c) { return 0; }
-  static void dump(char c) { printk("%c", c); }
-};
+DEF_INT_TRAITS(i16);
+DEF_INT_TRAITS(u16);
 
+DEF_INT_TRAITS(i32);
+DEF_INT_TRAITS(u32);
 
-template <>
-struct Traits<u64> : public GenericTraits<u64> {
-  static constexpr bool is_trivial() { return true; }
-  static size_t hash(u64 u) {
-    return u;  // TODO
-  }
-  static void dump(unsigned u) { printk("%u", u); }
-};
+DEF_INT_TRAITS(i64);
+DEF_INT_TRAITS(u64);
 
 template <typename T>
 struct Traits<T*> {

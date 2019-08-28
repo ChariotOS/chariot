@@ -28,6 +28,14 @@ bool fs::vnode::walk_dir(func<bool(const string &, ref<vnode>)> cb) {
   });
 }
 
+
+u8 *fs::vnode::read_entire(void) {
+  auto sz = size();
+  auto buf = kmalloc(sz);
+  read(0, sz, buf);
+  return (u8*)buf;
+}
+
 // get the filesystem information from an actual filesystem
 fs::inode::inode(const filesystem &fs, u32 index) : m_index(index) {
   m_fsid = fs.id();

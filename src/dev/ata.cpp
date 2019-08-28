@@ -175,8 +175,7 @@ bool dev::ata::identify() {
   bmr_prdt = bar4 + 4;
 
   if (this->master && data_port.m_port == 0x1F0) {
-    printk("PRIMARY MASTER\n");
-
+    // printk("PRIMARY MASTER\n");
     primary_master_status = m_io_base;
     primary_master_bmr_status = bmr_status;
     primary_master_bmr_command = bmr_command;
