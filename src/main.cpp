@@ -136,11 +136,14 @@ static void dump_file(const char* name) {
   printk("open %s\n", name);
   auto node = vfs::open(name, O_RDWR, 0666);
 
-#define N 16
+#define N 32
   if (node) {
     u8 buf[N];
     for (int i = 0; i < node->size(); i += N) {
       int n = node->read(i, N, buf);
+
+      // for_range(c, 0, n) printk("%c", buf[c]);
+
       hexdump(buf, n, N);
     }
   }
@@ -149,7 +152,6 @@ static void dump_file(const char* name) {
 [[noreturn]] void kmain2(void) {
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
-
 
   // now we want to clear out the initial mapping of the boot pages
 
@@ -174,8 +176,8 @@ static void dump_file(const char* name) {
   // setup the root vfs
   init_rootvfs("disk1");
 
-  // dump_file("/src/fs/ext2/inode.cpp");
-  dump_file("/misc/o95.wav");
+  dump_file("/src/fs/ext2/inode.cpp");
+  // dump_file("/misc/o95.wav");
 
   // spin forever
   printk("\n\nno more work. spinning.\n");

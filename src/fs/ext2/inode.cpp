@@ -189,9 +189,6 @@ ssize_t fs::ext2_inode::do_rw(off_t off, size_t nbytes, void *buf,
     // TODO: ensure blocks are avail
   }
 
-  // bound is how many blocks are left in the current indirection
-  int bound = 0;
-
   auto &efs = static_cast<ext2 &>(fs());
 
   ssize_t offset = off;
@@ -218,11 +215,11 @@ ssize_t fs::ext2_inode::do_rw(off_t off, size_t nbytes, void *buf,
     // inode
     u32 *table = (u32 *)info.dbp;
     int path[4];
-    int n = block_to_path(this, i_block, path, &bound);
+    int n = block_to_path(this, i_block, path);
 
-    for (int i = 0; i < n; i++) {
+    for (int i = 1; i < n; i++) {
       int off = path[i];
-      if (blk_bufs[i] == NULL || cached_path[i] != off) {
+      if (true || blk_bufs[i] == NULL || cached_path[i] != off) {
         if (blk_bufs[i] == NULL) blk_bufs[i] = (u32 *)kmalloc(bsize);
 
         bool succ = efs.read_block(table[off], blk_bufs[i]);
@@ -236,23 +233,17 @@ ssize_t fs::ext2_inode::do_rw(off_t off, size_t nbytes, void *buf,
       table = blk_bufs[i];
     }
 
-    off_t off = path[n - 1];
-
     succ = true;
-    return table[off];
+
+    return table[path[n - 1]];
   };
 
   for (int bi = first_blk_ind; remaining_count && bi <= last_blk_ind; bi++) {
     auto *buf = (u8 *)efs.work_buf;
-    // npath = block_to_path(this, bi, bpath, &bound);
-
-
     bool valid;
     u32 blk = get_ith_block(bi, valid);
     if (!valid) {
       printk("ext2fs: read_bytes: failed at lbi %u\n", bi);
-
-      // TODO: free the buffers
       return -EIO;
     }
 
