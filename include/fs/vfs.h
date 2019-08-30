@@ -20,9 +20,8 @@
 
 /**
  *
- * The virtual file system is the system that allows filesystems to be mounted
- * recursively in the directory tree. It is the main API for generalized
- * filesystem access
+ * The virtual file system allows filesystems to be mounted recursively in the
+ * directory tree. It is the main API for generalized filesystem access
  */
 
 class vfs {
@@ -32,8 +31,8 @@ class vfs {
     mountpoint(unique_ptr<fs::filesystem>, fs::vnoderef host);
     mountpoint();
 
-    fs::inode host() const;
-    fs::inode guest();
+    fs::vnoderef host() const;
+    fs::vnoderef guest();
 
     string absolute_path() const;
 
@@ -52,6 +51,11 @@ class vfs {
   static int mount_root(unique_ptr<fs::filesystem>);
 
   static fs::vnoderef open(string path, int opts, int mode = 0000);
+
+  // get the vnode located at the qualified inode
+  static fs::vnoderef get_mount_at(u64 qual_inode);
+
+  static u64 qualified_inode_number(const fs::filesystem &f, u32 inode);
 
  private:
   vfs();  // private constructor. use static methods

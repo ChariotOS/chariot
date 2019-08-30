@@ -297,6 +297,12 @@ class ref {
     return px;
   }
 
+
+  int use_count(void) throw()  // never throws
+  {
+    return pn.use_count();
+  }
+
  private:
   /// @brief acquire/share the ownership of the px pointer, initializing the
   /// reference counter
@@ -314,6 +320,8 @@ class ref {
     pn.release(px);
     px = NULL;
   }
+
+
 
  private:
   // This allow pointer_cast functions to share the reference counter between

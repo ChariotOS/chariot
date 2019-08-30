@@ -181,6 +181,9 @@ uint32_t next(void) {
   init_rootvfs("disk1");
 
 
+  vfs::open("/src/arch/x86/boot.asm", 0);
+
+
   // spin forever
   printk("\n\nno more work. spinning.\n");
   while (1) {

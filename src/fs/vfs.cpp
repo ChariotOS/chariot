@@ -3,15 +3,22 @@
 #include <fs/vfs.h>
 #include <map.h>
 
-using mountid_t = u64;
-
-static mountid_t mkmountid(const fs::filesystem &f, u32 inode) {
+u64 vfs::qualified_inode_number(const fs::filesystem &f, u32 inode) {
   return (u64)f.id() << 32 | inode;
 }
 
 vfs::mountpoint::mountpoint(unique_ptr<fs::filesystem> fs, fs::vnoderef host) {
   m_fs = move(fs);
   m_host = move(host);
+}
+
+fs::vnoderef vfs::mountpoint::host() const {
+  return m_host;
+}
+
+
+fs::vnoderef vfs::mountpoint::guest() {
+  return m_fs->get_root_inode();
 }
 
 vfs::mountpoint::mountpoint() {}
@@ -27,7 +34,7 @@ vfs::vfs() { panic("DO NOT CONSTRUCT A VFS INSTANCE\n"); }
 
 static vfs::mountpoint root_mountpoint;
 
-static map<mountid_t, unique_ptr<vfs::mountpoint>> mount_points;
+static map<u64, unique_ptr<vfs::mountpoint>> mount_points;
 
 int vfs::mount(unique_ptr<fs::filesystem> fs, fs::vnoderef host) {
   // check that the host is valid
@@ -36,7 +43,7 @@ int vfs::mount(unique_ptr<fs::filesystem> fs, fs::vnoderef host) {
   // check that the filesystem is valid
   if (!fs) return -ENOENT;
 
-  auto mid = mkmountid(*fs.get(), host->index());
+  auto mid = qualified_inode_number(*fs.get(), host->index());
 
   // if there is already a fs mounted here, fail
   if (mount_points.contains(mid)) return -EBUSY;
@@ -54,9 +61,16 @@ int vfs::mount_root(unique_ptr<fs::filesystem> fs) {
   return 0;
 }
 
+fs::vnoderef vfs::get_mount_at(u64 inode) {
+  if (mount_points.contains(inode)) {
+    return mount_points.get(inode)->guest();
+  } else {
+    return {};
+  }
+}
+
 fs::vnoderef vfs::open(string spath, int opts, int mode) {
   fs::path p = spath;
-
 
   fs::vnoderef curr = {};
 
@@ -65,7 +79,7 @@ fs::vnoderef vfs::open(string spath, int opts, int mode) {
     panic("fs::vfs::open should always receive a rooted path. '%s'\n",
           spath.get());
   } else {
-  curr = root_mountpoint.m_fs->get_root_inode();
+    curr = root_mountpoint.m_fs->get_root_inode();
   }
 
   // start out assuming we've found the file, for `open("/", ...);` cases
@@ -73,7 +87,7 @@ fs::vnoderef vfs::open(string spath, int opts, int mode) {
 
   for (int i = 0; i < p.len(); i++) {
     // if we are on the last directory of the path
-    bool last = i == p.len()-1;
+    bool last = i == p.len() - 1;
 
     auto &targ = p[i];
 
@@ -89,7 +103,7 @@ fs::vnoderef vfs::open(string spath, int opts, int mode) {
     });
     if (!contained) {
       if (last && (opts & O_CREAT)) {
-      // TODO: check for O_CREAT and last
+        // TODO: check for O_CREAT and last
         printk("NOT FOUND AT LAST, WOULD CREATE\n");
       }
       return {};

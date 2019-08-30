@@ -7,6 +7,7 @@
 #include <fs/vnode.h>
 #include <func.h>
 #include <vec.h>
+#include <map.h>
 
 /*
  * Ext2 directory file types.  Only the low 3 bits are used.  The
@@ -75,8 +76,6 @@ class ext2_inode : public vnode {
   int block_size();
 
  protected:
-
-
   int cached_path[4] = {0, 0, 0, 0};
   u32 *blk_bufs[4] = {NULL, NULL, NULL, NULL};
 
@@ -91,6 +90,15 @@ class ext2_inode : public vnode {
   virtual bool walk_dir_impl(func<bool(const string &, u32)> cb);
 };
 
+/**
+ * An ext2 implementation of the filesystem class
+ *
+ *
+ * Allows general read/write to the filesystem located on a block device
+ * provided in the constructor.
+ *
+ * It implements the standard Second Extended Filesystem
+ */
 class ext2 final : public filesystem {
  public:
   ext2(dev::blk_dev &);
@@ -133,7 +141,6 @@ class ext2 final : public filesystem {
 
   vec<u32> blocks_for_inode(u32 inode);
   vec<u32> blocks_for_inode(ext2_inode_info &inode);
-
 
   // update the disk copy of the superblock
   int write_superblock(void);
@@ -233,6 +240,8 @@ class ext2 final : public filesystem {
   vnoderef m_root_inode{};
 
   dev::blk_cache disk_cache;
+
+  map<u32, fs::vnoderef> vnode_cache;
 };
 }  // namespace fs
 

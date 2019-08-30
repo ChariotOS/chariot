@@ -144,3 +144,12 @@ namespace std {
 }
 */
 
+
+extern "C" void __cxa_guard_acquire(void*p) {
+  // printk("a: %p\n", p);
+}
+
+
+extern "C" void __cxa_guard_release(void*p) {
+  // printk("r: %p\n", p);
+}

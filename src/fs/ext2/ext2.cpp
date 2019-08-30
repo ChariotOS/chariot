@@ -1,11 +1,11 @@
 #include <asm.h>
+#include <dev/RTC.h>
 #include <dev/blk_dev.h>
 #include <errno.h>
 #include <fs/ext2.h>
+#include <math.h>
 #include <mem.h>
 #include <string.h>
-#include <math.h>
-#include <dev/RTC.h>
 
 // Standard information and structures for EXT2
 #define EXT2_SIGNATURE 0xEF53
@@ -75,13 +75,11 @@ bool fs::ext2::init(void) {
     return false;
   }
 
-
   printk("last check = %d\n", sb->last_check);
 
   sb->last_check = dev::RTC::now();
 
   printk("last check = %d\n", sb->last_check);
-
 
   // solve for the filesystems block size
   blocksize = 1024 << sb->blocksize_hint;
@@ -98,7 +96,6 @@ bool fs::ext2::init(void) {
 
   m_root_inode = get_inode(2);
 
-
   if (!write_superblock()) {
     printk("failed to write superblock\n");
     return false;
@@ -106,7 +103,6 @@ bool fs::ext2::init(void) {
 
   return true;
 }
-
 
 int fs::ext2::write_superblock(void) {
   // TODO: lock
@@ -299,11 +295,31 @@ int fs::ext2::read_file(ext2_inode_info &inode, u32 off, u32 len, u8 *buf) {
 
 fs::vnoderef fs::ext2::get_root_inode(void) { return m_root_inode; }
 
-// TODO
 fs::vnoderef fs::ext2::get_inode(u32 index) {
   TRACE;
+
+  // TODO: lock the vnode cache
+  // TODO: move the flush logic to a sync daemon
+  // I know, looping through this is bad, its a hash map. But untill there is a
+  // sync daemon, we need to flush inodes that have no external references
+  if (false)
+    for (auto &node : vnode_cache) {
+      if (node.key == index) {
+        printk("cached %d\n", index);
+        return node.value;
+      }
+
+      if (node.value.use_count() == 1) {
+        printk("here!\n");
+      }
+    }
+  if (vnode_cache.contains(index)) {
+    return vnode_cache.get(index);
+  }
   auto in = make_ref<fs::ext2_inode>(*this, index);
   read_inode(in->info, index);
+
+  vnode_cache.set(index, in);
   return in;
 }
 
