@@ -37,6 +37,8 @@ float floorf(float);
 double round(double);
 float roundf(float);
 double fabs(double);
+int abs(int);
+int sgn(int);
 float fabsf(float);
 double fmod(double, double);
 float fmodf(float, float);

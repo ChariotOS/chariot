@@ -57,6 +57,7 @@ void init_mmap(u64 mbd) {
   }
 
 
+
   printk("Memory Map:\n");
 
   for (auto *mmap =
@@ -65,6 +66,7 @@ void init_mmap(u64 mbd) {
        multiboot_info_ptr->mmap_addr + multiboot_info_ptr->mmap_length;
        mmap = (multiboot_memory_map_t *)((unsigned long)mmap + mmap->size +
                                          sizeof(mmap->size))) {
+
 
     if (mmap->type != MULTIBOOT_MEMORY_AVAILABLE) continue;
 

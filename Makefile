@@ -2,13 +2,9 @@ CC = $(X86_64_ELF_TOOLCHAIN)gcc
 CXX = $(X86_64_ELF_TOOLCHAIN)g++
 AS = nasm
 LD = $(X86_64_ELF_TOOLCHAIN)ld
-
 GRUB = $(GRUB_PREFIX)grub-mkrescue
 
 .PHONY: fs
-
-
-
 
 
 STRUCTURE := $(shell find src -type d)
@@ -27,6 +23,8 @@ ASOURCES:=$(filter %.asm,$(CODEFILES))
 AOBJECTS:=$(ASOURCES:%.asm=build/%.asm.o)
 
 KERNEL=build/kernel.elf
+ISO=build/kernel.iso
+SYMS=build/kernel.syms
 ROOTFS=build/root.img
 
 AFLAGS=-f elf64 -w-zext-reloc
@@ -34,10 +32,8 @@ AFLAGS=-f elf64 -w-zext-reloc
 CINCLUDES=-I./include/
 
 COMMON_FLAGS := $(CINCLUDES)  \
-				 -fPIC \
-				 -Wno-sign-compare\
-			   -ffreestanding \
-			   -mno-red-zone \
+				 -fPIC -Wno-sign-compare \
+			   -ffreestanding -mno-red-zone \
 				 -O3 -fno-tree-vectorize \
 				 -DGIT_REVISION=\"$(shell git rev-parse HEAD)\"
 
@@ -78,6 +74,9 @@ $(KERNEL): build/initrd.tar $(CODEFILES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
 	@$(LD) $(LDFLAGS) $(AOBJECTS) $(COBJECTS) -T kernel.ld -o $@
 
 
+$(SYMS): $(KERNEL)
+	nm -s $< > $@
+
 build/initrd.tar: build
 	@#tar cvf $@ mnt
 
@@ -89,11 +88,12 @@ fs:
 	rm -rf $(ROOTFS)
 	make $(ROOTFS)
 
-iso: $(KERNEL)
+$(ISO): $(KERNEL) $(SYMS) grub.cfg
 	mkdir -p build/iso/boot/grub
 	cp ./grub.cfg build/iso/boot/grub
 	cp build/kernel.elf build/iso/boot
-	$(GRUB) -o build/kernel.iso build/iso
+	cp build/kernel.syms build/iso/boot
+	$(GRUB) -o $(ISO) build/iso
 
 
 klean:
@@ -103,16 +103,15 @@ clean:
 	rm -rf build
 
 
-QEMUOPTS=-hda build/kernel.iso -smp 4 -m 2G -hdb $(ROOTFS)
+QEMUOPTS=-hda $(ISO) -m 2G -hdb $(ROOTFS)
 
-qemu: iso $(ROOTFS)
+qemu: $(ISO) $(ROOTFS)
 	qemu-system-x86_64 $(QEMUOPTS) \
 		-serial stdio
 
-qemu-nox: iso $(ROOTFS)
-	qemu-system-x86_64 $(QEMUOPTS) \
-		-nographic
+qemu-nox: $(ISO) $(ROOTFS)
+	qemu-system-x86_64 $(QEMUOPTS) -nographic
 
 
-bochs: iso
+bochs: $(ISO)
 	@bochs -f bochsrc

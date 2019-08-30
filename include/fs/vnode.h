@@ -1,10 +1,10 @@
 #ifndef __VNODE_H__
 #define __VNODE_H__
 
+#include <func.h>
 #include <ptr.h>
 #include <string.h>
 #include <types.h>
-#include <func.h>
 
 namespace fs {
 
@@ -63,13 +63,19 @@ class vnode {
 
   virtual inode_metadata metadata(void) = 0;
 
-
   virtual ssize_t read(off_t, size_t, void *) = 0;
   virtual ssize_t write(off_t, size_t, void *) = 0;
 
+  /*
+   * Cause a regular file to be truncated to the size of precisely length bytes.
+   *
+   * If the file previously was larger than this size, the extra data is lost.
+   * If the file previously was shorter, it is extended, and the extended part
+   * reads as null bytes ('\0').
+   */
+  virtual int truncate(size_t len) = 0;
 
-  bool walk_dir(func<bool(const string&, ref<vnode>)> cb);
-
+  bool walk_dir(func<bool(const string &, ref<vnode>)> cb);
 
   // add a file to the directory that this vnode points to
   // Error examples:
@@ -79,14 +85,13 @@ class vnode {
   //  -... - use your brain
   virtual int add_dir_entry(ref<vnode> node, const string &name, u32 mode) = 0;
 
-
   // read the entire file into a buffer which needs to be freed by the caller
   u8 *read_entire(void);
 
  protected:
   vnode(filesystem &fs, u32 index);
 
-  virtual bool walk_dir_impl(func<bool(const string&, u32)> cb) = 0;
+  virtual bool walk_dir_impl(func<bool(const string &, u32)> cb) = 0;
 
  private:
   filesystem &m_fs;

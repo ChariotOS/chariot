@@ -5,6 +5,7 @@
 #include <mem.h>
 #include <string.h>
 #include <math.h>
+#include <dev/RTC.h>
 
 // Standard information and structures for EXT2
 #define EXT2_SIGNATURE 0xEF53
@@ -74,6 +75,14 @@ bool fs::ext2::init(void) {
     return false;
   }
 
+
+  printk("last check = %d\n", sb->last_check);
+
+  sb->last_check = dev::RTC::now();
+
+  printk("last check = %d\n", sb->last_check);
+
+
   // solve for the filesystems block size
   blocksize = 1024 << sb->blocksize_hint;
 
@@ -89,7 +98,20 @@ bool fs::ext2::init(void) {
 
   m_root_inode = get_inode(2);
 
+
+  if (!write_superblock()) {
+    printk("failed to write superblock\n");
+    return false;
+  }
+
   return true;
+}
+
+
+int fs::ext2::write_superblock(void) {
+  // TODO: lock
+  printk("superblock len %zu\n", sizeof(fs::ext2::superblock));
+  return dev.write(1024, 1024, sb);
 }
 
 bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {

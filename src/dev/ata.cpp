@@ -233,7 +233,7 @@ bool dev::ata::read_block(u32 sector, u8* data) {
 bool dev::ata::write_block(u32 sector, const u8* buf) {
   TRACE;
 
-  printk("write block %d\n", sector);
+  // printk("write block %d\n", sector);
 
   if (sector & 0xF0000000) return false;
 

@@ -2,6 +2,7 @@
 #define __align(n) __attribute__((aligned(n)))
 
 #include <asm.h>
+#include <atom.h>
 #include <dev/ata.h>
 #include <dev/serial.h>
 #include <idt.h>
@@ -135,29 +136,7 @@ void init_rootvfs(string dev_name) {
   if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
 }
 
-static void dump_file(const char* name) {
-  printk("open %s\n", name);
-  auto node = vfs::open(name, O_RDWR, 0666);
-
-#define N 32
-  if (node) {
-    /*
-    auto* wbuf = (u8*)kmalloc(255);
-    memset(wbuf, 0xFE, 255);
-    node->write(0, 255, wbuf);
-    hexdump(wbuf, 255);
-    kfree(wbuf);
-    */
-
-    auto buf = kmalloc(node->size());
-    int n = node->read(0, node->size(), buf);
-    if (n > 0) hexdump(buf, n);
-    kfree(buf);
-  }
-}
-
 uint32_t x; /* The state can be seeded with any value. */
-
 /* Call next() to get 32 pseudo-random bits, call it again to get more bits. */
 // It may help to make this inline, but you should see if it benefits your code.
 uint32_t next(void) {
@@ -176,14 +155,21 @@ uint32_t next(void) {
   // initialize smp
   if (!smp::init()) panic("smp failed!\n");
 
-  // initialize the PCI subsystem
+  /*
+   * initialize the PCI subsystem by walking the devices and creating an
+   * internal representation that is faster to access later on
+   */
   pci::init();
 
-  // initialize the programmable interrupt timer
+  /*
+   * initialize the programmable interrupt timer
+   */
   init_pit();
 
-  // and set the interval, or whatever
-  set_pit_freq(100);
+  /*
+   * Set the PIT interrupt frequency to how many times per second it should fire
+   */
+  set_pit_freq(60);
 
   // finally, enable interrupts
   sti();
@@ -194,59 +180,6 @@ uint32_t next(void) {
   // setup the root vfs
   init_rootvfs("disk1");
 
-  if (auto fp = vfs::open("/misc/cat.raw", 0); fp) {
-    auto w = vga::width();
-    auto h = vga::height();
-
-    int slen = w * h;
-    u32* screen = new u32[slen];
-
-    // set a pixel in the screen buffer
-    auto set_pixel = [&](int x, int y, u32 color) {
-      int ind = x + y * w;
-      if (ind >= 0 && ind < slen) {
-        screen[ind] = color;
-      }
-    };
-
-    auto buf = new u32[w];
-
-
-    int off = 0;
-    while (1) {
-      int iw = 640;
-      int ih = 480;
-
-      for_range(y, 0, ih) {
-        fp->read(y * iw * sizeof(u32), iw * sizeof(u32), buf);
-
-        for_range(x, 0, iw) {
-          int im_pix = buf[x];
-          int r = (im_pix >> 0) & 0xFF;
-          int g = (im_pix >> 8) & 0xFF;
-          int b = (im_pix >> 16) & 0xFF;
-          im_pix = r << 16 | g << 8 | b << 0;
-
-          u16 data = next();
-
-          for (int i = 0; i < 4; i++) {
-            char c = (data >> (i * 4)) & 0xF;
-            im_pix &= ~(0xF << (i * 8));
-            im_pix |= (c << (i * 8));
-          }
-
-          set_pixel(x, y, im_pix);
-        }
-      }
-
-      // flush the screen
-      for_range(i, 0, slen) vga::set_pixel(i, screen[i]);
-      off++;
-    }
-
-    delete[] buf;
-    delete[] screen;
-  }
 
   // spin forever
   printk("\n\nno more work. spinning.\n");

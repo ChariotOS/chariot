@@ -166,12 +166,14 @@ static void set_resolution(int width, int height) {
 }
 
 void vga::set_pixel(int x, int y, int color) {
+  if (vga_fba == 0) return;
   if (x >= m_framebuffer_width || y >= m_framebuffer_height) return;
 
   set_pixel(y * m_framebuffer_width + x, color);
 }
 
 void vga::set_pixel(int ind, int color) {
+  if (vga_fba == 0) return;
   if (ind >= m_framebuffer_width * m_framebuffer_height) return;
 
   vga_fba[ind] = color;
@@ -189,12 +191,13 @@ static void *get_framebuffer_address(void) {
 
 static void vga_init_mod(void) {
   vga_fba = (u32 *)p2v(get_framebuffer_address());
-  set_resolution(1024, 768);
+  // set_resolution(1024, 768);
+  // set_resolution(640, 480);
 
   // clear the framebuffer
   for_range(x, 0, m_framebuffer_width) {
     for_range(y, 0, m_framebuffer_height) {
-      vga::set_pixel(x, y, 0);
+      // vga::set_pixel(x, y, 0x000000);
     }
   }
 }

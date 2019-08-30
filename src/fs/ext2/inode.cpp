@@ -236,13 +236,13 @@ ssize_t fs::ext2_inode::do_rw(off_t off, size_t nbytes, void *buf,
   return nread;
 }
 
-int fs::ext2_inode::block_from_index(int i_block) {
+int fs::ext2_inode::block_from_index(int i_block, int set_to) {
 
   auto &efs = static_cast<ext2 &>(fs());
 
 
   auto bsize = efs.block_size();
-  // start the inode
+  // start the inodeS
   u32 *table = (u32 *)info.dbp;
   int path[4];
   int n = block_to_path(this, i_block, path);
@@ -259,4 +259,10 @@ int fs::ext2_inode::block_from_index(int i_block) {
     table = blk_bufs[i];
   }
   return table[path[n - 1]];
+}
+
+
+int fs::ext2_inode::truncate(size_t newlen) {
+  printk("ext2 truncate\n");
+  return -ENOTIMPL;
 }

@@ -69,6 +69,7 @@ class ext2_inode : public vnode {
   virtual int add_dir_entry(ref<vnode> node, const string &name, u32 mode);
   virtual ssize_t read(off_t, size_t, void *);
   virtual ssize_t write(off_t, size_t, void *);
+  virtual int truncate(size_t newlen);
 
   // return the block size of the fs
   int block_size();
@@ -83,7 +84,9 @@ class ext2_inode : public vnode {
   off_t block_for_byte(off_t b);
 
   // return the ith block's index, returning 0 on failure.
-  int block_from_index(int i_block);
+  // if set_to is passed and is non-zero, the block at that
+  // index will be written as set_to
+  int block_from_index(int i_block, int set_to = 0);
   ext2_inode_info info;
   virtual bool walk_dir_impl(func<bool(const string &, u32)> cb);
 };
@@ -130,6 +133,10 @@ class ext2 final : public filesystem {
 
   vec<u32> blocks_for_inode(u32 inode);
   vec<u32> blocks_for_inode(ext2_inode_info &inode);
+
+
+  // update the disk copy of the superblock
+  int write_superblock(void);
 
   struct [[gnu::packed]] superblock {
     uint32_t inodes;
