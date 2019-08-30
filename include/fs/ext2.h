@@ -81,6 +81,9 @@ class ext2_inode : public vnode {
 
   ssize_t do_rw(off_t, size_t, void *, bool is_write);
   off_t block_for_byte(off_t b);
+
+  // return the ith block's index, returning 0 on failure.
+  int block_from_index(int i_block);
   ext2_inode_info info;
   virtual bool walk_dir_impl(func<bool(const string &, u32)> cb);
 };

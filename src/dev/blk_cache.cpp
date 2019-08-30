@@ -27,8 +27,6 @@ void dev::blk_cache::evict(u32 cache_ind) {
 
 bool dev::blk_cache::read_block(u32 sector, u8* buf) {
 
-  // static int nread = 0;
-
   // TODO: lock!
   auto cind = sector % m_cache_size;
 
@@ -62,8 +60,6 @@ bool dev::blk_cache::read_block(u32 sector, u8* buf) {
 bool dev::blk_cache::write_block(u32 sector, const u8* buf) {
   // TODO: lock!
   auto cind = sector % m_cache_size;
-
-  printk("write %6d@%6d ...", sector, cind);
 
   // evict the line until real write caching works
   evict(cind);

@@ -1,14 +1,12 @@
 #include <asm.h>
+#include <mem.h>
 #include <module.h>
+#include <pci.h>
 #include <printk.h>
-
-
 #include <vga.h>
-
 
 static u8 vga_x, vga_y;
 static u8 vga_attr;
-
 
 static inline void vga_write_screen(uint8_t x, uint8_t y, uint16_t val) {
   *(((uint16_t *)VGA_BASE_ADDR) + y * VGA_WIDTH + x) = val;
@@ -27,9 +25,7 @@ void vga::clear_screen(uint16_t val) {
   vga_y = 0;
 }
 
-void vga::clear_screen(void) {
-  vga::clear_screen(make_entry(' ', vga_attr));
-}
+void vga::clear_screen(void) { vga::clear_screen(make_entry(' ', vga_attr)); }
 
 static inline void vga_copy_out(void *dest, uint32_t n) {
   memcpy((void *)dest, (void *)VGA_BASE_ADDR, n);
@@ -100,7 +96,6 @@ void vga::scrollup(void) {
   }
 }
 
-
 void vga::set_color(enum vga::color fg, enum vga::color bg) {
   vga_attr = make_color(fg, bg);
 }
@@ -112,3 +107,96 @@ void vga::init(void) {
   vga::set_cursor(vga_x, vga_y);
 }
 
+#define VBE_DISPI_IOPORT_INDEX 0x01CE
+#define VBE_DISPI_IOPORT_DATA 0x01CF
+
+#define VBE_DISPI_INDEX_ID 0x0
+#define VBE_DISPI_INDEX_XRES 0x1
+#define VBE_DISPI_INDEX_YRES 0x2
+#define VBE_DISPI_INDEX_BPP 0x3
+#define VBE_DISPI_INDEX_ENABLE 0x4
+#define VBE_DISPI_INDEX_BANK 0x5
+#define VBE_DISPI_INDEX_VIRT_WIDTH 0x6
+#define VBE_DISPI_INDEX_VIRT_HEIGHT 0x7
+#define VBE_DISPI_INDEX_X_OFFSET 0x8
+#define VBE_DISPI_INDEX_Y_OFFSET 0x9
+#define VBE_DISPI_DISABLED 0x00
+#define VBE_DISPI_ENABLED 0x01
+#define VBE_DISPI_LFB_ENABLED 0x40
+
+#define BXVGA_DEV_IOCTL_SET_Y_OFFSET 1982
+#define BXVGA_DEV_IOCTL_SET_RESOLUTION 1985
+
+struct BXVGAResolution {
+  int width;
+  int height;
+};
+
+u32 *vga_fba = 0;
+int m_framebuffer_width = 0;
+int m_framebuffer_height = 0;
+
+int vga::width() {
+  return m_framebuffer_width;
+}
+
+int vga::height() {
+  return m_framebuffer_height;
+}
+
+static void set_register(u16 index, u16 data) {
+  outw(VBE_DISPI_IOPORT_INDEX, index);
+  outw(VBE_DISPI_IOPORT_DATA, data);
+}
+
+static void set_resolution(int width, int height) {
+  m_framebuffer_width = width;
+  m_framebuffer_height = height;
+
+  set_register(VBE_DISPI_INDEX_ENABLE, VBE_DISPI_DISABLED);
+  set_register(VBE_DISPI_INDEX_XRES, (u16)width);
+  set_register(VBE_DISPI_INDEX_YRES, (u16)height);
+  set_register(VBE_DISPI_INDEX_VIRT_WIDTH, (u16)width);
+  set_register(VBE_DISPI_INDEX_VIRT_HEIGHT, (u16)height * 2);
+  // bits per pixel
+  set_register(VBE_DISPI_INDEX_BPP, 32);
+  set_register(VBE_DISPI_INDEX_ENABLE,
+               VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
+  set_register(VBE_DISPI_INDEX_BANK, 0);
+}
+
+void vga::set_pixel(int x, int y, int color) {
+  if (x >= m_framebuffer_width || y >= m_framebuffer_height) return;
+
+  set_pixel(y * m_framebuffer_width + x, color);
+}
+
+void vga::set_pixel(int ind, int color) {
+  if (ind >= m_framebuffer_width * m_framebuffer_height) return;
+
+  vga_fba[ind] = color;
+}
+
+static void *get_framebuffer_address(void) {
+  void *addr = nullptr;
+  pci::walk_devices([&](pci::device *dev) {
+    if (dev->is_device(0x1234, 0x1111) || dev->is_device(0x80ee, 0xbeef)) {
+      addr = (void *)(dev->get_bar(0).raw & 0xfffffff0l);
+    }
+  });
+  return addr;
+}
+
+static void vga_init_mod(void) {
+  vga_fba = (u32 *)p2v(get_framebuffer_address());
+  set_resolution(1024, 768);
+
+  // clear the framebuffer
+  for_range(x, 0, m_framebuffer_width) {
+    for_range(y, 0, m_framebuffer_height) {
+      vga::set_pixel(x, y, 0);
+    }
+  }
+}
+
+module_init("vga", vga_init_mod);

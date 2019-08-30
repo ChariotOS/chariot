@@ -54,6 +54,13 @@ void clear_screen(char, vga::color);
 void clear_screen();
 
 
+void set_pixel(int ind, int color);
+void set_pixel(int x, int y, int color);
+
+int width();
+int height();
+
+
 
 class vesa {
 

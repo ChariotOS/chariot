@@ -100,6 +100,7 @@ void init_mmap(u64 mbd) {
     ++mm_info.num_regions;
     ++n;
   }
+
 }
 
 int init_mem(u64 mbd) {
@@ -125,6 +126,7 @@ int init_mem(u64 mbd) {
 
     phys::free_range(start, end);
   }
+
 
   return 0;
 }
@@ -180,14 +182,29 @@ void init_kernel_virtual_memory() {
 
   INFO("has: %s\n", human_size(mm_info.total_mem, buf));
 
-  u64 page_step = HUGE_PAGE_SIZE;
-  auto page_size = paging::pgsize::huge;
+  u64 page_step = PAGE_SIZE;
+  auto page_size = paging::pgsize::page;
+
+  bool use_large = true;
+  bool use_huge = false;
+
+  if (use_large) {
+    page_step = LARGE_PAGE_SIZE;
+    page_size = paging::pgsize::large;
+  } else if (use_huge) {
+    page_step = HUGE_PAGE_SIZE;
+    page_size = paging::pgsize::huge;
+  }
 
   u64 i = 0;
 
+  // so the min_mem is the miniumum amount of memory to map
+  size_t min_mem = 4l * 1024l * 1024l * 1024l;
+
   for (; true; i += page_step) {
-    if (i > mm_info.total_mem) break;
+    if (i > max(mm_info.total_mem, min_mem)) break;
     paging::map((u64)p2v(i), i, page_size, PTE_W | PTE_P);
+    // printk("%p\n", i);
   }
 
   INFO("mapped %s into high kernel memory\n", human_size(i, buf));

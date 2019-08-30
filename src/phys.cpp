@@ -46,6 +46,13 @@ static frame *working_addr(frame *fr) {
 
 // physical memory allocator implementation
 void *phys::alloc(void) {
+
+
+  /*
+  char buf[20];
+  printk("%s\n", human_size(kmem.nfree * 4096, buf));
+  */
+
   frame *r = kmem.freelist;
 
   if (r == nullptr) panic("out of memory");

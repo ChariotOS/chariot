@@ -4,6 +4,7 @@
 // A set of common assembly functions
 
 #include "types.h"
+#include <math.h>
 
 #define BOOTCODE __attribute__((__section__(".boot")))
 #define __packed __attribute__((packed))
@@ -107,6 +108,7 @@
 
 
 
+
 #define for_range(var, start, end) for (auto var = start; var < (end); var++)
 
 
@@ -135,6 +137,12 @@ static inline void memset(void *buf, char c, size_t len) {
 
 static inline i64 min(i64 a, i64 b) {
   if (a < b) return a;
+  return b;
+}
+
+
+static inline i64 max(i64 a, i64 b) {
+  if (a > b) return a;
   return b;
 }
 
@@ -337,13 +345,6 @@ static inline void lidt(void *p, int size) {
   pd[3] = (u64)p >> 32;
   pd[4] = (u64)p >> 48;
   asm volatile("lidt (%0)" : : "r"(pd));
-}
-
-static inline double ceil(double x) {
-  u64 i = x;
-  double a = i;
-  if (a < x) return i + 1;
-  return i;
 }
 
 

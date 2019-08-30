@@ -4,6 +4,7 @@
 #include <fs/ext2.h>
 #include <mem.h>
 #include <string.h>
+#include <math.h>
 
 // Standard information and structures for EXT2
 #define EXT2_SIGNATURE 0xEF53
@@ -22,7 +23,6 @@
 #else
 #define TRACE
 #endif
-
 
 struct [[gnu::packed]] block_group_desc {
   uint32_t block_of_block_usage_bitmap;
@@ -43,10 +43,12 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-
 #define EXT2_CACHE_SIZE 128
 
-fs::ext2::ext2(dev::blk_dev &dev) : filesystem(/*super*/), dev(dev), disk_cache(dev, 64) { TRACE; }
+fs::ext2::ext2(dev::blk_dev &dev)
+    : filesystem(/*super*/), dev(dev), disk_cache(dev, 64) {
+  TRACE;
+}
 
 fs::ext2::~ext2(void) {
   TRACE;
@@ -173,7 +175,8 @@ bool fs::ext2::write_inode(ext2_inode_info *src, u32 inode) {
 
 bool fs::ext2::read_block(u32 block, void *buf) {
   TRACE;
-  return disk_cache.read(block * blocksize, blocksize, buf);
+  bool valid = disk_cache.read(block * blocksize, blocksize, buf);
+  return valid;
 }
 
 bool fs::ext2::write_block(u32 block, const void *buf) {

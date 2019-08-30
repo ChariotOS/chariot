@@ -7,6 +7,7 @@
 #include <phys.h>
 #include <printk.h>
 #include <ptr.h>
+#include <vga.h>
 
 // #define DEBUG
 // #define DO_TRACE
@@ -186,7 +187,6 @@ bool dev::ata::identify() {
 
 bool dev::ata::read_block(u32 sector, u8* data) {
   TRACE;
-
 
   // TODO: also check for scheduler avail
   if (use_dma) {

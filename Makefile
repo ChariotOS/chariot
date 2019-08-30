@@ -103,7 +103,7 @@ clean:
 	rm -rf build
 
 
-QEMUOPTS=-hda build/kernel.iso -smp 4 -m 8G -hdb $(ROOTFS)
+QEMUOPTS=-hda build/kernel.iso -smp 4 -m 2G -hdb $(ROOTFS)
 
 qemu: iso $(ROOTFS)
 	qemu-system-x86_64 $(QEMUOPTS) \

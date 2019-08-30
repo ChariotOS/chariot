@@ -1,7 +1,7 @@
 #include <mem.h>
 #include <printk.h>
 #include <types.h>
-
+#include <vga.h>
 
 uint64_t sbreakc = 0;
 
@@ -43,24 +43,24 @@ typedef size_t blk_t;
 
 static inline void *heap_start(void) { return kheap_lo(); }
 
-#define ANSI_COLOR_RED "\x1b[31m"
-#define ANSI_COLOR_GREEN "\x1b[32m"
-#define ANSI_COLOR_RESET "\x1b[0m"
 void print_heap(void) {
   uint64_t i = 0;
   auto *c = (blk_t *)((u8 *)kheap_lo() + OVERHEAD);
-
-  char size_buf[50];
-  printk("[%16s] ", human_size((u64)kheap_hi() - (u64)c, size_buf));
   for (; (void *)c < kheap_hi(); c = NEXT_BLK(c)) {
-    i++;
-    printk("%s%li%s ", IS_FREE(c) ? ANSI_COLOR_GREEN : ANSI_COLOR_RED,
-           GET_SIZE(c), ANSI_COLOR_RESET);
-    printk(ANSI_COLOR_RESET);
+    bool free = IS_FREE(c);
+    int blocks = GET_SIZE(c) / 8;
+    for (int b = 0; b < blocks; b++) {
+      vga::set_pixel(i + b, free ? 0x00FF00 : 0xFF0000);
+    }
+    i += blocks;
   }
-
-  printk("\n");
 }
+
+// #define PRINT_DEBUG() print_heap()
+
+#ifndef PRINT_DEBUG
+#define PRINT_DEBUG()
+#endif
 
 static bool adjacent(blk_t *a, blk_t *b) { return (NEXT_BLK(a) == b); }
 
@@ -138,6 +138,8 @@ void *mm_malloc(size_t size) {
   SET_USED(blk);
   void *ptr = (u8 *)blk + HEADER_SIZE;
   memset(ptr, 0, size);
+
+  PRINT_DEBUG();
   return (char *)blk + HEADER_SIZE;
 }
 
@@ -217,6 +219,7 @@ void mm_free(void *ptr) {
     SET_FREE(blk);
   }
 
+  PRINT_DEBUG();
   return;
   size_t size = GET_SIZE(blk);
   free_header_t *freeheader = GET_FREE_HEADER(blk);
@@ -227,7 +230,6 @@ void mm_free(void *ptr) {
 }
 
 void *mm_realloc(void *ptr, size_t size) {
-
   size = ALIGN(size);
 
   blk_t *blk = GET_BLK(ptr);
@@ -238,6 +240,7 @@ void *mm_realloc(void *ptr, size_t size) {
     size_t growth_size = size - old_size;
     ksbrk(growth_size);
     SET_SIZE(blk, size);
+    PRINT_DEBUG();
     return ptr;
   }
 
@@ -256,5 +259,6 @@ void *mm_realloc(void *ptr, size_t size) {
   void *new_region = mm_malloc(size);
   memcpy(new_region, ptr, GET_SIZE(GET_BLK(ptr)));
   mm_free(ptr);
+  PRINT_DEBUG();
   return new_region;
 }

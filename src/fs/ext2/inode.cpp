@@ -200,61 +200,63 @@ ssize_t fs::ext2_inode::do_rw(off_t off, size_t nbytes, void *buf,
   // the size of a single block
   auto bsize = efs.block_size();
 
+
   off_t first_blk_ind = offset / bsize;
   off_t last_blk_ind = (offset + nbytes) / bsize;
   off_t offset_into_first_block = offset % bsize;
 
   // TODO: lock the FS. We now want to own the efs->work_buf
-  auto *out = (u8 *)buf;
+  auto *given_buf = (u8 *)buf;
 
   int remaining_count = min((off_t)nbytes, (off_t)size() - off);
 
-  // read the block into a buffer
-  auto get_ith_block = [&](int i_block, bool &succ) -> u32 {
-    // the current block table. Starting out as the block pointers from the
-    // inode
-    u32 *table = (u32 *)info.dbp;
-    int path[4];
-    int n = block_to_path(this, i_block, path);
-
-    for (int i = 1; i < n; i++) {
-      int off = path[i];
-      if (true || blk_bufs[i] == NULL || cached_path[i] != off) {
-        if (blk_bufs[i] == NULL) blk_bufs[i] = (u32 *)kmalloc(bsize);
-
-        bool succ = efs.read_block(table[off], blk_bufs[i]);
-        if (!succ) {
-          succ = false;
-          return 0;
-        }
-        cached_path[i] = off;
-      }
-
-      table = blk_bufs[i];
-    }
-
-    succ = true;
-
-    return table[path[n - 1]];
-  };
-
   for (int bi = first_blk_ind; remaining_count && bi <= last_blk_ind; bi++) {
-    auto *buf = (u8 *)efs.work_buf;
-    bool valid;
-    u32 blk = get_ith_block(bi, valid);
-    if (!valid) {
+    u32 blk = block_from_index(bi);
+    if (blk == 0) {
       printk("ext2fs: read_bytes: failed at lbi %u\n", bi);
-      return -EIO;
+      // return -EIO;
     }
 
+    auto *buf = (u8 *)efs.work_buf;
     efs.read_block(blk, buf);
 
     int offset_into_block = (bi == first_blk_ind) ? offset_into_first_block : 0;
     int num_bytes_to_copy = min(bsize - offset_into_block, remaining_count);
-    memcpy(out, buf + offset_into_block, num_bytes_to_copy);
+
+    if (is_write) {
+      memcpy(buf + offset_into_block, given_buf, num_bytes_to_copy);
+      efs.write_block(blk, buf);
+    } else {
+      memcpy(given_buf, buf + offset_into_block, num_bytes_to_copy);
+    }
     remaining_count -= num_bytes_to_copy;
     nread += num_bytes_to_copy;
-    out += num_bytes_to_copy;
+    given_buf += num_bytes_to_copy;
   }
   return nread;
+}
+
+int fs::ext2_inode::block_from_index(int i_block) {
+
+  auto &efs = static_cast<ext2 &>(fs());
+
+
+  auto bsize = efs.block_size();
+  // start the inode
+  u32 *table = (u32 *)info.dbp;
+  int path[4];
+  int n = block_to_path(this, i_block, path);
+
+  for (int i = 0; i < n-1; i++) {
+    int off = path[i];
+    if (blk_bufs[i] == NULL || cached_path[i] != off) {
+      if (blk_bufs[i] == NULL) blk_bufs[i] = (u32 *)kmalloc(bsize);
+      if (!efs.read_block(table[off], blk_bufs[i])) {
+        return 0;
+      }
+      cached_path[i] = off;
+    }
+    table = blk_bufs[i];
+  }
+  return table[path[n - 1]];
 }

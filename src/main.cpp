@@ -5,6 +5,7 @@
 #include <dev/ata.h>
 #include <dev/serial.h>
 #include <idt.h>
+#include <math.h>
 #include <mem.h>
 #include <module.h>
 #include <paging.h>
@@ -65,7 +66,7 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
   node->walk_dir([&](const string& name, fs::vnoderef vn) -> bool {
     if (name == "." || name == "..") return true;
 
-#define DUMP_TO_SERIAL
+      // #define DUMP_TO_SERIAL
       // #define READ_FILES
 
 #ifdef DUMP_TO_SERIAL
@@ -101,6 +102,8 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
 #endif
     } while (nread >= sz);
 #endif
+
+    vn->read_entire();
 
     if (vn->index() != node->index())
       if (vn->is_dir()) walk_tree(vn, depth + 1);
@@ -138,15 +141,30 @@ static void dump_file(const char* name) {
 
 #define N 32
   if (node) {
-    u8 buf[N];
-    for (int i = 0; i < node->size(); i += N) {
-      int n = node->read(i, N, buf);
+    /*
+    auto* wbuf = (u8*)kmalloc(255);
+    memset(wbuf, 0xFE, 255);
+    node->write(0, 255, wbuf);
+    hexdump(wbuf, 255);
+    kfree(wbuf);
+    */
 
-      // for_range(c, 0, n) printk("%c", buf[c]);
-
-      hexdump(buf, n, N);
-    }
+    auto buf = kmalloc(node->size());
+    int n = node->read(0, node->size(), buf);
+    if (n > 0) hexdump(buf, n);
+    kfree(buf);
   }
+}
+
+uint32_t x; /* The state can be seeded with any value. */
+
+/* Call next() to get 32 pseudo-random bits, call it again to get more bits. */
+// It may help to make this inline, but you should see if it benefits your code.
+uint32_t next(void) {
+  uint32_t z = (x += 0x6D2B79F5UL);
+  z = (z ^ (z >> 15)) * (z | 1UL);
+  z ^= z + (z ^ (z >> 7)) * (z | 61UL);
+  return z ^ (z >> 14);
 }
 
 [[noreturn]] void kmain2(void) {
@@ -176,8 +194,59 @@ static void dump_file(const char* name) {
   // setup the root vfs
   init_rootvfs("disk1");
 
-  dump_file("/src/fs/ext2/inode.cpp");
-  // dump_file("/misc/o95.wav");
+  if (auto fp = vfs::open("/misc/cat.raw", 0); fp) {
+    auto w = vga::width();
+    auto h = vga::height();
+
+    int slen = w * h;
+    u32* screen = new u32[slen];
+
+    // set a pixel in the screen buffer
+    auto set_pixel = [&](int x, int y, u32 color) {
+      int ind = x + y * w;
+      if (ind >= 0 && ind < slen) {
+        screen[ind] = color;
+      }
+    };
+
+    auto buf = new u32[w];
+
+
+    int off = 0;
+    while (1) {
+      int iw = 640;
+      int ih = 480;
+
+      for_range(y, 0, ih) {
+        fp->read(y * iw * sizeof(u32), iw * sizeof(u32), buf);
+
+        for_range(x, 0, iw) {
+          int im_pix = buf[x];
+          int r = (im_pix >> 0) & 0xFF;
+          int g = (im_pix >> 8) & 0xFF;
+          int b = (im_pix >> 16) & 0xFF;
+          im_pix = r << 16 | g << 8 | b << 0;
+
+          u16 data = next();
+
+          for (int i = 0; i < 4; i++) {
+            char c = (data >> (i * 4)) & 0xF;
+            im_pix &= ~(0xF << (i * 8));
+            im_pix |= (c << (i * 8));
+          }
+
+          set_pixel(x, y, im_pix);
+        }
+      }
+
+      // flush the screen
+      for_range(i, 0, slen) vga::set_pixel(i, screen[i]);
+      off++;
+    }
+
+    delete[] buf;
+    delete[] screen;
+  }
 
   // spin forever
   printk("\n\nno more work. spinning.\n");
