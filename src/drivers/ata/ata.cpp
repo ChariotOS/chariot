@@ -287,9 +287,13 @@ u64 dev::ata::sector_count(void) {
   return n_sectors;
 }
 
-u64 dev::ata::block_size() {
+size_t dev::ata::block_size() {
   TRACE;
   return sector_size;
+}
+
+ssize_t dev::ata::size() {
+  return sector_size * n_sectors;
 }
 
 bool dev::ata::read_block_dma(u32 sector, u8* data) {

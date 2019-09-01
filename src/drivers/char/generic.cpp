@@ -22,24 +22,18 @@ class mem_device : public dev::char_dev {
   virtual int write(u64 offset, u32 len, const void *) override {
     return -ENOTIMPL;
   }
+  virtual ssize_t size(void) override { return mem_size(); }
 };
 
+/**
+ * null_device - black hole device
+ */
 class null_device : public dev::char_dev {
  public:
   null_device(ref<dev::driver> dr) : dev::char_dev(dr) {}
-
-  /**
-   * the null device simply erases the buffer with nulls
-   */
-  virtual int read(u64 offset, u32 len, void *dst) override {
-    memset(dst, 0, len);
-    return len;
-  }
-
-  /**
-   * Writing to null simply accepts the data, without using it anywhere
-   */
+  virtual int read(u64 offset, u32 len, void *dst) override { return 0; }
   virtual int write(u64 offset, u32 len, const void *) override { return len; }
+  virtual ssize_t size(void) override { return -1; }
 };
 
 class random_device : public dev::char_dev {
@@ -69,8 +63,27 @@ class random_device : public dev::char_dev {
     // TODO: use the data to seed or something
     return len;
   }
+
+  virtual ssize_t size(void) override { return -1; }
 };
 
+/**
+ * zero_device - just return all zeroes
+ */
+class zero_device : public dev::char_dev {
+ public:
+  zero_device(ref<dev::driver> dr) : dev::char_dev(dr) {}
+  virtual int read(u64 offset, u32 len, void *dst) override {
+    memset(dst, 0, len);
+    return len;
+  }
+  virtual int write(u64 offset, u32 len, const void *) override { return len; }
+  virtual ssize_t size(void) override { return -1; }
+};
+
+/**
+ * one_device - much like null, but returns all ones (0xFF)
+ */
 class one_device : public dev::char_dev {
  public:
   one_device(ref<dev::driver> dr) : dev::char_dev(dr) {}
@@ -79,6 +92,7 @@ class one_device : public dev::char_dev {
     return len;
   }
   virtual int write(u64 offset, u32 len, const void *) override { return len; }
+  virtual ssize_t size(void) override { return -1; }
 };
 
 class chardev_driver : public dev::driver {
@@ -86,7 +100,8 @@ class chardev_driver : public dev::driver {
   chardev_driver() {
     // register the memory device on minor 0
     m_mem = make_ref<mem_device>(ref<chardev_driver>(this));
-    dev::register_name("mem", MAJOR_MEM, 0); // TODO: register this as ROOT ONLY
+    dev::register_name("mem", MAJOR_MEM,
+                       0);  // TODO: register this as ROOT ONLY
 
     // register random device on minor 1
     m_null = make_ref<null_device>(ref<chardev_driver>(this));
@@ -97,9 +112,14 @@ class chardev_driver : public dev::driver {
     dev::register_name("random", MAJOR_MEM, 2);
     dev::register_name("urandom", MAJOR_MEM, 2);
 
+
     // register one device on minor 3
+    m_zero = make_ref<zero_device>(ref<chardev_driver>(this));
+    dev::register_name("zero", MAJOR_MEM, 3);
+
+    // register one device on minor 4
     m_one = make_ref<one_device>(ref<chardev_driver>(this));
-    dev::register_name("one", MAJOR_MEM, 3);
+    dev::register_name("one", MAJOR_MEM, 4);
   }
 
   virtual ~chardev_driver(){};
@@ -119,6 +139,10 @@ class chardev_driver : public dev::driver {
     }
     if (min == 3) {
       err = 0;
+      return m_zero;
+    }
+    if (min == 4) {
+      err = 0;
       return m_one;
     }
     err = -ENOENT;
@@ -131,6 +155,7 @@ class chardev_driver : public dev::driver {
   ref<mem_device> m_mem = nullptr;
   ref<null_device> m_null = nullptr;
   ref<random_device> m_random = nullptr;
+  ref<zero_device> m_zero = nullptr;
   ref<one_device> m_one = nullptr;
 };
 

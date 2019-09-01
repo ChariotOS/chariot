@@ -87,7 +87,8 @@ class ata : public dev::blk_dev {
 
   virtual bool read_block(u32 sector, u8* data);
   virtual bool write_block(u32 sector, const u8* data);
-  virtual u64 block_size(void);
+  virtual size_t block_size(void);
+  virtual ssize_t size(void); // how big the drive is in bytes
 
   bool read_block_dma(u32 sector, u8* data);
   bool write_block_dma(u32 sector, const u8* data);

@@ -126,22 +126,26 @@ void init_rootvfs(ref<dev::device> dev) {
   // walk the kernel modules and run their init function
   initialize_kernel_modules();
 
-  auto thedev = dev::open("random");
-  if (thedev) {
+  auto thedev = dev::open("ata1");
+
+  printk("block size: %zu\n", thedev->block_size());
+  printk("      size: %zu\n", thedev->size());
+  if (false && thedev) {
     int nreads = 0;
-    int stride = 48;
+    int stride = 512;
     for (size_t i = 0; i < mem_size(); i += stride) {
       char buf[stride];
       int rc = thedev->read(i, stride, buf);
       if (rc != stride) break;
       nreads++;
-      hexdump(buf, stride, stride);
+      hexdump(buf, stride, 16);
+      printk("\n");
     }
     printk("nreads = %d\n", nreads);
   }
 
   // setup the root vfs
-  init_rootvfs(thedev.get());
+  init_rootvfs(thedev);
 
   fs::devfs::mount();
 

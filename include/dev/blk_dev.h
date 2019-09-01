@@ -17,15 +17,10 @@ class blk_dev : public dev::device {
   virtual int write(u64 offset, u32 len, const void*) override;
 
   // all block devices must implement these functions
-
-  /**
-   * return the size of a single block.
-   *
-   * Example: an ATA driver returns 512
-   */
-  virtual u64 block_size(void) = 0;
   virtual bool read_block(u32 index, u8* buf) = 0;
   virtual bool write_block(u32 index, const u8* buf) = 0;
+
+
 };
 };  // namespace dev
 

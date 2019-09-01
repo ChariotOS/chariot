@@ -46,6 +46,14 @@ class device : public refcounted<device> {
   virtual int read(u64 offset, u32 len, void *) = 0;
   virtual int write(u64 offset, u32 len, const void *) = 0;
 
+  // what is the granularity of a read/write action?
+  // Defaults to 1 byte, for char devices. Block devices all implement their own
+  // block size
+  virtual size_t block_size();
+
+  // the size of the device in bytes. -1 means no size(?)
+  virtual ssize_t size();
+
   ref<dev::driver> driver();
 
  private:
