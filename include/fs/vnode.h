@@ -5,6 +5,7 @@
 #include <ptr.h>
 #include <string.h>
 #include <types.h>
+#include <errno.h>
 
 namespace fs {
 
@@ -43,7 +44,7 @@ struct inode_metadata {
  *
  * Each filesystem implements their own vnode for their use cases.
  */
-class vnode {
+class vnode : public refcounted<vnode> {
  public:
   virtual ~vnode();
 
@@ -52,7 +53,7 @@ class vnode {
   // return the three octal permission mode
   inline virtual u16 permissions(void) { return 0777; }
 
-  inline filesystem &fs(void) { return m_fs; }
+  virtual filesystem &fs(void) = 0;
 
   inline off_t size(void) { return metadata().size; }
   inline bool is_simlink(void) {
@@ -89,12 +90,12 @@ class vnode {
   u8 *read_entire(void);
 
  protected:
-  vnode(filesystem &fs, u32 index);
+  vnode(u32 index);
 
   virtual bool walk_dir_impl(func<bool(const string &, u32)> cb) = 0;
 
  private:
-  filesystem &m_fs;
+  // filesystem &m_fs;
   u32 m_index = 0;
 };
 

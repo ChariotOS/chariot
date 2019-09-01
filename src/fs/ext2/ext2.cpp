@@ -309,7 +309,7 @@ fs::vnoderef fs::ext2::get_inode(u32 index) {
         return node.value;
       }
 
-      if (node.value.use_count() == 1) {
+      if (node.value->ref_count() == 1) {
         printk("here!\n");
       }
     }

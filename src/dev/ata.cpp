@@ -69,7 +69,7 @@ u16 primary_master_status = 0;
 u16 primary_master_bmr_status = 0;
 u16 primary_master_bmr_command = 0;
 
-dev::ata::ata(u16 portbase, bool master) {
+dev::ata::ata(u16 portbase, bool master) : dev::blk_dev(nullptr) {
 
   m_io_base = portbase;
   TRACE;
@@ -384,11 +384,13 @@ void ata_init(void) {
   interrupt_enable(ATA_IRQ0);
 
   interrupt_register(ATA_IRQ1, ata_interrupt);
+
   interrupt_enable(ATA_IRQ1);
 
+
   // try to load hard disks at their expected locations
-  find_disk(0x1F0, 0, true);
-  find_disk(0x1F0, 1, false);
+  // find_disk(0x1F0, 0, true);
+  // find_disk(0x1F0, 1, false);
 }
 
 module_init("ata", ata_init);

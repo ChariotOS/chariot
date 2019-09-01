@@ -1,7 +1,8 @@
 #include <dev/partition.h>
+#include <dev/driver.h>
 
 dev::partition::partition(dev::blk_dev &disk, u32 offset, u32 len)
-    : m_disk(disk), m_offset(offset), m_len(len) {}
+    : dev::blk_dev(disk.driver()), m_disk(disk), m_offset(offset), m_len(len) {}
 
 dev::partition::~partition(void) {}
 

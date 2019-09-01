@@ -23,7 +23,7 @@ void hexdump(void *vdata, size_t len, int width) {
 
   for_range(i, 0, roundUp(len, width)) {
     trailing_newline = false;
-    if (i % 2 == 0 && i != 0) printk(" ");
+    if (i % 2 == 0 && written != 0) printk(" ");
 
     if (i < len) {
       printk("%02x", buf[i]);

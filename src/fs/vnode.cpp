@@ -2,7 +2,7 @@
 #include <fs/vfs.h>
 #include <fs/vnode.h>
 
-fs::vnode::vnode(fs::filesystem &fs, u32 index) : m_fs(fs), m_index(index) {}
+fs::vnode::vnode(u32 index) : m_index(index) {}
 fs::vnode::~vnode(void) {}
 
 fs::inode::inode(u32 fsid, u32 index) : m_fsid(fsid), m_index(index) {}
@@ -11,42 +11,39 @@ fs::inode::inode(u32 fsid, u32 index) : m_fsid(fsid), m_index(index) {}
 static string dot = ".";
 static string dotdot = "..";
 
-
 bool fs::vnode::walk_dir(func<bool(const string &, ref<vnode>)> cb) {
   // fail immediately if it wasnt a directory
   if (!is_dir()) {
     return false;
   }
 
+  // Because we are a directory, we need to check if we are a mount point
+  bool is_mounted_root = false;
+
+  fs::vnoderef host_parent = {};
+
+  auto qual = vfs::qualified_inode_number(fs(), index());
+  // printk("qual: %p\n", qual);
+  auto host = vfs::get_mount_at(qual);
+  // printk("%d\n", host.get());
+
+
+
   // call the inode implementation of walk_dir, but stand between and handle
   // mount points
   return walk_dir_impl([&](const string &s, u32 in) -> bool {
-    // the dir walker lets you stop walking by returning false, so we need to
-    // keep track of that
-    bool cont = false;
-
     auto qual = vfs::qualified_inode_number(fs(), in);
 
-    if (s == dot) {
-      printk("dot!\n");
-    }
 
-    if (s == dotdot) {
-      printk("dotdot!\n");
-    }
 
-    if (vfs::get_mount_at(qual)) {
-      printk("is mount point\n");
+    auto vn = vfs::get_mount_at(qual);
+    if (is_mounted_root && s == dotdot) {
+      printk("oof\n");
     }
-
+    // printk("%s: %p\n", s.get(), vn.get());
     // TODO: handle if vn->index is a mount point
-    if (/*isnt mount point*/ true) {
-      auto vn = fs().get_inode(in);
-      cont = cb(s, fs().get_inode(in));
-    } else {
-    }
-
-    return cont;
+    if (!vn) vn = fs().get_inode(in);
+    return cb(s, vn);
   });
 }
 

@@ -75,6 +75,7 @@ class ext2_inode : public vnode {
   // return the block size of the fs
   int block_size();
 
+  inline virtual fs::filesystem &fs() {return m_fs;}
  protected:
   int cached_path[4] = {0, 0, 0, 0};
   u32 *blk_bufs[4] = {NULL, NULL, NULL, NULL};
@@ -88,6 +89,8 @@ class ext2_inode : public vnode {
   int block_from_index(int i_block, int set_to = 0);
   ext2_inode_info info;
   virtual bool walk_dir_impl(func<bool(const string &, u32)> cb);
+
+  fs::filesystem &m_fs;
 };
 
 /**

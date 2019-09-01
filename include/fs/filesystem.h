@@ -31,6 +31,11 @@ class filesystem {
   virtual vnoderef get_root_inode() = 0;
   virtual u64 block_size(void) = 0;
 
+  // signal to the filesystem that the filesystem is unmounting.
+  // Return false if the filesystem fails to unmount (mostly useful for
+  // synthetic kernel filesystems like devfs)
+  inline virtual bool umount(void) { return true; }
+
  protected:
   // TODO: put a lock in here.
 

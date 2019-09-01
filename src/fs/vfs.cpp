@@ -43,7 +43,7 @@ int vfs::mount(unique_ptr<fs::filesystem> fs, fs::vnoderef host) {
   // check that the filesystem is valid
   if (!fs) return -ENOENT;
 
-  auto mid = qualified_inode_number(*fs.get(), host->index());
+  auto mid = qualified_inode_number(host->fs(), host->index());
 
   // if there is already a fs mounted here, fail
   if (mount_points.contains(mid)) return -EBUSY;

@@ -81,7 +81,7 @@ static int block_to_path(fs::ext2_inode *node, int i_block, int offsets[4],
   return n;
 }
 
-fs::ext2_inode::ext2_inode(fs::ext2 &fs, u32 index) : vnode(fs, index) {}
+fs::ext2_inode::ext2_inode(fs::ext2 &fs, u32 index) : vnode(index), m_fs(fs) {}
 
 fs::ext2_inode::~ext2_inode() {
   for (int i = 0; i < 4; i++) {

@@ -1,6 +1,7 @@
 #ifndef __PTR_H__
 #define __PTR_H__
 
+#include <atom.h>
 #include <printk.h>
 #include <template_lib.h>
 
@@ -70,9 +71,7 @@ class unique_ptr {
   explicit operator bool() const noexcept { return this->m_ptr; }
   // releases the ownership of the resource. The user is now responsible for
   // memory clean-up.
-  T* release() noexcept {
-    return exchange(m_ptr, nullptr);
-  }
+  T* release() noexcept { return exchange(m_ptr, nullptr); }
   // returns a pointer to the resource
   T* get() const noexcept { return m_ptr; }
 
@@ -114,224 +113,211 @@ unique_ptr<T> make_unique(Args&&... args) {
 }
 
 #define SHARED_ASSERT(x) assert(x)
+#define ASSERT(x) assert(x)
 
-/**
- * @brief implementation of reference counter for the following minimal smart
- * pointer.
- *
- * ref_count is a container for the allocated pn reference counter.
- */
-class ref_count {
+template <class T>
+constexpr auto call_will_be_destroyed_if_present(T* object)
+    -> decltype(object->will_be_destroyed(), TrueType{}) {
+  object->will_be_destroyed();
+  return {};
+}
+
+constexpr auto call_will_be_destroyed_if_present(...) -> FalseType {
+  return {};
+}
+
+template <class T>
+constexpr auto call_one_ref_left_if_present(T* object)
+    -> decltype(object->one_ref_left(), TrueType{}) {
+  object->one_ref_left();
+  return {};
+}
+
+constexpr auto call_one_ref_left_if_present(...) -> FalseType { return {}; }
+
+class refcounted_base {
  public:
-  ref_count() : pn(NULL) {}
-  ref_count(const ref_count& count) : pn(count.pn) {}
-  /// @brief Swap method for the copy-and-swap idiom (copy constructor and swap
-  /// method)
-  void swap(ref_count& lhs) throw()  // never throws
-  {
-    ::swap(pn, lhs.pn);
-  }
-  /// @brief getter of the underlying reference counter
-  long use_count(void) const throw()  // never throws
-  {
-    long count = 0;
-    if (NULL != pn) {
-      count = *pn;
-    }
-    return count;
-  }
-  /// @brief acquire/share the ownership of the pointer, initializing the
-  /// reference counter
-  template <class U>
-  void acquire(U* p)  // may throw std::bad_alloc
-  {
-    if (NULL != p) {
-      if (NULL == pn) {
-        pn = new long(1);  // may throw std::bad_alloc
-      } else {
-        ++(*pn);
-      }
-    }
-  }
-  /// @brief release the ownership of the px pointer, destroying the object when
-  /// appropriate
-  template <class U>
-  void release(U* p) throw()  // never throws
-  {
-    if (NULL != pn) {
-      --(*pn);
-      if (0 == *pn) {
-        delete p;
-        delete pn;
-      }
-      pn = NULL;
-    }
+  void ref_retain() {
+    assert(m_ref_count);
+    m_ref_count++;
   }
 
- public:
-  long* pn;  //!< Reference counter
+  int ref_count() const { return m_ref_count; }
+
+ protected:
+  refcounted_base() {}
+  ~refcounted_base() { assert(m_ref_count == 0); }
+
+  void deref_base() {
+    assert(m_ref_count);
+    m_ref_count--;
+  }
+
+  int m_ref_count{1};
 };
 
-/**
- * @brief minimal implementation of smart pointer, a subset of the C++11
- * std::ref or boost::ref.
- *
- * ref is a smart pointer retaining ownership of an object through a
- * provided pointer, and sharing this ownership with a reference counter. It
- * destroys the object when the last shared pointer pointing to it is destroyed
- * or reset.
- */
-template <class T>
+template <typename T>
+class refcounted : public refcounted_base {
+ public:
+  void ref_release() {
+    deref_base();
+    if (m_ref_count == 0) {
+      call_will_be_destroyed_if_present(static_cast<T*>(this));
+      printk("DELETE!\n");
+      delete static_cast<T*>(this);
+    } else if (m_ref_count == 1) {
+      call_one_ref_left_if_present(static_cast<T*>(this));
+    }
+  }
+};
+
+template <typename T>
+inline void retain_if_not_null(T* ptr) {
+  if (ptr) ptr->ref_retain();
+}
+template <typename T>
+inline void release_if_not_null(T* ptr) {
+  if (ptr) ptr->ref_release();
+}
+template <typename T>
 class ref {
  public:
-  /// The type of the managed object, aliased as member type
-  typedef T element_type;
+  enum AdoptTag { Adopt };
 
-  /// @brief Default constructor
-  ref(void) throw()
-      :  // never throws
-        px(NULL),
-        pn() {}
-  /// @brief Constructor with the provided pointer to manage
-  explicit ref(T* p)
-      :  // may throw std::bad_alloc
-         // px(p), would be unsafe as acquire() may throw, which would call
-         // release() in destructor
-        pn() {
-    acquire(p);  // may throw std::bad_alloc
+  ref() {}
+  ref(const T* ptr) : m_ptr(const_cast<T*>(ptr)) { retain_if_not_null(m_ptr); }
+  ref(const T& object) : m_ptr(const_cast<T*>(&object)) { m_ptr->ref(); }
+  ref(AdoptTag, T& object) : m_ptr(&object) {}
+  ref(ref&& other) : m_ptr(other.leak_ref()) {}
+  template <typename U>
+  ref(ref<U>&& other) : m_ptr(static_cast<T*>(other.leak_ref())) {}
+  ref(const ref& other) : m_ptr(const_cast<T*>(other.ptr())) {
+    retain_if_not_null(m_ptr);
   }
-  /// @brief Constructor to share ownership. Warning : to be used for
-  /// pointer_cast only ! (does not manage two separate <T> and <U> pointers)
-  template <class U>
-  ref(const ref<U>& ptr, T* p)
-      :  // px(p), would be unsafe as acquire() may throw, which would call
-         // release() in destructor
-        pn(ptr.pn) {
-    acquire(p);  // may throw std::bad_alloc
+  template <typename U>
+  ref(const ref<U>& other)
+      : m_ptr(static_cast<T*>(const_cast<U*>(other.ptr()))) {
+    retain_if_not_null(m_ptr);
   }
-  /// @brief Copy constructor to convert from another pointer type
-  template <class U>
-  ref(const ref<U>& ptr) throw()
-      :  // never throws (see comment below)
-         // px(ptr.px),
-        pn(ptr.pn) {
-    SHARED_ASSERT(
-        (NULL == ptr.px) ||
-        (0 != ptr.pn.use_count()));  // must be coherent : no allocation allowed
-                                     // in this path
-    acquire(static_cast<typename ref<T>::element_type*>(
-        ptr.px));  // will never throw std::bad_alloc
+  ~ref() {
+    clear();
+    if constexpr (sizeof(T*) == 8)
+      m_ptr = (T*)(0xe0e0e0e0e0e0e0e0);
+    else
+      m_ptr = (T*)(0xe0e0e0e0);
   }
-  /// @brief Copy constructor (used by the copy-and-swap idiom)
-  ref(const ref& ptr) throw()
-      :  // never throws (see comment below)
-         // px(ptr.px),
-        pn(ptr.pn) {
-    SHARED_ASSERT(
-        (NULL == ptr.px) ||
-        (0 != ptr.pn.use_count()));  // must be cohérent : no allocation allowed
-                                     // in this path
-    acquire(ptr.px);  // will never throw std::bad_alloc
+  ref(nullptr_t) {}
+
+  template <typename U>
+  ref(const unique_ptr<U>&) = delete;
+  template <typename U>
+  ref& operator=(const unique_ptr<U>&) = delete;
+
+  template <typename U>
+  void swap(ref<U>& other) {
+    ::swap(m_ptr, other.m_ptr);
   }
-  /// @brief Assignment operator using the copy-and-swap idiom (copy constructor
-  /// and swap method)
-  ref& operator=(ref ptr) throw()  // never throws
-  {
-    swap(ptr);
+
+  ref& operator=(ref&& other) {
+    ref tmp = move(other);
+    swap(tmp);
     return *this;
   }
-  /// @brief the destructor releases its ownership
-  ~ref(void) throw()  // never throws
-  {
-    release();
-  }
-  /// @brief this reset releases its ownership
-  void reset(void) throw()  // never throws
-  {
-    release();
-  }
-  /// @brief this reset release its ownership and re-acquire another one
-  void reset(T* p)  // may throw std::bad_alloc
-  {
-    SHARED_ASSERT((NULL == p) || (px != p));  // auto-reset not allowed
-    release();
-    acquire(p);  // may throw std::bad_alloc
+
+  template <typename U>
+  ref& operator=(ref<U>&& other) {
+    ref tmp = move(other);
+    swap(tmp);
+    return *this;
   }
 
-  /// @brief Swap method for the copy-and-swap idiom (copy constructor and swap
-  /// method)
-  void swap(ref& lhs) throw()  // never throws
-  {
-    ::swap(px, lhs.px);
-    pn.swap(lhs.pn);
+  ref& operator=(const ref& other) {
+    ref tmp = other;
+    swap(tmp);
+    return *this;
   }
 
-  // reference counter operations :
-  operator bool() const throw()  // never throws
-  {
-    return (0 < pn.use_count());
-  }
-  bool unique(void) const throw()  // never throws
-  {
-    return (1 == pn.use_count());
-  }
-  long use_count(void) const throw()  // never throws
-  {
-    return pn.use_count();
+  template <typename U>
+  ref& operator=(const ref<U>& other) {
+    ref tmp = other;
+    swap(tmp);
+    return *this;
   }
 
-  // underlying pointer operations :
-  T& operator*() const throw()  // never throws
-  {
-    SHARED_ASSERT(NULL != px);
-    return *px;
-  }
-  T* operator->() const throw()  // never throws
-  {
-    SHARED_ASSERT(NULL != px);
-    return px;
-  }
-  T* get(void) const throw()  // never throws
-  {
-    // no assert, can return NULL
-    return px;
+  ref& operator=(const T* ptr) {
+    ref tmp = ptr;
+    swap(tmp);
+    return *this;
   }
 
-
-  int use_count(void) throw()  // never throws
-  {
-    return pn.use_count();
+  ref& operator=(const T& object) {
+    ref tmp = object;
+    swap(tmp);
+    return *this;
   }
+
+  ref& operator=(nullptr_t) {
+    clear();
+    return *this;
+  }
+
+  void clear() {
+    release_if_not_null(m_ptr);
+    m_ptr = nullptr;
+  }
+
+  bool operator!() const { return !m_ptr; }
+
+  [[nodiscard]] T* leak_ref() { return exchange(m_ptr, nullptr); }
+
+  T* ptr() { return m_ptr; }
+  T* get() { return m_ptr; }
+  const T* ptr() const { return m_ptr; }
+
+  T* operator->() {
+    ASSERT(m_ptr);
+    return m_ptr;
+  }
+
+  const T* operator->() const {
+    ASSERT(m_ptr);
+    return m_ptr;
+  }
+
+  T& operator*() {
+    ASSERT(m_ptr);
+    return *m_ptr;
+  }
+
+  const T& operator*() const {
+    ASSERT(m_ptr);
+    return *m_ptr;
+  }
+
+  operator const T*() const { return m_ptr; }
+  operator T*() { return m_ptr; }
+
+  operator bool() { return !!m_ptr; }
+
+  bool operator==(nullptr_t) const { return !m_ptr; }
+  bool operator!=(nullptr_t) const { return m_ptr; }
+
+  bool operator==(const ref& other) const { return m_ptr == other.m_ptr; }
+  bool operator!=(const ref& other) const { return m_ptr != other.m_ptr; }
+
+  bool operator==(ref& other) { return m_ptr == other.m_ptr; }
+  bool operator!=(ref& other) { return m_ptr != other.m_ptr; }
+
+  bool operator==(const T* other) const { return m_ptr == other; }
+  bool operator!=(const T* other) const { return m_ptr != other; }
+
+  bool operator==(T* other) { return m_ptr == other; }
+  bool operator!=(T* other) { return m_ptr != other; }
+
+  bool is_null() const { return !m_ptr; }
 
  private:
-  /// @brief acquire/share the ownership of the px pointer, initializing the
-  /// reference counter
-  void acquire(T* p)  // may throw std::bad_alloc
-  {
-    pn.acquire(p);  // may throw std::bad_alloc
-    px = p;  // here it is safe to acquire the ownership of the provided raw
-             // pointer, where exception cannot be thrown any more
-  }
-
-  /// @brief release the ownership of the px pointer, destroying the object when
-  /// appropriate
-  void release(void) throw()  // never throws
-  {
-    pn.release(px);
-    px = NULL;
-  }
-
-
-
- private:
-  // This allow pointer_cast functions to share the reference counter between
-  // different ref types
-  template <class U>
-  friend class ref;
-
- private:
-  T* px;         //!< Native pointer
-  ref_count pn;  //!< Reference counter
+  T* m_ptr = nullptr;
 };
 
 // comparaison operators
@@ -393,85 +379,7 @@ ref<T> dynamic_pointer_cast(const ref<U>& ptr)  // never throws
 
 template <typename T, typename... Args>
 ref<T> make_ref(Args&&... args) {
-  return ref<T>(new T(forward<Args>(args)...));
+  return ref<T>(ref<T>::AdoptTag::Adopt, *new T(forward<Args>(args)...));
 }
-
-
-
-
-
-
-
-
-
-
-
-template<class T>
-constexpr auto call_will_be_destroyed_if_present(T* object) -> decltype(object->will_be_destroyed(), TrueType {})
-{
-    object->will_be_destroyed();
-    return {};
-}
-
-constexpr auto call_will_be_destroyed_if_present(...) -> FalseType
-{
-    return {};
-}
-
-template<class T>
-constexpr auto call_one_ref_left_if_present(T* object) -> decltype(object->one_ref_left(), TrueType {})
-{
-    object->one_ref_left();
-    return {};
-}
-
-constexpr auto call_one_ref_left_if_present(...) -> FalseType
-{
-    return {};
-}
-
-class refcount_base {
-public:
-    void ref()
-    {
-        assert(m_ref_count);
-        ++m_ref_count;
-    }
-
-    int ref_count() const
-    {
-        return m_ref_count;
-    }
-
-protected:
-    refcount_base() {}
-    ~refcount_base()
-    {
-        assert(!m_ref_count);
-    }
-
-    void deref_base()
-    {
-        assert(m_ref_count);
-        --m_ref_count;
-    }
-
-    int m_ref_count { 1 };
-};
-
-template<typename T>
-class refcounted : public refcount_base {
-public:
-    void deref()
-    {
-        deref_base();
-        if (m_ref_count == 0) {
-            call_will_be_destroyed_if_present(static_cast<T*>(this));
-            delete static_cast<T*>(this);
-        } else if (m_ref_count == 1) {
-            call_one_ref_left_if_present(static_cast<T*>(this));
-        }
-    }
-};
 
 #endif

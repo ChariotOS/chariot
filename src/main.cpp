@@ -4,6 +4,7 @@
 #include <asm.h>
 #include <atom.h>
 #include <dev/ata.h>
+#include <dev/driver.h>
 #include <dev/serial.h>
 #include <idt.h>
 #include <math.h>
@@ -65,13 +66,6 @@ extern "C" void call_with_new_stack(void*, void*);
 
 static void walk_tree(fs::vnoderef& node, int depth = 0) {
   node->walk_dir([&](const string& name, fs::vnoderef vn) -> bool {
-    if (name == "." || name == "..") return true;
-
-      // #define DUMP_TO_SERIAL
-      // #define READ_FILES
-
-#ifdef DUMP_TO_SERIAL
-
     for (int i = 0; i < depth; i++) {
       printk("|");
       if (i == depth - 1) {
@@ -80,31 +74,10 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
         printk("   ");
       }
     }
-#endif
 
-#ifdef DUMP_TO_SERIAL
-    printk("%-20s %p\n", name.get(), vn.get());
-#endif
+    printk("name=\"%s\"  inode=%d\n", name.get(), vn->index());
 
-#ifdef READ_FILES
-    constexpr auto sz = 512;
-    char buf[sz];
-
-    int nread = 0;
-    int off = 0;
-
-    do {
-      nread = vn->read(off, sz, buf);
-      off += sz;
-#ifdef DUMP_TO_SERIAL
-      printk("\t%6d: ", off);
-      for_range(i, 0, nread) { printk("%02x ", (u8)buf[i]); }
-      printk("\n");
-#endif
-    } while (nread >= sz);
-#endif
-
-    vn->read_entire();
+    if (name == "." || name == "..") return true;
 
     if (vn->index() != node->index())
       if (vn->is_dir()) walk_tree(vn, depth + 1);
@@ -174,19 +147,37 @@ uint32_t next(void) {
   // finally, enable interrupts
   sti();
 
+  assert(fs::devfs::init());
+
   // walk the kernel modules and run their init function
   initialize_kernel_modules();
+
+  auto thedev = dev::open(1, 0);
+
+  if (thedev) {
+    int stride = 32;
+    for (size_t i = 0; i < mem_size(); i += stride) {
+      char buf[stride];
+      int rc = thedev->read(i, stride, buf);
+      if (rc != stride) break;
+
+      printk("%p ", i);
+      hexdump(buf, stride, stride);
+    }
+  }
 
   // setup the root vfs
   init_rootvfs("disk1");
 
+  fs::devfs::mount();
 
-  vfs::open("/src/arch/x86/boot.asm", 0);
-
+  auto node = vfs::open("/", 0);
+  walk_tree(node);
 
   // spin forever
   printk("\n\nno more work. spinning.\n");
   while (1) {
+    halt();
   }
 }
 

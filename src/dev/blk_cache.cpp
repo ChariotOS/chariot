@@ -5,7 +5,7 @@
 static int used = 0;
 
 dev::blk_cache::blk_cache(dev::blk_dev& disk, u32 cache_size)
-    : m_disk(disk), m_cache_size(cache_size) {
+    : dev::blk_dev(nullptr), m_disk(disk), m_cache_size(cache_size) {
   lines = new cache_line[cache_size];
 }
 

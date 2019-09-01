@@ -29,6 +29,7 @@ extern bool use_kernel_vm;
 inline void *operator new(size_t, void *ptr) { return ptr; }
 
 int init_mem(u64 mbd);
+size_t mem_size();
 
 // void *memcpy(void *dest, const void *src, u64 n);
 
@@ -44,5 +45,6 @@ void *kheap_lo();
 void *kheap_hi();
 
 void init_kernel_virtual_memory();
+
 
 #endif

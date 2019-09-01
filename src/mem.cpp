@@ -105,6 +105,11 @@ void init_mmap(u64 mbd) {
 
 }
 
+
+size_t mem_size() {
+  return mm_info.total_mem;
+}
+
 int init_mem(u64 mbd) {
   // go detect all the ram in the system
   init_mmap(mbd);
