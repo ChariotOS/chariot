@@ -94,6 +94,12 @@ void init_rootvfs(ref<dev::device> dev) {
 
 
 [[noreturn]] void kmain2(void) {
+
+  // clear out the base memory addresses and flush the tlb
+  // auto *pml4 = (u64*)p2v(read_cr3());
+  // pml4[0] = 0;
+  // printk("here %p\n", kmain2);
+  // tlb_flush();
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
 
@@ -175,8 +181,10 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   serial_install();
   vga::init();
 
+  /*
   vga::set_color(vga::color::white, vga::color::black);
   vga::clear_screen();
+  A*/
 
 #ifdef WASTE_TIME_PRINTING_WELCOME
   printk("%s\n", chariot_welcome_start);
@@ -197,6 +205,9 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   void* new_stack = (void*)((u64)kmalloc(STKSIZE) + STKSIZE);
 
   void* new_main = p2v(kmain2);
+
+
+  printk("%p %p\n", new_stack, new_main);
 
   call_with_new_stack(new_stack, new_main);
   // ??

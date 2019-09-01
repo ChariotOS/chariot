@@ -1,4 +1,4 @@
-
+default rel
 global _start
 global start
 

@@ -47,5 +47,5 @@ pic_enable:
 global call_with_new_stack
 call_with_new_stack:
 	mov rsp, rdi
-	call rsi
-	ret
+	jmp rsi
+	ret ;; ??

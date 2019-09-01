@@ -99,9 +99,10 @@ extern u32 idt_block[];
 
 extern void *vectors[];  // in vectors.S: array of 256 entry pointers
 
-static interrupt_handler_t interrupt_handler_table[48];
-static uint32_t interrupt_count[48];
-static uint8_t interrupt_spurious[48];
+#define IRQ_COUNT 300
+static interrupt_handler_t interrupt_handler_table[IRQ_COUNT];
+static uint32_t interrupt_count[IRQ_COUNT];
+static uint8_t interrupt_spurious[IRQ_COUNT];
 
 static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
   u64 addr = (u64)kva;
