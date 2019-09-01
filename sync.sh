@@ -33,7 +33,7 @@ printf "OK\n"
 
 
 sudo cp -r mnt/. $MOUNTPOINT/
-#sudo cp -r src $MOUNTPOINT/src
-#sudo cp -r include $MOUNTPOINT/include
+# sudo cp -r src $MOUNTPOINT/src
+# sudo cp -r include $MOUNTPOINT/include
 
 sudo umount $MOUNTPOINT

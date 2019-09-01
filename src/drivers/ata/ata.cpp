@@ -366,18 +366,6 @@ static void ata_interrupt(int intr, trapframe* fr) {
   // INFO("interrupt: err=%d\n", fr->err);
 }
 
-static bool find_disk(u16 addr, int id, bool master) {
-  auto drive = make_unique<dev::ata>(addr, master);
-
-  if (drive->identify()) {
-    string name = string::format("disk%d", id);
-    fs::devfs::register_device(name, move(drive), DEVFS_REG_WALK_PARTS);
-    return true;
-  }
-  return false;
-}
-
-
 class ata_driver : public dev::driver {
  public:
   ata_driver() {

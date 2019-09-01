@@ -78,7 +78,7 @@ class ext2_inode : public vnode {
   inline virtual fs::filesystem &fs() {return m_fs;}
  protected:
   int cached_path[4] = {0, 0, 0, 0};
-  u32 *blk_bufs[4] = {NULL, NULL, NULL, NULL};
+  int *blk_bufs[4] = {NULL, NULL, NULL, NULL};
 
   ssize_t do_rw(off_t, size_t, void *, bool is_write);
   off_t block_for_byte(off_t b);
@@ -104,7 +104,7 @@ class ext2_inode : public vnode {
  */
 class ext2 final : public filesystem {
  public:
-  ext2(dev::blk_dev &);
+  ext2(ref<dev::device>);
 
   ~ext2(void);
 
@@ -222,7 +222,7 @@ class ext2 final : public filesystem {
     u16 s_reserved_pad;  /* Padding to next 32bits */
     u32 s_reserved[162]; /* Padding to the end of the block */
   };
-  dev::blk_dev &dev;
+  ref<dev::blk_dev> dev;
 
   superblock *sb = nullptr;
 

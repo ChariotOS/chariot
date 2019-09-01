@@ -34,7 +34,7 @@ CINCLUDES=-I./include/
 COMMON_FLAGS := $(CINCLUDES)  \
 				 -fPIC -Wno-sign-compare \
 			   -ffreestanding -mno-red-zone \
-				 -O3 -fno-tree-vectorize \
+				 -O3 -fno-tree-vectorize -Wno-address-of-packed-member -Wno-strict-overflow \
 				 -DGIT_REVISION=\"$(shell git rev-parse HEAD)\"
 
 

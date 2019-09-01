@@ -46,7 +46,7 @@ typedef struct __ext2_dir_entry {
 
 #define EXT2_CACHE_SIZE 128
 
-fs::ext2::ext2(dev::blk_dev &dev)
+fs::ext2::ext2(ref<dev::device> dev)
     : filesystem(/*super*/), dev(dev), disk_cache(dev, 64) {
   TRACE;
 }
@@ -62,7 +62,7 @@ bool fs::ext2::init(void) {
   TRACE;
   sb = new superblock();
   // read the superblock
-  bool res = dev.read(1024, 1024, sb);
+  bool res = dev->read(1024, 1024, sb);
 
   if (!res) {
     printk("failed to read the superblock\n");
@@ -75,11 +75,8 @@ bool fs::ext2::init(void) {
     return false;
   }
 
-  printk("last check = %d\n", sb->last_check);
-
   sb->last_check = dev::RTC::now();
 
-  printk("last check = %d\n", sb->last_check);
 
   // solve for the filesystems block size
   blocksize = 1024 << sb->blocksize_hint;
@@ -106,8 +103,7 @@ bool fs::ext2::init(void) {
 
 int fs::ext2::write_superblock(void) {
   // TODO: lock
-  printk("superblock len %zu\n", sizeof(fs::ext2::superblock));
-  return dev.write(1024, 1024, sb);
+  return disk_cache.write(1024, 1024, sb);
 }
 
 bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {

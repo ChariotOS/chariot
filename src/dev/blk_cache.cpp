@@ -4,14 +4,14 @@
 
 static int used = 0;
 
-dev::blk_cache::blk_cache(dev::blk_dev& disk, u32 cache_size)
+dev::blk_cache::blk_cache(ref<dev::blk_dev> disk, u32 cache_size)
     : dev::blk_dev(nullptr), m_disk(disk), m_cache_size(cache_size) {
   lines = new cache_line[cache_size];
 }
 
 dev::blk_cache::~blk_cache(void) { delete[] lines; }
 
-u64 dev::blk_cache::block_size(void) { return m_disk.block_size(); }
+u64 dev::blk_cache::block_size(void) { return m_disk->block_size(); }
 
 void dev::blk_cache::evict(u32 cache_ind) {
   auto& line = lines[cache_ind];
@@ -42,7 +42,7 @@ bool dev::blk_cache::read_block(u32 sector, u8* buf) {
       line.data = kmalloc(block_size());
       used++;
     }
-    line.valid = m_disk.read_block(sector, (u8*)line.data);
+    line.valid = m_disk->read_block(sector, (u8*)line.data);
     // printk(" ###");
   } else {
     // printk("    ");
@@ -65,7 +65,7 @@ bool dev::blk_cache::write_block(u32 sector, const u8* buf) {
   evict(cind);
 
   // write thru
-  return m_disk.write_block(sector, buf);
+  return m_disk->write_block(sector, buf);
 }
 
 dev::blk_cache::cache_line::cache_line(void) {

@@ -200,7 +200,6 @@ ssize_t fs::ext2_inode::do_rw(off_t off, size_t nbytes, void *buf,
   // the size of a single block
   auto bsize = efs.block_size();
 
-
   off_t first_blk_ind = offset / bsize;
   off_t last_blk_ind = (offset + nbytes) / bsize;
   off_t offset_into_first_block = offset % bsize;
@@ -237,20 +236,19 @@ ssize_t fs::ext2_inode::do_rw(off_t off, size_t nbytes, void *buf,
 }
 
 int fs::ext2_inode::block_from_index(int i_block, int set_to) {
-
   auto &efs = static_cast<ext2 &>(fs());
-
 
   auto bsize = efs.block_size();
   // start the inodeS
-  u32 *table = (u32 *)info.dbp;
+  auto foo = info.dbp;
+  auto *table = (int *)foo;
   int path[4];
   int n = block_to_path(this, i_block, path);
 
-  for (int i = 0; i < n-1; i++) {
+  for (int i = 0; i < n - 1; i++) {
     int off = path[i];
     if (blk_bufs[i] == NULL || cached_path[i] != off) {
-      if (blk_bufs[i] == NULL) blk_bufs[i] = (u32 *)kmalloc(bsize);
+      if (blk_bufs[i] == NULL) blk_bufs[i] = (int *)kmalloc(bsize);
       if (!efs.read_block(table[off], blk_bufs[i])) {
         return 0;
       }
@@ -258,11 +256,9 @@ int fs::ext2_inode::block_from_index(int i_block, int set_to) {
     }
     table = blk_bufs[i];
   }
+
   return table[path[n - 1]];
 }
 
+int fs::ext2_inode::truncate(size_t newlen) { return -ENOTIMPL; }
 
-int fs::ext2_inode::truncate(size_t newlen) {
-  printk("ext2 truncate\n");
-  return -ENOTIMPL;
-}

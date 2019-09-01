@@ -7,9 +7,11 @@
  * A major number is a simple 16 bit number that represents a driver's identity.
  */
 
+#define MAJOR_NULL 0
 
 // MEM driver - for access to physical memory as a device
 #define MAJOR_MEM 1
+
 
 // ATA drives
 #define MAJOR_ATA 4

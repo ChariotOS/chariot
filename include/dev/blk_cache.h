@@ -6,7 +6,7 @@
 namespace dev {
 class blk_cache : public dev::blk_dev {
  public:
-  blk_cache(dev::blk_dev& disk, u32 cache_size);
+  blk_cache(ref<dev::blk_dev> disk, u32 cache_size);
   virtual ~blk_cache();
   virtual u64 block_size(void);
   virtual bool read_block(u32 index, u8* buf);
@@ -27,7 +27,7 @@ class blk_cache : public dev::blk_dev {
   };
 
 
-  dev::blk_dev& m_disk;
+  ref<dev::blk_dev> m_disk;
   u32 m_cache_size;
 
   cache_line* lines = nullptr;

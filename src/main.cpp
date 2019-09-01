@@ -64,17 +64,18 @@ static void call_global_constructors(void) {
 extern "C" void call_with_new_stack(void*, void*);
 
 static void walk_tree(fs::vnoderef& node, int depth = 0) {
+
+  if (depth == 0) printk("/\n");
+
   node->walk_dir([&](const string& name, fs::vnoderef vn) -> bool {
-    for (int i = 0; i < depth; i++) {
-      printk("|");
+    for (int i = -1; i < depth; i++) {
       if (i == depth - 1) {
-        printk(" - ");
+        printk("+-- ");
       } else {
-        printk("   ");
+        printk("|   ");
       }
     }
-
-    printk("name=\"%s\"  inode=%d\n", name.get(), vn->index());
+    printk("%s\n", name.get());
 
     if (name == "." || name == "..") return true;
 
@@ -85,37 +86,12 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
   });
 }
 
-void init_rootvfs(dev::device *dev) {
-
-  if (dev == nullptr) {
-    panic("couldnt find root device\n");
-    return;
-  }
-
-  auto drive = dev->to_blk_dev();
-  if (drive == nullptr) {
-    panic("root device is not blk device\n");
-    return;
-  }
-
-  // auto cache = dev::blk_cache(*drive, 64);
-
-  auto rootfs = make_unique<fs::ext2>(*drive);
-
+void init_rootvfs(ref<dev::device> dev) {
+  auto rootfs = make_unique<fs::ext2>(dev);
   if (!rootfs->init()) panic("failed to init ext2 on root disk\n");
-
   if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
 }
 
-uint32_t x; /* The state can be seeded with any value. */
-/* Call next() to get 32 pseudo-random bits, call it again to get more bits. */
-// It may help to make this inline, but you should see if it benefits your code.
-uint32_t next(void) {
-  uint32_t z = (x += 0x6D2B79F5UL);
-  z = (z ^ (z >> 15)) * (z | 1UL);
-  z ^= z + (z ^ (z >> 7)) * (z | 61UL);
-  return z ^ (z >> 14);
-}
 
 [[noreturn]] void kmain2(void) {
   // now that we have a stable memory manager, call the C++ global constructors
@@ -150,17 +126,16 @@ uint32_t next(void) {
   // walk the kernel modules and run their init function
   initialize_kernel_modules();
 
-  auto thedev = dev::open("ata1");
-  if (thedev && false) {
+  auto thedev = dev::open("random");
+  if (thedev) {
     int nreads = 0;
-    int stride = 512;
+    int stride = 48;
     for (size_t i = 0; i < mem_size(); i += stride) {
       char buf[stride];
       int rc = thedev->read(i, stride, buf);
       if (rc != stride) break;
       nreads++;
-      // printk("%p\n", i);
-      // hexdump(buf, stride, 32);
+      hexdump(buf, stride, stride);
     }
     printk("nreads = %d\n", nreads);
   }
@@ -201,9 +176,9 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 
 #ifdef WASTE_TIME_PRINTING_WELCOME
   printk("%s\n", chariot_welcome_start);
-#endif
   printk("git: %s\n", GIT_REVISION);
   printk("\n");
+#endif
 
   init_idt();
 

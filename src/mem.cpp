@@ -50,15 +50,23 @@ multiboot_info_t *multiboot_info_ptr;
 void init_mmap(u64 mbd) {
   multiboot_info_ptr = (multiboot_info_t *)mbd;
 
+  size_t total_mem = 0;
   uint32_t n = 0;
 
   if (mbd & 7) {
     panic("ERROR: Unaligned multiboot info struct\n");
   }
 
+  const char *names[] = {
+      "UNKNOWN",
+      [MULTIBOOT_MEMORY_AVAILABLE] = "AVAILABLE",
+      [MULTIBOOT_MEMORY_RESERVED] = "RESERVED ",
+      [MULTIBOOT_MEMORY_ACPI_RECLAIMABLE] = "ACPI RECL",
+      [MULTIBOOT_MEMORY_NVS] = "NVS      ",
+      [MULTIBOOT_MEMORY_BADRAM] = "BAD RAM  ",
+  };
 
-
-  printk("Memory Map:\n");
+  printk("  - MEMORY:\n");
 
   for (auto *mmap =
            (multiboot_memory_map_t *)(u64)multiboot_info_ptr->mmap_addr;
@@ -66,7 +74,19 @@ void init_mmap(u64 mbd) {
        multiboot_info_ptr->mmap_addr + multiboot_info_ptr->mmap_length;
        mmap = (multiboot_memory_map_t *)((unsigned long)mmap + mmap->size +
                                          sizeof(mmap->size))) {
+    u64 start, end;
 
+    start = round_up(mmap->addr, 4096);
+    end = round_down(mmap->addr + mmap->len, 4096);
+
+    memory_map[n].addr = start;
+    memory_map[n].len = end - start;
+    memory_map[n].type = mmap->type;
+
+    printk("  %s range=[% 16lx:% 16lx] size=%zu bytes\n", names[mmap->type],
+           start, end, end - start);
+
+    total_mem += end - start;
 
     if (mmap->type != MULTIBOOT_MEMORY_AVAILABLE) continue;
 
@@ -76,23 +96,9 @@ void init_mmap(u64 mbd) {
         ;
     }
 
-    u64 start, end;
-
-    start = round_up(mmap->addr, 4096);
-    end = round_down(mmap->addr + mmap->len, 4096);
-
-
-
-    memory_map[n].addr = start;
-    memory_map[n].len = end - start;
-    memory_map[n].type = mmap->type;
-
-    printk("  [%p:%p] (%zuB)\n", start, end, end - start);
-
     if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) {
       mm_info.usable_ram += mmap->len;
     }
-
 
     if (end > (mm_info.last_pfn << 12)) {
       mm_info.last_pfn = end >> 12;
@@ -103,12 +109,14 @@ void init_mmap(u64 mbd) {
     ++n;
   }
 
+  printk("\n");
+  printk("  - total:    %zu\n", total_mem);
+  printk("  - usable:   %zu\n", mm_info.total_mem);
+  printk("  - reserved: %zu\n", total_mem - mm_info.total_mem);
+  printk("\n");
 }
 
-
-size_t mem_size() {
-  return mm_info.total_mem;
-}
+size_t mem_size() { return mm_info.total_mem; }
 
 int init_mem(u64 mbd) {
   // go detect all the ram in the system
@@ -133,7 +141,6 @@ int init_mem(u64 mbd) {
 
     phys::free_range(start, end);
   }
-
 
   return 0;
 }
@@ -182,7 +189,6 @@ void init_dyn_mm(void) {
 }
 
 void init_kernel_virtual_memory() {
-
 #ifdef MEM_DEBUF
   char buf[50];
 #endif
@@ -234,7 +240,6 @@ extern "C" void *realloc(void *ptr, size_t size);
 extern void *mm_malloc(size_t size);
 extern void mm_free(void *ptr);
 extern void *mm_realloc(void *ptr, size_t size);
-
 
 void *kmalloc(u64 size) {
   // TODO: lock the allocator
