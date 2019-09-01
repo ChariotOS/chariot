@@ -5,28 +5,9 @@
 #include <string.h>
 #include <types.h>
 
-/**
- * a major number represents the device driver ID
- */
-using major_t = u16;
-using minor_t = u16;
 
 #define MAX_DRIVERS 255
 
-struct dev_t {
-  inline dev_t(major_t maj, minor_t min) : maj(maj), min(min) {}
-
-  inline major_t major(void) { return maj; }
-  inline minor_t minor(void) { return min; }
-
-  inline bool operator==(const dev_t &o) {
-    return o.maj == maj && o.min == min;
-  }
-
- protected:
-  major_t maj;
-  minor_t min;
-};
 
 namespace dev {
 
@@ -48,6 +29,10 @@ class driver : public refcounted<driver> {
 int register_driver(major_t major, ref<dev::driver>);
 int deregister_driver(major_t major);
 
+int register_name(string name, major_t major, minor_t minor);
+int deregister_name(string name);
+
+ref<dev::device> open(string name);
 ref<dev::device> open(major_t, minor_t);
 ref<dev::device> open(major_t, minor_t, int &errcode);
 

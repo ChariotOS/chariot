@@ -5,22 +5,21 @@
 #include <module.h>
 #include <printk.h>
 #include "../majors.h"
-#include <mem.h>
 
 class mem_device : public dev::char_dev {
  public:
   mem_device(ref<dev::driver> dr) : dev::char_dev(dr) {}
 
-  virtual int read(u64 offset, u32 len, void*dst) override {
+  virtual int read(u64 offset, u32 len, void *dst) override {
     if (offset + len >= mem_size()) return -E2BIG;
 
     // I'm the kernel, so I can read this :)
-    void *start = (char*)p2v(NULL) + offset;
+    void *start = (char *)p2v(NULL) + offset;
 
     memcpy(dst, start, len);
     return len;
   }
-  virtual int write(u64 offset, u32 len, const void*) override {
+  virtual int write(u64 offset, u32 len, const void *) override {
     return -ENOTIMPL;
   }
 };
@@ -29,10 +28,12 @@ class memdev_driver : public dev::driver {
  public:
   memdev_driver() {
     the_device = make_ref<mem_device>(ref<memdev_driver>(this));
-  }
-  virtual ~memdev_driver(){
 
-  };
+    // register the memory device
+    dev::register_name("mem", MAJOR_MEM, 0);
+  }
+
+  virtual ~memdev_driver(){};
 
   ref<dev::device> open(major_t maj, minor_t min, int &err) {
     if (min == 0) {
@@ -50,8 +51,6 @@ class memdev_driver : public dev::driver {
 };
 
 static void memdev_init(void) {
-  printk("[MEM] initializing mem device\n");
-
   auto d = make_ref<memdev_driver>();
   dev::register_driver(MAJOR_MEM, d);
 }

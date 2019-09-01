@@ -1,5 +1,6 @@
 #include <dev/driver.h>
 #include <errno.h>
+#include <map.h>
 #include <printk.h>
 
 #define DRIVER_DEBUG
@@ -9,7 +10,6 @@
 #else
 #define INFO(fmt, args...)
 #endif
-
 
 dev::driver::driver() {
   // INFO("driver '%s' created\n", name());
@@ -27,7 +27,6 @@ ref<dev::device> dev::driver::open(major_t, minor_t, int &errcode) {
 }
 
 int dev::driver::release(dev::device *) { return -ENOTIMPL; }
-
 
 static ref<dev::driver> drivers[MAX_DRIVERS];
 
@@ -51,7 +50,6 @@ int dev::register_driver(major_t major, ref<dev::driver> d) {
   return 0;
 }
 
-
 int dev::deregister_driver(major_t major) {
   // TODO: take a lock
 
@@ -63,8 +61,37 @@ int dev::deregister_driver(major_t major) {
   return 0;
 }
 
+map<string, dev_t> device_names;
 
-// main API to reading
+int dev::register_name(string name, major_t major, minor_t minor) {
+  printk("%s %d:%d\n", name.get(), major, minor);
+  // TODO: take a lock
+  if (device_names.contains(name)) return -EEXIST;
+  device_names[name] = {major, minor};
+  return 0;
+}
+
+int dev::deregister_name(string name) {
+  // TODO: take a lock
+  if (device_names.contains(name)) device_names.remove(name);
+  return -ENOENT;
+}
+
+
+// main API to opening devices
+
+ref<dev::device> dev::open(string name) {
+
+  int err;
+
+  if (device_names.contains(name)) {
+    auto d = device_names.get(name);
+    return dev::open(d.major(), d.minor(), err);
+  }
+
+  return nullptr;
+}
+
 ref<dev::device> dev::open(major_t maj, minor_t min) {
   int err;
   auto dev = open(maj, min, err);
@@ -74,13 +101,12 @@ ref<dev::device> dev::open(major_t maj, minor_t min) {
         maj, min, -err);
   return dev;
 }
-ref<dev::device> dev::open(major_t maj, minor_t min, int &errcode) {
 
+ref<dev::device> dev::open(major_t maj, minor_t min, int &errcode) {
   if (maj > MAX_DRIVERS) {
     errcode = -E2BIG;
     return nullptr;
   }
-
 
   // TODO: take a lock!
   if (drivers[maj].get() != nullptr) {

@@ -3,7 +3,6 @@
 
 #include <asm.h>
 #include <atom.h>
-#include <dev/ata.h>
 #include <dev/driver.h>
 #include <dev/serial.h>
 #include <idt.h>
@@ -152,19 +151,22 @@ uint32_t next(void) {
   // walk the kernel modules and run their init function
   initialize_kernel_modules();
 
-  auto thedev = dev::open(1, 0);
+  auto thedev = dev::open("ata0");
+  /*
 
   if (thedev) {
-    int stride = 32;
+    int nreads = 0;
+    int stride = 512;
     for (size_t i = 0; i < mem_size(); i += stride) {
       char buf[stride];
       int rc = thedev->read(i, stride, buf);
       if (rc != stride) break;
-
-      printk("%p ", i);
-      hexdump(buf, stride, stride);
+      nreads++;
+      // printk("%p\n", i);
+      // hexdump(buf, stride, 32);
     }
-  }
+    printk("nreads = %d\n", nreads);
+  }*/
 
   // setup the root vfs
   init_rootvfs("disk1");

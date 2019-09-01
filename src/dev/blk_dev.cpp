@@ -1,17 +1,16 @@
 #include <dev/blk_dev.h>
 #include <dev/driver.h>
-#include <printk.h>
 #include <errno.h>
-
-
+#include <printk.h>
 
 dev::blk_dev::blk_dev(ref<dev::driver> dr) : dev::device(dr) {}
 dev::blk_dev::~blk_dev(void) {}
 
 int dev::blk_dev::read(u64 offset, u32 len, void *data) {
   u64 bsize = block_size();
-  assert((offset % bsize) == 0);
-  assert((len % bsize) == 0);
+
+  if ((offset % bsize) != 0) return -EINVAL;
+  if ((len % bsize) != 0) return -EINVAL;
 
   u64 first_block = offset / bsize;
   u64 end_block = (offset + len) / bsize;
@@ -26,8 +25,9 @@ int dev::blk_dev::read(u64 offset, u32 len, void *data) {
 
 int dev::blk_dev::write(u64 offset, u32 len, const void *data) {
   u64 bsize = block_size();
-  assert((offset % bsize) == 0);
-  assert((len % bsize) == 0);
+
+  if ((offset % bsize) != 0) return -EINVAL;
+  if ((len % bsize) != 0) return -EINVAL;
 
   u64 first_block = offset / bsize;
   u64 end_block = (offset + len) / bsize;
