@@ -64,7 +64,6 @@ int dev::deregister_driver(major_t major) {
 map<string, dev_t> device_names;
 
 int dev::register_name(string name, major_t major, minor_t minor) {
-  printk("%s %d:%d\n", name.get(), major, minor);
   // TODO: take a lock
   if (device_names.contains(name)) return -EEXIST;
   device_names[name] = {major, minor};

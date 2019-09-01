@@ -85,8 +85,7 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
   });
 }
 
-void init_rootvfs(string dev_name) {
-  auto* dev = fs::devfs::get_device(dev_name);
+void init_rootvfs(dev::device *dev) {
 
   if (dev == nullptr) {
     panic("couldnt find root device\n");
@@ -151,10 +150,8 @@ uint32_t next(void) {
   // walk the kernel modules and run their init function
   initialize_kernel_modules();
 
-  auto thedev = dev::open("ata0");
-  /*
-
-  if (thedev) {
+  auto thedev = dev::open("ata1");
+  if (thedev && false) {
     int nreads = 0;
     int stride = 512;
     for (size_t i = 0; i < mem_size(); i += stride) {
@@ -166,10 +163,10 @@ uint32_t next(void) {
       // hexdump(buf, stride, 32);
     }
     printk("nreads = %d\n", nreads);
-  }*/
+  }
 
   // setup the root vfs
-  init_rootvfs("disk1");
+  init_rootvfs(thedev.get());
 
   fs::devfs::mount();
 
