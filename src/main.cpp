@@ -40,7 +40,6 @@ extern int kernel_end;
 
 // in src/arch/x86/sse.asm
 extern "C" void enable_sse();
-
 void initialize_kernel_modules(void) {
   extern struct kernel_module_info __start__kernel_modules[];
   extern struct kernel_module_info __stop__kernel_modules[];
@@ -91,6 +90,7 @@ void init_rootvfs(ref<dev::device> dev) {
   if (!rootfs->init()) panic("failed to init ext2 on root disk\n");
   if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
 }
+
 
 
 [[noreturn]] void kmain2(void) {
@@ -173,18 +173,22 @@ extern "C" char chariot_welcome_start[];
 
 extern void rtc_init(void);
 
+
+
 // #define WASTE_TIME_PRINTING_WELCOME
+//
+//
+const char *buf = "hello";
 
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
+
   rtc_init();  // initialize the clock
+
   // initialize the serial "driver"
   serial_install();
+
   vga::init();
 
-  /*
-  vga::set_color(vga::color::white, vga::color::black);
-  vga::clear_screen();
-  A*/
 
 #ifdef WASTE_TIME_PRINTING_WELCOME
   printk("%s\n", chariot_welcome_start);
@@ -192,24 +196,19 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   printk("\n");
 #endif
 
+
   init_idt();
 
   // now that we have interupts working, enable sse! (fpu)
   enable_sse();
-
   init_mem(mbd);
-
   init_kernel_virtual_memory();
 
 #define STKSIZE (4096 * 8)
   void* new_stack = (void*)((u64)kmalloc(STKSIZE) + STKSIZE);
 
-  void* new_main = p2v(kmain2);
-
-
-  printk("%p %p\n", new_stack, new_main);
-
-  call_with_new_stack(new_stack, new_main);
+  // call the next phase main with the new allocated stack
+  call_with_new_stack(new_stack, (void*)kmain2);
   // ??
   panic("should not have gotten back here\n");
 

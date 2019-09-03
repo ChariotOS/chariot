@@ -88,7 +88,7 @@
 
 
 void putchar(char c) {
-  vga::putchar(c);
+  // vga::putchar(c);
   serial_send(SERIAL_PORT_A, c);
 }
 int puts(char* s) {

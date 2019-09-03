@@ -46,7 +46,7 @@ static frame *working_addr(frame *fr) {
 
 // physical memory allocator implementation
 void *phys::alloc(void) {
-
+  // TODO: take a lock
 
   /*
   char buf[20];
@@ -54,9 +54,7 @@ void *phys::alloc(void) {
   */
 
   frame *r = kmem.freelist;
-
   if (r == nullptr) panic("out of memory");
-
   frame *f = working_addr(r);
 
   if (f->page_len > 1) {
@@ -80,10 +78,13 @@ void *phys::alloc(void) {
   // decrement the number of freed pages
   kmem.nfree--;
 
+  // printk("phys::alloc -> %p\n", r);
+
   return r;
 }
 
 void phys::free(void *v) {
+  // TODO: take a lock
   if ((u64)v % PGSIZE) panic("phys::free requires page aligned address");
   if (v < high_kern_end) panic("phys::free cannot free below the kernel's end");
 
@@ -98,6 +99,8 @@ void phys::free(void *v) {
 
 // add page frames to the allocator
 void phys::free_range(void *vstart, void *vend) {
+  // TODO: take a lock
+
   auto *fr = (frame *)PGROUNDUP((u64)vstart);
 
   u64 start_pn = PGROUNDUP((u64)vstart) >> 12;

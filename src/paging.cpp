@@ -6,12 +6,6 @@
 #include <printk.h>
 #include <types.h>
 
-#define P4_INDEX(addr) ((((u64)addr / 0x1000) >> 27) & 0777)
-#define P3_INDEX(addr) ((((u64)addr / 0x1000) >> 18) & 0777)
-#define P2_INDEX(addr) ((((u64)addr / 0x1000) >> 9) & 0777)
-#define P1_INDEX(addr) ((((u64)addr / 0x1000) >> 0) & 0777)
-
-
 // #define PAGING_DEBUG
 
 #ifdef PAGING_DEBUG

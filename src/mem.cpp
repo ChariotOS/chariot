@@ -180,14 +180,6 @@ void *ksbrk(i64 inc) {
 
 extern int mm_init(void);
 
-void init_dyn_mm(void) {
-  // the kheap starts, virtually, after the last physical page.
-
-  // ksbrk(0);
-
-  mm_init();
-}
-
 void init_kernel_virtual_memory() {
 #ifdef MEM_DEBUF
   char buf[50];
@@ -209,14 +201,18 @@ void init_kernel_virtual_memory() {
     page_size = paging::pgsize::huge;
   }
 
+
   u64 i = 0;
 
   // so the min_mem is the miniumum amount of memory to map
   size_t min_mem = 4l * 1024l * 1024l * 1024l;
 
+
+  auto *new_cr3 = (u64*)phys::alloc();
+
   for (; true; i += page_step) {
     if (i > max(mm_info.total_mem, min_mem)) break;
-    paging::map((u64)p2v(i), i, page_size, PTE_W | PTE_P);
+    paging::map_into(new_cr3, (u64)p2v(i), i, page_size, PTE_W | PTE_P);
     // printk("%p\n", i);
   }
 
@@ -225,12 +221,15 @@ void init_kernel_virtual_memory() {
   kheap_start = (u8 *)p2v(i);
   kheap_size = 0;
 
-  ksbrk(0);
 
-  mm_init();
+  // copy the low mapping
+  new_cr3[0] = ((u64*)read_cr3())[0];
 
   use_kernel_vm = true;
+  write_cr3((u64)new_cr3);
   tlb_flush();  // flush out the TLB
+  // initialize the memory allocator
+  mm_init();
 }
 
 extern "C" void *malloc(size_t size);

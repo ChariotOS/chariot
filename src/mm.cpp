@@ -113,6 +113,7 @@ void *mm_malloc(size_t size) {
   fit = find_fit(size);
   blk_t *blk;
 
+
   if (fit == NULL) {
     // there wasn't a valid spot for this allocation. Noone likes it.
     // it'll make a new spot, with blackjack

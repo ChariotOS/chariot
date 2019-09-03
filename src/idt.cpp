@@ -1,4 +1,5 @@
 #include <asm.h>
+#include <dev/serial.h>
 #include <idt.h>
 #include <mem.h>
 #include <paging.h>
@@ -91,9 +92,7 @@ const char *excp_codes[NUM_EXCEPTIONS][2] = {
 
 u64 ticks = 0;
 
-u64 get_ticks(void) {
-  return ticks;
-}
+u64 get_ticks(void) { return ticks; }
 
 extern u32 idt_block[];
 
@@ -147,7 +146,6 @@ void interrupt_disable(int i) {
   }
 }
 
-
 #ifndef GIT_REVISION
 #define GIT_REVISION "NO-GIT"
 #endif
@@ -157,10 +155,8 @@ static void unknown_exception(int i, struct trapframe *tf) {
   vga::clear_screen(vga::make_entry(' ', color));
   vga::set_color(vga::color::white, vga::color::blue);
 
-
 #define INDENT "                  "
 #define BORDER INDENT "+========================================+\n"
-
 
   for (int i = 0; i < 4; i++) printk("\n");
 
@@ -174,8 +170,7 @@ static void unknown_exception(int i, struct trapframe *tf) {
 
   printk("\n");
   printk(INDENT "Stats for nerds:\n");
-  printk(INDENT "INT=%016x  ERR=%016x\n", tf->trapno,
-         tf->err);
+  printk(INDENT "INT=%016x  ERR=%016x\n", tf->trapno, tf->err);
   printk(INDENT "ESP=%016x  EIP=%016x\n", tf->esp, tf->eip);
   printk(INDENT "CR2=%016x  CR3=%016x\n", read_cr2(), read_cr3());
   printk("\n");
@@ -188,14 +183,37 @@ static void unknown_exception(int i, struct trapframe *tf) {
   printk(BORDER);
 
   lidt(0, 0);  // die
-  while (1) {};
+  while (1) {
+  };
 }
 
+
+#define PGFLT_PRESENT  (1 << 0)
+#define PGFLT_WRITE    (1 << 1)
+#define PGFLT_USER     (1 << 2)
+#define PGFLT_RESERVED (1 << 3)
+#define PGFLT_INSTR    (1 << 4)
 static void pgfault_handle(int i, struct trapframe *tf) {
-  // void *addr = (void *)(read_cr2() & ~0xFFF);
-  printk("EIP: %p\n", tf->eip);
-  printk("ERR: %p\n", tf->err);
-  panic("PGFLT %p\n", read_cr2());
+  void *page = (void *)(read_cr2() & ~0xFFF);
+  printk("PAGEFAULT\n");
+  printk(" eip = %p\n", tf->eip);
+  printk(" err = %p\n", tf->err);
+  printk(" page = %p\n", page);
+  printk(" adr = %p\n", read_cr2());
+  printk(" FLGS: ");
+
+
+  if (tf->err & PGFLT_INSTR) printk("INSTRUCION ");
+  if (tf->err & PGFLT_RESERVED) printk("RESERVED ");
+  if (tf->err & PGFLT_USER) printk("USER ");
+  if (tf->err & PGFLT_WRITE) printk("WRITE ");
+  if (tf->err & PGFLT_PRESENT) printk("PRESENT ");
+
+  printk("\n");
+
+
+  printk(" halting\n");
+  while(1) halt();
   // paging::map_page(addr, addr);
   return;
 }
@@ -218,6 +236,7 @@ void interrupt_register(int i, interrupt_handler_t handler) {
 
 void init_idt(void) {
   u32 *idt = (u32 *)&idt_block;
+
   // fill up the idt with the correct trap vectors.
   for (int n = 0; n < 256; n++) mkgate(idt, n, vectors[n], 0, 0);
 

@@ -22,6 +22,9 @@ COBJECTS+=$(CPPSOURCES:%.cpp=build/%.cpp.o)
 ASOURCES:=$(filter %.asm,$(CODEFILES))
 AOBJECTS:=$(ASOURCES:%.asm=build/%.asm.o)
 
+
+LDFLAGS=-m elf_x86_64
+
 KERNEL=build/kernel.elf
 ISO=build/kernel.iso
 SYMS=build/kernel.syms
@@ -32,9 +35,8 @@ AFLAGS=-f elf64 -w-zext-reloc
 CINCLUDES=-I./include/
 
 COMMON_FLAGS := $(CINCLUDES)  \
-				 -fPIC -Wno-sign-compare \
-			   -ffreestanding -mno-red-zone \
-				 -O3 -fno-tree-vectorize -Wno-address-of-packed-member -Wno-strict-overflow \
+				 -mtls-direct-seg-refs -fno-pie -Wno-sign-compare -ffreestanding \
+				 -mcmodel=large -O3 -fno-tree-vectorize -Wno-address-of-packed-member -Wno-strict-overflow \
 				 -DGIT_REVISION=\"$(shell git rev-parse HEAD)\"
 
 
@@ -103,7 +105,7 @@ clean:
 	rm -rf build
 
 
-QEMUOPTS=-hda $(ISO) -m 2G -hdb $(ROOTFS)
+QEMUOPTS=-hda $(ISO) -m 4G -hdb $(ROOTFS)
 
 qemu: $(ISO) $(ROOTFS)
 	qemu-system-x86_64 $(QEMUOPTS) \
