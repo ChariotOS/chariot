@@ -201,14 +201,12 @@ void init_kernel_virtual_memory() {
     page_size = paging::pgsize::huge;
   }
 
-
   u64 i = 0;
 
   // so the min_mem is the miniumum amount of memory to map
   size_t min_mem = 4l * 1024l * 1024l * 1024l;
 
-
-  auto *new_cr3 = (u64*)phys::alloc();
+  auto *new_cr3 = (u64 *)phys::alloc();
 
   for (; true; i += page_step) {
     if (i > max(mm_info.total_mem, min_mem)) break;
@@ -221,10 +219,11 @@ void init_kernel_virtual_memory() {
   kheap_start = (u8 *)p2v(i);
   kheap_size = 0;
 
-
   // copy the low mapping
-  new_cr3[0] = ((u64*)read_cr3())[0];
+  new_cr3[0] = ((u64 *)read_cr3())[0];
 
+  // enable kernel vm, so paging can stop mapping to the scratch page, and we
+  // can also reference all of physical memory with virtual memory
   use_kernel_vm = true;
   write_cr3((u64)new_cr3);
   tlb_flush();  // flush out the TLB

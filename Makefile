@@ -48,7 +48,6 @@ DFLAGS=-g -DDEBUG -O0
 
 
 
-
 default: $(KERNEL)
 
 build:
