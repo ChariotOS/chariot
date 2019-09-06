@@ -3,35 +3,34 @@
 
 #include <asm.h>
 #include <atom.h>
+#include <dev/CMOS.h>
+#include <dev/RTC.h>
+#include <dev/blk_cache.h>
 #include <dev/driver.h>
+#include <dev/mbr.h>
 #include <dev/serial.h>
+#include <device.h>
+#include <fs/devfs.h>
+#include <fs/ext2.h>
+#include <fs/file.h>
+#include <fs/tmpfs.h>
+#include <fs/vfs.h>
+#include <func.h>
 #include <idt.h>
+#include <map.h>
 #include <math.h>
 #include <mem.h>
 #include <module.h>
 #include <paging.h>
 #include <pci.h>
+#include <phys.h>
 #include <pit.h>
 #include <printk.h>
-#include <types.h>
-#include <util.h>
-
-#include <asm.h>
-#include <dev/CMOS.h>
-#include <dev/RTC.h>
-#include <dev/blk_cache.h>
-#include <dev/mbr.h>
-#include <device.h>
-#include <fs/devfs.h>
-#include <fs/ext2.h>
-#include <fs/file.h>
-#include <fs/vfs.h>
-#include <func.h>
-#include <map.h>
-#include <phys.h>
 #include <ptr.h>
 #include <smp.h>
 #include <string.h>
+#include <types.h>
+#include <util.h>
 #include <uuid.h>
 #include <vec.h>
 #include <vga.h>
@@ -63,9 +62,6 @@ static void call_global_constructors(void) {
 extern "C" void call_with_new_stack(void*, void*);
 
 static void walk_tree(fs::vnoderef& node, int depth = 0) {
-
-  if (depth == 0) printk("/\n");
-
   node->walk_dir([&](const string& name, fs::vnoderef vn) -> bool {
     for (int i = -1; i < depth; i++) {
       if (i == depth - 1) {
@@ -74,7 +70,13 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
         printk("|   ");
       }
     }
-    printk("%s\n", name.get());
+    printk("%s", name.get());
+
+    if (vn->is_dir()) printk("/");
+
+    printk("  %d", vn->index());
+
+    printk("\n");
 
     if (name == "." || name == "..") return true;
 
@@ -91,15 +93,7 @@ void init_rootvfs(ref<dev::device> dev) {
   if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
 }
 
-
-
 [[noreturn]] void kmain2(void) {
-
-  // clear out the base memory addresses and flush the tlb
-  // auto *pml4 = (u64*)p2v(read_cr3());
-  // pml4[0] = 0;
-  // printk("here %p\n", kmain2);
-  // tlb_flush();
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
 
@@ -132,7 +126,7 @@ void init_rootvfs(ref<dev::device> dev) {
   // walk the kernel modules and run their init function
   initialize_kernel_modules();
 
-
+  /*
   auto thedev = dev::open("mem");
   printk("block size: %zu\n", thedev->block_size());
   printk("      size: %zu\n", thedev->size());
@@ -153,12 +147,19 @@ void init_rootvfs(ref<dev::device> dev) {
     }
     printk("nreads = %d\n", nreads);
   }
+  */
 
   auto rootdev = dev::open("ata1");
   // setup the root vfs
   init_rootvfs(rootdev);
 
   fs::devfs::mount();
+
+  vfs::mount(make_unique<fs::tmp>(), "/tmp");
+
+  auto tmp = vfs::open("/tmp", 0);
+  tmp->touch("foo", fs::inode_type::file, 0777);
+  tmp->mkdir("bar", 0777);
 
   auto node = vfs::open("/", 0);
   walk_tree(node);
@@ -178,15 +179,9 @@ extern "C" char chariot_welcome_start[];
 
 extern void rtc_init(void);
 
-
-
 // #define WASTE_TIME_PRINTING_WELCOME
-//
-//
-const char *buf = "hello";
 
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
-
   rtc_init();  // initialize the clock
 
   // initialize the serial "driver"
@@ -194,13 +189,11 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 
   vga::init();
 
-
 #ifdef WASTE_TIME_PRINTING_WELCOME
   printk("%s\n", chariot_welcome_start);
   printk("git: %s\n", GIT_REVISION);
   printk("\n");
 #endif
-
 
   init_idt();
 

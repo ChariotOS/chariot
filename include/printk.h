@@ -18,6 +18,8 @@ int sprintk(char* buffer, const char* format, ...);
 int snprintk(char* buffer, size_t count, const char* format, ...);
 int vsnprintk(char* buffer, size_t count, const char* format, va_list va);
 
+int sscanf(const char* buf, const char* fmt, ...);
+
 const char* human_size(uint64_t bytes, char* buf);
 
 template <typename... T>

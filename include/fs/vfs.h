@@ -47,13 +47,17 @@ class vfs {
 
   // mount a filesystem into a host vnode
   static int mount(unique_ptr<fs::filesystem>, fs::vnoderef host);
+  static int mount(unique_ptr<fs::filesystem>, string path);
 
   static int mount_root(unique_ptr<fs::filesystem>);
 
-  static fs::vnoderef open(string path, int opts, int mode = 0000);
+  static fs::vnoderef open(string path, int opts = 0, int mode = 0000);
 
   // get the vnode located at the qualified inode
   static fs::vnoderef get_mount_at(u64 qual_inode);
+
+
+  static fs::vnoderef get_mount_host(u64 guest_inode);
 
   static u64 qualified_inode_number(const fs::filesystem &f, u32 inode);
 

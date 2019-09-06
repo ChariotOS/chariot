@@ -53,6 +53,7 @@ class string {
 
   // implemented in printk.cpp
   static string format(const char *fmt, ...);
+  int scan(const char *fmt, ...);
 };
 
 string operator+(const string& lhs, const string& rhs);

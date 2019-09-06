@@ -1,9 +1,9 @@
 #include <asm.h>
-#include <printk.h>
 #include <dev/serial.h>
+#include <printk.h>
+#include <string.h>
 #include <types.h>
 #include <vga.h>
-#include <string.h>
 
 // define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H ...) to include the
 // printf_config.h header file
@@ -86,57 +86,52 @@
 
 #define IO_PORT_PUTCHAR 0xfad
 
-
 void putchar(char c) {
   vga::putchar(c);
   serial_send(SERIAL_PORT_A, c);
 }
-int puts(char* s) {
+int puts(char *s) {
   int i;
   for (i = 0; s[i] != '\0'; i++) outb(IO_PORT_PUTCHAR, s[i]);
   return i;
 }
 
+const char *human_size(uint64_t bytes, char *buf) {
+  const char *suffix[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB"};
+  char length = sizeof(suffix) / sizeof(suffix[0]);
 
+  int i = 0;
+  double dblBytes = bytes;
 
-const char *human_size(uint64_t bytes, char *buf)
-{
-	const char *suffix[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB"};
-	char length = sizeof(suffix) / sizeof(suffix[0]);
+  if (bytes > 1024) {
+    for (i = 0; (bytes / 1024) > 0 && i < length - 1; i++, bytes /= 1024)
+      dblBytes = bytes / 1024.0;
+  }
 
-	int i = 0;
-	double dblBytes = bytes;
-
-	if (bytes > 1024) {
-		for (i = 0; (bytes / 1024) > 0 && i<length-1; i++, bytes /= 1024)
-			dblBytes = bytes / 1024.0;
-	}
-
-	sprintk(buf, "%.03lf %s", dblBytes, suffix[i]);
-	return buf;
+  sprintk(buf, "%.03lf %s", dblBytes, suffix[i]);
+  return buf;
 }
 
-
 // output function type
-typedef void (*out_fct_type)(char character, void* buffer, size_t idx,
+typedef void (*out_fct_type)(char character, void *buffer, size_t idx,
                              size_t maxlen);
 
 // wrapper (used as buffer) for output function type
 typedef struct {
-  void (*fct)(char character, void* arg);
-  void* arg;
+  void (*fct)(char character, void *arg);
+  void *arg;
 } out_fct_wrap_type;
 
 // internal buffer output
-static inline void _out_buffer(char character, void* buffer, size_t idx,
+static inline void _out_buffer(char character, void *buffer, size_t idx,
                                size_t maxlen) {
   if (idx < maxlen) {
-    ((char*)buffer)[idx] = character;
+    ((char *)buffer)[idx] = character;
   }
 }
 
 // internal null output
-static inline void _out_null(char character, void* buffer, size_t idx,
+static inline void _out_null(char character, void *buffer, size_t idx,
                              size_t maxlen) {
   (void)character;
   (void)buffer;
@@ -145,7 +140,7 @@ static inline void _out_null(char character, void* buffer, size_t idx,
 }
 
 // internal _putchar wrapper
-static inline void _out_char(char character, void* buffer, size_t idx,
+static inline void _out_char(char character, void *buffer, size_t idx,
                              size_t maxlen) {
   (void)buffer;
   (void)idx;
@@ -156,22 +151,22 @@ static inline void _out_char(char character, void* buffer, size_t idx,
 }
 
 // internal output function wrapper
-static inline void _out_fct(char character, void* buffer, size_t idx,
+static inline void _out_fct(char character, void *buffer, size_t idx,
                             size_t maxlen) {
   (void)idx;
   (void)maxlen;
   if (character) {
     // buffer is the output fct pointer
-    ((out_fct_wrap_type*)buffer)
-        ->fct(character, ((out_fct_wrap_type*)buffer)->arg);
+    ((out_fct_wrap_type *)buffer)
+        ->fct(character, ((out_fct_wrap_type *)buffer)->arg);
   }
 }
 
 // internal secure strlen
 // \return The length of the string (excluding the terminating 0) limited by
 // 'maxsize'
-static inline unsigned int _strnlen_s(const char* str, size_t maxsize) {
-  const char* s;
+static inline unsigned int _strnlen_s(const char *str, size_t maxsize) {
+  const char *s;
   for (s = str; *s && maxsize--; ++s)
     ;
   return (unsigned int)(s - str);
@@ -182,7 +177,7 @@ static inline unsigned int _strnlen_s(const char* str, size_t maxsize) {
 static inline bool _is_digit(char ch) { return (ch >= '0') && (ch <= '9'); }
 
 // internal ASCII string to unsigned int conversion
-static unsigned int _atoi(const char** str) {
+static unsigned int _atoi(const char **str) {
   unsigned int i = 0U;
   while (_is_digit(**str)) {
     i = i * 10U + (unsigned int)(*((*str)++) - '0');
@@ -191,8 +186,8 @@ static unsigned int _atoi(const char** str) {
 }
 
 // output the specified string in reverse, taking care of any zero-padding
-static size_t _out_rev(out_fct_type out, char* buffer, size_t idx,
-                       size_t maxlen, const char* buf, size_t len,
+static size_t _out_rev(out_fct_type out, char *buffer, size_t idx,
+                       size_t maxlen, const char *buf, size_t len,
                        unsigned int width, unsigned int flags) {
   const size_t start_idx = idx;
 
@@ -219,8 +214,8 @@ static size_t _out_rev(out_fct_type out, char* buffer, size_t idx,
 }
 
 // internal itoa format
-static size_t _ntoa_format(out_fct_type out, char* buffer, size_t idx,
-                           size_t maxlen, char* buf, size_t len, bool negative,
+static size_t _ntoa_format(out_fct_type out, char *buffer, size_t idx,
+                           size_t maxlen, char *buf, size_t len, bool negative,
                            unsigned int base, unsigned int prec,
                            unsigned int width, unsigned int flags) {
   // pad leading zeros
@@ -275,7 +270,7 @@ static size_t _ntoa_format(out_fct_type out, char* buffer, size_t idx,
 }
 
 // internal itoa for 'long' type
-static size_t _ntoa_long(out_fct_type out, char* buffer, size_t idx,
+static size_t _ntoa_long(out_fct_type out, char *buffer, size_t idx,
                          size_t maxlen, unsigned long value, bool negative,
                          unsigned long base, unsigned int prec,
                          unsigned int width, unsigned int flags) {
@@ -304,7 +299,7 @@ static size_t _ntoa_long(out_fct_type out, char* buffer, size_t idx,
 
 // internal itoa for 'long long' type
 #if defined(PRINTF_SUPPORT_LONG_LONG)
-static size_t _ntoa_long_long(out_fct_type out, char* buffer, size_t idx,
+static size_t _ntoa_long_long(out_fct_type out, char *buffer, size_t idx,
                               size_t maxlen, unsigned long long value,
                               bool negative, unsigned long long base,
                               unsigned int prec, unsigned int width,
@@ -338,13 +333,13 @@ static size_t _ntoa_long_long(out_fct_type out, char* buffer, size_t idx,
 #if defined(PRINTF_SUPPORT_EXPONENTIAL)
 // forward declaration so that _ftoa can switch to exp notation for values >
 // PRINTF_MAX_FLOAT
-static size_t _etoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen,
+static size_t _etoa(out_fct_type out, char *buffer, size_t idx, size_t maxlen,
                     double value, unsigned int prec, unsigned int width,
                     unsigned int flags);
 #endif
 
 // internal ftoa for fixed decimal floating point
-static size_t _ftoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen,
+static size_t _ftoa(out_fct_type out, char *buffer, size_t idx, size_t maxlen,
                     double value, unsigned int prec, unsigned int width,
                     unsigned int flags) {
   char buf[PRINTF_FTOA_BUFFER_SIZE];
@@ -473,7 +468,7 @@ static size_t _ftoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen,
 #if defined(PRINTF_SUPPORT_EXPONENTIAL)
 // internal ftoa variant for exponential floating-point type, contributed by
 // Martijn Jasperse <m.jasperse@gmail.com>
-static size_t _etoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen,
+static size_t _etoa(out_fct_type out, char *buffer, size_t idx, size_t maxlen,
                     double value, unsigned int prec, unsigned int width,
                     unsigned int flags) {
   // check for NaN and special values
@@ -589,8 +584,8 @@ static size_t _etoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen,
 #endif  // PRINTF_SUPPORT_FLOAT
 
 // internal vsnprintf
-static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen,
-                      const char* format, va_list va) {
+static int _vsnprintf(out_fct_type out, char *buffer, const size_t maxlen,
+                      const char *format, va_list va) {
   unsigned int flags, width, precision, n;
   size_t idx = 0U;
 
@@ -839,7 +834,7 @@ static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen,
       }
 
       case 's': {
-        const char* p = va_arg(va, char*);
+        const char *p = va_arg(va, char *);
         unsigned int l = _strnlen_s(p, precision ? precision : (size_t)-1);
         // pre padding
         if (flags & FLAGS_PRECISION) {
@@ -865,19 +860,19 @@ static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen,
       }
 
       case 'p': {
-        width = sizeof(void*) * 2U;
+        width = sizeof(void *) * 2U;
         flags |= FLAGS_ZEROPAD | FLAGS_UPPERCASE;
 #if defined(PRINTF_SUPPORT_LONG_LONG)
         const bool is_ll = sizeof(uintptr_t) == sizeof(long long);
         if (is_ll) {
           idx = _ntoa_long_long(out, buffer, idx, maxlen,
-                                (uintptr_t)va_arg(va, void*), false, 16U,
+                                (uintptr_t)va_arg(va, void *), false, 16U,
                                 precision, width, flags);
         } else {
 #endif
           idx = _ntoa_long(out, buffer, idx, maxlen,
-                           (unsigned long)((uintptr_t)va_arg(va, void*)), false,
-                           16U, precision, width, flags);
+                           (unsigned long)((uintptr_t)va_arg(va, void *)),
+                           false, 16U, precision, width, flags);
 #if defined(PRINTF_SUPPORT_LONG_LONG)
         }
 #endif
@@ -906,7 +901,7 @@ static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen,
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int printk(const char* format, ...) {
+int printk(const char *format, ...) {
   va_list va;
   va_start(va, format);
   char buffer[1];
@@ -915,7 +910,7 @@ int printk(const char* format, ...) {
   return ret;
 }
 
-int sprintk(char* buffer, const char* format, ...) {
+int sprintk(char *buffer, const char *format, ...) {
   va_list va;
   va_start(va, format);
   const int ret = _vsnprintf(_out_buffer, buffer, (size_t)-1, format, va);
@@ -923,7 +918,7 @@ int sprintk(char* buffer, const char* format, ...) {
   return ret;
 }
 
-int snprintk(char* buffer, size_t count, const char* format, ...) {
+int snprintk(char *buffer, size_t count, const char *format, ...) {
   va_list va;
   va_start(va, format);
   const int ret = _vsnprintf(_out_buffer, buffer, count, format, va);
@@ -931,34 +926,32 @@ int snprintk(char* buffer, size_t count, const char* format, ...) {
   return ret;
 }
 
-int vprintk(const char* format, va_list va) {
+int vprintk(const char *format, va_list va) {
   char buffer[1];
   return _vsnprintf(_out_char, buffer, (size_t)-1, format, va);
 }
 
-int vsnprintf_(char* buffer, size_t count, const char* format, va_list va) {
+int vsnprintf_(char *buffer, size_t count, const char *format, va_list va) {
   return _vsnprintf(_out_buffer, buffer, count, format, va);
 }
 
-int fctprintf(void (*out)(char character, void* arg), void* arg,
-              const char* format, ...) {
+int fctprintf(void (*out)(char character, void *arg), void *arg,
+              const char *format, ...) {
   va_list va;
   va_start(va, format);
   const out_fct_wrap_type out_fct_wrap = {out, arg};
-  const int ret = _vsnprintf(_out_fct, (char*)(uintptr_t)&out_fct_wrap,
+  const int ret = _vsnprintf(_out_fct, (char *)(uintptr_t)&out_fct_wrap,
                              (size_t)-1, format, va);
   va_end(va);
   return ret;
 }
 
-
-//typedef void (*out_fct_type)(char character, void* buffer, size_t idx,
-                             // size_t maxlen);
+// typedef void (*out_fct_type)(char character, void* buffer, size_t idx,
+// size_t maxlen);
 
 static void string_out_fct(char c, void *buf, size_t idx, size_t maxlen) {
   auto *s = (string *)buf;
   s->push(c);
-
 }
 
 string string::format(const char *fmt, ...) {
@@ -966,9 +959,320 @@ string string::format(const char *fmt, ...) {
 
   va_list va;
   va_start(va, fmt);
-  _vsnprintf(string_out_fct, (char*)&dst,
-                             (size_t)-1, fmt, va);
+  _vsnprintf(string_out_fct, (char *)&dst, (size_t)-1, fmt, va);
   va_end(va);
 
   return dst;
+}
+
+static bool isspace(char c) { return c == ' ' || c == '\t' || c == '\n'; }
+
+static int isxdigit(int c) {
+  return (((c >= '0') && (c <= '9')) || ((c >= 'a') && (c <= 'f')) ||
+          ((c >= 'A') && (c <= 'F')));
+}
+
+static int isdigit(int c) { return ((c >= '0') && (c <= '9')); }
+int islower(int c) { return ((c >= 'a') && (c <= 'z')); }
+int toupper(int c) {
+  if (islower(c)) {
+    return c & ~0x20;
+  } else {
+    return c;
+  }
+}
+
+/**
+ * simple_strtoul - convert a string to an unsigned long
+ * @cp: The start of the string
+ * @endp: A pointer to the end of the parsed string will be placed here
+ * @base: The number base to use
+ */
+unsigned long simple_strtoul(const char *cp, char **endp, unsigned int base) {
+  unsigned long result = 0, value;
+
+  if (!base) {
+    base = 10;
+    if (*cp == '0') {
+      base = 8;
+      cp++;
+      if ((*cp == 'x') && isxdigit(cp[1])) {
+        cp++;
+        base = 16;
+      }
+    }
+  }
+  while (isxdigit(*cp) &&
+         (value = isdigit(*cp) ? *cp - '0' : toupper(*cp) - 'A' + 10) < base) {
+    result = result * base + value;
+    cp++;
+  }
+  if (endp) *endp = (char *)cp;
+  return result;
+}
+
+/**
+ * simple_strtol - convert a string to a signed long
+ * @cp: The start of the string
+ * @endp: A pointer to the end of the parsed string will be placed here
+ * @base: The number base to use
+ */
+long simple_strtol(const char *cp, char **endp, unsigned int base) {
+  if (*cp == '-') return -simple_strtoul(cp + 1, endp, base);
+  return simple_strtoul(cp, endp, base);
+}
+
+/**
+ * simple_strtoull - convert a string to an unsigned long long
+ * @cp: The start of the string
+ * @endp: A pointer to the end of the parsed string will be placed here
+ * @base: The number base to use
+ */
+unsigned long long simple_strtoull(const char *cp, char **endp,
+                                   unsigned int base) {
+  unsigned long long result = 0, value;
+
+  if (!base) {
+    base = 10;
+    if (*cp == '0') {
+      base = 8;
+      cp++;
+      if ((*cp == 'x') && isxdigit(cp[1])) {
+        cp++;
+        base = 16;
+      }
+    }
+  }
+  while (isxdigit(*cp) &&
+         (value = isdigit(*cp) ? *cp - '0'
+                               : (islower(*cp) ? toupper(*cp) : *cp) - 'A' +
+                                     10) < base) {
+    result = result * base + value;
+    cp++;
+  }
+  if (endp) *endp = (char *)cp;
+  return result;
+}
+
+/**
+ * simple_strtoll - convert a string to a signed long long
+ * @cp: The start of the string
+ * @endp: A pointer to the end of the parsed string will be placed here
+ * @base: The number base to use
+ */
+long long simple_strtoll(const char *cp, char **endp, unsigned int base) {
+  if (*cp == '-') return -simple_strtoull(cp + 1, endp, base);
+  return simple_strtoull(cp, endp, base);
+}
+
+static int skip_atoi(const char **s) {
+  int i = 0;
+
+  while (isdigit(**s)) i = i * 10 + *((*s)++) - '0';
+  return i;
+}
+
+/**
+ * vsscanf - Unformat a buffer into a list of arguments
+ * @buf:	input buffer
+ * @fmt:	format of buffer
+ * @args:	arguments
+ */
+int vsscanf(const char *buf, const char *fmt, va_list args) {
+  const char *str = buf;
+  char *next;
+  char digit;
+  int num = 0;
+  int qualifier;
+  int base;
+  int field_width;
+  int is_sign = 0;
+
+  while (*fmt && *str) {
+    /* skip any white space in format */
+    /* white space in format matchs any amount of
+     * white space, including none, in the input.
+     */
+    if (isspace(*fmt)) {
+      while (isspace(*fmt)) ++fmt;
+      while (isspace(*str)) ++str;
+    }
+
+    /* anything that is not a conversion must match exactly */
+    if (*fmt != '%' && *fmt) {
+      if (*fmt++ != *str++) break;
+      continue;
+    }
+
+    if (!*fmt) break;
+    ++fmt;
+
+    /* skip this conversion.
+     * advance both strings to next white space
+     */
+    if (*fmt == '*') {
+      while (!isspace(*fmt) && *fmt) fmt++;
+      while (!isspace(*str) && *str) str++;
+      continue;
+    }
+
+    /* get field width */
+    field_width = -1;
+    if (isdigit(*fmt)) field_width = skip_atoi(&fmt);
+
+    /* get conversion qualifier */
+    qualifier = -1;
+    if (*fmt == 'h' || *fmt == 'l' || *fmt == 'L' || *fmt == 'Z' ||
+        *fmt == 'z') {
+      qualifier = *fmt;
+      fmt++;
+    }
+    base = 10;
+    is_sign = 0;
+
+    if (!*fmt || !*str) break;
+
+    switch (*fmt++) {
+      case 'c': {
+        char *s = (char *)va_arg(args, char *);
+        if (field_width == -1) field_width = 1;
+        do {
+          *s++ = *str++;
+        } while (--field_width > 0 && *str);
+        num++;
+      }
+        continue;
+      case 's': {
+        char *s = (char *)va_arg(args, char *);
+        if (field_width == -1) field_width = sizeof(int);
+        /* first, skip leading white space in buffer */
+        while (isspace(*str)) str++;
+
+        /* now copy until next white space */
+        while (*str && !isspace(*str) && field_width--) {
+          *s++ = *str++;
+        }
+        *s = '\0';
+        num++;
+      }
+        continue;
+      case 'n':
+        /* return number of characters read so far */
+        {
+          int *i = (int *)va_arg(args, int *);
+          *i = str - buf;
+        }
+        continue;
+      case 'o':
+        base = 8;
+        break;
+      case 'x':
+      case 'X':
+        base = 16;
+        break;
+      case 'i':
+        base = 0;
+      case 'd':
+        is_sign = 1;
+      case 'u':
+        break;
+      case '%':
+        /* looking for '%' in str */
+        if (*str++ != '%') return num;
+        continue;
+      default:
+        /* invalid format; stop here */
+        return num;
+    }
+
+    /* have some sort of integer conversion.
+     * first, skip white space in buffer.
+     */
+    while (isspace(*str)) str++;
+
+    digit = *str;
+    if (is_sign && digit == '-') digit = *(str + 1);
+
+    if (!digit || (base == 16 && !isxdigit(digit)) ||
+        (base == 10 && !isdigit(digit)) ||
+        (base == 8 && (!isdigit(digit) || digit > '7')) ||
+        (base == 0 && !isdigit(digit)))
+      break;
+
+    switch (qualifier) {
+      case 'h':
+        if (is_sign) {
+          short *s = (short *)va_arg(args, short *);
+          *s = (short)simple_strtol(str, &next, base);
+        } else {
+          unsigned short *s = (unsigned short *)va_arg(args, unsigned short *);
+          *s = (unsigned short)simple_strtoul(str, &next, base);
+        }
+        break;
+      case 'l':
+        if (is_sign) {
+          long *l = (long *)va_arg(args, long *);
+          *l = simple_strtol(str, &next, base);
+        } else {
+          unsigned long *l = (unsigned long *)va_arg(args, unsigned long *);
+          *l = simple_strtoul(str, &next, base);
+        }
+        break;
+      case 'L':
+        if (is_sign) {
+          long long *l = (long long *)va_arg(args, long long *);
+          *l = simple_strtoll(str, &next, base);
+        } else {
+          unsigned long long *l =
+              (unsigned long long *)va_arg(args, unsigned long long *);
+          *l = simple_strtoull(str, &next, base);
+        }
+        break;
+      case 'Z':
+      case 'z': {
+        size_t *s = (size_t *)va_arg(args, size_t *);
+        *s = (size_t)simple_strtoul(str, &next, base);
+      } break;
+      default:
+        if (is_sign) {
+          int *i = (int *)va_arg(args, int *);
+          *i = (int)simple_strtol(str, &next, base);
+        } else {
+          unsigned int *i = (unsigned int *)va_arg(args, unsigned int *);
+          *i = (unsigned int)simple_strtoul(str, &next, base);
+        }
+        break;
+    }
+    num++;
+
+    if (!next) break;
+    str = next;
+  }
+  return num;
+}
+
+/**
+ * sscanf - Unformat a buffer into a list of arguments
+ * @buf:	input buffer
+ * @fmt:	formatting of buffer
+ * @...:	resulting arguments
+ */
+int sscanf(const char *buf, const char *fmt, ...) {
+  va_list args;
+  int i;
+
+  va_start(args, fmt);
+  i = vsscanf(buf, fmt, args);
+  va_end(args);
+  return i;
+}
+
+int string::scan(const char *fmt, ...) {
+  va_list args;
+  int i;
+
+  va_start(args, fmt);
+  i = vsscanf(this->get(), fmt, args);
+  va_end(args);
+  return i;
 }

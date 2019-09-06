@@ -23,22 +23,28 @@ bool fs::vnode::walk_dir(func<bool(const string &, ref<vnode>)> cb) {
   fs::vnoderef host_parent = {};
 
   auto qual = vfs::qualified_inode_number(fs(), index());
-  // printk("qual: %p\n", qual);
-  auto host = vfs::get_mount_at(qual);
-  // printk("%d\n", host.get());
+  auto host = vfs::get_mount_host(qual);
 
+  if (host.get() != nullptr) {
+    is_mounted_root = true;
 
+    host->walk_dir([&](const string &s, vnoderef parent) {
+      if (s == dotdot) {
+        host_parent = parent;
+        return false;
+      }
+      return true;
+    });
+  }
 
   // call the inode implementation of walk_dir, but stand between and handle
   // mount points
   return walk_dir_impl([&](const string &s, u32 in) -> bool {
     auto qual = vfs::qualified_inode_number(fs(), in);
 
-
-
     auto vn = vfs::get_mount_at(qual);
-    if (is_mounted_root && s == dotdot) {
-      printk("oof\n");
+    if (is_mounted_root && s == dotdot && host_parent) {
+      return cb(s, host_parent);
     }
     // printk("%s: %p\n", s.get(), vn.get());
     // TODO: handle if vn->index is a mount point

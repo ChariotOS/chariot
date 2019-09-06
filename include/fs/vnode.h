@@ -6,6 +6,7 @@
 #include <string.h>
 #include <types.h>
 #include <errno.h>
+#include <dev/device.h>
 
 namespace fs {
 
@@ -37,6 +38,8 @@ struct inode_metadata {
   time_t dtime = 0;
   u32 block_count = 0;
   u32 block_size = 0;
+  // major/minor for block and char device types
+  dev_t dev_info = {0, 0};
 };
 
 /**
@@ -66,6 +69,11 @@ class vnode : public refcounted<vnode> {
 
   virtual ssize_t read(off_t, size_t, void *) = 0;
   virtual ssize_t write(off_t, size_t, void *) = 0;
+
+
+  // create a directory and a file. Defaulting to no mode (permissions)
+  inline virtual ref<vnode> mkdir(string name, u32 mode = 0000) { return {}; };
+  inline virtual ref<vnode> touch(string name, fs::inode_type t = fs::inode_type::file, u32 mode = 0000) { return {}; };
 
   /*
    * Cause a regular file to be truncated to the size of precisely length bytes.

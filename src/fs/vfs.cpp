@@ -36,6 +36,10 @@ static vfs::mountpoint root_mountpoint;
 
 static map<u64, unique_ptr<vfs::mountpoint>> mount_points;
 
+int vfs::mount(unique_ptr<fs::filesystem> fs, string host) {
+  return mount(move(fs), vfs::open(host));
+}
+
 int vfs::mount(unique_ptr<fs::filesystem> fs, fs::vnoderef host) {
   // check that the host is valid
   if (!host) return -ENOENT;
@@ -67,6 +71,19 @@ fs::vnoderef vfs::get_mount_at(u64 inode) {
   } else {
     return {};
   }
+}
+
+
+// TODO: make this not crap
+fs::vnoderef vfs::get_mount_host(u64 inode) {
+  // TODO: obligitory todo to take a lock
+  for (auto &mnt : mount_points) {
+    auto guest = qualified_inode_number(mnt.value->guest()->fs(), mnt.value->guest()->index());
+    if (guest == inode) {
+      return mnt.value->host();
+    }
+  }
+  return nullptr;
 }
 
 fs::vnoderef vfs::open(string spath, int opts, int mode) {
