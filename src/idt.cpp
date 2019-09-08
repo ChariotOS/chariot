@@ -7,6 +7,7 @@
 #include <printk.h>
 #include <types.h>
 #include <vga.h>
+#include <cpu.h>
 
 // struct gatedesc idt[NUM_IDT_ENTRIES];
 
@@ -78,7 +79,6 @@ const char *excp_codes[NUM_EXCEPTIONS][2] = {
 #define TRAP_ILLOP 6   // illegal opcode
 #define TRAP_DEVICE 7  // device not available
 #define TRAP_DBLFLT 8  // double fault
-// #define TRAP_COPROC      9      // reserved (not used since 486)
 #define TRAP_TSS 10    // invalid task switch segment
 #define TRAP_SEGNP 11  // segment not present
 #define TRAP_STACK 12  // stack exception
@@ -219,7 +219,16 @@ static void pgfault_handle(int i, struct trapframe *tf) {
 }
 
 static void tick_handle(int i, struct trapframe *tf) {
-  ticks++;
+  // disable interrupts within here.
+  cpu::scoped_cli scli;
+
+  auto &cpu = cpu::current();
+
+
+  // increment the number of ticks
+  cpu.ticks++;
+
+
   return;
 }
 

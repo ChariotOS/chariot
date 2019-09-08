@@ -3,8 +3,8 @@
 
 // A set of common assembly functions
 
-#include "types.h"
 #include <math.h>
+#include "types.h"
 
 #define BOOTCODE __attribute__((__section__(".boot")))
 #define __packed __attribute__((packed))
@@ -105,26 +105,19 @@
 #define STS_IG32 0xE  // 32-bit Interrupt Gate
 #define STS_TG32 0xF  // 32-bit Trap Gate
 
-
-
-
-
 #define for_range(var, start, end) for (auto var = start; var < (end); var++)
-
-
 
 static inline void *memcpy(void *dst, const void *src, size_t n) {
   for (int i = 0; i < n; i++) {
-    ((char*)dst)[i] = ((char *)src)[i];
+    ((char *)dst)[i] = ((char *)src)[i];
   }
   return dst;
 }
 
-
 // memmove is just copy but you clear it out
 static inline void *memmove(void *dst, const void *src, size_t n) {
   for (int i = 0; i < n; i++) {
-    ((char*)dst)[i] = ((char *)src)[i];
+    ((char *)dst)[i] = ((char *)src)[i];
     ((char *)src)[i] = '\0';
   }
   return dst;
@@ -139,7 +132,6 @@ static inline i64 min(i64 a, i64 b) {
   if (a < b) return a;
   return b;
 }
-
 
 static inline i64 max(i64 a, i64 b) {
   if (a > b) return a;
@@ -181,7 +173,6 @@ typedef struct regs_s regs_t;
 #define BARRIER_WHILE(x) \
   while ((x)) {          \
   }
-
 
 static inline u64 read_rsp(void) {
   u64 ret;
@@ -347,16 +338,19 @@ static inline void lidt(void *p, int size) {
   asm volatile("lidt (%0)" : : "r"(pd));
 }
 
-
-
 static inline u32 compare_and_swap(volatile u32 *mem, u32 newval, u32 oldval) {
   u32 ret;
   asm volatile("cmpxchgl %2, %1"
-      : "=a"(ret), "+m"(mem)
-      : "r"(newval), "0"(oldval)
-      : "cc", "memory");
+               : "=a"(ret), "+m"(mem)
+               : "r"(newval), "0"(oldval)
+               : "cc", "memory");
   return ret;
 }
 
+static inline u64 readeflags(void) {
+  u64 eflags;
+  asm volatile("pushf; pop %0" : "=r"(eflags));
+  return eflags;
+}
 
 #endif

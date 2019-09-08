@@ -100,6 +100,8 @@ void vga::set_color(enum vga::color fg, enum vga::color bg) {
   vga_attr = make_color(fg, bg);
 }
 
+
+
 void vga::init(void) {
   vga_x = vga_y = 0;
   vga_attr = vga::make_color(color::white, color::black);
@@ -179,6 +181,11 @@ void vga::set_pixel(int ind, int color) {
   vga_fba[ind] = color;
 }
 
+
+int vga::rgb(int r, int g, int b) {
+  return ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
+}
+
 static void *get_framebuffer_address(void) {
   void *addr = nullptr;
   pci::walk_devices([&](pci::device *dev) {
@@ -191,7 +198,8 @@ static void *get_framebuffer_address(void) {
 
 static void vga_init_mod(void) {
   vga_fba = (u32 *)p2v(get_framebuffer_address());
-  set_resolution(1024, 768);
+  // set_resolution(1024, 768);
+  set_resolution(800, 600);
   // set_resolution(640, 480);
 
   // clear the framebuffer

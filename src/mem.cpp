@@ -1,3 +1,4 @@
+#include <lock.h>
 #include <mem.h>
 #include <multiboot.h>
 #include <paging.h>
@@ -239,23 +240,29 @@ extern void *mm_malloc(size_t size);
 extern void mm_free(void *ptr);
 extern void *mm_realloc(void *ptr, size_t size);
 
+static mutex_lock s_allocator_lock;
+
 void *kmalloc(u64 size) {
-  // TODO: lock the allocator
+  s_allocator_lock.lock();
   auto ptr = mm_malloc(size);
+  s_allocator_lock.unlock();
   return ptr;
 }
 void kfree(void *ptr) {
-  // TODO: lock the allocator
+  s_allocator_lock.lock();
   auto p = (u64)ptr;
-  if (ptr == NULL) return;
-
-  if (!(p >= (u64)kheap_lo() && p < (u64)kheap_hi())) {
-    printk("invalid address passed into free: %p\n", ptr);
+  if (ptr != NULL) {
+    if (!(p >= (u64)kheap_lo() && p < (u64)kheap_hi())) {
+      printk("invalid address passed into free: %p\n", ptr);
+    }
+    mm_free(ptr);
   }
-  mm_free(ptr);
+  s_allocator_lock.unlock();
 }
 
 void *krealloc(void *ptr, u64 newsize) {
-  // TODO: lock the allocator
-  return mm_realloc(ptr, newsize);
+  s_allocator_lock.lock();
+  auto p = mm_realloc(ptr, newsize);
+  s_allocator_lock.unlock();
+  return p;
 }

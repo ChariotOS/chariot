@@ -4,6 +4,7 @@
 #include <phys.h>
 #include <printk.h>
 #include <types.h>
+#include <lock.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 #define PGROUNDUP(x) round_up(x, 4096)
@@ -15,6 +16,10 @@ struct frame {
   struct frame *next;
   u64 page_len;
 };
+
+
+static mutex_lock phys_lck;
+
 
 static struct {
   int use_lock;
@@ -46,7 +51,6 @@ static frame *working_addr(frame *fr) {
 
 // physical memory allocator implementation
 void *phys::alloc(void) {
-  // TODO: take a lock
 
   /*
   char buf[20];
@@ -77,9 +81,6 @@ void *phys::alloc(void) {
 
   // decrement the number of freed pages
   kmem.nfree--;
-
-  // printk("phys::alloc -> %p\n", r);
-
   return r;
 }
 

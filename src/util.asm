@@ -21,7 +21,7 @@ pic_enable:
 	out 0x21, al     ;PIC1 now starts at 32
 	mov al, 0x28
 	out 0xA1, al     ;PIC2 now starts at 40
-	
+
 	mov al, 0x04
 	out 0x21, al     ;setup cascading
 	mov al, 0x02
@@ -49,3 +49,19 @@ call_with_new_stack:
 	mov rsp, rdi
 	jmp rsi
 	ret ;; ??
+
+
+
+global wrmsr
+wrmsr:
+	mov rcx, rdi ; msrnum <- arg0
+	mov rax, rsi ; rax <- val.low
+	shr rsi, 32
+	mov rdx, rsi ; rdx <- val.high
+  wrmsr
+  ret
+
+global get_sp
+get_sp:
+	mov rax, rsp
+	ret

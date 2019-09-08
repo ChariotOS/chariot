@@ -57,6 +57,8 @@ void clear_screen();
 void set_pixel(int ind, int color);
 void set_pixel(int x, int y, int color);
 
+int rgb(int r, int g, int b);
+
 int width();
 int height();
 

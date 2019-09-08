@@ -3,6 +3,7 @@
 
 #include <asm.h>
 #include <atom.h>
+#include <cpu.h>
 #include <dev/CMOS.h>
 #include <dev/RTC.h>
 #include <dev/blk_cache.h>
@@ -65,7 +66,7 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
   node->walk_dir([&](const string& name, fs::vnoderef vn) -> bool {
     for (int i = -1; i < depth; i++) {
       if (i == depth - 1) {
-        printk("+-- ");
+        printk("| - ");
       } else {
         printk("|   ");
       }
@@ -74,7 +75,7 @@ static void walk_tree(fs::vnoderef& node, int depth = 0) {
 
     if (vn->is_dir()) printk("/");
 
-    printk("  %d", vn->index());
+    // printk("  %d", vn->index());
 
     printk("\n");
 
@@ -97,72 +98,66 @@ void init_rootvfs(ref<dev::device> dev) {
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
 
-  // now we want to clear out the initial mapping of the boot pages
+  // initialize the segments for this CPU
+  cpu::seginit();
 
   // initialize smp
   if (!smp::init()) panic("smp failed!\n");
 
-  /*
-   * initialize the PCI subsystem by walking the devices and creating an
-   * internal representation that is faster to access later on
-   */
+  // initialize the PCI subsystem by walking the devices and creating an
+  // internal representation that is faster to access later on
   pci::init();
 
-  /*
-   * initialize the programmable interrupt timer
-   */
+  // initialize the programmable interrupt timer
   init_pit();
 
-  /*
-   * Set the PIT interrupt frequency to how many times per second it should fire
-   */
-  set_pit_freq(60);
+  // Set the PIT interrupt frequency to how many times per second it should fire
+  set_pit_freq(1000);
 
   // finally, enable interrupts
   sti();
 
   assert(fs::devfs::init());
 
+  cpu::calc_speed_khz();
+
   // walk the kernel modules and run their init function
   initialize_kernel_modules();
 
-  /*
-  auto thedev = dev::open("mem");
-  printk("block size: %zu\n", thedev->block_size());
-  printk("      size: %zu\n", thedev->size());
-  if (false && thedev) {
-    int nreads = 0;
-    int stride = sizeof(int) * 32;
-    for (size_t i = 0; i < mem_size(); i += stride) {
-      int buf[stride];
-      int rc = thedev->read(i, stride, buf);
-      if (rc != stride) break;
-      nreads++;
-
-      for_range(o, 0, stride / sizeof(int)) {
-        vga::set_pixel((i + o) % (vga::width() * vga::height()), buf[o]);
-      }
-      hexdump(buf, stride, 16);
-      // printk("\n");
-    }
-    printk("nreads = %d\n", nreads);
-  }
-  */
-
+  // open up the disk device for the root filesystem
   auto rootdev = dev::open("ata1");
+
   // setup the root vfs
   init_rootvfs(rootdev);
 
+  // mount the devfs
   fs::devfs::mount();
 
+  // setup the tmp filesystem
   vfs::mount(make_unique<fs::tmp>(), "/tmp");
-
   auto tmp = vfs::open("/tmp", 0);
   tmp->touch("foo", fs::inode_type::file, 0777);
   tmp->mkdir("bar", 0777);
 
-  auto node = vfs::open("/", 0);
-  walk_tree(node);
+  u64 ind = 0;
+
+  auto d = dev::open("kbd");
+
+  for (u64 addr = 0; true; addr += sizeof(char)) {
+    u8 c = 0x00;
+    int read = d->read(addr, sizeof(u32), &c);
+
+    if (read != 0) {
+      printk("%02x ", c);
+      vga::set_pixel(ind, vga::rgb(c, c, c));
+    }
+
+    ind++;
+    ind %= vga::width() * vga::height();
+  }
+
+  // auto node = vfs::open("/", 0);
+  // walk_tree(node);
 
   // spin forever
   printk("\n\nno more work. spinning.\n");

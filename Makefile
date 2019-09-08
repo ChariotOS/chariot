@@ -34,7 +34,7 @@ AFLAGS=-f elf64 -w-zext-reloc
 
 CINCLUDES=-I./include/
 
-COMMON_FLAGS := $(CINCLUDES)  \
+COMMON_FLAGS := $(CINCLUDES) -mno-red-zone -fno-omit-frame-pointer -fno-stack-protector \
 				 -mtls-direct-seg-refs -fno-pie -Wno-sign-compare -ffreestanding \
 				 -mcmodel=large -O3 -fno-tree-vectorize -Wno-address-of-packed-member -Wno-strict-overflow \
 				 -DGIT_REVISION=\"$(shell git rev-parse HEAD)\"
@@ -42,7 +42,7 @@ COMMON_FLAGS := $(CINCLUDES)  \
 
 CFLAGS:=$(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
 
-CPPFLAGS:=$(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions -fno-omit-frame-pointer
+CPPFLAGS:=$(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions
 
 DFLAGS=-g -DDEBUG -O0
 
@@ -104,14 +104,20 @@ clean:
 	rm -rf build
 
 
+
+
+images: $(ISO) $(ROOTFS)
+
+
 QEMUOPTS=-hda $(ISO) -m 4G -hdb $(ROOTFS)
 
-qemu: $(ISO) $(ROOTFS)
+qemu: images
 	qemu-system-x86_64 $(QEMUOPTS) \
 		-serial stdio
 
-qemu-nox: $(ISO) $(ROOTFS)
+qemu-nox: images
 	qemu-system-x86_64 $(QEMUOPTS) -nographic
+
 
 
 bochs: $(ISO)

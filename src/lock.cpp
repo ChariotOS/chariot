@@ -1,34 +1,18 @@
 #include <lock.h>
+#include <printk.h>
 
 #define memory_barrier() asm volatile("" ::: "memory")
 
-mutex_lock::mutex_lock(const char *name) : name(name) {
-  locked = 0;
-  // TODO: use a better cpu state struct (maybe a ptr?)
-  holding_cpu = -1;
-}
-
 void mutex_lock::lock(void) {
-  // TODO: check if interrupts are disabled. Wouldn't want to deadlock on
-  // preemption
-  while (true) {
-    if (compare_and_swap(&locked, 1, 0) == 0) {
-      // TODO: set the holding_cpu value, we now have the lock
-      locked = 0;
-      memory_barrier();
-    }
-    // TODO: yield to the scheduler
+  // printk("[MUTEX LOCK ] %p\n", this);
+  while (__sync_lock_test_and_set(&locked, 1)) {
+    /* nothing */
   }
 }
 
 void mutex_lock::unlock(void) {
-  while(true) {
-    if (compare_and_swap(&locked, 1, 0) == 0) {
-      // TODO: check
-      memory_barrier();
-    }
-    // TODO: yield to the scheduler
-  }
+  // printk("[MUTEX UNLCK] %p\n", this);
+  __sync_lock_release(&locked);
 }
 
 bool mutex_lock::is_locked(void) { return locked; }

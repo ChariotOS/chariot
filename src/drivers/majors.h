@@ -15,3 +15,6 @@
 
 // ATA drives
 #define MAJOR_ATA 4
+
+#define MAJOR_MOUSE 10
+#define MAJOR_KEYBOARD 11

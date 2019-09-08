@@ -110,6 +110,34 @@ double ceil(double x) {
 }
 
 
+double floor(double x) {
+  return (u64)x;
+}
+
+double round(double x) {
+  double y, r;
+
+  /* Largest integer <= x */
+  y = floor(x);
+
+  /* Fractional part */
+  r = x - y;
+
+  /* Round up to nearest. */
+  if (r > 0.5) goto rndup;
+
+  /* Round to even */
+  if (r == 0.5) {
+    r = y - 2.0 * floor(0.5 * y);
+    if (r == 1.0) {
+    rndup:
+      y += 1.0;
+    }
+  }
+
+  /* Else round down. */
+  return (y);
+}
 
 int abs(int n) {
   if (n < 0) return -n;
@@ -119,5 +147,5 @@ int sgn(int n) {
   if (n < 0) return -1;
   return +1;
 }
-
 }
+
