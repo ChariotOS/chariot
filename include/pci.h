@@ -266,7 +266,7 @@ class device {
   u16 bus, dev, func;
 
   u32 port_base;
-  u32 interrupt;
+  u8 interrupt;
 
   u16 vendor_id;
   u16 device_id;

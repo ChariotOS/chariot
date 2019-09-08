@@ -240,6 +240,7 @@ static void unknown_hardware(int i, struct trapframe *tf) {
 }
 
 void interrupt_register(int i, interrupt_handler_t handler) {
+  // printk("irq register %d to %p\n", i, handler);
   interrupt_handler_table[i] = handler;
 }
 

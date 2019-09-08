@@ -43,11 +43,12 @@ extern "C" void enable_sse();
 void initialize_kernel_modules(void) {
   extern struct kernel_module_info __start__kernel_modules[];
   extern struct kernel_module_info __stop__kernel_modules[];
-  struct kernel_module_info* dev = __start__kernel_modules;
+  struct kernel_module_info* mod = __start__kernel_modules;
   int i = 0;
-  while (dev != __stop__kernel_modules) {
-    dev->initfn();
-    dev = &(__start__kernel_modules[++i]);
+  while (mod != __stop__kernel_modules) {
+    // printk("calling module %s\n", dev->name);
+    mod->initfn();
+    mod = &(__start__kernel_modules[++i]);
   }
 }
 
@@ -149,7 +150,7 @@ void init_rootvfs(ref<dev::device> dev) {
 
     if (read != 0) {
       printk("%02x ", c);
-      vga::set_pixel(ind, vga::rgb(c, c, c));
+      vga::set_pixel(ind, vga::rgb(0, 0xFF, 0xFF));
     }
 
     ind++;
