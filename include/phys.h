@@ -7,7 +7,7 @@ namespace phys {
 
 
   // allocate a physical page
-  void *alloc(void);
+  void *alloc(int npages = 1);
 
 
   // free one page of physical memory

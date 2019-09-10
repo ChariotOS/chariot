@@ -126,7 +126,6 @@ gdtr:
 
 
 
-
 [bits 32] ALIGN 8
 section .init
 

@@ -20,3 +20,18 @@ class mutex_lock {
 
     bool is_locked(void);
 };
+
+
+
+class scoped_lock {
+
+  mutex_lock &lck;
+  public:
+    inline scoped_lock(mutex_lock &lck) : lck(lck) {
+      lck.lock();
+    }
+
+    inline ~scoped_lock(void) {
+      lck.unlock();
+    }
+};

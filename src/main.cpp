@@ -18,6 +18,7 @@
 #include <fs/vfs.h>
 #include <func.h>
 #include <idt.h>
+#include <keycode.h>
 #include <map.h>
 #include <math.h>
 #include <mem.h>
@@ -140,21 +141,71 @@ void init_rootvfs(ref<dev::device> dev) {
   tmp->touch("foo", fs::inode_type::file, 0777);
   tmp->mkdir("bar", 0777);
 
-  u64 ind = 0;
+  auto d = dev::open("random");
 
-  auto d = dev::open("kbd");
+  auto dist = [](int x0, int y0, int x1, int y1) -> double {
+    double dx = (x1 - x0) * (x1 - x0);
+    double dy = (y1 - y0) * (y1 - y0);
+    return sqrt(dx + dy);
+  };
 
-  for (u64 addr = 0; true; addr += sizeof(char)) {
-    u8 c = 0x00;
-    int read = d->read(addr, sizeof(u32), &c);
+  auto kbd = dev::open("kbd");
 
-    if (read != 0) {
-      printk("%02x ", c);
-      vga::set_pixel(ind, vga::rgb(0, 0xFF, 0xFF));
+  auto cx = vga::width() / 2;
+  auto cy = vga::height() / 2;
+
+
+  double xoff = 0;
+  double yoff = 0;
+
+  auto draw_circle = [dist](int cx, int cy, double r, int c) -> void {
+    for_range(y, cy - r, cy + r) {
+      for_range(x, cx - r, cx + r) {
+        if (dist(x, y, cx, cy) <= r) {
+          vga::set_pixel(x, y, c);
+        }
+        //
+      }
     }
+  };
 
-    ind++;
-    ind %= vga::width() * vga::height();
+  int step = 8;
+
+  bool left = false, right = false, up = false, down = false;
+  while (1) {
+    {
+      // disable interrupts - want to draw quickly
+      cpu::pushcli();
+
+      // loop over all the keyboard codes
+      int nread = 0;
+      while (1) {
+        keyevent packet;
+
+        nread = kbd->read(0, sizeof(keyevent), &packet);
+        if (nread != sizeof(keyevent)) break;
+
+        if (packet.magic != KEY_EVENT_MAGIC) panic("NOT MAGICAL\n");
+        if (packet.key == key_left) left = packet.is_press();
+        if (packet.key == key_right) right = packet.is_press();
+        if (packet.key == key_up) up = packet.is_press();
+        if (packet.key == key_down) down = packet.is_press();
+      }
+
+      // printk("%d%d%d%d\n", left, right, up, down);
+
+      if (up) yoff -= step;
+      if (down) yoff += step;
+
+      if (left) xoff -= step;
+      if (right) xoff += step;
+
+      draw_circle(cx + xoff, cy + yoff, 10, cpu::get_ticks());
+
+      // enable interrupts again so we can sleep
+      cpu::popcli();
+    }
+    cpu::sleep_ms(16);
   }
 
   // auto node = vfs::open("/", 0);

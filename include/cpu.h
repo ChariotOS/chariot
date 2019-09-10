@@ -27,6 +27,18 @@ void pushcli();
 // interrupts again
 void popcli();
 
+static inline u64 get_ticks(void) {
+  return current().ticks;
+}
+
+static inline void sleep_ms(int ms) {
+  auto start = get_ticks();
+  while(1) {
+    if (get_ticks() > start + ms) break;
+    // TODO: yield if there is enough time left?
+  }
+}
+
 // plop at the top of a scope and interrupts will be disabled within that scope
 class scoped_cli {
  public:

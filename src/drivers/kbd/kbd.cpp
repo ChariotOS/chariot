@@ -4,12 +4,12 @@
 #include <errno.h>
 #include <fifo_buf.h>
 #include <idt.h>
+#include <keycode.h>
 #include <mem.h>
 #include <module.h>
 #include <printk.h>
 #include <vga.h>
 #include "../majors.h"
-#include "keycode.h"
 
 #define IRQ_KEYBOARD 1
 #define I8042_BUFFER 0x60
@@ -214,139 +214,159 @@ static char shift_map[0x80] = {
     0,
 };
 
-static KeyCode unshifted_key_map[0x80] = {
-    Key_Invalid,    Key_Escape,    Key_1,           Key_2,
-    Key_3,          Key_4,         Key_5,           Key_6,
-    Key_7,          Key_8,         Key_9,           Key_0,
-    Key_Minus,      Key_Equal,     Key_Backspace,
-    Key_Tab,  // 15
-    Key_Q,          Key_W,         Key_E,           Key_R,
-    Key_T,          Key_Y,         Key_U,           Key_I,
-    Key_O,          Key_P,         Key_LeftBracket, Key_RightBracket,
-    Key_Return,   // 28
-    Key_Control,  // 29
-    Key_A,          Key_S,         Key_D,           Key_F,
-    Key_G,          Key_H,         Key_J,           Key_K,
-    Key_L,          Key_Semicolon, Key_Apostrophe,  Key_Backtick,
-    Key_LeftShift,  // 42
-    Key_Backslash,  Key_Z,         Key_X,           Key_C,
-    Key_V,          Key_B,         Key_N,           Key_M,
-    Key_Comma,      Key_Period,    Key_Slash,
-    Key_RightShift,  // 54
-    Key_Invalid,
-    Key_Alt,      // 56
-    Key_Space,    // 57
-    Key_Invalid,  // 58
-    Key_F1,         Key_F2,        Key_F3,          Key_F4,
-    Key_F5,         Key_F6,        Key_F7,          Key_F8,
-    Key_F9,         Key_F10,       Key_Invalid,
-    Key_Invalid,  // 70
-    Key_Home,       Key_Up,        Key_PageUp,      Key_Invalid,
-    Key_Left,       Key_Invalid,
-    Key_Right,  // 77
-    Key_Invalid,    Key_End,
-    Key_Down,  // 80
-    Key_PageDown,   Key_Invalid,
-    Key_Delete,  // 83
-    Key_Invalid,    Key_Invalid,   Key_Backslash,   Key_F11,
-    Key_F12,        Key_Invalid,   Key_Invalid,     Key_Logo,
+static keycode unshifted_key_map[0x80] = {
+    key_invalid,    key_escape,    key_1,           key_2,
+    key_3,          key_4,         key_5,           key_6,
+    key_7,          key_8,         key_9,           key_0,
+    key_minus,      key_equal,     key_backspace,
+    key_tab,  // 15
+    key_q,          key_w,         key_e,           key_r,
+    key_t,          key_y,         key_u,           key_i,
+    key_o,          key_p,         key_leftbracket, key_rightbracket,
+    key_return,   // 28
+    key_control,  // 29
+    key_a,          key_s,         key_d,           key_f,
+    key_g,          key_h,         key_j,           key_k,
+    key_l,          key_semicolon, key_apostrophe,  key_backtick,
+    key_leftshift,  // 42
+    key_backslash,  key_z,         key_x,           key_c,
+    key_v,          key_b,         key_n,           key_m,
+    key_comma,      key_period,    key_slash,
+    key_rightshift,  // 54
+    key_invalid,
+    key_alt,      // 56
+    key_space,    // 57
+    key_invalid,  // 58
+    key_f1,         key_f2,        key_f3,          key_f4,
+    key_f5,         key_f6,        key_f7,          key_f8,
+    key_f9,         key_f10,       key_invalid,
+    key_invalid,  // 70
+    key_home,       key_up,        key_pageup,      key_invalid,
+    key_left,       key_invalid,
+    key_right,  // 77
+    key_invalid,    key_end,
+    key_down,  // 80
+    key_pagedown,   key_invalid,
+    key_delete,  // 83
+    key_invalid,    key_invalid,   key_backslash,   key_f11,
+    key_f12,        key_invalid,   key_invalid,     key_logo,
 };
 
-static KeyCode shifted_key_map[0x100] = {
-    Key_Invalid,
-    Key_Escape,
-    Key_ExclamationPoint,
-    Key_AtSign,
-    Key_Hashtag,
-    Key_Dollar,
-    Key_Percent,
-    Key_Circumflex,
-    Key_Ampersand,
-    Key_Asterisk,
-    Key_LeftParen,
-    Key_RightParen,
-    Key_Underscore,
-    Key_Plus,
-    Key_Backspace,
-    Key_Tab,
-    Key_Q,
-    Key_W,
-    Key_E,
-    Key_R,
-    Key_T,
-    Key_Y,
-    Key_U,
-    Key_I,
-    Key_O,
-    Key_P,
-    Key_LeftBrace,
-    Key_RightBrace,
-    Key_Return,
-    Key_Control,
-    Key_A,
-    Key_S,
-    Key_D,
-    Key_F,
-    Key_G,
-    Key_H,
-    Key_J,
-    Key_K,
-    Key_L,
-    Key_Colon,
-    Key_DoubleQuote,
-    Key_Tilde,
-    Key_LeftShift,  // 42
-    Key_Pipe,
-    Key_Z,
-    Key_X,
-    Key_C,
-    Key_V,
-    Key_B,
-    Key_N,
-    Key_M,
-    Key_LessThan,
-    Key_GreaterThan,
-    Key_QuestionMark,
-    Key_RightShift,  // 54
-    Key_Invalid,
-    Key_Alt,
-    Key_Space,    // 57
-    Key_Invalid,  // 58
-    Key_F1,
-    Key_F2,
-    Key_F3,
-    Key_F4,
-    Key_F5,
-    Key_F6,
-    Key_F7,
-    Key_F8,
-    Key_F9,
-    Key_F10,
-    Key_Invalid,
-    Key_Invalid,  // 70
-    Key_Home,
-    Key_Up,
-    Key_PageUp,
-    Key_Invalid,
-    Key_Left,
-    Key_Invalid,
-    Key_Right,  // 77
-    Key_Invalid,
-    Key_End,
-    Key_Down,  // 80
-    Key_PageDown,
-    Key_Invalid,
-    Key_Delete,  // 83
-    Key_Invalid,
-    Key_Invalid,
-    Key_Pipe,
-    Key_F11,
-    Key_F12,
-    Key_Invalid,
-    Key_Invalid,
-    Key_Logo,
+static keycode shifted_key_map[0x100] = {
+    key_invalid,
+    key_escape,
+    key_exclamationpoint,
+    key_atsign,
+    key_hashtag,
+    key_dollar,
+    key_percent,
+    key_circumflex,
+    key_ampersand,
+    key_asterisk,
+    key_leftparen,
+    key_rightparen,
+    key_underscore,
+    key_plus,
+    key_backspace,
+    key_tab,
+    key_q,
+    key_w,
+    key_e,
+    key_r,
+    key_t,
+    key_y,
+    key_u,
+    key_i,
+    key_o,
+    key_p,
+    key_leftbrace,
+    key_rightbrace,
+    key_return,
+    key_control,
+    key_a,
+    key_s,
+    key_d,
+    key_f,
+    key_g,
+    key_h,
+    key_j,
+    key_k,
+    key_l,
+    key_colon,
+    key_doublequote,
+    key_tilde,
+    key_leftshift,  // 42
+    key_pipe,
+    key_z,
+    key_x,
+    key_c,
+    key_v,
+    key_b,
+    key_n,
+    key_m,
+    key_lessthan,
+    key_greaterthan,
+    key_questionmark,
+    key_rightshift,  // 54
+    key_invalid,
+    key_alt,
+    key_space,    // 57
+    key_invalid,  // 58
+    key_f1,
+    key_f2,
+    key_f3,
+    key_f4,
+    key_f5,
+    key_f6,
+    key_f7,
+    key_f8,
+    key_f9,
+    key_f10,
+    key_invalid,
+    key_invalid,  // 70
+    key_home,
+    key_up,
+    key_pageup,
+    key_invalid,
+    key_left,
+    key_invalid,
+    key_right,  // 77
+    key_invalid,
+    key_end,
+    key_down,  // 80
+    key_pagedown,
+    key_invalid,
+    key_delete,  // 83
+    key_invalid,
+    key_invalid,
+    key_pipe,
+    key_f11,
+    key_f12,
+    key_invalid,
+    key_invalid,
+    key_logo,
 };
 bool shifted = false;
+static u8 m_modifiers = 0;
+
+static void update_modifier(u8 modifier, bool state) {
+  if (state)
+    m_modifiers |= modifier;
+  else
+    m_modifiers &= ~modifier;
+}
+
+static void key_state_changed(u8 raw, bool pressed) {
+  keyevent event;
+  event.magic = KEY_EVENT_MAGIC;
+  event.key =
+      (m_modifiers & mod_shift) ? shifted_key_map[raw] : unshifted_key_map[raw];
+  event.character = (m_modifiers & mod_shift) ? shift_map[raw] : map[raw];
+  event.flags = m_modifiers;
+  if (pressed) event.flags |= is_pressed;
+
+  kbd_buf.write((u8*)&event, sizeof(keyevent));
+}
 
 static void kbd_handler(int i, struct trapframe *tf) {
   cpu::scoped_cli scli;
@@ -360,31 +380,30 @@ static void kbd_handler(int i, struct trapframe *tf) {
     u8 ch = raw & 0x7f;
     bool pressed = !(raw & 0x80);
 
-
 #ifdef KEYBOARD_DEBUG
     dbgprintf("Keyboard::handle_irq: %b %s\n", ch, pressed ? "down" : "up");
 #endif
     switch (ch) {
       case 0x38:
-        // printk("alt pressed\n");
+        update_modifier(mod_alt, pressed);
         break;
       case 0x1d:
-        // printk("ctrl pressed\n");
+        update_modifier(mod_ctrl, pressed);
         break;
       case 0x5b:
-        // printk("super pressed\n");
+        update_modifier(mod_logo, pressed);
         break;
       case 0x2a:
       case 0x36:
-        shifted = pressed;
-        // printk("shift pressed\n");
+        update_modifier(mod_shift, pressed);
         break;
     }
+
     switch (ch) {
       case I8042_ACK:
         break;
       default:
-        kbd_buf.write(&raw, 1);
+        key_state_changed(ch, pressed);
 
         // if (pressed) printk("%c", (shifted ? shift_map : map)[ch]);
         // printk("default %d %d '%c'\n", pressed, shifted, (shifted ? shift_map

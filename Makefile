@@ -7,7 +7,7 @@ GRUB = $(GRUB_PREFIX)grub-mkrescue
 .PHONY: fs
 
 
-STRUCTURE := $(shell find src -type d)
+STRUCTURE := $(shell tools/get_structure.sh)
 CODEFILES := $(addsuffix /*,$(STRUCTURE))
 CODEFILES := $(wildcard $(CODEFILES))
 
@@ -25,7 +25,7 @@ AOBJECTS:=$(ASOURCES:%.asm=build/%.asm.o)
 
 LDFLAGS=-m elf_x86_64
 
-KERNEL=build/kernel.elf
+KERNEL=build/vmchariot
 ISO=build/kernel.iso
 SYMS=build/kernel.syms
 ROOTFS=build/root.img
@@ -70,7 +70,7 @@ build/%.asm.o: %.asm
 	@echo " ASM " $<
 	@$(AS) $(AFLAGS) -o $@ $<
 
-$(KERNEL): build/initrd.tar $(CODEFILES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
+$(KERNEL): $(CODEFILES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
 	@echo " LNK " $@
 	@$(LD) $(LDFLAGS) $(AOBJECTS) $(COBJECTS) -T kernel.ld -o $@
 
@@ -92,7 +92,7 @@ fs:
 $(ISO): $(KERNEL) $(SYMS) grub.cfg
 	mkdir -p build/iso/boot/grub
 	cp ./grub.cfg build/iso/boot/grub
-	cp build/kernel.elf build/iso/boot
+	cp build/vmchariot build/iso/boot
 	cp build/kernel.syms build/iso/boot
 	$(GRUB) -o $(ISO) build/iso
 

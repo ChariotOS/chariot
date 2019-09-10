@@ -2,10 +2,11 @@
 #include <mem.h>
 #include <module.h>
 #include <pci.h>
+#include <phys.h>
 #include <printk.h>
 #include <util.h>
 
-// #define E1000_DEBUG
+#define E1000_DEBUG
 
 #ifdef E1000_DEBUG
 #define INFO(fmt, args...) printk("[E1000] " fmt, ##args)
@@ -250,16 +251,20 @@ void e1000::rxinit() {
   // address. In your case you should handle virtual and physical addresses as
   // the addresses passed to the NIC should be physical ones
 
-  auto size = sizeof(struct e1000_rx_desc) * E1000_NUM_RX_DESC + 16;
-  printk("%zu\n", size);
-  ptr = (uint8_t *)(kmalloc(size));
+  // auto size = sizeof(struct e1000_rx_desc) * E1000_NUM_RX_DESC + 16;
 
-  descs = (struct e1000_rx_desc *)ptr;
+  ptr = (u8 *)phys::alloc();
+  // ptr = (uint8_t *)(kmalloc(size));
+
+  descs = (struct e1000_rx_desc *)p2v(ptr);
   for (int i = 0; i < E1000_NUM_RX_DESC; i++) {
     rx_descs[i] = (struct e1000_rx_desc *)((uint8_t *)descs + i * 16);
     rx_descs[i]->addr = (uint64_t)(uint8_t *)(kmalloc(8192 + 16));
     rx_descs[i]->status = 0;
   }
+
+  INFO("RX virt: %16zx\n", descs);
+  INFO("RX phys: %16zx\n", ptr);
 
   write_cmd(REG_TXDESCLO, (uint32_t)((uint64_t)ptr >> 32));
   write_cmd(REG_TXDESCHI, (uint32_t)((uint64_t)ptr & 0xFFFFFFFF));
@@ -284,16 +289,21 @@ void e1000::txinit() {
   // khmalloc returns a virtual address that is identical to it physical mapped
   // address. In your case you should handle virtual and physical addresses as
   // the addresses passed to the NIC should be physical ones
-  ptr = (uint8_t *)(kmalloc(sizeof(struct e1000_tx_desc) * E1000_NUM_TX_DESC +
-                            16));
 
-  descs = (struct e1000_tx_desc *)ptr;
+  // auto sz = sizeof(struct e1000_tx_desc) * E1000_NUM_TX_DESC + 16;
+  // ptr = (uint8_t *)(kmalloc(sz));
+
+  ptr = (u8 *)phys::alloc();
+
+  descs = (struct e1000_tx_desc *)p2v(ptr);
   for (int i = 0; i < E1000_NUM_TX_DESC; i++) {
     tx_descs[i] = (struct e1000_tx_desc *)((uint8_t *)descs + i * 16);
     tx_descs[i]->addr = 0;
     tx_descs[i]->cmd = 0;
     tx_descs[i]->status = TSTA_DD;
   }
+  INFO("TX virt: %16zx\n", descs);
+  INFO("TX phys: %16zx\n", ptr);
 
   write_cmd(REG_TXDESCHI, (uint32_t)((uint64_t)ptr >> 32));
   write_cmd(REG_TXDESCLO, (uint32_t)((uint64_t)ptr & 0xFFFFFFFF));
@@ -334,8 +344,6 @@ e1000::e1000(pci::device *dev)
   io_base = dev->get_bar(PCI_BAR_IO).raw & ~1;
   mem_base = dev->get_bar(0).raw & ~3;
 
-  printk("%p\n", mem_base);
-
   // Off course you will need here to map the memory address into you page
   // tables and use corresponding virtual addresses
 
@@ -347,13 +355,11 @@ bool e1000::start(void) {
   eerprom_exists = false;
   detect_eeprom();
   if (!read_mac_addr()) return false;
-  printk("E1000: MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1],
+  INFO("MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1],
          mac[2], mac[3], mac[4], mac[5]);
   start_link();
 
   for (int i = 0; i < 0x80; i++) write_cmd(0x5200 + i * 4, 0);
-
-  printk("irq: %d\n", dev->interrupt);
 
   interrupt_register(32 + dev->interrupt, e1000_interrupt);
   enable_interrupt();
@@ -372,7 +378,10 @@ void e1000::fire(trapframe *p_interruptContext) {
    */
   write_cmd(REG_IMASK, 0x1);
 
+
   uint32_t status = read_cmd(0xc0);
+
+  INFO("IRQ. STATUS=%08x\n", status);
   if (status & 0x04) {
     start_link();
   } else if (status & 0x10) {
@@ -396,7 +405,6 @@ void e1000::handle_receive() {
     uint16_t len = rx_descs[rx_cur]->length;
 
     INFO("RX: %d bytes at %p\n", len, buf);
-
 
     hexdump(buf, len);
 
@@ -424,7 +432,7 @@ int e1000::send_packet(const void *p_data, uint16_t p_len) {
 
 static ref<e1000> e1000_inst;
 static void e1000_interrupt(int intr, trapframe *fr) {
-  INFO("interrupt: err=%d\n", fr->err);
+  // INFO("interrupt: err=%d\n", fr->err);
   if (e1000_inst) e1000_inst->fire(fr);
 }
 
@@ -445,6 +453,12 @@ void e1000_init(void) {
     if (!e1000_inst->start()) {
       e1000_inst = nullptr;
       INFO("failed!\n");
+    } else {
+      /*
+      auto data = "hello";
+      auto b = e1000_inst->send_packet(data, 6);
+      printk("%d\n", b);
+      */
     }
   }
 }

@@ -1,10 +1,10 @@
 #include <asm.h>
+#include <lock.h>
 #include <mem.h>
 #include <paging.h>
 #include <phys.h>
 #include <printk.h>
 #include <types.h>
-#include <lock.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 #define PGROUNDUP(x) round_up(x, 4096)
@@ -17,9 +17,7 @@ struct frame {
   u64 page_len;
 };
 
-
 static mutex_lock phys_lck;
-
 
 static struct {
   int use_lock;
@@ -49,16 +47,10 @@ static frame *working_addr(frame *fr) {
   return fr;
 }
 
-// physical memory allocator implementation
-void *phys::alloc(void) {
-
-  /*
-  char buf[20];
-  printk("%s\n", human_size(kmem.nfree * 4096, buf));
-  */
-
+static void *early_phys_alloc(void) {
   frame *r = kmem.freelist;
   if (r == nullptr) panic("out of memory");
+
   frame *f = working_addr(r);
 
   if (f->page_len > 1) {
@@ -76,16 +68,31 @@ void *phys::alloc(void) {
     kmem.freelist = f->next;
   }
   f = working_addr(r);
-
   memset(f, 0, PGSIZE);
-
   // decrement the number of freed pages
   kmem.nfree--;
   return r;
 }
 
+// physical memory allocator implementation
+void *phys::alloc(int npages) {
+  scoped_lock lock(phys_lck);
+
+  if (npages > 1 && !use_kernel_vm) {
+    panic(
+        "unable to allocate contiguious physical pages before kernel vm is "
+        "availible\n");
+  }
+
+  if (use_kernel_vm) {
+  }
+
+  return early_phys_alloc();
+}
+
 void phys::free(void *v) {
-  // TODO: take a lock
+  scoped_lock lock(phys_lck);
+
   if ((u64)v % PGSIZE) panic("phys::free requires page aligned address");
   if (v < high_kern_end) panic("phys::free cannot free below the kernel's end");
 
@@ -100,7 +107,7 @@ void phys::free(void *v) {
 
 // add page frames to the allocator
 void phys::free_range(void *vstart, void *vend) {
-  // TODO: take a lock
+  scoped_lock lock(phys_lck);
 
   auto *fr = (frame *)PGROUNDUP((u64)vstart);
 

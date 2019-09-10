@@ -33,10 +33,13 @@ double sin(double angle) {
 }
 
 double pow(double x, double y) {
-  (void)x;
-  (void)y;
-  panic("NO\n");
-  return 0;
+  double val = x;
+
+  // this is dumb
+  for (int i = 1; i < y; i++) {
+    val *= x;
+  }
+  return val;
 }
 
 double ldexp(double, int exp) {
