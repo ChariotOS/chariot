@@ -6,7 +6,7 @@
 #include <printk.h>
 #include <util.h>
 
-#define E1000_DEBUG
+// #define E1000_DEBUG
 
 #ifdef E1000_DEBUG
 #define INFO(fmt, args...) printk("[E1000] " fmt, ##args)
@@ -159,7 +159,7 @@ class e1000 : public refcounted<e1000> {
   ~e1000();
 
   // called by the interrupt handler
-  void fire(trapframe *fr);
+  void fire(regs_t *fr);
 
   u8 *get_mac_address(void);
 
@@ -334,7 +334,7 @@ void e1000::enable_interrupt() {
   read_cmd(0xc0);
 }
 
-static void e1000_interrupt(int intr, trapframe *fr);
+static void e1000_interrupt(int intr, regs_t *fr);
 
 e1000::e1000(pci::device *dev)
     : dev(dev) /* : NetworkDriver(p_pciConfigHeader) */ {
@@ -371,7 +371,7 @@ bool e1000::start(void) {
 
 e1000::~e1000(void) {}
 
-void e1000::fire(trapframe *p_interruptContext) {
+void e1000::fire(regs_t *p_interruptContext) {
   /* This might be needed here if your handler doesn't clear interrupts from
      each device and must be done before EOI if using the PIC.
      Without this, the card will spam interrupts as the int-line will stay high.
@@ -397,10 +397,10 @@ void e1000::start_link(void) {
 
 void e1000::handle_receive() {
   uint16_t old_cur;
-  bool got_packet = false;
+  // bool got_packet = false;
 
   while ((rx_descs[rx_cur]->status & 0x1)) {
-    got_packet = true;
+    // got_packet = true;
     uint8_t *buf = (uint8_t *)rx_descs[rx_cur]->addr;
     uint16_t len = rx_descs[rx_cur]->length;
 
@@ -431,7 +431,7 @@ int e1000::send_packet(const void *p_data, uint16_t p_len) {
 }
 
 static ref<e1000> e1000_inst;
-static void e1000_interrupt(int intr, trapframe *fr) {
+static void e1000_interrupt(int intr, regs_t *fr) {
   // INFO("interrupt: err=%d\n", fr->err);
   if (e1000_inst) e1000_inst->fire(fr);
 }

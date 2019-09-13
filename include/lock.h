@@ -3,35 +3,31 @@
 #include <asm.h>
 #include <atom.h>
 
-
 // TODO: use the correct cpu state
 class mutex_lock {
-  private:
+ private:
+  // compare and swap dest to spinlock on
+  int locked = 0;
 
-    // compare and swap dest to spinlock on
-    u32 locked = 0;
+  // what CPU currently holds the lock?
+  int holding_cpu = -1;
 
-    // what CPU currently holds the lock?
-    int holding_cpu = -1;
-  public:
+  const char *name;
 
-    void lock(void);
-    void unlock(void);
+ public:
+  inline mutex_lock(const char *name) : name(name) {}
 
-    bool is_locked(void);
+  void lock(void);
+  void unlock(void);
+
+  bool is_locked(void);
 };
 
-
-
 class scoped_lock {
-
   mutex_lock &lck;
-  public:
-    inline scoped_lock(mutex_lock &lck) : lck(lck) {
-      lck.lock();
-    }
 
-    inline ~scoped_lock(void) {
-      lck.unlock();
-    }
+ public:
+  inline scoped_lock(mutex_lock &lck) : lck(lck) { lck.lock(); }
+
+  inline ~scoped_lock(void) { lck.unlock(); }
 };

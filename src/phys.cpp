@@ -17,7 +17,16 @@ struct frame {
   u64 page_len;
 };
 
-static mutex_lock phys_lck;
+static mutex_lock phys_lck("physical allocator");
+
+
+static void lock(void) {
+  if (use_kernel_vm) phys_lck.lock();
+}
+
+static void unlock(void) {
+  if (use_kernel_vm) phys_lck.unlock();
+}
 
 static struct {
   int use_lock;
@@ -76,7 +85,8 @@ static void *early_phys_alloc(void) {
 
 // physical memory allocator implementation
 void *phys::alloc(int npages) {
-  scoped_lock lock(phys_lck);
+
+  lock();
 
   if (npages > 1 && !use_kernel_vm) {
     panic(
@@ -87,11 +97,15 @@ void *phys::alloc(int npages) {
   if (use_kernel_vm) {
   }
 
-  return early_phys_alloc();
+
+
+  auto p = early_phys_alloc();
+  unlock();
+  return p;
 }
 
 void phys::free(void *v) {
-  scoped_lock lock(phys_lck);
+  lock();
 
   if ((u64)v % PGSIZE) panic("phys::free requires page aligned address");
   if (v < high_kern_end) panic("phys::free cannot free below the kernel's end");
@@ -103,11 +117,13 @@ void phys::free(void *v) {
 
   // increment how many pages are freed
   kmem.nfree++;
+
+  unlock();
 }
 
 // add page frames to the allocator
 void phys::free_range(void *vstart, void *vend) {
-  scoped_lock lock(phys_lck);
+  lock();
 
   auto *fr = (frame *)PGROUNDUP((u64)vstart);
 
@@ -131,5 +147,6 @@ void phys::free_range(void *vstart, void *vend) {
     kmem.freelist->next = fr;
   }
   kmem.nfree += df->page_len;
+  unlock();
 }
 

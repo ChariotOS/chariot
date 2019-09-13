@@ -34,13 +34,11 @@ AFLAGS=-f elf64 -w-zext-reloc
 
 CINCLUDES=-I./include/
 
-COMMON_FLAGS := $(CINCLUDES) -mno-red-zone -fno-omit-frame-pointer -fno-stack-protector \
+
+CFLAGS:=$(CINCLUDES) -mno-red-zone -fno-omit-frame-pointer -fno-stack-protector \
 				 -mtls-direct-seg-refs -fno-pie -Wno-sign-compare -ffreestanding \
-				 -mcmodel=large -O3 -fno-tree-vectorize -Wno-address-of-packed-member -Wno-strict-overflow \
-				 -DGIT_REVISION=\"$(shell git rev-parse HEAD)\"
-
-
-CFLAGS:=$(COMMON_FLAGS) -Wall -fno-common -Wstrict-overflow=5
+				 -mcmodel=large -O3 -Wall -fno-common -Wstrict-overflow=5 -fno-tree-vectorize -Wno-address-of-packed-member -Wno-strict-overflow \
+				 -DGIT_REVISION=\"$(shell git rev-parse HEAD)\" 
 
 CPPFLAGS:=$(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions
 

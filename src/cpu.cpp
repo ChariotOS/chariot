@@ -20,6 +20,12 @@ cpu_t &cpu::current() {
   return *s_current;
 }
 
+cpu_t *cpu::get() {
+  return s_current;
+}
+
+task *cpu::task(void) { return current().current_task; }
+
 extern "C" void wrmsr(u32 msr, u64 val);
 
 struct gdt_desc64 {
@@ -38,9 +44,12 @@ extern "C" u64 get_sp(void);
 
 static inline void ltr(u16 sel) { asm volatile("ltr %0" : : "r"(sel)); }
 
-void cpu::seginit(void) {
-  // allocate CPU local storage (page size)
-  void *local = p2v(phys::alloc());
+void cpu::seginit(void *local) {
+  if (local == nullptr) {
+    local = p2v(phys::alloc());
+  }
+
+  // make sure the local information segment is zeroed
   memset(local, 0, PGSIZE);
 
   auto *gdt = (u64 *)local;
@@ -65,10 +74,15 @@ void cpu::seginit(void) {
                      (((addr >> 24) & 0xFF) << 56);
   gdt[SEG_TSS + 1] = (addr >> 32);
 
-  lgdt((void *)gdt, 3 * sizeof(u64));
+  for_range(i, 0, SEG_TSS+2) {
+    printk("%2d: 0x%016zu\n", i, gdt[i]);
+  }
+
+  lgdt((void *)gdt, 8 * sizeof(u64));
+
+
   // ltr(SEG_TSS << 3);
 }
-
 
 void cpu::calc_speed_khz(void) {
   auto &c = current();
@@ -79,9 +93,12 @@ void cpu::calc_speed_khz(void) {
 
   auto start_tick = c.ticks;
 
+  sti();
+
   // spin while recording
   while (1) {
-    // idk why this needs to be here... probably to uncache the c.ticks? idk dude
+    // idk why this needs to be here... probably to uncache the c.ticks? idk
+    // dude
     printk("");
     if (c.ticks - start_tick > rec_ms) {
       break;
@@ -90,15 +107,20 @@ void cpu::calc_speed_khz(void) {
 
   double cycles = rdtsc() - start_cycle;
 
+  cli();
+
   double hz = (cycles / rec_ms) * 1000.0;
   c.speed_khz = hz / 1000;
   // printk("%zu khz\n", c.speed_khz);
 }
+
 // Pushcli/popcli are like cli/sti except that they are matched:
 // it takes two popcli to undo two pushcli.  Also, if interrupts
 // are off, then pushcli, popcli leaves them off.
 
 void cpu::pushcli(void) {
+  // printk("%p\n", s_current);
+  // if (s_current == nullptr) return;
   int eflags;
 
   eflags = readeflags();
@@ -107,8 +129,8 @@ void cpu::pushcli(void) {
 }
 
 void cpu::popcli(void) {
+  // if (s_current == nullptr) return;
   if (readeflags() & FL_IF) panic("popcli - interruptible");
   if (--current().ncli < 0) panic("popcli");
   if (current().ncli == 0 && current().intena) sti();
 }
-

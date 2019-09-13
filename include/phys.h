@@ -18,7 +18,6 @@ namespace phys {
 
   u64 nfree(void);
 
-
   u64 bytes_free(void);
 };
 

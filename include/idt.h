@@ -2,6 +2,7 @@
 #define __IDT__
 
 #include <asm.h>
+#include <task.h>
 #include <types.h>
 
 #define NUM_IDT_ENTRIES 256
@@ -42,36 +43,6 @@
 #define IRQ_ERROR 19
 #define IRQ_SPURIOUS 31
 
-
-
-struct trapframe {
-  u64 rax;  // rax
-  u64 rbx;
-  u64 rcx;
-  u64 rdx;
-  u64 rbp;
-  u64 rsi;
-  u64 rdi;
-  u64 r8;
-  u64 r9;
-  u64 r10;
-  u64 r11;
-  u64 r12;
-  u64 r13;
-  u64 r14;
-  u64 r15;
-
-  u64 trapno;
-  u64 err;
-
-  u64 eip;  // rip
-  u64 cs;
-  u64 eflags;  // rflags
-  u64 esp;     // rsp
-  u64 ds;      // ss
-};
-
-
 struct gatedesc {
   u32 off_15_0 : 16;   // low 16 bits of offset in segment
   u32 cs : 16;         // code segment selector
@@ -91,15 +62,11 @@ struct idt_desc {
 
 void init_idt(void);
 
-
-typedef void (*interrupt_handler_t) (int intr, struct trapframe *);
+typedef void (*interrupt_handler_t)(int intr, regs_t *);
 
 void interrupt_register(int i, interrupt_handler_t handler);
 void interrupt_enable(int i);
 void interrupt_disable(int i);
-void interrupt_block();
-void interrupt_unblock();
-void interrupt_wait();
 
 u64 get_ticks(void);
 

@@ -132,7 +132,6 @@ section .init
 ;; Kernel entrypoint, 32bit code
 global _start
 _start:
-	cli ; disable interrupts
 
 	;; move the info that grub passes into the kenrel into
 	;; arguments that we will use when calling kmain later

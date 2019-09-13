@@ -34,8 +34,8 @@ printf "OK\n"
 
 sudo cp -r mnt/. $MOUNTPOINT/
 
-sudo mkdir -p $MOUNTPOINT/chariot
-sudo cp -r src $MOUNTPOINT/chariot/src
-sudo cp -r include $MOUNTPOINT/chariot/include
+# sudo mkdir -p $MOUNTPOINT/chariot
+# sudo cp -r src $MOUNTPOINT/chariot/src
+# sudo cp -r include $MOUNTPOINT/chariot/include
 
 sudo umount $MOUNTPOINT

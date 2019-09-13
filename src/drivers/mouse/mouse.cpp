@@ -74,8 +74,7 @@ typedef struct {
 int buttons;
 int mouse_x, mouse_y;
 
-static void mouse_handler(int i, struct trapframe* tf) {
-  cpu::scoped_cli scli;
+static void mouse_handler(int i, regs_t* tf) {
 
   u8 status = inb(MOUSE_STATUS);
 
@@ -133,8 +132,6 @@ static void mouse_handler(int i, struct trapframe* tf) {
 }
 
 void mouse_install() {
-  // disable irq in this scope
-  cpu::scoped_cli scli;
 
   mouse_wait(1);
   outb(MOUSE_STATUS, 0xA8);

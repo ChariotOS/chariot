@@ -53,33 +53,20 @@ void clear_screen(uint16_t val);
 void clear_screen(char, vga::color);
 void clear_screen();
 
-
 void set_pixel(int ind, int color);
 void set_pixel(int x, int y, int color);
 
 int rgb(int r, int g, int b);
 
+int hsl(double h, double s, double l);
+
 int width();
 int height();
 
+int flush_buffer(u32 *, int npixels);
 
-
-class vesa {
-
-
-  public:
-
-    vesa();
-
-
-  private:
-    int m_framebuffer_width = 0;
-    int m_framebuffer_height = 0;
-
-    u64 m_framebuffer_address = 0;
-
-
-    u64 find_framebuffer_address();
-};
+static inline u64 npixels(void) {
+  return width() * height();
+}
 
 };  // namespace vga

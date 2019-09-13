@@ -1,5 +1,7 @@
 #pragma once
 
+#include <lock.h>
+#include <task.h>
 #include <types.h>
 
 struct cpu_t {
@@ -8,15 +10,20 @@ struct cpu_t {
   size_t ticks = 0;
   size_t intena = 0;
   u32 speed_khz;
+  task *current_task;
+  context_t *scheduler;
 };
 
 namespace cpu {
 
 // return the current cpu struct
 cpu_t &current(void);
+cpu_t *get(void);
+
+task *task(void);
 
 // setup CPU segment descriptors, run once per cpu
-void seginit(void);
+void seginit(void *local = nullptr);
 
 void calc_speed_khz(void);
 
@@ -27,13 +34,13 @@ void pushcli();
 // interrupts again
 void popcli();
 
-static inline u64 get_ticks(void) {
-  return current().ticks;
-}
+inline int ncli(void) { return current().ncli; }
+
+static inline u64 get_ticks(void) { return current().ticks; }
 
 static inline void sleep_ms(int ms) {
   auto start = get_ticks();
-  while(1) {
+  while (1) {
     if (get_ticks() > start + ms) break;
     // TODO: yield if there is enough time left?
   }
@@ -45,6 +52,5 @@ class scoped_cli {
   inline scoped_cli() { pushcli(); }
   inline ~scoped_cli() { popcli(); }
 };
-
 
 }  // namespace cpu

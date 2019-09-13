@@ -1,13 +1,14 @@
 #include <asm.h>
+#include <cpu.h>
 #include <dev/serial.h>
 #include <idt.h>
 #include <mem.h>
 #include <paging.h>
 #include <pit.h>
 #include <printk.h>
+#include <sched.h>
 #include <types.h>
 #include <vga.h>
-#include <cpu.h>
 
 // struct gatedesc idt[NUM_IDT_ENTRIES];
 
@@ -121,15 +122,6 @@ static void interrupt_acknowledge(int i) {
   }
 }
 
-void interrupt_block() { asm("cli"); }
-
-void interrupt_unblock() { asm("sti"); }
-
-void interrupt_wait() {
-  asm("sti");
-  asm("hlt");
-}
-
 void interrupt_enable(int i) {
   if (i < 32) {
     /* do nothing */
@@ -150,7 +142,7 @@ void interrupt_disable(int i) {
 #define GIT_REVISION "NO-GIT"
 #endif
 
-static void unknown_exception(int i, struct trapframe *tf) {
+static void unknown_exception(int i, regs_t *tf) {
   auto color = vga::make_color(vga::color::white, vga::color::blue);
   vga::clear_screen(vga::make_entry(' ', color));
   vga::set_color(vga::color::white, vga::color::blue);
@@ -170,9 +162,9 @@ static void unknown_exception(int i, struct trapframe *tf) {
 
   printk("\n");
   printk(INDENT "Stats for nerds:\n");
-  printk(INDENT "INT=%016x  ERR=%016x\n", tf->trapno, tf->err);
-  printk(INDENT "ESP=%016x  EIP=%016x\n", tf->esp, tf->eip);
-  printk(INDENT "CR2=%016x  CR3=%016x\n", read_cr2(), read_cr3());
+  printk(INDENT "INT=%016zx  ERR=%016zx\n", tf->trapno, tf->err);
+  printk(INDENT "ESP=%016zx  EIP=%016zx\n", tf->esp, tf->eip);
+  printk(INDENT "CR2=%016zx  CR3=%016zx\n", read_cr2(), read_cr3());
   printk("\n");
   printk(INDENT "SYSTEM HALTED. File a bug report please:\n");
   printk(INDENT "  repo: github.com/nickwanninger/chariot\n");
@@ -187,13 +179,12 @@ static void unknown_exception(int i, struct trapframe *tf) {
   };
 }
 
-
-#define PGFLT_PRESENT  (1 << 0)
-#define PGFLT_WRITE    (1 << 1)
-#define PGFLT_USER     (1 << 2)
+#define PGFLT_PRESENT (1 << 0)
+#define PGFLT_WRITE (1 << 1)
+#define PGFLT_USER (1 << 2)
 #define PGFLT_RESERVED (1 << 3)
-#define PGFLT_INSTR    (1 << 4)
-static void pgfault_handle(int i, struct trapframe *tf) {
+#define PGFLT_INSTR (1 << 4)
+static void pgfault_handle(int i, regs_t *tf) {
   void *page = (void *)(read_cr2() & ~0xFFF);
   printk("PAGEFAULT\n");
   printk(" eip = %p\n", tf->eip);
@@ -201,7 +192,6 @@ static void pgfault_handle(int i, struct trapframe *tf) {
   printk(" page = %p\n", page);
   printk(" adr = %p\n", read_cr2());
   printk(" FLGS: ");
-
 
   if (tf->err & PGFLT_INSTR) printk("INSTRUCION ");
   if (tf->err & PGFLT_RESERVED) printk("RESERVED ");
@@ -211,28 +201,25 @@ static void pgfault_handle(int i, struct trapframe *tf) {
 
   printk("\n");
 
-
   printk(" halting\n");
-  while(1) halt();
+  while (1) halt();
   // paging::map_page(addr, addr);
   return;
 }
 
-static void tick_handle(int i, struct trapframe *tf) {
-  // disable interrupts within here.
-  cpu::scoped_cli scli;
-
+static void tick_handle(int i, regs_t *tf) {
   auto &cpu = cpu::current();
-
 
   // increment the number of ticks
   cpu.ticks++;
 
+  interrupt_acknowledge(i);
+  sched::handle_tick(cpu.ticks);
 
   return;
 }
 
-static void unknown_hardware(int i, struct trapframe *tf) {
+static void unknown_hardware(int i, regs_t *tf) {
   if (!interrupt_spurious[i]) {
     printk("interrupt: spurious interrupt %d\n", i);
   }
@@ -269,14 +256,13 @@ void init_idt(void) {
   interrupt_register(TRAP_PGFLT, pgfault_handle);
   interrupt_register(32, tick_handle);
 
-  interrupt_unblock();
   // and load the idt into the processor. It is a page in memory
   lidt(idt, 4096);
 }
 
 // where the trap handler throws us. It is up to this function to sort out
 // which trap handler to hand off to
-extern "C" void trap(struct trapframe *tf) {
+extern "C" void trap(regs_t *tf) {
   extern void pic_send_eoi(void);
 
   int i = tf->trapno;

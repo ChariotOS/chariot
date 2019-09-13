@@ -44,6 +44,9 @@ SECTIONS
 		. = ALIGN(0x1000);
 		idt_block = .;
 		. += 0x1000;
+
+		boot_cpu_local = .;
+		. += 0x1000;
 	}
 
 

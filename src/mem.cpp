@@ -240,16 +240,29 @@ extern void *mm_malloc(size_t size);
 extern void mm_free(void *ptr);
 extern void *mm_realloc(void *ptr, size_t size);
 
-static mutex_lock s_allocator_lock;
+static mutex_lock s_allocator_lock("allocator");
+
+
+
+static void alloc_lock(void) {
+  s_allocator_lock.lock();
+}
+
+static void alloc_unlock(void) {
+ s_allocator_lock.unlock();
+}
 
 void *kmalloc(u64 size) {
-  s_allocator_lock.lock();
+  alloc_lock();
   auto ptr = mm_malloc(size);
-  s_allocator_lock.unlock();
+  alloc_unlock();
+
+
+  // printk("kmalloc(%zu) -> %p\n", size, ptr);
   return ptr;
 }
 void kfree(void *ptr) {
-  s_allocator_lock.lock();
+  alloc_lock();
   auto p = (u64)ptr;
   if (ptr != NULL) {
     if (!(p >= (u64)kheap_lo() && p < (u64)kheap_hi())) {
@@ -257,12 +270,12 @@ void kfree(void *ptr) {
     }
     mm_free(ptr);
   }
-  s_allocator_lock.unlock();
+  alloc_unlock();
 }
 
 void *krealloc(void *ptr, u64 newsize) {
-  s_allocator_lock.lock();
+  alloc_lock();
   auto p = mm_realloc(ptr, newsize);
-  s_allocator_lock.unlock();
+  alloc_unlock();
   return p;
 }

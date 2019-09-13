@@ -368,8 +368,8 @@ static void key_state_changed(u8 raw, bool pressed) {
   kbd_buf.write((u8*)&event, sizeof(keyevent));
 }
 
-static void kbd_handler(int i, struct trapframe *tf) {
-  cpu::scoped_cli scli;
+static void kbd_handler(int i, regs_t *tf) {
+  // cpu::scoped_cli scli;
 
   for (;;) {
     u8 status = inb(I8042_STATUS);
@@ -435,7 +435,7 @@ class kbd_dev : public dev::char_dev {
 
   virtual int read(u64 offset, u32 len, void *dst) override {
     // TODO: do I need to disable interrupts here (?)
-    cpu::scoped_cli scli;
+    // cpu::scoped_cli scli;
     return kbd_buf.read((u8 *)dst, len);
   }
   virtual int write(u64 offset, u32 len, const void *) override {

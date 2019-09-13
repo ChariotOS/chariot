@@ -100,8 +100,6 @@ void vga::set_color(enum vga::color fg, enum vga::color bg) {
   vga_attr = make_color(fg, bg);
 }
 
-
-
 void vga::init(void) {
   vga_x = vga_y = 0;
   vga_attr = vga::make_color(color::white, color::black);
@@ -138,13 +136,9 @@ u32 *vga_fba = 0;
 int m_framebuffer_width = 0;
 int m_framebuffer_height = 0;
 
-int vga::width() {
-  return m_framebuffer_width;
-}
+int vga::width() { return m_framebuffer_width; }
 
-int vga::height() {
-  return m_framebuffer_height;
-}
+int vga::height() { return m_framebuffer_height; }
 
 static void set_register(u16 index, u16 data) {
   outw(VBE_DISPI_IOPORT_INDEX, index);
@@ -181,11 +175,34 @@ void vga::set_pixel(int ind, int color) {
   vga_fba[ind] = color;
 }
 
-
 int vga::rgb(int r, int g, int b) {
   return ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
 }
 
+static double hue2rgb(double p, double q, double t) {
+  if (t < 0) t += 1;
+  if (t > 1) t -= 1;
+  if (t < 1.0 / 6.0) return p + (q - p) * 6 * t;
+  if (t < 1.0 / 2.0) return q;
+  if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
+  return p;
+}
+int vga::hsl(double h, double s, double l) {
+  double r, g, b;
+
+  if (s == 0) {
+    r = g = b = l;  // achromatic
+  } else {
+    double q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    double p = 2.0 * l - q;
+
+    r = hue2rgb(p, q, h + 1 / 3.0);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1.0 / 3.0);
+  }
+
+  return vga::rgb(r * 255.0, g * 255.0, b * 255.0);
+}
 static void *get_framebuffer_address(void) {
   void *addr = nullptr;
   pci::walk_devices([&](pci::device *dev) {
@@ -196,20 +213,20 @@ static void *get_framebuffer_address(void) {
   return addr;
 }
 
+int vga::flush_buffer(u32 *dbuf, int npixels) {
+  int len = width() * height();
+  if (npixels < len) len = npixels;
+
+  memcpy(vga_fba, dbuf, sizeof(u32) * npixels);
+  return len;
+}
+
 static void vga_init_mod(void) {
   vga_fba = (u32 *)p2v(get_framebuffer_address());
 
-  printk("fba: %p\n", vga_fba);
   // set_resolution(1024, 768);
   // set_resolution(800, 600);
   set_resolution(640, 480);
-
-  // clear the framebuffer
-  for_range(x, 0, m_framebuffer_width) {
-    for_range(y, 0, m_framebuffer_height) {
-      // vga::set_pixel(x, y, 0x000000);
-    }
-  }
 }
 
 module_init("vga", vga_init_mod);
