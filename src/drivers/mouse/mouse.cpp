@@ -1,16 +1,21 @@
+#include <cpu.h>
 #include <dev/char_dev.h>
 #include <dev/driver.h>
 #include <errno.h>
+#include <fifo_buf.h>
+#include <idt.h>
 #include <mem.h>
 #include <module.h>
+#include <mouse_packet.h>
 #include <printk.h>
-#include <cpu.h>
+#include <sched.h>
 #include <vga.h>
 #include "../majors.h"
-#include <idt.h>
 
-uint8_t mouse_cycle = 0;
-char mouse_byte[3];
+static fifo_buf mouse_buffer(true);
+
+static uint8_t mouse_cycle = 0;
+static char mouse_byte[3];
 
 #define PACKETS_IN_PIPE 1024
 #define DISCARD_POINT 32
@@ -60,25 +65,24 @@ uint8_t mouse_read() {
   return t;
 }
 
-#define LEFT_CLICK 0x01
-#define RIGHT_CLICK 0x02
-#define MIDDLE_CLICK 0x04
+static int buttons;
+static int mouse_x, mouse_y;
 
-typedef struct {
-  uint32_t magic;
-  char x_difference;
-  char y_difference;
-  u32 buttons;
-} mouse_device_packet_t;
+static void mouse_handler(int i, regs_t *tf) {
+  cpu::pushcli();
 
-int buttons;
-int mouse_x, mouse_y;
+  // sched::play_tone(440, 25);
+  // printk("mouse int:\n");
+  while (1) {
 
-static void mouse_handler(int i, regs_t* tf) {
 
-  u8 status = inb(MOUSE_STATUS);
+    u8 status = inb(MOUSE_STATUS);
 
-  while (status & MOUSE_BBIT) {
+    // printk("%02x\n", status);
+
+    if ((status & MOUSE_BBIT) == 0) {
+      break;
+    }
     i8 mouse_in = inb(MOUSE_PORT);
 
     if (status & MOUSE_F_BIT) {
@@ -99,40 +103,44 @@ static void mouse_handler(int i, regs_t* tf) {
             /* x/y overflow? bad packet! */
             break;
           }
-          mouse_device_packet_t packet;
+          mouse_packet_t packet;
           packet.magic = MOUSE_MAGIC;
-          packet.x_difference = mouse_byte[1];
-          packet.y_difference = mouse_byte[2];
+          packet.dx = mouse_byte[1];
+          packet.dy = mouse_byte[2];
           packet.buttons = 0;
           if (mouse_byte[0] & 0x01) {
-            packet.buttons |= LEFT_CLICK;
+            packet.buttons |= MOUSE_LEFT_CLICK;
           }
           if (mouse_byte[0] & 0x02) {
-            packet.buttons |= RIGHT_CLICK;
+            packet.buttons |= MOUSE_RIGHT_CLICK;
           }
           if (mouse_byte[0] & 0x04) {
-            packet.buttons |= MIDDLE_CLICK;
+            packet.buttons |= MOUSE_MIDDLE_CLICK;
           }
           mouse_cycle = 0;
 
-          mouse_x = mouse_x + packet.x_difference;
+          mouse_x = mouse_x + packet.dx;
           if (mouse_x < 0) mouse_x = 0;
           if (mouse_x >= vga::width() - 1) mouse_x = vga::width() - 1;
-          mouse_y = mouse_y - packet.y_difference;
+          mouse_y = mouse_y - packet.dy;
           if (mouse_y < 0) mouse_y = 0;
           if (mouse_y >= vga::height() - 1) mouse_y = vga::height() - 1;
           buttons = packet.buttons;
+
+          // printk("%d:%d\n", packet.dx, -packet.dy);
+          mouse_buffer.write((const u8 *)&packet, sizeof(packet));
 
           break;
       }
     }
 
-    status = inb(MOUSE_STATUS);
+    // status = inb(MOUSE_STATUS);
   }
+
+  cpu::popcli();
 }
 
 void mouse_install() {
-
   mouse_wait(1);
   outb(MOUSE_STATUS, 0xA8);
   mouse_wait(1);
@@ -156,11 +164,10 @@ class mouse_dev : public dev::char_dev {
   mouse_dev(ref<dev::driver> dr) : dev::char_dev(dr) {}
 
   virtual int read(u64 offset, u32 len, void *dst) override {
+    return mouse_buffer.read((u8 *)dst, len);
     return 0;
   }
-  virtual int write(u64 offset, u32 len, const void *) override {
-    return 0;
-  }
+  virtual int write(u64 offset, u32 len, const void *) override { return 0; }
   virtual ssize_t size(void) override { return mem_size(); }
 };
 
@@ -183,6 +190,7 @@ class mousedev_driver : public dev::driver {
 };
 
 static void dev_init(void) {
+  mouse_install();
   dev::register_driver(MAJOR_MOUSE, make_ref<mousedev_driver>());
 }
 

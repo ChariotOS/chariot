@@ -2,11 +2,29 @@
 
 #include <lock.h>
 #include <vec.h>
+#include <single_list.h>
+
+// forward declare
+class task;
 
 class fifo_buf {
  public:
-  fifo_buf()
-      : m_write_buffer(&m_buffer1), m_read_buffer(&m_buffer2), m_lock("fifo") {}
+
+   bool m_blocking;
+
+   struct blocking_task {
+     size_t still_needs = 0;
+     task *waiter = nullptr;
+   };
+
+
+   int navail = 0;
+   single_list<blocking_task> waiters;
+
+
+
+  fifo_buf(bool blocking = false)
+      : m_blocking(blocking), m_write_buffer(&m_buffer1), m_read_buffer(&m_buffer2), m_lock("fifo") {}
 
   ssize_t write(const u8*, ssize_t);
   ssize_t read(u8*, ssize_t);

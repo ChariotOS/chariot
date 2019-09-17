@@ -8,6 +8,8 @@
 #include <mem.h>
 #include <module.h>
 #include <printk.h>
+#include <single_list.h>
+#include <task.h>
 #include <vga.h>
 #include "../majors.h"
 
@@ -20,7 +22,7 @@
 #define I8042_MOUSE_BUFFER 0x20
 #define I8042_KEYBOARD_BUFFER 0x00
 
-static fifo_buf kbd_buf;
+static fifo_buf kbd_buf(true);
 
 static char map[0x80] = {
     0,
@@ -356,8 +358,9 @@ static void update_modifier(u8 modifier, bool state) {
     m_modifiers &= ~modifier;
 }
 
+
 static void key_state_changed(u8 raw, bool pressed) {
-  keyevent event;
+  keyboard_packet_t event;
   event.magic = KEY_EVENT_MAGIC;
   event.key =
       (m_modifiers & mod_shift) ? shifted_key_map[raw] : unshifted_key_map[raw];
@@ -365,7 +368,8 @@ static void key_state_changed(u8 raw, bool pressed) {
   event.flags = m_modifiers;
   if (pressed) event.flags |= is_pressed;
 
-  kbd_buf.write((u8*)&event, sizeof(keyevent));
+  // first, check for a waiting process to wake
+  kbd_buf.write((u8 *)&event, sizeof(keyboard_packet_t));
 }
 
 static void kbd_handler(int i, regs_t *tf) {
@@ -404,27 +408,6 @@ static void kbd_handler(int i, regs_t *tf) {
         break;
       default:
         key_state_changed(ch, pressed);
-
-        // if (pressed) printk("%c", (shifted ? shift_map : map)[ch]);
-        // printk("default %d %d '%c'\n", pressed, shifted, (shifted ? shift_map
-        // : map)[ch]);
-        /*
-        if (m_modifiers & Mod_Alt) {
-            switch (map[ch]) {
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-                VirtualConsole::switch_to(map[ch] - '0' - 1);
-                break;
-            default:
-                key_state_changed(ch, pressed);
-                break;
-            }
-        } else {
-            key_state_changed(ch, pressed);
-        }
-        */
     }
   }
 }
@@ -435,7 +418,6 @@ class kbd_dev : public dev::char_dev {
 
   virtual int read(u64 offset, u32 len, void *dst) override {
     // TODO: do I need to disable interrupts here (?)
-    // cpu::scoped_cli scli;
     return kbd_buf.read((u8 *)dst, len);
   }
   virtual int write(u64 offset, u32 len, const void *) override {
