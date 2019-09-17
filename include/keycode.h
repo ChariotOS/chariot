@@ -126,7 +126,7 @@ enum keymodifier {
 
 #define KEY_EVENT_MAGIC 0xFFF8
 
-struct keyevent {
+struct keyboard_packet_t {
   u16 magic;
   keycode key{key_invalid};
   u8 character{0};
