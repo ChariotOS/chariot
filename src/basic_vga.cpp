@@ -216,17 +216,18 @@ static void *get_framebuffer_address(void) {
 int vga::flush_buffer(u32 *dbuf, int npixels) {
   int len = width() * height();
   if (npixels < len) len = npixels;
-
-  memcpy(vga_fba, dbuf, sizeof(u32) * npixels);
+  int i = 0;
+  for (; i < npixels; i += 2) *(u64 *)(vga_fba + i) = *(u64 *)(dbuf + i);
+  for (; i < npixels; i++) vga_fba[i] = dbuf[i];
   return len;
 }
 
 static void vga_init_mod(void) {
   vga_fba = (u32 *)p2v(get_framebuffer_address());
 
-  // set_resolution(1024, 768);
+  set_resolution(1024, 768);
   // set_resolution(800, 600);
-  set_resolution(640, 480);
+  // set_resolution(640, 480);
 }
 
 module_init("vga", vga_init_mod);
