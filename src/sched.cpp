@@ -1,6 +1,7 @@
 #include <asm.h>
 #include <cpu.h>
 #include <lock.h>
+#include <pcspeaker.h>
 #include <sched.h>
 #include <single_list.h>
 #include <task.h>
@@ -18,7 +19,10 @@ extern "C" void swtch(context_t **, context_t *);
 static mutex_lock task_lock("task");
 int next_pid = 1;
 static bool s_enabled = true;
-static single_list<task *> task_queue;
+
+static task *task_queue;
+static task *last_task;
+// static single_list<task *> task_queue;
 
 static task *talloc(const char *name, gid_t group, int ring) {
   task_lock.lock();
@@ -31,19 +35,27 @@ static task *talloc(const char *name, gid_t group, int ring) {
 static task *next_task(void) {
   task *nt = nullptr;
   task_lock.lock();
-  if (!task_queue.is_empty()) {
-    nt = task_queue.take_first();
+
+  if (task_queue != nullptr) {
+    nt = task_queue;
+    task_queue = nt->next;
   }
   task_lock.unlock();
-
-  // printk("%p\n", nt);
 
   return nt;
 }
 
 static void add_task(task *tsk) {
   task_lock.lock();
-  task_queue.append(tsk);
+
+  if (task_queue == nullptr) {
+    task_queue = tsk;
+    last_task = tsk;
+  } else {
+    last_task->next = tsk;
+    last_task = tsk;
+  }
+  // task_queue.append(tsk);
   task_lock.unlock();
 }
 
@@ -54,10 +66,6 @@ static void ktaskcreateret(void) {
 
   cpu::popcli();
 
-  auto task = cpu::task();
-
-  printk("func: %p %d\n", task->context->r15, task->pid());
-
   // call the kernel task function
   cpu::task()->kernel_func();
 
@@ -66,14 +74,15 @@ static void ktaskcreateret(void) {
   panic("ZOMBIE kernel task was ran\n");
 }
 
-pid_t sched::spawn_kernel_task(const char *name, void (*e)()) {
+pid_t sched::spawn_kernel_task(const char *name, void (*e)(),
+                               create_opts opts) {
   // alloc the task under the kernel group
   auto p = talloc(name, 0, RING_KERNEL);
 
   // printk("eip: %p\n", e);
   p->context->eip = (u64)e;
 
-  // p->timeslice = 200;
+  p->timeslice = opts.timeslice;
   //
   p->kernel_func = e;
 
@@ -93,9 +102,9 @@ pid_t sched::spawn_kernel_task(const char *name, void (*e)()) {
 static void switch_into(task *tsk) {
   INFO("ctxswtch: pid=%-4d gid=%-4d\n", tsk->pid(), tsk->gid());
   cpu::current().current_task = tsk;
-
   tsk->start_tick = cpu::get_ticks();
   tsk->state = task::state::RUNNING;
+
   swtch(&cpu::current().scheduler, tsk->context);
   cpu::current().current_task = nullptr;
 }
@@ -117,6 +126,10 @@ static void do_yield(enum task::state st) {
   schedule();
 
   cpu::popcli();
+}
+
+void sched::block() {
+  do_yield(task::state::BLOCKED);
 }
 
 void sched::yield() { do_yield(task::state::RUNNABLE); }
@@ -162,23 +175,29 @@ void sched::run() {
 
 bool sched::enabled() { return s_enabled; }
 
+static u64 beep_timeout = 0;
+
+void sched::play_tone(int frq, int dur) {
+  pcspeaker::set(frq);
+  beep_timeout = cpu::get_ticks() + dur;
+}
+
+void sched::beep(void) {
+  play_tone(440, 25);
+}
+
 void sched::handle_tick(u64 ticks) {
-  if (!enabled()) {
-    return;
-  }
-  if (cpu::task() == nullptr) {
-    return;
+  if (ticks >= beep_timeout) {
+    pcspeaker::clear();
   }
 
-  if (cpu::task()->state != task::state::RUNNING) {
+  if (!enabled() || cpu::task() == nullptr ||
+      cpu::task()->state != task::state::RUNNING) {
     return;
   }
-
-  // printk("\n%zu %zu %zu\n", ticks, ticks - cpu::task()->start_tick,
-  // cpu::task()->timeslice);
 
   // yield?
-  // if (ticks - cpu::task()->start_tick >= cpu::task()->timeslice)
-  // printk("tick\n");
-  sched::yield();
+  if (ticks - cpu::task()->start_tick >= cpu::task()->timeslice) {
+    sched::yield();
+  }
 }
