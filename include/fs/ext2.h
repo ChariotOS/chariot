@@ -8,6 +8,7 @@
 #include <func.h>
 #include <vec.h>
 #include <map.h>
+#include <lock.h>
 
 /*
  * Ext2 directory file types.  Only the low 3 bits are used.  The
@@ -245,6 +246,8 @@ class ext2 final : public filesystem {
   dev::blk_cache disk_cache;
 
   map<u32, fs::vnoderef> vnode_cache;
+
+  mutex_lock m_lock;
 };
 }  // namespace fs
 

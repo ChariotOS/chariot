@@ -31,7 +31,6 @@ u64 *alloc_page_dir(void) {
     paging::map((u64)new_table, (u64)new_table);
   }
 
-  INFO("%p\n", va);
   for (int i = 0; i < 512; i++) va[i] = 0;
   return new_table;
 }
@@ -160,7 +159,7 @@ void paging::map_into(u64 *p4, u64 va, u64 pa, pgsize size, u16 flags) {
 }
 
 void paging::map(u64 va, u64 pa, pgsize size, u16 flags) {
-  auto p4 = (u64*)read_cr3();
+  auto p4 = (u64*)p2v(read_cr3());
   // printk("mapping %p %p (%d)\n", va, pa, size);
   return paging::map_into(p4, va, pa, size, flags);
 }

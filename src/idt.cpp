@@ -219,11 +219,20 @@ static void tick_handle(int i, regs_t *tf) {
   return;
 }
 
+static void dbl_flt_handler(int i, regs_t *tf) {
+  printk("DOUBLE FAULT!\n");
+  while (1) {}
+}
+
+
+
 static void unknown_hardware(int i, regs_t *tf) {
+  /*
   if (!interrupt_spurious[i]) {
     printk("interrupt: spurious interrupt %d\n", i);
   }
   interrupt_spurious[i]++;
+  */
 }
 
 void interrupt_register(int i, interrupt_handler_t handler) {
@@ -243,18 +252,24 @@ void init_idt(void) {
     interrupt_acknowledge(i);
   }
   for (i = 0; i < 32; i++) {
-    interrupt_handler_table[i] = unknown_exception;
+
+    interrupt_register(i, unknown_exception);
     interrupt_spurious[i] = 0;
     interrupt_count[i] = 0;
   }
   for (i = 32; i < 48; i++) {
-    interrupt_handler_table[i] = unknown_hardware;
+    interrupt_register(i, unknown_hardware);
     interrupt_spurious[i] = 0;
     interrupt_count[i] = 0;
   }
 
+
+  interrupt_register(TRAP_DBLFLT, dbl_flt_handler);
   interrupt_register(TRAP_PGFLT, pgfault_handle);
   interrupt_register(32, tick_handle);
+
+
+  // printk("idt=%p\n", idt);
 
   // and load the idt into the processor. It is a page in memory
   lidt(idt, 4096);
@@ -263,6 +278,8 @@ void init_idt(void) {
 // where the trap handler throws us. It is up to this function to sort out
 // which trap handler to hand off to
 extern "C" void trap(regs_t *tf) {
+  //printk("trap: rip=%p tsk=%p\n", tf->eip, cpu::task());
+
   extern void pic_send_eoi(void);
 
   int i = tf->trapno;
@@ -270,3 +287,4 @@ extern "C" void trap(regs_t *tf) {
   interrupt_acknowledge(i);
   interrupt_count[i]++;
 }
+

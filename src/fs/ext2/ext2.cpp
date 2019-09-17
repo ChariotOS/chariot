@@ -47,7 +47,7 @@ typedef struct __ext2_dir_entry {
 #define EXT2_CACHE_SIZE 128
 
 fs::ext2::ext2(ref<dev::device> dev)
-    : filesystem(/*super*/), dev(dev), disk_cache(dev, 64) {
+    : filesystem(/*super*/), dev(dev), disk_cache(dev, 64), m_lock("ext2fs") {
   TRACE;
 }
 
@@ -60,6 +60,7 @@ fs::ext2::~ext2(void) {
 
 bool fs::ext2::init(void) {
   TRACE;
+
   sb = new superblock();
   // read the superblock
   bool res = dev->read(1024, 1024, sb);
@@ -76,7 +77,6 @@ bool fs::ext2::init(void) {
   }
 
   sb->last_check = dev::RTC::now();
-
 
   // solve for the filesystems block size
   blocksize = 1024 << sb->blocksize_hint;
@@ -209,6 +209,10 @@ void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,
 
 void *fs::ext2::read_entire(ext2_inode_info &inode) {
   TRACE;
+
+  scoped_lock lck(m_lock);
+
+
   u32 block_count = inode.size / blocksize;
   if (inode.size % blocksize != 0) block_count++;
 
@@ -267,6 +271,9 @@ vec<fs::directory_entry> fs::ext2::read_dir(u32 inode) {
 
 vec<fs::directory_entry> fs::ext2::read_dir(ext2_inode_info &inode) {
   TRACE;
+
+  scoped_lock lck(m_lock);
+
   vec<fs::directory_entry> entries;
 
   traverse_dir(inode, [&](fs::directory_entry ent) -> bool {
@@ -289,10 +296,14 @@ int fs::ext2::read_file(ext2_inode_info &inode, u32 off, u32 len, u8 *buf) {
   return 0;
 }
 
-fs::vnoderef fs::ext2::get_root_inode(void) { return m_root_inode; }
+fs::vnoderef fs::ext2::get_root_inode(void) {
+  scoped_lock lck(m_lock);
+  return m_root_inode;
+}
 
 fs::vnoderef fs::ext2::get_inode(u32 index) {
   TRACE;
+  scoped_lock lck(m_lock);
 
   // TODO: lock the vnode cache
   // TODO: move the flush logic to a sync daemon

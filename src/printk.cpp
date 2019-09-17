@@ -5,6 +5,7 @@
 #include <string.h>
 #include <types.h>
 #include <vga.h>
+#include <cpu.h>
 
 // define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H ...) to include the
 // printf_config.h header file
@@ -903,6 +904,8 @@ static int _vsnprintf(out_fct_type out, char *buffer, const size_t maxlen,
 ///////////////////////////////////////////////////////////////////////////////
 
 int printk(const char *format, ...) {
+
+  cpu::pushcli();
   // static mutex_lock lk("printk");
   // lk.lock();
   va_list va;
@@ -910,6 +913,8 @@ int printk(const char *format, ...) {
   char buffer[1];
   const int ret = _vsnprintf(_out_char, buffer, (size_t)-1, format, va);
   va_end(va);
+
+  cpu::popcli();
   // lk.unlock();
   return ret;
 }

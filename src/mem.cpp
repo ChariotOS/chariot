@@ -242,21 +242,14 @@ extern void *mm_realloc(void *ptr, size_t size);
 
 static mutex_lock s_allocator_lock("allocator");
 
+static void alloc_lock(void) { s_allocator_lock.lock(); }
 
-
-static void alloc_lock(void) {
-  s_allocator_lock.lock();
-}
-
-static void alloc_unlock(void) {
- s_allocator_lock.unlock();
-}
+static void alloc_unlock(void) { s_allocator_lock.unlock(); }
 
 void *kmalloc(u64 size) {
   alloc_lock();
   auto ptr = mm_malloc(size);
   alloc_unlock();
-
 
   // printk("kmalloc(%zu) -> %p\n", size, ptr);
   return ptr;

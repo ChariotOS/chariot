@@ -51,7 +51,7 @@ class task final {
   task(string name, pid_t, gid_t, int ring = 3);
   ~task(void);
 
-  enum state : u8 { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+  enum state : u8 { UNUSED, EMBRYO, SLEEPING, BLOCKED, RUNNABLE, RUNNING, ZOMBIE };
 
   inline pid_t pid(void) { return m_pid; }
   inline gid_t gid(void) { return m_gid; }
@@ -72,7 +72,11 @@ class task final {
   u64 start_tick = 0;
 
 
-  
+  // for the intrusive linked list
+  task *next;
+  task *prev;
+
+
   void (*kernel_func)(void);
 
  protected:

@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <fs/file.h>
 #include <fs/vfs.h>
+#include <lock.h>
 #include <map.h>
 
 u64 vfs::qualified_inode_number(const fs::filesystem &f, u32 inode) {

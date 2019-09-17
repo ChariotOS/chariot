@@ -12,7 +12,7 @@ extern "C" void trapret(void);
 
 
 task::task(string name, pid_t pid, gid_t gid, int ring) : m_ring(ring),m_name(name), m_pid(pid), m_gid(gid) {
-  int stksize = 4096 * 4;
+  int stksize = 4096 * 6;
   kernel_stack = kmalloc(stksize);
 
 

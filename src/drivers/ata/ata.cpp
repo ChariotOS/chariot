@@ -10,6 +10,8 @@
 #include <ptr.h>
 #include <vga.h>
 #include "../majors.h"
+#include <lock.h>
+#include <sched.h>
 
 // #define DEBUG
 // #define DO_TRACE
@@ -59,6 +61,12 @@
 #define BMR_STATUS_INT 0x4
 #define BMR_STATUS_ERR 0x2
 
+
+/**
+ * TODO: use per-channel ATA mutex locks. Right now every ata drive is locked the same way
+ */
+static mutex_lock drive_lock("ATA drive");
+
 /*
  * TODO: determine if we need this function
 static void wait_400ns(u16 io_base) {
@@ -72,6 +80,7 @@ u16 primary_master_bmr_status = 0;
 u16 primary_master_bmr_command = 0;
 
 dev::ata::ata(u16 portbase, bool master) : dev::blk_dev(nullptr) {
+  scoped_lock lck(drive_lock);
   m_io_base = portbase;
   TRACE;
   sector_size = 512;
@@ -91,11 +100,13 @@ dev::ata::ata(u16 portbase, bool master) : dev::blk_dev(nullptr) {
 }
 
 dev::ata::~ata() {
+  scoped_lock lck(drive_lock);
   TRACE;
   kfree(id_buf);
   if (m_dma_buffer != 0) {
     phys::free(m_dma_buffer);
   }
+  drive_lock.unlock();
 }
 
 void dev::ata::select_device() {
@@ -104,7 +115,7 @@ void dev::ata::select_device() {
 }
 
 bool dev::ata::identify() {
-  TRACE;
+  scoped_lock lck(drive_lock);
   // select the correct device
   select_device();
   // clear the HOB bit, idk what that is.
@@ -187,6 +198,7 @@ bool dev::ata::identify() {
 }
 
 bool dev::ata::read_block(u32 sector, u8* data) {
+
   TRACE;
 
   // TODO: also check for scheduler avail
@@ -194,7 +206,10 @@ bool dev::ata::read_block(u32 sector, u8* data) {
     return read_block_dma(sector, data);
   }
 
-  // TODO: take a lock
+
+  // take a scoped lock
+  scoped_lock lck(drive_lock);
+
 
   // printk("read block %d\n", sector);
 
@@ -233,8 +248,7 @@ bool dev::ata::read_block(u32 sector, u8* data) {
 
 bool dev::ata::write_block(u32 sector, const u8* buf) {
   TRACE;
-
-  // printk("write block %d\n", sector);
+  scoped_lock lck(drive_lock);
 
   if (sector & 0xF0000000) return false;
 
@@ -275,6 +289,8 @@ bool dev::ata::flush(void) {
 
 u8 dev::ata::wait(void) {
   TRACE;
+
+  // TODO: schedule out while waiting?
   u8 status = command_port.in();
   while (((status & 0x80) == 0x80) && ((status & 0x01) != 0x01)) {
     status = command_port.in();
@@ -299,7 +315,7 @@ ssize_t dev::ata::size() {
 bool dev::ata::read_block_dma(u32 sector, u8* data) {
   TRACE;
 
-  // TODO: take a lock.
+  scoped_lock lck(drive_lock);
 
   if (sector & 0xF0000000) return false;
 

@@ -37,6 +37,8 @@ static inline void lgdt(void *data, int size) {
   gdt.limit = size - 1;
   gdt.base = (u64)data;
 
+  printk("lgdt(%p)\n", data);
+
   asm volatile("lgdt %0" ::"m"(gdt));
 }
 
@@ -74,11 +76,7 @@ void cpu::seginit(void *local) {
                      (((addr >> 24) & 0xFF) << 56);
   gdt[SEG_TSS + 1] = (addr >> 32);
 
-  for_range(i, 0, SEG_TSS+2) {
-    printk("%2d: 0x%016zu\n", i, gdt[i]);
-  }
-
-  lgdt((void *)gdt, 8 * sizeof(u64));
+  lgdt((void *)gdt, 5 * sizeof(u64));
 
 
   // ltr(SEG_TSS << 3);

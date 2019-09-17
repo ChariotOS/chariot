@@ -9,7 +9,7 @@ static u8 vga_x, vga_y;
 static u8 vga_attr;
 
 static inline void vga_write_screen(uint8_t x, uint8_t y, uint16_t val) {
-  *(((uint16_t *)VGA_BASE_ADDR) + y * VGA_WIDTH + x) = val;
+  *(((uint16_t *)p2v(VGA_BASE_ADDR)) + y * VGA_WIDTH + x) = val;
 }
 
 void vga::clear_screen(char val, vga::color color) {
@@ -85,7 +85,7 @@ inline void vga::get_cursor(uint8_t *x, uint8_t *y) {
 
 void vga::scrollup(void) {
   int i;
-  uint16_t *buf = (uint16_t *)VGA_BASE_ADDR;
+  uint16_t *buf = (uint16_t *)p2v(VGA_BASE_ADDR);
 
   for (i = 0; i < VGA_WIDTH * (VGA_HEIGHT - 1); i++) {
     buf[i] = buf[i + VGA_WIDTH];
