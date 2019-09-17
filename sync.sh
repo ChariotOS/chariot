@@ -38,4 +38,9 @@ sudo cp -r mnt/. $MOUNTPOINT/
 # sudo cp -r src $MOUNTPOINT/chariot/src
 # sudo cp -r include $MOUNTPOINT/chariot/include
 
+# cd user && make
+
+
+sudo cp -r user $MOUNTPOINT/bin
+
 sudo umount $MOUNTPOINT
