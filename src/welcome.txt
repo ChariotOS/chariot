@@ -4,4 +4,4 @@
            / /___/ / / / /_/ / /  / / /_/ / /_
            \____/_/ /_/\__,_/_/  /_/\____/\__/
 
-       A Hobby "Operating System" by Nick Wanninger
+         A Hobby Operating System by Nick Wanninger

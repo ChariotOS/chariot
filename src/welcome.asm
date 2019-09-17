@@ -1,4 +1,3 @@
-align 4096
 global chariot_welcome_start
 chariot_welcome_start:
 
