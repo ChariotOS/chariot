@@ -113,29 +113,19 @@ static void screen_drawer(void) {
 
   buf = new u32[vga::npixels()];
 
-  int ox = 0, oy = 0;
   while (1) {
     c++;
 
-    int width = 320;
+    int width = 25;
     u32 col = vga::hsl((c % width) / (float)width, 1, 0.5);
 
-    // if (clicked) draw_square(cx, cy, mouse_x - cx, mouse_y - cy, col);
+    memset(buf, 0xFF, vga::npixels() * sizeof(u32));
 
-    draw_square(mouse_x, mouse_y, 40, 40, col);
-
-    ox = mouse_x;
-    oy = mouse_y;
-
+    if (clicked) draw_square(cx, cy, mouse_x - cx, mouse_y - cy, col);
+    draw_square(mouse_x, mouse_y, 20, 20, col);
     vga::flush_buffer(buf, vga::npixels());
 
-    /*
-    for_range(y, 0, 10) for_range(x, 0, 10) {
-      vga::set_pixel(mouse_x + x, mouse_y + y, 0xFFFFFF);
-    }
-    */
-
-    // cpu::sleep_ms(16);
+    cpu::sleep_ms(16);
   }
 
   delete[] buf;
@@ -233,18 +223,23 @@ static void kmain2(void) {
    * TODO: dont use FP in the kernel.
    */
   enable_sse();
-  printk("right here\n");
 
-#if 1
-  auto* pt = (u64*)p2v(read_cr3());
-  pt[0] = 0;
+  /**
+   * unmap the low memory, as the kenrel needs to work without it in order to
+   * support process level mappings later on. To do this, we just remove the
+   * entry from the page table. "simple"
+   *
+   * this caused me a big oof, because after this call, any references
+   * to low memory are invalid, which means vga framebuffers (the main problem)
+   * need to now reference high kernel virtual memory
+   */
+  *((u64*)p2v(read_cr3())) = 0;
   tlb_flush();
-  printk("page table: %p\n", pt);
-  // __asm__ volatile ("int 0x21\n");
-#endif
+  KINFO("cleared low memory 1:1 mapping\n");
 
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
+  KINFO("called global constructors\n");
 
   // initialize smp
   // if (!smp::init()) panic("smp failed!\n");
@@ -252,22 +247,29 @@ static void kmain2(void) {
   // initialize the PCI subsystem by walking the devices and creating an
   // internal representation that is faster to access later on
   pci::init();
+  KINFO("Initialized PCI\n");
 
   // initialize the programmable interrupt timer
   init_pit();
+  KINFO("Initialized PIT\n");
 
   // Set the PIT interrupt frequency to how many times per second it should fire
   set_pit_freq(1000);
 
   assert(fs::devfs::init());
 
-  cpu::calc_speed_khz();
+  // KINFO("Detecting CPU speed\n");
+  // cpu::calc_speed_khz();
+  // KINFO("CPU SPEED: %fmHz\n", cpu::current().speed_khz / 1000000.0);
 
   // initialize the scheduler
   assert(sched::init());
+  KINFO("Initialized the scheduler\n");
 
   // walk the kernel modules and run their init function
+  KINFO("Calling kernel module init functions\n");
   initialize_kernel_modules();
+  KINFO("kernel modules initialized\n");
 
   // open up the disk device for the root filesystem
   auto rootdev = dev::open("ata1");
@@ -295,18 +297,30 @@ static void kmain2(void) {
   kfree(data);
   */
 
-  sched::spawn_kernel_task("rainbow", screen_drawer, {.timeslice = 1});
-  sched::spawn_kernel_task("kbd1", []() {
+  // create a simple idle task
+  sched::spawn_kernel_thread("idle", idle_task,
+                           {.timeslice = 1, .priority = PRIORITY_IDLE});
+
+  sched::spawn_kernel_thread("rainbow", screen_drawer, {.timeslice = 1});
+
+  sched::spawn_kernel_thread("kbd1", []() {
     auto kbd = dev::open("kbd");
     keyboard_packet_t pkt;
     while (1) {
       int nread = kbd->read(0, sizeof(pkt), &pkt);
+      if (nread != sizeof(pkt)) continue;
+
       assert(nread == sizeof(pkt));
-      if (pkt.is_press()) printk("%c", pkt.character);
+      // sched::beep();
+      if (pkt.is_press()) {
+        if (pkt.character == 'd') assert(false);
+        sched::beep();
+        // printk("%c", pkt.character);
+      }
     }
   });
 
-  sched::spawn_kernel_task("mouse", []() {
+  sched::spawn_kernel_thread("mouse", []() {
     auto mouse = dev::open("mouse");
     mouse_packet_t pkt;
     int i = 0;
@@ -316,13 +330,13 @@ static void kmain2(void) {
       // printk("i=%d\n", i);
 
       if (nread == 0) continue;
+      if (nread != sizeof(pkt)) continue;
 
-      assert(nread == sizeof(pkt));
 
       int newx = mouse_x + pkt.dx;
       int newy = mouse_y + -pkt.dy;
 
-      // printk("%d:%d\n", pkt.dx, -pkt.dy);
+      // KINFO("%d:%d\n", pkt.dx, -pkt.dy);
 
       if (newx >= vga::width()) newx = vga::width() - 1;
       if (newy >= vga::height()) newy = vga::height() - 1;
@@ -340,21 +354,8 @@ static void kmain2(void) {
     }
   });
 
-  /*
-  sched::spawn_kernel_task("kbd2", []() {
-    auto kbd = dev::open("kbd");
-    keyboard_packet_t pkt;
-    while (1) {
-      int nread = kbd->read(0, sizeof(pkt), &pkt);
-      if (nread != 0 && pkt.is_press()) printk("2: %02x\n", pkt.character);
-    }
-  });
-  */
-
-  // create a simple idle task
-  sched::spawn_kernel_task("idle", idle_task,
-                           {.timeslice = 1, .priority = PRIORITY_IDLE});
-
+  // enable interrupts and start the scheduler
+  sti();
   sched::beep();
   sched::run();
 

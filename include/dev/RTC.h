@@ -7,7 +7,10 @@ namespace RTC {
 time_t now();
 time_t boot_time();
 
-void read_registers(unsigned& year, unsigned& month, unsigned& day,
-                    unsigned& hour, unsigned& minute, unsigned& second);
+
+void localtime(struct tm&);
+
+void read_registers(int& year, int& month, int& day,
+                    int& hour, int& minute, int& second);
 };  // namespace RTC
 }  // namespace dev

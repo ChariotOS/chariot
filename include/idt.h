@@ -2,7 +2,7 @@
 #define __IDT__
 
 #include <asm.h>
-#include <task.h>
+#include <process.h>
 #include <types.h>
 
 #define NUM_IDT_ENTRIES 256

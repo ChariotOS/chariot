@@ -2,28 +2,28 @@
 #include <dev/driver.h>
 #include <fs/devfs.h>
 #include <idt.h>
+#include <lock.h>
 #include <mem.h>
 #include <module.h>
 #include <pci.h>
 #include <phys.h>
 #include <printk.h>
 #include <ptr.h>
+#include <sched.h>
 #include <vga.h>
 #include "../majors.h"
-#include <lock.h>
-#include <sched.h>
 
-// #define DEBUG
+#define DEBUG
 // #define DO_TRACE
 
 #ifdef DEBUG
-#define INFO(fmt, args...) printk("[ATA] " fmt, ##args)
+#define INFO(fmt, args...) KINFO("ATA: " fmt, ##args)
 #else
 #define INFO(fmt, args...)
 #endif
 
 #ifdef DO_TRACE
-#define TRACE INFO("TRACE: (%d) %s\n", __LINE__, __PRETTY_FUNCTION__)
+#define TRACE KINFO("TRACE: (%d) %s\n", __LINE__, __PRETTY_FUNCTION__)
 #else
 #define TRACE
 #endif
@@ -61,9 +61,9 @@
 #define BMR_STATUS_INT 0x4
 #define BMR_STATUS_ERR 0x2
 
-
 /**
- * TODO: use per-channel ATA mutex locks. Right now every ata drive is locked the same way
+ * TODO: use per-channel ATA mutex locks. Right now every ata drive is locked
+ * the same way
  */
 static mutex_lock drive_lock("ATA drive");
 
@@ -198,7 +198,6 @@ bool dev::ata::identify() {
 }
 
 bool dev::ata::read_block(u32 sector, u8* data) {
-
   TRACE;
 
   // TODO: also check for scheduler avail
@@ -206,10 +205,8 @@ bool dev::ata::read_block(u32 sector, u8* data) {
     return read_block_dma(sector, data);
   }
 
-
   // take a scoped lock
   scoped_lock lck(drive_lock);
-
 
   // printk("read block %d\n", sector);
 
@@ -308,9 +305,7 @@ size_t dev::ata::block_size() {
   return sector_size;
 }
 
-ssize_t dev::ata::size() {
-  return sector_size * n_sectors;
-}
+ssize_t dev::ata::size() { return sector_size * n_sectors; }
 
 bool dev::ata::read_block_dma(u32 sector, u8* data) {
   TRACE;
@@ -409,13 +404,14 @@ class ata_driver : public dev::driver {
 
     if (drive->identify()) {
       string name = string::format("ata%d", id);
+      KINFO("Detected ATA drive '%s' (%d,%d)\n", name.get(), MAJOR_ATA,
+           m_disks.size());
       dev::register_name(name, MAJOR_ATA, m_disks.size());
       m_disks.push(drive);
     }
   }
 
-
-  ref<dev::device> open(major_t maj, minor_t min, int &err) {
+  ref<dev::device> open(major_t maj, minor_t min, int& err) {
     // TODO: record custody
     if (min < m_disks.size()) {
       err = 0;

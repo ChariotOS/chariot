@@ -1,7 +1,6 @@
 #ifndef __TYPES_H__
 #define __TYPES_H__
 
-
 typedef signed char i8;
 typedef unsigned char u8;
 
@@ -32,12 +31,23 @@ typedef char sint8_t;
 
 typedef u64 time_t;
 
+struct tm {
+  int tm_sec;     //	int	seconds after the minute	0-61*
+  int tm_min;    // int	minutes after the hour	0-59
+  int tm_hour;   // int	hours since midnight	0-23
+  int tm_mday;   // int	day of the month	1-31
+  int tm_mon;    // int	months since January	0-11
+  int tm_year;   // int	years since 1900
+  int tm_wday;   // int	days since Sunday	0-6
+  int tm_yday;   // int	days since January 1	0-365
+  int tm_isdst;  // int	Daylight Saving Time flag	};
+};
+
 typedef u64 addr_t;
 
 #ifndef __cplusplus
 typedef u8 bool;
 #endif
-
 
 typedef unsigned long uintptr_t;
 typedef long intptr_t;
@@ -56,9 +66,6 @@ typedef long intptr_t;
 #define false FALSE
 #endif
 
-
-
 #define PGSIZE 4096
-
 
 #endif

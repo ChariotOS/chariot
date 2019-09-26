@@ -227,12 +227,10 @@ static void dbl_flt_handler(int i, regs_t *tf) {
 
 
 static void unknown_hardware(int i, regs_t *tf) {
-  /*
   if (!interrupt_spurious[i]) {
-    printk("interrupt: spurious interrupt %d\n", i);
+    KINFO("interrupt: spurious interrupt %d\n", i);
   }
   interrupt_spurious[i]++;
-  */
 }
 
 void interrupt_register(int i, interrupt_handler_t handler) {
@@ -268,8 +266,7 @@ void init_idt(void) {
   interrupt_register(TRAP_PGFLT, pgfault_handle);
   interrupt_register(32, tick_handle);
 
-
-  // printk("idt=%p\n", idt);
+  KINFO("Registered basic interrupt handlers\n");
 
   // and load the idt into the processor. It is a page in memory
   lidt(idt, 4096);
@@ -278,8 +275,7 @@ void init_idt(void) {
 // where the trap handler throws us. It is up to this function to sort out
 // which trap handler to hand off to
 extern "C" void trap(regs_t *tf) {
-  //printk("trap: rip=%p tsk=%p\n", tf->eip, cpu::task());
-
+  // KINFO("trap: rip=%p tsk=%p\n", tf->eip, cpu::task());
   extern void pic_send_eoi(void);
 
   int i = tf->trapno;

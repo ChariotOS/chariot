@@ -1,4 +1,4 @@
-#include <task.h>
+#include <process.h>
 #include <mem.h>
 #include <phys.h>
 #include <cpu.h>
@@ -11,7 +11,7 @@ extern "C" void trapret(void);
 
 
 
-task::task(string name, pid_t pid, gid_t gid, int ring) : m_ring(ring),m_name(name), m_pid(pid), m_gid(gid) {
+process::process(string name, pid_t pid, gid_t gid, int ring) : m_ring(ring),m_name(name), m_pid(pid), m_gid(gid) {
   int stksize = 4096 * 6;
   kernel_stack = kmalloc(stksize);
 
@@ -35,18 +35,18 @@ task::task(string name, pid_t pid, gid_t gid, int ring) : m_ring(ring),m_name(na
 
   memset(context, 0, sizeof(regs_t));
 
-  state = state::EMBRYO;
+  state = pstate::EMBRYO;
 }
 
 
-task::~task(void) {
+process::~process(void) {
   kfree(kernel_stack);
 }
 
-regs_t &task::regs(void) {
+regs_t &process::regs(void) {
   return *tf;
 }
 
-const string &task::name(void) {
+const string &process::name(void) {
   return m_name;
 }

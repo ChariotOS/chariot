@@ -65,9 +65,9 @@ static unsigned days_in_years_since_epoch(unsigned year) {
 
 static bool update_in_progress() { return dev::CMOS::read(0x0a) & 0x80; }
 
-void dev::RTC::read_registers(unsigned& year, unsigned& month, unsigned& day,
-			      unsigned& hour, unsigned& minute,
-			      unsigned& second) {
+void dev::RTC::read_registers(int& year, int& month, int& day,
+			      int& hour, int& minute,
+			      int& second) {
   while (update_in_progress())
     ;
 
@@ -83,7 +83,7 @@ time_t dev::RTC::now() {
   while (update_in_progress())
     ;
 
-  unsigned year, month, day, hour, minute, second;
+  int year, month, day, hour, minute, second;
   read_registers(year, month, day, hour, minute, second);
 
   // printk("%d:%d:%d\n", hour, minute, second);
@@ -102,6 +102,11 @@ time_t dev::RTC::boot_time() {
   return s_boot_time;
 }
 
+
+
+void dev::RTC::localtime(struct tm& t) {
+  read_registers(t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
+}
 
 
 void rtc_init(void) {

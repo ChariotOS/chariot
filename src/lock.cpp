@@ -47,7 +47,7 @@ void mutex_lock::lock(void) {
   // reordered before it.
   while (xchg(&locked, 1) != 0) {
     // printk("waiting for %s lock in task %p\n", name, cpu::task());
-    if (cpu::task() != nullptr) sched::yield();
+    if (cpu::proc() != nullptr) sched::yield();
   }
   INFO("OK\n");
 }

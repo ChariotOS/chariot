@@ -27,7 +27,7 @@ namespace sched {
     int priority = PRIORITY_NORMAL;
   };
 
-  pid_t spawn_kernel_task(const char *name, void (*e)(), create_opts opts = {});
+  pid_t spawn_kernel_thread(const char *name, void (*e)(), create_opts opts = {});
 
 
   void yield(void);

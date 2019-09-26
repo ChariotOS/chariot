@@ -2,9 +2,9 @@
 #include <cpu.h>
 #include <lock.h>
 #include <pcspeaker.h>
+#include <process.h>
 #include <sched.h>
 #include <single_list.h>
-#include <task.h>
 
 // #define SCHED_DEBUG
 
@@ -16,47 +16,44 @@
 
 extern "C" void swtch(context_t **, context_t *);
 
-static mutex_lock task_lock("task");
+static mutex_lock process_lock("processes");
 int next_pid = 1;
 static bool s_enabled = true;
 
-static task *task_queue;
-static task *last_task;
-// static single_list<task *> task_queue;
+static process *proc_queue;
+static process *last_proc;
 
-static task *talloc(const char *name, gid_t group, int ring) {
-  task_lock.lock();
-  auto t = new task(name, next_pid++, group, ring);
-  task_lock.unlock();
-
+static process *proc_alloc(const char *name, gid_t group, int ring) {
+  process_lock.lock();
+  auto t = new process(name, next_pid++, group, ring);
+  process_lock.unlock();
   return t;
 }
 
-static task *next_task(void) {
-  task *nt = nullptr;
-  task_lock.lock();
+static process *next_task(void) {
+  process *nt = nullptr;
+  process_lock.lock();
 
-  if (task_queue != nullptr) {
-    nt = task_queue;
-    task_queue = nt->next;
+  if (proc_queue != nullptr) {
+    nt = proc_queue;
+    proc_queue = nt->next;
   }
-  task_lock.unlock();
+  process_lock.unlock();
 
   return nt;
 }
 
-static void add_task(task *tsk) {
-  task_lock.lock();
+static void add_task(process *tsk) {
+  process_lock.lock();
 
-  if (task_queue == nullptr) {
-    task_queue = tsk;
-    last_task = tsk;
+  if (proc_queue == nullptr) {
+    proc_queue = tsk;
+    last_proc = tsk;
   } else {
-    last_task->next = tsk;
-    last_task = tsk;
+    last_proc->next = tsk;
+    last_proc = tsk;
   }
-  // task_queue.append(tsk);
-  task_lock.unlock();
+  process_lock.unlock();
 }
 
 bool sched::init(void) { return true; }
@@ -67,17 +64,17 @@ static void ktaskcreateret(void) {
   cpu::popcli();
 
   // call the kernel task function
-  cpu::task()->kernel_func();
+  cpu::proc()->kernel_func();
 
   sched::exit();
 
   panic("ZOMBIE kernel task was ran\n");
 }
 
-pid_t sched::spawn_kernel_task(const char *name, void (*e)(),
+pid_t sched::spawn_kernel_thread(const char *name, void (*e)(),
                                create_opts opts) {
   // alloc the task under the kernel group
-  auto p = talloc(name, 0, RING_KERNEL);
+  auto p = proc_alloc(name, 0, RING_KERNEL);
 
   // printk("eip: %p\n", e);
   p->context->eip = (u64)e;
@@ -93,54 +90,54 @@ pid_t sched::spawn_kernel_task(const char *name, void (*e)(),
 
   p->context->eip = (u64)ktaskcreateret;
 
-  p->state = task::state::RUNNABLE;
+  p->state = pstate::RUNNABLE;
   add_task(p);
+
+  KINFO("spawned kernel task '%s' pid=%d\n", name, p->pid());
 
   return p->pid();
 }
 
-static void switch_into(task *tsk) {
+static void switch_into(process *tsk) {
   INFO("ctxswtch: pid=%-4d gid=%-4d\n", tsk->pid(), tsk->gid());
-  cpu::current().current_task = tsk;
+  cpu::current().current_proc = tsk;
   tsk->start_tick = cpu::get_ticks();
-  tsk->state = task::state::RUNNING;
+  tsk->state = pstate::RUNNING;
 
   swtch(&cpu::current().scheduler, tsk->context);
-  cpu::current().current_task = nullptr;
+  cpu::current().current_proc = nullptr;
 }
 
 static void schedule() {
   if (cpu::ncli() != 1) panic("schedule must have ncli == 1");
   int intena = cpu::current().intena;
-  swtch(&cpu::task()->context, cpu::current().scheduler);
+  swtch(&cpu::proc()->context, cpu::current().scheduler);
   cpu::current().intena = intena;
 }
 
-static void do_yield(enum task::state st) {
+static void do_yield(enum pstate st) {
   INFO("yield %d\n", st);
-  assert(cpu::task() != nullptr);
+  assert(cpu::proc() != nullptr);
 
   cpu::pushcli();
 
-  cpu::task()->state = st;
+  cpu::proc()->state = st;
   schedule();
 
   cpu::popcli();
 }
 
-void sched::block() {
-  do_yield(task::state::BLOCKED);
-}
+void sched::block() { do_yield(pstate::BLOCKED); }
 
-void sched::yield() { do_yield(task::state::RUNNABLE); }
+void sched::yield() { do_yield(pstate::RUNNABLE); }
 
-void sched::exit() { do_yield(task::state::ZOMBIE); }
+void sched::exit() { do_yield(pstate::ZOMBIE); }
 
 void sched::run() {
   for (;;) {
     auto tsk = next_task();
 
-    assert(cpu::task() == nullptr);
+    assert(cpu::proc() == nullptr);
 
     assert(tsk != nullptr);
 
@@ -148,18 +145,21 @@ void sched::run() {
 
     bool add_back = true;
 
-    if (tsk->state == task::state::RUNNABLE) {
+    if (tsk->state == pstate::RUNNABLE) {
       s_enabled = true;
       cpu::current().intena = 1;
+      // printk("switching into %s\n", tsk->name().get());
       switch_into(tsk);
+    } else {
+      // printk("proc %s was not runnable\n", tsk->name().get());
     }
 
     // check for state afterwards
-    if (tsk->state == task::state::ZOMBIE) {
+    if (tsk->state == pstate::ZOMBIE) {
       // TODO: check for waiting processes and notify
       if (tsk->ring() == RING_KERNEL) {
         add_back = false;
-        INFO("kernel '%s' task dead\n", tsk->name().get());
+        INFO("kernel '%s' process dead\n", tsk->name().get());
         delete tsk;
       }
     }
@@ -182,22 +182,20 @@ void sched::play_tone(int frq, int dur) {
   beep_timeout = cpu::get_ticks() + dur;
 }
 
-void sched::beep(void) {
-  play_tone(440, 25);
-}
+void sched::beep(void) { play_tone(440, 25); }
 
 void sched::handle_tick(u64 ticks) {
   if (ticks >= beep_timeout) {
     pcspeaker::clear();
   }
 
-  if (!enabled() || cpu::task() == nullptr ||
-      cpu::task()->state != task::state::RUNNING) {
+  if (!enabled() || cpu::proc() == nullptr ||
+      cpu::proc()->state != pstate::RUNNING) {
     return;
   }
 
   // yield?
-  if (ticks - cpu::task()->start_tick >= cpu::task()->timeslice) {
+  if (ticks - cpu::proc()->start_tick >= cpu::proc()->timeslice) {
     sched::yield();
   }
 }

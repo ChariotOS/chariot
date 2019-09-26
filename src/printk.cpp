@@ -905,7 +905,7 @@ static int _vsnprintf(out_fct_type out, char *buffer, const size_t maxlen,
 
 int printk(const char *format, ...) {
 
-  cpu::pushcli();
+  // cpu::pushcli();
   // static mutex_lock lk("printk");
   // lk.lock();
   va_list va;
@@ -914,7 +914,7 @@ int printk(const char *format, ...) {
   const int ret = _vsnprintf(_out_char, buffer, (size_t)-1, format, va);
   va_end(va);
 
-  cpu::popcli();
+  // cpu::popcli();
   // lk.unlock();
   return ret;
 }

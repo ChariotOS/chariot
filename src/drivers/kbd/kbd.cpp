@@ -8,8 +8,8 @@
 #include <mem.h>
 #include <module.h>
 #include <printk.h>
+#include <process.h>
 #include <single_list.h>
-#include <task.h>
 #include <vga.h>
 #include "../majors.h"
 
@@ -22,7 +22,7 @@
 #define I8042_MOUSE_BUFFER 0x20
 #define I8042_KEYBOARD_BUFFER 0x00
 
-static fifo_buf kbd_buf(true);
+static fifo_buf kbd_buf(4096, true);
 
 static char map[0x80] = {
     0,
@@ -358,7 +358,6 @@ static void update_modifier(u8 modifier, bool state) {
     m_modifiers &= ~modifier;
 }
 
-
 static void key_state_changed(u8 raw, bool pressed) {
   keyboard_packet_t event;
   event.magic = KEY_EVENT_MAGIC;
@@ -369,7 +368,7 @@ static void key_state_changed(u8 raw, bool pressed) {
   if (pressed) event.flags |= is_pressed;
 
   // first, check for a waiting process to wake
-  kbd_buf.write((u8 *)&event, sizeof(keyboard_packet_t));
+  kbd_buf.write(&event, sizeof(keyboard_packet_t));
 }
 
 static void kbd_handler(int i, regs_t *tf) {

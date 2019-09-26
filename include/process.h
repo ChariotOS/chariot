@@ -44,14 +44,15 @@ struct context_t {
   u64 eip;  // rip;
 };
 
-// a task is an abstract version of a process in other systems. Kernel threads,
-// user processes, etc. are all tasks
-class task final {
- public:
-  task(string name, pid_t, gid_t, int ring = 3);
-  ~task(void);
 
-  enum state : u8 { UNUSED, EMBRYO, SLEEPING, BLOCKED, RUNNABLE, RUNNING, ZOMBIE };
+
+enum pstate : u8 { UNUSED, EMBRYO, SLEEPING, BLOCKED, RUNNABLE, RUNNING, ZOMBIE };
+
+class process final {
+ public:
+  process(string name, pid_t, gid_t, int ring = 3);
+  ~process(void);
+
 
   inline pid_t pid(void) { return m_pid; }
   inline gid_t gid(void) { return m_gid; }
@@ -64,7 +65,7 @@ class task final {
   // TODO: move this to a thread context
   context_t *context;
   regs_t *tf;
-  task::state state;
+  pstate state;
   int m_ring;
 
   u64 timeslice = 2;
@@ -73,8 +74,8 @@ class task final {
 
 
   // for the intrusive linked list
-  task *next;
-  task *prev;
+  process *next;
+  process *prev;
 
 
   void (*kernel_func)(void);

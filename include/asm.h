@@ -107,11 +107,55 @@
 
 #define for_range(var, start, end) for (auto var = start; var < (end); var++)
 
+// #define FANCY_MEM_FUNCS
+
+#ifndef FANCY_MEM_FUNCS
+
 static inline void *memcpy(void *dst, const void *src, size_t n) {
   for (int i = 0; i < n; i++) {
     ((char *)dst)[i] = ((char *)src)[i];
   }
   return dst;
+}
+
+static inline void O_memset(void *buf, char c, size_t len) {
+  char *m = (char *)buf;
+  for (size_t i = 0; i < len; i++) m[i] = c;
+}
+
+#else
+
+static inline void *memcpy(void *vdst, const void *vsrc, size_t n) {
+  auto *dst = (u8 *)vdst;
+  auto *src = (u8 *)vsrc;
+
+#define DO_COPY(T) \
+  for (; i < n - sizeof(T); i += sizeof(T)) *(T *)(dst + i) = *(T *)(src + i);
+  int i = 0;
+  DO_COPY(u64);
+  DO_COPY(u32);
+
+  for (; i < n; i++) *(dst + i) = *(src + i);
+#undef DO_COPY
+  return dst;
+}
+
+
+#endif
+
+
+static inline void memset(void *buf, char c, size_t len) {
+  u64 b = c & 0xFF;
+  u64 val =
+      b | b << 8 | b << 16 | b << 24 | b << 32 | b << 40 | b << 48 | b << 56;
+  char *m = (char *)buf;
+#define DO_COPY(T) \
+  for (; i < len - sizeof(T); i += sizeof(T)) *(T *)(m + i) = val;
+  int i = 0;
+  DO_COPY(u64);
+  DO_COPY(u32);
+  for (; i < len; i++) *(m + i) = val;
+#undef DO_COPY
 }
 
 // memmove is just copy but you clear it out
@@ -123,11 +167,6 @@ static inline void *memmove(void *dst, const void *src, size_t n) {
   return dst;
 }
 
-static inline void memset(void *buf, char c, size_t len) {
-  char *m = (char *)buf;
-  for (size_t i = 0; i < len; i++) m[i] = c;
-}
-
 static inline i64 min(i64 a, i64 b) {
   if (a < b) return a;
   return b;
@@ -137,7 +176,6 @@ static inline i64 max(i64 a, i64 b) {
   if (a > b) return a;
   return b;
 }
-
 
 #define PAUSE_WHILE(x)     \
   while ((x)) {            \

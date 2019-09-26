@@ -6,10 +6,10 @@
 #include <printk.h>
 #include <util.h>
 
-// #define E1000_DEBUG
+#define E1000_DEBUG
 
 #ifdef E1000_DEBUG
-#define INFO(fmt, args...) printk("[E1000] " fmt, ##args)
+#define INFO(fmt, args...) KINFO("E1000: " fmt, ##args)
 #else
 #define INFO(fmt, args...)
 #endif
@@ -126,46 +126,46 @@ struct [[gnu::packed]] e1000_tx_desc {
 };
 
 class e1000 : public refcounted<e1000> {
- private:
-  pci::device *dev;
-  u8 bar_type;          // type of bar 0
-  u16 io_base;          // the base address for PIO
-  u64 mem_base;         // mmio base address
-  bool eerprom_exists;  // a flag indicating if eeprom exists
-  u8 mac[6];            // a buffer to store the mac address for the e1000 card
+  private:
+    pci::device *dev;
+    u8 bar_type;          // type of bar 0
+    u16 io_base;          // the base address for PIO
+    u64 mem_base;         // mmio base address
+    bool eerprom_exists;  // a flag indicating if eeprom exists
+    u8 mac[6];            // a buffer to store the mac address for the e1000 card
 
-  e1000_rx_desc *rx_descs[E1000_NUM_RX_DESC];  // receive descriptor buffers
-  e1000_tx_desc *tx_descs[E1000_NUM_TX_DESC];  // receive descriptor buffers
+    e1000_rx_desc *rx_descs[E1000_NUM_RX_DESC];  // receive descriptor buffers
+    e1000_tx_desc *tx_descs[E1000_NUM_TX_DESC];  // receive descriptor buffers
 
-  u16 rx_cur;
-  u16 tx_cur;
+    u16 rx_cur;
+    u16 tx_cur;
 
-  // send commands and read results from NICs using either MMIO or IO ports
-  void write_cmd(u16 p_addr, u32 p_value);
-  u32 read_cmd(u16 p_addr);
+    // send commands and read results from NICs using either MMIO or IO ports
+    void write_cmd(u16 p_addr, u32 p_value);
+    u32 read_cmd(u16 p_addr);
 
-  bool detect_eeprom(
-      void);  // return true if eeprom exists, setting the eeprom exists bool
-  u32 eeprom_read(u8 addr);  // read 4 bytes from the eeprom
-  bool read_mac_addr(void);
-  void start_link();        // setup the network
-  void rxinit();            // initialize rx descriptors and buffers;
-  void txinit();            // initialize tx descriptors and buffers;
-  void enable_interrupt();  // ...
-  void handle_receive();    // handle a packet reception
+    bool detect_eeprom(
+        void);  // return true if eeprom exists, setting the eeprom exists bool
+    u32 eeprom_read(u8 addr);  // read 4 bytes from the eeprom
+    bool read_mac_addr(void);
+    void start_link();        // setup the network
+    void rxinit();            // initialize rx descriptors and buffers;
+    void txinit();            // initialize tx descriptors and buffers;
+    void enable_interrupt();  // ...
+    void handle_receive();    // handle a packet reception
 
- public:
-  e1000(pci::device *pci_dev);
-  ~e1000();
+  public:
+    e1000(pci::device *pci_dev);
+    ~e1000();
 
-  // called by the interrupt handler
-  void fire(regs_t *fr);
+    // called by the interrupt handler
+    void fire(regs_t *fr);
 
-  u8 *get_mac_address(void);
+    u8 *get_mac_address(void);
 
-  int send_packet(const void *data, u16 len);
+    int send_packet(const void *data, u16 len);
 
-  bool start(void);
+    bool start(void);
 };
 
 void e1000::write_cmd(u16 addr, u32 val) {
@@ -263,8 +263,8 @@ void e1000::rxinit() {
     rx_descs[i]->status = 0;
   }
 
-  INFO("RX virt: %16zx\n", descs);
-  INFO("RX phys: %16zx\n", ptr);
+  // INFO("RX virt: %16zx\n", descs);
+  // INFO("RX phys: %16zx\n", ptr);
 
   write_cmd(REG_TXDESCLO, (uint32_t)((uint64_t)ptr >> 32));
   write_cmd(REG_TXDESCHI, (uint32_t)((uint64_t)ptr & 0xFFFFFFFF));
@@ -278,8 +278,8 @@ void e1000::rxinit() {
   write_cmd(REG_RXDESCTAIL, E1000_NUM_RX_DESC - 1);
   rx_cur = 0;
   write_cmd(REG_RCTRL, RCTL_EN | RCTL_SBP | RCTL_UPE | RCTL_MPE |
-                           RCTL_LBM_NONE | RTCL_RDMTS_HALF | RCTL_BAM |
-                           RCTL_SECRC | RCTL_BSIZE_8192);
+      RCTL_LBM_NONE | RTCL_RDMTS_HALF | RCTL_BAM |
+      RCTL_SECRC | RCTL_BSIZE_8192);
 }
 
 void e1000::txinit() {
@@ -302,8 +302,10 @@ void e1000::txinit() {
     tx_descs[i]->cmd = 0;
     tx_descs[i]->status = TSTA_DD;
   }
-  INFO("TX virt: %16zx\n", descs);
-  INFO("TX phys: %16zx\n", ptr);
+
+
+  // INFO("TX virt: %16zx\n", descs);
+  // INFO("TX phys: %16zx\n", ptr);
 
   write_cmd(REG_TXDESCHI, (uint32_t)((uint64_t)ptr >> 32));
   write_cmd(REG_TXDESCLO, (uint32_t)((uint64_t)ptr & 0xFFFFFFFF));
@@ -316,7 +318,7 @@ void e1000::txinit() {
   write_cmd(REG_TXDESCTAIL, 0);
   tx_cur = 0;
   write_cmd(REG_TCTRL, TCTL_EN | TCTL_PSP | (15 << TCTL_CT_SHIFT) |
-                           (64 << TCTL_COLD_SHIFT) | TCTL_RTLC);
+      (64 << TCTL_COLD_SHIFT) | TCTL_RTLC);
 
   // This line of code overrides the one before it but I left both to highlight
   // that the previous one works with e1000 cards, but for the e1000e cards you
@@ -337,26 +339,26 @@ void e1000::enable_interrupt() {
 static void e1000_interrupt(int intr, regs_t *fr);
 
 e1000::e1000(pci::device *dev)
-    : dev(dev) /* : NetworkDriver(p_pciConfigHeader) */ {
-  auto bar0 = dev->get_bar(0);
-  bar_type = (u8)bar0.type;
-  // Get BAR0 type, io_base address and MMIO base address
-  io_base = dev->get_bar(PCI_BAR_IO).raw & ~1;
-  mem_base = dev->get_bar(0).raw & ~3;
+  : dev(dev) /* : NetworkDriver(p_pciConfigHeader) */ {
+    auto bar0 = dev->get_bar(0);
+    bar_type = (u8)bar0.type;
+    // Get BAR0 type, io_base address and MMIO base address
+    io_base = dev->get_bar(PCI_BAR_IO).raw & ~1;
+    mem_base = dev->get_bar(0).raw & ~3;
 
-  // Off course you will need here to map the memory address into you page
-  // tables and use corresponding virtual addresses
+    // Off course you will need here to map the memory address into you page
+    // tables and use corresponding virtual addresses
 
-  // Enable bus mastering
-  dev->enable_bus_mastering();
-}
+    // Enable bus mastering
+    dev->enable_bus_mastering();
+  }
 
 bool e1000::start(void) {
   eerprom_exists = false;
   detect_eeprom();
   if (!read_mac_addr()) return false;
   INFO("MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1],
-         mac[2], mac[3], mac[4], mac[5]);
+      mac[2], mac[3], mac[4], mac[5]);
   start_link();
 
   for (int i = 0; i < 0x80; i++) write_cmd(0x5200 + i * 4, 0);
@@ -375,7 +377,7 @@ void e1000::fire(regs_t *p_interruptContext) {
   /* This might be needed here if your handler doesn't clear interrupts from
      each device and must be done before EOI if using the PIC.
      Without this, the card will spam interrupts as the int-line will stay high.
-   */
+     */
   write_cmd(REG_IMASK, 0x1);
 
 
@@ -439,11 +441,11 @@ static void e1000_interrupt(int intr, regs_t *fr) {
 void e1000_init(void) {
   pci::device *e1000_dev = nullptr;
   pci::walk_devices([&](pci::device *dev) {
-    // check if the device is an e1000 device
-    if (dev->is_device(0x8086, 0x100e)) {
+      // check if the device is an e1000 device
+      if (dev->is_device(0x8086, 0x100e)) {
       e1000_dev = dev;
-    }
-  });
+      }
+      });
 
   if (e1000_dev != nullptr) {
     e1000_dev->enable_bus_mastering();
@@ -455,10 +457,10 @@ void e1000_init(void) {
       INFO("failed!\n");
     } else {
       /*
-      auto data = "hello";
-      auto b = e1000_inst->send_packet(data, 6);
-      printk("%d\n", b);
-      */
+         auto data = "hello";
+         auto b = e1000_inst->send_packet(data, 6);
+         printk("%d\n", b);
+         */
     }
   }
 }

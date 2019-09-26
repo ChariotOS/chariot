@@ -24,7 +24,7 @@ cpu_t *cpu::get() {
   return s_current;
 }
 
-task *cpu::task(void) { return current().current_task; }
+process *cpu::proc(void) { return current().current_proc; }
 
 extern "C" void wrmsr(u32 msr, u64 val);
 
@@ -86,7 +86,7 @@ void cpu::calc_speed_khz(void) {
   auto &c = current();
   c.speed_khz = 0;
 
-  u64 rec_ms = 100;
+  u64 rec_ms = 500;
   auto start_cycle = rdtsc();
 
   auto start_tick = c.ticks;

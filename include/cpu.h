@@ -1,7 +1,7 @@
 #pragma once
 
 #include <lock.h>
-#include <task.h>
+#include <process.h>
 #include <types.h>
 
 struct cpu_t {
@@ -10,7 +10,7 @@ struct cpu_t {
   size_t ticks = 0;
   size_t intena = 0;
   u32 speed_khz;
-  task *current_task;
+  process *current_proc;
   context_t *scheduler;
 };
 
@@ -20,7 +20,7 @@ namespace cpu {
 cpu_t &current(void);
 cpu_t *get(void);
 
-task *task(void);
+process *proc(void);
 
 // setup CPU segment descriptors, run once per cpu
 void seginit(void *local = nullptr);

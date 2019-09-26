@@ -12,7 +12,7 @@
 #include <vga.h>
 #include "../majors.h"
 
-static fifo_buf mouse_buffer(true);
+static fifo_buf mouse_buffer(4096, true);
 
 static uint8_t mouse_cycle = 0;
 static char mouse_byte[3];
@@ -71,19 +71,20 @@ static int mouse_x, mouse_y;
 static void mouse_handler(int i, regs_t *tf) {
   cpu::pushcli();
 
+  // printk("HANDLE...");
+
+  // reset the cycle
+  mouse_cycle = 0;
+
   // sched::play_tone(440, 25);
-  // printk("mouse int:\n");
   while (1) {
-
-
     u8 status = inb(MOUSE_STATUS);
-
-    // printk("%02x\n", status);
 
     if ((status & MOUSE_BBIT) == 0) {
       break;
     }
-    i8 mouse_in = inb(MOUSE_PORT);
+
+    u8 mouse_in = inb(MOUSE_PORT);
 
     if (status & MOUSE_F_BIT) {
       switch (mouse_cycle) {
@@ -100,6 +101,7 @@ static void mouse_handler(int i, regs_t *tf) {
           mouse_byte[2] = mouse_in;
           /* We now have a full mouse packet ready to use */
           if (mouse_byte[0] & 0x80 || mouse_byte[0] & 0x40) {
+            printk("bad packet!\n");
             /* x/y overflow? bad packet! */
             break;
           }
@@ -127,15 +129,16 @@ static void mouse_handler(int i, regs_t *tf) {
           if (mouse_y >= vga::height() - 1) mouse_y = vga::height() - 1;
           buttons = packet.buttons;
 
-          // printk("%d:%d\n", packet.dx, -packet.dy);
-          mouse_buffer.write((const u8 *)&packet, sizeof(packet));
+          // printk("   %d:%d\n", packet.dx, -packet.dy);
+          mouse_buffer.write(&packet, sizeof(packet));
+          // printk("%d bytes in buffer\n", mouse_buffer.size());
 
           break;
       }
     }
-
-    // status = inb(MOUSE_STATUS);
   }
+
+  // printk("OK\n");
 
   cpu::popcli();
 }
@@ -165,7 +168,6 @@ class mouse_dev : public dev::char_dev {
 
   virtual int read(u64 offset, u32 len, void *dst) override {
     return mouse_buffer.read((u8 *)dst, len);
-    return 0;
   }
   virtual int write(u64 offset, u32 len, const void *) override { return 0; }
   virtual ssize_t size(void) override { return mem_size(); }

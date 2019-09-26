@@ -5,6 +5,8 @@
 #include <types.h>
 
 // use the host's headers as the information within should be header-only :)
+#include <asm.h>
+#include <dev/RTC.h>
 #include <stdarg.h>
 #include <stddef.h>
 // #include <string.h>
@@ -31,9 +33,17 @@ inline void panic(const char* fmt, T&&... args) {
     ;
 }
 
+#define KINFO(fmt, args...)                                                 \
+  do {                                                                      \
+    struct tm t;                                                            \
+    dev::RTC::localtime(t);                                                 \
+    printk("[%02d:%02d:%02d] " fmt, t.tm_hour, t.tm_min, t.tm_sec, ##args); \
+  } while (0);
+
 #define assert(val)                          \
   do {                                       \
     if (!(val)) {                            \
+      cli();                                 \
       panic("assertion failed: %s\n", #val); \
     }                                        \
   } while (0);

@@ -1,51 +1,39 @@
 #pragma once
 
 #include <lock.h>
-#include <vec.h>
+#include <mem.h>
+#include <process.h>
 #include <single_list.h>
-
-// forward declare
-class task;
+#include <vec.h>
 
 class fifo_buf {
  public:
-
-   bool m_blocking;
-
-   struct blocking_task {
-     size_t still_needs = 0;
-     task *waiter = nullptr;
-   };
-
-
-   int navail = 0;
-   single_list<blocking_task> waiters;
-
-
-
-  fifo_buf(bool blocking = false)
-      : m_blocking(blocking), m_write_buffer(&m_buffer1), m_read_buffer(&m_buffer2), m_lock("fifo") {}
-
-  ssize_t write(const u8*, ssize_t);
-  ssize_t read(u8*, ssize_t);
-
-  bool is_empty() const { return m_empty; }
-
-  // FIXME: Isn't this racy? What if we get interrupted between getting the
-  // buffer pointer and dereferencing it?
-  ssize_t bytes_in_write_buffer() const {
-    return (ssize_t)m_write_buffer->size();
+  inline fifo_buf(int cap = 4096, bool blocking = false)
+      : m_blocking(blocking), m_lock("fifo") {
+    capacity = cap;
+    data = (u8*)kmalloc(cap);
   }
 
- private:
-  void flip();
-  void compute_emptiness();
+  inline ~fifo_buf() { kfree(data); }
 
-  vec<u8>* m_write_buffer{nullptr};
-  vec<u8>* m_read_buffer{nullptr};
-  vec<u8> m_buffer1;
-  vec<u8> m_buffer2;
-  ssize_t m_read_buffer_index = 0;
-  bool m_empty = true;
+  ssize_t write(const void*, ssize_t);
+  ssize_t read(void*, ssize_t);
+
+  inline int size(void) const { return navail; }
+
+ private:
+  void wakeup_accessing_tasks(void);
+  void block_accessing_tasks(void);
+
+  bool m_blocking;
+  int navail = 0;
+
+  single_list<process *> accessing_threads;
+
+  u8* data;
+  u32 write_index;
+  u32 read_index;
+  u32 capacity;
+  u32 used_bytes;
   mutex_lock m_lock;
 };
