@@ -365,4 +365,7 @@ static inline u64 readeflags(void) {
   return eflags;
 }
 
+
+long syscall(long n, ...);
+
 #endif

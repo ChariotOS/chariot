@@ -19,7 +19,7 @@ class tmp : public fs::filesystem {
 
     virtual bool umount(void);
 
-    vnoderef alloc_node(fs::inode_type t, u32 mode);
+    vnoderef alloc_node(fs::file_type t, u32 mode);
 
     bool unlink_node(u32 index);
 

@@ -5,11 +5,11 @@ enum class tmp_type : u8 { file, dir, symlink, blockdev, chardev };
 
 class tmp_vnode : public fs::vnode {
  public:
-  tmp_vnode(u32 index, fs::tmp& the_fs, fs::inode_type type, u32 mode)
+  tmp_vnode(u32 index, fs::tmp& the_fs, fs::file_type type, u32 mode)
       : fs::vnode(index), m_fs(the_fs), type(type), m_mode(mode) {}
 
-  virtual fs::inode_metadata metadata(void) {
-    fs::inode_metadata md;
+  virtual fs::file_metadata metadata(void) {
+    fs::file_metadata md;
     md.link_count = link_count;
 
     md.type = type;
@@ -17,8 +17,8 @@ class tmp_vnode : public fs::vnode {
     return md;
   }
 
-  virtual ssize_t read(off_t, size_t, void*) { return -ENOTIMPL; }
-  virtual ssize_t write(off_t, size_t, void*) { return -ENOTIMPL; }
+  virtual ssize_t read(fs::filedesc&, void*, size_t) { return -ENOTIMPL; }
+  virtual ssize_t write(fs::filedesc&, void*, size_t) { return -ENOTIMPL; }
 
   virtual fs::filesystem& fs(void) { return m_fs; }
 
@@ -60,20 +60,17 @@ class tmp_vnode : public fs::vnode {
     if (!is_dir()) return nullptr;
 
     // TODO: add a directory, then add this dir as .. and itself as .
-    auto node = m_fs.alloc_node(fs::inode_type::dir, mode);
+    auto node = m_fs.alloc_node(fs::file_type::dir, mode);
 
     // add the directory defaults
     node->add_dir_entry(node, ".", mode);
     node->add_dir_entry(this, "..", m_mode);
 
-
     add_dir_entry(node, name, mode);
 
     return node;
   }
-  virtual ref<vnode> touch(string name,
-                           fs::inode_type type,
-                           u32 mode = 0000) {
+  virtual ref<vnode> touch(string name, fs::file_type type, u32 mode = 0000) {
     // fail if not a dir
     if (!is_dir()) return nullptr;
 
@@ -87,7 +84,7 @@ class tmp_vnode : public fs::vnode {
  private:
   // if this is null, then this inode is a directory;
   fs::tmp& m_fs;
-  fs::inode_type type;
+  fs::file_type type;
   u32 m_mode = 0000;
   vec<dir_entry> dir_entries;
   int link_count = 1;
@@ -97,7 +94,7 @@ class tmpinode : public fs::vnode {};
 
 fs::tmp::tmp(void) {
   // create the root
-  m_root = alloc_node(fs::inode_type::dir, 0777);
+  m_root = alloc_node(fs::file_type::dir, 0777);
   m_root->add_dir_entry(m_root, ".", 0777);
   m_root->add_dir_entry(m_root, "..", 0777);
 }
@@ -128,7 +125,7 @@ bool fs::tmp::umount(void) {
   return false;
 }
 
-fs::vnoderef fs::tmp::alloc_node(fs::inode_type type, u32 mode) {
+fs::vnoderef fs::tmp::alloc_node(fs::file_type type, u32 mode) {
   // TODO: take a lock
   auto node = make_ref<tmp_vnode>(m_next_inode, *this, type, mode);
   inodemap[m_next_inode++] = node;

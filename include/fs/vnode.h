@@ -7,51 +7,25 @@
 #include <types.h>
 #include <errno.h>
 #include <dev/device.h>
+#include <fs/file.h>
 
 namespace fs {
 
 // forward decl
 class filesystem;
-struct inode_metadata;
-
-enum class inode_type : u8 {
-  unknown = 0,
-  fifo,
-  char_dev,
-  dir,
-  block_dev,
-  file,
-  symlink,
-  unix_socket,
-};
-
-struct inode_metadata {
-  off_t size = 0;
-  inode_type type;
-  u32 mode = 0;
-  u32 uid = 0;
-  u32 gid = 0;
-  u32 link_count = 0;
-  time_t atime = 0;
-  time_t ctime = 0;
-  time_t mtime = 0;
-  time_t dtime = 0;
-  u32 block_count = 0;
-  u32 block_size = 0;
-  // major/minor for block and char device types
-  dev_t dev_info = {0, 0};
-};
 
 /**
  * a vnode is a virtual inode.
  *
  * Each filesystem implements their own vnode for their use cases.
  */
-class vnode : public refcounted<vnode> {
+class vnode : virtual public file {
  public:
   virtual ~vnode();
 
   inline u32 index(void) const { return m_index; }
+
+
 
   // return the three octal permission mode
   inline virtual u16 permissions(void) { return 0777; }
@@ -60,20 +34,16 @@ class vnode : public refcounted<vnode> {
 
   inline off_t size(void) { return metadata().size; }
   inline bool is_simlink(void) {
-    return metadata().type == inode_type::symlink;
+    return metadata().type == file_type::symlink;
   }
-  inline bool is_dir(void) { return metadata().type == inode_type::dir; }
+  inline bool is_dir(void) { return metadata().type == file_type::dir; }
   inline u32 mode(void) { return metadata().mode; }
 
-  virtual inode_metadata metadata(void) = 0;
-
-  virtual ssize_t read(off_t, size_t, void *) = 0;
-  virtual ssize_t write(off_t, size_t, void *) = 0;
-
+  virtual file_metadata metadata(void) = 0;
 
   // create a directory and a file. Defaulting to no mode (permissions)
   inline virtual ref<vnode> mkdir(string name, u32 mode = 0000) { return {}; };
-  inline virtual ref<vnode> touch(string name, fs::inode_type t = fs::inode_type::file, u32 mode = 0000) { return {}; };
+  inline virtual ref<vnode> touch(string name, fs::file_type t = fs::file_type::file, u32 mode = 0000) { return {}; };
 
   /*
    * Cause a regular file to be truncated to the size of precisely length bytes.
@@ -94,8 +64,6 @@ class vnode : public refcounted<vnode> {
   //  -... - use your brain
   virtual int add_dir_entry(ref<vnode> node, const string &name, u32 mode) = 0;
 
-  // read the entire file into a buffer which needs to be freed by the caller
-  u8 *read_entire(void);
 
  protected:
   vnode(u32 index);

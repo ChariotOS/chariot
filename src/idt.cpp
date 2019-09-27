@@ -233,6 +233,10 @@ static void unknown_hardware(int i, regs_t *tf) {
   interrupt_spurious[i]++;
 }
 
+
+
+extern void syscall_handle(int i, regs_t *tf);
+
 void interrupt_register(int i, interrupt_handler_t handler) {
   // printk("irq register %d to %p\n", i, handler);
   interrupt_handler_table[i] = handler;
@@ -249,22 +253,26 @@ void init_idt(void) {
     interrupt_disable(i);
     interrupt_acknowledge(i);
   }
-  for (i = 0; i < 32; i++) {
 
+  for (i = 0; i < 32; i++) {
     interrupt_register(i, unknown_exception);
     interrupt_spurious[i] = 0;
     interrupt_count[i] = 0;
   }
+
   for (i = 32; i < 48; i++) {
     interrupt_register(i, unknown_hardware);
     interrupt_spurious[i] = 0;
     interrupt_count[i] = 0;
   }
 
-
   interrupt_register(TRAP_DBLFLT, dbl_flt_handler);
   interrupt_register(TRAP_PGFLT, pgfault_handle);
+
   interrupt_register(32, tick_handle);
+
+  mkgate(idt, 0x80, vectors[0x80], 2, 1);
+  interrupt_register(0x80, syscall_handle);
 
   KINFO("Registered basic interrupt handlers\n");
 
@@ -275,10 +283,12 @@ void init_idt(void) {
 // where the trap handler throws us. It is up to this function to sort out
 // which trap handler to hand off to
 extern "C" void trap(regs_t *tf) {
-  // KINFO("trap: rip=%p tsk=%p\n", tf->eip, cpu::task());
   extern void pic_send_eoi(void);
 
   int i = tf->trapno;
+
+
+  // KINFO("trap(0x%02x): rip=%p proc=%p\n", i, tf->eip, cpu::proc());
   (interrupt_handler_table[i])(i, tf);
   interrupt_acknowledge(i);
   interrupt_count[i]++;

@@ -43,22 +43,22 @@ class devfs_inode : public fs::vnode {
   devfs_inode(u32 index, unique_ptr<dev::device> d = {})
       : fs::vnode(index), m_dev(move(d)) {}
 
-  virtual fs::inode_metadata metadata(void) {
-    fs::inode_metadata md;
+  virtual fs::file_metadata metadata(void) {
+    fs::file_metadata md;
     md.link_count = 1;
 
     // TODO: fill out the metadata correctly
     if (m_dev) {
-      md.type = fs::inode_type::file;
+      md.type = fs::file_type::file;
     } else {
-      md.type = fs::inode_type::dir;
+      md.type = fs::file_type::dir;
     }
 
     return md;
   }
 
-  virtual ssize_t read(off_t, size_t, void*) { return -ENOTIMPL; }
-  virtual ssize_t write(off_t, size_t, void*) { return -ENOTIMPL; }
+  virtual ssize_t read(fs::filedesc&, void*, size_t) { return -ENOTIMPL; }
+  virtual ssize_t write(fs::filedesc&, void *, size_t) { return -ENOTIMPL; }
 
   virtual fs::filesystem& fs(void) { return *primary_devfs; }
 

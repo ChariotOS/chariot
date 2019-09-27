@@ -113,19 +113,36 @@ static void screen_drawer(void) {
 
   buf = new u32[vga::npixels()];
 
+  auto rand = dev::open("random");
+
   while (1) {
+    int size = 2;
+
+    // syscall(0, c, 'a');
+
+    rand->read(0, sizeof(size), &size);
+    size = (size % 40) + 10;
+
+    rand->read(0, sizeof(mouse_x), &mouse_x);
+    rand->read(0, sizeof(mouse_y), &mouse_y);
+
+    mouse_x %= vga::width();
+    mouse_y %= vga::height();
+
     c++;
 
     int width = 25;
     u32 col = vga::hsl((c % width) / (float)width, 1, 0.5);
 
-    memset(buf, 0xFF, vga::npixels() * sizeof(u32));
-
     if (clicked) draw_square(cx, cy, mouse_x - cx, mouse_y - cy, col);
-    draw_square(mouse_x, mouse_y, 20, 20, col);
-    vga::flush_buffer(buf, vga::npixels());
+    draw_square(mouse_x, mouse_y, size, size, col);
 
-    cpu::sleep_ms(16);
+    if (c % 2048 == 0) {
+      vga::flush_buffer(buf, vga::npixels());
+      // memset(buf, 0x00, vga::npixels() * sizeof(u32));
+    }
+
+    // cpu::sleep_ms(16);
   }
 
   delete[] buf;
@@ -253,6 +270,8 @@ static void kmain2(void) {
   init_pit();
   KINFO("Initialized PIT\n");
 
+  syscall_init();
+
   // Set the PIT interrupt frequency to how many times per second it should fire
   set_pit_freq(1000);
 
@@ -283,23 +302,15 @@ static void kmain2(void) {
   // setup the tmp filesystem
   vfs::mount(make_unique<fs::tmp>(), "/tmp");
   auto tmp = vfs::open("/tmp", 0);
-  tmp->touch("foo", fs::inode_type::file, 0777);
+  tmp->touch("foo", fs::file_type::file, 0777);
   tmp->mkdir("bar", 0777);
 
   // auto node = vfs::open("/", 0);
   // walk_tree(node);
 
-  /*
-  auto bin = vfs::open("/usr/res/fonts/cherry.bdf");
-  auto data = bin->read_entire();
-  printk("%d bytes\n", bin->size());
-  hexdump(data, bin->size(), 32);
-  kfree(data);
-  */
-
   // create a simple idle task
   sched::spawn_kernel_thread("idle", idle_task,
-                           {.timeslice = 1, .priority = PRIORITY_IDLE});
+                             {.timeslice = 1, .priority = PRIORITY_IDLE});
 
   sched::spawn_kernel_thread("rainbow", screen_drawer, {.timeslice = 1});
 
@@ -331,7 +342,6 @@ static void kmain2(void) {
 
       if (nread == 0) continue;
       if (nread != sizeof(pkt)) continue;
-
 
       int newx = mouse_x + pkt.dx;
       int newy = mouse_y + -pkt.dy;

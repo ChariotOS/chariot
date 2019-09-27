@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <fs/filedesc.h>
 #include <fs/ext2.h>
 
 #define EXT2_ADDR_PER_BLOCK(node) (node->block_size() / sizeof(u32))
@@ -107,22 +108,22 @@ int fs::ext2_inode::add_dir_entry(ref<vnode> node, const string &name,
   return -ENOTIMPL;
 }
 
-fs::inode_metadata fs::ext2_inode::metadata(void) {
-  fs::inode_metadata md;
+fs::file_metadata fs::ext2_inode::metadata(void) {
+  fs::file_metadata md;
 
   md.size = info.size;
   md.mode = info.type & 0xFFF;
 
   auto type = ((info.type) & 0xF000) >> 12;
 
-  md.type = inode_type::unknown;
-  if (type == 0x1) md.type = inode_type::fifo;
-  if (type == 0x2) md.type = inode_type::char_dev;
-  if (type == 0x4) md.type = inode_type::dir;
-  if (type == 0x6) md.type = inode_type::block_dev;
-  if (type == 0x8) md.type = inode_type::file;
-  if (type == 0xA) md.type = inode_type::symlink;
-  if (type == 0xC) md.type = inode_type::unix_socket;
+  md.type = file_type::unknown;
+  if (type == 0x1) md.type = file_type::fifo;
+  if (type == 0x2) md.type = file_type::char_dev;
+  if (type == 0x4) md.type = file_type::dir;
+  if (type == 0x6) md.type = file_type::block_dev;
+  if (type == 0x8) md.type = file_type::file;
+  if (type == 0xA) md.type = file_type::symlink;
+  if (type == 0xC) md.type = file_type::unix_socket;
 
   md.mode = info.type & 0xFFF;
 
@@ -164,12 +165,12 @@ off_t fs::ext2_inode::block_for_byte(off_t b) {
   return block;
 }
 
-ssize_t fs::ext2_inode::read(off_t off, size_t nbytes, void *dst) {
-  return do_rw(off, nbytes, dst, false);
+ssize_t fs::ext2_inode::read(fs::filedesc &d, void*dst, size_t nbytes) {
+  return do_rw(d, nbytes, dst, false);
 }
 
-ssize_t fs::ext2_inode::write(off_t off, size_t nbytes, void *dst) {
-  return do_rw(off, nbytes, dst, true);
+ssize_t fs::ext2_inode::write(fs::filedesc &d, void*dst, size_t nbytes) {
+  return do_rw(d, nbytes, dst, true);
 }
 
 /**
@@ -180,7 +181,7 @@ ssize_t fs::ext2_inode::write(off_t off, size_t nbytes, void *dst) {
  * @buf: the buffer that we wish to read into or write out of
  * @is_write: the direction of the action.
  */
-ssize_t fs::ext2_inode::do_rw(off_t off, size_t nbytes, void *buf,
+ssize_t fs::ext2_inode::do_rw(fs::filedesc &d, size_t nbytes, void *buf,
                               bool is_write) {
   // you can't call this function on directories
   if (is_dir()) return -EISDIR;
@@ -191,7 +192,8 @@ ssize_t fs::ext2_inode::do_rw(off_t off, size_t nbytes, void *buf,
 
   auto &efs = static_cast<ext2 &>(fs());
 
-  ssize_t offset = off;
+
+  ssize_t offset = d.offset();
   if (offset > info.size) return 0;
 
   // how many bytes have been read
@@ -207,13 +209,13 @@ ssize_t fs::ext2_inode::do_rw(off_t off, size_t nbytes, void *buf,
   // TODO: lock the FS. We now want to own the efs->work_buf
   auto *given_buf = (u8 *)buf;
 
-  int remaining_count = min((off_t)nbytes, (off_t)size() - off);
+  int remaining_count = min((off_t)nbytes, (off_t)size() - offset);
 
   for (int bi = first_blk_ind; remaining_count && bi <= last_blk_ind; bi++) {
     u32 blk = block_from_index(bi);
     if (blk == 0) {
       printk("ext2fs: read_bytes: failed at lbi %u\n", bi);
-      // return -EIO;
+      return -EIO;
     }
 
     auto *buf = (u8 *)efs.work_buf;
@@ -232,6 +234,7 @@ ssize_t fs::ext2_inode::do_rw(off_t off, size_t nbytes, void *buf,
     nread += num_bytes_to_copy;
     given_buf += num_bytes_to_copy;
   }
+  d.seek(nread);
   return nread;
 }
 

@@ -13,10 +13,12 @@ static inline void vga_write_screen(uint8_t x, uint8_t y, uint16_t val) {
 }
 
 void vga::clear_screen(char val, vga::color color) {
+  return;
   vga::clear_screen(make_entry(val, color));
 }
 
 void vga::clear_screen(uint16_t val) {
+  return;
   int i;
   for (i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
     *(((uint16_t *)VGA_BASE_ADDR) + i) = val;

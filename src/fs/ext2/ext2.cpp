@@ -207,6 +207,7 @@ void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,
   }
 }
 
+/*
 void *fs::ext2::read_entire(ext2_inode_info &inode) {
   TRACE;
 
@@ -229,6 +230,7 @@ void *fs::ext2::read_entire(ext2_inode_info &inode) {
 
   return buf;
 }
+*/
 
 void fs::ext2::traverse_dir(u32 inode,
                             func<bool(fs::directory_entry)> callback) {

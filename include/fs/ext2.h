@@ -6,9 +6,9 @@
 #include <fs/filesystem.h>
 #include <fs/vnode.h>
 #include <func.h>
-#include <vec.h>
-#include <map.h>
 #include <lock.h>
+#include <map.h>
+#include <vec.h>
 
 /*
  * Ext2 directory file types.  Only the low 3 bits are used.  The
@@ -66,22 +66,23 @@ class ext2_inode : public vnode {
   explicit ext2_inode(ext2 &fs, u32 index);
   virtual ~ext2_inode();
 
-  virtual inode_metadata metadata(void);
+  virtual file_metadata metadata(void);
 
   virtual int add_dir_entry(ref<vnode> node, const string &name, u32 mode);
-  virtual ssize_t read(off_t, size_t, void *);
-  virtual ssize_t write(off_t, size_t, void *);
+  virtual ssize_t read(filedesc &, void *, size_t);
+  virtual ssize_t write(filedesc &, void *, size_t);
   virtual int truncate(size_t newlen);
 
   // return the block size of the fs
   int block_size();
 
-  inline virtual fs::filesystem &fs() {return m_fs;}
+  inline virtual fs::filesystem &fs() { return m_fs; }
+
  protected:
   int cached_path[4] = {0, 0, 0, 0};
   int *blk_bufs[4] = {NULL, NULL, NULL, NULL};
 
-  ssize_t do_rw(off_t, size_t, void *, bool is_write);
+  ssize_t do_rw(fs::filedesc &, size_t, void *, bool is_write);
   off_t block_for_byte(off_t b);
 
   // return the ith block's index, returning 0 on failure.
@@ -131,7 +132,7 @@ class ext2 final : public filesystem {
   bool write_inode(ext2_inode_info &dst, u32 inode);
 
   // must free the result of this.
-  void *read_entire(ext2_inode_info &inode);
+  // void *read_entire(ext2_inode_info &inode);
 
   vec<fs::directory_entry> read_dir(u32 inode);
   vec<fs::directory_entry> read_dir(ext2_inode_info &inode);

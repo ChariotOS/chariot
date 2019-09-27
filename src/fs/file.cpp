@@ -1,6 +1,9 @@
 #include <fs/file.h>
 #include <printk.h>
 
+
+fs::file::~file(void) {}
+
 fs::path::path(string s) { parse(s); }
 
 void fs::path::parse(string &s) {

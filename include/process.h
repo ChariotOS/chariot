@@ -48,6 +48,9 @@ struct context_t {
 
 enum pstate : u8 { UNUSED, EMBRYO, SLEEPING, BLOCKED, RUNNABLE, RUNNING, ZOMBIE };
 
+void syscall_init(void);
+
+
 class process final {
  public:
   process(string name, pid_t, gid_t, int ring = 3);
