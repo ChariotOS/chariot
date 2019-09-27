@@ -45,17 +45,20 @@ struct context_t {
   u64 eip;  // rip;
 };
 
-
-
-enum pstate : u8 { UNUSED, EMBRYO, SLEEPING, BLOCKED, RUNNABLE, RUNNING, ZOMBIE };
-
-
+enum pstate : u8 {
+  UNUSED,
+  EMBRYO,
+  SLEEPING,
+  BLOCKED,
+  RUNNABLE,
+  RUNNING,
+  ZOMBIE
+};
 
 class process final {
  public:
   process(string name, pid_t, gid_t, int ring = 3);
   ~process(void);
-
 
   inline pid_t pid(void) { return m_pid; }
   inline gid_t gid(void) { return m_gid; }
@@ -75,11 +78,9 @@ class process final {
 
   u64 start_tick = 0;
 
-
   // for the intrusive linked list
   process *next;
   process *prev;
-
 
   void (*kernel_func)(void);
 
@@ -91,10 +92,38 @@ class process final {
   void *kernel_stack;
 };
 
-
 void syscall_init(void);
-long syscall(long n, ...);
+long ksyscall(long n, ...);
 
 #define SYSSYM(name) sys_##name
 
-long sys_open(const char *path, int mode, int flags);
+/**
+ * the declaration of every syscall function. The kernel should go though this
+ * interface to use them when running kernel processes/threads
+ *
+ * These functions are implemented in process.cpp
+ */
+namespace sys {
+
+void exit(void);
+
+#define O_RDONLY 0
+#define O_WRONLY 1
+#define O_RDWR 2
+#define O_CREAT 0100
+#define O_EXCL 0200
+#define O_NOCTTY 0400
+#define O_TRUNC 01000
+#define O_APPEND 02000
+#define O_NONBLOCK 04000
+#define O_DIRECTORY 00200000
+#define O_NOFOLLOW 00400000
+#define O_CLOEXEC 02000000
+#define O_NOFOLLOW_NOERROR 0x4000000
+int open(const char *path, int flags, int mode = 0);
+
+
+int close(int fd);
+
+
+}  // namespace sys

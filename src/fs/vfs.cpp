@@ -3,6 +3,7 @@
 #include <fs/vfs.h>
 #include <lock.h>
 #include <map.h>
+#include <process.h>
 
 u64 vfs::qualified_inode_number(const fs::filesystem &f, u32 inode) {
   return (u64)f.id() << 32 | inode;

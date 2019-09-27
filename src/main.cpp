@@ -37,7 +37,6 @@
 #include <vec.h>
 #include <vga.h>
 
-
 extern int kernel_end;
 
 // in src/arch/x86/sse.asm
@@ -114,11 +113,14 @@ static void screen_drawer(void) {
 
   buf = new u32[vga::npixels()];
 
-  int fd = syscall(SYS_open, "/dev/random", 0xFF, 0xAA);
+  int fd = sys::open("/dev/random", O_RDWR);
 
   printk("fd=%d\n", fd);
 
   auto rand = dev::open("random");
+
+
+
 
   while (1) {
     int size = 2;
@@ -142,7 +144,7 @@ static void screen_drawer(void) {
     if (clicked) draw_square(cx, cy, mouse_x - cx, mouse_y - cy, col);
     draw_square(mouse_x, mouse_y, size, size, col);
 
-    if (c % 2048 == 0) {
+    if (c % 256 == 0) {
       vga::flush_buffer(buf, vga::npixels());
       // memset(buf, 0x00, vga::npixels() * sizeof(u32));
     }
@@ -336,6 +338,7 @@ static void kmain2(void) {
     }
   });
 
+  /*
   sched::spawn_kernel_thread("mouse", []() {
     auto mouse = dev::open("mouse");
     mouse_packet_t pkt;
@@ -368,6 +371,7 @@ static void kmain2(void) {
       clicked = is_clicked;
     }
   });
+  */
 
   // enable interrupts and start the scheduler
   sti();

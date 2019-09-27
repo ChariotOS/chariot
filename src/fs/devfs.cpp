@@ -8,6 +8,7 @@
 #include <map.h>
 #include <module.h>
 #include <vec.h>
+#include <process.h>
 
 #define DEVFS_ROOT_ID 42
 

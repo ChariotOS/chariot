@@ -280,10 +280,15 @@ void init_idt(void) {
   lidt(idt, 4096);
 }
 
+
+
+int depth = 0;
 // where the trap handler throws us. It is up to this function to sort out
 // which trap handler to hand off to
 extern "C" void trap(regs_t *tf) {
   extern void pic_send_eoi(void);
+
+  depth++;
 
   int i = tf->trapno;
 
@@ -292,5 +297,6 @@ extern "C" void trap(regs_t *tf) {
   (interrupt_handler_table[i])(i, tf);
   interrupt_acknowledge(i);
   interrupt_count[i]++;
+  depth--;
 }
 

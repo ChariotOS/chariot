@@ -1,4 +1,5 @@
 #include <cpu.h>
+#include <errno.h>
 #include <mem.h>
 #include <phys.h>
 #include <process.h>
@@ -37,29 +38,20 @@ regs_t &process::regs(void) { return *tf; }
 
 const string &process::name(void) { return m_name; }
 
-long sys_invalid(u64, u64, u64, u64, u64, u64) {
-  return 0;
-}
+long sys_invalid(u64, u64, u64, u64, u64, u64) { return 0; }
 
 #define SYSSYM(name) sys_##name
 
-
-long sys_exit() {
-  return 0;
+void sys::exit() {
+  // TODO: NEED TO EXIT
 }
 
-
-long sys_open(const char *path, int mode, int flags) {
-
+int sys::open(const char *path, int flags, int mode) {
   KINFO("path: '%s', mode=%d, flags=%d\n", path, mode, flags);
-  return 0;
+  return -ENOTIMPL;
 }
 
-long sys_close(int fd) {
-  return 0;
-}
-
-
+int sys::close(int fd) { return -ENOTIMPL; }
 
 static const char *syscall_names[] = {
 #undef __SYSCALL
@@ -68,50 +60,47 @@ static const char *syscall_names[] = {
 };
 
 static void *syscall_table[] = {
-  // [0 ... SYS_COUNT] = (void *)sys_invalid,
+// [0 ... SYS_COUNT] = (void *)sys_invalid,
 
 #undef __SYSCALL
-#define __SYSCALL(num, name) [num] = (void*)SYSSYM(name),
+#define __SYSCALL(num, name) [num] = (void *)sys::name,
 #include <syscalls.inc>
 };
 
-
 void syscall_init(void) {}
 
-void syscall_handle(int i, regs_t *tf) {
-
-  // grab the number out of rax
-  int num = tf->rax;
-
+static long do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e) {
   if (num >= SYS_COUNT) {
-    tf->rax = -1;
-    return;
+    return -1;
   }
 
+  KINFO("syscall(%s, 0x%llx, 0x%llx, 0x%llx, 0x%llx, 0x%llx)\n",
+        syscall_names[num], a, b, c, d, e);
 
+  auto *func = (long (*)(u64, u64, u64, u64, u64))syscall_table[num];
 
-  KINFO("syscall(%s, 0x%llx, 0x%llx, 0x%llx, 0x%llx, 0x%llx)\n", syscall_names[num], tf->rdi, tf->rsi, tf->rdx, tf->r10, tf->r8);
+  return func(a, b, c, d, e);
+}
 
-
-  auto *func = (long (*)(u64,u64,u64,u64,u64))syscall_table[num];
-
-  tf->rax = func(tf->rdi, tf->rsi, tf->rdx, tf->r10, tf->r8);
+void syscall_handle(int i, regs_t *tf) {
+  // grab the number out of rax
+  tf->rax = do_syscall(tf->rax, tf->rdi, tf->rsi, tf->rdx, tf->r10, tf->r8);
   return;
 }
 
 extern "C" long __syscall(size_t, size_t, size_t, size_t, size_t, size_t,
                           size_t);
 
-long syscall(long n, ...) {
+long ksyscall(long n, ...) {
   va_list ap;
-  size_t a, b, c, d, e, f;
+  size_t a, b, c, d, e;
   va_start(ap, n);
   a = va_arg(ap, size_t);
   b = va_arg(ap, size_t);
   c = va_arg(ap, size_t);
   d = va_arg(ap, size_t);
   e = va_arg(ap, size_t);
-  f = va_arg(ap, size_t);
   va_end(ap);
-  return __syscall(n, a, b, c, d, e, f);
+
+  return do_syscall(n, a, b, c, d, e);
 }
