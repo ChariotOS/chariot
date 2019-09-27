@@ -44,17 +44,18 @@ long sys_invalid(u64, u64, u64, u64, u64, u64) {
 #define SYSSYM(name) sys_##name
 
 
-long SYSSYM(exit)(u64 a,u64 b,u64 c,u64 d,u64 e) {
-  // KINFO("EXIT %d %d %d %d %d\n", a, b, c, d, e);
+long sys_exit() {
   return 0;
 }
 
 
-long SYSSYM(open)(u64,u64,u64,u64,u64) {
+long sys_open(const char *path, int mode, int flags) {
+
+  KINFO("path: '%s', mode=%d, flags=%d\n", path, mode, flags);
   return 0;
 }
 
-long SYSSYM(close)(u64,u64,u64,u64,u64) {
+long sys_close(int fd) {
   return 0;
 }
 

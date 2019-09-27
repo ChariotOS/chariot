@@ -2,6 +2,7 @@
 
 #include <sched.h>
 #include <string.h>
+#include <syscalls.h>
 
 #define RING_KERNEL 0
 #define RING_USER 3
@@ -48,7 +49,6 @@ struct context_t {
 
 enum pstate : u8 { UNUSED, EMBRYO, SLEEPING, BLOCKED, RUNNABLE, RUNNING, ZOMBIE };
 
-void syscall_init(void);
 
 
 class process final {
@@ -90,3 +90,11 @@ class process final {
 
   void *kernel_stack;
 };
+
+
+void syscall_init(void);
+long syscall(long n, ...);
+
+#define SYSSYM(name) sys_##name
+
+long sys_open(const char *path, int mode, int flags);

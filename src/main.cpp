@@ -37,6 +37,7 @@
 #include <vec.h>
 #include <vga.h>
 
+
 extern int kernel_end;
 
 // in src/arch/x86/sse.asm
@@ -112,6 +113,10 @@ static void screen_drawer(void) {
   int c = 0;
 
   buf = new u32[vga::npixels()];
+
+  int fd = syscall(SYS_open, "/dev/random", 0xFF, 0xAA);
+
+  printk("fd=%d\n", fd);
 
   auto rand = dev::open("random");
 
