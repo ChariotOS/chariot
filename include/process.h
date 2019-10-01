@@ -1,5 +1,7 @@
 #pragma once
 
+#include <func.h>
+#include <lock.h>
 #include <sched.h>
 #include <string.h>
 #include <syscalls.h>
@@ -55,6 +57,8 @@ enum pstate : u8 {
   ZOMBIE
 };
 
+class thread;
+
 class process final {
  public:
   process(string name, pid_t, gid_t, int ring = 3);
@@ -64,19 +68,10 @@ class process final {
   inline gid_t gid(void) { return m_gid; }
   inline int ring(void) { return m_ring; }
 
-  regs_t &regs(void);
-
   const string &name(void);
 
-  // TODO: move this to a thread context
-  context_t *context;
-  regs_t *tf;
-  pstate state;
   int m_ring;
 
-  u64 timeslice = 2;
-
-  u64 start_tick = 0;
 
   // for the intrusive linked list
   process *next;
@@ -84,12 +79,54 @@ class process final {
 
   void (*kernel_func)(void);
 
+  /**
+   * spawn a thread under this process, adding it to the global thread table
+   */
+  thread &create_thread(func<void(int tid)>);
+
  protected:
+  vec<unique_ptr<thread>> threads;
   string m_name;
   pid_t m_pid;
   gid_t m_gid;
 
+  int next_tid = 0;
+  mutex_lock big_lock;
+};
+
+class thread {
+ public:
+  ~thread();
+
+  // for the scheduler's intrusive list
+  thread *next;
+  thread *prev;
+
+  // TODO: move this to a thread context
+  context_t *context;
+  regs_t *tf;
+  pstate state;
+
+  u64 timeslice = 2;
+  u64 start_tick = 0;
+
+  int tid();
+
+  inline process &proc(void) { return m_proc; }
+
+  // called to start the thread from the scheduler
+  void start(void);
+
+ protected:
+  friend process;
+  // only processes can craete threads
+  thread(int tid, process &proc, func<void(int)> &);
+
+  func<void(int tid)> kernel_func;
   void *kernel_stack;
+
+  int m_tid;  // thread id
+  process &m_proc;
 };
 
 void syscall_init(void);
@@ -122,8 +159,11 @@ void exit(void);
 #define O_NOFOLLOW_NOERROR 0x4000000
 int open(const char *path, int flags, int mode = 0);
 
-
 int close(int fd);
 
+
+pid_t getpid(void);
+
+pid_t gettid(void);
 
 }  // namespace sys

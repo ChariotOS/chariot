@@ -20,11 +20,21 @@ cpu_t &cpu::current() {
   return *s_current;
 }
 
-cpu_t *cpu::get() {
-  return s_current;
+cpu_t *cpu::get() { return s_current; }
+
+process &cpu::proc(void) {
+  return thd().proc();
 }
 
-process *cpu::proc(void) { return current().current_proc; }
+bool cpu::in_thread(void) {
+  return current().current_thread != nullptr;
+}
+
+thread &cpu::thd() {
+  auto *t = current().current_thread;
+  assert(t != nullptr);
+  return *t;
+}
 
 extern "C" void wrmsr(u32 msr, u64 val);
 
@@ -77,7 +87,6 @@ void cpu::seginit(void *local) {
   gdt[SEG_TSS + 1] = (addr >> 32);
 
   lgdt((void *)gdt, 5 * sizeof(u64));
-
 
   // ltr(SEG_TSS << 3);
 }

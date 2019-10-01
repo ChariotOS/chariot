@@ -10,7 +10,7 @@ struct cpu_t {
   size_t ticks = 0;
   size_t intena = 0;
   u32 speed_khz;
-  process *current_proc;
+  thread *current_thread;
   context_t *scheduler;
 };
 
@@ -20,7 +20,10 @@ namespace cpu {
 cpu_t &current(void);
 cpu_t *get(void);
 
-process *proc(void);
+process &proc(void);
+
+thread &thd(void);
+bool in_thread(void);
 
 // setup CPU segment descriptors, run once per cpu
 void seginit(void *local = nullptr);

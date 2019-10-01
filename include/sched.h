@@ -4,49 +4,57 @@
 
 #include <func.h>
 
-
 using pid_t = int;
 using gid_t = int;
 
 // forward declare
-class task;
+class thread;
+class process;
 
 namespace sched {
 
-  bool init(void);
+bool init(void);
 
-  bool enabled();
+bool enabled();
 
 #define PRIORITY_IDLE 1
-#define PRIOIRTY_LOW  10
+#define PRIOIRTY_LOW 10
 #define PRIORITY_NORMAL 25
-#define PRIORITY_HIGH   100
+#define PRIORITY_HIGH 100
 
-  struct create_opts {
-    int timeslice = 1;
-    int priority = PRIORITY_NORMAL;
-  };
+struct create_opts {
+  int timeslice = 1;
+  int priority = PRIORITY_NORMAL;
+};
 
-  pid_t spawn_kernel_thread(const char *name, void (*e)(), create_opts opts = {});
+process &kernel_proc(void);
 
+// return the process relating to the pid_t, and null if there is no process at
+// that pid
+process *process_pid(pid_t);
 
-  void yield(void);
+pid_t spawn_process(const char *name);
+pid_t next_pid(void);
 
+thread *spawn_kernel_thread(const char *name, func<void(int)>,
+                            create_opts opts = {});
 
-  void block();
+void yield(void);
 
-  // does not return
-  void run(void);
+void block();
 
+// does not return
+void run(void);
 
-  void handle_tick(u64 tick);
+void handle_tick(u64 tick);
 
-  // force the process to exit, (yield with different state)
-  void exit();
+// force the process to exit, (yield with different state)
+void exit();
 
+void play_tone(int frq, int dur);
 
-  void play_tone(int frq, int dur);
+process &kernel_proc(void);
 
-  // make a 440hz beep for 100ms
-  void beep();
-}
+// make a 440hz beep for 100ms
+void beep();
+}  // namespace sched

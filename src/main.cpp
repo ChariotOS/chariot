@@ -108,14 +108,13 @@ void draw_square(int x, int y, int sx, int sy, int color) {
   }
 }
 
-static void screen_drawer(void) {
+static void screen_drawer(int tid) {
   int c = 0;
 
   buf = new u32[vga::npixels()];
 
   int fd = sys::open("/dev/random", O_RDWR);
 
-  printk("fd=%d\n", fd);
 
   auto rand = dev::open("random");
 
@@ -123,6 +122,8 @@ static void screen_drawer(void) {
 
 
   while (1) {
+
+    printk("screen pid = %d\n", sys::gettid());
     int size = 2;
 
     // syscall(0, c, 'a');
@@ -162,7 +163,7 @@ void init_rootvfs(ref<dev::device> dev) {
 }
 
 atom<int> nidles = 0;
-static void idle_task(void) {
+static void idle_task(int tid) {
   while (1) {
     // increment nidels
     nidles.store(nidles.load() + 1);
@@ -312,6 +313,7 @@ static void kmain2(void) {
   tmp->touch("foo", fs::file_type::file, 0777);
   tmp->mkdir("bar", 0777);
 
+
   // auto node = vfs::open("/", 0);
   // walk_tree(node);
 
@@ -321,7 +323,7 @@ static void kmain2(void) {
 
   sched::spawn_kernel_thread("rainbow", screen_drawer, {.timeslice = 1});
 
-  sched::spawn_kernel_thread("kbd1", []() {
+  sched::spawn_kernel_thread("kbd1", [](int tid) {
     auto kbd = dev::open("kbd");
     keyboard_packet_t pkt;
     while (1) {

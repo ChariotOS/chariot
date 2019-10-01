@@ -8,10 +8,50 @@
 extern "C" void trapret(void);
 
 process::process(string name, pid_t pid, gid_t gid, int ring)
-    : m_ring(ring), m_name(name), m_pid(pid), m_gid(gid) {
+    : m_ring(ring),
+      m_name(name),
+      m_pid(pid),
+      m_gid(gid),
+      big_lock("processlock") {}
+
+process::~process(void) {}
+
+const string &process::name(void) { return m_name; }
+
+thread &process::create_thread(func<void(int tid)> f) {
+
+  // construct the new thread
+  auto thd = unique_ptr(new thread(sched::next_pid(), *this, f));
+  thread &t = *thd;
+
+  // first, we simply walk over the list of threads, looking for a spot that a
+  // thread got removed from.
+  bool found_spot = false;
+  for (int i = 0; i < threads.size(); i++) {
+    if (!threads[i]) {
+      found_spot = true;
+      threads[i] = move(thd);
+      return t;
+    }
+  }
+
+
+  threads.push(move(thd));
+
+
+  return t;
+}
+
+/**
+ * ==============================================
+ * begin thread functions
+ */
+thread::thread(int tid, process &proc, func<void(int)> &kfunc)
+    : kernel_func(kfunc), m_tid(tid), m_proc(proc) {
   int stksize = 4096 * 6;
   kernel_stack = kmalloc(stksize);
 
+  // the initial stack pointer is at the end of the stack memory
   auto sp = (u64)kernel_stack + stksize;
 
   // leave room for a trap frame
@@ -32,11 +72,22 @@ process::process(string name, pid_t pid, gid_t gid, int ring)
   state = pstate::EMBRYO;
 }
 
-process::~process(void) { kfree(kernel_stack); }
+thread::~thread(void) { kfree(kernel_stack); }
 
-regs_t &process::regs(void) { return *tf; }
+void thread::start(void) {
+  // just forward to the kernel func
+  kernel_func(tid());
+}
 
-const string &process::name(void) { return m_name; }
+int thread::tid(void) {
+  return m_tid;
+}
+
+/**
+ * ===============================================
+ * end thread functions
+ * begin system calls
+ */
 
 long sys_invalid(u64, u64, u64, u64, u64, u64) { return 0; }
 
@@ -53,6 +104,16 @@ int sys::open(const char *path, int flags, int mode) {
 
 int sys::close(int fd) { return -ENOTIMPL; }
 
+
+pid_t sys::getpid(void) {
+  return cpu::proc().pid();
+}
+
+pid_t sys::gettid(void) {
+  return cpu::thd().tid();
+}
+
+
 static const char *syscall_names[] = {
 #undef __SYSCALL
 #define __SYSCALL(num, name) [num] = #name,
@@ -60,7 +121,7 @@ static const char *syscall_names[] = {
 };
 
 static void *syscall_table[] = {
-// [0 ... SYS_COUNT] = (void *)sys_invalid,
+  // [0 ... SYS_COUNT] = (void *)sys_invalid,
 
 #undef __SYSCALL
 #define __SYSCALL(num, name) [num] = (void *)sys::name,

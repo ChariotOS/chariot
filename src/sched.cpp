@@ -1,6 +1,7 @@
 #include <asm.h>
 #include <cpu.h>
 #include <lock.h>
+#include <map.h>
 #include <pcspeaker.h>
 #include <process.h>
 #include <sched.h>
@@ -17,21 +18,45 @@
 extern "C" void swtch(context_t **, context_t *);
 
 static mutex_lock process_lock("processes");
-int next_pid = 1;
 static bool s_enabled = true;
 
-static process *proc_queue;
-static process *last_proc;
+// the kernel process lives here, and should *never* die.
+static pid_t kproc_pid = -1;
+static mutex_lock proc_table_lock("process_table");
+static map<pid_t, unique_ptr<process>> process_table;
 
-static process *proc_alloc(const char *name, gid_t group, int ring) {
-  process_lock.lock();
-  auto t = new process(name, next_pid++, group, ring);
-  process_lock.unlock();
-  return t;
+static mutex_lock pid_lock("pid_lock");
+pid_t sched::next_pid(void) {
+  // the next pid starts at 2, since the kernel process is at pid 0, and the
+  // init proc will be located at pid 1. We just hardcode that
+  static int npid = 2;
+  pid_lock.lock();
+  pid_t n = npid++;
+  pid_lock.unlock();
+  return n;
 }
 
-static process *next_task(void) {
-  process *nt = nullptr;
+process &sched::kernel_proc(void) {
+  process *p = process_pid(kproc_pid);
+  if (p == nullptr) panic("kernel proc is null!\n");
+  return *p;
+}
+
+process *sched::process_pid(pid_t pid) {
+  process_lock.lock();
+  process *p = nullptr;
+
+  // look for the process table entry
+  if (process_table.contains(pid)) p = process_table.get(pid).get();
+  process_lock.unlock();
+  return p;
+}
+
+static thread *proc_queue;
+static thread *last_proc;
+
+static thread *next_thd(void) {
+  thread *nt = nullptr;
   process_lock.lock();
 
   if (proc_queue != nullptr) {
@@ -43,7 +68,7 @@ static process *next_task(void) {
   return nt;
 }
 
-static void add_task(process *tsk) {
+static void add_thd(thread *tsk) {
   process_lock.lock();
 
   if (proc_queue == nullptr) {
@@ -56,7 +81,17 @@ static void add_task(process *tsk) {
   process_lock.unlock();
 }
 
-bool sched::init(void) { return true; }
+bool sched::init(void) {
+  process_lock.lock();
+
+  // kernel proc is pid 0
+  kproc_pid = 0;
+
+  process_table[0] = new process("Essedarius", 0, 0, RING_KERNEL);
+
+  process_lock.unlock();
+  return true;
+}
 
 static void ktaskcreateret(void) {
   INFO("starting task '%s'\n", cpu::task()->name().get());
@@ -64,16 +99,17 @@ static void ktaskcreateret(void) {
   cpu::popcli();
 
   // call the kernel task function
-  cpu::proc()->kernel_func();
+  cpu::thd().start();
 
   sched::exit();
 
   panic("ZOMBIE kernel task was ran\n");
 }
 
-pid_t sched::spawn_kernel_thread(const char *name, void (*e)(),
-                               create_opts opts) {
+thread *sched::spawn_kernel_thread(const char *name, func<void(int)> fnc,
+                                   create_opts opts) {
   // alloc the task under the kernel group
+  /*
   auto p = proc_alloc(name, 0, RING_KERNEL);
 
   // printk("eip: %p\n", e);
@@ -83,7 +119,7 @@ pid_t sched::spawn_kernel_thread(const char *name, void (*e)(),
   //
   p->kernel_func = e;
 
-  // the process is run in kernel mode
+// the process is run in kernel mode
   p->tf->cs = (SEG_KCODE << 3);
   p->tf->ds = (SEG_KDATA << 3);
   p->tf->eflags = readeflags() | FL_IF;
@@ -96,32 +132,48 @@ pid_t sched::spawn_kernel_thread(const char *name, void (*e)(),
   KINFO("spawned kernel task '%s' pid=%d\n", name, p->pid());
 
   return p->pid();
+  */
+
+  thread &t = kernel_proc().create_thread(fnc);
+
+  t.timeslice = opts.timeslice;
+
+  t.tf->cs = (SEG_KCODE << 3);
+  t.tf->ds = (SEG_KDATA << 3);
+  t.tf->eflags = readeflags() | FL_IF;
+
+  t.context->eip = (u64)ktaskcreateret;
+  t.state = pstate::RUNNABLE;
+
+  add_thd(&t);
+
+  return &t;
 }
 
-static void switch_into(process *tsk) {
+static void switch_into(thread *tsk) {
   INFO("ctxswtch: pid=%-4d gid=%-4d\n", tsk->pid(), tsk->gid());
-  cpu::current().current_proc = tsk;
+  cpu::current().current_thread = tsk;
   tsk->start_tick = cpu::get_ticks();
   tsk->state = pstate::RUNNING;
 
   swtch(&cpu::current().scheduler, tsk->context);
-  cpu::current().current_proc = nullptr;
+  cpu::current().current_thread = nullptr;
 }
 
 static void schedule() {
   if (cpu::ncli() != 1) panic("schedule must have ncli == 1");
   int intena = cpu::current().intena;
-  swtch(&cpu::proc()->context, cpu::current().scheduler);
+  swtch(&cpu::thd().context, cpu::current().scheduler);
   cpu::current().intena = intena;
 }
 
 static void do_yield(enum pstate st) {
   INFO("yield %d\n", st);
-  assert(cpu::proc() != nullptr);
+  // assert(cpu::thd() != nullptr);
 
   cpu::pushcli();
 
-  cpu::proc()->state = st;
+  cpu::thd().state = st;
   schedule();
 
   cpu::popcli();
@@ -135,9 +187,9 @@ void sched::exit() { do_yield(pstate::ZOMBIE); }
 
 void sched::run() {
   for (;;) {
-    auto tsk = next_task();
+    auto tsk = next_thd();
 
-    assert(cpu::proc() == nullptr);
+    // assert(cpu::proc() == nullptr);
 
     assert(tsk != nullptr);
 
@@ -157,7 +209,7 @@ void sched::run() {
     // check for state afterwards
     if (tsk->state == pstate::ZOMBIE) {
       // TODO: check for waiting processes and notify
-      if (tsk->ring() == RING_KERNEL) {
+      if (tsk->proc().ring() == RING_KERNEL) {
         add_back = false;
         INFO("kernel '%s' process dead\n", tsk->name().get());
         delete tsk;
@@ -167,7 +219,7 @@ void sched::run() {
     cpu::popcli();
 
     if (add_back) {
-      add_task(tsk);
+      add_thd(tsk);
     }
   }
   panic("scheduler should not have gotten back here\n");
@@ -189,13 +241,12 @@ void sched::handle_tick(u64 ticks) {
     pcspeaker::clear();
   }
 
-  if (!enabled() || cpu::proc() == nullptr ||
-      cpu::proc()->state != pstate::RUNNING) {
+  if (!enabled() || !cpu::in_thread() || cpu::thd().state != pstate::RUNNING) {
     return;
   }
 
   // yield?
-  if (ticks - cpu::proc()->start_tick >= cpu::proc()->timeslice) {
+  if (ticks - cpu::thd().start_tick >= cpu::thd().timeslice) {
     sched::yield();
   }
 }
