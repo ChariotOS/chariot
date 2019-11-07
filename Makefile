@@ -106,7 +106,7 @@ clean:
 images: $(ISO) $(ROOTFS)
 
 
-QEMUOPTS=-hda $(ISO) -m 4G -hdb $(ROOTFS)
+QEMUOPTS=-hda $(ISO) -m 2G -hdb $(ROOTFS)
 
 qemu: images
 	qemu-system-x86_64 $(QEMUOPTS) \

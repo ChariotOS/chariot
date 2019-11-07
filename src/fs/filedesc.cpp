@@ -34,10 +34,17 @@ off_t fs::filedesc::seek(off_t offset, int whence) {
 
   if (new_off < 0) return -EINVAL;
 
+  // printk("new_off = %d, old = %d\n", new_off, m_offset);
   m_offset = new_off;
   return m_offset;
 }
 
-fs::file_metadata fs::filedesc::metadata(void) {
-  return {};
+fs::file_metadata fs::filedesc::metadata(void) { return {}; }
+
+ssize_t fs::filedesc::read(void *dst, ssize_t len) {
+  if (!m_file) {
+    return -1;
+  }
+
+  return m_file->read(*this, dst, len);
 }

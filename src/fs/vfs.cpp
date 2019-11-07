@@ -1,7 +1,6 @@
 #include <errno.h>
 #include <fs/file.h>
 #include <fs/vfs.h>
-#include <lock.h>
 #include <map.h>
 #include <process.h>
 

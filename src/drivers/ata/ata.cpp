@@ -11,6 +11,7 @@
 #include <ptr.h>
 #include <sched.h>
 #include <vga.h>
+#include <wait.h>
 #include "../majors.h"
 
 #define DEBUG
@@ -60,6 +61,8 @@
 #define BMR_COMMAND_READ 0x8
 #define BMR_STATUS_INT 0x4
 #define BMR_STATUS_ERR 0x2
+
+waitqueue ata_wq("ata");
 
 /**
  * TODO: use per-channel ATA mutex locks. Right now every ata drive is locked
@@ -287,12 +290,19 @@ bool dev::ata::flush(void) {
 u8 dev::ata::wait(void) {
   TRACE;
 
-  // TODO: schedule out while waiting?
-  u8 status = command_port.in();
-  while (((status & 0x80) == 0x80) && ((status & 0x01) != 0x01)) {
-    status = command_port.in();
+  if (sched::enabled()) {
+    ata_wq.wait();
+    return 0;
+  } else {
+    // TODO: schedule out while waiting?
+    u8 status = command_port.in();
+    while (((status & 0x80) == 0x80) && ((status & 0x01) != 0x01)) {
+      status = command_port.in();
+    }
+
+    return status;
   }
-  return status;
+  return -1;
 }
 
 u64 dev::ata::sector_count(void) {
@@ -378,6 +388,10 @@ static void ata_interrupt(int intr, regs_t* fr) {
   inb(primary_master_status);
   inb(primary_master_bmr_status);
   outb(primary_master_bmr_status, BMR_COMMAND_DMA_STOP);
+
+  if (sched::enabled()) {
+    ata_wq.notify();
+  }
   // INFO("interrupt: err=%d\n", fr->err);
 }
 
@@ -405,7 +419,7 @@ class ata_driver : public dev::driver {
     if (drive->identify()) {
       string name = string::format("ata%d", id);
       KINFO("Detected ATA drive '%s' (%d,%d)\n", name.get(), MAJOR_ATA,
-           m_disks.size());
+            m_disks.size());
       dev::register_name(name, MAJOR_ATA, m_disks.size());
       m_disks.push(drive);
     }

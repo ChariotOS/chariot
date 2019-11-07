@@ -1,10 +1,12 @@
 #pragma once
 
+#include <fs/filedesc.h>
 #include <func.h>
 #include <lock.h>
 #include <sched.h>
 #include <string.h>
 #include <syscalls.h>
+#include <vm.h>
 
 #define RING_KERNEL 0
 #define RING_USER 3
@@ -59,6 +61,13 @@ enum pstate : u8 {
 
 class thread;
 
+struct fd_flags {
+  inline operator bool() { return !!fd; }
+  void clear();
+  int flags;
+  ref<fs::filedesc> fd;
+};
+
 class process final {
  public:
   process(string name, pid_t, gid_t, int ring = 3);
@@ -72,7 +81,6 @@ class process final {
 
   int m_ring;
 
-
   // for the intrusive linked list
   process *next;
   process *prev;
@@ -84,8 +92,24 @@ class process final {
    */
   thread &create_thread(func<void(int tid)>);
 
+  int do_close(int fd);
+  int do_open(const char *, int flags, int mode = 0);
+  ssize_t do_read(int fd, void *dst, size_t);
+  off_t do_seek(int fd, off_t offset, int whence);
+
+  int handle_pagefault(off_t faulting_addr, off_t *pte);
+
+  // add a virtual memory region named `name` at a vpn, with len pages and prot
+  // protection. It shall be backed by the memory mapping object
+  int add_vm_region(string name, off_t vpn, size_t len, int prot,
+                    unique_ptr<vm::memory_backing>);
+
  protected:
+  vm::addr_space addr_space;
   vec<unique_ptr<thread>> threads;
+
+  vec<fd_flags> files;
+
   string m_name;
   pid_t m_pid;
   gid_t m_gid;
@@ -117,6 +141,8 @@ class thread {
   // called to start the thread from the scheduler
   void start(void);
 
+  size_t nran = 0;
+
  protected:
   friend process;
   // only processes can craete threads
@@ -142,6 +168,7 @@ long ksyscall(long n, ...);
  */
 namespace sys {
 
+void restart(void);
 void exit(void);
 
 #define O_RDONLY 0
@@ -161,6 +188,9 @@ int open(const char *path, int flags, int mode = 0);
 
 int close(int fd);
 
+off_t lseek(int fd, off_t offset, int whence);
+
+ssize_t read(int fd, void *, size_t);
 
 pid_t getpid(void);
 

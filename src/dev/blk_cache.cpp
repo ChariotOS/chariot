@@ -1,5 +1,6 @@
 #include <dev/blk_cache.h>
 #include <printk.h>
+#include <sched.h>
 
 
 static int used = 0;
@@ -36,6 +37,7 @@ bool dev::blk_cache::read_block(u32 sector, u8* buf) {
 
   if (!line.valid || line.data == nullptr || line.sector != sector) {
     evict(cind);
+    sched::beep();
     line.sector = sector;
 
     if (line.data == nullptr) {

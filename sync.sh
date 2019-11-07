@@ -4,20 +4,19 @@
 
 IMG=build/root.img
 MOUNTPOINT=build/mnt
-DISK_SIZE_MB=30
+DISK_SIZE_MB=64
 
 rm -rf $IMG
 
 
 # create the disk image file
-dd if=/dev/urandom of=$IMG bs=1M count=$DISK_SIZE_MB
+dd if=/dev/zero of=$IMG bs=1M count=$DISK_SIZE_MB
 
 # set the permissions of the disk image
 chmod 666 $IMG
 
-
 printf "building filesystem..."
-mkfs.ext2 $IMG
+mkfs.fat -F 16 $IMG
 printf "OK\n"
 
 printf "Making the mountpoint..."
@@ -41,9 +40,11 @@ sudo mkdir -p $MOUNTPOINT/tmp
 # sudo cp -r src $MOUNTPOINT/chariot/src
 # sudo cp -r include $MOUNTPOINT/chariot/include
 
-# cd user && make
+cd user && make
+cd ..
 
 
+echo $PWD
 sudo cp -r user $MOUNTPOINT/bin
 
 sudo umount $MOUNTPOINT
