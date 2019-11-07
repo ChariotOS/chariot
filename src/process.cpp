@@ -111,10 +111,9 @@ int process::handle_pagefault(off_t faulting_addr, off_t *pte) {
 
 int process::add_vm_region(string name, off_t vpn, size_t len, int prot,
                            unique_ptr<vm::memory_backing>) {
-  printk("adding region '%s' to %p\n", name.get(), (void*)(vpn << 12));
+  printk("adding region '%s' to %p\n", name.get(), (void *)(vpn << 12));
   return 0;
 }
-
 
 ssize_t process::do_read(int fd, void *dst, size_t len) {
   // TODO: handle permissions, EOF, modes, etc..
@@ -195,7 +194,7 @@ int thread::tid(void) { return m_tid; }
  * begin system calls
  */
 
-static long sys_invalid(u64, u64, u64, u64, u64, u64) { return 0; }
+// static long sys_invalid(u64, u64, u64, u64, u64, u64) { return 0; }
 
 #define SYSSYM(name) sys_##name
 
@@ -234,9 +233,6 @@ static const char *syscall_names[] = {
 };
 
 // WARNING: HACK
-//
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Winitializer-overrides"
 
 static void *syscall_table[] = {
 // [0 ... SYS_COUNT] = (void *)sys_invalid,
@@ -246,8 +242,6 @@ static void *syscall_table[] = {
 #include <syscalls.inc>
 };
 
-#pragma clang diagnostic pop
-
 void syscall_init(void) {
   for (int i = 0; i < SYS_COUNT; i++) {
     // printk("%d: %p\n", i, syscall_table);
@@ -256,6 +250,10 @@ void syscall_init(void) {
 
 static long do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e) {
   if (num >= SYS_COUNT) {
+    return -1;
+  }
+
+  if (syscall_table[num] == 0) {
     return -1;
   }
 
