@@ -16,7 +16,8 @@ dd if=/dev/zero of=$IMG bs=1M count=$DISK_SIZE_MB
 chmod 666 $IMG
 
 printf "building filesystem..."
-mkfs.fat -F 16 $IMG
+# mkfs.fat -F 16 $IMG
+mkfs.ext2 $IMG
 printf "OK\n"
 
 printf "Making the mountpoint..."

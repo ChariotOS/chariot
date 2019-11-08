@@ -48,3 +48,12 @@ ssize_t fs::filedesc::read(void *dst, ssize_t len) {
 
   return m_file->read(*this, dst, len);
 }
+
+
+ssize_t fs::filedesc::write(void *dst, ssize_t len) {
+  if (!m_file) {
+    return -1;
+  }
+
+  return m_file->write(*this, dst, len);
+}

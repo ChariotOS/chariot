@@ -1,4 +1,6 @@
 #include "ata.h"
+
+#include <cpu.h>
 #include <dev/driver.h>
 #include <fs/devfs.h>
 #include <idt.h>
@@ -10,8 +12,10 @@
 #include <printk.h>
 #include <ptr.h>
 #include <sched.h>
+#include <util.h>
 #include <vga.h>
 #include <wait.h>
+
 #include "../majors.h"
 
 #define DEBUG
@@ -250,6 +254,8 @@ bool dev::ata::write_block(u32 sector, const u8* buf) {
   TRACE;
   scoped_lock lck(drive_lock);
 
+  // hexdump((void*)buf, 512);
+
   if (sector & 0xF0000000) return false;
 
   // select the correct device, and put bits of the address
@@ -271,6 +277,8 @@ bool dev::ata::write_block(u32 sector, const u8* buf) {
     data_port.out(d);
   }
 
+  flush();
+
   return true;
 }
 
@@ -279,7 +287,11 @@ bool dev::ata::flush(void) {
   device_port.out(master ? 0xE0 : 0xF0);
   command_port.out(0xE7);
 
-  u8 status = wait();
+  // TODO: schedule out while waiting?
+  u8 status = command_port.in();
+  while (((status & 0x80) == 0x80) && ((status & 0x01) != 0x01)) {
+    status = command_port.in();
+  }
   if (status & 0x1) {
     printk("error flushing ATA drive\n");
     return false;
@@ -290,7 +302,7 @@ bool dev::ata::flush(void) {
 u8 dev::ata::wait(void) {
   TRACE;
 
-  if (sched::enabled()) {
+  if (sched::enabled() && cpu::in_thread()) {
     ata_wq.wait();
     return 0;
   } else {

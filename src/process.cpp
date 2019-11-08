@@ -132,6 +132,24 @@ ssize_t process::do_read(int fd, void *dst, size_t len) {
   return ret;
 }
 
+
+ssize_t process::do_write(int fd, void *dst, size_t len) {
+  // TODO: handle permissions, EOF, modes, etc..
+
+  // handle invalid file desc indexes
+  if (fd > files.size() || fd < 0) return -1;
+
+  // not a valid file
+  if (!files[fd]) return -1;
+
+  // clear out the fd
+  big_lock.lock();
+
+  ssize_t ret = files[fd].fd->write(dst, len);
+  big_lock.unlock();
+  return ret;
+}
+
 off_t process::do_seek(int fd, off_t offset, int whence) {
   // TODO: handle permissions, EOF, modes, etc..
 
@@ -220,6 +238,12 @@ off_t sys::lseek(int fd, off_t offset, int whence) {
 ssize_t sys::read(int fd, void *dst, size_t len) {
   // TODO: CHECK FOR BUFFER/ADDR SPACE VALIDITY
   return cpu::proc().do_read(fd, dst, len);
+}
+
+
+ssize_t sys::write(int fd, void *dst, size_t len) {
+  // TODO: CHECK FOR BUFFER/ADDR SPACE VALIDITY
+  return cpu::proc().do_write(fd, dst, len);
 }
 
 pid_t sys::getpid(void) { return cpu::proc().pid(); }

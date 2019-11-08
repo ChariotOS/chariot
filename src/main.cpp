@@ -112,8 +112,40 @@ void draw_square(int x, int y, int sx, int sy, int color) {
   }
 }
 
+struct info {
+  int number;
+  char msg[8];
+};
 static void screen_drawer(int tid) {
-  int c = 0;
+  int fd = sys::open("/hello.txt", O_RDWR);
+
+  int i = 0;
+  while (0) {
+    char buf[256];
+
+    // seek to the start, read
+    sys::lseek(fd, 0, SEEK_SET);
+    int nread = sys::read(fd, buf, 256);
+
+
+    // increment the count
+    auto* info = (struct info*)buf;
+
+    if (i == 0) {
+      // printk("used to be %d, resetting...\n", info->number);
+      // info->number = 0;
+    }
+    i++;
+    info->number++;
+
+    // reset... write
+    sys::lseek(fd, 0, SEEK_SET);
+    sys::write(fd, buf, nread);
+
+
+    printk("%d\n", info->number);
+  }
+
 
   buf = new u32[vga::npixels()];
 
@@ -130,16 +162,16 @@ static void screen_drawer(int tid) {
 
   int pixelc = img_size / sizeof(u32);
 
-  int width = 25;
+  int width = 512;
 
   auto pbuf = new int[width];
 
   int cycle = 0;
 
   while (1) {
-    printk("%p\n", pbuf);
     for (int i = 0; i < pixelc; i += width) {
       int stat = sys::read(catfd, pbuf, width * sizeof(u32));
+
       if (stat < 0) {
         break;
       }
@@ -149,12 +181,11 @@ static void screen_drawer(int tid) {
         char r = pix >> (0 + cycle);
         char g = pix >> (8 + cycle);
         char b = pix >> (16 + cycle);
-
         vga::set_pixel(i + o, vga::rgb(r, g, b));
       }
-      // printk("row\n");
-      // vga::flush_buffer(buf, vga::npixels());
     }
+
+    // vga::flush_buffer(buf, vga::npixels());
 
     cycle += 1;
     cycle %= 4;
@@ -163,38 +194,11 @@ static void screen_drawer(int tid) {
 
   delete[] pbuf;
 
-  while (1) {
-    int size = 2;
-
-    rand->read(0, sizeof(size), &size);
-    size = (size % 40) + 10;
-
-    rand->read(0, sizeof(mouse_x), &mouse_x);
-    rand->read(0, sizeof(mouse_y), &mouse_y);
-
-    mouse_x %= vga::width();
-    mouse_y %= vga::height();
-
-    c++;
-
-    int width = 25;
-    u32 col = vga::hsl((c % width) / (float)width, 1, 0.5);
-
-    if (clicked) draw_square(cx, cy, mouse_x - cx, mouse_y - cy, col);
-    draw_square(mouse_x, mouse_y, size, size, col);
-
-    // vga::flush_buffer(buf, vga::npixels());
-    if (c % 256 == 0) {
-      vga::flush_buffer(buf, vga::npixels());
-    }
-    // cpu::sleep_ms(16);
-  }
-
   delete[] buf;
 }
 
 void init_rootvfs(ref<dev::device> dev) {
-  auto rootfs = make_unique<fs::fat>(dev);
+  auto rootfs = make_unique<fs::ext2>(dev);
   if (!rootfs->init()) panic("failed to init fs on root disk\n");
   if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
 }

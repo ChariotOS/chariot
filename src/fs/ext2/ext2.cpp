@@ -47,7 +47,7 @@ typedef struct __ext2_dir_entry {
 #define EXT2_CACHE_SIZE 128
 
 fs::ext2::ext2(ref<dev::device> dev)
-    : filesystem(/*super*/), dev(dev), disk_cache(dev, 64), m_lock("ext2fs") {
+    : filesystem(/*super*/), dev(dev), disk_cache(dev, 16), m_lock("ext2fs") {
   TRACE;
 }
 

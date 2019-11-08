@@ -21,14 +21,9 @@ class fat_inode : public fs::vnode {
   friend class ext2;
 
  public:
-  explicit fat_inode(int index, fs::fat &fs, FIL *file)
-      : fs::vnode(index), file(file), m_fs(fs) {
-    is_file = 1;
-  }
-
-  explicit fat_inode(int index, fs::fat &fs, DIR *dir)
-      : fs::vnode(index), dir(dir), m_fs(fs) {
-    is_file = 0;
+  explicit fat_inode(int index, fs::fat &fs, string &&path)
+      : fs::vnode(index), path(path), m_fs(fs) {
+    scan();
   }
 
   virtual ~fat_inode() {}
@@ -50,11 +45,20 @@ class fat_inode : public fs::vnode {
 
   inline virtual fs::filesystem &fs() { return m_fs; }
 
+  fs::file_type type = fs::file_type::unknown;
   int is_file = 0;
+  string path;
+
   FIL *file = nullptr;
   DIR *dir = nullptr;
 
  protected:
+  /**
+   * read information about the file
+   */
+  void scan() {
+    //
+  }
   int cached_path[4] = {0, 0, 0, 0};
   int *blk_bufs[4] = {NULL, NULL, NULL, NULL};
 
@@ -64,6 +68,8 @@ class fat_inode : public fs::vnode {
   virtual bool walk_dir_impl(func<bool(const string &, u32)> cb) {
     return false;
   }
+
+  FILINFO finfo;
 
   fs::filesystem &m_fs;
 };
@@ -107,6 +113,51 @@ bool is_zeros(char *b, int len) {
   return true;
 }
 
+FRESULT scan_files(
+    char *path /* Start node to be scanned (***also used as work area***) */
+) {
+  FRESULT res;
+  DIR dir;
+  UINT i;
+  static FILINFO fno;
+
+  string pth_str = path;
+
+  res = f_opendir(&dir, path); /* Open the directory */
+
+  if (res == FR_OK) {
+    printk("D(%d) %s\n", dir.obj.sclust, path);
+    for (;;) {
+      res = f_readdir(&dir, &fno); /* Read a directory item */
+      if (res != FR_OK || fno.fname[0] == 0)
+        break;                    /* Break on error or end of dir */
+      if (fno.fattrib & AM_DIR) { /* It is a directory */
+        i = pth_str.len();
+        sprintk(&path[i], "/%s", fno.fname);
+        res = scan_files(path); /* Enter the directory */
+        if (res != FR_OK) break;
+        path[i] = 0;
+
+      } else { /* It is a file. */
+
+        FIL fp;
+
+        char fpath[50];
+        sprintk(fpath, "%s/%s", path, fno.fname);
+
+        f_open(&fp, fpath, 0);
+
+        printk("F(%d)  %s\n", fp.obj.sclust, fpath);
+
+        f_close(&fp);
+      }
+    }
+    f_closedir(&dir);
+  }
+
+  return res;
+}
+
 bool fs::fat::init(void) {
   char path[50];
 
@@ -126,16 +177,23 @@ bool fs::fat::init(void) {
   f_opendir(root, path);
 
   FILINFO fno;
+
+  printk("\n--- READ ---\n");
   // rewind
   f_readdir(root, NULL);
+
+  printk("ino: %d\n", root->obj.sclust);
   while (1) {
     f_readdir(root, &fno);
     if (fno.fname[0] == 0) break;
 
-
     printk("%s\n", fno.fname);
   }
 
+  printk("--- DONE ---\n\n");
+
+  sprintk(path, "0:");
+  scan_files(path);
 
   return true;
 }
@@ -151,6 +209,21 @@ fs::vnoderef fs::fat::get_root_inode(void) {
   // TODO
   return nullptr;
 }
+
+/////////////////////////////////////
+/////////////////////////////////////
+/////////////////////////////////////
+/////////////////////////////////////
+/////////////////////////////////////
+/////////////////////////////////////
+/////////////////////////////////////
+/////////////////////////////////////
+/////////////////////////////////////
+/////////////////////////////////////
+/////////////////////////////////////
+/////////////////////////////////////
+
+// interfaces for ff
 
 extern "C" DWORD get_fattime(void) { return 0; }
 
@@ -176,8 +249,6 @@ extern "C" u8 fat_disk_read(BYTE pdrv, BYTE *buff, DWORD sector, UINT count) {
   if (!dev) goto done;
   dev->read(sector * 512, count * 512, buff);
   res = 0;  // OKAY
-
-  // hexdump(buff, 512, 16);
 
 done:
 

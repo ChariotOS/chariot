@@ -95,6 +95,7 @@ class process final {
   int do_close(int fd);
   int do_open(const char *, int flags, int mode = 0);
   ssize_t do_read(int fd, void *dst, size_t);
+  ssize_t do_write(int fd, void *dst, size_t);
   off_t do_seek(int fd, off_t offset, int whence);
 
   int handle_pagefault(off_t faulting_addr, off_t *pte);
@@ -191,6 +192,7 @@ int close(int fd);
 off_t lseek(int fd, off_t offset, int whence);
 
 ssize_t read(int fd, void *, size_t);
+ssize_t write(int fd, void *, size_t);
 
 pid_t getpid(void);
 
