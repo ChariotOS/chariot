@@ -4,6 +4,25 @@
 #include <map.h>
 #include <process.h>
 
+static map<string, vfs::mounter_t> filesystems;
+
+int vfs::register_filesystem(string name, mounter_t m) {
+  if (filesystems.contains(name)) {
+    return -EEXIST;
+  }
+  KINFO("Registered filesystem '%s'\n", name.get());
+  filesystems[move(name)] = m;
+  return 0;
+}
+
+int vfs::deregister_filesystem(string name) {
+  if (filesystems.contains(name)) {
+    filesystems.remove(name);
+    return 0;
+  }
+  return -ENOENT;
+}
+
 u64 vfs::qualified_inode_number(const fs::filesystem &f, u32 inode) {
   return (u64)f.id() << 32 | inode;
 }
@@ -13,14 +32,9 @@ vfs::mountpoint::mountpoint(unique_ptr<fs::filesystem> fs, fs::vnoderef host) {
   m_host = move(host);
 }
 
-fs::vnoderef vfs::mountpoint::host() const {
-  return m_host;
-}
+fs::vnoderef vfs::mountpoint::host() const { return m_host; }
 
-
-fs::vnoderef vfs::mountpoint::guest() {
-  return m_fs->get_root_inode();
-}
+fs::vnoderef vfs::mountpoint::guest() { return m_fs->get_root_inode(); }
 
 vfs::mountpoint::mountpoint() {}
 
@@ -74,12 +88,12 @@ fs::vnoderef vfs::get_mount_at(u64 inode) {
   }
 }
 
-
 // TODO: make this not crap
 fs::vnoderef vfs::get_mount_host(u64 inode) {
   // TODO: obligitory todo to take a lock
   for (auto &mnt : mount_points) {
-    auto guest = qualified_inode_number(mnt.value->guest()->fs(), mnt.value->guest()->index());
+    auto guest = qualified_inode_number(mnt.value->guest()->fs(),
+                                        mnt.value->guest()->index());
     if (guest == inode) {
       return mnt.value->host();
     }

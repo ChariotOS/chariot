@@ -48,6 +48,14 @@ class vfs {
 
   static u64 qualified_inode_number(const fs::filesystem &f, u32 inode);
 
+
+  using mounter_t = int (*)(ref<dev::device>, int flags);
+
+
+  // register filesystems by name, therefore we can mount generically by name
+  static int register_filesystem(string, mounter_t);
+  static int deregister_filesystem(string);
+
  private:
   vfs();  // private constructor. use static methods
 };
