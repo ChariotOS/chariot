@@ -275,7 +275,9 @@ class ref {
   const T* ptr() const { return m_ptr; }
 
   T* operator->() {
-    ASSERT(m_ptr);
+    if (!m_ptr) {
+      panic("m_ptr error");
+    }
     return m_ptr;
   }
 

@@ -11,6 +11,7 @@
 #include <elf/loader.h>
 #include <fs/devfs.h>
 #include <fs/ext2.h>
+#include <fs/fat.h>
 #include <fs/file.h>
 #include <fs/tmpfs.h>
 #include <fs/vfs.h>
@@ -97,9 +98,12 @@ static bool clicked = false;
 
 static int cx, cy;
 
+static void set_pixel(int i, int col) {
+  if (i >= 0 && i < vga::width() * vga::height()) buf[i] = col;
+}
+
 static void set_pixel(int x, int y, int col) {
-  if (x >= 0 && x < vga::width() && y >= 0 && y < vga::height())
-    buf[x + y * vga::width()] = col;
+  set_pixel(x + y * vga::width(), col);
 }
 
 void draw_square(int x, int y, int sx, int sy, int color) {
@@ -108,57 +112,94 @@ void draw_square(int x, int y, int sx, int sy, int color) {
   }
 }
 
+struct info {
+  int number;
+  char msg[8];
+};
 static void screen_drawer(int tid) {
-  int c = 0;
+  int fd = sys::open("/hello.txt", O_RDWR);
+
+  int i = 0;
+  while (0) {
+    char buf[256];
+
+    // seek to the start, read
+    sys::lseek(fd, 0, SEEK_SET);
+    int nread = sys::read(fd, buf, 256);
+
+
+    // increment the count
+    auto* info = (struct info*)buf;
+
+    if (i == 0) {
+      // printk("used to be %d, resetting...\n", info->number);
+      // info->number = 0;
+    }
+    i++;
+    info->number++;
+
+    // reset... write
+    sys::lseek(fd, 0, SEEK_SET);
+    sys::write(fd, buf, nread);
+
+
+    printk("%d\n", info->number);
+  }
+
 
   buf = new u32[vga::npixels()];
 
-  int fd = sys::open("/dev/random", O_RDWR);
-
-
   auto rand = dev::open("random");
 
+  int catfd = sys::open("/misc/cat.raw", O_RDONLY);
+  if (catfd < 0) {
+    printk("FAILED\n");
+    return;
+  }
 
+  // hardcoding size, no stat syscall
+  int img_size = 1228800;
 
+  int pixelc = img_size / sizeof(u32);
+
+  int width = 512;
+
+  auto pbuf = new int[width];
+
+  int cycle = 0;
 
   while (1) {
+    for (int i = 0; i < pixelc; i += width) {
+      int stat = sys::read(catfd, pbuf, width * sizeof(u32));
 
-    printk("screen pid = %d\n", sys::gettid());
-    int size = 2;
+      if (stat < 0) {
+        break;
+      }
 
-    // syscall(0, c, 'a');
-
-    rand->read(0, sizeof(size), &size);
-    size = (size % 40) + 10;
-
-    rand->read(0, sizeof(mouse_x), &mouse_x);
-    rand->read(0, sizeof(mouse_y), &mouse_y);
-
-    mouse_x %= vga::width();
-    mouse_y %= vga::height();
-
-    c++;
-
-    int width = 25;
-    u32 col = vga::hsl((c % width) / (float)width, 1, 0.5);
-
-    if (clicked) draw_square(cx, cy, mouse_x - cx, mouse_y - cy, col);
-    draw_square(mouse_x, mouse_y, size, size, col);
-
-    if (c % 256 == 0) {
-      vga::flush_buffer(buf, vga::npixels());
-      // memset(buf, 0x00, vga::npixels() * sizeof(u32));
+      for (int o = 0; o < width; o++) {
+        u32 pix = pbuf[o];
+        char r = pix >> (0 + cycle);
+        char g = pix >> (8 + cycle);
+        char b = pix >> (16 + cycle);
+        vga::set_pixel(i + o, vga::rgb(r, g, b));
+      }
     }
 
-    // cpu::sleep_ms(16);
+    // vga::flush_buffer(buf, vga::npixels());
+
+    cycle += 1;
+    cycle %= 4;
+    sys::lseek(catfd, 0, SEEK_SET);
   }
+
+  delete[] pbuf;
 
   delete[] buf;
 }
 
 void init_rootvfs(ref<dev::device> dev) {
   auto rootfs = make_unique<fs::ext2>(dev);
-  if (!rootfs->init()) panic("failed to init ext2 on root disk\n");
+  if (!rootfs->init()) panic("failed to init fs on root disk\n");
   if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
 }
 
@@ -283,7 +324,9 @@ static void kmain2(void) {
   // Set the PIT interrupt frequency to how many times per second it should fire
   set_pit_freq(1000);
 
-  assert(fs::devfs::init());
+  if (fs::devfs::init() != true) {
+    panic("Failed to initialize devfs\n");
+  }
 
   // KINFO("Detecting CPU speed\n");
   // cpu::calc_speed_khz();
@@ -301,8 +344,13 @@ static void kmain2(void) {
   // open up the disk device for the root filesystem
   auto rootdev = dev::open("ata1");
 
+  // auto rootcache = make_ref<dev::blk_cache>(rootdev, 512);
+
   // setup the root vfs
   init_rootvfs(rootdev);
+
+  // TODO:
+  // vfs::mount(rootdev, "ext2", "/")
 
   // mount the devfs
   fs::devfs::mount();
@@ -310,19 +358,17 @@ static void kmain2(void) {
   // setup the tmp filesystem
   vfs::mount(make_unique<fs::tmp>(), "/tmp");
   auto tmp = vfs::open("/tmp", 0);
-  tmp->touch("foo", fs::file_type::file, 0777);
-  tmp->mkdir("bar", 0777);
 
-
-  // auto node = vfs::open("/", 0);
-  // walk_tree(node);
+  auto node = vfs::open("/", 0);
+  walk_tree(node);
 
   // create a simple idle task
   sched::spawn_kernel_thread("idle", idle_task,
                              {.timeslice = 1, .priority = PRIORITY_IDLE});
 
-  sched::spawn_kernel_thread("rainbow", screen_drawer, {.timeslice = 1});
+  sched::spawn_kernel_thread("screen_test", screen_drawer, {.timeslice = 1});
 
+  /*
   sched::spawn_kernel_thread("kbd1", [](int tid) {
     auto kbd = dev::open("kbd");
     keyboard_packet_t pkt;
@@ -339,6 +385,21 @@ static void kmain2(void) {
       }
     }
   });
+  */
+
+  // simple test thread
+  /*
+  sched::spawn_kernel_thread("test", [](int tid) {
+    //
+    assert(tid == sys::gettid());
+
+    assert(sys::close(-1) == -1);
+    while (1) {
+      // sched::exit();
+      // panic("here!\n");
+    }
+  });
+  */
 
   /*
   sched::spawn_kernel_thread("mouse", []() {
@@ -378,6 +439,7 @@ static void kmain2(void) {
   // enable interrupts and start the scheduler
   sti();
   sched::beep();
+  KINFO("starting scheduler\n");
   sched::run();
 
   // spin forever

@@ -1,4 +1,6 @@
 #include "ata.h"
+
+#include <cpu.h>
 #include <dev/driver.h>
 #include <fs/devfs.h>
 #include <idt.h>
@@ -10,7 +12,10 @@
 #include <printk.h>
 #include <ptr.h>
 #include <sched.h>
+#include <util.h>
 #include <vga.h>
+#include <wait.h>
+
 #include "../majors.h"
 
 #define DEBUG
@@ -60,6 +65,8 @@
 #define BMR_COMMAND_READ 0x8
 #define BMR_STATUS_INT 0x4
 #define BMR_STATUS_ERR 0x2
+
+waitqueue ata_wq("ata");
 
 /**
  * TODO: use per-channel ATA mutex locks. Right now every ata drive is locked
@@ -247,6 +254,8 @@ bool dev::ata::write_block(u32 sector, const u8* buf) {
   TRACE;
   scoped_lock lck(drive_lock);
 
+  // hexdump((void*)buf, 512);
+
   if (sector & 0xF0000000) return false;
 
   // select the correct device, and put bits of the address
@@ -268,6 +277,8 @@ bool dev::ata::write_block(u32 sector, const u8* buf) {
     data_port.out(d);
   }
 
+  flush();
+
   return true;
 }
 
@@ -276,7 +287,11 @@ bool dev::ata::flush(void) {
   device_port.out(master ? 0xE0 : 0xF0);
   command_port.out(0xE7);
 
-  u8 status = wait();
+  // TODO: schedule out while waiting?
+  u8 status = command_port.in();
+  while (((status & 0x80) == 0x80) && ((status & 0x01) != 0x01)) {
+    status = command_port.in();
+  }
   if (status & 0x1) {
     printk("error flushing ATA drive\n");
     return false;
@@ -287,12 +302,19 @@ bool dev::ata::flush(void) {
 u8 dev::ata::wait(void) {
   TRACE;
 
-  // TODO: schedule out while waiting?
-  u8 status = command_port.in();
-  while (((status & 0x80) == 0x80) && ((status & 0x01) != 0x01)) {
-    status = command_port.in();
+  if (sched::enabled() && cpu::in_thread()) {
+    ata_wq.wait();
+    return 0;
+  } else {
+    // TODO: schedule out while waiting?
+    u8 status = command_port.in();
+    while (((status & 0x80) == 0x80) && ((status & 0x01) != 0x01)) {
+      status = command_port.in();
+    }
+
+    return status;
   }
-  return status;
+  return -1;
 }
 
 u64 dev::ata::sector_count(void) {
@@ -378,6 +400,10 @@ static void ata_interrupt(int intr, regs_t* fr) {
   inb(primary_master_status);
   inb(primary_master_bmr_status);
   outb(primary_master_bmr_status, BMR_COMMAND_DMA_STOP);
+
+  if (sched::enabled()) {
+    ata_wq.notify();
+  }
   // INFO("interrupt: err=%d\n", fr->err);
 }
 
@@ -405,7 +431,7 @@ class ata_driver : public dev::driver {
     if (drive->identify()) {
       string name = string::format("ata%d", id);
       KINFO("Detected ATA drive '%s' (%d,%d)\n", name.get(), MAJOR_ATA,
-           m_disks.size());
+            m_disks.size());
       dev::register_name(name, MAJOR_ATA, m_disks.size());
       m_disks.push(drive);
     }

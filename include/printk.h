@@ -25,13 +25,19 @@ int sscanf(const char* buf, const char* fmt, ...);
 const char* human_size(uint64_t bytes, char* buf);
 
 template <typename... T>
-inline void panic(const char* fmt, T&&... args) {
-  printk("[PANIC] ");
+inline void do_panic(const char* fmt, T&&... args) {
+  // disable interrupts
+  cli();
   printk(fmt, args...);
   printk("\n");
-  while (1)
-    ;
+  while (1) {
+    halt();
+  }
 }
+
+#define panic(fmt, args...) \
+  do { printk("[PANIC @ %s] ", __PRETTY_FUNCTION__); \
+  do_panic(fmt, ##args); } while(0);
 
 #define KINFO(fmt, args...)                                                 \
   do {                                                                      \

@@ -3,8 +3,10 @@
 #include <dev/blk_dev.h>
 #include <errno.h>
 #include <fs/ext2.h>
+#include <fs/vfs.h>
 #include <math.h>
 #include <mem.h>
+#include <module.h>
 #include <string.h>
 
 // Standard information and structures for EXT2
@@ -47,7 +49,7 @@ typedef struct __ext2_dir_entry {
 #define EXT2_CACHE_SIZE 128
 
 fs::ext2::ext2(ref<dev::device> dev)
-    : filesystem(/*super*/), dev(dev), disk_cache(dev, 64), m_lock("ext2fs") {
+    : filesystem(/*super*/), dev(dev), disk_cache(dev, 16), m_lock("ext2fs") {
   TRACE;
 }
 
@@ -406,3 +408,11 @@ vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
   return list;
 }
 
+static unique_ptr<fs::filesystem> ext2_mounter(ref<dev::device>, int flags) {
+  printk("trying to mount\n");
+  return nullptr;
+}
+
+static void ext2_init(void) { vfs::register_filesystem("ext2", ext2_mounter); }
+
+module_init("fs::ext2", ext2_init);

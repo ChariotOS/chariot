@@ -37,7 +37,7 @@ CINCLUDES=-I./include/
 
 CFLAGS:=$(CINCLUDES) -mno-red-zone -fno-omit-frame-pointer -fno-stack-protector \
 				 -mtls-direct-seg-refs -fno-pie -Wno-sign-compare -ffreestanding \
-				 -mcmodel=large -O3 -Wall -fno-common -Wstrict-overflow=5 -fno-tree-vectorize -Wno-address-of-packed-member -Wno-strict-overflow \
+				 -mcmodel=large -O3 -Wall -fno-common -Wno-initializer-overrides -Wstrict-overflow=5 -fno-tree-vectorize -Wno-address-of-packed-member -Wno-strict-overflow \
 				 -DGIT_REVISION=\"$(shell git rev-parse HEAD)\" 
 
 CPPFLAGS:=$(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions
@@ -106,7 +106,7 @@ clean:
 images: $(ISO) $(ROOTFS)
 
 
-QEMUOPTS=-hda $(ISO) -m 4G -hdb $(ROOTFS)
+QEMUOPTS=-hda $(ISO) -m 2G -hdb $(ROOTFS)
 
 qemu: images
 	qemu-system-x86_64 $(QEMUOPTS) \

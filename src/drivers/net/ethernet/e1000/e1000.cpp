@@ -259,8 +259,15 @@ void e1000::rxinit() {
   descs = (struct e1000_rx_desc *)p2v(ptr);
   for (int i = 0; i < E1000_NUM_RX_DESC; i++) {
     rx_descs[i] = (struct e1000_rx_desc *)((uint8_t *)descs + i * 16);
-    rx_descs[i]->addr = (uint64_t)(uint8_t *)(kmalloc(8192 + 16));
+
+
+    void *addr = phys::alloc();
+
+    memset(p2v(addr), 0, PGSIZE);
+    rx_descs[i]->addr = (uint64_t)(uint8_t *)addr;
+    // printk("rx_descs[%d] = %p\n", i, rx_descs[i]->addr);
     rx_descs[i]->status = 0;
+    rx_descs[i]->length = 4096;
   }
 
   // INFO("RX virt: %16zx\n", descs);
@@ -404,11 +411,13 @@ void e1000::handle_receive() {
   while ((rx_descs[rx_cur]->status & 0x1)) {
     // got_packet = true;
     uint8_t *buf = (uint8_t *)rx_descs[rx_cur]->addr;
+
+    printk("buf=%p\n", buf);
     uint16_t len = rx_descs[rx_cur]->length;
 
     INFO("RX: %d bytes at %p\n", len, buf);
 
-    hexdump(buf, len);
+    hexdump(p2v(buf), len);
 
     // Here you should inject the received packet into your network stack
 
@@ -465,4 +474,4 @@ void e1000_init(void) {
   }
 }
 
-module_init("e1000", e1000_init);
+// module_init("e1000", e1000_init);

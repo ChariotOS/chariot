@@ -6,6 +6,7 @@
 #include <process.h>
 #include <sched.h>
 #include <single_list.h>
+#include <wait.h>
 
 // #define SCHED_DEBUG
 
@@ -101,6 +102,9 @@ static void ktaskcreateret(void) {
   // call the kernel task function
   cpu::thd().start();
 
+
+  printk("KERNEL TASK DIES\n");
+
   sched::exit();
 
   panic("ZOMBIE kernel task was ran\n");
@@ -153,6 +157,7 @@ thread *sched::spawn_kernel_thread(const char *name, func<void(int)> fnc,
 static void switch_into(thread *tsk) {
   INFO("ctxswtch: pid=%-4d gid=%-4d\n", tsk->pid(), tsk->gid());
   cpu::current().current_thread = tsk;
+  tsk->nran++;
   tsk->start_tick = cpu::get_ticks();
   tsk->state = pstate::RUNNING;
 
@@ -183,7 +188,10 @@ void sched::block() { do_yield(pstate::BLOCKED); }
 
 void sched::yield() { do_yield(pstate::RUNNABLE); }
 
-void sched::exit() { do_yield(pstate::ZOMBIE); }
+void sched::exit() {
+  // printk("sched::exit\n");
+  do_yield(pstate::ZOMBIE);
+}
 
 void sched::run() {
   for (;;) {
@@ -247,6 +255,42 @@ void sched::handle_tick(u64 ticks) {
 
   // yield?
   if (ticks - cpu::thd().start_tick >= cpu::thd().timeslice) {
+    // printk("yield\n");
     sched::yield();
+  }
+}
+
+
+waitqueue::waitqueue(const char *name) : name(name), lock(name) {
+}
+
+void waitqueue::wait(void) {
+  lock.lock();
+
+  if (navail > 0) {
+    navail--;
+    lock.unlock();
+    return;
+  }
+
+  assert(navail == 0);
+
+  // add to the wait queue
+  struct waitqueue_elem e;
+  e.waiter = &cpu::thd();
+  elems.append(e);
+  lock.unlock();
+  do_yield(pstate::BLOCKED);
+}
+
+void waitqueue::notify() {
+  scoped_lock lck(lock);
+  if (elems.is_empty()) {
+    navail++;
+  } else {
+    auto e = elems.take_first();
+
+    assert(e.waiter->state == pstate::BLOCKED);
+    e.waiter->state = pstate::RUNNABLE;
   }
 }

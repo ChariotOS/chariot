@@ -234,7 +234,7 @@ ssize_t fs::ext2_inode::do_rw(fs::filedesc &d, size_t nbytes, void *buf,
     nread += num_bytes_to_copy;
     given_buf += num_bytes_to_copy;
   }
-  d.seek(nread);
+  d.seek(nread, SEEK_CUR);
   return nread;
 }
 

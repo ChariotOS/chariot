@@ -1,8 +1,9 @@
-
-# include ../Makefile.common
-
 SRCS = $(wildcard *.c)
 APPS = ${SRCS:.c=}
+
+
+ASMSRCS = $(wildcard *.asm)
+APPS += ${ASMSRCS:.asm=}
 
 DEFINES += -DUSERLAND
 
@@ -14,8 +15,8 @@ clean:
 	@echo "CLEAN"
 	@rm -f $(APPS) $(OBJS) *.d
 
-$(APPS) : % : %.c
-	echo "CC $@"
-	gcc -o $@ -ffreestanding $<
 
+$(APPS) : % : %.asm
+	@echo "ASM $@"
+	nasm -f bin -o $@ $<
 

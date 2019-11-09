@@ -1,13 +1,13 @@
 #ifndef __VNODE_H__
 #define __VNODE_H__
 
+#include <dev/device.h>
+#include <errno.h>
+#include <fs/file.h>
 #include <func.h>
 #include <ptr.h>
 #include <string.h>
 #include <types.h>
-#include <errno.h>
-#include <dev/device.h>
-#include <fs/file.h>
 
 namespace fs {
 
@@ -25,17 +25,13 @@ class vnode : virtual public file {
 
   inline u32 index(void) const { return m_index; }
 
-
-
   // return the three octal permission mode
   inline virtual u16 permissions(void) { return 0777; }
 
   virtual filesystem &fs(void) = 0;
 
   inline off_t size(void) { return metadata().size; }
-  inline bool is_simlink(void) {
-    return metadata().type == file_type::symlink;
-  }
+  inline bool is_simlink(void) { return metadata().type == file_type::symlink; }
   inline bool is_dir(void) { return metadata().type == file_type::dir; }
   inline u32 mode(void) { return metadata().mode; }
 
@@ -43,7 +39,11 @@ class vnode : virtual public file {
 
   // create a directory and a file. Defaulting to no mode (permissions)
   inline virtual ref<vnode> mkdir(string name, u32 mode = 0000) { return {}; };
-  inline virtual ref<vnode> touch(string name, fs::file_type t = fs::file_type::file, u32 mode = 0000) { return {}; };
+  inline virtual ref<vnode> touch(string name,
+                                  fs::file_type t = fs::file_type::file,
+                                  u32 mode = 0000) {
+    return {};
+  };
 
   /*
    * Cause a regular file to be truncated to the size of precisely length bytes.
@@ -54,7 +54,7 @@ class vnode : virtual public file {
    */
   virtual int truncate(size_t len) = 0;
 
-  bool walk_dir(func<bool(const string &, ref<vnode>)> cb);
+  virtual bool walk_dir(func<bool(const string &, ref<vnode>)> cb);
 
   // add a file to the directory that this vnode points to
   // Error examples:
@@ -63,7 +63,6 @@ class vnode : virtual public file {
   //  -ENAMETOOLONG - name is too long for the particular filesystem
   //  -... - use your brain
   virtual int add_dir_entry(ref<vnode> node, const string &name, u32 mode) = 0;
-
 
  protected:
   vnode(u32 index);
