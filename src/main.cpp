@@ -349,6 +349,9 @@ static void kmain2(void) {
   // setup the root vfs
   init_rootvfs(rootdev);
 
+  // TODO:
+  // vfs::mount(rootdev, "ext2", "/")
+
   // mount the devfs
   fs::devfs::mount();
 

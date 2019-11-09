@@ -23,6 +23,16 @@ int vfs::deregister_filesystem(string name) {
   return -ENOENT;
 }
 
+
+int vfs::mount(ref<dev::device>, string fs_name, string path) {
+  // special case for mounting the root
+  if (path == "/") {
+    printk("mounting root!\n");
+  }
+  return -ENOTIMPL;
+}
+
+
 u64 vfs::qualified_inode_number(const fs::filesystem &f, u32 inode) {
   return (u64)f.id() << 32 | inode;
 }

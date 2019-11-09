@@ -408,9 +408,9 @@ vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
   return list;
 }
 
-static int ext2_mounter(ref<dev::device>, int flags) {
+static unique_ptr<fs::filesystem> ext2_mounter(ref<dev::device>, int flags) {
   printk("trying to mount\n");
-  return -1;
+  return nullptr;
 }
 
 static void ext2_init(void) { vfs::register_filesystem("ext2", ext2_mounter); }

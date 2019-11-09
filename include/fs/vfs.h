@@ -4,7 +4,6 @@
 #include <ptr.h>
 #include <string.h>
 
-
 /**
  *
  * The virtual file system allows filesystems to be mounted recursively in the
@@ -43,18 +42,18 @@ class vfs {
   // get the vnode located at the qualified inode
   static fs::vnoderef get_mount_at(u64 qual_inode);
 
-
   static fs::vnoderef get_mount_host(u64 guest_inode);
 
   static u64 qualified_inode_number(const fs::filesystem &f, u32 inode);
 
-
-  using mounter_t = int (*)(ref<dev::device>, int flags);
-
+  // a mounter creates a filesystem on a device and returns it
+  using mounter_t = unique_ptr<fs::filesystem> (*)(ref<dev::device>, int flags);
 
   // register filesystems by name, therefore we can mount generically by name
   static int register_filesystem(string, mounter_t);
   static int deregister_filesystem(string);
+
+  static int mount(ref<dev::device>, string fs_name, string path);
 
  private:
   vfs();  // private constructor. use static methods
