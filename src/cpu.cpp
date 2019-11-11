@@ -47,8 +47,6 @@ static inline void lgdt(void *data, int size) {
   gdt.limit = size - 1;
   gdt.base = (u64)data;
 
-  printk("lgdt(%p)\n", data);
-
   asm volatile("lgdt %0" ::"m"(gdt));
 }
 
