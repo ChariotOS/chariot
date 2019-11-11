@@ -102,7 +102,6 @@ static void ktaskcreateret(void) {
   // call the kernel task function
   cpu::thd().start();
 
-
   printk("KERNEL TASK DIES\n");
 
   sched::exit();
@@ -113,31 +112,6 @@ static void ktaskcreateret(void) {
 thread *sched::spawn_kernel_thread(const char *name, func<void(int)> fnc,
                                    create_opts opts) {
   // alloc the task under the kernel group
-  /*
-  auto p = proc_alloc(name, 0, RING_KERNEL);
-
-  // printk("eip: %p\n", e);
-  p->context->eip = (u64)e;
-
-  p->timeslice = opts.timeslice;
-  //
-  p->kernel_func = e;
-
-// the process is run in kernel mode
-  p->tf->cs = (SEG_KCODE << 3);
-  p->tf->ds = (SEG_KDATA << 3);
-  p->tf->eflags = readeflags() | FL_IF;
-
-  p->context->eip = (u64)ktaskcreateret;
-
-  p->state = pstate::RUNNABLE;
-  add_task(p);
-
-  KINFO("spawned kernel task '%s' pid=%d\n", name, p->pid());
-
-  return p->pid();
-  */
-
   thread &t = kernel_proc().create_thread(fnc);
 
   t.timeslice = opts.timeslice;
@@ -161,6 +135,7 @@ static void switch_into(thread *tsk) {
   tsk->start_tick = cpu::get_ticks();
   tsk->state = pstate::RUNNING;
 
+  tsk->proc().switch_vm();
   swtch(&cpu::current().scheduler, tsk->context);
   cpu::current().current_thread = nullptr;
 }
@@ -169,6 +144,7 @@ static void schedule() {
   if (cpu::ncli() != 1) panic("schedule must have ncli == 1");
   int intena = cpu::current().intena;
   swtch(&cpu::thd().context, cpu::current().scheduler);
+  cpu::proc().switch_vm();
   cpu::current().intena = intena;
 }
 
@@ -260,9 +236,7 @@ void sched::handle_tick(u64 ticks) {
   }
 }
 
-
-waitqueue::waitqueue(const char *name) : name(name), lock(name) {
-}
+waitqueue::waitqueue(const char *name) : name(name), lock(name) {}
 
 void waitqueue::wait(void) {
   lock.lock();

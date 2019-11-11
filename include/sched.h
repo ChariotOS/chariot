@@ -3,9 +3,8 @@
 #pragma once
 
 #include <func.h>
+#include <task.h>
 
-using pid_t = int;
-using gid_t = int;
 
 // forward declare
 class thread;

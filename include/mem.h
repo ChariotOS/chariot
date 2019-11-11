@@ -28,8 +28,13 @@ extern bool use_kernel_vm;
 // placement new
 inline void *operator new(size_t, void *ptr) { return ptr; }
 
+
+extern int kmem_revision;
+
 int init_mem(u64 mbd);
 size_t mem_size();
+
+void *get_kernel_page_table(void);
 
 // void *memcpy(void *dest, const void *src, u64 n);
 

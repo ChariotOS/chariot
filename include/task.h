@@ -8,6 +8,24 @@
 
 #define BIT(n) (1 << (n))
 
+/**
+ *
+ * Task lifetime in a task_process:
+ *
+ *                               C--------------X
+ *    |                          | clone()
+ *    |      C----------------------------------X
+ *    |      | clone()
+ *    F-----------------------------------------X exit()
+ *    ^ call to fork()      | clone()
+ *                          C-------------------X
+ *                                              ^ any task calls exit()
+ *
+ * When a task calls exit(), it deligates to the task_process which exits all
+ * the tasks in the process in a safe manner, flushing and cleanup up after
+ * itself
+ */
+
 struct task_regs {
   u64 rax;
   u64 rbx;
@@ -46,20 +64,50 @@ struct task_context {
   u64 eip;  // rip;
 };
 
+
+using pid_t = i64;
+using gid_t = i64;
+
+
+#define SPWN_FORK   BIT(0)
+#define SPWN_KERNEL BIT(1)
+#define SPWN_
+
 struct task_process final : public refcounted<task_process> {
-  int pid;
+  int pid; // obviously the process id
+
+  int uid, gid;
+
+  // per-process flags
+  unsigned long flags = 0;
+
+  int spawn_flags = 0;
+
+  // execution ring (0 for kernel, 3 for user)
+  int ring;
 
   /* address space information */
-  vm::addr_space *mm = nullptr;
+  ref<vm::addr_space> mm = nullptr;
 
   /* cwd - current working directory
    */
   ref<fs::vnode> cwd;
 
-  // create a thread in the task_process
-  ref<struct task> clone(int (*fn)(void *), void *stack, int falgs, void *arg);
+  // every process has a name
+  string name;
+  string command_path;
 
-  static ref<struct task_process> create(void);
+  // procs have arguments and enviroments.
+  vec<string> args;
+  vec<string> env;
+
+
+  ref<task_process> parent;
+
+  // create a thread in the task_process
+  int create_task(int (*fn)(void *), void *stack, int flags, void *arg);
+
+  static ref<struct task_process> spawn(string path, int uid, int gid, pid_t parent_pid, int&error, vec<string>&&args, int spwn_flags, int ring = 0);
   static ref<struct task_process> lookup(int pid);
 };
 
@@ -72,6 +120,12 @@ struct task_process final : public refcounted<task_process> {
 #define PF_EXITING BIT(1)  // in the process of exiting
 #define PF_KTHREAD BIT(2)  // is a kernel thread
 #define PF_MAIN BIT(3)     // this task is the main task for a process
+
+// Process states
+#define PS_UNRUNNABLE (-1)
+#define PS_RUNNABLE (0)
+#define PS_ZOMBIE (1)
+#define PS_BLOCKED (2)
 
 /**
  * task - a schedulable entity in the kernel

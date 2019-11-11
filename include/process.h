@@ -105,6 +105,9 @@ class process final {
   int add_vm_region(string name, off_t vpn, size_t len, int prot,
                     unique_ptr<vm::memory_backing>);
 
+
+  void switch_vm(void);
+
  protected:
   vm::addr_space addr_space;
   vec<unique_ptr<thread>> threads;
@@ -143,6 +146,7 @@ class thread {
   void start(void);
 
   size_t nran = 0;
+
 
  protected:
   friend process;

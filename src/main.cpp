@@ -32,6 +32,7 @@
 #include <sched.h>
 #include <smp.h>
 #include <string.h>
+#include <task.h>
 #include <types.h>
 #include <util.h>
 #include <uuid.h>
@@ -42,13 +43,18 @@ extern int kernel_end;
 
 // in src/arch/x86/sse.asm
 extern "C" void enable_sse();
+extern "C" void call_with_new_stack(void*, void*);
+
+// HACK: not real kernel modules right now, just basic function pointers in an
+// array statically.
+// TODO: some initramfs or something with a TAR file and load them in as kernel
+// modules or something :)
 void initialize_kernel_modules(void) {
   extern struct kernel_module_info __start__kernel_modules[];
   extern struct kernel_module_info __stop__kernel_modules[];
   struct kernel_module_info* mod = __start__kernel_modules;
   int i = 0;
   while (mod != __stop__kernel_modules) {
-    // printk("calling module %s\n", dev->name);
     mod->initfn();
     mod = &(__start__kernel_modules[++i]);
   }
@@ -63,40 +69,7 @@ static void call_global_constructors(void) {
     (*func)();
 }
 
-extern "C" void call_with_new_stack(void*, void*);
-
-static void walk_tree(fs::vnoderef& node, int depth = 0) {
-  node->walk_dir([&](const string& name, fs::vnoderef vn) -> bool {
-    for (int i = -1; i < depth; i++) {
-      if (i == depth - 1) {
-        printk("| - ");
-      } else {
-        printk("|   ");
-      }
-    }
-    printk("%s", name.get());
-
-    if (vn->is_dir()) printk("/");
-
-    // printk("  %d", vn->index());
-
-    printk("\n");
-
-    if (name == "." || name == "..") return true;
-
-    if (vn->index() != node->index())
-      if (vn->is_dir()) walk_tree(vn, depth + 1);
-
-    return true;
-  });
-}
-
 static u32* buf = nullptr;
-static int mouse_x = 0;
-static int mouse_y = 0;
-static bool clicked = false;
-
-static int cx, cy;
 
 static void set_pixel(int i, int col) {
   if (i >= 0 && i < vga::width() * vga::height()) buf[i] = col;
@@ -127,7 +100,6 @@ static void screen_drawer(int tid) {
     sys::lseek(fd, 0, SEEK_SET);
     int nread = sys::read(fd, buf, 256);
 
-
     // increment the count
     auto* info = (struct info*)buf;
 
@@ -142,12 +114,10 @@ static void screen_drawer(int tid) {
     sys::lseek(fd, 0, SEEK_SET);
     sys::write(fd, buf, nread);
 
-
     printk("%d\n", info->number);
   }
 
-
-  buf = new u32[vga::npixels()];
+  // buf = new u32[vga::npixels()];
 
   auto rand = dev::open("random");
 
@@ -164,24 +134,26 @@ static void screen_drawer(int tid) {
 
   int width = 512;
 
-  auto pbuf = new int[width];
-
   int cycle = 0;
 
+  auto pbuf = new int[width];
   while (1) {
     for (int i = 0; i < pixelc; i += width) {
       int stat = sys::read(catfd, pbuf, width * sizeof(u32));
 
       if (stat < 0) {
+        delete[] pbuf;
         break;
       }
 
       for (int o = 0; o < width; o++) {
+        /*
         u32 pix = pbuf[o];
         char r = pix >> (0 + cycle);
         char g = pix >> (8 + cycle);
         char b = pix >> (16 + cycle);
         vga::set_pixel(i + o, vga::rgb(r, g, b));
+        */
       }
     }
 
@@ -194,7 +166,7 @@ static void screen_drawer(int tid) {
 
   delete[] pbuf;
 
-  delete[] buf;
+  // delete[] buf;
 }
 
 void init_rootvfs(ref<dev::device> dev) {
@@ -349,9 +321,6 @@ static void kmain2(void) {
   // setup the root vfs
   init_rootvfs(rootdev);
 
-  // TODO:
-  // vfs::mount(rootdev, "ext2", "/")
-
   // mount the devfs
   fs::devfs::mount();
 
@@ -359,82 +328,30 @@ static void kmain2(void) {
   vfs::mount(make_unique<fs::tmp>(), "/tmp");
   auto tmp = vfs::open("/tmp", 0);
 
-  auto node = vfs::open("/", 0);
-  walk_tree(node);
+  ref<task_process> kproc0 = nullptr;
+  // initialize the kernel process
+  {
+    int kproc0_error = 0;
+
+    string kproc0_name = "essedarius";
+    vec<string> kproc_args;
+    kproc_args.push(kproc0_name);
+    // spawn the kernel process
+    auto kproc0 = task_process::spawn(kproc0_name, 0, 0, -1, kproc0_error,
+                                      move(kproc_args), SPWN_KERNEL, 0);
+
+    if (kproc0_error != 0) {
+      panic("creating the initial kernel process failed with error code %d!\n",
+            kproc0_error);
+    }
+    KINFO("spawned kproc0\n");
+  }
 
   // create a simple idle task
   sched::spawn_kernel_thread("idle", idle_task,
                              {.timeslice = 1, .priority = PRIORITY_IDLE});
 
   sched::spawn_kernel_thread("screen_test", screen_drawer, {.timeslice = 1});
-
-  /*
-  sched::spawn_kernel_thread("kbd1", [](int tid) {
-    auto kbd = dev::open("kbd");
-    keyboard_packet_t pkt;
-    while (1) {
-      int nread = kbd->read(0, sizeof(pkt), &pkt);
-      if (nread != sizeof(pkt)) continue;
-
-      assert(nread == sizeof(pkt));
-      // sched::beep();
-      if (pkt.is_press()) {
-        if (pkt.character == 'd') assert(false);
-        sched::beep();
-        // printk("%c", pkt.character);
-      }
-    }
-  });
-  */
-
-  // simple test thread
-  /*
-  sched::spawn_kernel_thread("test", [](int tid) {
-    //
-    assert(tid == sys::gettid());
-
-    assert(sys::close(-1) == -1);
-    while (1) {
-      // sched::exit();
-      // panic("here!\n");
-    }
-  });
-  */
-
-  /*
-  sched::spawn_kernel_thread("mouse", []() {
-    auto mouse = dev::open("mouse");
-    mouse_packet_t pkt;
-    int i = 0;
-    while (1) {
-      int nread = mouse->read(0, sizeof(pkt), &pkt);
-      i++;
-      // printk("i=%d\n", i);
-
-      if (nread == 0) continue;
-      if (nread != sizeof(pkt)) continue;
-
-      int newx = mouse_x + pkt.dx;
-      int newy = mouse_y + -pkt.dy;
-
-      // KINFO("%d:%d\n", pkt.dx, -pkt.dy);
-
-      if (newx >= vga::width()) newx = vga::width() - 1;
-      if (newy >= vga::height()) newy = vga::height() - 1;
-
-      if (newx >= 0 && newx < vga::width()) mouse_x = newx;
-      if (newy >= 0 && newy < vga::height()) mouse_y = newy;
-
-      bool is_clicked = (pkt.buttons & MOUSE_LEFT_CLICK) != 0;
-
-      if (!clicked && is_clicked) {
-        cx = newx;
-        cy = newy;
-      }
-      clicked = is_clicked;
-    }
-  });
-  */
 
   // enable interrupts and start the scheduler
   sti();

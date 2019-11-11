@@ -46,6 +46,8 @@ extern char high_kern_end;
 static struct mem_map_entry memory_map[MAX_MMAP_ENTRIES];
 static struct mmap_info mm_info;
 
+int kmem_revision = 0;
+
 multiboot_info_t *multiboot_info_ptr;
 
 void init_mmap(u64 mbd) {
@@ -84,8 +86,8 @@ void init_mmap(u64 mbd) {
     memory_map[n].len = end - start;
     memory_map[n].type = mmap->type;
 
-    printk("  %s range=[% 16lx:% 16lx] size=%zu bytes\n", names[mmap->type],
-           start, end, end - start);
+    KINFO("%s %-6lx:%-16lx (%zu bytes)\n", names[mmap->type],
+          start,end, end - start);
 
     total_mem += end - start;
 
@@ -110,11 +112,11 @@ void init_mmap(u64 mbd) {
     ++n;
   }
 
-  printk("\n");
-  printk("  - total:    %zu\n", total_mem);
-  printk("  - usable:   %zu\n", mm_info.total_mem);
-  printk("  - reserved: %zu\n", total_mem - mm_info.total_mem);
-  printk("\n");
+  KINFO("\n");
+  KINFO("  - total:    %zu\n", total_mem);
+  KINFO("  - usable:   %zu\n", mm_info.total_mem);
+  KINFO("  - reserved: %zu\n", total_mem - mm_info.total_mem);
+  KINFO("\n");
 }
 
 size_t mem_size() { return mm_info.total_mem; }
@@ -181,6 +183,8 @@ void *ksbrk(i64 inc) {
 
 extern int mm_init(void);
 
+static void *kernel_page_table;
+
 void init_kernel_virtual_memory() {
 #ifdef MEM_DEBUF
   char buf[50];
@@ -209,6 +213,8 @@ void init_kernel_virtual_memory() {
 
   auto *new_cr3 = (u64 *)phys::alloc();
 
+  kernel_page_table = p2v(new_cr3);
+
   for (; true; i += page_step) {
     if (i > max(mm_info.total_mem, min_mem)) break;
     paging::map_into(new_cr3, (u64)p2v(i), i, page_size, PTE_W | PTE_P);
@@ -231,6 +237,8 @@ void init_kernel_virtual_memory() {
   // initialize the memory allocator
   mm_init();
 }
+
+void *get_kernel_page_table(void) { return kernel_page_table; }
 
 extern "C" void *malloc(size_t size);
 extern "C" void free(void *ptr);

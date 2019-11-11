@@ -5,6 +5,7 @@
 #include <phys.h>
 #include <process.h>
 #include <syscalls.h>
+#include <asm.h>
 
 extern "C" void trapret(void);
 
@@ -18,9 +19,17 @@ process::process(string name, pid_t pid, gid_t gid, int ring)
       m_name(name),
       m_pid(pid),
       m_gid(gid),
-      big_lock("processlock") {}
+      big_lock("processlock") {
+  if (m_ring == RING_KERNEL) {
+    addr_space.page_table = get_kernel_page_table();
+  } else {
+    addr_space.page_table = p2v(phys::alloc(1));
+  }
+}
 
-process::~process(void) {}
+process::~process(void) {
+  // TODO: deallocate the address space
+}
 
 const string &process::name(void) { return m_name; }
 
@@ -132,7 +141,6 @@ ssize_t process::do_read(int fd, void *dst, size_t len) {
   return ret;
 }
 
-
 ssize_t process::do_write(int fd, void *dst, size_t len) {
   // TODO: handle permissions, EOF, modes, etc..
 
@@ -165,6 +173,15 @@ off_t process::do_seek(int fd, off_t offset, int whence) {
   ssize_t ret = files[fd].fd->seek(offset, whence);
   big_lock.unlock();
   return ret;
+}
+
+void process::switch_vm(void) {
+  // printk("switch into %p\n", addr_space.page_table);
+
+  if (addr_space.page_table == nullptr) {
+    panic("null page table!\n");
+  }
+  write_cr3((u64)v2p(addr_space.page_table));
 }
 
 /**
@@ -239,7 +256,6 @@ ssize_t sys::read(int fd, void *dst, size_t len) {
   // TODO: CHECK FOR BUFFER/ADDR SPACE VALIDITY
   return cpu::proc().do_read(fd, dst, len);
 }
-
 
 ssize_t sys::write(int fd, void *dst, size_t len) {
   // TODO: CHECK FOR BUFFER/ADDR SPACE VALIDITY

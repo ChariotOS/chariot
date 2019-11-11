@@ -49,7 +49,7 @@ typedef struct __ext2_dir_entry {
 #define EXT2_CACHE_SIZE 128
 
 fs::ext2::ext2(ref<dev::device> dev)
-    : filesystem(/*super*/), dev(dev), disk_cache(dev, 16), m_lock("ext2fs") {
+    : filesystem(/*super*/), dev(dev), disk(dev), m_lock("ext2fs") {
   TRACE;
 }
 
@@ -100,12 +100,20 @@ bool fs::ext2::init(void) {
     return false;
   }
 
+  auto uuid = sb->s_uuid;
+
+  u16 *u_shrts = (u16 *)(uuid + sizeof(u32));
+
+  u64 trail = 0xFFFFFFFFFFFF & *(u64 *)(uuid + sizeof(u32) + 3 * sizeof(u16));
+  KINFO("ext2 uuid: %08x-%04x-%04x-%04x-%012x\n", *(u32 *)uuid, u_shrts[0],
+        u_shrts[1], u_shrts[2], trail);
+
   return true;
 }
 
 int fs::ext2::write_superblock(void) {
   // TODO: lock
-  return disk_cache.write(1024, 1024, sb);
+  return disk->write(1024, 1024, sb);
 }
 
 bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {
@@ -191,13 +199,13 @@ bool fs::ext2::write_inode(ext2_inode_info *src, u32 inode) {
 
 bool fs::ext2::read_block(u32 block, void *buf) {
   TRACE;
-  bool valid = disk_cache.read(block * blocksize, blocksize, buf);
+  bool valid = disk->read(block * blocksize, blocksize, buf);
   return valid;
 }
 
 bool fs::ext2::write_block(u32 block, const void *buf) {
   TRACE;
-  return disk_cache.write(block * blocksize, blocksize, buf);
+  return disk->write(block * blocksize, blocksize, buf);
 }
 
 void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,

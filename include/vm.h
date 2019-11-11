@@ -10,22 +10,38 @@
 #define VPROT_EXEC (1 << 2)
 #define VPROT_SUPER (1 << 3)
 
+#define VACC_WRITE 1
+#define VACC_READ 2
+#define VACC_EXEC 4
+
+class process;  // fwd decl
 namespace vm {
 
 class region;  // fwd decl
+class addr_space;
+
+// a crazy simple wrapper around the physical memory allocator, except it frees
+// the page when no more references are held
+struct phys_page : public refcounted<phys_page> {
+  u64 pa;
+  ~phys_page(void);
+
+  static ref<phys_page> alloc(void);
+};
+
 /**
  * a memory backing is a structure that allows overloading of physical memory
- * access.
+ * access. By default it just owns physical pages
  */
-class memory_backing {
+class memory_backing : public refcounted<phys_page> {
  public:
+  memory_backing(int npags);
   virtual ~memory_backing() = 0;  // pure virtual
 
-  /*
-   * get a physical page address that can be mapped into the virtual address
-   * space. This function is called once per
-   */
-  addr_t phys_page(region &, off_t offset);
+  virtual int fault(addr_space &, region &, int page, int flags);
+
+  // every memory region has an array of npages refcounted physical pages
+  vec<ref<phys_page>> pages;
 };
 
 /**
@@ -47,21 +63,14 @@ class region {
   // memory protection is per-region and not per-page
   int prot = 0;
 
-  // once the region has changed a page, the dirt flag is flipped to true. Which
-  // causes the address space which owns this region to re-map the physical
-  // addresses in the page table
-  bool dirty = false;
-
   // regions have a backing structure which handles faults
-  unique_ptr<vm::memory_backing> backing;
+  ref<vm::memory_backing> backing;
 
  public:
   region(string name, off_t, size_t, int prot);
-
-  off_t fault(off_t);
 };
 
-class addr_space {
+class addr_space final : public refcounted<addr_space> {
  public:
   // lookup a region by its page number, returning null when there is no region
   vm::region *lookup(off_t page_number);
@@ -71,8 +80,24 @@ class addr_space {
 
   int handle_pagefault(off_t page_number, int flags);
 
+  // the page table for this address space.
+  void *page_table;
+
+  int schedule_mapping(void *va, u64 pa);
+
  protected:
+  friend class process;
+
   vec<unique_ptr<vm::region>> regions;
+
+  struct pending_mapping {
+    void *va;
+    u64 pa;
+  };
+
+  u64 revision = 0;
+  u64 kmem_revision = 0;
+  vec<pending_mapping> pending_mappings;
 };
 
 };  // namespace vm
