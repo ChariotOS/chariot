@@ -89,7 +89,7 @@ struct info {
   int number;
   char msg[8];
 };
-static void screen_drawer(int tid) {
+static int screen_drawer(void*) {
   int fd = sys::open("/hello.txt", O_RDWR);
 
   int i = 0;
@@ -124,7 +124,7 @@ static void screen_drawer(int tid) {
   int catfd = sys::open("/misc/cat.raw", O_RDONLY);
   if (catfd < 0) {
     printk("FAILED\n");
-    return;
+    return 0;
   }
 
   // hardcoding size, no stat syscall
@@ -176,7 +176,7 @@ void init_rootvfs(ref<dev::device> dev) {
 }
 
 atom<int> nidles = 0;
-static void idle_task(int tid) {
+static int idle_task(void* arg) {
   while (1) {
     // increment nidels
     nidles.store(nidles.load() + 1);
@@ -347,11 +347,9 @@ static void kmain2(void) {
     KINFO("spawned kproc0\n");
   }
 
-  // create a simple idle task
-  sched::spawn_kernel_thread("idle", idle_task,
-                             {.timeslice = 1, .priority = PRIORITY_IDLE});
+  kproc0->create_task(idle_task, 0 /* TODO: possible idle flag? */, nullptr);
 
-  sched::spawn_kernel_thread("screen_test", screen_drawer, {.timeslice = 1});
+  // kproc0->create_task(screen_drawer, 0, nullptr);
 
   // enable interrupts and start the scheduler
   sti();

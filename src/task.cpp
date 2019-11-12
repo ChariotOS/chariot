@@ -42,12 +42,13 @@ int task_process::create_task(int (*fn)(void *), int flags, void *arg) {
   // initial context
   sp -= sizeof(*t->ctx);
   t->ctx = (struct task_context *)sp;
-
   memset(t->ctx, 0, sizeof(*t->ctx));
 
+
+  t->flags = flags;
   t->state = PS_EMBRYO;
 
-  if (flags & PF_KTHREAD) {
+  if (this->flags & PF_KTHREAD) {
     t->tf->cs = (SEG_KCODE << 3);
     t->tf->ds = (SEG_KDATA << 3);
     t->tf->eflags = readeflags() | FL_IF;
@@ -58,6 +59,7 @@ int task_process::create_task(int (*fn)(void *), int flags, void *arg) {
   }
 
   t->tf->esp = 0;
+  t->tf->eip = (u64)fn; // call the passed fn on ``iret''
   t->ctx->eip = (u64)task_create_callback;
 
   task_table_lock.lock();
