@@ -339,7 +339,7 @@ static void kmain2(void) {
     kproc_args.push(kproc0_name);
     // spawn the kernel process
     kproc0 = task_process::spawn(kproc0_name, 0, 0, -1, kproc0_error,
-                                      move(kproc_args), SPWN_KERNEL, 0);
+                                      move(kproc_args), PF_KTHREAD, 0);
 
     if (kproc0_error != 0) {
       panic("creating the initial kernel process failed with error code %d!\n",
@@ -348,7 +348,7 @@ static void kmain2(void) {
     KINFO("spawned kproc0\n");
   }
 
-  kproc0->create_task(idle_task, 0 /* TODO: possible idle flag? */, nullptr);
+  kproc0->create_task(idle_task, PF_KTHREAD /* TODO: possible idle flag? */, nullptr);
 
   // kproc0->create_task(screen_drawer, 0, nullptr);
 

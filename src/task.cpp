@@ -3,6 +3,7 @@
 #include <printk.h>
 #include <sched.h>
 #include <task.h>
+#include <cpu.h>
 
 extern "C" void trapret(void);
 static void task_create_callback(void);
@@ -128,4 +129,18 @@ ref<struct task> task::lookup(int tid) {
   return t;
 }
 
-static void task_create_callback(void) { panic("huzzah!\n"); }
+static void task_create_callback(void) {
+  auto task = cpu::thd();
+
+  if (task.flags & PF_KTHREAD) {
+    printk("task is kthread\n");
+
+    using kfunc_t = int (*)(void*);
+    kfunc_t kfn;
+    kfn = (kfunc_t)task.tf->eip;
+
+    kfn(nullptr);
+  }
+
+  panic("non-kernel threads not working!\n");
+}

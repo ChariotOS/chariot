@@ -71,20 +71,30 @@ using gid_t = i64;
 
 
 #define SPWN_FORK   BIT(0)
-#define SPWN_KERNEL BIT(1)
+
+/*
+ * Per process flags
+ *
+ * These are mostly stollen from linux in include/linux/sched.h
+ */
+#define PF_IDLE BIT(0)     // is an idle thread
+#define PF_EXITING BIT(1)  // in the process of exiting
+#define PF_KTHREAD BIT(2)  // is a kernel thread
+#define PF_MAIN BIT(3)     // this task is the main task for a process
 
 struct task_process final : public refcounted<task_process> {
   int pid; // obviously the process id
 
   int uid, gid;
 
-  // per-process flags
+  // per-process flags (PF_*)
   unsigned long flags = 0;
 
   int spawn_flags = 0;
 
   // execution ring (0 for kernel, 3 for user)
   int ring;
+
 
   /* address space information */
   ref<vm::addr_space> mm = nullptr;
@@ -113,21 +123,12 @@ struct task_process final : public refcounted<task_process> {
   // create a thread in the task_process
   int create_task(int (*fn)(void *), int flags, void *arg);
 
-  static ref<struct task_process> spawn(string path, int uid, int gid, pid_t parent_pid, int&error, vec<string>&&args, int spwn_flags, int ring = 0);
+  static ref<struct task_process> spawn(string path, int uid, int gid, pid_t parent_pid, int&error, vec<string>&&args, int pflags, int ring = 0);
   static ref<struct task_process> lookup(int pid);
 
   task_process();
 };
 
-/*
- * Per process flags
- *
- * These are mostly stollen from linux in include/linux/sched.h
- */
-#define PF_IDLE BIT(0)     // is an idle thread
-#define PF_EXITING BIT(1)  // in the process of exiting
-#define PF_KTHREAD BIT(2)  // is a kernel thread
-#define PF_MAIN BIT(3)     // this task is the main task for a process
 
 // Process states
 #define PS_UNRUNNABLE (-1)
