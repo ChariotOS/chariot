@@ -60,7 +60,9 @@ int task_process::create_task(int (*fn)(void *), int flags, void *arg) {
     t->tf->eflags = readeflags() | FL_IF;
   }
 
-  t->tf->esp = 0;
+
+
+  t->tf->esp = sp;
   t->tf->eip = (u64)fn; // call the passed fn on ``iret''
   t->ctx->eip = (u64)task_create_callback;
 
@@ -140,6 +142,8 @@ static void task_create_callback(void) {
     kfn = (kfunc_t)task.tf->eip;
 
     kfn(nullptr);
+
+    panic("unhandled: kthread finishes\n");
   }
 
   panic("non-kernel threads not working!\n");
