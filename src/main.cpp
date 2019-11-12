@@ -28,6 +28,7 @@
 #include <phys.h>
 #include <pit.h>
 #include <printk.h>
+#include <process.h>
 #include <ptr.h>
 #include <sched.h>
 #include <smp.h>
@@ -38,7 +39,6 @@
 #include <uuid.h>
 #include <vec.h>
 #include <vga.h>
-#include <process.h>
 
 extern int kernel_end;
 
@@ -250,6 +250,29 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   while (1) panic("should not have gotten back here\n");
 }
 
+void screen_spam(int color) {
+  int r = vga::width() / 2;
+  float angle = 0.1;
+
+  int cx = vga::width() / 2;
+  int cy = vga::height() / 2;
+
+  while (1) {
+    cpu::pushcli();
+
+    double R = fabs(r * cos(angle / ((float)r * 10.0)));
+
+    int x = R * cos(angle / 33.33333) + cx;
+    int y = R * sin(angle) + cy;
+    vga::set_pixel(x, y, color);
+    // vga::set_pixel(x, y, vga::hsl(fmod(angle / 40.0, 1.0), 1, 0.5));
+    angle += 0.01;
+
+    cpu::popcli();
+  }
+}
+
+
 static void kmain2(void) {
   /**
    * setup interrupts
@@ -339,7 +362,7 @@ static void kmain2(void) {
     kproc_args.push(kproc0_name);
     // spawn the kernel process
     kproc0 = task_process::spawn(kproc0_name, 0, 0, -1, kproc0_error,
-                                      move(kproc_args), PF_KTHREAD, 0);
+                                 move(kproc_args), PF_KTHREAD, 0);
 
     if (kproc0_error != 0) {
       panic("creating the initial kernel process failed with error code %d!\n",
@@ -348,9 +371,10 @@ static void kmain2(void) {
     KINFO("spawned kproc0\n");
   }
 
-  kproc0->create_task(idle_task, PF_KTHREAD /* TODO: possible idle flag? */, nullptr);
+  kproc0->create_task(idle_task, PF_KTHREAD /* TODO: possible idle flag? */,
+                      nullptr);
 
-  kproc0->create_task(screen_drawer, PF_KTHREAD, nullptr);
+  // kproc0->create_task(screen_drawer, PF_KTHREAD, nullptr);
 
   // enable interrupts and start the scheduler
   sti();

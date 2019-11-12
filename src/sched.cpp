@@ -39,7 +39,6 @@ static struct task *next_task(void) {
 
 
 int sched::add_task(struct task *tsk) {
-
   process_lock.lock();
   if (task_queue == nullptr) {
     task_queue = tsk;
@@ -127,10 +126,10 @@ void sched::run() {
     if (tsk->state == PS_RUNNABLE) {
       s_enabled = true;
       cpu::current().intena = 1;
-      printk("switching to tid %d\n", tsk->tid);
+      // printk("switching to tid %d\n", tsk->tid);
       switch_into(tsk);
     } else {
-      printk("proc %d was not runnable\n", tsk->tid);
+      // printk("proc %d was not runnable\n", tsk->tid);
     }
 
 
@@ -178,7 +177,6 @@ void sched::handle_tick(u64 ticks) {
 
   // yield?
   if (ticks - cpu::thd().start_tick >= cpu::thd().timeslice) {
-    printk("yield\n");
     sched::yield();
   }
 }
