@@ -5,6 +5,7 @@
 #include <lock.h>
 #include <types.h>
 #include <vm.h>
+#include <func.h>
 
 #define BIT(n) (1 << (n))
 
@@ -71,7 +72,6 @@ using gid_t = i64;
 
 #define SPWN_FORK   BIT(0)
 #define SPWN_KERNEL BIT(1)
-#define SPWN_
 
 struct task_process final : public refcounted<task_process> {
   int pid; // obviously the process id
@@ -104,11 +104,16 @@ struct task_process final : public refcounted<task_process> {
 
   ref<task_process> parent;
 
+
+  mutex_lock proc_lock;
+
   // create a thread in the task_process
-  int create_task(int (*fn)(void *), void *stack, int flags, void *arg);
+  int create_task(int (*fn)(void *), int flags, void *arg);
 
   static ref<struct task_process> spawn(string path, int uid, int gid, pid_t parent_pid, int&error, vec<string>&&args, int spwn_flags, int ring = 0);
   static ref<struct task_process> lookup(int pid);
+
+  task_process();
 };
 
 /*
@@ -126,6 +131,7 @@ struct task_process final : public refcounted<task_process> {
 #define PS_RUNNABLE (0)
 #define PS_ZOMBIE (1)
 #define PS_BLOCKED (2)
+#define PS_EMBRYO (3)
 
 /**
  * task - a schedulable entity in the kernel
@@ -165,10 +171,8 @@ struct task final : public refcounted<task> {
   struct task *next = nullptr;
   struct task *prev = nullptr;
 
-  static ref<struct task> create(void);
   static ref<struct task> lookup(int tid);
 
- protected:
   // protected constructor - must use ::create
   task(struct task_process &);
 };

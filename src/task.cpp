@@ -3,6 +3,9 @@
 #include <printk.h>
 #include <task.h>
 
+extern "C" void trapret(void);
+static void task_create_callback(void);
+
 static mutex_lock proc_table_lock("process_table");
 static u64 next_pid = 0;
 static map<int, ref<struct task_process>> proc_table;
@@ -11,23 +14,64 @@ static mutex_lock task_table_lock("task_table");
 static u64 next_tid = 0;
 static map<int, ref<struct task>> task_table;
 
-ref<struct task> task::create(void) { return nullptr; }
+task_process::task_process(void) : proc_lock("proc_lock") {}
 
-ref<struct task> task::lookup(int tid) {
+/**
+ * task_process - create a task in a process
+ *
+ * takes in a function pointer, some flags, and an argument
+ */
+int task_process::create_task(int (*fn)(void *), int flags, void *arg) {
+  auto t = make_ref<task>(*this);
+
+  t->pid = pid;
+
+  // 4 pages of kernel stack
+  constexpr auto stksize = 4096 * 4;
+
+  t->stack = kmalloc(stksize);
+
+  auto sp = (off_t)t->stack + stksize;
+
+  sp -= sizeof(struct task_regs);
+  t->tf = (struct task_regs *)sp;
+
+  sp -= sizeof(u64);
+  *(u64 *)sp = (u64)trapret;
+
+  // initial context
+  sp -= sizeof(*t->ctx);
+  t->ctx = (struct task_context *)sp;
+
+  memset(t->ctx, 0, sizeof(*t->ctx));
+
+  t->state = PS_EMBRYO;
+
+  if (flags & PF_KTHREAD) {
+    t->tf->cs = (SEG_KCODE << 3);
+    t->tf->ds = (SEG_KDATA << 3);
+    t->tf->eflags = readeflags() | FL_IF;
+  } else {
+    t->tf->cs = (SEG_UCODE << 3) | DPL_USER;
+    t->tf->ds = (SEG_UDATA << 3) | DPL_USER;
+    t->tf->eflags = readeflags() | FL_IF;
+  }
+
+  t->tf->esp = 0;
+  t->ctx->eip = (u64)task_create_callback;
+
   task_table_lock.lock();
-  auto t = task_table.get(tid);
+  t->tid = next_tid++;
+  task_table[t->tid] = t;
   task_table_lock.unlock();
-  return t;
-}
 
-int task_process::create_task(int (*fn)(void *), void *stack, int flags,
-                              void *arg) {
   return 0;
 }
 
 ref<struct task_process> task_process::spawn(string path, int uid, int gid,
                                              pid_t parent_pid, int &error,
-                                             vec<string> &&args, int spwn_flags, int ring) {
+                                             vec<string> &&args, int spwn_flags,
+                                             int ring) {
   proc_table_lock.lock();
   pid_t pid = next_pid++;
 
@@ -67,3 +111,13 @@ ref<struct task_process> task_process::lookup(int pid) {
   proc_table_lock.unlock();
   return t;
 }
+
+task::task(struct task_process &proc) : proc(proc), task_lock("task lock") {}
+ref<struct task> task::lookup(int tid) {
+  task_table_lock.lock();
+  auto t = task_table.get(tid);
+  task_table_lock.unlock();
+  return t;
+}
+
+static void task_create_callback(void) { panic("huzzah!\n"); }
