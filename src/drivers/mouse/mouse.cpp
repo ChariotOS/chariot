@@ -68,7 +68,7 @@ uint8_t mouse_read() {
 static int buttons;
 static int mouse_x, mouse_y;
 
-static void mouse_handler(int i, regs_t *tf) {
+static void mouse_handler(int i, struct task_regs *tf) {
   cpu::pushcli();
 
   // printk("HANDLE...");

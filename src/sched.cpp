@@ -3,7 +3,6 @@
 #include <lock.h>
 #include <map.h>
 #include <pcspeaker.h>
-#include <process.h>
 #include <sched.h>
 #include <single_list.h>
 #include <wait.h>
@@ -16,48 +15,16 @@
 #define INFO(fmt, args...)
 #endif
 
-extern "C" void swtch(context_t **, context_t *);
+extern "C" void swtch(struct task_context **, struct task_context *);
 
 static mutex_lock process_lock("processes");
 static bool s_enabled = true;
 
-// the kernel process lives here, and should *never* die.
-static pid_t kproc_pid = -1;
-static mutex_lock proc_table_lock("process_table");
-static map<pid_t, unique_ptr<process>> process_table;
 
-static mutex_lock pid_lock("pid_lock");
-pid_t sched::next_pid(void) {
-  // the next pid starts at 2, since the kernel process is at pid 0, and the
-  // init proc will be located at pid 1. We just hardcode that
-  static int npid = 2;
-  pid_lock.lock();
-  pid_t n = npid++;
-  pid_lock.unlock();
-  return n;
-}
+static task *proc_queue;
 
-process &sched::kernel_proc(void) {
-  process *p = process_pid(kproc_pid);
-  if (p == nullptr) panic("kernel proc is null!\n");
-  return *p;
-}
-
-process *sched::process_pid(pid_t pid) {
-  process_lock.lock();
-  process *p = nullptr;
-
-  // look for the process table entry
-  if (process_table.contains(pid)) p = process_table.get(pid).get();
-  process_lock.unlock();
-  return p;
-}
-
-static thread *proc_queue;
-static thread *last_proc;
-
-static thread *next_thd(void) {
-  thread *nt = nullptr;
+static struct task *next_task(void) {
+  struct task *nt = nullptr;
   process_lock.lock();
 
   if (proc_queue != nullptr) {
@@ -69,27 +36,19 @@ static thread *next_thd(void) {
   return nt;
 }
 
-static void add_thd(thread *tsk) {
-  process_lock.lock();
 
+int sched::add_task(struct task *tsk) {
+
+  process_lock.lock();
   if (proc_queue == nullptr) {
     proc_queue = tsk;
-    last_proc = tsk;
-  } else {
-    last_proc->next = tsk;
-    last_proc = tsk;
   }
   process_lock.unlock();
+  return 0;
 }
 
 bool sched::init(void) {
   process_lock.lock();
-
-  // kernel proc is pid 0
-  kproc_pid = 0;
-
-  process_table[0] = new process("Essedarius", 0, 0, RING_KERNEL);
-
   process_lock.unlock();
   return true;
 }
@@ -100,7 +59,7 @@ static void ktaskcreateret(void) {
   cpu::popcli();
 
   // call the kernel task function
-  cpu::thd().start();
+  // cpu::thd().start();
 
   printk("KERNEL TASK DIES\n");
 
@@ -109,46 +68,28 @@ static void ktaskcreateret(void) {
   panic("ZOMBIE kernel task was ran\n");
 }
 
-thread *sched::spawn_kernel_thread(const char *name, func<void(int)> fnc,
-                                   create_opts opts) {
-  // alloc the task under the kernel group
-  thread &t = kernel_proc().create_thread(fnc);
 
-  t.timeslice = opts.timeslice;
-
-  t.tf->cs = (SEG_KCODE << 3);
-  t.tf->ds = (SEG_KDATA << 3);
-  t.tf->eflags = readeflags() | FL_IF;
-
-  t.context->eip = (u64)ktaskcreateret;
-  t.state = pstate::RUNNABLE;
-
-  add_thd(&t);
-
-  return &t;
-}
-
-static void switch_into(thread *tsk) {
+static void switch_into(struct task *tsk) {
   INFO("ctxswtch: pid=%-4d gid=%-4d\n", tsk->pid(), tsk->gid());
   cpu::current().current_thread = tsk;
-  tsk->nran++;
+  tsk->ticks++;
   tsk->start_tick = cpu::get_ticks();
-  tsk->state = pstate::RUNNING;
+  tsk->state = PS_UNRUNNABLE;
 
-  tsk->proc().switch_vm();
-  swtch(&cpu::current().scheduler, tsk->context);
+  // TODO: switch address space
+  swtch(&cpu::current().sched_ctx, tsk->ctx);
   cpu::current().current_thread = nullptr;
 }
 
 static void schedule() {
   if (cpu::ncli() != 1) panic("schedule must have ncli == 1");
   int intena = cpu::current().intena;
-  swtch(&cpu::thd().context, cpu::current().scheduler);
-  cpu::proc().switch_vm();
+  swtch(&cpu::thd().ctx, cpu::current().sched_ctx);
+  // cpu::proc().switch_vm();
   cpu::current().intena = intena;
 }
 
-static void do_yield(enum pstate st) {
+static void do_yield(int st) {
   INFO("yield %d\n", st);
   // assert(cpu::thd() != nullptr);
 
@@ -160,20 +101,17 @@ static void do_yield(enum pstate st) {
   cpu::popcli();
 }
 
-void sched::block() { do_yield(pstate::BLOCKED); }
+void sched::block() { do_yield(PS_BLOCKED); }
 
-void sched::yield() { do_yield(pstate::RUNNABLE); }
+void sched::yield() { do_yield(PS_RUNNABLE); }
 
 void sched::exit() {
-  // printk("sched::exit\n");
-  do_yield(pstate::ZOMBIE);
+  do_yield(PS_ZOMBIE);
 }
 
 void sched::run() {
   for (;;) {
-    auto tsk = next_thd();
-
-    // assert(cpu::proc() == nullptr);
+    auto tsk = next_task();
 
     assert(tsk != nullptr);
 
@@ -181,7 +119,7 @@ void sched::run() {
 
     bool add_back = true;
 
-    if (tsk->state == pstate::RUNNABLE) {
+    if (tsk->state == PS_RUNNABLE) {
       s_enabled = true;
       cpu::current().intena = 1;
       // printk("switching into %s\n", tsk->name().get());
@@ -191,9 +129,9 @@ void sched::run() {
     }
 
     // check for state afterwards
-    if (tsk->state == pstate::ZOMBIE) {
+    if (tsk->state == PS_ZOMBIE) {
       // TODO: check for waiting processes and notify
-      if (tsk->proc().ring() == RING_KERNEL) {
+      if (tsk->flags & PF_KTHREAD) {
         add_back = false;
         INFO("kernel '%s' process dead\n", tsk->name().get());
         delete tsk;
@@ -203,7 +141,7 @@ void sched::run() {
     cpu::popcli();
 
     if (add_back) {
-      add_thd(tsk);
+      add_task(tsk);
     }
   }
   panic("scheduler should not have gotten back here\n");
@@ -225,7 +163,7 @@ void sched::handle_tick(u64 ticks) {
     pcspeaker::clear();
   }
 
-  if (!enabled() || !cpu::in_thread() || cpu::thd().state != pstate::RUNNING) {
+  if (!enabled() || !cpu::in_thread() || cpu::thd().state != PS_UNRUNNABLE) {
     return;
   }
 
@@ -254,7 +192,7 @@ void waitqueue::wait(void) {
   e.waiter = &cpu::thd();
   elems.append(e);
   lock.unlock();
-  do_yield(pstate::BLOCKED);
+  do_yield(PS_BLOCKED);
 }
 
 void waitqueue::notify() {
@@ -264,7 +202,7 @@ void waitqueue::notify() {
   } else {
     auto e = elems.take_first();
 
-    assert(e.waiter->state == pstate::BLOCKED);
-    e.waiter->state = pstate::RUNNABLE;
+    assert(e.waiter->state == PS_BLOCKED);
+    e.waiter->state = PS_RUNNABLE;
   }
 }

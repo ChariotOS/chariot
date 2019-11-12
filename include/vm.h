@@ -14,7 +14,6 @@
 #define VACC_READ 2
 #define VACC_EXEC 4
 
-class process;  // fwd decl
 namespace vm {
 
 class region;  // fwd decl
@@ -86,7 +85,6 @@ class addr_space final : public refcounted<addr_space> {
   int schedule_mapping(void *va, u64 pa);
 
  protected:
-  friend class process;
 
   vec<unique_ptr<vm::region>> regions;
 

@@ -1,6 +1,7 @@
 #include <fs/file.h>
 #include <map.h>
 #include <printk.h>
+#include <sched.h>
 #include <task.h>
 
 extern "C" void trapret(void);
@@ -46,7 +47,7 @@ int task_process::create_task(int (*fn)(void *), int flags, void *arg) {
 
 
   t->flags = flags;
-  t->state = PS_EMBRYO;
+  t->state = PS_RUNNABLE;
 
   if (this->flags & PF_KTHREAD) {
     t->tf->cs = (SEG_KCODE << 3);
@@ -67,7 +68,12 @@ int task_process::create_task(int (*fn)(void *), int flags, void *arg) {
   task_table[t->tid] = t;
   task_table_lock.unlock();
 
-  return 0;
+  int add_res = sched::add_task(t);
+  if (add_res != 0) {
+    panic("failed to add task %d to the scheduler after creating\n", add_res);
+  }
+
+  return t->tid;
 }
 
 ref<struct task_process> task_process::spawn(string path, int uid, int gid,

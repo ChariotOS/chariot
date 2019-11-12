@@ -5,6 +5,7 @@
 #include <paging.h>
 #include <phys.h>
 #include <printk.h>
+#include <task.h>
 #include <types.h>
 
 // 16 CPU structures where each cpu has one
@@ -22,15 +23,15 @@ cpu_t &cpu::current() {
 
 cpu_t *cpu::get() { return s_current; }
 
-process &cpu::proc(void) {
-  return thd().proc();
+struct task_process &cpu::proc(void) {
+  return thd().proc;
 }
 
 bool cpu::in_thread(void) {
   return current().current_thread != nullptr;
 }
 
-thread &cpu::thd() {
+struct task &cpu::thd() {
   auto *t = current().current_thread;
   assert(t != nullptr);
   return *t;

@@ -9,6 +9,7 @@
 #include <sched.h>
 #include <types.h>
 #include <vga.h>
+#include <task.h>
 
 // struct gatedesc idt[NUM_IDT_ENTRIES];
 
@@ -142,7 +143,7 @@ void interrupt_disable(int i) {
 #define GIT_REVISION "NO-GIT"
 #endif
 
-static void unknown_exception(int i, regs_t *tf) {
+static void unknown_exception(int i, struct task_regs *tf) {
   auto color = vga::make_color(vga::color::white, vga::color::blue);
   vga::clear_screen(vga::make_entry(' ', color));
   vga::set_color(vga::color::white, vga::color::blue);
@@ -184,7 +185,7 @@ static void unknown_exception(int i, regs_t *tf) {
 #define PGFLT_USER (1 << 2)
 #define PGFLT_RESERVED (1 << 3)
 #define PGFLT_INSTR (1 << 4)
-static void pgfault_handle(int i, regs_t *tf) {
+static void pgfault_handle(int i, struct task_regs *tf) {
   void *page = (void *)(read_cr2() & ~0xFFF);
   printk("PAGEFAULT\n");
   printk(" eip = %p\n", tf->eip);
@@ -207,7 +208,7 @@ static void pgfault_handle(int i, regs_t *tf) {
   return;
 }
 
-static void tick_handle(int i, regs_t *tf) {
+static void tick_handle(int i, struct task_regs *tf) {
   auto &cpu = cpu::current();
 
   // increment the number of ticks
@@ -219,14 +220,14 @@ static void tick_handle(int i, regs_t *tf) {
   return;
 }
 
-static void dbl_flt_handler(int i, regs_t *tf) {
+static void dbl_flt_handler(int i, struct task_regs *tf) {
   printk("DOUBLE FAULT!\n");
   while (1) {}
 }
 
 
 
-static void unknown_hardware(int i, regs_t *tf) {
+static void unknown_hardware(int i, struct task_regs *tf) {
   if (!interrupt_spurious[i]) {
     KINFO("interrupt: spurious interrupt %d\n", i);
   }
@@ -235,7 +236,7 @@ static void unknown_hardware(int i, regs_t *tf) {
 
 
 
-extern void syscall_handle(int i, regs_t *tf);
+extern void syscall_handle(int i, struct task_regs *tf);
 
 void interrupt_register(int i, interrupt_handler_t handler) {
   // printk("irq register %d to %p\n", i, handler);
@@ -285,7 +286,7 @@ void init_idt(void) {
 int depth = 0;
 // where the trap handler throws us. It is up to this function to sort out
 // which trap handler to hand off to
-extern "C" void trap(regs_t *tf) {
+extern "C" void trap(struct task_regs *tf) {
   extern void pic_send_eoi(void);
 
   depth++;

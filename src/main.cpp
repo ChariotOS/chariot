@@ -38,6 +38,7 @@
 #include <uuid.h>
 #include <vec.h>
 #include <vga.h>
+#include <process.h>
 
 extern int kernel_end;
 
@@ -337,7 +338,7 @@ static void kmain2(void) {
     vec<string> kproc_args;
     kproc_args.push(kproc0_name);
     // spawn the kernel process
-    auto kproc0 = task_process::spawn(kproc0_name, 0, 0, -1, kproc0_error,
+    kproc0 = task_process::spawn(kproc0_name, 0, 0, -1, kproc0_error,
                                       move(kproc_args), SPWN_KERNEL, 0);
 
     if (kproc0_error != 0) {

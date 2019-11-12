@@ -101,6 +101,9 @@ struct task_process final : public refcounted<task_process> {
   vec<string> args;
   vec<string> env;
 
+  // vector of task ids
+  vec<int> tasks;
+
 
   ref<task_process> parent;
 
@@ -158,6 +161,7 @@ struct task final : public refcounted<task> {
   /* the previous cpu */
   atom<int> last_cpu;
 
+
   // used when an action requires ownership of this task
   mutex_lock task_lock;
 
@@ -166,6 +170,8 @@ struct task final : public refcounted<task> {
 
   // how many times the task has been ran
   unsigned long ticks = 0;
+  unsigned long start_tick; // last time it has been started
+  int timeslice = 2;
 
   // for the scheduler's intrusive runqueue
   struct task *next = nullptr;
