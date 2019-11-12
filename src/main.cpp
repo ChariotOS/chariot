@@ -350,7 +350,7 @@ static void kmain2(void) {
 
   kproc0->create_task(idle_task, PF_KTHREAD /* TODO: possible idle flag? */, nullptr);
 
-  // kproc0->create_task(screen_drawer, 0, nullptr);
+  kproc0->create_task(screen_drawer, PF_KTHREAD, nullptr);
 
   // enable interrupts and start the scheduler
   sti();

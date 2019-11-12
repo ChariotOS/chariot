@@ -134,8 +134,10 @@ ref<struct task> task::lookup(int tid) {
 static void task_create_callback(void) {
   auto task = cpu::thd();
 
+  cpu::popcli();
+
   if (task.flags & PF_KTHREAD) {
-    printk("task is kthread\n");
+    printk("task %d is kthread\n", task.tid);
 
     using kfunc_t = int (*)(void*);
     kfunc_t kfn;

@@ -21,15 +21,16 @@ static mutex_lock process_lock("processes");
 static bool s_enabled = true;
 
 
-static task *proc_queue;
+static task *task_queue;
+static task *last_task;
 
 static struct task *next_task(void) {
   struct task *nt = nullptr;
   process_lock.lock();
 
-  if (proc_queue != nullptr) {
-    nt = proc_queue;
-    proc_queue = nt->next;
+  if (task_queue != nullptr) {
+    nt = task_queue;
+    task_queue = nt->next;
   }
   process_lock.unlock();
 
@@ -40,8 +41,12 @@ static struct task *next_task(void) {
 int sched::add_task(struct task *tsk) {
 
   process_lock.lock();
-  if (proc_queue == nullptr) {
-    proc_queue = tsk;
+  if (task_queue == nullptr) {
+    task_queue = tsk;
+    last_task = tsk;
+  } else {
+    last_task->next = tsk;
+    last_task = tsk;
   }
   process_lock.unlock();
   return 0;
@@ -122,12 +127,15 @@ void sched::run() {
     if (tsk->state == PS_RUNNABLE) {
       s_enabled = true;
       cpu::current().intena = 1;
-      // printk("switching into %s\n", tsk->name().get());
+      printk("switching to tid %d\n", tsk->tid);
       switch_into(tsk);
     } else {
-      // printk("proc %s was not runnable\n", tsk->name().get());
+      printk("proc %d was not runnable\n", tsk->tid);
     }
 
+
+
+    /*
     // check for state afterwards
     if (tsk->state == PS_ZOMBIE) {
       // TODO: check for waiting processes and notify
@@ -137,6 +145,7 @@ void sched::run() {
         delete tsk;
       }
     }
+    */
 
     cpu::popcli();
 
@@ -169,7 +178,7 @@ void sched::handle_tick(u64 ticks) {
 
   // yield?
   if (ticks - cpu::thd().start_tick >= cpu::thd().timeslice) {
-    // printk("yield\n");
+    printk("yield\n");
     sched::yield();
   }
 }
