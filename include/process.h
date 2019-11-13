@@ -114,6 +114,9 @@ off_t lseek(int fd, off_t offset, int whence);
 ssize_t read(int fd, void *, size_t);
 ssize_t write(int fd, void *, size_t);
 
+
+int yield(void);
+
 pid_t getpid(void);
 
 pid_t gettid(void);

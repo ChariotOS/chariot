@@ -37,6 +37,8 @@ void pushcli();
 // interrupts again
 void popcli();
 
+void switch_vm(struct task *);
+
 inline int ncli(void) { return current().ncli; }
 
 static inline u64 get_ticks(void) { return current().ticks; }

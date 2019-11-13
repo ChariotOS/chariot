@@ -37,15 +37,16 @@ CINCLUDES=-I./include/
 
 
 
-DFLAGS=-g -DDEBUG -O0
+DFLAGS=-ggdb -DDEBUG -O0
 
 CFLAGS:=$(CINCLUDES) -mno-red-zone -fno-omit-frame-pointer -fno-stack-protector \
 				 -mtls-direct-seg-refs -fno-pie -Wno-sign-compare -ffreestanding \
-				 -mcmodel=large -O3 -Wall -fno-common -Wno-initializer-overrides \
+				 -mcmodel=large -O3 $(DFLAGS) -Wall -fno-common -Wno-initializer-overrides \
 				 -Wstrict-overflow=5 -fno-tree-vectorize -Wno-address-of-packed-member \
 				 -Wno-strict-overflow -DGIT_REVISION=\"$(shell git rev-parse HEAD)\"
 
-CLFAGS+=$(DFLAGS)
+# CLFAGS+=$(DFLAGS)
+
 
 
 
@@ -114,7 +115,7 @@ clean:
 images: $(ISO) $(ROOTFS)
 
 
-QEMUOPTS=-hda $(ISO) -m 2G -hdb $(ROOTFS)
+QEMUOPTS=-hda $(ISO) -m 2G -hdb $(ROOTFS) -gdb tcp::8256
 
 qemu: images
 	qemu-system-x86_64 $(QEMUOPTS) \
@@ -122,6 +123,14 @@ qemu: images
 
 qemu-nox: images
 	qemu-system-x86_64 $(QEMUOPTS) -nographic
+
+
+
+qemu-dbg: images
+	qemu-system-x86_64 $(QEMUOPTS) -d cpu_reset
+
+gdb:
+	gdb $(KERNEL) -iex "target remote localhost:8256"
 
 
 

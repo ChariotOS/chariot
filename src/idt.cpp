@@ -110,7 +110,7 @@ static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
   n *= 4;
   trap = trap ? 0x8F00 : 0x8E00;  // TRAP vs INTERRUPT gate;
   idt[n + 0] = (addr & 0xFFFF) | ((SEG_KCODE << 3) << 16);
-  idt[n + 1] = (addr & 0xFFFF0000) | trap | ((pl & 3) << 13);  // P=1 DPL=pl
+  idt[n + 1] = (addr & 0xFFFF0000) | trap | ((pl & 0b11) << 13);  // P=1 DPL=pl
   idt[n + 2] = addr >> 32;
   idt[n + 3] = 0;
 }
@@ -185,26 +185,25 @@ static void unknown_exception(int i, struct task_regs *tf) {
 #define PGFLT_USER (1 << 2)
 #define PGFLT_RESERVED (1 << 3)
 #define PGFLT_INSTR (1 << 4)
+
 static void pgfault_handle(int i, struct task_regs *tf) {
   void *page = (void *)(read_cr2() & ~0xFFF);
-  printk("PAGEFAULT\n");
-  printk(" eip = %p\n", tf->eip);
-  printk(" err = %p\n", tf->err);
-  printk(" page = %p\n", page);
-  printk(" adr = %p\n", read_cr2());
+  printk("PAGEFAULT in task %d\n", cpu::thd().tid);
+  printk(" EIP  = %p\n", tf->eip);
+  printk(" ERR  = %p\n", tf->err);
+  printk(" PAGE = %p\n", page);
+  printk(" ADDR = %p\n", read_cr2());
   printk(" FLGS: ");
 
   if (tf->err & PGFLT_INSTR) printk("INSTRUCION ");
   if (tf->err & PGFLT_RESERVED) printk("RESERVED ");
   if (tf->err & PGFLT_USER) printk("USER ");
   if (tf->err & PGFLT_WRITE) printk("WRITE ");
-  if (tf->err & PGFLT_PRESENT) printk("PRESENT ");
+  if (tf->err & PGFLT_PRESENT) printk("PROT ");
 
   printk("\n");
 
-  printk(" halting\n");
   while (1) halt();
-  // paging::map_page(addr, addr);
   return;
 }
 
@@ -270,9 +269,11 @@ void init_idt(void) {
   interrupt_register(TRAP_DBLFLT, dbl_flt_handler);
   interrupt_register(TRAP_PGFLT, pgfault_handle);
 
+
+  mkgate(idt, 32, vectors[32], 3, 0);
   interrupt_register(32, tick_handle);
 
-  mkgate(idt, 0x80, vectors[0x80], 2, 1);
+  mkgate(idt, 0x80, vectors[0x80], 3, 1);
   interrupt_register(0x80, syscall_handle);
 
   KINFO("Registered basic interrupt handlers\n");
@@ -299,5 +300,6 @@ extern "C" void trap(struct task_regs *tf) {
   interrupt_acknowledge(i);
   interrupt_count[i]++;
   depth--;
+
 }
 

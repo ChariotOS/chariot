@@ -122,7 +122,13 @@ u64 *paging::find_mapping(u64 *pml4, u64 va, u64 pa, pgsize size) {
     if (!(table[ind] & 1)) {
       u64 *new_table = alloc_page_dir();
       INFO("new_table = %p\n", new_table);
-      table[ind] = (u64)(new_table) | PTE_P | PTE_W;
+
+
+      int pflags = PTE_P | PTE_W;
+      if (va < KERNEL_VIRTUAL_BASE) {
+        pflags |= PTE_U;
+      }
+      table[ind] = (u64)(new_table) | pflags;
     }
 
     INFO("table(%p)[%d] = %p\n", table, i, table[ind]);
@@ -140,7 +146,6 @@ u64 *paging::find_mapping(u64 *pml4, u64 va, u64 pa, pgsize size) {
 
 void paging::map_into(u64 *p4, u64 va, u64 pa, pgsize size, u16 flags) {
 
-  INFO("%p -> %p\n", va, pa);
   u64 *pte = find_mapping(p4, va, pa, size);
   if (*pte & PTE_P) {
     // printk("REMAP!\n");

@@ -6,6 +6,7 @@
 #include <process.h>
 #include <syscalls.h>
 #include <asm.h>
+#include <util.h>
 
 extern "C" void trapret(void);
 
@@ -58,6 +59,12 @@ ssize_t sys::write(int fd, void *dst, size_t len) {
   return -ENOTIMPL;
 }
 
+
+int sys::yield(void) {
+  sched::yield();
+  return 0;
+}
+
 pid_t sys::getpid(void) {
   return cpu::proc().pid;
 }
@@ -97,8 +104,8 @@ static long do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e) {
     return -1;
   }
 
-  KINFO("syscall(%s, 0x%llx, 0x%llx, 0x%llx, 0x%llx, 0x%llx)\n",
-        syscall_names[num], a, b, c, d, e);
+  // kinfo("syscall(%s, 0x%llx, 0x%llx, 0x%llx, 0x%llx, 0x%llx)\n",
+        // syscall_names[num], a, b, c, d, e);
 
   auto *func = (long (*)(u64, u64, u64, u64, u64))syscall_table[num];
 
@@ -106,7 +113,10 @@ static long do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e) {
 }
 
 void syscall_handle(int i, struct task_regs *tf) {
-  // grab the number out of rax
+
+  // int x = 0;
+  // printk("rax=%p krsp~%p\n", tf->rax, &x);
+
   tf->rax = do_syscall(tf->rax, tf->rdi, tf->rsi, tf->rdx, tf->r10, tf->r8);
   return;
 }

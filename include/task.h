@@ -150,6 +150,7 @@ struct task final : public refcounted<task> {
   volatile long state;
 
   /* kenrel stack */
+  long stack_size ;
   void *stack;
 
   /* per-task flasg (uses PF_* macros)*/

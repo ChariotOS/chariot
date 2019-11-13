@@ -80,6 +80,11 @@ static void switch_into(struct task *tsk) {
   tsk->start_tick = cpu::get_ticks();
   tsk->state = PS_UNRUNNABLE;
 
+
+  if (0 == (tsk->flags & PF_KTHREAD)) {
+    cpu::switch_vm(tsk);
+  }
+
   // TODO: switch address space
   swtch(&cpu::current().sched_ctx, tsk->ctx);
   cpu::current().current_thread = nullptr;

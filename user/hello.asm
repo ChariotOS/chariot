@@ -1,19 +1,25 @@
-[global _start]
-[org 0x1000] ;; start at the first page
+
+
+org 0x1000 ;; start at the first page
+
 [bits 64]
 
 _start:
-	mov     edx,len  ; message length
-	mov     ecx,msg  ; message to write
-	mov     ebx,1    ; file descriptor (stdout)
-	mov     eax,4    ; system call number (sys_write)
-	syscall          ; call kernel
-	jmp _start
+	mov edi, _start
+.lp:
+	inc edi
 
-	mov eax, 1       ; exit
-	syscall
+	mov rsi, rdi
+	mov rdx, rdi
+	mov r10, rdi
+	mov r8, rdi
+
+	mov eax, 7
+	;; int 0x80
+	int     0x80          ; call kernel
+	jmp .lp
 
 
-msg   db    'Hello, Friend!',0xa
-len   equ   $-msg
+; msg   db    'Hello, Friend!',0xa
+; len   equ   $-msg
 

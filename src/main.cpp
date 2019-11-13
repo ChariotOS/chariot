@@ -250,28 +250,50 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   while (1) panic("should not have gotten back here\n");
 }
 
-void screen_spam(int color) {
-  int r = vga::width() / 2;
-  float angle = 0.1;
+#define def(n) class n : public refcounted<n>
 
-  int cx = vga::width() / 2;
-  int cy = vga::height() / 2;
+def(foo) {
+ public:
+  int arr[512];
+};
+
+void screen_spam(int color, int cx, int cy) {
+  int r = 240;
+  long angle = 1;
+
+  // int cx = vga::width() / 2;
+  // int cy = vga::height() / 2;
 
   while (1) {
     cpu::pushcli();
 
-    double R = fabs(r * cos(angle / ((float)r * 10.0)));
+    float a = angle / 100.0;
 
-    int x = R * cos(angle / 33.33333) + cx;
-    int y = R * sin(angle) + cy;
-    vga::set_pixel(x, y, color);
+    double R = (r / 2) + (r / 2 * cos(a / ((float)r * 4)));
+
+    int x = R * cos(a) + cx;
+    int y = R * sin(a) + cy;
+
+    if (x >= 0 && x < vga::width() && y >= 0 && y < vga::height())
+      vga::set_pixel(x, y, color);
     // vga::set_pixel(x, y, vga::hsl(fmod(angle / 40.0, 1.0), 1, 0.5));
-    angle += 0.01;
+    angle += 314;
 
     cpu::popcli();
   }
 }
 
+int task1(void*) {
+  int w = vga::width();
+  screen_spam(0xFF0000, w / 2, vga::height() / 2);
+  return 0;
+}
+
+int task2(void*) {
+  int w = vga::width();
+  screen_spam(0x0000FF, w / 2, vga::height() / 2);
+  return 0;
+}
 
 static void kmain2(void) {
   /**
@@ -374,7 +396,20 @@ static void kmain2(void) {
   kproc0->create_task(idle_task, PF_KTHREAD /* TODO: possible idle flag? */,
                       nullptr);
 
-  // kproc0->create_task(screen_drawer, PF_KTHREAD, nullptr);
+  kproc0->create_task(task1, PF_KTHREAD, nullptr);
+  kproc0->create_task(task2, PF_KTHREAD, nullptr);
+
+  // temporary hello function
+  auto pg = p2v(phys::alloc(1));
+  auto bin = vfs::open("/bin/hello", 0);
+  assert(bin);
+  fs::filedesc fd(bin, 0);
+  paging::map(0x1000, (u64)v2p(pg), paging::pgsize::page,
+              PTE_W | PTE_P | PTE_U);
+
+  fd.read((void*)0x1000, bin->size());
+  hexdump((void*)0x1000, bin->size());
+  kproc0->create_task((int (*)(void*))0x1000, 0, nullptr);
 
   // enable interrupts and start the scheduler
   sti();

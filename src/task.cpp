@@ -1,12 +1,19 @@
+#include <cpu.h>
 #include <fs/file.h>
 #include <map.h>
 #include <printk.h>
 #include <sched.h>
 #include <task.h>
-#include <cpu.h>
+
+extern "C" void user_task_create_callback(void) {
+
+  printk("starting user task\n");
+  cpu::popcli();
+}
 
 extern "C" void trapret(void);
-static void task_create_callback(void);
+extern "C" void userret(void);
+static void kernel_task_create_callback(void);
 
 static mutex_lock proc_table_lock("process_table");
 static u64 next_pid = 0;
@@ -23,14 +30,17 @@ task_process::task_process(void) : proc_lock("proc_lock") {}
  *
  * takes in a function pointer, some flags, and an argument
  */
-int task_process::create_task(int (*fn)(void *), int flags, void *arg) {
+int task_process::create_task(int (*fn)(void *), int tflags, void *arg) {
   auto t = make_ref<task>(*this);
 
   t->pid = pid;
 
+  int ktask = (tflags & PF_KTHREAD) != 0;
+
   // 4 pages of kernel stack
   constexpr auto stksize = 4096 * 4;
 
+  t->stack_size = stksize;
   t->stack = kmalloc(stksize);
 
   auto sp = (off_t)t->stack + stksize;
@@ -39,32 +49,39 @@ int task_process::create_task(int (*fn)(void *), int flags, void *arg) {
   t->tf = (struct task_regs *)sp;
 
   sp -= sizeof(u64);
-  *(u64 *)sp = (u64)trapret;
+  *(u64 *)sp = (u64)(ktask ? trapret : trapret);
 
   // initial context
   sp -= sizeof(*t->ctx);
   t->ctx = (struct task_context *)sp;
   memset(t->ctx, 0, sizeof(*t->ctx));
 
-
-  t->flags = flags;
+  t->flags = tflags;
   t->state = PS_RUNNABLE;
-
-  if (this->flags & PF_KTHREAD) {
-    t->tf->cs = (SEG_KCODE << 3);
-    t->tf->ds = (SEG_KDATA << 3);
-    t->tf->eflags = readeflags() | FL_IF;
-  } else {
-    t->tf->cs = (SEG_UCODE << 3) | DPL_USER;
-    t->tf->ds = (SEG_UDATA << 3) | DPL_USER;
-    t->tf->eflags = readeflags() | FL_IF;
-  }
-
 
 
   t->tf->esp = sp;
-  t->tf->eip = (u64)fn; // call the passed fn on ``iret''
-  t->ctx->eip = (u64)task_create_callback;
+  t->tf->eip = (u64)fn;  // call the passed fn on ``iret''
+
+  if (ktask) {
+    // kernel ring
+    t->tf->cs = (SEG_KCODE << 3) | DPL_KERN;
+    t->tf->ds = (SEG_KDATA << 3) | DPL_KERN;
+    t->tf->eflags = readeflags() | FL_IF;
+
+    t->ctx->eip = (u64)kernel_task_create_callback;
+  } else {
+    // user ring
+    t->tf->cs = (SEG_UCODE << 3) | DPL_USER;
+    t->tf->ds = (SEG_UDATA << 3) | DPL_USER;
+    t->tf->eflags = FL_IF;
+
+    t->ctx->eip = (u64)user_task_create_callback;
+    t->tf->esp =  0x1000 + PGSIZE - 1;
+
+  }
+  printk("%p %p %p\n", t->tf->cs, t->tf->ds, t->tf->eflags);
+
 
   task_table_lock.lock();
   t->tid = next_tid++;
@@ -131,22 +148,20 @@ ref<struct task> task::lookup(int tid) {
   return t;
 }
 
-static void task_create_callback(void) {
+static void kernel_task_create_callback(void) {
   auto task = cpu::thd();
 
   cpu::popcli();
 
-  if (task.flags & PF_KTHREAD) {
-    printk("task %d is kthread\n", task.tid);
+  assert(task.flags & PF_KTHREAD);
 
-    using kfunc_t = int (*)(void*);
-    kfunc_t kfn;
-    kfn = (kfunc_t)task.tf->eip;
+  printk("task %d is kthread\n", task.tid);
 
-    kfn(nullptr);
+  using kfunc_t = int (*)(void *);
+  kfunc_t kfn;
+  kfn = (kfunc_t)task.tf->eip;
 
-    panic("unhandled: kthread finishes\n");
-  }
+  kfn(nullptr);
 
-  panic("non-kernel threads not working!\n");
+  panic("unhandled: kthread finishes\n");
 }

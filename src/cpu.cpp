@@ -27,9 +27,7 @@ struct task_process &cpu::proc(void) {
   return thd().proc;
 }
 
-bool cpu::in_thread(void) {
-  return current().current_thread != nullptr;
-}
+bool cpu::in_thread(void) { return current().current_thread != nullptr; }
 
 struct task &cpu::thd() {
   auto *t = current().current_thread;
@@ -85,9 +83,9 @@ void cpu::seginit(void *local) {
                      (((addr >> 24) & 0xFF) << 56);
   gdt[SEG_TSS + 1] = (addr >> 32);
 
-  lgdt((void *)gdt, 5 * sizeof(u64));
+  lgdt((void *)gdt, 8 * sizeof(u64));
 
-  // ltr(SEG_TSS << 3);
+  ltr(SEG_TSS << 3);
 }
 
 void cpu::calc_speed_khz(void) {
@@ -139,4 +137,25 @@ void cpu::popcli(void) {
   if (readeflags() & FL_IF) panic("popcli - interruptible");
   if (--current().ncli < 0) panic("popcli");
   if (current().ncli == 0 && current().intena) sti();
+}
+
+static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {
+  tss[n * 2 + 1] = rsp;
+  tss[n * 2 + 2] = rsp >> 32;
+}
+
+
+static void tss_set_ist(u32 *tss, u32 n, u64 ist) {
+  tss[n*2 + 7] = ist;
+  tss[n*2 + 8] = ist >> 32;
+}
+
+void cpu::switch_vm(struct task *tsk) {
+  cpu::pushcli();
+  auto c = current();
+  auto tss = (u32 *)(((char *)c.local) + 1024);
+
+  tss_set_rsp(tss, 0, (u64)tsk->stack + tsk->stack_size);
+  tss_set_ist(tss, 0, (u64)tsk->stack + tsk->stack_size);
+  cpu::popcli();
 }
