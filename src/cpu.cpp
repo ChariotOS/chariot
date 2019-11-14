@@ -23,16 +23,15 @@ cpu_t &cpu::current() {
 
 cpu_t *cpu::get() { return s_current; }
 
-struct task_process &cpu::proc(void) {
-  return thd().proc;
+ref<struct task_process> cpu::proc(void) {
+  return task()->proc;
 }
 
-bool cpu::in_thread(void) { return current().current_thread != nullptr; }
+bool cpu::in_thread(void) { return (bool)task(); }
 
-struct task &cpu::thd() {
-  auto *t = current().current_thread;
-  assert(t != nullptr);
-  return *t;
+ref<struct task> cpu::task() {
+  auto t = current().current_thread;
+  return t;
 }
 
 extern "C" void wrmsr(u32 msr, u64 val);

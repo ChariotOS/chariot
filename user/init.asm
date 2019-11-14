@@ -1,7 +1,4 @@
-
-
-org 0x1000 ;; start at the first page
-
+[org 0x1000]
 [bits 64]
 
 

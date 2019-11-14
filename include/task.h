@@ -82,7 +82,7 @@ using gid_t = i64;
 #define PF_KTHREAD BIT(2)  // is a kernel thread
 #define PF_MAIN BIT(3)     // this task is the main task for a process
 
-struct task_process final : public refcounted<task_process> {
+struct task_process : public refcounted<struct task_process> {
   int pid; // obviously the process id
 
   int uid, gid;
@@ -156,7 +156,7 @@ struct task final : public refcounted<task> {
   /* per-task flasg (uses PF_* macros)*/
   unsigned int flags;
 
-  struct task_process &proc;
+  ref<struct task_process> proc;
 
   /* the current cpu this task is running on */
   atom<int> current_cpu;
@@ -182,5 +182,5 @@ struct task final : public refcounted<task> {
   static ref<struct task> lookup(int tid);
 
   // protected constructor - must use ::create
-  task(struct task_process &);
+  task(ref<struct task_process>);
 };

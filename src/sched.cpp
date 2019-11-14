@@ -93,7 +93,7 @@ static void switch_into(struct task *tsk) {
 static void schedule() {
   if (cpu::ncli() != 1) panic("schedule must have ncli == 1");
   int intena = cpu::current().intena;
-  swtch(&cpu::thd().ctx, cpu::current().sched_ctx);
+  swtch(&cpu::task()->ctx, cpu::current().sched_ctx);
   // cpu::proc().switch_vm();
   cpu::current().intena = intena;
 }
@@ -104,7 +104,7 @@ static void do_yield(int st) {
 
   cpu::pushcli();
 
-  cpu::thd().state = st;
+  cpu::task()->state = st;
   schedule();
 
   cpu::popcli();
@@ -176,12 +176,14 @@ void sched::handle_tick(u64 ticks) {
     pcspeaker::clear();
   }
 
-  if (!enabled() || !cpu::in_thread() || cpu::thd().state != PS_UNRUNNABLE) {
+  if (!enabled() || !cpu::in_thread() || cpu::task()->state != PS_UNRUNNABLE) {
     return;
   }
 
+
+  auto tsk = cpu::task();
   // yield?
-  if (ticks - cpu::thd().start_tick >= cpu::thd().timeslice) {
+  if (ticks - tsk->start_tick >= tsk->timeslice) {
     sched::yield();
   }
 }
@@ -201,7 +203,7 @@ void waitqueue::wait(void) {
 
   // add to the wait queue
   struct waitqueue_elem e;
-  e.waiter = &cpu::thd();
+  e.waiter = cpu::task();
   elems.append(e);
   lock.unlock();
   do_yield(PS_BLOCKED);

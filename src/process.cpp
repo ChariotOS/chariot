@@ -6,6 +6,7 @@
 #include <process.h>
 #include <syscalls.h>
 #include <asm.h>
+#include <vga.h>
 #include <util.h>
 
 extern "C" void trapret(void);
@@ -65,13 +66,44 @@ int sys::yield(void) {
   return 0;
 }
 
+// XXX: REMOVE
+int sys::set_pixel(int x, int y, int color) {
+  vga::set_pixel(x, y, color);
+  return 0;
+}
+
 pid_t sys::getpid(void) {
-  return cpu::proc().pid;
+  return cpu::task()->pid;
 }
 
 pid_t sys::gettid(void) {
-  return cpu::thd().tid;
+  return cpu::task()->tid;
 }
+
+
+
+pid_t sys::spawn(void) {
+
+  assert(cpu::in_thread());
+  auto proc = cpu::proc();
+
+  return -1;
+}
+
+
+int sys::impersonate(pid_t) {
+  return -ENOTIMPL;
+}
+
+
+int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[], const char *envp[]) {
+  return -1;
+}
+
+
+
+
+
 
 static const char *syscall_names[] = {
 #undef __SYSCALL

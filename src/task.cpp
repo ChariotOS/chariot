@@ -31,7 +31,7 @@ task_process::task_process(void) : proc_lock("proc_lock") {}
  * takes in a function pointer, some flags, and an argument
  */
 int task_process::create_task(int (*fn)(void *), int tflags, void *arg) {
-  auto t = make_ref<task>(*this);
+  auto t = make_ref<task>(this);
 
   t->pid = pid;
 
@@ -140,7 +140,11 @@ ref<struct task_process> task_process::lookup(int pid) {
   return t;
 }
 
-task::task(struct task_process &proc) : proc(proc), task_lock("task lock") {}
+task::task(ref<struct task_process> proc) : proc(proc), task_lock("task lock") {}
+
+
+
+
 ref<struct task> task::lookup(int tid) {
   task_table_lock.lock();
   auto t = task_table.get(tid);
@@ -149,17 +153,16 @@ ref<struct task> task::lookup(int tid) {
 }
 
 static void kernel_task_create_callback(void) {
-  auto task = cpu::thd();
+  auto task = cpu::task();
 
   cpu::popcli();
 
-  assert(task.flags & PF_KTHREAD);
 
-  printk("task %d is kthread\n", task.tid);
+  printk("task %d is kthread\n", task->tid);
 
   using kfunc_t = int (*)(void *);
   kfunc_t kfn;
-  kfn = (kfunc_t)task.tf->eip;
+  kfn = (kfunc_t)task->tf->eip;
 
   kfn(nullptr);
 

@@ -11,8 +11,6 @@
 #define RING_KERNEL 0
 #define RING_USER 3
 
-
-
 class thread;
 
 struct fd_flags {
@@ -58,7 +56,6 @@ class process final {
   // protection. It shall be backed by the memory mapping object
   int add_vm_region(string name, off_t vpn, size_t len, int prot,
                     unique_ptr<vm::memory_backing>);
-
 
   void switch_vm(void);
 
@@ -114,11 +111,24 @@ off_t lseek(int fd, off_t offset, int whence);
 ssize_t read(int fd, void *, size_t);
 ssize_t write(int fd, void *, size_t);
 
-
 int yield(void);
 
 pid_t getpid(void);
 
 pid_t gettid(void);
+
+// spawn a new USER process, inheriting the stdin, stdout, stderr from the
+// calling process.
+pid_t spawn();
+
+// TODO:
+int impersonate(pid_t);
+
+// command an embryo process to execute a command and promote it from embryo to
+// runnable. It will have a thread created for it and will be a user process.
+int cmdpidve(pid_t, const char *abs_path, const char *argv[], const char *envp[]);
+
+// XXX: REMOVE
+int set_pixel(int x, int y, int color);
 
 }  // namespace sys

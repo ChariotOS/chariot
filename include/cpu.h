@@ -10,7 +10,7 @@ struct cpu_t {
   size_t ticks = 0;
   size_t intena = 0;
   u32 speed_khz;
-  struct task *current_thread;
+  ref<struct task> current_thread;
   struct task_context *sched_ctx;
 };
 
@@ -20,9 +20,9 @@ namespace cpu {
 cpu_t &current(void);
 cpu_t *get(void);
 
-struct task_process &proc(void);
+ref<struct task_process> proc(void);
 
-struct task &thd(void);
+ref<struct task> task(void);
 bool in_thread(void);
 
 // setup CPU segment descriptors, run once per cpu

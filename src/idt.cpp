@@ -188,7 +188,7 @@ static void unknown_exception(int i, struct task_regs *tf) {
 
 static void pgfault_handle(int i, struct task_regs *tf) {
   void *page = (void *)(read_cr2() & ~0xFFF);
-  printk("PAGEFAULT in task %d\n", cpu::thd().tid);
+  printk("PAGEFAULT in task %d\n", cpu::task()->tid);
   printk(" EIP  = %p\n", tf->eip);
   printk(" ERR  = %p\n", tf->err);
   printk(" PAGE = %p\n", page);

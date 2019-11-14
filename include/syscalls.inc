@@ -6,5 +6,10 @@ __SYSCALL(4, lseek)
 __SYSCALL(5, read)
 __SYSCALL(6, write)
 __SYSCALL(7, yield)
-// __SYSCALL(20, getpid)
-// __SYSCALL(224, gettid)
+
+
+// process creationg related systemcalls
+__SYSCALL(8, spawn)
+__SYSCALL(9, impersonate)
+__SYSCALL(10, cmdpidve)
+

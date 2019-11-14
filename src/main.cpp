@@ -178,6 +178,13 @@ void init_rootvfs(ref<dev::device> dev) {
 
 atom<int> nidles = 0;
 static int idle_task(void* arg) {
+
+  // spawn init
+  auto pid = sys::spawn();
+
+  printk("pid=%d\n", pid);
+
+
   while (1) {
     // increment nidels
     nidles.store(nidles.load() + 1);
@@ -396,20 +403,26 @@ static void kmain2(void) {
   kproc0->create_task(idle_task, PF_KTHREAD /* TODO: possible idle flag? */,
                       nullptr);
 
-  kproc0->create_task(task1, PF_KTHREAD, nullptr);
-  kproc0->create_task(task2, PF_KTHREAD, nullptr);
+  // kproc0->create_task(task1, PF_KTHREAD, nullptr);
+  // kproc0->create_task(task2, PF_KTHREAD, nullptr);
 
-  // temporary hello function
+
+  /*
+  // allocate a page
   auto pg = p2v(phys::alloc(1));
+
+  // open the binary
   auto bin = vfs::open("/bin/hello", 0);
-  assert(bin);
+  assert(bin); // make sure it exists :)
   fs::filedesc fd(bin, 0);
+  // map the user page in
   paging::map(0x1000, (u64)v2p(pg), paging::pgsize::page,
               PTE_W | PTE_P | PTE_U);
-
+  // read the binary into the location
   fd.read((void*)0x1000, bin->size());
-  hexdump((void*)0x1000, bin->size());
+  // create a task where rip is at that location
   kproc0->create_task((int (*)(void*))0x1000, 0, nullptr);
+  */
 
   // enable interrupts and start the scheduler
   sti();

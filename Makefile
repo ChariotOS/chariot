@@ -36,12 +36,11 @@ CINCLUDES=-I./include/
 
 
 
-
-DFLAGS=-ggdb -DDEBUG -O0
+DFLAGS=-g -DDEBUG -O3
 
 CFLAGS:=$(CINCLUDES) -mno-red-zone -fno-omit-frame-pointer -fno-stack-protector \
 				 -mtls-direct-seg-refs -fno-pie -Wno-sign-compare -ffreestanding \
-				 -mcmodel=large -O3 $(DFLAGS) -Wall -fno-common -Wno-initializer-overrides \
+				 -mcmodel=large -O3 -Wall -fno-common -Wno-initializer-overrides \
 				 -Wstrict-overflow=5 -fno-tree-vectorize -Wno-address-of-packed-member \
 				 -Wno-strict-overflow -DGIT_REVISION=\"$(shell git rev-parse HEAD)\"
 
