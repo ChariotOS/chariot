@@ -55,3 +55,28 @@ int vm::addr_space::schedule_mapping(void *va, u64 pa) {
   pending_mappings.push({.va = va, .pa = pa});
   return 0;
 }
+
+
+
+int vm::addr_space::set_range(off_t b, off_t l) {
+  if (b < l) return -1;
+
+  base = b;
+  limit = l;
+
+  return 0;
+}
+
+
+vm::addr_space::addr_space(void) {
+  // process base/limit
+  set_range(0, KERNEL_VIRTUAL_BASE);
+
+
+  KINFO("new addr_space\n");
+}
+
+
+vm::addr_space::~addr_space(void) {
+  KINFO("destruct addr_space\n");
+}

@@ -5,6 +5,7 @@
 #include <types.h>
 #include <vec.h>
 
+
 #define VPROT_READ (1 << 0)
 #define VPROT_WRITE (1 << 1)
 #define VPROT_EXEC (1 << 2)
@@ -71,6 +72,11 @@ class region {
 
 class addr_space final : public refcounted<addr_space> {
  public:
+
+
+
+  off_t base, limit;
+
   // lookup a region by its page number, returning null when there is no region
   vm::region *lookup(off_t page_number);
 
@@ -83,6 +89,11 @@ class addr_space final : public refcounted<addr_space> {
   void *page_table;
 
   int schedule_mapping(void *va, u64 pa);
+
+  addr_space(void);
+  ~addr_space(void);
+
+  int set_range(off_t base, off_t limit);
 
  protected:
 

@@ -21,6 +21,16 @@ static const char *object_file_type_to_string(Elf32_Half type) {
 }
 
 elf::image::image(u8 *data, int len) : data(data), len(len) {
+  static const char elf_header[] = {0x7f, 0x45, 0x4c, 0x46};
+
+  // checking if its an elf binary?
+  if (len < 4) return;
+  for (int i = 0; i < 4; i++) {
+    if (data[i] != elf_header[i]) {
+      m_valid = false;
+      return;
+    }
+  }
   /*
   if (header().e_machine != 3) {
     printk("ELFImage::parse(): e_machine=%u not supported!\n");

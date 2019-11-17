@@ -113,7 +113,8 @@ ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
   }
 
 
-  p->mm = make_ref<vm::addr_space>();
+  // p->mm = make_ref<vm::addr_space>();
+  p->pid = pid;
 
   if (p->parent) {
     p->cwd = p->parent->cwd;
@@ -122,13 +123,16 @@ ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
   proc_table[pid] = p;
   proc_table_lock.unlock();
 
+  error = 0;
+
+  KINFO("spawned proccess %d\n", p->pid);
+
   return p;
 }
 
 ref<task_process> task_process::kproc_init(void) {
   int err = 0;
   auto p = task_process::spawn(-1, err);
-  printk("here\n");
 
   p->flags = PF_KTHREAD;
   p->ring = 0;
@@ -163,7 +167,7 @@ static void kernel_task_create_callback(void) {
 
   cpu::popcli();
 
-  printk("task %d is kthread\n", task->tid);
+  KINFO("kthread %d started\n", task->tid);
 
   using kfunc_t = int (*)(void *);
   kfunc_t kfn;

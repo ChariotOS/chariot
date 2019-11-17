@@ -73,6 +73,8 @@ class image {
 
   image(u8* data, int len);
 
+  inline bool valid(void) { return m_valid; }
+
   const u8* raw_data(int off = 0) const;
 
   const Elf64_Ehdr& header() const;

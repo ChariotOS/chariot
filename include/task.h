@@ -94,7 +94,7 @@ struct task_process : public refcounted<struct task_process> {
   int ring;
 
   /* address space information */
-  ref<vm::addr_space> mm = nullptr;
+  vm::addr_space mm;
 
   /* cwd - current working directory
    */

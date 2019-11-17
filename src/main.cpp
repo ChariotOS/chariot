@@ -82,16 +82,21 @@ static int userinit_idle(void* arg) {
   pid_t init = sys::spawn();
 
   assert(init != -1);
-  printk("init pid=%d\n", init);
 
-  const char *init_args[] = {"/bin/init", NULL};
+  if (init != -1) {
+    KINFO("init pid=%d\n", init);
 
-  // TODO: setup stdin, stdout, and stderr
+    const char* init_args[] = {"/bin/init", NULL};
 
-  int res = sys::cmdpidve(init, init_args[0], init_args, NULL /* TODO: env*/);
+    const char *envp[] = {NULL};
 
-  assert(res == 0);
+    // TODO: setup stdin, stdout, and stderr
 
+    int res = sys::cmdpidve(init, init_args[0], init_args, envp);
+    if (res != 0) {
+      KERR("failed to cmdpid init process\n");
+    }
+  }
 
   while (1) {
     // increment nidels
@@ -165,13 +170,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   while (1) panic("should not have gotten back here\n");
 }
 
-#define def(n) class n : public refcounted<n>
-
-def(foo) {
- public:
-  int arr[512];
-};
-
 void screen_spam(int color, int cx, int cy) {
   int r = min(vga::height(), vga::width()) / 2;
   long angle = 1;
@@ -244,6 +242,7 @@ static void kmain2(void) {
 
   // initialize smp
   if (!smp::init()) panic("smp failed!\n");
+  KINFO("Discovered SMP Cores\n");
 
   // initialize the PCI subsystem by walking the devices and creating an
   // internal representation that is faster to access later on
@@ -257,7 +256,7 @@ static void kmain2(void) {
   syscall_init();
 
   // Set the PIT interrupt frequency to how many times per second it should fire
-  set_pit_freq(1000);
+  set_pit_freq(100);
 
   if (fs::devfs::init() != true) {
     panic("Failed to initialize devfs\n");
@@ -291,16 +290,12 @@ static void kmain2(void) {
   vfs::mount(make_unique<fs::tmp>(), "/tmp");
   auto tmp = vfs::open("/tmp", 0);
 
-
-
   ref<task_process> kproc0 = task_process::kproc_init();
   kproc0->create_task(userinit_idle, PF_KTHREAD /* TODO: possible idle flag? */,
                       nullptr);
 
-  kproc0->create_task(task1, PF_KTHREAD, nullptr);
-  kproc0->create_task(task2, PF_KTHREAD, nullptr);
-
-
+  // kproc0->create_task(task1, PF_KTHREAD, nullptr);
+  // kproc0->create_task(task2, PF_KTHREAD, nullptr);
 
   /*
   {

@@ -24,6 +24,33 @@ int sscanf(const char* buf, const char* fmt, ...);
 
 const char* human_size(uint64_t bytes, char* buf);
 
+
+#define BLK "\e[0;30m"
+#define RED "\e[0;31m"
+#define GRN "\e[0;32m"
+#define YEL "\e[0;33m"
+#define BLU "\e[0;34m"
+#define MAG "\e[0;35m"
+#define CYN "\e[0;36m"
+#define WHT "\e[0;37m"
+
+#define RESET "\e[0m"
+
+
+#define KLOG(CLR, fmt, args...)                                             \
+  do {                                                                      \
+    struct tm t;                                                            \
+    dev::RTC::localtime(t);                                                 \
+    printk("[" CLR "%02d:%02d:%02d" RESET "] " fmt, t.tm_hour, t.tm_min, t.tm_sec, ##args); \
+  } while (0);
+
+
+#define KINFO(fmt, args...) KLOG(GRN, fmt, ##args)
+#define KWARN(fmt, args...) KLOG(YEL, fmt, ##args)
+#define KERR(fmt, args...) KLOG(RED, fmt, ##args)
+
+
+
 template <typename... T>
 inline void do_panic(const char* fmt, T&&... args) {
   // disable interrupts
@@ -35,16 +62,11 @@ inline void do_panic(const char* fmt, T&&... args) {
   }
 }
 
+
 #define panic(fmt, args...) \
-  do { printk("[PANIC @ %s] ", __PRETTY_FUNCTION__); \
+  do { KERR("PANIC: %s\n", __PRETTY_FUNCTION__); \
   do_panic(fmt, ##args); } while(0);
 
-#define KINFO(fmt, args...)                                                 \
-  do {                                                                      \
-    struct tm t;                                                            \
-    dev::RTC::localtime(t);                                                 \
-    printk("[%02d:%02d:%02d] " fmt, t.tm_hour, t.tm_min, t.tm_sec, ##args); \
-  } while (0);
 
 #define assert(val)                          \
   do {                                       \
