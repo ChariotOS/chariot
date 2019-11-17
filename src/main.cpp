@@ -70,106 +70,6 @@ static void call_global_constructors(void) {
     (*func)();
 }
 
-static u32* buf = nullptr;
-
-static void set_pixel(int i, int col) {
-  if (i >= 0 && i < vga::width() * vga::height()) buf[i] = col;
-}
-
-static void set_pixel(int x, int y, int col) {
-  set_pixel(x + y * vga::width(), col);
-}
-
-void draw_square(int x, int y, int sx, int sy, int color) {
-  for_range(oy, y, y + sy) for_range(ox, x, x + sx) {
-    set_pixel(ox, oy, color);
-  }
-}
-
-struct info {
-  int number;
-  char msg[8];
-};
-static int screen_drawer(void*) {
-  int fd = sys::open("/hello.txt", O_RDWR);
-
-  int i = 0;
-  while (0) {
-    char buf[256];
-
-    // seek to the start, read
-    sys::lseek(fd, 0, SEEK_SET);
-    int nread = sys::read(fd, buf, 256);
-
-    // increment the count
-    auto* info = (struct info*)buf;
-
-    if (i == 0) {
-      // printk("used to be %d, resetting...\n", info->number);
-      // info->number = 0;
-    }
-    i++;
-    info->number++;
-
-    // reset... write
-    sys::lseek(fd, 0, SEEK_SET);
-    sys::write(fd, buf, nread);
-
-    printk("%d\n", info->number);
-  }
-
-  // buf = new u32[vga::npixels()];
-
-  auto rand = dev::open("random");
-
-  int catfd = sys::open("/misc/cat.raw", O_RDONLY);
-  if (catfd < 0) {
-    printk("FAILED\n");
-    return 0;
-  }
-
-  // hardcoding size, no stat syscall
-  int img_size = 1228800;
-
-  int pixelc = img_size / sizeof(u32);
-
-  int width = 512;
-
-  int cycle = 0;
-
-  auto pbuf = new int[width];
-  while (1) {
-    for (int i = 0; i < pixelc; i += width) {
-      int stat = sys::read(catfd, pbuf, width * sizeof(u32));
-
-      if (stat < 0) {
-        delete[] pbuf;
-        break;
-      }
-
-      for (int o = 0; o < width; o++) {
-        /*
-        u32 pix = pbuf[o];
-        char r = pix >> (0 + cycle);
-        char g = pix >> (8 + cycle);
-        char b = pix >> (16 + cycle);
-        vga::set_pixel(i + o, vga::rgb(r, g, b));
-        */
-      }
-    }
-
-    // vga::flush_buffer(buf, vga::npixels());
-
-    cycle += 1;
-    cycle %= 4;
-    sys::lseek(catfd, 0, SEEK_SET);
-  }
-
-  delete[] pbuf;
-
-  // delete[] buf;
-}
-
 void init_rootvfs(ref<dev::device> dev) {
   auto rootfs = make_unique<fs::ext2>(dev);
   if (!rootfs->init()) panic("failed to init fs on root disk\n");
@@ -177,12 +77,20 @@ void init_rootvfs(ref<dev::device> dev) {
 }
 
 atom<int> nidles = 0;
-static int idle_task(void* arg) {
-
+static int userinit_idle(void* arg) {
   // spawn init
-  auto pid = sys::spawn();
+  pid_t init = sys::spawn();
 
-  printk("pid=%d\n", pid);
+  assert(init != -1);
+  printk("init pid=%d\n", init);
+
+  const char *init_args[] = {"/bin/init", NULL};
+
+  // TODO: setup stdin, stdout, and stderr
+
+  int res = sys::cmdpidve(init, init_args[0], init_args, NULL /* TODO: env*/);
+
+  assert(res == 0);
 
 
   while (1) {
@@ -265,28 +173,30 @@ def(foo) {
 };
 
 void screen_spam(int color, int cx, int cy) {
-  int r = 240;
+  int r = min(vga::height(), vga::width()) / 2;
   long angle = 1;
 
   // int cx = vga::width() / 2;
   // int cy = vga::height() / 2;
 
   while (1) {
-    cpu::pushcli();
+    for (int R = 0; R < r; R++) {
+      cpu::pushcli();
 
-    float a = angle / 100.0;
+      float a = angle / 100.0;
 
-    double R = (r / 2) + (r / 2 * cos(a / ((float)r * 4)));
+      // double R = (r / 2) + (r / 2 * cos(a / ((float)r * 4)));
 
-    int x = R * cos(a) + cx;
-    int y = R * sin(a) + cy;
+      int x = R * cos(a) + cx;
+      int y = R * sin(a) + cy;
 
-    if (x >= 0 && x < vga::width() && y >= 0 && y < vga::height())
-      vga::set_pixel(x, y, color);
-    // vga::set_pixel(x, y, vga::hsl(fmod(angle / 40.0, 1.0), 1, 0.5));
-    angle += 314;
+      if (x >= 0 && x < vga::width() && y >= 0 && y < vga::height())
+        vga::set_pixel(x, y, color);
+      // vga::set_pixel(x, y, vga::hsl(fmod(angle / 40.0, 1.0), 1, 0.5));
+      angle += 314;
 
-    cpu::popcli();
+      cpu::popcli();
+    }
   }
 }
 
@@ -333,7 +243,7 @@ static void kmain2(void) {
   KINFO("called global constructors\n");
 
   // initialize smp
-  // if (!smp::init()) panic("smp failed!\n");
+  if (!smp::init()) panic("smp failed!\n");
 
   // initialize the PCI subsystem by walking the devices and creating an
   // internal representation that is faster to access later on
@@ -381,33 +291,19 @@ static void kmain2(void) {
   vfs::mount(make_unique<fs::tmp>(), "/tmp");
   auto tmp = vfs::open("/tmp", 0);
 
-  ref<task_process> kproc0 = nullptr;
-  // initialize the kernel process
-  {
-    int kproc0_error = 0;
 
-    string kproc0_name = "essedarius";
-    vec<string> kproc_args;
-    kproc_args.push(kproc0_name);
-    // spawn the kernel process
-    kproc0 = task_process::spawn(kproc0_name, 0, 0, -1, kproc0_error,
-                                 move(kproc_args), PF_KTHREAD, 0);
 
-    if (kproc0_error != 0) {
-      panic("creating the initial kernel process failed with error code %d!\n",
-            kproc0_error);
-    }
-    KINFO("spawned kproc0\n");
-  }
-
-  kproc0->create_task(idle_task, PF_KTHREAD /* TODO: possible idle flag? */,
+  ref<task_process> kproc0 = task_process::kproc_init();
+  kproc0->create_task(userinit_idle, PF_KTHREAD /* TODO: possible idle flag? */,
                       nullptr);
 
-  // kproc0->create_task(task1, PF_KTHREAD, nullptr);
-  // kproc0->create_task(task2, PF_KTHREAD, nullptr);
+  kproc0->create_task(task1, PF_KTHREAD, nullptr);
+  kproc0->create_task(task2, PF_KTHREAD, nullptr);
+
 
 
   /*
+  {
   // allocate a page
   auto pg = p2v(phys::alloc(1));
 
@@ -422,6 +318,7 @@ static void kmain2(void) {
   fd.read((void*)0x1000, bin->size());
   // create a task where rip is at that location
   kproc0->create_task((int (*)(void*))0x1000, 0, nullptr);
+  }
   */
 
   // enable interrupts and start the scheduler

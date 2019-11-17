@@ -2,10 +2,10 @@
 
 #include <atom.h>
 #include <fs/vfs.h>
+#include <func.h>
 #include <lock.h>
 #include <types.h>
 #include <vm.h>
-#include <func.h>
 
 #define BIT(n) (1 << (n))
 
@@ -65,12 +65,10 @@ struct task_context {
   u64 eip;  // rip;
 };
 
-
 using pid_t = i64;
 using gid_t = i64;
 
-
-#define SPWN_FORK   BIT(0)
+#define SPWN_FORK BIT(0)
 
 /*
  * Per process flags
@@ -83,7 +81,7 @@ using gid_t = i64;
 #define PF_MAIN BIT(3)     // this task is the main task for a process
 
 struct task_process : public refcounted<struct task_process> {
-  int pid; // obviously the process id
+  int pid;  // obviously the process id
 
   int uid, gid;
 
@@ -94,7 +92,6 @@ struct task_process : public refcounted<struct task_process> {
 
   // execution ring (0 for kernel, 3 for user)
   int ring;
-
 
   /* address space information */
   ref<vm::addr_space> mm = nullptr;
@@ -114,21 +111,29 @@ struct task_process : public refcounted<struct task_process> {
   // vector of task ids
   vec<int> tasks;
 
+  // processes that have been spawned but aren't ready yet
+  vec<pid_t> nursery;
 
   ref<task_process> parent;
-
 
   mutex_lock proc_lock;
 
   // create a thread in the task_process
   int create_task(int (*fn)(void *), int flags, void *arg);
 
-  static ref<struct task_process> spawn(string path, int uid, int gid, pid_t parent_pid, int&error, vec<string>&&args, int pflags, int ring = 0);
+
+
+
+  static ref<struct task_process> spawn(pid_t parent, int &error);
   static ref<struct task_process> lookup(int pid);
+
+  // initialize the kernel ``process''
+  static ref<task_process> kproc_init(void);
+
+  int cmdve(string path, vec<string> &&args, vec<string> &&env);
 
   task_process();
 };
-
 
 // Process states
 #define PS_UNRUNNABLE (-1)
@@ -150,7 +155,7 @@ struct task final : public refcounted<task> {
   volatile long state;
 
   /* kenrel stack */
-  long stack_size ;
+  long stack_size;
   void *stack;
 
   /* per-task flasg (uses PF_* macros)*/
@@ -163,7 +168,6 @@ struct task final : public refcounted<task> {
   /* the previous cpu */
   atom<int> last_cpu;
 
-
   // used when an action requires ownership of this task
   mutex_lock task_lock;
 
@@ -172,7 +176,7 @@ struct task final : public refcounted<task> {
 
   // how many times the task has been ran
   unsigned long ticks = 0;
-  unsigned long start_tick; // last time it has been started
+  unsigned long start_tick;  // last time it has been started
   int timeslice = 2;
 
   // for the scheduler's intrusive runqueue

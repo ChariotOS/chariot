@@ -87,6 +87,8 @@ pid_t sys::spawn(void) {
   assert(cpu::in_thread());
   auto proc = cpu::proc();
 
+
+
   return -1;
 }
 
@@ -136,15 +138,21 @@ static long do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e) {
     return -1;
   }
 
-  // kinfo("syscall(%s, 0x%llx, 0x%llx, 0x%llx, 0x%llx, 0x%llx)\n",
-        // syscall_names[num], a, b, c, d, e);
+
+  /*
+  KINFO("syscall(%s, 0x%llx, 0x%llx, 0x%llx, 0x%llx, 0x%llx)\n",
+        syscall_names[num], a, b, c, d, e);
+        */
 
   auto *func = (long (*)(u64, u64, u64, u64, u64))syscall_table[num];
 
   return func(a, b, c, d, e);
 }
 
+
+
 void syscall_handle(int i, struct task_regs *tf) {
+
 
   // int x = 0;
   // printk("rax=%p krsp~%p\n", tf->rax, &x);

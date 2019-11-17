@@ -6,7 +6,6 @@
 #include <task.h>
 
 extern "C" void user_task_create_callback(void) {
-
   printk("starting user task\n");
   cpu::popcli();
 }
@@ -59,7 +58,6 @@ int task_process::create_task(int (*fn)(void *), int tflags, void *arg) {
   t->flags = tflags;
   t->state = PS_RUNNABLE;
 
-
   t->tf->esp = sp;
   t->tf->eip = (u64)fn;  // call the passed fn on ``iret''
 
@@ -77,11 +75,8 @@ int task_process::create_task(int (*fn)(void *), int tflags, void *arg) {
     t->tf->eflags = FL_IF;
 
     t->ctx->eip = (u64)user_task_create_callback;
-    t->tf->esp =  0x1000 + PGSIZE - 1;
-
+    t->tf->esp = 0x1000 + PGSIZE - 1;
   }
-  printk("%p %p %p\n", t->tf->cs, t->tf->ds, t->tf->eflags);
-
 
   task_table_lock.lock();
   t->tid = next_tid++;
@@ -96,30 +91,27 @@ int task_process::create_task(int (*fn)(void *), int tflags, void *arg) {
   return t->tid;
 }
 
-ref<struct task_process> task_process::spawn(string path, int uid, int gid,
-                                             pid_t parent_pid, int &error,
-                                             vec<string> &&args, int spwn_flags,
-                                             int ring) {
+ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
   proc_table_lock.lock();
   pid_t pid = next_pid++;
-
-  KINFO("spawned process '%s' at pid %d user=(%d,%d)\n", path.get(), pid, uid,
-        gid);
 
   assert(!proc_table.contains(pid));
 
   auto p = make_ref<task_process>();
 
-  p->uid = uid;
-  p->gid = gid;
-  p->ring = ring;
+  if (parent_pid != -1) {
+    p->parent = proc_table.get(parent_pid);
 
-  auto cmd_path = fs::path(path);
+    if (!p->parent) {
+      error = -ENOENT;
+      return nullptr;
+    }
 
-  p->command_path = move(path);
-  p->args = args;
+    p->uid = p->parent->uid;
+    p->gid = p->parent->gid;
+    p->ring = p->parent->ring;
+  }
 
-  p->parent = proc_table.get(parent_pid);
 
   p->mm = make_ref<vm::addr_space>();
 
@@ -133,6 +125,18 @@ ref<struct task_process> task_process::spawn(string path, int uid, int gid,
   return p;
 }
 
+ref<task_process> task_process::kproc_init(void) {
+  int err = 0;
+  auto p = task_process::spawn(-1, err);
+  printk("here\n");
+
+  p->flags = PF_KTHREAD;
+  p->ring = 0;
+  p->command_path = "kproc";
+
+  return p;
+}
+
 ref<struct task_process> task_process::lookup(int pid) {
   proc_table_lock.lock();
   auto t = proc_table.get(pid);
@@ -140,10 +144,12 @@ ref<struct task_process> task_process::lookup(int pid) {
   return t;
 }
 
-task::task(ref<struct task_process> proc) : proc(proc), task_lock("task lock") {}
+int task_process::cmdve(string path, vec<string> &&args, vec<string> &&env) {
+  return -1;
+}
 
-
-
+task::task(ref<struct task_process> proc)
+    : proc(proc), task_lock("task lock") {}
 
 ref<struct task> task::lookup(int tid) {
   task_table_lock.lock();
@@ -156,7 +162,6 @@ static void kernel_task_create_callback(void) {
   auto task = cpu::task();
 
   cpu::popcli();
-
 
   printk("task %d is kthread\n", task->tid);
 
