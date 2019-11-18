@@ -116,6 +116,8 @@ ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
   // p->mm = make_ref<vm::addr_space>();
   p->pid = pid;
 
+  p->mm.set_range(0, 0x700000000000);
+
   if (p->parent) {
     p->cwd = p->parent->cwd;
   }
@@ -141,12 +143,11 @@ ref<task_process> task_process::kproc_init(void) {
   // the kernel process is slightly wasteful, because processes allocate a page
   // table when they are created.
   // TODO: make this lazy
+  p->mm.set_range(KERNEL_VIRTUAL_BASE, -1);
 
   phys::free(p->mm.cr3);
 
   p->mm.cr3 = v2p(get_kernel_page_table());
-
-  printk("kernel cr3=%p\n", p->mm.cr3);
 
   return p;
 }

@@ -9,6 +9,7 @@
 #include <syscalls.h>
 #include <util.h>
 #include <vga.h>
+#include <map.h>
 
 extern "C" void trapret(void);
 
@@ -124,43 +125,39 @@ int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
   return -1;
 }
 
-static const char *syscall_names[] = {
-#undef __SYSCALL
-#define __SYSCALL(num, name) [num] = #name,
-#include <syscalls.inc>
-};
+
+
 
 // WARNING: HACK
-
-static void *syscall_table[] = {
-// [0 ... SYS_COUNT] = (void *)sys_invalid,
-
-#undef __SYSCALL
-#define __SYSCALL(num, name) [num] = (void *)sys::name,
-#include <syscalls.inc>
+struct syscall {
+  const char *name;
+  int num;
+  void *handler;
 };
 
+map<int, struct syscall> syscall_table;
+// vec<struct syscall> syscall_table;
+
+void set_syscall(const char *name, int num, void *handler) {
+
+  syscall_table[num] = {.name = name, .num = num, .handler = handler};
+}
+
 void syscall_init(void) {
-  for (int i = 0; i < SYS_COUNT; i++) {
-    // printk("%d: %p\n", i, syscall_table);
-  }
+#undef __SYSCALL
+#define __SYSCALL(num, name) set_syscall(#name, num, (void *)sys::name);
+#include <syscalls.inc>
 }
 
 static long do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e) {
-  if (num >= SYS_COUNT) {
+  if (num <= 0 || num >= syscall_table.size() || syscall_table[num].handler == nullptr) {
     return -1;
   }
 
-  if (syscall_table[num] == 0) {
-    return -1;
-  }
-
-  /*
   KINFO("syscall(%s, 0x%llx, 0x%llx, 0x%llx, 0x%llx, 0x%llx)\n",
-        syscall_names[num], a, b, c, d, e);
-        */
+        syscall_table[num].name, a, b, c, d, e);
 
-  auto *func = (long (*)(u64, u64, u64, u64, u64))syscall_table[num];
+  auto *func = (long (*)(u64, u64, u64, u64, u64))syscall_table[num].handler;
 
   return func(a, b, c, d, e);
 }

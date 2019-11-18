@@ -228,8 +228,8 @@ static void vga_init_mod(void) {
   vga_fba = (u32 *)p2v(get_framebuffer_address());
 
   // set_resolution(1024, 768);
-  set_resolution(800, 600);
-  // set_resolution(640, 480);
+  // set_resolution(800, 600);
+  set_resolution(640, 480);
 }
 
 module_init("vga", vga_init_mod);

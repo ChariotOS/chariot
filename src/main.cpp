@@ -77,42 +77,7 @@ void init_rootvfs(ref<dev::device> dev) {
 }
 
 atom<int> nidles = 0;
-static int userinit_idle(void* arg) {
-
-
-  auto buf = (char *)0x1000;
-
-  printk("%d\n", PGSIZE * 40);
-
-  for (int i = 0; i < PGSIZE * 40; i++) {
-    buf[i] = i;
-  }
-  hexdump(buf, PGSIZE * 40);
-  *buf = 42;
-  printk("%d\n", *buf);
-
-  printk("here\n");
-
-  // spawn init
-  pid_t init = sys::spawn();
-
-  assert(init != -1);
-
-  if (init != -1) {
-    KINFO("init pid=%d\n", init);
-
-    const char* init_args[] = {"/bin/init", NULL};
-
-    const char *envp[] = {NULL};
-
-    // TODO: setup stdin, stdout, and stderr
-
-    int res = sys::cmdpidve(init, init_args[0], init_args, envp);
-    if (res != 0) {
-      KERR("failed to cmdpid init process\n");
-    }
-  }
-
+static int idle_task(void* arg) {
   while (1) {
     // increment nidels
     nidles.store(nidles.load() + 1);
@@ -185,101 +150,49 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   while (1) panic("should not have gotten back here\n");
 }
 
-void screen_spam(int color, int cx, int cy) {
-  int r = min(vga::height(), vga::width()) / 2;
-  long angle = 1;
-
-  // int cx = vga::width() / 2;
-  // int cy = vga::height() / 2;
-
-  while (1) {
-    for (int R = 0; R < r; R++) {
-      cpu::pushcli();
-
-      float a = angle / 100.0;
-
-      // double R = (r / 2) + (r / 2 * cos(a / ((float)r * 4)));
-
-      int x = R * cos(a) + cx;
-      int y = R * sin(a) + cy;
-
-      if (x >= 0 && x < vga::width() && y >= 0 && y < vga::height())
-        vga::set_pixel(x, y, color);
-      // vga::set_pixel(x, y, vga::hsl(fmod(angle / 40.0, 1.0), 1, 0.5));
-      angle += 314;
-
-      cpu::popcli();
-    }
-  }
-}
-
-int task1(void*) {
-  int w = vga::width();
-  screen_spam(0xFF0000, w / 2, vga::height() / 2);
-  return 0;
-}
-
-int task2(void*) {
-  int w = vga::width();
-  screen_spam(0x0000FF, w / 2, vga::height() / 2);
-  return 0;
-}
+static int kernel_init_task(void*);
 
 static void kmain2(void) {
-  /**
-   * setup interrupts
-   */
   init_idt();
-
-  /**
-   * enable SSE extensions now that FP Faults can be caught by the OS
-   *
-   * TODO: dont use FP in the kernel.
-   */
   enable_sse();
 
-  /**
-   * unmap the low memory, as the kenrel needs to work without it in order to
-   * support process level mappings later on. To do this, we just remove the
-   * entry from the page table. "simple"
-   *
-   * this caused me a big oof, because after this call, any references
-   * to low memory are invalid, which means vga framebuffers (the main problem)
-   * need to now reference high kernel virtual memory
-   */
+  // for safety, unmap low memory (from bootstrap)
   *((u64*)p2v(read_cr3())) = 0;
   tlb_flush();
-  KINFO("cleared low memory 1:1 mapping\n");
 
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
-  KINFO("called global constructors\n");
 
-  // initialize smp
+  ref<task_process> kproc0 = task_process::kproc_init();
+  kproc0->create_task(kernel_init_task, PF_KTHREAD, nullptr);
+
+  KINFO("starting scheduler\n");
+  sti();
+  sched::beep();
+  sched::run();
+
+  // [noreturn]
+}
+
+/**
+ * the kernel drops here in a kernel task
+ *
+ * Further initialization past getting the scheduler working should run here
+ */
+static int kernel_init_task(void*) {
+  // TODO: initialize smp
   if (!smp::init()) panic("smp failed!\n");
   KINFO("Discovered SMP Cores\n");
-
-  // initialize the PCI subsystem by walking the devices and creating an
-  // internal representation that is faster to access later on
-  pci::init();
+  pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
-
-  // initialize the programmable interrupt timer
   init_pit();
   KINFO("Initialized PIT\n");
-
   syscall_init();
-
-  // Set the PIT interrupt frequency to how many times per second it should fire
-  set_pit_freq(100);
+  set_pit_freq(1000);
 
   if (fs::devfs::init() != true) {
     panic("Failed to initialize devfs\n");
   }
-
-  // KINFO("Detecting CPU speed\n");
-  // cpu::calc_speed_khz();
-  // KINFO("CPU SPEED: %fmHz\n", cpu::current().speed_khz / 1000000.0);
 
   // initialize the scheduler
   assert(sched::init());
@@ -292,64 +205,41 @@ static void kmain2(void) {
 
   // open up the disk device for the root filesystem
   auto rootdev = dev::open("ata1");
-
-  // auto rootcache = make_ref<dev::blk_cache>(rootdev, 512);
-
-  // setup the root vfs
   init_rootvfs(rootdev);
-
-  // mount the devfs
+  // TODO
   fs::devfs::mount();
 
   // setup the tmp filesystem
   vfs::mount(make_unique<fs::tmp>(), "/tmp");
   auto tmp = vfs::open("/tmp", 0);
 
-  ref<task_process> kproc0 = task_process::kproc_init();
-  kproc0->create_task(userinit_idle, PF_KTHREAD /* TODO: possible idle flag? */,
-                      nullptr);
+  auto proc = task_process::lookup(0);
 
+  // create the idle task
+  proc->create_task(idle_task, PF_KTHREAD /* TODO: possible idle flag? */,
+                    nullptr);
 
+  // spawn init
+  pid_t init = sys::spawn();
 
+  assert(init != -1);
 
-  // one page of memory backing
-  int pagec = 40;
-  auto reg = make_ref<vm::memory_backing>(pagec);
-  kproc0->mm.add_mapping("test", 0x1000, pagec * PGSIZE, reg, PROT_R | PROT_W | PROT_X);
+  if (init != -1) {
+    KINFO("init pid=%d\n", init);
 
+    const char* init_args[] = {"/bin/init", NULL};
 
+    const char* envp[] = {NULL};
 
-  // kproc0->create_task(task1, PF_KTHREAD, nullptr);
-  // kproc0->create_task(task2, PF_KTHREAD, nullptr);
+    // TODO: setup stdin, stdout, and stderr
 
-  /*
-  {
-  // allocate a page
-  auto pg = p2v(phys::alloc(1));
-
-  // open the binary
-  auto bin = vfs::open("/bin/hello", 0);
-  assert(bin); // make sure it exists :)
-  fs::filedesc fd(bin, 0);
-  // map the user page in
-  paging::map(0x1000, (u64)v2p(pg), paging::pgsize::page,
-              PTE_W | PTE_P | PTE_U);
-  // read the binary into the location
-  fd.read((void*)0x1000, bin->size());
-  // create a task where rip is at that location
-  kproc0->create_task((int (*)(void*))0x1000, 0, nullptr);
+    int res = sys::cmdpidve(init, init_args[0], init_args, envp);
+    if (res != 0) {
+      KERR("failed to cmdpid init process\n");
+    }
   }
-  */
 
-  // enable interrupts and start the scheduler
-  sti();
-  sched::beep();
-  KINFO("starting scheduler\n");
-  sched::run();
 
-  // spin forever
-  panic("should not have returned here\n");
-  while (1) {
-    halt();
-  }
+  // idle!
+  return idle_task(NULL);
 }

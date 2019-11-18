@@ -10,6 +10,7 @@
 #include <task.h>
 #include <types.h>
 #include <vga.h>
+#include <task.h>
 
 // struct gatedesc idt[NUM_IDT_ENTRIES];
 
@@ -191,6 +192,12 @@ static void pgfault_handle(int i, struct task_regs *tf) {
 
 
   auto proc = cpu::proc();
+
+
+  if (!proc) {
+    // lookup the kernel proc if we aren't in one!
+    proc = task_process::lookup(0);
+  }
 
   if (proc) {
     proc->mm.handle_pagefault((off_t)page, tf->err);

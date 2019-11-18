@@ -5,6 +5,8 @@
 #include <string.h>
 #include <types.h>
 #include <vec.h>
+#include <fs/filedesc.h>
+#include <fs/vfs.h>
 
 #define VPROT_READ (1 << 0)
 #define VPROT_WRITE (1 << 1)
@@ -35,13 +37,23 @@ struct phys_page : public refcounted<phys_page> {
  */
 class memory_backing : public refcounted<phys_page> {
  public:
-  memory_backing(int npags);
+  memory_backing(int npages);
   virtual ~memory_backing();  // pure virtual
 
   virtual int fault(addr_space &, region &, int page, int flags);
 
   // every memory region has an array of npages refcounted physical pages
   vec<ref<phys_page>> pages;
+};
+
+class file_backing : public memory_backing {
+  public:
+  file_backing(int npages, off_t, fs::vnoderef);
+  virtual ~file_backing();
+  virtual int fault(addr_space &, region &, int page, int flags);
+
+  off_t off = 0;
+  fs::filedesc fd;
 };
 
 /**
@@ -89,9 +101,18 @@ class addr_space final : public refcounted<addr_space> {
 
   off_t add_mapping(string name, off_t vaddr, size_t size, ref<vm::memory_backing>, int prot);
   off_t add_mapping(string name, ref<vm::memory_backing>, int prot);
+  off_t add_mapping(string name, size_t sz, int prot);
+
+  off_t map_file(string name, fs::vnoderef, off_t vaddr, off_t off, size_t size, int prot);
+
+  off_t find_region_hole(size_t);
 
 
   void *cr3;
+
+  inline const int region_count(void) const {
+    return regions.size();
+  }
 
  protected:
   mutex_lock lck;
