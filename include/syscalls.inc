@@ -11,7 +11,7 @@ __SYSCALL(7, yield)
 // process creationg related systemcalls
 __SYSCALL(8, spawn)
 __SYSCALL(9, impersonate)
-__SYSCALL(50, cmdpidve)
+__SYSCALL(10, cmdpidve)
 
 
 

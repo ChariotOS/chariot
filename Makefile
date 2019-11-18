@@ -111,8 +111,8 @@ clean:
 
 
 
-images: $(ISO) $(ROOTFS)
-
+images: $(ISO)
+	./sync.sh
 
 QEMUOPTS=-hda $(ISO) -m 2G -hdb $(ROOTFS) -gdb tcp::8256
 

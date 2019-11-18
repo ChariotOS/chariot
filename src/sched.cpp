@@ -20,7 +20,6 @@ extern "C" void swtch(struct task_context **, struct task_context *);
 static mutex_lock process_lock("processes");
 static bool s_enabled = true;
 
-
 static task *task_queue;
 static task *last_task;
 
@@ -36,7 +35,6 @@ static struct task *next_task(void) {
 
   return nt;
 }
-
 
 int sched::add_task(struct task *tsk) {
   process_lock.lock();
@@ -57,35 +55,14 @@ bool sched::init(void) {
   return true;
 }
 
-static void ktaskcreateret(void) {
-  INFO("starting task '%s'\n", cpu::task()->name().get());
-
-  cpu::popcli();
-
-  // call the kernel task function
-  // cpu::thd().start();
-
-  printk("KERNEL TASK DIES\n");
-
-  sched::exit();
-
-  panic("ZOMBIE kernel task was ran\n");
-}
-
-
 static void switch_into(struct task *tsk) {
-  INFO("ctxswtch: pid=%-4d gid=%-4d\n", tsk->pid(), tsk->gid());
   cpu::current().current_thread = tsk;
   tsk->ticks++;
   tsk->start_tick = cpu::get_ticks();
   tsk->state = PS_UNRUNNABLE;
 
+  cpu::switch_vm(tsk);
 
-  if (0 == (tsk->flags & PF_KTHREAD)) {
-    cpu::switch_vm(tsk);
-  }
-
-  // TODO: switch address space
   swtch(&cpu::current().sched_ctx, tsk->ctx);
   cpu::current().current_thread = nullptr;
 }
@@ -94,14 +71,14 @@ static void schedule() {
   if (cpu::ncli() != 1) panic("schedule must have ncli == 1");
   int intena = cpu::current().intena;
   swtch(&cpu::task()->ctx, cpu::current().sched_ctx);
-  // cpu::proc().switch_vm();
+
+
+  write_cr3((u64)v2p(get_kernel_page_table()));
+
   cpu::current().intena = intena;
 }
 
 static void do_yield(int st) {
-  INFO("yield %d\n", st);
-  // assert(cpu::thd() != nullptr);
-
   cpu::pushcli();
 
   cpu::task()->state = st;
@@ -112,11 +89,11 @@ static void do_yield(int st) {
 
 void sched::block() { do_yield(PS_BLOCKED); }
 
-void sched::yield() { do_yield(PS_RUNNABLE); }
-
-void sched::exit() {
-  do_yield(PS_ZOMBIE);
+void sched::yield() {
+  do_yield(PS_RUNNABLE);
 }
+
+void sched::exit() { do_yield(PS_ZOMBIE); }
 
 void sched::run() {
   for (;;) {
@@ -126,36 +103,17 @@ void sched::run() {
 
     cpu::pushcli();
 
-    bool add_back = true;
-
     if (tsk->state == PS_RUNNABLE) {
       s_enabled = true;
       cpu::current().intena = 1;
-      // printk("switching to tid %d\n", tsk->tid);
       switch_into(tsk);
     } else {
-      // printk("proc %d was not runnable\n", tsk->tid);
+      printk("proc %d was not runnable\n", tsk->tid);
     }
-
-
-
-    /*
-    // check for state afterwards
-    if (tsk->state == PS_ZOMBIE) {
-      // TODO: check for waiting processes and notify
-      if (tsk->flags & PF_KTHREAD) {
-        add_back = false;
-        INFO("kernel '%s' process dead\n", tsk->name().get());
-        delete tsk;
-      }
-    }
-    */
 
     cpu::popcli();
 
-    if (add_back) {
-      add_task(tsk);
-    }
+    add_task(tsk);
   }
   panic("scheduler should not have gotten back here\n");
 }
@@ -179,7 +137,6 @@ void sched::handle_tick(u64 ticks) {
   if (!enabled() || !cpu::in_thread() || cpu::task()->state != PS_UNRUNNABLE) {
     return;
   }
-
 
   auto tsk = cpu::task();
   // yield?

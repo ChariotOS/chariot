@@ -1,14 +1,16 @@
 #include <cpu.h>
 #include <fs/file.h>
 #include <map.h>
+#include <phys.h>
 #include <printk.h>
 #include <sched.h>
-#include <phys.h>
 #include <task.h>
 
 extern "C" void user_task_create_callback(void) {
   printk("starting user task\n");
+
   cpu::popcli();
+
 }
 
 extern "C" void trapret(void);
@@ -30,7 +32,8 @@ task_process::task_process(void) : proc_lock("proc_lock") {}
  *
  * takes in a function pointer, some flags, and an argument
  */
-int task_process::create_task(int (*fn)(void *), int tflags, void *arg) {
+int task_process::create_task(int (*fn)(void *), int tflags, void *arg,
+                              int state) {
   auto t = make_ref<task>(this);
 
   t->pid = pid;
@@ -57,7 +60,7 @@ int task_process::create_task(int (*fn)(void *), int tflags, void *arg) {
   memset(t->ctx, 0, sizeof(*t->ctx));
 
   t->flags = tflags;
-  t->state = PS_RUNNABLE;
+  t->state = state;
 
   t->tf->esp = sp;
   t->tf->eip = (u64)fn;  // call the passed fn on ``iret''
@@ -76,7 +79,6 @@ int task_process::create_task(int (*fn)(void *), int tflags, void *arg) {
     t->tf->eflags = FL_IF;
 
     t->ctx->eip = (u64)user_task_create_callback;
-    t->tf->esp = 0x1000 + PGSIZE - 1;
   }
 
   task_table_lock.lock();
@@ -100,6 +102,8 @@ ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
 
   auto p = make_ref<task_process>();
 
+  p->pid = pid;
+
   if (parent_pid != -1) {
     p->parent = proc_table.get(parent_pid);
 
@@ -114,9 +118,8 @@ ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
   }
 
   // p->mm = make_ref<vm::addr_space>();
-  p->pid = pid;
 
-  p->mm.set_range(0, 0x700000000000);
+  p->mm.set_range(0, KERNEL_VIRTUAL_BASE & ((1LL << 48) - 1));
 
   if (p->parent) {
     p->cwd = p->parent->cwd;

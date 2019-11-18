@@ -3,6 +3,7 @@
 #include <vm.h>
 #include <paging.h>
 #include <fs/filedesc.h>
+#include <cpu.h>
 
 vm::phys_page::~phys_page(void) { phys::free((void *)pa); }
 
@@ -57,20 +58,20 @@ vm::file_backing::~file_backing(void) {
 
 int vm::file_backing::fault(addr_space &space, region &reg, int page,
                               int flags) {
-  if (page < 0 || page > pages.size()) {
+  if (page < 0 || page >= pages.size()) {
     return -ENOENT;
   }
 
   if (!pages[page]) {
     pages[page] = vm::phys_page::alloc();
     void *buf = p2v(pages[page]->pa);
-
-
+    //TODO: handle faulures to read
     fd.seek(page * PGSIZE + off, SEEK_SET);
+    int nread = fd.read(buf, PGSIZE);
 
-    fd.read(buf, PGSIZE);
-
-
+    if (nread == -1) {
+      panic("failed to read mapped file!\n");
+    }
   }
 
   void *va = (void *)(reg.va + (page << 12));
@@ -129,24 +130,34 @@ static int sort_regions(vec<unique_ptr<vm::region>> &xs) {
 int vm::addr_space::handle_pagefault(off_t va, int flags) {
   auto r = lookup(va);
 
+  // printk("!! %d %p\n", cpu::task()->tid, read_cr3());
 
-  // printk("fault @ %p\n", va);
+  // KWARN("fault @ %p\n", va);
+
+  // KWARN("   region='%s'\n", r->name.get());
+
 
 
   if (!r) return -1;
 
   auto page = (va >> 12) -  (r->va >> 12);
 
-  r->backing->fault(*this, *r, page, flags);
+  int fault_res = r->backing->fault(*this, *r, page, flags);
+
+  if (fault_res != 0) {
+    panic("should segfault pid %p for accessing %p illegally\n", cpu::proc()->pid, va);
+    return -1;
+  }
 
   // walk through the scheduled mappings
   for (auto p : pending_mappings) {
-    // KINFO("mapping %p -> %p into %p\n", p.va, p.pa, cr3);
-    paging::map_into((u64*)p2v(cr3), (u64)p.va, p.pa, paging::pgsize::page, PTE_W | PTE_W | PTE_U);
+    // KWARN("   mapping %p -> %p into %p (%p, %p)\n", p.va, p.pa, cr3, read_cr3(), get_kernel_page_table());
+
+    paging::map_into((u64*)p2v(cr3), (u64)p.va, p.pa, paging::pgsize::page, PTE_W | PTE_U);
   }
 
   pending_mappings.clear();
-  return -1;
+  return 0;
 }
 
 int vm::addr_space::schedule_mapping(void *va, u64 pa) {

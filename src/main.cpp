@@ -163,23 +163,11 @@ static void kmain2(void) {
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
 
-  ref<task_process> kproc0 = task_process::kproc_init();
-  kproc0->create_task(kernel_init_task, PF_KTHREAD, nullptr);
 
-  KINFO("starting scheduler\n");
-  sti();
-  sched::beep();
-  sched::run();
 
-  // [noreturn]
-}
 
-/**
- * the kernel drops here in a kernel task
- *
- * Further initialization past getting the scheduler working should run here
- */
-static int kernel_init_task(void*) {
+
+
   // TODO: initialize smp
   if (!smp::init()) panic("smp failed!\n");
   KINFO("Discovered SMP Cores\n");
@@ -213,11 +201,32 @@ static int kernel_init_task(void*) {
   vfs::mount(make_unique<fs::tmp>(), "/tmp");
   auto tmp = vfs::open("/tmp", 0);
 
-  auto proc = task_process::lookup(0);
 
-  // create the idle task
-  proc->create_task(idle_task, PF_KTHREAD /* TODO: possible idle flag? */,
-                    nullptr);
+
+
+  // panic("ded\n");
+
+  ref<task_process> kproc0 = task_process::kproc_init();
+  kproc0->create_task(kernel_init_task, PF_KTHREAD, nullptr);
+
+
+
+  KINFO("starting scheduler\n");
+  sti();
+  sched::beep();
+  sched::run();
+
+  // [noreturn]
+}
+
+/**
+ * the kernel drops here in a kernel task
+ *
+ * Further initialization past getting the scheduler working should run here
+ */
+static int kernel_init_task(void*) {
+
+  auto proc = task_process::lookup(0);
 
   // spawn init
   pid_t init = sys::spawn();

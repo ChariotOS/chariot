@@ -23,9 +23,7 @@ cpu_t &cpu::current() {
 
 cpu_t *cpu::get() { return s_current; }
 
-ref<struct task_process> cpu::proc(void) {
-  return task()->proc;
-}
+ref<struct task_process> cpu::proc(void) { return task()->proc; }
 
 bool cpu::in_thread(void) { return (bool)task(); }
 
@@ -143,10 +141,9 @@ static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {
   tss[n * 2 + 2] = rsp >> 32;
 }
 
-
 static void tss_set_ist(u32 *tss, u32 n, u64 ist) {
-  tss[n*2 + 7] = ist;
-  tss[n*2 + 8] = ist >> 32;
+  tss[n * 2 + 7] = ist;
+  tss[n * 2 + 8] = ist >> 32;
 }
 
 void cpu::switch_vm(struct task *tsk) {
@@ -155,6 +152,22 @@ void cpu::switch_vm(struct task *tsk) {
   auto tss = (u32 *)(((char *)c.local) + 1024);
 
   tss_set_rsp(tss, 0, (u64)tsk->stack + tsk->stack_size);
-  tss_set_ist(tss, 0, (u64)tsk->stack + tsk->stack_size);
+  // tss_set_ist(tss, 0, (u64)tsk->stack + tsk->stack_size);
+
+  auto kptable = (u64 *)p2v(get_kernel_page_table());
+  auto pptable = (u64 *)p2v(tsk->proc->mm.cr3);
+
+  if (kptable != pptable) {
+    for (int i = 272; i < 512; i++) {
+      pptable[i] = kptable[i];
+    }
+  }
+
+  write_cr3((u64)v2p(tsk->proc->mm.cr3));
+
+  tlb_flush();
+
+  // KINFO("SWTCH %p %p\n", tsk->proc->mm.cr3, read_cr3());
+
   cpu::popcli();
 }

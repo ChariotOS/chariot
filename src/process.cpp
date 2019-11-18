@@ -10,6 +10,7 @@
 #include <util.h>
 #include <vga.h>
 #include <map.h>
+#include <paging.h>
 
 extern "C" void trapret(void);
 
@@ -57,7 +58,9 @@ ssize_t sys::read(int fd, void *dst, size_t len) {
 }
 
 ssize_t sys::write(int fd, void *dst, size_t len) {
-  panic("IMPL %s\n", __PRETTY_FUNCTION__);
+
+
+  hexdump(dst, len);
   return -ENOTIMPL;
 }
 
@@ -98,31 +101,52 @@ int sys::impersonate(pid_t) { return -ENOTIMPL; }
 int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
                   const char *envp[]) {
 
-  // load the image
+  auto proc = cpu::proc();
+
+  bool valid_pid = false;
+
+  // TODO: lock nursery
+  for (int i = 0; i < proc->nursery.size(); i++) {
+    if (pid == proc->nursery[i]) {
+      valid_pid = true;
+      proc->nursery.remove(i);
+      break;
+    }
+  }
+
+  auto newproc = task_process::lookup(pid);
+
+
   // TODO: validate that the current user has access to the file
   auto file = vfs::open(abs_path, 0);
 
-  printk("file=%p\n", file.get());
-
-  auto desc = fs::filedesc(file, FDIR_READ | FDIR_WRITE);
-
-  auto sz = file->size();
-
-  printk("sz=%zu\n", sz);
-  auto buf = new u8[sz];
-
-  int len = desc.read(buf, sz);
-
-
-  hexdump(buf, len);
-
-  elf::image img(buf, len);
-
-  if (img.valid()) {
-    img.dump();
+  if (!file) {
+    return -1; // file wasn't found TODO: ERRNO CODE
   }
+  newproc->mm.map_file(abs_path, file, 0x1000, 0, file->size(), PTE_W | PTE_U);
 
-  return -1;
+  auto ustack_size = 4 * PGSIZE;
+  // map the user stack
+  auto stack = newproc->mm.add_mapping("stack", ustack_size, PTE_W | PTE_U);
+
+  int tid = newproc->create_task(nullptr, 0, nullptr, PS_EMBRYO);
+
+  printk("stack=%p\n", stack);
+
+
+  KERR("cr3=%p\n", newproc->mm.cr3);
+
+  cpu::pushcli();
+  auto t = task::lookup(tid);
+  t->tf->esp = stack + ustack_size - 512;
+  t->tf->eip = 0x1000;
+  t->state = PS_RUNNABLE;
+
+  cpu::popcli();
+
+
+
+  return 0;
 }
 
 
@@ -150,12 +174,14 @@ void syscall_init(void) {
 }
 
 static long do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e) {
+
   if (num <= 0 || num >= syscall_table.size() || syscall_table[num].handler == nullptr) {
     return -1;
   }
 
-  KINFO("syscall(%s, 0x%llx, 0x%llx, 0x%llx, 0x%llx, 0x%llx)\n",
-        syscall_table[num].name, a, b, c, d, e);
+  /*
+  KINFO("syscall(%s, 0x%llx, 0x%llx, 0x%llx, 0x%llx, 0x%llx)\n", syscall_table[num].name, a, b, c, d, e);
+  */
 
   auto *func = (long (*)(u64, u64, u64, u64, u64))syscall_table[num].handler;
 
@@ -165,7 +191,6 @@ static long do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e) {
 void syscall_handle(int i, struct task_regs *tf) {
   // int x = 0;
   // printk("rax=%p krsp~%p\n", tf->rax, &x);
-
   tf->rax = do_syscall(tf->rax, tf->rdi, tf->rsi, tf->rdx, tf->r10, tf->r8);
   return;
 }

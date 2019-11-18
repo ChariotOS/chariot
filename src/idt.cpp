@@ -10,7 +10,6 @@
 #include <task.h>
 #include <types.h>
 #include <vga.h>
-#include <task.h>
 
 // struct gatedesc idt[NUM_IDT_ENTRIES];
 
@@ -190,9 +189,9 @@ static void unknown_exception(int i, struct task_regs *tf) {
 static void pgfault_handle(int i, struct task_regs *tf) {
   void *page = (void *)(read_cr2() & ~0xFFF);
 
-
   auto proc = cpu::proc();
 
+  // KINFO("FAULT %p %p\n", proc->mm.cr3, read_cr3());
 
   if (!proc) {
     // lookup the kernel proc if we aren't in one!
@@ -278,7 +277,7 @@ void init_idt(void) {
   interrupt_register(TRAP_DBLFLT, dbl_flt_handler);
   interrupt_register(TRAP_PGFLT, pgfault_handle);
 
-  mkgate(idt, 32, vectors[32], 3, 0);
+  mkgate(idt, 32, vectors[32], 0, 0);
   interrupt_register(32, tick_handle);
 
   mkgate(idt, 0x80, vectors[0x80], 3, 1);
@@ -299,6 +298,13 @@ extern "C" void trap(struct task_regs *tf) {
   depth++;
 
   int i = tf->trapno;
+
+  // XXX HACK
+  if (auto tsk = cpu::task()) {
+    if ((u64)tsk->proc->mm.cr3 != read_cr3()) {
+      write_cr3((u64)tsk->proc->mm.cr3);
+    }
+  }
 
   // KINFO("trap(0x%02x): rip=%p proc=%p\n", i, tf->eip, cpu::proc());
   (interrupt_handler_table[i])(i, tf);
