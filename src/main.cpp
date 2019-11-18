@@ -78,6 +78,21 @@ void init_rootvfs(ref<dev::device> dev) {
 
 atom<int> nidles = 0;
 static int userinit_idle(void* arg) {
+
+
+  auto buf = (char *)0x1000;
+
+  printk("%d\n", PGSIZE * 40);
+
+  for (int i = 0; i < PGSIZE * 40; i++) {
+    buf[i] = i;
+  }
+  hexdump(buf, PGSIZE * 40);
+  *buf = 42;
+  printk("%d\n", *buf);
+
+  printk("here\n");
+
   // spawn init
   pid_t init = sys::spawn();
 
@@ -293,6 +308,16 @@ static void kmain2(void) {
   ref<task_process> kproc0 = task_process::kproc_init();
   kproc0->create_task(userinit_idle, PF_KTHREAD /* TODO: possible idle flag? */,
                       nullptr);
+
+
+
+
+  // one page of memory backing
+  int pagec = 40;
+  auto reg = make_ref<vm::memory_backing>(pagec);
+  kproc0->mm.add_mapping("test", 0x1000, pagec * PGSIZE, reg, PROT_R | PROT_W | PROT_X);
+
+
 
   // kproc0->create_task(task1, PF_KTHREAD, nullptr);
   // kproc0->create_task(task2, PF_KTHREAD, nullptr);

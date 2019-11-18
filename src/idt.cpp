@@ -7,9 +7,9 @@
 #include <pit.h>
 #include <printk.h>
 #include <sched.h>
+#include <task.h>
 #include <types.h>
 #include <vga.h>
-#include <task.h>
 
 // struct gatedesc idt[NUM_IDT_ENTRIES];
 
@@ -188,23 +188,28 @@ static void unknown_exception(int i, struct task_regs *tf) {
 
 static void pgfault_handle(int i, struct task_regs *tf) {
   void *page = (void *)(read_cr2() & ~0xFFF);
-  printk("PAGEFAULT in task %d\n", cpu::task()->tid);
-  printk(" EIP  = %p\n", tf->eip);
-  printk(" ERR  = %p\n", tf->err);
-  printk(" PAGE = %p\n", page);
-  printk(" ADDR = %p\n", read_cr2());
-  printk(" FLGS: ");
 
-  if (tf->err & PGFLT_INSTR) printk("INSTRUCION ");
-  if (tf->err & PGFLT_RESERVED) printk("RESERVED ");
-  if (tf->err & PGFLT_USER) printk("USER ");
-  if (tf->err & PGFLT_WRITE) printk("WRITE ");
-  if (tf->err & PGFLT_PRESENT) printk("PROT ");
 
-  printk("\n");
+  auto proc = cpu::proc();
 
-  while (1) halt();
-  return;
+  if (proc) {
+    proc->mm.handle_pagefault((off_t)page, tf->err);
+  } else {
+    KERR("PAGEFAULT in task %d\n", cpu::task()->tid);
+    KERR(" EIP  = %p\n", tf->eip);
+    KERR(" ERR  = %p\n", tf->err);
+    KERR(" PAGE = %p\n", page);
+    KERR(" ADDR = %p\n", read_cr2());
+    KERR(" FLGS: ");
+
+    if (tf->err & PGFLT_INSTR) printk("INSTRUCION ");
+    if (tf->err & PGFLT_RESERVED) printk("RESERVED ");
+    if (tf->err & PGFLT_USER) printk("USER ");
+    if (tf->err & PGFLT_WRITE) printk("WRITE ");
+    if (tf->err & PGFLT_PRESENT) printk("PROT ");
+    printk("\n");
+    panic("page fault in kernel code (no proc)\n");
+  }
 }
 
 static void tick_handle(int i, struct task_regs *tf) {
@@ -221,10 +226,9 @@ static void tick_handle(int i, struct task_regs *tf) {
 
 static void dbl_flt_handler(int i, struct task_regs *tf) {
   printk("DOUBLE FAULT!\n");
-  while (1) {}
+  while (1) {
+  }
 }
-
-
 
 static void unknown_hardware(int i, struct task_regs *tf) {
   if (!interrupt_spurious[i]) {
@@ -232,8 +236,6 @@ static void unknown_hardware(int i, struct task_regs *tf) {
   }
   interrupt_spurious[i]++;
 }
-
-
 
 extern void syscall_handle(int i, struct task_regs *tf);
 
@@ -269,7 +271,6 @@ void init_idt(void) {
   interrupt_register(TRAP_DBLFLT, dbl_flt_handler);
   interrupt_register(TRAP_PGFLT, pgfault_handle);
 
-
   mkgate(idt, 32, vectors[32], 3, 0);
   interrupt_register(32, tick_handle);
 
@@ -282,8 +283,6 @@ void init_idt(void) {
   lidt(idt, 4096);
 }
 
-
-
 int depth = 0;
 // where the trap handler throws us. It is up to this function to sort out
 // which trap handler to hand off to
@@ -294,12 +293,10 @@ extern "C" void trap(struct task_regs *tf) {
 
   int i = tf->trapno;
 
-
   // KINFO("trap(0x%02x): rip=%p proc=%p\n", i, tf->eip, cpu::proc());
   (interrupt_handler_table[i])(i, tf);
   interrupt_acknowledge(i);
   interrupt_count[i]++;
   depth--;
-
 }
 

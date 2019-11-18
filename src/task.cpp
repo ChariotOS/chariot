@@ -3,6 +3,7 @@
 #include <map.h>
 #include <printk.h>
 #include <sched.h>
+#include <phys.h>
 #include <task.h>
 
 extern "C" void user_task_create_callback(void) {
@@ -112,7 +113,6 @@ ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
     p->ring = p->parent->ring;
   }
 
-
   // p->mm = make_ref<vm::addr_space>();
   p->pid = pid;
 
@@ -137,6 +137,16 @@ ref<task_process> task_process::kproc_init(void) {
   p->flags = PF_KTHREAD;
   p->ring = 0;
   p->command_path = "kproc";
+
+  // the kernel process is slightly wasteful, because processes allocate a page
+  // table when they are created.
+  // TODO: make this lazy
+
+  phys::free(p->mm.cr3);
+
+  p->mm.cr3 = v2p(get_kernel_page_table());
+
+  printk("kernel cr3=%p\n", p->mm.cr3);
 
   return p;
 }
