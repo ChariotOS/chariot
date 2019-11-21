@@ -5,6 +5,10 @@
 #include <fs/filedesc.h>
 #include <cpu.h>
 
+
+
+#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
+
 vm::phys_page::~phys_page(void) { phys::free((void *)pa); }
 
 ref<vm::phys_page> vm::phys_page::alloc(void) {
@@ -130,7 +134,6 @@ static int sort_regions(vec<unique_ptr<vm::region>> &xs) {
 int vm::addr_space::handle_pagefault(off_t va, int flags) {
   auto r = lookup(va);
 
-  // printk("!! %d %p\n", cpu::task()->tid, read_cr3());
 
   // KWARN("fault @ %p\n", va);
 
@@ -139,6 +142,9 @@ int vm::addr_space::handle_pagefault(off_t va, int flags) {
 
 
   if (!r) return -1;
+
+
+  // printk("!! %p %p\n", cpu::task()->proc->mm.cr3, read_cr3());
 
   auto page = (va >> 12) -  (r->va >> 12);
 
@@ -153,7 +159,7 @@ int vm::addr_space::handle_pagefault(off_t va, int flags) {
   for (auto p : pending_mappings) {
     // KWARN("   mapping %p -> %p into %p (%p, %p)\n", p.va, p.pa, cr3, read_cr3(), get_kernel_page_table());
 
-    paging::map_into((u64*)p2v(cr3), (u64)p.va, p.pa, paging::pgsize::page, PTE_W | PTE_U);
+    paging::map_into((u64*)p2v(cr3), (u64)p.va, p.pa, paging::pgsize::page, PTE_W | PTE_U | PTE_P);
   }
 
   pending_mappings.clear();
@@ -214,7 +220,6 @@ off_t vm::addr_space::find_region_hole(size_t size) {
 
 
 
-#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 off_t vm::addr_space::add_mapping(string name, ref<vm::memory_backing> mem, int prot) {
   // at this point, the address space is sorted because after adding each region it gets sorted
   // Therefore, we need to look at the end for a space that can fit this region's size
@@ -254,6 +259,50 @@ off_t vm::addr_space::map_file(string name, fs::vnoderef file, off_t vaddr, off_
 
   auto sz = round_up(size, 4096);
   return add_mapping(name, vaddr & ~0xFFF, sz, make_ref<vm::file_backing>(sz >> 12, off, file), prot);
+}
+
+
+#define PGMASK (~(PGSIZE - 1))
+bool vm::addr_space::validate_pointer(void *raw_va, size_t len, int mode) {
+
+
+  off_t start = (off_t)raw_va & PGMASK;
+  off_t end = ((off_t) raw_va + len) & PGMASK;
+  for (off_t va = start; va <= end; va += PGSIZE) {
+
+    // see if there is a region at the requested offset
+    auto r = lookup(va);
+    if (!r) {
+      return false;
+    }
+
+    // TODO: check mode flags
+  }
+
+  return true;
+}
+
+
+bool vm::addr_space::validate_string(const char *str) {
+  // TODO: this is really slow.
+  auto va = (off_t)str;
+
+
+  bool page_validated = false;
+  ssize_t validated_page = 0;
+  while (1) {
+    if (validated_page == (va & PGMASK) && page_validated) {
+      char *c = (char*)va;
+      if (c[0] == '\0') {
+        return true;
+      }
+      va++;
+    } else {
+      // TODO: validate page
+    }
+  }
+
+  return true;
 }
 
 

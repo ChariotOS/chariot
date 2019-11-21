@@ -8,3 +8,5 @@ mobo.cabal
 mobo
 .DS_Store
 tags
+
+user/bin

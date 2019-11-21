@@ -108,6 +108,13 @@ class addr_space final : public refcounted<addr_space> {
   off_t find_region_hole(size_t);
 
 
+
+#define VALIDATE_READ 1
+#define VALIDATE_WRITE 2
+  bool validate_pointer(void *, size_t, int mode);
+  bool validate_string(const char *);
+
+
   void *cr3;
 
   inline const int region_count(void) const {

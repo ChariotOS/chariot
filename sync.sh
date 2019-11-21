@@ -41,11 +41,12 @@ sudo mkdir -p $MOUNTPOINT/tmp
 # sudo cp -r src $MOUNTPOINT/chariot/src
 # sudo cp -r include $MOUNTPOINT/chariot/include
 
-cd user && make
+
+# make the user programs
+cd user && ./build.sh
 cd ..
 
 
-echo $PWD
-sudo cp -r user $MOUNTPOINT/bin
+sudo cp -r user/bin $MOUNTPOINT/bin
 
 sudo umount $MOUNTPOINT

@@ -107,6 +107,7 @@ klean:
 	rm -f $(COBJECTS) build/initrd.tar $(AOBJECTS) $(KERNEL)
 
 clean:
+	rm -rf user/bin
 	rm -rf build
 
 

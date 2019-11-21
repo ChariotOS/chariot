@@ -108,7 +108,7 @@ void sched::run() {
       cpu::current().intena = 1;
       switch_into(tsk);
     } else {
-      printk("proc %d was not runnable\n", tsk->tid);
+      // printk("proc %d was not runnable\n", tsk->tid);
     }
 
     cpu::popcli();

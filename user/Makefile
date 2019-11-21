@@ -1,22 +1,43 @@
-SRCS = $(wildcard *.c)
-APPS = ${SRCS:.c=}
+
+FILES = $(shell find $(DIR))
+
+CSOURCES = $(filter %.c,$(FILES))
+COBJECTS:=$(CSOURCES:%.c=bin/%.c.o)
 
 
-ASMSRCS = $(wildcard *.asm)
-APPS += ${ASMSRCS:.asm=}
+ASOURCES = $(filter %.asm,$(FILES))
+AOBJECTS:=$(ASOURCES:%.asm=bin/%.asm.o)
 
 DEFINES += -DUSERLAND
 
-.PHONY: all list clean
+.PHONY: bin default
 
-all: $(OBJS) $(APPS)
+
+bin:
+	@mkdir -p bin
+
+$(BIN): $(COBJECTS) $(AOBJECTS)
+	@echo " LD  $(BIN)"
+	@$(LD) -o $(BIN) $(LDFLAGS) $<
+
+
+all:
+	./build.sh
+
+
+
+
+bin/%.c.o: %.c
+	@mkdir -p $(dir $@)
+	@echo " CC " $<
+	@$(CC) -o $@ -c $<
+
+
+
+bin/%.asm.o: %.asm
+	@mkdir -p $(dir $@)
+	@echo " AS " $<
+	@nasm -f elf64 -o $@  $<
 
 clean:
-	@echo "CLEAN"
-	@rm -f $(APPS) $(OBJS) *.d
-
-
-$(APPS) : % : %.asm
-	@echo "ASM $@"
-	nasm -f bin -o $@ $<
-
+	@rm -rf bin

@@ -2,33 +2,27 @@
 [bits 64]
 
 main:
+
 	mov eax, 6 ;; write
 
+	mov rsi, 0
+	jmp dumb
+
+
+dumb:
+	mov eax, 6 ;; write
 	mov rdi, 1
-	mov rsi, msg
-	mov rdx, len
-	int 0x80 ;; syscall
+	mov rdx, 32
+	int 0x80
 
-
-	mov rdx, len
-
-.loop:
+	add rsi, 32
+	jmp dumb
 
 
 
-	inc byte [rdx + msg]
-
-	dec rdx
-	cmp rdx, -1
-	je .done
-	jmp .loop
-
-.done:
-	jmp main
 
 
-
-msg   db    'almkx932n okijp 9 aoisjp098ff 2',0xa
+msg   db    'hello, world',0xa
 len   equ   $-msg
 
 

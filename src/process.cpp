@@ -57,11 +57,17 @@ ssize_t sys::read(int fd, void *dst, size_t len) {
   return -ENOTIMPL;
 }
 
-ssize_t sys::write(int fd, void *dst, size_t len) {
+ssize_t sys::write(int fd, void *data, size_t len) {
+  auto proc = cpu::proc();
 
+  if (!proc->mm.validate_pointer(data, len, VALIDATE_READ)) {
+    // printk("%p: !! invalid !!\n", data);
+    return -1;
+  }
 
-  hexdump(dst, len);
-  return -ENOTIMPL;
+  printk("%p: ", data);
+  hexdump(data, len);
+  return 0;
 }
 
 int sys::yield(void) {
@@ -131,10 +137,6 @@ int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
 
   int tid = newproc->create_task(nullptr, 0, nullptr, PS_EMBRYO);
 
-  printk("stack=%p\n", stack);
-
-
-  KERR("cr3=%p\n", newproc->mm.cr3);
 
   cpu::pushcli();
   auto t = task::lookup(tid);
