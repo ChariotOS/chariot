@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 
-PROGS=$(ls src)
+PROGS=$(ls src/bin)
+LIBS=$(ls src/lib)
 
 
 mkdir -p bin
+mkdir -p bin/lib
 
+for lib in $LIBS; do
+	LIB=bin/lib/$lib.a
+	# echo "[USER] Building $prog"
+	make lib DIR=src/lib/$prog LIB=$LIB
+done
 
 
 for prog in $PROGS; do
 	BIN=bin/$prog
 	# echo "[USER] Building $prog"
-	make $BIN DIR=src/$prog BIN=$BIN
+	make prog DIR=src/bin/$prog BIN=$BIN
 done

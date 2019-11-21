@@ -199,7 +199,13 @@ static void pgfault_handle(int i, struct task_regs *tf) {
   }
 
   if (proc) {
-    proc->mm.handle_pagefault((off_t)page, tf->err);
+    int res = proc->mm.handle_pagefault((off_t)page, tf->err);
+    if (res == -1) {
+      // TODO:
+      KERR("pid %d segfaulted\n", proc->pid);
+      // XXX: just block, cause its an easy way to get the proc to stop running
+      sched::block();
+    }
   } else {
     KERR("PAGEFAULT in task %d\n", cpu::task()->tid);
     KERR(" EIP  = %p\n", tf->eip);

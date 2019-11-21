@@ -135,13 +135,15 @@ int vm::addr_space::handle_pagefault(off_t va, int flags) {
   auto r = lookup(va);
 
 
-  // KWARN("fault @ %p\n", va);
+  KWARN("fault @ %p\n", va);
 
   // KWARN("   region='%s'\n", r->name.get());
 
 
 
-  if (!r) return -1;
+  if (!r) {
+    return -1;
+  }
 
 
   // printk("!! %p %p\n", cpu::task()->proc->mm.cr3, read_cr3());
@@ -155,9 +157,10 @@ int vm::addr_space::handle_pagefault(off_t va, int flags) {
     return -1;
   }
 
+
   // walk through the scheduled mappings
   for (auto p : pending_mappings) {
-    // KWARN("   mapping %p -> %p into %p (%p, %p)\n", p.va, p.pa, cr3, read_cr3(), get_kernel_page_table());
+    KWARN("   mapping %p -> %p into %p (%p, %p)\n", p.va, p.pa, cr3, read_cr3(), get_kernel_page_table());
 
     paging::map_into((u64*)p2v(cr3), (u64)p.va, p.pa, paging::pgsize::page, PTE_W | PTE_U | PTE_P);
   }

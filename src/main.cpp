@@ -241,6 +241,14 @@ static int kernel_init_task(void*) {
   }
 
 
+  int c = 0;
+  while (1) {
+
+    for (int i = 0; i < vga::npixels(); i++) {
+      vga::set_pixel(i, c++);
+    }
+  }
+
   // idle!
   return idle_task(NULL);
 }
