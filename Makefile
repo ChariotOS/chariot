@@ -93,6 +93,7 @@ klean:
 
 clean:
 	rm -rf user/bin
+	rm -rf user/lib
 	rm -rf build
 
 

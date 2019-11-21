@@ -15,7 +15,7 @@ DEFINES += -DUSERLAND
 
 .PHONY: bin default
 
-LDFLAGS += -L$(PWD)/bin/lib/
+LDFLAGS += -L$(PWD)/lib/
 
 
 bin:
@@ -23,13 +23,13 @@ bin:
 
 $(BIN): $(COBJECTS) $(AOBJECTS)
 	@echo " LD  $(BIN)"
-	$(LD) $(LDFLAGS) -o $(BIN) $< -lc
+	@$(LD) $(LDFLAGS) -o $(BIN) $< -lc
 	@echo ""
 
 
 $(LIB): $(COBJECTS) $(AOBJECTS)
 	@echo " AR  $(LIB)"
-	ar rcs $(LIB) $<
+	@ar rcs $(LIB) $<
 	@echo ""
 
 prog: $(BIN)
@@ -53,4 +53,5 @@ bin/%.asm.o: %.asm
 
 
 clean:
+	@rm -rf lib
 	@rm -rf bin

@@ -48,5 +48,7 @@ cd ..
 
 
 sudo cp -r user/bin $MOUNTPOINT/bin
+sudo cp -r user/lib $MOUNTPOINT/lib
+sudo cp -r user/src $MOUNTPOINT/src
 
 sudo umount $MOUNTPOINT

@@ -5,10 +5,10 @@ LIBS=$(ls src/lib)
 
 
 mkdir -p bin
-mkdir -p bin/lib
+mkdir -p lib
 
 for lib in $LIBS; do
-	LIB=bin/lib/$lib.a
+	LIB=lib/$lib.a
 	# echo "[USER] Building $prog"
 	make lib DIR=src/lib/$prog LIB=$LIB
 done
