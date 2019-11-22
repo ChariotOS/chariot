@@ -228,7 +228,6 @@ static int kernel_init_task(void*) {
     KINFO("init pid=%d\n", init);
 
     const char* init_args[] = {"/bin/init", NULL};
-    // const char* init_args[] = {"/foo", NULL};
 
     const char* envp[] = {NULL};
 
