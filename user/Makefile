@@ -23,13 +23,13 @@ bin:
 
 $(BIN): $(COBJECTS) $(AOBJECTS)
 	@echo " LD  $(BIN)"
-	@$(LD) $(LDFLAGS) -o $(BIN) $< -lc
+	$(LD) $(LDFLAGS) -o $(BIN) $(COBJECTS) $(AOBJECTS) -lc
 	@echo ""
 
 
 $(LIB): $(COBJECTS) $(AOBJECTS)
 	@echo " AR  $(LIB)"
-	@ar rcs $(LIB) $<
+	@ar rcs $(LIB) $(COBJECTS) $(AOBJECTS)
 	@echo ""
 
 prog: $(BIN)

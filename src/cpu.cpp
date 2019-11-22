@@ -151,8 +151,13 @@ void cpu::switch_vm(struct task *tsk) {
   auto c = current();
   auto tss = (u32 *)(((char *)c.local) + 1024);
 
-  tss_set_rsp(tss, 0, (u64)tsk->stack + tsk->stack_size);
-  // tss_set_ist(tss, 0, (u64)tsk->stack + tsk->stack_size);
+  if (tsk->flags & PF_KTHREAD) {
+    // don't break the stack on kthreads with the tss
+    tss_set_rsp(tss, 0, 0);
+  } else {
+    tss_set_rsp(tss, 0, (u64)tsk->stack + tsk->stack_size);
+    // tss_set_ist(tss, 0, (u64)tsk->stack + tsk->stack_size);
+  }
 
   auto kptable = (u64 *)p2v(get_kernel_page_table());
   auto pptable = (u64 *)p2v(tsk->proc->mm.cr3);
@@ -165,9 +170,18 @@ void cpu::switch_vm(struct task *tsk) {
 
   write_cr3((u64)v2p(tsk->proc->mm.cr3));
 
-  tlb_flush();
+  // tlb_flush();
 
-  // KINFO("SWTCH %p %p\n", tsk->proc->mm.cr3, read_cr3());
+  // KINFO("SWTCH %d :: %p %p\n", tsk->pid, tsk->proc->mm.cr3, read_cr3());
+
+  /*
+  if (tsk->pid == 1) {
+    printk("rax=%p\n", tsk->tf->rax);
+
+    auto pml4 = (u64 *)p2v(tsk->proc->mm.cr3);
+    paging::dump_page_table(pml4);
+  }
+  */
 
   cpu::popcli();
 }

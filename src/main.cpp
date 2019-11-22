@@ -163,13 +163,12 @@ static void kmain2(void) {
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
 
-  // panic("ded\n");
-
   ref<task_process> kproc0 = task_process::kproc_init();
   kproc0->create_task(kernel_init_task, PF_KTHREAD, nullptr);
+
+  // a descrete idle task has to be added so that the scheduler always has work
+  // to do
   kproc0->create_task(idle_task, PF_KTHREAD, nullptr);
-
-
 
   KINFO("starting scheduler\n");
   sti();
@@ -229,6 +228,7 @@ static int kernel_init_task(void*) {
     KINFO("init pid=%d\n", init);
 
     const char* init_args[] = {"/bin/init", NULL};
+    // const char* init_args[] = {"/foo", NULL};
 
     const char* envp[] = {NULL};
 
@@ -240,15 +240,23 @@ static int kernel_init_task(void*) {
     }
   }
 
-
-  int c = 0;
+  int r = 0;
   while (1) {
+    int w = 60;
 
-    for (int i = 0; i < vga::npixels(); i++) {
-      vga::set_pixel(i, c++);
+    cpu::pushcli();
+    u32 color = vga::hsl(r++ / (float)w, 1.0, 0.5);
+    if (r > w) r = 0;
+    cpu::popcli();
+
+    for (int y = 0; y < 480; y++) {
+      for (int x = 0; x < 640; x++) {
+        vga::set_pixel(x, y, color);
+      }
     }
   }
 
-  // idle!
-  return idle_task(NULL);
+  while (1) {
+    sched::yield();
+  }
 }

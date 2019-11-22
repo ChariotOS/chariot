@@ -148,32 +148,21 @@ static void unknown_exception(int i, struct task_regs *tf) {
   vga::clear_screen(vga::make_entry(' ', color));
   vga::set_color(vga::color::white, vga::color::blue);
 
-#define INDENT "                  "
-#define BORDER INDENT "+========================================+\n"
+  KERR("KERNEL PANIC\n");
+  KERR("CPU EXCEPTION: %s\n", excp_codes[tf->trapno][EXCP_NAME]);
+  KERR("the system was running for %d ticks\n");
 
-  for (int i = 0; i < 4; i++) printk("\n");
+  KERR("\n");
+  KERR("Stats for nerds:\n");
+  KERR("INT=%016zx  ERR=%016zx\n", tf->trapno, tf->err);
+  KERR("ESP=%016zx  EIP=%016zx\n", tf->esp, tf->eip);
+  KERR("CR2=%016zx  CR3=%016zx\n", read_cr2(), read_cr3());
+  KERR("\n");
+  KERR("SYSTEM HALTED. File a bug report please:\n");
+  KERR("  repo: github.com/nickwanninger/chariot\n");
 
-  printk(BORDER);
-  printk("\n");
-  printk(INDENT "             ! KERNEL PANIC !\n");
-  printk("\n");
-
-  printk(INDENT "CPU EXCEPTION: %s\n", excp_codes[tf->trapno][EXCP_NAME]);
-  printk(INDENT "the system was running for %d ticks\n", ticks);
-
-  printk("\n");
-  printk(INDENT "Stats for nerds:\n");
-  printk(INDENT "INT=%016zx  ERR=%016zx\n", tf->trapno, tf->err);
-  printk(INDENT "ESP=%016zx  EIP=%016zx\n", tf->esp, tf->eip);
-  printk(INDENT "CR2=%016zx  CR3=%016zx\n", read_cr2(), read_cr3());
-  printk("\n");
-  printk(INDENT "SYSTEM HALTED. File a bug report please:\n");
-  printk(INDENT "  repo: github.com/nickwanninger/chariot\n");
-
-  printk("\n");
-  printk(INDENT " %s\n", GIT_REVISION);
-  printk("\n");
-  printk(BORDER);
+  KERR("\n");
+  KERR("git = %s\n", GIT_REVISION);
 
   lidt(0, 0);  // die
   while (1) {
@@ -197,29 +186,58 @@ static void pgfault_handle(int i, struct task_regs *tf) {
     // lookup the kernel proc if we aren't in one!
     proc = task_process::lookup(0);
   }
+  // KERR(" ADDR = %p\n", read_cr2());
+  // KERR(" RIP = %p\n", tf->eip);
+
+
+  cpu::task()->tf = tf;
+
+  /*
+  printk("\n\n\n\n");
+  KERR("PAGEFAULT in task %d, pid %d\n", cpu::task()->tid, cpu::task()->pid);
+  KERR(" FLGS: ");
+
+
+  if (tf->err & PGFLT_INSTR) printk("INSTRUCION ");
+  if (tf->err & PGFLT_RESERVED) printk("RESERVED ");
+  if (tf->err & PGFLT_USER) printk("USER ");
+  if (tf->err & PGFLT_WRITE) printk("WRITE ");
+  if (tf->err & PGFLT_PRESENT) printk("PROT ");
+  printk("\n");
+  */
+
+  /*
+
+#define PR_REG(name) printk("%3.3s=%p  ",  #name, tf->name)
+
+  PR_REG(rax);
+  PR_REG(rbx);
+  PR_REG(rcx);
+  PR_REG(rdx);
+  printk("\n");
+  PR_REG(rbp);
+  PR_REG(rsi);
+  PR_REG(rdi);
+  PR_REG(eip);  // rip
+
+  printk("\n");
+  PR_REG(cs);
+  PR_REG(eflags);  // rflags
+  PR_REG(esp);     // rsp
+  PR_REG(ds);      // ss
+  printk("\n");
+  */
 
   if (proc) {
     int res = proc->mm.handle_pagefault((off_t)page, tf->err);
     if (res == -1) {
       // TODO:
-      KERR("pid %d segfaulted\n", proc->pid);
+      KERR("pid %d, tid %d segfaulted\n", proc->pid, cpu::task()->tid);
       // XXX: just block, cause its an easy way to get the proc to stop running
       sched::block();
     }
-  } else {
-    KERR("PAGEFAULT in task %d\n", cpu::task()->tid);
-    KERR(" EIP  = %p\n", tf->eip);
-    KERR(" ERR  = %p\n", tf->err);
-    KERR(" PAGE = %p\n", page);
-    KERR(" ADDR = %p\n", read_cr2());
-    KERR(" FLGS: ");
 
-    if (tf->err & PGFLT_INSTR) printk("INSTRUCION ");
-    if (tf->err & PGFLT_RESERVED) printk("RESERVED ");
-    if (tf->err & PGFLT_USER) printk("USER ");
-    if (tf->err & PGFLT_WRITE) printk("WRITE ");
-    if (tf->err & PGFLT_PRESENT) printk("PROT ");
-    printk("\n");
+  } else {
     panic("page fault in kernel code (no proc)\n");
   }
 }
@@ -305,17 +323,21 @@ extern "C" void trap(struct task_regs *tf) {
 
   int i = tf->trapno;
 
+
   // XXX HACK
   if (auto tsk = cpu::task()) {
     if ((u64)tsk->proc->mm.cr3 != read_cr3()) {
+      printk("   -> is=%p kern=%p task=%p\n", read_cr3(), v2p(get_kernel_page_table()), tsk->proc->mm.cr3);
       write_cr3((u64)tsk->proc->mm.cr3);
     }
   }
+
 
   // KINFO("trap(0x%02x): rip=%p proc=%p\n", i, tf->eip, cpu::proc());
   (interrupt_handler_table[i])(i, tf);
   interrupt_acknowledge(i);
   interrupt_count[i]++;
   depth--;
+  // printk("   <- %p\n", read_cr3());
 }
 

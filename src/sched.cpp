@@ -72,9 +72,6 @@ static void schedule() {
   int intena = cpu::current().intena;
   swtch(&cpu::task()->ctx, cpu::current().sched_ctx);
 
-
-  write_cr3((u64)v2p(get_kernel_page_table()));
-
   cpu::current().intena = intena;
 }
 
@@ -99,7 +96,12 @@ void sched::run() {
   for (;;) {
     auto tsk = next_task();
 
-    assert(tsk != nullptr);
+
+    if (tsk == nullptr) {
+      // idle loop when there isn't a task
+      halt();
+      continue;
+    }
 
     cpu::pushcli();
 

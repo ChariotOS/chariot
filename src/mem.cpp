@@ -221,8 +221,6 @@ void init_kernel_virtual_memory() {
     // printk("%p\n", i);
   }
 
-  INFO("mapped %s into high kernel memory\n", human_size(i, buf));
-
   kheap_start = (u8 *)p2v(i);
   kheap_size = 0;
 

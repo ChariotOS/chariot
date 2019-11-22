@@ -119,7 +119,9 @@ ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
 
   // p->mm = make_ref<vm::addr_space>();
 
-  p->mm.set_range(0, KERNEL_VIRTUAL_BASE & ((1LL << 48) - 1));
+
+  p->mm.set_range(0, 0xFFFFFFFFFF000000 & ((1LL << 48) - 1));
+  // p->mm.set_range(0, KERNEL_VIRTUAL_BASE & ((1LL << 48) - 1));
 
   if (p->parent) {
     p->cwd = p->parent->cwd;

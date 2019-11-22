@@ -48,11 +48,12 @@ class memory_backing : public refcounted<phys_page> {
 
 class file_backing : public memory_backing {
   public:
-  file_backing(int npages, off_t, fs::vnoderef);
+  file_backing(int npages, size_t size, off_t, fs::vnoderef);
   virtual ~file_backing();
   virtual int fault(addr_space &, region &, int page, int flags);
 
   off_t off = 0;
+  size_t size;
   fs::filedesc fd;
 };
 

@@ -57,7 +57,9 @@ elf::image::image(u8 *data, int len) : data(data), len(len) {
   m_valid = true;
 }
 
-const u8 *elf::image::raw_data(int off) const { return data + off; }
+const u8 *elf::image::raw_data(int off) const {
+  return data + off;
+}
 
 const Elf64_Ehdr &elf::image::header() const {
   return *reinterpret_cast<const Elf64_Ehdr *>(raw_data(0));
