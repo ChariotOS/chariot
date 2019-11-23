@@ -11,12 +11,15 @@ int buf[BUFSZ];
 int main(int argc, char **argv) {
   printf("hello, world\n");
 
-  void *ptr = mmap(NULL, -1, -1, -1, -1, -1);
+  void *ptr =
+      mmap(NULL, 4096 * 800, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 
   if (ptr == MAP_FAILED) {
     printf("failed to map!\n");
   } else {
     printf("mapped region: %p\n", ptr);
+    strcpy(ptr, "hello\n");
+    printf("in region: '%s'\n", ptr);
   }
 
   while (1) {

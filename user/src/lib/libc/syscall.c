@@ -1,7 +1,7 @@
 #include <stdarg.h>
 #include <sys/syscall.h>
 
-extern int __syscall(int num, unsigned long long a, unsigned long long b,
+extern long __syscall(int num, unsigned long long a, unsigned long long b,
                      unsigned long long c, unsigned long long d,
                      unsigned long long e, unsigned long long f);
 

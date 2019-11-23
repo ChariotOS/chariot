@@ -164,7 +164,6 @@ int vm::addr_space::schedule_mapping(void *va, u64 pa) {
 }
 
 int vm::addr_space::set_range(off_t b, off_t l) {
-  if (l < b) return -1;
 
     // virtual addresses are only 48 bits, so we should truncate the addresses
     // to match so we don't go passing ugly pointers around to the process
@@ -192,7 +191,10 @@ off_t vm::addr_space::find_region_hole(size_t size) {
   off_t va = limit - size;
   off_t lim = va + size;
 
+
   for (int i = regions.size() - 1; i >= 0; i--) {
+
+    printk("va=%p\n", va);
     auto rva = regions[i]->va;
     auto rlim = rva + regions[i]->len;
 
@@ -215,10 +217,11 @@ off_t vm::addr_space::add_mapping(string name, ref<vm::memory_backing> mem,
 
   lck.lock();
 
-  KINFO("Adding region '%s'...\n", name.get());
+  // KINFO("Adding region '%s'...\n", name.get());
 
   // TODO: handle OOM
   off_t vaddr = find_region_hole(size);
+
 
   // TODO: how to determine failures here?
   if (vaddr == 0) {
@@ -231,7 +234,6 @@ off_t vm::addr_space::add_mapping(string name, ref<vm::memory_backing> mem,
   regions.push(move(reg));
   sort_regions(regions);
 
-  KINFO("   va = %p\n", vaddr);
   lck.unlock();
 
   return vaddr;

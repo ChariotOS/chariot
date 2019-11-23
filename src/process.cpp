@@ -5,6 +5,7 @@
 #include <fs/vfs.h>
 #include <map.h>
 #include <mem.h>
+#include <mmap_flags.h>
 #include <paging.h>
 #include <phys.h>
 #include <process.h>
@@ -191,9 +192,30 @@ int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
 
 void *sys::mmap(void *addr, size_t length, int prot, int flags, int fd,
                 off_t offset) {
+  auto proc = cpu::task()->proc;
+  if (!proc) return MAP_FAILED;
+
+  // TODO: handle address requests!
+  if (addr != NULL) return MAP_FAILED;
+
+  int reg_prot = PTE_U;
+
+  if (prot | PROT_READ) reg_prot |= PTE_U; // not sure for PROT_READ
+  if (prot | PROT_WRITE) reg_prot |= PTE_W;
+  // if (prot | PROT_EXEC) reg_prot |= PTE_NX; // not sure
+
+
+  printk("proc=%d\n", proc->pid);
+  off_t va = proc->mm.add_mapping("mmap", length, reg_prot);
+
+  printk("HERE=%p\n", va);
+
+  /*
   KINFO("mmap(addr=%p, len=%d, prot=%x, flags=%x, fd=%d, off=%d);\n", addr,
         length, prot, flags, fd, offset);
-  return (void *)-1;
+        */
+
+  return (void*)va;
 }
 int sys::munmap(void *addr, size_t length) { return -1; }
 
@@ -218,7 +240,7 @@ void syscall_init(void) {
 #include <syscalls.inc>
 }
 
-static long do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
+static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
   if (!syscall_table.contains(num) || syscall_table[num].handler == nullptr) {
     KWARN("unknown syscall in pid %d. syscall(%d) @ rip=%p\n", cpu::proc()->pid,
           num, cpu::task()->tf->eip);
@@ -226,7 +248,7 @@ static long do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
   }
 
   auto *func =
-      (long (*)(u64, u64, u64, u64, u64, u64))syscall_table[num].handler;
+      (u64 (*)(u64, u64, u64, u64, u64, u64))syscall_table[num].handler;
 
   return func(a, b, c, d, e, f);
 }
