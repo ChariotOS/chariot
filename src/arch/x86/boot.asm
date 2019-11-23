@@ -146,7 +146,7 @@ _start:
 	; enable long mode and the NX bit
   mov ecx, MSR_EFER
   rdmsr
-  or eax, (EFER_LM)
+  or eax, (EFER_LM | EFER_NX)
   wrmsr
 
   ; set cr3 to a pointer to pml4

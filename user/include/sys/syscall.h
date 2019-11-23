@@ -20,3 +20,6 @@ long syscall(long number, ...);
 #define SYS_impersonate 9
 #define SYS_cmdpidve 10
 
+#define SYS_mmap 60
+#define SYS_munmap 61
+

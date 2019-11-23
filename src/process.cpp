@@ -65,7 +65,7 @@ ssize_t sys::write(int fd, void *data, size_t len) {
   }
 
   for (int i = 0; i < len; i++) {
-    printk("%c", ((char*)data)[i]);
+    printk("%c", ((char *)data)[i]);
   }
   return 0;
 }
@@ -104,6 +104,7 @@ pid_t sys::spawn(void) {
 
 int sys::impersonate(pid_t) { return -ENOTIMPL; }
 
+#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
                   const char *envp[]) {
   auto proc = cpu::proc();
@@ -130,62 +131,53 @@ int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
 
   u64 entry_address = 0;
 
-  bool elf = true;
+  // TODO: avoid reading the entire elf file :)
+  auto sz = file->size();
+  auto buf = kmalloc(sz);
 
-  if (elf) {
-    // TODO: avoid reading the entire elf file :)
-    auto sz = file->size();
-    auto buf = kmalloc(sz);
+  auto fd = fs::filedesc(file, FDIR_READ);
+  int nread = fd.read(buf, sz);
+  elf::image im((u8 *)buf, nread);
 
-    auto fd = fs::filedesc(file, FDIR_READ);
-    int nread = fd.read(buf, sz);
-    elf::image im((u8 *)buf, nread);
-
-    if (!im.valid()) {
-      kfree(buf);
-      return -1;
-    }
-
-    for (int i = 0; i < im.section_count(); i++) {
-      auto sec = im.get_section(i);
-      // if the segment needs to be loaded
-      if (sec.type() == PT_LOAD) {
-        // map it
-        KWARN("mapping %s va=%p off=%x sz=%d\n", sec.name(), sec.address(),
-              sec.offset(), sec.size());
-        newproc->mm.map_file(sec.name(), file, sec.address(), sec.offset(),
-                             sec.size(), PTE_W | PTE_U | PTE_P);
-      }
-    }
-
-    entry_address = im.header().e_entry;
-
+  if (!im.valid()) {
     kfree(buf);
-  } else {
-    entry_address = 0x1000;
-    newproc->mm.map_file(abs_path, file, entry_address, /* offset */ 0,
-                         file->size(), PTE_W | PTE_U);
+    return 0;
   }
 
-  printk("entry = %p\n", entry_address);
+  for (int i = 0; i < im.section_count(); i++) {
+    auto sec = im.get_section(i);
+
+    printk("%s: type = %d\n", sec.name(), sec.type());
+    auto name = string::format("%s(%s)", abs_path, sec.name());
+    // if the segment needs to be loaded
+    if (sec.type() == PT_LOAD) {
+      // map it
+      KWARN("mapping %s va=%p off=%x sz=%d\n", sec.name(), sec.address(),
+            sec.offset(), sec.size());
+      newproc->mm.map_file(move(name), file, sec.address(), sec.offset(),
+                           sec.size(), PTE_W | PTE_U | PTE_P);
+    } else if (sec.type() == 8 /* TODO: investigate BSS type*/) {
+      int pages = round_up(sec.size(), 4096) >> 12;
+      printk("mapping %d pages for bss to %p\n", pages);
+      auto reg = make_ref<vm::memory_backing>(pages);
+      newproc->mm.add_mapping(move(name), sec.address(), pages * PGSIZE,
+                              move(reg), PTE_W | PTE_U);
+    }
+  }
+
+  entry_address = im.header().e_entry;
+
+  kfree(buf);
 
   u64 stack = 0;
 
-  if (0) {
-    // map the user stack
-    auto ustack_size = 8 * PGSIZE;
-    stack = newproc->mm.add_mapping("stack", ustack_size, PTE_W | PTE_U);
-    stack += ustack_size - 32;
-  } else {
-    stack = 0x1000 - 32;
-    // one page of stack
-    auto stk = make_ref<vm::memory_backing>(1);
-    newproc->mm.add_mapping("stack", 0, PGSIZE, stk, PTE_W | PTE_U);
-  }
+  // map the user stack
+  auto ustack_size = 8 * PGSIZE;
+  stack = newproc->mm.add_mapping("[stack]", ustack_size, PTE_W | PTE_U);
+  stack += ustack_size - 32;
 
   int tid = newproc->create_task(nullptr, 0, nullptr, PS_EMBRYO);
 
-  KINFO("esp=%p eip=%p\n", stack, entry_address);
   cpu::pushcli();
   auto t = task::lookup(tid);
   t->tf->esp = stack;
@@ -196,6 +188,14 @@ int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
 
   return 0;
 }
+
+void *sys::mmap(void *addr, size_t length, int prot, int flags, int fd,
+                off_t offset) {
+  KINFO("mmap(addr=%p, len=%d, prot=%x, flags=%x, fd=%d, off=%d);\n", addr,
+        length, prot, flags, fd, offset);
+  return (void *)-1;
+}
+int sys::munmap(void *addr, size_t length) { return -1; }
 
 // WARNING: HACK
 struct syscall {
@@ -208,6 +208,7 @@ map<int, struct syscall> syscall_table;
 // vec<struct syscall> syscall_table;
 
 void set_syscall(const char *name, int num, void *handler) {
+  KINFO("%s -> %d\n", name, num);
   syscall_table[num] = {.name = name, .num = num, .handler = handler};
 }
 
@@ -217,30 +218,23 @@ void syscall_init(void) {
 #include <syscalls.inc>
 }
 
-static long do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e) {
-
-
-  /*
-  KINFO("syscall(0x%x, 0x%llx, 0x%llx, 0x%llx, 0x%llx, 0x%llx)\n",
-        num, a, b, c, d, e);
-        */
-
-
-  if (num <= 0 || num >= syscall_table.size() ||
-      syscall_table[num].handler == nullptr) {
-
-    KWARN("unknown syscall in pid %d. syscall(%d) @ rip=%p\n", cpu::proc()->pid, num, cpu::task()->tf->eip);
+static long do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
+  if (!syscall_table.contains(num) || syscall_table[num].handler == nullptr) {
+    KWARN("unknown syscall in pid %d. syscall(%d) @ rip=%p\n", cpu::proc()->pid,
+          num, cpu::task()->tf->eip);
     return -1;
   }
 
-  auto *func = (long (*)(u64, u64, u64, u64, u64))syscall_table[num].handler;
+  auto *func =
+      (long (*)(u64, u64, u64, u64, u64, u64))syscall_table[num].handler;
 
-  return func(a, b, c, d, e);
+  return func(a, b, c, d, e, f);
 }
 
 void syscall_handle(int i, struct task_regs *tf) {
   // int x = 0;
-  tf->rax = do_syscall(tf->rax, tf->rdi, tf->rsi, tf->rdx, tf->r10, tf->r8);
+  tf->rax =
+      do_syscall(tf->rax, tf->rdi, tf->rsi, tf->rdx, tf->r10, tf->r8, tf->r9);
   return;
 }
 
@@ -249,14 +243,15 @@ extern "C" long __syscall(size_t, size_t, size_t, size_t, size_t, size_t,
 
 long ksyscall(long n, ...) {
   va_list ap;
-  size_t a, b, c, d, e;
+  size_t a, b, c, d, e, f;
   va_start(ap, n);
   a = va_arg(ap, size_t);
   b = va_arg(ap, size_t);
   c = va_arg(ap, size_t);
   d = va_arg(ap, size_t);
   e = va_arg(ap, size_t);
+  f = va_arg(ap, size_t);
   va_end(ap);
 
-  return do_syscall(n, a, b, c, d, e);
+  return do_syscall(n, a, b, c, d, e, f);
 }

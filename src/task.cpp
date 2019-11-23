@@ -116,12 +116,9 @@ ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
     p->gid = p->parent->gid;
     p->ring = p->parent->ring;
   }
-
-  // p->mm = make_ref<vm::addr_space>();
-
-
-  p->mm.set_range(0, 0xFFFFFFFFFF000000 & ((1LL << 48) - 1));
-  // p->mm.set_range(0, KERNEL_VIRTUAL_BASE & ((1LL << 48) - 1));
+  // set the range of virtual memory that the mm can map
+  // ... should be enough memory
+  p->mm.set_range(0, 0x7ffffffff000);
 
   if (p->parent) {
     p->cwd = p->parent->cwd;

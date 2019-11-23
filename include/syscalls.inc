@@ -14,5 +14,6 @@ __SYSCALL(9, impersonate)
 __SYSCALL(10, cmdpidve)
 
 
-
+__SYSCALL(60, mmap)
+__SYSCALL(61, munmap)
 

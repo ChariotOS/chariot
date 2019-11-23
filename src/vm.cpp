@@ -136,7 +136,7 @@ int vm::addr_space::handle_pagefault(off_t va, int flags) {
     return -1;
   }
 
-  KWARN("fault in region %s\n", r->name.get());
+  // KWARN("fault in region %s\n", r->name.get());
 
   auto page = (va >> 12) - (r->va >> 12);
   // refer to the backing structure to handle the fault
@@ -151,16 +151,9 @@ int vm::addr_space::handle_pagefault(off_t va, int flags) {
   auto p4 = (u64 *)p2v(cr3);
   // walk through the scheduled mappings
   for (auto p : pending_mappings) {
-    u64 *entry = paging::find_mapping(p4, (u64)p.va, paging::pgsize::page);
-
-    if ((*entry & ~0xFFF) != (p.pa & ~0xFFF)) {
-      KWARN("   mapping %p -> %p into %p. was %p\n", p.va, p.pa, cr3, *entry);
-      paging::map_into(p4, (u64)p.va, p.pa, paging::pgsize::page,
-                       PTE_W | PTE_U);
-    }
+    // KWARN("   mapping %p -> %p into %p. was %p\n", p.va, p.pa, cr3, *entry);
+    paging::map_into(p4, (u64)p.va, p.pa, paging::pgsize::page, PTE_W | PTE_U);
   }
-
-
   pending_mappings.clear();
   return 0;
 }
@@ -307,3 +300,16 @@ vm::addr_space::addr_space(void) : lck("addr_space_lock") {
 }
 
 vm::addr_space::~addr_space(void) { KINFO("destruct addr_space\n"); }
+
+
+
+
+string vm::addr_space::format(void) {
+  string s;
+
+  for (auto &r : regions) {
+    // s += string::format("%p\n", r->va);
+  }
+
+  return s;
+}

@@ -126,9 +126,16 @@ int impersonate(pid_t);
 
 // command an embryo process to execute a command and promote it from embryo to
 // runnable. It will have a thread created for it and will be a user process.
-int cmdpidve(pid_t, const char *abs_path, const char *argv[], const char *envp[]);
+int cmdpidve(pid_t, const char *abs_path, const char *argv[],
+             const char *envp[]);
 
 // XXX: REMOVE
 int set_pixel(int x, int y, int color);
+
+
+
+void *mmap(void *addr, size_t length, int prot, int flags, int fd,
+           off_t offset);
+int munmap(void *addr, size_t length);
 
 }  // namespace sys

@@ -118,9 +118,14 @@ class addr_space final : public refcounted<addr_space> {
 
   void *cr3;
 
+  // how much memory is used by the address space
+  size_t resident = 0;
+
   inline const int region_count(void) const {
     return regions.size();
   }
+
+  string format(void);
 
  protected:
   mutex_lock lck;
