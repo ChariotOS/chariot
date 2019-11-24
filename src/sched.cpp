@@ -61,14 +61,25 @@ static void switch_into(struct task *tsk) {
   tsk->start_tick = cpu::get_ticks();
   tsk->state = PS_UNRUNNABLE;
 
+  if (!tsk->fpu_initialized) {
+    asm volatile("fninit");
+    asm volatile("fxsave64 (%0);" ::"r"(tsk->fpu_state));
+    tsk->fpu_initialized = true;
+  } else {
+    asm volatile("fxrstor64 (%0);" ::"r"(tsk->fpu_state));
+  }
+
   cpu::switch_vm(tsk);
 
   swtch(&cpu::current().sched_ctx, tsk->ctx);
+
+  asm volatile("fxsave64 (%0);" ::"r"(tsk->fpu_state));
   cpu::current().current_thread = nullptr;
 }
 
 static void schedule() {
   if (cpu::ncli() != 1) panic("schedule must have ncli == 1");
+
   int intena = cpu::current().intena;
   swtch(&cpu::task()->ctx, cpu::current().sched_ctx);
 
@@ -86,16 +97,13 @@ static void do_yield(int st) {
 
 void sched::block() { do_yield(PS_BLOCKED); }
 
-void sched::yield() {
-  do_yield(PS_RUNNABLE);
-}
+void sched::yield() { do_yield(PS_RUNNABLE); }
 
 void sched::exit() { do_yield(PS_ZOMBIE); }
 
 void sched::run() {
   for (;;) {
     auto tsk = next_task();
-
 
     if (tsk == nullptr) {
       // idle loop when there isn't a task

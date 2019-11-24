@@ -138,23 +138,6 @@ int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
     }
   }
 
-
-  vec<string> args;
-  vec<string> env;
-  for (int i = 0; argv[i] != NULL; i++) {
-    printk("%p %s\n", argv[i], argv[i]);
-    /*
-    string s = argv[i];
-    args.push(move(s));
-    */
-    // args.push(argv[i]);
-  }
-
-  /*
-  if (envp != NULL) {
-    for (int i = 0; envp[i] != NULL; i++) env.push(envp[i]);
-  }
-  */
   bool valid_pid = false;
 
   // TODO: lock nursery
@@ -221,10 +204,28 @@ int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
   stack = newproc->mm.add_mapping("[stack]", ustack_size, PTE_W | PTE_U);
   stack += ustack_size - 32;
 
+  for (int i = 0; argv[i] != NULL; i++) {
+    newproc->args.push(argv[i]);
+  }
+
+  for (int i = 0; envp[i] != NULL; i++) {
+    newproc->env.push(envp[i]);
+  }
+
+
+
+
   int tid = newproc->create_task(nullptr, 0, nullptr, PS_EMBRYO);
 
   cpu::pushcli();
   auto t = task::lookup(tid);
+
+
+  // t->tf->rdi = (u64)u_argc;
+  // t->tf->rsi = (u64)u_argv;
+  // tf->rdx = u_envp
+
+
   t->tf->esp = stack;
   t->tf->eip = entry_address;
   t->state = PS_RUNNABLE;
@@ -274,7 +275,7 @@ map<int, struct syscall> syscall_table;
 // vec<struct syscall> syscall_table;
 
 void set_syscall(const char *name, int num, void *handler) {
-  KINFO("%s -> %d\n", name, num);
+  // KINFO("%s -> %d\n", name, num);
   syscall_table[num] = {.name = name, .num = num, .handler = handler};
 }
 

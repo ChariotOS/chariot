@@ -14,10 +14,14 @@ typedef struct free_header_s {
 
 typedef size_t blk_t;
 
+
+#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
+
+
 /* single word (4) or double word (8) alignment */
-#define ALIGNMENT 8
+#define ALIGNMENT 16
 /* rounds up to the nearest multiple of ALIGNMENT */
-#define ALIGN(size) (((size) + (ALIGNMENT - 1)) & ~0x7)
+#define ALIGN(size) round_up(size, ALIGNMENT)
 #define HEADER_SIZE (ALIGN(sizeof(blk_t)))
 
 #define OVERHEAD (ALIGN(sizeof(free_header_t)))

@@ -11,6 +11,10 @@ AOBJECTS:=$(ASOURCES:%.asm=bin/%.asm.o)
 
 DEFINES += -DUSERLAND
 
+OPTIMIZE:=-O3
+
+CFLAGS:=$(CINCLUDES) $(OPTIMIZE) -fno-omit-frame-pointer -fno-stack-protector \
+				 -mtls-direct-seg-refs -ffreestanding -Wall -Wstrict-overflow=5 \
 
 
 .PHONY: bin default

@@ -80,15 +80,12 @@ using gid_t = i64;
 #define PF_KTHREAD BIT(2)  // is a kernel thread
 #define PF_MAIN BIT(3)     // this task is the main task for a process
 
-
-
 // Process states
 #define PS_UNRUNNABLE (-1)
 #define PS_RUNNABLE (0)
 #define PS_ZOMBIE (1)
 #define PS_BLOCKED (2)
 #define PS_EMBRYO (3)
-
 
 struct task_process : public refcounted<struct task_process> {
   int pid;  // obviously the process id
@@ -129,7 +126,8 @@ struct task_process : public refcounted<struct task_process> {
   mutex_lock proc_lock;
 
   // create a thread in the task_process
-  int create_task(int (*fn)(void *), int flags, void *arg, int state = PS_RUNNABLE);
+  int create_task(int (*fn)(void *), int flags, void *arg,
+                  int state = PS_RUNNABLE);
 
   static ref<struct task_process> spawn(pid_t parent, int &error);
   static ref<struct task_process> lookup(int pid);
@@ -141,7 +139,6 @@ struct task_process : public refcounted<struct task_process> {
 
   task_process();
 };
-
 
 /**
  * task - a schedulable entity in the kernel
@@ -158,6 +155,10 @@ struct task final : public refcounted<task> {
   /* kenrel stack */
   long stack_size;
   void *stack;
+  // where the FPU info is saved
+  void *fpu_state;
+
+  bool fpu_initialized = false;
 
   /* per-task flasg (uses PF_* macros)*/
   unsigned int flags;
@@ -188,4 +189,5 @@ struct task final : public refcounted<task> {
 
   // protected constructor - must use ::create
   task(ref<struct task_process>);
+  ~task(void);
 };

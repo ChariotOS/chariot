@@ -239,7 +239,6 @@ static int kernel_init_task(void*) {
     }
   }
 
-
   int r = 0;
   while (1) {
     int w = 60;

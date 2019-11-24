@@ -171,7 +171,7 @@ static void unknown_exception(int i, struct task_regs *tf) {
 
 static void gpf_handler(int i, struct task_regs *tf) {
   // TODO: die
-  KERR("pid %d, tid %d died from GPF\n", cpu::task()->pid, cpu::task()->tid);
+  KERR("pid %d, tid %d died from GPF (err=%p)\n", cpu::task()->pid, cpu::task()->tid, tf->err);
   sched::block();
 }
 

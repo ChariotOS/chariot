@@ -5,8 +5,9 @@
 extern int main(int argc, char **argv, char **envp);
 
 
-void libc_start() {
-  main(0, 0, 0);
+void libc_start(int argc, char **argv, char **envp) {
+  // TODO: parse envp and store in a better format!
+  main(argc, argv, envp);
   // TODO: exit!
   while (1) {
   }

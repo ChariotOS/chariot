@@ -7,6 +7,8 @@
 extern "C" {
 #endif
 
+#undef NULL
+
 #ifdef __cplusplus
 #define NULL 0L
 #else
