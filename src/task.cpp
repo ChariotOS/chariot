@@ -7,10 +7,7 @@
 #include <task.h>
 
 extern "C" void user_task_create_callback(void) {
-  printk("starting user task\n");
-
   cpu::popcli();
-
 }
 
 extern "C" void trapret(void);

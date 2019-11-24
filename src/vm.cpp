@@ -164,9 +164,8 @@ int vm::addr_space::schedule_mapping(void *va, u64 pa) {
 }
 
 int vm::addr_space::set_range(off_t b, off_t l) {
-
-    // virtual addresses are only 48 bits, so we should truncate the addresses
-    // to match so we don't go passing ugly pointers around to the process
+  // virtual addresses are only 48 bits, so we should truncate the addresses
+  // to match so we don't go passing ugly pointers around to the process
 #define bits(n) ((1LL << n) - 1)
   base = b & ~0xFFF;
   limit = l & ~0xFFF;
@@ -191,10 +190,7 @@ off_t vm::addr_space::find_region_hole(size_t size) {
   off_t va = limit - size;
   off_t lim = va + size;
 
-
   for (int i = regions.size() - 1; i >= 0; i--) {
-
-    printk("va=%p\n", va);
     auto rva = regions[i]->va;
     auto rlim = rva + regions[i]->len;
 
@@ -217,11 +213,8 @@ off_t vm::addr_space::add_mapping(string name, ref<vm::memory_backing> mem,
 
   lck.lock();
 
-  // KINFO("Adding region '%s'...\n", name.get());
-
   // TODO: handle OOM
   off_t vaddr = find_region_hole(size);
-
 
   // TODO: how to determine failures here?
   if (vaddr == 0) {
@@ -257,6 +250,7 @@ off_t vm::addr_space::map_file(string name, fs::vnoderef file, off_t vaddr,
 bool vm::addr_space::validate_pointer(void *raw_va, size_t len, int mode) {
   off_t start = (off_t)raw_va & PGMASK;
   off_t end = ((off_t)raw_va + len) & PGMASK;
+
   for (off_t va = start; va <= end; va += PGSIZE) {
     // see if there is a region at the requested offset
     auto r = lookup(va);
@@ -271,6 +265,15 @@ bool vm::addr_space::validate_pointer(void *raw_va, size_t len, int mode) {
 }
 
 bool vm::addr_space::validate_string(const char *str) {
+  // TODO: this is really unsafe
+  if (validate_pointer((void *)str, 1, VALIDATE_READ)) {
+    int len = 0;
+    for (len = 0; str[len] != '\0'; len++)
+      ;
+    return validate_pointer((void *)str, len, VALIDATE_READ);
+  }
+
+  return false;
   // TODO: this is really slow.
   auto va = (off_t)str;
 
@@ -302,9 +305,6 @@ vm::addr_space::addr_space(void) : lck("addr_space_lock") {
 }
 
 vm::addr_space::~addr_space(void) { KINFO("destruct addr_space\n"); }
-
-
-
 
 string vm::addr_space::format(void) {
   string s;

@@ -169,6 +169,25 @@ static void unknown_exception(int i, struct task_regs *tf) {
   };
 }
 
+static void gpf_handler(int i, struct task_regs *tf) {
+  // TODO: die
+  KERR("pid %d, tid %d died from GPF\n", cpu::task()->pid, cpu::task()->tid);
+  sched::block();
+}
+
+static void illegal_instruction_handler(int i, struct task_regs *tf) {
+  // TODO: die
+  auto pa = paging::get_physical(tf->eip & ~0xFFF);
+  if (pa == 0) {
+    return;
+  }
+
+  KERR("pid %d, tid %d died from illegal instruction @ %p\n", cpu::task()->pid,
+       cpu::task()->tid, tf->eip);
+  KERR("  ESP=%p\n", tf->esp);
+  sched::block();
+}
+
 #define PGFLT_PRESENT (1 << 0)
 #define PGFLT_WRITE (1 << 1)
 #define PGFLT_USER (1 << 2)
@@ -180,53 +199,13 @@ static void pgfault_handle(int i, struct task_regs *tf) {
 
   auto proc = cpu::proc();
 
-  // KINFO("FAULT %p %p\n", proc->mm.cr3, read_cr3());
-
   if (!proc) {
+    KERR("not in a proc while pagefaulting\n");
     // lookup the kernel proc if we aren't in one!
     proc = task_process::lookup(0);
   }
-  // KERR(" ADDR = %p\n", read_cr2());
-  // KERR(" RIP = %p\n", tf->eip);
-
 
   cpu::task()->tf = tf;
-
-  /*
-  printk("\n\n\n\n");
-  KERR("PAGEFAULT in task %d, pid %d\n", cpu::task()->tid, cpu::task()->pid);
-  KERR(" FLGS: ");
-
-
-  if (tf->err & PGFLT_INSTR) printk("INSTRUCION ");
-  if (tf->err & PGFLT_RESERVED) printk("RESERVED ");
-  if (tf->err & PGFLT_USER) printk("USER ");
-  if (tf->err & PGFLT_WRITE) printk("WRITE ");
-  if (tf->err & PGFLT_PRESENT) printk("PROT ");
-  printk("\n");
-  */
-
-  /*
-
-#define PR_REG(name) printk("%3.3s=%p  ",  #name, tf->name)
-
-  PR_REG(rax);
-  PR_REG(rbx);
-  PR_REG(rcx);
-  PR_REG(rdx);
-  printk("\n");
-  PR_REG(rbp);
-  PR_REG(rsi);
-  PR_REG(rdi);
-  PR_REG(eip);  // rip
-
-  printk("\n");
-  PR_REG(cs);
-  PR_REG(eflags);  // rflags
-  PR_REG(esp);     // rsp
-  PR_REG(ds);      // ss
-  printk("\n");
-  */
 
   if (proc) {
     int res = proc->mm.handle_pagefault((off_t)page, tf->err);
@@ -300,6 +279,8 @@ void init_idt(void) {
 
   interrupt_register(TRAP_DBLFLT, dbl_flt_handler);
   interrupt_register(TRAP_PGFLT, pgfault_handle);
+  interrupt_register(TRAP_GPFLT, gpf_handler);
+  interrupt_register(TRAP_ILLOP, illegal_instruction_handler);
 
   mkgate(idt, 32, vectors[32], 0, 0);
   interrupt_register(32, tick_handle);
@@ -323,21 +304,18 @@ extern "C" void trap(struct task_regs *tf) {
 
   int i = tf->trapno;
 
-
   // XXX HACK
   if (auto tsk = cpu::task()) {
     if ((u64)tsk->proc->mm.cr3 != read_cr3()) {
-      printk("   -> is=%p kern=%p task=%p\n", read_cr3(), v2p(get_kernel_page_table()), tsk->proc->mm.cr3);
+      printk("   -> is=%p kern=%p task=%p\n", read_cr3(),
+             v2p(get_kernel_page_table()), tsk->proc->mm.cr3);
       write_cr3((u64)tsk->proc->mm.cr3);
     }
   }
 
-
-  // KINFO("trap(0x%02x): rip=%p proc=%p\n", i, tf->eip, cpu::proc());
   (interrupt_handler_table[i])(i, tf);
   interrupt_acknowledge(i);
   interrupt_count[i]++;
   depth--;
-  // printk("   <- %p\n", read_cr3());
 }
 

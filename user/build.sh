@@ -17,5 +17,5 @@ done
 for prog in $PROGS; do
 	BIN=bin/$prog
 	# echo "[USER] Building $prog"
-	make prog DIR=src/bin/$prog BIN=$BIN
+	make prog DIR=src/bin/$prog BIN=$BIN ULDFLAGS=$(cat src/bin/$prog/ld_flags.txt 2>/dev/null)
 done

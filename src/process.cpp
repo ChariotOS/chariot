@@ -105,11 +105,56 @@ pid_t sys::spawn(void) {
 
 int sys::impersonate(pid_t) { return -ENOTIMPL; }
 
+static bool validate_nt_string_array(struct task_process *proc, char **a) {
+  // validate the argv
+  if (!proc->mm.validate_pointer(a, sizeof(char **), VALIDATE_READ)) {
+    return false;
+  }
+  // loop over and check all the entry strings
+  for (int i = 0; true; i++) {
+    if (!proc->mm.validate_pointer(a + i, sizeof(char *), VALIDATE_READ))
+      return false;
+    if (a[i] == nullptr) break;
+    if (!proc->mm.validate_string(a[i])) return false;
+  }
+  return true;
+}
+
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
                   const char *envp[]) {
   auto proc = cpu::proc();
 
+  if (proc->pid != 0) {
+    KINFO("cmd from user process\n");
+    // validate the pointers provided
+
+    // validate the absolute path
+    if (!proc->mm.validate_string(abs_path)) return -1;
+
+    if (!validate_nt_string_array(proc.get(), (char **)argv)) return -1;
+    if (envp != NULL) {
+      if (!validate_nt_string_array(proc.get(), (char **)envp)) return -1;
+    }
+  }
+
+
+  vec<string> args;
+  vec<string> env;
+  for (int i = 0; argv[i] != NULL; i++) {
+    printk("%p %s\n", argv[i], argv[i]);
+    /*
+    string s = argv[i];
+    args.push(move(s));
+    */
+    // args.push(argv[i]);
+  }
+
+  /*
+  if (envp != NULL) {
+    for (int i = 0; envp[i] != NULL; i++) env.push(envp[i]);
+  }
+  */
   bool valid_pid = false;
 
   // TODO: lock nursery
@@ -121,12 +166,15 @@ int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
     }
   }
 
+  if (!valid_pid) return -1;
+
   auto newproc = task_process::lookup(pid);
 
   // TODO: validate that the current user has access to the file
   auto file = vfs::open(abs_path, 0);
 
   if (!file) {
+    printk("file not found '%s'\n", abs_path);
     return -1;  // file wasn't found TODO: ERRNO CODE
   }
 
@@ -148,18 +196,14 @@ int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
   for (int i = 0; i < im.section_count(); i++) {
     auto sec = im.get_section(i);
 
-    printk("%s: type = %d\n", sec.name(), sec.type());
     auto name = string::format("%s(%s)", abs_path, sec.name());
     // if the segment needs to be loaded
     if (sec.type() == PT_LOAD) {
       // map it
-      KWARN("mapping %s va=%p off=%x sz=%d\n", sec.name(), sec.address(),
-            sec.offset(), sec.size());
       newproc->mm.map_file(move(name), file, sec.address(), sec.offset(),
                            sec.size(), PTE_W | PTE_U | PTE_P);
     } else if (sec.type() == 8 /* TODO: investigate BSS type*/) {
       int pages = round_up(sec.size(), 4096) >> 12;
-      printk("mapping %d pages for bss to %p\n", pages);
       auto reg = make_ref<vm::memory_backing>(pages);
       newproc->mm.add_mapping(move(name), sec.address(), pages * PGSIZE,
                               move(reg), PTE_W | PTE_U);
@@ -200,22 +244,22 @@ void *sys::mmap(void *addr, size_t length, int prot, int flags, int fd,
 
   int reg_prot = PTE_U;
 
-  if (prot | PROT_READ) reg_prot |= PTE_U; // not sure for PROT_READ
-  if (prot | PROT_WRITE) reg_prot |= PTE_W;
+  if (prot == PROT_NONE) {
+    reg_prot = PTE_U | PTE_W;
+  } else {
+    if (prot | PROT_READ) reg_prot |= PTE_U;  // not sure for PROT_READ
+    if (prot | PROT_WRITE) reg_prot |= PTE_W;
+  }
   // if (prot | PROT_EXEC) reg_prot |= PTE_NX; // not sure
 
-
-  printk("proc=%d\n", proc->pid);
   off_t va = proc->mm.add_mapping("mmap", length, reg_prot);
-
-  printk("HERE=%p\n", va);
 
   /*
   KINFO("mmap(addr=%p, len=%d, prot=%x, flags=%x, fd=%d, off=%d);\n", addr,
         length, prot, flags, fd, offset);
         */
 
-  return (void*)va;
+  return (void *)va;
 }
 int sys::munmap(void *addr, size_t length) { return -1; }
 
@@ -247,8 +291,7 @@ static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
     return -1;
   }
 
-  auto *func =
-      (u64 (*)(u64, u64, u64, u64, u64, u64))syscall_table[num].handler;
+  auto *func = (u64(*)(u64, u64, u64, u64, u64, u64))syscall_table[num].handler;
 
   return func(a, b, c, d, e, f);
 }

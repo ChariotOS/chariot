@@ -22,8 +22,8 @@ bin:
 	@mkdir -p bin
 
 $(BIN): $(COBJECTS) $(AOBJECTS)
-	@echo " LD  $(BIN)"
-	$(LD) $(LDFLAGS) -o $(BIN) $(COBJECTS) $(AOBJECTS) -lc
+	@echo " LD  $(BIN)   $(ULDFLAGS)"
+	@$(LD) $(LDFLAGS) -o $(BIN) $(COBJECTS) $(AOBJECTS) -lc $(ULDFLAGS)
 	@echo ""
 
 
