@@ -26,13 +26,13 @@ bin:
 	@mkdir -p bin
 
 $(BIN): $(COBJECTS) $(AOBJECTS)
-	@echo " LD  $(BIN)   $(ULDFLAGS)"
+	@echo "[U] LD  $(BIN)   $(ULDFLAGS)"
 	@$(LD) $(LDFLAGS) -o $(BIN) $(COBJECTS) $(AOBJECTS) -lc $(ULDFLAGS)
 	@echo ""
 
 
 $(LIB): $(COBJECTS) $(AOBJECTS)
-	@echo " AR  $(LIB)"
+	@echo "[U] AR  $(LIB)"
 	@ar rcs $(LIB) $(COBJECTS) $(AOBJECTS)
 	@echo ""
 
@@ -46,13 +46,13 @@ all:
 
 bin/%.c.o: %.c
 	@mkdir -p $(dir $@)
-	@echo " CC " $<
+	@echo "[U] CC " $<
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
 
 bin/%.asm.o: %.asm
 	@mkdir -p $(dir $@)
-	@echo " AS " $<
+	@echo "[U] AS " $<
 	@nasm -f elf64 -o $@  $<
 
 

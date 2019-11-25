@@ -47,22 +47,22 @@ build:
 
 build/%.c.o: %.c
 	@mkdir -p $(dir $@)
-	@echo " CC  " $<
+	@echo "[K] CC  " $<
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
 build/%.cpp.o: %.cpp
 	@mkdir -p $(dir $@)
-	@echo " CXX " $<
+	@echo "[K] CXX " $<
 	@$(CXX) $(CPPFLAGS) -o $@ -c $<
 
 
 build/%.asm.o: %.asm
 	@mkdir -p $(dir $@)
-	@echo " ASM " $<
+	@echo "[K] ASM " $<
 	@$(AS) $(AFLAGS) -o $@ $<
 
 $(KERNEL): $(CODEFILES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
-	@echo " LNK " $@
+	@echo "[K] LNK " $@
 	@$(LD) $(LDFLAGS) $(AOBJECTS) $(COBJECTS) -T kernel.ld -o $@
 
 
