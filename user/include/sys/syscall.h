@@ -15,10 +15,7 @@ long syscall(long number, ...);
 #define SYS_write 6
 #define SYS_yield 7
 
-// process creation
-#define SYS_spawn 8
-#define SYS_impersonate 9
-#define SYS_cmdpidve 10
+#define SYS_pctl 8
 
 #define SYS_mmap 60
 #define SYS_munmap 61

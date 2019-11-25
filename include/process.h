@@ -117,17 +117,7 @@ pid_t getpid(void);
 
 pid_t gettid(void);
 
-// spawn a new USER process, inheriting the stdin, stdout, stderr from the
-// calling process.
-pid_t spawn();
-
-// TODO:
-int impersonate(pid_t);
-
-// command an embryo process to execute a command and promote it from embryo to
-// runnable. It will have a thread created for it and will be a user process.
-int cmdpidve(pid_t, const char *abs_path, const char *argv[],
-             const char *envp[]);
+int pctl(int pid, int request, u64 arg);
 
 // XXX: REMOVE
 int set_pixel(int x, int y, int color);

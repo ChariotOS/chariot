@@ -7,6 +7,7 @@
 #include <mem.h>
 #include <mmap_flags.h>
 #include <paging.h>
+#include <pctl.h>
 #include <phys.h>
 #include <process.h>
 #include <syscalls.h>
@@ -86,7 +87,7 @@ pid_t sys::getpid(void) { return cpu::task()->pid; }
 
 pid_t sys::gettid(void) { return cpu::task()->tid; }
 
-pid_t sys::spawn(void) {
+pid_t do_spawn(void) {
   assert(cpu::in_thread());
   auto proc = cpu::proc();
 
@@ -103,7 +104,7 @@ pid_t sys::spawn(void) {
   return p->pid;
 }
 
-int sys::impersonate(pid_t) { return -ENOTIMPL; }
+#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 
 static bool validate_nt_string_array(struct task_process *proc, char **a) {
   // validate the argv
@@ -120,31 +121,44 @@ static bool validate_nt_string_array(struct task_process *proc, char **a) {
   return true;
 }
 
-#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
-int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
-                  const char *envp[]) {
-  auto proc = cpu::proc();
+static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
+  auto proc = cpu::proc().get();
 
   if (proc->pid != 0) {
-    KINFO("cmd from user process\n");
-    // validate the pointers provided
+    // validate the args structure itself
+    if (!proc->mm.validate_pointer(args, sizeof(*args), VALIDATE_READ)) {
+      return -1;
+    }
 
     // validate the absolute path
-    if (!proc->mm.validate_string(abs_path)) return -1;
+    if (!proc->mm.validate_string(args->path)) {
+      return -1;
+    }
 
-    if (!validate_nt_string_array(proc.get(), (char **)argv)) return -1;
-    if (envp != NULL) {
-      if (!validate_nt_string_array(proc.get(), (char **)envp)) return -1;
+    // validate argv and env
+    if (!proc->mm.validate_pointer(args->argv, sizeof(char *) * args->argc,
+                                   VALIDATE_READ))
+      return -1;
+    if (args->envv != NULL &&
+        !proc->mm.validate_pointer(args->envv, sizeof(char *) * args->envc,
+                                   VALIDATE_READ)) {
+      return -1;
     }
   }
 
+  char *abs_path = args->path;
+  char **argv = args->argv;
+  char **envp = args->envv;
+
+  // validate the pid first
   bool valid_pid = false;
 
+  int nursery_index = 0;
   // TODO: lock nursery
   for (int i = 0; i < proc->nursery.size(); i++) {
     if (pid == proc->nursery[i]) {
       valid_pid = true;
-      proc->nursery.remove(i);
+      nursery_index = i;
       break;
     }
   }
@@ -166,20 +180,24 @@ int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
   // TODO: avoid reading the entire elf file :)
   auto sz = file->size();
   auto buf = kmalloc(sz);
-
   auto fd = fs::filedesc(file, FDIR_READ);
   int nread = fd.read(buf, sz);
   elf::image im((u8 *)buf, nread);
 
   if (!im.valid()) {
     kfree(buf);
-    return 0;
+    return -1;
   }
 
   for (int i = 0; i < im.section_count(); i++) {
     auto sec = im.get_section(i);
 
+    // probably not the best thing to do, but I'm not really sure
+    if (sec.address() == 0) continue;
+
     auto name = string::format("%s(%s)", abs_path, sec.name());
+
+    // KWARN("%s at %p\n", name.get(), sec.address());
     // if the segment needs to be loaded
     if (sec.type() == PT_LOAD) {
       // map it
@@ -192,7 +210,6 @@ int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
                               move(reg), PTE_W | PTE_U);
     }
   }
-
   entry_address = im.header().e_entry;
 
   kfree(buf);
@@ -208,23 +225,20 @@ int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
     newproc->args.push(argv[i]);
   }
 
-  for (int i = 0; envp[i] != NULL; i++) {
-    newproc->env.push(envp[i]);
+  if (envp != NULL) {
+    for (int i = 0; envp[i] != NULL; i++) {
+      newproc->env.push(envp[i]);
+    }
   }
-
-
-
 
   int tid = newproc->create_task(nullptr, 0, nullptr, PS_EMBRYO);
 
   cpu::pushcli();
   auto t = task::lookup(tid);
 
-
   // t->tf->rdi = (u64)u_argc;
   // t->tf->rsi = (u64)u_argv;
   // tf->rdx = u_envp
-
 
   t->tf->esp = stack;
   t->tf->eip = entry_address;
@@ -232,7 +246,25 @@ int sys::cmdpidve(pid_t pid, const char *abs_path, const char *argv[],
 
   cpu::popcli();
 
+  proc->nursery.remove(nursery_index);
+
   return 0;
+}
+
+int sys::pctl(int pid, int request, u64 arg) {
+  printk("pctl(%d, %d, %p);\n", pid, request, arg);
+  switch (request) {
+    case PCTL_SPAWN:
+      return do_spawn();
+
+    case PCTL_CMD:
+      return do_cmd(pid, (struct pctl_cmd_args *)arg);
+
+    // request not handled!
+    default:
+      return -1;
+  }
+  return -1;
 }
 
 void *sys::mmap(void *addr, size_t length, int prot, int flags, int fd,
@@ -254,11 +286,6 @@ void *sys::mmap(void *addr, size_t length, int prot, int flags, int fd,
   // if (prot | PROT_EXEC) reg_prot |= PTE_NX; // not sure
 
   off_t va = proc->mm.add_mapping("mmap", length, reg_prot);
-
-  /*
-  KINFO("mmap(addr=%p, len=%d, prot=%x, flags=%x, fd=%d, off=%d);\n", addr,
-        length, prot, flags, fd, offset);
-        */
 
   return (void *)va;
 }

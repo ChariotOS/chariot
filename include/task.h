@@ -121,6 +121,8 @@ struct task_process : public refcounted<struct task_process> {
   // processes that have been spawned but aren't ready yet
   vec<pid_t> nursery;
 
+  pid_t search_nursery(pid_t);
+
   ref<task_process> parent;
 
   mutex_lock proc_lock;

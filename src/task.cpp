@@ -12,7 +12,7 @@ extern "C" void user_task_create_callback(void) {
     auto *t = cpu::task().get();
 
     u64 sp = t->tf->esp;
-    KERR("sp=%p\n", sp);
+    // KERR("sp=%p\n", sp);
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 #define STACK_ALLOC(T, n)                \
@@ -32,7 +32,7 @@ extern "C" void user_task_create_callback(void) {
       auto p = STACK_ALLOC(char, arg.len() + 1);
       arg_storage.push(p);
       memcpy(p, arg.get(), arg.len() + 1);
-      KWARN(" %p %s\n", p, p);
+      // KWARN(" %p %s\n", p, p);
     }
 
     // allocate space for argv
@@ -43,7 +43,7 @@ extern "C" void user_task_create_callback(void) {
     }
     argv[argc] = NULL;
 
-    KWARN("argc=%d, argv=%p\n", argc, argv);
+    // KWARN("argc=%d, argv=%p\n", argc, argv);
 
     // argv goes into the second argument (RSI in x86_64)
     t->tf->rdi = (u64)argc;
@@ -137,6 +137,17 @@ int task_process::create_task(int (*fn)(void *), int tflags, void *arg,
   }
 
   return t->tid;
+}
+
+
+pid_t task_process::search_nursery(pid_t pid) {
+  // TODO: lock nursery and make this optimized :)
+  for (int i = 0; i < nursery.size(); i++) {
+    if (pid == nursery[i]) {
+      return pid;
+    }
+  }
+  return -1;
 }
 
 ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {

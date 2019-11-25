@@ -39,6 +39,7 @@
 #include <uuid.h>
 #include <vec.h>
 #include <vga.h>
+#include <pctl.h>
 
 extern int kernel_end;
 
@@ -220,7 +221,7 @@ static int kernel_init_task(void*) {
   auto proc = task_process::lookup(0);
 
   // spawn init
-  pid_t init = sys::spawn();
+  pid_t init = sys::pctl(0, PCTL_SPAWN, 0);
 
   assert(init != -1);
 
@@ -229,11 +230,17 @@ static int kernel_init_task(void*) {
 
     const char* init_args[] = {"/bin/init", NULL};
 
-    const char* envp[] = {NULL};
+    struct pctl_cmd_args cmdargs {
+      .path = (char*)init_args[0],
+      .argc = 1,
+      .argv = (char**)init_args,
+
+      .envc = 0,
+      .envv = NULL,
+    };
 
     // TODO: setup stdin, stdout, and stderr
-
-    int res = sys::cmdpidve(init, init_args[0], init_args, envp);
+    int res = sys::pctl(init, PCTL_CMD, (u64)&cmdargs);
     if (res != 0) {
       KERR("failed to cmdpid init process\n");
     }
@@ -241,7 +248,7 @@ static int kernel_init_task(void*) {
 
   int r = 0;
   while (1) {
-    int w = 60;
+    int w = 255;
 
     cpu::pushcli();
     u32 color = vga::hsl(r++ / (float)w, 1.0, 0.5);

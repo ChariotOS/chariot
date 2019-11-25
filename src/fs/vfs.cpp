@@ -157,3 +157,14 @@ fs::vnoderef vfs::open(string spath, int opts, int mode) {
 
   return curr;
 }
+
+fs::filedesc vfs::fdopen(string path, int opts, int mode) {
+  int fd_dirs = 0;
+
+  if (opts & O_RDWR) fd_dirs |= FDIR_READ | FDIR_WRITE;
+  if (opts & O_WRONLY) fd_dirs |= FDIR_WRITE;
+  if (opts & O_RDONLY) fd_dirs |= FDIR_READ;
+
+  fs::filedesc fd(vfs::open(move(path), opts, mode), fd_dirs);
+  return fd;
+}

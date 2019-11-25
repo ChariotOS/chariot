@@ -8,10 +8,11 @@ __SYSCALL(6, write)
 __SYSCALL(7, yield)
 
 
-// process creationg related systemcalls
-__SYSCALL(8, spawn)
-__SYSCALL(9, impersonate)
-__SYSCALL(10, cmdpidve)
+// process creation and various related systemcalls
+__SYSCALL(8, pctl)
+// __SYSCALL(8, spawn)
+// __SYSCALL(9, cfgpid)
+// __SYSCALL(10, cmdpidve)
 
 
 __SYSCALL(60, mmap)
