@@ -11,6 +11,7 @@ int main(int argc, char **argv) {
   if (pid != -1) {
     char *cmd[] = {"/bin/test", 0};
 
+    printf("starting test\n");
     int res = cmdpidv(pid, cmd[0], cmd);
     if (res != 0) {
       printf("failed to cmd, reason = %d\n", res);

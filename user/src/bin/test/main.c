@@ -3,10 +3,7 @@
 #include <stdlib.h>
 
 int main(int argc, char **argv, char **envp) {
-  printf("test: argc = %d, argv = %p\n", argc, argv);
-  for (int i = 0; i < argc; i++) {
-    printf("  argv[%d] = %p '%s'\n", i, argv[i], argv[i]);
-  }
+  printf("hello from test!\n");
 
   while (1) {
     // printf("B");

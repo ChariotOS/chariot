@@ -5,24 +5,28 @@
 
 int spawn() { return pctl(0, PCTL_SPAWN); }
 
+static int nt_array_len(char *const *a) {
+  if (a == NULL) return 0;
+  int i = 0;
+  for (i = 0; a[i] != NULL; i++)
+    ;
+  return i;
+}
+
 int cmdpidve(int pid, char *const path, char *const argv[],
              char *const envp[]) {
-  struct pctl_cmd_args args;
-
+  // some quick safety checks
+  if (pid == -1) return -1;
   if (path == NULL) return -1;
-
-  args.path = path;
-
   if (argv == NULL) return -1;
 
-  for (args.argc = 0; argv[args.envc] != NULL; args.envc++) {
-  }
+  struct pctl_cmd_args args;
+  args.path = path;
+
+  args.argc = nt_array_len(argv);
   args.argv = (char **)argv;
 
-  if (envp != NULL) {
-    for (args.envc = 0; envp[args.envc] != NULL; args.envc++) {
-    }
-  }
+  args.envc = nt_array_len(envp);
   args.envv = (char **)envp;
 
   return pctl(pid, PCTL_CMD, &args);

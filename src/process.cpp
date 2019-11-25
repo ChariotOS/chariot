@@ -252,7 +252,7 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
 }
 
 int sys::pctl(int pid, int request, u64 arg) {
-  printk("pctl(%d, %d, %p);\n", pid, request, arg);
+  // printk("pctl(%d, %d, %p);\n", pid, request, arg);
   switch (request) {
     case PCTL_SPAWN:
       return do_spawn();
