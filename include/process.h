@@ -119,9 +119,6 @@ pid_t gettid(void);
 
 int pctl(int pid, int request, u64 arg);
 
-// XXX: REMOVE
-int set_pixel(int x, int y, int color);
-
 
 
 void *mmap(void *addr, size_t length, int prot, int flags, int fd,

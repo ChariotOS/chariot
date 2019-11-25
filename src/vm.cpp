@@ -309,9 +309,6 @@ vm::addr_space::~addr_space(void) { KINFO("destruct addr_space\n"); }
 string vm::addr_space::format(void) {
   string s;
 
-  for (auto &r : regions) {
-    // s += string::format("%p\n", r->va);
-  }
 
   return s;
 }

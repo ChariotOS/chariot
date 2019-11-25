@@ -141,10 +141,12 @@ static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {
   tss[n * 2 + 2] = rsp >> 32;
 }
 
+/* TODO: do we need this?
 static void tss_set_ist(u32 *tss, u32 n, u64 ist) {
   tss[n * 2 + 7] = ist;
   tss[n * 2 + 8] = ist >> 32;
 }
+*/
 
 void cpu::switch_vm(struct task *tsk) {
   cpu::pushcli();
