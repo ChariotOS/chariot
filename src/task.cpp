@@ -251,3 +251,9 @@ static void kernel_task_create_callback(void) {
 
   panic("unhandled: kthread finishes\n");
 }
+
+
+void fd_flags::clear() {
+  fd = nullptr;
+  flags = 0;
+}

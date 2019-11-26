@@ -2,4 +2,4 @@
 
 ./sync.sh
 
-make qemu-nox
+make -j qemu-nox

@@ -87,6 +87,14 @@ using gid_t = i64;
 #define PS_BLOCKED (2)
 #define PS_EMBRYO (3)
 
+
+struct fd_flags {
+  inline operator bool() { return !!fd; }
+  void clear();
+  int flags;
+  ref<fs::filedesc> fd;
+};
+
 struct task_process : public refcounted<struct task_process> {
   int pid;  // obviously the process id
 
@@ -117,6 +125,9 @@ struct task_process : public refcounted<struct task_process> {
 
   // vector of task ids
   vec<int> tasks;
+
+
+  vec<fd_flags> files;
 
   // processes that have been spawned but aren't ready yet
   vec<pid_t> nursery;

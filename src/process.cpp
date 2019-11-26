@@ -15,10 +15,6 @@
 
 extern "C" void trapret(void);
 
-void fd_flags::clear() {
-  fd = nullptr;
-  flags = 0;
-}
 
 /**
  * ===============================================
