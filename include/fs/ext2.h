@@ -244,7 +244,7 @@ class ext2 final : public filesystem {
 
   vnoderef m_root_inode{};
 
-  dev::blk_cache disk_cache;
+  ref<dev::device> disk;
 
   map<u32, fs::vnoderef> vnode_cache;
 

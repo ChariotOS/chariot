@@ -27,7 +27,7 @@ class image {
     unsigned value() const { return m_sym.st_value; }
     unsigned size() const { return m_sym.st_size; }
     unsigned index() const { return m_index; }
-    unsigned type() const { return ELF32_ST_TYPE(m_sym.st_info); }
+    unsigned type() const { return ELF64_ST_TYPE(m_sym.st_info); }
     const section get_section() const {
       return m_image.get_section(section_index());
     }
@@ -72,6 +72,8 @@ class image {
   };
 
   image(u8* data, int len);
+
+  inline bool valid(void) { return m_valid; }
 
   const u8* raw_data(int off = 0) const;
 

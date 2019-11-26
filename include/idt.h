@@ -2,7 +2,6 @@
 #define __IDT__
 
 #include <asm.h>
-#include <process.h>
 #include <types.h>
 
 #define NUM_IDT_ENTRIES 256
@@ -62,7 +61,7 @@ struct idt_desc {
 
 void init_idt(void);
 
-typedef void (*interrupt_handler_t)(int intr, regs_t *);
+typedef void (*interrupt_handler_t)(int intr, struct task_regs *);
 
 void interrupt_register(int i, interrupt_handler_t handler);
 void interrupt_enable(int i);

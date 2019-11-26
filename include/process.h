@@ -11,54 +11,6 @@
 #define RING_KERNEL 0
 #define RING_USER 3
 
-struct regs_t {
-  u64 rax;
-  u64 rbx;
-  u64 rcx;
-  u64 rdx;
-  u64 rbp;
-  u64 rsi;
-  u64 rdi;
-  u64 r8;
-  u64 r9;
-  u64 r10;
-  u64 r11;
-  u64 r12;
-  u64 r13;
-  u64 r14;
-  u64 r15;
-
-  u64 trapno;
-  u64 err;
-
-  u64 eip;  // rip
-  u64 cs;
-  u64 eflags;  // rflags
-  u64 esp;     // rsp
-  u64 ds;      // ss
-};
-
-struct context_t {
-  u64 r15;
-  u64 r14;
-  u64 r13;
-  u64 r12;
-  u64 r11;
-  u64 rbx;
-  u64 ebp;  // rbp
-  u64 eip;  // rip;
-};
-
-enum pstate : u8 {
-  UNUSED,
-  EMBRYO,
-  SLEEPING,
-  BLOCKED,
-  RUNNABLE,
-  RUNNING,
-  ZOMBIE
-};
-
 class thread;
 
 struct fd_flags {
@@ -105,6 +57,8 @@ class process final {
   int add_vm_region(string name, off_t vpn, size_t len, int prot,
                     unique_ptr<vm::memory_backing>);
 
+  void switch_vm(void);
+
  protected:
   vm::addr_space addr_space;
   vec<unique_ptr<thread>> threads;
@@ -117,43 +71,6 @@ class process final {
 
   int next_tid = 0;
   mutex_lock big_lock;
-};
-
-class thread {
- public:
-  ~thread();
-
-  // for the scheduler's intrusive list
-  thread *next;
-  thread *prev;
-
-  // TODO: move this to a thread context
-  context_t *context;
-  regs_t *tf;
-  pstate state;
-
-  u64 timeslice = 2;
-  u64 start_tick = 0;
-
-  int tid();
-
-  inline process &proc(void) { return m_proc; }
-
-  // called to start the thread from the scheduler
-  void start(void);
-
-  size_t nran = 0;
-
- protected:
-  friend process;
-  // only processes can craete threads
-  thread(int tid, process &proc, func<void(int)> &);
-
-  func<void(int tid)> kernel_func;
-  void *kernel_stack;
-
-  int m_tid;  // thread id
-  process &m_proc;
 };
 
 void syscall_init(void);
@@ -194,8 +111,18 @@ off_t lseek(int fd, off_t offset, int whence);
 ssize_t read(int fd, void *, size_t);
 ssize_t write(int fd, void *, size_t);
 
+int yield(void);
+
 pid_t getpid(void);
 
 pid_t gettid(void);
+
+int pctl(int pid, int request, u64 arg);
+
+
+
+void *mmap(void *addr, size_t length, int prot, int flags, int fd,
+           off_t offset);
+int munmap(void *addr, size_t length);
 
 }  // namespace sys

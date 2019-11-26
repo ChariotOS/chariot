@@ -1,15 +1,13 @@
 #pragma once
 
 #include <lock.h>
-#include <process.h>
 #include <single_list.h>
 #include <types.h>
 
 struct waitqueue_elem {
   void *priv;
   u32 flags;
-
-  thread *waiter;
+  struct task *waiter;
 
 };
 

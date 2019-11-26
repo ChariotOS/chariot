@@ -5,6 +5,7 @@
 #include <paging.h>
 #include <phys.h>
 #include <printk.h>
+#include <task.h>
 #include <types.h>
 
 // 16 CPU structures where each cpu has one
@@ -22,18 +23,13 @@ cpu_t &cpu::current() {
 
 cpu_t *cpu::get() { return s_current; }
 
-process &cpu::proc(void) {
-  return thd().proc();
-}
+ref<struct task_process> cpu::proc(void) { return task()->proc; }
 
-bool cpu::in_thread(void) {
-  return current().current_thread != nullptr;
-}
+bool cpu::in_thread(void) { return (bool)task(); }
 
-thread &cpu::thd() {
-  auto *t = current().current_thread;
-  assert(t != nullptr);
-  return *t;
+ref<struct task> cpu::task() {
+  auto t = current().current_thread;
+  return t;
 }
 
 extern "C" void wrmsr(u32 msr, u64 val);
@@ -46,8 +42,6 @@ static inline void lgdt(void *data, int size) {
   gdt_desc64 gdt;
   gdt.limit = size - 1;
   gdt.base = (u64)data;
-
-  printk("lgdt(%p)\n", data);
 
   asm volatile("lgdt %0" ::"m"(gdt));
 }
@@ -86,9 +80,9 @@ void cpu::seginit(void *local) {
                      (((addr >> 24) & 0xFF) << 56);
   gdt[SEG_TSS + 1] = (addr >> 32);
 
-  lgdt((void *)gdt, 5 * sizeof(u64));
+  lgdt((void *)gdt, 8 * sizeof(u64));
 
-  // ltr(SEG_TSS << 3);
+  ltr(SEG_TSS << 3);
 }
 
 void cpu::calc_speed_khz(void) {
@@ -140,4 +134,56 @@ void cpu::popcli(void) {
   if (readeflags() & FL_IF) panic("popcli - interruptible");
   if (--current().ncli < 0) panic("popcli");
   if (current().ncli == 0 && current().intena) sti();
+}
+
+static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {
+  tss[n * 2 + 1] = rsp;
+  tss[n * 2 + 2] = rsp >> 32;
+}
+
+/* TODO: do we need this?
+static void tss_set_ist(u32 *tss, u32 n, u64 ist) {
+  tss[n * 2 + 7] = ist;
+  tss[n * 2 + 8] = ist >> 32;
+}
+*/
+
+void cpu::switch_vm(struct task *tsk) {
+  cpu::pushcli();
+  auto c = current();
+  auto tss = (u32 *)(((char *)c.local) + 1024);
+
+  if (tsk->flags & PF_KTHREAD) {
+    // don't break the stack on kthreads with the tss
+    tss_set_rsp(tss, 0, 0);
+  } else {
+    tss_set_rsp(tss, 0, (u64)tsk->stack + tsk->stack_size);
+    // tss_set_ist(tss, 0, (u64)tsk->stack + tsk->stack_size);
+  }
+
+  auto kptable = (u64 *)p2v(get_kernel_page_table());
+  auto pptable = (u64 *)p2v(tsk->proc->mm.cr3);
+
+  if (kptable != pptable) {
+    for (int i = 272; i < 512; i++) {
+      pptable[i] = kptable[i];
+    }
+  }
+
+  write_cr3((u64)v2p(tsk->proc->mm.cr3));
+
+  // tlb_flush();
+
+  // KINFO("SWTCH %d :: %p %p\n", tsk->pid, tsk->proc->mm.cr3, read_cr3());
+
+  /*
+  if (tsk->pid == 1) {
+    printk("rax=%p\n", tsk->tf->rax);
+
+    auto pml4 = (u64 *)p2v(tsk->proc->mm.cr3);
+    paging::dump_page_table(pml4);
+  }
+  */
+
+  cpu::popcli();
 }

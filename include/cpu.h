@@ -1,8 +1,8 @@
 #pragma once
 
 #include <lock.h>
-#include <process.h>
 #include <types.h>
+#include <task.h>
 
 struct cpu_t {
   void *local;
@@ -10,8 +10,8 @@ struct cpu_t {
   size_t ticks = 0;
   size_t intena = 0;
   u32 speed_khz;
-  thread *current_thread;
-  context_t *scheduler;
+  ref<struct task> current_thread;
+  struct task_context *sched_ctx;
 };
 
 namespace cpu {
@@ -20,9 +20,9 @@ namespace cpu {
 cpu_t &current(void);
 cpu_t *get(void);
 
-process &proc(void);
+ref<struct task_process> proc(void);
 
-thread &thd(void);
+ref<struct task> task(void);
 bool in_thread(void);
 
 // setup CPU segment descriptors, run once per cpu
@@ -36,6 +36,8 @@ void pushcli();
 // popcli - pop the depth of disabled interrupts, and if it reaches zero, enable
 // interrupts again
 void popcli();
+
+void switch_vm(struct task *);
 
 inline int ncli(void) { return current().ncli; }
 

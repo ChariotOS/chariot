@@ -3,9 +3,8 @@
 #pragma once
 
 #include <func.h>
+#include <task.h>
 
-using pid_t = int;
-using gid_t = int;
 
 // forward declare
 class thread;
@@ -29,16 +28,6 @@ struct create_opts {
 
 process &kernel_proc(void);
 
-// return the process relating to the pid_t, and null if there is no process at
-// that pid
-process *process_pid(pid_t);
-
-pid_t spawn_process(const char *name);
-pid_t next_pid(void);
-
-thread *spawn_kernel_thread(const char *name, func<void(int)>,
-                            create_opts opts = {});
-
 void yield(void);
 
 void block();
@@ -53,7 +42,8 @@ void exit();
 
 void play_tone(int frq, int dur);
 
-process &kernel_proc(void);
+int add_task(struct task*);
+
 
 // make a 440hz beep for 100ms
 void beep();

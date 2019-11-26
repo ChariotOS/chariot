@@ -16,6 +16,8 @@
 #define PTE_PS          0x080   // Page Size
 #define PTE_G           0x100   // Global Mapping (dont flush from tlb)
 
+#define PTE_NX          (1 << 63) // no execute
+
 
 
 #define PAGE_SIZE 0x1000
@@ -31,9 +33,11 @@ namespace paging {
     unknown = 4
   };
 
-  u64 *find_mapping(u64 *p4, u64 va, u64 pa, pgsize size);
+  u64 *find_mapping(u64 *p4, u64 va, pgsize size);
 
 
+
+  void dump_page_table(u64 *p4);
   void map_into(u64 *p4, u64 va, u64 pa, pgsize size, u16 flags);
   void map(u64 va, u64 pa, pgsize size = pgsize::page, u16 flags = PTE_W | PTE_P);
 

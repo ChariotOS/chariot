@@ -146,7 +146,7 @@ class refcounted_base {
 
  protected:
   refcounted_base() {}
-  ~refcounted_base() { assert(m_ref_count == 0); }
+  ~refcounted_base() { /* assert(m_ref_count == 0); */ }
 
   void deref_base() {
     assert(m_ref_count);

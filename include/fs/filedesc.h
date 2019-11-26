@@ -33,6 +33,8 @@ class filedesc : public refcounted<filedesc> {
 
   inline off_t offset(void) { return m_offset; }
 
+
+
  public:
   filedesc(ref<file>, int flags);
 

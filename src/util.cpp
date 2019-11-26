@@ -29,7 +29,7 @@ void hexdump(void *vdata, size_t len, int width) {
       printk("%02x", buf[i]);
       charbuf[written] = buf[i];
     } else {
-      printk("  ");
+      printk("__");
       charbuf[written] = ' ';
     }
 

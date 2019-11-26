@@ -2,7 +2,6 @@
 
 #include <lock.h>
 #include <mem.h>
-#include <process.h>
 #include <single_list.h>
 #include <vec.h>
 
@@ -28,7 +27,7 @@ class fifo_buf {
   bool m_blocking;
   int navail = 0;
 
-  single_list<process *> accessing_threads;
+  single_list<struct task *> accessing_threads;
 
   u8* data;
   u32 write_index;

@@ -2,6 +2,7 @@
 
 #include <fs/filesystem.h>
 #include <ptr.h>
+#include <fs/filedesc.h>
 #include <string.h>
 
 /**
@@ -54,6 +55,9 @@ class vfs {
   static int deregister_filesystem(string);
 
   static int mount(ref<dev::device>, string fs_name, string path);
+
+
+  static fs::filedesc fdopen(string path, int opts = 0, int mode = 0000);
 
  private:
   vfs();  // private constructor. use static methods

@@ -7,6 +7,7 @@
 #include <pit.h>
 #include <printk.h>
 #include <sched.h>
+#include <task.h>
 #include <types.h>
 #include <vga.h>
 
@@ -109,7 +110,7 @@ static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
   n *= 4;
   trap = trap ? 0x8F00 : 0x8E00;  // TRAP vs INTERRUPT gate;
   idt[n + 0] = (addr & 0xFFFF) | ((SEG_KCODE << 3) << 16);
-  idt[n + 1] = (addr & 0xFFFF0000) | trap | ((pl & 3) << 13);  // P=1 DPL=pl
+  idt[n + 1] = (addr & 0xFFFF0000) | trap | ((pl & 0b11) << 13);  // P=1 DPL=pl
   idt[n + 2] = addr >> 32;
   idt[n + 3] = 0;
 }
@@ -142,41 +143,49 @@ void interrupt_disable(int i) {
 #define GIT_REVISION "NO-GIT"
 #endif
 
-static void unknown_exception(int i, regs_t *tf) {
+static void unknown_exception(int i, struct task_regs *tf) {
   auto color = vga::make_color(vga::color::white, vga::color::blue);
   vga::clear_screen(vga::make_entry(' ', color));
   vga::set_color(vga::color::white, vga::color::blue);
 
-#define INDENT "                  "
-#define BORDER INDENT "+========================================+\n"
+  KERR("KERNEL PANIC\n");
+  KERR("CPU EXCEPTION: %s\n", excp_codes[tf->trapno][EXCP_NAME]);
+  KERR("the system was running for %d ticks\n");
 
-  for (int i = 0; i < 4; i++) printk("\n");
+  KERR("\n");
+  KERR("Stats for nerds:\n");
+  KERR("INT=%016zx  ERR=%016zx\n", tf->trapno, tf->err);
+  KERR("ESP=%016zx  EIP=%016zx\n", tf->esp, tf->eip);
+  KERR("CR2=%016zx  CR3=%016zx\n", read_cr2(), read_cr3());
+  KERR("\n");
+  KERR("SYSTEM HALTED. File a bug report please:\n");
+  KERR("  repo: github.com/nickwanninger/chariot\n");
 
-  printk(BORDER);
-  printk("\n");
-  printk(INDENT "             ! KERNEL PANIC !\n");
-  printk("\n");
-
-  printk(INDENT "CPU EXCEPTION: %s\n", excp_codes[tf->trapno][EXCP_NAME]);
-  printk(INDENT "the system was running for %d ticks\n", ticks);
-
-  printk("\n");
-  printk(INDENT "Stats for nerds:\n");
-  printk(INDENT "INT=%016zx  ERR=%016zx\n", tf->trapno, tf->err);
-  printk(INDENT "ESP=%016zx  EIP=%016zx\n", tf->esp, tf->eip);
-  printk(INDENT "CR2=%016zx  CR3=%016zx\n", read_cr2(), read_cr3());
-  printk("\n");
-  printk(INDENT "SYSTEM HALTED. File a bug report please:\n");
-  printk(INDENT "  repo: github.com/nickwanninger/chariot\n");
-
-  printk("\n");
-  printk(INDENT " %s\n", GIT_REVISION);
-  printk("\n");
-  printk(BORDER);
+  KERR("\n");
+  KERR("git = %s\n", GIT_REVISION);
 
   lidt(0, 0);  // die
   while (1) {
   };
+}
+
+static void gpf_handler(int i, struct task_regs *tf) {
+  // TODO: die
+  KERR("pid %d, tid %d died from GPF (err=%p)\n", cpu::task()->pid, cpu::task()->tid, tf->err);
+  sched::block();
+}
+
+static void illegal_instruction_handler(int i, struct task_regs *tf) {
+  // TODO: die
+  auto pa = paging::get_physical(tf->eip & ~0xFFF);
+  if (pa == 0) {
+    return;
+  }
+
+  KERR("pid %d, tid %d died from illegal instruction @ %p\n", cpu::task()->pid,
+       cpu::task()->tid, tf->eip);
+  KERR("  ESP=%p\n", tf->esp);
+  sched::block();
 }
 
 #define PGFLT_PRESENT (1 << 0)
@@ -184,30 +193,35 @@ static void unknown_exception(int i, regs_t *tf) {
 #define PGFLT_USER (1 << 2)
 #define PGFLT_RESERVED (1 << 3)
 #define PGFLT_INSTR (1 << 4)
-static void pgfault_handle(int i, regs_t *tf) {
+
+static void pgfault_handle(int i, struct task_regs *tf) {
   void *page = (void *)(read_cr2() & ~0xFFF);
-  printk("PAGEFAULT\n");
-  printk(" eip = %p\n", tf->eip);
-  printk(" err = %p\n", tf->err);
-  printk(" page = %p\n", page);
-  printk(" adr = %p\n", read_cr2());
-  printk(" FLGS: ");
 
-  if (tf->err & PGFLT_INSTR) printk("INSTRUCION ");
-  if (tf->err & PGFLT_RESERVED) printk("RESERVED ");
-  if (tf->err & PGFLT_USER) printk("USER ");
-  if (tf->err & PGFLT_WRITE) printk("WRITE ");
-  if (tf->err & PGFLT_PRESENT) printk("PRESENT ");
+  auto proc = cpu::proc();
 
-  printk("\n");
+  if (!proc) {
+    KERR("not in a proc while pagefaulting\n");
+    // lookup the kernel proc if we aren't in one!
+    proc = task_process::lookup(0);
+  }
 
-  printk(" halting\n");
-  while (1) halt();
-  // paging::map_page(addr, addr);
-  return;
+  cpu::task()->tf = tf;
+
+  if (proc) {
+    int res = proc->mm.handle_pagefault((off_t)page, tf->err);
+    if (res == -1) {
+      // TODO:
+      KERR("pid %d, tid %d segfaulted\n", proc->pid, cpu::task()->tid);
+      // XXX: just block, cause its an easy way to get the proc to stop running
+      sched::block();
+    }
+
+  } else {
+    panic("page fault in kernel code (no proc)\n");
+  }
 }
 
-static void tick_handle(int i, regs_t *tf) {
+static void tick_handle(int i, struct task_regs *tf) {
   auto &cpu = cpu::current();
 
   // increment the number of ticks
@@ -219,23 +233,20 @@ static void tick_handle(int i, regs_t *tf) {
   return;
 }
 
-static void dbl_flt_handler(int i, regs_t *tf) {
+static void dbl_flt_handler(int i, struct task_regs *tf) {
   printk("DOUBLE FAULT!\n");
-  while (1) {}
+  while (1) {
+  }
 }
 
-
-
-static void unknown_hardware(int i, regs_t *tf) {
+static void unknown_hardware(int i, struct task_regs *tf) {
   if (!interrupt_spurious[i]) {
     KINFO("interrupt: spurious interrupt %d\n", i);
   }
   interrupt_spurious[i]++;
 }
 
-
-
-extern void syscall_handle(int i, regs_t *tf);
+extern void syscall_handle(int i, struct task_regs *tf);
 
 void interrupt_register(int i, interrupt_handler_t handler) {
   // printk("irq register %d to %p\n", i, handler);
@@ -268,10 +279,13 @@ void init_idt(void) {
 
   interrupt_register(TRAP_DBLFLT, dbl_flt_handler);
   interrupt_register(TRAP_PGFLT, pgfault_handle);
+  interrupt_register(TRAP_GPFLT, gpf_handler);
+  interrupt_register(TRAP_ILLOP, illegal_instruction_handler);
 
+  mkgate(idt, 32, vectors[32], 0, 0);
   interrupt_register(32, tick_handle);
 
-  mkgate(idt, 0x80, vectors[0x80], 2, 1);
+  mkgate(idt, 0x80, vectors[0x80], 3, 1);
   interrupt_register(0x80, syscall_handle);
 
   KINFO("Registered basic interrupt handlers\n");
@@ -280,20 +294,25 @@ void init_idt(void) {
   lidt(idt, 4096);
 }
 
-
-
 int depth = 0;
 // where the trap handler throws us. It is up to this function to sort out
 // which trap handler to hand off to
-extern "C" void trap(regs_t *tf) {
+extern "C" void trap(struct task_regs *tf) {
   extern void pic_send_eoi(void);
 
   depth++;
 
   int i = tf->trapno;
 
+  // XXX HACK
+  if (auto tsk = cpu::task()) {
+    if ((u64)tsk->proc->mm.cr3 != read_cr3()) {
+      printk("   -> is=%p kern=%p task=%p\n", read_cr3(),
+             v2p(get_kernel_page_table()), tsk->proc->mm.cr3);
+      write_cr3((u64)tsk->proc->mm.cr3);
+    }
+  }
 
-  // KINFO("trap(0x%02x): rip=%p proc=%p\n", i, tf->eip, cpu::proc());
   (interrupt_handler_table[i])(i, tf);
   interrupt_acknowledge(i);
   interrupt_count[i]++;

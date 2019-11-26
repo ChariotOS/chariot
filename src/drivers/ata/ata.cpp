@@ -396,7 +396,7 @@ bool dev::ata::read_block_dma(u32 sector, u8* data) {
 }
 bool dev::ata::write_block_dma(u32 sector, const u8* data) { return false; }
 
-static void ata_interrupt(int intr, regs_t* fr) {
+static void ata_interrupt(int intr, struct task_regs* fr) {
   inb(primary_master_status);
   inb(primary_master_bmr_status);
   outb(primary_master_bmr_status, BMR_COMMAND_DMA_STOP);

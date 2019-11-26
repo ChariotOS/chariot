@@ -10,7 +10,7 @@
 // #define SMP_DEBUG
 
 #ifdef SMP_DEBUG
-#define INFO(fmt, args...) printk("[SMP] " fmt, ##args)
+#define INFO(fmt, args...) KINFO("SMP: " fmt, ##args)
 #else
 #define INFO(fmt, args...)
 #endif

@@ -11,14 +11,17 @@ typedef struct free_header_s {
   struct free_header_s *perf_ptr;
 } free_header_t;
 
-free_header_t *small_blocks = NULL;
 
 typedef size_t blk_t;
 
+
+#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
+
+
 /* single word (4) or double word (8) alignment */
-#define ALIGNMENT 8
+#define ALIGNMENT 16
 /* rounds up to the nearest multiple of ALIGNMENT */
-#define ALIGN(size) (((size) + (ALIGNMENT - 1)) & ~0x7)
+#define ALIGN(size) round_up(size, ALIGNMENT)
 #define HEADER_SIZE (ALIGN(sizeof(blk_t)))
 
 #define OVERHEAD (ALIGN(sizeof(free_header_t)))
@@ -50,12 +53,11 @@ void print_heap(void) {
     bool free = IS_FREE(c);
     int blocks = GET_SIZE(c) / 8;
     for (int b = 0; b < blocks; b++) {
-      vga::set_pixel(i + b, free ? 0x00FF00 : 0xFF0000);
+      vga::set_pixel(i + b, free ? 0x00FF00 : 0xAA0000);
     }
     i += blocks;
   }
 }
-
 // #define PRINT_DEBUG() print_heap()
 
 #ifndef PRINT_DEBUG
@@ -75,11 +77,6 @@ int mm_init(void) {
 }
 
 free_header_t *find_fit(size_t size) {
-  if (size <= 128 && small_blocks != NULL) {
-    free_header_t *ptr = small_blocks;
-    small_blocks = ptr->perf_ptr;
-    return ptr;
-  }
   auto *bp = (free_header_t *)kheap_lo();
   bp = bp->next;
   while (bp != heap_start()) {
@@ -141,6 +138,7 @@ void *mm_malloc(size_t size) {
   memset(ptr, 0, size);
 
   PRINT_DEBUG();
+
   return (char *)blk + HEADER_SIZE;
 }
 
@@ -221,13 +219,6 @@ void mm_free(void *ptr) {
   }
 
   PRINT_DEBUG();
-  return;
-  size_t size = GET_SIZE(blk);
-  free_header_t *freeheader = GET_FREE_HEADER(blk);
-  if (size <= 128) {
-    freeheader->perf_ptr = small_blocks;
-    small_blocks = freeheader;
-  }
 }
 
 void *mm_realloc(void *ptr, size_t size) {
