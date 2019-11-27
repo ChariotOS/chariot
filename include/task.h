@@ -148,9 +148,12 @@ struct task_process : public refcounted<struct task_process> {
   // initialize the kernel ``process''
   static ref<task_process> kproc_init(void);
 
-  int cmdve(string path, vec<string> &&args, vec<string> &&env);
 
   task_process();
+
+
+  // syscall interfaces
+  int open(const char *path, int flags, int mode);
 };
 
 /**

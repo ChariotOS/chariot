@@ -101,29 +101,33 @@ void sched::yield() { do_yield(PS_RUNNABLE); }
 
 void sched::exit() { do_yield(PS_ZOMBIE); }
 
+static void schedule_one() {
+  auto tsk = next_task();
+
+  if (tsk == nullptr) {
+    // idle loop when there isn't a task
+    halt();
+    return;
+  }
+
+  cpu::pushcli();
+
+  if (tsk->state == PS_RUNNABLE) {
+    s_enabled = true;
+    cpu::current().intena = 1;
+    switch_into(tsk);
+  } else {
+    // printk("proc %d was not runnable\n", tsk->tid);
+  }
+
+  cpu::popcli();
+
+  sched::add_task(tsk);
+}
+
 void sched::run() {
   for (;;) {
-    auto tsk = next_task();
-
-    if (tsk == nullptr) {
-      // idle loop when there isn't a task
-      halt();
-      continue;
-    }
-
-    cpu::pushcli();
-
-    if (tsk->state == PS_RUNNABLE) {
-      s_enabled = true;
-      cpu::current().intena = 1;
-      switch_into(tsk);
-    } else {
-      // printk("proc %d was not runnable\n", tsk->tid);
-    }
-
-    cpu::popcli();
-
-    add_task(tsk);
+    schedule_one();
   }
   panic("scheduler should not have gotten back here\n");
 }

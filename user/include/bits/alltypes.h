@@ -425,7 +425,7 @@ struct in_addr { in_addr_t s_addr; };
 
 
 #if defined(__NEED_FILE) && !defined(__DEFINED_FILE)
-typedef struct __FILE_s FILE;
+typedef struct _FILE_IMPL FILE;
 #define __DEFINED_FILE
 #endif
 

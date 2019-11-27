@@ -217,8 +217,11 @@ ref<struct task_process> task_process::lookup(int pid) {
   return t;
 }
 
-int task_process::cmdve(string path, vec<string> &&args, vec<string> &&env) {
-  return -1;
+
+int task_process::open(const char *path,int flags, int mode) {
+  int fd = -1;
+  printk("open '%s' -> %d\n", path, fd);
+  return fd;
 }
 
 task::task(ref<struct task_process> proc) : proc(proc), task_lock("task lock") {

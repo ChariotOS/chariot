@@ -88,6 +88,7 @@ void *phys::alloc(int npages) {
 
   lock();
 
+
   if (npages > 1 && !use_kernel_vm) {
     panic(
         "unable to allocate contiguious physical pages before kernel vm is "

@@ -12,10 +12,10 @@ extern libc_start
 global _start
 _start:
 
+
 	mov [__argc], edi
 	mov [__argv], esi
 	mov [__envp], edx
-
 
 	push rbp
 
@@ -26,4 +26,3 @@ _start:
 	.invalid_loop:
 		mov rax, [0x00]
 		jmp .invalid_loop
-

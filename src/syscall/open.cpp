@@ -1,7 +1,12 @@
 #include <process.h>
-
+#include <cpu.h>
 
 int sys::open(const char *path, int flags, int mode) {
-  panic("IMPL %s\n", __PRETTY_FUNCTION__);
-  return -ENOTIMPL;
+  auto proc = cpu::proc().get();
+
+  if (!proc->mm.validate_string(path)) {
+    return -1;
+  }
+
+  return proc->open(path, flags, mode);
 }
