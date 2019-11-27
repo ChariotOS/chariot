@@ -25,7 +25,7 @@
 
 static fifo_buf kbd_buf(4096, true);
 
-static char map[0x80] = {
+static char keymap[0x80] = {
     0,
     '\033',
     '1',
@@ -364,7 +364,7 @@ static void key_state_changed(u8 raw, bool pressed) {
   event.magic = KEY_EVENT_MAGIC;
   event.key =
       (m_modifiers & mod_shift) ? shifted_key_map[raw] : unshifted_key_map[raw];
-  event.character = (m_modifiers & mod_shift) ? shift_map[raw] : map[raw];
+  event.character = (m_modifiers & mod_shift) ? shift_map[raw] : keymap[raw];
   event.flags = m_modifiers;
   if (pressed) event.flags |= is_pressed;
 
