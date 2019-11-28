@@ -11,7 +11,6 @@
 #include <elf/loader.h>
 #include <fs/devfs.h>
 #include <fs/ext2.h>
-#include <fs/fat.h>
 #include <fs/file.h>
 #include <fs/tmpfs.h>
 #include <fs/vfs.h>
