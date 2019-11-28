@@ -66,6 +66,7 @@ int vfs::mount(unique_ptr<fs::filesystem> fs, string host) {
 }
 
 int vfs::mount(unique_ptr<fs::filesystem> fs, fs::vnoderef host) {
+  printk("here!\n");
   // check that the host is valid
   if (!host) return -ENOENT;
 

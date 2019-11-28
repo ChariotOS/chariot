@@ -1,4 +1,5 @@
 #include <fs/filedesc.h>
+#include <errno.h>
 
 ref<fs::filedesc> fs::filedesc::create(ref<file> f, int flags) {
   // fail if f is null

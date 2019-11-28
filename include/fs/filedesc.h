@@ -1,7 +1,6 @@
 #pragma once
 
 #include <fs/file.h>
-#include <fs/vnode.h>
 #include <ptr.h>
 #include <types.h>
 

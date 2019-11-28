@@ -12,19 +12,11 @@
 #include <fs/devfs.h>
 #include <fs/ext2.h>
 #include <fs/file.h>
-#include <fs/tmpfs.h>
 #include <fs/vfs.h>
 #include <func.h>
 #include <idt.h>
-#include <keycode.h>
-#include <map.h>
-#include <math.h>
-#include <mem.h>
 #include <module.h>
-#include <mouse_packet.h>
-#include <paging.h>
 #include <pci.h>
-#include <phys.h>
 #include <pit.h>
 #include <printk.h>
 #include <process.h>
@@ -35,7 +27,6 @@
 #include <task.h>
 #include <types.h>
 #include <util.h>
-#include <uuid.h>
 #include <vec.h>
 #include <vga.h>
 #include <pctl.h>
@@ -219,8 +210,6 @@ static int kernel_init_task(void*) {
   // TODO
   fs::devfs::mount();
 
-  // setup the tmp filesystem
-  vfs::mount(make_unique<fs::tmp>(), "/tmp");
   auto tmp = vfs::open("/tmp", 0);
 
   auto proc = task_process::lookup(0);
