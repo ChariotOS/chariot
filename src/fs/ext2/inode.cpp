@@ -1,8 +1,8 @@
 #include <errno.h>
-#include <fs/filedesc.h>
+#include <fs.h>
 #include <fs/ext2.h>
 
-#define EXT2_ADDR_PER_BLOCK(node) (node->block_size() / sizeof(u32))
+#define EXT2_ADDR_PER_BLOCK(node) (node->block_size / sizeof(u32))
 
 static int ilog2(int x) {
   /*
@@ -82,7 +82,10 @@ static int block_to_path(fs::ext2_inode *node, int i_block, int offsets[4],
   return n;
 }
 
-fs::ext2_inode::ext2_inode(fs::ext2 &fs, u32 index) : vnode(index), m_fs(fs) {}
+fs::ext2_inode::ext2_inode(int type, fs::ext2 &fs, u32 index)
+    : fs::inode(type), fs(fs) {
+  this->ino = index;
+}
 
 fs::ext2_inode::~ext2_inode() {
   for (int i = 0; i < 4; i++) {
@@ -92,22 +95,32 @@ fs::ext2_inode::~ext2_inode() {
   }
 }
 
-int fs::ext2_inode::block_size() { return fs().block_size(); }
+fs::ext2_inode *fs::ext2_inode::create(ext2 &fs, u32 index) {
+  fs::ext2_inode *ino = NULL;
 
-bool fs::ext2_inode::walk_dir_impl(func<bool(const string &, u32)> cb) {
-  auto *efs = static_cast<ext2 *>(&fs());
+  struct ext2_inode_info info;
 
-  efs->traverse_dir(this->info, [&](fs::directory_entry de) -> bool {
-    return cb(de.name, de.inode);
-  });
-  return false;
+  fs.read_inode(info, index);
+
+  int ino_type = T_INVA;
+
+  auto type = ((info.type) & 0xF000) >> 12;
+
+  if (type == 0x1) ino_type = T_FIFO;
+  if (type == 0x2) ino_type = T_CHAR;
+  if (type == 0x4) ino_type = T_DIR;
+  if (type == 0x6) ino_type = T_BLK;
+  if (type == 0x8) ino_type = T_FILE;
+  if (type == 0xA) ino_type = T_SYML;
+  if (type == 0xC) ino_type = T_SOCK;
+
+  ino = new ext2_inode(ino_type, fs, index);
+  ino->injest_info(info);
+
+  return ino;
 }
 
-int fs::ext2_inode::add_dir_entry(ref<vnode> node, const string &name,
-                                  u32 mode) {
-  return -ENOTIMPL;
-}
-
+/*
 fs::file_metadata fs::ext2_inode::metadata(void) {
   fs::file_metadata md;
 
@@ -142,34 +155,13 @@ fs::file_metadata fs::ext2_inode::metadata(void) {
 
   return md;
 }
+*/
 
-off_t fs::ext2_inode::block_for_byte(off_t b) {
-  auto *efs = static_cast<ext2 *>(&fs());
-
-  auto blksz = efs->block_size();
-
-  off_t blk_ind = b % blksz;
-
-  printk("blk_ind = %d\n", blk_ind);
-
-  off_t block = 0;
-
-  if (blk_ind < 12) {
-    block = info.dbp[blk_ind];
-  } else {
-    blk_ind = -ENOTIMPL;
-  }
-
-  // info.singly_block[blk_ind];
-
-  return block;
-}
-
-ssize_t fs::ext2_inode::read(fs::filedesc &d, void*dst, size_t nbytes) {
+ssize_t fs::ext2_inode::do_read(fs::filedesc &d, void *dst, size_t nbytes) {
   return do_rw(d, nbytes, dst, false);
 }
 
-ssize_t fs::ext2_inode::write(fs::filedesc &d, void*dst, size_t nbytes) {
+ssize_t fs::ext2_inode::do_write(fs::filedesc &d, void *dst, size_t nbytes) {
   return do_rw(d, nbytes, dst, true);
 }
 
@@ -183,24 +175,18 @@ ssize_t fs::ext2_inode::write(fs::filedesc &d, void*dst, size_t nbytes) {
  */
 ssize_t fs::ext2_inode::do_rw(fs::filedesc &d, size_t nbytes, void *buf,
                               bool is_write) {
-  // you can't call this function on directories
-  if (is_dir()) return -EISDIR;
-
   if (is_write) {
     // TODO: ensure blocks are avail
   }
 
-  auto &efs = static_cast<ext2 &>(fs());
-
-
   ssize_t offset = d.offset();
-  if (offset > info.size) return 0;
+  if (offset > size) return 0;
 
   // how many bytes have been read
   ssize_t nread = 0;
 
   // the size of a single block
-  auto bsize = efs.block_size();
+  auto bsize = fs.blocksize;
 
   off_t first_blk_ind = offset / bsize;
   off_t last_blk_ind = (offset + nbytes) / bsize;
@@ -209,7 +195,7 @@ ssize_t fs::ext2_inode::do_rw(fs::filedesc &d, size_t nbytes, void *buf,
   // TODO: lock the FS. We now want to own the efs->work_buf
   auto *given_buf = (u8 *)buf;
 
-  int remaining_count = min((off_t)nbytes, (off_t)size() - offset);
+  int remaining_count = min((off_t)nbytes, (off_t)size - offset);
 
   for (int bi = first_blk_ind; remaining_count && bi <= last_blk_ind; bi++) {
     u32 blk = block_from_index(bi);
@@ -218,15 +204,15 @@ ssize_t fs::ext2_inode::do_rw(fs::filedesc &d, size_t nbytes, void *buf,
       return -EIO;
     }
 
-    auto *buf = (u8 *)efs.work_buf;
-    efs.read_block(blk, buf);
+    auto *buf = (u8 *)fs.work_buf;
+    fs.read_block(blk, buf);
 
     int offset_into_block = (bi == first_blk_ind) ? offset_into_first_block : 0;
     int num_bytes_to_copy = min(bsize - offset_into_block, remaining_count);
 
     if (is_write) {
       memcpy(buf + offset_into_block, given_buf, num_bytes_to_copy);
-      efs.write_block(blk, buf);
+      fs.write_block(blk, buf);
     } else {
       memcpy(given_buf, buf + offset_into_block, num_bytes_to_copy);
     }
@@ -239,12 +225,9 @@ ssize_t fs::ext2_inode::do_rw(fs::filedesc &d, size_t nbytes, void *buf,
 }
 
 int fs::ext2_inode::block_from_index(int i_block, int set_to) {
-  auto &efs = static_cast<ext2 &>(fs());
-
-  auto bsize = efs.block_size();
+  auto bsize = fs.blocksize;
   // start the inodeS
-  auto foo = info.dbp;
-  auto *table = (int *)foo;
+  auto table = (int *)block_pointers;
   int path[4];
   int n = block_to_path(this, i_block, path);
 
@@ -252,7 +235,7 @@ int fs::ext2_inode::block_from_index(int i_block, int set_to) {
     int off = path[i];
     if (blk_bufs[i] == NULL || cached_path[i] != off) {
       if (blk_bufs[i] == NULL) blk_bufs[i] = (int *)kmalloc(bsize);
-      if (!efs.read_block(table[off], blk_bufs[i])) {
+      if (!fs.read_block(table[off], blk_bufs[i])) {
         return 0;
       }
       cached_path[i] = off;
@@ -263,5 +246,81 @@ int fs::ext2_inode::block_from_index(int i_block, int set_to) {
   return table[path[n - 1]];
 }
 
-int fs::ext2_inode::truncate(size_t newlen) { return -ENOTIMPL; }
+int fs::ext2_inode::injest_info(fs::ext2_inode_info &info) {
+  size = info.size;
+  uid = info.uid;
+  gid = info.gid;
+  link_count = info.hardlinks;
+  atime = info.last_access;
+  ctime = info.create_time;
+  mtime = info.last_modif;
+  dtime = info.delete_time;
+  block_size = fs.blocksize;
 
+  auto table = (u32 *)info.dbp;
+  // copy the block pointers
+  for (int i = 0; i < 15; i++) {
+    block_pointers[i] = table[i];
+  }
+
+  if (type == T_DIR) {
+    // TODO: clear out the dirents
+    fs.traverse_dir(this->ino, [this](fs::directory_entry de) -> bool {
+      // register the resident entries
+      this->register_direntry(de.name, ENT_RES);
+      return true;
+    });
+  }
+  return 0;
+}
+
+int fs::ext2_inode::commit_info(void) {
+  fs::ext2_inode_info info;
+
+  fs.read_inode(info, ino);
+
+  info.size = size;
+  info.uid = uid;
+  info.gid = gid;
+  info.hardlinks = link_count;
+  info.last_access = atime;
+  info.create_time = ctime;
+  mtime = info.last_modif = dev::RTC::now();
+
+  // ??
+  info.delete_time = dtime;
+
+  // copy the block pointers
+  auto table = (u32 *)info.dbp;
+  for (int i = 0; i < 15; i++) {
+    table[i] = block_pointers[i];
+  }
+
+  fs.write_inode(info, ino);
+
+  return 0;
+}
+
+struct fs::inode *fs::ext2_inode::resolve_direntry(string &name) {
+  bool found = false;
+  u32 ent_inode_num;
+
+  fs.traverse_dir(this->ino, [&](fs::directory_entry de) -> bool {
+    if (de.name == name) {
+      ent_inode_num = de.inode;
+      found = true;
+      return false;
+    }
+    return true;
+  });
+
+  if (found) {
+    return ext2_inode::create(fs, ent_inode_num);
+  }
+  return NULL;
+}
+
+int fs::ext2_inode::rm(string &name) {
+  // TODO:
+  return -1;
+}

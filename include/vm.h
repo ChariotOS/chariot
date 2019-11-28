@@ -5,7 +5,7 @@
 #include <string.h>
 #include <types.h>
 #include <vec.h>
-#include <fs/filedesc.h>
+#include <fs.h>
 #include <fs/vfs.h>
 
 #define VPROT_READ (1 << 0)
@@ -48,7 +48,7 @@ class memory_backing : public refcounted<phys_page> {
 
 class file_backing : public memory_backing {
   public:
-  file_backing(int npages, size_t size, off_t, fs::vnoderef);
+  file_backing(int npages, size_t size, off_t, struct fs::inode *);
   virtual ~file_backing();
   virtual int fault(addr_space &, region &, int page, int flags);
 
@@ -104,7 +104,7 @@ class addr_space final : public refcounted<addr_space> {
   off_t add_mapping(string name, ref<vm::memory_backing>, int prot);
   off_t add_mapping(string name, size_t sz, int prot);
 
-  off_t map_file(string name, fs::vnoderef, off_t vaddr, off_t off, size_t size, int prot);
+  off_t map_file(string name, struct fs::inode *, off_t vaddr, off_t off, size_t size, int prot);
 
   off_t find_region_hole(size_t);
 

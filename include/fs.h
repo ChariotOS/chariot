@@ -1,13 +1,63 @@
+#pragma once
+
+#ifndef __FS__H__
+#define __FS__H__
+
 #include <atom.h>
 #include <func.h>
 #include <lock.h>
 #include <string.h>
 #include <types.h>
-#include <fs/filedesc.h>
+
+
+#define FDIR_READ 1
+#define FDIR_WRITE 2
+
+#define SEEK_SET (-1)
+#define SEEK_CUR (-2)
+#define SEEK_END (-3)
 
 namespace fs {
 // fwd decl
 struct inode;
+
+
+
+
+class filedesc : public refcounted<filedesc> {
+ public:
+  // must construct file descriptors via these factory funcs
+  static ref<filedesc> create(struct fs::inode *,
+                              int flags = FDIR_READ | FDIR_WRITE);
+
+  /*
+   * seek - change the offset
+   * set the file position to the offset + whence if whence is not equal to
+   * either SEEK_SET, SEEK_CUR, or SEEK_END. (defaults to start)
+   */
+  off_t seek(off_t offset, int whence = SEEK_SET);
+  ssize_t read(void *, ssize_t);
+  ssize_t write(void *data, ssize_t);
+
+  int close();
+
+
+  inline off_t offset(void) { return m_offset; }
+
+  ~filedesc(void);
+
+ public:
+  filedesc(struct fs::inode *, int flags);
+
+  struct fs::inode *m_file;
+
+  off_t m_offset = 0;
+};
+
+
+
+
+
 
 // memory only
 #define ENT_MEM 0
@@ -33,7 +83,7 @@ struct direntry {
 #define T_FILE 2
 
 // TODO:
-#define T_PIPE 3
+#define T_FIFO 3
 #define T_CHAR 4
 #define T_BLK 5
 #define T_SYML 6
@@ -54,16 +104,15 @@ struct inode {
   off_t size = 0;
   int type = T_INVA;  // from T_[...] above
 
-  u32 ino = 0;  // inode (in systems that support it)
-  u32 uid = 0;
-  u32 gid = 0;
-  u32 link_count = 0;
+  uint32_t ino = 0;  // inode (in systems that support it)
+  uint32_t uid = 0;
+  uint32_t gid = 0;
+  uint32_t link_count = 0;
   time_t atime = 0;
   time_t ctime = 0;
   time_t mtime = 0;
   time_t dtime = 0;
-  u32 block_count = 0;
-  u32 block_size = 0;
+  uint32_t block_size = 0;
 
   // for devices
   int major, minor;
@@ -90,18 +139,6 @@ struct inode {
 
   inode(int type);
 
-  // destructs (and deletes) all inodes this inode owns
-  virtual ~inode();
-
-  // getter functions
-  inline bool is_dir() { return type == T_DIR; }
-  inline bool is_file() { return type == T_FILE; }
-  inline bool is_pipe() { return type == T_PIPE; }
-  inline bool is_chardev() { return type == T_CHAR; }
-  inline bool is_blkdev() { return type == T_BLK; }
-  inline bool is_symlink() { return type == T_SYML; }
-  inline bool is_sock() { return type == T_SOCK; }
-
   // file descriptors call this when opening or closing this inode
   inline void fd_open() { n_open.store(n_open.load() + 1); }
   inline void fd_close() { n_open.store(n_open.load() - 1); }
@@ -117,11 +154,6 @@ struct inode {
   int remove_direntry(string name);
 
   struct inode *get_direntry(string &name);
-  virtual struct inode *resolve_direntry(string &name);
-
-  // remove an entry in the directory (only called on entry removals of type
-  // ENT_RES). Returns 0 on success, <0 on failure or the file cannot be removed
-  virtual int rm(string &name);
 
   void walk_direntries(
       func<bool /* continue? */ (const string &, struct inode *)>);
@@ -131,14 +163,23 @@ struct inode {
   // add a mount in the current directory, returning 0 on success
   int add_mount(string &name, struct inode *other_root);
 
-
   /**
    * file related functions
    */
   ssize_t read(filedesc &, void *, size_t);
   ssize_t write(filedesc &, void *, size_t);
 
-
+  /**
+   * virtual functions
+   */
+  // destructs (and deletes) all inodes this inode owns
+  virtual ~inode();
+  virtual struct inode *resolve_direntry(string &name);
+  // remove an entry in the directory (only called on entry removals of type
+  // ENT_RES). Returns 0 on success, <0 on failure or the file cannot be removed
+  virtual int rm(string &name);
+  virtual ssize_t do_read(filedesc &, void *, size_t);
+  virtual ssize_t do_write(filedesc &, void *, size_t);
 
  private:
   mutex_lock lock;
@@ -148,11 +189,8 @@ struct inode {
 
   struct inode *get_direntry_nolock(string &name);
   struct inode *get_direntry_ino(struct direntry *);
-
-
-  // virtual implementations after checks in the base class
-  virtual ssize_t do_read(filedesc &, void *, size_t);
-  virtual ssize_t do_write(filedesc &, void *, size_t);
 };
 
 };  // namespace fs
+
+#endif

@@ -76,30 +76,6 @@ class vnode : virtual public file {
 
 using vnoderef = ref<vnode>;
 
-// an inode is a simple struct that just contains the fs_id and the inode index
-// within that filesystem. it is mostly used internally when referencing an
-// inode without a backing datastructure. For example, when walking a directory,
-// you may not need to create the full-on vnode structure on the heap when all
-// you need is a simple inode index.
-//
-// Because of this, inodes need to be able to lookup or 'reify' themselves into
-// the full-on vnode.
-class inode {
- public:
-  inode(u32 fsid, u32 index);
-  inode(const filesystem &fs, u32 index);
-
-  // will panic if the filesystem is not found
-  filesystem &fs(void);
-  u32 index(void);
-  // turn get the vnode for this inode
-  vnoderef reify(void);
-
- private:
-  u32 m_fsid;
-  u32 m_index;
-};
-
 }  // namespace fs
 
 #endif

@@ -9,7 +9,6 @@
 #include <dev/serial.h>
 #include <device.h>
 #include <elf/loader.h>
-#include <fs/devfs.h>
 #include <fs/ext2.h>
 #include <fs/file.h>
 #include <fs/vfs.h>
@@ -17,6 +16,7 @@
 #include <idt.h>
 #include <module.h>
 #include <pci.h>
+#include <pctl.h>
 #include <pit.h>
 #include <printk.h>
 #include <process.h>
@@ -29,7 +29,6 @@
 #include <util.h>
 #include <vec.h>
 #include <vga.h>
-#include <pctl.h>
 
 extern int kernel_end;
 
@@ -73,6 +72,24 @@ static int idle_task(void* arg) {
     // increment nidels
     nidles.store(nidles.load() + 1);
     halt();
+  }
+}
+
+static void print_depth(int d) { for_range(i, 0, d) printk("  "); }
+
+void print_tree(struct fs::inode* dir, int depth = 0) {
+  if (dir->type == T_DIR) {
+    dir->walk_direntries(
+        [&](const string& name, struct fs::inode* ino) -> bool {
+          if (name != "." && name != "..") {
+            print_depth(depth);
+            printk("%s [%d]\n", name.get(), ino->ino);
+            if (ino->type == T_DIR) {
+              print_tree(ino, depth + 1);
+            }
+          }
+          return true;
+        });
   }
 }
 
@@ -143,13 +160,9 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 
 static int kernel_init_task(void*);
 
-struct foo : public refcounted<foo> {
-
-};
-
+struct foo : public refcounted<foo> {};
 
 static void kmain2(void) {
-
   init_idt();
   enable_sse();
 
@@ -191,10 +204,6 @@ static int kernel_init_task(void*) {
   syscall_init();
   set_pit_freq(1000);
 
-  if (fs::devfs::init() != true) {
-    panic("Failed to initialize devfs\n");
-  }
-
   // initialize the scheduler
   assert(sched::init());
   KINFO("Initialized the scheduler\n");
@@ -208,9 +217,12 @@ static int kernel_init_task(void*) {
   auto rootdev = dev::open("ata1");
   init_rootvfs(rootdev);
   // TODO
-  fs::devfs::mount();
+  auto root = vfs::open("/", 0);
 
-  auto tmp = vfs::open("/tmp", 0);
+
+  vfs::fdopen("/tmp");
+
+  print_tree(root);
 
   auto proc = task_process::lookup(0);
 
@@ -225,12 +237,9 @@ static int kernel_init_task(void*) {
     const char* init_args[] = {"/bin/init", NULL};
 
     struct pctl_cmd_args cmdargs {
-      .path = (char*)init_args[0],
-      .argc = 1,
-      .argv = (char**)init_args,
+      .path = (char*)init_args[0], .argc = 1, .argv = (char**)init_args,
 
-      .envc = 0,
-      .envv = NULL,
+      .envc = 0, .envv = NULL,
     };
 
     // TODO: setup stdin, stdout, and stderr

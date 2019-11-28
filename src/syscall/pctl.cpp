@@ -82,7 +82,7 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
   u64 entry_address = 0;
 
   // TODO: avoid reading the entire elf file :)
-  auto sz = file->size();
+  auto sz = file->size;
   auto buf = kmalloc(sz);
   auto fd = fs::filedesc(file, FDIR_READ);
   int nread = fd.read(buf, sz);

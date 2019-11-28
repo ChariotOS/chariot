@@ -62,7 +62,7 @@ class path {
  public:
   path(string);
 
-  inline const string &operator[](u32 i) { return parts[i]; }
+  inline string &operator[](u32 i) { return parts[i]; }
 
   // how many elements are in the path
   inline u32 len(void) { return parts.size(); }

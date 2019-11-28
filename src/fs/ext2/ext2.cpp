@@ -93,7 +93,7 @@ bool fs::ext2::init(void) {
   work_buf = kmalloc(blocksize);
   inode_buf = kmalloc(blocksize);
 
-  m_root_inode = get_inode(2);
+  root = get_inode(2);
 
   if (!write_superblock()) {
     printk("failed to write superblock\n");
@@ -118,11 +118,6 @@ int fs::ext2::write_superblock(void) {
 
 bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {
   TRACE;
-  return read_inode(&dst, inode);
-}
-
-bool fs::ext2::read_inode(ext2_inode_info *dst, u32 inode) {
-  TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
 
   // now that we have which BGF the inode is in, load that desc
@@ -140,33 +135,12 @@ bool fs::ext2::read_inode(ext2_inode_info *dst, u32 inode) {
   auto *_inode =
       (ext2_inode_info *)inode_buf + (index % (blocksize / sb->s_inode_size));
 
-  memcpy(dst, _inode, sizeof(ext2_inode_info));
+  memcpy(&dst, _inode, sizeof(ext2_inode_info));
 
   return true;
 }
 
-bool fs::ext2::read_inode(ext2_inode *dst, u32 inode) {
-  TRACE;
-  return read_inode(&dst->info, inode);
-}
-
-/**
- *
- *
- *
- */
-
 bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
-  TRACE;
-  return read_inode(&src, inode);
-}
-
-bool fs::ext2::write_inode(ext2_inode *src, u32 inode) {
-  TRACE;
-  return read_inode(&src->info, inode);
-}
-
-bool fs::ext2::write_inode(ext2_inode_info *src, u32 inode) {
   TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
 
@@ -185,7 +159,7 @@ bool fs::ext2::write_inode(ext2_inode_info *src, u32 inode) {
   // modify it...
   auto *_inode =
       (ext2_inode_info *)inode_buf + (index % (blocksize / sb->s_inode_size));
-  memcpy(_inode, src, sizeof(ext2_inode_info));
+  memcpy(_inode, &src, sizeof(ext2_inode_info));
 
   // and write the block back
   write_block(bgd->block_of_inode_table + block, inode_buf);
@@ -295,51 +269,14 @@ vec<fs::directory_entry> fs::ext2::read_dir(ext2_inode_info &inode) {
   return entries;
 }
 
-int fs::ext2::read_file(u32 inode, u32 off, u32 len, u8 *buf) {
-  TRACE;
-  ext2_inode_info info;
-  read_inode(info, inode);
-
-  return read_file(info, off, len, buf);
+struct fs::inode *fs::ext2::get_root(void) {
+  return root;
 }
 
-int fs::ext2::read_file(ext2_inode_info &inode, u32 off, u32 len, u8 *buf) {
-  TRACE;
-  return 0;
-}
-
-fs::vnoderef fs::ext2::get_root_inode(void) {
-  scoped_lock lck(m_lock);
-  return m_root_inode;
-}
-
-fs::vnoderef fs::ext2::get_inode(u32 index) {
+struct fs::inode *fs::ext2::get_inode(u32 index) {
   TRACE;
   scoped_lock lck(m_lock);
-
-  // TODO: lock the vnode cache
-  // TODO: move the flush logic to a sync daemon
-  // I know, looping through this is bad, its a hash map. But untill there is a
-  // sync daemon, we need to flush inodes that have no external references
-  if (false)
-    for (auto &node : vnode_cache) {
-      if (node.key == index) {
-        printk("cached %d\n", index);
-        return node.value;
-      }
-
-      if (node.value->ref_count() == 1) {
-        printk("here!\n");
-      }
-    }
-  if (vnode_cache.contains(index)) {
-    return vnode_cache.get(index);
-  }
-  auto in = make_ref<fs::ext2_inode>(*this, index);
-  read_inode(in->info, index);
-
-  vnode_cache.set(index, in);
-  return in;
+  return fs::ext2_inode::create(*this, index);
 }
 
 vec<u32> fs::ext2::blocks_for_inode(u32 inode) {

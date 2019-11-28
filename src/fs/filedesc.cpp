@@ -1,7 +1,7 @@
-#include <fs/filedesc.h>
+#include <fs.h>
 #include <errno.h>
 
-ref<fs::filedesc> fs::filedesc::create(ref<file> f, int flags) {
+ref<fs::filedesc> fs::filedesc::create(struct fs::inode *f, int flags) {
   // fail if f is null
   if (!f) return nullptr;
 
@@ -9,12 +9,19 @@ ref<fs::filedesc> fs::filedesc::create(ref<file> f, int flags) {
   return make_ref<fs::filedesc>(f, flags);
 }
 
-fs::filedesc::filedesc(ref<file> f, int flags) : m_file(f) { m_offset = 0; }
+fs::filedesc::filedesc(struct fs::inode *f, int flags) : m_file(f) {
+  // register that the fd has access to the inode
+  m_file->fd_open();
+  m_offset = 0;
+}
+
+fs::filedesc::~filedesc(void) {
+  m_file->fd_close();
+}
 
 off_t fs::filedesc::seek(off_t offset, int whence) {
   // TODO: check if the file is actually seekable
 
-  auto md = metadata();
 
   off_t new_off;
 
@@ -26,7 +33,7 @@ off_t fs::filedesc::seek(off_t offset, int whence) {
       new_off = m_offset + offset;
       break;
     case SEEK_END:
-      new_off = md.size;
+      new_off = m_file->size;
       break;
     default:
       new_off = whence + offset;
@@ -40,7 +47,6 @@ off_t fs::filedesc::seek(off_t offset, int whence) {
   return m_offset;
 }
 
-fs::file_metadata fs::filedesc::metadata(void) { return {}; }
 
 ssize_t fs::filedesc::read(void *dst, ssize_t len) {
   if (!m_file) {

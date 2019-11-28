@@ -1,6 +1,6 @@
 #include <cpu.h>
 #include <errno.h>
-#include <fs/filedesc.h>
+#include <fs.h>
 #include <paging.h>
 #include <phys.h>
 #include <util.h>
@@ -44,7 +44,7 @@ int vm::memory_backing::fault(addr_space &space, region &reg, int page,
 }
 
 vm::file_backing::file_backing(int npages, size_t size, off_t off,
-                               fs::vnoderef node)
+                               struct fs::inode *node)
     : memory_backing(npages),
       off(off),
       size(size),
@@ -238,7 +238,7 @@ off_t vm::addr_space::add_mapping(string name, size_t sz, int prot) {
   return add_mapping(name, mem, prot);
 }
 
-off_t vm::addr_space::map_file(string name, fs::vnoderef file, off_t vaddr,
+off_t vm::addr_space::map_file(string name, struct fs::inode *file, off_t vaddr,
                                off_t off, size_t size, int prot) {
   auto sz = round_up(size, 4096);
   return add_mapping(name, vaddr & ~0xFFF, sz,
@@ -308,7 +308,6 @@ vm::addr_space::~addr_space(void) { KINFO("destruct addr_space\n"); }
 
 string vm::addr_space::format(void) {
   string s;
-
 
   return s;
 }

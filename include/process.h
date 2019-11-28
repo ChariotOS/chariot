@@ -1,6 +1,6 @@
 #pragma once
 
-#include <fs/filedesc.h>
+#include <fs.h>
 #include <func.h>
 #include <lock.h>
 #include <sched.h>

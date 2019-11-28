@@ -4,6 +4,11 @@
 #include <map.h>
 #include <process.h>
 
+
+vec<unique_ptr<fs::filesystem>> mounted_filesystems;
+struct fs::inode *vfs_root = NULL;
+
+
 static map<string, vfs::mounter_t> filesystems;
 
 int vfs::register_filesystem(string name, mounter_t m) {
@@ -23,6 +28,15 @@ int vfs::deregister_filesystem(string name) {
   return -ENOENT;
 }
 
+int vfs::mount_root(unique_ptr<fs::filesystem> fs) {
+
+  assert(vfs_root == NULL);
+  vfs_root = fs->get_root();
+  mounted_filesystems.push(move(fs));
+
+  return 0;
+}
+
 
 int vfs::mount(ref<dev::device>, string fs_name, string path) {
   // special case for mounting the root
@@ -33,96 +47,27 @@ int vfs::mount(ref<dev::device>, string fs_name, string path) {
 }
 
 
-u64 vfs::qualified_inode_number(const fs::filesystem &f, u32 inode) {
-  return (u64)f.id() << 32 | inode;
-}
-
-vfs::mountpoint::mountpoint(unique_ptr<fs::filesystem> fs, fs::vnoderef host) {
-  m_fs = move(fs);
-  m_host = move(host);
-}
-
-fs::vnoderef vfs::mountpoint::host() const { return m_host; }
-
-fs::vnoderef vfs::mountpoint::guest() { return m_fs->get_root_inode(); }
-
-vfs::mountpoint::mountpoint() {}
-
-bool vfs::mountpoint::operator==(const mountpoint &other) {
-  // two mounts are equal if their hosts are the same and their filesystems are
-  // the same
-  return other.m_host->index() == m_host->index() &&
-         m_fs.get() == other.m_fs.get();
-}
 
 vfs::vfs() { panic("DO NOT CONSTRUCT A VFS INSTANCE\n"); }
 
-static vfs::mountpoint root_mountpoint;
-
-static map<u64, unique_ptr<vfs::mountpoint>> mount_points;
-
 int vfs::mount(unique_ptr<fs::filesystem> fs, string host) {
-  return mount(move(fs), vfs::open(host));
+  return -1;
 }
 
-int vfs::mount(unique_ptr<fs::filesystem> fs, fs::vnoderef host) {
-  printk("here!\n");
-  // check that the host is valid
-  if (!host) return -ENOENT;
 
-  // check that the filesystem is valid
-  if (!fs) return -ENOENT;
 
-  auto mid = qualified_inode_number(host->fs(), host->index());
 
-  // if there is already a fs mounted here, fail
-  if (mount_points.contains(mid)) return -EBUSY;
-
-  // now we can actually add the mount
-  auto mpt = make_unique<mountpoint>(move(fs), host);
-  mount_points.set(mid, move(mpt));
-
-  return 0;
-}
-
-int vfs::mount_root(unique_ptr<fs::filesystem> fs) {
-  // TODO: check for errors :)
-  root_mountpoint = mountpoint(move(fs), fs->get_root_inode());
-  return 0;
-}
-
-fs::vnoderef vfs::get_mount_at(u64 inode) {
-  if (mount_points.contains(inode)) {
-    return mount_points.get(inode)->guest();
-  } else {
-    return {};
-  }
-}
-
-// TODO: make this not crap
-fs::vnoderef vfs::get_mount_host(u64 inode) {
-  // TODO: obligitory todo to take a lock
-  for (auto &mnt : mount_points) {
-    auto guest = qualified_inode_number(mnt.value->guest()->fs(),
-                                        mnt.value->guest()->index());
-    if (guest == inode) {
-      return mnt.value->host();
-    }
-  }
-  return nullptr;
-}
-
-fs::vnoderef vfs::open(string spath, int opts, int mode) {
+struct fs::inode *vfs::open(string spath, int opts, int mode) {
   fs::path p = spath;
 
-  fs::vnoderef curr = {};
+  struct fs::inode *curr = 0;
 
   if (!p.is_root()) {
     // TODO: use the current processes' CWD as root, and walk from there.
     panic("fs::vfs::open should always receive a rooted path. '%s'\n",
           spath.get());
   } else {
-    curr = root_mountpoint.m_fs->get_root_inode();
+    curr = vfs_root;
   }
 
   // start out assuming we've found the file, for `open("/", ...);` cases
@@ -134,17 +79,9 @@ fs::vnoderef vfs::open(string spath, int opts, int mode) {
 
     auto &targ = p[i];
 
-    bool contained = false;
-    // TODO: swap this out for a find_dir_entry function or something
-    curr->walk_dir([&](const string &fname, fs::vnoderef vn) -> bool {
-      if (fname == targ) {
-        curr = vn;
-        contained = true;
-        return false;
-      }
-      return true;
-    });
-    if (!contained) {
+    auto found = curr->get_direntry(targ);
+    curr = found;
+    if (found == NULL) {
       if (last && (opts & O_CREAT)) {
         // TODO: check for O_CREAT and last
         printk("NOT FOUND AT LAST, WOULD CREATE\n");
@@ -158,6 +95,7 @@ fs::vnoderef vfs::open(string spath, int opts, int mode) {
 
   return curr;
 }
+
 
 fs::filedesc vfs::fdopen(string path, int opts, int mode) {
   int fd_dirs = 0;

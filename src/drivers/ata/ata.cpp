@@ -2,7 +2,6 @@
 
 #include <cpu.h>
 #include <dev/driver.h>
-#include <fs/devfs.h>
 #include <idt.h>
 #include <lock.h>
 #include <mem.h>

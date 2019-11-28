@@ -98,6 +98,7 @@ int fs::inode::register_direntry(string name, int enttype, struct inode *ino) {
   assert(type == T_DIR);
   lock.lock();
 
+
   // check that there isn't a directory entry by that name
   for_in_ll(ent, dir.entries) {
     if (ent->name == name) {
@@ -166,7 +167,6 @@ int fs::inode::rm(string &name) {
 void fs::inode::walk_direntries(
     func<bool(const string &, struct inode *)> func) {
   assert(type == T_DIR);
-  lock.lock();
 
   for_in_ll(ent, dir.entries) {
     auto ino = get_direntry_ino(ent);
@@ -174,8 +174,6 @@ void fs::inode::walk_direntries(
       break;
     }
   }
-
-  lock.unlock();
 }
 
 ssize_t fs::inode::read(filedesc &fd, void *buf, size_t sz) {
@@ -201,28 +199,3 @@ ssize_t fs::inode::write(filedesc &fd, void *buf, size_t sz) {
 
 ssize_t fs::inode::do_read(filedesc &fd, void *buf, size_t sz) { return -1; }
 ssize_t fs::inode::do_write(filedesc &fd, void *buf, size_t sz) { return -1; }
-
-static void inode_test(void) {
-  auto ino = new inode(T_DIR);
-
-  printk("sz=%zu\n", sizeof(*ino));
-
-  for (int i = 0; i < 10; i++) {
-    ino->register_direntry(string::format("file_%d", i), ENT_MEM,
-                           new inode(T_FILE));
-  }
-
-  ino->walk_direntries([&](const string &name, struct inode *ino) -> bool {
-    printk("'%s' -> %p\n", name.get(), ino);
-    return true;
-  });
-
-  ino->remove_direntry("file_9");
-  ino->remove_direntry("file_9");
-  ino->remove_direntry("file_9");
-
-  delete ino;
-}
-
-module_init("inode", inode_test);
-

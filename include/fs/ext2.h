@@ -59,40 +59,43 @@ struct [[gnu::packed]] ext2_inode_info {
   uint8_t ossv2[12];
 };
 
-class ext2_inode : public vnode {
+class ext2_inode : public fs::inode {
   friend class ext2;
 
  public:
-  explicit ext2_inode(ext2 &fs, u32 index);
+
+  static ext2_inode *create(ext2 &fs, u32 index);
+  explicit ext2_inode(int type, ext2 &fs, u32 index);
+
   virtual ~ext2_inode();
 
-  virtual file_metadata metadata(void);
 
-  virtual int add_dir_entry(ref<vnode> node, const string &name, u32 mode);
-  virtual ssize_t read(filedesc &, void *, size_t);
-  virtual ssize_t write(filedesc &, void *, size_t);
-  virtual int truncate(size_t newlen);
+  // ^ struct fs::inode
+  virtual struct inode *resolve_direntry(string &name);
+  virtual int rm(string &name);
+  virtual ssize_t do_read(filedesc &, void *, size_t);
+  virtual ssize_t do_write(filedesc &, void *, size_t);
 
-  // return the block size of the fs
-  int block_size();
+  // flush the in-memory info struct to disk
+  int commit_info();
 
-  inline virtual fs::filesystem &fs() { return m_fs; }
+  int injest_info(ext2_inode_info &info);
 
  protected:
   int cached_path[4] = {0, 0, 0, 0};
   int *blk_bufs[4] = {NULL, NULL, NULL, NULL};
 
   ssize_t do_rw(fs::filedesc &, size_t, void *, bool is_write);
-  off_t block_for_byte(off_t b);
 
   // return the ith block's index, returning 0 on failure.
   // if set_to is passed and is non-zero, the block at that
   // index will be written as set_to
   int block_from_index(int i_block, int set_to = 0);
-  ext2_inode_info info;
-  virtual bool walk_dir_impl(func<bool(const string &, u32)> cb);
 
-  fs::filesystem &m_fs;
+  // block pointers
+  uint32_t block_pointers[15];
+
+  ext2 &fs;
 };
 
 /**
@@ -112,23 +115,17 @@ class ext2 final : public filesystem {
 
   virtual bool init(void);
 
-  virtual vnoderef get_root_inode(void);
-  virtual vnoderef get_inode(u32 index);
+  virtual struct fs::inode *get_root(void);
 
-  int read_file(u32 inode, u32 off, u32 len, u8 *buf);
-
-  inline virtual u64 block_size(void) { return blocksize; }
+  // don't cache
+  virtual struct fs::inode *get_inode(u32 index);
 
   friend class ext2_inode;
   bool read_block(u32 block, void *buf);
   bool write_block(u32 block, const void *buf);
 
-  bool read_inode(ext2_inode *dst, u32 inode);
-  bool read_inode(ext2_inode_info *dst, u32 inode);
   bool read_inode(ext2_inode_info &dst, u32 inode);
 
-  bool write_inode(ext2_inode *dst, u32 inode);
-  bool write_inode(ext2_inode_info *dst, u32 inode);
   bool write_inode(ext2_inode_info &dst, u32 inode);
 
   // must free the result of this.
@@ -142,7 +139,6 @@ class ext2 final : public filesystem {
   void traverse_blocks(vec<u32>, void *, func<bool(void *)> callback);
 
   // entrypoint to read a file
-  int read_file(ext2_inode_info &inode, u32 off, u32 len, u8 *buf);
 
   vec<u32> blocks_for_inode(u32 inode);
   vec<u32> blocks_for_inode(ext2_inode_info &inode);
@@ -224,6 +220,7 @@ class ext2 final : public filesystem {
     u16 s_reserved_pad;  /* Padding to next 32bits */
     u32 s_reserved[162]; /* Padding to the end of the block */
   };
+
   ref<dev::blk_dev> dev;
 
   superblock *sb = nullptr;
@@ -242,11 +239,11 @@ class ext2 final : public filesystem {
   void *work_buf = nullptr;
   void *inode_buf = nullptr;
 
-  vnoderef m_root_inode{};
+
+  struct inode *root;
+
 
   ref<dev::device> disk;
-
-  map<u32, fs::vnoderef> vnode_cache;
 
   mutex_lock m_lock;
 };
