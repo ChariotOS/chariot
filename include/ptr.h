@@ -139,7 +139,7 @@ class refcounted_base {
  public:
   void ref_retain() {
     assert(m_ref_count);
-    m_ref_count++;
+    m_ref_count.store(m_ref_count.load() + 1);
   }
 
   int ref_count() const { return m_ref_count; }
@@ -150,10 +150,11 @@ class refcounted_base {
 
   void deref_base() {
     assert(m_ref_count);
-    m_ref_count--;
+    m_ref_count.store(m_ref_count.load() - 1);
   }
 
-  int m_ref_count{1};
+
+  atom<short> m_ref_count = 2;
 };
 
 template <typename T>
