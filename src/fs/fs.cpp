@@ -15,8 +15,39 @@ fs::inode::inode(int type) : type(type) {
       dir.entries = nullptr;
       break;
 
+    case T_FILE:
+      break;
+
     default:
       printk("unhandled inode constructor: %d\n", type);
+  }
+}
+
+static void destruct_dir(struct inode *ino) {
+  assert(ino->type == T_DIR);
+
+  for_in_ll(ent, ino->dir.entries) {
+    // don't delete the backpointers and current directory pointers
+    if (ent->name == "." || ent->name == "..") {
+      continue;
+    }
+    if (ent->ino != NULL) {
+      delete ent->ino;
+    }
+    delete ent;
+  }
+}
+
+fs::inode::~inode() {
+  switch (type) {
+    case T_DIR:
+      destruct_dir(this);
+      break;
+    case T_FILE:
+      break;
+
+    default:
+      printk("unhandled inode destructor: %d\n", type);
   }
 }
 
@@ -61,32 +92,6 @@ struct inode *fs::inode::get_direntry(string &name) {
   ino = get_direntry_nolock(name);
   lock.unlock();
   return ino;  // nothing found!
-}
-
-static void destruct_dir(struct inode *ino) {
-  assert(ino->type == T_DIR);
-
-  for_in_ll(ent, ino->dir.entries) {
-    // don't delete the backpointers and current directory pointers
-    if (ent->name == "." || ent->name == "..") {
-      continue;
-    }
-    if (ent->ino != NULL) {
-      delete ent->ino;
-    }
-    delete ent;
-  }
-}
-
-fs::inode::~inode() {
-  switch (type) {
-    case T_DIR:
-      destruct_dir(this);
-      break;
-
-    default:
-      printk("unhandled inode destructor: %d\n", type);
-  }
 }
 
 int fs::inode::register_direntry(string name, int enttype, struct inode *ino) {
@@ -172,4 +177,52 @@ void fs::inode::walk_direntries(
 
   lock.unlock();
 }
+
+ssize_t fs::inode::read(filedesc &fd, void *buf, size_t sz) {
+  if (type != T_FILE) {
+    return -1;
+  }
+  // locking is handled by the base class
+  lock.lock();
+  auto k = do_read(fd, buf, sz);
+  lock.unlock();
+  return k;
+}
+ssize_t fs::inode::write(filedesc &fd, void *buf, size_t sz) {
+  if (type != T_FILE) {
+    return -1;
+  }
+  // locking is handled by the base class
+  lock.lock();
+  auto k = do_write(fd, buf, sz);
+  lock.unlock();
+  return k;
+}
+
+ssize_t fs::inode::do_read(filedesc &fd, void *buf, size_t sz) { return -1; }
+ssize_t fs::inode::do_write(filedesc &fd, void *buf, size_t sz) { return -1; }
+
+static void inode_test(void) {
+  auto ino = new inode(T_DIR);
+
+  printk("sz=%zu\n", sizeof(*ino));
+
+  for (int i = 0; i < 10; i++) {
+    ino->register_direntry(string::format("file_%d", i), ENT_MEM,
+                           new inode(T_FILE));
+  }
+
+  ino->walk_direntries([&](const string &name, struct inode *ino) -> bool {
+    printk("'%s' -> %p\n", name.get(), ino);
+    return true;
+  });
+
+  ino->remove_direntry("file_9");
+  ino->remove_direntry("file_9");
+  ino->remove_direntry("file_9");
+
+  delete ino;
+}
+
+module_init("inode", inode_test);
 

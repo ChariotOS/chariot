@@ -3,6 +3,7 @@
 #include <lock.h>
 #include <string.h>
 #include <types.h>
+#include <fs/filedesc.h>
 
 namespace fs {
 // fwd decl
@@ -130,14 +131,28 @@ struct inode {
   // add a mount in the current directory, returning 0 on success
   int add_mount(string &name, struct inode *other_root);
 
+
+  /**
+   * file related functions
+   */
+  ssize_t read(filedesc &, void *, size_t);
+  ssize_t write(filedesc &, void *, size_t);
+
+
+
  private:
   mutex_lock lock;
-
-  struct inode *get_direntry_nolock(string &name);
-  struct inode *get_direntry_ino(struct direntry *);
   // how many file descriptors have this inode open (good for keeping track of
   // busy-ness when unmounting a filesystem)
   atom<int> n_open = 0;
+
+  struct inode *get_direntry_nolock(string &name);
+  struct inode *get_direntry_ino(struct direntry *);
+
+
+  // virtual implementations after checks in the base class
+  virtual ssize_t do_read(filedesc &, void *, size_t);
+  virtual ssize_t do_write(filedesc &, void *, size_t);
 };
 
 };  // namespace fs
