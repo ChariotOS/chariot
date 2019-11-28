@@ -11,12 +11,12 @@ ref<fs::filedesc> fs::filedesc::create(struct fs::inode *f, int flags) {
 
 fs::filedesc::filedesc(struct fs::inode *f, int flags) : m_file(f) {
   // register that the fd has access to the inode
-  m_file->fd_open();
+  fs::inode::acquire(m_file);
   m_offset = 0;
 }
 
 fs::filedesc::~filedesc(void) {
-  m_file->fd_close();
+  fs::inode::release(m_file);
 }
 
 off_t fs::filedesc::seek(off_t offset, int whence) {

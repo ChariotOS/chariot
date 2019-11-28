@@ -117,7 +117,6 @@ class ext2 final : public filesystem {
 
   virtual struct fs::inode *get_root(void);
 
-  // don't cache
   virtual struct fs::inode *get_inode(u32 index);
 
   friend class ext2_inode;
@@ -241,6 +240,8 @@ class ext2 final : public filesystem {
 
 
   struct inode *root;
+
+  map<u32, ext2_inode *> inodes;
 
 
   ref<dev::device> disk;

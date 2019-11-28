@@ -65,7 +65,11 @@ struct inode *fs::inode::get_direntry_ino(struct direntry *ent) {
   }
 
   // otherwise attempt to resolve that entry
-  return ent->ino = resolve_direntry(ent->name);
+  ent->ino = resolve_direntry(ent->name);
+
+  if (ent->ino != NULL) fs::inode::acquire(ent->ino);
+
+  return ent->ino;
 }
 
 struct inode *fs::inode::get_direntry_nolock(string &name) {
@@ -98,7 +102,6 @@ int fs::inode::register_direntry(string name, int enttype, struct inode *ino) {
   assert(type == T_DIR);
   lock.lock();
 
-
   // check that there isn't a directory entry by that name
   for_in_ll(ent, dir.entries) {
     if (ent->name == name) {
@@ -117,6 +120,10 @@ int fs::inode::register_direntry(string name, int enttype, struct inode *ino) {
   ent->next = dir.entries;
   if (dir.entries != NULL) dir.entries->prev = ent;
   dir.entries = ent;
+
+  if (ent->ino != NULL) {
+    fs::inode::acquire(ent->ino);
+  }
 
   lock.unlock();
   return 0;
@@ -139,9 +146,9 @@ int fs::inode::remove_direntry(string name) {
       if (ent->next != NULL) ent->next->prev = ent->prev;
       if (ent == dir.entries) dir.entries = ent->next;
 
-      if (ent->ino != NULL) delete ent->ino;
+      if (ent->ino != NULL) fs::inode::release(ent->ino);
       // TODO: notify the vfs that the mount was deleted?
-      if (ent->mount_shadow != NULL) delete ent->mount_shadow;
+      if (ent->mount_shadow != NULL) fs::inode::release(ent->mount_shadow);
       delete ent;
       lock.unlock();
       return 0;
@@ -199,3 +206,22 @@ ssize_t fs::inode::write(filedesc &fd, void *buf, size_t sz) {
 
 ssize_t fs::inode::do_read(filedesc &fd, void *buf, size_t sz) { return -1; }
 ssize_t fs::inode::do_write(filedesc &fd, void *buf, size_t sz) { return -1; }
+
+int fs::inode::acquire(struct inode *in) {
+  assert(in != NULL);
+  in->lock.lock();
+  in->rc++;
+  in->lock.unlock();
+  return 0;
+}
+
+int fs::inode::release(struct inode *in) {
+  assert(in != NULL);
+  in->lock.lock();
+  in->rc--;
+  if (in->rc == 0) {
+    delete in;
+  }
+  in->lock.unlock();
+  return 0;
+}

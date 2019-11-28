@@ -276,7 +276,12 @@ struct fs::inode *fs::ext2::get_root(void) {
 struct fs::inode *fs::ext2::get_inode(u32 index) {
   TRACE;
   scoped_lock lck(m_lock);
-  return fs::ext2_inode::create(*this, index);
+
+  if (inodes[index] == NULL) {
+    inodes[index] = fs::ext2_inode::create(*this, index);
+  }
+
+  return inodes[index];
 }
 
 vec<u32> fs::ext2::blocks_for_inode(u32 inode) {

@@ -9,7 +9,6 @@
 #include <string.h>
 #include <types.h>
 
-
 #define FDIR_READ 1
 #define FDIR_WRITE 2
 
@@ -20,9 +19,6 @@
 namespace fs {
 // fwd decl
 struct inode;
-
-
-
 
 class filedesc : public refcounted<filedesc> {
  public:
@@ -41,7 +37,6 @@ class filedesc : public refcounted<filedesc> {
 
   int close();
 
-
   inline off_t offset(void) { return m_offset; }
 
   ~filedesc(void);
@@ -53,11 +48,6 @@ class filedesc : public refcounted<filedesc> {
 
   off_t m_offset = 0;
 };
-
-
-
-
-
 
 // memory only
 #define ENT_MEM 0
@@ -108,17 +98,15 @@ struct inode {
   uint32_t uid = 0;
   uint32_t gid = 0;
   uint32_t link_count = 0;
-  time_t atime = 0;
-  time_t ctime = 0;
-  time_t mtime = 0;
-  time_t dtime = 0;
+  uint32_t atime = 0;
+  uint32_t ctime = 0;
+  uint32_t mtime = 0;
+  uint32_t dtime = 0;
   uint32_t block_size = 0;
 
   // for devices
   int major, minor;
 
-  // for inline linked list inside the filesystem itself
-  struct inode *next, *prev;
 
   // different kinds of inodes need different kinds of data
   union {
@@ -138,10 +126,6 @@ struct inode {
    */
 
   inode(int type);
-
-  // file descriptors call this when opening or closing this inode
-  inline void fd_open() { n_open.store(n_open.load() + 1); }
-  inline void fd_close() { n_open.store(n_open.load() - 1); }
 
   /*
    * the directory entry list in this->as.dir is a linked list that must be
@@ -181,12 +165,14 @@ struct inode {
   virtual ssize_t do_read(filedesc &, void *, size_t);
   virtual ssize_t do_write(filedesc &, void *, size_t);
 
- private:
-  mutex_lock lock;
-  // how many file descriptors have this inode open (good for keeping track of
-  // busy-ness when unmounting a filesystem)
-  atom<int> n_open = 0;
+  static int acquire(struct inode *);
+  static int release(struct inode *);
 
+ protected:
+  mutex_lock lock;
+  int rc = 0;
+
+ private:
   struct inode *get_direntry_nolock(string &name);
   struct inode *get_direntry_ino(struct direntry *);
 };
