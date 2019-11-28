@@ -11,68 +11,6 @@
 #define RING_KERNEL 0
 #define RING_USER 3
 
-class thread;
-
-struct fd_flags {
-  inline operator bool() { return !!fd; }
-  void clear();
-  int flags;
-  ref<fs::filedesc> fd;
-};
-
-class process final {
- public:
-  process(string name, pid_t, gid_t, int ring = 3);
-  ~process(void);
-
-  inline pid_t pid(void) { return m_pid; }
-  inline gid_t gid(void) { return m_gid; }
-  inline int ring(void) { return m_ring; }
-
-  const string &name(void);
-
-  int m_ring;
-
-  // for the intrusive linked list
-  process *next;
-  process *prev;
-
-  void (*kernel_func)(void);
-
-  /**
-   * spawn a thread under this process, adding it to the global thread table
-   */
-  thread &create_thread(func<void(int tid)>);
-
-  int do_close(int fd);
-  int do_open(const char *, int flags, int mode = 0);
-  ssize_t do_read(int fd, void *dst, size_t);
-  ssize_t do_write(int fd, void *dst, size_t);
-  off_t do_seek(int fd, off_t offset, int whence);
-
-  int handle_pagefault(off_t faulting_addr, off_t *pte);
-
-  // add a virtual memory region named `name` at a vpn, with len pages and prot
-  // protection. It shall be backed by the memory mapping object
-  int add_vm_region(string name, off_t vpn, size_t len, int prot,
-                    unique_ptr<vm::memory_backing>);
-
-  void switch_vm(void);
-
- protected:
-  vm::addr_space addr_space;
-  vec<unique_ptr<thread>> threads;
-
-  vec<fd_flags> files;
-
-  string m_name;
-  pid_t m_pid;
-  gid_t m_gid;
-
-  int next_tid = 0;
-  mutex_lock big_lock;
-};
-
 void syscall_init(void);
 long ksyscall(long n, ...);
 

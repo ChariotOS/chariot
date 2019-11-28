@@ -15,6 +15,9 @@ struct mmap_info {
   uint32_t last_pfn;
   uint32_t num_regions;
   uint64_t nbytes;  // how many bytes
+
+  off_t vmlo = 0;
+  off_t vmhi = 0;
 };
 
 extern bool use_kernel_vm;

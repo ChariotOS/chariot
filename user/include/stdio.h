@@ -36,11 +36,30 @@ extern "C" {
 #define L_tmpnam 20
 
 
-
+#define __NEED_FILE
+#define __NEED___isoc_va_list
 #define __NEED_size_t
 #define __NEED_ptrdiff_t
+#define __NEED_off_t
+
 #include <bits/alltypes.h>
+
+
 #include <stdarg.h>
+
+extern FILE *const stdin;
+extern FILE *const stdout;
+extern FILE *const stderr;
+
+
+
+
+FILE *fdopen(int, const char *);
+int fclose(FILE *);
+
+
+size_t fread(void *__restrict, size_t, size_t, FILE *__restrict);
+size_t fwrite(const void *__restrict, size_t, size_t, FILE *__restrict);
 
 int putchar(int);
 

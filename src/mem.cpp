@@ -148,11 +148,6 @@ int init_mem(u64 mbd) {
   return 0;
 }
 
-void *alloc_id_page() {
-  auto pa = phys::alloc();
-  return pa;
-}
-
 static u8 *kheap_start = NULL;
 static u64 kheap_size = 0;
 
@@ -178,6 +173,7 @@ void *ksbrk(i64 inc) {
                 PTE_W | PTE_P);
   }
   kheap_size = newsz;
+
   return kheap_start + oldsz;
 }
 
@@ -186,11 +182,6 @@ extern int mm_init(void);
 static void *kernel_page_table;
 
 void init_kernel_virtual_memory() {
-#ifdef MEM_DEBUF
-  char buf[50];
-#endif
-
-  INFO("has: %s\n", human_size(mm_info.total_mem, buf));
 
   u64 page_step = PAGE_SIZE;
   auto page_size = paging::pgsize::page;
@@ -215,11 +206,20 @@ void init_kernel_virtual_memory() {
 
   kernel_page_table = p2v(new_cr3);
 
-  for (; true; i += page_step) {
+
+  off_t lo = 0;
+  off_t hi = 0;
+  while (1) {
     if (i > max(mm_info.total_mem, min_mem)) break;
+    hi = i;
+    // printk("%p <- %p\n", i, p2v(i));
     paging::map_into(new_cr3, (u64)p2v(i), i, page_size, PTE_W | PTE_P);
-    // printk("%p\n", i);
+    i += page_step;
   }
+
+  mm_info.vmlo = (off_t)p2v(lo);
+  mm_info.vmhi = (off_t)p2v(hi);
+
 
   kheap_start = (u8 *)p2v(i);
   kheap_size = 0;

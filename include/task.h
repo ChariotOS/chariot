@@ -6,6 +6,7 @@
 #include <lock.h>
 #include <types.h>
 #include <vm.h>
+#include <map.h>
 
 #define BIT(n) (1 << (n))
 
@@ -87,6 +88,14 @@ using gid_t = i64;
 #define PS_BLOCKED (2)
 #define PS_EMBRYO (3)
 
+
+struct fd_flags {
+  inline operator bool() { return !!fd; }
+  void clear();
+  int flags;
+  ref<fs::filedesc> fd;
+};
+
 struct task_process : public refcounted<struct task_process> {
   int pid;  // obviously the process id
 
@@ -118,6 +127,7 @@ struct task_process : public refcounted<struct task_process> {
   // vector of task ids
   vec<int> tasks;
 
+
   // processes that have been spawned but aren't ready yet
   vec<pid_t> nursery;
 
@@ -137,9 +147,14 @@ struct task_process : public refcounted<struct task_process> {
   // initialize the kernel ``process''
   static ref<task_process> kproc_init(void);
 
-  int cmdve(string path, vec<string> &&args, vec<string> &&env);
 
   task_process();
+
+  mutex_lock file_lock;
+  map<int, fd_flags> open_files;
+
+  // syscall interfaces
+  int open(const char *path, int flags, int mode);
 };
 
 /**

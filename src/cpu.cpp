@@ -136,6 +136,8 @@ void cpu::popcli(void) {
   if (current().ncli == 0 && current().intena) sti();
 }
 
+
+
 static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {
   tss[n * 2 + 1] = rsp;
   tss[n * 2 + 2] = rsp >> 32;
@@ -148,6 +150,13 @@ static void tss_set_ist(u32 *tss, u32 n, u64 ist) {
 }
 */
 
+
+
+extern "C" void syscall_enter(void);
+
+
+
+#define IA32_LSTAR (0xC0000082)
 void cpu::switch_vm(struct task *tsk) {
   cpu::pushcli();
   auto c = current();
@@ -171,6 +180,12 @@ void cpu::switch_vm(struct task *tsk) {
   }
 
   write_cr3((u64)v2p(tsk->proc->mm.cr3));
+
+
+  // setup the systemcall interface
+  // wrmsr(0x174, 0x33);
+  // wrmsr(0x175, (u64)tsk->stack + tsk->stack_size);
+  // wrmsr(0xC0000082, (u64)syscall_enter);
 
   // tlb_flush();
 

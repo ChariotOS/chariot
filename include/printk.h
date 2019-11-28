@@ -45,7 +45,7 @@ const char* human_size(uint64_t bytes, char* buf);
   } while (0);
 
 
-#define KINFO(fmt, args...) KLOG(GRN, fmt, ##args)
+#define KINFO(fmt, args...) KLOG("", fmt, ##args)
 #define KWARN(fmt, args...) KLOG(YEL, fmt, ##args)
 #define KERR(fmt, args...) KLOG(RED, fmt, ##args)
 

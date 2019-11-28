@@ -4,6 +4,7 @@
 #include <phys.h>
 #include <printk.h>
 #include <sched.h>
+#include <template_lib.h>
 #include <task.h>
 
 extern "C" void user_task_create_callback(void) {
@@ -139,7 +140,6 @@ int task_process::create_task(int (*fn)(void *), int tflags, void *arg,
   return t->tid;
 }
 
-
 pid_t task_process::search_nursery(pid_t pid) {
   // TODO: lock nursery and make this optimized :)
   for (int i = 0; i < nursery.size(); i++) {
@@ -217,8 +217,45 @@ ref<struct task_process> task_process::lookup(int pid) {
   return t;
 }
 
-int task_process::cmdve(string path, vec<string> &&args, vec<string> &&env) {
-  return -1;
+int task_process::open(const char *path, int flags, int mode) {
+  int fd = -1;
+
+  file_lock.lock();
+  constexpr const int fd_max = 255;
+
+  // search for a file descriptor!
+  for (int i = 0; i < fd_max; i++) {
+    if (!open_files.contains(i)) {
+      fd = i;
+      break;
+    }
+
+    if (!open_files[i]) {
+      fd = i;
+      break;
+    }
+  }
+
+
+  if (fd == -1) {
+    file_lock.unlock();
+    return fd;
+  }
+
+  printk("open '%s' -> %d\n", path, fd);
+
+  auto file = vfs::open(path, flags, mode);
+
+  if (!file) {
+    file_lock.unlock();
+    return fd;
+  }
+
+  open_files[fd].fd = fs::filedesc::create(file /* TODO: fd flags */);
+  open_files[fd].flags = flags;
+
+  file_lock.unlock();
+  return fd;
 }
 
 task::task(ref<struct task_process> proc) : proc(proc), task_lock("task lock") {
@@ -250,4 +287,9 @@ static void kernel_task_create_callback(void) {
   kfn(nullptr);
 
   panic("unhandled: kthread finishes\n");
+}
+
+void fd_flags::clear() {
+  fd = nullptr;
+  flags = 0;
 }

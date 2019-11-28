@@ -101,7 +101,7 @@ extern "C" char chariot_welcome_start[];
 
 extern void rtc_init(void);
 
-#define WASTE_TIME_PRINTING_WELCOME
+// #define WASTE_TIME_PRINTING_WELCOME
 
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   /*
@@ -153,7 +153,13 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 
 static int kernel_init_task(void*);
 
+struct foo : public refcounted<foo> {
+
+};
+
+
 static void kmain2(void) {
+
   init_idt();
   enable_sse();
 

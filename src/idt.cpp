@@ -211,7 +211,7 @@ static void pgfault_handle(int i, struct task_regs *tf) {
     int res = proc->mm.handle_pagefault((off_t)page, tf->err);
     if (res == -1) {
       // TODO:
-      KERR("pid %d, tid %d segfaulted\n", proc->pid, cpu::task()->tid);
+      KERR("pid %d, tid %d segfaulted @ %p\n", proc->pid, cpu::task()->tid, tf->eip);
       // XXX: just block, cause its an easy way to get the proc to stop running
       sched::block();
     }
@@ -246,7 +246,7 @@ static void unknown_hardware(int i, struct task_regs *tf) {
   interrupt_spurious[i]++;
 }
 
-extern void syscall_handle(int i, struct task_regs *tf);
+extern "C" void syscall_handle(int i, struct task_regs *tf);
 
 void interrupt_register(int i, interrupt_handler_t handler) {
   // printk("irq register %d to %p\n", i, handler);

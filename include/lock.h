@@ -16,6 +16,7 @@ class mutex_lock {
 
  public:
   inline mutex_lock(const char *name) : name(name) {}
+  inline mutex_lock() : name("generic_lock") {}
 
   void lock(void);
   void unlock(void);

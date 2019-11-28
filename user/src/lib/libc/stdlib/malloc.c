@@ -14,7 +14,6 @@ int liballoc_unlock() {
 
 
 void *liballoc_alloc(size_t s) {
-  printf("alloc size = %d\n", (int)s);
   void *p = mmap(NULL, s * 4096, PROT_READ | PROT_WRITE, MAP_ANON, -1, 0);
 
   return p;
