@@ -29,7 +29,7 @@ typedef short sint16_t;
 typedef unsigned char uint8_t;
 typedef char sint8_t;
 
-typedef u64 time_t;
+typedef long time_t;
 
 struct tm {
   int tm_sec;     //	int	seconds after the minute	0-61*

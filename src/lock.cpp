@@ -37,28 +37,20 @@ static bool ints_enabled(void) { return readeflags() & 0x200; }
 
 void mutex_lock::lock(void) {
   if (!ints_enabled()) {
-    // panic("Attempt to take a lock '%s' with interrupts disabled", name);
   }
-  // cpu::pushcli();
 
-  INFO("+ locking %s ... ", name);
-  // The xchg is atomic.
-  // It also serializes, so that reads after acquire are not
-  // reordered before it.
   while (xchg(&locked, 1) != 0) {
-    // printk("waiting for %s lock in task %p\n", name, cpu::task());
-    if (cpu::in_thread()) sched::yield();
+    if (!ints_enabled() && cpu::in_thread()) {
+      sched::yield();
+    } else {
+      halt();
+    }
+    // if (cpu::in_thread()) sched::yield();
   }
-  INFO("OK\n");
 }
 
 void mutex_lock::unlock(void) {
-  INFO("- releasing %s ... ", name);
   xchg(&locked, 0);
-
-  INFO("OK\n");
-
-  // cpu::popcli();
 }
 
 bool mutex_lock::is_locked(void) { return locked; }

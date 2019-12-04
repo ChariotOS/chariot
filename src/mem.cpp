@@ -3,6 +3,7 @@
 #include <multiboot.h>
 #include <paging.h>
 #include <phys.h>
+#include <cpu.h>
 #include <printk.h>
 #include <types.h>
 
@@ -174,6 +175,7 @@ void *ksbrk(i64 inc) {
   }
   kheap_size = newsz;
 
+
   return kheap_start + oldsz;
 }
 
@@ -256,8 +258,6 @@ void *kmalloc(u64 size) {
   alloc_lock();
   auto ptr = mm_malloc(size);
   alloc_unlock();
-
-  // printk("kmalloc(%zu) -> %p\n", size, ptr);
   return ptr;
 }
 void kfree(void *ptr) {

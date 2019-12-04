@@ -5,6 +5,9 @@
 long syscall(long number, ...);
 
 
+long __syscall_ret(unsigned long r);
+
+
 
 #define SYS_restart 0
 #define SYS_exit 1

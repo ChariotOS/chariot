@@ -51,7 +51,7 @@ void print_heap(void) {
   auto *c = (blk_t *)((u8 *)kheap_lo() + OVERHEAD);
   for (; (void *)c < kheap_hi(); c = NEXT_BLK(c)) {
     bool free = IS_FREE(c);
-    int blocks = GET_SIZE(c) / 8;
+    int blocks = GET_SIZE(c) / 4;
     for (int b = 0; b < blocks; b++) {
       vga::set_pixel(i + b, free ? 0x00FF00 : 0xAA0000);
     }
@@ -187,10 +187,11 @@ static inline blk_t *attempt_free_fusion(blk_t *this_blk) {
 blk_t *get_next_free(blk_t *curr) {
   curr = NEXT_BLK(curr);
   while (1) {
-    if ((void *)curr >= kheap_hi()) return NULL;
+    if ((void *)curr >= kheap_hi() || (void*)curr < kheap_lo()) return NULL;
     if (IS_FREE(curr)) return curr;
     curr = NEXT_BLK(curr);
   }
+  return NULL;
 }
 
 void mm_free(void *ptr) {

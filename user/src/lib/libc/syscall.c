@@ -18,3 +18,15 @@ long syscall(long num, ...) {
   va_end(ap);
   return __syscall(num, a, b, c, d, e, f);
 }
+
+
+
+long __syscall_ret(unsigned long r)
+{
+	if (r > -4096UL) {
+    // TODO: errno!
+		// errno = -r;
+		return -1;
+	}
+	return r;
+}

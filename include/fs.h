@@ -8,6 +8,8 @@
 #include <lock.h>
 #include <string.h>
 #include <types.h>
+#include <wait.h>
+#include <stat.h>
 
 #define FDIR_READ 1
 #define FDIR_WRITE 2
@@ -92,9 +94,9 @@ struct inode {
    * fields
    */
   off_t size = 0;
-  int type = T_INVA;  // from T_[...] above
-
-  uint32_t ino = 0;  // inode (in systems that support it)
+  short type = T_INVA;  // from T_[...] above
+  short mode = 0;       // file mode. ex: o755
+  uint32_t ino = 0;     // inode (in systems that support it)
   uint32_t uid = 0;
   uint32_t gid = 0;
   uint32_t link_count = 0;
@@ -107,16 +109,11 @@ struct inode {
   // for devices
   int major, minor;
 
-
   // different kinds of inodes need different kinds of data
   union {
     struct {
       // the parent directory, if this node is mounted
       struct inode *mountpoint;
-
-      // directories can have other filesystems mounted in them, so `mounts`
-      // holds any of those mounts in it. If a mount exists by a certain name,
-      // and another directory in this dir has the same name, the mount is given
       struct direntry *entries;
     } dir;
   };
@@ -165,6 +162,10 @@ struct inode {
   virtual ssize_t do_read(filedesc &, void *, size_t);
   virtual ssize_t do_write(filedesc &, void *, size_t);
 
+
+  // can overload!
+  virtual int stat(struct stat*);
+
   static int acquire(struct inode *);
   static int release(struct inode *);
 
@@ -175,6 +176,31 @@ struct inode {
  private:
   struct inode *get_direntry_nolock(string &name);
   struct inode *get_direntry_ino(struct direntry *);
+};
+
+// src/fs/pipe.cpp
+struct pipe : public fs::inode {
+  // uid and gid are the creators of this pipe
+
+  waitqueue wq;
+
+  unsigned int readers;
+  unsigned int writers;
+
+  uint8_t *data = NULL;
+
+  uint32_t write_ind;
+  uint32_t read_ind;
+  uint32_t capacity;
+  uint32_t used_bytes;
+
+  // ctor
+  pipe();
+  virtual ~pipe(void);
+
+  // main interface
+  virtual ssize_t do_read(filedesc &, void *, size_t);
+  virtual ssize_t do_write(filedesc &, void *, size_t);
 };
 
 };  // namespace fs

@@ -83,7 +83,7 @@ void print_tree(struct fs::inode* dir, int depth = 0) {
         [&](const string& name, struct fs::inode* ino) -> bool {
           if (name != "." && name != "..") {
             print_depth(depth);
-            printk("%s [%d]\n", name.get(), ino->ino);
+            printk("%s [ino=%d, sz=%d]\n", name.get(), ino->ino, ino->size);
             if (ino->type == T_DIR) {
               print_tree(ino, depth + 1);
             }
@@ -217,12 +217,7 @@ static int kernel_init_task(void*) {
   auto rootdev = dev::open("ata1");
   init_rootvfs(rootdev);
   // TODO
-  auto root = vfs::open("/", 0);
-
-
-  vfs::fdopen("/tmp");
-
-  print_tree(root);
+  vfs::fdopen("/", 0);
 
   auto proc = task_process::lookup(0);
 
@@ -248,6 +243,11 @@ static int kernel_init_task(void*) {
       KERR("failed to cmdpid init process\n");
     }
   }
+
+  while (1) {
+    sched::yield();
+  }
+
 
   int r = 0;
   while (1) {

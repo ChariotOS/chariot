@@ -171,7 +171,7 @@ static void unknown_exception(int i, struct task_regs *tf) {
 
 static void gpf_handler(int i, struct task_regs *tf) {
   // TODO: die
-  KERR("pid %d, tid %d died from GPF (err=%p)\n", cpu::task()->pid, cpu::task()->tid, tf->err);
+  KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", cpu::task()->pid, cpu::task()->tid, tf->eip, tf->err);
   sched::block();
 }
 
@@ -212,6 +212,7 @@ static void pgfault_handle(int i, struct task_regs *tf) {
     if (res == -1) {
       // TODO:
       KERR("pid %d, tid %d segfaulted @ %p\n", proc->pid, cpu::task()->tid, tf->eip);
+      KERR("       bad address = %p\n", read_cr2());
       // XXX: just block, cause its an easy way to get the proc to stop running
       sched::block();
     }

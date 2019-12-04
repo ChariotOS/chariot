@@ -1,29 +1,37 @@
 #include <chariot.h>
+#include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
+#include <unistd.h>
 
-void fail() {
-  while (1) {
-  }
-}
-
-int main(int argc, char **argv) {
-
+int spawn_proc(char *bin) {
   int pid = spawn();
 
   if (pid == -1) {
-    printf("failed to spawn!\n");
+    return -1;
   }
-  printf("starting test\n");
-  char *cmd[] = {"/bin/test", 0};
+  char *cmd[] = {bin, 0};
   int res = cmdpidv(pid, cmd[0], cmd);
   if (res != 0) {
-    printf("failed to cmd, reason = %d\n", res);
+    return -1;
   }
 
-  while (1) {
-  }
+  return pid;
+}
+
+int main(int argc, char **argv) {
+  int fd = open("/etc/passwd", O_RDONLY);
+
+  char buf[500];
+  int n = read(fd, buf, 255);
+
+  // write to stdout
+  write(1, buf, n);
+  syscall(SYS_close, fd);
+
+  while (1) {}
 }
 

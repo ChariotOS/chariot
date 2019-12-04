@@ -103,11 +103,12 @@ struct task_process : public refcounted<struct task_process> {
 
   // per-process flags (PF_*)
   unsigned long flags = 0;
-
   int spawn_flags = 0;
-
   // execution ring (0 for kernel, 3 for user)
   int ring;
+
+
+  uint64_t create_tick = 0;
 
   /* address space information */
   vm::addr_space mm;
@@ -155,6 +156,10 @@ struct task_process : public refcounted<struct task_process> {
 
   // syscall interfaces
   int open(const char *path, int flags, int mode);
+
+  int read(int fd, void *dst, size_t sz);
+
+  int close(int fd);
 };
 
 /**

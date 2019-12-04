@@ -7,6 +7,7 @@
 #include <string.h>
 #include <syscalls.h>
 #include <vm.h>
+#include <stat.h>
 
 #define RING_KERNEL 0
 #define RING_USER 3
@@ -56,6 +57,12 @@ pid_t getpid(void);
 pid_t gettid(void);
 
 int pctl(int pid, int request, u64 arg);
+
+
+
+int stat(const char *pathname, struct stat *statbuf);
+int fstat(int fd, struct stat *statbuf);
+int lstat(const char *pathname, struct stat *statbuf);
 
 
 

@@ -1,11 +1,11 @@
 #include <asm.h>
+#include <cpu.h>
 #include <dev/serial.h>
-#include <printk.h>
 #include <lock.h>
+#include <printk.h>
 #include <string.h>
 #include <types.h>
 #include <vga.h>
-#include <cpu.h>
 
 // define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H ...) to include the
 // printf_config.h header file
@@ -863,7 +863,7 @@ static int _vsnprintf(out_fct_type out, char *buffer, const size_t maxlen,
 
       case 'p': {
         width = sizeof(void *) * 2U;
-        flags |= FLAGS_ZEROPAD; // | FLAGS_UPPERCASE;
+        flags |= FLAGS_ZEROPAD;  // | FLAGS_UPPERCASE;
 #if defined(PRINTF_SUPPORT_LONG_LONG)
         const bool is_ll = sizeof(uintptr_t) == sizeof(long long);
         if (is_ll) {
@@ -904,18 +904,11 @@ static int _vsnprintf(out_fct_type out, char *buffer, const size_t maxlen,
 ///////////////////////////////////////////////////////////////////////////////
 
 int printk(const char *format, ...) {
-
-  // cpu::pushcli();
-  // static mutex_lock lk("printk");
-  // lk.lock();
   va_list va;
   va_start(va, format);
   char buffer[1];
   const int ret = _vsnprintf(_out_char, buffer, (size_t)-1, format, va);
   va_end(va);
-
-  // cpu::popcli();
-  // lk.unlock();
   return ret;
 }
 
@@ -1284,4 +1277,14 @@ int string::scan(const char *fmt, ...) {
   i = vsscanf(this->get(), fmt, args);
   va_end(args);
   return i;
+}
+
+time_logger::time_logger(const char *const name) : name(name) {
+  start = cpu::get_ticks();
+}
+
+time_logger::~time_logger(void) {
+  cpu::pushcli();
+  KWARN("[%s] %ld ticks\n", name, cpu::get_ticks() - start);
+  cpu::popcli();
 }

@@ -1,6 +1,7 @@
 #include <process.h>
+#include <cpu.h>
 
 int sys::close(int fd) {
-  panic("IMPL %s\n", __PRETTY_FUNCTION__);
-  return -ENOTIMPL;
+  auto proc = cpu::proc().get();
+  return proc->close(fd);
 }

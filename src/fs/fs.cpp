@@ -225,3 +225,29 @@ int fs::inode::release(struct inode *in) {
   in->lock.unlock();
   return 0;
 }
+
+
+#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
+int fs::inode::stat(struct stat *buf) {
+
+  if (buf != NULL) {
+    buf->st_dev = -1;
+    buf->st_ino = ino;
+    buf->st_mode = mode;
+    buf->st_nlink = link_count;
+    buf->st_uid = uid;
+    buf->st_gid = gid;
+    buf->st_rdev = -1;
+    buf->st_size = size;
+
+
+    // TODO?
+    buf->st_blocks = round_up(size, 512) / 512;
+    buf->st_blksize = 512;
+
+    // TODO: time
+    return 0;
+  }
+
+  return -1;
+}

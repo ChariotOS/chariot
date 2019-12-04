@@ -1,12 +1,10 @@
 #include <cpu.h>
-#include <pctl.h>
-#include <process.h>
 #include <elf/image.h>
 #include <paging.h>
-
+#include <pctl.h>
+#include <process.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
-
 
 pid_t do_spawn(void) {
   assert(cpu::in_thread());
@@ -81,42 +79,117 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
 
   u64 entry_address = 0;
 
-  // TODO: avoid reading the entire elf file :)
-  auto sz = file->size;
-  auto buf = kmalloc(sz);
   auto fd = fs::filedesc(file, FDIR_READ);
-  int nread = fd.read(buf, sz);
-  elf::image im((u8 *)buf, nread);
 
-  if (!im.valid()) {
-    kfree(buf);
-    return -1;
-  }
+  {
+    static const char elf_header[] = {0x7f, 0x45, 0x4c, 0x46};
+    // LOG_TIME;
 
-  for (int i = 0; i < im.section_count(); i++) {
-    auto sec = im.get_section(i);
+    Elf64_Ehdr hdr;
 
-    // probably not the best thing to do, but I'm not really sure
-    if (sec.address() == 0) continue;
+    fd.seek(0, SEEK_SET);
+    int header_read = fd.read(&hdr, sizeof(hdr));
 
-    auto name = string::format("%s(%s)", abs_path, sec.name());
+    // verify the header
+    bool invalid = false;
 
-    // KWARN("%s at %p\n", name.get(), sec.address());
-    // if the segment needs to be loaded
-    if (sec.type() == PT_LOAD) {
-      // map it
-      newproc->mm.map_file(move(name), file, sec.address(), sec.offset(),
-                           sec.size(), PTE_W | PTE_U | PTE_P);
-    } else if (sec.type() == 8 /* TODO: investigate BSS type*/) {
-      int pages = round_up(sec.size(), 4096) >> 12;
-      auto reg = make_ref<vm::memory_backing>(pages);
-      newproc->mm.add_mapping(move(name), sec.address(), pages * PGSIZE,
-                              move(reg), PTE_W | PTE_U);
+    if (!invalid && header_read != sizeof(hdr)) invalid = true;
+
+    if (!invalid) {
+      for (int i = 0; i < 4; i++) {
+        if (hdr.e_ident[i] != elf_header[i]) {
+          invalid = true;
+          break;
+        }
+      }
     }
-  }
-  entry_address = im.header().e_entry;
 
-  kfree(buf);
+    if (invalid) {
+      return -1;
+    }
+
+    // the binary is valid, so lets read the headers!
+    entry_address = hdr.e_entry;
+
+    Elf64_Shdr *sec_hdrs;
+
+    sec_hdrs = new Elf64_Shdr[hdr.e_shnum];
+
+    fd.seek(hdr.e_shoff, SEEK_SET);
+    auto sec_expected = hdr.e_shnum * sizeof(*sec_hdrs);
+    auto sec_read = fd.read(sec_hdrs, sec_expected);
+    if (sec_read != sec_expected) {
+      delete[] sec_hdrs;
+      return -1;
+    }
+
+    delete[] sec_hdrs;
+
+    if (true) {
+      Elf64_Phdr *prog_hdrs;
+      // read program headers
+      prog_hdrs = new Elf64_Phdr[hdr.e_phnum];
+      fd.seek(hdr.e_phoff, SEEK_SET);
+      auto hdrs_size = hdr.e_phnum * hdr.e_phentsize;
+      auto hdrs_read = fd.read(prog_hdrs, hdrs_size);
+      if (hdrs_read != hdrs_size) {
+        delete[] prog_hdrs;
+        return -1;
+      }
+
+      int err = 0;
+
+      for (int i = 0; i < hdr.e_phnum; i++) {
+        auto &sec = prog_hdrs[i];
+
+        switch (sec.p_type) {
+          case PT_LOAD:
+            newproc->mm.map_file("name_me", file, sec.p_vaddr, sec.p_offset,
+                                 sec.p_filesz, PTE_W | PTE_U | PTE_P);
+            break;
+          default:
+            // printk("unhandled program header %d\n", sec.p_type);
+            break;
+        }
+      }
+      delete[] prog_hdrs;
+
+      if (err != 0) {
+
+      }
+    }
+
+    /*
+    for (int i = 0; i < hdr.e_shnum; i++) {
+      auto &sec = sec_hdrs[i];
+
+      printk("sect header %d, 0x%x  ", i, sec.sh_type);
+
+      printk("%p-%p %d\n", sec.sh_addr, sec.sh_addr + sec.sh_size, sec.sh_size);
+
+      switch (sec.sh_type) {
+        // load program data in
+        case SHT_PROGBITS:
+          // load in program data
+          break;
+
+        // bss data
+        case SHT_NOBITS: {
+          int pages = round_up(sec.sh_size, 4096) >> 12;
+          auto reg = make_ref<vm::memory_backing>(pages);
+          newproc->mm.add_mapping(".bss", sec.sh_addr, pages * PGSIZE,
+                                  move(reg), PTE_W | PTE_U);
+        }
+
+        break;
+
+        default:
+          // dunno...
+          break;
+      }
+    }
+    */
+  }
 
   u64 stack = 0;
 
@@ -137,7 +210,6 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
 
   int tid = newproc->create_task(nullptr, 0, nullptr, PS_EMBRYO);
 
-  cpu::pushcli();
   auto t = task::lookup(tid);
 
   // t->tf->rdi = (u64)u_argc;
@@ -147,8 +219,6 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
   t->tf->esp = stack;
   t->tf->eip = entry_address;
   t->state = PS_RUNNABLE;
-
-  cpu::popcli();
 
   proc->nursery.remove(nursery_index);
 

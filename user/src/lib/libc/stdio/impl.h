@@ -8,11 +8,9 @@
 #define UNGET 8
 
 #define FFINALLOCK(f) ((f)->lock >= 0 ? __lockfile((f)) : 0)
-#define FLOCK(f) int __need_unlock = ((f)->lock >= 0 ? __lockfile((f)) : 0)
-#define FUNLOCK(f)                        \
-  do {                                    \
-    if (__need_unlock) __unlockfile((f)); \
-  } while (0)
+
+#define FLOCK(f)
+#define FUNLOCK(f)
 
 #define F_PERM 1
 #define F_NORD 4
@@ -46,8 +44,5 @@ struct _FILE_IMPL {
 };
 
 
-#define FLOCK(fp)
-
-#define FUNLOCK(fp)
 
 #endif

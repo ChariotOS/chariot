@@ -8,9 +8,9 @@ mkdir -p bin
 mkdir -p lib
 
 for lib in $LIBS; do
-	LIB=lib/$lib.a
+	LIB=lib/$lib.so
 	# echo "[USER] Building $prog"
-	make lib DIR=src/lib/$prog LIB=$LIB
+	make lib DIR=src/lib/$prog LIB=$LIB # MOREFLAGS=-fpic
 done
 
 

@@ -4,8 +4,8 @@
 #include <phys.h>
 #include <printk.h>
 #include <sched.h>
-#include <template_lib.h>
 #include <task.h>
+#include <template_lib.h>
 
 extern "C" void user_task_create_callback(void) {
   if (cpu::proc()->tasks.size() == 1) {
@@ -33,7 +33,6 @@ extern "C" void user_task_create_callback(void) {
       auto p = STACK_ALLOC(char, arg.len() + 1);
       arg_storage.push(p);
       memcpy(p, arg.get(), arg.len() + 1);
-      // KWARN(" %p %s\n", p, p);
     }
 
     // allocate space for argv
@@ -51,6 +50,7 @@ extern "C" void user_task_create_callback(void) {
     t->tf->rsi = (u64)argv;
     // t->tf->rdx = (u64)argv;
     t->tf->esp = sp;
+
   }
 
   // tf->rdx = u_envp
@@ -175,6 +175,9 @@ ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
   // set the range of virtual memory that the mm can map
   // ... should be enough memory
   p->mm.set_range(0, 0x7ffffffff000);
+  // p->mm.set_range(0, 0x10000000);
+
+  p->create_tick = cpu::get_ticks();
 
   if (p->parent) {
     p->cwd = p->parent->cwd;
@@ -185,7 +188,6 @@ ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
 
   error = 0;
 
-  KINFO("spawned proccess %d\n", p->pid);
 
   return p;
 }
@@ -236,13 +238,10 @@ int task_process::open(const char *path, int flags, int mode) {
     }
   }
 
-
   if (fd == -1) {
     file_lock.unlock();
     return fd;
   }
-
-  printk("open '%s' -> %d\n", path, fd);
 
   auto file = vfs::open(path, flags, mode);
 
@@ -256,6 +255,34 @@ int task_process::open(const char *path, int flags, int mode) {
 
   file_lock.unlock();
   return fd;
+}
+
+int task_process::read(int fd, void *dst, size_t sz) {
+  int n = -1;
+
+  file_lock.lock();
+
+  if (open_files[fd]) {
+    n = open_files[fd].fd->read(dst, sz);
+  }
+
+  file_lock.unlock();
+
+  return n;
+}
+
+int task_process::close(int fd) {
+  int n = -1;
+
+  file_lock.lock();
+
+  if (open_files[fd]) {
+    open_files[fd].clear();
+  }
+
+  file_lock.unlock();
+
+  return n;
 }
 
 task::task(ref<struct task_process> proc) : proc(proc), task_lock("task lock") {

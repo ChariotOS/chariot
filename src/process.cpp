@@ -13,6 +13,8 @@
 #include <util.h>
 #include <vga.h>
 
+
+
 extern "C" void wrmsr(u32 msr, u64 val);
 
 extern "C" void trapret(void);

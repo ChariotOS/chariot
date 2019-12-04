@@ -1,4 +1,4 @@
-global __syscall
+global __syscall:function
 __syscall:
 	;; rotate arguments
 	mov rax, rdi

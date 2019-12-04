@@ -248,6 +248,7 @@ int fs::ext2_inode::block_from_index(int i_block, int set_to) {
 
 int fs::ext2_inode::injest_info(fs::ext2_inode_info &info) {
   size = info.size;
+  mode = info.type & 0xFFF;
   uid = info.uid;
   gid = info.gid;
   link_count = info.hardlinks;
@@ -286,6 +287,8 @@ int fs::ext2_inode::commit_info(void) {
   info.last_access = atime;
   info.create_time = ctime;
   mtime = info.last_modif = dev::RTC::now();
+
+  info.type = (info.type & ~0xFFF) | (mode & 0xFFF);
 
   // ??
   info.delete_time = dtime;

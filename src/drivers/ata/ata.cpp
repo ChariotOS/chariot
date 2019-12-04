@@ -86,7 +86,9 @@ u16 primary_master_bmr_status = 0;
 u16 primary_master_bmr_command = 0;
 
 dev::ata::ata(u16 portbase, bool master) : dev::blk_dev(nullptr) {
-  scoped_lock lck(drive_lock);
+
+
+  drive_lock.lock();
   m_io_base = portbase;
   TRACE;
   sector_size = 512;
@@ -103,10 +105,11 @@ dev::ata::ata(u16 portbase, bool master) : dev::blk_dev(nullptr) {
   control_port = portbase + 0x206;
 
   m_dma_buffer = nullptr;
+  drive_lock.unlock();
 }
 
 dev::ata::~ata() {
-  scoped_lock lck(drive_lock);
+  drive_lock.lock();
   TRACE;
   kfree(id_buf);
   if (m_dma_buffer != 0) {
@@ -121,7 +124,8 @@ void dev::ata::select_device() {
 }
 
 bool dev::ata::identify() {
-  scoped_lock lck(drive_lock);
+  drive_lock.lock();
+
   // select the correct device
   select_device();
   // clear the HOB bit, idk what that is.
@@ -131,7 +135,10 @@ bool dev::ata::identify() {
   u8 status = command_port.in();
 
   // not valid, no device on that bus
-  if (status == 0xFF) return false;
+  if (status == 0xFF) {
+    drive_lock.unlock();
+    return false;
+  }
 
   select_device();
   sector_count_port.out(0);
@@ -144,6 +151,7 @@ bool dev::ata::identify() {
 
   status = command_port.in();
   if (status == 0x00) {
+    drive_lock.unlock();
     return false;
   }
 
@@ -154,6 +162,7 @@ bool dev::ata::identify() {
 
   if (status & 0x01) {
     printk("error identifying ATA drive. status=%02x\n", status);
+    drive_lock.unlock();
     return false;
   }
 
@@ -200,6 +209,7 @@ bool dev::ata::identify() {
     primary_master_bmr_command = bmr_command;
   }
 
+  drive_lock.unlock();
   return true;
 }
 
@@ -331,9 +341,9 @@ ssize_t dev::ata::size() { return sector_size * n_sectors; }
 bool dev::ata::read_block_dma(u32 sector, u8* data) {
   TRACE;
 
-  scoped_lock lck(drive_lock);
-
   if (sector & 0xF0000000) return false;
+
+  drive_lock.lock();
 
   // setup the prdt for DMA
   auto* prdt = static_cast<prdt_t*>(p2v(m_dma_buffer));
@@ -390,6 +400,8 @@ bool dev::ata::read_block_dma(u32 sector, u8* data) {
   // printk("loops: %d\n", i);
 
   memcpy(data, dma_dst, sector_size);
+
+  drive_lock.unlock();
 
   return true;
 }

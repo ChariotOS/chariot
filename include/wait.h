@@ -6,6 +6,9 @@
 
 struct waitqueue_elem {
   void *priv;
+
+  // arbitrary value, typically byte count
+  u32 waiting_on = 0;
   u32 flags;
   struct task *waiter;
 
@@ -16,10 +19,13 @@ struct waitqueue_elem {
  */
 class waitqueue {
  public:
-  waitqueue(const char *);
+  waitqueue(const char * = "generic_waitqueue");
 
-  void wait();
+  void wait(u32 on = 0);
   void notify();
+
+
+  bool should_notify(u32 val);
 
  private:
   // navail is the number of unhandled notifications

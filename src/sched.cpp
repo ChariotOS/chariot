@@ -78,10 +78,19 @@ static void switch_into(struct task *tsk) {
 }
 
 static void schedule() {
-  if (cpu::ncli() != 1) panic("schedule must have ncli == 1");
+
+  auto old_ncli = cpu::ncli();
+
+
+  if (cpu::ncli() > 1) {
+    cpu::current().ncli = 1;
+    // panic("schedule must have ncli == 1, instead ncli = %d", cpu::ncli());
+  }
 
   int intena = cpu::current().intena;
   swtch(&cpu::task()->ctx, cpu::current().sched_ctx);
+
+  cpu::current().ncli = old_ncli;
 
   cpu::current().intena = intena;
 }
@@ -161,7 +170,7 @@ void sched::handle_tick(u64 ticks) {
 
 waitqueue::waitqueue(const char *name) : name(name), lock(name) {}
 
-void waitqueue::wait(void) {
+void waitqueue::wait(u32 on) {
   lock.lock();
 
   if (navail > 0) {
@@ -175,6 +184,7 @@ void waitqueue::wait(void) {
   // add to the wait queue
   struct waitqueue_elem e;
   e.waiter = cpu::task();
+  e.waiting_on = on;
   elems.append(e);
   lock.unlock();
   do_yield(PS_BLOCKED);
@@ -190,4 +200,14 @@ void waitqueue::notify() {
     assert(e.waiter->state == PS_BLOCKED);
     e.waiter->state = PS_RUNNABLE;
   }
+}
+
+bool waitqueue::should_notify(u32 val) {
+  scoped_lock lck(lock);
+  if (!elems.is_empty()) {
+    if (elems.first().waiting_on <= val) {
+      return true;
+    }
+  }
+  return false;
 }

@@ -155,6 +155,21 @@ int vm::addr_space::handle_pagefault(off_t va, int flags) {
     paging::map_into(p4, (u64)p.va, p.pa, paging::pgsize::page, PTE_W | PTE_U);
   }
   pending_mappings.clear();
+
+
+  /*
+  cpu::pushcli();
+  for (auto &r : regions) {
+    off_t start = r->va;
+    off_t end = r->va + r->len;
+    printk("%llx-%llx", start, end);;
+    printk(" r%c ", r->prot & PTE_W ? 'w' : '-');
+
+    printk("\n");
+  }
+  printk("\n");
+  cpu::popcli();
+  */
   return 0;
 }
 
@@ -301,7 +316,6 @@ vm::addr_space::addr_space(void) : lck("addr_space_lock") {
   // allocate a page for the page directory
   cr3 = phys::alloc(1);
 
-  KINFO("new addr_space. cr3=%p\n", cr3);
 }
 
 vm::addr_space::~addr_space(void) { KINFO("destruct addr_space\n"); }

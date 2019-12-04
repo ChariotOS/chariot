@@ -87,3 +87,18 @@ class scope_logger {
   ~scope_logger() { printk("OK\n"); }
 };
 
+
+
+
+
+
+class time_logger {
+  const char *const name;
+  uint64_t start;
+  public:
+    time_logger(const char *const name);
+    ~time_logger(void);
+};
+
+
+#define LOG_TIME time_logger __TLOGGER(__PRETTY_FUNCTION__)

@@ -120,41 +120,26 @@ void cpu::calc_speed_khz(void) {
 // are off, then pushcli, popcli leaves them off.
 
 void cpu::pushcli(void) {
-  // printk("%p\n", s_current);
-  // if (s_current == nullptr) return;
   int eflags;
 
   eflags = readeflags();
   cli();
-  if (current().ncli++ == 0) current().intena = eflags & FL_IF;
+  current().ncli++;
 }
 
 void cpu::popcli(void) {
   // if (s_current == nullptr) return;
   if (readeflags() & FL_IF) panic("popcli - interruptible");
   if (--current().ncli < 0) panic("popcli");
-  if (current().ncli == 0 && current().intena) sti();
+  if (current().ncli == 0) sti();
 }
-
-
 
 static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {
   tss[n * 2 + 1] = rsp;
   tss[n * 2 + 2] = rsp >> 32;
 }
 
-/* TODO: do we need this?
-static void tss_set_ist(u32 *tss, u32 n, u64 ist) {
-  tss[n * 2 + 7] = ist;
-  tss[n * 2 + 8] = ist >> 32;
-}
-*/
-
-
-
 extern "C" void syscall_enter(void);
-
-
 
 #define IA32_LSTAR (0xC0000082)
 void cpu::switch_vm(struct task *tsk) {
@@ -180,25 +165,6 @@ void cpu::switch_vm(struct task *tsk) {
   }
 
   write_cr3((u64)v2p(tsk->proc->mm.cr3));
-
-
-  // setup the systemcall interface
-  // wrmsr(0x174, 0x33);
-  // wrmsr(0x175, (u64)tsk->stack + tsk->stack_size);
-  // wrmsr(0xC0000082, (u64)syscall_enter);
-
-  // tlb_flush();
-
-  // KINFO("SWTCH %d :: %p %p\n", tsk->pid, tsk->proc->mm.cr3, read_cr3());
-
-  /*
-  if (tsk->pid == 1) {
-    printk("rax=%p\n", tsk->tf->rax);
-
-    auto pml4 = (u64 *)p2v(tsk->proc->mm.cr3);
-    paging::dump_page_table(pml4);
-  }
-  */
 
   cpu::popcli();
 }
