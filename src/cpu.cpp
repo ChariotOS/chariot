@@ -120,9 +120,7 @@ void cpu::calc_speed_khz(void) {
 // are off, then pushcli, popcli leaves them off.
 
 void cpu::pushcli(void) {
-  int eflags;
-
-  eflags = readeflags();
+  // int eflags = readeflags();
   cli();
   current().ncli++;
 }

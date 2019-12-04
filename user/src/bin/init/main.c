@@ -25,6 +25,8 @@ int spawn_proc(char *bin) {
 int main(int argc, char **argv) {
   int fd = open("/etc/passwd", O_RDONLY);
 
+  printf("fd=%d\n", fd);
+
   char buf[500];
   int n = read(fd, buf, 255);
 

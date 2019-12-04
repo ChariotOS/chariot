@@ -24,6 +24,7 @@ pid_t do_spawn(void) {
 }
 
 static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
+
   auto proc = cpu::proc().get();
 
   if (proc->pid != 0) {
@@ -64,6 +65,7 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
       break;
     }
   }
+  
 
   if (!valid_pid) return -1;
 
@@ -95,6 +97,7 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
 
     if (!invalid && header_read != sizeof(hdr)) invalid = true;
 
+    // check the elf header identifier
     if (!invalid) {
       for (int i = 0; i < 4; i++) {
         if (hdr.e_ident[i] != elf_header[i]) {

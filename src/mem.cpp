@@ -1,9 +1,9 @@
+#include <cpu.h>
 #include <lock.h>
 #include <mem.h>
 #include <multiboot.h>
 #include <paging.h>
 #include <phys.h>
-#include <cpu.h>
 #include <printk.h>
 #include <types.h>
 
@@ -61,6 +61,7 @@ void init_mmap(u64 mbd) {
     panic("ERROR: Unaligned multiboot info struct\n");
   }
 
+  /*
   const char *names[] = {
       "UNKNOWN",
       [MULTIBOOT_MEMORY_AVAILABLE] = "AVAILABLE",
@@ -69,8 +70,9 @@ void init_mmap(u64 mbd) {
       [MULTIBOOT_MEMORY_NVS] = "NVS      ",
       [MULTIBOOT_MEMORY_BADRAM] = "BAD RAM  ",
   };
-
   printk("  - MEMORY:\n");
+  */
+
 
   for (auto *mmap =
            (multiboot_memory_map_t *)(u64)multiboot_info_ptr->mmap_addr;
@@ -87,8 +89,8 @@ void init_mmap(u64 mbd) {
     memory_map[n].len = end - start;
     memory_map[n].type = mmap->type;
 
-    KINFO("%s %-6lx:%-16lx (%zu bytes)\n", names[mmap->type],
-          start,end, end - start);
+    // KINFO("%s %-6lx:%-16lx (%zu bytes)\n", names[mmap->type], start,end, end
+    // - start);
 
     total_mem += end - start;
 
@@ -113,11 +115,13 @@ void init_mmap(u64 mbd) {
     ++n;
   }
 
+  /*
   KINFO("\n");
   KINFO("  - total:    %zu\n", total_mem);
   KINFO("  - usable:   %zu\n", mm_info.total_mem);
   KINFO("  - reserved: %zu\n", total_mem - mm_info.total_mem);
   KINFO("\n");
+  */
 }
 
 size_t mem_size() { return mm_info.total_mem; }
@@ -175,7 +179,6 @@ void *ksbrk(i64 inc) {
   }
   kheap_size = newsz;
 
-
   return kheap_start + oldsz;
 }
 
@@ -184,7 +187,6 @@ extern int mm_init(void);
 static void *kernel_page_table;
 
 void init_kernel_virtual_memory() {
-
   u64 page_step = PAGE_SIZE;
   auto page_size = paging::pgsize::page;
 
@@ -208,7 +210,6 @@ void init_kernel_virtual_memory() {
 
   kernel_page_table = p2v(new_cr3);
 
-
   off_t lo = 0;
   off_t hi = 0;
   while (1) {
@@ -221,7 +222,6 @@ void init_kernel_virtual_memory() {
 
   mm_info.vmlo = (off_t)p2v(lo);
   mm_info.vmhi = (off_t)p2v(hi);
-
 
   kheap_start = (u8 *)p2v(i);
   kheap_size = 0;
