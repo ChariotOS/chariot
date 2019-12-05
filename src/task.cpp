@@ -50,7 +50,6 @@ extern "C" void user_task_create_callback(void) {
     t->tf->rsi = (u64)argv;
     // t->tf->rdx = (u64)argv;
     t->tf->esp = sp;
-
   }
 
   // tf->rdx = u_envp
@@ -188,7 +187,6 @@ ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
 
   error = 0;
 
-
   return p;
 }
 
@@ -287,6 +285,9 @@ int task_process::close(int fd) {
 
 task::task(ref<struct task_process> proc) : proc(proc), task_lock("task lock") {
   fpu_state = kmalloc(512);
+
+  // default to the highest priority to maximize responsiveness of new tasks
+  priority = PRIORITY_HIGH;
 }
 
 task::~task() {

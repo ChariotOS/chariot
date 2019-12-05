@@ -16,15 +16,11 @@ bool init(void);
 
 bool enabled();
 
-#define PRIORITY_IDLE 1
-#define PRIOIRTY_LOW 10
-#define PRIORITY_NORMAL 25
-#define PRIORITY_HIGH 100
-
-struct create_opts {
-  int timeslice = 1;
-  int priority = PRIORITY_NORMAL;
-};
+// there are 10+1 priorities, HIGH = 10, LOW = 1, IDLE = 0
+#define PRIORITY_HIGH 10
+#define PRIORITY_NORM 5
+#define PRIORITY_LOW 1
+#define PRIORITY_IDLE 0
 
 process &kernel_proc(void);
 

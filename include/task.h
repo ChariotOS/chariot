@@ -180,6 +180,10 @@ struct task final : public refcounted<task> {
   // where the FPU info is saved
   void *fpu_state;
 
+  // the current priority of this task
+  int priority;
+  bool is_idle_thread = false;
+
   bool fpu_initialized = false;
 
   /* per-task flasg (uses PF_* macros)*/

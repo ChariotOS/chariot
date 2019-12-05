@@ -177,8 +177,12 @@ static void kmain2(void) {
   kproc0->create_task(kernel_init_task, PF_KTHREAD, nullptr);
 
   // a descrete idle task has to be added so that the scheduler always has work
-  // to do
-  kproc0->create_task(idle_task, PF_KTHREAD, nullptr);
+  // to do. This thread is marked as idle as well as not to be promoted in the
+  // mlfq scheduler
+  auto idle_tid = kproc0->create_task(idle_task, PF_KTHREAD, nullptr);
+  auto idle = task::lookup(idle_tid);
+  idle->priority = PRIORITY_IDLE;
+  idle->is_idle_thread = true;
 
   KINFO("starting scheduler\n");
   sti();
@@ -247,7 +251,6 @@ static int kernel_init_task(void*) {
   while (1) {
     sched::yield();
   }
-
 
   int r = 0;
   while (1) {
