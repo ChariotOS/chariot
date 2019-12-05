@@ -8,6 +8,9 @@
 #include <wait.h>
 
 // #define SCHED_DEBUG
+//
+
+#define TIMESLICE_MIN 4
 
 #ifdef SCHED_DEBUG
 #define INFO(fmt, args...) printk("[SCHED] " fmt, ##args)
@@ -37,12 +40,29 @@ struct mlfq_entry {
   struct task *last_task;
   int priority;
 
+  long ntasks = 0;
+  long timeslice = 0;
+
   mutex_lock queue_lock;
 };
 
 static mutex_lock mlfq_lock("sched::mlfq");
-// 11 arbitrary entries
-static struct mlfq_entry mlfq[PRIORITY_HIGH + 1 /* for IDLE at 0 */];
+
+static struct mlfq_entry mlfq[SCHED_MLFQ_DEPTH];
+
+bool sched::init(void) {
+  // initialize the mlfq
+  for (int i = 0; i < SCHED_MLFQ_DEPTH; i++) {
+    auto &Q = mlfq[i];
+    Q.task_queue = NULL;
+    Q.last_task = NULL;
+    Q.priority = i;
+    Q.ntasks = 0;
+
+    Q.timeslice = 2;
+  }
+  return true;
+}
 
 static struct task *next_task(void) {
   // the queue is a singly linked list, so we need to
@@ -50,25 +70,21 @@ static struct task *next_task(void) {
   // remove the one we want to run from it
   struct task *nt = nullptr;
 
-  for (int i = PRIORITY_HIGH; i >= 0; i--) {
+  for (int i = SCHED_MLFQ_DEPTH; i >= 0; i--) {
     auto &Q = mlfq[i];
 
     Q.queue_lock.lock();
-
 
     for (auto *t = Q.task_queue; t != NULL; t = t->next) {
       if (t->state == PS_RUNNABLE) {
         nt = t;
         // remove from the queue
-        if (t->prev != NULL)
-          t->prev->next = t->next;
-
-        if (t->next != NULL)
-          t->next->prev = t->prev;
-
+        if (t->prev != NULL) t->prev->next = t->next;
+        if (t->next != NULL) t->next->prev = t->prev;
         if (Q.task_queue == t) Q.task_queue = t->next;
         if (Q.last_task == t) Q.last_task = t->prev;
 
+        Q.ntasks--;
         t->prev = NULL;
         t->next = NULL;
 
@@ -86,16 +102,6 @@ static struct task *next_task(void) {
   return nt;
 }
 
-bool sched::init(void) {
-  // initialize the mlfq
-  for (int i = 0; i < PRIORITY_HIGH; i++) {
-    mlfq[i].task_queue = NULL;
-    mlfq[i].last_task = NULL;
-    mlfq[i].priority = i;
-  }
-  return true;
-}
-
 // add a task to a mlfq entry based on tsk->priority
 int sched::add_task(struct task *tsk) {
   // clamp the priority to the two bounds
@@ -104,6 +110,8 @@ int sched::add_task(struct task *tsk) {
 
   auto &Q = mlfq[tsk->priority];
 
+  // the task inherits the timeslice from the queue
+  tsk->timeslice = Q.timeslice;
   // only lock this queue.
   Q.queue_lock.lock();
 
@@ -115,7 +123,6 @@ int sched::add_task(struct task *tsk) {
     tsk->next = NULL;
     tsk->prev = NULL;
   } else {
-
     // insert at the end of the list
     Q.last_task->next = tsk;
     tsk->next = NULL;
@@ -123,6 +130,9 @@ int sched::add_task(struct task *tsk) {
     // the new task is the end
     Q.last_task = tsk;
   }
+
+  Q.ntasks++;
+
   Q.queue_lock.unlock();
   return 0;
 }
@@ -173,8 +183,6 @@ static void do_yield(int st) {
   if (cpu::get_ticks() - tsk->start_tick >= tsk->timeslice) {
     // uh oh, we used up the timeslice, drop the priority!
     if (!tsk->is_idle_thread) tsk->priority--;
-  } else {
-    if (!tsk->is_idle_thread) tsk->priority++;
   }
 
   cpu::task()->state = st;
@@ -192,9 +200,7 @@ void sched::exit() { do_yield(PS_ZOMBIE); }
 static void schedule_one() {
   auto tsk = next_task();
 
-
   if (tsk == nullptr) {
-    halt();
     // idle loop when there isn't a task
     return;
   }
@@ -211,8 +217,66 @@ static void schedule_one() {
 }
 
 void sched::run() {
+  // re-calculated later using ''math''
+  int boost_interval = 500;
+  u64 last_boost = 0;
+
   for (;;) {
     schedule_one();
+
+    auto ticks = cpu::get_ticks();
+
+
+    // every S ticks or so, boost the processes at the bottom of the queue into
+    // the top
+    if (ticks - last_boost > boost_interval) {
+      last_boost = ticks;
+      int nmoved = 0;
+
+      auto &HI = mlfq[PRIORITY_HIGH];
+
+      HI.queue_lock.lock();
+      for (int i = 0; i < PRIORITY_HIGH /* skipping HIGH */; i++) {
+        auto &Q = mlfq[i];
+
+        Q.queue_lock.lock();
+
+        auto loq = Q.task_queue;
+
+        if (loq != NULL) {
+          for (auto *c = loq; c != NULL; c = c->next) {
+            if (!c->is_idle_thread) c->priority = PRIORITY_HIGH;
+          }
+
+          // take the entire queue and add it to the end of the HIGH queue
+          if (HI.task_queue != NULL) {
+            assert(HI.last_task != NULL);
+            HI.last_task->next = loq;
+            loq->prev = HI.last_task;
+
+            // inherit the last task from the old Q
+            HI.last_task = Q.last_task;
+          } else {
+            assert(HI.ntasks == 0);
+            HI.task_queue = Q.task_queue;
+            HI.last_task = Q.last_task;
+          }
+
+          HI.ntasks += Q.ntasks;
+          nmoved += Q.ntasks;
+
+          // zero out this queue
+          Q.task_queue = Q.last_task = NULL;
+          Q.ntasks = 0;
+        }
+
+        Q.queue_lock.unlock();
+      }
+      boost_interval = 500;
+      // TODO: calculate a new boost interval here.
+
+      HI.queue_lock.unlock();
+    }
   }
   panic("scheduler should not have gotten back here\n");
 }

@@ -23,17 +23,26 @@ int spawn_proc(char *bin) {
 }
 
 int main(int argc, char **argv) {
-  int fd = open("/etc/passwd", O_RDONLY);
+  for (int i = 0; i < 3; i++) {
+    spawn_proc("/bin/test");
+  }
 
-  printf("fd=%d\n", fd);
+  int i = 0;
 
-  char buf[500];
-  int n = read(fd, buf, 255);
+  while (1) {
+    int fd = open("/etc/passwd", O_RDONLY);
+    printf("%-4d: ", i++);
 
-  // write to stdout
-  write(1, buf, n);
-  syscall(SYS_close, fd);
+    char buf[500];
+    int n = read(fd, buf, 255);
 
-  while (1) {}
+    // write to stdout
+    write(1, buf, n);
+    syscall(SYS_close, fd);
+  }
+
+  while (1) {
+    printf("hello\n");
+  }
 }
 

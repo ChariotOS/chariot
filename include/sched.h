@@ -17,9 +17,8 @@ bool init(void);
 bool enabled();
 
 // there are 10+1 priorities, HIGH = 10, LOW = 1, IDLE = 0
-#define PRIORITY_HIGH 10
-#define PRIORITY_NORM 5
-#define PRIORITY_LOW 1
+#define SCHED_MLFQ_DEPTH 10
+#define PRIORITY_HIGH (SCHED_MLFQ_DEPTH - 1)
 #define PRIORITY_IDLE 0
 
 process &kernel_proc(void);

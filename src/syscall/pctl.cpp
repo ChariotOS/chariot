@@ -20,6 +20,8 @@ pid_t do_spawn(void) {
 
   proc->nursery.push(p->pid);
 
+  printk("spawned %d!\n", p->pid);
+
   return p->pid;
 }
 
