@@ -60,10 +60,10 @@ bool dev::mbr::parse(void) {
 
 u32 dev::mbr::part_count(void) { return m_partitions.size(); }
 
-unique_ptr<dev::blk_dev> dev::mbr::partition(u32 index) {
+ref<dev::blk_dev> dev::mbr::partition(u32 index) {
   assert(index < part_count());
 
   auto info = m_partitions[index];
 
-  return make_unique<dev::partition>(m_disk, info.off, info.len);
+  return make_ref<dev::partition>(m_disk, info.off, info.len);
 }

@@ -2,53 +2,121 @@
 
 # sync the root filesystem into build/root.img
 
+die() {
+    echo "die: $*"
+    exit 1
+}
+
+
 IMG=build/root.img
-MOUNTPOINT=build/mnt
+mnt=build/mnt
 DISK_SIZE_MB=64
 
-rm -rf $IMG
+
+disk_exists=0
+
+if [ -f "$IMG" ]; then
+	disk_exists=1
+fi
 
 
-# create the disk image file
-dd if=/dev/zero of=$IMG bs=1M count=$DISK_SIZE_MB
+if [ $disk_exists -eq '0' ]; then
+	# create the disk image file
+	dd if=/dev/zero of=$IMG bs=1M count=$DISK_SIZE_MB || die "can't create disk image"
+	chown 1000:1000 $IMG || die "couldn't adjust permissions on disk image"
+	# set the permissions of the disk image
+	chmod 666 $IMG
+fi
 
-# set the permissions of the disk image
-chmod 666 $IMG
 
-printf "building filesystem..."
-# mkfs.fat -F 16 $IMG
-mkfs.ext2 $IMG
+printf "Creating Loopback Device..."
+dev=$(sudo losetup --find --partscan --show $IMG)
 printf "OK\n"
+echo "loopback device is at ${dev}"
 
-printf "Making the mountpoint..."
-rm -rf build/mnt
-mkdir -p build/mnt
-printf "OK\n"
+cleanup() {
+
+	echo "cleanup"
+	if [ -d $mnt ]; then
+			printf "unmounting filesystem... "
+			sudo umount -f $mnt || ( sleep 1 && sync && sudo umount $mnt )
+			rm -rf $mnt
+			echo "done"
+	fi
+
+	if [ -e "${dev}" ]; then
+			printf "cleaning up loopback device... "
+			sudo losetup -d "${dev}"
+			echo "done"
+	fi
+}
+# clean up when we can
+trap cleanup EXIT
 
 
-sudo umount $MOUNTPOINT
-printf "Mounting the disk, may need sudo...\n"
-sudo mount -o loop $IMG $MOUNTPOINT || exit
-printf "OK\n"
+# only if the disk wasn't created, create the partition map on the new disk
+if [ $disk_exists -eq '0' ]; then
+	printf "creating partition table... "
+	sudo parted -s "${dev}" mklabel msdos mkpart primary ext2 32k 100% -a minimal set 1 boot on || die "couldn't partition disk"
+	echo "done"
+
+	printf "creating new filesystem... "
+	sudo mkfs.ext2 "${dev}"p1 || die "couldn't create filesystem"
+	echo "done"
+fi
 
 
-sudo cp -r mnt/. $MOUNTPOINT/
+printf "mounting... "
+# create the mount dir
+if [ -d $mnt ]; then
+	printf "removing old... "
+	sudo umount -f $mnt
+	rm -rf $mnt
+fi
+mkdir -p $mnt
+echo "mounted."
 
-sudo mkdir -p $MOUNTPOINT/dev
-sudo mkdir -p $MOUNTPOINT/tmp
 
-# sudo mkdir -p $MOUNTPOINT/chariot
-# sudo cp -r src $MOUNTPOINT/chariot/src
-# sudo cp -r include $MOUNTPOINT/chariot/include
+sudo mount ${dev}p1 $mnt/
+
+echo 'removing old filesystem data'
+
+# delete all the directories besides boot/
+echo 'clearing out old filesystem'
+
+for dir in $mnt/*; do
+    [ "$dir" = "$mnt/boot" ] && continue
+		echo "removing $dir"
+		sudo rm -rf "$dir"
+done
+
+
+echo 'copying new filesystem data...'
+sudo cp -r mnt/. $mnt/
+sudo mkdir -p $mnt/dev
+sudo mkdir -p $mnt/tmp
 
 
 # make the user programs
-cd user && ./build.sh
+cd user && ./build.sh 2>/dev/null
 cd ..
 
+sudo cp -r user/bin $mnt/bin
+sudo cp -r user/lib $mnt/lib
+sudo cp -r user/src $mnt/src
 
-sudo cp -r user/bin $MOUNTPOINT/bin
-sudo cp -r user/lib $MOUNTPOINT/lib
-sudo cp -r user/src $MOUNTPOINT/src
 
-sudo umount $MOUNTPOINT
+# install the bootloader (grub, in this case)
+sudo mkdir -p $mnt/boot/grub
+sudo cp grub.cfg $mnt/boot/grub/
+
+# build the kernel and copy it into the boot dir
+make -j
+sudo cp build/vmchariot $mnt/boot/
+
+
+# only install grub on a new disk
+if [ $disk_exists -eq '0' ]; then
+	sudo grub-install --boot-directory=$mnt/boot --target=i386-pc --modules="ext2 part_msdos" "$dev"
+fi
+

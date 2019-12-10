@@ -20,7 +20,7 @@ class mbr {
   // successful. False in any other case
   bool parse(void);
 
-  unique_ptr<dev::blk_dev> partition(u32 index);
+  ref<dev::blk_dev> partition(u32 index);
 
   u32 part_count(void);
 

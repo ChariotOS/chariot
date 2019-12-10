@@ -234,7 +234,9 @@ static int kernel_init_task(void*) {
   KINFO("kernel modules initialized\n");
 
   // open up the disk device for the root filesystem
-  auto rootdev = dev::open("ata1");
+  auto rootdev = dev::open("ata0p0");
+
+  printk("rootdev=%p\n", rootdev.get());
   init_rootvfs(rootdev);
   // TODO
   vfs::fdopen("/", 0);

@@ -12,6 +12,8 @@
 #include <ptr.h>
 #include <sched.h>
 #include <util.h>
+#include <dev/mbr.h>
+
 #include <vga.h>
 #include <wait.h>
 
@@ -436,15 +438,32 @@ class ata_driver : public dev::driver {
 
   virtual const char* name(void) const { return "ATA"; }
 
+
+  inline void add_drive(const string &name, ref<dev::blk_dev> drive) {
+
+      KINFO("Detected ATA drive '%s' (%d,%d) %zu bytes\n", name.get(), MAJOR_ATA,
+            m_disks.size(), drive->size());
+      dev::register_name(name, MAJOR_ATA, m_disks.size());
+      m_disks.push(drive);
+  }
+
   void query_and_add_device(u16 addr, int id, bool master) {
     auto drive = make_ref<dev::ata>(addr, master);
 
     if (drive->identify()) {
       string name = string::format("ata%d", id);
-      KINFO("Detected ATA drive '%s' (%d,%d)\n", name.get(), MAJOR_ATA,
-            m_disks.size());
-      dev::register_name(name, MAJOR_ATA, m_disks.size());
-      m_disks.push(drive);
+
+      // add the main drive
+      add_drive(name, drive);
+
+      // now detect all the mbr partitions
+      dev::mbr mbr(*drive);
+      if (mbr.parse()) {
+        for (int i = 0; i < mbr.part_count(); i++) {
+          auto pname = string::format("%sp%d", name.get(), i);
+          add_drive(pname, mbr.partition(i));
+        }
+      }
     }
   }
 
@@ -458,7 +477,7 @@ class ata_driver : public dev::driver {
     return nullptr;
   }
 
-  vec<ref<dev::ata>> m_disks;
+  vec<ref<dev::blk_dev>> m_disks;
 };
 
 static void ata_init(void) {
