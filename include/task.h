@@ -4,9 +4,9 @@
 #include <fs/vfs.h>
 #include <func.h>
 #include <lock.h>
+#include <map.h>
 #include <types.h>
 #include <vm.h>
-#include <map.h>
 
 #define BIT(n) (1 << (n))
 
@@ -88,7 +88,6 @@ using gid_t = i64;
 #define PS_BLOCKED (2)
 #define PS_EMBRYO (3)
 
-
 struct fd_flags {
   inline operator bool() { return !!fd; }
   void clear();
@@ -106,7 +105,6 @@ struct task_process : public refcounted<struct task_process> {
   int spawn_flags = 0;
   // execution ring (0 for kernel, 3 for user)
   int ring;
-
 
   uint64_t create_tick = 0;
 
@@ -128,7 +126,6 @@ struct task_process : public refcounted<struct task_process> {
   // vector of task ids
   vec<int> tasks;
 
-
   // processes that have been spawned but aren't ready yet
   vec<pid_t> nursery;
 
@@ -147,7 +144,6 @@ struct task_process : public refcounted<struct task_process> {
 
   // initialize the kernel ``process''
   static ref<task_process> kproc_init(void);
-
 
   task_process();
 
@@ -189,6 +185,11 @@ struct task final : public refcounted<task> {
   /* per-task flasg (uses PF_* macros)*/
   unsigned int flags;
 
+  // checked IF this task's state is currently waiting, and the process is
+  // resumed if the flags match the new state of some process. The task_process
+  // owner of this task is what manages this information.
+  int wait_flags = 0;
+
   ref<struct task_process> proc;
 
   /* the current cpu this task is running on */
@@ -198,6 +199,9 @@ struct task final : public refcounted<task> {
 
   // used when an action requires ownership of this task
   mutex_lock task_lock;
+  // so only one scheduler can run the task at a time (TODO: just work around
+  // this possibility)
+  mutex_lock run_lock;
 
   struct task_context *ctx;
   struct task_regs *tf;

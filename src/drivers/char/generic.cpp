@@ -160,8 +160,7 @@ class chardev_driver : public dev::driver {
 };
 
 static void dev_init(void) {
-  auto d = make_ref<chardev_driver>();
-  dev::register_driver(MAJOR_MEM, d);
+  dev::register_driver(MAJOR_MEM, make_unique<chardev_driver>());
 }
 
 module_init("char", dev_init);

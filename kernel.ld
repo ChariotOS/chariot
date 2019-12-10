@@ -13,10 +13,9 @@ KERNEL_VMA = 0xffff880000000000;
 
 SECTIONS
 {
+
 	. = 1M;
-
 	_virt_start = . + KERNEL_VMA;
-
 
   .init : {
 		*(.multiboot)
@@ -31,6 +30,8 @@ SECTIONS
 		phys_mem_scratch = .;
 		. += 0x1000;
   }
+
+
 
 	. += KERNEL_VMA;
 

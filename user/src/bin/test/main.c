@@ -15,13 +15,16 @@ int fib(int i) {
 }
 
 int main(int argc, char **argv, char **envp) {
-  printf("hello, world\n");
-
   int fd = 0;
 
   char buf[255];
 
   while (1) {
+    continue;
+
+
+    fib(40);
+    continue;
 
     for (int i = 0; i < 3; i++) {
       switch (i) {
@@ -32,7 +35,6 @@ int main(int argc, char **argv, char **envp) {
           read(fd, buf, 255);
           break;
         case 2:
-          fib(50);
           syscall(SYS_close, fd);
           break;
       }

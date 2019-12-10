@@ -26,7 +26,7 @@ class driver : public refcounted<driver> {
   inline virtual const char *name(void) const { return "unknown"; }
 };
 
-int register_driver(major_t major, ref<dev::driver>);
+int register_driver(major_t major, unique_ptr<dev::driver>);
 int deregister_driver(major_t major);
 
 int register_name(string name, major_t major, minor_t minor);

@@ -456,7 +456,7 @@ static void dev_init(void) {
   // clear out the buffer...
   while (inb(I8042_STATUS) & I8042_BUFFER_FULL) inb(I8042_BUFFER);
 
-  dev::register_driver(MAJOR_KEYBOARD, make_ref<kbd_driver>());
+  dev::register_driver(MAJOR_KEYBOARD, make_unique<kbd_driver>());
 }
 
 module_init("kbd", dev_init);

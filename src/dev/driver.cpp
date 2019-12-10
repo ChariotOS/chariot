@@ -28,24 +28,37 @@ ref<dev::device> dev::driver::open(major_t, minor_t, int &errcode) {
 
 int dev::driver::release(dev::device *) { return -ENOTIMPL; }
 
-static ref<dev::driver> drivers[MAX_DRIVERS];
+/**
+ * the internal structure of devices
+ */
+struct driver_instance {
+  string name;
+  major_t major;
+  unique_ptr<dev::driver> driver;
+};
 
-int dev::register_driver(major_t major, ref<dev::driver> d) {
+// every device drivers, accessable through their major number
+static map<major_t, struct driver_instance> device_drivers;
+
+
+int dev::register_driver(major_t major, unique_ptr<dev::driver> d) {
   // TODO: take a lock
 
   if (d.get() == nullptr) return -ENOENT;
 
   if (major > MAX_DRIVERS) return -E2BIG;
 
-  if (drivers[major].get() != nullptr) {
-    // if the driver at major is d, then it already exists
-    if (drivers[major] == d) return -EEXIST;
-
-    // the major number was different
-    return -EBUSY;
+  if (device_drivers.contains(major)) {
+    return -EEXIST;
   }
 
-  drivers[major] = d;
+  struct driver_instance inst;
+  inst.name = d->name();
+  inst.major = major;
+  inst.driver = move(d);
+
+  device_drivers[major] = move(inst);
+
 
   return 0;
 }
@@ -55,10 +68,13 @@ int dev::deregister_driver(major_t major) {
 
   if (major > MAX_DRIVERS) return -E2BIG;
 
-  if (drivers[major].get() == nullptr) return -ENOENT;
+  if (device_drivers.contains(major)) {
+    // TODO: call driver::deregister() or something
+    device_drivers.remove(major);
+    return 0;
+  }
 
-  drivers[major] = nullptr;
-  return 0;
+  return -ENOENT;
 }
 
 map<string, dev_t> device_names;
@@ -76,11 +92,9 @@ int dev::deregister_name(string name) {
   return -ENOENT;
 }
 
-
 // main API to opening devices
 
 ref<dev::device> dev::open(string name) {
-
   int err;
 
   if (device_names.contains(name)) {
@@ -102,17 +116,17 @@ ref<dev::device> dev::open(major_t maj, minor_t min) {
 }
 
 ref<dev::device> dev::open(major_t maj, minor_t min, int &errcode) {
+  // TODO: is this needed?
   if (maj > MAX_DRIVERS) {
     errcode = -E2BIG;
     return nullptr;
   }
 
   // TODO: take a lock!
-  if (drivers[maj].get() != nullptr) {
-    // forward errcode to the driver's open code
-    return drivers[maj]->open(maj, min, errcode);
+  if (device_drivers.contains(maj)) {
+    errcode = 0;
+    return device_drivers[maj].driver->open(maj, min, errcode);
   }
-
   // if there wasnt a driver in the major list, return such
   errcode = -ENOENT;
   return nullptr;

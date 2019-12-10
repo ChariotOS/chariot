@@ -34,9 +34,6 @@ SYMS=build/kernel.syms
 ROOTFS=build/root.img
 
 AFLAGS=-f elf64 -w-zext-reloc
-AFLAGS=-f elf64 -w-zext-reloc
-
-
 
 
 default: $(KERNEL)
@@ -96,11 +93,9 @@ clean:
 	rm -rf user/lib
 	rm -rf build
 
-
-
 images: $(ISO) $(ROOTFS)
 
-QEMUOPTS=-hda $(ISO) -m 2G -hdb $(ROOTFS) -gdb tcp::8256
+QEMUOPTS=-hda $(ISO) -smp 4 -m 2G -hdb $(ROOTFS) -gdb tcp::8256
 
 qemu: images
 	qemu-system-x86_64 $(QEMUOPTS) \

@@ -28,6 +28,7 @@
 #include <types.h>
 #include <util.h>
 #include <vec.h>
+#include <set.h>
 #include <vga.h>
 
 extern int kernel_end;
@@ -192,6 +193,15 @@ static void kmain2(void) {
   // [noreturn]
 }
 
+extern "C" char smp_trampoline_start[];
+extern "C" char smp_trampoline_end[];
+
+
+
+
+extern "C" int bios_mmap[16];
+
+
 /**
  * the kernel drops here in a kernel task
  *
@@ -200,13 +210,19 @@ static void kmain2(void) {
 static int kernel_init_task(void*) {
   // TODO: initialize smp
   if (!smp::init()) panic("smp failed!\n");
+
   KINFO("Discovered SMP Cores\n");
+
+
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
   init_pit();
   KINFO("Initialized PIT\n");
   syscall_init();
-  set_pit_freq(1000);
+
+  // initialize the local apic
+  //    (sets up timer interupts)
+  smp::lapic_init();
 
   // initialize the scheduler
   assert(sched::init());
@@ -237,7 +253,7 @@ static int kernel_init_task(void*) {
 
     struct pctl_cmd_args cmdargs {
       .path = (char*)init_args[0], .argc = 1, .argv = (char**)init_args,
-
+        // its up to init to deal with env variables. (probably reading from an initial file or something)
       .envc = 0, .envv = NULL,
     };
 
@@ -248,9 +264,12 @@ static int kernel_init_task(void*) {
     }
   }
 
+  while (1) {
+  }
+
   int r = 0;
   while (1) {
-    int w = 255;
+    int w = 100;
 
     cpu::pushcli();
     u32 color = vga::hsl(r++ / (float)w, 1.0, 0.5);

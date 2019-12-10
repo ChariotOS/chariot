@@ -10,6 +10,7 @@
 #include <task.h>
 #include <types.h>
 #include <vga.h>
+#include <smp.h>
 
 // struct gatedesc idt[NUM_IDT_ENTRIES];
 
@@ -116,11 +117,6 @@ static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
 }
 
 static void interrupt_acknowledge(int i) {
-  if (i < 32) {
-    /* do nothing */
-  } else {
-    pic_ack(i - 32);
-  }
 }
 
 void interrupt_enable(int i) {
@@ -229,7 +225,9 @@ static void tick_handle(int i, struct task_regs *tf) {
   cpu.ticks++;
 
   interrupt_acknowledge(i);
+  smp::lapic_eoi();
   sched::handle_tick(cpu.ticks);
+
 
   return;
 }

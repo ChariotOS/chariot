@@ -462,8 +462,8 @@ class ata_driver : public dev::driver {
 };
 
 static void ata_init(void) {
-  auto d = make_ref<ata_driver>();
-  dev::register_driver(MAJOR_ATA, d);
+  auto d = make_unique<ata_driver>();
+  dev::register_driver(MAJOR_ATA, move(d));
 }
 
 module_init("ata", ata_init);

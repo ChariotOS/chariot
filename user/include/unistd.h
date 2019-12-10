@@ -15,6 +15,9 @@ ssize_t read(int fd, void *buf, size_t count);
 ssize_t write(int fd, const void *buf, size_t count);
 
 
+// does not return, wrapper around pctl(0, PCTL_EXIT);
+void exit(int);
+
 #ifdef __cplusplus
 }
 #endif

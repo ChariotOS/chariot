@@ -23,13 +23,18 @@ int spawn_proc(char *bin) {
 }
 
 int main(int argc, char **argv) {
-  for (int i = 0; i < 3; i++) {
+
+  for (int i = 0; i < 5; i++) {
     spawn_proc("/bin/test");
   }
+
+
+  // pctl(PID_SELF, PCTL_EXIT);
 
   int i = 0;
 
   while (1) {
+    continue;
     int fd = open("/etc/passwd", O_RDONLY);
     printf("%-4d: ", i++);
 
@@ -39,10 +44,6 @@ int main(int argc, char **argv) {
     // write to stdout
     write(1, buf, n);
     syscall(SYS_close, fd);
-  }
-
-  while (1) {
-    printf("hello\n");
   }
 }
 

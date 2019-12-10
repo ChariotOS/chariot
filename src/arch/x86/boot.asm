@@ -107,6 +107,13 @@ high_p2:
 
 
 
+
+
+BOOT_STACK_SIZE equ 256
+boot_stack:
+	;; enough bytes bytes
+	times BOOT_STACK_SIZE db 0
+
 ; the global descriptor table
 gdt:
   ; null selector
@@ -122,7 +129,7 @@ gdtr:
   dq gdt
 
 
-
+;; extern detect_e820_mem
 
 
 
@@ -133,10 +140,22 @@ section .init
 global _start
 _start:
 
+	;; load up the boot stack
+  mov esp, boot_stack + BOOT_STACK_SIZE
+	mov ebp, esp
+
 	;; move the info that grub passes into the kenrel into
 	;; arguments that we will use when calling kmain later
 	mov edi, ebx
 	mov esi, eax
+
+	;; push edi
+	;; push esi
+	;; 
+	;; call detect_e820_mem
+	;; 
+	;; pop esi
+	;; pop edi
 
   ; enable PAE and PSE
   mov eax, cr4
@@ -174,10 +193,6 @@ _start:
 
 ; some 64-bit code in the lower half used to jump to the higher half
 [bits 64]
-
-;; a function implemented in C that is used to identity map memory into the high kernel
-extern boot_stack
-
 .trampoline:
   ; enter the higher half now that we loaded up that half (somewhat)
   mov rax, qword .next
@@ -185,10 +200,8 @@ extern boot_stack
 
 
 
-
-
-
 ; the higher-half code
+[bits 64]
 [section .init_high]
 .next:
  ; re-load the GDTR with a virtual base address
@@ -223,6 +236,8 @@ extern boot_stack
 [section .bss align=STACK_ALIGN]
 stack:
   resb STACK_SIZE
+
+
 
 
 

@@ -192,8 +192,8 @@ class mousedev_driver : public dev::driver {
 };
 
 static void dev_init(void) {
-  mouse_install();
-  dev::register_driver(MAJOR_MOUSE, make_ref<mousedev_driver>());
+  // mouse_install();
+  // dev::register_driver(MAJOR_MOUSE, make_ref<mousedev_driver>());
 }
 
 module_init("mouse", dev_init);

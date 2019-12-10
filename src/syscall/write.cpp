@@ -8,8 +8,10 @@ ssize_t sys::write(int fd, void *data, size_t len) {
     return -1;
   }
 
+  cpu::pushcli();
   for (int i = 0; i < len; i++) {
     printk("%c", ((char *)data)[i]);
   }
+  cpu::popcli();
   return 0;
 }

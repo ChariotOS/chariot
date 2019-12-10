@@ -27,6 +27,15 @@ cpu_state &get_state(void);
 // initialize SMP, but don't IPI to the other CPUs yet.
 bool init(void);
 
+
+void lapic_init(void);
+void lapic_write(int ind, int value);
+void lapic_eoi(void);
+
+void init_cores(void);
+
+int cpunum(void);
+
 // the first field of the floating structure must be this value
 
 // use mp tables, as they are a little easier.

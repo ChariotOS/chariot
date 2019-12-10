@@ -138,6 +138,8 @@ int sched::add_task(struct task *tsk) {
 }
 
 static void switch_into(struct task *tsk) {
+
+  tsk->run_lock.lock();
   cpu::current().current_thread = tsk;
   tsk->ticks++;
   tsk->start_tick = cpu::get_ticks();
@@ -157,6 +159,8 @@ static void switch_into(struct task *tsk) {
 
   asm volatile("fxsave64 (%0);" ::"r"(tsk->fpu_state));
   cpu::current().current_thread = nullptr;
+
+  tsk->run_lock.unlock();
 }
 
 static void schedule() {
@@ -191,10 +195,9 @@ static void do_yield(int st) {
   cpu::popcli();
 }
 
+// helpful functions wrapping different resulting task states
 void sched::block() { do_yield(PS_BLOCKED); }
-
 void sched::yield() { do_yield(PS_RUNNABLE); }
-
 void sched::exit() { do_yield(PS_ZOMBIE); }
 
 static void schedule_one() {
@@ -204,9 +207,7 @@ static void schedule_one() {
     // idle loop when there isn't a task
     return;
   }
-
   cpu::pushcli();
-
   s_enabled = true;
   cpu::current().intena = 1;
   switch_into(tsk);
@@ -218,7 +219,7 @@ static void schedule_one() {
 
 void sched::run() {
   // re-calculated later using ''math''
-  int boost_interval = 500;
+  int boost_interval = 100;
   u64 last_boost = 0;
 
   for (;;) {
@@ -226,10 +227,10 @@ void sched::run() {
 
     auto ticks = cpu::get_ticks();
 
-
     // every S ticks or so, boost the processes at the bottom of the queue into
     // the top
     if (ticks - last_boost > boost_interval) {
+
       last_boost = ticks;
       int nmoved = 0;
 
