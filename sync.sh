@@ -12,8 +12,10 @@ IMG=build/root.img
 mnt=build/mnt
 DISK_SIZE_MB=64
 
+mkdir -p build
 
 disk_exists=0
+
 
 if [ -f "$IMG" ]; then
 	disk_exists=1
@@ -111,9 +113,14 @@ sudo mkdir -p $mnt/boot/grub
 sudo cp grub.cfg $mnt/boot/grub/
 
 # build the kernel and copy it into the boot dir
-make -j
-sudo cp build/vmchariot $mnt/boot/
+make -j || die 'Failed to build the kernel'
+sudo nm -s build/vmchariot | c++filt > build/kernel.syms
 
+sudo cp build/vmchariot $mnt/boot/
+sudo cp build/kernel.syms $mnt/boot/
+
+# create some device nodes
+sudo mknod $mnt/dev/urandom c 1 2
 
 # only install grub on a new disk
 if [ $disk_exists -eq '0' ]; then

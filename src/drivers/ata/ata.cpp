@@ -457,15 +457,19 @@ class ata_driver : public dev::driver {
       add_drive(name, drive);
 
       // now detect all the mbr partitions
-      dev::mbr mbr(*drive);
-      if (mbr.parse()) {
+      if (dev::mbr mbr(*drive); mbr.parse()) {
         for (int i = 0; i < mbr.part_count(); i++) {
-          auto pname = string::format("%sp%d", name.get(), i);
+          auto pname = string::format("ata%dp%d", id, i + 1);
           add_drive(pname, mbr.partition(i));
         }
       }
     }
   }
+
+
+  virtual ssize_t read(minor_t, fs::filedesc &fd, void *buf, size_t sz) {
+    return -1;
+  };
 
   ref<dev::device> open(major_t maj, minor_t min, int& err) {
     // TODO: record custody

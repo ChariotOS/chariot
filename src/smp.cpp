@@ -60,7 +60,7 @@ void smp::lapic_init(void) {
   // TICR would be calibrated using an external time source.
   lapic_write(LAPIC_TDCR, LAPIC_X1);
   lapic_write(LAPIC_TIMER, LAPIC_PERIODIC | (32));
-  lapic_write(LAPIC_TICR, 1000000);
+  lapic_write(LAPIC_TICR, 10000000);
 
   // Disable logical interrupt lines.
   lapic_write(LAPIC_LINT0, LAPIC_MASKED);
@@ -180,14 +180,13 @@ void parse_mp_bus(smp::mp::mp_table_entry_bus *ent) {
 
 void parse_mp_ioapic(smp::mp::mp_table_entry_ioapic *ent) {
   INFO("IOAPIC: %p\n", ent);
-  printk("%p\n", ent->addr);
 }
 
 void parse_mp_ioint(smp::mp::mp_table_entry_ioint *ent) {
-  KINFO("IOINT: %p\n", ent);
-  KINFO("type=%d\n", ent->int_type);
-  KINFO("ioapic_id=%d\n", ent->dst_ioapic_id);
-  KINFO("ioapic_intin=%d\n", ent->dst_ioapic_intin);
+  INFO("IOINT: %p\n", ent);
+  INFO("type=%d\n", ent->int_type);
+  INFO("ioapic_id=%d\n", ent->dst_ioapic_id);
+  INFO("ioapic_intin=%d\n", ent->dst_ioapic_intin);
 }
 
 void parse_mp_lint(smp::mp::mp_table_entry_lint *ent) {
@@ -211,7 +210,7 @@ static void walk_mp_table(smp::mp::mp_table *table, func<void(u8, void *)> fn) {
 static bool parse_mp_table(smp::mp::mp_table *table) {
   lapic = (uint32_t *)p2v((uint64_t)table->lapic_addr);
 
-  printk("lapic=%p\n", lapic);
+  INFO("lapic=%p\n", lapic);
 
   walk_mp_table(table, [&](u8 type, void *mp_entry) {
     switch (type) {
@@ -270,7 +269,7 @@ bool smp::init(void) {
     return false;
   }
 
-  printk("cpunum = %d\n", cpunum());
+  INFO("cpunum = %d\n", cpunum());
 
   // mp table was parsed and loaded into global memory
   INFO("ncpus: %d\n", cpus.size());

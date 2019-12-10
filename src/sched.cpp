@@ -138,7 +138,6 @@ int sched::add_task(struct task *tsk) {
 }
 
 static void switch_into(struct task *tsk) {
-
   tsk->run_lock.lock();
   cpu::current().current_thread = tsk;
   tsk->ticks++;
@@ -197,7 +196,13 @@ static void do_yield(int st) {
 
 // helpful functions wrapping different resulting task states
 void sched::block() { do_yield(PS_BLOCKED); }
-void sched::yield() { do_yield(PS_RUNNABLE); }
+void sched::yield() {
+  // when you yield, you give up the CPU by ''using the rest of your timeslice''
+  // TODO: do this another way
+  auto tsk = cpu::task().get();
+  tsk->start_tick -= tsk->timeslice;
+  do_yield(PS_RUNNABLE);
+}
 void sched::exit() { do_yield(PS_ZOMBIE); }
 
 static void schedule_one() {
@@ -230,7 +235,6 @@ void sched::run() {
     // every S ticks or so, boost the processes at the bottom of the queue into
     // the top
     if (ticks - last_boost > boost_interval) {
-
       last_boost = ticks;
       int nmoved = 0;
 

@@ -1,3 +1,4 @@
+#include <dev/driver.h>
 #include <errno.h>
 #include <fs.h>
 #include <module.h>
@@ -16,6 +17,10 @@ fs::inode::inode(int type) : type(type) {
       break;
 
     case T_FILE:
+      break;
+
+    case T_CHAR:
+    case T_BLK:
       break;
 
     default:
@@ -184,13 +189,29 @@ void fs::inode::walk_direntries(
 }
 
 ssize_t fs::inode::read(filedesc &fd, void *buf, size_t sz) {
+  ssize_t k = -1;
+
+  dev::driver *driver = NULL;
+
+  switch (type) {
+    case T_BLK:
+    case T_CHAR:
+      driver = dev::get(major);
+      if (driver != NULL) {
+        k = driver->read(minor, fd, buf, sz);
+      }
+      break;
+
+    case T_FILE:
+      lock.lock();
+      k = do_read(fd, buf, sz);
+      lock.unlock();
+      break;
+  }
   if (type != T_FILE) {
     return -1;
   }
-  // locking is handled by the base class
-  lock.lock();
-  auto k = do_read(fd, buf, sz);
-  lock.unlock();
+
   return k;
 }
 ssize_t fs::inode::write(filedesc &fd, void *buf, size_t sz) {
@@ -226,10 +247,8 @@ int fs::inode::release(struct inode *in) {
   return 0;
 }
 
-
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 int fs::inode::stat(struct stat *buf) {
-
   if (buf != NULL) {
     buf->st_dev = -1;
     buf->st_ino = ino;
@@ -239,7 +258,6 @@ int fs::inode::stat(struct stat *buf) {
     buf->st_gid = gid;
     buf->st_rdev = -1;
     buf->st_size = size;
-
 
     // TODO?
     buf->st_blocks = round_up(size, 512) / 512;

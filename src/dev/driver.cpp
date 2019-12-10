@@ -40,7 +40,6 @@ struct driver_instance {
 // every device drivers, accessable through their major number
 static map<major_t, struct driver_instance> device_drivers;
 
-
 int dev::register_driver(major_t major, unique_ptr<dev::driver> d) {
   // TODO: take a lock
 
@@ -58,7 +57,6 @@ int dev::register_driver(major_t major, unique_ptr<dev::driver> d) {
   inst.driver = move(d);
 
   device_drivers[major] = move(inst);
-
 
   return 0;
 }
@@ -130,4 +128,12 @@ ref<dev::device> dev::open(major_t maj, minor_t min, int &errcode) {
   // if there wasnt a driver in the major list, return such
   errcode = -ENOENT;
   return nullptr;
+}
+
+dev::driver *dev::get(major_t majr) {
+  // TODO: take a lock
+  if (device_drivers.contains(majr)) {
+    return device_drivers[majr].driver.get();
+  }
+  return NULL;
 }

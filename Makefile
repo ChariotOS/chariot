@@ -70,14 +70,14 @@ build/initrd.tar: build
 	@#tar cvf $@ mnt
 
 
-$(ROOTFS):
+$(ROOTFS): $(KERNEL)
 	./sync.sh
 
 fs:
 	rm -rf $(ROOTFS)
 	make $(ROOTFS)
 
-$(ISO): $(KERNEL) $(SYMS) grub.cfg
+$(ISO): $(KERNEL) grub.cfg
 	mkdir -p build/iso/boot/grub
 	cp ./grub.cfg build/iso/boot/grub
 	cp build/vmchariot build/iso/boot
@@ -93,9 +93,9 @@ clean:
 	rm -rf user/lib
 	rm -rf build
 
-images: $(ISO) $(ROOTFS)
+images: $(ROOTFS)
 
-QEMUOPTS=-hda $(ISO) -smp 4 -m 2G -hdb $(ROOTFS) -gdb tcp::8256
+QEMUOPTS=-hda $(ROOTFS) -smp 4 -m 2G -gdb tcp::8256
 
 qemu: images
 	qemu-system-x86_64 $(QEMUOPTS) \

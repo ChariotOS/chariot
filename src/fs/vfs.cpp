@@ -105,6 +105,8 @@ fs::filedesc vfs::fdopen(string path, int opts, int mode) {
   if (opts & O_WRONLY) fd_dirs |= FDIR_WRITE;
   if (opts & O_RDONLY) fd_dirs |= FDIR_READ;
 
-  fs::filedesc fd(vfs::open(move(path), opts, mode), fd_dirs);
+  auto *ino = vfs::open(move(path), opts, mode);
+
+  fs::filedesc fd(ino, fd_dirs);
   return fd;
 }

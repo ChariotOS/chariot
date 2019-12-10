@@ -1,13 +1,12 @@
 #pragma once
 
 #include <dev/device.h>
+#include <fs.h>
 #include <ptr.h>
 #include <string.h>
 #include <types.h>
 
-
 #define MAX_DRIVERS 255
-
 
 namespace dev {
 
@@ -23,6 +22,16 @@ class driver : public refcounted<driver> {
 
   virtual int release(dev::device *);
 
+  inline virtual ssize_t read(minor_t, fs::filedesc &fd, void *buf, size_t sz) {
+    return -1;
+  }
+  inline virtual ssize_t write(minor_t, fs::filedesc &fd, const void *buf,
+                               size_t sz) {
+    return -1;
+  }
+
+  inline virtual int ioctl(fs::filedesc &fd, int req, size_t arg) { return -1; }
+
   inline virtual const char *name(void) const { return "unknown"; }
 };
 
@@ -35,5 +44,7 @@ int deregister_name(string name);
 ref<dev::device> open(string name);
 ref<dev::device> open(major_t, minor_t);
 ref<dev::device> open(major_t, minor_t, int &errcode);
+
+dev::driver *get(major_t);
 
 };  // namespace dev

@@ -22,13 +22,13 @@
 #include <process.h>
 #include <ptr.h>
 #include <sched.h>
+#include <set.h>
 #include <smp.h>
 #include <string.h>
 #include <task.h>
 #include <types.h>
 #include <util.h>
 #include <vec.h>
-#include <set.h>
 #include <vga.h>
 
 extern int kernel_end;
@@ -82,7 +82,8 @@ void print_tree(struct fs::inode* dir, int depth = 0) {
   if (dir->type == T_DIR) {
     dir->walk_direntries(
         [&](const string& name, struct fs::inode* ino) -> bool {
-          if (name != "." && name != "..") {
+          if (name != "." && name != ".." &&
+              name != "boot" /* it's really noisy */) {
             print_depth(depth);
             printk("%s [ino=%d, sz=%d]\n", name.get(), ino->ino, ino->size);
             if (ino->type == T_DIR) {
@@ -196,11 +197,26 @@ static void kmain2(void) {
 extern "C" char smp_trampoline_start[];
 extern "C" char smp_trampoline_end[];
 
-
-
-
 extern "C" int bios_mmap[16];
 
+static map<off_t, string> symbols;
+
+void parse_ksyms(size_t len, char* buf) {
+  off_t off = 0;
+  while (off < len) {
+    off_t addr = 0;
+    sscanf(buf + off, "%016lx", &addr);
+    char* name = buf + off + 19 /* magic number */;
+
+    while (buf[off] != '\n') {
+      off++;
+    }
+    buf[off] = '\0';
+    symbols[addr] = name;
+    off++;
+  }
+  KINFO("parsed %d symbols out of the kernel\n", symbols.size());
+}
 
 /**
  * the kernel drops here in a kernel task
@@ -212,7 +228,6 @@ static int kernel_init_task(void*) {
   if (!smp::init()) panic("smp failed!\n");
 
   KINFO("Discovered SMP Cores\n");
-
 
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
@@ -234,39 +249,55 @@ static int kernel_init_task(void*) {
   KINFO("kernel modules initialized\n");
 
   // open up the disk device for the root filesystem
-  auto rootdev = dev::open("ata0p0");
-
-  printk("rootdev=%p\n", rootdev.get());
+  auto rootdev = dev::open("ata0p1");
   init_rootvfs(rootdev);
+
   // TODO
   vfs::fdopen("/", 0);
 
-  auto proc = task_process::lookup(0);
+  auto syms = vfs::fdopen("/boot/kernel.syms");
+  struct stat s;
+  syms.m_file->stat(&s);
 
-  // spawn init
-  pid_t init = sys::pctl(0, PCTL_SPAWN, 0);
+  auto buf = kmalloc(s.st_size);
+  syms.read(buf, s.st_size);
+  parse_ksyms(s.st_size, (char*)buf);
+  kfree(buf);
 
-  assert(init != -1);
-
-  if (init != -1) {
-    KINFO("init pid=%d\n", init);
-
-    const char* init_args[] = {"/bin/init", NULL};
-
-    struct pctl_cmd_args cmdargs {
-      .path = (char*)init_args[0], .argc = 1, .argv = (char**)init_args,
-        // its up to init to deal with env variables. (probably reading from an initial file or something)
-      .envc = 0, .envv = NULL,
-    };
-
-    // TODO: setup stdin, stdout, and stderr
-    int res = sys::pctl(init, PCTL_CMD, (u64)&cmdargs);
-    if (res != 0) {
-      KERR("failed to cmdpid init process\n");
+  /*
+  auto urandom = vfs::fdopen("/dev/urandom");
+  if (urandom.m_file != NULL) {
+      char buf[32];
+    while (1) {
+      urandom.read(buf, 32);
+      hexdump(buf, 32);
     }
+  }
+  */
+
+  auto proc = task_process::lookup(0);
+  // spawn the user process
+  pid_t init = sys::pctl(0, PCTL_SPAWN, 0);
+  assert(init != -1);
+  KINFO("init pid=%d\n", init);
+  // launch /bin/init
+  const char* init_args[] = {"/bin/init", NULL};
+
+  struct pctl_cmd_args cmdargs {
+    .path = (char*)init_args[0], .argc = 1, .argv = (char**)init_args,
+    // its up to init to deal with env variables. (probably reading from an
+    // initial file or something)
+        .envc = 0, .envv = NULL,
+  };
+
+  // TODO: setup stdin, stdout, and stderr
+  int res = sys::pctl(init, PCTL_CMD, (u64)&cmdargs);
+  if (res != 0) {
+    KERR("failed to cmdpid init process\n");
   }
 
   while (1) {
+    sched::yield();
   }
 
   int r = 0;

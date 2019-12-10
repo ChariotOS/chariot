@@ -271,6 +271,12 @@ int fs::ext2_inode::injest_info(fs::ext2_inode_info &info) {
       this->register_direntry(de.name, ENT_RES);
       return true;
     });
+  } else if (type == T_CHAR || type == T_BLK) {
+    // parse the major/minor
+    unsigned dev = info.dbp[0];
+    if (!dev) dev = info.dbp[1];
+    major = (dev & 0xfff00) >> 8;
+    minor = (dev & 0xff) | ((dev >> 12) & 0xfff00);
   }
   return 0;
 }

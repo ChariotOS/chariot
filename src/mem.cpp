@@ -61,7 +61,6 @@ void init_mmap(u64 mbd) {
     panic("ERROR: Unaligned multiboot info struct\n");
   }
 
-  /*
   const char *names[] = {
       "UNKNOWN",
       [MULTIBOOT_MEMORY_AVAILABLE] = "AVAILABLE",
@@ -70,8 +69,7 @@ void init_mmap(u64 mbd) {
       [MULTIBOOT_MEMORY_NVS] = "NVS      ",
       [MULTIBOOT_MEMORY_BADRAM] = "BAD RAM  ",
   };
-  printk("  - MEMORY:\n");
-  */
+  KINFO("Physical Memory Map:\n");
 
 
   for (auto *mmap =
@@ -89,8 +87,8 @@ void init_mmap(u64 mbd) {
     memory_map[n].len = end - start;
     memory_map[n].type = mmap->type;
 
-    // KINFO("%s %-6lx:%-16lx (%zu bytes)\n", names[mmap->type], start,end, end
-    // - start);
+
+    KINFO("%zu bytes %s - %lx:%lx\n", end-start, names[mmap->type], start, end);
 
     total_mem += end - start;
 

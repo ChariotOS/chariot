@@ -446,6 +446,12 @@ class kbd_driver : public dev::driver {
 
   virtual const char *name(void) const { return "kbd"; }
 
+
+  virtual ssize_t read(minor_t, fs::filedesc &fd, void *buf, size_t sz) {
+    return -1;
+  };
+
+
  private:
   ref<kbd_dev> m_dev;
 };
