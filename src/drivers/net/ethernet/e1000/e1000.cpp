@@ -474,4 +474,4 @@ void e1000_init(void) {
   }
 }
 
-// module_init("e1000", e1000_init);
+module_init("e1000", e1000_init);
