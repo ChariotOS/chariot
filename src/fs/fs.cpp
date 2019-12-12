@@ -208,10 +208,6 @@ ssize_t fs::inode::read(filedesc &fd, void *buf, size_t sz) {
       lock.unlock();
       break;
   }
-  if (type != T_FILE) {
-    return -1;
-  }
-
   return k;
 }
 ssize_t fs::inode::write(filedesc &fd, void *buf, size_t sz) {

@@ -23,7 +23,7 @@
 #define I8042_MOUSE_BUFFER 0x20
 #define I8042_KEYBOARD_BUFFER 0x00
 
-static fifo_buf kbd_buf(4096, true);
+static fifo_buf kbd_buf;
 
 static char keymap[0x80] = {
     0,
@@ -373,7 +373,6 @@ static void key_state_changed(u8 raw, bool pressed) {
 }
 
 static void kbd_handler(int i, struct task_regs *tf) {
-  printk("here\n");
   // cpu::scoped_cli scli;
 
   for (;;) {

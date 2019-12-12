@@ -31,6 +31,10 @@ void hexdump(void *vbuf, int len) {
     // printf("%p ", line);
 
     for (int c = 0; c < w; c++) {
+      if (i + c > len) {
+        printf("\n");
+        return;
+      }
       printf("%02X ", line[c]);
     }
     printf(" |");
@@ -40,22 +44,47 @@ void hexdump(void *vbuf, int len) {
   }
 }
 
+char *gets(int fd, char *buf, int max) {
+  int i, cc;
+  char c;
+
+  for (i = 0; i + 1 < max;) {
+    cc = read(fd, &c, 1);
+    if (cc < 1) break;
+
+
+    if (c == 0x7F) {
+      if (i != 0) {
+        buf[--i] = 0;
+      }
+    } else {
+      buf[i++] = c;
+    }
+    if (c == '\n' || c == '\r') break;
+  }
+  buf[i] = '\0';
+  return buf;
+}
+
+
+
 int main(int argc, char **argv) {
   /*
   for (int i = 0; i < 5; i++) spawn_proc("/bin/test");
   */
 
-  int cons = open("/dev/urandom", O_RDWR);
+  int cons = open("/dev/console", O_RDWR);
 
-  printf("fd=%d\n", cons);
+  char buf[100];
 
-  int len = 512;
-  char *buf = malloc(len);
+  while (1) {
+    printf("$ ");
+    gets(cons, buf, 100);
 
-  read(cons, buf, len);
-  hexdump(buf, len);
 
-  free(buf);
+    buf[strlen(buf)-1] = 0;
+    printf("you typed: '%s'\n", buf);
+  }
 
   while (1) {
     yield();

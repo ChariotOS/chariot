@@ -12,7 +12,7 @@
 #include <vga.h>
 #include "../majors.h"
 
-static fifo_buf mouse_buffer(4096, true);
+static fifo_buf mouse_buffer;
 
 static uint8_t mouse_cycle = 0;
 static char mouse_byte[3];
