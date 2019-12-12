@@ -18,3 +18,5 @@
 
 #define MAJOR_MOUSE 10
 #define MAJOR_KEYBOARD 11
+
+#define MAJOR_CONSOLE 20

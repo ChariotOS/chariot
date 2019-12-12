@@ -9,6 +9,7 @@
 #include <dev/serial.h>
 #include <device.h>
 #include <elf/loader.h>
+#include <fifo_buf.h>
 #include <fs/ext2.h>
 #include <fs/file.h>
 #include <fs/vfs.h>
@@ -17,9 +18,9 @@
 #include <module.h>
 #include <pci.h>
 #include <pctl.h>
+#include <phys.h>
 #include <pit.h>
 #include <printk.h>
-#include <phys.h>
 #include <process.h>
 #include <ptr.h>
 #include <sched.h>
@@ -31,8 +32,6 @@
 #include <util.h>
 #include <vec.h>
 #include <vga.h>
-
-#include <fifo_buf.h>
 
 extern int kernel_end;
 
@@ -50,6 +49,7 @@ void initialize_kernel_modules(void) {
   struct kernel_module_info* mod = __start__kernel_modules;
   int i = 0;
   while (mod != __stop__kernel_modules) {
+    KINFO("[%s] init\n", mod->name);
     mod->initfn();
     mod = &(__start__kernel_modules[++i]);
   }
@@ -262,20 +262,11 @@ static int kernel_init_task(void*) {
   struct stat s;
   syms.m_file->stat(&s);
 
+  /*
   auto buf = kmalloc(s.st_size);
   syms.read(buf, s.st_size);
   parse_ksyms(s.st_size, (char*)buf);
   kfree(buf);
-
-  /*
-  auto urandom = vfs::fdopen("/dev/urandom");
-  if (urandom.m_file != NULL) {
-      char buf[32];
-    while (1) {
-      urandom.read(buf, 32);
-      hexdump(buf, 32);
-    }
-  }
   */
 
   auto proc = task_process::lookup(0);
@@ -299,45 +290,11 @@ static int kernel_init_task(void*) {
     KERR("failed to cmdpid init process\n");
   }
 
-
-  hexdump(p2v(0), 1000000LL * PGSIZE);
-
-  auto b = fifo_block::alloc();
-  printk("%p\n", b);
-
-  printk("len=%d\n", b->len);
-
-  b->next = b;
-  b->prev = b;
-  b->r = 0xAAAA;
-  b->w = 0xFFFF;
-  b->data[0] = 'a';
-
-  hexdump(b, PGSIZE + 2);
-
-  fifo_block::free(b);
-
+  // yield back to scheduler, we don't really want to run this thread anymore
+  // TODO: run sys::wait() on the process we just spawned, and spawn it again
   while (1) {
     sched::yield();
   }
 
-  int r = 0;
-  while (1) {
-    int w = 100;
-
-    cpu::pushcli();
-    u32 color = vga::hsl(r++ / (float)w, 1.0, 0.5);
-    if (r > w) r = 0;
-    cpu::popcli();
-
-    for (int y = 0; y < 480; y++) {
-      for (int x = 0; x < 640; x++) {
-        vga::set_pixel(x, y, color);
-      }
-    }
-  }
-
-  while (1) {
-    sched::yield();
-  }
+  panic("main kernel thread reached unreachable code\n");
 }

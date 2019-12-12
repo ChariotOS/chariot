@@ -10,6 +10,7 @@ void hexdump(void *vdata, size_t len, int width) {
   // TODO: dont use VLA
   u8 charbuf[width];
   bool was_eq = false;
+  int neq = 0;
 
   bool trailing_newline = false;
 
@@ -29,13 +30,18 @@ void hexdump(void *vdata, size_t len, int width) {
 
       if (eq) {
         if (!was_eq) {
-          printk("*\n");
+          printk(" *");
         }
         was_eq = true;
         i += width-1;
         written = 0;
+        neq++;
         continue;
       } else {
+        if (was_eq) {
+          printk(" %d\n", neq);
+        }
+        neq = 0;
         was_eq = false;
       }
     }

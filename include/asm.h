@@ -108,6 +108,13 @@
 #define STS_TG32 0xF  // 32-bit Trap Gate
 
 
+// Useful constants for memory sizes
+#define KB (1024LL)
+#define MB (1024LL * KB)
+#define GB (1024LL * MB)
+#define TB (1024LL * GB)
+
+
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 #define for_range(var, start, end) for (auto var = start; var < (end); var++)
 
