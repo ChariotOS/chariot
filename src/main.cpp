@@ -286,14 +286,14 @@ static int kernel_init_task(void*) {
 
   // TODO: setup stdin, stdout, and stderr
   int res = sys::pctl(init, PCTL_CMD, (u64)&cmdargs);
-  if (res != 0) {
-    KERR("failed to cmdpid init process\n");
-  }
+  if (res != 0) KERR("failed to cmdpid init process\n");
+
 
   // yield back to scheduler, we don't really want to run this thread anymore
   // TODO: run sys::wait() on the process we just spawned, and spawn it again
   while (1) {
-    sched::yield();
+    halt();
+    // sched::yield();
   }
 
   panic("main kernel thread reached unreachable code\n");

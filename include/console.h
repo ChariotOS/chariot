@@ -24,6 +24,8 @@ void feed(size_t, char *);
 // there is no char avail
 int getc(bool block = false);
 
+void putc(char c);
+
 };  // namespace console
 
 #endif

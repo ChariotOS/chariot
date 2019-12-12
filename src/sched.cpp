@@ -59,7 +59,7 @@ bool sched::init(void) {
     Q.priority = i;
     Q.ntasks = 0;
 
-    Q.timeslice = 2;
+    Q.timeslice = 1;
   }
   return true;
 }

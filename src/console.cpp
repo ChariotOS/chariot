@@ -6,6 +6,7 @@
 #include <module.h>
 #include <printk.h>
 #include <util.h>
+#include <vga.h>
 
 #include "drivers/majors.h"
 
@@ -31,8 +32,11 @@ static void consputc(int c) {
     serial_send(COM1, '\b');
     serial_send(COM1, ' ');
     serial_send(COM1, '\b');
-  } else
+  } else {
     serial_send(COM1, c);
+  }
+
+  vga::putchar(c);
   // cgaputc(c);
 }
 
@@ -90,6 +94,11 @@ void console::feed(size_t sz, char *buf) {
 }
 
 int console::getc(bool block) { return -1; }
+void console::putc(char c) {
+  consputc(c);
+}
+
+
 
 struct console_driver : public dev::driver {
   console_driver() { dev::register_name("console", MAJOR_CONSOLE, 0); };
@@ -109,6 +118,8 @@ struct console_driver : public dev::driver {
     return sz;
   }
 };
+
+
 
 static void console_init(void) {
   dev::register_driver(MAJOR_CONSOLE, make_unique<console_driver>());

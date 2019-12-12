@@ -15,29 +15,6 @@ int fib(int i) {
 }
 
 int main(int argc, char **argv, char **envp) {
-  int fd = 0;
-
-  char buf[255];
-
   while (1) {
-    continue;
-
-
-    fib(40);
-    continue;
-
-    for (int i = 0; i < 3; i++) {
-      switch (i) {
-        case 0:
-          fd = open("/etc/passwd", O_RDONLY);
-          break;
-        case 1:
-          read(fd, buf, 255);
-          break;
-        case 2:
-          syscall(SYS_close, fd);
-          break;
-      }
-    }
   }
 }

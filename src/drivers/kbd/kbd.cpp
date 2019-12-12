@@ -1,3 +1,4 @@
+#include <console.h>
 #include <cpu.h>
 #include <dev/char_dev.h>
 #include <dev/driver.h>
@@ -10,6 +11,7 @@
 #include <printk.h>
 #include <process.h>
 #include <single_list.h>
+#include <smp.h>
 #include <vga.h>
 
 #include "../majors.h"
@@ -40,7 +42,7 @@ static char keymap[0x80] = {
     '0',
     '-',
     '=',
-    0x08,
+    CONS_DEL,
     '\t',
     'q',
     'w',
@@ -136,7 +138,7 @@ static char shift_map[0x80] = {
     ')',
     '_',
     '+',
-    0x08,
+    CONS_DEL,
     '\t',
     'Q',
     'W',
@@ -368,12 +370,17 @@ static void key_state_changed(u8 raw, bool pressed) {
   event.flags = m_modifiers;
   if (pressed) event.flags |= is_pressed;
 
+  if (pressed) {
+    console::feed(1, (char *)&event.character);
+  }
+
   // first, check for a waiting process to wake
-  kbd_buf.write(&event, sizeof(keyboard_packet_t));
+  // kbd_buf.write(&event, sizeof(keyboard_packet_t));
 }
 
 static void kbd_handler(int i, struct task_regs *tf) {
   // cpu::scoped_cli scli;
+  smp::lapic_eoi();
 
   for (;;) {
     u8 status = inb(I8042_STATUS);
@@ -446,23 +453,23 @@ class kbd_driver : public dev::driver {
 
   virtual const char *name(void) const { return "kbd"; }
 
-
   virtual ssize_t read(minor_t, fs::filedesc &fd, void *buf, size_t sz) {
     return -1;
   };
-
 
  private:
   ref<kbd_dev> m_dev;
 };
 
-static void dev_init(void) {
-  interrupt_register(32 + IRQ_KEYBOARD, kbd_handler);
+static void kbd_init(void) {
+  interrupt_register(T_IRQ0 + IRQ_KEYBOARD, kbd_handler);
 
   // clear out the buffer...
   while (inb(I8042_STATUS) & I8042_BUFFER_FULL) inb(I8042_BUFFER);
 
   dev::register_driver(MAJOR_KEYBOARD, make_unique<kbd_driver>());
+
+  smp::ioapicenable(IRQ_KEYBOARD, 0);
 }
 
-module_init("kbd", dev_init);
+module_init("kbd", kbd_init);
