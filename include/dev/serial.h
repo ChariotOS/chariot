@@ -2,6 +2,7 @@
 #define __SERIAL__
 
 /* Serial */
+#define COM1 0x3f8
 #define SERIAL_PORT_A 0x3F8
 #define SERIAL_PORT_B 0x2F8
 #define SERIAL_PORT_C 0x3E8
@@ -9,7 +10,6 @@
 
 #define SERIAL_IRQ 4
 
-void serial_enable(int device);
 void serial_install();
 int serial_rcvd(int device);
 char serial_recv(int device);

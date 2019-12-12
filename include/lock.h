@@ -32,3 +32,12 @@ class scoped_lock {
 
   inline ~scoped_lock(void) { lck.unlock(); }
 };
+
+
+// for POD structures
+namespace mutex {
+  void lock(int &);
+  void unlock(int &);
+};
+
+

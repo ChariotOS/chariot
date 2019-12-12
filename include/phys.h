@@ -2,6 +2,7 @@
 #define __PHYS_H__
 
 #include <types.h>
+#include <mem.h>
 
 namespace phys {
 
@@ -19,6 +20,15 @@ namespace phys {
   u64 nfree(void);
 
   u64 bytes_free(void);
+
+
+  // allocate a single page for kernel use
+  inline void *kalloc(void) {
+    return p2v(phys::alloc(1));
+  }
+  inline void kfree(void *p) {
+    return phys::free(v2p(p));
+  }
 };
 
 #endif

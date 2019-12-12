@@ -41,13 +41,13 @@ const char* human_size(uint64_t bytes, char* buf);
   do {                                                                      \
     struct tm t;                                                            \
     dev::RTC::localtime(t);                                                 \
-    printk("[" CLR "%02d:%02d:%02d" RESET "] " fmt, t.tm_hour, t.tm_min, t.tm_sec, ##args); \
+    printk(CLR "[%02d:%02d:%02d] " fmt, t.tm_hour, t.tm_min, t.tm_sec, ##args); \
   } while (0);
 
 
-#define KINFO(fmt, args...) KLOG("", fmt, ##args)
-#define KWARN(fmt, args...) KLOG(YEL, fmt, ##args)
-#define KERR(fmt, args...) KLOG(RED, fmt, ##args)
+#define KINFO(fmt, args...) KLOG(" ", fmt, ##args)
+#define KWARN(fmt, args...) KLOG("?", fmt, ##args)
+#define KERR(fmt, args...) KLOG("!", fmt, ##args)
 
 
 

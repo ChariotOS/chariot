@@ -148,10 +148,8 @@ void pci::init(void) {
 
         if (!read_device_descriptor(desc, bus, dev, func)) continue;
 
-        /*
-        printk("%02x.%02x.%1x: %04x:%04x\n", bus, dev, func, desc->vendor_id,
-               desc->device_id);
-               */
+        KINFO("pci device: %03x.%02x.%1x: %04x:%04x\n", bus, dev, func,
+              desc->vendor_id, desc->device_id);
 
         for (int barnum = 0; barnum < 6; barnum++) {
           struct pci_bar bar = pci_get_bar(bus, dev, func, barnum);
@@ -165,7 +163,7 @@ void pci::init(void) {
     }
   }
 
-  // printk("discovered %d PCI devices.\n", pci_device_count);
+  KINFO("discovered %d PCI devices.\n", pci_device_count);
 }
 
 void pci::walk_devices(func<void(device *)> fn) {

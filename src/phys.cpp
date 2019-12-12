@@ -56,17 +56,17 @@ static frame *working_addr(frame *fr) {
   return fr;
 }
 
-static void *early_phys_alloc(void) {
+static void *early_phys_alloc(int npages) {
   frame *r = kmem.freelist;
   if (r == nullptr) panic("out of memory");
 
   frame *f = working_addr(r);
 
-  if (f->page_len > 1) {
-    auto n = (frame *)((char *)r + PGSIZE);
+  if (f->page_len > npages) {
+    auto n = (frame *)((char *)r + PGSIZE * npages);
 
     auto *new_next = f->next;
-    auto new_len = f->page_len - 1;
+    auto new_len = f->page_len - npages;
 
     kmem.freelist = n;
 
@@ -79,7 +79,7 @@ static void *early_phys_alloc(void) {
   f = working_addr(r);
   memset(f, 0, PGSIZE);
   // decrement the number of freed pages
-  kmem.nfree--;
+  kmem.nfree -= npages;
   return r;
 }
 
@@ -95,12 +95,7 @@ void *phys::alloc(int npages) {
         "availible\n");
   }
 
-  if (use_kernel_vm) {
-  }
-
-
-
-  auto p = early_phys_alloc();
+  auto p = early_phys_alloc(npages);
   unlock();
   return p;
 }

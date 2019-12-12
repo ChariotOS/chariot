@@ -1,4 +1,5 @@
 #include <func.h>
+#include <idt.h>
 #include <mem.h>
 #include <paging.h>
 #include <smp.h>
@@ -46,6 +47,38 @@
 #define LAPIC_TICR (0x0380 / 4)    // Timer Initial Count
 #define LAPIC_TCCR (0x0390 / 4)    // Timer Current Count
 #define LAPIC_TDCR (0x03E0 / 4)    // Timer Divide Configuration
+
+// ioapic is always at the same location
+volatile auto *ioapic = (volatile struct ioapic *)p2v(0xFEC00000);
+
+// IO APIC MMIO structure: write reg, then read or write data.
+struct ioapic {
+  u32 reg;
+  u32 pad[3];
+  u32 data;
+};
+
+#define REG_ID 0x00     // Register index: ID
+#define REG_VER 0x01    // Register index: version
+#define REG_TABLE 0x10  // Redirection table base
+
+static u32 ioapicread(int reg) {
+  ioapic->reg = reg;
+  return ioapic->data;
+}
+
+static void ioapicwrite(int reg, u32 data) {
+  ioapic->reg = reg;
+  ioapic->data = data;
+}
+
+void smp::ioapicenable(int irq, int cpunum) {
+  // Mark interrupt edge-triggered, active high,
+  // enabled, and routed to the given cpunum,
+  // which happens to be that cpu's APIC ID.
+  ioapicwrite(REG_TABLE + 2 * irq, T_IRQ0 + irq);
+  ioapicwrite(REG_TABLE + 2 * irq + 1, cpunum << 24);
+}
 
 static uint32_t *lapic = NULL;
 
@@ -161,7 +194,6 @@ static u8 mp_entry_lengths[5] = {
 
 void parse_mp_cpu(smp::mp::mp_table_entry_cpu *ent) {
   INFO("CPU: %p\n", ent);
-
 
   INFO("type: %02x\n", ent->type);
   INFO("lapic_id: %02x\n", ent->lapic_id);

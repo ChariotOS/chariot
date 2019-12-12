@@ -55,6 +55,10 @@ int main(int argc, char **argv) {
 
   float avg = 0;
 
+  while (1) {
+    yield();
+  }
+
   int fd = open("/dev/urandom", O_RDONLY);
 
 #define RDSZ 255

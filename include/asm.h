@@ -107,6 +107,8 @@
 #define STS_IG32 0xE  // 32-bit Interrupt Gate
 #define STS_TG32 0xF  // 32-bit Trap Gate
 
+
+#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 #define for_range(var, start, end) for (auto var = start; var < (end); var++)
 
 // #define FANCY_MEM_FUNCS

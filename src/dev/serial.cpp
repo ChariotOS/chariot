@@ -1,27 +1,36 @@
 #include <asm.h>
+#include <console.h>
 #include <dev/serial.h>
+#include <idt.h>
+#include <module.h>
+#include <printk.h>
+#include <smp.h>
 
-void serial_enable(int device) {
-  // disable interrupts
-  outb(device + 1, 0x00);
-  outb(device + 3, 0x80); /* Enable divisor mode */
-  outb(device + 0, 0x03); /* Div Low:  03 Set the port to 38400 bps */
-  outb(device + 1, 0x00); /* Div High: 00 */
-  outb(device + 3, 0x03);
-  outb(device + 2, 0xC7);
-  outb(device + 4, 0x0B);
-}
+
+static int uart = 0;
 
 void serial_install() {
-  serial_enable(SERIAL_PORT_A);
-  // serial_enable(SERIAL_PORT_B);
+  // Turn off the FIFO
+  outb(COM1 + 2, 0);
+
+  // 9600 baud, 8 data bits, 1 stop bit, parity off.
+  outb(COM1 + 3, 0x80);  // Unlock divisor
+  outb(COM1 + 0, 115200 / 9600);
+  outb(COM1 + 1, 0);
+  outb(COM1 + 3, 0x03);  // Lock divisor, 8 data bits.
+  outb(COM1 + 4, 0);
+  outb(COM1 + 1, 0x01);  // Enable receive interrupts.
+
+  // If status is 0xFF, no serial port.
+  if (inb(COM1 + 5) == 0xFF) return;
+  uart = 1;
 }
 
 int serial_rcvd(int device) { return inb(device + 5) & 1; }
 
 char serial_recv(int device) {
-  while (serial_rcvd(device) == 0)
-    ;
+  while (!serial_rcvd(device)) {
+  }
   return inb(device);
 }
 
@@ -30,9 +39,11 @@ char serial_recv_async(int device) { return inb(device); }
 int serial_transmit_empty(int device) { return inb(device + 5) & 0x20; }
 
 void serial_send(int device, char out) {
-  while (serial_transmit_empty(device) == 0)
-    ;
-  outb(device, out);
+  if (uart) {
+    while (!serial_transmit_empty(device)) {
+    }
+    outb(device, out);
+  }
 }
 
 void serial_string(int device, char* out) {
@@ -40,3 +51,48 @@ void serial_string(int device, char* out) {
     serial_send(device, out[i]);
   }
 }
+
+static int uartgetc(void) {
+  if (!uart) return -1;
+  if (!(inb(COM1 + 5) & 0x01)) return -1;
+  return inb(COM1 + 0);
+}
+
+void serial_irq_handle(int i, struct task_regs* tf) {
+
+  size_t nread = 0;
+  char buf[32];
+
+  while (1) {
+    int c = uartgetc();
+    if (c < 0) break;
+
+    // serial only sends \r for some reason
+    if (c == '\r') c = '\n';
+
+    if (nread > 32) {
+      console::feed(nread, buf);
+      nread = 0;
+    }
+
+    buf[nread] = c;
+    nread++;
+
+  }
+
+  if (nread != 0) console::feed(nread, buf);
+  smp::lapic_eoi();
+}
+
+static void serial_mod_init() {
+  // setup interrupts on serial
+  interrupt_register(T_IRQ0 + IRQ_COM1, serial_irq_handle);
+
+  // Acknowledge pre-existing interrupt conditions;
+  // enable interrupts.
+  inb(COM1 + 2);
+  inb(COM1 + 0);
+  smp::ioapicenable(IRQ_COM1, 0);
+}
+
+module_init("serial", serial_mod_init);

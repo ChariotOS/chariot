@@ -19,6 +19,7 @@
 #include <pctl.h>
 #include <pit.h>
 #include <printk.h>
+#include <phys.h>
 #include <process.h>
 #include <ptr.h>
 #include <sched.h>
@@ -30,6 +31,8 @@
 #include <util.h>
 #include <vec.h>
 #include <vga.h>
+
+#include <fifo_buf.h>
 
 extern int kernel_end;
 
@@ -295,6 +298,24 @@ static int kernel_init_task(void*) {
   if (res != 0) {
     KERR("failed to cmdpid init process\n");
   }
+
+
+  hexdump(p2v(0), 1000000LL * PGSIZE);
+
+  auto b = fifo_block::alloc();
+  printk("%p\n", b);
+
+  printk("len=%d\n", b->len);
+
+  b->next = b;
+  b->prev = b;
+  b->r = 0xAAAA;
+  b->w = 0xFFFF;
+  b->data[0] = 'a';
+
+  hexdump(b, PGSIZE + 2);
+
+  fifo_block::free(b);
 
   while (1) {
     sched::yield();

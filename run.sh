@@ -2,4 +2,7 @@
 
 ./sync.sh
 
-qemu-system-x86_64 -m 2G -smp 4 -hda build/root.img -nographic
+qemu-system-x86_64 -nographic \
+	-m 4G -smp 4 \
+	-hda build/root.img \
+	-device rtl8139

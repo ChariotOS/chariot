@@ -2,15 +2,6 @@
 #include <printk.h>
 #include <util.h>
 
-static int roundUp(int numToRound, int multiple) {
-  if (multiple == 0) return numToRound;
-
-  int remainder = numToRound % multiple;
-  if (remainder == 0) return numToRound;
-
-  return numToRound + multiple - remainder;
-}
-
 void hexdump(void *vdata, size_t len, int width) {
   int written = 0;
 
@@ -18,11 +9,41 @@ void hexdump(void *vdata, size_t len, int width) {
 
   // TODO: dont use VLA
   u8 charbuf[width];
+  bool was_eq = false;
 
   bool trailing_newline = false;
 
-  for_range(i, 0, roundUp(len, width)) {
+  for_range(i, 0, round_up(len, width)) {
     trailing_newline = false;
+
+    if (written == 0 && i != 0) {
+      auto *o = buf + i;
+
+      bool eq = true;
+      for (int j = 0; j < width; j++) {
+        if (charbuf[j] != o[j]) {
+          eq = false;
+          break;
+        }
+      }
+
+      if (eq) {
+        if (!was_eq) {
+          printk("*\n");
+        }
+        was_eq = true;
+        i += width-1;
+        written = 0;
+        continue;
+      } else {
+        was_eq = false;
+      }
+    }
+
+    if (written == 0) {
+      printk("%p ", buf + i);
+    }
+
     if (i % 2 == 0 && written != 0) printk(" ");
 
     if (i < len) {

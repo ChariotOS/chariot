@@ -373,6 +373,7 @@ static void key_state_changed(u8 raw, bool pressed) {
 }
 
 static void kbd_handler(int i, struct task_regs *tf) {
+  printk("here\n");
   // cpu::scoped_cli scli;
 
   for (;;) {

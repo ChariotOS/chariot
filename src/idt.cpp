@@ -239,6 +239,7 @@ static void dbl_flt_handler(int i, struct task_regs *tf) {
 }
 
 static void unknown_hardware(int i, struct task_regs *tf) {
+  printk("unknown!\n");
   if (!interrupt_spurious[i]) {
     KINFO("interrupt: spurious interrupt %d\n", i);
   }

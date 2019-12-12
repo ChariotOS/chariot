@@ -1,6 +1,23 @@
 #include <cpu.h>
 #include <fifo_buf.h>
 #include <sched.h>
+#include <phys.h>
+
+struct fifo_block *fifo_block::alloc(void) {
+  auto b = (fifo_block *)phys::kalloc();
+
+  // initialize the data
+  b->len = PGSIZE - offsetof(struct fifo_block, data);
+
+  memset(b->data, 0xFF, b->len);
+
+  return b;
+}
+void fifo_block::free(struct fifo_block *b) {
+  phys::kfree(b);
+}
+
+
 
 void fifo_buf::wakeup_accessing_tasks(void) {
   cpu::pushcli();

@@ -36,6 +36,8 @@ void init_cores(void);
 
 int cpunum(void);
 
+void ioapicenable(int irq, int cpu);
+
 // the first field of the floating structure must be this value
 
 // use mp tables, as they are a little easier.
