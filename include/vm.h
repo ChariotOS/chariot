@@ -118,6 +118,8 @@ class addr_space final : public refcounted<addr_space> {
 
   void *cr3;
 
+  bool kernel_vm = false;
+
   // how much memory is used by the address space
   size_t resident = 0;
 

@@ -8,6 +8,7 @@
 #include <mem.h>
 #include <module.h>
 #include <string.h>
+#include <util.h>
 
 // Standard information and structures for EXT2
 #define EXT2_SIGNATURE 0xEF53
@@ -48,8 +49,8 @@ typedef struct __ext2_dir_entry {
 
 #define EXT2_CACHE_SIZE 128
 
-fs::ext2::ext2(ref<dev::device> dev)
-    : filesystem(/*super*/), dev(dev), disk(dev), m_lock("ext2fs") {
+fs::ext2::ext2(fs::filedesc disk)
+    : filesystem(/*super*/), disk(disk), m_lock("ext2fs") {
   TRACE;
 }
 
@@ -63,9 +64,12 @@ fs::ext2::~ext2(void) {
 bool fs::ext2::init(void) {
   TRACE;
 
+  if (!disk) return false;
+
   sb = new superblock();
   // read the superblock
-  bool res = dev->read(1024, 1024, sb);
+  disk.seek(1024, SEEK_SET);
+  bool res = disk.read(sb, 1024);
 
   if (!res) {
     printk("failed to read the superblock\n");
@@ -94,6 +98,7 @@ bool fs::ext2::init(void) {
   inode_buf = kmalloc(blocksize);
 
   root = get_inode(2);
+  fs::inode::acquire(root);
 
   if (!write_superblock()) {
     printk("failed to write superblock\n");
@@ -108,12 +113,14 @@ bool fs::ext2::init(void) {
   KINFO("ext2 uuid: %08x-%04x-%04x-%04x-%012x\n", *(u32 *)uuid, u_shrts[0],
         u_shrts[1], u_shrts[2], trail);
 
+
   return true;
 }
 
 int fs::ext2::write_superblock(void) {
   // TODO: lock
-  return disk->write(1024, 1024, sb);
+  disk.seek(1024, SEEK_SET);
+  return disk.write(sb, 1024);
 }
 
 bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {
@@ -173,13 +180,15 @@ bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
 
 bool fs::ext2::read_block(u32 block, void *buf) {
   TRACE;
-  bool valid = disk->read(block * blocksize, blocksize, buf);
+  disk.seek(block * blocksize, SEEK_SET);
+  bool valid = disk.read(buf, blocksize);
   return valid;
 }
 
 bool fs::ext2::write_block(u32 block, const void *buf) {
   TRACE;
-  return disk->write(block * blocksize, blocksize, buf);
+  disk.seek(block * blocksize, SEEK_SET);
+  return disk.write((void*)buf, blocksize);
 }
 
 void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,
@@ -227,7 +236,6 @@ void fs::ext2::traverse_dir(u32 inode,
 void fs::ext2::traverse_dir(ext2_inode_info &inode,
                             func<bool(fs::directory_entry)> callback) {
   TRACE;
-  // vec<u32> blocks = read_dir(inode);
 
   void *buffer = kmalloc(blocksize);
   traverse_blocks(blocks_for_inode(inode), buffer, [&](void *buffer) -> bool {
@@ -276,11 +284,9 @@ struct fs::inode *fs::ext2::get_root(void) {
 struct fs::inode *fs::ext2::get_inode(u32 index) {
   TRACE;
   scoped_lock lck(m_lock);
-
   if (inodes[index] == NULL) {
     inodes[index] = fs::ext2_inode::create(*this, index);
   }
-
   return inodes[index];
 }
 

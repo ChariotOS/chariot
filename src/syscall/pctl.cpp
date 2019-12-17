@@ -18,9 +18,14 @@ pid_t do_spawn(void) {
     return -1;
   }
 
+  // inherit stdio files
+  // TODO: is there a better way of doing this?
+  p->open_files[0] = proc->open_files[0];
+  p->open_files[1] = proc->open_files[1];
+  p->open_files[2] = proc->open_files[2];
+
   proc->nursery.push(p->pid);
 
-  printk("spawned %d!\n", p->pid);
 
   return p->pid;
 }

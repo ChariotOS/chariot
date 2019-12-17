@@ -1,46 +1,64 @@
 include ../Makefile.common
 
-FILES = $(shell find $(DIR))
-
-CSOURCES = $(filter %.c,$(FILES))
-COBJECTS:=$(CSOURCES:%.c=bin/%.c.o)
-
-
-ASOURCES = $(filter %.asm,$(FILES))
-AOBJECTS:=$(ASOURCES:%.asm=bin/%.asm.o)
 
 DEFINES += -DUSERLAND
 
 OPTIMIZE:=-O3
 
 CFLAGS:=$(CINCLUDES) $(OPTIMIZE) $(MOREFLAGS) -fno-omit-frame-pointer -fno-stack-protector \
-				 -mtls-direct-seg-refs -ffreestanding -Wall -Wstrict-overflow=5 \
+				 -mtls-direct-seg-refs -ffreestanding -Wall \
 
 
-.PHONY: bin default
+.PHONY: bin default setup
 
 LDFLAGS += -L$(PWD)/lib/
+
+
+
+srcs:=$(DIR)
+
+
+-include $(DIR)/Makefile
+
+
+
+srcs = $(shell find $(DIR))
+
+CSOURCES = $(filter %.c,$(srcs))
+COBJECTS:=$(CSOURCES:%.c=bin/%.c.o)
+
+
+CPPSOURCES = $(filter %.cpp,$(srcs))
+CPPOBJECTS:=$(CPPSOURCES:%.cpp=bin/%.cpp.o)
+
+
+ASOURCES = $(filter %.asm,$(srcs))
+AOBJECTS:=$(ASOURCES:%.asm=bin/%.asm.o)
+
+
+setup:
 
 
 bin:
 	@mkdir -p bin
 
-$(BIN): lib/crt0.o $(COBJECTS) $(AOBJECTS)
-	@echo "[U] LD  $(BIN)   $(ULDFLAGS)"
-	@$(LD) $(LDFLAGS) -o $(BIN) lib/crt0.o $(COBJECTS) $(AOBJECTS) -lc $(ULDFLAGS)
+$(BIN): lib/crt0.o $(COBJECTS) $(CPPOBJECTS) $(AOBJECTS)
+	@echo "sources: $(srcs)"
+	@echo "[U] LD   $(BIN)   $(ULDFLAGS)"
+	@$(LD) $(LDFLAGS) -o $(BIN) lib/crt0.o $(CPPOBJECTS) $(COBJECTS) $(AOBJECTS) -lc $(ULDFLAGS)
 	@echo ""
 
 
-$(LIB): $(COBJECTS) $(AOBJECTS)
-	@echo "[U] AR  $(LIB)"
+$(LIB): $(COBJECTS) $(CPPOBJECTS) $(AOBJECTS)
+	@echo "[U] AR   $(LIB)"
 	@ar rcs $(LIB) $(COBJECTS) $(AOBJECTS)
 	@echo ""
 
-prog: $(BIN)
+prog: setup $(BIN)
 
-lib: $(LIB)
+lib: setup $(LIB)
 
-shlib: $(COBJECTS) $(AOBJECTS)
+shlib: $(COBJECTS) $(CPPOBJECTS) $(AOBJECTS)
 	@echo "[U] SO  $(LIB)"
 	@gcc -shared -o $(LIB) $(COBJECTS) $(AOBJECTS)
 	@echo ""
@@ -56,13 +74,19 @@ lib/crt0.o: src/crt0.asm
 
 bin/%.c.o: %.c
 	@mkdir -p $(dir $@)
-	@echo "[U] CC " $<
+	@echo "[U] CC  " $<
 	@$(CC) $(CFLAGS) -o $@ -c $<
+
+
+bin/%.cpp.o: %.cpp
+	@mkdir -p $(dir $@)
+	@echo "[U] CXX " $<
+	@$(CXX) $(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions -o $@ -c $<
 
 
 bin/%.asm.o: %.asm
 	@mkdir -p $(dir $@)
-	@echo "[U] AS " $<
+	@echo "[U] AS  " $<
 	@nasm -f elf64 -o $@ $<
 
 

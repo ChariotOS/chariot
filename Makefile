@@ -4,7 +4,7 @@ AS = nasm
 LD = $(X86_64_ELF_TOOLCHAIN)ld
 GRUB = $(GRUB_PREFIX)grub-mkrescue
 
-.PHONY: fs
+.PHONY: fs watch
 
 
 STRUCTURE := $(shell tools/get_structure.sh)
@@ -116,3 +116,8 @@ gdb:
 
 bochs: $(ISO)
 	@bochs -f bochsrc
+
+
+
+watch:
+	while inotifywait **/*; do ./sync.sh; done

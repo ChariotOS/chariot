@@ -225,5 +225,3 @@ pci::bar pci::device::get_bar(int barnum) {
   return bar;
 }
 
-static void placeholder(void) {}
-module_init("placeholder", placeholder);

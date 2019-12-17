@@ -1,9 +1,14 @@
 #include <asm.h>
+#include <dev/driver.h>
 #include <mem.h>
 #include <module.h>
 #include <pci.h>
 #include <printk.h>
+#include <task.h>
 #include <vga.h>
+#include <util.h>
+
+#include "drivers/majors.h"
 
 static u8 vga_x, vga_y;
 static u8 vga_attr;
@@ -224,12 +229,41 @@ int vga::flush_buffer(u32 *dbuf, int npixels) {
   return len;
 }
 
+
+static ssize_t fb_write(fs::filedesc &fd, const char *buf, size_t sz) {
+  if (fd) {
+    size_t fbsize = vga::npixels() * sizeof(u32);
+    auto off = fd.offset() % fbsize;
+
+    ssize_t space_left = fbsize - off;
+
+    ssize_t to_copy = min(space_left, sz);
+
+    if (to_copy <= 0) return 0;
+
+    char *fb = (char*)vga_fba;
+
+    memcpy(fb + off, buf, to_copy);
+
+    // seek past
+    fd.seek(sz, SEEK_CUR);
+    return sz;
+  }
+  return -1;
+}
+
+// can only write to the framebuffer
+struct dev::driver_ops fb_ops = {
+    .write = fb_write,
+};
+
 static void vga_init_mod(void) {
-  // vga_fba = (u32 *)p2v(get_framebuffer_address());
+  vga_fba = (u32 *)p2v(get_framebuffer_address());
 
   // set_resolution(1024, 768);
   // set_resolution(800, 600);
-  // set_resolution(640, 480);
+  set_resolution(640, 480);
+  dev::register_driver("fb", CHAR_DRIVER, MAJOR_FB, &fb_ops);
 }
 
 module_init("vga", vga_init_mod);

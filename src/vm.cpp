@@ -263,6 +263,8 @@ off_t vm::addr_space::map_file(string name, struct fs::inode *file, off_t vaddr,
 
 #define PGMASK (~(PGSIZE - 1))
 bool vm::addr_space::validate_pointer(void *raw_va, size_t len, int mode) {
+
+  if (kernel_vm) return true;
   off_t start = (off_t)raw_va & PGMASK;
   off_t end = ((off_t)raw_va + len) & PGMASK;
 

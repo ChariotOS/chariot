@@ -102,6 +102,7 @@ fs::ext2_inode *fs::ext2_inode::create(ext2 &fs, u32 index) {
 
   fs.read_inode(info, index);
 
+
   int ino_type = T_INVA;
 
   auto type = ((info.type) & 0xF000) >> 12;

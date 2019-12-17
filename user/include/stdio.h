@@ -21,9 +21,10 @@ extern "C" {
 #undef SEEK_SET
 #undef SEEK_CUR
 #undef SEEK_END
-#define SEEK_SET 0
-#define SEEK_CUR 1
-#define SEEK_END 2
+#define SEEK_SET (-1)
+#define SEEK_CUR (-2)
+#define SEEK_END (-3)
+
 
 #define _IOFBF 0
 #define _IOLBF 1
@@ -55,6 +56,7 @@ extern FILE *const stderr;
 
 
 FILE *fdopen(int, const char *);
+FILE *fopen(const char *pathname, const char *mode);
 int fclose(FILE *);
 
 
@@ -62,6 +64,7 @@ size_t fread(void *__restrict, size_t, size_t, FILE *__restrict);
 size_t fwrite(const void *__restrict, size_t, size_t, FILE *__restrict);
 
 int putchar(int);
+
 
 
 int printf(const char *format, ...);

@@ -33,17 +33,18 @@ int dev::driver::release(dev::device *) { return -ENOTIMPL; }
  */
 struct driver_instance {
   string name;
+  int type;
   major_t major;
-  unique_ptr<dev::driver> driver;
+  dev::driver_ops *ops;
 };
 
 // every device drivers, accessable through their major number
 static map<major_t, struct driver_instance> device_drivers;
 
-int dev::register_driver(major_t major, unique_ptr<dev::driver> d) {
+int dev::register_driver(const char *name, int type, major_t major, dev::driver_ops *d) {
   // TODO: take a lock
 
-  if (d.get() == nullptr) return -ENOENT;
+  if (d == nullptr) return -ENOENT;
 
   if (major > MAX_DRIVERS) return -E2BIG;
 
@@ -52,9 +53,10 @@ int dev::register_driver(major_t major, unique_ptr<dev::driver> d) {
   }
 
   struct driver_instance inst;
-  inst.name = d->name();
+  inst.name = name;
+  inst.type = type; // TODO: assert the type is valid
   inst.major = major;
-  inst.driver = move(d);
+  inst.ops = d;
 
   device_drivers[major] = move(inst);
 
@@ -81,6 +83,8 @@ int dev::register_name(string name, major_t major, minor_t minor) {
   // TODO: take a lock
   if (device_names.contains(name)) return -EEXIST;
   device_names[name] = {major, minor};
+
+  KINFO("register dev %s to %d:%d\n", name.get(), major, minor);
   return 0;
 }
 
@@ -92,7 +96,7 @@ int dev::deregister_name(string name) {
 
 // main API to opening devices
 
-ref<dev::device> dev::open(string name) {
+fs::filedesc dev::open(string name) {
   int err;
 
   if (device_names.contains(name)) {
@@ -100,10 +104,10 @@ ref<dev::device> dev::open(string name) {
     return dev::open(d.major(), d.minor(), err);
   }
 
-  return nullptr;
+  return fs::filedesc(NULL, 0);
 }
 
-ref<dev::device> dev::open(major_t maj, minor_t min) {
+fs::filedesc dev::open(major_t maj, minor_t min) {
   int err;
   auto dev = open(maj, min, err);
   if (err != 0)
@@ -113,27 +117,34 @@ ref<dev::device> dev::open(major_t maj, minor_t min) {
   return dev;
 }
 
-ref<dev::device> dev::open(major_t maj, minor_t min, int &errcode) {
+fs::filedesc dev::open(major_t maj, minor_t min, int &errcode) {
   // TODO: is this needed?
   if (maj > MAX_DRIVERS) {
     errcode = -E2BIG;
-    return nullptr;
+    return fs::filedesc(NULL, 0);
   }
 
   // TODO: take a lock!
   if (device_drivers.contains(maj)) {
     errcode = 0;
-    return device_drivers[maj].driver->open(maj, min, errcode);
+
+    auto d = device_drivers[maj];
+
+    auto ino = new fs::inode(d.type == BLOCK_DRIVER ? T_BLK : T_CHAR);
+    ino->major = maj;
+    ino->minor = min;
+    return fs::filedesc(ino, FDIR_READ | FDIR_WRITE);
+    // return device_drivers[maj].ops->open(maj, min, errcode);
   }
   // if there wasnt a driver in the major list, return such
   errcode = -ENOENT;
-  return nullptr;
+  return fs::filedesc(NULL, 0);
 }
 
-dev::driver *dev::get(major_t majr) {
+dev::driver_ops *dev::get(major_t majr) {
   // TODO: take a lock
   if (device_drivers.contains(majr)) {
-    return device_drivers[majr].driver.get();
+    return device_drivers[majr].ops;
   }
   return NULL;
 }

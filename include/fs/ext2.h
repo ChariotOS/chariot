@@ -109,7 +109,7 @@ class ext2_inode : public fs::inode {
  */
 class ext2 final : public filesystem {
  public:
-  ext2(ref<dev::device>);
+  ext2(fs::filedesc);
 
   ~ext2(void);
 
@@ -220,7 +220,6 @@ class ext2 final : public filesystem {
     u32 s_reserved[162]; /* Padding to the end of the block */
   };
 
-  ref<dev::blk_dev> dev;
 
   superblock *sb = nullptr;
 
@@ -243,8 +242,7 @@ class ext2 final : public filesystem {
 
   map<u32, ext2_inode *> inodes;
 
-
-  ref<dev::device> disk;
+  fs::filedesc disk;
 
   mutex_lock m_lock;
 };

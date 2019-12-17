@@ -15,6 +15,9 @@ __SYSCALL(8, pctl)
 // __SYSCALL(10, cmdpidve)
 
 
+__SYSCALL(9, dup)
+__SYSCALL(10, dup2)
+
 __SYSCALL(60, mmap)
 __SYSCALL(61, munmap)
 

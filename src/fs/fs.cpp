@@ -44,11 +44,19 @@ static void destruct_dir(struct inode *ino) {
 }
 
 fs::inode::~inode() {
+
+  printk("INODE DESTRUCT %d\n", ino);
+
   switch (type) {
     case T_DIR:
       destruct_dir(this);
       break;
     case T_FILE:
+      break;
+
+
+    case T_CHAR:
+    case T_BLK:
       break;
 
     default:
@@ -191,14 +199,14 @@ void fs::inode::walk_direntries(
 ssize_t fs::inode::read(filedesc &fd, void *buf, size_t sz) {
   ssize_t k = -1;
 
-  dev::driver *driver = NULL;
+  dev::driver_ops *driver = NULL;
 
   switch (type) {
     case T_BLK:
     case T_CHAR:
       driver = dev::get(major);
-      if (driver != NULL) {
-        k = driver->read(minor, fd, buf, sz);
+      if (driver != NULL && driver->write != NULL) {
+        k = driver->read(fd, (char*)buf, sz);
       }
       break;
 
@@ -211,13 +219,25 @@ ssize_t fs::inode::read(filedesc &fd, void *buf, size_t sz) {
   return k;
 }
 ssize_t fs::inode::write(filedesc &fd, void *buf, size_t sz) {
-  if (type != T_FILE) {
-    return -1;
+  ssize_t k = -1;
+
+  dev::driver_ops *driver = NULL;
+
+  switch (type) {
+    case T_BLK:
+    case T_CHAR:
+      driver = dev::get(major);
+      if (driver != NULL && driver->write != NULL) {
+        k = driver->write(fd, (char*)buf, sz);
+      }
+      break;
+
+    case T_FILE:
+      lock.lock();
+      k = do_write(fd, buf, sz);
+      lock.unlock();
+      break;
   }
-  // locking is handled by the base class
-  lock.lock();
-  auto k = do_write(fd, buf, sz);
-  lock.unlock();
   return k;
 }
 
@@ -227,14 +247,17 @@ ssize_t fs::inode::do_write(filedesc &fd, void *buf, size_t sz) { return -1; }
 int fs::inode::acquire(struct inode *in) {
   assert(in != NULL);
   in->lock.lock();
+  // printk("acquire\n");
   in->rc++;
   in->lock.unlock();
   return 0;
 }
 
 int fs::inode::release(struct inode *in) {
+  return 0;
   assert(in != NULL);
   in->lock.lock();
+  // printk("release\n");
   in->rc--;
   if (in->rc == 0) {
     delete in;

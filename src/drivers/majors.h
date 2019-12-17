@@ -20,3 +20,5 @@
 #define MAJOR_KEYBOARD 11
 
 #define MAJOR_CONSOLE 20
+
+#define MAJOR_FB 21

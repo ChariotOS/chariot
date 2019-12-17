@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
-
+#include <fcntl.h>
 #include "./impl.h"
 
 
@@ -182,4 +182,12 @@ FILE *fdopen(int fd, const char *mode) {
   fp->seek = _stdio_seek;
 
   return fp;
+}
+
+
+FILE *fopen(const char *path, const char *mode) {
+  // TODO: better mode here
+  int fd = open(path, O_RDWR);
+
+  return fdopen(fd, mode);
 }

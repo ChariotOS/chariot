@@ -7,6 +7,7 @@ extern "C" {
 
 #define __NEED_ssize_t
 #define __NEED_size_t
+#define __NEED_off_t
 #include <bits/alltypes.h>
 
 // read or write from a file descriptor given a buffer of data
@@ -14,6 +15,12 @@ extern "C" {
 ssize_t read(int fd, void *buf, size_t count);
 ssize_t write(int fd, const void *buf, size_t count);
 
+
+#define SEEK_SET (-1)
+#define SEEK_CUR (-2)
+#define SEEK_END (-3)
+
+off_t lseek(int fd, off_t offset, int whence);
 
 // does not return, wrapper around pctl(0, PCTL_EXIT);
 void exit(int);

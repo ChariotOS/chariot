@@ -154,8 +154,21 @@ struct task_process : public refcounted<struct task_process> {
   int open(const char *path, int flags, int mode);
 
   int read(int fd, void *dst, size_t sz);
-
+  int write(int fd, void *data, size_t sz);
   int close(int fd);
+
+  // if newfd == -1, acts as dup(a), else act as dup2(a, b)
+  int do_dup(int oldfd, int newfd);
+
+  inline ref<fs::filedesc> get_fd(int fd) {
+    file_lock.lock();
+    ref<fs::filedesc> n;
+    if (open_files.contains(fd)) {
+      n = open_files[fd].fd;
+    }
+    file_lock.unlock();
+    return n;
+  }
 };
 
 /**

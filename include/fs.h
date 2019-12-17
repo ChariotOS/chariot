@@ -6,10 +6,10 @@
 #include <atom.h>
 #include <func.h>
 #include <lock.h>
+#include <stat.h>
 #include <string.h>
 #include <types.h>
 #include <wait.h>
-#include <stat.h>
 
 #define FDIR_READ 1
 #define FDIR_WRITE 2
@@ -25,7 +25,7 @@ struct inode;
 class filedesc : public refcounted<filedesc> {
  public:
   // must construct file descriptors via these factory funcs
-  static ref<filedesc> create(struct fs::inode *,
+  static ref<filedesc> create(struct fs::inode *, string open_path,
                               int flags = FDIR_READ | FDIR_WRITE);
 
   /*
@@ -46,8 +46,10 @@ class filedesc : public refcounted<filedesc> {
  public:
   filedesc(struct fs::inode *, int flags);
 
-  struct fs::inode *m_file;
+  inline operator bool() { return ino != NULL; }
 
+  struct fs::inode *ino;
+  string path;
   off_t m_offset = 0;
 };
 
@@ -162,9 +164,8 @@ struct inode {
   virtual ssize_t do_read(filedesc &, void *, size_t);
   virtual ssize_t do_write(filedesc &, void *, size_t);
 
-
   // can overload!
-  virtual int stat(struct stat*);
+  virtual int stat(struct stat *);
 
   static int acquire(struct inode *);
   static int release(struct inode *);

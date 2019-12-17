@@ -22,7 +22,7 @@ int spawn_proc(char *bin) {
   return pid;
 }
 
-void hexdump(void *vbuf, int len) {
+void hexdump(void *vbuf, long len) {
   unsigned char *buf = vbuf;
 
   int w = 16;
@@ -46,11 +46,17 @@ void hexdump(void *vbuf, int len) {
   }
 }
 
+int getc(void) {
+  int c;
+  if (read(0, &c, 1) != 1) {
+    return -1;
+  }
+  return c;
+}
+
 char *read_line(int fd, char *prompt, int *len_out) {
   int i = 0;
-  int cc;
-  char c;
-  int max = 16;
+  long max = 16;
 
   char *buf = malloc(max);
   memset(buf, 0, max);
@@ -63,40 +69,46 @@ char *read_line(int fd, char *prompt, int *len_out) {
       buf = realloc(buf, max);
     }
 
-    cc = read(fd, &c, 1);
-    if (cc < 1) break;
-
-    if (c == 0x7F) {
-      if (i != 0) {
-        buf[--i] = 0;
-      } else {
-        for (int j = 0; j < strlen(prompt); j++) {
-          printf("\b \b");
-        }
-        printf("%s", prompt);
-      }
-    } else {
-      buf[i++] = c;
-    }
+    int c = getc();
+    if (c == -1) break;
     if (c == '\n' || c == '\r') break;
+
+    switch (c) {
+      case 0x7F:
+        if (i != 0) {
+          buf[--i] = 0;
+        } else {
+          printf("\r%s", prompt);
+        }
+        break;
+
+      default:
+        buf[i++] = c;
+        break;
+    }
   }
-  buf[--i] = '\0';
+  buf[i] = '\0';  // null terminate
   if (len_out != NULL) *len_out = i;
   return buf;
 }
 
-int main(int argc, char **argv) {
-  // for (int i = 0; i < 6; i++) spawn_proc("/bin/test");
-  int cons = open("/dev/console", O_RDWR);
 
+int main(int argc, char **argv) {
+
+  spawn_proc("/bin/vidtest");
+
+  // open the console (till we get stdin/out/err opening by default)
   while (1) {
     int len = 0;
-    char *buf = read_line(cons, "init> ", &len);
+    char *buf = read_line(0, "init> ", &len);
 
+    len = strlen(buf);
+    if (len == 0) continue;
+
+    printf("len=%d\n", len);
     printf("buf=%p\n", buf);
     printf("you typed: '%s'\n", buf);
     hexdump(buf, len);
-
     free(buf);
   }
 

@@ -108,5 +108,7 @@ fs::filedesc vfs::fdopen(string path, int opts, int mode) {
   auto *ino = vfs::open(move(path), opts, mode);
 
   fs::filedesc fd(ino, fd_dirs);
+
+  fd.path = move(path);
   return fd;
 }

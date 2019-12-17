@@ -66,7 +66,7 @@ static bool handle_special_input(char c) {
   return false;
 }
 
-void console::feed(size_t sz, char *buf) {
+void console::feed(size_t sz, char* buf) {
   // lock the input
   cons_input_lock.lock();
   for (int i = 0; i < sz; i++) {
@@ -94,12 +94,9 @@ void console::feed(size_t sz, char *buf) {
 }
 
 int console::getc(bool block) { return -1; }
-void console::putc(char c) {
-  consputc(c);
-}
+void console::putc(char c) { consputc(c); }
 
-
-
+/*
 struct console_driver : public dev::driver {
   console_driver() { dev::register_name("console", MAJOR_CONSOLE, 0); };
   virtual ~console_driver() {}
@@ -118,11 +115,35 @@ struct console_driver : public dev::driver {
     return sz;
   }
 };
+*/
 
+static ssize_t console_read(fs::filedesc& fd, char* buf, size_t sz) {
+  if (fd) {
+    auto minor = fd.ino->minor;
+    if (minor != 0) return -1;
+    return console_fifo.read(buf, sz);
+  }
+  return -1;
+}
 
+static ssize_t console_write(fs::filedesc& fd, const char* buf, size_t sz) {
+  if (fd) {
+    auto minor = fd.ino->minor;
+    if (minor != 0) return -1;
+    for (size_t i = 0; i < sz; i++) consputc(buf[i]);
+    return sz;
+  }
+  return -1;
+}
+
+struct dev::driver_ops console_ops = {
+    .read = console_read,
+    .write = console_write,
+};
 
 static void console_init(void) {
-  dev::register_driver(MAJOR_CONSOLE, make_unique<console_driver>());
+  dev::register_driver("console", CHAR_DRIVER, MAJOR_CONSOLE, &console_ops);
+  // dev::register_driver(MAJOR_CONSOLE, make_unique<console_driver>());
   //
 }
 module_init("console", console_init);

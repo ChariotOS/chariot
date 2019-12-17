@@ -65,6 +65,8 @@ int fstat(int fd, struct stat *statbuf);
 int lstat(const char *pathname, struct stat *statbuf);
 
 
+int dup(int fd);
+int dup2(int oldfd, int newfd);
 
 void *mmap(void *addr, size_t length, int prot, int flags, int fd,
            off_t offset);

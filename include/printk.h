@@ -24,7 +24,6 @@ int sscanf(const char* buf, const char* fmt, ...);
 
 const char* human_size(uint64_t bytes, char* buf);
 
-
 #define BLK "\e[0;30m"
 #define RED "\e[0;31m"
 #define GRN "\e[0;32m"
@@ -36,20 +35,14 @@ const char* human_size(uint64_t bytes, char* buf);
 
 #define RESET "\e[0m"
 
-
-#define KLOG(CLR, fmt, args...)                                             \
-  do {                                                                      \
-    struct tm t;                                                            \
-    dev::RTC::localtime(t);                                                 \
-    printk(CLR "[%02d:%02d:%02d] " fmt, t.tm_hour, t.tm_min, t.tm_sec, ##args); \
+#define KLOG(PREFIX, fmt, args...)   \
+  do {                               \
+    printk(PREFIX ": " fmt, ##args); \
   } while (0);
 
-
-#define KINFO(fmt, args...) KLOG(" ", fmt, ##args)
+#define KINFO(fmt, args...) KLOG("K", fmt, ##args)
 #define KWARN(fmt, args...) KLOG("?", fmt, ##args)
 #define KERR(fmt, args...) KLOG("!", fmt, ##args)
-
-
 
 template <typename... T>
 inline void do_panic(const char* fmt, T&&... args) {
@@ -62,11 +55,11 @@ inline void do_panic(const char* fmt, T&&... args) {
   }
 }
 
-
-#define panic(fmt, args...) \
-  do { KERR("PANIC: %s\n", __PRETTY_FUNCTION__); \
-  do_panic(fmt, ##args); } while(0);
-
+#define panic(fmt, args...)                   \
+  do {                                        \
+    KERR("PANIC: %s\n", __PRETTY_FUNCTION__); \
+    do_panic(fmt, ##args);                    \
+  } while (0);
 
 #define assert(val)                          \
   do {                                       \
@@ -87,18 +80,13 @@ class scope_logger {
   ~scope_logger() { printk("OK\n"); }
 };
 
-
-
-
-
-
 class time_logger {
-  const char *const name;
+  const char* const name;
   uint64_t start;
-  public:
-    time_logger(const char *const name);
-    ~time_logger(void);
-};
 
+ public:
+  time_logger(const char* const name);
+  ~time_logger(void);
+};
 
 #define LOG_TIME time_logger __TLOGGER(__PRETTY_FUNCTION__)

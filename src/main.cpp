@@ -7,9 +7,6 @@
 #include <dev/driver.h>
 #include <dev/mbr.h>
 #include <dev/serial.h>
-#include <device.h>
-#include <elf/loader.h>
-#include <fifo_buf.h>
 #include <fs/ext2.h>
 #include <fs/file.h>
 #include <fs/vfs.h>
@@ -64,7 +61,7 @@ static void call_global_constructors(void) {
     (*func)();
 }
 
-void init_rootvfs(ref<dev::device> dev) {
+void init_rootvfs(fs::filedesc dev) {
   auto rootfs = make_unique<fs::ext2>(dev);
   if (!rootfs->init()) panic("failed to init fs on root disk\n");
   if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
@@ -194,6 +191,7 @@ static void kmain2(void) {
   sched::beep();
   sched::run();
 
+  panic("sched::run() returned\n");
   // [noreturn]
 }
 
@@ -251,6 +249,7 @@ static int kernel_init_task(void*) {
   initialize_kernel_modules();
   KINFO("kernel modules initialized\n");
 
+
   // open up the disk device for the root filesystem
   auto rootdev = dev::open("ata0p1");
   init_rootvfs(rootdev);
@@ -258,16 +257,13 @@ static int kernel_init_task(void*) {
   // TODO
   vfs::fdopen("/", 0);
 
-  auto syms = vfs::fdopen("/boot/kernel.syms");
-  struct stat s;
-  syms.m_file->stat(&s);
 
-  /*
-  auto buf = kmalloc(s.st_size);
-  syms.read(buf, s.st_size);
-  parse_ksyms(s.st_size, (char*)buf);
-  kfree(buf);
-  */
+  // setup stdio stuff for the kernel (to be inherited by spawn)
+  int fd = sys::open("/dev/console", O_RDWR);
+  assert(fd == 0);
+  sys::dup2(fd, 1);
+  sys::dup2(fd, 2);
+
 
   auto proc = task_process::lookup(0);
   // spawn the user process
@@ -290,10 +286,8 @@ static int kernel_init_task(void*) {
 
 
   // yield back to scheduler, we don't really want to run this thread anymore
-  // TODO: run sys::wait() on the process we just spawned, and spawn it again
   while (1) {
     halt();
-    // sched::yield();
   }
 
   panic("main kernel thread reached unreachable code\n");

@@ -2,6 +2,7 @@
 
 #include <cpu.h>
 #include <dev/driver.h>
+#include <dev/mbr.h>
 #include <idt.h>
 #include <lock.h>
 #include <mem.h>
@@ -12,14 +13,12 @@
 #include <ptr.h>
 #include <sched.h>
 #include <util.h>
-#include <dev/mbr.h>
-
 #include <vga.h>
 #include <wait.h>
 
 #include "../majors.h"
 
-#define DEBUG
+// #define DEBUG
 // #define DO_TRACE
 
 #ifdef DEBUG
@@ -29,7 +28,7 @@
 #endif
 
 #ifdef DO_TRACE
-#define TRACE KINFO("TRACE: (%d) %s\n", __LINE__, __PRETTY_FUNCTION__)
+#define TRACE printk("[ATA]: (%d) %s\n", __LINE__, __PRETTY_FUNCTION__)
 #else
 #define TRACE
 #endif
@@ -88,8 +87,6 @@ u16 primary_master_bmr_status = 0;
 u16 primary_master_bmr_command = 0;
 
 dev::ata::ata(u16 portbase, bool master) : dev::blk_dev(nullptr) {
-
-
   drive_lock.lock();
   m_io_base = portbase;
   TRACE;
@@ -420,73 +417,84 @@ static void ata_interrupt(int intr, struct task_regs* fr) {
   // INFO("interrupt: err=%d\n", fr->err);
 }
 
-class ata_driver : public dev::driver {
- public:
-  ata_driver() {
-    // TODO: make a new IRQ dispatch system to make this more general
-    interrupt_register(ATA_IRQ0, ata_interrupt);
-    interrupt_enable(ATA_IRQ0);
+static vec<ref<dev::blk_dev>> m_disks;
 
-    interrupt_register(ATA_IRQ1, ata_interrupt);
+static void add_drive(const string& name, ref<dev::blk_dev> drive) {
+  KINFO("Detected ATA drive '%s' (%d,%d) %zu bytes\n", name.get(), MAJOR_ATA,
+        m_disks.size(), drive->size());
+  dev::register_name(name, MAJOR_ATA, m_disks.size());
+  m_disks.push(drive);
+}
 
-    interrupt_enable(ATA_IRQ1);
-    // register all the ata drives on the system
-    query_and_add_device(0x1F0, 0, true);
-    query_and_add_device(0x1F0, 1, false);
-  }
-  virtual ~ata_driver() {}
+static void query_and_add_drive(u16 addr, int id, bool master) {
+  auto drive = make_ref<dev::ata>(addr, master);
 
-  virtual const char* name(void) const { return "ATA"; }
+  if (drive->identify()) {
+    string name = string::format("ata%d", id);
 
+    // add the main drive
+    add_drive(name, drive);
 
-  inline void add_drive(const string &name, ref<dev::blk_dev> drive) {
-
-      KINFO("Detected ATA drive '%s' (%d,%d) %zu bytes\n", name.get(), MAJOR_ATA,
-            m_disks.size(), drive->size());
-      dev::register_name(name, MAJOR_ATA, m_disks.size());
-      m_disks.push(drive);
-  }
-
-  void query_and_add_device(u16 addr, int id, bool master) {
-    auto drive = make_ref<dev::ata>(addr, master);
-
-    if (drive->identify()) {
-      string name = string::format("ata%d", id);
-
-      // add the main drive
-      add_drive(name, drive);
-
-      // now detect all the mbr partitions
-      if (dev::mbr mbr(*drive); mbr.parse()) {
-        for (int i = 0; i < mbr.part_count(); i++) {
-          auto pname = string::format("ata%dp%d", id, i + 1);
-          add_drive(pname, mbr.partition(i));
-        }
+    // now detect all the mbr partitions
+    if (dev::mbr mbr(*drive); mbr.parse()) {
+      for (int i = 0; i < mbr.part_count(); i++) {
+        auto pname = string::format("ata%dp%d", id, i + 1);
+        add_drive(pname, mbr.partition(i));
       }
     }
   }
+}
+static void ata_initialize(void) {
+  // TODO: make a new IRQ dispatch system to make this more general
+  interrupt_register(ATA_IRQ0, ata_interrupt);
+  interrupt_enable(ATA_IRQ0);
 
+  interrupt_register(ATA_IRQ1, ata_interrupt);
 
-  virtual ssize_t read(minor_t, fs::filedesc &fd, void *buf, size_t sz) {
-    return -1;
-  };
+  interrupt_enable(ATA_IRQ1);
+  // register all the ata drives on the system
+  query_and_add_drive(0x1F0, 0, true);
+  query_and_add_drive(0x1F0, 1, false);
+}
 
-  ref<dev::device> open(major_t maj, minor_t min, int& err) {
-    // TODO: record custody
-    if (min < m_disks.size()) {
-      err = 0;
-      return m_disks[min];
-    }
-    err = -ENOENT;
-    return nullptr;
+static dev::blk_dev* get_disk(int minor) {
+  if (minor >= 0 && minor < m_disks.size()) {
+    return m_disks[minor].get();
   }
+  return nullptr;
+}
 
-  vec<ref<dev::blk_dev>> m_disks;
+static ssize_t ata_read(fs::filedesc& fd, char* buf, size_t sz) {
+  if (fd) {
+    auto d = get_disk(fd.ino->minor);
+    if (d == NULL) return -1;
+    auto k = d->read(fd.offset(), sz, buf);
+    if (k) fd.seek(k);
+    return sz;
+  }
+  return -1;
+}
+
+static ssize_t ata_write(fs::filedesc& fd, const char* buf, size_t sz) {
+  if (fd) {
+
+    auto d = get_disk(fd.ino->minor);
+    if (d == NULL) return -1;
+    auto k = d->write(fd.offset(), sz, buf);
+    if (k) fd.seek(k);
+    return sz;
+  }
+  return -1;
+}
+
+struct dev::driver_ops ata_ops = {
+    .read = ata_read,
+    .write = ata_write,
 };
 
 static void ata_init(void) {
-  auto d = make_unique<ata_driver>();
-  dev::register_driver(MAJOR_ATA, move(d));
+  ata_initialize();
+  dev::register_driver("ata", BLOCK_DRIVER, MAJOR_ATA, &ata_ops);
 }
 
 module_init("ata", ata_init);

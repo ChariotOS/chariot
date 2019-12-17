@@ -7,6 +7,9 @@
 #include <task.h>
 #include <template_lib.h>
 
+
+constexpr const int fd_max = 255;
+
 extern "C" void user_task_create_callback(void) {
   if (cpu::proc()->tasks.size() == 1) {
     // setup argc, argv, etc...
@@ -206,6 +209,7 @@ ref<task_process> task_process::kproc_init(void) {
   phys::free(p->mm.cr3);
 
   p->mm.cr3 = v2p(get_kernel_page_table());
+  p->mm.kernel_vm = true;
 
   return p;
 }
@@ -221,7 +225,6 @@ int task_process::open(const char *path, int flags, int mode) {
   int fd = -1;
 
   file_lock.lock();
-  constexpr const int fd_max = 255;
 
   // search for a file descriptor!
   for (int i = 0; i < fd_max; i++) {
@@ -248,7 +251,7 @@ int task_process::open(const char *path, int flags, int mode) {
     return fd;
   }
 
-  open_files[fd].fd = fs::filedesc::create(file /* TODO: fd flags */);
+  open_files[fd].fd = fs::filedesc::create(file /* TODO: fd flags */, path);
   open_files[fd].flags = flags;
 
   file_lock.unlock();
@@ -269,6 +272,20 @@ int task_process::read(int fd, void *dst, size_t sz) {
   return n;
 }
 
+int task_process::write(int fd, void *data, size_t sz) {
+  int n = -1;
+
+  file_lock.lock();
+
+  if (open_files[fd]) {
+    n = open_files[fd].fd->write(data, sz);
+  }
+
+  file_lock.unlock();
+
+  return n;
+}
+
 int task_process::close(int fd) {
   int n = -1;
 
@@ -281,6 +298,33 @@ int task_process::close(int fd) {
   file_lock.unlock();
 
   return n;
+}
+
+int task_process::do_dup(int oldfd, int newfd) {
+  file_lock.lock();
+
+  int fd = newfd;
+
+  if (newfd == -1) {
+    for (int i = 0; i < fd_max; i++) {
+      if (!open_files.contains(i)) {
+        fd = i;
+        break;
+      }
+
+      if (!open_files[i]) {
+        fd = i;
+        break;
+      }
+    }
+  }
+
+  // do the dup
+  // TODO: does this need more information?
+  open_files[newfd] = open_files[oldfd];
+
+  file_lock.unlock();
+  return fd;
 }
 
 task::task(ref<struct task_process> proc) : proc(proc), task_lock("task lock") {

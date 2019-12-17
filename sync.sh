@@ -123,6 +123,7 @@ sudo cp build/kernel.syms $mnt/boot/
 sudo mknod $mnt/dev/urandom c 1 2
 # create the 'console' device
 sudo mknod $mnt/dev/console c 20 0
+sudo mknod $mnt/dev/fb c 21 0
 
 # only install grub on a new disk
 if [ $disk_exists -eq '0' ]; then

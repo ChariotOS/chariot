@@ -17,6 +17,9 @@ long __syscall_ret(unsigned long r);
 
 #define SYS_pctl 8
 
+#define SYS_dup 9
+#define SYS_dup2 10
+
 #define SYS_mmap 60
 #define SYS_munmap 61
 
