@@ -103,9 +103,8 @@ sudo mkdir -p $mnt/tmp
 cd user && ./build.sh 2>/dev/null
 cd ..
 
-sudo cp -r user/bin $mnt/bin
-sudo cp -r user/lib $mnt/lib
-sudo cp -r user/src $mnt/src
+sudo cp -r user/out/bin $mnt/bin
+sudo cp -r user/out/lib $mnt/lib
 
 
 # install the bootloader (grub, in this case)

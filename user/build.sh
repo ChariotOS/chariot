@@ -1,19 +1,14 @@
 #!/usr/bin/env bash
 
-PROGS=$(ls src/bin)
-LIBS=$(ls src/lib)
-
-
-mkdir -p bin
-mkdir -p lib
-
-for lib in $LIBS; do
-	LIB=lib/$lib.a
-	make lib DIR=src/lib/$prog LIB=$LIB # MOREFLAGS=-fpic
+# This is a little bit of a hack, but it is so that libraries
+# are built first, then binaries. This fixes `symbol not found' errors
+for dir in $(ls -d lib/*); do
+	echo "Building $dir"
+	make run M=$dir
 done
 
 
-for prog in $PROGS; do
-	BIN=bin/$prog
-	make prog DIR=src/bin/$prog BIN=$BIN ULDFLAGS=$(cat src/bin/$prog/ld_flags.txt 2>/dev/null)
+for dir in $(ls -d src/*); do
+	echo "Building $dir"
+	make run M=$dir
 done

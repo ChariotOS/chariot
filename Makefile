@@ -89,8 +89,7 @@ klean:
 	rm -f $(COBJECTS) build/initrd.tar $(AOBJECTS) $(KERNEL)
 
 clean:
-	rm -rf user/bin
-	rm -rf user/lib
+	rm -rf user/out user/build
 	rm -rf build
 
 images: $(ROOTFS)

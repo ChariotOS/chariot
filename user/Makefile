@@ -9,87 +9,89 @@ CFLAGS:=$(CINCLUDES) $(OPTIMIZE) $(MOREFLAGS) -fno-omit-frame-pointer -fno-stack
 				 -mtls-direct-seg-refs -ffreestanding -Wall \
 
 
-.PHONY: bin default setup
 
-LDFLAGS += -L$(PWD)/lib/
+PFX:=" - [U]"
 
+.PHONY: run
 
-
-srcs:=$(DIR)
-
-
--include $(DIR)/Makefile
+LDFLAGS += -L$(PWD)/out/lib/
 
 
+-include $(M)/Makefile
 
-srcs = $(shell find $(DIR))
+ifdef M
+ifndef srcs
+$(error srcs not provided in program)
+endif
+ifndef out
+$(error output not defined)
+endif
+endif
 
-CSOURCES = $(filter %.c,$(srcs))
-COBJECTS:=$(CSOURCES:%.c=bin/%.c.o)
+DST=out/
 
+libs = -lc
 
-CPPSOURCES = $(filter %.cpp,$(srcs))
-CPPOBJECTS:=$(CPPSOURCES:%.cpp=bin/%.cpp.o)
+# reify paths
+srcs:=$(srcs:%=$(M)/%)
 
+# fix up $out to be relative to the build destination
+out:=out/$(out)
 
-ASOURCES = $(filter %.asm,$(srcs))
-AOBJECTS:=$(ASOURCES:%.asm=bin/%.asm.o)
-
-
-setup:
-
-
-bin:
-	@mkdir -p bin
-
-$(BIN): lib/crt0.o $(COBJECTS) $(CPPOBJECTS) $(AOBJECTS)
-	@echo "sources: $(srcs)"
-	@echo "[U] LD   $(BIN)   $(ULDFLAGS)"
-	@$(LD) $(LDFLAGS) -o $(BIN) lib/crt0.o $(CPPOBJECTS) $(COBJECTS) $(AOBJECTS) -lc $(ULDFLAGS)
-	@echo ""
+# build a list of object files
+objs:=$(srcs:%=build/%.o)
 
 
-$(LIB): $(COBJECTS) $(CPPOBJECTS) $(AOBJECTS)
-	@echo "[U] AR   $(LIB)"
-	@ar rcs $(LIB) $(COBJECTS) $(AOBJECTS)
-	@echo ""
+# disable make's intermediate file removal
+.PRECIOUS: $(objs)
 
-prog: setup $(BIN)
+out:
+	@mkdir -p out
+	@mkdir -p out/bin
+	@mkdir -p out/lib
 
-lib: setup $(LIB)
-
-shlib: $(COBJECTS) $(CPPOBJECTS) $(AOBJECTS)
-	@echo "[U] SO  $(LIB)"
-	@gcc -shared -o $(LIB) $(COBJECTS) $(AOBJECTS)
-	@echo ""
-
-all:
-	./build.sh
+build:
+	@mkdir -p build
 
 
-lib/crt0.o: src/crt0.asm
+run: build out $(out)
+	@echo -e "Done\n"
+
+# binary programs
+out/bin/%: build/crt0.o $(objs)
+	@echo "$(PFX) LD   $@ with $(libs)"
+	@$(LD) $(LDFLAGS) -o $@ $^ $(libs)
+
+# static library archives
+out/lib/%.a: $(objs)
+	@echo "$(PFX) AR   $@"
+	@ar rcs $@ $^
+
+# dynamic library objects
+# out/lib/%.so:
+#	$(error dynamic libraries cannot be built)
+
+build/crt0.o: crt0.asm
 	@mkdir -p $(dir $@)
-	@echo "[U] making crt0.o"
-	@nasm -f elf64 -o lib/crt0.o src/crt0.asm
+	@echo "$(PFX) making crt0.o"
+	@nasm -f elf64 -o $@ $^
 
-bin/%.c.o: %.c
+build/%.c.o: %.c
 	@mkdir -p $(dir $@)
-	@echo "[U] CC  " $<
+	@echo "$(PFX) CC  " $<
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
 
-bin/%.cpp.o: %.cpp
+build/%.cpp.o: %.cpp
 	@mkdir -p $(dir $@)
-	@echo "[U] CXX " $<
+	@echo "$(PFX) CXX " $<
 	@$(CXX) $(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions -o $@ -c $<
 
 
-bin/%.asm.o: %.asm
+build/%.asm.o: %.asm
 	@mkdir -p $(dir $@)
-	@echo "[U] AS  " $<
+	@echo "$(PFX) AS  " $<
 	@nasm -f elf64 -o $@ $<
 
-
 clean:
-	@rm -rf lib
-	@rm -rf bin
+	rm -rf out build

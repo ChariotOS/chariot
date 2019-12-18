@@ -1,1 +1,0 @@
-$(warning in foo)
