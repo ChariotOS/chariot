@@ -14,6 +14,8 @@
 
 static fifo_buf mouse_buffer;
 
+
+static bool open = false;
 static uint8_t mouse_cycle = 0;
 static char mouse_byte[3];
 
@@ -61,7 +63,7 @@ void mouse_write(uint8_t write) {
 
 uint8_t mouse_read() {
   mouse_wait(0);
-  char t = inb(MOUSE_PORT);
+  uint8_t t = inb(MOUSE_PORT);
   return t;
 }
 
@@ -69,7 +71,6 @@ static int buttons;
 static int mouse_x, mouse_y;
 
 static void mouse_handler(int i, struct task_regs *tf) {
-
   // reset the cycle
   mouse_cycle = 0;
 
@@ -127,7 +128,7 @@ static void mouse_handler(int i, struct task_regs *tf) {
           buttons = packet.buttons;
 
           // printk("   %d:%d\n", packet.dx, -packet.dy);
-          mouse_buffer.write(&packet, sizeof(packet));
+          if (open) mouse_buffer.write(&packet, sizeof(packet));
           // printk("%d bytes in buffer\n", mouse_buffer.size());
 
           break;
@@ -137,6 +138,7 @@ static void mouse_handler(int i, struct task_regs *tf) {
 
   smp::lapic_eoi();
 }
+
 
 void mouse_install() {
   mouse_wait(1);
@@ -153,6 +155,7 @@ void mouse_install() {
   mouse_read();
   mouse_write(0xF4);
   mouse_read();
+
 
   interrupt_register(32 + MOUSE_IRQ, mouse_handler);
   smp::ioapicenable(MOUSE_IRQ, 0);
@@ -171,11 +174,18 @@ static ssize_t mouse_fdread(fs::filedesc &fd, char *buf, size_t sz) {
 }
 
 static int mouse_open(fs::filedesc &fd) {
+
+  // only open if it isn't already opened
+  if (open) return -1;
+  open = true;
   KINFO("[mouse] open!\n");
   return 0;
 }
 
-static void mouse_close(fs::filedesc &fd) { KINFO("[mouse] close!\n"); }
+static void mouse_close(fs::filedesc &fd) {
+  open = false;
+  KINFO("[mouse] close!\n");
+}
 
 struct dev::driver_ops mouse_ops = {
     .read = mouse_fdread,

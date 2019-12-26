@@ -8,6 +8,7 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+
 unsigned int *buffer;
 int width = 640;
 int height = 480;
@@ -82,6 +83,57 @@ inline uint32_t rand(void) {
   return z ^ (z >> 14);
 }
 
+int abs(int n) {
+  if (n < 0) return -n;
+  return n;
+}
+
+double floor(double x) {
+  return (uint64_t)x;
+}
+
+double round(double x) {
+  double y, r;
+
+  /* Largest integer <= x */
+  y = floor(x);
+
+  /* Fractional part */
+  r = x - y;
+
+  /* Round up to nearest. */
+  if (r > 0.5) goto rndup;
+
+  /* Round to even */
+  if (r == 0.5) {
+    r = y - 2.0 * floor(0.5 * y);
+    if (r == 1.0) {
+    rndup:
+      y += 1.0;
+    }
+  }
+
+  /* Else round down. */
+  return (y);
+}
+
+void draw_line(int x0, int y0, int x1, int y1, int col) {
+  double dx = x1 - x0;
+  double dy = y1 - y0;
+  double stepCount = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
+  double stepX = dx / stepCount;
+  double stepY = dy / stepCount;
+  double x = x0;
+  double y = y0;
+  for (int i = 0; i < stepCount + 1; i++) {
+    int drawx = (int)round(x);
+    int drawy = (int)round(y);
+    set_pixel(drawx, drawy, col);
+    x = x + stepX;
+    y = y + stepY;
+  }
+}
+
 int main() {
   int fb = open("/dev/fb", O_RDWR);
   int mouse = open("/dev/mouse", O_RDONLY);
@@ -105,25 +157,18 @@ int main() {
     if (mx >= 640) mx = 640 - 1;
     if (my >= 480) my = 480 - 1;
 
-
-    int bg = 0;
-    if (pkt.buttons & MOUSE_LEFT_CLICK) bg |= 0xFF0000;
-    if (pkt.buttons & MOUSE_RIGHT_CLICK) bg |= 0x00FF00;
-
-    for (int i = 0; i < 640 * 480; i++) {
-      buffer[i] = bg;
-    }
-    // memset(buffer, bg, sizeof(int) * 640 * 480);
+    memset(buffer, 0x00, sizeof(int) * 640 * 480);
 
     int mouse_sz = 16;
-    // write_pixel(fb, mx, my, 0xFFFFFF);
-    for (int x = 0; x < mouse_sz; x++) {
-      for (int y = 0; y < mouse_sz; y++) {
-        if (4 * x >= y && 4 * y >= x)
+    for (int y = 0; y < mouse_sz; y++) {
+      for (int x = 0; x < mouse_sz; x++) {
         set_pixel(mx + x, my + y, 0xFFFFFF);
       }
     }
 
+    draw_line(width/2, height/2, mx, my, 0xFF0000);
+
+    lseek(fb, 0, SEEK_SET);
     display_video(fb, buffer, 640, 480);
     continue;
   }
