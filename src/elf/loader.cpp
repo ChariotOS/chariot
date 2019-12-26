@@ -121,10 +121,10 @@ int elf::load(vm::addr_space &mm, fs::filedesc &fd, u64 &entry) {
 
       // auto sz = round_up(sec.p_memsz, 4096);
 
-      printk("%p (%zu, %zu)\n", start, sec.p_filesz, sec.p_memsz);
+      // printk("%p (%zu, %zu)\n", start, sec.p_filesz, sec.p_memsz);
 
       if (sec.p_filesz < sec.p_memsz) {
-        printk("    is .bss\n");
+        // printk("    is .bss\n");
       }
       mm.map_file("name_me", fd.ino, start, sec.p_offset, sec.p_memsz,
                   PTE_W | PTE_U | PTE_P);
