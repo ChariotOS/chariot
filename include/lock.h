@@ -4,7 +4,7 @@
 #include <atom.h>
 
 // TODO: use the correct cpu state
-class mutex_lock {
+class spinlock {
  private:
   // compare and swap dest to spinlock on
   int locked = 0;
@@ -15,8 +15,8 @@ class mutex_lock {
   const char *name;
 
  public:
-  inline mutex_lock(const char *name) : name(name) {}
-  inline mutex_lock() : name("generic_lock") {}
+  inline spinlock(const char *name) : name(name) {}
+  inline spinlock() : name("generic_lock") {}
 
   void lock(void);
   void unlock(void);
@@ -25,10 +25,10 @@ class mutex_lock {
 };
 
 class scoped_lock {
-  mutex_lock &lck;
+  spinlock &lck;
 
  public:
-  inline scoped_lock(mutex_lock &lck) : lck(lck) { lck.lock(); }
+  inline scoped_lock(spinlock &lck) : lck(lck) { lck.lock(); }
 
   inline ~scoped_lock(void) { lck.unlock(); }
 };

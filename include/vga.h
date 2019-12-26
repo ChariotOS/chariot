@@ -58,8 +58,6 @@ void set_pixel(int x, int y, int color);
 
 int rgb(int r, int g, int b);
 
-int hsl(double h, double s, double l);
-
 int width();
 int height();
 

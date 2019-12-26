@@ -140,10 +140,6 @@ void interrupt_disable(int i) {
 #endif
 
 static void unknown_exception(int i, struct task_regs *tf) {
-  auto color = vga::make_color(vga::color::white, vga::color::blue);
-  vga::clear_screen(vga::make_entry(' ', color));
-  vga::set_color(vga::color::white, vga::color::blue);
-
   KERR("KERNEL PANIC\n");
   KERR("CPU EXCEPTION: %s\n", excp_codes[tf->trapno][EXCP_NAME]);
   KERR("the system was running for %d ticks\n");
@@ -304,14 +300,6 @@ extern "C" void trap(struct task_regs *tf) {
 
   int i = tf->trapno;
 
-  // XXX HACK
-  if (auto tsk = cpu::task()) {
-    if ((u64)tsk->proc->mm.cr3 != read_cr3()) {
-      printk("   -> is=%p kern=%p task=%p\n", read_cr3(),
-             v2p(get_kernel_page_table()), tsk->proc->mm.cr3);
-      write_cr3((u64)tsk->proc->mm.cr3);
-    }
-  }
 
   (interrupt_handler_table[i])(i, tf);
   interrupt_acknowledge(i);

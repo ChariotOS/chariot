@@ -1,5 +1,3 @@
-#include <cpu.h>
-#include <dev/char_dev.h>
 #include <dev/driver.h>
 #include <errno.h>
 #include <fifo_buf.h>
@@ -9,7 +7,9 @@
 #include <mouse_packet.h>
 #include <printk.h>
 #include <sched.h>
+#include <smp.h>
 #include <vga.h>
+
 #include "../majors.h"
 
 static fifo_buf mouse_buffer;
@@ -69,10 +69,6 @@ static int buttons;
 static int mouse_x, mouse_y;
 
 static void mouse_handler(int i, struct task_regs *tf) {
-  cpu::pushcli();
-
-  // printk("HANDLE...");
-
   // reset the cycle
   mouse_cycle = 0;
 
@@ -105,7 +101,7 @@ static void mouse_handler(int i, struct task_regs *tf) {
             /* x/y overflow? bad packet! */
             break;
           }
-          mouse_packet_t packet;
+          struct mouse_packet packet;
           packet.magic = MOUSE_MAGIC;
           packet.dx = mouse_byte[1];
           packet.dy = mouse_byte[2];
@@ -138,9 +134,7 @@ static void mouse_handler(int i, struct task_regs *tf) {
     }
   }
 
-  // printk("OK\n");
-
-  cpu::popcli();
+  smp::lapic_eoi();
 }
 
 void mouse_install() {
@@ -160,46 +154,39 @@ void mouse_install() {
   mouse_read();
 
   interrupt_register(32 + MOUSE_IRQ, mouse_handler);
+  smp::ioapicenable(MOUSE_IRQ, 0);
 }
 
-class mouse_dev : public dev::char_dev {
- public:
-  mouse_dev(ref<dev::driver> dr) : dev::char_dev(dr) {}
+static ssize_t mouse_fdread(fs::filedesc &fd, char *buf, size_t sz) {
+  if (fd) {
+    // if the size of the read request is not a multiple of a packet, fail
+    if (sz % sizeof(struct mouse_packet) != 0) return -1;
 
-  virtual int read(u64 offset, u32 len, void *dst) override {
-    return mouse_buffer.read((u8 *)dst, len);
+    auto k = mouse_buffer.read(buf, sz);
+    fd.seek(k);
+    return k;
   }
-  virtual int write(u64 offset, u32 len, const void *) override { return 0; }
-  virtual ssize_t size(void) override { return mem_size(); }
-};
-
-class mousedev_driver : public dev::driver {
- public:
-  mousedev_driver() {
-    // register the memory device on minor 0
-    m_dev = make_ref<mouse_dev>(ref<mousedev_driver>(this));
-    dev::register_name("mouse", MAJOR_MOUSE, 0);
-  }
-
-  virtual ~mousedev_driver(){};
-
-  ref<dev::device> open(major_t maj, minor_t min, int &err) { return m_dev; }
-
-  virtual const char *name(void) const { return "mouse"; }
-
-
-  virtual ssize_t read(minor_t, fs::filedesc &fd, void *buf, size_t sz) {
-    return -1;
-  };
-
-
- private:
-  ref<mouse_dev> m_dev;
-};
-
-static void dev_init(void) {
-  // mouse_install();
-  // dev::register_driver(MAJOR_MOUSE, make_ref<mousedev_driver>());
+  return -1;
 }
 
-module_init("mouse", dev_init);
+static int mouse_open(fs::filedesc &fd) {
+  KINFO("[mouse] open!\n");
+  return 0;
+}
+
+static void mouse_close(fs::filedesc &fd) { KINFO("[mouse] close!\n"); }
+
+struct dev::driver_ops mouse_ops = {
+    .read = mouse_fdread,
+
+    .open = mouse_open,
+    .close = mouse_close,
+};
+
+static void mouse_init(void) {
+  mouse_install();
+
+  dev::register_driver("mouse", CHAR_DRIVER, MAJOR_MOUSE, &mouse_ops);
+}
+
+module_init("mouse", mouse_init);

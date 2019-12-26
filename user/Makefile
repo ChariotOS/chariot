@@ -60,7 +60,7 @@ run: build out $(out)
 # binary programs
 out/bin/%: build/crt0.o $(objs)
 	@echo "$(PFX) LD   $@ with $(libs)"
-	@$(LD) $(LDFLAGS) -o $@ $^ $(libs)
+	@$(LD) -T user.ld $(LDFLAGS) -o $@ $^ $(libs)
 
 # static library archives
 out/lib/%.a: $(objs)

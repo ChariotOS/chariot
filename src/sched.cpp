@@ -43,10 +43,10 @@ struct mlfq_entry {
   long ntasks = 0;
   long timeslice = 0;
 
-  mutex_lock queue_lock;
+  spinlock queue_lock;
 };
 
-static mutex_lock mlfq_lock("sched::mlfq");
+static spinlock mlfq_lock("sched::mlfq");
 
 static struct mlfq_entry mlfq[SCHED_MLFQ_DEPTH];
 
@@ -313,42 +313,63 @@ void sched::handle_tick(u64 ticks) {
 
 waitqueue::waitqueue(const char *name) : name(name), lock(name) {}
 
-void waitqueue::wait(u32 on) {
+int waitqueue::wait(u32 on) { return do_wait(on, 0); }
+
+void waitqueue::wait_noint(u32 on) { do_wait(on, WAIT_NOINT); }
+
+int waitqueue::do_wait(u32 on, int flags) {
   lock.lock();
 
   if (navail > 0) {
     navail--;
     lock.unlock();
-    return;
+    return 0;
   }
 
   assert(navail == 0);
 
   // add to the wait queue
-  struct waitqueue_elem e;
-  e.waiter = cpu::task();
-  e.waiting_on = on;
-  elems.append(e);
+  auto waiter = cpu::task().get();
+  waiter->waiting_on = on;
+  waiter->wait_flags = flags;
+
+  waiter->wq_next = NULL;
+  waiter->wq_prev = NULL;
+
+  if (back == NULL) {
+    assert(front == NULL);
+    back = front = waiter;
+  } else {
+    back->wq_next = waiter;
+    waiter->wq_prev = back;
+    back = waiter;
+  }
+
   lock.unlock();
   do_yield(PS_BLOCKED);
+
+  // TODO: read form the thread if it was rudely notified or not
+  return 0;
 }
 
 void waitqueue::notify() {
   scoped_lock lck(lock);
-  if (elems.is_empty()) {
+
+  if (front == NULL) {
     navail++;
   } else {
-    auto e = elems.take_first();
-
-    assert(e.waiter->state == PS_BLOCKED);
-    e.waiter->state = PS_RUNNABLE;
+    auto waiter = front;
+    if (front == back) back = NULL;
+    front = waiter->wq_next;
+    // *nicely* awaken the thread
+    waiter->awaken(false);
   }
 }
 
 bool waitqueue::should_notify(u32 val) {
   scoped_lock lck(lock);
-  if (!elems.is_empty()) {
-    if (elems.first().waiting_on <= val) {
+  if (front != NULL) {
+    if (front->waiting_on <= val) {
       return true;
     }
   }

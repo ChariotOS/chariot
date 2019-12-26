@@ -39,7 +39,8 @@ class fifo_buf {
   void init_blocks();
 
   bool m_blocking;
-  mutex_lock lock;
+  spinlock wlock;
+  spinlock rlock;
 
   fifo_block *read_block;
   fifo_block *write_block;

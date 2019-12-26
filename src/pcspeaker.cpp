@@ -1,4 +1,5 @@
 #include <asm.h>
+#include <module.h>
 #include <pcspeaker.h>
 #include <pit.h>
 #include <types.h>
@@ -23,6 +24,7 @@
 #define MSB(x) (((x) >> 8) & 0xFF)
 
 void pcspeaker::set(int tone) {
+  if (tone == 0) return;
   outb(PIT_CTL, TIMER2_SELECT | WRITE_WORD | MODE_SQUARE_WAVE);
   u16 timer_reload = BASE_FREQUENCY / tone;
 
@@ -32,3 +34,9 @@ void pcspeaker::set(int tone) {
 }
 
 void pcspeaker::clear(void) { outb(0x61, inb(0x61) & ~3); }
+
+void pcspeaker_init(void) {
+  //
+}
+
+module_init("pcspeaker", pcspeaker_init);

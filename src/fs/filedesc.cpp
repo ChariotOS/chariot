@@ -1,10 +1,10 @@
-#include <fs.h>
 #include <errno.h>
+#include <fs.h>
 
-ref<fs::filedesc> fs::filedesc::create(struct fs::inode *f, string path, int flags) {
+ref<fs::filedesc> fs::filedesc::create(struct fs::inode *f, string path,
+                                       int flags) {
   // fail if f is null
   if (!f) return nullptr;
-
   // otherwise construct
   auto n = make_ref<fs::filedesc>(f, flags);
   n->path = move(path);
@@ -12,18 +12,27 @@ ref<fs::filedesc> fs::filedesc::create(struct fs::inode *f, string path, int fla
 }
 
 fs::filedesc::filedesc(struct fs::inode *f, int flags) : ino(f) {
-  // register that the fd has access to the inode
-  if (ino != nullptr) fs::inode::acquire(ino);
   m_offset = 0;
+
+  // register that the fd has access to the inode
+  if (ino != nullptr) {
+    fs::inode::acquire(ino);
+    int o_res = ino->open(*this);
+    if (o_res != 0) ino = NULL;
+  }
 }
 
 fs::filedesc::~filedesc(void) {
-  if (ino != nullptr) fs::inode::release(ino);
+  if (ino != nullptr) {
+    // close the filedescriptor
+    ino->close(*this);
+    fs::inode::release(ino);
+    ino = nullptr;
+  }
 }
 
 off_t fs::filedesc::seek(off_t offset, int whence) {
   // TODO: check if the file is actually seekable
-
 
   off_t new_off;
 
@@ -49,7 +58,6 @@ off_t fs::filedesc::seek(off_t offset, int whence) {
   return m_offset;
 }
 
-
 ssize_t fs::filedesc::read(void *dst, ssize_t len) {
   if (!ino) {
     return -1;
@@ -58,7 +66,6 @@ ssize_t fs::filedesc::read(void *dst, ssize_t len) {
   return ino->read(*this, dst, len);
 }
 
-
 ssize_t fs::filedesc::write(void *dst, ssize_t len) {
   if (!ino) {
     return -1;
@@ -66,3 +73,4 @@ ssize_t fs::filedesc::write(void *dst, ssize_t len) {
 
   return ino->write(*this, dst, len);
 }
+

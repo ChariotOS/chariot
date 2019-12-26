@@ -5,7 +5,7 @@
 #include <util.h>
 
 // TODO: this will leak if one task uses a massive buffer
-static mutex_lock fifo_block_cache_lock;
+static spinlock fifo_block_cache_lock;
 static struct fifo_block *fifo_block_cache = NULL;
 
 struct fifo_block *fifo_block::alloc(void) {
@@ -61,7 +61,7 @@ void fifo_buf::block_accessing_tasks(void) {}
 void fifo_buf::init_blocks() { write_block = read_block = fifo_block::alloc(); }
 
 ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
-  lock.lock();
+  wlock.lock();
 
   if (write_block == NULL) init_blocks();
   auto *buf = (const char *)vbuf;
@@ -93,21 +93,21 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
   // possibly notify a reader (who will notify the next and so on)
   if (readers.should_notify(navail)) readers.notify();
 
-  lock.unlock();
+  wlock.unlock();
   return size;
 }
 
 ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
-  lock.lock();
+  rlock.lock();
 
   if (read_block == NULL) init_blocks();
   auto *buf = (char *)vbuf;
 
   // possibly block?
   if (navail < size && block) {
-    lock.unlock();
+    rlock.unlock();
     readers.wait(size);
-    lock.lock();
+    rlock.lock();
   }
 
   auto nread = 0;
@@ -157,6 +157,6 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
   // if more readers have built up, notify them with the new navail
   if (readers.should_notify(navail)) readers.notify();
 
-  lock.unlock();
+  rlock.unlock();
   return nread;
 }

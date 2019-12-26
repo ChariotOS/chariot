@@ -1,15 +1,17 @@
 #pragma once
 
+
+#include <fs.h>
 #include <types.h>
-#include "image.h"
+#include <vm.h>
+#include "exec_elf.h"
 
 namespace elf {
-class loader {
 
-  elf::image image;
 
- public:
-  // a loader takes the binary data image of the elf and the size of said data
-  loader(u8*, int size);
-};
+  bool validate(fs::filedesc &fd);
+
+  bool validate(fs::filedesc &fd, Elf64_Ehdr &);
+  int load(vm::addr_space &vm, fs::filedesc &fd, u64 &entry);
+
 };  // namespace elf

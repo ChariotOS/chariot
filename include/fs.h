@@ -45,6 +45,7 @@ class filedesc : public refcounted<filedesc> {
 
  public:
   filedesc(struct fs::inode *, int flags);
+  inline filedesc() : filedesc(NULL, 0) {}
 
   inline operator bool() { return ino != NULL; }
 
@@ -152,6 +153,9 @@ struct inode {
   ssize_t read(filedesc &, void *, size_t);
   ssize_t write(filedesc &, void *, size_t);
 
+  int open(filedesc &);
+  void close(filedesc &);
+
   /**
    * virtual functions
    */
@@ -171,7 +175,7 @@ struct inode {
   static int release(struct inode *);
 
  protected:
-  mutex_lock lock;
+  spinlock lock;
   int rc = 0;
 
  private:

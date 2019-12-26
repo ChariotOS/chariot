@@ -35,14 +35,24 @@ static inline u32 CAS(volatile u32* mem, u32 newval, u32 oldval) {
 // helper function to check if interrupts are enabled or not
 static bool ints_enabled(void) { return readeflags() & 0x200; }
 
-void mutex_lock::lock(void) { mutex::lock(locked); }
+void spinlock::lock(void) { mutex::lock(locked); }
 
-void mutex_lock::unlock(void) { mutex::unlock(locked); }
+void spinlock::unlock(void) { mutex::unlock(locked); }
 
-bool mutex_lock::is_locked(void) { return locked; }
+bool spinlock::is_locked(void) { return locked; }
 
 void mutex::lock(int& l) {
+
+	while(!__sync_bool_compare_and_swap(&l, 0, 1))
+	{
+		asm("pause");
+	}
+  return;
+
+
+
   while (xchg(&l, 1) != 0) {
+    asm("pause");
     if (!ints_enabled() && cpu::in_thread()) {
       sched::yield();
     }

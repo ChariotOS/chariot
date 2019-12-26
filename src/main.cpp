@@ -168,7 +168,7 @@ static void kmain2(void) {
   init_idt();
   enable_sse();
 
-  // for safety, unmap low memory (from bootstrap)
+  // for safety, unmap low memory (from boot.asm)
   *((u64*)p2v(read_cr3())) = 0;
   tlb_flush();
 
@@ -181,10 +181,10 @@ static void kmain2(void) {
   // a descrete idle task has to be added so that the scheduler always has work
   // to do. This thread is marked as idle as well as not to be promoted in the
   // mlfq scheduler
-  auto idle_tid = kproc0->create_task(idle_task, PF_KTHREAD, nullptr);
-  auto idle = task::lookup(idle_tid);
-  idle->priority = PRIORITY_IDLE;
-  idle->is_idle_thread = true;
+  // auto idle_tid = kproc0->create_task(idle_task, PF_KTHREAD, nullptr);
+  // auto idle = task::lookup(idle_tid);
+  // idle->priority = PRIORITY_IDLE;
+  // idle->is_idle_thread = true;
 
   KINFO("starting scheduler\n");
   sti();
@@ -257,7 +257,6 @@ static int kernel_init_task(void*) {
   // TODO
   vfs::fdopen("/", 0);
 
-
   // setup stdio stuff for the kernel (to be inherited by spawn)
   int fd = sys::open("/dev/console", O_RDWR);
   assert(fd == 0);
@@ -283,6 +282,16 @@ static int kernel_init_task(void*) {
   // TODO: setup stdin, stdout, and stderr
   int res = sys::pctl(init, PCTL_CMD, (u64)&cmdargs);
   if (res != 0) KERR("failed to cmdpid init process\n");
+
+
+  // auto *buf = new unsigned[640 * 480];
+  // int i = 0;
+  while (1) {
+    // memset(buf, i++, 640 * 480 * sizeof(int));
+
+    // vga::flush_buffer(buf, 640 * 480);
+
+  }
 
 
   // yield back to scheduler, we don't really want to run this thread anymore

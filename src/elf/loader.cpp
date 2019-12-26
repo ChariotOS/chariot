@@ -1,5 +1,137 @@
 #include <elf/loader.h>
+#include <paging.h>
 #include <printk.h>
 
-elf::loader::loader(u8 *buffer, int size) : image(buffer, size) {
+#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
+#define round_down(x, y) ((x) & ~((y)-1))
+
+static const char elf_header[] = {0x7f, 0x45, 0x4c, 0x46};
+
+bool elf::validate(fs::filedesc &fd) {
+  Elf64_Ehdr ehdr;
+  return elf::validate(fd, ehdr);
+}
+
+bool elf::validate(fs::filedesc &fd, Elf64_Ehdr &ehdr) {
+  fd.seek(0, SEEK_SET);
+  int header_read = fd.read(&ehdr, sizeof(ehdr));
+
+  if (header_read != sizeof(ehdr)) {
+    return false;
+  }
+
+  for (int i = 0; i < 4; i++) {
+    if (ehdr.e_ident[i] != elf_header[i]) {
+      return false;
+    }
+  }
+
+  switch (ehdr.e_machine) {
+    case EM_X86_64:
+    case EM_ARM:
+    case EM_AARCH64:
+      break;
+    default:
+      return false;
+      break;
+  }
+
+  return true;
+}
+
+int elf::load(vm::addr_space &mm, fs::filedesc &fd, u64 &entry) {
+  Elf64_Ehdr ehdr;
+
+  if (!elf::validate(fd, ehdr)) {
+    return -1;
+  }
+
+  // the binary is valid, so lets read the headers!
+  entry = ehdr.e_entry;
+
+  Elf64_Shdr *sec_hdrs = new Elf64_Shdr[ehdr.e_shnum];
+
+  // seek to and read the headers
+  fd.seek(ehdr.e_shoff, SEEK_SET);
+  auto sec_expected = ehdr.e_shnum * sizeof(*sec_hdrs);
+  auto sec_read = fd.read(sec_hdrs, sec_expected);
+
+  if (sec_read != sec_expected) {
+    delete[] sec_hdrs;
+    return -1;
+  }
+
+  delete[] sec_hdrs;
+
+  auto handle_bss = [&](Elf64_Phdr &ph) -> void {
+    if (ph.p_memsz > ph.p_filesz) {
+      auto addr = ph.p_vaddr;
+      // possibly map a new bss region, anonymously in?
+      auto file_end = addr + (ph.p_memsz - ph.p_filesz);
+      auto file_page_end = round_up(file_end, PGSIZE);
+
+      auto page_end = round_up(addr + ph.p_memsz, PGSIZE);
+
+      if (page_end > file_page_end) {
+        printk("need a new page!\n");
+      }
+    }
+  };
+
+  // read program headers
+  Elf64_Phdr *phdr = new Elf64_Phdr[ehdr.e_phnum];
+  fd.seek(ehdr.e_phoff, SEEK_SET);
+  auto hdrs_size = ehdr.e_phnum * ehdr.e_phentsize;
+  auto hdrs_read = fd.read(phdr, hdrs_size);
+
+  if (hdrs_read != hdrs_size) {
+    delete[] phdr;
+    return -1;
+  }
+
+  size_t i = 0;
+
+  // skip to the first loadable header
+  while (i < ehdr.e_phnum && phdr[i].p_type != PT_LOAD) i++;
+
+  if (i == ehdr.e_phnum) {
+    delete[] phdr;
+    return -1;
+  }
+
+  // Elf places the PT_LOAD segments in ascending order of vaddresses.
+  // So we find the last one to calculate the whole address span of the image.
+  auto *first_load = &phdr[i];
+  auto *last_load = &phdr[ehdr.e_phnum - 1];
+
+  // walk the last_load back
+  while (last_load > first_load && last_load->p_type != PT_LOAD) last_load--;
+
+  // Total memory size of phdr between first and last PT_LOAD.
+  // size_t span = last_load->p_vaddr + last_load->p_memsz - first_load->p_vaddr;
+
+
+  for (int i = 0; i < ehdr.e_phnum; i++) {
+    auto &sec = phdr[i];
+
+    // printk("fsz=%zu, msz=%zu\n", sec.p_filesz, sec.p_memsz);
+
+    if (sec.p_type == PT_LOAD) {
+      auto start = round_down(sec.p_vaddr, 1);
+
+      // auto sz = round_up(sec.p_memsz, 4096);
+
+      printk("%p (%zu, %zu)\n", start, sec.p_filesz, sec.p_memsz);
+
+      if (sec.p_filesz < sec.p_memsz) {
+        printk("    is .bss\n");
+      }
+      mm.map_file("name_me", fd.ino, start, sec.p_offset, sec.p_memsz,
+                  PTE_W | PTE_U | PTE_P);
+      handle_bss(sec);
+    }
+  }
+  delete[] phdr;
+
+  return 0;
 }

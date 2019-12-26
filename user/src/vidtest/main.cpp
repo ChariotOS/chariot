@@ -1,4 +1,5 @@
 #include <chariot.h>
+#include <chariot/mouse_packet.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -10,6 +11,15 @@
 unsigned int *buffer;
 int width = 640;
 int height = 480;
+
+void write_pixel(int fd, int x, int y, int color) {
+  if (buffer == 0) return;
+  if (x >= width || y >= height) return;
+
+  int i = y * width + x;
+  lseek(fd, i * sizeof(int), SEEK_SET);
+  write(fd, &color, sizeof(color));
+}
 
 void set_pixel(int x, int y, int color) {
   if (buffer == 0) return;
@@ -73,29 +83,50 @@ inline uint32_t rand(void) {
 }
 
 int main() {
-  // TODO: inherit from parent task
-  open("/dev/console", O_RDWR);
-
   int fb = open("/dev/fb", O_RDWR);
+  int mouse = open("/dev/mouse", O_RDONLY);
 
-  /*
-  FILE *font = fopen("/usr/res/fonts/cherry.bdf", "r");
+  buffer = (unsigned int *)calloc(sizeof(int), 640 * 480);
 
-  if (font != NULL) {
+  int mx = 100;
+  int my = 100;
 
-    auto c = (char*)malloc(64);
+  struct mouse_packet pkt;
+  while (1) {
+    int n = read(mouse, &pkt, sizeof(pkt));
+    if (n != sizeof(pkt)) continue;
 
-    fread(c, 64, 1, font);
+    mx += pkt.dx;
+    my -= pkt.dy;
 
-    c[63] = 0;
-    printf("%s\n", c);
+    if (mx < 0) mx = 0;
+    if (my < 0) my = 0;
+
+    if (mx >= 640) mx = 640 - 1;
+    if (my >= 480) my = 480 - 1;
+
+
+    int bg = 0;
+    if (pkt.buttons & MOUSE_LEFT_CLICK) bg |= 0xFF0000;
+    if (pkt.buttons & MOUSE_RIGHT_CLICK) bg |= 0x00FF00;
+
+    for (int i = 0; i < 640 * 480; i++) {
+      buffer[i] = bg;
+    }
+    // memset(buffer, bg, sizeof(int) * 640 * 480);
+
+    int mouse_sz = 16;
+    // write_pixel(fb, mx, my, 0xFFFFFF);
+    for (int x = 0; x < mouse_sz; x++) {
+      for (int y = 0; y < mouse_sz; y++) {
+        if (4 * x >= y && 4 * y >= x)
+        set_pixel(mx + x, my + y, 0xFFFFFF);
+      }
+    }
+
+    display_video(fb, buffer, 640, 480);
+    continue;
   }
-  */
-
-
-
-  buffer = (unsigned int*)calloc(sizeof(int), 640 * 480);
-
 
   int c = 0;
   int w = 255;
@@ -105,6 +136,8 @@ int main() {
     for (int i = 0; i < 640 * 480; i++) {
       buffer[i] = color;
     }
+
+    int c = -1;
     display_video(fb, buffer, 640, 480);
     c++;
   }

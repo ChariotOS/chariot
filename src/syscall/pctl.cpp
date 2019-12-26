@@ -1,10 +1,8 @@
 #include <cpu.h>
-#include <elf/image.h>
+#include <elf/loader.h>
 #include <paging.h>
 #include <pctl.h>
 #include <process.h>
-
-#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 
 pid_t do_spawn(void) {
   assert(cpu::in_thread());
@@ -26,12 +24,10 @@ pid_t do_spawn(void) {
 
   proc->nursery.push(p->pid);
 
-
   return p->pid;
 }
 
 static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
-
   auto proc = cpu::proc().get();
 
   if (proc->pid != 0) {
@@ -72,7 +68,6 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
       break;
     }
   }
-  
 
   if (!valid_pid) return -1;
 
@@ -90,115 +85,20 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
 
   auto fd = fs::filedesc(file, FDIR_READ);
 
-  {
-    static const char elf_header[] = {0x7f, 0x45, 0x4c, 0x46};
-    // LOG_TIME;
+  /*
+  // validate the elf binary
+  if (!elf::validate(fd)) {
+    printk("here\n");
+    return -1;
+  }
+  */
 
-    Elf64_Ehdr hdr;
+  printk("========================================================\n");
+  int loaded = elf::load(newproc->mm, fd, entry_address);
+  printk("========================================================\n");
 
-    fd.seek(0, SEEK_SET);
-    int header_read = fd.read(&hdr, sizeof(hdr));
-
-    // verify the header
-    bool invalid = false;
-
-    if (!invalid && header_read != sizeof(hdr)) invalid = true;
-
-    // check the elf header identifier
-    if (!invalid) {
-      for (int i = 0; i < 4; i++) {
-        if (hdr.e_ident[i] != elf_header[i]) {
-          invalid = true;
-          break;
-        }
-      }
-    }
-
-    if (invalid) {
-      return -1;
-    }
-
-    // the binary is valid, so lets read the headers!
-    entry_address = hdr.e_entry;
-
-    Elf64_Shdr *sec_hdrs;
-
-    sec_hdrs = new Elf64_Shdr[hdr.e_shnum];
-
-    fd.seek(hdr.e_shoff, SEEK_SET);
-    auto sec_expected = hdr.e_shnum * sizeof(*sec_hdrs);
-    auto sec_read = fd.read(sec_hdrs, sec_expected);
-    if (sec_read != sec_expected) {
-      delete[] sec_hdrs;
-      return -1;
-    }
-
-    delete[] sec_hdrs;
-
-    if (true) {
-      Elf64_Phdr *prog_hdrs;
-      // read program headers
-      prog_hdrs = new Elf64_Phdr[hdr.e_phnum];
-      fd.seek(hdr.e_phoff, SEEK_SET);
-      auto hdrs_size = hdr.e_phnum * hdr.e_phentsize;
-      auto hdrs_read = fd.read(prog_hdrs, hdrs_size);
-      if (hdrs_read != hdrs_size) {
-        delete[] prog_hdrs;
-        return -1;
-      }
-
-      int err = 0;
-
-      for (int i = 0; i < hdr.e_phnum; i++) {
-        auto &sec = prog_hdrs[i];
-
-        switch (sec.p_type) {
-          case PT_LOAD:
-            newproc->mm.map_file("name_me", file, sec.p_vaddr, sec.p_offset,
-                                 sec.p_filesz, PTE_W | PTE_U | PTE_P);
-            break;
-          default:
-            // printk("unhandled program header %d\n", sec.p_type);
-            break;
-        }
-      }
-      delete[] prog_hdrs;
-
-      if (err != 0) {
-
-      }
-    }
-
-    /*
-    for (int i = 0; i < hdr.e_shnum; i++) {
-      auto &sec = sec_hdrs[i];
-
-      printk("sect header %d, 0x%x  ", i, sec.sh_type);
-
-      printk("%p-%p %d\n", sec.sh_addr, sec.sh_addr + sec.sh_size, sec.sh_size);
-
-      switch (sec.sh_type) {
-        // load program data in
-        case SHT_PROGBITS:
-          // load in program data
-          break;
-
-        // bss data
-        case SHT_NOBITS: {
-          int pages = round_up(sec.sh_size, 4096) >> 12;
-          auto reg = make_ref<vm::memory_backing>(pages);
-          newproc->mm.add_mapping(".bss", sec.sh_addr, pages * PGSIZE,
-                                  move(reg), PTE_W | PTE_U);
-        }
-
-        break;
-
-        default:
-          // dunno...
-          break;
-      }
-    }
-    */
+  if (loaded != 0) {
+    return -1;
   }
 
   u64 stack = 0;

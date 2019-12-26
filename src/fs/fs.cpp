@@ -44,7 +44,6 @@ static void destruct_dir(struct inode *ino) {
 }
 
 fs::inode::~inode() {
-
   printk("INODE DESTRUCT %d\n", ino);
 
   switch (type) {
@@ -53,7 +52,6 @@ fs::inode::~inode() {
       break;
     case T_FILE:
       break;
-
 
     case T_CHAR:
     case T_BLK:
@@ -205,8 +203,8 @@ ssize_t fs::inode::read(filedesc &fd, void *buf, size_t sz) {
     case T_BLK:
     case T_CHAR:
       driver = dev::get(major);
-      if (driver != NULL && driver->write != NULL) {
-        k = driver->read(fd, (char*)buf, sz);
+      if (driver != NULL && driver->read != NULL) {
+        k = driver->read(fd, (char *)buf, sz);
       }
       break;
 
@@ -228,7 +226,7 @@ ssize_t fs::inode::write(filedesc &fd, void *buf, size_t sz) {
     case T_CHAR:
       driver = dev::get(major);
       if (driver != NULL && driver->write != NULL) {
-        k = driver->write(fd, (char*)buf, sz);
+        k = driver->write(fd, (char *)buf, sz);
       }
       break;
 
@@ -239,6 +237,41 @@ ssize_t fs::inode::write(filedesc &fd, void *buf, size_t sz) {
       break;
   }
   return k;
+}
+
+int fs::inode::open(filedesc &fd) {
+  ssize_t k = 0;
+
+  dev::driver_ops *driver = NULL;
+
+  switch (type) {
+    case T_BLK:
+    case T_CHAR:
+      driver = dev::get(major);
+      if (driver != NULL && driver->open != NULL) {
+        k = driver->open(fd);
+      }
+      break;
+
+    // by default, open should succeed
+    default:
+      k = 0;
+  }
+  return k;
+}
+
+void fs::inode::close(filedesc &fd) {
+  dev::driver_ops *driver = NULL;
+
+  switch (type) {
+    case T_BLK:
+    case T_CHAR:
+      driver = dev::get(major);
+      if (driver != NULL && driver->close != NULL) {
+        driver->close(fd);
+      }
+      break;
+  }
 }
 
 ssize_t fs::inode::do_read(filedesc &fd, void *buf, size_t sz) { return -1; }

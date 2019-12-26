@@ -7,6 +7,7 @@
 #include <printk.h>
 #include <util.h>
 #include <vga.h>
+#include <sched.h>
 
 #include "drivers/majors.h"
 
@@ -18,11 +19,12 @@
 // TODO: maybe not flush when it fills up and allocate a new buffer? Not really
 //       sure how it should work, and maybe look into how linux does it
 #define LINEBUF_SIZE 4096
+
 static bool buffer_input = false;
 static bool echo = true;
 static int line_len = 0;
 static char line_buffer[LINEBUF_SIZE];
-static mutex_lock cons_input_lock;
+static spinlock cons_input_lock;
 
 // the console fifo is defined globally
 static fifo_buf console_fifo;
@@ -35,9 +37,7 @@ static void consputc(int c) {
   } else {
     serial_send(COM1, c);
   }
-
   vga::putchar(c);
-  // cgaputc(c);
 }
 
 static void flush(void) {
@@ -96,27 +96,6 @@ void console::feed(size_t sz, char* buf) {
 int console::getc(bool block) { return -1; }
 void console::putc(char c) { consputc(c); }
 
-/*
-struct console_driver : public dev::driver {
-  console_driver() { dev::register_name("console", MAJOR_CONSOLE, 0); };
-  virtual ~console_driver() {}
-
-  // read from the fifo
-  ssize_t read(minor_t minor, fs::filedesc &fd, void *buf, size_t sz) {
-    if (minor != 0) return -1;
-    return console_fifo.read(buf, sz);
-  };
-
-  // write is just a consputc() wrapper
-  ssize_t write(minor_t minor, fs::filedesc &fd, const void *vbuf, size_t sz) {
-    if (minor != 0) return -1;
-    auto *buf = (const char *)vbuf;
-    for (size_t i = 0; i < sz; i++) consputc(buf[i]);
-    return sz;
-  }
-};
-*/
-
 static ssize_t console_read(fs::filedesc& fd, char* buf, size_t sz) {
   if (fd) {
     auto minor = fd.ino->minor;
@@ -136,9 +115,23 @@ static ssize_t console_write(fs::filedesc& fd, const char* buf, size_t sz) {
   return -1;
 }
 
+
+static int console_open(fs::filedesc &fd) {
+  KINFO("[console] open!\n");
+  return 0;
+}
+
+
+static void console_close(fs::filedesc &fd) {
+  KINFO("[console] close!\n");
+}
+
 struct dev::driver_ops console_ops = {
     .read = console_read,
     .write = console_write,
+
+    .open = console_open,
+    .close = console_close,
 };
 
 static void console_init(void) {

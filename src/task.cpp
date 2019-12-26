@@ -7,11 +7,13 @@
 #include <task.h>
 #include <template_lib.h>
 
-
 constexpr const int fd_max = 255;
 
 extern "C" void user_task_create_callback(void) {
   if (cpu::proc()->tasks.size() == 1) {
+    // load the elf binary, since we're in the process now and have full access
+    // to it's address space
+
     // setup argc, argv, etc...
     auto *t = cpu::task().get();
 
@@ -63,11 +65,11 @@ extern "C" void trapret(void);
 extern "C" void userret(void);
 static void kernel_task_create_callback(void);
 
-static mutex_lock proc_table_lock("process_table");
+static spinlock proc_table_lock("process_table");
 static u64 next_pid = 0;
 static map<int, ref<struct task_process>> proc_table;
 
-static mutex_lock task_table_lock("task_table");
+static spinlock task_table_lock("task_table");
 static u64 next_tid = 0;
 static map<int, ref<struct task>> task_table;
 
@@ -291,7 +293,7 @@ int task_process::close(int fd) {
 
   file_lock.lock();
 
-  if (open_files[fd]) {
+  if (open_files.contains(fd)) {
     open_files[fd].clear();
   }
 
@@ -348,14 +350,13 @@ ref<struct task> task::lookup(int tid) {
 static void kernel_task_create_callback(void) {
   auto task = cpu::task();
 
-  cpu::popcli();
-
   KINFO("kthread %d started\n", task->tid);
 
   using kfunc_t = int (*)(void *);
   kfunc_t kfn;
   kfn = (kfunc_t)task->tf->eip;
 
+  cpu::popcli();
   kfn(nullptr);
 
   panic("unhandled: kthread finishes\n");
@@ -364,4 +365,23 @@ static void kernel_task_create_callback(void) {
 void fd_flags::clear() {
   fd = nullptr;
   flags = 0;
+}
+
+bool task::awaken(bool rudely) {
+  if (!(wait_flags & WAIT_NOINT)) {
+    if (rudely) {
+      return false;
+    }
+  }
+
+  // TODO: this should be more complex
+  rudely_awoken = rudely;
+
+  // fix up the wq double linked list
+  current_wq = NULL;
+
+  assert(state == PS_BLOCKED);
+  state = PS_RUNNABLE;
+
+  return true;
 }

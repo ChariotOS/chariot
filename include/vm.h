@@ -130,7 +130,7 @@ class addr_space final : public refcounted<addr_space> {
   string format(void);
 
  protected:
-  mutex_lock lck;
+  spinlock lck;
 
   vec<unique_ptr<vm::region>> regions;
 

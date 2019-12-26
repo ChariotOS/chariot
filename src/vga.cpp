@@ -5,8 +5,8 @@
 #include <pci.h>
 #include <printk.h>
 #include <task.h>
-#include <vga.h>
 #include <util.h>
+#include <vga.h>
 
 #include "drivers/majors.h"
 
@@ -186,30 +186,7 @@ int vga::rgb(int r, int g, int b) {
   return ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
 }
 
-static double hue2rgb(double p, double q, double t) {
-  if (t < 0) t += 1;
-  if (t > 1) t -= 1;
-  if (t < 1.0 / 6.0) return p + (q - p) * 6 * t;
-  if (t < 1.0 / 2.0) return q;
-  if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
-  return p;
-}
-int vga::hsl(double h, double s, double l) {
-  double r, g, b;
 
-  if (s == 0) {
-    r = g = b = l;  // achromatic
-  } else {
-    double q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    double p = 2.0 * l - q;
-
-    r = hue2rgb(p, q, h + 1 / 3.0);
-    g = hue2rgb(p, q, h);
-    b = hue2rgb(p, q, h - 1.0 / 3.0);
-  }
-
-  return vga::rgb(r * 255.0, g * 255.0, b * 255.0);
-}
 static void *get_framebuffer_address(void) {
   void *addr = nullptr;
   pci::walk_devices([&](pci::device *dev) {
@@ -230,20 +207,20 @@ int vga::flush_buffer(u32 *dbuf, int npixels) {
 }
 
 
+/**
+ * give the user access to writing the framebuffer
+ */
 static ssize_t fb_write(fs::filedesc &fd, const char *buf, size_t sz) {
   if (fd) {
+    if (vga_fba == nullptr) return -1;
     size_t fbsize = vga::npixels() * sizeof(u32);
     auto off = fd.offset() % fbsize;
-
     ssize_t space_left = fbsize - off;
 
     ssize_t to_copy = min(space_left, sz);
-
     if (to_copy <= 0) return 0;
 
-    char *fb = (char*)vga_fba;
-
-    memcpy(fb + off, buf, to_copy);
+    memcpy((char *)vga_fba + off, buf, to_copy);
 
     // seek past
     fd.seek(sz, SEEK_CUR);
@@ -252,16 +229,20 @@ static ssize_t fb_write(fs::filedesc &fd, const char *buf, size_t sz) {
   return -1;
 }
 
+
+static int fb_ioctl(fs::filedesc &fd, unsigned int cmd, unsigned long arg) {
+  return -1;
+}
+
 // can only write to the framebuffer
 struct dev::driver_ops fb_ops = {
     .write = fb_write,
+    .ioctl = fb_ioctl,
 };
 
 static void vga_init_mod(void) {
   vga_fba = (u32 *)p2v(get_framebuffer_address());
 
-  // set_resolution(1024, 768);
-  // set_resolution(800, 600);
   set_resolution(640, 480);
   dev::register_driver("fb", CHAR_DRIVER, MAJOR_FB, &fb_ops);
 }

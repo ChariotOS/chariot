@@ -47,8 +47,20 @@ struct driver_ops {
   ssize_t (*read)(fs::filedesc &, char *, size_t) = NULL;
   ssize_t (*write)(fs::filedesc &, const char *, size_t) = NULL;
   int (*ioctl)(fs::filedesc &, unsigned int, unsigned long) = NULL;
+
+  /**
+   * open - notify the driver that a new descriptor has opened the file
+   * if it returns a non-zero code, it will be propagated back to the
+   * sys::open() call and be considered a fail
+   */
   int (*open)(fs::filedesc &) = NULL;
-  int (*release)(fs::filedesc &) = NULL;
+
+  /**
+   * close - notify the driver that a file descriptor is closing it
+   *
+   * no return value
+   */
+  void (*close)(fs::filedesc &) = NULL;
   /*
     int (*readdir) (struct file *, void *, filldir_t);
     unsigned int (*poll) (struct file *, struct poll_table_struct *);

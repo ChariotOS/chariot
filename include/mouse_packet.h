@@ -7,7 +7,7 @@
 #define MOUSE_MIDDLE_CLICK 0x04
 
 
-struct mouse_packet_t {
+struct mouse_packet {
   unsigned int magic;
   char dx;
   char dy;

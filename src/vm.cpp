@@ -56,6 +56,7 @@ vm::file_backing::~file_backing(void) {
 
 int vm::file_backing::fault(addr_space &space, region &reg, int page,
                             int flags) {
+
   if (page < 0 || page >= pages.size()) {
     return -ENOENT;
   }
@@ -126,17 +127,27 @@ static int sort_regions(vec<unique_ptr<vm::region>> &xs) {
       }
     }
   }
+
+
+  /*
+  for (auto &r : xs) {
+    printk("%p - '%s'\n", r->va, r->name.get());
+  }
+  printk("\n\n");
+  */
   return n;
 }
 
 int vm::addr_space::handle_pagefault(off_t va, int flags) {
+
+
+  // KWARN("fault @ va=%p\n", va);
   auto r = lookup(va);
 
   if (!r) {
     return -1;
   }
 
-  // KWARN("fault in region %s\n", r->name.get());
 
   auto page = (va >> 12) - (r->va >> 12);
   // refer to the backing structure to handle the fault

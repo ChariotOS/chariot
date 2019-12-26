@@ -108,7 +108,6 @@ high_p2:
 
 
 
-
 BOOT_STACK_SIZE equ 256
 boot_stack:
 	;; enough bytes bytes
@@ -217,12 +216,6 @@ _start:
   mov rbp, 0 ; terminate stack traces here
   mov rsp, qword stack + STACK_SIZE
 
-  ; unmap the identity-mapped memory
-  ; mov qword [boot_pml4], 0x0
-
-  ; invalidate the TLB cache for the identity-mapped memory
-  ; invlpg [0x0]
-
   ; clear the RFLAGS register
   push 0x0
   popf
@@ -236,12 +229,3 @@ _start:
 [section .bss align=STACK_ALIGN]
 stack:
   resb STACK_SIZE
-
-
-
-
-
-
-
-
-

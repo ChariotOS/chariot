@@ -111,6 +111,9 @@ struct task_process : public refcounted<struct task_process> {
   /* address space information */
   vm::addr_space mm;
 
+  // the main executable of this process. To load on first run
+  fs::filedesc executable;
+
   /* cwd - current working directory
    */
   ref<fs::vnode> cwd;
@@ -133,7 +136,7 @@ struct task_process : public refcounted<struct task_process> {
 
   ref<task_process> parent;
 
-  mutex_lock proc_lock;
+  spinlock proc_lock;
 
   // create a thread in the task_process
   int create_task(int (*fn)(void *), int flags, void *arg,
@@ -147,7 +150,7 @@ struct task_process : public refcounted<struct task_process> {
 
   task_process();
 
-  mutex_lock file_lock;
+  spinlock file_lock;
   map<int, fd_flags> open_files;
 
   // syscall interfaces
@@ -159,6 +162,8 @@ struct task_process : public refcounted<struct task_process> {
 
   // if newfd == -1, acts as dup(a), else act as dup2(a, b)
   int do_dup(int oldfd, int newfd);
+
+
 
   inline ref<fs::filedesc> get_fd(int fd) {
     file_lock.lock();
@@ -195,13 +200,13 @@ struct task final : public refcounted<task> {
 
   bool fpu_initialized = false;
 
+  // if the thread should die instead of return to userspace.
+  // (for thread teardown)
+  bool should_die = false;
+
   /* per-task flasg (uses PF_* macros)*/
   unsigned int flags;
 
-  // checked IF this task's state is currently waiting, and the process is
-  // resumed if the flags match the new state of some process. The task_process
-  // owner of this task is what manages this information.
-  int wait_flags = 0;
 
   ref<struct task_process> proc;
 
@@ -211,10 +216,10 @@ struct task final : public refcounted<task> {
   atom<int> last_cpu;
 
   // used when an action requires ownership of this task
-  mutex_lock task_lock;
+  spinlock task_lock;
   // so only one scheduler can run the task at a time (TODO: just work around
   // this possibility)
-  mutex_lock run_lock;
+  spinlock run_lock;
 
   struct task_context *ctx;
   struct task_regs *tf;
@@ -227,6 +232,23 @@ struct task final : public refcounted<task> {
   // for the scheduler's intrusive runqueue
   struct task *next = nullptr;
   struct task *prev = nullptr;
+
+  /**
+   * for waitqueue's intrusive ... queue
+   */
+  // how many *things* this thread is waiting on
+  unsigned waiting_on = 0;
+  int wait_flags = 0;
+  bool rudely_awoken = false;
+  // intrusive list for the waitqueue. It's the first if wq_prev == NULL
+  struct task *wq_next;
+  struct task *wq_prev;
+  waitqueue *current_wq = NULL;
+
+  // awaken the task from a blocked state, returning if it woke.
+  // rudely means that it is being awoken not by waitqueue::notify, but by
+  // something else (like a task teardown)
+  bool awaken(bool rudely = 0);
 
   static ref<struct task> lookup(int tid);
 

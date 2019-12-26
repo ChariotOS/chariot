@@ -119,15 +119,13 @@
 #define for_range(var, start, end) for (auto var = start; var < (end); var++)
 
 // #define FANCY_MEM_FUNCS
+//
+//
+// implemented in src/mem.cpp
+void *memcpy(void *dst, const void *src, size_t n);
 
 #ifndef FANCY_MEM_FUNCS
 
-static inline void *memcpy(void *dst, const void *src, size_t n) {
-  for (int i = 0; i < n; i++) {
-    ((char *)dst)[i] = ((char *)src)[i];
-  }
-  return dst;
-}
 
 static inline void O_memset(void *buf, char c, size_t len) {
   char *m = (char *)buf;
@@ -135,22 +133,6 @@ static inline void O_memset(void *buf, char c, size_t len) {
 }
 
 #else
-
-static inline void *memcpy(void *vdst, const void *vsrc, size_t n) {
-  auto *dst = (u8 *)vdst;
-  auto *src = (u8 *)vsrc;
-
-#define DO_COPY(T) \
-  for (; i < n - sizeof(T); i += sizeof(T)) *(T *)(dst + i) = *(T *)(src + i);
-  int i = 0;
-  DO_COPY(u64);
-  DO_COPY(u32);
-
-  for (; i < n; i++) *(dst + i) = *(src + i);
-#undef DO_COPY
-  return dst;
-}
-
 
 #endif
 

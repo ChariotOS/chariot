@@ -2,6 +2,7 @@
 #include <printk.h>
 #include <types.h>
 #include <vga.h>
+#include <cpu.h>
 
 uint64_t sbreakc = 0;
 
@@ -11,12 +12,9 @@ typedef struct free_header_s {
   struct free_header_s *perf_ptr;
 } free_header_t;
 
-
 typedef size_t blk_t;
 
-
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
-
 
 /* single word (4) or double word (8) alignment */
 #define ALIGNMENT 16
@@ -46,16 +44,24 @@ typedef size_t blk_t;
 
 static inline void *heap_start(void) { return kheap_lo(); }
 
+
 void print_heap(void) {
+  uint64_t o = 0;
   uint64_t i = 0;
   auto *c = (blk_t *)((u8 *)kheap_lo() + OVERHEAD);
   for (; (void *)c < kheap_hi(); c = NEXT_BLK(c)) {
     bool free = IS_FREE(c);
-    int blocks = GET_SIZE(c) / 4;
+    int blocks = GET_SIZE(c);
+
+    int c = 200 + ((i * 16) % 56);
+
+    int color = free ? vga::rgb(0, c, 0) : vga::rgb(c, 0, 0);
+
     for (int b = 0; b < blocks; b++) {
-      vga::set_pixel(i + b, free ? 0x00FF00 : 0xAA0000);
+      vga::set_pixel(o + b, color);
     }
-    i += blocks;
+    o += blocks;
+    i++;
   }
 }
 // #define PRINT_DEBUG() print_heap()
@@ -109,7 +115,6 @@ void *mm_malloc(size_t size) {
   free_header_t *fit;
   fit = find_fit(size);
   blk_t *blk;
-
 
   if (fit == NULL) {
     // there wasn't a valid spot for this allocation. Noone likes it.
@@ -187,7 +192,7 @@ static inline blk_t *attempt_free_fusion(blk_t *this_blk) {
 blk_t *get_next_free(blk_t *curr) {
   curr = NEXT_BLK(curr);
   while (1) {
-    if ((void *)curr >= kheap_hi() || (void*)curr < kheap_lo()) return NULL;
+    if ((void *)curr >= kheap_hi() || (void *)curr < kheap_lo()) return NULL;
     if (IS_FREE(curr)) return curr;
     curr = NEXT_BLK(curr);
   }

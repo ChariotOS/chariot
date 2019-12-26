@@ -372,9 +372,6 @@ static void key_state_changed(u8 raw, bool pressed) {
   if (pressed) {
     console::feed(1, (char *)&event.character);
   }
-
-  // first, check for a waiting process to wake
-  // kbd_buf.write(&event, sizeof(keyboard_packet_t));
 }
 
 static void kbd_handler(int i, struct task_regs *tf) {
