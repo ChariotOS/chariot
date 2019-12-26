@@ -300,7 +300,6 @@ extern "C" void trap(struct task_regs *tf) {
 
   int i = tf->trapno;
 
-
   (interrupt_handler_table[i])(i, tf);
   interrupt_acknowledge(i);
   interrupt_count[i]++;

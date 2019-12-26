@@ -9,6 +9,9 @@ struct cpu_t {
   int ncli = 0;
   size_t ticks = 0;
   size_t intena = 0;
+
+  uint16_t preemption_depth = 0;
+
   u32 speed_khz;
   ref<struct task> current_thread;
   struct task_context *sched_ctx;
@@ -50,6 +53,14 @@ static inline void sleep_ms(int ms) {
     // TODO: yield if there is enough time left?
   }
 }
+
+
+void preempt_enable(void);
+void preempt_disable(void);
+// re-enable
+void preempt_reset(void);
+// is it disabled?
+int preempt_disabled(void);
 
 // plop at the top of a scope and interrupts will be disabled within that scope
 class scoped_cli {

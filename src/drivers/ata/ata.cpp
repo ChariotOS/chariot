@@ -72,7 +72,7 @@ waitqueue ata_wq("ata");
  * TODO: use per-channel ATA mutex locks. Right now every ata drive is locked
  * the same way
  */
-static spinlock drive_lock("ATA drive");
+static spinlock drive_lock;
 
 /*
  * TODO: determine if we need this function

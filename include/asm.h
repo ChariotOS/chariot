@@ -6,6 +6,14 @@
 #include <math.h>
 #include "types.h"
 
+#ifndef unlikely
+#define unlikely(c) __builtin_expect((c), 0)
+#endif
+
+#ifndef likely
+#define likely(c)   __builtin_expect((c), 1)
+#endif
+
 #define BOOTCODE __attribute__((__section__(".boot")))
 #define __packed __attribute__((packed))
 

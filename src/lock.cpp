@@ -42,21 +42,40 @@ void spinlock::unlock(void) { mutex::unlock(locked); }
 bool spinlock::is_locked(void) { return locked; }
 
 void mutex::lock(int& l) {
-
-	while(!__sync_bool_compare_and_swap(&l, 0, 1))
-	{
-		asm("pause");
-	}
-  return;
-
-
-
-  while (xchg(&l, 1) != 0) {
+  while (!__sync_bool_compare_and_swap(&l, 0, 1)) {
     asm("pause");
-    if (!ints_enabled() && cpu::in_thread()) {
-      sched::yield();
-    }
   }
 }
 
-void mutex::unlock(int& l) { xchg(&l, 0); }
+void mutex::unlock(int& l) { l = 0; }
+
+int rwlock::rlock(void) {
+  m_lock.lock();
+  m_readers++;
+  m_lock.unlock();
+  return 0;
+}
+int rwlock::runlock(void) {
+  m_lock.lock();
+  m_readers--;
+  m_lock.unlock();
+  return 0;
+}
+
+int rwlock::wlock(void) {
+  while (1) {
+    m_lock.lock();
+
+    if (likely(m_readers == 0)) {
+      break;
+    } else {
+      m_lock.unlock();
+      /* TODO: we should yield if we're not spread across cores */
+    }
+  }
+  return 0;
+}
+int rwlock::wunlock(void) {
+  m_lock.unlock();
+  return 0;
+}

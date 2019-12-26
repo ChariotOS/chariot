@@ -50,7 +50,7 @@ typedef struct __ext2_dir_entry {
 #define EXT2_CACHE_SIZE 128
 
 fs::ext2::ext2(fs::filedesc disk)
-    : filesystem(/*super*/), disk(disk), m_lock("ext2fs") {
+    : filesystem(/*super*/), disk(disk) {
   TRACE;
 }
 

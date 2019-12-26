@@ -57,8 +57,9 @@ typedef void (*func_ptr)(void);
 extern "C" func_ptr __init_array_start[0], __init_array_end[0];
 
 static void call_global_constructors(void) {
-  for (func_ptr* func = __init_array_start; func != __init_array_end; func++)
+  for (func_ptr* func = __init_array_start; func != __init_array_end; func++) {
     (*func)();
+  }
 }
 
 void init_rootvfs(fs::filedesc dev) {
@@ -117,10 +118,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
    * Initialize the real-time-clock
    */
   rtc_init();
-
-  /*
-   * TODO: replace this serial driver with a major/minor device driver
-   */
   serial_install();
 
   /*
@@ -162,8 +159,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 
 static int kernel_init_task(void*);
 
-struct foo : public refcounted<foo> {};
-
 static void kmain2(void) {
   init_idt();
   enable_sse();
@@ -175,66 +170,10 @@ static void kmain2(void) {
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
 
-  ref<task_process> kproc0 = task_process::kproc_init();
-  kproc0->create_task(kernel_init_task, PF_KTHREAD, nullptr);
 
-  // a descrete idle task has to be added so that the scheduler always has work
-  // to do. This thread is marked as idle as well as not to be promoted in the
-  // mlfq scheduler
-  // auto idle_tid = kproc0->create_task(idle_task, PF_KTHREAD, nullptr);
-  // auto idle = task::lookup(idle_tid);
-  // idle->priority = PRIORITY_IDLE;
-  // idle->is_idle_thread = true;
-
-  KINFO("starting scheduler\n");
-  sti();
-  sched::beep();
-  sched::run();
-
-  panic("sched::run() returned\n");
-  // [noreturn]
-}
-
-extern "C" char smp_trampoline_start[];
-extern "C" char smp_trampoline_end[];
-
-extern "C" int bios_mmap[16];
-
-static map<off_t, string> symbols;
-
-void parse_ksyms(size_t len, char* buf) {
-  off_t off = 0;
-  while (off < len) {
-    off_t addr = 0;
-    sscanf(buf + off, "%016lx", &addr);
-    char* name = buf + off + 19 /* magic number */;
-
-    while (buf[off] != '\n') {
-      off++;
-    }
-    buf[off] = '\0';
-    symbols[addr] = name;
-    off++;
-  }
-  KINFO("parsed %d symbols out of the kernel\n", symbols.size());
-}
-
-/**
- * the kernel drops here in a kernel task
- *
- * Further initialization past getting the scheduler working should run here
- */
-static int kernel_init_task(void*) {
   // TODO: initialize smp
   if (!smp::init()) panic("smp failed!\n");
-
   KINFO("Discovered SMP Cores\n");
-
-  pci::init(); /* initialize the PCI subsystem */
-  KINFO("Initialized PCI\n");
-  init_pit();
-  KINFO("Initialized PIT\n");
-  syscall_init();
 
   // initialize the local apic
   //    (sets up timer interupts)
@@ -243,6 +182,31 @@ static int kernel_init_task(void*) {
   // initialize the scheduler
   assert(sched::init());
   KINFO("Initialized the scheduler\n");
+
+  ref<task_process> kproc0 = task_process::kproc_init();
+  kproc0->create_task(kernel_init_task, PF_KTHREAD, nullptr);
+
+
+  KINFO("starting scheduler\n");
+  sti();
+  // sched::beep();
+  sched::run();
+
+  panic("sched::run() returned\n");
+  // [noreturn]
+}
+
+/**
+ * the kernel drops here in a kernel task
+ *
+ * Further initialization past getting the scheduler working should run here
+ */
+static int kernel_init_task(void*) {
+  pci::init(); /* initialize the PCI subsystem */
+  KINFO("Initialized PCI\n");
+  init_pit();
+  KINFO("Initialized PIT\n");
+  syscall_init();
 
   // walk the kernel modules and run their init function
   KINFO("Calling kernel module init functions\n");
@@ -283,15 +247,6 @@ static int kernel_init_task(void*) {
   int res = sys::pctl(init, PCTL_CMD, (u64)&cmdargs);
   if (res != 0) KERR("failed to cmdpid init process\n");
 
-
-  // auto *buf = new unsigned[640 * 480];
-  // int i = 0;
-  while (1) {
-    // memset(buf, i++, 640 * 480 * sizeof(int));
-
-    // vga::flush_buffer(buf, 640 * 480);
-
-  }
 
 
   // yield back to scheduler, we don't really want to run this thread anymore

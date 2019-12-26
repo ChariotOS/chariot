@@ -46,14 +46,15 @@ struct mlfq_entry {
   spinlock queue_lock;
 };
 
-static spinlock mlfq_lock("sched::mlfq");
-
 static struct mlfq_entry mlfq[SCHED_MLFQ_DEPTH];
+static spinlock mlfq_lock;
+
 
 bool sched::init(void) {
   // initialize the mlfq
   for (int i = 0; i < SCHED_MLFQ_DEPTH; i++) {
     auto &Q = mlfq[i];
+
     Q.task_queue = NULL;
     Q.last_task = NULL;
     Q.priority = i;
@@ -61,6 +62,7 @@ bool sched::init(void) {
 
     Q.timeslice = 1;
   }
+
   return true;
 }
 
@@ -70,12 +72,13 @@ static struct task *next_task(void) {
   // remove the one we want to run from it
   struct task *nt = nullptr;
 
-  for (int i = SCHED_MLFQ_DEPTH; i >= 0; i--) {
+  for (int i = SCHED_MLFQ_DEPTH-1; i >= 0; i--) {
     auto &Q = mlfq[i];
 
     Q.queue_lock.lock();
 
     for (auto *t = Q.task_queue; t != NULL; t = t->next) {
+
       if (t->state == PS_RUNNABLE) {
         nt = t;
         // remove from the queue
@@ -119,6 +122,7 @@ int sched::add_task(struct task *tsk) {
     // this is the only thing in the queue
     Q.task_queue = tsk;
     Q.last_task = tsk;
+
 
     tsk->next = NULL;
     tsk->prev = NULL;
@@ -212,6 +216,8 @@ static void schedule_one() {
     // idle loop when there isn't a task
     return;
   }
+
+
   cpu::pushcli();
   s_enabled = true;
   cpu::current().intena = 1;
@@ -307,11 +313,15 @@ void sched::handle_tick(u64 ticks) {
   auto tsk = cpu::task();
   // yield?
   if (ticks - tsk->start_tick >= tsk->timeslice) {
+    if (cpu::preempt_disabled()) {
+      printk("preempt_disabled\n");
+      // return;
+    }
     sched::yield();
   }
 }
 
-waitqueue::waitqueue(const char *name) : name(name), lock(name) {}
+waitqueue::waitqueue(const char *name) : name(name) {}
 
 int waitqueue::wait(u32 on) { return do_wait(on, 0); }
 

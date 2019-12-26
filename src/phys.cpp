@@ -17,7 +17,7 @@ struct frame {
   u64 page_len;
 };
 
-static spinlock phys_lck("physical allocator");
+static spinlock phys_lck;
 
 
 static void lock(void) {

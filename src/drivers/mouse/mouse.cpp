@@ -69,6 +69,7 @@ static int buttons;
 static int mouse_x, mouse_y;
 
 static void mouse_handler(int i, struct task_regs *tf) {
+
   // reset the cycle
   mouse_cycle = 0;
 

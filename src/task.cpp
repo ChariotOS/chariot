@@ -65,15 +65,15 @@ extern "C" void trapret(void);
 extern "C" void userret(void);
 static void kernel_task_create_callback(void);
 
-static spinlock proc_table_lock("process_table");
+static spinlock proc_table_lock;
 static u64 next_pid = 0;
 static map<int, ref<struct task_process>> proc_table;
 
-static spinlock task_table_lock("task_table");
+static spinlock task_table_lock;
 static u64 next_tid = 0;
 static map<int, ref<struct task>> task_table;
 
-task_process::task_process(void) : proc_lock("proc_lock") {}
+task_process::task_process(void) {}
 
 /**
  * task_process - create a task in a process
@@ -329,7 +329,7 @@ int task_process::do_dup(int oldfd, int newfd) {
   return fd;
 }
 
-task::task(ref<struct task_process> proc) : proc(proc), task_lock("task lock") {
+task::task(ref<struct task_process> proc) : proc(proc) {
   fpu_state = kmalloc(512);
 
   // default to the highest priority to maximize responsiveness of new tasks

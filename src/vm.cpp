@@ -322,7 +322,7 @@ bool vm::addr_space::validate_string(const char *str) {
   return true;
 }
 
-vm::addr_space::addr_space(void) : lck("addr_space_lock") {
+vm::addr_space::addr_space(void) {
   // process base/limit
   set_range(0, KERNEL_VIRTUAL_BASE);
 

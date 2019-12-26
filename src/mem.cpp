@@ -245,7 +245,7 @@ extern void *mm_malloc(size_t size);
 extern void mm_free(void *ptr);
 extern void *mm_realloc(void *ptr, size_t size);
 
-static spinlock s_allocator_lock("allocator");
+static spinlock s_allocator_lock;
 
 static void alloc_lock(void) { s_allocator_lock.lock(); }
 
@@ -276,6 +276,8 @@ void *krealloc(void *ptr, u64 newsize) {
   return p;
 }
 
+
+// stolen from musl :)
 void *memcpy(void *dest, const void *src, size_t n) {
   auto *d = (unsigned char *)dest;
   auto *s = (const unsigned char *)src;

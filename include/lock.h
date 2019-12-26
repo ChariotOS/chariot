@@ -9,19 +9,28 @@ class spinlock {
   // compare and swap dest to spinlock on
   int locked = 0;
 
-  // what CPU currently holds the lock?
-  int holding_cpu = -1;
-
-  const char *name;
-
  public:
-  inline spinlock(const char *name) : name(name) {}
-  inline spinlock() : name("generic_lock") {}
+  inline spinlock() {
+    locked = 0;
+  }
 
   void lock(void);
   void unlock(void);
 
   bool is_locked(void);
+};
+
+class rwlock {
+ public:
+  int rlock();
+  int runlock();
+
+  int wlock();
+  int wunlock();
+
+ private:
+  spinlock m_lock;
+  unsigned m_readers = 0;
 };
 
 class scoped_lock {
@@ -33,11 +42,9 @@ class scoped_lock {
   inline ~scoped_lock(void) { lck.unlock(); }
 };
 
-
 // for POD structures
 namespace mutex {
-  void lock(int &);
-  void unlock(int &);
-};
-
+void lock(int &);
+void unlock(int &);
+};  // namespace mutex
 
