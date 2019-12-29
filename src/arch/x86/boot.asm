@@ -189,7 +189,6 @@ _start:
   jmp 0x08:.trampoline
 
 
-
 ; some 64-bit code in the lower half used to jump to the higher half
 [bits 64]
 .trampoline:

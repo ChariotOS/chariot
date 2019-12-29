@@ -138,6 +138,18 @@ int main() {
   int fb = open("/dev/fb", O_RDWR);
   int mouse = open("/dev/mouse", O_RDONLY);
 
+  int sb16 = open("/dev/sb16", O_WRONLY);
+
+
+  printf("sb16=%d\n", sb16);
+  char buf[512];
+
+  for (int i = 0; i < 512; i++) {
+    buf[i] = i;
+  }
+
+  write(sb16, buf, 512);
+
   buffer = (unsigned int *)calloc(sizeof(int), 640 * 480);
 
   int mx = 100;

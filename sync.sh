@@ -124,6 +124,7 @@ sudo mknod $mnt/dev/urandom c 1 2
 sudo mknod $mnt/dev/console c 20 0
 sudo mknod $mnt/dev/mouse c 10 0
 sudo mknod $mnt/dev/fb c 21 0
+sudo mknod $mnt/dev/sb16 c 22 0
 
 # only install grub on a new disk
 if [ $disk_exists -eq '0' ]; then

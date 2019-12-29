@@ -95,7 +95,7 @@ char *read_line(int fd, char *prompt, int *len_out) {
 
 int main(int argc, char **argv) {
 
-  spawn_proc("/bin/vidtest");
+  // spawn_proc("/bin/vidtest");
 
   // open the console (till we get stdin/out/err opening by default)
   while (1) {

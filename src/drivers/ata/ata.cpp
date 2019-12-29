@@ -477,7 +477,6 @@ static ssize_t ata_read(fs::filedesc& fd, char* buf, size_t sz) {
 
 static ssize_t ata_write(fs::filedesc& fd, const char* buf, size_t sz) {
   if (fd) {
-
     auto d = get_disk(fd.ino->minor);
     if (d == NULL) return -1;
     auto k = d->write(fd.offset(), sz, buf);

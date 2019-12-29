@@ -22,3 +22,5 @@
 #define MAJOR_CONSOLE 20
 
 #define MAJOR_FB 21
+
+#define MAJOR_SB16 22

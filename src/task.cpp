@@ -253,6 +253,8 @@ int task_process::open(const char *path, int flags, int mode) {
     return fd;
   }
 
+  printk("%p\n", file);
+
   open_files[fd].fd = fs::filedesc::create(file /* TODO: fd flags */, path);
   open_files[fd].flags = flags;
 

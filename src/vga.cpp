@@ -186,11 +186,13 @@ int vga::rgb(int r, int g, int b) {
   return ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
 }
 
+pci::device *vga_dev = NULL;
 
 static void *get_framebuffer_address(void) {
   void *addr = nullptr;
   pci::walk_devices([&](pci::device *dev) {
     if (dev->is_device(0x1234, 0x1111) || dev->is_device(0x80ee, 0xbeef)) {
+      vga_dev = dev;
       addr = (void *)(dev->get_bar(0).raw & 0xfffffff0l);
     }
   });
@@ -205,7 +207,6 @@ int vga::flush_buffer(u32 *dbuf, int npixels) {
   for (; i < npixels; i++) vga_fba[i] = dbuf[i];
   return len;
 }
-
 
 /**
  * give the user access to writing the framebuffer
@@ -229,7 +230,6 @@ static ssize_t fb_write(fs::filedesc &fd, const char *buf, size_t sz) {
   return -1;
 }
 
-
 static int fb_ioctl(fs::filedesc &fd, unsigned int cmd, unsigned long arg) {
   return -1;
 }
@@ -242,6 +242,9 @@ struct dev::driver_ops fb_ops = {
 
 static void vga_init_mod(void) {
   vga_fba = (u32 *)p2v(get_framebuffer_address());
+
+
+  vga_dev->enable_bus_mastering();
 
   set_resolution(640, 480);
   dev::register_driver("fb", CHAR_DRIVER, MAJOR_FB, &fb_ops);
