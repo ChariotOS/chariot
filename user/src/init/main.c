@@ -1,4 +1,5 @@
 #include <chariot.h>
+#include <chariot/pctl.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -92,8 +93,48 @@ char *read_line(int fd, char *prompt, int *len_out) {
   return buf;
 }
 
+int c = 0;
+int thread_func(void *p) {
+  while (1) {
+    c++;
+    yield();
+    /* exit unimplemented */
+  }
+}
+
+int create_thread(int (*fn)(void *), void *arg, void *stk, int stksize) {
+  struct pctl_create_thread_args args;
+
+  args.arg = arg;
+  args.fn = fn;
+  args.stack = stk;
+  args.stack_size = stksize;
+  args.flags = 0;
+
+  if (!pctl(0, PCTL_CREATE_THREAD, &args)) {
+    return -1;
+  }
+
+  return args.tid;
+}
 
 int main(int argc, char **argv) {
+  if (0) {
+    int stksize = 4096;
+    void *stk = malloc(stksize);
+
+    void *arg = NULL;
+
+    int thd = create_thread(thread_func, arg, stk, stksize);
+
+    printf("tid=%d\n", thd);
+
+    while (1) {
+      printf("c=%d\n", c);
+      yield();
+      /* wait */
+    }
+  }
 
   // spawn_proc("/bin/vidtest");
 

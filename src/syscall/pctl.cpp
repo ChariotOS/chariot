@@ -120,7 +120,7 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
 
   int tid = newproc->create_task(nullptr, 0, nullptr, PS_EMBRYO);
 
-  auto t = task::lookup(tid);
+  auto t = task::lookup(tid).get();
 
   // t->tf->rdi = (u64)u_argc;
   // t->tf->rsi = (u64)u_argv;
@@ -135,6 +135,34 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
   return 0;
 }
 
+static int do_create_thread(struct pctl_create_thread_args *argp) {
+  assert(cpu::in_thread());
+  auto proc = cpu::proc();
+
+  /* validate the argument passed */
+  if (!proc->mm.validate_pointer(argp, sizeof(argp), VPROT_READ)) {
+    return -1;
+  }
+
+  auto &args = *argp;
+
+  int tid = proc->create_task(nullptr, 0, nullptr, PS_EMBRYO);
+  auto t = task::lookup(tid).get();
+
+  if (t == NULL) {
+    panic("failed to spawn thread\n");
+  }
+
+  // set up initial context
+  t->tf->esp = (u64)args.stack + args.stack_size;
+  t->tf->eip = (u64)args.fn;
+  t->state = PS_RUNNABLE; /* mark task as runnable */
+
+  args.tid = tid;
+
+  return 0;
+}
+
 int sys::pctl(int pid, int request, u64 arg) {
   // printk("pctl(%d, %d, %p);\n", pid, request, arg);
   switch (request) {
@@ -143,6 +171,9 @@ int sys::pctl(int pid, int request, u64 arg) {
 
     case PCTL_CMD:
       return do_cmd(pid, (struct pctl_cmd_args *)arg);
+
+    case PCTL_CREATE_THREAD:
+      return do_create_thread((struct pctl_create_thread_args *)arg);
 
     // request not handled!
     default:
