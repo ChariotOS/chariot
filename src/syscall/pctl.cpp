@@ -156,6 +156,7 @@ static int do_create_thread(struct pctl_create_thread_args *argp) {
   // set up initial context
   t->tf->esp = (u64)args.stack + args.stack_size;
   t->tf->eip = (u64)args.fn;
+  t->tf->rdi = (u64)args.arg;
   t->state = PS_RUNNABLE; /* mark task as runnable */
 
   args.tid = tid;
