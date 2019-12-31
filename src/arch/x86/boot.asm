@@ -148,14 +148,6 @@ _start:
 	mov edi, ebx
 	mov esi, eax
 
-	;; push edi
-	;; push esi
-	;; 
-	;; call detect_e820_mem
-	;; 
-	;; pop esi
-	;; pop edi
-
   ; enable PAE and PSE
   mov eax, cr4
   or eax, (CR4_PAE + CR4_PSE)
