@@ -9,5 +9,7 @@ mobo
 .DS_Store
 tags
 
+
+user/out
 user/bin
 user/lib
