@@ -138,6 +138,30 @@ void pci_check_device(u8 bus, u8 device) {}
 int pci_device_count = 0;
 pci::device pci_devices[256];
 
+static const char *pci_class_names[] = {
+    [0x00] = "Unclassified",
+    [0x01] = "Mass Storage Controller",
+    [0x02] = "Network Controller",
+    [0x03] = "Display Controller",
+    [0x04] = "Multimedia Controller",
+    [0x05] = "Memory Controller",
+    [0x06] = "Bridge Device",
+    [0x07] = " Simple Communication Controller",
+    [0x08] = "Base System Peripheral",
+    [0x09] = "Input Device Controller",
+    [0x0A] = "Docking Station",
+    [0x0B] = "Processor",
+    [0x0C] = "Serial Bus Controller",
+    [0x0D] = "Wireless Controller",
+    [0x0E] = "Intelligent Controller",
+    [0x0F] = "Satellite Communication Controller",
+    [0x10] = "Encryption Controller",
+    [0x11] = "Signal Processing Controller",
+    [0x12] = "Processing Accelerator",
+    [0x13] = "Non-Essential Instrumentation",
+    [0x14] = "(Reserved)",
+};
+
 void pci::init(void) {
   // enumerate PCI devices
   for (int bus = 0; bus < 32; bus++) {
@@ -148,8 +172,12 @@ void pci::init(void) {
 
         if (!read_device_descriptor(desc, bus, dev, func)) continue;
 
-        KINFO("pci device: %03x.%02x.%1x: %04x:%04x\n", bus, dev, func,
+        KINFO("pci: %03x.%02x.%1x: %04x:%04x\n", bus, dev, func,
               desc->vendor_id, desc->device_id);
+
+        const char *class_name = pci_class_names[desc->class_id];
+        if (desc->class_id > 0x14) class_name = "Unknown";
+        KINFO("    class=%02x '%s'\n", desc->class_id, class_name);
 
         for (int barnum = 0; barnum < 6; barnum++) {
           struct pci_bar bar = pci_get_bar(bus, dev, func, barnum);
