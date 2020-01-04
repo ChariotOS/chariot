@@ -8,6 +8,7 @@
 #include <util.h>
 #include <vga.h>
 #include <sched.h>
+#include <task.h>
 
 #include "drivers/majors.h"
 
@@ -52,6 +53,10 @@ static void flush(void) {
 // return true if the char was special (like backspace)
 static bool handle_special_input(char c) {
   switch (c) {
+    case C('P'):
+
+      task_process::dump();
+      return true;
     /*
     case C('B'):
       buffer_input = !buffer_input;

@@ -294,15 +294,21 @@ int depth = 0;
 // where the trap handler throws us. It is up to this function to sort out
 // which trap handler to hand off to
 extern "C" void trap(struct task_regs *tf) {
+
+  auto num = tf->trapno;
   extern void pic_send_eoi(void);
 
   depth++;
 
-  int i = tf->trapno;
+  if (cpu::in_thread()) {
+    cpu::task().get()->tf=tf;
+  }
 
-  (interrupt_handler_table[i])(i, tf);
-  interrupt_acknowledge(i);
-  interrupt_count[i]++;
+
+
+  (interrupt_handler_table[num])(num, tf);
+  interrupt_acknowledge(num);
+  interrupt_count[num]++;
   depth--;
 }
 

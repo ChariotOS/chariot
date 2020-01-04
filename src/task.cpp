@@ -141,6 +141,8 @@ int task_process::create_task(int (*fn)(void *), int tflags, void *arg,
     panic("failed to add task %d to the scheduler after creating\n", add_res);
   }
 
+  KINFO("CREATED TASK %d %d\n", t->pid, t->tid);
+
   return t->tid;
 }
 
@@ -152,6 +154,63 @@ pid_t task_process::search_nursery(pid_t pid) {
     }
   }
   return -1;
+}
+
+void task_process::dump(void) {
+  /* this whole function takes no locks, so take its output with a bit of salt */
+  printk("process dump:\n");
+
+  printk("   sched: rip=%p\n", cpu::current().sched_ctx->eip);
+  for (auto &p : proc_table) {
+    auto &proc = p.value;
+    printk(" pid %d ", proc->pid);
+    printk("ntasks=%-3d ", proc->tasks.size());
+
+    printk("files={");
+
+    int ifd = 0;
+    for (auto &fd : proc->open_files) {
+      printk("%d", fd.key);
+
+      ifd++;
+      if (ifd <= proc->open_files.size() - 1) {
+        printk(", ");
+      }
+    }
+    printk("} ");
+    printk("\n");
+
+    for (auto tid : proc->tasks) {
+      auto t = task::lookup(tid).get();
+
+      printk("    ");
+      printk("tid=%-3d ", tid, t->ticks);
+      printk("ticks=%-4d ", t->ticks);
+      const char *state = "UNKNOWN";
+#define ST(name) \
+  if (t->state == PS_##name) state = #name
+      ST(UNRUNNABLE);
+      ST(RUNNABLE);
+      ST(ZOMBIE);
+      ST(BLOCKED);
+      ST(EMBRYO);
+#undef ST
+
+      printk("state=%-10s ", state);
+
+      printk("pri=%-3d ", t->priority);
+      printk("die=%-3d ", t->should_die);
+      printk("timeslice=%-3d ", t->timeslice);
+      printk("start=%-6d ", t->start_tick);
+      printk("cpu=%-3d ", t->current_cpu);
+      printk("last_cpu=%-3d ", t->last_cpu);
+
+      printk("rip=%p ", t->tf->eip);
+      printk("\n");
+    }
+  }
+
+  printk("\n");
 }
 
 ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {

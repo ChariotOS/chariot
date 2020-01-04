@@ -164,6 +164,9 @@ struct task_process : public refcounted<struct task_process> {
   int do_dup(int oldfd, int newfd);
 
 
+  // dump all the processes to the console for debug reasons
+  static void dump(void);
+
 
   inline ref<fs::filedesc> get_fd(int fd) {
     file_lock.lock();
@@ -211,9 +214,9 @@ struct task final : public refcounted<task> {
   ref<struct task_process> proc;
 
   /* the current cpu this task is running on */
-  atom<int> current_cpu;
+  int current_cpu = -1;
   /* the previous cpu */
-  atom<int> last_cpu;
+  int last_cpu = -1;
 
   // used when an action requires ownership of this task
   spinlock task_lock;

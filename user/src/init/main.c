@@ -1,6 +1,7 @@
 #include <chariot.h>
 #include <chariot/pctl.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -93,50 +94,42 @@ char *read_line(int fd, char *prompt, int *len_out) {
   return buf;
 }
 
-int c = 0;
-int thread_func(void *p) {
+// anon struct for an NxM matrix of type T
+#define matrix(N, M, T) \
+  struct {              \
+    T vals[N][M];       \
+  }
+
+static volatile long counter = 0;
+
+void *thread_func(void *p) {
   while (1) {
-    c++;
-    yield();
-    /* exit unimplemented */
+    counter++;
   }
+  return NULL;
 }
 
-int create_thread(int (*fn)(void *), void *arg, void *stk, int stksize) {
-  struct pctl_create_thread_args args;
-
-  args.arg = arg;
-  args.fn = fn;
-  args.stack = stk;
-  args.stack_size = stksize;
-  args.flags = 0;
-
-  if (!pctl(0, PCTL_CREATE_THREAD, &args)) {
-    return -1;
-  }
-
-  return args.tid;
-}
+typedef float mat3[3][3];
 
 int main(int argc, char **argv) {
+
+
+  spawn_proc("/bin/vidtest");
+
+
   if (0) {
-    int stksize = 4096;
-    void *stk = malloc(stksize);
 
-    void *arg = NULL;
+    while (1) yield();
 
-    int thd = create_thread(thread_func, arg, stk, stksize);
+    printf("sz=%zu\n", sizeof(mat3));
 
-    printf("tid=%d\n", thd);
+    pthread_t thd;
+    pthread_create(&thd, NULL, thread_func, NULL);
 
     while (1) {
-      printf("c=%d\n", c);
-      yield();
-      /* wait */
+      // printf("counter=%016lx\n", counter);
     }
   }
-
-  // spawn_proc("/bin/vidtest");
 
   // open the console (till we get stdin/out/err opening by default)
   while (1) {
@@ -144,12 +137,14 @@ int main(int argc, char **argv) {
     char *buf = read_line(0, "init> ", &len);
 
     len = strlen(buf);
-    if (len == 0) continue;
+    if (len == 0) goto noprint;
 
     printf("len=%d\n", len);
     printf("buf=%p\n", buf);
     printf("you typed: '%s'\n", buf);
     hexdump(buf, len);
+
+  noprint:
     free(buf);
   }
 

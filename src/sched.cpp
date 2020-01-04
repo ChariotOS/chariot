@@ -5,6 +5,7 @@
 #include <pcspeaker.h>
 #include <sched.h>
 #include <single_list.h>
+#include <smp.h>
 #include <wait.h>
 
 // #define SCHED_DEBUG
@@ -49,7 +50,6 @@ struct mlfq_entry {
 static struct mlfq_entry mlfq[SCHED_MLFQ_DEPTH];
 static spinlock mlfq_lock;
 
-
 bool sched::init(void) {
   // initialize the mlfq
   for (int i = 0; i < SCHED_MLFQ_DEPTH; i++) {
@@ -72,13 +72,12 @@ static struct task *next_task(void) {
   // remove the one we want to run from it
   struct task *nt = nullptr;
 
-  for (int i = SCHED_MLFQ_DEPTH-1; i >= 0; i--) {
+  for (int i = SCHED_MLFQ_DEPTH - 1; i >= 0; i--) {
     auto &Q = mlfq[i];
 
     Q.queue_lock.lock();
 
     for (auto *t = Q.task_queue; t != NULL; t = t->next) {
-
       if (t->state == PS_RUNNABLE) {
         nt = t;
         // remove from the queue
@@ -109,7 +108,7 @@ static struct task *next_task(void) {
 int sched::add_task(struct task *tsk) {
   // clamp the priority to the two bounds
   if (tsk->priority > PRIORITY_HIGH) tsk->priority = PRIORITY_HIGH;
-  if (tsk->priority < PRIORITY_IDLE) tsk->priority = 0;
+  if (tsk->priority < PRIORITY_IDLE) tsk->priority = PRIORITY_IDLE;
 
   auto &Q = mlfq[tsk->priority];
 
@@ -118,11 +117,14 @@ int sched::add_task(struct task *tsk) {
   // only lock this queue.
   Q.queue_lock.lock();
 
+  // we dont want to be interrupted here because this API can take the same lock
+  // that the scheduler needs. This results in a deadlock randomly.
+  if (cpu::in_thread()) cpu::pushcli();
+
   if (Q.task_queue == nullptr) {
     // this is the only thing in the queue
     Q.task_queue = tsk;
     Q.last_task = tsk;
-
 
     tsk->next = NULL;
     tsk->prev = NULL;
@@ -138,13 +140,14 @@ int sched::add_task(struct task *tsk) {
   Q.ntasks++;
 
   Q.queue_lock.unlock();
+  if (cpu::in_thread()) cpu::popcli();
+
   return 0;
 }
 
 static void switch_into(struct task *tsk) {
   tsk->run_lock.lock();
   cpu::current().current_thread = tsk;
-  tsk->ticks++;
   tsk->start_tick = cpu::get_ticks();
   tsk->state = PS_UNRUNNABLE;
 
@@ -157,6 +160,9 @@ static void switch_into(struct task *tsk) {
   }
 
   cpu::switch_vm(tsk);
+
+  tsk->last_cpu = tsk->current_cpu;
+  tsk->current_cpu = smp::cpunum();
 
   swtch(&cpu::current().sched_ctx, tsk->ctx);
 
@@ -174,6 +180,7 @@ static void schedule() {
     // panic("schedule must have ncli == 1, instead ncli = %d", cpu::ncli());
   }
 
+  cpu::task()->current_cpu = -1;
   int intena = cpu::current().intena;
   swtch(&cpu::task()->ctx, cpu::current().sched_ctx);
 
@@ -189,7 +196,11 @@ static void do_yield(int st) {
 
   if (cpu::get_ticks() - tsk->start_tick >= tsk->timeslice) {
     // uh oh, we used up the timeslice, drop the priority!
-    if (!tsk->is_idle_thread) tsk->priority--;
+    if (!tsk->is_idle_thread && tsk->priority > 0) {
+      // printk("bad!       (%d:%d) -> %d\n", tsk->pid, tsk->tid,
+      // tsk->priority);
+      tsk->priority--;
+    }
   }
 
   cpu::task()->state = st;
@@ -203,8 +214,8 @@ void sched::block() { do_yield(PS_BLOCKED); }
 void sched::yield() {
   // when you yield, you give up the CPU by ''using the rest of your timeslice''
   // TODO: do this another way
-  auto tsk = cpu::task().get();
-  tsk->start_tick -= tsk->timeslice;
+  // auto tsk = cpu::task().get();
+  // tsk->start_tick -= tsk->timeslice;
   do_yield(PS_RUNNABLE);
 }
 void sched::exit() { do_yield(PS_ZOMBIE); }
@@ -216,7 +227,6 @@ static void schedule_one() {
     // idle loop when there isn't a task
     return;
   }
-
 
   cpu::pushcli();
   s_enabled = true;
@@ -283,6 +293,7 @@ void sched::run() {
 
         Q.queue_lock.unlock();
       }
+
       boost_interval = 500;
       // TODO: calculate a new boost interval here.
 
@@ -306,11 +317,12 @@ void sched::beep(void) { play_tone(440, 25); }
 void sched::handle_tick(u64 ticks) {
   if (ticks >= beep_timeout) pcspeaker::clear();
 
-  if (!enabled() || !cpu::in_thread() || cpu::task()->state != PS_UNRUNNABLE) {
+  if (!enabled() || !cpu::in_thread()) {
     return;
   }
 
   auto tsk = cpu::task();
+  tsk->ticks++;
   // yield?
   if (ticks - tsk->start_tick >= tsk->timeslice) {
     if (cpu::preempt_disabled()) {

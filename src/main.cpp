@@ -71,9 +71,7 @@ void init_rootvfs(fs::filedesc dev) {
 atom<int> nidles = 0;
 static int idle_task(void* arg) {
   while (1) {
-    // increment nidels
     nidles.store(nidles.load() + 1);
-    halt();
   }
 }
 
@@ -213,6 +211,12 @@ static int kernel_init_task(void*) {
   initialize_kernel_modules();
   KINFO("kernel modules initialized\n");
 
+
+  auto foo = (char *)p2v(0xFFFFFFF0);
+
+  printk("foo=%p\n", foo);
+
+  hexdump(foo, 4096);
 
   // open up the disk device for the root filesystem
   auto rootdev = dev::open("ata0p1");

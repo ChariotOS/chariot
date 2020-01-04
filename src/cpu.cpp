@@ -153,6 +153,7 @@ void cpu::switch_vm(struct task *tsk) {
     // tss_set_ist(tss, 0, (u64)tsk->stack + tsk->stack_size);
   }
 
+
   auto kptable = (u64 *)p2v(get_kernel_page_table());
   auto pptable = (u64 *)p2v(tsk->proc->mm.cr3);
 

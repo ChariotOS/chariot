@@ -20,6 +20,10 @@ long __syscall_ret(unsigned long r);
 #define SYS_dup 9
 #define SYS_dup2 10
 
+#define SYS_stat 11
+#define SYS_fstat 12
+#define SYS_lstat 13
+
 #define SYS_mmap 60
 #define SYS_munmap 61
 

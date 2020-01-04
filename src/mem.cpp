@@ -63,11 +63,11 @@ void init_mmap(u64 mbd) {
 
   const char *names[] = {
       "UNKNOWN",
-      [MULTIBOOT_MEMORY_AVAILABLE] = "AVAILABLE",
-      [MULTIBOOT_MEMORY_RESERVED] = "RESERVED ",
-      [MULTIBOOT_MEMORY_ACPI_RECLAIMABLE] = "ACPI RECL",
-      [MULTIBOOT_MEMORY_NVS] = "NVS      ",
-      [MULTIBOOT_MEMORY_BADRAM] = "BAD RAM  ",
+      [MULTIBOOT_MEMORY_AVAILABLE] = "usable",
+      [MULTIBOOT_MEMORY_RESERVED] = "reserved",
+      [MULTIBOOT_MEMORY_ACPI_RECLAIMABLE] = "reserved (acpi recl)",
+      [MULTIBOOT_MEMORY_NVS] = "reserved (nvs)",
+      [MULTIBOOT_MEMORY_BADRAM] = "bad ram",
   };
   KINFO("Physical Memory Map:\n");
 
@@ -86,8 +86,7 @@ void init_mmap(u64 mbd) {
     memory_map[n].len = end - start;
     memory_map[n].type = mmap->type;
 
-    KINFO("%zu bytes %s - %lx:%lx\n", end - start, names[mmap->type], start,
-          end);
+    KINFO("mem: [0x%p-0x%p] %s\n", start, end, names[mmap->type]);
 
     total_mem += end - start;
 
@@ -99,26 +98,15 @@ void init_mmap(u64 mbd) {
         ;
     }
 
-    if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) {
+    if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
       mm_info.usable_ram += mmap->len;
-    }
 
-    if (end > (mm_info.last_pfn << 12)) {
-      mm_info.last_pfn = end >> 12;
-    }
+    if (end > (mm_info.last_pfn << 12)) mm_info.last_pfn = end >> 12;
 
     mm_info.total_mem += end - start;
     ++mm_info.num_regions;
     ++n;
   }
-
-  /*
-  KINFO("\n");
-  KINFO("  - total:    %zu\n", total_mem);
-  KINFO("  - usable:   %zu\n", mm_info.total_mem);
-  KINFO("  - reserved: %zu\n", total_mem - mm_info.total_mem);
-  KINFO("\n");
-  */
 }
 
 size_t mem_size() { return mm_info.total_mem; }
@@ -126,12 +114,6 @@ size_t mem_size() { return mm_info.total_mem; }
 int init_mem(u64 mbd) {
   // go detect all the ram in the system
   init_mmap(mbd);
-
-#ifdef MEM_DEBUG
-  char buf[20];
-  INFO("Detected %s of usable memory (%lu pages)\n",
-       human_size(mm_info.usable_ram, buf), mm_info.usable_ram / 4096);
-#endif
 
   auto *kend = (u8 *)&high_kern_end;
 
@@ -275,7 +257,6 @@ void *krealloc(void *ptr, u64 newsize) {
   alloc_unlock();
   return p;
 }
-
 
 // stolen from musl :)
 void *memcpy(void *dest, const void *src, size_t n) {

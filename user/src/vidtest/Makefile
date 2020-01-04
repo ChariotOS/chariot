@@ -1,2 +1,2 @@
 out = bin/vidtest
-srcs += main.cpp
+srcs += main.c
