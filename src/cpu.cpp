@@ -98,12 +98,10 @@ void cpu::calc_speed_khz(void) {
 
   // spin while recording
   while (1) {
-    // idk why this needs to be here... probably to uncache the c.ticks? idk
-    // dude
-    printk("");
     if (c.ticks - start_tick > rec_ms) {
       break;
     }
+    asm ("pause");
   }
 
   double cycles = rdtsc() - start_cycle;
@@ -112,7 +110,7 @@ void cpu::calc_speed_khz(void) {
 
   double hz = (cycles / rec_ms) * 1000.0;
   c.speed_khz = hz / 1000;
-  // printk("%zu khz\n", c.speed_khz);
+  printk("%zu khz\n", c.speed_khz);
 }
 
 // Pushcli/popcli are like cli/sti except that they are matched:
