@@ -68,12 +68,6 @@ void init_rootvfs(fs::filedesc dev) {
   if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
 }
 
-atom<int> nidles = 0;
-static int idle_task(void* arg) {
-  while (1) {
-    nidles.store(nidles.load() + 1);
-  }
-}
 
 static void print_depth(int d) { for_range(i, 0, d) printk("  "); }
 
