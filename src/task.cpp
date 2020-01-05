@@ -158,8 +158,10 @@ pid_t task_process::search_nursery(pid_t pid) {
 
 void task_process::dump(void) {
   /* this whole function takes no locks, so take its output with a bit of salt */
+
   printk("process dump:\n");
 
+  printk("   ticks: %zu\n", cpu::get_ticks());
   printk("   sched: rip=%p\n", cpu::current().sched_ctx->eip);
   for (auto &p : proc_table) {
     auto &proc = p.value;
