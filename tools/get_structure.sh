@@ -2,6 +2,6 @@
 
 ARCH=x86
 
-printf "%s " `find src -type d | grep -v arch`
+printf "%s " `find src -type d`
 
-printf "%s " `find src/arch/$ARCH -type d`
+printf "%s " `find arch/$ARCH -type d`
