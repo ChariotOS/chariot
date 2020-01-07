@@ -141,8 +141,6 @@ int task_process::create_task(int (*fn)(void *), int tflags, void *arg,
     panic("failed to add task %d to the scheduler after creating\n", add_res);
   }
 
-  KINFO("CREATED TASK %d %d\n", t->pid, t->tid);
-
   return t->tid;
 }
 
