@@ -36,21 +36,20 @@ static u32 pci_cmd_port = 0xCF8;
 static u32 pci_data_port = 0xCFC;
 
 static inline u32 get_pci_addr(u8 bus, u8 slot, u8 func, u8 off) {
-  u32 addr;
   u32 lbus = (uint32_t)bus;
   u32 lslot = (uint32_t)slot;
   u32 lfun = (uint32_t)func;
 
-  addr = (lbus << PCI_BUS_SHIFT) | (lslot << PCI_SLOT_SHIFT) |
-         (lfun << PCI_FUN_SHIFT) | (off & 0xfc) | PCI_ENABLE_BIT;
-  return addr;
+
+
+  return 0x80000000u | (lbus << 16u) | (lslot << 11u) | (lfun << 8u) | (off & 0xfc);
 }
 
 uint32_t pci::read(u8 bus, u8 slot, u8 func, u8 off) {
   u32 addr = get_pci_addr(bus, slot, func, off);
   outl(PCI_CFG_ADDR_PORT, addr);
   u32 ret = inl(PCI_CFG_DATA_PORT);
-  return (ret >> ((off & 0x2) * 8)) & 0xffff;
+  return (ret >> ((off & 0x2) * 8));
 }
 
 void pci::write(u8 bus, u16 dev, u16 func, u32 off, u32 value) {
@@ -177,7 +176,7 @@ void pci::init(void) {
 
         const char *class_name = pci_class_names[desc->class_id];
         if (desc->class_id > 0x14) class_name = "Unknown";
-        KINFO("    class=%02x '%s'\n", desc->class_id, class_name);
+        KINFO("    class=%02x,%02x '%s'\n", desc->class_id, desc->subclass_id, class_name);
 
         for (int barnum = 0; barnum < 6; barnum++) {
           struct pci_bar bar = pci_get_bar(bus, dev, func, barnum);
