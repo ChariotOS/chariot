@@ -3,7 +3,7 @@
 #include <cpu.h>
 #include <dev/driver.h>
 #include <dev/mbr.h>
-#include <idt.h>
+#include <arch.h>
 #include <lock.h>
 #include <mem.h>
 #include <module.h>
@@ -16,6 +16,7 @@
 #include <vga.h>
 #include <wait.h>
 
+#include <smp.h>
 #include "../majors.h"
 
 // #define DEBUG
@@ -188,7 +189,7 @@ bool dev::ata::identify() {
   }
 
   m_pci_dev->enable_bus_mastering();
-  use_dma = true;
+  // use_dma = true;
 
   // allocate the physical page for the dma buffer
   m_dma_buffer = phys::alloc();
@@ -310,8 +311,9 @@ bool dev::ata::flush(void) {
 u8 dev::ata::wait(void) {
   TRACE;
 
-  if (sched::enabled() && cpu::in_thread()) {
-    ata_wq.wait();
+  if (cpu::in_thread() && false) {
+    // wait, but don't allow rude awakening
+    ata_wq.wait_noint();
     return 0;
   } else {
     // TODO: schedule out while waiting?
@@ -381,22 +383,7 @@ bool dev::ata::read_block_dma(u32 sector, u8* data) {
   // start bus master
   outb(bmr_command, 0x9);
 
-  int i = 0;
-
-  while (1) {
-    i++;
-    auto status = inb(bmr_status);
-    auto dstatus = command_port.in();
-    if (!(status & 0x04)) {
-      continue;
-    }
-    if (!(dstatus & 0x80)) {
-      break;
-    }
-  }
-
-  // wait_400ns(m_io_base);
-  // printk("loops: %d\n", i);
+  this->wait();
 
   memcpy(data, dma_dst, sector_size);
 
@@ -407,6 +394,7 @@ bool dev::ata::read_block_dma(u32 sector, u8* data) {
 bool dev::ata::write_block_dma(u32 sector, const u8* data) { return false; }
 
 static void ata_interrupt(int intr, struct task_regs* fr) {
+  irq::eoi(intr);
   inb(primary_master_status);
   inb(primary_master_bmr_status);
   outb(primary_master_bmr_status, BMR_COMMAND_DMA_STOP);
@@ -446,12 +434,14 @@ static void query_and_add_drive(u16 addr, int id, bool master) {
 }
 static void ata_initialize(void) {
   // TODO: make a new IRQ dispatch system to make this more general
-  interrupt_register(ATA_IRQ0, ata_interrupt);
-  interrupt_enable(ATA_IRQ0);
+  irq::install(32 + ATA_IRQ0, ata_interrupt, "ATA Drive");
+  smp::ioapicenable(ATA_IRQ0, 0);
 
-  interrupt_register(ATA_IRQ1, ata_interrupt);
+  irq::install(32 + ATA_IRQ1, ata_interrupt, "ATA Drive");
+  smp::ioapicenable(ATA_IRQ1, 0);
 
-  interrupt_enable(ATA_IRQ1);
+
+
   // register all the ata drives on the system
   query_and_add_drive(0x1F0, 0, true);
   query_and_add_drive(0x1F0, 1, false);

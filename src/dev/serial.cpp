@@ -1,11 +1,14 @@
 #include <asm.h>
 #include <console.h>
 #include <dev/serial.h>
-#include <idt.h>
+#include <arch.h>
 #include <module.h>
 #include <printk.h>
 #include <smp.h>
 
+
+
+#define IRQ_COM1 4
 
 static int uart = 0;
 
@@ -83,18 +86,18 @@ void serial_irq_handle(int i, struct task_regs* tf) {
   }
 
   if (nread != 0) console::feed(nread, buf);
-  smp::lapic_eoi();
+  irq::eoi(i);
 }
 
 static void serial_mod_init() {
   // setup interrupts on serial
-  interrupt_register(T_IRQ0 + IRQ_COM1, serial_irq_handle);
+  irq::install(32 + IRQ_COM1, serial_irq_handle, "COM1 Serial Port");
 
   // Acknowledge pre-existing interrupt conditions;
   // enable interrupts.
   inb(COM1 + 2);
   inb(COM1 + 0);
-  smp::ioapicenable(IRQ_COM1, 0);
+  // smp::ioapicenable(IRQ_COM1, 0);
 }
 
 module_init("serial", serial_mod_init);

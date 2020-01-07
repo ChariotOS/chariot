@@ -1,7 +1,7 @@
 #include <dev/driver.h>
 #include <errno.h>
 #include <fifo_buf.h>
-#include <idt.h>
+#include <arch.h>
 #include <mem.h>
 #include <module.h>
 #include <mouse_packet.h>
@@ -136,7 +136,8 @@ static void mouse_handler(int i, struct task_regs *tf) {
     }
   }
 
-  smp::lapic_eoi();
+
+  irq::eoi(i);
 }
 
 
@@ -157,7 +158,7 @@ void mouse_install() {
   mouse_read();
 
 
-  interrupt_register(32 + MOUSE_IRQ, mouse_handler);
+  irq::install(32 + MOUSE_IRQ, mouse_handler, "PS2 Mouse");
   smp::ioapicenable(MOUSE_IRQ, 0);
 }
 

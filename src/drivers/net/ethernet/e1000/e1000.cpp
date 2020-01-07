@@ -1,4 +1,4 @@
-#include <idt.h>
+#include <arch.h>
 #include <mem.h>
 #include <module.h>
 #include <pci.h>
@@ -370,7 +370,8 @@ bool e1000::start(void) {
 
   for (int i = 0; i < 0x80; i++) write_cmd(0x5200 + i * 4, 0);
 
-  interrupt_register(32 + dev->interrupt, e1000_interrupt);
+  irq::install(32 + dev->interrupt, e1000_interrupt, "e1000 Ethernet Card");
+
   enable_interrupt();
   rxinit();
   txinit();

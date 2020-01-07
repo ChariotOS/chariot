@@ -11,7 +11,6 @@
 #include <fs/file.h>
 #include <fs/vfs.h>
 #include <func.h>
-#include <idt.h>
 #include <module.h>
 #include <pci.h>
 #include <pctl.h>
@@ -29,6 +28,7 @@
 #include <util.h>
 #include <vec.h>
 #include <vga.h>
+#include <arch.h>
 
 extern int kernel_end;
 
@@ -152,7 +152,7 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 static int kernel_init_task(void*);
 
 static void kmain2(void) {
-  init_idt();
+  irq::init();
   enable_sse();
 
   // for safety, unmap low memory (from boot.asm)

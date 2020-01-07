@@ -1,7 +1,7 @@
 #include "RTL8139.h"
 
 #include <asm.h>
-#include <idt.h>
+#include <arch.h>
 #include <mem.h>
 #include <phys.h>
 #include <util.h>
@@ -64,7 +64,8 @@ rtl8139::rtl8139(pci::device &dev, u8 irq) : m_dev(dev) {
   INFO("MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2],
        mac[3], mac[4], mac[5]);
 
-  interrupt_register(32 + m_interrupt_line, rtl_irq_handler);
+
+  irq::install(32 + m_interrupt_line, rtl_irq_handler, "RTL8139 Ethernet Card");
 }
 
 rtl8139::~rtl8139() { kfree(m_packet_buffer); }

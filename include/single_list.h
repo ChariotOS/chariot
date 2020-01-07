@@ -2,6 +2,9 @@
 
 #pragma once
 
+#include <printk.h>
+
+
 template <typename ListType, typename ElementType>
 class single_listIterator {
  public:
@@ -62,24 +65,24 @@ class single_list {
   }
 
   T& first() {
-    ASSERT(head());
+    assert(head());
     return head()->value;
   }
   const T& first() const {
-    ASSERT(head());
+    assert(head());
     return head()->value;
   }
   T& last() {
-    ASSERT(head());
+    assert(head());
     return tail()->value;
   }
   const T& last() const {
-    ASSERT(head());
+    assert(head());
     return tail()->value;
   }
 
   T take_first() {
-    ASSERT(m_head);
+    assert(m_head);
     auto* prev_head = m_head;
     T value = move(first());
     if (m_tail == m_head) m_tail = nullptr;
@@ -156,7 +159,7 @@ class single_list {
   }
 
   void remove(Iterator iterator) {
-    ASSERT(!iterator.is_end());
+    assert(!iterator.is_end());
     if (m_head == iterator.m_node) m_head = iterator.m_node->next;
     if (m_tail == iterator.m_node) m_tail = iterator.m_prev;
     if (iterator.m_prev) iterator.m_prev->next = iterator.m_node->next;

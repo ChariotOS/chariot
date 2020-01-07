@@ -63,9 +63,9 @@ void init_idt(void);
 
 typedef void (*interrupt_handler_t)(int intr, struct task_regs *);
 
-void interrupt_register(int i, interrupt_handler_t handler);
-void interrupt_enable(int i);
-void interrupt_disable(int i);
+// void interrupt_register(int i, interrupt_handler_t handler);
+// void interrupt_enable(int i);
+// void interrupt_disable(int i);
 
 u64 get_ticks(void);
 

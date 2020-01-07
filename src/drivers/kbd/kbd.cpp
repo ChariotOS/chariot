@@ -2,7 +2,7 @@
 #include <dev/driver.h>
 #include <errno.h>
 #include <fifo_buf.h>
-#include <idt.h>
+#include <arch.h>
 #include <keycode.h>
 #include <mem.h>
 #include <module.h>
@@ -376,7 +376,7 @@ static void key_state_changed(u8 raw, bool pressed) {
 
 static void kbd_handler(int i, struct task_regs *tf) {
   // cpu::scoped_cli scli;
-  smp::lapic_eoi();
+  irq::eoi(i);
 
   for (;;) {
     u8 status = inb(I8042_STATUS);
@@ -458,7 +458,8 @@ class kbd_driver : public dev::driver {
 };
 
 static void kbd_init(void) {
-  interrupt_register(T_IRQ0 + IRQ_KEYBOARD, kbd_handler);
+
+  irq::install(32 + IRQ_KEYBOARD, kbd_handler, "PS2 Keyboard");
 
   // clear out the buffer...
   while (inb(I8042_STATUS) & I8042_BUFFER_FULL) inb(I8042_BUFFER);

@@ -1,11 +1,18 @@
 #include <arch.h>
 #include <types.h>
+#include <printk.h>
 
-void arch::cli(void) { asm volatile("cli"); }
+void arch::cli(void) {
+  asm volatile("cli");
+}
 
-void arch::sti(void) { asm volatile("sti"); }
+void arch::sti(void) {
+  asm volatile("sti");
+}
 
-void arch::halt(void) { asm volatile("hlt"); }
+void arch::halt(void) {
+  asm volatile("hlt");
+}
 
 void arch::invalidate_page(unsigned long addr) {
   asm volatile("invlpg (%0)" ::"r"(addr) : "memory");
