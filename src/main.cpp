@@ -206,18 +206,9 @@ static int kernel_init_task(void*) {
   KINFO("kernel modules initialized\n");
 
 
-  auto foo = (char *)p2v(0xFFFFFFF0);
-
-  printk("foo=%p\n", foo);
-
-  hexdump(foo, 4096);
-
   // open up the disk device for the root filesystem
   auto rootdev = dev::open("ata0p1");
   init_rootvfs(rootdev);
-
-  // TODO
-  vfs::fdopen("/", 0);
 
   // setup stdio stuff for the kernel (to be inherited by spawn)
   int fd = sys::open("/dev/console", O_RDWR);
