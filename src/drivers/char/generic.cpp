@@ -50,7 +50,7 @@ class random_device : public dev::char_dev {
   }
 
  public:
-  random_device(ref<dev::driver> dr) : dev::char_dev(dr) { x = rdtsc(); }
+  random_device(ref<dev::driver> dr) : dev::char_dev(dr) { x = arch::read_timestamp(); }
 
   virtual int read(u64 offset, u32 len, void *vdst) override {
     // TODO: Optimize by reading u32s into the buffer until there isnt space,

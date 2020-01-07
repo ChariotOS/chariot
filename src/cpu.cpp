@@ -7,6 +7,7 @@
 #include <printk.h>
 #include <task.h>
 #include <types.h>
+#include <arch.h>
 
 // 16 CPU structures where each cpu has one
 static cpu_t cpus[16];
@@ -90,11 +91,11 @@ void cpu::calc_speed_khz(void) {
   c.speed_khz = 0;
 
   u64 rec_ms = 500;
-  auto start_cycle = rdtsc();
+  auto start_cycle = arch::read_timestamp();
 
   auto start_tick = c.ticks;
 
-  sti();
+  arch::sti();
 
   // spin while recording
   while (1) {
@@ -104,9 +105,9 @@ void cpu::calc_speed_khz(void) {
     asm ("pause");
   }
 
-  double cycles = rdtsc() - start_cycle;
+  double cycles = arch::read_timestamp() - start_cycle;
 
-  cli();
+  arch::cli();
 
   double hz = (cycles / rec_ms) * 1000.0;
   c.speed_khz = hz / 1000;
@@ -119,7 +120,7 @@ void cpu::calc_speed_khz(void) {
 
 void cpu::pushcli(void) {
   // int eflags = readeflags();
-  cli();
+  arch::cli();
   current().ncli++;
 }
 
@@ -127,7 +128,7 @@ void cpu::popcli(void) {
   // if (s_current == nullptr) return;
   if (readeflags() & FL_IF) panic("popcli - interruptible");
   if (--current().ncli < 0) panic("popcli");
-  if (current().ncli == 0) sti();
+  if (current().ncli == 0) arch::sti();
 }
 
 static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {

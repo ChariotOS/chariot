@@ -32,9 +32,6 @@ static inline u32 CAS(volatile u32* mem, u32 newval, u32 oldval) {
 
 #define memory_barrier() asm volatile("" ::: "memory")
 
-// helper function to check if interrupts are enabled or not
-static bool ints_enabled(void) { return readeflags() & 0x200; }
-
 void spinlock::lock(void) { mutex::lock(locked); }
 
 void spinlock::unlock(void) { mutex::unlock(locked); }

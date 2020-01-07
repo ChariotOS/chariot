@@ -157,7 +157,7 @@ static void kmain2(void) {
 
   // for safety, unmap low memory (from boot.asm)
   *((u64*)p2v(read_cr3())) = 0;
-  tlb_flush();
+  arch::flush_tlb();
 
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
@@ -180,7 +180,7 @@ static void kmain2(void) {
 
 
   KINFO("starting scheduler\n");
-  sti();
+  arch::sti();
   // sched::beep();
   sched::run();
 
@@ -240,7 +240,7 @@ static int kernel_init_task(void*) {
 
   // yield back to scheduler, we don't really want to run this thread anymore
   while (1) {
-    halt();
+    arch::halt();
   }
 
   panic("main kernel thread reached unreachable code\n");

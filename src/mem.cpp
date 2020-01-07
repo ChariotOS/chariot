@@ -6,6 +6,7 @@
 #include <phys.h>
 #include <printk.h>
 #include <types.h>
+#include <arch.h>
 
 // #define MEM_DEBUG
 // #define MEM_TRACE
@@ -212,7 +213,7 @@ void init_kernel_virtual_memory() {
   // can also reference all of physical memory with virtual memory
   use_kernel_vm = true;
   write_cr3((u64)new_cr3);
-  tlb_flush();  // flush out the TLB
+  arch::flush_tlb();  // flush out the TLB
   // initialize the memory allocator
   mm_init();
 }

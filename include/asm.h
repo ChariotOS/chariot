@@ -273,28 +273,6 @@ static inline void outl(uint16_t port, uint32_t val) {
   asm volatile("outl %0, %1" ::"a"(val), "dN"(port));
 }
 
-static inline void sti(void) { asm volatile("sti" : : : "memory"); }
-
-static inline void cli(void) { asm volatile("cli" : : : "memory"); }
-
-static inline uint64_t __attribute__((always_inline)) rdtsc(void) {
-  uint32_t lo, hi;
-  asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
-  return lo | ((uint64_t)(hi) << 32);
-}
-
-static inline uint64_t rdtscp(void) {
-  uint32_t lo, hi;
-  asm volatile("rdtscp" : "=a"(lo), "=d"(hi));
-  return lo | ((uint64_t)(hi) << 32);
-}
-
-static inline uint64_t read_rflags(void) {
-  uint64_t ret;
-  asm volatile("pushfq; popq %0" : "=a"(ret));
-  return ret;
-}
-
 static inline u32 popcnt(u64 val) {
   u64 count = 0;
 
@@ -302,43 +280,6 @@ static inline u32 popcnt(u64 val) {
   return count;
 }
 
-static inline void halt(void) { asm volatile("hlt"); }
-
-static inline void invlpg(unsigned long addr) {
-  asm volatile("invlpg (%0)" ::"r"(addr) : "memory");
-}
-
-static inline void wbinvd(void) { asm volatile("wbinvd" : : : "memory"); }
-
-static inline void clflush(void *ptr) {
-  __asm__ __volatile__("clflush (%0); " : : "r"(ptr) : "memory");
-}
-
-static inline void clflush_unaligned(void *ptr, int size) {
-  clflush(ptr);
-  if ((addr_t)ptr % size) {
-    // ptr is misaligned, so be paranoid since we
-    // may be spanning a cache line
-    clflush((void *)((addr_t)ptr + size - 1));
-  }
-}
-
-/**
- * Flush all non-global entries in the calling CPU's TLB.
- *
- * Flushing non-global entries is the common-case since user-space
- * does not use global pages (i.e., pages mapped at the same virtual
- * address in *all* processes).
- *
- */
-static inline void tlb_flush(void) {
-  uint64_t tmpreg;
-
-  asm volatile(
-      "movq %%cr3, %0;  # flush TLB \n"
-      "movq %0, %%cr3;              \n"
-      : "=r"(tmpreg)::"memory");
-}
 
 static inline void lidt(void *p, int size) {
   volatile u16 pd[5];
@@ -349,15 +290,6 @@ static inline void lidt(void *p, int size) {
   pd[3] = (u64)p >> 32;
   pd[4] = (u64)p >> 48;
   asm volatile("lidt (%0)" : : "r"(pd));
-}
-
-static inline u32 compare_and_swap(volatile u32 *mem, u32 newval, u32 oldval) {
-  u32 ret;
-  asm volatile("cmpxchgl %2, %1"
-               : "=a"(ret), "+m"(mem)
-               : "r"(newval), "0"(oldval)
-               : "cc", "memory");
-  return ret;
 }
 
 static inline u64 readeflags(void) {

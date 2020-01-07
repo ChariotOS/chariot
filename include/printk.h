@@ -9,6 +9,7 @@
 #include <dev/RTC.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <arch.h>
 // #include <string.h>
 
 typedef i64 acpi_native_int;
@@ -47,11 +48,11 @@ const char* human_size(uint64_t bytes, char* buf);
 template <typename... T>
 inline void do_panic(const char* fmt, T&&... args) {
   // disable interrupts
-  cli();
+  arch::cli();
   printk(fmt, args...);
   printk("\n");
   while (1) {
-    halt();
+    arch::halt();
   }
 }
 
@@ -64,7 +65,7 @@ inline void do_panic(const char* fmt, T&&... args) {
 #define assert(val)                          \
   do {                                       \
     if (!(val)) {                            \
-      cli();                                 \
+      arch::cli();                                 \
       panic("assertion failed: %s\n", #val); \
     }                                        \
   } while (0);
