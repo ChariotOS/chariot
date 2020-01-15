@@ -31,7 +31,7 @@ void hexdump(void *vbuf, long len) {
   for (int i = 0; i < len; i += w) {
     unsigned char *line = buf + i;
     for (int c = 0; c < w; c++) {
-      if (i + c > len) {
+      if (i + c >= len) {
         printf("   ");
       } else {
         printf("%02X ", line[c]);
@@ -39,7 +39,7 @@ void hexdump(void *vbuf, long len) {
     }
     printf(" |");
     for (int c = 0; c < w; c++) {
-      if (i + c > len) {
+      if (i + c >= len) {
       } else {
         printf("%c", (line[c] < 0x20) || (line[c] > 0x7e) ? '.' : line[c]);
       }
@@ -103,8 +103,10 @@ char *read_line(int fd, char *prompt, int *len_out) {
 static volatile long counter = 0;
 
 void *thread_func(void *p) {
+  printf("I'm in the thread!\n");
   while (1) {
     counter++;
+    yield();
   }
   return NULL;
 }
@@ -112,24 +114,21 @@ void *thread_func(void *p) {
 typedef float mat3[3][3];
 
 int main(int argc, char **argv) {
+  // spawn_proc("/bin/vidtest");
 
-
-  spawn_proc("/bin/vidtest");
-
+  pthread_t thd;
+  pthread_create(&thd, NULL, thread_func, NULL);
 
   if (0) {
-
     while (1) yield();
 
     printf("sz=%zu\n", sizeof(mat3));
-
-    pthread_t thd;
-    pthread_create(&thd, NULL, thread_func, NULL);
 
     while (1) {
       // printf("counter=%016lx\n", counter);
     }
   }
+
 
   // open the console (till we get stdin/out/err opening by default)
   while (1) {
@@ -142,6 +141,7 @@ int main(int argc, char **argv) {
     printf("len=%d\n", len);
     printf("buf=%p\n", buf);
     printf("you typed: '%s'\n", buf);
+    printf("counter=%ld\n", counter);
     hexdump(buf, len);
 
   noprint:

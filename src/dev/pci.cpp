@@ -39,16 +39,12 @@ static inline u32 get_pci_addr(u8 bus, u8 slot, u8 func, u8 off) {
   u32 lbus = (uint32_t)bus;
   u32 lslot = (uint32_t)slot;
   u32 lfun = (uint32_t)func;
-
-
-
   return 0x80000000u | (lbus << 16u) | (lslot << 11u) | (lfun << 8u) | (off & 0xfc);
 }
 
 uint32_t pci::read(u8 bus, u8 slot, u8 func, u8 off) {
-  u32 addr = get_pci_addr(bus, slot, func, off);
-  outl(PCI_CFG_ADDR_PORT, addr);
-  u32 ret = inl(PCI_CFG_DATA_PORT);
+  outl(PCI_CFG_ADDR_PORT, get_pci_addr(bus, slot, func, off));
+  u32 ret = inl(PCI_CFG_DATA_PORT + off);
   return (ret >> ((off & 0x2) * 8));
 }
 
@@ -115,20 +111,24 @@ bool read_device_descriptor(pci::device *desc, u8 bus, u8 dev, u8 func) {
   desc->dev = dev;
   desc->func = func;
 
-  desc->vendor_id = pci::read(bus, dev, func, 0x00);
+  desc->vendor_id = pci::read(bus, dev, func, PCI_VENDOR_ID);
   // bail if the device isn't valid
   if (desc->vendor_id == 0x0000 || desc->vendor_id == 0xFFFF) {
     return false;
   }
 
-  desc->device_id = pci::read(bus, dev, func, 0x02);
 
-  desc->class_id = pci::read(bus, dev, func, 0x0B);
-  desc->subclass_id = pci::read(bus, dev, func, 0x0A);
-  desc->interface_id = pci::read(bus, dev, func, 0x09);
+  desc->device_id = desc->read<u16>(PCI_DEVICE_ID);
 
-  desc->revision = pci::read(bus, dev, func, 0x08);
-  desc->interrupt = pci::read(bus, dev, func, 0x3C);
+  auto class_code = desc->read<u32>(0x08) >> 16;
+
+  desc->class_id = (class_code >> 8) & 0xFF;
+  desc->subclass_id = (class_code >> 0) & 0xFF;
+
+  // /* TODO */
+  // desc->interface_id = pci::read(bus, dev, func, 0x09);
+  // desc->revision = pci::read(bus, dev, func, PCI_REVISION_ID);
+  // desc->interrupt = pci::read(bus, dev, func, PCI_INTERRUPT_LINE);
   return true;
 }
 
@@ -165,7 +165,7 @@ void pci::init(void) {
   // enumerate PCI devices
   for (int bus = 0; bus < 32; bus++) {
     for (int dev = 0; dev < 32; dev++) {
-      int nfuncs = pci_device_has_functions(bus, dev) ? 8 : 1;
+      int nfuncs = 8; /* TODO: only scan functions if there are some */
       for (int func = 0; func < nfuncs; func++) {
         pci::device *desc = &pci_devices[pci_device_count];
 

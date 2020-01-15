@@ -1,10 +1,16 @@
 #!/bin/bash
 
-./sync.sh
+
+# build the root disk and exit if it fails
+#     (this is so build failures don't run
+#          the kernel and clear the screen)
+./sync.sh || exit 1
 
 qemu-system-x86_64 -gdb tcp::8256            \
 	-nographic -serial mon:stdio               \
 	-m 4G -smp 4                               \
 	-hda build/root.img                        \
-	-device rtl8139                            \
 	$@
+
+
+# -machine pc-q35-2.8                        \
