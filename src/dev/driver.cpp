@@ -148,3 +148,11 @@ dev::driver_ops *dev::get(major_t majr) {
   }
   return NULL;
 }
+
+
+
+
+static int disk_count = 0;
+string dev::next_disk_name(void) {
+  return string::format("disk%d", disk_count);
+}

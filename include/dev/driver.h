@@ -83,6 +83,12 @@ int deregister_driver(major_t major);
 int register_name(string name, major_t major, minor_t minor);
 int deregister_name(string name);
 
+
+/* return the next diskN where n is the next disk number
+ * ie: disk1, disk2, disk3
+ */
+string next_disk_name(void);
+
 // useful functions for the kernel to access devices by name or maj/min
 fs::filedesc open(string name);
 fs::filedesc open(major_t, minor_t);
