@@ -8,6 +8,12 @@ die() {
 }
 
 
+
+echo "Getting sudo so we can mount the disk later on."
+sudo id || die "Couldn't get sudo"
+echo "Okay!"
+
+
 IMG=build/root.img
 mnt=build/mnt
 DISK_SIZE_MB=64
