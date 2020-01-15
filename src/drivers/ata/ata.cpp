@@ -189,7 +189,7 @@ bool dev::ata::identify() {
   }
 
   m_pci_dev->enable_bus_mastering();
-  // use_dma = true;
+  use_dma = true;
 
   // allocate the physical page for the dma buffer
   m_dma_buffer = phys::alloc();
@@ -414,11 +414,12 @@ static void add_drive(const string& name, ref<dev::blk_dev> drive) {
   m_disks.push(drive);
 }
 
-static void query_and_add_drive(u16 addr, int id, bool master) {
+static void query_and_add_drive(u16 addr, bool master) {
   auto drive = make_ref<dev::ata>(addr, master);
 
   if (drive->identify()) {
-    string name = string::format("ata%d", id);
+    auto name = dev::next_disk_name();
+    // string name = string::format("ata%d", id);
 
     // add the main drive
     add_drive(name, drive);
@@ -426,7 +427,7 @@ static void query_and_add_drive(u16 addr, int id, bool master) {
     // now detect all the mbr partitions
     if (dev::mbr mbr(*drive); mbr.parse()) {
       for (int i = 0; i < mbr.part_count(); i++) {
-        auto pname = string::format("ata%dp%d", id, i + 1);
+        auto pname = string::format("%sp%d", name.get(), i + 1);
         add_drive(pname, mbr.partition(i));
       }
     }
@@ -443,8 +444,8 @@ static void ata_initialize(void) {
 
 
   // register all the ata drives on the system
-  query_and_add_drive(0x1F0, 0, true);
-  query_and_add_drive(0x1F0, 1, false);
+  query_and_add_drive(0x1F0, true);
+  query_and_add_drive(0x1F0, false);
 }
 
 static dev::blk_dev* get_disk(int minor) {

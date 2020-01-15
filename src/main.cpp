@@ -29,6 +29,7 @@
 #include <vec.h>
 #include <vga.h>
 #include <arch.h>
+#include <kargs.h>
 
 extern int kernel_end;
 
@@ -88,6 +89,8 @@ void print_tree(struct fs::inode* dir, int depth = 0) {
   }
 }
 
+
+struct multiboot_info *mbinfo;
 static void kmain2(void);
 
 extern "C" char chariot_welcome_start[];
@@ -102,6 +105,8 @@ extern "C" char chariot_welcome_start[];
 #define STKSIZE (4096 * 2)
 
 extern void rtc_init(void);
+
+
 
 // #define WASTE_TIME_PRINTING_WELCOME
 
@@ -134,10 +139,13 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
    * detect memory and setup the physical address space free-list
    */
   init_mem(mbd);
+
+  mbinfo = (struct multiboot_info*)(u64)p2v(mbd);
   /**
    * startup the high-kernel virtual mapping and the heap allocator
    */
   init_kernel_virtual_memory();
+
 
   void* new_stack = (void*)((u64)kmalloc(STKSIZE) + STKSIZE);
 
@@ -151,6 +159,8 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 
 static int kernel_init_task(void*);
 
+
+
 static void kmain2(void) {
   irq::init();
   enable_sse();
@@ -158,10 +168,10 @@ static void kmain2(void) {
   // for safety, unmap low memory (from boot.asm)
   *((u64*)p2v(read_cr3())) = 0;
   arch::flush_tlb();
-
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
 
+  kargs::init(mbinfo);
 
   // TODO: initialize smp
   if (!smp::init()) panic("smp failed!\n");
@@ -207,7 +217,9 @@ static int kernel_init_task(void*) {
 
 
   // open up the disk device for the root filesystem
-  auto rootdev = dev::open("ata0p1");
+  const char *rootdev_path = kargs::get("root", "disk0p1");
+  KINFO("rootdev=%s\n", rootdev_path);
+  auto rootdev = dev::open(rootdev_path);
   init_rootvfs(rootdev);
 
   // setup stdio stuff for the kernel (to be inherited by spawn)
@@ -222,8 +234,10 @@ static int kernel_init_task(void*) {
   pid_t init = sys::pctl(0, PCTL_SPAWN, 0);
   assert(init != -1);
   KINFO("init pid=%d\n", init);
+
+  const char *init_path = kargs::get("init", "/bin/init");
   // launch /bin/init
-  const char* init_args[] = {"/bin/init", NULL};
+  const char* init_args[] = {init_path, NULL};
 
   struct pctl_cmd_args cmdargs {
     .path = (char*)init_args[0], .argc = 1, .argv = (char**)init_args,
