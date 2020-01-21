@@ -39,4 +39,4 @@ void pcspeaker_init(void) {
   //
 }
 
-// module_init("pcspeaker", pcspeaker_init);
+module_init("pcspeaker", pcspeaker_init);

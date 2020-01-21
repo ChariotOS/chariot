@@ -118,4 +118,4 @@ void rtc_init(void) {
   s_boot_time = dev::RTC::now();
 }
 
-// module_init("RTC", rtc_init);
+module_init("RTC", rtc_init);

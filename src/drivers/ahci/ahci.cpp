@@ -187,4 +187,4 @@ void ahci_init(void) {
   });
 }
 
-// module_init("AHCI", ahci_init);
+module_init("AHCI", ahci_init);
