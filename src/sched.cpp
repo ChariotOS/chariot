@@ -114,12 +114,11 @@ int sched::add_task(struct task *tsk) {
 
   // the task inherits the timeslice from the queue
   tsk->timeslice = Q.timeslice;
+
+  cpu::pushcli();
   // only lock this queue.
   Q.queue_lock.lock();
 
-  // we dont want to be interrupted here because this API can take the same lock
-  // that the scheduler needs. This results in a deadlock randomly.
-  if (cpu::in_thread()) cpu::pushcli();
 
   if (Q.task_queue == nullptr) {
     // this is the only thing in the queue
@@ -140,7 +139,7 @@ int sched::add_task(struct task *tsk) {
   Q.ntasks++;
 
   Q.queue_lock.unlock();
-  if (cpu::in_thread()) cpu::popcli();
+  cpu::popcli();
 
   return 0;
 }
