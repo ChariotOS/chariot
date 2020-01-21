@@ -1,9 +1,9 @@
 #include "ata.h"
 
+#include <arch.h>
 #include <cpu.h>
 #include <dev/driver.h>
 #include <dev/mbr.h>
-#include <arch.h>
 #include <lock.h>
 #include <mem.h>
 #include <module.h>
@@ -12,11 +12,11 @@
 #include <printk.h>
 #include <ptr.h>
 #include <sched.h>
+#include <smp.h>
 #include <util.h>
 #include <vga.h>
 #include <wait.h>
 
-#include <smp.h>
 #include "../majors.h"
 
 // #define DEBUG
@@ -184,29 +184,28 @@ bool dev::ata::identify() {
     }
   });
 
-  if (m_pci_dev == nullptr) {
-    panic("no ATA PCI controller found!\n");
-  }
+  if (m_pci_dev != nullptr) {
+    m_pci_dev->enable_bus_mastering();
+    use_dma = false;
 
-  m_pci_dev->enable_bus_mastering();
-  use_dma = true;
+    // allocate the physical page for the dma buffer
+    m_dma_buffer = phys::alloc();
 
-  // allocate the physical page for the dma buffer
-  m_dma_buffer = phys::alloc();
+    // bar4 contains information for DMA
+    bar4 = m_pci_dev->get_bar(4).raw;
+    printk("bar4: %08x\n", bar4);
+    if (bar4 & 0x1) bar4 = bar4 & 0xfffffffc;
 
-  // bar4 contains information for DMA
-  bar4 = m_pci_dev->get_bar(4).raw;
-  if (bar4 & 0x1) bar4 = bar4 & 0xfffffffc;
+    bmr_command = bar4;
+    bmr_status = bar4 + 2;
+    bmr_prdt = bar4 + 4;
 
-  bmr_command = bar4;
-  bmr_status = bar4 + 2;
-  bmr_prdt = bar4 + 4;
-
-  if (this->master && data_port.m_port == 0x1F0) {
-    // printk("PRIMARY MASTER\n");
-    primary_master_status = m_io_base;
-    primary_master_bmr_status = bmr_status;
-    primary_master_bmr_command = bmr_command;
+    if (this->master && data_port.m_port == 0x1F0) {
+      // printk("PRIMARY MASTER\n");
+      primary_master_status = m_io_base;
+      primary_master_bmr_status = bmr_status;
+      primary_master_bmr_command = bmr_command;
+    }
   }
 
   drive_lock.unlock();
@@ -342,6 +341,7 @@ ssize_t dev::ata::size() { return sector_size * n_sectors; }
 bool dev::ata::read_block_dma(u32 sector, u8* data) {
   TRACE;
 
+  printk("ata read: %d\n", sector);
   if (sector & 0xF0000000) return false;
 
   drive_lock.lock();
@@ -389,6 +389,8 @@ bool dev::ata::read_block_dma(u32 sector, u8* data) {
 
   drive_lock.unlock();
 
+  hexdump(data, 512);
+
   return true;
 }
 bool dev::ata::write_block_dma(u32 sector, const u8* data) { return false; }
@@ -414,12 +416,12 @@ static void add_drive(const string& name, ref<dev::blk_dev> drive) {
   m_disks.push(drive);
 }
 
-static void query_and_add_drive(u16 addr, bool master) {
+static void query_and_add_drive(u16 addr, int id, bool master) {
   auto drive = make_ref<dev::ata>(addr, master);
 
   if (drive->identify()) {
-    auto name = dev::next_disk_name();
-    // string name = string::format("ata%d", id);
+    // auto name = dev::next_disk_name();
+    string name = string::format("ata%d", id);
 
     // add the main drive
     add_drive(name, drive);
@@ -441,11 +443,9 @@ static void ata_initialize(void) {
   irq::install(32 + ATA_IRQ1, ata_interrupt, "ATA Drive");
   smp::ioapicenable(ATA_IRQ1, 0);
 
-
-
   // register all the ata drives on the system
-  query_and_add_drive(0x1F0, true);
-  query_and_add_drive(0x1F0, false);
+  query_and_add_drive(0x1F0, 0, true);
+  query_and_add_drive(0x1F0, 1, false);
 }
 
 static dev::blk_dev* get_disk(int minor) {

@@ -247,8 +247,10 @@ int arch::irq::init(void) {
 
   pic_disable(34);
 
+
   mkgate(idt, 32, vectors[32], 0, 0);
   ::irq::install(32, tick_handle, "Preemption Tick");
+
 
   mkgate(idt, 0x80, vectors[0x80], 3, 1);
   ::irq::install(0x80, syscall_handle, "System Call");
@@ -264,6 +266,16 @@ int arch::irq::init(void) {
 // just forward the trap on to the irq subsystem
 // This function is called from arch/x86/trap.asm
 extern "C" void trap(struct task_regs *regs) {
+  /**
+   * TODO: why do some traps disable interrupts?
+   * it seems like its only with irq 32 (ticks)
+   *
+   * Honestly, I have no idea why this is needed...
+   */
+  arch::sti();
+
   irq::dispatch(regs->trapno, regs);
   irq::eoi(regs->trapno);
+
+  sched::before_iret();
 }

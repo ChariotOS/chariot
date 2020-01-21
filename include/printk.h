@@ -65,7 +65,6 @@ inline void do_panic(const char* fmt, T&&... args) {
 #define assert(val)                          \
   do {                                       \
     if (!(val)) {                            \
-      arch::cli();                                 \
       panic("assertion failed: %s\n", #val); \
     }                                        \
   } while (0);

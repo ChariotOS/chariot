@@ -94,46 +94,47 @@ char *read_line(int fd, char *prompt, int *len_out) {
   return buf;
 }
 
-// anon struct for an NxM matrix of type T
-#define matrix(N, M, T) \
-  struct {              \
-    T vals[N][M];       \
-  }
 
 static volatile long counter = 0;
 
 void *thread_func(void *p) {
-  printf("I'm in the thread!\n");
+  printf("hello!     p=%p\n", p);
   while (1) {
     counter++;
-    yield();
   }
+  syscall(SYS_exit_task, 0);
   return NULL;
 }
 
-typedef float mat3[3][3];
 
 int main(int argc, char **argv) {
   // spawn_proc("/bin/vidtest");
 
-  pthread_t thd;
-  pthread_create(&thd, NULL, thread_func, NULL);
-
-  if (0) {
-    while (1) yield();
-
-    printf("sz=%zu\n", sizeof(mat3));
-
-    while (1) {
-      // printf("counter=%016lx\n", counter);
-    }
+  for (int i = 0; i < 32; i++) {
+    pthread_t thd;
+    pthread_create(&thd, NULL, thread_func, (void*)(long)i);
+    printf("spawned %d\n", i);
+    yield();
   }
 
+  while (0) {
+    printf("%ld\n", counter);
+    yield();
+  }
+
+  // exit(0);
 
   // open the console (till we get stdin/out/err opening by default)
   while (1) {
     int len = 0;
-    char *buf = read_line(0, "init> ", &len);
+
+
+    char prompt[40];
+
+    snprintf(prompt, 40, "%d> ", counter);
+
+
+    char *buf = read_line(0, prompt, &len);
 
     len = strlen(buf);
     if (len == 0) goto noprint;

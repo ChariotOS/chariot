@@ -168,19 +168,6 @@ int vm::addr_space::handle_pagefault(off_t va, int flags) {
   pending_mappings.clear();
 
 
-  /*
-  cpu::pushcli();
-  for (auto &r : regions) {
-    off_t start = r->va;
-    off_t end = r->va + r->len;
-    printk("%llx-%llx", start, end);;
-    printk(" r%c ", r->prot & PTE_W ? 'w' : '-');
-
-    printk("\n");
-  }
-  printk("\n");
-  cpu::popcli();
-  */
   return 0;
 }
 

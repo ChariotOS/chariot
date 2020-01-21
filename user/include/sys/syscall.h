@@ -7,7 +7,7 @@ long __syscall_ret(unsigned long r);
 
 
 #define SYS_restart 0
-#define SYS_exit 1
+#define SYS_exit_task 1
 #define SYS_open 2
 #define SYS_close 3
 #define SYS_lseek 4
@@ -23,6 +23,9 @@ long __syscall_ret(unsigned long r);
 #define SYS_stat 11
 #define SYS_fstat 12
 #define SYS_lstat 13
+
+
+#define SYS_exit_proc 42
 
 #define SYS_mmap 60
 #define SYS_munmap 61

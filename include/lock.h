@@ -44,7 +44,7 @@ class scoped_lock {
 
 // for POD structures
 namespace mutex {
-void lock(int &);
-void unlock(int &);
+void lock(volatile int &);
+void unlock(volatile int &);
 };  // namespace mutex
 

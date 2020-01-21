@@ -26,7 +26,8 @@ long ksyscall(long n, ...);
 namespace sys {
 
 void restart(void);
-void exit(void);
+void exit_task(int code);
+void exit_proc(int code);
 
 #define O_RDONLY 0
 #define O_WRONLY 1

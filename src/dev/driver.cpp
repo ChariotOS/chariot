@@ -84,7 +84,7 @@ int dev::register_name(string name, major_t major, minor_t minor) {
   if (device_names.contains(name)) return -EEXIST;
   device_names[name] = {major, minor};
 
-  KINFO("register dev %s to %d:%d\n", name.get(), major, minor);
+  KINFO("register dev %s to %d:%d (%d devices total)\n", name.get(), major, minor, device_names.size());
   return 0;
 }
 

@@ -62,11 +62,4 @@ void preempt_reset(void);
 // is it disabled?
 int preempt_disabled(void);
 
-// plop at the top of a scope and interrupts will be disabled within that scope
-class scoped_cli {
- public:
-  inline scoped_cli() { pushcli(); }
-  inline ~scoped_cli() { popcli(); }
-};
-
 }  // namespace cpu

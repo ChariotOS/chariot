@@ -173,20 +173,8 @@ static void switch_into(struct task *tsk) {
 }
 
 static void schedule() {
-  auto old_ncli = cpu::ncli();
-
-  if (cpu::ncli() > 1) {
-    cpu::current().ncli = 1;
-    // panic("schedule must have ncli == 1, instead ncli = %d", cpu::ncli());
-  }
-
   cpu::task()->current_cpu = -1;
-  int intena = cpu::current().intena;
   swtch(&cpu::task()->ctx, cpu::current().sched_ctx);
-
-  cpu::current().ncli = old_ncli;
-
-  cpu::current().intena = intena;
 }
 
 static void do_yield(int st) {
@@ -194,16 +182,16 @@ static void do_yield(int st) {
 
   auto tsk = cpu::task().get();
 
+  tsk->priority = PRIORITY_HIGH;
   if (cpu::get_ticks() - tsk->start_tick >= tsk->timeslice) {
     // uh oh, we used up the timeslice, drop the priority!
     if (!tsk->is_idle_thread && tsk->priority > 0) {
-      // printk("bad!       (%d:%d) -> %d\n", tsk->pid, tsk->tid,
-      // tsk->priority);
       tsk->priority--;
     }
   }
 
   cpu::task()->state = st;
+
   schedule();
 
   cpu::popcli();
@@ -235,7 +223,9 @@ static void schedule_one() {
 
   cpu::popcli();
 
-  sched::add_task(tsk);
+  /* add the task back to the */
+  if (!tsk->should_die)
+    sched::add_task(tsk);
 }
 
 void sched::run() {
@@ -396,4 +386,13 @@ bool waitqueue::should_notify(u32 val) {
     }
   }
   return false;
+}
+
+
+void sched::before_iret(void) {
+
+  if (!cpu::in_thread()) return;
+  // exit via the scheduler if the task should die.
+  if (cpu::task()->should_die)
+    sched::exit();
 }

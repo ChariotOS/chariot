@@ -90,8 +90,6 @@ struct dev::driver_ops sb_ops = {
 };
 
 void sb16_init(void) {
-  cpu::pushcli();
-
   outb(0x226, 1);
   delay_3us();
   outb(0x226, 0);
@@ -107,10 +105,8 @@ void sb16_init(void) {
     printk("SB16: sb not ready");
   }
 
-  cpu::popcli();
-
   // finally initialize
   dev::register_driver("sb16", CHAR_DRIVER, MAJOR_SB16, &sb_ops);
 }
 
-module_init("sb16", sb16_init);
+// module_init("sb16", sb16_init);

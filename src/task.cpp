@@ -10,6 +10,9 @@
 constexpr const int fd_max = 255;
 
 extern "C" void user_task_create_callback(void) {
+
+  cpu::popcli();
+
   if (cpu::proc()->tasks.size() == 1) {
     // load the elf binary, since we're in the process now and have full access
     // to it's address space
@@ -58,7 +61,6 @@ extern "C" void user_task_create_callback(void) {
   }
 
   // tf->rdx = u_envp
-  cpu::popcli();
 }
 
 extern "C" void trapret(void);
@@ -302,17 +304,15 @@ int task_process::open(const char *path, int flags, int mode) {
 
   if (fd == -1) {
     file_lock.unlock();
-    return fd;
+    return -1;
   }
 
   auto file = vfs::open(path, flags, mode);
 
-  if (!file) {
+  if (file == NULL) {
     file_lock.unlock();
-    return fd;
+    return -1;
   }
-
-  printk("%p\n", file);
 
   open_files[fd].fd = fs::filedesc::create(file /* TODO: fd flags */, path);
   open_files[fd].flags = flags;
@@ -326,7 +326,7 @@ int task_process::read(int fd, void *dst, size_t sz) {
 
   file_lock.lock();
 
-  if (open_files[fd]) {
+  if (open_files.contains(fd)) {
     n = open_files[fd].fd->read(dst, sz);
   }
 
@@ -338,12 +338,12 @@ int task_process::read(int fd, void *dst, size_t sz) {
 int task_process::write(int fd, void *data, size_t sz) {
   int n = -1;
 
+  assert(readeflags() & FL_IF);
   file_lock.lock();
 
-  if (open_files[fd]) {
+  if (open_files.contains(fd)) {
     n = open_files[fd].fd->write(data, sz);
   }
-
   file_lock.unlock();
 
   return n;
@@ -401,6 +401,14 @@ task::~task() {
   if (fpu_state != NULL) kfree(fpu_state);
 }
 
+void task::exit(int code) {
+  // TODO: tell the process group that this task died :)
+  should_die = true;
+  exit_code = code;
+  // rudely awaken the task if it needs to be.
+  awaken(true);
+}
+
 ref<struct task> task::lookup(int tid) {
   task_table_lock.lock();
   auto t = task_table.get(tid);
@@ -409,15 +417,16 @@ ref<struct task> task::lookup(int tid) {
 }
 
 static void kernel_task_create_callback(void) {
-  auto task = cpu::task();
 
-  KINFO("kthread %d started\n", task->tid);
+
+  auto task = cpu::task().get();
 
   using kfunc_t = int (*)(void *);
   kfunc_t kfn;
   kfn = (kfunc_t)task->tf->eip;
 
   cpu::popcli();
+
   kfn(nullptr);
 
   panic("unhandled: kthread finishes\n");

@@ -41,4 +41,10 @@ int add_task(struct task*);
 
 // make a 440hz beep for 100ms
 void beep();
+
+
+// called before dropping back into user space. This is needed
+// when a thread should not return to userspace because it must
+// die or something else
+void before_iret(void);
 }  // namespace sched

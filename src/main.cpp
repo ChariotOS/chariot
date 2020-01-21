@@ -64,6 +64,7 @@ static void call_global_constructors(void) {
 }
 
 void init_rootvfs(fs::filedesc dev) {
+
   auto rootfs = make_unique<fs::ext2>(dev);
   if (!rootfs->init()) panic("failed to init fs on root disk\n");
   if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
@@ -111,6 +112,8 @@ extern void rtc_init(void);
 // #define WASTE_TIME_PRINTING_WELCOME
 
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
+
+
   /*
    * Initialize the real-time-clock
    */
@@ -198,6 +201,33 @@ static void kmain2(void) {
   // [noreturn]
 }
 
+/*
+ * attempt to spawn init from a certain binary. Returning the pid
+ * on success and -1 on failure
+ */
+static int attempt_init_spawn(const char *binary) {
+
+  // spawn the user process
+  pid_t init = sys::pctl(0, PCTL_SPAWN, 0);
+  if (init == -1) return -1;
+
+  // launch /bin/init
+  const char* init_args[] = {binary, NULL};
+
+  struct pctl_cmd_args cmdargs {
+    .path = (char*)init_args[0], .argc = 1, .argv = (char**)init_args,
+    // its up to init to deal with env variables. (probably reading from an
+    // initial file or something)
+        .envc = 0, .envv = NULL,
+  };
+
+  // TODO: setup stdin, stdout, and stderr
+  int res = sys::pctl(init, PCTL_CMD, (u64)&cmdargs);
+  if (res == -1) return -1;
+
+  return init;
+}
+
 /**
  * the kernel drops here in a kernel task
  *
@@ -217,9 +247,10 @@ static int kernel_init_task(void*) {
 
 
   // open up the disk device for the root filesystem
-  const char *rootdev_path = kargs::get("root", "disk0p1");
+  const char *rootdev_path = kargs::get("root", "ata0p1");
   KINFO("rootdev=%s\n", rootdev_path);
   auto rootdev = dev::open(rootdev_path);
+  assert(rootdev.ino != NULL);
   init_rootvfs(rootdev);
 
   // setup stdio stuff for the kernel (to be inherited by spawn)
@@ -228,27 +259,24 @@ static int kernel_init_task(void*) {
   sys::dup2(fd, 1);
   sys::dup2(fd, 2);
 
+  string init_paths = kargs::get("init", "/bin/init");
+  int init_pid = -1;
 
-  auto proc = task_process::lookup(0);
-  // spawn the user process
-  pid_t init = sys::pctl(0, PCTL_SPAWN, 0);
-  assert(init != -1);
-  KINFO("init pid=%d\n", init);
+  for (auto &path : init_paths.split(',')) {
+    init_pid = attempt_init_spawn(path.get());
+    if (init_pid != -1) {
+      break;
+    }
+  }
 
-  const char *init_path = kargs::get("init", "/bin/init");
-  // launch /bin/init
-  const char* init_args[] = {init_path, NULL};
 
-  struct pctl_cmd_args cmdargs {
-    .path = (char*)init_args[0], .argc = 1, .argv = (char**)init_args,
-    // its up to init to deal with env variables. (probably reading from an
-    // initial file or something)
-        .envc = 0, .envv = NULL,
-  };
 
-  // TODO: setup stdin, stdout, and stderr
-  int res = sys::pctl(init, PCTL_CMD, (u64)&cmdargs);
-  if (res != 0) KERR("failed to cmdpid init process\n");
+
+  if (init_pid == -1) {
+    KERR("failed to create init process\n");
+    KERR("check the grub config and make sure that the init command line arg\n")
+    KERR("is set to a comma seperated list of possible paths.\n")
+  }
 
 
 

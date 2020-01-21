@@ -1287,7 +1287,4 @@ time_logger::time_logger(const char *const name) : name(name) {
 }
 
 time_logger::~time_logger(void) {
-  cpu::pushcli();
-  KWARN("[%s] %ld ticks\n", name, cpu::get_ticks() - start);
-  cpu::popcli();
 }

@@ -201,4 +201,4 @@ static void mouse_init(void) {
   dev::register_driver("mouse", CHAR_DRIVER, MAJOR_MOUSE, &mouse_ops);
 }
 
-module_init("mouse", mouse_init);
+// module_init("mouse", mouse_init);

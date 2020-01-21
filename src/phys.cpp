@@ -5,6 +5,7 @@
 #include <phys.h>
 #include <printk.h>
 #include <types.h>
+#include <cpu.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 #define PGROUNDUP(x) round_up(x, 4096)

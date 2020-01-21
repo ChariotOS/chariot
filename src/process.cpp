@@ -34,8 +34,27 @@ void sys::restart() {
   // TODO: NEED TO RESTART
 }
 
-void sys::exit() {
-  // TODO: NEED TO EXIT
+
+void sys::exit_task(int code) {
+  printk("Exit task. code=%d\n", code);
+  cpu::task()->exit(code);
+  // return, letting trap() call sched::before_iret()
+}
+
+void sys::exit_proc(int code) {
+  auto proc = cpu::proc().get();
+  assert(proc != NULL);
+
+  for (auto tid : proc->tasks) {
+    auto *task = task::lookup(tid).get();
+    if (task != NULL) {
+      task->exit(code);
+    }
+    printk("tid=%d\n", tid);
+  }
+
+  printk("Exit proc. code=%d\n", code);
+
 }
 
 

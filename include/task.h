@@ -96,8 +96,11 @@ struct fd_flags {
 };
 
 struct task_process : public refcounted<struct task_process> {
-  int pid;  // obviously the process id
+ public: /* I know, all this stuff is public, I'm a bad OOP programmer but its
+            so the syscall interface can just access all the stuff in here. Also
+            getters and setters suck. */
 
+  int pid;  // obviously the process id
   int uid, gid;
 
   // per-process flags (PF_*)
@@ -163,10 +166,8 @@ struct task_process : public refcounted<struct task_process> {
   // if newfd == -1, acts as dup(a), else act as dup2(a, b)
   int do_dup(int oldfd, int newfd);
 
-
   // dump all the processes to the console for debug reasons
   static void dump(void);
-
 
   inline ref<fs::filedesc> get_fd(int fd) {
     file_lock.lock();
@@ -191,6 +192,8 @@ struct task final : public refcounted<task> {
   /* -1 unrunnable, 0 runnable, >0 stopped */
   volatile long state;
 
+  long exit_code;
+
   /* kenrel stack */
   long stack_size;
   void *stack;
@@ -209,7 +212,6 @@ struct task final : public refcounted<task> {
 
   /* per-task flasg (uses PF_* macros)*/
   unsigned int flags;
-
 
   ref<struct task_process> proc;
 
@@ -258,4 +260,6 @@ struct task final : public refcounted<task> {
   // protected constructor - must use ::create
   task(ref<struct task_process>);
   ~task(void);
+
+  void exit(int code);
 };

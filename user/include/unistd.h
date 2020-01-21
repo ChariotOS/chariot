@@ -24,8 +24,6 @@ int close(int fd);
 
 off_t lseek(int fd, off_t offset, int whence);
 
-// does not return, wrapper around pctl(0, PCTL_EXIT);
-void exit(int);
 
 #ifdef __cplusplus
 }

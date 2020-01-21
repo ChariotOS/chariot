@@ -20,3 +20,4 @@ srcs += syscall.c
 srcs += start.asm
 srcs += stat.c
 srcs += pthread.c
+srcs += exit.c

@@ -11,26 +11,14 @@
 #define INFO(fmt, args...)
 #endif
 
-static inline u64 xchg(volatile int* addr, int newval) {
-  int result;
-  // The + in "+m" denotes a read-modify-write operand.
-  asm volatile("lock; xchgl %0, %1"
-               : "+m"(*addr), "=a"(result)
-               : "1"(newval)
-               : "cc");
-  return result;
+static inline int arch_atomic_swap(volatile int* x, int v) {
+  asm("xchg %0, %1" : "=r"(v), "=m"(*x) : "0"(v) : "memory");
+  return v;
 }
 
-static inline u32 CAS(volatile u32* mem, u32 newval, u32 oldval) {
-  u32 ret;
-  asm volatile("cmpxchgl %2, %1"
-               : "=a"(ret), "+m"(*mem)
-               : "r"(newval), "0"(oldval)
-               : "cc", "memory");
-  return ret;
+static inline void arch_atomic_store(volatile int* p, int x) {
+  asm("movl %1, %0" : "=m"(*p) : "r"(x) : "memory");
 }
-
-#define memory_barrier() asm volatile("" ::: "memory")
 
 void spinlock::lock(void) { mutex::lock(locked); }
 
@@ -38,13 +26,20 @@ void spinlock::unlock(void) { mutex::unlock(locked); }
 
 bool spinlock::is_locked(void) { return locked; }
 
-void mutex::lock(int& l) {
-  while (!__sync_bool_compare_and_swap(&l, 0, 1)) {
-    asm("pause");
+static void spin_wait(volatile int* lock) { asm("pause"); }
+void mutex::lock(volatile int& l) {
+  volatile int* lock = &l;
+  while (likely(arch_atomic_swap(lock, 1))) {
+    spin_wait(lock);
   }
 }
 
-void mutex::unlock(int& l) { l = 0; }
+void mutex::unlock(volatile int& l) {
+  volatile int* lock = &l;
+  if (likely(lock[0])) {
+    arch_atomic_store(lock, 0);
+  }
+}
 
 int rwlock::rlock(void) {
   m_lock.lock();

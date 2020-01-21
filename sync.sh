@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# sync the root filesystem into build/root.img
+# sync the root filesystem into build/chariot.img
 
 die() {
     echo "die: $*"
@@ -14,7 +14,7 @@ sudo id || die "Couldn't get sudo"
 echo "Okay!"
 
 
-IMG=build/root.img
+IMG=build/chariot.img
 mnt=build/mnt
 DISK_SIZE_MB=64
 

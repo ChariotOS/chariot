@@ -1,5 +1,7 @@
 __SYSCALL(0, restart) // TODO
-__SYSCALL(1, exit)
+
+// exit the current task
+__SYSCALL(1, exit_task)
 __SYSCALL(2, open)
 __SYSCALL(3, close)
 __SYSCALL(4, lseek)
@@ -23,6 +25,8 @@ __SYSCALL(10, dup2)
 __SYSCALL(12, fstat)
 // __SYSCALL(13, lstat)
 
+// exit the whole process
+__SYSCALL(42, exit_proc)
 __SYSCALL(60, mmap)
 __SYSCALL(61, munmap)
 
