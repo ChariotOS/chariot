@@ -86,6 +86,10 @@ static uint32_t *lapic = NULL;
 
 void smp::lapic_init(void) {
   if (!lapic) return;
+
+
+  outb(0xa1, 0xff);
+  outb(0x21, 0xff);
   // Enable local APIC; set spurious interrupt vector.
   lapic_write(LAPIC_SVR, LAPIC_ENABLE | (32 + 31 /* spurious */));
 

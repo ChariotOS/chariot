@@ -256,8 +256,15 @@ static int kernel_init_task(void*) {
   // setup stdio stuff for the kernel (to be inherited by spawn)
   int fd = sys::open("/dev/console", O_RDWR);
   assert(fd == 0);
+  printk("A\n");
+
   sys::dup2(fd, 1);
+  printk("B\n");
+
+
   sys::dup2(fd, 2);
+  printk("C\n");
+
 
   string init_paths = kargs::get("init", "/bin/init");
   int init_pid = -1;

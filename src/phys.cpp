@@ -18,7 +18,7 @@ struct frame {
   u64 page_len;
 };
 
-static spinlock phys_lck;
+static spinlock phys_lck("phys_lock");
 
 
 static void lock(void) {

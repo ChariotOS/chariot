@@ -125,7 +125,7 @@ struct [[gnu::packed]] e1000_tx_desc {
   volatile uint16_t special;
 };
 
-class e1000 : public refcounted<e1000> {
+class e1000 {
   private:
     pci::device *dev;
     u8 bar_type;          // type of bar 0
@@ -442,7 +442,7 @@ int e1000::send_packet(const void *p_data, uint16_t p_len) {
   return 0;
 }
 
-static ref<e1000> e1000_inst;
+static e1000 *e1000_inst;
 static void e1000_interrupt(int intr, struct task_regs *fr) {
   // INFO("interrupt: err=%d\n", fr->err);
   if (e1000_inst) e1000_inst->fire(fr);
@@ -460,7 +460,7 @@ void e1000_init(void) {
   if (e1000_dev != nullptr) {
     e1000_dev->enable_bus_mastering();
 
-    e1000_inst = make_ref<e1000>(e1000_dev);
+    e1000_inst = new e1000(e1000_dev);
 
     if (!e1000_inst->start()) {
       e1000_inst = nullptr;

@@ -73,7 +73,7 @@ waitqueue ata_wq("ata");
  * TODO: use per-channel ATA mutex locks. Right now every ata drive is locked
  * the same way
  */
-static spinlock drive_lock;
+static spinlock drive_lock = spinlock("ata::drive_lock");
 
 /*
  * TODO: determine if we need this function
@@ -396,7 +396,7 @@ bool dev::ata::read_block_dma(u32 sector, u8* data) {
 bool dev::ata::write_block_dma(u32 sector, const u8* data) { return false; }
 
 static void ata_interrupt(int intr, struct task_regs* fr) {
-  irq::eoi(intr);
+  // irq::eoi(intr);
   inb(primary_master_status);
   inb(primary_master_bmr_status);
   outb(primary_master_bmr_status, BMR_COMMAND_DMA_STOP);

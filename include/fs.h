@@ -175,7 +175,7 @@ struct inode {
   static int release(struct inode *);
 
  protected:
-  spinlock lock;
+  spinlock lock = spinlock("inode lock");
   int rc = 0;
 
  private:

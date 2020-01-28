@@ -12,7 +12,7 @@
 #endif
 
 dev::driver::driver() {
-  // INFO("driver '%s' created\n", name());
+  INFO("driver '%s' created\n", name());
 }
 
 dev::driver::~driver(void) {}

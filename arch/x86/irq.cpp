@@ -92,6 +92,11 @@ const char *excp_codes[128][2] = {
 
 void arch::irq::eoi(int i) {
   if (i >= 32) {
+    int pic_irq = i - 32;
+    if (pic_irq >= 8) {
+      outb(0xA0, 0x20);
+    }
+    outb(0x20, 0x20);
   }
 
   smp::lapic_eoi();
@@ -132,12 +137,6 @@ static void tick_handle(int i, struct task_regs *tf) {
   return;
 }
 
-static void dbl_flt_handler(int i, struct task_regs *tf) {
-  printk("DOUBLE FAULT!\n");
-  while (1) {
-  }
-}
-
 static void unknown_exception(int i, struct task_regs *tf) {
   KERR("KERNEL PANIC\n");
   KERR("CPU EXCEPTION: %s\n", excp_codes[tf->trapno][EXCP_NAME]);
@@ -160,6 +159,16 @@ static void unknown_exception(int i, struct task_regs *tf) {
   };
 }
 
+
+static void dbl_flt_handler(int i, struct task_regs *tf) {
+  printk("DOUBLE FAULT!\n");
+  printk("&i=%p\n", &i);
+
+  unknown_exception(i, tf);
+  while (1) {
+  }
+}
+
 static void unknown_hardware(int i, struct task_regs *tf) {
   printk("unknown! %d\n", i);
 }
@@ -168,6 +177,7 @@ static void gpf_handler(int i, struct task_regs *tf) {
   // TODO: die
   KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", cpu::task()->pid,
        cpu::task()->tid, tf->eip, tf->err);
+  asm("cli; hlt");
   sched::block();
 }
 
@@ -245,6 +255,8 @@ int arch::irq::init(void) {
   ::irq::install(TRAP_ILLOP, illegal_instruction_handler,
                  "Illegal Instruction Handler");
 
+
+
   pic_disable(34);
 
 
@@ -252,7 +264,7 @@ int arch::irq::init(void) {
   ::irq::install(32, tick_handle, "Preemption Tick");
 
 
-  mkgate(idt, 0x80, vectors[0x80], 3, 1);
+  mkgate(idt, 0x80, vectors[0x80], 3, 0);
   ::irq::install(0x80, syscall_handle, "System Call");
 
   KINFO("Registered basic interrupt handlers\n");
@@ -262,6 +274,9 @@ int arch::irq::init(void) {
 
   return 0;
 }
+
+
+static int trap_depths[255] = {0};
 
 // just forward the trap on to the irq subsystem
 // This function is called from arch/x86/trap.asm
@@ -274,8 +289,16 @@ extern "C" void trap(struct task_regs *regs) {
    */
   arch::sti();
 
+  cpu::current().current_trap = regs->trapno;
+  if (regs->trapno < 255) trap_depths[regs->trapno]++;
+
   irq::dispatch(regs->trapno, regs);
-  irq::eoi(regs->trapno);
 
   sched::before_iret();
+
+
+  irq::eoi(regs->trapno);
+
+  if (regs->trapno < 255) trap_depths[regs->trapno]--;
+  cpu::current().current_trap = -1;
 }

@@ -148,7 +148,7 @@ void cpu::switch_vm(struct task *tsk) {
     // don't break the stack on kthreads with the tss
     tss_set_rsp(tss, 0, 0);
   } else {
-    tss_set_rsp(tss, 0, (u64)tsk->stack + tsk->stack_size);
+    tss_set_rsp(tss, 0, (u64)tsk->stack + tsk->stack_size + 8);
     // tss_set_ist(tss, 0, (u64)tsk->stack + tsk->stack_size);
   }
 

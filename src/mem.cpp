@@ -228,7 +228,7 @@ extern void *mm_malloc(size_t size);
 extern void mm_free(void *ptr);
 extern void *mm_realloc(void *ptr, size_t size);
 
-static spinlock s_allocator_lock;
+static spinlock s_allocator_lock = spinlock("malloc lock");
 
 static void alloc_lock(void) { s_allocator_lock.lock(); }
 

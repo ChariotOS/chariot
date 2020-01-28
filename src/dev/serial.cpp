@@ -86,7 +86,6 @@ void serial_irq_handle(int i, struct task_regs* tf) {
   }
 
   if (nread != 0) console::feed(nread, buf);
-  irq::eoi(i);
 }
 
 static void serial_mod_init() {

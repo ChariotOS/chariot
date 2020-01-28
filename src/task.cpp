@@ -67,11 +67,11 @@ extern "C" void trapret(void);
 extern "C" void userret(void);
 static void kernel_task_create_callback(void);
 
-static spinlock proc_table_lock;
+static spinlock proc_table_lock("proc table");
 static u64 next_pid = 0;
 static map<int, ref<struct task_process>> proc_table;
 
-static spinlock task_table_lock;
+static spinlock task_table_lock("task table");
 static u64 next_tid = 0;
 static map<int, ref<struct task>> task_table;
 
@@ -230,6 +230,7 @@ ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
 
     if (!p->parent) {
       error = -ENOENT;
+      proc_table_lock.unlock();
       return nullptr;
     }
 

@@ -1,12 +1,12 @@
 LDFLAGS=-m elf_x86_64
 AFLAGS=-f elf64 -w-zext-reloc
 
-OPT = -O3
-DFLAGS=-g -DDEBUG -O3
+OPT = -O0
+DFLAGS=-g -DDEBUG
 
 CINCLUDES=-I./include/
 
-CFLAGS:=$(CINCLUDES) -mno-red-zone -fno-omit-frame-pointer -fno-stack-protector \
+CFLAGS:=$(CINCLUDES) $(DFLAGS) -mno-red-zone -fno-omit-frame-pointer -fno-stack-protector \
 				 -mtls-direct-seg-refs -fno-pie -Wno-sign-compare -ffreestanding \
 				 -mcmodel=large $(OPT) -Wall -fno-common -Wno-initializer-overrides \
 				 -Wstrict-overflow=5 -fno-tree-vectorize -Wno-address-of-packed-member \

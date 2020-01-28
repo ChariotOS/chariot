@@ -29,7 +29,7 @@ class waitqueue {
   int navail = 0;
   const char *name;
 
-  spinlock lock;
+  spinlock lock = spinlock("waitqueue.lock");
 
   // next to pop on notify
   struct task *front = NULL;

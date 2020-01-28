@@ -375,7 +375,7 @@ static void key_state_changed(u8 raw, bool pressed) {
 }
 
 static void kbd_handler(int i, struct task_regs *tf) {
-  irq::eoi(i);
+  // irq::eoi(i);
 
   for (;;) {
     u8 status = inb(I8042_STATUS);

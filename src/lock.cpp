@@ -20,21 +20,38 @@ static inline void arch_atomic_store(volatile int* p, int x) {
   asm("movl %1, %0" : "=m"(*p) : "r"(x) : "memory");
 }
 
-void spinlock::lock(void) { mutex::lock(locked); }
+void spinlock::lock(void) {
+  while (1) {
+    // cpu::pushcli();
+    if (arch_atomic_swap(&locked, 1) == 0) {
+      break;
+    }
+    // cpu::popcli();
+    asm("pause");
+  }
 
-void spinlock::unlock(void) { mutex::unlock(locked); }
+  owner_tid = -1;
+  if (cpu::in_thread()) owner_tid = cpu::task()->tid;
+}
+
+void spinlock::unlock(void) {
+  if (likely(locked)) {
+    arch_atomic_store(&locked, 0);
+  }
+  owner_tid = -1;
+}
 
 bool spinlock::is_locked(void) { return locked; }
 
 static void spin_wait(volatile int* lock) { asm("pause"); }
-void mutex::lock(volatile int& l) {
+void spinlock::lock(volatile int& l) {
   volatile int* lock = &l;
   while (likely(arch_atomic_swap(lock, 1))) {
     spin_wait(lock);
   }
 }
 
-void mutex::unlock(volatile int& l) {
+void spinlock::unlock(volatile int& l) {
   volatile int* lock = &l;
   if (likely(lock[0])) {
     arch_atomic_store(lock, 0);

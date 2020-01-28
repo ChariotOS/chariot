@@ -139,7 +139,7 @@ struct task_process : public refcounted<struct task_process> {
 
   ref<task_process> parent;
 
-  spinlock proc_lock;
+  spinlock proc_lock = spinlock("proc.proc_lock");
 
   // create a thread in the task_process
   int create_task(int (*fn)(void *), int flags, void *arg,
@@ -153,7 +153,7 @@ struct task_process : public refcounted<struct task_process> {
 
   task_process();
 
-  spinlock file_lock;
+  spinlock file_lock = spinlock("task.file_lock");
   map<int, fd_flags> open_files;
 
   // syscall interfaces
@@ -221,10 +221,10 @@ struct task final : public refcounted<task> {
   int last_cpu = -1;
 
   // used when an action requires ownership of this task
-  spinlock task_lock;
+  spinlock task_lock = spinlock("task.task_lock");
   // so only one scheduler can run the task at a time (TODO: just work around
   // this possibility)
-  spinlock run_lock;
+  spinlock run_lock = spinlock("task.run_lock");
 
   struct task_context *ctx;
   struct task_regs *tf;

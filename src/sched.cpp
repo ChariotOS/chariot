@@ -48,7 +48,7 @@ struct mlfq_entry {
 };
 
 static struct mlfq_entry mlfq[SCHED_MLFQ_DEPTH];
-static spinlock mlfq_lock;
+static spinlock mlfq_lock = spinlock("mlfq_lock");
 
 bool sched::init(void) {
   // initialize the mlfq
@@ -378,12 +378,14 @@ void waitqueue::notify() {
 }
 
 bool waitqueue::should_notify(u32 val) {
-  scoped_lock lck(lock);
+  lock.lock();
   if (front != NULL) {
     if (front->waiting_on <= val) {
+      lock.unlock();
       return true;
     }
   }
+  lock.unlock();
   return false;
 }
 

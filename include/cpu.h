@@ -10,6 +10,9 @@ struct cpu_t {
   size_t ticks = 0;
   size_t intena = 0;
 
+  int current_trap = -1;
+  int trap_depth = 0;
+
   uint16_t preemption_depth = 0;
 
   u32 speed_khz;

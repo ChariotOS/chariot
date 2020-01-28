@@ -98,9 +98,11 @@ char *read_line(int fd, char *prompt, int *len_out) {
 static volatile long counter = 0;
 
 void *thread_func(void *p) {
-  printf("hello!     p=%p\n", p);
+  int num = (int)p;
+  printf("hello!     p=%d\n", num);
   while (1) {
     counter++;
+    yield();
   }
   syscall(SYS_exit_task, 0);
   return NULL;
@@ -110,19 +112,15 @@ void *thread_func(void *p) {
 int main(int argc, char **argv) {
   // spawn_proc("/bin/vidtest");
 
-  for (int i = 0; i < 32; i++) {
+  for (int i = 0; i < 5; i++) {
     pthread_t thd;
     pthread_create(&thd, NULL, thread_func, (void*)(long)i);
     printf("spawned %d\n", i);
-    yield();
   }
 
   while (0) {
-    printf("%ld\n", counter);
     yield();
   }
-
-  // exit(0);
 
   // open the console (till we get stdin/out/err opening by default)
   while (1) {

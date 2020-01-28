@@ -244,7 +244,7 @@ class ext2 final : public filesystem {
 
   fs::filedesc disk;
 
-  spinlock m_lock;
+  spinlock m_lock = spinlock("ext2.m_lock");
 };
 }  // namespace fs
 

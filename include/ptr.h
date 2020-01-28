@@ -154,7 +154,7 @@ class refcounted_base {
   }
 
 
-  atom<short> m_ref_count = 2;
+  atom<short> m_ref_count = 1;
 };
 
 template <typename T>
@@ -202,10 +202,11 @@ class ref {
   }
   ~ref() {
     clear();
+    m_ptr = NULL;
     if constexpr (sizeof(T*) == 8)
-      m_ptr = (T*)(0xe0e0e0e0e0e0e0e0);
+      m_ptr = (T*)(NULL);
     else
-      m_ptr = (T*)(0xe0e0e0e0);
+      m_ptr = (T*)(NULL);
   }
   ref(nullptr_t) {}
 

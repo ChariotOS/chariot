@@ -15,8 +15,8 @@ struct fifo_block {
   char data[];  // at the end of the struct
 
   // ease of use functions
-  inline void lock() { mutex::lock(lck); }
-  inline void unlock() { mutex::unlock(lck); }
+  inline void lock() { spinlock::lock(lck); }
+  inline void unlock() { spinlock::unlock(lck); }
 
   static struct fifo_block *alloc(void);
   static void free(struct fifo_block *);
