@@ -1,5 +1,6 @@
 #include <limits.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define ALIGN (sizeof(size_t))
@@ -68,4 +69,15 @@ size_t strlen(const char *s) {
   for (; *s; s++)
     ;
   return s - a;
+}
+
+char *strchr(const char *s, int c) {
+  c = (unsigned char)c;
+  if (!c) return (char *)s + strlen(s);
+
+  for (; *s && *(unsigned char *)s != c; s++) {
+  }
+  char *r = (char *)s;
+
+  return *(unsigned char *)r == (unsigned char)c ? r : 0;
 }

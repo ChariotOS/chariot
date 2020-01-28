@@ -109,43 +109,85 @@ void *thread_func(void *p) {
 }
 
 
+#define MAX_ARGS 255
+
+int parseline(const char *cmdline, char **argv) {
+  char *buf = malloc(strlen(cmdline) + 1);          /* ptr that traverses command line */
+  char *delim;                /* points to first space delimiter */
+  int argc;                   /* number of args */
+  int bg;                     /* background job? */
+
+  strcpy(buf, cmdline);
+  buf[strlen(buf)] = ' ';   /* replace trailing '\n' with space */
+  while (*buf && (*buf == ' ')) /* ignore leading spaces */
+    buf++;
+
+  /* Build the argv list */
+  argc = 0;
+  if (*buf == '\'') {
+    buf++;
+    delim = strchr(buf, '\'');
+  } else {
+    delim = strchr(buf, ' ');
+  }
+
+  while (delim) {
+    argv[argc++] = buf;
+    *delim = '\0';
+    buf = delim + 1;
+    while (*buf && (*buf == ' ')) /* ignore spaces */
+      buf++;
+
+    if (*buf == '\'') {
+      buf++;
+      delim = strchr(buf, '\'');
+    } else {
+      delim = strchr(buf, ' ');
+    }
+  }
+  argv[argc] = NULL;
+
+  if (argc == 0) /* ignore blank line */
+    return 1;
+
+  /* should the job run in the background? */
+  if ((bg = (*argv[argc - 1] == '&')) != 0) {
+    argv[--argc] = NULL;
+  }
+  return bg;
+}
+
 int main(int argc, char **argv) {
-  // spawn_proc("/bin/vidtest");
 
-  for (int i = 0; i < 5; i++) {
-    pthread_t thd;
-    pthread_create(&thd, NULL, thread_func, (void*)(long)i);
-    printf("spawned %d\n", i);
-  }
+  int arg_buflen = sizeof(char *) * MAX_ARGS;
+  char **args = malloc(arg_buflen);
 
-  while (0) {
-    yield();
-  }
-
-  // open the console (till we get stdin/out/err opening by default)
   while (1) {
     int len = 0;
 
+    memset(args, 0, arg_buflen);
 
-    char prompt[40];
-
-    snprintf(prompt, 40, "%d> ", counter);
-
-
-    char *buf = read_line(0, prompt, &len);
+    char *buf = read_line(0, "# ", &len);
 
     len = strlen(buf);
     if (len == 0) goto noprint;
 
-    printf("len=%d\n", len);
-    printf("buf=%p\n", buf);
-    printf("you typed: '%s'\n", buf);
-    printf("counter=%ld\n", counter);
     hexdump(buf, len);
+
+    int bg = parseline(buf, args);
+
+    if (bg) printf("Background Process\n");
+    for (int i = 0; i < MAX_ARGS; i++) {
+      if (args[i] == NULL) break;
+      printf("%d:'%s'\n", i, args[i]);
+    }
+
 
   noprint:
     free(buf);
   }
+
+  free(args);
 
   while (1) {
     yield();

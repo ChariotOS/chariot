@@ -23,6 +23,9 @@ char *strncpy(char *__restrict, const char *__restrict, size_t);
 size_t strlen(const char *s);
 
 
+char *strchr(const char *s, int c);
+
+
 #ifdef __cplusplus
 }
 #endif

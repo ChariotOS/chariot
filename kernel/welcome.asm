@@ -1,6 +1,6 @@
 global chariot_welcome_start
 chariot_welcome_start:
 
-incbin "src/welcome.txt"
+incbin "kernel/welcome.txt"
 db 0 ;; null terminator
 

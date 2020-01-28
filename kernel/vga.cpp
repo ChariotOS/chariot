@@ -8,7 +8,7 @@
 #include <util.h>
 #include <vga.h>
 
-#include "drivers/majors.h"
+#include "../drivers/majors.h"
 
 static u8 vga_x, vga_y;
 static u8 vga_attr;
@@ -243,10 +243,11 @@ struct dev::driver_ops fb_ops = {
 static void vga_init_mod(void) {
   vga_fba = (u32 *)p2v(get_framebuffer_address());
 
-
   vga_dev->enable_bus_mastering();
 
+  /*
   set_resolution(640, 480);
+  */
   dev::register_driver("fb", CHAR_DRIVER, MAJOR_FB, &fb_ops);
 }
 

@@ -10,7 +10,7 @@
 #include <sched.h>
 #include <task.h>
 
-#include "drivers/majors.h"
+#include "../drivers/majors.h"
 
 // Control-x
 #define C(x) ((x) - '@')

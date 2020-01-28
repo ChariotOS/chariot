@@ -8,7 +8,6 @@
 #include <printk.h>
 #include <sched.h>
 #include <smp.h>
-#include <vga.h>
 
 #include "../majors.h"
 
@@ -68,7 +67,6 @@ uint8_t mouse_read() {
 }
 
 static int buttons;
-static int mouse_x, mouse_y;
 
 static void mouse_handler(int i, struct task_regs *tf) {
   // reset the cycle
@@ -119,17 +117,8 @@ static void mouse_handler(int i, struct task_regs *tf) {
           }
           mouse_cycle = 0;
 
-          mouse_x = mouse_x + packet.dx;
-          if (mouse_x < 0) mouse_x = 0;
-          if (mouse_x >= vga::width() - 1) mouse_x = vga::width() - 1;
-          mouse_y = mouse_y - packet.dy;
-          if (mouse_y < 0) mouse_y = 0;
-          if (mouse_y >= vga::height() - 1) mouse_y = vga::height() - 1;
           buttons = packet.buttons;
-
-          // printk("   %d:%d\n", packet.dx, -packet.dy);
           if (open) mouse_buffer.write(&packet, sizeof(packet));
-          // printk("%d bytes in buffer\n", mouse_buffer.size());
 
           break;
       }
