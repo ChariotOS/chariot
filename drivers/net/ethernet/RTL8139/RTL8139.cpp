@@ -6,9 +6,9 @@
 #include <phys.h>
 #include <util.h>
 
-#define DEBUG
+#define RTLDEBUG
 
-#ifdef DEBUG
+#ifdef RTLDEBUG
 #define INFO(fmt, args...) KWARN("RTL8139: " fmt, ##args)
 #else
 #define INFO(fmt, args...)

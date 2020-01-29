@@ -136,7 +136,6 @@ static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {
   tss[n * 2 + 2] = rsp >> 32;
 }
 
-extern "C" void syscall_enter(void);
 
 #define IA32_LSTAR (0xC0000082)
 void cpu::switch_vm(struct task *tsk) {

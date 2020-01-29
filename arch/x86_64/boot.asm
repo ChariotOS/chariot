@@ -58,7 +58,6 @@ TABLE_SIZE equ (1 << LOG_TABLE_SIZE)
 STACK_SIZE  equ 0x1000
 STACK_ALIGN equ 16
 
-
 ; paging structures
 align PAGE_SIZE
 [global boot_p4]
@@ -216,7 +215,7 @@ _start:
   ; - the DF has been reset by the code above - no CLD is required
   call kmain
 
-; memory reserved for the kernel's stack
+; memory reserved for the kernel's stck
 [section .bss align=STACK_ALIGN]
 stack:
   resb STACK_SIZE

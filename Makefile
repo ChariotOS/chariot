@@ -6,8 +6,9 @@ GRUB = $(GRUB_PREFIX)grub-mkrescue
 
 .PHONY: fs watch
 
+include Makefile.common
 
-STRUCTURE := $(shell tools/get_structure.sh)
+STRUCTURE := $(shell tools/get_structure.sh $(ARCH))
 CODEFILES := $(addsuffix /*,$(STRUCTURE))
 CODEFILES := $(wildcard $(CODEFILES))
 
@@ -23,17 +24,12 @@ ASOURCES:=$(filter %.asm,$(CODEFILES))
 AOBJECTS:=$(ASOURCES:%.asm=build/%.asm.o)
 
 
-include Makefile.common
-
-
-LDFLAGS=-m elf_x86_64
 
 KERNEL=build/vmchariot
 ISO=build/kernel.iso
 SYMS=build/kernel.syms
 ROOTFS=build/root.img
 
-AFLAGS=-f elf64 -w-zext-reloc
 
 
 default: $(KERNEL)

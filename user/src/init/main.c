@@ -1,7 +1,6 @@
 #include <chariot.h>
 #include <chariot/pctl.h>
 #include <fcntl.h>
-#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -92,20 +91,6 @@ char *read_line(int fd, char *prompt, int *len_out) {
   buf[i] = '\0';  // null terminate
   if (len_out != NULL) *len_out = i;
   return buf;
-}
-
-
-static volatile long counter = 0;
-
-void *thread_func(void *p) {
-  int num = (int)p;
-  printf("hello!     p=%d\n", num);
-  while (1) {
-    counter++;
-    yield();
-  }
-  syscall(SYS_exit_task, 0);
-  return NULL;
 }
 
 

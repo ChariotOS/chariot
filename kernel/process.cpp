@@ -13,12 +13,9 @@
 #include <util.h>
 #include <vga.h>
 
-
-
 extern "C" void wrmsr(u32 msr, u64 val);
 
 extern "C" void trapret(void);
-
 
 /**
  * ===============================================
@@ -33,7 +30,6 @@ extern "C" void trapret(void);
 void sys::restart() {
   // TODO: NEED TO RESTART
 }
-
 
 void sys::exit_task(int code) {
   printk("Exit task. code=%d\n", code);
@@ -54,18 +50,11 @@ void sys::exit_proc(int code) {
   }
 
   printk("Exit proc. code=%d\n", code);
-
 }
-
 
 pid_t sys::getpid(void) { return cpu::task()->pid; }
 
 pid_t sys::gettid(void) { return cpu::task()->tid; }
-
-
-
-
-
 
 // WARNING: HACK
 struct syscall {
@@ -82,25 +71,18 @@ void set_syscall(const char *name, int num, void *handler) {
   syscall_table[num] = {.name = name, .num = num, .handler = handler};
 }
 
-
-
-
-
 void syscall_init(void) {
 #undef __SYSCALL
 #define __SYSCALL(num, name) set_syscall(#name, num, (void *)sys::name);
 #include <syscalls.inc>
-
 }
 
 static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
-
   if (!syscall_table.contains(num) || syscall_table[num].handler == nullptr) {
     KWARN("unknown syscall in pid %d. syscall(%d) @ rip=%p\n", cpu::proc()->pid,
           num, cpu::task()->tf->eip);
     return -1;
   }
-
 
   auto *func = (u64(*)(u64, u64, u64, u64, u64, u64))syscall_table[num].handler;
 
@@ -109,8 +91,15 @@ static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
 
 extern "C" void syscall_handle(int i, struct task_regs *tf) {
   // int x = 0;
+#ifdef __ARCH_x86_64__
   tf->rax =
       do_syscall(tf->rax, tf->rdi, tf->rsi, tf->rdx, tf->r10, tf->r8, tf->r9);
+#endif
+
+#ifdef __ARCH_i386__
+  tf->eax = do_syscall(tf->eax, tf->ebx, tf->ecx, tf->edx, tf->esi, tf->edi,
+                       0 /* TODO */);
+#endif
   return;
 }
 

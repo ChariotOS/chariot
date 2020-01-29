@@ -57,6 +57,7 @@ static u8 dsp_read() {
 }
 
 /* Changes the sample rate of sound output */
+/*
 static void set_sample_rate(uint16_t hz) {
   dsp_write(0x41);  // output
   dsp_write((u8)(hz >> 8));
@@ -65,14 +66,17 @@ static void set_sample_rate(uint16_t hz) {
   dsp_write((u8)(hz >> 8));
   dsp_write((u8)hz);
 }
+*/
 
 void *dma_page = NULL;
 
+/*
 static void dma_start(uint32_t len) {
   if (dma_page == NULL) {
     dma_page = phys::alloc();
   }
 }
+*/
 
 static ssize_t sb16_write(fs::filedesc &fd, const char *buf, size_t sz) {
   hexdump((void *)buf, sz);

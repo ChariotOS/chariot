@@ -126,8 +126,10 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
   // t->tf->rsi = (u64)u_argv;
   // tf->rdx = u_envp
 
+#if defined(__ARCH_x86_64__) || defined(__ARCH_i386)
   t->tf->esp = stack;
   t->tf->eip = entry_address;
+#endif
   t->state = PS_RUNNABLE;
 
   proc->nursery.remove(nursery_index);
@@ -155,9 +157,20 @@ static int do_create_thread(struct pctl_create_thread_args *argp) {
 
 
   // set up initial context
+#if defined(__ARCH_x86_64__) || defined(__ARCH_i386)
   t->tf->esp = (u64)args.stack + args.stack_size;
-  t->tf->eip = (u64)args.fn;
-  t->tf->rdi = (u64)args.arg;
+  t->tf->eip = (u64)(void*)args.fn;
+#endif
+
+
+#ifdef __ARCH_x86_64__
+  t->tf->rdi = (unsigned long)args.arg;
+#endif
+
+#ifdef __ARCH_i386__
+  t->tf->edi = (unsigned long)args.arg;
+#endif
+
   t->state = PS_RUNNABLE; /* mark task as runnable */
 
   args.tid = tid;

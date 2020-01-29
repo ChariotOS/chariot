@@ -1,15 +1,35 @@
-LDFLAGS=-m elf_x86_64
-AFLAGS=-f elf64 -w-zext-reloc
-
 OPT = -O0
 DFLAGS=-g -DDEBUG
 
+
+ifeq ($(ARCH),)
+	ARCH := x86_64
+endif
+
+
+LDFLAGS=-m elf_x86_64
+AFLAGS=-f elf64 -w-zext-reloc -D __ARCH_$(ARCH)__
+
 CINCLUDES=-I./include/
 
-CFLAGS:=$(CINCLUDES) $(DFLAGS) -mno-red-zone -fno-omit-frame-pointer -fno-stack-protector \
+CFLAGS:=$(CINCLUDES) $(DFLAGS) -D__ARCH_$(ARCH)__ -mno-red-zone -fno-omit-frame-pointer -fno-stack-protector \
 				 -mtls-direct-seg-refs -fno-pie -Wno-sign-compare -ffreestanding \
 				 -mcmodel=large $(OPT) -Wall -fno-common -Wno-initializer-overrides \
 				 -Wstrict-overflow=5 -fno-tree-vectorize -Wno-address-of-packed-member \
 				 -Wno-strict-overflow -DGIT_REVISION=\"$(shell git rev-parse HEAD)\"
 
 CPPFLAGS:=$(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions
+
+
+# set flags for nasm and LD as required
+ifeq ($(ARCH),x86_64)
+	LDFLAGS = -m elf_x86_64
+	AFLAGS = -f elf64 -w-zext-reloc -D __ARCH_$(ARCH)__
+endif
+
+
+ifeq ($(ARCH),i386)
+	LDFLAGS = -m elf_i386
+	AFLAGS = -f elf32 -w-zext-reloc -D __ARCH_$(ARCH)__
+	CFLAGS += -m32
+endif

@@ -1,6 +1,8 @@
 global swtch
 swtch:
 
+%ifdef __ARCH_x86_64__
+
 	;; the return address is implicitly at the top of the stack
 	;; right now, so it is accessable within the context_t struct
 
@@ -29,4 +31,13 @@ swtch:
 	pop rbx
 	pop rbp
 
+	ret
+
+%elifdef __ARCH_i386__
+
+;; TODO
+
   ret ;; ??
+
+%endif
+

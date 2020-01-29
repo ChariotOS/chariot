@@ -169,9 +169,11 @@ static void dbl_flt_handler(int i, struct task_regs *tf) {
   }
 }
 
+/*
 static void unknown_hardware(int i, struct task_regs *tf) {
   printk("unknown! %d\n", i);
 }
+*/
 
 static void gpf_handler(int i, struct task_regs *tf) {
   // TODO: die

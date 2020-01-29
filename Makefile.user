@@ -1,0 +1,97 @@
+include Makefile.common
+
+
+DEFINES += -DUSERLAND
+
+OPTIMIZE:=-O3
+
+CFLAGS:=$(CINCLUDES) $(OPTIMIZE) $(MOREFLAGS) -fno-omit-frame-pointer -fno-stack-protector \
+				 -mtls-direct-seg-refs -ffreestanding -Wall \
+
+
+
+PFX:=" - [U]"
+
+.PHONY: run
+
+LDFLAGS += -L$(PWD)/out/lib/
+
+
+-include $(M)/Makefile
+
+ifdef M
+ifndef srcs
+$(error srcs not provided in program)
+endif
+ifndef out
+$(error output not defined)
+endif
+endif
+
+DST=out/
+
+libs = -lc
+
+# reify paths
+srcs:=$(srcs:%=$(M)/%)
+
+# fix up $out to be relative to the build destination
+out:=out/$(out)
+
+# build a list of object files
+objs:=$(srcs:%=build/%.o)
+
+
+# disable make's intermediate file removal
+.PRECIOUS: $(objs)
+
+out:
+	@mkdir -p out
+	@mkdir -p out/bin
+	@mkdir -p out/lib
+
+build:
+	@mkdir -p build
+
+
+run: build out $(out)
+	@echo -e "Done\n"
+
+# binary programs
+out/bin/%: build/crt0.o $(objs)
+	@echo "$(PFX) LD   $@ with $(libs)"
+	@$(LD) -T user.ld $(LDFLAGS) -o $@ $^ $(libs)
+
+# static library archives
+out/lib/%.a: $(objs)
+	@echo "$(PFX) AR   $@"
+	@ar rcs $@ $^
+
+# dynamic library objects
+# out/lib/%.so:
+#	$(error dynamic libraries cannot be built)
+
+build/crt0.o: crt0.asm
+	@mkdir -p $(dir $@)
+	@echo "$(PFX) making crt0.o"
+	@nasm -f elf64 -o $@ $^
+
+build/%.c.o: %.c
+	@mkdir -p $(dir $@)
+	@echo "$(PFX) CC  " $<
+	@$(CC) $(CFLAGS) -o $@ -c $<
+
+
+build/%.cpp.o: %.cpp
+	@mkdir -p $(dir $@)
+	@echo "$(PFX) CXX " $<
+	@$(CXX) $(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions -o $@ -c $<
+
+
+build/%.asm.o: %.asm
+	@mkdir -p $(dir $@)
+	@echo "$(PFX) AS  " $<
+	@nasm -f elf64 -o $@ $<
+
+clean:
+	rm -rf out build

@@ -147,6 +147,7 @@ int vga::width() { return m_framebuffer_width; }
 
 int vga::height() { return m_framebuffer_height; }
 
+/*
 static void set_register(u16 index, u16 data) {
   outw(VBE_DISPI_IOPORT_INDEX, index);
   outw(VBE_DISPI_IOPORT_DATA, data);
@@ -167,6 +168,7 @@ static void set_resolution(int width, int height) {
                VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
   set_register(VBE_DISPI_INDEX_BANK, 0);
 }
+*/
 
 void vga::set_pixel(int x, int y, int color) {
   if (vga_fba == 0) return;

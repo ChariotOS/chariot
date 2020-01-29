@@ -10,64 +10,55 @@
 
 #define BIT(n) (1 << (n))
 
-/**
- *
- * Task lifetime in a task_process:
- *
- *                               C--------------X
- *    |                          | clone()
- *    |      C----------------------------------X
- *    |      | clone()
- *    F-----------------------------------------X exit()
- *    ^ call to fork()      | clone()
- *                          C-------------------X
- *                                              ^ any task calls exit()
- *
- * When a task calls exit(), it deligates to the task_process which exits all
- * the tasks in the process in a safe manner, flushing and cleanup up after
- * itself
- */
-
 struct task_regs {
-  u64 rax;
-  u64 rbx;
-  u64 rcx;
-  u64 rdx;
-  u64 rbp;
-  u64 rsi;
-  u64 rdi;
-  u64 r8;
-  u64 r9;
-  u64 r10;
-  u64 r11;
-  u64 r12;
-  u64 r13;
-  u64 r14;
-  u64 r15;
+  unsigned long rax;
+  unsigned long rbx;
+  unsigned long rcx;
+  unsigned long rdx;
+  unsigned long rbp;
+  unsigned long rsi;
+  unsigned long rdi;
+  unsigned long r8;
+  unsigned long r9;
+  unsigned long r10;
+  unsigned long r11;
+  unsigned long r12;
+  unsigned long r13;
+  unsigned long r14;
+  unsigned long r15;
 
-  u64 trapno;
-  u64 err;
+  unsigned long trapno;
+  unsigned long err;
 
-  u64 eip;  // rip
-  u64 cs;
-  u64 eflags;  // rflags
-  u64 esp;     // rsp
-  u64 ds;      // ss
+  unsigned long eip;  // rip
+  unsigned long cs;
+  unsigned long eflags;  // rflags
+  unsigned long esp;     // rsp
+  unsigned long ds;      // ss
 };
 
 struct task_context {
-  u64 r15;
-  u64 r14;
-  u64 r13;
-  u64 r12;
-  u64 r11;
-  u64 rbx;
-  u64 ebp;  // rbp
-  u64 eip;  // rip;
+
+#if defined(__ARCH_x86_64__)
+  unsigned long r15;
+  unsigned long r14;
+  unsigned long r13;
+  unsigned long r12;
+  unsigned long r11;
+  unsigned long rbx;
+  unsigned long ebp;  // rbp
+  unsigned long eip;  // rip;
+
+#endif
+
+#if defined(__ARCH_i386__)
+#error DO THIS
+  // TODO
+#endif
 };
 
-using pid_t = i64;
-using gid_t = i64;
+using pid_t = long;
+using gid_t = long;
 
 #define SPWN_FORK BIT(0)
 
@@ -99,7 +90,6 @@ struct task_process : public refcounted<struct task_process> {
  public: /* I know, all this stuff is public, I'm a bad OOP programmer but its
             so the syscall interface can just access all the stuff in here. Also
             getters and setters suck. */
-
   int pid;  // obviously the process id
   int uid, gid;
 

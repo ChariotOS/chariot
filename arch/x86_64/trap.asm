@@ -1,8 +1,12 @@
-extern syscall_handle
+;; #include "mmu.h"
 
-global syscall_enter
-syscall_enter:
+; bits 32
+extern trap
+global alltraps
 
+
+%ifdef __ARCH_x86_64__
+alltraps:
 	; Build trap frame.
   push r15
   push r14
@@ -21,8 +25,11 @@ syscall_enter:
   push rax
 
   mov rdi, rsp ; frame in arg1
-  call syscall_handle
+  call trap
 
+	;; Return falls through to trapret...
+global trapret
+trapret:
   pop rax
   pop rbx
   pop rcx
@@ -39,4 +46,15 @@ syscall_enter:
   pop r14
   pop r15
 
-	sysret
+  ; discard trapnum and errorcode
+  add rsp, 16
+  iretq
+
+
+%else
+
+
+%endif
+
+
+

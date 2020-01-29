@@ -20,7 +20,12 @@ extern "C" void user_task_create_callback(void) {
     // setup argc, argv, etc...
     auto *t = cpu::task().get();
 
-    u64 sp = t->tf->esp;
+    unsigned long sp = 0;
+
+#if defined(__ARCH_x86_64__) || defined(__ARCH_x86_64__)
+    sp = t->tf->esp;
+#endif
+
     // KERR("sp=%p\n", sp);
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
@@ -54,10 +59,19 @@ extern "C" void user_task_create_callback(void) {
     // KWARN("argc=%d, argv=%p\n", argc, argv);
 
     // argv goes into the second argument (RSI in x86_64)
-    t->tf->rdi = (u64)argc;
-    t->tf->rsi = (u64)argv;
-    // t->tf->rdx = (u64)argv;
+    //
+#if defined(__ARCH_x86_64__)
+    t->tf->rdi = (unsigned long)argc;
+    t->tf->rsi = (unsigned long)argv;
     t->tf->esp = sp;
+#endif
+
+#if defined(__ARCH_i386__)
+
+    t->tf->edi = (unsigned long)argc;
+    t->tf->esi = (unsigned long)argv;
+    t->tf->esp = sp;
+#endif
   }
 
   // tf->rdx = u_envp

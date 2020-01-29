@@ -118,7 +118,7 @@ sudo mkdir -p $mnt/boot/grub
 sudo cp grub.cfg $mnt/boot/grub/
 
 # build the kernel and copy it into the boot dir
-make -j || die 'Failed to build the kernel'
+make -j ARCH=x86_64 || die 'Failed to build the kernel'
 sudo nm -s build/vmchariot | c++filt > build/kernel.syms
 
 sudo cp build/vmchariot $mnt/boot/
