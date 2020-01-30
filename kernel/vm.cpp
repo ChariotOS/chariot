@@ -325,3 +325,14 @@ string vm::addr_space::format(void) {
 
   return s;
 }
+
+
+void vm::addr_space::dump(void) {
+  if (lck.is_locked()) {
+    printk("    VA: locked.\n");
+    return;
+  }
+  for (auto &r : regions) {
+    printk("    %p-%p '%s'\n", r->va, r->va + r->len, r->name.get());
+  }
+}

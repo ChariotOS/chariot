@@ -108,6 +108,8 @@ class addr_space final : public refcounted<addr_space> {
 
   off_t find_region_hole(size_t);
 
+  void dump();
+
 
 
 #define VALIDATE_READ 1

@@ -216,6 +216,7 @@ void task_process::dump(void) {
 
       printk("pri=%-3d ", t->priority);
       printk("die=%-3d ", t->should_die);
+      printk("SC=%-7d ", t->syscall_count);
       printk("timeslice=%-3d ", t->timeslice);
       printk("start=%-6d ", t->start_tick);
       printk("cpu=%-3d ", t->current_cpu);
@@ -224,6 +225,9 @@ void task_process::dump(void) {
       printk("rip=%p ", t->tf->eip);
       printk("\n");
     }
+
+    proc->mm.dump();
+
   }
 
   printk("\n");
