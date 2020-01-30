@@ -16,7 +16,7 @@ echo "Okay!"
 
 IMG=build/chariot.img
 mnt=build/mnt
-DISK_SIZE_MB=64
+DISK_SIZE_MB=256
 
 mkdir -p build
 

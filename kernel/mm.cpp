@@ -200,6 +200,7 @@ blk_t *get_next_free(blk_t *curr) {
 }
 
 void mm_free(void *ptr) {
+  assert(ptr != NULL);
   if (ptr == nullptr) return;
   blk_t *blk = GET_BLK(ptr);
   auto *self = (free_header_t *)ptr;

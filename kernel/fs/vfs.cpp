@@ -1,13 +1,12 @@
+#include <cpu.h>
 #include <errno.h>
 #include <fs/file.h>
 #include <fs/vfs.h>
 #include <map.h>
 #include <process.h>
 
-
 vec<unique_ptr<fs::filesystem>> mounted_filesystems;
 struct fs::inode *vfs_root = NULL;
-
 
 static map<string, vfs::mounter_t> filesystems;
 
@@ -29,7 +28,6 @@ int vfs::deregister_filesystem(string name) {
 }
 
 int vfs::mount_root(unique_ptr<fs::filesystem> fs) {
-
   assert(vfs_root == NULL);
   vfs_root = fs->get_root();
   fs::inode::acquire(vfs_root);
@@ -37,7 +35,6 @@ int vfs::mount_root(unique_ptr<fs::filesystem> fs) {
 
   return 0;
 }
-
 
 int vfs::mount(ref<dev::device>, string fs_name, string path) {
   // special case for mounting the root
@@ -47,56 +44,78 @@ int vfs::mount(ref<dev::device>, string fs_name, string path) {
   return -ENOTIMPL;
 }
 
-
-
 vfs::vfs() { panic("DO NOT CONSTRUCT A VFS INSTANCE\n"); }
 
-int vfs::mount(unique_ptr<fs::filesystem> fs, string host) {
-  return -1;
-}
+struct fs::inode *vfs::cwd(void) {
+  if (cpu::in_thread()) {
+    auto proc = cpu::proc().get();
 
-
-
-
-struct fs::inode *vfs::open(string spath, int opts, int mode) {
-  fs::path p = spath;
-
-  struct fs::inode *curr = 0;
-
-  if (!p.is_root()) {
-    // TODO: use the current processes' CWD as root, and walk from there.
-    panic("fs::vfs::open should always receive a rooted path. '%s'\n",
-          spath.get());
-  } else {
-    curr = vfs_root;
+    if (proc->cwd != NULL) {
+      return proc->cwd;
+    }
   }
 
-  // start out assuming we've found the file, for `open("/", ...);` cases
-  bool found = true;
+  return vfs_root;
+}
+
+int vfs::mount(unique_ptr<fs::filesystem> fs, string host) { return -1; }
+
+struct fs::inode *vfs::open(string spath, int opts, int mode) {
+  struct fs::inode *ino = NULL;
+
+  if (!cpu::in_thread()) {
+    printk("not in thread\n");
+  }
+
+  if (0 != vfs::namei(spath.get(), opts, mode, vfs::cwd(), ino)) {
+    return NULL;
+  }
+  return ino;
+}
+
+int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
+               struct fs::inode *&res) {
+  assert(path != NULL);
+
+  // parse the fs::path from the given path
+  fs::path p = string(path);
+
+  auto ino = cwd;
+  /* if the path is rooted (/ at start), set the "working cwd" to the root
+   * directory */
+  if (p.is_root()) {
+    printk("rooted\n");
+    ino = vfs_root;
+  } else {
+    printk("not rooted\n");
+    assert(cwd != NULL);
+  }
 
   for (int i = 0; i < p.len(); i++) {
     // if we are on the last directory of the path
     bool last = i == p.len() - 1;
+    string &targ = p[i];
 
-    auto &targ = p[i];
+    printk("%d:%s\n", i, targ.get());
 
-    auto found = curr->get_direntry(targ);
-    curr = found;
+    auto found = ino->get_direntry(targ);
+
     if (found == NULL) {
-      if (last && (opts & O_CREAT)) {
+      if (last && (flags & O_CREAT)) {
         // TODO: check for O_CREAT and last
         printk("NOT FOUND AT LAST, WOULD CREATE\n");
       }
-      return {};
+
+      res = NULL;
+      return -ENOENT;
     }
+
+    ino = found;
   }
 
-  // if the file wasnt found, return a null inode
-  if (!found) return {};
-
-  return curr;
+  res = ino;
+  return 0;
 }
-
 
 fs::filedesc vfs::fdopen(string path, int opts, int mode) {
   int fd_dirs = 0;

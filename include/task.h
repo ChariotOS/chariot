@@ -38,8 +38,6 @@ struct task_regs {
 };
 
 struct task_context {
-
-#if defined(__ARCH_x86_64__)
   unsigned long r15;
   unsigned long r14;
   unsigned long r13;
@@ -48,13 +46,6 @@ struct task_context {
   unsigned long rbx;
   unsigned long ebp;  // rbp
   unsigned long eip;  // rip;
-
-#endif
-
-#if defined(__ARCH_i386__)
-#error DO THIS
-  // TODO
-#endif
 };
 
 using pid_t = long;
@@ -109,7 +100,7 @@ struct task_process : public refcounted<struct task_process> {
 
   /* cwd - current working directory
    */
-  ref<fs::vnode> cwd;
+  fs::inode *cwd = NULL;
 
   // every process has a name
   string name;
@@ -189,6 +180,9 @@ struct task final : public refcounted<task> {
   void *stack;
   // where the FPU info is saved
   void *fpu_state;
+
+
+  long syscall_count = 0;
 
   // the current priority of this task
   int priority;

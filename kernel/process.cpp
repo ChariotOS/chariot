@@ -84,6 +84,8 @@ static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
     return -1;
   }
 
+  cpu::task()->syscall_count++;
+
   auto *func = (u64(*)(u64, u64, u64, u64, u64, u64))syscall_table[num].handler;
 
   return func(a, b, c, d, e, f);

@@ -12,13 +12,33 @@
 
 class vfs {
  public:
-
   // mount a filesystem into a host vnode
   static int mount(unique_ptr<fs::filesystem>, string path);
 
   static int mount_root(unique_ptr<fs::filesystem>);
 
+  /*
+   * open a a file, rooted at task_process::cwd() if the path is not rooted at
+   * `/`, and return the inode pointer. NULL on failure to open
+   */
   static fs::inode *open(string path, int opts = 0, int mode = 0000);
+
+  /*
+   * namei()
+   *
+   * main "low level" interface for opening a file. Must have all arguments
+   * passed.
+   */
+  static int namei(const char *path, int flags, int mode, struct fs::inode *cwd,
+                   struct fs::inode *&res);
+
+  /*
+   * cwd()
+   *
+   * return the current working directory for whatever task we are in. If
+   * we are not in a task, use vfs_root (/)
+   */
+  static struct fs::inode *cwd(void);
 
   // a mounter creates a filesystem on a device and returns it
   using mounter_t = unique_ptr<fs::filesystem> (*)(ref<dev::device>, int flags);
