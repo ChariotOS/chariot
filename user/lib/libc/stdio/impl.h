@@ -20,7 +20,7 @@
 #define F_SVB 64
 #define F_APP 128
 
-#define FILE_BUFSZ 0
+#define FILE_BUFSZ 512
 
 
 struct _FILE_IMPL {
@@ -42,7 +42,9 @@ struct _FILE_IMPL {
 
   int lock;
 
-  char buf[FILE_BUFSZ];
+  int buffered;
+  int buf_len, buf_cap;
+  char *buffer;
 };
 
 

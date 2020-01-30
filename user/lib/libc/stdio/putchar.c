@@ -1,9 +1,8 @@
 #include <unistd.h>
+#include <stdio.h>
 
-
-// TODO: FILE* interface
 int putchar(int c) {
   // write one char
-  write(0, &c, 1);
+  fwrite(&c, 1, 1, stdout);
   return 0;
 }

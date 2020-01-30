@@ -4,11 +4,11 @@
 # are built first, then binaries. This fixes `symbol not found' errors
 for dir in $(ls -d lib/*); do
 	echo "Building $dir"
-	make run M=$dir
+	make run M=$dir -j
 done
 
 
 for dir in $(ls -d src/*); do
 	echo "Building $dir"
-	make run M=$dir
+	make run M=$dir -j
 done

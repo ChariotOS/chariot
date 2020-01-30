@@ -1,15 +1,14 @@
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
-#include <fcntl.h>
-#include "./impl.h"
 
+#include "./impl.h"
 
 static int _stdio_close(FILE *fp);
 static size_t _stdio_read(FILE *fp, unsigned char *dst, size_t sz);
 static size_t _stdio_write(FILE *fp, const unsigned char *src, size_t sz);
 static off_t _stdio_seek(FILE *fp, off_t offset, int whence);
-
 
 static FILE _stdin = {
     .close = NULL,
@@ -17,10 +16,11 @@ static FILE _stdin = {
     .seek = NULL,
     .read = _stdio_read,
 
-    .wfd = 0, .rfd = 0,
+    .wfd = 0,
+    .rfd = 0,
 };
 
-
+static char _stdout_buffer[512];
 
 static FILE _stdout = {
     .close = NULL,
@@ -28,9 +28,14 @@ static FILE _stdout = {
     .seek = NULL,
     .read = NULL,
 
-    .wfd = 1, .rfd = 1,
-};
+    .wfd = 1,
+    .rfd = 1,
 
+    .buffered = 1,
+    .buf_len = 0,
+    .buf_cap = 512,
+    .buffer = _stdout_buffer,
+};
 
 static FILE _stderr = {
     .close = NULL,
@@ -38,15 +43,15 @@ static FILE _stderr = {
     .seek = NULL,
     .read = NULL,
 
-    .wfd = 2, .rfd = 2,
+    .wfd = 2,
+    .rfd = 2,
 };
 
 FILE *const stdin = &_stdin;
 FILE *const stdout = &_stdout;
 FILE *const stderr = &_stderr;
 
-void stdio_init(void) {
-}
+void stdio_init(void) {}
 
 // TODO: lock
 static FILE *ofl_head = NULL;
@@ -128,8 +133,6 @@ size_t fread(void *restrict destv, size_t size, size_t nmemb,
              FILE *restrict f) {
   size_t len = size * nmemb;
 
-  printf("len=%d\n", len);
-
   FLOCK(f);
 
   if (f->read != NULL) {
@@ -144,8 +147,6 @@ size_t fread(void *restrict destv, size_t size, size_t nmemb,
   FUNLOCK(f);
   return 0;
 }
-
-
 
 static int _stdio_close(FILE *fp) {
   // close both ends of the file?
@@ -168,10 +169,38 @@ static size_t _stdio_read(FILE *fp, unsigned char *dst, size_t sz) {
   return k;
 }
 
+static void _stdio_flush_buffer(FILE *fp) {
+  if (fp->buffered) {
+    syscall(SYS_write, fp->rfd, fp->buffer, fp->buf_len);
+    fp->buf_len = 0;
+    // NULL out the buffer
+    memset(fp->buffer, 0x00, fp->buf_cap);
+  }
+}
+
 static size_t _stdio_write(FILE *fp, const unsigned char *src, size_t sz) {
   if (fp->rfd == -1) {
     return 0;
   }
+
+  if (fp->buffered && fp->buffer != NULL) {
+    /**
+     * copy from the src into the buffer, flushing on \n or when it is full
+     */
+    for (size_t i = 0; i < sz; i++) {
+
+      // Assume that the buffer has space avail.
+      unsigned char c = src[i];
+
+      fp->buffer[fp->buf_len++] = c;
+
+      if (c == '\n' || /* is full */ fp->buf_len == fp->buf_cap) {
+        _stdio_flush_buffer(fp);
+      }
+    }
+    return sz;
+  }
+
   long k = syscall(SYS_write, fp->rfd, src, sz);
   if (k < 0) return 0;
   return k;
@@ -204,9 +233,10 @@ FILE *fdopen(int fd, const char *mode) {
   fp->write = _stdio_write;
   fp->seek = _stdio_seek;
 
+  fp->buffered = 0;
+
   return fp;
 }
-
 
 FILE *fopen(const char *path, const char *mode) {
   // TODO: better mode here

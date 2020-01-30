@@ -93,17 +93,16 @@ char *read_line(int fd, char *prompt, int *len_out) {
   return buf;
 }
 
-
 #define MAX_ARGS 255
 
 int parseline(const char *cmdline, char **argv) {
-  char *buf = malloc(strlen(cmdline) + 1);          /* ptr that traverses command line */
-  char *delim;                /* points to first space delimiter */
-  int argc;                   /* number of args */
-  int bg;                     /* background job? */
+  char *buf = malloc(strlen(cmdline) + 1); /* ptr that traverses command line */
+  char *delim;                             /* points to first space delimiter */
+  int argc;                                /* number of args */
+  int bg;                                  /* background job? */
 
   strcpy(buf, cmdline);
-  buf[strlen(buf)] = ' ';   /* replace trailing '\n' with space */
+  buf[strlen(buf)] = ' ';       /* replace trailing '\n' with space */
   while (*buf && (*buf == ' ')) /* ignore leading spaces */
     buf++;
 
@@ -142,10 +141,28 @@ int parseline(const char *cmdline, char **argv) {
   return bg;
 }
 
-int main(int argc, char **argv) {
+uint32_t x;  // The state can be seeded with any value.
+// Call next() to get 32 pseudo-random bits, call it again to get more bits.
+// It may help to make this inline, but you should see if it benefits your
+// code.
+inline uint32_t next(void) {
+  uint32_t z = (x += 0x6D2B79F5UL);
+  z = (z ^ (z >> 15)) * (z | 1UL);
+  z ^= z + (z ^ (z >> 7)) * (z | 61UL);
+  return z ^ (z >> 14);
+}
 
+int main(int argc, char **argv) {
   int arg_buflen = sizeof(char *) * MAX_ARGS;
   char **args = malloc(arg_buflen);
+
+#define N 4096
+
+  while (1) {
+    char *buf = malloc(N);
+    for (int i = 0; i < N; i++) buf[i] = next();
+    hexdump(buf, N);
+  }
 
   while (1) {
     int len = 0;
@@ -157,16 +174,41 @@ int main(int argc, char **argv) {
     len = strlen(buf);
     if (len == 0) goto noprint;
 
-    hexdump(buf, len);
+    int fd = open(buf, O_RDONLY);
 
-    int bg = parseline(buf, args);
+    if (fd != -1) {
+      printf("found!\n");
 
-    if (bg) printf("Background Process\n");
-    for (int i = 0; i < MAX_ARGS; i++) {
-      if (args[i] == NULL) break;
-      printf("%d:'%s'\n", i, args[i]);
+      char buf[512];
+
+      int n = read(fd, buf, 512);
+
+      if (n == -1) {
+        printf("can't read\n");
+        goto done;
+      }
+      if (n == 0) {
+        printf("done!\n");
+        goto done;
+      }
+      if (n > 0) {
+        hexdump(buf, n);
+      }
+    done:
+      close(fd);
     }
 
+    if (0) {
+      hexdump(buf, len);
+
+      int bg = parseline(buf, args);
+
+      if (bg) printf("Background Process\n");
+      for (int i = 0; i < MAX_ARGS; i++) {
+        if (args[i] == NULL) break;
+        printf("%d:'%s'\n", i, args[i]);
+      }
+    }
 
   noprint:
     free(buf);
