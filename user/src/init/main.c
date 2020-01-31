@@ -1,6 +1,7 @@
 #include <chariot.h>
 #include <chariot/pctl.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -145,23 +146,38 @@ uint32_t x;  // The state can be seeded with any value.
 // Call next() to get 32 pseudo-random bits, call it again to get more bits.
 // It may help to make this inline, but you should see if it benefits your
 // code.
-inline uint32_t next(void) {
+uint32_t next(void) {
   uint32_t z = (x += 0x6D2B79F5UL);
   z = (z ^ (z >> 15)) * (z | 1UL);
   z ^= z + (z ^ (z >> 7)) * (z | 61UL);
   return z ^ (z >> 14);
 }
 
+long val = 0;
+static void *worker(void *arg) {
+  while (1) {
+    val = next();
+  }
+  return NULL;
+}
+
 int main(int argc, char **argv) {
   int arg_buflen = sizeof(char *) * MAX_ARGS;
   char **args = malloc(arg_buflen);
 
-#define N 4096
+#define N 64
+
+  pthread_t thd;
+
+  pthread_create(&thd, NULL, worker, NULL);
 
   while (1) {
     char *buf = malloc(N);
-    for (int i = 0; i < N; i++) buf[i] = next();
+    for (int i = 0; i < N; i++) buf[i] = val;
+
     hexdump(buf, N);
+
+    free(buf);
   }
 
   while (1) {

@@ -119,7 +119,6 @@ int sched::add_task(struct task *tsk) {
   // only lock this queue.
   Q.queue_lock.lock();
 
-
   if (Q.task_queue == nullptr) {
     // this is the only thing in the queue
     Q.task_queue = tsk;
@@ -158,6 +157,8 @@ static void switch_into(struct task *tsk) {
     asm volatile("fxrstor64 (%0);" ::"r"(tsk->fpu_state));
   }
 
+  tsk->run_count++;
+
   cpu::switch_vm(tsk);
 
   tsk->last_cpu = tsk->current_cpu;
@@ -171,11 +172,6 @@ static void switch_into(struct task *tsk) {
   tsk->run_lock.unlock();
 }
 
-static void schedule() {
-  cpu::task()->current_cpu = -1;
-  swtch(&cpu::task()->ctx, cpu::current().sched_ctx);
-}
-
 static void do_yield(int st) {
   cpu::pushcli();
 
@@ -184,20 +180,24 @@ static void do_yield(int st) {
   tsk->priority = PRIORITY_HIGH;
   if (cpu::get_ticks() - tsk->start_tick >= tsk->timeslice) {
     // uh oh, we used up the timeslice, drop the priority!
-    if (!tsk->is_idle_thread && tsk->priority > 0) {
-      tsk->priority--;
-    }
+    tsk->priority--;
   }
 
   cpu::task()->state = st;
 
-  schedule();
+  cpu::task()->current_cpu = -1;
+  swtch(&cpu::task()->ctx, cpu::current().sched_ctx);
+
 
   cpu::popcli();
 }
 
 // helpful functions wrapping different resulting task states
-void sched::block() { do_yield(PS_BLOCKED); }
+void sched::block() {
+  do_yield(PS_BLOCKED);
+}
+
+
 void sched::yield() {
   // when you yield, you give up the CPU by ''using the rest of your timeslice''
   // TODO: do this another way
@@ -223,8 +223,7 @@ static void schedule_one() {
   cpu::popcli();
 
   /* add the task back to the */
-  if (!tsk->should_die)
-    sched::add_task(tsk);
+  if (!tsk->should_die) sched::add_task(tsk);
 }
 
 void sched::run() {
@@ -246,7 +245,7 @@ void sched::run() {
       auto &HI = mlfq[PRIORITY_HIGH];
 
       HI.queue_lock.lock();
-      for (int i = 0; i < PRIORITY_HIGH /* skipping HIGH */; i++) {
+      for (int i = 0; i < PRIORITY_HIGH; i++) {
         auto &Q = mlfq[i];
 
         Q.queue_lock.lock();
@@ -389,11 +388,8 @@ bool waitqueue::should_notify(u32 val) {
   return false;
 }
 
-
 void sched::before_iret(void) {
-
   if (!cpu::in_thread()) return;
   // exit via the scheduler if the task should die.
-  if (cpu::task()->should_die)
-    sched::exit();
+  if (cpu::task()->should_die) sched::exit();
 }

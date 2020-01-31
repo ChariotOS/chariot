@@ -3,7 +3,7 @@ include ../Makefile.common
 
 DEFINES += -DUSERLAND
 
-OPTIMIZE:=-O3
+OPTIMIZE:=-O0
 
 CFLAGS:=$(CINCLUDES) $(OPTIMIZE) $(MOREFLAGS) -fno-omit-frame-pointer -fno-stack-protector \
 				 -mtls-direct-seg-refs -ffreestanding -Wall \

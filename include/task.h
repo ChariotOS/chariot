@@ -182,7 +182,8 @@ struct task final : public refcounted<task> {
   void *fpu_state;
 
 
-  long syscall_count = 0;
+  unsigned long syscall_count = 0;
+  unsigned long run_count = 0;
 
   // the current priority of this task
   int priority;
