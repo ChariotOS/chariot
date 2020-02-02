@@ -8,8 +8,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      CC: gcc-9
-      CXX: g++-9
+      TOOLCHAIN_GCC_VERSION: -9
 
     steps:
     - uses: actions/checkout@v2
