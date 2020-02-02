@@ -6,10 +6,16 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-18.04    
+    runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v2
-    - uses: ilammy/setup-nasm@v1
+      
+    - name: Get Toolchain
+      run: |
+        apt update
+        aupt install nasm gcc-9 g++-9
+
     - name: Build Kernel
       run: sudo ./sync.sh
     - name: Upload chariot.img
