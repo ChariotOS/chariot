@@ -1,15 +1,19 @@
-name: C/C++ CI
+name: Build Chariot
 
-on: [push]
+on: [push, pull_request]
+
+
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
-    
+    runs-on: ubuntu-19.10    
     steps:
     - uses: actions/checkout@v2
     - name: Build Kernel
-      run: make
-    - name: Build Userspace
-      run: cd user; ./build.sh
+      run: ./sync.sh
+    - name: Upload chariot.img
+      uses: actions/upload-artifact@v1.0.0
+      with:
+        name: chariot.img
+        path: build/chariot.img
+      
