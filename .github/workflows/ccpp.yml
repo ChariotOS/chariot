@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Build Kernel
-      run: ./sync.sh
+      run: sudo ./sync.sh
     - name: Upload chariot.img
       uses: actions/upload-artifact@v1.0.0
       with:
