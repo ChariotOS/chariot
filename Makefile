@@ -40,12 +40,12 @@ build:
 
 build/%.c.o: %.c
 	@mkdir -p $(dir $@)
-	@echo "[K] CC  " $<
+	@echo "[K] $(CC)  " $<
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
 build/%.cpp.o: %.cpp
 	@mkdir -p $(dir $@)
-	@echo "[K] CXX " $<
+	@echo "[K] $(CXX) " $<
 	@$(CXX) $(CPPFLAGS) -o $@ -c $<
 
 
