@@ -40,6 +40,6 @@ void *liballoc_alloc(size_t s) {
 
 
 int liballoc_free(void *buf, size_t sz) {
-  munmap(buf, sz * 4096);
+  // munmap(buf, sz * 4096);
   return 0;
 }

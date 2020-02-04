@@ -7,7 +7,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
+#include <sys/wait.h>
 #include <unistd.h>
+
+char *read_line(int fd, char *prompt, int *len_out);
+void hexdump(void *vbuf, long len);
 
 int spawn_proc(char *bin) {
   int pid = spawn();
@@ -22,76 +26,6 @@ int spawn_proc(char *bin) {
   }
 
   return pid;
-}
-
-void hexdump(void *vbuf, long len) {
-  unsigned char *buf = vbuf;
-
-  int w = 16;
-  for (int i = 0; i < len; i += w) {
-    unsigned char *line = buf + i;
-    for (int c = 0; c < w; c++) {
-      if (i + c >= len) {
-        printf("   ");
-      } else {
-        printf("%02X ", line[c]);
-      }
-    }
-    printf(" |");
-    for (int c = 0; c < w; c++) {
-      if (i + c >= len) {
-      } else {
-        printf("%c", (line[c] < 0x20) || (line[c] > 0x7e) ? '.' : line[c]);
-      }
-    }
-    printf("|\n");
-  }
-}
-
-int getc(void) {
-  int c;
-  if (read(0, &c, 1) != 1) {
-    return -1;
-  }
-  return c;
-}
-
-char *read_line(int fd, char *prompt, int *len_out) {
-  int i = 0;
-  long max = 16;
-
-  char *buf = malloc(max);
-  memset(buf, 0, max);
-
-  printf("%s", prompt);
-
-  for (;;) {
-    if (i + 1 >= max) {
-      max *= 2;
-      buf = realloc(buf, max);
-    }
-
-    int c = getc();
-    if (c == -1) break;
-    if (c == '\n' || c == '\r') break;
-
-    switch (c) {
-      case 0x7F:
-        if (i != 0) {
-          buf[--i] = 0;
-        } else {
-          printf("\r%s", prompt);
-        }
-        break;
-
-      default:
-        buf[i++] = c;
-        break;
-    }
-  }
-  buf[i] = '\0';  // null terminate
-  if (len_out != NULL) *len_out = i;
-  return buf;
 }
 
 #define MAX_ARGS 255
@@ -154,77 +88,44 @@ uint32_t next(void) {
 }
 
 long val = 0;
-static void *worker(void *arg) {
-  while (1) {
-    val = next();
-  }
-  return NULL;
-}
 
 int main(int argc, char **argv) {
   int arg_buflen = sizeof(char *) * MAX_ARGS;
   char **args = malloc(arg_buflen);
 
-#define N 64
+  pid_t pid = spawn_proc("/bin/test/exit");
 
-  pthread_t thd;
-
-  pthread_create(&thd, NULL, worker, NULL);
-
-  while (1) {
-    char *buf = malloc(N);
-    for (int i = 0; i < N; i++) buf[i] = val;
-
-    hexdump(buf, N);
-
-    free(buf);
-  }
+  int res = waitpid(pid, NULL, 0);
+  printf("res=%d\n", res);
 
   while (1) {
     int len = 0;
 
-    memset(args, 0, arg_buflen);
+    memset(args, 0, arg_buflen * sizeof(char *));
 
     char *buf = read_line(0, "# ", &len);
 
     len = strlen(buf);
     if (len == 0) goto noprint;
 
-    int fd = open(buf, O_RDONLY);
+    hexdump(buf, len);
 
-    if (fd != -1) {
-      printf("found!\n");
+    parseline(buf, args);
 
-      char buf[512];
+    pid_t pid = spawn_proc(args[0]);
 
-      int n = read(fd, buf, 512);
-
-      if (n == -1) {
-        printf("can't read\n");
-        goto done;
-      }
-      if (n == 0) {
-        printf("done!\n");
-        goto done;
-      }
-      if (n > 0) {
-        hexdump(buf, n);
-      }
-    done:
-      close(fd);
+    if (pid != -1) {
+      int res = waitpid(pid, NULL, 0);
+      printf("res=%d\n", res);
     }
 
-    if (0) {
-      hexdump(buf, len);
-
-      int bg = parseline(buf, args);
-
-      if (bg) printf("Background Process\n");
-      for (int i = 0; i < MAX_ARGS; i++) {
-        if (args[i] == NULL) break;
-        printf("%d:'%s'\n", i, args[i]);
-      }
+    /*
+    if (bg) printf("Background Process\n");
+    for (int i = 0; i < MAX_ARGS; i++) {
+      if (args[i] == NULL) break;
+      printf("%d:'%s'\n", i, args[i]);
     }
+    */
 
   noprint:
     free(buf);

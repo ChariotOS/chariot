@@ -13,8 +13,13 @@ static ssize_t sata_write(fs::filedesc &fd, const char *buf, size_t sz) {
 }
 
 struct dev::driver_ops sata_ops = {
+    .llseek = NULL,
     .read = sata_read,
     .write = sata_write,
+    .ioctl = NULL,
+
+    .open = NULL,
+    .close = NULL,
 };
 
 

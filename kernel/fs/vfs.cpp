@@ -48,7 +48,7 @@ vfs::vfs() { panic("DO NOT CONSTRUCT A VFS INSTANCE\n"); }
 
 struct fs::inode *vfs::cwd(void) {
   if (cpu::in_thread()) {
-    auto proc = cpu::proc().get();
+    auto proc = cpu::proc();
 
     if (proc->cwd != NULL) {
       return proc->cwd;
@@ -84,10 +84,10 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
   /* if the path is rooted (/ at start), set the "working cwd" to the root
    * directory */
   if (p.is_root()) {
-    printk("rooted\n");
+    // printk("rooted\n");
     ino = vfs_root;
   } else {
-    printk("not rooted\n");
+    // printk("not rooted\n");
     assert(cwd != NULL);
   }
 
@@ -96,7 +96,7 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
     bool last = i == p.len() - 1;
     string &targ = p[i];
 
-    printk("%d:%s\n", i, targ.get());
+    // printk("%d:%s\n", i, targ.get());
 
     auto found = ino->get_direntry(targ);
 

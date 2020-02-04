@@ -18,7 +18,7 @@ extern "C" void user_task_create_callback(void) {
     // to it's address space
 
     // setup argc, argv, etc...
-    auto *t = cpu::task().get();
+    auto *t = cpu::task();
 
     unsigned long sp = 0;
 
@@ -83,11 +83,11 @@ static void kernel_task_create_callback(void);
 
 static spinlock proc_table_lock("proc table");
 static u64 next_pid = 0;
-static map<int, ref<struct task_process>> proc_table;
+static map<int, struct task_process *> proc_table;
 
 static spinlock task_table_lock("task table");
 static u64 next_tid = 0;
-static map<int, ref<struct task>> task_table;
+static map<int, struct task *> task_table;
 
 task_process::task_process(void) {}
 
@@ -98,7 +98,7 @@ task_process::task_process(void) {}
  */
 int task_process::create_task(int (*fn)(void *), int tflags, void *arg,
                               int state) {
-  auto t = make_ref<task>(this);
+  auto t = new task(this);
 
   t->pid = pid;
 
@@ -197,7 +197,7 @@ void task_process::dump(void) {
     printk("\n");
 
     for (auto tid : proc->tasks) {
-      auto t = task::lookup(tid).get();
+      auto t = task::lookup(tid);
 
       printk("    ");
       printk("tid=%-3d ", tid, t->ticks);
@@ -234,13 +234,13 @@ void task_process::dump(void) {
   printk("\n");
 }
 
-ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
+struct task_process *task_process::spawn(pid_t parent_pid, int &error) {
   proc_table_lock.lock();
   pid_t pid = next_pid++;
 
   assert(!proc_table.contains(pid));
 
-  auto p = make_ref<task_process>();
+  auto p = new task_process;
 
   p->pid = pid;
 
@@ -259,7 +259,7 @@ ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
   }
   // set the range of virtual memory that the mm can map
   // ... should be enough memory
-  p->mm.set_range(0, 0x7ffffffff000);
+  p->mm.set_range(0x1000, 0x7ffffffff000);
   // p->mm.set_range(0, 0x10000000);
 
   p->create_tick = cpu::get_ticks();
@@ -276,7 +276,7 @@ ref<struct task_process> task_process::spawn(pid_t parent_pid, int &error) {
   return p;
 }
 
-ref<task_process> task_process::kproc_init(void) {
+struct task_process *task_process::kproc_init(void) {
   int err = 0;
   auto p = task_process::spawn(-1, err);
 
@@ -297,7 +297,7 @@ ref<task_process> task_process::kproc_init(void) {
   return p;
 }
 
-ref<struct task_process> task_process::lookup(int pid) {
+struct task_process *task_process::lookup(int pid) {
   proc_table_lock.lock();
   auto t = proc_table.get(pid);
   proc_table_lock.unlock();
@@ -345,11 +345,9 @@ int task_process::read(int fd, void *dst, size_t sz) {
   int n = -1;
 
   file_lock.lock();
-
   if (open_files.contains(fd)) {
     n = open_files[fd].fd->read(dst, sz);
   }
-
   file_lock.unlock();
 
   return n;
@@ -410,7 +408,7 @@ int task_process::do_dup(int oldfd, int newfd) {
   return fd;
 }
 
-task::task(ref<struct task_process> proc) : proc(proc) {
+task::task(struct task_process *proc) : proc(proc) {
   fpu_state = kmalloc(512);
 
   // default to the highest priority to maximize responsiveness of new tasks
@@ -429,7 +427,7 @@ void task::exit(int code) {
   awaken(true);
 }
 
-ref<struct task> task::lookup(int tid) {
+struct task *task::lookup(int tid) {
   task_table_lock.lock();
   auto t = task_table.get(tid);
   task_table_lock.unlock();
@@ -439,7 +437,7 @@ ref<struct task> task::lookup(int tid) {
 static void kernel_task_create_callback(void) {
 
 
-  auto task = cpu::task().get();
+  auto task = cpu::task();
 
   using kfunc_t = int (*)(void *);
   kfunc_t kfn;

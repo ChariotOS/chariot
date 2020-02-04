@@ -188,7 +188,7 @@ static void kmain2(void) {
   assert(sched::init());
   KINFO("Initialized the scheduler\n");
 
-  ref<task_process> kproc0 = task_process::kproc_init();
+  auto *kproc0 = task_process::kproc_init();
   kproc0->create_task(kernel_init_task, PF_KTHREAD, nullptr);
 
 

@@ -16,9 +16,14 @@ struct cpu_t {
   uint16_t preemption_depth = 0;
 
   u32 speed_khz;
-  ref<struct task> current_thread;
+  struct task *current_thread;
   struct task_context *sched_ctx;
 };
+
+// Nice macros to allow cleaner access to the current task and proc
+#define curtask cpu::task()
+#define curproc cpu::proc()
+
 
 namespace cpu {
 
@@ -26,9 +31,9 @@ namespace cpu {
 cpu_t &current(void);
 cpu_t *get(void);
 
-ref<struct task_process> proc(void);
+struct task_process *proc(void);
 
-ref<struct task> task(void);
+struct task *task(void);
 bool in_thread(void);
 
 // setup CPU segment descriptors, run once per cpu

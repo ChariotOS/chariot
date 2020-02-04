@@ -41,24 +41,5 @@ long ksyscall(long n, ...);
  * These functions are implemented in process.cpp
  */
 namespace sys {
-void restart(void);
-void exit_task(int code);
-void exit_proc(int code);
-int open(const char *path, int flags, int mode = 0);
-int close(int fd);
-off_t lseek(int fd, off_t offset, int whence);
-ssize_t read(int fd, void *, size_t);
-ssize_t write(int fd, void *, size_t);
-int yield(void);
-pid_t getpid(void);
-pid_t gettid(void);
-int pctl(int pid, int request, u64 arg);
-int stat(const char *pathname, struct stat *statbuf);
-int fstat(int fd, struct stat *statbuf);
-int lstat(const char *pathname, struct stat *statbuf);
-int dup(int fd);
-int dup2(int oldfd, int newfd);
-void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
-int munmap(void *addr, size_t length);
-
+#include <syscall.def.h>
 }  // namespace sys

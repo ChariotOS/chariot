@@ -170,7 +170,7 @@ static size_t _stdio_read(FILE *fp, unsigned char *dst, size_t sz) {
 }
 
 static void _stdio_flush_buffer(FILE *fp) {
-  if (fp->buffered) {
+  if (fp->buffered && fp->buffer != NULL && fp->buf_len > 0) {
     syscall(SYS_write, fp->rfd, fp->buffer, fp->buf_len);
     fp->buf_len = 0;
     // NULL out the buffer
@@ -243,4 +243,11 @@ FILE *fopen(const char *path, const char *mode) {
   int fd = open(path, O_RDWR);
 
   return fdopen(fd, mode);
+}
+
+
+
+int fflush(FILE *fp) {
+  _stdio_flush_buffer(fp);
+  return 0;
 }

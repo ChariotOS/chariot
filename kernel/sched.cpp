@@ -172,10 +172,10 @@ static void switch_into(struct task *tsk) {
   tsk->run_lock.unlock();
 }
 
-static void do_yield(int st) {
+void sched::do_yield(int st) {
   cpu::pushcli();
 
-  auto tsk = cpu::task().get();
+  auto tsk = cpu::task();
 
   tsk->priority = PRIORITY_HIGH;
   if (cpu::get_ticks() - tsk->start_tick >= tsk->timeslice) {
@@ -194,7 +194,7 @@ static void do_yield(int st) {
 
 // helpful functions wrapping different resulting task states
 void sched::block() {
-  do_yield(PS_BLOCKED);
+  sched::do_yield(PS_BLOCKED);
 }
 
 
@@ -339,7 +339,7 @@ int waitqueue::do_wait(u32 on, int flags) {
   assert(navail == 0);
 
   // add to the wait queue
-  auto waiter = cpu::task().get();
+  auto waiter = cpu::task();
   waiter->waiting_on = on;
   waiter->wait_flags = flags;
 
@@ -356,7 +356,7 @@ int waitqueue::do_wait(u32 on, int flags) {
   }
 
   lock.unlock();
-  do_yield(PS_BLOCKED);
+  sched::do_yield(PS_BLOCKED);
 
   // TODO: read form the thread if it was rudely notified or not
   return 0;

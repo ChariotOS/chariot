@@ -207,15 +207,14 @@ extern "C" void syscall_handle(int i, struct task_regs *tf);
 static void pgfault_handle(int i, struct task_regs *tf) {
   void *page = (void *)(read_cr2() & ~0xFFF);
 
-  auto proc = cpu::proc();
-
-  if (!proc) {
+  auto proc = curproc;
+  if (curproc == NULL) {
     KERR("not in a proc while pagefaulting\n");
     // lookup the kernel proc if we aren't in one!
     proc = task_process::lookup(0);
   }
 
-  cpu::task()->tf = tf;
+  curtask->tf = tf;
 
   if (proc) {
     int res = proc->mm.handle_pagefault((off_t)page, tf->err);
@@ -224,6 +223,8 @@ static void pgfault_handle(int i, struct task_regs *tf) {
       KERR("pid %d, tid %d segfaulted @ %p\n", proc->pid, cpu::task()->tid,
            tf->eip);
       KERR("       bad address = %p\n", read_cr2());
+      KERR("               err = %p\n", tf->err);
+
       // XXX: just block, cause its an easy way to get the proc to stop running
       sched::block();
     }

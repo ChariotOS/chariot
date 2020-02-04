@@ -132,8 +132,10 @@ static void console_close(fs::filedesc &fd) {
 }
 
 struct dev::driver_ops console_ops = {
+    .llseek = NULL,
     .read = console_read,
     .write = console_write,
+    .ioctl = NULL,
 
     .open = console_open,
     .close = console_close,

@@ -1,5 +1,6 @@
 #include <stdarg.h>
 #include <stdio.h>
+#include <unistd.h>
 
 // user provided main (linked when library is used)
 extern int main(int argc, char **argv, char **envp);
@@ -11,7 +12,9 @@ void libc_start(int argc, char **argv, char **envp) {
   stdio_init();
 
   // TODO: parse envp and store in a better format!
-  main(argc, argv, envp);
+  int res = main(argc, argv, envp);
+
+  exit(res);
   // TODO: exit!
   while (1) {
   }

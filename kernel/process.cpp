@@ -31,26 +31,6 @@ void sys::restart() {
   // TODO: NEED TO RESTART
 }
 
-void sys::exit_task(int code) {
-  printk("Exit task. code=%d\n", code);
-  cpu::task()->exit(code);
-  // return, letting trap() call sched::before_iret()
-}
-
-void sys::exit_proc(int code) {
-  auto proc = cpu::proc().get();
-  assert(proc != NULL);
-
-  for (auto tid : proc->tasks) {
-    auto *task = task::lookup(tid).get();
-    if (task != NULL) {
-      task->exit(code);
-    }
-    printk("tid=%d\n", tid);
-  }
-
-  printk("Exit proc. code=%d\n", code);
-}
 
 pid_t sys::getpid(void) { return cpu::task()->pid; }
 
@@ -67,7 +47,7 @@ map<int, struct syscall> syscall_table;
 // vec<struct syscall> syscall_table;
 
 void set_syscall(const char *name, int num, void *handler) {
-  // KINFO("%s -> %d\n", name, num);
+  KINFO("%s -> %d (0x%02x)\n", name, num, num);
   syscall_table[num] = {.name = name, .num = num, .handler = handler};
 }
 
@@ -84,6 +64,9 @@ static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
     return -1;
   }
 
+  // printk("System Call: '%s' [0x%02x] 0x%p 0x%p 0x%p 0x%p 0x%p 0x%p\n", syscall_table[num].name, num, a, b, c, d, e, f);
+
+
   cpu::task()->syscall_count++;
 
   auto *func = (u64(*)(u64, u64, u64, u64, u64, u64))syscall_table[num].handler;
@@ -93,6 +76,7 @@ static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
 
 extern "C" void syscall_handle(int i, struct task_regs *tf) {
   // int x = 0;
+  //
 #ifdef __ARCH_x86_64__
   tf->rax =
       do_syscall(tf->rax, tf->rdi, tf->rsi, tf->rdx, tf->r10, tf->r8, tf->r9);

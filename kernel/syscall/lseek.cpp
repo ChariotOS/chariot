@@ -1,8 +1,8 @@
 #include <process.h>
 #include <cpu.h>
 
-off_t sys::lseek(int fd, off_t offset, int whence) {
-  auto proc = cpu::proc().get();
+long sys::lseek(int fd, long offset, int whence) {
+  auto proc = cpu::proc();
 
   auto f = proc->get_fd(fd);
 

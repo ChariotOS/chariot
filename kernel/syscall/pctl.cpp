@@ -28,7 +28,7 @@ pid_t do_spawn(void) {
 }
 
 static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
-  auto proc = cpu::proc().get();
+  auto proc = cpu::proc();
 
   if (proc->pid != 0) {
     // validate the args structure itself
@@ -120,7 +120,7 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
 
   int tid = newproc->create_task(nullptr, 0, nullptr, PS_EMBRYO);
 
-  auto t = task::lookup(tid).get();
+  auto t = task::lookup(tid);
 
   // t->tf->rdi = (u64)u_argc;
   // t->tf->rsi = (u64)u_argv;
@@ -149,7 +149,7 @@ static int do_create_thread(struct pctl_create_thread_args *argp) {
   auto &args = *argp;
 
   int tid = proc->create_task(nullptr, 0, nullptr, PS_EMBRYO);
-  auto t = task::lookup(tid).get();
+  auto t = task::lookup(tid);
 
   if (t == NULL) {
     panic("failed to spawn thread\n");

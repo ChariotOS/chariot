@@ -5,9 +5,8 @@
 #include <vm.h>
 
 
-void *sys::mmap(void *addr, size_t length, int prot, int flags, int fd,
-                off_t offset) {
-  auto proc = cpu::task()->proc;
+void *sys::mmap(void *addr, long length, int prot, int flags, int fd, long offset) {
+  auto proc = cpu::proc();
   if (!proc) return MAP_FAILED;
 
   // TODO: handle address requests!

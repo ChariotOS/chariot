@@ -24,13 +24,15 @@ cpu_t &cpu::current() {
 
 cpu_t *cpu::get() { return s_current; }
 
-ref<struct task_process> cpu::proc(void) { return task()->proc; }
+struct task_process *cpu::proc(void) {
+  if (task() == NULL) return NULL;
+  return task()->proc;
+}
 
 bool cpu::in_thread(void) { return (bool)task(); }
 
-ref<struct task> cpu::task() {
-  auto t = current().current_thread;
-  return t;
+struct task *cpu::task() {
+  return current().current_thread;
 }
 
 extern "C" void wrmsr(u32 msr, u64 val);

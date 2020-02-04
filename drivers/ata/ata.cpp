@@ -478,8 +478,12 @@ static ssize_t ata_write(fs::filedesc& fd, const char* buf, size_t sz) {
 }
 
 struct dev::driver_ops ata_ops = {
+    .llseek = NULL,
     .read = ata_read,
     .write = ata_write,
+    .ioctl = NULL,
+    .open = NULL,
+    .close = NULL,
 };
 
 static void ata_init(void) {

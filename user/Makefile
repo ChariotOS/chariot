@@ -37,6 +37,7 @@ srcs:=$(srcs:%=$(M)/%)
 
 # fix up $out to be relative to the build destination
 out:=out/$(out)
+outdir := $(dir $(out))
 
 # build a list of object files
 objs:=$(srcs:%=build/%.o)
@@ -49,6 +50,7 @@ out:
 	@mkdir -p out
 	@mkdir -p out/bin
 	@mkdir -p out/lib
+	@mkdir -p $(dir $(out))
 
 build:
 	@mkdir -p build
@@ -57,13 +59,17 @@ build:
 run: build out $(out)
 	@echo -e "Done\n"
 
+
+
 # binary programs
 out/bin/%: build/crt0.o $(objs)
+	@mkdir -p $(outdir)
 	@echo "$(PFX) LD   $@ with $(libs)"
 	@$(LD) -T user.ld $(LDFLAGS) -o $@ $^ $(libs)
 
 # static library archives
 out/lib/%.a: $(objs)
+	@mkdir -p $(outdir)
 	@echo "$(PFX) AR   $@"
 	@ar rcs $@ $^
 
@@ -95,3 +101,4 @@ build/%.asm.o: %.asm
 
 clean:
 	rm -rf out build
+

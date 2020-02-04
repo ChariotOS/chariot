@@ -77,18 +77,32 @@ struct fd_flags {
   ref<fs::filedesc> fd;
 };
 
-struct task_process : public refcounted<struct task_process> {
+#define TEV_PROC_DIE 1
+#define TEV_TASK_DIE 2
+
+/**
+ * a child event is created whenever any of the TEV_* events occur and is added
+ * to a process when that happens
+ */
+struct child_event {
+  int type;
+  int id;  // pid or tid, depending on event
+};
+
+struct task_process {
  public: /* I know, all this stuff is public, I'm a bad OOP programmer but its
             so the syscall interface can just access all the stuff in here. Also
             getters and setters suck. */
   int pid;  // obviously the process id
-  int uid, gid;
 
   // per-process flags (PF_*)
   unsigned long flags = 0;
   int spawn_flags = 0;
   // execution ring (0 for kernel, 3 for user)
   int ring;
+
+  long uid, euid;
+  long gid, egid;
 
   uint64_t create_tick = 0;
 
@@ -118,7 +132,7 @@ struct task_process : public refcounted<struct task_process> {
 
   pid_t search_nursery(pid_t);
 
-  ref<task_process> parent;
+  struct task_process *parent;
 
   spinlock proc_lock = spinlock("proc.proc_lock");
 
@@ -126,11 +140,11 @@ struct task_process : public refcounted<struct task_process> {
   int create_task(int (*fn)(void *), int flags, void *arg,
                   int state = PS_RUNNABLE);
 
-  static ref<struct task_process> spawn(pid_t parent, int &error);
-  static ref<struct task_process> lookup(int pid);
+  static struct task_process *spawn(pid_t parent, int &error);
+  static struct task_process *lookup(int pid);
 
   // initialize the kernel ``process''
-  static ref<task_process> kproc_init(void);
+  static task_process *kproc_init(void);
 
   task_process();
 
@@ -164,7 +178,7 @@ struct task_process : public refcounted<struct task_process> {
 /**
  * task - a schedulable entity in the kernel
  */
-struct task final : public refcounted<task> {
+struct task final {
   /* task id */
   int tid;
   /* process id */
@@ -180,7 +194,6 @@ struct task final : public refcounted<task> {
   void *stack;
   // where the FPU info is saved
   void *fpu_state;
-
 
   unsigned long syscall_count = 0;
   unsigned long run_count = 0;
@@ -198,7 +211,7 @@ struct task final : public refcounted<task> {
   /* per-task flasg (uses PF_* macros)*/
   unsigned int flags;
 
-  ref<struct task_process> proc;
+  struct task_process *proc;
 
   /* the current cpu this task is running on */
   int current_cpu = -1;
@@ -235,15 +248,15 @@ struct task final : public refcounted<task> {
   struct task *wq_prev;
   waitqueue *current_wq = NULL;
 
+
+
   // awaken the task from a blocked state, returning if it woke.
   // rudely means that it is being awoken not by waitqueue::notify, but by
   // something else (like a task teardown)
   bool awaken(bool rudely = 0);
-
-  static ref<struct task> lookup(int tid);
-
+  static struct task *lookup(int tid);
   // protected constructor - must use ::create
-  task(ref<struct task_process>);
+  task(struct task_process *);
   ~task(void);
 
   void exit(int code);

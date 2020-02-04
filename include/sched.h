@@ -24,6 +24,8 @@ process &kernel_proc(void);
 
 void yield(void);
 
+void do_yield(int status);
+
 void block();
 
 // does not return

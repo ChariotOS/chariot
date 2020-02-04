@@ -18,6 +18,13 @@ ssize_t write(int fd, const void *buf, size_t count);
 
 int close(int fd);
 
+/**
+ * exit()
+ *
+ * Exit the process group
+ */
+void exit(int status);
+
 #define SEEK_SET (-1)
 #define SEEK_CUR (-2)
 #define SEEK_END (-3)

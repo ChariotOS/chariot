@@ -238,8 +238,13 @@ static int fb_ioctl(fs::filedesc &fd, unsigned int cmd, unsigned long arg) {
 
 // can only write to the framebuffer
 struct dev::driver_ops fb_ops = {
+    .llseek = NULL,
+    .read = NULL,
     .write = fb_write,
     .ioctl = fb_ioctl,
+
+    .open =  NULL,
+    .close = NULL,
 };
 
 static void vga_init_mod(void) {

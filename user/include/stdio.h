@@ -63,6 +63,8 @@ int fclose(FILE *);
 size_t fread(void *__restrict, size_t, size_t, FILE *__restrict);
 size_t fwrite(const void *__restrict, size_t, size_t, FILE *__restrict);
 
+int fflush(FILE *);
+
 int putchar(int);
 
 
