@@ -81,3 +81,9 @@ char *strchr(const char *s, int c) {
 
   return *(unsigned char *)r == (unsigned char)c ? r : 0;
 }
+
+int strcmp(const char *l, const char *r)
+{
+	for (; *l==*r && *l; l++, r++);
+	return *(unsigned char *)l - *(unsigned char *)r;
+}

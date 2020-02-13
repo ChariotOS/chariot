@@ -9,24 +9,10 @@
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <sys/mman.h>
 
 char *read_line(int fd, char *prompt, int *len_out);
 void hexdump(void *vbuf, long len);
-
-int spawn_proc(char *bin) {
-  int pid = spawn();
-
-  if (pid == -1) {
-    return -1;
-  }
-  char *cmd[] = {bin, 0};
-  int res = cmdpidv(pid, cmd[0], cmd);
-  if (res != 0) {
-    return -1;
-  }
-
-  return pid;
-}
 
 #define MAX_ARGS 255
 
@@ -40,6 +26,7 @@ int parseline(const char *cmdline, char **argv) {
   buf[strlen(buf)] = ' ';       /* replace trailing '\n' with space */
   while (*buf && (*buf == ' ')) /* ignore leading spaces */
     buf++;
+
 
   /* Build the argv list */
   argc = 0;
@@ -89,45 +76,67 @@ uint32_t next(void) {
 
 long val = 0;
 
+
+
+
 int main(int argc, char **argv) {
+  // open up file descriptor 1, 2, and 3
+  for (int i = 0; i < 3; i++) close(i + 1);
+  open("/dev/console", O_RDWR);
+  open("/dev/console", O_RDWR);
+  open("/dev/console", O_RDWR);
+
+  printf("[init] hello, friend\n");
+
+  printf("tid=%d, pid=%d\n", gettid(), getpid());
+
   int arg_buflen = sizeof(char *) * MAX_ARGS;
   char **args = malloc(arg_buflen);
 
-  pid_t pid = spawn_proc("/bin/test/exit");
 
-  int res = waitpid(pid, NULL, 0);
-  printf("res=%d\n", res);
+  int *exec = mmap(NULL, 4096, PROT_EXEC, MAP_ANON, -1, 0);
+  mrename(exec, "exec");
+  int *read = mmap(NULL, 4096, PROT_READ, MAP_ANON, -1, 0);
+  mrename(read, "read");
+  int *write = mmap(NULL, 4096, PROT_WRITE, MAP_ANON, -1, 0);
+  mrename(write, "write");
 
+
+  int *none = mmap(NULL, 4096, PROT_NONE, MAP_ANON, -1, 0);
+  mrename(none, "something\nwrong");
+
+
+
+  char *envs[] = {NULL};
   while (1) {
     int len = 0;
 
     memset(args, 0, arg_buflen * sizeof(char *));
 
-    char *buf = read_line(0, "# ", &len);
+    char *buf = read_line(0, "init~# ", &len);
 
     len = strlen(buf);
-    if (len == 0) goto noprint;
+    if (len == 0) goto cleanup;
+
+    if (strcmp(buf, "exit") == 0) exit(0);
 
     hexdump(buf, len);
-
     parseline(buf, args);
 
-    pid_t pid = spawn_proc(args[0]);
-
-    if (pid != -1) {
-      int res = waitpid(pid, NULL, 0);
-      printf("res=%d\n", res);
-    }
-
-    /*
-    if (bg) printf("Background Process\n");
     for (int i = 0; i < MAX_ARGS; i++) {
       if (args[i] == NULL) break;
       printf("%d:'%s'\n", i, args[i]);
     }
-    */
 
-  noprint:
+    pid_t pid = spawn();
+    if (pid <= -1) {
+      printf("Error spawning, code=%d\n", pid);
+      goto cleanup;
+    }
+    startpidve(pid, args[0], args, envs);
+
+
+  cleanup:
     free(buf);
   }
 

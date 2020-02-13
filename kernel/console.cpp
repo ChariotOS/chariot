@@ -8,7 +8,6 @@
 #include <util.h>
 #include <vga.h>
 #include <sched.h>
-#include <task.h>
 
 #include "../drivers/majors.h"
 
@@ -55,7 +54,7 @@ static bool handle_special_input(char c) {
   switch (c) {
     case C('P'):
 
-      task_process::dump();
+      sched::proc::dump_table();
       return true;
     /*
     case C('B'):
@@ -122,7 +121,7 @@ static ssize_t console_write(fs::filedesc& fd, const char* buf, size_t sz) {
 
 
 static int console_open(fs::filedesc &fd) {
-  KINFO("[console] open!\n");
+  // KINFO("[console] open!\n");
   return 0;
 }
 

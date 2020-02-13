@@ -31,7 +31,7 @@ void spinlock::lock(void) {
   }
 
   owner_tid = -1;
-  if (cpu::in_thread()) owner_tid = cpu::task()->tid;
+  if (cpu::in_thread()) owner_tid = curthd->tid;
 }
 
 void spinlock::unlock(void) {

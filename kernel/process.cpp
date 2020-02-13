@@ -31,10 +31,9 @@ void sys::restart() {
   // TODO: NEED TO RESTART
 }
 
+pid_t sys::getpid(void) { return curthd->pid; }
 
-pid_t sys::getpid(void) { return cpu::task()->pid; }
-
-pid_t sys::gettid(void) { return cpu::task()->tid; }
+pid_t sys::gettid(void) { return curthd->tid; }
 
 // WARNING: HACK
 struct syscall {
@@ -43,11 +42,10 @@ struct syscall {
   void *handler;
 };
 
-map<int, struct syscall> syscall_table;
-// vec<struct syscall> syscall_table;
+struct syscall syscall_table[255];
 
 void set_syscall(const char *name, int num, void *handler) {
-  KINFO("%s -> %d (0x%02x)\n", name, num, num);
+  // KINFO("%s -> %d (0x%02x)\n", name, num, num);
   syscall_table[num] = {.name = name, .num = num, .handler = handler};
 }
 
@@ -58,23 +56,27 @@ void syscall_init(void) {
 }
 
 static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
-  if (!syscall_table.contains(num) || syscall_table[num].handler == nullptr) {
-    KWARN("unknown syscall in pid %d. syscall(%d) @ rip=%p\n", cpu::proc()->pid,
-          num, cpu::task()->tf->eip);
+  if (num & !0xFF) return -1;
+
+  if (syscall_table[num].handler == NULL) {
+    KWARN("unknown syscall in pid %d. syscall(%d) @ rip=%p\n", curthd->pid, num,
+          curthd->trap_frame->eip);
     return -1;
   }
 
-  // printk("System Call: '%s' [0x%02x] 0x%p 0x%p 0x%p 0x%p 0x%p 0x%p\n", syscall_table[num].name, num, a, b, c, d, e, f);
+  /*
+  printk("System Call: '%s' [0x%02x] 0x%p 0x%p 0x%p 0x%p 0x%p 0x%p\n",
+         syscall_table[num].name, num, a, b, c, d, e, f);
+         */
 
-
-  cpu::task()->syscall_count++;
+  curthd->stats.syscall_count++;
 
   auto *func = (u64(*)(u64, u64, u64, u64, u64, u64))syscall_table[num].handler;
 
   return func(a, b, c, d, e, f);
 }
 
-extern "C" void syscall_handle(int i, struct task_regs *tf) {
+extern "C" void syscall_handle(int i, struct regs *tf) {
   // int x = 0;
   //
 #ifdef __ARCH_x86_64__

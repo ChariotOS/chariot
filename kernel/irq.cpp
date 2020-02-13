@@ -12,7 +12,6 @@ int irq::install(int irq, irq::handler handler, const char *name) {
   if (irq < 0 || irq > NIRQS) return -1;
   irq_handlers[irq] = handler;
   arch::irq::enable(irq);
-
   return 0;
 }
 
@@ -36,14 +35,11 @@ int irq::init(void) {
 }
 
 // cause an interrupt to be handled by the kernel's interrupt dispatcher
-void irq::dispatch(int irq, struct task_regs *regs) {
+void irq::dispatch(int irq, struct regs *regs) {
   // store the current register state in the CPU for introspection
-  if (cpu::in_thread()) {
-    cpu::task()->tf = regs;
-  }
+  if (cpu::in_thread()) cpu::thread()->trap_frame = regs;
 
   auto handler = irq_handlers[irq];
-
   if (handler != nullptr) {
     handler(irq, regs);
   }

@@ -8,6 +8,7 @@ extern "C" {
 #define __NEED_ssize_t
 #define __NEED_size_t
 #define __NEED_off_t
+#define __NEED_pid_t
 #include <bits/alltypes.h>
 
 // read or write from a file descriptor given a buffer of data
@@ -30,6 +31,10 @@ void exit(int status);
 #define SEEK_END (-3)
 
 off_t lseek(int fd, off_t offset, int whence);
+
+
+pid_t gettid(void);
+pid_t getpid(void);
 
 
 #ifdef __cplusplus

@@ -5,7 +5,6 @@
 #include <paging.h>
 #include <phys.h>
 #include <printk.h>
-#include <task.h>
 #include <types.h>
 #include <arch.h>
 
@@ -24,14 +23,14 @@ cpu_t &cpu::current() {
 
 cpu_t *cpu::get() { return s_current; }
 
-struct task_process *cpu::proc(void) {
-  if (task() == NULL) return NULL;
-  return task()->proc;
+struct process *cpu::proc(void) {
+  if (curthd == NULL) return NULL;
+  return &curthd->proc;
 }
 
-bool cpu::in_thread(void) { return (bool)task(); }
+bool cpu::in_thread(void) { return (bool)thread(); }
 
-struct task *cpu::task() {
+struct thread *cpu::thread() {
   return current().current_thread;
 }
 
@@ -54,6 +53,7 @@ extern "C" u64 get_sp(void);
 static inline void ltr(u16 sel) { asm volatile("ltr %0" : : "r"(sel)); }
 
 void cpu::seginit(void *local) {
+
   if (local == nullptr) {
     local = p2v(phys::alloc());
   }
@@ -139,31 +139,42 @@ static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {
 }
 
 
-#define IA32_LSTAR (0xC0000082)
-void cpu::switch_vm(struct task *tsk) {
+void cpu::switch_vm(struct thread *thd) {
   cpu::pushcli();
   auto c = current();
   auto tss = (u32 *)(((char *)c.local) + 1024);
 
-  if (tsk->flags & PF_KTHREAD) {
-    // don't break the stack on kthreads with the tss
-    tss_set_rsp(tss, 0, 0);
-  } else {
-    tss_set_rsp(tss, 0, (u64)tsk->stack + tsk->stack_size + 8);
-    // tss_set_ist(tss, 0, (u64)tsk->stack + tsk->stack_size);
+
+  switch (thd->proc.ring) {
+    case RING_KERN:
+      // When in kernel mode, we don't want to pull a stack from
+      // the tss on trap. (we want to avoid smashing our stack)
+      tss_set_rsp(tss, 0, 0);
+      break;
+
+    case RING_USER:
+      tss_set_rsp(tss, 0, (u64)thd->stack + thd->stack_size + 8);
+      break;
+
+    default:
+      panic("unknown ring %d in cpu::switch_vm\n", thd->proc.ring);
+      break;
   }
 
+  // printk("proc=%p, addr_space=%p\n", &thd->proc, thd->proc.addr_space);
+  // printk("     [p:%d,t:%d]\n",thd->proc.pid, thd->tid);
 
   auto kptable = (u64 *)p2v(get_kernel_page_table());
-  auto pptable = (u64 *)p2v(tsk->proc->mm.cr3);
+  auto pptable = (u64 *)p2v(thd->proc.addr_space->cr3);
 
   if (kptable != pptable) {
     for (int i = 272; i < 512; i++) {
+      if (kptable[i] == 0) break; // optimization
       pptable[i] = kptable[i];
     }
   }
 
-  write_cr3((u64)v2p(tsk->proc->mm.cr3));
+  write_cr3((u64)v2p(thd->proc.addr_space->cr3));
 
   cpu::popcli();
 }

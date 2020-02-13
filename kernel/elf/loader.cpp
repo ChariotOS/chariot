@@ -39,7 +39,8 @@ bool elf::validate(fs::filedesc &fd, Elf64_Ehdr &ehdr) {
   return true;
 }
 
-int elf::load(vm::addr_space &mm, fs::filedesc &fd, u64 &entry) {
+int elf::load(const char *path, vm::addr_space &mm, fs::filedesc &fd,
+              u64 &entry) {
   Elf64_Ehdr ehdr;
 
   if (!elf::validate(fd, ehdr)) {
@@ -108,8 +109,8 @@ int elf::load(vm::addr_space &mm, fs::filedesc &fd, u64 &entry) {
   while (last_load > first_load && last_load->p_type != PT_LOAD) last_load--;
 
   // Total memory size of phdr between first and last PT_LOAD.
-  // size_t span = last_load->p_vaddr + last_load->p_memsz - first_load->p_vaddr;
-
+  // size_t span = last_load->p_vaddr + last_load->p_memsz -
+  // first_load->p_vaddr;
 
   for (int i = 0; i < ehdr.e_phnum; i++) {
     auto &sec = phdr[i];
@@ -126,8 +127,12 @@ int elf::load(vm::addr_space &mm, fs::filedesc &fd, u64 &entry) {
       if (sec.p_filesz < sec.p_memsz) {
         // printk("    is .bss\n");
       }
-      mm.map_file("name_me", fd.ino, start, sec.p_offset, sec.p_memsz,
-                  PTE_W | PTE_U | PTE_P);
+
+      auto flags = 0L;
+      if (sec.p_flags & PF_X) flags |= VPROT_EXEC;
+      if (sec.p_flags & PF_W) flags |= VPROT_WRITE;
+      if (sec.p_flags & PF_R) flags |= VPROT_READ;
+      mm.map_file(path, fd.ino, start, sec.p_offset, sec.p_memsz, flags);
       handle_bss(sec);
     }
   }

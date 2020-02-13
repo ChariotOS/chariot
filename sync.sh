@@ -31,7 +31,7 @@ fi
 if [ $disk_exists -eq '0' ]; then
 	# create the disk image file
 	dd if=/dev/zero of=$IMG bs=1M count=$DISK_SIZE_MB || die "can't create disk image"
-	chown 1000:1000 $IMG || die "couldn't adjust permissions on disk image"
+	# chown 1000:1000 $IMG || die "couldn't adjust permissions on disk image"
 	# set the permissions of the disk image
 	chmod 666 $IMG
 fi
@@ -112,6 +112,8 @@ cd ..
 sudo cp -r user/out/bin $mnt/bin
 sudo cp -r user/out/lib $mnt/lib
 
+
+sudo chown -R 0:0 $mnt
 
 # install the bootloader (grub, in this case)
 sudo mkdir -p $mnt/boot/grub

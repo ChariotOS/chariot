@@ -34,7 +34,7 @@ int liballoc_unlock() {
 
 void *liballoc_alloc(size_t s) {
   void *p = mmap(NULL, s * 4096, PROT_READ | PROT_WRITE, MAP_ANON, -1, 0);
-
+  mrename(p, "[malloc]");
   return p;
 }
 

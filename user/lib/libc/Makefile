@@ -6,6 +6,7 @@ srcs += chariot/proc.c
 srcs += stdio/stdio.c
 srcs += stdio/putchar.c
 srcs += stdio/printf.c
+srcs += stdio/scanf.c
 srcs += stdlib/liballoc.c
 srcs += stdlib/malloc.c
 srcs += syscall.asm

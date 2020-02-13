@@ -40,6 +40,8 @@ class vfs {
    */
   static struct fs::inode *cwd(void);
 
+  static struct fs::inode *get_root(void);
+
   // a mounter creates a filesystem on a device and returns it
   using mounter_t = unique_ptr<fs::filesystem> (*)(ref<dev::device>, int flags);
 

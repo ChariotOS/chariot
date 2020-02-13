@@ -8,11 +8,12 @@
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 
-vm::phys_page::~phys_page(void) { phys::free((void *)pa); }
+vm::phys_page::~phys_page(void) { printk("~phys_page(%p)\n", pa); }
 
 ref<vm::phys_page> vm::phys_page::alloc(void) {
   auto p = make_ref<phys_page>();
   p->pa = (u64)phys::alloc();
+  // printk("=================== pa=%p\n", p->pa);
   return move(p);
 }
 
@@ -39,7 +40,7 @@ int vm::memory_backing::fault(addr_space &space, region &reg, int page,
   }
 
   void *va = (void *)(reg.va + (page << 12));
-  space.schedule_mapping(va, pages[page]->pa);
+  space.schedule_mapping(va, pages[page]->pa, reg.prot);
   return 0;
 }
 
@@ -52,11 +53,11 @@ vm::file_backing::file_backing(int npages, size_t size, off_t off,
 
 vm::file_backing::~file_backing(void) {
   // TODO: handle file backing destruction
+  printk("~file_backing()\n");
 }
 
 int vm::file_backing::fault(addr_space &space, region &reg, int page,
                             int flags) {
-
   if (page < 0 || page >= pages.size()) {
     return -ENOENT;
   }
@@ -87,7 +88,7 @@ int vm::file_backing::fault(addr_space &space, region &reg, int page,
   }
 
   void *va = (void *)(reg.va + (page << 12));
-  space.schedule_mapping(va, pages[page]->pa);
+  space.schedule_mapping(va, pages[page]->pa, reg.prot);
   return 0;
 }
 
@@ -131,21 +132,48 @@ static int sort_regions(vec<unique_ptr<vm::region>> &xs) {
   return n;
 }
 
-int vm::addr_space::handle_pagefault(off_t va, int flags) {
+static ssize_t convert_protection(off_t vm_prot) {
+  ssize_t p = 0;
+
+  p |= PTE_P;
+
+  if (vm_prot & VPROT_READ) p |= PTE_U;
+  if (vm_prot & VPROT_WRITE) p |= PTE_W;
+
+  if ((vm_prot & VPROT_EXEC) == 0) p |= PTE_NX;
+
+  p |= PTE_U;
+
+  return p;
+}
+
+
+int vm::addr_space::handle_pagefault(off_t va, int err) {
   auto r = lookup(va);
 
   if (!r) {
     return -1;
   }
 
+  int fault_res = 0;
+
 
   auto page = (va >> 12) - (r->va >> 12);
+
+  // TODO:
+  // if (err & PGFLT_USER && !(r->prot & VPROT_READ)) fault_res = -1;
+  if (err & FAULT_WRITE && !(r->prot & VPROT_WRITE)) fault_res = -1;
+  if (err & FAULT_READ && !(r->prot & VPROT_READ)) fault_res = -1;
+  if (err & FAULT_EXEC && !(r->prot & VPROT_EXEC)) fault_res = -1;
+
+
   // refer to the backing structure to handle the fault
-  int fault_res = r->backing->fault(*this, *r, page, flags);
+  if (fault_res == 0) fault_res = r->backing->fault(*this, *r, page, err);
 
   if (fault_res != 0) {
     printk("should segfault pid %p for accessing %p illegally\n",
            cpu::proc()->pid, va);
+    this->dump();
     return -1;
   }
 
@@ -153,16 +181,18 @@ int vm::addr_space::handle_pagefault(off_t va, int flags) {
   // walk through the scheduled mappings
   for (auto p : pending_mappings) {
     // KWARN("   mapping %p -> %p into %p. was %p\n", p.va, p.pa, cr3, *entry);
-    paging::map_into(p4, (u64)p.va, p.pa, paging::pgsize::page, PTE_W | PTE_U);
+    auto flags = convert_protection(p.prot);
+    paging::map_into(p4, (u64)p.va, p.pa, paging::pgsize::page, flags | PTE_P);
   }
   pending_mappings.clear();
 
+  arch::flush_tlb();
 
   return 0;
 }
 
-int vm::addr_space::schedule_mapping(void *va, u64 pa) {
-  pending_mappings.push({.va = va, .pa = pa});
+int vm::addr_space::schedule_mapping(void *va, u64 pa, int prot) {
+  pending_mappings.push({.va = va, .pa = pa, .prot = prot});
   return 0;
 }
 
@@ -251,7 +281,6 @@ off_t vm::addr_space::map_file(string name, struct fs::inode *file, off_t vaddr,
 
 #define PGMASK (~(PGSIZE - 1))
 bool vm::addr_space::validate_pointer(void *raw_va, size_t len, int mode) {
-
   if (kernel_vm) return true;
   off_t start = (off_t)raw_va & PGMASK;
   off_t end = ((off_t)raw_va + len) & PGMASK;
@@ -305,24 +334,31 @@ vm::addr_space::addr_space(void) {
 
   // allocate a page for the page directory
   cr3 = phys::alloc(1);
-
 }
 
-vm::addr_space::~addr_space(void) { KINFO("destruct addr_space\n"); }
+vm::addr_space::~addr_space(void) {
+  // KINFO("destruct addr_space\n");
+}
 
 string vm::addr_space::format(void) {
   string s;
 
+  for (auto &r : regions) {
+    s+=string::format("%p-%p ", r->va, r->va + r->len);
+    s+=string::format("%c", r->prot & VPROT_READ ? 'r' : '-');
+    s+=string::format("%c", r->prot & VPROT_WRITE ? 'w' : '-');
+    s+=string::format("%c", r->prot & VPROT_EXEC ? 'x' : '-');
+    s+=string::format(" %s", r->name.get());
+    s+=string::format("\n");
+  }
   return s;
 }
-
 
 void vm::addr_space::dump(void) {
   if (lck.is_locked()) {
     printk("    VA: locked.\n");
     return;
   }
-  for (auto &r : regions) {
-    printk("    %p-%p '%s'\n", r->va, r->va + r->len, r->name.get());
-  }
+
+  printk("%s", format().get());
 }

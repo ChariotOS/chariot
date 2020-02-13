@@ -2,7 +2,7 @@
 
 #include <lock.h>
 #include <types.h>
-#include <task.h>
+#include <sched.h>
 
 struct cpu_t {
   void *local;
@@ -16,12 +16,12 @@ struct cpu_t {
   uint16_t preemption_depth = 0;
 
   u32 speed_khz;
-  struct task *current_thread;
-  struct task_context *sched_ctx;
+  struct thread *current_thread;
+  struct thread_context *sched_ctx;
 };
 
 // Nice macros to allow cleaner access to the current task and proc
-#define curtask cpu::task()
+#define curthd cpu::thread()
 #define curproc cpu::proc()
 
 
@@ -31,9 +31,9 @@ namespace cpu {
 cpu_t &current(void);
 cpu_t *get(void);
 
-struct task_process *proc(void);
+struct process *proc(void);
 
-struct task *task(void);
+struct thread *thread(void);
 bool in_thread(void);
 
 // setup CPU segment descriptors, run once per cpu
@@ -48,7 +48,7 @@ void pushcli();
 // interrupts again
 void popcli();
 
-void switch_vm(struct task *);
+void switch_vm(struct thread *);
 
 inline int ncli(void) { return current().ncli; }
 

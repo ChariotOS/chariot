@@ -8,6 +8,7 @@ mobo.cabal
 mobo
 .DS_Store
 tags
+.gdb_history
 
 
 user/out

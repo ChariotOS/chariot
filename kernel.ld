@@ -80,11 +80,6 @@ SECTIONS
 		*(.eh_frame .note.GNU-stack)
 	}
 
-
-
-	. = ALIGN(0x1000);
-
 	_virt_end = .;
-
 	high_kern_end = . - KERNEL_VMA;
 }

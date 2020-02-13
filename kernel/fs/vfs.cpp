@@ -58,6 +58,10 @@ struct fs::inode *vfs::cwd(void) {
   return vfs_root;
 }
 
+struct fs::inode *vfs::get_root(void) {
+  return vfs_root;
+}
+
 int vfs::mount(unique_ptr<fs::filesystem> fs, string host) { return -1; }
 
 struct fs::inode *vfs::open(string spath, int opts, int mode) {

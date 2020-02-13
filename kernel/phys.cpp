@@ -104,8 +104,13 @@ void *phys::alloc(int npages) {
 void phys::free(void *v) {
   lock();
 
-  if ((u64)v % PGSIZE) panic("phys::free requires page aligned address");
-  if (v < high_kern_end) panic("phys::free cannot free below the kernel's end");
+
+
+
+  if ((u64)v % PGSIZE) {
+    panic("phys::free requires page aligned address. Given %p", v);
+  }
+  if (v <= high_kern_end) panic("phys::free cannot free below the kernel's end");
 
   frame *r = working_addr((frame *)v);
   r->next = kmem.freelist;

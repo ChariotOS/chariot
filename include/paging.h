@@ -16,7 +16,7 @@
 #define PTE_PS          0x080   // Page Size
 #define PTE_G           0x100   // Global Mapping (dont flush from tlb)
 
-#define PTE_NX          (1 << 63) // no execute
+#define PTE_NX          (1L << 63) // no execute
 
 
 

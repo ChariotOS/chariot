@@ -13,9 +13,13 @@
 #define VPROT_EXEC (1 << 2)
 #define VPROT_SUPER (1 << 3)
 
-#define PROT_W 1
-#define PROT_R 2
-#define PROT_X 4
+
+#define FAULT_READ (1 << 0)
+#define FAULT_WRITE (1 << 1)
+#define FAULT_EXEC (1 << 2)
+#define FAULT_PERM (1 << 3)
+#define FAULT_NOENT (1 << 4)
+
 
 namespace vm {
 
@@ -25,7 +29,7 @@ class addr_space;
 // a crazy simple wrapper around the physical memory allocator, except it frees
 // the page when no more references are held
 struct phys_page : public refcounted<phys_page> {
-  u64 pa;
+  u64 pa = 0;
   ~phys_page(void);
 
   static ref<phys_page> alloc(void);
@@ -93,10 +97,12 @@ class addr_space final : public refcounted<addr_space> {
   // the page table for this address space.
   void *page_table;
 
-  int schedule_mapping(void *va, u64 pa);
+  int schedule_mapping(void *va, u64 pa, int prot);
 
   addr_space(void);
   ~addr_space(void);
+
+  addr_space(const addr_space&) = delete;
 
   int set_range(off_t base, off_t limit);
 
@@ -139,6 +145,7 @@ class addr_space final : public refcounted<addr_space> {
   struct pending_mapping {
     void *va;
     u64 pa;
+    int prot;
   };
 
   u64 revision = 0;

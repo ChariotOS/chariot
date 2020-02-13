@@ -1,8 +1,8 @@
 section .data
 ;; storage for kernel parameters
-__argc dq 0
-__argv dq 0
-__envp dq 0
+extern __argc
+extern __argv
+extern __envp
 
 section .text
 
@@ -25,3 +25,9 @@ _start:
 	.invalid_loop:
 		mov rax, [0x00]
 		jmp .invalid_loop
+
+
+
+# set the dynamic linker
+section .interp
+	db "/lib/ld.so", 0

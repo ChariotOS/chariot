@@ -1,3 +1,4 @@
+#include <arch.h>
 #include <cpu.h>
 #include <lock.h>
 #include <mem.h>
@@ -6,7 +7,6 @@
 #include <phys.h>
 #include <printk.h>
 #include <types.h>
-#include <arch.h>
 
 // #define MEM_DEBUG
 // #define MEM_TRACE
@@ -42,7 +42,7 @@ bool use_kernel_vm = false;
 extern char low_kern_start;
 extern char low_kern_end;
 extern char high_kern_start;
-extern char high_kern_end;
+extern char high_kern_end[];
 
 // just 64 memory regions. Any more and idk what to do
 static struct mem_map_entry memory_map[MAX_MMAP_ENTRIES];
@@ -116,7 +116,7 @@ int init_mem(u64 mbd) {
   // go detect all the ram in the system
   init_mmap(mbd);
 
-  auto *kend = (u8 *)&high_kern_end;
+  auto *kend = (u8 *)high_kern_end;
 
   // setup memory regions
   for (int i = 0; i < mm_info.num_regions; i++) {
@@ -129,7 +129,6 @@ int init_mem(u64 mbd) {
 
     phys::free_range(start, end);
   }
-
   return 0;
 }
 
@@ -245,9 +244,9 @@ void kfree(void *ptr) {
   auto p = (u64)ptr;
   if (ptr != NULL) {
     if (!(p >= (u64)kheap_lo() && p < (u64)kheap_hi())) {
-      printk("invalid address passed into free: %p\n", ptr);
-    }
-    mm_free(ptr);
+      // printk("invalid address passed into free: %p\n", ptr);
+    } else
+      mm_free(ptr);
   }
   alloc_unlock();
 }

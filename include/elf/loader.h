@@ -12,6 +12,6 @@ namespace elf {
   bool validate(fs::filedesc &fd);
 
   bool validate(fs::filedesc &fd, Elf64_Ehdr &);
-  int load(vm::addr_space &vm, fs::filedesc &fd, u64 &entry);
+  int load(const char *, vm::addr_space &vm, fs::filedesc &fd, u64 &entry);
 
 };  // namespace elf

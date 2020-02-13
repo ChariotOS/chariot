@@ -5,6 +5,7 @@
 #include <process.h>
 
 pid_t do_spawn(void) {
+  /*
   assert(cpu::in_thread());
   auto proc = cpu::proc();
 
@@ -23,30 +24,35 @@ pid_t do_spawn(void) {
   p->open_files[2] = proc->open_files[2];
 
   proc->nursery.push(p->pid);
-
   return p->pid;
+  */
+
+  return -1;
 }
 
 static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
+
+  return -1;
+  /*
   auto proc = cpu::proc();
 
   if (proc->pid != 0) {
     // validate the args structure itself
-    if (!proc->mm.validate_pointer(args, sizeof(*args), VALIDATE_READ)) {
+    if (!proc->addr_space->validate_pointer(args, sizeof(*args), VALIDATE_READ)) {
       return -1;
     }
 
     // validate the absolute path
-    if (!proc->mm.validate_string(args->path)) {
+    if (!proc->addr_space->validate_string(args->path)) {
       return -1;
     }
 
     // validate argv and env
-    if (!proc->mm.validate_pointer(args->argv, sizeof(char *) * args->argc,
+    if (!proc->addr_space->validate_pointer(args->argv, sizeof(char *) * args->argc,
                                    VALIDATE_READ))
       return -1;
     if (args->envv != NULL &&
-        !proc->mm.validate_pointer(args->envv, sizeof(char *) * args->envc,
+        !proc->addr_space->validate_pointer(args->envv, sizeof(char *) * args->envc,
                                    VALIDATE_READ)) {
       return -1;
     }
@@ -84,14 +90,6 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
   u64 entry_address = 0;
 
   auto fd = fs::filedesc(file, FDIR_READ);
-
-  /*
-  // validate the elf binary
-  if (!elf::validate(fd)) {
-    printk("here\n");
-    return -1;
-  }
-  */
 
   // printk("========================================================\n");
   int loaded = elf::load(newproc->mm, fd, entry_address);
@@ -135,13 +133,15 @@ static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
   proc->nursery.remove(nursery_index);
 
   return 0;
+  */
 }
 
 static int do_create_thread(struct pctl_create_thread_args *argp) {
+  /*
   assert(cpu::in_thread());
   auto proc = cpu::proc();
 
-  /* validate the argument passed */
+  // validate the argument passed
   if (!proc->mm.validate_pointer(argp, sizeof(argp), VPROT_READ)) {
     return -1;
   }
@@ -171,11 +171,13 @@ static int do_create_thread(struct pctl_create_thread_args *argp) {
   t->tf->edi = (unsigned long)args.arg;
 #endif
 
-  t->state = PS_RUNNABLE; /* mark task as runnable */
+  t->state = PS_RUNNABLE; // mark task as runnable
 
   args.tid = tid;
 
   return 0;
+  */
+  return -1;
 }
 
 int sys::pctl(int pid, int request, u64 arg) {

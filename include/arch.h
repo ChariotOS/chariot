@@ -11,7 +11,7 @@
 #define GIT_REVISION "NO-GIT"
 #endif
 
-struct task_regs;
+struct regs;
 
 // Architecture specific functionality. Implemented in arch/$ARCH/*
 namespace arch {
@@ -47,7 +47,7 @@ void disable(int num);
 // core kernel irq (implemented in src/irq.cpp)
 namespace irq {
 
-using handler = void (*)(int i, struct task_regs *);
+using handler = void (*)(int i, struct regs *);
 
 // install and remove handlers
 int install(int irq, irq::handler handler, const char *name);
@@ -57,7 +57,7 @@ int init(void);
 static inline void eoi(int i) { arch::irq::eoi(i); }
 
 // cause an interrupt to be handled by the kernel's interrupt dispatcher
-void dispatch(int irq, struct task_regs *);
+void dispatch(int irq, struct regs *);
 
 };  // namespace irq
 

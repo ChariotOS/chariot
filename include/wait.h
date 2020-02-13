@@ -4,7 +4,6 @@
 #include <single_list.h>
 #include <types.h>
 
-
 #define WAIT_NOINT 1
 /**
  * implemented in sched.cpp
@@ -23,7 +22,6 @@ class waitqueue {
   bool should_notify(u32 val);
 
  private:
-
   int do_wait(u32 on, int flags);
   // navail is the number of unhandled notifications
   int navail = 0;
@@ -32,7 +30,7 @@ class waitqueue {
   spinlock lock = spinlock("waitqueue.lock");
 
   // next to pop on notify
-  struct task *front = NULL;
+  struct thread *front = NULL;
   // where to put new tasks
-  struct task *back = NULL;
+  struct thread *back = NULL;
 };

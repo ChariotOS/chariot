@@ -19,7 +19,7 @@
 #define INFO(fmt, args...)
 #endif
 
-extern "C" void swtch(struct task_context **, struct task_context *);
+extern "C" void swtch(struct thread_context **, struct thread_context *);
 
 static bool s_enabled = true;
 
@@ -29,16 +29,16 @@ static bool s_enabled = true;
 //   2. if Priority(A) == Priority(B), A and B run in RR
 //   3. when a job enters the system, it has a high priority to maximize
 //      responsiveness.
-//   4a. If a job uses up an entire time slioce while running, its priority is
+//   4a. If a job uses up an entire time slice while running, its priority is
 //       reduced, (only moves down one queue)
 //   4b. If a job gives up the CPU before
 //       the timeslice is over, it stays at the same priority level.
 //
 struct mlfq_entry {
   // a simple round robin queue of tasks
-  struct task *task_queue;
+  struct thread *task_queue;
   // so we can add to the end of the queue
-  struct task *last_task;
+  struct thread *last_task;
   int priority;
 
   long ntasks = 0;
@@ -54,41 +54,40 @@ bool sched::init(void) {
   // initialize the mlfq
   for (int i = 0; i < SCHED_MLFQ_DEPTH; i++) {
     auto &Q = mlfq[i];
-
     Q.task_queue = NULL;
     Q.last_task = NULL;
     Q.priority = i;
     Q.ntasks = 0;
-
-    Q.timeslice = 1;
+    Q.timeslice = 2;
   }
 
   return true;
 }
 
-static struct task *next_task(void) {
+static struct thread *get_next_thread(void) {
   // the queue is a singly linked list, so we need to
   // keep track of the last task in the queue so we can
   // remove the one we want to run from it
-  struct task *nt = nullptr;
+  struct thread *nt = nullptr;
 
   for (int i = SCHED_MLFQ_DEPTH - 1; i >= 0; i--) {
     auto &Q = mlfq[i];
 
     Q.queue_lock.lock();
 
-    for (auto *t = Q.task_queue; t != NULL; t = t->next) {
+    for (auto *t = Q.task_queue; t != NULL; t = t->sched.next) {
       if (t->state == PS_RUNNABLE) {
         nt = t;
+
         // remove from the queue
-        if (t->prev != NULL) t->prev->next = t->next;
-        if (t->next != NULL) t->next->prev = t->prev;
-        if (Q.task_queue == t) Q.task_queue = t->next;
-        if (Q.last_task == t) Q.last_task = t->prev;
+        if (t->sched.prev != NULL) t->sched.prev->sched.next = t->sched.next;
+        if (t->sched.next != NULL) t->sched.next->sched.prev = t->sched.prev;
+        if (Q.task_queue == t) Q.task_queue = t->sched.next;
+        if (Q.last_task == t) Q.last_task = t->sched.prev;
 
         Q.ntasks--;
-        t->prev = NULL;
-        t->next = NULL;
+        t->sched.prev = NULL;
+        t->sched.next = NULL;
 
         break;
       }
@@ -103,18 +102,31 @@ static struct task *next_task(void) {
 
   return nt;
 }
-
 // add a task to a mlfq entry based on tsk->priority
-int sched::add_task(struct task *tsk) {
+int sched::add_task(struct thread *tsk) {
   // clamp the priority to the two bounds
-  if (tsk->priority > PRIORITY_HIGH) tsk->priority = PRIORITY_HIGH;
-  if (tsk->priority < PRIORITY_IDLE) tsk->priority = PRIORITY_IDLE;
+  if (tsk->sched.priority > PRIORITY_HIGH) {
+    tsk->sched.priority = PRIORITY_HIGH;
+  }
+  if (tsk->sched.priority < PRIORITY_IDLE) {
+    tsk->sched.priority = PRIORITY_IDLE;
+  }
 
-  auto &Q = mlfq[tsk->priority];
+  auto &Q = mlfq[tsk->sched.priority];
 
   // the task inherits the timeslice from the queue
-  tsk->timeslice = Q.timeslice;
+  tsk->sched.timeslice = Q.timeslice;
 
+  /* This critical section must be both locked and behind a cli()
+   * because processes share this function with the scheduler. This means that
+   * if a process were to be prempted within this section, the system would
+   * deadlock as the scheduler would also try to grab the Q.queue_lock as well.
+   * Because the scheduler cannot contend locks with threads, this is obviously
+   * bad. To avoid this, we just make it so the thread cannot be interrupted in
+   * this spot. (The only thing a thread could contend with is another CPU
+   * core's scheduler, which is safe as the critical section is enormously
+   * simple.
+   */
   cpu::pushcli();
   // only lock this queue.
   Q.queue_lock.lock();
@@ -124,13 +136,13 @@ int sched::add_task(struct task *tsk) {
     Q.task_queue = tsk;
     Q.last_task = tsk;
 
-    tsk->next = NULL;
-    tsk->prev = NULL;
+    tsk->sched.next = NULL;
+    tsk->sched.prev = NULL;
   } else {
     // insert at the end of the list
-    Q.last_task->next = tsk;
-    tsk->next = NULL;
-    tsk->prev = Q.last_task;
+    Q.last_task->sched.next = tsk;
+    tsk->sched.next = NULL;
+    tsk->sched.prev = Q.last_task;
     // the new task is the end
     Q.last_task = tsk;
   }
@@ -143,63 +155,63 @@ int sched::add_task(struct task *tsk) {
   return 0;
 }
 
-static void switch_into(struct task *tsk) {
-  tsk->run_lock.lock();
-  cpu::current().current_thread = tsk;
-  tsk->start_tick = cpu::get_ticks();
-  tsk->state = PS_UNRUNNABLE;
+static void switch_into(struct thread &thd) {
+  thd.locks.run.lock();
+  cpu::current().current_thread = &thd;
+  thd.state = PS_UNRUNNABLE;
 
-  if (!tsk->fpu_initialized) {
+  if (!thd.fpu.initialized) {
     asm volatile("fninit");
-    asm volatile("fxsave64 (%0);" ::"r"(tsk->fpu_state));
-    tsk->fpu_initialized = true;
+    asm volatile("fxsave64 (%0);" ::"r"(thd.fpu.state));
+    thd.fpu.initialized = true;
   } else {
-    asm volatile("fxrstor64 (%0);" ::"r"(tsk->fpu_state));
+    asm volatile("fxrstor64 (%0);" ::"r"(thd.fpu.state));
   }
 
-  tsk->run_count++;
+  thd.stats.run_count++;
 
-  cpu::switch_vm(tsk);
+  thd.sched.start_tick = cpu::get_ticks();
 
-  tsk->last_cpu = tsk->current_cpu;
-  tsk->current_cpu = smp::cpunum();
+  cpu::switch_vm(&thd);
 
-  swtch(&cpu::current().sched_ctx, tsk->ctx);
+  thd.stats.last_cpu = thd.stats.current_cpu;
+  thd.stats.current_cpu = smp::cpunum();
 
-  asm volatile("fxsave64 (%0);" ::"r"(tsk->fpu_state));
+  swtch(&cpu::current().sched_ctx, thd.kern_context);
+
+  // save the FPU state after the context switch returns here
+  asm volatile("fxsave64 (%0);" ::"r"(thd.fpu.state));
   cpu::current().current_thread = nullptr;
 
-  tsk->run_lock.unlock();
+  thd.locks.run.unlock();
 }
 
 void sched::do_yield(int st) {
   cpu::pushcli();
 
-  auto tsk = cpu::task();
+  auto &thd = *curthd;
 
-  tsk->priority = PRIORITY_HIGH;
-  if (cpu::get_ticks() - tsk->start_tick >= tsk->timeslice) {
+  // thd.sched.priority = PRIORITY_HIGH;
+  if (cpu::get_ticks() - thd.sched.start_tick >= thd.sched.timeslice) {
     // uh oh, we used up the timeslice, drop the priority!
-    tsk->priority--;
+    thd.sched.priority--;
   }
 
-  cpu::task()->state = st;
+  thd.sched.priority = PRIORITY_HIGH;
 
-  cpu::task()->current_cpu = -1;
-  swtch(&cpu::task()->ctx, cpu::current().sched_ctx);
-
-
+  thd.state = st;
+  thd.stats.last_cpu = thd.stats.current_cpu;
+  thd.stats.current_cpu = -1;
+  swtch(&thd.kern_context, cpu::current().sched_ctx);
   cpu::popcli();
 }
 
 // helpful functions wrapping different resulting task states
-void sched::block() {
-  sched::do_yield(PS_BLOCKED);
-}
-
+void sched::block() { sched::do_yield(PS_BLOCKED); }
 
 void sched::yield() {
-  // when you yield, you give up the CPU by ''using the rest of your timeslice''
+  // when you yield, you give up the CPU by ''using the rest of your
+  // timeslice''
   // TODO: do this another way
   // auto tsk = cpu::task().get();
   // tsk->start_tick -= tsk->timeslice;
@@ -208,22 +220,24 @@ void sched::yield() {
 void sched::exit() { do_yield(PS_ZOMBIE); }
 
 static void schedule_one() {
-  auto tsk = next_task();
+  auto thd = get_next_thread();
 
-  if (tsk == nullptr) {
+  if (thd == nullptr) {
     // idle loop when there isn't a task
+    printk("nothing.\n");
     return;
   }
 
   cpu::pushcli();
   s_enabled = true;
   cpu::current().intena = 1;
-  switch_into(tsk);
+
+  switch_into(*thd);
 
   cpu::popcli();
 
-  /* add the task back to the */
-  if (!tsk->should_die) sched::add_task(tsk);
+  /* add the task back to the mlfq if needed. */
+  if (!thd->should_die) sched::add_task(thd);
 }
 
 void sched::run() {
@@ -236,8 +250,8 @@ void sched::run() {
 
     auto ticks = cpu::get_ticks();
 
-    // every S ticks or so, boost the processes at the bottom of the queue into
-    // the top
+    // every S ticks or so, boost the processes at the bottom of the queue
+    // into the top
     if (ticks - last_boost > boost_interval) {
       last_boost = ticks;
       int nmoved = 0;
@@ -253,15 +267,15 @@ void sched::run() {
         auto loq = Q.task_queue;
 
         if (loq != NULL) {
-          for (auto *c = loq; c != NULL; c = c->next) {
-            if (!c->is_idle_thread) c->priority = PRIORITY_HIGH;
+          for (auto *c = loq; c != NULL; c = c->sched.next) {
+            if (!c->kern_idle) c->sched.priority = PRIORITY_HIGH;
           }
 
           // take the entire queue and add it to the end of the HIGH queue
           if (HI.task_queue != NULL) {
             assert(HI.last_task != NULL);
-            HI.last_task->next = loq;
-            loq->prev = HI.last_task;
+            HI.last_task->sched.next = loq;
+            loq->sched.prev = HI.last_task;
 
             // inherit the last task from the old Q
             HI.last_task = Q.last_task;
@@ -303,20 +317,17 @@ void sched::play_tone(int frq, int dur) {
 void sched::beep(void) { play_tone(440, 25); }
 
 void sched::handle_tick(u64 ticks) {
+  // send the EOI signal to the lapic
+  irq::eoi(32 /* IRQ_TICK */);
+
   if (ticks >= beep_timeout) pcspeaker::clear();
+  if (!enabled() || !cpu::in_thread()) return;
 
-  if (!enabled() || !cpu::in_thread()) {
-    return;
-  }
-
-  auto tsk = cpu::task();
-  tsk->ticks++;
+  // grab the current thread
+  auto thd = cpu::thread();
+  thd->sched.ticks++;
   // yield?
-  if (ticks - tsk->start_tick >= tsk->timeslice) {
-    if (cpu::preempt_disabled()) {
-      printk("preempt_disabled\n");
-      // return;
-    }
+  if (ticks - thd->sched.start_tick >= thd->sched.timeslice) {
     sched::yield();
   }
 }
@@ -339,19 +350,19 @@ int waitqueue::do_wait(u32 on, int flags) {
   assert(navail == 0);
 
   // add to the wait queue
-  auto waiter = cpu::task();
-  waiter->waiting_on = on;
-  waiter->wait_flags = flags;
+  auto waiter = curthd;
+  waiter->wq.waiting_on = on;
+  waiter->wq.flags = flags;
 
-  waiter->wq_next = NULL;
-  waiter->wq_prev = NULL;
+  waiter->wq.next = NULL;
+  waiter->wq.prev = NULL;
 
   if (back == NULL) {
     assert(front == NULL);
     back = front = waiter;
   } else {
-    back->wq_next = waiter;
-    waiter->wq_prev = back;
+    back->wq.next = waiter;
+    waiter->wq.prev = back;
     back = waiter;
   }
 
@@ -370,7 +381,7 @@ void waitqueue::notify() {
   } else {
     auto waiter = front;
     if (front == back) back = NULL;
-    front = waiter->wq_next;
+    front = waiter->wq.next;
     // *nicely* awaken the thread
     waiter->awaken(false);
   }
@@ -379,7 +390,7 @@ void waitqueue::notify() {
 bool waitqueue::should_notify(u32 val) {
   lock.lock();
   if (front != NULL) {
-    if (front->waiting_on <= val) {
+    if (front->wq.waiting_on <= val) {
       lock.unlock();
       return true;
     }
@@ -391,5 +402,5 @@ bool waitqueue::should_notify(u32 val) {
 void sched::before_iret(void) {
   if (!cpu::in_thread()) return;
   // exit via the scheduler if the task should die.
-  if (cpu::task()->should_die) sched::exit();
+  if (curthd->should_die) sched::exit();
 }

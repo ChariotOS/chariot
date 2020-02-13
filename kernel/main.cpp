@@ -1,3 +1,4 @@
+#include <arch.h>
 #include <asm.h>
 #include <atom.h>
 #include <cpu.h>
@@ -11,6 +12,7 @@
 #include <fs/file.h>
 #include <fs/vfs.h>
 #include <func.h>
+#include <kargs.h>
 #include <module.h>
 #include <pci.h>
 #include <pctl.h>
@@ -23,53 +25,16 @@
 #include <set.h>
 #include <smp.h>
 #include <string.h>
-#include <task.h>
 #include <types.h>
 #include <util.h>
 #include <vec.h>
 #include <vga.h>
-#include <arch.h>
-#include <kargs.h>
 
 extern int kernel_end;
 
 // in src/arch/x86/sse.asm
 extern "C" void enable_sse();
 extern "C" void call_with_new_stack(void*, void*);
-
-// HACK: not real kernel modules right now, just basic function pointers in an
-// array statically.
-// TODO: some initramfs or something with a TAR file and load them in as kernel
-// modules or something :)
-void initialize_kernel_modules(void) {
-  extern struct kernel_module_info __start__kernel_modules[];
-  extern struct kernel_module_info __stop__kernel_modules[];
-  struct kernel_module_info* mod = __start__kernel_modules;
-  int i = 0;
-  while (mod != __stop__kernel_modules) {
-    KINFO("[%s] init\n", mod->name);
-    mod->initfn();
-    mod = &(__start__kernel_modules[++i]);
-  }
-}
-
-typedef void (*func_ptr)(void);
-
-extern "C" func_ptr __init_array_start[0], __init_array_end[0];
-
-static void call_global_constructors(void) {
-  for (func_ptr* func = __init_array_start; func != __init_array_end; func++) {
-    (*func)();
-  }
-}
-
-void init_rootvfs(fs::filedesc dev) {
-
-  auto rootfs = make_unique<fs::ext2>(dev);
-  if (!rootfs->init()) panic("failed to init fs on root disk\n");
-  if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
-}
-
 
 static void print_depth(int d) { for_range(i, 0, d) printk("  "); }
 
@@ -90,8 +55,7 @@ void print_tree(struct fs::inode* dir, int depth = 0) {
   }
 }
 
-
-struct multiboot_info *mbinfo;
+struct multiboot_info* mbinfo;
 static void kmain2(void);
 
 extern "C" char chariot_welcome_start[];
@@ -107,13 +71,9 @@ extern "C" char chariot_welcome_start[];
 
 extern void rtc_init(void);
 
-
-
 // #define WASTE_TIME_PRINTING_WELCOME
 
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
-
-
   /*
    * Initialize the real-time-clock
    */
@@ -149,7 +109,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
    */
   init_kernel_virtual_memory();
 
-
   void* new_stack = (void*)((u64)kmalloc(STKSIZE) + STKSIZE);
 
   // call the next phase main with the new allocated stack
@@ -160,9 +119,19 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   while (1) panic("should not have gotten back here\n");
 }
 
-static int kernel_init_task(void*);
+typedef void (*func_ptr)(void);
+extern "C" func_ptr __init_array_start[0], __init_array_end[0];
+
+static void call_global_constructors(void) {
+  for (func_ptr* func = __init_array_start; func != __init_array_end; func++) {
+    (*func)();
+  }
+}
 
 
+
+// kernel/init.cpp
+int kernel_init(void*);
 
 static void kmain2(void) {
   irq::init();
@@ -188,8 +157,8 @@ static void kmain2(void) {
   assert(sched::init());
   KINFO("Initialized the scheduler\n");
 
-  auto *kproc0 = task_process::kproc_init();
-  kproc0->create_task(kernel_init_task, PF_KTHREAD, nullptr);
+  // create the initialization thread.
+  sched::proc::create_kthread(kernel_init);
 
 
   KINFO("starting scheduler\n");
@@ -201,91 +170,4 @@ static void kmain2(void) {
   // [noreturn]
 }
 
-/*
- * attempt to spawn init from a certain binary. Returning the pid
- * on success and -1 on failure
- */
-static int attempt_init_spawn(const char *binary) {
 
-  // spawn the user process
-  pid_t init = sys::pctl(0, PCTL_SPAWN, 0);
-  if (init == -1) return -1;
-
-  // launch /bin/init
-  const char* init_args[] = {binary, NULL};
-
-  struct pctl_cmd_args cmdargs {
-    .path = (char*)init_args[0], .argc = 1, .argv = (char**)init_args,
-    // its up to init to deal with env variables. (probably reading from an
-    // initial file or something)
-        .envc = 0, .envv = NULL,
-  };
-
-  // TODO: setup stdin, stdout, and stderr
-  int res = sys::pctl(init, PCTL_CMD, (u64)&cmdargs);
-  if (res == -1) return -1;
-
-  return init;
-}
-
-/**
- * the kernel drops here in a kernel task
- *
- * Further initialization past getting the scheduler working should run here
- */
-static int kernel_init_task(void*) {
-  pci::init(); /* initialize the PCI subsystem */
-  KINFO("Initialized PCI\n");
-  init_pit();
-  KINFO("Initialized PIT\n");
-  syscall_init();
-
-  // walk the kernel modules and run their init function
-  KINFO("g Calling kernel module init functions\n");
-  initialize_kernel_modules();
-  KINFO("kernel modules initialized\n");
-
-
-  // open up the disk device for the root filesystem
-  const char *rootdev_path = kargs::get("root", "ata0p1");
-  KINFO("rootdev=%s\n", rootdev_path);
-  auto rootdev = dev::open(rootdev_path);
-  assert(rootdev.ino != NULL);
-  init_rootvfs(rootdev);
-
-  // setup stdio stuff for the kernel (to be inherited by spawn)
-  int fd = sys::open("/dev/console", O_RDWR);
-  assert(fd == 0);
-
-  sys::dup2(fd, 1);
-
-  sys::dup2(fd, 2);
-
-  string init_paths = kargs::get("init", "/bin/init");
-  int init_pid = -1;
-
-  for (auto &path : init_paths.split(',')) {
-    init_pid = attempt_init_spawn(path.get());
-    if (init_pid != -1) {
-      break;
-    }
-  }
-
-
-
-
-  if (init_pid == -1) {
-    KERR("failed to create init process\n");
-    KERR("check the grub config and make sure that the init command line arg\n")
-    KERR("is set to a comma seperated list of possible paths.\n")
-  }
-
-
-
-  // yield back to scheduler, we don't really want to run this thread anymore
-  while (1) {
-    arch::halt();
-  }
-
-  panic("main kernel thread reached unreachable code\n");
-}

@@ -5,7 +5,6 @@
 #include <printk.h>
 #include <sched.h>
 #include <smp.h>
-#include <task.h>
 
 // implementation of the x86 interrupt request handling system
 extern u32 idt_block[];
@@ -129,15 +128,16 @@ static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
 }
 
 // TODO: move to sched.cpp
-static void tick_handle(int i, struct task_regs *tf) {
+static void tick_handle(int i, struct regs *tf) {
   auto &cpu = cpu::current();
+
   // increment the number of ticks
   cpu.ticks++;
   sched::handle_tick(cpu.ticks);
   return;
 }
 
-static void unknown_exception(int i, struct task_regs *tf) {
+static void unknown_exception(int i, struct regs *tf) {
   KERR("KERNEL PANIC\n");
   KERR("CPU EXCEPTION: %s\n", excp_codes[tf->trapno][EXCP_NAME]);
   KERR("the system was running for %d ticks\n");
@@ -160,7 +160,7 @@ static void unknown_exception(int i, struct task_regs *tf) {
 }
 
 
-static void dbl_flt_handler(int i, struct task_regs *tf) {
+static void dbl_flt_handler(int i, struct regs *tf) {
   printk("DOUBLE FAULT!\n");
   printk("&i=%p\n", &i);
 
@@ -170,33 +170,34 @@ static void dbl_flt_handler(int i, struct task_regs *tf) {
 }
 
 /*
-static void unknown_hardware(int i, struct task_regs *tf) {
+static void unknown_hardware(int i, struct regs *tf) {
   printk("unknown! %d\n", i);
 }
 */
 
-static void gpf_handler(int i, struct task_regs *tf) {
+static void gpf_handler(int i, struct regs *tf) {
   // TODO: die
-  KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", cpu::task()->pid,
-       cpu::task()->tid, tf->eip, tf->err);
+  KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", curthd->pid,
+       curthd->tid, tf->eip, tf->err);
   asm("cli; hlt");
   sched::block();
 }
 
-static void illegal_instruction_handler(int i, struct task_regs *tf) {
+static void illegal_instruction_handler(int i, struct regs *tf) {
   // TODO: die
   auto pa = paging::get_physical(tf->eip & ~0xFFF);
   if (pa == 0) {
     return;
   }
 
-  KERR("pid %d, tid %d died from illegal instruction @ %p\n", cpu::task()->pid,
-       cpu::task()->tid, tf->eip);
+  KERR("pid %d, tid %d died from illegal instruction @ %p\n", curthd->pid,
+       curthd->tid, tf->eip);
   KERR("  ESP=%p\n", tf->esp);
   sched::block();
 }
 
-extern "C" void syscall_handle(int i, struct task_regs *tf);
+extern "C" void syscall_handle(int i, struct regs *tf);
+
 
 #define PGFLT_PRESENT (1 << 0)
 #define PGFLT_WRITE (1 << 1)
@@ -204,26 +205,36 @@ extern "C" void syscall_handle(int i, struct task_regs *tf);
 #define PGFLT_RESERVED (1 << 3)
 #define PGFLT_INSTR (1 << 4)
 
-static void pgfault_handle(int i, struct task_regs *tf) {
+static void pgfault_handle(int i, struct regs *tf) {
   void *page = (void *)(read_cr2() & ~0xFFF);
 
   auto proc = curproc;
   if (curproc == NULL) {
     KERR("not in a proc while pagefaulting\n");
     // lookup the kernel proc if we aren't in one!
-    proc = task_process::lookup(0);
+    proc = sched::proc::kproc();
   }
 
-  curtask->tf = tf;
+  curthd->trap_frame = tf;
 
   if (proc) {
-    int res = proc->mm.handle_pagefault((off_t)page, tf->err);
+
+    int err = 0;
+
+    // TODO: read errors
+    if (tf->err & PGFLT_USER) err |= FAULT_PERM;
+    if (tf->err & PGFLT_WRITE) err |= FAULT_WRITE;
+    if (tf->err & PGFLT_INSTR) err |= FAULT_EXEC;
+
+    int res = proc->addr_space->handle_pagefault((off_t)page, err);
     if (res == -1) {
       // TODO:
-      KERR("pid %d, tid %d segfaulted @ %p\n", proc->pid, cpu::task()->tid,
+      KERR("pid %d, tid %d segfaulted @ %p\n", curthd->pid, curthd->tid,
            tf->eip);
       KERR("       bad address = %p\n", read_cr2());
       KERR("               err = %p\n", tf->err);
+
+      panic("dead");
 
       // XXX: just block, cause its an easy way to get the proc to stop running
       sched::block();
@@ -258,10 +269,7 @@ int arch::irq::init(void) {
   ::irq::install(TRAP_ILLOP, illegal_instruction_handler,
                  "Illegal Instruction Handler");
 
-
-
   pic_disable(34);
-
 
   mkgate(idt, 32, vectors[32], 0, 0);
   ::irq::install(32, tick_handle, "Preemption Tick");
@@ -279,11 +287,9 @@ int arch::irq::init(void) {
 }
 
 
-static int trap_depths[255] = {0};
-
 // just forward the trap on to the irq subsystem
 // This function is called from arch/x86/trap.asm
-extern "C" void trap(struct task_regs *regs) {
+extern "C" void trap(struct regs *regs) {
   /**
    * TODO: why do some traps disable interrupts?
    * it seems like its only with irq 32 (ticks)
@@ -292,16 +298,9 @@ extern "C" void trap(struct task_regs *regs) {
    */
   arch::sti();
 
-  cpu::current().current_trap = regs->trapno;
-  if (regs->trapno < 255) trap_depths[regs->trapno]++;
-
   irq::dispatch(regs->trapno, regs);
 
+  irq::eoi(regs->trapno);
   sched::before_iret();
 
-
-  irq::eoi(regs->trapno);
-
-  if (regs->trapno < 255) trap_depths[regs->trapno]--;
-  cpu::current().current_trap = -1;
 }

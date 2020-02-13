@@ -4,9 +4,16 @@
 int sys::open(const char *path, int flags, int mode) {
   auto proc = cpu::proc();
 
-  if (!proc->mm.validate_string(path)) {
+  if (!proc->addr_space->validate_string(path)) {
     return -1;
   }
 
-  return proc->open(path, flags, mode);
+  auto ino = vfs::open(path, flags, mode);
+  if (ino == NULL) return -ENOENT;
+
+  auto file = fs::filedesc::create(ino, path, flags);
+
+  int fd = proc->add_fd(file);
+
+  return fd;
 }

@@ -159,7 +159,7 @@ class e1000 {
     ~e1000();
 
     // called by the interrupt handler
-    void fire(struct task_regs *fr);
+    void fire(struct regs *fr);
 
     u8 *get_mac_address(void);
 
@@ -343,7 +343,7 @@ void e1000::enable_interrupt() {
   read_cmd(0xc0);
 }
 
-static void e1000_interrupt(int intr, struct task_regs *fr);
+static void e1000_interrupt(int intr, struct regs *fr);
 
 e1000::e1000(pci::device *dev)
   : dev(dev) /* : NetworkDriver(p_pciConfigHeader) */ {
@@ -381,7 +381,7 @@ bool e1000::start(void) {
 
 e1000::~e1000(void) {}
 
-void e1000::fire(struct task_regs *p_interruptContext) {
+void e1000::fire(struct regs *p_interruptContext) {
   /* This might be needed here if your handler doesn't clear interrupts from
      each device and must be done before EOI if using the PIC.
      Without this, the card will spam interrupts as the int-line will stay high.
@@ -443,7 +443,7 @@ int e1000::send_packet(const void *p_data, uint16_t p_len) {
 }
 
 static e1000 *e1000_inst;
-static void e1000_interrupt(int intr, struct task_regs *fr) {
+static void e1000_interrupt(int intr, struct regs *fr) {
   // INFO("interrupt: err=%d\n", fr->err);
   if (e1000_inst) e1000_inst->fire(fr);
 }

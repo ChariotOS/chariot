@@ -4,9 +4,9 @@
 #include <module.h>
 #include <pci.h>
 #include <printk.h>
-#include <task.h>
 #include <util.h>
 #include <vga.h>
+#include <cpu.h>
 
 #include "../drivers/majors.h"
 
@@ -147,7 +147,6 @@ int vga::width() { return m_framebuffer_width; }
 
 int vga::height() { return m_framebuffer_height; }
 
-/*
 static void set_register(u16 index, u16 data) {
   outw(VBE_DISPI_IOPORT_INDEX, index);
   outw(VBE_DISPI_IOPORT_DATA, data);
@@ -168,7 +167,6 @@ static void set_resolution(int width, int height) {
                VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
   set_register(VBE_DISPI_INDEX_BANK, 0);
 }
-*/
 
 void vga::set_pixel(int x, int y, int color) {
   if (vga_fba == 0) return;
@@ -202,11 +200,15 @@ static void *get_framebuffer_address(void) {
 }
 
 int vga::flush_buffer(u32 *dbuf, int npixels) {
+
+  cpu::pushcli();
   int len = width() * height();
   if (npixels < len) len = npixels;
   int i = 0;
   for (; i < npixels; i += 2) *(u64 *)(vga_fba + i) = *(u64 *)(dbuf + i);
   for (; i < npixels; i++) vga_fba[i] = dbuf[i];
+
+  cpu::popcli();
   return len;
 }
 
@@ -216,6 +218,7 @@ int vga::flush_buffer(u32 *dbuf, int npixels) {
 static ssize_t fb_write(fs::filedesc &fd, const char *buf, size_t sz) {
   if (fd) {
     if (vga_fba == nullptr) return -1;
+
     size_t fbsize = vga::npixels() * sizeof(u32);
     auto off = fd.offset() % fbsize;
     ssize_t space_left = fbsize - off;
@@ -223,7 +226,9 @@ static ssize_t fb_write(fs::filedesc &fd, const char *buf, size_t sz) {
     ssize_t to_copy = min(space_left, sz);
     if (to_copy <= 0) return 0;
 
+    cpu::pushcli();
     memcpy((char *)vga_fba + off, buf, to_copy);
+    cpu::popcli();
 
     // seek past
     fd.seek(sz, SEEK_CUR);
@@ -252,8 +257,10 @@ static void vga_init_mod(void) {
 
   vga_dev->enable_bus_mastering();
 
-  /*
+  // set_resolution(1366, 768);
+
   set_resolution(640, 480);
+  /*
   */
   dev::register_driver("fb", CHAR_DRIVER, MAJOR_FB, &fb_ops);
 }

@@ -68,7 +68,7 @@ uint8_t mouse_read() {
 
 static int buttons;
 
-static void mouse_handler(int i, struct task_regs *tf) {
+static void mouse_handler(int i, struct regs *tf) {
   // reset the cycle
   mouse_cycle = 0;
 
@@ -153,6 +153,7 @@ void mouse_install() {
 
 static ssize_t mouse_fdread(fs::filedesc &fd, char *buf, size_t sz) {
   if (fd) {
+    printk("yo\n");
     // if the size of the read request is not a multiple of a packet, fail
     if (sz % sizeof(struct mouse_packet) != 0) return -1;
 

@@ -26,6 +26,9 @@ size_t strlen(const char *s);
 char *strchr(const char *s, int c);
 
 
+int strcmp(const char *l, const char *r);
+
+
 #ifdef __cplusplus
 }
 #endif

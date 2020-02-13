@@ -9,7 +9,7 @@
 void restart(void);
 
 /// num=0x01
-void exit_task(int code);
+void exit_thread(int code);
 
 /// num=0x02
 void exit_proc(int code);
@@ -18,7 +18,7 @@ void exit_proc(int code);
 int spawn(void);
 
 /// num=0x04
-int cmdve(int pid, const char *path, const char *argv[], const char *envp[]);
+int startpidve(int pid, const char *path, const char *argv[], const char *envp[]);
 
 /// num=0x05
 int pctl(int pid, int cmd, unsigned long arg);
@@ -72,3 +72,6 @@ void *mmap(void *addr, long length, int prot, int flags, int fd, long offset);
 
 /// num=0x31
 int munmap(void *addr, unsigned long length);
+
+/// num=0x32
+int mrename(void *addr, char *name);

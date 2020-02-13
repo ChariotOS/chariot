@@ -63,7 +63,7 @@ static int uartgetc(void) {
   return inb(COM1 + 0);
 }
 
-void serial_irq_handle(int i, struct task_regs* tf) {
+void serial_irq_handle(int i, struct regs* tf) {
 
   size_t nread = 0;
   char buf[32];
