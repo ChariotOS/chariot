@@ -24,7 +24,7 @@ int startpidve(int pid, const char *path, const char *argv[], const char *envp[]
 int pctl(int pid, int cmd, unsigned long arg);
 
 /// num=0x06
-long waitpid(long pid, int *stat, int options);
+long waitpid(int pid, int *stat, int options);
 
 /// num=0x10
 int open(const char *path, int flags, int mode = 0);
@@ -61,10 +61,10 @@ int dup2(int oldfd, int newfd);
 int yield(void);
 
 /// num=0x21
-long getpid(void);
+int getpid(void);
 
 /// num=0x22
-long gettid(void);
+int gettid(void);
 
 
 /// num=0x30

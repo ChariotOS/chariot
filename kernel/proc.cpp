@@ -305,7 +305,6 @@ bool process::is_dead(void) {
 int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   scoped_lock lck(this->datalock);
 
-
   if (!this->embryonic) return -1;
 
   if (threads.size() != 0) return -1;
@@ -374,6 +373,15 @@ bool sched::proc::send_signal(pid_t p, int sig) {
 }
 
 int sched::proc::reap(process::ptr p) {
+
+  auto *me = curproc;
+
+  for (int i = 0; i < me->children.size(); i++) {
+    if (me->children[i] == p) {
+      me->children.remove(i);
+      break;
+    }
+  }
   return 0;
   assert(p->is_dead());
   ptable_remove(p->pid);
@@ -385,7 +393,12 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
   auto *me = curproc;
 
   if (!me) return -1;
-  if (pid != -1 && !pid_lookup(pid)) return -ECHILD;
+
+  if (pid != -1) {
+    if (pid_lookup(pid).get() == NULL) {
+      return -ECHILD;
+    }
+  }
 
   if (pid < -1) {
     KWARN("waitpid(<-1) not implemented\n");
@@ -395,24 +408,35 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
   pid_t res_pid = pid;
 
   while (1) {
-    if (pid != -1) {
+    {
       scoped_lock l(me->datalock);
-      auto other = pid_lookup(pid);
-      if (other->parent != me) return -1;
-
-      if (other->is_dead()) {
-        status = sched::proc::reap(other);
-        return pid;
+      process::ptr targ = nullptr;
+      if (pid == -1) {
+        for (auto c : me->children) {
+          if (c) {
+            if (c->is_dead()) {
+              status = sched::proc::reap(c);
+              return c->pid;
+            }
+          }
+        }
+      } else if (pid != -1) {
+        targ = pid_lookup(pid);
+        if (!targ) return -1;
+        if (targ->parent != me) {
+          return -ECHILD;
+        }
       }
-    } else if (pid == -1) {
-      scoped_lock l(me->datalock);
-      for (auto c : me->children) {
-        if (c->is_dead()) {
-          status = sched::proc::reap(c);
-          return c->pid;
+
+      if (targ) {
+        if (targ->is_dead()) {
+          status = sched::proc::reap(targ);
+          return targ->pid;
         }
       }
     }
+
+    if (options & WNOHANG) return -1;
 
     me->waiters.wait();
   }

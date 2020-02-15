@@ -39,20 +39,23 @@ int sys::startpidve(int pid, char const *upath, char const **uargv,
     argv.push(uargv[i]);
   }
 
+  /*
   if (uenvp != NULL) {
     for (int i = 0; uenvp[i] != NULL; i++) {
       // printk("e[%d] = %p\n", i, uenvp[i]);
       envp.push(uenvp[i]);
     }
   }
+  */
 
   int res = np->exec(path, argv, envp);
 
   // printk("res = %d\n", res);
 
-
   if (res != 0) {
     sched::proc::ptable_remove(np->pid);
+  } else {
+    proc->children.push(np);
   }
 
   // TODO: delete the process on failure to start

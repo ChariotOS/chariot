@@ -7,6 +7,9 @@
 #include <types.h>
 #include <cpu.h>
 
+
+// #define DEBUG
+
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 #define PGROUNDUP(x) round_up(x, 4096)
 
@@ -38,14 +41,6 @@ static struct {
 u64 phys::nfree(void) { return kmem.nfree; }
 
 u64 phys::bytes_free(void) { return nfree() << 12; }
-
-/*
-static void print_freelist() {
-  for (frame *f = kmem.freelist; f != NULL; f = f->next) {
-  }
-  printk("\n");
-}
-*/
 
 static frame *working_addr(frame *fr) {
   if (use_kernel_vm) {
@@ -84,10 +79,18 @@ static void *early_phys_alloc(int npages) {
   return r;
 }
 
+#ifdef PHYS_DEBUG
+static void print_free(void) {
+  size_t nbytes = kmem.nfree * 4096;
+  printk("phys: %zu kb\n", nbytes / 1024);
+}
+#endif
+
 // physical memory allocator implementation
 void *phys::alloc(int npages) {
 
   lock();
+
 
 
   if (npages > 1 && !use_kernel_vm) {
@@ -97,6 +100,11 @@ void *phys::alloc(int npages) {
   }
 
   auto p = early_phys_alloc(npages);
+
+#ifdef PHYS_DEBUG
+  print_free();
+#endif
+
   unlock();
   return p;
 }
@@ -119,6 +127,10 @@ void phys::free(void *v) {
 
   // increment how many pages are freed
   kmem.nfree++;
+
+#ifdef PHYS_DEBUG
+  print_free();
+#endif
 
   unlock();
 }

@@ -15,7 +15,7 @@ _start:
 
 	mov QWORD [__argc], rdi
 	mov QWORD [__argv], rsi
-	mov QWORD [__envp], rcx
+	mov QWORD [environ], rdx
 	; mov QWORD [__envp], rdi
 
 	mov rbp, rsp

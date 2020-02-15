@@ -55,6 +55,7 @@ void syscall_init(void) {
 #include <syscalls.inc>
 }
 
+
 static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
   if (num & !0xFF) return -1;
 

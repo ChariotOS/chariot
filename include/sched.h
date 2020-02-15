@@ -59,8 +59,8 @@ struct thread_context {
   unsigned long eip;  // rip;
 };
 
-using pid_t = long;
-using gid_t = long;
+using pid_t = int;
+using gid_t = int;
 
 struct process_user_info {
   // user and group information

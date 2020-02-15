@@ -3,7 +3,7 @@
 #include <cpu.h>
 
 
-long sys::waitpid(long pid, int *status_ptr, int flags) {
+long sys::waitpid(int pid, int *status_ptr, int flags) {
 
   if (status_ptr != NULL && !curproc->addr_space->validate_pointer(status_ptr, sizeof(*status_ptr), VPROT_WRITE)) {
     return -1;
