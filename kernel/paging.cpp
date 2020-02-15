@@ -153,7 +153,7 @@ void paging::map_into(u64 *p4, u64 va, u64 pa, pgsize size, u16 flags) {
     // printk("REMAP!\n");
   }
 
-  *pte = (pa & ~0xFFF) | flags | PTE_P | size_flag(size);
+  *pte = (pa & ~0xFFF) | flags | size_flag(size);
 
   INFO("size_flag = %016x\n", size_flag(size));
 

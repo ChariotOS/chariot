@@ -29,28 +29,25 @@ void init_rootvfs(fs::filedesc dev) {
   if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
 }
 
-unsigned* buf;
-static int vw = 0;
-static int vh = 0;
+struct Foo : public refcounted<Foo> {
+  public:
+    Foo(void) {
+      printk("Foo ctor!\n");
+    }
+    virtual ~Foo() {
+      printk("Foo dtor!\n");
+    }
+};
 
-
-#include <mouse_packet.h>
-
-int draw_spam(void*) {
-  auto mouse = dev::open("mouse");
-  vw = vga::width();
-  vh = vga::height();
-  buf = new unsigned[vga::npixels()];
-
-  for (int i = 0; true; i += 128) {
-    auto c = vga::rgb(i, i, i);
-    for (int p = 0; p < vga::npixels(); p++) buf[p] = c;
-    vga::flush_buffer(buf, vga::npixels());
-  }
-
-  delete[] buf;
-  return 0;
-}
+struct Bar : public Foo {
+  public:
+    Bar(void) {
+      printk("Bar ctor!\n");
+    }
+    virtual ~Bar() {
+      printk("Bar dtor!\n");
+    }
+};
 
 /**
  * the kernel drops here in a kernel task
@@ -58,6 +55,7 @@ int draw_spam(void*) {
  * Further initialization past getting the scheduler working should run here
  */
 int kernel_init(void*) {
+
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
   init_pit();

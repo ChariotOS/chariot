@@ -10,14 +10,6 @@ int spawn() {
   return pctl(0, PCTL_SPAWN);
 }
 
-static int nt_array_len(char *const *a) {
-  if (a == NULL) return 0;
-  int i = 0;
-  for (i = 0; a[i] != NULL; i++)
-    ;
-  return i;
-}
-
 
 int pctl(int pid, int request, ...) {
   void *arg;
@@ -30,9 +22,11 @@ int pctl(int pid, int request, ...) {
 
 
 int startpidve(int pid, char *const path, char *const argv[], char *const envp[]) {
+  /*
   printf("path=%p\n", path);
   printf("argv=%p\n", argv);
   printf("envp=%p\n", envp);
+  */
   return syscall(SYS_startpidve, pid, path, argv, envp);
 }
 

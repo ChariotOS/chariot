@@ -17,6 +17,5 @@ int sys::spawn(void) {
     proc->datalock.unlock();
     return np->pid;
   }
-  // printk("here\n");
   return -1;
 }

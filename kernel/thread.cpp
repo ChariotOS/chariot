@@ -2,8 +2,10 @@
  * This file implements all the thread:: functions and methods
  */
 #include <cpu.h>
+#include <mmap_flags.h>
 #include <process.h>
 #include <sched.h>
+#include <util.h>
 
 /**
  * A thread needs to bootstrap itself somehow, and it uses this function to do
@@ -14,6 +16,7 @@
 static void thread_create_callback(void *);
 // implemented in arch/$ARCH/trap.asm most likely
 extern "C" void trapret(void);
+extern "C" void user_initial_trapret(int argc, char **argv, char **envp);
 
 static spinlock thread_table_lock;
 static map<pid_t, struct thread *> thread_table;
@@ -69,7 +72,7 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
 
   thread_table_lock.lock();
   assert(!thread_table.contains(tid));
-  printk("inserting %d\n", tid);
+  // printk("inserting %d\n", tid);
   thread_table.set(tid, this);
   thread_table_lock.unlock();
 
@@ -87,7 +90,8 @@ bool thread::kickoff(void *rip, int initial_state) {
 }
 
 thread::~thread(void) {
-  panic("Thread [t:%d,p:%d] Deleted in %p!\n", tid, pid, __builtin_return_address(0));
+  panic("Thread [t:%d,p:%d] Deleted in %p!\n", tid, pid,
+        __builtin_return_address(0));
   kfree(stack);
   kfree(fpu.state);
 
@@ -114,32 +118,63 @@ bool thread::awaken(bool rudely) {
 }
 
 static void thread_create_callback(void *) {
-  auto &thd = *curthd;
+  auto thd = curthd;
 
-  if (thd.proc.ring == RING_KERN) {
+  auto tf = thd->trap_frame;
+
+  if (thd->proc.ring == RING_KERN) {
     using fn_t = int (*)(void *);
-    auto fn = (fn_t)thd.trap_frame->eip;
+    auto fn = (fn_t)thd->trap_frame->eip;
     cpu::popcli();
     // run the kernel thread
     int res = fn(NULL);
     // exit the thread with the return code of the func
     sys::exit_thread(res);
   } else {
+    if (thd->pid == thd->tid) {
+      auto sp = tf->esp;
+#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
+#define STACK_ALLOC(T, n)               \
+  ({                                    \
+    sp -= round_up(sizeof(T) * (n), 8); \
+    (T *)(void *) sp;                   \
+  })
+      auto argc = (u64)thd->proc.args.size();
+
+      size_t sz = 0;
+      sz += thd->proc.args.size() * sizeof(char *);
+      for (auto &a : thd->proc.args) sz += a.size() + 1;
+
+      auto region = (void *)STACK_ALLOC(char, sz);
+      // auto region = thd->proc.addr_space->add_mapping("[argv]", round_up(sz,
+      // 4096), VPROT_READ | VPROT_WRITE);
+
+      auto argv = (char **)region;
+
+      auto *arg = (char *)((char **)argv + argc);
+
+      int i = 0;
+      for (auto &a : thd->proc.args) {
+        int len = a.size() + 1;
+        memcpy(arg, a.get(), len);
+        argv[i++] = arg;
+        arg += len;
+      }
+
+      tf->esp = sp;
+      tf->rdi = argc;
+      tf->rsi = (unsigned long)argv;
+      tf->rdx = (unsigned long)argv;
+    }
     cpu::popcli();
 
-    if (thd.pid == thd.tid) {
-      
-    }
     return;
   }
 
-  printk("HERE! tid=%d pid=%d\n", thd.tid, thd.pid);
-  printk("      ip=%p\n", thd.trap_frame->eip);
-
+  sys::exit_proc(-1);
   while (1) {
   }
 }
-
 
 struct thread *thread::lookup(pid_t tid) {
   thread_table_lock.lock();

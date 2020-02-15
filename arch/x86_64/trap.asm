@@ -4,8 +4,6 @@
 extern trap
 global alltraps
 
-
-%ifdef __ARCH_x86_64__
 alltraps:
 	; Build trap frame.
   push r15
@@ -51,10 +49,31 @@ trapret:
   iretq
 
 
-%else
 
+global user_initial_trapret
+user_initial_trapret:
+	add rsp, 8
+	mov [rsp+0], rdi
+	mov [rsp+8], rdi
+	mov [rsp+16], rdx
 
-%endif
+  pop rax
+  pop rbx
+  pop rcx
+  pop rdx
+  pop rbp
+  pop rsi
+  pop rdi
+  pop r8
+  pop r9
+  pop r10
+  pop r11
+  pop r12
+  pop r13
+  pop r14
+  pop r15
 
-
+  ; discard trapnum and errorcode
+  add rsp, 16
+  iretq
 

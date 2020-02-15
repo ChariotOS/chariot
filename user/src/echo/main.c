@@ -6,8 +6,11 @@
 
 
 int main(int argc, char **argv) {
-  exit(0);
-  printf("exit didn't work!\n");
+  for (int i = 1; i < argc; i++) {
+    printf("%s", argv[i]);
+    if (i != argc - 1) printf(" ");
+  }
+  printf("\n");
 
   return 0;
 }

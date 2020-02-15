@@ -8,18 +8,20 @@
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 
-vm::phys_page::~phys_page(void) { printk("~phys_page(%p)\n", pa); }
+vm::phys_page::~phys_page(void) {
+  phys::free((void*)pa);
+  pa = 0;
+}
 
 ref<vm::phys_page> vm::phys_page::alloc(void) {
   auto p = make_ref<phys_page>();
   p->pa = (u64)phys::alloc();
-  // printk("=================== pa=%p\n", p->pa);
   return move(p);
 }
 
 vm::memory_backing::memory_backing(int npages) {
   // allocate and clear out the pages vector
-
+  // printk("new memory backing: [npages: %d] %p\n", npages, this);
   for (int i = 0; i < npages; i++) {
     pages.push(nullptr);
   }
@@ -49,11 +51,11 @@ vm::file_backing::file_backing(int npages, size_t size, off_t off,
     : memory_backing(npages),
       off(off),
       size(size),
-      fd(node, FDIR_READ | FDIR_WRITE) {}
+      fd(node, FDIR_READ | FDIR_WRITE) {
+}
 
 vm::file_backing::~file_backing(void) {
   // TODO: handle file backing destruction
-  printk("~file_backing()\n");
 }
 
 int vm::file_backing::fault(addr_space &space, region &reg, int page,
@@ -83,8 +85,6 @@ int vm::file_backing::fault(addr_space &space, region &reg, int page,
       // clear out all the other memory that was read
       memset((char *)buf + nread, 0x00, PGSIZE - nread);
     }
-
-    // hexdump(buf, PGSIZE);
   }
 
   void *va = (void *)(reg.va + (page << 12));
@@ -97,13 +97,18 @@ vm::region::region(string name, off_t va, size_t len, int prot)
   // printk("created region '%s' %d:%d prot:%x\n", name.get(), va, len, prot);
 }
 
+vm::region::~region(void) {
+  // release the backing
+  backing.clear();
+}
+
 vm::region *vm::addr_space::lookup(off_t va) {
   // just dumbly walk over the list of regions and find the right region
   for (auto &r : regions) {
     off_t start = r->va;
 
     if (va >= start && va < start + r->len) {
-      return r.get();
+      return r;
     }
   }
 
@@ -112,7 +117,7 @@ vm::region *vm::addr_space::lookup(off_t va) {
 
 // sort regions and return the number of swaps
 // TODO: write a better sorter lol
-static int sort_regions(vec<unique_ptr<vm::region>> &xs) {
+static int sort_regions(vec<vm::region *> &xs) {
   int const len = xs.size();
   if (len == 1) return 0;
   int n = 0;
@@ -147,7 +152,6 @@ static ssize_t convert_protection(off_t vm_prot) {
   return p;
 }
 
-
 int vm::addr_space::handle_pagefault(off_t va, int err) {
   auto r = lookup(va);
 
@@ -157,7 +161,6 @@ int vm::addr_space::handle_pagefault(off_t va, int err) {
 
   int fault_res = 0;
 
-
   auto page = (va >> 12) - (r->va >> 12);
 
   // TODO:
@@ -165,7 +168,6 @@ int vm::addr_space::handle_pagefault(off_t va, int err) {
   if (err & FAULT_WRITE && !(r->prot & VPROT_WRITE)) fault_res = -1;
   if (err & FAULT_READ && !(r->prot & VPROT_READ)) fault_res = -1;
   if (err & FAULT_EXEC && !(r->prot & VPROT_EXEC)) fault_res = -1;
-
 
   // refer to the backing structure to handle the fault
   if (fault_res == 0) fault_res = r->backing->fault(*this, *r, page, err);
@@ -209,7 +211,7 @@ int vm::addr_space::set_range(off_t b, off_t l) {
 off_t vm::addr_space::add_mapping(string name, off_t vaddr, size_t size,
                                   ref<vm::memory_backing> mem, int prot) {
   lck.lock();
-  auto reg = make_unique<vm::region>(move(name), vaddr, size, prot);
+  auto reg = new vm::region(move(name), vaddr, size, prot);
   reg->backing = mem;
 
   regions.push(move(reg));
@@ -217,6 +219,33 @@ off_t vm::addr_space::add_mapping(string name, off_t vaddr, size_t size,
 
   lck.unlock();
   return vaddr;
+}
+
+int vm::addr_space::unmap(void *ptr, size_t len) {
+  scoped_lock l(lck);
+
+  off_t va = (off_t)ptr;
+  if ((va & 0xFFF) != 0) return -1;
+
+  for (int i = 0; i < regions.size(); i++) {
+    auto *region = regions[i];
+    if (region->va == va && region->len == len) {
+      // printk("removing region %d. Named '%s'\n", i, region->name.get());
+
+      regions.remove(i);
+      sort_regions(regions);
+
+      auto p4 = (u64 *)p2v(cr3);
+      for (off_t v = va; v < va + len; v += 4096) {
+        paging::map_into(p4, v, 0, paging::pgsize::page, 0);
+      }
+
+      delete region;
+      return 0;
+    }
+  }
+
+  return -1;
 }
 
 off_t vm::addr_space::find_region_hole(size_t size) {
@@ -254,7 +283,7 @@ off_t vm::addr_space::add_mapping(string name, ref<vm::memory_backing> mem,
     panic("unable to find mapping\n");
   }
 
-  auto reg = make_unique<vm::region>(move(name), vaddr, size, prot);
+  auto reg = new vm::region(move(name), vaddr, size, prot);
   reg->backing = mem;
 
   regions.push(move(reg));
@@ -337,19 +366,22 @@ vm::addr_space::addr_space(void) {
 }
 
 vm::addr_space::~addr_space(void) {
-  // KINFO("destruct addr_space\n");
+  this->dump();
+  for (auto r : regions) delete r;
+
+  // TODO: deallocate the page table.
 }
 
 string vm::addr_space::format(void) {
   string s;
 
   for (auto &r : regions) {
-    s+=string::format("%p-%p ", r->va, r->va + r->len);
-    s+=string::format("%c", r->prot & VPROT_READ ? 'r' : '-');
-    s+=string::format("%c", r->prot & VPROT_WRITE ? 'w' : '-');
-    s+=string::format("%c", r->prot & VPROT_EXEC ? 'x' : '-');
-    s+=string::format(" %s", r->name.get());
-    s+=string::format("\n");
+    s += string::format("%p-%p ", r->va, r->va + r->len);
+    s += string::format("%c", r->prot & VPROT_READ ? 'r' : '-');
+    s += string::format("%c", r->prot & VPROT_WRITE ? 'w' : '-');
+    s += string::format("%c", r->prot & VPROT_EXEC ? 'x' : '-');
+    s += string::format(" %s", r->name.get());
+    s += string::format("\n");
   }
   return s;
 }

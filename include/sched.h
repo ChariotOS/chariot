@@ -9,6 +9,9 @@
 #include <vec.h>
 #include <vm.h>
 
+#include <signals.h>
+#define SIGBIT(n) (1 << (n))
+
 #define RING_KERN 0
 #define RING_USER 3
 
@@ -93,6 +96,15 @@ struct process final : public refcounted<struct process> {
 
   unsigned ring = RING_USER;
 
+
+  // signal information
+  struct {
+    u64 mask;
+    u64 pending;
+    void *handlers[64] = {0};
+    spinlock lock;
+  } sig;
+
   /*
    * A process contains a ref counted pointer to the parent.
    * TODO: is this unsafe?
@@ -113,6 +125,9 @@ struct process final : public refcounted<struct process> {
   vec<string> args;
   vec<string> env;
 
+  bool exited = 0;
+  int exit_code = 0;
+
   vm::addr_space *addr_space;
 
   u64 create_tick = 0;
@@ -120,6 +135,9 @@ struct process final : public refcounted<struct process> {
   fs::inode *cwd = nullptr;
   bool embryonic = false;
   spinlock datalock;
+
+  /* threads stuck in a waitpid() call */
+  waitqueue waiters;
 
   spinlock file_lock = spinlock("task.file_lock");
   map<int, ref<fs::filedesc>> open_files;
@@ -134,6 +152,8 @@ struct process final : public refcounted<struct process> {
 
   pid_t create_thread(void *ip, int state);
 
+  // just walks the threads and checks they are all zombie
+  bool is_dead(void);
 
   inline process() {}
   process(const process &) = delete;
@@ -292,6 +312,14 @@ pid_t spawn_init(vec<string> &paths);
 
 /* remove a process from the ptable */
 bool ptable_remove(pid_t);
+
+
+bool send_signal(pid_t, int sig);
+
+int reap(process::ptr);
+
+
+int do_waitpid(pid_t, int &status, int options);
 
 };  // namespace proc
 }  // namespace sched

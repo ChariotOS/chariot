@@ -39,10 +39,10 @@ struct phys_page : public refcounted<phys_page> {
  * a memory backing is a structure that allows overloading of physical memory
  * access. By default it just owns physical pages
  */
-class memory_backing : public refcounted<phys_page> {
+class memory_backing : public refcounted<memory_backing> {
  public:
   memory_backing(int npages);
-  virtual ~memory_backing();  // pure virtual
+  virtual ~memory_backing();
 
   virtual int fault(addr_space &, region &, int page, int flags);
 
@@ -80,6 +80,7 @@ class region {
   // regions have a backing structure which handles faults
   ref<vm::memory_backing> backing;
   region(string name, off_t, size_t, int prot);
+  ~region(void);
 };
 
 class addr_space final : public refcounted<addr_space> {
@@ -112,6 +113,12 @@ class addr_space final : public refcounted<addr_space> {
 
   off_t map_file(string name, struct fs::inode *, off_t vaddr, off_t off, size_t size, int prot);
 
+
+  /**
+   * unmap a region of memory
+   */
+  int unmap(void *, size_t);
+
   off_t find_region_hole(size_t);
 
   void dump();
@@ -140,7 +147,7 @@ class addr_space final : public refcounted<addr_space> {
  protected:
   spinlock lck = spinlock("addr_space");
 
-  vec<unique_ptr<vm::region>> regions;
+  vec<vm::region*> regions;
 
   struct pending_mapping {
     void *va;

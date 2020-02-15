@@ -2,7 +2,8 @@ section .data
 ;; storage for kernel parameters
 extern __argc
 extern __argv
-extern __envp
+extern environ
+
 
 section .text
 
@@ -12,10 +13,12 @@ extern libc_start
 global _start
 _start:
 
-	mov [__argc], edi
-	mov [__argv], esi
-	mov [__envp], edx
+	mov QWORD [__argc], rdi
+	mov QWORD [__argv], rsi
+	mov QWORD [__envp], rcx
+	; mov QWORD [__envp], rdi
 
+	mov rbp, rsp
 	push rbp
 
 	jmp libc_start

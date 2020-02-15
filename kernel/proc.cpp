@@ -13,6 +13,7 @@
 #include <paging.h>
 #include <phys.h>
 #include <sched.h>
+#include <wait_flags.h>
 
 // start out at pid 2, so init is pid 1 regardless of if kernel threads are
 // created before init is spawned
@@ -33,6 +34,13 @@ static vm::addr_space *alloc_user_vm(void) {
 
   a->set_range(0x1000, 0x7ffffffff000);
   return a;
+}
+
+static process::ptr pid_lookup(pid_t pid) {
+  scoped_lock l(proc_table_lock);
+  process::ptr p = nullptr;
+  if (proc_table.contains(pid)) p = proc_table.get(pid);
+  return p;
 }
 
 static process::ptr do_spawn_proc(process::ptr proc_ptr,
@@ -211,8 +219,6 @@ int process::add_fd(ref<fs::filedesc> file) {
 }
 
 process::~process(void) {
-
-
   if (threads.size() != 0) {
     KWARN("destruction of proc %d still has threads!\n", this->pid);
   }
@@ -230,6 +236,8 @@ void sched::proc::dump_table(void) {
     auto &proc = p.value;
     printk("pid %d ", proc->pid);
     printk("threadc=%-3d ", proc->threads.size());
+
+    printk("dead= %d ", proc->is_dead());
 
     printk("files={");
 
@@ -280,27 +288,23 @@ void sched::proc::dump_table(void) {
   }
 }
 
+bool process::is_dead(void) {
+  for (auto tid : threads) {
+    auto t = thread::lookup(tid);
+    assert(t);
+    scoped_lock l(t->locks.generic);
+
+    if (t->state != PS_ZOMBIE) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   scoped_lock lck(this->datalock);
 
-  /*
-  printk("Attempting exec()\n");
-  printk("   path='%s'\n", path.get());
-
-  printk("   argv=[");
-  for (int i = 0; i < argv.size(); i++) {
-    printk("'%s'", argv[i].get());
-    if (i < argv.size() - 1) printk(", ");
-  }
-  printk("]\n");
-
-  printk("   envp=[");
-  for (int i = 0; i < envp.size(); i++) {
-    printk("'%s'", envp[i].get());
-    if (i < envp.size() - 1) printk(", ");
-  }
-  printk("]\n");
-  */
 
   if (!this->embryonic) return -1;
 
@@ -312,18 +316,6 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   // TODO: open permissions on the binary
   if (vfs::namei(path.get(), 0, 0, cwd, exe) != 0) return -ENOENT;
   // TODO check execution permissions
-
-  /*
-  printk("found the binary!\n");
-  // wipe out threads and address space
-  for (auto t : threads) {
-    printk("t=%d\n", t);
-    auto *thd = thread::lookup(t);
-    assert(thd != NULL);
-
-    printk("must teardown thread %p [tid=%d]\n", thd, t);
-  }
-  */
 
   off_t entry = 0;
   auto fd = fs::filedesc(exe, FDIR_READ);
@@ -341,31 +333,118 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   off_t stack = 0;
   // TODO: this size is arbitrary.
   auto stack_size = 8 * PGSIZE;
-
   stack = new_addr_space->add_mapping("[stack]", stack_size,
                                       VPROT_READ | VPROT_WRITE);
 
   // TODO: push argv and arguments onto the stack
   this->args = argv;
   this->env = envp;
-
-  // delete new_addr_space;
-  //
-  //
   delete this->addr_space;
   this->addr_space = new_addr_space;
 
-  // printk("entry=%p\n", entry);
-  // printk("stack=%p\n", stack);
-  // printk("new addr space = %p\n", new_addr_space);
   //
   this->embryonic = false;
 
   // construct the thread
   auto thd = new thread(pid, *this);
-  thd->trap_frame->esp = stack + stack_size - 32;
+  thd->trap_frame->esp = stack + stack_size - 64;
   thd->kickoff((void *)entry, PS_RUNNABLE);
 
   return 0;
 }
 
+bool sched::proc::send_signal(pid_t p, int sig) {
+  if (sig < 0 || sig >= 64) return false;
+
+  scoped_lock l(proc_table_lock);
+
+  bool sent = false;
+
+  if (proc_table.contains(p)) {
+    auto &targ = proc_table[p];
+    scoped_lock siglock(targ->sig.lock);
+    if (!(targ->sig.mask & SIGBIT(sig))) {
+      printk("sending signal %d to %d\n", p, sig);
+      targ->sig.pending |= SIGBIT(sig);
+      sent = true;
+    }
+  }
+
+  return sent;
+}
+
+int sched::proc::reap(process::ptr p) {
+  return 0;
+  assert(p->is_dead());
+  ptable_remove(p->pid);
+
+  return 0;
+}
+
+int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
+  auto *me = curproc;
+
+  if (!me) return -1;
+  if (pid != -1 && !pid_lookup(pid)) return -ECHILD;
+
+  if (pid < -1) {
+    KWARN("waitpid(<-1) not implemented\n");
+    return -1;
+  }
+
+  pid_t res_pid = pid;
+
+  while (1) {
+    if (pid != -1) {
+      scoped_lock l(me->datalock);
+      auto other = pid_lookup(pid);
+      if (other->parent != me) return -1;
+
+      if (other->is_dead()) {
+        status = sched::proc::reap(other);
+        return pid;
+      }
+    } else if (pid == -1) {
+      scoped_lock l(me->datalock);
+      for (auto c : me->children) {
+        if (c->is_dead()) {
+          status = sched::proc::reap(c);
+          return c->pid;
+        }
+      }
+    }
+
+    me->waiters.wait();
+  }
+
+  return res_pid;
+
+  /*
+  if (options & WNOHANG) {
+    // FIXME: Figure out what WNOHANG should do with stopped children.
+    if (pid == -1) {
+      pid_t reaped_pid = 0;
+      InterruptDisabler disabler;
+      for_each_child([&reaped_pid, &exit_status](Process &process) {
+        if (process.is_dead()) {
+          reaped_pid = process.pid();
+          exit_status = reap(process);
+        }
+        return IterationDecision::Continue;
+      });
+      return reaped_pid;
+    } else {
+      ASSERT(waitee > 0);  // FIXME: Implement other PID specs.
+      InterruptDisabler disabler;
+      auto *waitee_process = Process::from_pid(waitee);
+      if (!waitee_process) return -ECHILD;
+      if (waitee_process->is_dead()) {
+        exit_status = reap(*waitee_process);
+        return waitee;
+      }
+      return 0;
+    }
+  }
+*/
+  return -1;
+}

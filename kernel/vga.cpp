@@ -259,7 +259,8 @@ static void vga_init_mod(void) {
 
   // set_resolution(1366, 768);
 
-  set_resolution(640, 480);
+  // set_resolution(640, 480);
+  set_resolution(800, 600);
   /*
   */
   dev::register_driver("fb", CHAR_DRIVER, MAJOR_FB, &fb_ops);

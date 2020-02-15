@@ -8,12 +8,14 @@ void hexdump(void *vbuf, long len) {
 
   int w = 16;
   for (int i = 0; i < len; i += w) {
+
     unsigned char *line = buf + i;
+    printf("%p: ", line);
     for (int c = 0; c < w; c++) {
       if (i + c >= len) {
         printf("   ");
       } else {
-        printf("%02X ", line[c]);
+        printf("%02x ", line[c]);
       }
     }
     printf(" |");

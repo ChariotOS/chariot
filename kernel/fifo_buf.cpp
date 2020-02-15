@@ -106,7 +106,11 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
   // possibly block?
   if (navail < size && block) {
     rlock.unlock();
-    readers.wait(size);
+    int rude = readers.wait(size);
+    if (rude) {
+      if (readers.should_notify(navail)) readers.notify();
+      return -1;
+    }
     rlock.lock();
   }
 

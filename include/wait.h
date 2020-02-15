@@ -19,6 +19,8 @@ class waitqueue {
   void wait_noint(u32 on = 0);
   void notify();
 
+  void notify_all(void);
+
   bool should_notify(u32 val);
 
  private:

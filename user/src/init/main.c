@@ -6,10 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <sys/mman.h>
 
 char *read_line(int fd, char *prompt, int *len_out);
 void hexdump(void *vbuf, long len);
@@ -26,7 +26,6 @@ int parseline(const char *cmdline, char **argv) {
   buf[strlen(buf)] = ' ';       /* replace trailing '\n' with space */
   while (*buf && (*buf == ' ')) /* ignore leading spaces */
     buf++;
-
 
   /* Build the argv list */
   argc = 0;
@@ -76,9 +75,6 @@ uint32_t next(void) {
 
 long val = 0;
 
-
-
-
 int main(int argc, char **argv) {
   // open up file descriptor 1, 2, and 3
   for (int i = 0; i < 3; i++) close(i + 1);
@@ -93,19 +89,12 @@ int main(int argc, char **argv) {
   int arg_buflen = sizeof(char *) * MAX_ARGS;
   char **args = malloc(arg_buflen);
 
-
-  int *exec = mmap(NULL, 4096, PROT_EXEC, MAP_ANON, -1, 0);
-  mrename(exec, "exec");
-  int *read = mmap(NULL, 4096, PROT_READ, MAP_ANON, -1, 0);
-  mrename(read, "read");
-  int *write = mmap(NULL, 4096, PROT_WRITE, MAP_ANON, -1, 0);
-  mrename(write, "write");
-
-
-  int *none = mmap(NULL, 4096, PROT_NONE, MAP_ANON, -1, 0);
-  mrename(none, "something\nwrong");
-
-
+  int size = 8 * 4096;
+  int *reg =
+      mmap(NULL, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANON, -1, 0);
+  mrename(reg, "my region");
+  memset(reg, 0, size / 2);
+  munmap(reg, size);
 
   char *envs[] = {NULL};
   while (1) {
@@ -113,28 +102,28 @@ int main(int argc, char **argv) {
 
     memset(args, 0, arg_buflen * sizeof(char *));
 
-    char *buf = read_line(0, "init~# ", &len);
+    char *buf = read_line(0, "# ", &len);
 
     len = strlen(buf);
     if (len == 0) goto cleanup;
 
     if (strcmp(buf, "exit") == 0) exit(0);
 
-    hexdump(buf, len);
     parseline(buf, args);
-
-    for (int i = 0; i < MAX_ARGS; i++) {
-      if (args[i] == NULL) break;
-      printf("%d:'%s'\n", i, args[i]);
-    }
 
     pid_t pid = spawn();
     if (pid <= -1) {
       printf("Error spawning, code=%d\n", pid);
       goto cleanup;
     }
-    startpidve(pid, args[0], args, envs);
 
+    int start_res = startpidve(pid, args[0], args, envs);
+    // printf("sr:%d\n", start_res);
+    if (start_res == 0) {
+      int stat = 0;
+      waitpid(pid, &stat, 0);
+      // printf("r:%x s:%x\n", r, stat);
+    }
 
   cleanup:
     free(buf);

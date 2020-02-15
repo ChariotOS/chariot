@@ -41,14 +41,14 @@ int sys::startpidve(int pid, char const *upath, char const **uargv,
 
   if (uenvp != NULL) {
     for (int i = 0; uenvp[i] != NULL; i++) {
-      printk("e[%d] = %p\n", i, uenvp[i]);
+      // printk("e[%d] = %p\n", i, uenvp[i]);
       envp.push(uenvp[i]);
     }
   }
 
   int res = np->exec(path, argv, envp);
 
-  printk("res = %d\n", res);
+  // printk("res = %d\n", res);
 
 
   if (res != 0) {

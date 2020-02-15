@@ -128,8 +128,6 @@ static void call_global_constructors(void) {
   }
 }
 
-
-
 // kernel/init.cpp
 int kernel_init(void*);
 
@@ -160,7 +158,6 @@ static void kmain2(void) {
   // create the initialization thread.
   sched::proc::create_kthread(kernel_init);
 
-
   KINFO("starting scheduler\n");
   arch::sti();
   // sched::beep();
@@ -169,5 +166,3 @@ static void kmain2(void) {
   panic("sched::run() returned\n");
   // [noreturn]
 }
-
-

@@ -25,7 +25,12 @@ void *sys::mmap(void *addr, long length, int prot, int flags, int fd,
   return (void *)va;
 }
 
-int sys::munmap(void *addr, size_t length) { return -1; }
+int sys::munmap(void *addr, size_t length) {
+  auto proc = cpu::proc();
+  if (!proc) return -1;
+
+  return proc->addr_space->unmap(addr, length);
+}
 
 int sys::mrename(void *addr, char *name) {
   auto proc = cpu::proc();

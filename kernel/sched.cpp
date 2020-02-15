@@ -387,6 +387,18 @@ void waitqueue::notify() {
   }
 }
 
+void waitqueue::notify_all(void) {
+  scoped_lock lck(lock);
+
+  while (front != NULL) {
+    auto waiter = front;
+    if (front == back) back = NULL;
+    front = waiter->wq.next;
+    // *nicely* awaken the thread
+    waiter->awaken(false);
+  }
+}
+
 bool waitqueue::should_notify(u32 val) {
   lock.lock();
   if (front != NULL) {
@@ -403,4 +415,25 @@ void sched::before_iret(void) {
   if (!cpu::in_thread()) return;
   // exit via the scheduler if the task should die.
   if (curthd->should_die) sched::exit();
+
+  auto *proc = curproc;
+  int sig_to_handle = -1;
+  {
+    scoped_lock l(proc->sig.lock);
+    if (proc->sig.pending != 0) {
+      for (int i = 0; i < 63; i++) {
+        if (proc->sig.pending & SIGBIT(i)) {
+          proc->sig.pending &= ~SIGBIT(i);
+          sig_to_handle = i;
+        }
+      }
+    }
+  }
+
+  if (sig_to_handle != -1) {
+    cpu::pushcli();
+    printk("signal to handle: %d\n", sig_to_handle);
+    cpu::popcli();
+  }
 }
+

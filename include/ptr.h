@@ -164,7 +164,6 @@ class refcounted : public refcounted_base {
     deref_base();
     if (m_ref_count == 0) {
       call_will_be_destroyed_if_present(static_cast<T*>(this));
-      // printk("DELETE!\n");
       delete static_cast<T*>(this);
     } else if (m_ref_count == 1) {
       call_one_ref_left_if_present(static_cast<T*>(this));

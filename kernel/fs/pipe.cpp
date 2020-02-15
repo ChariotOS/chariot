@@ -29,7 +29,15 @@ ssize_t fs::pipe::do_read(filedesc &fd, void *vbuf, size_t size) {
   // if the buffer doesn't have space, wait on it!
   if (used_bytes < size) {
     lock.unlock();
-    wq.wait(size);
+    int rude = wq.wait(size);
+
+    // if we were rudely awoken, tell the next process
+    if (rude) {
+      if (wq.should_notify(used_bytes)) {
+        wq.notify();
+      }
+      return -1;
+    }
     lock.lock();
   }
 
@@ -82,7 +90,6 @@ ssize_t fs::pipe::do_write(filedesc &fd, void *vbuf, size_t size) {
     write_ind++;
     write_ind %= capacity;
   }
-
 
   // notify a reader if there is one
   if (wq.should_notify(used_bytes)) {

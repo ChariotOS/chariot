@@ -100,7 +100,7 @@ done
 
 
 echo 'copying new filesystem data...'
-sudo cp -r mnt/. $mnt/
+sudo cp -r base/. $mnt/
 sudo mkdir -p $mnt/dev
 sudo mkdir -p $mnt/tmp
 
