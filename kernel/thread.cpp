@@ -161,10 +161,24 @@ static void thread_create_callback(void *) {
         arg += len;
       }
 
+
+      auto envc = thd->proc.env.size();
+      auto envp = STACK_ALLOC(char *, envc + 1);
+
+      for (int i = 0; i < envc; i++) {
+        auto &e = thd->proc.env[i];
+        envp[i] = STACK_ALLOC(char, e.len() + 1);
+        memcpy(envp[i], e.get(), e.len() + 1);
+        printk("%s\n", e.get());
+      }
+
+      envp[envc + 1] = NULL;
+
+
       tf->esp = sp;
       tf->rdi = argc;
       tf->rsi = (unsigned long)argv;
-      tf->rdx = (unsigned long)argv;
+      tf->rdx = (unsigned long)envp;
     }
     cpu::popcli();
 

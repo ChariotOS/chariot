@@ -9,6 +9,8 @@ CFLAGS:=$(CINCLUDES) $(OPTIMIZE) $(MOREFLAGS) -fno-omit-frame-pointer -fno-stack
 				 -mtls-direct-seg-refs -ffreestanding -Wall \
 
 
+RSFLAGS := --crate-type=bin
+
 
 PFX:=" - [U]"
 
@@ -87,11 +89,22 @@ build/%.c.o: %.c
 	@echo "$(PFX) CC  " $<
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
-
 build/%.cpp.o: %.cpp
 	@mkdir -p $(dir $@)
 	@echo "$(PFX) CXX " $<
 	@$(CXX) $(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions -o $@ -c $<
+
+
+
+build/%.rs.o: %.rs
+	@mkdir -p $(dir $@)
+	@echo "$(PFX) RS  " $<
+	rustc -O -C target-feature=+crt-static \
+		--edition 2018                        \
+		$(RSFLAGS)                            \
+		-L crate=crates/                      \
+		-L out/lib/rs -l static=std           \
+		--emit obj -o $@ $<
 
 
 build/%.asm.o: %.asm

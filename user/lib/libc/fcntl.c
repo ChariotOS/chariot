@@ -31,5 +31,6 @@ int open(const char *filename, int flags, ...) {
 	//  __syscall(SYS_fcntl, fd, F_SETFD, FD_CLOEXEC);
   // }
 
-	return fd; // __syscall_ret(fd);
+
+	return __syscall_ret(fd);
 }

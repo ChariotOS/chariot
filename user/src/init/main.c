@@ -1,9 +1,67 @@
-#include <unistd.h>
 #include <chariot.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
+#include <unistd.h>
+
+static char *next_line(char *from) {
+  while (1) {
+    if (*from == '\0') return NULL;
+    if (*from == '\n') break;
+    from++;
+  }
+
+  return from + 1;
+}
+
+// read the initial environ from /etc/environ
+// credit: github.com/The0x539
+char **read_default_environ(void) {
+  struct stat st;
+
+  if (lstat("/etc/environ", &st) != 0) {
+    printf("[init] WARNING: no /etc/environ found\n");
+    while (1) {
+    }
+    return NULL;
+  }
+
+  char *buf = malloc(st.st_size + 1);
+  FILE *fp = fopen("/etc/environ", "r");
+  if (!fp) {
+    free(buf);
+    return NULL;
+  }
+
+  fread(buf, st.st_size, 1, fp);
+  fclose(fp);
+
+  size_t len = st.st_size;
+
+  if (!buf) {
+    return NULL;
+  }
+  size_t nvars = 0;
+  for (int i = 0; i < len; i++) {
+    if ((i == 0 || buf[i - 1] == '\n') && (buf[i] != '\n' && buf[i] != '#')) {
+      nvars++;
+    }
+  }
+  size_t idx = 0;
+  char **env = malloc(nvars * sizeof(char *));
+  for (int i = 0; i < len; i++) {
+    if ((i == 0 || buf[i - 1] == '\0') && (buf[i] != '\n' && buf[i] != '#')) {
+      env[idx++] = &buf[i];
+    }
+    if (buf[i] == '\n') {
+      buf[i] = '\0';
+    }
+  }
+  // *n = nvars;
+  return env;
+}
 
 int main(int argc, char **argv) {
   // open up file descriptor 1, 2, and 3
@@ -17,8 +75,11 @@ int main(int argc, char **argv) {
   char *shell = "/bin/sh";
   char *sh_argv[] = {shell, NULL};
 
-  // TODO: load default env from /etc/environ or something
-  char **envp = NULL;
+  char **envp = read_default_environ();
+
+  for (int i = 0; envp[i] != NULL; i++) {
+    printf("%s\n", envp[i]);
+  }
 
   while (1) {
     pid_t sh_pid = spawn();
@@ -28,7 +89,11 @@ int main(int argc, char **argv) {
     }
 
     while (1) {
-      if (waitpid(-1, NULL, 0) == sh_pid) {
+      pid_t reaped = waitpid(-1, NULL, 0);
+
+      printf("[init] reaped pid %d\n", reaped);
+
+      if (reaped == sh_pid) {
         printf("[init] sh died\n");
         break;
       }

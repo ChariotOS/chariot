@@ -13,10 +13,12 @@ int parseline(const char *, char **argv);
 
 
 
+
 int main(int argc, char **argv, char **envp) {
 
   int arg_buflen = sizeof(char *) * MAX_ARGS;
   char **args = malloc(arg_buflen);
+
 
   while (1) {
     int len = 0;
@@ -30,7 +32,7 @@ int main(int argc, char **argv, char **envp) {
 
     if (strcmp(buf, "exit") == 0) exit(0);
 
-    parseline(buf, args);
+    int bg = parseline(buf, args);
 
     pid_t pid = spawn();
     if (pid <= -1) {
@@ -39,11 +41,11 @@ int main(int argc, char **argv, char **envp) {
     }
 
     int start_res = startpidve(pid, args[0], args, envp);
-    // printf("sr:%d\n", start_res);
     if (start_res == 0) {
       int stat = 0;
-      waitpid(pid, &stat, 0);
-      // printf("r:%x s:%x\n", r, stat);
+      if (!bg) waitpid(pid, &stat, 0);
+    } else {
+      printf("failed to execute: '%s'\n", buf);
     }
 
   cleanup:

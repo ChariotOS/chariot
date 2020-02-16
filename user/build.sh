@@ -2,13 +2,19 @@
 
 # This is a little bit of a hack, but it is so that libraries
 # are built first, then binaries. This fixes `symbol not found' errors
-for dir in $(ls -d lib/*); do
-	echo "Building $dir"
-	make run M=$dir -j
-done
+
+build () {
+	echo "Building $1"
+	make run M=$1 -j
+}
 
 
-for dir in $(ls -d src/*); do
-	echo "Building $dir"
-	make run M=$dir -j
-done
+build lib/libc
+
+
+build src/init
+build src/env
+build src/cat
+build src/echo
+build src/sh
+build src/test_exit

@@ -16,11 +16,7 @@ int main(int argc, char **argv) {
   for (int i = 1; i < argc; i++) {
     int fd = open(argv[i], O_RDONLY);
 
-    if (fd == -1) {
-      return -1;
-    }
-
-    while (1) {
+    while (fd != -1) {
       size_t n = read(fd, buf, BSIZE);
       write(1, buf, n);
 
@@ -28,6 +24,8 @@ int main(int argc, char **argv) {
         break;
       }
     }
+
+    close(fd);
 
 
   }
