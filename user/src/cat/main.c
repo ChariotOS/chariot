@@ -7,6 +7,7 @@
 #define BSIZE 4096
 
 int main(int argc, char **argv) {
+
   if (argc == 1) {
     printf("usage: cat <files...>\n");
     return -1;

@@ -59,7 +59,7 @@ build:
 
 
 run: build out $(out)
-	@echo -e "Done\n"
+	@#echo -e "Done\n"
 
 
 
