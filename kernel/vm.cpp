@@ -173,9 +173,11 @@ int vm::addr_space::handle_pagefault(off_t va, int err) {
   if (fault_res == 0) fault_res = r->backing->fault(*this, *r, page, err);
 
   if (fault_res != 0) {
+    /*
     printk("should segfault pid %p for accessing %p illegally\n",
            cpu::proc()->pid, va);
     this->dump();
+    */
     return -1;
   }
 

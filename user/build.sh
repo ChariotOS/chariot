@@ -15,7 +15,9 @@ build lib/libc
 build src/init
 build src/env
 build src/cat
+build src/hex
 build src/echo
 build src/sh
 build src/ls
 build src/test_exit
+build src/cal

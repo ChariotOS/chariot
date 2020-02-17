@@ -1,10 +1,13 @@
 #include <stdlib.h>
 #include <sys/syscall.h>
+#include <stdio.h>
 
+
+extern void __funcs_on_exit();
 
 void exit(int status) {
-
-  // TODO: call destructors and whatnot.
+  // call destructors and whatnot.
+  __funcs_on_exit();
 
   syscall(SYS_exit_proc, status);
   // should not return here. Cause a segfault just in case :^)
@@ -12,6 +15,3 @@ void exit(int status) {
     *(volatile char*)NULL = 0;
   }
 }
-
-
-

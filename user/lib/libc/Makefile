@@ -24,3 +24,5 @@ srcs += pthread.c
 srcs += exit.c
 srcs += wait.c
 srcs += dirent.c
+srcs += atexit.c
+srcs += time.c

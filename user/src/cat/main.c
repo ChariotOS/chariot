@@ -17,7 +17,11 @@ int main(int argc, char **argv) {
     int fd = open(argv[i], O_RDONLY);
 
     while (fd != -1) {
-      size_t n = read(fd, buf, BSIZE);
+      long n = read(fd, buf, BSIZE);
+      if (n < 0) {
+        printf("failed to read '%s'\n", argv[i]);
+        break;
+      }
       write(1, buf, n);
 
       if (n < BSIZE) {

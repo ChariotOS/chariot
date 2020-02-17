@@ -5,6 +5,9 @@
 // A triple slash before the syscall allows the definition of an attribute,
 // where `num` is the systemcall number (the value of eax when called)
 
+
+#include <types.h>
+
 /// num=0x00
 void restart(void);
 
@@ -82,3 +85,7 @@ int mrename(void *addr, char *name);
 
 /// num=0x40
 int dirent(int fd, struct dirent *, int offset, int count);
+
+
+/// num=0x50
+time_t localtime(struct tm *tloc);

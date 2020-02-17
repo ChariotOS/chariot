@@ -18,7 +18,6 @@ void libc_start() {
   // initialize stdio
   stdio_init();
 
-
   // TODO: parse envp and store in a better format!
   exit(main(__argc, __argv, environ));
   printf("failed to exit!\n");

@@ -23,3 +23,4 @@
 #define SYS_munmap                   (0x31)
 #define SYS_mrename                  (0x32)
 #define SYS_dirent                   (0x40)
+#define SYS_localtime                (0x50)

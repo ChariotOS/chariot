@@ -3,21 +3,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
-
+#define C_RESET "\x1b[0m"
+#define C_GRAY "\x1b[90m"
 #define MAX_ARGS 255
 char *read_line(int fd, char *prompt, int *len_out);
 int parseline(const char *, char **argv);
 
-
-
-
 int main(int argc, char **argv, char **envp) {
-
   int arg_buflen = sizeof(char *) * MAX_ARGS;
   char **args = malloc(arg_buflen);
+
+  char prompt[64];
+
+  snprintf(prompt, 64, C_GRAY "sh# " C_RESET, argv[0]);
+
 
 
   while (1) {
@@ -25,7 +27,8 @@ int main(int argc, char **argv, char **envp) {
 
     memset(args, 0, arg_buflen * sizeof(char *));
 
-    char *buf = read_line(0, "# ", &len);
+
+    char *buf = read_line(0, prompt, &len);
 
     len = strlen(buf);
     if (len == 0) goto cleanup;
@@ -92,8 +95,6 @@ char *read_line(int fd, char *prompt, int *len_out) {
         if (i != 0) {
           buf[--i] = 0;
         } else {
-          printf("\r%s", prompt);
-          fflush(stdout);
         }
         break;
 
@@ -101,12 +102,14 @@ char *read_line(int fd, char *prompt, int *len_out) {
         buf[i++] = c;
         break;
     }
+
+    printf("\r%s%s", prompt, buf);
+    fflush(stdout);
   }
   buf[i] = '\0';  // null terminate
   if (len_out != NULL) *len_out = i;
   return buf;
 }
-
 
 int parseline(const char *cmdline, char **argv) {
   char *buf = malloc(strlen(cmdline) + 1); /* ptr that traverses command line */

@@ -5,6 +5,7 @@
 #include <printk.h>
 #include <sched.h>
 #include <smp.h>
+#include <process.h>
 
 // implementation of the x86 interrupt request handling system
 extern u32 idt_block[];
@@ -234,7 +235,8 @@ static void pgfault_handle(int i, struct regs *tf) {
       KERR("       bad address = %p\n", read_cr2());
       KERR("               err = %p\n", tf->err);
 
-      panic("dead");
+
+      sys::exit_proc(-1);
 
       // XXX: just block, cause its an easy way to get the proc to stop running
       sched::block();

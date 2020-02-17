@@ -22,6 +22,3 @@ int close(int fd) {
   return syscall(SYS_close, fd);
 }
 
-void exit(int status) {
-  syscall(SYS_exit_proc, status);
-}

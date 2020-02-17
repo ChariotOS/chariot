@@ -249,7 +249,7 @@ int fs::ext2_inode::block_from_index(int i_block, int set_to) {
 
 int fs::ext2_inode::injest_info(fs::ext2_inode_info &info) {
   size = info.size;
-  mode = info.type & 0xFFF;
+  mode = info.type & 077777;
   uid = info.uid;
   gid = info.gid;
   link_count = info.hardlinks;

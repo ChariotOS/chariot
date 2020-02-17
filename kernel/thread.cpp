@@ -171,8 +171,7 @@ static void thread_create_callback(void *) {
         memcpy(envp[i], e.get(), e.len() + 1);
       }
 
-      envp[envc + 1] = NULL;
-
+      envp[envc] = NULL;
 
       tf->esp = sp;
       tf->rdi = argc;

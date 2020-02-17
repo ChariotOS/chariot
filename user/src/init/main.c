@@ -9,15 +9,6 @@
 #include <sys/syscall.h>
 #include <chariot/dirent.h>
 
-static char *next_line(char *from) {
-  while (1) {
-    if (*from == '\0') return NULL;
-    if (*from == '\n') break;
-    from++;
-  }
-
-  return from + 1;
-}
 
 // read the initial environ from /etc/environ
 // credit: github.com/The0x539
