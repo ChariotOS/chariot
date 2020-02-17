@@ -366,10 +366,13 @@ vm::addr_space::addr_space(void) {
 }
 
 vm::addr_space::~addr_space(void) {
-  this->dump();
+  // this->dump();
+
   for (auto r : regions) delete r;
 
-  // TODO: deallocate the page table.
+
+  // free the layers of the page table and cr3
+  paging::free_table(cr3);
 }
 
 string vm::addr_space::format(void) {

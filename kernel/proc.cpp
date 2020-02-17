@@ -43,8 +43,7 @@ static process::ptr pid_lookup(pid_t pid) {
   return p;
 }
 
-static process::ptr do_spawn_proc(process::ptr proc_ptr,
-                                  struct sched::proc::spawn_options &opts) {
+static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
   // get a reference, they are nicer to look at.
   // (and we spend less time in ref<process>::{ref,deref}())
   auto &proc = *proc_ptr;
@@ -54,7 +53,7 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr,
   proc.create_tick = cpu::get_ticks();
   proc.embryonic = true;
 
-  proc.ring = opts.ring;
+  proc.ring = flags & SPAWN_KERN ? RING_KERN : RING_USER;
 
   // This check is needed because the kernel process has no parent.
   if (proc.parent) {
@@ -85,8 +84,7 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr,
  * democratic. This assures that the lifetime of a process is no longer than
  * that of the constituent tasks.
  */
-process::ptr sched::proc::spawn_process(struct process *parent,
-                                        struct spawn_options &opts) {
+process::ptr sched::proc::spawn_process(struct process *parent, int flags) {
   // grab the next pid (will be the tid of the main thread when it is executed)
   pid_t pid = get_next_pid();
 
@@ -102,7 +100,7 @@ process::ptr sched::proc::spawn_process(struct process *parent,
 
   // Set up initial data for the process.
   proc_ptr->parent = parent;
-  return do_spawn_proc(proc_ptr, opts);
+  return do_spawn_proc(proc_ptr, flags);
 };
 
 bool sched::proc::ptable_remove(pid_t p) {
@@ -137,11 +135,8 @@ pid_t sched::proc::spawn_init(vec<string> &paths) {
 
   proc_ptr->parent = sched::proc::kproc();
 
-  struct spawn_options opts;
-  opts.ring = RING_USER;
-
   // initialize normally
-  proc_ptr = do_spawn_proc(proc_ptr, opts);
+  proc_ptr = do_spawn_proc(proc_ptr, 0);
 
   auto &proc = *proc_ptr;
 
@@ -162,10 +157,7 @@ static process::ptr kernel_process = nullptr;
 struct process *sched::proc::kproc(void) {
   if (kernel_process.get() == nullptr) {
     // spawn the kernel process
-    struct sched::proc::spawn_options opts;
-    opts.ring = RING_KERN;
-
-    kernel_process = sched::proc::spawn_process(nullptr, opts);
+    kernel_process = sched::proc::spawn_process(nullptr, SPAWN_KERN);
     kernel_process->pid = 0;  // just lower than init (pid 1)
     kernel_process->embryonic = false;
     auto &vm = kernel_process->addr_space;
@@ -279,7 +271,6 @@ void sched::proc::dump_table(void) {
       printk("start %-6d ", t->sched.start_tick);
       printk("cpu %-3d ", t->stats.current_cpu);
 
-      printk("rip=%p ", t->trap_frame->eip);
       printk("\n");
     }
 
@@ -373,17 +364,34 @@ bool sched::proc::send_signal(pid_t p, int sig) {
 }
 
 int sched::proc::reap(process::ptr p) {
-
+  assert(p->is_dead());
   auto *me = curproc;
 
+  process::ptr init = proc_table[1];
+  assert(init);
+
+
+  for (auto tid : p->threads) {
+    auto *t = thread::lookup(tid);
+    assert(t->state == PS_ZOMBIE);
+    thread::teardown(t);
+  }
+  p->threads.clear();
+  /* remove the child from our list */
   for (int i = 0; i < me->children.size(); i++) {
     if (me->children[i] == p) {
       me->children.remove(i);
       break;
     }
   }
-  return 0;
-  assert(p->is_dead());
+
+  if (me != init) init->datalock.lock();
+  for (auto &c : p->children) {
+    printk("pid %d adopted by init\n", c->pid);
+    init->children.push(c);
+    c->parent = init;
+  }
+  if (me != init) init->datalock.unlock();
   ptable_remove(p->pid);
 
   return 0;

@@ -248,6 +248,7 @@ struct thread final {
   bool kickoff(void *rip, int state);
 
   static thread *lookup(pid_t);
+  static bool teardown(thread *);
 
   /**
    * Do not use this API, go through sched::proc::* to allocate and deallocate
@@ -297,7 +298,10 @@ namespace proc {
 struct spawn_options {
   int ring = RING_USER;
 };
-process::ptr spawn_process(struct process *parent, struct spawn_options &);
+
+#define SPAWN_KERN (1 << 0)
+// #define SPAWN_VFORK (1 << 1)
+process::ptr spawn_process(struct process *parent, int flags);
 
 // get the kernel process (creating if it doesnt exist
 struct process *kproc(void);

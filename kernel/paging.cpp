@@ -107,7 +107,7 @@ u64 *paging::find_mapping(u64 *pml4, u64 va, pgsize size) {
   INFO("depth = %d\n", depth);
 
   // KINFO("find_mapping: %p: %d %d %d %d\n", va, pti(va, 3), pti(va, 2),
-        // pti(va, 1), pti(va, 0));
+  // pti(va, 1), pti(va, 0));
 
   u64 *table = conv(pml4);
 
@@ -170,3 +170,50 @@ void paging::map(u64 va, u64 pa, pgsize size, u16 flags) {
 }
 
 u64 paging::get_physical(u64 va) { return 0; }
+
+static void free_p2(off_t *p2_p) {
+  off_t *p2 = (off_t *)p2v(p2_p);
+  for (int i = 0; i < 512; i++) {
+    if (p2[i]) {
+      off_t e = p2[i];
+      if ((e & PTE_P) == 0) continue;
+      if (e & PTE_PS) {
+        phys::free((void*)(e & ~0xFFF));
+        continue;
+      }
+      phys::free((off_t *)(e & ~0xFFF));
+    }
+  }
+  phys::free(p2_p);
+}
+
+static void free_p3(off_t *p3_p) {
+  off_t *p3 = (off_t *)p2v(p3_p);
+  for (int i = 0; i < 512; i++) {
+    if (p3[i]) {
+      off_t e = p3[i];
+
+      if ((e & PTE_P) == 0) continue;
+      if (e & PTE_PS) {
+        phys::free((void*)(e & ~0xFFF));
+        continue;
+      }
+
+      free_p2((off_t *)(e & ~0xFFF));
+    }
+  }
+
+  phys::free(p3_p);
+}
+
+void paging::free_table(void *cr3) {
+  off_t *pml4 = (off_t *)p2v(cr3);
+  // only loop over the lower half (userspace)
+  for (int i = 0; i < 272; i++) {
+    if (pml4[i]) {
+      free_p3((off_t *)(pml4[i] & ~0xFFF));
+    }
+  }
+
+  phys::free(cr3);
+}

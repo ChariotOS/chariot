@@ -90,12 +90,12 @@ bool thread::kickoff(void *rip, int initial_state) {
 }
 
 thread::~thread(void) {
+  /*
   panic("Thread [t:%d,p:%d] Deleted in %p!\n", tid, pid,
         __builtin_return_address(0));
+        */
   kfree(stack);
   kfree(fpu.state);
-
-  // TODO: remove this thread from the process
 }
 
 bool thread::awaken(bool rudely) {
@@ -195,4 +195,15 @@ struct thread *thread::lookup(pid_t tid) {
   auto t = thread_table.get(tid);
   thread_table_lock.unlock();
   return t;
+}
+
+bool thread::teardown(thread *t) {
+
+  thread_table_lock.lock();
+  assert(thread_table.contains(t->tid));
+  thread_table.remove(t->tid);
+  thread_table_lock.unlock();
+
+  delete t;
+  return true;
 }

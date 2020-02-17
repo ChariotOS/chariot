@@ -8,7 +8,7 @@ int sys::spawn(void) {
   struct sched::proc::spawn_options opts;
   opts.ring = RING_USER;
 
-  auto np = sched::proc::spawn_process(proc, opts);
+  auto np = sched::proc::spawn_process(proc, 0);
 
   if (np) {
     proc->datalock.lock();

@@ -8,7 +8,7 @@
 #include <cpu.h>
 
 
-// #define DEBUG
+// #define PHYS_DEBUG
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 #define PGROUNDUP(x) round_up(x, 4096)

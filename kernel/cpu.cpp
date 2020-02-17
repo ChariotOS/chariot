@@ -167,6 +167,8 @@ void cpu::switch_vm(struct thread *thd) {
   auto kptable = (u64 *)p2v(get_kernel_page_table());
   auto pptable = (u64 *)p2v(thd->proc.addr_space->cr3);
 
+  // TODO: do this with pagefaults instead
+  // TODO: maybe flush the tlb if it changes?
   if (kptable != pptable) {
     for (int i = 272; i < 512; i++) {
       if (kptable[i] == 0) break; // optimization

@@ -41,7 +41,7 @@ namespace paging {
   void map_into(u64 *p4, u64 va, u64 pa, pgsize size, u16 flags);
   void map(u64 va, u64 pa, pgsize size = pgsize::page, u16 flags = PTE_W | PTE_P);
 
-
+  void free_table(void *);
   u64 get_physical(u64 va);
 };
 
