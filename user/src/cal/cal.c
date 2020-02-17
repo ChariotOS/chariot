@@ -47,6 +47,9 @@ static const int days_in_month[2][13] = {
 #define leap_years_since_year_1(yr) \
   ((yr) / 4 - centuries_since_1700(yr) + quad_centuries_since_1700(yr))
 
+#define C_RESET "\x1b[0m"
+#define C_GRAY "\x1b[90m"
+
 void center(const char *, int, int);
 int day_in_week(int, int, int);
 int day_in_year(int, int, int);
@@ -56,6 +59,19 @@ void print_month(int month, int year, struct tm *now) {
   snprintf(header, 20, "%s %d", month_names[month - 1], year);
   center(header, 20, 0);
   printf("\n");
+
+  if (now->tm_mon == month && now->tm_year == year) {
+    int hour = now->tm_hour;
+    int min = now->tm_min;
+    int sec = now->tm_sec;
+
+    char ap = hour < 12 ? 'A' : 'P';
+    if (ap == 'P') hour -= 12;
+
+    snprintf(header, 12, "%d:%02d:%02d %cM", hour, min, sec, ap);
+    center(header, 20, 0);
+    printf("\n");
+  }
 
   printf("%s\n", DAY_HEADINGS_S);
 
@@ -73,8 +89,10 @@ void print_month(int month, int year, struct tm *now) {
       d = 0;
     }
 
-    if (i == now->tm_mday) {
+    if (i == now->tm_mday && month == now->tm_mon) {
       printf("\x1b[7m%2d\x1b[27m ", i);
+    } else if (d == 0 || d == 6) {
+      printf(C_GRAY "%2d " C_RESET, i);
     } else {
       printf("%2d ", i);
     }
@@ -92,7 +110,6 @@ int main(int argc, char **argv) {
   now = getlocaltime(&local_time);
 
   print_month(local_time.tm_mon, local_time.tm_year, &local_time);
-
   return 0;
 }
 
