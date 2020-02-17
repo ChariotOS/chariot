@@ -169,7 +169,6 @@ static void thread_create_callback(void *) {
         auto &e = thd->proc.env[i];
         envp[i] = STACK_ALLOC(char, e.len() + 1);
         memcpy(envp[i], e.get(), e.len() + 1);
-        printk("%s\n", e.get());
       }
 
       envp[envc + 1] = NULL;

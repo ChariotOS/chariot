@@ -4,31 +4,6 @@
 #include <pctl.h>
 #include <process.h>
 
-pid_t do_spawn(void) {
-  /*
-  assert(cpu::in_thread());
-  auto proc = cpu::proc();
-
-  int err = 0;
-  auto p = task_process::spawn(proc->pid, err);
-
-  if (err != 0) {
-    // TODO: make sure the process is deleted
-    return -1;
-  }
-
-  // inherit stdio files
-  // TODO: is there a better way of doing this?
-  p->open_files[0] = proc->open_files[0];
-  p->open_files[1] = proc->open_files[1];
-  p->open_files[2] = proc->open_files[2];
-
-  proc->nursery.push(p->pid);
-  return p->pid;
-  */
-
-  return -1;
-}
 
 static int do_cmd(pid_t pid, struct pctl_cmd_args *args) {
 
@@ -183,12 +158,6 @@ static int do_create_thread(struct pctl_create_thread_args *argp) {
 int sys::pctl(int pid, int request, u64 arg) {
   // printk("pctl(%d, %d, %p);\n", pid, request, arg);
   switch (request) {
-    case PCTL_SPAWN:
-      return do_spawn();
-
-    case PCTL_CMD:
-      return do_cmd(pid, (struct pctl_cmd_args *)arg);
-
     case PCTL_CREATE_THREAD:
       return do_create_thread((struct pctl_create_thread_args *)arg);
 

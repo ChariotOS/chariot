@@ -194,6 +194,17 @@ void fs::inode::walk_direntries(
   }
 }
 
+
+vec<string> fs::inode::direntries(void) {
+  assert(type == T_DIR);
+
+  vec<string> e;
+  for_in_ll(ent, dir.entries) {
+    e.push(ent->name);
+  }
+  return e;
+}
+
 ssize_t fs::inode::read(filedesc &fd, void *buf, size_t sz) {
   ssize_t k = -1;
 

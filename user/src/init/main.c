@@ -6,6 +6,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <sys/syscall.h>
+#include <chariot/dirent.h>
+
 static char *next_line(char *from) {
   while (1) {
     if (*from == '\0') return NULL;
@@ -76,10 +79,6 @@ int main(int argc, char **argv) {
   char *sh_argv[] = {shell, NULL};
 
   char **envp = read_default_environ();
-
-  for (int i = 0; envp[i] != NULL; i++) {
-    printf("%s\n", envp[i]);
-  }
 
   while (1) {
     pid_t sh_pid = spawn();

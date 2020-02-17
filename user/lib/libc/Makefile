@@ -23,3 +23,4 @@ srcs += stat.c
 srcs += pthread.c
 srcs += exit.c
 srcs += wait.c
+srcs += dirent.c

@@ -14,11 +14,13 @@ int yield(void);
 
 // TODO: pid_t and all that
 int spawn();
+int despawn(int pid);
 
 int pctl(int pid, int req, ...);
 
 
 int startpidve(int pid, char *const path, char *const argv[], char *const envp[]);
+int startpidvpe(int pid, char *const path, char *const argv[], char *const envp[]);
 // int cmdpidv(int pid, char *const path, char *const argv[]);
 
 

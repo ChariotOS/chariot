@@ -18,12 +18,15 @@ void exit_proc(int code);
 int spawn(void);
 
 /// num=0x04
-int startpidve(int pid, const char *path, const char *argv[], const char *envp[]);
+int despawn(int);
 
 /// num=0x05
-int pctl(int pid, int cmd, unsigned long arg);
+int startpidve(int pid, const char *path, const char *argv[], const char *envp[]);
 
 /// num=0x06
+int pctl(int pid, int cmd, unsigned long arg);
+
+/// num=0x07
 long waitpid(int pid, int *stat, int options);
 
 /// num=0x10
@@ -75,3 +78,7 @@ int munmap(void *addr, unsigned long length);
 
 /// num=0x32
 int mrename(void *addr, char *name);
+
+
+/// num=0x40
+int dirent(int fd, struct dirent *, int offset, int count);

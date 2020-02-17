@@ -19,3 +19,26 @@ int sys::spawn(void) {
   }
   return -1;
 }
+
+int sys::despawn(int pid) {
+  auto proc = curproc;
+  scoped_lock lck(proc->datalock);
+
+  int emb;
+  process::ptr np;
+  for (emb = 0; emb < proc->embryos.size(); emb++) {
+    auto p = proc->embryos[emb];
+    assert(p);
+
+    if (p->pid == pid) {
+      np = p;
+      break;
+    }
+  }
+
+  if (!np) return -ENOENT;
+
+  proc->embryos.remove(emb);
+  sched::proc::ptable_remove(pid);
+  return 0;
+}

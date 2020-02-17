@@ -40,12 +40,13 @@ int main(int argc, char **argv, char **envp) {
       goto cleanup;
     }
 
-    int start_res = startpidve(pid, args[0], args, envp);
+    int start_res = startpidvpe(pid, args[0], args, envp);
     if (start_res == 0) {
       int stat = 0;
       if (!bg) waitpid(pid, &stat, 0);
     } else {
       printf("failed to execute: '%s'\n", buf);
+      despawn(pid);
     }
 
   cleanup:

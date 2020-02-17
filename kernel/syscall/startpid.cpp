@@ -22,8 +22,6 @@ int sys::startpidve(int pid, char const *upath, char const **uargv,
     }
 
     if (!np) return -ENOENT;
-
-    proc->embryos.remove(emb);
   }
 
   if (upath == NULL) return -1;
@@ -50,12 +48,12 @@ int sys::startpidve(int pid, char const *upath, char const **uargv,
 
   // printk("res = %d\n", res);
 
-  if (res != 0) {
-    sched::proc::ptable_remove(np->pid);
-  } else {
+  if (res == 0) {
+    proc->embryos.remove(emb);
     proc->children.push(np);
   }
 
   // TODO: delete the process on failure to start
   return res;
 }
+

@@ -8,7 +8,7 @@
 #include <syscalls.h>
 #include <vm.h>
 #include <stat.h>
-
+#include <dirent.h>
 #define RING_KERNEL 0
 #define RING_USER 3
 
