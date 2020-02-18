@@ -102,12 +102,8 @@ void print_month(int month, int year, struct tm *now) {
 }
 
 int main(int argc, char **argv) {
-  time_t now;
   struct tm local_time;
-
-  // int ch, month, year, yflag;
-
-  now = getlocaltime(&local_time);
+  getlocaltime(&local_time);
 
   print_month(local_time.tm_mon, local_time.tm_year, &local_time);
   return 0;

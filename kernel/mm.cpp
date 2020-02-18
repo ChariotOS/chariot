@@ -3,6 +3,7 @@
 #include <types.h>
 #include <vga.h>
 #include <cpu.h>
+#include <util.h>
 
 uint64_t sbreakc = 0;
 
@@ -257,6 +258,7 @@ void *mm_realloc(void *ptr, size_t size) {
   */
   void *new_region = mm_malloc(size);
   memcpy(new_region, ptr, GET_SIZE(GET_BLK(ptr)));
+
   mm_free(ptr);
   PRINT_DEBUG();
   return new_region;

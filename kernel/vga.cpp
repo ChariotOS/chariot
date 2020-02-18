@@ -53,6 +53,7 @@ u8 vga::make_color(enum vga::color fg, enum vga::color bg) {
 }
 
 void vga::putchar(char c) {
+  return;
   if (c == '\n') {
     vga_x = 0;
     if (++vga_y == VGA_HEIGHT) {

@@ -117,6 +117,7 @@ int init_mem(u64 mbd) {
   init_mmap(mbd);
 
   auto *kend = (u8 *)high_kern_end;
+  printk("kend = %p\n", kend);
 
   // setup memory regions
   for (int i = 0; i < mm_info.num_regions; i++) {
@@ -153,7 +154,7 @@ void *ksbrk(i64 inc) {
   i64 a = PGROUNDUP(oldsz);
   for (; a < newsz; a += 4096) {
     void *pa = phys::alloc();
-    paging::map((u64)kheap_start + a, (u64)pa, paging::pgsize::page,
+    paging::map_into((u64*)get_kernel_page_table(), (u64)kheap_start + a, (u64)pa, paging::pgsize::page,
                 PTE_W | PTE_P);
   }
   kheap_size = newsz;

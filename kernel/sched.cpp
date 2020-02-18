@@ -224,7 +224,8 @@ static void schedule_one() {
 
   if (thd == nullptr) {
     // idle loop when there isn't a task
-    printk("nothing.\n");
+    // printk("nothing.\n");
+    asm("pause");
     return;
   }
 

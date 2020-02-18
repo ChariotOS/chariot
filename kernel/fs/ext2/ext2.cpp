@@ -49,10 +49,7 @@ typedef struct __ext2_dir_entry {
 
 #define EXT2_CACHE_SIZE 128
 
-fs::ext2::ext2(fs::filedesc disk)
-    : filesystem(/*super*/), disk(disk) {
-  TRACE;
-}
+fs::ext2::ext2(fs::filedesc disk) : filesystem(/*super*/), disk(disk) { TRACE; }
 
 fs::ext2::~ext2(void) {
   TRACE;
@@ -113,7 +110,6 @@ bool fs::ext2::init(void) {
   KINFO("ext2 uuid: %08x-%04x-%04x-%04x-%012x\n", *(u32 *)uuid, u_shrts[0],
         u_shrts[1], u_shrts[2], trail);
 
-
   return true;
 }
 
@@ -172,11 +168,6 @@ bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
   write_block(bgd->block_of_inode_table + block, inode_buf);
   return true;
 }
-/**
- *
- *
- *
- */
 
 bool fs::ext2::read_block(u32 block, void *buf) {
   TRACE;
@@ -188,7 +179,7 @@ bool fs::ext2::read_block(u32 block, void *buf) {
 bool fs::ext2::write_block(u32 block, const void *buf) {
   TRACE;
   disk.seek(block * blocksize, SEEK_SET);
-  return disk.write((void*)buf, blocksize);
+  return disk.write((void *)buf, blocksize);
 }
 
 void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,
@@ -200,33 +191,9 @@ void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,
   }
 }
 
-/*
-void *fs::ext2::read_entire(ext2_inode_info &inode) {
-  TRACE;
-
-  scoped_lock lck(m_lock);
-
-
-  u32 block_count = inode.size / blocksize;
-  if (inode.size % blocksize != 0) block_count++;
-
-  auto buf = (char *)kmalloc(block_count * blocksize);
-
-  vec<u32> blocks = blocks_for_inode(inode);
-
-  char *dst = buf;
-
-  for (auto b : blocks) {
-    read_block(b, dst);
-    dst += blocksize;
-  }
-
-  return buf;
-}
-*/
 
 void fs::ext2::traverse_dir(u32 inode,
-                            func<bool(fs::directory_entry)> callback) {
+                            func<bool(u32 ino, const char *name)> callback) {
   TRACE;
   ext2_inode_info i;
   read_inode(i, inode);
@@ -234,7 +201,7 @@ void fs::ext2::traverse_dir(u32 inode,
 }
 
 void fs::ext2::traverse_dir(ext2_inode_info &inode,
-                            func<bool(fs::directory_entry)> callback) {
+                            func<bool(u32 ino, const char* name)> callback) {
   TRACE;
 
   void *buffer = kmalloc(blocksize);
@@ -244,9 +211,13 @@ void fs::ext2::traverse_dir(ext2_inode_info &inode,
       if (entry->inode != 0) {
         fs::directory_entry ent;
         ent.inode = entry->inode;
-        for (u32 i = 0; i < entry->namelength; i++)
-          ent.name.push(entry->name[i]);
-        if (!callback(ent)) break;
+
+        // TODO: bad!
+        char buf[entry->namelength + 1];
+        memcpy(buf, entry->name, entry->namelength);
+        buf[entry->namelength] = 0;
+        ent.name = buf;
+        if (!callback(ent.inode, buf)) break;
       }
       entry = (ext2_dir *)((char *)entry + entry->size);
     }
@@ -256,26 +227,6 @@ void fs::ext2::traverse_dir(ext2_inode_info &inode,
   kfree(buffer);
 }
 
-vec<fs::directory_entry> fs::ext2::read_dir(u32 inode) {
-  TRACE;
-  ext2_inode_info info;
-  read_inode(info, inode);
-  return read_dir(info);
-}
-
-vec<fs::directory_entry> fs::ext2::read_dir(ext2_inode_info &inode) {
-  TRACE;
-
-  scoped_lock lck(m_lock);
-
-  vec<fs::directory_entry> entries;
-
-  traverse_dir(inode, [&](fs::directory_entry ent) -> bool {
-    entries.push(move(ent));
-    return true;
-  });
-  return entries;
-}
 
 struct fs::inode *fs::ext2::get_root(void) {
   return root;

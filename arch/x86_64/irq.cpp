@@ -3,9 +3,9 @@
 #include <paging.h>
 #include <pit.h>
 #include <printk.h>
+#include <process.h>
 #include <sched.h>
 #include <smp.h>
-#include <process.h>
 
 // implementation of the x86 interrupt request handling system
 extern u32 idt_block[];
@@ -160,7 +160,6 @@ static void unknown_exception(int i, struct regs *tf) {
   };
 }
 
-
 static void dbl_flt_handler(int i, struct regs *tf) {
   printk("DOUBLE FAULT!\n");
   printk("&i=%p\n", &i);
@@ -176,11 +175,29 @@ static void unknown_hardware(int i, struct regs *tf) {
 }
 */
 
+
+extern const char *ksym_find(off_t);
+
+void dump_backtrace(off_t ebp) {
+  printk("Backtrace (ebp=%p):\n", ebp);
+
+  off_t stk_end = (off_t)curthd->stack + curthd->stack_size;
+  int i = 0;
+  for (off_t *stack_ptr = (off_t *)ebp;
+       (off_t)stack_ptr < stk_end && (off_t)stack_ptr >= KERNEL_VIRTUAL_BASE;
+       stack_ptr = (off_t *)*stack_ptr) {
+    off_t retaddr = stack_ptr[1];
+    printk("%3d: %p\n", i++, retaddr);
+  }
+}
+
 static void gpf_handler(int i, struct regs *tf) {
   // TODO: die
-  KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", curthd->pid,
-       curthd->tid, tf->eip, tf->err);
+  KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", curthd->pid, curthd->tid,
+       tf->eip, tf->err);
+  dump_backtrace(tf->rbp);
   asm("cli; hlt");
+
   sched::block();
 }
 
@@ -198,7 +215,6 @@ static void illegal_instruction_handler(int i, struct regs *tf) {
 }
 
 extern "C" void syscall_handle(int i, struct regs *tf);
-
 
 #define PGFLT_PRESENT (1 << 0)
 #define PGFLT_WRITE (1 << 1)
@@ -219,13 +235,28 @@ static void pgfault_handle(int i, struct regs *tf) {
   curthd->trap_frame = tf;
 
   if (proc) {
-
     int err = 0;
 
     // TODO: read errors
     if (tf->err & PGFLT_USER) err |= FAULT_PERM;
     if (tf->err & PGFLT_WRITE) err |= FAULT_WRITE;
     if (tf->err & PGFLT_INSTR) err |= FAULT_EXEC;
+
+    if ((tf->err & PGFLT_USER) == 0) {
+      if ((off_t)page >= KERNEL_VIRTUAL_BASE) {
+        auto kptable = (u64 *)p2v(get_kernel_page_table());
+        auto pptable = (u64 *)p2v(curthd->proc.addr_space->cr3);
+        // TODO: do this with pagefaults instead TODO: maybe flush the tlb if it
+        // changes?
+        if (kptable != pptable) {
+          for (int i = 272; i < 512; i++) {
+            if (kptable[i] == 0) break;  // optimization
+            pptable[i] = kptable[i];
+          }
+        }
+        return;
+      }
+    }
 
     int res = proc->addr_space->handle_pagefault((off_t)page, err);
     if (res == -1) {
@@ -235,6 +266,7 @@ static void pgfault_handle(int i, struct regs *tf) {
       KERR("       bad address = %p\n", read_cr2());
       KERR("               err = %p\n", tf->err);
 
+      dump_backtrace(tf->rbp);
 
       sys::exit_proc(-1);
 
@@ -276,7 +308,6 @@ int arch::irq::init(void) {
   mkgate(idt, 32, vectors[32], 0, 0);
   ::irq::install(32, tick_handle, "Preemption Tick");
 
-
   mkgate(idt, 0x80, vectors[0x80], 3, 0);
   ::irq::install(0x80, syscall_handle, "System Call");
 
@@ -287,7 +318,6 @@ int arch::irq::init(void) {
 
   return 0;
 }
-
 
 // just forward the trap on to the irq subsystem
 // This function is called from arch/x86/trap.asm
@@ -304,5 +334,4 @@ extern "C" void trap(struct regs *regs) {
 
   irq::eoi(regs->trapno);
   sched::before_iret();
-
 }

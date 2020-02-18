@@ -102,7 +102,6 @@ fs::ext2_inode *fs::ext2_inode::create(ext2 &fs, u32 index) {
 
   fs.read_inode(info, index);
 
-
   int ino_type = T_INVA;
 
   auto type = ((info.type) & 0xF000) >> 12;
@@ -120,43 +119,6 @@ fs::ext2_inode *fs::ext2_inode::create(ext2 &fs, u32 index) {
 
   return ino;
 }
-
-/*
-fs::file_metadata fs::ext2_inode::metadata(void) {
-  fs::file_metadata md;
-
-  md.size = info.size;
-  md.mode = info.type & 0xFFF;
-
-  auto type = ((info.type) & 0xF000) >> 12;
-
-  md.type = file_type::unknown;
-  if (type == 0x1) md.type = file_type::fifo;
-  if (type == 0x2) md.type = file_type::char_dev;
-  if (type == 0x4) md.type = file_type::dir;
-  if (type == 0x6) md.type = file_type::block_dev;
-  if (type == 0x8) md.type = file_type::file;
-  if (type == 0xA) md.type = file_type::symlink;
-  if (type == 0xC) md.type = file_type::unix_socket;
-
-  md.mode = info.type & 0xFFF;
-
-  md.uid = info.uid;
-  md.gid = info.gid;
-  md.link_count = info.hardlinks;
-
-  md.atime = info.last_access;
-  md.ctime = info.create_time;
-  md.mtime = info.last_modif;
-  md.dtime = info.delete_time;
-  md.block_size = fs().block_size();
-
-  md.block_count = md.size / md.block_size;
-  if (md.size % md.block_size != 0) md.block_count++;
-
-  return md;
-}
-*/
 
 ssize_t fs::ext2_inode::do_read(fs::filedesc &d, void *dst, size_t nbytes) {
   return do_rw(d, nbytes, dst, false);
@@ -267,9 +229,9 @@ int fs::ext2_inode::injest_info(fs::ext2_inode_info &info) {
 
   if (type == T_DIR) {
     // TODO: clear out the dirents
-    fs.traverse_dir(this->ino, [this](fs::directory_entry de) -> bool {
+    fs.traverse_dir(this->ino, [this](u32 ino, const char *name) -> bool {
       // register the resident entries
-      this->register_direntry(de.name, ENT_RES);
+      this->register_direntry(name, ENT_RES);
       return true;
     });
   } else if (type == T_CHAR || type == T_BLK) {
@@ -311,22 +273,20 @@ int fs::ext2_inode::commit_info(void) {
   return 0;
 }
 
-struct fs::inode *fs::ext2_inode::resolve_direntry(string &name) {
+struct fs::inode *fs::ext2_inode::resolve_direntry(string &needle) {
   bool found = false;
   u32 ent_inode_num;
 
-  fs.traverse_dir(this->ino, [&](fs::directory_entry de) -> bool {
-    if (de.name == name) {
-      ent_inode_num = de.inode;
+  fs.traverse_dir(this->ino, [&](u32 ino, const char *name) -> bool {
+    if (needle == name) {
+      ent_inode_num = ino;
       found = true;
       return false;
     }
     return true;
   });
 
-  if (found) {
-    return ext2_inode::create(fs, ent_inode_num);
-  }
+  if (found) return ext2_inode::create(fs, ent_inode_num);
   return NULL;
 }
 

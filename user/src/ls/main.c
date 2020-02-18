@@ -112,9 +112,7 @@ int do_ls(char *path, int flags) {
     memcpy(b + l + 1, ent->d_name, k + 1);
 
     struct stat st;
-    if (lstat(b, &st) != 0) {
-      continue;
-    }
+    if (lstat(b, &st) != 0) continue;
 
     do_ls_pretty(ent, &st);
   }

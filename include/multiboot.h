@@ -109,3 +109,19 @@ struct multiboot_info {
 typedef struct multiboot_info multiboot_info_t;
 
 extern "C" multiboot_info_t* multiboot_info_ptr;
+
+
+
+struct multiboot_mod_list
+{
+  /* the memory used goes from bytes ’mod_start’ to ’mod_end-1’ inclusive */
+  u32 mod_start;
+  u32 mod_end;
+
+  /* Module command line */
+  u32 cmdline;
+
+  /* padding to take it to 16 bytes (must be zero) */
+  u32 pad;
+};
+typedef struct multiboot_mod_list multiboot_module_t;

@@ -6,6 +6,7 @@
 #include <pit.h>
 #include <process.h>
 #include <vga.h>
+#include <asm.h>
 
 // HACK: not real kernel modules right now, just basic function pointers in an
 // array statically.
@@ -14,7 +15,7 @@
 void initialize_kernel_modules(void) {
   extern struct kernel_module_info __start__kernel_modules[];
   extern struct kernel_module_info __stop__kernel_modules[];
-  struct kernel_module_info* mod = __start__kernel_modules;
+  struct kernel_module_info *mod = __start__kernel_modules;
   int i = 0;
   while (mod != __stop__kernel_modules) {
     KINFO("[%s] init\n", mod->name);
@@ -30,31 +31,88 @@ void init_rootvfs(fs::filedesc dev) {
 }
 
 struct Foo : public refcounted<Foo> {
-  public:
-    Foo(void) {
-      printk("Foo ctor!\n");
-    }
-    virtual ~Foo() {
-      printk("Foo dtor!\n");
-    }
+ public:
+  Foo(void) { printk("Foo ctor!\n"); }
+  virtual ~Foo() { printk("Foo dtor!\n"); }
 };
 
 struct Bar : public Foo {
-  public:
-    Bar(void) {
-      printk("Bar ctor!\n");
-    }
-    virtual ~Bar() {
-      printk("Bar dtor!\n");
-    }
+ public:
+  Bar(void) { printk("Bar ctor!\n"); }
+  virtual ~Bar() { printk("Bar dtor!\n"); }
 };
+
+extern struct multiboot_info *mbinfo;
+
+struct symbol {
+  off_t addr;
+  char name[50];
+};
+
+vec<struct symbol> symbols;
+
+const char *ksym_find(off_t addr) {
+  return NULL;
+  const char *name = NULL;
+  for (auto &s : symbols) {
+    if (s.addr <= addr) {
+      name = s.name;
+    } else {
+      break;
+    }
+  }
+  return name;
+}
+
+static char *next_line(char *from) {
+  while (1) {
+    if (*from == '\0') return NULL;
+    if (*from == '\n') break;
+    from++;
+  }
+
+  return from + 1;
+}
+
+static void parse_symbols(char *data, size_t len) {
+  return;
+  char *end = data + len;
+
+  while (data < end) {
+    printk("%p\n", data);
+    off_t addr = 0;
+    char *name = data;
+
+    while (*name != ' ') name++;
+    name += 3;  // walk over the type
+    sscanf(data, "%zx", &addr);
+    // printk("%p %s\n", addr, name);
+    data = next_line(data);
+    data[-1] = 0;
+
+    struct symbol s;
+    s.addr = addr;
+
+    int slen = (off_t)data - 1 - (off_t)name;
+    memcpy(s.name, name, slen > 40 ? 40 : slen);
+
+    symbols.push(s);
+  }
+}
 
 /**
  * the kernel drops here in a kernel task
  *
  * Further initialization past getting the scheduler working should run here
  */
-int kernel_init(void*) {
+int kernel_init(void *) {
+  auto *mod = (multiboot_module_t *)p2v(mbinfo->mods_addr);
+
+  size_t sz = mod->mod_end - mod->mod_start;
+
+  parse_symbols((char *)p2v(mod->mod_start), sz);
+
+  printk("%p\n", mod->mod_end);
 
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
@@ -68,7 +126,7 @@ int kernel_init(void*) {
   KINFO("kernel modules initialized\n");
 
   // open up the disk device for the root filesystem
-  const char* rootdev_path = kargs::get("root", "ata0p1");
+  const char *rootdev_path = kargs::get("root", "ata0p1");
   KINFO("rootdev=%s\n", rootdev_path);
   auto rootdev = dev::open(rootdev_path);
   assert(rootdev.ino != NULL);
@@ -85,6 +143,9 @@ int kernel_init(void*) {
 
   auto paths = init_paths.split(',');
   pid_t init_pid = sched::proc::spawn_init(paths);
+
+  sys::waitpid(init_pid, NULL, 0);
+  panic("init died!\n");
 
   // sched::proc::create_kthread(draw_spam);
 

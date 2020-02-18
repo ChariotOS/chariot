@@ -176,18 +176,22 @@ string& string::operator+=(char c) {
   push(c);
   return *this;
 }
-
+#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 void string::reserve(u32 new_cap) {
   CHECK;
   if (new_cap < 16) new_cap = 16;
+  new_cap = round_up(new_cap, 16);
   if (m_buf == nullptr) {
-    // assert(m_cap == 0);
+    assert(m_cap == 0);
     m_buf = (char*)kmalloc(new_cap);
 
     assert(m_buf != nullptr);
   } else {
     if (new_cap <= m_cap) return;
-    m_buf = (char*)krealloc(m_buf, new_cap);
+    auto n = (char*)kmalloc(new_cap);
+    memcpy(n, m_buf, m_cap);
+    kfree(m_buf);
+    m_buf = n;
   }
   // printk("%p\n", m_buf);
   m_cap = new_cap;

@@ -127,14 +127,9 @@ class ext2 final : public filesystem {
 
   bool write_inode(ext2_inode_info &dst, u32 inode);
 
-  // must free the result of this.
-  // void *read_entire(ext2_inode_info &inode);
-
-  vec<fs::directory_entry> read_dir(u32 inode);
-  vec<fs::directory_entry> read_dir(ext2_inode_info &inode);
-  void traverse_dir(u32 inode, func<bool(fs::directory_entry)> callback);
+  void traverse_dir(u32 inode, func<bool(u32 ino, const char *name)> callback);
   void traverse_dir(ext2_inode_info &inode,
-                    func<bool(fs::directory_entry)> callback);
+                    func<bool(u32 ino, const char *name)> callback);
   void traverse_blocks(vec<u32>, void *, func<bool(void *)> callback);
 
   // entrypoint to read a file

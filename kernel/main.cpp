@@ -34,14 +34,14 @@ extern int kernel_end;
 
 // in src/arch/x86/sse.asm
 extern "C" void enable_sse();
-extern "C" void call_with_new_stack(void*, void*);
+extern "C" void call_with_new_stack(void *, void *);
 
 static void print_depth(int d) { for_range(i, 0, d) printk("  "); }
 
-void print_tree(struct fs::inode* dir, int depth = 0) {
+void print_tree(struct fs::inode *dir, int depth = 0) {
   if (dir->type == T_DIR) {
     dir->walk_direntries(
-        [&](const string& name, struct fs::inode* ino) -> bool {
+        [&](const string &name, struct fs::inode *ino) -> bool {
           if (name != "." && name != ".." &&
               name != "boot" /* it's really noisy */) {
             print_depth(depth);
@@ -55,7 +55,7 @@ void print_tree(struct fs::inode* dir, int depth = 0) {
   }
 }
 
-struct multiboot_info* mbinfo;
+struct multiboot_info *mbinfo;
 static void kmain2(void);
 
 extern "C" char chariot_welcome_start[];
@@ -103,16 +103,16 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
    */
   init_mem(mbd);
 
-  mbinfo = (struct multiboot_info*)(u64)p2v(mbd);
+  mbinfo = (struct multiboot_info *)(u64)p2v(mbd);
   /**
    * startup the high-kernel virtual mapping and the heap allocator
    */
   init_kernel_virtual_memory();
 
-  void* new_stack = (void*)((u64)kmalloc(STKSIZE) + STKSIZE);
+  void *new_stack = (void *)((u64)kmalloc(STKSIZE) + STKSIZE);
 
   // call the next phase main with the new allocated stack
-  call_with_new_stack(new_stack, (void*)kmain2);
+  call_with_new_stack(new_stack, (void *)kmain2);
 
   // ?? - gotta loop forever here to make gcc happy. using [[gnu::noreturn]]
   // requires that it never returns...
@@ -123,20 +123,20 @@ typedef void (*func_ptr)(void);
 extern "C" func_ptr __init_array_start[0], __init_array_end[0];
 
 static void call_global_constructors(void) {
-  for (func_ptr* func = __init_array_start; func != __init_array_end; func++) {
+  for (func_ptr *func = __init_array_start; func != __init_array_end; func++) {
     (*func)();
   }
 }
 
 // kernel/init.cpp
-int kernel_init(void*);
+int kernel_init(void *);
 
 static void kmain2(void) {
   irq::init();
   enable_sse();
 
   // for safety, unmap low memory (from boot.asm)
-  *((u64*)p2v(read_cr3())) = 0;
+  *((u64 *)p2v(read_cr3())) = 0;
   arch::flush_tlb();
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
@@ -157,6 +157,7 @@ static void kmain2(void) {
 
   // create the initialization thread.
   sched::proc::create_kthread(kernel_init);
+
 
   KINFO("starting scheduler\n");
   arch::sti();

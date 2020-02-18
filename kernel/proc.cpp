@@ -363,9 +363,16 @@ bool sched::proc::send_signal(pid_t p, int sig) {
   return sent;
 }
 
+// #define REAP_DEBUG
+
 int sched::proc::reap(process::ptr p) {
   assert(p->is_dead());
   auto *me = curproc;
+
+
+#ifdef REAP_DEBUG
+  printk("reap (p:%d)\n", p->pid);
+#endif
 
   process::ptr init = proc_table[1];
   assert(init);
@@ -374,6 +381,10 @@ int sched::proc::reap(process::ptr p) {
   for (auto tid : p->threads) {
     auto *t = thread::lookup(tid);
     assert(t->state == PS_ZOMBIE);
+#ifdef REAP_DEBUG
+    printk(" [t:%d] sc:%d rc:%d\n", t->tid, t->stats.syscall_count, t->stats.run_count);
+#endif
+
     thread::teardown(t);
   }
   p->threads.clear();
@@ -392,6 +403,7 @@ int sched::proc::reap(process::ptr p) {
     c->parent = init;
   }
   if (me != init) init->datalock.unlock();
+
   ptable_remove(p->pid);
 
   return 0;
