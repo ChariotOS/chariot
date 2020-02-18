@@ -186,7 +186,7 @@ bool dev::ata::identify() {
 
   if (m_pci_dev != nullptr) {
     m_pci_dev->enable_bus_mastering();
-    use_dma = false;
+    use_dma = true;
 
     // allocate the physical page for the dma buffer
     m_dma_buffer = phys::alloc();
@@ -341,10 +341,9 @@ ssize_t dev::ata::size() { return sector_size * n_sectors; }
 bool dev::ata::read_block_dma(u32 sector, u8* data) {
   TRACE;
 
-  printk("ata read: %d\n", sector);
-  if (sector & 0xF0000000) return false;
+  // TODO: take a lock.
 
-  drive_lock.lock();
+  if (sector & 0xF0000000) return false;
 
   // setup the prdt for DMA
   auto* prdt = static_cast<prdt_t*>(p2v(m_dma_buffer));
@@ -383,13 +382,24 @@ bool dev::ata::read_block_dma(u32 sector, u8* data) {
   // start bus master
   outb(bmr_command, 0x9);
 
-  this->wait();
+  int i = 0;
+
+  while (1) {
+    i++;
+    auto status = inb(bmr_status);
+    auto dstatus = command_port.in();
+    if (!(status & 0x04)) {
+      continue;
+    }
+    if (!(dstatus & 0x80)) {
+      break;
+    }
+  }
+
+  // wait_400ns(m_io_base);
+  // printk("loops: %d\n", i);
 
   memcpy(data, dma_dst, sector_size);
-
-  drive_lock.unlock();
-
-  hexdump(data, 512);
 
   return true;
 }
