@@ -3,7 +3,7 @@ include ../Makefile.common
 
 DEFINES += -DUSERLAND
 
-OPTIMIZE:=-O0
+OPTIMIZE:=-O3
 
 CFLAGS:=$(CINCLUDES) $(OPTIMIZE) $(MOREFLAGS) -fno-omit-frame-pointer -fno-stack-protector \
 				 -mtls-direct-seg-refs -ffreestanding -Wall \
@@ -12,7 +12,8 @@ CFLAGS:=$(CINCLUDES) $(OPTIMIZE) $(MOREFLAGS) -fno-omit-frame-pointer -fno-stack
 RSFLAGS := --crate-type=bin
 
 
-PFX:=" - [U]"
+PFX:="\\x1b[34m[U]\\x1b[0m"
+
 
 .PHONY: run
 
@@ -66,13 +67,13 @@ run: build out $(out)
 # binary programs
 out/bin/%: build/crt0.o $(objs)
 	@mkdir -p $(outdir)
-	@echo "$(PFX) LD   $@ with $(libs)"
+	@echo -e "$(PFX) LD   $@ with $(libs)"
 	@$(LD) -T user.ld $(LDFLAGS) -o $@ $^ $(libs)
 
 # static library archives
 out/lib/%.a: $(objs)
 	@mkdir -p $(outdir)
-	@echo "$(PFX) AR   $@"
+	@echo -e "$(PFX) AR   $@"
 	@ar rcs $@ $^
 
 # dynamic library objects
@@ -81,24 +82,24 @@ out/lib/%.a: $(objs)
 
 build/crt0.o: crt0.asm
 	@mkdir -p $(dir $@)
-	@echo "$(PFX) making crt0.o"
+	@echo -e "$(PFX) making crt0.o"
 	@nasm -f elf64 -o $@ $^
 
 build/%.c.o: %.c
 	@mkdir -p $(dir $@)
-	@echo "$(PFX) CC  " $<
+	@echo -e "$(PFX) CC  " $<
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
 build/%.cpp.o: %.cpp
 	@mkdir -p $(dir $@)
-	@echo "$(PFX) CXX " $<
+	@echo -e "$(PFX) CXX " $<
 	@$(CXX) $(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions -o $@ -c $<
 
 
 
 build/%.rs.o: %.rs
 	@mkdir -p $(dir $@)
-	@echo "$(PFX) RS  " $<
+	@echo -e "$(PFX) RS  " $<
 	rustc -O -C target-feature=+crt-static \
 		--edition 2018                        \
 		$(RSFLAGS)                            \
@@ -109,7 +110,7 @@ build/%.rs.o: %.rs
 
 build/%.asm.o: %.asm
 	@mkdir -p $(dir $@)
-	@echo "$(PFX) AS  " $<
+	@echo -e "$(PFX) AS  " $<
 	@nasm -f elf64 -o $@ $<
 
 clean:

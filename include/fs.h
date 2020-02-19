@@ -168,6 +168,9 @@ struct inode {
   virtual ssize_t do_read(filedesc &, void *, size_t);
   virtual ssize_t do_write(filedesc &, void *, size_t);
 
+  // create a file
+  virtual int touch(string name, int mode, fs::inode *&dst);
+
   // can overload!
   virtual int stat(struct stat *);
 

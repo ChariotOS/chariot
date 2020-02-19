@@ -18,53 +18,9 @@
 
 namespace vga {
 
-enum color : char {
-  black = 0,
-  blue = 1,
-  green = 2,
-  cyan = 3,
-  red = 4,
-  magenta = 5,
-  brown = 6,
-  light_grey = 7,
-  dark_grey = 8,
-  light_blue = 9,
-  light_green = 10,
-  light_cyan = 11,
-  light_red = 12,
-  light_magenta = 13,
-  light_brown = 14,
-  white = 15,
-};
-
-u16 make_entry(char c, uint8_t attr);
-u8 make_color(enum vga::color fg, enum vga::color bg);
-void set_cursor(uint8_t x, uint8_t y);
-void get_cursor(uint8_t *x, uint8_t *y);
-
-void putchar(char c);
-
 void init();
-
-void scrollup();
-
-void set_color(enum vga::color fg, enum vga::color bg);
-void clear_screen(uint16_t val);
-void clear_screen(char, vga::color);
-void clear_screen();
-
-void set_pixel(int ind, int color);
-void set_pixel(int x, int y, int color);
-
-int rgb(int r, int g, int b);
-
-int width();
-int height();
-
-int flush_buffer(u32 *, int npixels);
-
-static inline u64 npixels(void) {
-  return width() * height();
-}
+void early_init();
+void late_init();
+void putchar(char c);
 
 };  // namespace vga

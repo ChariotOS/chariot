@@ -30,17 +30,6 @@ void init_rootvfs(fs::filedesc dev) {
   if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
 }
 
-struct Foo : public refcounted<Foo> {
- public:
-  Foo(void) { printk("Foo ctor!\n"); }
-  virtual ~Foo() { printk("Foo dtor!\n"); }
-};
-
-struct Bar : public Foo {
- public:
-  Bar(void) { printk("Bar ctor!\n"); }
-  virtual ~Bar() { printk("Bar dtor!\n"); }
-};
 
 extern struct multiboot_info *mbinfo;
 

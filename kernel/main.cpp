@@ -4,12 +4,11 @@
 #include <cpu.h>
 #include <dev/CMOS.h>
 #include <dev/RTC.h>
-#include <dev/blk_cache.h>
 #include <dev/driver.h>
 #include <dev/mbr.h>
 #include <dev/serial.h>
-#include <fs/ext2.h>
 #include <fs/file.h>
+#include <pctl.h>
 #include <fs/vfs.h>
 #include <func.h>
 #include <kargs.h>
@@ -83,7 +82,7 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   /*
    * Initialize early VGA state
    */
-  vga::init();
+  vga::early_init();
 
   /*
    * using the boot cpu local information page, setup the CPU and
@@ -135,12 +134,12 @@ static void kmain2(void) {
   irq::init();
   enable_sse();
 
-  // for safety, unmap low memory (from boot.asm)
-  *((u64 *)p2v(read_cr3())) = 0;
-  arch::flush_tlb();
+
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
 
+
+  vga::late_init();
   kargs::init(mbinfo);
 
   // TODO: initialize smp
@@ -157,6 +156,11 @@ static void kmain2(void) {
 
   // create the initialization thread.
   sched::proc::create_kthread(kernel_init);
+
+
+  // for safety, unmap low memory (from boot.asm)
+  // *((u64 *)p2v(read_cr3())) = 0;
+  // arch::flush_tlb();
 
 
   KINFO("starting scheduler\n");

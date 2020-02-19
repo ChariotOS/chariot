@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <sys/syscall.h>
+#include <stdio.h>
 
 ssize_t write(int fd, const void *buf, size_t count) {
   // just forward to the system call
@@ -20,5 +21,14 @@ off_t lseek(int fd, off_t offset, int whence) {
 
 int close(int fd) {
   return syscall(SYS_close, fd);
+}
+
+
+int chdir(const char *path) {
+  int res = syscall(SYS_chdir, path);
+
+  // printf("chdir('%s') = %d\n", path, res);
+
+  return res;
 }
 

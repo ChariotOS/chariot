@@ -286,13 +286,14 @@ void handle_tick(u64 tick);
 void exit();
 
 void play_tone(int frq, int dur);
+int remove_task(struct thread *t);
 int add_task(struct thread *);
 void beep();
 
 // called before dropping back into user space. This is needed
 // when a thread should not return to userspace because it must
 // die or something else
-void before_iret(void);
+void before_iret(bool userspace);
 
 namespace proc {
 struct spawn_options {

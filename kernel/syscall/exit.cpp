@@ -10,6 +10,11 @@ void sys::exit_thread(int code) {
 
   // ...
   printk("exit_thread(%d)\n", code);
+
+  // TODO: notify the parent
+
+  // defer to later!
+  curthd->should_die = 1;
 }
 
 void sys::exit_proc(int code) {
@@ -25,10 +30,10 @@ void sys::exit_proc(int code) {
         t->awaken(true);
       }
     }
-    curproc->exited = true;
-    curproc->exit_code = code;
   }
 
+  curproc->exit_code = code;
+  curproc->exited = true;
   curproc->parent->waiters.notify_all();
 
   sched::exit();

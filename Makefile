@@ -24,6 +24,7 @@ ASOURCES:=$(filter %.asm,$(CODEFILES))
 AOBJECTS:=$(ASOURCES:%.asm=build/%.asm.o)
 
 
+PFX:="\\x1b[32m[K]\\x1b[0m"
 
 KERNEL=build/vmchariot
 ISO=build/kernel.iso
@@ -40,27 +41,27 @@ build:
 
 build/%.c.o: %.c
 	@mkdir -p $(dir $@)
-	@echo "[K] $(CC)  " $<
+	@echo -e "$(PFX) $(CC)  " $<
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
 build/%.cpp.o: %.cpp
 	@mkdir -p $(dir $@)
-	@echo "[K] $(CXX) " $<
+	@echo -e "$(PFX) $(CXX) " $<
 	@$(CXX) $(CPPFLAGS) -o $@ -c $<
 
 
 build/%.asm.o: %.asm
 	@mkdir -p $(dir $@)
-	@echo "[K] ASM " $<
+	@echo -e "$(PFX) ASM " $<
 	@$(AS) $(AFLAGS) -o $@ $<
 
 $(KERNEL): $(CODEFILES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
-	@echo "[K] LNK " $@
+	@echo -e "$(PFX) LNK " $@
 	@$(LD) $(LDFLAGS) $(AOBJECTS) $(COBJECTS) -T kernel.ld -o $@
 
 
 $(SYMS): $(KERNEL)
-	nm -s $< > $@
+	nm -s $< | c++filt | cut -c -80 > $@
 
 build/initrd.tar: build
 	@#tar cvf $@ mnt

@@ -47,23 +47,6 @@ static inline void *heap_start(void) { return kheap_lo(); }
 
 
 void print_heap(void) {
-  uint64_t o = 0;
-  uint64_t i = 0;
-  auto *c = (blk_t *)((u8 *)kheap_lo() + OVERHEAD);
-  for (; (void *)c < kheap_hi(); c = NEXT_BLK(c)) {
-    bool free = IS_FREE(c);
-    int blocks = GET_SIZE(c);
-
-    int c = 200 + ((i * 16) % 56);
-
-    int color = free ? vga::rgb(0, c, 0) : vga::rgb(c, 0, 0);
-
-    for (int b = 0; b < blocks; b++) {
-      vga::set_pixel(o + b, color);
-    }
-    o += blocks;
-    i++;
-  }
 }
 // #define PRINT_DEBUG() print_heap()
 

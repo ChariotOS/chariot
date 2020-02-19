@@ -37,6 +37,9 @@ pid_t gettid(void);
 pid_t getpid(void);
 
 
+int chdir(const char *path);
+
+
 #ifdef __cplusplus
 }
 #endif

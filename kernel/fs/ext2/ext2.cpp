@@ -7,6 +7,7 @@
 #include <math.h>
 #include <mem.h>
 #include <module.h>
+#include <phys.h>
 #include <string.h>
 #include <util.h>
 
@@ -56,6 +57,13 @@ fs::ext2::~ext2(void) {
   if (sb != nullptr) delete sb;
   if (work_buf != nullptr) kfree(work_buf);
   if (inode_buf != nullptr) kfree(inode_buf);
+
+  for (int i = 0; i < cache_size; i++) {
+    if (disk_cache[i].buffer != NULL) {
+      phys::free(v2p(disk_cache[i].buffer));
+    }
+  }
+  delete[] disk_cache;
 }
 
 bool fs::ext2::init(void) {
@@ -77,6 +85,14 @@ bool fs::ext2::init(void) {
   if (sb->ext2_sig != 0xef53) {
     printk("Block device does not contain the ext2 signature\n");
     return false;
+  }
+
+  cache_size = 64;
+  disk_cache = new ext2_block_cache_line[cache_size];
+  for (int i = 0; i < cache_size; i++) {
+    disk_cache[i].blkno = 0;
+    disk_cache[i].dirty = false;
+    disk_cache[i].buffer = NULL;
   }
 
   sb->last_check = dev::RTC::now();
@@ -169,17 +185,74 @@ bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
   return true;
 }
 
+/* does not take a cache lock! */
+struct fs::ext2_block_cache_line *fs::ext2::get_cache_line(int block) {
+  // printk("read block %d, cache_size=%d\n", block, cache_size);
+  int oldest = -1;
+  unsigned int oldest_age = 4294967295UL;
+  for (int i = 0; i < cache_size; i++) {
+    // printk("%2d: lu:%d, blk:%d\n", i, disk_cache[i].last_used,
+    // disk_cache[i].blkno);
+    if (disk_cache[i].blkno == block) {
+      return &disk_cache[i];
+    }
+    if (disk_cache[i].last_used < oldest_age) {
+      /* We found an older block, remember this. */
+      oldest = i;
+      oldest_age = disk_cache[i].last_used;
+    }
+  }
+  // printk("oldest = %d\n", oldest);
+  if (disk_cache[oldest].buffer == NULL) {
+    disk_cache[oldest].blkno = 0;
+    disk_cache[oldest].dirty = false;
+    disk_cache[oldest].buffer = (char *)p2v(phys::alloc());
+  }
+
+  return &disk_cache[oldest];
+}
+
 bool fs::ext2::read_block(u32 block, void *buf) {
   TRACE;
+
+  scoped_lock l(cache_lock);
+  auto cl = get_cache_line(block);
+
+  if (cl->dirty) {
+    // flush
+    disk.seek(cl->blkno * blocksize, SEEK_SET);
+    disk.write(cl->buffer, blocksize);
+    cl->dirty = false;
+  }
+
+  // read into the cache line we found
+  cl->blkno = block;
+  cl->last_used = cache_time++;
+  cl->dirty = 0;
+
   disk.seek(block * blocksize, SEEK_SET);
-  bool valid = disk.read(buf, blocksize);
+  bool valid = disk.read(cl->buffer, blocksize);
+
+  memcpy(buf, cl->buffer, blocksize);
+
   return valid;
 }
 
 bool fs::ext2::write_block(u32 block, const void *buf) {
   TRACE;
-  disk.seek(block * blocksize, SEEK_SET);
-  return disk.write((void *)buf, blocksize);
+
+  scoped_lock l(cache_lock);
+  auto cl = get_cache_line(block);
+
+  if (cl->dirty && cl->blkno != block) {
+    disk.seek(cl->blkno * blocksize, SEEK_SET);
+    disk.write(cl->buffer, blocksize);
+    cl->dirty = false;
+  }
+
+  cl->dirty = true;
+  memcpy(cl->buffer, buf, blocksize);
+  return true;
 }
 
 void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,
@@ -191,7 +264,6 @@ void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,
   }
 }
 
-
 void fs::ext2::traverse_dir(u32 inode,
                             func<bool(u32 ino, const char *name)> callback) {
   TRACE;
@@ -201,7 +273,7 @@ void fs::ext2::traverse_dir(u32 inode,
 }
 
 void fs::ext2::traverse_dir(ext2_inode_info &inode,
-                            func<bool(u32 ino, const char* name)> callback) {
+                            func<bool(u32 ino, const char *name)> callback) {
   TRACE;
 
   void *buffer = kmalloc(blocksize);
@@ -226,7 +298,6 @@ void fs::ext2::traverse_dir(ext2_inode_info &inode,
 
   kfree(buffer);
 }
-
 
 struct fs::inode *fs::ext2::get_root(void) {
   return root;
@@ -314,6 +385,14 @@ vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
   });
   return list;
 }
+
+u32 fs::ext2::balloc(void) {
+  scoped_lock l(m_lock);
+
+  return 0;
+}
+
+void fs::ext2::bfree(u32 block) { scoped_lock l(m_lock); }
 
 static unique_ptr<fs::filesystem> ext2_mounter(ref<dev::device>, int flags) {
   printk("trying to mount\n");

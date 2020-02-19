@@ -250,6 +250,12 @@ ssize_t fs::inode::write(filedesc &fd, void *buf, size_t sz) {
   return k;
 }
 
+// to be implemented by the filesystem
+int fs::inode::touch(string name, int mode, fs::inode *&dst) {
+  dst = NULL;
+  return -EINVAL;
+}
+
 int fs::inode::open(filedesc &fd) {
   ssize_t k = 0;
 

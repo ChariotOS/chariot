@@ -128,6 +128,15 @@ ssize_t fs::ext2_inode::do_write(fs::filedesc &d, void *dst, size_t nbytes) {
   return do_rw(d, nbytes, dst, true);
 }
 
+
+int fs::ext2_inode::touch(string name, int mode, fs::inode *&dst) {
+  if (type != T_DIR) return -ENOTDIR;
+
+
+  printk("ext2 touch\n");
+  return -EINVAL;
+}
+
 /**
  * do_rw - actually execute the read/write of bytes on an inode
  *

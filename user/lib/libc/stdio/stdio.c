@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
@@ -16,8 +17,7 @@ static FILE _stdin = {
     .seek = NULL,
     .read = _stdio_read,
 
-    .wfd = 0,
-    .rfd = 0,
+    .fd = 0,
 };
 
 static char _stdout_buffer[512];
@@ -28,8 +28,7 @@ static FILE _stdout = {
     .seek = NULL,
     .read = NULL,
 
-    .wfd = 1,
-    .rfd = 1,
+    .fd = 1,
 
     .buffered = 1,
     .buf_len = 0,
@@ -43,8 +42,7 @@ static FILE _stderr = {
     .seek = NULL,
     .read = NULL,
 
-    .wfd = 2,
-    .rfd = 2,
+    .fd = 2,
 };
 
 FILE *const stdin = &_stdin;
@@ -88,8 +86,7 @@ FILE *falloc(void) {
   FILE *fp = malloc(sizeof(*fp));
   memset(fp, 0, sizeof(*fp));
 
-  fp->wfd = -1;
-  fp->rfd = -1;
+  fp->fd = -1;
   fp->lock = -1;
 
   return ofl_add(fp);
@@ -150,28 +147,23 @@ size_t fread(void *restrict destv, size_t size, size_t nmemb,
 
 static int _stdio_close(FILE *fp) {
   // close both ends of the file?
-  if (fp->wfd != fp->rfd) {
-    syscall(SYS_close, fp->wfd);
-    syscall(SYS_close, fp->wfd);
-  } else {
-    syscall(SYS_close, fp->wfd);
-  }
+  syscall(SYS_close, fp->fd);
 
   return 0;
 }
 
 static size_t _stdio_read(FILE *fp, unsigned char *dst, size_t sz) {
-  if (fp->rfd == -1) {
+  if (fp->fd == -1) {
     return 0;
   }
-  long k = syscall(SYS_read, fp->rfd, dst, sz);
+  long k = syscall(SYS_read, fp->fd, dst, sz);
   if (k < 0) return 0;
   return k;
 }
 
 static void _stdio_flush_buffer(FILE *fp) {
   if (fp->buffered && fp->buffer != NULL && fp->buf_len > 0) {
-    syscall(SYS_write, fp->rfd, fp->buffer, fp->buf_len);
+    syscall(SYS_write, fp->fd, fp->buffer, fp->buf_len);
     fp->buf_len = 0;
     // NULL out the buffer
     memset(fp->buffer, 0x00, fp->buf_cap);
@@ -179,7 +171,7 @@ static void _stdio_flush_buffer(FILE *fp) {
 }
 
 static size_t _stdio_write(FILE *fp, const unsigned char *src, size_t sz) {
-  if (fp->rfd == -1) {
+  if (fp->fd == -1) {
     return 0;
   }
 
@@ -188,7 +180,6 @@ static size_t _stdio_write(FILE *fp, const unsigned char *src, size_t sz) {
      * copy from the src into the buffer, flushing on \n or when it is full
      */
     for (size_t i = 0; i < sz; i++) {
-
       // Assume that the buffer has space avail.
       unsigned char c = src[i];
 
@@ -201,13 +192,13 @@ static size_t _stdio_write(FILE *fp, const unsigned char *src, size_t sz) {
     return sz;
   }
 
-  long k = syscall(SYS_write, fp->rfd, src, sz);
+  long k = syscall(SYS_write, fp->fd, src, sz);
   if (k < 0) return 0;
   return k;
 }
 
 static off_t _stdio_seek(FILE *fp, off_t offset, int whence) {
-  return syscall(SYS_lseek, fp->rfd, offset, whence);
+  return syscall(SYS_lseek, fp->fd, offset, whence);
 }
 
 FILE *fdopen(int fd, const char *mode) {
@@ -225,8 +216,7 @@ FILE *fdopen(int fd, const char *mode) {
 
   // TODO: more modes!
 
-  fp->rfd = fd;
-  fp->wfd = fd;
+  fp->fd = fd;
 
   fp->close = _stdio_close;
   fp->read = _stdio_read;
@@ -245,9 +235,69 @@ FILE *fopen(const char *path, const char *mode) {
   return fdopen(fd, mode);
 }
 
-
-
 int fflush(FILE *fp) {
   _stdio_flush_buffer(fp);
   return 0;
+}
+
+int fputc(int c, FILE *stream) {
+  char data[] = {c};
+  fwrite(data, 1, 1, stream);
+  return c;
+}
+
+int putc(int c, FILE *stream) __attribute__((weak, alias("fputc")));
+
+int fgetc(FILE *stream) {
+  char buf[1];
+  int r;
+  r = fread(buf, 1, 1, stream);
+  if (r < 0) {
+    stream->eof = 1;
+    return EOF;
+  } else if (r == 0) {
+    stream->eof = 1;
+    return EOF;
+  }
+  return (unsigned char)buf[0];
+}
+
+int getc(FILE *stream) __attribute__((weak, alias("fgetc")));
+
+int getchar(void) { return fgetc(stdin); }
+
+char *fgets(char *s, int size, FILE *stream) {
+  int c;
+  char *out = s;
+  while ((c = fgetc(stream)) > 0) {
+    *s++ = c;
+    size--;
+    if (size == 0) {
+      return out;
+    }
+    *s = '\0';
+    if (c == '\n') {
+      return out;
+    }
+  }
+  if (c == EOF) {
+    stream->eof = 1;
+    if (out == s) {
+      return NULL;
+    } else {
+      return out;
+    }
+  }
+  return NULL;
+}
+
+int putchar(int c) { return fputc(c, stdout); }
+
+
+int fseek(FILE *stream, long offset, int whence) {
+  return lseek(stream->fd, offset, whence);
+}
+
+void rewind(FILE *stream) {
+	fseek(stream, 0, SEEK_SET);
 }

@@ -90,10 +90,7 @@ bool thread::kickoff(void *rip, int initial_state) {
 }
 
 thread::~thread(void) {
-  /*
-  panic("Thread [t:%d,p:%d] Deleted in %p!\n", tid, pid,
-        __builtin_return_address(0));
-        */
+  sched::remove_task(this);
   kfree(stack);
   kfree(fpu.state);
 }

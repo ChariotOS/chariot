@@ -1,7 +1,6 @@
 #ifndef __ext2_H__
 #define __ext2_H__
 
-#include <dev/blk_cache.h>
 #include <dev/blk_dev.h>
 #include <fs/filesystem.h>
 #include <fs/vnode.h>
@@ -26,6 +25,15 @@
 #define EXT2_FT_MAX 8
 
 namespace fs {
+
+
+struct ext2_block_cache_line {
+  int blkno;
+  long last_used;
+  int dirty;
+  char *buffer; // a 4k page (allocated with phys::alloc)
+};
+
 
 class ext2;
 
@@ -75,7 +83,7 @@ class ext2_inode : public fs::inode {
   virtual int rm(string &name);
   virtual ssize_t do_read(filedesc &, void *, size_t);
   virtual ssize_t do_write(filedesc &, void *, size_t);
-
+  virtual int touch(string name, int mode, fs::inode *&dst);
   // flush the in-memory info struct to disk
   int commit_info();
 
@@ -131,6 +139,9 @@ class ext2 final : public filesystem {
   void traverse_dir(ext2_inode_info &inode,
                     func<bool(u32 ino, const char *name)> callback);
   void traverse_blocks(vec<u32>, void *, func<bool(void *)> callback);
+
+  u32 balloc(void);
+  void bfree(u32);
 
   // entrypoint to read a file
 
@@ -236,6 +247,15 @@ class ext2 final : public filesystem {
   struct inode *root;
 
   map<u32, ext2_inode *> inodes;
+
+
+  // how many entries in the disk cache
+  int cache_size;
+  int cache_time = 0;
+  struct ext2_block_cache_line *disk_cache;
+  spinlock cache_lock;
+
+  struct ext2_block_cache_line *get_cache_line(int blkno);
 
   fs::filedesc disk;
 

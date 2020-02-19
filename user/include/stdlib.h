@@ -19,6 +19,12 @@ extern "C" {
 #define __NEED_size_t
 #include <bits/alltypes.h>
 
+
+int atoi (const char *);
+long atol (const char *);
+long long atoll (const char *);
+double atof (const char *);
+
 void *malloc(size_t sz);
 void free(void *);
 

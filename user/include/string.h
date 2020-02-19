@@ -24,9 +24,16 @@ size_t strlen(const char *s);
 
 
 char *strchr(const char *s, int c);
-
-
 int strcmp(const char *l, const char *r);
+
+
+
+size_t strspn(const char * s, const char * c);
+size_t strcspn(const char * s, const char * c);
+
+
+char *strtok_r(char *str, const char *delim, char **saveptr);
+char *strtok(char *str, const char *delim);
 
 
 #ifdef __cplusplus

@@ -107,7 +107,8 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
     if (found == NULL) {
       if (last && (flags & O_CREAT)) {
         // TODO: check for O_CREAT and last
-        printk("NOT FOUND AT LAST, WOULD CREATE\n");
+        // printk("NOT FOUND AT LAST, WOULD CREATE %s %o\n", targ.get(), mode);
+        return ino->touch(targ, mode, res);
       }
 
       res = NULL;

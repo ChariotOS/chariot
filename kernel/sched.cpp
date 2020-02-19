@@ -155,6 +155,39 @@ int sched::add_task(struct thread *tsk) {
   return 0;
 }
 
+
+int sched::remove_task(struct thread *t) {
+
+  auto &Q = mlfq[t->sched.priority];
+
+  cpu::pushcli();
+  // only lock this queue.
+  Q.queue_lock.lock();
+
+  if (t->sched.next) {
+    t->sched.next->sched.prev = t->sched.prev;
+  }
+
+
+  if (t->sched.prev) {
+    t->sched.prev->sched.next = t->sched.next;
+  }
+
+
+  if (Q.last_task == t) {
+    Q.last_task = t->sched.prev;
+  }
+
+  if (Q.task_queue == t) {
+    Q.task_queue = t->sched.next;
+  }
+
+  Q.ntasks--;
+  Q.queue_lock.unlock();
+  cpu::popcli();
+  return 0;
+}
+
 static void switch_into(struct thread &thd) {
   thd.locks.run.lock();
   cpu::current().current_thread = &thd;
@@ -224,8 +257,7 @@ static void schedule_one() {
 
   if (thd == nullptr) {
     // idle loop when there isn't a task
-    // printk("nothing.\n");
-    asm("pause");
+    asm("hlt");
     return;
   }
 
@@ -237,8 +269,7 @@ static void schedule_one() {
 
   cpu::popcli();
 
-  /* add the task back to the mlfq if needed. */
-  if (!thd->should_die) sched::add_task(thd);
+  sched::add_task(thd);
 }
 
 void sched::run() {
@@ -412,10 +443,11 @@ bool waitqueue::should_notify(u32 val) {
   return false;
 }
 
-void sched::before_iret(void) {
+void sched::before_iret(bool userspace) {
   if (!cpu::in_thread()) return;
   // exit via the scheduler if the task should die.
-  if (curthd->should_die) sched::exit();
+  if (userspace && curthd->should_die) sched::exit();
+  /*
 
   auto *proc = curproc;
   int sig_to_handle = -1;
@@ -436,5 +468,6 @@ void sched::before_iret(void) {
     printk("signal to handle: %d\n", sig_to_handle);
     cpu::popcli();
   }
+  */
 }
 

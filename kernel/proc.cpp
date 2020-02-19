@@ -370,6 +370,10 @@ int sched::proc::reap(process::ptr p) {
   auto *me = curproc;
 
 
+  int f = 0;
+  f &= (p->exit_code & 0xFF) << 8;
+
+
 #ifdef REAP_DEBUG
   printk("reap (p:%d)\n", p->pid);
 #endif
@@ -406,8 +410,10 @@ int sched::proc::reap(process::ptr p) {
 
   ptable_remove(p->pid);
 
-  return 0;
+  return f;
 }
+
+
 
 int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
   auto *me = curproc;
@@ -458,37 +464,11 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
 
     if (options & WNOHANG) return -1;
 
+    // TODO: use a waitqueue
+
     me->waiters.wait();
+    // sched::yield();
   }
 
   return res_pid;
-
-  /*
-  if (options & WNOHANG) {
-    // FIXME: Figure out what WNOHANG should do with stopped children.
-    if (pid == -1) {
-      pid_t reaped_pid = 0;
-      InterruptDisabler disabler;
-      for_each_child([&reaped_pid, &exit_status](Process &process) {
-        if (process.is_dead()) {
-          reaped_pid = process.pid();
-          exit_status = reap(process);
-        }
-        return IterationDecision::Continue;
-      });
-      return reaped_pid;
-    } else {
-      ASSERT(waitee > 0);  // FIXME: Implement other PID specs.
-      InterruptDisabler disabler;
-      auto *waitee_process = Process::from_pid(waitee);
-      if (!waitee_process) return -ECHILD;
-      if (waitee_process->is_dead()) {
-        exit_status = reap(*waitee_process);
-        return waitee;
-      }
-      return 0;
-    }
-  }
-*/
-  return -1;
 }

@@ -2,7 +2,7 @@
 
 #if defined(__NEED_size_t) && !defined(__DEFINED_size_t)
 #ifdef CONFIG_X86_64
-typedef unsigned long size_t;
+typedef unsigned long long size_t;
 #else
 typedef unsigned size_t;
 #endif
@@ -11,7 +11,7 @@ typedef unsigned size_t;
 
 #if defined(__NEED_ssize_t) && !defined(__DEFINED_ssize_t)
 #ifdef CONFIG_X86_64
-typedef long ssize_t;
+typedef long long ssize_t;
 #else
 typedef int ssize_t;
 #endif

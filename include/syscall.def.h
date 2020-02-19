@@ -59,9 +59,11 @@ int lstat(const char *pathname, struct stat *statbuf);
 /// num=0x19
 int dup(int fd);
 
-/// num=0x20
+/// num=0x1a
 int dup2(int oldfd, int newfd);
 
+/// num=0x1b
+int chdir(const char *);
 
 /// num=0x20
 int yield(void);

@@ -25,12 +25,13 @@
 
 struct _FILE_IMPL {
   // possible different file descriptors for reading and writing
-  int wfd, rfd;
+  int fd;
 
   // inline linked list
   FILE *next, *prev;
 
   int flags;
+  int eof;
 
   // these operations can be ``overloaded'' in a sense. If the pointer is NULL,
   // it is not allowed. For example, a readonly file will have the read function

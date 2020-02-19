@@ -27,13 +27,10 @@ int main(int argc, char **argv, char **envp) {
 
   snprintf(prompt, 64, C_GREEN "sh# " C_RESET, argv[0]);
 
-
-
   while (1) {
     int len = 0;
 
     memset(args, 0, arg_buflen * sizeof(char *));
-
 
     char *buf = read_line(0, prompt, &len);
 
@@ -44,6 +41,15 @@ int main(int argc, char **argv, char **envp) {
 
     int bg = parseline(buf, args);
 
+    if (strcmp(args[0], "cd") == 0) {
+      int res = chdir(args[1]);
+      if (res != 0) {
+        printf("cd: '%s' could not be entered\n", args[1]);
+      }
+
+      goto cleanup;
+    }
+
     pid_t pid = spawn();
     if (pid <= -1) {
       printf("Error spawning, code=%d\n", pid);
@@ -53,7 +59,10 @@ int main(int argc, char **argv, char **envp) {
     int start_res = startpidvpe(pid, args[0], args, envp);
     if (start_res == 0) {
       int stat = 0;
-      if (!bg) waitpid(pid, &stat, 0);
+      if (!bg) {
+        waitpid(pid, &stat, 0);
+        // printf("status=%x\n", stat);
+      }
     } else {
       printf("failed to execute: '%s'\n", buf);
       despawn(pid);

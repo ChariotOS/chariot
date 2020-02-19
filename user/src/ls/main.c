@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <pwd.h>
 #include <unistd.h>
 
 #define BSIZE 4096
@@ -31,10 +32,9 @@ void print_st_mode(int m, int c) {
 
 void do_ls_pretty(struct dirent *ent, struct stat *st) {
   int p_color = 1;
-
-  /* print out the mode in a human-readable format */
   int m = st->st_mode;
 
+  /* print out the mode in a human-readable format */
   char type = '.';
   if (S_ISDIR(m)) type = 'd';
   if (S_ISBLK(m)) type = 'b';
@@ -61,6 +61,14 @@ void do_ls_pretty(struct dirent *ent, struct stat *st) {
   printf(C_RESET);
   */
 
+  /*
+  printf(" uid=%-4ld", st->st_uid);
+
+  struct passwd *p = getpwuid(st->st_uid);
+
+  printf(C_RESET " %s", p->pw_name);
+  */
+
   // printf(" %03lo", st.st_mode);
   // printf(" %d", st.st_size);
   char end = '\0';
@@ -82,6 +90,7 @@ void do_ls_pretty(struct dirent *ent, struct stat *st) {
     rst = "";
   }
   printf("  %s%s%s%c\n", color, ent->d_name, rst, end);
+  // printf("%s%s%s%c\t", color, ent->d_name, rst, end);
 }
 
 int do_ls(char *path, int flags) {

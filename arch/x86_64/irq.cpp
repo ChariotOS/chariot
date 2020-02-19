@@ -227,7 +227,7 @@ static void pgfault_handle(int i, struct regs *tf) {
 
   auto proc = curproc;
   if (curproc == NULL) {
-    KERR("not in a proc while pagefaulting\n");
+    KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf->eip, read_cr2());
     // lookup the kernel proc if we aren't in one!
     proc = sched::proc::kproc();
   }
@@ -328,10 +328,19 @@ extern "C" void trap(struct regs *regs) {
    *
    * Honestly, I have no idea why this is needed...
    */
+
+
   arch::sti();
+
 
   irq::dispatch(regs->trapno, regs);
 
+
   irq::eoi(regs->trapno);
-  sched::before_iret();
+
+
+
+  // TODO: generalize
+  bool to_userspace = regs->cs == 0x23;
+  sched::before_iret(to_userspace);
 }

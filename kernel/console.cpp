@@ -5,9 +5,9 @@
 #include <lock.h>
 #include <module.h>
 #include <printk.h>
+#include <sched.h>
 #include <util.h>
 #include <vga.h>
-#include <sched.h>
 
 #include "../drivers/majors.h"
 
@@ -37,7 +37,9 @@ static void consputc(int c) {
   } else {
     serial_send(COM1, c);
   }
-  // vga::putchar(c);
+  if (use_kernel_vm) {
+    vga::putchar(c);
+  }
 }
 
 static void flush(void) {
@@ -53,19 +55,8 @@ static void flush(void) {
 static bool handle_special_input(char c) {
   switch (c) {
     case C('P'):
-
       sched::proc::dump_table();
       return true;
-    /*
-    case C('B'):
-      buffer_input = !buffer_input;
-      printk("\nconsole buffering %s\n", buffer_input ? "on" : "off");
-      return true;
-    case C('E'):
-      echo = !echo;
-      printk("\nconsole echoing %s\n", buffer_input ? "on" : "off");
-      return true;
-      */
   }
   return false;
 }
@@ -119,16 +110,12 @@ static ssize_t console_write(fs::filedesc& fd, const char* buf, size_t sz) {
   return -1;
 }
 
-
-static int console_open(fs::filedesc &fd) {
+static int console_open(fs::filedesc& fd) {
   // KINFO("[console] open!\n");
   return 0;
 }
 
-
-static void console_close(fs::filedesc &fd) {
-  KINFO("[console] close!\n");
-}
+static void console_close(fs::filedesc& fd) { KINFO("[console] close!\n"); }
 
 struct dev::driver_ops console_ops = {
     .llseek = NULL,

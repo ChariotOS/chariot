@@ -68,6 +68,12 @@ int fflush(FILE *);
 int putchar(int);
 
 
+int fputc(int c, FILE *stream);
+int putc(int c, FILE *stream);
+int getchar(void);
+char *fgets(char *s, int size, FILE *stream);
+int getchar(void);
+
 
 int printf(const char *format, ...);
 int sprintf(char *str, const char *format, ...);
@@ -76,6 +82,9 @@ int snprintf(char* buffer, size_t count, const char* format, ...);
 int vsnprintf(char* buffer, size_t count, const char* format, va_list va);
 
 int sscanf(const char *, const char *format, ...);
+
+int fseek(FILE *stream, long offset, int whence);
+void rewind(FILE *stream);
 
 #ifdef __cplusplus
 }

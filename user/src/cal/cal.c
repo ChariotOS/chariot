@@ -11,6 +11,12 @@
 #define DAY_HEADINGS_JS " Su  Mo  Tu  We  Th  Fr  Sa"
 #define DAY_HEADINGS_JM " Mo  Tu  We  Th  Fr  Sa  Su"
 
+int use_color = 1;
+
+void set_color(int c) {
+  if (use_color) printf("\x1b[%dm", c);
+}
+
 const char *month_names[12] = {
     "January", "February", "March",     "April",   "May",      "June",
     "July",    "August",   "September", "October", "November", "December",
@@ -47,8 +53,11 @@ static const int days_in_month[2][13] = {
 #define leap_years_since_year_1(yr) \
   ((yr) / 4 - centuries_since_1700(yr) + quad_centuries_since_1700(yr))
 
-#define C_RESET "\x1b[0m"
-#define C_GRAY "\x1b[90m"
+#define C_RESET 0
+
+#define C_REVERSE 7
+#define C_UNINV 27
+#define C_GRAY 90
 
 void center(const char *, int, int);
 int day_in_week(int, int, int);
@@ -90,9 +99,14 @@ void print_month(int month, int year, struct tm *now) {
     }
 
     if (i == now->tm_mday && month == now->tm_mon) {
-      printf("\x1b[7m%2d\x1b[27m ", i);
+      set_color(C_REVERSE);
+      printf("%2d", i);
+      set_color(C_UNINV);
+      printf("%c", use_color ? ' ' : '*');
     } else if (d == 0 || d == 6) {
-      printf(C_GRAY "%2d " C_RESET, i);
+      set_color(C_GRAY);
+      printf("%2d ", i);
+      set_color(C_RESET);
     } else {
       printf("%2d ", i);
     }
