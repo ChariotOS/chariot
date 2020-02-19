@@ -5,7 +5,7 @@
 int sys::chdir(const char *path) {
   auto proc = curproc;
 
-  if (!proc->addr_space->validate_string(path)) return -EINVAL;
+  if (path == NULL || !proc->addr_space->validate_string(path)) return -EINVAL;
 
   scoped_lock l(proc->datalock);
 

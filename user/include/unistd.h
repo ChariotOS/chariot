@@ -26,6 +26,9 @@ int close(int fd);
  */
 void exit(int status);
 
+#undef SEEK_SET
+#undef SEEK_CUR
+#undef SEEK_END
 #define SEEK_SET (-1)
 #define SEEK_CUR (-2)
 #define SEEK_END (-3)
@@ -38,6 +41,11 @@ pid_t getpid(void);
 
 
 int chdir(const char *path);
+
+
+extern char *optarg;
+extern int optind, opterr, optopt;
+int getopt(int argc, char * const argv[], const char *optstring);
 
 
 #ifdef __cplusplus

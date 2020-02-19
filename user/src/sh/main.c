@@ -77,17 +77,10 @@ int main(int argc, char **argv, char **envp) {
   return 0;
 }
 
-int getc(void) {
-  int c = 0;
-  if (read(0, &c, 1) != 1) {
-    return -1;
-  }
-  return c;
-}
 
 char *read_line(int fd, char *prompt, int *len_out) {
   int i = 0;
-  long max = 16;
+  long max = 512;
 
   char *buf = malloc(max);
   memset(buf, 0, max);
@@ -96,12 +89,12 @@ char *read_line(int fd, char *prompt, int *len_out) {
   fflush(stdout);
 
   for (;;) {
-    if (i + 1 >= max) {
+    if (i + 1 >= max-1) {
       max *= 2;
       buf = realloc(buf, max);
     }
 
-    int c = getc();
+    int c = fgetc(stdin);
 
     if (c == -1) break;
     if (c == '\n' || c == '\r') break;
@@ -110,7 +103,6 @@ char *read_line(int fd, char *prompt, int *len_out) {
       case 0x7F:
         if (i != 0) {
           buf[--i] = 0;
-        } else {
         }
         break;
 

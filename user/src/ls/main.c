@@ -1,11 +1,12 @@
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <pwd.h>
 #include <unistd.h>
 
 #define BSIZE 4096
@@ -19,10 +20,25 @@
 
 #define C_RESET "\x1b[0m"
 #define C_GRAY "\x1b[90m"
+
+struct lsfile {
+  char *name;
+  struct stat st;
+};
+
+static int use_colors = 0;
+static int term_width = 80;  // default
+
+inline void set_color(char *c) {
+  if (use_colors) {
+    printf("%s", c);
+  }
+}
+
 /* this is ugly */
-void print_st_mode(int m, int c) {
-#define P_MOD(f, ch, col)                   \
-  if (c) printf("%s", m &f ? col : C_GRAY); \
+void print_st_mode(int m) {
+#define P_MOD(f, ch, col)         \
+  set_color(m &f ? col : C_GRAY); \
   printf("%c", m &f ? ch : '-');
 
   P_MOD(S_IROTH, 'r', C_YELLOW);
@@ -30,119 +46,299 @@ void print_st_mode(int m, int c) {
   P_MOD(S_IXOTH, 'x', C_GREEN);
 }
 
-void do_ls_pretty(struct dirent *ent, struct stat *st) {
-  int p_color = 1;
-  int m = st->st_mode;
-
-  /* print out the mode in a human-readable format */
-  char type = '.';
-  if (S_ISDIR(m)) type = 'd';
-  if (S_ISBLK(m)) type = 'b';
-  if (S_ISCHR(m)) type = 'c';
-
-  if (p_color) {
-    if (type != '.') {
-      printf(C_CYAN);
-    } else {
-      printf(C_GRAY);
-    }
-  }
-  printf("%c", type);
-  print_st_mode(m >> 6, p_color);
-  print_st_mode(m >> 3, p_color);
-  print_st_mode(m >> 0, p_color);
-
-  // printf(" %5o", m & 0777);
-
-  /*
-  printf(" %8u", st->st_size);
-  printf(C_YELLOW);
-  printf(" %4ld %4ld", st->st_uid, st->st_gid);
-  printf(C_RESET);
-  */
-
-  /*
-  printf(" uid=%-4ld", st->st_uid);
-
-  struct passwd *p = getpwuid(st->st_uid);
-
-  printf(C_RESET " %s", p->pw_name);
-  */
-
-  // printf(" %03lo", st.st_mode);
-  // printf(" %d", st.st_size);
-  char end = '\0';
-  char *color = C_RESET;
-  char *rst = C_RESET;
-
-  if (S_ISDIR(m)) {
-    end = '/';
-    color = "\x1b[35m";
+static int human_readable_size(char *_out, int bufsz, size_t s) {
+  if (s >= 1 << 20) {
+    size_t t = s / (1 << 20);
+    return snprintf(_out, bufsz, "%d.%1dM", (int)t,
+                    (int)(s - t * (1 << 20)) / ((1 << 20) / 10));
+  } else if (s >= 1 << 10) {
+    size_t t = s / (1 << 10);
+    return snprintf(_out, bufsz, "%d.%1dK", (int)t,
+                    (int)(s - t * (1 << 10)) / ((1 << 10) / 10));
   } else {
-    if (m & (S_IXUSR | S_IXGRP | S_IXOTH)) {
-      end = '*';
-      color = C_GREEN;
-    }
+    return snprintf(_out, bufsz, "%d", (int)s);
   }
-
-  if (!p_color) {
-    color = "";
-    rst = "";
-  }
-  printf("  %s%s%s%c\n", color, ent->d_name, rst, end);
-  // printf("%s%s%s%c\t", color, ent->d_name, rst, end);
 }
 
-int do_ls(char *path, int flags) {
-  DIR *d = opendir(path);
+#define FL_L (1 << 0)
+#define FL_1 (1 << 1)
+#define FL_a (1 << 2)
 
-  if (!d) {
-    return -1;
+int print_filename(const char *name, int mode) {
+  char end = '\0';
+  char *name_color = C_RESET;
+
+  if (S_ISDIR(mode)) {
+    end = '/';
+    name_color = C_MAGENTA;
+  } else {
+    if (mode & (S_IXUSR | S_IXGRP | S_IXOTH)) {
+      end = '*';
+      name_color = C_GREEN;
+    }
   }
+  set_color(name_color);
+  printf("%s", name);
+  set_color(C_RESET);
+  printf("%c", end);
+
+  return 1 + strlen(name);
+}
+
+void print_entries_long(struct lsfile **ents, int entc, long flags) {
+  int longest_username = 0;
+  int longest_filesize = 0;
+
+  int human_readable = 1;
+
+  for (int i = 0; i < entc; i++) {
+    struct lsfile *ent = ents[i];
+    struct passwd *pswd = getpwuid(ent->st.st_uid);
+    int len = strlen(pswd->pw_name);
+    if (len > longest_username) longest_username = len;
+  }
+
+  for (int i = 0; i < entc; i++) {
+    char buf[32];
+    struct lsfile *ent = ents[i];
+    int len = 1;
+    if (!S_ISDIR(ent->st.st_mode)) {
+      if (human_readable) {
+        human_readable_size(buf, 32, ent->st.st_size);
+      } else {
+        snprintf(buf, 32, "%d", ent->st.st_size);
+      }
+      len = strlen(buf);
+    }
+    if (len > longest_filesize) longest_filesize = len;
+  }
+
+  for (int i = 0; i < entc; i++) {
+    struct lsfile *ent = ents[i];
+    int m = ent->st.st_mode;
+    /* print out the mode in a human-readable format */
+    char type = '.';
+    if (S_ISDIR(m)) type = 'd';
+    if (S_ISBLK(m)) type = 'b';
+    if (S_ISCHR(m)) type = 'c';
+
+    if (type != '.') {
+      set_color(C_CYAN);
+    } else {
+      set_color(C_GRAY);
+    }
+    printf("%c", type);
+    print_st_mode(m >> 6);
+    print_st_mode(m >> 3);
+    print_st_mode(m >> 0);
+
+    struct passwd *pswd = getpwuid(ent->st.st_uid);
+
+    set_color(C_YELLOW);
+    printf(" %*s", longest_username, pswd->pw_name);
+
+    // print out the filesize
+    if (S_ISDIR(m)) {
+      set_color(C_GRAY);
+
+      printf(" %*s", longest_filesize, "-");
+    } else {
+      set_color(C_GREEN);
+      set_color("\x1b[1m");
+      if (human_readable) {
+        char filesz_buf[32];
+        human_readable_size(filesz_buf, 32, ent->st.st_size);
+        printf(" %*s", longest_filesize, filesz_buf);
+      } else {
+        printf(" %*d", longest_filesize, ent->st.st_size);
+      }
+    }
+
+    printf(" ");
+    print_filename(ent->name, m);
+    printf("\n");
+  }
+}
+static inline int max(int a, int b) { return (a > b) ? a : b; }
+
+void print_entry(struct lsfile *ent, int colwidth) {
+  int n = print_filename(ent->name, ent->st.st_mode);
+  for (int rem = colwidth - n; rem > 0; rem--) {
+    printf(" ");
+  }
+}
+
+void print_entries(struct lsfile **ents, int entc, long flags) {
+  /* Determine the gridding dimensions */
+  int ent_max_len = 0;
+  for (int i = 0; i < entc; i++) {
+    ent_max_len = max(ent_max_len, (int)strlen(ents[i]->name));
+  }
+
+  int col_ext = ent_max_len + 2;
+  int cols = ((term_width - ent_max_len) / col_ext) + 1;
+
+  if (flags & FL_1) cols = 1;
+
+  /* Print the entries */
+  for (int i = 0; i < entc;) {
+    /* Columns */
+    print_entry(ents[i++], ent_max_len);
+    for (int j = 0; (i < entc) && (j < (cols - 1)); j++) {
+      printf("  ");
+      print_entry(ents[i++], ent_max_len);
+    }
+
+    printf("\n");
+  }
+}
+
+int lsfile_compare(const void *av, const void *bv) {
+  const struct lsfile *d1 = av;
+  const struct lsfile *d2 = bv;
+
+  // order directories at the top
+  int a = S_ISDIR(d1->st.st_mode);
+  int b = S_ISDIR(d2->st.st_mode);
+
+  if (a == b) return strcmp(d1->name, d2->name);
+
+  return b - a;
+}
+
+int do_ls(char *path, long flags) {
+  DIR *d = opendir(path);
+  if (!d) return -ENOENT;
 
   int l = strlen(path);
-
   struct dirent *ent;
+  int ents = 0;
 
-  while (1) {
-    ent = readdir(d);
-    if (ent == NULL) break;
-
-    // ignore dotfiles. TODO: add a flag (-a)
-    if (ent->d_name[0] == '.') continue;
-
-    int k = strlen(ent->d_name);
-
-    // TODO: VLA is bad :^/
-    char b[l + k + 1];
-
-    memcpy(b, path, l);
-    b[l] = '/';
-    memcpy(b + l + 1, ent->d_name, k + 1);
-
-    struct stat st;
-    if (lstat(b, &st) != 0) continue;
-
-    do_ls_pretty(ent, &st);
+  for (ents = 0; (ent = readdir(d)) != NULL;) {
+    if ((flags & FL_a) == 0 && ent->d_name[0] == '.') {
+      continue;
+    } else {
+      ents++;
+    }
   }
+  rewinddir(d);
+
+  struct lsfile **files = calloc(sizeof(struct lsfile *), ents);
+
+  char *reified_path = NULL;
+  for (int i = 0; i < ents; i++) {
+    ent = readdir(d);
+    if (ent == NULL) return -1;
+
+    if ((flags & FL_a) == 0 && ent->d_name[0] == '.') {
+      i--;
+      continue;
+    }
+
+    files[i] = calloc(sizeof(struct lsfile), 1);
+    struct lsfile *f = files[i];
+
+    f->name = strdup(ent->d_name);
+    int k = strlen(ent->d_name);
+    reified_path = realloc(reified_path, l + k + 1);
+    memcpy(reified_path, path, l);
+    reified_path[l] = '/';
+    memcpy(reified_path + l + 1, ent->d_name, k + 1);
+    if (lstat(reified_path, &f->st) != 0) continue;
+  }
+  free(reified_path);
 
   closedir(d);
 
+  qsort(files, ents, sizeof(struct lsfile *), lsfile_compare);
+
+  for (int i = 0; i < ents; i++) {
+    struct lsfile *tmp = NULL;
+    if (!strcmp(files[i]->name, ".")) {
+      if (i != 0) {
+        tmp = files[i];
+        files[i] = files[0];
+        files[0] = tmp;
+      }
+    }
+
+    if (!strcmp(files[i]->name, "..")) {
+      if (i != 1) {
+        tmp = files[i];
+        files[i] = files[1];
+        files[1] = tmp;
+      }
+    }
+  }
+
+  if (flags & FL_L) {
+    print_entries_long(files, ents, flags);
+  } else {
+    print_entries(files, ents, flags);
+  }
+
+  // cleanup
+  for (int i = 0; i < ents; i++) {
+    free(files[i]->name);
+    free(files[i]);
+  }
+  free(files);
   return 0;
 }
 
 int main(int argc, char **argv) {
   char *path = ".";
 
-  // TODO: getopt
-  if (argc > 1) {
-    path = argv[1];
+  char ch;
+
+  long todo = 0;
+
+  const char *flags = "1lCa";
+  while ((ch = getopt(argc, argv, flags)) != -1) {
+    switch (ch) {
+      case '1':
+        todo |= FL_1;
+        break;
+      case 'l':
+        todo |= FL_L;
+        break;
+
+      case 'C':
+        use_colors = 1;
+        break;
+
+      case 'a':
+        todo |= FL_a;
+        break;
+
+      case '?':
+        printf("ls: invalid option\n");
+        printf("    usage: %s [%s] [FILE]\n", argv[0], flags);
+        return -1;
+    }
   }
 
-  int res = do_ls(path, 0);
-  if (res != 0) {
-    printf("ls: failed to open '%s'\n", path);
+  // TODO: derive this from isatty()
+  use_colors = 1;
+
+  argc -= optind;
+  argv += optind;
+
+  if (argc >= 1) {
+    path = argv[0];
+    for (int i = 0; i < argc; i++) {
+      int res = do_ls(argv[i], todo);
+      if (res != 0) {
+        printf("ls: failed to open '%s'\n", path);
+      }
+    }
+  } else {
+    int res = do_ls(".", todo);
+    if (res != 0) {
+      printf("ls: failed to open '%s'\n", path);
+    }
   }
 
   return 0;
 }
+

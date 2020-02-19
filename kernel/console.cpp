@@ -38,7 +38,7 @@ static void consputc(int c) {
     serial_send(COM1, c);
   }
   if (use_kernel_vm) {
-    vga::putchar(c);
+    // vga::putchar(c);
   }
 }
 

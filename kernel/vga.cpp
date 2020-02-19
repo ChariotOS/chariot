@@ -161,10 +161,10 @@ void csi_m(void) {
     if (p == 0) {
       attr = 0x07;
     } else if (p >= 30 && p <= 37) {
-      attr = (attr & 0xF0) | ((p - 30 & 0xF));
+      attr = (attr & 0xF0) | (((p - 30) & 0xF));
       continue;
     } else if (p >= 40 && p <= 47) {
-      attr = (attr & 0xF0) | ((p - 40 & 0xF));
+      attr = (attr & 0xF0) | (((p - 40) & 0xF));
       continue;
     } else {
       switch (par[i]) {
@@ -189,7 +189,6 @@ void csi_m(void) {
 }
 
 void vga::putchar(char c) {
-  return;
   switch (state) {
     case 0:
       if (c > 31 && c < 127) {
@@ -352,6 +351,7 @@ void vga::putchar(char c) {
   set_cursor();
 }
 
+/*
 struct BXVGAResolution {
   int width;
   int height;
@@ -395,7 +395,6 @@ static void *get_framebuffer_address(void) {
   return addr;
 }
 
-/*
 int vga::flush_buffer(u32 *dbuf, int npixels) {
   cpu::pushcli();
   int len = width() * height();

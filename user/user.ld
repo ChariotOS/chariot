@@ -1,7 +1,7 @@
 SECTIONS
 {
 	/* start on the second page */
-  . = 0x1000;
+  . = 0x40000;
   .text : { *(.text) }
 
 

@@ -19,22 +19,25 @@ void *memchr(const void *, int, size_t);
 char *strcpy(char *__restrict, const char *__restrict);
 char *strncpy(char *__restrict, const char *__restrict, size_t);
 
-
 size_t strlen(const char *s);
-
 
 char *strchr(const char *s, int c);
 int strcmp(const char *l, const char *r);
 
-
-
-size_t strspn(const char * s, const char * c);
-size_t strcspn(const char * s, const char * c);
-
+size_t strspn(const char *s, const char *c);
+size_t strcspn(const char *s, const char *c);
 
 char *strtok_r(char *str, const char *delim, char **saveptr);
 char *strtok(char *str, const char *delim);
 
+char *strdup(const char *s);
+char *stpcpy(char *d, const char *s);
+char *strcpy(char *dest, const char *src);
+char *strchrnul(const char *s, int c);
+char *strchr(const char *s, int c);
+char *strrchr(const char *s, int c);
+char *strpbrk(const char *s, const char *b);
+char *strstr(const char *h, const char *n);
 
 #ifdef __cplusplus
 }

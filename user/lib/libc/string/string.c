@@ -8,56 +8,82 @@
 #define HIGHS (ONES * (UCHAR_MAX / 2 + 1))
 #define HASZERO(x) (((x)-ONES) & (~(x)&HIGHS))
 
-
-static inline int isdigit(int ch) {
-	return (unsigned int)ch-'0' < 10;
-}
+static inline int isdigit(int ch) { return (unsigned int)ch - '0' < 10; }
 
 static inline int isspace(int ch) {
-	return ch == ' ' || (unsigned int)ch-'\t' < 5;
+  return ch == ' ' || (unsigned int)ch - '\t' < 5;
 }
-long atol(const char * s) {
-	int n = 0;
-	int neg = 0;
-	while (isspace(*s)) {
-		s++;
-	}
-	switch (*s) {
-		case '-':
-			neg = 1;
-			/* Fallthrough is intentional here */
-		case '+':
-			s++;
-	}
-	while (isdigit(*s)) {
-		n = 10*n - (*s++ - '0');
-	}
-	/* The sign order may look incorrect here but this is correct as n is calculated
-	 * as a negative number to avoid overflow on INT_MAX.
-	 */
-	return neg ? n : -n;
+long atol(const char *s) {
+  int n = 0;
+  int neg = 0;
+  while (isspace(*s)) {
+    s++;
+  }
+  switch (*s) {
+    case '-':
+      neg = 1;
+      /* Fallthrough is intentional here */
+    case '+':
+      s++;
+  }
+  while (isdigit(*s)) {
+    n = 10 * n - (*s++ - '0');
+  }
+  /* The sign order may look incorrect here but this is correct as n is
+   * calculated as a negative number to avoid overflow on INT_MAX.
+   */
+  return neg ? n : -n;
 }
 
-int atoi(const char * s) {
-	int n = 0;
-	int neg = 0;
-	while (isspace(*s)) {
-		s++;
-	}
-	switch (*s) {
-		case '-':
-			neg = 1;
-			/* Fallthrough is intentional here */
-		case '+':
-			s++;
-	}
-	while (isdigit(*s)) {
-		n = 10*n - (*s++ - '0');
-	}
-	/* The sign order may look incorrect here but this is correct as n is calculated
-	 * as a negative number to avoid overflow on INT_MAX.
-	 */
-	return neg ? n : -n;
+int atoi(const char *s) {
+  int n = 0;
+  int neg = 0;
+  while (isspace(*s)) {
+    s++;
+  }
+  switch (*s) {
+    case '-':
+      neg = 1;
+      /* Fallthrough is intentional here */
+    case '+':
+      s++;
+  }
+  while (isdigit(*s)) {
+    n = 10 * n - (*s++ - '0');
+  }
+  /* The sign order may look incorrect here but this is correct as n is
+   * calculated as a negative number to avoid overflow on INT_MAX.
+   */
+  return neg ? n : -n;
+}
+
+char *strdup(const char *s) {
+  size_t l = strlen(s);
+  return memcpy(malloc(l + 1), s, l + 1);
+}
+
+char *stpcpy(char *restrict d, const char *restrict s) {
+  size_t *wd;
+  const size_t *ws;
+
+  if ((uintptr_t)s % ALIGN == (uintptr_t)d % ALIGN) {
+    for (; (uintptr_t)s % ALIGN; s++, d++) {
+      if (!(*d = *s)) {
+        return d;
+      }
+    }
+    wd = (void *)d;
+    ws = (const void *)s;
+    for (; !HASZERO(*ws); *wd++ = *ws++)
+      ;
+    d = (void *)wd;
+    s = (const void *)ws;
+  }
+
+  for (; (*d = *s); s++, d++)
+    ;
+
+  return d;
 }
 
 char *strcpy(char *restrict d, const char *restrict s) {

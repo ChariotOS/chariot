@@ -37,6 +37,9 @@ void exit(int status);
 
 int atexit(void (*function)(void));
 
+
+void qsort(void * base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
+
 #ifdef __cplusplus
 }
 #endif

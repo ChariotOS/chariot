@@ -401,7 +401,7 @@ void *PREFIX(malloc)(size_t req_size) {
       FLUSH();
 #endif
       liballoc_unlock();  // release the lock
-      printf("malloc: %llu total\n", l_allocated);
+      // printf("malloc: %llu total\n", l_allocated);
       return p;
     }
 

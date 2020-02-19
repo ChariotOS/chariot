@@ -9,6 +9,7 @@ srcs += stdio/printf.c
 srcs += stdio/scanf.c
 srcs += stdlib/liballoc.c
 srcs += stdlib/malloc.c
+srcs += stdlib/stdlib.c
 srcs += syscall.asm
 srcs += mman/mmap.c
 srcs += string/mem.c

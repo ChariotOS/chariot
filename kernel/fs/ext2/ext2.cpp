@@ -16,6 +16,7 @@
 
 // #define EXT2_DEBUG
 // #define EXT2_TRACE
+#define USE_CACHE
 
 #ifdef EXT2_DEBUG
 #define INFO(fmt, args...) printk("[EXT2] " fmt, ##args)
@@ -58,12 +59,14 @@ fs::ext2::~ext2(void) {
   if (work_buf != nullptr) kfree(work_buf);
   if (inode_buf != nullptr) kfree(inode_buf);
 
+#ifdef USE_CACHE
   for (int i = 0; i < cache_size; i++) {
     if (disk_cache[i].buffer != NULL) {
       phys::free(v2p(disk_cache[i].buffer));
     }
   }
   delete[] disk_cache;
+#endif
 }
 
 bool fs::ext2::init(void) {
@@ -87,6 +90,7 @@ bool fs::ext2::init(void) {
     return false;
   }
 
+#ifdef USE_CACHE
   cache_size = 64;
   disk_cache = new ext2_block_cache_line[cache_size];
   for (int i = 0; i < cache_size; i++) {
@@ -94,7 +98,7 @@ bool fs::ext2::init(void) {
     disk_cache[i].dirty = false;
     disk_cache[i].buffer = NULL;
   }
-
+#endif
   sb->last_check = dev::RTC::now();
 
   // solve for the filesystems block size
@@ -215,14 +219,21 @@ struct fs::ext2_block_cache_line *fs::ext2::get_cache_line(int block) {
 bool fs::ext2::read_block(u32 block, void *buf) {
   TRACE;
 
+#ifdef USE_CACHE
   scoped_lock l(cache_lock);
   auto cl = get_cache_line(block);
 
-  if (cl->dirty) {
+  if (cl->dirty && cl->blkno != block) {
     // flush
     disk.seek(cl->blkno * blocksize, SEEK_SET);
     disk.write(cl->buffer, blocksize);
     cl->dirty = false;
+  }
+
+  if (cl->blkno == block) {
+    cl->last_used = cache_time++;
+    memcpy(buf, cl->buffer, blocksize);
+    return true;
   }
 
   // read into the cache line we found
@@ -234,13 +245,20 @@ bool fs::ext2::read_block(u32 block, void *buf) {
   bool valid = disk.read(cl->buffer, blocksize);
 
   memcpy(buf, cl->buffer, blocksize);
-
   return valid;
+
+#else
+
+  disk.seek(block * blocksize, SEEK_SET);
+  return disk.read(buf, blocksize);
+
+#endif
 }
 
 bool fs::ext2::write_block(u32 block, const void *buf) {
   TRACE;
 
+#ifdef USE_CACHE
   scoped_lock l(cache_lock);
   auto cl = get_cache_line(block);
 
@@ -253,6 +271,11 @@ bool fs::ext2::write_block(u32 block, const void *buf) {
   cl->dirty = true;
   memcpy(cl->buffer, buf, blocksize);
   return true;
+#else
+
+  disk.seek(block * blocksize, SEEK_SET);
+  return disk.write((void*)buf, blocksize);
+#endif
 }
 
 void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,
