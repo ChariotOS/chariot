@@ -70,11 +70,15 @@ int fflush(FILE *);
 int putchar(int);
 
 
-int fputc(int c, FILE *stream);
-int putc(int c, FILE *stream);
 int getchar(void);
 char *fgets(char *s, int size, FILE *stream);
 int getchar(void);
+
+
+int fputc(int c, FILE *stream);
+int putc(int c, FILE *stream);
+int fputs(const char *s, FILE *stream);
+int puts(const char *s);
 
 
 int printf(const char *format, ...);

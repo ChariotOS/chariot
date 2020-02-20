@@ -42,7 +42,13 @@ int main(int argc, char **argv, char **envp) {
     int bg = parseline(buf, args);
 
     if (strcmp(args[0], "cd") == 0) {
-      int res = chdir(args[1]);
+
+      char *path = args[1];
+      if (path == NULL) {
+        // TODO: get user $HOME and go there instead
+        path = "/";
+      }
+      int res = chdir(path);
       if (res != 0) {
         printf("cd: '%s' could not be entered\n", args[1]);
       }

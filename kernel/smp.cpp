@@ -98,7 +98,7 @@ void smp::lapic_init(void) {
   // TICR would be calibrated using an external time source.
   lapic_write(LAPIC_TDCR, LAPIC_X1);
   lapic_write(LAPIC_TIMER, LAPIC_PERIODIC | (32));
-  lapic_write(LAPIC_TICR, 10000000);
+  lapic_write(LAPIC_TICR, 1000000);
 
   // Disable logical interrupt lines.
   lapic_write(LAPIC_LINT0, LAPIC_MASKED);

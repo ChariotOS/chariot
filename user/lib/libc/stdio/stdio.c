@@ -301,3 +301,14 @@ int fseek(FILE *stream, long offset, int whence) {
 void rewind(FILE *stream) {
 	fseek(stream, 0, SEEK_SET);
 }
+
+
+int fputs(const char *s, FILE *stream) {
+  int len = strlen(s);
+  int r = fwrite(s, len, 1, stream);
+  return r >= 0 ? 0 : EOF;
+}
+
+int puts(const char *s) {
+  return fputs(s, stdout);
+}

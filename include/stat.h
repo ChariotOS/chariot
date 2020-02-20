@@ -67,9 +67,9 @@ struct stat {
   unsigned int st_blksize;
   unsigned int st_blocks;
 
-  struct timespec st_atim;
-  struct timespec st_mtim;
-  struct timespec st_ctim;
+  time_t st_atim;
+  time_t st_mtim;
+  time_t st_ctim;
 };
 
 #endif

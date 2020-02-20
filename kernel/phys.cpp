@@ -1,12 +1,11 @@
 #include <asm.h>
+#include <cpu.h>
 #include <lock.h>
 #include <mem.h>
 #include <paging.h>
 #include <phys.h>
 #include <printk.h>
 #include <types.h>
-#include <cpu.h>
-
 
 // #define PHYS_DEBUG
 
@@ -19,10 +18,12 @@ extern char phys_mem_scratch[];
 struct frame {
   struct frame *next;
   u64 page_len;
+
+  inline struct frame *getnext(void) { return (frame *)p2v(next); }
+  inline void setnext(frame *f) { next = (frame *)v2p(f); }
 };
 
 static spinlock phys_lck("phys_lock");
-
 
 static void lock(void) {
   if (use_kernel_vm) phys_lck.lock();
@@ -81,25 +82,64 @@ static void *early_phys_alloc(int npages) {
 
 #ifdef PHYS_DEBUG
 static void print_free(void) {
-  size_t nbytes = kmem.nfree * 4096;
-  printk("phys: %zu kb\n", nbytes / 1024);
+  if (use_kernel_vm) {
+    size_t nbytes = kmem.nfree * 4096;
+    printk("phys: %zu kb\n", nbytes / 1024);
+
+    auto f = working_addr(kmem.freelist);
+    while (1) {
+      printk("   %p ", v2p(f));
+
+      if (f->getnext() <= f && f->next != NULL) {
+        printk("!!");
+      } else {
+        printk("  ");
+      }
+
+      printk(" %p ", (char *)v2p(f) + f->page_len * PGSIZE);
+      printk(" %zu pages\n", f->page_len);
+      if (f->next == NULL) break;
+      f = f->getnext();
+    }
+  }
 }
 #endif
 
-// physical memory allocator implementation
-void *phys::alloc(int npages) {
+static void *late_phys_alloc(size_t npages) {
+  frame *p = NULL;
+  frame *c = (frame *)p2v(kmem.freelist);
 
-  lock();
-
-
-
-  if (npages > 1 && !use_kernel_vm) {
-    panic(
-        "unable to allocate contiguious physical pages before kernel vm is "
-        "availible\n");
+  while (v2p(c) != NULL) {
+    if (c->page_len >= npages) break;
+    p = c;
+    c = c->getnext();
   }
 
-  auto p = early_phys_alloc(npages);
+  void *a = NULL;
+
+  if (c->page_len == npages) {
+    // remove from start
+    if (v2p(p) == NULL) {
+      kmem.freelist = c->next;
+    } else {
+      p->setnext(c->getnext());
+    }
+    a = (void*)c;
+  } else {
+    // take from end
+    c->page_len -= npages;
+    a = (void*)((char*)c + c->page_len * PGSIZE);
+  }
+
+  // zero out the page(s)
+  memset(p2v(a), 0x00, npages * PGSIZE);
+  return v2p(a);
+}
+
+// physical memory allocator implementation
+void *phys::alloc(int npages) {
+  lock();
+  void *p = use_kernel_vm ? late_phys_alloc(npages) : early_phys_alloc(npages);
 
 #ifdef PHYS_DEBUG
   print_free();
@@ -109,24 +149,61 @@ void *phys::alloc(int npages) {
   return p;
 }
 
-void phys::free(void *v) {
-  lock();
-
-
-
+void phys::free(void *v, int len) {
+  if (!use_kernel_vm) {
+    panic("phys::free(%p) before kernel vm enabled\n", v);
+  }
 
   if ((u64)v % PGSIZE) {
     panic("phys::free requires page aligned address. Given %p", v);
   }
-  if (v <= high_kern_end) panic("phys::free cannot free below the kernel's end");
+  if (v <= high_kern_end)
+    panic("phys::free cannot free below the kernel's end");
+
+  lock();
+
+  /* find a spot to place the freed page */
 
   frame *r = working_addr((frame *)v);
-  r->next = kmem.freelist;
-  r->page_len = 1;
-  kmem.freelist = (frame *)v;
 
+  r->next = NULL;
+  r->page_len = len;
+
+  frame *prev = working_addr(kmem.freelist);
+
+  // insert at the start if we haven't found a slot
+  if (v2p(prev) == NULL) {
+    r->setnext(kmem.freelist);
+    kmem.freelist = (frame *)v2p(r);
+  } else {
+    while (1) {
+      if (prev->next == NULL) break;
+      if (prev->getnext() > r) break;
+      prev = prev->getnext();
+    }
+    // insert this frame after the prev
+    r->setnext(prev->next);
+    prev->setnext(r);
+  }
+
+  // patch up
+
+  auto f = working_addr(kmem.freelist);
+  while (1) {
+    if (v2p(f) == NULL || f->next == NULL) break;
+
+    auto succ = f->getnext();
+    auto after = (frame *)v2p((frame *)((char *)f + f->page_len * PGSIZE));
+
+    if (f->next == after) {
+      f->page_len += succ->page_len;
+      f->setnext(succ->next);
+    }
+    if (f->next == NULL) break;
+    f = f->getnext();
+  }
   // increment how many pages are freed
-  kmem.nfree++;
+  kmem.nfree += len;
 
 #ifdef PHYS_DEBUG
   print_free();
@@ -155,7 +232,7 @@ void phys::free_range(void *vstart, void *vend) {
   df->page_len = pl;
   if (kmem.freelist == NULL) {
     df->next = kmem.freelist;
-    kmem.freelist = fr;
+    kmem.freelist = (frame *)v2p(fr);
   } else {
     df->next = kmem.freelist->next;
     kmem.freelist->next = fr;

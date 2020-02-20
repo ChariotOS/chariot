@@ -18,7 +18,7 @@ int use_colors = 0;
 #define C_GRAY 90
 
 static int current_color = 0;
-inline void set_color(int code) {
+static void set_color(int code) {
   if (use_colors) {
     if (code != current_color) {
       printf("\x1b[%dm", code);

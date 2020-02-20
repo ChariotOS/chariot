@@ -78,7 +78,7 @@ int print_filename(const char *name, int mode) {
     }
   }
   set_color(name_color);
-  printf("%s", name);
+  puts(name);
   set_color(C_RESET);
   printf("%c", end);
 
@@ -137,6 +137,13 @@ void print_entries_long(struct lsfile **ents, int entc, long flags) {
     set_color(C_YELLOW);
     printf(" %*s", longest_username, pswd->pw_name);
 
+
+    /*
+    printf(" %8ld", ent->st.st_mtim);
+    printf(" %8ld", ent->st.st_atim);
+    printf(" %8ld", ent->st.st_ctim);
+    */
+
     // print out the filesize
     if (S_ISDIR(m)) {
       set_color(C_GRAY);
@@ -154,9 +161,9 @@ void print_entries_long(struct lsfile **ents, int entc, long flags) {
       }
     }
 
-    printf(" ");
+    puts(" ");
     print_filename(ent->name, m);
-    printf("\n");
+    puts("\n");
   }
 }
 static inline int max(int a, int b) { return (a > b) ? a : b; }
@@ -164,7 +171,7 @@ static inline int max(int a, int b) { return (a > b) ? a : b; }
 void print_entry(struct lsfile *ent, int colwidth) {
   int n = print_filename(ent->name, ent->st.st_mode);
   for (int rem = colwidth - n; rem > 0; rem--) {
-    printf(" ");
+    puts(" ");
   }
 }
 
@@ -185,11 +192,11 @@ void print_entries(struct lsfile **ents, int entc, long flags) {
     /* Columns */
     print_entry(ents[i++], ent_max_len);
     for (int j = 0; (i < entc) && (j < (cols - 1)); j++) {
-      printf("  ");
+      puts("  ");
       print_entry(ents[i++], ent_max_len);
     }
 
-    printf("\n");
+    puts("\n");
   }
 }
 
@@ -312,7 +319,7 @@ int main(int argc, char **argv) {
         break;
 
       case '?':
-        printf("ls: invalid option\n");
+        puts("ls: invalid option\n");
         printf("    usage: %s [%s] [FILE]\n", argv[0], flags);
         return -1;
     }

@@ -333,6 +333,9 @@ int fs::inode::stat(struct stat *buf) {
     buf->st_blksize = 512;
 
     // TODO: time
+    buf->st_atim = atime;
+    buf->st_ctim = ctime;
+    buf->st_mtim = mtime;
     return 0;
   }
 

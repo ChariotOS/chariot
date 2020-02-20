@@ -12,7 +12,7 @@ namespace phys {
 
 
   // free one page of physical memory
-  void free(void*);
+  void free(void*, int len = 1);
 
 
   void free_range(void *, void*);
@@ -27,7 +27,7 @@ namespace phys {
     return p2v(phys::alloc(1));
   }
   inline void kfree(void *p) {
-    return phys::free(v2p(p));
+    return phys::free(v2p(p), 1);
   }
 };
 
