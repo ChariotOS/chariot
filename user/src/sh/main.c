@@ -1,11 +1,11 @@
 #include <chariot.h>
 #include <pthread.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <pwd.h>
 
 #define C_RED "\x1b[31m"
 #define C_GREEN "\x1b[32m"
@@ -91,7 +91,8 @@ int main(int argc, char **argv, char **envp) {
   strncpy(uname, pwd->pw_name, 32);
 
   while (1) {
-    snprintf(prompt, 64, C_GREEN "[%s]%c " C_RESET, uname, uid == 0 ? '#' : '$');
+    snprintf(prompt, 64, C_GREEN "[%s]%c " C_RESET, uname,
+             uid == 0 ? '#' : '$');
 
     int len = 0;
 
@@ -109,45 +110,170 @@ int main(int argc, char **argv, char **envp) {
   return 0;
 }
 
+struct input_info {
+  // cursor index in the buffer
+  int ind;
+  int len;
+  // size of buffer
+  int max;
+  char *buf;
+};
+
+void input_insert(char c, struct input_info *in) {
+  // ensure there is enough space for the character insertion
+  if (in->len + 1 >= in->max - 1) {
+    in->max *= 2;
+    in->buf = realloc(in->buf, in->max);
+  }
+
+  int i = in->ind;
+  int l = in->len;
+
+  // _________|__________________00000000000
+  //          ^                  ^         ^
+  //          ind                len       max
+
+  // move the bytes after the cursor right by one
+  memmove(in->buf + i + 1, in->buf + i, l - i);
+  in->buf[i] = c;
+  in->ind++;
+  in->buf[++in->len] = '\0';
+}
+
+void input_del(struct input_info *in) {}
+
+void input_display(struct input_info *in, const char *prompt) {
+  // TODO: this wastes IO operations *alot*
+  fprintf(stderr, "\x1b[2K\r");
+  // fprintf(stderr, "%4d ", in->ind);
+  fprintf(stderr, "%s", prompt);
+  fprintf(stderr, "\x1b[s");  // save the cursor pos
+  fprintf(stderr, "%s", in->buf);
+  // restore cursor pos and move to the right
+  fprintf(stderr, "\x1b[u");
+  // CSI n C will move by 1 even when you ask for 0...
+  if (in->ind != 0) {
+    fprintf(stderr, "\x1b[%dC", in->ind);
+  }
+
+  fflush(stderr);
+}
+
+// the number of ANSI paramters
+#define NPAR 16
+
 char *read_line(int fd, char *prompt, int *len_out) {
-  int i = 0;
-  long max = 512;
+  struct input_info in;
 
-  char *buf = malloc(max);
-  memset(buf, 0, max);
+  in.max = 32;
+  in.len = 0;
+  in.ind = 0;
+  in.buf = calloc(in.max, 1);
 
-  printf("%s", prompt);
+  // ANSI escape code state machine
+  int state = 0;
+  static unsigned long npar, par[NPAR];
+  int ques = 0;
+
+  fprintf(stderr, "%s", prompt);
   fflush(stdout);
 
-  for (;;) {
-    if (i + 1 >= max - 1) {
-      max *= 2;
-      buf = realloc(buf, max);
-    }
-
+  while (1) {
+    input_display(&in, prompt);
     int c = fgetc(stdin);
 
     if (c == -1) break;
     if (c == '\n' || c == '\r') break;
 
-    switch (c) {
-      case 0x7F:
-        if (i != 0) {
-          buf[--i] = 0;
+    if (in.len + 1 >= in.max - 1) {
+      in.max *= 2;
+      in.buf = realloc(in.buf, in.max);
+    }
+
+    switch (state) {
+      // default text-entry mode
+      case 0:
+
+        if (c == 0x1b) {
+          state = 1;
+          break;
+        } else if (c == '\t') {
+          // TODO: tab handling
+        } else if (c == 0x7F /* DEL */) {
+          if (in.ind == 0) break;
+          int i = in.ind;
+          int l = in.len;
+
+          // move the bytes after the cursor left by one
+          memmove(in.buf + i - 1, in.buf + i, l - i);
+          in.ind--;
+          in.buf[--in.len] = '\0';
+        } else {
+          // _________|__________________00000000000
+          //          ^                  ^         ^
+          //          ind                len       max
+
+          // move the bytes after the cursor right by one
+          memmove(in.buf + in.ind + 1, in.buf + in.ind, in.len - in.ind);
+          in.buf[in.ind] = c;
+          in.ind++;
+          in.buf[++in.len] = '\0';
         }
         break;
 
-      default:
-        buf[i++] = c;
+      case 1:
+        state = 0;
+        if (c == '[') {
+          state = 2;
+        }
+        break;
+
+      case 2:
+        for (npar = 0; npar < NPAR; npar++) par[npar] = 0;
+        npar = 0;
+        state = 3;
+        if ((ques = (c == '?'))) {
+          break;
+        }
+
+        /* parse out decimal arguments */
+      case 3:
+        if (c == ';' && npar < NPAR - 1) {
+          npar++;
+          break;
+        } else if (c >= '0' && c <= '9') {
+          par[npar] = 10 * par[npar] + c - '0';
+          break;
+        } else
+          state = 4;
+      /* run ansi codes */
+      case 4:
+        state = 0;
+        switch (c) {
+          case 'D':
+            if (in.ind > 0) in.ind--;
+            break;
+          case 'C':
+            if (in.ind < in.len) in.ind++;
+            break;
+
+          default:
+            fprintf(stderr, "unknown ansi escp: \\x1b[");
+            for (int i = 0; i < npar; i++) {
+              fprintf(stderr, "%lu\n", par[i]);
+              if (i != npar - 1) fprintf(stderr, ";");
+            }
+            fprintf(stderr, "%c\n", c);
+            break;
+        }
         break;
     }
-
-    printf("\r%s%s", prompt, buf);
-    fflush(stdout);
   }
-  buf[i] = '\0';  // null terminate
-  if (len_out != NULL) *len_out = i;
-  return buf;
+  in.buf[in.len] = '\0';  // null terminate
+  if (len_out != NULL) *len_out = in.len;
+
+  fprintf(stderr, "\n");
+  return in.buf;
 }
 
 int parseline(const char *cmdline, char **argv) {

@@ -36,6 +36,7 @@ static FILE _stdout = {
     .buffer = _stdout_buffer,
 };
 
+static char _stderr_buffer[512];
 static FILE _stderr = {
     .close = NULL,
     .write = _stdio_write,
@@ -43,6 +44,11 @@ static FILE _stderr = {
     .read = NULL,
 
     .fd = 2,
+
+    .buffered = 1,
+    .buf_len = 0,
+    .buf_cap = 512,
+    .buffer = _stderr_buffer,
 };
 
 FILE *const stdin = &_stdin;

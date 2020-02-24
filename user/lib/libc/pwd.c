@@ -7,7 +7,7 @@
 static FILE *pwdb = NULL;
 
 static void open_it(void) {
-  pwdb = fopen("/etc/passwd", "r");
+  pwdb = fopen("/cfg/users", "r");
 }
 
 #define LINE_LEN 2048

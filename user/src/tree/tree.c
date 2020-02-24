@@ -1,14 +1,17 @@
+#include <errno.h>
 #include <ftw.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 
 long nfiles = 0;
 long ndirs = 0;
 int use_colors = 1;
 int level = -1;
+unsigned long total_size = 0;
+int quiet = 0;
 
 #define C_RED "\x1b[31m"
 #define C_GREEN "\x1b[32m"
@@ -55,15 +58,32 @@ static int display_info(const char *fpath, const struct stat *sb, int tflag,
     ndirs++;
   } else {
     nfiles++;
+    total_size += sb->st_size;
   }
 
-  for (int i = 0; i < ftwbuf->level; i++) puts("│   ");
-  puts("├── ");
+  if (!quiet) {
+    for (int i = 0; i < ftwbuf->level; i++) puts("│   ");
+    puts("├── ");
 
-  print_filename(name, sb->st_mode);
-  puts("\n");
+    print_filename(name, sb->st_mode);
+    puts("\n");
+  }
 
   return 0;  // To tell nftw() to continue
+}
+
+int print_filesize(long s) {
+  if (s >= 1 << 20) {
+    size_t t = s / (1 << 20);
+    return printf("%d.%1d mb", (int)t,
+                  (int)(s - t * (1 << 20)) / ((1 << 20) / 10));
+  } else if (s >= 1 << 10) {
+    size_t t = s / (1 << 10);
+    return printf("%d.%1d kb", (int)t,
+                  (int)(s - t * (1 << 10)) / ((1 << 10) / 10));
+  } else {
+    return printf("%d bytes", (int)s);
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -71,11 +91,15 @@ int main(int argc, char *argv[]) {
 
   char ch;
 
-  const char *flags = "L:";
+  const char *flags = "L:q";
   while ((ch = getopt(argc, argv, flags)) != -1) {
     switch (ch) {
       case 'L':
         level = atoi(optarg);
+        break;
+
+      case 'q':
+        quiet = 1;
         break;
 
       case '?':
@@ -86,15 +110,19 @@ int main(int argc, char *argv[]) {
   argc -= optind;
   argv += optind;
 
-  // ftw_flags |= FTW_DEPTH;
+  const char *path = ".";
 
-  if (nftw((argc < 2) ? "." : argv[1], display_info, 20, ftw_flags) == -1) {
-    // perror("nftw");
+  if (argc >= 1) {
+    path = argv[0];
+  }
+  if (nftw(path, display_info, 32, ftw_flags) < 0) {
     exit(EXIT_FAILURE);
   }
 
   puts("\n");
-  printf("%ld directories, %ld files\n", ndirs, nfiles);
+  printf("%ld directories, %ld files. \n", ndirs, nfiles);
+  print_filesize(total_size);
+  puts("\n");
   exit(EXIT_SUCCESS);
   return 0;
 }

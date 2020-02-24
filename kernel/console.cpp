@@ -21,7 +21,7 @@
 #define LINEBUF_SIZE 4096
 
 static bool buffer_input = false;
-static bool echo = true;
+static bool echo = false;
 static int line_len = 0;
 static char line_buffer[LINEBUF_SIZE];
 static spinlock cons_input_lock;

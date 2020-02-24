@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #define PATH_MAX 255
 

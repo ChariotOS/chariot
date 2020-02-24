@@ -465,8 +465,8 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
     }
 
     // TODO: use a waitqueue
-    // me->waiters.wait();
-    sched::yield();
+    me->waiters.wait();
+    // sched::yield();
   }
 
   return res_pid;
