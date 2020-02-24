@@ -4,6 +4,7 @@
 // A set of common assembly functions
 
 #include <math.h>
+
 #include "types.h"
 
 #ifndef unlikely
@@ -11,7 +12,7 @@
 #endif
 
 #ifndef likely
-#define likely(c)   __builtin_expect((c), 1)
+#define likely(c) __builtin_expect((c), 1)
 #endif
 
 #define BOOTCODE __attribute__((__section__(".boot")))
@@ -89,7 +90,6 @@
 #define SEG_UDATA 5  // user data+stack
 #define SEG_TSS 6    // this process's task state
 
-
 #define DPL_KERN 0x0
 #define DPL_USER 0x3  // User DPL
 
@@ -115,13 +115,11 @@
 #define STS_IG32 0xE  // 32-bit Interrupt Gate
 #define STS_TG32 0xF  // 32-bit Trap Gate
 
-
 // Useful constants for memory sizes
 #define KB (1024LL)
 #define MB (1024LL * KB)
 #define GB (1024LL * MB)
 #define TB (1024LL * GB)
-
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 #define for_range(var, start, end) for (auto var = start; var < (end); var++)
@@ -134,7 +132,6 @@ void *memcpy(void *dst, const void *src, size_t n);
 
 #ifndef FANCY_MEM_FUNCS
 
-
 static inline void O_memset(void *buf, char c, size_t len) {
   char *m = (char *)buf;
   for (size_t i = 0; i < len; i++) m[i] = c;
@@ -144,6 +141,19 @@ static inline void O_memset(void *buf, char c, size_t len) {
 
 #endif
 
+static inline int strcmp(const char *l, const char *r) {
+  for (; *l == *r && *l; l++, r++)
+    ;
+  return *(unsigned char *)l - *(unsigned char *)r;
+}
+
+
+static inline size_t strlen(const char *s) {
+  const char *a = s;
+  for (; *s; s++)
+    ;
+  return s - a;
+}
 
 static inline void memset(void *buf, char c, size_t len) {
   u64 b = c & 0xFF;
@@ -280,7 +290,6 @@ static inline u32 popcnt(u64 val) {
   return count;
 }
 
-
 static inline void lidt(void *p, int size) {
   volatile u16 pd[5];
 
@@ -297,6 +306,5 @@ static inline u64 readeflags(void) {
   asm volatile("pushf; pop %0" : "=r"(eflags));
   return eflags;
 }
-
 
 #endif

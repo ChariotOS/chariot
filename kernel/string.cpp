@@ -2,13 +2,6 @@
 #include <printk.h>
 #include <string.h>
 
-static size_t strlen(const char* str) {
-  const char* s;
-
-  for (s = str; *s; ++s)
-    ;
-  return (s - str);
-}
 
 #define INIT_STRING       \
   if (m_buf == nullptr) { \
@@ -38,14 +31,6 @@ class string_checker {
 
   ~string_checker() {
     printk("- [%4d %s]: %p\n", line, func, &s);
-    /*
-    if (s.m_buf == nullptr) {
-      assert(s.m_cap == 0);
-      assert(s.m_len == 0);
-    } else {
-      assert(s.m_cap > s.m_len);
-    }
-    */
   }
 };
 

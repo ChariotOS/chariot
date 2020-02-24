@@ -1,4 +1,4 @@
-// #define   0
+#define SIGINT    0
 #define SIGHUP    1
 #define SIGQUIT   3
 #define SIGILL    4

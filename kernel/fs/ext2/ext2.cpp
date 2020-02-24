@@ -91,7 +91,7 @@ bool fs::ext2::init(void) {
   }
 
 #ifdef USE_CACHE
-  cache_size = 64;
+  cache_size = EXT2_CACHE_SIZE;
   disk_cache = new ext2_block_cache_line[cache_size];
   for (int i = 0; i < cache_size; i++) {
     disk_cache[i].blkno = 0;

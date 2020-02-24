@@ -19,6 +19,8 @@ PFX:="\\x1b[34m[U]\\x1b[0m"
 
 LDFLAGS += -L$(PWD)/out/lib/
 
+libs = -lc
+
 
 -include $(M)/Makefile
 
@@ -32,8 +34,6 @@ endif
 endif
 
 DST=out/
-
-libs = -lc
 
 # reify paths
 srcs:=$(srcs:%=$(M)/%)

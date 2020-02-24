@@ -23,6 +23,7 @@ size_t strlen(const char *s);
 
 char *strchr(const char *s, int c);
 int strcmp(const char *l, const char *r);
+int strncmp(const char *s1, const char *s2, size_t n);
 
 size_t strspn(const char *s, const char *c);
 size_t strcspn(const char *s, const char *c);

@@ -26,14 +26,12 @@
 
 namespace fs {
 
-
 struct ext2_block_cache_line {
   int blkno;
   long last_used;
   int dirty;
-  char *buffer; // a 4k page (allocated with phys::alloc)
+  char *buffer;  // a 4k page (allocated with phys::alloc)
 };
-
 
 class ext2;
 
@@ -71,15 +69,13 @@ class ext2_inode : public fs::inode {
   friend class ext2;
 
  public:
-
   static ext2_inode *create(ext2 &fs, u32 index);
   explicit ext2_inode(int type, ext2 &fs, u32 index);
 
   virtual ~ext2_inode();
 
-
   // ^ struct fs::inode
-  virtual struct inode *resolve_direntry(string &name);
+  virtual struct inode *resolve_direntry(const char *name);
   virtual int rm(string &name);
   virtual ssize_t do_read(filedesc &, void *, size_t);
   virtual ssize_t do_write(filedesc &, void *, size_t);
@@ -226,7 +222,6 @@ class ext2 final : public filesystem {
     u32 s_reserved[162]; /* Padding to the end of the block */
   };
 
-
   superblock *sb = nullptr;
 
   // how many bytes a block is made up of
@@ -243,11 +238,9 @@ class ext2 final : public filesystem {
   void *work_buf = nullptr;
   void *inode_buf = nullptr;
 
-
   struct inode *root;
 
   map<u32, ext2_inode *> inodes;
-
 
   // how many entries in the disk cache
   int cache_size;

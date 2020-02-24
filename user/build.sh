@@ -10,6 +10,7 @@ build () {
 
 
 build lib/libc
+build lib/libm
 
 for i in src/*
 do

@@ -3,28 +3,30 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+int errno;
+
+int *__errno_location(void) {
+  return &errno;
+}
+
 ssize_t write(int fd, const void *buf, size_t count) {
   // just forward to the system call
-  return syscall(SYS_write, fd, buf, count);
+  return errno_syscall(SYS_write, fd, buf, count);
 }
 
 ssize_t read(int fd, void *buf, size_t count) {
   // just forward to the system call
-  return syscall(SYS_read, fd, buf, count);
+  return errno_syscall(SYS_read, fd, buf, count);
 }
 
 off_t lseek(int fd, off_t offset, int whence) {
-  return syscall(SYS_lseek, fd, offset, whence);
+  return errno_syscall(SYS_lseek, fd, offset, whence);
 }
 
-int close(int fd) { return syscall(SYS_close, fd); }
+int close(int fd) { return errno_syscall(SYS_close, fd); }
 
 int chdir(const char *path) {
-  int res = syscall(SYS_chdir, path);
-
-  // printf("chdir('%s') = %d\n", path, res);
-
-  return res;
+  return errno_syscall(SYS_chdir, path);
 }
 
 int opterr = 1, /* if error message should be printed */
@@ -84,4 +86,14 @@ int getopt(int nargc, char *const nargv[], const char *ostr) {
     ++optind;
   }
   return (optopt); /* dump back option letter */
+}
+
+uid_t getuid(void) { return syscall(SYS_getuid); }
+uid_t geteuid(void) { return syscall(SYS_geteuid); }
+gid_t getgid(void) { return syscall(SYS_getgid); }
+gid_t getegid(void) { return syscall(SYS_getegid); }
+
+int access(const char *path, int amode) {
+  // TODO: access syscall
+  return 0;
 }

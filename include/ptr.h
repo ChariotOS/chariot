@@ -154,7 +154,7 @@ class refcounted_base {
   }
 
 
-  atom<short> m_ref_count = 1;
+  atom<unsigned> m_ref_count = 1;
 };
 
 template <typename T>

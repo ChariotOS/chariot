@@ -28,4 +28,5 @@ srcs += dirent.c
 srcs += atexit.c
 srcs += time.c
 srcs += pwd.c
+srcs += ftw.c
 srcs += cxx/glue.cpp

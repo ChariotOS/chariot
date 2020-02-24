@@ -75,6 +75,16 @@ int getpid(void);
 int gettid(void);
 
 
+/// num=0x26
+long getuid(void);
+/// num=0x27
+long geteuid(void);
+/// num=0x28
+long getgid(void);
+/// num=0x29
+long getegid(void);
+
+
 /// num=0x30
 void *mmap(void *addr, long length, int prot, int flags, int fd, long offset);
 

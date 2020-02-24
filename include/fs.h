@@ -137,7 +137,7 @@ struct inode {
   int register_direntry(string name, int type, struct inode * = NULL);
   int remove_direntry(string name);
 
-  struct inode *get_direntry(string &name);
+  struct inode *get_direntry(const char*name);
 
   void walk_direntries(
       func<bool /* continue? */ (const string &, struct inode *)>);
@@ -161,7 +161,8 @@ struct inode {
    */
   // destructs (and deletes) all inodes this inode owns
   virtual ~inode();
-  virtual struct inode *resolve_direntry(string &name);
+  virtual struct inode *resolve_direntry(const char *name);
+
   // remove an entry in the directory (only called on entry removals of type
   // ENT_RES). Returns 0 on success, <0 on failure or the file cannot be removed
   virtual int rm(string &name);
@@ -182,7 +183,7 @@ struct inode {
   int rc = 0;
 
  private:
-  struct inode *get_direntry_nolock(string &name);
+  struct inode *get_direntry_nolock(const char *name);
   struct inode *get_direntry_ino(struct direntry *);
 };
 

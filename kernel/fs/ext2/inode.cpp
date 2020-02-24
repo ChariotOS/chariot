@@ -220,7 +220,7 @@ int fs::ext2_inode::block_from_index(int i_block, int set_to) {
 
 int fs::ext2_inode::injest_info(fs::ext2_inode_info &info) {
   size = info.size;
-  mode = info.type & 077777;
+  mode = info.type;
   uid = info.uid;
   gid = info.gid;
   link_count = info.hardlinks;
@@ -282,12 +282,12 @@ int fs::ext2_inode::commit_info(void) {
   return 0;
 }
 
-struct fs::inode *fs::ext2_inode::resolve_direntry(string &needle) {
+struct fs::inode *fs::ext2_inode::resolve_direntry(const char *needle) {
   bool found = false;
   u32 ent_inode_num;
 
   fs.traverse_dir(this->ino, [&](u32 ino, const char *name) -> bool {
-    if (needle == name) {
+    if (!strcmp(needle, name)) {
       ent_inode_num = ino;
       found = true;
       return false;

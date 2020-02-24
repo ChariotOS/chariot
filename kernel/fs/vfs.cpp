@@ -4,6 +4,7 @@
 #include <fs/vfs.h>
 #include <map.h>
 #include <process.h>
+#include <util.h>
 
 vec<unique_ptr<fs::filesystem>> mounted_filesystems;
 struct fs::inode *vfs_root = NULL;
@@ -77,38 +78,68 @@ struct fs::inode *vfs::open(string spath, int opts, int mode) {
   return ino;
 }
 
+// Copy the next path element from path into name.
+// Return a pointer to the element following the copied one.
+// The returned path has no leading slashes,
+// so the caller can check *path=='\0' to see if the name is the last one.
+// If no name to remove, return 0.
+//
+// Examples:
+//   skipelem("a/bb/c", name) = "bb/c", setting name = "a"
+//   skipelem("///a//bb", name) = "bb", setting name = "a"
+//   skipelem("a", name) = "", setting name = "a"
+//   skipelem("", name) = skipelem("////", name) = 0
+//
+static const char *skipelem(const char *path, char *name, bool &last) {
+  const char *s;
+  int len;
+
+  while (*path == '/') path++;
+  if (*path == 0) return 0;
+  s = path;
+  last = false;
+  while (1) {
+    if (*path == '/') break;
+    if (*path == 0x0) {
+      last = true;
+      break;
+    }
+    path++;
+  }
+  len = path - s;
+  if (name != NULL) {
+    if (len >= 255)
+      memcpy(name, s, 255);
+    else {
+      memcpy(name, s, len);
+      name[len] = 0;
+    }
+  }
+  while (*path == '/') path++;
+  return path;
+}
+
 int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
                struct fs::inode *&res) {
   assert(path != NULL);
-
-  // parse the fs::path from the given path
-  fs::path p = string(path);
-
   auto ino = cwd;
   /* if the path is rooted (/ at start), set the "working cwd" to the root
    * directory */
-  if (p.is_root()) {
-    // printk("rooted\n");
+  if (path[0] == '/') {
     ino = vfs_root;
   } else {
-    // printk("not rooted\n");
     assert(cwd != NULL);
   }
 
-  for (int i = 0; i < p.len(); i++) {
-    // if we are on the last directory of the path
-    bool last = i == p.len() - 1;
-    string &targ = p[i];
-
-    // printk("%d:%s\n", i, targ.get());
-
-    auto found = ino->get_direntry(targ);
+  char name[256];
+  bool last = false;
+  while ((path = skipelem((char *)path, name, last)) != 0) {
+    auto found = ino->get_direntry(name);
 
     if (found == NULL) {
       if (last && (flags & O_CREAT)) {
         // TODO: check for O_CREAT and last
-        // printk("NOT FOUND AT LAST, WOULD CREATE %s %o\n", targ.get(), mode);
-        return ino->touch(targ, mode, res);
+        return ino->touch(name, mode, res);
       }
 
       res = NULL;

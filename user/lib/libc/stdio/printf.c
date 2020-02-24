@@ -31,11 +31,10 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-
-#include <stdarg.h>
 
 // define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H ...) to include the
 // printf_config.h header file
@@ -927,7 +926,6 @@ int sprintf(char* buffer, const char* format, ...) {
   return ret;
 }
 
-
 int snprintf(char* buffer, size_t count, const char* format, ...) {
   va_list va;
   va_start(va, format);
@@ -952,6 +950,20 @@ int fctprintf(void (*out)(char character, void* arg), void* arg,
   const out_fct_wrap_type out_fct_wrap = {out, arg};
   const int ret = _vsnprintf(_out_fct, (char*)(uintptr_t)&out_fct_wrap,
                              (size_t)-1, format, va);
+  va_end(va);
+  return ret;
+}
+
+void fprintf_writer(char c, void* a, size_t idx, size_t maxlen) {
+  FILE* stream = a;
+  fputc(c, stream);
+}
+
+int fprintf(FILE* stream, const char* format, ...) {
+  va_list va;
+  va_start(va, format);
+  const int ret =
+      _vsnprintf(fprintf_writer, (char*)stream, (size_t)-1, format, va);
   va_end(va);
   return ret;
 }

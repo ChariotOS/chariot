@@ -32,13 +32,24 @@ void *calloc(size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
 void *reallocarray(void *ptr, size_t nmemb, size_t size);
 
+int system(const char *);
 
 void exit(int status);
-
 int atexit(void (*function)(void));
 
 
+char *getenv(const char *name);
+int setenv(const char *name, const char *value, int overwrite);
+int unsetenv(const char *name);
+
+
 void qsort(void * base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
+
+void abort(void);
+
+
+#define EXIT_FAILURE 1
+#define EXIT_SUCCESS 0
 
 #ifdef __cplusplus
 }

@@ -10,12 +10,15 @@
 #include <chariot/dirent.h>
 
 
+#define ENV_PATH "/cfg/environ"
+
+
 // read the initial environ from /etc/environ
 // credit: github.com/The0x539
 char **read_default_environ(void) {
   struct stat st;
 
-  if (lstat("/etc/environ", &st) != 0) {
+  if (lstat(ENV_PATH, &st) != 0) {
     printf("[init] WARNING: no /etc/environ found\n");
     while (1) {
     }
@@ -23,7 +26,7 @@ char **read_default_environ(void) {
   }
 
   char *buf = malloc(st.st_size + 1);
-  FILE *fp = fopen("/etc/environ", "r");
+  FILE *fp = fopen(ENV_PATH, "r");
   if (!fp) {
     free(buf);
     return NULL;
@@ -58,6 +61,12 @@ char **read_default_environ(void) {
 }
 
 int main(int argc, char **argv) {
+
+
+  if (getpid() != 1) {
+    fprintf(stderr, "init: must be run as pid 1\n");
+    return -1;
+  }
   // open up file descriptor 1, 2, and 3
   for (int i = 0; i < 3; i++) close(i + 1);
   open("/dev/console", O_RDWR);

@@ -114,6 +114,10 @@ sudo cp -r user/out/lib $mnt/lib
 sudo cp -r docs $mnt/etc/
 
 
+sudo mkdir $mnt/usr/src
+sudo rsync -ar --exclude=build  --exclude=.git --exclude=user/out ./ $mnt/usr/src
+
+
 sudo chown -R 0:0 $mnt
 
 # install the bootloader (grub, in this case)

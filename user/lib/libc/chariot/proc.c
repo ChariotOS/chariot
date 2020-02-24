@@ -1,4 +1,5 @@
 #include <chariot.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,21 +18,17 @@ int pctl(int pid, int request, ...) {
   va_start(ap, request);
   arg = va_arg(ap, void *);
   va_end(ap);
-  return syscall(SYS_pctl, pid, request, arg);
+  return errno_syscall(SYS_pctl, pid, request, arg);
 }
 
 int startpidve(int pid, char *const path, char *const argv[],
                char *const envp[]) {
-  /*
-  printf("path=%p\n", path);
-  printf("argv=%p\n", argv);
-  printf("envp=%p\n", envp);
-  */
-  return syscall(SYS_startpidve, pid, path, argv, envp);
+  return errno_syscall(SYS_startpidve, pid, path, argv, envp);
 }
 
 int startpidvpe(int pid, char *const file, char *const argv[],
                 char *const envp[]) {
+  int seen_eacces = 0;
   char *path = NULL;  // TODO: getenv
 
   if (strchr(file, '/')) {
@@ -44,7 +41,7 @@ int startpidvpe(int pid, char *const file, char *const argv[],
   int k = strlen(file);  // TODO: strnlen
   if (k > 255) {
     // TODO: errno
-    // errno = ENAMETOOLONG;
+    errno = ENAMETOOLONG;
     return -1;
   }
 
@@ -69,23 +66,23 @@ int startpidvpe(int pid, char *const file, char *const argv[],
       return 0;
     }
 
-    // TODO: errno
-    /*
-                switch (errno) {
-                case EACCES:
-                        seen_eacces = 1;
-                case ENOENT:
-                case ENOTDIR:
-                        break;
-                default:
-                        return -1;
-                }
-    */
-    if (!*z++) break;
+    switch (errno) {
+      case EACCES:
+        seen_eacces = 1;
+      case ENOENT:
+      case ENOTDIR:
+        break;
+      default: // TODO
+        break;
+        return -1;
+    }
+    if (!*z++) {
+      break;
+    }
   }
 
   // TODO: errno
-  // if (seen_eacces) errno = EACCES;
+  if (seen_eacces) errno = EACCES;
   return -1;
 }
 

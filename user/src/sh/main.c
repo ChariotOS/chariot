@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <pwd.h>
 
 #define C_RED "\x1b[31m"
 #define C_GREEN "\x1b[32m"
@@ -15,74 +16,98 @@
 #define C_RESET "\x1b[0m"
 #define C_GRAY "\x1b[90m"
 
+extern char **environ;
+
 #define MAX_ARGS 255
 char *read_line(int fd, char *prompt, int *len_out);
 int parseline(const char *, char **argv);
 
-int main(int argc, char **argv, char **envp) {
+int run_line(const char *line) {
+  int err = 0;
   int arg_buflen = sizeof(char *) * MAX_ARGS;
-  char **args = malloc(arg_buflen);
+  char **args = calloc(sizeof(char *), MAX_ARGS);
+  memset(args, 0, arg_buflen * sizeof(char *));
+
+  if (strcmp(line, "exit") == 0) exit(0);
+  int bg = parseline(line, args);
+
+  if (strcmp(args[0], "cd") == 0) {
+    char *path = args[1];
+    if (path == NULL) {
+      // TODO: get user $HOME and go there instead
+      path = "/";
+    }
+    int res = chdir(path);
+    if (res != 0) {
+      printf("cd: '%s' could not be entered\n", args[1]);
+    }
+    goto cleanup;
+  }
+
+  pid_t pid = spawn();
+  if (pid <= -1) {
+    printf("Error spawning, code=%d\n", pid);
+    err = -1;
+    goto cleanup;
+  }
+
+  int start_res = startpidvpe(pid, args[0], args, environ);
+  if (start_res == 0) {
+    int stat = 0;
+    if (!bg) {
+      waitpid(pid, &stat, 0);
+    }
+  } else {
+    printf("failed to execute: '%s'\n", line);
+    despawn(pid);
+  }
+
+cleanup:
+  free(args);
+
+  return err;
+}
+
+int main(int argc, char **argv, char **envp) {
+  char ch;
+  const char *flags = "c:";
+  while ((ch = getopt(argc, argv, flags)) != -1) {
+    switch (ch) {
+      case 'c':
+        return run_line(optarg);
+        break;
+
+      case '?':
+        puts("sh: invalid option\n");
+        return -1;
+    }
+  }
 
   char prompt[64];
+  char uname[32];
 
-  snprintf(prompt, 64, C_GREEN "sh# " C_RESET, argv[0]);
+  uid_t uid = getuid();
+  struct passwd *pwd = getpwuid(uid);
+  strncpy(uname, pwd->pw_name, 32);
 
   while (1) {
-    int len = 0;
+    snprintf(prompt, 64, C_GREEN "[%s]%c " C_RESET, uname, uid == 0 ? '#' : '$');
 
-    memset(args, 0, arg_buflen * sizeof(char *));
+    int len = 0;
 
     char *buf = read_line(0, prompt, &len);
 
     len = strlen(buf);
     if (len == 0) goto cleanup;
 
-    if (strcmp(buf, "exit") == 0) exit(0);
-
-    int bg = parseline(buf, args);
-
-    if (strcmp(args[0], "cd") == 0) {
-
-      char *path = args[1];
-      if (path == NULL) {
-        // TODO: get user $HOME and go there instead
-        path = "/";
-      }
-      int res = chdir(path);
-      if (res != 0) {
-        printf("cd: '%s' could not be entered\n", args[1]);
-      }
-
-      goto cleanup;
-    }
-
-    pid_t pid = spawn();
-    if (pid <= -1) {
-      printf("Error spawning, code=%d\n", pid);
-      goto cleanup;
-    }
-
-    int start_res = startpidvpe(pid, args[0], args, envp);
-    if (start_res == 0) {
-      int stat = 0;
-      if (!bg) {
-        waitpid(pid, &stat, 0);
-        // printf("status=%x\n", stat);
-      }
-    } else {
-      printf("failed to execute: '%s'\n", buf);
-      despawn(pid);
-    }
+    run_line(buf);
 
   cleanup:
     free(buf);
   }
 
-  free(args);
-
   return 0;
 }
-
 
 char *read_line(int fd, char *prompt, int *len_out) {
   int i = 0;
@@ -95,7 +120,7 @@ char *read_line(int fd, char *prompt, int *len_out) {
   fflush(stdout);
 
   for (;;) {
-    if (i + 1 >= max-1) {
+    if (i + 1 >= max - 1) {
       max *= 2;
       buf = realloc(buf, max);
     }

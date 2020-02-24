@@ -38,7 +38,7 @@
 static unsigned short *origin = (unsigned short *)VGA_BASE_ADDR;
 static unsigned long pos = 0;
 static unsigned long x = 0, y = 0;
-static unsigned long top = 0, bottom = LINES;
+static unsigned long bottom = LINES;
 static unsigned long lines = LINES, columns = COLUMNS;
 static unsigned long state = 0;
 // parameter storage

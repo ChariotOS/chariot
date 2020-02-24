@@ -3,6 +3,7 @@
 #include <fs.h>
 #include <module.h>
 #include <printk.h>
+#include <asm.h>
 
 using namespace fs;
 
@@ -44,7 +45,7 @@ static void destruct_dir(struct inode *ino) {
 }
 
 fs::inode::~inode() {
-  printk("INODE DESTRUCT %d\n", ino);
+  // printk("INODE DESTRUCT %d\n", ino);
 
   switch (type) {
     case T_DIR:
@@ -76,31 +77,32 @@ struct inode *fs::inode::get_direntry_ino(struct direntry *ent) {
   }
 
   // otherwise attempt to resolve that entry
-  ent->ino = resolve_direntry(ent->name);
-
+  ent->ino = resolve_direntry(ent->name.get());
   if (ent->ino != NULL) fs::inode::acquire(ent->ino);
 
   return ent->ino;
 }
 
-struct inode *fs::inode::get_direntry_nolock(string &name) {
+
+
+struct inode *fs::inode::get_direntry_nolock(const char *name) {
   assert(type == T_DIR);
   // special case ".." in the root of a mountpoint
-  if (name == "..") {
+  if (!strcmp(name, "..")) {
     if (dir.mountpoint != NULL) {
       return dir.mountpoint;
     }
   }
 
   for_in_ll(ent, dir.entries) {
-    if (ent->name == name) {
+    if (!strcmp(ent->name.get(), name)) {
       return get_direntry_ino(ent);
     }
   }
   return nullptr;
 }
 
-struct inode *fs::inode::get_direntry(string &name) {
+struct inode *fs::inode::get_direntry(const char *name) {
   assert(type == T_DIR);
   struct inode *ino = NULL;
   lock.lock();
@@ -132,7 +134,7 @@ int fs::inode::register_direntry(string name, int enttype, struct inode *ino) {
   if (dir.entries != NULL) dir.entries->prev = ent;
   dir.entries = ent;
 
-  if (ent->ino != NULL) {
+  if (ino != NULL) {
     fs::inode::acquire(ent->ino);
   }
 
@@ -170,7 +172,7 @@ int fs::inode::remove_direntry(string name) {
   return -ENOENT;
 }
 
-struct inode *fs::inode::resolve_direntry(string &name) {
+struct inode *fs::inode::resolve_direntry(const char *name) {
   panic("resolving direntry on 'super' fs::inode struct (not implemented)\n");
   return NULL;
 }
@@ -194,14 +196,11 @@ void fs::inode::walk_direntries(
   }
 }
 
-
 vec<string> fs::inode::direntries(void) {
   assert(type == T_DIR);
 
   vec<string> e;
-  for_in_ll(ent, dir.entries) {
-    e.push(ent->name);
-  }
+  for_in_ll(ent, dir.entries) { e.push(ent->name); }
   return e;
 }
 
@@ -299,18 +298,20 @@ int fs::inode::acquire(struct inode *in) {
   in->lock.lock();
   // printk("acquire\n");
   in->rc++;
+  // printk("rc = %d\n", in->rc);
   in->lock.unlock();
   return 0;
 }
 
 int fs::inode::release(struct inode *in) {
-  return 0;
   assert(in != NULL);
   in->lock.lock();
   // printk("release\n");
   in->rc--;
+  // printk("rc = %d\n", in->rc);
   if (in->rc == 0) {
-    delete in;
+    printk("delete inode\n");
+    // delete in;
   }
   in->lock.unlock();
   return 0;

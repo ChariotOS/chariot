@@ -8,6 +8,7 @@ int sys::open(const char *path, int flags, int mode) {
     return -1;
   }
 
+
   auto ino = vfs::open(path, flags, mode);
   if (ino == NULL) return -ENOENT;
 

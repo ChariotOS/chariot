@@ -369,9 +369,7 @@ vm::addr_space::addr_space(void) {
 
 vm::addr_space::~addr_space(void) {
   // this->dump();
-
   for (auto r : regions) delete r;
-
 
   // free the layers of the page table and cr3
   paging::free_table(cr3);

@@ -1,11 +1,9 @@
+#pragma once
 
 #ifndef _LIMITS_H
 #define _LIMITS_H
 
-// #include <features.h>
-
 /* Most limits are system-specific */
-
 
 #define LONG_MAX  0x7fffffffffffffffL
 #define LLONG_MAX  0x7fffffffffffffffLL

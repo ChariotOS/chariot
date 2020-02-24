@@ -7,6 +7,7 @@
 #include <process.h>
 #include <vga.h>
 #include <asm.h>
+#include <phys.h>
 
 // HACK: not real kernel modules right now, just basic function pointers in an
 // array statically.
@@ -127,6 +128,8 @@ int kernel_init(void *) {
 
   sys::dup2(fd, 1);
   sys::dup2(fd, 2);
+
+
 
   string init_paths = kargs::get("init", "/bin/init");
 

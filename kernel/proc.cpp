@@ -369,10 +369,8 @@ int sched::proc::reap(process::ptr p) {
   assert(p->is_dead());
   auto *me = curproc;
 
-
   int f = 0;
   f &= (p->exit_code & 0xFF) << 8;
-
 
 #ifdef REAP_DEBUG
   printk("reap (p:%d)\n", p->pid);
@@ -381,12 +379,12 @@ int sched::proc::reap(process::ptr p) {
   process::ptr init = proc_table[1];
   assert(init);
 
-
   for (auto tid : p->threads) {
     auto *t = thread::lookup(tid);
     assert(t->state == PS_ZOMBIE);
 #ifdef REAP_DEBUG
-    printk(" [t:%d] sc:%d rc:%d\n", t->tid, t->stats.syscall_count, t->stats.run_count);
+    printk(" [t:%d] sc:%d rc:%d\n", t->tid, t->stats.syscall_count,
+           t->stats.run_count);
 #endif
 
     thread::teardown(t);
@@ -400,6 +398,11 @@ int sched::proc::reap(process::ptr p) {
     }
   }
 
+
+  // release the CWD
+  fs::inode::release(p->cwd);
+  p->cwd = NULL;
+
   if (me != init) init->datalock.lock();
   for (auto &c : p->children) {
     printk("pid %d adopted by init\n", c->pid);
@@ -412,8 +415,6 @@ int sched::proc::reap(process::ptr p) {
 
   return f;
 }
-
-
 
 int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
   auto *me = curproc;
@@ -460,14 +461,12 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
           return targ->pid;
         }
       }
+      if (options & WNOHANG) return -1;
     }
 
-    if (options & WNOHANG) return -1;
-
     // TODO: use a waitqueue
-
-    me->waiters.wait();
-    // sched::yield();
+    // me->waiters.wait();
+    sched::yield();
   }
 
   return res_pid;

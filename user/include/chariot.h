@@ -9,12 +9,15 @@ extern "C" {
 
 #include <chariot/pctl.h>
 
+#define __NEED_pid_t
+#include <bits/alltypes.h>
+
 // yield system call
 int yield(void);
 
-// TODO: pid_t and all that
-int spawn();
-int despawn(int pid);
+pid_t spawn();
+pid_t despawn(int pid);
+
 
 int pctl(int pid, int req, ...);
 

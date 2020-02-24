@@ -67,7 +67,7 @@ struct process_user_info {
   long uid = 0;
   long euid = 0;
   long gid = 0;
-  long ugid = 0;
+  long egid = 0;
 };
 
 /**

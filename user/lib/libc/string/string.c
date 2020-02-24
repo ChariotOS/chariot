@@ -166,6 +166,14 @@ int strcmp(const char *l, const char *r) {
   return *(unsigned char *)l - *(unsigned char *)r;
 }
 
+int strncmp(const char *_l, const char *_r, size_t n) {
+  const unsigned char *l = (void *)_l, *r = (void *)_r;
+  if (!n--) return 0;
+  for (; *l && *r && n && *l == *r; l++, r++, n--)
+    ;
+  return *l - *r;
+}
+
 #define BITOP(A, B, OP)                              \
   ((A)[(size_t)(B) / (8 * sizeof *(A))] OP(size_t) 1 \
    << ((size_t)(B) % (8 * sizeof *(A))))

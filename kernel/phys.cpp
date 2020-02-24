@@ -106,6 +106,7 @@ static void print_free(void) {
 #endif
 
 static void *late_phys_alloc(size_t npages) {
+  // if (npages > 1) print_free();
   frame *p = NULL;
   frame *c = (frame *)p2v(kmem.freelist);
 
@@ -124,15 +125,17 @@ static void *late_phys_alloc(size_t npages) {
     } else {
       p->setnext(c->getnext());
     }
-    a = (void*)c;
+    a = (void *)c;
   } else {
     // take from end
     c->page_len -= npages;
-    a = (void*)((char*)c + c->page_len * PGSIZE);
+    a = (void *)((char *)c + c->page_len * PGSIZE);
   }
 
   // zero out the page(s)
   memset(p2v(a), 0x00, npages * PGSIZE);
+  kmem.nfree -= npages * PGSIZE;
+
   return v2p(a);
 }
 
@@ -140,10 +143,6 @@ static void *late_phys_alloc(size_t npages) {
 void *phys::alloc(int npages) {
   lock();
   void *p = use_kernel_vm ? late_phys_alloc(npages) : early_phys_alloc(npages);
-
-#ifdef PHYS_DEBUG
-  print_free();
-#endif
 
   unlock();
   return p;
@@ -187,7 +186,6 @@ void phys::free(void *v, int len) {
   }
 
   // patch up
-
   auto f = working_addr(kmem.freelist);
   while (1) {
     if (v2p(f) == NULL || f->next == NULL) break;
@@ -204,10 +202,6 @@ void phys::free(void *v, int len) {
   }
   // increment how many pages are freed
   kmem.nfree += len;
-
-#ifdef PHYS_DEBUG
-  print_free();
-#endif
 
   unlock();
 }

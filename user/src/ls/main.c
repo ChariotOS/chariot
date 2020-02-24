@@ -29,7 +29,7 @@ struct lsfile {
 static int use_colors = 0;
 static int term_width = 80;  // default
 
-inline void set_color(char *c) {
+static void set_color(char *c) {
   if (use_colors) {
     printf("%s", c);
   }
@@ -121,6 +121,7 @@ void print_entries_long(struct lsfile **ents, int entc, long flags) {
     if (S_ISDIR(m)) type = 'd';
     if (S_ISBLK(m)) type = 'b';
     if (S_ISCHR(m)) type = 'c';
+    if (S_ISLNK(m)) type = 'l';
 
     if (type != '.') {
       set_color(C_CYAN);
@@ -136,7 +137,6 @@ void print_entries_long(struct lsfile **ents, int entc, long flags) {
 
     set_color(C_YELLOW);
     printf(" %*s", longest_username, pswd->pw_name);
-
 
     /*
     printf(" %8ld", ent->st.st_mtim);
@@ -204,13 +204,16 @@ int lsfile_compare(const void *av, const void *bv) {
   const struct lsfile *d1 = av;
   const struct lsfile *d2 = bv;
 
-  // order directories at the top
   int a = S_ISDIR(d1->st.st_mode);
   int b = S_ISDIR(d2->st.st_mode);
 
-  if (a == b) return strcmp(d1->name, d2->name);
-
-  return b - a;
+  if (a == b)
+    return strcmp(d1->name, d2->name);
+  else if (a < b)
+    return -1;
+  else if (a > b)
+    return 1;
+  return 0; /* impossible ? */
 }
 
 int do_ls(char *path, long flags) {
