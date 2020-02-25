@@ -27,7 +27,7 @@
 namespace fs {
 
 struct ext2_block_cache_line {
-  int blkno;
+  int cba;
   long last_used;
   int dirty;
   char *buffer;  // a 4k page (allocated with phys::alloc)

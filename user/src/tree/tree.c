@@ -6,10 +6,12 @@
 #include <string.h>
 #include <unistd.h>
 
+
 long nfiles = 0;
 long ndirs = 0;
 int use_colors = 1;
 int level = -1;
+int display_filesize = 0;
 unsigned long total_size = 0;
 int quiet = 0;
 
@@ -50,6 +52,20 @@ int print_filename(const char *name, int mode) {
   return 1 + strlen(name);
 }
 
+int print_filesize(long s) {
+  if (s >= 1 << 20) {
+    size_t t = s / (1 << 20);
+    return printf("%d.%1dM", (int)t,
+                  (int)(s - t * (1 << 20)) / ((1 << 20) / 10));
+  } else if (s >= 1 << 10) {
+    size_t t = s / (1 << 10);
+    return printf("%d.%1dK", (int)t,
+                  (int)(s - t * (1 << 10)) / ((1 << 10) / 10));
+  } else {
+    return printf("%dB", (int)s);
+  }
+}
+
 static int display_info(const char *fpath, const struct stat *sb, int tflag,
                         struct FTW *ftwbuf) {
   const char *name = fpath + ftwbuf->base;
@@ -65,6 +81,13 @@ static int display_info(const char *fpath, const struct stat *sb, int tflag,
     for (int i = 0; i < ftwbuf->level; i++) puts("│   ");
     puts("├── ");
 
+
+    if (display_filesize) {
+      puts("[");
+      print_filesize(sb->st_size);
+      puts("] ");
+    }
+
     print_filename(name, sb->st_mode);
     puts("\n");
   }
@@ -72,18 +95,15 @@ static int display_info(const char *fpath, const struct stat *sb, int tflag,
   return 0;  // To tell nftw() to continue
 }
 
-int print_filesize(long s) {
-  if (s >= 1 << 20) {
-    size_t t = s / (1 << 20);
-    return printf("%d.%1d mb", (int)t,
-                  (int)(s - t * (1 << 20)) / ((1 << 20) / 10));
-  } else if (s >= 1 << 10) {
-    size_t t = s / (1 << 10);
-    return printf("%d.%1d kb", (int)t,
-                  (int)(s - t * (1 << 10)) / ((1 << 10) / 10));
-  } else {
-    return printf("%d bytes", (int)s);
-  }
+
+void usage(void) {
+  fprintf(stderr, "tree -- display the filesystem structure\n");
+  fprintf(stderr, " Usage:\n");
+  fprintf(stderr, "     -q            quiet (don't print tree)\n");
+  fprintf(stderr, "     -L level      depth (WIP)\n");
+  fprintf(stderr, "     -H            display file size\n");
+  fprintf(stderr, "     -h            display help\n");
+  exit(0);
 }
 
 int main(int argc, char *argv[]) {
@@ -91,9 +111,15 @@ int main(int argc, char *argv[]) {
 
   char ch;
 
-  const char *flags = "L:q";
+  const char *flags = "L:qhH";
   while ((ch = getopt(argc, argv, flags)) != -1) {
     switch (ch) {
+      case 'h':
+        usage();
+        return 0;
+      case 'H':
+        display_filesize = 1;
+        break;
       case 'L':
         level = atoi(optarg);
         break;
@@ -103,7 +129,8 @@ int main(int argc, char *argv[]) {
         break;
 
       case '?':
-        puts("optarg: invalid option\n");
+        puts("invalid argument\n");
+        usage();
         return -1;
     }
   }
@@ -116,11 +143,12 @@ int main(int argc, char *argv[]) {
     path = argv[0];
   }
   if (nftw(path, display_info, 32, ftw_flags) < 0) {
+    printf("failed to open '%s'\n", path);
     exit(EXIT_FAILURE);
   }
 
   puts("\n");
-  printf("%ld directories, %ld files. \n", ndirs, nfiles);
+  printf("%ld directories, %ld files, ", ndirs, nfiles);
   print_filesize(total_size);
   puts("\n");
   exit(EXIT_SUCCESS);

@@ -128,9 +128,21 @@ static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
   idt[n + 3] = 0;
 }
 
+static u64 last_tsc = 0;
+
 // TODO: move to sched.cpp
 static void tick_handle(int i, struct regs *tf) {
   auto &cpu = cpu::current();
+
+  u64 now = arch::read_timestamp();
+
+  /*
+  printk("%p\n", now);
+  u64 diff = now - last_tsc;
+  printk("%ld.%ld GHz\n", diff / 1000000, diff % 100000);
+  */
+
+  last_tsc = now;
 
   // increment the number of ticks
   cpu.ticks++;

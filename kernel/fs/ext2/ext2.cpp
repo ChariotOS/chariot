@@ -94,7 +94,7 @@ bool fs::ext2::init(void) {
   cache_size = EXT2_CACHE_SIZE;
   disk_cache = new ext2_block_cache_line[cache_size];
   for (int i = 0; i < cache_size; i++) {
-    disk_cache[i].blkno = 0;
+    disk_cache[i].cba = -1;
     disk_cache[i].dirty = false;
     disk_cache[i].buffer = NULL;
   }
@@ -190,14 +190,13 @@ bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
 }
 
 /* does not take a cache lock! */
-struct fs::ext2_block_cache_line *fs::ext2::get_cache_line(int block) {
-  // printk("read block %d, cache_size=%d\n", block, cache_size);
+struct fs::ext2_block_cache_line *fs::ext2::get_cache_line(int cba) {
   int oldest = -1;
   unsigned int oldest_age = 4294967295UL;
   for (int i = 0; i < cache_size; i++) {
     // printk("%2d: lu:%d, blk:%d\n", i, disk_cache[i].last_used,
     // disk_cache[i].blkno);
-    if (disk_cache[i].blkno == block) {
+    if (disk_cache[i].cba == cba) {
       return &disk_cache[i];
     }
     if (disk_cache[i].last_used < oldest_age) {
@@ -208,7 +207,7 @@ struct fs::ext2_block_cache_line *fs::ext2::get_cache_line(int block) {
   }
   // printk("oldest = %d\n", oldest);
   if (disk_cache[oldest].buffer == NULL) {
-    disk_cache[oldest].blkno = 0;
+    disk_cache[oldest].cba = -1;
     disk_cache[oldest].dirty = false;
     disk_cache[oldest].buffer = (char *)p2v(phys::alloc());
   }
@@ -217,34 +216,34 @@ struct fs::ext2_block_cache_line *fs::ext2::get_cache_line(int block) {
 }
 
 bool fs::ext2::read_block(u32 block, void *buf) {
-  TRACE;
-
 #ifdef USE_CACHE
   scoped_lock l(cache_lock);
-  auto cl = get_cache_line(block);
+  int cba = block >> 2;
+  int cbo = block & 0x3;
+  auto cl = get_cache_line(cba);
 
-  if (cl->dirty && cl->blkno != block) {
+  if (cl->dirty && cl->cba != cba) {
     // flush
-    disk.seek(cl->blkno * blocksize, SEEK_SET);
-    disk.write(cl->buffer, blocksize);
+    disk.seek(cl->cba * PGSIZE, SEEK_SET);
+    disk.write(cl->buffer, PGSIZE);
     cl->dirty = false;
   }
 
-  if (cl->blkno == block) {
+  if (cl->cba == cba) {
     cl->last_used = cache_time++;
-    memcpy(buf, cl->buffer, blocksize);
+    memcpy(buf, cl->buffer + (cbo * blocksize), blocksize);
     return true;
   }
 
   // read into the cache line we found
-  cl->blkno = block;
+  cl->cba = cba;
   cl->last_used = cache_time++;
   cl->dirty = 0;
 
-  disk.seek(block * blocksize, SEEK_SET);
-  bool valid = disk.read(cl->buffer, blocksize);
+  disk.seek(cl->cba * PGSIZE, SEEK_SET);
+  bool valid = disk.read(cl->buffer, PGSIZE);
 
-  memcpy(buf, cl->buffer, blocksize);
+  memcpy(buf, cl->buffer + (blocksize * cbo), blocksize);
   return valid;
 
 #else
@@ -256,25 +255,41 @@ bool fs::ext2::read_block(u32 block, void *buf) {
 }
 
 bool fs::ext2::write_block(u32 block, const void *buf) {
-  TRACE;
+
 
 #ifdef USE_CACHE
+  // I am not sure if this write code is correct
   scoped_lock l(cache_lock);
-  auto cl = get_cache_line(block);
+  int cba = block >> 2;
+  int cbo = block & 0x3;
+  auto cl = get_cache_line(cba);
 
-  if (cl->dirty && cl->blkno != block) {
-    disk.seek(cl->blkno * blocksize, SEEK_SET);
-    disk.write(cl->buffer, blocksize);
+  if (cl->dirty && cl->cba != cba) {
+    // flush
+    disk.seek(cl->cba * PGSIZE, SEEK_SET);
+    disk.write(cl->buffer, PGSIZE);
     cl->dirty = false;
   }
 
-  cl->dirty = true;
-  memcpy(cl->buffer, buf, blocksize);
-  return true;
+  if (cl->cba == cba) {
+    cl->last_used = cache_time++;
+    memcpy(cl->buffer + (cbo * blocksize), buf, blocksize);
+    return true;
+  }
+
+  cl->cba = cba;
+  cl->last_used = cache_time++;
+  cl->dirty = 1;
+  disk.seek(cl->cba * PGSIZE, SEEK_SET);
+  bool valid = disk.read(cl->buffer, PGSIZE);
+  memcpy(cl->buffer + (cbo * blocksize), buf, blocksize);
+  return valid;
+
 #else
 
   disk.seek(block * blocksize, SEEK_SET);
-  return disk.write((void*)buf, blocksize);
+  return disk.read(buf, blocksize);
+
 #endif
 }
 

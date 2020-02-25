@@ -111,7 +111,6 @@ cd ..
 
 sudo cp -r user/out/bin $mnt/bin
 sudo cp -r user/out/lib $mnt/lib
-sudo cp -r docs $mnt/etc/
 
 
 sudo mkdir $mnt/usr/src

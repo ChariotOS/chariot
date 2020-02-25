@@ -12,7 +12,7 @@
 
 static int uart = 0;
 
-#define BAUD 9600
+#define BAUD 115200
 
 void serial_install() {
   // Turn off the FIFO

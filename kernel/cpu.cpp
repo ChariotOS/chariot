@@ -65,6 +65,9 @@ void cpu::seginit(void *local) {
   auto *tss = (u32 *)(((char *)local) + 1024);
   tss[16] = 0x00680000;  // IO Map Base = End of TSS
 
+
+  tss[0x64] |= (0x64 * sizeof(u32)) << 16;
+
   wrmsr(0xC0000100, ((u64)local) + (PGSIZE / 2));
 
   cpu_t *c = &cpus[cpunum++];
@@ -108,6 +111,7 @@ void cpu::calc_speed_khz(void) {
   }
 
   double cycles = arch::read_timestamp() - start_cycle;
+  pushcli();
 
   arch::cli();
 

@@ -141,6 +141,12 @@ size_t fread(void *restrict destv, size_t size, size_t nmemb,
   if (f->read != NULL) {
     size_t k = f->read(f, destv, len);
 
+    if (k < 0) {
+      f->eof = 1;
+      FUNLOCK(f);
+      return 0;
+    }
+
     if (k != 0) {
       FUNLOCK(f);
       return k / size;
@@ -266,6 +272,10 @@ int fgetc(FILE *stream) {
     return EOF;
   }
   return (unsigned char)buf[0];
+}
+
+int feof(FILE *stream) {
+  return stream->eof;
 }
 
 int getc(FILE *stream) __attribute__((weak, alias("fgetc")));

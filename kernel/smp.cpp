@@ -62,12 +62,10 @@ struct ioapic {
 #define REG_VER 0x01    // Register index: version
 #define REG_TABLE 0x10  // Redirection table base
 
-/*
 static u32 ioapicread(int reg) {
   ioapic->reg = reg;
   return ioapic->data;
 }
-*/
 
 static void ioapicwrite(int reg, u32 data) {
   ioapic->reg = reg;
@@ -83,7 +81,7 @@ void smp::ioapicenable(int irq, int cpunum) {
 }
 
 static uint32_t *lapic = NULL;
-
+static uint32_t ticksin10ms = 0;
 void smp::lapic_init(void) {
   if (!lapic) return;
 
@@ -96,9 +94,15 @@ void smp::lapic_init(void) {
   // from lapic[TICR] and then issues an interrupt.
   // If we cared more about precise timekeeping,
   // TICR would be calibrated using an external time source.
+
+  if (ticksin10ms == 0) {
+
+    ticksin10ms = 1000000;
+  }
+
   lapic_write(LAPIC_TDCR, LAPIC_X1);
   lapic_write(LAPIC_TIMER, LAPIC_PERIODIC | (32));
-  lapic_write(LAPIC_TICR, 1000000);
+  lapic_write(LAPIC_TICR, ticksin10ms);
 
   // Disable logical interrupt lines.
   lapic_write(LAPIC_LINT0, LAPIC_MASKED);
@@ -134,6 +138,10 @@ void smp::lapic_write(int ind, int value) {
   lapic[ind] = value;
   (void)lapic[ind];  // wait for write to finish, by reading
 }
+unsigned smp::lapic_read(int ind) {
+  return lapic[ind];
+}
+
 
 int smp::cpunum(void) {
   // int n = 0;

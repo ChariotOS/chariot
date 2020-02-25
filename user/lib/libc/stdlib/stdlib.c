@@ -202,3 +202,19 @@ void abort(void) {
   fprintf(stderr, "abort() called!\n");
   exit(EXIT_FAILURE);
 }
+
+
+// nonstandard
+char *path_join(char *a, char *b) {
+  int l = strlen(a) + 1;
+  int k = strlen(b);
+
+  char *dst = malloc(l + k + 1);
+  char *z = a + l - 1;
+
+  memcpy(dst, a, z - a);
+  dst[z - a] = '/';
+  memcpy(dst + (z - a) + (z > a), b, k + 1);
+
+  return dst;
+}

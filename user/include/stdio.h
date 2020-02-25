@@ -87,8 +87,10 @@ int snprintf(char* buffer, size_t count, const char* format, ...);
 int vsnprintf(char* buffer, size_t count, const char* format, va_list va);
 
 int fprintf(FILE *fp, const char *fmt, ...);
-
 int sscanf(const char *, const char *format, ...);
+
+
+int feof(FILE *stream);
 
 int fseek(FILE *stream, long offset, int whence);
 long ftell(FILE *stream);

@@ -63,6 +63,7 @@ static int human_readable_size(char *_out, int bufsz, size_t s) {
 #define FL_L (1 << 0)
 #define FL_1 (1 << 1)
 #define FL_a (1 << 2)
+#define FL_i (1 << 3)
 
 int print_filename(const char *name, int mode) {
   char end = '\0';
@@ -303,7 +304,7 @@ int main(int argc, char **argv) {
 
   long todo = 0;
 
-  const char *flags = "1lCa";
+  const char *flags = "1liCa";
   while ((ch = getopt(argc, argv, flags)) != -1) {
     switch (ch) {
       case '1':
@@ -311,6 +312,10 @@ int main(int argc, char **argv) {
         break;
       case 'l':
         todo |= FL_L;
+        break;
+
+      case 'i':
+        todo |= FL_i;
         break;
 
       case 'C':

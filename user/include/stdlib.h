@@ -48,6 +48,14 @@ void qsort(void * base, size_t nmemb, size_t size, int (*compar)(const void *, c
 void abort(void);
 
 
+// nonstandard chariot functions
+#ifdef _CHARIOT_SRC
+// returns the joined path of a and b. Must be freed
+char *path_join(char *a, char *b);
+#endif
+
+
+
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
 

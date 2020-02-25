@@ -1,3 +1,4 @@
+#define _CHARIOT_SRC
 #include <chariot.h>
 #include <pthread.h>
 #include <pwd.h>
@@ -90,6 +91,10 @@ int main(int argc, char **argv, char **envp) {
   struct passwd *pwd = getpwuid(uid);
   strncpy(uname, pwd->pw_name, 32);
 
+  setenv("USER", pwd->pw_name, 1);
+  setenv("SHELL", pwd->pw_shell, 1);
+  setenv("HOME", pwd->pw_dir, 1);
+
   while (1) {
     snprintf(prompt, 64, C_GREEN "[%s]%c " C_RESET, uname,
              uid == 0 ? '#' : '$');
@@ -126,21 +131,28 @@ void input_insert(char c, struct input_info *in) {
     in->buf = realloc(in->buf, in->max);
   }
 
-  int i = in->ind;
-  int l = in->len;
-
+  // insert
   // _________|__________________00000000000
   //          ^                  ^         ^
   //          ind                len       max
 
   // move the bytes after the cursor right by one
-  memmove(in->buf + i + 1, in->buf + i, l - i);
-  in->buf[i] = c;
+  memmove(in->buf + in->ind + 1, in->buf + in->ind, in->len - in->ind);
+  in->buf[in->ind] = c;
   in->ind++;
   in->buf[++in->len] = '\0';
 }
 
-void input_del(struct input_info *in) {}
+void input_del(struct input_info *in) {
+  if (in->ind == 0) return;
+  int i = in->ind;
+  int l = in->len;
+
+  // move the bytes after the cursor left by one
+  memmove(in->buf + i - 1, in->buf + i, l - i);
+  in->ind--;
+  in->buf[--in->len] = '\0';
+}
 
 void input_display(struct input_info *in, const char *prompt) {
   // TODO: this wastes IO operations *alot*
@@ -159,6 +171,31 @@ void input_display(struct input_info *in, const char *prompt) {
   fflush(stderr);
 }
 
+
+void handle_special(char c, struct input_info *in) {
+
+  switch (c) {
+
+    case 0x01:
+      in->ind = 0;
+      break;
+
+    case 0x05:
+      in->ind = in->len;
+      break;
+
+      // C-u to clear the input
+    case 0x15:
+      memset(in->buf, 0, in->len);
+      in->ind = 0;
+      in->len = 0;
+      break;
+
+    default:
+      printf("special input: 0x%02x\n", c);
+  }
+}
+
 // the number of ANSI paramters
 #define NPAR 16
 
@@ -175,9 +212,6 @@ char *read_line(int fd, char *prompt, int *len_out) {
   static unsigned long npar, par[NPAR];
   int ques = 0;
 
-  fprintf(stderr, "%s", prompt);
-  fflush(stdout);
-
   while (1) {
     input_display(&in, prompt);
     int c = fgetc(stdin);
@@ -193,31 +227,16 @@ char *read_line(int fd, char *prompt, int *len_out) {
     switch (state) {
       // default text-entry mode
       case 0:
-
         if (c == 0x1b) {
           state = 1;
           break;
-        } else if (c == '\t') {
-          // TODO: tab handling
         } else if (c == 0x7F /* DEL */) {
-          if (in.ind == 0) break;
-          int i = in.ind;
-          int l = in.len;
-
-          // move the bytes after the cursor left by one
-          memmove(in.buf + i - 1, in.buf + i, l - i);
-          in.ind--;
-          in.buf[--in.len] = '\0';
+          input_del(&in);
+        } else if (c >= ' ' && c <= '~') {
+          input_insert(c, &in);
         } else {
-          // _________|__________________00000000000
-          //          ^                  ^         ^
-          //          ind                len       max
-
-          // move the bytes after the cursor right by one
-          memmove(in.buf + in.ind + 1, in.buf + in.ind, in.len - in.ind);
-          in.buf[in.ind] = c;
-          in.ind++;
-          in.buf[++in.len] = '\0';
+          // special input handling
+          handle_special(c, &in);
         }
         break;
 
@@ -255,6 +274,13 @@ char *read_line(int fd, char *prompt, int *len_out) {
             break;
           case 'C':
             if (in.ind < in.len) in.ind++;
+            break;
+          case '~':
+            if (in.ind < in.len) {
+            in.ind++;
+            input_del(&in);
+            }
+            // right delete
             break;
 
           default:

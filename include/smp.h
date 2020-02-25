@@ -30,6 +30,7 @@ bool init(void);
 
 void lapic_init(void);
 void lapic_write(int ind, int value);
+unsigned lapic_read(int ind);
 void lapic_eoi(void);
 
 void init_cores(void);

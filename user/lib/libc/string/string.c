@@ -133,6 +133,11 @@ tail:
   return d;
 }
 
+char *strcat(char *dest, const char *src) {
+  strcpy(dest + strlen(dest), src);
+  return dest;
+}
+
 size_t strlen(const char *s) {
   const char *a = s;
 #ifdef __GNUC__

@@ -25,7 +25,8 @@ fs::inode::inode(int type) : type(type) {
       break;
 
     default:
-      printk("unhandled inode constructor: %d\n", type);
+      break;
+      // printk("unhandled inode constructor: %d\n", type);
   }
 }
 
@@ -59,7 +60,8 @@ fs::inode::~inode() {
       break;
 
     default:
-      printk("unhandled inode destructor: %d\n", type);
+      // printk("unhandled inode destructor: %d\n", type);
+      break;
   }
 }
 
