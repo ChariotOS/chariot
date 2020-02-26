@@ -136,12 +136,6 @@ static void tick_handle(int i, struct regs *tf) {
 
   u64 now = arch::read_timestamp();
 
-  /*
-  printk("%p\n", now);
-  u64 diff = now - last_tsc;
-  printk("%ld.%ld GHz\n", diff / 1000000, diff % 100000);
-  */
-
   last_tsc = now;
 
   // increment the number of ticks

@@ -21,7 +21,7 @@ void initialize_kernel_modules(void) {
   struct kernel_module_info *mod = __start__kernel_modules;
   int i = 0;
   while (mod != __stop__kernel_modules) {
-    KINFO("[%s] init\n", mod->name);
+    // KINFO("[%s] init\n", mod->name);
     mod->initfn();
     mod = &(__start__kernel_modules[++i]);
   }
@@ -40,71 +40,12 @@ struct symbol {
   off_t addr;
   char name[50];
 };
-
-vec<struct symbol> symbols;
-
-const char *ksym_find(off_t addr) {
-  return NULL;
-  const char *name = NULL;
-  for (auto &s : symbols) {
-    if (s.addr <= addr) {
-      name = s.name;
-    } else {
-      break;
-    }
-  }
-  return name;
-}
-
-static char *next_line(char *from) {
-  while (1) {
-    if (*from == '\0') return NULL;
-    if (*from == '\n') break;
-    from++;
-  }
-
-  return from + 1;
-}
-
-static void parse_symbols(char *data, size_t len) {
-  return;
-  char *end = data + len;
-
-  while (data < end) {
-    printk("%p\n", data);
-    off_t addr = 0;
-    char *name = data;
-
-    while (*name != ' ') name++;
-    name += 3;  // walk over the type
-    sscanf(data, "%zx", &addr);
-    // printk("%p %s\n", addr, name);
-    data = next_line(data);
-    data[-1] = 0;
-
-    struct symbol s;
-    s.addr = addr;
-
-    int slen = (off_t)data - 1 - (off_t)name;
-    memcpy(s.name, name, slen > 40 ? 40 : slen);
-
-    symbols.push(s);
-  }
-}
-
 /**
  * the kernel drops here in a kernel task
  *
  * Further initialization past getting the scheduler working should run here
  */
 int kernel_init(void *) {
-  auto *mod = (multiboot_module_t *)p2v(mbinfo->mods_addr);
-
-  size_t sz = mod->mod_end - mod->mod_start;
-
-  parse_symbols((char *)p2v(mod->mod_start), sz);
-
-  printk("%p\n", mod->mod_end);
 
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");

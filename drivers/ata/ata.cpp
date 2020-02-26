@@ -193,7 +193,6 @@ bool dev::ata::identify() {
 
     // bar4 contains information for DMA
     bar4 = m_pci_dev->get_bar(4).raw;
-    printk("bar4: %08x\n", bar4);
     if (bar4 & 0x1) bar4 = bar4 & 0xfffffffc;
 
     bmr_command = bar4;

@@ -82,6 +82,8 @@ struct area {
   // TODO: unify shared mappings in the filedescriptor somehow
   ref<fs::filedesc> fd;
   vec<ref<mm::page>> pages;  // backing memory
+
+  ~area(void);
 };
 
 class space {

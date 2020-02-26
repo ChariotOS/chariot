@@ -171,12 +171,12 @@ void pci::init(void) {
 
         if (!read_device_descriptor(desc, bus, dev, func)) continue;
 
-        KINFO("pci: %03x.%02x.%1x: %04x:%04x\n", bus, dev, func,
-              desc->vendor_id, desc->device_id);
 
         const char *class_name = pci_class_names[desc->class_id];
         if (desc->class_id > 0x14) class_name = "Unknown";
-        KINFO("    class=%02x,%02x '%s'\n", desc->class_id, desc->subclass_id, class_name);
+
+        KINFO("pci: %03x.%02x.%1x: %04x:%04x  class=%02x,%02x '%s'\n", bus, dev, func,
+              desc->vendor_id, desc->device_id, desc->class_id, desc->subclass_id, class_name);
 
         for (int barnum = 0; barnum < 6; barnum++) {
           struct pci_bar bar = pci_get_bar(bus, dev, func, barnum);

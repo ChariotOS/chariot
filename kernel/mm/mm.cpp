@@ -7,6 +7,7 @@ mm::page::~page(void) {
   if (owns_page) {
     phys::free((void *)pa);
   }
+  assert(users == 0);
   pa = 0;
 }
 
@@ -253,4 +254,17 @@ off_t mm::space::find_hole(size_t size) {
   }
 
   return va;
+}
+
+
+mm::area::~area(void) {
+  for (auto &p : pages) {
+    if (p) {
+      spinlock::lock(p->lock);
+      p->users--;
+      spinlock::unlock(p->lock);
+    }
+  }
+
+  pages.clear();
 }

@@ -177,7 +177,6 @@ void arch::mem_init(unsigned long mbd) {
   }
 
   auto *kend = (u8 *)high_kern_end;
-  printk("kend = %p\n", kend);
 
   // setup memory regions
   for (int i = 0; i < mm_info.num_regions; i++) {
