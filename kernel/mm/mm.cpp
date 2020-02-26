@@ -72,6 +72,8 @@ int mm::space::pagefault(off_t va, int err) {
     if (!r->pages[ind]) {
       r->pages[ind] = mm::page::alloc();
       auto &page = r->pages[ind];
+      spinlock::lock(page->lock);
+      page->users++;
 
       /**
        * if the region is backed by a file, read the file into the page
@@ -96,6 +98,8 @@ int mm::space::pagefault(off_t va, int err) {
           memset((char *)buf + nread, 0x00, PGSIZE - nread);
         }
       }
+
+      spinlock::unlock(page->lock);
     }
 
     pte.ppn = r->pages[ind]->pa >> 12;
