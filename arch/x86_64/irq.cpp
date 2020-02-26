@@ -255,22 +255,10 @@ static void pgfault_handle(int i, struct regs *tf) {
     if (tf->err & PGFLT_INSTR) err |= FAULT_EXEC;
 
     if ((tf->err & PGFLT_USER) == 0) {
-      if ((off_t)page >= KERNEL_VIRTUAL_BASE) {
-        auto kptable = (u64 *)p2v(get_kernel_page_table());
-        auto pptable = (u64 *)p2v(curthd->proc.addr_space->cr3);
-        // TODO: do this with pagefaults instead TODO: maybe flush the tlb if it
-        // changes?
-        if (kptable != pptable) {
-          for (int i = 272; i < 512; i++) {
-            if (kptable[i] == 0) break;  // optimization
-            pptable[i] = kptable[i];
-          }
-        }
-        return;
-      }
+      // TODO
     }
 
-    int res = proc->addr_space->handle_pagefault((off_t)page, err);
+    int res = proc->mm->pagefault((off_t)page, err);
     if (res == -1) {
       // TODO:
       KERR("pid %d, tid %d segfaulted @ %p\n", curthd->pid, curthd->tid,

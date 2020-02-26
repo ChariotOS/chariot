@@ -2,7 +2,7 @@
 #include <mmap_flags.h>
 #include <paging.h>
 #include <process.h>
-#include <vm.h>
+#include <mm.h>
 
 void *sys::mmap(void *addr, long length, int prot, int flags, int fd,
                 long offset) {
@@ -12,15 +12,13 @@ void *sys::mmap(void *addr, long length, int prot, int flags, int fd,
   // TODO: handle address requests!
   if (addr != NULL) return MAP_FAILED;
 
-  int reg_prot = 0;
+  ref<fs::filedesc> f = nullptr;
 
-  if (prot != PROT_NONE) {
-    if (prot & PROT_READ) reg_prot |= VPROT_READ;  // not sure for PROT_READ
-    if (prot & PROT_WRITE) reg_prot |= VPROT_WRITE;
-    if (prot & PROT_EXEC) reg_prot |= VPROT_EXEC;
+  if ((flags & MAP_ANON) == 0) {
+    f = proc->get_fd(fd);
   }
 
-  off_t va = proc->addr_space->add_mapping("", length, reg_prot);
+  off_t va = proc->mm->mmap((off_t)addr, length, prot, flags, f, offset);
 
   return (void *)va;
 }
@@ -29,12 +27,12 @@ int sys::munmap(void *addr, size_t length) {
   auto proc = cpu::proc();
   if (!proc) return -1;
 
-  return proc->addr_space->unmap(addr, length);
+  return proc->mm->unmap((off_t)addr, length);
 }
 
 int sys::mrename(void *addr, char *name) {
   auto proc = cpu::proc();
-  if (!proc->addr_space->validate_string(name)) return -1;
+  if (!proc->mm->validate_string(name)) return -1;
 
   string sname = name;
   for (auto &c : sname) {
@@ -42,7 +40,7 @@ int sys::mrename(void *addr, char *name) {
     if (c > '~') c = ' ';
   }
 
-  auto region = proc->addr_space->lookup((u64)addr & ~0xFFF);
+  auto region = proc->mm->lookup((u64)addr & ~0xFFF);
 
   if (region == NULL) return -ENOENT;
   region->name = move(sname);

@@ -6,7 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #define C_RED "\x1b[31m"
 #define C_GREEN "\x1b[32m"
@@ -69,6 +72,33 @@ cleanup:
   return err;
 }
 
+
+void hexdump(off_t off, void *vbuf, long len) {
+  unsigned char *buf = vbuf;
+
+  int w = 16;
+  for (int i = 0; i < len; i += w) {
+
+    unsigned char *line = buf + i;
+    printf("%p: ", (void*)(off + i));
+    for (int c = 0; c < w; c++) {
+      if (i + c >= len) {
+        printf("   ");
+      } else {
+        printf("%02x ", line[c]);
+      }
+    }
+    printf(" |");
+    for (int c = 0; c < w; c++) {
+      if (i + c >= len) {
+      } else {
+        printf("%c", (line[c] < 0x20) || (line[c] > 0x7e) ? '.' : line[c]);
+      }
+    }
+    printf("|\n");
+  }
+}
+
 int main(int argc, char **argv, char **envp) {
   char ch;
   const char *flags = "c:";
@@ -83,6 +113,7 @@ int main(int argc, char **argv, char **envp) {
         return -1;
     }
   }
+
 
   char prompt[64];
   char uname[32];

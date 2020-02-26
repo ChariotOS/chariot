@@ -4,7 +4,7 @@
 int sys::open(const char *path, int flags, int mode) {
   auto proc = cpu::proc();
 
-  if (!proc->addr_space->validate_string(path)) {
+  if (!proc->mm->validate_string(path)) {
     return -1;
   }
 

@@ -7,7 +7,7 @@
 #include <ptr.h>
 #include <string.h>
 #include <vec.h>
-#include <vm.h>
+#include <mm.h>
 
 #include <signals.h>
 #define SIGBIT(n) (1 << (n))
@@ -128,7 +128,7 @@ struct process final : public refcounted<struct process> {
   bool exited = 0;
   int exit_code = 0;
 
-  vm::addr_space *addr_space;
+  mm::space *mm;
 
   u64 create_tick = 0;
   // The current working directory of the process.

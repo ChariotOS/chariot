@@ -25,7 +25,12 @@ void invalidate_page(unsigned long addr);
 
 void flush_tlb(void);
 
+// initialize the physical memory map from a multiboot record
+void mem_init(unsigned long mbd);
+
 unsigned long read_timestamp(void);
+
+
 
 /**
  * the architecture must only implement init() and eoi(). The arch must
@@ -58,6 +63,7 @@ static inline void eoi(int i) { arch::irq::eoi(i); }
 
 // cause an interrupt to be handled by the kernel's interrupt dispatcher
 void dispatch(int irq, struct regs *);
+
 
 };  // namespace irq
 

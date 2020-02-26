@@ -134,7 +134,13 @@ static void *late_phys_alloc(size_t npages) {
 
   // zero out the page(s)
   memset(p2v(a), 0x00, npages * PGSIZE);
-  kmem.nfree -= npages * PGSIZE;
+  kmem.nfree -= npages;
+
+
+  /*
+  long bytes = kmem.nfree * PGSIZE;
+  printk("free ram: %lu Mb\n", bytes / 1024 / 1024);
+  */
 
   return v2p(a);
 }
@@ -203,6 +209,11 @@ void phys::free(void *v, int len) {
   // increment how many pages are freed
   kmem.nfree += len;
 
+
+  /*
+  long bytes = kmem.nfree * PGSIZE;
+  printk("free ram: %lu Kb\n", bytes / 1024);
+  */
   unlock();
 }
 

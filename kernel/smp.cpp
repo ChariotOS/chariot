@@ -62,10 +62,12 @@ struct ioapic {
 #define REG_VER 0x01    // Register index: version
 #define REG_TABLE 0x10  // Redirection table base
 
+/*
 static u32 ioapicread(int reg) {
   ioapic->reg = reg;
   return ioapic->data;
 }
+*/
 
 static void ioapicwrite(int reg, u32 data) {
   ioapic->reg = reg;

@@ -165,22 +165,8 @@ void cpu::switch_vm(struct thread *thd) {
       break;
   }
 
-  // printk("proc=%p, addr_space=%p\n", &thd->proc, thd->proc.addr_space);
-  // printk("     [p:%d,t:%d]\n",thd->proc.pid, thd->tid);
 
-  auto kptable = (u64 *)p2v(get_kernel_page_table());
-  auto pptable = (u64 *)p2v(thd->proc.addr_space->cr3);
-
-  // TODO: do this with pagefaults instead
-  // TODO: maybe flush the tlb if it changes?
-  if (kptable != pptable) {
-    for (int i = 272; i < 512; i++) {
-      if (kptable[i] == 0) break; // optimization
-      pptable[i] = kptable[i];
-    }
-  }
-
-  write_cr3((u64)v2p(thd->proc.addr_space->cr3));
+  thd->proc.mm->switch_to();
 
   cpu::popcli();
 }

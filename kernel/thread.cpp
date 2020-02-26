@@ -143,8 +143,6 @@ static void thread_create_callback(void *) {
       for (auto &a : thd->proc.args) sz += a.size() + 1;
 
       auto region = (void *)STACK_ALLOC(char, sz);
-      // auto region = thd->proc.addr_space->add_mapping("[argv]", round_up(sz,
-      // 4096), VPROT_READ | VPROT_WRITE);
 
       auto argv = (char **)region;
 

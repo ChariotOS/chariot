@@ -39,11 +39,11 @@ bool elf::validate(fs::filedesc &fd, Elf64_Ehdr &ehdr) {
   return true;
 }
 
-int elf::load(const char *path, vm::addr_space &mm, fs::filedesc &fd,
+int elf::load(const char *path, mm::space &mm, ref<fs::filedesc> fd,
               u64 &entry) {
   Elf64_Ehdr ehdr;
 
-  if (!elf::validate(fd, ehdr)) {
+  if (!elf::validate(*fd, ehdr)) {
     return -1;
   }
 
@@ -53,9 +53,9 @@ int elf::load(const char *path, vm::addr_space &mm, fs::filedesc &fd,
   Elf64_Shdr *sec_hdrs = new Elf64_Shdr[ehdr.e_shnum];
 
   // seek to and read the headers
-  fd.seek(ehdr.e_shoff, SEEK_SET);
+  fd->seek(ehdr.e_shoff, SEEK_SET);
   auto sec_expected = ehdr.e_shnum * sizeof(*sec_hdrs);
-  auto sec_read = fd.read(sec_hdrs, sec_expected);
+  auto sec_read = fd->read(sec_hdrs, sec_expected);
 
   if (sec_read != sec_expected) {
     delete[] sec_hdrs;
@@ -81,9 +81,9 @@ int elf::load(const char *path, vm::addr_space &mm, fs::filedesc &fd,
 
   // read program headers
   Elf64_Phdr *phdr = new Elf64_Phdr[ehdr.e_phnum];
-  fd.seek(ehdr.e_phoff, SEEK_SET);
+  fd->seek(ehdr.e_phoff, SEEK_SET);
   auto hdrs_size = ehdr.e_phnum * ehdr.e_phentsize;
-  auto hdrs_read = fd.read(phdr, hdrs_size);
+  auto hdrs_read = fd->read(phdr, hdrs_size);
 
   if (hdrs_read != hdrs_size) {
     delete[] phdr;
@@ -129,10 +129,11 @@ int elf::load(const char *path, vm::addr_space &mm, fs::filedesc &fd,
       }
 
       auto flags = 0L;
-      if (sec.p_flags & PF_X) flags |= VPROT_EXEC;
-      if (sec.p_flags & PF_W) flags |= VPROT_WRITE;
-      if (sec.p_flags & PF_R) flags |= VPROT_READ;
-      mm.map_file(path, fd.ino, start, sec.p_offset, sec.p_memsz, flags);
+      if (sec.p_flags & PF_X) flags |= PROT_EXEC;
+      if (sec.p_flags & PF_W) flags |= PROT_WRITE;
+      if (sec.p_flags & PF_R) flags |= PROT_READ;
+
+      mm.mmap(path, start, sec.p_memsz, flags, MAP_PRIVATE, fd, sec.p_offset);
       handle_bss(sec);
     }
   }

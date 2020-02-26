@@ -29,11 +29,8 @@ static pid_t get_next_pid(void) {
   return p;
 }
 
-static vm::addr_space *alloc_user_vm(void) {
-  auto a = new vm::addr_space;
-
-  a->set_range(0x1000, 0x7ffffffff000);
-  return a;
+static mm::space *alloc_user_vm(void) {
+  return new mm::space(0x1000, 0x7ffffffff000, mm::pagetable::create());
 }
 
 static process::ptr pid_lookup(pid_t pid) {
@@ -74,7 +71,7 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
   // special case for kernel's init
   if (proc.cwd != NULL) fs::inode::acquire(proc.cwd);
 
-  proc.addr_space = alloc_user_vm();
+  proc.mm = alloc_user_vm();
   return proc_ptr;
 }
 
@@ -160,12 +157,9 @@ struct process *sched::proc::kproc(void) {
     kernel_process = sched::proc::spawn_process(nullptr, SPAWN_KERN);
     kernel_process->pid = 0;  // just lower than init (pid 1)
     kernel_process->embryonic = false;
-    auto &vm = kernel_process->addr_space;
-
-    vm->set_range(KERNEL_VIRTUAL_BASE, -1);
-    phys::free(vm->cr3);
-    vm->cr3 = v2p(get_kernel_page_table());
-    vm->kernel_vm = true;
+    // auto &vm = kernel_process->mm;
+    delete kernel_process->mm;
+    kernel_process->mm = &mm::space::kernel_space();
   }
 
   return kernel_process.get();
@@ -216,7 +210,7 @@ process::~process(void) {
   }
 
   sched::proc::ptable_remove(this->pid);
-  delete addr_space;
+  delete mm;
 }
 
 void sched::proc::dump_table(void) {
@@ -274,7 +268,7 @@ void sched::proc::dump_table(void) {
       printk("\n");
     }
 
-    proc->addr_space->dump();
+    // proc->mm->dump();
     printk("\n");
   }
 }
@@ -308,7 +302,7 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   // TODO check execution permissions
 
   off_t entry = 0;
-  auto fd = fs::filedesc(exe, FDIR_READ);
+  auto fd = make_ref<fs::filedesc>(exe, FDIR_READ);
 
   // allocate a new address space
   auto *new_addr_space = alloc_user_vm();
@@ -321,16 +315,17 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   }
 
   off_t stack = 0;
+  // allocate a 1mb stack
   // TODO: this size is arbitrary.
-  auto stack_size = 8 * PGSIZE;
-  stack = new_addr_space->add_mapping("[stack]", stack_size,
-                                      VPROT_READ | VPROT_WRITE);
+  auto stack_size = 1024 * 1024;
+
+  stack = new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ|PROT_WRITE, MAP_ANON, nullptr, 0);
 
   // TODO: push argv and arguments onto the stack
   this->args = argv;
   this->env = envp;
-  delete this->addr_space;
-  this->addr_space = new_addr_space;
+  delete this->mm;
+  this->mm = new_addr_space;
 
   //
   this->embryonic = false;

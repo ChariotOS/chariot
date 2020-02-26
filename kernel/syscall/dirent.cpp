@@ -3,7 +3,7 @@
 #include <process.h>
 
 int sys::dirent(int fd, struct dirent *ents, int off, int count) {
-  if (ents != NULL && !curproc->addr_space->validate_pointer(
+  if (ents != NULL && !curproc->mm->validate_pointer(
                           ents, count * sizeof(struct dirent), VALIDATE_WRITE))
     return -1;
 

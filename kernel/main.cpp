@@ -100,18 +100,20 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   /**
    * detect memory and setup the physical address space free-list
    */
-  init_mem(mbd);
+  arch::mem_init(mbd);
 
   mbinfo = (struct multiboot_info *)(u64)p2v(mbd);
   /**
    * startup the high-kernel virtual mapping and the heap allocator
+    init_kernel_virtual_memory();
    */
-  init_kernel_virtual_memory();
 
   void *new_stack = (void *)((u64)kmalloc(STKSIZE) + STKSIZE);
 
+
   // call the next phase main with the new allocated stack
   call_with_new_stack(new_stack, (void *)kmain2);
+
 
   // ?? - gotta loop forever here to make gcc happy. using [[gnu::noreturn]]
   // requires that it never returns...
@@ -133,7 +135,6 @@ int kernel_init(void *);
 static void kmain2(void) {
   irq::init();
   enable_sse();
-
 
   // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();

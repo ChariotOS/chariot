@@ -6,9 +6,11 @@
 #include <sched.h>
 #include <string.h>
 #include <syscalls.h>
-#include <vm.h>
 #include <stat.h>
+#include <errno.h>
+#include <fs/vfs.h>
 #include <dirent.h>
+
 #define RING_KERNEL 0
 #define RING_USER 3
 

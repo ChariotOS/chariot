@@ -8,6 +8,8 @@
 #include <vga.h>
 #include <asm.h>
 #include <phys.h>
+#include <fs/vfs.h>
+
 
 // HACK: not real kernel modules right now, just basic function pointers in an
 // array statically.
