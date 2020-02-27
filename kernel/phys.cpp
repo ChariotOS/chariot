@@ -137,10 +137,7 @@ static void *late_phys_alloc(size_t npages) {
   kmem.nfree -= npages;
 
 
-  /*
-  long bytes = kmem.nfree * PGSIZE;
-  printk("free ram: %lu Mb\n", bytes / 1024 / 1024);
-  */
+  // printk("free ram: %lu Kb\n", kmem.nfree * PGSIZE / 1024);
 
   return v2p(a);
 }
@@ -210,10 +207,8 @@ void phys::free(void *v, int len) {
   kmem.nfree += len;
 
 
-  /*
-  long bytes = kmem.nfree * PGSIZE;
-  printk("free ram: %lu Kb\n", bytes / 1024);
-  */
+  // printk("free ram: %lu Kb\n", kmem.nfree * PGSIZE / 1024);
+
   unlock();
 }
 

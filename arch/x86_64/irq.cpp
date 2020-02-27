@@ -181,7 +181,6 @@ static void unknown_hardware(int i, struct regs *tf) {
 }
 */
 
-
 extern const char *ksym_find(off_t);
 
 void dump_backtrace(off_t ebp) {
@@ -197,14 +196,62 @@ void dump_backtrace(off_t ebp) {
   }
 }
 
+
+/* eflags masks */
+#define CC_C 0x0001
+#define CC_P 0x0004
+#define CC_A 0x0010
+#define CC_Z 0x0040
+#define CC_S 0x0080
+#define CC_O 0x0800
+
+#define TF_SHIFT 8
+#define IOPL_SHIFT 12
+#define VM_SHIFT 17
+#define TF_MASK 0x00000100
+#define IF_MASK 0x00000200
+#define DF_MASK 0x00000400
+#define IOPL_MASK 0x00003000
+#define NT_MASK 0x00004000
+#define RF_MASK 0x00010000
+#define VM_MASK 0x00020000
+#define AC_MASK 0x00040000
+#define VIF_MASK 0x00080000
+#define VIP_MASK 0x00100000
+#define ID_MASK 0x00200000
+
+
 static void gpf_handler(int i, struct regs *tf) {
   // TODO: die
   KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", curthd->pid, curthd->tid,
        tf->eip, tf->err);
-  dump_backtrace(tf->rbp);
-  asm("cli; hlt");
 
-  sched::block();
+  unsigned int eflags = tf->eflags;
+#define GET(name) (tf->name)
+
+#define REGFMT "%016p"
+  printk("RAX=" REGFMT " RBX=" REGFMT " RCX=" REGFMT " RDX=" REGFMT
+         "\n"
+         "RSI=" REGFMT " RDI=" REGFMT " RBP=" REGFMT " RSP=" REGFMT
+         "\n"
+         "R8 =" REGFMT " R9 =" REGFMT " R10=" REGFMT " R11=" REGFMT
+         "\n"
+         "R12=" REGFMT " R13=" REGFMT " R14=" REGFMT " R15=" REGFMT
+         "\n"
+         "RIP=" REGFMT " RFL=%08x [%c%c%c%c%c%c%c]\n",
+
+         GET(rax), GET(rbx), GET(rcx), GET(rdx), GET(rsi), GET(rdi), GET(rbp),
+         GET(esp), GET(r8), GET(r9), GET(r10), GET(r11), GET(r12), GET(r13),
+         GET(r14), GET(r15), GET(eip), eflags, eflags & DF_MASK ? 'D' : '-',
+         eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-',
+         eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-',
+         eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
+
+  dump_backtrace(tf->rbp);
+
+  sys::exit_proc(-1);
+
+  sched::exit();
 }
 
 static void illegal_instruction_handler(int i, struct regs *tf) {
@@ -233,7 +280,8 @@ static void pgfault_handle(int i, struct regs *tf) {
 
   auto proc = curproc;
   if (curproc == NULL) {
-    KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf->eip, read_cr2());
+    KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf->eip,
+         read_cr2());
     // lookup the kernel proc if we aren't in one!
     proc = sched::proc::kproc();
   }
@@ -322,17 +370,11 @@ extern "C" void trap(struct regs *regs) {
    *
    * Honestly, I have no idea why this is needed...
    */
-
-
   arch::sti();
-
 
   irq::dispatch(regs->trapno, regs);
 
-
   irq::eoi(regs->trapno);
-
-
 
   // TODO: generalize
   bool to_userspace = regs->cs == 0x23;

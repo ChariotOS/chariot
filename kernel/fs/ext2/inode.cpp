@@ -117,6 +117,9 @@ fs::ext2_inode *fs::ext2_inode::create(ext2 &fs, u32 index) {
   ino = new ext2_inode(ino_type, fs, index);
   ino->injest_info(info);
 
+  ino->dev.major = fs.disk.ino->major;
+  ino->dev.minor = fs.disk.ino->minor;
+
   return ino;
 }
 

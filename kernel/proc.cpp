@@ -319,7 +319,8 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   // TODO: this size is arbitrary.
   auto stack_size = 1024 * 1024;
 
-  stack = new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ|PROT_WRITE, MAP_ANON, nullptr, 0);
+  stack = new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ | PROT_WRITE,
+                               MAP_ANON, nullptr, 0);
 
   // TODO: push argv and arguments onto the stack
   this->args = argv;
@@ -369,6 +370,8 @@ int sched::proc::reap(process::ptr p) {
 
 #ifdef REAP_DEBUG
   printk("reap (p:%d)\n", p->pid);
+  auto usage = p->mm->memory_usage();
+  printk("  ram usage: %zu Kb\n", usage / KB);
 #endif
 
   process::ptr init = proc_table[1];
@@ -392,7 +395,6 @@ int sched::proc::reap(process::ptr p) {
       break;
     }
   }
-
 
   // release the CWD
   fs::inode::release(p->cwd);
@@ -460,8 +462,11 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
     }
 
     // TODO: use a waitqueue
-    me->waiters.wait();
-    // sched::yield();
+    // me->waiters.wait();
+
+    // currently, just halt the CPU till the next IRQ and try again
+    arch::halt();
+    sched::yield();
   }
 
   return res_pid;

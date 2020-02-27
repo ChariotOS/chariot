@@ -1,15 +1,15 @@
 #define _CHARIOT_SRC
 #include <chariot.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #define C_RED "\x1b[31m"
 #define C_GREEN "\x1b[32m"
@@ -65,22 +65,19 @@ int run_line(const char *line) {
     printf("failed to execute: '%s'\n", line);
     despawn(pid);
   }
-
 cleanup:
   free(args);
 
   return err;
 }
 
-
 void hexdump(off_t off, void *vbuf, long len) {
   unsigned char *buf = vbuf;
 
   int w = 16;
   for (int i = 0; i < len; i += w) {
-
     unsigned char *line = buf + i;
-    printf("%p: ", (void*)(off + i));
+    printf("%p: ", (void *)(off + i));
     for (int c = 0; c < w; c++) {
       if (i + c >= len) {
         printf("   ");
@@ -113,7 +110,6 @@ int main(int argc, char **argv, char **envp) {
         return -1;
     }
   }
-
 
   char prompt[64];
   char uname[32];
@@ -202,11 +198,8 @@ void input_display(struct input_info *in, const char *prompt) {
   fflush(stderr);
 }
 
-
 void handle_special(char c, struct input_info *in) {
-
   switch (c) {
-
     case 0x01:
       in->ind = 0;
       break;
@@ -308,8 +301,8 @@ char *read_line(int fd, char *prompt, int *len_out) {
             break;
           case '~':
             if (in.ind < in.len) {
-            in.ind++;
-            input_del(&in);
+              in.ind++;
+              input_del(&in);
             }
             // right delete
             break;

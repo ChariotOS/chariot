@@ -99,7 +99,10 @@ struct inode {
   off_t size = 0;
   short type = T_INVA;  // from T_[...] above
   short mode = 0;       // file mode. ex: o755
-  uint32_t ino = 0;     // inode (in systems that support it)
+  struct {
+    int major, minor;
+  } dev;
+  uint32_t ino = 0;  // inode (in systems that support it)
   uint32_t uid = 0;
   uint32_t gid = 0;
   uint32_t link_count = 0;
@@ -137,7 +140,7 @@ struct inode {
   int register_direntry(string name, int type, struct inode * = NULL);
   int remove_direntry(string name);
 
-  struct inode *get_direntry(const char*name);
+  struct inode *get_direntry(const char *name);
 
   void walk_direntries(
       func<bool /* continue? */ (const string &, struct inode *)>);
@@ -179,6 +182,7 @@ struct inode {
   static int release(struct inode *);
 
   spinlock lock = spinlock("inode lock");
+
  protected:
   int rc = 0;
 

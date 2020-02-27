@@ -4,6 +4,7 @@
 #include <multiboot.h>
 #include <paging.h>
 #include <phys.h>
+#include <util.h>
 #include <types.h>
 
 #define round_down(x, y) ((x) & ~((y)-1))
@@ -118,6 +119,7 @@ void *ksbrk(i64 inc) {
 
   return kheap_start + oldsz;
 }
+
 
 void arch::mem_init(unsigned long mbd) {
   multiboot_info_ptr = (multiboot_info_t *)mbd;

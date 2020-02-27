@@ -32,7 +32,10 @@ int sys::munmap(void *addr, size_t length) {
 
 int sys::mrename(void *addr, char *name) {
   auto proc = cpu::proc();
+
   if (!proc->mm->validate_string(name)) return -1;
+
+
 
   string sname = name;
   for (auto &c : sname) {
@@ -43,6 +46,7 @@ int sys::mrename(void *addr, char *name) {
   auto region = proc->mm->lookup((u64)addr & ~0xFFF);
 
   if (region == NULL) return -ENOENT;
+
   region->name = move(sname);
   return 0;
 }

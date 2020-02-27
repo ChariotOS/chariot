@@ -12,6 +12,9 @@ int sys::spawn(void) {
 
   if (np) {
     proc->datalock.lock();
+    auto leak = proc->mm->fork();
+    delete leak;
+
     // store it in the embryos
     proc->embryos.push(np);
     proc->datalock.unlock();

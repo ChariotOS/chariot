@@ -107,6 +107,12 @@ class space {
              ref<fs::filedesc>, off_t off);
   int unmap(off_t addr, size_t sz);
 
+
+  // returns the number of bytes resident
+  size_t memory_usage(void);
+
+  mm::space *fork(void);
+
 #define VALIDATE_READ 1
 #define VALIDATE_WRITE 2
   bool validate_pointer(void *, size_t, int mode);

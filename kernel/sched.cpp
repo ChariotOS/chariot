@@ -227,7 +227,7 @@ void sched::do_yield(int st) {
   // thd.sched.priority = PRIORITY_HIGH;
   if (cpu::get_ticks() - thd.sched.start_tick >= thd.sched.timeslice) {
     // uh oh, we used up the timeslice, drop the priority!
-    thd.sched.priority--;
+    // thd.sched.priority--;
   }
 
   thd.sched.priority = PRIORITY_HIGH;

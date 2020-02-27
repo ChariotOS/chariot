@@ -38,16 +38,6 @@
 
 multiboot_info_t *multiboot_info_ptr;
 
-void init_mmap(u64 mbd) {
-}
-
-int init_mem(u64 mbd) {
-  // go detect all the ram in the system
-  init_mmap(mbd);
-
-  return 0;
-}
-
 u8 *kheap_start = NULL;
 u64 kheap_size = 0;
 

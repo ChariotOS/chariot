@@ -101,6 +101,28 @@ int mm::space::pagefault(off_t va, int err) {
       }
 
       spinlock::unlock(page->lock);
+    } else {
+      // If the fault was due to a write, and this region
+      // is writable, handle COW if needed
+      if ((err & FAULT_WRITE) && (r->prot & PROT_WRITE)) {
+        if (r->flags & MAP_SHARED) {
+          // TODO: handle shared
+        } else {
+          auto op = r->pages[ind];
+          spinlock::lock(op->lock);
+
+          if (op->users > 1) {
+            auto np = mm::page::alloc();
+            printk("COW [page %d in '%s']\n", ind, r->name.get());
+            np->users = 1;
+            op->users--;
+            memcpy(p2v(np->pa), p2v(op->pa), PGSIZE);
+            r->pages[ind] = np;
+          }
+
+          spinlock::unlock(op->lock);
+        }
+      }
     }
 
     pte.ppn = r->pages[ind]->pa >> 12;
@@ -109,6 +131,102 @@ int mm::space::pagefault(off_t va, int err) {
   }
 
   return 0;
+}
+
+size_t mm::space::memory_usage(void) {
+  scoped_lock l(lock);
+
+  size_t s = 0;
+
+  for (auto &r : regions) {
+    r->lock.lock();
+    for (auto &p : r->pages)
+      if (p) s += PGSIZE;
+    r->lock.unlock();
+  }
+
+  return s;
+}
+
+mm::space *mm::space::fork(void) {
+  auto npt = mm::pagetable::create();
+  auto *n = new mm::space(lo, hi, npt);
+
+  scoped_lock self_lock(this->lock);
+
+  /*
+  for (auto &r : regions) {
+    printk("%p-%p ", r->va, r->va + r->len);
+    printk("%c", r->prot & VPROT_READ ? 'r' : '-');
+    printk("%c", r->prot & VPROT_WRITE ? 'w' : '-');
+    printk("%c", r->prot & VPROT_EXEC ? 'x' : '-');
+    printk(" %08lx", r->off);
+    int maj = 0;
+    int min = 0;
+    if (r->fd) {
+      maj = r->fd->ino->dev.major;
+      min = r->fd->ino->dev.minor;
+    }
+    printk(" %02x:%02x", maj, min);
+    printk(" %-10d", r->fd ? r->fd->ino->ino : 0);
+    printk(" %s", r->name.get());
+    printk("\n");
+  }
+  printk("\n");
+  */
+#define DO_COW
+
+
+  for (auto &r : regions) {
+    auto copy = new mm::area;
+    copy->name = r->name;
+    copy->va = r->va;
+    copy->len = r->len;
+    copy->off = r->off;
+    copy->prot = r->prot;
+    copy->fd = r->fd;
+
+    for (auto &p : r->pages) {
+      if (p) {
+        spinlock::lock(p->lock);
+#ifdef DO_COW
+        p->users++;
+        copy->pages.push(p);
+#else
+        auto np = mm::page::alloc();
+        memcpy(p2v(np->pa), p2v(p->pa), PGSIZE);
+        copy->pages.push(p);
+#endif
+
+        spinlock::unlock(p->lock);
+      } else {
+        // TODO: manage shared mapping on fork
+        // push an empty page to take up the space
+        copy->pages.push(nullptr);
+      }
+    }
+
+#ifdef DO_COW
+    for (size_t i = 0; i < round_up(r->len, 4096) / 4096; i++) {
+      struct mm::pte pte;
+      if (r->pages[i]) {
+        pte.ppn = r->pages[i]->pa >> 12;
+        // for copy on write
+        pte.prot = r->prot & ~PROT_WRITE;
+        pt->add_mapping(r->va + (i * 4096), pte);
+      }
+    }
+#endif
+    n->regions.push(copy);
+  }
+
+  n->sort_regions();
+
+  return n;
+
+  // fail:
+  delete n;
+  return NULL;
 }
 
 off_t mm::space::mmap(off_t req, size_t size, int prot, int flags,
@@ -144,17 +262,6 @@ off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
   sort_regions();
 
   return addr;
-
-  for (auto &r : regions) {
-    printk("%p-%p ", r->va, r->va + r->len);
-    printk("%c", r->prot & VPROT_READ ? 'r' : '-');
-    printk("%c", r->prot & VPROT_WRITE ? 'w' : '-');
-    printk("%c", r->prot & VPROT_EXEC ? 'x' : '-');
-    printk(" %6d", r->len);
-    printk(" %s", r->name.get());
-    printk("\n");
-  }
-  printk("\n");
 
   return addr;
 }
@@ -255,7 +362,6 @@ off_t mm::space::find_hole(size_t size) {
 
   return va;
 }
-
 
 mm::area::~area(void) {
   for (auto &p : pages) {
