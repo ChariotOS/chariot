@@ -1,5 +1,5 @@
 OPT = -O3
-DFLAGS=-g -DDEBUG
+DFLAGS=#-g -DDEBUG
 
 
 ifeq ($(ARCH),)

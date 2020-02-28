@@ -1,4 +1,4 @@
-#include <process.h>
+#include <syscall.h>
 #include <cpu.h>
 
 long sys::lseek(int fd, long offset, int whence) {

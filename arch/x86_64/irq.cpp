@@ -3,7 +3,7 @@
 #include <paging.h>
 #include <pit.h>
 #include <printk.h>
-#include <process.h>
+#include <syscall.h>
 #include <sched.h>
 #include <smp.h>
 

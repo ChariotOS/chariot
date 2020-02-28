@@ -17,7 +17,7 @@
 #include <phys.h>
 #include <pit.h>
 #include <printk.h>
-#include <process.h>
+#include <syscall.h>
 #include <ptr.h>
 #include <sched.h>
 #include <set.h>

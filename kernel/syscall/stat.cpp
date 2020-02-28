@@ -1,5 +1,5 @@
 #include <cpu.h>
-#include <process.h>
+#include <syscall.h>
 #include <stat.h>
 
 int sys::stat(const char *pathname, struct stat *statbuf) { return -1; }

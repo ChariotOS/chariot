@@ -7,7 +7,7 @@
 #include <mem.h>
 #include <module.h>
 #include <printk.h>
-#include <process.h>
+#include <syscall.h>
 #include <single_list.h>
 #include <smp.h>
 #include <vga.h>

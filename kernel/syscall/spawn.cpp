@@ -1,5 +1,5 @@
 #include <cpu.h>
-#include <process.h>
+#include <syscall.h>
 #include <sched.h>
 
 int sys::spawn(void) {

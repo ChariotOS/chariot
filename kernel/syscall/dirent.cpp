@@ -1,6 +1,6 @@
 #include <cpu.h>
 #include <dirent.h>
-#include <process.h>
+#include <syscall.h>
 
 int sys::dirent(int fd, struct dirent *ents, int off, int count) {
   if (ents != NULL && !curproc->mm->validate_pointer(

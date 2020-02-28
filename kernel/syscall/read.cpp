@@ -1,5 +1,5 @@
 #include <cpu.h>
-#include <process.h>
+#include <syscall.h>
 #include <util.h>
 
 ssize_t sys::read(int fd, void *data, long len) {

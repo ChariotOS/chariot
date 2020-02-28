@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <fs/vfs.h>
 #include <map.h>
-#include <process.h>
+#include <syscall.h>
 #include <util.h>
 
 vec<unique_ptr<fs::filesystem>> mounted_filesystems;

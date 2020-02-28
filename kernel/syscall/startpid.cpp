@@ -1,5 +1,5 @@
 #include <cpu.h>
-#include <process.h>
+#include <syscall.h>
 
 int sys::startpidve(int pid, char const *upath, char const **uargv,
                     char const **uenvp) {

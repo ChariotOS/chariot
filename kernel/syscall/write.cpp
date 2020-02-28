@@ -1,5 +1,5 @@
 #include <cpu.h>
-#include <process.h>
+#include <syscall.h>
 
 ssize_t sys::write(int fd, void *data, long len) {
   int n = -1;

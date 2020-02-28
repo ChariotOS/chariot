@@ -1,4 +1,4 @@
-#include <process.h>
+#include <syscall.h>
 #include <cpu.h>
 
 int sys::dup(int fd) {

@@ -1,5 +1,7 @@
-include ../Makefile.common
+# include ../Makefile.common
 
+
+CINCLUDES=-I./include/
 
 DEFINES += -DUSERLAND
 

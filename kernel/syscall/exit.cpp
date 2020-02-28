@@ -1,5 +1,5 @@
 #include <cpu.h>
-#include <process.h>
+#include <syscall.h>
 
 void sys::exit_thread(int code) {
   // if we are the main thread, exit the group instead.

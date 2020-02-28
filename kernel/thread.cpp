@@ -3,7 +3,7 @@
  */
 #include <cpu.h>
 #include <mmap_flags.h>
-#include <process.h>
+#include <syscall.h>
 #include <sched.h>
 #include <util.h>
 

@@ -52,7 +52,7 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
 
   proc.ring = flags & SPAWN_KERN ? RING_KERN : RING_USER;
 
-  // This check is needed because the kernel process has no parent.
+  // This check is needed because the kernel syscall.has no parent.
   if (proc.parent) {
     proc.user = proc_ptr->parent->user;  // inherit the user information
     proc.cwd = proc_ptr->parent->cwd;    // inherit cwd (makes sense)

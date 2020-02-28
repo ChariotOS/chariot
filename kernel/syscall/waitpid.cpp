@@ -1,4 +1,4 @@
-#include <process.h>
+#include <syscall.h>
 #include <wait_flags.h>
 #include <cpu.h>
 

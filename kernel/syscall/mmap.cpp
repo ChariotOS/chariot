@@ -1,7 +1,7 @@
 #include <cpu.h>
 #include <mmap_flags.h>
 #include <paging.h>
-#include <process.h>
+#include <syscall.h>
 #include <mm.h>
 
 void *sys::mmap(void *addr, long length, int prot, int flags, int fd,

@@ -8,7 +8,7 @@
 #include <paging.h>
 #include <pctl.h>
 #include <phys.h>
-#include <process.h>
+#include <syscall.h>
 #include <syscalls.h>
 #include <util.h>
 #include <vga.h>
@@ -64,7 +64,9 @@ static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
     return -1;
   }
 
+  /*
   printk("%d '%s' 0x%02x\n", curproc->pid, syscall_table[num].name, num);
+  */
 
   curthd->stats.syscall_count++;
 

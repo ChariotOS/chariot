@@ -4,7 +4,7 @@
 #include <module.h>
 #include <pci.h>
 #include <pit.h>
-#include <process.h>
+#include <syscall.h>
 #include <vga.h>
 #include <asm.h>
 #include <phys.h>
