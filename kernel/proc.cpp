@@ -179,8 +179,8 @@ pid_t sched::proc::create_kthread(int (*func)(void *), void *arg) {
   return tid;
 }
 
-ref<fs::filedesc> process::get_fd(int fd) {
-  ref<fs::filedesc> file;
+ref<fs::file> process::get_fd(int fd) {
+  ref<fs::file> file;
 
   scoped_lock l(file_lock);
   auto it = open_files.find(fd);
@@ -191,7 +191,7 @@ ref<fs::filedesc> process::get_fd(int fd) {
   return file;
 }
 
-int process::add_fd(ref<fs::filedesc> file) {
+int process::add_fd(ref<fs::file> file) {
   int fd = 0;
   scoped_lock l(file_lock);
 
@@ -302,7 +302,7 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   // TODO check execution permissions
 
   off_t entry = 0;
-  auto fd = make_ref<fs::filedesc>(exe, FDIR_READ);
+  auto fd = make_ref<fs::file>(exe, FDIR_READ);
 
   // allocate a new address space
   auto *new_addr_space = alloc_user_vm();

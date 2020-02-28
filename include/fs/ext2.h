@@ -2,8 +2,7 @@
 #define __ext2_H__
 
 #include <dev/blk_dev.h>
-#include <fs/filesystem.h>
-#include <fs/vnode.h>
+#include <fs.h>
 #include <func.h>
 #include <lock.h>
 #include <map.h>
@@ -65,41 +64,28 @@ struct [[gnu::packed]] ext2_inode_info {
   uint8_t ossv2[12];
 };
 
+// inode data. To be stored in the inode's private data.
+// Freed on release
+struct ext2_idata {
+  // block pointers
+  uint32_t block_pointers[15];
+  int cached_path[4] = {0, 0, 0, 0};
+  int *blk_bufs[4] = {NULL, NULL, NULL, NULL};
+  ~ext2_idata(void);
+};
+
 class ext2_inode : public fs::inode {
   friend class ext2;
 
  public:
-  static ext2_inode *create(ext2 &fs, u32 index);
-  explicit ext2_inode(int type, ext2 &fs, u32 index);
+  static ext2_inode *create(ext2 *fs, u32 index);
+  explicit ext2_inode(int type, u32 index);
 
   virtual ~ext2_inode();
 
-  // ^ struct fs::inode
-  virtual struct inode *resolve_direntry(const char *name);
-  virtual int rm(string &name);
-  virtual ssize_t do_read(filedesc &, void *, size_t);
-  virtual ssize_t do_write(filedesc &, void *, size_t);
   virtual int touch(string name, int mode, fs::inode *&dst);
   // flush the in-memory info struct to disk
   int commit_info();
-
-  int injest_info(ext2_inode_info &info);
-
- protected:
-  int cached_path[4] = {0, 0, 0, 0};
-  int *blk_bufs[4] = {NULL, NULL, NULL, NULL};
-
-  ssize_t do_rw(fs::filedesc &, size_t, void *, bool is_write);
-
-  // return the ith block's index, returning 0 on failure.
-  // if set_to is passed and is non-zero, the block at that
-  // index will be written as set_to
-  int block_from_index(int i_block, int set_to = 0);
-
-  // block pointers
-  uint32_t block_pointers[15];
-
-  ext2 &fs;
 };
 
 /**
@@ -113,7 +99,7 @@ class ext2_inode : public fs::inode {
  */
 class ext2 final : public filesystem {
  public:
-  ext2(fs::filedesc);
+  ext2(fs::file);
 
   ~ext2(void);
 
@@ -250,7 +236,7 @@ class ext2 final : public filesystem {
 
   struct ext2_block_cache_line *get_cache_line(int blkno);
 
-  fs::filedesc disk;
+  fs::file disk;
 
   spinlock m_lock = spinlock("ext2.m_lock");
 };

@@ -30,6 +30,9 @@
 #define TRACE
 #endif
 
+extern fs::file_operations ext2_file_ops;
+extern fs::dir_operations ext2_dir_ops;
+
 struct [[gnu::packed]] block_group_desc {
   uint32_t block_of_block_usage_bitmap;
   uint32_t block_of_inode_usage_bitmap;
@@ -51,7 +54,7 @@ typedef struct __ext2_dir_entry {
 
 #define EXT2_CACHE_SIZE 128
 
-fs::ext2::ext2(fs::filedesc disk) : filesystem(/*super*/), disk(disk) { TRACE; }
+fs::ext2::ext2(fs::file disk) : filesystem(/*super*/), disk(disk) { TRACE; }
 
 fs::ext2::~ext2(void) {
   TRACE;
@@ -345,7 +348,7 @@ struct fs::inode *fs::ext2::get_inode(u32 index) {
   TRACE;
   scoped_lock lck(m_lock);
   if (inodes[index] == NULL) {
-    inodes[index] = fs::ext2_inode::create(*this, index);
+    inodes[index] = fs::ext2_inode::create(this, index);
   }
   return inodes[index];
 }

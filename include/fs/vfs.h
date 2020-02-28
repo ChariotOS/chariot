@@ -1,6 +1,7 @@
 #pragma once
 
-#include <fs/filesystem.h>
+#include <fs.h>
+#include <dev/device.h>
 #include <ptr.h>
 #include <string.h>
 
@@ -51,7 +52,7 @@ class vfs {
 
   static int mount(ref<dev::device>, string fs_name, string path);
 
-  static fs::filedesc fdopen(string path, int opts = 0, int mode = 0000);
+  static fs::file fdopen(string path, int opts = 0, int mode = 0000);
 
  private:
   vfs();  // private constructor. use static methods

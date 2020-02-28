@@ -7,7 +7,7 @@ fs::pipe::pipe() : fs::inode(T_FIFO) {}
 
 fs::pipe::~pipe(void) {}
 
-ssize_t fs::pipe::do_read(filedesc &fd, void *vbuf, size_t size) {
+ssize_t fs::pipe::do_read(file &fd, void *vbuf, size_t size) {
   ssize_t ret = 0;
   auto *buf = (uint8_t *)vbuf;
 
@@ -57,7 +57,7 @@ out:
   return ret;
 }
 
-ssize_t fs::pipe::do_write(filedesc &fd, void *vbuf, size_t size) {
+ssize_t fs::pipe::do_write(file &fd, void *vbuf, size_t size) {
   ssize_t ret = 0;
   auto *buf = (uint8_t *)vbuf;
 

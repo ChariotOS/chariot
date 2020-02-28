@@ -78,17 +78,17 @@ static void dma_start(uint32_t len) {
 }
 */
 
-static ssize_t sb16_write(fs::filedesc &fd, const char *buf, size_t sz) {
+static ssize_t sb16_write(fs::file &fd, const char *buf, size_t sz) {
   hexdump((void *)buf, sz);
   return -1;
 }
 
-static int sb16_open(fs::filedesc &fd) {
+static int sb16_open(fs::file &fd) {
   printk("here\n");
   return -1;
 }
 
-struct dev::driver_ops sb_ops = {
+struct fs::file_operations sb_ops = {
     .write = sb16_write,
     .open = sb16_open,
 };

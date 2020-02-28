@@ -27,7 +27,7 @@ void initialize_kernel_modules(void) {
   }
 }
 
-void init_rootvfs(fs::filedesc dev) {
+void init_rootvfs(fs::file dev) {
   auto rootfs = make_unique<fs::ext2>(dev);
   if (!rootfs->init()) panic("failed to init fs on root disk\n");
   if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");

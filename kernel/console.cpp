@@ -91,7 +91,7 @@ void console::feed(size_t sz, char* buf) {
 int console::getc(bool block) { return -1; }
 void console::putc(char c) { consputc(c); }
 
-static ssize_t console_read(fs::filedesc& fd, char* buf, size_t sz) {
+static ssize_t console_read(fs::file& fd, char* buf, size_t sz) {
   if (fd) {
     auto minor = fd.ino->minor;
     if (minor != 0) return -1;
@@ -100,7 +100,7 @@ static ssize_t console_read(fs::filedesc& fd, char* buf, size_t sz) {
   return -1;
 }
 
-static ssize_t console_write(fs::filedesc& fd, const char* buf, size_t sz) {
+static ssize_t console_write(fs::file& fd, const char* buf, size_t sz) {
   if (fd) {
     auto minor = fd.ino->minor;
     if (minor != 0) return -1;
@@ -109,21 +109,11 @@ static ssize_t console_write(fs::filedesc& fd, const char* buf, size_t sz) {
   }
   return -1;
 }
+static void console_close(fs::file& fd) { KINFO("[console] close!\n"); }
 
-static int console_open(fs::filedesc& fd) {
-  // KINFO("[console] open!\n");
-  return 0;
-}
-
-static void console_close(fs::filedesc& fd) { KINFO("[console] close!\n"); }
-
-struct dev::driver_ops console_ops = {
-    .llseek = NULL,
+struct fs::file_operations console_ops = {
     .read = console_read,
     .write = console_write,
-    .ioctl = NULL,
-
-    .open = console_open,
     .close = console_close,
 };
 

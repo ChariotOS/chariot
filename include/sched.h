@@ -60,6 +60,7 @@ struct thread_context {
 };
 
 using pid_t = int;
+using uid_t = int;
 using gid_t = int;
 
 struct process_user_info {
@@ -140,15 +141,15 @@ struct process final : public refcounted<struct process> {
   waitqueue waiters;
 
   spinlock file_lock = spinlock("task.file_lock");
-  map<int, ref<fs::filedesc>> open_files;
+  map<int, ref<fs::file>> open_files;
 
   /**
    * exec() - execute a command (implementation for startpid())
    */
   int exec(string &path, vec<string> &argv, vec<string> &envp);
 
-  ref<fs::filedesc> get_fd(int fd);
-  int add_fd(ref<fs::filedesc>);
+  ref<fs::file> get_fd(int fd);
+  int add_fd(ref<fs::file>);
 
   pid_t create_thread(void *ip, int state);
 

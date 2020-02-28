@@ -151,7 +151,7 @@ void mouse_install() {
   smp::ioapicenable(MOUSE_IRQ, 0);
 }
 
-static ssize_t mouse_fdread(fs::filedesc &fd, char *buf, size_t sz) {
+static ssize_t mouse_fdread(fs::file &fd, char *buf, size_t sz) {
   if (fd) {
     printk("yo\n");
     // if the size of the read request is not a multiple of a packet, fail
@@ -164,7 +164,7 @@ static ssize_t mouse_fdread(fs::filedesc &fd, char *buf, size_t sz) {
   return -1;
 }
 
-static int mouse_open(fs::filedesc &fd) {
+static int mouse_open(fs::file &fd) {
 
   // only open if it isn't already opened
   if (open) return -1;
@@ -173,12 +173,12 @@ static int mouse_open(fs::filedesc &fd) {
   return 0;
 }
 
-static void mouse_close(fs::filedesc &fd) {
+static void mouse_close(fs::file &fd) {
   open = false;
   KINFO("[mouse] close!\n");
 }
 
-struct dev::driver_ops mouse_ops = {
+struct fs::file_operations mouse_ops = {
     .read = mouse_fdread,
 
     .open = mouse_open,

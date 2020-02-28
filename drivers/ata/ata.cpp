@@ -464,7 +464,7 @@ static dev::blk_dev* get_disk(int minor) {
   return nullptr;
 }
 
-static ssize_t ata_read(fs::filedesc& fd, char* buf, size_t sz) {
+static ssize_t ata_read(fs::file& fd, char* buf, size_t sz) {
   if (fd) {
     auto d = get_disk(fd.ino->minor);
     if (d == NULL) return -1;
@@ -475,7 +475,7 @@ static ssize_t ata_read(fs::filedesc& fd, char* buf, size_t sz) {
   return -1;
 }
 
-static ssize_t ata_write(fs::filedesc& fd, const char* buf, size_t sz) {
+static ssize_t ata_write(fs::file& fd, const char* buf, size_t sz) {
   if (fd) {
     auto d = get_disk(fd.ino->minor);
     if (d == NULL) return -1;
@@ -486,13 +486,9 @@ static ssize_t ata_write(fs::filedesc& fd, const char* buf, size_t sz) {
   return -1;
 }
 
-struct dev::driver_ops ata_ops = {
-    .llseek = NULL,
+struct fs::file_operations ata_ops = {
     .read = ata_read,
     .write = ata_write,
-    .ioctl = NULL,
-    .open = NULL,
-    .close = NULL,
 };
 
 static void ata_init(void) {

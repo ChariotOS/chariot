@@ -35,13 +35,13 @@ struct driver_instance {
   string name;
   int type;
   major_t major;
-  dev::driver_ops *ops;
+  fs::file_operations *ops;
 };
 
 // every device drivers, accessable through their major number
 static map<major_t, struct driver_instance> device_drivers;
 
-int dev::register_driver(const char *name, int type, major_t major, dev::driver_ops *d) {
+int dev::register_driver(const char *name, int type, major_t major, fs::file_operations *d) {
   // TODO: take a lock
 
   if (d == nullptr) return -ENOENT;
@@ -96,7 +96,7 @@ int dev::deregister_name(string name) {
 
 // main API to opening devices
 
-fs::filedesc dev::open(string name) {
+fs::file dev::open(string name) {
   int err;
 
   if (device_names.contains(name)) {
@@ -104,10 +104,10 @@ fs::filedesc dev::open(string name) {
     return dev::open(d.major(), d.minor(), err);
   }
 
-  return fs::filedesc(NULL, 0);
+  return fs::file(NULL, 0);
 }
 
-fs::filedesc dev::open(major_t maj, minor_t min) {
+fs::file dev::open(major_t maj, minor_t min) {
   int err;
   auto dev = open(maj, min, err);
   if (err != 0)
@@ -117,11 +117,11 @@ fs::filedesc dev::open(major_t maj, minor_t min) {
   return dev;
 }
 
-fs::filedesc dev::open(major_t maj, minor_t min, int &errcode) {
+fs::file dev::open(major_t maj, minor_t min, int &errcode) {
   // TODO: is this needed?
   if (maj > MAX_DRIVERS) {
     errcode = -E2BIG;
-    return fs::filedesc(NULL, 0);
+    return fs::file(NULL, 0);
   }
 
   // TODO: take a lock!
@@ -134,15 +134,15 @@ fs::filedesc dev::open(major_t maj, minor_t min, int &errcode) {
     fs::inode::acquire(ino);
     ino->major = maj;
     ino->minor = min;
-    return fs::filedesc(ino, FDIR_READ | FDIR_WRITE);
+    return fs::file(ino, FDIR_READ | FDIR_WRITE);
     // return device_drivers[maj].ops->open(maj, min, errcode);
   }
   // if there wasnt a driver in the major list, return such
   errcode = -ENOENT;
-  return fs::filedesc(NULL, 0);
+  return fs::file(NULL, 0);
 }
 
-dev::driver_ops *dev::get(major_t majr) {
+fs::file_operations *dev::get(major_t majr) {
   // TODO: take a lock
   if (device_drivers.contains(majr)) {
     return device_drivers[majr].ops;

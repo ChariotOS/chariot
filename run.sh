@@ -8,7 +8,7 @@
 
 qemu-system-x86_64 -gdb tcp::8256            \
 	-nographic -serial mon:stdio               \
-	-m 256M -smp 4                               \
+	-m 2G -smp 4                               \
 	-hda build/chariot.img                     \
 	$@
 

@@ -230,12 +230,12 @@ mm::space *mm::space::fork(void) {
 }
 
 off_t mm::space::mmap(off_t req, size_t size, int prot, int flags,
-                      ref<fs::filedesc> fd, off_t off) {
+                      ref<fs::file> fd, off_t off) {
   return mmap("[anon]", req, size, prot, flags, move(fd), off);
 }
 
 off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
-                      ref<fs::filedesc> fd, off_t off) {
+                      ref<fs::file> fd, off_t off) {
   if (addr & 0xFFF) return -1;
 
   scoped_lock l(lock);

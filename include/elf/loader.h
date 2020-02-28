@@ -9,9 +9,9 @@
 namespace elf {
 
 
-  bool validate(fs::filedesc &fd);
+  bool validate(fs::file &fd);
 
-  bool validate(fs::filedesc &fd, Elf64_Ehdr &);
-  int load(const char *, mm::space &vm, ref<fs::filedesc> fd, u64 &entry);
+  bool validate(fs::file &fd, Elf64_Ehdr &);
+  int load(const char *, mm::space &vm, ref<fs::file> fd, u64 &entry);
 
 };  // namespace elf

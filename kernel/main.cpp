@@ -7,7 +7,6 @@
 #include <dev/driver.h>
 #include <dev/mbr.h>
 #include <dev/serial.h>
-#include <fs/file.h>
 #include <pctl.h>
 #include <fs/vfs.h>
 #include <func.h>

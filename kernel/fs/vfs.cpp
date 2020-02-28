@@ -1,6 +1,5 @@
 #include <cpu.h>
 #include <errno.h>
-#include <fs/file.h>
 #include <fs/vfs.h>
 #include <map.h>
 #include <process.h>
@@ -134,12 +133,21 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
   char name[256];
   bool last = false;
   while ((path = skipelem((char *)path, name, last)) != 0) {
+
     auto found = ino->get_direntry(name);
 
     if (found == NULL) {
       if (last && (flags & O_CREAT)) {
-        // TODO: check for O_CREAT and last
-        return ino->touch(name, mode, res);
+
+        if (ino->dops && ino->dops->create) {
+
+          fs::file_ownership own;
+          own.uid = curproc->user.uid;
+          own.gid = curproc->user.gid;
+          own.mode = mode;
+          return ino->dops->create(*ino, name, own);
+        }
+        return -EINVAL;
       }
 
       res = NULL;
@@ -153,7 +161,7 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
   return 0;
 }
 
-fs::filedesc vfs::fdopen(string path, int opts, int mode) {
+fs::file vfs::fdopen(string path, int opts, int mode) {
   int fd_dirs = 0;
 
   if (opts & O_RDWR) fd_dirs |= FDIR_READ | FDIR_WRITE;
@@ -162,7 +170,7 @@ fs::filedesc vfs::fdopen(string path, int opts, int mode) {
 
   auto *ino = vfs::open(move(path), opts, mode);
 
-  fs::filedesc fd(ino, fd_dirs);
+  fs::file fd(ino, fd_dirs);
 
   fd.path = move(path);
   return fd;

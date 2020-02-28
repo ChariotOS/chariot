@@ -79,8 +79,8 @@ struct area {
 
   spinlock lock;
 
-  // TODO: unify shared mappings in the filedescriptor somehow
-  ref<fs::filedesc> fd;
+  // TODO: unify shared mappings in the fileriptor somehow
+  ref<fs::file> fd;
   vec<ref<mm::page>> pages;  // backing memory
 
   ~area(void);
@@ -100,11 +100,11 @@ class space {
 
   int delete_region(off_t va);
   int pagefault(off_t va, int err);
-  off_t mmap(off_t req, size_t size, int prot, int flags, ref<fs::filedesc>,
+  off_t mmap(off_t req, size_t size, int prot, int flags, ref<fs::file>,
              off_t off);
 
   off_t mmap(string name, off_t req, size_t size, int prot, int flags,
-             ref<fs::filedesc>, off_t off);
+             ref<fs::file>, off_t off);
   int unmap(off_t addr, size_t sz);
 
 

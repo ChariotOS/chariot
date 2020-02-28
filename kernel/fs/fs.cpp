@@ -78,8 +78,11 @@ struct inode *fs::inode::get_direntry_ino(struct direntry *ent) {
     return ent->ino;
   }
 
+  if (dops == NULL) panic("dir_ops null in get_direntry_ino despite being a directory\n");
+  if (dops->lookup == NULL) panic("dir_ops->lookup null in get_direntry_ino despite being a directory\n");
+
   // otherwise attempt to resolve that entry
-  ent->ino = resolve_direntry(ent->name.get());
+  ent->ino = dops->lookup(*this, ent->name.get());
   if (ent->ino != NULL) fs::inode::acquire(ent->ino);
 
   return ent->ino;
@@ -153,7 +156,7 @@ int fs::inode::remove_direntry(string name) {
     if (ent->name == name) {
       if (ent->type == ENT_RES) {
         // check with the filesystem implementation
-        if (rm(ent->name) != 0) {
+        if (ent->ino->dops->unlink(*ent->ino, ent->name.get()) != 0) {
           return -1;
         }
       }
@@ -172,18 +175,6 @@ int fs::inode::remove_direntry(string name) {
 
   lock.unlock();
   return -ENOENT;
-}
-
-struct inode *fs::inode::resolve_direntry(const char *name) {
-  panic("resolving direntry on 'super' fs::inode struct (not implemented)\n");
-  return NULL;
-}
-
-int fs::inode::rm(string &name) {
-  panic(
-      "removing resident direntry on 'super' fs::inode doesn't make sense (not "
-      "implemented)\n");
-  return -1;
 }
 
 void fs::inode::walk_direntries(
@@ -206,61 +197,12 @@ vec<string> fs::inode::direntries(void) {
   return e;
 }
 
-ssize_t fs::inode::read(filedesc &fd, void *buf, size_t sz) {
-  ssize_t k = -1;
 
-  dev::driver_ops *driver = NULL;
 
-  switch (type) {
-    case T_BLK:
-    case T_CHAR:
-      driver = dev::get(major);
-      if (driver != NULL && driver->read != NULL) {
-        k = driver->read(fd, (char *)buf, sz);
-      }
-      break;
-
-    case T_FILE:
-      lock.lock();
-      k = do_read(fd, buf, sz);
-      lock.unlock();
-      break;
-  }
-  return k;
-}
-ssize_t fs::inode::write(filedesc &fd, void *buf, size_t sz) {
-  ssize_t k = -1;
-
-  dev::driver_ops *driver = NULL;
-
-  switch (type) {
-    case T_BLK:
-    case T_CHAR:
-      driver = dev::get(major);
-      if (driver != NULL && driver->write != NULL) {
-        k = driver->write(fd, (char *)buf, sz);
-      }
-      break;
-
-    case T_FILE:
-      lock.lock();
-      k = do_write(fd, buf, sz);
-      lock.unlock();
-      break;
-  }
-  return k;
-}
-
-// to be implemented by the filesystem
-int fs::inode::touch(string name, int mode, fs::inode *&dst) {
-  dst = NULL;
-  return -EINVAL;
-}
-
-int fs::inode::open(filedesc &fd) {
+int fs::inode::open(file &fd) {
   ssize_t k = 0;
 
-  dev::driver_ops *driver = NULL;
+  fs::file_operations *driver = NULL;
 
   switch (type) {
     case T_BLK:
@@ -278,8 +220,8 @@ int fs::inode::open(filedesc &fd) {
   return k;
 }
 
-void fs::inode::close(filedesc &fd) {
-  dev::driver_ops *driver = NULL;
+void fs::inode::close(file &fd) {
+  fs::file_operations *driver = NULL;
 
   switch (type) {
     case T_BLK:
@@ -291,9 +233,6 @@ void fs::inode::close(filedesc &fd) {
       break;
   }
 }
-
-ssize_t fs::inode::do_read(filedesc &fd, void *buf, size_t sz) { return -1; }
-ssize_t fs::inode::do_write(filedesc &fd, void *buf, size_t sz) { return -1; }
 
 int fs::inode::acquire(struct inode *in) {
   assert(in != NULL);

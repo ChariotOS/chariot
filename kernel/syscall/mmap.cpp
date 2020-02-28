@@ -12,7 +12,7 @@ void *sys::mmap(void *addr, long length, int prot, int flags, int fd,
   // TODO: handle address requests!
   if (addr != NULL) return MAP_FAILED;
 
-  ref<fs::filedesc> f = nullptr;
+  ref<fs::file> f = nullptr;
 
   if ((flags & MAP_ANON) == 0) {
     f = proc->get_fd(fd);

@@ -3,23 +3,18 @@
 #include <phys.h>
 #include "ahci.h"
 
-static ssize_t sata_read(fs::filedesc &fd, char *buf, size_t sz) {
+static ssize_t sata_read(fs::file &fd, char *buf, size_t sz) {
   //
   return -1;
 }
-static ssize_t sata_write(fs::filedesc &fd, const char *buf, size_t sz) {
+static ssize_t sata_write(fs::file &fd, const char *buf, size_t sz) {
   //
   return -1;
 }
 
-struct dev::driver_ops sata_ops = {
-    .llseek = NULL,
+struct fs::file_operations sata_ops = {
     .read = sata_read,
     .write = sata_write,
-    .ioctl = NULL,
-
-    .open = NULL,
-    .close = NULL,
 };
 
 

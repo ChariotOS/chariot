@@ -12,7 +12,7 @@ int sys::open(const char *path, int flags, int mode) {
   auto ino = vfs::open(path, flags, mode);
   if (ino == NULL) return -ENOENT;
 
-  auto file = fs::filedesc::create(ino, path, flags);
+  auto file = fs::file::create(ino, path, flags);
 
   int fd = proc->add_fd(file);
 

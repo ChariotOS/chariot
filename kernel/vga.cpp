@@ -407,7 +407,7 @@ int vga::flush_buffer(u32 *dbuf, int npixels) {
   return len;
 }
 
-static ssize_t fb_write(fs::filedesc &fd, const char *buf, size_t sz) {
+static ssize_t fb_write(fs::file &fd, const char *buf, size_t sz) {
   if (fd) {
     if (vga_fba == nullptr) return -1;
 
@@ -429,12 +429,12 @@ static ssize_t fb_write(fs::filedesc &fd, const char *buf, size_t sz) {
   return -1;
 }
 
-static int fb_ioctl(fs::filedesc &fd, unsigned int cmd, unsigned long arg) {
+static int fb_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
   return -1;
 }
 
 // can only write to the framebuffer
-struct dev::driver_ops fb_ops = {
+struct fs::file_operations fb_ops = {
     .llseek = NULL,
     .read = NULL,
     .write = fb_write,

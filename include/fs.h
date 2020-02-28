@@ -18,41 +18,41 @@
 #define SEEK_CUR (-2)
 #define SEEK_END (-3)
 
+// fwd decl
+namespace mm {
+struct area;
+}
+
 namespace fs {
 // fwd decl
 struct inode;
+class file;
 
-class filedesc : public refcounted<filedesc> {
- public:
-  // must construct file descriptors via these factory funcs
-  static ref<filedesc> create(struct fs::inode *, string open_path,
-                              int flags = FDIR_READ | FDIR_WRITE);
+using mode_t = u32;
 
-  /*
-   * seek - change the offset
-   * set the file position to the offset + whence if whence is not equal to
-   * either SEEK_SET, SEEK_CUR, or SEEK_END. (defaults to start)
-   */
-  off_t seek(off_t offset, int whence = SEEK_SET);
-  ssize_t read(void *, ssize_t);
-  ssize_t write(void *data, ssize_t);
-
-  int close();
-
-  inline off_t offset(void) { return m_offset; }
-
-  ~filedesc(void);
-
- public:
-  filedesc(struct fs::inode *, int flags);
-  inline filedesc() : filedesc(NULL, 0) {}
-
-  inline operator bool() { return ino != NULL; }
-
-  struct fs::inode *ino;
-  string path;
-  off_t m_offset = 0;
+struct directory_entry {
+  u32 inode;
+  string name;
 };
+
+class filesystem {
+ public:
+  virtual ~filesystem();
+
+  virtual bool init(void) = 0;
+  virtual struct inode *get_root() = 0;
+  inline virtual bool umount(void) { return true; }
+
+ protected:
+  // TODO: put a lock in here.
+
+  // must be called by subclasses
+  filesystem();
+};
+
+int mount(string path, filesystem &);
+
+struct inode *open(string s, u32 flags, u32 opts = 0);
 
 // memory only
 #define ENT_MEM 0
@@ -84,6 +84,96 @@ struct direntry {
 #define T_SYML 6
 #define T_SOCK 7
 
+struct file_ownership {
+  int uid;
+  int gid;
+  int mode;  // the octal part of a file :)
+};
+
+struct file_operations {
+  // seek - used to notify of seeking. Doesn't actually seek
+  //        returns -errno on failure (seek wasn't allowed)
+  int (*seek)(fs::file &, off_t old_off, off_t new_off) = NULL;
+  ssize_t (*read)(fs::file &, char *, size_t) = NULL;
+  ssize_t (*write)(fs::file &, const char *, size_t) = NULL;
+  int (*ioctl)(fs::file &, unsigned int, off_t) = NULL;
+
+  /**
+   * open - notify the driver that a new descriptor has opened the file
+   * if it returns a non-zero code, it will be propagated back to the
+   * sys::open() call and be considered a fail
+   */
+  int (*open)(fs::file &) = NULL;
+
+  /**
+   * close - notify the driver that a file descriptor is closing it
+   *
+   * no return value
+   */
+  void (*close)(fs::file &) = NULL;
+
+  /* map a file into a vm area */
+  int (*mmap)(fs::file &, struct mm::area &);
+  // resize a file. if size is zero, it is a truncate
+  int (*resize)(fs::file &, size_t);
+
+  void (*destroy_priv)(void*);
+
+};
+
+struct dir_operations {
+  // create a file in the directory
+  int (*create)(fs::inode &, const char *name, struct fs::file_ownership &);
+  // create a directory in a dir
+  int (*mkdir)(fs::inode &, const char *, struct fs::file_ownership &);
+  // remove a file from a directory
+  int (*unlink)(fs::inode &, const char *);
+  // lookup an inode by name in a file
+  struct fs::inode *(*lookup)(fs::inode &, const char *);
+  // create a device node with a major and minor number
+  int (*mknod)(fs::inode &, const char *name, struct fs::file_ownership &,
+               int major, int minor);
+
+  // walk through the directory, calling the callback per entry
+  int (*walk)(fs::inode &, func<bool(const string &)>);
+};
+
+
+class file : public refcounted<file> {
+ public:
+  // must construct file descriptors via these factory funcs
+  static ref<file> create(struct fs::inode *, string open_path,
+                          int flags = FDIR_READ | FDIR_WRITE);
+
+  /*
+   * seek - change the offset
+   * set the file position to the offset + whence if whence is not equal to
+   * either SEEK_SET, SEEK_CUR, or SEEK_END. (defaults to start)
+   */
+  off_t seek(off_t offset, int whence = SEEK_SET);
+  ssize_t read(void *, ssize_t);
+  ssize_t write(void *data, ssize_t);
+
+  int close();
+
+  inline off_t offset(void) { return m_offset; }
+
+  fs::file_operations *fops(void);
+
+  ~file(void);
+
+ public:
+  file(struct fs::inode *, int flags);
+  inline file() : file(NULL, 0) {}
+
+  inline operator bool() { return ino != NULL; }
+
+  struct fs::inode *ino;
+  string path;
+  off_t m_offset = 0;
+};
+
+
 /**
  * struct inode - base point for all "file-like" objects
  *
@@ -91,7 +181,6 @@ struct direntry {
  *       this means you cannot have circular references - hardlinks to one file
  *       in two different dirs must have different `struct inode`s
  */
-
 struct inode {
   /**
    * fields
@@ -115,6 +204,18 @@ struct inode {
   // for devices
   int major, minor;
 
+  fs::file_operations *fops = NULL;
+  fs::dir_operations *dops = NULL;
+  // the filesystem that this inode uses
+  fs::filesystem *fs;
+
+  void *_priv;
+
+  template <typename T>
+  T *&priv(void) {
+    return (T*&)_priv;
+  }
+
   // different kinds of inodes need different kinds of data
   union {
     struct {
@@ -127,7 +228,6 @@ struct inode {
   /**
    * methods
    */
-
   inode(int type);
 
   /*
@@ -150,30 +250,14 @@ struct inode {
   // add a mount in the current directory, returning 0 on success
   int add_mount(string &name, struct inode *other_root);
 
-  /**
-   * file related functions
-   */
-  ssize_t read(filedesc &, void *, size_t);
-  ssize_t write(filedesc &, void *, size_t);
-
-  int open(filedesc &);
-  void close(filedesc &);
+  int open(file &);
+  void close(file &);
 
   /**
    * virtual functions
    */
   // destructs (and deletes) all inodes this inode owns
   virtual ~inode();
-  virtual struct inode *resolve_direntry(const char *name);
-
-  // remove an entry in the directory (only called on entry removals of type
-  // ENT_RES). Returns 0 on success, <0 on failure or the file cannot be removed
-  virtual int rm(string &name);
-  virtual ssize_t do_read(filedesc &, void *, size_t);
-  virtual ssize_t do_write(filedesc &, void *, size_t);
-
-  // create a file
-  virtual int touch(string name, int mode, fs::inode *&dst);
 
   // can overload!
   virtual int stat(struct stat *);
@@ -212,8 +296,8 @@ struct pipe : public fs::inode {
   virtual ~pipe(void);
 
   // main interface
-  virtual ssize_t do_read(filedesc &, void *, size_t);
-  virtual ssize_t do_write(filedesc &, void *, size_t);
+  virtual ssize_t do_read(file &, void *, size_t);
+  virtual ssize_t do_write(file &, void *, size_t);
 };
 
 };  // namespace fs

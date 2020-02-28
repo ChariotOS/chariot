@@ -1,5 +1,4 @@
-#include <fs/file.h>
-#include <fs/filesystem.h>
+#include <fs.h>
 
 fs::filesystem::filesystem(void) {
 }
