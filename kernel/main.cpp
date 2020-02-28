@@ -34,25 +34,6 @@ extern int kernel_end;
 extern "C" void enable_sse();
 extern "C" void call_with_new_stack(void *, void *);
 
-static void print_depth(int d) { for_range(i, 0, d) printk("  "); }
-
-void print_tree(struct fs::inode *dir, int depth = 0) {
-  if (dir->type == T_DIR) {
-    dir->walk_direntries(
-        [&](const string &name, struct fs::inode *ino) -> bool {
-          if (name != "." && name != ".." &&
-              name != "boot" /* it's really noisy */) {
-            print_depth(depth);
-            printk("%s [ino=%d, sz=%d]\n", name.get(), ino->ino, ino->size);
-            if (ino->type == T_DIR) {
-              print_tree(ino, depth + 1);
-            }
-          }
-          return true;
-        });
-  }
-}
-
 struct multiboot_info *mbinfo;
 static void kmain2(void);
 

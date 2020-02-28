@@ -1,3 +1,4 @@
+#include <dev/driver.h>
 #include <errno.h>
 #include <fs.h>
 #include <fs/ext2.h>
@@ -187,17 +188,16 @@ int fs::ext2_inode::commit_info(void) {
 
   // copy the block pointers
   auto table = (u32 *)info.dbp;
-  for (int i = 0; i < 15; i++) {
-    table[i] = priv<ext2_idata>()->block_pointers[i];
-  }
+  for (int i = 0; i < 15; i++) table[i] = priv<ext2_idata>()->block_pointers[i];
 
   efs->write_inode(info, ino);
 
   return 0;
 }
 
+#define UNIMPL() printk("[ext2] '%s' NOT IMPLEMENTED\n", __PRETTY_FUNCTION__)
+
 static int ext2_seek(fs::file &, off_t, off_t) {
-  // ...
   return 0;  // allow seek
 }
 
@@ -255,36 +255,30 @@ static ssize_t ext2_do_read_write(fs::file &f, char *buf, size_t nbytes,
 }
 
 static ssize_t ext2_read(fs::file &f, char *dst, size_t sz) {
-  // ...
+  if (f.ino->type != T_FILE) return -EINVAL;
   return ext2_do_read_write(f, dst, sz, false);
 }
 
 static ssize_t ext2_write(fs::file &f, const char *src, size_t sz) {
-  // ...
+  if (f.ino->type != T_FILE) return -EINVAL;
   return ext2_do_read_write(f, (char *)src, sz, true);
 }
 
 static int ext2_ioctl(fs::file &, unsigned int, off_t) {
-  // ...
+  UNIMPL();
   return -ENOTIMPL;
 }
 
-static int ext2_open(fs::file &) {
-  // ...
-  return 0;
-}
-
-static void ext2_close(fs::file &) {
-  // ...
-}
+static int ext2_open(fs::file &) { return 0; }
+static void ext2_close(fs::file &) {}
 
 static int ext2_mmap(fs::file &, struct mm::area &) {
-  // ...
+  UNIMPL();
   return -ENOTIMPL;
 }
 
 static int ext2_resize(fs::file &, size_t) {
-  // ...
+  UNIMPL();
   return -ENOTIMPL;
 }
 
@@ -303,40 +297,36 @@ fs::file_operations ext2_file_ops{
     .read = ext2_read,
     .write = ext2_write,
     .ioctl = ext2_ioctl,
-
     .open = ext2_open,
     .close = ext2_close,
-
     .mmap = ext2_mmap,
-
     .resize = ext2_resize,
-
     .destroy_priv = ext2_destroy_priv,
 };
 
 static int ext2_create(fs::inode &, const char *name,
                        struct fs::file_ownership &) {
-  // ...
+  UNIMPL();
   return -ENOTIMPL;
 }
 
 static int ext2_mkdir(fs::inode &, const char *name,
                       struct fs::file_ownership &) {
-  // ...
+  UNIMPL();
   return -ENOTIMPL;
 }
 
 static int ext2_unlink(fs::inode &, const char *) {
-  // ...
+  UNIMPL();
   return -ENOTIMPL;
 }
 
 static struct fs::inode *ext2_lookup(fs::inode &node, const char *needle) {
-  bool found = false;
+  if (node.type != T_DIR) panic("ext2_lookup on non-dir\n");
 
+  bool found = false;
   auto efs = (fs::ext2 *)node.fs;
   u32 ent_inode_num;
-
   efs->traverse_dir(node.ino, [&](u32 ino, const char *name) -> bool {
     if (!strcmp(needle, name)) {
       ent_inode_num = ino;
@@ -352,10 +342,12 @@ static struct fs::inode *ext2_lookup(fs::inode &node, const char *needle) {
 
 static int ext2_mknod(fs::inode &, const char *name,
                       struct fs::file_ownership &, int major, int minor) {
+  UNIMPL();
   return -ENOTIMPL;
 }
 
 static int ext2_walk(fs::inode &, func<bool(const string &)>) {
+  UNIMPL();
   return -ENOTIMPL;
 }
 
@@ -397,6 +389,11 @@ fs::ext2_inode *fs::ext2_inode::create(ext2 *fs, u32 index) {
   ino->fs = fs;
 
   injest_info(ino, info);
+
+  if (ino_type == T_CHAR || ino_type == T_BLK) {
+    ino->fops = dev::get(ino->major);
+    ino->dops = NULL;
+  }
 
   return ino;
 }

@@ -123,7 +123,7 @@ int main(int argc, char **argv, char **envp) {
   setenv("HOME", pwd->pw_dir, 1);
 
   while (1) {
-    snprintf(prompt, 64, C_GREEN "[%s]%c " C_RESET, uname,
+    snprintf(prompt, 64, "[%s]%c ", uname,
              uid == 0 ? '#' : '$');
 
     int len = 0;

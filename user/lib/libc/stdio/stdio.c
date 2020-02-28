@@ -1,8 +1,9 @@
+#include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
+#include <unistd.h>
 
 #include "./impl.h"
 
@@ -55,8 +56,6 @@ FILE *const stdin = &_stdin;
 FILE *const stdout = &_stdout;
 FILE *const stderr = &_stderr;
 
-void stdio_init(void) {}
-
 // TODO: lock
 static FILE *ofl_head = NULL;
 
@@ -83,6 +82,18 @@ static void ofl_remove(FILE *fp) {
   if (*head == fp) *head = fp->next;
   ofl_unlock();
 }
+
+static void stdio_exit(void) {
+  fflush(stdout);
+  fflush(stderr);
+
+  for (FILE *f = ofl_head; f != NULL; f = f->next) {
+    printf("flushing: %p\n", f);
+    fflush(f);
+  }
+}
+
+void stdio_init(void) { atexit(stdio_exit); }
 
 static FILE *falloc();
 static void ffree(FILE *);
@@ -274,9 +285,7 @@ int fgetc(FILE *stream) {
   return (unsigned char)buf[0];
 }
 
-int feof(FILE *stream) {
-  return stream->eof;
-}
+int feof(FILE *stream) { return stream->eof; }
 
 int getc(FILE *stream) __attribute__((weak, alias("fgetc")));
 
@@ -309,20 +318,13 @@ char *fgets(char *s, int size, FILE *stream) {
 
 int putchar(int c) { return fputc(c, stdout); }
 
-
 int fseek(FILE *stream, long offset, int whence) {
   return lseek(stream->fd, offset, whence);
 }
 
-long ftell(FILE *stream) {
-  return lseek(stream->fd, 0, SEEK_CUR);
-}
+long ftell(FILE *stream) { return lseek(stream->fd, 0, SEEK_CUR); }
 
-
-void rewind(FILE *stream) {
-	fseek(stream, 0, SEEK_SET);
-}
-
+void rewind(FILE *stream) { fseek(stream, 0, SEEK_SET); }
 
 int fputs(const char *s, FILE *stream) {
   int len = strlen(s);
@@ -330,10 +332,24 @@ int fputs(const char *s, FILE *stream) {
   return r >= 0 ? 0 : EOF;
 }
 
-int puts(const char *s) {
-  return fputs(s, stdout);
-}
+int puts(const char *s) { return fputs(s, stdout); }
 
-int remove(const char*pathname) {
-  return -1;
+int remove(const char *pathname) { return -1; }
+
+void perror(const char *msg) {
+  fwrite(msg, strlen(msg), 1, stderr);
+  fputc(':', stderr);
+  fputc(' ', stderr);
+
+  switch (errno) {
+#define E(a, b)       \
+  case a:             \
+    fputs(b, stderr); \
+    break;
+#include "__strerror.h"
+
+    default:
+      fputs("No error information", stderr);
+  }
+  fputc('\n', stderr);
 }

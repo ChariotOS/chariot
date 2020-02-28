@@ -8,15 +8,16 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <limits.h>
 
 #define BSIZE 4096
 
-#define C_RED "\x1b[31m"
-#define C_GREEN "\x1b[32m"
-#define C_YELLOW "\x1b[33m"
-#define C_BLUE "\x1b[34m"
-#define C_MAGENTA "\x1b[35m"
-#define C_CYAN "\x1b[36m"
+#define C_RED "\x1b[91m"
+#define C_GREEN "\x1b[92m"
+#define C_YELLOW "\x1b[93m"
+#define C_BLUE "\x1b[94m"
+#define C_MAGENTA "\x1b[95m"
+#define C_CYAN "\x1b[96m"
 
 #define C_RESET "\x1b[0m"
 #define C_GRAY "\x1b[90m"
@@ -86,16 +87,74 @@ int print_filename(const char *name, int mode) {
   return 1 + strlen(name);
 }
 
+
+
+
+#define UCACHE_LEN 20
+struct username {
+  int last_used;
+  int uid;
+  char name[64];
+};
+
+static int next_cache_time = 2;
+static struct username username_cache[UCACHE_LEN];
+
+char *getusername(int uid) {
+  struct username *u = NULL;
+  int oldest_time = INT_MAX;
+
+
+  // find a cache entry
+  for (int i = 0; i < UCACHE_LEN; i++) {
+    struct username *c = username_cache + i;
+
+    if (c->uid == uid) {
+      c->last_used = next_cache_time++;
+      return c->name;
+    }
+
+    if (c->last_used < oldest_time) {
+      u = c;
+    }
+  }
+
+  if (u == NULL) {
+    fprintf(stderr, "username is null!\n");
+    exit(EXIT_FAILURE);
+  }
+
+
+  struct passwd *pswd = getpwuid(uid);
+  memcpy(u->name, pswd->pw_name, strlen(pswd->pw_name));
+  u->uid = 0;
+  u->last_used = next_cache_time++;
+
+
+
+
+  return u->name;
+}
+
+
 void print_entries_long(struct lsfile **ents, int entc, long flags) {
   int longest_username = 0;
   int longest_filesize = 0;
 
   int human_readable = 1;
 
+
+  for (int i = 0; i < 20; i++) {
+    username_cache[i].uid = -1;
+    username_cache[i].last_used = 0;
+  }
+
+
+
   for (int i = 0; i < entc; i++) {
     struct lsfile *ent = ents[i];
-    struct passwd *pswd = getpwuid(ent->st.st_uid);
-    int len = strlen(pswd->pw_name);
+    char *uname = getusername(ent->st.st_uid);
+    int len = strlen(uname);
     if (len > longest_username) longest_username = len;
   }
 
@@ -134,10 +193,8 @@ void print_entries_long(struct lsfile **ents, int entc, long flags) {
     print_st_mode(m >> 3);
     print_st_mode(m >> 0);
 
-    struct passwd *pswd = getpwuid(ent->st.st_uid);
-
     set_color(C_YELLOW);
-    printf(" %*s", longest_username, pswd->pw_name);
+    printf(" %*s", longest_username, getusername(ent->st.st_uid));
 
     /*
     printf(" %8ld", ent->st.st_mtim);

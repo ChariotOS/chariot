@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  puts("\n");
+  if (!quiet) puts("\n");
   printf("%ld directories, %ld files, ", ndirs, nfiles);
   print_filesize(total_size);
   puts("\n");

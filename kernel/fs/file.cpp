@@ -43,11 +43,7 @@ fs::file::~file(void) {
 
 fs::file_operations *fs::file::fops(void) {
   if (!ino) return NULL;
-
-  fs::file_operations *ops = ino->fops;
-  if (ino->type == T_BLK || ino->type == T_CHAR) ops = dev::get(ino->major);
-
-  return ops;
+  return ino->fops;
 }
 
 off_t fs::file::seek(off_t offset, int whence) {

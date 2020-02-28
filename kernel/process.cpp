@@ -55,7 +55,6 @@ void syscall_init(void) {
 #include <syscalls.inc>
 }
 
-
 static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
   if (num & !0xFF) return -1;
 
@@ -65,10 +64,7 @@ static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
     return -1;
   }
 
-  /*
-  printk("System Call: '%s' [0x%02x] 0x%p 0x%p 0x%p 0x%p 0x%p 0x%p\n",
-         syscall_table[num].name, num, a, b, c, d, e, f);
-         */
+  printk("%d '%s' 0x%02x\n", curproc->pid, syscall_table[num].name, num);
 
   curthd->stats.syscall_count++;
 

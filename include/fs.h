@@ -117,8 +117,7 @@ struct file_operations {
   // resize a file. if size is zero, it is a truncate
   int (*resize)(fs::file &, size_t);
 
-  void (*destroy_priv)(void*);
-
+  void (*destroy_priv)(void *);
 };
 
 struct dir_operations {
@@ -137,7 +136,6 @@ struct dir_operations {
   // walk through the directory, calling the callback per entry
   int (*walk)(fs::inode &, func<bool(const string &)>);
 };
-
 
 class file : public refcounted<file> {
  public:
@@ -173,7 +171,6 @@ class file : public refcounted<file> {
   off_t m_offset = 0;
 };
 
-
 /**
  * struct inode - base point for all "file-like" objects
  *
@@ -188,6 +185,8 @@ struct inode {
   off_t size = 0;
   short type = T_INVA;  // from T_[...] above
   short mode = 0;       // file mode. ex: o755
+
+  // the device that the file is located on
   struct {
     int major, minor;
   } dev;
@@ -213,7 +212,7 @@ struct inode {
 
   template <typename T>
   T *&priv(void) {
-    return (T*&)_priv;
+    return (T *&)_priv;
   }
 
   // different kinds of inodes need different kinds of data
@@ -225,11 +224,6 @@ struct inode {
     } dir;
   };
 
-  /**
-   * methods
-   */
-  inode(int type);
-
   /*
    * the directory entry list in this->as.dir is a linked list that must be
    * traversed to find the entry. When the subclass creates a directory, it must
@@ -239,28 +233,15 @@ struct inode {
    */
   int register_direntry(string name, int type, struct inode * = NULL);
   int remove_direntry(string name);
-
   struct inode *get_direntry(const char *name);
-
-  void walk_direntries(
-      func<bool /* continue? */ (const string &, struct inode *)>);
-
+  void walk_direntries(func<bool(const string &, struct inode *)>);
   vec<string> direntries(void);
-
-  // add a mount in the current directory, returning 0 on success
   int add_mount(string &name, struct inode *other_root);
 
-  int open(file &);
-  void close(file &);
-
-  /**
-   * virtual functions
-   */
-  // destructs (and deletes) all inodes this inode owns
+  inode(int type);
   virtual ~inode();
 
-  // can overload!
-  virtual int stat(struct stat *);
+  int stat(struct stat *);
 
   static int acquire(struct inode *);
   static int release(struct inode *);

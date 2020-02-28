@@ -199,40 +199,6 @@ vec<string> fs::inode::direntries(void) {
 
 
 
-int fs::inode::open(file &fd) {
-  ssize_t k = 0;
-
-  fs::file_operations *driver = NULL;
-
-  switch (type) {
-    case T_BLK:
-    case T_CHAR:
-      driver = dev::get(major);
-      if (driver != NULL && driver->open != NULL) {
-        k = driver->open(fd);
-      }
-      break;
-
-    // by default, open should succeed
-    default:
-      k = 0;
-  }
-  return k;
-}
-
-void fs::inode::close(file &fd) {
-  fs::file_operations *driver = NULL;
-
-  switch (type) {
-    case T_BLK:
-    case T_CHAR:
-      driver = dev::get(major);
-      if (driver != NULL && driver->close != NULL) {
-        driver->close(fd);
-      }
-      break;
-  }
-}
 
 int fs::inode::acquire(struct inode *in) {
   assert(in != NULL);

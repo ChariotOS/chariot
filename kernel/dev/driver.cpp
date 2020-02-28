@@ -134,6 +134,8 @@ fs::file dev::open(major_t maj, minor_t min, int &errcode) {
     fs::inode::acquire(ino);
     ino->major = maj;
     ino->minor = min;
+    ino->fops = get(maj);
+
     return fs::file(ino, FDIR_READ | FDIR_WRITE);
     // return device_drivers[maj].ops->open(maj, min, errcode);
   }

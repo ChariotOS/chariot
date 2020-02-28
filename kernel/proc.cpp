@@ -465,7 +465,6 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
     // me->waiters.wait();
 
     // currently, just halt the CPU till the next IRQ and try again
-    arch::halt();
     sched::yield();
   }
 

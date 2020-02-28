@@ -55,6 +55,7 @@ extern FILE *const stderr;
 
 
 
+
 FILE *fdopen(int, const char *);
 FILE *fopen(const char *pathname, const char *mode);
 int fclose(FILE *);
@@ -97,6 +98,9 @@ long ftell(FILE *stream);
 void rewind(FILE *stream);
 
 int remove(const char *pathname);
+
+
+void perror(const char *s);
 
 #ifdef __cplusplus
 }
