@@ -1,6 +1,5 @@
 #include <cpu.h>
 #include <elf/loader.h>
-#include <paging.h>
 #include <pctl.h>
 #include <syscall.h>
 

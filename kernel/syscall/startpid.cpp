@@ -24,8 +24,8 @@ int sys::startpidve(int pid, char const *upath, char const **uargv,
     if (!np) return -ENOENT;
   }
 
-  if (upath == NULL) return -1;
-  if (uargv == NULL) return -1;
+  if (upath == NULL) return -EINVAL;
+  if (uargv == NULL) return -EINVAL;
 
   // TODO validate the pointers
   string path = upath;
@@ -46,14 +46,11 @@ int sys::startpidve(int pid, char const *upath, char const **uargv,
 
   int res = np->exec(path, argv, envp);
 
-  // printk("res = %d\n", res);
-
   if (res == 0) {
     proc->embryos.remove(emb);
     proc->children.push(np);
   }
 
-  // TODO: delete the process on failure to start
   return res;
 }
 

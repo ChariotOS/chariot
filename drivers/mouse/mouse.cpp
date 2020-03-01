@@ -1,7 +1,7 @@
+#include <arch.h>
 #include <dev/driver.h>
 #include <errno.h>
 #include <fifo_buf.h>
-#include <arch.h>
 #include <mem.h>
 #include <module.h>
 #include <mouse_packet.h>
@@ -12,7 +12,6 @@
 #include "../majors.h"
 
 static fifo_buf mouse_buffer;
-
 
 static bool open = false;
 static uint8_t mouse_cycle = 0;
@@ -68,7 +67,7 @@ uint8_t mouse_read() {
 
 static int buttons;
 
-static void mouse_handler(int i, struct regs *tf) {
+static void mouse_handler(int i, reg_t *) {
   // reset the cycle
   mouse_cycle = 0;
 
@@ -125,10 +124,8 @@ static void mouse_handler(int i, struct regs *tf) {
     }
   }
 
-
   irq::eoi(i);
 }
-
 
 void mouse_install() {
   mouse_wait(1);
@@ -145,7 +142,6 @@ void mouse_install() {
   mouse_read();
   mouse_write(0xF4);
   mouse_read();
-
 
   irq::install(32 + MOUSE_IRQ, mouse_handler, "PS2 Mouse");
   smp::ioapicenable(MOUSE_IRQ, 0);
@@ -165,7 +161,6 @@ static ssize_t mouse_fdread(fs::file &fd, char *buf, size_t sz) {
 }
 
 static int mouse_open(fs::file &fd) {
-
   // only open if it isn't already opened
   if (open) return -1;
   open = true;

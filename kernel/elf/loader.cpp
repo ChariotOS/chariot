@@ -1,5 +1,4 @@
 #include <elf/loader.h>
-#include <paging.h>
 #include <printk.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
@@ -43,12 +42,14 @@ int elf::load(const char *path, mm::space &mm, ref<fs::file> fd,
               u64 &entry) {
   Elf64_Ehdr ehdr;
 
+  off_t off = 0;
+
   if (!elf::validate(*fd, ehdr)) {
     return -1;
   }
 
   // the binary is valid, so lets read the headers!
-  entry = ehdr.e_entry;
+  entry = off + ehdr.e_entry;
 
   Elf64_Shdr *sec_hdrs = new Elf64_Shdr[ehdr.e_shnum];
 
@@ -120,10 +121,6 @@ int elf::load(const char *path, mm::space &mm, ref<fs::file> fd,
     if (sec.p_type == PT_LOAD) {
       auto start = round_down(sec.p_vaddr, 1);
 
-      // auto sz = round_up(sec.p_memsz, 4096);
-
-      // printk("%p (%zu, %zu)\n", start, sec.p_filesz, sec.p_memsz);
-
       if (sec.p_filesz < sec.p_memsz) {
         // printk("    is .bss\n");
       }
@@ -133,10 +130,11 @@ int elf::load(const char *path, mm::space &mm, ref<fs::file> fd,
       if (sec.p_flags & PF_W) flags |= PROT_WRITE;
       if (sec.p_flags & PF_R) flags |= PROT_READ;
 
-      mm.mmap(path, start, sec.p_memsz, flags, MAP_PRIVATE, fd, sec.p_offset);
+      mm.mmap(path, off + start, sec.p_memsz, flags, MAP_PRIVATE, fd, sec.p_offset);
       handle_bss(sec);
     }
   }
+
   delete[] phdr;
 
   return 0;

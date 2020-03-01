@@ -1,4 +1,5 @@
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,24 +25,20 @@ static DIR *populate_dir(DIR *dir) {
     free(dir);
     return 0;
   }
-  /** TODO
   if (!S_ISDIR(st.st_mode)) {
-  printf("mode=%zo\n", st.st_mode);
-    // TODO: errno
-    // errno = ENOTDIR;
+    errno = ENOTDIR;
     free(dir);
     return 0;
   }
-  */
 
-  dir->nents = syscall(SYS_dirent, dir->fd, NULL, 0, 0);
-  if (dir->nents < 0) {
+  dir->nents = errno_syscall(SYS_dirent, dir->fd, NULL, 0, 0);
+  if (dir->nents == -1) {
     free(dir);
     return NULL;
   }
 
   dir->ents = calloc(dir->nents, sizeof(struct dirent));
-  int n = syscall(SYS_dirent, dir->fd, dir->ents, 0, dir->nents);
+  int n = errno_syscall(SYS_dirent, dir->fd, dir->ents, 0, dir->nents);
 
   if (n != dir->nents) {
     printf("populate_dir: hmm\n");
@@ -74,7 +71,6 @@ DIR *fdopendir(int fd) {
   return populate_dir(dir);
 }
 
-
 struct dirent *readdir(DIR *d) {
   if (d->pos == d->nents) return NULL;
 
@@ -88,11 +84,6 @@ int closedir(DIR *dir) {
   return ret;
 }
 
+void rewinddir(DIR *d) { d->pos = 0; }
 
-void rewinddir(DIR *d) {
-  d->pos = 0;
-}
-
-int dirfd(DIR *d) {
-  return d->fd;
-}
+int dirfd(DIR *d) { return d->fd; }

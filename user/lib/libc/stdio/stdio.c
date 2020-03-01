@@ -86,11 +86,8 @@ static void ofl_remove(FILE *fp) {
 static void stdio_exit(void) {
   fflush(stdout);
   fflush(stderr);
-
-  for (FILE *f = ofl_head; f != NULL; f = f->next) {
-    printf("flushing: %p\n", f);
-    fflush(f);
-  }
+  // go through all the files and flush them
+  for (FILE *f = ofl_head; f != NULL; f = f->next) fflush(f);
 }
 
 void stdio_init(void) { atexit(stdio_exit); }
@@ -332,16 +329,23 @@ int fputs(const char *s, FILE *stream) {
   return r >= 0 ? 0 : EOF;
 }
 
-int puts(const char *s) { return fputs(s, stdout); }
+int puts(const char *s) {
+  int r = -(fputs(s, stdout) < 0 || fputc('\n', stdout) < 0);
+  return r;
+}
 
 int remove(const char *pathname) { return -1; }
 
 void perror(const char *msg) {
+  // store errno in case something else in this function fiddles with it
+
+  int e = errno;
+
   fwrite(msg, strlen(msg), 1, stderr);
   fputc(':', stderr);
   fputc(' ', stderr);
 
-  switch (errno) {
+  switch (e) {
 #define E(a, b)       \
   case a:             \
     fputs(b, stderr); \
@@ -349,7 +353,8 @@ void perror(const char *msg) {
 #include "__strerror.h"
 
     default:
-      fputs("No error information", stderr);
+      fprintf(stderr, "No error information. (errno=%d)", e);
+      break;
   }
   fputc('\n', stderr);
 }

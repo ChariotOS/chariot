@@ -35,7 +35,7 @@ int irq::init(void) {
 }
 
 // cause an interrupt to be handled by the kernel's interrupt dispatcher
-void irq::dispatch(int irq, struct regs *regs) {
+void irq::dispatch(int irq, reg_t*regs) {
   // store the current register state in the CPU for introspection
   // if (cpu::in_thread()) cpu::thread()->trap_frame = regs;
 

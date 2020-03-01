@@ -12,7 +12,6 @@
 #include <printk.h>
 #include <ptr.h>
 #include <sched.h>
-#include <smp.h>
 #include <util.h>
 #include <vga.h>
 #include <wait.h>
@@ -404,7 +403,7 @@ bool dev::ata::read_block_dma(u32 sector, u8* data) {
 }
 bool dev::ata::write_block_dma(u32 sector, const u8* data) { return false; }
 
-static void ata_interrupt(int intr, struct regs* fr) {
+static void ata_interrupt(int intr, reg_t* fr) {
   // irq::eoi(intr);
   inb(primary_master_status);
   inb(primary_master_bmr_status);
@@ -447,10 +446,10 @@ static void query_and_add_drive(u16 addr, int id, bool master) {
 static void ata_initialize(void) {
   // TODO: make a new IRQ dispatch system to make this more general
   irq::install(32 + ATA_IRQ0, ata_interrupt, "ATA Drive");
-  smp::ioapicenable(ATA_IRQ0, 0);
+  // smp::ioapicenable(ATA_IRQ0, 0);
 
   irq::install(32 + ATA_IRQ1, ata_interrupt, "ATA Drive");
-  smp::ioapicenable(ATA_IRQ1, 0);
+  // smp::ioapicenable(ATA_IRQ1, 0);
 
   // register all the ata drives on the system
   query_and_add_drive(0x1F0, 0, true);

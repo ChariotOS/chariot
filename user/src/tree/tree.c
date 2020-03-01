@@ -6,7 +6,6 @@
 #include <string.h>
 #include <unistd.h>
 
-
 long nfiles = 0;
 long ndirs = 0;
 int use_colors = 1;
@@ -45,7 +44,7 @@ int print_filename(const char *name, int mode) {
     }
   }
   set_color(name_color);
-  puts(name);
+  fputs(name, stdout);
   set_color(C_RESET);
   printf("%c", end);
 
@@ -79,24 +78,22 @@ static int display_info(const char *fpath, const struct stat *sb, int tflag,
 
   if (!quiet) {
     if (ftwbuf->level != 0) {
-    for (int i = 0; i < ftwbuf->level; i++) puts("│   ");
-    puts("├── ");
+      for (int i = 0; i < ftwbuf->level; i++) printf("│   ");
+      printf("├── ");
     }
 
-
     if (display_filesize) {
-      puts("[");
+      printf("[");
       print_filesize(sb->st_size);
-      puts("] ");
+      printf("] ");
     }
 
     print_filename(name, sb->st_mode);
-    puts("\n");
+    printf("\n");
   }
 
   return 0;  // To tell nftw() to continue
 }
-
 
 void usage(void) {
   fprintf(stderr, "tree -- display the filesystem structure\n");
@@ -152,7 +149,7 @@ int main(int argc, char *argv[]) {
   if (!quiet) puts("\n");
   printf("%ld directories, %ld files, ", ndirs, nfiles);
   print_filesize(total_size);
-  puts("\n");
+  printf("\n");
   exit(EXIT_SUCCESS);
   return 0;
 }

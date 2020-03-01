@@ -35,6 +35,8 @@ int run_line(const char *line) {
   if (strcmp(line, "exit") == 0) exit(0);
   int bg = parseline(line, args);
 
+  if (args[0] == NULL) goto cleanup;
+
   if (strcmp(args[0], "cd") == 0) {
     char *path = args[1];
     if (path == NULL) {
@@ -50,7 +52,7 @@ int run_line(const char *line) {
 
   pid_t pid = spawn();
   if (pid <= -1) {
-    printf("Error spawning, code=%d\n", pid);
+    perror("spawn");
     err = -1;
     goto cleanup;
   }
@@ -62,12 +64,11 @@ int run_line(const char *line) {
       waitpid(pid, &stat, 0);
     }
   } else {
-    printf("failed to execute: '%s'\n", line);
+    printf("failed to execute: '%s'\n", args[0]);
     despawn(pid);
   }
 cleanup:
   free(args);
-
   return err;
 }
 

@@ -1,6 +1,5 @@
 #include <cpu.h>
 #include <mmap_flags.h>
-#include <paging.h>
 #include <syscall.h>
 #include <mm.h>
 

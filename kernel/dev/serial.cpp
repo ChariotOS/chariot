@@ -4,9 +4,6 @@
 #include <arch.h>
 #include <module.h>
 #include <printk.h>
-#include <smp.h>
-
-
 
 #define IRQ_COM1 4
 
@@ -66,7 +63,7 @@ static int uartgetc(void) {
   return inb(COM1 + 0);
 }
 
-void serial_irq_handle(int i, struct regs* tf) {
+void serial_irq_handle(int i, reg_t *) {
 
   size_t nread = 0;
   char buf[32];

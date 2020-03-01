@@ -176,7 +176,6 @@ mm::space *mm::space::fork(void) {
   */
 #define DO_COW
 
-
   for (auto &r : regions) {
     auto copy = new mm::area;
     copy->name = r->name;
@@ -237,6 +236,11 @@ off_t mm::space::mmap(off_t req, size_t size, int prot, int flags,
 off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
                       ref<fs::file> fd, off_t off) {
   if (addr & 0xFFF) return -1;
+
+  if ((flags & (MAP_PRIVATE | MAP_SHARED)) == 0) {
+    printk("map without private or shared\n");
+    return -1;
+  }
 
   scoped_lock l(lock);
 
@@ -346,6 +350,26 @@ int mm::space::sort_regions(void) {
   return n;
 }
 
+void mm::space::dump(void) {
+  scoped_lock l(lock);
+
+  for (auto &r : regions) {
+
+    int ino = 0;
+    int major = 0;
+    int minor = 0;
+
+    if (r->fd) {
+      ino = r->fd->ino->ino;
+      major = r->fd->ino->dev.major;
+      minor = r->fd->ino->dev.minor;
+    }
+    printk("%p-%p %c%c%c%c %09x %02x:%02x %-10d %s\n", r->va, round_up(r->va + r->len, 4096),
+           r->prot & PROT_READ ? 'r' : '-', r->prot & PROT_WRITE ? 'w' : '-',
+           r->prot & PROT_EXEC ? 'x' : '-', r->flags & MAP_PRIVATE ? 'p' : 's', r->off, major, minor, ino, r->name.get());
+  }
+}
+
 off_t mm::space::find_hole(size_t size) {
   off_t va = hi - size;
   off_t lim = va + size;
@@ -374,3 +398,4 @@ mm::area::~area(void) {
 
   pages.clear();
 }
+

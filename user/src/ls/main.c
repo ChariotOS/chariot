@@ -1,6 +1,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,7 +9,6 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <limits.h>
 
 #define BSIZE 4096
 
@@ -38,9 +38,7 @@ static void set_color(char *c) {
 
 /* this is ugly */
 void print_st_mode(int m) {
-#define P_MOD(f, ch, col)         \
-  set_color(m &f ? col : C_GRAY); \
-  printf("%c", m &f ? ch : '-');
+#define P_MOD(f, ch, col) printf("%c", m &f ? ch : '-');
 
   P_MOD(S_IROTH, 'r', C_YELLOW);
   P_MOD(S_IWOTH, 'w', C_RED);
@@ -80,15 +78,12 @@ int print_filename(const char *name, int mode) {
     }
   }
   set_color(name_color);
-  puts(name);
+  fputs(name, stdout);
   set_color(C_RESET);
   printf("%c", end);
 
   return 1 + strlen(name);
 }
-
-
-
 
 #define UCACHE_LEN 20
 struct username {
@@ -103,7 +98,6 @@ static struct username username_cache[UCACHE_LEN];
 char *getusername(int uid) {
   struct username *u = NULL;
   int oldest_time = INT_MAX;
-
 
   // find a cache entry
   for (int i = 0; i < UCACHE_LEN; i++) {
@@ -124,18 +118,13 @@ char *getusername(int uid) {
     exit(EXIT_FAILURE);
   }
 
-
   struct passwd *pswd = getpwuid(uid);
   memcpy(u->name, pswd->pw_name, strlen(pswd->pw_name));
   u->uid = 0;
   u->last_used = next_cache_time++;
 
-
-
-
   return u->name;
 }
-
 
 void print_entries_long(struct lsfile **ents, int entc, long flags) {
   int longest_username = 0;
@@ -143,13 +132,10 @@ void print_entries_long(struct lsfile **ents, int entc, long flags) {
 
   int human_readable = 1;
 
-
   for (int i = 0; i < 20; i++) {
     username_cache[i].uid = -1;
     username_cache[i].last_used = 0;
   }
-
-
 
   for (int i = 0; i < entc; i++) {
     struct lsfile *ent = ents[i];
@@ -184,31 +170,25 @@ void print_entries_long(struct lsfile **ents, int entc, long flags) {
     if (S_ISLNK(m)) type = 'l';
 
     if (type != '.') {
-      set_color(C_CYAN);
+      // set_color(C_CYAN);
     } else {
-      set_color(C_GRAY);
+      // set_color(C_GRAY);
     }
     printf("%c", type);
     print_st_mode(m >> 6);
     print_st_mode(m >> 3);
     print_st_mode(m >> 0);
 
-    set_color(C_YELLOW);
+    // set_color(C_YELLOW);
     printf(" %*s", longest_username, getusername(ent->st.st_uid));
-
-    /*
-    printf(" %8ld", ent->st.st_mtim);
-    printf(" %8ld", ent->st.st_atim);
-    printf(" %8ld", ent->st.st_ctim);
-    */
 
     // print out the filesize
     if (S_ISDIR(m)) {
-      set_color(C_GRAY);
+      // set_color(C_GRAY);
 
       printf(" %*s", longest_filesize, "-");
     } else {
-      set_color(C_GREEN);
+      // set_color(C_GREEN);
       set_color("\x1b[1m");
       if (human_readable) {
         char filesz_buf[32];
@@ -219,9 +199,9 @@ void print_entries_long(struct lsfile **ents, int entc, long flags) {
       }
     }
 
-    puts(" ");
+    fputs(" ", stdout);
     print_filename(ent->name, m);
-    puts("\n");
+    fputs("\n", stdout);
   }
 }
 static inline int max(int a, int b) { return (a > b) ? a : b; }
@@ -229,7 +209,7 @@ static inline int max(int a, int b) { return (a > b) ? a : b; }
 void print_entry(struct lsfile *ent, int colwidth) {
   int n = print_filename(ent->name, ent->st.st_mode);
   for (int rem = colwidth - n; rem > 0; rem--) {
-    puts(" ");
+    fputs(" ", stdout);
   }
 }
 
@@ -250,11 +230,11 @@ void print_entries(struct lsfile **ents, int entc, long flags) {
     /* Columns */
     print_entry(ents[i++], ent_max_len);
     for (int j = 0; (i < entc) && (j < (cols - 1)); j++) {
-      puts("  ");
+      fputs("  ", stdout);
       print_entry(ents[i++], ent_max_len);
     }
 
-    puts("\n");
+    fputs("\n", stdout);
   }
 }
 
@@ -276,7 +256,10 @@ int lsfile_compare(const void *av, const void *bv) {
 
 int do_ls(char *path, long flags) {
   DIR *d = opendir(path);
-  if (!d) return -ENOENT;
+  if (!d) {
+    perror(path);
+    return -ENOENT;
+  }
 
   int l = strlen(path);
   struct dirent *ent;
@@ -296,7 +279,10 @@ int do_ls(char *path, long flags) {
   char *reified_path = NULL;
   for (int i = 0; i < ents; i++) {
     ent = readdir(d);
-    if (ent == NULL) return -1;
+    if (ent == NULL) {
+      perror("readdir");
+      return -1;
+    }
 
     if ((flags & FL_a) == 0 && ent->d_name[0] == '.') {
       i--;
@@ -355,11 +341,12 @@ int do_ls(char *path, long flags) {
 }
 
 int main(int argc, char **argv) {
-  char *path = ".";
-
   char ch;
 
   long todo = 0;
+
+  // TODO: derive this from isatty()
+  use_colors = 1;
 
   const char *flags = "1liCa";
   while ((ch = getopt(argc, argv, flags)) != -1) {
@@ -390,25 +377,17 @@ int main(int argc, char **argv) {
     }
   }
 
-  // TODO: derive this from isatty()
-  use_colors = 1;
-
   argc -= optind;
   argv += optind;
 
   if (argc >= 1) {
-    path = argv[0];
     for (int i = 0; i < argc; i++) {
       int res = do_ls(argv[i], todo);
-      if (res != 0) {
-        printf("ls: failed to open '%s'\n", path);
-      }
+      if (res != 0) exit(EXIT_FAILURE);
     }
   } else {
     int res = do_ls(".", todo);
-    if (res != 0) {
-      printf("ls: failed to open '%s'\n", path);
-    }
+    if (res != 0) exit(EXIT_FAILURE);
   }
 
   return 0;

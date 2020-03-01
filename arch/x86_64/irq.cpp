@@ -5,6 +5,7 @@
 #include <printk.h>
 #include <syscall.h>
 #include <sched.h>
+#include "arch.h"
 #include <smp.h>
 
 // implementation of the x86 interrupt request handling system
@@ -131,7 +132,7 @@ static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
 static u64 last_tsc = 0;
 
 // TODO: move to sched.cpp
-static void tick_handle(int i, struct regs *tf) {
+static void tick_handle(int i, reg_t *tf) {
   auto &cpu = cpu::current();
 
   u64 now = arch::read_timestamp();
@@ -144,7 +145,10 @@ static void tick_handle(int i, struct regs *tf) {
   return;
 }
 
-static void unknown_exception(int i, struct regs *tf) {
+static void 
+unknown_exception(int i, reg_t *regs) {
+  auto *tf = (struct x86_64regs*)regs;
+
   KERR("KERNEL PANIC\n");
   KERR("CPU EXCEPTION: %s\n", excp_codes[tf->trapno][EXCP_NAME]);
   KERR("the system was running for %d ticks\n");
@@ -152,7 +156,7 @@ static void unknown_exception(int i, struct regs *tf) {
   KERR("\n");
   KERR("Stats for nerds:\n");
   KERR("INT=%016zx  ERR=%016zx\n", tf->trapno, tf->err);
-  KERR("ESP=%016zx  EIP=%016zx\n", tf->esp, tf->eip);
+  KERR("ESP=%016zx  EIP=%016zx\n", tf->rsp, tf->rip);
   KERR("CR2=%016zx  CR3=%016zx\n", read_cr2(), read_cr3());
   KERR("\n");
   KERR("SYSTEM HALTED. File a bug report please:\n");
@@ -166,7 +170,7 @@ static void unknown_exception(int i, struct regs *tf) {
   };
 }
 
-static void dbl_flt_handler(int i, struct regs *tf) {
+static void dbl_flt_handler(int i, reg_t *tf) {
   printk("DOUBLE FAULT!\n");
   printk("&i=%p\n", &i);
 
@@ -176,7 +180,7 @@ static void dbl_flt_handler(int i, struct regs *tf) {
 }
 
 /*
-static void unknown_hardware(int i, struct regs *tf) {
+static void unknown_hardware(int i, reg_t *tf) {
   printk("unknown! %d\n", i);
 }
 */
@@ -221,12 +225,14 @@ void dump_backtrace(off_t ebp) {
 #define ID_MASK 0x00200000
 
 
-static void gpf_handler(int i, struct regs *tf) {
+static void gpf_handler(int i, reg_t *regs) {
+
+  auto *tf = (struct x86_64regs*)regs;
   // TODO: die
   KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", curthd->pid, curthd->tid,
-       tf->eip, tf->err);
+       tf->rip, tf->err);
 
-  unsigned int eflags = tf->eflags;
+  unsigned int eflags = tf->rflags;
 #define GET(name) (tf->name)
 
 #define REGFMT "%016p"
@@ -241,8 +247,8 @@ static void gpf_handler(int i, struct regs *tf) {
          "RIP=" REGFMT " RFL=%08x [%c%c%c%c%c%c%c]\n",
 
          GET(rax), GET(rbx), GET(rcx), GET(rdx), GET(rsi), GET(rdi), GET(rbp),
-         GET(esp), GET(r8), GET(r9), GET(r10), GET(r11), GET(r12), GET(r13),
-         GET(r14), GET(r15), GET(eip), eflags, eflags & DF_MASK ? 'D' : '-',
+         GET(rsp), GET(r8), GET(r9), GET(r10), GET(r11), GET(r12), GET(r13),
+         GET(r14), GET(r15), GET(rip), eflags, eflags & DF_MASK ? 'D' : '-',
          eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-',
          eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-',
          eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
@@ -254,20 +260,21 @@ static void gpf_handler(int i, struct regs *tf) {
   sched::exit();
 }
 
-static void illegal_instruction_handler(int i, struct regs *tf) {
-  // TODO: die
-  auto pa = paging::get_physical(tf->eip & ~0xFFF);
+static void illegal_instruction_handler(int i, reg_t *regs) {
+
+  auto *tf = (struct x86_64regs*)regs;
+  auto pa = paging::get_physical(tf->rip & ~0xFFF);
   if (pa == 0) {
     return;
   }
 
   KERR("pid %d, tid %d died from illegal instruction @ %p\n", curthd->pid,
-       curthd->tid, tf->eip);
-  KERR("  ESP=%p\n", tf->esp);
-  sched::block();
+       curthd->tid, tf->rip);
+  KERR("  ESP=%p\n", tf->rsp);
+  sys::exit_proc(-1);
 }
 
-extern "C" void syscall_handle(int i, struct regs *tf);
+extern "C" void syscall_handle(int i, reg_t *tf);
 
 #define PGFLT_PRESENT (1 << 0)
 #define PGFLT_WRITE (1 << 1)
@@ -275,18 +282,19 @@ extern "C" void syscall_handle(int i, struct regs *tf);
 #define PGFLT_RESERVED (1 << 3)
 #define PGFLT_INSTR (1 << 4)
 
-static void pgfault_handle(int i, struct regs *tf) {
+static void pgfault_handle(int i, reg_t *regs) {
+  auto *tf = (struct x86_64regs*)regs;
   void *page = (void *)(read_cr2() & ~0xFFF);
 
   auto proc = curproc;
   if (curproc == NULL) {
-    KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf->eip,
+    KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf->rip,
          read_cr2());
     // lookup the kernel proc if we aren't in one!
     proc = sched::proc::kproc();
   }
 
-  curthd->trap_frame = tf;
+  curthd->trap_frame = regs;
 
   if (proc) {
     int err = 0;
@@ -304,7 +312,7 @@ static void pgfault_handle(int i, struct regs *tf) {
     if (res == -1) {
       // TODO:
       KERR("pid %d, tid %d segfaulted @ %p\n", curthd->pid, curthd->tid,
-           tf->eip);
+           tf->rip);
       KERR("       bad address = %p\n", read_cr2());
       KERR("               err = %p\n", tf->err);
 
@@ -363,7 +371,7 @@ int arch::irq::init(void) {
 
 // just forward the trap on to the irq subsystem
 // This function is called from arch/x86/trap.asm
-extern "C" void trap(struct regs *regs) {
+extern "C" void trap(reg_t *regs) {
   /**
    * TODO: why do some traps disable interrupts?
    * it seems like its only with irq 32 (ticks)
@@ -372,11 +380,12 @@ extern "C" void trap(struct regs *regs) {
    */
   arch::sti();
 
-  irq::dispatch(regs->trapno, regs);
+  auto *tf = (struct x86_64regs*)regs;
+  irq::dispatch(tf->trapno, regs);
 
-  irq::eoi(regs->trapno);
+  irq::eoi(tf->trapno);
 
   // TODO: generalize
-  bool to_userspace = regs->cs == 0x23;
+  bool to_userspace = tf->cs == 0x23;
   sched::before_iret(to_userspace);
 }

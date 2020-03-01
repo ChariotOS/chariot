@@ -159,7 +159,7 @@ class e1000 {
   ~e1000();
 
   // called by the interrupt handler
-  void fire(struct regs *fr);
+  void fire(reg_t *fr);
 
   u8 *get_mac_address(void);
 

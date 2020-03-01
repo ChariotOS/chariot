@@ -14,7 +14,10 @@ extern int main(int argc, char **argv, char **envp);
 
 extern void stdio_init(void);
 
-void libc_start() {
+void libc_start(int argc, char **argv, char **envp) {
+  __argc = argc;
+  __argv = argv;
+  environ = envp;
   // initialize stdio
   stdio_init();
 

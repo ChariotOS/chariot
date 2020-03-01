@@ -172,7 +172,7 @@ pid_t sched::proc::create_kthread(int (*func)(void *), void *arg) {
 
   // construct the thread
   auto thd = new thread(tid, *proc);
-  thd->trap_frame->rdi = (unsigned long)arg;
+  thd->trap_frame[1] = (unsigned long)arg;
 
   thd->kickoff((void *)func, PS_RUNNABLE);
 
@@ -320,7 +320,7 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   auto stack_size = 1024 * 1024;
 
   stack = new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ | PROT_WRITE,
-                               MAP_ANON, nullptr, 0);
+                               MAP_ANON | MAP_PRIVATE, nullptr, 0);
 
   // TODO: push argv and arguments onto the stack
   this->args = argv;
@@ -333,7 +333,7 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
 
   // construct the thread
   auto thd = new thread(pid, *this);
-  thd->trap_frame->esp = stack + stack_size - 64;
+  arch::reg(REG_SP, thd->trap_frame) = stack + stack_size - 64;
   thd->kickoff((void *)entry, PS_RUNNABLE);
 
   return 0;

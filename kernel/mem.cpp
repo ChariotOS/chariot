@@ -3,36 +3,10 @@
 #include <lock.h>
 #include <mem.h>
 #include <multiboot.h>
-#include <paging.h>
 #include <phys.h>
 #include <printk.h>
 #include <types.h>
 
-// #define MEM_DEBUG
-// #define MEM_TRACE
-
-#ifdef MEM_DEBUG
-#define INFO(fmt, args...) printk("[MEM] " fmt, ##args)
-#else
-#define INFO(fmt, args...)
-#endif
-
-#ifdef MEM_TRACE
-#define TRACE INFO("TRACE: (%d) %s\n", __LINE__, __PRETTY_FUNCTION__)
-#else
-#define TRACE
-#endif
-
-
-/*
- * Round x up to the nearest y aligned boundary.  y must be a power of two.
- */
-#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
-
-/*
- * Round x down to the nearest y aligned boundary.  y must be a power of two.
- */
-#define round_down(x, y) ((x) & ~((y)-1))
 
 #define ALIGN(x, a) (((x) + (a)-1) & ~((a)-1))
 
@@ -43,15 +17,6 @@ u64 kheap_size = 0;
 
 void *kheap_lo(void) { return kheap_start; }
 void *kheap_hi(void) { return kheap_start + kheap_size; }
-
-#define PGROUNDUP(x) round_up(x, 4096)
-
-extern int mm_init(void);
-
-
-void init_kernel_virtual_memory() {
-}
-
 
 extern "C" void *malloc(size_t size);
 extern "C" void free(void *ptr);

@@ -2,7 +2,6 @@
 #include <cpu.h>
 #include <idt.h>
 #include <mem.h>
-#include <paging.h>
 #include <phys.h>
 #include <printk.h>
 #include <types.h>

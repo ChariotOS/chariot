@@ -80,10 +80,10 @@ void hexdump(off_t off, void *vbuf, long len) {
     }
 
     set_color(C_RESET);
-    puts("|");
+    fputc('|', stdout);
     for (int c = 0; c < w; c++) {
       if (c % col_width == 0) {
-        puts(" ");
+        fputc(' ', stdout);
       }
       if (i + c >= len) {
         printf("   ");
@@ -94,11 +94,11 @@ void hexdump(off_t off, void *vbuf, long len) {
     }
 
     set_color(C_RESET);
-    puts("|");
+    fputc('|', stdout);
     for (int c = 0; c < w; c++) {
       if (c != 0 && (c % col_width == 0)) {
         set_color(C_RESET);
-        puts(" ");
+        fputc(' ', stdout);
       }
 
       if (i + c >= len) {

@@ -121,6 +121,8 @@ class space {
   // impl by arch::
   static mm::space &kernel_space(void);
 
+  void dump();
+
   int is_kspace = 0;
 
  protected:

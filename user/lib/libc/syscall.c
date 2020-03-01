@@ -34,7 +34,7 @@ long errno_syscall(long num, ...) {
   return __syscall_ret(__syscall(num, a, b, c, d, e, f));
 }
 
-long __syscall_ret(unsigned long r) {
+long __syscall_ret(long r) {
   if (r < 0) {
     errno = -r;
     return -1;

@@ -5,7 +5,6 @@
 #include <pcspeaker.h>
 #include <sched.h>
 #include <single_list.h>
-#include <smp.h>
 #include <wait.h>
 
 // #define SCHED_DEBUG
@@ -207,8 +206,7 @@ static void switch_into(struct thread &thd) {
 
   cpu::switch_vm(&thd);
 
-  thd.stats.last_cpu = thd.stats.current_cpu;
-  thd.stats.current_cpu = smp::cpunum();
+  // thd.stats.last_cpu = thd.stats.current_cpu;
 
   swtch(&cpu::current().sched_ctx, thd.kern_context);
 

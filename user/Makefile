@@ -48,6 +48,10 @@ outdir := $(dir $(out))
 objs:=$(srcs:%=build/%.o)
 
 
+# uncomment to enable PIE code
+# LDFLAGS += -pie -z combreloc -z separate-code
+
+
 # disable make's intermediate file removal
 .PRECIOUS: $(objs)
 

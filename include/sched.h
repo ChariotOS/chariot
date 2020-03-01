@@ -4,12 +4,11 @@
 
 #include <func.h>
 #include <map.h>
+#include <mm.h>
 #include <ptr.h>
+#include <signals.h>
 #include <string.h>
 #include <vec.h>
-#include <mm.h>
-
-#include <signals.h>
 #define SIGBIT(n) (1 << (n))
 
 #define RING_KERN 0
@@ -21,32 +20,6 @@
 #define PS_BLOCKED (2)
 #define PS_EMBRYO (3)
 
-struct regs {
-  unsigned long rax;
-  unsigned long rbx;
-  unsigned long rcx;
-  unsigned long rdx;
-  unsigned long rbp;
-  unsigned long rsi;
-  unsigned long rdi;
-  unsigned long r8;
-  unsigned long r9;
-  unsigned long r10;
-  unsigned long r11;
-  unsigned long r12;
-  unsigned long r13;
-  unsigned long r14;
-  unsigned long r15;
-
-  unsigned long trapno;
-  unsigned long err;
-
-  unsigned long eip;  // rip
-  unsigned long cs;
-  unsigned long eflags;  // rflags
-  unsigned long esp;     // rsp
-  unsigned long ds;      // ss
-};
 
 struct thread_context {
   unsigned long r15;
@@ -96,7 +69,6 @@ struct process final : public refcounted<struct process> {
   vec<process::ptr> children;
 
   unsigned ring = RING_USER;
-
 
   // signal information
   struct {
@@ -222,7 +194,7 @@ struct thread final {
 
   // register contexts
   struct thread_context *kern_context;
-  struct regs *trap_frame;
+  reg_t *trap_frame;
   struct thread_waitqueue_info wq;
 
   union /* flags */ {
@@ -319,11 +291,9 @@ pid_t spawn_init(vec<string> &paths);
 /* remove a process from the ptable */
 bool ptable_remove(pid_t);
 
-
 bool send_signal(pid_t, int sig);
 
 int reap(process::ptr);
-
 
 int do_waitpid(pid_t, int &status, int options);
 

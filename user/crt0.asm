@@ -1,21 +1,14 @@
 section .data
 ;; storage for kernel parameters
-extern __argc
-extern __argv
-extern environ
-
-
+; extern __argc
+; extern __argv
+; extern environ
 section .text
-
 
 extern libc_start
 
 global _start
 _start:
-
-	mov QWORD [__argc], rdi
-	mov QWORD [__argv], rsi
-	mov QWORD [environ], rdx
 
 	mov rbp, rsp
 	push rbp
@@ -28,8 +21,6 @@ _start:
 		mov rax, [0x00]
 		jmp .invalid_loop
 
-
-
 # set the dynamic linker
 section .interp
-	db "/lib/ld.so", 0
+	db "/bin/dynld", 0

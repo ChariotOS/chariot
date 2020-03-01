@@ -3,14 +3,14 @@
 #include <string.h>
 #include <stdlib.h>
 
-void hexdump(off_t off, void *vbuf, long len) {
+void hexdump(void *vbuf, long len) {
   unsigned char *buf = vbuf;
 
   int w = 16;
   for (int i = 0; i < len; i += w) {
 
     unsigned char *line = buf + i;
-    printf("%p: ", (void*)(off + i));
+    printf("%p: ", (void*)(long)i);
     for (int c = 0; c < w; c++) {
       if (i + c >= len) {
         printf("   ");

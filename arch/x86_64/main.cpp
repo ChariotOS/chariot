@@ -37,8 +37,6 @@ extern "C" void call_with_new_stack(void *, void *);
 struct multiboot_info *mbinfo;
 static void kmain2(void);
 
-extern "C" char chariot_welcome_start[];
-
 #ifndef GIT_REVISION
 #define GIT_REVISION "NO-GIT"
 #endif
@@ -50,53 +48,20 @@ extern "C" char chariot_welcome_start[];
 
 extern void rtc_init(void);
 
-// #define WASTE_TIME_PRINTING_WELCOME
-
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
-  /*
-   * Initialize the real-time-clock
-   */
   rtc_init();
   serial_install();
 
-  /*
-   * Initialize early VGA state
-   */
   vga::early_init();
 
-  /*
-   * using the boot cpu local information page, setup the CPU and
-   * fd segment so we can use CPU specific information early on
-   */
   extern u8 boot_cpu_local[];
   cpu::seginit(boot_cpu_local);
 
-#ifdef WASTE_TIME_PRINTING_WELCOME
-  printk("%s\n", chariot_welcome_start);
-  printk("git revision: %s\n", GIT_REVISION);
-  printk("\n");
-#endif
-
-  /**
-   * detect memory and setup the physical address space free-list
-   */
   arch::mem_init(mbd);
 
   mbinfo = (struct multiboot_info *)(u64)p2v(mbd);
-  /**
-   * startup the high-kernel virtual mapping and the heap allocator
-    init_kernel_virtual_memory();
-   */
-
   void *new_stack = (void *)((u64)kmalloc(STKSIZE) + STKSIZE);
-
-
-  // call the next phase main with the new allocated stack
   call_with_new_stack(new_stack, (void *)kmain2);
-
-
-  // ?? - gotta loop forever here to make gcc happy. using [[gnu::noreturn]]
-  // requires that it never returns...
   while (1) panic("should not have gotten back here\n");
 }
 
@@ -116,19 +81,13 @@ static void kmain2(void) {
   irq::init();
   enable_sse();
 
-  // now that we have a stable memory manager, call the C++ global constructors
   call_global_constructors();
-
 
   vga::late_init();
   kargs::init(mbinfo);
 
-  // TODO: initialize smp
   if (!smp::init()) panic("smp failed!\n");
   KINFO("Discovered SMP Cores\n");
-
-  // initialize the local apic
-  //    (sets up timer interupts)
   smp::lapic_init();
 
   // initialize the scheduler
@@ -138,15 +97,8 @@ static void kmain2(void) {
   // create the initialization thread.
   sched::proc::create_kthread(kernel_init);
 
-
-  // for safety, unmap low memory (from boot.asm)
-  // *((u64 *)p2v(read_cr3())) = 0;
-  // arch::flush_tlb();
-
-
   KINFO("starting scheduler\n");
   arch::sti();
-  // sched::beep();
   sched::run();
 
   panic("sched::run() returned\n");

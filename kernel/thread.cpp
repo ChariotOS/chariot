@@ -16,7 +16,6 @@
 static void thread_create_callback(void *);
 // implemented in arch/$ARCH/trap.asm most likely
 extern "C" void trapret(void);
-extern "C" void user_initial_trapret(int argc, char **argv, char **envp);
 
 static spinlock thread_table_lock;
 static map<pid_t, struct thread *> thread_table;
@@ -37,8 +36,8 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
   auto sp = (off_t)stack + stack_size;
 
   // get a pointer to the trapframe on the stack
-  sp -= sizeof(struct regs);
-  trap_frame = (struct regs *)sp;
+  sp -= arch::trapframe_size();
+  trap_frame = (reg_t *)sp;
 
   // 'return' to trapret()
   sp -= sizeof(void *);
@@ -51,24 +50,17 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
 
   state = PS_EMBRYO;
 
-  trap_frame->esp = sp;
-  trap_frame->eip = -1;  // to be set in ::kickoff()
+
+  arch::reg(REG_SP, trap_frame) = sp;
+  arch::reg(REG_PC, trap_frame) = -1;
+
+
+
 
   // set the initial context to the creation boostrap function
   kern_context->eip = (u64)thread_create_callback;
 
-  // setup segments (ring permissions)
-  if (proc.ring == RING_KERN) {
-    trap_frame->cs = (SEG_KCODE << 3) | DPL_KERN;
-    trap_frame->ds = (SEG_KCODE << 3) | DPL_KERN;
-    trap_frame->eflags = readeflags() | FL_IF;
-  } else if (proc.ring == RING_USER) {
-    trap_frame->cs = (SEG_UCODE << 3) | DPL_USER;
-    trap_frame->ds = (SEG_UDATA << 3) | DPL_USER;
-    trap_frame->eflags = FL_IF;
-  } else {
-    panic("Unknown ring %d\n", proc.ring);
-  }
+  arch::initialize_trapframe(proc.ring == RING_USER, trap_frame);
 
   thread_table_lock.lock();
   assert(!thread_table.contains(tid));
@@ -81,7 +73,7 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
 }
 
 bool thread::kickoff(void *rip, int initial_state) {
-  trap_frame->eip = (unsigned long)rip;
+  arch::reg(REG_PC, trap_frame) = (unsigned long)rip;
 
   this->state = initial_state;
 
@@ -121,7 +113,7 @@ static void thread_create_callback(void *) {
 
   if (thd->proc.ring == RING_KERN) {
     using fn_t = int (*)(void *);
-    auto fn = (fn_t)thd->trap_frame->eip;
+    auto fn = (fn_t)arch::reg(REG_PC, tf);
     cpu::popcli();
     // run the kernel thread
     int res = fn(NULL);
@@ -129,7 +121,7 @@ static void thread_create_callback(void *) {
     sys::exit_thread(res);
   } else {
     if (thd->pid == thd->tid) {
-      auto sp = tf->esp;
+      auto sp = arch::reg(REG_SP, tf);
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 #define STACK_ALLOC(T, n)               \
   ({                                    \
@@ -168,13 +160,12 @@ static void thread_create_callback(void *) {
 
       envp[envc] = NULL;
 
-      tf->esp = sp;
-      tf->rdi = argc;
-      tf->rsi = (unsigned long)argv;
-      tf->rdx = (unsigned long)envp;
+      arch::reg(REG_SP, tf) = sp;
+      tf[1] = argc;
+      tf[2] = (unsigned long)argv;
+      tf[3] = (unsigned long)envp;
     }
     cpu::popcli();
-
     return;
   }
 
