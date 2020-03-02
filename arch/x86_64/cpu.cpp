@@ -1,7 +1,7 @@
 #include <cpu.h>
 #include <mem.h>
 #include <phys.h>
-#include <smp.h>
+#include "smp.h"
 
 extern "C" void wrmsr(u32 msr, u64 val);
 
@@ -34,7 +34,9 @@ void cpu::seginit(void *local) {
 
   wrmsr(0xC0000100, ((u64)local) + (PGSIZE / 2));
 
+  // zero out the CPU
   cpu_t *c = &cpus[cpunum++];
+  memset(c, 0, sizeof(*c));
   c->local = local;
 
   auto addr = (u64)tss;

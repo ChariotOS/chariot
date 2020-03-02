@@ -6,10 +6,10 @@
 
 struct cpu_t {
   void *local;
-  int ncli = 0;
-  size_t ticks = 0;
+  int ncli;
+  size_t ticks;
 
-  uint16_t preemption_depth = 0;
+  uint16_t preemption_depth;
 
   u32 speed_khz;
   struct thread *current_thread;

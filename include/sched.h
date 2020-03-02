@@ -125,6 +125,8 @@ struct process final : public refcounted<struct process> {
 
   pid_t create_thread(void *ip, int state);
 
+  pid_t fork(void);
+
   // just walks the threads and checks they are all zombie
   bool is_dead(void);
 

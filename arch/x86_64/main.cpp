@@ -3,7 +3,7 @@
 #include <vga.h>
 #include <cpu.h>
 #include <kargs.h>
-#include <smp.h>
+#include "smp.h"
 #include <module.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>

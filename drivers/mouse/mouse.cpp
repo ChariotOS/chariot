@@ -7,7 +7,6 @@
 #include <mouse_packet.h>
 #include <printk.h>
 #include <sched.h>
-#include <smp.h>
 
 #include "../majors.h"
 
@@ -144,7 +143,6 @@ void mouse_install() {
   mouse_read();
 
   irq::install(32 + MOUSE_IRQ, mouse_handler, "PS2 Mouse");
-  smp::ioapicenable(MOUSE_IRQ, 0);
 }
 
 static ssize_t mouse_fdread(fs::file &fd, char *buf, size_t sz) {

@@ -179,6 +179,10 @@ pid_t sched::proc::create_kthread(int (*func)(void *), void *arg) {
   return tid;
 }
 
+pid_t process::fork(void) {
+  return -1;
+}
+
 ref<fs::file> process::get_fd(int fd) {
   ref<fs::file> file;
 

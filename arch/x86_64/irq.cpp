@@ -6,7 +6,7 @@
 #include <syscall.h>
 #include <sched.h>
 #include "arch.h"
-#include <smp.h>
+#include "smp.h"
 
 // implementation of the x86 interrupt request handling system
 extern u32 idt_block[];

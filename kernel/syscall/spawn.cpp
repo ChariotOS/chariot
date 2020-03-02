@@ -45,3 +45,8 @@ int sys::despawn(int pid) {
   sched::proc::ptable_remove(pid);
   return 0;
 }
+
+
+int sys::fork(void) {
+  return curproc->fork();
+}

@@ -9,7 +9,6 @@
 #include <printk.h>
 #include <syscall.h>
 #include <single_list.h>
-#include <smp.h>
 #include <vga.h>
 #include <console.h>
 
@@ -463,9 +462,6 @@ static void kbd_init(void) {
   // clear out the buffer...
   while (inb(I8042_STATUS) & I8042_BUFFER_FULL) inb(I8042_BUFFER);
 
-  // dev::register_driver(MAJOR_KEYBOARD, make_unique<kbd_driver>());
-
-  smp::ioapicenable(IRQ_KEYBOARD, 0);
 }
 
 module_init("kbd", kbd_init);

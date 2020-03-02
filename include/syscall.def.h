@@ -32,6 +32,9 @@ int pctl(int pid, int cmd, unsigned long arg);
 /// num=0x07
 long waitpid(int pid, int *stat, int options);
 
+/// num=0x08
+int fork(void);
+
 /// num=0x10
 int open(const char *path, int flags, int mode = 0);
 

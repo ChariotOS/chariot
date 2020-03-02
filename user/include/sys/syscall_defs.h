@@ -6,6 +6,7 @@
 #define SYS_startpidve               (0x05)
 #define SYS_pctl                     (0x06)
 #define SYS_waitpid                  (0x07)
+#define SYS_fork                     (0x08)
 #define SYS_open                     (0x10)
 #define SYS_close                    (0x11)
 #define SYS_lseek                    (0x12)

@@ -2,7 +2,7 @@
 #include <idt.h>
 #include <mem.h>
 #include <paging.h>
-#include <smp.h>
+#include "smp.h"
 #include <vec.h>
 
 #define BASE_MEM_LAST_KILO 0x9fc00
@@ -197,16 +197,15 @@ static u8 mp_entry_lengths[5] = {
 };
 
 void parse_mp_cpu(smp::mp::mp_table_entry_cpu *ent) {
-  INFO("CPU: %p\n", ent);
-
-  INFO("type: %02x\n", ent->type);
-  INFO("lapic_id: %02x\n", ent->lapic_id);
-  INFO("lapic_version: %02x\n", ent->lapic_version);
-  INFO("enabled: %d\n", ent->enabled);
-  INFO("is_bsp: %d\n", ent->is_bsp);
-  INFO("sig: %08x\n", ent->sig);
-  INFO("features: %08x\n", ent->feat_flags);
-  INFO("\n");
+  // INFO("CPU: %p\n", ent);
+  // INFO("type: %02x\n", ent->type);
+  // INFO("lapic_id: %02x\n", ent->lapic_id);
+  // INFO("lapic_version: %02x\n", ent->lapic_version);
+  // INFO("enabled: %d\n", ent->enabled);
+  // INFO("is_bsp: %d\n", ent->is_bsp);
+  // INFO("sig: %08x\n", ent->sig);
+  // INFO("features: %08x\n", ent->feat_flags);
+  // INFO("\n");
 }
 
 void parse_mp_bus(smp::mp::mp_table_entry_bus *ent) {}
