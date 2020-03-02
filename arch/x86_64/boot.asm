@@ -18,12 +18,6 @@ align 8
 	dd FLAGS
 	dd CHECKSUM
 
-
-
-
-
-
-
 ; higher-half virtual memory address
 KERNEL_VMA equ 0xffff880000000000
 
@@ -64,7 +58,6 @@ align PAGE_SIZE
 boot_p4:
 	dq (boot_p3 + PG_PRESENT + PG_WRITABLE)
 	times 271 dq 0
-	;; include the high mapping for p3 (mapped with large pages statically)
 	dq (high_p3 + PG_PRESENT + PG_WRITABLE)
 	times 239 dq 0
 
@@ -72,21 +65,15 @@ boot_p3:
 	dq (boot_p2 + PG_PRESENT + PG_WRITABLE)
 	times 511 dq 0
 
-
 boot_p2:
 	dq (boot_p1 + PG_PRESENT + PG_WRITABLE)
 	times 511 dq 0
 
-
 ;; ID map the first bit 512 pages of memory
 boot_p1:
-	;; pg starts at zero
 	%assign pg 0
-	;; repeat 512 times
   %rep 512
-		;; store the mapping to the page
     dq (pg + PG_PRESENT + PG_WRITABLE)
-		;; pg += 4096 (small page size)
     %assign pg pg+PAGE_SIZE
   %endrep
 
@@ -96,40 +83,26 @@ high_p3:
 	times 511 dq 0
 
 high_p2:
-	;; pg starts at zero, like above. We fill in the entries statically
 	%assign pg 0
   %rep 512
     dq (pg + PG_PRESENT + PG_BIG + PG_WRITABLE)
-		;; pg += 4096 (large page size, which most systems support)
     %assign pg pg+PAGE_SIZE*512
   %endrep
 
-
-
-
 BOOT_STACK_SIZE equ 256
 boot_stack:
-	;; enough bytes bytes
 	times BOOT_STACK_SIZE db 0
 
 ; the global descriptor table
 gdt:
-  ; null selector
     dq 0
-  ; cs selector
     dq 0x00AF98000000FFFF
-  ; ds selector
     dq 0x00CF92000000FFFF
 gdt_end:
   dq 0 ; some extra padding so the gdtr is 16-byte aligned
 gdtr:
   dw gdt_end - gdt - 1
   dq gdt
-
-
-;; extern detect_e820_mem
-
-
 
 [bits 32] ALIGN 8
 section .init
@@ -179,15 +152,12 @@ _start:
 
   jmp 0x08:.trampoline
 
-
 ; some 64-bit code in the lower half used to jump to the higher half
 [bits 64]
 .trampoline:
   ; enter the higher half now that we loaded up that half (somewhat)
   mov rax, qword .next
   jmp rax
-
-
 
 ; the higher-half code
 [bits 64]
@@ -201,18 +171,11 @@ _start:
   mov rax, gdtr + KERNEL_VMA
   lgdt [rax]
 
-  ; set up the new stack (multiboot2 spec says the stack pointer could be
-  ; anything - even pointing to invalid memory)
-  mov rbp, 0 ; terminate stack traces here
+  mov rbp, 0
   mov rsp, qword stack + STACK_SIZE
-
-  ; clear the RFLAGS register
   push 0x0
   popf
 
-  ; call the kernel
-  ; - the arguments were moved into EDI and ESI at the start
-  ; - the DF has been reset by the code above - no CLD is required
   call kmain
 
 ; memory reserved for the kernel's stck

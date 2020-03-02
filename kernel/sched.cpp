@@ -261,7 +261,6 @@ static void schedule_one() {
 
   cpu::pushcli();
   s_enabled = true;
-  cpu::current().intena = 1;
 
   switch_into(*thd);
 

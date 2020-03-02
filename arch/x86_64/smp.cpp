@@ -9,7 +9,7 @@
 #define BIOS_ROM_START 0xf0000
 #define BIOS_ROM_END 0xfffff
 
-// #define SMP_DEBUG
+#define SMP_DEBUG
 
 #ifdef SMP_DEBUG
 #define INFO(fmt, args...) KINFO("[SMP] " fmt, ##args)
@@ -98,7 +98,6 @@ void smp::lapic_init(void) {
   // TICR would be calibrated using an external time source.
 
   if (ticksin10ms == 0) {
-
     ticksin10ms = 1000000;
   }
 
@@ -140,10 +139,7 @@ void smp::lapic_write(int ind, int value) {
   lapic[ind] = value;
   (void)lapic[ind];  // wait for write to finish, by reading
 }
-unsigned smp::lapic_read(int ind) {
-  return lapic[ind];
-}
-
+unsigned smp::lapic_read(int ind) { return lapic[ind]; }
 
 int smp::cpunum(void) {
   // int n = 0;
@@ -165,13 +161,6 @@ int smp::cpunum(void) {
   id = lapic[LAPIC_ID] >> 24;
 
   return id;
-  /*
-  for (n = 0; n < ncpu; n++)
-    if (id == cpus[n].apicid)
-      return n;
-
-  return 0;
-  */
 }
 
 void smp::lapic_eoi(void) {
@@ -220,33 +209,15 @@ void parse_mp_cpu(smp::mp::mp_table_entry_cpu *ent) {
   INFO("\n");
 }
 
-void parse_mp_bus(smp::mp::mp_table_entry_bus *ent) {
-  INFO("BUS: %p\n", ent);
-  INFO("BUS: '%s'\n", ent->bus_type_string);
-}
-
-void parse_mp_ioapic(smp::mp::mp_table_entry_ioapic *ent) {
-  INFO("IOAPIC: %p\n", ent);
-}
-
-void parse_mp_ioint(smp::mp::mp_table_entry_ioint *ent) {
-  INFO("IOINT: %p\n", ent);
-  INFO("type=%d\n", ent->int_type);
-  INFO("ioapic_id=%d\n", ent->dst_ioapic_id);
-  INFO("ioapic_intin=%d\n", ent->dst_ioapic_intin);
-}
-
-void parse_mp_lint(smp::mp::mp_table_entry_lint *ent) {
-  // INFO("LINT: %p\n", ent);
-}
+void parse_mp_bus(smp::mp::mp_table_entry_bus *ent) {}
+void parse_mp_ioapic(smp::mp::mp_table_entry_ioapic *ent) {}
+void parse_mp_ioint(smp::mp::mp_table_entry_ioint *ent) {}
+void parse_mp_lint(smp::mp::mp_table_entry_lint *ent) {}
 
 static void walk_mp_table(smp::mp::mp_table *table, func<void(u8, void *)> fn) {
   auto count = table->entry_cnt;
-
   u8 *mp_entry;
-
   mp_entry = (u8 *)&table->entries;
-  // TODO: check table integrity
   while (--count) {
     auto type = *mp_entry;
     fn(type, mp_entry);
@@ -256,8 +227,6 @@ static void walk_mp_table(smp::mp::mp_table *table, func<void(u8, void *)> fn) {
 
 static bool parse_mp_table(smp::mp::mp_table *table) {
   lapic = (uint32_t *)p2v((uint64_t)table->lapic_addr);
-
-  INFO("lapic=%p\n", lapic);
 
   walk_mp_table(table, [&](u8 type, void *mp_entry) {
     switch (type) {

@@ -1,32 +1,15 @@
-#include <arch.h>
-#include <asm.h>
-#include <atom.h>
-#include <cpu.h>
-#include <dev/CMOS.h>
-#include <dev/RTC.h>
-#include <dev/driver.h>
-#include <dev/mbr.h>
 #include <dev/serial.h>
-#include <pctl.h>
-#include <fs/vfs.h>
-#include <func.h>
-#include <kargs.h>
-#include <module.h>
-#include <pci.h>
-#include <pctl.h>
-#include <phys.h>
-#include <pit.h>
-#include <printk.h>
-#include <syscall.h>
-#include <ptr.h>
-#include <sched.h>
-#include <set.h>
-#include <smp.h>
-#include <string.h>
 #include <types.h>
-#include <util.h>
-#include <vec.h>
 #include <vga.h>
+#include <cpu.h>
+#include <kargs.h>
+#include <smp.h>
+#include <module.h>
+#include <fs/ext2.h>
+#include <fs/vfs.h>
+#include <pci.h>
+#include <pit.h>
+#include <syscall.h>
 
 extern int kernel_end;
 
@@ -103,4 +86,61 @@ static void kmain2(void) {
 
   panic("sched::run() returned\n");
   // [noreturn]
+}
+
+void init_rootvfs(fs::file dev) {
+  auto rootfs = make_unique<fs::ext2>(dev);
+  if (!rootfs->init()) panic("failed to init fs on root disk\n");
+  if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
+}
+
+
+int kernel_init(void *) {
+
+  pci::init(); /* initialize the PCI subsystem */
+  KINFO("Initialized PCI\n");
+  init_pit();
+  KINFO("Initialized PIT\n");
+  syscall_init();
+
+  // walk the kernel modules and run their init function
+  KINFO("Calling kernel module init functions\n");
+  initialize_builtin_modules();
+  KINFO("kernel modules initialized\n");
+
+  // open up the disk device for the root filesystem
+  const char *rootdev_path = kargs::get("root", "ata0p1");
+  KINFO("rootdev=%s\n", rootdev_path);
+  auto rootdev = dev::open(rootdev_path);
+  assert(rootdev.ino != NULL);
+  init_rootvfs(rootdev);
+
+  // setup stdio stuff for the kernel (to be inherited by spawn)
+  int fd = sys::open("/dev/console", O_RDWR);
+  assert(fd == 0);
+
+  sys::dup2(fd, 1);
+  sys::dup2(fd, 2);
+
+  string init_paths = kargs::get("init", "/bin/init");
+
+  auto paths = init_paths.split(',');
+  pid_t init_pid = sched::proc::spawn_init(paths);
+
+  sys::waitpid(init_pid, NULL, 0);
+  panic("init died!\n");
+
+  if (init_pid == -1) {
+    KERR("failed to create init process\n");
+    KERR("check the grub config and make sure that the init command line arg\n")
+    KERR("is set to a comma seperated list of possible paths.\n")
+  }
+
+  // yield back to scheduler, we don't really want to run this thread anymore
+  while (1) {
+    arch::halt();
+    sched::yield();
+  }
+
+  panic("main kernel thread reached unreachable code\n");
 }

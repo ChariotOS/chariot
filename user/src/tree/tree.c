@@ -78,7 +78,7 @@ static int display_info(const char *fpath, const struct stat *sb, int tflag,
 
   if (!quiet) {
     if (ftwbuf->level != 0) {
-      for (int i = 0; i < ftwbuf->level; i++) printf("│   ");
+      for (int i = 1; i < ftwbuf->level; i++) printf("│   ");
       printf("├── ");
     }
 

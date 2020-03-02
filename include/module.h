@@ -17,4 +17,7 @@ struct kernel_module_info {
           initfn,                                                          \
   };
 
+
+void initialize_builtin_modules(void);
+
 #endif

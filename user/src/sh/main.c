@@ -124,12 +124,11 @@ int main(int argc, char **argv, char **envp) {
   setenv("HOME", pwd->pw_dir, 1);
 
   while (1) {
-    snprintf(prompt, 64, "[%s]%c ", uname,
-             uid == 0 ? '#' : '$');
+    snprintf(prompt, 64, "[%s]%c ", uname, uid == 0 ? '#' : '$');
 
     int len = 0;
 
-    char *buf = read_line(0, prompt, &len);
+    char *buf = read_line(0, getuid() == 0 ? "# " : "$ ", &len);
 
     len = strlen(buf);
     if (len == 0) goto cleanup;
