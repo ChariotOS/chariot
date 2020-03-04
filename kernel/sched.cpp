@@ -250,6 +250,15 @@ void sched::yield() {
 }
 void sched::exit() { do_yield(PS_ZOMBIE); }
 
+
+
+void sched::dumb_sleepticks(unsigned long t) {
+  auto start = cpu::get_ticks();
+
+  while (cpu::get_ticks() < start + t) {
+    sched::yield();
+  }
+}
 static void schedule_one() {
   auto thd = get_next_thread();
 

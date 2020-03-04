@@ -1,15 +1,18 @@
-#include <dev/serial.h>
-#include <types.h>
-#include <vga.h>
 #include <cpu.h>
-#include <kargs.h>
-#include "smp.h"
-#include <module.h>
+#include <dev/serial.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
+#include <kargs.h>
+#include <module.h>
+#include <net/ipv4.h>
+#include <net/net.h>
 #include <pci.h>
 #include <pit.h>
 #include <syscall.h>
+#include <types.h>
+#include <vga.h>
+
+#include "smp.h"
 
 extern int kernel_end;
 
@@ -78,7 +81,7 @@ static void kmain2(void) {
   KINFO("Initialized the scheduler\n");
 
   // create the initialization thread.
-  sched::proc::create_kthread(kernel_init);
+  sched::proc::create_kthread("[kinit]", kernel_init);
 
   KINFO("starting scheduler\n");
   arch::sti();
@@ -88,15 +91,13 @@ static void kmain2(void) {
   // [noreturn]
 }
 
-void init_rootvfs(fs::file dev) {
+void init_rootvfs(ref<fs::file> dev) {
   auto rootfs = make_unique<fs::ext2>(dev);
   if (!rootfs->init()) panic("failed to init fs on root disk\n");
   if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
 }
 
-
 int kernel_init(void *) {
-
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
   init_pit();
@@ -112,8 +113,18 @@ int kernel_init(void *) {
   const char *rootdev_path = kargs::get("root", "ata0p1");
   KINFO("rootdev=%s\n", rootdev_path);
   auto rootdev = dev::open(rootdev_path);
-  assert(rootdev.ino != NULL);
+  assert(rootdev);
   init_rootvfs(rootdev);
+
+  auto netif = net::get_interface("e1000");
+
+  if (netif != 0) {
+
+
+    const char *data = "hello";
+    auto raw_ip = net::ipv4::parse_ip("198.37.25.78");
+    net::udp::send_data(*netif, raw_ip, 63, 6000, (void *)data, strlen(data) + 1);
+  }
 
   // setup stdio stuff for the kernel (to be inherited by spawn)
   int fd = sys::open("/dev/console", O_RDWR);

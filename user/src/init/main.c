@@ -1,17 +1,16 @@
 #include <chariot.h>
+#include <chariot/dirent.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <sys/syscall.h>
-#include <chariot/dirent.h>
-
-
 #define ENV_PATH "/cfg/environ"
-
 
 // read the initial environ from /etc/environ
 // credit: github.com/The0x539
@@ -61,8 +60,6 @@ char **read_default_environ(void) {
 }
 
 int main(int argc, char **argv) {
-
-
   if (getpid() != 1) {
     fprintf(stderr, "init: must be run as pid 1\n");
     return -1;
@@ -74,6 +71,7 @@ int main(int argc, char **argv) {
   open("/dev/console", O_RDWR);
 
   printf("[init] hello, friend\n");
+
 
   char *shell = "/bin/sh";
   char *sh_argv[] = {shell, NULL};

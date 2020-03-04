@@ -2,4 +2,4 @@
 
 #include <types.h>
 
-void hexdump(void *, size_t len, int width = 32);
+void hexdump(void *, size_t len, bool use_colors = false);

@@ -14,7 +14,6 @@ CFLAGS:=$(CINCLUDES) $(OPTIMIZE) $(MOREFLAGS) -fPIE -fno-omit-frame-pointer -fno
 RSFLAGS := --crate-type=bin
 
 
-PFX:="\\x1b[34m[U]\\x1b[0m"
 
 
 .PHONY: run
@@ -25,6 +24,8 @@ libs = -lc
 
 
 -include $(M)/Makefile
+
+PFX:="\\x1b[34m$(out)\\x1b[0m:"
 
 ifdef M
 ifndef srcs

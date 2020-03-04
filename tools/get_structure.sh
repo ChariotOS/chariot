@@ -7,5 +7,6 @@ ARCH=$1
 
 printf "%s " `find kernel -type d`
 printf "%s " `find drivers -type d`
+printf "%s " `find net -type d`
 
 printf "%s " `find -L arch/$ARCH -type d`

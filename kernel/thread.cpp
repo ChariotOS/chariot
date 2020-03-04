@@ -3,8 +3,8 @@
  */
 #include <cpu.h>
 #include <mmap_flags.h>
-#include <syscall.h>
 #include <sched.h>
+#include <syscall.h>
 #include <util.h>
 
 /**
@@ -50,12 +50,8 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
 
   state = PS_EMBRYO;
 
-
   arch::reg(REG_SP, trap_frame) = sp;
   arch::reg(REG_PC, trap_frame) = -1;
-
-
-
 
   // set the initial context to the creation boostrap function
   kern_context->eip = (u64)thread_create_callback;
@@ -148,7 +144,6 @@ static void thread_create_callback(void *) {
         arg += len;
       }
 
-
       auto envc = thd->proc.env.size();
       auto envp = STACK_ALLOC(char *, envc + 1);
 
@@ -160,7 +155,9 @@ static void thread_create_callback(void *) {
 
       envp[envc] = NULL;
 
-      arch::reg(REG_SP, tf) = sp;
+      // align the stack to 16 bytes. (this is what intel wants, so it what I
+      // will give them)
+      arch::reg(REG_SP, tf) = sp & ~0xF;
       tf[1] = argc;
       tf[2] = (unsigned long)argv;
       tf[3] = (unsigned long)envp;
@@ -183,7 +180,6 @@ struct thread *thread::lookup(pid_t tid) {
 }
 
 bool thread::teardown(thread *t) {
-
   thread_table_lock.lock();
   assert(thread_table.contains(t->tid));
   thread_table.remove(t->tid);

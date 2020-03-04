@@ -99,7 +99,7 @@ class ext2_inode : public fs::inode {
  */
 class ext2 final : public filesystem {
  public:
-  ext2(fs::file);
+  ext2(ref<fs::file>);
 
   ~ext2(void);
 
@@ -236,7 +236,7 @@ class ext2 final : public filesystem {
 
   struct ext2_block_cache_line *get_cache_line(int blkno);
 
-  fs::file disk;
+  ref<fs::file> disk;
 
   spinlock m_lock = spinlock("ext2.m_lock");
 };

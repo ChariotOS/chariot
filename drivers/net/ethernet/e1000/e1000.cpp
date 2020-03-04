@@ -1,194 +1,345 @@
+#include "e1000.h"
+
 #include <arch.h>
+#include <lock.h>
 #include <mem.h>
 #include <module.h>
+#include <net/net.h>
 #include <pci.h>
 #include <phys.h>
 #include <printk.h>
+#include <sched.h>
 #include <util.h>
+#include <wait.h>
 
-#define E1000_DEBUG
+/**
+ * This is the driver for the e1000 network card. Currently we only support a
+ * single card at a time.
+ */
 
-#ifdef E1000_DEBUG
-#define INFO(fmt, args...) KINFO("E1000: " fmt, ##args)
-#else
-#define INFO(fmt, args...)
-#endif
+static uintptr_t mem_base = 0;
+static int has_eeprom = 0;
+static uint8_t mac[6];
+static int rx_index = 0;
+static int tx_index = 0;
 
-#define REG_CTRL 0x0000
-#define REG_STATUS 0x0008
-#define REG_EEPROM 0x0014
-#define REG_CTRL_EXT 0x0018
-#define REG_IMASK 0x00D0
-#define REG_RCTRL 0x0100
-#define REG_RXDESCLO 0x2800
-#define REG_RXDESCHI 0x2804
-#define REG_RXDESCLEN 0x2808
-#define REG_RXDESCHEAD 0x2810
-#define REG_RXDESCTAIL 0x2818
-#define REG_TCTRL 0x0400
-#define REG_TXDESCLO 0x3800
-#define REG_TXDESCHI 0x3804
-#define REG_TXDESCLEN 0x3808
-#define REG_TXDESCHEAD 0x3810
-#define REG_TXDESCTAIL 0x3818
-#define REG_RDTR 0x2820              // RX Delay Timer Register
-#define REG_RXDCTL 0x3828            // RX Descriptor Control
-#define REG_RADV 0x282C              // RX Int. Absolute Delay Timer
-#define REG_RSRPD 0x2C00             // RX Small Packet Detect Interrupt
-#define REG_TIPG 0x0410              // Transmit Inter Packet Gap
-#define ECTRL_SLU 0x40               // set link up
-#define RCTL_EN (1 << 1)             // Receiver Enable
-#define RCTL_SBP (1 << 2)            // Store Bad Packets
-#define RCTL_UPE (1 << 3)            // Unicast Promiscuous Enabled
-#define RCTL_MPE (1 << 4)            // Multicast Promiscuous Enabled
-#define RCTL_LPE (1 << 5)            // Long Packet Reception Enable
-#define RCTL_LBM_NONE (0 << 6)       // No Loopback
-#define RCTL_LBM_PHY (3 << 6)        // PHY or external SerDesc loopback
-#define RTCL_RDMTS_HALF (0 << 8)     // Free Buffer Threshold is 1/2 of RDLEN
-#define RTCL_RDMTS_QUARTER (1 << 8)  // Free Buffer Threshold is 1/4 of RDLEN
-#define RTCL_RDMTS_EIGHTH (2 << 8)   // Free Buffer Threshold is 1/8 of RDLEN
-#define RCTL_MO_36 (0 << 12)         // Multicast Offset - bits 47:36
-#define RCTL_MO_35 (1 << 12)         // Multicast Offset - bits 46:35
-#define RCTL_MO_34 (2 << 12)         // Multicast Offset - bits 45:34
-#define RCTL_MO_32 (3 << 12)         // Multicast Offset - bits 43:32
-#define RCTL_BAM (1 << 15)           // Broadcast Accept Mode
-#define RCTL_VFE (1 << 18)           // VLAN Filter Enable
-#define RCTL_CFIEN (1 << 19)         // Canonical Form Indicator Enable
-#define RCTL_CFI (1 << 20)           // Canonical Form Indicator Bit Value
-#define RCTL_DPF (1 << 22)           // Discard Pause Frames
-#define RCTL_PMCF (1 << 23)          // Pass MAC Control Frames
-#define RCTL_SECRC (1 << 26)         // Strip Ethernet CRC
+static pci::device *device;
 
-// Buffer Sizes
-#define RCTL_BSIZE_256 (3 << 16)
-#define RCTL_BSIZE_512 (2 << 16)
-#define RCTL_BSIZE_1024 (1 << 16)
-#define RCTL_BSIZE_2048 (0 << 16)
-#define RCTL_BSIZE_4096 ((3 << 16) | (1 << 25))
-#define RCTL_BSIZE_8192 ((2 << 16) | (1 << 25))
-#define RCTL_BSIZE_16384 ((1 << 16) | (1 << 25))
+static uint8_t *rx_virt[E1000_NUM_RX_DESC];
+static uint8_t *tx_virt[E1000_NUM_TX_DESC];
+static struct rx_desc *rx;
+static struct tx_desc *tx;
+static uintptr_t rx_phys;
+static uintptr_t tx_phys;
 
-// Transmit Command
+// static list_t *net_queue = NULL;
+static spinlock net_queue_lock;
+static waitqueue e1000wait;
+// static list_t *rx_wait;
 
-#define CMD_EOP (1 << 0)   // End of Packet
-#define CMD_IFCS (1 << 1)  // Insert FCS
-#define CMD_IC (1 << 2)    // Insert Checksum
-#define CMD_RS (1 << 3)    // Report Status
-#define CMD_RPS (1 << 4)   // Report Packet Sent
-#define CMD_VLE (1 << 6)   // VLAN Packet Enable
-#define CMD_IDE (1 << 7)   // Interrupt Delay Enable
+static uint32_t mmio_read32(uintptr_t addr) {
+  return *((volatile uint32_t *)p2v(addr));
+}
+static void mmio_write32(uintptr_t addr, uint32_t val) {
+  *((volatile uint32_t *)p2v(addr)) = val;
+}
 
-// TCTL Register
+static void write_command(uint16_t addr, uint32_t val) {
+  mmio_write32(mem_base + addr, val);
+}
 
-#define TCTL_EN (1 << 1)       // Transmit Enable
-#define TCTL_PSP (1 << 3)      // Pad Short Packets
-#define TCTL_CT_SHIFT 4        // Collision Threshold
-#define TCTL_COLD_SHIFT 12     // Collision Distance
-#define TCTL_SWXOFF (1 << 22)  // Software XOFF Transmission
-#define TCTL_RTLC (1 << 24)    // Re-transmit on Late Collision
+static uint32_t read_command(uint16_t addr) {
+  return mmio_read32(mem_base + addr);
+}
 
-#define TSTA_DD (1 << 0)  // Descriptor Done
-#define TSTA_EC (1 << 1)  // Excess Collisions
-#define TSTA_LC (1 << 2)  // Late Collision
-#define LSTA_TU (1 << 3)  // Transmit Underrun
+static int eeprom_detect(void) {
+  write_command(E1000_REG_EEPROM, 1);
 
-// STATUS Register
+  for (int i = 0; i < 100000 && !has_eeprom; ++i) {
+    uint32_t val = read_command(E1000_REG_EEPROM);
+    if (val & 0x10) has_eeprom = 1;
+  }
 
-#define STATUS_FD 0x01
-#define STATUS_LU 0x02
-#define STATUS_TXOFF 0x08
-#define STATUS_SPEED 0xC0
-#define STATUS_SPEED_10MB 0x00
-#define STATUS_SPEED_100MB 0x40
-#define STATUS_SPEED_1000MB1 0x80
-#define STATUS_SPEED_1000MB2 0xC0
+  return 0;
+}
 
-#define E1000_NUM_RX_DESC 32
-#define E1000_NUM_TX_DESC 8
+static uint16_t eeprom_read(uint8_t addr) {
+  uint32_t temp = 0;
+  write_command(E1000_REG_EEPROM, 1 | ((uint32_t)(addr) << 8));
+  while (!((temp = read_command(E1000_REG_EEPROM)) & (1 << 4)))
+    ;
+  return (uint16_t)((temp >> 16) & 0xFFFF);
+}
 
-struct [[gnu::packed]] e1000_rx_desc {
-  volatile uint64_t addr;
-  volatile uint16_t length;
-  volatile uint16_t checksum;
-  volatile uint8_t status;
-  volatile uint8_t errors;
-  volatile uint16_t special;
-};
+/*
+static void write_mac(void) {
+  return;
+  uint32_t low;
+  uint32_t high;
 
-struct [[gnu::packed]] e1000_tx_desc {
-  volatile uint64_t addr;
-  volatile uint16_t length;
-  volatile uint8_t cso;
-  volatile uint8_t cmd;
-  volatile uint8_t status;
-  volatile uint8_t css;
-  volatile uint16_t special;
-};
+  memcpy(&low, &mac[0], 4);
+  memcpy(&high, &mac[4], 2);
+  memset((uint8_t *)&high + 2, 0, 2);
+  high |= 0x80000000;
 
-class e1000 {
- private:
-  pci::device *dev;
-  u8 bar_type;          // type of bar 0
-  u16 io_base;          // the base address for PIO
-  u64 mem_base;         // mmio base address
-  bool eerprom_exists;  // a flag indicating if eeprom exists
-  u8 mac[6];            // a buffer to store the mac address for the e1000 card
+  write_command(E1000_REG_RXADDR + 0, low);
+  write_command(E1000_REG_RXADDR + 4, high);
+}
+*/
 
-  e1000_rx_desc *rx_descs;  // receive descriptor buffers
-  e1000_tx_desc *tx_descs;  // receive descriptor buffers
+static void read_mac(void) {
+  if (has_eeprom) {
+    uint32_t t;
+    t = eeprom_read(0);
+    mac[0] = t & 0xFF;
+    mac[1] = t >> 8;
+    t = eeprom_read(1);
+    mac[2] = t & 0xFF;
+    mac[3] = t >> 8;
+    t = eeprom_read(2);
+    mac[4] = t & 0xFF;
+    mac[5] = t >> 8;
+  } else {
+    uint8_t *mac_addr = (uint8_t *)p2v((mem_base + E1000_REG_RXADDR));
+    for (int i = 0; i < 6; ++i) {
+      mac[i] = mac_addr[i];
+    }
+  }
+}
 
-  u16 rx_cur;
-  u16 tx_cur;
+static void init_rx(void) {
+  write_command(E1000_REG_RXDESCLO, rx_phys);
+  write_command(E1000_REG_RXDESCHI, 0);
 
-  // send commands and read results from NICs using either MMIO or IO ports
-  void write_cmd(u16 p_addr, u32 p_value);
-  u32 read_cmd(u16 p_addr);
+  write_command(E1000_REG_RXDESCLEN,
+                E1000_NUM_RX_DESC * sizeof(struct rx_desc));
 
-  bool detect_eeprom(
-      void);  // return true if eeprom exists, setting the eeprom exists bool
-  u32 eeprom_read(u8 addr);  // read 4 bytes from the eeprom
-  bool read_mac_addr(void);
-  void start_link();        // setup the network
-  void rxinit();            // initialize rx descriptors and buffers;
-  void txinit();            // initialize tx descriptors and buffers;
-  void enable_interrupt();  // ...
-  void handle_receive();    // handle a packet reception
+  write_command(E1000_REG_RXDESCHEAD, 0);
+  write_command(E1000_REG_RXDESCTAIL, E1000_NUM_RX_DESC - 1);
 
- public:
-  e1000(pci::device *pci_dev);
-  ~e1000();
+  rx_index = 0;
 
-  // called by the interrupt handler
-  void fire(reg_t *fr);
+  write_command(E1000_REG_RCTRL, RCTL_EN | (read_command(E1000_REG_RCTRL) &
+                                            (~((1 << 17) | (1 << 16)))));
+}
 
-  u8 *get_mac_address(void);
+static void init_tx(void) {
+  write_command(E1000_REG_TXDESCLO, tx_phys);
+  write_command(E1000_REG_TXDESCHI, 0);
 
-  int send_packet(const void *data, u16 len);
+  write_command(E1000_REG_TXDESCLEN,
+                E1000_NUM_TX_DESC * sizeof(struct tx_desc));
 
-  bool start(void);
+  write_command(E1000_REG_TXDESCHEAD, 0);
+  write_command(E1000_REG_TXDESCTAIL, 0);
+
+  tx_index = 0;
+
+  write_command(E1000_REG_TCTRL,
+                TCTL_EN | TCTL_PSP | read_command(E1000_REG_TCTRL));
+}
+
+static void send_packet(void *payload, size_t payload_size) {}
+
+static void irq_handler(int i, reg_t *) {
+  uint32_t status = read_command(0xc0);
+
+  if (!status) {
+    return;
+  }
+
+  printk("[e1000]: irq %x\n", status);
+  irq::eoi(i);
+
+  if (status & 0x04) {
+    /* Start link */
+    printk("[e1000]: start link\n");
+  } else if (status & 0x10) {
+    /* ?? */
+  } else if (status & ((1 << 6) | (1 << 7))) {
+    /* receive packet */
+    do {
+      rx_index = read_command(E1000_REG_RXDESCTAIL);
+      if (rx_index == (int)read_command(E1000_REG_RXDESCHEAD)) return;
+      rx_index = (rx_index + 1) % E1000_NUM_RX_DESC;
+      if (rx[rx_index].status & 0x01) {
+        uint8_t *pbuf = (uint8_t *)rx_virt[rx_index];
+        uint16_t plen = rx[rx_index].length;
+
+        /*
+        void *packet = malloc(plen);
+        memcpy(packet, pbuf, plen);
+        enqueue_packet(packet);
+        */
+        hexdump(p2v(pbuf), plen, true);
+
+        rx[rx_index].status = 0;
+
+        write_command(E1000_REG_RXDESCTAIL, rx_index);
+      } else {
+        break;
+      }
+    } while (1);
+  }
+  e1000wait.notify();
+}
+
+#define htonl(l)                                                      \
+  ((((l)&0xFF) << 24) | (((l)&0xFF00) << 8) | (((l)&0xFF0000) >> 8) | \
+   (((l)&0xFF000000) >> 24))
+#define htons(s) ((((s)&0xFF) << 8) | (((s)&0xFF00) >> 8))
+#define ntohl(l) htonl((l))
+#define ntohs(s) htons((s))
+
+int e1000_daemon(void *) {
+  assert(device != NULL);
+
+  while (1) {
+    sched::yield();
+  }
+}
+
+static bool if_init(struct net::interface &i) {
+  memcpy(i.hwaddr, mac, 6);
+  return true;
+}
+
+static struct net::eth::packet *e1000_get_packet(struct net::interface &) {
+  return NULL;
+}
+
+static bool e1000_send_packet(struct net::interface &, void *payload,
+                              size_t payload_size) {
+  printk("[e1000]: sending packet 0x%x, %d desc[%d]:\n", payload, payload_size,
+         tx_index);
+  hexdump(payload, payload_size, true);
+
+  tx_index = read_command(E1000_REG_TXDESCTAIL);
+
+  memcpy(tx_virt[tx_index], payload, payload_size);
+  tx[tx_index].length = payload_size;
+  tx[tx_index].cmd = CMD_EOP | CMD_IFCS | CMD_RS;  //| CMD_RPS;
+  tx[tx_index].status = 0;
+
+  tx_index = (tx_index + 1) % E1000_NUM_TX_DESC;
+  write_command(E1000_REG_TXDESCTAIL, tx_index);
+
+  e1000wait.wait();
+  return true;
+}
+
+struct net::ifops e1000_ifops {
+  .init = if_init, .get_packet = e1000_get_packet,
+  .send_packet = e1000_send_packet,
 };
 
 void e1000_init(void) {
-  /*
   pci::device *e1000_dev = nullptr;
   pci::walk_devices([&](pci::device *dev) {
-      // check if the device is an e1000 device
-      if (dev->is_device(0x8086, 0x100e)) {
+    // check if the device is an e1000 device
+    if (dev->is_device(0x8086, 0x100e)) {
       e1000_dev = dev;
-      }
-      });
+    }
+  });
 
   if (e1000_dev != nullptr) {
-    e1000_dev->enable_bus_mastering();
+    device = e1000_dev;
 
-    e1000_inst = new e1000(e1000_dev);
+    device->enable_bus_mastering();
 
-    if (!e1000_inst->start()) {
-      e1000_inst = nullptr;
-      INFO("failed!\n");
+    mem_base = (unsigned long)p2v(device->get_bar(0).raw);
+
+    eeprom_detect();
+    printk("[e1000]: has_eeprom = %d\n", has_eeprom);
+    read_mac();
+
+    printk("[e1000]: device mac %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0],
+           mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+    rx = (struct rx_desc *)phys::kalloc(
+        NPAGES(sizeof(struct rx_desc) * E1000_NUM_RX_DESC + 16));
+
+    rx_phys = (unsigned long)v2p(rx);
+    for (int i = 0; i < E1000_NUM_RX_DESC; ++i) {
+      rx_virt[i] = (unsigned char *)phys::kalloc(NPAGES(8192 + 16));
+      rx[i].addr = (unsigned long)v2p(rx_virt[i]);
+      rx[i].status = 0;
     }
+
+    tx = (struct tx_desc *)phys::kalloc(
+        NPAGES(sizeof(struct tx_desc) * E1000_NUM_TX_DESC + 16));
+    tx_phys = (unsigned long)v2p(tx);
+
+    for (int i = 0; i < E1000_NUM_TX_DESC; ++i) {
+      tx_virt[i] = (unsigned char *)phys::kalloc(NPAGES(8192 + 16));
+      tx[i].addr = (unsigned long)v2p(tx_virt[i]);
+      tx[i].status = 0;
+      tx[i].length = 0;
+      tx[i].cmd = (1 << 0);
+    }
+
+    uint32_t ctrl = read_command(E1000_REG_CTRL);
+    /* reset phy */
+    write_command(E1000_REG_CTRL, ctrl | (0x80000000));
+    read_command(E1000_REG_STATUS);
+
+    /* reset mac */
+    write_command(E1000_REG_CTRL, ctrl | (0x04000000));
+    read_command(E1000_REG_STATUS);
+
+    /* Reload EEPROM */
+    write_command(E1000_REG_CTRL, ctrl | (0x00002000));
+    read_command(E1000_REG_STATUS);
+
+    /* initialize */
+    write_command(E1000_REG_CTRL, ctrl | (1 << 26));
+
+    sched::dumb_sleepticks(1);
+
+    uint32_t status = read_command(E1000_REG_CTRL);
+    status |= (1 << 5);       /* set auto speed detection */
+    status |= (1 << 6);       /* set link up */
+    status &= ~(1 << 3);      /* unset link reset */
+    status &= ~(1UL << 31UL); /* unset phy reset */
+    status &= ~(1 << 7);      /* unset invert loss-of-signal */
+    write_command(E1000_REG_CTRL, status);
+
+    /* Disables flow control */
+    write_command(0x0028, 0);
+    write_command(0x002c, 0);
+    write_command(0x0030, 0);
+    write_command(0x0170, 0);
+
+    /* Unset flow control */
+    status = read_command(E1000_REG_CTRL);
+    status &= ~(1 << 30);
+    write_command(E1000_REG_CTRL, status);
+
+    // grab the irq
+    auto e1000_irq = device->interrupt;
+    irq::install(e1000_irq + 32, irq_handler, "e1000");
+
+    for (int i = 0; i < 128; ++i) write_command(0x5200 + i * 4, 0);
+    for (int i = 0; i < 64; ++i) write_command(0x4000 + i * 4, 0);
+
+    init_rx();
+    init_tx();
+
+    /* Twiddle interrupts */
+    write_command(0x00D0, 0xFF);
+    write_command(0x00D8, 0xFF);
+    write_command(0x00D0, (1 << 2) | (1 << 6) | (1 << 7) | (1 << 1) | (1 << 0));
+
+    write_command(E1000_REG_RCTRL, (1 << 4));
+
+    int link_is_up = (read_command(E1000_REG_STATUS) & (1 << 1));
+    printk("[e1000]: done. has_eeprom = %d, link is up = %d, irq=%d\n",
+           has_eeprom, link_is_up, e1000_irq);
+
+    net::register_interface("e1000", e1000_ifops);
+
+    sched::proc::create_kthread("[e1000]", e1000_daemon, 0);
   }
-*/
 }
 
 module_init("e1000", e1000_init);

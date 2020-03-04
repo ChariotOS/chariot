@@ -290,7 +290,7 @@ fs::ext2_idata::~ext2_idata() {
   }
 }
 
-static void ext2_destroy_priv(void *v) { delete (fs::ext2_idata *)v; }
+static void ext2_destroy_priv(fs::inode &v) { delete v.priv<fs::ext2_idata>(); }
 
 fs::file_operations ext2_file_ops{
     .seek = ext2_seek,
@@ -301,7 +301,7 @@ fs::file_operations ext2_file_ops{
     .close = ext2_close,
     .mmap = ext2_mmap,
     .resize = ext2_resize,
-    .destroy_priv = ext2_destroy_priv,
+    .destroy = ext2_destroy_priv,
 };
 
 static int ext2_create(fs::inode &, const char *name,
@@ -382,8 +382,8 @@ fs::ext2_inode *fs::ext2_inode::create(ext2 *fs, u32 index) {
   ino = new ext2_inode(ino_type, index);
   ino->priv<ext2_idata>() = new ext2_idata();
 
-  ino->dev.major = fs->disk.ino->major;
-  ino->dev.minor = fs->disk.ino->minor;
+  ino->dev.major = fs->disk->ino->major;
+  ino->dev.minor = fs->disk->ino->minor;
   ino->fops = &ext2_file_ops;
   ino->dops = &ext2_dir_ops;
   ino->fs = fs;

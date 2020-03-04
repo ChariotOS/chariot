@@ -54,7 +54,7 @@ typedef struct __ext2_dir_entry {
 
 #define EXT2_CACHE_SIZE 128
 
-fs::ext2::ext2(fs::file disk) : filesystem(/*super*/), disk(disk) { TRACE; }
+fs::ext2::ext2(ref<fs::file> disk) : filesystem(/*super*/), disk(disk) { TRACE; }
 
 fs::ext2::~ext2(void) {
   TRACE;
@@ -79,8 +79,8 @@ bool fs::ext2::init(void) {
 
   sb = new superblock();
   // read the superblock
-  disk.seek(1024, SEEK_SET);
-  bool res = disk.read(sb, 1024);
+  disk->seek(1024, SEEK_SET);
+  bool res = disk->read(sb, 1024);
 
   if (!res) {
     printk("failed to read the superblock\n");
@@ -138,8 +138,8 @@ bool fs::ext2::init(void) {
 
 int fs::ext2::write_superblock(void) {
   // TODO: lock
-  disk.seek(1024, SEEK_SET);
-  return disk.write(sb, 1024);
+  disk->seek(1024, SEEK_SET);
+  return disk->write(sb, 1024);
 }
 
 bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {
@@ -227,8 +227,8 @@ bool fs::ext2::read_block(u32 block, void *buf) {
 
   if (cl->dirty && cl->cba != cba) {
     // flush
-    disk.seek(cl->cba * PGSIZE, SEEK_SET);
-    disk.write(cl->buffer, PGSIZE);
+    disk->seek(cl->cba * PGSIZE, SEEK_SET);
+    disk->write(cl->buffer, PGSIZE);
     cl->dirty = false;
   }
 
@@ -243,8 +243,8 @@ bool fs::ext2::read_block(u32 block, void *buf) {
   cl->last_used = cache_time++;
   cl->dirty = 0;
 
-  disk.seek(cl->cba * PGSIZE, SEEK_SET);
-  bool valid = disk.read(cl->buffer, PGSIZE);
+  disk->seek(cl->cba * PGSIZE, SEEK_SET);
+  bool valid = disk->read(cl->buffer, PGSIZE);
 
   memcpy(buf, cl->buffer + (blocksize * cbo), blocksize);
   return valid;
@@ -269,8 +269,8 @@ bool fs::ext2::write_block(u32 block, const void *buf) {
 
   if (cl->dirty && cl->cba != cba) {
     // flush
-    disk.seek(cl->cba * PGSIZE, SEEK_SET);
-    disk.write(cl->buffer, PGSIZE);
+    disk->seek(cl->cba * PGSIZE, SEEK_SET);
+    disk->write(cl->buffer, PGSIZE);
     cl->dirty = false;
   }
 
@@ -283,15 +283,15 @@ bool fs::ext2::write_block(u32 block, const void *buf) {
   cl->cba = cba;
   cl->last_used = cache_time++;
   cl->dirty = 1;
-  disk.seek(cl->cba * PGSIZE, SEEK_SET);
-  bool valid = disk.read(cl->buffer, PGSIZE);
+  disk->seek(cl->cba * PGSIZE, SEEK_SET);
+  bool valid = disk->read(cl->buffer, PGSIZE);
   memcpy(cl->buffer + (cbo * blocksize), buf, blocksize);
   return valid;
 
 #else
 
-  disk.seek(block * blocksize, SEEK_SET);
-  return disk.read(buf, blocksize);
+  disk->seek(block * blocksize, SEEK_SET);
+  return disk->read((void*)buf, blocksize);
 
 #endif
 }

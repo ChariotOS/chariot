@@ -255,6 +255,8 @@ void block();
 // does not return
 void run(void);
 
+void dumb_sleepticks(unsigned long);
+
 void handle_tick(u64 tick);
 
 // force the process to exit, (yield with different state)
@@ -282,7 +284,7 @@ process::ptr spawn_process(struct process *parent, int flags);
 // get the kernel process (creating if it doesnt exist
 struct process *kproc(void);
 
-pid_t create_kthread(int (*func)(void *), void *arg = NULL);
+pid_t create_kthread(const char *name, int (*func)(void *), void *arg = NULL);
 
 void dump_table();
 

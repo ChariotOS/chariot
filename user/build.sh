@@ -4,7 +4,6 @@
 # are built first, then binaries. This fixes `symbol not found' errors
 
 build () {
-	echo "Building $1"
 	make run M=$1 -j
 }
 

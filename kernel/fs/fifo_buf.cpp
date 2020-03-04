@@ -19,7 +19,7 @@ struct fifo_block *fifo_block::alloc(void) {
   }
   fifo_block_cache_lock.unlock();
 
-  if (b == NULL) b = (fifo_block *)phys::kalloc();
+  if (b == NULL) b = (fifo_block *)phys::kalloc(1);
 
   // initialize the data
   b->next = NULL;

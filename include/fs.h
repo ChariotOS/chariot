@@ -6,6 +6,7 @@
 #include <atom.h>
 #include <func.h>
 #include <lock.h>
+#include <net/sock.h>
 #include <stat.h>
 #include <string.h>
 #include <types.h>
@@ -117,7 +118,7 @@ struct file_operations {
   // resize a file. if size is zero, it is a truncate
   int (*resize)(fs::file &, size_t);
 
-  void (*destroy_priv)(void *);
+  void (*destroy)(fs::inode &);
 };
 
 struct dir_operations {
@@ -210,6 +211,8 @@ struct inode {
 
   void *_priv;
 
+  bool fixed = false;
+
   template <typename T>
   T *&priv(void) {
     return (T *&)_priv;
@@ -217,11 +220,15 @@ struct inode {
 
   // different kinds of inodes need different kinds of data
   union {
+    // T_DIR
     struct {
       // the parent directory, if this node is mounted
       struct inode *mountpoint;
       struct direntry *entries;
     } dir;
+
+    // T_SOCK
+    struct net::sock *sk;
   };
 
   /*

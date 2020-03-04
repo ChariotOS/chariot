@@ -96,7 +96,7 @@ int dev::deregister_name(string name) {
 
 // main API to opening devices
 
-fs::file dev::open(string name) {
+ref<fs::file> dev::open(string name) {
   int err;
 
   if (device_names.contains(name)) {
@@ -104,10 +104,10 @@ fs::file dev::open(string name) {
     return dev::open(d.major(), d.minor(), err);
   }
 
-  return fs::file(NULL, 0);
+  return nullptr;
 }
 
-fs::file dev::open(major_t maj, minor_t min) {
+ref<fs::file> dev::open(major_t maj, minor_t min) {
   int err;
   auto dev = open(maj, min, err);
   if (err != 0)
@@ -117,11 +117,11 @@ fs::file dev::open(major_t maj, minor_t min) {
   return dev;
 }
 
-fs::file dev::open(major_t maj, minor_t min, int &errcode) {
+ref<fs::file> dev::open(major_t maj, minor_t min, int &errcode) {
   // TODO: is this needed?
   if (maj > MAX_DRIVERS) {
     errcode = -E2BIG;
-    return fs::file(NULL, 0);
+    return nullptr;
   }
 
   // TODO: take a lock!
@@ -131,17 +131,19 @@ fs::file dev::open(major_t maj, minor_t min, int &errcode) {
     auto d = device_drivers[maj];
 
     auto ino = new fs::inode(d.type == BLOCK_DRIVER ? T_BLK : T_CHAR);
-    fs::inode::acquire(ino);
+    // for (int i = 0; i < 100; i++) fs::inode::acquire(ino);
     ino->major = maj;
     ino->minor = min;
     ino->fops = get(maj);
 
-    return fs::file(ino, FDIR_READ | FDIR_WRITE);
+    string path = string::format("/dev/%s", d.name.get());
+
+    return fs::file::create(ino, path, FDIR_READ | FDIR_WRITE);
     // return device_drivers[maj].ops->open(maj, min, errcode);
   }
   // if there wasnt a driver in the major list, return such
   errcode = -ENOENT;
-  return fs::file(NULL, 0);
+  return nullptr;
 }
 
 fs::file_operations *dev::get(major_t majr) {

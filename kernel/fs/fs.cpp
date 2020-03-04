@@ -1,9 +1,9 @@
+#include <asm.h>
 #include <dev/driver.h>
 #include <errno.h>
 #include <fs.h>
 #include <module.h>
 #include <printk.h>
-#include <asm.h>
 
 using namespace fs;
 
@@ -47,6 +47,7 @@ static void destruct_dir(struct inode *ino) {
 
 fs::inode::~inode() {
   // printk("INODE DESTRUCT %d\n", ino);
+  if (fops && fops->destroy) fops->destroy(*this);
 
   switch (type) {
     case T_DIR:
@@ -78,8 +79,11 @@ struct inode *fs::inode::get_direntry_ino(struct direntry *ent) {
     return ent->ino;
   }
 
-  if (dops == NULL) panic("dir_ops null in get_direntry_ino despite being a directory\n");
-  if (dops->lookup == NULL) panic("dir_ops->lookup null in get_direntry_ino despite being a directory\n");
+  if (dops == NULL)
+    panic("dir_ops null in get_direntry_ino despite being a directory\n");
+  if (dops->lookup == NULL)
+    panic(
+        "dir_ops->lookup null in get_direntry_ino despite being a directory\n");
 
   // otherwise attempt to resolve that entry
   ent->ino = dops->lookup(*this, ent->name.get());
@@ -87,8 +91,6 @@ struct inode *fs::inode::get_direntry_ino(struct direntry *ent) {
 
   return ent->ino;
 }
-
-
 
 struct inode *fs::inode::get_direntry_nolock(const char *name) {
   assert(type == T_DIR);
@@ -197,9 +199,6 @@ vec<string> fs::inode::direntries(void) {
   return e;
 }
 
-
-
-
 int fs::inode::acquire(struct inode *in) {
   assert(in != NULL);
   in->lock.lock();
@@ -213,12 +212,10 @@ int fs::inode::acquire(struct inode *in) {
 int fs::inode::release(struct inode *in) {
   assert(in != NULL);
   in->lock.lock();
-  // printk("release\n");
   in->rc--;
-  // printk("rc = %d\n", in->rc);
   if (in->rc == 0) {
     printk("delete inode\n");
-    // delete in;
+    delete in;
   }
   in->lock.unlock();
   return 0;

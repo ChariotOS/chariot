@@ -2,80 +2,95 @@
 #include <printk.h>
 #include <util.h>
 
-void hexdump(void *vdata, size_t len, int width) {
-  int written = 0;
+#define C_RED 91
+#define C_GREEN 92
+#define C_YELLOW 93
+#define C_BLUE 94
+#define C_MAGENTA 95
+#define C_CYAN 96
 
-  auto *buf = static_cast<u8 *>(vdata);
+#define C_RESET 0
+#define C_GRAY 90
 
-  // TODO: dont use VLA
-  u8 charbuf[width];
-  bool was_eq = false;
-  int neq = 0;
+static int current_color = 0;
+static void set_color(int code) {
+  if (code != current_color) {
+    printk("\x1b[%dm", code);
+    current_color = code;
+  }
+}
 
-  bool trailing_newline = false;
+static void set_color_for(char c) {
+  if (c >= 'A' && c <= 'z') {
+    set_color(C_YELLOW);
+  } else if (c >= '!' && c <= '~') {
+    set_color(C_CYAN);
+  } else if (c == '\n' || c == '\r') {
+    set_color(C_GREEN);
+  } else if (c == '\a' || c == '\b' || c == 0x1b || c == '\f' || c == '\n' ||
+             c == '\r') {
+    set_color(C_RED);
+  } else {
+    set_color(C_GRAY);
+  }
+}
 
-  for_range(i, 0, round_up(len, width)) {
-    trailing_newline = false;
+#define HEX_META
 
-    if (written == 0 && i != 0) {
-      auto *o = buf + i;
+void hexdump(void *vbuf, size_t len, bool use_colors) {
+#ifndef HEX_META
+  use_colors = false;
+#endif
 
-      bool eq = true;
-      for (int j = 0; j < width; j++) {
-        if (charbuf[j] != o[j]) {
-          eq = false;
-          break;
-        }
+  unsigned char *buf = (unsigned char *)vbuf;
+  int w = 16;
+
+  for (int i = 0; i < len; i += w) {
+    unsigned char *line = buf + i;
+
+    if (use_colors) {
+      set_color(C_RESET);
+      printk("|");
+      set_color(C_GRAY);
+
+      printk("%.8llx", i);
+
+      set_color(C_RESET);
+      printk("|");
+    }
+    for (int c = 0; c < w; c++) {
+      if (c % 8 == 0) {
+        if (use_colors) printk(" ");
       }
-
-      if (eq) {
-        if (!was_eq) {
-          printk(" *");
-        }
-        was_eq = true;
-        i += width-1;
-        written = 0;
-        neq++;
-        continue;
+      if (i + c >= len) {
+        printk("   ");
       } else {
-        if (was_eq) {
-          printk(" %d\n", neq);
+        if (use_colors) set_color_for(line[c]);
+        printk("%02x ", line[c]);
+      }
+    }
+
+    if (use_colors) {
+      set_color(C_RESET);
+      printk("|");
+      for (int c = 0; c < w; c++) {
+        if (c != 0 && (c % 8 == 0)) {
+          set_color(C_RESET);
+          printk(" ");
         }
-        neq = 0;
-        was_eq = false;
+
+        if (i + c >= len) {
+          printk(" ");
+        } else {
+          set_color_for(line[c]);
+          printk("%c", (line[c] < 0x20) || (line[c] > 0x7e) ? '.' : line[c]);
+        }
       }
-    }
+      set_color(C_RESET);
+      printk("|\n");
 
-    if (written == 0) {
-      printk("%p ", buf + i);
-    }
-
-    if (i % 2 == 0 && written != 0) printk(" ");
-
-    if (i < len) {
-      printk("%02x", buf[i]);
-      charbuf[written] = buf[i];
     } else {
-      printk("__");
-      charbuf[written] = ' ';
-    }
-
-    written++;
-
-    if (written == width) {
-      written = 0;
-      printk(" ");
-
-      // write the char buffer
-      for_range(j, 0, width) {
-        char c = charbuf[j];
-        printk("%c", (c < 0x20) || (c > 0x7e) ? '.' : c);
-      }
-      trailing_newline = true;
       printk("\n");
     }
-  }
-  if (!trailing_newline) {
-    printk("\n");
   }
 }

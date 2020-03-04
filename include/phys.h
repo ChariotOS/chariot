@@ -4,6 +4,9 @@
 #include <types.h>
 #include <mem.h>
 
+#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
+#define NPAGES(sz) (round_up((sz), 4096) / 4096)
+
 namespace phys {
 
 
@@ -22,12 +25,11 @@ namespace phys {
   u64 bytes_free(void);
 
 
-  // allocate a single page for kernel use
-  inline void *kalloc(void) {
-    return p2v(phys::alloc(1));
+  inline void *kalloc(int npages) {
+    return p2v(phys::alloc(npages));
   }
-  inline void kfree(void *p) {
-    return phys::free(v2p(p), 1);
+  inline void kfree(void *p, int npages) {
+    return phys::free(v2p(p), npages);
   }
 };
 

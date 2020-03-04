@@ -29,4 +29,5 @@ srcs += atexit.c
 srcs += time.c
 srcs += pwd.c
 srcs += ftw.c
+srcs += socket.c
 srcs += cxx/glue.cpp

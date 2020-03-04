@@ -54,9 +54,9 @@ int deregister_name(string name);
 string next_disk_name(void);
 
 // useful functions for the kernel to access devices by name or maj/min
-fs::file open(string name);
-fs::file open(major_t, minor_t);
-fs::file open(major_t, minor_t, int &errcode);
+ref<fs::file> open(string name);
+ref<fs::file> open(major_t, minor_t);
+ref<fs::file> open(major_t, minor_t, int &errcode);
 
 fs::file_operations *get(major_t);
 

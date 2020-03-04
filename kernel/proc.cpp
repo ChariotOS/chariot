@@ -165,7 +165,7 @@ struct process *sched::proc::kproc(void) {
   return kernel_process.get();
 }
 
-pid_t sched::proc::create_kthread(int (*func)(void *), void *arg) {
+pid_t sched::proc::create_kthread(const char *name, int (*func)(void *), void *arg) {
   auto proc = kproc();
 
   auto tid = get_next_pid();
@@ -175,6 +175,8 @@ pid_t sched::proc::create_kthread(int (*func)(void *), void *arg) {
   thd->trap_frame[1] = (unsigned long)arg;
 
   thd->kickoff((void *)func, PS_RUNNABLE);
+
+  KINFO("Created kernel thread '%s'. tid=%d\n", name, tid);
 
   return tid;
 }
