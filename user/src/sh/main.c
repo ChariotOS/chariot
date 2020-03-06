@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #define C_RED "\x1b[31m"
@@ -123,12 +124,17 @@ int main(int argc, char **argv, char **envp) {
   setenv("SHELL", pwd->pw_shell, 1);
   setenv("HOME", pwd->pw_dir, 1);
 
+
+
+  char *cwd[255];
   while (1) {
-    snprintf(prompt, 64, "[%s]%c ", uname, uid == 0 ? '#' : '$');
+    syscall(SYS_getcwd, cwd, 255);
+    setenv("CWD", (const char*)cwd, 1);
+    snprintf(prompt, 64, "[%s %s]%c ", uname, cwd, uid == 0 ? '#' : '$');
 
     int len = 0;
 
-    char *buf = read_line(0, getuid() == 0 ? "# " : "$ ", &len);
+    char *buf = read_line(0,  prompt, &len);
 
     len = strlen(buf);
     if (len == 0) goto cleanup;

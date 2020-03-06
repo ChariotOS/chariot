@@ -1,6 +1,7 @@
-#include <syscall.h>
-#include <fs.h>
 #include <cpu.h>
+#include <fs.h>
+#include <fs/vfs.h>
+#include <syscall.h>
 
 int sys::chdir(const char *path) {
   auto proc = curproc;
@@ -13,16 +14,34 @@ int sys::chdir(const char *path) {
 
   if (0 != vfs::namei(path, 0, 0, proc->cwd, ncwd)) return -1;
 
-  if (ncwd == NULL)
-    return -ENOENT;
+  if (ncwd == NULL) return -ENOENT;
 
   if (ncwd->type != T_DIR) return -ENOTDIR;
 
   fs::inode::acquire(ncwd);
   fs::inode::release(proc->cwd);
 
+  string cwd;
+  if (vfs::getcwd(*ncwd, cwd) != 0) return -EINVAL;
+
+  proc->cwd_string = cwd;
   proc->cwd = ncwd;
 
-
   return 0;
+}
+
+int sys::getcwd(char *dst, int dlen) {
+  if (!curproc->mm->validate_pointer(dst, dlen, PROT_WRITE)) return -1;
+
+  string s;
+  int res = vfs::getcwd(*curproc->cwd, s);
+
+  if (res == 0) {
+    int l = s.size() + 1;
+    if (dlen < l) l = dlen;
+    memcpy(dst, s.get(), l);
+    dst[l] = 0;
+  }
+
+  return res;
 }

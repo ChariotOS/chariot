@@ -1,7 +1,10 @@
 #include <cpu.h>
 #include <mem.h>
 #include <phys.h>
+
 #include "smp.h"
+
+static __thread cpu_t *s_current = nullptr;
 
 extern "C" void wrmsr(u32 msr, u64 val);
 
@@ -20,8 +23,7 @@ static inline void ltr(u16 sel) { asm volatile("ltr %0" : : "r"(sel)); }
 
 void cpu::seginit(void *local) {
 #ifdef __x86_64__
-  if (local == nullptr)
-    local = p2v(phys::alloc());
+  if (local == nullptr) local = p2v(phys::alloc());
 
   // make sure the local information segment is zeroed
   memset(local, 0, PGSIZE);
@@ -89,8 +91,11 @@ void cpu::switch_vm(struct thread *thd) {
 }
 
 cpu_t &cpu::current() {
+  if (s_current == NULL) {
+    int ind = smp::cpunum();
 
-  int ind = smp::cpunum();
+    s_current = &cpus[ind];
+  }
 
-  return cpus[ind];
+  return *s_current;
 }

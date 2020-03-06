@@ -106,13 +106,14 @@ struct process final : public refcounted<struct process> {
   u64 create_tick = 0;
   // The current working directory of the process.
   fs::inode *cwd = nullptr;
+  string cwd_string;
   bool embryonic = false;
   spinlock datalock;
 
   /* threads stuck in a waitpid() call */
   waitqueue waiters;
 
-  spinlock file_lock = spinlock("task.file_lock");
+  spinlock file_lock;
   map<int, ref<fs::file>> open_files;
 
   /**

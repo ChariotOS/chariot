@@ -10,8 +10,6 @@
  */
 class waitqueue {
  public:
-  waitqueue(const char * = "generic_waitqueue");
-
   // wait on the queue, interruptable. Returns if it was interrupted or not
   int wait(u32 on = 0);
 
@@ -27,9 +25,8 @@ class waitqueue {
   int do_wait(u32 on, int flags);
   // navail is the number of unhandled notifications
   int navail = 0;
-  const char *name;
 
-  spinlock lock = spinlock("waitqueue.lock");
+  spinlock lock;
 
   // next to pop on notify
   struct thread *front = NULL;

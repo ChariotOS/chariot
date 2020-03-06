@@ -8,12 +8,8 @@ class spinlock {
  private:
   // compare and swap dest to spinlock on
   int locked = 0;
-
-  int owner_tid = -1;
-  const char *name = NULL;
-
  public:
-  inline spinlock(const char *name = "unnamed") : name(name) { locked = 0; }
+  inline spinlock() { locked = 0; }
 
   void lock(void);
   void unlock(void);
@@ -26,14 +22,14 @@ class spinlock {
 
 class rwlock {
  public:
-  int rlock();
-  int runlock();
+  int read_lock();
+  int read_unlock();
 
-  int wlock();
-  int wunlock();
+  int write_lock();
+  int write_unlock();
 
  private:
-  spinlock m_lock = spinlock("rwlock.m_lock");
+  spinlock m_lock;
   unsigned m_readers = 0;
 };
 

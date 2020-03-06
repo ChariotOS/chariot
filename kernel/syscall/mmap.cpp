@@ -1,7 +1,7 @@
 #include <cpu.h>
+#include <mm.h>
 #include <mmap_flags.h>
 #include <syscall.h>
-#include <mm.h>
 
 void *sys::mmap(void *addr, long length, int prot, int flags, int fd,
                 long offset) {
@@ -15,6 +15,20 @@ void *sys::mmap(void *addr, long length, int prot, int flags, int fd,
 
   if ((flags & MAP_ANON) == 0) {
     f = proc->get_fd(fd);
+    if (!f) return MAP_FAILED;
+
+    auto t = f->ino->type;
+
+    // you can only map FILE, BLK, and CHAR devices
+    switch (t) {
+      case T_FILE:
+      case T_BLK:
+      case T_CHAR:
+        break;
+
+      default:
+        return MAP_FAILED;
+    }
   }
 
   off_t va = proc->mm->mmap((off_t)addr, length, prot, flags, f, offset);
@@ -33,8 +47,6 @@ int sys::mrename(void *addr, char *name) {
   auto proc = cpu::proc();
 
   if (!proc->mm->validate_string(name)) return -1;
-
-
 
   string sname = name;
   for (auto &c : sname) {

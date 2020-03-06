@@ -30,6 +30,7 @@ int vfs::deregister_filesystem(string name) {
 int vfs::mount_root(unique_ptr<fs::filesystem> fs) {
   assert(vfs_root == NULL);
   vfs_root = fs->get_root();
+  vfs_root->set_name("");
   fs::inode::acquire(vfs_root);
   mounted_filesystems.push(move(fs));
 

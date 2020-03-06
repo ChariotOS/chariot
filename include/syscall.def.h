@@ -68,6 +68,10 @@ int dup2(int oldfd, int newfd);
 /// num=0x1b
 int chdir(const char *);
 
+/// num=0x1c
+int getcwd(char *dst, int dlen);
+
+
 /// num=0x20
 int yield(void);
 

@@ -336,7 +336,7 @@ static struct fs::inode *ext2_lookup(fs::inode &node, const char *needle) {
     return true;
   });
 
-  if (found) return fs::ext2_inode::create(efs, ent_inode_num);
+  if (found) return efs->get_inode(ent_inode_num);
   return NULL;
 }
 

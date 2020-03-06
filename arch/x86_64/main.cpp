@@ -116,16 +116,6 @@ int kernel_init(void *) {
   assert(rootdev);
   init_rootvfs(rootdev);
 
-  auto netif = net::get_interface("e1000");
-
-  if (netif != 0) {
-
-
-    const char *data = "hello";
-    auto raw_ip = net::ipv4::parse_ip("198.37.25.78");
-    net::udp::send_data(*netif, raw_ip, 63, 6000, (void *)data, strlen(data) + 1);
-  }
-
   // setup stdio stuff for the kernel (to be inherited by spawn)
   int fd = sys::open("/dev/console", O_RDWR);
   assert(fd == 0);

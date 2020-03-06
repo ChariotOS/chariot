@@ -54,6 +54,9 @@ class vfs {
 
   static fs::file fdopen(string path, int opts = 0, int mode = 0000);
 
+
+  static int getcwd(fs::inode &, string &dst);
+
  private:
   vfs();  // private constructor. use static methods
 };

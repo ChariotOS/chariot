@@ -225,6 +225,8 @@ struct inode {
       // the parent directory, if this node is mounted
       struct inode *mountpoint;
       struct direntry *entries;
+      // an "owned" string that represents the name
+      const char *name;
     } dir;
 
     // T_SOCK
@@ -245,6 +247,9 @@ struct inode {
   vec<string> direntries(void);
   int add_mount(string &name, struct inode *other_root);
 
+  // if the inode is a directory, set its name. NOP otherwise
+  int set_name(const string &);
+
   inode(int type);
   virtual ~inode();
 
@@ -253,7 +258,7 @@ struct inode {
   static int acquire(struct inode *);
   static int release(struct inode *);
 
-  spinlock lock = spinlock("inode lock");
+  spinlock lock;
 
  protected:
   int rc = 0;

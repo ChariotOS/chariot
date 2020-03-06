@@ -2,9 +2,10 @@
 #include <map.h>
 #include <net/net.h>
 #include <printk.h>
+#include <string.h>
 
 static spinlock interfaces_lock;
-static map<const char *, struct net::interface *> interfaces;
+static map<string, struct net::interface *> interfaces;
 
 net::interface::interface(const char *name, struct net::ifops &o)
     : name(name), ops(o) {

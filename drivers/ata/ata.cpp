@@ -66,13 +66,13 @@
 #define BMR_STATUS_INT 0x4
 #define BMR_STATUS_ERR 0x2
 
-waitqueue ata_wq("ata");
+waitqueue ata_wq;
 
 /**
  * TODO: use per-channel ATA mutex locks. Right now every ata drive is locked
  * the same way
  */
-static spinlock drive_lock = spinlock("ata::drive_lock");
+static spinlock drive_lock;
 
 /*
  * TODO: determine if we need this function

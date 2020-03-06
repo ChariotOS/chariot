@@ -47,7 +47,7 @@ struct mlfq_entry {
 };
 
 static struct mlfq_entry mlfq[SCHED_MLFQ_DEPTH];
-static spinlock mlfq_lock = spinlock("mlfq_lock");
+static spinlock mlfq_lock;
 
 bool sched::init(void) {
   // initialize the mlfq
@@ -253,9 +253,9 @@ void sched::exit() { do_yield(PS_ZOMBIE); }
 
 
 void sched::dumb_sleepticks(unsigned long t) {
-  auto start = cpu::get_ticks();
+  auto now = cpu::get_ticks();
 
-  while (cpu::get_ticks() < start + t) {
+  while (cpu::get_ticks() * 10 < now + t) {
     sched::yield();
   }
 }
@@ -369,8 +369,6 @@ void sched::handle_tick(u64 ticks) {
     sched::yield();
   }
 }
-
-waitqueue::waitqueue(const char *name) : name(name) {}
 
 int waitqueue::wait(u32 on) { return do_wait(on, 0); }
 

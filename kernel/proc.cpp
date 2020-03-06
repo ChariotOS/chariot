@@ -19,7 +19,7 @@
 // created before init is spawned
 pid_t next_pid = 2;
 static spinlock pid_spinlock;
-static spinlock proc_table_lock;
+static rwlock ptable_lock;
 static map<pid_t, process::ptr> proc_table;
 
 static pid_t get_next_pid(void) {
@@ -34,9 +34,11 @@ static mm::space *alloc_user_vm(void) {
 }
 
 static process::ptr pid_lookup(pid_t pid) {
-  scoped_lock l(proc_table_lock);
+  ptable_lock.read_lock();
   process::ptr p = nullptr;
   if (proc_table.contains(pid)) p = proc_table.get(pid);
+
+  ptable_lock.read_unlock();
   return p;
 }
 
@@ -86,10 +88,10 @@ process::ptr sched::proc::spawn_process(struct process *parent, int flags) {
   pid_t pid = get_next_pid();
 
   // allocate the process
-  proc_table_lock.lock();
+  ptable_lock.write_lock();
   auto proc_ptr = make_ref<process>();
   proc_table.set(pid, proc_ptr);
-  proc_table_lock.unlock();
+  ptable_lock.write_unlock();
   if (proc_ptr.get() == NULL) return nullptr;
 
   proc_ptr->pid = pid;
@@ -103,12 +105,12 @@ process::ptr sched::proc::spawn_process(struct process *parent, int flags) {
 bool sched::proc::ptable_remove(pid_t p) {
   bool succ = false;
 
-  proc_table_lock.lock();
+  ptable_lock.write_lock();
   if (proc_table.contains(p)) {
     proc_table.remove(p);
     succ = true;
   }
-  proc_table_lock.unlock();
+  ptable_lock.write_unlock();
 
   return succ;
 }
@@ -119,15 +121,19 @@ pid_t sched::proc::spawn_init(vec<string> &paths) {
   process::ptr proc_ptr;
 
   {
-    scoped_lock lck(proc_table_lock);
+    ptable_lock.write_lock();
     proc_ptr = make_ref<process>();
-    if (proc_ptr.get() == NULL) return -1;
+    if (proc_ptr.get() == NULL) {
+      ptable_lock.write_unlock();
+      return -1;
+    }
 
     proc_ptr->pid = pid;
     proc_ptr->pgid = pid;  // pgid == pid (if no parent)
 
     assert(!proc_table.contains(pid));
     proc_table.set(pid, proc_ptr);
+    ptable_lock.write_unlock();
   }
 
   proc_ptr->parent = sched::proc::kproc();
@@ -165,7 +171,8 @@ struct process *sched::proc::kproc(void) {
   return kernel_process.get();
 }
 
-pid_t sched::proc::create_kthread(const char *name, int (*func)(void *), void *arg) {
+pid_t sched::proc::create_kthread(const char *name, int (*func)(void *),
+                                  void *arg) {
   auto proc = kproc();
 
   auto tid = get_next_pid();
@@ -181,9 +188,7 @@ pid_t sched::proc::create_kthread(const char *name, int (*func)(void *), void *a
   return tid;
 }
 
-pid_t process::fork(void) {
-  return -1;
-}
+pid_t process::fork(void) { return -1; }
 
 ref<fs::file> process::get_fd(int fd) {
   ref<fs::file> file;
@@ -313,7 +318,7 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   // allocate a new address space
   auto *new_addr_space = alloc_user_vm();
 
-  int loaded = elf::load(path.get(), *new_addr_space, fd, entry);
+  int loaded = elf::load(path.get(), *this, *new_addr_space, fd, entry);
 
   if (loaded != 0) {
     delete new_addr_space;
@@ -347,8 +352,7 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
 
 bool sched::proc::send_signal(pid_t p, int sig) {
   if (sig < 0 || sig >= 64) return false;
-
-  scoped_lock l(proc_table_lock);
+  ptable_lock.read_lock();
 
   bool sent = false;
 
@@ -361,6 +365,8 @@ bool sched::proc::send_signal(pid_t p, int sig) {
       sent = true;
     }
   }
+
+  ptable_lock.read_unlock();
 
   return sent;
 }
@@ -377,7 +383,7 @@ int sched::proc::reap(process::ptr p) {
 #ifdef REAP_DEBUG
   printk("reap (p:%d)\n", p->pid);
   auto usage = p->mm->memory_usage();
-  printk("  ram usage: %zu Kb\n", usage / KB);
+  printk("  ram usage: %zu Kb (%zu b)\n", usage / KB, usage);
 #endif
 
   process::ptr init = proc_table[1];
@@ -420,6 +426,7 @@ int sched::proc::reap(process::ptr p) {
 }
 
 int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
+
   auto *me = curproc;
 
   if (!me) return -1;
@@ -469,8 +476,6 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
 
     // TODO: use a waitqueue
     // me->waiters.wait();
-
-    // currently, just halt the CPU till the next IRQ and try again
     sched::yield();
   }
 

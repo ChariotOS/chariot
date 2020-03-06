@@ -59,6 +59,19 @@ char **read_default_environ(void) {
   return env;
 }
 
+
+
+
+struct service {
+  //
+};
+
+
+
+
+
+
+
 int main(int argc, char **argv) {
   if (getpid() != 1) {
     fprintf(stderr, "init: must be run as pid 1\n");

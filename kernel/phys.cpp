@@ -23,7 +23,7 @@ struct frame {
   inline void setnext(frame *f) { next = (frame *)v2p(f); }
 };
 
-static spinlock phys_lck("phys_lock");
+static spinlock phys_lck;
 
 static void lock(void) {
   if (use_kernel_vm) phys_lck.lock();

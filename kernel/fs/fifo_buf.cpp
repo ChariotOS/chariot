@@ -5,7 +5,7 @@
 #include <util.h>
 
 // TODO: this will leak if one task uses a massive buffer
-static spinlock fifo_block_cache_lock("fifo_block_cache_lock");
+static spinlock fifo_block_cache_lock;
 static struct fifo_block *fifo_block_cache = NULL;
 
 struct fifo_block *fifo_block::alloc(void) {

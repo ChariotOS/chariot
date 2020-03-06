@@ -1,4 +1,5 @@
 #include <asm.h>
+#include <mem.h>
 #include <dev/driver.h>
 #include <errno.h>
 #include <fs.h>
@@ -15,6 +16,7 @@ fs::inode::inode(int type) : type(type) {
       // zero out the directory specific info
       dir.mountpoint = nullptr;  // where the directory is mounted to
       dir.entries = nullptr;
+      dir.name = nullptr;
       break;
 
     case T_FILE:
@@ -32,6 +34,11 @@ fs::inode::inode(int type) : type(type) {
 
 static void destruct_dir(struct inode *ino) {
   assert(ino->type == T_DIR);
+
+  if (ino->dir.name) {
+    kfree((void*)ino->dir.name);
+    ino->dir.name = NULL;
+  }
 
   for_in_ll(ent, ino->dir.entries) {
     // don't delete the backpointers and current directory pointers
@@ -89,6 +96,10 @@ struct inode *fs::inode::get_direntry_ino(struct direntry *ent) {
   ent->ino = dops->lookup(*this, ent->name.get());
   if (ent->ino != NULL) fs::inode::acquire(ent->ino);
 
+  if (ent->ino->type == T_DIR) {
+    ent->ino->set_name(ent->name);
+  }
+
   return ent->ino;
 }
 
@@ -112,9 +123,9 @@ struct inode *fs::inode::get_direntry_nolock(const char *name) {
 struct inode *fs::inode::get_direntry(const char *name) {
   assert(type == T_DIR);
   struct inode *ino = NULL;
-  lock.lock();
+  // lock.lock();
   ino = get_direntry_nolock(name);
-  lock.unlock();
+  // lock.unlock();
   return ino;  // nothing found!
 }
 
@@ -179,6 +190,21 @@ int fs::inode::remove_direntry(string name) {
   return -ENOENT;
 }
 
+
+int fs::inode::set_name(const string &s) {
+  if (type != T_DIR) {
+    return -ENOTDIR;
+  }
+  if (dir.name != NULL) return 0;
+
+  auto name = (char *)kmalloc(s.size() + 1);
+
+  memcpy(name, s.get(), s.size() + 1);
+
+  dir.name = name;
+  return 0;
+}
+
 void fs::inode::walk_direntries(
     func<bool(const string &, struct inode *)> func) {
   assert(type == T_DIR);
@@ -214,7 +240,7 @@ int fs::inode::release(struct inode *in) {
   in->lock.lock();
   in->rc--;
   if (in->rc == 0) {
-    printk("delete inode\n");
+    // printk("delete inode\n");
     delete in;
   }
   in->lock.unlock();

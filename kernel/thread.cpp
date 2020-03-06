@@ -17,7 +17,7 @@ static void thread_create_callback(void *);
 // implemented in arch/$ARCH/trap.asm most likely
 extern "C" void trapret(void);
 
-static spinlock thread_table_lock;
+static rwlock thread_table_lock;
 static map<pid_t, struct thread *> thread_table;
 
 thread::thread(pid_t tid, struct process &proc) : proc(proc) {
@@ -58,11 +58,11 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
 
   arch::initialize_trapframe(proc.ring == RING_USER, trap_frame);
 
-  thread_table_lock.lock();
+  thread_table_lock.write_lock();
   assert(!thread_table.contains(tid));
   // printk("inserting %d\n", tid);
   thread_table.set(tid, this);
-  thread_table_lock.unlock();
+  thread_table_lock.write_unlock();
 
   // push the tid into the proc's tid list
   proc.threads.push(tid);
@@ -172,18 +172,18 @@ static void thread_create_callback(void *) {
 }
 
 struct thread *thread::lookup(pid_t tid) {
-  thread_table_lock.lock();
+  thread_table_lock.read_lock();
   assert(thread_table.contains(tid));
   auto t = thread_table.get(tid);
-  thread_table_lock.unlock();
+  thread_table_lock.read_unlock();
   return t;
 }
 
 bool thread::teardown(thread *t) {
-  thread_table_lock.lock();
+  thread_table_lock.write_lock();
   assert(thread_table.contains(t->tid));
   thread_table.remove(t->tid);
-  thread_table_lock.unlock();
+  thread_table_lock.write_unlock();
 
   delete t;
   return true;

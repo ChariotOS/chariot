@@ -23,7 +23,7 @@ static int udp_init(net::sock &sk) {
 
 static void udp_destroy(net::sock &sk) {
   // TODO: teardown internal state
-  printk("udp_destroy\n");
+  // printk("udp_destroy\n");
 
   // make sure to disconnect
   if (sk.connected) {

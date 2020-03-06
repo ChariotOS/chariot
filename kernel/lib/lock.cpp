@@ -29,16 +29,12 @@ void spinlock::lock(void) {
     // cpu::popcli();
     asm("pause");
   }
-
-  owner_tid = -1;
-  if (cpu::in_thread()) owner_tid = curthd->tid;
 }
 
 void spinlock::unlock(void) {
   if (likely(locked)) {
     arch_atomic_store(&locked, 0);
   }
-  owner_tid = -1;
 }
 
 bool spinlock::is_locked(void) { return locked; }
@@ -58,20 +54,20 @@ void spinlock::unlock(volatile int& l) {
   }
 }
 
-int rwlock::rlock(void) {
+int rwlock::read_lock(void) {
   m_lock.lock();
   m_readers++;
   m_lock.unlock();
   return 0;
 }
-int rwlock::runlock(void) {
+int rwlock::read_unlock(void) {
   m_lock.lock();
   m_readers--;
   m_lock.unlock();
   return 0;
 }
 
-int rwlock::wlock(void) {
+int rwlock::write_lock(void) {
   while (1) {
     m_lock.lock();
 
@@ -84,7 +80,7 @@ int rwlock::wlock(void) {
   }
   return 0;
 }
-int rwlock::wunlock(void) {
+int rwlock::write_unlock(void) {
   m_lock.unlock();
   return 0;
 }

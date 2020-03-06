@@ -1,5 +1,6 @@
 #include <mm.h>
 #include <phys.h>
+#include <util.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 
@@ -91,13 +92,12 @@ int mm::space::pagefault(off_t va, int err) {
         int nread = r->fd->read(buf, to_read);
 
         if (nread == -1) {
-          panic("failed to read mapped file!\n");
+          printk("failed to read mapped file!\n");
+          memset(buf, 0, PGSIZE);
         }
 
-        if (nread != PGSIZE) {
-          // clear out all the other memory that was read
-          memset((char *)buf + nread, 0x00, PGSIZE - nread);
-        }
+        // clear out all the other memory that was read
+        if (nread != PGSIZE) memset((char *)buf + nread, 0x00, PGSIZE - nread);
       }
 
       spinlock::unlock(page->lock);
@@ -141,9 +141,15 @@ size_t mm::space::memory_usage(void) {
   for (auto &r : regions) {
     r->lock.lock();
     for (auto &p : r->pages)
-      if (p) s += PGSIZE;
+      if (p) {
+        s += sizeof(mm::page);
+        s += PGSIZE;
+      }
+
+    s += sizeof(mm::page *) * r->pages.size();
     r->lock.unlock();
   }
+  s += sizeof(mm::space);
 
   return s;
 }
@@ -152,9 +158,8 @@ mm::space *mm::space::fork(void) {
   auto npt = mm::pagetable::create();
   auto *n = new mm::space(lo, hi, npt);
 
-  scoped_lock self_lock(this->lock);
+  scoped_lock self_lock(lock);
 
-  /*
   for (auto &r : regions) {
     printk("%p-%p ", r->va, r->va + r->len);
     printk("%c", r->prot & VPROT_READ ? 'r' : '-');
@@ -173,7 +178,6 @@ mm::space *mm::space::fork(void) {
     printk("\n");
   }
   printk("\n");
-  */
 #define DO_COW
 
   for (auto &r : regions) {
@@ -230,7 +234,7 @@ mm::space *mm::space::fork(void) {
 
 off_t mm::space::mmap(off_t req, size_t size, int prot, int flags,
                       ref<fs::file> fd, off_t off) {
-  return mmap("[anon]", req, size, prot, flags, move(fd), off);
+  return mmap("", req, size, prot, flags, move(fd), off);
 }
 
 off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
@@ -354,7 +358,6 @@ void mm::space::dump(void) {
   scoped_lock l(lock);
 
   for (auto &r : regions) {
-
     int ino = 0;
     int major = 0;
     int minor = 0;
@@ -364,9 +367,11 @@ void mm::space::dump(void) {
       major = r->fd->ino->dev.major;
       minor = r->fd->ino->dev.minor;
     }
-    printk("%p-%p %c%c%c%c %09x %02x:%02x %-10d %s\n", r->va, round_up(r->va + r->len, 4096),
-           r->prot & PROT_READ ? 'r' : '-', r->prot & PROT_WRITE ? 'w' : '-',
-           r->prot & PROT_EXEC ? 'x' : '-', r->flags & MAP_PRIVATE ? 'p' : 's', r->off, major, minor, ino, r->name.get());
+    printk("%p-%p %c%c%c%c %09x %02x:%02x %-10d %s\n", r->va,
+           round_up(r->va + r->len, 4096), r->prot & PROT_READ ? 'r' : '-',
+           r->prot & PROT_WRITE ? 'w' : '-', r->prot & PROT_EXEC ? 'x' : '-',
+           r->flags & MAP_PRIVATE ? 'p' : 's', r->off, major, minor, ino,
+           r->name.get());
   }
 }
 

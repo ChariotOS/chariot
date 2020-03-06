@@ -1,11 +1,11 @@
+#include <cpu.h>
 #include <errno.h>
 #include <fs.h>
 #include <lock.h>
 #include <map.h>
 #include <net/sock.h>
-#include <syscall.h>
 #include <sched.h>
-#include <cpu.h>
+#include <syscall.h>
 
 net::sock::sock(uint16_t dom, int type, net::proto &p)
     : domain(dom), type(type), prot(p) {}
@@ -16,11 +16,11 @@ net::sock::~sock(void) {
   }
 }
 
-static spinlock proto_lock;
+static rwlock proto_lock;
 static map<int, net::proto *> protos;
 
 void net::register_proto(net::proto &n, int af) {
-  scoped_lock l(proto_lock);
+  proto_lock.write_lock();
 
   assert(n.connect);
   assert(n.disconnect);
@@ -32,12 +32,18 @@ void net::register_proto(net::proto &n, int af) {
   assert(n.recv);
 
   protos[af] = &n;
+
+  proto_lock.write_unlock();
 }
 
 net::proto *net::lookup_proto(int type) {
-  scoped_lock l(proto_lock);
-  if (protos.contains(type)) return protos.get(type);
-  return 0;
+  proto_lock.read_lock();
+  net::proto *p = NULL;
+  if (protos.contains(type)) {
+    p = protos.get(type);
+  }
+  proto_lock.read_unlock();
+  return p;
 }
 
 net::sock *net::sock::create(int domain, int type, int protocol, int &err) {
@@ -71,9 +77,7 @@ static ssize_t sock_write(fs::file &f, const char *b, size_t s) {
   return f.ino->sk->prot.send(*f.ino->sk, (void *)b, s);
 }
 
-static void sock_destroy(fs::inode &f) {
-  f.sk->prot.destroy(*f.sk);
-}
+static void sock_destroy(fs::inode &f) { f.sk->prot.destroy(*f.sk); }
 
 fs::file_operations socket_fops{
     .seek = sock_seek,
@@ -99,7 +103,6 @@ fs::inode *net::sock::createi(int domain, int type, int protocol, int &err) {
 }
 
 int sys::socket(int d, int t, int p) {
-  printk("here\n");
   int err = 0;
   auto f = net::sock::createi(d, t, p, err);
   printk("%p %d\n", f, err);

@@ -38,7 +38,7 @@ bool elf::validate(fs::file &fd, Elf64_Ehdr &ehdr) {
   return true;
 }
 
-int elf::load(const char *path, mm::space &mm, ref<fs::file> fd,
+int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> fd,
               u64 &entry) {
   Elf64_Ehdr ehdr;
 

@@ -139,49 +139,45 @@ static void init_tx(void) {
                 TCTL_EN | TCTL_PSP | read_command(E1000_REG_TCTRL));
 }
 
-static void send_packet(void *payload, size_t payload_size) {}
-
 static void irq_handler(int i, reg_t *) {
   uint32_t status = read_command(0xc0);
 
-  if (!status) {
-    return;
-  }
-
-  printk("[e1000]: irq %x\n", status);
+  // printk("[e1000]: irq %x\n", status);
   irq::eoi(i);
 
-  if (status & 0x04) {
-    /* Start link */
-    printk("[e1000]: start link\n");
-  } else if (status & 0x10) {
-    /* ?? */
-  } else if (status & ((1 << 6) | (1 << 7))) {
-    /* receive packet */
-    do {
-      rx_index = read_command(E1000_REG_RXDESCTAIL);
-      if (rx_index == (int)read_command(E1000_REG_RXDESCHEAD)) return;
-      rx_index = (rx_index + 1) % E1000_NUM_RX_DESC;
-      if (rx[rx_index].status & 0x01) {
-        uint8_t *pbuf = (uint8_t *)rx_virt[rx_index];
-        uint16_t plen = rx[rx_index].length;
+  if (status) {
+    if (status & 0x04) {
+      /* Start link */
+      printk("[e1000]: start link\n");
+    } else if (status & 0x10) {
+      /* ?? */
+    } else if (status & ((1 << 6) | (1 << 7))) {
+      /* receive packet */
+      do {
+        rx_index = read_command(E1000_REG_RXDESCTAIL);
+        if (rx_index == (int)read_command(E1000_REG_RXDESCHEAD)) return;
+        rx_index = (rx_index + 1) % E1000_NUM_RX_DESC;
+        if (rx[rx_index].status & 0x01) {
+          uint8_t *pbuf = (uint8_t *)rx_virt[rx_index];
+          uint16_t plen = rx[rx_index].length;
 
-        /*
-        void *packet = malloc(plen);
-        memcpy(packet, pbuf, plen);
-        enqueue_packet(packet);
-        */
-        hexdump(p2v(pbuf), plen, true);
+          /*
+          void *packet = malloc(plen);
+          memcpy(packet, pbuf, plen);
+          enqueue_packet(packet);
+          */
+          hexdump(p2v(pbuf), plen, true);
 
-        rx[rx_index].status = 0;
+          rx[rx_index].status = 0;
 
-        write_command(E1000_REG_RXDESCTAIL, rx_index);
-      } else {
-        break;
-      }
-    } while (1);
+          write_command(E1000_REG_RXDESCTAIL, rx_index);
+        } else {
+          break;
+        }
+      } while (1);
+    }
   }
-  e1000wait.notify();
+  e1000wait.notify_all();
 }
 
 #define htonl(l)                                                      \
@@ -195,7 +191,7 @@ int e1000_daemon(void *) {
   assert(device != NULL);
 
   while (1) {
-    sched::yield();
+    // e1000wait.wait();
   }
 }
 
@@ -210,9 +206,11 @@ static struct net::eth::packet *e1000_get_packet(struct net::interface &) {
 
 static bool e1000_send_packet(struct net::interface &, void *payload,
                               size_t payload_size) {
+  /*
   printk("[e1000]: sending packet 0x%x, %d desc[%d]:\n", payload, payload_size,
          tx_index);
   hexdump(payload, payload_size, true);
+         */
 
   tx_index = read_command(E1000_REG_TXDESCTAIL);
 
@@ -224,7 +222,7 @@ static bool e1000_send_packet(struct net::interface &, void *payload,
   tx_index = (tx_index + 1) % E1000_NUM_TX_DESC;
   write_command(E1000_REG_TXDESCTAIL, tx_index);
 
-  e1000wait.wait();
+  // e1000wait.wait();
   return true;
 }
 
@@ -338,7 +336,7 @@ void e1000_init(void) {
 
     net::register_interface("e1000", e1000_ifops);
 
-    sched::proc::create_kthread("[e1000]", e1000_daemon, 0);
+    // sched::proc::create_kthread("[e1000]", e1000_daemon, 0);
   }
 }
 
