@@ -1,2 +1,2 @@
 out = bin/init
-srcs += main.c util.c bdf.c
+srcs += main.c util.c ini.c

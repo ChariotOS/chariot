@@ -6,7 +6,7 @@ long sys::lseek(int fd, long offset, int whence) {
 
   auto f = proc->get_fd(fd);
 
-  if (fd) {
+  if (f) {
     return f->seek(offset, whence);
   }
   return -ENOENT;

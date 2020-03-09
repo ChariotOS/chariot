@@ -8,12 +8,17 @@ int sys::open(const char *path, int flags, int mode) {
     return -1;
   }
 
+  struct fs::inode *ino = NULL;
 
-  auto ino = vfs::open(path, flags, mode);
+
+  int r = vfs::namei(path, flags, mode, vfs::cwd(), ino);
   if (ino == NULL) return -ENOENT;
 
-  auto file = fs::file::create(ino, path, flags);
+  if (r < 0) {
+    return r;
+  }
 
+  auto file = fs::file::create(ino, path, flags);
   int fd = proc->add_fd(file);
 
   return fd;

@@ -135,18 +135,23 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
   bool last = false;
   while ((path = skipelem((char *)path, name, last)) != 0) {
 
+    // hexdump(name, strlen(name), true);
+
     auto found = ino->get_direntry(name);
 
     if (found == NULL) {
+
       if (last && (flags & O_CREAT)) {
-
         if (ino->dops && ino->dops->create) {
-
           fs::file_ownership own;
           own.uid = curproc->user.uid;
           own.gid = curproc->user.gid;
           own.mode = mode;
-          return ino->dops->create(*ino, name, own);
+          int r = ino->dops->create(*ino, name, own);
+          if (r == 0) {
+            ino = ino->get_direntry(name);
+          }
+          return r;
         }
         return -EINVAL;
       }

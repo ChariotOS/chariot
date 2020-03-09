@@ -10,6 +10,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "ini.h"
+
 #define ENV_PATH "/cfg/environ"
 
 // read the initial environ from /etc/environ
@@ -59,18 +61,9 @@ char **read_default_environ(void) {
   return env;
 }
 
-
-
-
 struct service {
   //
 };
-
-
-
-
-
-
 
 int main(int argc, char **argv) {
   if (getpid() != 1) {
@@ -85,6 +78,30 @@ int main(int argc, char **argv) {
 
   printf("[init] hello, friend\n");
 
+  FILE *loadorder = fopen("/cfg/srv/loadorder", "r");
+
+  if (loadorder == NULL) {
+    fprintf(stderr,
+            "[init] loadorder file not found. No services shall be managed\n");
+  } else {
+    char buf[255];
+
+    while (!feof(loadorder)) {
+      if (fgets(buf, 255, loadorder) != NULL) {
+        ini_t *i = ini_load(buf);
+
+        printf("[cfg] %s", buf);
+
+        if (i) {
+          printf("name=%s\n", ini_get(i, "service", "name"));
+
+          ini_free(i);
+        }
+      }
+    }
+
+    fclose(loadorder);
+  }
 
   char *shell = "/bin/sh";
   char *sh_argv[] = {shell, NULL};

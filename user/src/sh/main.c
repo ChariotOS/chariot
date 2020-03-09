@@ -8,8 +8,8 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
 #include <sys/syscall.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #define C_RED "\x1b[31m"
@@ -41,8 +41,10 @@ int run_line(const char *line) {
   if (strcmp(args[0], "cd") == 0) {
     char *path = args[1];
     if (path == NULL) {
+      uid_t uid = getuid();
+      struct passwd *pwd = getpwuid(uid);
       // TODO: get user $HOME and go there instead
-      path = "/";
+      path = pwd->pw_dir;
     }
     int res = chdir(path);
     if (res != 0) {
@@ -115,26 +117,44 @@ int main(int argc, char **argv, char **envp) {
 
   char prompt[64];
   char uname[32];
-
-  uid_t uid = getuid();
-  struct passwd *pwd = getpwuid(uid);
-  strncpy(uname, pwd->pw_name, 32);
-
-  setenv("USER", pwd->pw_name, 1);
-  setenv("SHELL", pwd->pw_shell, 1);
-  setenv("HOME", pwd->pw_dir, 1);
-
-
-
   char *cwd[255];
+  char hostname[50];
+
   while (1) {
+    uid_t uid = getuid();
+    struct passwd *pwd = getpwuid(uid);
+    strncpy(uname, pwd->pw_name, 32);
+
     syscall(SYS_getcwd, cwd, 255);
-    setenv("CWD", (const char*)cwd, 1);
-    snprintf(prompt, 64, "[%s %s]%c ", uname, cwd, uid == 0 ? '#' : '$');
+
+    setenv("USER", pwd->pw_name, 1);
+    setenv("SHELL", pwd->pw_shell, 1);
+    setenv("HOME", pwd->pw_dir, 1);
+    setenv("CWD", (const char *)cwd, 1);
+
+    int hn = open("/cfg/hostname", O_RDONLY);
+
+    int n = read(hn, (void *)hostname, 50);
+    if (n >= 0) {
+      hostname[n] = 0;
+      for (int i = n; i > 0; i--) {
+        if (hostname[i] == '\n') hostname[i] = 0;
+      }
+    }
+
+    close(hn);
+
+    const char *disp_cwd = (const char *)cwd;
+    if (strcmp((const char *)cwd, pwd->pw_dir) == 0) {
+      disp_cwd = "~";
+    }
+
+    snprintf(prompt, 64, "[%s@%s %s]%c ", uname, hostname, disp_cwd,
+             uid == 0 ? '#' : '$');
 
     int len = 0;
 
-    char *buf = read_line(0,  prompt, &len);
+    char *buf = read_line(0, prompt, &len);
 
     len = strlen(buf);
     if (len == 0) goto cleanup;

@@ -55,7 +55,14 @@ static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
 
   auto *func = (u64(*)(u64, u64, u64, u64, u64, u64))syscall_table[num].handler;
 
-  return func(a, b, c, d, e, f);
+  auto res = func(a, b, c, d, e, f);
+
+#if 0
+  printk("pid: %d, syscall(SYS_%s, %lx, %lx, %lx, %lx, %lx, %lx) = %lx\n",
+         curproc->pid, syscall_table[num].name, a, b, c, d, e, f, res);
+#endif
+
+  return res;
 }
 
 extern "C" void syscall_handle(int i, reg_t *regs) {
