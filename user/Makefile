@@ -7,7 +7,7 @@ DEFINES += -DUSERLAND
 
 OPTIMIZE:=-O3
 
-CFLAGS:=$(CINCLUDES) $(OPTIMIZE) $(MOREFLAGS) -fPIE -fno-omit-frame-pointer -fno-stack-protector \
+CFLAGS:=-g $(CINCLUDES) $(OPTIMIZE) $(MOREFLAGS) -fPIE -fno-omit-frame-pointer -fno-stack-protector \
 				 -mtls-direct-seg-refs -ffreestanding -Wall \
 
 

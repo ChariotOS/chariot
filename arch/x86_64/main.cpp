@@ -110,9 +110,7 @@ int kernel_init(void *) {
   KINFO("kernel modules initialized\n");
 
   // open up the disk device for the root filesystem
-  const char *rootdev_path = kargs::get("root", "ata0p1");
-  KINFO("rootdev=%s\n", rootdev_path);
-  auto rootdev = dev::open(rootdev_path);
+  auto rootdev = dev::open(kargs::get("root", "ata0p1"));
   assert(rootdev);
   init_rootvfs(rootdev);
 

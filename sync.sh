@@ -16,7 +16,7 @@ echo "Okay!"
 
 IMG=build/chariot.img
 mnt=build/mnt
-DISK_SIZE_MB=128
+DISK_SIZE_MB=256
 
 mkdir -p build
 
@@ -69,7 +69,7 @@ if [ $disk_exists -eq '0' ]; then
 	echo "done"
 
 	printf "creating new filesystem... "
-	sudo mkfs.ext2 "${dev}"p1 || die "couldn't create filesystem"
+	sudo mkfs.ext2 -b 1024 "${dev}"p1 || die "couldn't create filesystem"
 	echo "done"
 fi
 
@@ -125,9 +125,9 @@ sudo cp grub.cfg $mnt/boot/grub/
 
 # build the kernel and copy it into the boot dir
 make -j ARCH=x86_64 || die 'Failed to build the kernel'
-sudo nm -s build/vmchariot | c++filt > build/kernel.syms
+sudo nm -s build/chariot.elf | c++filt > build/kernel.syms
 
-sudo cp build/vmchariot $mnt/boot/
+sudo cp build/chariot.elf $mnt/boot/
 sudo cp build/kernel.syms $mnt/boot/
 
 # create some device nodes

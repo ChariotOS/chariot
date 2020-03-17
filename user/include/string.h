@@ -19,7 +19,6 @@ void *memchr(const void *, int, size_t);
 char *strcpy(char *__restrict, const char *__restrict);
 char *strncpy(char *__restrict, const char *__restrict, size_t);
 
-
 char *strcat(char *dest, const char *src);
 
 size_t strlen(const char *s);
@@ -27,6 +26,11 @@ size_t strlen(const char *s);
 char *strchr(const char *s, int c);
 int strcmp(const char *l, const char *r);
 int strncmp(const char *s1, const char *s2, size_t n);
+
+// I dont have locales
+static inline int strcoll(const char *s1, const char *s2) {
+  return strcmp(s1, s2);
+}
 
 size_t strspn(const char *s, const char *c);
 size_t strcspn(const char *s, const char *c);
@@ -42,6 +46,14 @@ char *strchr(const char *s, int c);
 char *strrchr(const char *s, int c);
 char *strpbrk(const char *s, const char *b);
 char *strstr(const char *h, const char *n);
+
+double strtod(const char *nptr, char **endptr);
+float strtof(const char *nptr, char **endptr);
+long double strtold(const char *nptr, char **endptr);
+
+
+char *strerror(int errnum);
+
 
 #ifdef __cplusplus
 }

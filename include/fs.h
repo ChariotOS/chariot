@@ -4,6 +4,7 @@
 #define __FS__H__
 
 #include <atom.h>
+#include <dev/device.h>
 #include <func.h>
 #include <lock.h>
 #include <net/sock.h>
@@ -50,6 +51,66 @@ class filesystem {
   // must be called by subclasses
   filesystem();
 };
+
+struct superblock {
+  //
+  dev_t dev;
+  long block_size;
+  long max_filesize;
+  struct sb_operations *ops;
+  struct sb_information *info;
+  struct inode *root;
+  string arguments;
+
+  rwlock lock;
+  long count = 0;  // refcount
+
+  // nice to have thing
+  template <typename T>
+  T *&p(void) {
+    return (T *&)priv;
+  }
+
+  inline static void get(struct superblock *s) {
+    s->lock.read_lock();
+    s->count++;
+    s->lock.read_unlock();
+  }
+
+  inline static void put(struct superblock *s) {
+    s->lock.read_lock();
+    s->count--;
+    if (s->count == 0) {
+      printk("s->count == 0 now. Must delete!\n");
+    }
+    s->lock.read_unlock();
+  }
+
+ private:
+  void *priv;
+};
+
+struct sb_operations {
+  // initialize the superblock after it has been mounted. All of the
+	// arguments 
+  int (&init)(struct superblock &);
+  int (&write_super)(struct superblock &);
+  int (&sync)(struct superblock &, int flags);
+};
+
+struct sb_information {
+  const char *name;
+
+  // mount and return the root inode, returning NULL on failure.
+  struct inode *(*mount)(struct sb_information *, const char *args, int flags,
+			 const char *device);
+
+  struct sb_operations &ops;
+};
+
+// typically
+struct inode *bdev_mount(struct sb_information *info, const char *args,
+			 int flags);
 
 int mount(string path, filesystem &);
 
@@ -132,7 +193,7 @@ struct dir_operations {
   struct fs::inode *(*lookup)(fs::inode &, const char *);
   // create a device node with a major and minor number
   int (*mknod)(fs::inode &, const char *name, struct fs::file_ownership &,
-               int major, int minor);
+	       int major, int minor);
 
   // walk through the directory, calling the callback per entry
   int (*walk)(fs::inode &, func<bool(const string &)>);
@@ -142,7 +203,7 @@ class file : public refcounted<file> {
  public:
   // must construct file descriptors via these factory funcs
   static ref<file> create(struct fs::inode *, string open_path,
-                          int flags = FDIR_READ | FDIR_WRITE);
+			  int flags = FDIR_READ | FDIR_WRITE);
 
   /*
    * seek - change the offset
@@ -184,8 +245,8 @@ struct inode {
    * fields
    */
   off_t size = 0;
-  short type = T_INVA;  // from T_[...] above
-  short mode = 0;       // file mode. ex: o755
+  short type = T_INVA;	// from T_[...] above
+  short mode = 0;	// file mode. ex: o755
 
   // the device that the file is located on
   struct {

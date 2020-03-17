@@ -16,7 +16,7 @@
 #define C_GREEN "\x1b[92m"
 #define C_YELLOW "\x1b[93m"
 #define C_BLUE "\x1b[94m"
-#define C_MAGENTA "\x1b[95m"
+#define C_MAGENTA "\x1b[35m"
 #define C_CYAN "\x1b[96m"
 
 #define C_RESET "\x1b[0m"
@@ -82,7 +82,7 @@ int print_filename(const char *name, int mode) {
   set_color(C_RESET);
   printf("%c", end);
 
-  return 1 + strlen(name);
+  return (end == '\0' ? 0 : 1) + strlen(name);
 }
 
 #define UCACHE_LEN 20
@@ -199,6 +199,8 @@ void print_entries_long(struct lsfile **ents, int entc, long flags) {
       }
     }
 
+    printf("%7lu ", ent->st.st_ino);
+
     fputs(" ", stdout);
     print_filename(ent->name, m);
     fputs("\n", stdout);
@@ -208,7 +210,7 @@ static inline int max(int a, int b) { return (a > b) ? a : b; }
 
 void print_entry(struct lsfile *ent, int colwidth) {
   int n = print_filename(ent->name, ent->st.st_mode);
-  for (int rem = colwidth - n; rem > 0; rem--) {
+  for (int rem = colwidth - n; rem >= 0; rem--) {
     fputs(" ", stdout);
   }
 }
@@ -217,7 +219,7 @@ void print_entries(struct lsfile **ents, int entc, long flags) {
   /* Determine the gridding dimensions */
   int ent_max_len = 0;
   for (int i = 0; i < entc; i++) {
-    ent_max_len = max(ent_max_len, (int)strlen(ents[i]->name));
+    ent_max_len = max(ent_max_len, (int)strlen(ents[i]->name) + 2);
   }
 
   int col_ext = ent_max_len + 2;
@@ -230,7 +232,7 @@ void print_entries(struct lsfile **ents, int entc, long flags) {
     /* Columns */
     print_entry(ents[i++], ent_max_len);
     for (int j = 0; (i < entc) && (j < (cols - 1)); j++) {
-      fputs("  ", stdout);
+      printf("  ");
       print_entry(ents[i++], ent_max_len);
     }
 

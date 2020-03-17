@@ -304,9 +304,14 @@ fs::file_operations ext2_file_ops{
     .destroy = ext2_destroy_priv,
 };
 
-static int ext2_create(fs::inode &, const char *name,
+static int ext2_create(fs::inode &node, const char *name,
                        struct fs::file_ownership &) {
-  UNIMPL();
+
+  auto efs = (fs::ext2 *)node.fs;
+
+  int ino = efs->allocate_inode();
+  printk("ino=%d\n", ino);
+
   return -ENOTIMPL;
 }
 

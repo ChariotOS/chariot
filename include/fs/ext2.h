@@ -133,6 +133,8 @@ class ext2 final : public filesystem {
   // update the disk copy of the superblock
   int write_superblock(void);
 
+  long allocate_inode(void);
+
   struct [[gnu::packed]] superblock {
     uint32_t inodes;
     uint32_t blocks;
@@ -208,10 +210,14 @@ class ext2 final : public filesystem {
     u32 s_reserved[162]; /* Padding to the end of the block */
   };
 
+
   superblock *sb = nullptr;
 
   // how many bytes a block is made up of
   u32 blocksize = 0;
+
+  // lock the block groups
+  spinlock bglock;
 
   // how many blockgroups are in the filesystem
   u32 blockgroups = 0;

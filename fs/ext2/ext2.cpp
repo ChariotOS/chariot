@@ -16,7 +16,9 @@
 
 // #define EXT2_DEBUG
 // #define EXT2_TRACE
+
 #define USE_CACHE
+#define EXT2_CACHE_SIZE 128
 
 #ifdef EXT2_DEBUG
 #define INFO(fmt, args...) printk("[EXT2] " fmt, ##args)
@@ -34,9 +36,9 @@ extern fs::file_operations ext2_file_ops;
 extern fs::dir_operations ext2_dir_ops;
 
 struct [[gnu::packed]] block_group_desc {
-  uint32_t block_of_block_usage_bitmap;
-  uint32_t block_of_inode_usage_bitmap;
-  uint32_t block_of_inode_table;
+  uint32_t block_bitmap;
+  uint32_t inode_bitmap;
+  uint32_t inode_table;
   uint16_t num_of_unalloc_block;
   uint16_t num_of_unalloc_inode;
   uint16_t num_of_dirs;
@@ -52,9 +54,9 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-#define EXT2_CACHE_SIZE 128
-
-fs::ext2::ext2(ref<fs::file> disk) : filesystem(/*super*/), disk(disk) { TRACE; }
+fs::ext2::ext2(ref<fs::file> disk) : filesystem(/*super*/), disk(disk) {
+  TRACE;
+}
 
 fs::ext2::~ext2(void) {
   TRACE;
@@ -102,8 +104,8 @@ bool fs::ext2::init(void) {
     disk_cache[i].buffer = NULL;
   }
 #endif
-  sb->last_check = dev::RTC::now();
 
+  sb->last_mount = dev::RTC::now();
   // solve for the filesystems block size
   blocksize = 1024 << sb->blocksize_hint;
 
@@ -111,7 +113,7 @@ bool fs::ext2::init(void) {
   // blocks/blocks_per_group
   blockgroups = ceil((double)sb->blocks / (double)sb->blocks_in_blockgroup);
 
-  first_bgd = sb->superblock_id + (sizeof(fs::ext2::superblock) / blocksize);
+  first_bgd = blocksize == 1024 ? 2 : 1;
 
   // allocate a block for the work_buf
   work_buf = kmalloc(blocksize);
@@ -125,13 +127,17 @@ bool fs::ext2::init(void) {
     return false;
   }
 
+  /*
   auto uuid = sb->s_uuid;
-
   u16 *u_shrts = (u16 *)(uuid + sizeof(u32));
-
   u64 trail = 0xFFFFFFFFFFFF & *(u64 *)(uuid + sizeof(u32) + 3 * sizeof(u16));
   KINFO("ext2 uuid: %08x-%04x-%04x-%04x-%012x\n", *(u32 *)uuid, u_shrts[0],
         u_shrts[1], u_shrts[2], trail);
+  printk("blocksize = %u\n", blocksize);
+  printk("blks in group = %u\n", sb->blocks_in_blockgroup);
+  printk("total inodes = %u\n", sb->inodes);
+  printk("total blocks = %u\n", sb->blocks);
+  */
 
   return true;
 }
@@ -153,10 +159,9 @@ bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {
 
   // find the index and seek to the inode
   u32 index = (inode - 1) % sb->inodes_in_blockgroup;
-
   u32 block = (index * sb->s_inode_size) / blocksize;
 
-  read_block(bgd->block_of_inode_table + block, inode_buf);
+  read_block(bgd->inode_table + block, inode_buf);
 
   auto *_inode =
       (ext2_inode_info *)inode_buf + (index % (blocksize / sb->s_inode_size));
@@ -180,7 +185,7 @@ bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
   u32 block = (index * sb->s_inode_size) / blocksize;
 
   // read the inode buffer
-  read_block(bgd->block_of_inode_table + block, inode_buf);
+  read_block(bgd->inode_table + block, inode_buf);
 
   // modify it...
   auto *_inode =
@@ -188,17 +193,77 @@ bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
   memcpy(_inode, &src, sizeof(ext2_inode_info));
 
   // and write the block back
-  write_block(bgd->block_of_inode_table + block, inode_buf);
+  write_block(bgd->inode_table + block, inode_buf);
   return true;
+}
+
+#define BLOCKBIT(buf, n) (buf[((n) >> 3)] & (1 << (((n) % 8))))
+long fs::ext2::allocate_inode(void) {
+  scoped_lock l(bglock);
+  int bgs = blockgroups;
+  // TODO: we only support 32 block groups
+  if (bgs > 32) bgs = 32;
+  bool flush_changes = false;
+  int res = -1;
+
+  // now that we have which BGF the inode is in, load that desc
+  read_block(first_bgd, work_buf);
+
+  // space for the bitmap (a little wasteful with memory, but fast)
+  //    (allocates a full page)
+  auto vbitmap = phys::kalloc(1);
+
+  int nfree = 0;
+
+  for (int i = 0; i < bgs; i++) {
+    auto *bgd = (block_group_desc *)work_buf + i;
+    /*
+    printk("ib:%08x bb:%08x   ic:%4d bc:%4d\n", bgd->inode_bitmap,
+           bgd->block_bitmap, bgd->num_of_unalloc_inode,
+           bgd->num_of_unalloc_block);
+           */
+
+    if (res == -1 && bgd->num_of_unalloc_inode > 0) {
+      read_block(bgd->inode_bitmap, vbitmap);
+      auto bitmap = (char *)vbitmap;
+
+      int j = 0;
+      for (; j < sb->inodes_in_blockgroup && BLOCKBIT(bitmap, j); j++) {
+      }
+      // evaluate to the actual inode number
+      res = j + i * sb->inodes_in_blockgroup + 1;
+      bitmap[j / 8] |= static_cast<u8>((1u << (j % 8)));
+      write_block(bgd->inode_bitmap, vbitmap);
+      sb->unallocatedinodes--;
+      bgd->num_of_unalloc_inode--;
+      flush_changes = true;
+    }
+
+    nfree += bgd->num_of_unalloc_inode;
+  }
+
+  printk("free inodes now: %d\n", sb->unallocatedinodes);
+
+  if (flush_changes) {
+    write_block(first_bgd, work_buf);
+    write_superblock();
+  }
+
+  phys::kfree(vbitmap, 1);
+
+  return res;
 }
 
 /* does not take a cache lock! */
 struct fs::ext2_block_cache_line *fs::ext2::get_cache_line(int cba) {
   int oldest = -1;
   unsigned int oldest_age = 4294967295UL;
+
   for (int i = 0; i < cache_size; i++) {
-    // printk("%2d: lu:%d, blk:%d\n", i, disk_cache[i].last_used,
-    // disk_cache[i].blkno);
+    /*
+    printk("%2d: lu:%d, blk:%d\n", i, disk_cache[i].last_used,
+           disk_cache[i].cba);
+           */
     if (disk_cache[i].cba == cba) {
       return &disk_cache[i];
     }
@@ -223,6 +288,12 @@ bool fs::ext2::read_block(u32 block, void *buf) {
   scoped_lock l(cache_lock);
   int cba = block >> 2;
   int cbo = block & 0x3;
+
+  if (blocksize == PGSIZE) {
+    cba = block;
+    cbo = 0;
+  }
+
   auto cl = get_cache_line(cba);
 
   if (cl->dirty && cl->cba != cba) {
@@ -245,26 +316,28 @@ bool fs::ext2::read_block(u32 block, void *buf) {
 
   disk->seek(cl->cba * PGSIZE, SEEK_SET);
   bool valid = disk->read(cl->buffer, PGSIZE);
-
   memcpy(buf, cl->buffer + (blocksize * cbo), blocksize);
   return valid;
 
 #else
 
-  disk.seek(block * blocksize, SEEK_SET);
-  return disk.read(buf, blocksize);
+  disk->seek(block * blocksize, SEEK_SET);
+  return disk->read(buf, blocksize);
 
 #endif
 }
 
 bool fs::ext2::write_block(u32 block, const void *buf) {
-
-
 #ifdef USE_CACHE
   // I am not sure if this write code is correct
   scoped_lock l(cache_lock);
   int cba = block >> 2;
   int cbo = block & 0x3;
+  if (blocksize == PGSIZE) {
+    cba = block;
+    cbo = 0;
+  }
+
   auto cl = get_cache_line(cba);
 
   if (cl->dirty && cl->cba != cba) {
@@ -277,21 +350,28 @@ bool fs::ext2::write_block(u32 block, const void *buf) {
   if (cl->cba == cba) {
     cl->last_used = cache_time++;
     memcpy(cl->buffer + (cbo * blocksize), buf, blocksize);
-    return true;
+
+    disk->seek(block * blocksize, SEEK_SET);
+    return disk->write((void *)buf, blocksize);
   }
 
   cl->cba = cba;
   cl->last_used = cache_time++;
   cl->dirty = 1;
-  disk->seek(cl->cba * PGSIZE, SEEK_SET);
+  disk->seek(cba * PGSIZE, SEEK_SET);
   bool valid = disk->read(cl->buffer, PGSIZE);
   memcpy(cl->buffer + (cbo * blocksize), buf, blocksize);
+
+  if (valid) {
+    disk->seek(block * blocksize, SEEK_SET);
+    return disk->write((void *)buf, blocksize);
+  }
   return valid;
 
 #else
 
   disk->seek(block * blocksize, SEEK_SET);
-  return disk->read((void*)buf, blocksize);
+  return disk->write((void *)buf, blocksize);
 
 #endif
 }
@@ -440,6 +520,38 @@ static unique_ptr<fs::filesystem> ext2_mounter(ref<dev::device>, int flags) {
   return nullptr;
 }
 
-static void ext2_init(void) { vfs::register_filesystem("ext2", ext2_mounter); }
+
+
+
+
+int ext2_sb_init(struct fs::superblock &sb) {
+
+  return -ENOTIMPL;
+}
+
+
+int ext2_write_super(struct fs::superblock &sb) {
+  return -ENOTIMPL;
+}
+
+int ext2_sync(struct fs::superblock &sb, int flags) {
+  return -ENOTIMPL;
+}
+
+struct fs::sb_operations ext2_ops {
+  .init = ext2_sb_init,
+  .write_super = ext2_write_super,
+  .sync = ext2_sync,
+};
+
+struct fs::sb_information ext2_info {
+  .name = "ext2",
+  .ops = ext2_ops,
+};
+
+static void ext2_init(void) {
+  auto s = ext2_ops.sync;
+  vfs::register_filesystem("ext2", ext2_mounter);
+}
 
 module_init("fs::ext2", ext2_init);

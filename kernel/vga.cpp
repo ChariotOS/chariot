@@ -35,7 +35,7 @@
 #define LINES 25
 #define NPAR 16
 
-static unsigned short *origin = (unsigned short *)VGA_BASE_ADDR;
+static unsigned short *origin = (unsigned short *)p2v(VGA_BASE_ADDR);
 static unsigned long pos = 0;
 static unsigned long x = 0, y = 0;
 static unsigned long bottom = LINES;
@@ -124,7 +124,7 @@ static void csi_J(int par) {
       return;
   }
 
-  for (int i = start; i < start + count; i++) write(i, 0x7020);
+  for (int i = start; i < start + count; i++) write(i, 0x0720);
 }
 
 static void csi_K(int par) {
@@ -149,7 +149,21 @@ static void csi_K(int par) {
       return;
   }
 
-  for (int i = start; i < start + count; i++) write(i, 0x7020);
+  for (int i = start; i < start + count; i++) write(i, 0x0720);
+}
+
+static int saved_x = 0;
+static int saved_y = 0;
+
+static void save_cur(void) {
+  saved_x = x;
+  saved_y = y;
+}
+
+static void restore_cur(void) {
+  x = saved_x;
+  y = saved_y;
+  pos = y * columns + x;
 }
 
 void csi_m(void) {
@@ -166,22 +180,26 @@ void csi_m(void) {
     } else if (p >= 40 && p <= 47) {
       attr = (attr & 0xF0) | (((p - 40) & 0xF));
       continue;
+
+    } else if (p >= 90 && p <= 97) {
+      // attr = (attr & 0xF0) | (((p - 90) & 0xF));
+      continue;
     } else {
       switch (par[i]) {
         case 0:
-          attr = 0x07;
+          // attr = 0x07;
           break;
         case 1:
-          attr = 0x0f;
+          // attr = 0x0f;
           break;
         case 4:
-          attr = 0x0f;
+          // attr = 0x0f;
           break;
         case 7:
-          attr = 0x70;
+          // attr = 0x70;
           break;
         case 27:
-          attr = 0x07;
+          // attr = 0x07;
           break;
       }
     }
@@ -242,9 +260,9 @@ void vga::putchar(char c) {
       } else if (c == 'Z') {
         // respond(tty);
       } else if (x == '7') {
-        // save_cur();
+        save_cur();
       } else if (x == '8') {
-        // restore_cur();
+        restore_cur();
       }
       break;
     case 2:

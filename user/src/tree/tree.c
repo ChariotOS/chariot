@@ -65,6 +65,7 @@ int print_filesize(long s) {
   }
 }
 
+
 static int display_info(const char *fpath, const struct stat *sb, int tflag,
                         struct FTW *ftwbuf) {
   const char *name = fpath + ftwbuf->base;

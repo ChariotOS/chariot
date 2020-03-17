@@ -84,16 +84,16 @@ void hexdump(off_t off, void *vbuf, long len) {
     printf("%p: ", (void *)(off + i));
     for (int c = 0; c < w; c++) {
       if (i + c >= len) {
-        printf("   ");
+	printf("   ");
       } else {
-        printf("%02x ", line[c]);
+	printf("%02x ", line[c]);
       }
     }
     printf(" |");
     for (int c = 0; c < w; c++) {
       if (i + c >= len) {
       } else {
-        printf("%c", (line[c] < 0x20) || (line[c] > 0x7e) ? '.' : line[c]);
+	printf("%c", (line[c] < 0x20) || (line[c] > 0x7e) ? '.' : line[c]);
       }
     }
     printf("|\n");
@@ -106,12 +106,12 @@ int main(int argc, char **argv, char **envp) {
   while ((ch = getopt(argc, argv, flags)) != -1) {
     switch (ch) {
       case 'c':
-        return run_line(optarg);
-        break;
+	return run_line(optarg);
+	break;
 
       case '?':
-        puts("sh: invalid option\n");
-        return -1;
+	puts("sh: invalid option\n");
+	return -1;
     }
   }
 
@@ -138,7 +138,7 @@ int main(int argc, char **argv, char **envp) {
     if (n >= 0) {
       hostname[n] = 0;
       for (int i = n; i > 0; i--) {
-        if (hostname[i] == '\n') hostname[i] = 0;
+	if (hostname[i] == '\n') hostname[i] = 0;
       }
     }
 
@@ -149,8 +149,12 @@ int main(int argc, char **argv, char **envp) {
       disp_cwd = "~";
     }
 
-    snprintf(prompt, 64, "[%s@%s %s]%c ", uname, hostname, disp_cwd,
-             uid == 0 ? '#' : '$');
+    /*
+snprintf(prompt, 64, C_GRAY "[%s@%s %s]%c " C_RESET, uname, hostname, disp_cwd,
+ uid == 0 ? '#' : '$');
+				     */
+    snprintf(prompt, 64, "%s %c ", disp_cwd,
+	     uid == 0 ? '#' : '$');
 
     int len = 0;
 
@@ -277,72 +281,72 @@ char *read_line(int fd, char *prompt, int *len_out) {
     switch (state) {
       // default text-entry mode
       case 0:
-        if (c == 0x1b) {
-          state = 1;
-          break;
-        } else if (c == 0x7F /* DEL */) {
-          input_del(&in);
-        } else if (c >= ' ' && c <= '~') {
-          input_insert(c, &in);
-        } else {
-          // special input handling
-          handle_special(c, &in);
-        }
-        break;
+	if (c == 0x1b) {
+	  state = 1;
+	  break;
+	} else if (c == 0x7F /* DEL */) {
+	  input_del(&in);
+	} else if (c >= ' ' && c <= '~') {
+	  input_insert(c, &in);
+	} else {
+	  // special input handling
+	  handle_special(c, &in);
+	}
+	break;
 
       case 1:
-        state = 0;
-        if (c == '[') {
-          state = 2;
-        }
-        break;
+	state = 0;
+	if (c == '[') {
+	  state = 2;
+	}
+	break;
 
       case 2:
-        for (npar = 0; npar < NPAR; npar++) par[npar] = 0;
-        npar = 0;
-        state = 3;
-        if ((ques = (c == '?'))) {
-          break;
-        }
+	for (npar = 0; npar < NPAR; npar++) par[npar] = 0;
+	npar = 0;
+	state = 3;
+	if ((ques = (c == '?'))) {
+	  break;
+	}
 
-        /* parse out decimal arguments */
+	/* parse out decimal arguments */
       case 3:
-        if (c == ';' && npar < NPAR - 1) {
-          npar++;
-          break;
-        } else if (c >= '0' && c <= '9') {
-          par[npar] = 10 * par[npar] + c - '0';
-          break;
-        } else
-          state = 4;
+	if (c == ';' && npar < NPAR - 1) {
+	  npar++;
+	  break;
+	} else if (c >= '0' && c <= '9') {
+	  par[npar] = 10 * par[npar] + c - '0';
+	  break;
+	} else
+	  state = 4;
       /* run ansi codes */
       case 4:
-        state = 0;
-        switch (c) {
-          case 'D':
-            if (in.ind > 0) in.ind--;
-            break;
-          case 'C':
-            if (in.ind < in.len) in.ind++;
-            break;
-          case '~':
-            if (in.ind < in.len) {
-              in.ind++;
-              input_del(&in);
-            }
-            // right delete
-            break;
+	state = 0;
+	switch (c) {
+	  case 'D':
+	    if (in.ind > 0) in.ind--;
+	    break;
+	  case 'C':
+	    if (in.ind < in.len) in.ind++;
+	    break;
+	  case '~':
+	    if (in.ind < in.len) {
+	      in.ind++;
+	      input_del(&in);
+	    }
+	    // right delete
+	    break;
 
-          default:
-            fprintf(stderr, "unknown ansi escp: \\x1b[");
-            for (int i = 0; i < npar; i++) {
-              fprintf(stderr, "%lu\n", par[i]);
-              if (i != npar - 1) fprintf(stderr, ";");
-            }
-            fprintf(stderr, "%c\n", c);
-            break;
-        }
-        break;
+	  default:
+	    fprintf(stderr, "unknown ansi escp: \\x1b[");
+	    for (int i = 0; i < npar; i++) {
+	      fprintf(stderr, "%lu\n", par[i]);
+	      if (i != npar - 1) fprintf(stderr, ";");
+	    }
+	    fprintf(stderr, "%c\n", c);
+	    break;
+	}
+	break;
     }
   }
   in.buf[in.len] = '\0';  // null terminate
@@ -354,12 +358,12 @@ char *read_line(int fd, char *prompt, int *len_out) {
 
 int parseline(const char *cmdline, char **argv) {
   char *buf = malloc(strlen(cmdline) + 1); /* ptr that traverses command line */
-  char *delim;                             /* points to first space delimiter */
-  int argc;                                /* number of args */
-  int bg;                                  /* background job? */
+  char *delim;				   /* points to first space delimiter */
+  int argc;				   /* number of args */
+  int bg;				   /* background job? */
 
   strcpy(buf, cmdline);
-  buf[strlen(buf)] = ' ';       /* replace trailing '\n' with space */
+  buf[strlen(buf)] = ' ';	/* replace trailing '\n' with space */
   while (*buf && (*buf == ' ')) /* ignore leading spaces */
     buf++;
 

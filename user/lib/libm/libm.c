@@ -26,8 +26,28 @@ double floor(double a) { return 0; }
 float floorf(float a) { return 0; }
 double round(double a) { return 0; }
 float roundf(float a) { return 0; }
-double fabs(double a) { return 0; }
-float fabsf(float a) { return 0; }
+
+int abs(int a) {
+
+  if (a < 0) {
+    return -a;
+  }
+  return a;
+}
+
+
+double fabs(double a) {
+  if (a < 0) {
+    return -a;
+  }
+  return a;
+}
+float fabsf(float a) {
+  if (a < 0) {
+    return -a;
+  }
+  return a;
+}
 double fmod(double a, double b) { return 0; }
 float fmodf(float a, float b) { return 0; }
 double exp(double a) { return 0; }

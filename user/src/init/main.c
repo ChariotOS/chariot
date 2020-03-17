@@ -88,11 +88,18 @@ int main(int argc, char **argv) {
 
     while (!feof(loadorder)) {
       if (fgets(buf, 255, loadorder) != NULL) {
+
+        for (int i = strlen(buf); i >= 0; i--) {
+          if (buf[i] == '\n') {
+            buf[i] = '\0';
+            break;
+          }
+        }
+        buf[strlen(buf)] = 0;
         ini_t *i = ini_load(buf);
 
-        printf("[cfg] %s", buf);
-
         if (i) {
+          printf("[cfg] %s\n", buf);
           printf("name=%s\n", ini_get(i, "service", "name"));
 
           ini_free(i);

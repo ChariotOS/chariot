@@ -4,6 +4,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdint.h>
 
 extern char **environ;
 
@@ -217,4 +218,18 @@ char *path_join(char *a, char *b) {
   memcpy(dst + (z - a) + (z > a), b, k + 1);
 
   return dst;
+}
+
+
+static uint64_t seed;
+
+void srand(unsigned s)
+{
+	seed = s-1;
+}
+
+int rand(void)
+{
+	seed = 6364136223846793005ULL*seed + 1;
+	return seed>>33;
 }

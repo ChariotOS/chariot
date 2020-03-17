@@ -37,13 +37,15 @@ static void set_color_for(char c) {
 
 #define HEX_META
 
+static bool use_binary = false;
+
 void hexdump(void *vbuf, size_t len, bool use_colors) {
 #ifndef HEX_META
   use_colors = false;
 #endif
 
   unsigned char *buf = (unsigned char *)vbuf;
-  int w = 16;
+  int w = use_binary ? 8 : 16;
 
   for (int i = 0; i < len; i += w) {
     unsigned char *line = buf + i;
@@ -66,7 +68,14 @@ void hexdump(void *vbuf, size_t len, bool use_colors) {
         printk("   ");
       } else {
         if (use_colors) set_color_for(line[c]);
-        printk("%02x ", line[c]);
+        if (use_binary) {
+          for (int j = 7; j >= 0; j--) {
+            printk("%u", (line[c] >> j) & 1);
+          }
+          printk(" ");
+        } else {
+          printk("%02x ", line[c]);
+        }
       }
     }
 
@@ -83,6 +92,7 @@ void hexdump(void *vbuf, size_t len, bool use_colors) {
           printk(" ");
         } else {
           set_color_for(line[c]);
+
           printk("%c", (line[c] < 0x20) || (line[c] > 0x7e) ? '.' : line[c]);
         }
       }

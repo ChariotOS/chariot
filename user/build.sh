@@ -11,6 +11,8 @@ build () {
 build lib/libc
 build lib/libm
 
+# build lib/liblua
+
 for i in src/*
 do
 	build ${i}

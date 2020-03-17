@@ -52,6 +52,7 @@ double floor(double);
 float floorf(float);
 double round(double);
 float roundf(float);
+int abs(int);
 double fabs(double);
 float fabsf(float);
 double fmod(double, double);

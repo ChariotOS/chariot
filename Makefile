@@ -26,7 +26,7 @@ AOBJECTS:=$(ASOURCES:%.asm=build/%.asm.o)
 
 PFX:="\\x1b[32m[K]\\x1b[0m"
 
-KERNEL=build/vmchariot
+KERNEL=build/chariot.elf
 ISO=build/kernel.iso
 SYMS=build/kernel.syms
 ROOTFS=build/root.img
@@ -77,7 +77,7 @@ fs:
 $(ISO): $(KERNEL) grub.cfg
 	mkdir -p build/iso/boot/grub
 	cp ./grub.cfg build/iso/boot/grub
-	cp build/vmchariot build/iso/boot
+	cp build/chariot.elf build/iso/boot
 	cp build/kernel.syms build/iso/boot
 	$(GRUB) -o $(ISO) build/iso
 

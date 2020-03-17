@@ -21,7 +21,7 @@ static FILE _stdin = {
     .fd = 0,
 };
 
-static char _stdout_buffer[512];
+static char _stdout_buffer[BUFSIZ];
 
 static FILE _stdout = {
     .close = NULL,
@@ -37,7 +37,7 @@ static FILE _stdout = {
     .buffer = _stdout_buffer,
 };
 
-static char _stderr_buffer[512];
+static char _stderr_buffer[BUFSIZ];
 static FILE _stderr = {
     .close = NULL,
     .write = _stdio_write,
@@ -281,9 +281,14 @@ int fgetc(FILE *stream) {
 
 int feof(FILE *stream) { return stream->eof; }
 
+int ferror(FILE *s) { return 0; }
+void clearerr(FILE *s) {}
+
 int getc(FILE *stream) __attribute__((weak, alias("fgetc")));
 
 int getchar(void) { return fgetc(stdin); }
+
+int ungetc(int c, FILE *stream) { return EOF; }
 
 char *fgets(char *s, int size, FILE *stream) {
   int c;
@@ -335,23 +340,33 @@ int remove(const char *pathname) { return -1; }
 
 void perror(const char *msg) {
   // store errno in case something else in this function fiddles with it
-
   int e = errno;
 
-  fwrite(msg, strlen(msg), 1, stderr);
-  fputc(':', stderr);
-  fputc(' ', stderr);
-
-  switch (e) {
-#define E(a, b)       \
-  case a:             \
-    fputs(b, stderr); \
-    break;
-#include "__strerror.h"
-
-    default:
-      fprintf(stderr, "No error information. (errno=%d)", e);
-      break;
-  }
-  fputc('\n', stderr);
+  printf("%s: %s\n", msg, strerror(e));
 }
+
+void setbuf(FILE *stream, char *buf) {
+  setvbuf(stream, buf, buf ? _IOFBF : _IONBF, BUFSIZ);
+}
+void setbuffer(FILE *stream, char *buf, size_t size) {}
+void setlinebuf(FILE *stream) {}
+
+int setvbuf(FILE *restrict f, char *restrict buf, int type, size_t size) {
+  // f->lbf = EOF;
+
+  if (type == _IONBF) {
+    f->buf_cap = 0;
+  } else {
+    if (buf && size >= UNGET) {
+      f->buffer = (void *)(buf + UNGET);
+      f->buf_cap = size - UNGET;
+    }
+    // if (type == _IOLBF && f->buf_cap) f->lbf = '\n';
+  }
+
+  f->flags |= F_SVB;
+
+  return 0;
+}
+
+FILE *tmpfile(void) { return NULL; }

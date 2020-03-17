@@ -39,7 +39,21 @@ static inline u32 get_pci_addr(u8 bus, u8 slot, u8 func, u8 off) {
   u32 lbus = (uint32_t)bus;
   u32 lslot = (uint32_t)slot;
   u32 lfun = (uint32_t)func;
-  return 0x80000000u | (lbus << 16u) | (lslot << 11u) | (lfun << 8u) | (off & 0xfc);
+  return 0x80000000u | (lbus << 16u) | (lslot << 11u) | (lfun << 8u) |
+         (off & 0xfc);
+}
+
+uint32_t pci_cfg_readl(uint8_t bus, uint8_t slot, uint8_t fun, uint8_t off) {
+  uint32_t addr;
+  uint32_t lbus = (uint32_t)bus;
+  uint32_t lslot = (uint32_t)slot;
+  uint32_t lfun = (uint32_t)fun;
+
+  addr = (lbus << PCI_BUS_SHIFT) | (lslot << PCI_SLOT_SHIFT) |
+         (lfun << PCI_FUN_SHIFT) | PCI_REG_MASK(off) | PCI_ENABLE_BIT;
+
+  outl(PCI_CFG_ADDR_PORT, addr);
+  return inl(PCI_CFG_DATA_PORT);
 }
 
 uint32_t pci::read(u8 bus, u8 slot, u8 func, u8 off) {
@@ -117,7 +131,6 @@ bool read_device_descriptor(pci::device *desc, u8 bus, u8 dev, u8 func) {
     return false;
   }
 
-
   desc->device_id = desc->read<u16>(PCI_DEVICE_ID);
 
   auto class_code = desc->read<u32>(0x08) >> 16;
@@ -161,35 +174,46 @@ static const char *pci_class_names[] = {
     [0x14] = "(Reserved)",
 };
 
-void pci::init(void) {
-  // enumerate PCI devices
-  for (int bus = 0; bus < 32; bus++) {
-    for (int dev = 0; dev < 32; dev++) {
-      int nfuncs = 8; /* TODO: only scan functions if there are some */
-      for (int func = 0; func < nfuncs; func++) {
-        pci::device *desc = &pci_devices[pci_device_count];
+static void scan_bus(int bus) {
+  for (int dev = 0; dev < 32; dev++) {
+    int nfuncs = 8; /* TODO: only scan functions if there are some */
 
-        if (!read_device_descriptor(desc, bus, dev, func)) continue;
+    for (int func = 0; func < nfuncs; func++) {
+      pci::device *desc = &pci_devices[pci_device_count];
 
+      if (!read_device_descriptor(desc, bus, dev, func)) continue;
 
-        const char *class_name = pci_class_names[desc->class_id];
-        if (desc->class_id > 0x14) class_name = "Unknown";
+      const char *class_name = pci_class_names[desc->class_id];
+      if (desc->class_id > 0x14) class_name = "Unknown";
 
-        KINFO("pci: %03x.%02x.%1x: %04x:%04x  class=%02x,%02x '%s'\n", bus, dev, func,
-              desc->vendor_id, desc->device_id, desc->class_id, desc->subclass_id, class_name);
+      KINFO("pci: %03x.%02x.%1x: %04x:%04x  class=%02x,%02x '%s'\n", bus, dev,
+            func, desc->vendor_id, desc->device_id, desc->class_id,
+            desc->subclass_id, class_name);
 
-        for (int barnum = 0; barnum < 6; barnum++) {
-          struct pci_bar bar = pci_get_bar(bus, dev, func, barnum);
-          if (bar.addr && (bar.type == bar_in_out)) {
-            desc->port_base = (u32)(u64)bar.addr;
-          }
+      for (int barnum = 0; barnum < 6; barnum++) {
+        struct pci_bar bar = pci_get_bar(bus, dev, func, barnum);
+        if (bar.addr && (bar.type == bar_in_out)) {
+          desc->port_base = (u32)(u64)bar.addr;
         }
-
-        pci_device_count++;
       }
+
+      pci_device_count++;
     }
   }
+}
 
+void pci::init(void) {
+  // enumerate PCI devices
+  auto header_type = (pci_cfg_readl(0, 0, 0, 0xc) >> 16) & 0xff;
+  if ((header_type & 0x80) == 0) {
+    /* Single PCI host controller */
+    printk("Single PCI host controller (quick scan)\n");
+    scan_bus(0);
+  } else {
+    printk("Multiple PCI host controllers (slower scan)\n");
+    /* Multiple PCI host controllers */
+    for (int bus = 0; bus < 32; bus++) scan_bus(bus);
+  }
   KINFO("discovered %d PCI devices.\n", pci_device_count);
 }
 
