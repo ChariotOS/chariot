@@ -92,7 +92,7 @@ fs::inode *net::sock::createi(int domain, int type, int protocol, int &err) {
   auto sk = net::sock::create(domain, type, protocol, err);
   if (err != 0) return nullptr;
 
-  auto ino = new fs::inode(T_SOCK);
+  auto ino = new fs::inode(T_SOCK, fs::DUMMY_SB);
   ino->fops = &socket_fops;
   ino->dops = NULL;
 

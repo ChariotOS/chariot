@@ -28,6 +28,7 @@ struct area;
 namespace fs {
 // fwd decl
 struct inode;
+struct blkdev;
 class file;
 
 using mode_t = u32;
@@ -52,6 +53,47 @@ class filesystem {
   filesystem();
 };
 
+
+
+
+struct block_operations {
+  int (*open)(fs::blkdev &, int mode);
+  int (*release)(fs::blkdev &);
+  // 0 on success, -ERRNO on fail
+  int (&rw_block)(fs::blkdev &, void *data, int block, bool write);
+  int (*ioctl)(fs::blkdev &, unsigned int, off_t) = NULL;
+};
+
+
+struct blkdev {
+  dev_t dev;
+  string name; // ex. hda or ata0
+
+  size_t block_count;
+  size_t block_size;
+
+  struct block_operations &ops;
+
+  long count = 0; // refcount
+  spinlock lock;
+
+  inline static void acquire(struct blkdev *d) {
+    d->lock.lock();
+    d->count++;
+    d->lock.unlock();
+  }
+  inline static void release(struct blkdev *d) {
+    d->lock.lock();
+    d->count--;
+    if (d->count == 0) {
+      printk("delete blkdev [%d,%d]\n", d->dev.major(), d->dev.minor());
+    }
+    d->lock.unlock();
+  }
+};
+
+
+
 struct superblock {
   //
   dev_t dev;
@@ -72,27 +114,30 @@ struct superblock {
   }
 
   inline static void get(struct superblock *s) {
-    s->lock.read_lock();
+    s->lock.write_lock();
     s->count++;
-    s->lock.read_unlock();
+    s->lock.write_unlock();
   }
 
   inline static void put(struct superblock *s) {
-    s->lock.read_lock();
+    s->lock.write_lock();
     s->count--;
     if (s->count == 0) {
       printk("s->count == 0 now. Must delete!\n");
     }
-    s->lock.read_unlock();
+    s->lock.write_unlock();
   }
 
  private:
   void *priv;
 };
 
+
+extern struct superblock DUMMY_SB;
+
 struct sb_operations {
   // initialize the superblock after it has been mounted. All of the
-	// arguments 
+  // arguments
   int (&init)(struct superblock &);
   int (&write_super)(struct superblock &);
   int (&sync)(struct superblock &, int flags);
@@ -103,14 +148,14 @@ struct sb_information {
 
   // mount and return the root inode, returning NULL on failure.
   struct inode *(*mount)(struct sb_information *, const char *args, int flags,
-			 const char *device);
+                         const char *device);
 
   struct sb_operations &ops;
 };
 
 // typically
 struct inode *bdev_mount(struct sb_information *info, const char *args,
-			 int flags);
+                         int flags);
 
 int mount(string path, filesystem &);
 
@@ -182,6 +227,10 @@ struct file_operations {
   void (*destroy)(fs::inode &);
 };
 
+
+// wrapper functions for block devices
+extern struct fs::file_operations block_file_ops;
+
 struct dir_operations {
   // create a file in the directory
   int (*create)(fs::inode &, const char *name, struct fs::file_ownership &);
@@ -193,44 +242,10 @@ struct dir_operations {
   struct fs::inode *(*lookup)(fs::inode &, const char *);
   // create a device node with a major and minor number
   int (*mknod)(fs::inode &, const char *name, struct fs::file_ownership &,
-	       int major, int minor);
+               int major, int minor);
 
   // walk through the directory, calling the callback per entry
   int (*walk)(fs::inode &, func<bool(const string &)>);
-};
-
-class file : public refcounted<file> {
- public:
-  // must construct file descriptors via these factory funcs
-  static ref<file> create(struct fs::inode *, string open_path,
-			  int flags = FDIR_READ | FDIR_WRITE);
-
-  /*
-   * seek - change the offset
-   * set the file position to the offset + whence if whence is not equal to
-   * either SEEK_SET, SEEK_CUR, or SEEK_END. (defaults to start)
-   */
-  off_t seek(off_t offset, int whence = SEEK_SET);
-  ssize_t read(void *, ssize_t);
-  ssize_t write(void *data, ssize_t);
-
-  int close();
-
-  inline off_t offset(void) { return m_offset; }
-
-  fs::file_operations *fops(void);
-
-  ~file(void);
-
- public:
-  file(struct fs::inode *, int flags);
-  inline file() : file(NULL, 0) {}
-
-  inline operator bool() { return ino != NULL; }
-
-  struct fs::inode *ino;
-  string path;
-  off_t m_offset = 0;
 };
 
 /**
@@ -245,8 +260,8 @@ struct inode {
    * fields
    */
   off_t size = 0;
-  short type = T_INVA;	// from T_[...] above
-  short mode = 0;	// file mode. ex: o755
+  short type = T_INVA;  // from T_[...] above
+  short mode = 0;       // file mode. ex: o755
 
   // the device that the file is located on
   struct {
@@ -270,6 +285,8 @@ struct inode {
   // the filesystem that this inode uses
   fs::filesystem *fs;
 
+  fs::superblock &sb;
+
   void *_priv;
 
   bool fixed = false;
@@ -292,6 +309,11 @@ struct inode {
 
     // T_SOCK
     struct net::sock *sk;
+
+
+    struct {
+      fs::blkdev *dev;
+    } blk;
   };
 
   /*
@@ -311,7 +333,7 @@ struct inode {
   // if the inode is a directory, set its name. NOP otherwise
   int set_name(const string &);
 
-  inode(int type);
+  inode(int type, fs::superblock &sb);
   virtual ~inode();
 
   int stat(struct stat *);
@@ -353,6 +375,49 @@ struct pipe : public fs::inode {
   virtual ssize_t do_read(file &, void *, size_t);
   virtual ssize_t do_write(file &, void *, size_t);
 };
+
+
+
+
+
+class file : public refcounted<file> {
+ public:
+  // must construct file descriptors via these factory funcs
+  static ref<file> create(struct fs::inode *, string open_path,
+                          int flags = FDIR_READ | FDIR_WRITE);
+
+  /*
+   * seek - change the offset
+   * set the file position to the offset + whence if whence is not equal to
+   * either SEEK_SET, SEEK_CUR, or SEEK_END. (defaults to start)
+   */
+  off_t seek(off_t offset, int whence = SEEK_SET);
+  ssize_t read(void *, ssize_t);
+  ssize_t write(void *data, ssize_t);
+
+  int close();
+
+  inline off_t offset(void) { return m_offset; }
+
+  fs::file_operations *fops(void);
+
+  ~file(void);
+
+ public:
+  file(struct fs::inode *, int flags);
+  inline file() : file(NULL, 0) {}
+
+  inline operator bool() { return ino != NULL; }
+
+  struct fs::inode *ino;
+  string path;
+  off_t m_offset = 0;
+};
+
+
+
+
+
 
 };  // namespace fs
 

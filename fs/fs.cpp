@@ -1,20 +1,25 @@
 #include <asm.h>
-#include <mem.h>
 #include <dev/driver.h>
 #include <errno.h>
 #include <fs.h>
+#include <mem.h>
 #include <module.h>
 #include <printk.h>
+
+
+// TODO: remove
+struct fs::superblock fs::DUMMY_SB;
 
 using namespace fs;
 
 #define for_in_ll(it, ll) for (auto *it = ll; it != nullptr; it = it->next)
 
-fs::inode::inode(int type) : type(type) {
+fs::inode::inode(int type, fs::superblock &sb) : type(type), sb(sb) {
+	fs::superblock::get(&sb);
   switch (type) {
     case T_DIR:
       // zero out the directory specific info
-      dir.mountpoint = nullptr;  // where the directory is mounted to
+      dir.mountpoint = nullptr;	 // where the directory is mounted to
       dir.entries = nullptr;
       dir.name = nullptr;
       break;
@@ -36,7 +41,7 @@ static void destruct_dir(struct inode *ino) {
   assert(ino->type == T_DIR);
 
   if (ino->dir.name) {
-    kfree((void*)ino->dir.name);
+    kfree((void *)ino->dir.name);
     ino->dir.name = NULL;
   }
 
@@ -71,6 +76,8 @@ fs::inode::~inode() {
       // printk("unhandled inode destructor: %d\n", type);
       break;
   }
+
+	fs::superblock::put(&sb);
 }
 
 struct inode *fs::inode::get_direntry_ino(struct direntry *ent) {
@@ -90,7 +97,7 @@ struct inode *fs::inode::get_direntry_ino(struct direntry *ent) {
     panic("dir_ops null in get_direntry_ino despite being a directory\n");
   if (dops->lookup == NULL)
     panic(
-        "dir_ops->lookup null in get_direntry_ino despite being a directory\n");
+	"dir_ops->lookup null in get_direntry_ino despite being a directory\n");
 
   // otherwise attempt to resolve that entry
   ent->ino = dops->lookup(*this, ent->name.get());
@@ -168,10 +175,10 @@ int fs::inode::remove_direntry(string name) {
   for_in_ll(ent, dir.entries) {
     if (ent->name == name) {
       if (ent->type == ENT_RES) {
-        // check with the filesystem implementation
-        if (ent->ino->dops->unlink(*ent->ino, ent->name.get()) != 0) {
-          return -1;
-        }
+	// check with the filesystem implementation
+	if (ent->ino->dops->unlink(*ent->ino, ent->name.get()) != 0) {
+	  return -1;
+	}
       }
       if (ent->prev != NULL) ent->prev->next = ent->next;
       if (ent->next != NULL) ent->next->prev = ent->prev;
@@ -189,7 +196,6 @@ int fs::inode::remove_direntry(string name) {
   lock.unlock();
   return -ENOENT;
 }
-
 
 int fs::inode::set_name(const string &s) {
   if (type != T_DIR) {

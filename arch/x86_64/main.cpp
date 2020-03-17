@@ -114,6 +114,8 @@ int kernel_init(void *) {
   assert(rootdev);
   init_rootvfs(rootdev);
 
+  vfs::mount("/dev/ata0p1", "/", "ext2", 0, "");
+
   // setup stdio stuff for the kernel (to be inherited by spawn)
   int fd = sys::open("/dev/console", O_RDWR);
   assert(fd == 0);

@@ -3,7 +3,7 @@
 
 using namespace fs;
 
-fs::pipe::pipe() : fs::inode(T_FIFO) {}
+fs::pipe::pipe() : fs::inode(T_FIFO, fs::DUMMY_SB) {}
 
 fs::pipe::~pipe(void) {}
 

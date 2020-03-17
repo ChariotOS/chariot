@@ -1,7 +1,7 @@
 #pragma once
 
-#include <fs.h>
 #include <dev/device.h>
+#include <fs.h>
 #include <ptr.h>
 #include <string.h>
 
@@ -13,8 +13,10 @@
 
 class vfs {
  public:
-  // mount a filesystem into a host vnode
-  static int mount(unique_ptr<fs::filesystem>, string path);
+  static int mount(fs::blkdev *source, const char *targ, const char *type,
+		   unsigned long flags, const char *options);
+  static int mount(const char *source, const char *targ, const char *type,
+		   unsigned long /* TODO */ flags, const char *options);
 
   static int mount_root(unique_ptr<fs::filesystem>);
 
@@ -31,7 +33,7 @@ class vfs {
    * passed.
    */
   static int namei(const char *path, int flags, int mode, struct fs::inode *cwd,
-                   struct fs::inode *&res);
+		   struct fs::inode *&res);
 
   /*
    * cwd()
@@ -53,7 +55,6 @@ class vfs {
   static int mount(ref<dev::device>, string fs_name, string path);
 
   static fs::file fdopen(string path, int opts = 0, int mode = 0000);
-
 
   static int getcwd(fs::inode &, string &dst);
 

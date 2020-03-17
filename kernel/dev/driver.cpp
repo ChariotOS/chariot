@@ -130,7 +130,7 @@ ref<fs::file> dev::open(major_t maj, minor_t min, int &errcode) {
 
     auto d = device_drivers[maj];
 
-    auto ino = new fs::inode(d.type == BLOCK_DRIVER ? T_BLK : T_CHAR);
+    auto ino = new fs::inode(d.type == BLOCK_DRIVER ? T_BLK : T_CHAR, fs::DUMMY_SB);
     // for (int i = 0; i < 100; i++) fs::inode::acquire(ino);
     ino->major = maj;
     ino->minor = min;

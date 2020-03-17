@@ -419,7 +419,7 @@ static vec<ref<dev::blk_dev>> m_disks;
 
 static void add_drive(const string& name, ref<dev::blk_dev> drive) {
   KINFO("Detected ATA drive '%s' (%d,%d) %zu bytes\n", name.get(), MAJOR_ATA,
-        m_disks.size(), drive->size());
+	m_disks.size(), drive->size());
   dev::register_name(name, MAJOR_ATA, m_disks.size());
   m_disks.push(drive);
 }
@@ -437,8 +437,8 @@ static void query_and_add_drive(u16 addr, int id, bool master) {
     // now detect all the mbr partitions
     if (dev::mbr mbr(*drive); mbr.parse()) {
       for (int i = 0; i < mbr.part_count(); i++) {
-        auto pname = string::format("%sp%d", name.get(), i + 1);
-        add_drive(pname, mbr.partition(i));
+	auto pname = string::format("%sp%d", name.get(), i + 1);
+	add_drive(pname, mbr.partition(i));
       }
     }
   }
@@ -488,6 +488,25 @@ static ssize_t ata_write(fs::file& fd, const char* buf, size_t sz) {
 struct fs::file_operations ata_ops = {
     .read = ata_read,
     .write = ata_write,
+};
+
+
+
+static int ata_rw_block(fs::blkdev& b, void* data, int block, bool write) {
+  auto d = get_disk(b.dev.minor());
+  if (d == NULL) return -1;
+
+  bool success = false;
+  if (write) {
+    success = d->write_block(block, (const u8*)data);
+  } else {
+    success = d->read_block(block, (u8*)data);
+  }
+  return success ? 0 : -1;
+}
+
+struct fs::block_operations ata_blk_ops = {
+	.rw_block = ata_rw_block,
 };
 
 static void ata_init(void) {

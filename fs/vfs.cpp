@@ -37,13 +37,6 @@ int vfs::mount_root(unique_ptr<fs::filesystem> fs) {
   return 0;
 }
 
-int vfs::mount(ref<dev::device>, string fs_name, string path) {
-  // special case for mounting the root
-  if (path == "/") {
-    printk("mounting root!\n");
-  }
-  return -ENOTIMPL;
-}
 
 vfs::vfs() { panic("DO NOT CONSTRUCT A VFS INSTANCE\n"); }
 
@@ -63,7 +56,15 @@ struct fs::inode *vfs::get_root(void) {
   return vfs_root;
 }
 
-int vfs::mount(unique_ptr<fs::filesystem> fs, string host) { return -1; }
+
+
+int vfs::mount(fs::blkdev *bdev, const char *targ, const char *type, unsigned long flags, const char *options) {
+	return -ENOTIMPL;
+}
+
+int vfs::mount(const char *src, const char *targ, const char *type, unsigned long flags, const char *options) {
+	return -ENOTIMPL;
+}
 
 struct fs::inode *vfs::open(string spath, int opts, int mode) {
   struct fs::inode *ino = NULL;

@@ -24,7 +24,20 @@
 extern char **environ;
 
 #define MAX_ARGS 255
-char *read_line(int fd, char *prompt, int *len_out);
+
+struct readline_history_entry {
+  char *value;
+
+  // this is represented as a singly linked list, so it's not super fast to walk
+  // backwards (down arrow)
+  struct readline_history_entry *next;
+};
+
+struct readline_context {
+  struct readline_history_entry *history;
+};
+
+char *read_line(int fd, char *prompt, int *len_out, struct readline_context *);
 int parseline(const char *, char **argv);
 
 int run_line(const char *line) {
@@ -120,6 +133,9 @@ int main(int argc, char **argv, char **envp) {
   char *cwd[255];
   char hostname[50];
 
+  struct readline_context rl_ctx;
+  rl_ctx.history = NULL;
+
   while (1) {
     uid_t uid = getuid();
     struct passwd *pwd = getpwuid(uid);
@@ -153,12 +169,11 @@ int main(int argc, char **argv, char **envp) {
 snprintf(prompt, 64, C_GRAY "[%s@%s %s]%c " C_RESET, uname, hostname, disp_cwd,
  uid == 0 ? '#' : '$');
 				     */
-    snprintf(prompt, 64, "%s %c ", disp_cwd,
-	     uid == 0 ? '#' : '$');
+    snprintf(prompt, 64, "%s %c ", disp_cwd, uid == 0 ? '#' : '$');
 
     int len = 0;
 
-    char *buf = read_line(0, prompt, &len);
+    char *buf = read_line(0, prompt, &len, &rl_ctx);
 
     len = strlen(buf);
     if (len == 0) goto cleanup;
@@ -250,10 +265,35 @@ void handle_special(char c, struct input_info *in) {
   }
 }
 
+int select_historic_input(struct input_info *in, int n,
+			  struct readline_context *ctx) {
+  // clear the input
+  memset(in->buf, 0, in->len);
+  in->ind = 0;
+
+  if (n > -1) {
+    int i = 0;
+    for (struct readline_history_entry *hist = ctx->history; hist != NULL;
+	 hist = hist->next) {
+      if (i++ == n) {
+	for (int c = 0; c < strlen(hist->value); c++) {
+	  input_insert(hist->value[c], in);
+	}
+	return 0;
+      }
+    }
+
+    return -1;
+  }
+
+  return -1;
+}
+
 // the number of ANSI paramters
 #define NPAR 16
 
-char *read_line(int fd, char *prompt, int *len_out) {
+char *read_line(int fd, char *prompt, int *len_out,
+		struct readline_context *ctx) {
   struct input_info in;
 
   in.max = 32;
@@ -265,6 +305,16 @@ char *read_line(int fd, char *prompt, int *len_out) {
   int state = 0;
   static unsigned long npar, par[NPAR];
   int ques = 0;
+
+	/*
+  int i = 0;
+  for (struct readline_history_entry *hist = ctx->history; hist != NULL;
+       hist = hist->next) {
+    printf("%2d: %s\n", i++, hist->value);
+  }
+	*/
+
+  int history_index = -1;
 
   while (1) {
     input_display(&in, prompt);
@@ -285,10 +335,13 @@ char *read_line(int fd, char *prompt, int *len_out) {
 	  state = 1;
 	  break;
 	} else if (c == 0x7F /* DEL */) {
+	  history_index = -1;
 	  input_del(&in);
 	} else if (c >= ' ' && c <= '~') {
+	  history_index = -1;
 	  input_insert(c, &in);
 	} else {
+	  history_index = -1;
 	  // special input handling
 	  handle_special(c, &in);
 	}
@@ -323,6 +376,21 @@ char *read_line(int fd, char *prompt, int *len_out) {
       case 4:
 	state = 0;
 	switch (c) {
+	  // up arrow
+	  case 'A':
+
+	    if (0 == select_historic_input(&in, history_index + 1, ctx)) {
+	      history_index++;
+	    }
+	    break;
+
+	  // down arrow
+	  case 'B':
+	    if (0 == select_historic_input(&in, history_index - 1, ctx)) {
+	      history_index--;
+	    }
+	    break;
+
 	  case 'D':
 	    if (in.ind > 0) in.ind--;
 	    break;
@@ -353,6 +421,30 @@ char *read_line(int fd, char *prompt, int *len_out) {
   if (len_out != NULL) *len_out = in.len;
 
   fprintf(stderr, "\n");
+
+  // push to history
+  struct readline_history_entry *ent = calloc(1, sizeof(*ent));
+
+  int save = 1;
+
+  // don't save if we didn't type anything
+  if (strlen(in.buf) == 0) {
+    save = 0;
+  }
+
+  if (ctx->history) {
+    // don't save the entry if its the same as the previous
+    if (strcmp(ctx->history->value, in.buf) == 0) {
+      save = 0;
+    }
+  }
+
+  if (save) {
+    ent->value = strdup(in.buf);
+    ent->next = ctx->history;
+    ctx->history = ent;
+  }
+
   return in.buf;
 }
 

@@ -83,7 +83,7 @@ static int block_to_path(fs::inode *node, int i_block, int offsets[4],
   return n;
 }
 
-fs::ext2_inode::ext2_inode(int type, u32 index) : fs::inode(type) {
+fs::ext2_inode::ext2_inode(int type, u32 index) : fs::inode(type, fs::DUMMY_SB) {
   this->ino = index;
 }
 
