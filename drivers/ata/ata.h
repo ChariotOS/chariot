@@ -2,7 +2,7 @@
 #define __ATA_DRIVER_H__
 
 #include <asm.h>
-#include <dev/blk_dev.h>
+#include <dev/disk.h>
 #include <pci.h>
 #include <types.h>
 
@@ -31,8 +31,8 @@ class word_port {
 };
 
 namespace dev {
-class ata : public dev::blk_dev {
- protected:
+class ata : public dev::disk {
+ public:
   word_port data_port;
   byte_port error_port;
   byte_port sector_count_port;
@@ -67,6 +67,8 @@ class ata : public dev::blk_dev {
   // where DMA will take place
   void* m_dma_buffer = nullptr;
 
+  bool is_partition = false;
+
   pci::device* m_pci_dev;
   u32 bar4 = 0;
   u16 bmr_command;
@@ -79,16 +81,15 @@ class ata : public dev::blk_dev {
     uint16_t mark_end;
   } __attribute__((packed));
 
- public:
   ata(u16 portbase, bool master);
-  ~ata();
+  virtual ~ata();
 
   bool identify();
 
   virtual bool read_block(u32 sector, u8* data);
   virtual bool write_block(u32 sector, const u8* data);
   virtual size_t block_size(void);
-  virtual ssize_t size(void); // how big the drive is in bytes
+  virtual size_t block_count(void);
 
   bool read_block_dma(u32 sector, u8* data);
   bool write_block_dma(u32 sector, const u8* data);
@@ -98,6 +99,22 @@ class ata : public dev::blk_dev {
 
   u64 sector_count(void);
 };
+
+class ata_part : public dev::disk {
+  ref<dev::ata> parent;
+
+  u32 start, len;
+
+ public:
+  inline ata_part(ref<dev::ata> a, u32 start, u32 len)
+      : parent(a), start(start), len(len) {}
+  virtual ~ata_part();
+  virtual bool read_block(u32 sector, u8* data);
+  virtual bool write_block(u32 sector, const u8* data);
+  virtual size_t block_size(void);
+  virtual size_t block_count(void);
+};
+
 };  // namespace dev
 
 #endif

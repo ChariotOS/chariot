@@ -1,16 +1,16 @@
+#include <arch.h>
+#include <console.h>
 #include <dev/char_dev.h>
 #include <dev/driver.h>
 #include <errno.h>
 #include <fifo_buf.h>
-#include <arch.h>
 #include <keycode.h>
 #include <mem.h>
 #include <module.h>
 #include <printk.h>
-#include <syscall.h>
 #include <single_list.h>
+#include <syscall.h>
 #include <vga.h>
-#include <console.h>
 
 #include "../majors.h"
 
@@ -217,6 +217,7 @@ static char shift_map[0x80] = {
     0,
 };
 
+
 static keycode unshifted_key_map[0x80] = {
     key_invalid,    key_escape,    key_1,           key_2,
     key_3,          key_4,         key_5,           key_6,
@@ -369,8 +370,20 @@ static void key_state_changed(u8 raw, bool pressed) {
   if (pressed) event.flags |= is_pressed;
 
   if (pressed) {
-    console::feed(1, (char *)&event.character);
+
+#define SER(code, replace) case (code): console::feed(sizeof(replace) - 1, (char*)replace); break;
+    switch (event.key) {
+      case key_shift: break;
+      SER(key_left, "\x1b[1D");
+      SER(key_up, "\x1b[1A");
+      SER(key_right, "\x1b[1C");
+      SER(key_down, "\x1b[1B");
+      default:
+        console::feed(1, (char *)&event.character);
+        break;
+    }
   }
+#undef SER
 }
 
 static void kbd_handler(int i, reg_t *tf) {
@@ -413,55 +426,12 @@ static void kbd_handler(int i, reg_t *tf) {
   }
 }
 
-class kbd_dev : public dev::char_dev {
- public:
-  kbd_dev(ref<dev::driver> dr) : dev::char_dev(dr) {}
-
-  virtual int read(u64 offset, u32 len, void *dst) override {
-    // TODO: do I need to disable interrupts here (?)
-    return kbd_buf.read((u8 *)dst, len);
-  }
-  virtual int write(u64 offset, u32 len, const void *) override {
-    // do nothing
-    return 0;
-  }
-  virtual ssize_t size(void) override { return mem_size(); }
-};
-
-class kbd_driver : public dev::driver {
- public:
-  kbd_driver() {
-    // register the memory device on minor 0
-    m_dev = make_ref<kbd_dev>(ref<kbd_driver>(this));
-    dev::register_name("kbd", MAJOR_KEYBOARD, 0);
-  }
-
-  virtual ~kbd_driver(){};
-
-  ref<dev::device> open(major_t maj, minor_t min, int &err) {
-    // only work for min 0
-    if (min == 0) return m_dev;
-
-    return {};
-  }
-
-  virtual const char *name(void) const { return "kbd"; }
-
-  virtual ssize_t read(minor_t, fs::file &fd, void *buf, size_t sz) {
-    return -1;
-  };
-
- private:
-  ref<kbd_dev> m_dev;
-};
 
 static void kbd_init(void) {
-
   irq::install(32 + IRQ_KEYBOARD, kbd_handler, "PS2 Keyboard");
 
   // clear out the buffer...
   while (inb(I8042_STATUS) & I8042_BUFFER_FULL) inb(I8042_BUFFER);
-
 }
 
 module_init("kbd", kbd_init);

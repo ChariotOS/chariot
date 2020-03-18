@@ -110,7 +110,7 @@ void sb16_init(void) {
   }
 
   // finally initialize
-  dev::register_driver("sb16", CHAR_DRIVER, MAJOR_SB16, &sb_ops);
+  // dev::register_driver("sb16", CHAR_DRIVER, MAJOR_SB16, &sb_ops);
 }
 
 // module_init("sb16", sb16_init);

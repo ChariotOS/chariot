@@ -46,13 +46,13 @@ class vfs {
   static struct fs::inode *get_root(void);
 
   // a mounter creates a filesystem on a device and returns it
-  using mounter_t = unique_ptr<fs::filesystem> (*)(ref<dev::device>, int flags);
+  using mounter_t = unique_ptr<fs::filesystem> (*)(fs::blkdev *, int flags);
 
   // register filesystems by name, therefore we can mount generically by name
   static int register_filesystem(string, mounter_t);
   static int deregister_filesystem(string);
 
-  static int mount(ref<dev::device>, string fs_name, string path);
+  static int mount(fs::blkdev *, string fs_name, string path);
 
   static fs::file fdopen(string path, int opts = 0, int mode = 0000);
 

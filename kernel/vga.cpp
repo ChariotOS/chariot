@@ -182,24 +182,24 @@ void csi_m(void) {
       continue;
 
     } else if (p >= 90 && p <= 97) {
-      // attr = (attr & 0xF0) | (((p - 90) & 0xF));
+      attr = (attr & 0xF0) | (((p - 90) & 0xF));
       continue;
     } else {
       switch (par[i]) {
         case 0:
-          // attr = 0x07;
+          attr = 0x07;
           break;
         case 1:
-          // attr = 0x0f;
+          attr = 0x0f;
           break;
         case 4:
-          // attr = 0x0f;
+          attr = 0x0f;
           break;
         case 7:
-          // attr = 0x70;
+          attr = 0x70;
           break;
         case 27:
-          // attr = 0x07;
+          attr = 0x07;
           break;
       }
     }

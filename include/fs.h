@@ -53,10 +53,9 @@ class filesystem {
   filesystem();
 };
 
-
-
-
 struct block_operations {
+  // used to populate block_count and block_size
+  int (&init)(fs::blkdev &);
   int (*open)(fs::blkdev &, int mode);
   int (*release)(fs::blkdev &);
   // 0 on success, -ERRNO on fail
@@ -64,18 +63,31 @@ struct block_operations {
   int (*ioctl)(fs::blkdev &, unsigned int, off_t) = NULL;
 };
 
-
 struct blkdev {
   dev_t dev;
-  string name; // ex. hda or ata0
+  string name;	// ex. hda or ata0
 
   size_t block_count;
   size_t block_size;
 
   struct block_operations &ops;
 
-  long count = 0; // refcount
+  long count = 0;  // refcount
   spinlock lock;
+
+  inline blkdev(dev_t dev, string name, struct block_operations &ops)
+      : dev(dev), name(move(name)), ops(ops) {
+    ops.init(*this);
+  }
+
+  // nice wrappers for filesystems and all that :)
+  inline int read_block(void *data, int block) {
+    return ops.rw_block(*this, data, block, false);
+  }
+
+  inline int write_block(void *data, int block) {
+    return ops.rw_block(*this, data, block, true);
+  }
 
   inline static void acquire(struct blkdev *d) {
     d->lock.lock();
@@ -90,9 +102,16 @@ struct blkdev {
     }
     d->lock.unlock();
   }
+
+  // nice to have thing
+  template <typename T>
+  T *&p(void) {
+    return (T *&)priv;
+  }
+
+ private:
+  void *priv;
 };
-
-
 
 struct superblock {
   //
@@ -132,7 +151,6 @@ struct superblock {
   void *priv;
 };
 
-
 extern struct superblock DUMMY_SB;
 
 struct sb_operations {
@@ -148,14 +166,14 @@ struct sb_information {
 
   // mount and return the root inode, returning NULL on failure.
   struct inode *(*mount)(struct sb_information *, const char *args, int flags,
-                         const char *device);
+			 const char *device);
 
   struct sb_operations &ops;
 };
 
 // typically
 struct inode *bdev_mount(struct sb_information *info, const char *args,
-                         int flags);
+			 int flags);
 
 int mount(string path, filesystem &);
 
@@ -227,7 +245,6 @@ struct file_operations {
   void (*destroy)(fs::inode &);
 };
 
-
 // wrapper functions for block devices
 extern struct fs::file_operations block_file_ops;
 
@@ -242,7 +259,7 @@ struct dir_operations {
   struct fs::inode *(*lookup)(fs::inode &, const char *);
   // create a device node with a major and minor number
   int (*mknod)(fs::inode &, const char *name, struct fs::file_ownership &,
-               int major, int minor);
+	       int major, int minor);
 
   // walk through the directory, calling the callback per entry
   int (*walk)(fs::inode &, func<bool(const string &)>);
@@ -260,8 +277,8 @@ struct inode {
    * fields
    */
   off_t size = 0;
-  short type = T_INVA;  // from T_[...] above
-  short mode = 0;       // file mode. ex: o755
+  short type = T_INVA;	// from T_[...] above
+  short mode = 0;	// file mode. ex: o755
 
   // the device that the file is located on
   struct {
@@ -309,7 +326,6 @@ struct inode {
 
     // T_SOCK
     struct net::sock *sk;
-
 
     struct {
       fs::blkdev *dev;
@@ -376,15 +392,11 @@ struct pipe : public fs::inode {
   virtual ssize_t do_write(file &, void *, size_t);
 };
 
-
-
-
-
 class file : public refcounted<file> {
  public:
   // must construct file descriptors via these factory funcs
   static ref<file> create(struct fs::inode *, string open_path,
-                          int flags = FDIR_READ | FDIR_WRITE);
+			  int flags = FDIR_READ | FDIR_WRITE);
 
   /*
    * seek - change the offset
@@ -413,11 +425,6 @@ class file : public refcounted<file> {
   string path;
   off_t m_offset = 0;
 };
-
-
-
-
-
 
 };  // namespace fs
 

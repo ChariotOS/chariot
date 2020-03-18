@@ -5,48 +5,55 @@
 #include <ptr.h>
 #include <string.h>
 #include <types.h>
+#include <map.h>
 
-#define MAX_DRIVERS 255
+#define MAX_MAJOR 255
 
 namespace dev {
 
-// a driver is an interface to opening devices using a major
-// number and a minor number
-class driver : public refcounted<driver> {
- public:
-  driver();
-  virtual ~driver();
+#define DRIVER_INVALID -1
+#define DRIVER_CHAR 1
+#define DRIVER_BLOCK 2
 
-  ref<dev::device> open(major_t, minor_t);
-  virtual ref<dev::device> open(major_t, minor_t, int &errcode);
+#define EVENT_PCI_CHANGE 1
 
-  virtual int release(dev::device *);
+/**
+ * this struct is a general information source for the driver subsystem. Must be
+ * defined statically in each driver, and will be passed to the register_driver
+ * function. The driver subsystem will keep this information
+ */
+struct driver_info {
+  // fill in all the information below as needed.
+  const char *name = NULL;
+  int type = DRIVER_INVALID;
+  int major = -1;
 
-  inline virtual ssize_t read(minor_t, fs::file &fd, void *buf, size_t sz) {
-    return -1;
-  }
-  inline virtual ssize_t write(minor_t, fs::file &fd, const void *buf,
-                               size_t sz) {
-    return -1;
-  }
+  // useful for things like when a device is unplugged, or is mounted
+  int (*event_handler)(int minor, int ev, void *data);
 
-  inline virtual int ioctl(fs::file &fd, int req, size_t arg) { return -1; }
+  // one of these is REQUIRED, based on the type of the driver. (which is also
+  // needed)
+  union {
+    fs::block_operations *block_ops;
+    fs::file_operations *char_ops;
+  };
 
-  inline virtual const char *name(void) const { return "unknown"; }
+  // private to the driver subsystem, do not fiddle with (write to) stuff below here
+  rwlock lock;
+
+	// TODO: figure out char devices
+	map<minor_t, fs::blkdev *> block_devices;
+
+  // ...
 };
 
-// for use in register_driver
-#define CHAR_DRIVER 1
-#define BLOCK_DRIVER 2
+void populate_inode_device(fs::inode &);
 
+int register_driver(struct driver_info &);
+int deregister_driver(struct driver_info &);
 
-int register_driver(const char *name, int type, major_t major,
-                    fs::file_operations *operations);
-int deregister_driver(major_t major);
-
-int register_name(string name, major_t major, minor_t minor);
-int deregister_name(string name);
-
+int register_name(struct driver_info &, string name, minor_t minor);
+int deregister_name(struct driver_info &, string name);
 
 /* return the next diskN where n is the next disk number
  * ie: disk1, disk2, disk3
@@ -55,9 +62,5 @@ string next_disk_name(void);
 
 // useful functions for the kernel to access devices by name or maj/min
 ref<fs::file> open(string name);
-ref<fs::file> open(major_t, minor_t);
-ref<fs::file> open(major_t, minor_t, int &errcode);
-
-fs::file_operations *get(major_t);
 
 };  // namespace dev

@@ -25,20 +25,14 @@ struct mbr_header {
   u16 mbr_signature;
 } __attribute__((packed));
 
-dev::mbr::mbr(dev::blk_dev &disk) : m_disk(disk) {}
-
 dev::mbr::~mbr() {
   if (hdr != nullptr) {
     kfree(hdr);
   }
 }
 
-bool dev::mbr::parse(void) {
-  hdr = (struct mbr_header *)kmalloc(sizeof(mbr_header));
-
-  if (!m_disk.read_block(0, (u8 *)hdr)) {
-    return false;
-  }
+bool dev::mbr::parse(void *data) {
+  hdr = (struct mbr_header *)data;
 
   if (hdr->mbr_signature != MBR_SIGNATURE) {
     // printk("dev::mbr::parse: bad mbr signature %04X\n", hdr->mbr_signature);
@@ -60,10 +54,7 @@ bool dev::mbr::parse(void) {
 
 u32 dev::mbr::part_count(void) { return m_partitions.size(); }
 
-ref<dev::blk_dev> dev::mbr::partition(u32 index) {
+struct dev::part_info dev::mbr::partition(u32 index) {
   assert(index < part_count());
-
-  auto info = m_partitions[index];
-
-  return make_ref<dev::partition>(m_disk, info.off, info.len);
+	return m_partitions[index];
 }

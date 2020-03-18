@@ -6,21 +6,18 @@
 #include <ptr.h>
 
 namespace dev {
-class blk_dev : public dev::device {
+class disk : public refcounted<disk> {
  public:
-  blk_dev(ref<dev::driver> dr);
+  disk();
 
-  virtual ~blk_dev();
-  inline virtual bool is_blk_device(void) override { return true; }
+  virtual ~disk();
 
-  virtual int read(u64 offset, u32 len, void*) override;
-  virtual int write(u64 offset, u32 len, const void*) override;
+  virtual size_t block_size() = 0;
+	virtual size_t block_count() = 0;
 
   // all block devices must implement these functions
   virtual bool read_block(u32 index, u8* buf) = 0;
   virtual bool write_block(u32 index, const u8* buf) = 0;
-
-
 };
 };  // namespace dev
 

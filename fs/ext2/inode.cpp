@@ -396,8 +396,7 @@ fs::ext2_inode *fs::ext2_inode::create(ext2 *fs, u32 index) {
   injest_info(ino, info);
 
   if (ino_type == T_CHAR || ino_type == T_BLK) {
-    ino->fops = dev::get(ino->major);
-    ino->dops = NULL;
+		dev::populate_inode_device(*ino);
   }
 
   return ino;

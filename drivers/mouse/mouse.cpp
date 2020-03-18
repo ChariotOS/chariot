@@ -181,7 +181,7 @@ struct fs::file_operations mouse_ops = {
 static void mouse_init(void) {
   mouse_install();
 
-  dev::register_driver("mouse", CHAR_DRIVER, MAJOR_MOUSE, &mouse_ops);
+  // dev::register_driver("mouse", CHAR_DRIVER, MAJOR_MOUSE, &mouse_ops);
 }
 
 module_init("mouse", mouse_init);

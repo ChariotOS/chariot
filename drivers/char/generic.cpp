@@ -52,11 +52,18 @@ static struct fs::file_operations generic_ops = {
     .write = do_write,
 };
 
-static void dev_init(void) {
-  dev::register_driver("generic", CHAR_DRIVER, MAJOR_MEM, &generic_ops);
 
-  dev::register_name("urandom", MAJOR_ATA, MINOR_RANDOM);
-  dev::register_name("random", MAJOR_ATA, MINOR_RANDOM);
+static struct dev::driver_info generic_driver_info {
+  .name = "generic", .type = DRIVER_CHAR, .major = MAJOR_MEM,
+
+  .char_ops = &generic_ops,
+};
+
+static void dev_init(void) {
+	dev::register_driver(generic_driver_info);
+
+	dev::register_name(generic_driver_info, "urandom", MINOR_RANDOM);
+	dev::register_name(generic_driver_info, "random", MINOR_RANDOM);
 }
 
 module_init("char", dev_init);

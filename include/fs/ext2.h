@@ -1,7 +1,7 @@
 #ifndef __ext2_H__
 #define __ext2_H__
 
-#include <dev/blk_dev.h>
+#include <dev/disk.h>
 #include <fs.h>
 #include <func.h>
 #include <lock.h>

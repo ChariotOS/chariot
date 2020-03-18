@@ -165,11 +165,9 @@ int main(int argc, char **argv, char **envp) {
       disp_cwd = "~";
     }
 
-    /*
-snprintf(prompt, 64, C_GRAY "[%s@%s %s]%c " C_RESET, uname, hostname, disp_cwd,
- uid == 0 ? '#' : '$');
-				     */
-    snprintf(prompt, 64, "%s %c ", disp_cwd, uid == 0 ? '#' : '$');
+    snprintf(prompt, 64, "[%s@%s %s]%c ", uname, hostname,
+	     disp_cwd, uid == 0 ? '#' : '$');
+    // snprintf(prompt, 64, "%s %c ", disp_cwd, uid == 0 ? '#' : '$');
 
     int len = 0;
 
@@ -231,13 +229,15 @@ void input_display(struct input_info *in, const char *prompt) {
   fprintf(stderr, "\x1b[2K\r");
   // fprintf(stderr, "%4d ", in->ind);
   fprintf(stderr, "%s", prompt);
-  fprintf(stderr, "\x1b[s");  // save the cursor pos
   fprintf(stderr, "%s", in->buf);
-  // restore cursor pos and move to the right
-  fprintf(stderr, "\x1b[u");
   // CSI n C will move by 1 even when you ask for 0...
-  if (in->ind != 0) {
-    fprintf(stderr, "\x1b[%dC", in->ind);
+  int dist = in->len - in->ind;
+  if (dist != 0) {
+    if (dist > 6 /* arbitrary */) {
+      for (int i = 0; i < dist; i++) fputc('\b', stderr);
+    } else {
+      fprintf(stderr, "\x1b[%dD", dist);
+    }
   }
 
   fflush(stderr);
@@ -306,13 +306,13 @@ char *read_line(int fd, char *prompt, int *len_out,
   static unsigned long npar, par[NPAR];
   int ques = 0;
 
-	/*
-  int i = 0;
-  for (struct readline_history_entry *hist = ctx->history; hist != NULL;
-       hist = hist->next) {
-    printf("%2d: %s\n", i++, hist->value);
-  }
-	*/
+  /*
+int i = 0;
+for (struct readline_history_entry *hist = ctx->history; hist != NULL;
+ hist = hist->next) {
+printf("%2d: %s\n", i++, hist->value);
+}
+  */
 
   int history_index = -1;
 

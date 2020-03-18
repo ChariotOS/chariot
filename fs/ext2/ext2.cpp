@@ -1,6 +1,6 @@
 #include <asm.h>
 #include <dev/RTC.h>
-#include <dev/blk_dev.h>
+#include <dev/disk.h>
 #include <errno.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
@@ -84,6 +84,7 @@ bool fs::ext2::init(void) {
   disk->seek(1024, SEEK_SET);
   bool res = disk->read(sb, 1024);
 
+
   if (!res) {
     printk("failed to read the superblock\n");
     return false;
@@ -126,6 +127,7 @@ bool fs::ext2::init(void) {
     printk("failed to write superblock\n");
     return false;
   }
+
 
   /*
   auto uuid = sb->s_uuid;
@@ -515,14 +517,6 @@ u32 fs::ext2::balloc(void) {
 
 void fs::ext2::bfree(u32 block) { scoped_lock l(m_lock); }
 
-static unique_ptr<fs::filesystem> ext2_mounter(ref<dev::device>, int flags) {
-  printk("trying to mount\n");
-  return nullptr;
-}
-
-
-
-
 
 int ext2_sb_init(struct fs::superblock &sb) {
 
@@ -550,8 +544,8 @@ struct fs::sb_information ext2_info {
 };
 
 static void ext2_init(void) {
-  auto s = ext2_ops.sync;
-  vfs::register_filesystem("ext2", ext2_mounter);
+  // auto s = ext2_ops.sync;
+  // vfs::register_filesystem("ext2", ext2_mounter);
 }
 
 module_init("fs::ext2", ext2_init);

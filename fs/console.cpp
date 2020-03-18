@@ -70,14 +70,14 @@ void console::feed(size_t sz, char* buf) {
 
       // when buffered, DEL should delete a char in the line
       if (buffer_input && c == CONS_DEL) {
-        if (line_len != 0) {
-          line_buffer[--line_len] = '\0';
-        }
+	if (line_len != 0) {
+	  line_buffer[--line_len] = '\0';
+	}
       } else {
-        // put the element in the line buffer
-        line_buffer[line_len++] = c;
-        if (c == '\n' || c == '\r') flush();
-        if (line_len >= LINEBUF_SIZE) flush();
+	// put the element in the line buffer
+	line_buffer[line_len++] = c;
+	if (c == '\n' || c == '\r') flush();
+	if (line_len >= LINEBUF_SIZE) flush();
       }
     }
   }
@@ -107,17 +107,26 @@ static ssize_t console_write(fs::file& fd, const char* buf, size_t sz) {
   }
   return -1;
 }
+static int console_open(fs::file& fd) {
+	return 0;
+}
 static void console_close(fs::file& fd) { KINFO("[console] close!\n"); }
 
 struct fs::file_operations console_ops = {
     .read = console_read,
     .write = console_write,
+    .open = console_open,
     .close = console_close,
 };
 
+static struct dev::driver_info console_driver_info {
+  .name = "console", .type = DRIVER_CHAR, .major = MAJOR_CONSOLE,
+
+  .char_ops = &console_ops,
+};
+
 static void console_init(void) {
-  dev::register_driver("console", CHAR_DRIVER, MAJOR_CONSOLE, &console_ops);
-  // dev::register_driver(MAJOR_CONSOLE, make_unique<console_driver>());
-  //
+  dev::register_driver(console_driver_info);
+  dev::register_name(console_driver_info, "console", 0);
 }
 module_init("console", console_init);

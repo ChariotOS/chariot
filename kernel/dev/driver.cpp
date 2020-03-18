@@ -11,153 +11,109 @@
 #define INFO(fmt, args...)
 #endif
 
-dev::driver::driver() {
-  INFO("driver '%s' created\n", name());
-}
+static rwlock drivers_lock;
+static map<major_t, struct dev::driver_info *> drivers;
+static map<string, dev_t> device_names;
 
-dev::driver::~driver(void) {}
+int dev::register_driver(struct dev::driver_info &info) {
+  assert(info.major != -1);
+  assert(info.type == DRIVER_CHAR || info.type == DRIVER_BLOCK);
+  assert(info.type == DRIVER_CHAR ? info.char_ops != NULL
+				  : info.block_ops != NULL);
 
-ref<dev::device> dev::driver::open(major_t maj, minor_t min) {
-  int err;
-  return open(maj, min, err);
-}
-ref<dev::device> dev::driver::open(major_t, minor_t, int &errcode) {
-  errcode = -ENOTIMPL;
-  return nullptr;
-}
+  drivers_lock.write_lock();
 
-int dev::driver::release(dev::device *) { return -ENOTIMPL; }
+  drivers.set(info.major, &info);
 
-/**
- * the internal structure of devices
- */
-struct driver_instance {
-  string name;
-  int type;
-  major_t major;
-  fs::file_operations *ops;
-};
-
-// every device drivers, accessable through their major number
-static map<major_t, struct driver_instance> device_drivers;
-
-int dev::register_driver(const char *name, int type, major_t major, fs::file_operations *d) {
-  // TODO: take a lock
-
-  if (d == nullptr) return -ENOENT;
-
-  if (major > MAX_DRIVERS) return -E2BIG;
-
-  if (device_drivers.contains(major)) {
-    return -EEXIST;
-  }
-
-  struct driver_instance inst;
-  inst.name = name;
-  inst.type = type; // TODO: assert the type is valid
-  inst.major = major;
-  inst.ops = d;
-
-  device_drivers[major] = move(inst);
+  drivers_lock.write_unlock();
 
   return 0;
 }
 
-int dev::deregister_driver(major_t major) {
-  // TODO: take a lock
-
-  if (major > MAX_DRIVERS) return -E2BIG;
-
-  if (device_drivers.contains(major)) {
-    // TODO: call driver::deregister() or something
-    device_drivers.remove(major);
-    return 0;
+int dev::register_name(struct dev::driver_info &info, string name,
+		       minor_t min) {
+  // create the block device if it is one
+  if (info.type == DRIVER_BLOCK) {
+    auto bdev = new fs::blkdev(dev_t(info.major, min), name, *info.block_ops);
+    fs::blkdev::acquire(bdev);
+    info.block_devices[min] = bdev;
   }
 
-  return -ENOENT;
-}
+  drivers_lock.write_lock();
 
-map<string, dev_t> device_names;
+  KINFO("register name %s [maj:%d, min:%d] (%d total)\n", name.get(),
+	info.major, min, device_names.size());
 
-int dev::register_name(string name, major_t major, minor_t minor) {
-  // TODO: take a lock
-  if (device_names.contains(name)) return -EEXIST;
-  device_names[name] = {major, minor};
+  device_names.set(name, dev_t(info.major, min));
+  drivers_lock.write_unlock();
 
-  KINFO("register dev %s to %d:%d (%d devices total)\n", name.get(), major, minor, device_names.size());
   return 0;
 }
 
-int dev::deregister_name(string name) {
-  // TODO: take a lock
-  if (device_names.contains(name)) device_names.remove(name);
+int dev::deregister_name(struct dev::driver_info &, string name) {
+  drivers_lock.write_lock();
+  device_names.remove(name);
+  drivers_lock.write_unlock();
   return -ENOENT;
 }
 
-// main API to opening devices
+void dev::populate_inode_device(fs::inode &ino) {
+  if (drivers.contains(ino.major)) {
+    auto *d = drivers[ino.major];
+    d->lock.read_lock();
+
+    if (d->type == DRIVER_BLOCK) {
+      ino.fops = &fs::block_file_ops;
+
+      ino.blk.dev = d->block_devices[ino.minor];
+      fs::blkdev::acquire(ino.blk.dev);
+    }
+
+    if (d->type == DRIVER_CHAR) {
+      ino.fops = d->char_ops;
+    }
+    d->lock.read_unlock();
+  }
+}
+
+struct fs::inode *devicei(struct dev::driver_info &d, string name,
+			  minor_t min) {
+  fs::inode *ino =
+      new fs::inode(d.type == DRIVER_BLOCK ? T_BLK : T_CHAR, fs::DUMMY_SB);
+
+  ino->major = d.major;
+  ino->minor = min;
+
+  dev::populate_inode_device(*ino);
+
+  return ino;
+}
 
 ref<fs::file> dev::open(string name) {
-  int err;
-
   if (device_names.contains(name)) {
-    auto d = device_names.get(name);
-    return dev::open(d.major(), d.minor(), err);
+    auto dev = device_names.get(name);
+    int maj = dev.major();
+    int min = dev.minor();
+
+    drivers_lock.read_lock();
+
+    // TODO: take a lock!
+    if (drivers.contains(maj)) {
+      auto *d = drivers[maj];
+
+      string path = string::format("/dev/%s", name.get());
+
+      auto ino = devicei(*d, name, min);
+
+      return fs::file::create(ino, path, FDIR_READ | FDIR_WRITE);
+    }
   }
 
   return nullptr;
 }
-
-ref<fs::file> dev::open(major_t maj, minor_t min) {
-  int err;
-  auto dev = open(maj, min, err);
-  if (err != 0)
-    printk(
-        "[DRIVER:ERR] open device %d:%d failed with unhandled error code %d\n",
-        maj, min, -err);
-  return dev;
-}
-
-ref<fs::file> dev::open(major_t maj, minor_t min, int &errcode) {
-  // TODO: is this needed?
-  if (maj > MAX_DRIVERS) {
-    errcode = -E2BIG;
-    return nullptr;
-  }
-
-  // TODO: take a lock!
-  if (device_drivers.contains(maj)) {
-    errcode = 0;
-
-    auto d = device_drivers[maj];
-
-    auto ino = new fs::inode(d.type == BLOCK_DRIVER ? T_BLK : T_CHAR, fs::DUMMY_SB);
-    // for (int i = 0; i < 100; i++) fs::inode::acquire(ino);
-    ino->major = maj;
-    ino->minor = min;
-    ino->fops = get(maj);
-
-    string path = string::format("/dev/%s", d.name.get());
-
-    return fs::file::create(ino, path, FDIR_READ | FDIR_WRITE);
-    // return device_drivers[maj].ops->open(maj, min, errcode);
-  }
-  // if there wasnt a driver in the major list, return such
-  errcode = -ENOENT;
-  return nullptr;
-}
-
-fs::file_operations *dev::get(major_t majr) {
-  // TODO: take a lock
-  if (device_drivers.contains(majr)) {
-    return device_drivers[majr].ops;
-  }
-  return NULL;
-}
-
-
-
 
 static int disk_count = 0;
 string dev::next_disk_name(void) {
   return string::format("disk%d", disk_count);
 }
+
