@@ -270,6 +270,7 @@ int select_historic_input(struct input_info *in, int n,
   // clear the input
   memset(in->buf, 0, in->len);
   in->ind = 0;
+	in->len = 0;
 
   if (n > -1) {
     int i = 0;
