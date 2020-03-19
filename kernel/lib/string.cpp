@@ -169,6 +169,7 @@ void string::reserve(u32 new_cap) {
   if (m_buf == nullptr) {
     assert(m_cap == 0);
     m_buf = (char*)kmalloc(new_cap);
+		memset(m_buf, 0, new_cap);
 
     assert(m_buf != nullptr);
   } else {

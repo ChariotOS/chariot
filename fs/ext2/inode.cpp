@@ -11,7 +11,7 @@ static int ilog2(int x) {
    * binary search.
    */
   int result = 0;
-  result = (!!(x >> 16)) << 4;  // if > 16?
+  result = (!!(x >> 16)) << 4;	// if > 16?
   // based on previous result, if > (result + 8)
   result = result + ((!!(x >> (result + 8))) << 3);
   result = result + ((!!(x >> (result + 4))) << 2);
@@ -19,15 +19,6 @@ static int ilog2(int x) {
   result = result + (!!(x >> (result + 1)));
   return result;
 }
-
-struct block_reader {
-  fs::ext2_inode &node;
-
-  int last_path[4];
-
- public:
-  block_reader(fs::ext2_inode &node) : node(node) {}
-};
 
 #define EXT2_NDIR_BLOCKS 12
 #define EXT2_IND_BLOCK EXT2_NDIR_BLOCKS
@@ -43,7 +34,7 @@ struct block_reader {
  * @offsets: the indirect path array to fill in
  */
 static int block_to_path(fs::inode *node, int i_block, int offsets[4],
-                         int *boundary = nullptr) {
+			 int *boundary = nullptr) {
   int ptrs = EXT2_ADDR_PER_BLOCK(node);
   int ptrs_bits = ilog2(ptrs);
 
@@ -83,7 +74,8 @@ static int block_to_path(fs::inode *node, int i_block, int offsets[4],
   return n;
 }
 
-fs::ext2_inode::ext2_inode(int type, u32 index) : fs::inode(type, fs::DUMMY_SB) {
+fs::ext2_inode::ext2_inode(int type, u32 index)
+    : fs::inode(type, fs::DUMMY_SB) {
   this->ino = index;
 }
 
@@ -119,7 +111,7 @@ int block_from_index(fs::inode &node, int i_block, int set_to = 0) {
     if (p->blk_bufs[i] == NULL || p->cached_path[i] != off) {
       if (p->blk_bufs[i] == NULL) p->blk_bufs[i] = (int *)kmalloc(bsize);
       if (!efs->read_block(table[off], p->blk_bufs[i])) {
-        return 0;
+	return 0;
       }
       p->cached_path[i] = off;
     }
@@ -151,9 +143,9 @@ static int injest_info(fs::inode *ino, fs::ext2_inode_info &info) {
 
   if (ino->type == T_DIR) {
     // TODO: clear out the dirents
-    efs->traverse_dir(ino->ino, [&](u32 nr, const char *name) -> bool {
+    efs->traverse_dir(info, [&](u32 nr, const char *name) -> bool {
       // register the resident entries
-      ino->register_direntry(name, ENT_RES);
+      ino->register_direntry(name, ENT_RES, nr);
       return true;
     });
   } else if (ino->type == T_CHAR || ino->type == T_BLK) {
@@ -202,7 +194,7 @@ static int ext2_seek(fs::file &, off_t, off_t) {
 }
 
 static ssize_t ext2_do_read_write(fs::file &f, char *buf, size_t nbytes,
-                                  bool is_write) {
+				  bool is_write) {
   auto efs = (fs::ext2 *)f.ino->fs;
   if (is_write) {
     // TODO: ensure blocks are avail
@@ -305,8 +297,7 @@ fs::file_operations ext2_file_ops{
 };
 
 static int ext2_create(fs::inode &node, const char *name,
-                       struct fs::file_ownership &) {
-
+		       struct fs::file_ownership &) {
   auto efs = (fs::ext2 *)node.fs;
 
   int ino = efs->allocate_inode();
@@ -316,7 +307,7 @@ static int ext2_create(fs::inode &node, const char *name,
 }
 
 static int ext2_mkdir(fs::inode &, const char *name,
-                      struct fs::file_ownership &) {
+		      struct fs::file_ownership &) {
   UNIMPL();
   return -ENOTIMPL;
 }
@@ -331,22 +322,24 @@ static struct fs::inode *ext2_lookup(fs::inode &node, const char *needle) {
 
   bool found = false;
   auto efs = (fs::ext2 *)node.fs;
-  u32 ent_inode_num;
-  efs->traverse_dir(node.ino, [&](u32 ino, const char *name) -> bool {
-    if (!strcmp(needle, name)) {
-      ent_inode_num = ino;
-      found = true;
-      return false;
-    }
-    return true;
-  });
+  int nr = -1;
 
-  if (found) return efs->get_inode(ent_inode_num);
+
+  // walk the linked list to get the inode num
+  for (auto *it = node.dir.entries; it != NULL; it = it->next) {
+    if (!strcmp(it->name.get(), needle)) {
+      nr = it->nr;
+			found = true;
+			break;
+    }
+  }
+
+  if (found) return efs->get_inode(nr);
   return NULL;
 }
 
 static int ext2_mknod(fs::inode &, const char *name,
-                      struct fs::file_ownership &, int major, int minor) {
+		      struct fs::file_ownership &, int major, int minor) {
   UNIMPL();
   return -ENOTIMPL;
 }
@@ -396,7 +389,7 @@ fs::ext2_inode *fs::ext2_inode::create(ext2 *fs, u32 index) {
   injest_info(ino, info);
 
   if (ino_type == T_CHAR || ino_type == T_BLK) {
-		dev::populate_inode_device(*ino);
+    dev::populate_inode_device(*ino);
   }
 
   return ino;

@@ -177,7 +177,7 @@ struct inode *bdev_mount(struct sb_information *info, const char *args,
 
 int mount(string path, filesystem &);
 
-struct inode *open(string s, u32 flags, u32 opts = 0);
+struct inode *open(const char *s, u32 flags, u32 opts = 0);
 
 // memory only
 #define ENT_MEM 0
@@ -190,6 +190,7 @@ struct inode *open(string s, u32 flags, u32 opts = 0);
 struct direntry {
   int type = ENT_RES;
   string name;
+  int nr = -1; // for unresolved
   struct inode *ino;
 
   // if this direntry is a mount, this inode will shadow it
@@ -327,6 +328,8 @@ struct inode {
     // T_SOCK
     struct net::sock *sk;
 
+
+		// T_BLK
     struct {
       fs::blkdev *dev;
     } blk;
@@ -339,9 +342,10 @@ struct inode {
    * contains a NULL inode, it calls 'resolve_direntry' which returns the
    * backing inode.
    */
-  int register_direntry(string name, int type, struct inode * = NULL);
+  int register_direntry(string name, int type, int nr, struct inode * = NULL);
   int remove_direntry(string name);
   struct inode *get_direntry(const char *name);
+	int get_direntry_r(const char *name);
   void walk_direntries(func<bool(const string &, struct inode *)>);
   vec<string> direntries(void);
   int add_mount(string &name, struct inode *other_root);

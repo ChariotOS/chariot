@@ -107,14 +107,14 @@ extern "C" uint64_t _Unwind_GetDataRelBase(struct _Unwind_Context *context) {
 
 void *operator new(size_t size) {
   // printk("operator new %zu\n", size);
-  return kmalloc(size);
+  return kzalloc(size);
 }
 
-void *operator new[](size_t size) { return kmalloc(size); }
+void *operator new[](size_t size) { return kzalloc(size); }
 
 template <typename T>
 void *operator new(size_t size, T*&dst) {
-  dst = kmalloc(size);
+  dst = kzalloc(size);
   return dst;
 }
 

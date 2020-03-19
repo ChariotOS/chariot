@@ -136,7 +136,7 @@ struct inode *fs::inode::get_direntry(const char *name) {
   return ino;  // nothing found!
 }
 
-int fs::inode::register_direntry(string name, int enttype, struct inode *ino) {
+int fs::inode::register_direntry(string name, int enttype, int nr, struct inode *ino) {
   assert(type == T_DIR);
   lock.lock();
 
@@ -151,8 +151,8 @@ int fs::inode::register_direntry(string name, int enttype, struct inode *ino) {
 
   auto ent = new fs::direntry;
   ent->name = move(name);
+	ent->nr = nr;
   ent->ino = ino;
-
   ent->type = enttype;
 
   ent->next = dir.entries;
@@ -204,7 +204,6 @@ int fs::inode::set_name(const string &s) {
   if (dir.name != NULL) return 0;
 
   auto name = (char *)kmalloc(s.size() + 1);
-
   memcpy(name, s.get(), s.size() + 1);
 
   dir.name = name;

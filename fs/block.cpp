@@ -18,6 +18,7 @@ static int blk_seek(fs::file &f, off_t o, off_t) {
 static ssize_t blk_rw(fs::file &f, char *data, size_t len, bool write) {
   size_t first_block, end_block, blk_count;
   ssize_t n = 0;
+  int res;
   off_t offset;
   struct fs::blkdev *dev;
 
@@ -35,8 +36,8 @@ static ssize_t blk_rw(fs::file &f, char *data, size_t len, bool write) {
   blk_count = end_block - first_block;
 
   for (u64 i = 0; i < blk_count; i++) {
-    auto res = dev->ops.rw_block(*dev, data + dev->block_size * i,
-				 first_block + i, write);
+    res = dev->ops.rw_block(*dev, data + dev->block_size * i, first_block + i,
+			    write);
     if (res != 0) {
       return -EIO;
     }
@@ -55,7 +56,7 @@ static ssize_t blk_write(fs::file &f, const char *data, size_t len) {
 }
 
 static int blk_ioctl(fs::file &f, unsigned int num, off_t val) {
-  auto dev = f.ino->blk.dev;
+  struct fs::blkdev *dev = f.ino->blk.dev;
   if (!dev || !dev->ops.ioctl) return -EINVAL;
   return dev->ops.ioctl(*dev, num, val);
 }

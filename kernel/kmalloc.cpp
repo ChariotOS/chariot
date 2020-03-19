@@ -123,8 +123,6 @@ void *mm_malloc(size_t size) {
   }
 
   SET_USED(blk);
-  void *ptr = (u8 *)blk + HEADER_SIZE;
-  memset(ptr, 0, size);
 
   PRINT_DEBUG();
 
@@ -189,6 +187,9 @@ void mm_free(void *ptr) {
   blk_t *blk = GET_BLK(ptr);
   auto *self = (free_header_t *)ptr;
   blk_t *next_free = get_next_free(blk);
+
+	// printk("%zu\n", GET_SIZE(blk) - OVERHEAD);
+	// hexdump(ptr, GET_SIZE(blk) - OVERHEAD, true);
 
   // if we were at the end of the heap...
   if (next_free == NULL) {

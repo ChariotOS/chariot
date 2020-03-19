@@ -30,7 +30,7 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
 
   sched.priority = PRIORITY_HIGH;
 
-  stack_size = PGSIZE * 16;
+  stack_size = PGSIZE * 2;
   stack = kmalloc(stack_size);
 
   auto sp = (off_t)stack + stack_size;

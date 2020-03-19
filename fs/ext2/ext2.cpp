@@ -128,8 +128,6 @@ bool fs::ext2::init(void) {
     return false;
   }
 
-
-  /*
   auto uuid = sb->s_uuid;
   u16 *u_shrts = (u16 *)(uuid + sizeof(u32));
   u64 trail = 0xFFFFFFFFFFFF & *(u64 *)(uuid + sizeof(u32) + 3 * sizeof(u16));
@@ -139,7 +137,6 @@ bool fs::ext2::init(void) {
   printk("blks in group = %u\n", sb->blocks_in_blockgroup);
   printk("total inodes = %u\n", sb->inodes);
   printk("total blocks = %u\n", sb->blocks);
-  */
 
   return true;
 }
@@ -219,11 +216,6 @@ long fs::ext2::allocate_inode(void) {
 
   for (int i = 0; i < bgs; i++) {
     auto *bgd = (block_group_desc *)work_buf + i;
-    /*
-    printk("ib:%08x bb:%08x   ic:%4d bc:%4d\n", bgd->inode_bitmap,
-           bgd->block_bitmap, bgd->num_of_unalloc_inode,
-           bgd->num_of_unalloc_block);
-           */
 
     if (res == -1 && bgd->num_of_unalloc_inode > 0) {
       read_block(bgd->inode_bitmap, vbitmap);
@@ -262,10 +254,6 @@ struct fs::ext2_block_cache_line *fs::ext2::get_cache_line(int cba) {
   unsigned int oldest_age = 4294967295UL;
 
   for (int i = 0; i < cache_size; i++) {
-    /*
-    printk("%2d: lu:%d, blk:%d\n", i, disk_cache[i].last_used,
-           disk_cache[i].cba);
-           */
     if (disk_cache[i].cba == cba) {
       return &disk_cache[i];
     }
@@ -275,7 +263,6 @@ struct fs::ext2_block_cache_line *fs::ext2::get_cache_line(int cba) {
       oldest_age = disk_cache[i].last_used;
     }
   }
-  // printk("oldest = %d\n", oldest);
   if (disk_cache[oldest].buffer == NULL) {
     disk_cache[oldest].cba = -1;
     disk_cache[oldest].dirty = false;
@@ -506,6 +493,7 @@ vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
       });
     });
   });
+
   return list;
 }
 

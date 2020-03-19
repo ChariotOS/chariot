@@ -38,6 +38,16 @@ void *kmalloc(u64 size) {
   alloc_unlock();
   return ptr;
 }
+
+void *kzalloc(size_t size) {
+  alloc_lock();
+  auto ptr = mm_malloc(size);
+  alloc_unlock();
+
+	memset(ptr, 0, size);
+  return ptr;
+}
+
 void kfree(void *ptr) {
   alloc_lock();
   auto p = (u64)ptr;
