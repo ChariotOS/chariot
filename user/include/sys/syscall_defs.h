@@ -19,6 +19,7 @@
 #define SYS_dup2                     (0x1a)
 #define SYS_chdir                    (0x1b)
 #define SYS_getcwd                   (0x1c)
+#define SYS_ioctl                    (0x1f)
 #define SYS_yield                    (0x20)
 #define SYS_getpid                   (0x21)
 #define SYS_gettid                   (0x22)

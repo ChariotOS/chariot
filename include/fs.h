@@ -397,6 +397,9 @@ struct pipe : public fs::inode {
 };
 
 class file : public refcounted<file> {
+
+	int m_error = 0;
+
  public:
   // must construct file descriptors via these factory funcs
   static ref<file> create(struct fs::inode *, string open_path,
@@ -410,12 +413,15 @@ class file : public refcounted<file> {
   off_t seek(off_t offset, int whence = SEEK_SET);
   ssize_t read(void *, ssize_t);
   ssize_t write(void *data, ssize_t);
+	int ioctl(int cmd, unsigned long arg);
 
   int close();
 
   inline off_t offset(void) { return m_offset; }
 
   fs::file_operations *fops(void);
+
+	inline int errorcode() {return m_error;};
 
   ~file(void);
 

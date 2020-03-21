@@ -71,6 +71,11 @@ char *getcwd(char *, size_t);
 
 
 
+int dup(int fildes);
+int dup2(int fildes, int fildes2);
+
+
+
 #ifdef __cplusplus
 }
 #endif

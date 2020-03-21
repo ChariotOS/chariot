@@ -71,6 +71,8 @@ int chdir(const char *);
 /// num=0x1c
 int getcwd(char *dst, int dlen);
 
+/// num=0x1f
+int ioctl(int fd, int cmd, unsigned long value);
 
 /// num=0x20
 int yield(void);

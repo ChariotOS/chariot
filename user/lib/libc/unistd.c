@@ -99,3 +99,12 @@ int access(const char *path, int amode) {
 }
 
 
+
+
+
+int dup(int fd) {
+	return syscall(SYS_dup, fd);
+}
+int dup2(int old, int new) {
+	return syscall(SYS_dup2, old, new);
+}

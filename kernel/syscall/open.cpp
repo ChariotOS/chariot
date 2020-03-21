@@ -19,6 +19,10 @@ int sys::open(const char *path, int flags, int mode) {
   }
 
   auto file = fs::file::create(ino, path, flags);
+	if (file->ino == NULL) {
+		// the file was created for no reason, as it failed to open
+		return file->errorcode(); // negative errno
+	}
   int fd = proc->add_fd(file);
 
   return fd;

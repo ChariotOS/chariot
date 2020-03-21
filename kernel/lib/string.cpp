@@ -115,6 +115,18 @@ vec<string> string::split(char c, bool include_empty) {
 unsigned string::len() const { return m_len; }
 unsigned string::size() const { return m_len; }
 
+char string::pop() {
+
+	char c = -1;
+	if (m_len > 0) {
+		m_len--;
+		c = m_buf[m_len];
+		m_buf[m_len] = 0;
+	}
+
+	return c;
+}
+
 void string::clear() {
   CHECK;
   reserve(16);

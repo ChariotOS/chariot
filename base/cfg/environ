@@ -1,2 +1,2 @@
-PATH=/bin
+PATH=/bin:/usr/local/bin
 SHELL=/bin/sh

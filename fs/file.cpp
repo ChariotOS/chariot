@@ -21,6 +21,7 @@ fs::file::file(struct fs::inode *f, int flags) : ino(f) {
     int o_res = 0;
     if (ops && ops->open) o_res = ops->open(*this);
     if (o_res != 0) {
+			m_error = o_res;
       fs::inode::release(ino);
       ino = NULL;
     }
@@ -35,7 +36,7 @@ fs::file::~file(void) {
     */
 
     auto ops = fops();
-    if (ops && ops->open) ops->close(*this);
+    if (ops && ops->close) ops->close(*this);
     fs::inode::release(ino);
     ino = nullptr;
   }
@@ -89,6 +90,13 @@ ssize_t fs::file::write(void *data, ssize_t len) {
   if (!ino) return -ENOENT;
   fs::file_operations *ops = fops();
   if (ops && ops->write) return ops->write(*this, (char *)data, len);
+  return -EINVAL;
+}
+
+int fs::file::ioctl(int cmd, unsigned long arg) {
+  if (!ino) return -ENOENT;
+  fs::file_operations *ops = fops();
+  if (ops && ops->ioctl) return ops->ioctl(*this, cmd, arg);
   return -EINVAL;
 }
 

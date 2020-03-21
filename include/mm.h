@@ -118,6 +118,12 @@ class space {
   bool validate_pointer(void *, size_t, int mode);
   bool validate_string(const char *);
 
+
+	template<typename T, typename V>
+		bool validate_struct(V val, int mode) {
+			return validate_pointer((void*)(val), sizeof(T), mode);
+		}
+
   // impl by arch::
   static mm::space &kernel_space(void);
 

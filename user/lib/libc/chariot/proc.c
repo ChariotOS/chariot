@@ -29,11 +29,12 @@ int startpidve(int pid, char *const path, char *const argv[],
 int startpidvpe(int pid, char *const file, char *const argv[],
                 char *const envp[]) {
   int seen_eacces = 0;
-  char *path = NULL;  // TODO: getenv
 
   if (strchr(file, '/')) {
     return startpidve(pid, file, argv, envp);
   }
+
+  char *path = getenv("PATH");  // TODO: getenv
 
   // default path if there isn't one
   if (!path) path = "/usr/local/bin:/bin:/usr/bin";

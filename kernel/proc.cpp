@@ -301,6 +301,17 @@ bool process::is_dead(void) {
 int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   scoped_lock lck(this->datalock);
 
+	/*
+	printk("exec (pid=%d) %s:\n", pid, path.get());
+	for (int i = 0; i < argv.size(); i++) {
+		printk("   argv[%d] = '%s'\n", i, argv[i].get());
+	}
+	for (int i = 0; i < envp.size(); i++) {
+		printk("   envp[%d] = '%s'\n", i, envp[i].get());
+	}
+	*/
+
+
   if (!this->embryonic) return -1;
 
   if (threads.size() != 0) return -1;

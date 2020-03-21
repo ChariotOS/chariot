@@ -20,7 +20,6 @@
 #define PS_BLOCKED (2)
 #define PS_EMBRYO (3)
 
-
 struct thread_context {
   unsigned long r15;
   unsigned long r14;
@@ -72,6 +71,14 @@ struct process final : public refcounted<struct process> {
 
   // signal information
   struct {
+    /* This is the address of the signal's "return" trampoline. Basically, the
+     * signal is triggered and this is the retunrn address of that signal. If
+     * this is not set (== 0), signals cannot be sent, as it would result in a
+     * segmentation fault [bad! :^)]. So the user must install this before any
+     * signals will be sent - likely in the _start function. This function
+     * should run the systemcall "sigreturn" in order to end the signal's
+     * lifetime */
+    off_t ret = 0;
     u64 mask;
     u64 pending;
     void *handlers[64] = {0};
@@ -160,7 +167,7 @@ struct thread_sched_info {
 
 struct thread_locks {
   spinlock generic;  // locked for data manipulation
-  spinlock run;      // locked while a thread is being run
+  spinlock run;	     // locked while a thread is being run
 };
 
 struct thread_waitqueue_info {
@@ -205,11 +212,11 @@ struct thread final {
 
     struct /* bitmask */ {
       unsigned kthread : 1;
-      unsigned should_die : 1;  // the thread needs to be torn down, must not
-                                // return to userspace
-      unsigned kern_idle : 1;   // the thread is a kernel idle thread
+      unsigned should_die : 1;	// the thread needs to be torn down, must not
+				// return to userspace
+      unsigned kern_idle : 1;	// the thread is a kernel idle thread
       unsigned exited : 1;  // the thread has exited, it's safe to delete when
-                            // reaped by the parent or another thread
+			    // reaped by the parent or another thread
     };
   };
 

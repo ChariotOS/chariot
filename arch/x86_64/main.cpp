@@ -69,7 +69,6 @@ static void kmain2(void) {
 
   call_global_constructors();
 
-  vga::late_init();
   kargs::init(mbinfo);
 
   if (!smp::init()) panic("smp failed!\n");
