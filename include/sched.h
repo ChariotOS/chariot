@@ -79,8 +79,6 @@ struct process final : public refcounted<struct process> {
      * should run the systemcall "sigreturn" in order to end the signal's
      * lifetime */
     off_t ret = 0;
-    u64 mask;
-    u64 pending;
     void *handlers[64] = {0};
     spinlock lock;
   } sig;
@@ -194,6 +192,13 @@ struct thread final {
   /* Reference to the kernel stack */
   long stack_size;
   void *stack;
+
+
+
+	struct {
+		unsigned long pending = 0;
+		unsigned long mask = 0;
+	} sig;
 
   struct thread_sched_info sched;
   struct thread_fpu_info fpu;

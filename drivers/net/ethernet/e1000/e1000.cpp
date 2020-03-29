@@ -148,7 +148,7 @@ static void irq_handler(int i, reg_t *) {
   if (status) {
     if (status & 0x04) {
       /* Start link */
-      printk("[e1000]: start link\n");
+      printk(KERN_INFO "[e1000]: start link\n");
     } else if (status & 0x10) {
       /* ?? */
     } else if (status & ((1 << 6) | (1 << 7))) {
@@ -248,10 +248,10 @@ void e1000_init(void) {
     mem_base = (unsigned long)p2v(device->get_bar(0).raw);
 
     eeprom_detect();
-    printk("[e1000]: has_eeprom = %d\n", has_eeprom);
+    printk(KERN_INFO "[e1000]: has_eeprom = %d\n", has_eeprom);
     read_mac();
 
-    printk("[e1000]: device mac %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0],
+    printk(KERN_INFO "[e1000]: device mac %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0],
            mac[1], mac[2], mac[3], mac[4], mac[5]);
 
     rx = (struct rx_desc *)phys::kalloc(
@@ -331,7 +331,7 @@ void e1000_init(void) {
     write_command(E1000_REG_RCTRL, (1 << 4));
 
     int link_is_up = (read_command(E1000_REG_STATUS) & (1 << 1));
-    printk("[e1000]: done. has_eeprom = %d, link is up = %d, irq=%d\n",
+    printk(KERN_INFO "[e1000]: done. has_eeprom = %d, link is up = %d, irq=%d\n",
            has_eeprom, link_is_up, e1000_irq);
 
     net::register_interface("e1000", e1000_ifops);

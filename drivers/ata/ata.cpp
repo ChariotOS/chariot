@@ -173,7 +173,7 @@ bool dev::ata::identify() {
   }
 
   if (status & 0x01) {
-    printk("error identifying ATA drive. status=%02x\n", status);
+    printk(KERN_ERROR "error identifying ATA drive. status=%02x\n", status);
     drive_lock.unlock();
     return false;
   }
@@ -253,7 +253,7 @@ bool dev::ata::read_block(u32 sector, u8* data) {
 
   u8 status = wait();
   if (status & 0x1) {
-    printk("error reading ATA drive\n");
+    printk(KERN_ERROR "error reading ATA drive\n");
     return false;
   }
 
@@ -312,7 +312,7 @@ bool dev::ata::flush(void) {
     status = command_port.in();
   }
   if (status & 0x1) {
-    printk("error flushing ATA drive\n");
+    printk(KERN_ERROR "error flushing ATA drive\n");
     return false;
   }
   return true;
@@ -431,8 +431,8 @@ static void ata_interrupt(int intr, reg_t* fr) {
 static vec<ref<dev::disk>> m_disks;
 
 static void add_drive(const string& name, ref<dev::disk> drive) {
-	int minor = m_disks.size();
-  KINFO("Detected ATA drive '%s'\n", name.get(), MAJOR_ATA);
+  int minor = m_disks.size();
+  // KINFO("Detected ATA drive '%s'\n", name.get(), MAJOR_ATA);
   m_disks.push(drive);
   dev::register_name(ata_driver_info, name, minor);
 }
@@ -458,7 +458,6 @@ static void query_and_add_drive(u16 addr, int id, bool master) {
 	auto pname = string::format("%sp%d", name.get(), i + 1);
 
 	auto part_disk = make_ref<dev::ata_part>(drive, part.off, part.len);
-	printk("part_disk=%p\n", part_disk.get());
 
 	add_drive(pname, part_disk);
       }
@@ -484,7 +483,7 @@ static dev::disk* get_disk(int minor) {
   if (minor >= 0 && minor < m_disks.size()) {
     return m_disks[minor].get();
   }
-	printk("inval\n");
+  printk("inval\n");
   return nullptr;
 }
 

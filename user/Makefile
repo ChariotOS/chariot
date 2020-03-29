@@ -1,4 +1,6 @@
-# include ../Makefile.common
+
+ROOTDIR = ..
+include ../Makefile.common
 
 
 CINCLUDES=-I./include/

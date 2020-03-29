@@ -36,7 +36,7 @@ void arch::initialize_trapframe(bool userspace, reg_t *r) {
   if (userspace) {
     r[18 /* CS */] = (SEG_UCODE << 3) | DPL_USER;
     r[21 /* DS */] = (SEG_UDATA << 3) | DPL_USER;
-    r[19 /* FL */] = FL_IF;
+    r[19 /* FL */] = FL_IF ;
   } else {
     r[18 /* CS */] = (SEG_UCODE << 3) | DPL_KERN;
     r[21 /* DS */] = (SEG_UDATA << 3) | DPL_KERN;

@@ -9,13 +9,13 @@ extern libc_start
 
 global _start
 _start:
-
 	mov rbp, rsp
 	push rbp
 
 	jmp libc_start
 
 	pop rbp
+
 
 	.invalid_loop:
 		mov rax, [0x00]

@@ -128,6 +128,7 @@ bool fs::ext2::init(void) {
     return false;
   }
 
+	/*
   auto uuid = sb->s_uuid;
   u16 *u_shrts = (u16 *)(uuid + sizeof(u32));
   u64 trail = 0xFFFFFFFFFFFF & *(u64 *)(uuid + sizeof(u32) + 3 * sizeof(u16));
@@ -137,6 +138,7 @@ bool fs::ext2::init(void) {
   printk("blks in group = %u\n", sb->blocks_in_blockgroup);
   printk("total inodes = %u\n", sb->inodes);
   printk("total blocks = %u\n", sb->blocks);
+	*/
 
   return true;
 }

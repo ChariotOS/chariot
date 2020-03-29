@@ -23,7 +23,6 @@ alltraps:
   push rdi
   push rax
 
-
   mov rdi, rsp ; frame in arg1
   call trap
 

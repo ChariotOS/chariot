@@ -3,14 +3,15 @@
 #include <paging.h>
 #include <pit.h>
 #include <printk.h>
-#include <syscall.h>
 #include <sched.h>
+#include <syscall.h>
+
 #include "arch.h"
 #include "smp.h"
 
 // implementation of the x86 interrupt request handling system
 extern u32 idt_block[];
-extern void *vectors[];  // in vectors.S: array of 256 entry pointers
+extern void *vectors[];	 // in vectors.S: array of 256 entry pointers
 
 // Set up a normal interrupt/trap gate descriptor.
 // - istrap: 1 for a trap (= exception) gate, 0 for an interrupt gate.
@@ -49,10 +50,10 @@ extern void *vectors[];  // in vectors.S: array of 256 entry pointers
 #define TRAP_GPFLT 13  // general protection fault
 #define TRAP_PGFLT 14  // page fault
 // #define TRAP_RES        15      // reserved
-#define TRAP_FPERR 16    // floating point error
-#define TRAP_ALIGN 17    // aligment check
-#define TRAP_MCHK 18     // machine check
-#define TRAP_SIMDERR 19  // SIMD floating point error
+#define TRAP_FPERR 16	 // floating point error
+#define TRAP_ALIGN 17	 // aligment check
+#define TRAP_MCHK 18	 // machine check
+#define TRAP_SIMDERR 19	 // SIMD floating point error
 
 #define EXCP_NAME 0
 #define EXCP_MNEMONIC 1
@@ -99,7 +100,6 @@ void arch::irq::eoi(int i) {
     }
     outb(0x20, 0x20);
   }
-
   smp::lapic_eoi();
 }
 
@@ -129,25 +129,24 @@ static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
   idt[n + 3] = 0;
 }
 
-static u64 last_tsc = 0;
 
-// TODO: move to sched.cpp
+// boot time tick handler
+// Will be replaced by the lapic
 static void tick_handle(int i, reg_t *tf) {
   auto &cpu = cpu::current();
 
   u64 now = arch::read_timestamp();
+  cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
+  cpu.kstat.last_tick_tsc = now;
+  cpu.kstat.ticks++;
 
-  last_tsc = now;
-
-  // increment the number of ticks
-  cpu.ticks++;
-  sched::handle_tick(cpu.ticks);
+  irq::eoi(32 /* IRQ_TICK */);
+  sched::handle_tick(cpu.kstat.ticks);
   return;
 }
 
-static void 
-unknown_exception(int i, reg_t *regs) {
-  auto *tf = (struct x86_64regs*)regs;
+static void unknown_exception(int i, reg_t *regs) {
+  auto *tf = (struct x86_64regs *)regs;
 
   KERR("KERNEL PANIC\n");
   KERR("CPU EXCEPTION: %s\n", excp_codes[tf->trapno][EXCP_NAME]);
@@ -200,7 +199,6 @@ void dump_backtrace(off_t ebp) {
   }
 }
 
-
 /* eflags masks */
 #define CC_C 0x0001
 #define CC_P 0x0004
@@ -224,10 +222,8 @@ void dump_backtrace(off_t ebp) {
 #define VIP_MASK 0x00100000
 #define ID_MASK 0x00200000
 
-
 static void gpf_handler(int i, reg_t *regs) {
-
-  auto *tf = (struct x86_64regs*)regs;
+  auto *tf = (struct x86_64regs *)regs;
   // TODO: die
   KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", curthd->pid, curthd->tid,
        tf->rip, tf->err);
@@ -237,21 +233,21 @@ static void gpf_handler(int i, reg_t *regs) {
 
 #define REGFMT "%016p"
   printk("RAX=" REGFMT " RBX=" REGFMT " RCX=" REGFMT " RDX=" REGFMT
-         "\n"
-         "RSI=" REGFMT " RDI=" REGFMT " RBP=" REGFMT " RSP=" REGFMT
-         "\n"
-         "R8 =" REGFMT " R9 =" REGFMT " R10=" REGFMT " R11=" REGFMT
-         "\n"
-         "R12=" REGFMT " R13=" REGFMT " R14=" REGFMT " R15=" REGFMT
-         "\n"
-         "RIP=" REGFMT " RFL=%08x [%c%c%c%c%c%c%c]\n",
+	 "\n"
+	 "RSI=" REGFMT " RDI=" REGFMT " RBP=" REGFMT " RSP=" REGFMT
+	 "\n"
+	 "R8 =" REGFMT " R9 =" REGFMT " R10=" REGFMT " R11=" REGFMT
+	 "\n"
+	 "R12=" REGFMT " R13=" REGFMT " R14=" REGFMT " R15=" REGFMT
+	 "\n"
+	 "RIP=" REGFMT " RFL=%08x [%c%c%c%c%c%c%c]\n",
 
-         GET(rax), GET(rbx), GET(rcx), GET(rdx), GET(rsi), GET(rdi), GET(rbp),
-         GET(rsp), GET(r8), GET(r9), GET(r10), GET(r11), GET(r12), GET(r13),
-         GET(r14), GET(r15), GET(rip), eflags, eflags & DF_MASK ? 'D' : '-',
-         eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-',
-         eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-',
-         eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
+	 GET(rax), GET(rbx), GET(rcx), GET(rdx), GET(rsi), GET(rdi), GET(rbp),
+	 GET(rsp), GET(r8), GET(r9), GET(r10), GET(r11), GET(r12), GET(r13),
+	 GET(r14), GET(r15), GET(rip), eflags, eflags & DF_MASK ? 'D' : '-',
+	 eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-',
+	 eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-',
+	 eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
 
   dump_backtrace(tf->rbp);
 
@@ -261,16 +257,12 @@ static void gpf_handler(int i, reg_t *regs) {
 }
 
 static void illegal_instruction_handler(int i, reg_t *regs) {
-
-  auto *tf = (struct x86_64regs*)regs;
-  auto pa = paging::get_physical(tf->rip & ~0xFFF);
-  if (pa == 0) {
-    return;
-  }
+  auto *tf = (struct x86_64regs *)regs;
 
   KERR("pid %d, tid %d died from illegal instruction @ %p\n", curthd->pid,
        curthd->tid, tf->rip);
   KERR("  ESP=%p\n", tf->rsp);
+
   sys::exit_proc(-1);
 }
 
@@ -283,13 +275,16 @@ extern "C" void syscall_handle(int i, reg_t *tf);
 #define PGFLT_INSTR (1 << 4)
 
 static void pgfault_handle(int i, reg_t *regs) {
-  auto *tf = (struct x86_64regs*)regs;
+
+
+  auto *tf = (struct x86_64regs *)regs;
   void *page = (void *)(read_cr2() & ~0xFFF);
+
 
   auto proc = curproc;
   if (curproc == NULL) {
     KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf->rip,
-         read_cr2());
+	 read_cr2());
     // lookup the kernel proc if we aren't in one!
     proc = sched::proc::kproc();
   }
@@ -312,7 +307,7 @@ static void pgfault_handle(int i, reg_t *regs) {
     if (res == -1) {
       // TODO:
       KERR("pid %d, tid %d segfaulted @ %p\n", curthd->pid, curthd->tid,
-           tf->rip);
+	   tf->rip);
       KERR("       bad address = %p\n", read_cr2());
       KERR("               err = %p\n", tf->err);
 
@@ -329,14 +324,17 @@ static void pgfault_handle(int i, reg_t *regs) {
   }
 }
 
+extern void pit_irq_handler(int i, reg_t *);
+
 int arch::irq::init(void) {
+  init_pit();
   u32 *idt = (u32 *)&idt_block;
 
   // fill up the idt with the correct trap vectors.
   for (int n = 0; n < 130; n++) mkgate(idt, n, vectors[n], 0, 0);
 
   int i;
-  for (i = 32; i < 48; i++) irq::disable(i);
+  // for (i = 32; i < 48; i++) irq::disable(i);
 
   // handle all the <32 irqs as unknown
   for (i = 0; i < 32; i++) {
@@ -351,13 +349,16 @@ int arch::irq::init(void) {
   ::irq::install(TRAP_PGFLT, pgfault_handle, "Page Fault");
   ::irq::install(TRAP_GPFLT, gpf_handler, "General Protection Fault");
   ::irq::install(TRAP_ILLOP, illegal_instruction_handler,
-                 "Illegal Instruction Handler");
+		 "Illegal Instruction Handler");
 
   pic_disable(34);
 
-  mkgate(idt, 32, vectors[32], 0, 0);
+  init_pit();
+
   ::irq::install(32, tick_handle, "Preemption Tick");
 
+
+	// setup the ancient systemcall interface
   mkgate(idt, 0x80, vectors[0x80], 3, 0);
   ::irq::install(0x80, syscall_handle, "System Call");
 
@@ -380,7 +381,7 @@ extern "C" void trap(reg_t *regs) {
    */
   arch::sti();
 
-  auto *tf = (struct x86_64regs*)regs;
+  auto *tf = (struct x86_64regs *)regs;
   irq::dispatch(tf->trapno, regs);
 
   irq::eoi(tf->trapno);

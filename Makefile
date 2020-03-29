@@ -1,12 +1,22 @@
-CC = $(X86_64_ELF_TOOLCHAIN)gcc$(TOOLCHAIN_GCC_VERSION)
-CXX = $(X86_64_ELF_TOOLCHAIN)g++$(TOOLCHAIN_GCC_VERSION)
-AS = nasm
-LD = $(X86_64_ELF_TOOLCHAIN)ld
-GRUB = $(GRUB_PREFIX)grub-mkrescue
-
 .PHONY: fs watch
 
+ROOTDIR = .
 include Makefile.common
+
+
+
+LDFLAGS=-m elf_x86_64
+AFLAGS=-f elf64 -w-zext-reloc -D __ARCH_$(ARCH)__
+
+CINCLUDES=-I./include/
+
+CFLAGS:=$(CINCLUDES) $(DFLAGS) -D__ARCH_$(ARCH)__ -mno-red-zone -fno-omit-frame-pointer -fno-stack-protector \
+				 -mtls-direct-seg-refs -fno-pie -Wno-sign-compare -ffreestanding \
+				 -mcmodel=large $(OPT) -Wall -fno-common -Wno-initializer-overrides \
+				 -Wstrict-overflow=5 -fno-tree-vectorize -Wno-address-of-packed-member \
+				 -Wno-strict-overflow -DGIT_REVISION=\"$(shell git rev-parse HEAD)\"
+
+CPPFLAGS:=$(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions
 
 STRUCTURE := $(shell tools/get_structure.sh $(ARCH))
 CODEFILES := $(addsuffix /*,$(STRUCTURE))
@@ -41,12 +51,12 @@ build:
 
 build/%.c.o: %.c
 	@mkdir -p $(dir $@)
-	@echo -e "$(PFX) $(CC)  " $<
+	@echo -e "$(PFX) CC   " $<
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
 build/%.cpp.o: %.cpp
 	@mkdir -p $(dir $@)
-	@echo -e "$(PFX) $(CXX) " $<
+	@echo -e "$(PFX) CXX " $<
 	@$(CXX) $(CPPFLAGS) -o $@ -c $<
 
 

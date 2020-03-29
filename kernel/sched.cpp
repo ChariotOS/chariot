@@ -264,6 +264,7 @@ static void schedule_one() {
 
   if (thd == nullptr) {
     // idle loop when there isn't a task
+		cpu::current().kstat.iticks++;
     asm("hlt");
     return;
   }
@@ -280,10 +281,11 @@ static void schedule_one() {
 
 void sched::run() {
   // re-calculated later using ''math''
-  int boost_interval = 100;
+  int boost_interval = 10;
   u64 last_boost = 0;
 
   for (;;) {
+
     schedule_one();
 
     auto ticks = cpu::get_ticks();
@@ -334,9 +336,6 @@ void sched::run() {
         Q.queue_lock.unlock();
       }
 
-      boost_interval = 500;
-      // TODO: calculate a new boost interval here.
-
       HI.queue_lock.unlock();
     }
   }
@@ -355,14 +354,18 @@ void sched::play_tone(int frq, int dur) {
 void sched::beep(void) { play_tone(440, 25); }
 
 void sched::handle_tick(u64 ticks) {
-  // send the EOI signal to the lapic
-  irq::eoi(32 /* IRQ_TICK */);
 
   if (ticks >= beep_timeout) pcspeaker::clear();
   if (!enabled() || !cpu::in_thread()) return;
 
   // grab the current thread
   auto thd = cpu::thread();
+
+	if (thd->proc.ring == RING_KERN) {
+		cpu::current().kstat.kticks++;
+	} else {
+		cpu::current().kstat.uticks++;
+	}
   thd->sched.ticks++;
   // yield?
   if (ticks - thd->sched.start_tick >= thd->sched.timeslice) {

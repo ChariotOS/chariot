@@ -63,6 +63,10 @@ static void call_global_constructors(void) {
 // kernel/init.cpp
 int kernel_init(void *);
 
+
+// ms per tick
+#define TICK_FREQ 100
+
 static void kmain2(void) {
   irq::init();
   enable_sse();
@@ -73,7 +77,11 @@ static void kmain2(void) {
 
   if (!smp::init()) panic("smp failed!\n");
   KINFO("Discovered SMP Cores\n");
-  smp::lapic_init();
+
+
+  init_pit();
+	set_pit_freq(TICK_FREQ);
+  KINFO("Initialized PIT\n");
 
   // initialize the scheduler
   assert(sched::init());
@@ -96,11 +104,17 @@ void init_rootvfs(ref<fs::file> dev) {
   if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
 }
 
+
+
 int kernel_init(void *) {
+
+
+	// at this point, the pit is being used for interrupts,
+	// so we should go setup lapic for that
+	smp::lapic_init();
+
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
-  init_pit();
-  KINFO("Initialized PIT\n");
   syscall_init();
 
   // walk the kernel modules and run their init function
@@ -132,8 +146,8 @@ int kernel_init(void *) {
 
   if (init_pid == -1) {
     KERR("failed to create init process\n");
-    KERR("check the grub config and make sure that the init command line arg\n")
-    KERR("is set to a comma seperated list of possible paths.\n")
+    KERR("check the grub config and make sure that the init command line arg\n");
+    KERR("is set to a comma seperated list of possible paths.\n");
   }
 
   // yield back to scheduler, we don't really want to run this thread anymore

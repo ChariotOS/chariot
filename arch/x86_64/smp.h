@@ -15,6 +15,16 @@
 #define MP_TAB_IO_INT_LEN  8
 #define MP_TAB_LINT_LEN    8
 
+
+struct cpuid_busfreq_info {
+	unsigned base, max, bus;
+};
+
+extern "C" {
+	// in cpuid.s
+	extern unsigned cpuid_busfreq(struct cpuid_busfreq_info *);
+}
+
 namespace smp {
 
 // every CPU has one of these. Stored globally and accessed by the

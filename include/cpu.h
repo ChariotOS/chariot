@@ -4,10 +4,22 @@
 #include <sched.h>
 #include <types.h>
 
+
+struct kstat_cpu {
+	unsigned long ticks; // total ticks
+	unsigned long uticks; // user tasks
+	unsigned long kticks; // kernel tasks
+	unsigned long iticks; // idle
+
+	unsigned long last_tick_tsc = 0;
+	unsigned long tsc_per_tick = 0;
+};
+
 struct cpu_t {
   void *local;
   int ncli;
-  size_t ticks;
+
+	struct kstat_cpu kstat;
 
   uint16_t preemption_depth;
 
@@ -52,6 +64,6 @@ void seginit(void *local = nullptr);
 void switch_vm(struct thread *);
 
 inline int ncli(void) { return current().ncli; }
-static inline u64 get_ticks(void) { return current().ticks; }
+static inline u64 get_ticks(void) { return current().kstat.ticks; }
 
 }  // namespace cpu

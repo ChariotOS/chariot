@@ -1,3 +1,8 @@
+#define SIG_BLOCK     0
+#define SIG_UNBLOCK   1
+#define SIG_SETMASK   2
+
+
 #define SIGINT    0
 #define SIGHUP    1
 #define SIGQUIT   3

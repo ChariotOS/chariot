@@ -1,6 +1,7 @@
 #include <dev/CMOS.h>
 #include <dev/RTC.h>
 #include <module.h>
+#include <util.h>
 #include <string.h>
 
 static time_t s_boot_time;
@@ -116,6 +117,8 @@ void rtc_init(void) {
   dev::CMOS::write(0x0b, cmos_mode);
 
   s_boot_time = dev::RTC::now();
+
+
 }
 
 module_init("RTC", rtc_init);

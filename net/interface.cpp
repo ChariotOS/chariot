@@ -26,9 +26,10 @@ int net::register_interface(const char *name, struct net::ifops &ops) {
   auto i = new struct net::interface(name, ops);
 
   interfaces[name] = i;
-  printk("[net] registered new interface '%s': %02x:%02x:%02x:%02x:%02x:%02x\n",
-         name, i->hwaddr[0], i->hwaddr[1], i->hwaddr[2], i->hwaddr[3],
-         i->hwaddr[4], i->hwaddr[5]);
+  printk(KERN_INFO
+	 "[net] registered new interface '%s': %02x:%02x:%02x:%02x:%02x:%02x\n",
+	 name, i->hwaddr[0], i->hwaddr[1], i->hwaddr[2], i->hwaddr[3],
+	 i->hwaddr[4], i->hwaddr[5]);
 
   return 0;
 }

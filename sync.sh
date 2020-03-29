@@ -47,6 +47,7 @@ cleanup() {
 	echo "cleanup"
 	if [ -d $mnt ]; then
 			printf "unmounting filesystem... "
+			ncdu $mnt
 			sudo umount -f $mnt || ( sleep 1 && sync && sudo umount $mnt )
 			rm -rf $mnt
 			echo "done"
@@ -106,15 +107,15 @@ sudo mkdir -p $mnt/tmp
 
 
 # make the user programs
-cd user && ./build.sh 2>/dev/null
-cd ..
+pushd user
+	./build.sh
+popd
 
-sudo cp -r user/out/bin $mnt/bin
-sudo cp -r user/out/lib $mnt/lib
+sudo cp -r user/out/* $mnt/
 
 
-sudo mkdir $mnt/usr/src
-sudo rsync -ar --exclude=build  --exclude=.git --exclude=user/out ./ $mnt/usr/src
+# sudo mkdir $mnt/usr/src
+# sudo rsync -ar --exclude=toolchain --exclude=build  --exclude=.git --exclude=user/out ./ $mnt/usr/src
 
 
 sudo chown -R 0:0 $mnt
@@ -125,10 +126,8 @@ sudo cp grub.cfg $mnt/boot/grub/
 
 # build the kernel and copy it into the boot dir
 make -j ARCH=x86_64 || die 'Failed to build the kernel'
-sudo nm -s build/chariot.elf | c++filt > build/kernel.syms
 
 sudo cp build/chariot.elf $mnt/boot/
-sudo cp build/kernel.syms $mnt/boot/
 
 # create some device nodes
 sudo mknod $mnt/dev/urandom c 1 2

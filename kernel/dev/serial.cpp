@@ -9,7 +9,7 @@
 
 static int uart = 0;
 
-#define BAUD 115200
+#define BAUD 9600
 
 void serial_install() {
   // Turn off the FIFO
@@ -42,10 +42,8 @@ int serial_transmit_empty(int device) { return inb(device + 5) & 0x20; }
 
 void serial_send(int device, char out) {
   if (uart) {
-    /*
     while (!serial_transmit_empty(device)) {
     }
-    */
     outb(device, out);
   }
 }
@@ -53,7 +51,6 @@ void serial_send(int device, char out) {
 void serial_string(int device, char* out) {
   for (uint32_t i = 0; out[i] != '\0'; i++) {
     outb(device, out[i]);
-    // serial_send(device, out[i]);
   }
 }
 

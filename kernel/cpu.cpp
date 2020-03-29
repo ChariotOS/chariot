@@ -7,6 +7,8 @@
 #include <printk.h>
 #include <types.h>
 
+
+
 // 16 CPU structures where each cpu has one
 cpu_t cpus[16];
 int cpunum = 0;
@@ -31,13 +33,13 @@ void cpu::calc_speed_khz(void) {
   c.speed_khz = 0;
   u64 rec_ms = 500;
   auto start_cycle = arch::read_timestamp();
-  auto start_tick = c.ticks;
+  auto start_tick = c.kstat.ticks;
 
   arch::sti();
 
   // spin while recording
   while (1) {
-    if (c.ticks - start_tick > rec_ms) {
+    if (c.kstat.ticks - start_tick > rec_ms) {
       break;
     }
     asm("pause");
@@ -50,7 +52,7 @@ void cpu::calc_speed_khz(void) {
 
   double hz = (cycles / rec_ms) * 1000.0;
   c.speed_khz = hz / 1000;
-  printk("%zu khz\n", c.speed_khz);
+  KINFO("%zu khz\n", c.speed_khz);
 }
 
 // Pushcli/popcli are like cli/sti except that they are matched:

@@ -1,8 +1,11 @@
+#include "smp.h"
+
+#include <cpu.h>
 #include <func.h>
 #include <idt.h>
 #include <mem.h>
 #include <paging.h>
-#include "smp.h"
+#include <pit.h>
 #include <vec.h>
 
 #define BASE_MEM_LAST_KILO 0x9fc00
@@ -18,35 +21,35 @@
 #endif
 
 // Local APIC registers, divided by 4 for use as uint[] indices.
-#define LAPIC_ID (0x0020 / 4)     // ID
-#define LAPIC_VER (0x0030 / 4)    // Version
-#define LAPIC_TPR (0x0080 / 4)    // Task Priority
-#define LAPIC_EOI (0x00B0 / 4)    // EOI
-#define LAPIC_SVR (0x00F0 / 4)    // Spurious Interrupt Vector
-#define LAPIC_ENABLE 0x00000100   // Unit Enable
-#define LAPIC_ESR (0x0280 / 4)    // Error Status
+#define LAPIC_ID (0x0020 / 4)	  // ID
+#define LAPIC_VER (0x0030 / 4)	  // Version
+#define LAPIC_TPR (0x0080 / 4)	  // Task Priority
+#define LAPIC_EOI (0x00B0 / 4)	  // EOI
+#define LAPIC_SVR (0x00F0 / 4)	  // Spurious Interrupt Vector
+#define LAPIC_ENABLE 0x00000100	  // Unit Enable
+#define LAPIC_ESR (0x0280 / 4)	  // Error Status
 #define LAPIC_ICRLO (0x0300 / 4)  // Interrupt Command
-#define LAPIC_INIT 0x00000500     // INIT/RESET
+#define LAPIC_INIT 0x00000500	  // INIT/RESET
 #define LAPIC_STARTUP 0x00000600  // Startup IPI
-#define LAPIC_DELIVS 0x00001000   // Delivery status
-#define LAPIC_ASSERT 0x00004000   // Assert interrupt (vs deassert)
+#define LAPIC_DELIVS 0x00001000	  // Delivery status
+#define LAPIC_ASSERT 0x00004000	  // Assert interrupt (vs deassert)
 #define LAPIC_DEASSERT 0x00000000
-#define LAPIC_LEVEL 0x00008000  // Level triggered
-#define LAPIC_BCAST 0x00080000  // Send to all APICs, including self.
+#define LAPIC_LEVEL 0x00008000	// Level triggered
+#define LAPIC_BCAST 0x00080000	// Send to all APICs, including self.
 #define LAPIC_BUSY 0x00001000
 #define LAPIC_FIXED 0x00000000
 #define LAPIC_ICRHI (0x0310 / 4)   // Interrupt Command [63:32]
 #define LAPIC_TIMER (0x0320 / 4)   // Local Vector Table 0 (TIMER)
-#define LAPIC_X1 0x0000000B        // divide counts by 1
+#define LAPIC_X1 0x0000000B	   // divide counts by 1
 #define LAPIC_PERIODIC 0x00020000  // Periodic
 #define LAPIC_PCINT (0x0340 / 4)   // Performance Counter LVT
 #define LAPIC_LINT0 (0x0350 / 4)   // Local Vector Table 1 (LINT0)
 #define LAPIC_LINT1 (0x0360 / 4)   // Local Vector Table 2 (LINT1)
 #define LAPIC_ERROR (0x0370 / 4)   // Local Vector Table 3 (ERROR)
-#define LAPIC_MASKED 0x00010000    // Interrupt masked
-#define LAPIC_TICR (0x0380 / 4)    // Timer Initial Count
-#define LAPIC_TCCR (0x0390 / 4)    // Timer Current Count
-#define LAPIC_TDCR (0x03E0 / 4)    // Timer Divide Configuration
+#define LAPIC_MASKED 0x00010000	   // Interrupt masked
+#define LAPIC_TICR (0x0380 / 4)	   // Timer Initial Count
+#define LAPIC_TCCR (0x0390 / 4)	   // Timer Current Count
+#define LAPIC_TDCR (0x03E0 / 4)	   // Timer Divide Configuration
 
 // ioapic is always at the same location
 volatile auto *ioapic = (volatile struct ioapic *)p2v(0xFEC00000);
@@ -58,16 +61,9 @@ struct ioapic {
   u32 data;
 };
 
-#define REG_ID 0x00     // Register index: ID
-#define REG_VER 0x01    // Register index: version
-#define REG_TABLE 0x10  // Redirection table base
-
-/*
-static u32 ioapicread(int reg) {
-  ioapic->reg = reg;
-  return ioapic->data;
-}
-*/
+#define REG_ID 0x00	// Register index: ID
+#define REG_VER 0x01	// Register index: version
+#define REG_TABLE 0x10	// Redirection table base
 
 static void ioapicwrite(int reg, u32 data) {
   ioapic->reg = reg;
@@ -75,6 +71,7 @@ static void ioapicwrite(int reg, u32 data) {
 }
 
 void smp::ioapicenable(int irq, int cpunum) {
+  if (irq == 0) return;
   // Mark interrupt edge-triggered, active high,
   // enabled, and routed to the given cpunum,
   // which happens to be that cpu's APIC ID.
@@ -83,27 +80,84 @@ void smp::ioapicenable(int irq, int cpunum) {
 }
 
 static uint32_t *lapic = NULL;
-static uint32_t ticksin10ms = 0;
+// how fast does the lapic tick in the time of a kernel tick?
+static uint32_t lapic_ticks_per_second = 0;
+
+static void wait_for_tick_change(void) {
+  volatile u64 start = cpu::get_ticks();
+  while (cpu::get_ticks() == start) {
+  }
+}
+
+static void lapic_tick_handler(int i, reg_t *tf) {
+  auto &cpu = cpu::current();
+
+  u64 now = arch::read_timestamp();
+  cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
+  cpu.kstat.last_tick_tsc = now;
+  cpu.kstat.ticks++;
+
+	smp::lapic_eoi();
+
+	// printk("tick %d\n", cpu.kstat.ticks);
+  sched::handle_tick(cpu.kstat.ticks);
+  return;
+}
+
+// will screw up the PIT
+static void calibrate(void) {
+		#define PIT_DIV 100
+		set_pit_freq(PIT_DIV);
+    wait_for_tick_change();
+    // Set APIC init counter to -1
+		smp::lapic_write(LAPIC_TICR, 0xffffffff);
+
+    wait_for_tick_change();
+    // Stop the APIC timer
+		smp::lapic_write(LAPIC_TIMER, LAPIC_MASKED);
+
+    // Now we know how often the APIC timer has ticked in 10ms
+    auto ticks = 0xffffffff - smp::lapic_read(LAPIC_TCCR);
+
+		lapic_ticks_per_second = ticks * PIT_DIV;
+
+}
+
+
+static void set_tickrate(u32 per_second) {
+  smp::lapic_write(LAPIC_TICR, lapic_ticks_per_second / per_second); // set the tick rate
+}
+
+
 void smp::lapic_init(void) {
   if (!lapic) return;
 
-  outb(0xa1, 0xff);
-  outb(0x21, 0xff);
+  struct cpuid_busfreq_info freq;
+
+  cpuid_busfreq(&freq);
+
+  KINFO("[LAPIC] freq info: base: %uMHz,  max: %uMHz, bus: %uMHz\n", freq.base,
+	freq.max, freq.bus);
+
+  lapic_write(LAPIC_TDCR, LAPIC_X1);
+
+  if (lapic_ticks_per_second == 0) {
+  	calibrate();
+  }
+
+
+	KINFO("[LAPIC] counts per tick: %zu\t0x%08x\n", lapic_ticks_per_second,
+	lapic_ticks_per_second);
+
+
   // Enable local APIC; set spurious interrupt vector.
   lapic_write(LAPIC_SVR, LAPIC_ENABLE | (32 + 31 /* spurious */));
 
-  // The timer repeatedly counts down at bus frequency
-  // from lapic[TICR] and then issues an interrupt.
-  // If we cared more about precise timekeeping,
-  // TICR would be calibrated using an external time source.
-
-  if (ticksin10ms == 0) {
-    ticksin10ms = 1000000;
-  }
-
-  lapic_write(LAPIC_TDCR, LAPIC_X1);
-  lapic_write(LAPIC_TIMER, LAPIC_PERIODIC | (32));
-  lapic_write(LAPIC_TICR, ticksin10ms);
+  // set the periodic interrupt timer to be IRQ 50
+  // This is so we can use the PIT for sleep related activities at IRQ 32
+	smp::lapic_write(LAPIC_TDCR, LAPIC_X1);
+	smp::lapic_write(LAPIC_TIMER, LAPIC_PERIODIC | (50));
+	set_tickrate(100);
 
   // Disable logical interrupt lines.
   lapic_write(LAPIC_LINT0, LAPIC_MASKED);
@@ -133,6 +187,10 @@ void smp::lapic_init(void) {
 
   // Enable interrupts on the APIC (but not on the processor).
   lapic_write(LAPIC_TPR, 0);
+
+
+	irq::uninstall(32);
+  irq::install(50, lapic_tick_handler, "Local APIC Preemption Tick");
 }
 
 void smp::lapic_write(int ind, int value) {
@@ -153,7 +211,7 @@ int smp::cpunum(void) {
     static int n;
     if (n++ == 0)
       printk("cpu called from %p with interrupts enabled\n",
-             __builtin_return_address(0));
+	     __builtin_return_address(0));
   }
 
   if (!lapic) return 0;
@@ -192,7 +250,7 @@ static smp::mp::mp_float_ptr_struct *find_mp_floating_ptr(void) {
 }
 
 static u8 mp_entry_lengths[5] = {
-    MP_TAB_CPU_LEN,    MP_TAB_BUS_LEN,  MP_TAB_IOAPIC_LEN,
+    MP_TAB_CPU_LEN,    MP_TAB_BUS_LEN,	MP_TAB_IOAPIC_LEN,
     MP_TAB_IO_INT_LEN, MP_TAB_LINT_LEN,
 };
 
@@ -230,28 +288,28 @@ static bool parse_mp_table(smp::mp::mp_table *table) {
   walk_mp_table(table, [&](u8 type, void *mp_entry) {
     switch (type) {
       case MP_TAB_TYPE_CPU:
-        parse_mp_cpu((smp::mp::mp_table_entry_cpu *)mp_entry);
-        break;
+	parse_mp_cpu((smp::mp::mp_table_entry_cpu *)mp_entry);
+	break;
 
       case MP_TAB_TYPE_BUS:
-        parse_mp_bus((smp::mp::mp_table_entry_bus *)mp_entry);
-        break;
+	parse_mp_bus((smp::mp::mp_table_entry_bus *)mp_entry);
+	break;
 
       case MP_TAB_TYPE_IOAPIC:
-        ioapic_entry = (smp::mp::mp_table_entry_ioapic *)mp_entry;
-        parse_mp_ioapic((smp::mp::mp_table_entry_ioapic *)mp_entry);
-        break;
+	ioapic_entry = (smp::mp::mp_table_entry_ioapic *)mp_entry;
+	parse_mp_ioapic((smp::mp::mp_table_entry_ioapic *)mp_entry);
+	break;
 
       case MP_TAB_TYPE_IO_INT:
-        parse_mp_ioint((smp::mp::mp_table_entry_ioint *)mp_entry);
-        break;
+	parse_mp_ioint((smp::mp::mp_table_entry_ioint *)mp_entry);
+	break;
 
       case MP_TAB_TYPE_LINT:
-        parse_mp_lint((smp::mp::mp_table_entry_lint *)mp_entry);
-        break;
+	parse_mp_lint((smp::mp::mp_table_entry_lint *)mp_entry);
+	break;
 
       default:
-        printk("unhandled mp_entry of type %02x\n", type);
+	printk("unhandled mp_entry of type %02x\n", type);
     }
   });
 
@@ -261,14 +319,14 @@ static bool parse_mp_table(smp::mp::mp_table *table) {
 static smp::mp::mp_float_ptr_struct *mp_floating_ptr;
 
 // global variable that stores the CPUs
-static vec<smp::cpu_state *> cpus;
+static vec<smp::cpu_state *> apic_cpus;
 
 smp::cpu_state &smp::get_state(void) {
   // TODO: get the real cpu number
   auto cpu_index = 0;
 
   // return the cpu at that index, unchecked.
-  return *cpus[cpu_index];
+  return *apic_cpus[cpu_index];
 }
 
 bool smp::init(void) {
@@ -287,7 +345,7 @@ bool smp::init(void) {
   INFO("cpunum = %d\n", cpunum());
 
   // mp table was parsed and loaded into global memory
-  INFO("ncpus: %d\n", cpus.size());
+  INFO("ncpus: %d\n", apic_cpus.size());
   return true;
 }
 

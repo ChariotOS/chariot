@@ -207,10 +207,10 @@ void pci::init(void) {
   auto header_type = (pci_cfg_readl(0, 0, 0, 0xc) >> 16) & 0xff;
   if ((header_type & 0x80) == 0) {
     /* Single PCI host controller */
-    printk("Single PCI host controller (quick scan)\n");
+    KINFO("Single PCI host controller (quick scan)\n");
     scan_bus(0);
   } else {
-    printk("Multiple PCI host controllers (slower scan)\n");
+    KINFO("Multiple PCI host controllers (slower scan)\n");
     /* Multiple PCI host controllers */
     for (int bus = 0; bus < 32; bus++) scan_bus(bus);
   }

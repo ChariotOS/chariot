@@ -388,7 +388,7 @@ typedef unsigned long clock_t;
 
 
 #if defined(__NEED_sigset_t) && !defined(__DEFINED_sigset_t)
-typedef struct { unsigned long __bits[128/sizeof(long)]; } sigset_t;
+typedef unsigned long sigset_t;
 #define __DEFINED_sigset_t
 #endif
 

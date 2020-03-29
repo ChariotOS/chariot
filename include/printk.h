@@ -41,9 +41,16 @@ const char* human_size(uint64_t bytes, char* buf);
     printk(PREFIX ": " fmt, ##args); \
   } while (0);
 
-#define KINFO(fmt, args...) KLOG("K", fmt, ##args)
-#define KWARN(fmt, args...) KLOG("?", fmt, ##args)
-#define KERR(fmt, args...) KLOG("!", fmt, ##args)
+
+
+#define KERN_ERROR "\0010"
+#define KERN_WARN "\0011"
+#define KERN_INFO "\0012"
+#define KERN_DEBUG "\0013"
+
+#define KERR(fmt, args...) printk(KERN_ERROR fmt, ##args)
+#define KWARN(fmt, args...) printk(KERN_WARN fmt, ##args)
+#define KINFO(fmt, args...) printk(KERN_INFO fmt, ##args)
 
 template <typename... T>
 inline void do_panic(const char* fmt, T&&... args) {

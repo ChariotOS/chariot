@@ -41,7 +41,7 @@ int dev::register_name(struct dev::driver_info &info, string name,
 
   drivers_lock.write_lock();
 
-  KINFO("register name %s [maj:%d, min:%d] (%d total)\n", name.get(),
+  printk(KERN_INFO "register name %s [maj:%d, min:%d] (%d total)\n", name.get(),
 	info.major, min, device_names.size());
 
   device_names.set(name, dev_t(info.major, min));

@@ -8,6 +8,7 @@
 #include <sched.h>
 #include <util.h>
 #include <vga.h>
+#include <signals.h>
 
 #include "../drivers/majors.h"
 
@@ -37,7 +38,6 @@ static void consputc(int c) {
   } else {
     serial_send(COM1, c);
   }
-  // vga::putchar(c);
 }
 
 static void flush(void) {
@@ -55,6 +55,9 @@ static bool handle_special_input(char c) {
     case C('P'):
       sched::proc::dump_table();
       return true;
+		case C('K'):
+			sched::proc::send_signal(1, SIGKILL);
+			return true;
   }
   return false;
 }

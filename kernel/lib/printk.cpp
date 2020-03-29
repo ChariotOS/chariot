@@ -906,7 +906,38 @@ static int _vsnprintf(out_fct_type out, char *buffer, const size_t maxlen,
 
 ///////////////////////////////////////////////////////////////////////////////
 
+// TODO
+static int loglevel = 4;
 int printk(const char *format, ...) {
+
+	bool valid_loglevel = true;
+
+	if (format[0] == '\001') {
+		const char *prefix = NULL;
+		int val = format[1] - '0';
+
+		if (val <= loglevel) {
+			switch(val) {
+				case 0:
+					prefix = RED "[ERR]" RESET;
+					break;
+				case 1:
+					prefix = YEL "[WRN]" RESET;
+					break;
+				case 2:
+					break;
+			}
+			if (prefix != NULL) {
+				printk("%s ", prefix);
+			}
+		} else {
+			valid_loglevel = false;
+		}
+		format += 2;
+	}
+
+	if (!valid_loglevel) {return 0;}
+
   va_list va;
   va_start(va, format);
   char buffer[1];

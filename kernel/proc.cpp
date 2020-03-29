@@ -301,6 +301,9 @@ bool process::is_dead(void) {
 int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   scoped_lock lck(this->datalock);
 
+	// auto &st = cpu::current().kstat;
+	// printk("t:%-8zu u:%-8zu k:%-8zu i:%-8zu\n", st.ticks, st.uticks, st.kticks, st.iticks);
+
 	/*
 	printk("exec (pid=%d) %s:\n", pid, path.get());
 	for (int i = 0; i < argv.size(); i++) {
@@ -367,6 +370,8 @@ bool sched::proc::send_signal(pid_t p, int sig) {
 
   bool sent = false;
 
+	/*
+
   if (proc_table.contains(p)) {
     auto &targ = proc_table[p];
     scoped_lock siglock(targ->sig.lock);
@@ -376,6 +381,7 @@ bool sched::proc::send_signal(pid_t p, int sig) {
       sent = true;
     }
   }
+	*/
 
   ptable_lock.read_unlock();
 

@@ -27,6 +27,7 @@ MSR_EFER equ 0xC0000080
 ; EFER bitmasks
 EFER_LM equ 0x100
 EFER_NX equ 0x800
+EFER_SCE equ 0x001
 
 ; CR0 bitmasks
 CR0_PAGING equ 0x80000000
@@ -128,7 +129,7 @@ _start:
 	; enable long mode and the NX bit
   mov ecx, MSR_EFER
   rdmsr
-  or eax, (EFER_LM | EFER_NX)
+  or eax, (EFER_LM | EFER_NX | EFER_SCE)
   wrmsr
 
   ; set cr3 to a pointer to pml4

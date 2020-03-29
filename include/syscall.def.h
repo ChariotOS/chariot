@@ -5,7 +5,6 @@
 // A triple slash before the syscall allows the definition of an attribute,
 // where `num` is the systemcall number (the value of eax when called)
 
-
 #include <types.h>
 
 /// num=0x00
@@ -83,7 +82,6 @@ int getpid(void);
 /// num=0x22
 int gettid(void);
 
-
 /// num=0x26
 long getuid(void);
 /// num=0x27
@@ -92,7 +90,6 @@ long geteuid(void);
 long getgid(void);
 /// num=0x29
 long getegid(void);
-
 
 /// num=0x30
 void *mmap(void *addr, long length, int prot, int flags, int fd, long offset);
@@ -103,14 +100,24 @@ int munmap(void *addr, unsigned long length);
 /// num=0x32
 int mrename(void *addr, char *name);
 
-
 /// num=0x40
 int dirent(int fd, struct dirent *, int offset, int count);
-
 
 /// num=0x50
 time_t localtime(struct tm *tloc);
 
-
 /// num=0x60
 int socket(int domain, int type, int protocol);
+
+/* signal related system calls own 0x7X */
+
+/// num=0x70
+int signal_init(void *sigret);
+
+/// num=0x71
+int signal(int sig, void *handler);
+/// num=0x72
+int sigreturn(void);
+
+/// num=0x73
+int sigprocmask(int how, unsigned long set, unsigned long *old_set);
