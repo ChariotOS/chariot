@@ -47,7 +47,6 @@ cleanup() {
 	echo "cleanup"
 	if [ -d $mnt ]; then
 			printf "unmounting filesystem... "
-			ncdu $mnt
 			sudo umount -f $mnt || ( sleep 1 && sync && sudo umount $mnt )
 			rm -rf $mnt
 			echo "done"
