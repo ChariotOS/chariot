@@ -4,7 +4,7 @@
 # are built first, then binaries. This fixes `symbol not found' errors
 
 build () {
-	make run M=$1 -j
+	make run M=$1 -j --no-print-directory
 }
 
 

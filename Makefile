@@ -67,7 +67,7 @@ build/%.asm.o: %.asm
 
 $(KERNEL): $(CODEFILES) $(ASOURCES) $(COBJECTS) $(AOBJECTS)
 	@echo -e "$(PFX) LNK " $@
-	@$(LD) $(LDFLAGS) $(AOBJECTS) $(COBJECTS) -T kernel.ld -o $@
+	@$(LD) $(LDFLAGS) $(AOBJECTS) $(COBJECTS) -T kernel/kernel.ld -o $@
 
 
 $(SYMS): $(KERNEL)
@@ -101,28 +101,9 @@ clean:
 
 images: $(ROOTFS)
 
-QEMUOPTS=-hda $(ROOTFS) -smp 4 -m 2G -gdb tcp::8256
-
-qemu: images
-	qemu-system-x86_64 $(QEMUOPTS) \
-		-serial stdio
-
-qemu-nox: images
-	qemu-system-x86_64 $(QEMUOPTS) -nographic
-
-
-
-qemu-dbg: images
-	qemu-system-x86_64 $(QEMUOPTS) -d cpu_reset
 
 gdb:
 	gdb $(KERNEL) -iex "target remote localhost:8256"
-
-
-
-bochs: $(ISO)
-	@bochs -f bochsrc
-
 
 
 watch:

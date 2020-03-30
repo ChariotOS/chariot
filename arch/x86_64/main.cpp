@@ -20,6 +20,7 @@ extern int kernel_end;
 extern "C" void enable_sse();
 extern "C" void call_with_new_stack(void *, void *);
 
+
 struct multiboot_info *mbinfo;
 static void kmain2(void);
 

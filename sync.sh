@@ -94,7 +94,7 @@ echo 'clearing out old filesystem'
 
 for dir in $mnt/*; do
     [ "$dir" = "$mnt/boot" ] && continue
-		echo "removing $dir"
+		#echo "removing $dir"
 		sudo rm -rf "$dir"
 done
 
@@ -121,10 +121,10 @@ sudo chown -R 0:0 $mnt
 
 # install the bootloader (grub, in this case)
 sudo mkdir -p $mnt/boot/grub
-sudo cp grub.cfg $mnt/boot/grub/
+sudo cp kernel/grub.cfg $mnt/boot/grub/
 
 # build the kernel and copy it into the boot dir
-make -j ARCH=x86_64 || die 'Failed to build the kernel'
+make --no-print-directory -j ARCH=x86_64 || die 'Failed to build the kernel'
 
 sudo cp build/chariot.elf $mnt/boot/
 
