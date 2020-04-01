@@ -124,10 +124,12 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
                struct fs::inode *&res) {
   assert(path != NULL);
   auto ino = cwd;
+
+	auto uroot = curproc->root ? : vfs::get_root();
   /* if the path is rooted (/ at start), set the "working cwd" to the root
    * directory */
   if (path[0] == '/') {
-    ino = vfs_root;
+    ino = uroot;
   } else {
     assert(cwd != NULL);
   }
@@ -136,7 +138,10 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
   bool last = false;
   while ((path = skipelem((char *)path, name, last)) != 0) {
 
-    // hexdump(name, strlen(name), true);
+		// attempting to go above the current root is a nop
+		if (!strcmp(name, "..") && ino == uroot) {
+			continue;
+		}
 
     auto found = ino->get_direntry(name);
 

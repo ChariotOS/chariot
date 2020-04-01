@@ -57,9 +57,11 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
   // This check is needed because the kernel syscall.has no parent.
   if (proc.parent) {
     proc.user = proc_ptr->parent->user;  // inherit the user information
-    proc.cwd = proc_ptr->parent->cwd;    // inherit cwd (makes sense)
     proc.ppid = proc_ptr->parent->pid;
     proc.pgid = proc_ptr->parent->pgid;  // inherit the group id of the parent
+
+		proc.root = geti(proc.parent->root);
+		proc.cwd = geti(proc.parent->cwd);
 
     // inherit stdin(0) stdout(1) and stderr(2)
     for (int i = 0; i < 3; i++) {
@@ -71,7 +73,7 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
     proc.cwd = vfs::get_root();
   }
   // special case for kernel's init
-  if (proc.cwd != NULL) fs::inode::acquire(proc.cwd);
+  if (proc.cwd != NULL) geti(proc.cwd);
 
   proc.mm = alloc_user_vm();
   return proc_ptr;
@@ -141,6 +143,9 @@ pid_t sched::proc::spawn_init(vec<string> &paths) {
   // initialize normally
   proc_ptr = do_spawn_proc(proc_ptr, 0);
 
+	// init starts in the root directory
+	proc_ptr->root = geti(vfs::get_root());
+	proc_ptr->cwd = geti(vfs::get_root());
   auto &proc = *proc_ptr;
 
   vec<string> envp;
@@ -425,9 +430,12 @@ int sched::proc::reap(process::ptr p) {
     }
   }
 
-  // release the CWD
+  // release the CWD and root
   fs::inode::release(p->cwd);
   p->cwd = NULL;
+
+  fs::inode::release(p->root);
+  p->root = NULL;
 
   if (me != init) init->datalock.lock();
   for (auto &c : p->children) {

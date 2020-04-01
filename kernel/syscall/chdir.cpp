@@ -18,7 +18,7 @@ int sys::chdir(const char *path) {
 
   if (ncwd->type != T_DIR) return -ENOTDIR;
 
-  fs::inode::acquire(ncwd);
+  geti(ncwd);
   fs::inode::release(proc->cwd);
 
   string cwd;

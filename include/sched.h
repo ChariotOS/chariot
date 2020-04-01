@@ -111,6 +111,7 @@ struct process final : public refcounted<struct process> {
   u64 create_tick = 0;
   // The current working directory of the process.
   fs::inode *cwd = nullptr;
+	fs::inode *root = nullptr;
   string cwd_string;
   bool embryonic = false;
   spinlock datalock;

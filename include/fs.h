@@ -358,7 +358,7 @@ struct inode {
 
   int stat(struct stat *);
 
-  static int acquire(struct inode *);
+  static fs::inode *acquire(struct inode *);
   static int release(struct inode *);
 
   spinlock lock;
@@ -438,4 +438,8 @@ class file : public refcounted<file> {
 
 };  // namespace fs
 
+
+static inline fs::inode *geti(fs::inode *i) {
+	return fs::inode::acquire(i);
+}
 #endif

@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <fs/vfs.h>
+#include <cpu.h>
 
 int vfs::getcwd(fs::inode &cwd, string &dst) {
   int err = 0;
@@ -11,7 +12,7 @@ int vfs::getcwd(fs::inode &cwd, string &dst) {
   string sep = "/";
 
   dst.clear();
-  auto *root = vfs::get_root();
+  auto root = curproc->root;
 
   if (cur == root) {
     dst = "/";

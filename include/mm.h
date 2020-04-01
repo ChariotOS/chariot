@@ -22,10 +22,13 @@
 
 namespace mm {
 
+
+#define PAGE_DEBUG_LIST
+
 // every physical page in mm circulation is kept track of via a heap-allocated
 // `struct page`.
 struct page : public refcounted<mm::page> {
-  u64 pa = 0;
+  unsigned long pa = 0;
   /**
    * users is a representation of how many holders of this page there are.
    * This is useful for COW mappings, because you must copy the page on write if
@@ -34,12 +37,22 @@ struct page : public refcounted<mm::page> {
    */
   unsigned users = 0;
   int lock = 0;
-  // some pages should not be phys::freed when this page is destructed.
-  char owns_page = 0;
 
+	// non-freeable pages are needed (for example when mmapping mmio regions)
+  char freeable : 1;
+
+	page(void);
   ~page(void);
 
   static ref<page> alloc(void);
+	// create a page mapping for some physical memory
+	// note: this page isn't owned.
+	static ref<page> create(unsigned long pa);
+
+#ifdef PAGE_DEBUG_LIST
+	struct page *dbg_prev;
+	struct page *dbg_next;
+#endif
 };
 
 struct pte {

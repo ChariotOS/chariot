@@ -66,6 +66,7 @@ int run_line(const char *line) {
     goto cleanup;
   }
 
+
   pid_t pid = spawn();
   if (pid <= -1) {
     perror("spawn");

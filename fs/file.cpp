@@ -16,7 +16,7 @@ fs::file::file(struct fs::inode *f, int flags) : ino(f) {
 
   // register that the fd has access to the inode
   if (ino != nullptr) {
-    fs::inode::acquire(ino);
+    geti(ino);
     auto ops = fops();
     int o_res = 0;
     if (ops && ops->open) o_res = ops->open(*this);

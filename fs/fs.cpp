@@ -230,14 +230,14 @@ vec<string> fs::inode::direntries(void) {
   return e;
 }
 
-int fs::inode::acquire(struct inode *in) {
+struct fs::inode *fs::inode::acquire(struct inode *in) {
   assert(in != NULL);
   in->lock.lock();
   // printk("acquire\n");
   in->rc++;
   // printk("rc = %d\n", in->rc);
   in->lock.unlock();
-  return 0;
+  return in;
 }
 
 int fs::inode::release(struct inode *in) {
