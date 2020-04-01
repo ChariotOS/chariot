@@ -4,34 +4,34 @@
 #include <syscall.h>
 
 void *sys::mmap(void *addr, long length, int prot, int flags, int fd,
-                long offset) {
+		long offset) {
   auto proc = cpu::proc();
-  if (!proc) return MAP_FAILED;
-
-  // TODO: handle address requests!
-  if (addr != NULL) return MAP_FAILED;
-
+  off_t va;
   ref<fs::file> f = nullptr;
+
+	// printk("mmap offset 0x%08x (fd:%d)\n", offset, fd);
+  if ((offset & 0xFFF) != 0) {
+		// printk("invalid!\n");
+		return MAP_FAILED;
+	}
 
   if ((flags & MAP_ANON) == 0) {
     f = proc->get_fd(fd);
     if (!f) return MAP_FAILED;
 
-    auto t = f->ino->type;
-
     // you can only map FILE, BLK, and CHAR devices
-    switch (t) {
+    switch (f->ino->type) {
       case T_FILE:
       case T_BLK:
       case T_CHAR:
-        break;
+	break;
 
       default:
-        return MAP_FAILED;
+	return MAP_FAILED;
     }
   }
 
-  off_t va = proc->mm->mmap((off_t)addr, length, prot, flags, f, offset);
+  va = proc->mm->mmap((off_t)addr, length, prot, flags, f, offset);
 
   return (void *)va;
 }

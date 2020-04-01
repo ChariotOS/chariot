@@ -130,6 +130,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
       if (sec.p_flags & PF_W) flags |= PROT_WRITE;
       if (sec.p_flags & PF_R) flags |= PROT_READ;
 
+			// printk("mmap[%d] addr=%p, size=%08x, offset=%08x\n", i, off + start, sec.p_memsz, sec.p_offset);
       mm.mmap(path, off + start, sec.p_memsz, flags, MAP_PRIVATE, fd, sec.p_offset);
       handle_bss(sec);
     }

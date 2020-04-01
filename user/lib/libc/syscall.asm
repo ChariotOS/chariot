@@ -1,7 +1,6 @@
 global __syscall:function
 __syscall:
 
-	push rcx
 	;; rotate arguments
 	mov rax, rdi
 	mov rdi, rsi
@@ -12,5 +11,4 @@ __syscall:
 	mov r9, [rsp + 8]
 	;; syscall
 	int 0x80 ;; TODO: real syscall instruction
-	pop rcx
 	ret
