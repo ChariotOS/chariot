@@ -13,10 +13,6 @@ SECTIONS
 
 	.text : { *(.text) }
 
-
-	/* skip to the next page */
-  	. = ALIGN(CONSTANT (MAXPAGESIZE));
-
 	/*
 	 * .bss not being last means it doesn't make filesz < memsz
 	 * and that my crappy elf loader can work :)
