@@ -49,8 +49,8 @@ class vfs {
   using mounter_t = unique_ptr<fs::filesystem> (*)(fs::blkdev *, int flags);
 
   // register filesystems by name, therefore we can mount generically by name
-  static int register_filesystem(string, mounter_t);
-  static int deregister_filesystem(string);
+	static void register_filesystem(struct fs::sb_information &);
+  static void deregister_filesystem(struct fs::sb_information &);
 
   static int mount(fs::blkdev *, string fs_name, string path);
 

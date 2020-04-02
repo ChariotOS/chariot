@@ -8,24 +8,16 @@
 vec<unique_ptr<fs::filesystem>> mounted_filesystems;
 struct fs::inode *vfs_root = NULL;
 
-static map<string, vfs::mounter_t> filesystems;
+static vec<struct fs::sb_information *> filesystems;
 
-int vfs::register_filesystem(string name, mounter_t m) {
-  if (filesystems.contains(name)) {
-    return -EEXIST;
-  }
-  KINFO("Registered filesystem '%s'\n", name.get());
-  filesystems[move(name)] = m;
-  return 0;
+void vfs::register_filesystem(struct fs::sb_information &info) {
+	printk(KERN_INFO "filesystem '%s' registered\n", info.name);
+	filesystems.push(&info);
 }
 
-int vfs::deregister_filesystem(string name) {
-  if (filesystems.contains(name)) {
-    filesystems.remove(name);
-    return 0;
-  }
-  return -ENOENT;
-}
+void vfs::deregister_filesystem(struct fs::sb_information &) {}
+
+
 
 int vfs::mount_root(unique_ptr<fs::filesystem> fs) {
   assert(vfs_root == NULL);
@@ -36,7 +28,6 @@ int vfs::mount_root(unique_ptr<fs::filesystem> fs) {
 
   return 0;
 }
-
 
 vfs::vfs() { panic("DO NOT CONSTRUCT A VFS INSTANCE\n"); }
 
@@ -56,14 +47,14 @@ struct fs::inode *vfs::get_root(void) {
   return vfs_root;
 }
 
-
-
-int vfs::mount(fs::blkdev *bdev, const char *targ, const char *type, unsigned long flags, const char *options) {
-	return -ENOTIMPL;
+int vfs::mount(fs::blkdev *bdev, const char *targ, const char *type,
+	       unsigned long flags, const char *options) {
+  return -ENOTIMPL;
 }
 
-int vfs::mount(const char *src, const char *targ, const char *type, unsigned long flags, const char *options) {
-	return -ENOTIMPL;
+int vfs::mount(const char *src, const char *targ, const char *type,
+	       unsigned long flags, const char *options) {
+  return -ENOTIMPL;
 }
 
 struct fs::inode *vfs::open(string spath, int opts, int mode) {
@@ -121,11 +112,11 @@ static const char *skipelem(const char *path, char *name, bool &last) {
 }
 
 int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
-               struct fs::inode *&res) {
+	       struct fs::inode *&res) {
   assert(path != NULL);
   auto ino = cwd;
 
-	auto uroot = curproc->root ? : vfs::get_root();
+  auto uroot = curproc->root ?: vfs::get_root();
   /* if the path is rooted (/ at start), set the "working cwd" to the root
    * directory */
   if (path[0] == '/') {
@@ -137,29 +128,27 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
   char name[256];
   bool last = false;
   while ((path = skipelem((char *)path, name, last)) != 0) {
-
-		// attempting to go above the current root is a nop
-		if (!strcmp(name, "..") && ino == uroot) {
-			continue;
-		}
+    // attempting to go above the current root is a nop
+    if (!strcmp(name, "..") && ino == uroot) {
+      continue;
+    }
 
     auto found = ino->get_direntry(name);
 
     if (found == NULL) {
-
       if (last && (flags & O_CREAT)) {
-        if (ino->dops && ino->dops->create) {
-          fs::file_ownership own;
-          own.uid = curproc->user.uid;
-          own.gid = curproc->user.gid;
-          own.mode = mode;
-          int r = ino->dops->create(*ino, name, own);
-          if (r == 0) {
-            ino = ino->get_direntry(name);
-          }
-          return r;
-        }
-        return -EINVAL;
+	if (ino->dops && ino->dops->create) {
+	  fs::file_ownership own;
+	  own.uid = curproc->user.uid;
+	  own.gid = curproc->user.gid;
+	  own.mode = mode;
+	  int r = ino->dops->create(*ino, name, own);
+	  if (r == 0) {
+	    ino = ino->get_direntry(name);
+	  }
+	  return r;
+	}
+	return -EINVAL;
       }
 
       res = NULL;

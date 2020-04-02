@@ -84,7 +84,6 @@ bool fs::ext2::init(void) {
   disk->seek(1024, SEEK_SET);
   bool res = disk->read(sb, 1024);
 
-
   if (!res) {
     printk("failed to read the superblock\n");
     return false;
@@ -128,17 +127,17 @@ bool fs::ext2::init(void) {
     return false;
   }
 
-	/*
-  auto uuid = sb->s_uuid;
-  u16 *u_shrts = (u16 *)(uuid + sizeof(u32));
-  u64 trail = 0xFFFFFFFFFFFF & *(u64 *)(uuid + sizeof(u32) + 3 * sizeof(u16));
-  KINFO("ext2 uuid: %08x-%04x-%04x-%04x-%012x\n", *(u32 *)uuid, u_shrts[0],
-        u_shrts[1], u_shrts[2], trail);
-  printk("blocksize = %u\n", blocksize);
-  printk("blks in group = %u\n", sb->blocks_in_blockgroup);
-  printk("total inodes = %u\n", sb->inodes);
-  printk("total blocks = %u\n", sb->blocks);
-	*/
+  /*
+auto uuid = sb->s_uuid;
+u16 *u_shrts = (u16 *)(uuid + sizeof(u32));
+u64 trail = 0xFFFFFFFFFFFF & *(u64 *)(uuid + sizeof(u32) + 3 * sizeof(u16));
+KINFO("ext2 uuid: %08x-%04x-%04x-%04x-%012x\n", *(u32 *)uuid, u_shrts[0],
+  u_shrts[1], u_shrts[2], trail);
+printk("blocksize = %u\n", blocksize);
+printk("blks in group = %u\n", sb->blocks_in_blockgroup);
+printk("total inodes = %u\n", sb->inodes);
+printk("total blocks = %u\n", sb->blocks);
+  */
 
   return true;
 }
@@ -368,7 +367,7 @@ bool fs::ext2::write_block(u32 block, const void *buf) {
 }
 
 void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,
-                               func<bool(void *)> callback) {
+			       func<bool(void *)> callback) {
   TRACE;
   for (auto b : blks) {
     read_block(b, buf);
@@ -377,7 +376,7 @@ void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,
 }
 
 void fs::ext2::traverse_dir(u32 inode,
-                            func<bool(u32 ino, const char *name)> callback) {
+			    func<bool(u32 ino, const char *name)> callback) {
   TRACE;
   ext2_inode_info i;
   read_inode(i, inode);
@@ -385,7 +384,7 @@ void fs::ext2::traverse_dir(u32 inode,
 }
 
 void fs::ext2::traverse_dir(ext2_inode_info &inode,
-                            func<bool(u32 ino, const char *name)> callback) {
+			    func<bool(u32 ino, const char *name)> callback) {
   TRACE;
 
   void *buffer = kmalloc(blocksize);
@@ -393,15 +392,15 @@ void fs::ext2::traverse_dir(ext2_inode_info &inode,
     auto *entry = reinterpret_cast<ext2_dir *>(buffer);
     while ((u64)entry < (u64)buffer + blocksize) {
       if (entry->inode != 0) {
-        fs::directory_entry ent;
-        ent.inode = entry->inode;
+	fs::directory_entry ent;
+	ent.inode = entry->inode;
 
-        // TODO: bad!
-        char buf[entry->namelength + 1];
-        memcpy(buf, entry->name, entry->namelength);
-        buf[entry->namelength] = 0;
-        ent.name = buf;
-        if (!callback(ent.inode, buf)) break;
+	// TODO: bad!
+	char buf[entry->namelength + 1];
+	memcpy(buf, entry->name, entry->namelength);
+	buf[entry->namelength] = 0;
+	ent.name = buf;
+	if (!callback(ent.inode, buf)) break;
       }
       entry = (ext2_dir *)((char *)entry + entry->size);
     }
@@ -460,9 +459,9 @@ vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
     unsigned count = min(blocks_remaining, blocksize / sizeof(u32));
     for (unsigned i = 0; i < count; ++i) {
       if (!array[i]) {
-        blocks_remaining = 0;
-        kfree(array_block);
-        return;
+	blocks_remaining = 0;
+	kfree(array_block);
+	return;
       }
       callback(array[i]);
       --blocks_remaining;
@@ -490,8 +489,8 @@ vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
   process_block_array(inode.triply_block, [&](unsigned entry) {
     process_block_array(entry, [&](unsigned entry) {
       process_block_array(entry, [&](unsigned entry) {
-        list.push(entry);
-        --blocks_remaining;
+	list.push(entry);
+	--blocks_remaining;
       });
     });
   });
@@ -507,35 +506,22 @@ u32 fs::ext2::balloc(void) {
 
 void fs::ext2::bfree(u32 block) { scoped_lock l(m_lock); }
 
+int ext2_sb_init(struct fs::superblock &sb) { return -ENOTIMPL; }
 
-int ext2_sb_init(struct fs::superblock &sb) {
+int ext2_write_super(struct fs::superblock &sb) { return -ENOTIMPL; }
 
-  return -ENOTIMPL;
-}
-
-
-int ext2_write_super(struct fs::superblock &sb) {
-  return -ENOTIMPL;
-}
-
-int ext2_sync(struct fs::superblock &sb, int flags) {
-  return -ENOTIMPL;
-}
+int ext2_sync(struct fs::superblock &sb, int flags) { return -ENOTIMPL; }
 
 struct fs::sb_operations ext2_ops {
-  .init = ext2_sb_init,
-  .write_super = ext2_write_super,
-  .sync = ext2_sync,
+  .init = ext2_sb_init, .write_super = ext2_write_super, .sync = ext2_sync,
 };
 
 struct fs::sb_information ext2_info {
-  .name = "ext2",
-  .ops = ext2_ops,
+  .name = "ext2", .ops = ext2_ops,
 };
 
 static void ext2_init(void) {
-  // auto s = ext2_ops.sync;
-  // vfs::register_filesystem("ext2", ext2_mounter);
+	vfs::register_filesystem(ext2_info);
 }
 
 module_init("fs::ext2", ext2_init);
