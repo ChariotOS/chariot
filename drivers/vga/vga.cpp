@@ -384,20 +384,13 @@ static void set_register(u16 index, u16 data) {
   outw(VBE_DISPI_IOPORT_DATA, data);
 }
 
+/*
 static u16 get_register(u16 index) {
   outw(VBE_DISPI_IOPORT_INDEX, index);
   return inw(VBE_DISPI_IOPORT_DATA);
 }
+*/
 
-
-static void print_vga_state(void) {
-	auto enabled = get_register(VBE_DISPI_INDEX_ENABLE);
-  printk("enable = %s (%x)\n", (enabled & 0x01) ? "yes" : "no", enabled);
-  printk("xres   = %dpx\n", get_register(VBE_DISPI_INDEX_XRES));
-  printk("yres   = %dpx\n", get_register(VBE_DISPI_INDEX_YRES));
-  printk("vw     = %dpx\n", get_register(VBE_DISPI_INDEX_VIRT_WIDTH));
-  printk("vh     = %dpx\n", get_register(VBE_DISPI_INDEX_VIRT_HEIGHT));
-}
 
 static void set_info(struct ck_fb_info i) {
   set_register(VBE_DISPI_INDEX_ENABLE, VBE_DISPI_DISABLED);
@@ -518,9 +511,10 @@ static struct dev::driver_info generic_driver_info {
   .char_ops = &fb_ops,
 };
 
-void vga::early_init(void) { gotoxy(0, 0); }
+void vga::early_init(void) {}
 
 void vga_mod_init(void) {
+	gotoxy(0, 0);
   origin = (unsigned short *)p2v(VGA_BASE_ADDR);
 
   if (vga_fba == NULL) {

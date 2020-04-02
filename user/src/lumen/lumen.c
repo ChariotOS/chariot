@@ -1,8 +1,10 @@
 /**
  * the chariot windowing system - lumen
  */
+#include <chariot.h>
 #include <chariot/fb.h>
 #include <fcntl.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,6 +23,8 @@ struct window {
   // Z ordering
   struct window *next;
   struct window *prev;
+
+  int background_color;
 };
 static int fbfd = -1;
 
@@ -78,40 +82,85 @@ void draw_window(struct window *win) {
 
   for (y = 0; y < win->pos.h; y++) {
     for (x = 0; x < win->pos.w; x++) {
-      set_pixel(x + win->pos.x, y + win->pos.y, 0x252525);
+      set_pixel(x + win->pos.x, y + win->pos.y, win->background_color);
     }
   }
 }
 
-
-
-static uint32_t seed;  // The state can be seeded with any value.
-// Call next() to get 32 pseudo-random bits, call it again to get more bits.
-// It may help to make this inline, but you should see if it benefits your
-// code.
+static uint32_t seed;
 static inline uint64_t next_random(void) {
   uint32_t z = (seed += 0x6D2B79F5UL);
   z = (z ^ (z >> 15)) * (z | 1UL);
   z ^= z + (z ^ (z >> 7)) * (z | 61UL);
   return z ^ (z >> 14);
 }
+
+double sin(double angle) {
+  double ret = 0.0;
+  __asm__("fsin" : "=t"(ret) : "0"(angle));
+
+  return ret;
+}
+
+
+void draw_circle(int xc, int yc, int x, int y, int color) {
+  set_pixel(xc + x, yc + y, color);
+  set_pixel(xc - x, yc + y, color);
+  set_pixel(xc + x, yc - y, color);
+  set_pixel(xc - x, yc - y, color);
+  set_pixel(xc + y, yc + x, color);
+  set_pixel(xc - y, yc + x, color);
+  set_pixel(xc + y, yc - x, color);
+  set_pixel(xc - y, yc - x, color);
+}
+
+void circleBres(int xc, int yc, int r, int color) {
+  int x = 0, y = r;
+  int d = 3 - 2 * r;
+  draw_circle(xc, yc, x, y, color);
+  while (y >= x) {
+    // for each pixel we will
+    // draw all eight pixels
+
+    x++;
+
+    // check for decision parameter
+    // and correspondingly
+    // update d, x, y
+    if (d > 0) {
+      y--;
+      d = d + 4 * (x - y) + 10;
+    } else
+      d = d + 4 * x + 6;
+    draw_circle(xc, yc, x, y, color);
+		blit();
+  }
+}
+
 static void compose(void) {
-
-	static int i = 0;
   // set it to some kind of grey
-  memset(buffer, i++, BSIZE);
+  memset(buffer, 0x00, BSIZE);
 
-  struct window win;
+#define C(x) ((x & 0xFF) | (x << 8 & 0xFF) | (x << 16 & 0xFF))
+	for (int i = 0; i < 200; i++) {
+	circleBres(WIDTH/2, HEIGHT/2, i, C(i));
+	}
 
-  // arbitrary
-  win.pos.w = 160;
-  win.pos.h = 195;
+  /*
+for (int i = 0; i < 10; i++) {
+struct window win;
+// arbitrary
+win.pos.w = 160;
+win.pos.h = 195;
+win.pos.x = next_random() % WIDTH;
+win.pos.y = next_random() % HEIGHT;
 
-  win.pos.x = next_random() % WIDTH;
-  win.pos.y = next_random() % HEIGHT;
-
-  draw_window(&win);
+	  win.background_color = next_random();
+draw_window(&win);
+}
+  */
 
   blit();
+  yield();
 }
 

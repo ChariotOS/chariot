@@ -23,7 +23,7 @@
 namespace mm {
 
 
-#define PAGE_DEBUG_LIST
+// #define PAGE_DEBUG_LIST
 
 // every physical page in mm circulation is kept track of via a heap-allocated
 // `struct page`.

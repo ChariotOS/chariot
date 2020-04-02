@@ -9,7 +9,6 @@ build () {
 
 
 build lib/libc
-build lib/libm
 
 # build lib/liblua
 
