@@ -28,6 +28,7 @@ namespace mm {
 // every physical page in mm circulation is kept track of via a heap-allocated
 // `struct page`.
 struct page : public refcounted<mm::page> {
+	unsigned long lru = 0;
   unsigned long pa = 0;
   /**
    * users is a representation of how many holders of this page there are.

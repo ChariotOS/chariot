@@ -1,6 +1,7 @@
 #include <mm.h>
 #include <phys.h>
 #include <util.h>
+#include <cpu.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 
@@ -28,6 +29,8 @@ mm::page::page(void) {
   debug_page_list = this;
   debug_page_list_lock.unlock();
 #endif
+
+	lru = cpu::get_ticks();
 }
 
 mm::page::~page(void) {
