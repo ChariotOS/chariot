@@ -3,6 +3,8 @@
 #include <module.h>
 #include <util.h>
 #include <string.h>
+#include <cpu.h>
+#include <time.h>
 
 static time_t s_boot_time;
 
@@ -72,15 +74,19 @@ void dev::RTC::read_registers(int& year, int& month, int& day,
   while (update_in_progress())
     ;
 
+	// wrap all this in a cli() as its likely to panic if it is interrupted
+	cpu::pushcli();
   year = (CMOS::read(0x32) * 100) + CMOS::read(0x09);
   month = CMOS::read(0x08);
   day = CMOS::read(0x07);
   hour = CMOS::read(0x04);
   minute = CMOS::read(0x02);
   second = CMOS::read(0x00);
+	cpu::popcli();
 }
 
 time_t dev::RTC::now() {
+
   while (update_in_progress())
     ;
 
@@ -92,6 +98,7 @@ time_t dev::RTC::now() {
   // printk("year: %d, month: %d, day: %d\n", year, month, day);
 
   assert(year >= 2019);
+
 
   return days_in_years_since_epoch(year - 1) * 86400 +
 	 days_in_months_since_start_of_year(month - 1, year) * 86400 +
@@ -118,7 +125,7 @@ void rtc_init(void) {
 
   s_boot_time = dev::RTC::now();
 
-
+	time::set_second(s_boot_time);
 }
 
-module_init("RTC", rtc_init);
+// module_init("RTC", rtc_init);

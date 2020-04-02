@@ -108,6 +108,8 @@ int dirent(int fd, struct dirent *, int offset, int count);
 
 /// num=0x50
 time_t localtime(struct tm *tloc);
+/// num=0x51
+size_t gettime_microsecond(void);
 
 /// num=0x60
 int socket(int domain, int type, int protocol);

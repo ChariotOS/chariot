@@ -33,6 +33,7 @@
 #define SYS_mrename                  (0x32)
 #define SYS_dirent                   (0x40)
 #define SYS_localtime                (0x50)
+#define SYS_gettime_microsecond      (0x51)
 #define SYS_socket                   (0x60)
 #define SYS_signal_init              (0x70)
 #define SYS_signal                   (0x71)

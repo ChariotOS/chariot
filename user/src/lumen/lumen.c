@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 struct rect {
@@ -38,6 +39,8 @@ static uint32_t *buffer = NULL;
 
 static void compose(void);
 
+size_t current_ms() { return syscall(SYS_gettime_microsecond) / 1000; }
+
 int main(int argc, char **argv) {
   fbfd = open("/dev/fb", O_RDWR);
   if (fbfd < 0) {
@@ -59,9 +62,18 @@ int main(int argc, char **argv) {
 
   buffer = calloc(sizeof(uint32_t), WIDTH * HEIGHT);
 
+  size_t last_frame = current_ms();
   while (1) {
     compose();
 
+#define FPS 60
+    size_t now = current_ms();
+    while (1) {
+      now = current_ms();
+      if (now - last_frame >= (1000 / FPS)) break;
+      // yield();
+    }
+    last_frame = now;
     frame++;
   }
 
@@ -102,49 +114,28 @@ double sin(double angle) {
   return ret;
 }
 
+double off = 0.0;
 
-void draw_circle(int xc, int yc, int x, int y, int color) {
-  set_pixel(xc + x, yc + y, color);
-  set_pixel(xc - x, yc + y, color);
-  set_pixel(xc + x, yc - y, color);
-  set_pixel(xc - x, yc - y, color);
-  set_pixel(xc + y, yc + x, color);
-  set_pixel(xc - y, yc + x, color);
-  set_pixel(xc + y, yc - x, color);
-  set_pixel(xc - y, yc - x, color);
-}
-
-void circleBres(int xc, int yc, int r, int color) {
-  int x = 0, y = r;
-  int d = 3 - 2 * r;
-  draw_circle(xc, yc, x, y, color);
-  while (y >= x) {
-    // for each pixel we will
-    // draw all eight pixels
-
-    x++;
-
-    // check for decision parameter
-    // and correspondingly
-    // update d, x, y
-    if (d > 0) {
-      y--;
-      d = d + 4 * (x - y) + 10;
-    } else
-      d = d + 4 * x + 6;
-    draw_circle(xc, yc, x, y, color);
-		blit();
-  }
-}
+static long total_count = 0;
+static long counts[256];
 
 static void compose(void) {
   // set it to some kind of grey
-  memset(buffer, 0x00, BSIZE);
+  memset(buffer, 0xFFFFFF, BSIZE);
 
-#define C(x) ((x & 0xFF) | (x << 8 & 0xFF) | (x << 16 & 0xFF))
-	for (int i = 0; i < 200; i++) {
-	circleBres(WIDTH/2, HEIGHT/2, i, C(i));
-	}
+  struct window win;
+
+  const int H = 400;
+  // arbitrary
+  win.pos.w = 200;
+  win.pos.h = sin(off / 2.5) * (H / 2) + H;
+  win.pos.x = (int)(sin(off) * 500 / 2 + WIDTH / 2 - win.pos.w / 2);
+  win.pos.y = (HEIGHT / 2) - (win.pos.h / 2);
+
+  off += 0.1;
+
+  win.background_color = 0;
+  draw_window(&win);
 
   /*
 for (int i = 0; i < 10; i++) {

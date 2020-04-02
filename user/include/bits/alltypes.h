@@ -1,20 +1,14 @@
 /* @LICENSE(MUSLC_MIT) */
 
+#define CONFIG_X86_64
+
 #if defined(__NEED_size_t) && !defined(__DEFINED_size_t)
-#ifdef CONFIG_X86_64
-typedef unsigned long long size_t;
-#else
-typedef unsigned size_t;
-#endif
+typedef unsigned long size_t;
 #define __DEFINED_size_t
 #endif
 
 #if defined(__NEED_ssize_t) && !defined(__DEFINED_ssize_t)
-#ifdef CONFIG_X86_64
 typedef long long ssize_t;
-#else
-typedef int ssize_t;
-#endif
 #define __DEFINED_ssize_t
 #endif
 

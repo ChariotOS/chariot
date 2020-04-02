@@ -6,6 +6,7 @@
 #include <mem.h>
 #include <paging.h>
 #include <pit.h>
+#include <time.h>
 #include <vec.h>
 
 #define BASE_MEM_LAST_KILO 0x9fc00
@@ -97,37 +98,40 @@ static void lapic_tick_handler(int i, reg_t *tf) {
   cpu.kstat.last_tick_tsc = now;
   cpu.kstat.ticks++;
 
-	smp::lapic_eoi();
+  smp::lapic_eoi();
 
-	// printk("tick %d\n", cpu.kstat.ticks);
+	if (cpu::current().timekeeper) {
+		time::timekeep();
+	}
+
+  // printk("tick %d\n", cpu.kstat.ticks);
   sched::handle_tick(cpu.kstat.ticks);
   return;
 }
 
 // will screw up the PIT
 static void calibrate(void) {
-		#define PIT_DIV 100
-		set_pit_freq(PIT_DIV);
-    wait_for_tick_change();
-    // Set APIC init counter to -1
-		smp::lapic_write(LAPIC_TICR, 0xffffffff);
+#define PIT_DIV 100
+  set_pit_freq(PIT_DIV);
+  wait_for_tick_change();
+  // Set APIC init counter to -1
+  smp::lapic_write(LAPIC_TICR, 0xffffffff);
 
-    wait_for_tick_change();
-    // Stop the APIC timer
-		smp::lapic_write(LAPIC_TIMER, LAPIC_MASKED);
+  wait_for_tick_change();
+  // Stop the APIC timer
+  smp::lapic_write(LAPIC_TIMER, LAPIC_MASKED);
 
-    // Now we know how often the APIC timer has ticked in 10ms
-    auto ticks = 0xffffffff - smp::lapic_read(LAPIC_TCCR);
+  // Now we know how often the APIC timer has ticked in 10ms
+  auto ticks = 0xffffffff - smp::lapic_read(LAPIC_TCCR);
 
-		lapic_ticks_per_second = ticks * PIT_DIV;
-
+  lapic_ticks_per_second = ticks * PIT_DIV;
 }
-
 
 static void set_tickrate(u32 per_second) {
-  smp::lapic_write(LAPIC_TICR, lapic_ticks_per_second / per_second); // set the tick rate
+	cpu::current().ticks_per_second = per_second;
+  smp::lapic_write(LAPIC_TICR,
+		   lapic_ticks_per_second / per_second);  // set the tick rate
 }
-
 
 void smp::lapic_init(void) {
   if (!lapic) return;
@@ -142,22 +146,20 @@ void smp::lapic_init(void) {
   lapic_write(LAPIC_TDCR, LAPIC_X1);
 
   if (lapic_ticks_per_second == 0) {
-  	calibrate();
+    calibrate();
   }
 
-
-	KINFO("[LAPIC] counts per tick: %zu\t0x%08x\n", lapic_ticks_per_second,
+  KINFO("[LAPIC] counts per tick: %zu\t0x%08x\n", lapic_ticks_per_second,
 	lapic_ticks_per_second);
-
 
   // Enable local APIC; set spurious interrupt vector.
   lapic_write(LAPIC_SVR, LAPIC_ENABLE | (32 + 31 /* spurious */));
 
   // set the periodic interrupt timer to be IRQ 50
   // This is so we can use the PIT for sleep related activities at IRQ 32
-	smp::lapic_write(LAPIC_TDCR, LAPIC_X1);
-	smp::lapic_write(LAPIC_TIMER, LAPIC_PERIODIC | (50));
-	set_tickrate(100);
+  smp::lapic_write(LAPIC_TDCR, LAPIC_X1);
+  smp::lapic_write(LAPIC_TIMER, LAPIC_PERIODIC | (50));
+  set_tickrate(100);
 
   // Disable logical interrupt lines.
   lapic_write(LAPIC_LINT0, LAPIC_MASKED);
@@ -188,8 +190,7 @@ void smp::lapic_init(void) {
   // Enable interrupts on the APIC (but not on the processor).
   lapic_write(LAPIC_TPR, 0);
 
-
-	irq::uninstall(32);
+  irq::uninstall(32);
   irq::install(50, lapic_tick_handler, "Local APIC Preemption Tick");
 }
 
@@ -341,6 +342,8 @@ bool smp::init(void) {
   if (!parse_mp_table((mp::mp_table *)p2v(table_addr))) {
     return false;
   }
+
+	cpus[0].timekeeper = true;
 
   INFO("cpunum = %d\n", cpunum());
 

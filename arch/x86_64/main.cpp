@@ -36,7 +36,6 @@ static void kmain2(void);
 extern void rtc_init(void);
 
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
-  rtc_init();
   serial_install();
 
   vga::early_init();
@@ -45,6 +44,8 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   cpu::seginit(boot_cpu_local);
 
   arch::mem_init(mbd);
+
+  rtc_init();
 
   mbinfo = (struct multiboot_info *)(u64)p2v(mbd);
   void *new_stack = (void *)((u64)kmalloc(STKSIZE) + STKSIZE);
