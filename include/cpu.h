@@ -23,6 +23,10 @@ struct cpu_t {
 
   uint16_t preemption_depth;
 
+	// this cpu is the timekeeper
+	bool timekeeper = false;
+	unsigned long ticks_per_second = 0;
+
   u32 speed_khz;
   struct thread *current_thread;
   struct thread_context *sched_ctx;
