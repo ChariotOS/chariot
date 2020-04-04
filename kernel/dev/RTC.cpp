@@ -75,14 +75,14 @@ void dev::RTC::read_registers(int& year, int& month, int& day,
     ;
 
 	// wrap all this in a cli() as its likely to panic if it is interrupted
-	cpu::pushcli();
+	// if (cpu::get() != NULL) cpu::pushcli();
   year = (CMOS::read(0x32) * 100) + CMOS::read(0x09);
   month = CMOS::read(0x08);
   day = CMOS::read(0x07);
   hour = CMOS::read(0x04);
   minute = CMOS::read(0x02);
   second = CMOS::read(0x00);
-	cpu::popcli();
+	// if (cpu::get() != NULL) cpu::popcli();
 }
 
 time_t dev::RTC::now() {
