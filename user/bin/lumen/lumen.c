@@ -117,12 +117,7 @@ double sin(double angle) {
 
 double off = 0.0;
 
-static long total_count = 0;
-static long counts[256];
-
 static void compose(void) {
-  // set it to some kind of grey
-  // memset(buffer, 0xFFFFFF, BSIZE);
 
   struct window win;
 

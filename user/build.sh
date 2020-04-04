@@ -12,7 +12,7 @@ build lib/libc
 
 # build lib/liblua
 
-for i in src/*
+for i in bin/*
 do
 	build ${i}
 done

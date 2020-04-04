@@ -9,8 +9,8 @@ DEFINES += -DUSERLAND
 
 OPTIMIZE:=-O3
 
-CFLAGS:=-g $(CINCLUDES) $(OPTIMIZE) $(MOREFLAGS) -fPIE -fno-omit-frame-pointer -fno-stack-protector \
-				 -mtls-direct-seg-refs -ffreestanding -Wall \
+CFLAGS:=$(CINCLUDES) $(OPTIMIZE) $(MOREFLAGS) -fPIE
+CFLAGS += -ffreestanding -Wall
 
 
 RSFLAGS := --crate-type=bin
