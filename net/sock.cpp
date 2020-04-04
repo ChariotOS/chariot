@@ -103,6 +103,7 @@ fs::inode *net::sock::createi(int domain, int type, int protocol, int &err) {
 }
 
 int sys::socket(int d, int t, int p) {
+	return -1;
   int err = 0;
   auto f = net::sock::createi(d, t, p, err);
   printk("%p %d\n", f, err);
