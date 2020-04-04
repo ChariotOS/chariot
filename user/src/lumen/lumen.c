@@ -65,9 +65,10 @@ int main(int argc, char **argv) {
   size_t last_frame = current_ms();
   while (1) {
     compose();
+		// printf("frame @ %zu\n", last_frame);
 
 #define FPS 60
-    size_t now = current_ms();
+    size_t now;
     while (1) {
       now = current_ms();
       if (now - last_frame >= (1000 / FPS)) break;
@@ -121,7 +122,7 @@ static long counts[256];
 
 static void compose(void) {
   // set it to some kind of grey
-  memset(buffer, 0xFFFFFF, BSIZE);
+  // memset(buffer, 0xFFFFFF, BSIZE);
 
   struct window win;
 
@@ -134,7 +135,7 @@ static void compose(void) {
 
   off += 0.1;
 
-  win.background_color = 0;
+  win.background_color = off * 100;
   draw_window(&win);
 
   /*
