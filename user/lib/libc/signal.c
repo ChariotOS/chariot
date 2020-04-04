@@ -57,7 +57,9 @@ int sigprocmask(int how, const sigset_t *set, sigset_t *old) {
 	return r;
 }
 
-void (*signal(int sig, void (*func)(int)))(int) { return SIG_ERR; }
+typedef void (*signal_handler_t)(int);
+
+signal_handler_t signal(int sig, signal_handler_t func) { return SIG_ERR; }
 
 
 void __signal_return_callback(void) {
