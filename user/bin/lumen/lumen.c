@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
   return EXIT_SUCCESS;
 }
 
-static void blit(void) { write(fbfd, buffer, BSIZE); }
+static void blit(void) { /*write(fbfd, buffer, BSIZE);*/ }
 
 static void set_pixel(int x, int y, int c) {
   if (x > WIDTH || x < 0 || y > HEIGHT || y < 0) return;

@@ -11,13 +11,11 @@ struct fs::inode *vfs_root = NULL;
 static vec<struct fs::sb_information *> filesystems;
 
 void vfs::register_filesystem(struct fs::sb_information &info) {
-	printk(KERN_INFO "filesystem '%s' registered\n", info.name);
-	filesystems.push(&info);
+  printk(KERN_INFO "filesystem '%s' registered\n", info.name);
+  filesystems.push(&info);
 }
 
 void vfs::deregister_filesystem(struct fs::sb_information &) {}
-
-
 
 int vfs::mount_root(unique_ptr<fs::filesystem> fs) {
   assert(vfs_root == NULL);
@@ -47,13 +45,16 @@ struct fs::inode *vfs::get_root(void) {
   return vfs_root;
 }
 
-int vfs::mount(fs::blkdev *bdev, const char *targ, const char *type,
-	       unsigned long flags, const char *options) {
-  return -ENOTIMPL;
-}
-
 int vfs::mount(const char *src, const char *targ, const char *type,
 	       unsigned long flags, const char *options) {
+  printk(KERN_INFO "mount %s with fs %s to %s\n", src, type, targ);
+
+  struct fs::blkdev *bdev = fs::bdev_from_path(src);
+  if (bdev) {
+    printk(KERN_INFO "found device at %p (%d %d)\n", bdev, bdev->dev.major(),
+	   bdev->dev.minor());
+  }
+
   return -ENOTIMPL;
 }
 

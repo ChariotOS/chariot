@@ -58,8 +58,8 @@ static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
   auto res = func(a, b, c, d, e, f);
 
 #if 0
-  printk("pid: %d, syscall(SYS_%s, %lx, %lx, %lx, %lx, %lx, %lx) = %lx\n",
-         curproc->pid, syscall_table[num].name, a, b, c, d, e, f, res);
+		printk("pid: %d, syscall(SYS_%s, %lx, %lx, %lx, %lx, %lx, %lx) = %lx\n",
+					 curproc->pid, syscall_table[num].name, a, b, c, d, e, f, res);
 #endif
 
   return res;

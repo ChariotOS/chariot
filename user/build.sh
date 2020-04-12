@@ -16,3 +16,7 @@ for i in bin/*
 do
 	build ${i}
 done
+
+make -C rs
+
+cp $(find rs/target/chariot-x86_64/ -maxdepth 2 -executable -type f) out/bin/

@@ -13,8 +13,6 @@
 
 class vfs {
  public:
-  static int mount(fs::blkdev *source, const char *targ, const char *type,
-		   unsigned long flags, const char *options);
   static int mount(const char *source, const char *targ, const char *type,
 		   unsigned long /* TODO */ flags, const char *options);
 

@@ -128,7 +128,7 @@ int main(int argc, char **argv) {
 	    if (res == 0) {
 	      printf("[init] %s spawned on pid %d\n", name, pid);
 	    } else {
-	      printf("[init] %s - %s", name, strerror(e));
+	      printf("[init] %s - %s\n", name, strerror(e));
 	      waitpid(pid, NULL, 0);
 	    }
 	  } else {

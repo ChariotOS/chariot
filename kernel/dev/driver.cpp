@@ -117,3 +117,16 @@ string dev::next_disk_name(void) {
   return string::format("disk%d", disk_count);
 }
 
+
+
+
+
+struct fs::blkdev *fs::bdev_from_path(const char *name) {
+	struct fs::blkdev *bdev = nullptr;
+
+	printk("looking for device called %s\n", name);
+	// We *assume* that the format is well formed :)
+
+
+	return bdev;
+}

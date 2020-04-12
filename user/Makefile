@@ -1,24 +1,16 @@
+.PHONY: run
 
-ROOTDIR = ..
 include ../Makefile.common
 
 
-CINCLUDES=-I./include/
-
+CINCLUDES=
 DEFINES += -DUSERLAND
-
 OPTIMIZE:=-O3
 
-CFLAGS:=$(CINCLUDES) $(OPTIMIZE) $(MOREFLAGS) -fPIE
+CFLAGS  = -I./include/ $(MOREFLAGS) -fPIE
 CFLAGS += -ffreestanding -Wall
 
 
-RSFLAGS := --crate-type=bin
-
-
-
-
-.PHONY: run
 
 LDFLAGS += -L$(PWD)/out/lib/
 
@@ -109,9 +101,9 @@ build/%.cpp.o: %.cpp
 build/%.rs.o: %.rs
 	@mkdir -p $(dir $@)
 	@echo -e "$(PFX) RS  " $<
-	rustc -O -C target-feature=+crt-static \
+	rustc -O -C target-feature=+crt-static  \
 		--edition 2018                        \
-		$(RSFLAGS)                            \
+		--crate-type=bin                      \
 		-L crate=crates/                      \
 		-L out/lib/rs -l static=std           \
 		--emit obj -o $@ $<

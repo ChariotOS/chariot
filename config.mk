@@ -10,7 +10,7 @@ CONFIG_PS2MOUSE = y
 CONFIG_PS2KBD = y
 
 # networking
-CONFIG_E1000 = n
+CONFIG_E1000 = y
 CONFIG_RTL8139 = n
 
 # audio

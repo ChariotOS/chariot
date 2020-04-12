@@ -113,6 +113,13 @@ struct blkdev {
   void *priv;
 };
 
+
+// used in the kernel to look up "/dev/*" block devices before we have /dev
+// (and really, the kernel cannot rely on userspace filesystems in the end either.
+// implemented in kernel/dev/driver.cpp (where we have the driver name info)
+struct fs::blkdev *bdev_from_path(const char *);
+
+
 struct superblock {
   //
   dev_t dev;
