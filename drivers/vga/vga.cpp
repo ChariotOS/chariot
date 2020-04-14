@@ -9,9 +9,25 @@
 #include <pci.h>
 #include <printk.h>
 #include <util.h>
+#include <vconsole.h>
 #include <vga.h>
 
 #include "../drivers/majors.h"
+#include "vga_font_raw.h"
+#include "xterm_colors.h"
+
+struct [[gnu::packed]] font_file_header {
+  char magic[4];
+  unsigned char glyph_width;
+  unsigned char glyph_height;
+  unsigned char type;
+  unsigned char is_variable_width;
+  unsigned char glyph_spacing;
+  unsigned char unused[5];
+  char name[64];
+};
+
+const struct font_file_header &vga_font = (font_file_header &)*&vga_font_raw;
 
 #define VBE_DISPI_IOPORT_INDEX 0x01CE
 #define VBE_DISPI_IOPORT_DATA 0x01CF
@@ -33,343 +49,7 @@
 #define BXVGA_DEV_IOCTL_SET_Y_OFFSET 1982
 #define BXVGA_DEV_IOCTL_SET_RESOLUTION 1985
 
-#define COLUMNS 80
-#define LINES 25
-#define NPAR 16
-
-static unsigned short *origin = (unsigned short *)p2v(VGA_BASE_ADDR);
-static unsigned long pos = 0;
-static unsigned long x = 0, y = 0;
-static unsigned long bottom = LINES;
-static unsigned long lines = LINES, columns = COLUMNS;
-static unsigned long state = 0;
-// parameter storage
-static unsigned long npar, par[NPAR];
-static unsigned long ques = 0;
-static unsigned char attr = 0x07;
-
-/*
- * this is what the terminal answers to a ESC-Z or csi0c
- * query (= vt100 response).
- */
-#define RESPONSE "\033[?1;2c"
-
-static inline void gotoxy(unsigned int new_x, unsigned int new_y) {
-  if (new_x >= columns || new_y >= lines) return;
-  x = new_x;
-  y = new_y;
-  pos = y * columns + x;
-}
-
-static inline void write(long pos, uint16_t val) {
-  if (pos <= 0 || pos >= COLUMNS * LINES) return;
-  origin[pos] = val;
-}
-
-void scrollup(void) {
-  for (int i = 0; i < COLUMNS * (LINES - 1); i++)
-    origin[i] = origin[i + COLUMNS];
-
-  // fill the last line with spaces
-  for (int i = COLUMNS * (LINES - 1); i < COLUMNS * LINES; i++)
-    origin[i] = 0x0720;
-}
-
-static void lf(void) {
-  if (y + 1 < bottom) {
-    y++;
-    pos += columns;
-    return;
-  }
-  scrollup();
-}
-
-static void cr(void) {
-  pos -= x;
-  x = 0;
-}
-
-static void del(void) {
-  if (x) {
-    pos--;
-    x--;
-    write(pos, 0x0720);
-  }
-}
-
-static inline void set_cursor(void) {
-  arch::cli();
-  outb(0x3d4, 14);
-  outb(0x3d5, 0xff & (pos >> 8));
-  outb(0x3d4, 15);
-  outb(0x3d5, 0xff & pos);
-  arch::sti();
-}
-
-static void csi_J(int par) {
-  long count = 0;
-  long start = 0;
-  switch (par) {
-    case 0: /* erase from cursor to end of display */
-      count = (COLUMNS * LINES - pos);
-      start = pos;
-      break;
-    case 1: /* erase from start to cursor */
-      count = pos;
-      start = 0;
-      break;
-    case 2: /* erase whole display */
-      count = columns * lines;
-      start = 0;
-      break;
-    default:
-      return;
-  }
-
-  for (int i = start; i < start + count; i++) write(i, 0x0720);
-}
-
-static void csi_K(int par) {
-  long count;
-  long start;
-
-  switch (par) {
-    case 0: /* erase from cursor to end of line */
-      if (x >= columns) return;
-      count = columns - x;
-      start = pos;
-      break;
-    case 1: /* erase from start of line to cursor */
-      start = pos - x;
-      count = (x < columns) ? x : columns;
-      break;
-    case 2: /* erase whole line */
-      start = pos - x;
-      count = columns;
-      break;
-    default:
-      return;
-  }
-
-  for (int i = start; i < start + count; i++) write(i, 0x0720);
-}
-
-static int saved_x = 0;
-static int saved_y = 0;
-
-static void save_cur(void) {
-  saved_x = x;
-  saved_y = y;
-}
-
-static void restore_cur(void) {
-  x = saved_x;
-  y = saved_y;
-  pos = y * columns + x;
-}
-
-void csi_m(void) {
-  int i;
-
-  for (i = 0; i <= npar; i++) {
-    char p = par[i];
-
-    if (p == 0) {
-      attr = 0x07;
-    } else if (p >= 30 && p <= 37) {
-      attr = (attr & 0xF0) | (((p - 30) & 0xF));
-      continue;
-    } else if (p >= 40 && p <= 47) {
-      attr = (attr & 0xF0) | (((p - 40) & 0xF));
-      continue;
-
-    } else if (p >= 90 && p <= 97) {
-      attr = (attr & 0xF0) | (((p - 90) & 0xF));
-      continue;
-    } else {
-      switch (par[i]) {
-	case 0:
-	  attr = 0x07;
-	  break;
-	case 1:
-	  attr = 0x0f;
-	  break;
-	case 4:
-	  attr = 0x0f;
-	  break;
-	case 7:
-	  attr = 0x70;
-	  break;
-	case 27:
-	  attr = 0x07;
-	  break;
-      }
-    }
-  }
-}
-
-void vga::putchar(char c) {
-  switch (state) {
-    case 0:
-      if (c > 31 && c < 127) {
-	if (x >= columns) {
-	  x -= columns;
-	  pos -= columns;
-	  lf();
-	}
-
-	write(pos++, (attr << 8) | (c & 0xFF));
-	x++;
-
-      } else if (c == 27) {
-	state = 1;
-      } else if (c == '\n') {
-	cr();
-	lf();
-      } else if (c == '\r') {
-	cr();
-      } else if (c == CONS_DEL) {
-	del();
-      } else if (c == 8) {
-	if (x) {
-	  x--;
-	  pos--;
-	}
-      } else if (c == 9) {
-	/*
-	c = 8 - (x & 7);
-	x += c;
-	pos += c << 1;
-	if (x > columns) {
-	  x -= columns;
-	  pos -= columns << 1;
-	  lf();
-	}
-	c = 9;
-	*/
-      }
-      break;
-    case 1:
-      state = 0;
-      if (c == '[') {
-	state = 2;
-      } else if (c == 'E') {
-	gotoxy(0, y + 1);
-      } else if (c == 'M') {
-	// ri();
-      } else if (c == 'D') {
-	lf();
-      } else if (c == 'Z') {
-	// respond(tty);
-      } else if (x == '7') {
-	save_cur();
-      } else if (x == '8') {
-	restore_cur();
-      }
-      break;
-    case 2:
-      for (npar = 0; npar < NPAR; npar++) par[npar] = 0;
-      npar = 0;
-      state = 3;
-      if ((ques = (c == '?'))) {
-	break;
-      }
-    case 3:
-      if (c == ';' && npar < NPAR - 1) {
-	npar++;
-	break;
-      } else if (c >= '0' && c <= '9') {
-	par[npar] = 10 * par[npar] + c - '0';
-	break;
-      } else
-	state = 4;
-    case 4:
-      state = 0;
-      switch (c) {
-	case 'G':
-	case '`':
-	  if (par[0]) par[0]--;
-	  gotoxy(par[0], y);
-	  break;
-	case 'A':
-	  if (!par[0]) par[0]++;
-	  gotoxy(x, y - par[0]);
-	  break;
-	case 'B':
-	case 'e':
-	  if (!par[0]) par[0]++;
-	  gotoxy(x, y + par[0]);
-	  break;
-	case 'C':
-	case 'a':
-	  if (!par[0]) par[0]++;
-	  gotoxy(x + par[0], y);
-	  break;
-	case 'D':
-	  if (!par[0]) par[0]++;
-	  gotoxy(x - par[0], y);
-	  break;
-	case 'E':
-	  if (!par[0]) par[0]++;
-	  gotoxy(0, y + par[0]);
-	  break;
-	case 'F':
-	  if (!par[0]) par[0]++;
-	  gotoxy(0, y - par[0]);
-	  break;
-	case 'd':
-	  if (par[0]) par[0]--;
-	  gotoxy(x, par[0]);
-	  break;
-	case 'H':
-	case 'f':
-	  if (par[0]) par[0]--;
-	  if (par[1]) par[1]--;
-	  gotoxy(par[1], par[0]);
-	  break;
-	case 'J':
-	  csi_J(par[0]);
-	  break;
-	case 'K':
-	  csi_K(par[0]);
-	  break;
-	case 'm':
-	  csi_m();
-	  break;
-	  /*
-	  case 'L':
-		  csi_L(par[0]);
-		  break;
-	  case 'M':
-		  csi_M(par[0]);
-		  break;
-	  case 'P':
-		  csi_P(par[0]);
-		  break;
-	  case '@':
-		  csi_at(par[0]);
-		  break;
-	  case 'r':
-		  if (par[0]) par[0]--;
-		  if (!par[1]) par[1]=lines;
-		  if (par[0] < par[1] &&
-		      par[1] <= lines) {
-			  top=par[0];
-			  bottom=par[1];
-		  }
-		  break;
-	  case 's':
-		  save_cur();
-		  break;
-	  case 'u':
-		  restore_cur();
-		  break;
-	  */
-      }
-  }
-
-  set_cursor();
-}
+struct vconsole *vga_console = NULL;
 
 static spinlock fblock;
 static bool owned = false;
@@ -378,6 +58,50 @@ u32 *vga_fba = 0;
 struct ck_fb_info info {
   .active = 0, .width = 0, .height = 0,
 };
+
+static void set_pixel(uint32_t x, uint32_t y, int color) {
+  if (x > info.width || y > info.height) return;
+  ((u32 *)p2v(vga_fba))[x + info.width * y] = color;
+}
+
+// dummy
+static void draw_char(char c, int x, int y, int fg, int bg) {
+  auto *rows = const_cast<unsigned *>((const unsigned *)(&vga_font + 1));
+
+  uint32_t *ch = rows + (c * vga_font.glyph_height);
+
+  if (!(c >= ' ' && c <= '~')) {
+    for (int r = 0; r < vga_font.glyph_height; r++) {
+      for (int c = 0; c < vga_font.glyph_width; c++) {
+	set_pixel(x + c, y + r, bg);
+      }
+    }
+    return;
+  }
+
+  for (int r = 0; r < vga_font.glyph_height; r++) {
+    for (int c = 0; c < vga_font.glyph_width; c++) {
+      int b = (ch[r] & (1 << (c))) != 0;
+
+      int color = b ? fg : bg;
+      set_pixel(x + c, y + r, color);
+    }
+  }
+}
+
+static void flush_vga_console() {
+  vga_console->for_each_cell([](int row, int col, char c, char attr) {
+    draw_char(c, col * vga_font.glyph_width, row * vga_font.glyph_height,
+	      0xffffff, 0);
+  });
+}
+
+void vga::putchar(char c) {
+  if (vga_console == NULL) return;
+
+  vga_console->feed(c);
+  // if (!owned) flush_vga_console();
+}
 
 static void set_register(u16 index, u16 data) {
   outw(VBE_DISPI_IOPORT_INDEX, index);
@@ -391,24 +115,25 @@ static u16 get_register(u16 index) {
 }
 */
 
-
 static void set_info(struct ck_fb_info i) {
   set_register(VBE_DISPI_INDEX_ENABLE, VBE_DISPI_DISABLED);
   set_register(VBE_DISPI_INDEX_XRES, (u16)i.width);
   set_register(VBE_DISPI_INDEX_YRES, (u16)i.height);
   set_register(VBE_DISPI_INDEX_VIRT_WIDTH, (u16)i.width);
   set_register(VBE_DISPI_INDEX_VIRT_HEIGHT, 4096);
-  if (i.active) {
-  // bits per pixel
-    set_register(VBE_DISPI_INDEX_BPP, 32);
-    set_register(VBE_DISPI_INDEX_ENABLE,
-		 VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
-    set_register(VBE_DISPI_INDEX_BANK, 0);
-	}
+	// bits per pixel
+	set_register(VBE_DISPI_INDEX_BPP, 32);
+	set_register(VBE_DISPI_INDEX_ENABLE,
+	 VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
+	set_register(VBE_DISPI_INDEX_BANK, 0);
 
   info.active = i.active;
   info.width = i.width;
   info.height = i.height;
+  if (vga_console != NULL && info.active == false) {
+    vga_console->resize(info.width / vga_font.glyph_width,
+			info.height / vga_font.glyph_height);
+  }
 }
 
 pci::device *vga_dev = NULL;
@@ -491,8 +216,8 @@ static void fb_close(fs::file &f) {
   // disable the framebuffer (drop back to text mode)
   auto i = info;
   i.active = false;
-	i.width = 0;
-	i.height = 0;
+  i.width = 1024;
+  i.height = 768;
   set_info(i);
 }
 
@@ -513,13 +238,27 @@ static struct dev::driver_info generic_driver_info {
 
 void vga::early_init(void) {}
 
-void vga_mod_init(void) {
-	gotoxy(0, 0);
-  origin = (unsigned short *)p2v(VGA_BASE_ADDR);
+static void vga_char_drawer(int x, int y, char c, char attr) {
+  if (info.active) return;
+  draw_char(c, x * vga_font.glyph_width, y * vga_font.glyph_height,
+	    xterm_colors[attr & 0xF], xterm_colors[(attr >> 4) & 0xF]);
+}
 
+void vga_mod_init(void) {
   if (vga_fba == NULL) {
     vga_fba = (u32 *)get_framebuffer_address();
   }
+
+
+  vga_console =
+      new vconsole(0, 0, vga_char_drawer);
+
+  auto i = info;
+  i.active = false;
+  i.width = 1024;
+  i.height = 768;
+  set_info(i);
+
 
   dev::register_driver(generic_driver_info);
   dev::register_name(generic_driver_info, "fb", 0);
