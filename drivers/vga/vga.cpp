@@ -12,23 +12,6 @@
 #include <vconsole.h>
 #include <vga.h>
 
-#include "../drivers/majors.h"
-#include "vga_font_raw.h"
-#include "xterm_colors.h"
-
-struct [[gnu::packed]] font_file_header {
-  char magic[4];
-  unsigned char glyph_width;
-  unsigned char glyph_height;
-  unsigned char type;
-  unsigned char is_variable_width;
-  unsigned char glyph_spacing;
-  unsigned char unused[5];
-  char name[64];
-};
-
-const struct font_file_header &vga_font = (font_file_header &)*&vga_font_raw;
-
 #define VBE_DISPI_IOPORT_INDEX 0x01CE
 #define VBE_DISPI_IOPORT_DATA 0x01CF
 
@@ -49,7 +32,48 @@ const struct font_file_header &vga_font = (font_file_header &)*&vga_font_raw;
 #define BXVGA_DEV_IOCTL_SET_Y_OFFSET 1982
 #define BXVGA_DEV_IOCTL_SET_RESOLUTION 1985
 
-struct vconsole *vga_console = NULL;
+#include "../drivers/majors.h"
+#include "vga_font_raw.h"
+#include "xterm_colors.h"
+
+struct [[gnu::packed]] font_file_header {
+  char magic[4];
+  unsigned char glyph_width;
+  unsigned char glyph_height;
+  unsigned char type;
+  unsigned char is_variable_width;
+  unsigned char glyph_spacing;
+  unsigned char unused[5];
+  char name[64];
+};
+
+const struct font_file_header &vga_font = (font_file_header &)*&vga_font_raw;
+
+#define EDGE_MARGIN 16
+#define TOTAL_MARGIN (EDGE_MARGIN * 2)
+#define CHAR_LINE_MARGIN 4
+#define FONT_WIDTH (8)	// hardcoded :/
+#define FONT_HEIGHT (10)
+#define LINE_HEIGHT (FONT_HEIGHT + CHAR_LINE_MARGIN)
+
+#define VCONSOLE_WIDTH 1024
+#define VCONSOLE_HEIGHT 768
+
+#define VC_COLS ((VCONSOLE_WIDTH - TOTAL_MARGIN) / FONT_WIDTH)
+#define VC_ROWS ((VCONSOLE_HEIGHT - TOTAL_MARGIN) / LINE_HEIGHT)
+
+static void vga_char_scribe(int col, int row, struct vc_cell *);
+
+// manually create
+struct vc_cell static_cells[VC_COLS * VC_ROWS];
+struct vcons vga_console {
+  .state = 0, .cols = VC_COLS, .rows = VC_ROWS, .pos = 0, .x = 0, .y = 0,
+  .saved_x = 0, .saved_y = 0, .scribe = vga_char_scribe, .npar = 0, .ques = 0,
+  .attr = 0x07,	 // common default
+      .buf = (struct vc_cell *)&static_cells,
+};
+
+static bool cons_enabled = false;
 
 static spinlock fblock;
 static bool owned = false;
@@ -59,7 +83,7 @@ struct ck_fb_info info {
   .active = 0, .width = 0, .height = 0,
 };
 
-static void set_pixel(uint32_t x, uint32_t y, int color) {
+static inline void set_pixel(uint32_t x, uint32_t y, int color) {
   if (x > info.width || y > info.height) return;
   ((u32 *)p2v(vga_fba))[x + info.width * y] = color;
 }
@@ -68,20 +92,19 @@ static void set_pixel(uint32_t x, uint32_t y, int color) {
 static void draw_char(char c, int x, int y, int fg, int bg) {
   auto *rows = const_cast<unsigned *>((const unsigned *)(&vga_font + 1));
 
-  uint32_t *ch = rows + (c * vga_font.glyph_height);
+  uint32_t *ch = rows + (c * FONT_HEIGHT);
 
   if (!(c >= ' ' && c <= '~')) {
-    for (int r = 0; r < vga_font.glyph_height; r++) {
-      for (int c = 0; c < vga_font.glyph_width; c++) {
-	set_pixel(x + c, y + r, bg);
-      }
+    for (int r = 0; r < LINE_HEIGHT; r++) {
+      for (int c = 0; c < FONT_WIDTH; c++) set_pixel(x + c, y + r, bg);
     }
     return;
   }
 
-  for (int r = 0; r < vga_font.glyph_height; r++) {
-    for (int c = 0; c < vga_font.glyph_width; c++) {
-      int b = (ch[r] & (1 << (c))) != 0;
+  for (int r = 0; r < LINE_HEIGHT; r++) {
+    for (int c = 0; c < FONT_WIDTH; c++) {
+      int b = 0;
+      if (r < FONT_HEIGHT) b = (ch[r] & (1 << (c))) != 0;
 
       int color = b ? fg : bg;
       set_pixel(x + c, y + r, color);
@@ -90,17 +113,15 @@ static void draw_char(char c, int x, int y, int fg, int bg) {
 }
 
 static void flush_vga_console() {
-  vga_console->for_each_cell([](int row, int col, char c, char attr) {
-    draw_char(c, col * vga_font.glyph_width, row * vga_font.glyph_height,
-	      0xffffff, 0);
-  });
+  for (int y = 0; y < VC_ROWS; y++) {
+    for (int x = 0; x < VC_COLS; x++) {
+      vga_char_scribe(x, y, vc_get_cell(&vga_console, x, y));
+    }
+  }
 }
 
 void vga::putchar(char c) {
-  if (vga_console == NULL) return;
-
-  vga_console->feed(c);
-  // if (!owned) flush_vga_console();
+  vc_feed(&vga_console, c);
 }
 
 static void set_register(u16 index, u16 data) {
@@ -108,32 +129,21 @@ static void set_register(u16 index, u16 data) {
   outw(VBE_DISPI_IOPORT_DATA, data);
 }
 
-/*
-static u16 get_register(u16 index) {
-  outw(VBE_DISPI_IOPORT_INDEX, index);
-  return inw(VBE_DISPI_IOPORT_DATA);
-}
-*/
-
 static void set_info(struct ck_fb_info i) {
   set_register(VBE_DISPI_INDEX_ENABLE, VBE_DISPI_DISABLED);
   set_register(VBE_DISPI_INDEX_XRES, (u16)i.width);
   set_register(VBE_DISPI_INDEX_YRES, (u16)i.height);
   set_register(VBE_DISPI_INDEX_VIRT_WIDTH, (u16)i.width);
   set_register(VBE_DISPI_INDEX_VIRT_HEIGHT, 4096);
-	// bits per pixel
-	set_register(VBE_DISPI_INDEX_BPP, 32);
-	set_register(VBE_DISPI_INDEX_ENABLE,
-	 VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
-	set_register(VBE_DISPI_INDEX_BANK, 0);
+  // bits per pixel
+  set_register(VBE_DISPI_INDEX_BPP, 32);
+  set_register(VBE_DISPI_INDEX_ENABLE,
+	       VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
+  set_register(VBE_DISPI_INDEX_BANK, 0);
 
   info.active = i.active;
   info.width = i.width;
   info.height = i.height;
-  if (vga_console != NULL && info.active == false) {
-    vga_console->resize(info.width / vga_font.glyph_width,
-			info.height / vga_font.glyph_height);
-  }
 }
 
 pci::device *vga_dev = NULL;
@@ -208,17 +218,22 @@ static int fb_open(fs::file &f) {
   return 0;  // allow
 }
 
+static void reset_fb(void) {
+  // disable the framebuffer (drop back to text mode)
+  auto i = info;
+  i.active = false;
+  i.width = VCONSOLE_WIDTH;
+  i.height = VCONSOLE_HEIGHT;
+  set_info(i);
+
+  flush_vga_console();
+}
+
 static void fb_close(fs::file &f) {
   scoped_lock l(fblock);
   // printk("[fb] closed!\n");
   owned = false;
-
-  // disable the framebuffer (drop back to text mode)
-  auto i = info;
-  i.active = false;
-  i.width = 1024;
-  i.height = 768;
-  set_info(i);
+  reset_fb();
 }
 
 // can only write to the framebuffer
@@ -236,29 +251,24 @@ static struct dev::driver_info generic_driver_info {
   .char_ops = &fb_ops,
 };
 
-void vga::early_init(void) {}
-
-static void vga_char_drawer(int x, int y, char c, char attr) {
-  if (info.active) return;
-  draw_char(c, x * vga_font.glyph_width, y * vga_font.glyph_height,
-	    xterm_colors[attr & 0xF], xterm_colors[(attr >> 4) & 0xF]);
-}
-
-void vga_mod_init(void) {
+void vga::early_init(void) {
   if (vga_fba == NULL) {
     vga_fba = (u32 *)get_framebuffer_address();
   }
 
+  reset_fb();
+  cons_enabled = true;
+}
 
-  vga_console =
-      new vconsole(0, 0, vga_char_drawer);
+static void vga_char_scribe(int x, int y, struct vc_cell *cell) {
+  char c = cell->c;
+  char attr = cell->attr;
+  if (info.active) return;
+  draw_char(c, EDGE_MARGIN + x * FONT_WIDTH, EDGE_MARGIN + y * LINE_HEIGHT,
+	    xterm_colors[attr & 0xF], xterm_colors[(attr >> 4) & 0xF]);
+}
 
-  auto i = info;
-  i.active = false;
-  i.width = 1024;
-  i.height = 768;
-  set_info(i);
-
+void vga_mod_init(void) {
 
   dev::register_driver(generic_driver_info);
   dev::register_name(generic_driver_info, "fb", 0);
