@@ -1,10 +1,10 @@
+#include <errno.h>
 #include <mem.h>
+#include <net/in.h>
 #include <net/ipv4.h>
 #include <net/net.h>
 #include <net/socket.h>
-#include <net/in.h>
 #include <printk.h>
-#include <errno.h>
 
 uint32_t net::ipv4::parse_ip(const char *name) {
   // TODO: not sure this is the smartest way to do this.
@@ -19,16 +19,25 @@ void net::ipv4::format_ip(uint32_t ip, char *dst) {
   sprintk(dst, "%d.%d.%d.%d", v[3], v[2], v[1], v[0]);
 }
 
-uint16_t net::checksum(void *p, uint16_t count) {
-  uint16_t *s = (uint16_t *)p;
-  uint32_t sum = 0;
+uint16_t net::checksum(void *p, uint16_t nbytes) {
+  auto *ptr = (uint16_t *)p;
 
-  /* TODO: Checksums for options? */
-  for (int i = 0; i < 10; ++i) sum += net::ntohs(s[i]);
+  long sum = 0;
+  unsigned short oddbyte;
 
-  if (sum > 0xFFFF) sum = (sum >> 16) + (sum & 0xFFFF);
+  while (nbytes > 1) {
+    sum += *ptr++;
+    nbytes -= 2;
+  }
+  if (nbytes == 1) {
+    oddbyte = 0;
+    *((unsigned char *)&oddbyte) = *(unsigned char *)ptr;
+    sum += oddbyte;
+  }
 
-  return ~(sum & 0xFFFF) & 0xFFFF;
+  sum = (sum >> 16) + (sum & 0xffff);
+  sum = sum + (sum >> 16);
+  return (uint16_t)~sum;
 }
 
 uint16_t net::ipv4::checksum(const net::ipv4::packet &p) {
@@ -44,7 +53,7 @@ uint16_t net::ipv4::checksum(const net::ipv4::packet &p) {
 }
 
 int net::udp::send_data(net::interface &i, uint32_t ip, uint16_t from,
-                        uint16_t to, void *data, uint16_t length) {
+			uint16_t to, void *data, uint16_t length) {
   char *pkt;
 
   struct net::eth::packet epkt {
@@ -54,11 +63,12 @@ int net::udp::send_data(net::interface &i, uint32_t ip, uint16_t from,
   memcpy(epkt.source, i.hwaddr, 6);
 
   uint16_t _length = net::htons(sizeof(struct net::ipv4::packet) +
-                                sizeof(struct net::udp::packet) + length);
+				sizeof(struct net::udp::packet) + length);
   uint16_t _ident = net::htons(1);
 
   struct net::ipv4::packet ipv4_out = {
-      .version_ihl = ((0x4 << 4) | (0x5 << 0)), /* 4 = ipv4, 5 = no options */
+			.header_len = 5,
+			.version = 4,
       .dscp_ecn = 0, /* not setting either of those */
       .length = _length,
       .ident = _ident,
@@ -105,7 +115,7 @@ int net::udp::send_data(net::interface &i, uint32_t ip, uint16_t from,
 }
 
 int net::ipv4::datagram_connect(net::sock &sk, struct sockaddr *uaddr,
-                                int addr_len) {
+				int addr_len) {
   struct sockaddr_in *usin = (struct sockaddr_in *)uaddr;
 
   if (addr_len != sizeof(*usin)) return -EINVAL;

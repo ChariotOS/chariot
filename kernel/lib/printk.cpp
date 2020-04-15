@@ -864,6 +864,19 @@ static int _vsnprintf(out_fct_type out, char *buffer, const size_t maxlen,
         break;
       }
 
+
+			// nonstandard "Mac address" formatter
+			case 'A': {
+					uint8_t *addr = (uint8_t *)va_arg(va, void *);
+					for (int i = 0; i < 6; i++) {
+						idx = _ntoa_long(out, buffer, idx, maxlen, addr[i], false, 16, 2, 2, 0);
+						if (i != 5) out(':', buffer, idx++, maxlen);
+					}
+					format++;
+					break;
+			}
+
+
       case 'p': {
         width = sizeof(void *) * 2U;
         flags |= FLAGS_ZEROPAD;  // | FLAGS_UPPERCASE;

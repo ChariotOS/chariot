@@ -31,7 +31,7 @@ static void set_color_for(char c) {
              c == '\r') {
     set_color(C_RED);
   } else {
-    set_color(C_GRAY);
+    set_color(C_RESET);
   }
 }
 
@@ -55,7 +55,7 @@ void hexdump(void *vbuf, size_t len, bool use_colors) {
       printk("|");
       set_color(C_GRAY);
 
-      printk("%.8llx", i);
+      printk("%.8llX", i);
 
       set_color(C_RESET);
       printk("|");
@@ -74,7 +74,7 @@ void hexdump(void *vbuf, size_t len, bool use_colors) {
           }
           printk(" ");
         } else {
-          printk("%02x ", line[c]);
+          printk("%02X ", line[c]);
         }
       }
     }

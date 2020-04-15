@@ -150,15 +150,15 @@ static void init_tx(void) {
 
 static void irq_handler(int i, reg_t *) {
   uint32_t status = read_command(E1000_ICR);
-  printk("[e1000]: irq status = 0x%02x\n", status);
   irq::eoi(i);
 
-  printk(KERN_INFO "[e1000]: irq info\n");
 
+	/*
+  printk("[e1000]: irq status = 0x%02x\n", status);
+  printk(KERN_INFO "[e1000]: irq info\n");
 #define PR_ICR_FLAG(name)        \
   if (status & E1000_ICR_##name) \
   printk(KERN_INFO "[e1000]      %s\n", E1000_ICR_MSG_##name)
-
   PR_ICR_FLAG(TXDW);
   PR_ICR_FLAG(TXQE);
   PR_ICR_FLAG(LSC);
@@ -178,15 +178,14 @@ static void irq_handler(int i, reg_t *) {
   PR_ICR_FLAG(MNG);
   PR_ICR_FLAG(DOCK);
   PR_ICR_FLAG(INT_ASSERTED);
+	*/
 
   if (status & E1000_ICR_LSC) {
     printk(KERN_INFO "[e1000]: status change\n");
   }
 
   if (status & E1000_ICR_RXT0) {
-    printk(KERN_INFO "[e1000]: rx packet\n");
     /* receive packet */
-
     uint32_t rx_current = 0;
     for (;;) {
       rx_current = read_command(E1000_REG_RXDESCTAIL);
@@ -196,7 +195,10 @@ static void irq_handler(int i, reg_t *) {
       uint8_t *pbuf = (uint8_t *)rx_virt[rx_index];
       uint16_t plen = rx[rx_index].length;
 
-      hexdump(p2v(pbuf), plen, true);
+			// allocate a new buffer and pass it off to the network stack
+			void *buf = kmalloc(plen); // TODO: probably don't use malloc
+			memcpy(buf, pbuf, plen);
+			net::packet_received(buf, plen);
 
       rx[rx_index].status = 0;
       write_command(E1000_REG_RXDESCTAIL, rx_current);

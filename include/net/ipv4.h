@@ -33,7 +33,8 @@ struct packet {
 
 namespace ipv4 {
 struct packet {
-  uint8_t version_ihl;
+	uint8_t header_len: 4;
+  uint8_t version : 4;
   uint8_t dscp_ecn;
   uint16_t length;
   uint16_t ident;
@@ -50,12 +51,10 @@ struct packet {
 uint32_t parse_ip(const char *ip);
 void format_ip(uint32_t ip, char *dst);
 
-
-int datagram_connect(net::sock &sk, struct sockaddr*, int alen);
+int datagram_connect(net::sock &sk, struct sockaddr *, int alen);
 int datagram_disconnect(net::sock &sk, int flags);
 
 uint16_t checksum(const net::ipv4::packet &p);
-
 
 }  // namespace ipv4
 
@@ -71,7 +70,7 @@ struct packet {
 // just send some arbitrary data over the interface
 // all fields are host-ordered
 int send_data(net::interface &, uint32_t ip, uint16_t from, uint16_t to,
-              void *data, uint16_t length);
+	      void *data, uint16_t length);
 
 };  // namespace udp
 
@@ -94,7 +93,7 @@ struct packet {
 
   uint8_t chaddr[16];
 
-  uint8_t sname[64];
+	uint8_t sname[64];
   uint8_t file[128];
 
   uint32_t magic;
@@ -141,6 +140,26 @@ struct check_header {
   uint8_t tcp_header[];
 };
 };  // namespace tcp
+
+namespace icmp {
+struct packet {
+  uint8_t type; /* message type */
+  uint8_t code; /* type sub-code */
+  uint16_t checksum;
+  union {
+    struct {
+      uint16_t id;
+      uint16_t sequence;
+    } echo;	      /* echo datagram */
+    uint32_t gateway; /* gateway address */
+    struct {
+      uint16_t __unused;
+      uint16_t mtu;
+    } frag; /* path mtu discovery */
+  };
+};
+
+};  // namespace icmp
 
 };  // namespace net
 

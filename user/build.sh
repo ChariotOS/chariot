@@ -7,10 +7,7 @@ build () {
 	make run M=$1 -j --no-print-directory
 }
 
-
 build lib/libc
-
-# build lib/liblua
 
 for i in bin/*
 do
