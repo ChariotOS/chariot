@@ -1,76 +1,58 @@
 #pragma once
 
-#include <func.h>
-
 #define VC_NPAR 16
 
-// emulates a TTY on an internal buffer
-struct vconsole {
-  vconsole(int cols, int rows, void (&drawer)(int x, int y, char val, char attr));
+#ifdef __cplusplus
 
-  void resize(int cols, int rows);
+// the actual VC structure is implemented in C, to share code with userspace
+extern "C" {
+#endif
 
-  // feed a single char of display input
-  void feed(char c);
-	inline void feed(const char *m) {
-		for (int i = 0; m[i]; i++) feed(m[i]);
-	}
+struct vc_cell {
+  char c;	       // the char at this cell
+  unsigned char attr;  // the attribute of this cell
+} __attribute__((packed));
 
-  inline int cols(void) { return m_cols; }
-  inline int rows(void) { return m_rows; }
+typedef void (*vc_scribe_func)(int x, int y, struct vc_cell *);
 
-  inline int cursor(int &x, int &y) {
-    x = this->x;
-    y = this->y;
-    return 0;
-  }
+// opaque
+struct vcons {
+  /* do not modify any of these fields directly */
+  int state;
+  int cols, rows;
 
-  struct cell {
-    char c;
-    char attr;
-  };
+  unsigned int pos;
+  unsigned int x;
+  unsigned int y;
 
-  void for_each_cell(void (*fn)(int x, int y, char val, char attr));
+  unsigned int saved_x;
+  unsigned int saved_y;
 
- private:
-	void (&drawer)(int row, int col, char val, char attr);
-	int state = 0;
-  int m_rows, m_cols;
+  vc_scribe_func scribe;
 
-  uint32_t pos = 0;
-  uint32_t x = 0;
-  uint32_t y = 0;
+  unsigned int npar;
+	unsigned int par[VC_NPAR];
+  unsigned int ques;
+  unsigned int attr;
 
-  uint32_t saved_x = 0, saved_y = 0;
-
-  struct cell *buf = NULL;
-
-  // parameter storage
-  uint32_t npar, par[VC_NPAR];
-  uint32_t ques = 0;
-  uint32_t attr = 0x07;
-
-  void gotoxy(unsigned int new_x, unsigned int new_y);
-  void write(long pos, char c, char attr);
-
-  void scrollup(void);
-  void lf(void);
-  void cr(void);
-  void del(void);
-  void csi_J(int par);
-  void csi_K(int par);
-	void csi_m(void);
-
-  inline void save_cur(void) {
-    saved_x = x;
-    saved_y = y;
-  }
-
-  inline void restore_cur(void) {
-    x = saved_x;
-    y = saved_y;
-    pos = y * cols() + x;
-  }
-
-
+  struct vc_cell *buf;
 };
+
+// initialize a vconsole.
+void vc_init(struct vcons *, int col, int row, vc_scribe_func);
+
+// initialize a static vconsole with some cells
+void vc_init_static(struct vcons *, int col, int row, vc_scribe_func,
+		    struct vc_cell *cells);
+void vc_resize(struct vcons *, int col, int row);
+void vc_feed(struct vcons *, char c);
+
+// doesn't free the vcons, just the data inside it.
+void vc_free(struct vcons *);
+
+struct vc_cell *vc_get_cell(struct vcons *, int col, int row);
+
+#ifdef __cplusplus
+}
+#endif
+
