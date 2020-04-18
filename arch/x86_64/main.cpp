@@ -11,6 +11,7 @@
 #include <syscall.h>
 #include <types.h>
 #include <vga.h>
+#include <util.h>
 
 #include "smp.h"
 
@@ -39,12 +40,13 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   rtc_init();
   serial_install();
 
-  vga::early_init();
 
   extern u8 boot_cpu_local[];
   cpu::seginit(boot_cpu_local);
 
   arch::mem_init(mbd);
+
+
 
 
   mbinfo = (struct multiboot_info *)(u64)p2v(mbd);
@@ -100,23 +102,29 @@ static void kmain2(void) {
   // [noreturn]
 }
 
-void init_rootvfs(ref<fs::file> dev) {
-  auto rootfs = make_unique<fs::ext2>(dev);
-  if (!rootfs->init()) panic("failed to init fs on root disk\n");
-  if (vfs::mount_root(move(rootfs)) < 0) panic("failed to mount rootfs");
+
+static unsigned long seed;
+int rand(void)
+{
+	seed = 6364136223846793005ULL*seed + 1;
+	return seed>>33;
 }
 
-
-
 int kernel_init(void *) {
+
+
+  pci::init(); /* initialize the PCI subsystem */
+  KINFO("Initialized PCI\n");
+
+
+
+
+  vga::early_init();
 
 
 	// at this point, the pit is being used for interrupts,
 	// so we should go setup lapic for that
 	smp::lapic_init();
-
-  pci::init(); /* initialize the PCI subsystem */
-  KINFO("Initialized PCI\n");
   syscall_init();
 
   // walk the kernel modules and run their init function
@@ -127,9 +135,13 @@ int kernel_init(void *) {
   // open up the disk device for the root filesystem
   auto rootdev = dev::open(kargs::get("root", "ata0p1"));
   assert(rootdev);
-  init_rootvfs(rootdev);
 
-  vfs::mount("/dev/ata0p1", "/", "ext2", 0, "");
+
+
+	while (1) {
+		asm("hlt");
+	}
+  vfs::mount_root("/dev/ata0p1", "ext2");
 
   // setup stdio stuff for the kernel (to be inherited by spawn)
   int fd = sys::open("/dev/console", O_RDWR);

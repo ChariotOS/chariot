@@ -1,7 +1,9 @@
 #include <lock.h>
 #include <map.h>
+#include <net/eth.h>
 #include <net/ipv4.h>
 #include <net/net.h>
+#include <net/pkt.h>
 #include <printk.h>
 #include <sched.h>
 #include <string.h>
@@ -29,13 +31,19 @@
 #define DHCP_INFORM 8
 
 static void test_interface(struct net::interface &i) {
+	int sz = 5000;
+  char *c = (char *)kmalloc(sz);
+  net::ipv4::transmit(i, 0, 0, c, sz);
+  kfree(c);
+
+
   net::pkt_builder b;
 
   // allocate all the headers
-  auto &eth = b.alloc<net::eth::packet>();
-  auto &ip = b.alloc<net::ipv4::packet>();
-  auto &udp = b.alloc<net::udp::packet>();
-  auto &dhcp = b.alloc<net::dhcp::packet>();
+  auto &eth = b.alloc<net::eth::hdr>();
+  auto &ip = b.alloc<net::ipv4::hdr>();
+  auto &udp = b.alloc<net::udp::hdr>();
+  auto &dhcp = b.alloc<net::dhcp::hdr>();
 
   // build the ethernet frame
   unsigned char bcast_mac[6] = BROADCAST_MAC;

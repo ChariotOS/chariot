@@ -7,8 +7,6 @@
 #include <net/sock.h>
 #include <types.h>
 
-#define BROADCAST_MAC \
-  { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }
 #define IPV4_PROT_UDP 17
 #define IPV4_PROT_TCP 6
 #define DHCP_MAGIC 0x63825363
@@ -22,17 +20,9 @@ inline uint16_t checksum(T &thing) {
   return checksum((void *)&thing, sizeof(thing));
 }
 
-namespace eth {
-struct packet {
-  uint8_t destination[6];
-  uint8_t source[6];
-  uint16_t type;
-  uint8_t payload[];
-} __attribute__((packed));
-};  // namespace eth
 
 namespace ipv4 {
-struct packet {
+struct hdr {
 	uint8_t header_len: 4;
   uint8_t version : 4;
   uint8_t dscp_ecn;
@@ -54,12 +44,15 @@ void format_ip(uint32_t ip, char *dst);
 int datagram_connect(net::sock &sk, struct sockaddr *, int alen);
 int datagram_disconnect(net::sock &sk, int flags);
 
-uint16_t checksum(const net::ipv4::packet &p);
+uint16_t checksum(const net::ipv4::hdr &p);
+
+
+int transmit(net::interface &i, uint32_t dst, uint16_t proto, void *data, size_t sz);
 
 }  // namespace ipv4
 
 namespace udp {
-struct packet {
+struct hdr {
   uint16_t source_port;
   uint16_t destination_port;
   uint16_t length;
@@ -75,7 +68,7 @@ int send_data(net::interface &, uint32_t ip, uint16_t from, uint16_t to,
 };  // namespace udp
 
 namespace dhcp {
-struct packet {
+struct hdr {
   uint8_t op;
   uint8_t htype;
   uint8_t hlen;
@@ -103,7 +96,7 @@ struct packet {
 };  // namespace dhcp
 
 namespace dns {
-struct packet {
+struct hdr {
   uint16_t qid;
   uint16_t flags;
   uint16_t questions;
@@ -142,7 +135,7 @@ struct check_header {
 };  // namespace tcp
 
 namespace icmp {
-struct packet {
+struct hdr {
   uint8_t type; /* message type */
   uint8_t code; /* type sub-code */
   uint16_t checksum;

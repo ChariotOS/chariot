@@ -5,6 +5,7 @@
 #include <mem.h>
 #include <module.h>
 #include <net/net.h>
+#include <net/pkt.h>
 #include <pci.h>
 #include <phys.h>
 #include <printk.h>
@@ -195,10 +196,8 @@ static void irq_handler(int i, reg_t *) {
       uint8_t *pbuf = (uint8_t *)rx_virt[rx_index];
       uint16_t plen = rx[rx_index].length;
 
-			// allocate a new buffer and pass it off to the network stack
-			void *buf = kmalloc(plen); // TODO: probably don't use malloc
-			memcpy(buf, pbuf, plen);
-			net::packet_received(buf, plen);
+			auto pkt = net::pkt_buff::create(pbuf, plen);
+			net::packet_received(pkt);
 
       rx[rx_index].status = 0;
       write_command(E1000_REG_RXDESCTAIL, rx_current);
