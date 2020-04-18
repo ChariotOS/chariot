@@ -33,31 +33,25 @@
 #define BXVGA_DEV_IOCTL_SET_RESOLUTION 1985
 
 #include "../drivers/majors.h"
-#include "vga_font_raw.h"
-#include "xterm_colors.h"
+#include "font.ckf.h"
 
-struct [[gnu::packed]] font_file_header {
-  char magic[4];
-  unsigned char glyph_width;
-  unsigned char glyph_height;
-  unsigned char type;
-  unsigned char is_variable_width;
-  unsigned char glyph_spacing;
-  unsigned char unused[5];
-  char name[64];
+struct [[gnu::packed]] chariot_kernel_font {
+  uint8_t width;
+  uint8_t height;
+  uint16_t data[]; /* width * height uint16 values */
 };
 
-const struct font_file_header &vga_font = (font_file_header &)*&vga_font_raw;
+const auto &vga_font = (chariot_kernel_font &)*&build_font_ckf;
 
-#define EDGE_MARGIN 16
+#define EDGE_MARGIN 5
 #define TOTAL_MARGIN (EDGE_MARGIN * 2)
 #define CHAR_LINE_MARGIN 4
-#define FONT_WIDTH (8)	// hardcoded :/
-#define FONT_HEIGHT (10)
+#define FONT_WIDTH (7)	// hardcoded :/
+#define FONT_HEIGHT (13)
 #define LINE_HEIGHT (FONT_HEIGHT + CHAR_LINE_MARGIN)
 
-#define VCONSOLE_WIDTH 1024
-#define VCONSOLE_HEIGHT 768
+#define VCONSOLE_WIDTH 640
+#define VCONSOLE_HEIGHT 480
 
 #define VC_COLS ((VCONSOLE_WIDTH - TOTAL_MARGIN) / FONT_WIDTH)
 #define VC_ROWS ((VCONSOLE_HEIGHT - TOTAL_MARGIN) / LINE_HEIGHT)
@@ -90,9 +84,7 @@ static inline void set_pixel(uint32_t x, uint32_t y, int color) {
 
 // dummy
 static void draw_char(char c, int x, int y, int fg, int bg) {
-  auto *rows = const_cast<unsigned *>((const unsigned *)(&vga_font + 1));
-
-  uint32_t *ch = rows + (c * FONT_HEIGHT);
+  auto ch = (uint16_t*)vga_font.data + (c * FONT_HEIGHT);
 
   if (!(c >= ' ' && c <= '~')) {
     for (int r = 0; r < LINE_HEIGHT; r++) {
@@ -107,7 +99,7 @@ static void draw_char(char c, int x, int y, int fg, int bg) {
       if (r < FONT_HEIGHT) b = (ch[r] & (1 << (c))) != 0;
 
       int color = b ? fg : bg;
-      set_pixel(x + c, y + r, color);
+      set_pixel(x + FONT_WIDTH - c, y + r, color);
     }
   }
 }
@@ -120,9 +112,7 @@ static void flush_vga_console() {
   }
 }
 
-void vga::putchar(char c) {
-  vc_feed(&vga_console, c);
-}
+void vga::putchar(char c) { vc_feed(&vga_console, c); }
 
 static void set_register(u16 index, u16 data) {
   outw(VBE_DISPI_IOPORT_INDEX, index);
@@ -260,16 +250,25 @@ void vga::early_init(void) {
   cons_enabled = true;
 }
 
+static int fg_colors[] = {
+    0x676767, 0xff6d67, 0x59f68d, 0xf3f89d,
+    0xc9a8fa, 0xff92d0, 0x99ecfd, 0xfeffff,
+};
+
+static int bg_colors[] = {
+    0x000000, 0xff6d67, 0x59f68d, 0xf3f89d,
+    0xc9a8fa, 0xff92d0, 0x99ecfd, 0xc7c7c7,
+};
+
 static void vga_char_scribe(int x, int y, struct vc_cell *cell) {
   char c = cell->c;
   char attr = cell->attr;
   if (info.active) return;
   draw_char(c, EDGE_MARGIN + x * FONT_WIDTH, EDGE_MARGIN + y * LINE_HEIGHT,
-	    xterm_colors[attr & 0xF], xterm_colors[(attr >> 4) & 0xF]);
+	    fg_colors[attr & 0xF], bg_colors[(attr >> 4) & 0xF]);
 }
 
 void vga_mod_init(void) {
-
   dev::register_driver(generic_driver_info);
   dev::register_name(generic_driver_info, "fb", 0);
 }

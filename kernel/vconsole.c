@@ -203,6 +203,9 @@ void vc_resize(struct vcons *vc, int col, int row) {
   vc->pos = 0;
 }
 
+
+#define TAB_WIDTH 8
+
 void vc_feed(struct vcons *vc, char c) {
   switch (vc->state) {
     case 0:
@@ -229,18 +232,16 @@ void vc_feed(struct vcons *vc, char c) {
 	  vc->x--;
 	  vc->pos--;
 	}
-      } else if (c == 9) {
-	/*
-	c = 8 - (x & 7);
-	x += c;
-	pos += c << 1;
-	if (x > cols()) {
-	  x -= cols();
-	  pos -= cols() << 1;
-	  lf();
+      } else if (c == '\t') {
+	c = 8 - (vc->x & 7);
+	vc->x += c;
+	vc->pos += c;
+	if (vc->x > COLS) {
+	  vc->x -= COLS;
+	  vc->pos -= COLS;
+	  vc_lf(vc);
 	}
 	c = 9;
-	*/
       }
       break;
     case 1:
