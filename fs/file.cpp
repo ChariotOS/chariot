@@ -2,6 +2,24 @@
 #include <errno.h>
 #include <fs.h>
 
+
+ref<fs::file> fs::bdev_to_file(fs::blkdev *bdev) {
+  fs::inode *ino = new fs::inode(T_BLK, fs::DUMMY_SB /* TODO */);
+
+  ino->major = bdev->dev.major();
+  ino->minor = bdev->dev.minor();
+
+  dev::populate_inode_device(*ino);
+
+
+  dev::populate_inode_device(*ino);
+
+	string name = "/dev/";
+	name += bdev->name;
+
+  return fs::file::create(ino, name, FDIR_READ | FDIR_WRITE);
+}
+
 ref<fs::file> fs::file::create(struct fs::inode *f, string path, int flags) {
   // fail if f is null
   if (!f) return nullptr;

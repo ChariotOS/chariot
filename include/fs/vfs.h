@@ -5,7 +5,10 @@
 #include <ptr.h>
 #include <string.h>
 
-namespace fs {};
+namespace fs {
+	// fwd decl
+	struct superblock;
+};
 
 /**
  *
@@ -16,14 +19,13 @@ namespace fs {};
 namespace vfs {
 
 /**
- * mount - describes a single filesystem mounted on the system
+ * mountpoint - describes a single filesystem mounted on the system
  */
-struct mount {
-  struct superblock &sb;
+struct mountpoint {
+  struct fs::superblock *sb;
 
-
-
-  struct fs::inode *mountpoint;
+	// if this is null, it is the root node.
+  struct fs::inode *host;
 	int mountflags;
 
 	string devname;
@@ -33,7 +35,6 @@ struct mount {
   struct mount *next;
   struct mount *prev;
 
-  mount(struct superblock &sb);
 };
 
 // for use by the kernel only. (user cant access this function)

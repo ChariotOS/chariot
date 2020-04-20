@@ -79,7 +79,7 @@ class ext2_inode : public fs::inode {
 
  public:
   static ext2_inode *create(ext2 *fs, u32 index);
-  explicit ext2_inode(int type, u32 index);
+  explicit ext2_inode(int type, u32 index, ext2 &fs);
 
   virtual ~ext2_inode();
 
@@ -97,17 +97,16 @@ class ext2_inode : public fs::inode {
  *
  * It implements the standard Second Extended Filesystem
  */
-class ext2 final {
+class ext2 final : public fs::superblock {
  public:
-  ext2(ref<fs::file>);
+  ext2(void);
 
   ~ext2(void);
 
-  virtual bool init(void);
+  bool init(fs::blkdev *);
 
-  virtual struct fs::inode *get_root(void);
-
-  virtual struct fs::inode *get_inode(u32 index);
+  struct fs::inode *get_root(void);
+  struct fs::inode *get_inode(u32 index);
 
   friend class ext2_inode;
   bool read_block(u32 block, void *buf);
@@ -213,8 +212,6 @@ class ext2 final {
 
   superblock *sb = nullptr;
 
-  // how many bytes a block is made up of
-  u32 blocksize = 0;
 
   // lock the block groups
   spinlock bglock;
@@ -229,8 +226,6 @@ class ext2 final {
   // allocations when doing general maintainence
   void *work_buf = nullptr;
   void *inode_buf = nullptr;
-
-  struct inode *root;
 
   map<u32, ext2_inode *> inodes;
 

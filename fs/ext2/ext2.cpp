@@ -54,9 +54,7 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-fs::ext2::ext2(ref<fs::file> disk) : disk(disk) {
-  TRACE;
-}
+fs::ext2::ext2(void) { TRACE; }
 
 fs::ext2::~ext2(void) {
   TRACE;
@@ -74,8 +72,12 @@ fs::ext2::~ext2(void) {
 #endif
 }
 
-bool fs::ext2::init(void) {
+bool fs::ext2::init(fs::blkdev *bdev) {
   TRACE;
+
+
+	fs::blkdev::acquire(bdev);
+	disk = fs::bdev_to_file(bdev);
 
   if (!disk) return false;
 
@@ -107,17 +109,17 @@ bool fs::ext2::init(void) {
 
   sb->last_mount = dev::RTC::now();
   // solve for the filesystems block size
-  blocksize = 1024 << sb->blocksize_hint;
+  block_size = 1024 << sb->blocksize_hint;
 
   // the number of block groups can be found by rounding up the
   // blocks/blocks_per_group
   blockgroups = ceil((double)sb->blocks / (double)sb->blocks_in_blockgroup);
 
-  first_bgd = blocksize == 1024 ? 2 : 1;
+  first_bgd = block_size == 1024 ? 2 : 1;
 
   // allocate a block for the work_buf
-  work_buf = kmalloc(blocksize);
-  inode_buf = kmalloc(blocksize);
+  work_buf = kmalloc(block_size);
+  inode_buf = kmalloc(block_size);
 
   root = get_inode(2);
   fs::inode::acquire(root);
@@ -127,17 +129,17 @@ bool fs::ext2::init(void) {
     return false;
   }
 
-  /*
-auto uuid = sb->s_uuid;
-u16 *u_shrts = (u16 *)(uuid + sizeof(u32));
-u64 trail = 0xFFFFFFFFFFFF & *(u64 *)(uuid + sizeof(u32) + 3 * sizeof(u16));
-KINFO("ext2 uuid: %08x-%04x-%04x-%04x-%012x\n", *(u32 *)uuid, u_shrts[0],
-  u_shrts[1], u_shrts[2], trail);
-printk("blocksize = %u\n", blocksize);
-printk("blks in group = %u\n", sb->blocks_in_blockgroup);
-printk("total inodes = %u\n", sb->inodes);
-printk("total blocks = %u\n", sb->blocks);
-  */
+	/*
+  auto uuid = sb->s_uuid;
+  u16 *u_shrts = (u16 *)(uuid + sizeof(u32));
+  u64 trail = 0xFFFFFFFFFFFF & *(u64 *)(uuid + sizeof(u32) + 3 * sizeof(u16));
+  KINFO("ext2 uuid: %08x-%04x-%04x-%04x-%012x\n", *(u32 *)uuid, u_shrts[0],
+	u_shrts[1], u_shrts[2], trail);
+  printk("block_size = %u\n", block_size);
+  printk("blks in group = %u\n", sb->blocks_in_blockgroup);
+  printk("total inodes = %u\n", sb->inodes);
+  printk("total blocks = %u\n", sb->blocks);
+	*/
 
   return true;
 }
@@ -159,12 +161,12 @@ bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {
 
   // find the index and seek to the inode
   u32 index = (inode - 1) % sb->inodes_in_blockgroup;
-  u32 block = (index * sb->s_inode_size) / blocksize;
+  u32 block = (index * sb->s_inode_size) / block_size;
 
   read_block(bgd->inode_table + block, inode_buf);
 
   auto *_inode =
-      (ext2_inode_info *)inode_buf + (index % (blocksize / sb->s_inode_size));
+      (ext2_inode_info *)inode_buf + (index % (block_size / sb->s_inode_size));
 
   memcpy(&dst, _inode, sizeof(ext2_inode_info));
 
@@ -182,14 +184,14 @@ bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
 
   // find the index and seek to the inode
   u32 index = (inode - 1) % sb->inodes_in_blockgroup;
-  u32 block = (index * sb->s_inode_size) / blocksize;
+  u32 block = (index * sb->s_inode_size) / block_size;
 
   // read the inode buffer
   read_block(bgd->inode_table + block, inode_buf);
 
   // modify it...
   auto *_inode =
-      (ext2_inode_info *)inode_buf + (index % (blocksize / sb->s_inode_size));
+      (ext2_inode_info *)inode_buf + (index % (block_size / sb->s_inode_size));
   memcpy(_inode, &src, sizeof(ext2_inode_info));
 
   // and write the block back
@@ -274,12 +276,14 @@ struct fs::ext2_block_cache_line *fs::ext2::get_cache_line(int cba) {
 }
 
 bool fs::ext2::read_block(u32 block, void *buf) {
+
 #ifdef USE_CACHE
   scoped_lock l(cache_lock);
+
   int cba = block >> 2;
   int cbo = block & 0x3;
 
-  if (blocksize == PGSIZE) {
+  if (block_size == PGSIZE) {
     cba = block;
     cbo = 0;
   }
@@ -295,7 +299,7 @@ bool fs::ext2::read_block(u32 block, void *buf) {
 
   if (cl->cba == cba) {
     cl->last_used = cache_time++;
-    memcpy(buf, cl->buffer + (cbo * blocksize), blocksize);
+    memcpy(buf, cl->buffer + (cbo * block_size), block_size);
     return true;
   }
 
@@ -306,13 +310,13 @@ bool fs::ext2::read_block(u32 block, void *buf) {
 
   disk->seek(cl->cba * PGSIZE, SEEK_SET);
   bool valid = disk->read(cl->buffer, PGSIZE);
-  memcpy(buf, cl->buffer + (blocksize * cbo), blocksize);
+  memcpy(buf, cl->buffer + (block_size * cbo), block_size);
   return valid;
 
 #else
 
-  disk->seek(block * blocksize, SEEK_SET);
-  return disk->read(buf, blocksize);
+  disk->seek(block * block_size, SEEK_SET);
+  return disk->read(buf, block_size);
 
 #endif
 }
@@ -320,10 +324,10 @@ bool fs::ext2::read_block(u32 block, void *buf) {
 bool fs::ext2::write_block(u32 block, const void *buf) {
 #ifdef USE_CACHE
   // I am not sure if this write code is correct
-  scoped_lock l(cache_lock);
+  // scoped_lock l(cache_lock);
   int cba = block >> 2;
   int cbo = block & 0x3;
-  if (blocksize == PGSIZE) {
+  if (block_size == PGSIZE) {
     cba = block;
     cbo = 0;
   }
@@ -339,10 +343,10 @@ bool fs::ext2::write_block(u32 block, const void *buf) {
 
   if (cl->cba == cba) {
     cl->last_used = cache_time++;
-    memcpy(cl->buffer + (cbo * blocksize), buf, blocksize);
+    memcpy(cl->buffer + (cbo * block_size), buf, block_size);
 
-    disk->seek(block * blocksize, SEEK_SET);
-    return disk->write((void *)buf, blocksize);
+    disk->seek(block * block_size, SEEK_SET);
+    return disk->write((void *)buf, block_size);
   }
 
   cl->cba = cba;
@@ -350,18 +354,18 @@ bool fs::ext2::write_block(u32 block, const void *buf) {
   cl->dirty = 1;
   disk->seek(cba * PGSIZE, SEEK_SET);
   bool valid = disk->read(cl->buffer, PGSIZE);
-  memcpy(cl->buffer + (cbo * blocksize), buf, blocksize);
+  memcpy(cl->buffer + (cbo * block_size), buf, block_size);
 
   if (valid) {
-    disk->seek(block * blocksize, SEEK_SET);
-    return disk->write((void *)buf, blocksize);
+    disk->seek(block * block_size, SEEK_SET);
+    return disk->write((void *)buf, block_size);
   }
   return valid;
 
 #else
 
-  disk->seek(block * blocksize, SEEK_SET);
-  return disk->write((void *)buf, blocksize);
+  disk->seek(block * block_size, SEEK_SET);
+  return disk->write((void *)buf, block_size);
 
 #endif
 }
@@ -387,10 +391,10 @@ void fs::ext2::traverse_dir(ext2_inode_info &inode,
 			    func<bool(u32 ino, const char *name)> callback) {
   TRACE;
 
-  void *buffer = kmalloc(blocksize);
+  void *buffer = kmalloc(block_size);
   traverse_blocks(blocks_for_inode(inode), buffer, [&](void *buffer) -> bool {
     auto *entry = reinterpret_cast<ext2_dir *>(buffer);
-    while ((u64)entry < (u64)buffer + blocksize) {
+    while ((u64)entry < (u64)buffer + block_size) {
       if (entry->inode != 0) {
 	fs::directory_entry ent;
 	ent.inode = entry->inode;
@@ -432,8 +436,9 @@ vec<u32> fs::ext2::blocks_for_inode(u32 inode) {
 
 vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
   TRACE;
-  u32 block_count = inode.size / blocksize;
-  if (inode.size % blocksize != 0) block_count++;
+
+  u32 block_count = inode.size / block_size;
+  if (inode.size % block_size != 0) block_count++;
 
   vec<u32> list;
 
@@ -453,10 +458,10 @@ vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
   if (!blocks_remaining) return list;
 
   auto process_block_array = [&](unsigned array_block_index, auto &&callback) {
-    u32 *array_block = (u32 *)kmalloc(blocksize);
+    u32 *array_block = (u32 *)kmalloc(block_size);
     read_block(array_block_index, array_block);
     auto *array = reinterpret_cast<const u32 *>(array_block);
-    unsigned count = min(blocks_remaining, blocksize / sizeof(u32));
+    unsigned count = min(blocks_remaining, block_size / sizeof(u32));
     for (unsigned i = 0; i < count; ++i) {
       if (!array[i]) {
 	blocks_remaining = 0;
@@ -516,12 +521,26 @@ struct fs::sb_operations ext2_ops {
   .init = ext2_sb_init, .write_super = ext2_write_super, .sync = ext2_sync,
 };
 
+static struct fs::superblock *ext2_mount(struct fs::sb_information *,
+					 const char *args, int flags,
+					 const char *device) {
+  struct fs::blkdev *bdev = fs::bdev_from_path(device);
+  if (bdev == NULL) return NULL;
+
+  auto *sb = new fs::ext2();
+
+  if (!sb->init(bdev)) {
+		delete sb;
+		return NULL;
+	}
+
+  return sb;
+}
+
 struct fs::sb_information ext2_info {
-  .name = "ext2", .ops = ext2_ops,
+  .name = "ext2", .mount = ext2_mount, .ops = ext2_ops,
 };
 
-static void ext2_init(void) {
-	vfs::register_filesystem(ext2_info);
-}
+static void ext2_init(void) { vfs::register_filesystem(ext2_info); }
 
 module_init("fs::ext2", ext2_init);

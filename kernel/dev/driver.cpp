@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <map.h>
 #include <printk.h>
+#include <fs/vfs.h>
 
 #define DRIVER_DEBUG
 
@@ -42,7 +43,7 @@ int dev::register_name(struct dev::driver_info &info, string name,
   drivers_lock.write_lock();
 
   printk(KERN_INFO "register name %s [maj:%d, min:%d] (%d total)\n", name.get(),
-	info.major, min, device_names.size());
+	 info.major, min, device_names.size());
 
   device_names.set(name, dev_t(info.major, min));
   drivers_lock.write_unlock();
@@ -104,7 +105,6 @@ ref<fs::file> dev::open(string name) {
       string path = string::format("/dev/%s", name.get());
 
       auto ino = devicei(*d, name, min);
-
       return fs::file::create(ino, path, FDIR_READ | FDIR_WRITE);
     }
   }
@@ -117,16 +117,38 @@ string dev::next_disk_name(void) {
   return string::format("disk%d", disk_count);
 }
 
+/**
+ * look up a device
+ */
+struct fs::blkdev *fs::bdev_from_path(const char *n) {
+  struct fs::blkdev *bdev = nullptr;
+
+	// if we don't have root yet, we need to emulate devfs
+	if (vfs::get_root() == NULL) {
+
+  string name = n;
+
+  auto parts = name.split('/');
+
+  if (parts.size() != 2 || parts[0] != "dev") {
+    panic("invalid blkdev path %s\n", n);
+  }
 
 
+  drivers_lock.read_lock();
+	if (device_names.contains(parts[1])) {
+		dev_t d = device_names.get(parts[1]);
+		// pretty sure the two maps should always be in sync
+		auto *driver = drivers.get(d.major());
+		if (driver != NULL) {
+			if (driver->type == DRIVER_BLOCK) {
+				bdev = driver->block_devices[d.minor()];
+			}
+		}
+	}
+  drivers_lock.read_unlock();
+	}
 
 
-struct fs::blkdev *fs::bdev_from_path(const char *name) {
-	struct fs::blkdev *bdev = nullptr;
-
-	printk("looking for device called %s\n", name);
-	// We *assume* that the format is well formed :)
-
-
-	return bdev;
+  return bdev;
 }

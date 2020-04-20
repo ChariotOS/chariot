@@ -157,18 +157,19 @@ struct sb_operations {
 struct sb_information {
   const char *name;
 
-  // mount and return the root inode, returning NULL on failure.
-  struct inode *(*mount)(struct sb_information *, const char *args, int flags,
+	// return a superblock containing the root inode
+  struct fs::superblock *(&mount)(struct sb_information *, const char *args, int flags,
 			 const char *device);
 
   struct sb_operations &ops;
 };
 
-// typically
 struct inode *bdev_mount(struct sb_information *info, const char *args,
 			 int flags);
 
 struct inode *open(const char *s, u32 flags, u32 opts = 0);
+
+ref<fs::file> bdev_to_file(fs::blkdev *);
 
 // memory only
 #define ENT_MEM 0

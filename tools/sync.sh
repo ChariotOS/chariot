@@ -136,6 +136,8 @@ sudo mknod $mnt/dev/mouse c 10 0
 sudo mknod $mnt/dev/fb c 21 0
 sudo mknod $mnt/dev/sb16 c 22 0
 
+sudo ls -il $mnt/dev
+
 # only install grub on a new disk
 if [ $disk_exists -eq '0' ]; then
 	sudo grub-install --boot-directory=$mnt/boot --target=i386-pc --modules="ext2 part_msdos" "$dev"

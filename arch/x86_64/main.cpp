@@ -47,8 +47,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   arch::mem_init(mbd);
 
 
-
-
   mbinfo = (struct multiboot_info *)(u64)p2v(mbd);
   void *new_stack = (void *)((u64)kmalloc(STKSIZE) + STKSIZE);
   call_with_new_stack(new_stack, (void *)kmain2);
@@ -133,18 +131,21 @@ int kernel_init(void *) {
   KINFO("kernel modules initialized\n");
 
   // open up the disk device for the root filesystem
-  auto rootdev = dev::open(kargs::get("root", "ata0p1"));
-  assert(rootdev);
+  // auto rootdev = dev::open(kargs::get("root", "ata0p1"));
+  // assert(rootdev);
 
+	auto root_name = kargs::get("root", "/dev/ata0p1");
+	assert(root_name);
 
-
-	while (1) {
-		asm("hlt");
+  int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);
+	if (mnt_res != 0) {
+		panic("failed to mount root. Error=%d\n", -mnt_res);
 	}
-  vfs::mount_root("/dev/ata0p1", "ext2");
 
   // setup stdio stuff for the kernel (to be inherited by spawn)
   int fd = sys::open("/dev/console", O_RDWR);
+
+	printk("here\n");
   assert(fd == 0);
 
   sys::dup2(fd, 1);

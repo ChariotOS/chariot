@@ -351,7 +351,6 @@ size_t dev::ata::block_count() { return n_sectors; }
 
 bool dev::ata::read_block_dma(u32 sector, u8* data) {
   TRACE;
-
   // TODO: take a lock.
 
   if (sector & 0xF0000000) return false;
@@ -508,6 +507,7 @@ static int ata_dev_init(fs::blkdev& d) {
 
   d.block_count = disk->block_count();
   d.block_size = disk->block_size();
+
   return 0;
 }
 
