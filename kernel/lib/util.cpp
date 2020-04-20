@@ -30,8 +30,10 @@ static void set_color_for(char c) {
   } else if (c == '\a' || c == '\b' || c == 0x1b || c == '\f' || c == '\n' ||
              c == '\r') {
     set_color(C_RED);
-  } else {
-    set_color(C_RESET);
+  } else if ((unsigned char)c == 0xFF) {
+		set_color(C_MAGENTA);
+	} else {
+    set_color(C_GRAY);
   }
 }
 
@@ -44,6 +46,10 @@ void hexdump(void *vbuf, size_t len, bool use_colors) {
   use_colors = false;
 #endif
 
+	unsigned awidth = 4;
+
+	if (len > 0xFFFFL) awidth = 8;
+
   unsigned char *buf = (unsigned char *)vbuf;
   int w = use_binary ? 8 : 16;
 
@@ -55,7 +61,7 @@ void hexdump(void *vbuf, size_t len, bool use_colors) {
       printk("|");
       set_color(C_GRAY);
 
-      printk("%.8llX", i);
+      printk("%.*llx", awidth, i);
 
       set_color(C_RESET);
       printk("|");

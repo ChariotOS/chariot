@@ -38,20 +38,6 @@ struct directory_entry {
   string name;
 };
 
-class filesystem {
- public:
-  virtual ~filesystem();
-
-  virtual bool init(void) = 0;
-  virtual struct inode *get_root() = 0;
-  inline virtual bool umount(void) { return true; }
-
- protected:
-  // TODO: put a lock in here.
-
-  // must be called by subclasses
-  filesystem();
-};
 
 struct block_operations {
   // used to populate block_count and block_size
@@ -182,8 +168,6 @@ struct sb_information {
 struct inode *bdev_mount(struct sb_information *info, const char *args,
 			 int flags);
 
-int mount(string path, filesystem &);
-
 struct inode *open(const char *s, u32 flags, u32 opts = 0);
 
 // memory only
@@ -307,8 +291,6 @@ struct inode {
 
   fs::file_operations *fops = NULL;
   fs::dir_operations *dops = NULL;
-  // the filesystem that this inode uses
-  fs::filesystem *fs;
 
   fs::superblock &sb;
 

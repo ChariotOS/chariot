@@ -75,3 +75,14 @@ void *memcpy(void *dest, const void *src, size_t n) {
   for (size_t i = 0; i < n; i++) d[i] = s[i];
   return dest;
 }
+
+
+extern "C" {
+	void *malloc(unsigned long s) {
+		return kmalloc(s);
+	}
+
+	void free(void *p) {
+		kfree(p);
+	}
+}

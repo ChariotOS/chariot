@@ -97,7 +97,7 @@ class ext2_inode : public fs::inode {
  *
  * It implements the standard Second Extended Filesystem
  */
-class ext2 final : public filesystem {
+class ext2 final {
  public:
   ext2(ref<fs::file>);
 

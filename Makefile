@@ -7,16 +7,17 @@ AFLAGS=-f elf64 -w-zext-reloc -D __ARCH_$(ARCH)__
 
 CINCLUDES=-I./include/
 
-CFLAGS:=$(CINCLUDES) $(DFLAGS) -D__ARCH_$(ARCH)__ -mno-red-zone                   \
+CFLAGS=$(CINCLUDES) $(DFLAGS) -D__ARCH_$(ARCH)__ -mno-red-zone                   \
            -fno-omit-frame-pointer -fno-stack-protector                           \
            -mtls-direct-seg-refs -fno-pie -Wno-sign-compare -ffreestanding        \
            -mcmodel=large $(OPT) -Wall -fno-common -Wno-initializer-overrides     \
            -Wstrict-overflow=5 -fno-tree-vectorize -Wno-address-of-packed-member  \
-           -Wno-strict-overflow -DGIT_REVISION=\"$(shell git rev-parse HEAD)\"
+           -Wno-strict-overflow -DGIT_REVISION=\"$(shell git rev-parse HEAD)\" -DKERNEL
 
-CPPFLAGS:=$(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions
+CPPFLAGS = $(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions
 
 src-y =
+
 
 
 # load the config file
@@ -74,3 +75,11 @@ gdb:
 
 watch:
 	while inotifywait $(src-y); do ./sync.sh; done
+
+
+
+
+font:
+	@mkdir -p build
+	tools/convert_font.py base/usr/res/fonts/cherry.bdf build/font.ckf
+	xxd -i build/font.ckf > drivers/vga/font.ckf.h

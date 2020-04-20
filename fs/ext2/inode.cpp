@@ -96,7 +96,7 @@ int fs::ext2_inode::touch(string name, int mode, fs::inode *&dst) {
 }
 
 int block_from_index(fs::inode &node, int i_block, int set_to = 0) {
-  auto efs = (fs::ext2 *)node.fs;
+  auto efs = node.priv<fs::ext2>();
 
   auto bsize = efs->blocksize;
 
@@ -122,7 +122,7 @@ int block_from_index(fs::inode &node, int i_block, int set_to = 0) {
 }
 
 static int injest_info(fs::inode *ino, fs::ext2_inode_info &info) {
-  auto efs = (fs::ext2 *)ino->fs;
+  auto efs = ino->priv<fs::ext2>();
   ino->size = info.size;
   ino->mode = info.type;
   ino->uid = info.uid;
@@ -161,7 +161,7 @@ static int injest_info(fs::inode *ino, fs::ext2_inode_info &info) {
 int fs::ext2_inode::commit_info(void) {
   fs::ext2_inode_info info;
 
-  auto efs = (fs::ext2 *)fs;
+  auto efs = priv<fs::ext2>();
 
   efs->read_inode(info, ino);
 
@@ -195,7 +195,7 @@ static int ext2_seek(fs::file &, off_t, off_t) {
 
 static ssize_t ext2_do_read_write(fs::file &f, char *buf, size_t nbytes,
 				  bool is_write) {
-  auto efs = (fs::ext2 *)f.ino->fs;
+  auto efs = f.ino->priv<fs::ext2>();
   if (is_write) {
     // TODO: ensure blocks are avail
   }
@@ -298,7 +298,7 @@ fs::file_operations ext2_file_ops{
 
 static int ext2_create(fs::inode &node, const char *name,
 		       struct fs::file_ownership &) {
-  auto efs = (fs::ext2 *)node.fs;
+  auto efs = node.priv<fs::ext2>();
 
   int ino = efs->allocate_inode();
   printk("ino=%d\n", ino);
@@ -321,7 +321,7 @@ static struct fs::inode *ext2_lookup(fs::inode &node, const char *needle) {
   if (node.type != T_DIR) panic("ext2_lookup on non-dir\n");
 
   bool found = false;
-  auto efs = (fs::ext2 *)node.fs;
+  auto efs = node.priv<fs::ext2>();
   int nr = -1;
 
 
@@ -384,7 +384,7 @@ fs::ext2_inode *fs::ext2_inode::create(ext2 *fs, u32 index) {
   ino->dev.minor = fs->disk->ino->minor;
   ino->fops = &ext2_file_ops;
   ino->dops = &ext2_dir_ops;
-  ino->fs = fs;
+	ino->priv<fs::ext2>() = fs;
 
   injest_info(ino, info);
 

@@ -13,7 +13,11 @@ struct vc_cell {
   unsigned char attr;  // the attribute of this cell
 } __attribute__((packed));
 
-typedef void (*vc_scribe_func)(int x, int y, struct vc_cell *);
+typedef void (*vc_scribe_func)(int x, int y, struct vc_cell *, int flags);
+
+
+
+#define VC_SCRIBE_CURSOR (1 << 0)
 
 // opaque
 struct vcons {

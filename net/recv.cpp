@@ -5,13 +5,16 @@
 #include <util.h>
 #include <sched.h>
 
+static long total_bytes_recv = 0;
+
 static void print_packet(ref<net::pkt_buff> &pbuf) {
   auto eth = pbuf->eth();
   auto arp = pbuf->arph();
   auto ip = pbuf->iph();
 
 
-	printk(KERN_INFO "Raw Packet:\n");
+	total_bytes_recv += pbuf->size();
+	printk(KERN_INFO "Raw Packet (%d bytes, %d total):\n", pbuf->size(), total_bytes_recv);
 	hexdump(pbuf->get(), pbuf->size(), true);
 
   printk("[eth] src: %A, dst: %A, type: %04x\n", eth->source, eth->destination,

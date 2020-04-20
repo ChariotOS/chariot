@@ -29,9 +29,6 @@
 #define VBE_DISPI_ENABLED 0x01
 #define VBE_DISPI_LFB_ENABLED 0x40
 
-#define BXVGA_DEV_IOCTL_SET_Y_OFFSET 1982
-#define BXVGA_DEV_IOCTL_SET_RESOLUTION 1985
-
 #include "../drivers/majors.h"
 #include "font.ckf.h"
 
@@ -43,28 +40,28 @@ struct [[gnu::packed]] chariot_kernel_font {
 
 const auto &vga_font = (chariot_kernel_font &)*&build_font_ckf;
 
-#define EDGE_MARGIN 5
+#define VCONSOLE_WIDTH 1024
+#define VCONSOLE_HEIGHT 768
+
+#define EDGE_MARGIN 0
 #define TOTAL_MARGIN (EDGE_MARGIN * 2)
-#define CHAR_LINE_MARGIN 4
 #define FONT_WIDTH (7)	// hardcoded :/
 #define FONT_HEIGHT (13)
-#define LINE_HEIGHT (FONT_HEIGHT + CHAR_LINE_MARGIN)
 
-#define VCONSOLE_WIDTH 640
-#define VCONSOLE_HEIGHT 480
+#define CHAR_LINE_MARGIN (3)
+#define LINE_HEIGHT (FONT_HEIGHT + CHAR_LINE_MARGIN)
 
 #define VC_COLS ((VCONSOLE_WIDTH - TOTAL_MARGIN) / FONT_WIDTH)
 #define VC_ROWS ((VCONSOLE_HEIGHT - TOTAL_MARGIN) / LINE_HEIGHT)
 
-static void vga_char_scribe(int col, int row, struct vc_cell *);
+static void vga_char_scribe(int col, int row, struct vc_cell *, int flags);
 
 // manually create
 struct vc_cell static_cells[VC_COLS * VC_ROWS];
 struct vcons vga_console {
   .state = 0, .cols = VC_COLS, .rows = VC_ROWS, .pos = 0, .x = 0, .y = 0,
   .saved_x = 0, .saved_y = 0, .scribe = vga_char_scribe, .npar = 0, .ques = 0,
-  .attr = 0x07,	 // common default
-      .buf = (struct vc_cell *)&static_cells,
+  .attr = 0x07, .buf = (struct vc_cell *)&static_cells,
 };
 
 static bool cons_enabled = false;
@@ -82,32 +79,11 @@ static inline void set_pixel(uint32_t x, uint32_t y, int color) {
   ((u32 *)p2v(vga_fba))[x + info.width * y] = color;
 }
 
-// dummy
-static void draw_char(char c, int x, int y, int fg, int bg) {
-  auto ch = (uint16_t*)vga_font.data + (c * FONT_HEIGHT);
-
-  if (!(c >= ' ' && c <= '~')) {
-    for (int r = 0; r < LINE_HEIGHT; r++) {
-      for (int c = 0; c < FONT_WIDTH; c++) set_pixel(x + c, y + r, bg);
-    }
-    return;
-  }
-
-  for (int r = 0; r < LINE_HEIGHT; r++) {
-    for (int c = 0; c < FONT_WIDTH; c++) {
-      int b = 0;
-      if (r < FONT_HEIGHT) b = (ch[r] & (1 << (c))) != 0;
-
-      int color = b ? fg : bg;
-      set_pixel(x + FONT_WIDTH - c, y + r, color);
-    }
-  }
-}
-
 static void flush_vga_console() {
   for (int y = 0; y < VC_ROWS; y++) {
     for (int x = 0; x < VC_COLS; x++) {
-      vga_char_scribe(x, y, vc_get_cell(&vga_console, x, y));
+      int cursor = vga_console.x == x && vga_console.y == y;
+      vga_char_scribe(x, y, vc_get_cell(&vga_console, x, y), cursor);
     }
   }
 }
@@ -136,13 +112,13 @@ static void set_info(struct ck_fb_info i) {
   info.height = i.height;
 }
 
-pci::device *vga_dev = NULL;
+// static pci::device *vga_dev = NULL;
 
 static void *get_framebuffer_address(void) {
   void *addr = nullptr;
   pci::walk_devices([&](pci::device *dev) {
     if (dev->is_device(0x1234, 0x1111) || dev->is_device(0x80ee, 0xbeef)) {
-      vga_dev = dev;
+			// vga_dev = dev;
       addr = (void *)(dev->get_bar(0).raw & 0xfffffff0l);
     }
   });
@@ -150,25 +126,23 @@ static void *get_framebuffer_address(void) {
 }
 
 static ssize_t fb_write(fs::file &fd, const char *buf, size_t sz) {
-  if (fd) {
-    if (vga_fba == nullptr) return -1;
+  if (!fd) return -1;
+  if (vga_fba == nullptr) return -1;
 
-    size_t fbsize = info.width * info.height * sizeof(u32);
-    auto off = fd.offset() % fbsize;
-    ssize_t space_left = fbsize - off;
+  size_t fbsize = info.width * info.height * sizeof(u32);
+  auto off = fd.offset() % fbsize;
+  ssize_t space_left = fbsize - off;
 
-    ssize_t to_copy = min(space_left, sz);
-    if (to_copy <= 0) return 0;
+  ssize_t to_copy = min(space_left, sz);
+  if (to_copy <= 0) return 0;
 
-    cpu::pushcli();
-    memcpy((char *)p2v(vga_fba) + off, buf, to_copy);
-    cpu::popcli();
+  cpu::pushcli();
+  memcpy((char *)p2v(vga_fba) + off, buf, to_copy);
+  cpu::popcli();
 
-    // seek past
-    fd.seek(sz, SEEK_CUR);
-    return sz;
-  }
-  return -1;
+  // seek past
+  fd.seek(sz, SEEK_CUR);
+  return sz;
 }
 
 static int fb_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
@@ -199,11 +173,7 @@ static int fb_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
 
 static int fb_open(fs::file &f) {
   scoped_lock l(fblock);
-  // printk("[fb] open: %sallowed\n", owned ? "not " : "");
-
-  if (owned) {
-    return -EBUSY;  // disallow
-  }
+  if (owned) return -EBUSY;  // disallow
   owned = true;
   return 0;  // allow
 }
@@ -215,7 +185,6 @@ static void reset_fb(void) {
   i.width = VCONSOLE_WIDTH;
   i.height = VCONSOLE_HEIGHT;
   set_info(i);
-
   flush_vga_console();
 }
 
@@ -242,10 +211,7 @@ static struct dev::driver_info generic_driver_info {
 };
 
 void vga::early_init(void) {
-  if (vga_fba == NULL) {
-    vga_fba = (u32 *)get_framebuffer_address();
-  }
-
+  if (vga_fba == NULL) vga_fba = (u32 *)get_framebuffer_address();
   reset_fb();
   cons_enabled = true;
 }
@@ -260,12 +226,33 @@ static int bg_colors[] = {
     0xc9a8fa, 0xff92d0, 0x99ecfd, 0xc7c7c7,
 };
 
-static void vga_char_scribe(int x, int y, struct vc_cell *cell) {
+static void vga_char_scribe(int x, int y, struct vc_cell *cell, int flags) {
   char c = cell->c;
   char attr = cell->attr;
   if (info.active) return;
-  draw_char(c, EDGE_MARGIN + x * FONT_WIDTH, EDGE_MARGIN + y * LINE_HEIGHT,
-	    fg_colors[attr & 0xF], bg_colors[(attr >> 4) & 0xF]);
+
+  auto ch = (uint16_t *)vga_font.data + (c * FONT_HEIGHT);
+  x = EDGE_MARGIN + x * FONT_WIDTH;
+  y = EDGE_MARGIN + y * LINE_HEIGHT;
+  int fg = fg_colors[attr & 0xF];
+  int bg = bg_colors[(attr >> 4) & 0xF];
+
+  // flip around the colors for the block cursor
+  if (flags & VC_SCRIBE_CURSOR) {
+    int tmp = fg;
+    fg = bg;
+    bg = tmp;
+  }
+
+  for (int r = 0; r < LINE_HEIGHT; r++) {
+    for (int c = 0; c <= FONT_WIDTH; c++) {
+      int b = 0;
+      if (r < FONT_HEIGHT) b = (ch[r] & (1 << (FONT_WIDTH - c))) != 0;
+
+      int color = b ? fg : bg;
+      set_pixel(x + c, y + r, color);
+    }
+  }
 }
 
 void vga_mod_init(void) {

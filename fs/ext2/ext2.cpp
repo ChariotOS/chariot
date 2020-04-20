@@ -54,7 +54,7 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-fs::ext2::ext2(ref<fs::file> disk) : filesystem(/*super*/), disk(disk) {
+fs::ext2::ext2(ref<fs::file> disk) : disk(disk) {
   TRACE;
 }
 

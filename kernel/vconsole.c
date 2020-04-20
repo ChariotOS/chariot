@@ -14,18 +14,33 @@ extern void free(void *);
 #define COLS (vc->cols)
 #define ROWS (vc->rows)
 
-static void vc_write(struct vcons *vc, long p, char c, char attr) {
+static void vc_pos_convert(struct vcons *vc, int pos, int *x, int *y) {
+  *x = pos % COLS;
+  *y = pos / COLS;
+}
+
+static void vc_write(struct vcons *vc, long p, char c, char attr, int force) {
   if (p < 0 || p >= COLS * ROWS) return;
 
   // don't draw the change if it isn't needed.
-  if (vc->buf[p].c != c || vc->buf[p].attr != attr) {
-    int x = p % COLS;
-    int y = p / COLS;
+  if (force || (vc->buf[p].c != c || vc->buf[p].attr != attr)) {
+    int x, y;
+    vc_pos_convert(vc, p, &x, &y);
 
     vc->buf[p].c = c;
     vc->buf[p].attr = attr;
-    vc->scribe(x, y, &vc->buf[p]);
+    int flags = 0;
+    if (x == vc->x && y == vc->y) {
+      flags |= VC_SCRIBE_CURSOR;
+    }
+    // for now, scribe with no flags. the cursor flag is
+    // handled when we move the cursor in the feed function
+    vc->scribe(x, y, &vc->buf[p], flags);
   }
+}
+
+static void vc_update(struct vcons *vc, long pos) {
+  vc_write(vc, pos, vc->buf[pos].c, vc->buf[pos].attr, 1);
 }
 
 static void vc_goto(struct vcons *vc, int new_x, int new_y) {
@@ -55,7 +70,7 @@ static void vc_csi_J(struct vcons *vc, int par) {
       return;
   }
 
-  for (int i = start; i < start + count; i++) vc_write(vc, i, ' ', 0x07);
+  for (int i = start; i < start + count; i++) vc_write(vc, i, ' ', 0x07, 0);
 }
 
 static void vc_csi_K(struct vcons *vc, int par) {
@@ -80,7 +95,7 @@ static void vc_csi_K(struct vcons *vc, int par) {
       return;
   }
 
-  for (int i = start; i < start + count; i++) vc_write(vc, i, ' ', 0x07);
+  for (int i = start; i < start + count; i++) vc_write(vc, i, ' ', 0x07, 0);
 }
 
 static void vc_csi_m(struct vcons *vc) {
@@ -126,12 +141,12 @@ static void vc_csi_m(struct vcons *vc) {
 static void vc_scrollup(struct vcons *vc) {
   for (int i = 0; i < COLS * (ROWS - 1); i++) {
     struct vc_cell *c = &vc->buf[i + COLS];
-    vc_write(vc, i, c->c, c->attr);
+    vc_write(vc, i, c->c, c->attr, 0);
   }
 
   // fill the last line with spaces
   for (int i = COLS * (ROWS - 1); i < COLS * ROWS; i++) {
-    vc_write(vc, i, ' ', 0x07);
+    vc_write(vc, i, ' ', 0x07, 0);
   }
 }
 
@@ -153,7 +168,7 @@ static void vc_del(struct vcons *vc) {
   if (vc->x) {
     vc->pos--;
     vc->x--;
-    vc_write(vc, vc->pos, ' ', 0x07);
+    vc_write(vc, vc->pos, ' ', 0x07, 0);
   }
 }
 
@@ -203,10 +218,10 @@ void vc_resize(struct vcons *vc, int col, int row) {
   vc->pos = 0;
 }
 
-
 #define TAB_WIDTH 8
 
 void vc_feed(struct vcons *vc, char c) {
+  int old_pos = vc->pos;
   switch (vc->state) {
     case 0:
       if (c > 31 && c < 127) {
@@ -215,7 +230,7 @@ void vc_feed(struct vcons *vc, char c) {
 	  vc_lf(vc);
 	}
 
-	vc_write(vc, vc->pos++, c & 0xFF, vc->attr);
+	vc_write(vc, vc->pos++, c & 0xFF, vc->attr, 0);
 	vc->x++;
 
       } else if (c == 27) {
@@ -364,6 +379,12 @@ void vc_feed(struct vcons *vc, char c) {
 		  break;
 	  */
       }
+  }
+
+  // check if the position changed
+  if (old_pos != vc->pos) {
+    vc_update(vc, old_pos);
+    vc_update(vc, vc->pos);
   }
 }
 

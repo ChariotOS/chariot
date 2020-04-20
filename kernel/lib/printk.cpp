@@ -7,6 +7,7 @@
 #include <types.h>
 #include <vga.h>
 #include <console.h>
+#include <net/ipv4.h>
 
 // define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H ...) to include the
 // printf_config.h header file
@@ -871,6 +872,19 @@ static int _vsnprintf(out_fct_type out, char *buffer, const size_t maxlen,
 					for (int i = 0; i < 6; i++) {
 						idx = _ntoa_long(out, buffer, idx, maxlen, addr[i], false, 16, 2, 2, 0);
 						if (i != 5) out(':', buffer, idx++, maxlen);
+					}
+					format++;
+					break;
+			}
+
+
+			// ip address formatter
+			case 'I': {
+					uint32_t addr = (uint32_t)va_arg(va, long long);
+					char buf[32];
+					net::ipv4::format_ip(addr, buf);
+					for (int i = 0; buf[i]; i++) {
+						out(buf[i], buffer, idx++, maxlen);
 					}
 					format++;
 					break;

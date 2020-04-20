@@ -5,9 +5,7 @@
 #include <syscall.h>
 #include <util.h>
 
-vec<unique_ptr<fs::filesystem>> mounted_filesystems;
 struct fs::inode *vfs_root = NULL;
-
 static vec<struct fs::sb_information *> filesystems;
 
 void vfs::register_filesystem(struct fs::sb_information &info) {
@@ -17,17 +15,6 @@ void vfs::register_filesystem(struct fs::sb_information &info) {
 
 void vfs::deregister_filesystem(struct fs::sb_information &) {}
 
-int vfs::mount_root(unique_ptr<fs::filesystem> fs) {
-  assert(vfs_root == NULL);
-  vfs_root = fs->get_root();
-  vfs_root->set_name("");
-  fs::inode::acquire(vfs_root);
-  mounted_filesystems.push(move(fs));
-
-  return 0;
-}
-
-vfs::vfs() { panic("DO NOT CONSTRUCT A VFS INSTANCE\n"); }
 
 struct fs::inode *vfs::cwd(void) {
   if (cpu::in_thread()) {
@@ -43,6 +30,13 @@ struct fs::inode *vfs::cwd(void) {
 
 struct fs::inode *vfs::get_root(void) {
   return vfs_root;
+}
+
+int vfs::mount_root(const char *source, const char *type) {
+	panic("mounting root %s with type %s\n", source, type);
+
+
+	return -1;
 }
 
 int vfs::mount(const char *src, const char *targ, const char *type,
