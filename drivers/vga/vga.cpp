@@ -40,8 +40,8 @@ struct [[gnu::packed]] chariot_kernel_font {
 
 const auto &vga_font = (chariot_kernel_font &)*&build_font_ckf;
 
-#define VCONSOLE_WIDTH 1024
-#define VCONSOLE_HEIGHT 768
+#define VCONSOLE_WIDTH 640
+#define VCONSOLE_HEIGHT 480
 
 #define EDGE_MARGIN 0
 #define TOTAL_MARGIN (EDGE_MARGIN * 2)

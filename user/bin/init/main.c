@@ -69,14 +69,7 @@ struct service {
 };
 
 
-unsigned long read_timestamp(void) {
-  unsigned int lo, hi;
-  __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
-  return lo | ((unsigned long)(hi) << 32);
-}
-
 int main(int argc, char **argv) {
-	unsigned long tsc = read_timestamp();
 
   if (getpid() != 1) {
     fprintf(stderr, "init: must be run as pid 1\n");
@@ -89,9 +82,6 @@ int main(int argc, char **argv) {
   open("/dev/console", O_RDWR);
   open("/dev/console", O_RDWR);
   open("/dev/console", O_RDWR);
-
-
-	printf("ticks to code: %zu\n", tsc);
 
   printf("[init] hello, friend\n");
 

@@ -51,6 +51,10 @@ uint32_t htonl(uint32_t n);
 uint16_t ntohs(uint16_t n);
 uint32_t ntohl(uint32_t n);
 
+static inline uint16_t net_ord(uint16_t n) { return htons(n); }
+static inline uint32_t net_ord(uint32_t n) { return htonl(n); }
+static inline uint16_t host_ord(uint16_t n) { return ntohs(n); }
+static inline uint32_t host_ord(uint32_t n) { return ntohl(n); }
 
 };  // namespace net
 

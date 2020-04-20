@@ -422,7 +422,7 @@ struct fs::inode *fs::ext2::get_inode(u32 index) {
   TRACE;
   scoped_lock lck(m_lock);
   if (inodes[index] == NULL) {
-    inodes[index] = fs::ext2_inode::create(this, index);
+    inodes[index] = fs::ext2::create_inode(this, index);
   }
   return inodes[index];
 }

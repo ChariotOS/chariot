@@ -90,8 +90,19 @@
 
 #define IO_PORT_PUTCHAR 0xfad
 
-void putchar(char c) {
 
+
+void putchar(char c) {
+	// kernel logging goes to serial *and* /dev/console
+	// but userspace logging to /dev/console does not log
+	// over serial
+  if (c == CONS_DEL) {
+    serial_send(COM1, '\b');
+    serial_send(COM1, ' ');
+    serial_send(COM1, '\b');
+  } else {
+    serial_send(COM1, c);
+  }
   console::putc(c);
   // vga::putchar(c);
   // serial_send(SERIAL_PORT_A, c);

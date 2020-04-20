@@ -73,20 +73,19 @@ struct ext2_idata {
   int *blk_bufs[4] = {NULL, NULL, NULL, NULL};
   ~ext2_idata(void);
 };
-
+/*
 class ext2_inode : public fs::inode {
   friend class ext2;
 
  public:
   static ext2_inode *create(ext2 *fs, u32 index);
   explicit ext2_inode(int type, u32 index, ext2 &fs);
-
   virtual ~ext2_inode();
 
-  virtual int touch(string name, int mode, fs::inode *&dst);
   // flush the in-memory info struct to disk
   int commit_info();
 };
+*/
 
 /**
  * An ext2 implementation of the filesystem class
@@ -120,6 +119,10 @@ class ext2 final : public fs::superblock {
   void traverse_dir(ext2_inode_info &inode,
                     func<bool(u32 ino, const char *name)> callback);
   void traverse_blocks(vec<u32>, void *, func<bool(void *)> callback);
+
+
+	// implemented in ext2/inode.cpp
+	static struct fs::inode *create_inode(fs::ext2 *fs, u32 index);
 
   u32 balloc(void);
   void bfree(u32);
@@ -227,7 +230,7 @@ class ext2 final : public fs::superblock {
   void *work_buf = nullptr;
   void *inode_buf = nullptr;
 
-  map<u32, ext2_inode *> inodes;
+  map<u32, struct fs::inode *> inodes;
 
   // how many entries in the disk cache
   int cache_size;

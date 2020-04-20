@@ -42,6 +42,7 @@ static void compose(void);
 size_t current_ms() { return syscall(SYS_gettime_microsecond) / 1000; }
 
 int main(int argc, char **argv) {
+	exit(0);
   fbfd = open("/dev/fb", O_RDWR);
   if (fbfd < 0) {
     perror("Framebuffer");
