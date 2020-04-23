@@ -32,10 +32,10 @@ struct hdr {
    * The remaining fields are variable in size,
    * according to the sizes above.
    */
-  uint8_t sha[6]; /* sender hardware address */
-  uint32_t spa;	  /* sender protocol address */
-  uint8_t tha[6]; /* target hardware address */
-  uint32_t tpa;	  /* target protocol address */
+  net::macaddr sender_hw; /* sender hardware address */
+  uint32_t sender_ip;	    /* sender protocol address */
+  net::macaddr target_hw; /* target hardware address */
+  uint32_t target_ip;	    /* target protocol address */
 } __attribute__((packed));
 };  // namespace arp
 };  // namespace net

@@ -226,38 +226,6 @@ static int injest_info(fs::inode &ino, fs::ext2_inode_info &info) {
   return 0;
 }
 
-/*
-int fs::ext2_inode::commit_info(void) {
-	fs::ext2_inode_info info;
-
-	fs::ext2 *efs = static_cast<fs::ext2*>(&sb);
-
-	efs->read_inode(info, ino);
-
-	info.size = size;
-	info.uid = uid;
-	info.gid = gid;
-	info.hardlinks = link_count;
-	info.last_access = atime;
-	info.create_time = ctime;
-	mtime = info.last_modif = dev::RTC::now();
-
-	info.type = (info.type & ~0xFFF) | (mode & 0xFFF);
-
-	// ??
-	info.delete_time = dtime;
-
-	// copy the block pointers
-	auto table = (u32 *)info.dbp;
-	for (int i = 0; i < 15; i++) table[i] =
-priv<ext2_idata>()->block_pointers[i];
-
-	efs->write_inode(info, ino);
-
-	return 0;
-}
-*/
-
 #define UNIMPL() printk("[ext2] '%s' NOT IMPLEMENTED\n", __PRETTY_FUNCTION__)
 
 static int ext2_seek(fs::file &, off_t, off_t) {
@@ -353,6 +321,10 @@ static struct fs::inode *ext2_lookup(fs::inode &node, const char *needle) {
   // walk the linked list to get the inode num
   for (auto *it = node.dir.entries; it != NULL; it = it->next) {
     if (!strcmp(it->name.get(), needle)) {
+			if (it->mount_shadow != NULL) {
+				printk("here\n");
+				return it->mount_shadow;
+			}
       nr = it->nr;
       found = true;
       break;
@@ -371,10 +343,6 @@ static int ext2_mknod(fs::inode &, const char *name,
   return -ENOTIMPL;
 }
 
-static int ext2_walk(fs::inode &, func<bool(const string &)>) {
-  UNIMPL();
-  return -ENOTIMPL;
-}
 
 fs::dir_operations ext2_dir_ops{
     .create = ext2_create,
@@ -382,7 +350,6 @@ fs::dir_operations ext2_dir_ops{
     .unlink = ext2_unlink,
     .lookup = ext2_lookup,
     .mknod = ext2_mknod,
-    .walk = ext2_walk,
 };
 
 struct fs::inode *fs::ext2::create_inode(ext2 *fs, u32 index) {

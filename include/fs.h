@@ -253,9 +253,6 @@ struct dir_operations {
   // create a device node with a major and minor number
   int (*mknod)(fs::inode &, const char *name, struct fs::file_ownership &,
 	       int major, int minor);
-
-  // walk through the directory, calling the callback per entry
-  int (*walk)(fs::inode &, func<bool(const string &)>);
 };
 
 /**
@@ -318,7 +315,6 @@ struct inode {
     // T_SOCK
     struct net::sock *sk;
 
-
 		// T_BLK
     struct {
       fs::blkdev *dev;
@@ -338,7 +334,9 @@ struct inode {
 	int get_direntry_r(const char *name);
   void walk_direntries(func<bool(const string &, struct inode *)>);
   vec<string> direntries(void);
-  int add_mount(string &name, struct inode *other_root);
+  int add_mount(const char *name, struct inode *other_root);
+
+	struct direntry *get_direntry_raw(const char *name);
 
   // if the inode is a directory, set its name. NOP otherwise
   int set_name(const string &);

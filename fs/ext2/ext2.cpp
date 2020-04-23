@@ -41,7 +41,7 @@ struct [[gnu::packed]] block_group_desc {
   uint32_t inode_table;
   uint16_t num_of_unalloc_block;
   uint16_t num_of_unalloc_inode;
-  uint16_t num_of_dirs;
+  uint16_t num_of_dirs_inode;
   uint8_t unused[14];
 };
 
@@ -75,9 +75,8 @@ fs::ext2::~ext2(void) {
 bool fs::ext2::init(fs::blkdev *bdev) {
   TRACE;
 
-
-	fs::blkdev::acquire(bdev);
-	disk = fs::bdev_to_file(bdev);
+  fs::blkdev::acquire(bdev);
+  disk = fs::bdev_to_file(bdev);
 
   if (!disk) return false;
 
@@ -129,17 +128,17 @@ bool fs::ext2::init(fs::blkdev *bdev) {
     return false;
   }
 
-	/*
-  auto uuid = sb->s_uuid;
-  u16 *u_shrts = (u16 *)(uuid + sizeof(u32));
-  u64 trail = 0xFFFFFFFFFFFF & *(u64 *)(uuid + sizeof(u32) + 3 * sizeof(u16));
-  KINFO("ext2 uuid: %08x-%04x-%04x-%04x-%012x\n", *(u32 *)uuid, u_shrts[0],
-	u_shrts[1], u_shrts[2], trail);
-  printk("block_size = %u\n", block_size);
-  printk("blks in group = %u\n", sb->blocks_in_blockgroup);
-  printk("total inodes = %u\n", sb->inodes);
-  printk("total blocks = %u\n", sb->blocks);
-	*/
+  /*
+auto uuid = sb->s_uuid;
+u16 *u_shrts = (u16 *)(uuid + sizeof(u32));
+u64 trail = 0xFFFFFFFFFFFF & *(u64 *)(uuid + sizeof(u32) + 3 * sizeof(u16));
+KINFO("ext2 uuid: %08x-%04x-%04x-%04x-%012x\n", *(u32 *)uuid, u_shrts[0],
+  u_shrts[1], u_shrts[2], trail);
+printk("block_size = %u\n", block_size);
+printk("blks in group = %u\n", sb->blocks_in_blockgroup);
+printk("total inodes = %u\n", sb->inodes);
+printk("total blocks = %u\n", sb->blocks);
+  */
 
   return true;
 }
@@ -276,7 +275,6 @@ struct fs::ext2_block_cache_line *fs::ext2::get_cache_line(int cba) {
 }
 
 bool fs::ext2::read_block(u32 block, void *buf) {
-
 #ifdef USE_CACHE
   scoped_lock l(cache_lock);
 
@@ -370,50 +368,6 @@ bool fs::ext2::write_block(u32 block, const void *buf) {
 #endif
 }
 
-void fs::ext2::traverse_blocks(vec<u32> blks, void *buf,
-			       func<bool(void *)> callback) {
-  TRACE;
-  for (auto b : blks) {
-    read_block(b, buf);
-    if (!callback(buf)) return;
-  }
-}
-
-void fs::ext2::traverse_dir(u32 inode,
-			    func<bool(u32 ino, const char *name)> callback) {
-  TRACE;
-  ext2_inode_info i;
-  read_inode(i, inode);
-  traverse_dir(i, callback);
-}
-
-void fs::ext2::traverse_dir(ext2_inode_info &inode,
-			    func<bool(u32 ino, const char *name)> callback) {
-  TRACE;
-
-  void *buffer = kmalloc(block_size);
-  traverse_blocks(blocks_for_inode(inode), buffer, [&](void *buffer) -> bool {
-    auto *entry = reinterpret_cast<ext2_dir *>(buffer);
-    while ((u64)entry < (u64)buffer + block_size) {
-      if (entry->inode != 0) {
-	fs::directory_entry ent;
-	ent.inode = entry->inode;
-
-	// TODO: bad!
-	char buf[entry->namelength + 1];
-	memcpy(buf, entry->name, entry->namelength);
-	buf[entry->namelength] = 0;
-	ent.name = buf;
-	if (!callback(ent.inode, buf)) break;
-      }
-      entry = (ext2_dir *)((char *)entry + entry->size);
-    }
-    return true;
-  });
-
-  kfree(buffer);
-}
-
 struct fs::inode *fs::ext2::get_root(void) {
   return root;
 }
@@ -425,82 +379,6 @@ struct fs::inode *fs::ext2::get_inode(u32 index) {
     inodes[index] = fs::ext2::create_inode(this, index);
   }
   return inodes[index];
-}
-
-vec<u32> fs::ext2::blocks_for_inode(u32 inode) {
-  TRACE;
-  ext2_inode_info info;
-  read_inode(info, inode);
-  return blocks_for_inode(info);
-}
-
-vec<u32> fs::ext2::blocks_for_inode(ext2_inode_info &inode) {
-  TRACE;
-
-  u32 block_count = inode.size / block_size;
-  if (inode.size % block_size != 0) block_count++;
-
-  vec<u32> list;
-
-  list.ensure_capacity(block_count);
-
-  u32 blocks_remaining = block_count;
-
-  u32 direct_count = min(block_count, 12);
-
-  for (unsigned i = 0; i < direct_count; ++i) {
-    auto block_index = inode.dbp[i];
-    if (!block_index) return list;
-    list.push(block_index);
-    --blocks_remaining;
-  }
-
-  if (!blocks_remaining) return list;
-
-  auto process_block_array = [&](unsigned array_block_index, auto &&callback) {
-    u32 *array_block = (u32 *)kmalloc(block_size);
-    read_block(array_block_index, array_block);
-    auto *array = reinterpret_cast<const u32 *>(array_block);
-    unsigned count = min(blocks_remaining, block_size / sizeof(u32));
-    for (unsigned i = 0; i < count; ++i) {
-      if (!array[i]) {
-	blocks_remaining = 0;
-	kfree(array_block);
-	return;
-      }
-      callback(array[i]);
-      --blocks_remaining;
-    }
-    kfree(array_block);
-  };
-
-  // process the singly linked block
-  process_block_array(inode.singly_block, [&](unsigned entry) {
-    list.push(entry);
-    --blocks_remaining;
-  });
-
-  if (!blocks_remaining) return list;
-
-  process_block_array(inode.doubly_block, [&](unsigned entry) {
-    process_block_array(entry, [&](unsigned entry) {
-      list.push(entry);
-      --blocks_remaining;
-    });
-  });
-
-  if (!blocks_remaining) return list;
-
-  process_block_array(inode.triply_block, [&](unsigned entry) {
-    process_block_array(entry, [&](unsigned entry) {
-      process_block_array(entry, [&](unsigned entry) {
-	list.push(entry);
-	--blocks_remaining;
-      });
-    });
-  });
-
-  return list;
 }
 
 u32 fs::ext2::balloc(void) {
@@ -530,9 +408,9 @@ static struct fs::superblock *ext2_mount(struct fs::sb_information *,
   auto *sb = new fs::ext2();
 
   if (!sb->init(bdev)) {
-		delete sb;
-		return NULL;
-	}
+    delete sb;
+    return NULL;
+  }
 
   return sb;
 }

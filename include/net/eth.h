@@ -23,12 +23,13 @@
   { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }
 
 #include <types.h>
+#include <net/net.h>
 
 namespace net {
 namespace eth {
 struct hdr {
-  uint8_t destination[ETH_ADDR_LEN];
-  uint8_t source[ETH_ADDR_LEN];
+	net::macaddr dst;
+	net::macaddr src;
   uint16_t type;
   uint8_t payload[];
 } __attribute__((packed));

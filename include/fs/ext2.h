@@ -104,6 +104,10 @@ class ext2 final : public fs::superblock {
 
   bool init(fs::blkdev *);
 
+
+	// implemented in ext2/inode.cpp
+	static struct fs::inode *create_inode(fs::ext2 *fs, u32 index);
+
   struct fs::inode *get_root(void);
   struct fs::inode *get_inode(u32 index);
 
@@ -115,22 +119,10 @@ class ext2 final : public fs::superblock {
 
   bool write_inode(ext2_inode_info &dst, u32 inode);
 
-  void traverse_dir(u32 inode, func<bool(u32 ino, const char *name)> callback);
-  void traverse_dir(ext2_inode_info &inode,
-                    func<bool(u32 ino, const char *name)> callback);
-  void traverse_blocks(vec<u32>, void *, func<bool(void *)> callback);
 
-
-	// implemented in ext2/inode.cpp
-	static struct fs::inode *create_inode(fs::ext2 *fs, u32 index);
 
   u32 balloc(void);
   void bfree(u32);
-
-  // entrypoint to read a file
-
-  vec<u32> blocks_for_inode(u32 inode);
-  vec<u32> blocks_for_inode(ext2_inode_info &inode);
 
   // update the disk copy of the superblock
   int write_superblock(void);

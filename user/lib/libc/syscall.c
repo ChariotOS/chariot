@@ -39,5 +39,6 @@ long __syscall_ret(long r) {
     errno = -r;
     return -1;
   }
+	errno = 0;
   return r;
 }

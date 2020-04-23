@@ -31,6 +31,7 @@ int dev::register_driver(struct dev::driver_info &info) {
   return 0;
 }
 
+extern void devfs_register_device(string name, int type, int major, int minor);
 int dev::register_name(struct dev::driver_info &info, string name,
 		       minor_t min) {
   // create the block device if it is one
@@ -47,6 +48,10 @@ int dev::register_name(struct dev::driver_info &info, string name,
 
   device_names.set(name, dev_t(info.major, min));
   drivers_lock.write_unlock();
+
+	int ftype = info.type == DRIVER_BLOCK ? T_BLK : T_CHAR;
+
+	devfs_register_device(name, ftype, info.major, min);
 
   return 0;
 }

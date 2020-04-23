@@ -12,12 +12,12 @@ void do_stat(char *path) {
 
 #define F(name, thing, fmt) printf(name ": %-10" fmt, thing)
   F("- File", path, "s");
-  puts("\n");
+  printf("\n");
 
   F("  Size", st.st_size, "d");
   F("Blocks", st.st_blocks, "d");
   F(" Links", st.st_nlink, "ld");
-  puts("\n");
+  printf("\n");
 
   char mode[12];
 
@@ -33,7 +33,7 @@ void do_stat(char *path) {
   F("  Mode", mode, "s");
   F("   UID", st.st_uid, "ld");
   F("   GID", st.st_gid, "ld");
-  puts("\n");
+  printf("\n");
 }
 
 int main(int argc, char **argv) {

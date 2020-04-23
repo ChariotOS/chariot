@@ -276,10 +276,8 @@ void handle_tick(u64 tick);
 // force the process to exit, (yield with different state)
 void exit();
 
-void play_tone(int frq, int dur);
 int remove_task(struct thread *t);
 int add_task(struct thread *);
-void beep();
 
 // called before dropping back into user space. This is needed
 // when a thread should not return to userspace because it must

@@ -10,6 +10,12 @@ int socket(int dom, int typ, int prot) {
   return errno_syscall(SYS_socket, dom, typ, prot);
 }
 
+
+ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
+	       const struct sockaddr *dest_addr, size_t addrlen) {
+	return errno_syscall(SYS_sendto, sockfd, buf, len, flags, dest_addr, addrlen);
+}
+
 static uint16_t bswap_16(uint16_t __x) { return __x << 8 | __x >> 8; }
 
 static uint32_t bswap_32(uint32_t __x) {

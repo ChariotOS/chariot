@@ -7,62 +7,24 @@
 #include <sched.h>
 #include <syscall.h>
 
-net::sock::sock(uint16_t dom, int type, net::proto &p)
-    : domain(dom), type(type), prot(p) {}
+net::sock::sock(int dom, int type, int protocol)
+    : domain(dom), type(type), protocol(protocol) {}
 
-net::sock::~sock(void) {
-  if (prot.destroy) {
-    prot.destroy(*this);
-  }
-}
+net::sock::~sock(void) {}
 
-static rwlock proto_lock;
-static map<int, net::proto *> protos;
-
-void net::register_proto(net::proto &n, int af) {
-  proto_lock.write_lock();
-
-  assert(n.connect);
-  assert(n.disconnect);
-  assert(n.accept);
-  assert(n.init);
-  assert(n.destroy);
-
-  assert(n.send);
-  assert(n.recv);
-
-  protos[af] = &n;
-
-  proto_lock.write_unlock();
-}
-
-net::proto *net::lookup_proto(int type) {
-  proto_lock.read_lock();
-  net::proto *p = NULL;
-  if (protos.contains(type)) {
-    p = protos.get(type);
-  }
-  proto_lock.read_unlock();
-  return p;
-}
+extern net::sock *udp_create(int domain, int type, int protocol, int &err);
 
 net::sock *net::sock::create(int domain, int type, int protocol, int &err) {
-  err = -1;
-  if (domain == PF_LOCAL || domain == PF_INET) {
-    auto proto = net::lookup_proto(type);
-    if (proto) {
-      auto sk = new net::sock(domain, type, *proto);
-      sk->protocol = protocol;
-
-      if (!sk) return nullptr;
-      proto->init(*sk);
-
+  // manually
+  if (domain == PF_INET) {
+    if (type == SOCK_DGRAM) {
       err = 0;
-      return sk;
+      return new net::udpsock(domain, type, protocol);
     }
   }
 
-  return nullptr;
+  err = -EINVAL;
+  return NULL;
 }
 
 static int sock_seek(fs::file &, off_t old_off, off_t new_off) {
@@ -70,14 +32,17 @@ static int sock_seek(fs::file &, off_t old_off, off_t new_off) {
 }
 
 static ssize_t sock_read(fs::file &f, char *b, size_t s) {
-  return f.ino->sk->prot.recv(*f.ino->sk, (void *)b, s);
+  return f.ino->sk->recvfrom((void *)b, s, 0, nullptr, 0);
 }
 
 static ssize_t sock_write(fs::file &f, const char *b, size_t s) {
-  return f.ino->sk->prot.send(*f.ino->sk, (void *)b, s);
+  return f.ino->sk->sendto((void *)b, s, 0, nullptr, 0);
 }
 
-static void sock_destroy(fs::inode &f) { f.sk->prot.destroy(*f.sk); }
+static void sock_destroy(fs::inode &f) {
+  delete f.sk;
+  f.sk = NULL;
+}
 
 fs::file_operations socket_fops{
     .seek = sock_seek,
@@ -89,7 +54,9 @@ fs::file_operations socket_fops{
 
 /* create an inode wrapper around a socket */
 fs::inode *net::sock::createi(int domain, int type, int protocol, int &err) {
+  // printk("domain=%3d, type=%3d, proto=%3d\n", domain, type, protocol);
   auto sk = net::sock::create(domain, type, protocol, err);
+	// printk("sk %p %d\n", sk, err);
   if (err != 0) return nullptr;
 
   auto ino = new fs::inode(T_SOCK, fs::DUMMY_SB);
@@ -105,13 +72,52 @@ fs::inode *net::sock::createi(int domain, int type, int protocol, int &err) {
 int sys::socket(int d, int t, int p) {
   int err = 0;
   auto f = net::sock::createi(d, t, p, err);
-  printk("%p %d\n", f, err);
-
-	delete f;
-	return -1;
+	// printk("in %p %d\n", f, err);
   if (err != 0) return -1;
 
   ref<fs::file> fd = fs::file::create(f, "socket", FDIR_READ | FDIR_WRITE);
 
   return curproc->add_fd(move(fd));
+}
+
+ssize_t sys::sendto(int sockfd, const void *buf, size_t len, int flags,
+               const struct sockaddr *dest_addr, size_t addrlen) {
+
+	if (!curproc->mm->validate_pointer((void*)buf, len, VALIDATE_READ)) {
+		return -EINVAL;
+	}
+
+	if (!curproc->mm->validate_pointer((void*)dest_addr, addrlen, VALIDATE_READ)) {
+		return -EINVAL;
+	}
+
+  ref<fs::file> file = curproc->get_fd(sockfd);
+	ssize_t res = -EINVAL;
+  if (file) {
+		if (file->ino->type == T_SOCK) {
+			res = file->ino->sk->sendto((void*)buf, len, flags, dest_addr, addrlen);
+		}
+  }
+
+	return res;
+}
+
+int net::sock::ioctl(int cmd, unsigned long arg) { return -ENOTIMPL; }
+
+int net::sock::connect(struct sockaddr *uaddr, int addr_len) {
+  return -ENOTIMPL;
+}
+
+int net::sock::disconnect(int flags) { return -ENOTIMPL; }
+
+net::sock *net::sock::accept(int flags, int &err) {
+  err = -ENOTIMPL;
+  return NULL;
+}
+
+ssize_t net::sock::sendto(void *data, size_t len, int flags, const sockaddr *, size_t) {
+  return -ENOTIMPL;
+}
+ssize_t net::sock::recvfrom(void *data, size_t len, int flags, const sockaddr *, size_t) {
+  return -ENOTIMPL;
 }

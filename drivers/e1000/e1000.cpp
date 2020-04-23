@@ -223,11 +223,11 @@ int e1000_daemon(void *) {
 }
 
 static bool if_init(struct net::interface &i) {
-  memcpy(i.hwaddr, mac, 6);
+	i.hwaddr = mac;
   return true;
 }
 
-static struct net::eth::packet *e1000_get_packet(struct net::interface &) {
+static struct net::eth::hdr *e1000_get_packet(struct net::interface &) {
   return NULL;
 }
 

@@ -125,10 +125,14 @@ int kernel_init(void *) {
 	smp::lapic_init();
   syscall_init();
 
+
   // walk the kernel modules and run their init function
   KINFO("Calling kernel module init functions\n");
   initialize_builtin_modules();
   KINFO("kernel modules initialized\n");
+
+
+  sched::proc::create_kthread("[net]", net::task);
 
   // open up the disk device for the root filesystem
   // auto rootdev = dev::open(kargs::get("root", "ata0p1"));
@@ -140,6 +144,10 @@ int kernel_init(void *) {
   int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);
 	if (mnt_res != 0) {
 		panic("failed to mount root. Error=%d\n", -mnt_res);
+	}
+
+	if (vfs::mount("none", "/dev", "devfs", 0, NULL) != 0) {
+		panic("failed to mount devfs");
 	}
 
   // setup stdio stuff for the kernel (to be inherited by spawn)

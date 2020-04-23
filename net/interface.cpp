@@ -7,95 +7,19 @@
 #include <printk.h>
 #include <sched.h>
 #include <string.h>
-
-#define OPT_PAD 0
-#define OPT_SUBNET_MASK 1
-#define OPT_ROUTER 3
-#define OPT_DNS 6
-#define OPT_REQUESTED_IP_ADDR 50
-#define OPT_LEASE_TIME 51
-#define OPT_DHCP_MESSAGE_TYPE 53
-#define OPT_SERVER_ID 54
-#define OPT_PARAMETER_REQUEST 55
-#define OPT_END 255
-
-// Message Types
-
-#define DHCP_DISCOVER 1
-#define DHCP_OFFER 2
-#define DHCP_REQUEST 3
-#define DHCP_DECLINE 4
-#define DHCP_ACK 5
-#define DHCP_NAK 6
-#define DHCP_RELEASE 7
-#define DHCP_INFORM 8
-
-static void test_interface(struct net::interface &i) {
-	int sz = 5000;
-  char *c = (char *)kmalloc(sz);
-  net::ipv4::transmit(i, 0, 0, c, sz);
-  kfree(c);
-
-
-  net::pkt_builder b;
-
-  // allocate all the headers
-  auto &eth = b.alloc<net::eth::hdr>();
-  auto &ip = b.alloc<net::ipv4::hdr>();
-  auto &udp = b.alloc<net::udp::hdr>();
-  auto &dhcp = b.alloc<net::dhcp::hdr>();
-
-  // build the ethernet frame
-  unsigned char bcast_mac[6] = BROADCAST_MAC;
-  memcpy(eth.destination, bcast_mac, 6);
-  memcpy(eth.source, i.hwaddr, 6);
-  eth.type = net::htons(0x0800);
-
-  ip.version = 4;
-  ip.header_len = 5;  // 20 bytes
-  ip.dscp_ecn = 0;
-  ip.destination = net::htonl(net::ipv4::parse_ip("255.255.255.255"));
-  ip.source = net::htonl(net::ipv4::parse_ip("10.0.2.15"));
-  ip.protocol = 17;  // UDP
-  ip.ttl = 255;
-
-  udp.source_port = net::htons(68);
-  udp.destination_port = net::htons(67);
-
-  // const char *msg = "hello, world\n";
-  // memcpy(b.alloc(strlen(msg) + 1), msg, strlen(msg) + 1);
-
-  dhcp.op = 1;
-  dhcp.hlen = 6;
-  dhcp.hops = 0;
-  dhcp.xid = 0;
-  dhcp.magic = net::htonl(0x63825363);
-  memcpy(dhcp.chaddr, i.hwaddr, 6);
-
-  b.u8() = OPT_DHCP_MESSAGE_TYPE;
-  b.u8() = 1;
-  b.u8() = DHCP_DISCOVER;
-
-  // Parameter Request list
-  b.u8() = OPT_PARAMETER_REQUEST;
-  b.u8() = 3;
-  b.u8() = OPT_SUBNET_MASK;
-  b.u8() = OPT_ROUTER;
-  b.u8() = OPT_DNS;
-
-  b.u8() = OPT_END;
-
-  udp.length = net::htons(b.len_from(udp));
-  udp.checksum = 0;
-
-  ip.checksum = net::checksum(ip);
-  ip.length = net::htons(b.len_from(ip));
-
-  i.ops.send_packet(i, b.get(), b.size());
-}
+#include <util.h>
+#include <fifo_buf.h>
 
 static spinlock interfaces_lock;
 static map<string, struct net::interface *> interfaces;
+
+void net::each_interface(func<bool(const string &, net::interface &)> fn) {
+  interfaces_lock.lock();
+  for (auto &a : interfaces) {
+    if (!fn(a.key, *a.value)) break;
+  }
+  interfaces_lock.unlock();
+}
 
 net::interface::interface(const char *name, struct net::ifops &o)
     : name(name), ops(o) {
@@ -106,6 +30,30 @@ net::interface::interface(const char *name, struct net::ifops &o)
   ops.init(*this);
 }
 
+net::interface *net::find_interface(net::macaddr m) {
+  for (auto &a : interfaces) {
+    if (a.value->hwaddr == m) {
+      return a.value;
+    }
+  }
+  return nullptr;
+}
+
+int net::interface::send(net::macaddr m, uint16_t proto, void *data,
+			 size_t len) {
+  net::pkt_builder b;
+
+  auto &e = b.alloc<net::eth::hdr>();
+  e.src = hwaddr;
+  e.dst = m;
+  e.type = net::net_ord(proto);
+  // better hope the len is less than MTU :)
+  memcpy(b.alloc(len), data, len);
+
+  ops.send_packet(*this, b.get(), b.size());
+  return 0;
+}
+
 int net::register_interface(const char *name, struct net::ifops &ops) {
   scoped_lock l(interfaces_lock);
 
@@ -114,8 +62,6 @@ int net::register_interface(const char *name, struct net::ifops &ops) {
     return -1;
   }
   auto i = new struct net::interface(name, ops);
-
-  test_interface(*i);
 
   interfaces[name] = i;
   printk(KERN_INFO
@@ -176,4 +122,111 @@ uint32_t net::ntohl(uint32_t n) {
     char c;
   } u = {1};
   return u.c ? bswap_32(n) : n;
+}
+
+static long total_bytes_recv = 0;
+
+
+
+static void print_packet(ref<net::pkt_buff> &pbuf) {
+  auto eth = pbuf->eth();
+  auto arp = pbuf->arph();
+  auto ip = pbuf->iph();
+
+  total_bytes_recv += pbuf->size();
+  printk(KERN_INFO "Raw Packet (%d bytes, %d total):\n", pbuf->size(),
+	 total_bytes_recv);
+  hexdump(pbuf->get(), pbuf->size(), true);
+
+  printk("[eth] src: %A, dst: %A, type: %04x\n", eth->src.raw, eth->dst.raw,
+	 net::ntohs(eth->type));
+
+  if (arp != NULL) {
+    if (arp->ha_len != 6 || arp->pr_len != 4) {
+      printk("[arp] ignoring due to address sizes being wrong\n");
+      return;
+    }
+
+    auto op = net::ntohs(arp->op);
+    auto spa = net::ntohl(arp->sender_ip);
+    auto tpa = net::ntohl(arp->target_ip);
+
+    if (op == ARPOP_REQUEST) printk("[arp] 'Who has %I? Tell %I'\n", spa, tpa);
+    printk("\n");
+  }
+
+  if (ip != NULL) {
+    printk("[ipv4]\n");
+  }
+}
+
+static void handle_packet(ref<net::pkt_buff> &pbuf) {
+  auto eth = pbuf->eth();
+  auto in = net::find_interface(eth->dst);
+  if (in == NULL) return;
+
+  auto arp = pbuf->arph();
+  if (arp != NULL) {
+    // lookup by mac address
+    auto p = new net::arp::hdr;
+    memcpy(p, arp, sizeof(*p));
+    in->pending_arps.push(p);
+    in->pending_arp_queue.notify_all();
+    return;
+  }
+  print_packet(pbuf);
+}
+
+
+struct pending_packet {
+  ref<net::pkt_buff> pbuf;
+};
+static fifo_buf pending_packets;
+
+
+int net::task(void *) {
+  int octet = 15;
+
+  // initialize all the network interfaces
+  //  TODO: this is probably a bad idea, since we are assuming that these addrs
+  //  are safe
+  //        without asking DHCP first.
+  net::each_interface([&](const string &name, net::interface &i) -> bool {
+    i.address = net::net_ord(
+	net::ipv4::parse_ip(string::format("10.0.0.%d", octet++).get()));
+    i.netmask = net::net_ord(net::ipv4::parse_ip("255.255.255.0"));
+    i.gateway = net::net_ord(net::ipv4::parse_ip("10.0.2.2"));
+
+    printk(KERN_INFO "[network task] Setup interface '%s'\n", name.get());
+    printk(KERN_INFO "               hardware: %A\n", i.hwaddr.raw);
+    printk(KERN_INFO "               address:  %I\n", net::host_ord(i.address));
+    printk(KERN_INFO "               netmask:  %I\n", net::host_ord(i.netmask));
+    printk(KERN_INFO "               gateway:  %I\n", net::host_ord(i.gateway));
+
+    return true;
+  });
+  while (1) {
+		struct pending_packet *p = NULL;
+		int n = pending_packets.read(&p, sizeof(p), true);
+
+		// not sure when this would happen
+		if (n != 8) panic("somehow the pending_packets fifo buffer got out of sync");
+
+		handle_packet(p->pbuf);
+		delete p;
+  }
+}
+
+// When packets are recv'd by adapters, they are sent here for internal parsing
+// and routing
+void net::packet_received(ref<net::pkt_buff> pbuf) {
+  // skip non-ethernet packets
+  auto eth = pbuf->eth();
+  if (eth == NULL) return;
+
+  auto *p = new pending_packet;
+  p->pbuf = pbuf;
+	// printk("created %p\n", p);
+	pending_packets.write(&p, sizeof(p), false);
+	// printk("pending size: %d\n", pending_packets.size());
 }

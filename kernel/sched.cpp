@@ -2,7 +2,6 @@
 #include <cpu.h>
 #include <lock.h>
 #include <map.h>
-#include <pcspeaker.h>
 #include <sched.h>
 #include <single_list.h>
 #include <wait.h>
@@ -344,18 +343,7 @@ void sched::run() {
 
 bool sched::enabled() { return s_enabled; }
 
-static u64 beep_timeout = 0;
-
-void sched::play_tone(int frq, int dur) {
-  pcspeaker::set(frq);
-  beep_timeout = cpu::get_ticks() + dur;
-}
-
-void sched::beep(void) { play_tone(440, 25); }
-
 void sched::handle_tick(u64 ticks) {
-
-  if (ticks >= beep_timeout) pcspeaker::clear();
   if (!enabled() || !cpu::in_thread()) return;
 
   // grab the current thread

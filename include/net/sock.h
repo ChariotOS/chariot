@@ -1,6 +1,8 @@
 #pragma once
 
+#include <lock.h>
 #include <net/socket.h>
+#include <net/ipv4.h>
 #include <ptr.h>
 #include <types.h>
 
@@ -31,25 +33,20 @@ struct proto {
   int (*ioctl)(net::sock &sk, int cmd, unsigned long arg);
 };
 
-// register a protocol with an SOCK_*
-void register_proto(net::proto &, int typ);
-net::proto *lookup_proto(int type);
-
 /**
  * The representation of a network socket. Stored in fs::inode.sock when type
  * is T_SOCK
  */
 struct sock {
-  uint16_t domain;  // AF_*
-  int type;         // SOCK_*
-  int protocol;     // ignored in this kernel, but nice to have
+  int domain;	 // AF_*
+  int type;	 // SOCK_*
+  int protocol;	 // ignored in this kernel, but nice to have
   bool connected = false;
+	size_t total_sent = 0;
+	size_t total_recv = 0;
 
-  // a reference to the socket's protocol block
-  struct proto &prot;
-
-  sock(uint16_t d, int type, struct proto &p);
-  ~sock(void);
+  sock(int domain, int type, int proto);
+  virtual ~sock(void);
 
   template <typename T>
   T *&priv(void) {
@@ -57,10 +54,58 @@ struct sock {
   }
 
   static net::sock *create(int domain, int type, int protocol, int &err);
-  static fs::inode *createi(int domain, int type, int protocol, int&err);
+  static fs::inode *createi(int domain, int type, int protocol, int &err);
+
+  virtual int ioctl(int cmd, unsigned long arg);
+
+  virtual int connect(struct sockaddr *uaddr, int addr_len);
+  virtual int disconnect(int flags);
+  virtual net::sock *accept(int flags, int &error);
+
+  // implemented by the network layer (OSI)
+  virtual ssize_t sendto(void *data, size_t len, int flags, const sockaddr *,
+			 size_t);
+  virtual ssize_t recvfrom(void *data, size_t len, int flags, const sockaddr *,
+			   size_t);
 
  private:
   void *_private;
+};
+
+struct ipv4sock : public net::sock {
+ public:
+  ipv4sock(int domain, int type, int proto);
+  virtual ~ipv4sock(void);
+
+  // send the buffer over ipv4
+  ssize_t send_packet(void *pkt, size_t plen);
+
+  // host ordered
+  uint32_t peer_addr = 0;
+  uint32_t local_addr = 0;
+  uint16_t peer_port = 0;
+  uint16_t local_port = 0;
+
+  uint32_t bytes_received = 0;
+
+  uint8_t ttl = 64;
+
+  net::ipv4::route route;
+  spinlock iplock;
+};
+
+struct udpsock : public net::ipv4sock {
+ public:
+  udpsock(int domain, int type, int proto);
+  virtual ~udpsock(void);
+
+  // implemented by the transport layer (OSI)
+  virtual ssize_t sendto(void *data, size_t len, int flags, const sockaddr *,
+			 size_t);
+  virtual ssize_t recvfrom(void *data, size_t len, int flags, const sockaddr *,
+			   size_t);
+
+  void *send_buffer = NULL;
 };
 
 }  // namespace net

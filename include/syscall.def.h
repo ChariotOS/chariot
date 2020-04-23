@@ -113,6 +113,8 @@ size_t gettime_microsecond(void);
 
 /// num=0x60
 int socket(int domain, int type, int protocol);
+/// num=0x61
+ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr*, size_t addrlen);
 
 /* signal related system calls own 0x7X */
 

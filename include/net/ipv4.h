@@ -4,7 +4,6 @@
 #define __CHARIOT_IPV4_H
 
 #include <net/net.h>
-#include <net/sock.h>
 #include <types.h>
 
 #define IPV4_PROT_UDP 17
@@ -41,13 +40,18 @@ struct hdr {
 uint32_t parse_ip(const char *ip);
 void format_ip(uint32_t ip, char *dst);
 
-int datagram_connect(net::sock &sk, struct sockaddr *, int alen);
-int datagram_disconnect(net::sock &sk, int flags);
-
 uint16_t checksum(const net::ipv4::hdr &p);
 
 
 int transmit(net::interface &i, uint32_t dst, uint16_t proto, void *data, size_t sz);
+
+struct route {
+	bool valid = false;
+	net::interface *in;
+	net::macaddr next_hop; // mac address
+};
+
+struct route route_to(uint32_t ip_target, uint32_t ip_source);
 
 }  // namespace ipv4
 
@@ -59,12 +63,6 @@ struct hdr {
   uint16_t checksum;
   uint8_t payload[];
 } __attribute__((packed));
-
-// just send some arbitrary data over the interface
-// all fields are host-ordered
-int send_data(net::interface &, uint32_t ip, uint16_t from, uint16_t to,
-	      void *data, uint16_t length);
-
 };  // namespace udp
 
 namespace dhcp {

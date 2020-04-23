@@ -63,6 +63,12 @@ class pkt_builder {
     return length - ((char *)&h - (char *)buffer);
   }
 
+	inline void clear(void) {
+		memset(buffer, 0, length);
+		length = 0;
+		buffer = 0;
+	}
+
   pkt_builder();
   ~pkt_builder();
 };
