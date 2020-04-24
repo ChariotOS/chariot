@@ -5,12 +5,12 @@
 
 #include <asm.h>
 #include <func.h>
+#include <map.h>
 #include <ptr.h>
 #include <string.h>
 #include <types.h>
-#include <wait.h>
-#include <map.h>
 #include <vec.h>
+#include <wait.h>
 
 namespace net {
 
@@ -23,35 +23,21 @@ struct hdr;
 }
 
 struct [[gnu::packed]] macaddr {
-  inline macaddr() {}
-  inline macaddr(const u8 data[6]) { memcpy(raw, data, 6); }
-  inline macaddr(u8 a, u8 b, u8 c, u8 d, u8 e, u8 f) {
-    raw[0] = a;
-    raw[1] = b;
-    raw[2] = c;
-    raw[3] = d;
-    raw[4] = e;
-    raw[5] = f;
-  }
-  inline ~macaddr() {}
+  macaddr();
+  macaddr(const uint8_t data[6]);
+  macaddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint8_t e, uint8_t f);
+  ~macaddr();
 
-  inline u8 operator[](int i) const {
-    ASSERT(i >= 0 && i < 6);
+  inline uint8_t operator[](int i) const {
+    assert(i >= 0 && i < 6);
     return raw[i];
   }
 
-  inline bool operator==(const macaddr &other) const {
-    for (int i = 0; i < 6; i++) {
-      if (raw[i] != other.raw[i]) return false;
-    }
-    return true;
-  }
+  bool operator==(const macaddr &other) const;
+  bool is_zero(void) const;
+  void clear(void);
 
-  inline bool is_zero() const {
-    return raw[0] == 0 && raw[1] == 0 && raw[2] == 0 &&
-	   raw[3] == 0 && raw[4] == 0 && raw[5] == 0;
-  }
-
+  // the raw data
   uint8_t raw[6];
 };
 
@@ -84,15 +70,14 @@ struct interface {
 
   interface(const char *name, struct net::ifops &o);
 
+  waitqueue pending_arp_queue;
+  vec<net::arp::hdr *> pending_arps;
+  // network ordered ip to mac
+  map<uint32_t, net::macaddr> arp_table;
 
-	waitqueue pending_arp_queue;
-	vec<net::arp::hdr *> pending_arps;
-	// network ordered ip to mac
-	map<uint32_t, net::macaddr> arp_table;
-
-
-	// send information to a mac address over ethernet
-	int send(net::macaddr, uint16_t proto /* host ordered */, void *data, size_t len);
+  // send information to a mac address over ethernet
+  int send(net::macaddr, uint16_t proto /* host ordered */, void *data,
+	   size_t len);
 };
 
 net::interface *find_interface(net::macaddr);

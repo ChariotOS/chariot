@@ -68,6 +68,8 @@ struct sock {
   virtual ssize_t recvfrom(void *data, size_t len, int flags, const sockaddr *,
 			   size_t);
 
+	virtual int bind(const struct sockaddr *addr, size_t len);
+
  private:
   void *_private;
 };
@@ -106,6 +108,8 @@ struct udpsock : public net::ipv4sock {
 			   size_t);
 
   void *send_buffer = NULL;
+
+	int bind(const struct sockaddr *addr, size_t len);
 };
 
 }  // namespace net

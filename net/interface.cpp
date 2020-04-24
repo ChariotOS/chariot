@@ -1,3 +1,4 @@
+#include <fifo_buf.h>
 #include <lock.h>
 #include <map.h>
 #include <net/eth.h>
@@ -8,7 +9,6 @@
 #include <sched.h>
 #include <string.h>
 #include <util.h>
-#include <fifo_buf.h>
 
 static spinlock interfaces_lock;
 static map<string, struct net::interface *> interfaces;
@@ -126,8 +126,6 @@ uint32_t net::ntohl(uint32_t n) {
 
 static long total_bytes_recv = 0;
 
-
-
 static void print_packet(ref<net::pkt_buff> &pbuf) {
   auto eth = pbuf->eth();
   auto arp = pbuf->arph();
@@ -177,12 +175,10 @@ static void handle_packet(ref<net::pkt_buff> &pbuf) {
   print_packet(pbuf);
 }
 
-
 struct pending_packet {
   ref<net::pkt_buff> pbuf;
 };
 static fifo_buf pending_packets;
-
 
 int net::task(void *) {
   int octet = 15;
@@ -206,14 +202,15 @@ int net::task(void *) {
     return true;
   });
   while (1) {
-		struct pending_packet *p = NULL;
-		int n = pending_packets.read(&p, sizeof(p), true);
+    struct pending_packet *p = NULL;
+    int n = pending_packets.read(&p, sizeof(p), true);
 
-		// not sure when this would happen
-		if (n != 8) panic("somehow the pending_packets fifo buffer got out of sync");
+    // not sure when this would happen
+    if (n != 8)
+      panic("somehow the pending_packets fifo buffer got out of sync");
 
-		handle_packet(p->pbuf);
-		delete p;
+    handle_packet(p->pbuf);
+    delete p;
   }
 }
 
@@ -226,7 +223,7 @@ void net::packet_received(ref<net::pkt_buff> pbuf) {
 
   auto *p = new pending_packet;
   p->pbuf = pbuf;
-	// printk("created %p\n", p);
-	pending_packets.write(&p, sizeof(p), false);
-	// printk("pending size: %d\n", pending_packets.size());
+  // printk("created %p\n", p);
+  pending_packets.write(&p, sizeof(p), false);
+  // printk("pending size: %d\n", pending_packets.size());
 }

@@ -50,11 +50,9 @@ net::udpsock::~udpsock(void) {
   }
   active_socket_lock.write_lock();
   active_sockets.remove(net::host_ord(local_port));
-  /*
 printk("udp scoket port %d unbound (%d/%d sent/recv). %d total\n",
    net::host_ord(local_port), total_sent, total_recv,
    active_sockets.size());
-   */
   active_socket_lock.write_unlock();
 }
 
@@ -108,5 +106,36 @@ ssize_t net::udpsock::sendto(void *data, size_t len, int flags,
 
 ssize_t net::udpsock::recvfrom(void *data, size_t len, int flags,
 			       const sockaddr *, size_t) {
+  return -ENOTIMPL;
+}
+
+int net::udpsock::bind(const struct sockaddr *addr, size_t len) {
+  if (len != sizeof(sockaddr_in)) return -EINVAL;
+
+  auto *sin = (struct sockaddr_in *)addr;
+  printk("udp bind to %I:%d\n", sin->sin_addr, net::host_ord(sin->sin_port));
+
+  // TODO: check for permission
+  active_socket_lock.write_lock();
+
+  uint16_t hport = net::host_ord(sin->sin_port);
+
+  if (active_sockets.contains(hport)) {
+    active_socket_lock.write_unlock();
+    return -EEXIST;
+  }
+
+	auto current_port = net::host_ord(local_port);
+
+	// not bound?
+	if (current_port != 0) {
+		active_sockets.remove(current_port);
+	}
+
+  local_port = sin->sin_port;
+  active_sockets.set(hport, this);
+  active_socket_lock.write_unlock();
+
+  printk("bind udp\n");
   return -ENOTIMPL;
 }

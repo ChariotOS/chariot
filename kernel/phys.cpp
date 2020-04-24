@@ -148,6 +148,8 @@ void *phys::alloc(int npages) {
   void *p = use_kernel_vm ? late_phys_alloc(npages) : early_phys_alloc(npages);
 
   unlock();
+	// size_t nbytes = kmem.nfree * PGSIZE;
+	// printk("phys: %zuB free\n", nbytes);
   return p;
 }
 
