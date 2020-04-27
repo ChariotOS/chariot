@@ -31,6 +31,13 @@ static spinlock cons_input_lock;
 static fifo_buf console_fifo;
 
 static void consputc(int c) {
+  if (c == CONS_DEL) {
+    serial_send(COM1, '\b');
+    serial_send(COM1, ' ');
+    serial_send(COM1, '\b');
+  } else {
+    serial_send(COM1, c);
+  }
 	vga::putchar(c);
 }
 
