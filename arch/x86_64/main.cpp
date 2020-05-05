@@ -69,6 +69,7 @@ int kernel_init(void *);
 // ms per tick
 #define TICK_FREQ 100
 
+
 static void kmain2(void) {
   irq::init();
   enable_sse();
@@ -101,30 +102,48 @@ static void kmain2(void) {
 }
 
 
-static unsigned long seed;
-int rand(void)
-{
-	seed = 6364136223846793005ULL*seed + 1;
-	return seed>>33;
-}
+
+
+#include <chan.h>
+
+struct foo {
+
+	char buf[50];
+	inline foo(const char *s) {
+		for (int i = 0; s[i] != '\0'; i++) {
+			if (i == 50) {
+				buf[49] = 0;
+				break;
+			}
+			buf[i] = s[i];
+		}
+		printk("foo()\n");
+	}
+	inline ~foo() {
+		printk("~foo()\n");
+	}
+};
 
 int kernel_init(void *) {
+
+	struct foo f("hello world");
+	chan<struct foo> c;
+	c.send(move(f));
+
+	struct foo n = c.recv();
+
+	while (1) {}
 
 
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
 
-
-
-
   vga::early_init();
-
 
 	// at this point, the pit is being used for interrupts,
 	// so we should go setup lapic for that
 	smp::lapic_init();
   syscall_init();
-
 
   // walk the kernel modules and run their init function
   KINFO("Calling kernel module init functions\n");
@@ -140,6 +159,8 @@ int kernel_init(void *) {
 
 	auto root_name = kargs::get("root", "/dev/ata0p1");
 	assert(root_name);
+
+	printk("%zu b\n", sizeof(fs::inode));
 
   int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);
 	if (mnt_res != 0) {

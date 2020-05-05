@@ -126,6 +126,7 @@ static void *get_framebuffer_address(void) {
 }
 
 static ssize_t fb_write(fs::file &fd, const char *buf, size_t sz) {
+
   if (!fd) return -1;
   if (vga_fba == nullptr) return -1;
 
@@ -152,6 +153,7 @@ static int fb_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
   if (!curproc->mm->validate_struct<struct ck_fb_info>(
 	  arg, VALIDATE_READ | VALIDATE_WRITE))
     return -1;
+
 
   switch (cmd) {
     case FB_SET_INFO:

@@ -113,10 +113,10 @@ global _start
 _start:
 
 	;; load up the boot stack
-  mov esp, boot_stack + BOOT_STACK_SIZE
+	mov esp, boot_stack + BOOT_STACK_SIZE
 	mov ebp, esp
 
-	;; move the info that grub passes into the kenrel into
+	;; move the info that grub passes into the kernel into
 	;; arguments that we will use when calling kmain later
 	mov edi, ebx
 	mov esi, eax
@@ -164,13 +164,13 @@ _start:
 [bits 64]
 [section .init_high]
 .next:
- ; re-load the GDTR with a virtual base address
-  mov rax, [gdtr + 2]
-  mov rbx, KERNEL_VMA
-  add rax, rbx
-  mov [gdtr + 2], rax
-  mov rax, gdtr + KERNEL_VMA
-  lgdt [rax]
+	; re-load the GDTR with a virtual base address
+	mov rax, [gdtr + 2]
+	mov rbx, KERNEL_VMA
+	add rax, rbx
+	mov [gdtr + 2], rax
+	mov rax, gdtr + KERNEL_VMA
+	lgdt [rax]
 
   mov rbp, 0
   mov rsp, qword stack + STACK_SIZE

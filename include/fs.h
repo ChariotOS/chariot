@@ -38,7 +38,6 @@ struct directory_entry {
   string name;
 };
 
-
 struct block_operations {
   // used to populate block_count and block_size
   int (&init)(fs::blkdev &);
@@ -99,12 +98,11 @@ struct blkdev {
   void *priv;
 };
 
-
 // used in the kernel to look up "/dev/*" block devices before we have /dev
-// (and really, the kernel cannot rely on userspace filesystems in the end either.
-// implemented in kernel/dev/driver.cpp (where we have the driver name info)
+// (and really, the kernel cannot rely on userspace filesystems in the end
+// either. implemented in kernel/dev/driver.cpp (where we have the driver name
+// info)
 struct fs::blkdev *bdev_from_path(const char *);
-
 
 struct superblock {
   //
@@ -157,9 +155,9 @@ struct sb_operations {
 struct sb_information {
   const char *name;
 
-	// return a superblock containing the root inode
-  struct fs::superblock *(&mount)(struct sb_information *, const char *args, int flags,
-			 const char *device);
+  // return a superblock containing the root inode
+  struct fs::superblock *(&mount)(struct sb_information *, const char *args,
+				  int flags, const char *device);
 
   struct sb_operations &ops;
 };
@@ -182,7 +180,7 @@ ref<fs::file> bdev_to_file(fs::blkdev *);
 struct direntry {
   int type = ENT_RES;
   string name;
-  int nr = -1; // for unresolved
+  int nr = -1;	// for unresolved
   struct inode *ino;
 
   // if this direntry is a mount, this inode will shadow it
@@ -272,17 +270,17 @@ struct inode {
 
   // the device that the file is located on
   struct {
-    int major, minor;
+    uint16_t major, minor;
   } dev;
   uint32_t ino = 0;  // inode (in systems that support it)
-  uint32_t uid = 0;
-  uint32_t gid = 0;
+  uint16_t uid = 0;
+  uint16_t gid = 0;
   uint32_t link_count = 0;
   uint32_t atime = 0;
   uint32_t ctime = 0;
   uint32_t mtime = 0;
   uint32_t dtime = 0;
-  uint32_t block_size = 0;
+  uint16_t block_size = 0;
 
   // for devices
   int major, minor;
@@ -312,14 +310,13 @@ struct inode {
       const char *name;
     } dir;
 
-    // T_SOCK
-    struct net::sock *sk;
-
-		// T_BLK
+    // T_BLK
     struct {
       fs::blkdev *dev;
     } blk;
   };
+
+  struct net::sock *sk = NULL;
 
   /*
    * the directory entry list in this->as.dir is a linked list that must be
@@ -331,12 +328,12 @@ struct inode {
   int register_direntry(string name, int type, int nr, struct inode * = NULL);
   int remove_direntry(string name);
   struct inode *get_direntry(const char *name);
-	int get_direntry_r(const char *name);
+  int get_direntry_r(const char *name);
   void walk_direntries(func<bool(const string &, struct inode *)>);
   vec<string> direntries(void);
   int add_mount(const char *name, struct inode *other_root);
 
-	struct direntry *get_direntry_raw(const char *name);
+  struct direntry *get_direntry_raw(const char *name);
 
   // if the inode is a directory, set its name. NOP otherwise
   int set_name(const string &);
@@ -385,8 +382,7 @@ struct pipe : public fs::inode {
 };
 
 class file : public refcounted<file> {
-
-	int m_error = 0;
+  int m_error = 0;
 
  public:
   // must construct file descriptors via these factory funcs
@@ -401,7 +397,7 @@ class file : public refcounted<file> {
   off_t seek(off_t offset, int whence = SEEK_SET);
   ssize_t read(void *, ssize_t);
   ssize_t write(void *data, ssize_t);
-	int ioctl(int cmd, unsigned long arg);
+  int ioctl(int cmd, unsigned long arg);
 
   int close();
 
@@ -409,7 +405,7 @@ class file : public refcounted<file> {
 
   fs::file_operations *fops(void);
 
-	inline int errorcode() {return m_error;};
+  inline int errorcode() { return m_error; };
 
   ~file(void);
 
@@ -426,8 +422,5 @@ class file : public refcounted<file> {
 
 };  // namespace fs
 
-
-static inline fs::inode *geti(fs::inode *i) {
-	return fs::inode::acquire(i);
-}
+static inline fs::inode *geti(fs::inode *i) { return fs::inode::acquire(i); }
 #endif

@@ -30,6 +30,7 @@ static spinlock cons_input_lock;
 // the console fifo is defined globally
 static fifo_buf console_fifo;
 
+
 static void consputc(int c) {
   if (c == CONS_DEL) {
     serial_send(COM1, '\b');

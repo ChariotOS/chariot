@@ -8,6 +8,7 @@
 #include <printk.h>
 #include <sched.h>
 #include <string.h>
+#include <chan.h>
 #include <util.h>
 
 static spinlock interfaces_lock;
@@ -178,15 +179,14 @@ static void handle_packet(ref<net::pkt_buff> &pbuf) {
 struct pending_packet {
   ref<net::pkt_buff> pbuf;
 };
-static fifo_buf pending_packets;
+static chan<pending_packet*> pending_packets;
 
 int net::task(void *) {
-  int octet = 15;
 
   // initialize all the network interfaces
   //  TODO: this is probably a bad idea, since we are assuming that these addrs
-  //  are safe
-  //        without asking DHCP first.
+  //  are safe without asking DHCP first.
+  int octet = 15;
   net::each_interface([&](const string &name, net::interface &i) -> bool {
     i.address = net::net_ord(
 	net::ipv4::parse_ip(string::format("10.0.0.%d", octet++).get()));
@@ -202,13 +202,7 @@ int net::task(void *) {
     return true;
   });
   while (1) {
-    struct pending_packet *p = NULL;
-    int n = pending_packets.read(&p, sizeof(p), true);
-
-    // not sure when this would happen
-    if (n != 8)
-      panic("somehow the pending_packets fifo buffer got out of sync");
-
+    struct pending_packet *p = pending_packets.recv();
     handle_packet(p->pbuf);
     delete p;
   }
@@ -223,7 +217,5 @@ void net::packet_received(ref<net::pkt_buff> pbuf) {
 
   auto *p = new pending_packet;
   p->pbuf = pbuf;
-  // printk("created %p\n", p);
-  pending_packets.write(&p, sizeof(p), false);
-  // printk("pending size: %d\n", pending_packets.size());
+	pending_packets.send(move(p));
 }

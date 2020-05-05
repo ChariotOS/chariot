@@ -121,8 +121,8 @@ class ext2 final : public fs::superblock {
 
 
 
-  u32 balloc(void);
-  void bfree(u32);
+  uint32_t balloc(void);
+  void bfree(uint32_t);
 
   // update the disk copy of the superblock
   int write_superblock(void);

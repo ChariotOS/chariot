@@ -13,7 +13,7 @@ static int uart = 0;
 
 void serial_install() {
   // Turn off the FIFO
-  outb(COM1 + 2, 0);
+  // outb(COM1 + 2, 0);
 
   // BAUD baud, 8 data bits, 1 stop bit, parity off.
   outb(COM1 + 3, 0x80);  // Unlock divisor

@@ -250,6 +250,18 @@ long fs::ext2::allocate_inode(void) {
   return res;
 }
 
+u32 fs::ext2::balloc(void) {
+  scoped_lock l(m_lock);
+
+  return 0;
+}
+
+void fs::ext2::bfree(u32 block) {
+  scoped_lock l(m_lock);
+
+  //
+}
+
 /* does not take a cache lock! */
 struct fs::ext2_block_cache_line *fs::ext2::get_cache_line(int cba) {
   int oldest = -1;
@@ -380,14 +392,6 @@ struct fs::inode *fs::ext2::get_inode(u32 index) {
   }
   return inodes[index];
 }
-
-u32 fs::ext2::balloc(void) {
-  scoped_lock l(m_lock);
-
-  return 0;
-}
-
-void fs::ext2::bfree(u32 block) { scoped_lock l(m_lock); }
 
 int ext2_sb_init(struct fs::superblock &sb) { return -ENOTIMPL; }
 

@@ -33,6 +33,8 @@ static int ilog2(int x) {
  *        and no IO occurs
  * @block: the block index to find the path of
  * @offsets: the indirect path array to fill in
+ * @boundary: an optional pointer to an integer that contains how many blocks
+ *            remain in the last offset's block pointer
  */
 static int block_to_path(fs::inode *node, int i_block, int offsets[4],
 			 int *boundary = nullptr) {
@@ -68,7 +70,7 @@ static int block_to_path(fs::inode *node, int i_block, int offsets[4],
     offsets[n++] = i_block & (ptrs - 1);
     final = ptrs;
   } else {
-    printk("[EXT2 WARN] %s: block is too big!\n", __func__);
+    printk("[EXT2 WARN] %s: i_block is too big!\n", __func__);
   }
 
   if (boundary) *boundary = final - 1 - (i_block & (ptrs - 1));
@@ -113,7 +115,13 @@ static ssize_t ext2_raw_rw(fs::inode &ino, char *buf, size_t sz, off_t offset,
 			   bool write) {
   fs::ext2 *efs = static_cast<fs::ext2 *>(&ino.sb);
   if (write) {
+		off_t total_needed = offset + sz;
+		printk("total_needed=%zu, current=%zu\n", total_needed, ino.size);
+		if (ino.size < total_needed) {
+			printk("must truncate\n");
+		}
     // TODO: ensure blocks are avail
+		hexdump(buf, sz, true);
   }
 
   if (offset > ino.size) return 0;

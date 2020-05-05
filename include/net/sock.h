@@ -1,8 +1,8 @@
 #pragma once
 
 #include <lock.h>
-#include <net/socket.h>
 #include <net/ipv4.h>
+#include <net/socket.h>
 #include <ptr.h>
 #include <types.h>
 
@@ -38,12 +38,18 @@ struct proto {
  * is T_SOCK
  */
 struct sock {
+	enum class role : uint8_t {
+		none, accepting, listener, connected, connecting
+	};
+
+	net::sock::role role = role::none;
+
   int domain;	 // AF_*
   int type;	 // SOCK_*
   int protocol;	 // ignored in this kernel, but nice to have
   bool connected = false;
-	size_t total_sent = 0;
-	size_t total_recv = 0;
+  size_t total_sent = 0;
+  size_t total_recv = 0;
 
   sock(int domain, int type, int proto);
   virtual ~sock(void);
@@ -68,10 +74,32 @@ struct sock {
   virtual ssize_t recvfrom(void *data, size_t len, int flags, const sockaddr *,
 			   size_t);
 
-	virtual int bind(const struct sockaddr *addr, size_t len);
+  virtual int bind(const struct sockaddr *addr, size_t len);
 
  private:
   void *_private;
+};
+
+struct localsock : public net::sock {
+
+
+  localsock(int type);
+  virtual ~localsock(void);
+
+  virtual int connect(struct sockaddr *uaddr, int addr_len);
+  virtual int disconnect(int flags);
+  virtual net::sock *accept(int flags, int &error);
+
+  // implemented by the network layer (OSI)
+  virtual ssize_t sendto(void *data, size_t len, int flags, const sockaddr *,
+			 size_t);
+  virtual ssize_t recvfrom(void *data, size_t len, int flags, const sockaddr *,
+			   size_t);
+
+  virtual int bind(const struct sockaddr *addr, size_t len);
+
+  // intrusive linked list so we can store them all
+  struct net::localsock *next, *prev;
 };
 
 struct ipv4sock : public net::sock {
@@ -107,9 +135,7 @@ struct udpsock : public net::ipv4sock {
   virtual ssize_t recvfrom(void *data, size_t len, int flags, const sockaddr *,
 			   size_t);
 
-  void *send_buffer = NULL;
-
-	int bind(const struct sockaddr *addr, size_t len);
+  int bind(const struct sockaddr *addr, size_t len);
 };
 
 }  // namespace net

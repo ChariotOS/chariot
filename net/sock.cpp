@@ -23,6 +23,13 @@ net::sock *net::sock::create(int domain, int type, int protocol, int &err) {
     }
   }
 
+	if (domain == PF_LOCAL) {
+		if (type == SOCK_STREAM) {
+			err = 0;
+			return new net::localsock(type);
+		}
+	}
+
   err = -EINVAL;
   return NULL;
 }

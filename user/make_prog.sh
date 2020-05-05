@@ -11,8 +11,8 @@ fi
 
 
 mkdir -p src/$1
-echo "out = bin/$1" >> src/$1/Makefile
-echo "srcs += $1.c" >> src/$1/Makefile
+echo "out = bin/$1" >> bin/$1/Makefile
+echo "srcs += $1.c" >> bin/$1/Makefile
 
 
-touch src/$1/$1.c
+touch bin/$1/$1.c

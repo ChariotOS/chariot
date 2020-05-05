@@ -43,8 +43,6 @@ void format_ip(uint32_t ip, char *dst);
 uint16_t checksum(const net::ipv4::hdr &p);
 
 
-int transmit(net::interface &i, uint32_t dst, uint16_t proto, void *data, size_t sz);
-
 struct route {
 	bool valid = false;
 	net::interface *in;

@@ -13,6 +13,25 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+
+
+#define MSG_INVAL 0
+struct msgclient {
+	// a file descriptor that can be polled or selected.
+	int fd;
+	int (*handle_msg)(struct msgclient *, int msg_type);
+
+	// private data.
+	void *data;
+};
+
+/**
+ * every client filedescriptor has a message client
+ * structure assigned to it. Mapped through the fd nr.
+ */
+static uint64_t nclients = 32;
+static struct msgclient *clients;
+
 struct rect {
   int x, y;
   int w, h;
@@ -42,17 +61,20 @@ static void compose(void);
 size_t current_ms() { return syscall(SYS_gettime_microsecond) / 1000; }
 
 int main(int argc, char **argv) {
-	exit(0);
   fbfd = open("/dev/fb", O_RDWR);
   if (fbfd < 0) {
     perror("Framebuffer");
     exit(EXIT_FAILURE);
   }
 
+	// allocate the clients list
+	clients = calloc(sizeof(struct msgclient*), nclients);
+
+
   screen_size.x = 0;
   screen_size.y = 0;
-  screen_size.w = 1024;
-  screen_size.h = 768;
+  screen_size.w = 640;
+  screen_size.h = 480;
 
   struct ck_fb_info fbinfo;
   fbinfo.active = 1;
@@ -66,7 +88,7 @@ int main(int argc, char **argv) {
   size_t last_frame = current_ms();
   while (1) {
     compose();
-		// printf("frame @ %zu\n", last_frame);
+    // printf("frame @ %zu\n", last_frame);
 
 #define FPS 60
     size_t now;
@@ -77,6 +99,9 @@ int main(int argc, char **argv) {
     }
     last_frame = now;
     frame++;
+		if (frame == 100) {
+			exit(0);
+		}
   }
 
   free(buffer);
@@ -84,7 +109,7 @@ int main(int argc, char **argv) {
   return EXIT_SUCCESS;
 }
 
-static void blit(void) { /*write(fbfd, buffer, BSIZE);*/ }
+static void blit(void) { write(fbfd, buffer, BSIZE); }
 
 static void set_pixel(int x, int y, int c) {
   if (x > WIDTH || x < 0 || y > HEIGHT || y < 0) return;
@@ -119,14 +144,13 @@ double sin(double angle) {
 double off = 0.0;
 
 static void compose(void) {
-
   struct window win;
 
-  const int H = 400;
+  const int H = 200;
   // arbitrary
   win.pos.w = 200;
   win.pos.h = sin(off / 2.5) * (H / 2) + H;
-  win.pos.x = (int)(sin(off) * 500 / 2 + WIDTH / 2 - win.pos.w / 2);
+  win.pos.x = (int)(sin(off) * 300 / 2 + WIDTH / 2 - win.pos.w / 2);
   win.pos.y = (HEIGHT / 2) - (win.pos.h / 2);
 
   off += 0.1;

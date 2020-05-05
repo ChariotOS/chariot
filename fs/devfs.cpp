@@ -81,7 +81,6 @@ static struct fs::inode *devfs_get_root(void) {
 }
 
 void devfs_register_device(string name, int type, int major, int minor) {
-	printk("here registering %s!\n", name.get());
   auto root = devfs_get_root();
 
   auto node = devfs_create_inode(type);

@@ -30,29 +30,17 @@ static uint16_t next_ephemeral_port(void) {
 
 net::udpsock::udpsock(int domain, int type, int protocol)
     : ipv4sock(domain, type, protocol) {
-  send_buffer = kmalloc(1500);
 
   active_socket_lock.write_lock();
   uint16_t port = next_ephemeral_port();
   local_port = net::net_ord(port);
   active_sockets.set(port, this);
-  /*
-printk("udp scoket port %d bound. %d total\n", net::host_ord(local_port),
-   active_sockets.size());
-   */
   active_socket_lock.write_unlock();
 }
 
 net::udpsock::~udpsock(void) {
-  if (send_buffer != NULL) {
-    kfree(send_buffer);
-    send_buffer = NULL;
-  }
   active_socket_lock.write_lock();
   active_sockets.remove(net::host_ord(local_port));
-printk("udp scoket port %d unbound (%d/%d sent/recv). %d total\n",
-   net::host_ord(local_port), total_sent, total_recv,
-   active_sockets.size());
   active_socket_lock.write_unlock();
 }
 
@@ -84,7 +72,7 @@ ssize_t net::udpsock::sendto(void *data, size_t len, int flags,
     }
 
     auto buf = kmalloc(final_len);
-    auto *udp = (net::udp::hdr *)send_buffer;
+    auto *udp = (net::udp::hdr *)buf;
 
     // this should always "succeed"
     udp->length = net::net_ord((uint16_t)final_len);
@@ -113,7 +101,7 @@ int net::udpsock::bind(const struct sockaddr *addr, size_t len) {
   if (len != sizeof(sockaddr_in)) return -EINVAL;
 
   auto *sin = (struct sockaddr_in *)addr;
-  printk("udp bind to %I:%d\n", sin->sin_addr, net::host_ord(sin->sin_port));
+  // printk("udp bind to %I:%d\n", sin->sin_addr, net::host_ord(sin->sin_port));
 
   // TODO: check for permission
   active_socket_lock.write_lock();
@@ -136,6 +124,5 @@ int net::udpsock::bind(const struct sockaddr *addr, size_t len) {
   active_sockets.set(hport, this);
   active_socket_lock.write_unlock();
 
-  printk("bind udp\n");
-  return -ENOTIMPL;
+  return 0;
 }
