@@ -104,36 +104,7 @@ static void kmain2(void) {
 
 
 
-#include <chan.h>
-
-struct foo {
-
-	char buf[50];
-	inline foo(const char *s) {
-		for (int i = 0; s[i] != '\0'; i++) {
-			if (i == 50) {
-				buf[49] = 0;
-				break;
-			}
-			buf[i] = s[i];
-		}
-		printk("foo()\n");
-	}
-	inline ~foo() {
-		printk("~foo()\n");
-	}
-};
-
 int kernel_init(void *) {
-
-	struct foo f("hello world");
-	chan<struct foo> c;
-	c.send(move(f));
-
-	struct foo n = c.recv();
-
-	while (1) {}
-
 
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
