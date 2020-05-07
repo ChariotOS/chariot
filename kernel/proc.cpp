@@ -499,9 +499,8 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
       if (options & WNOHANG) return -1;
     }
 
-    // TODO: use a waitqueue
-    // me->waiters.wait();
-    sched::yield();
+		// wait on the waiter's semaphore
+    me->waiters.wait();
   }
 
   return res_pid;

@@ -76,6 +76,10 @@ int dup2(int fildes, int fildes2);
 
 
 
+int usleep(unsigned long usec);
+
+
+
 #ifdef __cplusplus
 }
 #endif

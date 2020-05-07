@@ -9,6 +9,7 @@
 #include <signals.h>
 #include <string.h>
 #include <vec.h>
+#include <sem.h>
 #define SIGBIT(n) (1 << (n))
 
 #define RING_KERN 0
@@ -19,6 +20,11 @@
 #define PS_ZOMBIE (1)
 #define PS_BLOCKED (2)
 #define PS_EMBRYO (3)
+
+
+namespace sched {
+void block();
+}
 
 struct thread_context {
   unsigned long r15;
@@ -117,7 +123,7 @@ struct process final : public refcounted<struct process> {
   spinlock datalock;
 
   /* threads stuck in a waitpid() call */
-  waitqueue waiters;
+	semaphore waiters = semaphore(0);
 
   spinlock file_lock;
   map<int, ref<fs::file>> open_files;
@@ -179,6 +185,21 @@ struct thread_waitqueue_info {
   waitqueue *current_wq = NULL;
 };
 
+
+struct thread_blocker {
+	virtual ~thread_blocker(void) {}
+	virtual bool should_unblock(struct thread &t, unsigned long now_us) = 0;
+};
+
+struct sleep_blocker final : public thread_blocker {
+	// the end time to wait until.
+	unsigned long end_us = 0;
+
+	sleep_blocker(unsigned long us_to_sleep);
+	virtual ~sleep_blocker(void) {}
+	virtual bool should_unblock(struct thread &t, unsigned long now_us);
+};
+
 struct thread final {
   pid_t tid;  // unique thread id
   pid_t pid;  // process id. If this thread is the main thread, tid == pid
@@ -194,6 +215,8 @@ struct thread final {
   long stack_size;
   void *stack;
 
+
+	thread_blocker *blocker = NULL;
 
 
 	struct {
@@ -226,6 +249,24 @@ struct thread final {
     };
   };
 
+#define BLOCKRES_NORMAL 0
+#define BLOCKRES_SIGNAL 1
+#define BLOCKRES_DEATH  2
+
+	template<typename T, class... Args>
+	[[nodiscard]] int block(Args&&... args) {
+
+
+		T t(forward<Args>(args)...);
+		blocker = &t;
+
+		sched::block();
+
+		// remove the blocker
+		blocker = NULL;
+		return BLOCKRES_NORMAL;
+	}
+
   /**
    * Awaken the thread from it's waitqueue. Being rudely awoken means that the
    * waitqueue may not have been completed. A thread would be rudely awoken when
@@ -248,6 +289,7 @@ struct thread final {
   ~thread(void);
 };
 
+
 namespace sched {
 
 bool init(void);
@@ -264,7 +306,6 @@ void yield(void);
 
 void do_yield(int status);
 
-void block();
 
 // does not return
 void run(void);

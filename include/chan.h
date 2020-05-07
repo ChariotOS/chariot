@@ -22,9 +22,6 @@ class chan {
     // not sure when this would happen
     if (n != sizeof(T))
       panic("channel read %d bytes when it expected %d", n, sizeof(T));
-
-    printk("recv:\n");
-    hexdump(buf, sizeof(T), true);
     return *(T *)buf;
   }
 
@@ -35,4 +32,9 @@ class chan {
     *((T *)buf) = move(val);
     backing.write(buf, sizeof(T), wait);
   }
+
+
+	inline bool avail(void) {
+		return backing.size() >= sizeof(T);
+	}
 };

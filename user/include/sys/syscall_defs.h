@@ -34,6 +34,7 @@
 #define SYS_dirent                   (0x40)
 #define SYS_localtime                (0x50)
 #define SYS_gettime_microsecond      (0x51)
+#define SYS_usleep                   (0x52)
 #define SYS_socket                   (0x60)
 #define SYS_sendto                   (0x61)
 #define SYS_bind                     (0x62)

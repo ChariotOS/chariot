@@ -85,23 +85,13 @@ int main(int argc, char **argv) {
 
   buffer = calloc(sizeof(uint32_t), WIDTH * HEIGHT);
 
-  size_t last_frame = current_ms();
+#define FPS 60
+
   while (1) {
     compose();
-    // printf("frame @ %zu\n", last_frame);
-
-#define FPS 60
-    size_t now;
-    while (1) {
-      now = current_ms();
-      if (now - last_frame >= (1000 / FPS)) break;
-      // yield();
-    }
-    last_frame = now;
+		usleep(1000 * 1000 / FPS);
     frame++;
-		if (frame == 100) {
-			exit(0);
-		}
+		if (frame > FPS * 3) break;
   }
 
   free(buffer);
@@ -141,21 +131,23 @@ double sin(double angle) {
   return ret;
 }
 
-double off = 0.0;
+int off = 0.0;
 
 static void compose(void) {
   struct window win;
 
-  const int H = 200;
+	memset(buffer, 0, WIDTH * HEIGHT * sizeof(uint32_t));
+
+  // const int H = 200;
   // arbitrary
   win.pos.w = 200;
-  win.pos.h = sin(off / 2.5) * (H / 2) + H;
-  win.pos.x = (int)(sin(off) * 300 / 2 + WIDTH / 2 - win.pos.w / 2);
-  win.pos.y = (HEIGHT / 2) - (win.pos.h / 2);
+  win.pos.h = 200; // sin(off / 2.5) * (H / 2) + H;
+  win.pos.x = off % WIDTH; // (int)(sin(off) * 300 / 2 + WIDTH / 2 - win.pos.w / 2);
+  win.pos.y = 20; // (HEIGHT / 2) - (win.pos.h / 2);
 
-  off += 0.1;
+  off += 1;
 
-  win.background_color = off * 100;
+  win.background_color = 0xFF00FF;
   draw_window(&win);
 
   /*

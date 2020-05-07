@@ -32,6 +32,7 @@ static fifo_buf console_fifo;
 
 
 static void consputc(int c) {
+	/*
   if (c == CONS_DEL) {
     serial_send(COM1, '\b');
     serial_send(COM1, ' ');
@@ -39,6 +40,7 @@ static void consputc(int c) {
   } else {
     serial_send(COM1, c);
   }
+	*/
 	vga::putchar(c);
 }
 

@@ -34,7 +34,7 @@ void sys::exit_proc(int code) {
 
   curproc->exit_code = code;
   curproc->exited = true;
-  curproc->parent->waiters.notify_all();
+  curproc->parent->waiters.post();
 
   sched::exit();
 }

@@ -8,7 +8,6 @@
 static unsigned long current_second = 0;
 static unsigned long us_this_second = 0;
 unsigned long time::now_us(void) {
-
 	// TODO: this function can possibly return the same value multiple times?
 	// I'm sure this is fine, but still.
 	return (current_second * US_PER_SEC) + us_this_second;

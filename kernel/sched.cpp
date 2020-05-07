@@ -4,6 +4,8 @@
 #include <map.h>
 #include <sched.h>
 #include <single_list.h>
+#include <syscall.h>
+#include <time.h>
 #include <wait.h>
 
 // #define SCHED_DEBUG
@@ -74,20 +76,29 @@ static struct thread *get_next_thread(void) {
     Q.queue_lock.lock();
 
     for (auto *t = Q.task_queue; t != NULL; t = t->sched.next) {
+      if (t->state == PS_BLOCKED) {
+	// poll the thread's blocker if it exists
+	if (t->blocker != NULL) {
+	  if (t->blocker->should_unblock(*t, time::now_us())) {
+	    t->state = PS_RUNNABLE;
+	  }
+	}
+      }
+
       if (t->state == PS_RUNNABLE) {
-        nt = t;
+	nt = t;
 
-        // remove from the queue
-        if (t->sched.prev != NULL) t->sched.prev->sched.next = t->sched.next;
-        if (t->sched.next != NULL) t->sched.next->sched.prev = t->sched.prev;
-        if (Q.task_queue == t) Q.task_queue = t->sched.next;
-        if (Q.last_task == t) Q.last_task = t->sched.prev;
+	// remove from the queue
+	if (t->sched.prev != NULL) t->sched.prev->sched.next = t->sched.next;
+	if (t->sched.next != NULL) t->sched.next->sched.prev = t->sched.prev;
+	if (Q.task_queue == t) Q.task_queue = t->sched.next;
+	if (Q.last_task == t) Q.last_task = t->sched.prev;
 
-        Q.ntasks--;
-        t->sched.prev = NULL;
-        t->sched.next = NULL;
+	Q.ntasks--;
+	t->sched.prev = NULL;
+	t->sched.next = NULL;
 
-        break;
+	break;
       }
     }
 
@@ -153,9 +164,7 @@ int sched::add_task(struct thread *tsk) {
   return 0;
 }
 
-
 int sched::remove_task(struct thread *t) {
-
   auto &Q = mlfq[t->sched.priority];
 
   cpu::pushcli();
@@ -166,11 +175,9 @@ int sched::remove_task(struct thread *t) {
     t->sched.next->sched.prev = t->sched.prev;
   }
 
-
   if (t->sched.prev) {
     t->sched.prev->sched.next = t->sched.next;
   }
-
 
   if (Q.last_task == t) {
     Q.last_task = t->sched.prev;
@@ -249,8 +256,6 @@ void sched::yield() {
 }
 void sched::exit() { do_yield(PS_ZOMBIE); }
 
-
-
 void sched::dumb_sleepticks(unsigned long t) {
   auto now = cpu::get_ticks();
 
@@ -263,7 +268,7 @@ static void schedule_one() {
 
   if (thd == nullptr) {
     // idle loop when there isn't a task
-		cpu::current().kstat.iticks++;
+    cpu::current().kstat.iticks++;
     asm("hlt");
     return;
   }
@@ -284,7 +289,6 @@ void sched::run() {
   u64 last_boost = 0;
 
   for (;;) {
-
     schedule_one();
 
     auto ticks = cpu::get_ticks();
@@ -299,40 +303,40 @@ void sched::run() {
 
       HI.queue_lock.lock();
       for (int i = 0; i < PRIORITY_HIGH; i++) {
-        auto &Q = mlfq[i];
+	auto &Q = mlfq[i];
 
-        Q.queue_lock.lock();
+	Q.queue_lock.lock();
 
-        auto loq = Q.task_queue;
+	auto loq = Q.task_queue;
 
-        if (loq != NULL) {
-          for (auto *c = loq; c != NULL; c = c->sched.next) {
-            if (!c->kern_idle) c->sched.priority = PRIORITY_HIGH;
-          }
+	if (loq != NULL) {
+	  for (auto *c = loq; c != NULL; c = c->sched.next) {
+	    if (!c->kern_idle) c->sched.priority = PRIORITY_HIGH;
+	  }
 
-          // take the entire queue and add it to the end of the HIGH queue
-          if (HI.task_queue != NULL) {
-            assert(HI.last_task != NULL);
-            HI.last_task->sched.next = loq;
-            loq->sched.prev = HI.last_task;
+	  // take the entire queue and add it to the end of the HIGH queue
+	  if (HI.task_queue != NULL) {
+	    assert(HI.last_task != NULL);
+	    HI.last_task->sched.next = loq;
+	    loq->sched.prev = HI.last_task;
 
-            // inherit the last task from the old Q
-            HI.last_task = Q.last_task;
-          } else {
-            assert(HI.ntasks == 0);
-            HI.task_queue = Q.task_queue;
-            HI.last_task = Q.last_task;
-          }
+	    // inherit the last task from the old Q
+	    HI.last_task = Q.last_task;
+	  } else {
+	    assert(HI.ntasks == 0);
+	    HI.task_queue = Q.task_queue;
+	    HI.last_task = Q.last_task;
+	  }
 
-          HI.ntasks += Q.ntasks;
-          nmoved += Q.ntasks;
+	  HI.ntasks += Q.ntasks;
+	  nmoved += Q.ntasks;
 
-          // zero out this queue
-          Q.task_queue = Q.last_task = NULL;
-          Q.ntasks = 0;
-        }
+	  // zero out this queue
+	  Q.task_queue = Q.last_task = NULL;
+	  Q.ntasks = 0;
+	}
 
-        Q.queue_lock.unlock();
+	Q.queue_lock.unlock();
       }
 
       HI.queue_lock.unlock();
@@ -349,11 +353,11 @@ void sched::handle_tick(u64 ticks) {
   // grab the current thread
   auto thd = cpu::thread();
 
-	if (thd->proc.ring == RING_KERN) {
-		cpu::current().kstat.kticks++;
-	} else {
-		cpu::current().kstat.uticks++;
-	}
+  if (thd->proc.ring == RING_KERN) {
+    cpu::current().kstat.kticks++;
+  } else {
+    cpu::current().kstat.uticks++;
+  }
   thd->sched.ticks++;
   // yield?
   if (ticks - thd->sched.start_tick >= thd->sched.timeslice) {
@@ -450,10 +454,10 @@ void sched::before_iret(bool userspace) {
     scoped_lock l(proc->sig.lock);
     if (proc->sig.pending != 0) {
       for (int i = 0; i < 63; i++) {
-        if (proc->sig.pending & SIGBIT(i)) {
-          proc->sig.pending &= ~SIGBIT(i);
-          sig_to_handle = i;
-        }
+	if (proc->sig.pending & SIGBIT(i)) {
+	  proc->sig.pending &= ~SIGBIT(i);
+	  sig_to_handle = i;
+	}
       }
     }
   }
@@ -466,3 +470,39 @@ void sched::before_iret(bool userspace) {
   */
 }
 
+sleep_blocker::sleep_blocker(unsigned long us_to_sleep) {
+  auto now = time::now_us();
+  end_us = now + us_to_sleep;
+  // printk("waiting %zuus from %zu till %zu\n", us_to_sleep, now, end_us);
+}
+
+bool sleep_blocker::should_unblock(struct thread &t, unsigned long now_us) {
+  bool ready = now_us >= end_us;
+
+  if (ready) {
+    // printk("accuracy: %zdus\n", (long)now_us - (long)end_us);
+  } else {
+    // printk("time to go %zuus\n", end_us - now_us);
+  }
+
+  return ready;
+}
+
+int sys::usleep(unsigned long n) {
+  // optimize short sleeps into a spinloop. Not sure if this is a good idea or
+  // not, but I dont really care about efficiency right now :)
+  if (n <= 1000 * 100 /* 100ms */) {
+    unsigned long end = time::now_us() + n;
+    while (1) {
+      if (time::now_us() >= end) break;
+			// asm("pause"); // TODO: arch::relax();
+    }
+    return 0;
+  }
+
+  if (curthd->block<sleep_blocker>(n) != BLOCKRES_NORMAL) {
+    return -1;
+  }
+  // printk("ret\n");
+  return 0;
+}

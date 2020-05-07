@@ -179,7 +179,7 @@ static void handle_packet(ref<net::pkt_buff> &pbuf) {
 struct pending_packet {
   ref<net::pkt_buff> pbuf;
 };
-static chan<pending_packet*> pending_packets;
+static chan<ref<net::pkt_buff>> pending_packets;
 
 int net::task(void *) {
 
@@ -202,9 +202,8 @@ int net::task(void *) {
     return true;
   });
   while (1) {
-    struct pending_packet *p = pending_packets.recv();
-    handle_packet(p->pbuf);
-    delete p;
+    auto pbuf = pending_packets.recv();
+    handle_packet(pbuf);
   }
 }
 
@@ -215,7 +214,5 @@ void net::packet_received(ref<net::pkt_buff> pbuf) {
   auto eth = pbuf->eth();
   if (eth == NULL) return;
 
-  auto *p = new pending_packet;
-  p->pbuf = pbuf;
-	pending_packets.send(move(p));
+	pending_packets.send(move(pbuf));
 }

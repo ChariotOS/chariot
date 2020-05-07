@@ -5,9 +5,7 @@
 
 int errno;
 
-int *__errno_location(void) {
-  return &errno;
-}
+int *__errno_location(void) { return &errno; }
 
 ssize_t write(int fd, const void *buf, size_t count) {
   // just forward to the system call
@@ -25,15 +23,13 @@ off_t lseek(int fd, off_t offset, int whence) {
 
 int close(int fd) { return errno_syscall(SYS_close, fd); }
 
-int chdir(const char *path) {
-  return errno_syscall(SYS_chdir, path);
-}
+int chdir(const char *path) { return errno_syscall(SYS_chdir, path); }
 
 int opterr = 1, /* if error message should be printed */
     optind = 1, /* index into parent argv vector */
-    optopt,     /* character checked for validity */
-    optreset;   /* reset getopt */
-char *optarg;   /* argument associated with option */
+    optopt,	/* character checked for validity */
+    optreset;	/* reset getopt */
+char *optarg;	/* argument associated with option */
 
 #define BADCH (int)'?'
 #define BADARG (int)':'
@@ -45,7 +41,7 @@ char *optarg;   /* argument associated with option */
  */
 int getopt(int nargc, char *const nargv[], const char *ostr) {
   static char *place = EMSG; /* option letter processing */
-  const char *oli;           /* option letter list index */
+  const char *oli;	     /* option letter list index */
 
   if (optreset || !*place) { /* update scanning pointer */
     optreset = 0;
@@ -72,7 +68,7 @@ int getopt(int nargc, char *const nargv[], const char *ostr) {
   if (*++oli != ':') { /* don't need argument */
     optarg = NULL;
     if (!*place) ++optind;
-  } else {      /* need an argument */
+  } else {	/* need an argument */
     if (*place) /* no white space */
       optarg = place;
     else if (nargc <= ++optind) { /* no arg */
@@ -98,13 +94,10 @@ int access(const char *path, int amode) {
   return 0;
 }
 
+int dup(int fd) { return syscall(SYS_dup, fd); }
+int dup2(int old, int new) { return syscall(SYS_dup2, old, new); }
 
-
-
-
-int dup(int fd) {
-	return syscall(SYS_dup, fd);
-}
-int dup2(int old, int new) {
-	return syscall(SYS_dup2, old, new);
+int usleep(unsigned long usec) {
+  syscall(SYS_usleep, usec);
+  return 0;
 }

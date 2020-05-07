@@ -110,6 +110,8 @@ static void *late_phys_alloc(size_t npages) {
   frame *p = NULL;
   frame *c = (frame *)p2v(kmem.freelist);
 
+	if (v2p(c) == NULL) panic("OOM!\n");
+
   while (v2p(c) != NULL) {
     if (c->page_len >= npages) break;
     p = c;

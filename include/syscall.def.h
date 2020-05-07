@@ -111,6 +111,9 @@ time_t localtime(struct tm *tloc);
 /// num=0x51
 size_t gettime_microsecond(void);
 
+/// num=0x52
+int usleep(unsigned long usec);
+
 /// num=0x60
 int socket(int domain, int type, int protocol);
 /// num=0x61
