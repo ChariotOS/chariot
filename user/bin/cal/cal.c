@@ -75,7 +75,7 @@ void print_month(int month, int year, struct tm *now) {
     int sec = now->tm_sec;
 
     char ap = hour < 12 ? 'A' : 'P';
-    if (ap == 'P') hour -= 12;
+    if (ap == 'P' && hour != 12) hour -= 12;
 
     snprintf(header, 12, "%d:%02d:%02d %cM", hour, min, sec, ap);
     center(header, 20, 0);

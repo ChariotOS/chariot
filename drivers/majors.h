@@ -24,3 +24,5 @@
 #define MAJOR_FB 21
 
 #define MAJOR_SB16 22
+
+#define MAJOR_DEKSTOP 42

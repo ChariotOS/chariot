@@ -65,7 +65,6 @@ struct vcons vga_console {
 };
 
 static bool cons_enabled = false;
-
 static spinlock fblock;
 static bool owned = false;
 
@@ -86,6 +85,12 @@ static void flush_vga_console() {
       vga_char_scribe(x, y, vc_get_cell(&vga_console, x, y), cursor);
     }
   }
+}
+
+
+// returns the userspace address
+void *vga::get_fba(void) {
+	return (void*)p2v(vga_fba);
 }
 
 void vga::putchar(char c) { vc_feed(&vga_console, c); }
@@ -111,6 +116,8 @@ static void set_info(struct ck_fb_info i) {
   info.width = i.width;
   info.height = i.height;
 }
+
+
 
 // static pci::device *vga_dev = NULL;
 
@@ -180,14 +187,23 @@ static int fb_open(fs::file &f) {
   return 0;  // allow
 }
 
+void vga::configure(struct ck_fb_info &i) {
+
+	if (i.active == false) {
+		i.width = VCONSOLE_WIDTH;
+		i.height = VCONSOLE_HEIGHT;
+	}
+	set_info(i);
+	flush_vga_console();
+}
+
 static void reset_fb(void) {
   // disable the framebuffer (drop back to text mode)
   auto i = info;
   i.active = false;
   i.width = VCONSOLE_WIDTH;
   i.height = VCONSOLE_HEIGHT;
-  set_info(i);
-  flush_vga_console();
+	vga::configure(i);
 }
 
 static void fb_close(fs::file &f) {
@@ -229,6 +245,7 @@ static int bg_colors[] = {
 };
 
 static void vga_char_scribe(int x, int y, struct vc_cell *cell, int flags) {
+
   char c = cell->c;
   char attr = cell->attr;
   if (info.active) return;
@@ -258,8 +275,8 @@ static void vga_char_scribe(int x, int y, struct vc_cell *cell, int flags) {
 }
 
 void vga_mod_init(void) {
-  dev::register_driver(generic_driver_info);
-  dev::register_name(generic_driver_info, "fb", 0);
+  // dev::register_driver(generic_driver_info);
+  // dev::register_name(generic_driver_info, "fb", 0);
 }
 
 module_init("vga framebuffer", vga_mod_init);

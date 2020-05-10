@@ -12,3 +12,5 @@ src-$(CONFIG_SB16) += $(shell find drivers/sb16 -name "*.cpp" -or -name "*.asm" 
 
 # video
 src-$(CONFIG_VGA) += $(shell find drivers/vga -name "*.cpp" -or -name "*.asm" -or -name "*.c")
+
+src-$(CONFIG_DESKTOP) += $(shell find drivers/desktop -name "*.cpp" -or -name "*.asm" -or -name "*.c")

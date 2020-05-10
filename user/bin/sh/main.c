@@ -80,6 +80,11 @@ int run_line(const char *line) {
     if (!bg) {
       waitpid(pid, &stat, 0);
     }
+
+		int exit_code = WEXITSTATUS(stat);
+		if (exit_code != 0) {
+			fprintf(stderr, "%s: exited with code %d\n", args[0], exit_code);
+		}
   } else {
     printf("failed to execute: '%s'\n", args[0]);
     despawn(pid);

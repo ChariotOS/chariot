@@ -1,6 +1,7 @@
 #pragma once
 
 #include <types.h>
+#include <fb.h>
 
 #define VGA_BASE_ADDR 0xb8000
 #define VGA_WIDTH 80
@@ -22,5 +23,10 @@ void init();
 void early_init();
 void late_init();
 void putchar(char c);
+
+
+void configure(struct ck_fb_info &);
+
+void *get_fba();
 
 };  // namespace vga

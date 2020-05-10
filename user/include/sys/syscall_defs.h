@@ -42,3 +42,4 @@
 #define SYS_signal                   (0x71)
 #define SYS_sigreturn                (0x72)
 #define SYS_sigprocmask              (0x73)
+#define SYS_kshell                   (0xF0)

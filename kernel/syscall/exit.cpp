@@ -18,6 +18,8 @@ void sys::exit_thread(int code) {
 }
 
 void sys::exit_proc(int code) {
+
+
   // ...
   // printk("exit_proc(%d)\n", code);
 

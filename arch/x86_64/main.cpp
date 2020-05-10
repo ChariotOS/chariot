@@ -12,7 +12,7 @@
 #include <types.h>
 #include <vga.h>
 #include <util.h>
-
+#include <kshell.h>
 #include "smp.h"
 
 extern int kernel_end;

@@ -31,16 +31,18 @@ static spinlock cons_input_lock;
 static fifo_buf console_fifo;
 
 
-static void consputc(int c) {
-	/*
-  if (c == CONS_DEL) {
-    serial_send(COM1, '\b');
-    serial_send(COM1, ' ');
-    serial_send(COM1, '\b');
-  } else {
-    serial_send(COM1, c);
-  }
-	*/
+static void consputc(int c, bool debug = false) {
+
+	if (debug || true) {
+		if (c == CONS_DEL) {
+			serial_send(COM1, '\b');
+			serial_send(COM1, ' ');
+			serial_send(COM1, '\b');
+		} else {
+			serial_send(COM1, c);
+		}
+	}
+
 	vga::putchar(c);
 }
 
@@ -94,7 +96,7 @@ void console::feed(size_t sz, char* buf) {
 }
 
 int console::getc(bool block) { return -1; }
-void console::putc(char c) { consputc(c); }
+void console::putc(char c, bool debug) { consputc(c, debug); }
 
 static ssize_t console_read(fs::file& fd, char* buf, size_t sz) {
   if (fd) {

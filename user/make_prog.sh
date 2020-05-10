@@ -10,7 +10,7 @@ fi
 
 
 
-mkdir -p src/$1
+mkdir -p bin/$1
 echo "out = bin/$1" >> bin/$1/Makefile
 echo "srcs += $1.c" >> bin/$1/Makefile
 

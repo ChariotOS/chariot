@@ -93,7 +93,7 @@
 
 
 void putchar(char c) {
-  console::putc(c);
+  console::putc(c, true /* debug */);
   // vga::putchar(c);
   // serial_send(SERIAL_PORT_A, c);
 }

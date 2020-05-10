@@ -18,3 +18,4 @@ CONFIG_SB16 = n
 
 # video
 CONFIG_VGA = y
+CONFIG_DESKTOP = y

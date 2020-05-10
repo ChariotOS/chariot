@@ -399,8 +399,9 @@ int sched::proc::reap(process::ptr p) {
   assert(p->is_dead());
   auto *me = curproc;
 
+
   int f = 0;
-  f &= (p->exit_code & 0xFF) << 8;
+  f |= (p->exit_code & 0xFF) << 8;
 
 #ifdef REAP_DEBUG
   printk("reap (p:%d)\n", p->pid);
