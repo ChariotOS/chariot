@@ -36,188 +36,232 @@ static char mouse_mode = MOUSE_DEFAULT;
 #define MOUSE_V_BIT 0x08
 
 void mouse_wait(uint8_t a_type) {
-	uint32_t timeout = 100000;
-	if (!a_type) {
-		while (--timeout) {
-			if ((inb(MOUSE_STATUS) & MOUSE_BBIT) == 1) {
-				return;
-			}
-		}
-		printk("[MOUSE] mouse timeout\n");
-		return;
-	} else {
-		while (--timeout) {
-			if (!((inb(MOUSE_STATUS) & MOUSE_ABIT))) {
-				return;
-			}
-		}
-		printk("[MOUSE] mouse timeout\n");
-		return;
-	}
+  uint32_t timeout = 100000;
+  if (!a_type) {
+    while (--timeout) {
+      if ((inb(MOUSE_STATUS) & MOUSE_BBIT) == 1) {
+	return;
+      }
+    }
+    printk("[MOUSE] mouse timeout\n");
+    return;
+  } else {
+    while (--timeout) {
+      if (!((inb(MOUSE_STATUS) & MOUSE_ABIT))) {
+	return;
+      }
+    }
+    printk("[MOUSE] mouse timeout\n");
+    return;
+  }
 }
 
 void mouse_write(uint8_t write) {
-	mouse_wait(1);
-	outb(MOUSE_STATUS, MOUSE_WRITE);
-	mouse_wait(1);
-	outb(MOUSE_PORT, write);
+  mouse_wait(1);
+  outb(MOUSE_STATUS, MOUSE_WRITE);
+  mouse_wait(1);
+  outb(MOUSE_PORT, write);
 }
 
 uint8_t mouse_read() {
-	mouse_wait(0);
-	uint8_t t = inb(MOUSE_PORT);
-	return t;
+  mouse_wait(0);
+  uint8_t t = inb(MOUSE_PORT);
+  return t;
 }
 
 static int buttons;
 
 static void mouse_handler(int i, reg_t *) {
-	uint8_t status = inb(MOUSE_STATUS);
-	bool finalize = false;
-	while ((status & MOUSE_BBIT) && (status & MOUSE_F_BIT)) {
-		char mouse_in = inb(MOUSE_PORT);
-		switch (mouse_cycle) {
-			case 0:
-				mouse_byte[0] = mouse_in;
-				if (!(mouse_in & MOUSE_V_BIT)) break;
-				++mouse_cycle;
-				break;
-			case 1:
-				mouse_byte[1] = mouse_in;
-				++mouse_cycle;
-				break;
-			case 2:
-				mouse_byte[2] = mouse_in;
-				if (mouse_mode == MOUSE_SCROLLWHEEL || mouse_mode == MOUSE_BUTTONS) {
-					++mouse_cycle;
-					break;
-				}
-				finalize = true;
-				break;
-			case 3:
-				mouse_byte[3] = mouse_in;
-				finalize = true;
-				break;
-		}
-
-		if (finalize) {
-			mouse_cycle = 0;
-			/* We now have a full mouse packet ready to use */
-			struct mouse_packet packet;
-			packet.magic = MOUSE_MAGIC;
-			int x = mouse_byte[1];
-			int y = mouse_byte[2];
-			if (x && mouse_byte[0] & (1 << 4)) {
-				/* Sign bit */
-				x = x - 0x100;
-			}
-			if (y && mouse_byte[0] & (1 << 5)) {
-				/* Sign bit */
-				y = y - 0x100;
-			}
-			if (mouse_byte[0] & (1 << 6) || mouse_byte[0] & (1 << 7)) {
-				/* Overflow */
-				x = 0;
-				y = 0;
-			}
-			packet.dx = x;
-			packet.dy = -y; // the mouse gives us a negative value for going up
-			packet.buttons = 0;
-			if (mouse_byte[0] & 0x01) {
-				packet.buttons |= MOUSE_LEFT_CLICK;
-			}
-			if (mouse_byte[0] & 0x02) {
-				packet.buttons |= MOUSE_RIGHT_CLICK;
-			}
-			if (mouse_byte[0] & 0x04) {
-				packet.buttons |= MOUSE_MIDDLE_CLICK;
-			}
-
-			if (mouse_mode == MOUSE_SCROLLWHEEL && mouse_byte[3]) {
-				if ((char)mouse_byte[3] > 0) {
-					packet.buttons |= MOUSE_SCROLL_DOWN;
-				} else if ((char)mouse_byte[3] < 0) {
-					packet.buttons |= MOUSE_SCROLL_UP;
-				}
-			}
-
-			if (open) {
-				mouse_buffer.write(&packet, sizeof(packet));
-			} else {
-				desktop::mouse_input(packet);
-			}
-
-			/*
-				 mouse_device_packet_t bitbucket;
-				 while (pipe_size(mouse_pipe) > (int)(DISCARD_POINT *
-				 sizeof(packet))) { read_fs(mouse_pipe, 0, sizeof(packet), (uint8_t
-			 *)&bitbucket);
-			 }
-			 write_fs(mouse_pipe, 0, sizeof(packet), (uint8_t *)&packet);
-			 */
-		}
-		break;
+  uint8_t status = inb(MOUSE_STATUS);
+  bool finalize = false;
+  while ((status & MOUSE_BBIT) && (status & MOUSE_F_BIT)) {
+    char mouse_in = inb(MOUSE_PORT);
+    switch (mouse_cycle) {
+      case 0:
+	mouse_byte[0] = mouse_in;
+	if (!(mouse_in & MOUSE_V_BIT)) break;
+	++mouse_cycle;
+	break;
+      case 1:
+	mouse_byte[1] = mouse_in;
+	++mouse_cycle;
+	break;
+      case 2:
+	mouse_byte[2] = mouse_in;
+	if (mouse_mode == MOUSE_SCROLLWHEEL || mouse_mode == MOUSE_BUTTONS) {
+	  ++mouse_cycle;
+	  break;
 	}
+	finalize = true;
+	break;
+      case 3:
+	mouse_byte[3] = mouse_in;
+	finalize = true;
+	break;
+    }
 
-	irq::eoi(i);
+    if (finalize) {
+      mouse_cycle = 0;
+      /* We now have a full mouse packet ready to use */
+      struct mouse_packet packet;
+      packet.magic = MOUSE_MAGIC;
+      int x = mouse_byte[1];
+      int y = mouse_byte[2];
+      if (x && mouse_byte[0] & (1 << 4)) {
+	/* Sign bit */
+	x = x - 0x100;
+      }
+      if (y && mouse_byte[0] & (1 << 5)) {
+	/* Sign bit */
+	y = y - 0x100;
+      }
+      if (mouse_byte[0] & (1 << 6) || mouse_byte[0] & (1 << 7)) {
+	/* Overflow */
+	x = 0;
+	y = 0;
+      }
+      packet.dx = x;
+      packet.dy = -y;  // the mouse gives us a negative value for going up
+      packet.buttons = 0;
+      if (mouse_byte[0] & 0x01) {
+	packet.buttons |= MOUSE_LEFT_CLICK;
+      }
+      if (mouse_byte[0] & 0x02) {
+	packet.buttons |= MOUSE_RIGHT_CLICK;
+      }
+      if (mouse_byte[0] & 0x04) {
+	packet.buttons |= MOUSE_MIDDLE_CLICK;
+      }
+
+      if (mouse_mode == MOUSE_SCROLLWHEEL && mouse_byte[3]) {
+	if ((char)mouse_byte[3] > 0) {
+	  packet.buttons |= MOUSE_SCROLL_DOWN;
+	} else if ((char)mouse_byte[3] < 0) {
+	  packet.buttons |= MOUSE_SCROLL_UP;
+	}
+      }
+
+      if (open) {
+	mouse_buffer.write(&packet, sizeof(packet));
+      } else {
+	desktop::mouse_input(packet);
+      }
+
+      /*
+	       mouse_device_packet_t bitbucket;
+	       while (pipe_size(mouse_pipe) > (int)(DISCARD_POINT *
+	       sizeof(packet))) { read_fs(mouse_pipe, 0, sizeof(packet),
+       (uint8_t
+       *)&bitbucket);
+       }
+       write_fs(mouse_pipe, 0, sizeof(packet), (uint8_t *)&packet);
+       */
+    }
+    break;
+  }
+
+  irq::eoi(i);
 }
 
 void mouse_install() {
+  int result = 0;
+  mouse_wait(1);
+  outb(MOUSE_STATUS, 0xA8);
+  mouse_wait(1);
+  outb(MOUSE_STATUS, 0x20);
+  mouse_wait(0);
+  u8 status = inb(0x60) | 2;
+  mouse_wait(1);
+  outb(MOUSE_STATUS, 0x60);
+  mouse_wait(1);
+  outb(MOUSE_PORT, status);
+  mouse_write(0xF6);
+  mouse_read();
+  mouse_write(0xF4);
+  mouse_read();
+
+  // try to enable the scroll wheel
+  mouse_write(0xF2);
+  mouse_read();
+  result = mouse_read();
+  mouse_write(0xF3);
+  mouse_read();
+  mouse_write(200);
+  mouse_read();
+  mouse_write(0xF3);
+  mouse_read();
+  mouse_write(100);
+  mouse_read();
+  mouse_write(0xF3);
+  mouse_read();
+  mouse_write(80);
+  mouse_read();
+  mouse_write(0xF2);
+  mouse_read();
+  result = mouse_read();
+  if (result == 3) {
+    mouse_mode = MOUSE_SCROLLWHEEL;
+  }
+
+
+	/* keyboard scancode set */
 	mouse_wait(1);
-	outb(MOUSE_STATUS, 0xA8);
+	outb(MOUSE_PORT, 0xF0);
 	mouse_wait(1);
-	outb(MOUSE_STATUS, 0x20);
-	mouse_wait(0);
-	u8 status = inb(0x60) | 2;
+	outb(MOUSE_PORT, 0x02);
 	mouse_wait(1);
-	outb(MOUSE_STATUS, 0x60);
-	mouse_wait(1);
-	outb(MOUSE_PORT, status);
-	mouse_write(0xF6);
-	mouse_read();
-	mouse_write(0xF4);
 	mouse_read();
 
-	irq::install(32 + MOUSE_IRQ, mouse_handler, "PS2 Mouse");
+
+	uint8_t tmp = inb(0x61);
+	outb(0x61, tmp | 0x80);
+	outb(0x61, tmp & 0x7F);
+	inb(MOUSE_PORT);
+
+	while ((inb(0x64) & 1)) {
+		inb(0x60);
+	}
+
+  irq::install(32 + MOUSE_IRQ, mouse_handler, "PS2 Mouse");
 }
 
 static ssize_t mouse_fdread(fs::file &fd, char *buf, size_t sz) {
-	if (fd) {
-		printk("yo\n");
-		// if the size of the read request is not a multiple of a packet, fail
-		if (sz % sizeof(struct mouse_packet) != 0) return -1;
+  if (fd) {
+    printk("yo\n");
+    // if the size of the read request is not a multiple of a packet, fail
+    if (sz % sizeof(struct mouse_packet) != 0) return -1;
 
-		auto k = mouse_buffer.read(buf, sz);
-		fd.seek(k);
-		return k;
-	}
-	return -1;
+    auto k = mouse_buffer.read(buf, sz);
+    fd.seek(k);
+    return k;
+  }
+  return -1;
 }
 
 static int mouse_open(fs::file &fd) {
-	// only open if it isn't already opened
-	if (open) return -1;
-	open = true;
-	KINFO("[mouse] open!\n");
-	return 0;
+  // only open if it isn't already opened
+  if (open) return -1;
+  open = true;
+  KINFO("[mouse] open!\n");
+  return 0;
 }
 
 static void mouse_close(fs::file &fd) {
-	open = false;
-	KINFO("[mouse] close!\n");
+  open = false;
+  KINFO("[mouse] close!\n");
 }
 
 struct fs::file_operations mouse_ops = {
-	.read = mouse_fdread,
+    .read = mouse_fdread,
 
-	.open = mouse_open,
-	.close = mouse_close,
+    .open = mouse_open,
+    .close = mouse_close,
 };
 
 static void mouse_init(void) {
-	mouse_install();
+  mouse_install();
 
-	// dev::register_driver("mouse", CHAR_DRIVER, MAJOR_MOUSE, &mouse_ops);
+  // dev::register_driver("mouse", CHAR_DRIVER, MAJOR_MOUSE, &mouse_ops);
 }
 
 module_init("mouse", mouse_init);
