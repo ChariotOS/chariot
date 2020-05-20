@@ -275,8 +275,8 @@ static void vga_char_scribe(int x, int y, struct vc_cell *cell, int flags) {
 }
 
 void vga_mod_init(void) {
-  // dev::register_driver(generic_driver_info);
-  // dev::register_name(generic_driver_info, "fb", 0);
+  dev::register_driver(generic_driver_info);
+  dev::register_name(generic_driver_info, "fb", 0);
 }
 
 module_init("vga framebuffer", vga_mod_init);

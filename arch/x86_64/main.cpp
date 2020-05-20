@@ -104,8 +104,6 @@ static void kmain2(void) {
 }
 
 
-
-
 int kernel_init(void *) {
 
 
@@ -118,7 +116,6 @@ int kernel_init(void *) {
 	// so we should go setup lapic for that
 	smp::lapic_init();
   syscall_init();
-
 
 
   // walk the kernel modules and run their init function
@@ -147,7 +144,6 @@ int kernel_init(void *) {
 	if (vfs::mount("none", "/dev", "devfs", 0, NULL) != 0) {
 		panic("failed to mount devfs");
 	}
-
 
 	// desktop::init();
 
