@@ -252,6 +252,8 @@ FILE *fopen(const char *path, const char *mode) {
   // TODO: better mode here
   int fd = open(path, O_RDWR);
 
+	if (fd < 0) return NULL;
+
   return fdopen(fd, mode);
 }
 
