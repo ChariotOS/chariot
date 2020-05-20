@@ -14,6 +14,7 @@
 #include <phys.h>
 #include <sched.h>
 #include <wait_flags.h>
+#include <util.h>
 
 // start out at pid 2, so init is pid 1 regardless of if kernel threads are
 // created before init is spawned
@@ -328,7 +329,9 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   fs::inode *exe = NULL;
 
   // TODO: open permissions on the binary
-  if (vfs::namei(path.get(), 0, 0, cwd, exe) != 0) return -ENOENT;
+  if (vfs::namei(path.get(), 0, 0, cwd, exe) != 0) {
+		return -ENOENT;
+	}
   // TODO check execution permissions
 
   off_t entry = 0;
@@ -336,6 +339,7 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
 
   // allocate a new address space
   auto *new_addr_space = alloc_user_vm();
+
 
   int loaded = elf::load(path.get(), *this, *new_addr_space, fd, entry);
 

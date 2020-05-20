@@ -69,7 +69,6 @@ uint8_t mouse_read() {
 	return t;
 }
 
-static int buttons;
 
 static void mouse_handler(int i, reg_t *) {
 	uint8_t status = inb(MOUSE_STATUS);

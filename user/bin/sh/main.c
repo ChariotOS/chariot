@@ -74,6 +74,12 @@ int run_line(const char *line) {
     goto cleanup;
   }
 
+	printf("args[0] = %s\n", args[0]);
+	for (int i = 0; i < strlen(args[0]); i++) {
+		printf("%02x ", args[0][i]);
+	}
+	printf("\n");
+
   int start_res = startpidvpe(pid, args[0], args, environ);
   if (start_res == 0) {
     int stat = 0;

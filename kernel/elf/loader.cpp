@@ -45,6 +45,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
   off_t off = 0;
 
   if (!elf::validate(*fd, ehdr)) {
+  	printk("elf not valid\n");
     return -1;
   }
 
@@ -60,6 +61,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
 
   if (sec_read != sec_expected) {
     delete[] sec_hdrs;
+  	printk("sec_read != sec_expected\n");
     return -1;
   }
 
@@ -88,6 +90,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
 
   if (hdrs_read != hdrs_size) {
     delete[] phdr;
+		printk("hdrs_read != hdrs_size\n");
     return -1;
   }
 
@@ -98,6 +101,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
 
   if (i == ehdr.e_phnum) {
     delete[] phdr;
+		printk("i == ehdr.e_phnum\n");
     return -1;
   }
 

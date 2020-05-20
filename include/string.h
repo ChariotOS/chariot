@@ -43,7 +43,10 @@ class string {
 	// remove a char from the end
 	char pop(void);
 
-  inline const char* get() const { return m_buf; }
+  inline const char* get() const {
+		m_buf[len()] = 0;
+		return m_buf;
+	}
 
   string& operator=(const string& s);
   string& operator=(const char* s);

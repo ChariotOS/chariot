@@ -8,7 +8,6 @@
 #include <types.h>
 
 #define round_down(x, y) ((x) & ~((y)-1))
-extern int mm_init(void);
 
 extern u8 *kheap_start;
 extern u64 kheap_size;
@@ -35,7 +34,7 @@ class pagetable : public mm::pagetable {
   u64 *pml4;
 
  public:
-  pagetable(u64 *pml4) : pml4(pml4) {}
+  pagetable(u64 *pml4);
   virtual ~pagetable();
 
   virtual bool switch_to(void) override;
@@ -46,6 +45,11 @@ class pagetable : public mm::pagetable {
 };
 }  // namespace x86
 
+
+x86::pagetable::pagetable(u64 *pml4) : pml4(pml4) {
+
+
+}
 x86::pagetable::~pagetable(void) {
   paging::free_table(pml4);
 }
@@ -64,7 +68,6 @@ bool x86::pagetable::switch_to(void) {
   }
 
   write_cr3((u64)v2p(pml4));
-
   return true;
 }
 
@@ -99,26 +102,6 @@ int x86::pagetable::del_mapping(off_t va) {
   return 0;
 }
 
-/**
- * ksbrk - shift the end of the heap further.
- */
-void *ksbrk(i64 inc) {
-  // printk("sbrk %d: %p (%zu)\n", inc, kheap_start + kheap_size, kheap_size);
-  u64 oldsz = kheap_size;
-  u64 newsz = oldsz + inc;
-
-  if (inc == 0) return kheap_start + oldsz;
-
-  i64 a = round_up(oldsz, 4096);
-  for (; a < newsz; a += 4096) {
-    void *pa = phys::alloc();
-    paging::map_into((u64 *)kernel_page_table, (u64)kheap_start + a, (u64)pa,
-                     paging::pgsize::page, PTE_W | PTE_P);
-  }
-  kheap_size = newsz;
-
-  return kheap_start + oldsz;
-}
 
 
 void arch::mem_init(unsigned long mbd) {
@@ -228,9 +211,6 @@ void arch::mem_init(unsigned long mbd) {
   mm_info.vmlo = (off_t)p2v(lo);
   mm_info.vmhi = (off_t)p2v(hi);
 
-  kheap_start = (u8 *)p2v(i);
-  kheap_size = 0;
-
   // copy the low mapping
   new_cr3[0] = ((u64 *)read_cr3())[0];
 
@@ -239,8 +219,6 @@ void arch::mem_init(unsigned long mbd) {
   use_kernel_vm = true;
   write_cr3((u64)new_cr3);
   arch::flush_tlb();  // flush out the TLB
-  // initialize the memory allocator
-  mm_init();
 }
 
 mm::space *kspace;

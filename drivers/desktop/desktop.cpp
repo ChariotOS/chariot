@@ -31,12 +31,15 @@ static vec<ref<window>> windows;
 static spinlock dirty_regions_lock;
 static vec<struct rect> dirty_regions;
 
+
+/*
 // mark a region (rectangle) as dirty so it is redrawn on the next composition
 static void mark_dirty(const struct rect &r) {
   dirty_regions_lock.lock();
   dirty_regions.push(r);
   dirty_regions_lock.unlock();
 }
+*/
 
 static void compose(void) { compositor_sem.post(); }
 

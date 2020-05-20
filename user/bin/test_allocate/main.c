@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <string.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 
@@ -31,7 +32,8 @@ int main(int argc, char **argv) {
 	char *buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, 0, 0);
 
 	for (off_t i = 0; i < size; i += 4096) {
-		buf[i] = 'a';
+		memset(buf + i, i, 4096);
+		// buf[i] = 'a';
 		printf("\r%.2f%%", (float)i / size * 100.0);
 	}
 

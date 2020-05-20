@@ -186,10 +186,7 @@ void string::reserve(u32 new_cap) {
     assert(m_buf != nullptr);
   } else {
     if (new_cap <= m_cap) return;
-    auto n = (char*)kmalloc(new_cap);
-    memcpy(n, m_buf, m_cap);
-    kfree(m_buf);
-    m_buf = n;
+		m_buf = (char*)krealloc(m_buf, new_cap);
   }
   // printk("%p\n", m_buf);
   m_cap = new_cap;

@@ -48,12 +48,6 @@ void *kzalloc(size_t size);
 void kfree(void *ptr);
 void *krealloc(void *ptr, u64 newsize);
 
-// increase the kernel heap
-void *ksbrk(i64 inc);
-void *kheap_lo();
-void *kheap_hi();
-
 void init_kernel_virtual_memory();
-
 
 #endif
