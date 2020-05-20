@@ -105,6 +105,20 @@ gdtr:
   dw gdt_end - gdt - 1
   dq gdt
 
+
+global gdtr
+global gdtr32
+
+gdt32:
+		dq 0x0000000000000000
+		dq 0x00cf9a000000ffff
+		dq 0x00cf92000000ffff
+gdtr32:
+	dw 23
+	dd gdt32
+
+
+
 [bits 32] ALIGN 8
 section .init
 

@@ -13,12 +13,17 @@ KERNEL_VMA = 0xffff880000000000;
 
 SECTIONS
 {
-
-	. = 1M;
 	_virt_start = . + KERNEL_VMA;
 
-  .init : {
+	. = 0x8000;
+
+	.init_ap : {
 		*(.multiboot)
+	}
+
+	. = 1M;
+
+  .init : {
     *(.initl)
 
 		/*

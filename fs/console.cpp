@@ -32,7 +32,6 @@ static fifo_buf console_fifo;
 
 
 static void consputc(int c, bool debug = false) {
-
 	if (debug || true) {
 		if (c == CONS_DEL) {
 			serial_send(COM1, '\b');

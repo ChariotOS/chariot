@@ -16,6 +16,7 @@ typedef i64 acpi_native_int;
 
 void putchar(char);
 int puts(char*);
+void printk_nolock(const char *format, ...);
 int printk(const char* format, ...);
 int sprintk(char* buffer, const char* format, ...);
 int snprintk(char* buffer, size_t count, const char* format, ...);

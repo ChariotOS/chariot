@@ -83,6 +83,7 @@ static void kmain2(void) {
   KINFO("Discovered SMP Cores\n");
 
 
+
   init_pit();
 	set_pit_freq(TICK_FREQ);
   KINFO("Initialized PIT\n");
@@ -107,6 +108,7 @@ static void kmain2(void) {
 
 int kernel_init(void *) {
 
+
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
 
@@ -117,12 +119,16 @@ int kernel_init(void *) {
 	smp::lapic_init();
   syscall_init();
 
+
+
   // walk the kernel modules and run their init function
   KINFO("Calling kernel module init functions\n");
   initialize_builtin_modules();
   KINFO("kernel modules initialized\n");
 
 
+	// start up the extra cpu cores
+	smp::init_cores();
 
   sched::proc::create_kthread("[net]", net::task);
 

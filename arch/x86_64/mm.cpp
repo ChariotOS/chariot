@@ -26,7 +26,7 @@ extern char high_kern_end[];
 static struct mem_map_entry memory_map[MAX_MMAP_ENTRIES];
 static struct mmap_info mm_info;
 
-static u64 *kernel_page_table;
+u64 *kernel_page_table;
 
 int kmem_revision = 0;
 

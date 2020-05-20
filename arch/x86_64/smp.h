@@ -27,28 +27,6 @@ extern "C" {
 
 namespace smp {
 
-// every CPU has one of these. Stored globally and accessed by the
-// smp::get_state function
-struct cpu_state {};
-
-// return the current CPU's state.
-cpu_state &get_state(void);
-
-// initialize SMP, but don't IPI to the other CPUs yet.
-bool init(void);
-
-
-void lapic_init(void);
-void lapic_write(int ind, int value);
-unsigned lapic_read(int ind);
-void lapic_eoi(void);
-
-void init_cores(void);
-
-int cpunum(void);
-
-void ioapicenable(int irq, int cpu);
-
 // the first field of the floating structure must be this value
 
 // use mp tables, as they are a little easier.
@@ -144,5 +122,34 @@ struct mp_table {
 
 } __packed;
 }  // namespace mp
+
+
+
+// every CPU has one of these. Stored globally and accessed by the
+// smp::get_state function
+struct cpu_state {
+	smp::mp::mp_table_entry_cpu *entry;
+};
+
+// return the current CPU's state.
+cpu_state &get_state(void);
+// and the state of another CPU
+cpu_state &get_state(int apicid);
+
+// initialize SMP, but don't IPI to the other CPUs yet.
+bool init(void);
+
+
+void lapic_init(void);
+void lapic_write(int ind, int value);
+unsigned lapic_read(int ind);
+void lapic_eoi(void);
+
+void init_cores(void);
+
+int cpunum(void);
+
+void ioapicenable(int irq, int cpu);
+
 
 };  // namespace smp

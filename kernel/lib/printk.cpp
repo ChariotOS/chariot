@@ -934,10 +934,10 @@ static int _vsnprintf(out_fct_type out, char *buffer, const size_t maxlen,
 
 ///////////////////////////////////////////////////////////////////////////////
 
+
 // TODO
 static int loglevel = 4;
-int printk(const char *format, ...) {
-
+static int do_printk(const char *format, va_list va) {
 	bool valid_loglevel = true;
 
 	if (format[0] == '\001') {
@@ -956,7 +956,7 @@ int printk(const char *format, ...) {
 					break;
 			}
 			if (prefix != NULL) {
-				printk("%s ", prefix);
+				printk_nolock("%s ", prefix);
 			}
 		} else {
 			valid_loglevel = false;
@@ -966,13 +966,30 @@ int printk(const char *format, ...) {
 
 	if (!valid_loglevel) {return 0;}
 
+  char buffer[1];
+  return _vsnprintf(_out_char, buffer, (size_t)-1, format, va);
+}
+
+
+void printk_nolock(const char *format, ...) {
   va_list va;
   va_start(va, format);
-  char buffer[1];
-  const int ret = _vsnprintf(_out_char, buffer, (size_t)-1, format, va);
+	do_printk(format, va);
   va_end(va);
+}
+
+
+static spinlock printk_lock;
+int printk(const char *format, ...) {
+	printk_lock.lock();
+  va_list va;
+  va_start(va, format);
+	const int ret = do_printk(format, va);
+  va_end(va);
+	printk_lock.unlock();
   return ret;
 }
+
 
 int sprintk(char *buffer, const char *format, ...) {
   va_list va;

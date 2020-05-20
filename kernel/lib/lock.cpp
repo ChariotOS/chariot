@@ -23,7 +23,7 @@ static inline void arch_atomic_store(volatile int* p, int x) {
 void spinlock::lock(void) {
   while (1) {
     if (arch_atomic_swap(&locked, 1) == 0) break;
-		sched::yield(); // hmm
+		// sched::yield(); // hmm
   }
 }
 

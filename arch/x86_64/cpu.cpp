@@ -68,6 +68,7 @@ void cpu::seginit(void *local) {
   cpu_t *c = &cpus[cpunum++];
   memset(c, 0, sizeof(*c));
   c->local = local;
+	c->cpunum = smp::cpunum();
 
   auto addr = (u64)tss;
   gdt[0] = 0x0000000000000000;
@@ -144,8 +145,10 @@ void cpu::switch_vm(struct thread *thd) {
 
 cpu_t &cpu::current() {
   if (s_current == NULL) {
-    int ind = smp::cpunum();
 
+		arch::cli();
+    int ind = smp::cpunum();
+		arch::sti();
     s_current = &cpus[ind];
   }
 

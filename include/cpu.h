@@ -18,6 +18,7 @@ struct kstat_cpu {
 struct cpu_t {
   void *local;
   int ncli;
+	int cpunum;
 
 	struct kstat_cpu kstat;
 
