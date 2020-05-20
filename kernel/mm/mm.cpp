@@ -48,8 +48,6 @@ mm::page::~page(void) {
   }
   assert(users == 0);
   pa = 0;
-
-	
 }
 
 ref<mm::page> mm::page::alloc(void) {

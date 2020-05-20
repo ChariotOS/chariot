@@ -8,7 +8,6 @@
 #include <pctl.h>
 #include <phys.h>
 #include <syscall.h>
-#include <syscalls.h>
 #include <util.h>
 #include <vga.h>
 

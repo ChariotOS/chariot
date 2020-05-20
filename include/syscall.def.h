@@ -26,7 +26,7 @@ int despawn(int);
 int startpidve(int pid, const char *path, const char *argv[], const char *envp[]);
 
 /// num=0x06
-int pctl(int pid, int cmd, unsigned long arg);
+int clone(int pid, int cmd, unsigned long arg);
 
 /// num=0x07
 long waitpid(int pid, int *stat, int options);

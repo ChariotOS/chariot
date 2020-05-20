@@ -5,7 +5,6 @@
 #include <lock.h>
 #include <sched.h>
 #include <string.h>
-#include <syscalls.h>
 #include <stat.h>
 #include <errno.h>
 #include <fs/vfs.h>

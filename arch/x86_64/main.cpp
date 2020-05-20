@@ -14,6 +14,7 @@
 #include <util.h>
 #include <kshell.h>
 #include "smp.h"
+#include <desktop.h>
 
 extern int kernel_end;
 
@@ -122,6 +123,7 @@ int kernel_init(void *) {
   KINFO("kernel modules initialized\n");
 
 
+
   sched::proc::create_kthread("[net]", net::task);
 
   // open up the disk device for the root filesystem
@@ -131,8 +133,6 @@ int kernel_init(void *) {
 	auto root_name = kargs::get("root", "/dev/ata0p1");
 	assert(root_name);
 
-	printk("%zu b\n", sizeof(fs::inode));
-
   int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);
 	if (mnt_res != 0) {
 		panic("failed to mount root. Error=%d\n", -mnt_res);
@@ -141,6 +141,9 @@ int kernel_init(void *) {
 	if (vfs::mount("none", "/dev", "devfs", 0, NULL) != 0) {
 		panic("failed to mount devfs");
 	}
+
+
+	// desktop::init();
 
   // setup stdio stuff for the kernel (to be inherited by spawn)
   int fd = sys::open("/dev/console", O_RDWR);

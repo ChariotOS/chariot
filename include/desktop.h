@@ -63,4 +63,6 @@ void draw_border(const struct rect &r, int border_color, int width = 1);
 
 namespace desktop {
 	void mouse_input(struct mouse_packet &m);
+
+	void init(void);
 };
