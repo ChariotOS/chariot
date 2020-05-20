@@ -195,15 +195,17 @@ static void switch_into(struct thread &thd) {
 
 	thd.sched.start_tick = cpu::get_ticks();
 
+	thd.stats.current_cpu = cpu::current().cpunum;
 	cpu::switch_vm(&thd);
-
-	// thd.stats.last_cpu = thd.stats.current_cpu;
 
 	swtch(&cpu::current().sched_ctx, thd.kern_context);
 
 	// save the FPU state after the context switch returns here
 	asm volatile("fxsave64 (%0);" ::"r"(thd.fpu.state));
 	cpu::current().current_thread = nullptr;
+
+	thd.stats.last_cpu = thd.stats.current_cpu;
+	thd.stats.current_cpu = -1;
 
 	thd.locks.run.unlock();
 }
@@ -273,6 +275,7 @@ void sched::run() {
 	int boost_interval = 10;
 	u64 last_boost = 0;
 
+	cpu::current().in_sched = true;
 	for (;;) {
 		schedule_one();
 

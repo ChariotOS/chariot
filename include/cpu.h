@@ -20,6 +20,8 @@ struct cpu_t {
   int ncli;
 	int cpunum;
 
+	bool in_sched = false;
+
 	struct kstat_cpu kstat;
 
   uint16_t preemption_depth;
