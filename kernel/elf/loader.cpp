@@ -44,8 +44,9 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
 
   off_t off = 0;
 
+
   if (!elf::validate(*fd, ehdr)) {
-  	printk("elf not valid\n");
+  	printk("[ELF LOADER] elf not valid\n");
     return -1;
   }
 

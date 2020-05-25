@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/syscall.h>
+#include <stdlib.h>
+#include <time.h>
 
 int __argc;
 char **__argv;
@@ -35,9 +37,12 @@ void libc_start(int argc, char **argv, char **envp) {
   __argc = argc;
   __argv = argv;
   environ = envp;
+
+
   // initialize stdio
   stdio_init();
 
+	srand(time(NULL));
 
 	// initialize signals
 	syscall(SYS_signal_init, __signal_return_callback);

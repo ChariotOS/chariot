@@ -13,7 +13,9 @@ qemu-system-x86_64 -gdb tcp::8256        \
 	-netdev user,id=u1                     \
 	-device e1000,netdev=u1                \
 	-rtc base=localtime                    \
-	-machine kernel_irqchip=on,accel=kvm   \
 	$@
+
+
+	# -machine kernel_irqchip=on,accel=kvm   \
 
 

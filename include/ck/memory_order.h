@@ -30,7 +30,13 @@
 #ifndef _GLIBCXX_ATOMIC_BASE_H
 #define _GLIBCXX_ATOMIC_BASE_H 1
 
+#ifndef USERLAND
 #include <types.h>
+#else
+
+
+
+#endif
 
 
 #ifndef _GLIBCXX_ALWAYS_INLINE

@@ -7,12 +7,18 @@ build () {
 	make run M=$1 -j --no-print-directory
 }
 
+
+make build/crt0.o
+
 build lib/libc
 
+# build everything in parallel then wait on it
 for i in bin/*
 do
-	build ${i}
+	build ${i} &
 done
+
+wait
 
 # make -C rs
 # cp $(find rs/target/chariot-x86_64/ -maxdepth 2 -executable -type f) out/bin/

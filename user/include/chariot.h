@@ -4,7 +4,7 @@
 #define _CHARIOT_H
 
 
-
+#include <stdlib.h>
 #include <stdio.h>
 
 #ifdef __cplusplus
@@ -56,6 +56,10 @@ int startpidvpe(int pid, char *const path, char *const argv[],
       panic("assertion failed: %s\n", #val); \
     }                                        \
   } while (0);
+
+
+
+
 
 
 #ifdef __cplusplus
