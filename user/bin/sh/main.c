@@ -81,10 +81,10 @@ int run_line(const char *line) {
       waitpid(pid, &stat, 0);
     }
 
-		int exit_code = WEXITSTATUS(stat);
-		if (exit_code != 0) {
-			fprintf(stderr, "%s: exited with code %d\n", args[0], exit_code);
-		}
+    int exit_code = WEXITSTATUS(stat);
+    if (exit_code != 0) {
+      fprintf(stderr, "%s: exited with code %d\n", args[0], exit_code);
+    }
   } else {
     printf("failed to execute: '%s'\n", args[0]);
     despawn(pid);
@@ -94,43 +94,18 @@ cleanup:
   return err;
 }
 
-void hexdump(off_t off, void *vbuf, long len) {
-  unsigned char *buf = vbuf;
-
-  int w = 16;
-  for (int i = 0; i < len; i += w) {
-    unsigned char *line = buf + i;
-    printf("%p: ", (void *)(off + i));
-    for (int c = 0; c < w; c++) {
-      if (i + c >= len) {
-	printf("   ");
-      } else {
-	printf("%02x ", line[c]);
-      }
-    }
-    printf(" |");
-    for (int c = 0; c < w; c++) {
-      if (i + c >= len) {
-      } else {
-	printf("%c", (line[c] < 0x20) || (line[c] > 0x7e) ? '.' : line[c]);
-      }
-    }
-    printf("|\n");
-  }
-}
-
 int main(int argc, char **argv, char **envp) {
   char ch;
   const char *flags = "c:";
   while ((ch = getopt(argc, argv, flags)) != -1) {
     switch (ch) {
       case 'c':
-	return run_line(optarg);
-	break;
+        return run_line(optarg);
+        break;
 
       case '?':
-	puts("sh: invalid option\n");
-	return -1;
+        puts("sh: invalid option\n");
+        return -1;
     }
   }
 
@@ -160,7 +135,7 @@ int main(int argc, char **argv, char **envp) {
     if (n >= 0) {
       hostname[n] = 0;
       for (int i = n; i > 0; i--) {
-	if (hostname[i] == '\n') hostname[i] = 0;
+        if (hostname[i] == '\n') hostname[i] = 0;
       }
     }
 
@@ -171,8 +146,8 @@ int main(int argc, char **argv, char **envp) {
       disp_cwd = "~";
     }
 
-    snprintf(prompt, 64, "[%s@%s %s]%c ", uname, hostname,
-	     disp_cwd, uid == 0 ? '#' : '$');
+    snprintf(prompt, 64, "[%s@%s %s]%c ", uname, hostname, disp_cwd,
+             uid == 0 ? '#' : '$');
     // snprintf(prompt, 64, "%s %c ", disp_cwd, uid == 0 ? '#' : '$');
 
     int len = 0;
@@ -272,21 +247,21 @@ void handle_special(char c, struct input_info *in) {
 }
 
 int select_historic_input(struct input_info *in, int n,
-			  struct readline_context *ctx) {
+                          struct readline_context *ctx) {
   // clear the input
   memset(in->buf, 0, in->len);
   in->ind = 0;
-	in->len = 0;
+  in->len = 0;
 
   if (n > -1) {
     int i = 0;
     for (struct readline_history_entry *hist = ctx->history; hist != NULL;
-	 hist = hist->next) {
+         hist = hist->next) {
       if (i++ == n) {
-	for (int c = 0; c < strlen(hist->value); c++) {
-	  input_insert(hist->value[c], in);
-	}
-	return 0;
+        for (int c = 0; c < strlen(hist->value); c++) {
+          input_insert(hist->value[c], in);
+        }
+        return 0;
       }
     }
 
@@ -300,7 +275,7 @@ int select_historic_input(struct input_info *in, int n,
 #define NPAR 16
 
 char *read_line(int fd, char *prompt, int *len_out,
-		struct readline_context *ctx) {
+                struct readline_context *ctx) {
   struct input_info in;
 
   in.max = 32;
@@ -338,90 +313,90 @@ printf("%2d: %s\n", i++, hist->value);
     switch (state) {
       // default text-entry mode
       case 0:
-	if (c == 0x1b) {
-	  state = 1;
-	  break;
-	} else if (c == 0x7F /* DEL */) {
-	  history_index = -1;
-	  input_del(&in);
-	} else if (c >= ' ' && c <= '~') {
-	  history_index = -1;
-	  input_insert(c, &in);
-	} else {
-	  history_index = -1;
-	  // special input handling
-	  handle_special(c, &in);
-	}
-	break;
+        if (c == 0x1b) {
+          state = 1;
+          break;
+        } else if (c == 0x7F /* DEL */) {
+          history_index = -1;
+          input_del(&in);
+        } else if (c >= ' ' && c <= '~') {
+          history_index = -1;
+          input_insert(c, &in);
+        } else {
+          history_index = -1;
+          // special input handling
+          handle_special(c, &in);
+        }
+        break;
 
       case 1:
-	state = 0;
-	if (c == '[') {
-	  state = 2;
-	}
-	break;
+        state = 0;
+        if (c == '[') {
+          state = 2;
+        }
+        break;
 
       case 2:
-	for (npar = 0; npar < NPAR; npar++) par[npar] = 0;
-	npar = 0;
-	state = 3;
-	if ((ques = (c == '?'))) {
-	  break;
-	}
+        for (npar = 0; npar < NPAR; npar++) par[npar] = 0;
+        npar = 0;
+        state = 3;
+        if ((ques = (c == '?'))) {
+          break;
+        }
 
-	/* parse out decimal arguments */
+        /* parse out decimal arguments */
       case 3:
-	if (c == ';' && npar < NPAR - 1) {
-	  npar++;
-	  break;
-	} else if (c >= '0' && c <= '9') {
-	  par[npar] = 10 * par[npar] + c - '0';
-	  break;
-	} else
-	  state = 4;
+        if (c == ';' && npar < NPAR - 1) {
+          npar++;
+          break;
+        } else if (c >= '0' && c <= '9') {
+          par[npar] = 10 * par[npar] + c - '0';
+          break;
+        } else
+          state = 4;
       /* run ansi codes */
       case 4:
-	state = 0;
-	switch (c) {
-	  // up arrow
-	  case 'A':
+        state = 0;
+        switch (c) {
+          // up arrow
+          case 'A':
 
-	    if (0 == select_historic_input(&in, history_index + 1, ctx)) {
-	      history_index++;
-	    }
-	    break;
+            if (0 == select_historic_input(&in, history_index + 1, ctx)) {
+              history_index++;
+            }
+            break;
 
-	  // down arrow
-	  case 'B':
-	    if (0 == select_historic_input(&in, history_index - 1, ctx)) {
-	      history_index--;
-	    }
-	    break;
+          // down arrow
+          case 'B':
+            if (0 == select_historic_input(&in, history_index - 1, ctx)) {
+              history_index--;
+            }
+            break;
 
-	  case 'D':
-	    if (in.ind > 0) in.ind--;
-	    break;
-	  case 'C':
-	    if (in.ind < in.len) in.ind++;
-	    break;
-	  case '~':
-	    if (in.ind < in.len) {
-	      in.ind++;
-	      input_del(&in);
-	    }
-	    // right delete
-	    break;
+          case 'D':
+            if (in.ind > 0) in.ind--;
+            break;
+          case 'C':
+            if (in.ind < in.len) in.ind++;
+            break;
+          case '~':
+            if (in.ind < in.len) {
+              in.ind++;
+              input_del(&in);
+            }
+            // right delete
+            break;
 
-	  default:
-	    fprintf(stderr, "unknown ansi escp: \\x1b[");
-	    for (int i = 0; i < npar; i++) {
-	      fprintf(stderr, "%lu\n", par[i]);
-	      if (i != npar - 1) fprintf(stderr, ";");
-	    }
-	    fprintf(stderr, "%c\n", c);
-	    break;
-	}
-	break;
+          default:
+            fprintf(stderr, "unknown ansi escp: \\x1b[");
+            for (int i = 0; i < npar; i++) {
+              fprintf(stderr, "%lu\n", par[i]);
+              if (i != npar - 1) fprintf(stderr, ";");
+            }
+            fprintf(stderr, "%c\n", c);
+            break;
+        }
+        break;
     }
   }
   in.buf[in.len] = '\0';  // null terminate
@@ -457,12 +432,12 @@ printf("%2d: %s\n", i++, hist->value);
 
 int parseline(const char *cmdline, char **argv) {
   char *buf = malloc(strlen(cmdline) + 1); /* ptr that traverses command line */
-  char *delim;				   /* points to first space delimiter */
-  int argc;				   /* number of args */
-  int bg;				   /* background job? */
+  char *delim;                             /* points to first space delimiter */
+  int argc;                                /* number of args */
+  int bg;                                  /* background job? */
 
   strcpy(buf, cmdline);
-  buf[strlen(buf)] = ' ';	/* replace trailing '\n' with space */
+  buf[strlen(buf)] = ' ';       /* replace trailing '\n' with space */
   while (*buf && (*buf == ' ')) /* ignore leading spaces */
     buf++;
 

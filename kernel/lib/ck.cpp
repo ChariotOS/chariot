@@ -1,7 +1,5 @@
-#include <asm.h>
-#include <printk.h>
-#include <string.h>
-
+#include <ck/string.h>
+#include <ck/vec.h>
 
 #define INIT_STRING       \
   if (m_buf == nullptr) { \
@@ -10,31 +8,9 @@
     m_buf[0] = '\0';      \
   }
 
-// #define STR_DEBUG
 
-#ifdef STR_DEBUG
-#define CHECK string_checker chk(*this, __LINE__, __PRETTY_FUNCTION__);
-#else
-#define CHECK
-#endif
 
-class string_checker {
-  string& s;
-  int line;
-  const char* func;
-
- public:
-  string_checker(string& s, int line, const char* func)
-      : s(s), line(line), func(func) {
-    printk("+ (%4d %s): %p\n", line, func, &s);
-  }
-
-  ~string_checker() {
-    printk("- [%4d %s]: %p\n", line, func, &s);
-  }
-};
-
-string::string() {
+ck::string::string() {
   m_buf = nullptr;
   m_len = 0;
   m_cap = 0;
@@ -42,7 +18,7 @@ string::string() {
   INIT_STRING;
 }
 
-string::string(const char* s) {
+ck::string::string(const char* s) {
   m_buf = nullptr;
   m_len = 0;
   m_cap = 0;
@@ -50,18 +26,16 @@ string::string(const char* s) {
   *this = s;
 }
 
-string::string(const string& s) {
+ck::string::string(const string& s) {
   m_buf = nullptr;
   m_len = 0;
   m_cap = 0;
   INIT_STRING;
-  CHECK;
   m_buf[0] = '\0';
   for (char c : s) push(c);
 }
 
-string::string(string&& s) {
-  CHECK;
+ck::string::string(string&& s) {
   // take control of another string's data
   m_len = s.m_len;
   m_cap = s.m_cap;
@@ -72,26 +46,24 @@ string::string(string&& s) {
   s.m_buf = nullptr;
 }
 
-string::string(char c) {
-  CHECK;
+ck::string::string(char c) {
   m_buf = 0;
   m_cap = 0;
   m_len = 0;
   push(c);
 }
 
-string::~string() {
+ck::string::~string() {
   if (m_buf != nullptr) kfree(m_buf);
 }
 
-vec<string> string::split(char c, bool include_empty) {
-  CHECK;
+ck::vec<ck::string> ck::string::split(char c, bool include_empty) {
   vec<string> tokens;
   string token = "";
 
   string& self = *this;
 
-  for (u32 i = 0; i < len(); i++) {
+  for (unsigned int i = 0; i < len(); i++) {
     if (self[i] == c) {
       if (token.len() == 0 && !include_empty) {
         continue;
@@ -112,10 +84,10 @@ vec<string> string::split(char c, bool include_empty) {
   return tokens;
 }
 
-unsigned string::len() const { return m_len; }
-unsigned string::size() const { return m_len; }
+unsigned ck::string::len() const { return m_len; }
+unsigned ck::string::size() const { return m_len; }
 
-char string::pop() {
+char ck::string::pop() {
 
 	char c = -1;
 	if (m_len > 0) {
@@ -127,55 +99,48 @@ char string::pop() {
 	return c;
 }
 
-void string::clear() {
-  CHECK;
+void ck::string::clear() {
   reserve(16);
   m_buf[0] = '\0';
   m_len = 0;
 }
 
-char& string::operator[](u32 j) {
-  CHECK;
+char& ck::string::operator[](unsigned int j) {
   if (j >= m_len) panic("string out of range");
   return m_buf[j];
 }
 
-char string::operator[](u32 j) const {
+char ck::string::operator[](unsigned int j) const {
   if (j >= m_len) panic("string out of range");
   return m_buf[j];
 }
 
-string& string::operator=(const string& s) {
-  CHECK;
+ck::string& ck::string::operator=(const string& s) {
   reserve(s.m_cap);
   m_buf[0] = '\0';
   for (char c : s) push(c);
   return *this;
 }
 
-string& string::operator=(const char* s) {
-  CHECK;
-  u32 len = strlen(s);
+ck::string& ck::string::operator=(const char* s) {
+  unsigned int len = strlen(s);
   reserve(len + 1);
   m_len = len;
   memcpy(m_buf, s, len);
   return *this;
 }
 
-string& string::operator+=(const string& s) {
-  CHECK;
+ck::string& ck::string::operator+=(const string& s) {
   reserve(len() + s.len());
   for (char c : s) push(c);
   return *this;
 }
-string& string::operator+=(char c) {
-  CHECK;
+ck::string& ck::string::operator+=(char c) {
   push(c);
   return *this;
 }
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
-void string::reserve(u32 new_cap) {
-  CHECK;
+void ck::string::reserve(unsigned int new_cap) {
   if (new_cap < 16) new_cap = 16;
   new_cap = round_up(new_cap, 16);
   if (m_buf == nullptr) {
@@ -195,8 +160,7 @@ void string::reserve(u32 new_cap) {
 /**
  * main append function (assures null at end)
  */
-void string::push(char c) {
-  CHECK;
+void ck::string::push(char c) {
 
 
   if (c == '\0') return;
@@ -218,20 +182,20 @@ void string::push(char c) {
  *
  */
 
-string operator+(const string& lhs, const string& rhs) {
-  return string(lhs) += rhs;
+ck::string operator+(const ck::string& lhs, const ck::string& rhs) {
+  return ck::string(lhs) += rhs;
 }
 
-string operator+(const string& lhs, const char* rhs) {
-  return string(lhs) += string(rhs);
+ck::string operator+(const ck::string& lhs, const char* rhs) {
+  return ck::string(lhs) += ck::string(rhs);
 }
 
-string operator+(const char* lhs, const string& rhs) {
-  return string(lhs) += rhs;
+ck::string operator+(const char* lhs, const ck::string& rhs) {
+  return ck::string(lhs) += rhs;
 }
 
 
-bool operator==(const string& lhs, const string& rhs) {
+bool operator==(const ck::string& lhs, const ck::string& rhs) {
   if (lhs.len() != rhs.len()) return false;
 
   unsigned cap = lhs.len();
@@ -240,15 +204,15 @@ bool operator==(const string& lhs, const string& rhs) {
   return (n == cap);
 }
 
-bool operator==(const string& lhs, const char* rhs) {
-  return (lhs == string(rhs));
+bool operator==(const ck::string& lhs, const char* rhs) {
+  return (lhs == ck::string(rhs));
 }
 
-bool operator==(const char* lhs, const string& rhs) {
-  return (string(lhs) == rhs);
+bool operator==(const char* lhs, const ck::string& rhs) {
+  return (ck::string(lhs) == rhs);
 }
 
-bool operator>(const string& lhs, const string& rhs) {
+bool operator>(const ck::string& lhs, const ck::string& rhs) {
   unsigned cap = (lhs.len() < rhs.len()) ? lhs.len() : rhs.len();
   unsigned n = 0;
   while ((n < cap) && (lhs[n] == rhs[n])) n++;
@@ -263,37 +227,37 @@ bool operator>(const string& lhs, const string& rhs) {
   return lhs[n] > rhs[n];
 }
 
-bool operator>(const string& lhs, const char* rhs) {
-  return (lhs > string(rhs));
+bool operator>(const ck::string& lhs, const char* rhs) {
+  return (lhs > ck::string(rhs));
 }
-bool operator>(const char* lhs, const string& rhs) {
-  return (string(lhs) > rhs);
+bool operator>(const char* lhs, const ck::string& rhs) {
+  return (ck::string(lhs) > rhs);
 }
-bool operator!=(const string& lhs, const string& rhs) { return !(lhs == rhs); }
-bool operator!=(const string& lhs, const char* rhs) { return !(lhs == rhs); }
-bool operator!=(const char* lhs, const string& rhs) { return !(lhs == rhs); }
-bool operator<(const string& lhs, const string& rhs) {
+bool operator!=(const ck::string& lhs, const ck::string& rhs) { return !(lhs == rhs); }
+bool operator!=(const ck::string& lhs, const char* rhs) { return !(lhs == rhs); }
+bool operator!=(const char* lhs, const ck::string& rhs) { return !(lhs == rhs); }
+bool operator<(const ck::string& lhs, const ck::string& rhs) {
   return !(lhs == rhs) && !(lhs > rhs);
 }
-bool operator<(const string& lhs, const char* rhs) {
+bool operator<(const ck::string& lhs, const char* rhs) {
   return !(lhs == rhs) && !(lhs > rhs);
 }
-bool operator<(const char* lhs, const string& rhs) {
+bool operator<(const char* lhs, const ck::string& rhs) {
   return !(lhs == rhs) && !(lhs > rhs);
 }
-bool operator<=(const string& lhs, const string& rhs) { return !(lhs > rhs); }
-bool operator<=(const string& lhs, const char* rhs) { return !(lhs > rhs); }
-bool operator<=(const char* lhs, const string& rhs) { return !(lhs > rhs); }
+bool operator<=(const ck::string& lhs, const ck::string& rhs) { return !(lhs > rhs); }
+bool operator<=(const ck::string& lhs, const char* rhs) { return !(lhs > rhs); }
+bool operator<=(const char* lhs, const ck::string& rhs) { return !(lhs > rhs); }
 
-bool operator>=(const string& lhs, const string& rhs) {
+bool operator>=(const ck::string& lhs, const ck::string& rhs) {
   return (lhs == rhs) || (lhs > rhs);
 }
 
-bool operator>=(const string& lhs, const char* rhs) {
+bool operator>=(const ck::string& lhs, const char* rhs) {
   return (lhs == rhs) || (lhs > rhs);
 }
 
-bool operator>=(const char* lhs, const string& rhs) {
+bool operator>=(const char* lhs, const ck::string& rhs) {
   return (lhs == rhs) || (lhs > rhs);
 }
 

@@ -1,7 +1,13 @@
 #ifndef __TEMPLATE_LIB_H__
 #define __TEMPLATE_LIB_H__
 
+
+#ifdef USERLAND
+
+#else
 #include <printk.h>
+#endif
+
 
 typedef decltype(nullptr) nullptr_t;
 
@@ -17,7 +23,7 @@ struct Traits : public GenericTraits<T> {};
 template <typename T>
 struct IntegerTraits : public GenericTraits<T> {
   static constexpr bool is_trivial() { return true; }
-  static u64 hash(T c) { return c; }
+  static unsigned long hash(T c) { return c; }
   static int cmp(T a, T b) { return a - b; }
 };
 
@@ -25,17 +31,17 @@ struct IntegerTraits : public GenericTraits<T> {
   template <>             \
   struct Traits<T> : public IntegerTraits<T> {};
 
-DEF_INT_TRAITS(i8);
-DEF_INT_TRAITS(u8);
+DEF_INT_TRAITS(unsigned char);
+DEF_INT_TRAITS(char);
 
-DEF_INT_TRAITS(i16);
-DEF_INT_TRAITS(u16);
+DEF_INT_TRAITS(short);
+DEF_INT_TRAITS(unsigned short);
 
-DEF_INT_TRAITS(i32);
-DEF_INT_TRAITS(u32);
+DEF_INT_TRAITS(int);
+DEF_INT_TRAITS(unsigned int);
 
-DEF_INT_TRAITS(i64);
-DEF_INT_TRAITS(u64);
+DEF_INT_TRAITS(long);
+DEF_INT_TRAITS(unsigned long);
 
 template <typename T>
 struct Traits<T*> {

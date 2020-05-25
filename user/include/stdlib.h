@@ -48,8 +48,6 @@ void qsort(void * base, size_t nmemb, size_t size, int (*compar)(const void *, c
 void abort(void);
 
 
-
-
 #define RAND_MAX (0x7fffffff)
 int rand (void);
 void srand (unsigned);
@@ -58,6 +56,9 @@ void srand (unsigned);
 #ifdef _CHARIOT_SRC
 // returns the joined path of a and b. Must be freed
 char *path_join(char *a, char *b);
+
+// pretty print hexdump to the terminal
+void debug_hexdump(void *, size_t);
 #endif
 
 

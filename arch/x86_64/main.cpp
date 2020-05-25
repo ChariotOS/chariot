@@ -1,8 +1,10 @@
 #include <cpu.h>
+#include <desktop.h>
 #include <dev/serial.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <kargs.h>
+#include <kshell.h>
 #include <module.h>
 #include <net/ipv4.h>
 #include <net/net.h>
@@ -10,11 +12,9 @@
 #include <pit.h>
 #include <syscall.h>
 #include <types.h>
-#include <vga.h>
 #include <util.h>
-#include <kshell.h>
+#include <vga.h>
 #include "smp.h"
-#include <desktop.h>
 
 extern int kernel_end;
 
@@ -85,7 +85,7 @@ static void kmain2(void) {
 
 
   init_pit();
-	set_pit_freq(TICK_FREQ);
+  set_pit_freq(TICK_FREQ);
   KINFO("Initialized PIT\n");
 
   // initialize the scheduler
@@ -105,16 +105,14 @@ static void kmain2(void) {
 
 
 int kernel_init(void *) {
-
-
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
 
   vga::early_init();
 
-	// at this point, the pit is being used for interrupts,
-	// so we should go setup lapic for that
-	smp::lapic_init();
+  // at this point, the pit is being used for interrupts,
+  // so we should go setup lapic for that
+  smp::lapic_init();
   syscall_init();
 
 
@@ -124,8 +122,8 @@ int kernel_init(void *) {
   KINFO("kernel modules initialized\n");
 
 
-	// start up the extra cpu cores
-	smp::init_cores();
+  // start up the extra cpu cores
+  smp::init_cores();
 
   sched::proc::create_kthread("[net]", net::task);
 
@@ -133,19 +131,19 @@ int kernel_init(void *) {
   // auto rootdev = dev::open(kargs::get("root", "ata0p1"));
   // assert(rootdev);
 
-	auto root_name = kargs::get("root", "/dev/ata0p1");
-	assert(root_name);
+  auto root_name = kargs::get("root", "/dev/ata0p1");
+  assert(root_name);
 
   int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);
-	if (mnt_res != 0) {
-		panic("failed to mount root. Error=%d\n", -mnt_res);
-	}
+  if (mnt_res != 0) {
+    panic("failed to mount root. Error=%d\n", -mnt_res);
+  }
 
-	if (vfs::mount("none", "/dev", "devfs", 0, NULL) != 0) {
-		panic("failed to mount devfs");
-	}
+  if (vfs::mount("none", "/dev", "devfs", 0, NULL) != 0) {
+    panic("failed to mount devfs");
+  }
 
-	// desktop::init();
+  // desktop::init();
 
   // setup stdio stuff for the kernel (to be inherited by spawn)
   int fd = sys::open("/dev/console", O_RDWR);
@@ -155,9 +153,9 @@ int kernel_init(void *) {
   sys::dup2(fd, 2);
 
 
-	auto kproc = sched::proc::kproc();
-	kproc->root = fs::inode::acquire(vfs::get_root());
-	kproc->cwd = fs::inode::acquire(vfs::get_root());
+  auto kproc = sched::proc::kproc();
+  kproc->root = fs::inode::acquire(vfs::get_root());
+  kproc->cwd = fs::inode::acquire(vfs::get_root());
 
   string init_paths = kargs::get("init", "/bin/init");
 
@@ -169,7 +167,8 @@ int kernel_init(void *) {
 
   if (init_pid == -1) {
     KERR("failed to create init process\n");
-    KERR("check the grub config and make sure that the init command line arg\n");
+    KERR(
+        "check the grub config and make sure that the init command line arg\n");
     KERR("is set to a comma seperated list of possible paths.\n");
   }
 

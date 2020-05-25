@@ -1,7 +1,7 @@
+#include <cpu.h>
 #include <mm.h>
 #include <phys.h>
 #include <util.h>
-#include <cpu.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 
@@ -14,7 +14,7 @@ static void print_debug_page_list(void) {
   for (auto *cur = debug_page_list; cur != NULL; cur = cur->dbg_next) {
     printk("%p freeable: %d\n", cur->pa, cur->freeable);
   }
-	printk("\n");
+  printk("\n");
   debug_page_list_lock.unlock();
 }
 
@@ -30,7 +30,7 @@ mm::page::page(void) {
   debug_page_list_lock.unlock();
 #endif
 
-	lru = cpu::get_ticks();
+  lru = cpu::get_ticks();
 }
 
 mm::page::~page(void) {
@@ -131,23 +131,23 @@ int mm::space::pagefault(off_t va, int err) {
        * if the region is backed by a file, read the file into the page
        */
       if (r->fd) {
-	void *buf = p2v(page->pa);
-	// TODO: handle failures to read
+        void *buf = p2v(page->pa);
+        // TODO: handle failures to read
 
-	// offset, in bytes, into the region
-	off_t roff = ind * PGSIZE;
-	r->fd->seek(r->off + roff, SEEK_SET);
+        // offset, in bytes, into the region
+        off_t roff = ind * PGSIZE;
+        r->fd->seek(r->off + roff, SEEK_SET);
 
-	size_t to_read = min(PGSIZE, r->len - roff);
-	int nread = r->fd->read(buf, to_read);
+        size_t to_read = min(PGSIZE, r->len - roff);
+        int nread = r->fd->read(buf, to_read);
 
-	if (nread == -1) {
-	  printk("failed to read mapped file!\n");
-	  memset(buf, 0, PGSIZE);
-	}
+        if (nread == -1) {
+          printk("failed to read mapped file!\n");
+          memset(buf, 0, PGSIZE);
+        }
 
-	// clear out all the other memory that was read
-	if (nread != PGSIZE) memset((char *)buf + nread, 0x00, PGSIZE - nread);
+        // clear out all the other memory that was read
+        if (nread != PGSIZE) memset((char *)buf + nread, 0x00, PGSIZE - nread);
       }
 
       spinlock::unlock(page->lock);
@@ -155,23 +155,23 @@ int mm::space::pagefault(off_t va, int err) {
       // If the fault was due to a write, and this region
       // is writable, handle COW if needed
       if ((err & FAULT_WRITE) && (r->prot & PROT_WRITE)) {
-	if (r->flags & MAP_SHARED) {
-	  // TODO: handle shared
-	} else {
-	  auto op = r->pages[ind];
-	  spinlock::lock(op->lock);
+        if (r->flags & MAP_SHARED) {
+          // TODO: handle shared
+        } else {
+          auto op = r->pages[ind];
+          spinlock::lock(op->lock);
 
-	  if (op->users > 1) {
-	    auto np = mm::page::alloc();
-	    printk("COW [page %d in '%s']\n", ind, r->name.get());
-	    np->users = 1;
-	    op->users--;
-	    memcpy(p2v(np->pa), p2v(op->pa), PGSIZE);
-	    r->pages[ind] = np;
-	  }
+          if (op->users > 1) {
+            auto np = mm::page::alloc();
+            printk("COW [page %d in '%s']\n", ind, r->name.get());
+            np->users = 1;
+            op->users--;
+            memcpy(p2v(np->pa), p2v(op->pa), PGSIZE);
+            r->pages[ind] = np;
+          }
 
-	  spinlock::unlock(op->lock);
-	}
+          spinlock::unlock(op->lock);
+        }
       }
     }
 
@@ -192,8 +192,8 @@ size_t mm::space::memory_usage(void) {
     r->lock.lock();
     for (auto &p : r->pages)
       if (p) {
-	s += sizeof(mm::page);
-	s += PGSIZE;
+        s += sizeof(mm::page);
+        s += PGSIZE;
       }
 
     s += sizeof(mm::page *) * r->pages.size();
@@ -241,21 +241,21 @@ mm::space *mm::space::fork(void) {
 
     for (auto &p : r->pages) {
       if (p) {
-	spinlock::lock(p->lock);
+        spinlock::lock(p->lock);
 #ifdef DO_COW
-	p->users++;
-	copy->pages.push(p);
+        p->users++;
+        copy->pages.push(p);
 #else
-	auto np = mm::page::alloc();
-	memcpy(p2v(np->pa), p2v(p->pa), PGSIZE);
-	copy->pages.push(p);
+        auto np = mm::page::alloc();
+        memcpy(p2v(np->pa), p2v(p->pa), PGSIZE);
+        copy->pages.push(p);
 #endif
 
-	spinlock::unlock(p->lock);
+        spinlock::unlock(p->lock);
       } else {
-	// TODO: manage shared mapping on fork
-	// push an empty page to take up the space
-	copy->pages.push(nullptr);
+        // TODO: manage shared mapping on fork
+        // push an empty page to take up the space
+        copy->pages.push(nullptr);
       }
     }
 
@@ -263,10 +263,10 @@ mm::space *mm::space::fork(void) {
     for (size_t i = 0; i < round_up(r->len, 4096) / 4096; i++) {
       struct mm::pte pte;
       if (r->pages[i]) {
-	pte.ppn = r->pages[i]->pa >> 12;
-	// for copy on write
-	pte.prot = r->prot & ~PROT_WRITE;
-	pt->add_mapping(r->va + (i * 4096), pte);
+        pte.ppn = r->pages[i]->pa >> 12;
+        // for copy on write
+        pte.prot = r->prot & ~PROT_WRITE;
+        pt->add_mapping(r->va + (i * 4096), pte);
       }
     }
 #endif
@@ -283,12 +283,12 @@ mm::space *mm::space::fork(void) {
 }
 
 off_t mm::space::mmap(off_t req, size_t size, int prot, int flags,
-		      ref<fs::file> fd, off_t off) {
+                      ref<fs::file> fd, off_t off) {
   return mmap("", req, size, prot, flags, move(fd), off);
 }
 
 off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
-		      ref<fs::file> fd, off_t off) {
+                      ref<fs::file> fd, off_t off) {
   if (addr & 0xFFF) return -1;
 
   if ((flags & (MAP_PRIVATE | MAP_SHARED)) == 0) {
@@ -339,7 +339,7 @@ int mm::space::unmap(off_t ptr, size_t len) {
       sort_regions();
 
       for (off_t v = va; v < va + len; v += 4096) {
-	pt->del_mapping(va);
+        pt->del_mapping(va);
       }
 
       delete region;
@@ -393,10 +393,10 @@ int mm::space::sort_regions(void) {
       auto &t1 = regions.at(j - 1);
       auto &t2 = regions.at(j);
       if (t1->va > t2->va) {
-	swap(t1, t2);
-	n++;
+        swap(t1, t2);
+        n++;
       } else {
-	break;
+        break;
       }
     }
   }
@@ -418,10 +418,10 @@ void mm::space::dump(void) {
       minor = r->fd->ino->dev.minor;
     }
     printk("%p-%p %c%c%c%c %09x %02x:%02x %-10d %s\n", r->va,
-	   round_up(r->va + r->len, 4096), r->prot & PROT_READ ? 'r' : '-',
-	   r->prot & PROT_WRITE ? 'w' : '-', r->prot & PROT_EXEC ? 'x' : '-',
-	   r->flags & MAP_PRIVATE ? 'p' : 's', r->off, major, minor, ino,
-	   r->name.get());
+           round_up(r->va + r->len, 4096), r->prot & PROT_READ ? 'r' : '-',
+           r->prot & PROT_WRITE ? 'w' : '-', r->prot & PROT_EXEC ? 'x' : '-',
+           r->flags & MAP_PRIVATE ? 'p' : 's', r->off, major, minor, ino,
+           r->name.get());
   }
 }
 

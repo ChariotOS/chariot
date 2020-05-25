@@ -31,4 +31,5 @@ int main(int argc, char **argv) {
 		fwrite(buf, 1, n, dst);
 	}
 	free(buf);
+	return 0;
 }

@@ -9,7 +9,8 @@ OPTIMIZE:=-O3
 
 CFLAGS  = -I./include/ $(MOREFLAGS) -fPIE
 CFLAGS += -ffreestanding -Wall
-
+CFLAGS += $(DEFINES)
+CPPFLAGS = $(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions
 
 
 LDFLAGS += -L$(PWD)/out/lib/
@@ -94,7 +95,7 @@ build/%.c.o: %.c
 build/%.cpp.o: %.cpp
 	@mkdir -p $(dir $@)
 	@echo -e "$(PFX) CXX " $<
-	@$(CXX) $(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions -o $@ -c $<
+	@$(CXX) $(CPPFLAGS) -std=c++17 -fno-rtti -fno-exceptions -o $@ -c $<
 
 
 

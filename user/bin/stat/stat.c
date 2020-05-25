@@ -74,8 +74,6 @@ int main(int argc, char **argv) {
 			printf("failed to execute: '%s'\n", args[0]);
 			despawn(pid);
 		}
-		sprintf(buf, "echo %d", i);
-		system(buf);
 	}
 	return 0;
 

@@ -13,6 +13,13 @@ SECTIONS
 
 	.text : { *(.text) }
 
+
+	.init_array : {
+		__init_array_start = .;
+		KEEP (*(.init_array*))
+		__init_array_end = .;
+	}
+
 	/*
 	 * .bss not being last means it doesn't make filesz < memsz
 	 * and that my crappy elf loader can work :)
