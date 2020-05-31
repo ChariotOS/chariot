@@ -19,6 +19,7 @@ static int slot;
 static volatile int lock[1];
 
 void __funcs_on_exit() {
+#if 0
   int n = mregions(NULL, 0);
   if (n > 0) {
     struct mmap_region *regions = calloc(n, sizeof(*regions));
@@ -34,6 +35,7 @@ void __funcs_on_exit() {
     }
     free(regions);
   }
+#endif
 
 
   void (*func)(void *), *arg;
