@@ -1,20 +1,11 @@
-#include <ck/defer.h>
-#include <ck/map.h>
-#include <ck/ptr.h>
-#include <ck/single_list.h>
-#include <ck/string.h>
-#include <ck/vec.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <ck/command.h>
+#include <ck/io.h>
 
-void print(const char *msg) {
-	ck::command("echo", msg).exec();
-}
 
 int main() {
-	print("hello, world");
-	print("this is a test.");
+	void *p = malloc(100);
+	ck::hexdump((void*)((off_t)p - 200), 300);
+
   return 0;
 }
-

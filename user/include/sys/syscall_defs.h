@@ -31,6 +31,8 @@
 #define SYS_mmap                     (0x30)
 #define SYS_munmap                   (0x31)
 #define SYS_mrename                  (0x32)
+#define SYS_mgetname                 (0x33)
+#define SYS_mregions                 (0x34)
 #define SYS_dirent                   (0x40)
 #define SYS_localtime                (0x50)
 #define SYS_gettime_microsecond      (0x51)

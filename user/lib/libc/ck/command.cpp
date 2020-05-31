@@ -1,11 +1,10 @@
-// defer to the kernel's implementation
-#include "../../kernel/lib/ck.cpp"
-
 #include <stdlib.h>
 #include <string.h>
 #include <ck/command.h>
 #include <ck/defer.h>
 #include <sys/wait.h>
+#include <ck/io.h>
+#include <errno.h>
 
 extern char **environ;
 
@@ -24,10 +23,10 @@ void ck::command::arg(ck::string arg) { m_args.push(arg); }
 
 
 int ck::command::start(void) {
+	if (pid != -1) return -EEXIST;
 
   pid = spawn();
   if (pid <= -1) {
-    // perror("ck::command::exec spawn");
     return pid;
   }
 
@@ -71,3 +70,19 @@ int ck::command::wait(void) {
   }
   return stat;
 }
+
+
+ck::string ck::format(const ck::command &cmd) {
+	ck::string s = cmd.exe();
+
+	auto argc = cmd.argc();
+
+	auto argv = cmd.argv();
+	for (int i = 0; i < argc; i++) {
+		s += " "; // add the spacing
+		s += argv[i]; // add the argument
+	}
+
+	return s;
+}
+

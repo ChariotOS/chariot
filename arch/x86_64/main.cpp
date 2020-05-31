@@ -16,6 +16,9 @@
 #include <vga.h>
 #include "smp.h"
 
+#include <arch.h>
+
+
 extern int kernel_end;
 
 // in src/arch/x86/sse.asm
@@ -162,6 +165,12 @@ int kernel_init(void *) {
   auto paths = init_paths.split(',');
   pid_t init_pid = sched::proc::spawn_init(paths);
 
+
+	/*
+	while (1) {
+		arch::us_this_second();
+	}
+	*/
   sys::waitpid(init_pid, NULL, 0);
   panic("init died!\n");
 

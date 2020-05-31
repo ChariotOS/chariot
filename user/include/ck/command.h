@@ -18,29 +18,33 @@ namespace ck {
 
     ~command(void);
 
-    // The base case: we just have a single number.
     template <typename T>
     void args(T t) {
-			arg(t);
+      arg(t);
     }
 
-    // The recursive case: we take a number, alongside
-    // some other numbers, and produce their sum.
     template <typename T, typename... Rest>
     void args(T t, Rest... rest) {
-			arg(t);
-			args(rest...);
+      arg(t);
+      args(rest...);
     }
 
     void arg(ck::string);
 
+
+    inline const ck::string &exe(void) const { return m_exe; }
+    inline int argc(void) const { return m_args.size(); }
+    inline ck::vec<ck::string> argv(void) const { return m_args; }
+
+    // start the command
     int start(void);
 
-		// starts then waits
+    // starts then waits
     int exec(void);
 
-		// waits for the started command to exit
+    // waits for the started command to exit
     int wait(void);
-
   };
+
+  ck::string format(const ck::command &cmd);
 }  // namespace ck

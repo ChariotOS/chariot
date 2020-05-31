@@ -331,6 +331,32 @@ class ref {
 
 
 
+// static cast of ck::ref
+template <class T, class U>
+ck::ref<T> static_pointer_cast(const ck::ref<U>& ptr)  // never throws
+{
+  return ck::ref<T>(ptr, static_cast<typename ck::ref<T>::element_type*>(ptr.get()));
+}
+
+// dynamic cast of ck::ref
+template <class T, class U>
+ck::ref<T> dynamic_pointer_cast(const ck::ref<U>& ptr)  // never throws
+{
+  T* p = dynamic_cast<typename ck::ref<T>::element_type*>(ptr.get());
+  if (NULL != p) {
+    return ck::ref<T>(ptr, p);
+  } else {
+    return ck::ref<T>();
+  }
+}
+
+template <typename T, typename... Args>
+ck::ref<T> make_ref(Args&&... args) {
+  return ck::ref<T>(ck::ref<T>::AdoptTag::Adopt, *new T(forward<Args>(args)...));
+}
+
+
+
 };
 
 
@@ -372,28 +398,4 @@ bool operator>(const ck::ref<T>& l,
                const ck::ref<U>& r) throw()  // never throws
 {
   return (l.get() > r.get());
-}
-
-// static cast of ck::ref
-template <class T, class U>
-ck::ref<T> static_pointer_cast(const ck::ref<U>& ptr)  // never throws
-{
-  return ck::ref<T>(ptr, static_cast<typename ck::ref<T>::element_type*>(ptr.get()));
-}
-
-// dynamic cast of ck::ref
-template <class T, class U>
-ck::ref<T> dynamic_pointer_cast(const ck::ref<U>& ptr)  // never throws
-{
-  T* p = dynamic_cast<typename ck::ref<T>::element_type*>(ptr.get());
-  if (NULL != p) {
-    return ck::ref<T>(ptr, p);
-  } else {
-    return ck::ref<T>();
-  }
-}
-
-template <typename T, typename... Args>
-ck::ref<T> make_ref(Args&&... args) {
-  return ck::ref<T>(ck::ref<T>::AdoptTag::Adopt, *new T(forward<Args>(args)...));
 }

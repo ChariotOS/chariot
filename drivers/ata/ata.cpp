@@ -347,9 +347,13 @@ size_t dev::ata::block_count() { return n_sectors; }
 
 bool dev::ata::read_block_dma(u32 sector, u8* data) {
 	TRACE;
+
 	// TODO: take a lock.
 
 	if (sector & 0xF0000000) return false;
+
+
+	scoped_lock lck(drive_lock);
 
 	// setup the prdt for DMA
 	auto* prdt = static_cast<prdt_t*>(p2v(m_dma_buffer));
@@ -411,15 +415,20 @@ bool dev::ata::read_block_dma(u32 sector, u8* data) {
 }
 bool dev::ata::write_block_dma(u32 sector, const u8* data) { return false; }
 
+
 static void ata_interrupt(int intr, reg_t* fr) {
-	// irq::eoi(intr);
 	inb(primary_master_status);
 	inb(primary_master_bmr_status);
+
+	// printk("ata irq on cpu %d. %02x %02x\n", cpu::current().cpunum, pms, pmbs);
+
 	outb(primary_master_bmr_status, BMR_COMMAND_DMA_STOP);
 
 	if (sched::enabled()) {
 		ata_wq.notify();
 	}
+
+	irq::eoi(intr);
 	// INFO("interrupt: err=%d\n", fr->err);
 }
 
@@ -464,10 +473,10 @@ static void query_and_add_drive(u16 addr, int id, bool master) {
 }
 static void ata_initialize(void) {
 	// TODO: make a new IRQ dispatch system to make this more general
-	irq::install(32 + ATA_IRQ0, ata_interrupt, "ATA Drive");
+	irq::install(ATA_IRQ0, ata_interrupt, "ATA Drive");
 	// smp::ioapicenable(ATA_IRQ0, 0);
 
-	irq::install(32 + ATA_IRQ1, ata_interrupt, "ATA Drive");
+	irq::install(ATA_IRQ1, ata_interrupt, "ATA Drive");
 	// smp::ioapicenable(ATA_IRQ1, 0);
 
 	// register all the ata drives on the system

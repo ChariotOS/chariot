@@ -17,3 +17,12 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd,
 int mrename(void *addr, char *name) {
   return syscall(SYS_mrename, addr, name);
 }
+
+
+int mgetname(void *addr, char *name, size_t len) {
+	return syscall(SYS_mgetname, addr, name, len);
+}
+
+int mregions(struct mmap_region *list, int entries) {
+	return syscall(SYS_mregions, list, entries);
+}

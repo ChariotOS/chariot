@@ -95,7 +95,7 @@ build/%.c.o: %.c
 build/%.cpp.o: %.cpp
 	@mkdir -p $(dir $@)
 	@echo -e "$(PFX) CXX " $<
-	@$(CXX) $(CPPFLAGS) -std=c++17 -fno-rtti -fno-exceptions -o $@ -c $<
+	@$(CXX) $(CPPFLAGS) -o $@ -c $<
 
 
 

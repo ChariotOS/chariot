@@ -4,7 +4,6 @@
 #include <string.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-
 #include "./impl.h"
 
 static int _stdio_close(FILE *fp);

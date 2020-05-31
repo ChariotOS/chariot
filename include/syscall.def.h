@@ -103,6 +103,12 @@ int munmap(void *addr, unsigned long length);
 /// num=0x32
 int mrename(void *addr, char *name);
 
+/// num=0x33
+int mgetname(void *addr, char *name, size_t bufsz);
+
+/// num=0x34
+int mregions(struct mmap_region *, int nregions);
+
 /// num=0x40
 int dirent(int fd, struct dirent *, int offset, int count);
 

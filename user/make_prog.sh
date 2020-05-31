@@ -8,11 +8,8 @@ fi
 
 
 
-
-
 mkdir -p bin/$1
 echo "out = bin/$1" >> bin/$1/Makefile
-echo "srcs += $1.c" >> bin/$1/Makefile
+echo "srcs += main.cpp" >> bin/$1/Makefile
 
-
-touch bin/$1/$1.c
+touch bin/$1/main.cpp

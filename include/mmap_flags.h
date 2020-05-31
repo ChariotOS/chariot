@@ -1,4 +1,4 @@
-
+#pragma once
 // failure state
 #define MAP_FAILED ((void *) -1)
 
@@ -14,3 +14,22 @@
 #define PROT_EXEC      4
 #define PROT_GROWSDOWN 0x01000000
 #define PROT_GROWSUP   0x02000000
+
+
+struct mmap_region {
+
+	// a unique id
+	int id;
+
+	// offset and length
+	unsigned long long off, len;
+
+	// MAP_*
+	int flags;
+
+	// PROT_*
+	int prot;
+
+	// the region's name
+	char name[64];
+};

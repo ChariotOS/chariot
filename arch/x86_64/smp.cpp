@@ -110,6 +110,18 @@ static void lapic_tick_handler(int i, reg_t *tf) {
 	return;
 }
 
+
+unsigned long arch::us_this_second(void) {
+	unsigned int ticks = 0xffffffff - smp::lapic_read(LAPIC_TCCR);
+
+	printk("%d / %d\n", ticks, lapic_ticks_per_second / cpu::current().ticks_per_second);
+	// printk("1000000\n");
+	auto val = ticks / lapic_ticks_per_second;
+	// printk("%d\n", val);
+	return val;
+}
+
+
 // will screw up the PIT
 static void calibrate(void) {
 #define PIT_DIV 100

@@ -144,8 +144,6 @@ class space {
   void dump();
 
   int is_kspace = 0;
-
- protected:
   int schedule_mapping(off_t va, off_t pa, int prot);
   int sort_regions(void);
   off_t find_hole(size_t size);

@@ -31,10 +31,12 @@ int liballoc_unlock() {
   return 0;
 }
 
-
+int region_id = 0;
 void *liballoc_alloc(size_t s) {
   void *p = mmap(NULL, s * 4096, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, 0, 0);
-  // mrename(p, "[malloc]");
+	char name[32];
+	snprintf(name, 32, "[malloc #%d]", region_id++);
+  mrename(p, name);
   return p;
 }
 

@@ -1,6 +1,8 @@
+#include <errno.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <sys/mman.h>
 
 #define LOCK(n)
 #define UNLOCK(n)
@@ -17,6 +19,23 @@ static int slot;
 static volatile int lock[1];
 
 void __funcs_on_exit() {
+  int n = mregions(NULL, 0);
+  if (n > 0) {
+    struct mmap_region *regions = calloc(n, sizeof(*regions));
+    n = mregions(regions, n);
+
+    for (int i = 0; i < n; i++) {
+      printf("%012llx-%012llx %c%c%c %s\n", regions[i].off,
+             regions[i].off + regions[i].len,
+						 regions[i].prot & PROT_READ ? 'R' : '-',
+						 regions[i].prot & PROT_WRITE ? 'W' : '-',
+						 regions[i].prot & PROT_EXEC ? 'X' : '-',
+						 regions[i].name);
+    }
+    free(regions);
+  }
+
+
   void (*func)(void *), *arg;
   LOCK(lock);
   for (; head; head = head->next, slot = COUNT)
@@ -29,8 +48,7 @@ void __funcs_on_exit() {
     }
 }
 
-void __cxa_finalize(void *dso) {
-}
+void __cxa_finalize(void *dso) {}
 
 int __cxa_atexit(void (*func)(void *), void *arg, void *dso) {
   LOCK(lock);

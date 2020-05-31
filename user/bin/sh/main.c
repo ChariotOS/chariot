@@ -21,6 +21,9 @@
 #define C_RESET "\x1b[0m"
 #define C_GRAY "\x1b[90m"
 
+
+size_t current_us() { return syscall(SYS_gettime_microsecond); }
+
 extern char **environ;
 
 #define MAX_ARGS 255
@@ -74,11 +77,16 @@ int run_line(const char *line) {
     goto cleanup;
   }
 
+  // size_t start = current_us();
   int start_res = startpidvpe(pid, args[0], args, environ);
   if (start_res == 0) {
     int stat = 0;
     if (!bg) {
       waitpid(pid, &stat, 0);
+  		// size_t end = current_us();
+
+			// fprintf(stderr, "\n--------------------\n");
+			// fprintf(stderr, "%ldus\n", end - start);
     }
 
     int exit_code = WEXITSTATUS(stat);

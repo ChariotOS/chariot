@@ -18,7 +18,9 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd,
            off_t offset);
 int munmap(void *addr, size_t length);
 int mrename(void *addr, char *name);
+int mgetname(void *addr, char *name, size_t len);
 
+int mregions(struct mmap_region *list, int entries);
 #ifdef __cplusplus
 }
 #endif
