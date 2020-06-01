@@ -15,6 +15,8 @@ extern "C" {
 #include <bits/alltypes.h>
 
 int socket(int domain, int type, int protocol);
+
+int accept(int sockfd, struct sockaddr *, int addrlen);
 int connect(int sockfd, const struct sockaddr *addr, int addrlen);
 
 ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,

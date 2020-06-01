@@ -19,6 +19,14 @@ int bind(int sockfd, struct sockaddr *addr, size_t len) {
   return errno_syscall(SYS_bind, sockfd, addr, len);
 }
 
+
+int accept(int sockfd, struct sockaddr *addr, int addrlen) {
+	return errno_syscall(SYS_accept, sockfd, addr, addrlen);
+}
+int connect(int sockfd, const struct sockaddr *addr, int addrlen) {
+	return errno_syscall(SYS_connect, sockfd, addr, addrlen);
+}
+
 static uint16_t bswap_16(uint16_t __x) { return __x << 8 | __x >> 8; }
 
 static uint32_t bswap_32(uint32_t __x) {

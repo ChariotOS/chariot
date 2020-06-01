@@ -40,6 +40,8 @@
 #define SYS_socket                   (0x60)
 #define SYS_sendto                   (0x61)
 #define SYS_bind                     (0x62)
+#define SYS_accept                   (0x63)
+#define SYS_connect                  (0x64)
 #define SYS_signal_init              (0x70)
 #define SYS_signal                   (0x71)
 #define SYS_sigreturn                (0x72)

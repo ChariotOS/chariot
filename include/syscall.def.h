@@ -127,6 +127,12 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct 
 /// num=0x62
 int bind(int sockfd, const struct sockaddr*, size_t addrlen);
 
+/// num=0x63
+int accept(int sockfd, struct sockaddr *, int addrlen);
+
+/// num=0x64
+int connect(int sockfd, const struct sockaddr *addr, int addrlen);
+
 /* signal related system calls own 0x7X */
 
 /// num=0x70

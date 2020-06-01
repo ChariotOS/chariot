@@ -23,12 +23,12 @@ net::sock *net::sock::create(int domain, int type, int protocol, int &err) {
     }
   }
 
-	if (domain == PF_LOCAL) {
-		if (type == SOCK_STREAM) {
-			err = 0;
-			return new net::localsock(type);
-		}
-	}
+  if (domain == PF_LOCAL) {
+    if (type == SOCK_STREAM) {
+      err = 0;
+      return new net::localsock(type);
+    }
+  }
 
   err = -EINVAL;
   return NULL;
@@ -88,13 +88,13 @@ int sys::socket(int d, int t, int p) {
 }
 
 ssize_t sys::sendto(int sockfd, const void *buf, size_t len, int flags,
-		    const struct sockaddr *dest_addr, size_t addrlen) {
+                    const struct sockaddr *dest_addr, size_t addrlen) {
   if (!curproc->mm->validate_pointer((void *)buf, len, VALIDATE_READ)) {
     return -EINVAL;
   }
 
   if (!curproc->mm->validate_pointer((void *)dest_addr, addrlen,
-				     VALIDATE_READ)) {
+                                     VALIDATE_READ)) {
     return -EINVAL;
   }
 
@@ -119,13 +119,25 @@ int sys::bind(int sockfd, const struct sockaddr *addr, size_t len) {
   if (file) {
     if (file->ino->type == T_SOCK) {
       res = file->ino->sk->bind(addr, len);
-		} else {
-			res = -ENOTSOCK;
-		}
+    } else {
+      res = -ENOTSOCK;
+    }
   }
 
   return res;
 }
+
+
+int sys::accept(int sockfd, struct sockaddr *addr, int addrlen) {
+	return -ENOTIMPL;
+}
+
+
+int sys::connect(int sockfd, const struct sockaddr *addr, int addrlen) {
+	return -ENOTIMPL;
+}
+
+
 
 int net::sock::ioctl(int cmd, unsigned long arg) { return -ENOTIMPL; }
 
@@ -133,23 +145,24 @@ int net::sock::connect(struct sockaddr *uaddr, int addr_len) {
   return -ENOTIMPL;
 }
 
+
 int net::sock::disconnect(int flags) { return -ENOTIMPL; }
 
-net::sock *net::sock::accept(int flags, int &err) {
+net::sock *net::sock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
   err = -ENOTIMPL;
   return NULL;
 }
 
 ssize_t net::sock::sendto(void *data, size_t len, int flags, const sockaddr *,
-			  size_t) {
+                          size_t) {
   return -ENOTIMPL;
 }
 ssize_t net::sock::recvfrom(void *data, size_t len, int flags, const sockaddr *,
-			    size_t) {
+                            size_t) {
   return -ENOTIMPL;
 }
 
 
 int net::sock::bind(const struct sockaddr *addr, size_t len) {
-	return -ENOTIMPL;
+  return -ENOTIMPL;
 }

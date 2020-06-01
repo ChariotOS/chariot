@@ -21,7 +21,7 @@ struct proto {
   int (*connect)(net::sock &sk, struct sockaddr *uaddr, int addr_len);
   int (*disconnect)(net::sock &sk, int flags);
 
-  net::sock *(*accept)(net::sock &sk, int flags, int &err);
+  net::sock *(*accept)(net::sock &sk, struct sockaddr *uaddr, int addr_len, int &err);
 
   int (*init)(net::sock &sk);
   void (*destroy)(net::sock &sk);  // called on ~net::sock()
@@ -64,9 +64,9 @@ struct sock {
 
   virtual int ioctl(int cmd, unsigned long arg);
 
-  virtual int connect(struct sockaddr *uaddr, int addr_len);
+	virtual int connect(struct sockaddr *uaddr, int addr_len);
+  virtual net::sock *accept(struct sockaddr *uaddr, int addr_len, int &err);
   virtual int disconnect(int flags);
-  virtual net::sock *accept(int flags, int &error);
 
   // implemented by the network layer (OSI)
   virtual ssize_t sendto(void *data, size_t len, int flags, const sockaddr *,
@@ -88,7 +88,7 @@ struct localsock : public net::sock {
 
   virtual int connect(struct sockaddr *uaddr, int addr_len);
   virtual int disconnect(int flags);
-  virtual net::sock *accept(int flags, int &error);
+  virtual net::sock *accept(struct sockaddr *uaddr, int addr_len, int &err);
 
   // implemented by the network layer (OSI)
   virtual ssize_t sendto(void *data, size_t len, int flags, const sockaddr *,

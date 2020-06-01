@@ -27,11 +27,17 @@ net::localsock::~localsock(void) {
   all_localsocks_lock.write_unlock();
 }
 
+
+net::sock *net::localsock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
+	err = -ENOTIMPL;
+	return NULL;
+}
+
 int net::localsock::connect(struct sockaddr *uaddr, int addr_len) {
   return -ENOTIMPL;
 }
 int net::localsock::disconnect(int flags) { return -ENOTIMPL; }
-net::sock *net::localsock::accept(int flags, int &error) { return NULL; }
+
 
 // implemented by the network layer (OSI)
 ssize_t net::localsock::sendto(void *data, size_t len, int flags,
