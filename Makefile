@@ -43,7 +43,7 @@ default: $(BIN)
 
 build/%.c.o: %.c
 	@mkdir -p $(dir $@)
-	@echo -e "$(PFX) CC   " $<
+	@echo -e "$(PFX) CC  " $<
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
 build/%.cpp.o: %.cpp
