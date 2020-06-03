@@ -74,15 +74,13 @@ mm::space::space(off_t lo, off_t hi, ref<mm::pagetable> pt)
     : pt(pt), lo(lo), hi(hi) {}
 
 mm::space::~space(void) {
-  //
-  for (auto r : regions) {
-    delete r;
-  }
+	// clear out our handle to each area
+	regions.clear();
 }
 
 void mm::space::switch_to() { pt->switch_to(); }
 
-mm::area *mm::space::lookup(off_t va) {
+ref<mm::area> mm::space::lookup(off_t va) {
   // just dumbly walk over the list of regions and find the right region
   for (auto &r : regions) {
     off_t start = r->va;
@@ -331,7 +329,7 @@ int mm::space::unmap(off_t ptr, size_t len) {
   if ((va & 0xFFF) != 0) return -1;
 
   for (int i = 0; i < regions.size(); i++) {
-    auto *region = regions[i];
+    auto region = regions[i];
     if (region->va == va && region->len == len) {
       // printk("removing region %d. Named '%s'\n", i, region->name.get());
 
@@ -342,7 +340,7 @@ int mm::space::unmap(off_t ptr, size_t len) {
         pt->del_mapping(va);
       }
 
-      delete region;
+      // delete region;
       return 0;
     }
   }

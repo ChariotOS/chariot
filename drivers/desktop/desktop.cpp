@@ -77,10 +77,6 @@ static void draw_window(int x, int y, int w, int h) {
 static int compositor_thread(void *) {
   fb = (uint32_t *)vga::get_fba();
 
-  // TODO: this can fail
-  // auto cursor = bitmap::load("/usr/res/icons/arrow.bmp");
-
-
   while (1) {
     // sys::usleep(1000 * 1000 / 60);
     compositor_sem.wait();
@@ -92,14 +88,6 @@ static int compositor_thread(void *) {
     // memset(fb, 0x33, globals.resx * globals.resy * sizeof(uint32_t));
 
     draw_window(globals.mousex, globals.mousey, window_size, window_size);
-
-		/*
-    for (int y = 0; y < cursor.height(); y++) {
-      for (int x = 0; x < cursor.width(); x++) {
-				set_pixel(globals.mousex + x, globals.mousey + y, cursor.pix(x, y));
-      }
-    }
-		*/
 
     // draw each window
     for (auto &window : windows) {
@@ -134,29 +122,38 @@ static void stop(void) {
   vga::configure(info);
 }
 
+static bool initialized = false;
 static unsigned long desktop_shell(vec<string> &args, void *data, int dlen) {
   if (args.size() > 0) {
     if (args[0] == "composite" || args[0] == "c") {
+      if (!initialized) return -1;
       compositor_sem.post();
       return 0;
     }
 
     if (args[0] == "debug" || args[0] == "d") {
+      if (!initialized) return -1;
       desktop_debug_dump();
       return 0;
     }
 
     if (args[0] == "n") {
+      if (!initialized) return -1;
       printk("create window\n");
       return 0;
     }
 
     if (args[0] == "start") {
+      if (!initialized) {
+        desktop::init();
+        initialized = true;
+      }
       start();
       return 0;
     }
 
     if (args[0] == "stop") {
+      if (!initialized) return -1;
       stop();
       return 0;
     }
@@ -178,7 +175,66 @@ static unsigned long desktop_shell(vec<string> &args, void *data, int dlen) {
   return 0;
 }
 
-static struct fs::file_operations desktop_ops = {};
+
+
+// each process who has created a window gets one of these. For bookkeeping.
+// Once a process closes all it's windows it is removed.
+struct desk_state {
+	pid_t pid = -1;
+
+	map<int, void *> windows;
+};
+
+
+static spinlock desktop_states_lock;
+static map<pid_t, desk_state *> desktop_states;
+
+
+struct desk_state *pid_desk_state(pid_t pid) {
+	desktop_states_lock.lock();
+	auto p = desktop_states.get(pid);
+	printk("p=%p\n", p);
+	if (p == NULL) {
+		printk("create new\n");
+		p = new desk_state();
+		p->pid = pid;
+		printk("new p=%p\n", p);
+		desktop_states.set(pid, p);
+	}
+	desktop_states_lock.unlock();
+
+	return p;
+}
+
+static struct desk_state *my_desk_state(void) {
+	return pid_desk_state(curproc->pid);
+}
+
+
+
+// ioctl on the main desktop interface
+static int desktop_ioctl(fs::file &, unsigned int cmd, off_t arg) {
+	printk("desktop ioctl %d\n", cmd);
+
+	// auto *info = my_desk_state();
+
+	switch (cmd) {
+
+		case 0:
+			//
+			break;
+
+		case DESKTOP_CREATE_WINDOW:
+			printk("create window!\n");
+			return -ENOTIMPL;
+			break;
+
+	}
+	return -1;
+}
+
+
+static struct fs::file_operations desktop_ops = {.ioctl = desktop_ioctl};
 
 static struct dev::driver_info desktop_driver {
   .name = "desktop", .type = DRIVER_CHAR, .major = MAJOR_MEM,
@@ -195,9 +251,13 @@ void desktop::init(void) {
   kshell::add("desk", desktop_shell);
   sched::proc::create_kthread("[compositor]", compositor_thread);
 
+  initialized = true;
   start();
   compose();
 }
+
+void desktop_module_init(void) { desktop::init(); }
+module_init("[desktop]", desktop_module_init);
 
 struct rect rect::intersect(const struct rect &other) const {
   int l = max(left(), other.left());
@@ -226,15 +286,15 @@ void compositor::draw_rect(const struct rect &r, int color) {
 }
 
 void compositor::draw_rect_bordered(const struct rect &r, int bg, int border,
-				    int w) {
+                                    int w) {
   auto bb = r.intersect(compositor::screen_rect());
 
   for (int y = bb.top(); y < bb.bottom(); y++) {
     for (int x = bb.left(); x < bb.right(); x++) {
       int c = bg;
       if (y < r.top() + w || y >= r.bottom() - w || x < r.left() + w ||
-	  x >= r.right() - w) {
-	c = border;
+          x >= r.right() - w) {
+        c = border;
       }
       set_pixel(x, y, c);
     }

@@ -146,7 +146,6 @@ int kernel_init(void *) {
     panic("failed to mount devfs");
   }
 
-  // desktop::init();
 
   // setup stdio stuff for the kernel (to be inherited by spawn)
   int fd = sys::open("/dev/console", O_RDWR);
@@ -154,6 +153,8 @@ int kernel_init(void *) {
 
   sys::dup2(fd, 1);
   sys::dup2(fd, 2);
+
+
 
 
   auto kproc = sched::proc::kproc();

@@ -80,7 +80,7 @@ class pagetable : public refcounted<pagetable> {
 
 class space;
 
-struct area {
+struct area : public refcounted<area> {
   string name;
 
   off_t va;
@@ -110,7 +110,7 @@ class space {
   ~space(void);
 
   void switch_to();
-  mm::area *lookup(off_t va);
+  ref<mm::area> lookup(off_t va);
 
   int delete_region(off_t va);
   int pagefault(off_t va, int err);
@@ -149,7 +149,7 @@ class space {
   off_t find_hole(size_t size);
 
   spinlock lock;
-  vec<mm::area *> regions;
+  vec<ref<mm::area>> regions;
 
   struct pending_mapping {
     off_t va;
