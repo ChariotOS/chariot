@@ -1,7 +1,7 @@
 #include <dev/driver.h>
 #include <errno.h>
 #include <fs.h>
-
+#include <fcntl.h>
 
 ref<fs::file> fs::bdev_to_file(fs::blkdev *bdev) {
   fs::inode *ino = new fs::inode(T_BLK, fs::DUMMY_SB /* TODO */);
@@ -43,7 +43,14 @@ fs::file::file(struct fs::inode *f, int flags) : ino(f) {
       fs::inode::release(ino);
       ino = NULL;
     }
+
   }
+
+	if (ino != NULL) {
+		if (flags & O_APPEND) {
+			printk("append\n");
+		}
+	}
 }
 
 fs::file::~file(void) {

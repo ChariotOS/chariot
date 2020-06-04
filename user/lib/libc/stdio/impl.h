@@ -45,6 +45,7 @@ struct _FILE_IMPL {
 
   int buffered;
   int buf_len, buf_cap;
+	char default_buffer[BUFSIZ];
   char *buffer;
 };
 

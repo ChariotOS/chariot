@@ -256,8 +256,10 @@ void desktop::init(void) {
   compose();
 }
 
+/*
 void desktop_module_init(void) { desktop::init(); }
 module_init("[desktop]", desktop_module_init);
+*/
 
 struct rect rect::intersect(const struct rect &other) const {
   int l = max(left(), other.left());

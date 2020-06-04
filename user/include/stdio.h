@@ -52,6 +52,9 @@ FILE *fdopen(int, const char *);
 FILE *fopen(const char *pathname, const char *mode);
 int fclose(FILE *);
 
+
+int fileno(FILE *stream);
+
 size_t fread(void *__restrict, size_t, size_t, FILE *__restrict);
 size_t fwrite(const void *__restrict, size_t, size_t, FILE *__restrict);
 
@@ -81,6 +84,8 @@ int snprintf(char *buffer, size_t count, const char *format, ...);
 int vsnprintf(char *buffer, size_t count, const char *format, va_list va);
 
 int fprintf(FILE *fp, const char *fmt, ...);
+int vsnfprintf(FILE *fp, const char *fmt, va_list va);
+
 int sscanf(const char *, const char *format, ...);
 
 int feof(FILE *stream);

@@ -11,13 +11,16 @@
 #define EXT2_TIND_BLOCK (EXT2_DIND_BLOCK + 1)
 #define EXT2_N_BLOCKS (EXT2_TIND_BLOCK + 1)
 
+
+static int flush_info(fs::inode &ino);
+
 static int ilog2(int x) {
   /*
    * Find the leftmost 1. Use a method that is similar to
    * binary search.
    */
   int result = 0;
-  result = (!!(x >> 16)) << 4;	// if > 16?
+  result = (!!(x >> 16)) << 4;  // if > 16?
   // based on previous result, if > (result + 8)
   result = result + ((!!(x >> (result + 8))) << 3);
   result = result + ((!!(x >> (result + 4))) << 2);
@@ -37,7 +40,7 @@ static int ilog2(int x) {
  *            remain in the last offset's block pointer
  */
 static int block_to_path(fs::inode *node, int i_block, int offsets[4],
-			 int *boundary = nullptr) {
+                         int *boundary = nullptr) {
   int ptrs = EXT2_ADDR_PER_BLOCK(node);
   int ptrs_bits = ilog2(ptrs);
 
@@ -91,7 +94,7 @@ int block_from_index(fs::inode &node, int i_block, int set_to = 0) {
 
   auto p = node.priv<fs::ext2_idata>();
   // start the inodeS
-  auto table = (int *)p->block_pointers;
+  auto table = (int *)p->info.block_pointers;
   int path[4];
   int n = block_to_path(&node, i_block, path);
 
@@ -100,7 +103,8 @@ int block_from_index(fs::inode &node, int i_block, int set_to = 0) {
     if (p->blk_bufs[i] == NULL || p->cached_path[i] != off) {
       if (p->blk_bufs[i] == NULL) p->blk_bufs[i] = (int *)kmalloc(bsize);
       if (!efs->read_block(table[off], p->blk_bufs[i])) {
-	return 0;
+				printk("failef to read table[%d] = %d\n", off, table[off]);
+        return 0;
       }
       p->cached_path[i] = off;
     }
@@ -110,21 +114,232 @@ int block_from_index(fs::inode &node, int i_block, int set_to = 0) {
   return table[path[n - 1]];
 }
 
-// returns the number of bytes read or negative values on failure
-static ssize_t ext2_raw_rw(fs::inode &ino, char *buf, size_t sz, off_t offset,
-			   bool write) {
+
+
+
+// I know, this is slow.
+static vec<uint32_t> read_blocklist(fs::inode &ino,
+                                    bool include_block_list_blocks = true) {
   fs::ext2 *efs = static_cast<fs::ext2 *>(&ino.sb);
-  if (write) {
-		off_t total_needed = offset + sz;
-		printk("total_needed=%zu, current=%zu\n", total_needed, ino.size);
-		if (ino.size < total_needed) {
-			printk("must truncate\n");
-		}
-    // TODO: ensure blocks are avail
-		hexdump(buf, sz, true);
+
+  auto blocksize = efs->block_size;
+  auto entries_per_block = blocksize / sizeof(uint32_t);
+
+  auto block_count = ceil_div(ino.size, blocksize);
+  auto blocks_remaining = block_count;
+  vec<uint32_t> list;
+  auto add_block = [&](uint32_t bi) {
+    if (blocks_remaining) {
+      list.push(bi);
+      --blocks_remaining;
+    }
+  };
+
+
+  if (include_block_list_blocks) {
+    // This seems like an excessive over-estimate but w/e.
+    list.ensure_capacity(blocks_remaining * 2);
+  } else {
+    list.ensure_capacity(blocks_remaining);
   }
 
-  if (offset > ino.size) return 0;
+
+	auto &e2inode = ino.priv<fs::ext2_idata>()->info;
+  unsigned direct_count = min(block_count, (unsigned)EXT2_NDIR_BLOCKS);
+  for (unsigned i = 0; i < direct_count; ++i) {
+    auto block_index = e2inode.dbp[i];
+    add_block(block_index);
+  }
+
+  if (!blocks_remaining) return list;
+
+
+  auto process_block_array = [&](unsigned array_block_index, auto &&callback) {
+    if (include_block_list_blocks) callback(array_block_index);
+    auto array_block = new char[blocksize];
+    efs->read_block(array_block_index, array_block);
+
+    auto *array = reinterpret_cast<const uint32_t *>(array_block);
+    unsigned count = min(blocks_remaining, entries_per_block);
+
+    for (uint32_t i = 0; i < count; ++i) callback(array[i]);
+
+    delete[] array_block;
+  };
+
+
+  process_block_array(e2inode.singly_block,
+                      [&](unsigned block_index) { add_block(block_index); });
+
+
+  if (!blocks_remaining) return list;
+
+  process_block_array(e2inode.doubly_block, [&](unsigned block_index) {
+    process_block_array(
+        block_index, [&](unsigned block_index2) { add_block(block_index2); });
+  });
+
+  if (!blocks_remaining) return list;
+
+  process_block_array(e2inode.triply_block, [&](unsigned block_index) {
+    process_block_array(block_index, [&](unsigned block_index2) {
+      process_block_array(block_index2, [&](unsigned block_index3) {
+        add_block(block_index3);
+      });
+    });
+  });
+
+  return list;
+}
+
+
+// this is also really bad.
+static int write_blocklist(fs::inode &ino, const vec<uint32_t> &blocklist) {
+  /*
+fs::ext2 *efs = static_cast<fs::ext2 *>(&ino.sb);
+
+uint32_t blocksize = efs->block_size;
+uint32_t entries_per_block = blocksize / sizeof(uint32_t);
+// read the e2inode.
+// TODO: cache me!
+fs::ext2_inode_info e2inode;
+efs->read_inode(e2inode, ino.ino);
+
+
+// NOTE: There is a mismatch between i_blocks and blocks.size() since i_blocks
+// includes meta blocks and blocks.size() does not.
+auto old_block_count = ceil_div(e2inode.size, blocksize);
+  */
+
+  return 0;
+}
+
+
+
+
+// TODO: used to add a single block to the end of a file
+static int append_block(fs::inode &ino, int dest) {
+  fs::ext2 *efs = static_cast<fs::ext2 *>(&ino.sb);
+
+	auto &info = ino.priv<fs::ext2_idata>()->info;
+
+  auto blk = efs->balloc();
+  if (blk == 0) return -ENOSPC;
+
+  int path[4];
+  int n = block_to_path(&ino, dest, path);
+
+
+  // DEBUG
+  printk("blocks[%d] = %d\n", dest, blk);
+  // DEBUG
+
+  if (n == 1) {
+    // direct case
+		printk("direct block %d <- %d", path[0], blk);
+    info.dbp[path[0]] = blk;
+    return 0;
+  } else {
+    return -ENOTIMPL;
+  }
+
+
+  return 0;
+}
+
+// TODO: remove a block from the end of a file, used for shrinking
+static int pop_block(fs::inode &ino) { return 0; }
+
+static int truncate(fs::inode &ino, size_t new_size) {
+  auto old_size = ino.size;
+  if (old_size == new_size) return 0;
+
+
+  fs::ext2 *efs = static_cast<fs::ext2 *>(&ino.sb);
+
+  auto block_size = efs->block_size;
+  size_t bbefore = ceil_div(old_size, block_size);
+  size_t bafter = ceil_div(new_size, block_size);
+
+	if (new_size == ino.size) return 0;
+
+
+  if (bafter > bbefore) {
+    auto blocks_needed = bafter - bbefore;
+		if (bafter > 12) {
+			return -ENOTIMPL;
+		}
+    printk("need to allocate %d on the end\n", blocks_needed);
+
+    if (efs->sb->unallocatedblocks < blocks_needed) return -ENOSPC;
+
+    for (int i = 0; i < blocks_needed; i++) {
+      // push the blocks on the end :)
+      int err = append_block(ino, bbefore + i);
+      if (err < 0) {
+        // not sure how to recover just yet, as we already handle the case of
+        // ENOSPC up above...
+        panic("append_block failed with error %d\n", -err);
+      }
+    }
+
+
+
+  } else if (bafter < bbefore) {
+    auto blocks_to_remove = bbefore - bafter;
+    printk("need to remove %d\n", blocks_to_remove);
+    return -ENOTIMPL;
+  }
+
+  // :^)
+  ino.size = new_size;
+  // printk("resize to %d\n", new_size);
+
+  flush_info(ino);
+
+
+	/*
+	// DEBUG
+	auto olist = read_blocklist(ino);
+	printk("olist for ino %d: [", ino.ino);
+	for (int i = 0; i < olist.size(); i++) {
+		printk("%d", olist[i]);
+		if (i != olist.size() - 1) printk(", ");
+	}
+	printk("]\n");
+	// DEBUG
+	*/
+
+  return 0;
+}
+
+
+// returns the number of bytes read or negative values on failure
+static ssize_t ext2_raw_rw(fs::inode &ino, char *buf, size_t sz, off_t offset,
+                           bool write) {
+  fs::ext2 *efs = static_cast<fs::ext2 *>(&ino.sb);
+  if (write) {
+    off_t total_needed = offset + sz;
+    if (ino.size < total_needed) {
+      truncate(ino, total_needed);
+    }
+
+    /*
+    auto olist = read_blocklist(ino);
+
+    printk("blocklist for ino %d: [", ino.ino);
+    for (int i = 0; i < olist.size(); i++) {
+            printk("%d", olist[i]);
+            if (i != olist.size() - 1) printk(", ");
+    }
+    printk("]\n");
+    */
+
+    // TODO: ensure blocks are avail
+  }
+
+
+  // if (offset > ino.size) return 0;
 
   // how many bytes have been read
   ssize_t nread = 0;
@@ -177,7 +392,7 @@ typedef struct __ext2_dir_entry {
 } __attribute__((packed)) ext2_dir;
 
 static void ext2_traverse_dir(fs::inode &ino,
-			      func<void(u32 ino, const char *name)> fn) {
+                              func<void(u32 ino, const char *name)> fn) {
   auto *ents = (ext2_dir *)kmalloc(ino.size);
 
   // read the entire file into the buffer
@@ -192,12 +407,33 @@ static void ext2_traverse_dir(fs::inode &ino,
     if (entry->inode != 0) {
       memcpy(namebuf, entry->name, entry->namelength);
       namebuf[entry->namelength] = 0;
-			fn(entry->inode, namebuf);
+      fn(entry->inode, namebuf);
     }
   }
 
   kfree(ents);
 }
+
+static int flush_info(fs::inode &ino) {
+  fs::ext2 *efs = static_cast<fs::ext2 *>(&ino.sb);
+	auto &info = ino.priv<fs::ext2_idata>()->info;
+
+  info.size = ino.size;
+  info.type = ino.mode;
+  info.uid = ino.uid;
+  info.gid = ino.gid;
+
+  info.hardlinks = ino.link_count;
+  info.last_access = ino.atime;
+  info.create_time = ino.ctime;
+  info.delete_time = ino.dtime;
+	// TODO: update all this stuff too
+  efs->write_inode(info, ino.ino);
+  return 0;
+}
+
+
+
 
 static int injest_info(fs::inode &ino, fs::ext2_inode_info &info) {
   fs::ext2 *efs = static_cast<fs::ext2 *>(&ino.sb);
@@ -216,7 +452,7 @@ static int injest_info(fs::inode &ino, fs::ext2_inode_info &info) {
   auto table = (u32 *)info.dbp;
   // copy the block pointers
   for (int i = 0; i < 15; i++) {
-    ino.priv<fs::ext2_idata>()->block_pointers[i] = table[i];
+    ino.priv<fs::ext2_idata>()->info.block_pointers[i] = table[i];
   }
 
   if (ino.type == T_DIR) {
@@ -241,7 +477,7 @@ static int ext2_seek(fs::file &, off_t, off_t) {
 }
 
 static ssize_t ext2_do_read_write(fs::file &f, char *buf, size_t nbytes,
-				  bool is_write) {
+                                  bool is_write) {
   ssize_t nread = ext2_raw_rw(*f.ino, buf, nbytes, f.offset(), is_write);
   if (nread >= 0) {
     f.seek(nread, SEEK_CUR);
@@ -300,7 +536,7 @@ fs::file_operations ext2_file_ops{
 };
 
 static int ext2_create(fs::inode &node, const char *name,
-		       struct fs::file_ownership &) {
+                       struct fs::file_ownership &) {
   fs::ext2 *efs = static_cast<fs::ext2 *>(&node.sb);
   int ino = efs->allocate_inode();
   printk("ino=%d\n", ino);
@@ -309,7 +545,7 @@ static int ext2_create(fs::inode &node, const char *name,
 }
 
 static int ext2_mkdir(fs::inode &, const char *name,
-		      struct fs::file_ownership &) {
+                      struct fs::file_ownership &) {
   UNIMPL();
   return -ENOTIMPL;
 }
@@ -329,10 +565,10 @@ static struct fs::inode *ext2_lookup(fs::inode &node, const char *needle) {
   // walk the linked list to get the inode num
   for (auto *it = node.dir.entries; it != NULL; it = it->next) {
     if (!strcmp(it->name.get(), needle)) {
-			if (it->mount_shadow != NULL) {
-				printk("here\n");
-				return it->mount_shadow;
-			}
+      if (it->mount_shadow != NULL) {
+        printk("here\n");
+        return it->mount_shadow;
+      }
       nr = it->nr;
       found = true;
       break;
@@ -346,7 +582,7 @@ static struct fs::inode *ext2_lookup(fs::inode &node, const char *needle) {
 }
 
 static int ext2_mknod(fs::inode &, const char *name,
-		      struct fs::file_ownership &, int major, int minor) {
+                      struct fs::file_ownership &, int major, int minor) {
   UNIMPL();
   return -ENOTIMPL;
 }

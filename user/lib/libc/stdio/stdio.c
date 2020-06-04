@@ -112,6 +112,14 @@ void ffree(FILE *fp) {
   free(fp);
 }
 
+
+int fileno(FILE *stream) {
+	if (stream == NULL) {
+		return -1;
+	}
+	return stream->fd;
+}
+
 int fclose(FILE *fp) {
   if (fp->close != NULL) {
     fp->close(fp);
@@ -242,7 +250,8 @@ FILE *fdopen(int fd, const char *mode) {
   fp->write = _stdio_write;
   fp->seek = _stdio_seek;
 
-  fp->buffered = 0;
+	fp->buffer = fp->default_buffer;
+	fp->buffered = 1;
 
   return fp;
 }

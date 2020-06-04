@@ -153,6 +153,10 @@ bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {
   TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
 
+
+  scoped_lock l1(inode_buf_lock);
+  scoped_lock l2(work_buf_lock);
+
   // now that we have which BGF the inode is in, load that desc
   read_block(first_bgd, work_buf);
 
@@ -176,6 +180,10 @@ bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
   TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
 
+  scoped_lock l1(inode_buf_lock);
+  scoped_lock l2(work_buf_lock);
+
+
   // now that we have which BGF the inode is in, load that desc
   read_block(first_bgd, work_buf);
 
@@ -191,6 +199,7 @@ bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
   // modify it...
   auto *_inode =
       (ext2_inode_info *)inode_buf + (index % (block_size / sb->s_inode_size));
+
   memcpy(_inode, &src, sizeof(ext2_inode_info));
 
   // and write the block back
@@ -202,8 +211,6 @@ bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
 long fs::ext2::allocate_inode(void) {
   scoped_lock l(bglock);
   int bgs = blockgroups;
-  // TODO: we only support 32 block groups
-  if (bgs > 32) bgs = 32;
   bool flush_changes = false;
   int res = -1;
 
@@ -238,7 +245,6 @@ long fs::ext2::allocate_inode(void) {
     nfree += bgd->num_of_unalloc_inode;
   }
 
-  printk("free inodes now: %d\n", sb->unallocatedinodes);
 
   if (flush_changes) {
     write_block(first_bgd, work_buf);
@@ -251,9 +257,53 @@ long fs::ext2::allocate_inode(void) {
 }
 
 u32 fs::ext2::balloc(void) {
-  scoped_lock l(m_lock);
+  scoped_lock l(bglock);
+  int bgs = blockgroups;
+  bool flush_changes = false;
 
-  return 0;
+  unsigned int block_no = 0;
+
+  // now that we have which BGF the block is in, load that desc
+  read_block(first_bgd, work_buf);
+  auto vbitmap = kmalloc(block_size);
+  int nfree = 0;
+
+  for (int group = 0; group < bgs; group++) {
+    auto *bgd = (block_group_desc *)work_buf + group;
+
+    if (block_no == 0 && bgd->num_of_unalloc_block > 0) {
+      read_block(bgd->block_bitmap, vbitmap);
+      auto bitmap = (char *)vbitmap;
+
+      int block_offset = 0;
+      for (; block_offset < sb->blocks_in_blockgroup &&
+             BLOCKBIT(bitmap, block_offset);
+           block_offset++) {
+      }
+
+
+      block_no = block_offset + sb->blocks_in_blockgroup * group;
+
+      bitmap[block_offset / 8] |= static_cast<u8>((1u << (block_offset % 8)));
+      write_block(bgd->block_bitmap, vbitmap);
+      sb->unallocatedblocks--;
+      bgd->num_of_unalloc_block--;
+      flush_changes = true;
+      break;
+    }
+
+    nfree += bgd->num_of_unalloc_block;
+  }
+
+
+  if (flush_changes) {
+    write_block(first_bgd, work_buf);
+    write_superblock();
+  }
+
+  kfree(vbitmap);
+
+  return block_no;
 }
 
 void fs::ext2::bfree(u32 block) {
@@ -363,14 +413,13 @@ bool fs::ext2::write_block(u32 block, const void *buf) {
   cl->last_used = cache_time++;
   cl->dirty = 1;
   disk->seek(cba * PGSIZE, SEEK_SET);
-  bool valid = disk->read(cl->buffer, PGSIZE);
-  memcpy(cl->buffer + (cbo * block_size), buf, block_size);
-
-  if (valid) {
-    disk->seek(block * block_size, SEEK_SET);
-    return disk->write((void *)buf, block_size);
-  }
-  return valid;
+  int valid = disk->read(cl->buffer, PGSIZE);
+	if (valid) {
+		memcpy(cl->buffer + (cbo * block_size), buf, block_size);
+		disk->seek(block * block_size, SEEK_SET);
+		return disk->write((void *)buf, block_size);
+	}
+	return valid;
 
 #else
 
@@ -404,8 +453,8 @@ struct fs::sb_operations ext2_ops {
 };
 
 static struct fs::superblock *ext2_mount(struct fs::sb_information *,
-					 const char *args, int flags,
-					 const char *device) {
+                                         const char *args, int flags,
+                                         const char *device) {
   struct fs::blkdev *bdev = fs::bdev_from_path(device);
   if (bdev == NULL) return NULL;
 

@@ -959,11 +959,17 @@ void fprintf_writer(char c, void* a, size_t idx, size_t maxlen) {
   fputc(c, stream);
 }
 
+
+int vsnfprintf(FILE *stream, const char *fmt, va_list va) {
+return 
+      _vsnprintf(fprintf_writer, (char*)stream, (size_t)-1, fmt, va);
+};
+
+
 int fprintf(FILE* stream, const char* format, ...) {
   va_list va;
   va_start(va, format);
-  const int ret =
-      _vsnprintf(fprintf_writer, (char*)stream, (size_t)-1, format, va);
+  const int ret = vsnfprintf(stream, format, va);
   va_end(va);
   return ret;
 }

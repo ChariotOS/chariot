@@ -124,6 +124,14 @@
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 #define for_range(var, start, end) for (auto var = start; var < (end); var++)
 
+template <typename T, typename U>
+inline constexpr T ceil_div(T a, U b) {
+  static_assert(sizeof(T) == sizeof(U));
+  T result = a / b;
+  if ((a % b) != 0) ++result;
+  return result;
+}
+
 // #define FANCY_MEM_FUNCS
 //
 //

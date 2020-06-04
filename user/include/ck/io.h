@@ -3,6 +3,8 @@
 #include <ck/ptr.h>
 #include <ck/string.h>
 #include <stdio.h>
+#include <chariot/stat.h>
+#include <stdio.h>
 
 namespace ck {
 
@@ -59,6 +61,15 @@ namespace ck {
 
     virtual ssize_t write(const void *buf, size_t) override;
     virtual ssize_t read(void *buf, size_t) override;
+
+		// the size of this file
+		ssize_t size(void);
+		// current location in the file
+		ssize_t tell(void);
+		int seek(long offset, int whence);
+		int stat(struct stat &);
+
+		int writef(const char *format, ...);
 
 		using stream::read;
 
