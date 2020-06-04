@@ -1,5 +1,4 @@
 #include <cpu.h>
-#include <desktop.h>
 #include <dev/serial.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
