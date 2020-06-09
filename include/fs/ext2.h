@@ -25,12 +25,6 @@
 
 namespace fs {
 
-  struct ext2_block_cache_line {
-    int cba;
-    long last_used;
-    int dirty;
-    char *buffer;  // a 4k page (allocated with phys::alloc)
-  };
 
   class ext2;
 
@@ -73,6 +67,7 @@ namespace fs {
   // Freed on release
   struct ext2_idata {
     // block pointers
+		spinlock path_cache_lock;
     ext2_inode_info info;
     int cached_path[4] = {0, 0, 0, 0};
     int *blk_bufs[4] = {NULL, NULL, NULL, NULL};
@@ -138,7 +133,7 @@ namespace fs {
       uint32_t reserved_for_root;
       uint32_t unallocatedblocks;
       uint32_t unallocatedinodes;
-      uint32_t superblock_id;
+      uint32_t first_data_block;
       uint32_t blocksize_hint;     // shift by 1024 to the left
       uint32_t fragmentsize_hint;  // shift by 1024 to left
       uint32_t blocks_in_blockgroup;
@@ -228,15 +223,16 @@ namespace fs {
     spinlock inode_buf_lock;
     void *inode_buf = nullptr;
 
+
+		// the size of a single disk sector
+		long sector_size;
+
     map<u32, struct fs::inode *> inodes;
 
     // how many entries in the disk cache
     int cache_size;
     int cache_time = 0;
-    struct ext2_block_cache_line *disk_cache;
     spinlock cache_lock;
-
-    struct ext2_block_cache_line *get_cache_line(int blkno);
 
     ref<fs::file> disk;
 

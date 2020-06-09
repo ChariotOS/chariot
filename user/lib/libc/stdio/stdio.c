@@ -252,6 +252,8 @@ FILE *fdopen(int fd, const char *mode) {
 
 	fp->buffer = fp->default_buffer;
 	fp->buffered = 1;
+	fp->buf_cap = BUFSIZ;
+	fp->buf_len = 0;
 
   return fp;
 }

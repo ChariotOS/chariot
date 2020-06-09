@@ -198,9 +198,6 @@ bool dev::ata::identify() {
     m_pci_dev->enable_bus_mastering();
     use_dma = true;
 
-    // allocate the physical page for the dma buffer
-    m_dma_buffer = phys::alloc();
-
     // bar4 contains information for DMA
     bar4 = m_pci_dev->get_bar(4).raw;
     if (bar4 & 0x1) bar4 = bar4 & 0xfffffffc;
@@ -215,17 +212,20 @@ bool dev::ata::identify() {
       primary_master_bmr_status = bmr_status;
       primary_master_bmr_command = bmr_command;
     }
-  }
+  } else {
+		printk("can't use ata without DMA\n");
+		return false;
+	}
 
   return true;
 }
 
-bool dev::ata::read_block(u32 sector, u8* data) {
+bool dev::ata::read_blocks(u32 sector, u8* data, int n) {
   TRACE;
 
   // TODO: also check for scheduler avail
   if (use_dma) {
-    return read_block_dma(sector, data);
+    return read_blocks_dma(sector, data, n);
   }
 
   // take a scoped lock
@@ -239,7 +239,7 @@ bool dev::ata::read_block(u32 sector, u8* data) {
   device_port.out((master ? 0xE0 : 0xF0) | ((sector & 0x0F000000) >> 24));
   error_port.out(0);
   // read a single sector
-  sector_count_port.out(1);
+  sector_count_port.out(n);
 
   lba_low_port.out((sector & 0x00FF));
   lba_mid_port.out((sector & 0xFF00) >> 8);
@@ -256,7 +256,7 @@ bool dev::ata::read_block(u32 sector, u8* data) {
 
   auto* buf = (char*)data;
 
-  for (u16 i = 0; i < sector_size; i += 2) {
+  for (u16 i = 0; i < sector_size * n; i += 2) {
     u16 d = data_port.in();
 
     buf[i] = d & 0xFF;
@@ -266,15 +266,13 @@ bool dev::ata::read_block(u32 sector, u8* data) {
   return true;
 }
 
-bool dev::ata::write_block(u32 sector, const u8* buf) {
+bool dev::ata::write_blocks(u32 sector, const u8* buf, int n) {
   TRACE;
-
 
   // TODO: also check for scheduler avail
   if (use_dma) {
-    return write_block_dma(sector, buf);
+    return write_blocks_dma(sector, buf, n);
   }
-
 
   // TODO: use DMA here :^)
   scoped_lock lck(drive_lock);
@@ -286,7 +284,7 @@ bool dev::ata::write_block(u32 sector, const u8* buf) {
   device_port.out((master ? 0xE0 : 0xF0) | ((sector & 0x0F000000) >> 24));
   error_port.out(0);
   // write a single sector
-  sector_count_port.out(1);
+  sector_count_port.out(n);
 
   lba_low_port.out((sector & 0x00FF));
   lba_mid_port.out((sector & 0xFF00) >> 8);
@@ -295,7 +293,7 @@ bool dev::ata::write_block(u32 sector, const u8* buf) {
   // write command
   command_port.out(0x30);
 
-  for (u16 i = 0; i < sector_size; i += 2) {
+  for (u16 i = 0; i < sector_size * n; i += 2) {
     u16 d = buf[i];
     d |= ((u16)buf[i + 1]) << 8;
     data_port.out(d);
@@ -354,20 +352,21 @@ size_t dev::ata::block_size() {
 
 size_t dev::ata::block_count() { return n_sectors; }
 
-bool dev::ata::read_block_dma(u32 sector, u8* data) {
+bool dev::ata::read_blocks_dma(u32 sector, u8* data, int n) {
   TRACE;
-
-  // TODO: take a lock.
 
   if (sector & 0xF0000000) return false;
 
 
   scoped_lock lck(drive_lock);
 
+
+	int buffer_pages = NPAGES(n * block_size() + sizeof(prdt_t));
+	auto buffer = phys::alloc(buffer_pages);
   // setup the prdt for DMA
-  auto* prdt = static_cast<prdt_t*>(p2v(m_dma_buffer));
+  auto* prdt = static_cast<prdt_t*>(p2v(buffer));
   prdt->transfer_size = sector_size;
-  prdt->buffer_phys = (u64)m_dma_buffer + sizeof(prdt_t);
+  prdt->buffer_phys = (u64)buffer + sizeof(prdt_t);
   prdt->mark_end = 0x8000;
 
   u8* dma_dst = (u8*)p2v(prdt->buffer_phys);
@@ -375,7 +374,7 @@ bool dev::ata::read_block_dma(u32 sector, u8* data) {
   // stop bus master
   outb(bmr_command, 0);
   // Set prdt
-  outl(bmr_prdt, (u64)m_dma_buffer);
+  outl(bmr_prdt, (u64)buffer);
 
   // Turn on "Interrupt" and "Error" flag. The error flag should be cleared by
   // hardware.
@@ -389,7 +388,9 @@ bool dev::ata::read_block_dma(u32 sector, u8* data) {
   // clear the error port
   error_port.out(0);
   // read a single sector
-  sector_count_port.out(1);
+  sector_count_port.out(n);
+
+
 
   lba_low_port.out((sector & 0x00FF));
   lba_mid_port.out((sector & 0xFF00) >> 8);
@@ -418,20 +419,23 @@ bool dev::ata::read_block_dma(u32 sector, u8* data) {
   // wait_400ns(m_io_base);
   // printk("loops: %d\n", i);
 
-  memcpy(data, dma_dst, sector_size);
+  memcpy(data, dma_dst, sector_size * n);
+
+	phys::free(buffer, buffer_pages);
 
   return true;
 }
-bool dev::ata::write_block_dma(u32 sector, const u8* data) {
-	// printk("write_block(%d, %p)\n", sector, data);
+bool dev::ata::write_blocks_dma(u32 sector, const u8* data, int n) {
 
   if (sector & 0xF0000000) return false;
   drive_lock.lock();
 
+	int buffer_pages = NPAGES(n * block_size() + sizeof(prdt_t));
+	auto buffer = phys::alloc(buffer_pages);
   // setup the prdt for DMA
-  auto* prdt = static_cast<prdt_t*>(p2v(m_dma_buffer));
+  auto* prdt = static_cast<prdt_t*>(p2v(buffer));
   prdt->transfer_size = sector_size;
-  prdt->buffer_phys = (u64)m_dma_buffer + sizeof(prdt_t);
+  prdt->buffer_phys = (u64)buffer + sizeof(prdt_t);
   prdt->mark_end = 0x8000;
 
   u8* dma_dst = (u8*)p2v(prdt->buffer_phys);
@@ -453,14 +457,14 @@ bool dev::ata::write_block_dma(u32 sector, const u8* data) {
   // clear the error port
   error_port.out(0);
   // read a single sector
-  sector_count_port.out(1);
+  sector_count_port.out(n);
 
   lba_low_port.out((sector & 0x00FF));
   lba_mid_port.out((sector & 0xFF00) >> 8);
   lba_high_port.out((sector & 0xFF0000) >> 16);
 
   // copy our data
-  memcpy(dma_dst, data, sector_size);
+  memcpy(dma_dst, data, sector_size * n);
 
   // read DMA command
   command_port.out(ATA_CMD_WRITE_DMA);
@@ -481,31 +485,18 @@ bool dev::ata::write_block_dma(u32 sector, const u8* data) {
       break;
     }
   }
+	phys::free(buffer, buffer_pages);
+
   drive_lock.unlock();
 
+
 	return true;
-
-  auto buf = (u8*)kmalloc(sector_size);
-  read_block(sector, buf);
-
-	printk("checking:\n");
-  for (int i = 0; i < sector_size; i++) {
-		if (data[i] != buf[i]) {
-    	printk("err: %3d: %02x %02x\n", i, data[i], buf[i]);
-		}
-  }
-
-  kfree(buf);
-
-  return true;
 }
 
 
 static void ata_interrupt(int intr, reg_t* fr) {
   inb(primary_master_status);
   inb(primary_master_bmr_status);
-
-  // printk("ata irq on cpu %d. %02x %02x\n", cpu::current().cpunum, pms, pmbs);
 
   outb(primary_master_bmr_status, BMR_COMMAND_DMA_STOP);
 
@@ -523,6 +514,8 @@ static void add_drive(const string& name, ref<dev::disk> drive) {
   int minor = m_disks.size();
   // KINFO("Detected ATA drive '%s'\n", name.get(), MAJOR_ATA);
   m_disks.push(drive);
+
+
   dev::register_name(ata_driver_info, name, minor);
 }
 
@@ -539,7 +532,7 @@ static void query_and_add_drive(u16 addr, int id, bool master) {
     // detect mbr partitions
     void* first_sector = kmalloc(drive->block_size());
 
-    drive->read_block(0, (u8*)first_sector);
+    drive->read_blocks(0, (u8*)first_sector, 1);
 
     if (dev::mbr mbr; mbr.parse(first_sector)) {
       for (int i = 0; i < mbr.part_count(); i++) {
@@ -578,14 +571,14 @@ static dev::disk* get_disk(int minor) {
 
 dev::ata_part::~ata_part() {}
 
-bool dev::ata_part::read_block(u32 sector, u8* data) {
+bool dev::ata_part::read_blocks(u32 sector, u8* data, int n) {
   if (sector > len) return false;
-  return parent->read_block(sector + start, data);
+  return parent->read_blocks(sector + start, data, n);
 }
 
-bool dev::ata_part::write_block(u32 sector, const u8* data) {
+bool dev::ata_part::write_blocks(u32 sector, const u8* data, int n) {
   if (sector > len) return false;
-  return parent->write_block(sector + start, data);
+  return parent->write_blocks(sector + start, data, n);
 }
 
 size_t dev::ata_part::block_size(void) { return parent->block_size(); }
@@ -608,9 +601,9 @@ static int ata_rw_block(fs::blkdev& b, void* data, int block, bool write) {
 
   bool success = false;
   if (write) {
-    success = d->write_block(block, (const u8*)data);
+    success = d->write_blocks(block, (const u8*)data);
   } else {
-    success = d->read_block(block, (u8*)data);
+    success = d->read_blocks(block, (u8*)data);
   }
   return success ? 0 : -1;
 }

@@ -16,8 +16,8 @@ class disk : public refcounted<disk> {
 	virtual size_t block_count() = 0;
 
   // all block devices must implement these functions
-  virtual bool read_block(u32 index, u8* buf) = 0;
-  virtual bool write_block(u32 index, const u8* buf) = 0;
+  virtual bool read_blocks(u32 index, u8* buf, int n = 1) = 0;
+  virtual bool write_blocks(u32 index, const u8* buf, int n = 1) = 0;
 };
 };  // namespace dev
 

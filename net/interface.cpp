@@ -193,11 +193,13 @@ int net::task(void *) {
     i.netmask = net::net_ord(net::ipv4::parse_ip("255.255.255.0"));
     i.gateway = net::net_ord(net::ipv4::parse_ip("10.0.2.2"));
 
+		/*
     printk(KERN_INFO "[network task] Setup interface '%s'\n", name.get());
     printk(KERN_INFO "               hardware: %A\n", i.hwaddr.raw);
     printk(KERN_INFO "               address:  %I\n", net::host_ord(i.address));
     printk(KERN_INFO "               netmask:  %I\n", net::host_ord(i.netmask));
     printk(KERN_INFO "               gateway:  %I\n", net::host_ord(i.gateway));
+		*/
 
     return true;
   });

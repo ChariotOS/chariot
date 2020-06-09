@@ -86,13 +86,13 @@ class ata : public dev::disk {
 
   bool identify();
 
-  virtual bool read_block(u32 sector, u8* data);
-  virtual bool write_block(u32 sector, const u8* data);
+  virtual bool read_blocks(u32 sector, u8* data, int n = 1);
+  virtual bool write_blocks(u32 sector, const u8* data, int n = 1);
   virtual size_t block_size(void);
   virtual size_t block_count(void);
 
-  bool read_block_dma(u32 sector, u8* data);
-  bool write_block_dma(u32 sector, const u8* data);
+  bool read_blocks_dma(u32 sector, u8* data, int n);
+  bool write_blocks_dma(u32 sector, const u8* data, int n);
 
   // flush the internal buffer on the disk
   bool flush();
@@ -109,8 +109,8 @@ class ata_part : public dev::disk {
   inline ata_part(ref<dev::ata> a, u32 start, u32 len)
       : parent(a), start(start), len(len) {}
   virtual ~ata_part();
-  virtual bool read_block(u32 sector, u8* data);
-  virtual bool write_block(u32 sector, const u8* data);
+  virtual bool read_blocks(u32 sector, u8* data, int n = 1);
+  virtual bool write_blocks(u32 sector, const u8* data, int n = 1);
   virtual size_t block_size(void);
   virtual size_t block_count(void);
 };

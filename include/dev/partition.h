@@ -15,8 +15,8 @@ class partition : public dev::disk {
   virtual ~partition();
   virtual size_t block_size(void);
 	virtual size_t block_count(void);
-  virtual bool read_block(u32 index, u8* buf);
-  virtual bool write_block(u32 index, const u8* buf);
+  virtual bool read_blocks(u32 index, u8* buf, int n = 1);
+  virtual bool write_blocks(u32 index, const u8* buf, int n = 1);
 
  protected:
   dev::disk &m_disk;

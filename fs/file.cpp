@@ -74,6 +74,8 @@ fs::file_operations *fs::file::fops(void) {
 
 off_t fs::file::seek(off_t offset, int whence) {
   // TODO: check if the file is actually seekable
+	//
+	if (!ino) return -EINVAL;
 
   off_t new_off;
 

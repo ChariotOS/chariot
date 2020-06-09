@@ -69,7 +69,7 @@ if [ $disk_exists -eq '0' ]; then
 	echo "done"
 
 	printf "creating new filesystem... "
-	sudo mkfs.ext2 -b 1024 "${dev}"p1 || die "couldn't create filesystem"
+	sudo mkfs.ext2 -b 4096 "${dev}"p1 || die "couldn't create filesystem"
 	echo "done"
 fi
 

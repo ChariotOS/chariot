@@ -1,5 +1,226 @@
+#include <chan.h>
 #include <errno.h>
 #include <fs.h>
+#include <map.h>
+#include <mm.h>
+#include <module.h>
+#include <sched.h>
+#include <template_lib.h>
+
+static spinlock g_next_block_lru_lock;
+static uint64_t g_next_block_lru = 0;
+
+static uint64_t next_block_lru(void) {
+  g_next_block_lru_lock.lock();
+  auto l = g_next_block_lru++;
+  g_next_block_lru_lock.unlock();
+  return l;
+}
+
+
+static chan<block::buffer *> dirty_buffers;
+static int block_flush_task(void *) {
+  while (1) {
+    auto buffer = dirty_buffers.recv();
+    buffer->flush();
+    // 'recursively' put the buffer
+    bput(buffer);
+  }
+}
+
+
+
+static spinlock buffer_cache_lock;
+static uint64_t total_blocks_in_cache = 0;
+static map<uint32_t, map<off_t, block::buffer *>> buffer_cache;
+
+
+
+static uint32_t to_key(dev_t device) {
+  return ((uint32_t)device.major() << 16) | ((uint32_t)device.minor());
+}
+
+
+static auto oldest_block_slow(void) {
+  struct block::buffer *oldest = nullptr;
+
+  scoped_lock l(buffer_cache_lock);
+  // this is so bad, but I don't really feel like writing a real LRU now :^)
+  for (auto &kv1 : buffer_cache) {
+    for (auto &kv2 : kv1.value) {
+      if (kv2.value == NULL) continue;
+      if (kv2.value->owners() != 0) continue;
+
+      if (oldest == nullptr) {
+        oldest = kv2.value;
+      } else {
+        if (oldest->last_used() > kv2.value->last_used()) {
+          oldest = kv2.value;
+        }
+      }
+    }
+  }
+
+  return oldest;
+}
+
+struct block_cache_key {};
+
+namespace block {
+
+  buffer::buffer(fs::blkdev &bdev, off_t index) : bdev(bdev), m_index(index) {
+    // we don't allocate the page here, only on calls to ::data().
+
+    // start with 0 refs
+    m_count = 0;
+  }
+
+
+  struct buffer *block::buffer::get(fs::blkdev &device, off_t page) {
+    scoped_lock l(buffer_cache_lock);
+
+    struct block::buffer *buf = NULL;
+
+    auto key = to_key(device.dev);
+    auto &dev_map = buffer_cache[key];
+
+    buf = dev_map[page];
+
+    if (buf == NULL) {
+      buf = new block::buffer(device, page);
+      buf->m_index = page;
+      dev_map[page] = buf;
+      total_blocks_in_cache += 1;
+    }
+
+    buf->m_lock.lock();
+    buf->m_count++;  // someone now has a copy of the buffer :^)
+    buf->m_index = page;
+    buf->m_last_used = next_block_lru();
+    buf->m_lock.unlock();
+    return buf;
+  }
+
+  void buffer::register_write(void) { m_dirty = true; }
+
+  void buffer::release(struct buffer *b) {
+    b->m_lock.lock();
+
+    if (b->m_dirty) {
+      b->m_lock.unlock();
+      dirty_buffers.send(move(b));
+      return;
+    }
+
+
+    // count is decremented here iff it is not dirty
+    b->m_count--;
+
+    b->m_lock.unlock();
+  }
+
+  int buffer::flush(void) {
+    scoped_lock l(m_lock);
+    if (m_page && m_dirty) {
+      // get the page if there isn't one and read the blocks
+      m_page = mm::page::alloc();
+
+      int blocks = PGSIZE / bdev.block_size;
+      auto *buf = (char *)p2v(m_page->pa);
+
+      for (int i = 0; i < blocks; i++) {
+        bdev.write_block(buf + (bdev.block_size * i), m_index * blocks + i);
+      }
+    }
+    // we're no longer dirty!
+    m_dirty = false;
+    return 0;
+  }
+
+
+  void *buffer::data(void) {
+    scoped_lock l(m_lock);
+    if (!m_page) {
+      // get the page if there isn't one and read the blocks
+      m_page = mm::page::alloc();
+
+      int blocks = PGSIZE / bdev.block_size;
+      auto *buf = (char *)p2v(m_page->pa);
+
+      for (int i = 0; i < blocks; i++) {
+        bdev.read_block(buf + (bdev.block_size * i), m_index * blocks + i);
+      }
+    }
+
+    if (m_page && m_page->pa) {
+      return p2v(m_page->pa);
+    }
+    return nullptr;
+  }
+}  // namespace block
+
+
+static ssize_t block_rw(fs::blkdev &b, void *dst, size_t size,
+                        off_t byte_offset, bool write) {
+  // how many more bytes are needed
+  long to_access = size;
+  // the offset within the current page
+  ssize_t offset = byte_offset % PGSIZE;
+
+  char *udata = (char *)dst;
+
+  for (off_t blk = byte_offset / PGSIZE; true; blk++) {
+    // get the block we are looking at.
+    auto block = bget(b, blk);
+    auto data = (char *)block->data();
+
+    size_t space_left = PGSIZE - offset;
+    size_t can_access = min(space_left, to_access);
+
+    if (write) {
+      memcpy(data + offset, udata, can_access);
+      block->register_write();
+    } else {
+      memcpy(udata, data + offset, can_access);
+    }
+
+    // release the block
+    bput(block);
+
+    // moving on to the next block, we reset the offset
+    offset = 0;
+    to_access -= can_access;
+    udata += can_access;
+
+    if (to_access <= 0) break;
+  }
+
+
+  return size;
+}
+
+
+int bread(fs::blkdev &b, void *dst, size_t size, off_t byte_offset) {
+  return block_rw(b, dst, size, byte_offset, false /* read */);
+
+  return 0;
+}
+
+
+int bwrite(fs::blkdev &b, void *data, size_t size, off_t byte_offset) {
+  return block_rw(b, data, size, byte_offset, true /* write */);
+}
+
+
+static void block_init(void) {
+  sched::proc::create_kthread("[block flush]", block_flush_task);
+  // TODO: spawn a kernel thread for the flush block cache write flushing daemon
+}
+
+module_init("block", block_init);
+
+
+
 
 // ideally, the seek operation would never go out of sync, so this just checks
 // that we only ever seek by blocksize amounts
@@ -16,34 +237,18 @@ static int blk_seek(fs::file &f, off_t o, off_t) {
 }
 
 static ssize_t blk_rw(fs::file &f, char *data, size_t len, bool write) {
-  size_t first_block, end_block, blk_count;
-  ssize_t n = 0;
-  int res;
   off_t offset;
   struct fs::blkdev *dev;
 
   if (f.ino->type != T_BLK || !f.ino->blk.dev) return -EINVAL;
 
   dev = f.ino->blk.dev;
+
+
   offset = f.offset();
-
-  if ((offset % dev->block_size) != 0 || (len % dev->block_size) != 0) {
-    return -EINVAL;
-  }
-
-  first_block = offset / dev->block_size;
-  end_block = (offset + len) / dev->block_size;
-  blk_count = end_block - first_block;
-
-  for (u64 i = 0; i < blk_count; i++) {
-    res = dev->ops.rw_block(*dev, data + dev->block_size * i, first_block + i,
-			    write);
-    if (res != 0) {
-      return -EIO;
-    }
-    n += dev->block_size;
-  }
+  auto n = block_rw(*dev, (void *)data, (size_t)len, (off_t)offset, write);
   f.seek(n, SEEK_CUR);
+
   return n;
 }
 

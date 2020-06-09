@@ -154,8 +154,6 @@ int kernel_init(void *) {
   sys::dup2(fd, 2);
 
 
-
-
   auto kproc = sched::proc::kproc();
   kproc->root = fs::inode::acquire(vfs::get_root());
   kproc->cwd = fs::inode::acquire(vfs::get_root());
