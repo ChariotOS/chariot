@@ -73,19 +73,6 @@ namespace fs {
     int *blk_bufs[4] = {NULL, NULL, NULL, NULL};
     ~ext2_idata(void);
   };
-  /*
-  class ext2_inode : public fs::inode {
-    friend class ext2;
-
-   public:
-    static ext2_inode *create(ext2 *fs, u32 index);
-    explicit ext2_inode(int type, u32 index, ext2 &fs);
-    virtual ~ext2_inode();
-
-    // flush the in-memory info struct to disk
-    int commit_info();
-  };
-  */
 
   /**
    * An ext2 implementation of the filesystem class
@@ -118,6 +105,10 @@ namespace fs {
     bool read_inode(ext2_inode_info &dst, u32 inode);
 
     bool write_inode(ext2_inode_info &dst, u32 inode);
+
+		inline struct block::buffer *bget(uint32_t block) {
+			return ::bget(*bdev, block);
+		}
 
     uint32_t balloc(void);
     void bfree(uint32_t);
@@ -217,12 +208,6 @@ namespace fs {
 
     // blocks are read here for access. This is so the filesystem can cut down
     // on allocations when doing general maintainence
-    spinlock work_buf_lock;
-    void *work_buf = nullptr;
-
-    spinlock inode_buf_lock;
-    void *inode_buf = nullptr;
-
 
 		// the size of a single disk sector
 		long sector_size;
@@ -235,6 +220,7 @@ namespace fs {
     spinlock cache_lock;
 
     ref<fs::file> disk;
+		fs::blkdev *bdev;
 
     spinlock m_lock;
   };

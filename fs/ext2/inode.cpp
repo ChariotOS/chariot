@@ -431,18 +431,24 @@ static ssize_t ext2_raw_rw(fs::inode &ino, char *buf, size_t sz, off_t offset,
       return -EIO;
     }
 
-    auto *buf = (u8 *)efs->work_buf;
-    efs->read_block(blk, buf);
-
     int offset_into_block = (bi == first_blk_ind) ? offset_into_first_block : 0;
     int num_bytes_to_copy = min(bsize - offset_into_block, remaining_count);
 
+
+		// load the buffer from the buffer cache
+		auto buf_bb = bref::get(*efs->bdev, blk);
+    auto *buf = (u8 *)buf_bb->data();
+
     if (write) {
+			// write to the buffer
       memcpy(buf + offset_into_block, given_buf, num_bytes_to_copy);
-      efs->write_block(blk, buf);
+			buf_bb->register_write();
     } else {
+			// read from the buffer
       memcpy(given_buf, buf + offset_into_block, num_bytes_to_copy);
     }
+
+
     remaining_count -= num_bytes_to_copy;
     nread += num_bytes_to_copy;
     given_buf += num_bytes_to_copy;

@@ -58,15 +58,13 @@ fs::ext2::ext2(void) { TRACE; }
 fs::ext2::~ext2(void) {
   TRACE;
   if (sb != nullptr) delete sb;
-  if (work_buf != nullptr) kfree(work_buf);
-  if (inode_buf != nullptr) kfree(inode_buf);
-
 }
 
 bool fs::ext2::init(fs::blkdev *bdev) {
   TRACE;
 
   fs::blkdev::acquire(bdev);
+  this->bdev = bdev;
   disk = fs::bdev_to_file(bdev);
 
   sector_size = bdev->block_size;
@@ -95,15 +93,18 @@ bool fs::ext2::init(fs::blkdev *bdev) {
   // solve for the filesystems block size
   block_size = 1024 << sb->blocksize_hint;
 
+  if (block_size != 4096) {
+    printk(KERN_WARN "ext2: blocksize is not 4096\n");
+    return false;
+  }
+
   // the number of block groups can be found by rounding up the
   // blocks/blocks_per_group
   blockgroups = ceil((double)sb->blocks / (double)sb->blocks_in_blockgroup);
 
+
   first_bgd = block_size == 1024 ? 2 : 1;
 
-  // allocate a block for the work_buf
-  work_buf = kmalloc(block_size);
-  inode_buf = kmalloc(block_size);
 
   root = get_inode(2);
   fs::inode::acquire(root);
@@ -125,24 +126,18 @@ int fs::ext2::write_superblock(void) {
 bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {
   TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
-
-
-  scoped_lock l1(inode_buf_lock);
-  scoped_lock l2(work_buf_lock);
-
-  // now that we have which BGF the inode is in, load that desc
-  read_block(first_bgd, work_buf);
-
-  auto *bgd = (block_group_desc *)work_buf + bg;
+	auto bgd_bb = bref::get(*bdev, first_bgd);
+  auto *bgd = (block_group_desc *)bgd_bb->data() + bg;
 
   // find the index and seek to the inode
   u32 index = (inode - 1) % sb->inodes_in_blockgroup;
   u32 block = (index * sb->s_inode_size) / block_size;
 
-  read_block(bgd->inode_table + block, inode_buf);
+
+	auto inode_bb = bref::get(*bdev, bgd->inode_table + block);
 
   auto *_inode =
-      (ext2_inode_info *)inode_buf + (index % (block_size / sb->s_inode_size));
+      (ext2_inode_info *)inode_bb->data() + (index % (block_size / sb->s_inode_size));
 
   memcpy(&dst, _inode, sizeof(ext2_inode_info));
 
@@ -153,30 +148,21 @@ bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
   TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
 
-  scoped_lock l1(inode_buf_lock);
-  scoped_lock l2(work_buf_lock);
-
-
-  // now that we have which BGF the inode is in, load that desc
-  read_block(first_bgd, work_buf);
-
-  auto *bgd = (block_group_desc *)work_buf + bg;
+	auto bgd_bb = bref::get(*bdev, first_bgd);
+  auto *bgd = (block_group_desc *)bgd_bb->data() + bg;
 
   // find the index and seek to the inode
   u32 index = (inode - 1) % sb->inodes_in_blockgroup;
   u32 block = (index * sb->s_inode_size) / block_size;
 
-  // read the inode buffer
-  read_block(bgd->inode_table + block, inode_buf);
+	auto inode_bb = bref::get(*bdev, bgd->inode_table + block);
 
-  // modify it...
   auto *_inode =
-      (ext2_inode_info *)inode_buf + (index % (block_size / sb->s_inode_size));
+      (ext2_inode_info *)inode_bb->data() + (index % (block_size / sb->s_inode_size));
 
   memcpy(_inode, &src, sizeof(ext2_inode_info));
+	inode_bb->register_write();
 
-  // and write the block back
-  write_block(bgd->inode_table + block, inode_buf);
   return true;
 }
 
@@ -194,20 +180,20 @@ long fs::ext2::allocate_inode(void) {
   int res = -1;
 
   // now that we have which BGF the inode is in, load that desc
-  read_block(first_bgd, work_buf);
+	auto first_bgd_bb = bref::get(*bdev, first_bgd);
 
   // space for the bitmap (a little wasteful with memory, but fast)
   //    (allocates a full page)
-  auto vbitmap = phys::kalloc(1);
 
   int nfree = 0;
 
   for (int i = 0; i < bgs; i++) {
-    auto *bgd = (block_group_desc *)work_buf + i;
+    auto *bgd = (block_group_desc *)first_bgd_bb->data() + i;
 
     if (res == -1 && bgd->num_of_unalloc_inode > 0) {
-      read_block(bgd->inode_bitmap, vbitmap);
-      auto bitmap = (char *)vbitmap;
+
+			auto bitmap_bb = bref::get(*bdev, bgd->inode_bitmap);
+      auto bitmap = (char *)bitmap_bb->data();
 
       int j = 0;
       for (; j < sb->inodes_in_blockgroup && BLOCKBIT(bitmap, j); j++) {
@@ -215,7 +201,7 @@ long fs::ext2::allocate_inode(void) {
       // evaluate to the actual inode number
       res = j + i * sb->inodes_in_blockgroup + 1;
       bitmap[j / 8] |= static_cast<u8>((1u << (j % 8)));
-      write_block(bgd->inode_bitmap, vbitmap);
+			bitmap_bb->register_write();
       sb->unallocatedinodes--;
       bgd->num_of_unalloc_inode--;
       flush_changes = true;
@@ -226,11 +212,10 @@ long fs::ext2::allocate_inode(void) {
 
 
   if (flush_changes) {
-    write_block(first_bgd, work_buf);
+		first_bgd_bb->register_write();
     write_superblock();
   }
 
-  phys::kfree(vbitmap, 1);
 
   return res;
 }
@@ -241,20 +226,20 @@ u32 fs::ext2::balloc(void) {
   scoped_lock l(bglock);
 
   unsigned int block_no = 0;
-  auto *bg_buffer = (uint8_t *)kmalloc(block_size);
-  auto *first_bgd_block = (uint8_t *)kmalloc(block_size);
+
+  auto first_bgd_bb = bref::get(*bdev, first_bgd);
+  auto *bgd = (block_group_desc *)first_bgd_bb->data();
 
   auto blocks_in_group = sb->blocks_in_blockgroup;
-  read_block(first_bgd, first_bgd_block);
-
-
-  auto *bgd = (block_group_desc *)first_bgd_block;
 
 
   for (uint32_t bg_idx = 0; bg_idx < blockgroups; bg_idx++) {
     if (bgd[bg_idx].num_of_unalloc_block == 0) continue;
 
-    read_block(bgd[bg_idx].block_bitmap, bg_buffer);
+    auto bgblk = bref::get(*bdev, bgd[bg_idx].block_bitmap);
+    auto bg_buffer = bgblk->data();
+
+		// hexdump(bg_buffer, block_size, true);
 
     auto words = reinterpret_cast<uint32_t *>(bg_buffer);
 
@@ -265,29 +250,25 @@ u32 fs::ext2::balloc(void) {
         if (words[i] & (1 << bit)) continue;
 
         block_no = (bg_idx * blocks_in_group) + (i * 32) + bit;
-				block_no += sb->first_data_block;
+        block_no += sb->first_data_block;
         bgd[bg_idx].num_of_unalloc_block--;
         sb->unallocatedblocks--;
+
         assert(block_no);
         words[i] |= static_cast<uint32_t>(1) << bit;
 
-        // flush the bitmap we just changed
-        write_block(bgd[bg_idx].block_bitmap, words);
-        write_block(first_bgd, bgd);
-
         write_superblock();
 
-				/*
-				printk("%d:\n", block_no-1);
-        read_block(block_no-1, bg_buffer);
-				hexdump(bg_buffer, block_size, true);
-				*/
 
-        memset(bg_buffer, 0x00, block_size);
-        write_block(block_no, bg_buffer);
+				// clear out the new block we just allocated
+				// TODO: allow this to happen without reading the block
+        auto newblk = bref::get(*bdev, block_no);
+        memset(newblk->data(), 0x00, block_size);
 
-        kfree(bg_buffer);
-        kfree(first_bgd_block);
+				// register everything we've changed :^)
+        newblk->register_write();
+        first_bgd_bb->register_write();
+        bgblk->register_write();
 
         return block_no;
       }
@@ -295,9 +276,8 @@ u32 fs::ext2::balloc(void) {
     }
   }
 
+
   printk(KERN_WARN "No Space left on disk\n");
-  kfree(bg_buffer);
-  kfree(first_bgd_block);
   return 0;
 }
 
@@ -311,13 +291,13 @@ void fs::ext2::bfree(u32 block) {
 }
 
 bool fs::ext2::read_block(u32 block, void *buf) {
-  disk->seek(block * block_size, SEEK_SET);
-  return disk->read(buf, block_size);
+  bread(*bdev, (void *)buf, block_size, block * block_size);
+  return true;
 }
 
 bool fs::ext2::write_block(u32 block, const void *buf) {
-  disk->seek(block * block_size, SEEK_SET);
-  return disk->write((void *)buf, block_size);
+  bwrite(*bdev, (void *)buf, block_size, block * block_size);
+  return true;
 }
 
 struct fs::inode *fs::ext2::get_root(void) {

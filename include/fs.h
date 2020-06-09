@@ -109,6 +109,7 @@ namespace fs {
     dev_t dev;
     long block_size;
     long max_filesize;
+
     struct sb_operations *ops;
     struct sb_information *info;
     struct inode *root;
@@ -485,5 +486,27 @@ static inline auto bget(fs::blkdev &b, off_t page) {
 static inline auto bput(struct block::buffer *b) {
   return block::buffer::release(b);
 }
+
+
+struct bref {
+	static inline bref get(fs::blkdev &b, off_t page)  {
+		return block::buffer::get(b, page);
+	}
+
+	inline bref(struct block::buffer *b) {
+		buf = b;
+	}
+
+	inline ~bref(void) {
+		if (buf) bput(buf);
+	}
+
+	inline struct block::buffer *operator->(void) {
+		return buf;
+	}
+
+	private:
+	struct block::buffer *buf = NULL;
+};
 
 #endif
