@@ -83,7 +83,6 @@ namespace block {
 
     auto key = to_key(device.dev);
     auto &dev_map = buffer_cache[key];
-
     buf = dev_map[page];
 
     if (buf == NULL) {
@@ -122,9 +121,6 @@ namespace block {
   int buffer::flush(void) {
     scoped_lock l(m_lock);
     if (m_page && m_dirty) {
-      // get the page if there isn't one and read the blocks
-      m_page = mm::page::alloc();
-
       int blocks = PGSIZE / bdev.block_size;
       auto *buf = (char *)p2v(m_page->pa);
 
