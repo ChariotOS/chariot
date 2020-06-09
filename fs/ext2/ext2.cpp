@@ -176,7 +176,6 @@ long fs::ext2::allocate_inode(void) {
   scoped_lock l(bglock);
 
   int bgs = blockgroups;
-  bool flush_changes = false;
   int res = -1;
 
   // now that we have which BGF the inode is in, load that desc
@@ -204,20 +203,15 @@ long fs::ext2::allocate_inode(void) {
 			bitmap_bb->register_write();
       sb->unallocatedinodes--;
       bgd->num_of_unalloc_inode--;
-      flush_changes = true;
+			first_bgd_bb->register_write();
+			write_superblock();
+			return res;
     }
 
     nfree += bgd->num_of_unalloc_inode;
   }
 
-
-  if (flush_changes) {
-		first_bgd_bb->register_write();
-    write_superblock();
-  }
-
-
-  return res;
+  return 0;
 }
 
 
