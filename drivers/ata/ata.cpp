@@ -430,20 +430,26 @@ bool dev::ata::write_blocks_dma(u32 sector, const u8* data, int n) {
   if (sector & 0xF0000000) return false;
   drive_lock.lock();
 
+	printk("write %d, n = %d\n", sector, n);
+
 	int buffer_pages = NPAGES(n * block_size() + sizeof(prdt_t));
 	auto buffer = phys::alloc(buffer_pages);
   // setup the prdt for DMA
   auto* prdt = static_cast<prdt_t*>(p2v(buffer));
-  prdt->transfer_size = sector_size;
+  prdt->transfer_size = sector_size * n;
   prdt->buffer_phys = (u64)buffer + sizeof(prdt_t);
   prdt->mark_end = 0x8000;
 
   u8* dma_dst = (u8*)p2v(prdt->buffer_phys);
 
+  // copy our data
+  memcpy(dma_dst, data, sector_size * n);
+	hexdump(dma_dst, sector_size  * n, true);
+
   // stop bus master
   outb(bmr_command, 0);
   // Set prdt
-  outl(bmr_prdt, (u64)m_dma_buffer);
+  outl(bmr_prdt, (u64)buffer);
 
   // Turn on "Interrupt" and "Error" flag. The error flag should be cleared by
   // hardware.
@@ -456,6 +462,7 @@ bool dev::ata::write_blocks_dma(u32 sector, const u8* data, int n) {
   device_port.out((master ? 0xE0 : 0xF0) | ((sector & 0x0F000000) >> 24));
   // clear the error port
   error_port.out(0);
+
   // read a single sector
   sector_count_port.out(n);
 
@@ -463,14 +470,11 @@ bool dev::ata::write_blocks_dma(u32 sector, const u8* data, int n) {
   lba_mid_port.out((sector & 0xFF00) >> 8);
   lba_high_port.out((sector & 0xFF0000) >> 16);
 
-  // copy our data
-  memcpy(dma_dst, data, sector_size * n);
-
-  // read DMA command
-  command_port.out(ATA_CMD_WRITE_DMA);
-
   // start bus master
   outb(bmr_command, 0x9);
+
+  // write DMA command
+  command_port.out(ATA_CMD_WRITE_DMA);
 
   int i = 0;
 
