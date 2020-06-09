@@ -23,6 +23,7 @@
 // fwd decl
 namespace mm {
   struct area;
+	struct vmobject;
 }
 
 namespace fs {
@@ -230,7 +231,7 @@ namespace fs {
     void (*close)(fs::file &) = NULL;
 
     /* map a file into a vm area */
-    int (*mmap)(fs::file &, struct mm::area &);
+		ref<mm::vmobject> (*mmap)(fs::file &, size_t npages, int prot, int flags, off_t off);
     // resize a file. if size is zero, it is a truncate
     int (*resize)(fs::file &, size_t);
 
@@ -446,6 +447,8 @@ namespace block {
     static void release(struct buffer *);
 
     void register_write(void);
+
+		ref<mm::page> page(void);
 
     // return the backing page data.
     void *data(void);

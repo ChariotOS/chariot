@@ -120,33 +120,30 @@ int mm::space::pagefault(off_t va, int err) {
   if (fault_res == 0) {
     // handle the fault in the region
     if (!r->pages[ind]) {
-      r->pages[ind] = mm::page::alloc();
+
+
+			bool got_from_vmobj = false;
+			if (r->obj) {
+				if (r->flags & MAP_SHARED) {
+					r->pages[ind] = r->obj->get_shared(ind);
+					got_from_vmobj = true;
+				} else if (r->flags & MAP_PRIVATE) {
+					r->pages[ind] = r->obj->get_private(ind);
+					got_from_vmobj = true;
+				}
+			}
+
+			if (!r->pages[ind] && got_from_vmobj) {
+				panic("failed!\n");
+			}
+
+			if (!r->pages[ind]) {
+      	r->pages[ind] = mm::page::alloc();
+			}
+
       auto &page = r->pages[ind];
       spinlock::lock(page->lock);
       page->users++;
-
-      /**
-       * if the region is backed by a file, read the file into the page
-       */
-      if (r->fd) {
-        void *buf = p2v(page->pa);
-        // TODO: handle failures to read
-
-        // offset, in bytes, into the region
-        off_t roff = ind * PGSIZE;
-        r->fd->seek(r->off + roff, SEEK_SET);
-
-        size_t to_read = min(PGSIZE, r->len - roff);
-        int nread = r->fd->read(buf, to_read);
-
-        if (nread == -1) {
-          printk("failed to read mapped file!\n");
-          memset(buf, 0, PGSIZE);
-        }
-
-        // clear out all the other memory that was read
-        if (nread != PGSIZE) memset((char *)buf + nread, 0x00, PGSIZE - nread);
-      }
 
       spinlock::unlock(page->lock);
     } else {
@@ -294,6 +291,7 @@ off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
     return -1;
   }
 
+
   scoped_lock l(lock);
 
   if (addr == 0) {
@@ -302,7 +300,7 @@ off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
 
   off_t pages = round_up(size, 4096) / 4096;
 
-  auto r = new mm::area;
+  auto r = new mm::area();
 
   r->name = name;
   r->va = addr;
@@ -311,13 +309,21 @@ off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
   r->prot = prot;
   r->flags = flags;
   r->fd = fd;
+
   for (int i = 0; i < pages; i++) r->pages.push(nullptr);
+
+	if (fd) {
+		if (fd->ino && fd->ino->fops && fd->ino->fops->mmap) {
+			auto obj = fd->ino->fops->mmap(*fd, pages, prot, flags, off);
+			if (obj) {
+				r->obj = obj;
+			}
+		}
+	}
 
   regions.push(r);
 
   sort_regions();
-
-  return addr;
 
   return addr;
 }

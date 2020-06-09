@@ -130,13 +130,23 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
         // printk("    is .bss\n");
       }
 
-      auto flags = 0L;
-      if (sec.p_flags & PF_X) flags |= PROT_EXEC;
-      if (sec.p_flags & PF_W) flags |= PROT_WRITE;
-      if (sec.p_flags & PF_R) flags |= PROT_READ;
+      auto prot = 0L;
+      if (sec.p_flags & PF_X) prot |= PROT_EXEC;
+      if (sec.p_flags & PF_W) prot |= PROT_WRITE;
+      if (sec.p_flags & PF_R) prot |= PROT_READ;
+
+
+			auto flags = 0L;
+			if (prot & PROT_WRITE) {
+				flags = MAP_PRIVATE;
+			} else {
+				flags = MAP_SHARED;
+			}
+
+			// printk("%p (%zu), prot: %x, flags: %x\n", off + start, sec.p_memsz, prot, flags);
 
 			// printk("mmap[%d] addr=%p, size=%08x, offset=%08x\n", i, off + start, sec.p_memsz, sec.p_offset);
-      mm.mmap(path, off + start, sec.p_memsz, flags, MAP_PRIVATE, fd, sec.p_offset);
+      mm.mmap(path, off + start, sec.p_memsz, prot, flags, fd, sec.p_offset);
       handle_bss(sec);
     }
   }

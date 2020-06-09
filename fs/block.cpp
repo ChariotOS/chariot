@@ -120,11 +120,15 @@ namespace block {
 
   int buffer::flush(void) {
     scoped_lock l(m_lock);
-    if (m_page && m_dirty) {
+
+		// flush even if we aren't dirty.
+    if (m_page) {
       int blocks = PGSIZE / bdev.block_size;
       auto *buf = (char *)p2v(m_page->pa);
 
       for (int i = 0; i < blocks; i++) {
+				// printk("write block %d\n", m_index * blocks + i);
+				// hexdump(buf + (bdev.block_size * i), bdev.block_size, true);
         bdev.write_block(buf + (bdev.block_size * i), m_index * blocks + i);
       }
     }
@@ -153,6 +157,15 @@ namespace block {
     }
     return nullptr;
   }
+
+
+	ref<mm::page> buffer::page(void) {
+		// ::data() asserts that the page is there.
+		(void)this->data();
+		assert(m_page);
+		return m_page;
+	}
+
 }  // namespace block
 
 

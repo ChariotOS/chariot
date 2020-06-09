@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fs.h>
 #include <fs/ext2.h>
+#include <mm.h>
 #include <util.h>
 
 #define EXT2_ADDR_PER_BLOCK(node) (node->block_size / sizeof(u32))
@@ -221,7 +222,7 @@ static int access_block_path(fs::inode &ino, int n, int *path,
 
   // in the case of direct blocks, go through the short path.
   if (n == 1) {
-		auto *blks = info.dbp;
+    auto *blks = info.dbp;
     cb(blks[path[0]]);  // we dont care about if we wrote
     return 0;
   }
@@ -325,9 +326,9 @@ static int append_block(fs::inode &ino, int dest) {
   fs::ext2 *efs = static_cast<fs::ext2 *>(&ino.sb);
 
   return access_block_path(ino, n, path, [&](uint32_t &dst) -> bool {
-		int blk = efs->balloc();
-		if (dst) printk("%d becomes %d\n", dst, blk);
-		dst = blk;
+    int blk = efs->balloc();
+    if (dst) printk("%d becomes %d\n", dst, blk);
+    dst = blk;
     // we wrote
     return true;
   });
@@ -435,16 +436,16 @@ static ssize_t ext2_raw_rw(fs::inode &ino, char *buf, size_t sz, off_t offset,
     int num_bytes_to_copy = min(bsize - offset_into_block, remaining_count);
 
 
-		// load the buffer from the buffer cache
-		auto buf_bb = bref::get(*efs->bdev, blk);
+    // load the buffer from the buffer cache
+    auto buf_bb = bref::get(*efs->bdev, blk);
     auto *buf = (u8 *)buf_bb->data();
 
     if (write) {
-			// write to the buffer
+      // write to the buffer
       memcpy(buf + offset_into_block, given_buf, num_bytes_to_copy);
-			buf_bb->register_write();
+      buf_bb->register_write();
     } else {
-			// read from the buffer
+      // read from the buffer
       memcpy(given_buf, buf + offset_into_block, num_bytes_to_copy);
     }
 
@@ -586,10 +587,90 @@ static int ext2_ioctl(fs::file &, unsigned int, off_t) {
 static int ext2_open(fs::file &) { return 0; }
 static void ext2_close(fs::file &) {}
 
-static int ext2_mmap(fs::file &, struct mm::area &) {
-  UNIMPL();
-  return -ENOTIMPL;
+
+
+
+struct ext2_vmobject final : public mm::vmobject {
+  ext2_vmobject(fs::inode *ino, size_t npages, off_t off) : vmobject(npages) {
+    m_ino = fs::inode::acquire(ino);
+    m_off = off;
+  }
+
+  virtual ~ext2_vmobject(void) {
+    for (auto &kv : buffers) {
+      bput(kv.value);
+    }
+    fs::inode::release(m_ino);
+  };
+
+
+  struct block::buffer *bget(uint32_t n) {
+    scoped_lock l(m_lock);
+
+    struct block::buffer *buf = buffers[n];
+
+    if (buf == NULL) {
+      fs::ext2 *efs = static_cast<fs::ext2 *>(&m_ino->sb);
+
+      auto i_block =
+          (m_off / efs->block_size) + ((n * PGSIZE) / efs->block_size);
+      int block = block_from_index(*m_ino, i_block);
+
+      // we hold the buffer hostage and don't release it back till this region
+      // is destructed
+      buf = efs->bget(block);
+      buffers[n] = buf;
+    }
+
+    return buf;
+  }
+
+  // get a shared page (page #n in the mapping)
+  virtual ref<mm::page> get_shared(off_t n) override {
+		// printk("get_shared(%d)\n", n);
+		auto blk = bget(n);
+
+		// hexdump(blk->data(), PGSIZE, true);
+
+    return blk->page();
+  }
+
+  // get a private copy of the page
+  virtual ref<mm::page> get_private(off_t n) override {
+		// printk("get_private(%d)\n", n);
+    auto shared = bget(n)->page();
+    if (!shared) return nullptr;  // FAIL
+    auto copy = mm::page::alloc();
+    if (!copy) return nullptr;  // FAIL
+
+    memcpy(p2v(copy->pa), p2v(shared->pa), PGSIZE);
+    return copy;  // SUCCESS
+  }
+
+
+ private:
+  // offset -> block
+  spinlock m_lock;
+  map<uint32_t, block::buffer *> buffers;
+  fs::inode *m_ino;
+  off_t m_off = 0;
+};
+
+
+
+
+static ref<mm::vmobject> ext2_mmap(fs::file &f, size_t npages, int prot,
+                                   int flags, off_t off) {
+  // XXX: this is invalid, should be asserted before here :^)
+  if (off & 0xFFF) return nullptr;
+
+  // if (flags & MAP_PRIVATE) printk("ext2 map private\n");
+  // if (flags & MAP_SHARED) printk("ext2 map shared\n");
+
+  return make_ref<ext2_vmobject>(f.ino, npages, off);
 }
+
+
 
 static int ext2_resize(fs::file &, size_t) {
   UNIMPL();
@@ -617,6 +698,7 @@ fs::file_operations ext2_file_ops{
     .resize = ext2_resize,
     .destroy = ext2_destroy_priv,
 };
+
 
 static int ext2_create(fs::inode &node, const char *name,
                        struct fs::file_ownership &) {
