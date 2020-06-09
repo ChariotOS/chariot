@@ -430,8 +430,6 @@ bool dev::ata::write_blocks_dma(u32 sector, const u8* data, int n) {
   if (sector & 0xF0000000) return false;
   drive_lock.lock();
 
-	printk("write %d, n = %d\n", sector, n);
-
 	int buffer_pages = NPAGES(n * block_size() + sizeof(prdt_t));
 	auto buffer = phys::alloc(buffer_pages);
   // setup the prdt for DMA
@@ -444,7 +442,6 @@ bool dev::ata::write_blocks_dma(u32 sector, const u8* data, int n) {
 
   // copy our data
   memcpy(dma_dst, data, sector_size * n);
-	hexdump(dma_dst, sector_size  * n, true);
 
   // stop bus master
   outb(bmr_command, 0);
