@@ -15,7 +15,7 @@
 
 #include <asm.h>
 #include <mem.h>
-#include <printk.h>
+// #include <printk.h>
 #include <types.h>
 
 #endif

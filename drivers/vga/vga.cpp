@@ -207,8 +207,6 @@ static void reset_fb(void) {
 static void fb_close(fs::file &f) {
   scoped_lock l(fblock);
   printk(KERN_INFO "[fb] close\n");
-
-  // printk("[fb] closed!\n");
   owned = false;
   reset_fb();
 }

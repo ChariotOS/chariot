@@ -4,7 +4,6 @@
 #ifdef USERLAND
 
 #else
-#include <printk.h>
 #include "../template_lib.h"
 #endif
 
