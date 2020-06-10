@@ -83,10 +83,10 @@ int run_line(const char *line) {
     int stat = 0;
     if (!bg) {
       waitpid(pid, &stat, 0);
-  		// size_t end = current_us();
+      // size_t end = current_us();
 
-			// fprintf(stderr, "\n--------------------\n");
-			// fprintf(stderr, "%ldus\n", end - start);
+      // fprintf(stderr, "\n--------------------\n");
+      // fprintf(stderr, "%ldus\n", end - start);
     }
 
     int exit_code = WEXITSTATUS(stat);
@@ -125,29 +125,32 @@ int main(int argc, char **argv, char **envp) {
   struct readline_context rl_ctx;
   rl_ctx.history = NULL;
 
+  int hn = open("/cfg/hostname", O_RDONLY);
+
+  int n = read(hn, (void *)hostname, 50);
+  if (n >= 0) {
+    hostname[n] = 0;
+    for (int i = n; i > 0; i--) {
+      if (hostname[i] == '\n') hostname[i] = 0;
+    }
+  }
+
+  close(hn);
+
+
+  uid_t uid = getuid();
+  struct passwd *pwd = getpwuid(uid);
+  strncpy(uname, pwd->pw_name, 32);
+
+
+  setenv("USER", pwd->pw_name, 1);
+  setenv("SHELL", pwd->pw_shell, 1);
+  setenv("HOME", pwd->pw_dir, 1);
+
   while (1) {
-    uid_t uid = getuid();
-    struct passwd *pwd = getpwuid(uid);
-    strncpy(uname, pwd->pw_name, 32);
-
     syscall(SYS_getcwd, cwd, 255);
-
-    setenv("USER", pwd->pw_name, 1);
-    setenv("SHELL", pwd->pw_shell, 1);
-    setenv("HOME", pwd->pw_dir, 1);
     setenv("CWD", (const char *)cwd, 1);
 
-    int hn = open("/cfg/hostname", O_RDONLY);
-
-    int n = read(hn, (void *)hostname, 50);
-    if (n >= 0) {
-      hostname[n] = 0;
-      for (int i = n; i > 0; i--) {
-        if (hostname[i] == '\n') hostname[i] = 0;
-      }
-    }
-
-    close(hn);
 
     const char *disp_cwd = (const char *)cwd;
     if (strcmp((const char *)cwd, pwd->pw_dir) == 0) {

@@ -180,7 +180,7 @@ static int fb_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
 
 static int fb_open(fs::file &f) {
   scoped_lock l(fblock);
-  printk(KERN_INFO "[fb] open\n");
+  // printk(KERN_INFO "[fb] open\n");
   if (owned) return -EBUSY;  // disallow
   owned = true;
   return 0;  // allow
@@ -195,8 +195,7 @@ void vga::configure(struct ck_fb_info &i) {
   flush_vga_console();
 }
 
-static void reset_fb(void) {
-  // disable the framebuffer (drop back to text mode)
+static void reset_fb(void) { // disable the framebuffer (drop back to text mode)
   auto i = info;
   i.active = false;
   i.width = VCONSOLE_WIDTH;
@@ -206,7 +205,7 @@ static void reset_fb(void) {
 
 static void fb_close(fs::file &f) {
   scoped_lock l(fblock);
-  printk(KERN_INFO "[fb] close\n");
+  // printk(KERN_INFO "[fb] close\n");
   owned = false;
   reset_fb();
 }

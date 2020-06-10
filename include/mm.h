@@ -119,6 +119,7 @@ namespace mm {
     // and it isn't anon but has no obj field, it acts like an anon mapping
     ref<vmobject> obj = nullptr;
 
+    area(void);
     ~area(void);
   };
 

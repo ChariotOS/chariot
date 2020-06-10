@@ -5,29 +5,67 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <chariot/fb.h>
+#include <sys/ioctl.h>
+
+
+
+struct vga_framebuffer {
+
+
+	vga_framebuffer(int w, int h) {
+		fd = open("/dev/fb", O_RDWR);
+		set_resolution(w, h);
+	}
+
+	~vga_framebuffer(void) {
+		munmap(buf, bufsz);
+		close(fd);
+		buf = NULL;
+	}
+
+	void set_resolution(int w, int h) {
+		if (buf != NULL) {
+			munmap(buf, bufsz);
+		}
+
+
+		info.width = w;
+		info.height = h;
+		flush_info();
+
+		bufsz = w * h * sizeof(uint32_t);
+		buf = (uint32_t*)mmap(NULL, bufsz, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+	}
+
+	uint32_t *pixels(void) {
+		return buf;
+	}
+
+	private:
+		int fd = -1;
+		uint32_t *buf = NULL;
+		size_t bufsz = 0;
+		struct ck_fb_info info;
+
+		void flush_info(void) {
+			info.active = 1;
+			ioctl(fd, FB_SET_INFO, &info);
+		}
+
+		void load_info(void) {
+			ioctl(fd, FB_GET_INFO, &info);
+		}
+
+};
 
 int main(int argc, char **argv) {
-	int fd = open("/dev/fb", O_RDWR);
-	if (fd == -1) {
-		perror("open");
-		return 1;
-	}
+	vga_framebuffer fb(1024, 768);
 
 
-	int pixels = 640 * 480;
+	fb.pixels()[0] = 0xFF00FF;
 
-	auto buf = (char*)mmap(NULL, pixels * sizeof(int), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-	if (buf == MAP_FAILED) {
-		perror("mmap");
-		return 1;
-	}
-
-
-	for (int i = 0; i < 4096; i++) {
-		memset(buf, i, pixels * sizeof(int));
-	}
-
-
+	(void)getchar();
 
 	return 0;
 
