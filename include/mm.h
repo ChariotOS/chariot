@@ -132,7 +132,7 @@ namespace mm {
     ~space(void);
 
     void switch_to();
-    ref<mm::area> lookup(off_t va);
+    mm::area *lookup(off_t va);
 
     int delete_region(off_t va);
     int pagefault(off_t va, int err);
@@ -171,7 +171,7 @@ namespace mm {
     off_t find_hole(size_t size);
 
     spinlock lock;
-    vec<ref<mm::area>> regions;
+    vec<mm::area *> regions;
 
     struct pending_mapping {
       off_t va;

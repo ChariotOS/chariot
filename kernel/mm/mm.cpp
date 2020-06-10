@@ -74,13 +74,16 @@ mm::space::space(off_t lo, off_t hi, ref<mm::pagetable> pt)
     : pt(pt), lo(lo), hi(hi) {}
 
 mm::space::~space(void) {
+	for (auto &r : regions) {
+		delete r;
+	}
 	// clear out our handle to each area
 	regions.clear();
 }
 
 void mm::space::switch_to() { pt->switch_to(); }
 
-ref<mm::area> mm::space::lookup(off_t va) {
+mm::area *mm::space::lookup(off_t va) {
   // just dumbly walk over the list of regions and find the right region
   for (auto &r : regions) {
     off_t start = r->va;
@@ -453,13 +456,17 @@ off_t mm::space::find_hole(size_t size) {
 }
 
 mm::area::~area(void) {
+	printk("here\n");
   for (auto &p : pages) {
     if (p) {
       spinlock::lock(p->lock);
       p->users--;
       spinlock::unlock(p->lock);
+			p = nullptr;
     }
   }
+
+	this->fd = nullptr;
 
   pages.clear();
 }
