@@ -177,6 +177,8 @@ static inline void memset(void *buf, char c, size_t len) {
 #undef DO_COPY
 }
 
+#define ZERO_OUT(x) memset(&x, 0, sizeof(x))
+
 // memmove is just copy but you clear it out
 static inline void *memmove(void *dst, const void *src, size_t n) {
   for (int i = 0; i < n; i++) {
