@@ -936,7 +936,7 @@ static int _vsnprintf(out_fct_type out, char *buffer, const size_t maxlen,
 
 
 // TODO
-static int loglevel = 4;
+static int loglevel = 100;
 static int do_printk(const char *format, va_list va) {
 	bool valid_loglevel = true;
 
@@ -953,6 +953,10 @@ static int do_printk(const char *format, va_list va) {
 					prefix = YEL "[WRN]" RESET;
 					break;
 				case 2:
+					prefix = GRN ">" RESET;
+					break;
+				case 3:
+					prefix = MAG "[DBG]" RESET;
 					break;
 			}
 			if (prefix != NULL) {
