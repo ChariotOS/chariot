@@ -11,6 +11,7 @@
 #include <util.h>
 #include <vconsole.h>
 #include <vga.h>
+#include <phys.h>
 
 #define VBE_DISPI_IOPORT_INDEX 0x01CE
 #define VBE_DISPI_IOPORT_DATA 0x01CF
@@ -45,7 +46,7 @@ const auto &vga_font = (chariot_kernel_font &)*&build_font_ckf;
 
 #define EDGE_MARGIN 0
 #define TOTAL_MARGIN (EDGE_MARGIN * 2)
-#define FONT_WIDTH (7)	// hardcoded :/
+#define FONT_WIDTH (7)  // hardcoded :/
 #define FONT_HEIGHT (13)
 
 #define CHAR_LINE_MARGIN (3)
@@ -89,9 +90,7 @@ static void flush_vga_console() {
 
 
 // returns the userspace address
-void *vga::get_fba(void) {
-	return (void*)p2v(vga_fba);
-}
+void *vga::get_fba(void) { return (void *)p2v(vga_fba); }
 
 void vga::putchar(char c) { vc_feed(&vga_console, c); }
 
@@ -109,7 +108,7 @@ static void set_info(struct ck_fb_info i) {
   // bits per pixel
   set_register(VBE_DISPI_INDEX_BPP, 32);
   set_register(VBE_DISPI_INDEX_ENABLE,
-	       VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
+               VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
   set_register(VBE_DISPI_INDEX_BANK, 0);
 
   info.active = i.active;
@@ -125,7 +124,7 @@ static void *get_framebuffer_address(void) {
   void *addr = nullptr;
   pci::walk_devices([&](pci::device *dev) {
     if (dev->is_device(0x1234, 0x1111) || dev->is_device(0x80ee, 0xbeef)) {
-			// vga_dev = dev;
+      // vga_dev = dev;
       addr = (void *)(dev->get_bar(0).raw & 0xfffffff0l);
     }
   });
@@ -133,7 +132,6 @@ static void *get_framebuffer_address(void) {
 }
 
 static ssize_t fb_write(fs::file &fd, const char *buf, size_t sz) {
-
   if (!fd) return -1;
   if (vga_fba == nullptr) return -1;
 
@@ -158,7 +156,7 @@ static int fb_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
   // pre-cast (dunno if this is dangerous)
   auto *a = (struct ck_fb_info *)arg;
   if (!curproc->mm->validate_struct<struct ck_fb_info>(
-	  arg, VALIDATE_READ | VALIDATE_WRITE))
+          arg, VALIDATE_READ | VALIDATE_WRITE))
     return -1;
 
 
@@ -182,19 +180,19 @@ static int fb_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
 
 static int fb_open(fs::file &f) {
   scoped_lock l(fblock);
+  printk(KERN_INFO "[fb] open\n");
   if (owned) return -EBUSY;  // disallow
   owned = true;
   return 0;  // allow
 }
 
 void vga::configure(struct ck_fb_info &i) {
-
-	if (i.active == false) {
-		i.width = VCONSOLE_WIDTH;
-		i.height = VCONSOLE_HEIGHT;
-	}
-	set_info(i);
-	flush_vga_console();
+  if (i.active == false) {
+    i.width = VCONSOLE_WIDTH;
+    i.height = VCONSOLE_HEIGHT;
+  }
+  set_info(i);
+  flush_vga_console();
 }
 
 static void reset_fb(void) {
@@ -203,15 +201,64 @@ static void reset_fb(void) {
   i.active = false;
   i.width = VCONSOLE_WIDTH;
   i.height = VCONSOLE_HEIGHT;
-	vga::configure(i);
+  vga::configure(i);
 }
 
 static void fb_close(fs::file &f) {
   scoped_lock l(fblock);
+  printk(KERN_INFO "[fb] close\n");
+
   // printk("[fb] closed!\n");
   owned = false;
   reset_fb();
 }
+
+
+
+
+struct vga_vmobject final : public mm::vmobject {
+  vga_vmobject(size_t npages) : vmobject(npages) {}
+
+  virtual ~vga_vmobject(void){};
+
+  // get a shared page (page #n in the mapping)
+  virtual ref<mm::page> get_shared(off_t n) override {
+    return mm::page::create((unsigned long)vga_fba + (n * PGSIZE));
+  }
+
+  // this doesn't make sense imo
+  virtual ref<mm::page> get_private(off_t n) override { return get_shared(n); }
+};
+
+
+
+
+static ref<mm::vmobject> vga_mmap(fs::file &f, size_t npages, int prot,
+                                  int flags, off_t off) {
+  // XXX: this is invalid, should be asserted before here :^)
+  if (off != 0) {
+    printk(KERN_WARN "vga: attempt to mmap at invalid offset (%d != 0)\n", off);
+    return nullptr;
+  }
+
+	// we only allow up to 1920 * 1080
+	// If I don't limit it like this, we run the risk of userspace
+	// being able to access all of ram :^)
+	if (npages > NPAGES(1820 * 1080 * sizeof(uint32_t))) {
+    printk(KERN_WARN "vga: attempt to mmap too many pages (%d pixels)\n", (npages * 4096) / sizeof(uint32_t));
+		return nullptr;
+	}
+
+  if (flags & MAP_PRIVATE) {
+    printk(KERN_WARN
+           "vga: attempt to mmap with MAP_PRIVATE doesn't make sense :^)\n");
+    return nullptr;
+  }
+
+  return make_ref<vga_vmobject>(npages);
+}
+
+
 
 // can only write to the framebuffer
 struct fs::file_operations fb_ops = {
@@ -220,6 +267,7 @@ struct fs::file_operations fb_ops = {
 
     .open = fb_open,
     .close = fb_close,
+		.mmap = vga_mmap,
 };
 
 static struct dev::driver_info generic_driver_info {
@@ -245,7 +293,6 @@ static int bg_colors[] = {
 };
 
 static void vga_char_scribe(int x, int y, struct vc_cell *cell, int flags) {
-
   char c = cell->c;
   char attr = cell->attr;
   if (info.active) return;
