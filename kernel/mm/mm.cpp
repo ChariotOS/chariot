@@ -355,7 +355,7 @@ int mm::space::unmap(off_t ptr, size_t len) {
         pt->del_mapping(va);
       }
 
-      // delete region;
+      delete region;
       return 0;
     }
   }
@@ -455,18 +455,19 @@ off_t mm::space::find_hole(size_t size) {
   return va;
 }
 
+
+mm::area::area(void) {
+}
+
+
 mm::area::~area(void) {
-	printk("here\n");
   for (auto &p : pages) {
     if (p) {
       spinlock::lock(p->lock);
       p->users--;
       spinlock::unlock(p->lock);
-			p = nullptr;
     }
   }
-
-	this->fd = nullptr;
 
   pages.clear();
 }
