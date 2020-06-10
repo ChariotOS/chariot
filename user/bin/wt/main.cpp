@@ -7,10 +7,28 @@
 #include <fcntl.h>
 
 int main(int argc, char **argv) {
-	int fd = open("/small", O_RDWR);
+	int fd = open("/dev/fb", O_RDWR);
+	if (fd == -1) {
+		perror("open");
+		return 1;
+	}
 
-	auto buf = (char*)mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-	buf[0]++;
+
+	int pixels = 640 * 480;
+
+	auto buf = (char*)mmap(NULL, pixels * sizeof(int), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+	if (buf == MAP_FAILED) {
+		perror("mmap");
+		return 1;
+	}
+
+
+	for (int i = 0; i < 4096; i++) {
+		memset(buf, i, pixels * sizeof(int));
+	}
+
+
+
 	return 0;
 
 	/*

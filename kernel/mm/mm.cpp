@@ -300,6 +300,20 @@ off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
 
   off_t pages = round_up(size, 4096) / 4096;
 
+	ref<mm::vmobject> obj = nullptr;
+
+	// if there is a file descriptor, try to call it's mmap. Otherwise fail
+	if (fd) {
+		if (fd->ino && fd->ino->fops && fd->ino->fops->mmap) {
+			obj = fd->ino->fops->mmap(*fd, pages, prot, flags, off);
+		}
+
+		if (!obj) {
+			return -1;
+		}
+	}
+
+
   auto r = new mm::area();
 
   r->name = name;
@@ -309,17 +323,9 @@ off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
   r->prot = prot;
   r->flags = flags;
   r->fd = fd;
+	r->obj = obj;
 
   for (int i = 0; i < pages; i++) r->pages.push(nullptr);
-
-	if (fd) {
-		if (fd->ino && fd->ino->fops && fd->ino->fops->mmap) {
-			auto obj = fd->ino->fops->mmap(*fd, pages, prot, flags, off);
-			if (obj) {
-				r->obj = obj;
-			}
-		}
-	}
 
   regions.push(r);
 
