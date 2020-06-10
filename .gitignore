@@ -11,6 +11,10 @@ tags
 .gdb_history
 
 
+base/bin
+base/lib
+base/boot
+
 user/out
 
 toolchain/tarballs

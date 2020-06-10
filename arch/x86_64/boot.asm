@@ -1,8 +1,5 @@
 extern kmain ;; c entry point
 [extern high_kern_end]
-[extern _virt_start]
-[extern _virt_end]
-
 
 ; Declare constants for the multiboot header.
 MBALIGN  equ  1 << 0            ; align loaded modules on page boundaries
@@ -14,9 +11,16 @@ CHECKSUM equ -(MAGIC + FLAGS)   ; checksum of above, to prove we are multiboot
 
 section .multiboot
 align 8
+global mbheader
+mbheader:
 	dd MAGIC
 	dd FLAGS
 	dd CHECKSUM
+
+
+
+
+
 
 ; higher-half virtual memory address
 KERNEL_VMA equ 0xffff880000000000
@@ -52,6 +56,10 @@ TABLE_SIZE equ (1 << LOG_TABLE_SIZE)
 ; bootstrap stack size and alignment
 STACK_SIZE  equ 0x1000
 STACK_ALIGN equ 16
+
+
+
+
 
 ; paging structures
 align PAGE_SIZE
@@ -119,9 +127,10 @@ gdtr32:
 
 
 
+
+
 [bits 32] ALIGN 8
 section .init
-
 ;; Kernel entrypoint, 32bit code
 global _start
 _start:
@@ -197,3 +206,23 @@ _start:
 [section .bss align=STACK_ALIGN]
 stack:
   resb STACK_SIZE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

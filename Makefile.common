@@ -18,13 +18,13 @@ endif
 
 # set flags for nasm and LD as required
 ifeq ($(ARCH),x86_64)
-	LDFLAGS = -m elf_x86_64
+	LDFLAGS = -m elf_x86_64 -z max-page-size=0x1000
 	AFLAGS = -f elf64 -w-zext-reloc -D __ARCH_$(ARCH)__
 endif
 
 
 ifeq ($(ARCH),i386)
-	LDFLAGS = -m elf_i386
+	LDFLAGS = -m elf_i386 -z max-page-size=0x1000
 	AFLAGS = -f elf32 -w-zext-reloc -D __ARCH_$(ARCH)__
 	CFLAGS += -m32
 endif

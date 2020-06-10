@@ -1,11 +1,5 @@
-/* Simple linker script for the JOS kernel.
-   See the GNU ld 'info' manual ("info ld") to learn the syntax. */
-
 OUTPUT_FORMAT(elf64-x86-64)
 ENTRY(_start)
-
-
-
 
 PAGE_SIZE  = 0x1000;
 KERNEL_VMA = 0xffff880000000000;
@@ -13,8 +7,6 @@ KERNEL_VMA = 0xffff880000000000;
 
 SECTIONS
 {
-	_virt_start = . + KERNEL_VMA;
-
 	. = 0x8000;
 
 	.init_ap : {
@@ -85,6 +77,5 @@ SECTIONS
 		*(.eh_frame .note.GNU-stack)
 	}
 
-	_virt_end = .;
 	high_kern_end = . - KERNEL_VMA;
 }

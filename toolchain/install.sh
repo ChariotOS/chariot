@@ -41,11 +41,6 @@ pushd tarballs
 	fi
 
 
-
-
-
-
-
 	# GCC
 	if [ ! -f gcc.tar ]; then
 		wget ftp://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz -O gcc.tar

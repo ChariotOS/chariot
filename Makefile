@@ -4,7 +4,6 @@ export PATH := $(PWD)/toolchain/local/bin/:$(PATH)
 TOOLCHAIN=x86_64-elf-chariot-
 include Makefile.common
 
-LDFLAGS=-m elf_x86_64
 AFLAGS=-f elf64 -w-zext-reloc -D __ARCH_$(ARCH)__
 
 CINCLUDES=-I./include/
@@ -61,7 +60,7 @@ build/%.asm.o: %.asm
 
 $(BIN): $(src-y) $(objs)
 	@echo -e "$(PFX) LNK " $@
-	@$(LD) $(objs) -T kernel/kernel.ld -o $@
+	@$(LD) $(LDFLAGS) -T kernel/kernel.ld $(objs) -o $@
 
 
 klean:

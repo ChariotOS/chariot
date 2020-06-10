@@ -1,7 +1,5 @@
 .PHONY: run
 
-
-
 export PATH := $(PWD)/../toolchain/local/bin/:$(PATH)
 TOOLCHAIN=x86_64-elf-chariot-
 include ../Makefile.common
