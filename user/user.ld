@@ -9,9 +9,11 @@ ENTRY(_start)
 SECTIONS
 {
 
-	. = 0x400000;
+	. = 0x10000;
 
-	.text : { *(.text) }
+	.text : {
+		*(.text)
+	}
 
 
 	.init_array : {
@@ -27,6 +29,9 @@ SECTIONS
 	 *
 	 * TODO: make a better elf loader :)
 	 */
+
+	. += 0;
+
 	.bss : { *(.bss) }
 	.data : { *(.data) }
 }
