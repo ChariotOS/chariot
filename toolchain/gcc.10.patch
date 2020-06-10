@@ -1,0 +1,147 @@
+From d057f5b9482ae88ef0fde10aedfb057ee3af5cf8 Mon Sep 17 00:00:00 2001
+From: Nick Wanninger <nickwanninger@gmail.com>
+Date: Wed, 10 Jun 2020 16:22:32 -0500
+Subject: [PATCH] patch
+
+---
+ config.sub                  |  2 +-
+ fixincludes/mkfixinc.sh     |  1 +
+ gcc/config.gcc              | 13 ++++++++++++
+ gcc/config/chariot.h        | 28 ++++++++++++++++++++++++++
+ libgcc/config.host          |  6 ++++++
+ libstdc++-v3/crossconfig.m4 | 11 ++++++++++
+ 6 files changed, 60 insertions(+), 1 deletion(-)
+ create mode 100644 gcc/config/chariot.h
+
+diff --git a/config.sub b/config.sub
+index a318a4686..a750668a9 100755
+--- a/config.sub
++++ b/config.sub
+@@ -1366,7 +1366,7 @@ case $os in
+ 	     | skyos* | haiku* | rdos* | toppers* | drops* | es* \
+ 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten* | wasi* \
+-	     | nsk* | powerunix)
++	     | nsk* | powerunix | chariot* )
+ 	# Remember, each alternative MUST END IN *, to match a version number.
+ 		;;
+ 	qnx*)
+diff --git a/fixincludes/mkfixinc.sh b/fixincludes/mkfixinc.sh
+index df90720b7..5adcdda54 100755
+--- a/fixincludes/mkfixinc.sh
++++ b/fixincludes/mkfixinc.sh
+@@ -11,6 +11,7 @@ target=fixinc.sh
+ 
+ # Check for special fix rules for particular targets
+ case $machine in
++    *-*-chariot* | \
+     i?86-*-cygwin* | \
+     i?86-*-mingw32* | \
+     x86_64-*-mingw32* | \
+diff --git a/gcc/config.gcc b/gcc/config.gcc
+index cf1a87e2e..c47a2357d 100644
+--- a/gcc/config.gcc
++++ b/gcc/config.gcc
+@@ -675,6 +675,14 @@ x86_cpus="generic intel"
+ 
+ # Common parts for widely ported systems.
+ case ${target} in
++
++
++*-*-chariot*)
++  gas=yes
++  gnu_ld=yes
++  default_use_cxa_atexit=yes
++  ;;
++
+ *-*-darwin*)
+   tmake_file="t-darwin "
+   tm_file="${tm_file} darwin.h"
+@@ -1033,6 +1041,11 @@ case ${target} in
+ esac
+ 
+ case ${target} in
++
++x86_64-*-chariot*)
++    tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h glibc-stdint.h i386/i386elf.h i386/x86-64.h chariot.h"
++    ;;
++
+ aarch64*-*-elf | aarch64*-*-fuchsia* | aarch64*-*-rtems*)
+ 	tm_file="${tm_file} dbxelf.h elfos.h newlib-stdint.h"
+ 	tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-errata.h aarch64/aarch64-elf-raw.h"
+diff --git a/gcc/config/chariot.h b/gcc/config/chariot.h
+new file mode 100644
+index 000000000..e09228053
+--- /dev/null
++++ b/gcc/config/chariot.h
+@@ -0,0 +1,28 @@
++/* Useful if you wish to make target-specific GCC changes. */
++#undef TARGET_CHARIOT
++#define TARGET_CHARIOT 1
++
++/* Default arguments you want when running your
++   i686-chariot-gcc/x86_64-chariot-gcc toolchain */
++#undef LIB_SPEC
++#define LIB_SPEC "-lc" /* link against C standard library */
++
++/* Files that are linked before user code.
++   The %s tells GCC to look for these files in the library directory. */
++#undef STARTFILE_SPEC
++#define STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
++
++/* Files that are linked after user code. */
++#undef ENDFILE_SPEC
++#define ENDFILE_SPEC "crtend.o%s crtn.o%s"
++
++/* Additional predefined macros. */
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()      \
++  do {                                \
++    builtin_define ("__chariot__");      \
++    builtin_define ("__unix__");      \
++    builtin_assert ("system=chariot");   \
++    builtin_assert ("system=unix");   \
++    builtin_assert ("system=posix");   \
++  } while(0);
+diff --git a/libgcc/config.host b/libgcc/config.host
+index 1ff415923..0c03a56a9 100644
+--- a/libgcc/config.host
++++ b/libgcc/config.host
+@@ -215,6 +215,12 @@ esac
+ 
+ # Common parts for widely ported systems.
+ case ${host} in
++
++x86_64-*-chariot*)
++	extra_parts="$extra_parts crti.o crtbegin.o crtend.o crtn.o"
++	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
++	;;
++
+ *-*-darwin*)
+   asm_hidden_op=.private_extern
+   tmake_file="$tmake_file t-darwin ${cpu_type}/t-darwin t-libgcc-pic t-slibgcc-darwin"
+diff --git a/libstdc++-v3/crossconfig.m4 b/libstdc++-v3/crossconfig.m4
+index fe1828835..940a13b1e 100644
+--- a/libstdc++-v3/crossconfig.m4
++++ b/libstdc++-v3/crossconfig.m4
+@@ -5,6 +5,17 @@ dnl
+ AC_DEFUN([GLIBCXX_CROSSCONFIG],[
+ # Base decisions on target environment.
+ case "${host}" in
++
++
++
++  *-chariot*)
++    GLIBCXX_CHECK_COMPILER_FEATURES
++    GLIBCXX_CHECK_LINKER_FEATURES
++    GLIBCXX_CHECK_MATH_SUPPORT
++    GLIBCXX_CHECK_STDLIB_SUPPORT
++    ;;
++
++
+   arm*-*-symbianelf*)
+     # This is a freestanding configuration; there is nothing to do here.
+     ;;
+-- 
+2.27.0
+

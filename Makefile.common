@@ -1,10 +1,4 @@
 
-
-TOOLCHAIN_PATH =  $(ROOTDIR)/toolchain/local/x86_64/bin/
-# TOOLCHAIN = $(TOOLCHAIN_PATH)x86_64-pc-chariot-
-TOOLCHAIN =
-
-
 CC =  $(TOOLCHAIN)gcc
 CXX = $(TOOLCHAIN)g++
 AS = nasm
