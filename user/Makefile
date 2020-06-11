@@ -69,7 +69,7 @@ run: $(BUILD) $(out)
 # binary programs
 $(DST)/bin/%: $(BUILD)/crt0.o $(objs)
 	@mkdir -p $(outdir)
-	@echo -e "$(PFX) LD   $@ with $(libs)"
+	@echo -e "$(PFX) LD   $(M) with $(libs)"
 	@$(LD) -T user.ld $(LDFLAGS) -o $@ $^ $(libs)
 
 # static library archives

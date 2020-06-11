@@ -7,8 +7,8 @@ build () {
 	make run M=$1 -j --no-print-directory
 }
 
-
-make build/crt0.o
+# bit of a hack
+make ../build/userspace/crt0.o
 
 build lib/libc
 
