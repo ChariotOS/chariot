@@ -99,18 +99,18 @@ for dir in $mnt/*; do
 done
 
 
-echo 'copying new filesystem data...'
-sudo cp -a base/. $mnt/
-sudo mkdir -p $mnt/dev
-sudo mkdir -p $mnt/tmp
 
 
-# make the user programs
+# make the user programs into the base
 pushd user
 	./build.sh
 popd
 
-sudo cp -r user/out/* $mnt/
+
+echo 'copying new filesystem data...'
+sudo cp -a base/. $mnt/
+sudo mkdir -p $mnt/dev
+sudo mkdir -p $mnt/tmp
 
 
 # sudo mkdir $mnt/usr/src

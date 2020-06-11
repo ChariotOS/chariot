@@ -15,7 +15,10 @@ CFLAGS += $(DEFINES)
 CPPFLAGS = $(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions
 
 
-LDFLAGS += -L$(PWD)/out/lib/
+DST:=../base
+BUILD:=../build/userspace
+
+LDFLAGS += -L$(DST)/lib/
 
 libs = -lc
 
@@ -33,17 +36,17 @@ $(error output not defined)
 endif
 endif
 
-DST=out/
-
 # reify paths
 srcs:=$(srcs:%=$(M)/%)
 
+
+
 # fix up $out to be relative to the build destination
-out:=out/$(out)
+out:=$(DST)/$(out)
 outdir := $(dir $(out))
 
 # build a list of object files
-objs:=$(srcs:%=build/%.o)
+objs:=$(srcs:%=$(BUILD)/%.o)
 
 
 # uncomment to enable PIE code
@@ -53,29 +56,24 @@ objs:=$(srcs:%=build/%.o)
 # disable make's intermediate file removal
 .PRECIOUS: $(objs)
 
-out:
-	@mkdir -p out
-	@mkdir -p out/bin
-	@mkdir -p out/lib
-	@mkdir -p $(dir $(out))
 
-build:
-	@mkdir -p build
+$(BUILD):
+	@mkdir -p $(BUILD)
 
 
-run: build out $(out)
+run: $(BUILD) $(out)
 	@#echo -e "Done\n"
 
 
 
 # binary programs
-out/bin/%: build/crt0.o $(objs)
+$(DST)/bin/%: $(BUILD)/crt0.o $(objs)
 	@mkdir -p $(outdir)
 	@echo -e "$(PFX) LD   $@ with $(libs)"
 	@$(LD) -T user.ld $(LDFLAGS) -o $@ $^ $(libs)
 
 # static library archives
-out/lib/%.a: $(objs)
+$(DST)/lib/%.a: $(objs)
 	@mkdir -p $(outdir)
 	@echo -e "$(PFX) AR   $@"
 	@ar rcs $@ $^
@@ -84,24 +82,24 @@ out/lib/%.a: $(objs)
 # out/lib/%.so:
 #	$(error dynamic libraries cannot be built)
 
-build/crt0.o: crt0.asm
+$(BUILD)/crt0.o: crt0.asm
 	@mkdir -p $(dir $@)
 	@echo -e "$(PFX) making crt0.o"
 	@nasm -f elf64 -o $@ $^
 
-build/%.c.o: %.c
+$(BUILD)/%.c.o: %.c
 	@mkdir -p $(dir $@)
 	@echo -e "$(PFX) CC  " $<
 	@$(CC) $(CFLAGS) -o $@ -c $<
 
-build/%.cpp.o: %.cpp
+$(BUILD)/%.cpp.o: %.cpp
 	@mkdir -p $(dir $@)
 	@echo -e "$(PFX) CXX " $<
 	@$(CXX) $(CPPFLAGS) -o $@ -c $<
 
 
 
-build/%.rs.o: %.rs
+$(BUILD)/%.rs.o: %.rs
 	@mkdir -p $(dir $@)
 	@echo -e "$(PFX) RS  " $<
 	rustc -O -C target-feature=+crt-static  \
@@ -112,11 +110,11 @@ build/%.rs.o: %.rs
 		--emit obj -o $@ $<
 
 
-build/%.asm.o: %.asm
+$(BUILD)/%.asm.o: %.asm
 	@mkdir -p $(dir $@)
 	@echo -e "$(PFX) AS  " $<
 	@nasm -f elf64 -o $@ $<
 
 clean:
-	rm -rf out build
+	rm -rf $(DST)/bin $(DST)/lib $(BUILD)
 
