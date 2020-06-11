@@ -43,40 +43,6 @@ void do_stat(char *path) {
 extern char **environ;
 
 int main(int argc, char **argv) {
-	char buf[50];
-
-	char *args[] = {
-		"echo",
-		buf,
-		NULL
-	};
-
-	for (int i = 0; i < 100; i++) {
-
-		sprintf(buf, "%d", i);
-
-		pid_t pid = spawn();
-		if (pid <= -1) {
-			perror("spawn");
-			exit(0);
-		}
-
-		int start_res = startpidvpe(pid, args[0], args, environ);
-		if (start_res == 0) {
-			int stat = 0;
-			waitpid(pid, &stat, 0);
-
-			int exit_code = WEXITSTATUS(stat);
-			if (exit_code != 0) {
-				fprintf(stderr, "%s: exited with code %d\n", args[0], exit_code);
-			}
-		} else {
-			printf("failed to execute: '%s'\n", args[0]);
-			despawn(pid);
-		}
-	}
-	return 0;
-
 	argc -= 1;
 	argv += 1;
 

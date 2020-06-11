@@ -119,6 +119,7 @@ int block_from_index(fs::inode &node, int i_block, int set_to = 0) {
 
 
 
+#if 0
 // I know, this is slow.
 static vec<uint32_t> read_blocklist(fs::inode &ino,
                                     bool include_block_list_blocks = true) {
@@ -210,6 +211,7 @@ static vec<uint32_t> read_blocklist(fs::inode &ino,
 
   return list;
 }
+#endif
 
 static int access_block_path(fs::inode &ino, int n, int *path,
                              func<bool(uint32_t &)> cb) {
@@ -373,6 +375,7 @@ static int truncate(fs::inode &ino, size_t new_size) {
   } else if (bafter < bbefore) {
     // auto blocks_to_remove = bbefore - bafter;
     // printk("need to remove %d\n", blocks_to_remove);
+		pop_block(ino);
     return -ENOTIMPL;
   }
 

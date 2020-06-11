@@ -87,11 +87,10 @@ void vmware::send(struct vmware::command& command) {
 
 
 
+/*
 static bool detect_vmmouse() {
-  /*
-if (!supported())
-  return false;
-                          */
+	if (!supported())
+		return false;
   struct vmware::command command;
   command.bx = VMMOUSE_READ_ID;
   command.cmd = VMMOUSE_COMMAND;
@@ -102,15 +101,14 @@ if (!supported())
   if (command.ax != VMMOUSE_QEMU_VERSION) return false;
   return true;
 }
+*/
 
 static bool mouse_absolute = false;
 
-bool vmware::vmmouse_is_absolute(void) {
-	return mouse_absolute;
-}
+bool vmware::vmmouse_is_absolute(void) { return mouse_absolute; }
 
 void vmware::enable_absolute_vmmouse(void) {
-	if (!supported()) return;
+  if (!supported()) return;
 
   cpu::pushcli();
 
@@ -134,7 +132,7 @@ void vmware::enable_absolute_vmmouse(void) {
 }
 
 void vmware::disable_absolute_vmmouse(void) {
-	if (!supported()) return;
+  if (!supported()) return;
 
   cpu::pushcli();
 

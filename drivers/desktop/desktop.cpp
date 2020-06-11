@@ -206,9 +206,11 @@ struct desk_state *pid_desk_state(pid_t pid) {
 	return p;
 }
 
+/*
 static struct desk_state *my_desk_state(void) {
 	return pid_desk_state(curproc->pid);
 }
+*/
 
 
 

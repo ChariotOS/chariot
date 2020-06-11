@@ -40,7 +40,7 @@ static uint32_t to_key(dev_t device) {
   return ((uint32_t)device.major() << 16) | ((uint32_t)device.minor());
 }
 
-
+#if 0
 static auto oldest_block_slow(void) {
   struct block::buffer *oldest = nullptr;
 
@@ -63,6 +63,7 @@ static auto oldest_block_slow(void) {
 
   return oldest;
 }
+#endif
 
 struct block_cache_key {};
 

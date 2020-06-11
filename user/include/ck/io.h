@@ -74,7 +74,13 @@ namespace ck {
 		using stream::read;
 
     inline operator bool(void) const { return fp != NULL; }
-  };
+
+		inline int fileno(void) {
+			if (fp == NULL) return -1;
+			return ::fileno(fp);
+		}
+	};
+
 
 
 	// print a nice and pretty hexdump to the screen

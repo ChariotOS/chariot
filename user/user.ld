@@ -30,6 +30,11 @@ SECTIONS
 	 */
 	.data : { *(.data) }
 
+
+	/**
+	 * we don't handle bss very well in the kernel, so it needs to be
+	 * seperate somehow from the rest of the sections
+	 * */
 	. += 4096;
 	. = ALIGN(4096);
 
