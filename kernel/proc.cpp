@@ -408,7 +408,7 @@ int sched::proc::reap(process::ptr p) {
   f |= (p->exit_code & 0xFF) << 8;
 
 #ifdef REAP_DEBUG
-  printk("reap (p:%d)\n", p->pid);
+  printk("reap (p:%d) on cpu %d\n", p->pid, cpu::current().cpunum);
   auto usage = p->mm->memory_usage();
   printk("  ram usage: %zu Kb (%zu b)\n", usage / KB, usage);
 #endif

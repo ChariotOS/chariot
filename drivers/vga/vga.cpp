@@ -222,9 +222,6 @@ struct vga_vmobject final : public mm::vmobject {
   virtual ref<mm::page> get_shared(off_t n) override {
     return mm::page::create((unsigned long)vga_fba + (n * PGSIZE));
   }
-
-  // this doesn't make sense imo
-  virtual ref<mm::page> get_private(off_t n) override { return get_shared(n); }
 };
 
 

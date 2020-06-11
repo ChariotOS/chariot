@@ -126,28 +126,22 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
     if (sec.p_type == PT_LOAD) {
       auto start = round_down(sec.p_vaddr, 1);
 
-      if (sec.p_filesz < sec.p_memsz) {
+
+			auto prot = 0L;
+			if (sec.p_flags & PF_X) prot |= PROT_EXEC;
+			if (sec.p_flags & PF_W) prot |= PROT_WRITE;
+			if (sec.p_flags & PF_R) prot |= PROT_READ;
+
+      if (sec.p_filesz == 0) {
+
+				mm.mmap(path, off + start, sec.p_memsz, prot, MAP_ANON | MAP_PRIVATE, nullptr, 0);
         // printk("    is .bss\n");
-      }
+      } else {
 
-      auto prot = 0L;
-      if (sec.p_flags & PF_X) prot |= PROT_EXEC;
-      if (sec.p_flags & PF_W) prot |= PROT_WRITE;
-      if (sec.p_flags & PF_R) prot |= PROT_READ;
-
-
-			auto flags = 0L;
-			if (prot & PROT_WRITE) {
-				flags = MAP_PRIVATE;
-			} else {
-				flags = MAP_SHARED;
+				mm.mmap(path, off + start, sec.p_memsz, prot, MAP_PRIVATE, fd, sec.p_offset);
+				handle_bss(sec);
 			}
 
-			// printk("%p (%zu), prot: %x, flags: %x\n", off + start, sec.p_memsz, prot, flags);
-
-			// printk("mmap[%d] addr=%p, size=%08x, offset=%08x\n", i, off + start, sec.p_memsz, sec.p_offset);
-      mm.mmap(path, off + start, sec.p_memsz, prot, flags, fd, sec.p_offset);
-      handle_bss(sec);
     }
   }
 

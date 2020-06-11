@@ -635,17 +635,11 @@ struct ext2_vmobject final : public mm::vmobject {
     return blk->page();
   }
 
-  // get a private copy of the page
-  virtual ref<mm::page> get_private(off_t n) override {
-		// printk("get_private(%d)\n", n);
-    auto shared = bget(n)->page();
-    if (!shared) return nullptr;  // FAIL
-    auto copy = mm::page::alloc();
-    if (!copy) return nullptr;  // FAIL
-
-    memcpy(p2v(copy->pa), p2v(shared->pa), PGSIZE);
-    return copy;  // SUCCESS
-  }
+	virtual void flush(off_t n) override {
+		auto blk = bget(n);
+		// TODO: do this in a more async way (hand off to syncd or something)
+		blk->flush();
+	}
 
 
  private:

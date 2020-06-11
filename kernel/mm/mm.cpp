@@ -74,11 +74,11 @@ mm::space::space(off_t lo, off_t hi, ref<mm::pagetable> pt)
     : pt(pt), lo(lo), hi(hi) {}
 
 mm::space::~space(void) {
-	for (auto &r : regions) {
-		delete r;
-	}
-	// clear out our handle to each area
-	regions.clear();
+  for (auto &r : regions) {
+    delete r;
+  }
+  // clear out our handle to each area
+  regions.clear();
 }
 
 void mm::space::switch_to() { pt->switch_to(); }
@@ -121,57 +121,68 @@ int mm::space::pagefault(off_t va, int err) {
   pte.prot = r->prot;
 
   if (fault_res == 0) {
+
     // handle the fault in the region
     if (!r->pages[ind]) {
 
+			// printk("Doesn't Exist\n");
+      bool got_from_vmobj = false;
+      ref<mm::page> page;
+      if (r->obj) {
+        page = r->obj->get_shared(ind);
+        got_from_vmobj = true;
 
-			bool got_from_vmobj = false;
-			if (r->obj) {
-				if (r->flags & MAP_SHARED) {
-					r->pages[ind] = r->obj->get_shared(ind);
-					got_from_vmobj = true;
-				} else if (r->flags & MAP_PRIVATE) {
-					r->pages[ind] = r->obj->get_private(ind);
-					got_from_vmobj = true;
-				}
+				// remove the protection so we can detect writes and mark pages as dirty or COW them
+				pte.prot &= ~VPROT_WRITE;
+      }
+
+			/*
+			if (r->flags & MAP_PRIVATE && page) {
+				// remove write from the region so it is COW'd
 			}
+			*/
 
-			if (!r->pages[ind] && got_from_vmobj) {
-				panic("failed!\n");
-			}
+      if (!page && got_from_vmobj) {
+        panic("failed!\n");
+      }
 
-			if (!r->pages[ind]) {
-      	r->pages[ind] = mm::page::alloc();
-			}
+      if (!page) {
+				// anonymous mapping
+        page = mm::page::alloc();
+      }
 
-      auto &page = r->pages[ind];
       spinlock::lock(page->lock);
       page->users++;
-
       spinlock::unlock(page->lock);
-    } else {
-      // If the fault was due to a write, and this region
-      // is writable, handle COW if needed
-      if ((err & FAULT_WRITE) && (r->prot & PROT_WRITE)) {
-        if (r->flags & MAP_SHARED) {
-          // TODO: handle shared
-        } else {
-          auto op = r->pages[ind];
-          spinlock::lock(op->lock);
 
-          if (op->users > 1) {
-            auto np = mm::page::alloc();
-            printk("COW [page %d in '%s']\n", ind, r->name.get());
-            np->users = 1;
-            op->users--;
-            memcpy(p2v(np->pa), p2v(op->pa), PGSIZE);
-            r->pages[ind] = np;
-          }
-
-          spinlock::unlock(op->lock);
-        }
-      }
+      r->pages[ind] = page;
     }
+
+		// If the fault was due to a write, and this region
+		// is writable, handle COW if needed
+		if ((err & FAULT_WRITE) && (r->prot & PROT_WRITE)) {
+			pte.prot = r->prot;
+
+			if (r->flags & MAP_SHARED) {
+				// TODO: handle shared
+				// printk(KERN_INFO "Write to shared page\n");
+				r->pages[ind]->dirty = true;
+			} else {
+				auto old_page = r->pages[ind];
+				spinlock::lock(old_page->lock);
+
+				if (old_page->users > 1 || r->fd) {
+					auto np = mm::page::alloc();
+					// printk(KERN_INFO "COW [page %d in '%s']\n", ind, r->name.get());
+					np->users = 1;
+					old_page->users--;
+					memcpy(p2v(np->pa), p2v(old_page->pa), PGSIZE);
+					r->pages[ind] = np;
+				}
+
+				spinlock::unlock(old_page->lock);
+			}
+		}
 
     pte.ppn = r->pages[ind]->pa >> 12;
     auto va = (r->va + (ind << 12));
@@ -303,18 +314,18 @@ off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
 
   off_t pages = round_up(size, 4096) / 4096;
 
-	ref<mm::vmobject> obj = nullptr;
+  ref<mm::vmobject> obj = nullptr;
 
-	// if there is a file descriptor, try to call it's mmap. Otherwise fail
-	if (fd) {
-		if (fd->ino && fd->ino->fops && fd->ino->fops->mmap) {
-			obj = fd->ino->fops->mmap(*fd, pages, prot, flags, off);
-		}
+  // if there is a file descriptor, try to call it's mmap. Otherwise fail
+  if (fd) {
+    if (fd->ino && fd->ino->fops && fd->ino->fops->mmap) {
+      obj = fd->ino->fops->mmap(*fd, pages, prot, flags, off);
+    }
 
-		if (!obj) {
-			return -1;
-		}
-	}
+    if (!obj) {
+      return -1;
+    }
+  }
 
 
   auto r = new mm::area();
@@ -326,7 +337,7 @@ off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
   r->prot = prot;
   r->flags = flags;
   r->fd = fd;
-	r->obj = obj;
+  r->obj = obj;
 
   for (int i = 0; i < pages; i++) r->pages.push(nullptr);
 
@@ -456,17 +467,23 @@ off_t mm::space::find_hole(size_t size) {
 }
 
 
-mm::area::area(void) {
-}
+mm::area::area(void) {}
 
 
 mm::area::~area(void) {
+	off_t n = 0;
   for (auto &p : pages) {
     if (p) {
       spinlock::lock(p->lock);
       p->users--;
+			// if the region was dirty, and we have an object, notify them and ask
+			// them to flush the nth page
+			if (p->dirty && obj) {
+				obj->flush(n);
+			}
       spinlock::unlock(p->lock);
     }
+		n += 1;
   }
 
   pages.clear();

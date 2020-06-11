@@ -28,6 +28,8 @@ namespace mm {
   // every physical page in mm circulation is kept track of via a heap-allocated
   // `struct page`.
   struct page : public refcounted<mm::page> {
+
+		bool dirty = false;
     unsigned long lru = 0;
     unsigned long pa = 0;
     /**
@@ -89,8 +91,8 @@ namespace mm {
 
 		// get a shared page (page #n in the mapping)
     virtual ref<mm::page> get_shared(off_t n) = 0;
-		// get a private copy of the page
-		virtual ref<mm::page> get_private(off_t n) = 0;
+		// tell the region to flush a page
+		virtual void flush(off_t n) {}
 
    private:
     size_t m_npages;

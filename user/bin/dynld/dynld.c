@@ -74,6 +74,11 @@ int try_file(const char *path) {
     Elf64_Phdr *p = phdrs + i;
 
 
+		if (p->p_type == PT_LOAD) {
+			printf("PT_LOAD\n");
+		}
+
+
     if (p->p_type == PT_INTERP) {
       printf("PT_INTERP\n");
       hexdump((char*)buf + p->p_offset, p->p_filesz);

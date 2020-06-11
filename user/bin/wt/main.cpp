@@ -59,13 +59,31 @@ struct vga_framebuffer {
 
 };
 
+// static storage, which we write to
+volatile int x = 32;
+
 int main(int argc, char **argv) {
+
+	printf("before write\n");
+	x += 1;
+	printf("after write\n");
+	printf("x=%d\n", x);
+
+
+	int fd = open("/small", O_RDWR);
+	auto buf = (char*)mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+	buf[0] = '1';
+
+	close(fd);
+
+	/*
 	vga_framebuffer fb(1024, 768);
 
 
 	fb.pixels()[0] = 0xFF00FF;
 
 	(void)getchar();
+	*/
 
 	return 0;
 

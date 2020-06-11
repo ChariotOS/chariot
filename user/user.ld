@@ -15,7 +15,6 @@ SECTIONS
 		*(.text)
 	}
 
-
 	.init_array : {
 		__init_array_start = .;
 		KEEP (*(.init_array*))
@@ -29,11 +28,12 @@ SECTIONS
 	 *
 	 * TODO: make a better elf loader :)
 	 */
+	.data : { *(.data) }
 
-	. += 0;
+	. += 4096;
+	. = ALIGN(4096);
 
 	.bss : { *(.bss) }
-	.data : { *(.data) }
 }
 
 
