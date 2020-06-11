@@ -51,7 +51,7 @@ int try_file(const char *path) {
   int fd = open(path, O_RDONLY);
   if (fd < 0) return -1;
 
-  void *buf = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+  void *buf = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
 
   if (buf == MAP_FAILED) {
     fprintf(stderr, "Failed to map file.\n");
