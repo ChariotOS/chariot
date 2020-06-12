@@ -32,7 +32,7 @@ int main(int argc, const char **argv) {
 	ck::vec<ck::string> lines;
 	{
 		ck::string current;
-		for (int i = 0; i < size; i++) {
+		for (size_t i = 0; i < size; i++) {
 			if (buf[i] == '\n') {
 				lines.push(current);
 				current.clear();
@@ -64,13 +64,18 @@ int main(int argc, const char **argv) {
 
 					printf("old: %s\n", lines[selected_line].get());
 					printf("new: ");
-					fflush(stdout);
 					while (1) {
 						char input = getchar();
 						printf("%c", input);
 						fflush(stdout);
 						if (input == '\n') break;
-						new_line.push(input);
+						if (input == 0x7f) {
+							new_line.pop();
+							printf(" \x7f");
+							fflush(stdout);
+						} else {
+							new_line.push(input);
+						}
 					}
 					printf("line replaced. %d (%s)\n", selected_line, new_line.get());
 					lines[selected_line] = new_line.get();
