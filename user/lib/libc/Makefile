@@ -3,35 +3,3 @@ out = lib/libc.a
 
 srcs += $(shell cd lib/libc && find -type f \( -iname \*.c -o -iname \*.asm -o -iname \*.cpp \))
 
-
-# srcs += chariot/yield.c
-# srcs += chariot/proc.c
-# srcs += stdio/stdio.c
-# srcs += stdio/putchar.c
-# srcs += stdio/printf.c
-# srcs += stdio/scanf.c
-# srcs += stdlib/liballoc.c
-# srcs += stdlib/malloc.c
-# srcs += stdlib/stdlib.c
-# srcs += syscall.asm
-# srcs += mman/mmap.c
-# srcs += string/mem.c
-# srcs += string/string.c
-# srcs += stack_chk_fail.c
-# srcs += lib.c
-# srcs += fcntl.c
-# srcs += unistd.c
-# srcs += syscall.c
-# srcs += start.asm
-# srcs += stat.c
-# srcs += pthread.c
-# srcs += exit.c
-# srcs += wait.c
-# srcs += dirent.c
-# srcs += atexit.c
-# srcs += time.c
-# srcs += pwd.c
-# srcs += ftw.c
-# srcs += socket.c
-# srcs += cxx/glue.cpp
-# srcs += setjmp.asm
