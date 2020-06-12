@@ -105,6 +105,9 @@ namespace fs {
   // info)
   struct fs::blkdev *bdev_from_path(const char *);
 
+
+  extern struct superblock DUMMY_SB;
+
   struct superblock {
     //
     dev_t dev;
@@ -134,7 +137,7 @@ namespace fs {
     inline static void put(struct superblock *s) {
       s->lock.write_lock();
       s->count--;
-      if (s->count == 0) {
+      if (s->count == 0 && s != &DUMMY_SB) {
         printk("s->count == 0 now. Must delete!\n");
       }
       s->lock.write_unlock();
@@ -144,7 +147,6 @@ namespace fs {
     void *priv;
   };
 
-  extern struct superblock DUMMY_SB;
 
   struct sb_operations {
     // initialize the superblock after it has been mounted. All of the
@@ -318,7 +320,10 @@ namespace fs {
       } blk;
     };
 
+
+		// if this inode has a socket bound to it, it will be located here.
     struct net::sock *sk = NULL;
+    struct net::sock *bound_socket = NULL;
 
     /*
      * the directory entry list in this->as.dir is a linked list that must be
@@ -411,7 +416,7 @@ namespace fs {
 
     ~file(void);
 
-   public:
+
     file(struct fs::inode *, int flags);
     inline file() : file(NULL, 0) {}
 
@@ -420,6 +425,8 @@ namespace fs {
     struct fs::inode *ino;
     string path;
     off_t m_offset = 0;
+
+		int pflags = 0; // private flags
   };
 
 };  // namespace fs

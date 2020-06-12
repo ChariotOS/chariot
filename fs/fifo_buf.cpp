@@ -3,6 +3,7 @@
 #include <phys.h>
 #include <sched.h>
 #include <util.h>
+#include <errno.h>
 
 // TODO: this will leak if one task uses a massive buffer
 static spinlock fifo_block_cache_lock;
@@ -45,6 +46,8 @@ void fifo_block::free(struct fifo_block *b) {
   // phys::kfree(b);
 }
 
+
+
 fifo_buf::fifo_buf(void) {}
 fifo_buf::~fifo_buf(void) {
   while (write_block != NULL) {
@@ -52,6 +55,12 @@ fifo_buf::~fifo_buf(void) {
     write_block = ob->next;
     fifo_block::free(ob);
   }
+}
+
+void fifo_buf::close(void) {
+	m_closed = true;
+
+	readers.notify_all();
 }
 
 void fifo_buf::wakeup_accessing_tasks(void) {}
@@ -91,13 +100,15 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
   navail += size;
 
   // possibly notify a reader (who will notify the next and so on)
-  if (readers.should_notify(navail)) readers.notify();
+  readers.notify();
 
   wlock.unlock();
   return size;
 }
 
 ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
+	if (m_closed) return -ECONNRESET;
+
   rlock.lock();
 
   if (read_block == NULL) init_blocks();
@@ -107,6 +118,7 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
   if (navail < size && block) {
     rlock.unlock();
     int rude = readers.wait(size);
+		// if we were woken up because the fifo_buf has been closed, we read 0 bytes
     if (rude) {
       if (readers.should_notify(navail)) readers.notify();
       return -1;
@@ -119,9 +131,11 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
     auto to_read = min(read_block->w - read_block->r, size - nread);
 
     if (to_read == 0) {
+			/*
       if (block) {
         panic("fifo read (blocking) with missing data\n");
       }
+			*/
       break;
     }
 

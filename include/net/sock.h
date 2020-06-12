@@ -4,12 +4,20 @@
 #include <net/ipv4.h>
 #include <net/socket.h>
 #include <ptr.h>
+#include <chan.h>
 #include <types.h>
+#include <fifo_buf.h>
+#include <sem.h>
+
 
 // fwd decl
 namespace fs {
 struct inode;
+class file;
 }
+
+#define PFLAGS_SERVER (1 << 0)
+#define PFLAGS_CLIENT (1 << 1)
 
 namespace net {
 
@@ -51,6 +59,8 @@ struct sock {
   size_t total_sent = 0;
   size_t total_recv = 0;
 
+
+
   sock(int domain, int type, int proto);
   virtual ~sock(void);
 
@@ -62,6 +72,9 @@ struct sock {
   static net::sock *create(int domain, int type, int protocol, int &err);
   static fs::inode *createi(int domain, int type, int protocol, int &err);
 
+	static net::sock *acquire(net::sock &);
+	static void release(net::sock *&);
+
   virtual int ioctl(int cmd, unsigned long arg);
 
 	virtual int connect(struct sockaddr *uaddr, int addr_len);
@@ -69,20 +82,22 @@ struct sock {
   virtual int disconnect(int flags);
 
   // implemented by the network layer (OSI)
-  virtual ssize_t sendto(void *data, size_t len, int flags, const sockaddr *,
+  virtual ssize_t sendto(fs::file&, void *data, size_t len, int flags, const sockaddr *,
 			 size_t);
-  virtual ssize_t recvfrom(void *data, size_t len, int flags, const sockaddr *,
+  virtual ssize_t recvfrom(fs::file&, void *data, size_t len, int flags, const sockaddr *,
 			   size_t);
 
   virtual int bind(const struct sockaddr *addr, size_t len);
 
  private:
+
+
+	spinlock owners_lock;
+	int owners = 0;
   void *_private;
 };
 
 struct localsock : public net::sock {
-
-
   localsock(int type);
   virtual ~localsock(void);
 
@@ -91,12 +106,28 @@ struct localsock : public net::sock {
   virtual net::sock *accept(struct sockaddr *uaddr, int addr_len, int &err);
 
   // implemented by the network layer (OSI)
-  virtual ssize_t sendto(void *data, size_t len, int flags, const sockaddr *,
+  virtual ssize_t sendto(fs::file&, void *data, size_t len, int flags, const sockaddr *,
 			 size_t);
-  virtual ssize_t recvfrom(void *data, size_t len, int flags, const sockaddr *,
+  virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *,
 			   size_t);
 
   virtual int bind(const struct sockaddr *addr, size_t len);
+
+	// the inode this (server) socket is bound to
+	fs::inode *bindpoint = nullptr;
+
+	struct localsock *peer;
+
+	fifo_buf for_server; // client writes, server reads
+	fifo_buf for_client; // server writes, client reads
+
+	bool is_server = false;
+
+	size_t bytes_avail();
+	waitqueue reader_wq;
+	waitqueue writer_wq;
+
+	chan<localsock *> pending_connections;
 
   // intrusive linked list so we can store them all
   struct net::localsock *next, *prev;
@@ -130,9 +161,9 @@ struct udpsock : public net::ipv4sock {
   virtual ~udpsock(void);
 
   // implemented by the transport layer (OSI)
-  virtual ssize_t sendto(void *data, size_t len, int flags, const sockaddr *,
+  virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *,
 			 size_t);
-  virtual ssize_t recvfrom(void *data, size_t len, int flags, const sockaddr *,
+  virtual ssize_t recvfrom(fs::file&, void *data, size_t len, int flags, const sockaddr *,
 			   size_t);
 
   int bind(const struct sockaddr *addr, size_t len);

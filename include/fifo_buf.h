@@ -27,10 +27,13 @@ class fifo_buf {
   fifo_buf();
   ~fifo_buf();
 
+
   ssize_t write(const void *, ssize_t, bool block = false);
   ssize_t read(void *, ssize_t, bool block = true);
 
   inline int size(void) const { return navail; }
+
+	void close();
 
  private:
   void wakeup_accessing_tasks(void);
@@ -38,6 +41,8 @@ class fifo_buf {
 
   void init_blocks();
 
+
+	bool m_closed = false;
   bool m_blocking;
   spinlock wlock;
   spinlock rlock;

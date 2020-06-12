@@ -39,15 +39,19 @@ static int sock_seek(fs::file &, off_t old_off, off_t new_off) {
 }
 
 static ssize_t sock_read(fs::file &f, char *b, size_t s) {
-  return f.ino->sk->recvfrom((void *)b, s, 0, nullptr, 0);
+  return f.ino->sk->recvfrom(f, (void *)b, s, 0, nullptr, 0);
 }
 
 static ssize_t sock_write(fs::file &f, const char *b, size_t s) {
-  return f.ino->sk->sendto((void *)b, s, 0, nullptr, 0);
+  return f.ino->sk->sendto(f, (void *)b, s, 0, nullptr, 0);
 }
 
-static void sock_destroy(fs::inode &f) {
-  delete f.sk;
+static void sock_close(fs::file &fd) {
+	auto f = *fd.ino;
+	if (f.sk) {
+		f.sk->disconnect(fd.pflags);
+	}
+  net::sock::release(f.sk);
   f.sk = NULL;
 }
 
@@ -56,8 +60,31 @@ fs::file_operations socket_fops{
     .read = sock_read,
     .write = sock_write,
 
-    .destroy = sock_destroy,
+		.close = sock_close,
+
 };
+
+
+net::sock *net::sock::acquire(net::sock &sk) {
+  sk.owners_lock.lock();
+  sk.owners += 1;
+  sk.owners_lock.unlock();
+  return &sk;
+}
+
+
+void net::sock::release(net::sock *&sk) {
+  if (sk == NULL) return;
+  sk->owners_lock.lock();
+  sk->owners--;
+  if (sk->owners == 0) {
+    delete sk;
+  } else {
+    sk->owners_lock.unlock();
+  }
+  // make sure the owner can't access their reference anymroe,
+  sk = NULL;
+}
 
 /* create an inode wrapper around a socket */
 fs::inode *net::sock::createi(int domain, int type, int protocol, int &err) {
@@ -70,7 +97,7 @@ fs::inode *net::sock::createi(int domain, int type, int protocol, int &err) {
   ino->fops = &socket_fops;
   ino->dops = NULL;
 
-  ino->sk = sk;
+  ino->sk = net::sock::acquire(*sk);
   err = 0;
 
   return ino;
@@ -102,7 +129,7 @@ ssize_t sys::sendto(int sockfd, const void *buf, size_t len, int flags,
   ssize_t res = -EINVAL;
   if (file) {
     if (file->ino->type == T_SOCK) {
-      res = file->ino->sk->sendto((void *)buf, len, flags, dest_addr, addrlen);
+      res = file->ino->sk->sendto(*file, (void *)buf, len, flags, dest_addr, addrlen);
     }
   }
 
@@ -129,12 +156,56 @@ int sys::bind(int sockfd, const struct sockaddr *addr, size_t len) {
 
 
 int sys::accept(int sockfd, struct sockaddr *addr, int addrlen) {
-	return -ENOTIMPL;
+  if (!curproc->mm->validate_pointer((void *)addr, addrlen, VALIDATE_READ)) {
+    return -EINVAL;
+  }
+
+  ref<fs::file> file = curproc->get_fd(sockfd);
+  ssize_t res = -EINVAL;
+  if (file) {
+    if (file->ino->type == T_SOCK) {
+      int err = 0;
+      auto sk = file->ino->sk->accept((struct sockaddr *)addr, addrlen, err);
+      if (sk != NULL) {
+        auto ino = new fs::inode(T_SOCK, fs::DUMMY_SB);
+        ino->fops = &socket_fops;
+        ino->dops = NULL;
+        ino->sk = net::sock::acquire(*sk);
+				auto file = fs::file::create(ino, "[socket]", O_RDWR);
+				file->pflags = PFLAGS_SERVER;
+        int fd = curproc->add_fd(file);
+
+        return fd;
+
+      } else {
+        return err;
+      }
+    } else {
+      res = -ENOTSOCK;
+    }
+  }
+
+  return res;
 }
 
 
-int sys::connect(int sockfd, const struct sockaddr *addr, int addrlen) {
-	return -ENOTIMPL;
+int sys::connect(int sockfd, const struct sockaddr *addr, int len) {
+  if (!curproc->mm->validate_pointer((void *)addr, len, VALIDATE_READ)) {
+    return -EINVAL;
+  }
+
+  ref<fs::file> file = curproc->get_fd(sockfd);
+  ssize_t res = -EINVAL;
+  if (file) {
+    if (file->ino->type == T_SOCK) {
+      res = file->ino->sk->connect((struct sockaddr *)addr, len);
+			file->pflags = PFLAGS_CLIENT;
+    } else {
+      res = -ENOTSOCK;
+    }
+  }
+
+  return res;
 }
 
 
@@ -153,11 +224,11 @@ net::sock *net::sock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
   return NULL;
 }
 
-ssize_t net::sock::sendto(void *data, size_t len, int flags, const sockaddr *,
+ssize_t net::sock::sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *,
                           size_t) {
   return -ENOTIMPL;
 }
-ssize_t net::sock::recvfrom(void *data, size_t len, int flags, const sockaddr *,
+ssize_t net::sock::recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *,
                             size_t) {
   return -ENOTIMPL;
 }

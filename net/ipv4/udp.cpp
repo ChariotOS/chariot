@@ -44,7 +44,7 @@ net::udpsock::~udpsock(void) {
   active_socket_lock.write_unlock();
 }
 
-ssize_t net::udpsock::sendto(void *data, size_t len, int flags,
+ssize_t net::udpsock::sendto(fs::file&, void *data, size_t len, int flags,
 			     const struct sockaddr *addr, size_t alen) {
   (void)flags;
 
@@ -92,7 +92,7 @@ ssize_t net::udpsock::sendto(void *data, size_t len, int flags,
   return -EDESTADDRREQ;
 }
 
-ssize_t net::udpsock::recvfrom(void *data, size_t len, int flags,
+ssize_t net::udpsock::recvfrom(fs::file &, void *data, size_t len, int flags,
 			       const sockaddr *, size_t) {
   return -ENOTIMPL;
 }
