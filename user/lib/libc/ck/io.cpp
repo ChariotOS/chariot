@@ -63,7 +63,7 @@ int ck::file::seek(long offset, int whence) {
 }
 
 int ck::file::stat(struct stat &s) {
-	int fd = fileno(fp);
+	int fd = ::fileno(fp);
 
 	return fstat(fd, &s);
 }
