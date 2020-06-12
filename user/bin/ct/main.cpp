@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
 	addr.sun_family = AF_UNIX;
 
 	// bind the local socket to the windowserver
-	strncpy(addr.sun_path, "/usr/servers/windowserver", sizeof(addr.sun_path)-1);
+	strncpy(addr.sun_path, "/usr/servers/lumen", sizeof(addr.sun_path)-1);
 
 	int res = connect(fd, (const sockaddr *)&addr, sizeof(addr));
 	if (res < 0) {

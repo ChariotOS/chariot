@@ -1,2 +1,2 @@
-out = bin/st
+out = bin/lumen
 srcs += main.cpp

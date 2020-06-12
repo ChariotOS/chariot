@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
   addr.sun_family = AF_UNIX;
 
   // bind the local socket to the windowserver
-  strncpy(addr.sun_path, "/usr/servers/windowserver",
+  strncpy(addr.sun_path, "/usr/servers/lumen",
           sizeof(addr.sun_path) - 1);
   int bind_res = bind(fd, (struct sockaddr *)&addr, sizeof(addr));
   if (bind_res < 0) {
@@ -38,9 +38,7 @@ int main(int argc, char **argv) {
 
 		int len = 0;
 		read(client, &len, sizeof(len));
-
 		auto *buf = (char*)malloc(len);
-
     int n = read(client, buf, len);
 
     for (int i = 0; i < n; i++) {
