@@ -1,2 +1,3 @@
 out = bin/lumen
-srcs += main.cpp
+
+srcs += $(shell cd bin/lumen && find -type f \( -iname \*.c -o -iname \*.asm -o -iname \*.cpp \))

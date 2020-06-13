@@ -72,6 +72,7 @@ $(DST)/bin/%: $(BUILD)/crt0.o $(objs)
 	@echo -e "$(PFX) LD   $(M) with $(libs)"
 	@$(LD) -T user.ld $(LDFLAGS) -o $@ $^ $(libs)
 
+
 # static library archives
 $(DST)/lib/%.a: $(objs)
 	@mkdir -p $(outdir)
