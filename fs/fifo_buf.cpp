@@ -1,180 +1,120 @@
 #include <cpu.h>
+#include <errno.h>
 #include <fifo_buf.h>
 #include <phys.h>
 #include <sched.h>
 #include <util.h>
-#include <errno.h>
 
-// TODO: this will leak if one task uses a massive buffer
-static spinlock fifo_block_cache_lock;
-static struct fifo_block *fifo_block_cache = NULL;
 
-struct fifo_block *fifo_block::alloc(void) {
-  struct fifo_block *b = NULL;
-
-  fifo_block_cache_lock.lock();
-  if (fifo_block_cache != NULL) {
-    // pull from the cache
-    b = fifo_block_cache;
-    fifo_block_cache = b->next;
+size_t fifo_buf::available(void) {
+  if (read_ptr == write_ptr) {
+    return m_size - 1;
   }
-  fifo_block_cache_lock.unlock();
 
-  if (b == NULL) b = (fifo_block *)phys::kalloc(1);
-
-  // initialize the data
-  b->next = NULL;
-  b->prev = NULL;
-  // b->len = PGSIZE - offsetof(struct fifo_block, data);
-  b->len = 64;
-  b->w = 0;
-  b->r = 0;
-
-  // zero out the buffer
-  memset(b->data, 0x00, b->len);
-  return b;
-}
-
-void fifo_block::free(struct fifo_block *b) {
-  fifo_block_cache_lock.lock();
-
-  // insert at the front of the queue
-  b->next = fifo_block_cache;
-  fifo_block_cache = b;
-
-  fifo_block_cache_lock.unlock();
-  // phys::kfree(b);
-}
-
-
-
-fifo_buf::fifo_buf(void) {}
-fifo_buf::~fifo_buf(void) {
-  while (write_block != NULL) {
-    auto ob = write_block;
-    write_block = ob->next;
-    fifo_block::free(ob);
+  if (read_ptr > write_ptr) {
+    return read_ptr - write_ptr - 1;
+  } else {
+    return (m_size - write_ptr) + read_ptr - 1;
   }
 }
+
+
+size_t fifo_buf::unread(void) {
+  if (read_ptr == write_ptr) {
+    return 0;
+  }
+  if (read_ptr > write_ptr) {
+    return (m_size - read_ptr) + write_ptr;
+  } else {
+    return (write_ptr - read_ptr);
+  }
+}
+
+
+
+void fifo_buf::increment_read(void) {
+  read_ptr++;
+  if (read_ptr == m_size) {
+    read_ptr = 0;
+  }
+}
+
+void fifo_buf::increment_write(void) {
+  write_ptr++;
+  if (write_ptr == m_size) {
+    write_ptr = 0;
+  }
+}
+
+
 
 void fifo_buf::close(void) {
-	m_closed = true;
+  m_closed = true;
 
-	readers.notify_all();
+  wq_readers.notify_all();
+  wq_writers.notify_all();
 }
 
-void fifo_buf::wakeup_accessing_tasks(void) {}
 
-void fifo_buf::block_accessing_tasks(void) {}
+void fifo_buf::init_if_needed(void) {
+	if (buffer == NULL) {
+		m_size = 4096;
+		buffer = (char *)kmalloc(m_size);
+	}
+}
 
-void fifo_buf::init_blocks() { write_block = read_block = fifo_block::alloc(); }
 
 ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
-  wlock.lock();
+	init_if_needed();
 
-  if (write_block == NULL) init_blocks();
-  auto *buf = (const char *)vbuf;
+	auto ibuf = (char*)vbuf;
 
-  size_t to_write = size;
-  while (to_write > 0) {
-    if (write_block->w >= write_block->len) {
-      // make a new write block to work in
-      auto nb = fifo_block::alloc();
-      write_block->next = nb;
-      nb->prev = write_block;
-      write_block = nb;
+  size_t written = 0;
+  while (written < size) {
+    lock_write.lock();
+
+    while (available() > 0 && written < size) {
+      buffer[write_ptr] = ibuf[written];
+      increment_write();
+      written++;
     }
 
-    size_t can_write = write_block->len - write_block->w;
-    size_t will_write = min(to_write, can_write);
+    wq_readers.notify_all();
+    lock_write.unlock();
 
-    memcpy(write_block->data + write_block->w, buf, will_write);
-
-    // increment the write location
-    write_block->w += will_write;
-    to_write -= will_write;
-    buf += will_write;
+    if (written < size) {
+      wq_writers.wait();
+			if (m_closed) return -ECONNRESET;
+    }
   }
 
-  // record that there is data in the fifo
-  navail += size;
 
-  // possibly notify a reader (who will notify the next and so on)
-  readers.notify();
-
-  wlock.unlock();
-  return size;
+  return 0;
 }
 
 ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
-	if (m_closed) return -ECONNRESET;
+	init_if_needed();
 
-  rlock.lock();
+	auto obuf = (char*)vbuf;
 
-  if (read_block == NULL) init_blocks();
-  auto *buf = (char *)vbuf;
+  size_t collected = 0;
+  while (collected == 0) {
 
-  // possibly block?
-  if (navail < size && block) {
-    rlock.unlock();
-    int rude = readers.wait(size);
-		// if we were woken up because the fifo_buf has been closed, we read 0 bytes
-    if (rude) {
-      if (readers.should_notify(navail)) readers.notify();
-      return -1;
+    lock_read.lock();
+    while (unread() > 0 && collected < size) {
+      obuf[collected] = buffer[read_ptr];
+      increment_read();
+      collected++;
     }
-    rlock.lock();
-  }
+		wq_writers.notify_all();
+		lock_read.unlock();
 
-  auto nread = 0;
-  while (nread < size) {
-    auto to_read = min(read_block->w - read_block->r, size - nread);
+    if (collected == 0) {
+			wq_readers.wait();
 
-    if (to_read == 0) {
-			/*
-      if (block) {
-        panic("fifo read (blocking) with missing data\n");
-      }
-			*/
-      break;
-    }
-
-    // copy to the buffer
-    memcpy(buf, read_block->data + read_block->r, to_read);
-
-    // move our pointers
-    read_block->r += to_read;
-    buf += to_read;
-    nread += to_read;
-
-    // make sure we fix up the blocks when we use this one up
-    if (read_block->r >= read_block->len) {
-      // if we consumed the entire block, we can just reset this one for next
-      // time :)
-      if (read_block->next == NULL) {
-        assert(read_block == write_block);
-        read_block->w = 0;
-        read_block->r = 0;
-        memset(read_block->data, 0, read_block->len);
-      } else {
-        // we're at the end of the block, delete it
-        assert(read_block->next != NULL);  // sanity check
-
-        read_block = read_block->next;
-        fifo_block::free(read_block->prev);
-        read_block->prev = NULL;
-      }
+			if (m_closed) return -ECONNRESET;
     }
   }
 
-  navail -= nread;
-
-  // sanity check
-  assert(navail >= 0);
-
-  // if more readers have built up, notify them with the new navail
-  if (readers.should_notify(navail)) readers.notify();
-
-  rlock.unlock();
-  return nread;
+  return collected;
 }

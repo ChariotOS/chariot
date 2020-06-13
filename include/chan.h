@@ -34,7 +34,5 @@ class chan {
   }
 
 
-	inline bool avail(void) {
-		return backing.size() >= sizeof(T);
-	}
+  inline bool avail(void) { return backing.size() >= sizeof(T); }
 };

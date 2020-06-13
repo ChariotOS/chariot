@@ -6,51 +6,49 @@
 #include <vec.h>
 #include <wait.h>
 
-struct fifo_block {
-  struct fifo_block *next, *prev;
-  // atomic lock
-  int lck = 0;
-  u16 r, w, len;
-  char pad[6];
-  char data[];  // at the end of the struct
-
-  // ease of use functions
-  inline void lock() { spinlock::lock(lck); }
-  inline void unlock() { spinlock::unlock(lck); }
-
-  static struct fifo_block *alloc(void);
-  static void free(struct fifo_block *);
-};
-
 class fifo_buf {
  public:
-  fifo_buf();
-  ~fifo_buf();
-
+  inline fifo_buf() {
+		init_if_needed();
+		// printk("size: %zu, buff=%p\n", m_size, buffer);
+	}
+  inline ~fifo_buf() {
+		kfree(buffer);
+	}
 
   ssize_t write(const void *, ssize_t, bool block = false);
   ssize_t read(void *, ssize_t, bool block = true);
 
-  inline int size(void) const { return navail; }
+  inline int size(void) { return unread(); }
 
 	void close();
 
  private:
-  void wakeup_accessing_tasks(void);
-  void block_accessing_tasks(void);
 
-  void init_blocks();
+	void init_if_needed(void);
+
+	char *get_buffer(void);
 
 
 	bool m_closed = false;
   bool m_blocking;
-  spinlock wlock;
-  spinlock rlock;
 
-  fifo_block *read_block;
-  fifo_block *write_block;
 
-  ssize_t navail = 0;
+  spinlock lock_write;
+  spinlock lock_read;
 
-  waitqueue readers;
+	char * buffer;
+	size_t write_ptr = 0;
+	size_t read_ptr = 0;
+	size_t m_size;
+
+  waitqueue wq_readers;
+	waitqueue wq_writers;
+
+
+	size_t available(void);
+	size_t unread(void);
+
+	void increment_read(void);
+	void increment_write(void);
 };
