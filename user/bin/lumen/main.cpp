@@ -1,4 +1,6 @@
+#include <ck/func.h>
 #include <ck/io.h>
+#include <ck/map.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +12,59 @@
 #include <lumen/msg.h>
 
 #include "internal.h"
+
+
+
+#include <chariot/awaitfs_types.h>
+#include <sys/syscall.h>
+
+int awaitfs(struct await_target *fds, int nfds, int flags) {
+  return errno_syscall(SYS_awaitfs, fds, nfds, flags);
+}
+
+
+
+class eventloop {
+  using callback_t = ck::func<void(eventloop &, int fd, int events)>;
+
+  struct handler {
+    callback_t cb;
+
+    handler(callback_t cb) : cb(cb) {}
+    handler() : cb([](eventloop &, int fd, int events) {}) {}
+  };
+
+  ck::map<int, handler> handlers;
+
+ public:
+  eventloop(void) {}
+
+  void register_handler(int fd, callback_t cb) {
+    handlers.set(fd, handler(cb));
+  }
+
+  void deregister(int fd) { handlers.remove(fd); }
+
+  void pump(void) {
+    ck::vec<struct await_target> targs;
+
+    for (auto &kv : handlers) {
+      struct await_target targ;
+      targ.fd = kv.key;
+      targ.awaiting = AWAITFS_ALL;
+
+      targs.push(targ);
+    }
+
+    int index = awaitfs(targs.data(), targs.size(), 0);
+    if (index >= 0) {
+      int fd = targs[index].fd;
+      auto &handler = handlers[fd];
+      handler.cb(*this, fd, targs[index].occurred);
+    }
+  }
+};
+
 
 
 char upper(char ch) {
@@ -24,7 +79,20 @@ char upper(char ch) {
 struct lumen::msg *read_msg(int fd, int &err) {
   // read in the base data
   struct lumen::msg base;
-  int n = read(fd, &base, sizeof(base));
+
+	while (1) {
+		int n = read(fd, &base.magic, sizeof(int));
+		ck::hexdump(&base.magic, sizeof(int));
+		if (n < 0) {
+			err = n;
+			return NULL;
+		}
+
+		if (base.magic == LUMEN_MAGIC) break;
+		printf("magic is not right!\n");
+	}
+
+  int n = read(fd, &base.type, sizeof(base) - sizeof(int));
   if (n < 0) {
     err = n;
     return NULL;
@@ -38,15 +106,19 @@ struct lumen::msg *read_msg(int fd, int &err) {
   msg->len = base.len;
 
 
-  if (base.len > 0) {
-    int n = read(fd, msg + 1, msg->len);
+
+	auto *buf = (char*)(msg + 1);
+	int nread = 0;
+	while (nread != base.len) {
+    int n = read(fd, buf + n, msg->len);
     if (n < 0) {
       free(msg);
       err = n;
       return NULL;
     }
-  }
-	err = 0;
+		nread += n;
+	}
+  err = 0;
   return msg;
 }
 
@@ -67,29 +139,36 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  // server
-  while (1) {
-    int client = accept(fd, (struct sockaddr *)&addr, sizeof(addr));
-    if (client < 0) continue;
+  eventloop loop;
 
-    printf("[server] client connected %d\n", client);
+  loop.register_handler(fd, [&](eventloop &loop, int fd, int events) {
+    // READ on the server means there is someone waiting
+    if (events & AWAITFS_READ) {
+      int client = accept(fd, (struct sockaddr *)&addr, sizeof(addr));
 
-    while (1) {
-      int err = 0;
-      auto *msg = read_msg(client, err);
-      // printf("msg: %p, err: %d\n", msg, err);
-      if (err != 0) break;
+      loop.register_handler(client, [](eventloop &loop, int fd, int events) {
+        if (events & AWAITFS_READ) {
+          int err = 0;
+          auto *msg = read_msg(fd, err);
+          if (err != 0) {
+            printf("er=%d\n", err);
+						// close(client);
+            return;
+          }
 
-			if (msg != NULL) {
-				printf("id: %3lu, len: %3d, type: %3d\n", msg->id, msg->len, msg->type);
-				ck::hexdump(&msg->data, msg->len);
-			}
+          for (int i = 0; i < msg->len; i++) {
+            printf("%4lu: 0x%02x\n", msg->id, msg->data[i]);
+          }
 
-      free(msg);
+          free(msg);
+        }
+      });
     }
-    printf("[server] client disconnected\n");
+  });
 
-    close(client);
+
+  while (1) {
+    loop.pump();
   }
 
   return 0;

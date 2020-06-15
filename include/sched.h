@@ -166,6 +166,8 @@ struct thread_sched_info {
   int priority = 0;
   u64 ticks = 0;
   u64 start_tick = 0;
+
+	// for waitqueues
   struct thread *next = nullptr;
   struct thread *prev = nullptr;
 };

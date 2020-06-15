@@ -238,6 +238,9 @@ namespace fs {
     int (*resize)(fs::file &, size_t);
 
     void (*destroy)(fs::inode &);
+
+		// *quickly* poll for a bitmap of events and return a bitmap of those that match
+		int (*poll)(fs::file &, int events);
   };
 
   // wrapper functions for block devices
@@ -256,6 +259,8 @@ namespace fs {
     int (*mknod)(fs::inode &, const char *name, struct fs::file_ownership &,
                  int major, int minor);
   };
+
+
 
   /**
    * struct inode - base point for all "file-like" objects
@@ -342,6 +347,8 @@ namespace fs {
 
     struct direntry *get_direntry_raw(const char *name);
 
+		int poll(fs::file &, int events);
+
     // if the inode is a directory, set its name. NOP otherwise
     int set_name(const string &);
 
@@ -425,6 +432,9 @@ namespace fs {
     struct fs::inode *ino;
     string path;
     off_t m_offset = 0;
+
+		bool can_write = false;
+		bool can_read = false;
 
 		int pflags = 0; // private flags
   };

@@ -6,6 +6,7 @@
 #include <net/sock.h>
 #include <sched.h>
 #include <syscall.h>
+#include <util.h>
 
 net::sock::sock(int dom, int type, int protocol)
     : domain(dom), type(type), protocol(protocol) {}
@@ -39,10 +40,12 @@ static int sock_seek(fs::file &, off_t old_off, off_t new_off) {
 }
 
 static ssize_t sock_read(fs::file &f, char *b, size_t s) {
+	if (f.ino->sk->connected) return -ENOTCONN;
   return f.ino->sk->recvfrom(f, (void *)b, s, 0, nullptr, 0);
 }
 
 static ssize_t sock_write(fs::file &f, const char *b, size_t s) {
+	if (f.ino->sk->connected) return -ENOTCONN;
   return f.ino->sk->sendto(f, (void *)b, s, 0, nullptr, 0);
 }
 
@@ -55,13 +58,23 @@ static void sock_close(fs::file &fd) {
   f.sk = NULL;
 }
 
-fs::file_operations socket_fops{
+
+static int sock_poll(fs::file &fd, int events) {
+	auto f = *fd.ino;
+	if (f.sk) {
+		return f.sk->poll(fd, events);
+	}
+	return 0;
+}
+
+fs::file_operations socket_fops {
     .seek = sock_seek,
     .read = sock_read,
     .write = sock_write,
 
 		.close = sock_close,
 
+		.poll = sock_poll,
 };
 
 
@@ -98,6 +111,7 @@ fs::inode *net::sock::createi(int domain, int type, int protocol, int &err) {
   ino->dops = NULL;
 
   ino->sk = net::sock::acquire(*sk);
+	sk->ino = ino;
   err = 0;
 
   return ino;
@@ -171,6 +185,7 @@ int sys::accept(int sockfd, struct sockaddr *addr, int addrlen) {
         ino->fops = &socket_fops;
         ino->dops = NULL;
         ino->sk = net::sock::acquire(*sk);
+				sk->ino = ino;
 				auto file = fs::file::create(ino, "[socket]", O_RDWR);
 				file->pflags = PFLAGS_SERVER;
         int fd = curproc->add_fd(file);
@@ -194,11 +209,17 @@ int sys::connect(int sockfd, const struct sockaddr *addr, int len) {
     return -EINVAL;
   }
 
+
   ref<fs::file> file = curproc->get_fd(sockfd);
   ssize_t res = -EINVAL;
   if (file) {
     if (file->ino->type == T_SOCK) {
       res = file->ino->sk->connect((struct sockaddr *)addr, len);
+			if (res < 0) {
+				file->ino->sk->connected = true;
+				return res;
+			}
+			file->ino->sk->connected = false;
 			file->pflags = PFLAGS_CLIENT;
     } else {
       res = -ENOTSOCK;

@@ -10,6 +10,9 @@ mobo
 tags
 .gdb_history
 
+.clangd
+
+compile_commands.json
 
 base/bin
 base/lib

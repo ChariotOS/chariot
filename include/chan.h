@@ -2,6 +2,7 @@
 
 #include <fifo_buf.h>
 #include <util.h>
+#include <awaitfs.h>
 
 // a fifo channel for different types in the kernel
 template <typename T>
@@ -33,6 +34,14 @@ class chan {
     backing.write(buf, sizeof(T), wait);
   }
 
-
   inline bool avail(void) { return backing.size() >= sizeof(T); }
+
+	inline int poll(void) {
+		int ev = 0;
+
+		if (avail()) ev |= AWAITFS_READ;
+		ev |= AWAITFS_WRITE;
+
+		return ev;
+	}
 };

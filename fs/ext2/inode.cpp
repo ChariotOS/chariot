@@ -699,9 +699,9 @@ fs::file_operations ext2_file_ops{
 
 static int ext2_create(fs::inode &node, const char *name,
                        struct fs::file_ownership &) {
-  fs::ext2 *efs = static_cast<fs::ext2 *>(&node.sb);
-  int ino = efs->allocate_inode();
-  printk("ino=%d\n", ino);
+  // fs::ext2 *efs = static_cast<fs::ext2 *>(&node.sb);
+  // int ino = efs->allocate_inode();
+  // printk("ino=%d\n", ino);
 
   return -ENOTIMPL;
 }

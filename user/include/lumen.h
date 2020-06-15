@@ -6,6 +6,7 @@
 
 #include <ck/object.h>
 #include <lumen/msg.h>
+#include <ck/socket.h>
 
 // client namespace
 namespace lumen {
@@ -14,12 +15,16 @@ namespace lumen {
 	class session : ck::object {
 
 		// this is the connection to the windowserver
-		int fd = -1;
+		ck::localsocket sock;
 
 		public:
 
 		session(void);
 		~session(void);
+
+		inline bool connected(void) {
+			return sock.connected();
+		}
 
 		long send_raw(int type, void *payload, size_t payloadsize);
 
@@ -34,6 +39,8 @@ namespace lumen {
 				return send_raw(type, (void*)&payload, sizeof(payload));
 			}
 
+
+		CK_OBJECT(lumen::session);
 	};
 };
 

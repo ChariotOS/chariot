@@ -5,6 +5,7 @@
 #include <net/un.h>
 #include <syscall.h>
 #include <util.h>
+#include <awaitfs.h>
 
 static rwlock all_localsocks_lock;
 static struct net::localsock *all_localsocks = NULL;
@@ -31,7 +32,7 @@ net::localsock::~localsock(void) {
 
 	// if this socket is bound, release it
 	if (bindpoint != NULL) {
-		// we don't need to 
+		// we don't need to
 		bindpoint->bound_socket = NULL;
 		fs::inode::release(bindpoint);
 	}
@@ -63,10 +64,11 @@ int net::localsock::connect(struct sockaddr *addr, int len) {
   if (in == NULL) return -ENOENT;
 
   if (in->bound_socket == NULL) {
-    return -EADDRINUSE;
+    return -ENOENT;
   }
 
 	peer = (struct localsock *)net::sock::acquire(*in->bound_socket);
+
 	// send, and wait. This will always succeed if we are here.
 	this->peer->pending_connections.send(this, true);
 
@@ -90,6 +92,7 @@ int net::localsock::disconnect(int flags) {
 
 ssize_t net::localsock::sendto(fs::file &fd, void *data, size_t len, int flags,
                                const sockaddr *, size_t) {
+	printk("sendto(%p, %zu)\n", data, len);
 	if (fd.pflags & PFLAGS_SERVER) {
 		return for_client.write(data, len, true);
 	} else if (fd.pflags & PFLAGS_CLIENT) {
@@ -136,3 +139,22 @@ int net::localsock::bind(const struct sockaddr *addr, size_t len) {
   return 0;
 }
 
+
+int net::localsock::poll(fs::file &f, int events) {
+	int res = 0;
+
+	if (f.pflags & PFLAGS_CLIENT) {
+		// printk("client poll\n");
+		// printk("client disconnect\n");
+		res |= for_client.poll() & AWAITFS_READ & events;
+	}
+	if (f.pflags & PFLAGS_SERVER) {
+		// printk("server poll\n");
+		// printk("server disconnect\n");
+		res |= for_server.poll() & AWAITFS_READ & events;
+	}
+
+	res |= pending_connections.poll() & AWAITFS_READ & events;
+
+	return res;
+}

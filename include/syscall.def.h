@@ -146,6 +146,8 @@ int sigreturn(void);
 /// num=0x73
 int sigprocmask(int how, unsigned long set, unsigned long *old_set);
 
+/// num=0x80
+int awaitfs(struct await_target *, int nfds, int flags);
 
 /// num=0xF0
 unsigned long kshell(char *cmd, int argc, char **argv, void *data, size_t len);

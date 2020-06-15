@@ -10,9 +10,13 @@
 int main(int argc, char **argv) {
 
 	lumen::session session;
+	if (!session.connected()) {
+		fprintf(stderr, "failed to connect\n");
+		exit(EXIT_FAILURE);
+	}
 	while (true) {
 		char c = getchar();
-		if (c == '!') break;
+		if (c == '\n') break;
 		session.send_msg(3, c);
 	}
 

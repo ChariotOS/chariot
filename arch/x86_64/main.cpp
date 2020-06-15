@@ -32,6 +32,8 @@ static void kmain2(void);
 #define GIT_REVISION "NO-GIT"
 #endif
 
+
+
 /**
  * the size of the (main cpu) scheduler stack
  */

@@ -23,10 +23,13 @@ namespace ck {
     ck::object *next, *prev;
 
    public:
+
+		object(void);
+		virtual ~object(void);
     /**
      * class_name - returns the name of the object's class as a string
      */
-    virtual inline const char* class_name(void) { return "ck::object"; }
+    virtual const char* class_name(void) const { return "ck::object"; };
 
 
     /*

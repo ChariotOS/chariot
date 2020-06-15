@@ -5,6 +5,7 @@
 #include <single_list.h>
 #include <vec.h>
 #include <wait.h>
+#include <awaitfs.h>
 
 class fifo_buf {
  public:
@@ -23,12 +24,23 @@ class fifo_buf {
 
 	void close();
 
+	inline int poll() {
+		int ev = 0;
+		if (unread() > 0) {
+			ev |= AWAITFS_READ;
+		}
+
+		if (available() > 0) {
+			ev |= AWAITFS_WRITE;
+		}
+		return ev;
+	}
+
  private:
 
 	void init_if_needed(void);
 
 	char *get_buffer(void);
-
 
 	bool m_closed = false;
   bool m_blocking;

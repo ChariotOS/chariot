@@ -6,9 +6,9 @@
 #include <module.h>
 #include <printk.h>
 #include <sched.h>
+#include <signals.h>
 #include <util.h>
 #include <vga.h>
-#include <signals.h>
 
 #include "../drivers/majors.h"
 
@@ -32,17 +32,17 @@ static fifo_buf console_fifo;
 
 
 static void consputc(int c, bool debug = false) {
-	if (debug || true) {
-		if (c == CONS_DEL) {
-			serial_send(COM1, '\b');
-			serial_send(COM1, ' ');
-			serial_send(COM1, '\b');
-		} else {
-			serial_send(COM1, c);
-		}
-	}
+  if (debug || true) {
+    if (c == CONS_DEL) {
+      serial_send(COM1, '\b');
+      serial_send(COM1, ' ');
+      serial_send(COM1, '\b');
+    } else {
+      serial_send(COM1, c);
+    }
+  }
 
-	vga::putchar(c);
+  vga::putchar(c);
 }
 
 static void flush(void) {
@@ -60,9 +60,9 @@ static bool handle_special_input(char c) {
     case C('P'):
       sched::proc::dump_table();
       return true;
-		case C('K'):
-			sched::proc::send_signal(1, SIGKILL);
-			return true;
+    case C('K'):
+      sched::proc::send_signal(1, SIGKILL);
+      return true;
   }
   return false;
 }
@@ -78,14 +78,14 @@ void console::feed(size_t sz, char* buf) {
 
       // when buffered, DEL should delete a char in the line
       if (buffer_input && c == CONS_DEL) {
-	if (line_len != 0) {
-	  line_buffer[--line_len] = '\0';
-	}
+        if (line_len != 0) {
+          line_buffer[--line_len] = '\0';
+        }
       } else {
-	// put the element in the line buffer
-	line_buffer[line_len++] = c;
-	if (c == '\n' || c == '\r') flush();
-	if (line_len >= LINEBUF_SIZE) flush();
+        // put the element in the line buffer
+        line_buffer[line_len++] = c;
+        if (c == '\n' || c == '\r') flush();
+        if (line_len >= LINEBUF_SIZE) flush();
       }
     }
   }
@@ -106,7 +106,9 @@ static ssize_t console_read(fs::file& fd, char* buf, size_t sz) {
   return -1;
 }
 
+spinlock console_write_lock;
 static ssize_t console_write(fs::file& fd, const char* buf, size_t sz) {
+  scoped_lock l(console_write_lock);
   if (fd) {
     auto minor = fd.ino->minor;
     if (minor != 0) return -1;
@@ -115,9 +117,7 @@ static ssize_t console_write(fs::file& fd, const char* buf, size_t sz) {
   }
   return -1;
 }
-static int console_open(fs::file& fd) {
-	return 0;
-}
+static int console_open(fs::file& fd) { return 0; }
 static void console_close(fs::file& fd) { KINFO("[console] close!\n"); }
 
 struct fs::file_operations console_ops = {

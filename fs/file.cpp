@@ -43,12 +43,11 @@ fs::file::file(struct fs::inode *f, int flags) : ino(f) {
       fs::inode::release(ino);
       ino = NULL;
     }
-
   }
 
 	if (ino != NULL) {
 		if (flags & O_APPEND) {
-			printk("append\n");
+			seek(0, SEEK_END);
 		}
 	}
 }

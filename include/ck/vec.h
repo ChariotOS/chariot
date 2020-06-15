@@ -300,7 +300,7 @@ class vec {
     m_size += other_size;
   }
 
-  void push(const vec& other) {
+  void push(const vec<T>& other) {
     grow_capacity(size() + other.size());
     typed_transfer<T>::copy(data() + m_size, other.data(), other.size());
     m_size += other.m_size;

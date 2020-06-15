@@ -57,17 +57,17 @@ void fifo_buf::close(void) {
 
 
 void fifo_buf::init_if_needed(void) {
-	if (buffer == NULL) {
-		m_size = 4096;
-		buffer = (char *)kmalloc(m_size);
-	}
+  if (buffer == NULL) {
+    m_size = 4096;
+    buffer = (char *)kmalloc(m_size);
+  }
 }
 
 
 ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
-	init_if_needed();
+  init_if_needed();
 
-	auto ibuf = (char*)vbuf;
+  auto ibuf = (char *)vbuf;
 
   size_t written = 0;
   while (written < size) {
@@ -82,9 +82,10 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
     wq_readers.notify_all();
     lock_write.unlock();
 
+
     if (written < size) {
       wq_writers.wait();
-			if (m_closed) return -ECONNRESET;
+      if (m_closed) return -ECONNRESET;
     }
   }
 
@@ -92,29 +93,31 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
   return 0;
 }
 
-ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
-	init_if_needed();
 
-	auto obuf = (char*)vbuf;
+ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
+  init_if_needed();
+
+  auto obuf = (char *)vbuf;
 
   size_t collected = 0;
   while (collected == 0) {
-
     lock_read.lock();
     while (unread() > 0 && collected < size) {
       obuf[collected] = buffer[read_ptr];
       increment_read();
       collected++;
     }
-		wq_writers.notify_all();
-		lock_read.unlock();
+
+    wq_writers.notify_all();
+    lock_read.unlock();
 
     if (collected == 0) {
-			wq_readers.wait();
+      wq_readers.wait();
 
-			if (m_closed) return -ECONNRESET;
+      if (m_closed) return -ECONNRESET;
     }
   }
+
 
   return collected;
 }

@@ -74,7 +74,6 @@
 #ifndef PRINTF_DEFAULT_FLOAT_PRECISION
 #define PRINTF_DEFAULT_FLOAT_PRECISION 6U
 #endif
-
 // define the largest float suitable to print with %f
 // default: 1e9
 #ifndef PRINTF_MAX_FLOAT
@@ -587,8 +586,7 @@ static size_t _etoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen,
 #endif  // PRINTF_SUPPORT_FLOAT
 
 // internal vsnprintf
-static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen,
-                      const char* format, va_list va) {
+static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen, const char* format, va_list va) {
   unsigned int flags, width, precision, n;
   size_t idx = 0U;
 
@@ -951,6 +949,15 @@ int fctprintf(void (*out)(char character, void* arg), void* arg,
   const int ret = _vsnprintf(_out_fct, (char*)(uintptr_t)&out_fct_wrap,
                              (size_t)-1, format, va);
   va_end(va);
+  return ret;
+}
+
+
+int vfctprintf(void (*out)(char character, void* arg), void* arg,
+              const char* format, va_list va) {
+  const out_fct_wrap_type out_fct_wrap = {out, arg};
+  const int ret = _vsnprintf(_out_fct, (char*)(uintptr_t)&out_fct_wrap,
+                             (size_t)-1, format, va);
   return ret;
 }
 

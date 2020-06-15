@@ -10,6 +10,8 @@
 #include <fs/vfs.h>
 #include <dirent.h>
 
+#include <awaitfs.h>
+
 #define RING_KERNEL 0
 #define RING_USER 3
 

@@ -114,10 +114,10 @@ void ffree(FILE *fp) {
 
 
 int fileno(FILE *stream) {
-	if (stream == NULL) {
-		return -1;
-	}
-	return stream->fd;
+  if (stream == NULL) {
+    return -1;
+  }
+  return stream->fd;
 }
 
 int fclose(FILE *fp) {
@@ -228,20 +228,44 @@ static off_t _stdio_seek(FILE *fp, off_t offset, int whence) {
   return errno_syscall(SYS_lseek, fp->fd, offset, whence);
 }
 
-FILE *fdopen(int fd, const char *mode) {
-  FILE *fp = falloc();
 
-  char im = *mode;
 
-  if (im != 'r' && im != 'w' && im != 'a') {
-    // TODO: errno = EINVAL;
+static int string_to_mode(const char *mode) {
+  if (mode == NULL) return -1;
+#define DEF_MODE(s, m) \
+  if (strcmp(mode, s) == 0) return m
+
+  DEF_MODE("r", O_RDONLY);
+  DEF_MODE("rb", O_RDONLY);
+
+  DEF_MODE("w", O_WRONLY | O_CREAT | O_TRUNC);
+  DEF_MODE("wb", O_WRONLY | O_CREAT | O_TRUNC);
+
+  DEF_MODE("a", O_WRONLY | O_CREAT | O_APPEND);
+  DEF_MODE("ab", O_WRONLY | O_CREAT | O_APPEND);
+
+  DEF_MODE("r+", O_RDWR);
+  DEF_MODE("rb+", O_RDWR);
+
+  DEF_MODE("w+", O_RDWR | O_CREAT | O_TRUNC);
+  DEF_MODE("wb+", O_RDWR | O_CREAT | O_TRUNC);
+
+  DEF_MODE("a+", O_RDWR | O_CREAT | O_APPEND);
+  DEF_MODE("ab+", O_RDWR | O_CREAT | O_APPEND);
+
+  return -1;
+#undef DEF_MODE
+}
+
+
+FILE *fdopen(int fd, const char *string_mode) {
+  int mode = string_to_mode(string_mode);
+  if (mode == -1) {
+    errno = EINVAL;
     return NULL;
   }
 
-  // int readable = 1;
-  // int writable = 1;
-
-  // TODO: more modes!
+  FILE *fp = falloc();
 
   fp->fd = fd;
 
@@ -250,21 +274,25 @@ FILE *fdopen(int fd, const char *mode) {
   fp->write = _stdio_write;
   fp->seek = _stdio_seek;
 
-	fp->buffer = fp->default_buffer;
-	fp->buffered = 1;
-	fp->buf_cap = BUFSIZ;
-	fp->buf_len = 0;
+  fp->buffer = fp->default_buffer;
+  fp->buffered = 1;
+  fp->buf_cap = BUFSIZ;
+  fp->buf_len = 0;
 
   return fp;
 }
 
-FILE *fopen(const char *path, const char *mode) {
-  // TODO: better mode here
-  int fd = open(path, O_RDWR);
+FILE *fopen(const char *path, const char *string_mode) {
+  int mode = string_to_mode(string_mode);
+  if (mode == -1) {
+    errno = EINVAL;
+    return NULL;
+  }
+  int fd = open(path, mode);
 
-	if (fd < 0) return NULL;
+  if (fd < 0) return NULL;
 
-  return fdopen(fd, mode);
+  return fdopen(fd, string_mode);
 }
 
 int fflush(FILE *fp) {

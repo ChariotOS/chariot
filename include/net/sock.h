@@ -59,10 +59,14 @@ struct sock {
   size_t total_sent = 0;
   size_t total_recv = 0;
 
+	// the inode that contains this socket
+	struct fs::inode *ino = NULL;
 
 
   sock(int domain, int type, int proto);
   virtual ~sock(void);
+
+	inline virtual int poll(fs::file &f, int events) {return 0;}
 
   template <typename T>
   T *&priv(void) {
@@ -113,6 +117,8 @@ struct localsock : public net::sock {
 
   virtual int bind(const struct sockaddr *addr, size_t len);
 
+	virtual int poll(fs::file &f, int events);
+
 	// the inode this (server) socket is bound to
 	fs::inode *bindpoint = nullptr;
 
@@ -125,7 +131,6 @@ struct localsock : public net::sock {
 
 	size_t bytes_avail();
 	waitqueue reader_wq;
-	waitqueue writer_wq;
 
 	chan<localsock *> pending_connections;
 

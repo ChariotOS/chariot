@@ -49,8 +49,11 @@ int main(int argc, const char **argv) {
 	int selected_line = 0;
 
 	bool done = false;
+
+	bool dirty = false;
 	while (!done) {
 		// read a single char from the user
+		if (dirty) printf("dirty ");
 		printf("%% ");
 		fflush(stdout);
 		char c = getchar();
@@ -79,6 +82,7 @@ int main(int argc, const char **argv) {
 					}
 					printf("line replaced. %d (%s)\n", selected_line, new_line.get());
 					lines[selected_line] = new_line.get();
+					dirty = true;
 				}
 				break;
 
@@ -90,7 +94,7 @@ int main(int argc, const char **argv) {
 				break;
 
 			// next line
-			case 'n':
+			case 'j':
 				if (selected_line == lines.size() - 1) {
 					printf("ERR\n");
 				} else {
@@ -100,7 +104,7 @@ int main(int argc, const char **argv) {
 				break;
 
 			// previous line
-			case 'p':
+			case 'k':
 				if (selected_line == 0) {
 					printf("ERR\n");
 				} else {
@@ -136,12 +140,46 @@ int main(int argc, const char **argv) {
 						written += stream.writef("%s\n", line.get());
 					}
 					printf("%d written\n", written);
+					dirty = false;
 				}
 				break;
 
+
+			case '?':
+				printf("binds:\n");
+				printf(" r: replace line\n");
+				printf(" l: display all lines\n");
+				printf(" j: next line\n");
+				printf(" k: previous line\n");
+				printf(" a: append line below\n");
+				printf(" d: delete current line\n");
+				printf(" w: write the file\n");
+				printf(" q: quit\n");
+				break;
+
 			// exit!
-			case 'x':
-				done = true;
+			case 'q':
+				if (dirty) {
+					while (1) {
+						printf("Exit without saving? (y/n): ");
+						fflush(stdout);
+
+						char answer = getchar();
+						printf("\n");
+						if (answer == 'y') {
+							done = true;
+							break;
+						} else if (answer == 'n') {
+							done = false;
+							break;
+						}
+						printf("Unknown answer '%c'\n", answer);
+
+					}
+
+				} else {
+					done = true;
+				}
 				break;
 
 			default:
