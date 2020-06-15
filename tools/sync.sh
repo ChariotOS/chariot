@@ -126,7 +126,7 @@ sudo cp kernel/grub.cfg $mnt/boot/grub/
 # build the kernel and copy it into the boot dir
 make --no-print-directory -j ARCH=x86_64 || die 'Failed to build the kernel'
 
-sudo cp build/chariot.elf $mnt/boot/
+sudo cp build/kernel/kernel $mnt/boot/chariot.elf
 
 # create some device nodes
 sudo mknod $mnt/dev/urandom c 1 2

@@ -162,7 +162,6 @@ static void unknown_exception(int i, reg_t *regs) {
   KERR("  repo: github.com/nickwanninger/chariot\n");
 
   KERR("\n");
-  KERR("git = %s\n", GIT_REVISION);
 
   lidt(0, 0);  // die
   while (1) {

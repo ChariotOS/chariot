@@ -45,12 +45,10 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   rtc_init();
   serial_install();
 
-
   extern u8 boot_cpu_local[];
   cpu::seginit(boot_cpu_local);
 
   arch::mem_init(mbd);
-
 
   mbinfo = (struct multiboot_info *)(u64)p2v(mbd);
   void *new_stack = (void *)((u64)kmalloc(STKSIZE) + STKSIZE);
@@ -124,6 +122,8 @@ int kernel_init(void *) {
   KINFO("Calling kernel module init functions\n");
   initialize_builtin_modules();
   KINFO("kernel modules initialized\n");
+
+
 
 
   // start up the extra cpu cores
