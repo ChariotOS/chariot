@@ -175,7 +175,7 @@ int mm::space::pagefault(off_t va, int err) {
 
         if (old_page->users > 1 || r->fd) {
           auto np = mm::page::alloc();
-          // printk(KERN_INFO "COW [page %d in '%s']\n", ind, r->name.get());
+          // printk(KERN_WARN "COW [page %d in '%s']\n", ind, r->name.get());
           np->users = 1;
           old_page->users--;
           memcpy(p2v(np->pa), p2v(old_page->pa), PGSIZE);
@@ -522,6 +522,8 @@ struct mshare_vmobject final : public mm::vmobject {
     scoped_lock l(m_lock);
     if (n > pages.size()) return nullptr;
     if (!pages[n]) pages[n] = mm::page::alloc();
+
+		// printk("get_shared(%d) = %p\n", n, pages[n].get());
     return pages[n];
   }
 
@@ -561,7 +563,7 @@ static void *msh_create(struct mshare_create *arg) {
 
 
   auto addr = curproc->mm->mmap(0, pages * PGSIZE, PROT_READ | PROT_WRITE,
-                                MAP_ANON | MAP_PRIVATE, nullptr, 0);
+                                MAP_ANON | MAP_SHARED, nullptr, 0);
 
   auto region = curproc->mm->lookup(addr);
   if (region == nullptr) return MAP_FAILED;
@@ -591,7 +593,7 @@ static void *msh_acquire(struct mshare_acquire *arg) {
 
   auto size = (unsigned long)obj->size();
   auto addr = curproc->mm->mmap(0, size, PROT_READ | PROT_WRITE,
-                                MAP_ANON | MAP_PRIVATE, nullptr, 0);
+                                MAP_ANON | MAP_SHARED, nullptr, 0);
 
   auto region = curproc->mm->lookup(addr);
   if (region == nullptr) return MAP_FAILED;

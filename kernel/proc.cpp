@@ -32,6 +32,7 @@ static pid_t get_next_pid(void) {
 
 static mm::space *alloc_user_vm(void) {
   return new mm::space(0x1000, 0x7ffffffff000, mm::pagetable::create());
+  return new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create());
 }
 
 static process::ptr pid_lookup(pid_t pid) {
