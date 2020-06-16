@@ -7,9 +7,7 @@
 #include <stdio.h>
 #include <sys/socket.h>
 
-
 namespace ck {
-
 
   class buffer {
     void *m_buf = NULL;
@@ -41,7 +39,6 @@ namespace ck {
 
   // an abstract type which can be read from and written to
   class stream {
-    // CK_OBJECT(ck::stream);
     bool m_eof = false;
 
    public:
@@ -58,7 +55,6 @@ namespace ck {
 
   // A file is an "abstract implementation" of
   class file : public ck::stream {
-    // CK_OBJECT(ck::file);
 
 
    public:
@@ -97,7 +93,7 @@ namespace ck {
     int m_fd = -1;
     size_t buf_cap = 0;
     size_t buf_len = 0;
-    uint8_t *m_buffer;
+    uint8_t *m_buffer = NULL;
   };
 
 

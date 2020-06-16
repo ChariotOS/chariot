@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef __TEMPLATE_LIB_H__
 #define __TEMPLATE_LIB_H__
 

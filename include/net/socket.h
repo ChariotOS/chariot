@@ -2,6 +2,10 @@
 
 // declarations and types for user/kernel network sockets
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 
 
@@ -263,3 +267,8 @@ struct sockaddr_storage {
 #define MSG_ZEROCOPY  0x4000000
 #define MSG_FASTOPEN  0x20000000
 #define MSG_CMSG_CLOEXEC 0x40000000
+
+
+#ifdef __cplusplus
+}
+#endif

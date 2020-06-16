@@ -19,7 +19,6 @@ lumen::session::~session(void) {
 static unsigned long nextmsgid(void) {
 	static unsigned long sid = 0;
 
-
 	return sid++;
 }
 
@@ -35,7 +34,6 @@ long lumen::session::send_raw(int type, void *payload, size_t payloadsize) {
 	if (payloadsize > 0) {
 		memcpy(msg + 1, payload, payloadsize);
 	}
-	printf("sending %zu!\n", msgsize);
 	ck::hexdump((void*)msg, msgsize);
 	auto w = sock.write((const void*)msg, msgsize);
 

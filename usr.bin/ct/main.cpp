@@ -8,8 +8,8 @@
 #include <ck/io.h>
 
 int main(int argc, char **argv) {
-
 	lumen::session session;
+
 	if (!session.connected()) {
 		fprintf(stderr, "failed to connect\n");
 		exit(EXIT_FAILURE);

@@ -106,6 +106,7 @@ make --no-print-directory -j ARCH=x86_64 || die 'Failed to build the kernel'
 echo 'copying new filesystem data...'
 sudo rsync -a base/. $mnt/
 sudo rsync -a build/base/. $mnt/
+sudo cp -rL usr.include/ $mnt/usr/include
 # sudo cp -a base/. $mnt/
 sudo mkdir -p $mnt/dev
 sudo mkdir -p $mnt/tmp

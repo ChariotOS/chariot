@@ -3,6 +3,7 @@ project(ChariotOS C CXX ASM)
 enable_language(ASM_NASM)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+# set(CMAKE_INCLUDE_HEADERS_IN_COMPILE_COMMANDS ON)
 set(CMAKE_INSTALL_MESSAGE NEVER)
 # set(CMAKE_VERBOSE_MAKEFILE on)
 
@@ -50,16 +51,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -DUSERLAND -D__ARCH_${ARCH}__ -ffreestan
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++2a -fno-rtti -fno-exceptions -fdiagnostics-color=always")
 
 
-function(chariot_install_headers target_name)
-    file(GLOB_RECURSE headers RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.h")
-    foreach(header ${headers})
-        get_filename_component(subdirectory ${header} DIRECTORY)
-        install(FILES ${header} DESTINATION usr/include/${target_name}/${subdirectory})
-    endforeach()
-endfunction()
 
 function(chariot_libc target_name fs_name)
-    chariot_install_headers("")
     add_library(${target_name} ${SOURCES})
     set_target_properties(${target_name} PROPERTIES OUTPUT_NAME ${fs_name})
 		install(TARGETS ${target_name} ARCHIVE DESTINATION lib)
@@ -69,7 +62,6 @@ endfunction()
 
 
 function(chariot_lib target_name fs_name)
-    chariot_install_headers(${target_name})
     add_library(${target_name} ${SOURCES} ${GENERATED_SOURCES})
     install(TARGETS ${target_name} ARCHIVE DESTINATION lib)
 
