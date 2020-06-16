@@ -9,9 +9,9 @@ die() {
 
 
 
-echo "Getting sudo so we can mount the disk later on."
-sudo id || die "Couldn't get sudo"
-echo "Okay!"
+# echo "Getting sudo so we can mount the disk later on."
+sudo id > /dev/null || die "Couldn't get sudo"
+# echo "Okay!"
 
 
 IMG=build/chariot.img
@@ -37,25 +37,25 @@ if [ $disk_exists -eq '0' ]; then
 fi
 
 
-printf "Creating Loopback Device..."
+# printf "Creating Loopback Device..."
 dev=$(sudo losetup --find --partscan --show $IMG)
-printf "OK\n"
-echo "loopback device is at ${dev}"
+# printf "OK\n"
+# echo "loopback device is at ${dev}"
 
 cleanup() {
 
-	echo "cleanup"
+	# echo "cleanup"
 	if [ -d $mnt ]; then
-			printf "unmounting filesystem... "
+			# printf "unmounting filesystem... "
 			sudo umount -f $mnt || ( sleep 1 && sync && sudo umount $mnt )
 			rm -rf $mnt
-			echo "done"
+			# echo "done"
 	fi
 
 	if [ -e "${dev}" ]; then
-			printf "cleaning up loopback device... "
+			# printf "cleaning up loopback device... "
 			sudo losetup -d "${dev}"
-			echo "done"
+			# echo "done"
 	fi
 }
 # clean up when we can
@@ -64,33 +64,33 @@ trap cleanup EXIT
 
 # only if the disk wasn't created, create the partition map on the new disk
 if [ $disk_exists -eq '0' ]; then
-	printf "creating partition table... "
+	# printf "creating partition table... "
 	sudo parted -s "${dev}" mklabel msdos mkpart primary ext2 32k 100% -a minimal set 1 boot on || die "couldn't partition disk"
-	echo "done"
+	# echo "done"
 
-	printf "creating new filesystem... "
+	# printf "creating new filesystem... "
 	sudo mkfs.ext2 -b 4096 "${dev}"p1 || die "couldn't create filesystem"
-	echo "done"
+	# echo "done"
 fi
 
 
-printf "mounting... "
+# printf "mounting... "
 # create the mount dir
 if [ -d $mnt ]; then
-	printf "removing old... "
+	# printf "removing old... "
 	sudo umount -f $mnt
 	rm -rf $mnt
 fi
 mkdir -p $mnt
-echo "mounted."
+# echo "mounted."
 
 
 sudo mount ${dev}p1 $mnt/
 
-echo 'removing old filesystem data'
+# echo 'removing old filesystem data'
 
 # delete all the directories besides boot/
-echo 'clearing out old filesystem'
+# echo 'clearing out old filesystem'
 
 for dir in $mnt/*; do
     [ "$dir" = "$mnt/boot" ] && continue

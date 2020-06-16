@@ -72,6 +72,9 @@ function(chariot_lib target_name fs_name)
     chariot_install_headers(${target_name})
     add_library(${target_name} ${SOURCES} ${GENERATED_SOURCES})
     install(TARGETS ${target_name} ARCHIVE DESTINATION lib)
+
+
+		target_link_libraries(${target_name} libc)
     set_target_properties(${target_name} PROPERTIES OUTPUT_NAME ${fs_name})
     if(DEFINED GENERATED_SOURCES)
         set_source_files_properties(${GENERATED_SOURCES} PROPERTIES GENERATED 1)
@@ -86,7 +89,7 @@ endfunction()
 function(chariot_bin target_name)
     add_executable(${target_name} ${SOURCES})
     install(TARGETS ${target_name} RUNTIME DESTINATION bin)
-		target_link_libraries(${target_name} crt0 libc)
+		target_link_libraries(${target_name} crt0 libc libm)
 		# set_target_properties(${target_name} PROPERTIES LINKER_LANGUAGE C)
 endfunction()
 
