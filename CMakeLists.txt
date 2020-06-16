@@ -3,6 +3,8 @@ project(ChariotOS C CXX ASM)
 enable_language(ASM_NASM)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_INSTALL_MESSAGE NEVER)
+# set(CMAKE_VERBOSE_MAKEFILE on)
 
 
 if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "")
@@ -13,8 +15,11 @@ if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "")
 endif()
 
 
+
+
 set(TOOLCHAIN_PATH ${CMAKE_SOURCE_DIR}/toolchain/local/bin)
 set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/x86_64-elf-chariot-)
+
 
 set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc)
 set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++)
@@ -25,19 +30,67 @@ set(CMAKE_STRIP ${TOOLCHAIN_PREFIX}strip)
 set(CMAKE_AR ${TOOLCHAIN_PREFIX}ar)
 
 
-set(ARCH x86_64)
-set(LDFLAGS -m elf_x86_64 -z max-page-size=0x1000)
-
-set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
 
 
 
-unset(CMAKE_SYSROOT)
+
 set(CMAKE_STAGING_PREFIX ${CMAKE_BINARY_DIR}/base)
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/base)
-set(CMAKE_INSTALL_DATAROOTDIR ${CMAKE_BINARY_DIR}/base/res)
+# set(CMAKE_SYSROOT ${PROJECT_SOURCE_DIR}/base)
+
+unset(CMAKE_SYSROOT)
+set(CHARIOT_SYSROOT ${CMAKE_BINARY_DIR}/base)
+add_link_options(--sysroot ${CHARIOT_SYSROOT})
 
 
-add_link_options(--sysroot ${CMAKE_BINARY_DIR}/base)
+set(ARCH x86_64)
+set(LDFLAGS -m elf_x86_64 -z max-page-size=0x1000)
+set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -DUSERLAND -D__ARCH_${ARCH}__ -ffreestanding -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++2a -fno-rtti -fno-exceptions -fdiagnostics-color=always")
+
+
+function(chariot_install_headers target_name)
+    file(GLOB_RECURSE headers RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.h")
+    foreach(header ${headers})
+        get_filename_component(subdirectory ${header} DIRECTORY)
+        install(FILES ${header} DESTINATION usr/include/${target_name}/${subdirectory})
+    endforeach()
+endfunction()
+
+function(chariot_libc target_name fs_name)
+    chariot_install_headers("")
+    add_library(${target_name} ${SOURCES})
+    set_target_properties(${target_name} PROPERTIES OUTPUT_NAME ${fs_name})
+		install(TARGETS ${target_name} ARCHIVE DESTINATION lib)
+		message(STATUS ${CMAKE_CURRENT_BINARY_DIR})
+		target_link_directories(${target_name} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+endfunction()
+
+
+function(chariot_lib target_name fs_name)
+    chariot_install_headers(${target_name})
+    add_library(${target_name} ${SOURCES} ${GENERATED_SOURCES})
+    install(TARGETS ${target_name} ARCHIVE DESTINATION lib)
+    set_target_properties(${target_name} PROPERTIES OUTPUT_NAME ${fs_name})
+    if(DEFINED GENERATED_SOURCES)
+        set_source_files_properties(${GENERATED_SOURCES} PROPERTIES GENERATED 1)
+        foreach(generated ${GENERATED_SOURCES})
+            get_filename_component(generated_name ${generated} NAME)
+            add_dependencies(${target_name} generate_${generated_name})
+        endforeach()
+    endif()
+endfunction()
+
+
+function(chariot_bin target_name)
+    add_executable(${target_name} ${SOURCES})
+    install(TARGETS ${target_name} RUNTIME DESTINATION bin)
+		target_link_libraries(${target_name} crt0 libc)
+		# set_target_properties(${target_name} PROPERTIES LINKER_LANGUAGE C)
+endfunction()
 
 add_subdirectory(kernel)
+
+add_subdirectory(libc)
+add_subdirectory(user)

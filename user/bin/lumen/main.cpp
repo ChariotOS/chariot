@@ -13,8 +13,6 @@
 
 #include "internal.h"
 
-
-
 #include <chariot/awaitfs_types.h>
 #include <sys/syscall.h>
 
@@ -49,7 +47,7 @@ class eventloop {
     ck::vec<struct await_target> targs;
 
     for (auto &kv : handlers) {
-      struct await_target targ;
+      struct await_target targ {0};
       targ.fd = kv.key;
       targ.awaiting = AWAITFS_ALL;
 
@@ -110,7 +108,7 @@ struct lumen::msg *read_msg(int fd, int &err) {
 	auto *buf = (char*)(msg + 1);
 	int nread = 0;
 	while (nread != base.len) {
-    int n = read(fd, buf + n, msg->len);
+    int n = read(fd, buf + nread, msg->len);
     if (n < 0) {
       free(msg);
       err = n;

@@ -99,22 +99,16 @@ for dir in $mnt/*; do
 done
 
 
-
-
-# make the user programs into the base
-pushd user
-	./build.sh
-popd
+# build the kernel and copy it into the boot dir
+make --no-print-directory -j ARCH=x86_64 || die 'Failed to build the kernel'
 
 
 echo 'copying new filesystem data...'
-sudo cp -a base/. $mnt/
+sudo rsync -a base/. $mnt/
+sudo rsync -a build/base/. $mnt/
+# sudo cp -a base/. $mnt/
 sudo mkdir -p $mnt/dev
 sudo mkdir -p $mnt/tmp
-
-
-# sudo mkdir $mnt/usr/src
-# sudo rsync -ar --exclude=toolchain --exclude=build  --exclude=.git --exclude=user/out ./ $mnt/usr/src
 
 
 sudo chown -R 0:0 $mnt
@@ -123,10 +117,7 @@ sudo chown -R 0:0 $mnt
 sudo mkdir -p $mnt/boot/grub
 sudo cp kernel/grub.cfg $mnt/boot/grub/
 
-# build the kernel and copy it into the boot dir
-make --no-print-directory -j ARCH=x86_64 || die 'Failed to build the kernel'
-
-sudo cp build/kernel/kernel $mnt/boot/chariot.elf
+# sudo cp build/kernel/chariot.elf $mnt/boot/chariot.elf
 
 # create some device nodes
 sudo mknod $mnt/dev/urandom c 1 2

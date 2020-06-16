@@ -36,8 +36,6 @@ file(GLOB_RECURSE KERNEL_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 	../drivers/*.c
 	)
 
-
-
 add_link_options(LINKER:-T ${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld -nostdlib -z max-page-size=0x1000)
 
 set(LDFLAGS -T ${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld -m elf_x86_64 -z max-page-size=0x1000)
@@ -45,5 +43,8 @@ set(LDFLAGS -T ${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld -m elf_x86_64 -z max-page-s
 include_directories(../include)
 
 
+
 set(SOURCES ${KERNEL_SOURCES})
 add_executable(kernel ${SOURCES})
+set_target_properties(kernel PROPERTIES OUTPUT_NAME "chariot.elf")
+install(TARGETS kernel RUNTIME DESTINATION boot)

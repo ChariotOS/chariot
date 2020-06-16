@@ -102,6 +102,12 @@ pushd build
         make -j "$MAKEJOBS" all-gcc all-target-libgcc || exit 1
         echo "XXX install gcc and libgcc"
         make install-gcc install-target-libgcc || exit 1
+
+
+        echo "XXX build libstdc++"
+        # make all-target-libstdc++-v3 || exit 1
+        echo "XXX install libstdc++"
+        # make install-target-libstdc++-v3 || exit 1
 	popd
 popd
 

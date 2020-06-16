@@ -21,10 +21,10 @@ BINDIR=build
 
 default:
 	@mkdir -p build
-	@if [ ! -d build/kernel ]; then  cd build; cmake ../ ; fi
-	@cd build; make -j --no-print-directory
+	@if [ ! -d build/kernel ]; then  cd build; cmake -GNinja ../ ; fi
+	@cd build; ninja install # make install --quiet --no-print-directory -j
+	@cp build/compile_commands.json .
 
 clean:
-	rm -rf user/out user/build
-	rm -rf build
+	@rm -rf build
 
