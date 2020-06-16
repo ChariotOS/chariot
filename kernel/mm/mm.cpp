@@ -3,6 +3,7 @@
 #include <mshare.h>
 #include <phys.h>
 #include <syscall.h>
+#include <types.h>
 #include <util.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
@@ -492,36 +493,128 @@ mm::area::~area(void) {
 
 
 
-static unsigned long msh_share(struct mshare_publish *) {
-  //
-  return 0;
+static spinlock mshare_lock;
+static map<string, struct mshare_vmobject *> mshare_regions;
+
+
+
+
+struct mshare_vmobject final : public mm::vmobject {
+  mshare_vmobject(string name, size_t npages) : vmobject(npages) {
+    this->name = name;
+    for (int i = 0; i < npages; i++) {
+      pages.push(nullptr);
+    }
+    scoped_lock l(mshare_lock);
+    mshare_regions[name] = this;
+  }
+
+  virtual ~mshare_vmobject(void) {
+		// printk("everyone dropped '%s'\n", name.get());
+    scoped_lock l(mshare_lock);
+    assert(mshare_regions.contains(name));
+    mshare_regions.remove(name);
+  };
+
+
+  // get a shared page (page #n in the mapping)
+  virtual ref<mm::page> get_shared(off_t n) override {
+    scoped_lock l(m_lock);
+    if (n > pages.size()) return nullptr;
+    if (!pages[n]) pages[n] = mm::page::alloc();
+    return pages[n];
+  }
+
+
+ private:
+  string name;
+  spinlock m_lock;
+  vec<ref<mm::page>> pages;
+};
+
+
+
+
+static string msh_name(char buf[MSHARE_NAMESZ]) {
+  string s;
+  for (int i = 0; i < MSHARE_NAMESZ; i++) {
+    char c = buf[i];
+    if (c == 0) break;
+    s.push(c);
+  }
+  return s;
+}
+
+static void *msh_create(struct mshare_create *arg) {
+  string name = msh_name(arg->name);
+
+
+  if (mshare_regions.contains(name)) {
+    // TODO: errno or something
+    return MAP_FAILED;
+  }
+
+
+  auto pages = NPAGES(arg->size);
+  // this should automatically add it to the global list
+  ref<mm::vmobject> obj = make_ref<mshare_vmobject>(name, pages);
+
+
+  auto addr = curproc->mm->mmap(0, pages * PGSIZE, PROT_READ | PROT_WRITE,
+                                MAP_ANON | MAP_PRIVATE, nullptr, 0);
+
+  auto region = curproc->mm->lookup(addr);
+  if (region == nullptr) return MAP_FAILED;
+
+  region->obj = obj;
+
+  // printk("create '%s'\n", name.get());
+	// curproc->mm->dump();
+  return (void*)addr;
 }
 
 
-static void *msh_aquire(struct mshare_acquire *aq) {
-	//
-	return NULL;
-}
+static void *msh_acquire(struct mshare_acquire *arg) {
+  string name = msh_name(arg->name);
 
 
-static unsigned long msh_release(struct mshare_release *arg) {
-  //
-  return 0;
+  scoped_lock l(mshare_lock);
+
+  if (!mshare_regions.contains(name)) {
+    return MAP_FAILED;
+  }
+
+  arg->size = 0;
+
+  // grab the object
+  ref<mm::vmobject> obj = mshare_regions.get(name);
+
+  auto size = (unsigned long)obj->size();
+  auto addr = curproc->mm->mmap(0, size, PROT_READ | PROT_WRITE,
+                                MAP_ANON | MAP_PRIVATE, nullptr, 0);
+
+  auto region = curproc->mm->lookup(addr);
+  if (region == nullptr) return MAP_FAILED;
+
+  region->obj = obj;
+  arg->size = size;
+
+  // printk("acquire('%s', size=%zu) -> %p\n", name.get(), size, addr);
+	// curproc->mm->dump();
+
+  return (void *)addr;
 }
+
 
 unsigned long sys::mshare(int action, void *arg) {
   switch (action) {
-    case MSHARE_PUBLISH:
-      if (!VALIDATE_RD(arg, sizeof(struct mshare_publish))) return -1;
-      return (unsigned long)msh_share((struct mshare_publish *)arg);
+    case MSHARE_CREATE:
+      if (!VALIDATE_RD(arg, sizeof(struct mshare_create))) return -1;
+      return (unsigned long)msh_create((struct mshare_create *)arg);
 
     case MSHARE_ACQUIRE:
       if (!VALIDATE_RDWR(arg, sizeof(struct mshare_acquire))) return -1;
-      return (unsigned long)msh_aquire((struct mshare_acquire *)arg);
-
-    case MSHARE_RELEASE:
-      if (!VALIDATE_RD(arg, sizeof(struct mshare_release))) return -1;
-      return (unsigned long)msh_release((struct mshare_release *)arg);
+      return (unsigned long)msh_acquire((struct mshare_acquire *)arg);
   }
 
   return -1;

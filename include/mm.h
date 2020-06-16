@@ -94,7 +94,7 @@ namespace mm {
 
   // vm areas can optionally have a vmobject that represents them.
   struct vmobject : public refcounted<vmobject> {
-    inline vmobject(size_t npages) : m_npages(npages) {}
+    inline vmobject(size_t npages) : n_pages(npages) {}
 
     virtual ~vmobject(void){};
 
@@ -103,8 +103,12 @@ namespace mm {
     // tell the region to flush a page
     virtual void flush(off_t n) {}
 
-   private:
-    size_t m_npages;
+		inline size_t size(void) {
+			return n_pages * PGSIZE;
+		}
+
+		private:
+			size_t n_pages;
   };
 
 

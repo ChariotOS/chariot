@@ -5,23 +5,22 @@ extern "C" {
 #endif
 
 
-#define MSHARE_PUBLISH 1
+#define MSHARE_CREATE 1
 #define MSHARE_ACQUIRE 2
-#define MSHARE_RELEASE 3
 
+#define MSHARE_NAMESZ 128
 
-struct mshare_publish {
-  void *addr;
+struct mshare_create {
+	unsigned long size; // the size of the region
+	char name[MSHARE_NAMESZ]; // eventual name of the region
 };
 
 struct mshare_acquire {
-  unsigned long id;     // The ID of the region you wish to acquire
-  unsigned long *size;  // filled in by the systemcall
+  unsigned long size;  // filled in by the systemcall
+	char name[MSHARE_NAMESZ]; // the name of the region to acquire
 };
 
-struct mshare_release {
-  void *address;  // the start of the region
-};
+
 
 #ifdef __cplusplus
 }
