@@ -93,4 +93,8 @@ endfunction()
 add_subdirectory(kernel)
 
 add_subdirectory(libc)
-add_subdirectory(user)
+add_subdirectory(usr.bin)
+add_subdirectory(usr.lib)
+
+
+

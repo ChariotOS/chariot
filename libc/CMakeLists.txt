@@ -1,5 +1,5 @@
 
-include_directories(../user/include)
+include_directories(../usr.include)
 
 add_library(crt0 STATIC crt0.asm)
 add_custom_command(

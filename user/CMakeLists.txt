@@ -2,8 +2,7 @@
 # make sure the userspace programs and libraries use this 
 add_link_options(LINKER:-T ${CMAKE_CURRENT_SOURCE_DIR}/user.ld -z max-page-size=0x1000 -nostdlib)
 
-include_directories(include)
-
+include_directories(usr.include)
 
 MACRO(SUBDIRLIST result curdir)
   FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
@@ -17,13 +16,13 @@ MACRO(SUBDIRLIST result curdir)
 ENDMACRO()
 
 
-SUBDIRLIST(USER_LIBS ${CMAKE_CURRENT_SOURCE_DIR}/lib)
+SUBDIRLIST(USER_LIBS ${CMAKE_CURRENT_SOURCE_DIR}/usr.lib)
 FOREACH(subdir ${USER_LIBS})
-	add_subdirectory(lib/${subdir})
+	add_subdirectory(usr.lib/${subdir})
 ENDFOREACH()
 
 
-SUBDIRLIST(USER_PROGS ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+SUBDIRLIST(USER_PROGS ${CMAKE_CURRENT_SOURCE_DIR}/usr.bin)
 FOREACH(subdir ${USER_PROGS})
-	add_subdirectory(bin/${subdir})
+	add_subdirectory(usr.bin/${subdir})
 ENDFOREACH()
