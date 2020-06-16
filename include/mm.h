@@ -20,6 +20,16 @@
 #define FAULT_PERM (1 << 3)
 #define FAULT_NOENT (1 << 4)
 
+#define VALIDATE_RD(ptr, size) \
+  curproc->mm->validate_pointer(ptr, size, PROT_READ)
+
+#define VALIDATE_WR(ptr, size) \
+  curproc->mm->validate_pointer(ptr, size, PROT_WRITE)
+
+#define VALIDATE_RDWR(ptr, size) \
+  curproc->mm->validate_pointer(ptr, size, PROT_WRITE | PROT_READ)
+
+
 namespace mm {
 
 
@@ -28,8 +38,7 @@ namespace mm {
   // every physical page in mm circulation is kept track of via a heap-allocated
   // `struct page`.
   struct page : public refcounted<mm::page> {
-
-		bool dirty = false;
+    bool dirty = false;
     unsigned long lru = 0;
     unsigned long pa = 0;
     /**
@@ -89,10 +98,10 @@ namespace mm {
 
     virtual ~vmobject(void){};
 
-		// get a shared page (page #n in the mapping)
+    // get a shared page (page #n in the mapping)
     virtual ref<mm::page> get_shared(off_t n) = 0;
-		// tell the region to flush a page
-		virtual void flush(off_t n) {}
+    // tell the region to flush a page
+    virtual void flush(off_t n) {}
 
    private:
     size_t m_npages;

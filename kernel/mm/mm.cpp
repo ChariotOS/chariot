@@ -1,6 +1,8 @@
 #include <cpu.h>
 #include <mm.h>
+#include <mshare.h>
 #include <phys.h>
+#include <syscall.h>
 #include <util.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
@@ -121,33 +123,32 @@ int mm::space::pagefault(off_t va, int err) {
   pte.prot = r->prot;
 
   if (fault_res == 0) {
-
     // handle the fault in the region
     if (!r->pages[ind]) {
-
-			// printk("Doesn't Exist\n");
+      // printk("Doesn't Exist\n");
       bool got_from_vmobj = false;
       ref<mm::page> page;
       if (r->obj) {
         page = r->obj->get_shared(ind);
         got_from_vmobj = true;
 
-				// remove the protection so we can detect writes and mark pages as dirty or COW them
-				pte.prot &= ~VPROT_WRITE;
+        // remove the protection so we can detect writes and mark pages as dirty
+        // or COW them
+        pte.prot &= ~VPROT_WRITE;
       }
 
-			/*
-			if (r->flags & MAP_PRIVATE && page) {
-				// remove write from the region so it is COW'd
-			}
-			*/
+      /*
+      if (r->flags & MAP_PRIVATE && page) {
+              // remove write from the region so it is COW'd
+      }
+      */
 
       if (!page && got_from_vmobj) {
         panic("failed!\n");
       }
 
       if (!page) {
-				// anonymous mapping
+        // anonymous mapping
         page = mm::page::alloc();
       }
 
@@ -158,31 +159,31 @@ int mm::space::pagefault(off_t va, int err) {
       r->pages[ind] = page;
     }
 
-		// If the fault was due to a write, and this region
-		// is writable, handle COW if needed
-		if ((err & FAULT_WRITE) && (r->prot & PROT_WRITE)) {
-			pte.prot = r->prot;
+    // If the fault was due to a write, and this region
+    // is writable, handle COW if needed
+    if ((err & FAULT_WRITE) && (r->prot & PROT_WRITE)) {
+      pte.prot = r->prot;
 
-			if (r->flags & MAP_SHARED) {
-				// TODO: handle shared
-				// printk(KERN_INFO "Write to shared page\n");
-				r->pages[ind]->dirty = true;
-			} else {
-				auto old_page = r->pages[ind];
-				spinlock::lock(old_page->lock);
+      if (r->flags & MAP_SHARED) {
+        // TODO: handle shared
+        // printk(KERN_INFO "Write to shared page\n");
+        r->pages[ind]->dirty = true;
+      } else {
+        auto old_page = r->pages[ind];
+        spinlock::lock(old_page->lock);
 
-				if (old_page->users > 1 || r->fd) {
-					auto np = mm::page::alloc();
-					// printk(KERN_INFO "COW [page %d in '%s']\n", ind, r->name.get());
-					np->users = 1;
-					old_page->users--;
-					memcpy(p2v(np->pa), p2v(old_page->pa), PGSIZE);
-					r->pages[ind] = np;
-				}
+        if (old_page->users > 1 || r->fd) {
+          auto np = mm::page::alloc();
+          // printk(KERN_INFO "COW [page %d in '%s']\n", ind, r->name.get());
+          np->users = 1;
+          old_page->users--;
+          memcpy(p2v(np->pa), p2v(old_page->pa), PGSIZE);
+          r->pages[ind] = np;
+        }
 
-				spinlock::unlock(old_page->lock);
-			}
-		}
+        spinlock::unlock(old_page->lock);
+      }
+    }
 
     pte.ppn = r->pages[ind]->pa >> 12;
     auto va = (r->va + (ind << 12));
@@ -471,21 +472,57 @@ mm::area::area(void) {}
 
 
 mm::area::~area(void) {
-	off_t n = 0;
+  off_t n = 0;
   for (auto &p : pages) {
     if (p) {
       spinlock::lock(p->lock);
       p->users--;
-			// if the region was dirty, and we have an object, notify them and ask
-			// them to flush the nth page
-			if (p->dirty && obj) {
-				obj->flush(n);
-			}
+      // if the region was dirty, and we have an object, notify them and ask
+      // them to flush the nth page
+      if (p->dirty && obj) {
+        obj->flush(n);
+      }
       spinlock::unlock(p->lock);
     }
-		n += 1;
+    n += 1;
   }
 
   pages.clear();
 }
 
+
+
+static unsigned long msh_share(struct mshare_publish *) {
+  //
+  return 0;
+}
+
+
+static void *msh_aquire(struct mshare_acquire *aq) {
+	//
+	return NULL;
+}
+
+
+static unsigned long msh_release(struct mshare_release *arg) {
+  //
+  return 0;
+}
+
+unsigned long sys::mshare(int action, void *arg) {
+  switch (action) {
+    case MSHARE_PUBLISH:
+      if (!VALIDATE_RD(arg, sizeof(struct mshare_publish))) return -1;
+      return (unsigned long)msh_share((struct mshare_publish *)arg);
+
+    case MSHARE_ACQUIRE:
+      if (!VALIDATE_RDWR(arg, sizeof(struct mshare_acquire))) return -1;
+      return (unsigned long)msh_aquire((struct mshare_acquire *)arg);
+
+    case MSHARE_RELEASE:
+      if (!VALIDATE_RD(arg, sizeof(struct mshare_release))) return -1;
+      return (unsigned long)msh_release((struct mshare_release *)arg);
+  }
+
+  return -1;
+}

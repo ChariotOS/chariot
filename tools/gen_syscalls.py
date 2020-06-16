@@ -74,6 +74,6 @@ with open('include/syscalls.inc', 'w+') as f:
         f.write(s.k_macro() + '\n')
 
 
-with open('user/include/sys/syscall_defs.h', 'w+') as f:
+with open('usr.include/sys/syscall_defs.h', 'w+') as f:
     for s in defs:
         f.write(s.u_macro() + '\n')

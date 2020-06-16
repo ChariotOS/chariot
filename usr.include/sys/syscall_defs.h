@@ -33,6 +33,7 @@
 #define SYS_mrename                  (0x32)
 #define SYS_mgetname                 (0x33)
 #define SYS_mregions                 (0x34)
+#define SYS_mshare                   (0x35)
 #define SYS_dirent                   (0x40)
 #define SYS_localtime                (0x50)
 #define SYS_gettime_microsecond      (0x51)

@@ -109,6 +109,9 @@ int mgetname(void *addr, char *name, size_t bufsz);
 /// num=0x34
 int mregions(struct mmap_region *, int nregions);
 
+/// num=0x35
+unsigned long mshare(int action, void *arg);
+
 /// num=0x40
 int dirent(int fd, struct dirent *, int offset, int count);
 
