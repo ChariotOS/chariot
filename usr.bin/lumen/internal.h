@@ -40,6 +40,22 @@ namespace lumen {
 
 
 
+	// a client who is connected to the server
+	// Clients can have many windows
+	struct client {
+		long id = 0;
+		struct context &ctx; // the context we live in
+		ck::localsocket *connection;
+
+
+		client(long id, struct context &ctx, ck::localsocket *conn);
+		~client(void);
+
+		void on_read(void);
+
+	};
+
+
 	/**
 	 * contains all the state needed to run the window server
 	 */
@@ -59,9 +75,10 @@ namespace lumen {
 		void handle_keyboard_input(keyboard_packet_t &pkt);
 		void handle_mouse_input(struct mouse_packet &pkt);
 
+		void client_closed(long id);
 
 		private:
-			ck::map<long, ck::localsocket *> clients;
+			ck::map<long, lumen::client *> clients;
 			long next_client_id = 0;
 
 	};

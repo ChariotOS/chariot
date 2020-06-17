@@ -1,7 +1,7 @@
 #include <errno.h>
+#include <lumen/msg.h>
 #include <string.h>
 #include "internal.h"
-#include <lumen/msg.h>
 
 lumen::context::context(void) : screen(1024, 768) {
   // clear the screen (black)
@@ -104,26 +104,38 @@ void lumen::context::accept_connection() {
   auto id = next_client_id++;
   // accept the connection
   auto *client = server.accept();
-  clients.set(id, client);
+  clients.set(id, new lumen::client(id, *this, client));
+}
 
+void lumen::context::client_closed(long id) {
+	auto c = clients[id];
+	clients.remove(id);
+	delete c;
+}
+
+
+lumen::client::client(long id, struct context &ctx, ck::localsocket *conn)
+    : id(id), ctx(ctx), connection(conn) {
   printf("got a connection\n");
 
-  client->on_read([id, client, this] {
-    bool failed = false;
-    auto msgs = drain_messages(*client, failed);
-    // handle messages
+  connection->on_read([this] { this->on_read(); });
+}
 
-    for (auto *msg : msgs) {
-      ck::hexdump(msg, sizeof(*msg) + msg->len);
-      free(msg);
-    }
+lumen::client::~client(void) { delete connection; }
 
-    // if the client is at EOF *or* it otherwise failed, consider it
-    // disconnected
-    if (client->eof() || failed) {
-      printf("Client %d disconnected\n", id);
-      clients.remove(id);
-      delete client;
-    }
-  });
+void lumen::client::on_read(void) {
+  bool failed = false;
+  auto msgs = drain_messages(*connection, failed);
+  // handle messages
+
+  for (auto *msg : msgs) {
+    ck::hexdump(msg, sizeof(*msg) + msg->len);
+    free(msg);
+  }
+
+  // if the client is at EOF *or* it otherwise failed, consider it
+  // disconnected
+  if (connection->eof() || failed) {
+    this->ctx.client_closed(id);
+  }
 }
