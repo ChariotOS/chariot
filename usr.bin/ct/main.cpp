@@ -20,6 +20,11 @@ int main(int argc, char **argv) {
 
 	auto window = app.new_window("Hello, World", 300, 200);
 
+
+	auto input = ck::file::unowned(0);
+
+	input->on_read([] { ck::eventloop::exit(); });
+
 	// start the application!
 	app.start();
 

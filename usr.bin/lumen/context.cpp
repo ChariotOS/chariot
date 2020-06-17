@@ -1,8 +1,8 @@
 #include <errno.h>
+#include <lumen.h>
 #include <lumen/msg.h>
 #include <string.h>
 #include "internal.h"
-#include <lumen.h>
 
 lumen::context::context(void) : screen(1024, 768) {
   // clear the screen (black)
@@ -56,38 +56,43 @@ void lumen::context::accept_connection() {
 }
 
 void lumen::context::client_closed(long id) {
-	auto c = clients[id];
-	clients.remove(id);
-	delete c;
+  auto c = clients[id];
+  clients.remove(id);
+  delete c;
 }
 
 
-#define HANDLE_TYPE(t, data_type) if (auto arg = (data_type*)msg.data; msg.type == t && msg.len == sizeof(data_type))
+#define HANDLE_TYPE(t, data_type)       \
+  if (auto arg = (data_type *)msg.data; \
+      msg.type == t && msg.len == sizeof(data_type))
 void lumen::context::process_message(lumen::client &c, lumen::msg &msg) {
+  HANDLE_TYPE(LUMEN_MSG_CREATE_WINDOW, lumen::create_window_msg) {
+    (void)arg;
 
+    ck::string name(arg->name, LUMEN_NAMESZ);
 
-	HANDLE_TYPE(LUMEN_MSG_CREATE_WINDOW, lumen::create_window_msg) {
-		(void)arg;
+		/*
+    printf("window wants to be made! ('%s', %dx%d)\n", name.get(), arg->width,
+           arg->height);
+					 */
 
-		ck::string name(arg->name, LUMEN_NAMESZ);
+    struct lumen::window_created_msg res;
+		// TODO: figure out a better position to open to
+		auto *window = c.new_window(name, gfx::rect(arg->width, arg->height, 0, 0));
+		res.window_id = window->id;
 
-		printf("window wants to be made! ('%s', %dx%d)\n", name.get(), arg->width, arg->height);
+    c.respond(msg, LUMEN_MSG_WINDOW_CREATED, res);
+    return;
+  }
 
-		struct lumen::window_created_msg res;
-		res.window_id = -1; // fail for now
-
-		c.respond(msg, LUMEN_MSG_WINDOW_CREATED, res);
-		return;
-	}
-
-	HANDLE_TYPE(LUMEN_MSG_GREET, lumen::greet_msg) {
-		(void)arg;
-		// responed to that
-		struct lumen::greetback_msg res;
-		res.magic = LUMEN_GREETBACK_MAGIC;
-		res.client_id = c.id;
-		c.respond(msg, msg.type, res);
-	};
+  HANDLE_TYPE(LUMEN_MSG_GREET, lumen::greet_msg) {
+    (void)arg;
+    // responed to that
+    struct lumen::greetback_msg res;
+    res.magic = LUMEN_GREETBACK_MAGIC;
+    res.client_id = c.id;
+    c.respond(msg, msg.type, res);
+  };
 }
 
 
@@ -98,7 +103,14 @@ lumen::client::client(long id, struct context &ctx, ck::localsocket *conn)
   connection->on_read([this] { this->on_read(); });
 }
 
-lumen::client::~client(void) { delete connection; }
+lumen::client::~client(void) {
+  for (auto kv : windows) {
+    printf("window '%s' (id: %d) removed!\n", kv.value->name.get(), kv.key);
+    // XXX: notify the context of the window destructions
+    delete kv.value;
+  }
+  delete connection;
+}
 
 void lumen::client::on_read(void) {
   bool failed = false;
@@ -106,7 +118,7 @@ void lumen::client::on_read(void) {
   // handle messages
 
   for (auto *msg : msgs) {
-		process_message(*msg);
+    process_message(*msg);
     free(msg);
   }
 
@@ -117,13 +129,27 @@ void lumen::client::on_read(void) {
   }
 }
 
+
+
+struct lumen::window *lumen::client::new_window(ck::string name, gfx::rect r) {
+	auto w = new lumen::window();
+	w->name = name;
+	w->rect = r;
+	w->id = next_window_id++;
+
+	windows.set(w->id, w);
+
+	return w;
+}
+
 void lumen::client::process_message(lumen::msg &msg) {
-	// defer to the window server's function
-	ctx.process_message(*this, msg);
+  // defer to the window server's function
+  ctx.process_message(*this, msg);
 }
 
 
-long lumen::client::send_raw(int type, int id, void *payload, size_t payloadsize) {
+long lumen::client::send_raw(int type, int id, void *payload,
+                             size_t payloadsize) {
   size_t msgsize = payloadsize + sizeof(lumen::msg);
   auto msg = (lumen::msg *)malloc(msgsize);
 

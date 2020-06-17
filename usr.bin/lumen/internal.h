@@ -9,6 +9,7 @@
 #include <lumen/msg.h>
 #include <chariot/keycode.h>
 #include <chariot/mouse_packet.h>
+#include "gfx/rect.h"
 
 namespace lumen {
 
@@ -39,6 +40,14 @@ namespace lumen {
   };
 
 
+	struct window {
+		int id = 0;
+		ck::string name;
+		gfx::rect rect;
+
+	};
+
+
 
 	// a client who is connected to the server
 	// Clients can have many windows
@@ -46,7 +55,7 @@ namespace lumen {
 		long id = 0;
 		struct context &ctx; // the context we live in
 		ck::localsocket *connection;
-
+		ck::map<long, struct window *> windows;
 
 		client(long id, struct context &ctx, ck::localsocket *conn);
 		~client(void);
@@ -69,7 +78,12 @@ namespace lumen {
     }
 
 
+
+		struct window *new_window(ck::string name, gfx::rect r);
+
+
 		// a big number.
+		long next_window_id = 0;
 		long next_msg_id = 0x7F00'0000'0000'0000;
 	};
 
