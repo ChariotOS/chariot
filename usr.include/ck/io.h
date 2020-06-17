@@ -6,6 +6,7 @@
 #include <ck/string.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <ck/fsnotifier.h>
 
 namespace ck {
@@ -96,6 +97,11 @@ namespace ck {
     inline int fileno(void) { return m_fd; }
 
     void flush(void);
+
+		template<typename T>
+		int ioctl(int req, T arg) {
+			return ioctl(m_fd, req, arg);
+		}
 
     // if size == 0, disable buffer.
     // otherwise allocate a buffer.

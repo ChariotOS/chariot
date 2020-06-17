@@ -374,7 +374,7 @@ static void key_state_changed(u8 raw, bool pressed) {
 
 
   if (owners > 0) {
-    kbd_buf.write(&event, sizeof(event));
+    kbd_buf.write(&event, sizeof(event), false /* no block */);
   } else {
     if (pressed) {
 #define SER(code, replace)                              \

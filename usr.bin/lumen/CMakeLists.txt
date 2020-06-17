@@ -1,2 +1,6 @@
-file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cpp *.c *.asm)
+set(SOURCES
+    main.cpp
+		manager.cpp
+		screen.cpp
+)
 chariot_bin(lumen)

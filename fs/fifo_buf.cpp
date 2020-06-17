@@ -72,14 +72,18 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
   size_t written = 0;
   while (written < size) {
     lock_write.lock();
+
     while (available() > 0 && written < size) {
       buffer[write_ptr] = ibuf[written];
       increment_write();
       written++;
     }
 
+
     wq_readers.notify_all();
     lock_write.unlock();
+
+		if (!block) return -EAGAIN;
 
     if (written < size) {
       wq_writers.wait();

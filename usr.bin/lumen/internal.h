@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
+#include <ck/io.h>
+#include <ck/socket.h>
+
+#include <chariot/keycode.h>
+#include <chariot/mouse_packet.h>
 
 namespace lumen {
 
@@ -34,8 +39,32 @@ namespace lumen {
   };
 
 
-  void set_pixel(int i, int color);
-  void set_pixel(int x, int y, int color);
-  void set_resolution(int w, int h);
+
+	/**
+	 * contains all the state needed to run the window server
+	 */
+	struct manager {
+
+
+		lumen::screen screen;
+
+		ck::file keyboard, mouse;
+		ck::localsocket server;
+
+		manager(void);
+
+
+
+		void accept_connection(void);
+		void handle_keyboard_input(keyboard_packet_t &pkt);
+		void handle_mouse_input(struct mouse_packet &pkt);
+
+
+		private:
+			ck::map<long, ck::localsocket *> clients;
+			long next_client_id = 0;
+
+	};
+
 
 }  // namespace lumen

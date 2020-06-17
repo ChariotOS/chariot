@@ -30,18 +30,3 @@ void lumen::screen::set_resolution(int w, int h) {
 }
 
 
-
-static lumen::screen the_screen(640, 480);
-
-void lumen::set_pixel(int i, int color) {
-	if (i < 0 || i > (int)the_screen.screensize()) return;
-	the_screen.pixels()[i] = color;
-}
-
-void lumen::set_pixel(int x, int y, int color) {
-	lumen::set_pixel(x + y * the_screen.width(), color);
-}
-
-void lumen::set_resolution(int w, int h) {
-	the_screen.set_resolution(w, h);
-}

@@ -200,15 +200,10 @@ static void mouse_handler(int i, reg_t *) {
         }
       }
 
-			/*
+			irq::eoi(i);
       if (open) {
-        mouse_buffer.write(&packet, sizeof(packet));
-      } else {
-        irq::eoi(i);
-        desktop::mouse_input(packet);
-        return;
+        mouse_buffer.write(&packet, sizeof(packet), false /* dont block */);
       }
-			*/
     }
     break;
   }
@@ -257,7 +252,7 @@ void mouse_install() {
   }
 
 
-  /* keyboard scancode set */
+  /* mouse scancode set */
   mouse_wait(1);
   outb(MOUSE_PORT, 0xF0);
   mouse_wait(1);
@@ -278,15 +273,14 @@ void mouse_install() {
   irq::install(32 + MOUSE_IRQ, mouse_handler, "PS2 Mouse");
 }
 
-static ssize_t mouse_fdread(fs::file &fd, char *buf, size_t sz) {
+static ssize_t mouse_read(fs::file& fd, char* buf, size_t sz) {
   if (fd) {
-    printk("yo\n");
-    // if the size of the read request is not a multiple of a packet, fail
-    if (sz % sizeof(struct mouse_packet) != 0) return -1;
+    if (sz % sizeof(struct mouse_packet) != 0) {
+      return -EINVAL;
+    }
 
-    auto k = mouse_buffer.read(buf, sz);
-    fd.seek(k);
-    return k;
+		// this is a nonblocking api
+    return mouse_buffer.read(buf, sz, false);
   }
   return -1;
 }
@@ -295,26 +289,43 @@ static int mouse_open(fs::file &fd) {
   // only open if it isn't already opened
   if (open) return -1;
   open = true;
-  KINFO("[mouse] open!\n");
+  // KINFO("[mouse] open!\n");
   return 0;
 }
 
 static void mouse_close(fs::file &fd) {
   open = false;
-  KINFO("[mouse] close!\n");
+  // KINFO("[mouse] close!\n");
 }
 
+
+static int mouse_poll(fs::file &fd, int events) {
+	return mouse_buffer.poll() & events;
+}
+
+
 struct fs::file_operations mouse_ops = {
-    .read = mouse_fdread,
+    .read = mouse_read,
 
     .open = mouse_open,
     .close = mouse_close,
+
+		.poll = mouse_poll,
+};
+
+
+static struct dev::driver_info mouse_driver_info {
+  .name = "mouse", .type = DRIVER_CHAR, .major = MAJOR_MOUSE,
+
+  .char_ops = &mouse_ops,
 };
 
 static void mouse_init(void) {
   mouse_install();
 
-  // dev::register_driver("mouse", CHAR_DRIVER, MAJOR_MOUSE, &mouse_ops);
+
+  dev::register_driver(mouse_driver_info);
+  dev::register_name(mouse_driver_info, "mouse", 0);
 }
 
 module_init("mouse", mouse_init);
