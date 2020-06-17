@@ -1,5 +1,6 @@
 #include <asm.h>
 #include <cpu.h>
+#include <fs.h>
 #include <lock.h>
 #include <mem.h>
 #include <paging.h>
@@ -110,7 +111,7 @@ static void *late_phys_alloc(size_t npages) {
   frame *p = NULL;
   frame *c = (frame *)p2v(kmem.freelist);
 
-	if (v2p(c) == NULL) panic("OOM!\n");
+  if (v2p(c) == NULL) panic("OOM!\n");
 
   while (v2p(c) != NULL) {
     if (c->page_len >= npages) break;
@@ -146,7 +147,16 @@ static void *late_phys_alloc(size_t npages) {
 
 // physical memory allocator implementation
 void *phys::alloc(int npages) {
-  lock();
+
+	lock();
+	// reclaim block cache if the free pages drops below 32 pages
+	if (kmem.nfree < 32) {
+		unlock();
+		printk("gotta reclaim!\n");
+		block::reclaim_memory();
+		lock();
+	}
+
   void *p = use_kernel_vm ? late_phys_alloc(npages) : early_phys_alloc(npages);
 
   unlock();

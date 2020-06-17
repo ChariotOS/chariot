@@ -38,10 +38,11 @@ namespace ck {
   };
 
   // an abstract type which can be read from and written to
-  class stream {
+  class stream : public ck::object {
     bool m_eof = false;
 
    public:
+		CK_OBJECT(ck::stream);
     virtual ~stream(){};
     inline virtual ssize_t write(const void *buf, size_t) { return -1; }
     inline virtual ssize_t read(void *buf, size_t) { return -1; }
@@ -55,9 +56,10 @@ namespace ck {
 
   // A file is an "abstract implementation" of
   class file : public ck::stream {
-
-
    public:
+		CK_OBJECT(ck::file);
+		// construct without opening any file
+		file(void);
     // construct by opening the file
     file(ck::string path, const char *mode);
     // give the file ownership of a file descriptor
@@ -66,6 +68,8 @@ namespace ck {
 
     virtual ssize_t write(const void *buf, size_t) override;
     virtual ssize_t read(void *buf, size_t) override;
+
+    bool open(ck::string path, const char *mode);
 
     // the size of this file
     ssize_t size(void);

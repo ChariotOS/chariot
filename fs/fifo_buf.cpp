@@ -72,7 +72,6 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
   size_t written = 0;
   while (written < size) {
     lock_write.lock();
-
     while (available() > 0 && written < size) {
       buffer[write_ptr] = ibuf[written];
       increment_write();
@@ -82,13 +81,11 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
     wq_readers.notify_all();
     lock_write.unlock();
 
-
     if (written < size) {
       wq_writers.wait();
       if (m_closed) return -ECONNRESET;
     }
   }
-
 
   return 0;
 }
@@ -102,6 +99,12 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
   size_t collected = 0;
   while (collected == 0) {
     lock_read.lock();
+
+		if (!block && unread() == 0) {
+			lock_read.unlock();
+			// come back later!
+			return -EAGAIN;
+		}
     while (unread() > 0 && collected < size) {
       obuf[collected] = buffer[read_ptr];
       increment_read();
@@ -110,6 +113,11 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
 
     wq_writers.notify_all();
     lock_read.unlock();
+
+		// break early if we are not meant to block
+		if (!block) {
+			break;
+		}
 
     if (collected == 0) {
       wq_readers.wait();
@@ -120,4 +128,22 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
 
 
   return collected;
+}
+
+
+int fifo_buf::poll(void) {
+  int ev = 0;
+  lock_read.lock();
+  if (unread() > 0) {
+    ev |= AWAITFS_READ;
+  }
+  lock_read.unlock();
+
+
+  lock_write.lock();
+  if (available() > 0) {
+    ev |= AWAITFS_WRITE;
+  }
+  lock_write.unlock();
+  return ev;
 }

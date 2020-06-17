@@ -6,8 +6,23 @@
 #include <unistd.h>
 #include <lumen.h>
 #include <ck/io.h>
+#include <ck/socket.h>
 
 int main(int argc, char **argv) {
+
+	/*
+	ck::localsocket sock;
+
+	sock.connect("/usr/servers/lumen");
+
+	while (true) {
+		char c = getchar();
+		if (c == '\n') break;
+		sock.write(&c, 1);
+	}
+	return 0;
+	*/
+
 	lumen::session session;
 
 	if (!session.connected()) {

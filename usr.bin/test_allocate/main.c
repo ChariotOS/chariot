@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
 	printf("Allocating %zuMB of ram and writing 1 byte per page...\n", mb);
 
 	size_t size = round_up(mb * 1024 * 1024, 4096);
-	char *buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, 0, 0);
+	char *buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 
 	for (off_t i = 0; i < size; i += 4096) {
 		buf[i] = 'a';

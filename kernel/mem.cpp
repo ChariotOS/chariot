@@ -78,7 +78,6 @@ void *kzalloc(unsigned long sz) {
 static unsigned long mem_kshell(vec<string> &args, void *data, int dlen) {
 
   if (args.size() > 0) {
-
 		if (args[0] == "dump") {
 			printk("kmalloc usage: %zu bytes\n", kmalloc_usage);
 			printk("physical free: %zu bytes\n", phys::bytes_free());

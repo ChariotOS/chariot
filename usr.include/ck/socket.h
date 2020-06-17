@@ -17,6 +17,7 @@ namespace ck {
     bool m_connected = false;
 
    public:
+		CK_OBJECT(ck::socket);
     socket(int domain, int type, int protocol = 0);
     virtual ~socket(void);
 
@@ -28,6 +29,7 @@ namespace ck {
 
 	class localsocket : public ck::socket {
 		public:
+			CK_OBJECT(ck::localsocket);
 			inline localsocket(void) : socket(AF_UNIX, SOCK_STREAM) {}
 			inline virtual ~localsocket(void) {}
 

@@ -10,11 +10,6 @@ int socket(int dom, int typ, int prot) {
   return errno_syscall(SYS_socket, dom, typ, prot);
 }
 
-ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
-	       const struct sockaddr *dest_addr, size_t addrlen) {
-  return errno_syscall(SYS_sendto, sockfd, buf, len, flags, dest_addr, addrlen);
-}
-
 int bind(int sockfd, struct sockaddr *addr, size_t len) {
   return errno_syscall(SYS_bind, sockfd, addr, len);
 }
@@ -225,3 +220,30 @@ in_addr_t inet_netof(struct in_addr in) {
   if (h >> 24 < 192) return h >> 16;
   return h >> 8;
 }
+
+
+ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
+	       const struct sockaddr *dest_addr, size_t addrlen) {
+	return syscall(SYS_sendto, sockfd, buf, len, flags, dest_addr, addrlen);
+}
+
+
+ssize_t recvfrom(int sockfd, const void *buf, size_t len, int flags,
+	       const struct sockaddr *dest_addr, size_t *addrlen) {
+	size_t alen = 0;
+	if (addrlen != NULL) {
+		alen = *addrlen;
+	}
+	return syscall(SYS_recvfrom, sockfd, buf, len, flags, dest_addr, alen);
+}
+
+
+ssize_t recv(int socket, void *buffer, size_t length, int flags) {
+	return recvfrom(socket, buffer, length, flags, NULL, 0);
+}
+
+ssize_t send(int socket, const void *buffer, size_t length, int flags) {
+	return sendto(socket, buffer, length, flags, NULL, 0);
+}
+
+

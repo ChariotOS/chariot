@@ -24,17 +24,7 @@ class fifo_buf {
 
 	void close();
 
-	inline int poll() {
-		int ev = 0;
-		if (unread() > 0) {
-			ev |= AWAITFS_READ;
-		}
-
-		if (available() > 0) {
-			ev |= AWAITFS_WRITE;
-		}
-		return ev;
-	}
+	int poll();
 
  private:
 

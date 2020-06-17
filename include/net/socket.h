@@ -6,9 +6,6 @@
 extern "C" {
 #endif
 
-
-
-
 typedef unsigned short sa_family_t;
 
 

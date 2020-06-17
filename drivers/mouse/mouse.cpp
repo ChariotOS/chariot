@@ -200,6 +200,7 @@ static void mouse_handler(int i, reg_t *) {
         }
       }
 
+			/*
       if (open) {
         mouse_buffer.write(&packet, sizeof(packet));
       } else {
@@ -207,6 +208,7 @@ static void mouse_handler(int i, reg_t *) {
         desktop::mouse_input(packet);
         return;
       }
+			*/
     }
     break;
   }

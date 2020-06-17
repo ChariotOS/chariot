@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 
-#define LUMEN_MAGIC 0x4e4d554c // 'L' 'U' 'M' 'N'
+#define LUMEN_MAGIC 0x5D4c
 
 namespace lumen {
 
@@ -11,8 +11,8 @@ namespace lumen {
 #define LUMEN_MSG_PONG 1
 
 	struct msg {
-		int magic;
-		int type;
+		unsigned short magic;
+		unsigned short type;
 
 		// length of the payload
 		int len;
@@ -23,7 +23,4 @@ namespace lumen {
 
 		char data[];
 	};
-
-
-
 }

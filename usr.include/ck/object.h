@@ -7,9 +7,13 @@
 /*
  * macro for automatically implementing some basic ck::object methods
  */
-#define CK_OBJECT(klass) \
- public:                 \
-  virtual const char* class_name() const override { return #klass; }
+#define CK_OBJECT(klass)                                             \
+ public:                                                             \
+  virtual const char* class_name() const override { return #klass; } \
+  template <class... Args>                                           \
+  static inline ck::ref<klass> create(Args&&... args) {           \
+    return ck::make_ref<klass>(forward<Args>(args)...);              \
+  }
 
 namespace ck {
 
@@ -23,9 +27,8 @@ namespace ck {
     ck::object *next, *prev;
 
    public:
-
-		object(void);
-		virtual ~object(void);
+    object(void);
+    virtual ~object(void);
     /**
      * class_name - returns the name of the object's class as a string
      */

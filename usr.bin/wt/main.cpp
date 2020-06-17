@@ -22,14 +22,18 @@ void *mshare_acquire(const char *name, size_t *size) {
 }
 
 #define N 255
-
 int main(int argc, char **argv) {
+	auto file = ck::file::create();
+	if (file->open("/small", "r+")) {
+		printf("openned!\n");
+	}
+
+
   volatile auto region1 = (int *)mshare_create("my_region", 4096);
 
   for (int i = 0; i < N; i++) {
     auto other = (volatile uint32_t *)mshare_acquire("my_region", NULL);
-		uint32_t c = i;
-		other[i] = (c << 24) | (c << 16) | (c << 8) | (c);
+		other[i] = i;
 		munmap((void*)other, 4096);
   }
 

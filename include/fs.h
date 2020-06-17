@@ -476,6 +476,8 @@ namespace block {
       return m_count;  // XXX: race condition (!?!?)
     }
 
+		size_t reclaim(void);
+
    protected:
     inline static void release(struct blkdev *d) {}
 
@@ -490,6 +492,9 @@ namespace block {
     ref<mm::page> m_page;
   };
 
+
+	size_t reclaim_memory(void);
+
 };  // namespace block
 
 
@@ -497,6 +502,8 @@ namespace block {
 // but that gets amortized by the block flush daemon :^)
 int bread(fs::blkdev &, void *dst, size_t size, off_t byte_offset);
 int bwrite(fs::blkdev &, void *data, size_t size, off_t byte_offset);
+
+// reclaim some memory
 
 static inline auto bget(fs::blkdev &b, off_t page) {
   return block::buffer::get(b, page);

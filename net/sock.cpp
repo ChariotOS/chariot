@@ -7,6 +7,7 @@
 #include <sched.h>
 #include <syscall.h>
 #include <util.h>
+#include "mm.h"
 
 net::sock::sock(int dom, int type, int protocol)
     : domain(dom), type(type), protocol(protocol) {}
@@ -40,41 +41,41 @@ static int sock_seek(fs::file &, off_t old_off, off_t new_off) {
 }
 
 static ssize_t sock_read(fs::file &f, char *b, size_t s) {
-	if (f.ino->sk->connected) return -ENOTCONN;
+  if (f.ino->sk->connected) return -ENOTCONN;
   return f.ino->sk->recvfrom(f, (void *)b, s, 0, nullptr, 0);
 }
 
 static ssize_t sock_write(fs::file &f, const char *b, size_t s) {
-	if (f.ino->sk->connected) return -ENOTCONN;
+  if (f.ino->sk->connected) return -ENOTCONN;
   return f.ino->sk->sendto(f, (void *)b, s, 0, nullptr, 0);
 }
 
 static void sock_close(fs::file &fd) {
-	auto f = *fd.ino;
-	if (f.sk) {
-		f.sk->disconnect(fd.pflags);
-	}
+  auto f = *fd.ino;
+  if (f.sk) {
+    f.sk->disconnect(fd.pflags);
+  }
   net::sock::release(f.sk);
   f.sk = NULL;
 }
 
 
 static int sock_poll(fs::file &fd, int events) {
-	auto f = *fd.ino;
-	if (f.sk) {
-		return f.sk->poll(fd, events);
-	}
-	return 0;
+  auto f = *fd.ino;
+  if (f.sk) {
+    return f.sk->poll(fd, events);
+  }
+  return 0;
 }
 
-fs::file_operations socket_fops {
+fs::file_operations socket_fops{
     .seek = sock_seek,
     .read = sock_read,
     .write = sock_write,
 
-		.close = sock_close,
+    .close = sock_close,
 
-		.poll = sock_poll,
+    .poll = sock_poll,
 };
 
 
@@ -111,7 +112,7 @@ fs::inode *net::sock::createi(int domain, int type, int protocol, int &err) {
   ino->dops = NULL;
 
   ino->sk = net::sock::acquire(*sk);
-	sk->ino = ino;
+  sk->ino = ino;
   err = 0;
 
   return ino;
@@ -130,20 +131,44 @@ int sys::socket(int d, int t, int p) {
 
 ssize_t sys::sendto(int sockfd, const void *buf, size_t len, int flags,
                     const struct sockaddr *dest_addr, size_t addrlen) {
-  if (!curproc->mm->validate_pointer((void *)buf, len, VALIDATE_READ)) {
-    return -EINVAL;
-  }
+  if (!VALIDATE_RD((void *)buf, len)) return -EINVAL;
 
-  if (!curproc->mm->validate_pointer((void *)dest_addr, addrlen,
-                                     VALIDATE_READ)) {
-    return -EINVAL;
+  if (dest_addr != NULL) {
+    if (!VALIDATE_RD((void *)dest_addr, addrlen)) {
+      return -EINVAL;
+    }
   }
 
   ref<fs::file> file = curproc->get_fd(sockfd);
   ssize_t res = -EINVAL;
   if (file) {
     if (file->ino->type == T_SOCK) {
-      res = file->ino->sk->sendto(*file, (void *)buf, len, flags, dest_addr, addrlen);
+      res = file->ino->sk->sendto(*file, (void *)buf, len, flags, dest_addr,
+                                  addrlen);
+    }
+  }
+
+  return res;
+}
+
+
+ssize_t sys::recvfrom(int sockfd, const void *buf, size_t len, int flags,
+                      const struct sockaddr *dest_addr, size_t addrlen) {
+
+  if (!VALIDATE_RD((void *)buf, len)) return -EINVAL;
+
+  if (dest_addr != NULL) {
+    if (!VALIDATE_RD((void *)dest_addr, addrlen)) {
+      return -EINVAL;
+    }
+  }
+
+  ref<fs::file> file = curproc->get_fd(sockfd);
+  ssize_t res = -EINVAL;
+  if (file) {
+    if (file->ino->type == T_SOCK) {
+      res = file->ino->sk->recvfrom(*file, (void *)buf, len, flags, dest_addr,
+                                    addrlen);
     }
   }
 
@@ -185,9 +210,9 @@ int sys::accept(int sockfd, struct sockaddr *addr, int addrlen) {
         ino->fops = &socket_fops;
         ino->dops = NULL;
         ino->sk = net::sock::acquire(*sk);
-				sk->ino = ino;
-				auto file = fs::file::create(ino, "[socket]", O_RDWR);
-				file->pflags = PFLAGS_SERVER;
+        sk->ino = ino;
+        auto file = fs::file::create(ino, "[socket]", O_RDWR);
+        file->pflags = PFLAGS_SERVER;
         int fd = curproc->add_fd(file);
 
         return fd;
@@ -215,12 +240,12 @@ int sys::connect(int sockfd, const struct sockaddr *addr, int len) {
   if (file) {
     if (file->ino->type == T_SOCK) {
       res = file->ino->sk->connect((struct sockaddr *)addr, len);
-			if (res < 0) {
-				file->ino->sk->connected = true;
-				return res;
-			}
-			file->ino->sk->connected = false;
-			file->pflags = PFLAGS_CLIENT;
+      if (res < 0) {
+        file->ino->sk->connected = true;
+        return res;
+      }
+      file->ino->sk->connected = false;
+      file->pflags = PFLAGS_CLIENT;
     } else {
       res = -ENOTSOCK;
     }
@@ -245,12 +270,12 @@ net::sock *net::sock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
   return NULL;
 }
 
-ssize_t net::sock::sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *,
-                          size_t) {
+ssize_t net::sock::sendto(fs::file &, void *data, size_t len, int flags,
+                          const sockaddr *, size_t) {
   return -ENOTIMPL;
 }
-ssize_t net::sock::recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *,
-                            size_t) {
+ssize_t net::sock::recvfrom(fs::file &, void *data, size_t len, int flags,
+                            const sockaddr *, size_t) {
   return -ENOTIMPL;
 }
 

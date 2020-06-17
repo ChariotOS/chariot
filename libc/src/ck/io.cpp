@@ -157,9 +157,39 @@ static int string_to_mode(const char *mode) {
 }
 
 
+ck::file::file(void) {
+	m_fd = -1;
+}
+
 ck::file::file(ck::string path, const char *mode) {
-  m_fd = open(path.get(), string_to_mode(mode));
-  //
+	m_fd = -1;
+  this->open(path, mode);
+}
+
+
+
+bool ck::file::open(ck::string path, const char *mode) {
+
+	int fmode = string_to_mode(mode);
+	if (fmode == -1) {
+		fprintf(stderr, "[ck::file::open] '%s' is an invalid mode\n", mode);
+		return false;
+	}
+
+
+	int new_fd = ::open(path.get(), fmode);
+
+	if (new_fd < 0) {
+		return false;
+	}
+
+	if (m_fd != -1) {
+		flush();
+		close(m_fd);
+	}
+	m_fd = new_fd;
+
+	return true;
 }
 
 
@@ -169,8 +199,10 @@ ck::file::file(int fd) {
 }
 
 ck::file::~file(void) {
-  flush();
-  if (m_fd != -1) close(m_fd);
+  if (m_fd != -1) {
+  	flush();
+		close(m_fd);
+	}
 }
 
 

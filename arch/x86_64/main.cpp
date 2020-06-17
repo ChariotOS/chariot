@@ -17,7 +17,6 @@
 
 #include <arch.h>
 
-
 extern int kernel_end;
 
 // in src/arch/x86/sse.asm

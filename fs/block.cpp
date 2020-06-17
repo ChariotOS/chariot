@@ -1,6 +1,7 @@
 #include <chan.h>
 #include <errno.h>
 #include <fs.h>
+#include <kshell.h>
 #include <map.h>
 #include <mm.h>
 #include <module.h>
@@ -30,6 +31,7 @@ static int block_flush_task(void *) {
 
 
 
+
 static spinlock buffer_cache_lock;
 static uint64_t total_blocks_in_cache = 0;
 static map<uint32_t, map<off_t, block::buffer *>> buffer_cache;
@@ -38,6 +40,23 @@ static map<uint32_t, map<off_t, block::buffer *>> buffer_cache;
 
 static uint32_t to_key(dev_t device) {
   return ((uint32_t)device.major() << 16) | ((uint32_t)device.minor());
+}
+
+
+size_t block::reclaim_memory(void) {
+  size_t reclaimed = 0;
+  buffer_cache_lock.lock();
+
+  for (auto &blk : buffer_cache) {
+    for (auto &off : blk.value) {
+      if (off.value) {
+        reclaimed += off.value->reclaim();
+      }
+    }
+  }
+
+  buffer_cache_lock.unlock();
+  return reclaimed;
 }
 
 #if 0
@@ -122,14 +141,14 @@ namespace block {
   int buffer::flush(void) {
     scoped_lock l(m_lock);
 
-		// flush even if we aren't dirty.
+    // flush even if we aren't dirty.
     if (m_page) {
       int blocks = PGSIZE / bdev.block_size;
       auto *buf = (char *)p2v(m_page->pa);
 
       for (int i = 0; i < blocks; i++) {
-				// printk("write block %d\n", m_index * blocks + i);
-				// hexdump(buf + (bdev.block_size * i), bdev.block_size, true);
+        // printk("write block %d\n", m_index * blocks + i);
+        // hexdump(buf + (bdev.block_size * i), bdev.block_size, true);
         bdev.write_block(buf + (bdev.block_size * i), m_index * blocks + i);
       }
     }
@@ -137,6 +156,16 @@ namespace block {
     m_dirty = false;
     return 0;
   }
+
+  size_t buffer::reclaim(void) {
+    scoped_lock l(m_lock);
+    if (m_count == 0 && m_page && !m_dirty) {
+      m_page = nullptr;  // release the page
+      return PGSIZE;
+    }
+    return 0;
+  }
+
 
 
   void *buffer::data(void) {
@@ -160,12 +189,12 @@ namespace block {
   }
 
 
-	ref<mm::page> buffer::page(void) {
-		// ::data() asserts that the page is there.
-		(void)this->data();
-		assert(m_page);
-		return m_page;
-	}
+  ref<mm::page> buffer::page(void) {
+    // ::data() asserts that the page is there.
+    (void)this->data();
+    assert(m_page);
+    return m_page;
+  }
 
 }  // namespace block
 
@@ -212,8 +241,6 @@ static ssize_t block_rw(fs::blkdev &b, void *dst, size_t size,
 
 int bread(fs::blkdev &b, void *dst, size_t size, off_t byte_offset) {
   return block_rw(b, dst, size, byte_offset, false /* read */);
-
-  return 0;
 }
 
 
@@ -222,9 +249,38 @@ int bwrite(fs::blkdev &b, void *data, size_t size, off_t byte_offset) {
 }
 
 
+
+static unsigned long blk_kshell(vec<string> &args, void *data, int dlen) {
+  if (args.size() > 0) {
+    if (args[0] == "reclaim") {
+      auto reclaimed = block::reclaim_memory();
+      printk("reclaimed %zu bytes (%d pages)\n", reclaimed, reclaimed / PGSIZE);
+
+      return reclaimed;
+    }
+
+
+    if (args[0] == "dump") {
+      buffer_cache_lock.lock();
+
+      for (auto &blk : buffer_cache) {
+        for (auto &off : blk.value) {
+          if (off.value) {
+          }
+        }
+      }
+
+      buffer_cache_lock.unlock();
+
+      return 0;
+    }
+  }
+
+  return 0;
+}
 static void block_init(void) {
   sched::proc::create_kthread("[block flush]", block_flush_task);
-  // TODO: spawn a kernel thread for the flush block cache write flushing daemon
+  kshell::add("blk", blk_kshell);
 }
 
 module_init("block", block_init);

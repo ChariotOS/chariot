@@ -1,15 +1,15 @@
 #include <ck/func.h>
 #include <ck/io.h>
 #include <ck/map.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <lumen/msg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
-
-#include <lumen/msg.h>
 
 #include "internal.h"
 
@@ -47,7 +47,9 @@ class eventloop {
     ck::vec<struct await_target> targs;
 
     for (auto &kv : handlers) {
-      struct await_target targ {0};
+      struct await_target targ {
+        0
+      };
       targ.fd = kv.key;
       targ.awaiting = AWAITFS_ALL;
 
@@ -73,53 +75,50 @@ char upper(char ch) {
 }
 
 
+ck::vec<lumen::msg *> drain_messages(int fd, int &err) {
+  ck::vec<uint8_t> bytes;
+  for (;;) {
+    uint8_t buffer[512];  // XXX dont put this on the stack
+    int nread = ::recv(fd, buffer, sizeof(buffer), MSG_DONTWAIT);
+    if (nread == -EAGAIN) {
+      break;
+    }
+    if (nread > 0) {
+      bytes.push(buffer, nread);
+    }
+  }
 
-struct lumen::msg *read_msg(int fd, int &err) {
-  // read in the base data
-  struct lumen::msg base;
+  // printf("got %d bytes\n", bytes.size());
+  // ck::hexdump(bytes.data(), bytes.size());
 
-	while (1) {
-		int n = read(fd, &base.magic, sizeof(int));
-		ck::hexdump(&base.magic, sizeof(int));
-		if (n < 0) {
-			err = n;
-			return NULL;
+  ck::vec<lumen::msg *> msgs;
+
+  uint8_t *data = bytes.data();
+  for (size_t i = 0; i < bytes.size();) {
+    auto *m = (lumen::msg *)(data + i);
+		// if it isn't the magic number, we gotta walk to the next
+		// magic number
+    if (m->magic != LUMEN_MAGIC) {
+      i += 1;
+			fprintf(stderr, "LUMEN_MAGIC is not correct\n");
+      continue;
+    }
+
+		auto total_size = sizeof(lumen::msg) + m->len;
+		if (i + total_size > (size_t)bytes.size()) {
+			fprintf(stderr, "malformed!\n");
+			break;
 		}
 
-		if (base.magic == LUMEN_MAGIC) break;
-		printf("magic is not right!\n");
-	}
+		auto msg = (lumen::msg*)malloc(total_size);
+		memcpy(msg, data + i, total_size);
 
-  int n = read(fd, &base.type, sizeof(base) - sizeof(int));
-  if (n < 0) {
-    err = n;
-    return NULL;
+		msgs.push(msg);
+		i += total_size;
   }
-  // TODO: this could break stuff!
-  if (n <= 0) return NULL;
 
-  auto *msg = (lumen::msg *)malloc(sizeof(lumen::msg) + base.len);
-  msg->type = base.type;
-  msg->id = base.id;
-  msg->len = base.len;
-
-
-
-	auto *buf = (char*)(msg + 1);
-	int nread = 0;
-	while (nread != base.len) {
-    int n = read(fd, buf + nread, msg->len);
-    if (n < 0) {
-      free(msg);
-      err = n;
-      return NULL;
-    }
-		nread += n;
-	}
-  err = 0;
-  return msg;
+  return msgs;
 }
-
 
 
 int main(int argc, char **argv) {
@@ -140,6 +139,7 @@ int main(int argc, char **argv) {
   eventloop loop;
 
   loop.register_handler(fd, [&](eventloop &loop, int fd, int events) {
+    printf("event on server %02xd!\n", events);
     // READ on the server means there is someone waiting
     if (events & AWAITFS_READ) {
       int client = accept(fd, (struct sockaddr *)&addr, sizeof(addr));
@@ -147,18 +147,13 @@ int main(int argc, char **argv) {
       loop.register_handler(client, [](eventloop &loop, int fd, int events) {
         if (events & AWAITFS_READ) {
           int err = 0;
-          auto *msg = read_msg(fd, err);
-          if (err != 0) {
-            printf("er=%d\n", err);
-						// close(client);
-            return;
-          }
 
-          for (int i = 0; i < msg->len; i++) {
-            printf("%4lu: 0x%02x\n", msg->id, msg->data[i]);
-          }
+          auto msgs = drain_messages(fd, err);
 
-          free(msg);
+          for (auto *msg : msgs) {
+						ck::hexdump(msg->data, msg->len);
+            free(msg);
+          }
         }
       });
     }
