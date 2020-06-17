@@ -84,7 +84,8 @@ int main(int argc, char **argv) {
       keyboard_packet_t pkt;
       keyboard.read(&pkt, sizeof(pkt));
       if (errno == EAGAIN) break;
-      ck::hexdump(&pkt, sizeof(pkt));
+      // ck::hexdump(&pkt, sizeof(pkt));
+			printf("keycode: %02x, char: %02x (%c)\n", pkt.key, pkt.character, pkt.character);
     }
   });
 

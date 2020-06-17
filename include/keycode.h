@@ -1,10 +1,6 @@
 #pragma once
 
 
-#ifndef USERLAND
-#include <types.h>
-#endif
-
 enum keycode : unsigned char {
   key_invalid = 0,
   key_escape,
