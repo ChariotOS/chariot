@@ -1,9 +1,9 @@
 #pragma once
 
 
-namespace gui {
+namespace gfx {
 
-  struct rect {
+  struct rect final {
     // simple!
     int x, y, w, h;
 
@@ -39,4 +39,4 @@ namespace gui {
     }
   };
 
-};  // namespace gui
+};  // namespace gfx

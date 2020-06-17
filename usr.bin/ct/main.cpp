@@ -5,15 +5,15 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <lumen.h>
-#include <ck/io.h>
-#include <ck/socket.h>
-
+#include <gfx/rect.h>
 #include <gui/application.h>
 #include <gui/window.h>
 
 #include <ck/eventloop.h>
 
 int main(int argc, char **argv) {
+
+	printf("sz: %zu\n", sizeof(gfx::rect));
 
 	// connect to the window server
 	gui::application app;

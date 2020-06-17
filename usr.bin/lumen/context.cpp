@@ -65,6 +65,21 @@ void lumen::context::client_closed(long id) {
 #define HANDLE_TYPE(t, data_type) if (auto arg = (data_type*)msg.data; msg.type == t && msg.len == sizeof(data_type))
 void lumen::context::process_message(lumen::client &c, lumen::msg &msg) {
 
+
+	HANDLE_TYPE(LUMEN_MSG_CREATE_WINDOW, lumen::create_window_msg) {
+		(void)arg;
+
+		ck::string name(arg->name, LUMEN_NAMESZ);
+
+		printf("window wants to be made! ('%s', %dx%d)\n", name.get(), arg->width, arg->height);
+
+		struct lumen::window_created_msg res;
+		res.window_id = -1; // fail for now
+
+		c.respond(msg, LUMEN_MSG_WINDOW_CREATED, res);
+		return;
+	}
+
 	HANDLE_TYPE(LUMEN_MSG_GREET, lumen::greet_msg) {
 		(void)arg;
 		// responed to that
@@ -103,12 +118,8 @@ void lumen::client::on_read(void) {
 }
 
 void lumen::client::process_message(lumen::msg &msg) {
-
-	if (msg.type & FOR_WINDOW_SERVER) {
-		ctx.process_message(*this, msg);
-		return;
-	}
-
+	// defer to the window server's function
+	ctx.process_message(*this, msg);
 }
 
 

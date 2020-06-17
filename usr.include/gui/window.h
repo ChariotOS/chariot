@@ -2,7 +2,7 @@
 
 #include <ck/object.h>
 #include <ck/string.h>
-#include <gui/rect.h>
+#include <gfx/rect.h>
 
 
 namespace gui {
@@ -12,13 +12,13 @@ namespace gui {
 
   class window : public ck::object {
    public:
-    window(int id, ck::string name, gui::rect r);
+    window(int id, ck::string name, gfx::rect r);
 
     CK_OBJECT(gui::window);
 
    private:
     long m_id;
     ck::string m_name;
-		gui::rect m_rect;
+		gfx::rect m_rect;
   };
 };  // namespace gui

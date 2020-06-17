@@ -40,13 +40,13 @@ namespace gui {
     }
 
     template <typename T, typename R>
-    inline bool send_msg_sync(int type, const T &payload, R &ret) {
+    inline bool send_msg_sync(int type, const T &payload, R *ret) {
       auto *response = send_msg_sync(type, payload);
       if (response == NULL) return false;
       int success = true;
 
       if (success && response->len != sizeof(R)) success = false;
-      if (success) ret = *(R *)response->data;
+      if (success && ret != NULL) *ret = *(R *)response->data;
 
       delete response;
       return success;
