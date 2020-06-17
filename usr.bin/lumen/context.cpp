@@ -98,7 +98,7 @@ void lumen::context::process_message(lumen::client &c, lumen::msg &msg) {
 
 lumen::client::client(long id, struct context &ctx, ck::localsocket *conn)
     : id(id), ctx(ctx), connection(conn) {
-  printf("got a connection\n");
+  // printf("got a connection\n");
 
   connection->on_read([this] { this->on_read(); });
 }
@@ -132,13 +132,12 @@ void lumen::client::on_read(void) {
 
 
 struct lumen::window *lumen::client::new_window(ck::string name, gfx::rect r) {
-	auto w = new lumen::window();
+	auto id = next_window_id++;
+	auto w = new lumen::window(id, *this);
 	w->name = name;
 	w->rect = r;
-	w->id = next_window_id++;
-
+	printf("client %d made a new window, '%s'\n", this->id, name.get());
 	windows.set(w->id, w);
-
 	return w;
 }
 

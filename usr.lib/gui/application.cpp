@@ -33,7 +33,6 @@ gui::application::application(void) {
 
   greet.pid = getpid();
   if (send_msg_sync(LUMEN_MSG_GREET, greet, &greetback)) {
-		ck::hexdump(greetback);
     printf("my client id is %d!\n", greetback.client_id);
   }
 }

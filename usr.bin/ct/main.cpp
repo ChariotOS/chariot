@@ -13,17 +13,16 @@
 
 int main(int argc, char **argv) {
 
-	printf("sz: %zu\n", sizeof(gfx::rect));
-
 	// connect to the window server
 	gui::application app;
 
-	auto window = app.new_window("Hello, World", 300, 200);
+	char buf[50];
+	sprintf(buf, "window on pid %d", getpid());
 
+	auto window = app.new_window(buf, 300, 200);
 
-	auto input = ck::file::unowned(0);
-
-	input->on_read([] { ck::eventloop::exit(); });
+	// auto input = ck::file::unowned(0);
+	// input->on_read([] { ck::eventloop::exit(); });
 
 	// start the application!
 	app.start();
