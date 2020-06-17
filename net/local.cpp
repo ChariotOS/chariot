@@ -152,5 +152,5 @@ int net::localsock::poll(fs::file &f, int events) {
 
   res |= pending_connections.poll() & AWAITFS_READ;
 
-  return res & events;
+  return res & events & AWAITFS_READ;
 }

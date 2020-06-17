@@ -102,11 +102,26 @@ namespace ck {
     void set_buffer(size_t size);
     inline bool buffered(void) { return buf_cap > 0; }
 
-		// callback functions for read/write
-    ck::func<void()> on_read;
-    ck::func<void()> on_write;
+
+		inline auto on_read(ck::func<void()> cb) {
+			m_on_read = move(cb);
+			update_notifier();
+		}
+
+
+		inline auto on_write(ck::func<void()> cb) {
+			m_on_write = move(cb);
+			update_notifier();
+		}
 
    protected:
+
+
+		// callback functions for read/write
+    ck::func<void()> m_on_read;
+    ck::func<void()> m_on_write;
+
+
 		bool m_owns = true;
     int m_fd = -1;
     size_t buf_cap = 0;
@@ -116,6 +131,7 @@ namespace ck {
 		ck::fsnotifier notifier;
 
 		void init_notifier(void);
+		void update_notifier(void);
 
 		CK_OBJECT(ck::file);
   };

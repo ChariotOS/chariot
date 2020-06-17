@@ -214,13 +214,25 @@ ck::file::~file(void) {
 }
 
 void ck::file::init_notifier(void) {
-  notifier.init(m_fd, AWAITFS_READ | AWAITFS_WRITE);
-  notifier.set_active(true);
+  notifier.init(m_fd, 0);
   notifier.on_event = [this](int event) {
-    if (event == CK_EVENT_READ && this->on_read) this->on_read();
-    if (event == CK_EVENT_WRITE && this->on_write) this->on_write();
+    if (event == CK_EVENT_READ && this->m_on_read) this->m_on_read();
+    if (event == CK_EVENT_WRITE && this->m_on_write) this->m_on_write();
   };
+
+  update_notifier();
 }
+
+
+void ck::file::update_notifier(void) {
+  int mask = 0;
+
+  if (this->m_on_read) mask |= AWAITFS_READ;
+  if (this->m_on_write) mask |= AWAITFS_WRITE;
+  notifier.set_active(mask != 0);
+  notifier.set_event_mask(mask);
+}
+
 
 
 void ck::hexdump(void *buf, size_t sz) { debug_hexdump(buf, sz); }
@@ -238,6 +250,7 @@ void ck::hexdump(const ck::buffer &buf) {
 ck::socket::socket(int fd, int domain, int type, int protocol) : ck::file(fd) {
   m_domain = domain;
   m_type = type;
+
   m_proto = protocol;
 
   // sockets should not be buffered
@@ -279,7 +292,7 @@ ssize_t ck::socket::recv(void *buf, size_t sz, int flags) {
   if (eof()) return 0;
   if (m_fd == -1) return 0;
   int nread = ::recv(m_fd, buf, sz, flags);
-	if (nread == 0) set_eof(true);
+  if (nread == 0) set_eof(true);
   return nread;
 }
 
@@ -297,7 +310,7 @@ bool ck::localsocket::connect(ck::string str) {
 
 
 
-int ck::localsocket::bind(ck::string path) {
+int ck::localsocket::listen(ck::string path, ck::func<void()> cb) {
   // are we already listening?
   if (m_listening) return false;
 
@@ -310,17 +323,17 @@ int ck::localsocket::bind(ck::string path) {
 
   if (bind_res == 0) {
     m_listening = true;
+    on_read(move(cb));
   }
   return bind_res;
 }
 
 
-ck::ref<ck::localsocket> ck::localsocket::accept(void) {
+ck::localsocket *ck::localsocket::accept(void) {
   int client = ::accept(m_fd, (struct sockaddr *)&addr, sizeof(addr));
 
   if (client < 0) return nullptr;
 
   return new ck::localsocket(client);
 }
-
 

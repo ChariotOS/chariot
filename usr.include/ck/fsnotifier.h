@@ -25,7 +25,9 @@ namespace ck {
       set_active(true);
     }
 
-    void set_event_mask(int ev);
+    void set_event_mask(int ev) {
+			m_ev_mask = ev;
+		}
 
     void set_active(bool);
 

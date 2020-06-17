@@ -1,8 +1,11 @@
 #pragma once
 
-#include <types.h>
 
-enum keycode : u8 {
+#ifndef USERLAND
+#include <types.h>
+#endif
+
+enum keycode : unsigned char {
   key_invalid = 0,
   key_escape,
   key_tab,
@@ -127,10 +130,10 @@ enum keymodifier {
 #define KEY_EVENT_MAGIC 0xFFF8
 
 struct keyboard_packet_t {
-  u16 magic;
+  unsigned short magic;
   keycode key{key_invalid};
-  u8 character{0};
-  u8 flags{0};
+  unsigned char character{0};
+  unsigned char flags{0};
   bool alt() const { return flags & mod_alt; }
   bool ctrl() const { return flags & mod_ctrl; }
   bool shift() const { return flags & mod_shift; }

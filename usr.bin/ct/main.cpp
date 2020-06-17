@@ -22,11 +22,11 @@ int main(int argc, char **argv) {
 	// get a reference to stdin
 	auto in = ck::file::unowned(0);
 	// register a read handler
-	in->on_read = [&] {
+	in->on_read([&] {
 		char c = getchar();
 		if (c == '\n') ck::eventloop::exit();
 		session.send_msg(3, c);
-	};
+	});
 
 	// start the loop!
 	loop.start();

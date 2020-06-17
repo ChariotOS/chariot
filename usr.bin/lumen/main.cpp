@@ -1,3 +1,4 @@
+#include <chariot/keycode.h>
 #include <ck/eventloop.h>
 #include <ck/func.h>
 #include <ck/io.h>
@@ -16,23 +17,22 @@
 #include "internal.h"
 
 ck::vec<lumen::msg *> drain_messages(ck::localsocket &sock, bool &failed) {
-	failed = false;
+  failed = false;
   ck::vec<uint8_t> bytes;
   for (;;) {
     uint8_t buffer[512];  // XXX dont put this on the stack
     int nread = sock.recv(buffer, sizeof(buffer), MSG_DONTWAIT);
-		int errno_cache = errno;
-		if (nread < 0) {
-				if (errno_cache == EAGAIN)
-						break;
-				failed = true;
-				return {};
-		}
+    int errno_cache = errno;
+    if (nread < 0) {
+      if (errno_cache == EAGAIN) break;
+      failed = true;
+      return {};
+    }
 
-		if (nread == 0) {
-			failed = true;
-			return {};
-		}
+    if (nread == 0) {
+      failed = true;
+      return {};
+    }
     if (nread > 0) {
       bytes.push(buffer, nread);
     }
@@ -64,46 +64,58 @@ ck::vec<lumen::msg *> drain_messages(ck::localsocket &sock, bool &failed) {
     i += total_size;
   }
 
-	failed = false;
+  failed = false;
 
   return msgs;
 }
 
 
-ck::map<long, ck::localsocket*> clients;
+static ck::map<long, ck::localsocket *> clients;
+static int next_id = 0;
 
 int main(int argc, char **argv) {
   ck::eventloop loop;
   ck::localsocket server;
 
-  server.bind("/usr/servers/lumen");
+  ck::file keyboard("/dev/keyboard", "r+");
 
-	long next_id = 0;
+  keyboard.on_read([&] {
+    while (1) {
+      keyboard_packet_t pkt;
+      keyboard.read(&pkt, sizeof(pkt));
+      if (errno == EAGAIN) break;
+      ck::hexdump(&pkt, sizeof(pkt));
+    }
+  });
 
-  server.on_read = [&] {
-		auto id = next_id++;
-		auto *client = server.accept().leak_ref();
-		clients.set(id, client);
+  server.listen("/usr/servers/lumen", [&] {
+    auto id = next_id++;
+    // accept the connection
+    auto *client = server.accept();
+    clients.set(id, client);
 
-		printf("connected %d\n", client->fileno());
+    printf("got a connection\n");
 
-    client->on_read = [id, client] {
+    client->on_read([id, client] {
+      printf("here\n");
       bool failed = false;
       auto msgs = drain_messages(*client, failed);
+      // handle messages
 
       for (auto *msg : msgs) {
         ck::hexdump(msg, sizeof(*msg) + msg->len);
         free(msg);
       }
-      fflush(stdout);
 
-			if (client->eof() || failed) {
-				printf("Client %d disconnected\n", id);
-				clients.remove(id);
-				delete client;
-			}
-    };
-  };
+      // if the client is at EOF *or* it otherwise failed, consider it
+      // disconnected
+      if (client->eof() || failed) {
+        printf("Client %d disconnected\n", id);
+        clients.remove(id);
+        delete client;
+      }
+    });
+  });
 
   loop.start();
 

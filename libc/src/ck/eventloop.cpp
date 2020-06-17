@@ -59,7 +59,6 @@ int awaitfs(struct await_target *fds, int nfds, int flags) {
 
 void ck::eventloop::pump(void) {
   ck::vec<struct await_target> targs;
-
   auto add_fd = [&](int fd, int mask, ck::object *obj) {
     struct await_target targ = {0};
     targ.fd = fd;
@@ -85,7 +84,6 @@ void ck::eventloop::pump(void) {
       event->type = CK_EVENT_READ;
       post_event(*(ck::object *)targs[index].priv, event);
     }
-
 
     if (occ & AWAITFS_WRITE) {
       auto event = new ck::event();

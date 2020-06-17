@@ -25,6 +25,8 @@
 
 static fifo_buf kbd_buf;
 
+static long owners = 0;
+
 static char keymap[0x80] = {
     0,
     '\033',
@@ -369,25 +371,34 @@ static void key_state_changed(u8 raw, bool pressed) {
   event.flags = m_modifiers;
   if (pressed) event.flags |= is_pressed;
 
-  if (pressed) {
 
-#define SER(code, replace) case (code): console::feed(sizeof(replace) - 1, (char*)replace); break;
-    switch (event.key) {
-      case key_shift: break;
-      SER(key_left, "\x1b[1D");
-      SER(key_up, "\x1b[1A");
-      SER(key_right, "\x1b[1C");
-      SER(key_down, "\x1b[1B");
-      default:
-        console::feed(1, (char *)&event.character);
-        break;
+
+  if (owners > 0) {
+    kbd_buf.write(&event, sizeof(event));
+  } else {
+    if (pressed) {
+#define SER(code, replace)                              \
+  case (code):                                          \
+    console::feed(sizeof(replace) - 1, (char*)replace); \
+    break;
+      switch (event.key) {
+        case key_shift:
+          break;
+          SER(key_left, "\x1b[1D");
+          SER(key_up, "\x1b[1A");
+          SER(key_right, "\x1b[1C");
+          SER(key_down, "\x1b[1B");
+        default:
+          console::feed(1, (char*)&event.character);
+          break;
+      }
     }
-  }
 #undef SER
+  }
 }
 
-static void kbd_handler(int i, reg_t *tf) {
-  // irq::eoi(i);
+static void kbd_handler(int i, reg_t* tf) {
+  irq::eoi(i);
 
   for (;;) {
     u8 status = inb(I8042_STATUS);
@@ -427,11 +438,54 @@ static void kbd_handler(int i, reg_t *tf) {
 }
 
 
+
+static ssize_t kbd_read(fs::file& fd, char* buf, size_t sz) {
+  if (fd) {
+    if (sz % sizeof(keyboard_packet_t) != 0) {
+      return -EINVAL;
+    }
+
+		// this is a nonblocking api
+    return kbd_buf.read(buf, sz, false);
+  }
+  return -1;
+}
+
+
+static int kbd_open(fs::file& fd) {
+  owners++;
+  return 0;
+}
+static void kbd_close(fs::file& fd) { owners--; }
+
+static int kbd_poll(fs::file &fd, int events) {
+	return kbd_buf.poll() & events;
+}
+
+
+struct fs::file_operations kbd_ops = {
+    .read = kbd_read,
+    .open = kbd_open,
+    .close = kbd_close,
+		.poll = kbd_poll,
+};
+
+static struct dev::driver_info keyboard_driver_info {
+  .name = "kdb", .type = DRIVER_CHAR, .major = MAJOR_KEYBOARD,
+
+  .char_ops = &kbd_ops,
+};
+
+
 static void kbd_init(void) {
   irq::install(32 + IRQ_KEYBOARD, kbd_handler, "PS2 Keyboard");
 
   // clear out the buffer...
   while (inb(I8042_STATUS) & I8042_BUFFER_FULL) inb(I8042_BUFFER);
+
+
+  dev::register_driver(keyboard_driver_info);
+  dev::register_name(keyboard_driver_info, "keyboard", 0);
 }
 
 module_init("kbd", kbd_init);

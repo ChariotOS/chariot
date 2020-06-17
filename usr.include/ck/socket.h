@@ -45,9 +45,9 @@ namespace ck {
     inline virtual ~localsocket(void) {}
 
     bool connect(ck::string path);
-    int bind(ck::string path);
+    int listen(ck::string path, ck::func<void()> cb);
 
-		ref<ck::localsocket> accept(void);
+		ck::localsocket *accept(void);
 
     CK_OBJECT(ck::localsocket);
 
