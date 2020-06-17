@@ -31,6 +31,19 @@ class string {
   string(string&&);
   string(char);
 
+	/**
+	 * This is meant to read from buffers like `char buf[SIZE];`
+	 * where the construction call would be...
+	 *
+	 * ck::string s(buf, SIZE);
+	 */
+	inline string(char *c, size_t len) {
+		for (size_t i = 0; i < len; i++) {
+			if (c[i] == 0) break;
+			push(c[i]);
+		}
+	}
+
   ~string(void);
   vec<string> split(char c, bool include_empty = false);
 

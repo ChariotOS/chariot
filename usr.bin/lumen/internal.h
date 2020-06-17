@@ -6,7 +6,7 @@
 #include <sys/ioctl.h>
 #include <ck/io.h>
 #include <ck/socket.h>
-
+#include <lumen/msg.h>
 #include <chariot/keycode.h>
 #include <chariot/mouse_packet.h>
 
@@ -51,8 +51,26 @@ namespace lumen {
 		client(long id, struct context &ctx, ck::localsocket *conn);
 		~client(void);
 
+		void process_message(lumen::msg &);
 		void on_read(void);
 
+		long send_raw(int type, int id, void *payload, size_t payloadsize);
+
+    template <typename T>
+    inline int send_msg(int type, const T &payload) {
+			int id = next_msg_id;
+      return send_raw(type, id, (void *)&payload, sizeof(payload));
+    }
+
+
+    template <typename T>
+    inline int respond(lumen::msg &m, int type, const T &payload) {
+      return send_raw(type, m.id, (void *)&payload, sizeof(payload));
+    }
+
+
+		// a big number.
+		long next_msg_id = 0x7F00'0000'0000'0000;
 	};
 
 
@@ -60,7 +78,6 @@ namespace lumen {
 	 * contains all the state needed to run the window server
 	 */
 	struct context {
-
 
 		lumen::screen screen;
 
@@ -74,7 +91,7 @@ namespace lumen {
 		void accept_connection(void);
 		void handle_keyboard_input(keyboard_packet_t &pkt);
 		void handle_mouse_input(struct mouse_packet &pkt);
-
+		void process_message(lumen::client &c, lumen::msg &);
 		void client_closed(long id);
 
 		private:

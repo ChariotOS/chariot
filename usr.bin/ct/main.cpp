@@ -8,30 +8,20 @@
 #include <ck/io.h>
 #include <ck/socket.h>
 
+#include <gui/application.h>
+#include <gui/window.h>
+
 #include <ck/eventloop.h>
 
 int main(int argc, char **argv) {
 
+	// connect to the window server
+	gui::application app;
 
-	// make an eventloop
-	ck::eventloop loop;
+	auto window = app.new_window("Hello, World", 300, 200);
 
-	// connect to the "server"
-	lumen::session session;
-
-	// get a reference to stdin
-	auto in = ck::file::unowned(0);
-	// register a read handler
-	in->on_read([&] {
-		char c = getchar();
-		if (c == '\n') ck::eventloop::exit();
-		session.send_msg(3, c);
-	});
-
-	// start the loop!
-	loop.start();
-
-	printf("\n");
+	// start the application!
+	app.start();
 
 	return 0;
 }

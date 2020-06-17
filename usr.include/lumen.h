@@ -5,43 +5,16 @@
 #ifdef __cplusplus
 
 #include <ck/object.h>
-#include <lumen/msg.h>
 #include <ck/socket.h>
+#include <lumen/msg.h>
 
-// client namespace
+
+// shared functionality between the client and server
 namespace lumen {
 
-	// TODO: event loop this thing
-	class session : public ck::object {
 
-		// this is the connection to the windowserver
-		ck::localsocket sock;
+  ck::vec<lumen::msg *> drain_messages(ck::localsocket &sock, bool &failed);
 
-		public:
-
-		session(void);
-		~session(void);
-
-		inline bool connected(void) {
-			return sock.connected();
-		}
-
-		long send_raw(int type, void *payload, size_t payloadsize);
-
-
-		// send a bare message
-		inline int send_msg(int type) {
-			return send_raw(type, NULL, 0);
-		}
-
-		template<typename T>
-			inline int send_msg(int type, const T& payload) {
-				return send_raw(type, (void*)&payload, sizeof(payload));
-			}
-
-
-		CK_OBJECT(lumen::session);
-	};
-};
+};  // namespace lumen
 
 #endif

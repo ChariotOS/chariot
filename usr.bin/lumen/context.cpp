@@ -2,6 +2,7 @@
 #include <lumen/msg.h>
 #include <string.h>
 #include "internal.h"
+#include <lumen.h>
 
 lumen::context::context(void) : screen(1024, 768) {
   // clear the screen (black)
@@ -46,59 +47,6 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
 }
 
 
-static ck::vec<lumen::msg *> drain_messages(ck::localsocket &sock,
-                                            bool &failed) {
-  failed = false;
-  ck::vec<uint8_t> bytes;
-  for (;;) {
-    uint8_t buffer[512];  // XXX dont put this on the stack
-    int nread = sock.recv(buffer, sizeof(buffer), MSG_DONTWAIT);
-    int errno_cache = errno;
-    if (nread < 0) {
-      if (errno_cache == EAGAIN) break;
-      failed = true;
-      return {};
-    }
-
-    if (nread == 0) {
-      failed = true;
-      return {};
-    }
-    if (nread > 0) {
-      bytes.push(buffer, nread);
-    }
-  }
-
-  ck::vec<lumen::msg *> msgs;
-
-  uint8_t *data = bytes.data();
-  for (int i = 0; i < bytes.size();) {
-    auto *m = (lumen::msg *)(data + i);
-    // if it isn't the magic number, we gotta walk to the next
-    // magic number
-    if (m->magic != LUMEN_MAGIC) {
-      i += 1;
-      fprintf(stderr, "LUMEN_MAGIC is not correct\n");
-      continue;
-    }
-
-    auto total_size = sizeof(lumen::msg) + m->len;
-    if (i + total_size > (size_t)bytes.size()) {
-      fprintf(stderr, "malformed!\n");
-      break;
-    }
-
-    auto msg = (lumen::msg *)malloc(total_size);
-    memcpy(msg, data + i, total_size);
-
-    msgs.push(msg);
-    i += total_size;
-  }
-
-  failed = false;
-
-  return msgs;
-}
 
 void lumen::context::accept_connection() {
   auto id = next_client_id++;
@@ -114,6 +62,20 @@ void lumen::context::client_closed(long id) {
 }
 
 
+#define HANDLE_TYPE(t, data_type) if (auto arg = (data_type*)msg.data; msg.type == t && msg.len == sizeof(data_type))
+void lumen::context::process_message(lumen::client &c, lumen::msg &msg) {
+
+	HANDLE_TYPE(LUMEN_MSG_GREET, lumen::greet_msg) {
+		(void)arg;
+		// responed to that
+		struct lumen::greetback_msg res;
+		res.magic = LUMEN_GREETBACK_MAGIC;
+		res.client_id = c.id;
+		c.respond(msg, msg.type, res);
+	};
+}
+
+
 lumen::client::client(long id, struct context &ctx, ck::localsocket *conn)
     : id(id), ctx(ctx), connection(conn) {
   printf("got a connection\n");
@@ -125,11 +87,11 @@ lumen::client::~client(void) { delete connection; }
 
 void lumen::client::on_read(void) {
   bool failed = false;
-  auto msgs = drain_messages(*connection, failed);
+  auto msgs = lumen::drain_messages(*connection, failed);
   // handle messages
 
   for (auto *msg : msgs) {
-    ck::hexdump(msg, sizeof(*msg) + msg->len);
+		process_message(*msg);
     free(msg);
   }
 
@@ -138,4 +100,31 @@ void lumen::client::on_read(void) {
   if (connection->eof() || failed) {
     this->ctx.client_closed(id);
   }
+}
+
+void lumen::client::process_message(lumen::msg &msg) {
+
+	if (msg.type & FOR_WINDOW_SERVER) {
+		ctx.process_message(*this, msg);
+		return;
+	}
+
+}
+
+
+long lumen::client::send_raw(int type, int id, void *payload, size_t payloadsize) {
+  size_t msgsize = payloadsize + sizeof(lumen::msg);
+  auto msg = (lumen::msg *)malloc(msgsize);
+
+  msg->magic = LUMEN_MAGIC;
+  msg->type = type;
+  msg->id = id;
+  msg->len = payloadsize;
+
+  if (payloadsize > 0) memcpy(msg + 1, payload, payloadsize);
+
+  auto w = connection->write((const void *)msg, msgsize);
+
+  free(msg);
+  return w;
 }
