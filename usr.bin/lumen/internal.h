@@ -43,7 +43,7 @@ namespace lumen {
 	/**
 	 * contains all the state needed to run the window server
 	 */
-	struct manager {
+	struct context {
 
 
 		lumen::screen screen;
@@ -51,7 +51,7 @@ namespace lumen {
 		ck::file keyboard, mouse;
 		ck::localsocket server;
 
-		manager(void);
+		context(void);
 
 
 

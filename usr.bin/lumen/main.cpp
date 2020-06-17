@@ -11,8 +11,8 @@ int main(int argc, char **argv) {
 	// make an eventloop
   ck::eventloop loop;
 
-	// construct the manager
-	lumen::manager ctx;
+	// construct the context
+	lumen::context ctx;
 
 	// run the loop
 	loop.start();

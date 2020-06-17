@@ -3,7 +3,7 @@
 #include "internal.h"
 #include <lumen/msg.h>
 
-lumen::manager::manager(void) : screen(1024, 768) {
+lumen::context::context(void) : screen(1024, 768) {
   // clear the screen (black)
   memset(screen.pixels(), 0x00, screen.screensize());
 
@@ -35,12 +35,12 @@ lumen::manager::manager(void) : screen(1024, 768) {
 }
 
 
-void lumen::manager::handle_keyboard_input(keyboard_packet_t &pkt) {
+void lumen::context::handle_keyboard_input(keyboard_packet_t &pkt) {
   printf("keyboard: code: %02x ch: %02x (%c)\n", pkt.key, pkt.character,
          pkt.character);
 }
 
-void lumen::manager::handle_mouse_input(struct mouse_packet &pkt) {
+void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
   printf("mouse: dx: %-3d dy: %-3d buttons: %02x\n", pkt.dx, pkt.dy,
          pkt.buttons);
 }
@@ -100,7 +100,7 @@ static ck::vec<lumen::msg *> drain_messages(ck::localsocket &sock,
   return msgs;
 }
 
-void lumen::manager::accept_connection() {
+void lumen::context::accept_connection() {
   auto id = next_client_id++;
   // accept the connection
   auto *client = server.accept();
