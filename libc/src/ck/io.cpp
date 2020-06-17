@@ -3,12 +3,18 @@
 #include <ck/object.h>
 #include <ck/ptr.h>
 #include <ck/socket.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/un.h>
 #include <unistd.h>
+
+
+ck::file ck::stdin(0);
+ck::file ck::stdout(1);
+ck::file ck::stderr(2);
 
 ck::buffer::buffer(size_t size) {
   m_buf = calloc(size, 1);
@@ -169,7 +175,8 @@ ck::file::file(ck::string path, const char *mode) {
 bool ck::file::open(ck::string path, const char *mode) {
   int fmode = string_to_mode(mode);
   if (fmode == -1) {
-    fprintf(stderr, "[ck::file::open] '%s' is an invalid mode\n", mode);
+    fprintf(::stderr, "[ck::file::open] '%s' is an invalid mode\n", mode);
+    notifier.set_active(false);
     return false;
   }
 
@@ -177,6 +184,7 @@ bool ck::file::open(ck::string path, const char *mode) {
   int new_fd = ::open(path.get(), fmode);
 
   if (new_fd < 0) {
+    notifier.set_active(false);
     return false;
   }
 
@@ -184,20 +192,34 @@ bool ck::file::open(ck::string path, const char *mode) {
     flush();
     close(m_fd);
   }
+
   m_fd = new_fd;
+  init_notifier();
 
   return true;
 }
 
 
 
-ck::file::file(int fd) { m_fd = fd; }
+ck::file::file(int fd) {
+  m_fd = fd;
+  init_notifier();
+}
 
 ck::file::~file(void) {
-  if (m_fd != -1) {
+  if (m_fd != -1 && m_owns) {
     flush();
     close(m_fd);
   }
+}
+
+void ck::file::init_notifier(void) {
+  notifier.init(m_fd, AWAITFS_READ | AWAITFS_WRITE);
+  notifier.set_active(true);
+  notifier.on_event = [this](int event) {
+    if (event == CK_EVENT_READ && this->on_read) this->on_read();
+    if (event == CK_EVENT_WRITE && this->on_write) this->on_write();
+  };
 }
 
 
@@ -210,26 +232,16 @@ void ck::hexdump(const ck::buffer &buf) {
 
 
 
-
 // Socket implementation
 
 
-
-ck::socket::socket(int fd, int domain, int type, int protocol)
-    : ck::file(fd), notifier(m_fd, AWAITFS_READ | AWAITFS_WRITE) {
+ck::socket::socket(int fd, int domain, int type, int protocol) : ck::file(fd) {
   m_domain = domain;
   m_type = type;
   m_proto = protocol;
+
   // sockets should not be buffered
   set_buffer(0);
-  notifier.set_active(true);
-
-	notifier.on_read = [this] {
-		if (this->on_read) this->on_read();
-	};
-	notifier.on_write = [this] {
-		if (this->on_write) this->on_write();
-	};
 }
 
 
@@ -238,7 +250,6 @@ ck::socket::socket(int domain, int type, int protocol)
 
 
 ck::socket::~socket(void) {
-  notifier.set_active(false);
   // nothing for now.
 }
 
@@ -258,14 +269,18 @@ bool ck::socket::connect(struct sockaddr *addr, size_t size) {
 
 
 ssize_t ck::socket::send(void *buf, size_t sz, int flags) {
+  if (eof()) return 0;
   if (m_fd == -1) return 0;
   return ::send(m_fd, buf, sz, flags);
 }
 
 
 ssize_t ck::socket::recv(void *buf, size_t sz, int flags) {
+  if (eof()) return 0;
   if (m_fd == -1) return 0;
-  return ::recv(m_fd, buf, sz, flags);
+  int nread = ::recv(m_fd, buf, sz, flags);
+	if (nread == 0) set_eof(true);
+  return nread;
 }
 
 
@@ -301,10 +316,11 @@ int ck::localsocket::bind(ck::string path) {
 
 
 ck::ref<ck::localsocket> ck::localsocket::accept(void) {
-
   int client = ::accept(m_fd, (struct sockaddr *)&addr, sizeof(addr));
 
-	if (client < 0) return nullptr;
+  if (client < 0) return nullptr;
 
-	return new ck::localsocket(client);
+  return new ck::localsocket(client);
 }
+
+

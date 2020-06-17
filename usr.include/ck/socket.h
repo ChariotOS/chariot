@@ -5,7 +5,7 @@
 #include <ck/string.h>
 #include <sys/socket.h>
 #include <ck/fsnotifier.h>
-
+#include <ck/map.h>
 
 namespace ck {
 
@@ -20,8 +20,6 @@ namespace ck {
     bool m_connected = false;
     bool m_listening = false;
 
-		ck::fsnotifier notifier;
-
 		socket(int fd, int domain, int type, int protocol = 0);
    public:
     socket(int domain, int type, int protocol = 0);
@@ -35,10 +33,6 @@ namespace ck {
     inline bool connected(void) { return m_connected; }
     inline bool listening(void) { return m_listening; }
 
-
-
-    ck::func<void()> on_read;
-    ck::func<void()> on_write;
 
     CK_OBJECT(ck::socket);
   };

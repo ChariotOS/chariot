@@ -6,6 +6,7 @@
 #include <ck/string.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <ck/fsnotifier.h>
 
 namespace ck {
 
@@ -65,12 +66,19 @@ namespace ck {
     file(ck::string path, const char *mode);
     // give the file ownership of a file descriptor
     file(int fd);
+
     virtual ~file(void);
 
     virtual ssize_t write(const void *buf, size_t) override;
     virtual ssize_t read(void *buf, size_t) override;
 
     bool open(ck::string path, const char *mode);
+
+		static inline auto unowned(int fd) {
+			auto f = ck::file::create(fd);
+			f->m_owns = false;
+			return f;
+		}
 
     // the size of this file
     ssize_t size(void);
@@ -94,16 +102,30 @@ namespace ck {
     void set_buffer(size_t size);
     inline bool buffered(void) { return buf_cap > 0; }
 
+		// callback functions for read/write
+    ck::func<void()> on_read;
+    ck::func<void()> on_write;
+
    protected:
+		bool m_owns = true;
     int m_fd = -1;
     size_t buf_cap = 0;
     size_t buf_len = 0;
     uint8_t *m_buffer = NULL;
 
+		ck::fsnotifier notifier;
+
+		void init_notifier(void);
+
 		CK_OBJECT(ck::file);
   };
 
 
+
+
+	extern ck::file stdin;
+	extern ck::file stdout;
+	extern ck::file stderr;
 
 
   // print a nice and pretty hexdump to the screen

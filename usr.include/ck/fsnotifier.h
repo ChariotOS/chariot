@@ -1,8 +1,8 @@
 #pragma once
 
+#include <chariot/awaitfs_types.h>
 #include <ck/func.h>
 #include <ck/object.h>
-#include <chariot/awaitfs_types.h>
 
 namespace ck {
 
@@ -12,16 +12,20 @@ namespace ck {
    */
   class fsnotifier : public ck::object {
    public:
-    ck::func<void()> on_read;
-    ck::func<void()> on_write;
-
+    ck::func<void(int event)> on_event;
 
     fsnotifier(int fd, int event_mask = 0);
+    inline fsnotifier() {}
     ~fsnotifier(void);
 
 
-    void set_event_mask(int ev);
+    inline void init(int fd, int ev) {
+      m_fd = fd;
+      m_ev_mask = ev;
+      set_active(true);
+    }
 
+    void set_event_mask(int ev);
 
     void set_active(bool);
 

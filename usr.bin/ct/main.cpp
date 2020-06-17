@@ -13,20 +13,25 @@
 int main(int argc, char **argv) {
 
 
-	// ck::eventloop loop;
+	// make an eventloop
+	ck::eventloop loop;
+
+	// connect to the "server"
 	lumen::session session;
 
-	if (!session.connected()) {
-		fprintf(stderr, "failed to connect\n");
-		exit(EXIT_FAILURE);
-	}
-	while (true) {
+	// get a reference to stdin
+	auto in = ck::file::unowned(0);
+	// register a read handler
+	in->on_read = [&] {
 		char c = getchar();
-		if (c == '\n') break;
+		if (c == '\n') ck::eventloop::exit();
 		session.send_msg(3, c);
-	}
+	};
 
-	// loop.start();
+	// start the loop!
+	loop.start();
+
+	printf("\n");
 
 	return 0;
 }

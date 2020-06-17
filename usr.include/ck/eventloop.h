@@ -13,7 +13,6 @@ namespace ck {
 			~eventloop(void);
 
 
-
 			/**
 			 * start the eventloop, only to return once we are told.
 			 */
@@ -44,6 +43,9 @@ namespace ck {
 
 			static void register_notifier(ck::fsnotifier &);
 			static void deregister_notifier(ck::fsnotifier &);
+
+			// cause the eventlopp to exit
+			static void exit(void);
 
 		private:
 			bool m_finished = false;

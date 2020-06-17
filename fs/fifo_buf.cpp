@@ -94,17 +94,25 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
 ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
   init_if_needed();
 
+
+	if (!block) {
+		scoped_lock l(lock_read);
+
+		if (unread() == 0) {
+				if (m_closed)
+						return 0;
+				return -EAGAIN;
+		}
+	}
+
+
   auto obuf = (char *)vbuf;
 
   size_t collected = 0;
   while (collected == 0) {
+
     lock_read.lock();
 
-		if (!block && unread() == 0) {
-			lock_read.unlock();
-			// come back later!
-			return -EAGAIN;
-		}
     while (unread() > 0 && collected < size) {
       obuf[collected] = buffer[read_ptr];
       increment_read();
@@ -122,7 +130,6 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
     if (collected == 0) {
       wq_readers.wait();
 
-      if (m_closed) return -ECONNRESET;
     }
   }
 
@@ -132,6 +139,9 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
 
 
 int fifo_buf::poll(void) {
+	// upon close, it returns AWAITFS_READ (idk, its expected)
+	if (m_closed) return AWAITFS_READ;
+
   int ev = 0;
   lock_read.lock();
   if (unread() > 0) {

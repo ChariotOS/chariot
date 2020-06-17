@@ -32,6 +32,11 @@ ck::eventloop::~eventloop(void) {
 	*/
 }
 
+void ck::eventloop::exit(void) {
+	if (active_eventloop == NULL) return;
+	active_eventloop->m_finished = true;
+}
+
 
 
 void ck::eventloop::start(void) {
@@ -42,6 +47,7 @@ void ck::eventloop::start(void) {
     pump();
     dispatch();
   }
+	m_finished = false;
 	active_eventloop = old;
 }
 
@@ -86,6 +92,7 @@ void ck::eventloop::pump(void) {
       event->type = CK_EVENT_WRITE;
       post_event(*(ck::object *)targs[index].priv, event);
     }
+
   }
 }
 
@@ -143,13 +150,6 @@ void ck::fsnotifier::set_active(bool a) {
 
 
 bool ck::fsnotifier::event(const ck::event & ev) {
-
-	if (ev.type == CK_EVENT_READ && on_read) {
-		on_read();
-	}
-
-	if (ev.type == CK_EVENT_WRITE && on_write) {
-		on_write();
-	}
+	on_event(ev.type);
 	return true;
 }

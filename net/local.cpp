@@ -144,10 +144,10 @@ int net::localsock::poll(fs::file &f, int events) {
   int res = 0;
 
   if (f.pflags & PFLAGS_CLIENT) {
-    res |= for_client.poll() & AWAITFS_READ;
+    res |= for_client.poll() & (AWAITFS_READ);
   } else if (f.pflags & PFLAGS_SERVER) {
     // A pending connection is considered an AWAITFS_READ event
-    res |= for_server.poll() & AWAITFS_READ;
+    res |= for_server.poll() & (AWAITFS_READ);
   }
 
   res |= pending_connections.poll() & AWAITFS_READ;

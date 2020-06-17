@@ -15,20 +15,24 @@
 #include <unistd.h>
 #include "internal.h"
 
-
-ck::vec<lumen::msg *> drain_messages(ck::localsocket &sock, int &err) {
+ck::vec<lumen::msg *> drain_messages(ck::localsocket &sock, bool &failed) {
+	failed = false;
   ck::vec<uint8_t> bytes;
   for (;;) {
     uint8_t buffer[512];  // XXX dont put this on the stack
     int nread = sock.recv(buffer, sizeof(buffer), MSG_DONTWAIT);
-    if (nread == -EAGAIN) {
-      break;
-    }
+		int errno_cache = errno;
+		if (nread < 0) {
+				if (errno_cache == EAGAIN)
+						break;
+				failed = true;
+				return {};
+		}
 
-    if (nread <= 0) {
-      err = nread;
-      return {};
-    }
+		if (nread == 0) {
+			failed = true;
+			return {};
+		}
     if (nread > 0) {
       bytes.push(buffer, nread);
     }
@@ -60,39 +64,44 @@ ck::vec<lumen::msg *> drain_messages(ck::localsocket &sock, int &err) {
     i += total_size;
   }
 
+	failed = false;
+
   return msgs;
 }
 
 
-int main(int argc, char **argv) {
+ck::map<long, ck::localsocket*> clients;
 
+int main(int argc, char **argv) {
   ck::eventloop loop;
   ck::localsocket server;
 
-  ck::vec<ck::ref<ck::localsocket>> clients;
-
   server.bind("/usr/servers/lumen");
 
-  server.on_read = [&] {
-    auto client_ref = server.accept();
-		auto *client = client_ref.get();
-		printf("connected to %p\n", client);
-    clients.push(client_ref);
+	long next_id = 0;
 
-    client->on_read = [=] {
-      int err = 0;
-      auto msgs = drain_messages(*client, err);
-      if (err < 0) {
-        fprintf(stderr, "goodbye\n");
-				// TODO: close the client
-      }
-			// do stuff with the messages
+  server.on_read = [&] {
+		auto id = next_id++;
+		auto *client = server.accept().leak_ref();
+		clients.set(id, client);
+
+		printf("connected %d\n", client->fileno());
+
+    client->on_read = [id, client] {
+      bool failed = false;
+      auto msgs = drain_messages(*client, failed);
 
       for (auto *msg : msgs) {
-        printf("%c", msg->data[0]);
+        ck::hexdump(msg, sizeof(*msg) + msg->len);
         free(msg);
       }
       fflush(stdout);
+
+			if (client->eof() || failed) {
+				printf("Client %d disconnected\n", id);
+				clients.remove(id);
+				delete client;
+			}
     };
   };
 

@@ -43,10 +43,12 @@ int startpidvpe(int pid, char *const path, char *const argv[],
 
 
 
+
+
 #define panic(fmt, args...)                     \
   do {                                          \
     printf("PANIC: %s\n", __PRETTY_FUNCTION__); \
-    fprintf(stderr, fmt, ##args);               \
+    printf(fmt, ##args);               \
     exit(-1);                                   \
   } while (0);
 

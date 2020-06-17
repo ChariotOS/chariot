@@ -118,13 +118,19 @@ static ssize_t console_write(fs::file& fd, const char* buf, size_t sz) {
   return -1;
 }
 static int console_open(fs::file& fd) { return 0; }
-static void console_close(fs::file& fd) { KINFO("[console] close!\n"); }
+static void console_close(fs::file& fd) { /* KINFO("[console] close!\n"); */ }
+
+
+static int console_poll(fs::file &fd, int events) {
+	return console_fifo.poll() & events;
+}
 
 struct fs::file_operations console_ops = {
     .read = console_read,
     .write = console_write,
     .open = console_open,
     .close = console_close,
+		.poll = console_poll,
 };
 
 static struct dev::driver_info console_driver_info {

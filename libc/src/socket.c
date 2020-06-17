@@ -224,7 +224,7 @@ in_addr_t inet_netof(struct in_addr in) {
 
 ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
 	       const struct sockaddr *dest_addr, size_t addrlen) {
-	return syscall(SYS_sendto, sockfd, buf, len, flags, dest_addr, addrlen);
+	return errno_syscall(SYS_sendto, sockfd, buf, len, flags, dest_addr, addrlen);
 }
 
 
@@ -234,7 +234,7 @@ ssize_t recvfrom(int sockfd, const void *buf, size_t len, int flags,
 	if (addrlen != NULL) {
 		alen = *addrlen;
 	}
-	return syscall(SYS_recvfrom, sockfd, buf, len, flags, dest_addr, alen);
+	return errno_syscall(SYS_recvfrom, sockfd, buf, len, flags, dest_addr, alen);
 }
 
 
