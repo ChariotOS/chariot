@@ -21,16 +21,16 @@ ck::buffer::~buffer(void) {
 
 
 ssize_t ck::file::read(void *buf, size_t sz) {
-	if (eof()) return 0;
+  if (eof()) return 0;
 
   if (m_fd == -1) return 0;
 
   size_t k = ::read(m_fd, buf, sz);
 
-	if (k < 0) {
-		set_eof(true);
-		return 0;
-	}
+  if (k < 0) {
+    set_eof(true);
+    return 0;
+  }
   return k;
 }
 
@@ -109,7 +109,7 @@ int ck::file::writef(const char *format, ...) {
 void ck::file::flush(void) {
   if (buffered()) {
     errno_syscall(SYS_write, m_fd, m_buffer, buf_len);
-		ck::hexdump(m_buffer, buf_len);
+    ck::hexdump(m_buffer, buf_len);
     buf_len = 0;
     // memset(m_buffer, 0, buf_cap);
   }
@@ -157,52 +157,47 @@ static int string_to_mode(const char *mode) {
 }
 
 
-ck::file::file(void) {
-	m_fd = -1;
-}
+ck::file::file(void) { m_fd = -1; }
 
 ck::file::file(ck::string path, const char *mode) {
-	m_fd = -1;
+  m_fd = -1;
   this->open(path, mode);
 }
 
 
 
 bool ck::file::open(ck::string path, const char *mode) {
+  int fmode = string_to_mode(mode);
+  if (fmode == -1) {
+    fprintf(stderr, "[ck::file::open] '%s' is an invalid mode\n", mode);
+    return false;
+  }
 
-	int fmode = string_to_mode(mode);
-	if (fmode == -1) {
-		fprintf(stderr, "[ck::file::open] '%s' is an invalid mode\n", mode);
-		return false;
-	}
 
+  int new_fd = ::open(path.get(), fmode);
 
-	int new_fd = ::open(path.get(), fmode);
+  if (new_fd < 0) {
+    return false;
+  }
 
-	if (new_fd < 0) {
-		return false;
-	}
+  if (m_fd != -1) {
+    flush();
+    close(m_fd);
+  }
+  m_fd = new_fd;
 
-	if (m_fd != -1) {
-		flush();
-		close(m_fd);
-	}
-	m_fd = new_fd;
-
-	return true;
+  return true;
 }
 
 
 
-ck::file::file(int fd) {
-	m_fd = fd;
-}
+ck::file::file(int fd) { m_fd = fd; }
 
 ck::file::~file(void) {
   if (m_fd != -1) {
-  	flush();
-		close(m_fd);
-	}
+    flush();
+    close(m_fd);
+  }
 }
 
 
@@ -217,17 +212,33 @@ void ck::hexdump(const ck::buffer &buf) {
 
 
 // Socket implementation
-ck::socket::socket(int domain, int type, int protocol)
-    : ck::file(::socket(AF_UNIX, SOCK_STREAM, 0)) {
+
+
+
+ck::socket::socket(int fd, int domain, int type, int protocol)
+    : ck::file(fd), notifier(m_fd, AWAITFS_READ | AWAITFS_WRITE) {
   m_domain = domain;
   m_type = type;
   m_proto = protocol;
-	// sockets should not be buffered
-	set_buffer(0);
+  // sockets should not be buffered
+  set_buffer(0);
+  notifier.set_active(true);
+
+	notifier.on_read = [this] {
+		if (this->on_read) this->on_read();
+	};
+	notifier.on_write = [this] {
+		if (this->on_write) this->on_write();
+	};
 }
 
 
+ck::socket::socket(int domain, int type, int protocol)
+    : ck::socket(::socket(AF_UNIX, SOCK_STREAM, 0), AF_UNIX, SOCK_STREAM, 0) {}
+
+
 ck::socket::~socket(void) {
+  notifier.set_active(false);
   // nothing for now.
 }
 
@@ -246,6 +257,19 @@ bool ck::socket::connect(struct sockaddr *addr, size_t size) {
 }
 
 
+ssize_t ck::socket::send(void *buf, size_t sz, int flags) {
+  if (m_fd == -1) return 0;
+  return ::send(m_fd, buf, sz, flags);
+}
+
+
+ssize_t ck::socket::recv(void *buf, size_t sz, int flags) {
+  if (m_fd == -1) return 0;
+  return ::recv(m_fd, buf, sz, flags);
+}
+
+
+
 bool ck::localsocket::connect(ck::string str) {
   struct sockaddr_un addr;
   memset(&addr, 0, sizeof(addr));
@@ -254,4 +278,33 @@ bool ck::localsocket::connect(ck::string str) {
   // bind the local socket to the windowserver
   strncpy(addr.sun_path, str.get(), sizeof(addr.sun_path) - 1);
   return ck::socket::connect((struct sockaddr *)&addr, sizeof(addr));
+}
+
+
+
+int ck::localsocket::bind(ck::string path) {
+  // are we already listening?
+  if (m_listening) return false;
+
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = AF_UNIX;
+  strncpy(addr.sun_path, path.get(), sizeof(addr.sun_path) - 1);
+
+
+  int bind_res = ::bind(m_fd, (struct sockaddr *)&addr, sizeof(addr));
+
+  if (bind_res == 0) {
+    m_listening = true;
+  }
+  return bind_res;
+}
+
+
+ck::ref<ck::localsocket> ck::localsocket::accept(void) {
+
+  int client = ::accept(m_fd, (struct sockaddr *)&addr, sizeof(addr));
+
+	if (client < 0) return nullptr;
+
+	return new ck::localsocket(client);
 }

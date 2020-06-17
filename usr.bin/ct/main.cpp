@@ -8,21 +8,12 @@
 #include <ck/io.h>
 #include <ck/socket.h>
 
+#include <ck/eventloop.h>
+
 int main(int argc, char **argv) {
 
-	/*
-	ck::localsocket sock;
 
-	sock.connect("/usr/servers/lumen");
-
-	while (true) {
-		char c = getchar();
-		if (c == '\n') break;
-		sock.write(&c, 1);
-	}
-	return 0;
-	*/
-
+	// ck::eventloop loop;
 	lumen::session session;
 
 	if (!session.connected()) {
@@ -35,6 +26,7 @@ int main(int argc, char **argv) {
 		session.send_msg(3, c);
 	}
 
+	// loop.start();
+
 	return 0;
 }
-

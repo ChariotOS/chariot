@@ -42,7 +42,6 @@ namespace ck {
     bool m_eof = false;
 
    public:
-		CK_OBJECT(ck::stream);
     virtual ~stream(){};
     inline virtual ssize_t write(const void *buf, size_t) { return -1; }
     inline virtual ssize_t read(void *buf, size_t) { return -1; }
@@ -51,13 +50,15 @@ namespace ck {
 
    protected:
     inline void set_eof(bool e) { m_eof = e; }
+
+
+		CK_OBJECT(ck::stream);
   };
 
 
   // A file is an "abstract implementation" of
   class file : public ck::stream {
    public:
-		CK_OBJECT(ck::file);
 		// construct without opening any file
 		file(void);
     // construct by opening the file
@@ -98,6 +99,8 @@ namespace ck {
     size_t buf_cap = 0;
     size_t buf_len = 0;
     uint8_t *m_buffer = NULL;
+
+		CK_OBJECT(ck::file);
   };
 
 

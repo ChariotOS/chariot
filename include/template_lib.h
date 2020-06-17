@@ -48,7 +48,7 @@ DEF_INT_TRAITS(unsigned long);
 template <typename T>
 struct Traits<T*> {
   static unsigned hash(const T* p) {
-    return (unsigned)p;  // int_hash((unsigned)(__PTRDIFF_TYPE__)p);
+    return (unsigned long long)p;  // int_hash((unsigned)(__PTRDIFF_TYPE__)p);
   }
   static constexpr bool is_trivial() { return true; }
   static void dump(const T* p) { printk("%p", p); }

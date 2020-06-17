@@ -12,7 +12,7 @@
 namespace lumen {
 
 	// TODO: event loop this thing
-	class session : ck::object {
+	class session : public ck::object {
 
 		// this is the connection to the windowserver
 		ck::localsocket sock;

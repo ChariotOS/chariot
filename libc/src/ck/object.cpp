@@ -3,9 +3,17 @@
 
 
 
+ck::intrusive_list<ck::object, &ck::object::m_all_list>&
+ck::object::all_objects() {
+  static ck::intrusive_list<ck::object, &ck::object::m_all_list> objects;
+  return objects;
+}
+
+
 ck::object::object(void) {
-	// printf("construct a '%s'\n", class_name());
+  all_objects().append(*this);
+
 }
 ck::object::~object(void) {
-	// printf("destruct a '%s'\n", class_name());
+  all_objects().remove(*this);
 }
