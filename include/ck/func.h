@@ -33,6 +33,8 @@ namespace ck {
 
     operator bool(void) { return m_callable_wrapper.get() != NULL; }
 
+		using ReturnType = Out;
+
    private:
     class CallableWrapperBase {
      public:

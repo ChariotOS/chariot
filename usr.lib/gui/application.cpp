@@ -33,7 +33,7 @@ gui::application::application(void) {
 
   greet.pid = getpid();
   if (send_msg_sync(LUMEN_MSG_GREET, greet, &greetback)) {
-    printf("my client id is %d!\n", greetback.client_id);
+    printf("my guest id is %d!\n", greetback.guest_id);
   }
 }
 
@@ -128,21 +128,20 @@ void gui::application::start(void) { m_eventloop.start(); }
 
 ck::ref<gui::window> gui::application::new_window(ck::string name, int w,
                                                   int h) {
-
-	struct lumen::create_window_msg msg;
-	msg.width = w;
-	msg.height = h;
+  struct lumen::create_window_msg msg;
+  msg.width = w;
+  msg.height = h;
   strncpy(msg.name, name.get(), LUMEN_NAMESZ - 1);
 
-	// the response message
-	struct lumen::window_created_msg res = {0};
+  // the response message
+  struct lumen::window_created_msg res = {0};
 
-	if (send_msg_sync(LUMEN_MSG_CREATE_WINDOW, msg, &res)) {
-		if (res.window_id >= 0) {
-			return gui::window::create(res.window_id, name, gfx::rect(w, h, 0, 0));
-		}
-		printf("window_id = %d\n", res.window_id);
-	}
+  if (send_msg_sync(LUMEN_MSG_CREATE_WINDOW, msg, &res)) {
+    if (res.window_id >= 0) {
+      return gui::window::create(res.window_id, name, gfx::rect(w, h, 0, 0));
+    }
+    printf("window_id = %d\n", res.window_id);
+  }
 
   return nullptr;
 }

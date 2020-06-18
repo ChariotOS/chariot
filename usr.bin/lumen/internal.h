@@ -14,7 +14,7 @@
 namespace lumen {
 
   // fwd decl
-  struct client;
+  struct guest;
 
   // represents a framebuffer for a screen
   class screen {
@@ -47,22 +47,22 @@ namespace lumen {
     int id = 0;
     ck::string name;
     gfx::rect rect;
-    lumen::client &client;
+    lumen::guest &guest;
 
-    inline window(int id, lumen::client &c) : id(id), client(c) {}
+    inline window(int id, lumen::guest &c) : id(id), guest(c) {}
   };
 
 
-  // a client who is connected to the server
-  // Clients can have many windows
-  struct client {
+  // a guest who is connected to the server
+  // guests can have many windows
+  struct guest {
     long id = 0;
     struct context &ctx;  // the context we live in
     ck::localsocket *connection;
     ck::map<long, struct window *> windows;
 
-    client(long id, struct context &ctx, ck::localsocket *conn);
-    ~client(void);
+    guest(long id, struct context &ctx, ck::localsocket *conn);
+    ~guest(void);
 
     void process_message(lumen::msg &);
     void on_read(void);
@@ -80,8 +80,6 @@ namespace lumen {
     inline int respond(lumen::msg &m, int type, const T &payload) {
       return send_raw(type, m.id, (void *)&payload, sizeof(payload));
     }
-
-
 
     struct window *new_window(ck::string name, gfx::rect r);
 
@@ -108,12 +106,27 @@ namespace lumen {
     void accept_connection(void);
     void handle_keyboard_input(keyboard_packet_t &pkt);
     void handle_mouse_input(struct mouse_packet &pkt);
-    void process_message(lumen::client &c, lumen::msg &);
-    void client_closed(long id);
+    void process_message(lumen::guest &c, lumen::msg &);
+    void guest_closed(long id);
+
+
+		void window_opened(window *);
+		void window_closed(window *);
+
+		struct window_ref {
+			// the client and the window id
+			long client, id;
+		};
+
+
+		// ordered list of all the windows (front to back)
+		// The currently focused window is at the front
+		ck::vec<lumen::window *> windows;
+
 
    private:
-    ck::map<long, lumen::client *> clients;
-    long next_client_id = 0;
+    ck::map<long, lumen::guest *> guests;
+    long next_guest_id = 0;
   };
 
 

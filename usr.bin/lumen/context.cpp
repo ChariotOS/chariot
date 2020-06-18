@@ -49,15 +49,15 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
 
 
 void lumen::context::accept_connection() {
-  auto id = next_client_id++;
+  auto id = next_guest_id++;
   // accept the connection
-  auto *client = server.accept();
-  clients.set(id, new lumen::client(id, *this, client));
+  auto *guest = server.accept();
+  guests.set(id, new lumen::guest(id, *this, guest));
 }
 
-void lumen::context::client_closed(long id) {
-  auto c = clients[id];
-  clients.remove(id);
+void lumen::context::guest_closed(long id) {
+  auto c = guests[id];
+  guests.remove(id);
   delete c;
 }
 
@@ -65,7 +65,7 @@ void lumen::context::client_closed(long id) {
 #define HANDLE_TYPE(t, data_type)       \
   if (auto arg = (data_type *)msg.data; \
       msg.type == t && msg.len == sizeof(data_type))
-void lumen::context::process_message(lumen::client &c, lumen::msg &msg) {
+void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
   HANDLE_TYPE(LUMEN_MSG_CREATE_WINDOW, lumen::create_window_msg) {
     (void)arg;
 
@@ -90,29 +90,67 @@ void lumen::context::process_message(lumen::client &c, lumen::msg &msg) {
     // responed to that
     struct lumen::greetback_msg res;
     res.magic = LUMEN_GREETBACK_MAGIC;
-    res.client_id = c.id;
+    res.guest_id = c.id;
     c.respond(msg, msg.type, res);
   };
 }
 
 
-lumen::client::client(long id, struct context &ctx, ck::localsocket *conn)
+
+
+
+
+
+
+void lumen::context::window_opened(lumen::window *w) {
+	// TODO lock
+
+	// [sanity check] make sure the window isn't already in the list :^)
+	for (auto *e : windows) {
+		if (w == e) {
+			fprintf(stderr, "Window already exists!!\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	windows.insert(0, w);
+	// TODO: set the focused window to the new one
+}
+
+
+void lumen::context::window_closed(lumen::window *w) {
+	// TODO lock
+
+	// Remove the window from our list
+	for (int i = 0; i < windows.size(); i++) {
+		if (windows[i] == w) {
+			windows.remove(i);
+			break;
+		}
+	}
+}
+
+
+
+
+lumen::guest::guest(long id, struct context &ctx, ck::localsocket *conn)
     : id(id), ctx(ctx), connection(conn) {
   // printf("got a connection\n");
 
   connection->on_read([this] { this->on_read(); });
 }
 
-lumen::client::~client(void) {
+lumen::guest::~guest(void) {
   for (auto kv : windows) {
-    printf("window '%s' (id: %d) removed!\n", kv.value->name.get(), kv.key);
-    // XXX: notify the context of the window destructions
+    printf("window '%s' (id: %d) removed due to guest being destructed!\n", kv.value->name.get(), kv.key);
+
+		ctx.window_closed(kv.value);
     delete kv.value;
   }
   delete connection;
 }
 
-void lumen::client::on_read(void) {
+void lumen::guest::on_read(void) {
   bool failed = false;
   auto msgs = lumen::drain_messages(*connection, failed);
   // handle messages
@@ -122,32 +160,34 @@ void lumen::client::on_read(void) {
     free(msg);
   }
 
-  // if the client is at EOF *or* it otherwise failed, consider it
+  // if the guest is at EOF *or* it otherwise failed, consider it
   // disconnected
   if (connection->eof() || failed) {
-    this->ctx.client_closed(id);
+    this->ctx.guest_closed(id);
   }
 }
 
 
 
-struct lumen::window *lumen::client::new_window(ck::string name, gfx::rect r) {
+struct lumen::window *lumen::guest::new_window(ck::string name, gfx::rect r) {
 	auto id = next_window_id++;
 	auto w = new lumen::window(id, *this);
 	w->name = name;
 	w->rect = r;
-	printf("client %d made a new window, '%s'\n", this->id, name.get());
+	printf("guest %d made a new window, '%s'\n", this->id, name.get());
 	windows.set(w->id, w);
+
+	ctx.window_opened(w);
 	return w;
 }
 
-void lumen::client::process_message(lumen::msg &msg) {
+void lumen::guest::process_message(lumen::msg &msg) {
   // defer to the window server's function
   ctx.process_message(*this, msg);
 }
 
 
-long lumen::client::send_raw(int type, int id, void *payload,
+long lumen::guest::send_raw(int type, int id, void *payload,
                              size_t payloadsize) {
   size_t msgsize = payloadsize + sizeof(lumen::msg);
   auto msg = (lumen::msg *)malloc(msgsize);
