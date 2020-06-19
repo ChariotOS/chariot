@@ -1,6 +1,7 @@
 set(SOURCES
     main.cpp
 		context.cpp
+		window.cpp
 		screen.cpp
 )
 chariot_bin(lumen)

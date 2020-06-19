@@ -63,7 +63,7 @@ namespace lumen {
 	struct window_created_msg {
 		// if this is -1, it failed
 		int window_id;
-		//
+		char bitmap_name[LUMEN_NAMESZ];
 	};
 
 

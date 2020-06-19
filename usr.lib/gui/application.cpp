@@ -138,9 +138,8 @@ ck::ref<gui::window> gui::application::new_window(ck::string name, int w,
 
   if (send_msg_sync(LUMEN_MSG_CREATE_WINDOW, msg, &res)) {
     if (res.window_id >= 0) {
-      return gui::window::create(res.window_id, name, gfx::rect(w, h, 0, 0));
+      return gui::window::create(res.window_id, name, gfx::rect(0, 0, w, h), gfx::shared_bitmap::get(res.bitmap_name, w, h));
     }
-    printf("window_id = %d\n", res.window_id);
   }
 
   return nullptr;

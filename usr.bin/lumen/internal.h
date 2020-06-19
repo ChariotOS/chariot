@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include "gfx/rect.h"
+#include <gfx/bitmap.h>
 
 namespace lumen {
 
@@ -63,10 +64,12 @@ namespace lumen {
   struct window {
     int id = 0;
     ck::string name;
-    gfx::rect rect;
     lumen::guest &guest;
+    gfx::rect rect;
 
-    inline window(int id, lumen::guest &c) : id(id), guest(c) {}
+		ck::ref<gfx::shared_bitmap> bitmap;
+
+    window(int id, lumen::guest &c, int w, int h);
   };
 
 
@@ -98,7 +101,7 @@ namespace lumen {
       return send_raw(type, m.id, (void *)&payload, sizeof(payload));
     }
 
-    struct window *new_window(ck::string name, gfx::rect r);
+    struct window *new_window(ck::string name, int w, int h);
 
 
     // a big number.
@@ -129,6 +132,9 @@ namespace lumen {
 
 		void window_opened(window *);
 		void window_closed(window *);
+
+
+		void compose(void);
 
 		struct window_ref {
 			// the client and the window id

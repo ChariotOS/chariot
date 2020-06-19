@@ -32,6 +32,10 @@ namespace gfx {
     inline size_t width(void) { return m_width; }
     inline size_t height(void) { return m_height; }
 
+    inline void clear(uint32_t c) {
+      for (size_t i = 0; i < width() * height(); i++) m_pixels[i] = c;
+    }
+
    protected:
     bitmap(){};  // protected constructor
     size_t m_width, m_height;
@@ -49,19 +53,21 @@ namespace gfx {
    public:
     inline const char *shared_name(void) const { return m_name.get(); }
 
-		static ck::ref<gfx::shared_bitmap> get(const char *name, size_t w, size_t h);
+    static ck::ref<gfx::shared_bitmap> get(const char *name, size_t w,
+                                           size_t h);
     shared_bitmap(size_t w, size_t h);
 
     virtual ~shared_bitmap(void);
 
 
-		// applies no transformation to the image. Just gets a new canvas
-		ck::ref<gfx::shared_bitmap> resize(size_t w, size_t h);
+    // applies no transformation to the image. Just gets a new canvas
+    ck::ref<gfx::shared_bitmap> resize(size_t w, size_t h);
 
-		// DO NOT USE THIS
+    // DO NOT USE THIS
     shared_bitmap(const char *name, uint32_t *, size_t w, size_t h);
+
    protected:
-		size_t m_original_size;
+    size_t m_original_size;
     const ck::string m_name;
   };
 

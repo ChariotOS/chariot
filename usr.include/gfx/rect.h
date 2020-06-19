@@ -7,13 +7,12 @@ namespace gfx {
     // simple!
     int x, y, w, h;
 
-    void draw(int color);
-
 		inline rect() {
 			x = y = w = h = 0;
 		}
 
     inline rect(int x, int y, int w, int h) : x(x), y(y), w(w), h(h) {}
+    inline rect(int w, int h) : x(0), y(0), w(w), h(h) {}
 		inline rect(const rect &o) {
 			rect(o.x, o.y, o.w, o.h);
 		}

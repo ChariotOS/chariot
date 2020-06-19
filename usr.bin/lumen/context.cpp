@@ -16,7 +16,7 @@ uint32_t blend(uint32_t fgi, uint32_t bgi) {
   auto fg = (unsigned char *)&fgi;
   auto bg = (unsigned char *)&bgi;
 
-	// spooky math follows
+  // spooky math follows
   uint32_t alpha = fg[3] + 1;
   uint32_t inv_alpha = 256 - fg[3];
   result[0] = (unsigned char)((alpha * fg[0] + inv_alpha * bg[0]) >> 8);
@@ -56,14 +56,16 @@ draw_bmp(test, screen, 0, 0);
   */
 
   auto logo = gfx::load_png_shared("/usr/res/misc/cat.png");
-	auto copy = gfx::shared_bitmap::get(logo->shared_name(), logo->width() * 2, logo->height() * 2);
-	auto copy2 = gfx::shared_bitmap::get(logo->shared_name(), logo->width() / 2, logo->height() * 2);
+  auto copy = gfx::shared_bitmap::get(logo->shared_name(), logo->width() * 2,
+                                      logo->height() * 2);
+  auto copy2 = gfx::shared_bitmap::get(logo->shared_name(), logo->width() / 2,
+                                       logo->height() * 2);
 
   draw_bmp(logo, screen, 0, 0);
   draw_bmp(copy, screen, 0, logo->height());
   draw_bmp(copy2, screen, 0, copy->height());
 
-	printf("done!\n");
+  printf("done!\n");
 
 
 
@@ -124,22 +126,27 @@ void lumen::context::guest_closed(long id) {
 #define HANDLE_TYPE(t, data_type)       \
   if (auto arg = (data_type *)msg.data; \
       msg.type == t && msg.len == sizeof(data_type))
+
+
 void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
+  compose();  // XXX: remove me!
   HANDLE_TYPE(LUMEN_MSG_CREATE_WINDOW, lumen::create_window_msg) {
     (void)arg;
 
     ck::string name(arg->name, LUMEN_NAMESZ);
 
-    /*
-printf("window wants to be made! ('%s', %dx%d)\n", name.get(), arg->width,
-arg->height);
-                             */
+    printf("window wants to be made! ('%s', %dx%d)\n", name.get(), arg->width,
+           arg->height);
 
     struct lumen::window_created_msg res;
     // TODO: figure out a better position to open to
-    auto *window = c.new_window(name, gfx::rect(arg->width, arg->height, 0, 0));
-    res.window_id = window->id;
-
+    auto *window = c.new_window(name, arg->width, arg->height);
+    if (window != NULL) {
+      res.window_id = window->id;
+      strncpy(res.bitmap_name, window->bitmap->shared_name(), LUMEN_NAMESZ - 1);
+    } else {
+      res.window_id = -1;
+    }
     c.respond(msg, LUMEN_MSG_WINDOW_CREATED, res);
     return;
   }
@@ -185,6 +192,20 @@ void lumen::context::window_closed(lumen::window *w) {
   }
 }
 
+void lumen::context::compose(void) {
+	screen.clear(0xFFFFFF);
+  for (auto *win : windows) {
+		for (int y = 0; y < win->bitmap->height(); y++) {
+			for (int x = 0; x < win->bitmap->width(); x++) {
+				int ax = x + win->rect.x;
+				int ay = y + win->rect.y;
+
+				screen.set_pixel(ax, ay, win->bitmap->get_pixel(x, y));
+			}
+		}
+  }
+}
+
 
 
 
@@ -225,16 +246,21 @@ void lumen::guest::on_read(void) {
 
 
 
-struct lumen::window *lumen::guest::new_window(ck::string name, gfx::rect r) {
+struct lumen::window *lumen::guest::new_window(ck::string name, int w, int h) {
   auto id = next_window_id++;
-  auto w = new lumen::window(id, *this);
-  w->name = name;
-  w->rect = r;
-  printf("guest %d made a new window, '%s'\n", this->id, name.get());
-  windows.set(w->id, w);
+  auto win = new lumen::window(id, *this, w, h);
+  win->name = name;
 
-  ctx.window_opened(w);
-  return w;
+	// XXX: allow the user to request a position
+	win->rect.x = rand() % (ctx.screen.width() - w);
+	win->rect.y = rand() % (ctx.screen.height() - h);
+
+  printf("guest %d made a new window, '%s'\n", this->id, name.get());
+  windows.set(win->id, win);
+
+
+  ctx.window_opened(win);
+  return win;
 }
 
 void lumen::guest::process_message(lumen::msg &msg) {

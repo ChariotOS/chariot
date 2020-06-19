@@ -31,7 +31,11 @@ int main(int argc, char **argv) {
     if (c == 'n') {
       char buf[50];
       sprintf(buf, "window %d on pid %d", windows.size(), getpid());
-      windows.push(app.new_window(buf, 300, 200));
+			auto win = app.new_window(buf, 300, 200);
+			win->bmp().clear(rand());
+			// flush the whole window!
+			win->flush();
+      windows.push(win);
       return;
     }
     ck::eventloop::exit();
