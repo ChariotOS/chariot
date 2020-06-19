@@ -1,12 +1,50 @@
 #include <errno.h>
+#include <gfx/image.h>
 #include <lumen.h>
 #include <lumen/msg.h>
 #include <string.h>
+#include <unistd.h>
 #include "internal.h"
+int blend(unsigned char result[4], unsigned char fg[4], unsigned char bg[4]) {
+  unsigned int alpha = fg[3] + 1;
+  unsigned int inv_alpha = 256 - fg[3];
+  result[0] = (unsigned char)((alpha * fg[0] + inv_alpha * bg[0]) >> 8);
+  result[1] = (unsigned char)((alpha * fg[1] + inv_alpha * bg[1]) >> 8);
+  result[2] = (unsigned char)((alpha * fg[2] + inv_alpha * bg[2]) >> 8);
+  result[3] = 0xff;
+  return 0;
+}
+
+
+void draw_bmp(ck::ref<gfx::bitmap> bmp, lumen::screen &screen, int xo, int yo) {
+  if (bmp) {
+    for (size_t y = 0; y < bmp->height(); y++) {
+      for (size_t x = 0; x < bmp->width(); x++) {
+        uint32_t bp = bmp->get_pixel(x, y);
+        uint32_t sp = screen.get_pixel(x + xo, y + yo);
+        uint32_t pix = 0;
+
+        blend((unsigned char *)&pix, (unsigned char *)&bp,
+              (unsigned char *)&sp);
+        screen.set_pixel(x + xo, y + yo, pix);
+      }
+    }
+  }
+}
 
 lumen::context::context(void) : screen(1024, 768) {
-  // clear the screen (black)
-  memset(screen.pixels(), 0x00, screen.screensize());
+  // clear the screen
+  memset(screen.pixels(), 0xFF, screen.screensize());
+
+  auto test = gfx::load_png("/usr/res/misc/test.png");
+  draw_bmp(test, screen, 0, 0);
+
+
+  auto cat = gfx::load_png("/usr/res/misc/shadow.png");
+  for (int i = 0; i < screen.width(); i += 30) {
+    draw_bmp(cat, screen, i, screen.height() - cat->height());
+  }
+
 
   keyboard.open("/dev/keyboard", "r+");
   keyboard.on_read([this] {
@@ -71,15 +109,15 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
 
     ck::string name(arg->name, LUMEN_NAMESZ);
 
-		/*
-    printf("window wants to be made! ('%s', %dx%d)\n", name.get(), arg->width,
-           arg->height);
-					 */
+    /*
+printf("window wants to be made! ('%s', %dx%d)\n", name.get(), arg->width,
+arg->height);
+                             */
 
     struct lumen::window_created_msg res;
-		// TODO: figure out a better position to open to
-		auto *window = c.new_window(name, gfx::rect(arg->width, arg->height, 0, 0));
-		res.window_id = window->id;
+    // TODO: figure out a better position to open to
+    auto *window = c.new_window(name, gfx::rect(arg->width, arg->height, 0, 0));
+    res.window_id = window->id;
 
     c.respond(msg, LUMEN_MSG_WINDOW_CREATED, res);
     return;
@@ -98,36 +136,32 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
 
 
 
-
-
-
-
 void lumen::context::window_opened(lumen::window *w) {
-	// TODO lock
+  // TODO lock
 
-	// [sanity check] make sure the window isn't already in the list :^)
-	for (auto *e : windows) {
-		if (w == e) {
-			fprintf(stderr, "Window already exists!!\n");
-			exit(EXIT_FAILURE);
-		}
-	}
+  // [sanity check] make sure the window isn't already in the list :^)
+  for (auto *e : windows) {
+    if (w == e) {
+      fprintf(stderr, "Window already exists!!\n");
+      exit(EXIT_FAILURE);
+    }
+  }
 
-	windows.insert(0, w);
-	// TODO: set the focused window to the new one
+  windows.insert(0, w);
+  // TODO: set the focused window to the new one
 }
 
 
 void lumen::context::window_closed(lumen::window *w) {
-	// TODO lock
+  // TODO lock
 
-	// Remove the window from our list
-	for (int i = 0; i < windows.size(); i++) {
-		if (windows[i] == w) {
-			windows.remove(i);
-			break;
-		}
-	}
+  // Remove the window from our list
+  for (int i = 0; i < windows.size(); i++) {
+    if (windows[i] == w) {
+      windows.remove(i);
+      break;
+    }
+  }
 }
 
 
@@ -142,9 +176,10 @@ lumen::guest::guest(long id, struct context &ctx, ck::localsocket *conn)
 
 lumen::guest::~guest(void) {
   for (auto kv : windows) {
-    printf("window '%s' (id: %d) removed due to guest being destructed!\n", kv.value->name.get(), kv.key);
+    printf("window '%s' (id: %d) removed due to guest being destructed!\n",
+           kv.value->name.get(), kv.key);
 
-		ctx.window_closed(kv.value);
+    ctx.window_closed(kv.value);
     delete kv.value;
   }
   delete connection;
@@ -170,15 +205,15 @@ void lumen::guest::on_read(void) {
 
 
 struct lumen::window *lumen::guest::new_window(ck::string name, gfx::rect r) {
-	auto id = next_window_id++;
-	auto w = new lumen::window(id, *this);
-	w->name = name;
-	w->rect = r;
-	printf("guest %d made a new window, '%s'\n", this->id, name.get());
-	windows.set(w->id, w);
+  auto id = next_window_id++;
+  auto w = new lumen::window(id, *this);
+  w->name = name;
+  w->rect = r;
+  printf("guest %d made a new window, '%s'\n", this->id, name.get());
+  windows.set(w->id, w);
 
-	ctx.window_opened(w);
-	return w;
+  ctx.window_opened(w);
+  return w;
 }
 
 void lumen::guest::process_message(lumen::msg &msg) {
@@ -188,7 +223,7 @@ void lumen::guest::process_message(lumen::msg &msg) {
 
 
 long lumen::guest::send_raw(int type, int id, void *payload,
-                             size_t payloadsize) {
+                            size_t payloadsize) {
   size_t msgsize = payloadsize + sizeof(lumen::msg);
   auto msg = (lumen::msg *)malloc(msgsize);
 

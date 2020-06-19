@@ -9,10 +9,12 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <gfx/bitmap.h>
 #include <unistd.h>
 
 
 int main(int argc, char **argv) {
+
   // connect to the window server
   gui::application app;
 

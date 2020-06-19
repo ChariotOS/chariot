@@ -37,6 +37,17 @@ namespace lumen {
     void set_resolution(int w, int h);
     inline size_t screensize(void) { return bufsz; }
     inline uint32_t *pixels(void) { return buf; }
+		inline void set_pixel(int x, int y, uint32_t color) {
+			if (x < 0 || x >= width() || y < 0 || y >= height()) return;
+			buf[x + y * width()] = color;
+		}
+
+		// This is slow! READING FROM VGA MEMORY
+		inline uint32_t get_pixel(int x, int y) {
+			if (x < 0 || x >= width() || y < 0 || y >= height()) return 0;
+			return buf[x + y * width()];
+		}
+
 
     inline int width(void) { return info.width; }
     inline int height(void) { return info.height; }
