@@ -6,13 +6,14 @@
 
 namespace gfx {
 
-
   class bitmap : public ck::object {
+    CK_OBJECT(gfx::bitmap);
+    CK_NONCOPYABLE(bitmap);
+    CK_MAKE_NONMOVABLE(bitmap);
+
    public:
-    static ck::ref<gfx::bitmap> create_shared(size_t w, size_t h);
-    static ck::ref<gfx::bitmap> create(size_t w, size_t h);
-    bitmap(size_t w, size_t h, bool shared = false);
-    ~bitmap(void);
+    bitmap(size_t w, size_t h);
+    virtual ~bitmap(void);
 
     inline uint32_t get_pixel(uint32_t x, uint32_t y) const {
       if (x < 0 || x >= m_width) return 0;
@@ -31,9 +32,27 @@ namespace gfx {
     inline size_t width(void) { return m_width; }
     inline size_t height(void) { return m_height; }
 
-   private:
+   protected:
+    bitmap(){};  // protected constructor
     size_t m_width, m_height;
-    bool m_shared = false;
     uint32_t *m_pixels = NULL;
   };
+
+
+
+  class shared_bitmap : public gfx::bitmap {
+    CK_OBJECT(gfx::shared_bitmap);
+    CK_NONCOPYABLE(shared_bitmap);
+    CK_MAKE_NONMOVABLE(shared_bitmap);
+
+   public:
+   public:
+    inline const char *shared_name(void) const { return m_name.get(); }
+    shared_bitmap(size_t w, size_t h);
+    virtual ~shared_bitmap(void);
+
+   protected:
+    const ck::string m_name;
+  };
+
 };  // namespace gfx

@@ -55,7 +55,7 @@ auto test = gfx::load_png("/usr/res/misc/test.png");
 draw_bmp(test, screen, 0, 0);
   */
 
-  auto logo = gfx::load_png("/usr/res/misc/cat.png");
+  auto logo = gfx::load_png_shared("/usr/res/misc/cat.png");
 
   draw_bmp(logo, screen, 0, 0);
 

@@ -497,10 +497,9 @@ static spinlock mshare_lock;
 static map<string, struct mshare_vmobject *> mshare_regions;
 
 
-
-
 struct mshare_vmobject final : public mm::vmobject {
   mshare_vmobject(string name, size_t npages) : vmobject(npages) {
+		printk("new mshare_vmobject: '%s'\n", name.get());
     this->name = name;
     for (int i = 0; i < npages; i++) {
       pages.push(nullptr);
@@ -510,7 +509,7 @@ struct mshare_vmobject final : public mm::vmobject {
   }
 
   virtual ~mshare_vmobject(void) {
-		// printk("everyone dropped '%s'\n", name.get());
+		printk("everyone dropped '%s'\n", name.get());
     scoped_lock l(mshare_lock);
     assert(mshare_regions.contains(name));
     mshare_regions.remove(name);

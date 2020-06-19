@@ -1,7 +1,27 @@
+#include <chariot/mshare.h>
 #include <gfx/bitmap.h>
-#include <sys/mman.h>
 #include <stdlib.h>
+#include <sys/mman.h>
+#include <sys/syscall.h>
 #include <unistd.h>
+
+void *mshare_create(const char *name, size_t size) {
+  struct mshare_create arg;
+  arg.size = size;
+  strncpy(arg.name, name, MSHARE_NAMESZ - 1);
+  return (void *)syscall(SYS_mshare, MSHARE_CREATE, &arg);
+}
+
+
+void *mshare_acquire(const char *name, size_t *size) {
+  struct mshare_acquire arg;
+  arg.size = 0;
+  strncpy(arg.name, name, MSHARE_NAMESZ - 1);
+
+  if (size != NULL) *size = arg.size;
+  return (void *)syscall(SYS_mshare, MSHARE_ACQUIRE, &arg);
+}
+
 
 unsigned long read_timestamp(void) {
   uint32_t lo, hi;
@@ -12,34 +32,38 @@ unsigned long read_timestamp(void) {
   return ret;
 }
 
-
-/*
 static ck::string unique_ident(void) {
-	char buf[50];
+  static long next_id = 0;
+  char buf[50];
+  snprintf(buf, 50, "%d:%d-%llx", getpid(), next_id++, read_timestamp());
 
-	snprintf(buf, 50, "%d-%llx", getpid(), read_timestamp());
-
-	return buf;
-}
-*/
-
-ck::ref<gfx::bitmap> gfx::bitmap::create(size_t w, size_t h) {
-	return ck::make_ref<gfx::bitmap>(w, h, false);
+  return buf;
 }
 
 
-gfx::bitmap::bitmap(size_t w, size_t h, bool shared) : m_width(w), m_height(h), m_shared(shared) {
-	// printf("unique ident: %s\n", unique_ident().get());
-	if (m_shared) {
-		panic("bitmap::create_shared not setup\n");
-	} else {
-		m_pixels = (uint32_t*)mmap(NULL, size(), PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
-	}
+
+gfx::bitmap::bitmap(size_t w, size_t h) : m_width(w), m_height(h) {
+  m_pixels = (uint32_t *)mmap(NULL, size(), PROT_READ | PROT_WRITE,
+                              MAP_ANON | MAP_PRIVATE, -1, 0);
 }
 
 
 gfx::bitmap::~bitmap(void) {
-	if(m_pixels) {
-		munmap(m_pixels, size());
-	}
+  if (m_pixels) {
+    munmap(m_pixels, size());
+  }
+}
+
+
+gfx::shared_bitmap::shared_bitmap(size_t w, size_t h) : m_name(unique_ident()) {
+  m_height = h;
+  m_width = w;
+  m_pixels = (uint32_t *)mshare_create(shared_name(), size());
+}
+
+
+gfx::shared_bitmap::~shared_bitmap(void) {
+  if (m_pixels) {
+    munmap(m_pixels, size());
+  }
 }

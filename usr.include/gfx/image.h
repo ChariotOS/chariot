@@ -9,4 +9,5 @@ namespace gfx {
 
 	// load .png files
 	ck::ref<gfx::bitmap> load_png(ck::string path);
+	ck::ref<gfx::shared_bitmap> load_png_shared(ck::string path);
 };
