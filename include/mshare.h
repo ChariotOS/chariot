@@ -16,7 +16,7 @@ struct mshare_create {
 };
 
 struct mshare_acquire {
-  unsigned long size;  // filled in by the systemcall
+  unsigned long size;  // How much of the region to map (can be over-mapped)
 	char name[MSHARE_NAMESZ]; // the name of the region to acquire
 };
 

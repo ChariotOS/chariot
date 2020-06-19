@@ -56,9 +56,14 @@ draw_bmp(test, screen, 0, 0);
   */
 
   auto logo = gfx::load_png_shared("/usr/res/misc/cat.png");
+	auto copy = gfx::shared_bitmap::get(logo->shared_name(), logo->width() * 2, logo->height() * 2);
+	auto copy2 = gfx::shared_bitmap::get(logo->shared_name(), logo->width() / 2, logo->height() * 2);
 
   draw_bmp(logo, screen, 0, 0);
+  draw_bmp(copy, screen, 0, logo->height());
+  draw_bmp(copy2, screen, 0, copy->height());
 
+	printf("done!\n");
 
 
 

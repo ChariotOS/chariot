@@ -48,10 +48,20 @@ namespace gfx {
    public:
    public:
     inline const char *shared_name(void) const { return m_name.get(); }
+
+		static ck::ref<gfx::shared_bitmap> get(const char *name, size_t w, size_t h);
     shared_bitmap(size_t w, size_t h);
+
     virtual ~shared_bitmap(void);
 
+
+		// applies no transformation to the image. Just gets a new canvas
+		ck::ref<gfx::shared_bitmap> resize(size_t w, size_t h);
+
+		// DO NOT USE THIS
+    shared_bitmap(const char *name, uint32_t *, size_t w, size_t h);
    protected:
+		size_t m_original_size;
     const ck::string m_name;
   };
 

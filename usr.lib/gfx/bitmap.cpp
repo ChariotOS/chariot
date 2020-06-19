@@ -13,12 +13,10 @@ void *mshare_create(const char *name, size_t size) {
 }
 
 
-void *mshare_acquire(const char *name, size_t *size) {
+void *mshare_acquire(const char *name, size_t size) {
   struct mshare_acquire arg;
-  arg.size = 0;
+  arg.size = size;
   strncpy(arg.name, name, MSHARE_NAMESZ - 1);
-
-  if (size != NULL) *size = arg.size;
   return (void *)syscall(SYS_mshare, MSHARE_ACQUIRE, &arg);
 }
 
@@ -59,11 +57,48 @@ gfx::shared_bitmap::shared_bitmap(size_t w, size_t h) : m_name(unique_ident()) {
   m_height = h;
   m_width = w;
   m_pixels = (uint32_t *)mshare_create(shared_name(), size());
+	m_original_size = size();
+}
+
+gfx::shared_bitmap::shared_bitmap(const char *name, uint32_t *pix, size_t w,
+                                  size_t h)
+    : m_name(name) {
+  m_pixels = pix;
+  m_width = w;
+  m_height = h;
+	m_original_size = size();
+}
+
+ck::ref<gfx::shared_bitmap> gfx::shared_bitmap::get(const char *name, size_t w,
+                                                    size_t h) {
+  void *buf = mshare_acquire(name, w * h * sizeof(uint32_t));
+  if (buf == MAP_FAILED) {
+    return nullptr;
+  }
+
+  return new gfx::shared_bitmap(name, (uint32_t *)buf, w, h);
+}
+
+#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
+#define NPAGES(sz) (round_up((sz), 4096) / 4096)
+ck::ref<gfx::shared_bitmap> gfx::shared_bitmap::resize(size_t w, size_t h) {
+  auto old_pgcount = NPAGES(size());
+  auto new_pgcount = NPAGES(w * h * sizeof(uint32_t));
+  if (new_pgcount > old_pgcount) {
+    // if it's bigger, return a larger "copy"
+    return gfx::shared_bitmap::get(shared_name(), w, h);
+  } else {
+    // if it is smaller, just keep those pages in memory and act like it's the
+    // new size
+    this->m_width = w;
+    this->m_height = h;
+  }
+  return nullptr;  // ???
 }
 
 
 gfx::shared_bitmap::~shared_bitmap(void) {
   if (m_pixels) {
-    munmap(m_pixels, size());
+    munmap(m_pixels, m_original_size);
   }
 }
