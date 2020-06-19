@@ -33,15 +33,12 @@ void draw_bmp_scaled(ck::ref<gfx::bitmap> bmp, lumen::screen &screen, int xo,
 
 void draw_bmp(ck::ref<gfx::bitmap> bmp, lumen::screen &screen, int xo, int yo) {
   if (bmp) {
-    int blends = 0;
-    int noblend = 0;
     for (size_t y = 0; y < bmp->height(); y++) {
       for (size_t x = 0; x < bmp->width(); x++) {
         uint32_t bp = bmp->get_pixel(x, y);
         uint32_t sp = screen.get_pixel(x + xo, y + yo);
         uint32_t pix = blend(bp, sp);
         screen.set_pixel(x + xo, y + yo, pix);
-        blends++;
       }
     }
   }
