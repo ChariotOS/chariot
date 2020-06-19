@@ -1,5 +1,4 @@
 #include <arch.h>
-#include <desktop.h>
 #include <dev/driver.h>
 #include <errno.h>
 #include <fifo_buf.h>
