@@ -42,6 +42,12 @@ namespace lumen {
 			buf[x + y * width()] = color;
 		}
 
+
+		inline void clear(uint32_t color) {
+			for (int i = 0; i < width() * height(); i++) {
+				buf[i] = color;
+			}
+		}
 		// This is slow! READING FROM VGA MEMORY
 		inline uint32_t get_pixel(int x, int y) {
 			if (x < 0 || x >= width() || y < 0 || y >= height()) return 0;

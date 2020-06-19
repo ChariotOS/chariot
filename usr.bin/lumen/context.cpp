@@ -5,45 +5,65 @@
 #include <string.h>
 #include <unistd.h>
 #include "internal.h"
-int blend(unsigned char result[4], unsigned char fg[4], unsigned char bg[4]) {
-  unsigned int alpha = fg[3] + 1;
-  unsigned int inv_alpha = 256 - fg[3];
+uint32_t blend(uint32_t fgi, uint32_t bgi) {
+  // only blend if we have to!
+  if ((fgi & 0xFF000000) >> 24 == 0xFF) {
+    return fgi;
+  }
+
+  uint32_t res = 0;
+  auto result = (unsigned char *)&res;
+  auto fg = (unsigned char *)&fgi;
+  auto bg = (unsigned char *)&bgi;
+
+
+  uint32_t alpha = fg[3] + 1;
+  uint32_t inv_alpha = 256 - fg[3];
   result[0] = (unsigned char)((alpha * fg[0] + inv_alpha * bg[0]) >> 8);
   result[1] = (unsigned char)((alpha * fg[1] + inv_alpha * bg[1]) >> 8);
   result[2] = (unsigned char)((alpha * fg[2] + inv_alpha * bg[2]) >> 8);
   result[3] = 0xff;
-  return 0;
+
+  return res;
 }
+
+void draw_bmp_scaled(ck::ref<gfx::bitmap> bmp, lumen::screen &screen, int xo,
+                     int yo, float scale) {}
 
 
 void draw_bmp(ck::ref<gfx::bitmap> bmp, lumen::screen &screen, int xo, int yo) {
   if (bmp) {
+    int blends = 0;
+    int noblend = 0;
     for (size_t y = 0; y < bmp->height(); y++) {
       for (size_t x = 0; x < bmp->width(); x++) {
         uint32_t bp = bmp->get_pixel(x, y);
         uint32_t sp = screen.get_pixel(x + xo, y + yo);
-        uint32_t pix = 0;
-
-        blend((unsigned char *)&pix, (unsigned char *)&bp,
-              (unsigned char *)&sp);
+        uint32_t pix = blend(bp, sp);
         screen.set_pixel(x + xo, y + yo, pix);
+        blends++;
       }
     }
+    printf("blends: %d, noblend: %d\n", blends, noblend);
   }
 }
 
 lumen::context::context(void) : screen(1024, 768) {
   // clear the screen
-  memset(screen.pixels(), 0xFF, screen.screensize());
+  // memset(screen.pixels(), 0, screen.screensize());
 
-  auto test = gfx::load_png("/usr/res/misc/test.png");
-  draw_bmp(test, screen, 0, 0);
+  screen.clear(0xFF00FF);
+
+  /*
+auto test = gfx::load_png("/usr/res/misc/test.png");
+draw_bmp(test, screen, 0, 0);
+  */
+
+  auto logo = gfx::load_png("/usr/res/misc/cat.png");
+
+  draw_bmp(logo, screen, 0, 0);
 
 
-  auto cat = gfx::load_png("/usr/res/misc/shadow.png");
-  for (int i = 0; i < screen.width(); i += 30) {
-    draw_bmp(cat, screen, i, screen.height() - cat->height());
-  }
 
 
   keyboard.open("/dev/keyboard", "r+");
