@@ -16,7 +16,7 @@ uint32_t blend(uint32_t fgi, uint32_t bgi) {
   auto fg = (unsigned char *)&fgi;
   auto bg = (unsigned char *)&bgi;
 
-
+	// spooky math follows
   uint32_t alpha = fg[3] + 1;
   uint32_t inv_alpha = 256 - fg[3];
   result[0] = (unsigned char)((alpha * fg[0] + inv_alpha * bg[0]) >> 8);
@@ -44,7 +44,6 @@ void draw_bmp(ck::ref<gfx::bitmap> bmp, lumen::screen &screen, int xo, int yo) {
         blends++;
       }
     }
-    printf("blends: %d, noblend: %d\n", blends, noblend);
   }
 }
 
