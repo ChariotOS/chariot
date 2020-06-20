@@ -7,11 +7,11 @@
 #include <mem.h>
 #include <module.h>
 #include <pci.h>
+#include <phys.h>
 #include <printk.h>
 #include <util.h>
 #include <vconsole.h>
 #include <vga.h>
-#include <phys.h>
 
 #define VBE_DISPI_IOPORT_INDEX 0x01CE
 #define VBE_DISPI_IOPORT_DATA 0x01CF
@@ -154,21 +154,34 @@ static ssize_t fb_write(fs::file &fd, const char *buf, size_t sz) {
 static int fb_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
   scoped_lock l(fblock);
   // pre-cast (dunno if this is dangerous)
-  auto *a = (struct ck_fb_info *)arg;
-  if (!curproc->mm->validate_struct<struct ck_fb_info>(
-          arg, VALIDATE_READ | VALIDATE_WRITE))
-    return -1;
 
 
   switch (cmd) {
+
+    case FB_SET_XOFF:
+    	set_register(VBE_DISPI_INDEX_X_OFFSET, (u16)arg);
+      return 0;
+
+    case FB_SET_YOFF:
+    	set_register(VBE_DISPI_INDEX_Y_OFFSET, (u16)arg);
+      return 0;
+
     case FB_SET_INFO:
-      set_info(*a);
+      if (!curproc->mm->validate_struct<struct ck_fb_info>(
+              arg, VALIDATE_READ | VALIDATE_WRITE)) {
+        return -1;
+      }
+      set_info(*(struct ck_fb_info *)arg);
       return 0;
 
       break;
 
     case FB_GET_INFO:
-      *a = info;
+      if (!curproc->mm->validate_struct<struct ck_fb_info>(
+              arg, VALIDATE_READ | VALIDATE_WRITE)) {
+        return -1;
+      }
+      *(struct ck_fb_info *)arg = info;
       break;
 
     default:
@@ -195,7 +208,8 @@ void vga::configure(struct ck_fb_info &i) {
   flush_vga_console();
 }
 
-static void reset_fb(void) { // disable the framebuffer (drop back to text mode)
+static void reset_fb(
+    void) {  // disable the framebuffer (drop back to text mode)
   auto i = info;
   i.active = false;
   i.width = VCONSOLE_WIDTH;
@@ -235,10 +249,11 @@ static ref<mm::vmobject> vga_mmap(fs::file &f, size_t npages, int prot,
     return nullptr;
   }
 
-	if (npages > NPAGES(64 * MB)) {
-    printk(KERN_WARN "vga: attempt to mmap too many pages (%d pixels)\n", (npages * 4096) / sizeof(uint32_t));
-		return nullptr;
-	}
+  if (npages > NPAGES(64 * MB)) {
+    printk(KERN_WARN "vga: attempt to mmap too many pages (%d pixels)\n",
+           (npages * 4096) / sizeof(uint32_t));
+    return nullptr;
+  }
 
 
   if (flags & MAP_PRIVATE) {
@@ -259,7 +274,7 @@ struct fs::file_operations fb_ops = {
 
     .open = fb_open,
     .close = fb_close,
-		.mmap = vga_mmap,
+    .mmap = vga_mmap,
 };
 
 static struct dev::driver_info generic_driver_info {
@@ -271,6 +286,8 @@ static struct dev::driver_info generic_driver_info {
 void vga::early_init(void) {
   if (vga_fba == NULL) vga_fba = (u32 *)get_framebuffer_address();
   reset_fb();
+	set_register(VBE_DISPI_INDEX_X_OFFSET, 0);
+	set_register(VBE_DISPI_INDEX_Y_OFFSET, 0);
   cons_enabled = true;
 }
 

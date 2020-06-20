@@ -1,5 +1,6 @@
 #include <ck/eventloop.h>
 #include <ck/fsnotifier.h>
+#include <ck/timer.h>
 #include <ck/map.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,54 +9,51 @@
 #include <chariot/awaitfs_types.h>
 #include <sys/syscall.h>
 #include "ck/event.h"
-#include "ck/event.h"
+
 
 static ck::HashTable<ck::fsnotifier *> s_notifiers;
+static ck::HashTable<ck::timer *> s_timers;
+
+
+static ck::timer *next_timer(void) {
+	//
+}
 
 ck::eventloop *active_eventloop = NULL;
 
 ck::eventloop::eventloop(void) {
-	/*
-  if (active_eventloop != NULL) {
-    panic(
-        "Attempt to construct an event loop despite there already being one in "
-        "existence\n");
-    exit(EXIT_FAILURE);
-  }
-  active_eventloop = this;
-	*/
 }
 
 ck::eventloop::~eventloop(void) {
-	/*
-	active_eventloop = NULL;
-	*/
 }
 
 void ck::eventloop::exit(void) {
-	if (active_eventloop == NULL) return;
-	active_eventloop->m_finished = true;
+  if (active_eventloop == NULL) return;
+  active_eventloop->m_finished = true;
 }
 
 
 
 void ck::eventloop::start(void) {
-	auto old = active_eventloop;
-	active_eventloop = this;
+  auto old = active_eventloop;
+  active_eventloop = this;
   for (;;) {
     if (m_finished) break;
     pump();
     dispatch();
   }
-	m_finished = false;
-	active_eventloop = old;
+  m_finished = false;
+  active_eventloop = old;
 }
 
 
-int awaitfs(struct await_target *fds, int nfds, int flags, unsigned long timeout_time) {
+int awaitfs(struct await_target *fds, int nfds, int flags,
+            unsigned long timeout_time) {
   return errno_syscall(SYS_awaitfs, fds, nfds, flags, timeout_time);
 }
 
+
+size_t current_ms() { return syscall(SYS_gettime_microsecond) / 1000; }
 
 void ck::eventloop::pump(void) {
   ck::vec<struct await_target> targs;
@@ -76,7 +74,7 @@ void ck::eventloop::pump(void) {
   }
 
 
-  int index = awaitfs(targs.data(), targs.size(), 0, 0);
+  int index = awaitfs(targs.data(), targs.size(), 0, current_ms() + 1000);
   if (index >= 0) {
     auto occ = targs[index].occurred;
     if (occ & AWAITFS_READ) {
@@ -91,6 +89,8 @@ void ck::eventloop::pump(void) {
       post_event(*(ck::object *)targs[index].priv, event);
     }
 
+  } else {
+    printf("timed out!\n");
   }
 }
 
@@ -99,7 +99,7 @@ void ck::eventloop::post_event(ck::object &obj, ck::event *ev) {
 }
 
 void ck::eventloop::dispatch(void) {
-	// printf("dispatch: %d events\n", m_pending.size());
+  // printf("dispatch: %d events\n", m_pending.size());
   // just loop through each event that needs to be dispatched and send them to
   // the clients
   for (auto &ev : m_pending) {
@@ -114,16 +114,28 @@ ck::eventloop *ck::eventloop::current(void) { return active_eventloop; }
 
 
 void ck::eventloop::register_notifier(ck::fsnotifier &n) {
-	// printf("register notifier %p\n", &n);
+  // printf("register notifier %p\n", &n);
   s_notifiers.set(&n);
 }
 
 
 void ck::eventloop::deregister_notifier(ck::fsnotifier &n) {
-	// printf("dregister notifier %p\n", &n);
+  // printf("dregister notifier %p\n", &n);
   s_notifiers.remove(&n);
 }
 
+/////////////////////////////////////////////////////////////////////////////////////
+
+
+ck::ref<ck::timer> ck::timer::make_interval(int ms, ck::func<void()> cb) {
+
+	return nullptr;
+}
+
+ck::ref<ck::timer> ck::timer::make_timeout(int ms, ck::func<void()> cb) {
+
+	return nullptr;
+}
 
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -139,15 +151,15 @@ ck::fsnotifier::fsnotifier(int fd, int event_mask)
 ck::fsnotifier::~fsnotifier(void) { set_active(false); }
 
 void ck::fsnotifier::set_active(bool a) {
-	if (a) {
-		ck::eventloop::register_notifier(*this);
-	} else {
-		ck::eventloop::deregister_notifier(*this);
-	}
+  if (a) {
+    ck::eventloop::register_notifier(*this);
+  } else {
+    ck::eventloop::deregister_notifier(*this);
+  }
 }
 
 
-bool ck::fsnotifier::event(const ck::event & ev) {
-	on_event(ev.type);
-	return true;
+bool ck::fsnotifier::event(const ck::event &ev) {
+  on_event(ev.type);
+  return true;
 }

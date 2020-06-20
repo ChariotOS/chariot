@@ -10,14 +10,8 @@
 
 uint32_t blend(uint32_t fgi, uint32_t bgi) {
   // only blend if we have to!
-  if ((fgi & 0xFF000000) >> 24 == 0xFF) {
-    return fgi;
-  }
-
-
-  if ((fgi & 0xFF000000) >> 24 == 0x00) {
-    return bgi;
-  }
+  if ((fgi & 0xFF000000) >> 24 == 0xFF) return fgi;
+  if ((fgi & 0xFF000000) >> 24 == 0x00) return bgi;
 
   uint32_t res = 0;
   auto result = (unsigned char *)&res;
@@ -35,6 +29,7 @@ uint32_t blend(uint32_t fgi, uint32_t bgi) {
   return res;
 }
 
+/*
 void draw_bmp_scaled(ck::ref<gfx::bitmap> bmp, lumen::screen &screen, int xo,
                      int yo, float scale) {}
 
@@ -51,15 +46,17 @@ void draw_bmp(ck::ref<gfx::bitmap> bmp, lumen::screen &screen, int xo, int yo) {
     }
   }
 }
+*/
+
 
 lumen::screen::screen(int w, int h) {
   fd = open("/dev/fb", O_RDWR);
-  back_bitmap = gfx::shared_bitmap::create(w, h);
   set_resolution(w, h);
-
   // these are leaked, but thats okay...
   cursors[mouse_cursor::pointer] = gfx::load_png("/usr/res/icons/pointer.png");
 }
+
+
 
 lumen::screen::~screen(void) {
   munmap(buf, bufsz);
@@ -67,11 +64,21 @@ lumen::screen::~screen(void) {
   buf = NULL;
 }
 
+void lumen::screen::flip_buffers(void) {
+  uint32_t *tmp = back_buffer;
+  back_buffer = front_buffer;
+  front_buffer = tmp;
+
+  // auto old = buffer_index;
+  buffer_index = buffer_index ? 0 : 1;
+  // printf("%d -> %d (%p %p)\n", old, buffer_index, front_buffer, back_buffer);
+  ioctl(fd, FB_SET_YOFF, height() * buffer_index);
+}
+
 void lumen::screen::set_resolution(int w, int h) {
   if (buf != NULL) {
     munmap(buf, bufsz);
   }
-
 
   info.width = w;
   info.height = h;
@@ -80,9 +87,15 @@ void lumen::screen::set_resolution(int w, int h) {
 
   flush_info();
 
-  bufsz = w * h * sizeof(uint32_t);
+  bufsz = w * h * sizeof(uint32_t) * 2;
   buf =
       (uint32_t *)mmap(NULL, bufsz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+
+  buffer_index = 0;
+  front_buffer = buf;
+  back_buffer = buf + (width() * height());
+  ioctl(fd, FB_SET_YOFF, height() * buffer_index);
 }
 
 
@@ -143,58 +156,38 @@ inline void fast_u32_copy(uint32_t *dest, const uint32_t *src, size_t count) {
 }
 
 
-void lumen::screen::flush(const gfx::rect &orig_area) {
-  gfx::rect draw_rect = bounds().intersect(orig_area);
-
-	auto src = back_bitmap->pixels();
-	auto right = draw_rect.right();
-	auto left = draw_rect.left();
-	auto bottom = draw_rect.bottom();
-	auto w = width();
-	auto h = height();
-
-  for (int y = draw_rect.top(); y < bottom; y++) {
-		if (y < 0 || y >= h) continue;
-    for (int x = left; x < right; x++) {
-      if (x < 0 || x >= w) continue;
-      buf[x + y * w] = src[x + y * w];
-    }
-  }
-	
-	return;
-	/*
-
-  gfx::rect area = bounds().intersect(orig_area);
-
-  auto *front_ptr = back_bitmap->scanline(area.y) + area.x;
-  auto *back_ptr = &buf[area.y * width()] + area.x;
-	auto w = width();
-
-  uint32_t *to_ptr;
-  const uint32_t *from_ptr;
-	to_ptr = back_ptr;
-	from_ptr = front_ptr;
-
-  for (int y = 0; y < area.h; y++) {
-    fast_u32_copy(to_ptr, from_ptr, area.w);
-    from_ptr += w; // (const uint32_t *)((const uint8_t *)from_ptr + pitch);
-    to_ptr += w; // (uint32_t *)((uint8_t *)to_ptr + pitch);
-  }
-	*/
-
-  // printf("flush drew %zu pixels\n", ndrawn);
-}
-
+long xoff = 0;
+long yoff = 0;
+long delta = 10;
 const gfx::point &lumen::screen::handle_mouse_input(struct mouse_packet &pkt) {
   // clear the old location
-	flush(mouse_rect());
+  if (pkt.buttons & MOUSE_SCROLL_UP) {
+    yoff -= delta;
+    ioctl(fd, FB_SET_YOFF, yoff);
+  }
+
+  if (pkt.buttons & MOUSE_SCROLL_DOWN) {
+    yoff += delta;
+    ioctl(fd, FB_SET_YOFF, yoff);
+  }
+
+
+
 
   mouse_pos.set_x(mouse_pos.x() + pkt.dx);
   mouse_pos.set_y(mouse_pos.y() + pkt.dy);
-  mouse_pos.constrain(bounds());
+  /* The mouse is constrained within the visible region */
+  gfx::rect sc(0, 0, width() - 1, height() - 1);
+  mouse_pos.constrain(sc);
+
+
+  // clear(mouse_pos.x() ^ mouse_pos.y());
+
+	clear(0x333333);
 
   // TODO: buttons
-	draw_mouse();
+  draw_mouse();
+  flip_buffers();
 
   return mouse_pos;
 }
@@ -204,19 +197,25 @@ void lumen::screen::draw_mouse(void) {
 
   // draw the cursor to the framebuffer (NOT THE DOUBLE BUFFER!!!)
   auto draw_rect = mouse_rect();
-  for (int y = draw_rect.top(); y < draw_rect.bottom(); y++) {
-		if (y < 0 || y >= height()) continue;
-    for (int x = draw_rect.left(); x < draw_rect.right(); x++) {
-      if (x < 0 || x >= width()) continue;
 
-      uint32_t pix = cur->get_pixel(x - draw_rect.left(), y - draw_rect.top());
-			if ((pix & 0xFF000000) >> 24 != 0xFF) {
-				uint32_t bg = back_bitmap->get_pixel(x, y);
-				pix = blend(pix, bg);
-			}
+  auto right = draw_rect.right();
+  auto left = draw_rect.left();
+  auto top = draw_rect.top();
+  auto bottom = draw_rect.bottom();
+  auto w = width();
 
-      buf[x + y * width()] = pix;
+  for (int y = top; y < bottom; y++) {
+    if (y < 0 || y >= height()) continue;
+    for (int x = left; x < right; x++) {
+      if (x < 0 || x >= w) continue;
+
+      uint32_t pix = cur->get_pixel(x - left, y - top);
+      if ((pix & 0xFF000000) >> 24 != 0xFF) {
+        /* This is slow */
+        uint32_t bg = back_buffer[x + y * w];
+        pix = blend(pix, bg);
+      }
+      back_buffer[x + y * w] = pix;
     }
   }
-
 }

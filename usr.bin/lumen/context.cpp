@@ -6,11 +6,11 @@
 #include <unistd.h>
 #include "internal.h"
 
-lumen::context::context(void) : screen(1024, 768) {
+lumen::context::context(void) : screen(640, 480) {
   // clear the screen
   // memset(screen.pixels(), 0, screen.screensize());
 
-  screen.clear(0x333333);
+  // screen.clear(0x333333);
 
 
 
@@ -144,8 +144,8 @@ void lumen::context::window_closed(lumen::window *w) {
 void lumen::context::compose(void) {
 	screen.clear(0xFFFFFF);
   for (auto *win : windows) {
-		for (int y = 0; y < win->bitmap->height(); y++) {
-			for (int x = 0; x < win->bitmap->width(); x++) {
+		for (size_t y = 0; y < win->bitmap->height(); y++) {
+			for (size_t x = 0; x < win->bitmap->width(); x++) {
 				int ax = x + win->rect.x;
 				int ay = y + win->rect.y;
 

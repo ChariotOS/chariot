@@ -13,6 +13,8 @@ extern "C" {
 
 #define FB_SET_INFO 1
 #define FB_GET_INFO 2
+#define FB_SET_XOFF 3
+#define FB_SET_YOFF 4
 
 struct ck_fb_info {
   int active;

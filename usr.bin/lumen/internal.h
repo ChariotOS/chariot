@@ -34,10 +34,13 @@ namespace lumen {
     uint32_t *buf = NULL;
     struct ck_fb_info info;
 
+
+    int buffer_index = 0;
+    uint32_t *front_buffer;
+    uint32_t *back_buffer;
+
     gfx::rect m_bounds;
     gfx::point mouse_pos;
-
-    ck::ref<gfx::shared_bitmap> back_bitmap;
 
     lumen::mouse_cursor cursor = lumen::mouse_cursor::pointer;
     ck::ref<gfx::bitmap> cursors[mouse_cursor::mouse_count];
@@ -59,35 +62,34 @@ namespace lumen {
     screen(int w, int h);
     ~screen(void);
 
+    void flip_buffers(void);
+
     // returns the new mouse position
     const gfx::point &handle_mouse_input(struct mouse_packet &pkt);
-		// draw the mouse later
+    // draw the mouse later
     void draw_mouse(void);
 
     void set_resolution(int w, int h);
     inline size_t screensize(void) { return bufsz; }
     inline uint32_t *pixels(void) { return buf; }
+
     inline void set_pixel(int x, int y, uint32_t color) {
-      back_bitmap->set_pixel(x, y, color);
+      back_buffer[x + y * m_bounds.w] = color;
     }
 
+		// THIS IS VERY SLOW!!!
+    inline uint32_t get_pixel(int x, int y) {
+      return back_buffer[x + y * m_bounds.w];
+    }
 
     inline void clear(uint32_t color) {
-			printf("clearing\n");
-			back_bitmap->clear(color);
-			flush(bounds());
-    }
-    inline uint32_t get_pixel(int x, int y) {
-      return back_bitmap->get_pixel(x, y);
-    }
+			for (int i = 0; i < width() * height(); i++) {
+				back_buffer[i] = color;
+			}
+		}
 
     inline int width(void) { return m_bounds.w; }
     inline int height(void) { return m_bounds.h; }
-
-    // flush an area of the screen's bitmap to the backing framebuffer
-    void flush(const gfx::rect &area);
-
-
 
     inline const gfx::rect &bounds(void) { return m_bounds; }
   };
