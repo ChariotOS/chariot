@@ -375,23 +375,33 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
 }
 
 bool sched::proc::send_signal(pid_t p, int sig) {
+
+	// TODO: handle process group signals
+	if (p < 0) {
+		return -ENOTIMPL;
+	}
+
   if (sig < 0 || sig >= 64) return false;
   ptable_lock.read_lock();
 
   bool sent = false;
 
-	/*
-
   if (proc_table.contains(p)) {
     auto &targ = proc_table[p];
-    scoped_lock siglock(targ->sig.lock);
-    if (!(targ->sig.mask & SIGBIT(sig))) {
-      printk("sending signal %d to %d\n", p, sig);
-      targ->sig.pending |= SIGBIT(sig);
-      sent = true;
-    }
+
+
+		// find a thread 
+		for (auto &tid : targ->threads) {
+    	auto *thd = thread::lookup(tid);
+			assert(thd != NULL);
+			if (thd->send_signal(sig)) {
+				printk("signal recv'd by tid %d\n", tid);
+				sent = true;
+				break;
+			}
+		}
+
   }
-	*/
 
   ptable_lock.read_unlock();
 

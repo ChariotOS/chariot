@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef _SIGNAL_H
 #define _SIGNAL_H
 
@@ -10,7 +12,6 @@ extern "C" {
 #define __NEED_size_t
 #define __NEED_pid_t
 #define __NEED_uid_t
-#define __NEED_struct_timespec
 #define __NEED_pthread_t
 #define __NEED_pthread_attr_t
 #define __NEED_time_t
@@ -28,8 +29,8 @@ extern "C" {
 int __libc_current_sigrtmin(void);
 int __libc_current_sigrtmax(void);
 
-#define SIGRTMIN  (__libc_current_sigrtmin())
-#define SIGRTMAX  (__libc_current_sigrtmax())
+#define SIGRTMIN (__libc_current_sigrtmin())
+#define SIGRTMAX (__libc_current_sigrtmax())
 
 // send a signal to a process
 int kill(pid_t, int);
@@ -43,10 +44,20 @@ int sigismember(const sigset_t *, int);
 
 int sigprocmask(int, const sigset_t *, sigset_t *);
 
+struct sigaction {
+  void (*sa_handler)(int);
+  void (*sa_sigaction)(int, long *sigset, void *);
+  long sa_mask;
+  int sa_flags;
+  void (*sa_restorer)(void);
+};
 
-#define SIG_ERR  ((void (*)(int))-1)
-#define SIG_DFL  ((void (*)(int)) 0)
-#define SIG_IGN  ((void (*)(int)) 1)
+
+int sigaction(int sig, struct sigaction *act, struct sigaction *old);
+
+#define SIG_ERR ((void (*)(int)) - 1)
+#define SIG_DFL ((void (*)(int))0)
+#define SIG_IGN ((void (*)(int))1)
 
 typedef int sig_atomic_t;
 

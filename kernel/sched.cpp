@@ -77,6 +77,13 @@ static struct thread *get_next_thread(void) {
 
     for (auto *t = Q.task_queue; t != NULL; t = t->sched.next) {
       if (t->state == PS_BLOCKED) {
+        if (t->sig.pending) {
+					printk("[tid %d] %08x %08x\n", t->tid, t->sig.pending, t->sig.mask);
+          if (t->sig.pending & t->sig.mask) {
+            printk("tid %d has pending signals\n", t->tid);
+          }
+        }
+
         // poll the thread's blocker if it exists
         if (t->blocker != NULL) {
           if (t->blocker->should_unblock(*t, time::now_us())) {
@@ -360,8 +367,7 @@ class threadwaiter : public waiter {
  public:
   inline threadwaiter(waitqueue &wq, struct thread *td) : waiter(wq), thd(td) {}
 
-  virtual ~threadwaiter(void) {
-	}
+  virtual ~threadwaiter(void) {}
 
   virtual bool notify(bool rude) override {
     if (rude) printk("rude!\n");
@@ -370,9 +376,7 @@ class threadwaiter : public waiter {
     return true;
   }
 
-  virtual void start(void) override {
-    sched::do_yield(PS_BLOCKED);
-  }
+  virtual void start(void) override { sched::do_yield(PS_BLOCKED); }
 
   struct thread *thd = NULL;
 };

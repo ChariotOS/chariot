@@ -61,7 +61,8 @@ static bool handle_special_input(char c) {
       sched::proc::dump_table();
       return true;
     case C('K'):
-      sched::proc::send_signal(1, SIGKILL);
+			// send a signal to init as a test
+      sched::proc::send_signal(1, 12);
       return true;
   }
   return false;

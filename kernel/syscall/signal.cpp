@@ -15,7 +15,12 @@ int sys::signal_init(void *sigret) {
   return 0;
 }
 
-int sys::signal(int sig, void *handler) { return -ENOSYS; }
+int sys::sigaction(int sig, struct sigaction *act, struct sigaction *old) {
+  // printk("Process %d wants to set signal %d to %p\n", curproc->pid, sig, handler);
+  return -ENOSYS;
+}
+
+
 int sys::sigreturn(void) { return -ENOSYS; }
 int sys::sigprocmask(int how, unsigned long set, unsigned long *old_set) {
   if (old_set) {

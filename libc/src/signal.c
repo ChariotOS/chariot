@@ -1,8 +1,8 @@
 #include <errno.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
-#include <stdlib.h>
 
 // zero out the set
 int sigemptyset(sigset_t *s) {
@@ -45,26 +45,40 @@ int sigismember(const sigset_t *set, int sig) {
 }
 
 int sigprocmask(int how, const sigset_t *set, sigset_t *old) {
-	sigset_t oldv;
+  sigset_t oldv;
 
 
-	int r = errno_syscall(SYS_sigprocmask, how, *set, &oldv);
+  int r = errno_syscall(SYS_sigprocmask, how, *set, &oldv);
 
-	if (old != NULL) {
-		*old = oldv;
-	}
+  if (old != NULL) {
+    *old = oldv;
+  }
 
-	return r;
+  return r;
+}
+
+
+int sigaction(int sig, struct sigaction *act, struct sigaction *old) {
+  return errno_syscall(SYS_sigaction, sig, act, old);
 }
 
 typedef void (*signal_handler_t)(int);
 
-signal_handler_t signal(int sig, signal_handler_t func) { return SIG_ERR; }
+signal_handler_t signal(int sig, signal_handler_t handler) {
+  struct sigaction new_act;
+  struct sigaction old_act;
+  new_act.sa_handler = handler;
+  new_act.sa_flags = 0;
+  new_act.sa_mask = 0;
+  int rc = sigaction(sig, &new_act, &old_act);
+  if (rc < 0) return SIG_ERR;
+  return old_act.sa_handler;
+}
 
 
 void __signal_return_callback(void) {
-	// just forward to the sigreturn syscall (no libc binding)
-	syscall(SYS_sigreturn);
+  // just forward to the sigreturn syscall (no libc binding)
+  syscall(SYS_sigreturn);
 
-	/* [does not return] */
+  /* [does not return] */
 }

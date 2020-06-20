@@ -45,7 +45,7 @@
 #define SYS_accept                   (0x64)
 #define SYS_connect                  (0x65)
 #define SYS_signal_init              (0x70)
-#define SYS_signal                   (0x71)
+#define SYS_sigaction                (0x71)
 #define SYS_sigreturn                (0x72)
 #define SYS_sigprocmask              (0x73)
 #define SYS_awaitfs                  (0x80)

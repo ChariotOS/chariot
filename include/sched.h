@@ -6,10 +6,10 @@
 #include <map.h>
 #include <mm.h>
 #include <ptr.h>
+#include <sem.h>
 #include <signals.h>
 #include <string.h>
 #include <vec.h>
-#include <sem.h>
 #define SIGBIT(n) (1 << (n))
 
 #define RING_KERN 0
@@ -22,8 +22,17 @@
 #define PS_EMBRYO (3)
 
 
+struct sigaction {
+  void (*sa_handler)(int);
+  void (*sa_sigaction)(int, long *sigset, void *);
+  long sa_mask;
+  int sa_flags;
+  void (*sa_restorer)(void);
+};
+
+
 namespace sched {
-void block();
+  void block();
 }
 
 struct thread_context {
@@ -85,7 +94,8 @@ struct process final : public refcounted<struct process> {
      * should run the systemcall "sigreturn" in order to end the signal's
      * lifetime */
     off_t ret = 0;
-    void *handlers[64] = {0};
+    struct sigaction handlers[64] = {0};
+    // void *handlers[64] = {0};
     spinlock lock;
   } sig;
 
@@ -117,13 +127,13 @@ struct process final : public refcounted<struct process> {
   u64 create_tick = 0;
   // The current working directory of the process.
   fs::inode *cwd = nullptr;
-	fs::inode *root = nullptr;
+  fs::inode *root = nullptr;
   string cwd_string;
   bool embryonic = false;
   spinlock datalock;
 
   /* threads stuck in a waitpid() call */
-	semaphore waiters = semaphore(0);
+  semaphore waiters = semaphore(0);
 
   spinlock file_lock;
   map<int, ref<fs::file>> open_files;
@@ -167,14 +177,14 @@ struct thread_sched_info {
   u64 ticks = 0;
   u64 start_tick = 0;
 
-	// for waitqueues
+  // for waitqueues
   struct thread *next = nullptr;
   struct thread *prev = nullptr;
 };
 
 struct thread_locks {
   spinlock generic;  // locked for data manipulation
-  spinlock run;	     // locked while a thread is being run
+  spinlock run;      // locked while a thread is being run
 };
 
 struct thread_waitqueue_info {
@@ -189,17 +199,17 @@ struct thread_waitqueue_info {
 
 
 struct thread_blocker {
-	virtual ~thread_blocker(void) {}
-	virtual bool should_unblock(struct thread &t, unsigned long now_us) = 0;
+  virtual ~thread_blocker(void) {}
+  virtual bool should_unblock(struct thread &t, unsigned long now_us) = 0;
 };
 
 struct sleep_blocker final : public thread_blocker {
-	// the end time to wait until.
-	unsigned long end_us = 0;
+  // the end time to wait until.
+  unsigned long end_us = 0;
 
-	sleep_blocker(unsigned long us_to_sleep);
-	virtual ~sleep_blocker(void) {}
-	virtual bool should_unblock(struct thread &t, unsigned long now_us);
+  sleep_blocker(unsigned long us_to_sleep);
+  virtual ~sleep_blocker(void) {}
+  virtual bool should_unblock(struct thread &t, unsigned long now_us);
 };
 
 struct thread final {
@@ -218,13 +228,15 @@ struct thread final {
   void *stack;
 
 
-	thread_blocker *blocker = NULL;
+  thread_blocker *blocker = NULL;
 
 
-	struct {
-		unsigned long pending = 0;
-		unsigned long mask = 0;
-	} sig;
+  // Masks are per-thread
+  struct {
+    unsigned long pending = 0;
+    unsigned long mask = 0;
+		long handling = -1;
+  } sig;
 
   struct thread_sched_info sched;
   struct thread_fpu_info fpu;
@@ -243,31 +255,29 @@ struct thread final {
 
     struct /* bitmask */ {
       unsigned kthread : 1;
-      unsigned should_die : 1;	// the thread needs to be torn down, must not
-				// return to userspace
-      unsigned kern_idle : 1;	// the thread is a kernel idle thread
+      unsigned should_die : 1;  // the thread needs to be torn down, must not
+                                // return to userspace
+      unsigned kern_idle : 1;   // the thread is a kernel idle thread
       unsigned exited : 1;  // the thread has exited, it's safe to delete when
-			    // reaped by the parent or another thread
+                            // reaped by the parent or another thread
     };
   };
 
 #define BLOCKRES_NORMAL 0
 #define BLOCKRES_SIGNAL 1
-#define BLOCKRES_DEATH  2
+#define BLOCKRES_DEATH 2
 
-	template<typename T, class... Args>
-	[[nodiscard]] int block(Args&&... args) {
+  template <typename T, class... Args>
+  [[nodiscard]] int block(Args &&... args) {
+    T t(forward<Args>(args)...);
+    blocker = &t;
 
+    sched::block();
 
-		T t(forward<Args>(args)...);
-		blocker = &t;
-
-		sched::block();
-
-		// remove the blocker
-		blocker = NULL;
-		return BLOCKRES_NORMAL;
-	}
+    // remove the blocker
+    blocker = NULL;
+    return BLOCKRES_NORMAL;
+  }
 
   /**
    * Awaken the thread from it's waitqueue. Being rudely awoken means that the
@@ -282,6 +292,9 @@ struct thread final {
   static thread *lookup(pid_t);
   static bool teardown(thread *);
 
+  // sends a signal to the thread and returns if it succeeded or not
+  bool send_signal(int sig);
+
   /**
    * Do not use this API, go through sched::proc::* to allocate and deallocate
    * processes and threads.
@@ -294,68 +307,69 @@ struct thread final {
 
 namespace sched {
 
-bool init(void);
+  bool init(void);
 
-bool enabled();
+  bool enabled();
 
 #define SCHED_MLFQ_DEPTH 10
 #define PRIORITY_HIGH (SCHED_MLFQ_DEPTH - 1)
 #define PRIORITY_IDLE 0
 
-process &kernel_proc(void);
+  process &kernel_proc(void);
 
-void yield(void);
+  void yield(void);
 
-void do_yield(int status);
+  void do_yield(int status);
 
 
-// does not return
-void run(void);
+  // does not return
+  void run(void);
 
-void dumb_sleepticks(unsigned long);
+  void dumb_sleepticks(unsigned long);
 
-void handle_tick(u64 tick);
+  void handle_tick(u64 tick);
 
-// force the process to exit, (yield with different state)
-void exit();
+  // force the process to exit, (yield with different state)
+  void exit();
 
-int remove_task(struct thread *t);
-int add_task(struct thread *);
+  int remove_task(struct thread *t);
+  int add_task(struct thread *);
 
-// called before dropping back into user space. This is needed
-// when a thread should not return to userspace because it must
-// die or something else
-void before_iret(bool userspace);
+  // called before dropping back into user space. This is needed
+  // when a thread should not return to userspace because it must
+  // die or something else
+  void before_iret(bool userspace);
 
-namespace proc {
-struct spawn_options {
-  int ring = RING_USER;
-};
+  namespace proc {
+    struct spawn_options {
+      int ring = RING_USER;
+    };
 
 #define SPAWN_KERN (1 << 0)
-// #define SPAWN_VFORK (1 << 1)
-process::ptr spawn_process(struct process *parent, int flags);
+    // #define SPAWN_VFORK (1 << 1)
+    process::ptr spawn_process(struct process *parent, int flags);
 
-// get the kernel process (creating if it doesnt exist
-struct process *kproc(void);
+    // get the kernel process (creating if it doesnt exist
+    struct process *kproc(void);
 
-pid_t create_kthread(const char *name, int (*func)(void *), void *arg = NULL);
+    pid_t create_kthread(const char *name, int (*func)(void *),
+                         void *arg = NULL);
 
-void dump_table();
+    void dump_table();
 
-// spawn init (pid 1) and try to execute each of the paths in order, stopping on
-// the first success. Returns -1
-pid_t spawn_init(vec<string> &paths);
+    // spawn init (pid 1) and try to execute each of the paths in order,
+    // stopping on the first success. Returns -1
+    pid_t spawn_init(vec<string> &paths);
 
-/* remove a process from the ptable */
-bool ptable_remove(pid_t);
+    /* remove a process from the ptable */
+    bool ptable_remove(pid_t);
 
-bool send_signal(pid_t, int sig);
+    bool send_signal(pid_t, int sig);
 
-int reap(process::ptr);
+    int reap(process::ptr);
 
-int do_waitpid(pid_t, int &status, int options);
+    int do_waitpid(pid_t, int &status, int options);
 
-};  // namespace proc
+  };  // namespace proc
 }  // namespace sched
 

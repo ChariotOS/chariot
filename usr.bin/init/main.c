@@ -10,7 +10,7 @@
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
+#include <signal.h>
 #include "ini.h"
 
 #define ENV_PATH "/cfg/environ"
@@ -69,7 +69,22 @@ struct service {
 };
 
 
+
+static void handler(int i) {
+	printf("signal handler got %d\n", i);
+}
+
 int main(int argc, char **argv) {
+	sigset_t set;
+	sigemptyset(&set);
+
+	for (int i = 0; i < 32; i++) {
+		sigaddset(&set, i);
+		signal(i, handler);
+	}
+
+	printf("sigprocmask: %d\n", sigprocmask(SIG_SETMASK, &set, NULL));
+
 
   if (getpid() != 1) {
     fprintf(stderr, "init: must be run as pid 1\n");

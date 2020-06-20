@@ -147,7 +147,7 @@ int connect(int sockfd, const struct sockaddr *addr, int addrlen);
 int signal_init(void *sigret);
 
 /// num=0x71
-int signal(int sig, void *handler);
+int sigaction(int sig, struct sigaction *new_action, struct sigaction *old);
 /// num=0x72
 int sigreturn(void);
 

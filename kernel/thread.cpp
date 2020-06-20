@@ -188,3 +188,11 @@ bool thread::teardown(thread *t) {
   delete t;
   return true;
 }
+
+
+
+bool thread::send_signal(int sig) {
+	unsigned long pend = (1 << sig);
+	this->sig.pending |= pend;
+	return true;
+}
