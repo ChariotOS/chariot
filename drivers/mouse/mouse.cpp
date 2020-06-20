@@ -43,7 +43,7 @@ void mouse_wait(uint8_t a_type) {
         return;
       }
     }
-    printk("[MOUSE] mouse timeout\n");
+    // printk("[MOUSE] mouse timeout\n");
     return;
   } else {
     while (--timeout) {
@@ -51,7 +51,7 @@ void mouse_wait(uint8_t a_type) {
         return;
       }
     }
-    printk("[MOUSE] mouse timeout\n");
+    // printk("[MOUSE] mouse timeout\n");
     return;
   }
 }
@@ -235,20 +235,26 @@ void mouse_install() {
   mouse_write(0xF2);
   mouse_read();
   result = mouse_read();
+
   mouse_write(0xF3);
   mouse_read();
   mouse_write(200);
+
   mouse_read();
   mouse_write(0xF3);
   mouse_read();
   mouse_write(100);
   mouse_read();
+
   mouse_write(0xF3);
   mouse_read();
   mouse_write(80);
   mouse_read();
   mouse_write(0xF2);
   mouse_read();
+
+
+
   result = mouse_read();
   if (result == 3) {
     mouse_mode = MOUSE_SCROLLWHEEL;
