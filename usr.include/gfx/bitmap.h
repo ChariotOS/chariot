@@ -27,6 +27,9 @@ namespace gfx {
       m_pixels[x + y * m_width] = color;
     }
 
+		inline uint32_t *pixels(void) {return m_pixels;}
+		inline uint32_t *scanline(uint32_t y) {return  m_pixels + (y * m_width); }
+
     inline size_t size(void) { return m_width * m_height * sizeof(uint32_t); }
 
     inline size_t width(void) { return m_width; }

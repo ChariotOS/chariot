@@ -235,13 +235,11 @@ static ref<mm::vmobject> vga_mmap(fs::file &f, size_t npages, int prot,
     return nullptr;
   }
 
-	// we only allow up to 1920 * 1080
-	// If I don't limit it like this, we run the risk of userspace
-	// being able to access all of ram :^)
-	if (npages > NPAGES(1820 * 1080 * sizeof(uint32_t))) {
+	if (npages > NPAGES(64 * MB)) {
     printk(KERN_WARN "vga: attempt to mmap too many pages (%d pixels)\n", (npages * 4096) / sizeof(uint32_t));
 		return nullptr;
 	}
+
 
   if (flags & MAP_PRIVATE) {
     printk(KERN_WARN

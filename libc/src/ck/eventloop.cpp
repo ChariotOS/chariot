@@ -52,8 +52,8 @@ void ck::eventloop::start(void) {
 }
 
 
-int awaitfs(struct await_target *fds, int nfds, int flags) {
-  return errno_syscall(SYS_awaitfs, fds, nfds, flags);
+int awaitfs(struct await_target *fds, int nfds, int flags, unsigned long timeout_time) {
+  return errno_syscall(SYS_awaitfs, fds, nfds, flags, timeout_time);
 }
 
 
@@ -76,7 +76,7 @@ void ck::eventloop::pump(void) {
   }
 
 
-  int index = awaitfs(targs.data(), targs.size(), 0);
+  int index = awaitfs(targs.data(), targs.size(), 0, 0);
   if (index >= 0) {
     auto occ = targs[index].occurred;
     if (occ & AWAITFS_READ) {

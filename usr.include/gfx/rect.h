@@ -1,36 +1,60 @@
 #pragma once
 
 
+#define max(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a > _b ? _a : _b; })
+
+
+#define min(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a < _b ? _a : _b; })
+
 namespace gfx {
 
   struct rect final {
     // simple!
     int x, y, w, h;
 
-		inline rect() {
-			x = y = w = h = 0;
-		}
+    inline rect() { x = y = w = h = 0; }
 
     inline rect(int x, int y, int w, int h) : x(x), y(y), w(w), h(h) {}
     inline rect(int w, int h) : x(0), y(0), w(w), h(h) {}
-		inline rect(const rect &o) {
-			rect(o.x, o.y, o.w, o.h);
-		}
+    inline rect(const rect &o) { rect(o.x, o.y, o.w, o.h); }
 
-		inline rect &operator=(const rect &o) {
-			x = o.x;
-			y = o.y;
-			w = o.w;
-			h = o.h;
-			return *this;
-		}
+    inline rect &operator=(const rect &o) {
+      x = o.x;
+      y = o.y;
+      w = o.w;
+      h = o.h;
+      return *this;
+    }
 
     inline int left() const { return x; }
     inline int right() const { return x + w; }
     inline int top() const { return y; }
     inline int bottom() const { return y + h; }
 
-    struct rect intersect(const struct rect &other) const;
+    inline struct rect intersect(const struct rect &other) const {
+			gfx::rect in;
+      int l = max(left(), other.left());
+      int r = min(right(), other.right());
+      int t = max(top(), other.top());
+      int b = min(bottom(), other.bottom());
+
+      if (l > r || t > b) {
+        return in;
+      }
+
+			in.x = l;
+			in.y = t;
+			in.w = (r - l) + 1;
+			in.h = (b - t) + 1;
+
+			return in;
+    }
 
     inline bool intersects(const rect &other) const {
       return left() <= other.right() && other.left() <= right() &&

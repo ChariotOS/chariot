@@ -5,24 +5,43 @@
 #include <chariot/mouse_packet.h>
 #include <ck/io.h>
 #include <ck/socket.h>
+#include <gfx/bitmap.h>
+#include <gfx/point.h>
 #include <lumen/msg.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include "gfx/rect.h"
-#include <gfx/bitmap.h>
 
 namespace lumen {
 
   // fwd decl
   struct guest;
 
-  // represents a framebuffer for a screen
+  enum mouse_cursor : char {
+    pointer = 0,
+
+    mouse_count
+  };
+
+#define MOUSE_POINTER 0
+
+  // represents a framebuffer for a screen. This also renders the mouse cursor
+  // with double buffering
   class screen {
     int fd = -1;
     size_t bufsz = 0;
     uint32_t *buf = NULL;
     struct ck_fb_info info;
+
+    gfx::rect m_bounds;
+    gfx::point mouse_pos;
+
+    ck::ref<gfx::shared_bitmap> back_bitmap;
+
+    lumen::mouse_cursor cursor = lumen::mouse_cursor::pointer;
+    ck::ref<gfx::bitmap> cursors[mouse_cursor::mouse_count];
+
 
     void flush_info(void) {
       info.active = 1;
@@ -31,33 +50,46 @@ namespace lumen {
 
     void load_info(void) { ioctl(fd, FB_GET_INFO, &info); }
 
+    inline gfx::rect mouse_rect(void) {
+      return gfx::rect(mouse_pos.x() - 6, mouse_pos.y() - 6,
+                       cursors[cursor]->width(), cursors[cursor]->height());
+    }
+
    public:
     screen(int w, int h);
     ~screen(void);
 
+    // returns the new mouse position
+    const gfx::point &handle_mouse_input(struct mouse_packet &pkt);
+		// draw the mouse later
+    void draw_mouse(void);
+
     void set_resolution(int w, int h);
     inline size_t screensize(void) { return bufsz; }
     inline uint32_t *pixels(void) { return buf; }
-		inline void set_pixel(int x, int y, uint32_t color) {
-			if (x < 0 || x >= width() || y < 0 || y >= height()) return;
-			buf[x + y * width()] = color;
-		}
+    inline void set_pixel(int x, int y, uint32_t color) {
+      back_bitmap->set_pixel(x, y, color);
+    }
 
 
-		inline void clear(uint32_t color) {
-			for (int i = 0; i < width() * height(); i++) {
-				buf[i] = color;
-			}
-		}
-		// This is slow! READING FROM VGA MEMORY
-		inline uint32_t get_pixel(int x, int y) {
-			if (x < 0 || x >= width() || y < 0 || y >= height()) return 0;
-			return buf[x + y * width()];
-		}
+    inline void clear(uint32_t color) {
+			printf("clearing\n");
+			back_bitmap->clear(color);
+			flush(bounds());
+    }
+    inline uint32_t get_pixel(int x, int y) {
+      return back_bitmap->get_pixel(x, y);
+    }
+
+    inline int width(void) { return m_bounds.w; }
+    inline int height(void) { return m_bounds.h; }
+
+    // flush an area of the screen's bitmap to the backing framebuffer
+    void flush(const gfx::rect &area);
 
 
-    inline int width(void) { return info.width; }
-    inline int height(void) { return info.height; }
+
+    inline const gfx::rect &bounds(void) { return m_bounds; }
   };
 
 
@@ -67,7 +99,7 @@ namespace lumen {
     lumen::guest &guest;
     gfx::rect rect;
 
-		ck::ref<gfx::shared_bitmap> bitmap;
+    ck::ref<gfx::shared_bitmap> bitmap;
 
     window(int id, lumen::guest &c, int w, int h);
   };
@@ -130,21 +162,21 @@ namespace lumen {
     void guest_closed(long id);
 
 
-		void window_opened(window *);
-		void window_closed(window *);
+    void window_opened(window *);
+    void window_closed(window *);
 
 
-		void compose(void);
+    void compose(void);
 
-		struct window_ref {
-			// the client and the window id
-			long client, id;
-		};
+    struct window_ref {
+      // the client and the window id
+      long client, id;
+    };
 
 
-		// ordered list of all the windows (front to back)
-		// The currently focused window is at the front
-		ck::vec<lumen::window *> windows;
+    // ordered list of all the windows (front to back)
+    // The currently focused window is at the front
+    ck::vec<lumen::window *> windows;
 
 
    private:

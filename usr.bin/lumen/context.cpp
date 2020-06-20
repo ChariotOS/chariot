@@ -5,67 +5,12 @@
 #include <string.h>
 #include <unistd.h>
 #include "internal.h"
-uint32_t blend(uint32_t fgi, uint32_t bgi) {
-  // only blend if we have to!
-  if ((fgi & 0xFF000000) >> 24 == 0xFF) {
-    return fgi;
-  }
-
-  uint32_t res = 0;
-  auto result = (unsigned char *)&res;
-  auto fg = (unsigned char *)&fgi;
-  auto bg = (unsigned char *)&bgi;
-
-  // spooky math follows
-  uint32_t alpha = fg[3] + 1;
-  uint32_t inv_alpha = 256 - fg[3];
-  result[0] = (unsigned char)((alpha * fg[0] + inv_alpha * bg[0]) >> 8);
-  result[1] = (unsigned char)((alpha * fg[1] + inv_alpha * bg[1]) >> 8);
-  result[2] = (unsigned char)((alpha * fg[2] + inv_alpha * bg[2]) >> 8);
-  result[3] = 0xff;
-
-  return res;
-}
-
-void draw_bmp_scaled(ck::ref<gfx::bitmap> bmp, lumen::screen &screen, int xo,
-                     int yo, float scale) {}
-
-
-void draw_bmp(ck::ref<gfx::bitmap> bmp, lumen::screen &screen, int xo, int yo) {
-  if (bmp) {
-    for (size_t y = 0; y < bmp->height(); y++) {
-      for (size_t x = 0; x < bmp->width(); x++) {
-        uint32_t bp = bmp->get_pixel(x, y);
-        uint32_t sp = screen.get_pixel(x + xo, y + yo);
-        uint32_t pix = blend(bp, sp);
-        screen.set_pixel(x + xo, y + yo, pix);
-      }
-    }
-  }
-}
 
 lumen::context::context(void) : screen(1024, 768) {
   // clear the screen
   // memset(screen.pixels(), 0, screen.screensize());
 
-  screen.clear(0xFF00FF);
-
-  /*
-auto test = gfx::load_png("/usr/res/misc/test.png");
-draw_bmp(test, screen, 0, 0);
-  */
-
-  auto logo = gfx::load_png_shared("/usr/res/misc/cat.png");
-  auto copy = gfx::shared_bitmap::get(logo->shared_name(), logo->width() * 2,
-                                      logo->height() * 2);
-  auto copy2 = gfx::shared_bitmap::get(logo->shared_name(), logo->width() / 2,
-                                       logo->height() * 2);
-
-  draw_bmp(logo, screen, 0, 0);
-  draw_bmp(copy, screen, 0, logo->height());
-  draw_bmp(copy2, screen, 0, copy->height());
-
-  printf("done!\n");
+  screen.clear(0x333333);
 
 
 
@@ -103,8 +48,12 @@ void lumen::context::handle_keyboard_input(keyboard_packet_t &pkt) {
 }
 
 void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
+	/*
   printf("mouse: dx: %-3d dy: %-3d buttons: %02x\n", pkt.dx, pkt.dy,
          pkt.buttons);
+				 */
+
+	screen.handle_mouse_input(pkt);
 }
 
 
@@ -129,7 +78,7 @@ void lumen::context::guest_closed(long id) {
 
 
 void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
-  compose();  // XXX: remove me!
+  // compose();  // XXX: remove me!
   HANDLE_TYPE(LUMEN_MSG_CREATE_WINDOW, lumen::create_window_msg) {
     (void)arg;
 

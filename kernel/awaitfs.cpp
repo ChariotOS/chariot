@@ -4,7 +4,7 @@
 #include <map.h>
 #include <syscall.h>
 #include <wait.h>
-
+#include <time.h>
 
 
 using table_key_t = off_t;
@@ -20,13 +20,12 @@ struct await_table_entry {
 };
 
 
-int sys::awaitfs(struct await_target *targs, int nfds, int flags) {
+int sys::awaitfs(struct await_target *targs, int nfds, int flags, unsigned long timeout_time) {
 
 	if (nfds == 0) return -EINVAL;
   if (!curproc->mm->validate_pointer(targs, sizeof(*targs) * nfds,
                                      PROT_READ | PROT_WRITE))
     return -1;
-
 
 	vec<await_table_entry> entries;
 
@@ -45,25 +44,32 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags) {
     }
   }
 
-
-
   int index = -1;
+	auto start = time::now_ms();
+	unsigned long loops = 0;
 	// this probably isn't great
 	while (1) {
+		if (timeout_time != 0) {
+			if (timeout_time <= time::now_ms()) {
+				return -ETIMEDOUT;
+			}
+		}
 		for (auto &ent : entries) {
 			if (ent.file) {
 				int occurred = ent.file->ino->poll(*ent.file, ent.awaiting);
 				if (occurred & ent.awaiting) {
 					index = ent.index;
 					targs[index].occurred = occurred;
+					// printk("awaitfs took %d ms, %d loops\n", time::now_ms() - start, loops);
 					return index;
 				}
 			}
 		}
+		loops++;
 
 		asm("hlt");
 		sched::yield();
 	}
 
-  return -1;
+  return -ETIMEDOUT;
 }

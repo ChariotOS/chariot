@@ -1,4 +1,5 @@
 #include <arch.h>
+#include <cpu.h>
 #include <dev/driver.h>
 #include <errno.h>
 #include <fifo_buf.h>
@@ -69,16 +70,14 @@ uint8_t mouse_read() {
 }
 
 
-#define CMD_ABSPOINTER_DATA    39
-#define CMD_ABSPOINTER_STATUS  40
+#define CMD_ABSPOINTER_DATA 39
+#define CMD_ABSPOINTER_STATUS 40
 #define CMD_ABSPOINTER_COMMAND 41
 
 static void mouse_handler(int i, reg_t *) {
-
-
+  cpu::pushcli();
   if (vmware::vmmouse_is_absolute()) {
-
-		inb(0x60);
+    inb(0x60);
     struct vmware::command cmd;
     /* Read the mouse status */
     cmd.bx = 0;
@@ -90,12 +89,16 @@ static void mouse_handler(int i, reg_t *) {
       /* An error has occured, let's turn the device off and back on */
       // mouse_off();
       // mouse_absolute();
+      cpu::popcli();
       return;
     }
 
     /* The status command returns a size we need to read, should be at least 4.
      */
-    if ((cmd.ax & 0xFFFF) < 4) return;
+    if ((cmd.ax & 0xFFFF) < 4) {
+      cpu::popcli();
+      return;
+    }
 
     /* Read 4 bytes of mouse data */
     cmd.bx = 4;
@@ -112,10 +115,11 @@ static void mouse_handler(int i, reg_t *) {
     int z = (char)(cmd.dx); /* Z is a single signed byte indicating scroll
                                direction. */
 
-		(void)flags;
-		(void)buttons;
-		printk("x: %d, y: %d, z: %d\n", x, y, z);
+    (void)flags;
+    (void)buttons;
+    printk("x: %d, y: %d, z: %d\n", x, y, z);
     irq::eoi(i);
+    cpu::popcli();
     return;
   }
 
@@ -199,7 +203,6 @@ static void mouse_handler(int i, reg_t *) {
         }
       }
 
-			irq::eoi(i);
       if (open) {
         mouse_buffer.write(&packet, sizeof(packet), false /* dont block */);
       }
@@ -207,6 +210,7 @@ static void mouse_handler(int i, reg_t *) {
     break;
   }
 
+  cpu::popcli();
   irq::eoi(i);
 }
 
@@ -272,13 +276,13 @@ void mouse_install() {
   irq::install(32 + MOUSE_IRQ, mouse_handler, "PS2 Mouse");
 }
 
-static ssize_t mouse_read(fs::file& fd, char* buf, size_t sz) {
+static ssize_t mouse_read(fs::file &fd, char *buf, size_t sz) {
   if (fd) {
     if (sz % sizeof(struct mouse_packet) != 0) {
       return -EINVAL;
     }
 
-		// this is a nonblocking api
+    // this is a nonblocking api
     return mouse_buffer.read(buf, sz, false);
   }
   return -1;
@@ -299,7 +303,7 @@ static void mouse_close(fs::file &fd) {
 
 
 static int mouse_poll(fs::file &fd, int events) {
-	return mouse_buffer.poll() & events;
+  return mouse_buffer.poll() & events;
 }
 
 
@@ -309,7 +313,7 @@ struct fs::file_operations mouse_ops = {
     .open = mouse_open,
     .close = mouse_close,
 
-		.poll = mouse_poll,
+    .poll = mouse_poll,
 };
 
 
