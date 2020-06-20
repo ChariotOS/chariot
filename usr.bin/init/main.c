@@ -2,6 +2,7 @@
 #include <chariot/dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,7 +11,6 @@
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <signal.h>
 #include "ini.h"
 
 #define ENV_PATH "/cfg/environ"
@@ -70,20 +70,18 @@ struct service {
 
 
 
-static void handler(int i) {
-	printf("signal handler got %d\n", i);
-}
+static void handler(int i) { printf("signal handler got %d\n", i); }
 
 int main(int argc, char **argv) {
-	sigset_t set;
-	sigemptyset(&set);
+  sigset_t set;
+  sigemptyset(&set);
 
-	for (int i = 0; i < 32; i++) {
-		sigaddset(&set, i);
-		signal(i, handler);
-	}
+  for (int i = 0; i < 32; i++) {
+    sigaddset(&set, i);
+    signal(i, handler);
+  }
 
-	printf("sigprocmask: %d\n", sigprocmask(SIG_SETMASK, &set, NULL));
+  printf("sigprocmask: %d\n", sigprocmask(SIG_SETMASK, &set, NULL));
 
 
   if (getpid() != 1) {
@@ -104,44 +102,44 @@ int main(int argc, char **argv) {
 
   if (loadorder == NULL) {
     fprintf(stderr,
-	    "[init] loadorder file not found. No services shall be managed\n");
+            "[init] loadorder file not found. No services shall be managed\n");
   } else {
     char buf[255];
 
     while (!feof(loadorder)) {
       if (fgets(buf, 255, loadorder) != NULL) {
-	for (int i = strlen(buf); i >= 0; i--) {
-	  if (buf[i] == '\n') {
-	    buf[i] = '\0';
-	    break;
-	  }
-	}
-	buf[strlen(buf)] = 0;
-	ini_t *i = ini_load(buf);
+        for (int i = strlen(buf); i >= 0; i--) {
+          if (buf[i] == '\n') {
+            buf[i] = '\0';
+            break;
+          }
+        }
+        buf[strlen(buf)] = 0;
+        ini_t *i = ini_load(buf);
 
-	if (i) {
-	  const char *exec = ini_get(i, "service", "exec");
+        if (i) {
+          const char *exec = ini_get(i, "service", "exec");
 
-	  const char *name = ini_get(i, "service", "name");
-	  if (exec != NULL) {
-	    pid_t pid = spawn();
-	    char *args[] = {(char *)exec, NULL};
+          const char *name = ini_get(i, "service", "name");
+          if (exec != NULL) {
+            pid_t pid = spawn();
+            char *args[] = {(char *)exec, NULL};
 
-	    // just let it go
-	    int res = startpidvpe(pid, (char *)exec, args, environ);
-	    int e = errno;
-	    if (res == 0) {
-	      printf("[init] %s spawned on pid %d\n", name, pid);
-	    } else {
-	      printf("[init] %s - %s\n", name, strerror(e));
-	      waitpid(pid, NULL, 0);
-	    }
-	  } else {
-	    printf("[init] WARN: service %s has no service.exec field\n", buf);
-	  }
+            // just let it go
+            int res = startpidvpe(pid, (char *)exec, args, environ);
+            int e = errno;
+            if (res == 0) {
+              printf("[init] %s spawned on pid %d\n", name, pid);
+            } else {
+              printf("[init] %s - %s\n", name, strerror(e));
+              waitpid(pid, NULL, 0);
+            }
+          } else {
+            printf("[init] WARN: service %s has no service.exec field\n", buf);
+          }
 
-	  ini_free(i);
-	}
+          ini_free(i);
+        }
       }
     }
 
@@ -166,8 +164,8 @@ int main(int argc, char **argv) {
       printf("[init] reaped pid %d\n", reaped);
 
       if (reaped == sh_pid) {
-	printf("[init] sh died\n");
-	break;
+        printf("[init] sh died\n");
+        break;
       }
     }
   }
