@@ -78,9 +78,9 @@ static struct thread *get_next_thread(void) {
     for (auto *t = Q.task_queue; t != NULL; t = t->sched.next) {
       if (t->state == PS_BLOCKED) {
         if (t->sig.pending) {
-					printk("[tid %d] %08x %08x\n", t->tid, t->sig.pending, t->sig.mask);
+          // printk("[tid %d] %08x %08x\n", t->tid, t->sig.pending, t->sig.mask);
           if (t->sig.pending & t->sig.mask) {
-            printk("tid %d has pending signals\n", t->tid);
+            // printk("tid %d has pending signals\n", t->tid);
           }
         }
 
@@ -467,28 +467,26 @@ void sched::before_iret(bool userspace) {
   if (!cpu::in_thread()) return;
   // exit via the scheduler if the task should die.
   if (userspace && curthd->should_die) sched::exit();
-  /*
 
-           auto *proc = curproc;
-           int sig_to_handle = -1;
-           {
-           scoped_lock l(proc->sig.lock);
-           if (proc->sig.pending != 0) {
-           for (int i = 0; i < 63; i++) {
-           if (proc->sig.pending & SIGBIT(i)) {
-           proc->sig.pending &= ~SIGBIT(i);
-           sig_to_handle = i;
-           }
-           }
-           }
-           }
+  long sig_to_handle = -1;
 
-           if (sig_to_handle != -1) {
-           cpu::pushcli();
-           printk("signal to handle: %d\n", sig_to_handle);
-           cpu::popcli();
-           }
-           */
+  if (curthd->sig.pending != 0) {
+    for (int i = 0; i < 63; i++) {
+      if (curthd->sig.pending & SIGBIT(i)) {
+        if (curthd->sig.mask & SIGBIT(i)) {
+          curthd->sig.pending &= ~SIGBIT(i);
+          sig_to_handle = i;
+          break;
+        }
+      }
+    }
+  }
+
+  if (sig_to_handle != -1) {
+		// whatver the arch needs to do
+		arch::dispatch_signal(sig_to_handle);
+  }
+
 }
 
 sleep_blocker::sleep_blocker(unsigned long us_to_sleep) {

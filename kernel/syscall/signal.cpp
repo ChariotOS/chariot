@@ -16,12 +16,22 @@ int sys::signal_init(void *sigret) {
 }
 
 int sys::sigaction(int sig, struct sigaction *act, struct sigaction *old) {
-  // printk("Process %d wants to set signal %d to %p\n", curproc->pid, sig, handler);
-  return -ENOSYS;
+	if (!VALIDATE_RD(act, sizeof(*act))) return -EINVAL;
+	if (!VALIDATE_WR(old, sizeof(*old))) return -EINVAL;
+
+
+	if (sig < 0 || sig >= 64) return -EINVAL;
+	*old = curproc->sig.handlers[sig];
+	curproc->sig.handlers[sig] = *act;
+
+	return 0;
 }
 
 
-int sys::sigreturn(void) { return -ENOSYS; }
+int sys::sigreturn(void) {
+	arch::sigreturn();
+	return -ENOSYS;
+}
 int sys::sigprocmask(int how, unsigned long set, unsigned long *old_set) {
   if (old_set) {
     if (!curproc->mm->validate_pointer(old_set, sizeof(*old_set),

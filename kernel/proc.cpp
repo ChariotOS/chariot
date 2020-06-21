@@ -390,12 +390,12 @@ bool sched::proc::send_signal(pid_t p, int sig) {
     auto &targ = proc_table[p];
 
 
-		// find a thread 
+		// find a thread
 		for (auto &tid : targ->threads) {
     	auto *thd = thread::lookup(tid);
 			assert(thd != NULL);
 			if (thd->send_signal(sig)) {
-				printk("signal recv'd by tid %d\n", tid);
+				// printk("signal recv'd by tid %d\n", tid);
 				sent = true;
 				break;
 			}

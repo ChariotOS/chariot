@@ -56,6 +56,10 @@ unsigned long read_timestamp(void);
 // use whatever the arch can use to get a high accuracy reading of time.
 unsigned long us_this_second(void);
 
+// dispatch a signal to userspace and return when done
+void dispatch_signal(int sig);
+void sigreturn(void);
+
 /**
  * the architecture must only implement init() and eoi(). The arch must
  * implement calling irq::dispatch() when an interrupt is received.

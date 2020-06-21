@@ -81,6 +81,8 @@ thread::~thread(void) {
   sched::remove_task(this);
   kfree(stack);
   kfree(fpu.state);
+	// assume it doesn't have a destructor, idk
+	kfree(sig.arch_priv);
 }
 
 bool thread::awaken(bool rudely) {

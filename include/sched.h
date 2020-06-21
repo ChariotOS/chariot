@@ -231,11 +231,13 @@ struct thread final {
   thread_blocker *blocker = NULL;
 
 
+
   // Masks are per-thread
   struct {
     unsigned long pending = 0;
     unsigned long mask = 0;
 		long handling = -1;
+		void *arch_priv = nullptr;
   } sig;
 
   struct thread_sched_info sched;

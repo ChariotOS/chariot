@@ -70,7 +70,10 @@ struct service {
 
 
 
-static void handler(int i) { printf("signal handler got %d\n", i); }
+static void handler(int i) {
+	//
+	printf("signal handler got %d\n", i);
+}
 
 int main(int argc, char **argv) {
   sigset_t set;
