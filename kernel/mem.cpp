@@ -59,13 +59,11 @@ extern "C" void free(void *p) {
 
 
 void *memcpy(void *dest, const void *src, size_t n) {
-
   auto *s = (uint8_t*)src;
   auto *d = (uint8_t*)dest;
   for (size_t i = 0; i < n; i++) d[i] = s[i];
   return dest;
 }
-
 
 
 void *kzalloc(unsigned long sz) {
@@ -76,7 +74,6 @@ void *kzalloc(unsigned long sz) {
 
 
 static unsigned long mem_kshell(vec<string> &args, void *data, int dlen) {
-
   if (args.size() > 0) {
 		if (args[0] == "dump") {
 			printk("kmalloc usage: %zu bytes\n", kmalloc_usage);
@@ -87,8 +84,9 @@ static unsigned long mem_kshell(vec<string> &args, void *data, int dlen) {
 	return 0;
 }
 static void mem_init(void) {
-	
 	kshell::add("mem", mem_kshell);
 }
+
+
 
 module_init("mem", mem_init);

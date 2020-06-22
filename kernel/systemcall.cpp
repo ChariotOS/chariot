@@ -49,7 +49,6 @@ static u64 do_syscall(long num, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
   if (syscall_table[num].handler == NULL) {
     return -1;
   }
-
   curthd->stats.syscall_count++;
 
   auto *func = (u64(*)(u64, u64, u64, u64, u64, u64))syscall_table[num].handler;
