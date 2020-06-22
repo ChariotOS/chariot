@@ -45,7 +45,6 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, unsigned long 
   }
 
   int index = -1;
-	auto start = time::now_ms();
 	unsigned long loops = 0;
 	// this probably isn't great
 	while (1) {

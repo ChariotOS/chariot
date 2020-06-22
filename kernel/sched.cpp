@@ -381,13 +381,13 @@ class threadwaiter : public waiter {
   struct thread *thd = NULL;
 };
 
-int waitqueue::wait(u32 on, ref<waiter> wt) { return do_wait(on, 0, wt); }
+bool waitqueue::wait(u32 on, ref<waiter> wt) { return do_wait(on, 0, wt); }
 
 void waitqueue::wait_noint(u32 on, ref<waiter> wt) {
   do_wait(on, WAIT_NOINT, wt);
 }
 
-int waitqueue::do_wait(u32 on, int flags, ref<waiter> waiter) {
+bool waitqueue::do_wait(u32 on, int flags, ref<waiter> waiter) {
   if (!waiter) {
     waiter = make_ref<threadwaiter>(*this, curthd);
   }
@@ -396,7 +396,7 @@ int waitqueue::do_wait(u32 on, int flags, ref<waiter> waiter) {
   if (navail > 0) {
     navail--;
     lock.unlock();
-    return 0;
+    return true;
   }
 
   assert(navail == 0);
@@ -420,7 +420,7 @@ int waitqueue::do_wait(u32 on, int flags, ref<waiter> waiter) {
   waiter->start();
 
   // TODO: read form the thread if it was rudely notified or not
-  return 0;
+  return true;
 }
 
 void waitqueue::notify() {

@@ -83,10 +83,12 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
     wq_readers.notify_all();
     lock_write.unlock();
 
-		if (!block) return -EAGAIN;
+    if (!block) return -EAGAIN;
 
     if (written < size) {
-      wq_writers.wait();
+      if (wq_writers.wait() == false /* interrupted by signals? */) {
+        return -EINTR;
+      }
       if (m_closed) return -ECONNRESET;
     }
   }
@@ -99,22 +101,20 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
   init_if_needed();
 
 
-	if (!block) {
-		scoped_lock l(lock_read);
+  if (!block) {
+    scoped_lock l(lock_read);
 
-		if (unread() == 0) {
-				if (m_closed)
-						return 0;
-				return -EAGAIN;
-		}
-	}
+    if (unread() == 0) {
+      if (m_closed) return 0;
+      return -EAGAIN;
+    }
+  }
 
 
   auto obuf = (char *)vbuf;
 
   size_t collected = 0;
   while (collected == 0) {
-
     lock_read.lock();
 
     while (unread() > 0 && collected < size) {
@@ -126,14 +126,17 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
     wq_writers.notify_all();
     lock_read.unlock();
 
-		// break early if we are not meant to block
-		if (!block) {
-			break;
-		}
+    // break early if we are not meant to block
+    if (!block) {
+      break;
+    }
 
     if (collected == 0) {
-      wq_readers.wait();
-
+      if (wq_readers.wait() == false /* Were we interrupted?? */) {
+        // We haven't read anything anyways, just return that there was an
+        // interrupt due to signals.
+        return -EINTR;
+      }
     }
   }
 
@@ -143,8 +146,8 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
 
 
 int fifo_buf::poll(void) {
-	// upon close, it returns AWAITFS_READ (idk, its expected)
-	if (m_closed) return AWAITFS_READ;
+  // upon close, it returns AWAITFS_READ (idk, its expected)
+  if (m_closed) return AWAITFS_READ;
 
   int ev = 0;
   lock_read.lock();

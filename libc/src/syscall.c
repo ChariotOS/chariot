@@ -17,7 +17,12 @@ long syscall(long num, ...) {
   e = va_arg(ap, unsigned long long);
   f = va_arg(ap, unsigned long long);
   va_end(ap);
-  return __syscall(num, a, b, c, d, e, f);
+
+	long res = 0;
+	do {
+		res = __syscall(num, a, b, c, d, e, f);
+	} while (res == -EINTR);
+  return res;
 }
 
 long errno_syscall(long num, ...) {
@@ -31,7 +36,10 @@ long errno_syscall(long num, ...) {
   e = va_arg(ap, unsigned long long);
   f = va_arg(ap, unsigned long long);
   va_end(ap);
-  return __syscall_ret(__syscall(num, a, b, c, d, e, f));
+
+	long result = __syscall_ret(__syscall(num, a, b, c, d, e, f));
+
+	return result;
 }
 
 long __syscall_ret(long r) {

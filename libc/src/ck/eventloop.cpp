@@ -16,6 +16,7 @@ static ck::HashTable<ck::timer *> s_timers;
 
 
 static ck::timer *next_timer(void) {
+	return nullptr;
 	//
 }
 
@@ -90,7 +91,7 @@ void ck::eventloop::pump(void) {
     }
 
   } else {
-    printf("timed out!\n");
+    // printf("timed out!\n");
   }
 }
 

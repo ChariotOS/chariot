@@ -13,8 +13,8 @@
 #include <paging.h>
 #include <phys.h>
 #include <sched.h>
-#include <wait_flags.h>
 #include <util.h>
+#include <wait_flags.h>
 
 // start out at pid 2, so init is pid 1 regardless of if kernel threads are
 // created before init is spawned
@@ -31,7 +31,6 @@ static pid_t get_next_pid(void) {
 }
 
 static mm::space *alloc_user_vm(void) {
-  return new mm::space(0x1000, 0x7ffffffff000, mm::pagetable::create());
   return new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create());
 }
 
@@ -62,8 +61,8 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
     proc.ppid = proc_ptr->parent->pid;
     proc.pgid = proc_ptr->parent->pgid;  // inherit the group id of the parent
 
-		proc.root = geti(proc.parent->root);
-		proc.cwd = geti(proc.parent->cwd);
+    proc.root = geti(proc.parent->root);
+    proc.cwd = geti(proc.parent->cwd);
 
     // inherit stdin(0) stdout(1) and stderr(2)
     for (int i = 0; i < 3; i++) {
@@ -145,9 +144,9 @@ pid_t sched::proc::spawn_init(vec<string> &paths) {
   // initialize normally
   proc_ptr = do_spawn_proc(proc_ptr, 0);
 
-	// init starts in the root directory
-	proc_ptr->root = geti(vfs::get_root());
-	proc_ptr->cwd = geti(vfs::get_root());
+  // init starts in the root directory
+  proc_ptr->root = geti(vfs::get_root());
+  proc_ptr->cwd = geti(vfs::get_root());
   auto &proc = *proc_ptr;
 
   vec<string> envp;
@@ -308,18 +307,19 @@ bool process::is_dead(void) {
 int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   scoped_lock lck(this->datalock);
 
-	// auto &st = cpu::current().kstat;
-	// printk("t:%-8zu u:%-8zu k:%-8zu i:%-8zu\n", st.ticks, st.uticks, st.kticks, st.iticks);
+  // auto &st = cpu::current().kstat;
+  // printk("t:%-8zu u:%-8zu k:%-8zu i:%-8zu\n", st.ticks, st.uticks, st.kticks,
+  // st.iticks);
 
-	/*
-	printk("exec (pid=%d) %s:\n", pid, path.get());
-	for (int i = 0; i < argv.size(); i++) {
-		printk("   argv[%d] = '%s'\n", i, argv[i].get());
-	}
-	for (int i = 0; i < envp.size(); i++) {
-		printk("   envp[%d] = '%s'\n", i, envp[i].get());
-	}
-	*/
+  /*
+  printk("exec (pid=%d) %s:\n", pid, path.get());
+  for (int i = 0; i < argv.size(); i++) {
+          printk("   argv[%d] = '%s'\n", i, argv[i].get());
+  }
+  for (int i = 0; i < envp.size(); i++) {
+          printk("   envp[%d] = '%s'\n", i, envp[i].get());
+  }
+  */
 
 
   if (!this->embryonic) return -1;
@@ -331,8 +331,8 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
 
   // TODO: open permissions on the binary
   if (vfs::namei(path.get(), 0, 0, cwd, exe) != 0) {
-		return -ENOENT;
-	}
+    return -ENOENT;
+  }
   // TODO check execution permissions
 
   off_t entry = 0;
@@ -375,11 +375,10 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
 }
 
 bool sched::proc::send_signal(pid_t p, int sig) {
-
-	// TODO: handle process group signals
-	if (p < 0) {
-		return -ENOTIMPL;
-	}
+  // TODO: handle process group signals
+  if (p < 0) {
+    return -ENOTIMPL;
+  }
 
   if (sig < 0 || sig >= 64) return false;
   ptable_lock.read_lock();
@@ -390,17 +389,16 @@ bool sched::proc::send_signal(pid_t p, int sig) {
     auto &targ = proc_table[p];
 
 
-		// find a thread
-		for (auto &tid : targ->threads) {
-    	auto *thd = thread::lookup(tid);
-			assert(thd != NULL);
-			if (thd->send_signal(sig)) {
-				// printk("signal recv'd by tid %d\n", tid);
-				sent = true;
-				break;
-			}
-		}
-
+    // find a thread
+    for (auto &tid : targ->threads) {
+      auto *thd = thread::lookup(tid);
+      assert(thd != NULL);
+      if (thd->send_signal(sig)) {
+        // printk("signal recv'd by tid %d\n", tid);
+        sent = true;
+        break;
+      }
+    }
   }
 
   ptable_lock.read_unlock();
@@ -467,7 +465,6 @@ int sched::proc::reap(process::ptr p) {
 }
 
 int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
-
   auto *me = curproc;
 
   if (!me) return -1;
@@ -512,11 +509,15 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
           return targ->pid;
         }
       }
+      //
       if (options & WNOHANG) return -1;
     }
 
-		// wait on the waiter's semaphore
-    me->waiters.wait();
+    // wait on the waiter's semaphore
+    if (me->waiters.wait() == false /* were we interrupted by a signal? */) {
+      // Linux does this if WNOHANG was set
+      return -EINTR;
+    }
   }
 
   return res_pid;

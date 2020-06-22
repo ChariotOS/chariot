@@ -12,6 +12,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <errno.h>
+
 #define C_RED "\x1b[31m"
 #define C_GREEN "\x1b[32m"
 #define C_YELLOW "\x1b[33m"
@@ -82,7 +84,8 @@ int run_line(const char *line) {
   if (start_res == 0) {
     int stat = 0;
     if (!bg) {
-      waitpid(pid, &stat, 0);
+			WHILE_INTR(waitpid(pid, &stat, 0));
+
       // size_t end = current_us();
 
       // fprintf(stderr, "\n--------------------\n");

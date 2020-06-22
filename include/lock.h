@@ -3,6 +3,8 @@
 #include <asm.h>
 #include <atom.h>
 
+#define WARN_UNUSED __attribute__((warn_unused_result))
+
 // TODO: use the correct cpu state
 class spinlock {
  private:

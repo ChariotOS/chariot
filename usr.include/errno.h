@@ -23,6 +23,16 @@ __attribute__((const))
 int *__errno_location(void);
 #define errno (*__errno_location())
 
+
+#define WHILE_INTR(expr)      \
+  ({                          \
+    typeof(expr) _res;        \
+    do {                      \
+      _res = expr;           \
+    } while (errno == EINTR); \
+    _res;                     \
+  })
+
 #ifdef __cplusplus
 }
 #endif

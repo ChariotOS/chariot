@@ -33,8 +33,8 @@ struct waiter : public refcounted<waiter> {
  */
 class waitqueue {
  public:
-  // wait on the queue, interruptable. Returns if it was interrupted or not
-  int wait(u32 on = 0, ref<waiter> wtr = nullptr);
+  // wait on the queue, interruptable. Returns true if it was not interrupted
+  bool WARN_UNUSED wait(u32 on = 0, ref<waiter> wtr = nullptr);
 
   // wait, but not interruptable
   void wait_noint(u32 on = 0, ref<waiter> wtr = nullptr);
@@ -45,7 +45,7 @@ class waitqueue {
   bool should_notify(u32 val);
 
  private:
-  int do_wait(u32 on, int flags, ref<waiter> wtr);
+  bool do_wait(u32 on, int flags, ref<waiter> wtr);
   // navail is the number of unhandled notifications
   int navail = 0;
 

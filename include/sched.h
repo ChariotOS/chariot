@@ -94,7 +94,7 @@ struct process final : public refcounted<struct process> {
      * should run the systemcall "sigreturn" in order to end the signal's
      * lifetime */
     off_t ret = 0;
-    struct sigaction handlers[64] = {0};
+    struct sigaction handlers[64] = {{0}};
     // void *handlers[64] = {0};
     spinlock lock;
   } sig;
