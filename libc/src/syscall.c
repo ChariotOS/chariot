@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <sys/syscall.h>
+#include <stdio.h>
 
 extern long __syscall(int num, unsigned long long a, unsigned long long b,
                       unsigned long long c, unsigned long long d,
@@ -18,10 +19,14 @@ long syscall(long num, ...) {
   f = va_arg(ap, unsigned long long);
   va_end(ap);
 
-	long res = 0;
-	do {
-		res = __syscall(num, a, b, c, d, e, f);
-	} while (res == -EINTR);
+	long count = 0;
+  long res = 0;
+  do {  // Loop while the syscall was interrupted. This isn't cool but it's way
+        // easier than restartable syscalls
+    res = __syscall(num, a, b, c, d, e, f);
+		count++;
+  } while (res == -EINTR);
+	if (count > 1) printf("Syscall repeat count: %d\n", count - 1);
   return res;
 }
 
@@ -37,9 +42,8 @@ long errno_syscall(long num, ...) {
   f = va_arg(ap, unsigned long long);
   va_end(ap);
 
-	long result = __syscall_ret(__syscall(num, a, b, c, d, e, f));
-
-	return result;
+  long result = __syscall_ret(__syscall(num, a, b, c, d, e, f));
+  return result;
 }
 
 long __syscall_ret(long r) {
@@ -47,6 +51,6 @@ long __syscall_ret(long r) {
     errno = -r;
     return -1;
   }
-	errno = 0;
+  errno = 0;
   return r;
 }
