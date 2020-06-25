@@ -48,11 +48,6 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, unsigned long 
 	unsigned long loops = 0;
 	// this probably isn't great
 	while (1) {
-		if (timeout_time != 0) {
-			if (timeout_time <= time::now_ms()) {
-				return -ETIMEDOUT;
-			}
-		}
 		for (auto &ent : entries) {
 			if (ent.file) {
 				int occurred = ent.file->ino->poll(*ent.file, ent.awaiting);
@@ -63,9 +58,15 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, unsigned long 
 					return index;
 				}
 			}
+			asm("pause");
 		}
 		loops++;
 
+		if (timeout_time > 0) {
+			if (timeout_time >= time::now_ms()) {
+				return -ETIMEDOUT;
+			}
+		}
 		asm("hlt");
 		sched::yield();
 	}

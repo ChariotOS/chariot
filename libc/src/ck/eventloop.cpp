@@ -1,7 +1,7 @@
 #include <ck/eventloop.h>
 #include <ck/fsnotifier.h>
-#include <ck/timer.h>
 #include <ck/map.h>
+#include <ck/timer.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -15,18 +15,30 @@ static ck::HashTable<ck::fsnotifier *> s_notifiers;
 static ck::HashTable<ck::timer *> s_timers;
 
 
+size_t current_ms() { return syscall(SYS_gettime_microsecond) / 1000; }
+
 static ck::timer *next_timer(void) {
-	return nullptr;
-	//
+	// TODO: take a lock
+	ck::timer *n = NULL;
+
+	for (auto *t : s_timers) {
+		if (n == NULL) {
+			n = t;
+		} else {
+			if (t->next_fire() < n->next_fire()) {
+				n = t;
+			}
+		}
+	}
+
+  return n;
 }
 
 ck::eventloop *active_eventloop = NULL;
 
-ck::eventloop::eventloop(void) {
-}
+ck::eventloop::eventloop(void) {}
 
-ck::eventloop::~eventloop(void) {
-}
+ck::eventloop::~eventloop(void) {}
 
 void ck::eventloop::exit(void) {
   if (active_eventloop == NULL) return;
@@ -54,8 +66,6 @@ int awaitfs(struct await_target *fds, int nfds, int flags,
 }
 
 
-size_t current_ms() { return syscall(SYS_gettime_microsecond) / 1000; }
-
 void ck::eventloop::pump(void) {
   ck::vec<struct await_target> targs;
   auto add_fd = [&](int fd, int mask, ck::object *obj) {
@@ -74,8 +84,15 @@ void ck::eventloop::pump(void) {
     add_fd(fd, event, notifier);
   }
 
+	auto timeout = -1;
+	auto nt = next_timer();
 
-  int index = awaitfs(targs.data(), targs.size(), 0, current_ms() + 1000);
+	if (nt != NULL) {
+		timeout = nt->next_fire();
+		// printf("timeout=%d\n", timeout);
+	}
+
+  int index = awaitfs(targs.data(), targs.size(), 0, timeout);
   if (index >= 0) {
     auto occ = targs[index].occurred;
     if (occ & AWAITFS_READ) {
@@ -91,7 +108,9 @@ void ck::eventloop::pump(void) {
     }
 
   } else {
-    // printf("timed out!\n");
+		if (nt != NULL) {
+			nt->trigger();
+		}
   }
 }
 
@@ -129,14 +148,52 @@ void ck::eventloop::deregister_notifier(ck::fsnotifier &n) {
 
 
 ck::ref<ck::timer> ck::timer::make_interval(int ms, ck::func<void()> cb) {
-
-	return nullptr;
+  auto t = new ck::timer();
+  t->on_tick = move(cb);
+  t->start(ms, true);
+  return t;
 }
 
 ck::ref<ck::timer> ck::timer::make_timeout(int ms, ck::func<void()> cb) {
-
-	return nullptr;
+  auto t = new ck::timer();
+  t->on_tick = move(cb);
+  t->start(ms, false);
+  return t;
 }
+
+
+void ck::timer::start(uint64_t ms, bool repeat) {
+  m_next_fire = current_ms() + ms;
+  m_interval = ms;
+  active = true;
+  this->repeat = repeat;
+	// TODO: take a lock
+  s_timers.set(this);
+}
+
+void ck::timer::trigger(void) {
+  on_tick();
+  if (active) {
+    if (!repeat) {
+      stop();
+    } else {
+      m_next_fire = current_ms() + m_interval;
+    }
+  }
+}
+
+ck::timer::~timer(void) {
+  if (active) stop();
+}
+
+void ck::timer::stop(void) {
+	if (active) {
+		// TODO: take a lock
+		s_timers.remove(this);
+		active = false;
+	}
+}
+
 
 
 /////////////////////////////////////////////////////////////////////////////////////
