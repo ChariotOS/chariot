@@ -41,8 +41,8 @@ struct [[gnu::packed]] chariot_kernel_font {
 
 const auto &vga_font = (chariot_kernel_font &)*&build_font_ckf;
 
-#define VCONSOLE_WIDTH 1024
-#define VCONSOLE_HEIGHT 768
+#define VCONSOLE_WIDTH 640
+#define VCONSOLE_HEIGHT 480
 
 #define EDGE_MARGIN 0
 #define TOTAL_MARGIN (EDGE_MARGIN * 2)
@@ -118,11 +118,185 @@ static void set_info(struct ck_fb_info i) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#define SVGA_IO_BASE (vmware_io)
+#define SVGA_IO_MUL 1
+#define SVGA_INDEX_PORT 0
+#define SVGA_VALUE_PORT 1
+
+
+
+
+
+/*
+ * Registers
+ */
+
+enum {
+  SVGA_REG_ID = 0,
+  SVGA_REG_ENABLE = 1,
+  SVGA_REG_WIDTH = 2,
+  SVGA_REG_HEIGHT = 3,
+  SVGA_REG_MAX_WIDTH = 4,
+  SVGA_REG_MAX_HEIGHT = 5,
+  SVGA_REG_DEPTH = 6,
+  SVGA_REG_BITS_PER_PIXEL = 7, /* Current bpp in the guest */
+  SVGA_REG_PSEUDOCOLOR = 8,
+  SVGA_REG_RED_MASK = 9,
+  SVGA_REG_GREEN_MASK = 10,
+  SVGA_REG_BLUE_MASK = 11,
+  SVGA_REG_BYTES_PER_LINE = 12,
+  SVGA_REG_FB_START = 13, /* (Deprecated) */
+  SVGA_REG_FB_OFFSET = 14,
+  SVGA_REG_VRAM_SIZE = 15,
+  SVGA_REG_FB_SIZE = 16,
+
+  /* ID 0 implementation only had the above registers, then the palette */
+  SVGA_REG_ID_0_TOP = 17,
+
+  SVGA_REG_CAPABILITIES = 17,
+  SVGA_REG_MEM_START = 18, /* (Deprecated) */
+  SVGA_REG_MEM_SIZE = 19,
+  SVGA_REG_CONFIG_DONE = 20,         /* Set when memory area configured */
+  SVGA_REG_SYNC = 21,                /* See "FIFO Synchronization Registers" */
+  SVGA_REG_BUSY = 22,                /* See "FIFO Synchronization Registers" */
+  SVGA_REG_GUEST_ID = 23,            /* (Deprecated) */
+  SVGA_REG_CURSOR_ID = 24,           /* (Deprecated) */
+  SVGA_REG_CURSOR_X = 25,            /* (Deprecated) */
+  SVGA_REG_CURSOR_Y = 26,            /* (Deprecated) */
+  SVGA_REG_CURSOR_ON = 27,           /* (Deprecated) */
+  SVGA_REG_HOST_BITS_PER_PIXEL = 28, /* (Deprecated) */
+  SVGA_REG_SCRATCH_SIZE = 29,        /* Number of scratch registers */
+  SVGA_REG_MEM_REGS = 30,            /* Number of FIFO registers */
+  SVGA_REG_NUM_DISPLAYS = 31,        /* (Deprecated) */
+  SVGA_REG_PITCHLOCK = 32,           /* Fixed pitch for all modes */
+  SVGA_REG_IRQMASK = 33,             /* Interrupt mask */
+
+  /* Legacy multi-monitor support */
+  SVGA_REG_NUM_GUEST_DISPLAYS =
+      34, /* Number of guest displays in X/Y direction */
+  SVGA_REG_DISPLAY_ID =
+      35, /* Display ID for the following display attributes */
+  SVGA_REG_DISPLAY_IS_PRIMARY = 36, /* Whether this is a primary display */
+  SVGA_REG_DISPLAY_POSITION_X = 37, /* The display position x */
+  SVGA_REG_DISPLAY_POSITION_Y = 38, /* The display position y */
+  SVGA_REG_DISPLAY_WIDTH = 39,      /* The display's width */
+  SVGA_REG_DISPLAY_HEIGHT = 40,     /* The display's height */
+
+  /* See "Guest memory regions" below. */
+  SVGA_REG_GMR_ID = 41,
+  SVGA_REG_GMR_DESCRIPTOR = 42,
+  SVGA_REG_GMR_MAX_IDS = 43,
+  SVGA_REG_GMR_MAX_DESCRIPTOR_LENGTH = 44,
+
+  SVGA_REG_TRACES = 45, /* Enable trace-based updates even when FIFO is on */
+  SVGA_REG_GMRS_MAX_PAGES = 46, /* Maximum number of 4KB pages for all GMRs */
+  SVGA_REG_MEMORY_SIZE = 47,  /* Total dedicated device memory excluding FIFO */
+  SVGA_REG_COMMAND_LOW = 48,  /* Lower 32 bits and submits commands */
+  SVGA_REG_COMMAND_HIGH = 49, /* Upper 32 bits of command buffer PA */
+
+  /*
+   * Max primary memory.
+   * See SVGA_CAP_NO_BB_RESTRICTION.
+   */
+  SVGA_REG_MAX_PRIMARY_MEM = 50,
+  SVGA_REG_MAX_PRIMARY_BOUNDING_BOX_MEM = 50,
+
+  SVGA_REG_SUGGESTED_GBOBJECT_MEM_SIZE_KB = 51, /* Sugested limit on mob mem */
+  SVGA_REG_DEV_CAP = 52, /* Write dev cap index, read value */
+  SVGA_REG_CMD_PREPEND_LOW = 53,
+  SVGA_REG_CMD_PREPEND_HIGH = 54,
+  SVGA_REG_SCREENTARGET_MAX_WIDTH = 55,
+  SVGA_REG_SCREENTARGET_MAX_HEIGHT = 56,
+  SVGA_REG_MOB_MAX_SIZE = 57,
+  SVGA_REG_BLANK_SCREEN_TARGETS = 58,
+  SVGA_REG_CAP2 = 59,
+  SVGA_REG_DEVEL_CAP = 60,
+  SVGA_REG_TOP = 61, /* Must be 1 more than the last register */
+
+  SVGA_PALETTE_BASE = 1024, /* Base of SVGA color map */
+  /* Next 768 (== 256*3) registers exist for colormap */
+  // SVGA_SCRATCH_BASE = SVGA_PALETTE_BASE + SVGA_NUM_PALETTE_REGS
+  /* Base of scratch registers */
+  /* Next reg[SVGA_REG_SCRATCH_SIZE] registers exist for scratch usage:
+     First 4 are reserved for VESA BIOS Extension; any remaining are for
+     the use of the current SVGA driver. */
+};
+
+static uint32_t vmware_io = 0;
+
+
+/*
+static void vmware_write(int reg, int value) {
+  outl(SVGA_IO_MUL * SVGA_INDEX_PORT + SVGA_IO_BASE, reg);
+  outl(SVGA_IO_MUL * SVGA_VALUE_PORT + SVGA_IO_BASE, value);
+}
+*/
+
+static uint32_t vmware_read(int reg) {
+  outl(SVGA_IO_MUL * SVGA_INDEX_PORT + SVGA_IO_BASE, reg);
+  return inl(SVGA_IO_MUL * SVGA_VALUE_PORT + SVGA_IO_BASE);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // static pci::device *vga_dev = NULL;
 
 static void *get_framebuffer_address(void) {
   void *addr = nullptr;
   pci::walk_devices([&](pci::device *dev) {
+
+
+    // vmware SVGA II Adapter
+    if (dev->is_device(0x15ad, 0x0405)) {
+      uint32_t t = dev->get_bar(0).raw;
+      vmware_io = (t & 0xFFFFFFF0);
+      printk(KERN_DEBUG "vmware_io: 0x%x\n", vmware_io);
+			addr = (void*)(size_t)vmware_read(SVGA_REG_FB_START);
+		// auto fb = (uint32_t *)p2v(fb_addr);
+    }
+
     if (dev->is_device(0x1234, 0x1111) || dev->is_device(0x80ee, 0xbeef)) {
       // vga_dev = dev;
       addr = (void *)(dev->get_bar(0).raw & 0xfffffff0l);
@@ -130,6 +304,10 @@ static void *get_framebuffer_address(void) {
   });
   return addr;
 }
+
+
+
+
 
 static ssize_t fb_write(fs::file &fd, const char *buf, size_t sz) {
   if (!fd) return -1;
@@ -157,13 +335,12 @@ static int fb_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
 
 
   switch (cmd) {
-
     case FB_SET_XOFF:
-    	set_register(VBE_DISPI_INDEX_X_OFFSET, (u16)arg);
+      set_register(VBE_DISPI_INDEX_X_OFFSET, (u16)arg);
       return 0;
 
     case FB_SET_YOFF:
-    	set_register(VBE_DISPI_INDEX_Y_OFFSET, (u16)arg);
+      set_register(VBE_DISPI_INDEX_Y_OFFSET, (u16)arg);
       return 0;
 
     case FB_SET_INFO:
@@ -234,7 +411,12 @@ struct vga_vmobject final : public mm::vmobject {
 
   // get a shared page (page #n in the mapping)
   virtual ref<mm::page> get_shared(off_t n) override {
-    return mm::page::create((unsigned long)vga_fba + (n * PGSIZE));
+    auto p = mm::page::create((unsigned long)vga_fba + (n * PGSIZE));
+
+		p->nocache = true;
+		p->writethrough = true;
+
+		return p;
   }
 };
 
@@ -285,10 +467,13 @@ static struct dev::driver_info generic_driver_info {
 
 void vga::early_init(void) {
   if (vga_fba == NULL) vga_fba = (u32 *)get_framebuffer_address();
-  reset_fb();
-	set_register(VBE_DISPI_INDEX_X_OFFSET, 0);
-	set_register(VBE_DISPI_INDEX_Y_OFFSET, 0);
-  cons_enabled = true;
+
+  if (vga_fba != NULL) {
+    reset_fb();
+    set_register(VBE_DISPI_INDEX_X_OFFSET, 0);
+    set_register(VBE_DISPI_INDEX_Y_OFFSET, 0);
+    cons_enabled = true;
+  }
 }
 
 static int fg_colors[] = {
@@ -331,8 +516,11 @@ static void vga_char_scribe(int x, int y, struct vc_cell *cell, int flags) {
 }
 
 void vga_mod_init(void) {
-  dev::register_driver(generic_driver_info);
-  dev::register_name(generic_driver_info, "fb", 0);
+  if (vga_fba != NULL) {
+    printk(KERN_INFO "Standard VGA Framebuffer found!\n");
+    dev::register_driver(generic_driver_info);
+    dev::register_name(generic_driver_info, "fb", 0);
+  }
 }
 
 module_init("vga framebuffer", vga_mod_init);
