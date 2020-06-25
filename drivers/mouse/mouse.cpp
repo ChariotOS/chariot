@@ -239,8 +239,8 @@ void mouse_install() {
   mouse_write(0xF3);
   mouse_read();
   mouse_write(200);
-
   mouse_read();
+
   mouse_write(0xF3);
   mouse_read();
   mouse_write(100);
@@ -267,6 +267,13 @@ void mouse_install() {
   mouse_wait(1);
   outb(MOUSE_PORT, 0x02);
   mouse_wait(1);
+  mouse_read();
+
+
+
+  mouse_write(0xF3);
+  mouse_read();
+  mouse_write(255);
   mouse_read();
 
 
