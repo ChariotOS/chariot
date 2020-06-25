@@ -26,7 +26,9 @@ long syscall(long num, ...) {
     res = __syscall(num, a, b, c, d, e, f);
 		count++;
   } while (res == -EINTR);
+#if 0
 	if (count > 1) printf("Syscall repeat count: %d\n", count - 1);
+#endif
   return res;
 }
 

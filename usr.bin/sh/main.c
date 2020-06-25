@@ -56,6 +56,21 @@ int run_line(const char *line) {
 
   if (args[0] == NULL) goto cleanup;
 
+
+  if (strcmp(args[0], "fork") == 0) {
+    pid_t p = syscall(SYS_fork);
+
+    printf("p = %d\n", p);
+    if (p >= 0) {
+			int stat = 0;
+      if (p == 0) {
+      } else {
+        waitpid(p, &stat, 0);
+      }
+    }
+		goto cleanup;
+  }
+
   if (strcmp(args[0], "cd") == 0) {
     char *path = args[1];
     if (path == NULL) {
@@ -84,7 +99,7 @@ int run_line(const char *line) {
   if (start_res == 0) {
     int stat = 0;
     if (!bg) {
-			WHILE_INTR(waitpid(pid, &stat, 0));
+      waitpid(pid, &stat, 0);
 
       // size_t end = current_us();
 

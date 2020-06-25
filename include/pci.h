@@ -247,71 +247,74 @@ struct pci_info {
 
 namespace pci {
 
-enum class bar_type : char {
-  BAR_MMIO = 0,
-  BAR_PIO = 1,
-};
-struct bar {
-  bar_type type;
-  bool prefetchable;
-  bool valid;
-  u8 *addr;
-  u32 size;
-  u32 raw;
-};
+  enum class bar_type : char {
+    BAR_MMIO = 0,
+    BAR_PIO = 1,
+  };
+  struct bar {
+    bar_type type;
+    bool prefetchable;
+    bool valid;
+    u8 *addr;
+    u32 size;
+    u32 raw;
+  };
 
-class device {
- public:
-  bool valid = false;
-  u16 bus, dev, func;
+  class device {
+   public:
+    bool valid = false;
+    u16 bus, dev, func;
 
-  u32 port_base;
-  u8 interrupt;
+    u32 port_base;
+    u8 interrupt;
 
-  u16 vendor_id;
-  u16 device_id;
+    u16 vendor_id;
+    u16 device_id;
 
-  u8 class_id;
-  u8 subclass_id;
-  u8 interface_id;
-  u8 revision;
+    u8 class_id;
+    u8 subclass_id;
+    u8 interface_id;
+    u8 revision;
 
-  u32 get_address(u32);
+    u32 get_address(u32);
 
-  pci::bar get_bar(int barnum);
 
-  bool is_device(u16 vendor, u16 device);
+    struct pci_cfg_space cfg;  // snapshot at boot!
 
-  template <typename T>
-  T read(u32 field) {
-    outl(PCI_CFG_ADDR_PORT, get_address(field));
-    if constexpr (sizeof(T) == 4) return inl(PCI_CFG_DATA_PORT);
-    if constexpr (sizeof(T) == 2) return inw(PCI_CFG_DATA_PORT + (field & 2));
-    if constexpr (sizeof(T) == 1) return inb(PCI_CFG_DATA_PORT + (field & 3));
+    pci::bar get_bar(int barnum);
 
-    panic("invalid PCI read of size %d\n", sizeof(T));
-  }
+    bool is_device(u16 vendor, u16 device);
 
-  template <typename T>
-  void write(u32 field, T val) {
-    outl(PCI_CFG_ADDR_PORT, get_address(field));
-    if constexpr (sizeof(T) == 4) return outl(PCI_CFG_DATA_PORT, val);
-    if constexpr (sizeof(T) == 2)
-      return outw(PCI_CFG_DATA_PORT + (field & 2), val);
-    if constexpr (sizeof(T) == 1)
-      return outb(PCI_CFG_DATA_PORT + (field & 3), val);
+    template <typename T>
+    T read(u32 field) {
+      outl(PCI_CFG_ADDR_PORT, get_address(field));
+      if constexpr (sizeof(T) == 4) return inl(PCI_CFG_DATA_PORT);
+      if constexpr (sizeof(T) == 2) return inw(PCI_CFG_DATA_PORT + (field & 2));
+      if constexpr (sizeof(T) == 1) return inb(PCI_CFG_DATA_PORT + (field & 3));
 
-    panic("invalid PCI write of size %d\n", sizeof(T));
-  }
-  void enable_bus_mastering(void);
-};
+      panic("invalid PCI read of size %d\n", sizeof(T));
+    }
 
-void init();
+    template <typename T>
+    void write(u32 field, T val) {
+      outl(PCI_CFG_ADDR_PORT, get_address(field));
+      if constexpr (sizeof(T) == 4) return outl(PCI_CFG_DATA_PORT, val);
+      if constexpr (sizeof(T) == 2)
+        return outw(PCI_CFG_DATA_PORT + (field & 2), val);
+      if constexpr (sizeof(T) == 1)
+        return outb(PCI_CFG_DATA_PORT + (field & 3), val);
 
-u32 read(u8 bus, u8 dev, u8 func, u8 off);
-void write(u8 bus, u16 dev, u16 func, u32 reg_off, u32 value);
+      panic("invalid PCI write of size %d\n", sizeof(T));
+    }
+    void enable_bus_mastering(void);
+  };
 
-void walk_devices(func<void(device *)>);
+  void init();
+
+  u32 read(u8 bus, u8 dev, u8 func, u8 off);
+  void write(u8 bus, u16 dev, u16 func, u32 reg_off, u32 value);
+
+  void walk_devices(func<void(device *)>);
 
 };  // namespace pci
 

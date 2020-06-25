@@ -47,6 +47,3 @@ int sys::despawn(int pid) {
 }
 
 
-int sys::fork(void) {
-  return curproc->fork();
-}

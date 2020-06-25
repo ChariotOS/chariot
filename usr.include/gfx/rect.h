@@ -22,7 +22,7 @@ namespace gfx {
 
     inline rect(int x, int y, int w, int h) : x(x), y(y), w(w), h(h) {}
     inline rect(int w, int h) : x(0), y(0), w(w), h(h) {}
-    inline rect(const rect &o) { rect(o.x, o.y, o.w, o.h); }
+    inline rect(const rect &o) { operator=(o); }
 
     inline rect &operator=(const rect &o) {
       x = o.x;
@@ -63,3 +63,6 @@ namespace gfx {
   };
 
 };  // namespace gfx
+
+#undef min
+#undef max

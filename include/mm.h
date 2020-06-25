@@ -52,7 +52,9 @@ namespace mm {
     int lock = 0;
 
     // non-freeable pages are needed (for example when mmapping mmio regions)
-    char freeable : 1;
+    bool freeable : 1;
+		bool writethrough: 1;
+		bool nocache : 1;
 
     page(void);
     ~page(void);
@@ -71,6 +73,9 @@ namespace mm {
   struct pte {
     off_t ppn;
     int prot;
+
+		bool writethrough = false;
+		bool nocache = false;
   };
   /**
    * Page tables are created and implemented by the specific arch.

@@ -4,8 +4,8 @@
 #include <multiboot.h>
 #include <paging.h>
 #include <phys.h>
-#include <util.h>
 #include <types.h>
+#include <util.h>
 
 #define round_down(x, y) ((x) & ~((y)-1))
 
@@ -30,29 +30,24 @@ u64 *kernel_page_table;
 int kmem_revision = 0;
 
 namespace x86 {
-class pagetable : public mm::pagetable {
-  u64 *pml4;
+  class pagetable : public mm::pagetable {
+    u64 *pml4;
 
- public:
-  pagetable(u64 *pml4);
-  virtual ~pagetable();
+   public:
+    pagetable(u64 *pml4);
+    virtual ~pagetable();
 
-  virtual bool switch_to(void) override;
+    virtual bool switch_to(void) override;
 
-  virtual int add_mapping(off_t va, struct mm::pte &) override;
-  virtual int get_mapping(off_t va, struct mm::pte &) override;
-  virtual int del_mapping(off_t va) override;
-};
+    virtual int add_mapping(off_t va, struct mm::pte &) override;
+    virtual int get_mapping(off_t va, struct mm::pte &) override;
+    virtual int del_mapping(off_t va) override;
+  };
 }  // namespace x86
 
 
-x86::pagetable::pagetable(u64 *pml4) : pml4(pml4) {
-
-
-}
-x86::pagetable::~pagetable(void) {
-  paging::free_table(pml4);
-}
+x86::pagetable::pagetable(u64 *pml4) : pml4(pml4) {}
+x86::pagetable::~pagetable(void) { paging::free_table(pml4); }
 
 bool x86::pagetable::switch_to(void) {
   auto kptable = (u64 *)p2v(kernel_page_table);
@@ -82,6 +77,16 @@ int x86::pagetable::add_mapping(off_t va, struct mm::pte &p) {
   if (va < KERNEL_VIRTUAL_BASE) flags |= PTE_U;
   if (p.prot & PROT_WRITE) flags |= PTE_W;
   if ((p.prot & PROT_EXEC) == 0) flags |= PTE_NX;
+
+  if (p.nocache) {
+    // printk("nocache\n");
+    flags |= PTE_D;
+  }
+  if (p.writethrough) {
+    // printk("writethrough\n");
+    flags |= PTE_PWT;
+  }
+
   map_into(pml4, va, p.ppn << 12, paging::pgsize::page, flags);
 
   return 0;

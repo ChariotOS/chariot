@@ -142,6 +142,11 @@ bool read_device_descriptor(pci::device *desc, u8 bus, u8 dev, u8 func) {
   // desc->interface_id = pci::read(bus, dev, func, 0x09);
   // desc->revision = pci::read(bus, dev, func, PCI_REVISION_ID);
   desc->interrupt = desc->read<u8>(PCI_INTERRUPT_LINE);
+
+
+  for (int i = 0; i < sizeof(desc->cfg); i += 4) {
+    ((uint32_t *)(&desc->cfg))[i / 4] = desc->read<uint32_t>(i);
+  }
   return true;
 }
 

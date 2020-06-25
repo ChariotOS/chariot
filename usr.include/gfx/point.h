@@ -22,8 +22,8 @@ namespace gfx {
         set_y(rect.bottom());
     }
 
-    inline int x(void) { return m_x; }
-    inline int y(void) { return m_y; }
+    inline int x(void) const { return m_x; }
+    inline int y(void) const { return m_y; }
     inline void set_x(int x) { m_x = x; }
     inline void set_y(int y) { m_y = y; }
 

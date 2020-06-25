@@ -5,6 +5,7 @@
 #include <chariot/mouse_packet.h>
 #include <ck/io.h>
 #include <ck/socket.h>
+#include <ck/timer.h>
 #include <gfx/bitmap.h>
 #include <gfx/point.h>
 #include <lumen/msg.h>
@@ -29,6 +30,7 @@ namespace lumen {
   // represents a framebuffer for a screen. This also renders the mouse cursor
   // with double buffering
   class screen {
+   public:
     int fd = -1;
     size_t bufsz = 0;
     uint32_t *buf = NULL;
@@ -58,7 +60,6 @@ namespace lumen {
                        cursors[cursor]->width(), cursors[cursor]->height());
     }
 
-   public:
     screen(int w, int h);
     ~screen(void);
 
@@ -73,20 +74,23 @@ namespace lumen {
     inline size_t screensize(void) { return bufsz; }
     inline uint32_t *pixels(void) { return buf; }
 
+
+    inline uint32_t *buffer(void) { return back_buffer; }
     inline void set_pixel(int x, int y, uint32_t color) {
-      back_buffer[x + y * m_bounds.w] = color;
+      buffer()[x + y * m_bounds.w] = color;
     }
 
-		// THIS IS VERY SLOW!!!
+
+    // THIS IS VERY SLOW!!!
     inline uint32_t get_pixel(int x, int y) {
       return back_buffer[x + y * m_bounds.w];
     }
 
     inline void clear(uint32_t color) {
-			for (int i = 0; i < width() * height(); i++) {
-				back_buffer[i] = color;
-			}
-		}
+      for (int i = 0; i < width() * height(); i++) {
+        back_buffer[i] = color;
+      }
+    }
 
     inline int width(void) { return m_bounds.w; }
     inline int height(void) { return m_bounds.h; }
@@ -153,6 +157,7 @@ namespace lumen {
     ck::file keyboard, mouse;
     ck::localsocket server;
 
+    ck::ref<ck::timer> compose_timer;
     context(void);
 
 
@@ -179,6 +184,10 @@ namespace lumen {
     // ordered list of all the windows (front to back)
     // The currently focused window is at the front
     ck::vec<lumen::window *> windows;
+
+    ck::vec<gfx::rect> dirty_regions;
+
+    void invalidate(const gfx::rect &r);
 
 
    private:

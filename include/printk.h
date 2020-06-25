@@ -49,6 +49,7 @@ const char* human_size(uint64_t bytes, char* buf);
 #define KERN_INFO "\0012"
 #define KERN_DEBUG "\0013"
 
+#define debug(fmt, args...) printk(KERN_DEBUG fmt, ##args)
 #define KERR(fmt, args...) printk(KERN_ERROR fmt, ##args)
 #define KWARN(fmt, args...) printk(KERN_WARN fmt, ##args)
 #define KINFO(fmt, args...) printk(KERN_INFO fmt, ##args)

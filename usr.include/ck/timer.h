@@ -15,11 +15,14 @@ namespace ck {
 	class timer final : public ck::object {
 		CK_OBJECT(ck::timer);
 		public:
+
+			~timer();
 			static ck::ref<ck::timer> make_interval(int ms, ck::func<void()>);
 			static ck::ref<ck::timer> make_timeout(int ms, ck::func<void()>);
 
 
-			void start(uint64_t interval);
+			void start(uint64_t interval, bool repeat);
+			void stop();
 
 			inline uint64_t next_fire(void) {
 				return m_next_fire;
@@ -31,6 +34,7 @@ namespace ck {
 			uint64_t m_interval = -1;
 			uint64_t m_next_fire = -1;
 			bool repeat = false;
+			bool active = false;
 			ck::func<void()> on_tick;
 	};
 }

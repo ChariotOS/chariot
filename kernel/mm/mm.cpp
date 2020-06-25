@@ -34,6 +34,8 @@ mm::page::page(void) {
   debug_page_list_lock.unlock();
 #endif
 
+	writethrough = false;
+	nocache = false;
   lru = cpu::get_ticks();
 }
 
@@ -152,7 +154,12 @@ int mm::space::pagefault(off_t va, int err) {
       if (!page) {
         // anonymous mapping
         page = mm::page::alloc();
-      }
+      } else {
+
+				pte.nocache = page->nocache;
+				pte.writethrough = page->writethrough;
+			}
+
 
       spinlock::lock(page->lock);
       page->users++;
@@ -176,7 +183,7 @@ int mm::space::pagefault(off_t va, int err) {
 
         if (old_page->users > 1 || r->fd) {
           auto np = mm::page::alloc();
-          // printk(KERN_WARN "COW [page %d in '%s']\n", ind, r->name.get());
+          printk(KERN_WARN "COW [page %d in '%s']\n", ind, r->name.get());
           np->users = 1;
           old_page->users--;
           memcpy(p2v(np->pa), p2v(old_page->pa), PGSIZE);
@@ -222,25 +229,6 @@ mm::space *mm::space::fork(void) {
 
   scoped_lock self_lock(lock);
 
-  for (auto &r : regions) {
-    printk("%p-%p ", r->va, r->va + r->len);
-    printk("%c", r->prot & VPROT_READ ? 'r' : '-');
-    printk("%c", r->prot & VPROT_WRITE ? 'w' : '-');
-    printk("%c", r->prot & VPROT_EXEC ? 'x' : '-');
-    printk(" %08lx", r->off);
-    int maj = 0;
-    int min = 0;
-    if (r->fd) {
-      maj = r->fd->ino->dev.major;
-      min = r->fd->ino->dev.minor;
-    }
-    printk(" %02x:%02x", maj, min);
-    printk(" %-10d", r->fd ? r->fd->ino->ino : 0);
-    printk(" %s", r->name.get());
-    printk("\n");
-  }
-  printk("\n");
-#define DO_COW
 
   for (auto &r : regions) {
     auto copy = new mm::area;
@@ -254,14 +242,8 @@ mm::space *mm::space::fork(void) {
     for (auto &p : r->pages) {
       if (p) {
         spinlock::lock(p->lock);
-#ifdef DO_COW
         p->users++;
         copy->pages.push(p);
-#else
-        auto np = mm::page::alloc();
-        memcpy(p2v(np->pa), p2v(p->pa), PGSIZE);
-        copy->pages.push(p);
-#endif
 
         spinlock::unlock(p->lock);
       } else {
@@ -271,7 +253,6 @@ mm::space *mm::space::fork(void) {
       }
     }
 
-#ifdef DO_COW
     for (size_t i = 0; i < round_up(r->len, 4096) / 4096; i++) {
       struct mm::pte pte;
       if (r->pages[i]) {
@@ -279,19 +260,17 @@ mm::space *mm::space::fork(void) {
         // for copy on write
         pte.prot = r->prot & ~PROT_WRITE;
         pt->add_mapping(r->va + (i * 4096), pte);
+
       }
     }
-#endif
     n->regions.push(copy);
   }
 
   n->sort_regions();
+	this->dump();
+  n->dump();
 
   return n;
-
-  // fail:
-  delete n;
-  return NULL;
 }
 
 off_t mm::space::mmap(off_t req, size_t size, int prot, int flags,
@@ -432,24 +411,24 @@ int mm::space::sort_regions(void) {
 }
 
 void mm::space::dump(void) {
-  scoped_lock l(lock);
-
   for (auto &r : regions) {
-    int ino = 0;
-    int major = 0;
-    int minor = 0;
-
+    printk("%p-%p ", r->va, r->va + r->len);
+    printk("%c", r->prot & VPROT_READ ? 'r' : '-');
+    printk("%c", r->prot & VPROT_WRITE ? 'w' : '-');
+    printk("%c", r->prot & VPROT_EXEC ? 'x' : '-');
+    printk(" %08lx", r->off);
+    int maj = 0;
+    int min = 0;
     if (r->fd) {
-      ino = r->fd->ino->ino;
-      major = r->fd->ino->dev.major;
-      minor = r->fd->ino->dev.minor;
+      maj = r->fd->ino->dev.major;
+      min = r->fd->ino->dev.minor;
     }
-    printk("%p-%p %c%c%c%c %09x %02x:%02x %-10d %s\n", r->va,
-           round_up(r->va + r->len, 4096), r->prot & PROT_READ ? 'r' : '-',
-           r->prot & PROT_WRITE ? 'w' : '-', r->prot & PROT_EXEC ? 'x' : '-',
-           r->flags & MAP_PRIVATE ? 'p' : 's', r->off, major, minor, ino,
-           r->name.get());
+    printk(" %02x:%02x", maj, min);
+    printk(" %-10d", r->fd ? r->fd->ino->ino : 0);
+    printk(" %s", r->name.get());
+    printk("\n");
   }
+  printk("\n");
 }
 
 off_t mm::space::find_hole(size_t size) {
@@ -520,9 +499,9 @@ struct mshare_vmobject final : public mm::vmobject {
   // get a shared page (page #n in the mapping)
   virtual ref<mm::page> get_shared(off_t n) override {
     scoped_lock l(m_lock);
-		while (n >= pages.size()) {
-			pages.push(nullptr);
-		}
+    while (n >= pages.size()) {
+      pages.push(nullptr);
+    }
     if (!pages[n]) pages[n] = mm::page::alloc();
     return pages[n];
   }
@@ -562,8 +541,9 @@ static void *msh_create(struct mshare_create *arg) {
   ref<mm::vmobject> obj = make_ref<mshare_vmobject>(name, pages);
 
 
-  auto addr = curproc->mm->mmap(string::format("[msh '%s' (created)]", name.get()), 0, pages * PGSIZE, PROT_READ | PROT_WRITE,
-                                MAP_ANON | MAP_SHARED, nullptr, 0);
+  auto addr = curproc->mm->mmap(
+      string::format("[msh '%s' (created)]", name.get()), 0, pages * PGSIZE,
+      PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
 
   auto region = curproc->mm->lookup(addr);
   if (region == nullptr) return MAP_FAILED;
@@ -589,10 +569,11 @@ static void *msh_acquire(struct mshare_acquire *arg) {
 
   // grab the object
   ref<mm::vmobject> obj = mshare_regions.get(name);
-	// printk("arg size: %zu\n", arg->size);
+  // printk("arg size: %zu\n", arg->size);
 
-  auto addr = curproc->mm->mmap(string::format("[msh '%s' (acquired)]", name.get()), 0, arg->size, PROT_READ | PROT_WRITE,
-                                MAP_ANON | MAP_SHARED, nullptr, 0);
+  auto addr = curproc->mm->mmap(
+      string::format("[msh '%s' (acquired)]", name.get()), 0, arg->size,
+      PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
   // printk("addr=%p\n", addr);
 
   auto region = curproc->mm->lookup(addr);

@@ -2,15 +2,17 @@
 #include <gfx/image.h>
 #include <lumen.h>
 #include <lumen/msg.h>
+#include <math.h>
 #include <string.h>
 #include <unistd.h>
 #include "internal.h"
 
-lumen::context::context(void) : screen(640, 480) {
+lumen::context::context(void) : screen(1024, 768) {
   // clear the screen
   // memset(screen.pixels(), 0, screen.screensize());
 
   // screen.clear(0x333333);
+
 
 
 
@@ -39,6 +41,12 @@ lumen::context::context(void) : screen(640, 480) {
 
 
   server.listen("/usr/servers/lumen", [this] { accept_connection(); });
+
+
+  compose_timer =
+      ck::timer::make_interval(1000 / 30.0, [this] { this->compose(); });
+
+  invalidate(screen.bounds());
 }
 
 
@@ -48,14 +56,12 @@ void lumen::context::handle_keyboard_input(keyboard_packet_t &pkt) {
 }
 
 void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
-	/*
-  printf("mouse: dx: %-3d dy: %-3d buttons: %02x\n", pkt.dx, pkt.dy,
-         pkt.buttons);
-				 */
-
-	screen.handle_mouse_input(pkt);
+  invalidate(screen.mouse_rect());
+  screen.handle_mouse_input(pkt);
 }
 
+
+void lumen::context::invalidate(const gfx::rect &r) { dirty_regions.push(r); }
 
 
 void lumen::context::accept_connection() {
@@ -141,18 +147,75 @@ void lumen::context::window_closed(lumen::window *w) {
   }
 }
 
+static long frame = 0;
 void lumen::context::compose(void) {
-	screen.clear(0xFFFFFF);
-  for (auto *win : windows) {
-		for (size_t y = 0; y < win->bitmap->height(); y++) {
-			for (size_t x = 0; x < win->bitmap->width(); x++) {
-				int ax = x + win->rect.x;
-				int ay = y + win->rect.y;
+  // printf("compose frame %d\n", frame);
+  frame++;
 
-				screen.set_pixel(ax, ay, win->bitmap->get_pixel(x, y));
-			}
-		}
+  // make a tmp bitmap
+  gfx::bitmap b(screen.width(), screen.height(), screen.buffer());
+
+	/*
+  b.clear(0x333333);
+
+  gfx::rect r;
+  r.x = frame;
+  r.y = 0; // os(frame / 20.0) * 300;
+  r.w = 200;
+  r.h = 200;
+  r.x += 200;
+  r.y += 200;
+  b.fill_rect(r, 30, 0xFFFFFF);
+
+  screen.flip_buffers();
+
+	frame %= screen.width();
+
+  return;
+
+	*/
+
+  // do nothing if nothing has changed
+  if (dirty_regions.size() == 0) return;
+
+
+  // b.clear(0x333333);
+
+  for (auto &r : dirty_regions) {
+    b.fill_rect(r, 0x333333);
   }
+
+
+  // b.draw_rect(gfx::rect(0, 0, screen.mouse_pos.x(), screen.mouse_pos.y()),
+  // 30, 0xFFFFFF);
+  screen.draw_mouse();
+
+  screen.flip_buffers();
+
+  int sw = screen.width();
+
+  // copy the changes we made to the other buffer
+  for (auto &r : dirty_regions) {
+    int ox = r.left();
+    int oy = r.top();
+
+    // printf("copy: %4d %4d %4d %4d\n", r.x, r.y, r.w, r.h);
+
+    for (int y = 0; y <= r.h; y++) {
+      int ry = y + oy;
+      if (ry < 0) continue;
+      if (ry > screen.height()) break;
+      for (int x = 0; x <= r.w; x++) {
+        int rx = x + ox;
+        if (rx < 0 || rx > sw) continue;
+        screen.back_buffer[rx + ry * sw] = screen.front_buffer[rx + ry * sw];
+      }
+    }
+  }
+
+  dirty_regions.clear();
+
+	asm("pause");
 }
 
 
@@ -200,9 +263,9 @@ struct lumen::window *lumen::guest::new_window(ck::string name, int w, int h) {
   auto win = new lumen::window(id, *this, w, h);
   win->name = name;
 
-	// XXX: allow the user to request a position
-	win->rect.x = rand() % (ctx.screen.width() - w);
-	win->rect.y = rand() % (ctx.screen.height() - h);
+  // XXX: allow the user to request a position
+  win->rect.x = rand() % (ctx.screen.width() - w);
+  win->rect.y = rand() % (ctx.screen.height() - h);
 
   printf("guest %d made a new window, '%s'\n", this->id, name.get());
   windows.set(win->id, win);

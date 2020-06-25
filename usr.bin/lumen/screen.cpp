@@ -64,14 +64,13 @@ lumen::screen::~screen(void) {
   buf = NULL;
 }
 
+
 void lumen::screen::flip_buffers(void) {
+	// return;
   uint32_t *tmp = back_buffer;
   back_buffer = front_buffer;
   front_buffer = tmp;
-
-  // auto old = buffer_index;
   buffer_index = buffer_index ? 0 : 1;
-  // printf("%d -> %d (%p %p)\n", old, buffer_index, front_buffer, back_buffer);
   ioctl(fd, FB_SET_YOFF, height() * buffer_index);
 }
 
@@ -180,16 +179,25 @@ const gfx::point &lumen::screen::handle_mouse_input(struct mouse_packet &pkt) {
   gfx::rect sc(0, 0, width() - 1, height() - 1);
   mouse_pos.constrain(sc);
 
-
-  // clear(mouse_pos.x() ^ mouse_pos.y());
-
-	clear(0x333333);
-
   // TODO: buttons
-  draw_mouse();
-  flip_buffers();
 
   return mouse_pos;
+}
+
+
+inline int abs(int a) { return a < 0 ? -a : a; }
+inline int min(int a, int b) { return a < b ? a : b; }
+
+
+void draw_rect(lumen::screen &s, const gfx::rect &bound, uint32_t color) {
+  auto l = bound.left();
+  auto t = bound.top();
+
+  for (int y = 0; y < bound.h; y++) {
+    for (int x = 0; x < bound.w; x++) {
+      s.set_pixel(x + l, y + t, color);
+    }
+  }
 }
 
 void lumen::screen::draw_mouse(void) {
@@ -212,10 +220,11 @@ void lumen::screen::draw_mouse(void) {
       uint32_t pix = cur->get_pixel(x - left, y - top);
       if ((pix & 0xFF000000) >> 24 != 0xFF) {
         /* This is slow */
-        uint32_t bg = back_buffer[x + y * w];
+        uint32_t bg = buffer()[x + y * w];
         pix = blend(pix, bg);
       }
-      back_buffer[x + y * w] = pix;
+      buffer()[x + y * w] = pix;
     }
   }
+
 }
