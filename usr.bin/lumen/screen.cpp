@@ -70,7 +70,7 @@ void lumen::screen::flip_buffers(void) {
   uint32_t *tmp = back_buffer;
   back_buffer = front_buffer;
   front_buffer = tmp;
-  buffer_index = buffer_index ? 0 : 1;
+  buffer_index = buffer_index == 0 ? 1 : 0;
   ioctl(fd, FB_SET_YOFF, height() * buffer_index);
 }
 
