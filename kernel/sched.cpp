@@ -58,7 +58,7 @@ bool sched::init(void) {
     Q.last_task = NULL;
     Q.priority = i;
     Q.ntasks = 0;
-    Q.timeslice = 2;
+    Q.timeslice = 1;
   }
 
   return true;
