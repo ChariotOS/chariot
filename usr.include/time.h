@@ -20,6 +20,7 @@ extern "C" {
 #define __NEED_timer_t
 #define __NEED_pid_t
 #define __NEED_locale_t
+#define __NEED_clock_t
 #endif
 
 #include <bits/alltypes.h>
@@ -40,6 +41,10 @@ struct tm {
 time_t time(time_t *);
 time_t getlocaltime(struct tm *tloc);  // nonstandard
 
+
+// clock() returns milliseconds
+#define CLOCKS_PER_SEC (1000.0)
+clock_t clock(void);
 
 #define CLOCK_REALTIME 0
 int clock_gettime(int id, struct timespec *s);

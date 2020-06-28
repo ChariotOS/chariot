@@ -1,10 +1,13 @@
 #include <cpu.h>
 #include <syscall.h>
+#include <util.h>
 
 int sys::startpidve(int pid, char const *upath, char const **uargv,
                     char const **uenvp) {
+
   auto proc = curproc;
   assert(proc != NULL);
+
 
   int emb = 0;
   process::ptr np = nullptr;
@@ -27,19 +30,24 @@ int sys::startpidve(int pid, char const *upath, char const **uargv,
   if (upath == NULL) return -EINVAL;
   if (uargv == NULL) return -EINVAL;
 
+	if (!proc->mm->validate_string(upath)) return -EINVAL;
+
   // TODO validate the pointers
   string path = upath;
   vec<string> argv;
   vec<string> envp;
 
+	printk("av: %p\n", uargv);
+
+
   for (int i = 0; uargv[i] != NULL; i++) {
-    // printk("a[%d] = %p\n", i, uargv[i]);
+		printk("arg[%d]: %p '%s'\n", i, uargv[i], uargv[i]);
     argv.push(uargv[i]);
   }
 
   if (uenvp != NULL) {
     for (int i = 0; uenvp[i] != NULL; i++) {
-      // printk("e[%d] = %s\n", i, uenvp[i]);
+			printk("env[%d]: %p '%s'\n", i, uenvp[i], uenvp[i]);
       envp.push(uenvp[i]);
     }
   }

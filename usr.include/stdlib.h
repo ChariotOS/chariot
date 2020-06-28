@@ -66,6 +66,11 @@ void debug_hexdump(void *, size_t);
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
 
+
+long int strtol(const char *nptr, char **endptr, int base);
+long long int strtoll(const char *nptr, char **endptr, int base);
+
+
 #ifdef __cplusplus
 }
 #endif

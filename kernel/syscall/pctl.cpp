@@ -10,6 +10,7 @@ static int do_create_thread(struct pctl_create_thread_args *argp) {
 }
 
 int sys::pctl(int pid, int request, u64 arg) {
+	return 0;
   // printk("pctl(%d, %d, %p);\n", pid, request, arg);
   switch (request) {
     case PCTL_CREATE_THREAD:

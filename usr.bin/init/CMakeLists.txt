@@ -1,2 +1,9 @@
-file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cpp *.c *.asm)
+set(SOURCES
+	main.cpp
+	bdf.c
+	ini.c
+	util.c
+)
+
+
 chariot_bin(init)

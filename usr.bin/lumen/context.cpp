@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include "internal.h"
 
-lumen::context::context(void) : screen(1024, 768) {
+lumen::context::context(void) : screen(640, 480) {
   // clear the screen
   // memset(screen.pixels(), 0, screen.screensize());
 

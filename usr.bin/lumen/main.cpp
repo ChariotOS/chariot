@@ -3,11 +3,10 @@
 #include <ck/eventloop.h>
 #include "internal.h"
 
-
 /**
  * the main function for the window server
  */
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   // make an eventloop
   ck::eventloop loop;
 

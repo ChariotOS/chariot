@@ -1,8 +1,10 @@
 #include <chariot.h>
 #include <chariot/dirent.h>
+#include <ck/io.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,21 +14,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include "ini.h"
-#include <stdint.h>
+
+
 
 #define ENV_PATH "/cfg/environ"
 
 extern char **environ;
 
-
-unsigned long read_timestamp(void) {
-  uint32_t lo, hi;
-  asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
-  return lo | ((uint64_t)(hi) << 32);
-  uint64_t ret;
-  asm volatile("pushfq; popq %0" : "=a"(ret));
-  return ret;
-}
 
 
 // read the initial environ from /etc/environ
@@ -63,7 +57,7 @@ char **read_default_environ(void) {
     }
   }
   size_t idx = 0;
-  char **env = (char**)malloc(nvars * sizeof(char *));
+  char **env = (char **)malloc(nvars * sizeof(char *));
   for (size_t i = 0; i < len; i++) {
     if ((i == 0 || buf[i - 1] == '\0') && (buf[i] != '\n' && buf[i] != '#')) {
       env[idx++] = &buf[i];
@@ -87,10 +81,8 @@ static void handler(int i) {
   printf("signal handler got %d\n", i);
 }
 
+
 int main(int argc, char **argv) {
-
-
-
   // open up file descriptor 1, 2, and 3
   for (int i = 0; i < 3; i++) close(i + 1);
   open("/dev/console", O_RDWR);
@@ -105,7 +97,7 @@ int main(int argc, char **argv) {
     signal(i, handler);
   }
 
-  printf("sigprocmask: %d\n", sigprocmask(SIG_SETMASK, &set, NULL));
+  sigprocmask(SIG_SETMASK, &set, NULL);
 
 
   if (getpid() != 1) {
@@ -114,16 +106,11 @@ int main(int argc, char **argv) {
   }
 
 
-	for (int i = 0; i < 100; i++) {
-		auto start = read_timestamp();
-		pctl(0, 0);
-		auto end = read_timestamp();
-
-		printf("%3d: %ld\n", i, end - start);
-	}
-
 
   printf("[init] hello, friend\n");
+
+
+  environ = read_default_environ();
 
   FILE *loadorder = fopen("/cfg/srv/loadorder", "r");
 
@@ -174,13 +161,11 @@ int main(int argc, char **argv) {
   }
 
   const char *shell = "/bin/sh";
-  char *sh_argv[] = {(char*)shell, NULL};
-
-  char **envp = read_default_environ();
+  char *sh_argv[] = {(char *)shell, NULL};
 
   while (1) {
     pid_t sh_pid = spawn();
-    if (startpidve(sh_pid, (char*)shell, sh_argv, envp) != 0) {
+    if (startpidve(sh_pid, (char *)shell, sh_argv, environ) != 0) {
       printf("failed to spawn shell\n");
       return -1;
     }

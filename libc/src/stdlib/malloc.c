@@ -2,7 +2,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <stdio.h>
-
+#include <unistd.h>
 
 static int malloc_lock = 0;
 
@@ -33,6 +33,7 @@ int liballoc_unlock() {
 
 int region_id = 0;
 void *liballoc_alloc(size_t s) {
+	// printf("[%d] malloc %d\n", getpid(), s);
   void *p = mmap(NULL, s * 4096, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 	char name[32];
 	snprintf(name, 32, "[malloc #%d]", region_id++);

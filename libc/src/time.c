@@ -22,3 +22,8 @@ int clock_gettime(int id, struct timespec *s) {
 	return 0;
 }
 
+
+
+clock_t clock(void) {
+	return current_us() / 1000;
+}
