@@ -20,10 +20,46 @@ double tanh(double a) { return 0; }
 float tanhf(float a) { return 0; }
 double ceil(double a) { return 0; }
 float ceilf(float a) { return 0; }
-double floor(double a) { return 0; }
-float floorf(float a) { return 0; }
-double round(double a) { return 0; }
-float roundf(float a) { return 0; }
+double floor(double a) {
+  if (a >= 0) return (int)a;
+  int intvalue = (int)a;
+  return ((double)intvalue == a) ? intvalue : intvalue - 1;
+}
+
+
+float floorf(float a) { return floor(a); }
+double round(double value) {
+  // FIXME: Please fix me. I am naive.
+  if (value >= 0.0) return (double)(int)(value + 0.5);
+  return (double)(int)(value - 0.5);
+}
+float roundf(float a) { return round(a); }
+
+
+union IEEEd2bits {
+  double d;
+  struct {
+    unsigned int manl : 32;
+    unsigned int manh : 20;
+    unsigned int exp : 11;
+    unsigned int sign : 1;
+  } bits;
+};
+
+int isinf(double d) {
+  union IEEEd2bits u;
+  u.d = d;
+  return (u.bits.exp == 2047 && u.bits.manl == 0 && u.bits.manh == 0);
+}
+
+int isnan(double d) { return d == NAN; }
+
+
+
+double fmax(double a, double b) { return a > b ? a : b; }
+double fmin(double a, double b) { return a < b ? a : b; }
+
+double trunc(double x) { return (unsigned long)x; }
 
 double cos(double angle) { return sin(angle + M_PI_2); }
 
