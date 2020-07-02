@@ -29,7 +29,6 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, unsigned long 
 
 	vec<await_table_entry> entries;
 
-	// auto start = time::now_ms();
 
   // build up the entry list
   for (int i = 0; i < nfds; i++) {
@@ -49,32 +48,31 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, unsigned long 
   int index = -1;
 	unsigned long loops = 0;
 	// this probably isn't great
-	while (1) {
+	for (;;) {
 		for (auto &ent : entries) {
 			if (ent.file) {
 				int occurred = ent.file->ino->poll(*ent.file, ent.awaiting);
 				if (occurred & ent.awaiting) {
 					index = ent.index;
 					targs[index].occurred = occurred;
-					// printk("awaitfs took %d ms, %d loops\n", time::now_ms() - start, loops);
 					return index;
 				}
 			}
-			asm("pause");
 		}
-		loops++;
 
 		// do we timeout?
-		auto now = time::now_ms();
 		if (timeout_time > 0) {
-			// printk("to: %-12d now: %-12d delta: %d cpu: %-3d\n", timeout_time, now, now - timeout_time, cpu::current().cpunum);
-			if (now > timeout_time) {
-				// printk("timed out in %dms\n", now - start);
+			int now = time::now_ms();
+			int timeout = timeout_time;
+			if (now >= timeout) {
+				// printk("loops: %d\n", loops);
 				return -ETIMEDOUT;
 			}
 		}
-		asm("hlt");
-		sched::yield();
+
+		loops++;
+		arch::halt();
+		// sched::yield();
 	}
 
   return -ETIMEDOUT;
