@@ -12,7 +12,7 @@ _start:
 	mov rbp, rsp
 	push rbp
 
-	jmp libc_start
+	call libc_start
 
 	pop rbp
 
@@ -21,6 +21,6 @@ _start:
 		mov rax, [0x00]
 		jmp .invalid_loop
 
-# set the dynamic linker
-section .interp
-	db "/bin/dynld", 0
+; set the dynamic linker
+; section .interp
+;   db "/bin/dynld", 0

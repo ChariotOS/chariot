@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 extern "C" {
-	void *__dso_handle = NULL;
+void *__dso_handle = NULL;
 }
 unsigned __atexit_func_count = 0;
 atexit_func_entry_t __atexit_funcs[ATEXIT_MAX_FUNCS];
@@ -139,5 +139,7 @@ extern "C" void __cxa_guard_acquire(void *p) {
 extern "C" void __cxa_guard_release(void *p) {
   // printk("r: %p\n", p);
 }
+
+
 
 

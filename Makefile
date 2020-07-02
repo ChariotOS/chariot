@@ -14,4 +14,3 @@ comp:
 
 clean:
 	@rm -rf build
-

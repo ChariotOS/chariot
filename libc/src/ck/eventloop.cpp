@@ -89,7 +89,6 @@ void ck::eventloop::pump(void) {
 
 	if (nt != NULL) {
 		timeout = nt->next_fire();
-		// printf("timeout=%d\n", timeout);
 	}
 
   int index = awaitfs(targs.data(), targs.size(), 0, timeout);
@@ -163,8 +162,8 @@ ck::ref<ck::timer> ck::timer::make_timeout(int ms, ck::func<void()> cb) {
 
 
 void ck::timer::start(uint64_t ms, bool repeat) {
-  m_next_fire = current_ms() + ms;
   m_interval = ms;
+  m_next_fire = current_ms() + m_interval;
   active = true;
   this->repeat = repeat;
 	// TODO: take a lock
@@ -172,7 +171,6 @@ void ck::timer::start(uint64_t ms, bool repeat) {
 }
 
 void ck::timer::trigger(void) {
-  on_tick();
   if (active) {
     if (!repeat) {
       stop();
@@ -180,6 +178,8 @@ void ck::timer::trigger(void) {
       m_next_fire = current_ms() + m_interval;
     }
   }
+	// do this part last cause it might take a long time
+  on_tick();
 }
 
 ck::timer::~timer(void) {

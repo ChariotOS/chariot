@@ -29,6 +29,9 @@
 #define VALIDATE_RDWR(ptr, size) \
   curproc->mm->validate_pointer(ptr, size, PROT_WRITE | PROT_READ)
 
+#define VALIDATE_EXEC(ptr, size) \
+  curproc->mm->validate_pointer(ptr, size, PROT_EXEC)
+
 
 namespace mm {
 

@@ -183,7 +183,7 @@ int mm::space::pagefault(off_t va, int err) {
 
         if (old_page->users > 1 || r->fd) {
           auto np = mm::page::alloc();
-          printk(KERN_WARN "COW [page %d in '%s']\n", ind, r->name.get());
+          // printk(KERN_WARN "COW [page %d in '%s']\n", ind, r->name.get());
           np->users = 1;
           old_page->users--;
           memcpy(p2v(np->pa), p2v(old_page->pa), PGSIZE);
@@ -368,6 +368,10 @@ bool mm::space::validate_pointer(void *raw_va, size_t len, int mode) {
     if (!r) {
       return false;
     }
+
+		if (mode & PROT_READ && !(r->prot & PROT_READ)) return false;
+		if (mode & PROT_WRITE && !(r->prot & PROT_WRITE)) return false;
+		if (mode & PROT_EXEC && !(r->prot & PROT_EXEC)) return false;
     // TODO: check mode flags
   }
   return true;

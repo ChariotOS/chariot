@@ -8,13 +8,14 @@
 
 static unsigned long current_second = 0;
 static unsigned long us_this_second = 0;
-unsigned long time::now_us(void) {
+
+unsigned long long time::now_us(void) {
 	// TODO: this function can possibly return the same value multiple times?
 	// I'm sure this is fine, but still.
 	return (current_second * US_PER_SEC) + us_this_second; //  arch::us_this_second();
 }
 
-unsigned long time::now_ms(void) {
+unsigned long long time::now_ms(void) {
 	return now_us() / 1000;
 }
 
