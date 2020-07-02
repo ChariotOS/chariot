@@ -4,10 +4,11 @@
 #include <lumen/msg.h>
 #include <math.h>
 #include <string.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 #include "internal.h"
 
-lumen::context::context(void) : screen(640, 480) {
+lumen::context::context(void) : screen(1024, 768) {
   // clear the screen
   // memset(screen.pixels(), 0, screen.screensize());
 
@@ -44,7 +45,7 @@ lumen::context::context(void) : screen(640, 480) {
 
 
   compose_timer =
-      ck::timer::make_interval(1000 / 30.0, [this] { this->compose(); });
+      ck::timer::make_interval(1000 / 60.0, [this] { this->compose(); });
 
   invalidate(screen.bounds());
 }
@@ -84,6 +85,7 @@ void lumen::context::guest_closed(long id) {
 
 
 void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
+
   // compose();  // XXX: remove me!
   HANDLE_TYPE(LUMEN_MSG_CREATE_WINDOW, lumen::create_window_msg) {
     (void)arg;
@@ -155,25 +157,27 @@ void lumen::context::compose(void) {
   // make a tmp bitmap
   gfx::bitmap b(screen.width(), screen.height(), screen.buffer());
 
-	/*
-  b.clear(0x333333);
+  /*
+b.clear(0x333333);
 
-  gfx::rect r;
-  r.x = frame;
-  r.y = 0; // os(frame / 20.0) * 300;
-  r.w = 200;
-  r.h = 200;
-  r.x += 200;
-  r.y += 200;
-  b.fill_rect(r, 30, 0xFFFFFF);
+gfx::rect r;
+r.x = frame;
+r.y = 0; // os(frame / 20.0) * 300;
+r.w = 200;
+r.h = 200;
+r.x += 200;
+r.y += 200;
+b.fill_rect(r, 30, 0xFFFFFF);
 
-  screen.flip_buffers();
+screen.flip_buffers();
 
-	frame %= screen.width();
+  frame %= screen.width();
 
-  return;
+return;
 
-	*/
+  */
+
+  // printf("regions: %d\n", dirty_regions.size());
 
   // do nothing if nothing has changed
   if (dirty_regions.size() == 0) return;
@@ -215,7 +219,7 @@ void lumen::context::compose(void) {
 
   dirty_regions.clear();
 
-	asm("pause");
+  asm("pause");
 }
 
 
