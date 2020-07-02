@@ -9,6 +9,7 @@ namespace gfx {
   class point {
    public:
     inline point() : m_x(0), m_y(0) {}
+    inline point(int x, int y) : m_x(x), m_y(y) {}
 
 
     inline void constrain(const gfx::rect &rect) {

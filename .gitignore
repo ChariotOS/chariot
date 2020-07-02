@@ -25,3 +25,5 @@ toolchain/build
 toolchain/local
 
 target
+
+node_modules

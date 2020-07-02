@@ -1,16 +1,22 @@
 #pragma once
 
 
-#define max(a,b) \
-   ({ __typeof__ (a) _a = (a); \
-       __typeof__ (b) _b = (b); \
-     _a > _b ? _a : _b; })
+#define max(a, b)           \
+  ({                        \
+    __typeof__(a) _a = (a); \
+    __typeof__(b) _b = (b); \
+    _a > _b ? _a : _b;      \
+  })
 
 
-#define min(a,b) \
-   ({ __typeof__ (a) _a = (a); \
-       __typeof__ (b) _b = (b); \
-     _a < _b ? _a : _b; })
+#define min(a, b)           \
+  ({                        \
+    __typeof__(a) _a = (a); \
+    __typeof__(b) _b = (b); \
+    _a < _b ? _a : _b;      \
+  })
+
+#define unlikely(c) __builtin_expect((c), 0)
 
 namespace gfx {
 
@@ -38,7 +44,7 @@ namespace gfx {
     inline int bottom() const { return y + h; }
 
     inline struct rect intersect(const struct rect &other) const {
-			gfx::rect in;
+      gfx::rect in;
       int l = max(left(), other.left());
       int r = min(right(), other.right());
       int t = max(top(), other.top());
@@ -48,17 +54,31 @@ namespace gfx {
         return in;
       }
 
-			in.x = l;
-			in.y = t;
-			in.w = (r - l) + 1;
-			in.h = (b - t) + 1;
+      in.x = l;
+      in.y = t;
+      in.w = (r - l) + 1;
+      in.h = (b - t) + 1;
 
-			return in;
+      return in;
     }
+
+
+    inline bool is_empty() const { return w <= 0 || w <= 0; }
 
     inline bool intersects(const rect &other) const {
       return left() <= other.right() && other.left() <= right() &&
              top() <= other.bottom() && other.top() <= bottom();
+    }
+
+
+    // is a rect fully within me?
+    inline bool contains(const gfx::rect &other) {
+      return left() <= other.left() && right() >= other.right() &&
+             top() <= other.top() && bottom() >= other.bottom();
+    }
+
+    inline bool contains(int x, int y) const {
+      return x >= left() && x <= right() && y >= top() && y <= bottom();
     }
   };
 

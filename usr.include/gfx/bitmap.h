@@ -36,8 +36,8 @@ namespace gfx {
 
     inline size_t size(void) { return m_width * m_height * sizeof(uint32_t); }
 
-    inline size_t width(void) { return m_width; }
-    inline size_t height(void) { return m_height; }
+    inline size_t width(void) const { return m_width; }
+    inline size_t height(void) const { return m_height; }
 
     inline void clear(uint32_t c) {
       for (size_t i = 0; i < width() * height(); i++) m_pixels[i] = c;
@@ -45,32 +45,10 @@ namespace gfx {
 
 
 
-		// draw a line between two points
-		inline void draw_line(const gfx::point &p1, const gfx::point &p2, uint32_t color) {
-			draw_line(p1.x(), p1.y(), p2.x(), p2.y(), color);
-		}
-		void draw_line(int x0, int y0, int x1, int y1, uint32_t color);
-		inline void draw_vline(int x0, int y0, int h, uint32_t color) {
-			draw_line(x0, y0, x0, y0 + h, color);
-		}
-		inline void draw_hline(int x0, int y0, int w, uint32_t color) {
-			draw_line(x0, y0, x0 + w, y0, color);
+		inline gfx::rect rect(void) const {
+			return gfx::rect(0, 0, width(), height());
 		}
 
-
-		// draw a rectangle border
-		void draw_rect(const gfx::rect &r, uint32_t color);
-		void fill_rect(const gfx::rect &r, uint32_t color);
-
-		void draw_rect(const gfx::rect &r, int radius, uint32_t color);
-		void fill_rect(const gfx::rect &r, int radius, uint32_t color);
-
-		void draw_circle(int x, int y, int r, uint32_t color);
-		void draw_circle_helper(int x, int y, int r, int cornername, uint32_t color);
-
-
-		void fill_circle(int x, int y, int r, uint32_t color);
-		void fill_circle_helper(int x, int y, int r, int corner, int delta, uint32_t color);
 
    protected:
     bitmap(){};  // protected constructor

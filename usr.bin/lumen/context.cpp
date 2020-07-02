@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <gfx/image.h>
+#include <gfx/scribe.h>
 #include <lumen.h>
 #include <lumen/msg.h>
 #include <math.h>
@@ -62,7 +63,9 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
 }
 
 
-void lumen::context::invalidate(const gfx::rect &r) { dirty_regions.push(r); }
+void lumen::context::invalidate(const gfx::rect &r) {
+	dirty_regions.push(r.intersect(screen.bounds()));
+}
 
 
 void lumen::context::accept_connection() {
@@ -85,7 +88,6 @@ void lumen::context::guest_closed(long id) {
 
 
 void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
-
   // compose();  // XXX: remove me!
   HANDLE_TYPE(LUMEN_MSG_CREATE_WINDOW, lumen::create_window_msg) {
     (void)arg;
@@ -98,12 +100,17 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
     struct lumen::window_created_msg res;
     // TODO: figure out a better position to open to
     auto *window = c.new_window(name, arg->width, arg->height);
+
     if (window != NULL) {
       res.window_id = window->id;
       strncpy(res.bitmap_name, window->bitmap->shared_name(), LUMEN_NAMESZ - 1);
+			printf("WINDOW HAS BUFFER '%s'\n", res.bitmap_name);
     } else {
       res.window_id = -1;
     }
+
+    invalidate(window->rect);
+
     c.respond(msg, LUMEN_MSG_WINDOW_CREATED, res);
     return;
   }
@@ -115,7 +122,26 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
     res.magic = LUMEN_GREETBACK_MAGIC;
     res.guest_id = c.id;
     c.respond(msg, msg.type, res);
+    return;
   };
+
+
+  HANDLE_TYPE(LUMEN_MSG_WINDOW_INVALIDATE, lumen::invalidate_msg) {
+    auto *win = c.windows[arg->id];
+    if (win == NULL) return;
+
+    // offset to the location that the window is at
+    arg->x += win->rect.x;
+    arg->y += win->rect.y;
+
+    auto r = gfx::rect(arg->x, arg->y, arg->w, arg->h).intersect(win->rect);
+    invalidate(r);
+    return;
+  };
+
+
+
+  printf("message %d of type %d not handled. Ignored.\n", msg.id, msg.type);
 }
 
 
@@ -131,8 +157,14 @@ void lumen::context::window_opened(lumen::window *w) {
       exit(EXIT_FAILURE);
     }
   }
+	w->rect.x = 100;
+	w->rect.y = 100;
 
-  windows.insert(0, w);
+  // insert at the back (front of the stack)
+  windows.push(w);
+
+	printf("opene %d %d\n", w->rect.x, w->rect.y);
+
   // TODO: set the focused window to the new one
 }
 
@@ -144,10 +176,38 @@ void lumen::context::window_closed(lumen::window *w) {
   for (int i = 0; i < windows.size(); i++) {
     if (windows[i] == w) {
       windows.remove(i);
+			invalidate(w->rect);
       break;
     }
   }
 }
+
+
+void print(const gfx::rect &r) {
+  printf("[l:%-3d  r:%-3d  t:%-3d  b:%-3d]\n", r.left(), r.right(), r.top(),
+         r.bottom());
+}
+
+bool lumen::context::occluded(lumen::window &win, const gfx::rect &a) {
+  auto r = win.rect.intersect(a);
+
+
+	for (int i = windows.size() - 1; i >= 0; i--) {
+		auto other = windows[i];
+    // print(win.rect);
+    // print(other->rect);
+    // print(a);
+    // printf("\n");
+    if (&win == other) {
+      return false;
+    }
+    if (other->rect.contains(r)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 
 static long frame = 0;
 void lumen::context::compose(void) {
@@ -157,64 +217,84 @@ void lumen::context::compose(void) {
   // make a tmp bitmap
   gfx::bitmap b(screen.width(), screen.height(), screen.buffer());
 
-  /*
-b.clear(0x333333);
-
-gfx::rect r;
-r.x = frame;
-r.y = 0; // os(frame / 20.0) * 300;
-r.w = 200;
-r.h = 200;
-r.x += 200;
-r.y += 200;
-b.fill_rect(r, 30, 0xFFFFFF);
-
-screen.flip_buffers();
-
-  frame %= screen.width();
-
-return;
-
-  */
-
-  // printf("regions: %d\n", dirty_regions.size());
-
   // do nothing if nothing has changed
   if (dirty_regions.size() == 0) return;
 
+  // this scribe is the "compositor scribe", used by everyone in this function
+  gfx::scribe scribe(b);
+	bool draw_mouse = screen.mouse_moved;
+	// clear that information
+	if (draw_mouse) screen.mouse_moved = false;
+	
+  for (auto &r : dirty_regions) {
+		if (r.intersects(screen.mouse_rect())) draw_mouse = true;
+    scribe.fill_rect(r, 0xFFFFFF);
+  }
 
   // b.clear(0x333333);
+  //
+  //
+  auto compose_window = [&](lumen::window &window) -> bool {
+    // make a state for this window
+    scribe.enter();
+		scribe.state().offset = gfx::point(window.rect.x, window.rect.y);
 
+    for (auto &dirty_rect : dirty_regions) {
+      if (!dirty_rect.intersects(window.rect)) continue;
+			// is this region occluded by another window?
+      if (occluded(window, dirty_rect)) {
+        continue;
+      }
+			scribe.state().clip = dirty_rect;
+
+
+      // blit the window at the region
+      scribe.blit(gfx::point(), *window.bitmap, window.bitmap->rect());
+      //
+    }
+    scribe.leave();
+    return true;
+  };
+
+#if 0
+	// clear the dirty regions
   for (auto &r : dirty_regions) {
     b.fill_rect(r, 0x333333);
+  }
+#endif
+
+
+	// go back to front
+	for (auto win : windows) {
+    compose_window(*win);
   }
 
 
   // b.draw_rect(gfx::rect(0, 0, screen.mouse_pos.x(), screen.mouse_pos.y()),
   // 30, 0xFFFFFF);
-  screen.draw_mouse();
+	if (draw_mouse) {
+		screen.draw_mouse();
+	}
 
   screen.flip_buffers();
 
   int sw = screen.width();
 
+
+
+
   // copy the changes we made to the other buffer
   for (auto &r : dirty_regions) {
-    int ox = r.left();
-    int oy = r.top();
 
-    // printf("copy: %4d %4d %4d %4d\n", r.x, r.y, r.w, r.h);
+		auto off = r.y * sw + r.x;
+    uint32_t* to_ptr = screen.back_buffer +off;
+    uint32_t* from_ptr = screen.front_buffer + off;
 
-    for (int y = 0; y <= r.h; y++) {
-      int ry = y + oy;
-      if (ry < 0) continue;
-      if (ry > screen.height()) break;
-      for (int x = 0; x <= r.w; x++) {
-        int rx = x + ox;
-        if (rx < 0 || rx > sw) continue;
-        screen.back_buffer[rx + ry * sw] = screen.front_buffer[rx + ry * sw];
-      }
-    }
+		for (int y = 0; y < r.h; y++) {
+        memcpy(to_ptr, from_ptr, r.w * sizeof(uint32_t));
+				from_ptr += sw;
+				to_ptr += sw;
+		}
   }
 
   dirty_regions.clear();

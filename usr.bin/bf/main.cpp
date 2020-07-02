@@ -7,8 +7,7 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <unistd.h>
-
-
+#include "x86.h"
 
 class interpreter {
   off_t pc = 0;
@@ -52,8 +51,8 @@ class interpreter {
           break;
         case '+':
           if (!loopskip) {
-						mem[ptr]++;
-					}
+            mem[ptr]++;
+          }
           break;
         case '-':
           if (!loopskip) mem[ptr]--;
@@ -109,11 +108,28 @@ class interpreter {
 
     return 0;
   }
-
 };
 
 
 int main(int argc, const char **argv) {
+  if (0) {
+    // create a code object
+    x86::code code;
+    // fill out the instructions
+    code.prologue();  // prologue of the function, setup stack frame
+    code << x86::add(x86::edi, x86::esi);
+    code << x86::mov(x86::eax, x86::edi);
+    code.epilogue();  // pop rbp and return
+    // print the x86 mnemonics (using capstone)
+    code.dump();
+    // finalize the function and call it!
+    auto func = code.finalize<long, long, long>();
+    long res = func(1, 2);
+    assert(res == 3);
+    printf("1 + 2 = %ld\n", res);
+  }
+
+
   const char *file = "/usr/src/bf/hello.bf";
 
   if (argc == 2) {
@@ -121,7 +137,7 @@ int main(int argc, const char **argv) {
   }
 
   // open the file!
-  auto stream = ck::file(file, "rw");
+  auto stream = ck::file(file, "r");
 
   if (!stream) {
     fprintf(stderr, "Failed to open '%s'\n", file);

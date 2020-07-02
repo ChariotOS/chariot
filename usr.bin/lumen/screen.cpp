@@ -178,6 +178,7 @@ const gfx::point &lumen::screen::handle_mouse_input(struct mouse_packet &pkt) {
   /* The mouse is constrained within the visible region */
   gfx::rect sc(0, 0, width() - 1, height() - 1);
   mouse_pos.constrain(sc);
+	mouse_moved = true;
 
   // TODO: buttons
 

@@ -41,6 +41,8 @@ namespace lumen {
     uint32_t *front_buffer;
     uint32_t *back_buffer;
 
+		bool mouse_moved = false;
+
     gfx::rect m_bounds;
     gfx::point mouse_pos;
 
@@ -188,6 +190,9 @@ namespace lumen {
     ck::vec<gfx::rect> dirty_regions;
 
     void invalidate(const gfx::rect &r);
+
+		// return if a rect in a window is occluded
+		bool occluded(lumen::window &win, const gfx::rect &r);
 
 
    private:

@@ -22,6 +22,9 @@ namespace lumen {
 #define LUMEN_MSG_CREATE_WINDOW (2 | FOR_WINDOW_SERVER)
 #define LUMEN_MSG_WINDOW_CREATED (3)
 
+// invalidate a region of the window
+#define LUMEN_MSG_WINDOW_INVALIDATE (4)
+
 #define LUMEN_MSG_INPUT (3)
 
 
@@ -95,6 +98,13 @@ namespace lumen {
 				unsigned char flags;
 			} keyboard;
 		};
+	};
+
+
+	struct invalidate_msg {
+		int id; // window id
+		// where in the window?
+		int x, y, w, h;
 	};
 
 

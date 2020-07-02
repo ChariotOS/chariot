@@ -1,6 +1,9 @@
 #include <ck/eventloop.h>
 #include <ck/option.h>
+#include <ck/timer.h>
+#include <gfx/bitmap.h>
 #include <gfx/rect.h>
+#include <gfx/scribe.h>
 #include <gui/application.h>
 #include <gui/window.h>
 #include <lumen.h>
@@ -9,12 +12,9 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <gfx/bitmap.h>
 #include <unistd.h>
 
-
 int main(int argc, char **argv) {
-
   // connect to the window server
   gui::application app;
 
@@ -25,19 +25,23 @@ int main(int argc, char **argv) {
   ck::vec<ck::ref<gui::window>> windows;
   // auto window = app.new_window(buf, 300, 200);
 
+  auto win = app.new_window(buf, 400, 400);
+
+
+  int c = 0;
+  auto t = ck::timer::make_interval(30, [&] {
+    gfx::scribe s(win->bmp());
+
+		// efficient clear(?)
+		s.clear(c);
+    win->flush();
+		c += 8;
+  });
+
+
   auto input = ck::file::unowned(0);
   input->on_read([&] {
-    char c = getchar();
-    if (c == 'n') {
-      char buf[50];
-      sprintf(buf, "window %d on pid %d", windows.size(), getpid());
-			auto win = app.new_window(buf, 300, 200);
-			win->bmp().clear(rand());
-			// flush the whole window!
-			win->flush();
-      windows.push(win);
-      return;
-    }
+    getchar();
     ck::eventloop::exit();
   });
 
