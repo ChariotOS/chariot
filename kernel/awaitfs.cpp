@@ -29,6 +29,8 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, unsigned long 
 
 	vec<await_table_entry> entries;
 
+	// auto start = time::now_ms();
+
   // build up the entry list
   for (int i = 0; i < nfds; i++) {
     auto &targ = targs[i];
@@ -62,8 +64,12 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, unsigned long 
 		}
 		loops++;
 
+		// do we timeout?
+		auto now = time::now_ms();
 		if (timeout_time > 0) {
-			if (timeout_time >= time::now_ms()) {
+			// printk("to: %-12d now: %-12d delta: %d cpu: %-3d\n", timeout_time, now, now - timeout_time, cpu::current().cpunum);
+			if (now > timeout_time) {
+				// printk("timed out in %dms\n", now - start);
 				return -ETIMEDOUT;
 			}
 		}

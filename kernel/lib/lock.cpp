@@ -23,9 +23,9 @@ static inline void arch_atomic_store(volatile int* p, int x) {
 void spinlock::lock(void) {
   while (1) {
     if (arch_atomic_swap(&locked, 1) == 0) break;
-		if (cpu::current().in_sched) {
-			// sched::yield();
-		}
+    if (cpu::current().in_sched) {
+      // sched::yield();
+    }
   }
 }
 
@@ -33,6 +33,25 @@ void spinlock::unlock(void) {
   if (likely(locked)) {
     arch_atomic_store(&locked, 0);
   }
+}
+
+
+void spinlock::lock_cli(void) {
+  while (1) {
+    cpu::pushcli();
+    if (arch_atomic_swap(&locked, 1) == 0) break;
+    if (cpu::current().in_sched) {
+      cpu::popcli();
+      // sched::yield();
+    }
+  }
+}
+
+void spinlock::unlock_cli(void) {
+  if (likely(locked)) {
+    arch_atomic_store(&locked, 0);
+  }
+  cpu::popcli();
 }
 
 bool spinlock::is_locked(void) { return locked; }

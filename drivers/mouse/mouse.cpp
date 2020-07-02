@@ -75,7 +75,7 @@ uint8_t mouse_read() {
 #define CMD_ABSPOINTER_COMMAND 41
 
 static void mouse_handler(int i, reg_t *) {
-  cpu::pushcli();
+#if 0
   if (vmware::vmmouse_is_absolute()) {
     inb(0x60);
     struct vmware::command cmd;
@@ -89,14 +89,12 @@ static void mouse_handler(int i, reg_t *) {
       /* An error has occured, let's turn the device off and back on */
       // mouse_off();
       // mouse_absolute();
-      cpu::popcli();
       return;
     }
 
     /* The status command returns a size we need to read, should be at least 4.
      */
     if ((cmd.ax & 0xFFFF) < 4) {
-      cpu::popcli();
       return;
     }
 
@@ -119,14 +117,12 @@ static void mouse_handler(int i, reg_t *) {
     (void)buttons;
     printk("x: %d, y: %d, z: %d\n", x, y, z);
     irq::eoi(i);
-    cpu::popcli();
     return;
   }
-
+#endif
 
   uint8_t status = inb(MOUSE_STATUS);
-
-
+	cpu::pushcli();
 
   while ((status & MOUSE_BBIT) && (status & MOUSE_F_BIT)) {
     bool finalize = false;
@@ -209,8 +205,8 @@ static void mouse_handler(int i, reg_t *) {
     }
     break;
   }
+	cpu::popcli();
 
-  cpu::popcli();
   irq::eoi(i);
 }
 

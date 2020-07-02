@@ -16,6 +16,10 @@ class spinlock {
   void lock(void);
   void unlock(void);
 
+
+	void lock_cli();
+	void unlock_cli();
+
   // for just locking ints
   static void lock(volatile int &);
   static void unlock(volatile int &);
