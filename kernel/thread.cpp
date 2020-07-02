@@ -81,8 +81,8 @@ thread::~thread(void) {
   sched::remove_task(this);
   kfree(stack);
   kfree(fpu.state);
-	// assume it doesn't have a destructor, idk
-	kfree(sig.arch_priv);
+  // assume it doesn't have a destructor, idk
+  kfree(sig.arch_priv);
 }
 
 bool thread::awaken(bool rudely) {
@@ -194,7 +194,22 @@ bool thread::teardown(thread *t) {
 
 
 bool thread::send_signal(int sig) {
-	unsigned long pend = (1 << sig);
-	this->sig.pending |= pend;
-	return true;
+  unsigned long pend = (1 << sig);
+  this->sig.pending |= pend;
+  return true;
+}
+
+
+
+vec<off_t> thread::backtrace(off_t rbp, off_t rip) {
+  vec<off_t> bt;
+  bt.push(rip);
+
+  for (auto sp = (off_t *)rbp; VALIDATE_RD(sp, sizeof(off_t) * 2); sp = (off_t *)sp[0]) {
+    auto retaddr = sp[1];
+		if (!VALIDATE_EXEC((void*)retaddr, sizeof(off_t))) break;
+    bt.push(retaddr);
+  }
+
+  return bt;
 }

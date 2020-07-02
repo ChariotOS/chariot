@@ -302,6 +302,9 @@ struct thread final {
   thread(pid_t tid, struct process &);
   thread(const thread &) = delete;  // no copy
   ~thread(void);
+
+	// return a list of instruction pointers (recent -> older)
+	vec<off_t> backtrace(off_t rbp, off_t rip);
 };
 
 

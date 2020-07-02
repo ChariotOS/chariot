@@ -345,6 +345,23 @@ bool sched::enabled() { return s_enabled; }
 void sched::handle_tick(u64 ticks) {
   if (!enabled() || !cpu::in_thread()) return;
 
+
+	/*
+	auto rbp = arch::reg(REG_BP, curthd->trap_frame);
+	auto rip = arch::reg(REG_PC, curthd->trap_frame);
+  if (cpu::in_thread() && curproc->ring == RING_USER) {
+    auto bt = curthd->backtrace(rbp, rip);
+    cpu::pushcli();
+    printk_nolock("backtrace: ");
+    for (auto rip : bt) {
+      printk_nolock("%p ", rip);
+    }
+    printk_nolock("\n");
+    cpu::popcli();
+  }
+	*/
+
+
   // grab the current thread
   auto thd = cpu::thread();
 
