@@ -1,23 +1,26 @@
 #include <arch.h>
-#include <printk.h>
 #include <cpu.h>
+#include <printk.h>
+#include "arch.h"
 
 reg_t &arch::reg(int ind, reg_t *r) {
 #ifdef __x86_64__
+  auto *tf = (struct x86_64regs *)r;
   switch (ind) {
     case REG_PC:
-      return r[17];
+      return tf->rip;
 
     case REG_SP:
-      return r[20];
+      return tf->rsp;
 
     case REG_BP:
-      return r[9];
+      return tf->rbp;
   }
 #endif
 
   panic("regs: invalid ind %d\n", ind);
-  while (1) {}
+  while (1) {
+  }
 }
 
 unsigned arch::trapframe_size() {
@@ -31,12 +34,11 @@ unsigned arch::trapframe_size() {
 }
 
 void arch::initialize_trapframe(bool userspace, reg_t *r) {
-
 #ifdef __x86_64__
   if (userspace) {
     r[18 /* CS */] = (SEG_UCODE << 3) | DPL_USER;
     r[21 /* DS */] = (SEG_UDATA << 3) | DPL_USER;
-    r[19 /* FL */] = FL_IF ;
+    r[19 /* FL */] = FL_IF;
   } else {
     r[18 /* CS */] = (SEG_UCODE << 3) | DPL_KERN;
     r[21 /* DS */] = (SEG_UDATA << 3) | DPL_KERN;
@@ -47,6 +49,4 @@ void arch::initialize_trapframe(bool userspace, reg_t *r) {
 
   panic("initialize_trapframe: unimplemneted\n");
 }
-
-
 
