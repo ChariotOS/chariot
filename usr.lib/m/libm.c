@@ -113,8 +113,23 @@ double log(double a) { return 0; }
 float logf(float a) { return 0; }
 double log10(double a) { return 0; }
 float log10f(float a) { return 0; }
-double sqrt(double a) { return 0; }
-float sqrtf(float a) { return 0; }
+double sqrt(double x)
+{
+    double res;
+    __asm__("fsqrt"
+            : "=t"(res)
+            : "0"(x));
+    return res;
+}
+
+float sqrtf(float x)
+{
+    float res;
+    __asm__("fsqrt"
+            : "=t"(res)
+            : "0"(x));
+    return res;
+}
 double modf(double a, double* b) { return 0; }
 float modff(float a, float* b) { return 0; }
 double ldexp(double a, int exp) { return 0; }
