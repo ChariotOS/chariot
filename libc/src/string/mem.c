@@ -1,15 +1,67 @@
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 
 // memory related functions
 // ie: memcpy, memmove, etc...
 
 // most of the code here was coppied from musl :)
 
+
+
+void *mmx_memcpy(void *dest, const void *src, size_t len) {
+  uint8_t *dest_ptr = (uint8_t *)dest;
+  const uint8_t *src_ptr = (const uint8_t *)src;
+
+  if ((off_t)dest_ptr & 7) {
+    off_t prologue = 8 - ((off_t)dest_ptr & 7);
+    len -= prologue;
+    asm volatile("rep movsb\n"
+                 : "=S"(src_ptr), "=D"(dest_ptr), "=c"(prologue)
+                 : "0"(src_ptr), "1"(dest_ptr), "2"(prologue)
+                 : "memory");
+  }
+  for (off_t i = len / 64; i; --i) {
+    asm volatile(
+        "movq (%0), %%mm0\n"
+        "movq 8(%0), %%mm1\n"
+        "movq 16(%0), %%mm2\n"
+        "movq 24(%0), %%mm3\n"
+        "movq 32(%0), %%mm4\n"
+        "movq 40(%0), %%mm5\n"
+        "movq 48(%0), %%mm6\n"
+        "movq 56(%0), %%mm7\n"
+        "movq %%mm0, (%1)\n"
+        "movq %%mm1, 8(%1)\n"
+        "movq %%mm2, 16(%1)\n"
+        "movq %%mm3, 24(%1)\n"
+        "movq %%mm4, 32(%1)\n"
+        "movq %%mm5, 40(%1)\n"
+        "movq %%mm6, 48(%1)\n"
+        "movq %%mm7, 56(%1)\n" ::"r"(src_ptr),
+        "r"(dest_ptr)
+        : "memory");
+    src_ptr += 64;
+    dest_ptr += 64;
+  }
+  asm volatile("emms" ::: "memory");
+  // Whatever remains we'll have to memcpy.
+  len %= 64;
+  if (len) memcpy(dest_ptr, src_ptr, len);
+  return dest;
+}
+
+
+
 void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
   unsigned char *d = dest;
   const unsigned char *s = src;
 
+	if (n >= 1024) {
+		return mmx_memcpy(dest, src, n);
+	}
+
+#if 0
 #define LS >>
 #define RS <<
 
@@ -138,6 +190,13 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
     *d = *s;
   }
   return dest;
+
+#endif
+
+  for (size_t i = 0; i < n; i++) {
+    d[i] = s[i];
+  }
+	return dest;
 }
 
 #ifdef __GNUC__

@@ -25,8 +25,8 @@ namespace gfx {
     void leave();
 
 
-  	scribe(gfx::bitmap &b);
-		~scribe(void);
+    scribe(gfx::bitmap &b);
+    ~scribe(void);
 
     // set a pixel in the bmp. not translated
     inline void set_pixel(int x, int y, uint32_t color) {
@@ -34,7 +34,17 @@ namespace gfx {
     }
 
 
-    struct state &state(void) { return states.last(); }
+    struct state &state(void) {
+      return states.last();
+    }
+
+		void draw_generic_bezier(ck::vec<gfx::point> &points, uint32_t color, float stroke = 1);
+
+    void draw_quadratic_bezier(const gfx::point &start, const gfx::point &p1,
+                               const gfx::point &end, uint32_t color, float stroke = 1);
+
+    // blend a pixel with a 0-1 alpha
+    void blend_pixel(int x, int y, uint32_t color, float alpha);
 
     // draw a pixel, offset in the state and within the clip rect
     inline void draw_pixel(int x, int y, uint32_t color) {
@@ -42,14 +52,14 @@ namespace gfx {
       x += s.offset.x();
       y += s.offset.y();
       if (s.clip.contains(x, y)) {
-				set_pixel(x, y, color);
-			}
+        set_pixel(x, y, color);
+      }
     }
 
-		// clear the region (clipped) with a color
-		void clear(uint32_t);
+    // clear the region (clipped) with a color
+    void clear(uint32_t);
 
-		inline gfx::point translation() { return state().offset; }
+    inline gfx::point translation() { return state().offset; }
 
 
     inline uint32_t width() { return bmp.width(); }
@@ -60,7 +70,16 @@ namespace gfx {
                           uint32_t color) {
       draw_line(p1.x(), p1.y(), p2.x(), p2.y(), color);
     }
+
+
     void draw_line(int x0, int y0, int x1, int y1, uint32_t color);
+
+
+    inline void draw_line_antialias(const gfx::point &p1, const gfx::point &p2,
+                                    uint32_t color, float stroke = 1) {
+      draw_line_antialias(p1.x(), p1.y(), p2.x(), p2.y(), color, stroke);
+    }
+    void draw_line_antialias(int x0, int y0, int x1, int y1, uint32_t color, float stroke = 1);
     inline void draw_vline(int x0, int y0, int h, uint32_t color) {
       draw_line(x0, y0, x0, y0 + h, color);
     }
@@ -69,8 +88,8 @@ namespace gfx {
     }
 
 
-		// just draw a bitmap to a position (no scaling)
-		void blit(const gfx::point &at, gfx::bitmap &bmp, const gfx::rect &src);
+    // just draw a bitmap to a position (no scaling)
+    void blit(const gfx::point &at, gfx::bitmap &bmp, const gfx::rect &src);
 
 
     // draw a rectangle border

@@ -211,7 +211,13 @@ bool lumen::context::occluded(lumen::window &win, const gfx::rect &a) {
 
 static long frame = 0;
 void lumen::context::compose(void) {
-  // printf("compose frame %d\n", frame);
+
+
+	/*
+	dirty_regions.clear();
+  invalidate(screen.bounds());
+	*/
+
   frame++;
 
   // make a tmp bitmap
@@ -225,7 +231,7 @@ void lumen::context::compose(void) {
 	bool draw_mouse = screen.mouse_moved;
 	// clear that information
 	if (draw_mouse) screen.mouse_moved = false;
-	
+
   for (auto &r : dirty_regions) {
 		if (r.intersects(screen.mouse_rect())) draw_mouse = true;
     scribe.fill_rect(r, 0xFFFFFF);
@@ -256,22 +262,25 @@ void lumen::context::compose(void) {
     return true;
   };
 
-#if 0
-	// clear the dirty regions
-  for (auto &r : dirty_regions) {
-    b.fill_rect(r, 0x333333);
-  }
-#endif
-
-
 	// go back to front
 	for (auto win : windows) {
     compose_window(*win);
   }
 
+	ck::vec<gfx::point> points;
+	points.push(gfx::point());
+	points.push(gfx::point(screen.width(), 0));
+	points.push(screen.mouse_pos);
+	points.push(gfx::point(0, screen.height()));
+	points.push(gfx::point(screen.width(), screen.height()));
 
-  // b.draw_rect(gfx::rect(0, 0, screen.mouse_pos.x(), screen.mouse_pos.y()),
-  // 30, 0xFFFFFF);
+	scribe.draw_generic_bezier(points, 0, 12);
+
+	// scribe.draw_quadratic_bezier(gfx::point(), screen.mouse_pos, gfx::point(screen.width(), screen.height()), 0x0000FF, 12);
+
+	// scribe.draw_line_antialias(gfx::point(), screen.mouse_pos, 0xFF0000, 40);
+
+
 	if (draw_mouse) {
 		screen.draw_mouse();
 	}

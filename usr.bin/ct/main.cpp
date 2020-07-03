@@ -31,9 +31,10 @@ int main(int argc, char **argv) {
   int c = 0;
   auto t = ck::timer::make_interval(30, [&] {
     gfx::scribe s(win->bmp());
-
 		// efficient clear(?)
 		s.clear(c);
+
+		s.draw_line(gfx::point(), gfx::point(400, 400), 0xFFFFFF);
     win->flush();
 		c += 8;
   });

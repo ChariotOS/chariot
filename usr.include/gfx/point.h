@@ -6,10 +6,11 @@
 namespace gfx {
 
 
-  class point {
+  template <typename T>
+  class point_impl {
    public:
-    inline point() : m_x(0), m_y(0) {}
-    inline point(int x, int y) : m_x(x), m_y(y) {}
+    inline point_impl() : m_x(0), m_y(0) {}
+    inline point_impl(int x, int y) : m_x(x), m_y(y) {}
 
 
     inline void constrain(const gfx::rect &rect) {
@@ -28,7 +29,33 @@ namespace gfx {
     inline void set_x(int x) { m_x = x; }
     inline void set_y(int y) { m_y = y; }
 
+
+    inline point_impl operator+(const point_impl &other) {
+      return point_impl<T>(m_x + other.x(), m_y + other.y());
+    }
+
+
+    inline point_impl operator-(const point_impl &other) {
+      return point_impl<T>(m_x - other.x(), m_y - other.y());
+    }
+
+
+
+    inline point_impl operator*(const T &o) {
+      return point_impl<T>(m_x * o, m_y * o);
+    }
+
+
+		template<typename V>
+			point_impl<T> &operator=(const point_impl<V> &o) {
+				m_x = o.x();
+				m_y = o.y();
+				return *this;
+			}
    private:
-    int m_x, m_y;
+    T m_x, m_y;
   };
+
+  using point = gfx::point_impl<int>;
+  using pointf = gfx::point_impl<float>;
 }  // namespace gfx

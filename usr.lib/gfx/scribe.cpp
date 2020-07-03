@@ -51,11 +51,11 @@ void gfx::scribe::clear(uint32_t color) {
   const size_t dst_skip = bmp.width();
 
   for (int row = first_row; row <= last_row; ++row) {
-		for (int i = 0; i < clipped_rect.w; i++) {
-			dst[i] = color;
-		}
+    for (int i = 0; i < clipped_rect.w; i++) {
+      dst[i] = color;
+    }
     dst += dst_skip;
-	}
+  }
 }
 
 void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source,
@@ -88,6 +88,235 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source,
   }
   return;
 }
+
+
+static inline uint32_t blend(uint32_t fgi, uint32_t bgi) {
+  // only blend if we have to!
+  if ((fgi & 0xFF000000) >> 24 == 0xFF) return fgi;
+  if ((fgi & 0xFF000000) >> 24 == 0x00) return bgi;
+
+  uint32_t res = 0;
+  auto result = (unsigned char *)&res;
+  auto fg = (unsigned char *)&fgi;
+  auto bg = (unsigned char *)&bgi;
+
+  // spooky math follows
+  uint32_t alpha = fg[3] + 1;
+  uint32_t inv_alpha = 256 - fg[3];
+  result[0] = (unsigned char)((alpha * fg[0] + inv_alpha * bg[0]) >> 8);
+  result[1] = (unsigned char)((alpha * fg[1] + inv_alpha * bg[1]) >> 8);
+  result[2] = (unsigned char)((alpha * fg[2] + inv_alpha * bg[2]) >> 8);
+  result[3] = 0xff;
+
+  return res;
+}
+
+void gfx::scribe::blend_pixel(int x, int y, uint32_t color, float alpha) {
+  auto &s = state();
+  x += s.offset.x();
+  y += s.offset.y();
+  if (!s.clip.contains(x, y)) return;
+
+
+  uint32_t fgi = (color & 0xFF'FF'FF) | ((int)(255 * alpha) << 24);
+  uint32_t bgi = bmp.get_pixel(
+      x, y);  // this could be slow, cause we read from vga memory...
+  set_pixel(x, y, blend(fgi, bgi));
+}
+
+#define __ipart(X) ((int)(X))
+#define __round(X) ((int)(((double)(X)) + 0.5))
+#define __fpart(X) (((double)(X)) - (double)__ipart(X))
+#define __rfpart(X) (1.0 - __fpart(X))
+#define __plot(__x, __y, __brightness) \
+  blend_pixel((__x), (__y), color, __brightness)
+
+#define __swap(__x, __y)         \
+  ({                             \
+    __typeof__(__x) __tmp = __x; \
+    __x = __y;                   \
+    __y = __tmp;                 \
+  })
+
+void gfx::scribe::draw_line_antialias(int x0i, int y0i, int x1i, int y1i,
+                                      uint32_t color, float wd) {
+  double x0 = x0i;
+  double y0 = y0i;
+  double x1 = x1i;
+  double y1 = y1i;
+
+
+#if 0
+  int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+  int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+  int err = dx - dy, e2, x2, y2; /* error value e_xy */
+  float ed = dx + dy == 0 ? 1 : sqrt((float)dx * dx + (float)dy * dy);
+
+  for (wd = (wd + 1) / 2;;) { /* pixel loop */
+    // blend_pixel(x0, y0, color, fmax(0, (fabs(err - dx + dy) / ed - wd + 1)));
+		draw_pixel(x0, y0, color);
+    e2 = err;
+    x2 = x0;
+    if (2 * e2 >= -dx) { /* x step */
+      for (e2 += dy, y2 = y0; e2 < ed * wd && (y1 != y2 || dx > dy); e2 += dx) {
+        // blend_pixel(x0, y2 += sy, color, fmax(0, (fabs(e2) / ed - wd + 1)));
+				draw_pixel(x0, y2 + sy, color);
+			}
+      if (x0 == x1) break;
+      e2 = err;
+      err -= dy;
+      x0 += sx;
+    }
+    if (2 * e2 <= dy) { /* y step */
+      for (e2 = dx - e2; e2 < ed * wd && (x1 != x2 || dx < dy); e2 += dy) {
+        // blend_pixel(x2 += sx, y0, color, fmax(0, (fabs(e2) / ed - wd + 1)));
+				draw_pixel(x2 += sx, y0, color);
+			}
+      if (y0 == y1) break;
+      err += dx;
+      y0 += sy;
+    }
+  }
+
+
+#else
+
+  const bool steep = abs(y1 - y0) > abs(x1 - x0);
+  if (steep) {
+    __swap(x0, y0);
+    __swap(x1, y1);
+  }
+  if (x0 > x1) {
+    __swap(x0, x1);
+    __swap(y0, y1);
+  }
+
+  const float dx = x1 - x0;
+  const float dy = y1 - y0;
+  const float gradient = (dx == 0) ? 1 : dy / dx;
+
+  int xpx11;
+  float intery;
+  {
+    const float xend = __round(x0);
+    const float yend = y0 + gradient * (xend - x0);
+    const float xgap = __rfpart(x0 + 0.5);
+    xpx11 = (int)xend;
+    const int ypx11 = __ipart(yend);
+    if (steep) {
+      __plot(ypx11, xpx11, __rfpart(yend) * xgap);
+      __plot(ypx11 + 1, xpx11, __fpart(yend) * xgap);
+    } else {
+      __plot(xpx11, ypx11, __rfpart(yend) * xgap);
+      __plot(xpx11, ypx11 + 1, __fpart(yend) * xgap);
+    }
+    intery = yend + gradient;
+  }
+
+  int xpx12;
+  {
+    const float xend = __round(x1);
+    const float yend = y1 + gradient * (xend - x1);
+    const float xgap = __rfpart(x1 + 0.5);
+    xpx12 = (int)xend;
+    const int ypx12 = __ipart(yend);
+    if (steep) {
+      __plot(ypx12, xpx12, __rfpart(yend) * xgap);
+      __plot(ypx12 + 1, xpx12, __fpart(yend) * xgap);
+    } else {
+      __plot(xpx12, ypx12, __rfpart(yend) * xgap);
+      __plot(xpx12, ypx12 + 1, __fpart(yend) * xgap);
+    }
+  }
+
+  if (steep) {
+    for (int x = xpx11 + 1; x < xpx12; x++) {
+      __plot(__ipart(intery), x, __rfpart(intery));
+      __plot(__ipart(intery) + 1, x, __fpart(intery));
+      intery += gradient;
+    }
+  } else {
+    for (int x = xpx11 + 1; x < xpx12; x++) {
+      __plot(x, __ipart(intery), __rfpart(intery));
+      __plot(x, __ipart(intery) + 1, __fpart(intery));
+      intery += gradient;
+    }
+  }
+#endif
+}
+
+
+static double getPt(double n1, double n2, float perc) {
+  double diff = n2 - n1;
+
+  return n1 + (diff * perc);
+}
+
+void gfx::scribe::draw_generic_bezier(ck::vec<gfx::point> &points,
+                                      uint32_t color, float stroke) {
+  /*
+for (int i = 0; i < points.size() - 1; i++) {
+auto &p1 = points[i];
+auto &p2 = points[i + 1];
+draw_line_antialias(p1, p2, color, stroke);
+}
+  */
+
+  int lx = points[0].x();
+  int ly = points[0].y();
+
+  ck::vec<gfx::pointf> tmp;
+  for (auto &p : points) tmp.push(gfx::pointf(p.x(), p.y()));
+
+  for (float t = 0; t < 1; t += 0.001) {
+    // copy, idk.
+    for (int i = 0; i < points.size(); i++) tmp[i] = points[i];
+
+    int i = points.size() - 1;
+    while (i > 0) {
+      for (int k = 0; k < i; k++) tmp[k] = tmp[k] + ((tmp[k + 1] - tmp[k]) * t);
+      i--;
+    }
+
+    double x = tmp[0].x();
+    double y = tmp[0].y();
+
+    draw_line_antialias(gfx::point(lx, ly), gfx::point(x, y), color, stroke);
+
+    lx = x;
+    ly = y;
+  }
+}
+
+
+
+void gfx::scribe::draw_quadratic_bezier(const gfx::point &start,
+                                        const gfx::point &p1,
+                                        const gfx::point &end, uint32_t color,
+                                        float stroke) {
+  int lx = start.x();
+  int ly = start.y();
+
+
+  for (float i = 0; i < 1; i += 0.001) {
+    // The Green Line
+    double xa = getPt(start.x(), p1.x(), i);
+    double ya = getPt(start.y(), p1.y(), i);
+    double xb = getPt(p1.x(), end.x(), i);
+    double yb = getPt(p1.y(), end.y(), i);
+
+    // The Black Dot
+    int x = getPt(xa, xb, i);
+    int y = getPt(ya, yb, i);
+
+    draw_line_antialias(gfx::point(lx, ly), gfx::point(x, y), color, stroke);
+
+    lx = x;
+    ly = y;
+  }
+}
+
+
 
 
 void gfx::scribe::draw_line(int x0, int y0, int x1, int y1, uint32_t color) {

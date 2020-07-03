@@ -228,6 +228,8 @@ void phys::free(void *v, int len) {
 void phys::free_range(void *vstart, void *vend) {
   lock();
 
+	printk("0x%p 0x%p\n", vstart, vend);
+
   auto *fr = (frame *)PGROUNDUP((u64)vstart);
 
   u64 start_pn = PGROUNDUP((u64)vstart) >> 12;

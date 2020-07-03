@@ -99,79 +99,10 @@ void lumen::screen::set_resolution(int w, int h) {
 
 
 
-void *mmx_memcpy(void *dest, const void *src, size_t len) {
-  ASSERT(len >= 1024);
-
-  auto *dest_ptr = (uint8_t *)dest;
-  auto *src_ptr = (const uint8_t *)src;
-
-  if ((off_t)dest_ptr & 7) {
-    off_t prologue = 8 - ((off_t)dest_ptr & 7);
-    len -= prologue;
-    asm volatile("rep movsb\n"
-                 : "=S"(src_ptr), "=D"(dest_ptr), "=c"(prologue)
-                 : "0"(src_ptr), "1"(dest_ptr), "2"(prologue)
-                 : "memory");
-  }
-  for (off_t i = len / 64; i; --i) {
-    asm volatile(
-        "movq (%0), %%mm0\n"
-        "movq 8(%0), %%mm1\n"
-        "movq 16(%0), %%mm2\n"
-        "movq 24(%0), %%mm3\n"
-        "movq 32(%0), %%mm4\n"
-        "movq 40(%0), %%mm5\n"
-        "movq 48(%0), %%mm6\n"
-        "movq 56(%0), %%mm7\n"
-        "movq %%mm0, (%1)\n"
-        "movq %%mm1, 8(%1)\n"
-        "movq %%mm2, 16(%1)\n"
-        "movq %%mm3, 24(%1)\n"
-        "movq %%mm4, 32(%1)\n"
-        "movq %%mm5, 40(%1)\n"
-        "movq %%mm6, 48(%1)\n"
-        "movq %%mm7, 56(%1)\n" ::"r"(src_ptr),
-        "r"(dest_ptr)
-        : "memory");
-    src_ptr += 64;
-    dest_ptr += 64;
-  }
-  asm volatile("emms" ::: "memory");
-  // Whatever remains we'll have to memcpy.
-  len %= 64;
-  if (len) memcpy(dest_ptr, src_ptr, len);
-  return dest;
-}
-
-inline void fast_u32_copy(uint32_t *dest, const uint32_t *src, size_t count) {
-  if (count >= 256) {
-    mmx_memcpy(dest, src, count * sizeof(count));
-    return;
-  }
-  asm volatile("rep movsl\n"
-               : "=S"(src), "=D"(dest), "=c"(count)
-               : "S"(src), "D"(dest), "c"(count)
-               : "memory");
-}
-
-
 long xoff = 0;
 long yoff = 0;
 long delta = 10;
 const gfx::point &lumen::screen::handle_mouse_input(struct mouse_packet &pkt) {
-  // clear the old location
-  if (pkt.buttons & MOUSE_SCROLL_UP) {
-    yoff -= delta;
-    ioctl(fd, FB_SET_YOFF, yoff);
-  }
-
-  if (pkt.buttons & MOUSE_SCROLL_DOWN) {
-    yoff += delta;
-    ioctl(fd, FB_SET_YOFF, yoff);
-  }
-
-
-
 
   mouse_pos.set_x(mouse_pos.x() + pkt.dx);
   mouse_pos.set_y(mouse_pos.y() + pkt.dy);
