@@ -11,6 +11,7 @@ global _start
 _start:
 	mov rbp, rsp
 	push rbp
+	push qword 0 ; we need to align the stack to 16 bytes for XMM operations
 
 	call libc_start
 
