@@ -8,8 +8,8 @@
 
 namespace gfx {
 
-  class bitmap : public ck::object {
-    CK_OBJECT(gfx::bitmap);
+  class bitmap : public ck::refcounted<bitmap> {
+    // CK_OBJECT(gfx::bitmap);
     CK_NONCOPYABLE(bitmap);
     CK_MAKE_NONMOVABLE(bitmap);
 
@@ -60,7 +60,7 @@ namespace gfx {
 
 
   class shared_bitmap : public gfx::bitmap {
-    CK_OBJECT(gfx::shared_bitmap);
+    // CK_OBJECT(gfx::shared_bitmap);
     CK_NONCOPYABLE(shared_bitmap);
     CK_MAKE_NONMOVABLE(shared_bitmap);
 

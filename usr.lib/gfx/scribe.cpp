@@ -1,10 +1,11 @@
 #include <chariot.h>
+#include <gfx/font.h>
 #include <gfx/point.h>
 #include <gfx/scribe.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <unistd.h>
 
 
 gfx::scribe::scribe(gfx::bitmap &b) : bmp(b) {
@@ -41,18 +42,16 @@ static inline int max(int a, int b) { return a > b ? a : b; }
 
 
 void gfx::scribe::clear(uint32_t color) {
-  auto clipped_rect = state().clip;
-  if (clipped_rect.is_empty()) return;
+  auto rect = state().clip;
+  if (rect.is_empty()) return;
 
-
-  const int first_row = clipped_rect.top();
-  const int last_row = clipped_rect.bottom();
-  uint32_t *dst = bmp.scanline(clipped_rect.y) + clipped_rect.x;
+  uint32_t *dst = bmp.scanline(rect.top()) + rect.left();
   const size_t dst_skip = bmp.width();
 
-  for (int row = first_row; row <= last_row; ++row) {
-    for (int i = 0; i < clipped_rect.w; i++) {
-      dst[i] = color;
+  for (int i = rect.h - 1; i >= 0; --i) {
+    // fast_u32_fill(dst, color, rect.w);
+    for (int o = 0; o < rect.w; o++) {
+      dst[o] = color;
     }
     dst += dst_skip;
   }
@@ -66,8 +65,8 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source,
   gfx::rect dst_rect;
   dst_rect.x = position.x() + translation().x();
   dst_rect.y = position.y() + translation().y();
-  dst_rect.w = safe_src_rect.w;
-  dst_rect.h = safe_src_rect.h;
+  dst_rect.w = safe_src_rect.w - 1;
+  dst_rect.h = safe_src_rect.h - 2;
 
   auto clipped_rect = dst_rect.intersect(state().clip);
   if (clipped_rect.is_empty()) return;
@@ -580,4 +579,123 @@ void gfx::scribe::fill_circle_helper(int x0, int y0, int r, int corner,
       draw_hline(x0 - y, y0 + x, 2 * y + 1 + delta, color);
     }
   }
+}
+
+
+
+#define ALPHA(c, a) (((c)&0xFF'FF'FF) | ((int)(255 * (a)) << 24))
+
+void gfx::scribe::draw_frame(const gfx::rect &frame, uint32_t bg) {
+  auto highlight = blend(ALPHA(0xFFFFFF, 0.8), bg);
+  auto shadow = blend(ALPHA(0x000000, 0.2), bg);
+
+  auto l = frame.left();
+  auto t = frame.top();
+
+  for (int y = 0; y < frame.h; y++) {
+    draw_pixel(0 + l, y + t, 0x000000);
+    draw_pixel(frame.w + l, y + t, 0x000000);
+
+    // top or bottom black bar
+    if (unlikely(y == 0 || y == frame.h - 1)) {
+      for (int x = 0; x < frame.w; x++) draw_pixel(x + l, y + t, 0x000000);
+      continue;
+    }
+
+    // top highlight
+    if (unlikely(y == 1)) {
+      for (int x = 1; x < frame.w; x++) draw_pixel(x + l, y + t, highlight);
+      continue;
+    }
+
+    // bottom shadow
+    if (unlikely(y == frame.h - 2)) {
+      draw_pixel(1 + l, y + t, highlight);
+      for (int x = 2; x < frame.w; x++) draw_pixel(x + l, y + t, shadow);
+      continue;
+    }
+
+    draw_pixel(1 + l, y + t, highlight);
+    draw_pixel(l + frame.w - 1, y + t, shadow);
+
+
+    for (int x = 2; x < frame.w - 1; x++) {
+      draw_pixel(x + l, y + t, bg);
+    }
+  }
+}
+void gfx::scribe::draw_text(struct text_thunk &st, gfx::font &fnt, char c,
+                            uint32_t color, int flags) {
+  int x = st.pos.x();
+  int y = st.pos.y();
+  uint32_t right_edge = st.x0 + st.width;
+
+	// if (getpid() != 6)::printf("'%c' %d %d\n", c, x, y);
+
+  auto newline = [&] {
+    x = st.x0;
+		// int oy = y;
+    y += fnt.line_height();
+		// if (getpid() != 6) ::printf("y: %4d -> %-4d   %d\n", oy, y, fnt.line_height());
+  };
+
+  if (c == '\n') {
+    newline();
+  } else {
+    if (x + fnt.width(c) > right_edge) {
+      newline();
+    }
+
+    int dy = y + fnt.line_height();
+    fnt.draw(x, dy, *this, c, color);
+  }
+  st.pos.set_x(x);
+  st.pos.set_y(y);
+}
+
+
+void gfx::scribe::draw_text(struct text_thunk &st, gfx::font &fnt,
+                            const char *str, uint32_t color, int flags) {
+  for (int i = 0; str[i] != 0; i++) {
+    draw_text(st, fnt, str[i], color, flags);
+  }
+}
+
+
+
+struct scribe_cb_info {
+  gfx::scribe *sc;
+  ck::ref<gfx::font> fnt;
+  uint32_t color;
+  uint32_t flags;
+  struct gfx::scribe::text_thunk *st;
+};
+
+
+static void scribe_draw_text_callback(char c, void *arg) {
+  auto *f = (struct scribe_cb_info *)arg;
+
+	f->sc->draw_text(*f->st, *f->fnt, c, f->color, f->flags);
+}
+
+
+extern "C" int vfctprintf(void (*out)(char character, void *arg), void *arg,
+                          const char *format, va_list va);
+
+void gfx::scribe::printf(struct text_thunk &st, gfx::font &fnt, uint32_t color,
+                    int flags, const char *fmt, ...) {
+
+
+	struct scribe_cb_info s;
+
+	s.sc = this;
+	s.st = &st;
+	s.fnt = &fnt;
+	s.color = color;
+	s.flags = flags;
+
+  va_list va;
+  va_start(va, fmt);
+  vfctprintf(scribe_draw_text_callback, (void *)&s, fmt, va);
+  va_end(va);
 }

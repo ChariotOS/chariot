@@ -10,6 +10,9 @@ gui::window::window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bi
 }
 
 
+gui::window::~window(void) {
+}
+
 void gui::window::flush(void) {
 	auto &app = gui::application::get();
 	struct lumen::invalidate_msg iv;

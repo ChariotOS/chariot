@@ -36,7 +36,7 @@ static char mouse_mode = MOUSE_DEFAULT;
 #define MOUSE_V_BIT 0x08
 
 void mouse_wait(uint8_t a_type) {
-  uint32_t timeout = 100000;
+  uint32_t timeout = 10000;
   if (!a_type) {
     while (--timeout) {
       if ((inb(MOUSE_STATUS) & MOUSE_BBIT) == 1) {

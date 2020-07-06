@@ -185,6 +185,8 @@ static void unknown_hardware(int i, reg_t *tf) {
 
 extern const char *ksym_find(off_t);
 
+
+
 void dump_backtrace(off_t ebp) {
   printk("Backtrace (ebp=%p):\n", ebp);
 
@@ -197,6 +199,15 @@ void dump_backtrace(off_t ebp) {
     printk("%3d: %p\n", i++, retaddr);
   }
 }
+
+
+void arch::dump_backtrace(void) {
+	off_t rbp = 0;
+	asm volatile("mov %%rbp, %0\n\t" : "=r" (rbp) );
+
+	::dump_backtrace(rbp);
+}
+
 
 /* eflags masks */
 #define CC_C 0x0001
@@ -248,7 +259,7 @@ static void gpf_handler(int i, reg_t *regs) {
          eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-',
          eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
 
-  dump_backtrace(tf->rbp);
+	arch::dump_backtrace();
 
   sys::exit_proc(-1);
 
@@ -282,6 +293,7 @@ static void pgfault_handle(int i, reg_t *regs) {
   if (curproc == NULL) {
     KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf->rip,
          read_cr2());
+		arch::dump_backtrace();
     // lookup the kernel proc if we aren't in one!
     proc = sched::proc::kproc();
   }

@@ -1,4 +1,5 @@
 #include <elf/loader.h>
+#include <errno.h>
 #include <printk.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
@@ -38,35 +39,119 @@ bool elf::validate(fs::file &fd, Elf64_Ehdr &ehdr) {
   return true;
 }
 
-int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> fd,
-              u64 &entry) {
+
+int elf::each_symbol(fs::file &fd, func<bool(const char *sym, off_t)> cb) {
+  Elf64_Ehdr ehdr;
+
+
+  if (!elf::validate(fd, ehdr)) {
+    printk("[ELF LOADER] elf not valid\n");
+    return -1;
+  }
+
+
+  if (ehdr.e_shstrndx == SHN_UNDEF) {
+    return -ENOENT;
+  }
+
+
+  Elf64_Shdr *sec_hdrs = new Elf64_Shdr[ehdr.e_shnum];
+
+  // seek to and read the headers
+  fd.seek(ehdr.e_shoff, SEEK_SET);
+  auto sec_expected = ehdr.e_shnum * sizeof(*sec_hdrs);
+  auto sec_read = fd.read(sec_hdrs, sec_expected);
+
+  if (sec_read != sec_expected) {
+    delete[] sec_hdrs;
+    printk("sec_read != sec_expected\n");
+    return -1;
+  }
+
+
+
+
+  Elf64_Sym *symtab = NULL;
+  int symcount = 0;
+
+  char *strtab = NULL;
+  size_t strtab_size = 0;
+
+  for (int i = 0; i < ehdr.e_shnum; i++) {
+    auto &sh = sec_hdrs[i];
+    if (sh.sh_type == SHT_SYMTAB) {
+      symtab = (Elf64_Sym *)kmalloc(sh.sh_size);
+
+      symcount = sh.sh_size / sizeof(*symtab);
+
+      fd.seek(sh.sh_offset, SEEK_SET);
+      fd.read(symtab, sh.sh_size);
+      continue;
+    }
+
+    if (sh.sh_type == SHT_STRTAB && strtab == NULL) {
+      strtab = (char *)kmalloc(sh.sh_size);
+      fd.seek(sh.sh_offset, SEEK_SET);
+      fd.read(strtab, sh.sh_size);
+      strtab_size = sh.sh_size;
+    }
+  }
+
+
+
+  delete[] sec_hdrs;
+
+
+  int err = 0;
+  if (symtab != NULL && symtab != NULL) {
+    for (int i = 0; i < symcount; i++) {
+      auto &sym = symtab[i];
+      if (sym.st_name > strtab_size - 2) {
+        err = -EINVAL;
+        break;
+      }
+      if (!cb(strtab + sym.st_name, sym.st_value)) break;
+    }
+
+    kfree(symtab);
+  }
+
+  if (symtab != NULL) kfree(symtab);
+  if (strtab != NULL) kfree(strtab);
+
+  return err;
+}
+
+int elf::load(const char *path, struct process &p, mm::space &mm,
+              ref<fs::file> fd, u64 &entry) {
   Elf64_Ehdr ehdr;
 
   off_t off = 0;
 
 
   if (!elf::validate(*fd, ehdr)) {
-  	printk("[ELF LOADER] elf not valid\n");
+    printk("[ELF LOADER] elf not valid\n");
     return -1;
   }
 
   // the binary is valid, so lets read the headers!
   entry = off + ehdr.e_entry;
+  /*
+Elf64_Shdr *sec_hdrs = new Elf64_Shdr[ehdr.e_shnum];
 
-  Elf64_Shdr *sec_hdrs = new Elf64_Shdr[ehdr.e_shnum];
+// seek to and read the headers
+fd->seek(ehdr.e_shoff, SEEK_SET);
+auto sec_expected = ehdr.e_shnum * sizeof(*sec_hdrs);
+auto sec_read = fd->read(sec_hdrs, sec_expected);
 
-  // seek to and read the headers
-  fd->seek(ehdr.e_shoff, SEEK_SET);
-  auto sec_expected = ehdr.e_shnum * sizeof(*sec_hdrs);
-  auto sec_read = fd->read(sec_hdrs, sec_expected);
+if (sec_read != sec_expected) {
+delete[] sec_hdrs;
+  printk("sec_read != sec_expected\n");
+return -1;
+}
 
-  if (sec_read != sec_expected) {
-    delete[] sec_hdrs;
-  	printk("sec_read != sec_expected\n");
-    return -1;
-  }
-
-  delete[] sec_hdrs;
+delete[] sec_hdrs;
+  */
 
   auto handle_bss = [&](Elf64_Phdr &ph) -> void {
     if (ph.p_memsz > ph.p_filesz) {
@@ -91,7 +176,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
 
   if (hdrs_read != hdrs_size) {
     delete[] phdr;
-		printk("hdrs_read != hdrs_size\n");
+    printk("hdrs_read != hdrs_size\n");
     return -1;
   }
 
@@ -102,7 +187,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
 
   if (i == ehdr.e_phnum) {
     delete[] phdr;
-		printk("i == ehdr.e_phnum\n");
+    printk("i == ehdr.e_phnum\n");
     return -1;
   }
 
@@ -127,21 +212,20 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
       auto start = round_down(sec.p_vaddr, 1);
 
 
-			auto prot = 0L;
-			if (sec.p_flags & PF_X) prot |= PROT_EXEC;
-			if (sec.p_flags & PF_W) prot |= PROT_WRITE;
-			if (sec.p_flags & PF_R) prot |= PROT_READ;
+      auto prot = 0L;
+      if (sec.p_flags & PF_X) prot |= PROT_EXEC;
+      if (sec.p_flags & PF_W) prot |= PROT_WRITE;
+      if (sec.p_flags & PF_R) prot |= PROT_READ;
 
       if (sec.p_filesz == 0) {
-
-				mm.mmap(path, off + start, sec.p_memsz, prot, MAP_ANON | MAP_PRIVATE, nullptr, 0);
+        mm.mmap(path, off + start, sec.p_memsz, prot, MAP_ANON | MAP_PRIVATE,
+                nullptr, 0);
         // printk("    is .bss\n");
       } else {
-
-				mm.mmap(path, off + start, sec.p_memsz, prot, MAP_PRIVATE, fd, sec.p_offset);
-				handle_bss(sec);
-			}
-
+        mm.mmap(path, off + start, sec.p_memsz, prot, MAP_PRIVATE, fd,
+                sec.p_offset);
+        handle_bss(sec);
+      }
     }
   }
 

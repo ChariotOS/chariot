@@ -1,5 +1,6 @@
 #include <cpu.h>
 #include <dev/serial.h>
+#include <elf/loader.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <kargs.h>
@@ -147,6 +148,16 @@ int kernel_init(void *) {
   }
 
 
+  auto kimg = vfs::fdopen("/boot/chariot.elf", O_RDONLY);
+
+  if (false && kimg) {
+    elf::each_symbol(kimg, [](const char *name, off_t addr) {
+      // printk("%p %s\n", addr, name);
+      return true;
+    });
+  }
+
+
   // setup stdio stuff for the kernel (to be inherited by spawn)
   int fd = sys::open("/dev/console", O_RDWR);
   assert(fd == 0);
@@ -164,12 +175,11 @@ int kernel_init(void *) {
   auto paths = init_paths.split(',');
   pid_t init_pid = sched::proc::spawn_init(paths);
 
-
-	/*
-	while (1) {
-		arch::us_this_second();
-	}
-	*/
+  /*
+  while (1) {
+          arch::us_this_second();
+  }
+  */
   sys::waitpid(init_pid, NULL, 0);
   panic("init died!\n");
 

@@ -34,8 +34,8 @@ mm::page::page(void) {
   debug_page_list_lock.unlock();
 #endif
 
-	writethrough = false;
-	nocache = false;
+  writethrough = false;
+  nocache = false;
   lru = cpu::get_ticks();
 }
 
@@ -51,6 +51,7 @@ mm::page::~page(void) {
 
   if (freeable) {
     phys::free((void *)pa);
+		// printk("free %p. %5ld left\n", pa, phys::nfree());
   }
   assert(users == 0);
   pa = 0;
@@ -155,10 +156,9 @@ int mm::space::pagefault(off_t va, int err) {
         // anonymous mapping
         page = mm::page::alloc();
       } else {
-
-				pte.nocache = page->nocache;
-				pte.writethrough = page->writethrough;
-			}
+        pte.nocache = page->nocache;
+        pte.writethrough = page->writethrough;
+      }
 
 
       spinlock::lock(page->lock);
@@ -260,14 +260,13 @@ mm::space *mm::space::fork(void) {
         // for copy on write
         pte.prot = r->prot & ~PROT_WRITE;
         pt->add_mapping(r->va + (i * 4096), pte);
-
       }
     }
     n->regions.push(copy);
   }
 
   n->sort_regions();
-	this->dump();
+  this->dump();
   n->dump();
 
   return n;
@@ -307,6 +306,7 @@ off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
     if (!obj) {
       return -1;
     }
+    obj->acquire();
   }
 
 
@@ -339,16 +339,16 @@ int mm::space::unmap(off_t ptr, size_t len) {
   for (int i = 0; i < regions.size(); i++) {
     auto region = regions[i];
     if (region->va == va && NPAGES(region->len) == NPAGES(len)) {
-      // printk("removing region %d. Named '%s'\n", i, region->name.get());
-
       regions.remove(i);
       sort_regions();
 
       for (off_t v = va; v < va + len; v += 4096) {
-        pt->del_mapping(va);
+        pt->del_mapping(v);
       }
 
       delete region;
+      // dump();
+      // printk("\n\n");
       return 0;
     }
   }
@@ -369,9 +369,9 @@ bool mm::space::validate_pointer(void *raw_va, size_t len, int mode) {
       return false;
     }
 
-		if (mode & PROT_READ && !(r->prot & PROT_READ)) return false;
-		if (mode & PROT_WRITE && !(r->prot & PROT_WRITE)) return false;
-		if (mode & PROT_EXEC && !(r->prot & PROT_EXEC)) return false;
+    if (mode & PROT_READ && !(r->prot & PROT_READ)) return false;
+    if (mode & PROT_WRITE && !(r->prot & PROT_WRITE)) return false;
+    if (mode & PROT_EXEC && !(r->prot & PROT_EXEC)) return false;
     // TODO: check mode flags
   }
   return true;
@@ -472,7 +472,13 @@ mm::area::~area(void) {
     n += 1;
   }
 
+
   pages.clear();
+  // release the object if we have one
+  if (obj) {
+    obj->release();
+  }
+  obj = nullptr;
 }
 
 
@@ -483,21 +489,17 @@ static map<string, struct mshare_vmobject *> mshare_regions;
 
 struct mshare_vmobject final : public mm::vmobject {
   mshare_vmobject(string name, size_t npages) : vmobject(npages) {
-    printk("new mshare_vmobject: '%s' (npages: %zu)\n", name.get(), npages);
     this->name = name;
     for (int i = 0; i < npages; i++) {
       pages.push(nullptr);
     }
     scoped_lock l(mshare_lock);
     mshare_regions[name] = this;
+
+    // printk("[mshare] new  '%s' %p\n", name.get(), this);
   }
 
-  virtual ~mshare_vmobject(void) {
-    printk("everyone dropped '%s'\n", name.get());
-    scoped_lock l(mshare_lock);
-    assert(mshare_regions.contains(name));
-    mshare_regions.remove(name);
-  };
+  virtual ~mshare_vmobject(void){};
 
 
   // get a shared page (page #n in the mapping)
@@ -507,9 +509,16 @@ struct mshare_vmobject final : public mm::vmobject {
       pages.push(nullptr);
     }
     if (!pages[n]) pages[n] = mm::page::alloc();
+
     return pages[n];
   }
 
+
+  virtual void drop(void) override {
+    scoped_lock l(mshare_lock);
+    assert(mshare_regions.contains(name));
+    mshare_regions.remove(name);
+  }
 
  private:
   string name;
@@ -554,8 +563,9 @@ static void *msh_create(struct mshare_create *arg) {
 
   region->obj = obj;
 
-  // printk("create '%s'\n", name.get());
+  // printk("[mshare] new  '%s' %p\n", name.get(), obj.get());
   // curproc->mm->dump();
+
   return (void *)addr;
 }
 
@@ -573,7 +583,8 @@ static void *msh_acquire(struct mshare_acquire *arg) {
 
   // grab the object
   ref<mm::vmobject> obj = mshare_regions.get(name);
-  // printk("arg size: %zu\n", arg->size);
+
+  obj->acquire();
 
   auto addr = curproc->mm->mmap(
       string::format("[msh '%s' (acquired)]", name.get()), 0, arg->size,
@@ -586,7 +597,8 @@ static void *msh_acquire(struct mshare_acquire *arg) {
   }
 
   region->obj = obj;
-  // printk("acquire('%s', size=%zu) -> %p\n", name.get(), arg->size, addr);
+
+  // printk("[mshare] get  '%s' %p\n", name.get(), obj.get());
   // curproc->mm->dump();
 
   return (void *)addr;

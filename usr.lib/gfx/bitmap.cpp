@@ -25,9 +25,6 @@ unsigned long read_timestamp(void) {
   uint32_t lo, hi;
   asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
   return lo | ((uint64_t)(hi) << 32);
-  uint64_t ret;
-  asm volatile("pushfq; popq %0" : "=a"(ret));
-  return ret;
 }
 
 static ck::string unique_ident(void) {
@@ -56,6 +53,7 @@ gfx::bitmap::bitmap(size_t w, size_t h, uint32_t *buf) {
 gfx::bitmap::~bitmap(void) {
   if (m_pixels && m_owned) {
     munmap(m_pixels, size());
+    m_pixels = 0;
   }
 }
 
@@ -83,7 +81,9 @@ ck::ref<gfx::shared_bitmap> gfx::shared_bitmap::get(const char *name, size_t w,
     return nullptr;
   }
 
-  return new gfx::shared_bitmap(name, (uint32_t *)buf, w, h);
+  auto bm = ck::make_ref<gfx::shared_bitmap>(name, (uint32_t *)buf, w, h);
+
+  return bm;
 }
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
@@ -104,12 +104,5 @@ ck::ref<gfx::shared_bitmap> gfx::shared_bitmap::resize(size_t w, size_t h) {
 }
 
 
-gfx::shared_bitmap::~shared_bitmap(void) {
-  if (m_pixels) {
-    munmap(m_pixels, m_original_size);
-  }
-}
-
-
-
+gfx::shared_bitmap::~shared_bitmap(void) {}
 

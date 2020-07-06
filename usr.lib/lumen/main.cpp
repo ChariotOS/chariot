@@ -35,13 +35,13 @@ ck::vec<lumen::msg *> lumen::drain_messages(ck::localsocket &sock,
     // magic number
     if (m->magic != LUMEN_MAGIC) {
       i += 1;
-      fprintf(stderr, "LUMEN_MAGIC is not correct\n");
+      // fprintf(stderr, "LUMEN_MAGIC is not correct\n");
       continue;
     }
 
     auto total_size = sizeof(lumen::msg) + m->len;
     if (i + total_size > (size_t)bytes.size()) {
-      fprintf(stderr, "malformed!\n");
+      // fprintf(stderr, "malformed!\n");
       break;
     }
 

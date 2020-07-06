@@ -106,6 +106,20 @@ namespace mm {
 
     virtual ~vmobject(void){};
 
+		// added and removed from spaces.
+		inline void acquire(void) {
+			scoped_lock l(m_lock);
+			owners++;
+		}
+		inline void release(void) {
+			scoped_lock l(m_lock);
+			owners--;
+			if (owners == 0) drop();
+		}
+
+		// all owners have dropped you!
+		virtual void drop(void) {}
+
     // get a shared page (page #n in the mapping)
     virtual ref<mm::page> get_shared(off_t n) = 0;
     // tell the region to flush a page
@@ -116,6 +130,8 @@ namespace mm {
 		}
 
 		private:
+		spinlock m_lock;
+		int owners = 0;
 			size_t n_pages;
   };
 

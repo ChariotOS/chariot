@@ -7,6 +7,7 @@
 #include <ck/socket.h>
 #include <ck/timer.h>
 #include <gfx/bitmap.h>
+#include <gfx/scribe.h>
 #include <gfx/point.h>
 #include <lumen/msg.h>
 #include <stdint.h>
@@ -101,15 +102,46 @@ namespace lumen {
   };
 
 
+	enum class window_mode : char {
+		normal, // no borders, only a title bar.
+	};
+
+	enum class hover_result : char {
+		normal, // normal pointer
+		draggable, // this region of the window is draggable
+	};
+
+
   struct window {
     int id = 0;
     ck::string name;
     lumen::guest &guest;
     gfx::rect rect;
 
+		bool hovered = false;
+
+		window_mode mode;
+
     ck::ref<gfx::shared_bitmap> bitmap;
 
     window(int id, lumen::guest &c, int w, int h);
+		~window(void);
+
+		// get the bounds of the window frame
+		gfx::rect bounds();
+
+		// users invalidate the bounds of their bitmap, not the window. So we gotta translate
+		// that invalidation to the actual bounds of the bitmap on the screen.
+		void translate_invalidation(gfx::rect &r);
+		void handle_mouse_input(gfx::point &r, struct mouse_packet &p);
+
+		// used to tell the window compositor where in the window we are hovering.
+		hover_result hover();
+
+		void set_mode(lumen::window_mode);
+
+		// draw within the scribe. The scribe is offset to within the window
+		void draw(gfx::scribe &);
   };
 
 
@@ -174,6 +206,8 @@ namespace lumen {
     void window_opened(window *);
     void window_closed(window *);
 
+		void calculate_hover(void);
+
 
     void compose(void);
 
@@ -186,6 +220,8 @@ namespace lumen {
     // ordered list of all the windows (front to back)
     // The currently focused window is at the front
     ck::vec<lumen::window *> windows;
+
+		lumen::window *hovered_window = nullptr;
 
     ck::vec<gfx::rect> dirty_regions;
 

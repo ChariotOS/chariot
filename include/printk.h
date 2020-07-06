@@ -5,18 +5,23 @@
 #include <types.h>
 
 // use the host's headers as the information within should be header-only :)
+#include <arch.h>
 #include <asm.h>
 #include <dev/RTC.h>
 #include <stdarg.h>
 #include <stddef.h>
-#include <arch.h>
 // #include <string.h>
+//
+//
+namespace arch {
+  void dump_backtrace(void);
+};
 
 typedef i64 acpi_native_int;
 
 void putchar(char);
 int puts(char*);
-void printk_nolock(const char *format, ...);
+void printk_nolock(const char* format, ...);
 int printk(const char* format, ...);
 int sprintk(char* buffer, const char* format, ...);
 int snprintk(char* buffer, size_t count, const char* format, ...);
@@ -60,6 +65,8 @@ inline void do_panic(const char* fmt, T&&... args) {
   arch::cli();
   printk(fmt, args...);
   printk("\n");
+
+	arch::dump_backtrace();
   while (1) {
     arch::halt();
   }

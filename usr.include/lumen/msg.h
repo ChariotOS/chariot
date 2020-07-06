@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gfx/rect.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #define LUMEN_MAGIC 0x5D4c
@@ -84,11 +85,13 @@ namespace lumen {
 	struct input_msg {
 		unsigned short type;
 
+		int window_id;
 		union {
 			// mouse data
 			struct {
-				unsigned short xpos;
-				unsigned short ypos;
+				uint16_t xpos;
+				uint16_t ypos;
+				int8_t dx, dy;
 				int buttons;
 			} mouse;
 

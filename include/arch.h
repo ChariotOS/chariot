@@ -60,6 +60,9 @@ unsigned long us_this_second(void);
 void dispatch_signal(int sig);
 void sigreturn(void);
 
+
+
+void dump_backtrace(void);
 /**
  * the architecture must only implement init() and eoi(). The arch must
  * implement calling irq::dispatch() when an interrupt is received.
@@ -86,10 +89,12 @@ int install(int irq, irq::handler handler, const char *name);
 irq::handler uninstall(int irq);
 
 int init(void);
-static inline void eoi(int i) { arch::irq::eoi(i); }
+inline void eoi(int i) { arch::irq::eoi(i); }
 
 // cause an interrupt to be handled by the kernel's interrupt dispatcher
 void dispatch(int irq, reg_t *);
+
+
 
 };  // namespace irq
 

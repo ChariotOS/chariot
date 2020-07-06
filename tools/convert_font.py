@@ -14,47 +14,59 @@ with open(argv[1], "rb") as handle:
     font = reader.read_bdf(handle)
 
 
-
-# the chariot font "format" is just the specific 
-
-expected_w = -1
-expected_h = -1
-
-
-# go through and verify all the glyphs
-for i in range(0, 255):
-    if i in font:
-        gl = font[i];
-        if expected_w == -1:
-            expected_w = gl.bbW
-            expected_h = gl.bbH
-        if expected_w != gl.bbW or expected_h != gl.bbH:
-            print("Font must be the same dimentions for each char")
-            exit(-1)
-
-        if gl.bbW > 8:
-            print("Font must be 8 bits wide")
-            exit(-1)
+# this part sucks. bdflib doesn't provide this information
+height = 0
+width = 0
+with open(argv[1], "rb") as handle:
+    for line in handle:
+        if line.startswith(b"FONTBOUNDINGBOX"):
+            parts = line.split(b" ")
+            height = int(parts[2])
+            width = int(parts[2])
 
 
+MAGIC = 0x464f4e54
 
-# starts with two shorts, width and height
-f = struct.pack("BB", expected_w, expected_h);
 
-print(expected_w, expected_h)
+cmap = struct.pack("");
+dmap = struct.pack("");
 
-# followed by a glyph for every char (0-255 extended ascii)
-for i in range(0, 255):
-    if i in font:
-        gl = font[i];
-        for l in reversed(gl.data):
-            # each line is a short
-            f += struct.pack("H", l)
-    else:
-        for l in range(0, expected_h):
-            f += struct.pack("H", l)
+count = len(font.codepoints())
+i = 0
+for cp in font.codepoints():
+    gl = font[cp]
+    print(i / count)
+    i += 1
+    if gl.bbW > 32:
+        print("Glyphs cannot be wider than 32pixels")
+        exit()
 
+    c = struct.pack("")
+    # the codepoint
+    c += struct.pack("I", cp)
+
+    # data offset
+    c += struct.pack("I", len(dmap))
+
+    # bounding box
+    c += struct.pack("b", gl.bbX)
+    c += struct.pack("b", gl.bbY)
+    c += struct.pack("b", gl.bbW)
+    c += struct.pack("b", gl.bbH)
+    c += struct.pack("b", gl.advance)
+
+
+    for line in gl.data:
+        dmap += struct.pack("I", line)
+
+    cmap += c
 
 
 with open(argv[2], "wb") as handle:
-    handle.write(f)
+    handle.write(struct.pack("I", MAGIC))
+    handle.write(struct.pack("I", height))
+    handle.write(struct.pack("I", width))
+    handle.write(struct.pack("I", len(cmap)))
+    handle.write(struct.pack("I", len(dmap)))
+    handle.write(cmap)
+    handle.write(dmap)

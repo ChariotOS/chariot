@@ -30,6 +30,16 @@ uint32_t blend(uint32_t fgi, uint32_t bgi) {
 }
 
 /*
+static uint32_t invert(uint32_t c) {
+	uint8_t r = (c >> 16) & 0xFF;
+	uint8_t g = (c >> 8) & 0xFF;
+	uint8_t b = (c >> 0) & 0xFF;
+	return ((255 - r) << 16) | ((255 -g) << 8) | ((255 - b) << b);
+}
+*/
+
+
+/*
 void draw_bmp_scaled(ck::ref<gfx::bitmap> bmp, lumen::screen &screen, int xo,
                      int yo, float scale) {}
 
@@ -66,7 +76,7 @@ lumen::screen::~screen(void) {
 
 
 void lumen::screen::flip_buffers(void) {
-	// return;
+	return;
   uint32_t *tmp = back_buffer;
   back_buffer = front_buffer;
   front_buffer = tmp;
@@ -144,18 +154,22 @@ void lumen::screen::draw_mouse(void) {
   auto bottom = draw_rect.bottom();
   auto w = width();
 
+	auto buf = buffer();
+
   for (int y = top; y < bottom; y++) {
     if (y < 0 || y >= height()) continue;
     for (int x = left; x < right; x++) {
       if (x < 0 || x >= w) continue;
 
       uint32_t pix = cur->get_pixel(x - left, y - top);
-      if ((pix & 0xFF000000) >> 24 != 0xFF) {
+			if (pix == 0xFFFF00FF) {
+				pix = 0xFF'FFFFFF;
+			} else if ((pix & 0xFF000000) >> 24 != 0xFF) {
         /* This is slow */
-        uint32_t bg = buffer()[x + y * w];
+        uint32_t bg = buf[x + y * w];
         pix = blend(pix, bg);
       }
-      buffer()[x + y * w] = pix;
+      buf[x + y * w] = pix;
     }
   }
 

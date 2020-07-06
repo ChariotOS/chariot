@@ -69,6 +69,7 @@ static struct thread *get_next_thread(void) {
   // keep track of the last task in the queue so we can
   // remove the one we want to run from it
   struct thread *nt = nullptr;
+  cpu::pushcli();
 
   for (int i = SCHED_MLFQ_DEPTH - 1; i >= 0; i--) {
     auto &Q = mlfq[i];
@@ -78,7 +79,8 @@ static struct thread *get_next_thread(void) {
     for (auto *t = Q.task_queue; t != NULL; t = t->sched.next) {
       if (t->state == PS_BLOCKED) {
         if (t->sig.pending) {
-          // printk("[tid %d] %08x %08x\n", t->tid, t->sig.pending, t->sig.mask);
+          // printk("[tid %d] %08x %08x\n", t->tid, t->sig.pending,
+          // t->sig.mask);
           if (t->sig.pending & t->sig.mask) {
             // printk("tid %d has pending signals\n", t->tid);
           }
@@ -115,9 +117,20 @@ static struct thread *get_next_thread(void) {
       break;
     }
   }
+  cpu::popcli();
 
   return nt;
 }
+
+
+static auto pick_next_thread(void) {
+  if (cpu::current().next_thread == NULL) {
+    cpu::current().next_thread = get_next_thread();
+  }
+  return cpu::current().next_thread;
+}
+
+
 // add a task to a mlfq entry based on tsk->priority
 int sched::add_task(struct thread *tsk) {
   // clamp the priority to the two bounds
@@ -258,7 +271,9 @@ void sched::dumb_sleepticks(unsigned long t) {
   }
 }
 static void schedule_one() {
-  auto thd = get_next_thread();
+  struct thread *thd = pick_next_thread();
+
+  cpu::current().next_thread = NULL;
 
   if (thd == nullptr) {
     // idle loop when there isn't a task
@@ -345,23 +360,6 @@ bool sched::enabled() { return s_enabled; }
 void sched::handle_tick(u64 ticks) {
   if (!enabled() || !cpu::in_thread()) return;
 
-
-	/*
-	auto rbp = arch::reg(REG_BP, curthd->trap_frame);
-	auto rip = arch::reg(REG_PC, curthd->trap_frame);
-  if (cpu::in_thread() && curproc->ring == RING_USER) {
-    auto bt = curthd->backtrace(rbp, rip);
-    cpu::pushcli();
-    printk_nolock("backtrace: ");
-    for (auto rip : bt) {
-      printk_nolock("%p ", rip);
-    }
-    printk_nolock("\n");
-    cpu::popcli();
-  }
-	*/
-
-
   // grab the current thread
   auto thd = cpu::thread();
 
@@ -371,9 +369,16 @@ void sched::handle_tick(u64 ticks) {
     cpu::current().kstat.uticks++;
   }
   thd->sched.ticks++;
+
+  auto has_run = ticks - thd->sched.start_tick;
+
   // yield?
-  if (ticks - thd->sched.start_tick >= thd->sched.timeslice) {
-    sched::yield();
+  if (has_run >= thd->sched.timeslice) {
+    // pick a thread to go into next. If there is nothing to run,
+    // don't yield to the scheduler. This improves some stuff's latencies
+    if (true || pick_next_thread() != NULL) {
+      sched::yield();
+    }
   }
 }
 
@@ -500,10 +505,9 @@ void sched::before_iret(bool userspace) {
   }
 
   if (sig_to_handle != -1) {
-		// whatver the arch needs to do
-		arch::dispatch_signal(sig_to_handle);
+    // whatver the arch needs to do
+    arch::dispatch_signal(sig_to_handle);
   }
-
 }
 
 sleep_blocker::sleep_blocker(unsigned long us_to_sleep) {

@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 
+// #define DEBUG
+// #define INFO
 /**  Durand's Amazing Super Duper Memory functions.  */
 
 #define VERSION "1.1"
@@ -149,11 +151,11 @@ static void liballoc_dump() {
 
 #ifdef DEBUG
   while (maj != NULL) {
-    printf("liballoc: %x: total = %i, used = %i\n", maj, maj->size, maj->usage);
+    printf("liballoc: %p: total = %i, used = %i\n", maj, maj->size, maj->usage);
 
     min = maj->first;
     while (min != NULL) {
-      printf("liballoc:    %x: %i bytes\n", min, min->size);
+      printf("liballoc:    %p: %i bytes\n", min, min->size);
       min = min->next;
     }
 
@@ -207,7 +209,7 @@ static struct liballoc_major *allocate_new_page(unsigned int size) {
 
 #ifdef DEBUG
   printf(
-      "liballoc: Resource allocated %x of %i pages (%i bytes) for %i size.\n",
+      "liballoc: Resource allocated %p of %i pages (%i bytes) for %i size.\n",
       maj, st, maj->size, size);
 
   printf("liballoc: Total memory usage = %i KB\n",
@@ -240,7 +242,7 @@ void *PREFIX(malloc)(size_t req_size) {
   if (size == 0) {
     l_warningCount += 1;
 #if defined DEBUG || defined INFO
-    printf("liballoc: WARNING: alloc( 0 ) called from %x\n",
+    printf("liballoc: WARNING: alloc( 0 ) called from %p\n",
            __builtin_return_address(0));
     FLUSH();
 #endif
@@ -269,13 +271,13 @@ void *PREFIX(malloc)(size_t req_size) {
     }
 
 #ifdef DEBUG
-    printf("liballoc: set up first memory major %x\n", l_memRoot);
+    printf("liballoc: set up first memory major %p\n", l_memRoot);
     FLUSH();
 #endif
   }
 
 #ifdef DEBUG
-  printf("liballoc: %x PREFIX(malloc)( %i ): ", __builtin_return_address(0),
+  printf("liballoc: %p PREFIX(malloc)( %i ): ", __builtin_return_address(0),
          size);
   FLUSH();
 #endif
@@ -310,7 +312,7 @@ void *PREFIX(malloc)(size_t req_size) {
     // CASE 1:  There is not enough space in this major block.
     if (diff < (size + sizeof(struct liballoc_minor))) {
 #ifdef DEBUG
-      printf("CASE 1: Insufficient space in block %x\n", maj);
+      printf("CASE 1: Insufficient space in block %p\n", maj);
       FLUSH();
 #endif
 
@@ -360,7 +362,7 @@ void *PREFIX(malloc)(size_t req_size) {
       ALIGN(p);
 
 #ifdef DEBUG
-      printf("CASE 2: returning %x\n", p);
+      printf("CASE 2: returning %p\n", p);
       FLUSH();
 #endif
       liballoc_unlock();  // release the lock
@@ -397,7 +399,7 @@ void *PREFIX(malloc)(size_t req_size) {
       ALIGN(p);
 
 #ifdef DEBUG
-      printf("CASE 3: returning %x\n", p);
+      printf("CASE 3: returning %p\n", p);
       FLUSH();
 #endif
       liballoc_unlock();  // release the lock
@@ -443,7 +445,7 @@ void *PREFIX(malloc)(size_t req_size) {
           ALIGN(p);
 
 #ifdef DEBUG
-          printf("CASE 4.1: returning %x\n", p);
+          printf("CASE 4.1: returning %p\n", p);
           FLUSH();
 #endif
           liballoc_unlock();  // release the lock
@@ -482,7 +484,7 @@ void *PREFIX(malloc)(size_t req_size) {
           ALIGN(p);
 
 #ifdef DEBUG
-          printf("CASE 4.2: returning %x\n", p);
+          printf("CASE 4.2: returning %p\n", p);
           FLUSH();
 #endif
 
@@ -543,7 +545,7 @@ void PREFIX(free)(void *ptr) {
   if (ptr == NULL) {
     l_warningCount += 1;
 #if defined DEBUG || defined INFO
-    printf("liballoc: WARNING: PREFIX(free)( NULL ) called from %x\n",
+    printf("liballoc: WARNING: PREFIX(free)( NULL ) called from %p\n",
            __builtin_return_address(0));
     FLUSH();
 #endif
@@ -566,7 +568,7 @@ void PREFIX(free)(void *ptr) {
         ((min->magic & 0xFF) == (LIBALLOC_MAGIC & 0xFF))) {
       l_possibleOverruns += 1;
 #if defined DEBUG || defined INFO
-      printf("liballoc: ERROR: Possible 1-3 byte overrun for magic %x != %x\n",
+      printf("liballoc: ERROR: Possible 1-3 byte overrun for magic %p != %p\n",
              min->magic, LIBALLOC_MAGIC);
       FLUSH();
 #endif
@@ -575,13 +577,13 @@ void PREFIX(free)(void *ptr) {
     if (min->magic == LIBALLOC_DEAD) {
 #if defined DEBUG || defined INFO
       printf(
-          "liballoc: ERROR: multiple PREFIX(free)() attempt on %x from %x.\n",
+          "liballoc: ERROR: multiple PREFIX(free)() attempt on %p from %p.\n",
           ptr, __builtin_return_address(0));
       FLUSH();
 #endif
     } else {
 #if defined DEBUG || defined INFO
-      printf("liballoc: ERROR: Bad PREFIX(free)( %x ) called from %x\n", ptr,
+      printf("liballoc: ERROR: Bad PREFIX(free)( %p ) called from %p\n", ptr,
              __builtin_return_address(0));
       FLUSH();
 #endif
@@ -593,7 +595,7 @@ void PREFIX(free)(void *ptr) {
   }
 
 #ifdef DEBUG
-  printf("liballoc: %x PREFIX(free)( %x ): ", __builtin_return_address(0), ptr);
+  printf("liballoc: %p PREFIX(free)( %p ): ", __builtin_return_address(0), ptr);
   FLUSH();
 #endif
 
@@ -685,7 +687,7 @@ void *PREFIX(realloc)(void *p, size_t size) {
         ((min->magic & 0xFF) == (LIBALLOC_MAGIC & 0xFF))) {
       l_possibleOverruns += 1;
 #if defined DEBUG || defined INFO
-      printf("liballoc: ERROR: Possible 1-3 byte overrun for magic %x != %x\n",
+      printf("liballoc: ERROR: Possible 1-3 byte overrun for magic %p != %p\n",
              min->magic, LIBALLOC_MAGIC);
       FLUSH();
 #endif
@@ -694,13 +696,13 @@ void *PREFIX(realloc)(void *p, size_t size) {
     if (min->magic == LIBALLOC_DEAD) {
 #if defined DEBUG || defined INFO
       printf(
-          "liballoc: ERROR: multiple PREFIX(free)() attempt on %x from %x.\n",
+          "liballoc: ERROR: multiple PREFIX(free)() attempt on %p from %p.\n",
           ptr, __builtin_return_address(0));
       FLUSH();
 #endif
     } else {
 #if defined DEBUG || defined INFO
-      printf("liballoc: ERROR: Bad PREFIX(free)( %x ) called from %x\n", ptr,
+      printf("liballoc: ERROR: Bad PREFIX(free)( %p ) called from %p\n", ptr,
              __builtin_return_address(0));
       FLUSH();
 #endif

@@ -15,9 +15,8 @@ namespace gui {
 
    public:
     window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bitmap>);
-
+		~window();
 		void flush(void);
-
 
 		inline gfx::bitmap &bmp(void) {
 			return *m_bitmap;

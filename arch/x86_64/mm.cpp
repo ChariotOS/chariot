@@ -9,6 +9,12 @@
 
 #define round_down(x, y) ((x) & ~((y)-1))
 
+
+static inline void flush_tlb_single(u64 addr) {
+  __asm__ volatile("invlpg (%0)" ::"r"(addr) : "memory");
+}
+
+
 extern u8 *kheap_start;
 extern u64 kheap_size;
 
@@ -104,13 +110,15 @@ int x86::pagetable::get_mapping(off_t va, struct mm::pte &r) {
 }
 int x86::pagetable::del_mapping(off_t va) {
   *paging::find_mapping(pml4, va, paging::pgsize::page) = 0;
+
+  flush_tlb_single(va);
   return 0;
 }
 
 
 
 void arch::mem_init(unsigned long mbd) {
-#if 0
+#if 1
 
   multiboot_info_ptr = (multiboot_info_t *)mbd;
 

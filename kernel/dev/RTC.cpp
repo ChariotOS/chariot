@@ -14,7 +14,7 @@ inline bool is_leap_year(unsigned year) {
 
 static unsigned days_in_months_since_start_of_year(unsigned month,
 						   unsigned year) {
-  assert(month <= 11);
+  // assert(month <= 11);
   unsigned days = 0;
   switch (month) {
     case 11:

@@ -172,7 +172,7 @@ void smp::lapic_init(void) {
 	// This is so we can use the PIT for sleep related activities at IRQ 32
 	smp::lapic_write(LAPIC_TDCR, LAPIC_X1);
 	smp::lapic_write(LAPIC_TIMER, LAPIC_PERIODIC | (50));
-	set_tickrate(1000); // tick every ms
+	set_tickrate(100); // tick every ms
 
 	// Disable logical interrupt lines.
 	lapic_write(LAPIC_LINT0, LAPIC_MASKED);

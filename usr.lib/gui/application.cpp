@@ -117,9 +117,19 @@ void gui::application::drain_messages(void) {
 
 void gui::application::dispatch_messages(void) {
   for (auto *msg : m_pending_messages) {
-    printf("unhandled message %d (%p)\n", msg->id, msg);
+		if (msg->type == LUMEN_MSG_INPUT) {
+			auto *inp = (struct lumen::input_msg*)(msg + 1);
+
+			printf("[window %d] abs: (%d, %d) delta: (%d, %d)\n", inp->window_id, inp->mouse.xpos, inp->mouse.ypos, inp->mouse.dx, inp->mouse.dy);
+
+			// ck::hexdump(inp, sizeof(*inp));
+		} else {
+    	printf("unhandled message %d (%p)\n", msg->id, msg);
+		}
+
     delete msg;
   }
+	m_pending_messages.clear();
 }
 
 

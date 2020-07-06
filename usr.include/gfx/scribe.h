@@ -2,7 +2,11 @@
 
 #include <gfx/bitmap.h>
 
+
 namespace gfx {
+
+  // fwd decl
+  class font;
 
   /*
    * A scibe draws on bitmaps :^)
@@ -38,10 +42,12 @@ namespace gfx {
       return states.last();
     }
 
-		void draw_generic_bezier(ck::vec<gfx::point> &points, uint32_t color, float stroke = 1);
+    void draw_generic_bezier(ck::vec<gfx::point> &points, uint32_t color,
+                             float stroke = 1);
 
     void draw_quadratic_bezier(const gfx::point &start, const gfx::point &p1,
-                               const gfx::point &end, uint32_t color, float stroke = 1);
+                               const gfx::point &end, uint32_t color,
+                               float stroke = 1);
 
     // blend a pixel with a 0-1 alpha
     void blend_pixel(int x, int y, uint32_t color, float alpha);
@@ -54,6 +60,41 @@ namespace gfx {
       if (s.clip.contains(x, y)) {
         set_pixel(x, y, color);
       }
+    }
+
+
+    // allows you to continue drawing text from the last position
+    struct text_thunk {
+      int x0, y0, width;
+
+      gfx::point pos;
+
+      inline text_thunk(int x, int y, int width) {
+        x0 = x;
+        y0 = y;
+        this->width = width;
+        pos.set_x(x);
+        pos.set_y(y);
+      }
+    };
+
+    // draw text, wrapping within
+    //
+    void draw_text(struct text_thunk &st, gfx::font &fnt, const char *str,
+                   uint32_t color, int flags = 0);
+
+		// with a printf thing
+    void printf(struct text_thunk &st, gfx::font &fnt, uint32_t color,
+                    int flags, const char *fmt, ...);
+
+    void draw_text(struct text_thunk &st, gfx::font &fnt, char c,
+                   uint32_t color, int flags = 0);
+
+
+    inline void draw_text(const char *str, gfx::font &fnt, int width,
+                          gfx::point &pos, uint32_t color, int flags = 0) {
+      auto thnk = text_thunk(pos.x(), pos.y(), width);
+      draw_text(thnk, fnt, str, color, flags);
     }
 
     // clear the region (clipped) with a color
@@ -79,7 +120,8 @@ namespace gfx {
                                     uint32_t color, float stroke = 1) {
       draw_line_antialias(p1.x(), p1.y(), p2.x(), p2.y(), color, stroke);
     }
-    void draw_line_antialias(int x0, int y0, int x1, int y1, uint32_t color, float stroke = 1);
+    void draw_line_antialias(int x0, int y0, int x1, int y1, uint32_t color,
+                             float stroke = 1);
     inline void draw_vline(int x0, int y0, int h, uint32_t color) {
       draw_line(x0, y0, x0, y0 + h, color);
     }
@@ -91,6 +133,9 @@ namespace gfx {
     // just draw a bitmap to a position (no scaling)
     void blit(const gfx::point &at, gfx::bitmap &bmp, const gfx::rect &src);
 
+
+    // draw a "theme frame" that fits with the chariot design style
+    void draw_frame(const gfx::rect &r, uint32_t bg);
 
     // draw a rectangle border
     void draw_rect(const gfx::rect &r, uint32_t color);

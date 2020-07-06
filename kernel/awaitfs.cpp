@@ -58,21 +58,21 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, unsigned long 
 					return index;
 				}
 			}
+			asm("pause");
 		}
 
 		// do we timeout?
-		if (timeout_time > 0) {
+		if ((long long)timeout_time > 0) {
 			int now = time::now_ms();
 			int timeout = timeout_time;
 			if (now >= timeout) {
-				// printk("loops: %d\n", loops);
 				return -ETIMEDOUT;
 			}
 		}
 
 		loops++;
 		arch::halt();
-		// sched::yield();
+		//sched::yield();
 	}
 
   return -ETIMEDOUT;
