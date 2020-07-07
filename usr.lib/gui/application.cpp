@@ -120,7 +120,7 @@ void gui::application::dispatch_messages(void) {
 		if (msg->type == LUMEN_MSG_INPUT) {
 			auto *inp = (struct lumen::input_msg*)(msg + 1);
 
-			printf("[window %d] abs: (%d, %d) delta: (%d, %d)\n", inp->window_id, inp->mouse.xpos, inp->mouse.ypos, inp->mouse.dx, inp->mouse.dy);
+			// printf("[window %d] abs: (%d, %d) delta: (%d, %d)\n", inp->window_id, inp->mouse.xpos, inp->mouse.ypos, inp->mouse.dx, inp->mouse.dy);
 
 			// ck::hexdump(inp, sizeof(*inp));
 		} else {

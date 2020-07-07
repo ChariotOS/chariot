@@ -53,16 +53,50 @@ void lumen::context::handle_keyboard_input(keyboard_packet_t &pkt) {
 }
 
 void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
+  auto old_pos = screen.mouse_pos;
   invalidate(screen.mouse_rect());
   screen.handle_mouse_input(pkt);
   invalidate(screen.mouse_rect());
 
-  calculate_hover();
+  if (!dragging) calculate_hover();
+
+  if (dragging && !(pkt.buttons & MOUSE_LEFT_CLICK)) {
+    dragging = false;
+    // TODO: pull from window's state
+  }
+
+  if (focused_window != hovered_window) {
+    if (pkt.buttons & (MOUSE_LEFT_CLICK | MOUSE_RIGHT_CLICK)) {
+      select_window(hovered_window);
+    }
+  }
 
   if (hovered_window) {
-    auto pos = gfx::point(screen.mouse_pos.x() - hovered_window->rect.x,
-                          screen.mouse_pos.y() - hovered_window->rect.y);
-    hovered_window->handle_mouse_input(pos, pkt);
+    if (!dragging) {
+      auto pos = gfx::point(screen.mouse_pos.x() - hovered_window->rect.x,
+                            screen.mouse_pos.y() - hovered_window->rect.y);
+
+
+      int res = hovered_window->handle_mouse_input(pos, pkt);
+      if (res == WINDOW_REGION_DRAG) {
+        screen.cursor = mouse_cursor::grab;
+        if (pkt.buttons & MOUSE_LEFT_CLICK) {
+          dragging = true;
+        }
+      } else if (res == WINDOW_REGION_NORM) {
+				screen.cursor = mouse_cursor::pointer;
+			}
+    }
+
+    if (dragging) {
+      screen.cursor = mouse_cursor::grabbing;
+      invalidate(hovered_window->rect);
+      hovered_window->rect.x -= old_pos.x() - screen.mouse_pos.x();
+      hovered_window->rect.y -= old_pos.y() - screen.mouse_pos.y();
+      invalidate(hovered_window->rect);
+		}
+  } else {
+    screen.cursor = mouse_cursor::pointer;
   }
 }
 
@@ -88,8 +122,6 @@ void lumen::context::calculate_hover(void) {
     hovered_window = NULL;
   }
 
-
-
   if (old != hovered_window) {
     // notify both!
     if (old) {
@@ -103,6 +135,34 @@ void lumen::context::calculate_hover(void) {
   }
 }
 
+
+void lumen::context::select_window(lumen::window *win) {
+  // de-select all windows
+  if (win == NULL) {
+    // TODO: tell the window it lost focus
+  } else {
+    if (focused_window != win) {
+      int from_ind = 0;
+      for (from_ind = 0; from_ind < windows.size(); from_ind++) {
+        if (windows[from_ind] == win) {
+          break;
+        }
+      }
+      // the focused window is no longer focused
+      if (focused_window != NULL) {
+        focused_window->focused = false;
+        invalidate(focused_window->rect);
+      }
+      windows.remove(from_ind);
+      windows.push(win);
+      win->focused = true;
+    }
+  }
+
+  if (win != NULL) invalidate(win->rect);
+  if (focused_window != NULL) invalidate(focused_window->rect);
+  focused_window = win;
+}
 
 void lumen::context::invalidate(const gfx::rect &r) {
   auto real = r.intersect(screen.bounds());
@@ -221,6 +281,7 @@ void lumen::context::window_opened(lumen::window *w) {
   windows.push(w);
 
   // TODO: set the focused window to the new one
+  select_window(w);
 }
 
 
@@ -240,6 +301,13 @@ void lumen::context::window_closed(lumen::window *w) {
   if (hovered_window == w) {
     hovered_window = NULL;
     calculate_hover();
+  }
+
+
+  if (focused_window == w) {
+    focused_window = NULL;
+    printf("focused window lost!\n");
+    // calculate_hover();
   }
 }
 
@@ -261,6 +329,17 @@ bool lumen::context::occluded(lumen::window &win, const gfx::rect &a) {
 }
 
 
+// #define LUMEN_DEBUG
+
+#ifdef LUMEN_DEBUG
+ck::ref<gfx::font> get_debug_font(void) {
+  static ck::ref<gfx::font> font;
+  if (!font) font = gfx::font::open("scientifica-normal", 11);
+  return font;
+}
+#endif
+
+
 static long frame = 0;
 void lumen::context::compose(void) {
   frame++;
@@ -275,11 +354,9 @@ void lumen::context::compose(void) {
   gfx::scribe scribe(b);
 
 
-
-
-  // debug region, idk
-  invalidate(gfx::rect(0, 0, 500, 500));
-
+#ifdef LUMEN_DEBUG
+  invalidate(gfx::rect(0, 0, 400, 150));
+#endif
 
 
   bool draw_mouse = screen.mouse_moved;
@@ -291,18 +368,37 @@ void lumen::context::compose(void) {
     scribe.fill_rect(r, 0x6261a1);
   }
 
+
+#ifdef LUMEN_DEBUG
   // Debug info
-  auto fnt = gfx::font::get_default();
-  auto st = gfx::scribe::text_thunk(0, 0, 500);
+  auto fnt = get_debug_font();
+  auto st = gfx::scribe::text_thunk(0, 0, 300);
 
   scribe.printf(st, *fnt, 0xFFFFFF, 0, "mouse: (%d %d)\n", screen.mouse_pos.x(),
                 screen.mouse_pos.y());
   scribe.printf(st, *fnt, 0xFFFFFF, 0, "hover: %p '%s'\n", hovered_window,
                 hovered_window ? hovered_window->name.get() : "none");
-  scribe.printf(st, *fnt, 0xFFFFFF, 0, "window stack:\n");
+
+
+  scribe.printf(st, *fnt, 0xFFFFFF, 0, "focus: %p '%s'\n", focused_window,
+                focused_window ? focused_window->name.get() : "none");
+
+  scribe.printf(st, *fnt, 0xFFFFFF, 0, "Window Stack:\n");
   for (auto *win : windows) {
-    scribe.printf(st, *fnt, 0xFFFFFF, 0, "   %p '%s'\n", win, win->name.get());
+    scribe.printf(st, *fnt, 0xFFFFFF, 0, "%p '%s'\n", win, win->name.get());
   }
+
+
+  st.pos.set_x(st.x0 = 150);
+  st.pos.set_y(st.y0 = fnt->line_height() * 3);
+
+  scribe.printf(st, *fnt, 0xFFFFFF, 0, "Dirty Regions:\n");
+  for (auto &r : dirty_regions) {
+    scribe.printf(st, *fnt, 0xFFFFFF, 0,
+                  "x:%-4d y:%-4d w: %-4d h: %-4d  pixels: %d\n", r.x, r.y, r.w,
+                  r.h, r.w * r.h);
+  }
+#endif
 
 
 

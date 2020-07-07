@@ -4,10 +4,16 @@
 #define TITLE_HEIGHT 18
 
 
+
+
+static gfx::rect close_button() {
+	return gfx::rect(4, 4, 9, 9);
+}
+
 static uint32_t theme_color() {
   // return 0xFFFFFF;
-  // return 0xFFC9C9;  // poolside.fm
-  return 0xACCED8;  // off-blue
+  return 0xFFC9C9;  // poolside.fm
+  // return 0xACCED8;  // off-blue
   // return 0x858585;  // gray
 }
 
@@ -39,32 +45,40 @@ void lumen::window::translate_invalidation(gfx::rect &r) {
 }
 
 
-void lumen::window::handle_mouse_input(gfx::point &r, struct mouse_packet &p) {
-
-	int x = 0;
-	int y = 0;
+int lumen::window::handle_mouse_input(gfx::point &r, struct mouse_packet &p) {
+  int x = 0;
+  int y = 0;
   if (mode == window_mode::normal) {
     x = r.x() - 1;
     y = r.y() - TITLE_HEIGHT;
   }
 
-	if (x >= 0 && x < bitmap->width() && y >= 0 && y < bitmap->height()) {
+  if (x >= 0 && x < bitmap->width() && y >= 0 && y < bitmap->height()) {
+    struct lumen::input_msg m;
 
-		struct lumen::input_msg m;
+    m.window_id = this->id;
+    m.type = LUMEN_INPUT_MOUSE;
+    m.mouse.xpos = x;
+    m.mouse.ypos = y;
+    m.mouse.dx = p.dx;
+    m.mouse.dy = p.dy;
+    m.mouse.buttons = p.buttons;
 
-		m.window_id = this->id;
-		m.type = LUMEN_INPUT_MOUSE;
-		m.mouse.xpos = x;
-		m.mouse.ypos = y;
-		m.mouse.dx = p.dx;
-		m.mouse.dy = p.dy;
-		m.mouse.buttons = p.buttons;
+    guest.send_msg(LUMEN_MSG_INPUT, m);
+    return WINDOW_REGION_NORM;
+  }
+  if (y < 0) {
+		if (close_button().contains(r.x(), r.y())) {
+			// The region describes the close region
+			return WINDOW_REGION_CLOSE;
+    } else {
+			// this region is draggable
+			return WINDOW_REGION_DRAG;
+		}
+  }
 
-		guest.send_msg(LUMEN_MSG_INPUT, m);
-	}
 
-
-
+  return 0;
 }
 
 gfx::rect lumen::window::bounds() { return rect; }
@@ -85,25 +99,28 @@ void lumen::window::draw(gfx::scribe &scribe) {
 
     auto bg = theme_color();
 
+    if (!focused) {
+      bg = 0xFF'FFFFFF;
+    }
+
 
     scribe.draw_frame(gfx::rect(0, 0, rect.w, TITLE_HEIGHT), bg);
 
-    /*
-if (hovered) {
-}
-    */
+
+    // if (hovered || focused) {
 
 
-    auto st = gfx::scribe::text_thunk(4, 0, rect.w);
+    scribe.draw_rect(close_button(), 0x000000);
+
+    auto st = gfx::scribe::text_thunk(18, 0, rect.w);
     scribe.draw_text(st, *gfx::font::get_default(), name.get(), 0x000000, 0);
-
 
     for (int i = 0; i < 5; i++) {
       int x = st.pos.x() + 4;
       int y = 4 + (i * 2);
-      scribe.draw_line(x, y, rect.w - 10, y, 0);
+      scribe.draw_line(x, y, rect.w - 4, y, 0);
     }
-
+    // }
 
     scribe.draw_line(0, TITLE_HEIGHT, 0, rect.h - 2, 0x000000);
     scribe.draw_line(rect.w, TITLE_HEIGHT, rect.w, rect.h - 2, 0x000000);

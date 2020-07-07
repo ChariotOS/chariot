@@ -64,6 +64,8 @@ lumen::screen::screen(int w, int h) {
   set_resolution(w, h);
   // these are leaked, but thats okay...
   cursors[mouse_cursor::pointer] = gfx::load_png("/usr/res/icons/pointer.png");
+  cursors[mouse_cursor::grab] = gfx::load_png("/usr/res/icons/grab.png");
+  cursors[mouse_cursor::grabbing] = gfx::load_png("/usr/res/icons/grabbing.png");
 }
 
 

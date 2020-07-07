@@ -26,7 +26,8 @@ void test(gfx::scribe &s, struct gfx::scribe::text_thunk &t, const char *font,
 
 
 int main(int argc, char **argv) {
-  auto fnt = gfx::font::get_default();
+  // auto fnt = gfx::font::get_default();
+	auto fnt = gfx::font::open("chicago-normal", 12);
 
   while (1) {
     // connect to the window server
@@ -37,17 +38,15 @@ int main(int argc, char **argv) {
     ck::vec<ck::ref<gui::window>> windows;
 
 
-#define WIDTH 400
-#define LINE_HEIGHT 12
 
-
-    int height = fnt->line_height() * 20;
+		int width = 150;
+    int height = 50;
 
 
     char buf[50];
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 60; i++) {
       sprintf(buf, "Window %d", i);
-      auto win = app.new_window(buf, WIDTH, height);
+      auto win = app.new_window(buf, width, height);
       printf("%p\n", win.get());
       windows.push(win);
 
@@ -56,8 +55,8 @@ int main(int argc, char **argv) {
 
       gfx::point p(0, 0);
 
-      auto st = gfx::scribe::text_thunk(0, 0, WIDTH);
-      s.printf(st, *fnt, 0x000000, 0, "hello, world");
+      auto st = gfx::scribe::text_thunk(0, 0, width);
+      s.printf(st, *fnt, 0x000000, 0, "Hello, world");
       win->flush();
     }
 

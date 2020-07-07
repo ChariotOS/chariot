@@ -22,11 +22,12 @@ namespace lumen {
 
   enum mouse_cursor : char {
     pointer = 0,
+		grab = 1,
+		grabbing = 2,
 
     mouse_count
   };
 
-#define MOUSE_POINTER 0
 
   // represents a framebuffer for a screen. This also renders the mouse cursor
   // with double buffering
@@ -119,6 +120,7 @@ namespace lumen {
     gfx::rect rect;
 
 		bool hovered = false;
+		bool focused = false;
 
 		window_mode mode;
 
@@ -133,7 +135,13 @@ namespace lumen {
 		// users invalidate the bounds of their bitmap, not the window. So we gotta translate
 		// that invalidation to the actual bounds of the bitmap on the screen.
 		void translate_invalidation(gfx::rect &r);
-		void handle_mouse_input(gfx::point &r, struct mouse_packet &p);
+
+
+#define WINDOW_REGION_NORM 1 // use the window's cursor style
+#define WINDOW_REGION_DRAG 2
+#define WINDOW_REGION_CLOSE 3
+		// return one of the above ^
+		int handle_mouse_input(gfx::point &r, struct mouse_packet &p);
 
 		// used to tell the window compositor where in the window we are hovering.
 		hover_result hover();
@@ -222,10 +230,15 @@ namespace lumen {
     ck::vec<lumen::window *> windows;
 
 		lumen::window *hovered_window = nullptr;
+		lumen::window *focused_window = nullptr;
+		bool dragging = false;
 
     ck::vec<gfx::rect> dirty_regions;
 
     void invalidate(const gfx::rect &r);
+
+		// select a window, moving it around the view stack and all that fun stuff
+		void select_window(lumen::window *win);
 
 		// return if a rect in a window is occluded
 		bool occluded(lumen::window &win, const gfx::rect &r);
