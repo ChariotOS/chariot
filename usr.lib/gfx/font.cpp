@@ -17,7 +17,7 @@ namespace gfx {
     auto count = hdr->charsz / sizeof(char_map_ent);
 
     // parse!
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < (int)count; i++) {
       auto *cp = &hdr->cmap[i];
       cmap[cp->codepoint] = cp;
     }

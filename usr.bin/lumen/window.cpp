@@ -53,7 +53,7 @@ int lumen::window::handle_mouse_input(gfx::point &r, struct mouse_packet &p) {
     y = r.y() - TITLE_HEIGHT;
   }
 
-  if (x >= 0 && x < bitmap->width() && y >= 0 && y < bitmap->height()) {
+  if (x >= 0 && x < (int)bitmap->width() && y >= 0 && y < (int)bitmap->height()) {
     struct lumen::input_msg m;
 
     m.window_id = this->id;

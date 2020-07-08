@@ -120,9 +120,14 @@ void gui::application::dispatch_messages(void) {
 		if (msg->type == LUMEN_MSG_INPUT) {
 			auto *inp = (struct lumen::input_msg*)(msg + 1);
 
-			// printf("[window %d] abs: (%d, %d) delta: (%d, %d)\n", inp->window_id, inp->mouse.xpos, inp->mouse.ypos, inp->mouse.dx, inp->mouse.dy);
-
-			// ck::hexdump(inp, sizeof(*inp));
+			int wid = inp->window_id;
+			if (m_windows.contains(wid)) {
+				auto *win = m_windows.get(wid).get();
+				assert(win != NULL);
+				win->handle_input(*inp);
+			} else {
+				printf("Got n input message from the window server for a window I don't control! (wid=%d)\n", wid);
+			}
 		} else {
     	printf("unhandled message %d (%p)\n", msg->id, msg);
 		}
@@ -136,7 +141,7 @@ void gui::application::dispatch_messages(void) {
 void gui::application::start(void) { m_eventloop.start(); }
 
 
-ck::ref<gui::window> gui::application::new_window(ck::string name, int w,
+gui::window *gui::application::new_window(ck::string name, int w,
                                                   int h) {
   struct lumen::create_window_msg msg;
   msg.width = w;
@@ -148,7 +153,9 @@ ck::ref<gui::window> gui::application::new_window(ck::string name, int w,
 
   if (send_msg_sync(LUMEN_MSG_CREATE_WINDOW, msg, &res)) {
     if (res.window_id >= 0) {
-      return gui::window::create(res.window_id, name, gfx::rect(0, 0, w, h), gfx::shared_bitmap::get(res.bitmap_name, w, h));
+			auto win = ck::make_unique<gui::window>(res.window_id, name, gfx::rect(0, 0, w, h), gfx::shared_bitmap::get(res.bitmap_name, w, h));
+			m_windows.set(res.window_id, move(win));
+			return m_windows.get(res.window_id).get();
     }
   }
 

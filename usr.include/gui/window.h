@@ -4,7 +4,7 @@
 #include <ck/string.h>
 #include <gfx/rect.h>
 #include <gfx/bitmap.h>
-
+#include <lumen/msg.h>
 namespace gui {
 
   // fwd decl
@@ -21,6 +21,8 @@ namespace gui {
 		inline gfx::bitmap &bmp(void) {
 			return *m_bitmap;
 		}
+
+		void handle_input(struct lumen::input_msg &);
 
    private:
     long m_id;

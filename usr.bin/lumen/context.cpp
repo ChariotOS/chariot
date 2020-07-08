@@ -85,6 +85,8 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
         }
       } else if (res == WINDOW_REGION_NORM) {
 				screen.cursor = mouse_cursor::pointer;
+			} else if (res == WINDOW_REGION_CLOSE) {
+				screen.cursor = mouse_cursor::pointer;
 			}
     }
 

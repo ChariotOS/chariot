@@ -33,21 +33,16 @@ int main(int argc, char **argv) {
     // connect to the window server
     gui::application app;
 
+    ck::vec<gui::window *> windows;
 
-
-    ck::vec<ck::ref<gui::window>> windows;
-
-
-
-		int width = 150;
-    int height = 50;
+		int width = 350;
+    int height = 280;
 
 
     char buf[50];
-    for (int i = 0; i < 60; i++) {
-      sprintf(buf, "Window %d", i);
+    for (int i = 0; i < 1; i++) {
+      sprintf(buf, "This window says, 'Hello, world!'", i);
       auto win = app.new_window(buf, width, height);
-      printf("%p\n", win.get());
       windows.push(win);
 
       gfx::scribe s(win->bmp());

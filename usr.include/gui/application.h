@@ -53,7 +53,7 @@ namespace gui {
     }
 
 
-    ck::ref<gui::window> new_window(ck::string initial_title, int w, int h);
+		gui::window *new_window(ck::string initial_title, int w, int h);
 
 
     void drain_messages(void);
@@ -67,6 +67,8 @@ namespace gui {
     static gui::application &get(void);
 
    private:
+		// all the windows in the application
+		ck::map<int, ck::unique_ptr<gui::window>> m_windows;
     ck::vec<lumen::msg *> m_pending_messages;
     ck::eventloop m_eventloop;
   };
