@@ -7,15 +7,15 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include <gui/application.h>
+#include <ui/application.h>
 
-static gui::application *the_app = NULL;
+static ui::application *the_app = NULL;
 
-gui::application &gui::application::get(void) { return *the_app; }
+ui::application &ui::application::get(void) { return *the_app; }
 
-gui::application::application(void) {
+ui::application::application(void) {
   if (the_app != NULL) {
-    fprintf(stderr, "Cannot have multiple gui::applications\n");
+    fprintf(stderr, "Cannot have multiple ui::applications\n");
     exit(EXIT_FAILURE);
   }
 
@@ -37,7 +37,7 @@ gui::application::application(void) {
   }
 }
 
-gui::application::~application(void) {
+ui::application::~application(void) {
   the_app = NULL;
   // TODO: send the shutdown message
 }
@@ -49,7 +49,7 @@ static unsigned long nextmsgid(void) {
   return sid++;
 }
 
-long gui::application::send_raw(int type, void *payload, size_t payloadsize) {
+long ui::application::send_raw(int type, void *payload, size_t payloadsize) {
   size_t msgsize = payloadsize + sizeof(lumen::msg);
   auto msg = (lumen::msg *)malloc(msgsize);
 
@@ -67,7 +67,7 @@ long gui::application::send_raw(int type, void *payload, size_t payloadsize) {
 }
 
 
-lumen::msg *gui::application::send_raw_sync(int type, void *payload,
+lumen::msg *ui::application::send_raw_sync(int type, void *payload,
                                             size_t payloadsize) {
   size_t msgsize = payloadsize + sizeof(lumen::msg);
   auto msg = (lumen::msg *)malloc(msgsize);
@@ -105,7 +105,7 @@ lumen::msg *gui::application::send_raw_sync(int type, void *payload,
 
 
 
-void gui::application::drain_messages(void) {
+void ui::application::drain_messages(void) {
   bool failed = false;
   auto msgs = lumen::drain_messages(sock, failed);
 
@@ -115,7 +115,7 @@ void gui::application::drain_messages(void) {
 }
 
 
-void gui::application::dispatch_messages(void) {
+void ui::application::dispatch_messages(void) {
   for (auto *msg : m_pending_messages) {
 		if (msg->type == LUMEN_MSG_INPUT) {
 			auto *inp = (struct lumen::input_msg*)(msg + 1);
@@ -138,10 +138,10 @@ void gui::application::dispatch_messages(void) {
 }
 
 
-void gui::application::start(void) { m_eventloop.start(); }
+void ui::application::start(void) { m_eventloop.start(); }
 
 
-gui::window *gui::application::new_window(ck::string name, int w,
+ui::window *ui::application::new_window(ck::string name, int w,
                                                   int h) {
   struct lumen::create_window_msg msg;
   msg.width = w;
@@ -153,7 +153,7 @@ gui::window *gui::application::new_window(ck::string name, int w,
 
   if (send_msg_sync(LUMEN_MSG_CREATE_WINDOW, msg, &res)) {
     if (res.window_id >= 0) {
-			auto win = ck::make_unique<gui::window>(res.window_id, name, gfx::rect(0, 0, w, h), gfx::shared_bitmap::get(res.bitmap_name, w, h));
+			auto win = ck::make_unique<ui::window>(res.window_id, name, gfx::rect(0, 0, w, h), gfx::shared_bitmap::get(res.bitmap_name, w, h));
 			m_windows.set(res.window_id, move(win));
 			return m_windows.get(res.window_id).get();
     }

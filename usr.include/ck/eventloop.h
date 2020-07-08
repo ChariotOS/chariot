@@ -4,6 +4,7 @@
 #include <ck/vec.h>
 #include <ck/ptr.h>
 #include <ck/fsnotifier.h>
+#include <ck/func.h>
 
 namespace ck {
 	class eventloop {
@@ -47,6 +48,8 @@ namespace ck {
 			// cause the eventlopp to exit
 			static void exit(void);
 
+			static void defer(ck::func<void(void)> cb);
+
 		private:
 			bool m_finished = false;
 
@@ -60,5 +63,6 @@ namespace ck {
 			};
 
 			ck::vec<pending_event> m_pending;
+
 	};
 };

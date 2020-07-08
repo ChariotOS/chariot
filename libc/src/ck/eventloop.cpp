@@ -11,6 +11,8 @@
 #include "ck/event.h"
 
 
+
+static ck::vec<ck::func<void(void)>> s_defered;
 static ck::HashTable<ck::fsnotifier *> s_notifiers;
 static ck::HashTable<ck::timer *> s_timers;
 
@@ -18,23 +20,27 @@ static ck::HashTable<ck::timer *> s_timers;
 size_t current_ms() { return syscall(SYS_gettime_microsecond) / 1000; }
 
 static ck::timer *next_timer(void) {
-	// TODO: take a lock
-	ck::timer *n = NULL;
+  // TODO: take a lock
+  ck::timer *n = NULL;
 
-	for (auto *t : s_timers) {
-		if (n == NULL) {
-			n = t;
-		} else {
-			if (t->next_fire() < n->next_fire()) {
-				n = t;
-			}
-		}
-	}
+  for (auto *t : s_timers) {
+    if (n == NULL) {
+      n = t;
+    } else {
+      if (t->next_fire() < n->next_fire()) {
+        n = t;
+      }
+    }
+  }
 
   return n;
 }
 
 ck::eventloop *active_eventloop = NULL;
+
+void ck::eventloop::defer(ck::func<void(void)> cb) {
+  s_defered.push(move(cb));
+}
 
 ck::eventloop::eventloop(void) {}
 
@@ -67,6 +73,12 @@ int awaitfs(struct await_target *fds, int nfds, int flags,
 
 
 void ck::eventloop::pump(void) {
+  for (auto &cb : s_defered) {
+    cb();
+  }
+  s_defered.clear();
+
+
   ck::vec<struct await_target> targs;
   auto add_fd = [&](int fd, int mask, ck::object *obj) {
     struct await_target targ = {0};
@@ -84,12 +96,12 @@ void ck::eventloop::pump(void) {
     add_fd(fd, event, notifier);
   }
 
-	auto timeout = -1;
-	auto nt = next_timer();
+  auto timeout = -1;
+  auto nt = next_timer();
 
-	if (nt != NULL) {
-		timeout = nt->next_fire();
-	}
+  if (nt != NULL) {
+    timeout = nt->next_fire();
+  }
 
   int index = awaitfs(targs.data(), targs.size(), 0, timeout);
   if (index >= 0) {
@@ -107,9 +119,9 @@ void ck::eventloop::pump(void) {
     }
 
   } else {
-		if (nt != NULL) {
-			nt->trigger();
-		}
+    if (nt != NULL) {
+      nt->trigger();
+    }
   }
 }
 
@@ -166,7 +178,7 @@ void ck::timer::start(uint64_t ms, bool repeat) {
   m_next_fire = current_ms() + m_interval;
   active = true;
   this->repeat = repeat;
-	// TODO: take a lock
+  // TODO: take a lock
   s_timers.set(this);
 }
 
@@ -178,7 +190,7 @@ void ck::timer::trigger(void) {
       m_next_fire = current_ms() + m_interval;
     }
   }
-	// do this part last cause it might take a long time
+  // do this part last cause it might take a long time
   on_tick();
 }
 
@@ -187,11 +199,11 @@ ck::timer::~timer(void) {
 }
 
 void ck::timer::stop(void) {
-	if (active) {
-		// TODO: take a lock
-		s_timers.remove(this);
-		active = false;
-	}
+  if (active) {
+    // TODO: take a lock
+    s_timers.remove(this);
+    active = false;
+  }
 }
 
 

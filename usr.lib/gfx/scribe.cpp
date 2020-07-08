@@ -321,16 +321,16 @@ void gfx::scribe::draw_quadratic_bezier(const gfx::point &start,
 void gfx::scribe::draw_line(int x0, int y0, int x1, int y1, uint32_t color) {
   // horrizontal optimization
   if (x0 == x1) {
-    auto end = min(height(), y1);
-    for (int y = max(0, y0); y <= end; y++) {
+    auto end = min(height(), max(y0, y1));
+    for (int y = max(0, min(y0, y1)); y <= end; y++) {
       draw_pixel(x0, y, color);
     }
     return;
   }
   // vertical line optimization
   if (y0 == y1) {
-    auto end = min(width(), x1);
-    for (int x = max(0, x0); x <= end; x++) {
+    auto end = min(width(), max(x0, x1));
+    for (int x = max(0, min(x0, x1)); x <= end; x++) {
       draw_pixel(x, y0, color);
     }
     return;

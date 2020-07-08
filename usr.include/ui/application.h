@@ -4,11 +4,11 @@
 #include <ck/eventloop.h>
 #include <ck/object.h>
 #include <ck/socket.h>
-#include <gui/window.h>
+#include <ui/window.h>
 #include <lumen/msg.h>
 #include "stdlib.h"
 
-namespace gui {
+namespace ui {
 
   class application : public ck::object {
     // this is the connection to the windowserver
@@ -53,23 +53,23 @@ namespace gui {
     }
 
 
-		gui::window *new_window(ck::string initial_title, int w, int h);
+		ui::window *new_window(ck::string initial_title, int w, int h);
 
 
     void drain_messages(void);
     void dispatch_messages(void);
 
-    CK_OBJECT(gui::application);
+    CK_OBJECT(ui::application);
 
     void start(void);
 
-#define THE_APP gui::application::get()
-    static gui::application &get(void);
+#define THE_APP ui::application::get()
+    static ui::application &get(void);
 
    private:
 		// all the windows in the application
-		ck::map<int, ck::unique_ptr<gui::window>> m_windows;
+		ck::map<int, ck::unique_ptr<ui::window>> m_windows;
     ck::vec<lumen::msg *> m_pending_messages;
     ck::eventloop m_eventloop;
   };
-};  // namespace gui
+};  // namespace ui

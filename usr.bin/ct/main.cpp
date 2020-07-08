@@ -5,54 +5,90 @@
 #include <gfx/font.h>
 #include <gfx/rect.h>
 #include <gfx/scribe.h>
-#include <gui/application.h>
-#include <gui/window.h>
 #include <lumen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <ui/application.h>
+#include <ui/view.h>
+#include <ui/window.h>
 #include <unistd.h>
 
 
+class painter : public ui::view {
+  int ox = 0;
+  int oy = 0;
+  bool active = false;
 
-void test(gfx::scribe &s, struct gfx::scribe::text_thunk &t, const char *font,
-          int lh) {
-  auto fnt = gfx::font::open(font, lh);
-  s.draw_text(t, *fnt, "The quick brown fox jumps over the lazy brown dog\n",
-              0);
-}
+  int color = 0;
+
+ public:
+  painter(void) { color = rand(); }
+
+
+  virtual void repaint(void) override {
+    auto s = get_scribe();
+    s.clear(color);
+    invalidate();
+  }
+
+  virtual bool mouse_event(ui::mouse_event &ev) override {
+    active = ev.left;
+
+    if (ev.right) {
+      auto s = get_scribe();
+      s.clear(color);
+      invalidate();
+    }
+
+
+    if (ev.left) {
+      if (!active) {
+        ox = ev.x;
+        oy = ev.y;
+      }
+      auto s = get_scribe();
+
+      s.draw_line_antialias(ox, oy, ev.x, ev.y, 0);
+      invalidate();
+      active = true;
+    } else {
+      active = false;
+    }
+
+    ox = ev.x;
+    oy = ev.y;
+
+    return true;
+  }
+};
+
 
 
 int main(int argc, char **argv) {
   // auto fnt = gfx::font::get_default();
-	auto fnt = gfx::font::open("chicago-normal", 12);
+  auto fnt = gfx::font::open("chicago-normal", 12);
+
+  printf("%zu\n", sizeof(painter));
 
   while (1) {
     // connect to the window server
-    gui::application app;
+    ui::application app;
 
-    ck::vec<gui::window *> windows;
+    ck::vec<ui::window *> windows;
 
-		int width = 350;
-    int height = 280;
+    int width = 100;
+    int height = 100;
 
 
     char buf[50];
-    for (int i = 0; i < 1; i++) {
-      sprintf(buf, "This window says, 'Hello, world!'", i);
+    for (int i = 0; i < 5; i++) {
+      sprintf(buf, "Title", i);
       auto win = app.new_window(buf, width, height);
       windows.push(win);
-
-      gfx::scribe s(win->bmp());
-      s.clear(0xFFFFFF);
-
-      gfx::point p(0, 0);
-
-      auto st = gfx::scribe::text_thunk(0, 0, width);
-      s.printf(st, *fnt, 0x000000, 0, "Hello, world");
-      win->flush();
+      win->set_view<painter>();
     }
 
     auto input = ck::file::unowned(0);

@@ -22,7 +22,7 @@ namespace ck {
 
     option(option&& other) : m_has_value(other.m_has_value) {
       if (other.has_value()) {
-        new (&m_storage) T(other.release_value());
+        new (&m_storage) T(other.release());
         other.m_has_value = false;
       }
     }
@@ -38,7 +38,7 @@ namespace ck {
         clear();
         m_has_value = other.m_has_value;
         if (m_has_value) {
-          new (&m_storage) T(other.value());
+          new (&m_storage) T(other.unwrap());
         }
       }
       return *this;
@@ -48,7 +48,7 @@ namespace ck {
       if (this != &other) {
         clear();
         m_has_value = other.m_has_value;
-        if (other.has_value()) new (&m_storage) T(other.release_value());
+        if (other.has_value()) new (&m_storage) T(other.release());
       }
       return *this;
     }
