@@ -17,6 +17,8 @@ static pid_t do_fork(struct process &p) {
 
   auto np = sched::proc::spawn_process(&p, SPAWN_FORK);
 
+	p.children.push(np);
+
   auto old_td = curthd;
   auto new_td = new thread(np->pid, *np);
 
