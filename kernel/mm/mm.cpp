@@ -183,7 +183,7 @@ int mm::space::pagefault(off_t va, int err) {
 
         if (old_page->users > 1 || r->fd) {
           auto np = mm::page::alloc();
-          // printk(KERN_WARN "COW [page %d in '%s']\n", ind, r->name.get());
+          // printk(KERN_WARN "COW [page %d in '%s'] %p\n", ind, r->name.get(), va);
           np->users = 1;
           old_page->users--;
           memcpy(p2v(np->pa), p2v(old_page->pa), PGSIZE);
@@ -239,6 +239,12 @@ mm::space *mm::space::fork(void) {
     copy->off = r->off;
     copy->prot = r->prot;
     copy->fd = r->fd;
+		copy->flags = r->flags;
+
+		if (r->obj) {
+			copy->obj = r->obj;
+			r->obj->acquire();
+		}
 
     for (auto &p : r->pages) {
       if (p) {
@@ -264,10 +270,6 @@ mm::space *mm::space::fork(void) {
       }
     }
 
-		if (r->obj) {
-			copy->obj = r->obj;
-			r->obj->acquire();
-		}
     n->regions.push(copy);
   }
 

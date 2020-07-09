@@ -21,7 +21,7 @@ void *mshare_acquire(const char *name, size_t size) {
 }
 
 
-unsigned long read_timestamp(void) {
+static unsigned long read_timestamp(void) {
   uint32_t lo, hi;
   asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
   return lo | ((uint64_t)(hi) << 32);

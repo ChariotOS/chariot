@@ -341,9 +341,17 @@ ck::ref<gfx::font> get_debug_font(void) {
 #endif
 
 
+static unsigned long tsc(void) {
+  uint32_t lo, hi;
+  asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
+  return lo | ((uint64_t)(hi) << 32);
+}
+
+
 static long frame = 0;
 void lumen::context::compose(void) {
   frame++;
+	auto start = tsc();
 
   // make a tmp bitmap
   gfx::bitmap b(screen.width(), screen.height(), screen.buffer());
@@ -355,11 +363,6 @@ void lumen::context::compose(void) {
   gfx::scribe scribe(b);
 
 
-#ifdef LUMEN_DEBUG
-  invalidate(gfx::rect(0, 0, 400, 150));
-#endif
-
-
   bool draw_mouse = screen.mouse_moved;
   // clear that information
   if (draw_mouse) screen.mouse_moved = false;
@@ -368,39 +371,6 @@ void lumen::context::compose(void) {
     if (r.intersects(screen.mouse_rect())) draw_mouse = true;
     scribe.fill_rect(r, 0x6261a1);
   }
-
-
-#ifdef LUMEN_DEBUG
-  // Debug info
-  auto fnt = get_debug_font();
-  auto st = gfx::scribe::text_thunk(0, 0, 300);
-
-  scribe.printf(st, *fnt, 0xFFFFFF, 0, "mouse: (%d %d)\n", screen.mouse_pos.x(),
-                screen.mouse_pos.y());
-  scribe.printf(st, *fnt, 0xFFFFFF, 0, "hover: %p '%s'\n", hovered_window,
-                hovered_window ? hovered_window->name.get() : "none");
-
-
-  scribe.printf(st, *fnt, 0xFFFFFF, 0, "focus: %p '%s'\n", focused_window,
-                focused_window ? focused_window->name.get() : "none");
-
-  scribe.printf(st, *fnt, 0xFFFFFF, 0, "Window Stack:\n");
-  for (auto *win : windows) {
-    scribe.printf(st, *fnt, 0xFFFFFF, 0, "%p '%s'\n", win, win->name.get());
-  }
-
-
-  st.pos.set_x(st.x0 = 150);
-  st.pos.set_y(st.y0 = fnt->line_height() * 3);
-
-  scribe.printf(st, *fnt, 0xFFFFFF, 0, "Dirty Regions:\n");
-  for (auto &r : dirty_regions) {
-    scribe.printf(st, *fnt, 0xFFFFFF, 0,
-                  "x:%-4d y:%-4d w: %-4d h: %-4d  pixels: %d\n", r.x, r.y, r.w,
-                  r.h, r.w * r.h);
-  }
-#endif
-
 
 
   auto compose_window = [&](lumen::window &window) -> bool {
@@ -436,6 +406,7 @@ void lumen::context::compose(void) {
 
 
 
+#if 1
   int sw = screen.width();
   // copy the changes we made to the other buffer
   for (auto &r : dirty_regions) {
@@ -449,10 +420,22 @@ void lumen::context::compose(void) {
       to_ptr += sw;
     }
   }
+#endif
+
+	if (0) {
+		gfx::bitmap b(screen.width(), screen.height(), screen.front_buffer);
+		gfx::scribe scribe(b);
+		uint32_t color = rand();
+		for (auto &r : dirty_regions) {
+			scribe.draw_rect(r, color);
+		}
+	}
 
   dirty_regions.clear();
 
   compose_timer->stop();
+
+	printf("took %zu\n", tsc() - start);
 }
 
 

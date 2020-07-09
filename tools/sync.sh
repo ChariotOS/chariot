@@ -16,7 +16,7 @@ sudo id > /dev/null || die "Couldn't get sudo"
 
 IMG=build/chariot.img
 mnt=build/mnt
-DISK_SIZE_MB=48
+DISK_SIZE_MB=64
 
 mkdir -p build
 
