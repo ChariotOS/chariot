@@ -320,9 +320,7 @@ static ssize_t fb_write(fs::file &fd, const char *buf, size_t sz) {
   ssize_t to_copy = min(space_left, sz);
   if (to_copy <= 0) return 0;
 
-  cpu::pushcli();
   memcpy((char *)p2v(vga_fba) + off, buf, to_copy);
-  cpu::popcli();
 
   // seek past
   fd.seek(sz, SEEK_CUR);

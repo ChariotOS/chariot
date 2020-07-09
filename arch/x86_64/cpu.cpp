@@ -117,7 +117,6 @@ static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {
 }
 
 void cpu::switch_vm(struct thread *thd) {
-  cpu::pushcli();
   auto c = current();
   auto tss = (u32 *)(((char *)c.local) + 1024);
 
@@ -139,8 +138,6 @@ void cpu::switch_vm(struct thread *thd) {
   }
 
   thd->proc.mm->switch_to();
-
-  cpu::popcli();
 }
 
 cpu_t &cpu::current() {

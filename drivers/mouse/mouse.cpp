@@ -122,7 +122,7 @@ static void mouse_handler(int i, reg_t *) {
 #endif
 
   uint8_t status = inb(MOUSE_STATUS);
-	cpu::pushcli();
+	arch::cli();
 
   while ((status & MOUSE_BBIT) && (status & MOUSE_F_BIT)) {
     bool finalize = false;
@@ -205,7 +205,7 @@ static void mouse_handler(int i, reg_t *) {
     }
     break;
   }
-	cpu::popcli();
+	arch::sti();
 
   irq::eoi(i);
 }

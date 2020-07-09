@@ -56,14 +56,12 @@ void arch::dispatch_signal(int sig) {
 
   // printk("old stack: %p\n", old_stack);
   if (setjmp(priv->jb)) {
-		cpu::pushcli();
     // printk("GOT BACK TO DISPATCH_SIGNAL %08x\n", thing);
     curthd->stack = old_stack;
     curthd->stack_size = old_stack_size;
 
 		cpu::switch_vm(curthd);
     phys::kfree(sigstk, SIGSTKSZ);
-		cpu::popcli();
     return;
   }
 
@@ -77,11 +75,11 @@ void arch::dispatch_signal(int sig) {
 	// printk("new sp: %p -> %p. Handler: %p\n", old_sp, new_sp, handler.sa_handler);
 
 
-	cpu::pushcli();
+	arch::cli();
   curthd->stack_size = SIGSTKSZ * PGSIZE;
   curthd->stack = (void*)((off_t)sigstk + curthd->stack_size);
 	cpu::switch_vm(curthd);
-	cpu::popcli();
+	arch::sti();
 
   jmp_to_userspace((uint64_t)handler.sa_handler, new_sp, sig, 0, 0);
 

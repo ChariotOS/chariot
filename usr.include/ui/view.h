@@ -12,7 +12,7 @@ namespace ui {
 
   // used for things like paddings or margins
   template <typename T>
-  struct all_sides {
+  struct edges {
     T left = 0, right = 0, top = 0, bottom = 0;
   };
 
@@ -53,8 +53,8 @@ namespace ui {
     // default handlers
     virtual bool mouse_event(ui::mouse_event &) { return false; };
 
-		// tell the view to repaint
-		virtual void repaint(void);
+    // tell the view to repaint
+    virtual void repaint(void);
 
 
     /*
@@ -145,10 +145,10 @@ namespace ui {
 
     inline auto &padding(void) { return m_padding; }
 
-		/*
-    inline auto get_bg(void) { return m_background; }
-    inline void set_bg(ck::option<uint32_t> c) { m_background = c; }
-		*/
+    /*
+inline auto get_bg(void) { return m_background; }
+inline void set_bg(ck::option<uint32_t> c) { m_background = c; }
+    */
 
 
     inline auto get_pref_size(void) {
@@ -190,8 +190,8 @@ namespace ui {
     // ck::option<uint32_t> m_background;
 
 
-    ui::all_sides<int> m_margin;
-    ui::all_sides<int> m_padding;
+    ui::edges<int> m_margin;
+    ui::edges<int> m_padding;
 
     uint32_t m_bordercolor = 0;
     uint32_t m_bodersize = 0;

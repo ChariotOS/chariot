@@ -17,7 +17,6 @@ struct kstat_cpu {
 
 struct cpu_t {
   void *local;
-  int ncli;
   int cpunum;
 
   bool in_sched = false;
@@ -60,8 +59,6 @@ namespace cpu {
 
   void calc_speed_khz(void);
 
-  void pushcli();
-  void popcli();
 
   void preempt_enable(void);
   void preempt_disable(void);
@@ -75,8 +72,6 @@ namespace cpu {
   // setup CPU segment descriptors, run once per cpu
   void seginit(void *local = nullptr);
   void switch_vm(struct thread *);
-
-  inline int ncli(void) { return current().ncli; }
   inline u64 get_ticks(void) { return current().kstat.ticks; }
 
 

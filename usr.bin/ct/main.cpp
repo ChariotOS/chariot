@@ -13,9 +13,9 @@
 #include <sys/un.h>
 #include <ui/application.h>
 #include <ui/view.h>
+#include <ck/unicode.h>
 #include <ui/window.h>
 #include <unistd.h>
-
 
 class painter : public ui::view {
   int ox = 0;
@@ -30,7 +30,14 @@ class painter : public ui::view {
 
   virtual void repaint(void) override {
     auto s = get_scribe();
+
+
     s.clear(color);
+
+    auto st = gfx::scribe::text_thunk(0, 0, s.width());
+  	auto fnt = gfx::font::open("chicago-normal", 12);
+		s.printf(st, *fnt, 0x000000, 0, "OS Dev\nCommunity");
+
     invalidate();
   }
 
@@ -85,7 +92,7 @@ int main(int argc, char **argv) {
 
     char buf[50];
     for (int i = 0; i < 5; i++) {
-      sprintf(buf, "Title", i);
+      sprintf(buf, "OSDev", i);
       auto win = app.new_window(buf, width, height);
       windows.push(win);
       win->set_view<painter>();

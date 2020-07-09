@@ -20,7 +20,7 @@ namespace ui {
     ~window();
     void flush(void);
 
-		void invalidate(const gfx::rect &r);
+    void invalidate(const gfx::rect &r);
 
     inline gfx::bitmap &bmp(void) { return *m_bitmap; }
 
@@ -29,7 +29,7 @@ namespace ui {
 
     template <typename T, typename... Args>
     inline T &set_view(Args &&... args) {
-			m_main_view = NULL;
+      m_main_view = NULL;
 
       ui::view *v = new T(forward<Args>(args)...);
       m_main_view = ck::unique_ptr<ui::view>(v);
@@ -39,21 +39,19 @@ namespace ui {
 
       // the window can do this cause they are the window :^)
       m_main_view->m_window = this;
-			m_main_view->m_parent = NULL;
-			// do the reflow asap (not deferred)
-			m_main_view->do_reflow();
+      m_main_view->m_parent = NULL;
+      // do the reflow asap (not deferred)
+      m_main_view->do_reflow();
       return *(T *)v;
     }
 
 
-		// the whole window needs reflowed, so schedule one
-		void schedule_reflow();
+    // the whole window needs reflowed, so schedule one
+    void schedule_reflow();
 
 
    private:
-
-
-		bool m_pending_reflow = false;
+    bool m_pending_reflow = false;
 
     ck::unique_ptr<ui::view> m_main_view;
 

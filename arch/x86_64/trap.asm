@@ -70,3 +70,9 @@ jmp_to_userspace:
     mov rbp, rdi        ;; set user_rbp == user_rsp
     iretq
 
+
+
+global fork_return
+fork_return:
+	; mov rsp, rdi ;; trapframe address in arg1
+	jmp trapret

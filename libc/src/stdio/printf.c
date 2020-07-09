@@ -879,6 +879,15 @@ static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen, const
         break;
       }
 
+
+
+			case 'U': {
+				// unicode!
+				// uint32_t cp = (uint32_t)va_arg(va, void*);
+				// (void)cp;
+				break;
+			}
+
       case '%':
         out('%', buffer, idx++, maxlen);
         format++;

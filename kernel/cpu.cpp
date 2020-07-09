@@ -46,27 +46,12 @@ void cpu::calc_speed_khz(void) {
   }
 
   double cycles = arch::read_timestamp() - start_cycle;
-  pushcli();
 
   arch::cli();
 
   double hz = (cycles / rec_ms) * 1000.0;
   c.speed_khz = hz / 1000;
   KINFO("%zu khz\n", c.speed_khz);
-}
-
-// Pushcli/popcli are like cli/sti except that they are matched:
-// it takes two popcli to undo two pushcli.  Also, if interrupts
-// are off, then pushcli, popcli leaves them off.
-void cpu::pushcli(void) {
-  arch::cli();
-  current().ncli++;
-}
-
-void cpu::popcli(void) {
-  if (readeflags() & FL_IF) panic("popcli - interruptible");
-  if (--current().ncli < 0) panic("popcli");
-  if (current().ncli == 0) arch::sti();
 }
 
 void cpu::preempt_enable(void) {

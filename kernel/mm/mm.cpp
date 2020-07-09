@@ -224,6 +224,7 @@ size_t mm::space::memory_usage(void) {
 }
 
 mm::space *mm::space::fork(void) {
+
   auto npt = mm::pagetable::create();
   auto *n = new mm::space(lo, hi, npt);
 
@@ -262,12 +263,17 @@ mm::space *mm::space::fork(void) {
         pt->add_mapping(r->va + (i * 4096), pte);
       }
     }
+
+		if (r->obj) {
+			copy->obj = r->obj;
+			r->obj->acquire();
+		}
     n->regions.push(copy);
   }
 
   n->sort_regions();
-  this->dump();
-  n->dump();
+  // this->dump();
+  // n->dump();
 
   return n;
 }

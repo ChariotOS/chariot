@@ -355,6 +355,8 @@ namespace sched {
     };
 
 #define SPAWN_KERN (1 << 0)
+
+#define SPAWN_FORK (1 << 1)
     // #define SPAWN_VFORK (1 << 1)
     process::ptr spawn_process(struct process *parent, int flags);
 

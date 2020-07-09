@@ -38,10 +38,10 @@ void spinlock::unlock(void) {
 
 void spinlock::lock_cli(void) {
   while (1) {
-    cpu::pushcli();
+    arch::cli();
     if (arch_atomic_swap(&locked, 1) == 0) break;
     if (cpu::current().in_sched) {
-      cpu::popcli();
+      arch::sti();
       // sched::yield();
     }
   }
@@ -51,7 +51,7 @@ void spinlock::unlock_cli(void) {
   if (likely(locked)) {
     arch_atomic_store(&locked, 0);
   }
-  cpu::popcli();
+	arch::sti();
 }
 
 bool spinlock::is_locked(void) { return locked; }

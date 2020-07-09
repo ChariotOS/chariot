@@ -112,7 +112,7 @@ static void thread_create_callback(void *) {
   if (thd->proc.ring == RING_KERN) {
     using fn_t = int (*)(void *);
     auto fn = (fn_t)arch::reg(REG_PC, tf);
-    cpu::popcli();
+		arch::sti();
     // run the kernel thread
     int res = fn(NULL);
     // exit the thread with the return code of the func
@@ -164,7 +164,7 @@ static void thread_create_callback(void *) {
       tf[2] = (unsigned long)argv;
       tf[3] = (unsigned long)envp;
     }
-    cpu::popcli();
+		arch::sti();
     return;
   }
 

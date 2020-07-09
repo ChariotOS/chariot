@@ -48,6 +48,7 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
   // (and we spend less time in ref<process>::{ref,deref}())
   auto &proc = *proc_ptr;
 
+
   scoped_lock lck(proc.datalock);
 
   proc.create_tick = cpu::get_ticks();
@@ -55,18 +56,32 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
 
   proc.ring = flags & SPAWN_KERN ? RING_KERN : RING_USER;
 
+
+
   // This check is needed because the kernel syscall.has no parent.
   if (proc.parent) {
-    proc.user = proc_ptr->parent->user;  // inherit the user information
-    proc.ppid = proc_ptr->parent->pid;
-    proc.pgid = proc_ptr->parent->pgid;  // inherit the group id of the parent
+    proc.user = proc.parent->user;  // inherit the user information
+    proc.ppid = proc.parent->pid;
+    proc.pgid = proc.parent->pgid;  // inherit the group id of the parent
 
     proc.root = geti(proc.parent->root);
     proc.cwd = geti(proc.parent->cwd);
 
-    // inherit stdin(0) stdout(1) and stderr(2)
-    for (int i = 0; i < 3; i++) {
-      proc.open_files[i] = proc_ptr->parent->get_fd(i);
+
+    // are we forking?
+    if (flags & SPAWN_FORK) {
+			// inherit all file descriptors
+			proc.parent->file_lock.lock();
+			for (auto &kv : proc.parent->open_files) {
+				proc.open_files[kv.key] = kv.value;
+			}
+			proc.parent->file_lock.unlock();
+
+    } else {
+      // inherit stdin(0) stdout(1) and stderr(2)
+      for (int i = 0; i < 3; i++) {
+        proc.open_files[i] = proc.parent->get_fd(i);
+      }
     }
   }
 
@@ -76,7 +91,12 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
   // special case for kernel's init
   if (proc.cwd != NULL) geti(proc.cwd);
 
-  proc.mm = alloc_user_vm();
+
+	if (flags & SPAWN_FORK) {
+		proc.mm = proc.parent->mm->fork();
+	} else {
+  	proc.mm = alloc_user_vm();
+	}
   return proc_ptr;
 }
 
@@ -458,6 +478,8 @@ int sched::proc::reap(process::ptr p) {
   if (me != init) init->datalock.unlock();
 
   ptable_remove(p->pid);
+
+	// printk("reap done\n");
 
   return f;
 }

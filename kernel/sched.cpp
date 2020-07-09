@@ -69,7 +69,7 @@ static struct thread *get_next_thread(void) {
   // keep track of the last task in the queue so we can
   // remove the one we want to run from it
   struct thread *nt = nullptr;
-  cpu::pushcli();
+
 
   for (int i = SCHED_MLFQ_DEPTH - 1; i >= 0; i--) {
     auto &Q = mlfq[i];
@@ -117,7 +117,6 @@ static struct thread *get_next_thread(void) {
       break;
     }
   }
-  cpu::popcli();
 
   return nt;
 }
@@ -152,7 +151,8 @@ int sched::add_task(struct thread *tsk) {
    * core's scheduler, which is safe as the critical section is enormously
    * simple.
    */
-  cpu::pushcli();
+  if (cpu::in_thread()) arch::cli();
+
   // only lock this queue.
   Q.queue_lock.lock();
 
@@ -175,7 +175,7 @@ int sched::add_task(struct thread *tsk) {
   Q.ntasks++;
 
   Q.queue_lock.unlock();
-  cpu::popcli();
+  if (cpu::in_thread()) arch::sti();
 
   return 0;
 }
@@ -183,7 +183,7 @@ int sched::add_task(struct thread *tsk) {
 int sched::remove_task(struct thread *t) {
   auto &Q = mlfq[t->sched.priority];
 
-  cpu::pushcli();
+  if (cpu::in_thread()) arch::cli();
   // only lock this queue.
   Q.queue_lock.lock();
 
@@ -194,7 +194,7 @@ int sched::remove_task(struct thread *t) {
 
   Q.ntasks--;
   Q.queue_lock.unlock();
-  cpu::popcli();
+  if (cpu::in_thread()) arch::sti();
   return 0;
 }
 
@@ -231,7 +231,7 @@ static void switch_into(struct thread &thd) {
 }
 
 void sched::do_yield(int st) {
-  cpu::pushcli();
+  arch::cli();
 
   auto &thd = *curthd;
 
@@ -247,7 +247,8 @@ void sched::do_yield(int st) {
   thd.stats.last_cpu = thd.stats.current_cpu;
   thd.stats.current_cpu = -1;
   swtch(&thd.kern_context, cpu::current().sched_ctx);
-  cpu::popcli();
+
+  arch::sti();
 }
 
 // helpful functions wrapping different resulting task states
@@ -270,87 +271,84 @@ void sched::dumb_sleepticks(unsigned long t) {
     sched::yield();
   }
 }
-static void schedule_one() {
-  struct thread *thd = pick_next_thread();
 
-  cpu::current().next_thread = NULL;
 
-  if (thd == nullptr) {
-    // idle loop when there isn't a task
-    cpu::current().kstat.iticks++;
-    asm("hlt");
-    return;
-  }
-
-  cpu::pushcli();
-  s_enabled = true;
-
-  switch_into(*thd);
-
-  cpu::popcli();
-
-  sched::add_task(thd);
-}
-
-void sched::run() {
+void boost(void) {
   // re-calculated later using ''math''
   int boost_interval = 10;
   u64 last_boost = 0;
+  auto ticks = cpu::get_ticks();
 
-  cpu::current().in_sched = true;
-  for (;;) {
-    schedule_one();
+  // every S ticks or so, boost the processes at the bottom of the queue
+  // into the top
+  if (ticks - last_boost > boost_interval) {
+    last_boost = ticks;
+    int nmoved = 0;
 
-    auto ticks = cpu::get_ticks();
+    auto &HI = mlfq[PRIORITY_HIGH];
 
-    // every S ticks or so, boost the processes at the bottom of the queue
-    // into the top
-    if (ticks - last_boost > boost_interval) {
-      last_boost = ticks;
-      int nmoved = 0;
+    HI.queue_lock.lock();
+    for (int i = 0; i < PRIORITY_HIGH; i++) {
+      auto &Q = mlfq[i];
 
-      auto &HI = mlfq[PRIORITY_HIGH];
+      Q.queue_lock.lock();
 
-      HI.queue_lock.lock();
-      for (int i = 0; i < PRIORITY_HIGH; i++) {
-        auto &Q = mlfq[i];
+      auto loq = Q.task_queue;
 
-        Q.queue_lock.lock();
-
-        auto loq = Q.task_queue;
-
-        if (loq != NULL) {
-          for (auto *c = loq; c != NULL; c = c->sched.next) {
-            if (!c->kern_idle) c->sched.priority = PRIORITY_HIGH;
-          }
-
-          // take the entire queue and add it to the end of the HIGH queue
-          if (HI.task_queue != NULL) {
-            assert(HI.last_task != NULL);
-            HI.last_task->sched.next = loq;
-            loq->sched.prev = HI.last_task;
-
-            // inherit the last task from the old Q
-            HI.last_task = Q.last_task;
-          } else {
-            assert(HI.ntasks == 0);
-            HI.task_queue = Q.task_queue;
-            HI.last_task = Q.last_task;
-          }
-
-          HI.ntasks += Q.ntasks;
-          nmoved += Q.ntasks;
-
-          // zero out this queue
-          Q.task_queue = Q.last_task = NULL;
-          Q.ntasks = 0;
+      if (loq != NULL) {
+        for (auto *c = loq; c != NULL; c = c->sched.next) {
+          if (!c->kern_idle) c->sched.priority = PRIORITY_HIGH;
         }
 
-        Q.queue_lock.unlock();
+        // take the entire queue and add it to the end of the HIGH queue
+        if (HI.task_queue != NULL) {
+          assert(HI.last_task != NULL);
+          HI.last_task->sched.next = loq;
+          loq->sched.prev = HI.last_task;
+
+          // inherit the last task from the old Q
+          HI.last_task = Q.last_task;
+        } else {
+          assert(HI.ntasks == 0);
+          HI.task_queue = Q.task_queue;
+          HI.last_task = Q.last_task;
+        }
+
+        HI.ntasks += Q.ntasks;
+        nmoved += Q.ntasks;
+
+        // zero out this queue
+        Q.task_queue = Q.last_task = NULL;
+        Q.ntasks = 0;
       }
 
-      HI.queue_lock.unlock();
+      Q.queue_lock.unlock();
     }
+
+    HI.queue_lock.unlock();
+  }
+}
+
+void sched::run() {
+  cpu::current().in_sched = true;
+  for (;;) {
+
+    struct thread *thd = pick_next_thread();
+    cpu::current().next_thread = NULL;
+
+    if (thd == nullptr) {
+      // idle loop when there isn't a task
+      cpu::current().kstat.iticks++;
+      asm("hlt");
+      return;
+    }
+
+    s_enabled = true;
+
+    switch_into(*thd);
+
+    sched::add_task(thd);
+    continue;
   }
   panic("scheduler should not have gotten back here\n");
 }
@@ -374,11 +372,14 @@ void sched::handle_tick(u64 ticks) {
 
   // yield?
   if (has_run >= thd->sched.timeslice) {
+		sched::yield();
+#if 0
     // pick a thread to go into next. If there is nothing to run,
     // don't yield to the scheduler. This improves some stuff's latencies
     if (true || pick_next_thread() != NULL) {
       sched::yield();
     }
+#endif
   }
 }
 

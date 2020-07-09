@@ -98,7 +98,6 @@ static void kmain2(void) {
   sched::proc::create_kthread("[kinit]", kernel_init);
 
   KINFO("starting scheduler\n");
-  arch::sti();
   sched::run();
 
   panic("sched::run() returned\n");

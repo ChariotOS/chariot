@@ -468,7 +468,7 @@ extern "C" u64 boot_p4[];
 extern u64 *kernel_page_table;
 
 void smp::init_cores(void) {
-	cpu::pushcli();
+	arch::cli();
 	// copy the code into the AP region
 	void *code = p2v(0x7000);
 	auto sz = 4096;
@@ -495,6 +495,6 @@ void smp::init_cores(void) {
 		}
 	}
 
-	cpu::popcli();
+	arch::sti();
 }
 

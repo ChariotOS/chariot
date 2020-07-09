@@ -110,7 +110,6 @@ bool vmware::vmmouse_is_absolute(void) { return mouse_absolute; }
 void vmware::enable_absolute_vmmouse(void) {
   if (!supported()) return;
 
-  cpu::pushcli();
 
   struct vmware::command command;
 
@@ -128,15 +127,9 @@ void vmware::enable_absolute_vmmouse(void) {
   send(command);
   mouse_absolute = true;
 
-  cpu::popcli();
 }
 
 void vmware::disable_absolute_vmmouse(void) {
   if (!supported()) return;
 
-  cpu::pushcli();
-
-  //
-
-  cpu::popcli();
 }
