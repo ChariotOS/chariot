@@ -308,8 +308,7 @@ void lumen::context::window_closed(lumen::window *w) {
 
   if (focused_window == w) {
     focused_window = NULL;
-    printf("focused window lost!\n");
-    // calculate_hover();
+    calculate_hover();
   }
 }
 
