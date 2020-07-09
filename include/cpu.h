@@ -23,8 +23,6 @@ struct cpu_t {
 
   struct kstat_cpu kstat;
 
-  uint16_t preemption_depth;
-
   // this cpu is the timekeeper
   bool timekeeper = false;
   unsigned long ticks_per_second = 0;
@@ -58,12 +56,6 @@ namespace cpu {
   bool in_thread(void);
 
   void calc_speed_khz(void);
-
-
-  void preempt_enable(void);
-  void preempt_disable(void);
-  void preempt_reset(void);
-  int preempt_disabled(void);
 
   /**
    * These functions are all implemented in the arch directory

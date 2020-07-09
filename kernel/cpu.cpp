@@ -54,30 +54,3 @@ void cpu::calc_speed_khz(void) {
   KINFO("%zu khz\n", c.speed_khz);
 }
 
-void cpu::preempt_enable(void) {
-  auto *c = cpu::get();
-  if (c != NULL) {
-    __sync_fetch_and_add(&c->preemption_depth, 1);
-  }
-}
-void cpu::preempt_disable(void) {
-  auto *c = cpu::get();
-  if (c != NULL) {
-    __sync_fetch_and_sub(&c->preemption_depth, 1);
-  }
-}
-
-void cpu::preempt_reset(void) {
-  auto *c = cpu::get();
-  if (c != NULL) {
-    c->preemption_depth = 0;
-  }
-}
-
-int cpu::preempt_disabled(void) {
-  auto *c = cpu::get();
-  if (c != NULL) {
-    return __sync_fetch_and_add(&c->preemption_depth, 0) > 0;
-  } else
-    return 1;
-}
