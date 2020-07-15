@@ -94,7 +94,7 @@ time_t dev::RTC::now() {
 
   // printk("year: %d, month: %d, day: %d\n", year, month, day);
 
-  assert(year >= 2019);
+  // assert(year >= 2019);
 
 
   return days_in_years_since_epoch(year - 1) * 86400 +
