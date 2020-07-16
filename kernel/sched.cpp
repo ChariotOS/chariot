@@ -202,6 +202,7 @@ static void switch_into(struct thread &thd) {
   thd.locks.run.lock();
   cpu::current().current_thread = &thd;
   thd.state = PS_UNRUNNABLE;
+	// printk_nolock("[sched] cpu %d schedules %p\n", cpu::current().cpunum, &thd);
 
   if (!thd.fpu.initialized) {
     asm volatile("fninit");
@@ -332,15 +333,16 @@ void boost(void) {
 void sched::run() {
   cpu::current().in_sched = true;
   for (;;) {
-
     struct thread *thd = pick_next_thread();
     cpu::current().next_thread = NULL;
 
     if (thd == nullptr) {
       // idle loop when there isn't a task
       cpu::current().kstat.iticks++;
+			arch::sti();
       asm("hlt");
-      return;
+			arch::cli();
+			continue;
     }
 
     s_enabled = true;
@@ -348,7 +350,6 @@ void sched::run() {
     switch_into(*thd);
 
     sched::add_task(thd);
-    continue;
   }
   panic("scheduler should not have gotten back here\n");
 }
@@ -379,7 +380,7 @@ void sched::handle_tick(u64 ticks) {
       sched::yield();
     }
 #else
-		sched::yield();
+    sched::yield();
 #endif
   }
 }
@@ -393,9 +394,9 @@ class threadwaiter : public waiter {
 
   virtual ~threadwaiter(void) {}
 
-  virtual bool notify(bool rude) override {
-    if (rude) printk("rude!\n");
-    thd->awaken(rude);
+  virtual bool notify(int flags) override {
+    if (flags & NOTIFY_RUDE) printk("rude!\n");
+    thd->awaken(flags);
     // I absorb this!
     return true;
   }
@@ -447,7 +448,7 @@ bool waitqueue::do_wait(u32 on, int flags, ref<waiter> waiter) {
   return true;
 }
 
-void waitqueue::notify() {
+void waitqueue::notify(int flags) {
   scoped_lock lck(lock);
 top:
   if (!front) {
@@ -457,21 +458,25 @@ top:
     if (front == back) back = nullptr;
     front = waiter->next;
     // *nicely* awaken the thread
-    if (!waiter->notify(false)) {
+    if (!waiter->notify(flags)) {
       goto top;
     }
   }
 }
 
-void waitqueue::notify_all(void) {
+void waitqueue::notify_all(int flags) {
   scoped_lock lck(lock);
 
-  while (front) {
-    auto waiter = front;
-    if (front == back) back = nullptr;
-    front = waiter->next;
-    // *nicely* awaken the thread
-    waiter->notify(false);
+  if (!front) {
+    navail++;
+  } else {
+    while (front) {
+      auto waiter = front;
+      if (front == back) back = nullptr;
+      front = waiter->next;
+      // *nicely* awaken the thread
+      waiter->notify(flags);
+    }
   }
 }
 

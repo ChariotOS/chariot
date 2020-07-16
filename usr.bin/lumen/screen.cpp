@@ -29,35 +29,6 @@ uint32_t blend(uint32_t fgi, uint32_t bgi) {
   return res;
 }
 
-/*
-static uint32_t invert(uint32_t c) {
-	uint8_t r = (c >> 16) & 0xFF;
-	uint8_t g = (c >> 8) & 0xFF;
-	uint8_t b = (c >> 0) & 0xFF;
-	return ((255 - r) << 16) | ((255 -g) << 8) | ((255 - b) << b);
-}
-*/
-
-
-/*
-void draw_bmp_scaled(ck::ref<gfx::bitmap> bmp, lumen::screen &screen, int xo,
-                     int yo, float scale) {}
-
-
-void draw_bmp(ck::ref<gfx::bitmap> bmp, lumen::screen &screen, int xo, int yo) {
-  if (bmp) {
-    for (size_t y = 0; y < bmp->height(); y++) {
-      for (size_t x = 0; x < bmp->width(); x++) {
-        uint32_t bp = bmp->get_pixel(x, y);
-        uint32_t sp = screen.get_pixel(x + xo, y + yo);
-        uint32_t pix = blend(bp, sp);
-        screen.set_pixel(x + xo, y + yo, pix);
-      }
-    }
-  }
-}
-*/
-
 
 lumen::screen::screen(int w, int h) {
   fd = open("/dev/fb", O_RDWR);
@@ -78,12 +49,6 @@ lumen::screen::~screen(void) {
 
 
 void lumen::screen::flip_buffers(void) {
-	return;
-  uint32_t *tmp = back_buffer;
-  back_buffer = front_buffer;
-  front_buffer = tmp;
-  buffer_index = buffer_index == 0 ? 1 : 0;
-  ioctl(fd, FB_SET_YOFF, height() * buffer_index);
 }
 
 void lumen::screen::set_resolution(int w, int h) {
@@ -91,22 +56,28 @@ void lumen::screen::set_resolution(int w, int h) {
     munmap(buf, bufsz);
   }
 
+	ck_fb_info old_info;
+  ioctl(fd, FB_GET_INFO, &old_info);
+
+
   info.width = w;
   info.height = h;
-  m_bounds = gfx::rect(0, 0, w, h);
+	if (ioctl(fd, FB_GET_INFO, &info) < 0) {
+		printf("[lumen]: failed to set resolution, loading existing state\n");
+		printf("[lumen]: w: %d, h: %d\n", old_info.width, old_info.height);
+		info = old_info;
+	}
+  m_bounds = gfx::rect(0, 0, info.width, info.height);
   mouse_pos.constrain(m_bounds);
 
-  flush_info();
 
-  bufsz = w * h * sizeof(uint32_t) * 2;
+  bufsz = info.width * info.height * sizeof(uint32_t) * 2;
   buf =
       (uint32_t *)mmap(NULL, bufsz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-
 
   buffer_index = 0;
   front_buffer = buf;
   back_buffer = buf + (width() * height());
-  ioctl(fd, FB_SET_YOFF, height() * buffer_index);
 }
 
 

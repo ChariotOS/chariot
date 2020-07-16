@@ -100,6 +100,10 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
   } else {
     screen.cursor = mouse_cursor::pointer;
   }
+
+
+	// compose asap so we can get lower mouse input latencies
+	compose();
 }
 
 
@@ -341,17 +345,11 @@ ck::ref<gfx::font> get_debug_font(void) {
 #endif
 
 
-static unsigned long tsc(void) {
-  uint32_t lo, hi;
-  asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
-  return lo | ((uint64_t)(hi) << 32);
-}
 
 
 static long frame = 0;
 void lumen::context::compose(void) {
   frame++;
-	auto start = tsc();
 
   // make a tmp bitmap
   gfx::bitmap b(screen.width(), screen.height(), screen.buffer());
@@ -402,11 +400,7 @@ void lumen::context::compose(void) {
     screen.draw_mouse();
   }
 
-  // screen.flip_buffers();
 
-
-
-#if 1
   int sw = screen.width();
   // copy the changes we made to the other buffer
   for (auto &r : dirty_regions) {
@@ -420,22 +414,11 @@ void lumen::context::compose(void) {
       to_ptr += sw;
     }
   }
-#endif
-
-	if (0) {
-		gfx::bitmap b(screen.width(), screen.height(), screen.front_buffer);
-		gfx::scribe scribe(b);
-		uint32_t color = rand();
-		for (auto &r : dirty_regions) {
-			scribe.draw_rect(r, color);
-		}
-	}
-
   dirty_regions.clear();
 
   compose_timer->stop();
 
-	printf("took %zu\n", tsc() - start);
+	// printf("took %zu\n", tsc() - start);
 }
 
 

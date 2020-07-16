@@ -3,26 +3,37 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <ck/io.h>
+
+int fork(void) {
+	return syscall(SYS_fork);
+}
+
+int fib(int n) {
+	if (n < 2) return n;
+
+	int a = 0;
+	int b = 0;
+
+
+	int pid1 = 0;
+	int pid2 = 0;
+
+	if ((pid1 = fork()) == 0) {
+		syscall(SYS_exit_proc, fib(n - 1));
+	}
+	waitpid(pid1, &a, 0);
+
+	if ((pid2 = fork()) == 0) {
+		syscall(SYS_exit_proc, fib(n - 2));
+	}
+	waitpid(pid2, &b, 0);
+
+	return WEXITSTATUS(a) + WEXITSTATUS(b);
+}
 
 int main() {
-	int parent = getpid();
-
-	auto *ptr = (volatile int*)mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
-	printf("ptr: %p\n", ptr);
-
-	*ptr = 3;
-
-	int pid = syscall(SYS_fork);
-
-
-
-	if (pid == 0) {
-		*ptr = 30;
-		exit(0);
-	}
-
-	waitpid(pid, NULL, 0);
-	printf("%d in parent\n", *ptr);
+	printf("fork fib: %d\n", fib(10));
 
 	return 0;
 }

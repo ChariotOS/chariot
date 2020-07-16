@@ -7,6 +7,13 @@
 extern "C" {
 #endif
 
+#define __NEED_time_t
+#define __NEED_struct_timespec
+#include <bits/alltypes.h>
+
+
+
+#define DEFINED_MY_OWN_TIMESPEC
 // just refer to the chariot provided stat
 #include <chariot/stat.h>
 

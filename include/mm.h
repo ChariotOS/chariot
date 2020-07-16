@@ -21,16 +21,16 @@
 #define FAULT_NOENT (1 << 4)
 
 #define VALIDATE_RD(ptr, size) \
-  curproc->mm->validate_pointer(ptr, size, PROT_READ)
+  curproc->mm->validate_pointer((void*)ptr, size, PROT_READ)
 
 #define VALIDATE_WR(ptr, size) \
-  curproc->mm->validate_pointer(ptr, size, PROT_WRITE)
+  curproc->mm->validate_pointer((void*)ptr, size, PROT_WRITE)
 
 #define VALIDATE_RDWR(ptr, size) \
-  curproc->mm->validate_pointer(ptr, size, PROT_WRITE | PROT_READ)
+  curproc->mm->validate_pointer((void*)ptr, size, PROT_WRITE | PROT_READ)
 
 #define VALIDATE_EXEC(ptr, size) \
-  curproc->mm->validate_pointer(ptr, size, PROT_EXEC)
+  curproc->mm->validate_pointer((void*)ptr, size, PROT_EXEC)
 
 
 namespace mm {

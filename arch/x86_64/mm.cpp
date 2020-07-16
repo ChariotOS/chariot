@@ -118,8 +118,10 @@ int x86::pagetable::del_mapping(off_t va) {
 
 
 void arch::mem_init(unsigned long mbd) {
-#if 1
-
+#ifdef CHARIOT_HRT
+  phys::free_range((void *)0x184000, (void *)0x1ffe0000);
+	mm_info.total_mem = 0x1ffe0000;
+#else
   multiboot_info_ptr = (multiboot_info_t *)mbd;
 
   size_t total_mem = 0;
@@ -176,10 +178,6 @@ void arch::mem_init(unsigned long mbd) {
     ++n;
   }
 
-
-#else
-  phys::free_range((void *)0x184000, (void *)0x1ffe0000);
-	mm_info.total_mem = 0x1ffe0000;
 #endif
 
   auto *kend = (u8 *)high_kern_end;

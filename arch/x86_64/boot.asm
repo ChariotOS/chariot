@@ -4,7 +4,8 @@ extern kmain ;; c entry point
 ; Declare constants for the multiboot header.
 MBALIGN  equ  1 << 0            ; align loaded modules on page boundaries
 MEMINFO  equ  1 << 1            ; provide memory map
-FLAGS    equ  MBALIGN | MEMINFO ; this is the Multiboot 'flag' field
+MBVIDEO equ  1 << 2
+FLAGS    equ  MBALIGN | MEMINFO | MBVIDEO ; this is the Multiboot 'flag' field
 MAGIC    equ  0x1BADB002        ; 'magic number' lets bootloader find the header
 CHECKSUM equ -(MAGIC + FLAGS)   ; checksum of above, to prove we are multiboot
 
@@ -17,7 +18,17 @@ mbheader:
 	dd FLAGS
 	dd CHECKSUM
 
-
+;; other required headers
+	dd 0
+	dd 0
+	dd 0
+	dd 0
+	dd 0
+;; video header
+	dd 0
+	dd FBWIDTH
+	dd FBHEIGHT
+	dd 32
 
 
 

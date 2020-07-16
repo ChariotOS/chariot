@@ -290,7 +290,7 @@ struct thread final {
    * waitqueue may not have been completed. A thread would be rudely awoken when
    * the process decides to exit, or a fault occurs.
    */
-  bool awaken(bool rudely = false);
+  bool awaken(int flags = 0);
 
   // tell the thread to start running at a certain address.
   bool kickoff(void *rip, int state);

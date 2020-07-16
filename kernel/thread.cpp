@@ -85,9 +85,10 @@ thread::~thread(void) {
   kfree(sig.arch_priv);
 }
 
-bool thread::awaken(bool rudely) {
+bool thread::awaken(int flags) {
+  bool rudely = false;
   if (!(wq.flags & WAIT_NOINT)) {
-    if (rudely) {
+    if (flags & NOTIFY_RUDE) {
       return false;
     }
   }
@@ -99,7 +100,20 @@ bool thread::awaken(bool rudely) {
   wq.current_wq = NULL;
 
   assert(state == PS_BLOCKED);
+
+#if 0
+  if (flags & NOTIFY_URGENT) {
+    sched::remove_task(this);
+    cpu::current().next_thread = this;
+    state = PS_RUNNABLE;
+    printk("urgent\n");
+    sched::yield();
+    return true;
+  }
+#endif
+
   state = PS_RUNNABLE;
+
 
   return true;
 }
@@ -112,7 +126,7 @@ static void thread_create_callback(void *) {
   if (thd->proc.ring == RING_KERN) {
     using fn_t = int (*)(void *);
     auto fn = (fn_t)arch::reg(REG_PC, tf);
-		arch::sti();
+    arch::sti();
     // run the kernel thread
     int res = fn(NULL);
     // exit the thread with the return code of the func
@@ -164,7 +178,7 @@ static void thread_create_callback(void *) {
       tf[2] = (unsigned long)argv;
       tf[3] = (unsigned long)envp;
     }
-		arch::sti();
+    arch::sti();
     return;
   }
 
@@ -205,9 +219,10 @@ vec<off_t> thread::backtrace(off_t rbp, off_t rip) {
   vec<off_t> bt;
   bt.push(rip);
 
-  for (auto sp = (off_t *)rbp; VALIDATE_RD(sp, sizeof(off_t) * 2); sp = (off_t *)sp[0]) {
+  for (auto sp = (off_t *)rbp; VALIDATE_RD(sp, sizeof(off_t) * 2);
+       sp = (off_t *)sp[0]) {
     auto retaddr = sp[1];
-		if (!VALIDATE_EXEC((void*)retaddr, sizeof(off_t))) break;
+    if (!VALIDATE_EXEC((void *)retaddr, sizeof(off_t))) break;
     bt.push(retaddr);
   }
 

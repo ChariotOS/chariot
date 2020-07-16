@@ -44,7 +44,12 @@ set(CHARIOT_SYSROOT ${CMAKE_BINARY_DIR}/base)
 add_link_options(--sysroot ${CHARIOT_SYSROOT})
 
 
+if(NOT DEFINED ARCH)
 set(ARCH x86_64)
+endif()
+
+
+
 set(LDFLAGS -m elf_x86_64 -z max-page-size=0x1000)
 set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -fno-omit-frame-pointer -mmmx -msse -msse2 -g -DUSERLAND -D__ARCH_${ARCH}__ -ffreestanding -Wall")
@@ -76,6 +81,8 @@ function(chariot_lib target_name fs_name)
         endforeach()
     endif()
 endfunction()
+
+
 
 
 function(chariot_bin target_name)

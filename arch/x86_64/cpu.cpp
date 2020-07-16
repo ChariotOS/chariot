@@ -141,6 +141,9 @@ void cpu::switch_vm(struct thread *thd) {
 }
 
 cpu_t &cpu::current() {
+#ifdef CHARIOT_HRT
+	return cpus[0];
+#endif
   if (s_current == NULL) {
 
 		arch::cli();

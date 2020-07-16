@@ -42,7 +42,7 @@ static void consputc(int c, bool debug = false) {
     }
   }
 
-  // vga::putchar(c);
+  vga::putchar(c);
 }
 
 static void flush(void) {

@@ -34,6 +34,8 @@ static void kmain2(void);
 
 
 
+
+
 /**
  * the size of the (main cpu) scheduler stack
  */
@@ -42,8 +44,10 @@ static void kmain2(void);
 extern void rtc_init(void);
 
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
-  rtc_init();
   serial_install();
+	printk("hello, world\n");
+
+  rtc_init();
 
   extern u8 boot_cpu_local[];
   cpu::seginit(boot_cpu_local);
@@ -109,7 +113,7 @@ int kernel_init(void *) {
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
 
-  vga::early_init();
+  vga::early_init(mbinfo);
 
   // at this point, the pit is being used for interrupts,
   // so we should go setup lapic for that
@@ -137,6 +141,7 @@ int kernel_init(void *) {
   auto root_name = kargs::get("root", "/dev/ata0p1");
   assert(root_name);
 
+
   int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);
   if (mnt_res != 0) {
     panic("failed to mount root. Error=%d\n", -mnt_res);
@@ -146,7 +151,6 @@ int kernel_init(void *) {
     panic("failed to mount devfs");
   }
 
-
   auto kimg = vfs::fdopen("/boot/chariot.elf", O_RDONLY);
 
   if (false && kimg) {
@@ -155,6 +159,7 @@ int kernel_init(void *) {
       return true;
     });
   }
+
 
 
   // setup stdio stuff for the kernel (to be inherited by spawn)
@@ -172,6 +177,7 @@ int kernel_init(void *) {
   string init_paths = kargs::get("init", "/bin/init");
 
   auto paths = init_paths.split(',');
+
   pid_t init_pid = sched::proc::spawn_init(paths);
 
   /*
@@ -196,4 +202,10 @@ int kernel_init(void *) {
   }
 
   panic("main kernel thread reached unreachable code\n");
+}
+
+
+extern "C" void _hrt_start(void) {
+	kmain(0, 0);
+	while (1) {}
 }

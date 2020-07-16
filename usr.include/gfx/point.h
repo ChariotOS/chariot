@@ -39,12 +39,9 @@ namespace gfx {
       return point_impl<T>(m_x - other.x(), m_y - other.y());
     }
 
-
-
     inline point_impl operator*(const T &o) {
       return point_impl<T>(m_x * o, m_y * o);
     }
-
 
 		template<typename V>
 			point_impl<T> &operator=(const point_impl<V> &o) {
@@ -58,4 +55,6 @@ namespace gfx {
 
   using point = gfx::point_impl<int>;
   using pointf = gfx::point_impl<float>;
+
+	using float2 = gfx::point_impl<float>;
 }  // namespace gfx

@@ -2,6 +2,10 @@
 
 # zero out the C_FLAGS
 set(CMAKE_C_FLAGS "")
+
+
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DCHARIOT_HRT")
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__ARCH_${ARCH}__ -mno-red-zone -fno-omit-frame-pointer")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-protector -mtls-direct-seg-refs -fno-pie -Wno-sign-compare")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -mcmodel=large -O3 -Wall -fno-common")
@@ -12,6 +16,13 @@ set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++17 -fno-rtti -fno-exceptions")
 
 
 set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
+
+
+
+add_definitions(-D FBWIDTH=1024)
+add_definitions(-D FBHEIGHT=768)
+add_definitions(-D__ARCH_${ARCH}__)
+
 
 
 file(GLOB_RECURSE KERNEL_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}

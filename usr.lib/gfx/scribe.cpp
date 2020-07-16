@@ -1,4 +1,5 @@
 #include <chariot.h>
+#include <gfx/color.h>
 #include <gfx/font.h>
 #include <gfx/point.h>
 #include <gfx/scribe.h>
@@ -89,27 +90,6 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source,
 }
 
 
-static inline uint32_t blend(uint32_t fgi, uint32_t bgi) {
-  // only blend if we have to!
-  if ((fgi & 0xFF000000) >> 24 == 0xFF) return fgi;
-  if ((fgi & 0xFF000000) >> 24 == 0x00) return bgi;
-
-  uint32_t res = 0;
-  auto result = (unsigned char *)&res;
-  auto fg = (unsigned char *)&fgi;
-  auto bg = (unsigned char *)&bgi;
-
-  // spooky math follows
-  uint32_t alpha = fg[3] + 1;
-  uint32_t inv_alpha = 256 - fg[3];
-  result[0] = (unsigned char)((alpha * fg[0] + inv_alpha * bg[0]) >> 8);
-  result[1] = (unsigned char)((alpha * fg[1] + inv_alpha * bg[1]) >> 8);
-  result[2] = (unsigned char)((alpha * fg[2] + inv_alpha * bg[2]) >> 8);
-  result[3] = 0xff;
-
-  return res;
-}
-
 void gfx::scribe::blend_pixel(int x, int y, uint32_t color, float alpha) {
   auto &s = state();
   x += s.offset.x();
@@ -120,7 +100,7 @@ void gfx::scribe::blend_pixel(int x, int y, uint32_t color, float alpha) {
   uint32_t fgi = (color & 0xFF'FF'FF) | ((int)(255 * alpha) << 24);
   uint32_t bgi = bmp.get_pixel(
       x, y);  // this could be slow, cause we read from vga memory...
-  set_pixel(x, y, blend(fgi, bgi));
+  set_pixel(x, y, gfx::color::blend(fgi, bgi));
 }
 
 #define __ipart(X) ((int)(X))
@@ -264,8 +244,8 @@ draw_line_antialias(p1, p2, color, stroke);
   int lx = points[0].x();
   int ly = points[0].y();
 
-  ck::vec<gfx::pointf> tmp;
-  for (auto &p : points) tmp.push(gfx::pointf(p.x(), p.y()));
+  ck::vec<gfx::float2> tmp;
+  for (auto &p : points) tmp.push(gfx::float2(p.x(), p.y()));
 
   for (float t = 0; t < 1; t += 0.001) {
     // copy, idk.
@@ -582,12 +562,9 @@ void gfx::scribe::fill_circle_helper(int x0, int y0, int r, int corner,
 }
 
 
-
-#define ALPHA(c, a) (((c)&0xFF'FF'FF) | ((int)(255 * (a)) << 24))
-
 void gfx::scribe::draw_frame(const gfx::rect &frame, uint32_t bg) {
-  auto highlight = blend(ALPHA(0xFFFFFF, 0.8), bg);
-  auto shadow = blend(ALPHA(0x000000, 0.2), bg);
+  auto highlight = gfx::color::blend(gfx::color::alpha(0xFFFFFF, 0.8), bg);
+  auto shadow = gfx::color::blend(gfx::color::alpha(0x000000, 0.2), bg);
 
   auto l = frame.left();
   auto t = frame.top();
@@ -630,13 +607,14 @@ void gfx::scribe::draw_text(struct text_thunk &st, gfx::font &fnt, char c,
   int y = st.pos.y();
   uint32_t right_edge = st.x0 + st.width;
 
-	// if (getpid() != 6)::printf("'%c' %d %d\n", c, x, y);
+  // if (getpid() != 6)::printf("'%c' %d %d\n", c, x, y);
 
   auto newline = [&] {
     x = st.x0;
-		// int oy = y;
+    // int oy = y;
     y += fnt.line_height();
-		// if (getpid() != 6) ::printf("y: %4d -> %-4d   %d\n", oy, y, fnt.line_height());
+    // if (getpid() != 6) ::printf("y: %4d -> %-4d   %d\n", oy, y,
+    // fnt.line_height());
   };
 
   if (c == '\n') {
@@ -675,7 +653,7 @@ struct scribe_cb_info {
 static void scribe_draw_text_callback(char c, void *arg) {
   auto *f = (struct scribe_cb_info *)arg;
 
-	f->sc->draw_text(*f->st, *f->fnt, c, f->color, f->flags);
+  f->sc->draw_text(*f->st, *f->fnt, c, f->color, f->flags);
 }
 
 
@@ -683,16 +661,14 @@ extern "C" int vfctprintf(void (*out)(char character, void *arg), void *arg,
                           const char *format, va_list va);
 
 void gfx::scribe::printf(struct text_thunk &st, gfx::font &fnt, uint32_t color,
-                    int flags, const char *fmt, ...) {
+                         int flags, const char *fmt, ...) {
+  struct scribe_cb_info s;
 
-
-	struct scribe_cb_info s;
-
-	s.sc = this;
-	s.st = &st;
-	s.fnt = &fnt;
-	s.color = color;
-	s.flags = flags;
+  s.sc = this;
+  s.st = &st;
+  s.fnt = &fnt;
+  s.color = color;
+  s.flags = flags;
 
   va_list va;
   va_start(va, fmt);

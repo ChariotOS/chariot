@@ -9,13 +9,16 @@
 
 class waitqueue;
 
+#define NOTIFY_RUDE (1 << 0)
+#define NOTIFY_URGENT (1 << 1)
+
 struct waiter : public refcounted<waiter> {
   inline waiter(waitqueue &wq) : wq(wq) {}
 
   virtual ~waiter(void) {}
 
   // returns if the notify was accepted
-  virtual bool notify(bool rude) = 0;
+  virtual bool notify(int flags) = 0;
   //
   virtual void start() = 0;
 
@@ -38,9 +41,9 @@ class waitqueue {
 
   // wait, but not interruptable
   void wait_noint(u32 on = 0, ref<waiter> wtr = nullptr);
-  void notify();
+  void notify(int flags = 0);
 
-  void notify_all(void);
+  void notify_all(int flags = 0);
 
   bool should_notify(u32 val);
 

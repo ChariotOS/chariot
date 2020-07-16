@@ -16,6 +16,8 @@
 #include <ck/unicode.h>
 #include <ui/window.h>
 #include <unistd.h>
+#include <sys/emx.h>
+#include <ck/rand.h>
 
 class painter : public ui::view {
   int ox = 0;
@@ -69,8 +71,24 @@ class painter : public ui::view {
 };
 
 
-
 int main(int argc, char **argv) {
+
+	int emx = emx_create();
+
+	int foo = 0;
+
+	emx_set(emx, 0, (void*)&foo, EMX_READ);
+
+
+	int events = 0;
+	void *key = emx_wait(emx, &events);
+
+	printf("key=%p, foo=%p\n", key, &foo);
+
+	close(emx);
+	return 0;
+
+
   // auto fnt = gfx::font::get_default();
   auto fnt = gfx::font::open("chicago-normal", 12);
 

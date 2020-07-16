@@ -175,7 +175,7 @@ int mm::space::pagefault(off_t va, int err) {
 
       if (r->flags & MAP_SHARED) {
         // TODO: handle shared
-        // printk(KERN_INFO "Write to shared page\n");
+        // printk(KERN_INFO "Write to shared page %p\n", r->pages[ind]->pa);
         r->pages[ind]->dirty = true;
       } else {
         auto old_page = r->pages[ind];

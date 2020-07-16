@@ -47,11 +47,15 @@
 #define DEFFILEMODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
 
 // TODO: move to own spot
+#ifndef DEFINED_MY_OWN_TIMESPEC
 typedef long time_t;
+/*
 struct timespec {
   time_t tv_sec;
   long tv_nsec;
 };
+*/
+#endif
 
 struct stat {
   unsigned long st_dev;

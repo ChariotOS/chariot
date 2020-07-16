@@ -25,4 +25,4 @@
 
 #define MAJOR_SB16 22
 
-#define MAJOR_DEKSTOP 42
+#define MAJOR_EMX 42

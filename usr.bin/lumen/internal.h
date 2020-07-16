@@ -54,7 +54,9 @@ namespace lumen {
 
     void flush_info(void) {
       info.active = 1;
-      ioctl(fd, FB_SET_INFO, &info);
+    	if (ioctl(fd, FB_SET_INFO, &info) < 0) {
+				ioctl(fd, FB_GET_INFO, &info);
+			}
     }
 
     void load_info(void) { ioctl(fd, FB_GET_INFO, &info); }
