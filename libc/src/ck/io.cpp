@@ -12,10 +12,6 @@
 #include <unistd.h>
 
 
-ck::file ck::stdin(0);
-ck::file ck::stdout(1);
-ck::file ck::stderr(2);
-
 ck::buffer::buffer(size_t size) {
   m_buf = calloc(size, 1);
   m_size = size;
@@ -23,6 +19,26 @@ ck::buffer::buffer(size_t size) {
 
 ck::buffer::~buffer(void) {
   if (m_buf) free(m_buf);
+}
+
+
+
+extern "C" int vfctprintf(void (*out)(char character, void *arg), void *arg,
+                          const char *format, va_list va);
+
+
+static void ck_file_writef_callback(char c, void *arg) {
+  auto *f = (ck::stream *)arg;
+  f->write(&c, 1);
+}
+
+
+int ck::stream::fmt(const char *format, ...) {
+  va_list va;
+  va_start(va, format);
+  const int ret = vfctprintf(ck_file_writef_callback, (void *)static_cast<ck::stream*>(this), format, va);
+  va_end(va);
+  return ret;
 }
 
 
@@ -94,28 +110,11 @@ int ck::file::stat(struct stat &s) {
   return fstat(m_fd, &s);
 }
 
-extern "C" int vfctprintf(void (*out)(char character, void *arg), void *arg,
-                          const char *format, va_list va);
-
-
-static void ck_file_writef_callback(char c, void *arg) {
-  auto *f = (ck::file *)arg;
-  f->write(&c, 1);
-}
-
-
-int ck::file::writef(const char *format, ...) {
-  va_list va;
-  va_start(va, format);
-  const int ret = vfctprintf(ck_file_writef_callback, (void *)this, format, va);
-  va_end(va);
-  return ret;
-}
 
 void ck::file::flush(void) {
   if (buffered()) {
     errno_syscall(SYS_write, m_fd, m_buffer, buf_len);
-    ck::hexdump(m_buffer, buf_len);
+    // ck::hexdump(m_buffer, buf_len);
     buf_len = 0;
     // memset(m_buffer, 0, buf_cap);
   }

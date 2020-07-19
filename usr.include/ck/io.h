@@ -1,13 +1,13 @@
 #pragma once
 
 #include <chariot/stat.h>
+#include <ck/fsnotifier.h>
 #include <ck/object.h>
 #include <ck/ptr.h>
 #include <ck/string.h>
 #include <stdio.h>
-#include <sys/socket.h>
 #include <sys/ioctl.h>
-#include <ck/fsnotifier.h>
+#include <sys/socket.h>
 
 namespace ck {
 
@@ -47,22 +47,35 @@ namespace ck {
     virtual ~stream(){};
     inline virtual ssize_t write(const void *buf, size_t) { return -1; }
     inline virtual ssize_t read(void *buf, size_t) { return -1; }
+    virtual ssize_t size(void) { return 0; }
+    virtual ssize_t tell(void) { return 0; }
+    virtual int seek(long offset, int whence) { return -1; }
 
     inline bool eof(void) { return m_eof; }
+
+    int fmt(const char *format, ...);
+
+    inline int getc(void) {
+      if (m_eof) return -1;
+      char c = 0;
+      this->read(&c, 1);
+      if (m_eof) return -1;
+      return c;
+    }
 
    protected:
     inline void set_eof(bool e) { m_eof = e; }
 
 
-		CK_OBJECT(ck::stream);
+    CK_OBJECT(ck::stream);
   };
 
 
   // A file is an "abstract implementation" of
   class file : public ck::stream {
    public:
-		// construct without opening any file
-		file(void);
+    // construct without opening any file
+    file(void);
     // construct by opening the file
     file(ck::string path, const char *mode);
     // give the file ownership of a file descriptor
@@ -72,23 +85,22 @@ namespace ck {
 
     virtual ssize_t write(const void *buf, size_t) override;
     virtual ssize_t read(void *buf, size_t) override;
+    virtual ssize_t size(void) override;
+    virtual ssize_t tell(void) override;
+    virtual int seek(long offset, int whence) override;
 
     bool open(ck::string path, const char *mode);
 
-		static inline auto unowned(int fd) {
-			auto f = ck::file::create(fd);
-			f->m_owns = false;
-			return f;
-		}
+    static inline auto unowned(int fd) {
+      auto f = ck::file::create(fd);
+      f->m_owns = false;
+      return f;
+    }
 
-    // the size of this file
-    ssize_t size(void);
-    // current location in the file
-    ssize_t tell(void);
-    int seek(long offset, int whence);
+
+
     int stat(struct stat &);
 
-    int writef(const char *format, ...);
 
     using stream::read;
 
@@ -98,10 +110,10 @@ namespace ck {
 
     void flush(void);
 
-		template<typename T>
-		int ioctl(int req, T arg) {
-			return ioctl(m_fd, req, arg);
-		}
+    template <typename T>
+    int ioctl(int req, T arg) {
+      return ioctl(m_fd, req, arg);
+    }
 
     // if size == 0, disable buffer.
     // otherwise allocate a buffer.
@@ -109,45 +121,44 @@ namespace ck {
     inline bool buffered(void) { return buf_cap > 0; }
 
 
-		inline auto on_read(ck::func<void()> cb) {
-			m_on_read = move(cb);
-			update_notifier();
-		}
+    inline auto on_read(ck::func<void()> cb) {
+      m_on_read = move(cb);
+      update_notifier();
+    }
 
 
-		inline auto on_write(ck::func<void()> cb) {
-			m_on_write = move(cb);
-			update_notifier();
-		}
+    inline auto on_write(ck::func<void()> cb) {
+      m_on_write = move(cb);
+      update_notifier();
+    }
 
    protected:
-
-
-		// callback functions for read/write
+    // callback functions for read/write
     ck::func<void()> m_on_read;
     ck::func<void()> m_on_write;
 
 
-		bool m_owns = true;
+    bool m_owns = true;
     int m_fd = -1;
     size_t buf_cap = 0;
     size_t buf_len = 0;
     uint8_t *m_buffer = NULL;
 
-		ck::fsnotifier notifier;
+    ck::fsnotifier notifier;
 
-		void init_notifier(void);
-		void update_notifier(void);
+    void init_notifier(void);
+    void update_notifier(void);
 
-		CK_OBJECT(ck::file);
+    CK_OBJECT(ck::file);
   };
 
 
 
 
-	extern ck::file stdin;
-	extern ck::file stdout;
-	extern ck::file stderr;
+  inline auto stdin(void) { return ck::file(0); }
+  inline auto stdout(void) { return ck::file(1); }
+  inline auto stderr(void) { return ck::file(2); }
+
 
 
   // print a nice and pretty hexdump to the screen
