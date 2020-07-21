@@ -137,7 +137,7 @@ int main(int argc, const char **argv) {
 					int written = 0;
 					stream.seek(0, SEEK_SET);
 					for (auto &line : lines) {
-						written += stream.writef("%s\n", line.get());
+						written += stream.fmt("%s\n", line.get());
 					}
 					printf("%d written\n", written);
 					dirty = false;

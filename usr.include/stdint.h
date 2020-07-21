@@ -21,6 +21,10 @@
 
 
 
+typedef int64_t   intmax_t;
+typedef uint64_t   uintmax_t;
+
+
 #define INT8_MIN   (-1-0x7f)
 #define INT16_MIN  (-1-0x7fff)
 #define INT32_MIN  (-1-0x7fffffff)

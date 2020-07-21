@@ -20,7 +20,7 @@ namespace ui {
   class window;
 
 
-  enum class layout : uint8_t { column, row };
+  enum class direction : uint8_t { vertical, horizontal };
 
   enum class size_policy : uint8_t {
     fixed,
@@ -51,10 +51,21 @@ namespace ui {
 
 
     // default handlers
-    virtual bool mouse_event(ui::mouse_event &) { return false; };
+		// core mouse events
+		inline virtual void on_left_click(ui::mouse_event &) {}
+		inline virtual void on_right_click(ui::mouse_event &) {}
+		inline virtual void on_scroll(ui::mouse_event &) {}
+		inline virtual void on_mouse_move(ui::mouse_event &) {}
 
-    // tell the view to repaint
-    virtual void repaint(void);
+    inline virtual void paint_event(void) {}
+
+
+    // distribute a mouse event to children or the parent if it's better suited
+    // for it
+    void dispatch_mouse_event(ui::mouse_event &ev);
+
+    // ask the view to repaint at the next possible time
+    void repaint(void);
 
 
     /*
@@ -69,6 +80,9 @@ namespace ui {
     inline auto right() { return m_rel.right(); }
     inline auto top() { return m_rel.top(); }
     inline auto bottom() { return m_rel.bottom(); }
+
+    inline auto width() { return m_rel.w; }
+    inline auto height() { return m_rel.h; }
 
     /*
      * Return the window for this view
@@ -98,12 +112,13 @@ namespace ui {
 
       v->m_parent = this;
       v->m_window = m_window;
+      do_reflow();
       return *(T *)v;
     }
 
 
     template <typename Fn>
-    void each_child(Fn cb) {
+    inline void each_child(Fn cb) {
       for (auto &v : m_children) cb(v);
     }
 
@@ -166,12 +181,55 @@ inline void set_bg(ck::option<uint32_t> c) { m_background = c; }
     inline auto set_width_policy(ui::size_policy s) { m_width_policy = s; }
     inline auto set_height_policy(ui::size_policy s) { m_height_policy = s; }
 
+    inline void set_size(ui::direction dir, int sz) {
+      switch (dir) {
+        case ui::direction::vertical:
+          m_rel.h = sz;
+          break;
+        case ui::direction::horizontal:
+          m_rel.w = sz;
+          break;
+      }
+      return;
+    }
 
-    inline auto get_layout(void) const { return m_layout; }
-    inline void set_layout(ui::layout l) { m_layout = l; }
 
+    inline auto size(ui::direction dir) {
+      return dir == ui::direction::vertical ? height() : width();
+    }
+
+
+    inline void set_pos(ui::direction dir, int pos) {
+      switch (dir) {
+        case ui::direction::vertical:
+          m_rel.y = pos;
+          break;
+        case ui::direction::horizontal:
+          m_rel.x = pos;
+          break;
+      }
+      return;
+    }
+    inline ui::size_policy get_size_policy(ui::direction dir) {
+      return dir == ui::direction::vertical ? get_height_policy()
+                                            : get_width_policy();
+    }
+
+    void set_background(uint32_t bg) {
+      m_background = bg;
+      m_use_bg = true;
+      repaint();
+    }
+
+    void remove_background() {
+      m_use_bg = false;
+      repaint();
+    }
 
    protected:
+    // implemented by the subclass
+    virtual void reflow_impl() {}
+
     friend ui::window;
     /*
      * Because views are meant to be nested ad infinitum, they hold information
@@ -180,14 +238,12 @@ inline void set_bg(ck::option<uint32_t> c) { m_background = c; }
      */
     gfx::rect m_rel;
 
+    // bit flags
+    bool m_visible : 1 = true;
+    bool m_use_bg : 1 = true;
 
-    /*
-     * Is this view visible?
-     */
-    bool m_visible = true;
 
-    /// the background color
-    // ck::option<uint32_t> m_background;
+    uint32_t m_background = 0xFFFFFF;
 
 
     ui::edges<int> m_margin;
@@ -204,9 +260,6 @@ inline void set_bg(ck::option<uint32_t> c) { m_background = c; }
     ui::size_policy m_width_policy = ui::size_policy::calc;
     ui::size_policy m_height_policy = ui::size_policy::calc;
 
-    // default to a column layout
-    ui::layout m_layout = ui::layout::column;
-
     /*
      * these two entries are mutually exclusive
      */
@@ -221,4 +274,34 @@ inline void set_bg(ck::option<uint32_t> c) { m_background = c; }
      */
     ck::intrusive_list<ui::view, &ui::view::m_child_node> m_children;
   };
+
+
+
+
+  class stackview : public ui::view {
+   public:
+    inline auto get_layout(void) const { return m_layout; }
+    inline void set_layout(ui::direction l) {
+      if (l == m_layout) return;
+      m_layout = l;
+      // since we changed the layout, we gotta force a reflow
+      do_reflow();
+    }
+
+    inline stackview(ui::direction l = ui::direction::vertical) : m_layout(l) {}
+    virtual ~stackview();
+
+    inline void set_spacing(uint32_t s) { m_spacing = s; }
+    inline auto spacing(void) const { return m_spacing; }
+
+
+   protected:
+    virtual void reflow_impl(void);
+
+
+   private:
+    uint32_t m_spacing = 0;
+    ui::direction m_layout;
+  };
+
 }  // namespace ui

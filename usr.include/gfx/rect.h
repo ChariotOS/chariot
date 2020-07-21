@@ -56,8 +56,8 @@ namespace gfx {
 
       in.x = l;
       in.y = t;
-      in.w = (r - l) + 1;
-      in.h = (b - t) + 1;
+      in.w = (r - l);// + 1;
+      in.h = (b - t);// + 1;
 
       return in;
     }

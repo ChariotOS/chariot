@@ -24,6 +24,7 @@ void ui::window::invalidate(const gfx::rect &r) {
   iv.y = r.y;
   iv.w = r.w;
   iv.h = r.h;
+  // printf("invalidate x:%3d y:%3d w:%3d h:%3d)\n", r.x, r.y, r.w, r.h);
   app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
 }
 

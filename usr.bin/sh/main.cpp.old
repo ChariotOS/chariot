@@ -1,0 +1,103 @@
+#define _CHARIOT_SRC
+#include <chariot.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <pthread.h>
+#include <pwd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+#include <ck/command.h>
+#include <ck/string.h>
+#include <ck/strstream.h>
+#include <ck/linereader.h>
+
+
+ck::command evaluate_buffer(const ck::string &buf);
+
+
+
+int main(int argc, char **argv, char **envp) {
+  char ch;
+  const char *flags = "c:";
+  while ((ch = getopt(argc, argv, flags)) != -1) {
+    switch (ch) {
+      case 'c':
+        evaluate_buffer(optarg).wait();
+        // return run_line(optarg);
+        break;
+
+      case '?':
+        puts("sh: invalid option\n");
+        return -1;
+    }
+  }
+
+  char uname[32];
+  char *cwd[255];
+  char hostname[50];
+
+  // struct readline_context rl_ctx;
+  // rl_ctx.history = NULL;
+
+  int hn = open("/cfg/hostname", O_RDONLY);
+
+  int n = read(hn, (void *)hostname, 50);
+  if (n >= 0) {
+    hostname[n] = 0;
+    for (int i = n; i > 0; i--) {
+      if (hostname[i] == '\n') hostname[i] = 0;
+    }
+  }
+
+  close(hn);
+
+
+  uid_t uid = getuid();
+  struct passwd *pwd = getpwuid(uid);
+  strncpy(uname, pwd->pw_name, 32);
+
+	auto in = ck::stdin();
+	ck::linereader r(in);
+
+  // display the prompt forever ( l part of repl :^] )
+  while (1) {
+    syscall(SYS_getcwd, cwd, 255);
+    setenv("CWD", (const char *)cwd, 1);
+
+    const char *disp_cwd = (const char *)cwd;
+    if (strcmp((const char *)cwd, pwd->pw_dir) == 0) {
+      disp_cwd = "~";
+    }
+
+    ck::strstream prompt;
+    prompt.fmt("[%s@%s %s]%c ", uname, hostname, disp_cwd,
+               uid == 0 ? '#' : '$');
+
+		auto res = r.next();
+
+		if (res) {
+			ck::string &s = res.unwrap();
+			printf("got: '%s'\n", s.get());
+		} else {
+			printf("Nothing returned\n");
+			break;
+		}
+
+  }
+	return 0;
+}
+
+
+
+
+
+ck::command evaluate_buffer(const ck::string &buf) {
+	return ck::command(buf);
+}

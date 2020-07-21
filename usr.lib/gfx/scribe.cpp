@@ -66,8 +66,8 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source,
   gfx::rect dst_rect;
   dst_rect.x = position.x() + translation().x();
   dst_rect.y = position.y() + translation().y();
-  dst_rect.w = safe_src_rect.w - 1;
-  dst_rect.h = safe_src_rect.h - 2;
+  dst_rect.w = safe_src_rect.w;
+  dst_rect.h = safe_src_rect.h;
 
   auto clipped_rect = dst_rect.intersect(state().clip);
   if (clipped_rect.is_empty()) return;
@@ -81,11 +81,16 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source,
   const uint32_t *src = source.scanline(src_rect.top() + first_row) +
                         src_rect.left() + first_column;
   const size_t src_skip = source.width();
-  for (int row = first_row; row <= last_row; ++row) {
+
+
+	// ::printf("w: %4d,  last_row: %4d\n", last_row, clipped_rect.w-1);
+  for (int row = first_row; row < last_row; ++row) {
     memcpy(dst, src, clipped_rect.w * sizeof(uint32_t));
     dst += dst_skip;
     src += src_skip;
   }
+
+	// draw_pixel(dst_rect.x, dst_rect.y, 0xFF00FF);
   return;
 }
 
@@ -571,7 +576,7 @@ void gfx::scribe::draw_frame(const gfx::rect &frame, uint32_t bg) {
 
   for (int y = 0; y < frame.h; y++) {
     draw_pixel(0 + l, y + t, 0x000000);
-    draw_pixel(frame.w + l, y + t, 0x000000);
+    draw_pixel(frame.w + l - 1, y + t, 0x000000);
 
     // top or bottom black bar
     if (unlikely(y == 0 || y == frame.h - 1)) {
@@ -581,19 +586,19 @@ void gfx::scribe::draw_frame(const gfx::rect &frame, uint32_t bg) {
 
     // top highlight
     if (unlikely(y == 1)) {
-      for (int x = 1; x < frame.w; x++) draw_pixel(x + l, y + t, highlight);
+      for (int x = 1; x < frame.w - 1; x++) draw_pixel(x + l, y + t, highlight);
       continue;
     }
 
     // bottom shadow
     if (unlikely(y == frame.h - 2)) {
       draw_pixel(1 + l, y + t, highlight);
-      for (int x = 2; x < frame.w; x++) draw_pixel(x + l, y + t, shadow);
+      for (int x = 2; x < frame.w - 1; x++) draw_pixel(x + l, y + t, shadow);
       continue;
     }
 
     draw_pixel(1 + l, y + t, highlight);
-    draw_pixel(l + frame.w - 1, y + t, shadow);
+    draw_pixel(l + frame.w - 2, y + t, shadow);
 
 
     for (int x = 2; x < frame.w - 1; x++) {

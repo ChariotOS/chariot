@@ -1,6 +1,3 @@
-#include <ck/eventloop.h>
-#include <ck/option.h>
-#include <ck/timer.h>
 #include <gfx/bitmap.h>
 #include <gfx/font.h>
 #include <gfx/rect.h>
@@ -9,37 +6,55 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/emx.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <ui/application.h>
 #include <ui/view.h>
-#include <ck/unicode.h>
 #include <ui/window.h>
 #include <unistd.h>
-#include <sys/emx.h>
+
+#include <ck/array.h>
+#include <ck/eventloop.h>
+#include <ck/option.h>
 #include <ck/rand.h>
+#include <ck/strstream.h>
+#include <ck/timer.h>
+#include <ck/tuple.h>
+#include <ck/unicode.h>
+
 
 class painter : public ui::view {
-  int ox = 0;
-  int oy = 0;
-  bool active = false;
-
   int color = 0;
 
  public:
-  painter(void) { color = rand(); }
+  painter(int width = -1) {
+    if (width != -1) {
+      // set the width
+      set_width_policy(ui::size_policy::fixed);
+      set_size(ui::direction::horizontal, width);
+    }
+    color = rand();
+  }
 
 
-  virtual void repaint(void) override {
+  virtual void paint_event(void) override {
     auto s = get_scribe();
-
-
     s.clear(color);
-
     invalidate();
   }
 
-  virtual bool mouse_event(ui::mouse_event &ev) override {
+	virtual void on_mouse_move(ui::mouse_event &ev) override {
+      auto s = get_scribe();
+
+			int ox = ev.x - ev.dx;
+			int oy = ev.y - ev.dy;
+      s.draw_line_antialias(ox, oy, ev.x, ev.y, 0);
+			invalidate();
+	}
+
+	/*
+  virtual bool mouse_event(ui::mouse_event& ev) override {
     active = ev.left;
 
     if (ev.right) {
@@ -68,48 +83,59 @@ class painter : public ui::view {
 
     return true;
   }
+	*/
 };
 
 
-int main(int argc, char **argv) {
-
-	int emx = emx_create();
-
-	int foo = 0;
-
-	emx_set(emx, 0, (void*)&foo, EMX_READ);
 
 
-	int events = 0;
-	void *key = emx_wait(emx, &events);
+struct Thingy {
+  int foo(void) { return 42; }
+};
 
-	printf("key=%p, foo=%p\n", key, &foo);
+int main(int argc, char** argv) {
+  /*
+  int emx = emx_create();
 
-	close(emx);
-	return 0;
+  int foo = 0;
+  emx_set(emx, 0, (void*)&foo, EMX_READ);
 
+  int events = 0;
+  void *key = emx_wait(emx, &events);
 
-  // auto fnt = gfx::font::get_default();
-  auto fnt = gfx::font::open("chicago-normal", 12);
+  printf("key=%p, foo=%p\n", key, &foo);
 
-  printf("%zu\n", sizeof(painter));
+  close(emx);
+  return 0;
+  */
+
+  // ck::strstream stream;
+  // stream.fmt("hello");
 
   while (1) {
     // connect to the window server
     ui::application app;
+    ck::vec<ui::window*> windows;
 
-    ck::vec<ui::window *> windows;
-
-    int width = 100;
-    int height = 100;
+    int width = 400;
+    int height = 300;
 
 
     char buf[50];
-    for (int i = 0; i < 5; i++) {
-      sprintf(buf, "Hello", i);
+    for (int i = 0; i < 1; i++) {
+      sprintf(buf, "[Window %d]", i);
       auto win = app.new_window(buf, width, height);
       windows.push(win);
-      win->set_view<painter>();
+      auto& stk = win->set_view<ui::stackview>(ui::direction::horizontal);
+
+
+			srand(0);
+      stk.spawn<painter>(20);
+      stk.spawn<painter>(50);
+      stk.spawn<painter>(10);
+      stk.spawn<painter>();
+      stk.spawn<painter>(50);
+      stk.spawn<painter>();
     }
 
     auto input = ck::file::unowned(0);

@@ -84,10 +84,10 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
           dragging = true;
         }
       } else if (res == WINDOW_REGION_NORM) {
-				screen.cursor = mouse_cursor::pointer;
-			} else if (res == WINDOW_REGION_CLOSE) {
-				screen.cursor = mouse_cursor::pointer;
-			}
+        screen.cursor = mouse_cursor::pointer;
+      } else if (res == WINDOW_REGION_CLOSE) {
+        screen.cursor = mouse_cursor::pointer;
+      }
     }
 
     if (dragging) {
@@ -96,14 +96,14 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
       hovered_window->rect.x -= old_pos.x() - screen.mouse_pos.x();
       hovered_window->rect.y -= old_pos.y() - screen.mouse_pos.y();
       invalidate(hovered_window->rect);
-		}
+    }
   } else {
     screen.cursor = mouse_cursor::pointer;
   }
 
 
-	// compose asap so we can get lower mouse input latencies
-	compose();
+  // compose asap so we can get lower mouse input latencies
+  compose();
 }
 
 
@@ -255,7 +255,11 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
 
     auto r = gfx::rect(arg->x, arg->y, arg->w, arg->h).intersect(win->rect);
     win->translate_invalidation(r);
-    invalidate(r);
+    if (!r.is_empty()) {
+      r.w++;
+      r.h++;
+      invalidate(r);
+    }
     return;
   };
 
@@ -279,8 +283,20 @@ void lumen::context::window_opened(lumen::window *w) {
 
 
 
-  w->rect.x = rand() % (screen.width() - w->rect.w);
-  w->rect.y = rand() % (screen.height() - w->rect.h);
+  long wleft = (screen.width() - w->rect.w);
+  long hleft = (screen.height() - w->rect.h);
+
+  if (wleft > 0) {
+    w->rect.x = rand() % wleft;
+  } else {
+    w->rect.x = 100;
+  }
+
+  if (hleft > 0) {
+    w->rect.y = rand() % hleft;
+  } else {
+    w->rect.y = 100;
+  }
 
 
   // insert at the back (front of the stack)
@@ -418,7 +434,7 @@ void lumen::context::compose(void) {
 
   compose_timer->stop();
 
-	// printf("took %zu\n", tsc() - start);
+  // printf("took %zu\n", tsc() - start);
 }
 
 
@@ -461,9 +477,19 @@ struct lumen::window *lumen::guest::new_window(ck::string name, int w, int h) {
   auto win = new lumen::window(id, *this, w, h);
   win->name = name;
 
-  // XXX: allow the user to request a position
-  win->rect.x = rand() % (ctx.screen.width() - w);
-  win->rect.y = rand() % (ctx.screen.height() - h);
+
+  if (w >= ctx.screen.width()) {
+    win->rect.x = 0;
+  } else {
+    win->rect.x = rand() % (ctx.screen.width() - w);
+  }
+
+
+  if (h >= ctx.screen.height()) {
+    win->rect.y = 0;
+  } else {
+    win->rect.y = rand() % (ctx.screen.height() - h);
+  }
   windows.set(win->id, win);
 
   ctx.window_opened(win);

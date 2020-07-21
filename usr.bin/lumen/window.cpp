@@ -1,4 +1,5 @@
 #include <gfx/font.h>
+#include <gfx/image.h>
 #include "internal.h"
 
 #define TITLE_HEIGHT 18
@@ -6,9 +7,7 @@
 
 
 
-static gfx::rect close_button() {
-	return gfx::rect(4, 4, 9, 9);
-}
+static gfx::rect close_button() { return gfx::rect(4, 4, 9, 9); }
 
 static uint32_t theme_color() {
   // return 0xFFFFFF;
@@ -33,7 +32,8 @@ void lumen::window::set_mode(window_mode mode) {
     case window_mode::normal:
       // no side borders
       this->rect.w = bitmap->width() + 2;
-      this->rect.h = bitmap->height() + TITLE_HEIGHT + 2;
+      this->rect.h = bitmap->height() + TITLE_HEIGHT + 1;
+      printf("width: %d\n", this->rect.w);
       break;
   }
 }
@@ -53,7 +53,8 @@ int lumen::window::handle_mouse_input(gfx::point &r, struct mouse_packet &p) {
     y = r.y() - TITLE_HEIGHT;
   }
 
-  if (x >= 0 && x < (int)bitmap->width() && y >= 0 && y < (int)bitmap->height()) {
+  if (x >= 0 && x < (int)bitmap->width() && y >= 0 &&
+      y < (int)bitmap->height()) {
     struct lumen::input_msg m;
 
     m.window_id = this->id;
@@ -68,13 +69,13 @@ int lumen::window::handle_mouse_input(gfx::point &r, struct mouse_packet &p) {
     return WINDOW_REGION_NORM;
   }
   if (y < 0) {
-		if (close_button().contains(r.x(), r.y())) {
-			// The region describes the close region
-			return WINDOW_REGION_CLOSE;
+    if (close_button().contains(r.x(), r.y())) {
+      // The region describes the close region
+      return WINDOW_REGION_CLOSE;
     } else {
-			// this region is draggable
-			return WINDOW_REGION_DRAG;
-		}
+      // this region is draggable
+      return WINDOW_REGION_DRAG;
+    }
   }
 
 
@@ -89,11 +90,21 @@ int noise(uint64_t seed) {
   return seed >> 33;
 }
 
+
+
+class Foo {
+ public:
+  Foo() { printf("ctor!\n"); }
+};
+
 void lumen::window::draw(gfx::scribe &scribe) {
+  static Foo f;
   // draw normal window mode.
   if (mode == window_mode::normal) {
     // draw the window bitmap, offset by the title bar
     auto bmp_rect = gfx::rect(0, 0, bitmap->width(), bitmap->height());
+
+
 
     scribe.blit(gfx::point(1, TITLE_HEIGHT), *bitmap, bmp_rect);
 
@@ -103,12 +114,7 @@ void lumen::window::draw(gfx::scribe &scribe) {
       bg = 0xFF'FFFFFF;
     }
 
-
     scribe.draw_frame(gfx::rect(0, 0, rect.w, TITLE_HEIGHT), bg);
-
-
-    // if (hovered || focused) {
-
 
     scribe.draw_rect(close_button(), 0x000000);
 
@@ -123,9 +129,12 @@ void lumen::window::draw(gfx::scribe &scribe) {
     // }
 
     scribe.draw_line(0, TITLE_HEIGHT, 0, rect.h - 2, 0x000000);
-    scribe.draw_line(rect.w, TITLE_HEIGHT, rect.w, rect.h - 2, 0x000000);
-    scribe.draw_line(0, rect.h - 2, rect.w, rect.h - 2, 0x000000);
+    scribe.draw_line(rect.w - 1, TITLE_HEIGHT, rect.w - 1, rect.h - 2,
+                     0x000000);
+    scribe.draw_line(0, rect.h - 2, rect.w - 1, rect.h - 2, 0x000000);
 
     return;
   }
+
+  return;
 }

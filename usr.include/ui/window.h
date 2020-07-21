@@ -50,6 +50,11 @@ namespace ui {
     void schedule_reflow();
 
 
+		// which view is hovered and focused?
+		ui::view *focused = NULL;
+		ui::view *hovered = NULL;
+
+
    private:
     bool m_pending_reflow = false;
 
