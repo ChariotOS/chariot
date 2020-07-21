@@ -192,22 +192,22 @@ void dump_backtrace(off_t ebp) {
 
   off_t stk_end = (off_t)curthd->stack + curthd->stack_size;
   // int i = 0;
-	printk("addr2line -e /tmp/chariot.elf ");
+  printk("addr2line -e /tmp/chariot.elf ");
   for (off_t *stack_ptr = (off_t *)ebp;
        (off_t)stack_ptr < stk_end && (off_t)stack_ptr >= KERNEL_VIRTUAL_BASE;
        stack_ptr = (off_t *)*stack_ptr) {
     off_t retaddr = stack_ptr[1];
     printk("0x%p ", retaddr);
   }
-	printk("\n");
+  printk("\n");
 }
 
 
 void arch::dump_backtrace(void) {
-	off_t rbp = 0;
-	asm volatile("mov %%rbp, %0\n\t" : "=r" (rbp) );
+  off_t rbp = 0;
+  asm volatile("mov %%rbp, %0\n\t" : "=r"(rbp));
 
-	::dump_backtrace(rbp);
+  ::dump_backtrace(rbp);
 }
 
 
@@ -261,7 +261,7 @@ static void gpf_handler(int i, reg_t *regs) {
          eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-',
          eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
 
-	arch::dump_backtrace();
+  arch::dump_backtrace();
 
   sys::exit_proc(-1);
 
@@ -295,7 +295,7 @@ static void pgfault_handle(int i, reg_t *regs) {
   if (curproc == NULL) {
     KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf->rip,
          read_cr2());
-		arch::dump_backtrace();
+    arch::dump_backtrace();
     // lookup the kernel proc if we aren't in one!
     proc = sched::proc::kproc();
   }
@@ -320,9 +320,18 @@ static void pgfault_handle(int i, reg_t *regs) {
       KERR("pid %d, tid %d segfaulted @ %p\n", curthd->pid, curthd->tid,
            tf->rip);
       KERR("       bad address = %p\n", read_cr2());
-      KERR("               err = %p\n", tf->err);
+      KERR("              info = ");
+
+      if (tf->err & PGFLT_PRESENT) printk("PRESENT ");
+      if (tf->err & PGFLT_WRITE) printk("WRITE ");
+      if (tf->err & PGFLT_USER) printk("USER ");
+      if (tf->err & PGFLT_INSTR) printk("INSTR ");
+      printk("\n");
 
       dump_backtrace(tf->rbp);
+
+      KERR("Address Space Dump:\n");
+      proc->mm->dump();
 
       sys::exit_proc(-1);
 
