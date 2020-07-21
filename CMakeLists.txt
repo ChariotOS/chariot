@@ -53,7 +53,9 @@ endif()
 set(LDFLAGS -m elf_x86_64 -z max-page-size=0x1000)
 set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -fno-omit-frame-pointer -mmmx -msse -msse2 -g -DUSERLAND -D__ARCH_${ARCH}__ -ffreestanding -Wall")
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++2a -fno-rtti -fno-exceptions -fdiagnostics-color=always")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++2a -fdiagnostics-color=always")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -fno-exceptions")
+
 
 
 
