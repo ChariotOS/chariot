@@ -143,3 +143,10 @@ extern "C" void __cxa_guard_release(void *p) {
 
 
 
+extern "C" int __gxx_personality_v0 (int version,
+		      void *actions,
+		      void *exception_class,
+		      struct _Unwind_Exception *ue_header,
+		      struct _Unwind_Context *context) {
+	return 0;
+}
