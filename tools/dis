@@ -1,0 +1,3 @@
+#!/bin/bash
+
+objdump -Mintel -D $1 | bat -l asm
