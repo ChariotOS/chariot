@@ -51,11 +51,11 @@ namespace ui {
 
 
     // default handlers
-		// core mouse events
-		inline virtual void on_left_click(ui::mouse_event &) {}
-		inline virtual void on_right_click(ui::mouse_event &) {}
-		inline virtual void on_scroll(ui::mouse_event &) {}
-		inline virtual void on_mouse_move(ui::mouse_event &) {}
+    // core mouse events
+    inline virtual void on_left_click(ui::mouse_event &) {}
+    inline virtual void on_right_click(ui::mouse_event &) {}
+    inline virtual void on_scroll(ui::mouse_event &) {}
+    inline virtual void on_mouse_move(ui::mouse_event &) {}
 
     inline virtual void paint_event(void) {}
 
@@ -75,12 +75,13 @@ namespace ui {
     virtual void reflowed(void) {}
 
 
-    /* relative positions relative to the parent */
+		/*
+		 * Geometry relative to the parent view (or window)
+		 */
     inline auto left() { return m_rel.left(); }
     inline auto right() { return m_rel.right(); }
     inline auto top() { return m_rel.top(); }
     inline auto bottom() { return m_rel.bottom(); }
-
     inline auto width() { return m_rel.w; }
     inline auto height() { return m_rel.h; }
 
@@ -95,6 +96,41 @@ namespace ui {
     inline ui::view *parent() const { return m_parent; }
 
 
+
+
+    // get a scribe for this view's bounding box
+    gfx::scribe get_scribe(void);
+    void invalidate(void);
+    void do_reflow(void);
+    inline auto &margin(void) { return m_margin; }
+    inline auto &padding(void) { return m_padding; }
+
+
+    ui::size_policy get_width_policy(void) const { return m_width_policy; }
+    ui::size_policy get_height_policy(void) const { return m_height_policy; }
+    void set_width_policy(ui::size_policy s) { m_width_policy = s; }
+    void set_height_policy(ui::size_policy s) { m_height_policy = s; }
+
+    void set_size(ui::direction dir, int sz);
+    void set_size(int w, int h);
+    void set_pos(int x, int y);
+    gfx::rect absolute_rect(void);
+
+
+    /**
+     * Get the size of the view along a certain axis
+     */
+    int size(ui::direction dir);
+
+    void set_pos(ui::direction dir, int pos);
+    ui::size_policy get_size_policy(ui::direction dir);
+
+    void set_background(uint32_t bg);
+    void remove_background();
+
+
+
+
     /**
      * Because the view tree is strict (views cannot live in multiple places,
      * and must have a parent or a window) new views are created by spawning
@@ -107,9 +143,7 @@ namespace ui {
     template <typename T, typename... Args>
     inline T &spawn(Args &&... args) {
       ui::view *v = new T(forward<Args>(args)...);
-
       m_children.append(*v);
-
       v->m_parent = this;
       v->m_window = m_window;
       do_reflow();
@@ -123,108 +157,7 @@ namespace ui {
     }
 
 
-    inline void set_size(int w, int h) {
-      m_rel.w = w;
-      m_rel.h = h;
-    }
 
-    inline void set_pos(int x, int y) {
-      m_rel.x = x;
-      m_rel.y = y;
-    }
-
-    inline gfx::rect absolute_rect(void) {
-      if (m_parent != NULL) {
-        gfx::rect p = parent()->absolute_rect();
-        gfx::rect r = m_rel;
-        r.x += p.x;
-        r.y += p.y;
-        return r;
-      }
-      return m_rel;
-    }
-
-
-    // get a scribe for this view's bounding box
-    gfx::scribe get_scribe(void);
-
-    // invalidate *just* this view
-    void invalidate(void);
-
-    // cause the view to reflow
-    void do_reflow(void);
-
-
-    inline auto &margin(void) { return m_margin; }
-
-
-    inline auto &padding(void) { return m_padding; }
-
-    /*
-inline auto get_bg(void) { return m_background; }
-inline void set_bg(ck::option<uint32_t> c) { m_background = c; }
-    */
-
-
-    inline auto get_pref_size(void) {
-      return gfx::rect(0, 0, m_pref_width, m_pref_height);
-    }
-
-    inline void set_pref_size(int w, int h) {
-      m_pref_width = w;
-      m_pref_height = h;
-    }
-
-
-    inline auto get_width_policy(void) const { return m_width_policy; }
-    inline auto get_height_policy(void) const { return m_height_policy; }
-    inline auto set_width_policy(ui::size_policy s) { m_width_policy = s; }
-    inline auto set_height_policy(ui::size_policy s) { m_height_policy = s; }
-
-    inline void set_size(ui::direction dir, int sz) {
-      switch (dir) {
-        case ui::direction::vertical:
-          m_rel.h = sz;
-          break;
-        case ui::direction::horizontal:
-          m_rel.w = sz;
-          break;
-      }
-      return;
-    }
-
-
-    inline auto size(ui::direction dir) {
-      return dir == ui::direction::vertical ? height() : width();
-    }
-
-
-    inline void set_pos(ui::direction dir, int pos) {
-      switch (dir) {
-        case ui::direction::vertical:
-          m_rel.y = pos;
-          break;
-        case ui::direction::horizontal:
-          m_rel.x = pos;
-          break;
-      }
-      return;
-    }
-    inline ui::size_policy get_size_policy(ui::direction dir) {
-      return dir == ui::direction::vertical ? get_height_policy()
-                                            : get_width_policy();
-    }
-
-    void set_background(uint32_t bg) {
-      m_background = bg;
-      m_use_bg = true;
-      repaint();
-    }
-
-    void remove_background() {
-      m_use_bg = false;
-      repaint();
-    }
 
    protected:
     // implemented by the subclass
@@ -239,8 +172,8 @@ inline void set_bg(ck::option<uint32_t> c) { m_background = c; }
     gfx::rect m_rel;
 
     // bit flags
-    bool m_visible : 1 = true;
-    bool m_use_bg : 1 = true;
+    bool m_visible = true;
+    bool m_use_bg = true;
 
 
     uint32_t m_background = 0xFFFFFF;
@@ -252,9 +185,6 @@ inline void set_bg(ck::option<uint32_t> c) { m_background = c; }
     uint32_t m_bordercolor = 0;
     uint32_t m_bodersize = 0;
 
-
-    int m_pref_width;
-    int m_pref_height;
 
     // by default, calculate width and height
     ui::size_policy m_width_policy = ui::size_policy::calc;

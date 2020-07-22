@@ -6,9 +6,8 @@
 ui::view::view() {}
 
 ui::view::~view(void) {
-
-	if (m_window->hovered == this) m_window->hovered = NULL;
-	if (m_window->focused == this) m_window->focused = NULL;
+  if (m_window->hovered == this) m_window->hovered = NULL;
+  if (m_window->focused == this) m_window->focused = NULL;
   for (auto &v : m_children) {
     delete &v;
   }
@@ -113,3 +112,77 @@ void ui::view::do_reflow(void) {
   // repaint this view after we did a reflow :)
   repaint();
 }
+
+
+
+
+void ui::view::set_background(uint32_t bg) {
+  m_background = bg;
+  m_use_bg = true;
+  repaint();
+}
+
+void ui::view::remove_background() {
+  m_use_bg = false;
+  repaint();
+}
+
+
+void ui::view::set_pos(ui::direction dir, int pos) {
+  switch (dir) {
+    case ui::direction::vertical:
+      m_rel.y = pos;
+      break;
+    case ui::direction::horizontal:
+      m_rel.x = pos;
+      break;
+  }
+  return;
+}
+ui::size_policy ui::view::get_size_policy(ui::direction dir) {
+  return dir == ui::direction::vertical ? get_height_policy()
+                                        : get_width_policy();
+}
+
+
+int ui::view::size(ui::direction dir) {
+  return dir == ui::direction::vertical ? height() : width();
+}
+
+
+
+void ui::view::set_size(ui::direction dir, int sz) {
+  switch (dir) {
+    case ui::direction::vertical:
+      m_rel.h = sz;
+      break;
+    case ui::direction::horizontal:
+      m_rel.w = sz;
+      break;
+  }
+  return;
+}
+
+
+
+void ui::view::set_size(int w, int h) {
+  m_rel.w = w;
+  m_rel.h = h;
+}
+
+void ui::view::set_pos(int x, int y) {
+  m_rel.x = x;
+  m_rel.y = y;
+}
+
+gfx::rect ui::view::absolute_rect(void) {
+  if (m_parent != NULL) {
+    gfx::rect p = parent()->absolute_rect();
+    gfx::rect r = m_rel;
+    r.x += p.x;
+    r.y += p.y;
+    return r;
+  }
+  return m_rel;
+}
+
