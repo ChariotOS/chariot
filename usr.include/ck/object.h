@@ -47,11 +47,6 @@ namespace ck {
     virtual const char* class_name(void) const { return "ck::object"; };
 
 
-
-    /**
-     *
-     */
-
     /*
      * event - notify the ck::object of some external event. Returns if it has
      * consumed the event.
