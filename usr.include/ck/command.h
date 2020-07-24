@@ -44,6 +44,12 @@ namespace ck {
 
     // waits for the started command to exit
     int wait(void);
+
+    inline pid_t leak(void) {
+      auto o = pid;
+      pid = -1;
+      return o;
+    }
   };
 
   ck::string format(const ck::command &cmd);
