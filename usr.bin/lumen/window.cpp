@@ -11,8 +11,8 @@ static gfx::rect close_button() { return gfx::rect(4, 4, 9, 9); }
 
 static uint32_t theme_color() {
   // return 0xFFFFFF;
-  return 0xFFC9C9;  // poolside.fm
-  // return 0xACCED8;  // off-blue
+  // return 0xFFC9C9;  // poolside.fm
+  return 0xACCED8;  // off-blue
   // return 0x858585;  // gray
 }
 
@@ -110,9 +110,6 @@ void lumen::window::draw(gfx::scribe &scribe) {
 
     auto bg = theme_color();
 
-    if (!focused) {
-      bg = 0xFF'FFFFFF;
-    }
 
     scribe.draw_frame(gfx::rect(0, 0, rect.w, TITLE_HEIGHT), bg);
 
@@ -121,12 +118,13 @@ void lumen::window::draw(gfx::scribe &scribe) {
     auto st = gfx::scribe::text_thunk(18, 0, rect.w);
     scribe.draw_text(st, *gfx::font::get_default(), name.get(), 0x000000, 0);
 
-    for (int i = 0; i < 5; i++) {
-      int x = st.pos.x() + 4;
-      int y = 4 + (i * 2);
-      scribe.draw_line(x, y, rect.w - 4, y, 0);
+    if (focused) {
+      for (int i = 0; i < 5; i++) {
+        int x = st.pos.x() + 4;
+        int y = 4 + (i * 2);
+        scribe.draw_line(x, y, rect.w - 4, y, 0);
+      }
     }
-    // }
 
     scribe.draw_line(0, TITLE_HEIGHT, 0, rect.h - 2, 0x000000);
     scribe.draw_line(rect.w - 1, TITLE_HEIGHT, rect.w - 1, rect.h - 2,

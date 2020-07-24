@@ -23,25 +23,35 @@
 #include <ck/timer.h>
 #include <ck/tuple.h>
 #include <ck/unicode.h>
+#include <ck/mem.h>
 
+
+struct line {
+	gfx::point start;
+	gfx::point end;
+};
 
 class painter : public ui::view {
   int color = 0;
 
+	ck::vec<struct line> lines;
+
  public:
-  painter(void) { color = rand(); }
+  painter(void) {
+		//
+		color = rand();
+	}
 
 
   virtual void paint_event(void) override {
     auto s = get_scribe();
-    s.clear(color);
-
+    // s.clear(color);
     // s.draw_frame(gfx::rect(0, 0, width(), height()), color);
 
-    // gfx::rect r(10, 10, 50, 50);
-    // s.fill_rect(r, 0x00FF00);
-    // s.draw_rect(r.intersect(gfx::rect(10, 10, 60, 60)), 0xFF0000);
+		for (auto &line : lines) {
+    	s.draw_line(line.start, line.end, color);
 
+		}
     invalidate();
   }
 
@@ -50,17 +60,18 @@ class painter : public ui::view {
 
     int ox = ev.x - ev.dx;
     int oy = ev.y - ev.dy;
-    s.draw_line(ox, oy, ev.x, ev.y, 0xFFFFFF);
 
+		lines.push({.start = gfx::point(ox, oy), .end = gfx::point(ev.x, ev.y)});
 
-
-    invalidate();
+		repaint();
   }
 };
 
 
 
 int main(int argc, char** argv) {
+
+	return 0;
   /*
   int emx = emx_create();
 

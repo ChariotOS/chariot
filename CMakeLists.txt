@@ -52,7 +52,7 @@ endif()
 
 set(LDFLAGS -m elf_x86_64 -z max-page-size=0x1000)
 set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -fno-omit-frame-pointer -mmmx -msse -msse2 -g -DUSERLAND -D__ARCH_${ARCH}__ -ffreestanding -Wall")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -mmmx -msse -msse2 -g -DUSERLAND -D__ARCH_${ARCH}__ -ffreestanding -Wall")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++2a -fdiagnostics-color=always")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -fno-exceptions")
 
@@ -91,7 +91,18 @@ function(chariot_bin target_name)
     add_executable(${target_name} ${SOURCES})
     install(TARGETS ${target_name} RUNTIME DESTINATION bin)
 		target_link_libraries(${target_name} crt0 libc libm)
-		# set_target_properties(${target_name} PROPERTIES LINKER_LANGUAGE C)
+
+
+
+		foreach(src ${SOURCES})
+			if (${src} MATCHES "cpp$")
+				# message(STATUS "${target_name} is a c++ project")
+				# only link in libck if it is a c++ project
+				target_link_libraries(${target_name} libck)
+				break()
+			endif()
+		endforeach(src)
+
 endfunction()
 
 add_subdirectory(kernel)
