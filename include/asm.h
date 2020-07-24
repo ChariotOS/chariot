@@ -243,55 +243,13 @@ static inline void write_cr3(u64 data) {
   asm volatile("mov %0, %%cr3" : : "r"(data));
 }
 
-static inline u64 read_cr4(void) {
-  u64 ret;
-  asm volatile("mov %%cr4, %0" : "=r"(ret));
-  return ret;
-}
 
-static inline void write_cr4(u64 data) {
-  asm volatile("mov %0, %%cr4" : : "r"(data));
-}
-
-static inline u64 read_cr8(void) {
-  u64 ret;
-  asm volatile("mov %%cr8, %0" : "=r"(ret));
-  return ret;
-}
-
-static inline void write_cr8(u64 data) {
-  asm volatile("mov %0, %%cr8" : : "r"(data));
-}
-
-static inline uint8_t inb(uint16_t port) {
-  uint8_t ret;
-  asm volatile("inb %1, %0" : "=a"(ret) : "dN"(port));
-  return ret;
-}
-
-static inline uint16_t inw(uint16_t port) {
-  uint16_t ret;
-  asm volatile("inw %1, %0" : "=a"(ret) : "dN"(port));
-  return ret;
-}
-
-static inline uint32_t inl(uint16_t port) {
-  uint32_t ret;
-  asm volatile("inl %1, %0" : "=a"(ret) : "dN"(port));
-  return ret;
-}
-
-static inline void outb(uint16_t port, uint8_t val) {
-  asm volatile("outb %0, %1" ::"a"(val), "dN"(port));
-}
-
-static inline void outw(uint16_t port, uint16_t val) {
-  asm volatile("outw %0, %1" ::"a"(val), "dN"(port));
-}
-
-static inline void outl(uint16_t port, uint32_t val) {
-  asm volatile("outl %0, %1" ::"a"(val), "dN"(port));
-}
+uint8_t inb(off_t port);
+uint16_t inw(off_t port);
+uint32_t inl(off_t port);
+void outb(off_t port, uint8_t val);
+void outw(off_t port, uint16_t val);
+void outl(off_t port, uint32_t val);
 
 static inline u32 popcnt(u64 val) {
   u64 count = 0;
