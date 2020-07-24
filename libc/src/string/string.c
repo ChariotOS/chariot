@@ -1,20 +1,27 @@
+#include <ctype.h>
+#include <errno.h>
 #include <limits.h>
 #include <locale.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
+#include <stdio.h>
 
 #define ALIGN (sizeof(size_t))
 #define ONES ((size_t)-1 / UCHAR_MAX)
 #define HIGHS (ONES * (UCHAR_MAX / 2 + 1))
 #define HASZERO(x) (((x)-ONES) & (~(x)&HIGHS))
 
-static inline int isdigit(int ch) { return (unsigned int)ch - '0' < 10; }
 
-static inline int isspace(int ch) {
-  return ch == ' ' || (unsigned int)ch - '\t' < 5;
+char *strrchr(const char *str, int ch) {
+  char *last = NULL;
+  char c;
+  for (; (c = *str); ++str) {
+    if (c == ch) last = (char *)(str);
+  }
+  return last;
 }
+
 long atol(const char *s) {
   int n = 0;
   int neg = 0;
@@ -57,6 +64,12 @@ int atoi(const char *s) {
    * calculated as a negative number to avoid overflow on INT_MAX.
    */
   return neg ? n : -n;
+}
+
+double atof(const char *c) {
+	double res = 0.0;
+	sscanf(c, "%f", &res);
+	return res;
 }
 
 char *strdup(const char *s) {
@@ -180,6 +193,9 @@ int strncmp(const char *_l, const char *_r, size_t n) {
     ;
   return *l - *r;
 }
+
+
+int strcoll(const char *s1, const char *s2) { return strcmp(s1, s2); }
 
 #define BITOP(A, B, OP)                              \
   ((A)[(size_t)(B) / (8 * sizeof *(A))] OP(size_t) 1 \
@@ -527,7 +543,7 @@ char *strerror(int e) {
   switch (e) {
 #define E(a, b) \
   case a:       \
-    return #b;   \
+    return #b;  \
     break;
 #include "../stdio/__strerror.h"
 
@@ -538,3 +554,30 @@ char *strerror(int e) {
 
 
 
+
+/* strings.h nonsense */
+static char foldcase(char ch) {
+  if (isalpha(ch)) return tolower(ch);
+  return ch;
+}
+
+int strcasecmp(const char *s1, const char *s2) {
+  for (; foldcase(*s1) == foldcase(*s2); ++s1, ++s2) {
+    if (*s1 == 0) return 0;
+  }
+  return foldcase(*(const unsigned char *)s1) <
+                 foldcase(*(const unsigned char *)s2)
+             ? -1
+             : 1;
+}
+
+int strncasecmp(const char *s1, const char *s2, size_t n) {
+  if (!n) return 0;
+  do {
+    if (foldcase(*s1) != foldcase(*s2++))
+      return foldcase(*(const unsigned char *)s1) -
+             foldcase(*(const unsigned char *)--s2);
+    if (*s1++ == 0) break;
+  } while (--n);
+  return 0;
+}

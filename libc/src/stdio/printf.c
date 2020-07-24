@@ -579,7 +579,8 @@ static size_t _etoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen,
 #endif  // PRINTF_SUPPORT_FLOAT
 
 // internal vsnprintf
-static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen, const char* format, va_list va) {
+static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen,
+                      const char* format, va_list va) {
   unsigned int flags, width, precision, n;
   size_t idx = 0U;
 
@@ -881,12 +882,12 @@ static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen, const
 
 
 
-			case 'U': {
-				// unicode!
-				// uint32_t cp = (uint32_t)va_arg(va, void*);
-				// (void)cp;
-				break;
-			}
+      case 'U': {
+        // unicode!
+        // uint32_t cp = (uint32_t)va_arg(va, void*);
+        // (void)cp;
+        break;
+      }
 
       case '%':
         out('%', buffer, idx++, maxlen);
@@ -956,7 +957,7 @@ int fctprintf(void (*out)(char character, void* arg), void* arg,
 
 
 int vfctprintf(void (*out)(char character, void* arg), void* arg,
-              const char* format, va_list va) {
+               const char* format, va_list va) {
   const out_fct_wrap_type out_fct_wrap = {out, arg};
   const int ret = _vsnprintf(_out_fct, (char*)(uintptr_t)&out_fct_wrap,
                              (size_t)-1, format, va);
@@ -969,9 +970,13 @@ void fprintf_writer(char c, void* a, size_t idx, size_t maxlen) {
 }
 
 
-int vsnfprintf(FILE *stream, const char *fmt, va_list va) {
-return 
-      _vsnprintf(fprintf_writer, (char*)stream, (size_t)-1, fmt, va);
+int vsnfprintf(FILE* stream, const char* fmt, va_list va) {
+  return _vsnprintf(fprintf_writer, (char*)stream, (size_t)-1, fmt, va);
+};
+
+
+int vfprintf(FILE* stream, const char* fmt, va_list va) {
+  return _vsnprintf(fprintf_writer, (char*)stream, (size_t)-1, fmt, va);
 };
 
 

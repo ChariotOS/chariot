@@ -210,6 +210,11 @@ bool thread::teardown(thread *t) {
 bool thread::send_signal(int sig) {
   unsigned long pend = (1 << sig);
   this->sig.pending |= pend;
+
+	printk("sending signal to tid %d. Blocked=%d\n", tid, state == PS_BLOCKED);
+	if (state == PS_BLOCKED) {
+		// 
+	}
   return true;
 }
 

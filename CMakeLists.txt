@@ -52,7 +52,8 @@ endif()
 
 set(LDFLAGS -m elf_x86_64 -z max-page-size=0x1000)
 set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -mmmx -msse -msse2 -g -DUSERLAND -D__ARCH_${ARCH}__ -ffreestanding -Wall")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -mmmx -fno-omit-frame-pointer -msse -msse2 -DUSERLAND -D__ARCH_${ARCH}__ -ffreestanding -Wall")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++2a -fdiagnostics-color=always")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -fno-exceptions")
 
@@ -93,12 +94,13 @@ function(chariot_bin target_name)
 		target_link_libraries(${target_name} crt0 libc libm)
 
 
+		target_link_libraries(${target_name} libck)
 
 		foreach(src ${SOURCES})
 			if (${src} MATCHES "cpp$")
 				# message(STATUS "${target_name} is a c++ project")
 				# only link in libck if it is a c++ project
-				target_link_libraries(${target_name} libck)
+				# target_link_libraries(${target_name} libck)
 				break()
 			endif()
 		endforeach(src)

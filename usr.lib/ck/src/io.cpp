@@ -12,6 +12,11 @@
 #include <unistd.h>
 
 
+ck::file ck::in(0);
+ck::file ck::out(1);
+ck::file ck::err(2);
+
+
 ck::buffer::buffer(size_t size) {
   m_buf = calloc(size, 1);
   m_size = size;
@@ -36,7 +41,9 @@ static void ck_file_writef_callback(char c, void *arg) {
 int ck::stream::fmt(const char *format, ...) {
   va_list va;
   va_start(va, format);
-  const int ret = vfctprintf(ck_file_writef_callback, (void *)static_cast<ck::stream*>(this), format, va);
+  const int ret =
+      vfctprintf(ck_file_writef_callback,
+                 (void *)static_cast<ck::stream *>(this), format, va);
   va_end(va);
   return ret;
 }

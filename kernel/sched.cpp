@@ -390,9 +390,13 @@ void sched::handle_tick(u64 ticks) {
 /* the default "waiter" type */
 class threadwaiter : public waiter {
  public:
-  inline threadwaiter(waitqueue &wq, struct thread *td) : waiter(wq), thd(td) {}
+  inline threadwaiter(waitqueue &wq, struct thread *td) : waiter(wq), thd(td) {
+		thd->waiter = this;
+	}
 
-  virtual ~threadwaiter(void) {}
+  virtual ~threadwaiter(void) {
+		thd->waiter = nullptr;
+	}
 
   virtual bool notify(int flags) override {
     if (flags & NOTIFY_RUDE) printk("rude!\n");
@@ -405,6 +409,20 @@ class threadwaiter : public waiter {
 
   struct thread *thd = NULL;
 };
+
+
+void waiter::interrupt(void) {
+	wq.interrupt(this);
+}
+
+void waitqueue::interrupt(struct waiter *w) {
+  lock.lock();
+
+
+	if (w->flags & WAIT_NOINT) return;
+
+  lock.unlock();
+}
 
 bool waitqueue::wait(u32 on, ref<waiter> wt) { return do_wait(on, 0, wt); }
 

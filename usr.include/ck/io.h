@@ -153,11 +153,9 @@ namespace ck {
   };
 
 
-
-
-  inline auto stdin(void) { return ck::file(0); }
-  inline auto stdout(void) { return ck::file(1); }
-  inline auto stderr(void) { return ck::file(2); }
+	extern ck::file in;
+	extern ck::file out;
+	extern ck::file err;
 
 
 

@@ -75,58 +75,14 @@ uint8_t mouse_read() {
 #define CMD_ABSPOINTER_COMMAND 41
 
 static void mouse_handler(int i, reg_t *) {
-#if 0
-  if (vmware::vmmouse_is_absolute()) {
-    inb(0x60);
-    struct vmware::command cmd;
-    /* Read the mouse status */
-    cmd.bx = 0;
-    cmd.cmd = CMD_ABSPOINTER_STATUS;
-    vmware::send(cmd);
-
-    /* Mouse status is in EAX */
-    if (cmd.ax == 0xFFFF0000) {
-      /* An error has occured, let's turn the device off and back on */
-      // mouse_off();
-      // mouse_absolute();
-      return;
-    }
-
-    /* The status command returns a size we need to read, should be at least 4.
-     */
-    if ((cmd.ax & 0xFFFF) < 4) {
-      return;
-    }
-
-    /* Read 4 bytes of mouse data */
-    cmd.bx = 4;
-    cmd.cmd = CMD_ABSPOINTER_DATA;
-    vmware::send(cmd);
-
-    /* Mouse data is now stored in AX, BX, CX, and DX */
-    int flags = (cmd.ax & 0xFFFF0000) >> 16; /* Not important */
-    int buttons =
-        (cmd.ax & 0xFFFF); /* 0x10 = Right, 0x20 = Left, 0x08 = Middle */
-    int x = (cmd.bx);      /* Both X and Y are scaled from 0 to 0xFFFF */
-    int y =
-        (cmd.cx); /* You should map these somewhere to the actual resolution. */
-    int z = (char)(cmd.dx); /* Z is a single signed byte indicating scroll
-                               direction. */
-
-    (void)flags;
-    (void)buttons;
-    printk("x: %d, y: %d, z: %d\n", x, y, z);
-    irq::eoi(i);
-    return;
-  }
-#endif
-
   uint8_t status = inb(MOUSE_STATUS);
 	arch::cli();
 
+	int loops = 0;
   while ((status & MOUSE_BBIT) && (status & MOUSE_F_BIT)) {
     bool finalize = false;
     char mouse_in = inb(MOUSE_PORT);
+		loops++;
     switch (mouse_cycle) {
       case 0:
         mouse_byte[0] = mouse_in;
@@ -175,12 +131,6 @@ static void mouse_handler(int i, reg_t *) {
       packet.dx = x;
       packet.dy = -y;  // the mouse gives us a negative value for going up
       packet.buttons = 0;
-#if 0
-			for (int i = 0; i < 3; i++) {
-				printk("0x%02x ", mouse_byte[i] & 0xFF);
-			}
-			printk("\n");
-#endif
       if (mouse_byte[0] & 0x01) {
         packet.buttons |= MOUSE_LEFT_CLICK;
       }
@@ -205,8 +155,8 @@ static void mouse_handler(int i, reg_t *) {
     }
     break;
   }
-	arch::sti();
 
+	arch::sti();
   irq::eoi(i);
 }
 

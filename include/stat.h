@@ -76,4 +76,7 @@ struct stat {
   time_t st_ctim;
 };
 
+
+int mkdir(const char *path, int mode);
+
 #endif

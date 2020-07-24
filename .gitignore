@@ -27,3 +27,6 @@ toolchain/local
 target
 
 node_modules
+
+
+*.wad

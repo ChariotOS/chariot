@@ -410,3 +410,11 @@ int setvbuf(FILE *restrict f, char *restrict buf, int type, size_t size) {
 }
 
 FILE *tmpfile(void) { return NULL; }
+
+
+
+int rename(const char *old_filename, const char *new_filename) {
+	errno = -ENOTIMPL;
+	return -1;
+}
+

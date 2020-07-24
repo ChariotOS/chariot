@@ -24,10 +24,6 @@
 
 
 
-
-
-
-
 struct sigaction {
   void (*sa_handler)(int);
   void (*sa_sigaction)(int, long *sigset, void *);
@@ -233,15 +229,16 @@ struct thread final {
 
 
   thread_blocker *blocker = NULL;
-
+  // the current waitqueue waiter
+  struct waiter *waiter = nullptr;
 
 
   // Masks are per-thread
   struct {
     unsigned long pending = 0;
     unsigned long mask = 0;
-		long handling = -1;
-		void *arch_priv = nullptr;
+    long handling = -1;
+    void *arch_priv = nullptr;
   } sig;
 
   struct thread_sched_info sched;
@@ -285,12 +282,19 @@ struct thread final {
     return BLOCKRES_NORMAL;
   }
 
+
+
+
   /**
    * Awaken the thread from it's waitqueue. Being rudely awoken means that the
    * waitqueue may not have been completed. A thread would be rudely awoken when
    * the process decides to exit, or a fault occurs.
    */
   bool awaken(int flags = 0);
+
+  // Notify a thread that a signal is available, interrupting it from a
+  // waitqueue if there is one
+  void interrupt(void);
 
   // tell the thread to start running at a certain address.
   bool kickoff(void *rip, int state);
@@ -309,8 +313,8 @@ struct thread final {
   thread(const thread &) = delete;  // no copy
   ~thread(void);
 
-	// return a list of instruction pointers (recent -> older)
-	vec<off_t> backtrace(off_t rbp, off_t rip);
+  // return a list of instruction pointers (recent -> older)
+  vec<off_t> backtrace(off_t rbp, off_t rip);
 };
 
 

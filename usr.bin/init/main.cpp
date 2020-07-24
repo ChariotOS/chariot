@@ -1,6 +1,5 @@
 #include <chariot.h>
 #include <chariot/dirent.h>
-#include <ck/io.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -15,13 +14,12 @@
 #include <unistd.h>
 #include "ini.h"
 
-
+#include <ck/io.h>
+#include <ck/command.h>
 
 #define ENV_PATH "/cfg/environ"
 
 extern char **environ;
-
-
 
 // read the initial environ from /etc/environ
 // credit: github.com/The0x539
@@ -136,6 +134,7 @@ int main(int argc, char **argv) {
 
           const char *name = ini_get(i, "service", "name");
           if (exec != NULL) {
+
             pid_t pid = spawn();
             char *args[] = {(char *)exec, NULL};
 

@@ -23,6 +23,12 @@ SECTIONS
 		__init_array_end = .;
 
 
+		__fini_array_start = .;
+        KEEP (*(.dtors))
+		KEEP (*(.fini_array*))
+		__fini_array_end = .;
+
+
         *(.rodata)
     }
 

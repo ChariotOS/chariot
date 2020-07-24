@@ -16,7 +16,19 @@ static struct fl {
 } builtin, *head;
 
 static int slot;
-static volatile int lock[1];
+// static volatile int lock[1];
+
+
+
+typedef void (*func_ptr)(void);
+extern func_ptr __fini_array_start[0], __fini_array_end[0];
+
+static void call_global_destructors(void) {
+  for (func_ptr *func = __fini_array_start; func != __fini_array_end; func++) {
+    (*func)();
+  }
+}
+
 
 void __funcs_on_exit() {
 #if 0
@@ -38,6 +50,7 @@ void __funcs_on_exit() {
 #endif
 
 
+
   void (*func)(void *), *arg;
   LOCK(lock);
   for (; head; head = head->next, slot = COUNT)
@@ -48,6 +61,8 @@ void __funcs_on_exit() {
       func(arg);
       LOCK(lock);
     }
+
+	call_global_destructors();
 }
 
 void __cxa_finalize(void *dso) {}

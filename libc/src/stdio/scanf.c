@@ -1,21 +1,5 @@
 #include <stdio.h>
-
-static int isspace(char c) { return c == ' ' || c == '\t' || c == '\n'; }
-
-static int isxdigit(int c) {
-  return (((c >= '0') && (c <= '9')) || ((c >= 'a') && (c <= 'f')) ||
-          ((c >= 'A') && (c <= 'F')));
-}
-
-static int isdigit(int c) { return ((c >= '0') && (c <= '9')); }
-int islower(int c) { return ((c >= 'a') && (c <= 'z')); }
-int toupper(int c) {
-  if (islower(c)) {
-    return c & ~0x20;
-  } else {
-    return c;
-  }
-}
+#include <ctype.h>
 
 /**
  * simple_strtoul - convert a string to an unsigned long

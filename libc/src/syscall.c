@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <sys/syscall.h>
 #include <stdio.h>
+#include <unistd.h>
 
 extern long __syscall(int num, unsigned long long a, unsigned long long b,
                       unsigned long long c, unsigned long long d,
@@ -25,6 +26,9 @@ long syscall(long num, ...) {
         // easier than restartable syscalls
     res = __syscall(num, a, b, c, d, e, f);
 		count++;
+		if (res == -EINTR) {
+			printf("[pid:%d] syscall interrupted\n", getpid());
+		}
   } while (res == -EINTR);
 #if 0
 	if (count > 1) printf("Syscall repeat count: %d\n", count - 1);

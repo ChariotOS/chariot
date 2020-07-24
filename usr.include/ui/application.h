@@ -4,8 +4,8 @@
 #include <ck/eventloop.h>
 #include <ck/object.h>
 #include <ck/socket.h>
-#include <ui/window.h>
 #include <lumen/msg.h>
+#include <ui/window.h>
 #include "stdlib.h"
 
 namespace ui {
@@ -53,7 +53,7 @@ namespace ui {
     }
 
 
-		ui::window *new_window(ck::string initial_title, int w, int h);
+    ui::window *new_window(ck::string initial_title, int w, int h);
 
 
     void drain_messages(void);
@@ -63,12 +63,14 @@ namespace ui {
 
     void start(void);
 
+    auto &eventloop(void) { return m_eventloop; }
+
 #define THE_APP ui::application::get()
     static ui::application &get(void);
 
    private:
-		// all the windows in the application
-		ck::map<int, ck::unique_ptr<ui::window>> m_windows;
+    // all the windows in the application
+    ck::map<int, ck::unique_ptr<ui::window>> m_windows;
     ck::vec<lumen::msg *> m_pending_messages;
     ck::eventloop m_eventloop;
   };

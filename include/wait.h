@@ -22,6 +22,8 @@ struct waiter : public refcounted<waiter> {
   //
   virtual void start() = 0;
 
+	void interrupt(void);
+
 
 	size_t waiting_on = 0;
 	int flags = 0;
@@ -47,6 +49,8 @@ class waitqueue {
 
   bool should_notify(u32 val);
 
+
+	void interrupt(waiter *);
  private:
   bool do_wait(u32 on, int flags, ref<waiter> wtr);
   // navail is the number of unhandled notifications

@@ -1,0 +1,5 @@
+
+SUBDIRLIST(USER_LIBS ${CMAKE_CURRENT_SOURCE_DIR}/)
+FOREACH(subdir ${USER_LIBS})
+	add_subdirectory(${subdir})
+ENDFOREACH()

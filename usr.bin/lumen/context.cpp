@@ -363,14 +363,6 @@ ck::ref<gfx::font> get_debug_font(void) {
 
 
 
-
-
-
-
-
-
-
-
 static unsigned short const stackblur_mul[255] = {
     512, 512, 456, 512, 328, 456, 335, 512, 405, 328, 271, 456, 388, 335, 292,
     512, 454, 405, 364, 328, 298, 271, 496, 456, 420, 388, 360, 335, 312, 292,
@@ -416,7 +408,7 @@ static unsigned char const stackblur_shr[255] = {
 
 
 void stackblurJob(
-    unsigned char* src,   ///< input image data
+    unsigned char *src,   ///< input image data
     unsigned int w,       ///< image width
     unsigned int h,       ///< image height
     unsigned int radius,  ///< blur intensity (should be in 2..254 range)
@@ -427,10 +419,10 @@ void stackblurJob(
   unsigned int x, y, xp, yp, i;
   unsigned int sp;
   unsigned int stack_start;
-  unsigned char* stack_ptr;
+  unsigned char *stack_ptr;
 
-  unsigned char* src_ptr;
-  unsigned char* dst_ptr;
+  unsigned char *src_ptr;
+  unsigned char *dst_ptr;
 
   unsigned long sum_r;
   unsigned long sum_g;
@@ -630,28 +622,20 @@ void stackblurJob(
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 static long frame = 0;
 void lumen::context::compose(void) {
   frame++;
 
+  // do nothing if nothing has changed
+  if (dirty_regions.size() == 0)
+
+  {
+    printf("nothing to do...\n");
+    return;
+  }
+
   // make a tmp bitmap
   gfx::bitmap b(screen.width(), screen.height(), screen.buffer());
-
-
-
-  // do nothing if nothing has changed
-  if (dirty_regions.size() == 0) return;
 
   // this scribe is the "compositor scribe", used by everyone in this function
   gfx::scribe scribe(b);
@@ -692,6 +676,7 @@ void lumen::context::compose(void) {
   }
 
   if (draw_mouse) {
+		// scribe.draw_pixel(screen.mouse_pos.x(), screen.mouse_pos.y(), 0);
     // scribe.draw_frame(screen.mouse_rect(), 0xFF8888);
     screen.draw_mouse();
   }
@@ -715,9 +700,9 @@ void lumen::context::compose(void) {
   dirty_regions.clear();
 #else
 
-    uint32_t *to_ptr = screen.front_buffer;
-    uint32_t *from_ptr = screen.back_buffer;
-		memcpy(to_ptr, from_ptr, screen.width() * screen.height() * sizeof(uint32_t));
+  uint32_t *to_ptr = screen.front_buffer;
+  uint32_t *from_ptr = screen.back_buffer;
+  memcpy(to_ptr, from_ptr, screen.width() * screen.height() * sizeof(uint32_t));
 #endif
 
 

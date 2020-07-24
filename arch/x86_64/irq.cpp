@@ -192,12 +192,14 @@ void dump_backtrace(off_t ebp) {
 
   off_t stk_end = (off_t)curthd->stack + curthd->stack_size;
   // int i = 0;
-  printk("addr2line -e /tmp/chariot.elf ");
+  // printk("addr2line -e /tmp/chariot.elf ");
   for (off_t *stack_ptr = (off_t *)ebp;
-       (off_t)stack_ptr < stk_end && (off_t)stack_ptr >= KERNEL_VIRTUAL_BASE;
+       (off_t)stack_ptr <
+       stk_end /*&& (off_t)stack_ptr >= KERNEL_VIRTUAL_BASE */;
        stack_ptr = (off_t *)*stack_ptr) {
+    if (!VALIDATE_RD(stack_ptr, 16)) break;
     off_t retaddr = stack_ptr[1];
-    printk("0x%p ", retaddr);
+    printk("0x%p\n", retaddr);
   }
   printk("\n");
 }

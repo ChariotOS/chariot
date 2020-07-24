@@ -28,9 +28,7 @@ int strcmp(const char *l, const char *r);
 int strncmp(const char *s1, const char *s2, size_t n);
 
 // I dont have locales
-static inline int strcoll(const char *s1, const char *s2) {
-  return strcmp(s1, s2);
-}
+int strcoll(const char *s1, const char *s2);
 
 size_t strspn(const char *s, const char *c);
 size_t strcspn(const char *s, const char *c);

@@ -17,30 +17,30 @@
 
 #include <ck/array.h>
 #include <ck/eventloop.h>
+#include <ck/mem.h>
 #include <ck/option.h>
 #include <ck/rand.h>
 #include <ck/strstream.h>
 #include <ck/timer.h>
 #include <ck/tuple.h>
 #include <ck/unicode.h>
-#include <ck/mem.h>
 
 
 struct line {
-	gfx::point start;
-	gfx::point end;
+  gfx::point start;
+  gfx::point end;
 };
 
 class painter : public ui::view {
   int color = 0;
 
-	ck::vec<struct line> lines;
+  ck::vec<struct line> lines;
 
  public:
   painter(void) {
-		//
-		color = rand();
-	}
+    //
+    color = rand();
+  }
 
 
   virtual void paint_event(void) override {
@@ -48,10 +48,9 @@ class painter : public ui::view {
     // s.clear(color);
     // s.draw_frame(gfx::rect(0, 0, width(), height()), color);
 
-		for (auto &line : lines) {
-    	s.draw_line(line.start, line.end, color);
-
-		}
+    for (auto& line : lines) {
+      s.draw_line(line.start, line.end, color);
+    }
     invalidate();
   }
 
@@ -61,17 +60,17 @@ class painter : public ui::view {
     int ox = ev.x - ev.dx;
     int oy = ev.y - ev.dy;
 
-		lines.push({.start = gfx::point(ox, oy), .end = gfx::point(ev.x, ev.y)});
+    lines.push({.start = gfx::point(ox, oy), .end = gfx::point(ev.x, ev.y)});
 
-		repaint();
+    repaint();
   }
 };
 
 
 
+
 int main(int argc, char** argv) {
 
-	return 0;
   /*
   int emx = emx_create();
 

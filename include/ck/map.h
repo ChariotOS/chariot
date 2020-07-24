@@ -72,8 +72,8 @@ namespace ck {
           m_bucket_index(bucket_index),
           m_is_end(is_end),
           m_bucket_iterator(bucket_iterator) {
-      assert(!table.m_clearing);
-      assert(!table.m_rehashing);
+      // assert(!table.m_clearing);
+      // assert(!table.m_rehashing);
       if (!is_end && !m_table.is_empty() &&
           !(m_bucket_iterator != BucketIteratorType::universal_end())) {
         m_bucket_iterator = m_table.bucket(0).begin();

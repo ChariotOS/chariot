@@ -84,6 +84,7 @@ int snprintf(char *buffer, size_t count, const char *format, ...);
 int vsnprintf(char *buffer, size_t count, const char *format, va_list va);
 
 int fprintf(FILE *fp, const char *fmt, ...);
+int vfprintf(FILE* fp, const char* fmt, va_list ap);
 int vsnfprintf(FILE *fp, const char *fmt, va_list va);
 
 int sscanf(const char *, const char *format, ...);
@@ -106,6 +107,9 @@ void setlinebuf(FILE *stream);
 int setvbuf(FILE *stream, char *buf, int mode, size_t size);
 
 void perror(const char *s);
+
+
+int rename(const char *old_filename, const char *new_filename);
 
 
 
