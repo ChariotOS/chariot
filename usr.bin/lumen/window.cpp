@@ -33,7 +33,6 @@ void lumen::window::set_mode(window_mode mode) {
       // no side borders
       this->rect.w = bitmap->width() + 2;
       this->rect.h = bitmap->height() + TITLE_HEIGHT + 1;
-      printf("width: %d\n", this->rect.w);
       break;
   }
 }
