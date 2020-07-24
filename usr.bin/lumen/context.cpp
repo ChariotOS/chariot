@@ -256,7 +256,7 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
     auto r = gfx::rect(arg->x, arg->y, arg->w, arg->h).intersect(win->rect);
     win->translate_invalidation(r);
     if (!r.is_empty()) {
-      // r.w++;
+      r.w++;
       // r.h++;
       invalidate(r);
     }
