@@ -24,7 +24,7 @@ namespace ck {
     void start(uint64_t interval, bool repeat);
     void stop();
 
-    inline uint64_t next_fire(void) { return m_next_fire; }
+    inline long long next_fire(void) { return m_next_fire; }
 
     inline bool running() { return active; }
 
@@ -32,8 +32,8 @@ namespace ck {
     void trigger();
 
    protected:
-    uint64_t m_interval = -1;
-    uint64_t m_next_fire = -1;
+    long long m_interval = -1;
+    long long m_next_fire = -1;
     bool repeat = false;
     bool active = false;
     ck::func<void()> on_tick;

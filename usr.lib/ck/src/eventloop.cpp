@@ -67,7 +67,7 @@ void ck::eventloop::start(void) {
 
 
 int awaitfs(struct await_target *fds, int nfds, int flags,
-            unsigned long timeout_time) {
+            long long timeout_time) {
   return errno_syscall(SYS_awaitfs, fds, nfds, flags, timeout_time);
 }
 
@@ -96,7 +96,7 @@ void ck::eventloop::pump(void) {
     add_fd(fd, event, notifier);
   }
 
-  auto timeout = -1;
+  long long timeout = -1;
   auto nt = next_timer();
 
   if (nt != NULL) {
