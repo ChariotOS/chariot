@@ -15,11 +15,17 @@ SECTIONS
 		*(.text)
 	}
 
-	.init_array : {
+	.rodata ALIGN(4K) : {
+
 		__init_array_start = .;
+        KEEP (*(.ctors))
 		KEEP (*(.init_array*))
 		__init_array_end = .;
-	}
+
+
+        *(.rodata)
+    }
+
 
 	/*
 	 * .bss not being last means it doesn't make filesz < memsz
