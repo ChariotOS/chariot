@@ -60,6 +60,8 @@ long ui::application::send_raw(int type, void *payload, size_t payloadsize) {
 
   if (payloadsize > 0) memcpy(msg + 1, payload, payloadsize);
 
+
+	// printf("\033[31;1m[client send] id: %6d. type: %04x\033[31;0m\n", msg->id, msg->type);
   auto w = sock.write((const void *)msg, msgsize);
 
   free(msg);
@@ -79,6 +81,7 @@ lumen::msg *ui::application::send_raw_sync(int type, void *payload,
 
   if (payloadsize > 0) memcpy(msg + 1, payload, payloadsize);
 
+	// printf("\033[31;1m[client send] id: %6d. type: %04x\033[0m\n", msg->id, msg->type);
   // TODO: this might fail?
   sock.write((const void *)msg, msgsize);
 
@@ -94,7 +97,7 @@ lumen::msg *ui::application::send_raw_sync(int type, void *payload,
       if (got->id == msg->id) {
         response = got;
       } else {
-        m_pending_messages.push(msg);
+        m_pending_messages.push(got);
       }
     }
   }
