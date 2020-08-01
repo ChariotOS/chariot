@@ -242,7 +242,7 @@ void sched::do_yield(int st) {
     thd.sched.priority--;
   }
 
-  thd.sched.priority = PRIORITY_HIGH;
+  // thd.sched.priority = PRIORITY_HIGH;
 
   thd.state = st;
   thd.stats.last_cpu = thd.stats.current_cpu;
@@ -350,6 +350,7 @@ void sched::run() {
     switch_into(*thd);
 
     sched::add_task(thd);
+		boost();
   }
   panic("scheduler should not have gotten back here\n");
 }
