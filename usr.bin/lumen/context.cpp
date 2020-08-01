@@ -48,8 +48,10 @@ lumen::context::context(void) : screen(1024, 768) {
 
 
 void lumen::context::handle_keyboard_input(keyboard_packet_t &pkt) {
-  printf("keyboard: code: %02x ch: %02x (%c)\n", pkt.key, pkt.character,
-         pkt.character);
+
+	if (focused_window != NULL) {
+		focused_window->handle_keyboard_input(pkt);
+	}
 }
 
 void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {

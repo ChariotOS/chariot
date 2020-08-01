@@ -35,7 +35,7 @@ namespace lumen {
 
     // length of the payload
     int len = 0;
-		int window_id = -1; // -1 means no window
+    int window_id = -1;  // -1 means no window
 
     // "unique" id for this message. That way we know who to notify
     // when a response is gotten.
@@ -61,14 +61,14 @@ namespace lumen {
   struct create_window_msg {
     int width, height;
 
-		char name[LUMEN_NAMESZ];
+    char name[LUMEN_NAMESZ];
   };
 
-	struct window_created_msg {
-		// if this is -1, it failed
-		int window_id;
-		char bitmap_name[LUMEN_NAMESZ];
-	};
+  struct window_created_msg {
+    // if this is -1, it failed
+    int window_id;
+    char bitmap_name[LUMEN_NAMESZ];
+  };
 
 
 #define LUMEN_INPUT_KEYBOARD 1
@@ -82,33 +82,46 @@ namespace lumen {
 #define LUMEN_MOUSE_SCROLL_UP 0x10
 
 
-	struct input_msg {
-		unsigned short type;
-
-		int window_id;
-		union {
-			// mouse data
-			struct {
-				uint16_t xpos;
-				uint16_t ypos;
-				int8_t dx, dy;
-				int buttons;
-			} mouse;
-
-			struct {
-				unsigned char keycode;
-				unsigned char c; // the ascii char of this keystroke
-				unsigned char flags;
-			} keyboard;
-		};
-	};
 
 
-	struct invalidate_msg {
-		int id; // window id
-		// where in the window?
-		int x, y, w, h;
-	};
+#define LUMEN_KBD_MOD_NONE 0x00
+#define LUMEN_KBD_MOD_ALT 0x01
+#define LUMEN_KBD_MOD_CTRL 0x02
+#define LUMEN_KBD_MOD_SHIFT 0x04
+#define LUMEN_KBD_MOD_SUPER 0x08
+#define LUMEN_KBD_MOD_SHIFT 0x04
+#define LUMEN_KBD_MOD_MASK 0x0F
+
+#define LUMEN_KBD_PRESS 0x80
+
+
+  struct input_msg {
+    unsigned short type;
+
+    int window_id;
+    union {
+      // mouse data
+      struct {
+        uint16_t xpos;
+        uint16_t ypos;
+        int8_t dx, dy;
+        int buttons;
+      } mouse;
+
+      struct {
+        unsigned char keycode;
+        unsigned char c;  // the ascii char of this keystroke
+        unsigned char flags;
+      } keyboard;
+    };
+  };
+
+
+  struct invalidate_msg {
+    int id;  // window id
+    // where in the window?
+    int x, y, w, h;
+  };
 
 
 

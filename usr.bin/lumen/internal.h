@@ -145,6 +145,8 @@ namespace lumen {
 		// return one of the above ^
 		int handle_mouse_input(gfx::point &r, struct mouse_packet &p);
 
+		int handle_keyboard_input(struct keyboard_packet_t &p);
+
 		// used to tell the window compositor where in the window we are hovering.
 		hover_result hover();
 

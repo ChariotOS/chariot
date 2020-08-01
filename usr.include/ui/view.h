@@ -60,6 +60,19 @@ namespace ui {
     inline virtual void paint_event(void) {}
 
 
+    inline virtual void on_keydown(ui::keydown_event &) {}
+    inline virtual void on_keyup(ui::keyup_event &) {}
+
+
+		inline virtual void on_focused(void) {}
+		inline virtual void on_blur(void) {}
+
+
+
+
+		// make this widget the focused one
+		void set_focused(void);
+
     // distribute a mouse event to children or the parent if it's better suited
     // for it
     void dispatch_mouse_event(ui::mouse_event &ev);
@@ -75,9 +88,9 @@ namespace ui {
     virtual void reflowed(void) {}
 
 
-		/*
-		 * Geometry relative to the parent view (or window)
-		 */
+    /*
+     * Geometry relative to the parent view (or window)
+     */
     inline auto left() { return m_rel.left(); }
     inline auto right() { return m_rel.right(); }
     inline auto top() { return m_rel.top(); }

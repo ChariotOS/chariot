@@ -34,6 +34,21 @@ gfx::point last_pos;
 
 void ui::window::handle_input(struct lumen::input_msg &msg) {
   if (msg.type == LUMEN_INPUT_KEYBOARD) {
+    auto &k = msg.keyboard;
+
+    if (k.flags & LUMEN_KBD_PRESS) {
+      ui::keydown_event ev;
+      ev.c = k.c;
+      ev.flags = k.flags;
+      ev.code = k.keycode;
+      if (focused) focused->event(ev);
+    } else {
+      ui::keyup_event ev;
+      ev.c = k.c;
+      ev.flags = k.flags;
+      ev.code = k.keycode;
+      if (focused) focused->event(ev);
+    }
   } else if (msg.type == LUMEN_INPUT_MOUSE) {
     ui::mouse_event ev;
     ev.x = msg.mouse.xpos;
@@ -48,8 +63,8 @@ void ui::window::handle_input(struct lumen::input_msg &msg) {
     } else if (msg.mouse.buttons & LUMEN_MOUSE_SCROLL_DOWN) {
       ev.ds = -1;
     }
-    if (m_main_view) {
-      m_main_view->event(ev);
+    if (focused) {
+      focused->event(ev);
     }
     // TODO: forward to the main widget or something
   }

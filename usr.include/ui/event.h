@@ -2,6 +2,7 @@
 
 #include <lumen/msg.h>
 #include <stdint.h>
+#include <chariot/keycode.h>
 
 namespace ui {
 
@@ -9,7 +10,7 @@ namespace ui {
   struct event {
    public:
     enum class type : int {
-      mouse,
+      mouse, keydown, keyup,
     };
 
 
@@ -36,6 +37,27 @@ namespace ui {
    public:
 		EV(mouse_event, ui::event::type::mouse);
   };
+
+
+  struct keydown_event : public event {
+		char c;
+		int flags;
+		int code;
+
+   public:
+		EV(keydown_event, ui::event::type::keydown);
+  };
+
+
+  struct keyup_event : public event {
+		char c;
+		int flags;
+		int code;
+
+   public:
+		EV(keyup_event, ui::event::type::keyup);
+  };
+
 
 
 

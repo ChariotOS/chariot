@@ -81,6 +81,25 @@ int lumen::window::handle_mouse_input(gfx::point &r, struct mouse_packet &p) {
   return 0;
 }
 
+
+
+
+int lumen::window::handle_keyboard_input(keyboard_packet_t &p) {
+  struct lumen::input_msg m;
+  m.window_id = this->id;
+  m.type = LUMEN_INPUT_KEYBOARD;
+  m.keyboard.c = p.character;
+  m.keyboard.flags = p.flags;
+  m.keyboard.keycode = p.key;
+
+
+
+  guest.send_msg(LUMEN_MSG_INPUT, m);
+  return 0;
+}
+
+
+
 gfx::rect lumen::window::bounds() { return rect; }
 
 

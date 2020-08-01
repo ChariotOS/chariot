@@ -27,6 +27,17 @@ void ui::view::repaint(void) {
 }
 
 
+void ui::view::set_focused(void) {
+	if (m_window->focused) {
+		m_window->focused->on_blur();
+	}
+
+
+	m_window->focused = this;
+	on_focused();
+}
+
+
 void ui::view::dispatch_mouse_event(ui::mouse_event &event) {
   // copy the event and adjust it to the local bounds
   ui::mouse_event ev = event;
@@ -65,6 +76,18 @@ bool ui::view::event(ui::event &ev) {
         dispatch_mouse_event(mv);
         return true;
       }
+      break;
+    }
+
+    case ui::event::type::keyup: {
+      auto mv = ev.as<ui::keyup_event>();
+      on_keyup(mv);
+      break;
+    }
+
+    case ui::event::type::keydown: {
+      auto mv = ev.as<ui::keydown_event>();
+      on_keydown(mv);
       break;
     }
   }

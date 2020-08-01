@@ -37,11 +37,19 @@ namespace ui {
       m_main_view->set_size(m_rect.w, m_rect.h);
       m_main_view->set_pos(0, 0);  // the main widget exists at the top left
 
+
       // the window can do this cause they are the window :^)
       m_main_view->m_window = this;
       m_main_view->m_parent = NULL;
+
+      // make this main widget focused
+      m_main_view->set_focused();
+
       // do the reflow asap (not deferred)
       m_main_view->do_reflow();
+
+
+
       return *(T *)v;
     }
 
@@ -50,9 +58,9 @@ namespace ui {
     void schedule_reflow();
 
 
-		// which view is hovered and focused?
-		ui::view *focused = NULL;
-		ui::view *hovered = NULL;
+    // which view is hovered and focused?
+    ui::view *focused = NULL;
+    ui::view *hovered = NULL;
 
 
    private:
