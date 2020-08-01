@@ -41,11 +41,13 @@ static int sock_seek(fs::file &, off_t old_off, off_t new_off) {
 }
 
 static ssize_t sock_read(fs::file &f, char *b, size_t s) {
+	// printk("[%3d] recvfrom as '%s'\n", curproc->pid, f.pflags == PFLAGS_CLIENT ? "client" : "server");
   if (f.ino->sk->connected) return -ENOTCONN;
   return f.ino->sk->recvfrom(f, (void *)b, s, 0, nullptr, 0);
 }
 
 static ssize_t sock_write(fs::file &f, const char *b, size_t s) {
+	// printk("[%3d] sendto as '%s'\n", curproc->pid, f.pflags == PFLAGS_CLIENT ? "client" : "server");
   if (f.ino->sk->connected) return -ENOTCONN;
   return f.ino->sk->sendto(f, (void *)b, s, 0, nullptr, 0);
 }
@@ -140,6 +142,10 @@ ssize_t sys::sendto(int sockfd, const void *buf, size_t len, int flags,
   }
 
   ref<fs::file> file = curproc->get_fd(sockfd);
+
+
+	// printk("[%3d] sendto as '%s'\n", curproc->pid, file->pflags == PFLAGS_CLIENT ? "client" : "server");
+
   ssize_t res = -EINVAL;
   if (file) {
     if (file->ino->type == T_SOCK) {
@@ -155,7 +161,9 @@ ssize_t sys::sendto(int sockfd, const void *buf, size_t len, int flags,
 ssize_t sys::recvfrom(int sockfd, const void *buf, size_t len, int flags,
                       const struct sockaddr *dest_addr, size_t addrlen) {
 
-  if (!VALIDATE_RD((void *)buf, len)) return -EINVAL;
+
+
+  if (!VALIDATE_WR((void *)buf, len)) return -EINVAL;
 
   if (dest_addr != NULL) {
     if (!VALIDATE_RD((void *)dest_addr, addrlen)) {
@@ -164,6 +172,11 @@ ssize_t sys::recvfrom(int sockfd, const void *buf, size_t len, int flags,
   }
 
   ref<fs::file> file = curproc->get_fd(sockfd);
+
+
+	// printk("[%3d] recvfrom as '%s'\n", curproc->pid, file->pflags == PFLAGS_CLIENT ? "client" : "server");
+
+
   ssize_t res = -EINVAL;
   if (file) {
     if (file->ino->type == T_SOCK) {

@@ -89,30 +89,42 @@ int net::localsock::disconnect(int flags) {
   return 0;
 }
 
+// #define LOCALSOCK_DUMP_STATS
+
+#ifdef LOCALSOCK_DUMP_STATS
+static spinlock localsocket_stat_lock;
+#endif
+
+void net::localsock::dump_stats(void) {
+#ifdef LOCALSOCK_DUMP_STATS
+  scoped_lock l(localsocket_stat_lock);
+  size_t server_avail, server_unread;
+  size_t client_avail, client_unread;
+
+  for_server.stats(server_avail, server_unread);
+  for_client.stats(client_avail, client_unread);
+  printk(KERN_DEBUG
+         "stats: server: (a: %-4zu, u: %-4zu) client: (a: %-4zu, u: %-4zu)\n",
+         server_avail, server_unread, client_avail, client_unread);
+#endif
+}
+
+
+
 
 ssize_t net::localsock::sendto(fs::file &fd, void *data, size_t len, int flags,
                                const sockaddr *, size_t) {
-  bool block = (flags & MSG_DONTWAIT) == 0;
-  // printk("sendto(%p, %zu)\n", data, len);
-  if (fd.pflags & PFLAGS_SERVER) {
-    return for_client.write(data, len, block);
-  } else if (fd.pflags & PFLAGS_CLIENT) {
-    return for_server.write(data, len, block);
-  }
-  panic("invalid file descriptor for localsock::sendto()\n");
-  return -EINVAL;
+  auto &buf = (fd.pflags & PFLAGS_SERVER) ? for_client : for_server;
+  auto n = buf.write(data, len, (flags & MSG_DONTWAIT) == 0);
+  dump_stats();
+  return n;
 }
 ssize_t net::localsock::recvfrom(fs::file &fd, void *data, size_t len,
                                  int flags, const sockaddr *, size_t) {
-  bool block = (flags & MSG_DONTWAIT) == 0;
-  // printk("recvfrom(%p, %zu)\n", data,) == 0 len);
-  if (fd.pflags & PFLAGS_SERVER) {
-    return for_server.read(data, len, block);
-  } else if (fd.pflags & PFLAGS_CLIENT) {
-    return for_client.read(data, len, block);
-  }
-  panic("invalid file descriptor for localsock::recvfrom()\n");
-  return -EINVAL;
+  auto &buf = (fd.pflags & PFLAGS_SERVER) ? for_server : for_client;
+  auto n = buf.read(data, len, (flags & MSG_DONTWAIT) == 0);
+  dump_stats();
+  return n;
 }
 
 int net::localsock::bind(const struct sockaddr *addr, size_t len) {

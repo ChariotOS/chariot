@@ -16,8 +16,8 @@ struct inode;
 class file;
 }
 
-#define PFLAGS_SERVER (1 << 0)
-#define PFLAGS_CLIENT (1 << 1)
+#define PFLAGS_SERVER (0x1)
+#define PFLAGS_CLIENT (0x2)
 
 namespace net {
 
@@ -118,6 +118,9 @@ struct localsock : public net::sock {
   virtual int bind(const struct sockaddr *addr, size_t len);
 
 	virtual int poll(fs::file &f, int events);
+
+
+	void dump_stats(void);
 
 	// the inode this (server) socket is bound to
 	fs::inode *bindpoint = nullptr;
