@@ -89,12 +89,12 @@ namespace lumen {
 
     // THIS IS VERY SLOW!!!
     inline uint32_t get_pixel(int x, int y) {
-      return back_buffer[x + y * m_bounds.w];
+      return buffer()[x + y * m_bounds.w];
     }
 
     inline void clear(uint32_t color) {
       for (int i = 0; i < width() * height(); i++) {
-        back_buffer[i] = color;
+        buffer()[i] = color;
       }
     }
 
