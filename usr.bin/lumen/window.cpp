@@ -89,15 +89,7 @@ int noise(uint64_t seed) {
   return seed >> 33;
 }
 
-
-
-class Foo {
- public:
-  Foo() { printf("ctor!\n"); }
-};
-
 void lumen::window::draw(gfx::scribe &scribe) {
-  static Foo f;
   // draw normal window mode.
   if (mode == window_mode::normal) {
     // draw the window bitmap, offset by the title bar
