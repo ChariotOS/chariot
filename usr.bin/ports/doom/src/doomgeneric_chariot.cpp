@@ -36,8 +36,13 @@ class doomview : public ui::view {
 
 
 extern "C" void DG_PumpEventLoop() {
+	main_app.drain_messages();
+	main_app.dispatch_messages();
+
+	/*
 	main_app.eventloop().pump();
 	main_app.eventloop().dispatch();
+	*/
 }
 
 
@@ -51,6 +56,7 @@ extern "C" void DG_Init() {
 
 extern "C" void DG_DrawFrame() {
 	main_widget->repaint();
+	DG_PumpEventLoop();
 }
 
 
