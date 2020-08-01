@@ -60,7 +60,6 @@ void fifo_buf::init_if_needed(void) {
   if (buffer == NULL) {
     m_size = 4096;
     buffer = (char *)kmalloc(m_size);
-		printk(KERN_DEBUG "fifo buffer = %p\n", buffer);
   }
 }
 
