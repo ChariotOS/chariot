@@ -24,7 +24,7 @@ namespace lumen {
 #define LUMEN_MSG_WINDOW_CREATED (3)
 
 // invalidate a region of the window
-#define LUMEN_MSG_WINDOW_INVALIDATE (4)
+#define LUMEN_MSG_WINDOW_INVALIDATE (4 | FOR_WINDOW_SERVER)
 
 #define LUMEN_MSG_INPUT (3)
 
