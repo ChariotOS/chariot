@@ -60,6 +60,7 @@ void fifo_buf::init_if_needed(void) {
   if (buffer == NULL) {
     m_size = 4096;
     buffer = (char *)kmalloc(m_size);
+		printk(KERN_DEBUG "fifo buffer = %p\n", buffer);
   }
 }
 
@@ -71,7 +72,7 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
 
   size_t written = 0;
   while (written < size) {
-    lock_write.lock_cli();
+    lock.lock_cli();
 
     while (available() > 0 && written < size) {
       buffer[write_ptr] = ibuf[written];
@@ -80,20 +81,23 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
     }
 
 
+		// printk_nolock("available: %d\n", available());
+
+    lock.unlock_cli();
     wq_readers.notify_all();
-    lock_write.unlock_cli();
 
     if (!block) return -EAGAIN;
 
     if (written < size) {
       if (wq_writers.wait() == false /* interrupted by signals? */) {
+				if (written > 0) return written;
         return -EINTR;
       }
       if (m_closed) return -ECONNRESET;
     }
   }
 
-  return 0;
+  return written;
 }
 
 
@@ -102,7 +106,7 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
 
 
   if (!block) {
-    scoped_lock l(lock_read);
+    scoped_lock l(lock);
 
     if (unread() == 0) {
       if (m_closed) return 0;
@@ -115,7 +119,7 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
 
   size_t collected = 0;
   while (collected == 0) {
-    lock_read.lock_cli();
+    lock.lock_cli();
 
     while (unread() > 0 && collected < size) {
       obuf[collected] = buffer[read_ptr];
@@ -123,8 +127,12 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
       collected++;
     }
 
+
+		// printk_nolock("unread: %d\n", unread());
+
+    lock.unlock_cli();
     wq_writers.notify_all();
-    lock_read.unlock_cli();
+
 
     // break early if we are not meant to block
     if (!block) {
@@ -144,23 +152,31 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
   return collected;
 }
 
+void fifo_buf::stats(size_t &avail, size_t &unread) {
+	scoped_lock l(lock);
+
+	avail = this->available();
+	unread = this->unread();
+}
+
+
 
 int fifo_buf::poll(void) {
   // upon close, it returns AWAITFS_READ (idk, its expected)
   if (m_closed) return AWAITFS_READ;
 
   int ev = 0;
-  lock_read.lock_cli();
+  lock.lock_cli();
   if (unread() > 0) {
     ev |= AWAITFS_READ;
   }
-  lock_read.unlock_cli();
 
-
-  lock_write.lock_cli();
   if (available() > 0) {
     ev |= AWAITFS_WRITE;
   }
-  lock_write.unlock_cli();
+  lock.unlock_cli();
   return ev;
 }
+
+
+

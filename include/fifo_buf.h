@@ -11,20 +11,17 @@ class fifo_buf {
  public:
   inline fifo_buf() {
 		init_if_needed();
-		// printk("size: %zu, buff=%p\n", m_size, buffer);
 	}
   inline ~fifo_buf() {
-		kfree(buffer);
+		if (buffer != NULL) kfree(buffer);
 	}
 
   ssize_t write(const void *, ssize_t, bool block = false);
   ssize_t read(void *, ssize_t, bool block = true);
-
   inline int size(void) { return unread(); }
-
 	void close();
-
 	int poll();
+	void stats(size_t &avail, size_t &unread);
 
  private:
 
@@ -36,8 +33,12 @@ class fifo_buf {
   bool m_blocking;
 
 
+	spinlock lock;
+
+	/*
   spinlock lock_write;
   spinlock lock_read;
+	*/
 
 	char * buffer;
 	size_t write_ptr = 0;
