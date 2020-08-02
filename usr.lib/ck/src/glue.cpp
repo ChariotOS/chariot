@@ -1,5 +1,6 @@
 #include "glue.h"
 
+#include <ck/io.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,12 +19,6 @@ inline void do_panic(const char *fmt, T &&... args) {
     exit(-1);
   }
 }
-
-#define panic(fmt, args...)                     \
-  do {                                          \
-    printf("PANIC: %s\n", __PRETTY_FUNCTION__); \
-    do_panic(fmt, ##args);                      \
-  } while (0);
 
 #define BAD() panic("Undefined C++ function (%s)\n", __func__);
 
@@ -112,41 +107,55 @@ void operator delete(void *ptr, size_t s) { free(ptr); }
 void operator delete[](void *ptr, size_t s) { free(ptr); }
 
 
-
-// placement new
-void *operator new(size_t, void *ptr) { return ptr; }
-
-
 extern "C" void __stack_chk_fail(void) { panic("stack pointer smashed!\n"); }
 
+
+
+
+// helper functions for getting/setting flags in guard_object
+static bool initializerHasRun(uint64_t *guard_object) {
+  return (*((uint8_t *)guard_object) != 0);
+}
+
 /*
-namespace std {
+ * The chariot cxa guard api expects two ints as an array
+ * the first is the lock, the second is the status (1 is initialized, 0 is not)
+ */
+extern "C" int __cxa_guard_acquire(uint64_t *guard_object) {
+  // Double check that the initializer has not already been run
+  if (initializerHasRun(guard_object)) return 0;
 
-    void __throw_bad_alloc(void) {
-        BAD();
-    }
+  if (initializerHasRun(guard_object)) {
+    return 0;
+  }
 
-    void __throw_length_error(char const * c) {
-        BAD();
-    }
-}
-*/
+  // mark this guard object as being in use
+  ((uint8_t *)guard_object)[1] = 1;
 
-extern "C" void __cxa_guard_acquire(void *p) {
-  // printk("a: %p\n", p);
-}
-
-extern "C" void __cxa_guard_release(void *p) {
-  // printk("r: %p\n", p);
+  // return non-zero to tell caller to run initializer
+  return 1;
 }
 
 
+//
+// Sets the first byte of the guard_object to a non-zero value.
+// Releases any locks acquired by __cxa_guard_acquire().
+//
+extern "C" void __cxa_guard_release(uint64_t *guard_object) {
+  // first mark initalizer as having been run, so
+  // other threads won't try to re-run it.
+  *((uint8_t *)guard_object) = 1;
 
-
-extern "C" int __gxx_personality_v0 (int version,
-		      void *actions,
-		      void *exception_class,
-		      struct _Unwind_Exception *ue_header,
-		      struct _Unwind_Context *context) {
-	return 0;
+  // TODO: release a global mutex
 }
+
+
+
+
+extern "C" int __gxx_personality_v0(int version, void *actions,
+                                    void *exception_class,
+                                    struct _Unwind_Exception *ue_header,
+                                    struct _Unwind_Context *context) {
+  return 0;
+}
+

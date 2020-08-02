@@ -4,7 +4,7 @@
 #include <sys/wait.h>
 #include <sys/syscall.h>
 
-size_t current_ms() { return syscall(SYS_gettime_microsecond) / 1000; }
+static size_t current_ms() { return syscall(SYS_gettime_microsecond) / 1000; }
 
 
 int main(int argc, char **argv) {

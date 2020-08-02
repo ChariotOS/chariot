@@ -145,11 +145,41 @@ namespace std {
 */
 
 
-extern "C" void __cxa_guard_acquire(void*p) {
-  // printk("a: %p\n", p);
+// helper functions for getting/setting flags in guard_object
+static bool initializerHasRun(uint64_t *guard_object) {
+  return (*((uint8_t *)guard_object) != 0);
+}
+
+/*
+ * The chariot cxa guard api expects two ints as an array
+ * the first is the lock, the second is the status (1 is initialized, 0 is not)
+ */
+extern "C" int __cxa_guard_acquire(uint64_t *guard_object) {
+  // Double check that the initializer has not already been run
+  if (initializerHasRun(guard_object)) return 0;
+
+  if (initializerHasRun(guard_object)) {
+    return 0;
+  }
+
+  // mark this guard object as being in use
+  ((uint8_t *)guard_object)[1] = 1;
+
+  // return non-zero to tell caller to run initializer
+  return 1;
 }
 
 
-extern "C" void __cxa_guard_release(void*p) {
-  // printk("r: %p\n", p);
+//
+// Sets the first byte of the guard_object to a non-zero value.
+// Releases any locks acquired by __cxa_guard_acquire().
+//
+extern "C" void __cxa_guard_release(uint64_t *guard_object) {
+  // first mark initalizer as having been run, so
+  // other threads won't try to re-run it.
+  *((uint8_t *)guard_object) = 1;
+
+  // TODO: release a global mutex
 }
+
+

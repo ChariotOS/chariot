@@ -17,7 +17,7 @@ static ck::HashTable<ck::fsnotifier *> s_notifiers;
 static ck::HashTable<ck::timer *> s_timers;
 
 
-size_t current_ms() { return syscall(SYS_gettime_microsecond) / 1000; }
+static size_t current_ms() { return syscall(SYS_gettime_microsecond) / 1000; }
 
 static ck::timer *next_timer(void) {
   // TODO: take a lock
