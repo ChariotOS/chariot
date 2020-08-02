@@ -1,15 +1,18 @@
 #define _CHARIOT_SRC
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/un.h>
+
 #include <ck/io.h>
 #include <ck/object.h>
 #include <ck/ptr.h>
 #include <ck/socket.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <sys/stat.h>
-#include <sys/syscall.h>
-#include <sys/un.h>
-#include <unistd.h>
 
 
 ck::file ck::in(0);
@@ -48,6 +51,16 @@ int ck::stream::fmt(const char *format, ...) {
   return ret;
 }
 
+
+
+ck::unique_ptr<ck::file::mapping> ck::file::mmap(off_t off, size_t size) {
+  auto *mem = ::mmap(NULL, size, PROT_READ, MAP_PRIVATE, m_fd, off);
+  if (mem == MAP_FAILED) return nullptr;
+
+  return ck::unique_ptr(new ck::file::mapping(mem, size));
+}
+
+ck::file::mapping::~mapping(void) { ::munmap(mem, len); }
 
 ssize_t ck::file::read(void *buf, size_t sz) {
   if (eof()) return 0;

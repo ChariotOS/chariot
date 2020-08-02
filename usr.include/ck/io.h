@@ -71,9 +71,31 @@ namespace ck {
   };
 
 
+
+
   // A file is an "abstract implementation" of
   class file : public ck::stream {
    public:
+    class mapping {
+     public:
+      friend class file;
+
+      template <typename T>
+      T *as() {
+        return (T *)mem;
+      }
+      inline void *data() { return mem; }
+
+
+      inline auto size(void) { return len; }
+      ~mapping();
+
+     protected:
+      mapping(void *mem, size_t len) : mem(mem), len(len) {}
+      void *mem;
+      size_t len;
+    };
+
     // construct without opening any file
     file(void);
     // construct by opening the file
@@ -98,6 +120,11 @@ namespace ck {
     }
 
 
+
+    inline ck::unique_ptr<ck::file::mapping> mmap(/* Whole file */) {
+      return mmap(0, size());
+    }
+    ck::unique_ptr<ck::file::mapping> mmap(off_t off, size_t len);
 
     int stat(struct stat &);
 
@@ -153,9 +180,9 @@ namespace ck {
   };
 
 
-	extern ck::file in;
-	extern ck::file out;
-	extern ck::file err;
+  extern ck::file in;
+  extern ck::file out;
+  extern ck::file err;
 
 
 
