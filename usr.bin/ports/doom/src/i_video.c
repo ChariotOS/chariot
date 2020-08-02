@@ -260,6 +260,8 @@ void I_FinishUpdate(void) {
       ((s_Fb.xres - (SCREENWIDTH * fb_scaling)) * s_Fb.bits_per_pixel / 8) -
       x_offset;
 
+	(void)y_offset;
+
   /* DRAW SCREEN */
   line_in = (unsigned char *)I_VideoBuffer;
   line_out = (unsigned char *)DG_ScreenBuffer;
