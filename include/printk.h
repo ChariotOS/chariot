@@ -105,4 +105,7 @@ class time_logger {
   ~time_logger(void);
 };
 
+
+#define UNIMPL() printk(KERN_WARN "'%s' NOT IMPLEMENTED\n", __PRETTY_FUNCTION__)
+
 #define LOG_TIME time_logger __TLOGGER(__PRETTY_FUNCTION__)

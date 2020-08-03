@@ -557,7 +557,6 @@ static int injest_info(fs::inode &ino, fs::ext2_inode_info &info) {
   return 0;
 }
 
-#define UNIMPL() printk("[ext2] '%s' NOT IMPLEMENTED\n", __PRETTY_FUNCTION__)
 
 static int ext2_seek(fs::file &, off_t, off_t) {
   return 0;  // allow seek
