@@ -78,6 +78,8 @@ int vfs::mount(const char *src, const char *targ, const char *type,
 	mp->devname = targ;
 	mp->id = 0;
 
+	assert(sb->root != NULL);
+
 	assert(&mp->sb->root->sb == sb);
 
 	if (get_root() == NULL && strcmp(targ, "/") == 0) {
