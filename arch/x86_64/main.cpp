@@ -151,6 +151,11 @@ int kernel_init(void *) {
     panic("failed to mount devfs");
   }
 
+
+  if (vfs::mount("none", "/tmp", "tmpfs", 0, NULL) != 0) {
+    panic("failed to mount tmpfs");
+  }
+
   auto kimg = vfs::fdopen("/boot/chariot.elf", O_RDONLY);
 
   if (false && kimg) {

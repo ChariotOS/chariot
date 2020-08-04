@@ -268,8 +268,8 @@ int fs::inode::release(struct inode *in) {
   assert(in != NULL);
   in->lock.lock();
   in->rc--;
+  // printk(KERN_DEBUG "rc=%d\n", in->rc);
   if (in->rc == 0) {
-    // printk("delete inode\n");
     delete in;
   } else {
     in->lock.unlock();

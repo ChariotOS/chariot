@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
 
   int fd = open(argv[1], O_CREAT | O_WRONLY, 0666);
   if (fd < 0) {
-    printf("touch: failed to create file\n");
+    perror("touch: failed to create file");
     return 1;
   }
 

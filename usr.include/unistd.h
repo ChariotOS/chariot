@@ -79,6 +79,8 @@ int dup2(int fildes, int fildes2);
 int usleep(unsigned long usec);
 
 
+int unlink(const char *path);
+
 
 #ifdef __cplusplus
 }

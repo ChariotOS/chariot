@@ -12,6 +12,7 @@ int sys::open(const char *path, int flags, int mode) {
 
 
   int r = vfs::namei(path, flags, mode, vfs::cwd(), ino);
+
   if (ino == NULL) return -ENOENT;
 
   if (r < 0) {

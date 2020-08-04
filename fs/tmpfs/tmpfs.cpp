@@ -20,7 +20,10 @@ static struct fs::superblock *tmpfs_mount(struct fs::sb_information *,
   return sb;
 	*/
 
-	return NULL;
+	auto *sb = new tmp::superblock(args, flags);
+
+
+	return sb;
 }
 
 

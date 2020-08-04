@@ -21,6 +21,11 @@ off_t lseek(int fd, off_t offset, int whence) {
   return errno_syscall(SYS_lseek, fd, offset, whence);
 }
 
+
+int unlink(const char *path) {
+	return errno_syscall(SYS_unlink, path);
+}
+
 int close(int fd) { return errno_syscall(SYS_close, fd); }
 
 int chdir(const char *path) { return errno_syscall(SYS_chdir, path); }

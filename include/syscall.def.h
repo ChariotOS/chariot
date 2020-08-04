@@ -73,6 +73,9 @@ int getcwd(char *dst, int dlen);
 /// num=0x1d
 int chroot(const char *);
 
+/// num=0x1e
+int unlink(const char *path);
+
 /// num=0x1f
 int ioctl(int fd, int cmd, unsigned long value);
 

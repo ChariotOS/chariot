@@ -61,6 +61,9 @@ fs::file fdopen(string path, int opts = 0, int mode = 0000);
 int namei(const char *path, int flags, int mode, struct fs::inode *cwd,
 	  struct fs::inode *&res);
 
+
+int unlink(const char *path, struct fs::inode *cwd);
+
 /*
  * cwd()
  *
