@@ -110,6 +110,6 @@ function(add_kernel_module)
 endfunction()
 
 
-add_rooted_subdir(arch/${ARCH})
+add_rooted_subdir(arch/intel)
 add_rooted_subdir(fs)
 
