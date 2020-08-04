@@ -263,7 +263,7 @@ static void gpf_handler(int i, reg_t *regs) {
          eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-',
          eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
 
-  arch::dump_backtrace();
+  // arch::dump_backtrace();
 
   sys::exit_proc(-1);
 
@@ -297,7 +297,7 @@ static void pgfault_handle(int i, reg_t *regs) {
   if (curproc == NULL) {
     KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf->rip,
          read_cr2());
-    arch::dump_backtrace();
+    // arch::dump_backtrace();
     // lookup the kernel proc if we aren't in one!
     proc = sched::proc::kproc();
   }
@@ -330,7 +330,7 @@ static void pgfault_handle(int i, reg_t *regs) {
       if (tf->err & PGFLT_INSTR) printk("INSTR ");
       printk("\n");
 
-      dump_backtrace(tf->rbp);
+      // dump_backtrace(tf->rbp);
 
       KERR("Address Space Dump:\n");
       proc->mm->dump();
