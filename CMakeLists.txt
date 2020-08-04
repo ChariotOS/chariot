@@ -115,6 +115,7 @@ function(chariot_bin target_name)
 endfunction()
 
 add_subdirectory(kernel)
+# add_subdirectory(arch/${ARCH})
 
 add_subdirectory(libc)
 add_subdirectory(usr.bin)
