@@ -52,7 +52,7 @@ add_link_options(--sysroot ${CHARIOT_SYSROOT})
 
 
 if(NOT DEFINED ARCH)
-set(ARCH x86_64)
+set(ARCH x86)
 endif()
 
 

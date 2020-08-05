@@ -2,9 +2,6 @@
 #ifndef __ARCH_H__
 #define __ARCH_H__
 
-#ifdef __ARCH_x86_64__
-
-#endif
 
 #ifndef GIT_REVISION
 #define GIT_REVISION "NO-GIT"
