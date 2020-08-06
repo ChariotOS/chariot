@@ -3,8 +3,9 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include "doomkeys.h"
+#include <ctype.h>
 
-
+#include <gfx/font.h>
 #include <ui/application.h>
 #include <ui/view.h>
 
@@ -19,62 +20,51 @@ static ui::view* main_widget;
 
 
 
-#define KEYQUEUE_SIZE 16
+#define KEYQUEUE_SIZE 128
 
 static unsigned short s_KeyQueue[KEYQUEUE_SIZE];
 static unsigned int s_KeyQueueWriteIndex = 0;
 static unsigned int s_KeyQueueReadIndex = 0;
 
-static unsigned char convertToDoomKey(int code) {
-  unsigned char key = 0;
-  switch (code) {
-    case key_return:
-      key = KEY_ENTER;
-      break;
-    case key_escape:
-      key = KEY_ESCAPE;
-      break;
-		case key_a:
-    case key_left:
-      key = KEY_LEFTARROW;
-      break;
-		case key_d:
-    case key_right:
-      key = KEY_RIGHTARROW;
-      break;
-    case key_w:
-    case key_up:
-      key = KEY_UPARROW;
-      break;
-    case key_s:
-    case key_down:
-      key = KEY_DOWNARROW;
-      break;
-    case key_control:
-    case key_x:
-      key = KEY_FIRE;
-      break;
-    case key_space:
-      key = KEY_USE;
-      break;
-    case key_leftshift:
-    case key_rightshift:
-      key = KEY_RSHIFT;
-      break;
-    case key_alt:
-      key = KEY_RALT;
-      break;
-    default:
-      break;
-  }
+static unsigned char convertToDoomKey(int code, char c) {
+#define BIND(from, to) if (code == (from)) { return (to); }
 
-  return key;
+	BIND(key_return, KEY_ENTER);
+	BIND(key_escape, KEY_ESCAPE);
+	BIND(key_tab, KEY_TAB);
+
+	// use is e, fire is space
+	BIND(key_e, KEY_USE);
+	BIND(key_space, KEY_FIRE);
+
+
+	// WASD key bindings
+	BIND(key_w, KEY_UPARROW);
+	BIND(key_a, KEY_STRAFE_L);
+	BIND(key_s, KEY_DOWNARROW);
+	BIND(key_d, KEY_STRAFE_R);
+
+
+
+	BIND(key_left, KEY_LEFTARROW);
+	BIND(key_right, KEY_RIGHTARROW);
+	BIND(key_up, KEY_UPARROW);
+	BIND(key_down, KEY_DOWNARROW);
+
+	BIND(key_leftshift, KEY_RSHIFT);
+	BIND(key_rightshift, KEY_RSHIFT);
+
+	BIND(key_control, KEY_RCTRL);
+	BIND(key_alt, KEY_RALT);
+#undef BIND
+
+	return tolower(c);
 }
 
 
 
-static void addKeyToQueue(int code, bool pressed) {
-  unsigned char key = convertToDoomKey(code);
+static void addKeyToQueue(int code, char c, bool pressed) {
+  unsigned char key = convertToDoomKey(code, c);
   unsigned short keyData = (pressed << 8) | key;
 
   // printf("%04x\n", keyData);
@@ -85,23 +75,38 @@ static void addKeyToQueue(int code, bool pressed) {
 }
 
 class doomview : public ui::view {
+  int frames = 0;
+
  public:
   virtual void paint_event(void) override {
+    frames += 1;
     constexpr size_t sz =
         DOOMGENERIC_RESX * DOOMGENERIC_RESY * sizeof(uint32_t);
     memcpy(window()->bmp().pixels(), DG_ScreenBuffer, sz);
+
+
+    auto s = get_scribe();
+    auto pr = gfx::printer(s, *gfx::font::get_default(), 0, 0, width());
+    pr.set_color(0xFFFFFF);
+
+    pr.printf("Keyqueue:\n");
+    for (int i = 0; i < KEYQUEUE_SIZE; i++) {
+			auto key = s_KeyQueue[i];
+			if (key == 0) continue;
+      pr.printf("  %3d: %04x\n", i, s_KeyQueue[i]);
+    }
     invalidate();
   }
 
   virtual void on_mouse_move(ui::mouse_event& ev) override { repaint(); }
 
   virtual void on_keydown(ui::keydown_event& ev) override {
-    addKeyToQueue(ev.code, true);
+    addKeyToQueue(ev.code, ev.c, true);
   }
 
 
   virtual void on_keyup(ui::keyup_event& ev) override {
-    addKeyToQueue(ev.code, false);
+    addKeyToQueue(ev.code, ev.c, false);
   }
 };
 
@@ -134,7 +139,10 @@ extern "C" void DG_DrawFrame() {
 
 
 
-extern "C" void DG_SleepMs(uint32_t ms) { usleep(ms * 1000); }
+extern "C" void DG_SleepMs(uint32_t ms) {
+	//
+	usleep(ms * 1000);
+}
 
 
 extern "C" uint32_t DG_GetTicksMs() {
@@ -149,6 +157,7 @@ extern "C" int DG_GetKey(int* pressed, unsigned char* doomKey) {
     return 0;
   } else {
     unsigned short keyData = s_KeyQueue[s_KeyQueueReadIndex];
+		s_KeyQueue[s_KeyQueueReadIndex] = 0;
     s_KeyQueueReadIndex++;
     s_KeyQueueReadIndex %= KEYQUEUE_SIZE;
 
