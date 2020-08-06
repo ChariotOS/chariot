@@ -7,6 +7,53 @@ namespace gfx {
 
   // fwd decl
   class font;
+  class scribe;
+
+
+
+  // allows you to continue drawing text from the last position
+  class printer {
+   public:
+    inline printer(gfx::scribe &sc, gfx::font &font, int x, int y, int width)
+        : sc(sc) {
+      set_font(font);
+      x0 = x;
+      y0 = y;
+      this->width = width;
+      pos.set_x(x);
+      pos.set_y(y);
+    }
+
+
+    void printf(const char *fmt, ...);
+    void write(char c);
+    void write(const char *msg);
+
+    auto set_color(uint32_t c) { color = c; }
+    auto get_color(void) { return color; }
+
+    /*
+     * The font management is a little goofy, It requires that the owner
+     * maintains a reference to the original font, as we don't take in a
+     * ck::ref<gfx::font> here...
+     */
+    void set_font(gfx::font &fnt) { this->fnt = &fnt; }
+
+    auto get_pos() { return pos; }
+
+
+
+   protected:
+    uint32_t color;
+
+    gfx::scribe &sc;
+    gfx::font *fnt;
+    int x0, y0, width;
+
+    gfx::point pos;
+
+    friend class scribe;
+  };
 
   /*
    * A scibe draws on bitmaps :^)
@@ -21,6 +68,8 @@ namespace gfx {
       gfx::rect clip;     // restricting draw regions
     };
     ck::vec<struct state> states;
+
+    friend class printer;
 
    public:
     // enter a new state
@@ -63,39 +112,25 @@ namespace gfx {
     }
 
 
-    // allows you to continue drawing text from the last position
-    struct text_thunk {
-      int x0, y0, width;
-
-      gfx::point pos;
-
-      inline text_thunk(int x, int y, int width) {
-        x0 = x;
-        y0 = y;
-        this->width = width;
-        pos.set_x(x);
-        pos.set_y(y);
-      }
-    };
-
     // draw text, wrapping within
-    //
-    void draw_text(struct text_thunk &st, gfx::font &fnt, const char *str,
-                   uint32_t color, int flags = 0);
+    /*
+void draw_text(struct printer &st, gfx::font &fnt, const char *str,
+       uint32_t color, int flags = 0);
 
-		// with a printf thing
-    void printf(struct text_thunk &st, gfx::font &fnt, uint32_t color,
-                    int flags, const char *fmt, ...);
+// with a printf thing
+void printf(struct printer &st, gfx::font &fnt, uint32_t color, int flags,
+    const char *fmt, ...);
 
-    void draw_text(struct text_thunk &st, gfx::font &fnt, char c,
-                   uint32_t color, int flags = 0);
+void draw_text(struct printer &st, gfx::font &fnt, char c, uint32_t color,
+       int flags = 0);
 
 
-    inline void draw_text(const char *str, gfx::font &fnt, int width,
-                          gfx::point &pos, uint32_t color, int flags = 0) {
-      auto thnk = text_thunk(pos.x(), pos.y(), width);
-      draw_text(thnk, fnt, str, color, flags);
-    }
+inline void draw_text(const char *str, gfx::font &fnt, int width,
+              gfx::point &pos, uint32_t color, int flags = 0) {
+auto thnk = printer(pos.x(), pos.y(), width);
+draw_text(thnk, fnt, str, color, flags);
+}
+    */
 
     // clear the region (clipped) with a color
     void clear(uint32_t);

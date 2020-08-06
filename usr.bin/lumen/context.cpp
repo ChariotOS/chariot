@@ -48,10 +48,9 @@ lumen::context::context(void) : screen(1024, 768) {
 
 
 void lumen::context::handle_keyboard_input(keyboard_packet_t &pkt) {
-
-	if (focused_window != NULL) {
-		focused_window->handle_keyboard_input(pkt);
-	}
+  if (focused_window != NULL) {
+    focused_window->handle_keyboard_input(pkt);
+  }
 }
 
 void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
@@ -678,7 +677,7 @@ void lumen::context::compose(void) {
   }
 
   if (draw_mouse) {
-		// scribe.draw_pixel(screen.mouse_pos.x(), screen.mouse_pos.y(), 0);
+    // scribe.draw_pixel(screen.mouse_pos.x(), screen.mouse_pos.y(), 0);
     // scribe.draw_frame(screen.mouse_rect(), 0xFF8888);
     screen.draw_mouse();
   }
@@ -716,7 +715,7 @@ void lumen::context::compose(void) {
 
 
 
-lumen::guest::guest(long id, struct context &ctx, ck::localsocket *conn)
+lumen::guest::guest(long id, struct context &ctx, ck::ipcsocket *conn)
     : id(id), ctx(ctx), connection(conn) {
   connection->on_read([this] { this->on_read(); });
 }
@@ -790,7 +789,7 @@ long lumen::guest::send_raw(int type, int id, void *payload,
 
   if (payloadsize > 0) memcpy(msg + 1, payload, payloadsize);
 
-  auto w = connection->write((const void *)msg, msgsize);
+  auto w = connection->send((void *)msg, msgsize, MSG_DONTWAIT);
 
   free(msg);
   return w;

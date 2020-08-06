@@ -34,7 +34,7 @@ struct line {
 class painter : public ui::view {
   int color = 0;
 
-  ck::vec<struct line> lines;
+  int x, y;
 
  public:
   painter(void) {
@@ -45,23 +45,23 @@ class painter : public ui::view {
 
   virtual void paint_event(void) override {
     auto s = get_scribe();
-    // s.clear(color);
-    // s.draw_frame(gfx::rect(0, 0, width(), height()), color);
 
-    for (auto& line : lines) {
-      s.draw_line(line.start, line.end, color);
-    }
+    s.clear(0xFFFFFF);
+
+    auto pr = gfx::printer(s, *gfx::font::get_default(), 0, 0, width());
+		pr.set_color(0x000000);
+    pr.printf("x: %d\n", x);
+    pr.printf("y: %d\n", y);
+
+    s.draw_hline(0, y, width(), 0xFF0000);
+    s.draw_vline(x, 0, height(), 0xFF0000);
+
     invalidate();
   }
 
   virtual void on_mouse_move(ui::mouse_event& ev) override {
-    auto s = get_scribe();
-
-    int ox = ev.x - ev.dx;
-    int oy = ev.y - ev.dy;
-
-    lines.push({.start = gfx::point(ox, oy), .end = gfx::point(ev.x, ev.y)});
-
+    x = ev.x;
+    y = ev.y;
     repaint();
   }
 };
@@ -70,7 +70,6 @@ class painter : public ui::view {
 
 
 int main(int argc, char** argv) {
-
   /*
   int emx = emx_create();
 

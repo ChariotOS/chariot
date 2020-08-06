@@ -33,7 +33,7 @@ ui::application::application(void) {
 
   greet.pid = getpid();
   if (send_msg_sync(LUMEN_MSG_GREET, greet, &greetback)) {
-    printf("my guest id is %d!\n", greetback.guest_id);
+    // printf("my guest id is %d!\n", greetback.guest_id);
   }
 }
 
@@ -60,8 +60,8 @@ long ui::application::send_raw(int type, void *payload, size_t payloadsize) {
 
   if (payloadsize > 0) memcpy(msg + 1, payload, payloadsize);
 
-
-	// printf("\033[31;1m[client send] id: %6d. type: %04x\033[31;0m\n", msg->id, msg->type);
+  // printf("\033[31;1m[client send] id: %6d. type: %04x\033[31;0m\n", msg->id,
+  // msg->type);
   auto w = sock.write((const void *)msg, msgsize);
 
   free(msg);
@@ -70,20 +70,21 @@ long ui::application::send_raw(int type, void *payload, size_t payloadsize) {
 
 
 lumen::msg *ui::application::send_raw_sync(int type, void *payload,
-                                            size_t payloadsize) {
+                                           size_t payloadsize) {
   size_t msgsize = payloadsize + sizeof(lumen::msg);
-  auto msg = (lumen::msg *)malloc(msgsize);
+  auto req = (lumen::msg *)malloc(msgsize);
 
-  msg->magic = LUMEN_MAGIC;
-  msg->type = type;
-  msg->id = nextmsgid();
-  msg->len = payloadsize;
+	auto req_id = nextmsgid();
 
-  if (payloadsize > 0) memcpy(msg + 1, payload, payloadsize);
+  req->magic = LUMEN_MAGIC;
+  req->type = type;
+  req->id = req_id;
+  req->len = payloadsize;
 
-	// printf("\033[31;1m[client send] id: %6d. type: %04x\033[0m\n", msg->id, msg->type);
+  if (payloadsize > 0) memcpy(req + 1, payload, payloadsize);
+
   // TODO: this might fail?
-  sock.write((const void *)msg, msgsize);
+  sock.write((const void *)req, msgsize);
 
   lumen::msg *response = NULL;
 
@@ -91,10 +92,12 @@ lumen::msg *ui::application::send_raw_sync(int type, void *payload,
   while (response == NULL) {
     bool failed = false;
     auto msgs = lumen::drain_messages(sock, failed);
-    if (failed) break;
+    if (failed) {
+			// TODO:
+    }
 
     for (auto *got : msgs) {
-      if (got->id == msg->id) {
+      if (got->id == req_id) {
         response = got;
       } else {
         m_pending_messages.push(got);
@@ -102,7 +105,7 @@ lumen::msg *ui::application::send_raw_sync(int type, void *payload,
     }
   }
 
-  free(msg);
+  free(req);
   return response;
 }
 
@@ -112,40 +115,43 @@ void ui::application::drain_messages(void) {
   bool failed = false;
   auto msgs = lumen::drain_messages(sock, failed);
 
+
   for (auto *msg : msgs) {
-    m_pending_messages.push(msg);
-  }
+		m_pending_messages.push(msg);
+	}
 }
 
 
 void ui::application::dispatch_messages(void) {
   for (auto *msg : m_pending_messages) {
-		if (msg->type == LUMEN_MSG_INPUT) {
-			auto *inp = (struct lumen::input_msg*)(msg + 1);
+    if (msg->type == LUMEN_MSG_INPUT) {
+      auto *inp = (struct lumen::input_msg *)(msg + 1);
 
-			int wid = inp->window_id;
-			if (m_windows.contains(wid)) {
-				auto *win = m_windows.get(wid).get();
-				assert(win != NULL);
-				win->handle_input(*inp);
-			} else {
-				printf("Got n input message from the window server for a window I don't control! (wid=%d)\n", wid);
-			}
-		} else {
-    	printf("unhandled message %d (%p)\n", msg->id, msg);
-		}
+      int wid = inp->window_id;
+      if (m_windows.contains(wid)) {
+        auto *win = m_windows.get(wid).get();
+        assert(win != NULL);
+        win->handle_input(*inp);
+      } else {
+        printf(
+            "Got n input message from the window server for a window I don't "
+            "control! (wid=%d)\n",
+            wid);
+      }
+    } else {
+      printf("unhandled message %d (%p)\n", msg->id, msg);
+    }
 
     delete msg;
   }
-	m_pending_messages.clear();
+  m_pending_messages.clear();
 }
 
 
 void ui::application::start(void) { m_eventloop.start(); }
 
 
-ui::window *ui::application::new_window(ck::string name, int w,
-                                                  int h) {
+ui::window *ui::application::new_window(ck::string name, int w, int h) {
   struct lumen::create_window_msg msg;
   msg.width = w;
   msg.height = h;
@@ -154,13 +160,19 @@ ui::window *ui::application::new_window(ck::string name, int w,
   // the response message
   struct lumen::window_created_msg res = {0};
 
-  if (send_msg_sync(LUMEN_MSG_CREATE_WINDOW, msg, &res)) {
+
+	bool response = send_msg_sync(LUMEN_MSG_CREATE_WINDOW, msg, &res);
+
+  if (response) {
     if (res.window_id >= 0) {
-			auto win = ck::make_unique<ui::window>(res.window_id, name, gfx::rect(0, 0, w, h), gfx::shared_bitmap::get(res.bitmap_name, w, h));
-			m_windows.set(res.window_id, move(win));
-			return m_windows.get(res.window_id).get();
+      auto win = ck::make_unique<ui::window>(
+          res.window_id, name, gfx::rect(0, 0, w, h),
+          gfx::shared_bitmap::get(res.bitmap_name, w, h));
+      m_windows.set(res.window_id, move(win));
+      return m_windows.get(res.window_id).get();
     }
   }
+
 
   return nullptr;
 }

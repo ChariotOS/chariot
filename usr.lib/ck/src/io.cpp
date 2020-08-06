@@ -278,7 +278,7 @@ ck::socket::socket(int fd, int domain, int type, int protocol) : ck::file(fd) {
 
 
 ck::socket::socket(int domain, int type, int protocol)
-    : ck::socket(::socket(AF_UNIX, SOCK_STREAM, 0), AF_UNIX, SOCK_STREAM, 0) {}
+    : ck::socket(::socket(domain, type, 0), domain, type, 0) {}
 
 
 ck::socket::~socket(void) {
@@ -320,7 +320,7 @@ ssize_t ck::socket::recv(void *buf, size_t sz, int flags) {
 bool ck::localsocket::connect(ck::string str) {
   struct sockaddr_un addr;
   memset(&addr, 0, sizeof(addr));
-  addr.sun_family = AF_UNIX;
+  addr.sun_family = AF_LOCAL;
 
   // bind the local socket to the windowserver
   strncpy(addr.sun_path, str.get(), sizeof(addr.sun_path) - 1);
@@ -355,4 +355,58 @@ ck::localsocket *ck::localsocket::accept(void) {
 
   return new ck::localsocket(client);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+/////////////////////////////////////////////
+
+
+bool ck::ipcsocket::connect(ck::string str) {
+  struct sockaddr_un addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = AF_LOCAL;
+
+  // bind the local socket to the windowserver
+  strncpy(addr.sun_path, str.get(), sizeof(addr.sun_path) - 1);
+  return ck::socket::connect((struct sockaddr *)&addr, sizeof(addr));
+}
+
+
+
+int ck::ipcsocket::listen(ck::string path, ck::func<void()> cb) {
+  // are we already listening?
+  if (m_listening) return false;
+
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = AF_UNIX;
+  strncpy(addr.sun_path, path.get(), sizeof(addr.sun_path) - 1);
+
+
+  int bind_res = ::bind(m_fd, (struct sockaddr *)&addr, sizeof(addr));
+
+  if (bind_res == 0) {
+    m_listening = true;
+    on_read(move(cb));
+  }
+  return bind_res;
+}
+
+
+ck::ipcsocket *ck::ipcsocket::accept(void) {
+  int client = ::accept(m_fd, (struct sockaddr *)&addr, sizeof(addr));
+
+  if (client < 0) return nullptr;
+
+  return new ck::ipcsocket(client);
+}
+
 

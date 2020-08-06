@@ -89,7 +89,7 @@ int net::localsock::disconnect(int flags) {
   return 0;
 }
 
-// #define LOCALSOCK_DUMP_STATS
+#define LOCALSOCK_DUMP_STATS
 
 #ifdef LOCALSOCK_DUMP_STATS
 static spinlock localsocket_stat_lock;

@@ -32,6 +32,14 @@ net::sock *net::sock::create(int domain, int type, int protocol, int &err) {
     }
   }
 
+
+	if (domain == PF_CKIPC) {
+		if (type == SOCK_DGRAM) {
+      err = 0;
+      return new net::ipcsock(type);
+		}
+	}
+
   err = -EINVAL;
   return NULL;
 }

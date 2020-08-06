@@ -7,8 +7,8 @@
 #include <ck/socket.h>
 #include <ck/timer.h>
 #include <gfx/bitmap.h>
-#include <gfx/scribe.h>
 #include <gfx/point.h>
+#include <gfx/scribe.h>
 #include <lumen/msg.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -22,8 +22,8 @@ namespace lumen {
 
   enum mouse_cursor : char {
     pointer = 0,
-		grab = 1,
-		grabbing = 2,
+    grab = 1,
+    grabbing = 2,
 
     mouse_count
   };
@@ -43,7 +43,7 @@ namespace lumen {
     uint32_t *front_buffer;
     uint32_t *back_buffer;
 
-		bool mouse_moved = false;
+    bool mouse_moved = false;
 
     gfx::rect m_bounds;
     gfx::point mouse_pos;
@@ -54,9 +54,9 @@ namespace lumen {
 
     void flush_info(void) {
       info.active = 1;
-    	if (ioctl(fd, FB_SET_INFO, &info) < 0) {
-				ioctl(fd, FB_GET_INFO, &info);
-			}
+      if (ioctl(fd, FB_SET_INFO, &info) < 0) {
+        ioctl(fd, FB_GET_INFO, &info);
+      }
     }
 
     void load_info(void) { ioctl(fd, FB_GET_INFO, &info); }
@@ -105,14 +105,14 @@ namespace lumen {
   };
 
 
-	enum class window_mode : char {
-		normal, // no borders, only a title bar.
-	};
+  enum class window_mode : char {
+    normal,  // no borders, only a title bar.
+  };
 
-	enum class hover_result : char {
-		normal, // normal pointer
-		draggable, // this region of the window is draggable
-	};
+  enum class hover_result : char {
+    normal,     // normal pointer
+    draggable,  // this region of the window is draggable
+  };
 
 
   struct window {
@@ -121,51 +121,52 @@ namespace lumen {
     lumen::guest &guest;
     gfx::rect rect;
 
-		bool hovered = false;
-		bool focused = false;
+    bool hovered = false;
+    bool focused = false;
 
-		window_mode mode;
+    window_mode mode;
 
     ck::ref<gfx::shared_bitmap> bitmap;
 
     window(int id, lumen::guest &c, int w, int h);
-		~window(void);
+    ~window(void);
 
-		// get the bounds of the window frame
-		gfx::rect bounds();
+    // get the bounds of the window frame
+    gfx::rect bounds();
 
-		// users invalidate the bounds of their bitmap, not the window. So we gotta translate
-		// that invalidation to the actual bounds of the bitmap on the screen.
-		void translate_invalidation(gfx::rect &r);
+    // users invalidate the bounds of their bitmap, not the window. So we gotta
+    // translate that invalidation to the actual bounds of the bitmap on the
+    // screen.
+    void translate_invalidation(gfx::rect &r);
 
 
-#define WINDOW_REGION_NORM 1 // use the window's cursor style
+#define WINDOW_REGION_NORM 1  // use the window's cursor style
 #define WINDOW_REGION_DRAG 2
 #define WINDOW_REGION_CLOSE 3
-		// return one of the above ^
-		int handle_mouse_input(gfx::point &r, struct mouse_packet &p);
+    // return one of the above ^
+    int handle_mouse_input(gfx::point &r, struct mouse_packet &p);
 
-		int handle_keyboard_input(struct keyboard_packet_t &p);
+    int handle_keyboard_input(struct keyboard_packet_t &p);
 
-		// used to tell the window compositor where in the window we are hovering.
-		hover_result hover();
+    // used to tell the window compositor where in the window we are hovering.
+    hover_result hover();
 
-		void set_mode(lumen::window_mode);
+    void set_mode(lumen::window_mode);
 
-		// draw within the scribe. The scribe is offset to within the window
-		void draw(gfx::scribe &);
+    // draw within the scribe. The scribe is offset to within the window
+    void draw(gfx::scribe &);
   };
 
 
   // a guest who is connected to the server
   // guests can have many windows
   struct guest {
-    long id = 0;
+    unsigned long id = 0;
     struct context &ctx;  // the context we live in
-    ck::localsocket *connection;
+    ck::ipcsocket *connection;
     ck::map<long, struct window *> windows;
 
-    guest(long id, struct context &ctx, ck::localsocket *conn);
+    guest(long id, struct context &ctx, ck::ipcsocket *conn);
     ~guest(void);
 
     void process_message(lumen::msg &);
@@ -175,8 +176,7 @@ namespace lumen {
 
     template <typename T>
     inline int send_msg(int type, const T &payload) {
-      int id = next_msg_id;
-      return send_raw(type, id, (void *)&payload, sizeof(payload));
+      return send_raw(type, -1, (void *)&payload, sizeof(payload));
     }
 
 
@@ -201,7 +201,7 @@ namespace lumen {
     lumen::screen screen;
 
     ck::file keyboard, mouse;
-    ck::localsocket server;
+    ck::ipcsocket server;
 
     ck::ref<ck::timer> compose_timer;
     context(void);
@@ -218,7 +218,7 @@ namespace lumen {
     void window_opened(window *);
     void window_closed(window *);
 
-		void calculate_hover(void);
+    void calculate_hover(void);
 
 
     void compose(void);
@@ -233,19 +233,19 @@ namespace lumen {
     // The currently focused window is at the front
     ck::vec<lumen::window *> windows;
 
-		lumen::window *hovered_window = nullptr;
-		lumen::window *focused_window = nullptr;
-		bool dragging = false;
+    lumen::window *hovered_window = nullptr;
+    lumen::window *focused_window = nullptr;
+    bool dragging = false;
 
     ck::vec<gfx::rect> dirty_regions;
 
     void invalidate(const gfx::rect &r);
 
-		// select a window, moving it around the view stack and all that fun stuff
-		void select_window(lumen::window *win);
+    // select a window, moving it around the view stack and all that fun stuff
+    void select_window(lumen::window *win);
 
-		// return if a rect in a window is occluded
-		bool occluded(lumen::window &win, const gfx::rect &r);
+    // return if a rect in a window is occluded
+    bool occluded(lumen::window &win, const gfx::rect &r);
 
 
    private:

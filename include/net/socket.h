@@ -86,6 +86,7 @@ struct sockaddr_storage {
 #define PF_SMC          43
 #define PF_MAX          44
 
+
 #define AF_UNSPEC       PF_UNSPEC
 #define AF_LOCAL        PF_LOCAL
 #define AF_UNIX         AF_LOCAL
@@ -265,6 +266,13 @@ struct sockaddr_storage {
 #define MSG_FASTOPEN  0x20000000
 #define MSG_CMSG_CLOEXEC 0x40000000
 
+
+
+// Chariot specific
+#define AF_CKIPC   100
+#define PF_CKIPC   AF_CKIPC
+// returns the size of the next message, -EAGAIN if there isn't one left.
+#define MSG_IPC_QUERY 0x80000000
 
 #ifdef __cplusplus
 }

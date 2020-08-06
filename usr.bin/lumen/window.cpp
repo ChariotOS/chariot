@@ -125,12 +125,12 @@ void lumen::window::draw(gfx::scribe &scribe) {
 
     scribe.draw_rect(close_button(), 0x000000);
 
-    auto st = gfx::scribe::text_thunk(18, 0, rect.w);
-    scribe.draw_text(st, *gfx::font::get_default(), name.get(), 0x000000, 0);
+		auto pr = gfx::printer(scribe, *gfx::font::get_default(), 18, 0, rect.w);
+		pr.printf("%s", name.get());
 
     if (focused) {
       for (int i = 0; i < 5; i++) {
-        int x = st.pos.x() + 4;
+        int x = pr.get_pos().x() + 4;
         int y = 4 + (i * 2);
         scribe.draw_line(x, y, rect.w - 4, y, 0);
       }

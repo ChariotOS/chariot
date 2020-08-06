@@ -58,7 +58,7 @@ void fifo_buf::close(void) {
 
 void fifo_buf::init_if_needed(void) {
   if (buffer == NULL) {
-    m_size = 4096;
+    m_size = 4096 * 16;  // 16 pages
     buffer = (char *)kmalloc(m_size);
   }
 }
@@ -80,7 +80,7 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
     }
 
 
-		// printk_nolock("available: %d\n", available());
+    // printk_nolock("available: %d\n", available());
 
     lock.unlock_cli();
     wq_readers.notify_all();
@@ -89,7 +89,7 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
 
     if (written < size) {
       if (wq_writers.wait() == false /* interrupted by signals? */) {
-				if (written > 0) return written;
+        if (written > 0) return written;
         return -EINTR;
       }
       if (m_closed) return -ECONNRESET;
@@ -127,7 +127,7 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
     }
 
 
-		// printk_nolock("unread: %d\n", unread());
+    // printk_nolock("unread: %d\n", unread());
 
     lock.unlock_cli();
     wq_writers.notify_all();
@@ -152,10 +152,10 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
 }
 
 void fifo_buf::stats(size_t &avail, size_t &unread) {
-	scoped_lock l(lock);
+  scoped_lock l(lock);
 
-	avail = this->available();
-	unread = this->unread();
+  avail = this->available();
+  unread = this->unread();
 }
 
 
@@ -176,6 +176,4 @@ int fifo_buf::poll(void) {
   lock.unlock_cli();
   return ev;
 }
-
-
 

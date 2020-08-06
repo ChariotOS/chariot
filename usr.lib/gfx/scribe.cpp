@@ -83,14 +83,14 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source,
   const size_t src_skip = source.width();
 
 
-	// ::printf("w: %4d,  last_row: %4d\n", last_row, clipped_rect.w-1);
+  // ::printf("w: %4d,  last_row: %4d\n", last_row, clipped_rect.w-1);
   for (int row = first_row; row < last_row; ++row) {
     memcpy(dst, src, clipped_rect.w * sizeof(uint32_t));
     dst += dst_skip;
     src += src_skip;
   }
 
-	// draw_pixel(dst_rect.x, dst_rect.y, 0xFF00FF);
+  // draw_pixel(dst_rect.x, dst_rect.y, 0xFF00FF);
   return;
 }
 
@@ -606,6 +606,8 @@ void gfx::scribe::draw_frame(const gfx::rect &frame, uint32_t bg) {
     }
   }
 }
+
+#if 0
 void gfx::scribe::draw_text(struct text_thunk &st, gfx::font &fnt, char c,
                             uint32_t color, int flags) {
   int x = st.pos.x();
@@ -635,48 +637,62 @@ void gfx::scribe::draw_text(struct text_thunk &st, gfx::font &fnt, char c,
   st.pos.set_x(x);
   st.pos.set_y(y);
 }
+#endif
 
 
-void gfx::scribe::draw_text(struct text_thunk &st, gfx::font &fnt,
-                            const char *str, uint32_t color, int flags) {
-  for (int i = 0; str[i] != 0; i++) {
-    draw_text(st, fnt, str[i], color, flags);
-  }
-}
-
-
-
-struct scribe_cb_info {
-  gfx::scribe *sc;
-  ck::ref<gfx::font> fnt;
-  uint32_t color;
-  uint32_t flags;
-  struct gfx::scribe::text_thunk *st;
-};
 
 
 static void scribe_draw_text_callback(char c, void *arg) {
-  auto *f = (struct scribe_cb_info *)arg;
-
-  f->sc->draw_text(*f->st, *f->fnt, c, f->color, f->flags);
+  auto *f = (gfx::printer *)arg;
+  f->write(c);
 }
 
 
 extern "C" int vfctprintf(void (*out)(char character, void *arg), void *arg,
                           const char *format, va_list va);
 
-void gfx::scribe::printf(struct text_thunk &st, gfx::font &fnt, uint32_t color,
-                         int flags, const char *fmt, ...) {
-  struct scribe_cb_info s;
-
-  s.sc = this;
-  s.st = &st;
-  s.fnt = &fnt;
-  s.color = color;
-  s.flags = flags;
-
+void gfx::printer::printf(const char *fmt, ...) {
   va_list va;
   va_start(va, fmt);
-  vfctprintf(scribe_draw_text_callback, (void *)&s, fmt, va);
+  vfctprintf(scribe_draw_text_callback, (void *)this, fmt, va);
   va_end(va);
 }
+
+
+void gfx::printer::write(char c) {
+  int x = pos.x();
+  int y = pos.y();
+  uint32_t right_edge = this->x0 + width;
+
+
+  auto newline = [&] {
+    x = this->x0;
+    // int oy = y;
+    y += fnt->line_height();
+    // if (getpid() != 6) ::printf("y: %4d -> %-4d   %d\n", oy, y,
+    // fnt.line_height());
+  };
+
+  if (c == '\n') {
+    newline();
+  } else {
+    if (x + fnt->width(c) > right_edge) {
+      newline();
+    }
+
+    int dy = y + fnt->line_height();
+    fnt->draw(x, dy, this->sc, c, color);
+  }
+
+	/* flush the position change */
+  pos.set_x(x);
+  pos.set_y(y);
+}
+
+
+void gfx::printer::write(const char *str) {
+  for (int i = 0; str[i] != 0; i++) {
+    write(str[i]);
+  }
+}
+

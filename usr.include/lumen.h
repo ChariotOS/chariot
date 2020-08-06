@@ -13,7 +13,7 @@
 namespace lumen {
 
 
-  ck::vec<lumen::msg *> drain_messages(ck::localsocket &sock, bool &failed);
+  ck::vec<lumen::msg *> drain_messages(ck::ipcsocket &sock, bool &failed);
 
 };  // namespace lumen
 
