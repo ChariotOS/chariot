@@ -1,9 +1,9 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 #include "doomkeys.h"
-#include <ctype.h>
 
 #include <gfx/font.h>
 #include <ui/application.h>
@@ -17,48 +17,55 @@ extern "C" {
 static ui::application main_app;
 static ui::window* main_window;
 static ui::view* main_widget;
+static size_t last_tick = 0;
 
-
+ck::ref<gfx::font> doomuifont;
 
 #define KEYQUEUE_SIZE 128
+
+
+static inline auto current_us(void) { return syscall(SYS_gettime_microsecond); }
 
 static unsigned short s_KeyQueue[KEYQUEUE_SIZE];
 static unsigned int s_KeyQueueWriteIndex = 0;
 static unsigned int s_KeyQueueReadIndex = 0;
 
 static unsigned char convertToDoomKey(int code, char c) {
-#define BIND(from, to) if (code == (from)) { return (to); }
+#define BIND(from, to)  \
+  if (code == (from)) { \
+    return (to);        \
+  }
 
-	BIND(key_return, KEY_ENTER);
-	BIND(key_escape, KEY_ESCAPE);
-	BIND(key_tab, KEY_TAB);
+  BIND(key_return, KEY_ENTER);
+  BIND(key_escape, KEY_ESCAPE);
+  BIND(key_tab, KEY_TAB);
 
-	// use is e, fire is space
-	BIND(key_e, KEY_USE);
-	BIND(key_space, KEY_FIRE);
-
-
-	// WASD key bindings
-	BIND(key_w, KEY_UPARROW);
-	BIND(key_a, KEY_STRAFE_L);
-	BIND(key_s, KEY_DOWNARROW);
-	BIND(key_d, KEY_STRAFE_R);
+  // use is e, fire is space
+  BIND(key_e, KEY_USE);
+  BIND(key_space, KEY_FIRE);
 
 
+  // WASD key bindings
+  BIND(key_w, KEY_UPARROW);
+  BIND(key_a, KEY_STRAFE_L);
+  BIND(key_s, KEY_DOWNARROW);
+  BIND(key_d, KEY_STRAFE_R);
 
-	BIND(key_left, KEY_LEFTARROW);
-	BIND(key_right, KEY_RIGHTARROW);
-	BIND(key_up, KEY_UPARROW);
-	BIND(key_down, KEY_DOWNARROW);
 
-	BIND(key_leftshift, KEY_RSHIFT);
-	BIND(key_rightshift, KEY_RSHIFT);
 
-	BIND(key_control, KEY_RCTRL);
-	BIND(key_alt, KEY_RALT);
+  BIND(key_left, KEY_LEFTARROW);
+  BIND(key_right, KEY_RIGHTARROW);
+  BIND(key_up, KEY_UPARROW);
+  BIND(key_down, KEY_DOWNARROW);
+
+  BIND(key_leftshift, KEY_RSHIFT);
+  BIND(key_rightshift, KEY_RSHIFT);
+
+  BIND(key_control, KEY_RCTRL);
+  BIND(key_alt, KEY_RALT);
 #undef BIND
 
-	return tolower(c);
+  return tolower(c);
 }
 
 
@@ -67,7 +74,6 @@ static void addKeyToQueue(int code, char c, bool pressed) {
   unsigned char key = convertToDoomKey(code, c);
   unsigned short keyData = (pressed << 8) | key;
 
-  // printf("%04x\n", keyData);
 
   s_KeyQueue[s_KeyQueueWriteIndex] = keyData;
   s_KeyQueueWriteIndex++;
@@ -75,26 +81,45 @@ static void addKeyToQueue(int code, char c, bool pressed) {
 }
 
 class doomview : public ui::view {
-  int frames = 0;
+  long frames = 0;
+  long start_time = current_us();
 
  public:
+  doomview() { doomuifont = gfx::font::open("scientifica-normal", 11); }
   virtual void paint_event(void) override {
-    frames += 1;
-    constexpr size_t sz =
-        DOOMGENERIC_RESX * DOOMGENERIC_RESY * sizeof(uint32_t);
-    memcpy(window()->bmp().pixels(), DG_ScreenBuffer, sz);
+    memcpy(window()->bmp().pixels(), DG_ScreenBuffer,
+           DOOMGENERIC_RESX * DOOMGENERIC_RESY * sizeof(uint32_t));
+
+    if (0) {
+      frames += 1;
+
+      auto now = current_us();
+      auto elapsed = (now - start_time) / 1000.0 / 1000.0;
 
 
-    auto s = get_scribe();
-    auto pr = gfx::printer(s, *gfx::font::get_default(), 0, 0, width());
-    pr.set_color(0xFFFFFF);
+      if (elapsed > 3) {
+        start_time = now;
+      }
 
-    pr.printf("Keyqueue:\n");
-    for (int i = 0; i < KEYQUEUE_SIZE; i++) {
-			auto key = s_KeyQueue[i];
-			if (key == 0) continue;
-      pr.printf("  %3d: %04x\n", i, s_KeyQueue[i]);
+
+      float fps = frames / elapsed;
+
+
+
+      auto s = get_scribe();
+      auto pr = gfx::printer(s, *doomuifont, 0, 0, width());
+      pr.set_color(0xFFFFFF);
+
+      pr.printf("FPS: %3.8f\n", fps);
+      pr.printf("FRAMES: %d\n", frames);
+
+      pr.printf("\n");
+
+      pr.printf("NOW:   %lld\n", now);
+      pr.printf("START: %lld\n", start_time);
+      pr.printf("       %f\n", elapsed);
     }
+
     invalidate();
   }
 
@@ -140,13 +165,14 @@ extern "C" void DG_DrawFrame() {
 
 
 extern "C" void DG_SleepMs(uint32_t ms) {
-	//
-	usleep(ms * 1000);
+  //
+  // usleep(ms * 1000);
 }
 
 
 extern "C" uint32_t DG_GetTicksMs() {
-  return syscall(SYS_gettime_microsecond) / 1000;
+  last_tick = current_us() / 1000;
+  return last_tick;
 }
 
 
@@ -157,7 +183,7 @@ extern "C" int DG_GetKey(int* pressed, unsigned char* doomKey) {
     return 0;
   } else {
     unsigned short keyData = s_KeyQueue[s_KeyQueueReadIndex];
-		s_KeyQueue[s_KeyQueueReadIndex] = 0;
+    s_KeyQueue[s_KeyQueueReadIndex] = 0;
     s_KeyQueueReadIndex++;
     s_KeyQueueReadIndex %= KEYQUEUE_SIZE;
 
