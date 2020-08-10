@@ -166,7 +166,7 @@ extern "C" void DG_DrawFrame() {
 
 extern "C" void DG_SleepMs(uint32_t ms) {
   //
-  // usleep(ms * 1000);
+  usleep(ms * 1000);
 }
 
 
