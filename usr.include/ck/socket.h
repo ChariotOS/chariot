@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef __cplusplus
+
 #include <ck/fsnotifier.h>
 #include <ck/io.h>
 #include <ck/map.h>
@@ -56,6 +58,10 @@ namespace ck {
     struct sockaddr_un addr;
   };
 
+
+
+
+
   class ipcsocket : public ck::socket {
     inline ipcsocket(int fd) : socket(fd, AF_CKIPC, SOCK_DGRAM, 0) {}
 
@@ -75,3 +81,5 @@ namespace ck {
   };
 
 };  // namespace ck
+
+#endif
