@@ -33,13 +33,12 @@ namespace lumen {
     unsigned short magic = LUMEN_MAGIC;
     unsigned short type = -1;
 
-    // length of the payload
-    int len = 0;
-    int window_id = -1;  // -1 means no window
 
     // "unique" id for this message. That way we know who to notify
     // when a response is gotten.
-    unsigned long id;
+    unsigned short id;
+    unsigned short window_id = -1;  // -1 means no window
+    int len = 0; // the size of data[]
 
     char data[];
   };

@@ -48,7 +48,7 @@ namespace ui {
       if (success && response->len != sizeof(R)) success = false;
       if (success && ret != NULL) *ret = *(R *)response->data;
 
-      delete response;
+      free(response);
       return success;
     }
 

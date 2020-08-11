@@ -263,7 +263,12 @@ static void gpf_handler(int i, reg_t *regs) {
          eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-',
          eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
 
-  // arch::dump_backtrace();
+  if (curproc) {
+    KERR("Address Space Dump:\n");
+    curproc->mm->dump();
+    dump_backtrace(tf->rbp);
+  }
+
 
   sys::exit_proc(-1);
 
@@ -330,10 +335,12 @@ static void pgfault_handle(int i, reg_t *regs) {
       if (tf->err & PGFLT_INSTR) printk("INSTR ");
       printk("\n");
 
-      // dump_backtrace(tf->rbp);
 
       KERR("Address Space Dump:\n");
       proc->mm->dump();
+
+
+      dump_backtrace(tf->rbp);
 
       sys::exit_proc(-1);
 

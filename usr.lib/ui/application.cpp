@@ -53,9 +53,11 @@ long ui::application::send_raw(int type, void *payload, size_t payloadsize) {
   size_t msgsize = payloadsize + sizeof(lumen::msg);
   auto msg = (lumen::msg *)malloc(msgsize);
 
+	long id = nextmsgid();
+
   msg->magic = LUMEN_MAGIC;
   msg->type = type;
-  msg->id = nextmsgid();
+  msg->id = id;
   msg->len = payloadsize;
 
   if (payloadsize > 0) memcpy(msg + 1, payload, payloadsize);
@@ -64,34 +66,54 @@ long ui::application::send_raw(int type, void *payload, size_t payloadsize) {
   // msg->type);
   auto w = sock.write((const void *)msg, msgsize);
 
+	if (w < 0) return -1;
+
   free(msg);
-  return w;
+  return id;
 }
 
 
+
+static ck::vec<lumen::msg *> drain_messages_from(ck::ipcsocket &sock, bool &failed) {
+  failed = false;
+  ck::vec<lumen::msg *> msgs;
+
+  while (1) {
+    uint8_t buf;
+    int sz = sock.recv(&buf, 1, MSG_IPC_QUERY | MSG_DONTWAIT);
+    if (sz < 0) {
+      if (errno == EAGAIN) break;
+      failed = true;
+      break;
+    }
+
+    char *buffer = (char *)malloc(sz);
+    int nread = sock.recv(buffer, sz, 0);
+    if (nread != sz) {
+      free(buffer);
+      failed = true;
+      break;
+    }
+    auto *msg = (lumen::msg *)buffer;
+    msgs.push(msg);
+  }
+
+
+
+  return msgs;
+}
+
 lumen::msg *ui::application::send_raw_sync(int type, void *payload,
                                            size_t payloadsize) {
-  size_t msgsize = payloadsize + sizeof(lumen::msg);
-  auto req = (lumen::msg *)malloc(msgsize);
-
-	auto req_id = nextmsgid();
-
-  req->magic = LUMEN_MAGIC;
-  req->type = type;
-  req->id = req_id;
-  req->len = payloadsize;
-
-  if (payloadsize > 0) memcpy(req + 1, payload, payloadsize);
-
-  // TODO: this might fail?
-  sock.write((const void *)req, msgsize);
+	long req_id = send_raw(type, payload, payloadsize);
+	if (req_id == -1) return NULL;
 
   lumen::msg *response = NULL;
 
   // wait for a response (this can be smarter)
   while (response == NULL) {
     bool failed = false;
-    auto msgs = lumen::drain_messages(sock, failed);
+    auto msgs = drain_messages_from(sock, failed);
     if (failed) {
 			// TODO:
     }
@@ -105,7 +127,6 @@ lumen::msg *ui::application::send_raw_sync(int type, void *payload,
     }
   }
 
-  free(req);
   return response;
 }
 
@@ -113,7 +134,7 @@ lumen::msg *ui::application::send_raw_sync(int type, void *payload,
 
 void ui::application::drain_messages(void) {
   bool failed = false;
-  auto msgs = lumen::drain_messages(sock, failed);
+  auto msgs = drain_messages_from(sock, failed);
 
 
   for (auto *msg : msgs) {

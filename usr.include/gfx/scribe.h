@@ -106,7 +106,13 @@ namespace gfx {
       auto &s = state();
       x += s.offset.x();
       y += s.offset.y();
-      if (s.clip.contains(x, y)) {
+
+
+
+      auto &c = s.clip;
+
+
+      if (x >= c.left() && x < c.right() && y >= c.top() && y < c.bottom()) {
         set_pixel(x, y, color);
       }
     }
