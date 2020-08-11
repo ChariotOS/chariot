@@ -3,6 +3,8 @@
 #ifndef __TEMPLATE_LIB_H__
 #define __TEMPLATE_LIB_H__
 
+#ifdef __cplusplus
+
 
 #ifdef USERLAND
 
@@ -223,5 +225,7 @@ template <typename T>
 struct IsSame<T, T> {
   enum { value = 1 };
 };
+
+#endif
 
 #endif
