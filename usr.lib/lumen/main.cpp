@@ -11,7 +11,8 @@ ck::vec<lumen::msg *> lumen::drain_messages(ck::ipcsocket &sock, bool &failed) {
   while (1) {
     uint8_t buf;
     int sz = sock.recv(&buf, 1, MSG_IPC_QUERY | MSG_DONTWAIT);
-    if (sz < 0) {
+
+    if (sz < 0 || sock.eof()) {
       if (errno == EAGAIN) break;
       failed = true;
       break;
@@ -19,7 +20,7 @@ ck::vec<lumen::msg *> lumen::drain_messages(ck::ipcsocket &sock, bool &failed) {
 
     char *buffer = (char *)malloc(sz);
     int nread = sock.recv(buffer, sz, 0);
-    if (nread != sz) {
+    if (nread != sz || sock.eof()) {
       free(buffer);
       failed = true;
       break;

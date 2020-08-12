@@ -79,8 +79,9 @@ int net::ipcsock::connect(struct sockaddr *addr, int len) {
 
 
 int net::ipcsock::disconnect(int flags) {
-  auto &state = (flags & PFLAGS_CLIENT) ? for_client : for_server;
+  auto &state = (flags & PFLAGS_CLIENT) ? for_server : for_client;
 
+  printk("DC!\n");
   state.lock.lock();
   state.closed = true;
   state.wq.notify_all();
@@ -113,22 +114,13 @@ ssize_t net::ipcsock::sendto(fs::file &fd, void *data, size_t len, int flags,
                              const sockaddr *, size_t) {
   auto &state = (fd.pflags & PFLAGS_SERVER) ? for_client : for_server;
 
-    scoped_lock l(state.lock);
-    if (state.closed) {
-      return 0;
-    }
+  scoped_lock l(state.lock);
+  if (state.closed) {
+    return 0;
+  }
 
-#ifdef IPCSOCK_DEBUG
-    named_hexdump(string::format("%s %p",
-                                 (fd.pflags & PFLAGS_SERVER) ? "SEND TO CLIENT"
-                                                             : "SEND TO SERVER",
-                                 data, &state)
-                      .get(),
-                  data, len);
-#endif
-
-    state.msgs.append(ipcmsg(data, len));
-    state.wq.notify();
+  state.msgs.append(ipcmsg(data, len));
+  state.wq.notify();
 
 
   return len;
@@ -168,16 +160,6 @@ ssize_t net::ipcsock::recvfrom(fs::file &fd, void *data, size_t len, int flags,
         memcpy(data, front.data.data(), front.data.size());
         size_t nread = front.data.size();
         state.msgs.take_first();
-
-#ifdef IPCSOCK_DEBUG
-        named_hexdump(
-            string::format("%s %p",
-                           (fd.pflags & PFLAGS_SERVER) ? "RECV AS CLIENT"
-                                                       : "RECV AS CLIENT",
-                           &state)
-                .get(),
-            data, len);
-#endif
 
         return nread;
       }
@@ -231,12 +213,19 @@ int net::ipcsock::poll(fs::file &f, int events) {
     if (!for_client.msgs.is_empty()) {
       res |= AWAITFS_READ;
     }
+
+    if (for_client.closed) {
+      res |= AWAITFS_READ;
+    }
   }
 
 
   if (f.pflags & PFLAGS_SERVER) {
     scoped_lock l(for_server.lock);
     if (!for_server.msgs.is_empty()) {
+      res |= AWAITFS_READ;
+    }
+    if (for_server.closed) {
       res |= AWAITFS_READ;
     }
   }

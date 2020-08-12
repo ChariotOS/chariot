@@ -6,8 +6,8 @@
 
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sys/syscall.h>
 #include <sys/sysbind.h>
+#include <sys/syscall.h>
 #include <sys/un.h>
 
 #include <ck/io.h>
@@ -99,7 +99,7 @@ ssize_t ck::file::write(const void *buf, size_t sz) {
     return sz;
   }
 
-  long k = errno_wrap(sysbind_write(m_fd, (void*)src, sz));
+  long k = errno_wrap(sysbind_write(m_fd, (void *)src, sz));
   if (k < 0) return 0;
 
   return k;
@@ -312,7 +312,9 @@ ssize_t ck::socket::recv(void *buf, size_t sz, int flags) {
   if (eof()) return 0;
   if (m_fd == -1) return 0;
   int nread = ::recv(m_fd, buf, sz, flags);
-  if (nread == 0) set_eof(true);
+  if (nread == 0) {
+    set_eof(true);
+  }
   return nread;
 }
 
@@ -360,14 +362,6 @@ ck::localsocket *ck::localsocket::accept(void) {
 
 
 
-
-
-
-
-
-
-
-
 /////////////////////////////////////////////
 
 
@@ -409,5 +403,4 @@ ck::ipcsocket *ck::ipcsocket::accept(void) {
 
   return new ck::ipcsocket(client);
 }
-
 
