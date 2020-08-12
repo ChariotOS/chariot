@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <chariot/awaitfs_types.h>
+#include <sys/sysbind.h>
 #include <sys/syscall.h>
 #include "ck/event.h"
 
@@ -17,7 +18,7 @@ static ck::HashTable<ck::fsnotifier *> s_notifiers;
 static ck::HashTable<ck::timer *> s_timers;
 
 
-static size_t current_ms() { return syscall(SYS_gettime_microsecond) / 1000; }
+static size_t current_ms() { return sysbind_gettime_microsecond() / 1000; }
 
 static ck::timer *next_timer(void) {
   // TODO: take a lock
@@ -38,9 +39,7 @@ static ck::timer *next_timer(void) {
 
 ck::eventloop *active_eventloop = NULL;
 
-void ck::eventloop::defer(ck::func<void(void)> cb) {
-  s_defered.push(move(cb));
-}
+void ck::eventloop::defer(ck::func<void(void)> cb) { s_defered.push(move(cb)); }
 
 ck::eventloop::eventloop(void) {}
 
@@ -68,7 +67,7 @@ void ck::eventloop::start(void) {
 
 int awaitfs(struct await_target *fds, int nfds, int flags,
             long long timeout_time) {
-  return errno_syscall(SYS_awaitfs, fds, nfds, flags, timeout_time);
+  return errno_wrap(sysbind_awaitfs(fds, nfds, flags, timeout_time));
 }
 
 
@@ -119,8 +118,10 @@ void ck::eventloop::pump(void) {
     }
 
   } else {
-    if (nt != NULL) {
-      nt->trigger();
+    if (errno == ETIMEDOUT) {
+      if (nt != NULL) {
+        nt->trigger();
+      }
     }
   }
 }

@@ -24,7 +24,6 @@ extern "C" {
 #define __NEED_fsfilcnt_t
 
 #define __NEED_id_t
-#define __NEED_key_t
 #define __NEED_clock_t
 #define __NEED_suseconds_t
 #define __NEED_blksize_t

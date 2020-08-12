@@ -1,10 +1,11 @@
 #include <ck/command.h>
 #include <stdio.h>
-#include <time.h>
-#include <sys/wait.h>
 #include <sys/syscall.h>
+#include <sys/sysbind.h>
+#include <sys/wait.h>
+#include <time.h>
 
-static size_t current_ms() { return syscall(SYS_gettime_microsecond) / 1000; }
+static size_t current_ms() { return sysbind_gettime_microsecond() / 1000; }
 
 
 int main(int argc, char **argv) {

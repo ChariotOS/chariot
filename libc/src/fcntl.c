@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <sys/syscall.h>
+#include <sys/sysbind.h>
 #include <stdarg.h>
 
 
@@ -26,7 +27,7 @@ int open(const char *filename, int flags, ...) {
 		va_end(ap);
 	}
 
-	int fd = syscall(SYS_open, filename, flags, mode);
+	int fd = sysbind_open(filename, flags, mode);
 	// if (fd>=0 && (flags & O_CLOEXEC)) {
 	//  __syscall(SYS_fcntl, fd, F_SETFD, FD_CLOEXEC);
   // }

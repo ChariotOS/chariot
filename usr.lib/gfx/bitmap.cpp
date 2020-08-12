@@ -2,14 +2,14 @@
 #include <gfx/bitmap.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-#include <sys/syscall.h>
+#include <sys/sysbind.h>
 #include <unistd.h>
 
 void *mshare_create(const char *name, size_t size) {
   struct mshare_create arg;
   arg.size = size;
   strncpy(arg.name, name, MSHARE_NAMESZ - 1);
-  return (void *)syscall(SYS_mshare, MSHARE_CREATE, &arg);
+  return (void *)sysbind_mshare(MSHARE_CREATE, &arg);
 }
 
 
@@ -17,7 +17,7 @@ void *mshare_acquire(const char *name, size_t size) {
   struct mshare_acquire arg;
   arg.size = size;
   strncpy(arg.name, name, MSHARE_NAMESZ - 1);
-  return (void *)syscall(SYS_mshare, MSHARE_ACQUIRE, &arg);
+  return (void *)sysbind_mshare(MSHARE_ACQUIRE, &arg);
 }
 
 

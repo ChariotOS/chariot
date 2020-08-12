@@ -1,34 +1,37 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/syscall.h>
+#include <sys/sysbind.h>
 #include <unistd.h>
 
+
+#undef errno
 int errno;
 
 int *__errno_location(void) { return &errno; }
 
 ssize_t write(int fd, const void *buf, size_t count) {
   // just forward to the system call
-  return errno_syscall(SYS_write, fd, buf, count);
+  return errno_wrap(sysbind_write(fd, (void*)buf, count));
 }
 
 ssize_t read(int fd, void *buf, size_t count) {
   // just forward to the system call
-  return errno_syscall(SYS_read, fd, buf, count);
+  return errno_wrap(sysbind_read(fd, buf, count));
 }
 
 off_t lseek(int fd, off_t offset, int whence) {
-  return errno_syscall(SYS_lseek, fd, offset, whence);
+  return errno_wrap(sysbind_lseek(fd, offset, whence));
 }
 
 
 int unlink(const char *path) {
-	return errno_syscall(SYS_unlink, path);
+	return errno_wrap(sysbind_unlink(path));
 }
 
-int close(int fd) { return errno_syscall(SYS_close, fd); }
+int close(int fd) { return errno_wrap(sysbind_close(fd)); }
 
-int chdir(const char *path) { return errno_syscall(SYS_chdir, path); }
+int chdir(const char *path) { return errno_wrap(sysbind_chdir(path)); }
 
 int opterr = 1, /* if error message should be printed */
     optind = 1, /* index into parent argv vector */
@@ -89,20 +92,20 @@ int getopt(int nargc, char *const nargv[], const char *ostr) {
   return (optopt); /* dump back option letter */
 }
 
-uid_t getuid(void) { return syscall(SYS_getuid); }
-uid_t geteuid(void) { return syscall(SYS_geteuid); }
-gid_t getgid(void) { return syscall(SYS_getgid); }
-gid_t getegid(void) { return syscall(SYS_getegid); }
+uid_t getuid(void) { return sysbind_getuid(); }
+uid_t geteuid(void) { return sysbind_geteuid(); }
+gid_t getgid(void) { return sysbind_getgid(); }
+gid_t getegid(void) { return sysbind_getegid(); }
 
 int access(const char *path, int amode) {
   // TODO: access syscall
   return 0;
 }
 
-int dup(int fd) { return syscall(SYS_dup, fd); }
-int dup2(int old, int new) { return syscall(SYS_dup2, old, new); }
+int dup(int fd) { return sysbind_dup(fd); }
+int dup2(int old, int new) { return sysbind_dup2(old, new); }
 
 int usleep(unsigned long usec) {
-  syscall(SYS_usleep, usec);
+  sysbind_usleep(usec);
   return 0;
 }

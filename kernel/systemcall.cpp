@@ -39,7 +39,7 @@ void set_syscall(const char *name, int num, void *handler) {
 
 void syscall_init(void) {
 #undef __SYSCALL
-#define __SYSCALL(num, name) set_syscall(#name, num, (void *)sys::name);
+#define __SYSCALL(num, name, args...) set_syscall(#name, num, (void *)sys::name);
 #include <syscalls.inc>
 }
 

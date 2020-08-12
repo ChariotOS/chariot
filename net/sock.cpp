@@ -166,7 +166,7 @@ ssize_t sys::sendto(int sockfd, const void *buf, size_t len, int flags,
 }
 
 
-ssize_t sys::recvfrom(int sockfd, const void *buf, size_t len, int flags,
+ssize_t sys::recvfrom(int sockfd, void *buf, size_t len, int flags,
                       const struct sockaddr *dest_addr, size_t addrlen) {
 
 
@@ -215,7 +215,7 @@ int sys::bind(int sockfd, const struct sockaddr *addr, size_t len) {
 }
 
 
-int sys::accept(int sockfd, struct sockaddr *addr, int addrlen) {
+int sys::accept(int sockfd, struct sockaddr *addr, size_t addrlen) {
   if (!curproc->mm->validate_pointer((void *)addr, addrlen, VALIDATE_READ)) {
     return -EINVAL;
   }
@@ -250,7 +250,7 @@ int sys::accept(int sockfd, struct sockaddr *addr, int addrlen) {
 }
 
 
-int sys::connect(int sockfd, const struct sockaddr *addr, int len) {
+int sys::connect(int sockfd, const struct sockaddr *addr, size_t len) {
   if (!curproc->mm->validate_pointer((void *)addr, len, VALIDATE_READ)) {
     return -EINVAL;
   }

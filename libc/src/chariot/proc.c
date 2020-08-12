@@ -5,12 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/sysbind.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
-int spawn() { return syscall(SYS_spawn); }
+int spawn() { return sysbind_spawn(); }
 
-int despawn(int p) { return syscall(SYS_despawn, p); }
+int despawn(int p) { return sysbind_despawn(p); }
 
 int pctl(int pid, int request, ...) {
   void *arg;
@@ -18,12 +19,12 @@ int pctl(int pid, int request, ...) {
   va_start(ap, request);
   arg = va_arg(ap, void *);
   va_end(ap);
-  return errno_syscall(SYS_pctl, pid, request, arg);
+  return errno_wrap(sysbind_pctl(pid, request, (unsigned long)arg));
 }
 
 int startpidve(int pid, char *const path, char *const argv[],
                char *const envp[]) {
-  return errno_syscall(SYS_startpidve, pid, path, argv, envp);
+  return errno_wrap(sysbind_startpidve(pid, path, (const char**)argv, (const char**)envp));
 }
 
 int startpidvpe(int pid, char *const file, char *const argv[],
@@ -73,7 +74,7 @@ int startpidvpe(int pid, char *const file, char *const argv[],
       case ENOENT:
       case ENOTDIR:
         break;
-      default: // TODO
+      default:  // TODO
         break;
         return -1;
     }
@@ -87,6 +88,6 @@ int startpidvpe(int pid, char *const file, char *const argv[],
   return -1;
 }
 
-pid_t getpid(void) { return syscall(SYS_getpid); }
+pid_t getpid(void) { return sysbind_getpid(); }
 
-pid_t gettid(void) { return syscall(SYS_gettid); }
+pid_t gettid(void) { return sysbind_gettid(); }

@@ -1,6 +1,6 @@
 #include <sys/ioctl.h>
 #include <stdarg.h>
-#include <sys/syscall.h>
+#include <sys/sysbind.h>
 
 int ioctl(int fd, int req, ...)
 {
@@ -9,5 +9,5 @@ int ioctl(int fd, int req, ...)
 	va_start(ap, req);
 	arg = va_arg(ap, void *);
 	va_end(ap);
-	return syscall(SYS_ioctl, fd, req, arg);
+	return sysbind_ioctl(fd, req, (unsigned long)arg);
 }

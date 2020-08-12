@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/sysbind.h>
 #include <unistd.h>
 
 struct __dirstream {
@@ -31,14 +32,14 @@ static DIR *populate_dir(DIR *dir) {
     return 0;
   }
 
-  dir->nents = errno_syscall(SYS_dirent, dir->fd, NULL, 0, 0);
+  dir->nents = errno_wrap(sysbind_dirent(dir->fd, NULL, 0, 0));
   if (dir->nents == -1) {
     free(dir);
     return NULL;
   }
 
   dir->ents = calloc(dir->nents, sizeof(struct dirent));
-  int n = errno_syscall(SYS_dirent, dir->fd, dir->ents, 0, dir->nents);
+  int n = errno_wrap(sysbind_dirent(dir->fd, dir->ents, 0, dir->nents));
 
   if (n != dir->nents) {
     printf("populate_dir: hmm\n");

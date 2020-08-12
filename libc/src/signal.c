@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
+#include <sys/sysbind.h>
 
 // zero out the set
 int sigemptyset(sigset_t *s) {
@@ -48,7 +49,7 @@ int sigprocmask(int how, const sigset_t *set, sigset_t *old) {
   sigset_t oldv;
 
 
-  int r = errno_syscall(SYS_sigprocmask, how, *set, &oldv);
+  int r = errno_wrap(sysbind_sigprocmask(how, *set, &oldv));
 
   if (old != NULL) {
     *old = oldv;
@@ -59,7 +60,7 @@ int sigprocmask(int how, const sigset_t *set, sigset_t *old) {
 
 
 int sigaction(int sig, struct sigaction *act, struct sigaction *old) {
-  return errno_syscall(SYS_sigaction, sig, act, old);
+  return errno_wrap(sysbind_sigaction(sig, act, old));
 }
 
 typedef void (*signal_handler_t)(int);
@@ -78,7 +79,7 @@ signal_handler_t signal(int sig, signal_handler_t handler) {
 
 void __signal_return_callback(void) {
   // just forward to the sigreturn syscall (no libc binding)
-  syscall(SYS_sigreturn);
+  sysbind_sigreturn();
 
   /* [does not return] */
 }

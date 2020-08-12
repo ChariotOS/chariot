@@ -266,7 +266,7 @@ static void gpf_handler(int i, reg_t *regs) {
   if (curproc) {
     KERR("Address Space Dump:\n");
     curproc->mm->dump();
-    dump_backtrace(tf->rbp);
+    // dump_backtrace(tf->rbp);
   }
 
 

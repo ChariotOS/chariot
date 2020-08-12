@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/sysbind.h>
 #include <sys/un.h>
 
 #include <ck/io.h>
@@ -98,7 +99,7 @@ ssize_t ck::file::write(const void *buf, size_t sz) {
     return sz;
   }
 
-  long k = errno_syscall(SYS_write, m_fd, src, sz);
+  long k = errno_wrap(sysbind_write(m_fd, (void*)src, sz));
   if (k < 0) return 0;
 
   return k;
@@ -133,7 +134,7 @@ int ck::file::stat(struct stat &s) {
 
 void ck::file::flush(void) {
   if (buffered()) {
-    errno_syscall(SYS_write, m_fd, m_buffer, buf_len);
+    errno_wrap(sysbind_write(m_fd, m_buffer, buf_len));
     // ck::hexdump(m_buffer, buf_len);
     buf_len = 0;
     // memset(m_buffer, 0, buf_cap);

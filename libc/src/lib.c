@@ -1,9 +1,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <sys/syscall.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/sysbind.h>
 
 int __argc;
 char **__argv;
@@ -46,7 +46,7 @@ void libc_start(int argc, char **argv, char **envp) {
 
 	// printf("welcome!\n");
 	// initialize signals
-	syscall(SYS_signal_init, __signal_return_callback);
+	sysbind_signal_init(__signal_return_callback);
 
 	call_global_constructors();
 

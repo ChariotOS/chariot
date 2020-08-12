@@ -168,7 +168,7 @@ int kernel_init(void *) {
 
 
   // setup stdio stuff for the kernel (to be inherited by spawn)
-  int fd = sys::open("/dev/console", O_RDWR);
+  int fd = sys::open("/dev/console", O_RDWR, 0);
   assert(fd == 0);
 
   sys::dup2(fd, 1);

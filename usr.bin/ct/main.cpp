@@ -27,6 +27,8 @@
 #include <ck/tuple.h>
 #include <ck/unicode.h>
 
+#include <sys/sysbind.h>
+
 struct line {
   gfx::point start;
   gfx::point end;

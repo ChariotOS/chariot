@@ -1,9 +1,8 @@
-#include <sys/syscall.h>
+#include <sys/sysbind.h>
 #include <chariot.h>
 
 
 
-
 int yield(void) {
-  return syscall(SYS_yield);
+  return sysbind_yield();
 }

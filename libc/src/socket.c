@@ -4,22 +4,23 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/sysbind.h>
 #include <sys/syscall.h>
 
 int socket(int dom, int typ, int prot) {
-  return errno_syscall(SYS_socket, dom, typ, prot);
+  return errno_wrap(sysbind_socket(dom, typ, prot));
 }
 
 int bind(int sockfd, struct sockaddr *addr, size_t len) {
-  return errno_syscall(SYS_bind, sockfd, addr, len);
+  return errno_wrap(sysbind_bind(sockfd, addr, len));
 }
 
 
 int accept(int sockfd, struct sockaddr *addr, int addrlen) {
-	return errno_syscall(SYS_accept, sockfd, addr, addrlen);
+  return errno_wrap(sysbind_accept(sockfd, addr, addrlen));
 }
 int connect(int sockfd, const struct sockaddr *addr, int addrlen) {
-	return errno_syscall(SYS_connect, sockfd, addr, addrlen);
+  return errno_wrap(sysbind_connect(sockfd, addr, addrlen));
 }
 
 static uint16_t bswap_16(uint16_t __x) { return __x << 8 | __x >> 8; }
@@ -154,7 +155,7 @@ int inet_pton(int af, const char *restrict s, void *restrict a0) {
 }
 
 const char *inet_ntop(int af, const void *restrict a0, char *restrict s,
-		      int l) {
+                      int l) {
   const unsigned char *a = a0;
   int i, j, max, best;
   char buf[100];
@@ -165,28 +166,28 @@ const char *inet_ntop(int af, const void *restrict a0, char *restrict s,
       break;
     case AF_INET6:
       if (memcmp(a, "\0\0\0\0\0\0\0\0\0\0\377\377", 12))
-	snprintf(buf, sizeof buf, "%x:%x:%x:%x:%x:%x:%x:%x", 256 * a[0] + a[1],
-		 256 * a[2] + a[3], 256 * a[4] + a[5], 256 * a[6] + a[7],
-		 256 * a[8] + a[9], 256 * a[10] + a[11], 256 * a[12] + a[13],
-		 256 * a[14] + a[15]);
+        snprintf(buf, sizeof buf, "%x:%x:%x:%x:%x:%x:%x:%x", 256 * a[0] + a[1],
+                 256 * a[2] + a[3], 256 * a[4] + a[5], 256 * a[6] + a[7],
+                 256 * a[8] + a[9], 256 * a[10] + a[11], 256 * a[12] + a[13],
+                 256 * a[14] + a[15]);
       else
-	snprintf(buf, sizeof buf, "%x:%x:%x:%x:%x:%x:%d.%d.%d.%d",
-		 256 * a[0] + a[1], 256 * a[2] + a[3], 256 * a[4] + a[5],
-		 256 * a[6] + a[7], 256 * a[8] + a[9], 256 * a[10] + a[11],
-		 a[12], a[13], a[14], a[15]);
+        snprintf(buf, sizeof buf, "%x:%x:%x:%x:%x:%x:%d.%d.%d.%d",
+                 256 * a[0] + a[1], 256 * a[2] + a[3], 256 * a[4] + a[5],
+                 256 * a[6] + a[7], 256 * a[8] + a[9], 256 * a[10] + a[11],
+                 a[12], a[13], a[14], a[15]);
       /* Replace longest /(^0|:)[:0]{2,}/ with "::" */
       for (i = best = 0, max = 2; buf[i]; i++) {
-	if (i && buf[i] != ':') continue;
-	j = strspn(buf + i, ":0");
-	if (j > max) best = i, max = j;
+        if (i && buf[i] != ':') continue;
+        j = strspn(buf + i, ":0");
+        if (j > max) best = i, max = j;
       }
       if (max > 3) {
-	buf[best] = buf[best + 1] = ':';
-	memmove(buf + best + 2, buf + best + max, i - best - max + 1);
+        buf[best] = buf[best + 1] = ':';
+        memmove(buf + best + 2, buf + best + max, i - best - max + 1);
       }
       if (strlen(buf) < l) {
-	strcpy(s, buf);
-	return s;
+        strcpy(s, buf);
+        return s;
       }
       break;
     default:
@@ -223,27 +224,26 @@ in_addr_t inet_netof(struct in_addr in) {
 
 
 ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
-	       const struct sockaddr *dest_addr, size_t addrlen) {
-	return errno_syscall(SYS_sendto, sockfd, buf, len, flags, dest_addr, addrlen);
+               const struct sockaddr *dest_addr, size_t addrlen) {
+  return errno_wrap(sysbind_sendto(sockfd, buf, len, flags, dest_addr, addrlen));
 }
 
 
-ssize_t recvfrom(int sockfd, const void *buf, size_t len, int flags,
-	       const struct sockaddr *dest_addr, size_t *addrlen) {
-	size_t alen = 0;
-	if (addrlen != NULL) {
-		alen = *addrlen;
-	}
-	return errno_syscall(SYS_recvfrom, sockfd, buf, len, flags, dest_addr, alen);
+ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
+                 const struct sockaddr *dest_addr, size_t *addrlen) {
+  size_t alen = 0;
+  if (addrlen != NULL) {
+    alen = *addrlen;
+  }
+  return errno_wrap(sysbind_recvfrom(sockfd, buf, len, flags, dest_addr, alen));
 }
 
 
 ssize_t recv(int socket, void *buffer, size_t length, int flags) {
-	return recvfrom(socket, buffer, length, flags, NULL, 0);
+  return recvfrom(socket, buffer, length, flags, NULL, 0);
 }
 
 ssize_t send(int socket, const void *buffer, size_t length, int flags) {
-	return sendto(socket, buffer, length, flags, NULL, 0);
+  return sendto(socket, buffer, length, flags, NULL, 0);
 }
-
 

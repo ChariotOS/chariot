@@ -1,0 +1,310 @@
+
+[userspace]
+includes = [
+	'<chariot/awaitfs_types.h>',
+	'<dirent.h>',
+	'<time.h>',
+	'<signal.h>',
+	'<sys/mman.h>',
+	'<sys/socket.h>',
+	'<sys/stat.h>',
+	'<sys/types.h>',
+]
+
+[kernel]
+includes = [
+	'<types.h>'
+]
+
+
+# sc.* are systemcalls. Just add them and a number is decided on automatically
+
+[sc.restart]
+ret = 'void'
+args = []
+
+[sc.exit_thread]
+ret = 'void'
+args = [ 'code: int' ]
+
+[sc.exit_proc]
+ret = 'void'
+args = [ 'code: int' ]
+
+[sc.spawn]
+ret = 'int'
+args = []
+
+[sc.despawn]
+ret = 'int'
+args = [ 'pid: int' ]
+
+[sc.startpidve]
+ret = 'int'
+args = [
+	'pid: int',
+	'path: const char*',
+	'argv: const char **',
+	'envp: const char **',
+]
+
+[sc.pctl]
+ret = 'int'
+args = [
+	'pid: int',
+	'cmd: int',
+	'args: unsigned long',
+]
+
+[sc.waitpid]
+ret = 'long'
+args = [
+	'pid: int',
+	'stat: int*',
+	'options: int'
+]
+
+[sc.fork]
+ret = 'int'
+
+[sc.open]
+ret = 'int'
+args = [
+	'path: const char *',
+	'flags: int',
+	'mode: int'
+]
+
+[sc.close]
+ret = 'int'
+args = [ 'fd: int', ]
+
+[sc.lseek]
+ret = 'long'
+args = [ 'fd: int', 'offset: long', 'whence: int', ]
+
+[sc.read]
+ret = 'long'
+args = [ 'fd: int', 'buf: void*', 'len: long', ]
+
+[sc.write]
+ret = 'long'
+args = [ 'fd: int', 'buf: void*', 'len: long', ]
+
+[sc.stat]
+ret = 'int'
+args = [ 'pathname: const char*', 'statbuf: struct stat*', ]
+
+[sc.fstat]
+ret = 'int'
+args = [ 'fd: int', 'statbuf: struct stat*', ]
+
+[sc.lstat]
+ret = 'int'
+args = [ 'pathname: const char*', 'statbuf: struct stat*', ]
+
+[sc.dup]
+ret = 'int'
+args = [ 'fd: int' ]
+
+
+[sc.dup2]
+ret = 'int'
+args = [ 'old: int', 'newfd: int' ]
+
+
+[sc.chdir]
+ret = 'int'
+args = [ 'path: const char*' ]
+
+[sc.getcwd]
+ret = 'int'
+args = [ 'dst: char *', 'len: int', ]
+
+[sc.chroot]
+ret = 'int'
+args = [ 'path: const char *' ]
+
+[sc.unlink]
+ret = 'int'
+args = [ 'path: const char *' ]
+
+[sc.ioctl]
+ret = 'int'
+args = ['fd: int', 'cmd: int', 'value: unsigned long' ]
+
+[sc.yield]
+ret = 'int'
+
+[sc.getpid]
+ret = 'int'
+
+[sc.gettid]
+ret = 'int'
+
+[sc.getuid]
+ret = 'int'
+
+[sc.geteuid]
+ret = 'int'
+
+[sc.getgid]
+ret = 'int'
+
+[sc.getegid]
+ret = 'int'
+
+[sc.mmap]
+ret = 'void*'
+args = [
+	'addr: void *',
+	'length: long',
+	'prot: int',
+	'flags: int',
+	'fd: int',
+	'offset: long'
+]
+
+[sc.munmap]
+ret = 'int'
+args = [ 'addr: void*', 'length: unsigned long', ]
+
+
+[sc.mrename]
+ret = 'int'
+args = [ 'addr: void *', 'name: char*', ]
+
+[sc.mgetname]
+ret = 'int'
+args = [ 'addr: void*', 'name: char*', 'sz: size_t' ]
+
+[sc.mregions]
+ret = 'int'
+args = [
+	'regions: struct mmap_region *',
+	'nregions: int'
+]
+
+
+[sc.mshare]
+ret = 'unsigned long'
+args = [
+	'action: int',
+	'arg: void*'
+]
+
+
+[sc.dirent]
+ret = 'int'
+args = [ 'fd: int', 'ent: struct dirent *', 'offset: int', 'count: int' ]
+
+[sc.localtime]
+ret = 'time_t'
+args = [ 'tloc: struct tm*' ]
+
+[sc.gettime_microsecond]
+ret = 'size_t'
+
+[sc.usleep]
+ret = 'int'
+args = ['usec: unsigned long']
+
+[sc.socket]
+ret = 'int'
+args = [
+	'domain: int',
+	'type: int',
+	'proto: int'
+]
+
+[sc.sendto]
+ret = 'ssize_t'
+args = [
+	'sockfd: int',
+	'buf: const void *',
+	'len: size_t',
+	'flags: int',
+	'addr: const struct sockaddr*',
+	'addrlen: size_t'
+]
+
+[sc.recvfrom]
+ret = 'ssize_t'
+args = [
+	'sockfd: int',
+	'buf: void *',
+	'len: size_t',
+	'flags: int',
+	'addr: const struct sockaddr*',
+	'addrlen: size_t'
+]
+
+
+[sc.bind]
+ret = 'int'
+args = [
+	'sockfd: int',
+	'addr: const struct sockaddr*',
+	'addrlen: size_t'
+]
+
+[sc.accept]
+ret = 'int'
+args = [
+	'sockfd: int',
+	'addr: struct sockaddr*',
+	'addrlen: size_t'
+]
+
+[sc.connect]
+ret = 'int'
+args = [
+	'sockfd: int',
+	'addr: const struct sockaddr*',
+	'addrlen: size_t'
+]
+
+
+[sc.signal_init]
+ret = 'int'
+args = [ 'sigret: void *' ]
+
+[sc.sigaction]
+ret = 'int'
+args = [
+	'sig: int',
+	'new_action: struct sigaction*',
+	'old: struct sigaction*',
+]
+
+[sc.sigreturn]
+ret = 'int'
+
+[sc.sigprocmask]
+ret = 'int'
+args = [
+	'how: int',
+	'set: unsigned long',
+	'old_set: unsigned long*',
+]
+
+
+[sc.awaitfs]
+ret = 'int'
+args = [
+	'fds: struct await_target *',
+	'nfds: int',
+	'flags: int',
+	'timeout_time: long long'
+]
+
+
+[sc.kshell]
+ret = 'unsigned long'
+args = [
+	'cmd: char*',
+	'argc: int',
+	'argv: char **',
+	'data: void*',
+	'len: size_t'
+]

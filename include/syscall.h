@@ -36,13 +36,4 @@ long ksyscall(long n, ...);
 #define O_CLOEXEC 02000000
 #define O_NOFOLLOW_NOERROR 0x4000000
 
-
-/**
- * the declaration of every syscall function. The kernel should go though this
- * interface to use them when running kernel processes/threads
- *
- * These functions are implemented in process.cpp
- */
-namespace sys {
 #include <syscall.def.h>
-}  // namespace sys

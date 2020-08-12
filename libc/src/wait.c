@@ -1,5 +1,6 @@
 #include <sys/wait.h>
 #include <sys/syscall.h>
+#include <sys/sysbind.h>
 #include <stdlib.h>
 
 pid_t wait(int *status) {
@@ -10,5 +11,5 @@ pid_t wait(int *status) {
 pid_t waitpid(pid_t p, int *status, int flags) {
   int dummy_stat;
   if (status == NULL) status = &dummy_stat;
-  return syscall(SYS_waitpid, p, status, flags);
+  return sysbind_waitpid(p, status, flags);
 }

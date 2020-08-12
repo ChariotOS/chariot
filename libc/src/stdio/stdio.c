@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/syscall.h>
+#include <sys/sysbind.h>
 #include <unistd.h>
 #include "./impl.h"
 
@@ -174,7 +175,7 @@ size_t fread(void *restrict destv, size_t size, size_t nmemb,
 
 static int _stdio_close(FILE *fp) {
   // close both ends of the file?
-  errno_syscall(SYS_close, fp->fd);
+  errno_wrap(sysbind_close(fp->fd));
 
   return 0;
 }
@@ -183,14 +184,14 @@ static size_t _stdio_read(FILE *fp, unsigned char *dst, size_t sz) {
   if (fp->fd == -1) {
     return 0;
   }
-  long k = errno_syscall(SYS_read, fp->fd, dst, sz);
+  long k = errno_wrap(sysbind_read(fp->fd, dst, sz));
   if (k < 0) return 0;
   return k;
 }
 
 static void _stdio_flush_buffer(FILE *fp) {
   if (fp->buffered && fp->buffer != NULL && fp->buf_len > 0) {
-    errno_syscall(SYS_write, fp->fd, fp->buffer, fp->buf_len);
+    errno_wrap(sysbind_write(fp->fd, fp->buffer, fp->buf_len));
     fp->buf_len = 0;
     // NULL out the buffer
     memset(fp->buffer, 0x00, fp->buf_cap);
@@ -219,13 +220,13 @@ static size_t _stdio_write(FILE *fp, const unsigned char *src, size_t sz) {
     return sz;
   }
 
-  long k = errno_syscall(SYS_write, fp->fd, src, sz);
+  long k = errno_wrap(sysbind_write(fp->fd, (void*)src, sz));
   if (k < 0) return 0;
   return k;
 }
 
 static off_t _stdio_seek(FILE *fp, off_t offset, int whence) {
-  return errno_syscall(SYS_lseek, fp->fd, offset, whence);
+  return errno_wrap(sysbind_lseek(fp->fd, offset, whence));
 }
 
 

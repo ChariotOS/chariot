@@ -1,7 +1,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/syscall.h>
+#include <sys/sysbind.h>
 #include <unistd.h>
 #include "doomkeys.h"
 
@@ -24,7 +24,7 @@ ck::ref<gfx::font> doomuifont;
 #define KEYQUEUE_SIZE 128
 
 
-static inline auto current_us(void) { return syscall(SYS_gettime_microsecond); }
+static inline auto current_us(void) { return sysbind_gettime_microsecond(); }
 
 static unsigned short s_KeyQueue[KEYQUEUE_SIZE];
 static unsigned int s_KeyQueueWriteIndex = 0;

@@ -1,6 +1,6 @@
 #include <errno.h>
 #include <stdio.h>
-#include <sys/syscall.h>
+#include <sys/sysbind.h>
 #include <unistd.h>
 #include <string.h>
 
@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
       fprintf(stderr, "Failed to remove '%s', %s\n", argv[i], strerror(e));
 			res = 1;
     }
-    syscall(SYS_unlink, argv[i]);
+    sysbind_unlink(argv[i]);
   }
   return res;
 }
