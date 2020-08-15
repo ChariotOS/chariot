@@ -11,6 +11,7 @@ int sys::open(const char *path, int flags, int mode) {
   struct fs::inode *ino = NULL;
 
 
+	printk("[%d] open('%s');\n", curproc->pid, path);
   int r = vfs::namei(path, flags, mode, vfs::cwd(), ino);
 
   if (ino == NULL) return -ENOENT;

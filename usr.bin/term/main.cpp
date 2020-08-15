@@ -1,3 +1,4 @@
+#include <ck/eventloop.h>
 #include <ck/io.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -16,26 +17,46 @@ char* ptsname(int fd) {
 
 
 int main() {
-  ck::file ptmx(open("/dev/ptmx", O_RDWR | O_CLOEXEC));
+  int ptmxfd = open("/dev/ptmx", O_RDWR | O_CLOEXEC);
 
-  ck::file pts;
-  pts.open(ptsname(ptmx.fileno()), "r+");
 
-	int pid = sysbind_fork();
+  ck::eventloop ev;
+  int pid = sysbind_fork();
   if (pid == 0) {
-    // forked!
-    int n = pts.fmt("hello, terminal\n");
-		printf("n=%d\n", n);
-    exit(0);
-  } else {
-    char buf[512];
-    int n = ptmx.read(buf, 512);
-    if (n >= 0) {
-      ck::hexdump(buf, n);
-    } else {
-      perror("ptmx read");
+    ck::file pts;
+    pts.open(ptsname(ptmxfd), "r+");
+
+    while (1) {
+      char data[32];
+      auto n = pts.read(data, 32);
+      if (n < 0) continue;
+      ck::hexdump(data, n);
     }
-    waitpid(pid, NULL, 0);
+
+    ev.start();
+  } else {
+    ck::file ptmx(ptmxfd);
+
+		// send input
+    ck::in.on_read(fn() {
+      int c = getchar();
+      if (c == EOF) return;
+      ptmx.write(&c, 1);
+    });
+
+
+    // echo
+    ptmx.on_read(fn() {
+      char buf[512];
+      auto n = ptmx.read(buf, 512);
+      if (n < 0) {
+        perror("ptmx read");
+        return;
+      }
+      ck::out.write(buf, n);
+    });
+
+    ev.start();
   }
 
 

@@ -90,7 +90,10 @@ void tty::handle_input(char c) {
       canonical_buf.clear();
       if (fg_proc) {
         printk("[tty] would send signal %d to group %d\n", sig, fg_proc);
-      }
+      } else {
+
+        printk("[tty] would send signal %d but has no group\n", sig);
+			}
       return;
     }
   }
@@ -234,16 +237,16 @@ struct ptspriv {
 
 static spinlock pts_lock;
 static map<int, ref<tty>> pts;
-static ssize_t pty_read(fs::file &f, char *dst, size_t sz);
-static ssize_t pty_write(fs::file &f, const char *dst, size_t sz);
+static ssize_t pts_read(fs::file &f, char *dst, size_t sz);
+static ssize_t pts_write(fs::file &f, const char *dst, size_t sz);
 static ssize_t mx_read(fs::file &f, char *dst, size_t sz);
 static ssize_t mx_write(fs::file &f, const char *dst, size_t sz);
-
-
+static int pts_poll(fs::file &f, int events);
 
 static struct fs::file_operations pts_ops = {
-    .read = pty_read,
-    .write = pty_write,
+    .read = pts_read,
+    .write = pts_write,
+		.poll = pts_poll,
 };
 
 
@@ -295,9 +298,16 @@ static void close_pts(int ptsid) {
   pts_lock.unlock();
 }
 
+// #define TTY_DEBUG
 
+#ifdef TTY_DEBUG
+#define DBG(fmt, args...) printk(KERN_DEBUG fmt, ##args);
+#else
+#define DBG(fmt, args...)
+#endif
 
-static ssize_t pty_read(fs::file &f, char *dst, size_t sz) {
+static ssize_t pts_read(fs::file &f, char *dst, size_t sz) {
+	DBG("pts_read\n");
   auto pts = getpts(f.ino->minor);
 
   //
@@ -313,24 +323,26 @@ static ssize_t pty_read(fs::file &f, char *dst, size_t sz) {
   return -ENOSYS;
 }
 
-static ssize_t pty_write(fs::file &f, const char *dst, size_t sz) {
+static ssize_t pts_write(fs::file &f, const char *dst, size_t sz) {
+	DBG("pts_write\n");
   auto pts = getpts(f.ino->minor);
 
   for (size_t s = 0; s < sz; s++) {
     pts->output(dst[s]);
   }
-	return sz;
+  return sz;
 }
 
 
 static ssize_t mx_read(fs::file &f, char *dst, size_t sz) {
   auto pts = getpts(f.pflags);
-	printk("mx_read %d\n", sz);
+  DBG("mx_read %d\n", sz);
   return pts->out.read(dst, sz);
 }
 
 static ssize_t mx_write(fs::file &f, const char *dst, size_t sz) {
   auto pts = getpts(f.pflags);
+  DBG("mx_write %d\n", sz);
 
   for (size_t s = 0; s < sz; s++) {
     pts->handle_input(dst[s]);
@@ -341,14 +353,26 @@ static ssize_t mx_write(fs::file &f, const char *dst, size_t sz) {
 
 
 
+static int pts_poll(fs::file &f, int events) {
+  auto pts = getpts(f.ino->minor);
+  return pts->in.poll() & events & AWAITFS_READ;
+}
+
+
+static int mx_poll(fs::file &f, int events) {
+	DBG("mx_poll\n");
+  auto pts = getpts(f.pflags);
+  return pts->out.poll() & events & AWAITFS_READ;
+}
+
 static int mx_open(fs::file &f) {
   f.pflags = allocate_pts();
-  printk("mx open\n");
+  DBG("mx open\n");
   return 0;
 }
 
 static void mx_close(fs::file &f) {
-  printk("mx close\n");
+  DBG("mx close\n");
   close_pts(f.pflags);
 }
 
@@ -368,6 +392,7 @@ static struct fs::file_operations mx_ops = {
     .ioctl = mx_ioctl,
     .open = mx_open,
     .close = mx_close,
+    .poll = mx_poll,
 };
 
 
