@@ -285,6 +285,9 @@ struct thread final {
 
 
 
+  void setup_stack(reg_t *);
+
+
   /**
    * Awaken the thread from it's waitqueue. Being rudely awoken means that the
    * waitqueue may not have been completed. A thread would be rudely awoken when

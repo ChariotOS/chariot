@@ -5,6 +5,10 @@
 #include <unistd.h>
 
 
+pid_t fork(void) {
+	return sysbind_fork();
+}
+
 #undef errno
 int errno;
 

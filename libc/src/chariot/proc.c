@@ -9,6 +9,10 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+
+typedef int (*exec_fn_t)(const char *, const char **, const char **);
+
+
 int spawn() { return sysbind_spawn(); }
 
 int despawn(int p) { return sysbind_despawn(p); }
@@ -24,7 +28,8 @@ int pctl(int pid, int request, ...) {
 
 int startpidve(int pid, char *const path, char *const argv[],
                char *const envp[]) {
-  return errno_wrap(sysbind_startpidve(pid, path, (const char**)argv, (const char**)envp));
+  return errno_wrap(
+      sysbind_startpidve(pid, path, (const char **)argv, (const char **)envp));
 }
 
 int startpidvpe(int pid, char *const file, char *const argv[],
@@ -87,6 +92,87 @@ int startpidvpe(int pid, char *const file, char *const argv[],
   if (seen_eacces) errno = EACCES;
   return -1;
 }
+
+extern const char **environ;
+
+int execve(const char *path, char *const argv[], char *const envp[]) {
+  return startpidve(-1, (char *)path, argv, envp);
+}
+
+int execvp(const char *file, char *const argv[]) {
+  return startpidve(-1, (char *const)file, (char *const *)argv,
+                    (char *const *)environ);
+}
+
+int execvpe(const char *file, char *const argv[], char *const envp[]) {
+  return startpidvpe(-1, (char *)file, argv, envp);
+}
+
+
+int execl(const char *path, const char *arg0, ... /*, (char *)0 */) {
+  int argc;
+  va_list ap;
+  va_start(ap, arg0);
+  for (argc = 1; va_arg(ap, const char *); argc++)
+    ;
+  va_end(ap);
+  {
+    int i;
+    char *argv[argc + 1];
+    va_start(ap, arg0);
+    argv[0] = (char *)arg0;
+    for (i = 1; i < argc; i++) argv[i] = va_arg(ap, char *);
+    argv[i] = NULL;
+    va_end(ap);
+    return execv(path, argv);
+  }
+}
+
+
+int execle(const char *path, const char *argv0, ...) {
+  int argc;
+  va_list ap;
+  va_start(ap, argv0);
+  for (argc = 1; va_arg(ap, const char *); argc++)
+    ;
+  va_end(ap);
+  {
+    int i;
+    char *argv[argc + 1];
+    char **envp;
+    va_start(ap, argv0);
+    argv[0] = (char *)argv0;
+    for (i = 1; i <= argc; i++) argv[i] = va_arg(ap, char *);
+    envp = va_arg(ap, char **);
+    va_end(ap);
+    return execve(path, argv, envp);
+  }
+}
+
+int execlp(const char *file, const char *argv0, ...) {
+  int argc;
+  va_list ap;
+  va_start(ap, argv0);
+  for (argc = 1; va_arg(ap, const char *); argc++)
+    ;
+  va_end(ap);
+  {
+    int i;
+    char *argv[argc + 1];
+    va_start(ap, argv0);
+    argv[0] = (char *)argv0;
+    for (i = 1; i < argc; i++) argv[i] = va_arg(ap, char *);
+    argv[i] = NULL;
+    va_end(ap);
+    return execvp(file, argv);
+  }
+}
+
+
+int execv(const char *path, char *const argv[]) {
+  return execve(path, argv, (char *const *)environ);
+}
+
 
 pid_t getpid(void) { return sysbind_getpid(); }
 

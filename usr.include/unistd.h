@@ -55,6 +55,7 @@ extern char *optarg;
 extern int optind, opterr, optopt;
 int getopt(int argc, char *const argv[], const char *optstring);
 
+pid_t fork(void);
 
 
 #define F_OK 0
@@ -81,6 +82,17 @@ int usleep(unsigned long usec);
 
 int unlink(const char *path);
 
+
+
+int execl(const char *path, const char *arg0, ... /*, (char *)0 */);
+int execle(const char *path, const char *arg0, ... /*,
+           (char *)0, char *const envp[]*/);
+int execlp(const char *file, const char *arg0, ... /*, (char *)0 */);
+int execv(const char *path, char *const argv[]);
+// the systemcall
+int execve(const char *path, char *const argv[], char *const envp[]);
+int execvp(const char *file, char *const argv[]);
+int execvpe(const char *file, char *const argv[], char *const envp[]);
 
 #ifdef __cplusplus
 }

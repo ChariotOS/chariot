@@ -48,6 +48,15 @@ args = [
 	'envp: const char **',
 ]
 
+
+[sc.execve]
+ret = 'int'
+args = [
+	'path: const char*',
+	'argv: const char **',
+	'envp: const char **',
+]
+
 [sc.pctl]
 ret = 'int'
 args = [

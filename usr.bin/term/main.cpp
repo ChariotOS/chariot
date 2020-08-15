@@ -5,20 +5,19 @@
 #include <sys/ioctl.h>
 #include <sys/sysbind.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
-static char ptsname_buf[32];
-char* ptsname(int fd) {
-  int id = ioctl(fd, PTMX_GETPTSID);
-  if (id < 0) return NULL;
 
-  snprintf(ptsname_buf, 32, "/dev/vtty%d", id);
-  return ptsname_buf;
-}
+extern const char **environ;
 
 
 int main() {
-  int ptmxfd = open("/dev/ptmx", O_RDWR | O_CLOEXEC);
+  const char *cmd[] = {"/bin/echo", "hello, world", NULL};
+  int ret = sysbind_execve(cmd[0], cmd, environ);
+  perror("exec");
+  exit(ret);
 
+  int ptmxfd = open("/dev/ptmx", O_RDWR | O_CLOEXEC);
 
   ck::eventloop ev;
   int pid = sysbind_fork();
@@ -37,7 +36,7 @@ int main() {
   } else {
     ck::file ptmx(ptmxfd);
 
-		// send input
+    // send input
     ck::in.on_read(fn() {
       int c = getchar();
       if (c == EOF) return;

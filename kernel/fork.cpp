@@ -17,6 +17,7 @@ static pid_t do_fork(struct process &p) {
 
   auto np = sched::proc::spawn_process(&p, SPAWN_FORK);
 
+	np->embryonic = false;
 	p.children.push(np);
 
   auto old_td = curthd;

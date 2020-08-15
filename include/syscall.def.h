@@ -6,6 +6,7 @@ void exit_proc(int code);
 int spawn();
 int despawn(int pid);
 int startpidve(int pid, const char* path, const char ** argv, const char ** envp);
+int execve(const char* path, const char ** argv, const char ** envp);
 int pctl(int pid, int cmd, unsigned long args);
 long waitpid(int pid, int* stat, int options);
 int fork();

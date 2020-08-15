@@ -1,18 +1,19 @@
 #define _CHARIOT_SRC
 #include <chariot.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/sysbind.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
-#include <errno.h>
 
 #define C_RED "\x1b[31m"
 #define C_GREEN "\x1b[32m"
@@ -62,13 +63,13 @@ int run_line(const char *line) {
 
     printf("p = %d\n", p);
     if (p >= 0) {
-			int stat = 0;
+      int stat = 0;
       if (p == 0) {
       } else {
         waitpid(p, &stat, 0);
       }
     }
-		goto cleanup;
+    goto cleanup;
   }
 
   if (strcmp(args[0], "cd") == 0) {
@@ -87,33 +88,20 @@ int run_line(const char *line) {
   }
 
 
-  pid_t pid = spawn();
-  if (pid <= -1) {
-    perror("spawn");
-    err = -1;
-    goto cleanup;
+  pid_t pid = fork();
+  if (pid == 0) {
+    execvpe(args[0], args, environ);
+    exit(-1);
   }
 
-  // size_t start = current_us();
-  int start_res = startpidvpe(pid, args[0], args, environ);
-  if (start_res == 0) {
-    int stat = 0;
-    if (!bg) {
-      waitpid(pid, &stat, 0);
+  int stat = 0;
+  if (!bg) {
+    waitpid(pid, &stat, 0);
+  }
 
-      // size_t end = current_us();
-
-      // fprintf(stderr, "\n--------------------\n");
-      // fprintf(stderr, "%ldus\n", end - start);
-    }
-
-    int exit_code = WEXITSTATUS(stat);
-    if (exit_code != 0) {
-      fprintf(stderr, "%s: exited with code %d\n", args[0], exit_code);
-    }
-  } else {
-    printf("failed to execute: '%s'\n", args[0]);
-    despawn(pid);
+  int exit_code = WEXITSTATUS(stat);
+  if (exit_code != 0) {
+    fprintf(stderr, "%s: exited with code %d\n", args[0], exit_code);
   }
 cleanup:
   free(args);
@@ -305,6 +293,14 @@ int select_historic_input(struct input_info *in, int n,
 
 char *read_line(int fd, char *prompt, int *len_out,
                 struct readline_context *ctx) {
+  printf("%s", prompt);
+  fflush(stdout);
+  char *buf = malloc(4096);
+  fgets(buf, 4096, stdin);
+  buf[strlen(buf) - 1] = '\0';
+  *len_out = strlen(buf);
+  return buf;
+
   struct input_info in;
 
   in.max = 32;
@@ -326,6 +322,7 @@ printf("%2d: %s\n", i++, hist->value);
   */
 
   int history_index = -1;
+
 
   while (1) {
     input_display(&in, prompt);

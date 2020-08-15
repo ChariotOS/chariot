@@ -5,6 +5,10 @@
 int sys::startpidve(int pid, char const *upath, char const **uargv,
                     char const **uenvp) {
 
+
+	if (pid == -1)
+		return sys::execve(upath, uargv, uenvp);
+
   auto proc = curproc;
   assert(proc != NULL);
 

@@ -249,10 +249,12 @@ typedef int key_t;
 #endif
 
 
+/*
 #if defined(__NEED_pthread_t) && !defined(__DEFINED_pthread_t)
 typedef struct __pthread * pthread_t;
 #define __DEFINED_pthread_t
 #endif
+*/
 
 #if defined(__NEED_pthread_once_t) && !defined(__DEFINED_pthread_once_t)
 typedef int pthread_once_t;
@@ -270,10 +272,12 @@ typedef int pthread_spinlock_t;
 #endif
 
 
+/*
 #if defined(__NEED_pthread_attr_t) && !defined(__DEFINED_pthread_attr_t)
 typedef struct { union { int __i[9]; size_t __s[9]; } __u; } pthread_attr_t;
 #define __DEFINED_pthread_attr_t
 #endif
+*/
 
 #if defined(__NEED_pthread_mutexattr_t) && !defined(__DEFINED_pthread_mutexattr_t)
 typedef unsigned pthread_mutexattr_t;

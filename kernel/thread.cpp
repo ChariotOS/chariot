@@ -118,6 +118,55 @@ bool thread::awaken(int flags) {
   return true;
 }
 
+void thread::setup_stack(reg_t *tf) {
+  auto sp = arch::reg(REG_SP, tf);
+#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
+#define STACK_ALLOC(T, n)               \
+  ({                                    \
+    sp -= round_up(sizeof(T) * (n), 8); \
+    (T *)(void *) sp;                   \
+  })
+  auto argc = (u64)proc.args.size();
+
+  size_t sz = 0;
+  sz += proc.args.size() * sizeof(char *);
+  for (auto &a : proc.args) sz += a.size() + 1;
+
+  auto region = (void *)STACK_ALLOC(char, sz);
+
+  auto argv = (char **)region;
+
+  auto *arg = (char *)((char **)argv + argc);
+
+  int i = 0;
+  for (auto &a : proc.args) {
+    int len = a.size() + 1;
+    memcpy(arg, a.get(), len);
+    argv[i++] = arg;
+    arg += len;
+  }
+
+  auto envc = proc.env.size();
+  auto envp = STACK_ALLOC(char *, envc + 1);
+
+  for (int i = 0; i < envc; i++) {
+    auto &e = proc.env[i];
+    envp[i] = STACK_ALLOC(char, e.len() + 1);
+    memcpy(envp[i], e.get(), e.len() + 1);
+  }
+
+  envp[envc] = NULL;
+
+  // align the stack to 16 bytes. (this is what intel wants, so it what I
+  // will give them)
+  arch::reg(REG_SP, tf) = sp & ~0xF;
+  tf[1] = argc;
+  tf[2] = (unsigned long)argv;
+  tf[3] = (unsigned long)envp;
+}
+
+
+
 static void thread_create_callback(void *) {
   auto thd = curthd;
 
@@ -133,50 +182,7 @@ static void thread_create_callback(void *) {
     sys::exit_thread(res);
   } else {
     if (thd->pid == thd->tid) {
-      auto sp = arch::reg(REG_SP, tf);
-#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
-#define STACK_ALLOC(T, n)               \
-  ({                                    \
-    sp -= round_up(sizeof(T) * (n), 8); \
-    (T *)(void *) sp;                   \
-  })
-      auto argc = (u64)thd->proc.args.size();
-
-      size_t sz = 0;
-      sz += thd->proc.args.size() * sizeof(char *);
-      for (auto &a : thd->proc.args) sz += a.size() + 1;
-
-      auto region = (void *)STACK_ALLOC(char, sz);
-
-      auto argv = (char **)region;
-
-      auto *arg = (char *)((char **)argv + argc);
-
-      int i = 0;
-      for (auto &a : thd->proc.args) {
-        int len = a.size() + 1;
-        memcpy(arg, a.get(), len);
-        argv[i++] = arg;
-        arg += len;
-      }
-
-      auto envc = thd->proc.env.size();
-      auto envp = STACK_ALLOC(char *, envc + 1);
-
-      for (int i = 0; i < envc; i++) {
-        auto &e = thd->proc.env[i];
-        envp[i] = STACK_ALLOC(char, e.len() + 1);
-        memcpy(envp[i], e.get(), e.len() + 1);
-      }
-
-      envp[envc] = NULL;
-
-      // align the stack to 16 bytes. (this is what intel wants, so it what I
-      // will give them)
-      arch::reg(REG_SP, tf) = sp & ~0xF;
-      tf[1] = argc;
-      tf[2] = (unsigned long)argv;
-      tf[3] = (unsigned long)envp;
+      thd->setup_stack((reg_t *)tf);
     }
     arch::sti();
     return;
@@ -211,10 +217,10 @@ bool thread::send_signal(int sig) {
   unsigned long pend = (1 << sig);
   this->sig.pending |= pend;
 
-	printk("sending signal to tid %d. Blocked=%d\n", tid, state == PS_BLOCKED);
-	if (state == PS_BLOCKED) {
-		// 
-	}
+  printk("sending signal to tid %d. Blocked=%d\n", tid, state == PS_BLOCKED);
+  if (state == PS_BLOCKED) {
+    //
+  }
   return true;
 }
 

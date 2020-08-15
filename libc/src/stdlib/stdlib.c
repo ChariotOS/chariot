@@ -1,14 +1,16 @@
 #include <chariot.h>
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/sysbind.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <limits.h>
 
 extern char **environ;
 
@@ -70,27 +72,18 @@ void qsort_r(void *bot, size_t nmemb, size_t size,
 
 
 int system(const char *command) {
-  int err = 0;
+  int pid = sysbind_fork();
 
-  pid_t pid = spawn();
-  if (pid <= -1) {
-    err = -1;
-    goto cleanup;
+  if (pid == 0) {
+    char *args[] = {"/bin/sh", "-c", (char *)command, NULL};
+    execvpe("/bin/sh", args, environ);
+    exit(-1);
   }
 
-  char *args[] = {"/bin/sh", "-c", (char *)command, NULL};
-
-  int start_res = startpidvpe(pid, "/bin/sh", args, environ);
-  if (start_res == 0) {
-    int stat = 0;
-    // TODO: block SIGCHILD and ignore SIGINT and SIGQUIT
-    waitpid(pid, &stat, 0);
-  } else {
-    despawn(pid);
-  }
-cleanup:
-
-  return err;
+  int stat;
+  waitpid(pid, &stat, 0);
+  // TODO: detect an error
+  return 0;
 }
 
 static void __env_rm_add(char *old, char *new) {
@@ -459,4 +452,14 @@ long int strtol(const char *nptr, char **endptr, int base) {
 long long strtoll(const char *__restrict nptr, char **__restrict endptr,
                   int base) {
   return strtoll_l(nptr, endptr, base);
+}
+
+
+static char ptsname_buf[32];
+char *ptsname(int fd) {
+  int id = ioctl(fd, PTMX_GETPTSID);
+  if (id < 0) return NULL;
+
+  snprintf(ptsname_buf, 32, "/dev/vtty%d", id);
+  return ptsname_buf;
 }

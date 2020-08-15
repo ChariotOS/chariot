@@ -50,9 +50,9 @@ tty::~tty(void) {
   // TODO: remove from the storage
 }
 
-void tty::write_in(char c) { in.write(&c, 1, false); }
+void tty::write_in(char c) { in.write(&c, 1, true); }
 
-void tty::write_out(char c) { out.write(&c, 1, false); }
+void tty::write_out(char c) { out.write(&c, 1, true); }
 
 string tty::name(void) { return string::format("/dev/pts%d", index); }
 
@@ -65,7 +65,6 @@ void tty::handle_input(char c) {
         output('^');
         output(('@' + c) % 128);
       } else {
-        output(c);
       }
     }
     return;
@@ -239,6 +238,7 @@ static spinlock pts_lock;
 static map<int, ref<tty>> pts;
 static ssize_t pts_read(fs::file &f, char *dst, size_t sz);
 static ssize_t pts_write(fs::file &f, const char *dst, size_t sz);
+static int pts_ioctl(fs::file &f, unsigned int cmd, off_t arg);
 static ssize_t mx_read(fs::file &f, char *dst, size_t sz);
 static ssize_t mx_write(fs::file &f, const char *dst, size_t sz);
 static int pts_poll(fs::file &f, int events);
@@ -246,6 +246,7 @@ static int pts_poll(fs::file &f, int events);
 static struct fs::file_operations pts_ops = {
     .read = pts_read,
     .write = pts_write,
+		.ioctl = pts_ioctl,
 		.poll = pts_poll,
 };
 
@@ -286,6 +287,11 @@ static int allocate_pts() {
   return i;
 }
 
+
+static int pts_ioctl(fs::file &f, unsigned int cmd, off_t arg) {
+	return 0;
+}
+
 static void close_pts(int ptsid) {
   pts_lock.lock();
 
@@ -309,6 +315,8 @@ static void close_pts(int ptsid) {
 static ssize_t pts_read(fs::file &f, char *dst, size_t sz) {
 	DBG("pts_read\n");
   auto pts = getpts(f.ino->minor);
+
+  return pts->in.read(dst, sz, true /* block? */);
 
   //
   if (pts->tios.c_lflag & ICANON) {
@@ -360,7 +368,7 @@ static int pts_poll(fs::file &f, int events) {
 
 
 static int mx_poll(fs::file &f, int events) {
-	DBG("mx_poll\n");
+	// DBG("mx_poll\n");
   auto pts = getpts(f.pflags);
   return pts->out.poll() & events & AWAITFS_READ;
 }

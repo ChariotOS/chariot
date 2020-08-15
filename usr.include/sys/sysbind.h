@@ -23,6 +23,7 @@ void sysbind_exit_proc(int code);
 int sysbind_spawn();
 int sysbind_despawn(int pid);
 int sysbind_startpidve(int pid, const char* path, const char ** argv, const char ** envp);
+int sysbind_execve(const char* path, const char ** argv, const char ** envp);
 int sysbind_pctl(int pid, int cmd, unsigned long args);
 long sysbind_waitpid(int pid, int* stat, int options);
 int sysbind_fork();

@@ -30,7 +30,7 @@ static pid_t get_next_pid(void) {
   return p;
 }
 
-static mm::space *alloc_user_vm(void) {
+mm::space *alloc_user_vm(void) {
   return new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create());
 }
 
@@ -70,12 +70,12 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
 
     // are we forking?
     if (flags & SPAWN_FORK) {
-			// inherit all file descriptors
-			proc.parent->file_lock.lock();
-			for (auto &kv : proc.parent->open_files) {
-				proc.open_files[kv.key] = kv.value;
-			}
-			proc.parent->file_lock.unlock();
+      // inherit all file descriptors
+      proc.parent->file_lock.lock();
+      for (auto &kv : proc.parent->open_files) {
+        proc.open_files[kv.key] = kv.value;
+      }
+      proc.parent->file_lock.unlock();
 
     } else {
       // inherit stdin(0) stdout(1) and stderr(2)
@@ -92,11 +92,11 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
   if (proc.cwd != NULL) geti(proc.cwd);
 
 
-	if (flags & SPAWN_FORK) {
-		proc.mm = proc.parent->mm->fork();
-	} else {
-  	proc.mm = alloc_user_vm();
-	}
+  if (flags & SPAWN_FORK) {
+    proc.mm = proc.parent->mm->fork();
+  } else {
+    proc.mm = alloc_user_vm();
+  }
   return proc_ptr;
 }
 
@@ -340,9 +340,6 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   */
 
 
-  if (!this->embryonic) return -1;
-
-  if (threads.size() != 0) return -1;
 
   // try to load the binary
   fs::inode *exe = NULL;
@@ -384,8 +381,15 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   //
   this->embryonic = false;
 
+  struct thread *thd;
+  if (threads.size() != 0) {
+    thd = thread::lookup(this->pid);
+		assert(thd != NULL);
+  } else {
+    thd = new thread(pid, *this);
+  }
+
   // construct the thread
-  auto thd = new thread(pid, *this);
   arch::reg(REG_SP, thd->trap_frame) = stack + stack_size - 64;
   thd->kickoff((void *)entry, PS_RUNNABLE);
 
@@ -479,7 +483,7 @@ int sched::proc::reap(process::ptr p) {
 
   ptable_remove(p->pid);
 
-	// printk("reap done\n");
+  // printk("reap done\n");
 
   return f;
 }

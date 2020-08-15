@@ -14,8 +14,8 @@
 #include <unistd.h>
 #include "ini.h"
 
-#include <ck/io.h>
 #include <ck/command.h>
+#include <ck/io.h>
 
 #define ENV_PATH "/cfg/environ"
 
@@ -134,7 +134,6 @@ int main(int argc, char **argv) {
 
           const char *name = ini_get(i, "service", "name");
           if (exec != NULL) {
-
             pid_t pid = spawn();
             char *args[] = {(char *)exec, NULL};
 
@@ -159,26 +158,9 @@ int main(int argc, char **argv) {
     fclose(loadorder);
   }
 
-  const char *shell = "/bin/sh";
-  char *sh_argv[] = {(char *)shell, NULL};
-
   while (1) {
-    pid_t sh_pid = spawn();
-    if (startpidve(sh_pid, (char *)shell, sh_argv, environ) != 0) {
-      printf("failed to spawn shell\n");
-      return -1;
-    }
-
-    while (1) {
-      pid_t reaped = waitpid(-1, NULL, 0);
-
-      printf("[init] reaped pid %d\n", reaped);
-
-      if (reaped == sh_pid) {
-        printf("[init] sh died\n");
-        break;
-      }
-    }
+    pid_t reaped = waitpid(-1, NULL, 0);
+    printf("[init] reaped pid %d\n", reaped);
   }
 }
 

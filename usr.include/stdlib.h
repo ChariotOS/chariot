@@ -47,6 +47,7 @@ void qsort(void * base, size_t nmemb, size_t size, int (*compar)(const void *, c
 
 void abort(void);
 
+char *ptsname(int fd);
 
 #define RAND_MAX (0x7fffffff)
 int rand (void);
