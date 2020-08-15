@@ -112,11 +112,7 @@ lumen::msg *ui::application::send_raw_sync(int type, void *payload,
 
   // wait for a response (this can be smarter)
   while (response == NULL) {
-    bool failed = false;
-    auto msgs = drain_messages_from(sock, failed);
-    if (failed) {
-			// TODO:
-    }
+    auto msgs = sock.drain<lumen::msg>();
 
     for (auto *got : msgs) {
       if (got->id == req_id) {
