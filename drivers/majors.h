@@ -26,3 +26,6 @@
 #define MAJOR_SB16 22
 
 #define MAJOR_EMX 42
+
+#define MAJOR_PTMX 55
+#define MAJOR_PTS 56

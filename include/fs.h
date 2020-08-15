@@ -436,7 +436,7 @@ namespace fs {
 		bool can_write = false;
 		bool can_read = false;
 
-		int pflags = 0; // private flags
+		int pflags = 0; // private flags. Also used to track ptmx id
   };
 
 };  // namespace fs

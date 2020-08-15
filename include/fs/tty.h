@@ -22,6 +22,8 @@ struct tty : public refcounted<tty> {
   /* Foreground process (can be the same as controller) */
   pid_t fg_proc;
 
+
+	bool controlled = false;
   bool next_is_verbatim;
   /* Used to store the line in canonical mode */
   string canonical_buf;
@@ -34,6 +36,8 @@ struct tty : public refcounted<tty> {
 
 	~tty(void);
 
+
+	void reset();
 
   void write_in(char c);
   void write_out(char c);

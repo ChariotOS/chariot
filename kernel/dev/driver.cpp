@@ -78,6 +78,8 @@ void dev::populate_inode_device(fs::inode &ino) {
     if (d->type == DRIVER_CHAR) {
       ino.fops = d->char_ops;
     }
+
+
     d->lock.read_unlock();
   }
 }

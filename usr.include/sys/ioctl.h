@@ -4,6 +4,8 @@
 extern "C" {
 #endif
 
+#include <chariot/ioctl.h>
+
 int ioctl(int, int, ...);
 
 #ifdef __cplusplus
