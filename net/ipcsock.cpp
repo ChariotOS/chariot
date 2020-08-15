@@ -81,7 +81,6 @@ int net::ipcsock::connect(struct sockaddr *addr, int len) {
 int net::ipcsock::disconnect(int flags) {
   auto &state = (flags & PFLAGS_CLIENT) ? for_server : for_client;
 
-  printk("DC!\n");
   state.lock.lock();
   state.closed = true;
   state.wq.notify_all();
