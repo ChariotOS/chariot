@@ -55,3 +55,10 @@ add_kernel_module(
 	INTEL
 	AUTOGLOB vmware/
 )
+
+
+add_kernel_module(
+	NAME COM
+	INTEL
+	AUTOGLOB com/
+)

@@ -1,9 +1,12 @@
+#include <arch.h>
 #include <asm.h>
 #include <console.h>
+#include <dev/driver.h>
 #include <dev/serial.h>
-#include <arch.h>
+#include <errno.h>
 #include <module.h>
 #include <printk.h>
+#include "../majors.h"
 
 #define IRQ_COM1 4
 
@@ -48,7 +51,7 @@ void serial_send(int device, char out) {
   }
 }
 
-void serial_string(int device, char* out) {
+void serial_string(int device, char *out) {
   for (uint32_t i = 0; out[i] != '\0'; i++) {
     outb(device, out[i]);
   }
@@ -61,7 +64,6 @@ static int uartgetc(void) {
 }
 
 void serial_irq_handle(int i, reg_t *) {
-
   size_t nread = 0;
   char buf[32];
 
@@ -79,11 +81,32 @@ void serial_irq_handle(int i, reg_t *) {
 
     buf[nread] = c;
     nread++;
-
   }
 
   if (nread != 0) console::feed(nread, buf);
 }
+
+
+
+
+static ssize_t com_read(fs::file &f, char *dst, size_t sz) { return -ENOSYS; }
+
+static ssize_t com_write(fs::file &f, const char *dst, size_t sz) {
+  return -ENOSYS;
+}
+
+
+static struct fs::file_operations com_ops = {
+    .read = com_read,
+    .write = com_write,
+};
+
+
+static struct dev::driver_info com_driver {
+  .name = "com", .type = DRIVER_CHAR, .major = MAJOR_COM, .char_ops = &com_ops,
+};
+
+
 
 static void serial_mod_init() {
   // setup interrupts on serial
@@ -93,6 +116,11 @@ static void serial_mod_init() {
   // enable interrupts.
   inb(COM1 + 2);
   inb(COM1 + 0);
+
+  dev::register_driver(com_driver);
+
+
+  dev::register_name(com_driver, "com1", 0);
   // smp::ioapicenable(IRQ_COM1, 0);
 }
 
