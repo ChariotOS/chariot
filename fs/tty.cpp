@@ -52,7 +52,7 @@ tty::~tty(void) {
 
 void tty::write_in(char c) { in.write(&c, 1, true); }
 
-void tty::write_out(char c) { out.write(&c, 1, true); }
+void tty::write_out(char c, bool block) { out.write(&c, 1, block); }
 
 string tty::name(void) { return string::format("/dev/pts%d", index); }
 
@@ -62,8 +62,8 @@ void tty::handle_input(char c) {
     canonical_buf += c;
     if (tios.c_lflag & ECHO) {
       if (is_control(c)) {
-        output('^');
-        output(('@' + c) % 128);
+        echo('^');
+        echo(('@' + c) % 129);
       } else {
       }
     }
@@ -82,9 +82,9 @@ void tty::handle_input(char c) {
     }
     if (sig != -1) {
       if (tios.c_lflag & ECHO) {
-        output('^');
-        output(('@' + c) % 128);
-        output('\n');
+        echo('^');
+        echo(('@' + c) % 128);
+        echo('\n');
       }
       canonical_buf.clear();
       if (fg_proc) {
@@ -118,16 +118,16 @@ void tty::handle_input(char c) {
   if (tios.c_lflag & ICANON) {
     if (c == tios.c_cc[VLNEXT] && (tios.c_lflag & IEXTEN)) {
       next_is_verbatim = 1;
-      output('^');
-      output('\010');
+      echo('^');
+      echo('\010');
       return;
     }
 
     if (c == tios.c_cc[VKILL]) {
       canonical_buf.clear();
       if ((tios.c_lflag & ECHO) && !(tios.c_lflag & ECHOK)) {
-        output('^');
-        output(('@' + c) % 128);
+        echo('^');
+        echo(('@' + c) % 128);
       }
       return;
     }
@@ -136,8 +136,8 @@ void tty::handle_input(char c) {
       /* Backspace */
       erase_one(tios.c_lflag & ECHOE);
       if ((tios.c_lflag & ECHO) && !(tios.c_lflag & ECHOE)) {
-        output('^');
-        output(('@' + c) % 128);
+        echo('^');
+        echo(('@' + c) % 128);
       }
       return;
     }
@@ -155,23 +155,23 @@ void tty::handle_input(char c) {
 
     if (tios.c_lflag & ECHO) {
       if (is_control(c) && c != '\n') {
-        output('^');
-        output(('@' + c) % 128);
+        echo('^');
+        echo(('@' + c) % 128);
       } else {
-        output(c);
+        echo(c);
       }
     }
 
     if (c == '\n' || (tios.c_cc[VEOL] && c == tios.c_cc[VEOL])) {
       if (!(tios.c_lflag & ECHO) && (tios.c_lflag & ECHONL)) {
-        output(c);
+        echo(c);
       }
       dump_input_buffer();
       return;
     }
     return;
   } else if (tios.c_lflag & ECHO) {
-    output(c);
+    echo(c);
   }
 
   write_in(c);
@@ -206,12 +206,12 @@ void tty::erase_one(int erase) {
   }
 }
 
-void tty::output(char c) {
+void tty::output(char c, bool block) {
   if (c == '\n' && (tios.c_oflag & ONLCR)) {
     c = '\n';
-    write_out(c);
+    write_out(c, block);
     c = '\r';
-    write_out(c);
+    write_out(c, block);
     return;
   }
 
@@ -221,11 +221,11 @@ void tty::output(char c) {
 
   if (c >= 'a' && c <= 'z' && (tios.c_oflag & OLCUC)) {
     c = c + 'a' - 'A';
-    write_out(c);
+    write_out(c, block);
     return;
   }
 
-  write_out(c);
+  write_out(c, block);
 }
 
 
