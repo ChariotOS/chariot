@@ -7,25 +7,37 @@
  * A major number is a simple 16 bit number that represents a driver's identity.
  */
 
-#define MAJOR_NULL 0
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-// MEM driver - for access to physical memory as a device
-#define MAJOR_MEM 1
+typedef enum {
+	MAJOR_NULL,
+	MAJOR_MEM,
+	MAJOR_ATA,
+
+	MAJOR_COM,
+
+	// PS2
+	MAJOR_MOUSE,
+	MAJOR_KEYBOARD,
+
+	// console
+	MAJOR_CONSOLE,
+
+	// VGA framebuffer
+	MAJOR_FB,
+
+	// Soundblaster 16
+	MAJOR_SB16,
+
+	// Pseudoterminal
+	MAJOR_PTMX,
+	MAJOR_PTS,
+
+} major_numbers;
 
 
-// ATA drives
-#define MAJOR_ATA 4
-
-#define MAJOR_MOUSE 10
-#define MAJOR_KEYBOARD 11
-
-#define MAJOR_CONSOLE 20
-
-#define MAJOR_FB 21
-
-#define MAJOR_SB16 22
-
-#define MAJOR_EMX 42
-
-#define MAJOR_PTMX 55
-#define MAJOR_PTS 56
+#ifdef __cplusplus
+}
+#endif
