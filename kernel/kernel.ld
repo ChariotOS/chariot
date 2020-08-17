@@ -50,14 +50,17 @@ SECTIONS
 
 	.init_array ALIGN(PAGE_SIZE) : AT(ADDR(.init_array) - KERNEL_VMA) {
 		__init_array_start = .;
+    KEEP (*(.ctors))
 		KEEP (*(.init_array*))
 		__init_array_end = .;
 	}
 
 	/* Include the list of termination functions sorted. */
 	.fini_array ALIGN(PAGE_SIZE) :	AT(ADDR(.fini_array) - KERNEL_VMA) {
-		KEEP (*(SORT(.fini_array.*)))
-		KEEP (*(.fini_array))
+		__fini_array_start = .;
+    KEEP (*(.dtors))
+		KEEP (*(.fini_array*))
+		__fini_array_end = .;
 	}
 
 	.rodata ALIGN(PAGE_SIZE) : AT(ADDR(.rodata) - KERNEL_VMA) {
