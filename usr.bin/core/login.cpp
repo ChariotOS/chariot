@@ -3,9 +3,10 @@
 #include <stdio.h>
 
 int main() {
-	system("cat /cfg/motd");
 
+	// TODO: actually login lol
 	while (1) {
+		system("cat /cfg/motd");
 		system("/bin/sh");
 		printf("[login] Restarting shell...\n");
 	}
