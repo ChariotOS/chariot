@@ -7,15 +7,13 @@
 #include <string.h>
 #include <termios.h>
 
+/**
+ */
 struct tty : public refcounted<tty> {
   int index;
 
   struct termios tios;
   struct winsize size;
-
-  /* Directional Pipes */
-  fifo_buf in;
-  fifo_buf out;
 
   /* Controlling process */
   pid_t ct_proc;
@@ -31,16 +29,17 @@ struct tty : public refcounted<tty> {
   /* locked by the external API (read/write ops and whatnot) */
   spinlock lock;
 
-  static ref<struct tty> create(void);
 
 
-  ~tty(void);
+	tty();
+  virtual ~tty(void);
 
 
   void reset();
 
-  void write_in(char c);
-  void write_out(char c, bool block = true);
+  virtual void write_in(char c) {};
+  virtual void write_out(char c, bool block = true) {};
+
   void handle_input(char c);
   void output(char c, bool block = true);
   inline void echo(char c) { output(c, false); }
@@ -50,3 +49,5 @@ struct tty : public refcounted<tty> {
 
   string name(void);
 };
+
+

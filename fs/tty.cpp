@@ -1,22 +1,7 @@
 #include <dev/driver.h>
 #include <fs/tty.h>
-#include <ioctl.h>
-#include <module.h>
-#include <syscall.h>
-#include "../drivers/majors.h"
 
 static int is_control(int c) { return c < ' ' || c == 0x7F; }
-
-ref<struct tty> tty::create(void) {
-  auto t = make_ref<tty>();
-
-
-  t->reset();
-
-
-  // TODO: store somewhere
-  return t;
-}
 
 
 void tty::reset(void) {
@@ -46,13 +31,18 @@ void tty::reset(void) {
 
 
 
+
+tty::tty(void) {
+	reset();
+}
 tty::~tty(void) {
   // TODO: remove from the storage
 }
 
+/*
 void tty::write_in(char c) { in.write(&c, 1, true); }
-
 void tty::write_out(char c, bool block) { out.write(&c, 1, block); }
+*/
 
 string tty::name(void) { return string::format("/dev/pts%d", index); }
 
@@ -229,193 +219,3 @@ void tty::output(char c, bool block) {
 }
 
 
-
-struct ptspriv {
-  int id;
-};
-
-static spinlock pts_lock;
-static map<int, ref<tty>> pts;
-static ssize_t pts_read(fs::file &f, char *dst, size_t sz);
-static ssize_t pts_write(fs::file &f, const char *dst, size_t sz);
-static int pts_ioctl(fs::file &f, unsigned int cmd, off_t arg);
-static ssize_t mx_read(fs::file &f, char *dst, size_t sz);
-static ssize_t mx_write(fs::file &f, const char *dst, size_t sz);
-static int pts_poll(fs::file &f, int events);
-
-static struct fs::file_operations pts_ops = {
-    .read = pts_read,
-    .write = pts_write,
-		.ioctl = pts_ioctl,
-		.poll = pts_poll,
-};
-
-
-
-static struct dev::driver_info pts_driver {
-  .name = "pts", .type = DRIVER_CHAR, .major = MAJOR_PTS, .char_ops = &pts_ops,
-};
-
-
-static auto getpts(int id) { return pts.get(id); }
-
-static int allocate_pts() {
-  pts_lock.lock();
-  int i = 0;
-  for (i = 0; true; i++) {
-    // if there isn't a pts at this location, allocate one
-    if (!pts.contains(i)) {
-      pts[i] = tty::create();
-
-      dev::register_name(pts_driver, string::format("vtty%d", i), i);
-      break;
-    } else {
-      // if nobody is controlling this pts, return it
-      if (!pts[i]->controlled) {
-        break;
-      }
-    }
-  }
-
-  // take control of the pts
-  pts[i]->lock.lock();
-  pts[i]->controlled = true;
-  pts[i]->lock.unlock();
-
-  pts_lock.unlock();
-
-  return i;
-}
-
-
-static int pts_ioctl(fs::file &f, unsigned int cmd, off_t arg) {
-	return 0;
-}
-
-static void close_pts(int ptsid) {
-  pts_lock.lock();
-
-  auto pts = getpts(ptsid);
-  pts->lock.lock();
-  pts->controlled = false;
-  pts->lock.unlock();
-
-
-  pts_lock.unlock();
-}
-
-// #define TTY_DEBUG
-
-#ifdef TTY_DEBUG
-#define DBG(fmt, args...) printk(KERN_DEBUG fmt, ##args);
-#else
-#define DBG(fmt, args...)
-#endif
-
-static ssize_t pts_read(fs::file &f, char *dst, size_t sz) {
-	DBG("pts_read\n");
-  auto pts = getpts(f.ino->minor);
-
-  return pts->in.read(dst, sz, true /* block? */);
-
-  //
-  if (pts->tios.c_lflag & ICANON) {
-    return pts->in.read(dst, sz);
-  } else {
-    if (pts->tios.c_cc[VMIN] == 0) {
-      return pts->in.read(dst, sz);
-    } else {
-      return pts->in.read(dst, min(pts->tios.c_cc[VMIN], sz));
-    }
-  }
-  return -ENOSYS;
-}
-
-static ssize_t pts_write(fs::file &f, const char *dst, size_t sz) {
-	DBG("pts_write\n");
-  auto pts = getpts(f.ino->minor);
-
-  for (size_t s = 0; s < sz; s++) {
-    pts->output(dst[s]);
-  }
-  return sz;
-}
-
-
-static ssize_t mx_read(fs::file &f, char *dst, size_t sz) {
-  auto pts = getpts(f.pflags);
-  DBG("mx_read %d\n", sz);
-  return pts->out.read(dst, sz);
-}
-
-static ssize_t mx_write(fs::file &f, const char *dst, size_t sz) {
-  auto pts = getpts(f.pflags);
-  DBG("mx_write %d\n", sz);
-
-  for (size_t s = 0; s < sz; s++) {
-    pts->handle_input(dst[s]);
-  }
-
-  return sz;
-}
-
-
-
-static int pts_poll(fs::file &f, int events) {
-  auto pts = getpts(f.ino->minor);
-  return pts->in.poll() & events & AWAITFS_READ;
-}
-
-
-static int mx_poll(fs::file &f, int events) {
-	// DBG("mx_poll\n");
-  auto pts = getpts(f.pflags);
-  return pts->out.poll() & events & AWAITFS_READ;
-}
-
-static int mx_open(fs::file &f) {
-  f.pflags = allocate_pts();
-  DBG("mx open\n");
-  return 0;
-}
-
-static void mx_close(fs::file &f) {
-  DBG("mx close\n");
-  close_pts(f.pflags);
-}
-
-static int mx_ioctl(fs::file &f, unsigned int cmd, off_t arg) {
-  if (cmd == PTMX_GETPTSID) {
-    return f.pflags;
-  }
-  return -EINVAL;
-}
-
-
-
-
-static struct fs::file_operations mx_ops = {
-    .read = mx_read,
-    .write = mx_write,
-    .ioctl = mx_ioctl,
-    .open = mx_open,
-    .close = mx_close,
-    .poll = mx_poll,
-};
-
-
-static struct dev::driver_info mx_driver {
-  .name = "ptmx", .type = DRIVER_CHAR, .major = MAJOR_PTMX, .char_ops = &mx_ops,
-};
-
-
-
-
-static void tty_init(void) {
-  dev::register_driver(mx_driver);
-  dev::register_driver(pts_driver);
-  //
-  dev::register_name(mx_driver, "ptmx", 0);
-}
-
-module_init("tty", tty_init);
