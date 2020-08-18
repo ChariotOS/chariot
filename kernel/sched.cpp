@@ -7,6 +7,7 @@
 #include <syscall.h>
 #include <time.h>
 #include <wait.h>
+#include "../arch/x86/fpu.h"
 
 // #define SCHED_DEBUG
 //
@@ -202,29 +203,23 @@ static void switch_into(struct thread &thd) {
   thd.locks.run.lock();
   cpu::current().current_thread = &thd;
   thd.state = PS_UNRUNNABLE;
-	// printk_nolock("[sched] cpu %d schedules %p\n", cpu::current().cpunum, &thd);
+	arch::restore_fpu(thd);
 
-  if (!thd.fpu.initialized) {
-    asm volatile("fninit");
-    asm volatile("fxsave64 (%0);" ::"r"(thd.fpu.state));
-    thd.fpu.initialized = true;
-  } else {
-    asm volatile("fxrstor64 (%0);" ::"r"(thd.fpu.state));
-  }
-
+	// update the statistics of the thread
   thd.stats.run_count++;
-
   thd.sched.start_tick = cpu::get_ticks();
-
   thd.stats.current_cpu = cpu::current().cpunum;
+
+	// load up the thread's address space
   cpu::switch_vm(&thd);
 
+	// Switch into the thread!
   swtch(&cpu::current().sched_ctx, thd.kern_context);
 
-  // save the FPU state after the context switch returns here
-  asm volatile("fxsave64 (%0);" ::"r"(thd.fpu.state));
-  cpu::current().current_thread = nullptr;
+	arch::save_fpu(thd);
 
+	// Update the stats afterwards
+  cpu::current().current_thread = nullptr;
   thd.stats.last_cpu = thd.stats.current_cpu;
   thd.stats.current_cpu = -1;
 
@@ -339,10 +334,10 @@ void sched::run() {
     if (thd == nullptr) {
       // idle loop when there isn't a task
       cpu::current().kstat.iticks++;
-			arch::sti();
+      arch::sti();
       asm("hlt");
-			arch::cli();
-			continue;
+      arch::cli();
+      continue;
     }
 
     s_enabled = true;
@@ -350,7 +345,7 @@ void sched::run() {
     switch_into(*thd);
 
     sched::add_task(thd);
-		boost();
+    boost();
   }
   panic("scheduler should not have gotten back here\n");
 }
@@ -392,12 +387,10 @@ void sched::handle_tick(u64 ticks) {
 class threadwaiter : public waiter {
  public:
   inline threadwaiter(waitqueue &wq, struct thread *td) : waiter(wq), thd(td) {
-		thd->waiter = this;
-	}
+    thd->waiter = this;
+  }
 
-  virtual ~threadwaiter(void) {
-		thd->waiter = nullptr;
-	}
+  virtual ~threadwaiter(void) { thd->waiter = nullptr; }
 
   virtual bool notify(int flags) override {
     if (flags & NOTIFY_RUDE) printk("rude!\n");
@@ -412,15 +405,13 @@ class threadwaiter : public waiter {
 };
 
 
-void waiter::interrupt(void) {
-	wq.interrupt(this);
-}
+void waiter::interrupt(void) { wq.interrupt(this); }
 
 void waitqueue::interrupt(struct waiter *w) {
   lock.lock();
 
 
-	if (w->flags & WAIT_NOINT) return;
+  if (w->flags & WAIT_NOINT) return;
 
   lock.unlock();
 }

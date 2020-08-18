@@ -10,6 +10,7 @@
 #include <time.h>
 #include <util.h>
 #include <vec.h>
+#include "fpu.h"
 
 #define BASE_MEM_LAST_KILO 0x9fc00
 #define BIOS_ROM_START 0xf0000
@@ -463,7 +464,7 @@ extern "C" void mpentry(int apic_id) {
 
   // load the IDT
   lidt((u32 *)&idt_block, 4096);
-  enable_sse();
+	fpu::init();
 
   smp::lapic_init();
 

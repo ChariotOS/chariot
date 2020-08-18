@@ -6,7 +6,7 @@
 #include <sched.h>
 #include <syscall.h>
 #include <util.h>
-
+#include <phys.h>
 /**
  * A thread needs to bootstrap itself somehow, and it uses this function to do
  * so. Both kinds of threads (user and kernel) start by executing this function.
@@ -26,7 +26,7 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
   this->pid = proc.pid;
 
   fpu.initialized = false;
-  fpu.state = kmalloc(512);
+  fpu.state = phys::kalloc(1);
 
   sched.priority = PRIORITY_HIGH;
 
@@ -80,7 +80,7 @@ bool thread::kickoff(void *rip, int initial_state) {
 thread::~thread(void) {
   sched::remove_task(this);
   kfree(stack);
-  kfree(fpu.state);
+	phys::kfree(fpu.state, 1);
   // assume it doesn't have a destructor, idk
   kfree(sig.arch_priv);
 }

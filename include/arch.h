@@ -17,6 +17,7 @@ typedef unsigned long reg_t;
 
 
 struct regs;
+struct thread;
 
 // Architecture specific functionality. Implemented in arch/$ARCH/*
 namespace arch {
@@ -33,6 +34,10 @@ unsigned trapframe_size(void);
 // or the kernel
 void initialize_trapframe(bool userspace, reg_t *);
 
+
+
+void save_fpu(struct thread &);
+void restore_fpu(struct thread &);
 
 void cli(void);
 void sti(void);
@@ -90,7 +95,6 @@ inline void eoi(int i) { arch::irq::eoi(i); }
 
 // cause an interrupt to be handled by the kernel's interrupt dispatcher
 void dispatch(int irq, reg_t *);
-
 
 
 };  // namespace irq

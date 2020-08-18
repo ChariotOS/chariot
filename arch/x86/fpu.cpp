@@ -1,7 +1,11 @@
 #include "fpu.h"
+#include <arch.h>
 #include <printk.h>
+#include <sched.h>
 #include "cpuid.h"
 #include "msr.h"
+
+struct fpu::fpu_caps fpu::caps;
 
 #define FPU_DEBUG(fmt, args...) printk(KERN_INFO "[FPU] " fmt, ##args)
 #define FPU_WARN(fmt, args...) printk(KERN_WARN "[FPU] " fmt, ##args)
@@ -135,6 +139,7 @@ static void set_osxsave(void) {
 }
 
 static void enable_xsave(void) {
+  fpu::caps.xsave = true;
   /* Enables XSAVE features by reading CR4 and writing OSXSAVE bit */
   set_osxsave();
 
@@ -143,6 +148,7 @@ static void enable_xsave(void) {
 }
 
 static void enable_sse(void) {
+  fpu::caps.sse = true;
   unsigned long r = read_cr4();
   uint32_t m;
 
@@ -180,11 +186,13 @@ static void fpu_init_common() {
 
   if (has_sse()) {
     ++sse_ready;
+    fpu::caps.sse = true;
     FPU_DEBUG("[SSE]\n");
   }
 
   if (has_clflush()) {
     ++sse_ready;
+    fpu::caps.sse = true;
     FPU_DEBUG("[CLFLUSH]\n");
   }
 
@@ -193,6 +201,7 @@ static void fpu_init_common() {
 
   if (has_fxsr()) {
     ++sse_ready;
+    fpu::caps.sse = true;
     FPU_DEBUG("[FXSAVE/RESTORE]\n");
   } else {
     panic("No FXSAVE/RESTORE support. Thread switching will be broken\n");
@@ -273,6 +282,7 @@ static void fpu_init_common() {
 
   /* Configure XSAVE Support */
   if (xsave_ready) {
+    fpu::caps.xsave = true;
     xsave_support &= get_xsave_features();
     asm volatile(
         "xor %%rcx, %%rcx ;"
@@ -301,5 +311,39 @@ void fpu::init(void) {
     DEFAULT_FUN_CHECK(amd_has_3dnow_ext, 3DNOWEXT)
     DEFAULT_FUN_CHECK(amd_has_prefetch, PREFETCHW)
     DEFAULT_FUN_CHECK(amd_has_misal_sse, MISALSSE)
+  }
+}
+
+
+extern "C" void __fpu_xsave64(void *);
+extern "C" void __fpu_xrstor64(void *);
+
+void arch::save_fpu(struct thread &thd) {
+  if (fpu::caps.xsave) {
+    __fpu_xsave64(thd.fpu.state);
+  } else {
+    asm volatile("fxsave64 (%0);" ::"r"(thd.fpu.state));
+  }
+}
+
+void arch::restore_fpu(struct thread &thd) {
+
+	// printk("cr4=%p\n", read_cr4());
+
+  if (!thd.fpu.initialized) {
+    asm volatile("fninit");
+
+    if (fpu::caps.xsave) {
+      __fpu_xsave64(thd.fpu.state);
+    } else {
+      asm volatile("fxsave64 (%0);" ::"r"(thd.fpu.state));
+    }
+    thd.fpu.initialized = true;
+  } else {
+    if (fpu::caps.xsave) {
+      __fpu_xrstor64(thd.fpu.state);
+    } else {
+      asm volatile("fxrstor64 (%0);" ::"r"(thd.fpu.state));
+    }
   }
 }

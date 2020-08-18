@@ -5,7 +5,12 @@
 
 namespace fpu {
   // the FPU capabilities on this current processor
-  // extern struct { } caps;
+  struct fpu_caps {
+		bool sse = false;
+		bool xsave = false;
+	};
+
+	extern struct fpu_caps caps;
 
   uint16_t get_x87_status(void);
   void set_x87_ctrl(uint16_t val);
