@@ -98,7 +98,7 @@ static void probe_port(ahci::hba_mem *abar) {
       } else if (dt == AHCI_DEV_PM) {
         AHCI_INFO("PM drive found at port %d\n", i);
       } else {
-        AHCI_INFO("No drive found at port %d\n", i);
+        // AHCI_INFO("No drive found at port %d\n", i);
       }
     }
 
