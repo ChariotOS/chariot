@@ -1,32 +1,5 @@
-#include <gfx/bitmap.h>
-#include <gfx/font.h>
-#include <gfx/rect.h>
-#include <gfx/scribe.h>
-#include <lumen.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/syscall.h>
-#include <sys/un.h>
-#include <sys/wait.h>
 #include <ui/application.h>
-#include <ui/view.h>
-#include <ui/window.h>
-#include <unistd.h>
-
-#include <ck/array.h>
-#include <ck/eventloop.h>
-#include <ck/mem.h>
-#include <ck/option.h>
-#include <ck/rand.h>
-#include <ck/strstream.h>
-#include <ck/timer.h>
-#include <ck/tuple.h>
-#include <ck/unicode.h>
-
-#include <sys/sysbind.h>
+#include <gfx/font.h>
 
 struct line {
   gfx::point start;
@@ -74,6 +47,7 @@ class painter : public ui::view {
 int main(int argc, char** argv) {
   // connect to the window server
   ui::application app;
+
 
   ui::window* win = app.new_window("My Window", 300, 300);
   // win->set_view<ui::stackview>(ui::direction::horizontal);
