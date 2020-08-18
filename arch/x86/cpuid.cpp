@@ -1,4 +1,5 @@
 #include "cpuid.h"
+#include <asm.h>
 #include <printk.h>
 #include <util.h>
 
@@ -81,16 +82,35 @@ uint32_t cpuid::leaf_max(void) {
 }
 
 
+static void get_vendor_string(char buf[13]) {
+  memset(buf, 0, 13);
+
+  cpuid::ret_t id;
+  cpuid::run(CPUID_LEAF_BASIC_INFO0, id);
+
+  uint32_t *b = (uint32_t *)buf;
+  b[0] = id.b;
+  b[1] = id.d;
+  b[2] = id.c;
+  b[3] = 0;
+}
+
 void cpuid::detect_cpu(void) {
-	cpuid::ret_t id;
-  char branding[16];
-	cpuid::run(CPUID_LEAF_BASIC_INFO0, id);
-
-	uint32_t *b = (uint32_t*)branding;
-	b[0] = id.b;
-	b[1] = id.d;
-	b[2] = id.c;
-	b[3] = 0;
-
+  char branding[13];
+  get_vendor_string(branding);
   printk(KERN_INFO "Detected %s Processor\n", branding);
+}
+
+
+
+bool cpuid::is_amd(void) {
+  char name[13];
+  get_vendor_string(name);
+  return !strcmp(name, "AuthenticAMD");
+}
+
+bool cpuid::is_intel(void) {
+  char name[13];
+  get_vendor_string(name);
+  return !strcmp(name, "GenuineIntel");
 }

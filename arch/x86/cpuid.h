@@ -277,4 +277,8 @@ namespace cpuid {
   int run(uint32_t func, cpuid::ret_t &);
   int run_sub(uint32_t func, uint32_t sub_func, cpuid::ret_t &ret);
 
+
+	bool is_intel();
+	bool is_amd();
+
 };  // namespace cpuid
