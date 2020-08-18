@@ -114,8 +114,10 @@ static void lapic_tick_handler(int i, reg_t *tf) {
 unsigned long arch::us_this_second(void) {
   unsigned int ticks = 0xffffffff - smp::lapic_read(LAPIC_TCCR);
 
-  printk("%d / %d\n", ticks,
-         lapic_ticks_per_second / cpu::current().ticks_per_second);
+  /*
+printk("%d / %d\n", ticks,
+   lapic_ticks_per_second / cpu::current().ticks_per_second);
+                           */
   // printk("1000000\n");
   auto val = ticks / lapic_ticks_per_second;
   // printk("%d\n", val);
@@ -145,17 +147,17 @@ static void calibrate(void) {
 
     // Now we know how often the APIC timer has ticked in 10ms
     auto ticks = 0xffffffff - smp::lapic_read(LAPIC_TCCR);
-    printk("%d ticks\n", ticks);
+    // printk("%d ticks\n", ticks);
     total_ticks += ticks;
   }
 
   auto avg = (total_ticks / DATASET_SIZE);
-  printk("%d avg ticks\n", avg);
+  printk(KERN_INFO "%d avg ticks\n", avg);
 
 
   lapic_ticks_per_second = avg * PIT_DIV;
 
-  printk("%d ticks per second\n", lapic_ticks_per_second);
+  printk(KERN_INFO "%d ticks per second\n", lapic_ticks_per_second);
 }
 
 static void set_tickrate(u32 per_second) {
