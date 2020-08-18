@@ -16,6 +16,7 @@
 #include <vga.h>
 #include "smp.h"
 #include "cpuid.h"
+#include "fpu.h"
 
 #include <arch.h>
 
@@ -79,7 +80,7 @@ int kernel_init(void *);
 
 static void kmain2(void) {
   irq::init();
-  enable_sse();
+	fpu::init();
 
   call_global_constructors();
 

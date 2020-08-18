@@ -244,6 +244,17 @@ static inline void write_cr3(u64 data) {
 }
 
 
+
+static inline u64 read_cr4(void) {
+  u64 ret;
+  asm volatile("mov %%cr4, %0" : "=r"(ret));
+  return ret;
+}
+
+static inline void write_cr4(u64 data) {
+  asm volatile("mov %0, %%cr4" : : "r"(data));
+}
+
 uint8_t inb(off_t port);
 uint16_t inw(off_t port);
 uint32_t inl(off_t port);
