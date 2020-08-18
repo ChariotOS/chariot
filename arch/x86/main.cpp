@@ -15,6 +15,7 @@
 #include <util.h>
 #include <vga.h>
 #include "smp.h"
+#include "cpuid.h"
 
 #include <arch.h>
 
@@ -45,7 +46,6 @@ extern void rtc_init(void);
 
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   serial_install();
-	printk("hello, world\n");
 
   rtc_init();
 
@@ -90,6 +90,10 @@ static void kmain2(void) {
 
 
 
+	cpuid::detect_cpu();
+
+
+
   init_pit();
   set_pit_freq(TICK_FREQ);
   KINFO("Initialized PIT\n");
@@ -110,6 +114,9 @@ static void kmain2(void) {
 
 
 int kernel_init(void *) {
+
+
+
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
 
@@ -128,7 +135,6 @@ int kernel_init(void *) {
 
 
 
-
   // start up the extra cpu cores
   smp::init_cores();
 
@@ -140,6 +146,7 @@ int kernel_init(void *) {
 
   auto root_name = kargs::get("root", "/dev/ata0p1");
   assert(root_name);
+
 
 
   int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);
@@ -155,16 +162,6 @@ int kernel_init(void *) {
   if (vfs::mount("none", "/tmp", "tmpfs", 0, NULL) != 0) {
     panic("failed to mount tmpfs");
   }
-
-  auto kimg = vfs::fdopen("/boot/chariot.elf", O_RDONLY);
-
-  if (false && kimg) {
-    elf::each_symbol(kimg, [](const char *name, off_t addr) {
-      // printk("%p %s\n", addr, name);
-      return true;
-    });
-  }
-
 
 
   // setup stdio stuff for the kernel (to be inherited by spawn)
