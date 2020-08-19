@@ -20,7 +20,6 @@ inline void *operator new(size_t, void *ptr) { return ptr; }
 extern "C" {
 #endif
 
-#include <chariot/pctl.h>
 
 #define __NEED_pid_t
 #include <bits/alltypes.h>
@@ -31,8 +30,6 @@ int yield(void);
 pid_t spawn();
 pid_t despawn(int pid);
 
-
-int pctl(int pid, int req, ...);
 
 
 int startpidve(int pid, char *const path, char *const argv[],

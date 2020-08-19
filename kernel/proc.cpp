@@ -12,6 +12,7 @@
 #include <mem.h>
 #include <paging.h>
 #include <phys.h>
+#include <syscall.h>
 #include <sched.h>
 #include <util.h>
 #include <wait_flags.h>
@@ -545,4 +546,20 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
   }
 
   return res_pid;
+}
+
+
+
+// TODO: alot of verification, basically
+int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
+	int tid = get_next_pid();
+	auto *thd = new thread(tid, *curproc);
+
+	arch::reg(REG_SP, thd->trap_frame) = (unsigned long)stack;
+  arch::reg(REG_PC, thd->trap_frame) = (unsigned long)fn;
+  arch::reg(REG_ARG0, thd->trap_frame) = (unsigned long)arg;
+
+	thd->kickoff(fn, PS_RUNNABLE);
+
+	return tid;
 }

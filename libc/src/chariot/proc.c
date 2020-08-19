@@ -17,15 +17,6 @@ int spawn() { return sysbind_spawn(); }
 
 int despawn(int p) { return sysbind_despawn(p); }
 
-int pctl(int pid, int request, ...) {
-  void *arg;
-  va_list ap;
-  va_start(ap, request);
-  arg = va_arg(ap, void *);
-  va_end(ap);
-  return errno_wrap(sysbind_pctl(pid, request, (unsigned long)arg));
-}
-
 int startpidve(int pid, char *const path, char *const argv[],
                char *const envp[]) {
   return errno_wrap(

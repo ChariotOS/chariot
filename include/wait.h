@@ -1,6 +1,6 @@
 #pragma once
 
-#include <lock.h>
+#include "lock.h"
 #include <ptr.h>
 #include <single_list.h>
 #include <types.h>

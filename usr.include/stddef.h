@@ -19,6 +19,8 @@
 
 #include <bits/alltypes.h>
 
+#undef offsetof
+
 #if __GNUC__ > 3
 #define offsetof(type, member) __builtin_offsetof(type, member)
 #else

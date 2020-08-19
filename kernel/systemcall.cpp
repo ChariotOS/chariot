@@ -5,7 +5,6 @@
 #include <map.h>
 #include <mem.h>
 #include <mmap_flags.h>
-#include <pctl.h>
 #include <phys.h>
 #include <syscall.h>
 #include <util.h>

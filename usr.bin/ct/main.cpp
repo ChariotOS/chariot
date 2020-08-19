@@ -1,5 +1,7 @@
-#include <ui/application.h>
 #include <gfx/font.h>
+#include <ui/application.h>
+
+#include <pthread.h>
 
 struct line {
   gfx::point start;
@@ -10,11 +12,9 @@ class painter : public ui::view {
   int x, y;
 
  public:
-  painter(void) {
-  }
+  painter(void) {}
 
-  ~painter(void) {
-  }
+  ~painter(void) {}
 
 
   virtual void paint_event(void) override {
@@ -42,9 +42,34 @@ class painter : public ui::view {
 };
 
 
+pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+
+
+// A normal C function that is executed as a thread
+// when its name is specified in pthread_create()
+void* func(void* vargp) {
+	pthread_mutex_lock(&m);
+  printf("B!\n");
+	pthread_mutex_unlock(&m);
+  return NULL;
+}
 
 
 int main(int argc, char** argv) {
+  pthread_t thread_id;
+  printf("Before Thread\n");
+
+	pthread_mutex_lock(&m);
+  pthread_create(&thread_id, NULL, func, NULL);
+	printf("A\n");
+	pthread_mutex_unlock(&m);
+
+	while(1) {}
+  // pthread_join(thread_id, NULL);
+  exit(0);
+
+
+
   // connect to the window server
   ui::application app;
 

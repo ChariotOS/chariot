@@ -1,25 +1,117 @@
 #pragma once
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef __PTHREAD_H
 #define __PTHREAD_H
 
 
 #define __NEED_size_t
+#define __NEED_pthread_t
+#define __NEED_pthread_attr_t
+#define __NEED_pthread_condattr_t
+#define __NEED_pthread_rwlockattr_t
+#define __NEED_pthread_barrierattr_t
+#define __NEED_pthread_cond_t
+#define __NEED_pthread_rwlock_t
+#define __NEED_pthread_barrier_t
+#define __NEED_pthread_spinlock_t
+#define __NEED_pthread_key_t
+#define __NEED_pthread_once_t
 #include <bits/alltypes.h>
+#include <time.h>
+// #include <sched.h>
 
 
-/* do not use -- use pthread_t instead */
-struct __pthread {
-  int tid;
-};
-
-typedef struct __pthread pthread_t;
 
 
-/* TODO: ??? */
-typedef struct { union { int __i[9]; size_t __s[9]; } __u; } pthread_attr_t;
+#define PTHREAD_CREATE_JOINABLE 0
+#define PTHREAD_CREATE_DETACHED 1
+
+#define PTHREAD_MUTEX_NORMAL 0
+#define PTHREAD_MUTEX_DEFAULT 0
+#define PTHREAD_MUTEX_RECURSIVE 1
+#define PTHREAD_MUTEX_ERRORCHECK 2
+
+#define PTHREAD_MUTEX_STALLED 0
+#define PTHREAD_MUTEX_ROBUST 1
+
+#define PTHREAD_PRIO_NONE 0
+#define PTHREAD_PRIO_INHERIT 1
+#define PTHREAD_PRIO_PROTECT 2
+
+#define PTHREAD_INHERIT_SCHED 0
+#define PTHREAD_EXPLICIT_SCHED 1
+
+#define PTHREAD_SCOPE_SYSTEM 0
+#define PTHREAD_SCOPE_PROCESS 1
+
+#define PTHREAD_PROCESS_PRIVATE 0
+#define PTHREAD_PROCESS_SHARED 1
 
 
-int pthread_create(pthread_t *, const pthread_attr_t *, void *(*fn)(void *), void *arg);
+#define PTHREAD_MUTEX_INITIALIZER (0)
+#define PTHREAD_RWLOCK_INITIALIZER \
+  {                                \
+    {                              \
+      { 0 }                        \
+    }                              \
+  }
+#define PTHREAD_COND_INITIALIZER \
+  {                              \
+    {                            \
+      { 0 }                      \
+    }                            \
+  }
+#define PTHREAD_ONCE_INIT 0
+
+
+#define PTHREAD_CANCEL_ENABLE 0
+#define PTHREAD_CANCEL_DISABLE 1
+#define PTHREAD_CANCEL_MASKED 2
+
+#define PTHREAD_CANCEL_DEFERRED 0
+#define PTHREAD_CANCEL_ASYNCHRONOUS 1
+
+#define PTHREAD_CANCELED ((void *)-1)
+
+
+#define PTHREAD_BARRIER_SERIAL_THREAD (-1)
+
+int pthread_create(pthread_t *, const pthread_attr_t *, void *(*)(void *), void *);
+void pthread_exit(void *) __attribute__((noreturn));
+int pthread_kill(pthread_t, int);
+// void pthread_cleanup_push(void (*)(void*), void*);
+// void pthread_cleanup_pop(int);
+int pthread_join(pthread_t, void **);
+
+
+
+
+typedef int volatile pthread_mutex_t;
+typedef int pthread_mutexattr_t;
+
+int pthread_mutex_lock(pthread_mutex_t *mutex);
+int pthread_mutex_trylock(pthread_mutex_t *mutex);
+int pthread_mutex_unlock(pthread_mutex_t *mutex);
+int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr);
+int pthread_mutex_destroy(pthread_mutex_t *mutex);
+
+
+int pthread_cond_init(pthread_cond_t *__restrict, const pthread_condattr_t *__restrict);
+int pthread_cond_destroy(pthread_cond_t *);
+int pthread_cond_wait(pthread_cond_t *__restrict, pthread_mutex_t *__restrict);
+int pthread_cond_timedwait(pthread_cond_t *__restrict, pthread_mutex_t *__restrict, const struct timespec *__restrict);
+int pthread_cond_broadcast(pthread_cond_t *);
+int pthread_cond_signal(pthread_cond_t *);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __PTHREAD_H */
+

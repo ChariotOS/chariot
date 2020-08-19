@@ -15,6 +15,11 @@ reg_t &arch::reg(int ind, reg_t *r) {
 
     case REG_BP:
       return tf->rbp;
+
+    case REG_ARG0:
+      return tf->rdi;
+    case REG_ARG1:
+      return tf->rsi;
   }
 #endif
 

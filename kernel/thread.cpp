@@ -185,6 +185,7 @@ static void thread_create_callback(void *) {
       thd->setup_stack((reg_t *)tf);
     }
     arch::sti();
+		printk("starting thread %d\n", thd->tid);
     return;
   }
 

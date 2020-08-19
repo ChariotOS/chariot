@@ -9,9 +9,9 @@ int sysbind_spawn() { return (int)__syscall_eintr(3, 0, 0, 0, 0, 0, 0); }
 int sysbind_despawn(int pid) { return (int)__syscall_eintr(4, (unsigned long long)pid, 0, 0, 0, 0, 0); }
 int sysbind_startpidve(int pid, const char* path, const char ** argv, const char ** envp) { return (int)__syscall_eintr(5, (unsigned long long)pid, (unsigned long long)path, (unsigned long long)argv, (unsigned long long)envp, 0, 0); }
 int sysbind_execve(const char* path, const char ** argv, const char ** envp) { return (int)__syscall_eintr(6, (unsigned long long)path, (unsigned long long)argv, (unsigned long long)envp, 0, 0, 0); }
-int sysbind_pctl(int pid, int cmd, unsigned long args) { return (int)__syscall_eintr(7, (unsigned long long)pid, (unsigned long long)cmd, (unsigned long long)args, 0, 0, 0); }
-long sysbind_waitpid(int pid, int* stat, int options) { return (long)__syscall_eintr(8, (unsigned long long)pid, (unsigned long long)stat, (unsigned long long)options, 0, 0, 0); }
-int sysbind_fork() { return (int)__syscall_eintr(9, 0, 0, 0, 0, 0, 0); }
+long sysbind_waitpid(int pid, int* stat, int options) { return (long)__syscall_eintr(7, (unsigned long long)pid, (unsigned long long)stat, (unsigned long long)options, 0, 0, 0); }
+int sysbind_fork() { return (int)__syscall_eintr(8, 0, 0, 0, 0, 0, 0); }
+int sysbind_spawnthread(void * stack, void* func, void* arg, int flags) { return (int)__syscall_eintr(9, (unsigned long long)stack, (unsigned long long)func, (unsigned long long)arg, (unsigned long long)flags, 0, 0); }
 int sysbind_open(const char * path, int flags, int mode) { return (int)__syscall_eintr(10, (unsigned long long)path, (unsigned long long)flags, (unsigned long long)mode, 0, 0, 0); }
 int sysbind_close(int fd) { return (int)__syscall_eintr(11, (unsigned long long)fd, 0, 0, 0, 0, 0); }
 long sysbind_lseek(int fd, long offset, int whence) { return (long)__syscall_eintr(12, (unsigned long long)fd, (unsigned long long)offset, (unsigned long long)whence, 0, 0, 0); }

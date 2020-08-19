@@ -15,6 +15,9 @@ void sys::exit_thread(int code) {
 
   // defer to later!
   curthd->should_die = 1;
+	curproc->waiters.post();
+
+	sched::exit();
 }
 
 void sys::exit_proc(int code) {

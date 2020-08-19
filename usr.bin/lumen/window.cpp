@@ -2,19 +2,16 @@
 #include <gfx/image.h>
 #include "internal.h"
 
-#define TITLE_HEIGHT 18
+#define TITLE_HEIGHT 24
 
 
+
+#define BGCOLOR 0xF6F6F6
+#define FGCOLOR 0x1E1E1E
 
 
 static gfx::rect close_button() { return gfx::rect(4, 4, 9, 9); }
 
-static uint32_t theme_color() {
-  // return 0xFFFFFF;
-  // return 0xFFC9C9;  // poolside.fm
-  return 0xACCED8;  // off-blue
-  // return 0x858585;  // gray
-}
 
 lumen::window::window(int id, lumen::guest &g, int w, int h)
     : id(id), guest(g) {
@@ -103,11 +100,6 @@ int lumen::window::handle_keyboard_input(keyboard_packet_t &p) {
 gfx::rect lumen::window::bounds() { return rect; }
 
 
-int noise(uint64_t seed) {
-  seed = 6364136223846793005ULL * seed + 1;
-  return seed >> 33;
-}
-
 void lumen::window::draw(gfx::scribe &scribe) {
   // draw normal window mode.
   if (mode == window_mode::normal) {
@@ -118,28 +110,26 @@ void lumen::window::draw(gfx::scribe &scribe) {
 
     scribe.blit(gfx::point(1, TITLE_HEIGHT), *bitmap, bmp_rect);
 
-    auto bg = theme_color();
+    scribe.draw_frame(gfx::rect(0, 0, rect.w, TITLE_HEIGHT), BGCOLOR);
 
+		scribe.fill_circle(10, 10, 10, FGCOLOR);
+    // scribe.fill_rect(close_button(), BGCOLOR);
 
-    scribe.draw_frame(gfx::rect(0, 0, rect.w, TITLE_HEIGHT), bg);
-
-    scribe.draw_rect(close_button(), 0x000000);
-
-		auto pr = gfx::printer(scribe, *gfx::font::get_default(), 18, 0, rect.w);
-		pr.printf("%s", name.get());
+    auto pr = gfx::printer(scribe, *gfx::font::get_default(), 18, 0, rect.w);
+    pr.set_color(FGCOLOR);
+    pr.printf("%s", name.get());
 
     if (focused) {
       for (int i = 0; i < 5; i++) {
         int x = pr.get_pos().x() + 4;
         int y = 4 + (i * 2);
-        scribe.draw_line(x, y, rect.w - 4, y, 0);
+        scribe.draw_line(x, y, rect.w - 4, y, FGCOLOR);
       }
     }
 
-    scribe.draw_line(0, TITLE_HEIGHT, 0, rect.h - 2, 0x000000);
-    scribe.draw_line(rect.w - 1, TITLE_HEIGHT, rect.w - 1, rect.h - 2,
-                     0x000000);
-    scribe.draw_line(0, rect.h - 2, rect.w - 1, rect.h - 2, 0x000000);
+    scribe.draw_line(0, TITLE_HEIGHT, 0, rect.h - 2, FGCOLOR);
+    scribe.draw_line(rect.w - 1, TITLE_HEIGHT, rect.w - 1, rect.h - 2, FGCOLOR);
+    scribe.draw_line(0, rect.h - 2, rect.w - 1, rect.h - 2, FGCOLOR);
 
     return;
   }

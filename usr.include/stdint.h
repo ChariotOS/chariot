@@ -79,4 +79,25 @@ typedef uint64_t   uintmax_t;
 #define WCHAR_MIN (-1-0x7fffffff+L'\0')
 #endif
 
+
+#define INT8_C(c)  c
+#define INT16_C(c) c
+#define INT32_C(c) c
+
+#define UINT8_C(c)  c
+#define UINT16_C(c) c
+#define UINT32_C(c) c ## U
+
+#if UINTPTR_MAX == UINT64_MAX
+#define INT64_C(c) c ## L
+#define UINT64_C(c) c ## UL
+#define INTMAX_C(c)  c ## L
+#define UINTMAX_C(c) c ## UL
+#else
+#define INT64_C(c) c ## LL
+#define UINT64_C(c) c ## ULL
+#define INTMAX_C(c)  c ## LL
+#define UINTMAX_C(c) c ## ULL
+#endif
+
 #endif

@@ -26,6 +26,8 @@ namespace arch {
 #define REG_PC 0
 #define REG_SP 1
 #define REG_BP 2
+#define REG_ARG0 3
+#define REG_ARG1 4
 // access a special register (only for PC, SP, BP)
 reg_t &reg(int ind, reg_t *);
 // allows allocation of a trapframe in thread.cpp

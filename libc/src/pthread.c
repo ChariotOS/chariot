@@ -1,8 +1,11 @@
 #include <chariot.h>
-#include <chariot/pctl.h>
+#include <errno.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/sysbind.h>
+#include <sys/syscall.h>
+#include <sys/wait.h>
 
 #define PTHREAD_STACK_SIZE 4096
 
@@ -20,12 +23,13 @@
  * pthread_join(). So this funciton is a trampoline function that allows
  * maintaining state, destructing, etc..
  */
-struct pthread_data {
+struct __pthread {
   // this struct contains the args used to create, so the thread can get it's
   // tid and whatnot
-  struct pctl_create_thread_args pctl_args;
   void *(*fn)(void *);
   void *arg;
+
+  int tid;  // the thread id of the thread
 
   long stack_size;
   void *stack;
@@ -33,12 +37,14 @@ struct pthread_data {
   void *res;
 
   /* used to allow the thread to run in the trampoline */
-  int runnable;
+  pthread_mutex_t runlock;
 
   /* ... */
 };
 
-static int __pthread_died(struct pthread_data *data) {
+
+
+static int __pthread_died(struct __pthread *data) {
   // here, we are still living within the thread, so we can't delete the data
   // yet...
   // TODO: clean up better.
@@ -54,16 +60,11 @@ static int __pthread_died(struct pthread_data *data) {
 }
 
 static int __pthread_trampoline(void *arg) {
-  struct pthread_data *data = arg;
+  struct __pthread *data = arg;
 
 
   // wait till the thread can actually run (sync with the creator)
-  while (data->runnable == 0) {
-    __asm__ ("pause");
-    yield();
-  }
-  // printf("fn = %p\n", data->fn);
-
+  pthread_mutex_lock(&data->runlock);
 
   // run the thread's function
   data->res = data->fn(data->arg);
@@ -73,39 +74,80 @@ static int __pthread_trampoline(void *arg) {
   return 0;
 }
 
-int pthread_create(pthread_t *thd, const pthread_attr_t *attr,
-                   void *(*fn)(void *), void *arg) {
-  struct pthread_data *data = malloc(sizeof(*data));
+int pthread_create(pthread_t *thd, const pthread_attr_t *attr, void *(*fn)(void *), void *arg) {
+  struct __pthread *data = malloc(sizeof(*data));
 
   data->stack_size = PTHREAD_STACK_SIZE;
   data->stack = malloc(data->stack_size);
   data->arg = arg;
   data->fn = fn;
-  data->runnable = 0;
+  pthread_mutex_init(&data->runlock, PTHREAD_MUTEX_DEFAULT);
+  pthread_mutex_lock(&data->runlock);
 
-  // fill in the pctl args
-  data->pctl_args.arg = data;
-  data->pctl_args.fn = __pthread_trampoline;
-  data->pctl_args.stack = data->stack;
-  data->pctl_args.stack_size = data->stack_size;
-  data->pctl_args.flags = 0; /*TODO*/
+  // int res = pctl(0, PCTL_CREATE_THREAD, &data->pctl_args);
 
-  int res = pctl(0, PCTL_CREATE_THREAD, &data->pctl_args);
+  int tid = sysbind_spawnthread(data->stack + data->stack_size, __pthread_trampoline, data, 0);
+  printf("tid=%d\n", tid);
 
 
-  if (res != 0) {
+  if (tid < 0) {
     free(data->stack);
     free(data);
     printf("oops!\n");
-    return -1;
+    return errno_wrap(tid);
   }
 
-  // fill in the thread identifier in the pthread_t* passed
-  thd->tid = data->pctl_args.tid;
+  data->tid = tid;
+  *thd = data;
 
   // at this point, we know the thread is created, so we start it :)
   // TODO: use a semaphore, lock, or something smarter...
-  data->runnable = 1;
+  pthread_mutex_unlock(&data->runlock);
 
   return 0;
 }
+
+int pthread_join(pthread_t t, void **retval) {
+  int status;
+  int result = waitpid(t->tid, &status, 0);
+  if (retval) {
+    *retval = t->res;
+  }
+  return result;
+}
+
+
+
+/////////////////////////////////////////////////////////////////
+//  Mutex
+/////////////////////////////////////////////////////////////////
+
+int pthread_mutex_lock(pthread_mutex_t *m) {
+  while (__sync_lock_test_and_set((volatile int *)m, 0x01)) {
+    sysbind_yield();
+  }
+  return 0;
+}
+
+
+int pthread_mutex_trylock(pthread_mutex_t *mutex) {
+  if (__sync_lock_test_and_set(mutex, 0x01)) {
+    return EBUSY;
+  }
+  return 0;
+}
+
+int pthread_mutex_unlock(pthread_mutex_t *mutex) {
+  __sync_lock_release(mutex);
+  return 0;
+}
+
+
+int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr) {
+  *mutex = 0;
+  return 0;
+}
+
+int pthread_mutex_destroy(pthread_mutex_t *mutex) { return 0; }
+
+/////////////////////////////////////////////////////////////////
