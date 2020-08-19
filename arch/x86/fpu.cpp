@@ -7,8 +7,17 @@
 
 struct fpu::fpu_caps fpu::caps;
 
+
+// #define FPU_DO_DEBUG
+
+
+#ifdef FPU_DO_DEBUG
 #define FPU_DEBUG(fmt, args...) printk(KERN_INFO "[FPU] " fmt, ##args)
 #define FPU_WARN(fmt, args...) printk(KERN_WARN "[FPU] " fmt, ##args)
+#else
+#define FPU_DEBUG(fmt, args...)
+#define FPU_WARN(fmt, args...)
+#endif
 
 
 #define _INTEL_FPU_FEAT_QUERY(r, feat)   \
