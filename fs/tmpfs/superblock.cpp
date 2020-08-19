@@ -30,6 +30,6 @@ fs::inode *tmp::superblock::create_inode(int type) {
 
 	// allocate the private data
 	ino->priv<tmp::priv>() = new tmp::priv();
-  // return fs::inode::acquire(ino);
-	return ino;
+  return fs::inode::acquire(ino);
+	// return ino;
 }
