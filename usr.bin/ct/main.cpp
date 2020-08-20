@@ -1,5 +1,6 @@
 #include <gfx/font.h>
 #include <ui/application.h>
+#include <chariot/fs/magicfd.h>
 
 #include <pthread.h>
 
@@ -48,23 +49,39 @@ pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 // A normal C function that is executed as a thread
 // when its name is specified in pthread_create()
 void* func(void* vargp) {
-	pthread_mutex_lock(&m);
+  pthread_mutex_lock(&m);
   printf("B!\n");
-	pthread_mutex_unlock(&m);
+  pthread_mutex_unlock(&m);
   return NULL;
 }
 
 
+
+
+
+__thread int val;
+
+
 int main(int argc, char** argv) {
+
+
+	val = 30;
+	printf("%p\n", &val);
+
+  return 0;
+
+
   pthread_t thread_id;
   printf("Before Thread\n");
 
-	pthread_mutex_lock(&m);
+  pthread_mutex_lock(&m);
   pthread_create(&thread_id, NULL, func, NULL);
-	printf("A\n");
-	pthread_mutex_unlock(&m);
+  printf("A\n");
+  pthread_mutex_unlock(&m);
 
-	while(1) {}
+  while (1) {
+  }
+
   // pthread_join(thread_id, NULL);
   exit(0);
 

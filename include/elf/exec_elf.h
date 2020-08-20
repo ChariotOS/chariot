@@ -33,32 +33,37 @@
 #ifndef _SYS_EXEC_ELF_H_
 #define _SYS_EXEC_ELF_H_
 
+#ifdef USERLAND
+#include <stdint.h>
+#else
 #include <types.h>
+#endif
 
 typedef uint8_t Elf_Byte;
 
 typedef uint32_t Elf32_Addr; /* Unsigned program address */
 typedef uint32_t Elf32_Off;  /* Unsigned file offset */
-typedef i32 Elf32_Sword;     /* Signed large integer */
+typedef int32_t Elf32_Sword;     /* Signed large integer */
 typedef uint32_t Elf32_Word; /* Unsigned large integer */
 typedef uint16_t Elf32_Half; /* Unsigned medium integer */
 typedef uint64_t Elf32_Lword;
 
 typedef uint64_t Elf64_Addr;
 typedef uint64_t Elf64_Off;
-typedef i32 Elf64_Shalf;
+typedef int32_t Elf64_Shalf;
 
 #ifdef __alpha__
 typedef int64_t Elf64_Sword;
 typedef uint64_t Elf64_Word;
 #else
-typedef i32 Elf64_Sword;
+typedef int32_t Elf64_Sword;
 typedef uint32_t Elf64_Word;
 #endif
 
-typedef i64 Elf64_Sxword;
+typedef int64_t Elf64_Sxword;
 typedef uint64_t Elf64_Xword;
 typedef uint64_t Elf64_Lword;
+
 
 typedef uint32_t Elf64_Half;
 typedef uint16_t Elf64_Quarter;
@@ -651,17 +656,17 @@ struct elfcore_procinfo {
   uint32_t cpi_sigmask;   /* blocked signals */
   uint32_t cpi_sigignore; /* ignored signals */
   uint32_t cpi_sigcatch;  /* signals being caught by user */
-  i32 cpi_pid;        /* process ID */
-  i32 cpi_ppid;       /* parent process ID */
-  i32 cpi_pgrp;       /* process group ID */
-  i32 cpi_sid;        /* session ID */
+  int32_t cpi_pid;        /* process ID */
+  int32_t cpi_ppid;       /* parent process ID */
+  int32_t cpi_pgrp;       /* process group ID */
+  int32_t cpi_sid;        /* session ID */
   uint32_t cpi_ruid;      /* real user ID */
   uint32_t cpi_euid;      /* effective user ID */
   uint32_t cpi_svuid;     /* saved user ID */
   uint32_t cpi_rgid;      /* real group ID */
   uint32_t cpi_egid;      /* effective group ID */
   uint32_t cpi_svgid;     /* saved group ID */
-  i8 cpi_name[32];    /* copy of pr->ps_comm */
+  int8_t cpi_name[32];    /* copy of pr->ps_comm */
 };
 
 /*

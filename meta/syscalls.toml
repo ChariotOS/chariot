@@ -319,3 +319,16 @@ args = [
 	'data: void*',
 	'len: size_t'
 ]
+
+
+# implemented in kernel/proc.cpp
+[sc.futex]
+ret = 'int'
+args = [
+	'uaddr: int*',
+	'op: int',
+	'val: int',
+	'val2: int',
+	'uaddr2: int*',
+	'val3: int'
+]

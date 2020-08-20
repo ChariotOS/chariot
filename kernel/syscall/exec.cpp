@@ -43,8 +43,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   auto fd = make_ref<fs::file>(exe, FDIR_READ);
 
   // allocate a new address space
-  auto *new_addr_space =
-      new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create());
+  auto *new_addr_space = new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create());
 
   int loaded = elf::load(path, *curproc, *new_addr_space, fd, entry);
   if (loaded < 0) {
@@ -57,8 +56,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   // TODO: this size is arbitrary.
   auto stack_size = 1024 * 1024;
   off_t stack =
-      new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ | PROT_WRITE,
-                           MAP_ANON | MAP_PRIVATE, nullptr, 0);
+      new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, nullptr, 0);
 
   // kill the other threads
   for (auto tid : curproc->threads) {
@@ -78,9 +76,10 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   arch::reg(REG_SP, tf) = stack + stack_size - 64;
   arch::reg(REG_PC, tf) = (unsigned long)entry;
 
-	cpu::switch_vm(curthd);
+  cpu::switch_vm(curthd);
 
-	curthd->setup_stack(tf);
+  curthd->setup_tls();
+  curthd->setup_stack(tf);
 
   return 0;
 }

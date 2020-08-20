@@ -3,10 +3,10 @@
  */
 #include <cpu.h>
 #include <mmap_flags.h>
+#include <phys.h>
 #include <sched.h>
 #include <syscall.h>
 #include <util.h>
-#include <phys.h>
 /**
  * A thread needs to bootstrap itself somehow, and it uses this function to do
  * so. Both kinds of threads (user and kernel) start by executing this function.
@@ -64,23 +64,51 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
   thread_table.set(tid, this);
   thread_table_lock.write_unlock();
 
+
+
   // push the tid into the proc's tid list
   proc.threads.push(tid);
 }
+
+
+off_t thread::setup_tls(void) {
+  // Map in the TLS if there is one
+  // TODO maybe move TLS to userspace?
+  if (proc.tls_info.exists) {
+    tls_usize = proc.tls_info.memsz;
+    tls_uaddr = proc.mm->mmap(string::format("[tid %d TLS]", this->tid), 0, proc.tls_info.memsz, PROT_READ | PROT_WRITE,
+                              MAP_PRIVATE | MAP_ANON, nullptr, 0);
+
+    printk("============================== %p\n", tls_uaddr);
+    proc.mm->dump();
+  } else {
+    tls_uaddr = 0;
+  }
+
+  return tls_uaddr;
+}
+
 
 bool thread::kickoff(void *rip, int initial_state) {
   arch::reg(REG_PC, trap_frame) = (unsigned long)rip;
 
   this->state = initial_state;
 
+  setup_tls();
+
   sched::add_task(this);
   return true;
 }
 
 thread::~thread(void) {
+  if (tls_uaddr != 0) {
+    proc.mm->dump();
+    proc.mm->unmap(tls_uaddr, tls_usize);
+  }
+
   sched::remove_task(this);
   kfree(stack);
-	phys::kfree(fpu.state, 1);
+  phys::kfree(fpu.state, 1);
   // assume it doesn't have a destructor, idk
   kfree(sig.arch_priv);
 }
@@ -185,7 +213,7 @@ static void thread_create_callback(void *) {
       thd->setup_stack((reg_t *)tf);
     }
     arch::sti();
-		printk("starting thread %d\n", thd->tid);
+    printk("starting thread %d\n", thd->tid);
     return;
   }
 
@@ -231,8 +259,7 @@ vec<off_t> thread::backtrace(off_t rbp, off_t rip) {
   vec<off_t> bt;
   bt.push(rip);
 
-  for (auto sp = (off_t *)rbp; VALIDATE_RD(sp, sizeof(off_t) * 2);
-       sp = (off_t *)sp[0]) {
+  for (auto sp = (off_t *)rbp; VALIDATE_RD(sp, sizeof(off_t) * 2); sp = (off_t *)sp[0]) {
     auto retaddr = sp[1];
     if (!VALIDATE_EXEC((void *)retaddr, sizeof(off_t))) break;
     bt.push(retaddr);

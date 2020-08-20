@@ -210,6 +210,13 @@ namespace mm {
     int sort_regions(void);
     off_t find_hole(size_t size);
 
+
+
+		// expects nothing to be locked
+		ref<mm::page> get_page(off_t uaddr);
+		// expects the area, and space to be locked
+		ref<mm::page> get_page_internal(off_t uaddr, mm::area &area, int pagefault_err, bool do_map);
+
     spinlock lock;
     vec<mm::area *> regions;
 

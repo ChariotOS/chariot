@@ -1,5 +1,6 @@
 #include <elf/loader.h>
 #include <errno.h>
+#include <fs/magicfd.h>
 #include <printk.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
@@ -122,12 +123,17 @@ int elf::each_symbol(fs::file &fd, func<bool(const char *sym, off_t)> cb) {
   return err;
 }
 
-int elf::load(const char *path, struct process &p, mm::space &mm,
-              ref<fs::file> fd, u64 &entry) {
+int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> fd, u64 &entry) {
   Elf64_Ehdr ehdr;
 
   off_t off = 0;
 
+
+  p.file_lock.lock();
+  p.open_files[MAGICFD_EXEC] = fd;
+  p.executable = fd;
+	p.tls_info.exists = false;
+  p.file_lock.unlock();
 
   if (!elf::validate(*fd, ehdr)) {
     printk("[ELF LOADER] elf not valid\n");
@@ -136,22 +142,6 @@ int elf::load(const char *path, struct process &p, mm::space &mm,
 
   // the binary is valid, so lets read the headers!
   entry = off + ehdr.e_entry;
-  /*
-Elf64_Shdr *sec_hdrs = new Elf64_Shdr[ehdr.e_shnum];
-
-// seek to and read the headers
-fd->seek(ehdr.e_shoff, SEEK_SET);
-auto sec_expected = ehdr.e_shnum * sizeof(*sec_hdrs);
-auto sec_read = fd->read(sec_hdrs, sec_expected);
-
-if (sec_read != sec_expected) {
-delete[] sec_hdrs;
-  printk("sec_read != sec_expected\n");
-return -1;
-}
-
-delete[] sec_hdrs;
-  */
 
   auto handle_bss = [&](Elf64_Phdr &ph) -> void {
     if (ph.p_memsz > ph.p_filesz) {
@@ -206,10 +196,18 @@ delete[] sec_hdrs;
   for (int i = 0; i < ehdr.e_phnum; i++) {
     auto &sec = phdr[i];
 
-    // printk("fsz=%zu, msz=%zu\n", sec.p_filesz, sec.p_memsz);
+
+    if (sec.p_type == PT_TLS) {
+      printk("Found a TLS template!\n");
+			p.tls_info.exists = true;
+			p.tls_info.fileoff = sec.p_offset;
+			p.tls_info.fsize = sec.p_filesz;
+			p.tls_info.memsz = sec.p_memsz;
+    }
 
     if (sec.p_type == PT_LOAD) {
       auto start = round_down(sec.p_vaddr, 1);
+
 
 
       auto prot = 0L;
@@ -218,12 +216,10 @@ delete[] sec_hdrs;
       if (sec.p_flags & PF_R) prot |= PROT_READ;
 
       if (sec.p_filesz == 0) {
-        mm.mmap(path, off + start, sec.p_memsz, prot, MAP_ANON | MAP_PRIVATE,
-                nullptr, 0);
+        mm.mmap(path, off + start, sec.p_memsz, prot, MAP_ANON | MAP_PRIVATE, nullptr, 0);
         // printk("    is .bss\n");
       } else {
-        mm.mmap(path, off + start, sec.p_memsz, prot, MAP_PRIVATE, fd,
-                sec.p_offset);
+        mm.mmap(path, off + start, sec.p_memsz, prot, MAP_PRIVATE, fd, sec.p_offset);
         handle_bss(sec);
       }
     }

@@ -51,7 +51,7 @@ mm::page::~page(void) {
 
   if (freeable) {
     phys::free((void *)pa);
-		// printk("free %p. %5ld left\n", pa, phys::nfree());
+    // printk("free %p. %5ld left\n", pa, phys::nfree());
   }
   assert(users == 0);
   pa = 0;
@@ -77,8 +77,7 @@ ref<mm::page> mm::page::create(unsigned long page) {
   return move(p);
 }
 
-mm::space::space(off_t lo, off_t hi, ref<mm::pagetable> pt)
-    : pt(pt), lo(lo), hi(hi) {}
+mm::space::space(off_t lo, off_t hi, ref<mm::pagetable> pt) : pt(pt), lo(lo), hi(hi) {}
 
 mm::space::~space(void) {
   for (auto &r : regions) {
@@ -112,9 +111,19 @@ int mm::space::pagefault(off_t va, int err) {
 
   if (!r) return -1;
 
+
   scoped_lock region_lock(r->lock);
 
   int fault_res = 0;
+
+
+#if 0
+  printk("[%3d] fault at %p err: %02x   ", curproc->pid, va, err);
+  if (err & FAULT_WRITE) printk(" write");
+  if (err & FAULT_READ) printk(" read");
+  if (err & FAULT_EXEC) printk(" exec");
+  printk("\n");
+#endif
 
   // TODO:
   // if (err & PGFLT_USER && !(r->prot & VPROT_READ)) fault_res = -1;
@@ -122,84 +131,102 @@ int mm::space::pagefault(off_t va, int err) {
   if (err & FAULT_READ && !(r->prot & VPROT_READ)) fault_res = -1;
   if (err & FAULT_EXEC && !(r->prot & VPROT_EXEC)) fault_res = -1;
 
-  // the page index within the region
-  auto ind = (va >> 12) - (r->va >> 12);
-  struct mm::pte pte;
-  pte.prot = r->prot;
-
   if (fault_res == 0) {
     // handle the fault in the region
-    if (!r->pages[ind]) {
-      // printk("Doesn't Exist\n");
-      bool got_from_vmobj = false;
-      ref<mm::page> page;
-      if (r->obj) {
-        page = r->obj->get_shared(ind);
-        got_from_vmobj = true;
-
-        // remove the protection so we can detect writes and mark pages as dirty
-        // or COW them
-        pte.prot &= ~VPROT_WRITE;
-      }
-
-      /*
-      if (r->flags & MAP_PRIVATE && page) {
-              // remove write from the region so it is COW'd
-      }
-      */
-
-      if (!page && got_from_vmobj) {
-        panic("failed!\n");
-      }
-
-      if (!page) {
-        // anonymous mapping
-        page = mm::page::alloc();
-      } else {
-        pte.nocache = page->nocache;
-        pte.writethrough = page->writethrough;
-      }
-
-
-      spinlock::lock(page->lock);
-      page->users++;
-      spinlock::unlock(page->lock);
-
-      r->pages[ind] = page;
-    }
-
-    // If the fault was due to a write, and this region
-    // is writable, handle COW if needed
-    if ((err & FAULT_WRITE) && (r->prot & PROT_WRITE)) {
-      pte.prot = r->prot;
-
-      if (r->flags & MAP_SHARED) {
-        // TODO: handle shared
-        // printk(KERN_INFO "Write to shared page %p\n", r->pages[ind]->pa);
-        r->pages[ind]->dirty = true;
-      } else {
-        auto old_page = r->pages[ind];
-        spinlock::lock(old_page->lock);
-
-        if (old_page->users > 1 || r->fd) {
-          auto np = mm::page::alloc();
-          // printk(KERN_WARN "COW [page %d in '%s'] %p\n", ind, r->name.get(), va);
-          np->users = 1;
-          old_page->users--;
-          memcpy(p2v(np->pa), p2v(old_page->pa), PGSIZE);
-          r->pages[ind] = np;
-        }
-
-        spinlock::unlock(old_page->lock);
-      }
-    }
-
-    pte.ppn = r->pages[ind]->pa >> 12;
-    auto va = (r->va + (ind << 12));
-    pt->add_mapping(va, pte);
+    auto page = get_page_internal(va, *r, err, true);
+    if (!page) return -1;
   }
 
   return 0;
+}
+
+
+// return the page at an address (allocate if needed)
+ref<mm::page> mm::space::get_page(off_t uaddr) {
+  scoped_lock l(this->lock);
+  auto r = lookup(uaddr);
+  if (!r) return nullptr;
+
+  scoped_lock region_lock(r->lock);
+  return get_page_internal(uaddr, *r, 0, false);
+}
+
+
+ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bool do_map) {
+  struct mm::pte pte;
+  pte.prot = r.prot;
+
+
+  // the page index within the region
+  auto ind = (uaddr >> 12) - (r.va >> 12);
+
+  if (!r.pages[ind]) {
+    bool got_from_vmobj = false;
+    ref<mm::page> page;
+    if (r.obj) {
+      page = r.obj->get_shared(ind);
+      got_from_vmobj = true;
+
+      // remove the protection so we can detect writes and mark pages as dirty
+      // or COW them
+      pte.prot &= ~VPROT_WRITE;
+    }
+
+    if (!page && got_from_vmobj) {
+      panic("failed!\n");
+    }
+
+    if (!page) {
+      // anonymous mapping
+      page = mm::page::alloc();
+    } else {
+      pte.nocache = page->nocache;
+      pte.writethrough = page->writethrough;
+    }
+
+
+    spinlock::lock(page->lock);
+    page->users++;
+    spinlock::unlock(page->lock);
+
+    r.pages[ind] = page;
+  }
+
+
+  // If the fault was due to a write, and this region
+  // is writable, handle COW if needed
+  if ((err & FAULT_WRITE) && (r.prot & PROT_WRITE)) {
+    pte.prot = r.prot;
+
+    if (r.flags & MAP_SHARED) {
+      // TODO: handle shared
+      // printk(KERN_INFO "Write to shared page %p\n", r.pages[ind]->pa);
+      r.pages[ind]->dirty = true;
+    } else {
+      auto old_page = r.pages[ind];
+      spinlock::lock(old_page->lock);
+
+      if (old_page->users > 1 || r.fd) {
+        auto np = mm::page::alloc();
+        // printk(KERN_WARN "COW [page %d in '%s'] %p\n", ind, r.name.get(), uaddr);
+        np->users = 1;
+        old_page->users--;
+        memcpy(p2v(np->pa), p2v(old_page->pa), PGSIZE);
+        r.pages[ind] = np;
+      }
+
+      spinlock::unlock(old_page->lock);
+    }
+  }
+
+  if (do_map) {
+    // printk("[%3d] map %p to %p\n", curproc->pid, uaddr & ~0xFFF, r.pages[ind]->pa);
+    pte.ppn = r.pages[ind]->pa >> 12;
+    auto va = (r.va + (ind << 12));
+    pt->add_mapping(va, pte);
+  }
+
+  return r.pages[ind];
 }
 
 size_t mm::space::memory_usage(void) {
@@ -224,7 +251,6 @@ size_t mm::space::memory_usage(void) {
 }
 
 mm::space *mm::space::fork(void) {
-
   auto npt = mm::pagetable::create();
   auto *n = new mm::space(lo, hi, npt);
 
@@ -239,12 +265,12 @@ mm::space *mm::space::fork(void) {
     copy->off = r->off;
     copy->prot = r->prot;
     copy->fd = r->fd;
-		copy->flags = r->flags;
+    copy->flags = r->flags;
 
-		if (r->obj) {
-			copy->obj = r->obj;
-			r->obj->acquire();
-		}
+    if (r->obj) {
+      copy->obj = r->obj;
+      r->obj->acquire();
+    }
 
     for (auto &p : r->pages) {
       if (p) {
@@ -280,13 +306,11 @@ mm::space *mm::space::fork(void) {
   return n;
 }
 
-off_t mm::space::mmap(off_t req, size_t size, int prot, int flags,
-                      ref<fs::file> fd, off_t off) {
+off_t mm::space::mmap(off_t req, size_t size, int prot, int flags, ref<fs::file> fd, off_t off) {
   return mmap("", req, size, prot, flags, move(fd), off);
 }
 
-off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
-                      ref<fs::file> fd, off_t off) {
+off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags, ref<fs::file> fd, off_t off) {
   if (addr & 0xFFF) return -1;
 
   if ((flags & (MAP_PRIVATE | MAP_SHARED)) == 0) {
@@ -562,9 +586,8 @@ static void *msh_create(struct mshare_create *arg) {
   ref<mm::vmobject> obj = make_ref<mshare_vmobject>(name, pages);
 
 
-  auto addr = curproc->mm->mmap(
-      string::format("[msh '%s' (created)]", name.get()), 0, pages * PGSIZE,
-      PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
+  auto addr = curproc->mm->mmap(string::format("[msh '%s' (created)]", name.get()), 0, pages * PGSIZE,
+                                PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
 
   auto region = curproc->mm->lookup(addr);
   if (region == nullptr) return MAP_FAILED;
@@ -594,9 +617,8 @@ static void *msh_acquire(struct mshare_acquire *arg) {
 
   obj->acquire();
 
-  auto addr = curproc->mm->mmap(
-      string::format("[msh '%s' (acquired)]", name.get()), 0, arg->size,
-      PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
+  auto addr = curproc->mm->mmap(string::format("[msh '%s' (acquired)]", name.get()), 0, arg->size,
+                                PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
   // printk("addr=%p\n", addr);
 
   auto region = curproc->mm->lookup(addr);

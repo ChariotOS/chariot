@@ -5,7 +5,8 @@
 #include "smp.h"
 #include "msr.h"
 
-static __thread cpu_t *s_current = nullptr;
+extern "C" cpu_t *__get_cpu_struct(void);
+extern "C" void __set_cpu_struct(cpu_t *);
 
 extern "C" void wrmsr(u32 msr, u64 val);
 
@@ -48,6 +49,12 @@ extern "C" void syscall_entry(void);
 extern "C" void ignore_sysret(void);
 
 
+#define FS_BASE_MSR 		0xC0000100
+#define GS_BASE_MSR 		0xC0000101
+#define KERNEL_GS_BASE 		0xC0000102
+
+
+
 
 void cpu::seginit(void *local) {
 #ifdef __x86_64__
@@ -62,10 +69,12 @@ void cpu::seginit(void *local) {
 
   tss[0x64] |= (0x64 * sizeof(u32)) << 16;
 
-  wrmsr(0xC0000100, ((u64)local) + (PGSIZE / 2));
+  wrmsr(GS_BASE_MSR, ((u64)local) + (PGSIZE / 2));
 
   // zero out the CPU
   cpu_t *c = &cpus[cpunum++];
+	__set_cpu_struct(c);
+
   memset(c, 0, sizeof(*c));
   c->local = local;
 	c->cpunum = smp::cpunum();
@@ -117,6 +126,8 @@ static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {
 }
 
 void cpu::switch_vm(struct thread *thd) {
+
+
   auto c = current();
   auto tss = (u32 *)(((char *)c.local) + 1024);
 
@@ -138,19 +149,13 @@ void cpu::switch_vm(struct thread *thd) {
   }
 
   thd->proc.mm->switch_to();
+
+	// load the TLS :)
+	if (thd->tls_uaddr != 0)
+  	wrmsr(FS_BASE_MSR, thd->tls_uaddr);
 }
 
 cpu_t &cpu::current() {
-#ifdef CHARIOT_HRT
-	return cpus[0];
-#endif
-  if (s_current == NULL) {
-
-		arch::cli();
-    int ind = smp::cpunum();
-		arch::sti();
-    s_current = &cpus[ind];
-  }
-
-  return *s_current;
+	cpu_t *c = __get_cpu_struct();
+	return *c;
 }

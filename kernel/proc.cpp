@@ -326,21 +326,6 @@ bool process::is_dead(void) {
 int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   scoped_lock lck(this->datalock);
 
-  // auto &st = cpu::current().kstat;
-  // printk("t:%-8zu u:%-8zu k:%-8zu i:%-8zu\n", st.ticks, st.uticks, st.kticks,
-  // st.iticks);
-
-  /*
-  printk("exec (pid=%d) %s:\n", pid, path.get());
-  for (int i = 0; i < argv.size(); i++) {
-          printk("   argv[%d] = '%s'\n", i, argv[i].get());
-  }
-  for (int i = 0; i < envp.size(); i++) {
-          printk("   envp[%d] = '%s'\n", i, envp[i].get());
-  }
-  */
-
-
 
   // try to load the binary
   fs::inode *exe = NULL;
@@ -562,4 +547,14 @@ int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
 	thd->kickoff(fn, PS_RUNNABLE);
 
 	return tid;
+}
+
+
+
+
+
+
+
+int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
+	return -ENOTIMPL;
 }

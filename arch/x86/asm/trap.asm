@@ -1,10 +1,19 @@
 ;; #include "mmu.h"
 
+%macro swapgs_if_needed 0
+		cmp QWORD [rsp + 16], 0x08
+		jne .1
+		swapgs
+	.1:
+%endmacro
+
+
 ; bits 32
 extern trap
 global alltraps
 
 alltraps:
+	swapgs_if_needed
 	; Build trap frame.
   push r15
   push r14
@@ -48,6 +57,7 @@ trapret:
 
   ; discard trapnum and errorcode
   add rsp, 16
+	swapgs_if_needed
   iretq
 
 
@@ -68,6 +78,7 @@ jmp_to_userspace:
     mov rsi, rcx        ;; user arg 2
     mov rdx, r8         ;; user arg 3
     mov rbp, rdi        ;; set user_rbp == user_rsp
+		swapgs_if_needed
     iretq
 
 

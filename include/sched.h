@@ -126,6 +126,16 @@ struct process final : public refcounted<struct process> {
 
   mm::space *mm;
 
+
+	ref<fs::file> executable;
+
+	struct {
+		bool exists = false;
+		off_t fileoff;
+		size_t memsz;
+		size_t fsize;
+	} tls_info;
+
   u64 create_tick = 0;
   // The current working directory of the process.
   fs::inode *cwd = nullptr;
@@ -253,6 +263,9 @@ struct thread final {
   reg_t *trap_frame;
   struct thread_waitqueue_info wq;
 
+	off_t tls_uaddr;
+	size_t tls_usize;
+
   union /* flags */ {
     u64 flags = 0;
 
@@ -265,6 +278,7 @@ struct thread final {
                             // reaped by the parent or another thread
     };
   };
+
 
 #define BLOCKRES_NORMAL 0
 #define BLOCKRES_SIGNAL 1
@@ -301,6 +315,8 @@ struct thread final {
 
   // tell the thread to start running at a certain address.
   bool kickoff(void *rip, int state);
+
+	off_t setup_tls(void);
 
   static thread *lookup(pid_t);
   static bool teardown(thread *);

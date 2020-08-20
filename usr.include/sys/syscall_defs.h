@@ -52,3 +52,4 @@
 #define SYS_sigprocmask              (0x33)
 #define SYS_awaitfs                  (0x34)
 #define SYS_kshell                   (0x35)
+#define SYS_futex                    (0x36)
