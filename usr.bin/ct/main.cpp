@@ -1,6 +1,8 @@
 #include <gfx/font.h>
 #include <ui/application.h>
 #include <chariot/fs/magicfd.h>
+#include <sys/sysbind.h>
+#include <fcntl.h>
 
 #include <pthread.h>
 
@@ -23,7 +25,6 @@ class painter : public ui::view {
 
     s.clear(0xFF'FF'FF);
 
-
     auto pr = gfx::printer(s, *gfx::font::get_default(), 0, 0, width());
     pr.set_color(0xFF0000);
     pr.printf("x: %d\n", x);
@@ -43,53 +44,9 @@ class painter : public ui::view {
 };
 
 
-pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
-
-
-// A normal C function that is executed as a thread
-// when its name is specified in pthread_create()
-void* func(void* vargp) {
-  pthread_mutex_lock(&m);
-  printf("B!\n");
-  pthread_mutex_unlock(&m);
-  return NULL;
-}
-
-
-
-
-
-__thread int val;
-
-
 int main(int argc, char** argv) {
-
-
-	val = 30;
-	printf("%p\n", &val);
-
-  return 0;
-
-
-  pthread_t thread_id;
-  printf("Before Thread\n");
-
-  pthread_mutex_lock(&m);
-  pthread_create(&thread_id, NULL, func, NULL);
-  printf("A\n");
-  pthread_mutex_unlock(&m);
-
-  while (1) {
-  }
-
-  // pthread_join(thread_id, NULL);
-  exit(0);
-
-
-
   // connect to the window server
   ui::application app;
-
 
   ui::window* win = app.new_window("My Window", 300, 300);
   // win->set_view<ui::stackview>(ui::direction::horizontal);

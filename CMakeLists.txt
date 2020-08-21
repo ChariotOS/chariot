@@ -28,6 +28,7 @@ endif()
 set(TOOLCHAIN_PATH ${CMAKE_SOURCE_DIR}/toolchain/local/bin)
 set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/x86_64-elf-chariot-)
 
+# set(POSITION_INDEPENDENT_CODE TRUE)
 
 set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc)
 set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++)
@@ -76,9 +77,12 @@ function(chariot_libc target_name fs_name)
 endfunction()
 
 
+
 function(chariot_lib target_name fs_name)
+
     add_library(${target_name} ${SOURCES} ${GENERATED_SOURCES})
-    install(TARGETS ${target_name} ARCHIVE DESTINATION lib)
+    install(TARGETS ${target_name} ARCHIVE DESTINATION lib/shared)
+
 
 
 		target_link_libraries(${target_name} libc)
@@ -90,7 +94,9 @@ function(chariot_lib target_name fs_name)
             add_dependencies(${target_name} generate_${generated_name})
         endforeach()
     endif()
+
 endfunction()
+
 
 
 

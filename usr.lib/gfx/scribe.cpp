@@ -567,20 +567,20 @@ void gfx::scribe::fill_circle_helper(int x0, int y0, int r, int corner,
 }
 
 
-void gfx::scribe::draw_frame(const gfx::rect &frame, uint32_t bg) {
+void gfx::scribe::draw_frame(const gfx::rect &frame, uint32_t bg, uint32_t fg) {
   auto highlight = gfx::color::blend(gfx::color::alpha(0xFFFFFF, 0.8), bg);
-  auto shadow = gfx::color::blend(gfx::color::alpha(0x000000, 0.2), bg);
+  auto shadow = gfx::color::blend(gfx::color::alpha(fg, 0.2), bg);
 
   auto l = frame.left();
   auto t = frame.top();
 
   for (int y = 0; y < frame.h; y++) {
-    draw_pixel(0 + l, y + t, 0x000000);
-    draw_pixel(frame.w + l - 1, y + t, 0x000000);
+    draw_pixel(0 + l, y + t, fg);
+    draw_pixel(frame.w + l - 1, y + t, fg);
 
     // top or bottom black bar
     if (unlikely(y == 0 || y == frame.h - 1)) {
-      for (int x = 0; x < frame.w; x++) draw_pixel(x + l, y + t, 0x000000);
+      for (int x = 0; x < frame.w; x++) draw_pixel(x + l, y + t, fg);
       continue;
     }
 

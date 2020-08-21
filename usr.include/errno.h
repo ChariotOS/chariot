@@ -7,14 +7,14 @@ extern "C" {
 
 #include <chariot/errno.h>
 
-#define __RETURN_WITH_ERRNO(rc, good_ret, bad_ret) \
-  do {                                             \
-    if (rc < 0) {                                  \
-      errno = -rc;                                 \
-      return (bad_ret);                            \
-    }                                              \
-    errno = 0;                                     \
-    return (good_ret);                             \
+#define __RETURN_WITH_ERRNO(rc) \
+  do {                          \
+    if (rc < 0) {               \
+      errno = -rc;              \
+      return (-1);              \
+    }                           \
+    errno = 0;                  \
+    return (rc);                \
   } while (0)
 
 #ifdef __GNUC__
@@ -28,7 +28,7 @@ int *__errno_location(void);
   ({                          \
     typeof(expr) _res;        \
     do {                      \
-      _res = expr;           \
+      _res = expr;            \
     } while (errno == EINTR); \
     _res;                     \
   })

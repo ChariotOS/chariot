@@ -109,6 +109,10 @@ with open('usr.include/sys/sysbind.h', 'w+') as f:
         f.write(s.cdecl('sysbind_') + ';\n')
 
 
+    for s in syscalls:
+       if s.data['ret'] == 'int' and False:
+           f.write(s.cdecl('errbind_') + ';\n')
+
     f.write('#ifdef __cplusplus\n')
     f.write('}\n')
 
@@ -117,16 +121,29 @@ with open('usr.include/sys/sysbind.h', 'w+') as f:
 
 with open('libc/src/sysbind.c', 'w+') as f:
     f.write("#include <sys/sysbind.h>\n");
+    f.write("#include <sys/syscall.h>\n");
     f.write("""
 extern long __syscall_eintr(int num, unsigned long long a, unsigned long long b,
                       unsigned long long c, unsigned long long d,
                       unsigned long long e, unsigned long long f);""")
 
     for sc in syscalls:
-        decl = sc.cdecl('sysbind_')
-        args = ['0'] * 6
-        ret = sc.data['ret']
-        for i, arg in enumerate(sc.args):
-            args[i] = '(unsigned long long)' + arg[0]
-        f.write(f'{decl} {{ return ({ret})__syscall_eintr({sc.num}, {", ".join(args)}); }}\n')
-(f'    ret\n')
+        prefixes = [
+            ('sysbind_', lambda call: call)
+        ]
+
+        if sc.data['ret'] == 'int' and False:
+            prefixes.append(('errbind_', lambda call: f'errno_wrap({call})'))
+
+        for pfx in prefixes:
+            decl = sc.cdecl(pfx[0])
+            args = ['0'] * 6
+            ret = sc.data['ret']
+            for i, arg in enumerate(sc.args):
+                args[i] = '(unsigned long long)' + arg[0]
+            f.write(f'{decl} {{\n')
+
+            the_call = f'__syscall_eintr({sc.num}, {", ".join(args)})'
+            f.write(f'    return ({ret}){pfx[1](the_call)};\n')
+            f.write(f'}}\n')
+            f.write(f'\n')

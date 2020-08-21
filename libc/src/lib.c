@@ -48,7 +48,6 @@ void libc_start(int argc, char **argv, char **envp) {
 
   call_global_constructors();
 
-  handle_executable(MAGICFD_EXEC);
 
   // TODO: parse envp and store in a better format!
   exit(main(__argc, __argv, environ));
@@ -56,15 +55,15 @@ void libc_start(int argc, char **argv, char **envp) {
   // TODO: exit!
   while (1) {
   }
+
+  handle_executable(MAGICFD_EXEC);
 }
 
 
 void handle_executable(int fd) {
-  /*
-struct stat st;
-fstat(fd, &st);
+  struct stat st;
+  fstat(fd, &st);
 
-void *buf = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-munmap(buf, st.st_size);
-  */
+  void *buf = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+  munmap(buf, st.st_size);
 }

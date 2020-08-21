@@ -115,6 +115,9 @@ char ck::string::operator[](unsigned int j) const {
   return m_buf[j];
 }
 
+
+
+
 ck::string& ck::string::operator=(const string& s) {
   reserve(s.m_cap);
   m_buf[0] = '\0';
@@ -122,7 +125,16 @@ ck::string& ck::string::operator=(const string& s) {
   return *this;
 }
 
+static void foo() {
+
+}
+
 ck::string& ck::string::operator=(const char* s) {
+	if (s == NULL) return *this;
+	off_t addr = (off_t)s;
+	if (addr < 0x1000) {
+		foo();
+	}
   unsigned int len = strlen(s);
   reserve(len + 1);
   m_len = len;

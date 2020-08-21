@@ -176,7 +176,7 @@ draw_text(thnk, fnt, str, color, flags);
 
 
     // draw a "theme frame" that fits with the chariot design style
-    void draw_frame(const gfx::rect &r, uint32_t bg);
+    void draw_frame(const gfx::rect &r, uint32_t bg, uint32_t border = 0x000000);
 
     // draw a rectangle border
     void draw_rect(const gfx::rect &r, uint32_t color);
