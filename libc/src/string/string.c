@@ -68,7 +68,7 @@ int atoi(const char *s) {
 
 double atof(const char *c) {
 	double res = 0.0;
-	sscanf(c, "%f", &res);
+	sscanf(c, "%lf", &res);
 	return res;
 }
 

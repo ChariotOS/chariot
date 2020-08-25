@@ -1,13 +1,14 @@
-#include <vconsole.h>
 
 #ifdef KERNEL
 
+#include <vconsole.h>
 extern void *malloc(unsigned long);
 extern void free(void *);
 
 #define NULL (0)
 
 #else
+#include <chariot/vconsole.h>
 #include <stdlib.h>
 #endif
 
@@ -30,7 +31,7 @@ static void vc_write(struct vcons *vc, long p, char c, char attr, int force) {
     vc->buf[p].c = c;
     vc->buf[p].attr = attr;
     int flags = 0;
-    if (x == vc->x && y == vc->y) {
+    if ((int)x == (int)vc->x && (int)y == (int)vc->y) {
       flags |= VC_SCRIBE_CURSOR;
     }
     // for now, scribe with no flags. the cursor flag is

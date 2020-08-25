@@ -1,0 +1,21 @@
+
+
+<decl myview(value)>
+	<ui:textview>
+		{value}
+	</end>
+</end>
+
+
+
+<application>
+	<myview
+		value="Nice Meme"
+		ui:background=#FFFFFF/>
+</end>
+
+
+
+<%for(x in list)>
+	<myview value={x}/>
+</end>

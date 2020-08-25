@@ -30,7 +30,7 @@ static unsigned long read_timestamp(void) {
 static ck::string unique_ident(void) {
   static long next_id = 0;
   char buf[50];
-  snprintf(buf, 50, "%d:%d-%llx", getpid(), next_id++, read_timestamp());
+  snprintf(buf, 50, "%d:%ld-%lx", getpid(), next_id++, read_timestamp());
 
   return buf;
 }

@@ -123,7 +123,7 @@ int main(int argc, char **argv, char **envp) {
     }
   }
 
-  char prompt[64];
+  char prompt[256];
   char uname[32];
   char *cwd[255];
   char hostname[50];
@@ -163,7 +163,7 @@ int main(int argc, char **argv, char **envp) {
       disp_cwd = "~";
     }
 
-    snprintf(prompt, 64, "[%s@%s %s]%c ", uname, hostname, disp_cwd,
+    snprintf(prompt, 256, "[%s@%s %s]%c ", uname, hostname, disp_cwd,
              uid == 0 ? '#' : '$');
     // snprintf(prompt, 64, "%s %c ", disp_cwd, uid == 0 ? '#' : '$');
 

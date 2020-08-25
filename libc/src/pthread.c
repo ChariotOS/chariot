@@ -82,8 +82,7 @@ static int __pthread_trampoline(void *arg) {
 }
 
 int pthread_create(pthread_t *thd, const pthread_attr_t *attr, void *(*fn)(void *), void *arg) {
-
-	printf("fs=%p\n", fs());
+  printf("fs=%p\n", fs());
   struct __pthread *data = malloc(sizeof(*data));
 
   data->stack_size = PTHREAD_STACK_SIZE;
@@ -160,3 +159,41 @@ int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr) 
 int pthread_mutex_destroy(pthread_mutex_t *mutex) { return 0; }
 
 /////////////////////////////////////////////////////////////////
+
+
+
+
+static void *threadDataTable[64];
+static int freeEntry = 0;
+int pthread_key_create(pthread_key_t *key, void (*a)(void *)) {
+  assert(freeEntry < 64);
+
+  *key = freeEntry;
+  freeEntry++;
+  return 0;
+}
+
+int pthread_once(pthread_once_t *control, void (*init)(void)) {
+  if (*control == 0) {
+    (*init)();
+    *control = 1;
+  }
+  return 0;
+}
+
+void *pthread_getspecific(pthread_key_t key) { return threadDataTable[key]; }
+
+int pthread_setspecific(pthread_key_t key, const void *data) {
+  threadDataTable[key] = (void *)data;
+  return 0;
+}
+
+
+
+
+int pthread_cond_init(pthread_cond_t *c, const pthread_condattr_t *att) { return -1; }
+int pthread_cond_destroy(pthread_cond_t *c) { return -1; }
+int pthread_cond_wait(pthread_cond_t *c, pthread_mutex_t *m) { return -1; }
+int pthread_cond_timedwait(pthread_cond_t *c, pthread_mutex_t *m, const struct timespec *ts) { return -1; }
+int pthread_cond_broadcast(pthread_cond_t *c) { return -1; }
+int pthread_cond_signal(pthread_cond_t *c) { return -1; }

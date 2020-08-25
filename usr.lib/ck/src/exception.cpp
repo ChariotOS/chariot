@@ -4,7 +4,7 @@
 namespace std {
 	struct type_info;
 }
-
+/*
 
 extern "C" void* __cxa_allocate_exception(size_t thrown_size) throw() {
 	return malloc(thrown_size);
@@ -31,3 +31,4 @@ extern "C" void* __cxa_begin_catch(void* exceptionObject) throw() {
 
 
 extern "C" void __cxa_end_catch(void) {}
+*/

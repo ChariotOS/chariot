@@ -13,5 +13,7 @@ file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 	src/*.asm
 )
 
+
 chariot_libc(libc c)
-target_link_libraries(libc crt0)
+
+target_link_libraries(libc crt0 "${CMAKE_CURRENT_LIST_DIR}/libgcc.a")

@@ -1,17 +1,18 @@
-#include <ck/eventloop.h>
-#include <ck/io.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <sys/ioctl.h>
-#include <sys/sysbind.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
+#include <ui/application.h>
+// #include "terminalview.h"
 
 extern const char **environ;
 
 
 int main() {
+	// ui::application app;
+
+  // ui::window* win = app.new_window("Terminal", 300, 300);
+  // win->set_view<terminalview>(rows, cols);
+
+	// app.start();
+
+#if 0
   const char *cmd[] = {"/bin/echo", "hello, world", NULL};
   int ret = sysbind_execve(cmd[0], cmd, environ);
   perror("exec");
@@ -57,8 +58,6 @@ int main() {
 
     ev.start();
   }
-
-
-
+#endif
   return 0;
 }

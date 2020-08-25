@@ -1,10 +1,13 @@
-#include <gfx/font.h>
-#include <ui/application.h>
 #include <chariot/fs/magicfd.h>
-#include <sys/sysbind.h>
 #include <fcntl.h>
-
+#include <gfx/font.h>
 #include <pthread.h>
+#include <sys/sysbind.h>
+#include <ui/application.h>
+
+
+#include <cxxabi.h>
+#include <typeinfo>
 
 struct line {
   gfx::point start;
@@ -44,12 +47,30 @@ class painter : public ui::view {
 };
 
 
+template <typename T>
+ck::string type_name(const T& val) {
+  size_t len = 512;
+  char buffer[len];
+  int status = 0;
+  char* name = __cxxabiv1::__cxa_demangle(typeid(val).name(), buffer, &len, &status);
+  return ck::string(name, len);
+}
+
 int main(int argc, char** argv) {
+  auto s = type_name(argv);
+  printf("%s\n", s.get());
+
+
+  int val = 0;
+  try {
+    throw val;
+  } catch (int a) {
+    printf("caught %d\n", a);
+  }
   // connect to the window server
   ui::application app;
 
   ui::window* win = app.new_window("My Window", 300, 300);
-  // win->set_view<ui::stackview>(ui::direction::horizontal);
   win->set_view<painter>();
 
   auto input = ck::file::unowned(0);

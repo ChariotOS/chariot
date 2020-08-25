@@ -64,7 +64,7 @@ void lumen::screen::set_resolution(int w, int h) {
   info.height = h;
 	if (ioctl(fd, FB_GET_INFO, &info) < 0) {
 		printf("[lumen]: failed to set resolution, loading existing state\n");
-		printf("[lumen]: w: %d, h: %d\n", old_info.width, old_info.height);
+		printf("[lumen]: w: %ld, h: %ld\n", old_info.width, old_info.height);
 		info = old_info;
 	}
   m_bounds = gfx::rect(0, 0, info.width, info.height);

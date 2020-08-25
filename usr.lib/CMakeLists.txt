@@ -3,7 +3,7 @@
 # make sure the userspace programs and libraries use this
 add_link_options(LINKER:-T ${CMAKE_CURRENT_SOURCE_DIR}/../user.ld -z max-page-size=0x1000 -nostdlib)
 
-include_directories(../usr.include)
+include_directories(../usr.include ./c++/include)
 
 
 MACRO(SUBDIRLIST result curdir)

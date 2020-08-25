@@ -11,8 +11,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__ARCH_${ARCH}__ -mno-red-zone -fno-omit-f
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-protector -mtls-direct-seg-refs -fno-pie -Wno-sign-compare")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -mcmodel=large -Wall -fno-common")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-initializer-override -Wstrict-overflow=5 -fno-tree-vectorize")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-address-of-packed-member -Wno-strict-overflow -DGIT_REVISION=\"git revision, idk\" -DKERNEL ")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++17 -fno-rtti -fno-exceptions")

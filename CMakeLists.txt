@@ -60,10 +60,22 @@ endif()
 
 set(LDFLAGS -m elf_x86_64 -z max-page-size=0x1000)
 set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -mmmx -fno-omit-frame-pointer -msse -msse2 -DUSERLAND -D__ARCH_${ARCH}__ -ffreestanding -Wall")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__ARCH_${ARCH}__")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSERLAND")
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++2a -fdiagnostics-color=always")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -fno-exceptions")
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -mmmx -fno-omit-frame-pointer -msse -msse2 -Wall -Wno-sign-compare")
+
+
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a -fdiagnostics-color=always")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
+
+
 
 
 
@@ -78,22 +90,27 @@ endfunction()
 
 
 
+
 function(chariot_lib target_name fs_name)
 
     add_library(${target_name} ${SOURCES} ${GENERATED_SOURCES})
-    install(TARGETS ${target_name} ARCHIVE DESTINATION lib/shared)
+    install(TARGETS ${target_name} ARCHIVE DESTINATION usr/lib)
 
 
+		# target_link_libraries(${target_name} libc)
+		set_target_properties(${target_name} PROPERTIES OUTPUT_NAME ${fs_name})
 
-		target_link_libraries(${target_name} libc)
-    set_target_properties(${target_name} PROPERTIES OUTPUT_NAME ${fs_name})
-    if(DEFINED GENERATED_SOURCES)
-        set_source_files_properties(${GENERATED_SOURCES} PROPERTIES GENERATED 1)
-        foreach(generated ${GENERATED_SOURCES})
-            get_filename_component(generated_name ${generated} NAME)
-            add_dependencies(${target_name} generate_${generated_name})
-        endforeach()
-    endif()
+		foreach(src ${SOURCES})
+			if (${src} MATCHES "cpp$")
+				message(STATUS "${target_name} is a c++ project")
+				if (NOT ${target_name} STREQUAL "libck")
+					message(STATUS "${target_name} is a c++ project")
+					# only link in libck if it is a c++ project
+					target_link_libraries(${target_name} libck libcxxrt)
+				endif()
+				break()
+			endif()
+		endforeach(src)
 
 endfunction()
 
@@ -107,13 +124,12 @@ function(chariot_bin target_name)
 		target_link_libraries(${target_name} crt0 libc libm)
 
 
-		target_link_libraries(${target_name} libck)
-
 		foreach(src ${SOURCES})
 			if (${src} MATCHES "cpp$")
-				# message(STATUS "${target_name} is a c++ project")
+
+				message(STATUS "${target_name} is a c++ project")
 				# only link in libck if it is a c++ project
-				# target_link_libraries(${target_name} libck)
+				target_link_libraries(${target_name} libck libcxxrt)
 				break()
 			endif()
 		endforeach(src)
@@ -121,11 +137,10 @@ function(chariot_bin target_name)
 endfunction()
 
 add_subdirectory(kernel)
-# add_subdirectory(arch/${ARCH})
 
 add_subdirectory(libc)
-add_subdirectory(usr.bin)
 add_subdirectory(usr.lib)
+add_subdirectory(usr.bin)
 
 
 

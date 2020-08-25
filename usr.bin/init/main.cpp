@@ -98,6 +98,7 @@ int main(int argc, char **argv) {
   sigprocmask(SIG_SETMASK, &set, NULL);
 
 
+
   if (getpid() != 1) {
     fprintf(stderr, "init: must be run as pid 1\n");
     return -1;

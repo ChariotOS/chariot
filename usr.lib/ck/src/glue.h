@@ -34,7 +34,7 @@ struct _Unwind_Context {
     void * empty;
 };
 
-void __cxa_pure_virtual(void);
+// void __cxa_pure_virtual(void);
 int __cxa_atexit(void (*destructor)(void*), void * arg, void * __dso_handle);
 void __cxa_finalize(void *f);
 void _Unwind_Resume(void);

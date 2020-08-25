@@ -109,9 +109,26 @@ int pthread_cond_broadcast(pthread_cond_t *);
 int pthread_cond_signal(pthread_cond_t *);
 
 
+
+
+
+int pthread_key_create(pthread_key_t *, void (*)(void *));
+int pthread_key_delete(pthread_key_t);
+void *pthread_getspecific(pthread_key_t);
+int pthread_setspecific(pthread_key_t, const void *);
+
+
+
+int pthread_once(pthread_once_t *, void (*)(void));
+
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* __PTHREAD_H */
+
+
+
+
 

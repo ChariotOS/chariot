@@ -15,7 +15,7 @@
 #include <bits/alltypes.h>
 // placement new
 inline void *operator new(size_t, void *ptr) { return ptr; }
-
+// #include <new>
 
 extern "C" {
 #endif

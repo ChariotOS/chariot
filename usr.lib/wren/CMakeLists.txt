@@ -19,7 +19,5 @@ set(SOURCES
 
 include_directories(src/vm src/optional src/include)
 
-chariot_lib(libwren wren)
-
-
-target_link_libraries(libwren libm)
+# chariot_lib(libwren wren)
+# target_link_libraries(libwren libm)
