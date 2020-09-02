@@ -20,10 +20,10 @@ extern "C" {
 #include <bits/alltypes.h>
 
 
-int atoi (const char *);
-long atol (const char *);
-long long atoll (const char *);
-double atof (const char *);
+int atoi(const char *);
+long atol(const char *);
+long long atoll(const char *);
+double atof(const char *);
 
 void *malloc(size_t sz);
 void free(void *);
@@ -43,15 +43,15 @@ int setenv(const char *name, const char *value, int overwrite);
 int unsetenv(const char *name);
 
 
-void qsort(void * base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
+void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
 
 void abort(void);
 
 char *ptsname(int fd);
 
 #define RAND_MAX (0x7fffffff)
-int rand (void);
-void srand (unsigned);
+int rand(void);
+void srand(unsigned);
 
 // nonstandard chariot functions
 #ifdef _CHARIOT_SRC
@@ -70,6 +70,12 @@ void debug_hexdump(void *, size_t);
 
 long int strtol(const char *nptr, char **endptr, int base);
 long long int strtoll(const char *nptr, char **endptr, int base);
+
+
+int posix_memalign(void **memptr, size_t alignment, size_t size);
+
+
+void *bsearch(const void *key, const void *base, size_t nel, size_t width, int (*cmp)(const void *, const void *));
 
 
 #ifdef __cplusplus

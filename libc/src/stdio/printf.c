@@ -987,3 +987,8 @@ int fprintf(FILE* stream, const char* format, ...) {
   va_end(va);
   return ret;
 }
+
+
+int vsprintf(char *buffer, const char *format, va_list va) {
+	return vsnprintf(buffer, 0x7FFFFFF, format, va);
+}

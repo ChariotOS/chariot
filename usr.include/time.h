@@ -40,6 +40,7 @@ struct tm {
 
 time_t time(time_t *);
 time_t getlocaltime(struct tm *tloc);  // nonstandard
+struct tm *localtime(const time_t *timep);
 
 
 // clock() returns milliseconds

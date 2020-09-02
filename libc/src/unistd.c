@@ -113,3 +113,19 @@ int usleep(unsigned long usec) {
   sysbind_usleep(usec);
   return 0;
 }
+
+
+// TODO: ftruncate systemcall
+int ftruncate(int fildes, off_t length) {
+	return -ENOSYS;
+}
+
+int fsync(int fd) {
+	return -ENOSYS;
+}
+
+char *getcwd(char *buf, size_t sz) {
+	if (sysbind_getcwd(buf, sz) < 0) return NULL;
+	return buf;
+}
+

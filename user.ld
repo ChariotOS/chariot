@@ -60,6 +60,9 @@ SECTIONS
 		*(.gnu.warning)
 	}
 
+	.tdata      : { *(.tdata .tdata.* .gnu.linkonce.td.*) }
+	.tbss       : { *(.tbss .tbss.* .gnu.linkonce.tb.*) *(.tcommon) }
+
 
 	.rodata ALIGN(4K) : {
 

@@ -24,6 +24,7 @@ extern "C" {
 
 int fstat(int fd, struct stat *statbuf);
 int lstat(const char *path, struct stat *statbuf);
+int stat(const char *path, struct stat *statbuf);
 
 #endif
 

@@ -81,6 +81,9 @@ extern "C" {
 
 #define PTHREAD_BARRIER_SERIAL_THREAD (-1)
 
+pthread_t pthread_self(void);
+
+
 int pthread_create(pthread_t *, const pthread_attr_t *, void *(*)(void *), void *);
 void pthread_exit(void *) __attribute__((noreturn));
 int pthread_kill(pthread_t, int);

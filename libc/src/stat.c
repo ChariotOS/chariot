@@ -7,6 +7,10 @@ int fstat(int fd, struct stat *statbuf) {
   return errno_wrap(sysbind_fstat(fd, statbuf));
 }
 
+int stat(const char *path, struct stat *statbuf) {
+  return errno_wrap(sysbind_lstat(path, statbuf));
+}
+
 int lstat(const char *path, struct stat *statbuf) {
   return errno_wrap(sysbind_lstat(path, statbuf));
 }

@@ -15,8 +15,7 @@
 extern char **environ;
 
 
-static void insertion_sort(void *bot, size_t nmemb, size_t size,
-                           int (*compar)(const void *, const void *)) {
+static void insertion_sort(void *bot, size_t nmemb, size_t size, int (*compar)(const void *, const void *)) {
   int cnt;
   unsigned char ch;
   char *s1, *s2, *t1, *t2, *top;
@@ -35,8 +34,7 @@ static void insertion_sort(void *bot, size_t nmemb, size_t size,
   }
 }
 
-static void insertion_sort_r(void *bot, size_t nmemb, size_t size,
-                             int (*compar)(const void *, const void *, void *),
+static void insertion_sort_r(void *bot, size_t nmemb, size_t size, int (*compar)(const void *, const void *, void *),
                              void *arg) {
   int cnt;
   unsigned char ch;
@@ -56,15 +54,13 @@ static void insertion_sort_r(void *bot, size_t nmemb, size_t size,
   }
 }
 
-void qsort(void *bot, size_t nmemb, size_t size,
-           int (*compar)(const void *, const void *)) {
+void qsort(void *bot, size_t nmemb, size_t size, int (*compar)(const void *, const void *)) {
   if (nmemb <= 1) return;
 
   insertion_sort(bot, nmemb, size, compar);
 }
 
-void qsort_r(void *bot, size_t nmemb, size_t size,
-             int (*compar)(const void *, const void *, void *), void *arg) {
+void qsort_r(void *bot, size_t nmemb, size_t size, int (*compar)(const void *, const void *, void *), void *arg) {
   if (nmemb <= 1) return;
 
   insertion_sort_r(bot, nmemb, size, compar, arg);
@@ -251,8 +247,7 @@ static void set_color_for(char c) {
     set_color(C_CYAN);
   } else if (c == '\n' || c == '\r') {
     set_color(C_GREEN);
-  } else if (c == '\a' || c == '\b' || c == 0x1b || c == '\f' || c == '\n' ||
-             c == '\r') {
+  } else if (c == '\a' || c == '\b' || c == 0x1b || c == '\f' || c == '\n' || c == '\r') {
     set_color(C_RED);
   } else if ((unsigned char)c == 0xFF) {
     set_color(C_MAGENTA);
@@ -360,8 +355,7 @@ void debug_hexdump(void *vbuf, size_t len) {
 
 
 
-long long strtoll_l(const char *__restrict nptr, char **__restrict endptr,
-                    int base) {
+long long strtoll_l(const char *__restrict nptr, char **__restrict endptr, int base) {
   const char *s;
   unsigned long long acc;
   char c;
@@ -384,8 +378,7 @@ long long strtoll_l(const char *__restrict nptr, char **__restrict endptr,
     if (c == '+') c = *s++;
   }
   if ((base == 0 || base == 16) && c == '0' && (*s == 'x' || *s == 'X') &&
-      ((s[1] >= '0' && s[1] <= '9') || (s[1] >= 'A' && s[1] <= 'F') ||
-       (s[1] >= 'a' && s[1] <= 'f'))) {
+      ((s[1] >= '0' && s[1] <= '9') || (s[1] >= 'A' && s[1] <= 'F') || (s[1] >= 'a' && s[1] <= 'f'))) {
     c = s[1];
     s += 2;
     base = 16;
@@ -412,8 +405,7 @@ long long strtoll_l(const char *__restrict nptr, char **__restrict endptr,
    * Set 'any' if any `digits' consumed; make it negative to indicate
    * overflow.
    */
-  cutoff = neg ? (unsigned long long)-(LLONG_MIN + LLONG_MAX) + LLONG_MAX
-               : LLONG_MAX;
+  cutoff = neg ? (unsigned long long)-(LLONG_MIN + LLONG_MAX) + LLONG_MAX : LLONG_MAX;
   cutlim = cutoff % base;
   cutoff /= base;
   for (;; c = *s++) {
@@ -446,11 +438,8 @@ long long strtoll_l(const char *__restrict nptr, char **__restrict endptr,
   return (acc);
 }
 
-long int strtol(const char *nptr, char **endptr, int base) {
-  return strtoll(nptr, endptr, base);
-}
-long long strtoll(const char *__restrict nptr, char **__restrict endptr,
-                  int base) {
+long int strtol(const char *nptr, char **endptr, int base) { return strtoll(nptr, endptr, base); }
+long long strtoll(const char *__restrict nptr, char **__restrict endptr, int base) {
   return strtoll_l(nptr, endptr, base);
 }
 
@@ -462,4 +451,36 @@ char *ptsname(int fd) {
 
   snprintf(ptsname_buf, 32, "/dev/vtty%d", id);
   return ptsname_buf;
+}
+
+
+
+int posix_memalign(void **memptr, size_t alignment, size_t size) {
+  printf("posix_memalign sz: %d, align: %d\n", size, alignment);
+	*memptr = malloc(size);
+	return 0;
+  return -1;
+}
+
+
+void *bsearch(const void *key, const void *base, size_t nel, size_t width, int (*cmp)(const void *, const void *)) {
+  void *try
+    ;
+  int sign;
+  while (nel > 0) {
+    try
+      = (char *)base + width * (nel / 2);
+    sign = cmp(key, try);
+    if (sign < 0) {
+      nel /= 2;
+    } else if (sign > 0) {
+      base = (char *)try
+        +width;
+      nel -= nel / 2 + 1;
+    } else {
+      return try
+        ;
+    }
+  }
+  return NULL;
 }

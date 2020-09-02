@@ -9,6 +9,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#pragma weak main
+
 int __argc;
 char **__argv;
 
@@ -48,6 +50,10 @@ void libc_start(int argc, char **argv, char **envp) {
 
   call_global_constructors();
 
+	if (main == 0) {
+		printf("No main found!\n");
+		exit(-1);
+	}
 
   // TODO: parse envp and store in a better format!
   exit(main(__argc, __argv, environ));

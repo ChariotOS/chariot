@@ -81,6 +81,8 @@ static int __pthread_trampoline(void *arg) {
   return 0;
 }
 
+pthread_t pthread_self(void) { return 0; }
+
 int pthread_create(pthread_t *thd, const pthread_attr_t *attr, void *(*fn)(void *), void *arg) {
   printf("fs=%p\n", fs());
   struct __pthread *data = malloc(sizeof(*data));

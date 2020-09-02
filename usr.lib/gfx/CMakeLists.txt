@@ -2,4 +2,4 @@ file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cpp *.c *.asm)
 
 chariot_lib(libgfx gfx)
 
-target_link_libraries(libgfx libm)
+target_link_libraries(libgfx libm )

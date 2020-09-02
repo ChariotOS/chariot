@@ -82,6 +82,7 @@ int printf(const char *format, ...);
 int sprintf(char *str, const char *format, ...);
 int snprintf(char *buffer, size_t count, const char *format, ...);
 int vsnprintf(char *buffer, size_t count, const char *format, va_list va);
+int vsprintf(char *buffer, const char *format, va_list va);
 
 int fprintf(FILE *fp, const char *fmt, ...);
 int vfprintf(FILE* fp, const char* fmt, va_list ap);

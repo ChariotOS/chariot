@@ -28,6 +28,10 @@ __attribute__((noreturn)) void __assertion_failed(const char* msg);
 #define RELEASE_ASSERT assert
 #define TODO ASSERT_NOT_REACHED
 
+
+
+extern void __assert_fail(const char * assertion, const char * file, unsigned int line, const char * function);
+
 #ifdef __cplusplus
 }
 #endif

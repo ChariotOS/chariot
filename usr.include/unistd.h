@@ -39,6 +39,8 @@ void exit(int status);
 #define SEEK_END (-3)
 
 off_t lseek(int fd, off_t offset, int whence);
+int ftruncate(int fildes, off_t length);
+int fsync(int fd);
 
 pid_t gettid(void);
 pid_t getpid(void);

@@ -92,10 +92,12 @@ sudo mount ${dev}p1 $mnt/
 # delete all the directories besides boot/
 # echo 'clearing out old filesystem'
 
+ls -la $mnt/
+
 for dir in $mnt/*; do
     [ "$dir" = "$mnt/boot" ] && continue
-		#echo "removing $dir"
-		sudo rm -rf "$dir"
+		# echo "removing $dir"
+		# sudo rm -rf "$dir"
 done
 
 
@@ -119,16 +121,6 @@ sudo mkdir -p $mnt/boot/grub
 sudo cp kernel/grub.cfg $mnt/boot/grub/
 
 # sudo cp build/kernel/chariot.elf $mnt/boot/chariot.elf
-
-# create some device nodes
-sudo mknod $mnt/dev/urandom c 1 2
-# create the 'console' device
-sudo mknod $mnt/dev/console c 20 0
-sudo mknod $mnt/dev/mouse c 10 0
-sudo mknod $mnt/dev/fb c 21 0
-sudo mknod $mnt/dev/sb16 c 22 0
-
-# sudo ls -il $mnt/dev
 
 # only install grub on a new disk
 if [ $disk_exists -eq '0' ]; then

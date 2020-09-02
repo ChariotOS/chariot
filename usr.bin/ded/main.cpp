@@ -17,7 +17,7 @@ int main(int argc, const char **argv) {
 
 	// open the file!
 	const char *file = argv[1];
-	auto stream = ck::file(file, "rw");
+	auto stream = ck::file(file, "r+");
 
 	if (!stream) {
 		fprintf(stderr, "Failed to open '%s'\n", file);

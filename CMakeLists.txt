@@ -62,7 +62,7 @@ set(LDFLAGS -m elf_x86_64 -z max-page-size=0x1000)
 set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__ARCH_${ARCH}__")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSERLAND")
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -mmmx -fno-omit-frame-pointer -msse -msse2 -Wall -Wno-sign-compare")
@@ -84,7 +84,6 @@ function(chariot_libc target_name fs_name)
     add_library(${target_name} ${SOURCES})
     set_target_properties(${target_name} PROPERTIES OUTPUT_NAME ${fs_name})
 		install(TARGETS ${target_name} ARCHIVE DESTINATION lib)
-		message(STATUS ${CMAKE_CURRENT_BINARY_DIR})
 		target_link_directories(${target_name} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 endfunction()
 
@@ -102,9 +101,8 @@ function(chariot_lib target_name fs_name)
 
 		foreach(src ${SOURCES})
 			if (${src} MATCHES "cpp$")
-				message(STATUS "${target_name} is a c++ project")
 				if (NOT ${target_name} STREQUAL "libck")
-					message(STATUS "${target_name} is a c++ project")
+					# message(STATUS "${target_name} is a c++ project")
 					# only link in libck if it is a c++ project
 					target_link_libraries(${target_name} libck libcxxrt)
 				endif()
@@ -126,8 +124,7 @@ function(chariot_bin target_name)
 
 		foreach(src ${SOURCES})
 			if (${src} MATCHES "cpp$")
-
-				message(STATUS "${target_name} is a c++ project")
+				# message(STATUS "${target_name} is a c++ project")
 				# only link in libck if it is a c++ project
 				target_link_libraries(${target_name} libck libcxxrt)
 				break()

@@ -3,9 +3,9 @@
 #include <limits.h>
 #include <locale.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 #define ALIGN (sizeof(size_t))
 #define ONES ((size_t)-1 / UCHAR_MAX)
@@ -67,9 +67,9 @@ int atoi(const char *s) {
 }
 
 double atof(const char *c) {
-	double res = 0.0;
-	sscanf(c, "%lf", &res);
-	return res;
+  double res = 0.0;
+  sscanf(c, "%lf", &res);
+  return res;
 }
 
 char *strdup(const char *s) {
@@ -134,9 +134,7 @@ char *strncpy(char *restrict d, const char *restrict s, size_t n) {
     if (!n || !*s) goto tail;
     wd = (void *)d;
     ws = (const void *)s;
-    for (; n >= sizeof(size_t) && !HASZERO(*ws);
-         n -= sizeof(size_t), ws++, wd++)
-      *wd = *ws;
+    for (; n >= sizeof(size_t) && !HASZERO(*ws); n -= sizeof(size_t), ws++, wd++) *wd = *ws;
     d = (void *)wd;
     s = (const void *)ws;
   }
@@ -151,6 +149,13 @@ tail:
 char *strcat(char *dest, const char *src) {
   strcpy(dest + strlen(dest), src);
   return dest;
+}
+char *strncat(char *d, const char *s, size_t n) {
+  char *a = d;
+  d += strlen(d);
+  while (n && *s) n--, *d++ = *s++;
+  *d++ = 0;
+  return a;
 }
 
 size_t strlen(const char *s) {
@@ -197,9 +202,7 @@ int strncmp(const char *_l, const char *_r, size_t n) {
 
 int strcoll(const char *s1, const char *s2) { return strcmp(s1, s2); }
 
-#define BITOP(A, B, OP)                              \
-  ((A)[(size_t)(B) / (8 * sizeof *(A))] OP(size_t) 1 \
-   << ((size_t)(B) % (8 * sizeof *(A))))
+#define BITOP(A, B, OP) ((A)[(size_t)(B) / (8 * sizeof *(A))] OP(size_t) 1 << ((size_t)(B) % (8 * sizeof *(A))))
 
 size_t strspn(const char *s, const char *c) {
   const char *a = s;
@@ -292,18 +295,16 @@ char *strtok(char *str, const char *delim) {
   return strtok_r(str, delim, &saveptr);
 }
 
-const int _strtod_maxExponent_ =
-    511; /* Largest possible base 10 exponent.  Any
-          * exponent larger than this will already
-          * produce underflow or overflow, so there's
-          * no need to worry about additional digits.
-          */
+const int _strtod_maxExponent_ = 511; /* Largest possible base 10 exponent.  Any
+                                       * exponent larger than this will already
+                                       * produce underflow or overflow, so there's
+                                       * no need to worry about additional digits.
+                                       */
 
-const double _strtod_powersOf10_[] =
-    {      /* Table giving binary powers of 10.  Entry */
-     10.,  /* is 10^2^i.  Used to convert decimal */
-     100., /* exponents into floating-point numbers. */
-     1.0e4, 1.0e8, 1.0e16, 1.0e32, 1.0e64, 1.0e128, 1.0e256};
+const double _strtod_powersOf10_[] = {      /* Table giving binary powers of 10.  Entry */
+                                      10.,  /* is 10^2^i.  Used to convert decimal */
+                                      100., /* exponents into floating-point numbers. */
+                                      1.0e4, 1.0e8, 1.0e16, 1.0e32, 1.0e64, 1.0e128, 1.0e256};
 
 double strtod(const char *s, /* A decimal ASCII floating-point number,
                               * optionally preceded by white space.
@@ -496,9 +497,7 @@ done:
 
 float strtof(const char *s, char **p) { return strtod(s, p); }
 
-long double strtold(const char *restrict s, char **restrict p) {
-  return strtod(s, p);
-}
+long double strtold(const char *restrict s, char **restrict p) { return strtod(s, p); }
 
 static const struct lconv posix_lconv = {
     .decimal_point = ".",
@@ -565,19 +564,54 @@ int strcasecmp(const char *s1, const char *s2) {
   for (; foldcase(*s1) == foldcase(*s2); ++s1, ++s2) {
     if (*s1 == 0) return 0;
   }
-  return foldcase(*(const unsigned char *)s1) <
-                 foldcase(*(const unsigned char *)s2)
-             ? -1
-             : 1;
+  return foldcase(*(const unsigned char *)s1) < foldcase(*(const unsigned char *)s2) ? -1 : 1;
 }
 
 int strncasecmp(const char *s1, const char *s2, size_t n) {
   if (!n) return 0;
   do {
     if (foldcase(*s1) != foldcase(*s2++))
-      return foldcase(*(const unsigned char *)s1) -
-             foldcase(*(const unsigned char *)--s2);
+      return foldcase(*(const unsigned char *)s1) - foldcase(*(const unsigned char *)--s2);
     if (*s1++ == 0) break;
   } while (--n);
   return 0;
 }
+
+
+// idk, got this from musl
+#ifndef a_ctz_32
+#define a_ctz_32 a_ctz_32
+static inline int a_ctz_32(uint32_t x) {
+#ifdef a_clz_32
+  return 31 - a_clz_32(x & -x);
+#else
+  static const char debruijn32[32] = {0,  1,  23, 2,  29, 24, 19, 3,  30, 27, 25, 11, 20, 8, 4,  13,
+                                      31, 22, 28, 18, 26, 10, 7,  12, 21, 17, 9,  6,  16, 5, 15, 14};
+  return debruijn32[(x & -x) * 0x076be629 >> 27];
+#endif
+}
+#endif
+
+#ifndef a_ctz_64
+#define a_ctz_64 a_ctz_64
+static inline int a_ctz_64(uint64_t x) {
+  static const char debruijn64[64] = {0,  1,  2,  53, 3,  7,  54, 27, 4,  38, 41, 8,  34, 55, 48, 28,
+                                      62, 5,  39, 46, 44, 42, 22, 9,  24, 35, 59, 56, 49, 18, 29, 11,
+                                      63, 52, 6,  26, 37, 40, 33, 47, 61, 45, 43, 21, 23, 58, 17, 10,
+                                      51, 25, 36, 32, 60, 20, 57, 16, 50, 31, 19, 15, 30, 14, 13, 12};
+  if (sizeof(long) < 8) {
+    uint32_t y = x;
+    if (!y) {
+      y = x >> 32;
+      return 32 + a_ctz_32(y);
+    }
+    return a_ctz_32(y);
+  }
+  return debruijn64[(x & -x) * 0x022fdd63cc95386dull >> 58];
+}
+#endif
+
+static inline int a_ctz_l(unsigned long x) { return (sizeof(long) < 8) ? a_ctz_32(x) : a_ctz_64(x); }
+
+int ffs(int i) { return i ? a_ctz_l(i) + 1 : 0; }
+
