@@ -456,10 +456,9 @@ char *ptsname(int fd) {
 
 
 int posix_memalign(void **memptr, size_t alignment, size_t size) {
-  printf("posix_memalign sz: %d, align: %d\n", size, alignment);
+  // printf("posix_memalign sz: %d, align: %d\n", size, alignment);
 	*memptr = malloc(size);
 	return 0;
-  return -1;
 }
 
 
