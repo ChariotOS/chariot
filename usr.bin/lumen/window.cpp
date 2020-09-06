@@ -10,7 +10,8 @@
 #define FGCOLOR 0xF0F0F0
 #define BORDERCOLOR 0x000000
 
-#define TITLECOLOR 0x6261A1
+// #define TITLECOLOR 0x6261A1
+#define TITLECOLOR 0xFFFFFF
 
 
 auto title_font(void) {

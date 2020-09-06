@@ -648,8 +648,8 @@ void lumen::context::compose(void) {
 
   for (auto &r : dirty_regions) {
     if (r.intersects(screen.mouse_rect())) draw_mouse = true;
-    // scribe.fill_rect(r, 0x6261a1);
-		scribe.fill_rect(r, 0x313032);
+		// scribe.fill_rect(r, 0x313032);
+		scribe.fill_rect(r, 0x625373);
   }
 
 
