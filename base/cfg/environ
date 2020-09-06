@@ -1,2 +1,3 @@
 PATH=/bin:/usr/local/bin
 SHELL=/bin/sh
+MESA_NO_DITHER=

@@ -157,6 +157,7 @@ static inline int strcmp(const char *l, const char *r) {
 
 
 static inline size_t strlen(const char *s) {
+	if (s == NULL) return 0;
   const char *a = s;
   for (; *s; s++)
     ;

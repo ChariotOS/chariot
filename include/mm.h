@@ -171,6 +171,10 @@ namespace mm {
     space(off_t lo, off_t hi, ref<mm::pagetable>);
     ~space(void);
 
+
+		size_t copy_out(off_t addr, void *into, size_t len);
+
+		inline auto get_pt(void) { return pt; }
     void switch_to();
     mm::area *lookup(off_t va);
 

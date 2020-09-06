@@ -92,6 +92,30 @@ const char *excp_codes[128][2] = {
     {"Reserved", "N/A"},
 };
 
+
+/* eflags masks */
+#define CC_C 0x0001
+#define CC_P 0x0004
+#define CC_A 0x0010
+#define CC_Z 0x0040
+#define CC_S 0x0080
+#define CC_O 0x0800
+
+#define TF_SHIFT 8
+#define IOPL_SHIFT 12
+#define VM_SHIFT 17
+#define TF_MASK 0x00000100
+#define IF_MASK 0x00000200
+#define DF_MASK 0x00000400
+#define IOPL_MASK 0x00003000
+#define NT_MASK 0x00004000
+#define RF_MASK 0x00010000
+#define VM_MASK 0x00020000
+#define AC_MASK 0x00040000
+#define VIF_MASK 0x00080000
+#define VIP_MASK 0x00100000
+#define ID_MASK 0x00200000
+
 void arch::irq::eoi(int i) {
   if (i >= 32) {
     int pic_irq = i - 32;
@@ -187,21 +211,43 @@ extern const char *ksym_find(off_t);
 
 
 
+
 void dump_backtrace(off_t ebp) {
   printk("Backtrace (ebp=%p):\n", ebp);
 
   off_t stk_end = (off_t)curthd->stack + curthd->stack_size;
   // int i = 0;
   // printk("addr2line -e /tmp/chariot.elf ");
-  for (off_t *stack_ptr = (off_t *)ebp;
-       (off_t)stack_ptr <
-       stk_end /*&& (off_t)stack_ptr >= KERNEL_VIRTUAL_BASE */;
+  for (off_t *stack_ptr = (off_t *)ebp; (off_t)stack_ptr < stk_end /*&& (off_t)stack_ptr >= KERNEL_VIRTUAL_BASE */;
        stack_ptr = (off_t *)*stack_ptr) {
-    if (!VALIDATE_RD(stack_ptr, 16)) break;
+    // if (!VALIDATE_RD(stack_ptr, 16)) break;
     off_t retaddr = stack_ptr[1];
     printk("0x%p\n", retaddr);
   }
   printk("\n");
+}
+
+void dump_trapframe(reg_t *r) {
+  auto *tf = (struct x86_64regs *)r;
+  unsigned int eflags = tf->rflags;
+#define GET(name) (tf->name)
+#define REGFMT "%016p"
+  KWARN("RAX=" REGFMT " RBX=" REGFMT " RCX=" REGFMT " RDX=" REGFMT
+         "\n"
+         "RSI=" REGFMT " RDI=" REGFMT " RBP=" REGFMT " RSP=" REGFMT
+         "\n"
+         "R8 =" REGFMT " R9 =" REGFMT " R10=" REGFMT " R11=" REGFMT
+         "\n"
+         "R12=" REGFMT " R13=" REGFMT " R14=" REGFMT " R15=" REGFMT
+         "\n"
+         "RIP=" REGFMT " RFL=%08x [%c%c%c%c%c%c%c]\n",
+
+         GET(rax), GET(rbx), GET(rcx), GET(rdx), GET(rsi), GET(rdi), GET(rbp), GET(rsp), GET(r8), GET(r9), GET(r10),
+         GET(r11), GET(r12), GET(r13), GET(r14), GET(r15), GET(rip), eflags, eflags & DF_MASK ? 'D' : '-',
+         eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-', eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-',
+         eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
+
+  dump_backtrace(tf->rbp);
 }
 
 
@@ -213,55 +259,14 @@ void arch::dump_backtrace(void) {
 }
 
 
-/* eflags masks */
-#define CC_C 0x0001
-#define CC_P 0x0004
-#define CC_A 0x0010
-#define CC_Z 0x0040
-#define CC_S 0x0080
-#define CC_O 0x0800
 
-#define TF_SHIFT 8
-#define IOPL_SHIFT 12
-#define VM_SHIFT 17
-#define TF_MASK 0x00000100
-#define IF_MASK 0x00000200
-#define DF_MASK 0x00000400
-#define IOPL_MASK 0x00003000
-#define NT_MASK 0x00004000
-#define RF_MASK 0x00010000
-#define VM_MASK 0x00020000
-#define AC_MASK 0x00040000
-#define VIF_MASK 0x00080000
-#define VIP_MASK 0x00100000
-#define ID_MASK 0x00200000
 
 static void gpf_handler(int i, reg_t *regs) {
   auto *tf = (struct x86_64regs *)regs;
   // TODO: die
-  KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", curthd->pid, curthd->tid,
-       tf->rip, tf->err);
+  KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", curthd->pid, curthd->tid, tf->rip, tf->err);
 
-  unsigned int eflags = tf->rflags;
-#define GET(name) (tf->name)
-
-#define REGFMT "%016p"
-  printk("RAX=" REGFMT " RBX=" REGFMT " RCX=" REGFMT " RDX=" REGFMT
-         "\n"
-         "RSI=" REGFMT " RDI=" REGFMT " RBP=" REGFMT " RSP=" REGFMT
-         "\n"
-         "R8 =" REGFMT " R9 =" REGFMT " R10=" REGFMT " R11=" REGFMT
-         "\n"
-         "R12=" REGFMT " R13=" REGFMT " R14=" REGFMT " R15=" REGFMT
-         "\n"
-         "RIP=" REGFMT " RFL=%08x [%c%c%c%c%c%c%c]\n",
-
-         GET(rax), GET(rbx), GET(rcx), GET(rdx), GET(rsi), GET(rdi), GET(rbp),
-         GET(rsp), GET(r8), GET(r9), GET(r10), GET(r11), GET(r12), GET(r13),
-         GET(r14), GET(r15), GET(rip), eflags, eflags & DF_MASK ? 'D' : '-',
-         eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-',
-         eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-',
-         eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
+  dump_trapframe(regs);
 
   if (curproc) {
     KERR("Address Space Dump:\n");
@@ -278,8 +283,7 @@ static void gpf_handler(int i, reg_t *regs) {
 static void illegal_instruction_handler(int i, reg_t *regs) {
   auto *tf = (struct x86_64regs *)regs;
 
-  KERR("pid %d, tid %d died from illegal instruction @ %p\n", curthd->pid,
-       curthd->tid, tf->rip);
+  KERR("pid %d, tid %d died from illegal instruction @ %p\n", curthd->pid, curthd->tid, tf->rip);
   KERR("  ESP=%p\n", tf->rsp);
 
   sys::exit_proc(-1);
@@ -293,6 +297,7 @@ extern "C" void syscall_handle(int i, reg_t *tf);
 #define PGFLT_RESERVED (1 << 3)
 #define PGFLT_INSTR (1 << 4)
 
+
 static void pgfault_handle(int i, reg_t *regs) {
   auto *tf = (struct x86_64regs *)regs;
   void *page = (void *)(read_cr2() & ~0xFFF);
@@ -300,8 +305,7 @@ static void pgfault_handle(int i, reg_t *regs) {
 
   auto proc = curproc;
   if (curproc == NULL) {
-    KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf->rip,
-         read_cr2());
+    KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf->rip, read_cr2());
     // arch::dump_backtrace();
     // lookup the kernel proc if we aren't in one!
     proc = sched::proc::kproc();
@@ -323,9 +327,10 @@ static void pgfault_handle(int i, reg_t *regs) {
 
     int res = proc->mm->pagefault((off_t)page, err);
     if (res == -1) {
+
+			KERR("==================================================================\n");
       // TODO:
-      KERR("pid %d, tid %d segfaulted @ %p\n", curthd->pid, curthd->tid,
-           tf->rip);
+      KERR("pid %d, tid %d segfaulted @ %p\n", curthd->pid, curthd->tid, tf->rip);
       KERR("       bad address = %p\n", read_cr2());
       KERR("              info = ");
 
@@ -335,12 +340,11 @@ static void pgfault_handle(int i, reg_t *regs) {
       if (tf->err & PGFLT_INSTR) printk("INSTR ");
       printk("\n");
 
-
+			dump_trapframe(regs);
       KERR("Address Space Dump:\n");
       proc->mm->dump();
-
-
       dump_backtrace(tf->rbp);
+			KERR("==================================================================\n");
 
       sys::exit_proc(-1);
 
@@ -377,8 +381,7 @@ int arch::irq::init(void) {
   ::irq::install(TRAP_DBLFLT, dbl_flt_handler, "Double Fault");
   ::irq::install(TRAP_PGFLT, pgfault_handle, "Page Fault");
   ::irq::install(TRAP_GPFLT, gpf_handler, "General Protection Fault");
-  ::irq::install(TRAP_ILLOP, illegal_instruction_handler,
-                 "Illegal Instruction Handler");
+  ::irq::install(TRAP_ILLOP, illegal_instruction_handler, "Illegal Instruction Handler");
 
   pic_disable(34);
 

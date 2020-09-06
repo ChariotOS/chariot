@@ -3,6 +3,7 @@ build
 *.o
 *.ao
 .DS_Store
+._.DS_Store
 tags
 .gdb_history
 

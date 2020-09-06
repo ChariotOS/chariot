@@ -1,4 +1,5 @@
 #include <chariot/fs/magicfd.h>
+#include <ck/timer.h>
 #include <ck/tuple.h>
 #include <cxxabi.h>
 #include <fcntl.h>
@@ -8,6 +9,7 @@
 #include <sys/sysbind.h>
 #include <ui/application.h>
 #include <typeinfo>
+
 
 
 #define SSFN_IMPLEMENTATION /* use the normal renderer implementation */
@@ -173,10 +175,10 @@ class sqlite3_db {
           return 0;
         },
         NULL, &err);
-		if (err != NULL) {
-			printf("err: %s\n", err);
-			sqlite3_free((void*)err);
-		}
+                if (err != NULL) {
+                        printf("err: %s\n", err);
+                        sqlite3_free((void*)err);
+                }
 
     return rows;
   }
@@ -184,41 +186,169 @@ class sqlite3_db {
 */
 
 
+#include <GL/glu.h>
 #include <GL/osmesa.h>
 
+
+
+class glpainter : public ui::view {
+  OSMesaContext om;
+  bool initialized = false;
+  float xrot = 100.0f;
+  float yrot = -100.0f;
+
+  // float xdiff = 100.0f;
+  // float ydiff = 100.0f;
+
+  float tra_x = 0.0f;
+  float tra_y = 0.0f;
+  float tra_z = 0.0f;
+
+
+  float grow_shrink = 70.0f;
+  float resize_f = 1.0f;
+
+
+  ck::ref<ck::timer> compose_timer;
+
+ public:
+  glpainter(void) { om = OSMesaCreateContext(OSMESA_BGRA, NULL); }
+
+  ~glpainter(void) { OSMesaDestroyContext(om); }
+
+
+  void reshape(int w, int h) {
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+
+    glViewport(0, 0, w, h);
+
+    gluPerspective(grow_shrink, resize_f * w / h, resize_f, 100 * resize_f);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+  }
+
+
+
+  int initgl(void) {
+    if (initialized == true) return 0;
+
+    compose_timer = ck::timer::make_interval(1000 / 30, [this] { this->tick(); });
+    initialized = true;
+    auto* win = window();
+    auto& bmp = win->bmp();
+
+    if (!OSMesaMakeCurrent(om, bmp.pixels(), GL_UNSIGNED_BYTE, bmp.width(), bmp.height())) return 1;
+
+    OSMesaPixelStore(OSMESA_Y_UP, 0);
+
+    reshape(bmp.width(), bmp.height());
+
+    // glShadeModel(GL_SMOOTH); // THIS IS SLOW
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);  // black background
+
+    glClearDepth(1.0f);       // Depth Buffer Setup
+    glEnable(GL_DEPTH_TEST);  // Enables Depth Testing
+    glDepthFunc(GL_LEQUAL);   // The Type Of Depth Test To Do
+    // glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);  // Really Nice Perspective Calculations
+    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
+
+    glEnable(GL_MULTISAMPLE_ARB);  // enable MSAA
+
+
+
+    return 0;
+  }
+
+
+
+
+  void tick() {
+    xrot += 0.3f;
+    yrot += 0.4f;
+    repaint();
+  }
+
+  virtual void paint_event(void) override {
+    // initgl();
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glLoadIdentity();
+
+    gluLookAt(0.0f, 0.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+
+    glRotatef(xrot, 1.0f, 0.0f, 0.0f);
+    glRotatef(yrot, 0.0f, 1.0f, 0.0f);
+
+    drawBox();
+
+    glFlush();
+    invalidate();
+  }
+
+  void drawBox() {
+    glTranslatef(tra_x, tra_y, tra_z);
+
+    glBegin(GL_QUADS);
+
+    glColor3f(1.0f, 0.0f, 0.0f);
+    // FRONT
+    glVertex3f(-0.5f, -0.5f, 0.5f);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(0.5f, -0.5f, 0.5f);
+    glVertex3f(0.5f, 0.5f, 0.5f);
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glVertex3f(-0.5f, 0.5f, 0.5f);
+    // BACK
+    glVertex3f(-0.5f, -0.5f, -0.5f);
+    glVertex3f(-0.5f, 0.5f, -0.5f);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(0.5f, 0.5f, -0.5f);
+    glVertex3f(0.5f, -0.5f, -0.5f);
+
+    glColor3f(0.0f, 1.0f, 0.0f);
+    // LEFT
+    glVertex3f(-0.5f, -0.5f, 0.5f);
+    glVertex3f(-0.5f, 0.5f, 0.5f);
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glVertex3f(-0.5f, 0.5f, -0.5f);
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glVertex3f(-0.5f, -0.5f, -0.5f);
+    // RIGHT
+    glVertex3f(0.5f, -0.5f, -0.5f);
+    glVertex3f(0.5f, 0.5f, -0.5f);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(0.5f, 0.5f, 0.5f);
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glVertex3f(0.5f, -0.5f, 0.5f);
+
+    glColor3f(0.0f, 0.0f, 1.0f);
+    // TOP
+    glVertex3f(-0.5f, 0.5f, 0.5f);
+    glVertex3f(0.5f, 0.5f, 0.5f);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(0.5f, 0.5f, -0.5f);
+    glVertex3f(-0.5f, 0.5f, -0.5f);
+    glColor3f(1.0f, 0.0f, 0.0f);
+    // BOTTOM
+    glVertex3f(-0.5f, -0.5f, 0.5f);
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glVertex3f(-0.5f, -0.5f, -0.5f);
+    glVertex3f(0.5f, -0.5f, -0.5f);
+    glVertex3f(0.5f, -0.5f, 0.5f);
+    glEnd();  // GL_QUADS
+  }
+};
+
 int main(int argc, char** argv) {
-
-
-	// create and destroy the gl context as a test
-	OSMesaContext gl_ctx = OSMesaCreateContext(OSMESA_ARGB, NULL);
-
-	printf("Created!\n");
-	OSMesaDestroyContext(gl_ctx);
-
-	return 0;
-
-#if 0
-
-	for (int i = 0; true; i++) {
-		char buf[100];
-		snprintf(buf, 100, "echo %d", i);
-		system(buf);
-	}
-	return 0;
-  ck::file fnt;
-  fnt.open("/usr/res/fonts/Vera.sfn", "r");
-  font_mapping = fnt.mmap();
-
-
-
-  ck::file text;
-  text.open("/usr/res/misc/lorem.txt", "r");
-
   // connect to the window server
   ui::application app;
 
-  ui::window* win = app.new_window("My Window", 640, 480);
-  win->set_view<painter>(text);
+  ui::window* win = app.new_window("OpenGL Test (Mesa)", 640, 640);
+  auto& vw = win->set_view<glpainter>();
+  vw.initgl();
 
   auto input = ck::file::unowned(0);
   input->on_read([&] {
@@ -230,6 +360,7 @@ int main(int argc, char** argv) {
   app.start();
 
 
+
+
   return 0;
-#endif
 }

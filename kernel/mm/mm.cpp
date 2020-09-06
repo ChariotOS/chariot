@@ -89,6 +89,42 @@ mm::space::~space(void) {
 
 void mm::space::switch_to() { pt->switch_to(); }
 
+
+size_t mm::space::copy_out(off_t byte_offset, void *dst, size_t size) {
+  // how many more bytes are needed
+  long to_access = size;
+  // the offset within the current page
+  ssize_t offset = byte_offset % PGSIZE;
+
+  char *udata = (char *)dst;
+	size_t read = 0;
+
+  for (off_t blk = byte_offset / PGSIZE; true; blk++) {
+		struct pte pte;
+		pt->get_mapping(blk * PGSIZE, pte);
+
+		if (pte.ppn == 0) break;
+    // get the block we are looking at.
+    auto data = (char *)(p2v(pte.ppn << 12));
+
+    size_t space_left = PGSIZE - offset;
+    size_t can_access = min(space_left, to_access);
+
+		// copy the data from the page
+    memcpy(udata, data + offset, can_access);
+
+    // moving on to the next block, we reset the offset
+    offset = 0;
+    to_access -= can_access;
+		read += can_access;
+    udata += can_access;
+
+    if (to_access <= 0) break;
+  }
+
+  return read;
+}
+
 mm::area *mm::space::lookup(off_t va) {
   // just dumbly walk over the list of regions and find the right region
   for (auto &r : regions) {
