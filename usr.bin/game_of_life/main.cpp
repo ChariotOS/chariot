@@ -3,13 +3,13 @@
 #include <ui/application.h>
 
 
-#define WIDTH 25
-#define HEIGHT 25
+#define WIDTH 40
+#define HEIGHT 40
 #define BOARDSIZE (WIDTH * HEIGHT)
 
-#define SCALE 20
+#define SCALE 12
 
-#define TICKS 10
+#define TICKS 30
 
 class gol : public ui::view {
   bool init[WIDTH][HEIGHT];
@@ -65,23 +65,25 @@ class gol : public ui::view {
   virtual void paint_event(void) override {
     auto scribe = get_scribe();
     bool is_running = tick_timer->running();
-    scribe.clear(is_running ? 0xFFFFFF : 0x777777);
+    // scribe.clear();
 
-    /*
-auto pr = gfx::printer(scribe, *gfx::font::get_default(), 0, 0, WIDTH * SCALE);
-pr.set_color(0x000000);
-pr.printf("alive: %d\n", alive);
-    */
 
     // draw all the dudes
     for (int y = 0; y < HEIGHT; y++) {
       for (int x = 0; x < WIDTH; x++) {
+        // int color = is_running ? 0xFFFFFF : 0x777777;
+				int color = 0xFFFFFF;
         if ((is_running ? current : init)[x][y]) {
-          for (int ox = 0; ox < SCALE; ox++) {
-            for (int oy = 0; oy < SCALE; oy++) {
-              // int color = (x ^ y) | ((x ^ y) << 8) | ((x ^ y) << 16);
-              scribe.set_pixel(x * SCALE + ox, y * SCALE + oy, 0x000000);
-            }
+          color = 0x000000;
+        }
+
+
+        for (int ox = 0; ox < SCALE; ox++) {
+          for (int oy = 0; oy < SCALE; oy++) {
+            int d = color;
+            if (!is_running && (ox == 0 || oy == 0)) d = 0;
+            // int color = (x ^ y) | ((x ^ y) << 8) | ((x ^ y) << 16);
+            scribe.set_pixel(x * SCALE + ox, y * SCALE + oy, d);
           }
         }
       }
