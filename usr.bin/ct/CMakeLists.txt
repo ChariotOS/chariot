@@ -3,6 +3,7 @@ chariot_bin(ct)
 
 
 target_link_libraries(ct libui
+	# libosmesa
 	"${CMAKE_CURRENT_SOURCE_DIR}/../../usr.lib/mesa/libOSMesa.a"
 	"${CMAKE_CURRENT_SOURCE_DIR}/../../usr.lib/mesa/libGLU.a"
 	)
