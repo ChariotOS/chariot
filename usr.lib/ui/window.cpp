@@ -4,8 +4,7 @@
 #include <ui/window.h>
 
 
-ui::window::window(int id, ck::string name, gfx::rect r,
-                   ck::ref<gfx::shared_bitmap> bmp) {
+ui::window::window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bitmap> bmp) {
   m_id = id;
   m_name = name;
   m_rect = r;
@@ -19,13 +18,16 @@ ui::window::~window(void) {}
 void ui::window::invalidate(const gfx::rect &r) {
   auto &app = ui::application::get();
   struct lumen::invalidate_msg iv;
+
+  iv.nrects = 1;
   iv.id = m_id;
-  iv.x = r.x;
-  iv.y = r.y;
-  iv.w = r.w;
-  iv.h = r.h;
-  // printf("invalidate x:%3d y:%3d w:%3d h:%3d)\n", r.x, r.y, r.w, r.h);
-  app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
+  iv.rects[0].x = r.x;
+  iv.rects[0].y = r.y;
+  iv.rects[0].w = r.w;
+  iv.rects[0].h = r.h;
+
+  struct lumen::invalidated_msg response = {0};
+  app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
 }
 
 void ui::window::flush(void) { invalidate(m_rect); }

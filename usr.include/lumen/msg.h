@@ -25,6 +25,7 @@ namespace lumen {
 
 // invalidate a region of the window
 #define LUMEN_MSG_WINDOW_INVALIDATE (4 | FOR_WINDOW_SERVER)
+#define LUMEN_MSG_WINDOW_INVALIDATED (4)
 
 #define LUMEN_MSG_INPUT (3)
 
@@ -116,11 +117,19 @@ namespace lumen {
   };
 
 
+#define MAX_INVALIDATE 10
   struct invalidate_msg {
     int id;  // window id
-    // where in the window?
-    int x, y, w, h;
+		int nrects;
+		struct r {
+			// where in the window?
+			int x, y, w, h;
+		} rects[10];
   };
+
+	struct invalidated_msg {
+		int id; // window id;
+	};
 
 
 
