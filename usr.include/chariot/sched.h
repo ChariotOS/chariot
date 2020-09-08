@@ -179,6 +179,9 @@ struct thread_statistics {
 
   int current_cpu = -1;
   int last_cpu = -1;
+
+	u64 cycles = 0;
+	u64 last_start_cycle = 0;
 };
 
 struct thread_sched_info {

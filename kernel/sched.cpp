@@ -213,6 +213,8 @@ static void switch_into(struct thread &thd) {
 	// load up the thread's address space
   cpu::switch_vm(&thd);
 
+	thd.stats.last_start_cycle = arch::read_timestamp();
+
 	// Switch into the thread!
   swtch(&cpu::current().sched_ctx, thd.kern_context);
 
@@ -230,6 +232,8 @@ void sched::do_yield(int st) {
   arch::cli();
 
   auto &thd = *curthd;
+
+	thd.stats.cycles += arch::read_timestamp() - thd.stats.last_start_cycle;
 
   // thd.sched.priority = PRIORITY_HIGH;
   if (cpu::get_ticks() - thd.sched.start_tick >= thd.sched.timeslice) {
