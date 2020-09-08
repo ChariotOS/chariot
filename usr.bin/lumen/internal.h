@@ -124,6 +124,8 @@ namespace lumen {
     bool hovered = false;
     bool focused = false;
 
+		long pending_invalidation_id = -1;
+
     window_mode mode;
 
     ck::ref<gfx::shared_bitmap> bitmap;

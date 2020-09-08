@@ -37,7 +37,7 @@ add_link_options(LINKER:-T ${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld -nostdlib -z ma
 
 set(LDFLAGS -T ${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld -m elf_x86_64 -z max-page-size=0x1000)
 
-include_directories(../include)
+include_directories(../usr.include/chariot)
 
 add_executable(chariot ${KERNEL_SOURCES})
 set_target_properties(chariot PROPERTIES OUTPUT_NAME "chariot.elf")

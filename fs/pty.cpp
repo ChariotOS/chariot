@@ -4,7 +4,6 @@
 #include <ioctl.h>
 #include <map.h>
 #include <module.h>
-#include "../drivers/majors.h"
 
 
 #define PTY_DEBUG

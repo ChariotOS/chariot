@@ -234,7 +234,7 @@ class glpainter : public ui::view {
   int initgl(void) {
     if (initialized == true) return 0;
 
-    compose_timer = ck::timer::make_interval(1000 / 30, [this] { this->tick(); });
+    compose_timer = ck::timer::make_interval(1000 / 100, [this] { this->tick(); });
     initialized = true;
     auto* win = window();
     auto& bmp = win->bmp();

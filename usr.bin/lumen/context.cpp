@@ -14,6 +14,14 @@
 #define COMPOSE_INTERVAL (1000 / 1000)
 
 
+#define min(a, b)           \
+  ({                        \
+    __typeof__(a) _a = (a); \
+    __typeof__(b) _b = (b); \
+    _a < _b ? _a : _b;      \
+  })
+
+
 lumen::context::context(void) : screen(1024, 768) {
   keyboard.open("/dev/keyboard", "r+");
   keyboard.on_read([this] {
@@ -40,8 +48,7 @@ lumen::context::context(void) : screen(1024, 768) {
   server.listen("/usr/servers/lumen", [this] { accept_connection(); });
 
 
-  compose_timer =
-      ck::timer::make_interval(COMPOSE_INTERVAL, [this] { this->compose(); });
+  compose_timer = ck::timer::make_interval(COMPOSE_INTERVAL, [this] { this->compose(); });
 
   invalidate(screen.bounds());
 }
@@ -74,8 +81,8 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
 
   if (hovered_window) {
     if (!dragging) {
-      auto pos = gfx::point(screen.mouse_pos.x() - hovered_window->rect.x,
-                            screen.mouse_pos.y() - hovered_window->rect.y);
+      auto pos =
+          gfx::point(screen.mouse_pos.x() - hovered_window->rect.x, screen.mouse_pos.y() - hovered_window->rect.y);
 
 
       int res = hovered_window->handle_mouse_input(pos, pkt);
@@ -205,9 +212,9 @@ void lumen::context::guest_closed(long id) {
 }
 
 
-#define HANDLE_TYPE(t, data_type)       \
-  if (auto arg = (data_type *)msg.data; \
-      msg.type == t && msg.len == sizeof(data_type))
+#define HANDLE_TYPE(t, data_type) if (auto arg = (data_type *)msg.data; msg.type == t && msg.len == sizeof(data_type))
+
+
 
 
 void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
@@ -250,17 +257,23 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
     auto *win = c.windows[arg->id];
     if (win == NULL) return;
 
-    // offset to the location that the window is at
-    arg->x += win->rect.x;
-    arg->y += win->rect.y;
+		win->pending_invalidation_id = msg.id;
 
-    auto r = gfx::rect(arg->x, arg->y, arg->w, arg->h).intersect(win->rect);
-    win->translate_invalidation(r);
-    if (!r.is_empty()) {
-      r.w++;
-      // r.h++;
-      invalidate(r);
+    for (int i = 0; i < min(arg->nrects, MAX_INVALIDATE); i++) {
+      auto &r = arg->rects[i];
+      // offset to the location that the window is at
+      r.x += win->rect.x;
+      r.y += win->rect.y;
+
+      auto rect = gfx::rect(r.x, r.y, r.w, r.h).intersect(win->rect);
+      win->translate_invalidation(rect);
+      if (!rect.is_empty()) {
+        r.w++;
+        // r.h++;
+        invalidate(rect);
+      }
     }
+
     return;
   };
 
@@ -365,39 +378,29 @@ ck::ref<gfx::font> get_debug_font(void) {
 
 
 static unsigned short const stackblur_mul[255] = {
-    512, 512, 456, 512, 328, 456, 335, 512, 405, 328, 271, 456, 388, 335, 292,
-    512, 454, 405, 364, 328, 298, 271, 496, 456, 420, 388, 360, 335, 312, 292,
-    273, 512, 482, 454, 428, 405, 383, 364, 345, 328, 312, 298, 284, 271, 259,
-    496, 475, 456, 437, 420, 404, 388, 374, 360, 347, 335, 323, 312, 302, 292,
-    282, 273, 265, 512, 497, 482, 468, 454, 441, 428, 417, 405, 394, 383, 373,
-    364, 354, 345, 337, 328, 320, 312, 305, 298, 291, 284, 278, 271, 265, 259,
-    507, 496, 485, 475, 465, 456, 446, 437, 428, 420, 412, 404, 396, 388, 381,
-    374, 367, 360, 354, 347, 341, 335, 329, 323, 318, 312, 307, 302, 297, 292,
-    287, 282, 278, 273, 269, 265, 261, 512, 505, 497, 489, 482, 475, 468, 461,
-    454, 447, 441, 435, 428, 422, 417, 411, 405, 399, 394, 389, 383, 378, 373,
-    368, 364, 359, 354, 350, 345, 341, 337, 332, 328, 324, 320, 316, 312, 309,
-    305, 301, 298, 294, 291, 287, 284, 281, 278, 274, 271, 268, 265, 262, 259,
-    257, 507, 501, 496, 491, 485, 480, 475, 470, 465, 460, 456, 451, 446, 442,
-    437, 433, 428, 424, 420, 416, 412, 408, 404, 400, 396, 392, 388, 385, 381,
-    377, 374, 370, 367, 363, 360, 357, 354, 350, 347, 344, 341, 338, 335, 332,
-    329, 326, 323, 320, 318, 315, 312, 310, 307, 304, 302, 299, 297, 294, 292,
-    289, 287, 285, 282, 280, 278, 275, 273, 271, 269, 267, 265, 263, 261, 259};
+    512, 512, 456, 512, 328, 456, 335, 512, 405, 328, 271, 456, 388, 335, 292, 512, 454, 405, 364, 328, 298, 271,
+    496, 456, 420, 388, 360, 335, 312, 292, 273, 512, 482, 454, 428, 405, 383, 364, 345, 328, 312, 298, 284, 271,
+    259, 496, 475, 456, 437, 420, 404, 388, 374, 360, 347, 335, 323, 312, 302, 292, 282, 273, 265, 512, 497, 482,
+    468, 454, 441, 428, 417, 405, 394, 383, 373, 364, 354, 345, 337, 328, 320, 312, 305, 298, 291, 284, 278, 271,
+    265, 259, 507, 496, 485, 475, 465, 456, 446, 437, 428, 420, 412, 404, 396, 388, 381, 374, 367, 360, 354, 347,
+    341, 335, 329, 323, 318, 312, 307, 302, 297, 292, 287, 282, 278, 273, 269, 265, 261, 512, 505, 497, 489, 482,
+    475, 468, 461, 454, 447, 441, 435, 428, 422, 417, 411, 405, 399, 394, 389, 383, 378, 373, 368, 364, 359, 354,
+    350, 345, 341, 337, 332, 328, 324, 320, 316, 312, 309, 305, 301, 298, 294, 291, 287, 284, 281, 278, 274, 271,
+    268, 265, 262, 259, 257, 507, 501, 496, 491, 485, 480, 475, 470, 465, 460, 456, 451, 446, 442, 437, 433, 428,
+    424, 420, 416, 412, 408, 404, 400, 396, 392, 388, 385, 381, 377, 374, 370, 367, 363, 360, 357, 354, 350, 347,
+    344, 341, 338, 335, 332, 329, 326, 323, 320, 318, 315, 312, 310, 307, 304, 302, 299, 297, 294, 292, 289, 287,
+    285, 282, 280, 278, 275, 273, 271, 269, 267, 265, 263, 261, 259};
 
 static unsigned char const stackblur_shr[255] = {
-    9,  11, 12, 13, 13, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 17, 17, 17, 17,
-    17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18, 19, 19, 19, 19, 19, 19, 19,
-    19, 19, 19, 19, 19, 19, 19, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
-    20, 20, 20, 20, 20, 20, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21,
-    21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 22, 22, 22, 22, 22,
-    22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
-    22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 23, 23, 23, 23, 23, 23,
-    23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
-    23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
-    23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-    24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-    24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-    24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-    24, 24, 24, 24, 24, 24, 24, 24};
+    9,  11, 12, 13, 13, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 17, 17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18,
+    18, 18, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+    20, 20, 20, 20, 20, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21,
+    21, 21, 21, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
+    22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+    23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+    23, 23, 23, 23, 23, 23, 23, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+    24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+    24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24};
 
 
 
@@ -408,13 +411,11 @@ static unsigned char const stackblur_shr[255] = {
 #define MAX(__x, __y) ((__x) > (__y) ? (__x) : (__y))
 
 
-void stackblurJob(
-    unsigned char *src,   ///< input image data
-    unsigned int w,       ///< image width
-    unsigned int h,       ///< image height
-    unsigned int radius,  ///< blur intensity (should be in 2..254 range)
-    unsigned int minX, unsigned int maxX, unsigned int minY,
-    unsigned int maxY) {
+void stackblurJob(unsigned char *src,   ///< input image data
+                  unsigned int w,       ///< image width
+                  unsigned int h,       ///< image height
+                  unsigned int radius,  ///< blur intensity (should be in 2..254 range)
+                  unsigned int minX, unsigned int maxX, unsigned int minY, unsigned int maxY) {
   (void)h;
 
   unsigned int x, y, xp, yp, i;
@@ -445,8 +446,7 @@ void stackblurJob(
 
   {
     for (y = minY; y < maxY; y++) {
-      sum_r = sum_g = sum_b = sum_in_r = sum_in_g = sum_in_b = sum_out_r =
-          sum_out_g = sum_out_b = 0;
+      sum_r = sum_g = sum_b = sum_in_r = sum_in_g = sum_in_b = sum_out_r = sum_out_g = sum_out_b = 0;
 
       src_ptr = src + w4 * y + (minX * 4);  // start of line (0,y)
 
@@ -533,8 +533,7 @@ void stackblurJob(
 
   {
     for (x = minX; x < maxX; x++) {
-      sum_r = sum_g = sum_b = sum_in_r = sum_in_g = sum_in_b = sum_out_r =
-          sum_out_g = sum_out_b = 0;
+      sum_r = sum_g = sum_b = sum_in_r = sum_in_g = sum_in_b = sum_out_r = sum_out_g = sum_out_b = 0;
 
       src_ptr = src + 4 * x + minY * w4;  // x,0
       for (i = 0; i <= radius; i++) {
@@ -648,8 +647,8 @@ void lumen::context::compose(void) {
 
   for (auto &r : dirty_regions) {
     if (r.intersects(screen.mouse_rect())) draw_mouse = true;
-		// scribe.fill_rect(r, 0x313032);
-		scribe.fill_rect(r, 0x625373);
+    // scribe.fill_rect(r, 0x313032);
+    scribe.fill_rect(r, 0x625373);
   }
 
 
@@ -672,15 +671,25 @@ void lumen::context::compose(void) {
     return true;
   };
 
-  // go back to front
+  // go back to front and compose each window
   for (auto win : windows) {
     compose_window(*win);
   }
 
   if (draw_mouse) {
-    // scribe.draw_pixel(screen.mouse_pos.x(), screen.mouse_pos.y(), 0);
-    // scribe.draw_frame(screen.mouse_rect(), 0xFF8888);
     screen.draw_mouse();
+  }
+
+
+  // and now, go through all windows and notify them they have been composed :)
+  for (auto win : windows) {
+    if (win->pending_invalidation_id != -1) {
+      struct lumen::invalidated_msg m;
+      m.id = win->id;
+
+      win->guest.send_raw(LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m, sizeof(msg));
+      win->pending_invalidation_id = -1;
+    }
   }
 
 
@@ -716,8 +725,7 @@ void lumen::context::compose(void) {
 
 
 
-lumen::guest::guest(long id, struct context &ctx, ck::ipcsocket *conn)
-    : id(id), ctx(ctx), connection(conn) {
+lumen::guest::guest(long id, struct context &ctx, ck::ipcsocket *conn) : id(id), ctx(ctx), connection(conn) {
   connection->on_read([this] { this->on_read(); });
 }
 
@@ -778,8 +786,7 @@ void lumen::guest::process_message(lumen::msg &msg) {
 }
 
 
-long lumen::guest::send_raw(int type, int id, void *payload,
-                            size_t payloadsize) {
+long lumen::guest::send_raw(int type, int id, void *payload, size_t payloadsize) {
   size_t msgsize = payloadsize + sizeof(lumen::msg);
   auto msg = (lumen::msg *)malloc(msgsize);
 

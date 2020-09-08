@@ -30,7 +30,7 @@
 #define VBE_DISPI_ENABLED 0x01
 #define VBE_DISPI_LFB_ENABLED 0x40
 
-#include "../drivers/majors.h"
+#include <device_majors.h>
 #include "font.ckf.h"
 
 struct [[gnu::packed]] chariot_kernel_font {
