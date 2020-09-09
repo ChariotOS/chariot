@@ -419,3 +419,9 @@ int rename(const char *old_filename, const char *new_filename) {
 	return -1;
 }
 
+
+
+// TODO:
+int fscanf(FILE *stream, const char *format, ...) {
+	return -1;
+}

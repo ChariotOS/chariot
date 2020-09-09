@@ -5,29 +5,13 @@
 extern "C" {
 #endif
 
-#ifdef DEBUG
-__attribute__((noreturn)) void __assertion_failed(const char* msg);
-#    define __stringify_helper(x) #    x
-#    define __stringify(x) __stringify_helper(x)
-#    define assert(expr)                                                           \
-        do {                                                                       \
-            if (__builtin_expect(!(expr), 0))                                      \
-                __assertion_failed(#expr "\n" __FILE__ ":" __stringify(__LINE__)); \
-        } while (0)
-#    define ASSERT_NOT_REACHED() assert(false)
+
+
+#ifdef NDEBUG
+#define	assert(x) (void)0
 #else
-#    define assert(expr)
-#    define ASSERT_NOT_REACHED() CRASH()
+#define assert(x) ((void)((x) || (__assert_fail(#x, __FILE__, __LINE__, __func__),0)))
 #endif
-
-#define CRASH()              \
-    do {                     \
-        asm volatile("ud2"); \
-    } while (0)
-#define ASSERT assert
-#define RELEASE_ASSERT assert
-#define TODO ASSERT_NOT_REACHED
-
 
 
 extern void __assert_fail(const char * assertion, const char * file, unsigned int line, const char * function);

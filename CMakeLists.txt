@@ -28,6 +28,9 @@ endif()
 set(TOOLCHAIN_PATH ${CMAKE_SOURCE_DIR}/toolchain/local/bin)
 set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/x86_64-elf-chariot-)
 
+
+
+
 # set(POSITION_INDEPENDENT_CODE TRUE)
 
 set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc)

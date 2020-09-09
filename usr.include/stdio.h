@@ -89,6 +89,7 @@ int vfprintf(FILE* fp, const char* fmt, va_list ap);
 int vsnfprintf(FILE *fp, const char *fmt, va_list va);
 
 int sscanf(const char *, const char *format, ...);
+int fscanf(FILE *stream, const char *format, ...);
 
 int feof(FILE *stream);
 int ferror(FILE *);

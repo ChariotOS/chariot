@@ -5,12 +5,6 @@ ninja:
 	@cd build; ninja install
 	cp build/compile_commands.json .
 
-cmake:
-	@mkdir -p build
-	@if [ ! -d build/kernel ]; then  cd build; cmake ../ ; fi
-	@cd build; make install
-	cp build/compile_commands.json .
-
 
 all: ninja
 

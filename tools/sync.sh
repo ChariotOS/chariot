@@ -92,7 +92,6 @@ sudo mount ${dev}p1 $mnt/
 # delete all the directories besides boot/
 # echo 'clearing out old filesystem'
 
-ls -la $mnt/
 
 for dir in $mnt/*; do
     [ "$dir" = "$mnt/boot" ] && continue

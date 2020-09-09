@@ -21,6 +21,9 @@ toolchain/tarballs
 toolchain/build
 toolchain/local
 
+
+/thirdparty
+
 target
 
 node_modules
