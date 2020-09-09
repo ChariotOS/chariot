@@ -1515,7 +1515,7 @@ cpp_demangle_read_function(struct cpp_demangle_data *ddata, int *ext_c,
 static int
 cpp_demangle_read_encoding(struct cpp_demangle_data *ddata)
 {
-	char *name, *type, *num_str;
+	char *name, *type, *num_str = NULL;
 	long offset;
 	int rtn;
 
