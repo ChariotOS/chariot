@@ -28,8 +28,8 @@ static pid_t do_fork(struct process &p) {
   new_td->trap_frame[0] = 0;  // return value for child is 0
 
 
-	// copy floating point if we need to
-	memcpy(new_td->fpu.state, old_td->fpu.state, 512);
+	// copy floating point
+	memcpy(new_td->fpu.state, old_td->fpu.state, 4096);
 	new_td->fpu.initialized = old_td->fpu.initialized;
 
 	// go to the trap_return function instead of whatever it was gonna do otherwise
