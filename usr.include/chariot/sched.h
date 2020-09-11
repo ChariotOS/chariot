@@ -10,7 +10,7 @@
 #include <signals.h>
 #include <string.h>
 #include <vec.h>
-#define SIGBIT(n) (1 << (n))
+#define SIGBIT(n) (1llu << (n))
 
 #define RING_KERN 0
 #define RING_USER 3

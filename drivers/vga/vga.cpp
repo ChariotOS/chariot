@@ -145,6 +145,7 @@ static void *get_framebuffer_address(void) {
       addr = (void *)(dev->get_bar(0).raw & 0xfffffff0l);
     }
   });
+	printk("device: %p\n", vga_dev);
   return addr;
 }
 

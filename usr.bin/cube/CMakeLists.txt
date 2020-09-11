@@ -1,6 +1,3 @@
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cpp *.c *.asm)
-chariot_bin(ct)
-target_link_libraries(ct libui libgl libglu)
-
-
-
+chariot_bin(cube)
+target_link_libraries(cube libui libgl libglu)

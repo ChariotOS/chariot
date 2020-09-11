@@ -29,10 +29,8 @@ static pid_t do_fork(struct process &p) {
 
 
 	// copy floating point if we need to
-  if (old_td->fpu.initialized) {
-    memcpy(new_td->fpu.state, old_td->fpu.state, 512);
-    new_td->fpu.initialized = old_td->fpu.initialized;
-  }
+	memcpy(new_td->fpu.state, old_td->fpu.state, 512);
+	new_td->fpu.initialized = old_td->fpu.initialized;
 
 	// go to the trap_return function instead of whatever it was gonna do otherwise
 	new_td->kern_context->eip = (u64)trap_return;

@@ -17,13 +17,14 @@ class chan {
   // sit and wait on data to be recv'd
   inline T recv(void) {
     // this feels wrong, but works fine
-    char buf[sizeof(T)];
+    char buf[sizeof(T)] alignas(T);
     int n = backing.read(buf, sizeof(T), true);
 
     // not sure when this would happen
     if (n != sizeof(T))
       panic("channel read %d bytes when it expected %d", n, sizeof(T));
-    return *(T *)buf;
+		T val = *(T *)(void*)buf;
+    return val;
   }
 
   inline void send(T &&val, bool wait = false) {

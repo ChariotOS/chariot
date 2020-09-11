@@ -20,12 +20,15 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   // TODO validate the pointers
   vec<string> argv;
   vec<string> envp;
+	// printk("path=%s\n", path);
   for (int i = 0; uargv[i] != NULL; i++) {
+		// printk("argv[%d] = %p\n", i, uargv[i]);
     argv.push(uargv[i]);
   }
 
   if (uenvp != NULL) {
     for (int i = 0; uenvp[i] != NULL; i++) {
+			// printk("uenvp[%d] = %p\n", i, uenvp[i]);
       envp.push(uenvp[i]);
     }
   }

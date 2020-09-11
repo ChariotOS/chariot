@@ -23,6 +23,7 @@ char *strcat(char *dest, const char *src);
 char *strncat(char *d, const char *s, size_t n);
 
 size_t strlen(const char *s);
+size_t strnlen(const char *str, size_t maxsize);
 
 char *strchr(const char *s, int c);
 int strcmp(const char *l, const char *r);

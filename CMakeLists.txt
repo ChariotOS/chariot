@@ -136,6 +136,13 @@ function(chariot_bin target_name)
 
 endfunction()
 
+
+
+function(chariot_external name archive_path)
+	add_library(${name} STATIC IMPORTED GLOBAL)
+	set_property(TARGET ${name} PROPERTY IMPORTED_LOCATION ${archive_path})
+endfunction()
+
 add_subdirectory(kernel)
 
 add_subdirectory(libc)

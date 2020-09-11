@@ -1,170 +1,125 @@
-#include <ck/timer.h>
-#include <stdio.h>
+#include <chariot/fs/magicfd.h>
+#include <ck/tuple.h>
+#include <cxxabi.h>
+#include <fcntl.h>
 #include <ui/application.h>
 
-#include <GL/glu.h>
-#include <GL/osmesa.h>
+
+#define SSFN_IMPLEMENTATION /* use the normal renderer implementation */
+#include "./ssfn.h"
+
+
+struct line {
+  gfx::point start;
+  gfx::point end;
+};
+
+ck::unique_ptr<ck::file::mapping> font_mapping;
 
 
 
-class glpainter : public ui::view {
-  OSMesaContext om;
-  bool initialized = false;
-  float xrot = 100.0f;
-  float yrot = -100.0f;
 
-  // float xdiff = 100.0f;
-  // float ydiff = 100.0f;
+class painter : public ui::view {
+  int x, y;
+  ssfn_t ctx;     /* the renderer context */
+  ssfn_buf_t buf; /* the destination pixel buffer */
 
-  float tra_x = 0.0f;
-  float tra_y = 0.0f;
-  float tra_z = 0.0f;
-
-
-  float grow_shrink = 70.0f;
-  float resize_f = 1.0f;
-
-
-  ck::ref<ck::timer> compose_timer;
+  ck::unique_ptr<ck::file::mapping> mapping;
 
  public:
-  glpainter(void) { om = OSMesaCreateContext(OSMESA_BGRA, NULL); }
+  painter(ck::file& f) {
+    mapping = f.mmap();
 
-  ~glpainter(void) { OSMesaDestroyContext(om); }
+    /* you don't need to initialize the library, just make sure the context is zerod out */
+    memset(&ctx, 0, sizeof(ssfn_t));
 
-
-  void reshape(int w, int h) {
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-
-    glViewport(0, 0, w, h);
-
-    gluPerspective(grow_shrink, resize_f * w / h, resize_f, 100 * resize_f);
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    /* add one or more fonts to the context. Fonts must be already in memory */
+    ssfn_load(&ctx, font_mapping->data()); /* you can add different styles... */
   }
 
-
-
-  int initgl(void) {
-    if (initialized == true) return 0;
-
-    compose_timer = ck::timer::make_interval(1000 / 100, [this] { this->tick(); });
-    initialized = true;
-    auto* win = window();
-    auto& bmp = win->bmp();
-
-    if (!OSMesaMakeCurrent(om, bmp.pixels(), GL_UNSIGNED_BYTE, bmp.width(), bmp.height())) return 1;
-
-    OSMesaPixelStore(OSMESA_Y_UP, 0);
-
-    reshape(bmp.width(), bmp.height());
-
-    // glShadeModel(GL_SMOOTH); // THIS IS SLOW
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);  // black background
-
-    glClearDepth(1.0f);       // Depth Buffer Setup
-    glEnable(GL_DEPTH_TEST);  // Enables Depth Testing
-    glDepthFunc(GL_LEQUAL);   // The Type Of Depth Test To Do
-    // glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);  // Really Nice Perspective Calculations
-    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
-
-    glEnable(GL_MULTISAMPLE_ARB);  // enable MSAA
-
-
-
-    return 0;
+  ~painter(void) {
+    /* free resources */
+    ssfn_free(&ctx); /* free the renderer context's internal buffers */
   }
 
-
-
-
-  void tick() {
-    xrot += 0.3f;
-    yrot += 0.4f;
-    repaint();
-  }
 
   virtual void paint_event(void) override {
-    // initgl();
+    auto s = get_scribe();
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // s.clear(0xFF'FF'FF);
 
-    glLoadIdentity();
 
-    gluLookAt(0.0f, 0.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 
-    glRotatef(xrot, 1.0f, 0.0f, 0.0f);
-    glRotatef(yrot, 0.0f, 1.0f, 0.0f);
+    auto& bmp = window()->bmp();
 
-    drawBox();
 
-    glFlush();
+    int size = 12;
+    /* select the typeface to use */
+    ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, /* family */
+                SSFN_STYLE_REGULAR,           /* style */
+                size                          /* size */
+    );
+
+
+    /* describe the destination buffer. Could be a 32 bit linear framebuffer as well */
+    buf.ptr = (unsigned char*)bmp.pixels(); /* address of the buffer */
+    buf.w = bmp.width();                    /* width */
+    buf.h = bmp.height();                   /* height */
+    buf.p = buf.w * sizeof(int);            /* bytes per line */
+    buf.fg = 0xFF000000;                    /* foreground color */
+
+    buf.x = 0;
+    buf.y = size;
+
+    auto* data = mapping->as<const char>();
+
+    for (size_t i = 0; i < mapping->size(); i++) {
+      char c = data[i];
+      char text[2];
+      text[0] = c;
+      text[1] = 0;
+
+      if (c == '\n') {
+        buf.x = 0;
+        buf.y += size;
+        continue;
+      }
+
+      ssfn_render(&ctx, &buf, (char*)text);
+      if (buf.x > buf.w) {
+        buf.x = 0;
+        buf.y += size;
+      }
+    }
+
     invalidate();
   }
 
-  void drawBox() {
-    glTranslatef(tra_x, tra_y, tra_z);
-
-    glBegin(GL_QUADS);
-
-    glColor3f(1.0f, 0.0f, 0.0f);
-    // FRONT
-    glVertex3f(-0.5f, -0.5f, 0.5f);
-    glColor3f(0.0f, 1.0f, 0.0f);
-    glVertex3f(0.5f, -0.5f, 0.5f);
-    glVertex3f(0.5f, 0.5f, 0.5f);
-    glColor3f(1.0f, 0.0f, 0.0f);
-    glVertex3f(-0.5f, 0.5f, 0.5f);
-    // BACK
-    glVertex3f(-0.5f, -0.5f, -0.5f);
-    glVertex3f(-0.5f, 0.5f, -0.5f);
-    glColor3f(0.0f, 1.0f, 0.0f);
-    glVertex3f(0.5f, 0.5f, -0.5f);
-    glVertex3f(0.5f, -0.5f, -0.5f);
-
-    glColor3f(0.0f, 1.0f, 0.0f);
-    // LEFT
-    glVertex3f(-0.5f, -0.5f, 0.5f);
-    glVertex3f(-0.5f, 0.5f, 0.5f);
-    glColor3f(0.0f, 0.0f, 1.0f);
-    glVertex3f(-0.5f, 0.5f, -0.5f);
-    glColor3f(1.0f, 0.0f, 0.0f);
-    glVertex3f(-0.5f, -0.5f, -0.5f);
-    // RIGHT
-    glVertex3f(0.5f, -0.5f, -0.5f);
-    glVertex3f(0.5f, 0.5f, -0.5f);
-    glColor3f(0.0f, 1.0f, 0.0f);
-    glVertex3f(0.5f, 0.5f, 0.5f);
-    glColor3f(0.0f, 0.0f, 1.0f);
-    glVertex3f(0.5f, -0.5f, 0.5f);
-
-    glColor3f(0.0f, 0.0f, 1.0f);
-    // TOP
-    glVertex3f(-0.5f, 0.5f, 0.5f);
-    glVertex3f(0.5f, 0.5f, 0.5f);
-    glColor3f(0.0f, 1.0f, 0.0f);
-    glVertex3f(0.5f, 0.5f, -0.5f);
-    glVertex3f(-0.5f, 0.5f, -0.5f);
-    glColor3f(1.0f, 0.0f, 0.0f);
-    // BOTTOM
-    glVertex3f(-0.5f, -0.5f, 0.5f);
-    glColor3f(0.0f, 0.0f, 1.0f);
-    glVertex3f(-0.5f, -0.5f, -0.5f);
-    glVertex3f(0.5f, -0.5f, -0.5f);
-    glVertex3f(0.5f, -0.5f, 0.5f);
-    glEnd();  // GL_QUADS
+  virtual void on_mouse_move(ui::mouse_event& ev) override {
+    x = ev.x;
+    y = ev.y;
+    repaint();
   }
 };
 
+
+
+
 int main(int argc, char** argv) {
+  ck::file fnt;
+  fnt.open("/usr/res/fonts/Vera.sfn", "r");
+  font_mapping = fnt.mmap();
+
+
+
+  ck::file text;
+  text.open("/usr/res/misc/lorem.txt", "r");
+
   // connect to the window server
   ui::application app;
 
-  ui::window* win = app.new_window("OpenGL Test (Mesa)", 640, 640);
-  auto& vw = win->set_view<glpainter>();
-  vw.initgl();
+  ui::window* win = app.new_window("My Window", 640, 480);
+  win->set_view<painter>(text);
 
   auto input = ck::file::unowned(0);
   input->on_read([&] {
@@ -174,8 +129,6 @@ int main(int argc, char** argv) {
 
   // start the application!
   app.start();
-
-
 
 
   return 0;

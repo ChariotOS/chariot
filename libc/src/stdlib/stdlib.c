@@ -1,3 +1,4 @@
+#define _CHARIOT_SRC
 #include <chariot.h>
 #include <ctype.h>
 #include <errno.h>
@@ -68,11 +69,12 @@ void qsort_r(void *bot, size_t nmemb, size_t size, int (*compar)(const void *, c
 
 
 int system(const char *command) {
-  int pid = sysbind_fork();
-
+  int pid = fork();
   if (pid == 0) {
     char *args[] = {"/bin/sh", "-c", (char *)command, NULL};
-    execvpe("/bin/sh", args, environ);
+
+		// debug_hexdump(args, sizeof(args));
+    execve("/bin/sh", args, environ);
     exit(-1);
   }
 

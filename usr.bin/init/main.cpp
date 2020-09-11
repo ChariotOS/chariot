@@ -132,21 +132,21 @@ int main(int argc, char **argv) {
 
         if (i) {
           const char *exec = ini_get(i, "service", "exec");
-
           const char *name = ini_get(i, "service", "name");
-          if (exec != NULL) {
-            pid_t pid = spawn();
-            char *args[] = {(char *)exec, NULL};
 
-            // just let it go
-            int res = startpidvpe(pid, (char *)exec, args, environ);
-            int e = errno;
-            if (res == 0) {
-              printf("[init] %s spawned on pid %d\n", name, pid);
-            } else {
-              printf("[init] %s - %s\n", name, strerror(e));
-              waitpid(pid, NULL, 0);
-            }
+          if (exec != NULL) {
+
+
+						pid_t pid = fork();
+
+						if (pid == 0) {
+							// child
+            	char *args[] = {(char *)exec, NULL};
+            	execve((char *)exec, args, environ);
+							exit(-1);
+						}
+
+            printf("[init] %s spawned on pid %d\n", name, pid);
           } else {
             printf("[init] WARN: service %s has no service.exec field\n", buf);
           }

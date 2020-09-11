@@ -232,7 +232,7 @@ void dump_trapframe(reg_t *r) {
   unsigned int eflags = tf->rflags;
 #define GET(name) (tf->name)
 #define REGFMT "%016p"
-  KWARN("RAX=" REGFMT " RBX=" REGFMT " RCX=" REGFMT " RDX=" REGFMT
+  printk("RAX=" REGFMT " RBX=" REGFMT " RCX=" REGFMT " RDX=" REGFMT
          "\n"
          "RSI=" REGFMT " RDI=" REGFMT " RBP=" REGFMT " RSP=" REGFMT
          "\n"
@@ -247,7 +247,7 @@ void dump_trapframe(reg_t *r) {
          eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-', eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-',
          eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
 
-  dump_backtrace(tf->rbp);
+  // dump_backtrace(tf->rbp);
 }
 
 
@@ -300,8 +300,8 @@ extern "C" void syscall_handle(int i, reg_t *tf);
 
 static void pgfault_handle(int i, reg_t *regs) {
   auto *tf = (struct x86_64regs *)regs;
-  void *page = (void *)(read_cr2() & ~0xFFF);
-
+  uint64_t addr = read_cr2();
+  void *page = (void *)(addr & ~0xFFF);
 
   auto proc = curproc;
   if (curproc == NULL) {
@@ -327,8 +327,7 @@ static void pgfault_handle(int i, reg_t *regs) {
 
     int res = proc->mm->pagefault((off_t)page, err);
     if (res == -1) {
-
-			KERR("==================================================================\n");
+      KERR("==================================================================\n");
       // TODO:
       KERR("pid %d, tid %d segfaulted @ %p\n", curthd->pid, curthd->tid, tf->rip);
       KERR("       bad address = %p\n", read_cr2());
@@ -340,11 +339,43 @@ static void pgfault_handle(int i, reg_t *regs) {
       if (tf->err & PGFLT_INSTR) printk("INSTR ");
       printk("\n");
 
-			dump_trapframe(regs);
+
+#define CHECK(reg)                                  \
+  if ((tf->reg) == addr) {                          \
+    printk(KERN_ERROR "Could be a dereference of " #reg "\n"); \
+  }
+      CHECK(rax);
+      CHECK(rbx);
+      CHECK(rcx);
+      CHECK(rdx);
+      CHECK(rsi);
+      CHECK(rdi);
+      CHECK(rbp);
+      CHECK(rsp);
+      CHECK(r8);
+      CHECK(r9);
+      CHECK(r10);
+      CHECK(r11);
+      CHECK(r12);
+      CHECK(r13);
+      CHECK(r14);
+      CHECK(r15);
+      CHECK(rip);
+
+#undef CHECK
+
+      dump_trapframe(regs);
       KERR("Address Space Dump:\n");
       proc->mm->dump();
-      dump_backtrace(tf->rbp);
-			KERR("==================================================================\n");
+      KERR("FPU State:\n");
+      alignas(16) char sse_data[512];
+
+      asm volatile("fxsave64 (%0);" ::"r"(sse_data));
+
+
+
+      hexdump(sse_data, 512, true);
+      KERR("==================================================================\n");
 
       sys::exit_proc(-1);
 

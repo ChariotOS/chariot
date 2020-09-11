@@ -27,20 +27,6 @@ extern "C" {
 // yield system call
 int yield(void);
 
-pid_t spawn();
-pid_t despawn(int pid);
-
-
-
-int startpidve(int pid, char *const path, char *const argv[],
-               char *const envp[]);
-int startpidvpe(int pid, char *const path, char *const argv[],
-                char *const envp[]);
-// int cmdpidv(int pid, char *const path, char *const argv[]);
-
-
-
-
 
 #define panic(fmt, args...)                     \
   do {                                          \

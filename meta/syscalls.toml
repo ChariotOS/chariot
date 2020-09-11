@@ -31,22 +31,22 @@ args = [ 'code: int' ]
 ret = 'void'
 args = [ 'code: int' ]
 
-[sc.spawn]
-ret = 'int'
-args = []
-
-[sc.despawn]
-ret = 'int'
-args = [ 'pid: int' ]
-
-[sc.startpidve]
-ret = 'int'
-args = [
-	'pid: int',
-	'path: const char*',
-	'argv: const char **',
-	'envp: const char **',
-]
+# [sc.spawn]
+# ret = 'int'
+# args = []
+#
+# [sc.despawn]
+# ret = 'int'
+# args = [ 'pid: int' ]
+#
+# [sc.startpidve]
+# ret = 'int'
+# args = [
+# 	'pid: int',
+# 	'path: const char*',
+# 	'argv: const char **',
+# 	'envp: const char **',
+# ]
 
 
 [sc.execve]

@@ -97,26 +97,26 @@ size_t mm::space::copy_out(off_t byte_offset, void *dst, size_t size) {
   ssize_t offset = byte_offset % PGSIZE;
 
   char *udata = (char *)dst;
-	size_t read = 0;
+  size_t read = 0;
 
   for (off_t blk = byte_offset / PGSIZE; true; blk++) {
-		struct pte pte;
-		pt->get_mapping(blk * PGSIZE, pte);
+    struct pte pte;
+    pt->get_mapping(blk * PGSIZE, pte);
 
-		if (pte.ppn == 0) break;
+    if (pte.ppn == 0) break;
     // get the block we are looking at.
     auto data = (char *)(p2v(pte.ppn << 12));
 
     size_t space_left = PGSIZE - offset;
     size_t can_access = min(space_left, to_access);
 
-		// copy the data from the page
+    // copy the data from the page
     memcpy(udata, data + offset, can_access);
 
     // moving on to the next block, we reset the offset
     offset = 0;
     to_access -= can_access;
-		read += can_access;
+    read += can_access;
     udata += can_access;
 
     if (to_access <= 0) break;
@@ -434,12 +434,15 @@ bool mm::space::validate_pointer(void *raw_va, size_t len, int mode) {
     // see if there is a region at the requested offset
     auto r = lookup(va);
     if (!r) {
+			printk(KERN_WARN "validate_pointer(%p) - region not found!\n", raw_va);
       return false;
     }
 
-    if (mode & PROT_READ && !(r->prot & PROT_READ)) return false;
-    if (mode & PROT_WRITE && !(r->prot & PROT_WRITE)) return false;
-    if (mode & PROT_EXEC && !(r->prot & PROT_EXEC)) return false;
+    if ((mode & PROT_READ && !(r->prot & PROT_READ)) || (mode & PROT_WRITE && !(r->prot & PROT_WRITE)) ||
+        (mode & PROT_EXEC && !(r->prot & PROT_EXEC))) {
+			printk(KERN_WARN "validate_pointer(%p) - protection!\n", raw_va);
+      return false;
+    }
     // TODO: check mode flags
   }
   return true;

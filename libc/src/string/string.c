@@ -174,6 +174,15 @@ size_t strlen(const char *s) {
   return s - a;
 }
 
+
+size_t strnlen(const char *str, size_t maxsize) {
+  const char *s;
+  for (s = str; *s && maxsize--; ++s)
+    ;
+  return (unsigned int)(s - str);
+}
+
+
 char *strchr(const char *s, int c) {
   c = (unsigned char)c;
   if (!c) return (char *)s + strlen(s);
