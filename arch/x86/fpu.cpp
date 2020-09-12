@@ -148,7 +148,6 @@ static void set_osxsave(void) {
 }
 
 static void enable_xsave(void) {
-	return;
   fpu::caps.xsave = true;
   /* Enables XSAVE features by reading CR4 and writing OSXSAVE bit */
   set_osxsave();
