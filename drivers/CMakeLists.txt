@@ -48,6 +48,14 @@ add_kernel_module(
 	AUTOGLOB RTL8139/
 )
 
+
+add_kernel_module(
+	NAME sb16
+	INTEL
+	AUTOGLOB sb16/
+)
+
+
 # add_kernel_module(NAME sb16)
 # add_kernel_module(NAME virtio)
 add_kernel_module(

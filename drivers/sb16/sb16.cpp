@@ -1,6 +1,7 @@
 #include <asm.h>
 #include <cpu.h>
 #include <dev/driver.h>
+#include <errno.h>
 #include <module.h>
 #include <phys.h>
 #include <printk.h>
@@ -8,40 +9,28 @@
 
 #include "../majors.h"
 
-// Digital Sound Processor ports
-#define DSP_RESET 0x226
-#define DSP_READ 0x22A
-#define DSP_WRITE 0x22C
-#define DSP_BUFFER 0x22A
-#define DSP_STATUS 0x22E
-#define DSP_INTERRUPT 0x22F
+#define SB16_DEFAULT_IRQ 5
 
-// Digital Sound Processor commands
-#define DSP_CMD_OUTPUT_RATE 0x41
-#define DSP_CMD_TRANSFER_MODE 0xB6
-#define DSP_CMD_STOP 0xD5
-#define DSP_CMD_VERSION 0xE1
+enum class SampleFormat : u8 {
+  Signed = 0x10,
+  Stereo = 0x20,
+};
 
-// DMA ports
-#define DMA_ADDRES 0xC4
-#define DMA_COUNT 0xC6
-#define DMA_PAGE 0x8B
-#define DMA_SINGLE_MASK 0xD4
-#define DMA_TRANSFER_MODE 0xD6
-#define DMA_CLEAR_POINTER 0xD8
+constexpr uint16_t DSP_READ = 0x22A;
+constexpr uint16_t DSP_WRITE = 0x22C;
+constexpr uint16_t DSP_STATUS = 0x22E;
+constexpr uint16_t DSP_R_ACK = 0x22F;
 
-inline void delay_3us() {
-  // ~3 microsecs
-  for (auto i = 0; i < 32; i++) {
-    inb(0x80);
-  }
+int m_major_version = 0;
+
+
+
+static inline void delay(size_t microseconds) {
+  for (size_t i = 0; i < microseconds; ++i) inb(0x80);
 }
 
-int version_major = 0;
-int version_minor = 0;
-
 /* Write a value to the DSP write register */
-static void dsp_write(u8 value) {
+static void dsp_write(uint8_t value) {
   while (inb(DSP_WRITE) & 0x80) {
     ;
   }
@@ -49,7 +38,7 @@ static void dsp_write(u8 value) {
 }
 
 /* Reads the value of the DSP read register */
-static u8 dsp_read() {
+static uint8_t dsp_read() {
   while (!(inb(DSP_STATUS) & 0x80)) {
     ;
   }
@@ -57,7 +46,6 @@ static u8 dsp_read() {
 }
 
 /* Changes the sample rate of sound output */
-/*
 static void set_sample_rate(uint16_t hz) {
   dsp_write(0x41);  // output
   dsp_write((u8)(hz >> 8));
@@ -66,26 +54,144 @@ static void set_sample_rate(uint16_t hz) {
   dsp_write((u8)(hz >> 8));
   dsp_write((u8)hz);
 }
-*/
 
-void *dma_page = NULL;
+
+static void set_irq_register(u8 irq_number) {
+  uint8_t bitmask = 0;
+  switch (irq_number) {
+    case 2:
+      bitmask = 0;
+      break;
+    case 5:
+      bitmask = 0b10;
+      break;
+    case 7:
+      bitmask = 0b100;
+      break;
+    case 10:
+      bitmask = 0b1000;
+      break;
+    default:
+      panic("INVALID!\n");
+  }
+  outb(0x224, 0x80);
+  outb(0x225, bitmask);
+}
+
+
+static uint8_t get_irq_line() {
+  outb(0x224, 0x80);
+  uint8_t bitmask = inb(0x225);
+  switch (bitmask) {
+    case 0:
+      return 2;
+    case 0b10:
+      return 5;
+    case 0b100:
+      return 7;
+    case 0b1000:
+      return 10;
+  }
+  return bitmask;
+}
+
 
 /*
-static void dma_start(uint32_t len) {
-  if (dma_page == NULL) {
-    dma_page = phys::alloc();
-  }
+static void set_irq_line(u8 irq_number) {
+        arch::cli();
+  InterruptDisabler disabler;
+  if (irq_number == get_irq_line()) return;
+  set_irq_register(irq_number);
+  change_irq_number(irq_number);
+        arch::sti();
 }
 */
 
+
+static spinlock sb16_lock;
+void *dma_page = NULL;
+static waitqueue sb16_wq;
+
+
+static void dma_start(uint32_t length) {
+  const auto addr = (off_t)v2p(dma_page);
+  printk(KERN_INFO "DMA START %p %d. page=%04x\n", addr, length, addr >> 16);
+  const u8 channel = 5;  // 16-bit samples use DMA channel 5 (on the master DMA controller)
+  const u8 mode = 0x48;
+
+  // Disable the DMA channel
+  outb(0xd4, 4 + (channel % 4));
+
+  // Clear the byte pointer flip-flop
+  outb(0xd8, 0);
+
+  // Write the DMA mode for the transfer
+  outb(0xd6, (channel % 4) | mode);
+
+  // Write the offset of the buffer
+  uint16_t offset = (addr / 2) % 65536;
+  outb(0xc4, (u8)offset);
+  outb(0xc4, (u8)(offset >> 8));
+
+  // Write the transfer length
+  outb(0xc6, (u8)(length - 1));
+  outb(0xc6, (u8)((length - 1) >> 8));
+
+  // Write the buffer
+  outw(0x8b, addr >> 16);
+
+  // Enable the DMA channel
+  outb(0xd4, channel % 5);
+}
+
+
 static ssize_t sb16_write(fs::file &fd, const char *buf, size_t sz) {
-  hexdump((void *)buf, sz);
-  return -1;
+  // limit to single access
+  scoped_lock l(sb16_lock);
+  if (dma_page == NULL) {
+    dma_page = phys::kalloc(1);
+  }
+
+
+
+  const int BLOCK_SIZE = 32 * 1024;
+  if (sz > PGSIZE) return -ENOSPC;
+  if (sz > BLOCK_SIZE) return -ENOSPC;
+
+  uint8_t mode = (uint8_t)SampleFormat::Signed | (uint8_t)SampleFormat::Stereo;
+
+  const int sample_rate = 44100;
+  set_sample_rate(sample_rate);
+  memcpy(p2v(dma_page), buf, sz);
+
+  // 16-bit single-cycle output.
+  // FIXME: Implement auto-initialized output.
+  uint8_t command = 0xb0;
+  uint16_t sample_count = sz / sizeof(int16_t);
+	// if stereo, double the sample are used
+  if (mode & (u8)SampleFormat::Stereo) sample_count >>= 1;
+
+  printk(KERN_INFO "SB16: writing %d bytes! %d samples\n", sz, sample_count);
+
+  sample_count -= 1;
+
+  dma_start(sz);
+
+
+  dsp_write(command);
+  dsp_write(mode);
+  dsp_write(sample_count & 0xFF);
+  dsp_write((sample_count >> 8) & 0xFF);
+
+  // arch::sti();
+
+  printk("%d\n", sb16_wq.wait());
+  return sz;
 }
 
 static int sb16_open(fs::file &fd) {
   printk("here\n");
-  return -1;
+  return 0;
 }
 
 struct fs::file_operations sb_ops = {
@@ -93,24 +199,59 @@ struct fs::file_operations sb_ops = {
     .open = sb16_open,
 };
 
+
+static struct dev::driver_info sb16_driver {
+  .name = "sb16", .type = DRIVER_CHAR, .major = MAJOR_SB16,
+
+  .char_ops = &sb_ops,
+};
+
+
+static void sb16_interrupt(int intr, reg_t *fr) {
+  printk(KERN_INFO "SB16 INTERRUPT\n");
+  // Stop sound output ready for the next block.
+  dsp_write(0xd5);
+
+  inb(DSP_STATUS);                           // 8 bit interrupt
+  if (m_major_version >= 4) inb(DSP_R_ACK);  // 16 bit interrupt
+
+  sb16_wq.notify_all();
+
+  irq::eoi(intr);
+}
+
+
 void sb16_init(void) {
+
+	// Try to detect the soundblaster 16 card
   outb(0x226, 1);
-  delay_3us();
+  delay(32);
   outb(0x226, 0);
 
   auto data = dsp_read();
-  if (data == 0xaa) {
-    // Get the version info
-    dsp_write(0xe1);
-    version_major = dsp_read();
-    version_minor = dsp_read();
-    printk("SB16: found version %d.%d\n", version_major, version_minor);
-  } else {
-    printk("SB16: sb not ready");
+  if (data != 0xAA) {
+		// Soundblaster was not found, just return
+    return;
   }
 
+  // Turn the speaker on
+  dsp_write(0xD1);
+
+  // Get the version info
+  dsp_write(0xe1);
+  m_major_version = dsp_read();
+  auto vmin = dsp_read();
+
+
+  printk(KERN_INFO "SB16: found version %d.%d\n", m_major_version, vmin);
+  set_irq_register(SB16_DEFAULT_IRQ);
+  printk(KERN_INFO "SB16: IRQ %d\n", get_irq_line());
+
+  irq::install(32 + SB16_DEFAULT_IRQ, sb16_interrupt, "Sound Blaster 16");
   // finally initialize
-  // dev::register_driver("sb16", CHAR_DRIVER, MAJOR_SB16, &sb_ops);
+  dev::register_driver(sb16_driver);
+
+  dev::register_name(sb16_driver, "sb16", 0);
 }
 
-// module_init("sb16", sb16_init);
+module_init("sb16", sb16_init);

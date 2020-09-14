@@ -14,12 +14,20 @@
 #include <unistd.h>
 #include "ini.h"
 
+
 #include <ck/command.h>
+#include <ck/dir.h>
+#include <ck/re.h>
 #include <ck/io.h>
+#include <ck/string.h>
 
 #define ENV_PATH "/cfg/environ"
 
 extern char **environ;
+
+
+static void handler(int i) { printf("signal handler got %d\n", i); }
+
 
 // read the initial environ from /etc/environ
 // credit: github.com/The0x539
@@ -68,16 +76,23 @@ char **read_default_environ(void) {
   return env;
 }
 
-struct service {
-  //
+
+
+/*
+class service {
+ public:
+  ck::string name;
+  ck::string config_file;
+  pid_t pid = -1;
+
+	service(const char *path);
 };
 
+service::service(const char *path) : config_file(path) {
 
-
-static void handler(int i) {
-  //
-  printf("signal handler got %d\n", i);
 }
+*/
+
 
 
 int main(int argc, char **argv) {
@@ -86,36 +101,27 @@ int main(int argc, char **argv) {
   open("/dev/console", O_RDWR);
   open("/dev/console", O_RDWR);
   open("/dev/console", O_RDWR);
-
   sigset_t set;
   sigemptyset(&set);
-
   for (int i = 0; i < 32; i++) {
     sigaddset(&set, i);
     signal(i, handler);
   }
-
   sigprocmask(SIG_SETMASK, &set, NULL);
-
-
 
   if (getpid() != 1) {
     fprintf(stderr, "init: must be run as pid 1\n");
     return -1;
   }
 
-	// system("cat /cfg/srv/loadorder");
-
   printf("[init] hello, friend\n");
-
 
   environ = read_default_environ();
 
   FILE *loadorder = fopen("/cfg/srv/loadorder", "r");
 
   if (loadorder == NULL) {
-    fprintf(stderr,
-            "[init] loadorder file not found. No services shall be managed\n");
+    fprintf(stderr, "[init] loadorder file not found. No services shall be managed\n");
   } else {
     char buf[255];
 
@@ -135,16 +141,14 @@ int main(int argc, char **argv) {
           const char *name = ini_get(i, "service", "name");
 
           if (exec != NULL) {
+            pid_t pid = fork();
 
-
-						pid_t pid = fork();
-
-						if (pid == 0) {
-							// child
-            	char *args[] = {(char *)exec, NULL};
-            	execve((char *)exec, args, environ);
-							exit(-1);
-						}
+            if (pid == 0) {
+              // child
+              char *args[] = {(char *)exec, NULL};
+              execve((char *)exec, args, environ);
+              exit(-1);
+            }
 
             printf("[init] %s spawned on pid %d\n", name, pid);
           } else {
