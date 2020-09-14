@@ -299,6 +299,13 @@ args = [
 	'old_set: unsigned long*',
 ]
 
+[sc.kill]
+ret = 'int'
+args = [
+	'pid: int',
+	'sig: int',
+]
+
 
 [sc.awaitfs]
 ret = 'int'

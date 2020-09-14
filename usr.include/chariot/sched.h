@@ -401,7 +401,7 @@ namespace sched {
     /* remove a process from the ptable */
     bool ptable_remove(pid_t);
 
-    bool send_signal(pid_t, int sig);
+    int send_signal(pid_t, int sig);
 
     int reap(process::ptr);
 

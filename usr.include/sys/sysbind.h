@@ -66,6 +66,7 @@ int sysbind_signal_init(void * sigret);
 int sysbind_sigaction(int sig, struct sigaction* new_action, struct sigaction* old);
 int sysbind_sigreturn();
 int sysbind_sigprocmask(int how, unsigned long set, unsigned long* old_set);
+int sysbind_kill(int pid, int sig);
 int sysbind_awaitfs(struct await_target * fds, int nfds, int flags, long long timeout_time);
 unsigned long sysbind_kshell(char* cmd, int argc, char ** argv, void* data, size_t len);
 int sysbind_futex(int* uaddr, int op, int val, int val2, int* uaddr2, int val3);

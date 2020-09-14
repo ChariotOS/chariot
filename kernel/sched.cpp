@@ -203,24 +203,24 @@ static void switch_into(struct thread &thd) {
   thd.locks.run.lock();
   cpu::current().current_thread = &thd;
   thd.state = PS_UNRUNNABLE;
-	arch::restore_fpu(thd);
+  arch::restore_fpu(thd);
 
-	// update the statistics of the thread
+  // update the statistics of the thread
   thd.stats.run_count++;
   thd.sched.start_tick = cpu::get_ticks();
   thd.stats.current_cpu = cpu::current().cpunum;
 
-	// load up the thread's address space
+  // load up the thread's address space
   cpu::switch_vm(&thd);
 
-	thd.stats.last_start_cycle = arch::read_timestamp();
+  thd.stats.last_start_cycle = arch::read_timestamp();
 
-	// Switch into the thread!
+  // Switch into the thread!
   swtch(&cpu::current().sched_ctx, thd.kern_context);
 
-	arch::save_fpu(thd);
+  arch::save_fpu(thd);
 
-	// Update the stats afterwards
+  // Update the stats afterwards
   cpu::current().current_thread = nullptr;
   thd.stats.last_cpu = thd.stats.current_cpu;
   thd.stats.current_cpu = -1;
@@ -233,7 +233,7 @@ void sched::do_yield(int st) {
 
   auto &thd = *curthd;
 
-	thd.stats.cycles += arch::read_timestamp() - thd.stats.last_start_cycle;
+  thd.stats.cycles += arch::read_timestamp() - thd.stats.last_start_cycle;
 
   // thd.sched.priority = PRIORITY_HIGH;
   if (cpu::get_ticks() - thd.sched.start_tick >= thd.sched.timeslice) {
@@ -390,9 +390,7 @@ void sched::handle_tick(u64 ticks) {
 /* the default "waiter" type */
 class threadwaiter : public waiter {
  public:
-  inline threadwaiter(waitqueue &wq, struct thread *td) : waiter(wq), thd(td) {
-    thd->waiter = this;
-  }
+  inline threadwaiter(waitqueue &wq, struct thread *td) : waiter(wq), thd(td) { thd->waiter = this; }
 
   virtual ~threadwaiter(void) { thd->waiter = nullptr; }
 
@@ -412,19 +410,14 @@ class threadwaiter : public waiter {
 void waiter::interrupt(void) { wq.interrupt(this); }
 
 void waitqueue::interrupt(struct waiter *w) {
-  lock.lock();
-
-
+  scoped_lock l(lock);
   if (w->flags & WAIT_NOINT) return;
-
-  lock.unlock();
 }
+
 
 bool waitqueue::wait(u32 on, ref<waiter> wt) { return do_wait(on, 0, wt); }
 
-void waitqueue::wait_noint(u32 on, ref<waiter> wt) {
-  do_wait(on, WAIT_NOINT, wt);
-}
+void waitqueue::wait_noint(u32 on, ref<waiter> wt) { do_wait(on, WAIT_NOINT, wt); }
 
 bool waitqueue::do_wait(u32 on, int flags, ref<waiter> waiter) {
   if (!waiter) {
@@ -556,7 +549,7 @@ int sys::usleep(unsigned long n) {
     unsigned long end = time::now_us() + n;
     while (1) {
       if (time::now_us() >= end) break;
-			arch::relax();
+      arch::relax();
     }
     return 0;
   }

@@ -199,15 +199,19 @@ int sysbind_sigprocmask(int how, unsigned long set, unsigned long* old_set) {
     return (int)__syscall_eintr(48, (unsigned long long)how, (unsigned long long)set, (unsigned long long)old_set, 0, 0, 0);
 }
 
+int sysbind_kill(int pid, int sig) {
+    return (int)__syscall_eintr(49, (unsigned long long)pid, (unsigned long long)sig, 0, 0, 0, 0);
+}
+
 int sysbind_awaitfs(struct await_target * fds, int nfds, int flags, long long timeout_time) {
-    return (int)__syscall_eintr(49, (unsigned long long)fds, (unsigned long long)nfds, (unsigned long long)flags, (unsigned long long)timeout_time, 0, 0);
+    return (int)__syscall_eintr(50, (unsigned long long)fds, (unsigned long long)nfds, (unsigned long long)flags, (unsigned long long)timeout_time, 0, 0);
 }
 
 unsigned long sysbind_kshell(char* cmd, int argc, char ** argv, void* data, size_t len) {
-    return (unsigned long)__syscall_eintr(50, (unsigned long long)cmd, (unsigned long long)argc, (unsigned long long)argv, (unsigned long long)data, (unsigned long long)len, 0);
+    return (unsigned long)__syscall_eintr(51, (unsigned long long)cmd, (unsigned long long)argc, (unsigned long long)argv, (unsigned long long)data, (unsigned long long)len, 0);
 }
 
 int sysbind_futex(int* uaddr, int op, int val, int val2, int* uaddr2, int val3) {
-    return (int)__syscall_eintr(51, (unsigned long long)uaddr, (unsigned long long)op, (unsigned long long)val, (unsigned long long)val2, (unsigned long long)uaddr2, (unsigned long long)val3);
+    return (int)__syscall_eintr(52, (unsigned long long)uaddr, (unsigned long long)op, (unsigned long long)val, (unsigned long long)val2, (unsigned long long)uaddr2, (unsigned long long)val3);
 }
 

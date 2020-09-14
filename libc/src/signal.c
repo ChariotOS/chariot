@@ -5,6 +5,11 @@
 #include <sys/syscall.h>
 #include <sys/sysbind.h>
 
+
+int kill(pid_t pid, int sig) {
+	return errno_wrap(sysbind_kill(pid, sig));
+}
+
 // zero out the set
 int sigemptyset(sigset_t *s) {
   *s = 0;

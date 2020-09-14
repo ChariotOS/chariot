@@ -56,7 +56,7 @@ for sc in src['sc']:
 
 
 
-with open('include/syscalls.inc', 'w+') as f:
+with open('usr.include/chariot/syscalls.inc', 'w+') as f:
     for s in syscalls:
         f.write(s.cmacro() + '\n')
 
@@ -71,7 +71,7 @@ with open('usr.include/sys/syscall_defs.h', 'w+') as f:
 
 
 
-with open('include/syscall.def.h', 'w+') as f:
+with open('usr.include/chariot/syscall.def.h', 'w+') as f:
     for inc in src['kernel']['includes']:
         f.write(f'#include {inc}\n')
 

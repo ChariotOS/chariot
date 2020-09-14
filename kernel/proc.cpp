@@ -12,8 +12,8 @@
 #include <mem.h>
 #include <paging.h>
 #include <phys.h>
-#include <syscall.h>
 #include <sched.h>
+#include <syscall.h>
 #include <util.h>
 #include <wait_flags.h>
 
@@ -31,9 +31,7 @@ static pid_t get_next_pid(void) {
   return p;
 }
 
-mm::space *alloc_user_vm(void) {
-  return new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create());
-}
+mm::space *alloc_user_vm(void) { return new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create()); }
 
 static process::ptr pid_lookup(pid_t pid) {
   ptable_lock.read_lock();
@@ -198,8 +196,7 @@ struct process *sched::proc::kproc(void) {
   return kernel_process.get();
 }
 
-pid_t sched::proc::create_kthread(const char *name, int (*func)(void *),
-                                  void *arg) {
+pid_t sched::proc::create_kthread(const char *name, int (*func)(void *), void *arg) {
   auto proc = kproc();
 
   auto tid = get_next_pid();
@@ -355,8 +352,7 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   // TODO: this size is arbitrary.
   auto stack_size = 1024 * 1024;
 
-  stack = new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ | PROT_WRITE,
-                               MAP_ANON | MAP_PRIVATE, nullptr, 0);
+  stack = new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, nullptr, 0);
 
   // TODO: push argv and arguments onto the stack
   this->args = argv;
@@ -370,7 +366,7 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   struct thread *thd;
   if (threads.size() != 0) {
     thd = thread::lookup(this->pid);
-		assert(thd != NULL);
+    assert(thd != NULL);
   } else {
     thd = new thread(pid, *this);
   }
@@ -382,16 +378,16 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   return 0;
 }
 
-bool sched::proc::send_signal(pid_t p, int sig) {
+int sched::proc::send_signal(pid_t p, int sig) {
   // TODO: handle process group signals
   if (p < 0) {
     return -ENOTIMPL;
   }
 
-  if (sig < 0 || sig >= 64) return false;
+  if (sig < 0 || sig >= 64) return -EINVAL;
   ptable_lock.read_lock();
 
-  bool sent = false;
+  int err = -ESRCH;
 
   if (proc_table.contains(p)) {
     auto &targ = proc_table[p];
@@ -403,7 +399,7 @@ bool sched::proc::send_signal(pid_t p, int sig) {
       assert(thd != NULL);
       if (thd->send_signal(sig)) {
         // printk("signal recv'd by tid %d\n", tid);
-        sent = true;
+        err = 0;
         break;
       }
     }
@@ -411,7 +407,7 @@ bool sched::proc::send_signal(pid_t p, int sig) {
 
   ptable_lock.read_unlock();
 
-  return sent;
+  return err;
 }
 
 // #define REAP_DEBUG
@@ -437,8 +433,7 @@ int sched::proc::reap(process::ptr p) {
     auto *t = thread::lookup(tid);
     assert(t->state == PS_ZOMBIE);
 #ifdef REAP_DEBUG
-    printk(" [t:%d] sc:%d rc:%d\n", t->tid, t->stats.syscall_count,
-           t->stats.run_count);
+    printk(" [t:%d] sc:%d rc:%d\n", t->tid, t->stats.syscall_count, t->stats.run_count);
 #endif
 
     thread::teardown(t);
@@ -537,24 +532,25 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
 
 // TODO: alot of verification, basically
 int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
-	int tid = get_next_pid();
-	auto *thd = new thread(tid, *curproc);
+  int tid = get_next_pid();
+  auto *thd = new thread(tid, *curproc);
 
-	arch::reg(REG_SP, thd->trap_frame) = (unsigned long)stack;
+  arch::reg(REG_SP, thd->trap_frame) = (unsigned long)stack;
   arch::reg(REG_PC, thd->trap_frame) = (unsigned long)fn;
   arch::reg(REG_ARG0, thd->trap_frame) = (unsigned long)arg;
 
-	thd->kickoff(fn, PS_RUNNABLE);
+  thd->kickoff(fn, PS_RUNNABLE);
 
-	return tid;
+  return tid;
 }
 
 
 
 
+int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) { return -ENOTIMPL; }
 
 
 
-int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
-	return -ENOTIMPL;
+int sys::kill(int pid, int sig) {
+  return sched::proc::send_signal(pid, sig);
 }
