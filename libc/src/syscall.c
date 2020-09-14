@@ -19,7 +19,7 @@ extern long __syscall_eintr(int num, unsigned long long a, unsigned long long b,
     res = __syscall(num, a, b, c, d, e, f);
     count++;
     if (res == -EINTR) {
-      printf("[pid:%d] syscall interrupted\n", getpid());
+      // printf("[pid:%d] syscall interrupted\n", getpid());
     }
   } while (res == -EINTR);
   return res;

@@ -114,31 +114,21 @@ thread::~thread(void) {
 }
 
 bool thread::awaken(int flags) {
-  bool rudely = false;
-  if (!(wq.flags & WAIT_NOINT)) {
-    if (flags & NOTIFY_RUDE) {
+  bool rudely = (flags & NOTIFY_RUDE) != 0;
+  if (waiter != NULL && (waiter->flags & WAIT_NOINT)) {
+    if (rudely) {
       return false;
     }
   }
 
   // TODO: this should be more complex
   wq.rudely_awoken = rudely;
+	waiter = nullptr;
 
   // fix up the wq double linked list
-  wq.current_wq = NULL;
+  // wq.current_wq = NULL;
 
-  assert(state == PS_BLOCKED);
-
-#if 0
-  if (flags & NOTIFY_URGENT) {
-    sched::remove_task(this);
-    cpu::current().next_thread = this;
-    state = PS_RUNNABLE;
-    printk("urgent\n");
-    sched::yield();
-    return true;
-  }
-#endif
+  // assert(state == PS_BLOCKED);
 
   state = PS_RUNNABLE;
 
@@ -231,7 +221,7 @@ struct thread *thread::lookup(pid_t tid) {
 }
 
 bool thread::teardown(thread *t) {
-	// printk("thread ran for %llu cycles\n", t->stats.cycles);
+  // printk("thread ran for %llu cycles\n", t->stats.cycles);
   thread_table_lock.write_lock();
   assert(thread_table.contains(t->tid));
   thread_table.remove(t->tid);
@@ -247,9 +237,9 @@ bool thread::send_signal(int sig) {
   unsigned long pend = (1 << sig);
   this->sig.pending |= pend;
 
-  printk("sending signal to tid %d. Blocked=%d\n", tid, state == PS_BLOCKED);
+  // printk("sending signal to tid %d. Blocked=%d\n", tid, state == PS_BLOCKED);
   if (state == PS_BLOCKED) {
-    //
+    this->interrupt();
   }
   return true;
 }
@@ -267,4 +257,29 @@ vec<off_t> thread::backtrace(off_t rbp, off_t rip) {
   }
 
   return bt;
+}
+
+void thread::interrupt(void) {
+  if (waiter) {
+    if (waiter->flags & WAIT_NOINT) {
+      // printk("no interrupt!\n");
+      return;
+    }
+
+
+		auto &wq = waiter->wq;
+		// take a lock on the waitqueue so we can futz with it
+		scoped_lock l(wq.lock);
+
+		ref<struct waiter> w = waiter;
+
+		if (w->next != NULL) w->next->prev = w->prev;
+		if (w->prev != NULL) w->prev->next = w->next;
+
+		if (wq.front == w) wq.front = w->next;
+		if (wq.back == w) wq.back = w->prev;
+
+		w->notify(NOTIFY_RUDE);
+		waiter = nullptr;
+  }
 }

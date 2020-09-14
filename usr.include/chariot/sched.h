@@ -205,9 +205,6 @@ struct thread_waitqueue_info {
   int flags = 0;
   bool rudely_awoken = false;
   // intrusive list for the waitqueue. It's the first if wq_prev == NULL
-  struct thread *next;
-  struct thread *prev;
-  waitqueue *current_wq = NULL;
 };
 
 

@@ -390,12 +390,14 @@ void sched::handle_tick(u64 ticks) {
 /* the default "waiter" type */
 class threadwaiter : public waiter {
  public:
-  inline threadwaiter(waitqueue &wq, struct thread *td) : waiter(wq), thd(td) { thd->waiter = this; }
+  inline threadwaiter(waitqueue &wq, struct thread *td) : waiter(wq), thd(td) {
+		thd->waiter = this;
+	}
 
   virtual ~threadwaiter(void) { thd->waiter = nullptr; }
 
   virtual bool notify(int flags) override {
-    if (flags & NOTIFY_RUDE) printk("rude!\n");
+    // if (flags & NOTIFY_RUDE) printk("rude!\n");
     thd->awaken(flags);
     // I absorb this!
     return true;
@@ -438,6 +440,8 @@ bool waitqueue::do_wait(u32 on, int flags, ref<waiter> waiter) {
   waiter->next = NULL;
   waiter->prev = NULL;
 
+	curthd->waiter = waiter.get();
+
   if (!back) {
     assert(!front);
     back = front = waiter;
@@ -451,8 +455,8 @@ bool waitqueue::do_wait(u32 on, int flags, ref<waiter> waiter) {
 
   waiter->start();
 
-  // TODO: read form the thread if it was rudely notified or not
-  return true;
+  // TODO: read from the thread if it was rudely notified or not
+  return curthd->wq.rudely_awoken == false;
 }
 
 void waitqueue::notify(int flags) {

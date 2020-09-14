@@ -51,7 +51,6 @@ class waitqueue {
 
 
 	void interrupt(waiter *);
- private:
   bool do_wait(u32 on, int flags, ref<waiter> wtr);
   // navail is the number of unhandled notifications
   int navail = 0;

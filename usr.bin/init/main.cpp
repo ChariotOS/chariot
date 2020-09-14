@@ -26,7 +26,7 @@
 extern char **environ;
 
 
-static void handler(int i) { printf("signal handler got %d\n", i); }
+static void handler(int i) { printf("=====================\nsignal handler got %d\n=====================\n", i); }
 
 
 // read the initial environ from /etc/environ
