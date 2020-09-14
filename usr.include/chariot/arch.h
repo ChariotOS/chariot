@@ -43,6 +43,8 @@ void restore_fpu(struct thread &);
 
 void cli(void);
 void sti(void);
+// Tell the cpu core to relax. ex: in a spin loop
+void relax();
 
 void halt(void);
 

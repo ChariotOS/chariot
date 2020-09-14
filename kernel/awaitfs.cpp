@@ -60,7 +60,7 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags,
           return index;
         }
       }
-      asm("pause");
+			arch::relax();
     }
 
     // do we timeout?

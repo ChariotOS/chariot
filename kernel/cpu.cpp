@@ -42,7 +42,7 @@ void cpu::calc_speed_khz(void) {
     if (c.kstat.ticks - start_tick > rec_ms) {
       break;
     }
-    asm("pause");
+		arch::relax();
   }
 
   double cycles = arch::read_timestamp() - start_cycle;

@@ -36,3 +36,8 @@ unsigned long arch::read_timestamp(void) {
   asm volatile("pushfq; popq %0" : "=a"(ret));
   return ret;
 }
+
+
+void arch::relax(void) {
+	asm("pause");
+}

@@ -199,15 +199,6 @@ static inline i64 max(i64 a, i64 b) {
   return b;
 }
 
-#define PAUSE_WHILE(x)     \
-  while ((x)) {            \
-    asm volatile("pause"); \
-  }
-
-#define BARRIER_WHILE(x) \
-  while ((x)) {          \
-  }
-
 static inline u64 read_rsp(void) {
   u64 ret;
   asm volatile("mov %%rsp, %0" : "=r"(ret));

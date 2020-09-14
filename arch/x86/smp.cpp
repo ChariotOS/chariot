@@ -512,7 +512,7 @@ void smp::init_cores(void) {
 
     startap(core.entry->lapic_id, (unsigned long)v2p(code));
     while (args->ready == 0) {
-      asm("pause");
+			arch::relax();
     }
   }
 

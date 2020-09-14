@@ -56,7 +56,7 @@ void spinlock::unlock_cli(void) {
 
 bool spinlock::is_locked(void) { return locked; }
 
-static void spin_wait(volatile int* lock) { asm("pause"); }
+static void spin_wait(volatile int* lock) { arch::relax(); }
 void spinlock::lock(volatile int& l) {
   volatile int* lock = &l;
   while (likely(arch_atomic_swap(lock, 1))) {

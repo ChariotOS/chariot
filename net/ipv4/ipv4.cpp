@@ -74,12 +74,11 @@ net::ipv4sock::ipv4sock(int d, int t, int p) : net::sock(d, t, p) {
 
 net::ipv4sock::~ipv4sock(void) {}
 
-struct net::ipv4::route net::ipv4::route_to(uint32_t target_addr,
-					    uint32_t source_addr) {
+struct net::ipv4::route net::ipv4::route_to(uint32_t target_addr, uint32_t source_addr) {
   /*
-	   printk("route %I -> %I\n", net::host_ord(target_addr),
-	   net::host_ord(source_addr));
-	   */
+           printk("route %I -> %I\n", net::host_ord(target_addr),
+           net::host_ord(source_addr));
+           */
 
   struct net::ipv4::route r;
   r.in = NULL;
@@ -93,8 +92,7 @@ struct net::ipv4::route net::ipv4::route_to(uint32_t target_addr,
 
     if (source_addr != 0 && source_addr != adapter_addr) return true;
 
-    if ((target_addr & adapter_mask) == (adapter_addr & adapter_mask))
-      local_adapter = &i;
+    if ((target_addr & adapter_mask) == (adapter_addr & adapter_mask)) local_adapter = &i;
 
     if (i.gateway != 0) gateway_adapter = &i;
     return true;
@@ -152,20 +150,20 @@ struct net::ipv4::route net::ipv4::route_to(uint32_t target_addr,
 
     while (1) {
       for (int i = 0; i < adapter->pending_arps.size(); i++) {
-	auto *p = adapter->pending_arps[i];
-	if (p->sender_ip == next_hop_ip) {
-	  adapter->pending_arps.remove(i);
-	  arp_table.set(target_addr, p->target_hw);
-	  arp_response = p;
-	  break;
-	}
+        auto *p = adapter->pending_arps[i];
+        if (p->sender_ip == next_hop_ip) {
+          adapter->pending_arps.remove(i);
+          arp_table.set(target_addr, p->target_hw);
+          arp_response = p;
+          break;
+        }
       }
       if (arp_response != NULL) {
-	delete arp_response;
-	break;
+        delete arp_response;
+        break;
       }
       sched::yield();
-      asm("pause");
+      arch::relax();
     }
   }
 
@@ -208,7 +206,7 @@ ssize_t net::ipv4sock::send_packet(void *data, size_t len) {
   } else {
     panic("uh");
   }
-  ip.ttl = 64;	// dunno
+  ip.ttl = 64;  // dunno
 
   memcpy(b.alloc(len), data, len);
 

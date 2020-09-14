@@ -252,7 +252,7 @@ static bool e1000_send_packet(struct net::interface &, void *payload,
 
   write_command(E1000_REG_TXDESCTAIL, tx_index);
   while (!(desc.status & 0x0f)) {
-    asm("pause");
+		arch::relax();
   }
   net_queue_lock.unlock();
 

@@ -556,7 +556,7 @@ int sys::usleep(unsigned long n) {
     unsigned long end = time::now_us() + n;
     while (1) {
       if (time::now_us() >= end) break;
-      // asm("pause"); // TODO: arch::relax();
+			arch::relax();
     }
     return 0;
   }
