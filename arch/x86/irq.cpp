@@ -458,3 +458,61 @@ extern "C" void trap(reg_t *regs) {
   // TODO: generalize
   sched::before_iret(from_userspace);
 }
+
+
+
+
+
+
+#if 0
+struct irq_state {
+	void *fpu_state = NULL;
+	struct irq_state *prev;
+};
+
+
+struct {
+	struct irq_state *irq_state = NULL;
+} current_thread;
+
+
+
+void on_nm_irq(void) {
+	struct irq_state *state = current_thread.irq_state->prev;
+
+	if (state->fpu_state == NULL) {
+		state->fpu_state = kmalloc(4096);
+	}
+
+
+	enable_fpu();
+	save_fpu(state->fpu_state);
+}
+
+
+
+void on_irq(void) {
+	struct irq_state state;
+	state.prev = current_thread.irq_state;
+	current_thread.irq_state = &state;
+	// in the nk code, fpu is disabled until you use it, so we can save/restore
+	disable_fpu();
+
+
+	// do stuff with the irq
+	auto handler = handler_table[irq]
+	handler();
+	nk_sched_need_resched();
+
+	current_thread.irq_state = current_thread.irq_state->prev;
+
+	if (state.fpu_state != NULL) {
+		restore_fpu(state.fpu_state);
+		kfree(state.fpu_state);
+	}
+
+	// if fpu was already enabled, re-enable it here.
+}
+#endif
+
+

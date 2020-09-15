@@ -7,6 +7,7 @@
   return 0;
 
 extern "C" {
+#if 0
 double trunc(double x) { return (int)x; }
 
 double cos(double angle) { return sin(angle + M_PI_2); }
@@ -150,5 +151,7 @@ int sgn(int n) {
   if (n < 0) return -1;
   return +1;
 }
+
+#endif
 }
 

@@ -11,6 +11,7 @@
 #include <string.h>
 #include <util.h>
 
+
 // Standard information and structures for EXT2
 #define EXT2_SIGNATURE 0xEF53
 
@@ -100,7 +101,7 @@ bool fs::ext2::init(fs::blkdev *bdev) {
 
   // the number of block groups can be found by rounding up the
   // blocks/blocks_per_group
-  blockgroups = ceil((double)sb->blocks / (double)sb->blocks_in_blockgroup);
+  blockgroups = ceil_div((int)sb->blocks, (int)sb->blocks_in_blockgroup);
 
 
   first_bgd = block_size == 1024 ? 2 : 1;
