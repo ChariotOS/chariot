@@ -1,6 +1,9 @@
 
 include_directories(../usr.include)
 
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-instrument-functions ")
+
 add_library(crt0 STATIC crt0.asm)
 add_custom_command(
     TARGET crt0

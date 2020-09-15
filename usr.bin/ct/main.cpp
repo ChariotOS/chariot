@@ -105,10 +105,14 @@ class painter : public ui::view {
 
 #include <setjmp.h>
 #include <signal.h>
-
+#include <ck/async.h>
 
 
 int main(int argc, char** argv) {
+	// ck::future<int> x;
+
+
+
   int* a = NULL;
   *a = 10;
 

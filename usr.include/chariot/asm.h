@@ -3,8 +3,6 @@
 
 // A set of common assembly functions
 
-#include <math.h>
-
 #include "types.h"
 
 #ifndef unlikely

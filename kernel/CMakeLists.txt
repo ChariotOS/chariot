@@ -3,6 +3,7 @@ include(CMakeParseArguments)
 
 # zero out the C_FLAGS
 set(CMAKE_C_FLAGS "")
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -finstrument-functions ")
 
 
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DCHARIOT_HRT")

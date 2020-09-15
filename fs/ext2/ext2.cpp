@@ -4,7 +4,6 @@
 #include <errno.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
-#include <math.h>
 #include <mem.h>
 #include <module.h>
 #include <phys.h>

@@ -9,8 +9,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#pragma weak main
-
 int __argc;
 char **__argv;
 
@@ -50,13 +48,12 @@ void libc_start(int argc, char **argv, char **envp) {
 
   call_global_constructors();
 
-	if (main == 0) {
-		printf("No main found!\n");
-		exit(-1);
-	}
 
   // TODO: parse envp and store in a better format!
-  exit(main(__argc, __argv, environ));
+  int code = main(__argc, __argv, environ);
+
+  exit(code);
+
   printf("failed to exit!\n");
   // TODO: exit!
   while (1) {
@@ -72,4 +69,18 @@ void handle_executable(int fd) {
 
   void *buf = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
   munmap(buf, st.st_size);
+}
+
+
+void __cyg_profile_func_enter(void *this_func, void *call_site) __attribute__((no_instrument_function));
+void __cyg_profile_func_exit(void *this_func, void *call_site) __attribute__((no_instrument_function));
+
+
+
+void __cyg_profile_func_enter(void *this_func, void *call_site) {
+	printf("call %p from %p\n", this_func, call_site);
+
+}
+void __cyg_profile_func_exit(void *this_func, void *call_site) {
+
 }
