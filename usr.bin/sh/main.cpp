@@ -93,6 +93,10 @@ int run_line(ck::string line) {
 		return err;
   }
 
+	if (parts[0] == "exit") {
+		exit(0);
+	}
+
 
   pid_t pid = fork();
   if (pid == 0) {

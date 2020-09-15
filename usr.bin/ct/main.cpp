@@ -103,9 +103,17 @@ class painter : public ui::view {
 };
 
 
+#include <setjmp.h>
+#include <signal.h>
+
 
 
 int main(int argc, char** argv) {
+  int* a = NULL;
+  *a = 10;
+
+
+
   ck::file fnt;
   fnt.open("/usr/res/fonts/Vera.sfn", "r");
   font_mapping = fnt.mmap();

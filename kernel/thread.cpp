@@ -30,10 +30,14 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
 
   sched.priority = PRIORITY_HIGH;
 
-  stack_size = PGSIZE * 2;
-  stack = kmalloc(stack_size);
 
-  auto sp = (off_t)stack + stack_size;
+
+	struct thread::kernel_stack s;
+	s.size = PGSIZE * 2;
+  s.start = (void*)kmalloc(s.size);
+	stacks.push(s);
+
+  auto sp = (off_t)s.start + s.size;
 
   // get a pointer to the trapframe on the stack
   sp -= arch::trapframe_size();
@@ -107,7 +111,11 @@ thread::~thread(void) {
   }
 
   sched::remove_task(this);
-  kfree(stack);
+
+	for (auto &s : stacks) {
+		kfree(s.start);
+	}
+  // kfree(stack);
   phys::kfree(fpu.state, 1);
   // assume it doesn't have a destructor, idk
   kfree(sig.arch_priv);
@@ -236,7 +244,6 @@ bool thread::teardown(thread *t) {
 bool thread::send_signal(int sig) {
   unsigned long pend = (1 << sig);
   this->sig.pending |= pend;
-
   // printk("sending signal to tid %d. Blocked=%d\n", tid, state == PS_BLOCKED);
   if (state == PS_BLOCKED) {
     this->interrupt();

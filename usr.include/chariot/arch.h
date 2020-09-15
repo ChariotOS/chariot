@@ -63,7 +63,7 @@ unsigned long read_timestamp(void);
 unsigned long us_this_second(void);
 
 // dispatch a signal to userspace and return when done
-void dispatch_signal(int sig);
+void dispatch_function(void *func, long arg);
 void sigreturn(void);
 
 

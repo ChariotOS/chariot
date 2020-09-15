@@ -41,6 +41,8 @@ void sys::exit_proc(int code) {
   curproc->exited = true;
   curproc->parent->waiters.post();
 
+	sched::proc::send_signal(curproc->parent->pid, SIGCHLD);
+
   sched::exit();
 }
 

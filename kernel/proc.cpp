@@ -398,7 +398,6 @@ int sched::proc::send_signal(pid_t p, int sig) {
       auto *thd = thread::lookup(tid);
       assert(thd != NULL);
       if (thd->send_signal(sig)) {
-        // printk("signal recv'd by tid %d\n", tid);
         err = 0;
         break;
       }

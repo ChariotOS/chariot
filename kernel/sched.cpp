@@ -9,6 +9,11 @@
 #include <wait.h>
 #include "../arch/x86/fpu.h"
 
+
+#define SIG_ERR ((void (*)(int)) - 1)
+#define SIG_DFL ((void (*)(int))0)
+#define SIG_IGN ((void (*)(int))1)
+
 // #define SCHED_DEBUG
 //
 
@@ -390,9 +395,7 @@ void sched::handle_tick(u64 ticks) {
 /* the default "waiter" type */
 class threadwaiter : public waiter {
  public:
-  inline threadwaiter(waitqueue &wq, struct thread *td) : waiter(wq), thd(td) {
-		thd->waiter = this;
-	}
+  inline threadwaiter(waitqueue &wq, struct thread *td) : waiter(wq), thd(td) { thd->waiter = this; }
 
   virtual ~threadwaiter(void) { thd->waiter = nullptr; }
 
@@ -440,7 +443,7 @@ bool waitqueue::do_wait(u32 on, int flags, ref<waiter> waiter) {
   waiter->next = NULL;
   waiter->prev = NULL;
 
-	curthd->waiter = waiter.get();
+  curthd->waiter = waiter.get();
 
   if (!back) {
     assert(!front);
@@ -503,6 +506,96 @@ bool waitqueue::should_notify(u32 val) {
   return false;
 }
 
+
+#define SIGACT_IGNO 0
+#define SIGACT_TERM 1
+#define SIGACT_STOP 2
+#define SIGACT_CONT 3
+
+
+static int default_signal_action(int signal) {
+  ASSERT(signal && signal < 64);
+
+  switch (signal) {
+    case SIGHUP:
+    case SIGINT:
+    case SIGKILL:
+    case SIGPIPE:
+    case SIGALRM:
+    case SIGUSR1:
+    case SIGUSR2:
+    case SIGVTALRM:
+    // case SIGSTKFLT:
+    case SIGIO:
+    case SIGPROF:
+    case SIGTERM:
+      return SIGACT_TERM;
+    case SIGCHLD:
+    case SIGURG:
+    case SIGWINCH:
+      // case SIGINFO:
+      return SIGACT_IGNO;
+    case SIGQUIT:
+    case SIGILL:
+    case SIGTRAP:
+    case SIGABRT:
+    case SIGBUS:
+    case SIGFPE:
+    case SIGSEGV:
+    case SIGXCPU:
+    case SIGXFSZ:
+    case SIGSYS:
+      return SIGACT_TERM;
+    case SIGCONT:
+      return SIGACT_CONT;
+    case SIGSTOP:
+    case SIGTSTP:
+    case SIGTTIN:
+    case SIGTTOU:
+      return SIGACT_STOP;
+  }
+
+  return SIGACT_TERM;
+}
+
+void sched::dispatch_signal(int sig) {
+  // sanity check
+  if (sig < 0 || sig > 63) return;
+
+  auto &action = curproc->sig.handlers[sig];
+
+  if (sig == SIGSTOP) {
+    printk("TODO: SIGSTOP\n");
+    return;
+  }
+
+  if (sig == SIGCONT) {
+    printk("TODO: SIGCONT\n");
+    // resume_from_stopped();
+  }
+
+  if (action.sa_handler == SIG_DFL) {
+    // handle the default action
+    switch (default_signal_action(sig)) {
+      case SIGACT_STOP:
+        printk("TODO: SIGACT_STOP!\n");
+        return;
+      case SIGACT_TERM:
+        sys::exit_proc(128 + sig);
+        return;
+      case SIGACT_IGNO:
+				return;
+      case SIGACT_CONT:
+        printk("TODO: SIGACT_CONT!\n");
+        return;
+    }
+  }
+
+  // whatver the arch needs to do
+  arch::dispatch_function((void *)action.sa_handler, sig);
+}
+
+
 void sched::before_iret(bool userspace) {
   if (!cpu::in_thread()) return;
   // exit via the scheduler if the task should die.
@@ -510,21 +603,27 @@ void sched::before_iret(bool userspace) {
 
   long sig_to_handle = -1;
 
-  if (curthd->sig.pending != 0) {
-    for (int i = 0; i < 63; i++) {
-      if (curthd->sig.pending & SIGBIT(i)) {
-        if (curthd->sig.mask & SIGBIT(i)) {
-          curthd->sig.pending &= ~SIGBIT(i);
-          sig_to_handle = i;
-          break;
+
+  while (1) {
+    sig_to_handle = -1;
+    if (curthd->sig.pending != 0) {
+      for (int i = 0; i < 63; i++) {
+        if ((curthd->sig.pending & SIGBIT(i)) != 0) {
+          if (true || (curthd->sig.mask & SIGBIT(i))) {
+            // Mark this signal as handled.
+            curthd->sig.pending &= ~SIGBIT(i);
+            sig_to_handle = i;
+            break;
+          }
         }
       }
     }
-  }
 
-  if (sig_to_handle != -1) {
-    // whatver the arch needs to do
-    arch::dispatch_signal(sig_to_handle);
+    if (sig_to_handle != -1) {
+      sched::dispatch_signal(sig_to_handle);
+    } else {
+      break;
+    }
   }
 }
 

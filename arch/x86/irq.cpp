@@ -215,6 +215,7 @@ extern const char *ksym_find(off_t);
 void dump_backtrace(off_t ebp) {
   printk("Backtrace (ebp=%p):\n", ebp);
 
+#if 0
   off_t stk_end = (off_t)curthd->stack + curthd->stack_size;
   // int i = 0;
   // printk("addr2line -e /tmp/chariot.elf ");
@@ -225,6 +226,7 @@ void dump_backtrace(off_t ebp) {
     printk("0x%p\n", retaddr);
   }
   printk("\n");
+#endif
 }
 
 void dump_trapframe(reg_t *r) {
@@ -311,7 +313,7 @@ static void pgfault_handle(int i, reg_t *regs) {
     proc = sched::proc::kproc();
   }
 
-  curthd->trap_frame = regs;
+  // curthd->trap_frame = regs;
 
   if (proc) {
     int err = 0;
@@ -340,8 +342,8 @@ static void pgfault_handle(int i, reg_t *regs) {
       printk("\n");
 
 
-#define CHECK(reg)                                  \
-  if ((tf->reg) == addr) {                          \
+#define CHECK(reg)                                             \
+  if ((tf->reg) == addr) {                                     \
     printk(KERN_ERROR "Could be a dereference of " #reg "\n"); \
   }
       CHECK(rax);
@@ -372,15 +374,13 @@ static void pgfault_handle(int i, reg_t *regs) {
 
       asm volatile("fxsave64 (%0);" ::"r"(sse_data));
 
-
-
       hexdump(sse_data, 512, true);
       KERR("==================================================================\n");
 
-      sys::exit_proc(-1);
+      sched::dispatch_signal(SIGSEGV);
 
       // XXX: just block, cause its an easy way to get the proc to stop running
-      sched::block();
+      // sched::block();
     }
 
   } else {
@@ -445,14 +445,16 @@ extern "C" void trap(reg_t *regs) {
   arch::sti();
 
 
-
   auto *tf = (struct x86_64regs *)regs;
+  bool from_userspace = tf->cs == 0x23;
+  if (cpu::in_thread() && from_userspace) {
+    curthd->trap_frame = regs;
+  }
   irq::dispatch(tf->trapno, regs);
 
 
   irq::eoi(tf->trapno);
 
   // TODO: generalize
-  bool to_userspace = tf->cs == 0x23;
-  sched::before_iret(to_userspace);
+  sched::before_iret(from_userspace);
 }

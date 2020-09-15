@@ -233,9 +233,13 @@ struct thread final {
 
   int exit_code;
 
+	struct kernel_stack {
+		void *start;
+		long size;
+	};
+
   /* Reference to the kernel stack */
-  long stack_size;
-  void *stack;
+	vec<kernel_stack> stacks;
 
 
   thread_blocker *blocker = NULL;
@@ -338,6 +342,10 @@ struct thread final {
 
 
 namespace sched {
+
+
+	// run a signal on the current thread
+	void dispatch_signal(int sig);
 
   bool init(void);
 
