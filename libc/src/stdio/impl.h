@@ -23,6 +23,11 @@
 #define FILE_BUFSZ 512
 
 
+#define BUFROLE_NONE 0
+#define BUFROLE_WRITE 1
+#define BUFROLE_READ 2
+
+
 struct _FILE_IMPL {
   // possible different file descriptors for reading and writing
   int fd;
@@ -32,6 +37,8 @@ struct _FILE_IMPL {
 
   int flags;
   int eof;
+	// the offset into the file
+	int pos;
 
   // these operations can be ``overloaded'' in a sense. If the pointer is NULL,
   // it is not allowed. For example, a readonly file will have the read function
@@ -44,6 +51,12 @@ struct _FILE_IMPL {
   int lock;
 
   int buffered;
+	int bufrole;
+	// if bufrole == BUFROLE_READ, this describes the byte offset of
+	// the buffer into the file.
+	int bufbase;
+
+
   int buf_len, buf_cap;
 	char default_buffer[BUFSIZ];
   char *buffer;

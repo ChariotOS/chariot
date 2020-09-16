@@ -76,9 +76,50 @@ void ui::window::handle_input(struct lumen::input_msg &msg) {
 void ui::window::schedule_reflow(void) {
   if (!m_pending_reflow) {
     ck::eventloop::defer(fn() {
+      m_main_view->set_size(m_rect.w, m_rect.h);
+      m_main_view->set_pos(0, 0);  // the main widget exists at the top left
       // tell the main vie to reflow
       m_main_view->do_reflow();
       this->m_pending_reflow = false;
     });
   }
+}
+
+
+ck::tuple<int, int> ui::window::resize(int w, int h) {
+  // don't change stuff if you dont need to
+  if (width() == w && height() == h) {
+    return ck::tuple(w, h);
+  }
+
+  auto &app = ui::application::get();
+
+  // allocate the messages
+  struct lumen::resize_msg m = {0};
+  struct lumen::resized_msg response = {0};
+  m.id = this->m_id;
+  m.width = w;
+  m.height = h;
+
+  app.send_msg_sync(LUMEN_MSG_RESIZE, m, &response);
+
+  // failure case
+  if (response.id != m.id) {
+    // nothing changed, so we just return the old size
+    return ck::tuple(width(), height());
+  }
+
+  auto new_bitmap = gfx::shared_bitmap::get(response.bitmap_name, response.width, response.height);
+
+  if (!new_bitmap) printf("NOT FOUND!\n");
+  // update the bitmap
+  this->m_bitmap = new_bitmap;
+  m_rect.w = width();
+  m_rect.h = height();
+
+  m_main_view->set_size(m_rect.w, m_rect.h);
+  m_main_view->set_pos(0, 0);  // the main widget exists at the top left
+  // tell the main vie to reflow
+  m_main_view->do_reflow();
+  return ck::tuple(w, h);
 }

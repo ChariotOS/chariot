@@ -32,6 +32,15 @@ static void call_global_constructors(void) {
 
 
 
+void __ck_before_main(int argc, char **argv, char **envp) __attribute__((weak));
+void __ck_before_main(int argc, char **argv, char **envp) {}
+
+
+void __ck_after_main(int status) __attribute__((weak));
+void __ck_after_main(int status) {}
+
+
+
 void libc_start(int argc, char **argv, char **envp) {
   __argc = argc;
   __argv = argv;
@@ -49,8 +58,10 @@ void libc_start(int argc, char **argv, char **envp) {
   call_global_constructors();
 
 
+	__ck_before_main(__argc, __argv, environ);
   // TODO: parse envp and store in a better format!
   int code = main(__argc, __argv, environ);
+	__ck_after_main(code);
 
   exit(code);
 
@@ -69,18 +80,4 @@ void handle_executable(int fd) {
 
   void *buf = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
   munmap(buf, st.st_size);
-}
-
-
-void __cyg_profile_func_enter(void *this_func, void *call_site) __attribute__((no_instrument_function));
-void __cyg_profile_func_exit(void *this_func, void *call_site) __attribute__((no_instrument_function));
-
-
-
-void __cyg_profile_func_enter(void *this_func, void *call_site) {
-	printf("call %p from %p\n", this_func, call_site);
-
-}
-void __cyg_profile_func_exit(void *this_func, void *call_site) {
-
 }

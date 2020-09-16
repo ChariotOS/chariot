@@ -13,7 +13,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
+#include <ck/lock.h>
 #include "gfx/rect.h"
+#include <pthread.h>
 
 namespace lumen {
 
@@ -124,6 +126,8 @@ namespace lumen {
     bool hovered = false;
     bool focused = false;
 
+
+		ck::mutex window_lock;
 		long pending_invalidation_id = -1;
 
     window_mode mode;
@@ -168,6 +172,8 @@ namespace lumen {
     ck::ipcsocket *connection;
     ck::map<long, struct window *> windows;
 
+		ck::mutex guest_lock;
+
     guest(long id, struct context &ctx, ck::ipcsocket *conn);
     ~guest(void);
 
@@ -210,6 +216,8 @@ namespace lumen {
 
 
 
+		pthread_t compositor_thread;
+
     void accept_connection(void);
     void handle_keyboard_input(keyboard_packet_t &pkt);
     void handle_mouse_input(struct mouse_packet &pkt);
@@ -223,6 +231,7 @@ namespace lumen {
     void calculate_hover(void);
 
 
+		static void *compositor_thread_worker(void *arg);
     void compose(void);
 
     struct window_ref {
@@ -234,11 +243,13 @@ namespace lumen {
     // ordered list of all the windows (front to back)
     // The currently focused window is at the front
     ck::vec<lumen::window *> windows;
+		ck::mutex windows_lock;
 
     lumen::window *hovered_window = nullptr;
     lumen::window *focused_window = nullptr;
     bool dragging = false;
 
+		ck::mutex dirty_regions_lock;
     ck::vec<gfx::rect> dirty_regions;
 
     void invalidate(const gfx::rect &r);

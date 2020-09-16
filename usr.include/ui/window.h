@@ -6,6 +6,7 @@
 #include <gfx/rect.h>
 #include <lumen/msg.h>
 #include <ui/view.h>
+#include <ck/tuple.h>
 
 namespace ui {
 
@@ -19,6 +20,9 @@ namespace ui {
     window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bitmap>);
     ~window();
     void flush(void);
+
+    inline int width() { return bmp().width(); }
+    inline int height() { return bmp().height(); }
 
     void invalidate(const gfx::rect &r);
 
@@ -56,6 +60,8 @@ namespace ui {
 
     // the whole window needs reflowed, so schedule one
     void schedule_reflow();
+
+		ck::tuple<int, int> resize(int width, int height);
 
 
     // which view is hovered and focused?

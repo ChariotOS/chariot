@@ -2,8 +2,8 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/syscall.h>
 #include <sys/sysbind.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 #include "./impl.h"
 
@@ -129,8 +129,7 @@ int fclose(FILE *fp) {
   return 0;
 }
 
-size_t fwrite(const void *restrict src, size_t size, size_t nmemb,
-              FILE *restrict f) {
+size_t fwrite(const void *restrict src, size_t size, size_t nmemb, FILE *restrict f) {
   size_t len = size * nmemb;
 
   FLOCK(f);
@@ -148,8 +147,7 @@ size_t fwrite(const void *restrict src, size_t size, size_t nmemb,
   return 0;
 }
 
-size_t fread(void *restrict destv, size_t size, size_t nmemb,
-             FILE *restrict f) {
+size_t fread(void *restrict destv, size_t size, size_t nmemb, FILE *restrict f) {
   size_t len = size * nmemb;
 
   FLOCK(f);
@@ -190,11 +188,13 @@ static size_t _stdio_read(FILE *fp, unsigned char *dst, size_t sz) {
 }
 
 static void _stdio_flush_buffer(FILE *fp) {
-  if (fp->buffered && fp->buffer != NULL && fp->buf_len > 0) {
-    errno_wrap(sysbind_write(fp->fd, fp->buffer, fp->buf_len));
-    fp->buf_len = 0;
-    // NULL out the buffer
-    memset(fp->buffer, 0x00, fp->buf_cap);
+  if (fp->buffered) {
+    if (fp->buffer != NULL && fp->buf_len > 0) {
+      errno_wrap(sysbind_write(fp->fd, fp->buffer, fp->buf_len));
+      fp->buf_len = 0;
+      // NULL out the buffer
+      memset(fp->buffer, 0x00, fp->buf_cap);
+    }
   }
 }
 
@@ -204,6 +204,13 @@ static size_t _stdio_write(FILE *fp, const unsigned char *src, size_t sz) {
   }
 
   if (fp->buffered && fp->buffer != NULL) {
+    /*
+    if (fp->bufrole != BUFROLE_WRITE) {
+            _stdio_flush_buffer(fp);
+    }
+    */
+    fp->bufrole = BUFROLE_WRITE;
+
     /**
      * copy from the src into the buffer, flushing on \n or when it is full
      */
@@ -220,7 +227,7 @@ static size_t _stdio_write(FILE *fp, const unsigned char *src, size_t sz) {
     return sz;
   }
 
-  long k = errno_wrap(sysbind_write(fp->fd, (void*)src, sz));
+  long k = errno_wrap(sysbind_write(fp->fd, (void *)src, sz));
   if (k < 0) return 0;
   return k;
 }
@@ -270,6 +277,9 @@ FILE *fdopen(int fd, const char *string_mode) {
 
   fp->fd = fd;
 
+
+  fp->pos = ftell(fp);
+
   fp->close = _stdio_close;
   fp->read = _stdio_read;
   fp->write = _stdio_write;
@@ -277,6 +287,7 @@ FILE *fdopen(int fd, const char *string_mode) {
 
   fp->buffer = fp->default_buffer;
   fp->buffered = 1;
+  fp->bufrole = BUFROLE_NONE;
   fp->buf_cap = BUFSIZ;
   fp->buf_len = 0;
 
@@ -358,9 +369,7 @@ char *fgets(char *s, int size, FILE *stream) {
 
 int putchar(int c) { return fputc(c, stdout); }
 
-int fseek(FILE *stream, long offset, int whence) {
-  return lseek(stream->fd, offset, whence);
-}
+int fseek(FILE *stream, long offset, int whence) { return lseek(stream->fd, offset, whence); }
 
 long ftell(FILE *stream) { return lseek(stream->fd, 0, SEEK_CUR); }
 
@@ -386,9 +395,7 @@ void perror(const char *msg) {
   printf("%s: %s\n", msg, strerror(e));
 }
 
-void setbuf(FILE *stream, char *buf) {
-  setvbuf(stream, buf, buf ? _IOFBF : _IONBF, BUFSIZ);
-}
+void setbuf(FILE *stream, char *buf) { setvbuf(stream, buf, buf ? _IOFBF : _IONBF, BUFSIZ); }
 void setbuffer(FILE *stream, char *buf, size_t size) {}
 void setlinebuf(FILE *stream) {}
 
@@ -415,13 +422,11 @@ FILE *tmpfile(void) { return NULL; }
 
 
 int rename(const char *old_filename, const char *new_filename) {
-	errno = -ENOTIMPL;
-	return -1;
+  errno = -ENOTIMPL;
+  return -1;
 }
 
 
 
 // TODO:
-int fscanf(FILE *stream, const char *format, ...) {
-	return -1;
-}
+int fscanf(FILE *stream, const char *format, ...) { return -1; }

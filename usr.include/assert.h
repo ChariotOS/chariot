@@ -1,6 +1,9 @@
 
 #pragma once
 
+#ifndef __ASSERT_H__
+#define __ASSERT_H__
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -18,4 +21,6 @@ extern void __assert_fail(const char * assertion, const char * file, unsigned in
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

@@ -27,6 +27,11 @@ namespace lumen {
 #define LUMEN_MSG_WINDOW_INVALIDATE (4 | FOR_WINDOW_SERVER)
 #define LUMEN_MSG_WINDOW_INVALIDATED (4)
 
+
+// Tell the window to resize to a new bitmap
+#define LUMEN_MSG_RESIZE (5 | FOR_WINDOW_SERVER)
+#define LUMEN_MSG_RESIZED (5)
+
 #define LUMEN_MSG_INPUT (3)
 
 
@@ -39,7 +44,7 @@ namespace lumen {
     // when a response is gotten.
     unsigned short id;
     unsigned short window_id = -1;  // -1 means no window
-    int len = 0; // the size of data[]
+    int len = 0;                    // the size of data[]
 
     char data[];
   };
@@ -120,17 +125,30 @@ namespace lumen {
 #define MAX_INVALIDATE 10
   struct invalidate_msg {
     int id;  // window id
-		int nrects;
-		struct r {
-			// where in the window?
-			int x, y, w, h;
-		} rects[10];
+    int nrects;
+    struct r {
+      // where in the window?
+      int x, y, w, h;
+    } rects[10];
   };
 
-	struct invalidated_msg {
-		int id; // window id;
-	};
+  struct invalidated_msg {
+    int id;  // window id;
+  };
 
+
+
+  struct resize_msg {
+    int id;  // window id
+		int width, height;
+  };
+
+  struct resized_msg {
+    int id;  // window id
+		// confirmation
+		int width, height;
+    char bitmap_name[LUMEN_NAMESZ];
+  };
 
 
 }  // namespace lumen
