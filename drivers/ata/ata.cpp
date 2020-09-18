@@ -33,10 +33,10 @@
 #define TRACE
 #endif
 
-#define ATA_IRQ0 (32 + 14)
-#define ATA_IRQ1 (32 + 15)
-#define ATA_IRQ2 (32 + 11)
-#define ATA_IRQ3 (32 + 9)
+#define ATA_IRQ0 (14)
+#define ATA_IRQ1 (15)
+#define ATA_IRQ2 (11)
+#define ATA_IRQ3 (9)
 
 #define ATA_CMD_READ_PIO 0x20
 #define ATA_CMD_READ_DMA 0xC8

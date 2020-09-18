@@ -2,7 +2,9 @@
 add_link_options(LINKER:-T ${CMAKE_CURRENT_SOURCE_DIR}/../user.ld -z max-page-size=0x1000 -nostdlib)
 # make sure the userspace programs and libraries use this
 
-include_directories(../usr.include ../usr.lib/c++/include)
+include_directories(../usr.include ../toolchain/tarballs/gcc-10.1.0/libstdc++-v3/include)
+# include_directories(/usr/include/c++/10.2.0/)
+# include_directories(../usr.include ../usr.lib/c++/include)
 
 MACRO(SUBDIRLIST result curdir)
   FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)

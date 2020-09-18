@@ -349,7 +349,7 @@ void e1000_init(void) {
 
     // grab the irq
     auto e1000_irq = device->interrupt;
-    irq::install(e1000_irq + 32, irq_handler, "e1000");
+    irq::install(e1000_irq, irq_handler, "e1000");
 
     for (int i = 0; i < 128; ++i) write_command(0x5200 + i * 4, 0);
     for (int i = 0; i < 64; ++i) write_command(0x4000 + i * 4, 0);

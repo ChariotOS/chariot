@@ -97,7 +97,7 @@ class scope_logger {
 };
 
 class time_logger {
-  const char* const name;
+  // const char* const name;
   uint64_t start;
 
  public:

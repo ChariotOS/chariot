@@ -109,7 +109,7 @@ void pit_irq_handler(int i, reg_t *) { pit_result_lock.unlock(); }
 
 void pit::dumb_sleep(unsigned ms) {
   pit_sleep_lock.lock();
-  irq::install(32, pit_irq_handler, "PIT Timer Interrupt");
+  irq::install(0, pit_irq_handler, "PIT Timer Interrupt");
 
   pit_result_lock.lock();
   set_pit_timeout(ms);

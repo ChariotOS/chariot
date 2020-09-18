@@ -9,12 +9,12 @@ mkdir -p $DIR/local
 ARCH="x86_64"
 TARGET="$ARCH-elf-chariot"
 PREFIX="$DIR/local"
-SYSROOT="$DIR/../base"
+SYSROOT="$DIR/../build/base/"
 
 
 
 BINUTILS_VERSION="2.33.1"
-GCC_VERSION="9.2.0"
+GCC_VERSION="10.1.0"
 
 pushd tarballs
 
@@ -41,25 +41,23 @@ pushd tarballs
 	fi
 
 
-	# GCC
-	if [ ! -f gcc.tar ]; then
-		wget ftp://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz -O gcc.tar
-	fi
+#	# GCC
+if [ ! -f gcc-${GCC_VERSION}.tar ]; then
+	wget ftp://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz -O gcc-${GCC_VERSION}.tar
+fi
 
-	if [ ! -d gcc-${GCC_VERSION} ]; then
-		echo "Unpacking gcc..."
-		tar -xf gcc.tar
+if [ ! -d gcc-${GCC_VERSION} ]; then
+	echo "Unpacking gcc..."
+	tar -xf gcc-${GCC_VERSION}.tar
 
-		pushd gcc-${GCC_VERSION}
-			echo "Initializing Git Repo..."
-			git init >/dev/null
-			git add . >/dev/null
-			git commit -am "BASE" >/dev/null
+	pushd gcc-${GCC_VERSION}
+		echo "Initializing Git Repo..."
 
-			echo "Applying Patch..."
-			git apply ../../gcc.patch >/dev/null
-		popd
-	fi
+		echo "Applying Patch..."
+		patch -p1 < ../../gcc.patch
+		# git apply ../../gcc.patch >/dev/null
+	popd
+fi
 
 popd
 
@@ -70,6 +68,18 @@ mkdir -p $DIR/build/gcc
 mkdir -p $DIR/build/binutils
 
 MAKEJOBS=24
+
+
+
+# mkdir -p $PREFIX/bin
+# pushd $PREFIX/bin
+# 	for prog in clang clang++; do
+# 		echo "#!/bin/bash" > $TARGET-$prog
+# 		echo "ARCH=$ARCH CROSS_COMPILE=$TARGET $prog --sysroot $SYSROOT \$@" >> $TARGET-$prog
+# 		echo +x $TARGET-$prog
+# 	done
+# popd
+
 
 pushd build
 	# build binutils
@@ -88,26 +98,24 @@ pushd build
 
 	# build gcc
 	pushd gcc
+		"$DIR"/tarballs/gcc-${GCC_VERSION}/configure --prefix="$PREFIX" \
+																			 --target="$TARGET" \
+																			 --with-sysroot="$SYSROOT" \
+																			 --disable-nls \
+																			 --with-newlib \
+																			 --enable-shared \
+																			 --enable-languages=c,c++ || exit 1
+
+		echo "XXX build gcc and libgcc"
+		make -j "$MAKEJOBS" all-gcc all-target-libgcc || exit 1
+		echo "XXX install gcc and libgcc"
+		make install-gcc install-target-libgcc || exit 1
 
 
-        "$DIR"/tarballs/gcc-${GCC_VERSION}/configure --prefix="$PREFIX" \
-                                            --target="$TARGET" \
-                                            --with-sysroot="$SYSROOT" \
-                                            --disable-nls \
-                                            --with-newlib \
-                                            --enable-shared \
-                                            --enable-languages=c,c++ || exit 1
-
-        echo "XXX build gcc and libgcc"
-        make -j "$MAKEJOBS" all-gcc all-target-libgcc || exit 1
-        echo "XXX install gcc and libgcc"
-        make install-gcc install-target-libgcc || exit 1
-
-
-        echo "XXX build libstdc++"
-        # make all-target-libstdc++-v3 || exit 1
-        echo "XXX install libstdc++"
-        # make install-target-libstdc++-v3 || exit 1
+		echo "XXX build libstdc++"
+		make all-target-libstdc++-v3
+		# echo "XXX install libstdc++"
+		# make install-target-libstdc++-v3 || exit 1
 	popd
 popd
 

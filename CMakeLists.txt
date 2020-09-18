@@ -35,11 +35,21 @@ set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/x86_64-elf-chariot-)
 
 set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc)
 set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++)
+
+# set(CMAKE_C_COMPILER clang)
+# set(CMAKE_CXX_COMPILER clang++)
+# set(CMAKE_C_FLAGS "-target x86_64-chariot-elf -fPIE ")
+
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding ")
+
 set(CMAKE_ASM_COMPILER nasm)
 set(CMAKE_LINKER ${TOOLCHAIN_PREFIX}ld)
 set(CMAKE_RANLIB ${TOOLCHAIN_PREFIX}ranlib)
 set(CMAKE_STRIP ${TOOLCHAIN_PREFIX}strip)
 set(CMAKE_AR ${TOOLCHAIN_PREFIX}ar)
+
+
 
 
 
@@ -67,16 +77,14 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__ARCH_${ARCH}__")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSERLAND")
 
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -finstrument-functions ")
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -mmmx -fno-omit-frame-pointer -msse -msse2 -Wall -Wno-sign-compare")
 
 
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a -fdiagnostics-color=always")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -fdiagnostics-color=always")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcoroutines -frtti")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
 
 
@@ -97,7 +105,7 @@ endfunction()
 function(chariot_lib target_name fs_name)
 
     add_library(${target_name} ${SOURCES} ${GENERATED_SOURCES})
-    install(TARGETS ${target_name} ARCHIVE DESTINATION usr/lib)
+    install(TARGETS ${target_name} ARCHIVE DESTINATION lib)
 
 
 		# target_link_libraries(${target_name} libc)

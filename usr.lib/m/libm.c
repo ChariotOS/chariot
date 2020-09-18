@@ -161,6 +161,7 @@ double fmax(double a, double b) { return a > b ? a : b; }
 double fmin(double a, double b) { return a < b ? a : b; }
 
 double trunc(double x) { return (unsigned long)x; }
+float truncf(float x) { return (unsigned long)x; }
 
 double cos(double angle) { return sin(angle + M_PI_2); }
 
@@ -212,6 +213,7 @@ double fmod(double index, double period) {
   MATH;
   return index - trunc(index / period) * period;
 }
+
 float fmodf(float index, float period) {
   MATH;
   return index - trunc(index / period) * period;

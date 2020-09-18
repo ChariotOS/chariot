@@ -2,10 +2,11 @@
 
 #pragma once
 
+#include <ptr.h>
+
 #include <func.h>
 #include <map.h>
 #include <mm.h>
-#include <ptr.h>
 #include <sem.h>
 #include <signals.h>
 #include <string.h>
@@ -22,6 +23,8 @@
 #define PS_EMBRYO (3)
 
 
+#include <schedulers.h>
+
 
 
 struct sigaction {
@@ -35,6 +38,8 @@ struct sigaction {
 
 namespace sched {
   void block();
+
+	using impl = sched::round_robin;
 }
 
 struct thread_context {
@@ -173,6 +178,7 @@ struct thread_fpu_info {
   void *state;
 };
 
+
 struct thread_statistics {
   u64 syscall_count = 0;
   u64 run_count = 0;
@@ -255,7 +261,11 @@ struct thread final {
     void *arch_priv = nullptr;
   } sig;
 
+
+	sched::impl::thread_state sched_state;
   struct thread_sched_info sched;
+
+
   struct thread_fpu_info fpu;
   struct thread_statistics stats;
 

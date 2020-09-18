@@ -1,6 +1,6 @@
+#include <chan.h>
 #include <fifo_buf.h>
 #include <lock.h>
-#include <map.h>
 #include <net/eth.h>
 #include <net/ipv4.h>
 #include <net/net.h>
@@ -8,8 +8,10 @@
 #include <printk.h>
 #include <sched.h>
 #include <string.h>
-#include <chan.h>
 #include <util.h>
+
+
+#include <map.h>
 
 static spinlock interfaces_lock;
 static map<string, struct net::interface *> interfaces;
@@ -22,8 +24,7 @@ void net::each_interface(func<bool(const string &, net::interface &)> fn) {
   interfaces_lock.unlock();
 }
 
-net::interface::interface(const char *name, struct net::ifops &o)
-    : name(name), ops(o) {
+net::interface::interface(const char *name, struct net::ifops &o) : name(name), ops(o) {
   assert(ops.init);
   assert(ops.get_packet);
   assert(ops.get_packet);
@@ -40,8 +41,7 @@ net::interface *net::find_interface(net::macaddr m) {
   return nullptr;
 }
 
-int net::interface::send(net::macaddr m, uint16_t proto, void *data,
-			 size_t len) {
+int net::interface::send(net::macaddr m, uint16_t proto, void *data, size_t len) {
   net::pkt_builder b;
 
   auto &e = b.alloc<net::eth::hdr>();
@@ -65,10 +65,8 @@ int net::register_interface(const char *name, struct net::ifops &ops) {
   auto i = new struct net::interface(name, ops);
 
   interfaces[name] = i;
-  printk(KERN_INFO
-	 "[net] registered new interface '%s': %02x:%02x:%02x:%02x:%02x:%02x\n",
-	 name, i->hwaddr[0], i->hwaddr[1], i->hwaddr[2], i->hwaddr[3],
-	 i->hwaddr[4], i->hwaddr[5]);
+  printk(KERN_INFO "[net] registered new interface '%s': %02x:%02x:%02x:%02x:%02x:%02x\n", name, i->hwaddr[0],
+         i->hwaddr[1], i->hwaddr[2], i->hwaddr[3], i->hwaddr[4], i->hwaddr[5]);
 
   return 0;
 }
@@ -78,17 +76,13 @@ struct net::interface *net::get_interface(const char *name) {
   return interfaces.get(name);
 }
 
-static __inline uint16_t __bswap_16(uint16_t __x) {
-  return __x << 8 | __x >> 8;
-}
+static __inline uint16_t __bswap_16(uint16_t __x) { return __x << 8 | __x >> 8; }
 
 static __inline uint32_t __bswap_32(uint32_t __x) {
   return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24;
 }
 
-static __inline uint64_t __bswap_64(uint64_t __x) {
-  return (__bswap_32(__x) + 0ULL) << 32 | __bswap_32(__x >> 32);
-}
+static __inline uint64_t __bswap_64(uint64_t __x) { return (__bswap_32(__x) + 0ULL) << 32 | __bswap_32(__x >> 32); }
 
 #define bswap_16(x) __bswap_16(x)
 #define bswap_32(x) __bswap_32(x)
@@ -133,12 +127,10 @@ static void print_packet(ref<net::pkt_buff> &pbuf) {
   auto ip = pbuf->iph();
 
   total_bytes_recv += pbuf->size();
-  printk(KERN_INFO "Raw Packet (%d bytes, %d total):\n", pbuf->size(),
-	 total_bytes_recv);
+  printk(KERN_INFO "Raw Packet (%d bytes, %d total):\n", pbuf->size(), total_bytes_recv);
   hexdump(pbuf->get(), pbuf->size(), true);
 
-  printk("[eth] src: %A, dst: %A, type: %04x\n", eth->src.raw, eth->dst.raw,
-	 net::ntohs(eth->type));
+  printk("[eth] src: %A, dst: %A, type: %04x\n", eth->src.raw, eth->dst.raw, net::ntohs(eth->type));
 
   if (arp != NULL) {
     if (arp->ha_len != 6 || arp->pr_len != 4) {
@@ -182,24 +174,22 @@ struct pending_packet {
 static chan<ref<net::pkt_buff>> pending_packets;
 
 int net::task(void *) {
-
   // initialize all the network interfaces
   //  TODO: this is probably a bad idea, since we are assuming that these addrs
   //  are safe without asking DHCP first.
   int octet = 15;
   net::each_interface([&](const string &name, net::interface &i) -> bool {
-    i.address = net::net_ord(
-	net::ipv4::parse_ip(string::format("10.0.0.%d", octet++).get()));
+    i.address = net::net_ord(net::ipv4::parse_ip(string::format("10.0.0.%d", octet++).get()));
     i.netmask = net::net_ord(net::ipv4::parse_ip("255.255.255.0"));
     i.gateway = net::net_ord(net::ipv4::parse_ip("10.0.2.2"));
 
-		/*
-    printk(KERN_INFO "[network task] Setup interface '%s'\n", name.get());
-    printk(KERN_INFO "               hardware: %A\n", i.hwaddr.raw);
-    printk(KERN_INFO "               address:  %I\n", net::host_ord(i.address));
-    printk(KERN_INFO "               netmask:  %I\n", net::host_ord(i.netmask));
-    printk(KERN_INFO "               gateway:  %I\n", net::host_ord(i.gateway));
-		*/
+    /*
+printk(KERN_INFO "[network task] Setup interface '%s'\n", name.get());
+printk(KERN_INFO "               hardware: %A\n", i.hwaddr.raw);
+printk(KERN_INFO "               address:  %I\n", net::host_ord(i.address));
+printk(KERN_INFO "               netmask:  %I\n", net::host_ord(i.netmask));
+printk(KERN_INFO "               gateway:  %I\n", net::host_ord(i.gateway));
+    */
 
     return true;
   });
@@ -216,5 +206,5 @@ void net::packet_received(ref<net::pkt_buff> pbuf) {
   auto eth = pbuf->eth();
   if (eth == NULL) return;
 
-	pending_packets.send(move(pbuf));
+  pending_packets.send(move(pbuf));
 }

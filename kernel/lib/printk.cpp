@@ -1358,7 +1358,7 @@ int string::scan(const char *fmt, ...) {
   return i;
 }
 
-time_logger::time_logger(const char *const name) : name(name) {
+time_logger::time_logger(const char *const name) {
   start = cpu::get_ticks();
 }
 

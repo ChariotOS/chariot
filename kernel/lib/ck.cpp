@@ -194,20 +194,22 @@ void ck::string::push(char c) {
  *
  */
 
-ck::string operator+(const ck::string& lhs, const ck::string& rhs) {
+ck::string ck::operator+(const ck::string& lhs, const ck::string& rhs) {
   return ck::string(lhs) += rhs;
 }
 
-ck::string operator+(const ck::string& lhs, const char* rhs) {
+/*
+ck::string ck::operator+(const ck::string& lhs, const char* rhs) {
   return ck::string(lhs) += ck::string(rhs);
 }
 
-ck::string operator+(const char* lhs, const ck::string& rhs) {
+ck::string ck::operator+(const char* lhs, const ck::string& rhs) {
   return ck::string(lhs) += rhs;
 }
+*/
 
 
-bool operator==(const ck::string& lhs, const ck::string& rhs) {
+bool ck::operator==(const ck::string& lhs, const ck::string& rhs) {
   if (lhs.len() != rhs.len()) return false;
 
   unsigned cap = lhs.len();
@@ -216,6 +218,7 @@ bool operator==(const ck::string& lhs, const ck::string& rhs) {
   return (n == cap);
 }
 
+/*
 bool operator==(const ck::string& lhs, const char* rhs) {
   return (lhs == ck::string(rhs));
 }
@@ -223,8 +226,9 @@ bool operator==(const ck::string& lhs, const char* rhs) {
 bool operator==(const char* lhs, const ck::string& rhs) {
   return (ck::string(lhs) == rhs);
 }
+*/
 
-bool operator>(const ck::string& lhs, const ck::string& rhs) {
+bool ck::operator>(const ck::string& lhs, const ck::string& rhs) {
   unsigned cap = (lhs.len() < rhs.len()) ? lhs.len() : rhs.len();
   unsigned n = 0;
   while ((n < cap) && (lhs[n] == rhs[n])) n++;
@@ -239,37 +243,45 @@ bool operator>(const ck::string& lhs, const ck::string& rhs) {
   return lhs[n] > rhs[n];
 }
 
+/*
 bool operator>(const ck::string& lhs, const char* rhs) {
   return (lhs > ck::string(rhs));
 }
 bool operator>(const char* lhs, const ck::string& rhs) {
   return (ck::string(lhs) > rhs);
 }
-bool operator!=(const ck::string& lhs, const ck::string& rhs) { return !(lhs == rhs); }
-bool operator!=(const ck::string& lhs, const char* rhs) { return !(lhs == rhs); }
-bool operator!=(const char* lhs, const ck::string& rhs) { return !(lhs == rhs); }
-bool operator<(const ck::string& lhs, const ck::string& rhs) {
+*/
+bool ck::operator!=(const ck::string& lhs, const ck::string& rhs) { return !(lhs == rhs); }
+// bool operator!=(const ck::string& lhs, const char* rhs) { return !(lhs == rhs); }
+// bool operator!=(const char* lhs, const ck::string& rhs) { return !(lhs == rhs); }
+
+
+bool ck::operator<(const ck::string& lhs, const ck::string& rhs) {
   return !(lhs == rhs) && !(lhs > rhs);
 }
+/*
 bool operator<(const ck::string& lhs, const char* rhs) {
   return !(lhs == rhs) && !(lhs > rhs);
 }
 bool operator<(const char* lhs, const ck::string& rhs) {
   return !(lhs == rhs) && !(lhs > rhs);
 }
-bool operator<=(const ck::string& lhs, const ck::string& rhs) { return !(lhs > rhs); }
-bool operator<=(const ck::string& lhs, const char* rhs) { return !(lhs > rhs); }
-bool operator<=(const char* lhs, const ck::string& rhs) { return !(lhs > rhs); }
+*/
 
-bool operator>=(const ck::string& lhs, const ck::string& rhs) {
+bool ck::operator<=(const ck::string& lhs, const ck::string& rhs) { return !(lhs > rhs); }
+// bool operator<=(const ck::string& lhs, const char* rhs) { return !(lhs > rhs); }
+// bool operator<=(const char* lhs, const ck::string& rhs) { return !(lhs > rhs); }
+
+bool ck::operator>=(const ck::string& lhs, const ck::string& rhs) {
   return (lhs == rhs) || (lhs > rhs);
 }
 
+/*
 bool operator>=(const ck::string& lhs, const char* rhs) {
   return (lhs == rhs) || (lhs > rhs);
 }
 
 bool operator>=(const char* lhs, const ck::string& rhs) {
   return (lhs == rhs) || (lhs > rhs);
-}
+}*/
 

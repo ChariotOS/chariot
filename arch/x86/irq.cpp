@@ -118,7 +118,7 @@ const char *excp_codes[128][2] = {
 
 void arch::irq::eoi(int i) {
   if (i >= 32) {
-    int pic_irq = i - 32;
+    int pic_irq = i;
     if (pic_irq >= 8) {
       outb(0xA0, 0x20);
     }
@@ -128,19 +128,13 @@ void arch::irq::eoi(int i) {
 }
 
 void arch::irq::enable(int num) {
-  // if the interrupt is larger than 32, enable in the ioapic
-  if (num >= 32) {
-    smp::ioapicenable(num - 32, /* TODO */ 0);
-    pic_enable(num - 32);
-  }
+  smp::ioapicenable(num, /* TODO */ 0);
+  pic_enable(num);
 }
 
 void arch::irq::disable(int num) {
-  // if the interrupt is larger than 32, disable in the ioapic
-  if (num >= 32) {
-    // smp::ioapicdisable(num);
-    pic_disable(num - 32);
-  }
+  // smp::ioapicdisable(num);
+  pic_disable(num);
 }
 
 static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
@@ -390,6 +384,10 @@ static void pgfault_handle(int i, reg_t *regs) {
 
 extern void pit_irq_handler(int i, reg_t *);
 
+
+void (*isr_functions[32])(int, reg_t *);
+
+
 int arch::irq::init(void) {
   init_pit();
   u32 *idt = (u32 *)&idt_block;
@@ -402,28 +400,29 @@ int arch::irq::init(void) {
 
   // handle all the <32 irqs as unknown
   for (i = 0; i < 32; i++) {
-    ::irq::install(i, unknown_exception, "Unknown Exception");
+    isr_functions[i] = unknown_exception;
   }
+  isr_functions[TRAP_DBLFLT] = dbl_flt_handler;
+  isr_functions[TRAP_PGFLT] = pgfault_handle;
+  isr_functions[TRAP_GPFLT] = gpf_handler;
+  isr_functions[TRAP_ILLOP] = illegal_instruction_handler;
 
   for (i = 32; i < 48; i++) {
     // ::irq::install(i, unknown_hardware, "Unknown Hardware");
   }
 
-  ::irq::install(TRAP_DBLFLT, dbl_flt_handler, "Double Fault");
-  ::irq::install(TRAP_PGFLT, pgfault_handle, "Page Fault");
-  ::irq::install(TRAP_GPFLT, gpf_handler, "General Protection Fault");
-  ::irq::install(TRAP_ILLOP, illegal_instruction_handler, "Illegal Instruction Handler");
+
 
   pic_disable(34);
 
   init_pit();
 
-  ::irq::install(32, tick_handle, "Preemption Tick");
+  ::irq::install(0, tick_handle, "Preemption Tick");
 
 
   // setup the ancient systemcall interface
   mkgate(idt, 0x80, vectors[0x80], 3, 0);
-  ::irq::install(0x80, syscall_handle, "System Call");
+  ::irq::install(0x80 - 32, syscall_handle, "System Call");
 
   KINFO("Registered basic interrupt handlers\n");
 
@@ -445,12 +444,21 @@ extern "C" void trap(reg_t *regs) {
   arch::sti();
 
 
+
   auto *tf = (struct x86_64regs *)regs;
   bool from_userspace = tf->cs == 0x23;
   if (cpu::in_thread() && from_userspace) {
     curthd->trap_frame = regs;
   }
-  irq::dispatch(tf->trapno, regs);
+
+  int nr = tf->trapno;
+
+  if (nr >= 32) {
+    irq::dispatch(nr - 32, regs);
+  } else {
+    isr_functions[nr](nr, regs);
+  }
+
 
 
   irq::eoi(tf->trapno);
@@ -458,8 +466,6 @@ extern "C" void trap(reg_t *regs) {
   // TODO: generalize
   sched::before_iret(from_userspace);
 }
-
-
 
 
 
@@ -514,5 +520,4 @@ void on_irq(void) {
 	// if fpu was already enabled, re-enable it here.
 }
 #endif
-
 

@@ -1,5 +1,5 @@
 
-include_directories(../usr.include)
+include_directories(../usr.include /usr/include/c++/10.2.0/)
 
 
 add_library(crt0 STATIC crt0.asm)
@@ -17,4 +17,4 @@ file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 
 chariot_libc(libc c)
 
-target_link_libraries(libc crt0 "${CMAKE_CURRENT_LIST_DIR}/libgcc.a")
+target_link_libraries(libc crt0 "${CMAKE_CURRENT_LIST_DIR}/libgcc.a" "/usr/lib/libc++.a")

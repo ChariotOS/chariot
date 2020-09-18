@@ -1,7 +1,9 @@
 #include <kargs.h>
+#include <string.h>
+
+
 #include <map.h>
 #include <printk.h>
-#include <string.h>
 #include <vec.h>
 
 static map<string, string> cmdline_map;
@@ -13,7 +15,6 @@ void kargs::init(struct multiboot_info *info) {
   KINFO("Command line arguments:\n");
   int i = 0;
   for (auto arg : cmdline.split(' ')) {
-
     KINFO("  args[%d]='%s'\n", i++, arg.get());
     auto parts = arg.split('=');
 
@@ -23,11 +24,10 @@ void kargs::init(struct multiboot_info *info) {
       KWARN("Kernel argument '%s' not of the form key=value. Discarded.\n", arg.get());
     }
   }
-
 }
 
 const char *kargs::get(const char *keyp, const char *def) {
-  string key = keyp; // optimize away the string copies
+  string key = keyp;  // optimize away the string copies
   if (cmdline_map.contains(key)) {
     return cmdline_map[key].get();
   }

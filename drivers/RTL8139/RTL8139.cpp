@@ -65,7 +65,7 @@ rtl8139::rtl8139(pci::device &dev, u8 irq) : m_dev(dev) {
        mac[3], mac[4], mac[5]);
 
 
-  irq::install(32 + m_interrupt_line, rtl_irq_handler, "RTL8139 Ethernet Card");
+  irq::install(m_interrupt_line, rtl_irq_handler, "RTL8139 Ethernet Card");
 }
 
 rtl8139::~rtl8139() { kfree(m_packet_buffer); }

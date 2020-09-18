@@ -79,30 +79,32 @@ class string {
   int scan(const char *fmt, ...);
 };
 
+
+ck::string operator+(const ck::string& lhs, const ck::string& rhs);
+// ck::string operator+(const ck::string& lhs, const char* rhs);
+// ck::string operator+(const char* lhs, const ck::string& rhs);
+bool operator==(const ck::string& lhs, const ck::string& rhs);
+// bool operator==(const ck::string& lhs, const char* rhs);
+// bool operator==(const char* lhs, const ck::string& rhs);
+bool operator>(const ck::string& lhs, const ck::string& rhs);
+// bool operator>(const ck::string& lhs, const char* rhs);
+// bool operator>(const char* lhs, const ck::string& rhs);
+bool operator!=(const ck::string& lhs, const ck::string& rhs);
+// bool operator!=(const ck::string& lhs, const char* rhs);
+// bool operator!=(const char* lhs, const ck::string& rhs);
+bool operator<(const ck::string& lhs, const ck::string& rhs);
+// bool operator<(const ck::string& lhs, const char* rhs);
+// bool operator<(const char* lhs, const ck::string& rhs);
+bool operator<=(const ck::string& lhs, const ck::string& rhs);
+// bool operator<=(const ck::string& lhs, const char* rhs);
+// bool operator<=(const char* lhs, const ck::string& rhs);
+bool operator>=(const ck::string& lhs, const ck::string& rhs);
+// bool operator>=(const ck::string& lhs, const char* rhs);
+// bool operator>=(const char* lhs, const ck::string& rhs);
+
 }
 
 
-ck::string operator+(const ck::string& lhs, const ck::string& rhs);
-ck::string operator+(const ck::string& lhs, const char* rhs);
-ck::string operator+(const char* lhs, const ck::string& rhs);
-bool operator==(const ck::string& lhs, const ck::string& rhs);
-bool operator==(const ck::string& lhs, const char* rhs);
-bool operator==(const char* lhs, const ck::string& rhs);
-bool operator>(const ck::string& lhs, const ck::string& rhs);
-bool operator>(const ck::string& lhs, const char* rhs);
-bool operator>(const char* lhs, const ck::string& rhs);
-bool operator!=(const ck::string& lhs, const ck::string& rhs);
-bool operator!=(const ck::string& lhs, const char* rhs);
-bool operator!=(const char* lhs, const ck::string& rhs);
-bool operator<(const ck::string& lhs, const ck::string& rhs);
-bool operator<(const ck::string& lhs, const char* rhs);
-bool operator<(const char* lhs, const ck::string& rhs);
-bool operator<=(const ck::string& lhs, const ck::string& rhs);
-bool operator<=(const ck::string& lhs, const char* rhs);
-bool operator<=(const char* lhs, const ck::string& rhs);
-bool operator>=(const ck::string& lhs, const ck::string& rhs);
-bool operator>=(const ck::string& lhs, const char* rhs);
-bool operator>=(const char* lhs, const ck::string& rhs);
 
 
 

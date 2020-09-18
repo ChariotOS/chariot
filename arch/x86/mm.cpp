@@ -10,9 +10,7 @@
 #define round_down(x, y) ((x) & ~((y)-1))
 
 
-static inline void flush_tlb_single(u64 addr) {
-  __asm__ volatile("invlpg (%0)" ::"r"(addr) : "memory");
-}
+static inline void flush_tlb_single(u64 addr) { __asm__ volatile("invlpg (%0)" ::"r"(addr) : "memory"); }
 
 
 extern u8 *kheap_start;
@@ -120,7 +118,7 @@ int x86::pagetable::del_mapping(off_t va) {
 void arch::mem_init(unsigned long mbd) {
 #ifdef CHARIOT_HRT
   phys::free_range((void *)0x184000, (void *)0x1ffe0000);
-	mm_info.total_mem = 0x1ffe0000;
+  mm_info.total_mem = 0x1ffe0000;
 #else
   multiboot_info_ptr = (multiboot_info_t *)mbd;
 
@@ -132,7 +130,7 @@ void arch::mem_init(unsigned long mbd) {
   }
 
   const char *names[] = {
-      "UNKNOWN",
+      [0] = "UNKNOWN",
       [MULTIBOOT_MEMORY_AVAILABLE] = "usable",
       [MULTIBOOT_MEMORY_RESERVED] = "reserved",
       [MULTIBOOT_MEMORY_ACPI_RECLAIMABLE] = "reserved (acpi recl)",
@@ -141,12 +139,9 @@ void arch::mem_init(unsigned long mbd) {
   };
   KINFO("Physical Memory Map:\n");
 
-  for (auto *mmap =
-           (multiboot_memory_map_t *)(u64)multiboot_info_ptr->mmap_addr;
-       (unsigned long)mmap <
-       multiboot_info_ptr->mmap_addr + multiboot_info_ptr->mmap_length;
-       mmap = (multiboot_memory_map_t *)((unsigned long)mmap + mmap->size +
-                                         sizeof(mmap->size))) {
+  for (auto *mmap = (multiboot_memory_map_t *)(u64)multiboot_info_ptr->mmap_addr;
+       (unsigned long)mmap < multiboot_info_ptr->mmap_addr + multiboot_info_ptr->mmap_length;
+       mmap = (multiboot_memory_map_t *)((unsigned long)mmap + mmap->size + sizeof(mmap->size))) {
     u64 start, end;
 
     start = round_up(mmap->addr, 4096);
@@ -168,8 +163,7 @@ void arch::mem_init(unsigned long mbd) {
         ;
     }
 
-    if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
-      mm_info.usable_ram += mmap->len;
+    if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) mm_info.usable_ram += mmap->len;
 
     if (end > (mm_info.last_pfn << 12)) mm_info.last_pfn = end >> 12;
 
@@ -245,8 +239,7 @@ mm::space *kspace;
 mm::space &mm::space::kernel_space(void) {
   if (kspace == NULL) {
     auto kptable = make_ref<x86::pagetable>(kernel_page_table);
-    kspace = new mm::space(KERNEL_VIRTUAL_BASE,
-                           KERNEL_VIRTUAL_BASE + 0x100000000, kptable);
+    kspace = new mm::space(KERNEL_VIRTUAL_BASE, KERNEL_VIRTUAL_BASE + 0x100000000, kptable);
     kspace->is_kspace = 1;
   }
 

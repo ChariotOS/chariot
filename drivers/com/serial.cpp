@@ -110,7 +110,7 @@ static struct dev::driver_info com_driver {
 
 static void serial_mod_init() {
   // setup interrupts on serial
-  irq::install(32 + IRQ_COM1, serial_irq_handle, "COM1 Serial Port");
+  irq::install(IRQ_COM1, serial_irq_handle, "COM1 Serial Port");
 
   // Acknowledge pre-existing interrupt conditions;
   // enable interrupts.

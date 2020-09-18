@@ -478,7 +478,7 @@ static struct dev::driver_info keyboard_driver_info {
 
 
 static void kbd_init(void) {
-  irq::install(32 + IRQ_KEYBOARD, kbd_handler, "PS2 Keyboard");
+  irq::install(IRQ_KEYBOARD, kbd_handler, "PS2 Keyboard");
 
   // clear out the buffer...
   while (inb(I8042_STATUS) & I8042_BUFFER_FULL) inb(I8042_BUFFER);

@@ -7,7 +7,7 @@
 #include <syscall.h>
 #include <time.h>
 #include <wait.h>
-#include "../arch/x86/fpu.h"
+#include "../../arch/x86/fpu.h"
 
 
 #define SIG_ERR ((void (*)(int)) - 1)
@@ -27,104 +27,16 @@
 
 extern "C" void swtch(struct thread_context **, struct thread_context *);
 
+
 static bool s_enabled = true;
-
-// every mlfq entry has a this structure
-// The scheduler is defined simply in OSTEP.
-//   1. if Priority(A) > Priority(B), A runs
-//   2. if Priority(A) == Priority(B), A and B run in RR
-//   3. when a job enters the system, it has a high priority to maximize
-//      responsiveness.
-//   4a. If a job uses up an entire time slice while running, its priority is
-//       reduced, (only moves down one queue)
-//   4b. If a job gives up the CPU before
-//       the timeslice is over, it stays at the same priority level.
-//
-struct mlfq_entry {
-  // a simple round robin queue of tasks
-  struct thread *task_queue;
-  // so we can add to the end of the queue
-  struct thread *last_task;
-  int priority;
-
-  long ntasks = 0;
-  long timeslice = 0;
-
-  spinlock queue_lock;
-};
-
-static struct mlfq_entry mlfq[SCHED_MLFQ_DEPTH];
-static spinlock mlfq_lock;
+static sched::impl s_scheduler;
 
 bool sched::init(void) {
-  // initialize the mlfq
-  for (int i = 0; i < SCHED_MLFQ_DEPTH; i++) {
-    auto &Q = mlfq[i];
-    Q.task_queue = NULL;
-    Q.last_task = NULL;
-    Q.priority = i;
-    Q.ntasks = 0;
-    Q.timeslice = 1;
-  }
-
-  return true;
+	return true;
 }
 
 static struct thread *get_next_thread(void) {
-  // the queue is a singly linked list, so we need to
-  // keep track of the last task in the queue so we can
-  // remove the one we want to run from it
-  struct thread *nt = nullptr;
-
-
-  for (int i = SCHED_MLFQ_DEPTH - 1; i >= 0; i--) {
-    auto &Q = mlfq[i];
-
-    Q.queue_lock.lock();
-
-    for (auto *t = Q.task_queue; t != NULL; t = t->sched.next) {
-      if (t->state == PS_BLOCKED) {
-        if (t->sig.pending) {
-          // printk("[tid %d] %08x %08x\n", t->tid, t->sig.pending,
-          // t->sig.mask);
-          if (t->sig.pending & t->sig.mask) {
-            // printk("tid %d has pending signals\n", t->tid);
-          }
-        }
-
-        // poll the thread's blocker if it exists
-        if (t->blocker != NULL) {
-          if (t->blocker->should_unblock(*t, time::now_us())) {
-            t->state = PS_RUNNABLE;
-          }
-        }
-      }
-
-      if (t->state == PS_RUNNABLE) {
-        nt = t;
-
-        // remove from the queue
-        if (t->sched.prev != NULL) t->sched.prev->sched.next = t->sched.next;
-        if (t->sched.next != NULL) t->sched.next->sched.prev = t->sched.prev;
-        if (Q.task_queue == t) Q.task_queue = t->sched.next;
-        if (Q.last_task == t) Q.last_task = t->sched.prev;
-
-        Q.ntasks--;
-        t->sched.prev = NULL;
-        t->sched.next = NULL;
-
-        break;
-      }
-    }
-
-    Q.queue_lock.unlock();
-
-    if (nt != nullptr) {
-      break;
-    }
-  }
-
-  return nt;
+	return s_scheduler.pick_next();
 }
 
 
@@ -138,70 +50,11 @@ static auto pick_next_thread(void) {
 
 // add a task to a mlfq entry based on tsk->priority
 int sched::add_task(struct thread *tsk) {
-  // clamp the priority to the two bounds
-  if (tsk->sched.priority > PRIORITY_HIGH) tsk->sched.priority = PRIORITY_HIGH;
-  if (tsk->sched.priority < PRIORITY_IDLE) tsk->sched.priority = PRIORITY_IDLE;
-
-  auto &Q = mlfq[tsk->sched.priority];
-
-  // the task inherits the timeslice from the queue
-  tsk->sched.timeslice = Q.timeslice;
-
-  /* This critical section must be both locked and behind a cli()
-   * because processes share this function with the scheduler. This means that
-   * if a process were to be prempted within this section, the system would
-   * deadlock as the scheduler would also try to grab the Q.queue_lock as well.
-   * Because the scheduler cannot contend locks with threads, this is obviously
-   * bad. To avoid this, we just make it so the thread cannot be interrupted in
-   * this spot. (The only thing a thread could contend with is another CPU
-   * core's scheduler, which is safe as the critical section is enormously
-   * simple.
-   */
-  if (cpu::in_thread()) arch::cli();
-
-  // only lock this queue.
-  Q.queue_lock.lock();
-
-  if (Q.task_queue == nullptr) {
-    // this is the only thing in the queue
-    Q.task_queue = tsk;
-    Q.last_task = tsk;
-
-    tsk->sched.next = NULL;
-    tsk->sched.prev = NULL;
-  } else {
-    // insert at the end of the list
-    Q.last_task->sched.next = tsk;
-    tsk->sched.next = NULL;
-    tsk->sched.prev = Q.last_task;
-    // the new task is the end
-    Q.last_task = tsk;
-  }
-
-  Q.ntasks++;
-
-  Q.queue_lock.unlock();
-  if (cpu::in_thread()) arch::sti();
-
-  return 0;
+	return s_scheduler.add_task(tsk);
 }
 
 int sched::remove_task(struct thread *t) {
-  auto &Q = mlfq[t->sched.priority];
-
-  if (cpu::in_thread()) arch::cli();
-  // only lock this queue.
-  Q.queue_lock.lock();
-
-  if (t->sched.next) t->sched.next->sched.prev = t->sched.prev;
-  if (t->sched.prev) t->sched.prev->sched.next = t->sched.next;
-  if (Q.last_task == t) Q.last_task = t->sched.prev;
-  if (Q.task_queue == t) Q.task_queue = t->sched.next;
-
-  Q.ntasks--;
-  Q.queue_lock.unlock();
-  if (cpu::in_thread()) arch::sti();
-  return 0;
+	return s_scheduler.remove_task(t);
 }
 
 static void switch_into(struct thread &thd) {
@@ -240,14 +93,6 @@ void sched::do_yield(int st) {
 
   thd.stats.cycles += arch::read_timestamp() - thd.stats.last_start_cycle;
 
-  // thd.sched.priority = PRIORITY_HIGH;
-  if (cpu::get_ticks() - thd.sched.start_tick >= thd.sched.timeslice) {
-    // uh oh, we used up the timeslice, drop the priority!
-    thd.sched.priority--;
-  }
-
-  // thd.sched.priority = PRIORITY_HIGH;
-
   thd.state = st;
   thd.stats.last_cpu = thd.stats.current_cpu;
   thd.stats.current_cpu = -1;
@@ -278,62 +123,6 @@ void sched::dumb_sleepticks(unsigned long t) {
 }
 
 
-void boost(void) {
-  // re-calculated later using ''math''
-  int boost_interval = 10;
-  u64 last_boost = 0;
-  auto ticks = cpu::get_ticks();
-
-  // every S ticks or so, boost the processes at the bottom of the queue
-  // into the top
-  if (ticks - last_boost > boost_interval) {
-    last_boost = ticks;
-    int nmoved = 0;
-
-    auto &HI = mlfq[PRIORITY_HIGH];
-
-    HI.queue_lock.lock();
-    for (int i = 0; i < PRIORITY_HIGH; i++) {
-      auto &Q = mlfq[i];
-
-      Q.queue_lock.lock();
-
-      auto loq = Q.task_queue;
-
-      if (loq != NULL) {
-        for (auto *c = loq; c != NULL; c = c->sched.next) {
-          if (!c->kern_idle) c->sched.priority = PRIORITY_HIGH;
-        }
-
-        // take the entire queue and add it to the end of the HIGH queue
-        if (HI.task_queue != NULL) {
-          assert(HI.last_task != NULL);
-          HI.last_task->sched.next = loq;
-          loq->sched.prev = HI.last_task;
-
-          // inherit the last task from the old Q
-          HI.last_task = Q.last_task;
-        } else {
-          assert(HI.ntasks == 0);
-          HI.task_queue = Q.task_queue;
-          HI.last_task = Q.last_task;
-        }
-
-        HI.ntasks += Q.ntasks;
-        nmoved += Q.ntasks;
-
-        // zero out this queue
-        Q.task_queue = Q.last_task = NULL;
-        Q.ntasks = 0;
-      }
-
-      Q.queue_lock.unlock();
-    }
-
-    HI.queue_lock.unlock();
-  }
-}
-
 void sched::run() {
   cpu::current().in_sched = true;
   for (;;) {
@@ -354,7 +143,7 @@ void sched::run() {
     switch_into(*thd);
 
     sched::add_task(thd);
-    boost();
+    // boost();
   }
   panic("scheduler should not have gotten back here\n");
 }

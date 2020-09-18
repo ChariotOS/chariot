@@ -232,7 +232,7 @@ void mouse_install() {
     inb(0x60);
   }
 
-  irq::install(32 + MOUSE_IRQ, mouse_handler, "PS2 Mouse");
+  irq::install(MOUSE_IRQ, mouse_handler, "PS2 Mouse");
 }
 
 static ssize_t mouse_read(fs::file &fd, char *buf, size_t sz) {

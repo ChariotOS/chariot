@@ -17,7 +17,7 @@ class chan {
   // sit and wait on data to be recv'd
   inline T recv(void) {
     // this feels wrong, but works fine
-    char buf[sizeof(T)] alignas(T);
+    char buf[sizeof(T)];
     int n = backing.read(buf, sizeof(T), true);
 
     // not sure when this would happen

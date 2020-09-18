@@ -106,7 +106,6 @@ static void lapic_tick_handler(int i, reg_t *tf) {
     time::timekeep();
   }
 
-  // printk("tick %d\n", cpu.kstat.ticks);
   sched::handle_tick(cpu.kstat.ticks);
   return;
 }
@@ -187,12 +186,12 @@ void smp::lapic_init(void) {
 
 
   // Enable local APIC; set spurious interrupt vector.
-  lapic_write(LAPIC_SVR, LAPIC_ENABLE | (32 + 31 /* spurious */));
+  lapic_write(LAPIC_SVR, LAPIC_ENABLE | (31 /* spurious */));
 
   // set the periodic interrupt timer to be IRQ 50
   // This is so we can use the PIT for sleep related activities at IRQ 32
   smp::lapic_write(LAPIC_TDCR, LAPIC_X1);
-  smp::lapic_write(LAPIC_TIMER, LAPIC_PERIODIC | (50));
+  smp::lapic_write(LAPIC_TIMER, LAPIC_PERIODIC | (50 + 32));
   set_tickrate(100);  // tick every ms
 
   // Disable logical interrupt lines.
@@ -206,7 +205,7 @@ void smp::lapic_init(void) {
   }
 
   // Map error interrupt to IRQ_ERROR.
-  lapic_write(LAPIC_ERROR, 32 + 19);
+  lapic_write(LAPIC_ERROR, 19);
 
   // Clear error status register (requires back-to-back writes).
   lapic_write(LAPIC_ESR, 0);
@@ -224,7 +223,7 @@ void smp::lapic_init(void) {
   // Enable interrupts on the APIC (but not on the processor).
   lapic_write(LAPIC_TPR, 0);
 
-  irq::uninstall(32);
+  irq::uninstall(0);
   irq::install(50, lapic_tick_handler, "Local APIC Preemption Tick");
 }
 

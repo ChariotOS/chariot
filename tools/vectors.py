@@ -3,7 +3,9 @@ print(';; handlers')
 print('default rel')
 print('extern alltraps')
 
-for i in range(0, 130):
+NR = 130
+
+for i in range(0, NR):
     print('global vector{}'.format(i))
     print('vector{}:'.format(i))
     if not (i == 8 or (i >= 10 and i <= 14) or i == 17):
@@ -15,5 +17,5 @@ print('\n; vector table')
 print('section .data')
 print('global vectors')
 print('vectors:')
-for i in range(0, 130):
+for i in range(0, NR):
     print('  dq vector{}'.format(i))
