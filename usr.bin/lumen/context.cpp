@@ -13,6 +13,7 @@
 // run the compositor at 60fps if there is work to be done.
 #define COMPOSE_INTERVAL (1000 / 1000)
 
+#define USE_COMPOSE_INTERVAL
 
 #define min(a, b)           \
   ({                        \
@@ -47,10 +48,10 @@ lumen::context::context(void) : screen(1024, 768) {
 
   server.listen("/usr/servers/lumen", [this] { accept_connection(); });
 
-#if 0
-  pthread_create(&compositor_thread, NULL, lumen::context::compositor_thread_worker, (void *)this);
-#else
+#ifdef USE_COMPOSE_INTERVAL
   compose_timer = ck::timer::make_interval(COMPOSE_INTERVAL, [this] { this->compose(); });
+#else
+  pthread_create(&compositor_thread, NULL, lumen::context::compositor_thread_worker, (void *)this);
 #endif
   invalidate(screen.bounds());
 }
@@ -203,11 +204,11 @@ void lumen::context::invalidate(const gfx::rect &r) {
   dirty_regions.push(real);
   dirty_regions_lock.unlock();
 
-  /*
-if (!compose_timer->running()) {
-compose_timer->start(COMPOSE_INTERVAL, true);
-}
-  */
+#ifdef USE_COMPOSE_INTERVAL
+  if (!compose_timer->running()) {
+    compose_timer->start(COMPOSE_INTERVAL, true);
+  }
+#endif
 }
 
 
@@ -440,6 +441,10 @@ printf("nothing to do...\n");
 return;
 }
   */
+
+#ifdef USE_COMPOSE_INTERVAL
+	compose_timer->stop();
+#endif
 
   // make a tmp bitmap
   gfx::bitmap b(screen.width(), screen.height(), screen.buffer());

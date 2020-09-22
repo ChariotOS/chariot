@@ -97,7 +97,7 @@ service::service(const char *path) : config_file(path) {
 
 int main(int argc, char **argv) {
   // open up file descriptor 1, 2, and 3
-  for (int i = 0; i < 3; i++) close(i + 1);
+  for (int i = 0; i < 3; i++) close(i);
   open("/dev/console", O_RDWR);
   open("/dev/console", O_RDWR);
   open("/dev/console", O_RDWR);
