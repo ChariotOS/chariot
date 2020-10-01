@@ -1035,7 +1035,8 @@ static void string_out_fct(char c, void *buf, size_t idx, size_t maxlen) {
   s->push(c);
 }
 
-string string::format(const char *fmt, ...) {
+template<>
+string ck::basic_string<char>::format(const char *fmt, ...) {
   string dst;
 
   va_list va;
@@ -1348,6 +1349,7 @@ int sscanf(const char *buf, const char *fmt, ...) {
   return i;
 }
 
+template<>
 int string::scan(const char *fmt, ...) {
   va_list args;
   int i;
