@@ -20,17 +20,13 @@
 #define FAULT_PERM (1 << 3)
 #define FAULT_NOENT (1 << 4)
 
-#define VALIDATE_RD(ptr, size) \
-  curproc->mm->validate_pointer((void*)ptr, size, PROT_READ)
+#define VALIDATE_RD(ptr, size) curproc->mm->validate_pointer((void *)ptr, size, PROT_READ)
 
-#define VALIDATE_WR(ptr, size) \
-  curproc->mm->validate_pointer((void*)ptr, size, PROT_WRITE)
+#define VALIDATE_WR(ptr, size) curproc->mm->validate_pointer((void *)ptr, size, PROT_WRITE)
 
-#define VALIDATE_RDWR(ptr, size) \
-  curproc->mm->validate_pointer((void*)ptr, size, PROT_WRITE | PROT_READ)
+#define VALIDATE_RDWR(ptr, size) curproc->mm->validate_pointer((void *)ptr, size, PROT_WRITE | PROT_READ)
 
-#define VALIDATE_EXEC(ptr, size) \
-  curproc->mm->validate_pointer((void*)ptr, size, PROT_EXEC)
+#define VALIDATE_EXEC(ptr, size) curproc->mm->validate_pointer((void *)ptr, size, PROT_EXEC)
 
 
 namespace mm {
@@ -56,8 +52,8 @@ namespace mm {
 
     // non-freeable pages are needed (for example when mmapping mmio regions)
     bool freeable : 1;
-		bool writethrough: 1;
-		bool nocache : 1;
+    bool writethrough : 1;
+    bool nocache : 1;
 
     page(void);
     ~page(void);
@@ -77,8 +73,8 @@ namespace mm {
     off_t ppn;
     int prot;
 
-		bool writethrough = false;
-		bool nocache = false;
+    bool writethrough = false;
+    bool nocache = false;
   };
   /**
    * Page tables are created and implemented by the specific arch.
@@ -106,33 +102,31 @@ namespace mm {
 
     virtual ~vmobject(void){};
 
-		// added and removed from spaces.
-		inline void acquire(void) {
-			scoped_lock l(m_lock);
-			owners++;
-		}
-		inline void release(void) {
-			scoped_lock l(m_lock);
-			owners--;
-			if (owners == 0) drop();
-		}
+    // added and removed from spaces.
+    inline void acquire(void) {
+      scoped_lock l(m_lock);
+      owners++;
+    }
+    inline void release(void) {
+      scoped_lock l(m_lock);
+      owners--;
+      if (owners == 0) drop();
+    }
 
-		// all owners have dropped you!
-		virtual void drop(void) {}
+    // all owners have dropped you!
+    virtual void drop(void) {}
 
     // get a shared page (page #n in the mapping)
     virtual ref<mm::page> get_shared(off_t n) = 0;
     // tell the region to flush a page
     virtual void flush(off_t n) {}
 
-		inline size_t size(void) {
-			return n_pages * PGSIZE;
-		}
+    inline size_t size(void) { return n_pages * PGSIZE; }
 
-		private:
-		spinlock m_lock;
-		int owners = 0;
-			size_t n_pages;
+   private:
+    spinlock m_lock;
+    int owners = 0;
+    size_t n_pages;
   };
 
 
@@ -160,6 +154,9 @@ namespace mm {
 
     area(void);
     ~area(void);
+
+
+    static inline int compare(area &a, area &b) { return a.va - a.va; }
   };
 
   class space {
@@ -172,19 +169,17 @@ namespace mm {
     ~space(void);
 
 
-		size_t copy_out(off_t addr, void *into, size_t len);
+    size_t copy_out(off_t addr, void *into, size_t len);
 
-		inline auto get_pt(void) { return pt; }
+    inline auto get_pt(void) { return pt; }
     void switch_to();
     mm::area *lookup(off_t va);
 
     int delete_region(off_t va);
     int pagefault(off_t va, int err);
-    off_t mmap(off_t req, size_t size, int prot, int flags, ref<fs::file>,
-               off_t off);
+    off_t mmap(off_t req, size_t size, int prot, int flags, ref<fs::file>, off_t off);
 
-    off_t mmap(string name, off_t req, size_t size, int prot, int flags,
-               ref<fs::file>, off_t off);
+    off_t mmap(string name, off_t req, size_t size, int prot, int flags, ref<fs::file>, off_t off);
     int unmap(off_t addr, size_t sz);
 
 
@@ -216,10 +211,10 @@ namespace mm {
 
 
 
-		// expects nothing to be locked
-		ref<mm::page> get_page(off_t uaddr);
-		// expects the area, and space to be locked
-		ref<mm::page> get_page_internal(off_t uaddr, mm::area &area, int pagefault_err, bool do_map);
+    // expects nothing to be locked
+    ref<mm::page> get_page(off_t uaddr);
+    // expects the area, and space to be locked
+    ref<mm::page> get_page_internal(off_t uaddr, mm::area &area, int pagefault_err, bool do_map);
 
     spinlock lock;
     vec<mm::area *> regions;
