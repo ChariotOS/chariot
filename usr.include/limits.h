@@ -35,6 +35,8 @@
 #define LLONG_MIN (-LLONG_MAX-1)
 #define ULLONG_MAX (2ULL*LLONG_MAX+1)
 
+#define SIZE_MAX ULONG_MAX
+
 #define MB_LEN_MAX 4
 
 #if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \

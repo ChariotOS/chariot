@@ -34,9 +34,12 @@
 #include <math.h>
 #if defined(__APPLE__)
 #include <malloc/malloc.h>
-#elif defined(__linux__)
+#else
 #include <malloc.h>
 #endif
+
+#include <sys/types.h>
+#include <limits.h>
 
 #include "cutils.h"
 #include "list.h"
@@ -112,6 +115,10 @@
 #include <stdatomic.h>
 #include <errno.h>
 #endif
+
+int isfinite(double f) {
+	return !isinf(f);
+}
 
 enum {
     /* classid tag        */    /* union usage   | properties */
@@ -1666,7 +1673,7 @@ static inline size_t js_def_malloc_usable_size(void *ptr)
     return malloc_usable_size(ptr);
 #else
     /* change this to `return 0;` if compilation fails */
-    return malloc_usable_size(ptr);
+    return 0;
 #endif
 }
 
@@ -1740,7 +1747,7 @@ static const JSMallocFunctions def_malloc_funcs = {
     (size_t (*)(const void *))malloc_usable_size,
 #else
     /* change this to `NULL,` if compilation fails */
-    malloc_usable_size,
+    NULL,
 #endif
 };
 
@@ -10840,7 +10847,7 @@ static int JS_ToUint8ClampFree(JSContext *ctx, int32_t *pres, JSValue val)
                 else if (d > 255)
                     res = 255;
                 else
-                    res = lrint(d);
+                    res = round(d);
             }
         }
         break;
@@ -10933,7 +10940,7 @@ static __exception int JS_ToArrayLengthFree(JSContext *ctx, uint32_t *plen,
 
 static BOOL is_safe_integer(double d)
 {
-    return isfinite(d) && floor(d) == d &&
+    return !isinf(d) && floor(d) == d &&
         fabs(d) <= (double)MAX_SAFE_INTEGER;
 }
 
@@ -10969,7 +10976,7 @@ static int JS_NumberIsInteger(JSContext *ctx, JSValueConst val)
         return FALSE;
     if (unlikely(JS_ToFloat64(ctx, &d, val)))
         return -1;
-    return isfinite(d) && floor(d) == d;
+    return !isinf(d) && floor(d) == d;
 }
 
 static BOOL JS_NumberIsNegativeOrMinusZero(JSContext *ctx, JSValueConst val)
@@ -41233,9 +41240,7 @@ static uint64_t xorshift64star(uint64_t *pstate)
 
 static void js_random_init(JSContext *ctx)
 {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    ctx->random_state = ((int64_t)tv.tv_sec * 1000000) + tv.tv_usec;
+    ctx->random_state = ((int64_t)getlocaltime(NULL) * 1000000);
     /* the state must be non zero */
     if (ctx->random_state == 0)
         ctx->random_state = 1;
@@ -41326,15 +41331,16 @@ static JSValue js___date_clock(JSContext *ctx, JSValueConst this_val,
                                int argc, JSValueConst *argv)
 {
     int64_t d;
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    d = (int64_t)tv.tv_sec * 1000000 + tv.tv_usec;
+		time_t s = getlocaltime(NULL);
+    d = s * 1000000;
     return JS_NewInt64(ctx, d);
 }
 
 /* OS dependent. d = argv[0] is in ms from 1970. Return the difference
    between local time and UTC time 'd' in minutes */
 static int getTimezoneOffset(int64_t time) {
+	return 0;
+#if 0
 #if defined(_WIN32)
     /* XXX: TODO */
     return 0;
@@ -41366,6 +41372,7 @@ static int getTimezoneOffset(int64_t time) {
     ti = time;
     localtime_r(&ti, &tm);
     return -tm.tm_gmtoff / 60;
+#endif
 #endif
 }
 
@@ -43374,7 +43381,7 @@ static int js_json_to_str(JSContext *ctx, JSONStringifyContext *jsc,
             goto exception;
         goto concat_value;
     case JS_TAG_FLOAT64:
-        if (!isfinite(JS_VALUE_GET_FLOAT64(val))) {
+        if (isinf(JS_VALUE_GET_FLOAT64(val))) {
             val = JS_NULL;
         }
         goto concat_value;
@@ -47410,7 +47417,7 @@ static JSValue set_date_field(JSContext *ctx, JSValueConst this_val,
         for(i = 0; i < n; i++) {
             if (JS_ToFloat64(ctx, &a, argv[i]))
                 return JS_EXCEPTION;
-            if (!isfinite(a))
+            if (isinf(a))
                 goto done;
             fields[first_field + i] = trunc(a);
         }
@@ -47536,9 +47543,7 @@ static JSValue get_date_string(JSContext *ctx, JSValueConst this_val,
 
 /* OS dependent: return the UTC time in ms since 1970. */
 static int64_t date_now(void) {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (int64_t)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
+    return (int64_t)getlocaltime(NULL) * 1000;
 }
 
 static JSValue js_date_constructor(JSContext *ctx, JSValueConst new_target,

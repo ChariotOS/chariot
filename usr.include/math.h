@@ -18,6 +18,9 @@ extern "C" {
 #define M_SQRT2 1.4142135623730951
 #define M_SQRT1_2 0.7071067811865475
 
+#define signbit(arg) (((arg) < 1) ? 1 : 0)
+
+
 double acos(double);
 float acosf(float);
 double asin(double);
@@ -97,6 +100,8 @@ int isnan(double d);
 
 
 int abs(int);
+
+
 
 #ifdef __cplusplus
 }

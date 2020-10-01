@@ -27,7 +27,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <assert.h>
-
+#include <alloca.h>
 #include "cutils.h"
 #include "libregexp.h"
 
