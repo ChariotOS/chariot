@@ -434,13 +434,13 @@ bool mm::space::validate_pointer(void *raw_va, size_t len, int mode) {
     // see if there is a region at the requested offset
     auto r = lookup(va);
     if (!r) {
-			printk(KERN_WARN "validate_pointer(%p) - region not found!\n", raw_va);
+      printk(KERN_WARN "validate_pointer(%p) - region not found!\n", raw_va);
       return false;
     }
 
     if ((mode & PROT_READ && !(r->prot & PROT_READ)) || (mode & PROT_WRITE && !(r->prot & PROT_WRITE)) ||
         (mode & PROT_EXEC && !(r->prot & PROT_EXEC))) {
-			printk(KERN_WARN "validate_pointer(%p) - protection!\n", raw_va);
+      printk(KERN_WARN "validate_pointer(%p) - protection!\n", raw_va);
       return false;
     }
     // TODO: check mode flags
@@ -464,6 +464,7 @@ int mm::space::schedule_mapping(off_t va, off_t pa, int prot) {
   pending_mappings.push({.va = va, .pa = pa, .prot = prot});
   return 0;
 }
+
 
 int mm::space::sort_regions(void) {
   int const len = regions.size();
