@@ -4,7 +4,7 @@
 #include <cxxabi.h>
 #include <fcntl.h>
 #include <ui/application.h>
-
+#include <sys/mman.h>
 
 #define SSFN_IMPLEMENTATION /* use the normal renderer implementation */
 #include "./ssfn.h"
@@ -87,24 +87,12 @@ class painter : public ui::view {
 };
 
 
-#include <ck/async.h>
-#include <setjmp.h>
-#include <signal.h>
 
 
-namespace std {
-  template <class, class...>
-  struct coroutine_traits {};
-}  // namespace std
-
-
-// void foo() {}
-
-// #include <vector>
 
 int main(int argc, char** argv) {
 
-	// std::vector<int> x;
+
   stbtt_fontinfo font;
 
   ck::file f;
