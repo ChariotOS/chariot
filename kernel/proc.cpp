@@ -42,6 +42,20 @@ static process::ptr pid_lookup(pid_t pid) {
   return p;
 }
 
+
+
+void sched::proc::in_pgrp(pid_t pgid, func<bool(struct process &)> cb) {
+  ptable_lock.read_lock();
+
+	for (auto kv : proc_table) {
+		auto proc = kv.value;
+		if (proc->pgid == pgid) {
+			if (cb(*proc) == false) break;
+		}
+	}
+  ptable_lock.read_unlock();
+}
+
 static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
   // get a reference, they are nicer to look at.
   // (and we spend less time in ref<process>::{ref,deref}())

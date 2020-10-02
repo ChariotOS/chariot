@@ -422,6 +422,12 @@ namespace sched {
 
     int do_waitpid(pid_t, int &status, int options);
 
+		// this takes a lock over the process table while iterating
+		// Return false from the callback to stop.
+		void in_pgrp(pid_t pgid, func<bool(struct process &)>);
+
+
   };  // namespace proc
+
 }  // namespace sched
 
