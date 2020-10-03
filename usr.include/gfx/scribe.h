@@ -1,7 +1,7 @@
 #pragma once
 
 #include <gfx/bitmap.h>
-
+#include <ui/textalign.h>
 
 namespace gfx {
 
@@ -107,15 +107,15 @@ namespace gfx {
       x += s.offset.x();
       y += s.offset.y();
 
-
-
       auto &c = s.clip;
-
 
       if (x >= c.left() && x < c.right() && y >= c.top() && y < c.bottom()) {
         set_pixel(x, y, color);
       }
     }
+
+		void draw_text(gfx::font &fnt, const gfx::rect &bounds, const ck::string &text, ui::TextAlign, uint32_t color, bool elide = true);
+		void draw_text_line(gfx::font &fnt, const gfx::rect &bounds, const ck::string &text, ui::TextAlign, uint32_t color, bool elide = true);
 
 
     // draw text, wrapping within

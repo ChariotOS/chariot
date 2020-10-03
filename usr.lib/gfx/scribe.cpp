@@ -18,8 +18,7 @@ gfx::scribe::~scribe(void) { leave(); }
 
 void gfx::scribe::enter(void) {
   if (states.size() == 0) {
-    states.push({.offset = gfx::point(0, 0),
-                 .clip = gfx::rect(0, 0, width(), height())});
+    states.push({.offset = gfx::point(0, 0), .clip = gfx::rect(0, 0, width(), height())});
   } else {
     // copy the current state
     states.push(state());
@@ -58,8 +57,7 @@ void gfx::scribe::clear(uint32_t color) {
   }
 }
 
-void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source,
-                       const gfx::rect &src_rect) {
+void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source, const gfx::rect &src_rect) {
   auto safe_src_rect = src_rect.intersect(source.rect());
   // assert(source.rect().contains(safe_src_rect));
 
@@ -78,8 +76,7 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source,
   uint32_t *dst = bmp.scanline(clipped_rect.y) + clipped_rect.x;
   const size_t dst_skip = bmp.width();
 
-  const uint32_t *src = source.scanline(src_rect.top() + first_row) +
-                        src_rect.left() + first_column;
+  const uint32_t *src = source.scanline(src_rect.top() + first_row) + src_rect.left() + first_column;
   const size_t src_skip = source.width();
 
 
@@ -103,8 +100,7 @@ void gfx::scribe::blend_pixel(int x, int y, uint32_t color, float alpha) {
 
 
   uint32_t fgi = (color & 0xFF'FF'FF) | ((int)(255 * alpha) << 24);
-  uint32_t bgi = bmp.get_pixel(
-      x, y);  // this could be slow, cause we read from vga memory...
+  uint32_t bgi = bmp.get_pixel(x, y);  // this could be slow, cause we read from vga memory...
   set_pixel(x, y, gfx::color::blend(fgi, bgi));
 }
 
@@ -112,8 +108,7 @@ void gfx::scribe::blend_pixel(int x, int y, uint32_t color, float alpha) {
 #define __round(X) ((int)(((double)(X)) + 0.5))
 #define __fpart(X) (((double)(X)) - (double)__ipart(X))
 #define __rfpart(X) (1.0 - __fpart(X))
-#define __plot(__x, __y, __brightness) \
-  blend_pixel((__x), (__y), color, __brightness)
+#define __plot(__x, __y, __brightness) blend_pixel((__x), (__y), color, __brightness)
 
 #define __swap(__x, __y)         \
   ({                             \
@@ -122,8 +117,7 @@ void gfx::scribe::blend_pixel(int x, int y, uint32_t color, float alpha) {
     __y = __tmp;                 \
   })
 
-void gfx::scribe::draw_line_antialias(int x0i, int y0i, int x1i, int y1i,
-                                      uint32_t color, float wd) {
+void gfx::scribe::draw_line_antialias(int x0i, int y0i, int x1i, int y1i, uint32_t color, float wd) {
   double x0 = x0i;
   double y0 = y0i;
   double x1 = x1i;
@@ -236,8 +230,7 @@ static double getPt(double n1, double n2, float perc) {
   return n1 + (diff * perc);
 }
 
-void gfx::scribe::draw_generic_bezier(ck::vec<gfx::point> &points,
-                                      uint32_t color, float stroke) {
+void gfx::scribe::draw_generic_bezier(ck::vec<gfx::point> &points, uint32_t color, float stroke) {
   /*
 for (int i = 0; i < points.size() - 1; i++) {
 auto &p1 = points[i];
@@ -274,10 +267,8 @@ draw_line_antialias(p1, p2, color, stroke);
 
 
 
-void gfx::scribe::draw_quadratic_bezier(const gfx::point &start,
-                                        const gfx::point &p1,
-                                        const gfx::point &end, uint32_t color,
-                                        float stroke) {
+void gfx::scribe::draw_quadratic_bezier(const gfx::point &start, const gfx::point &p1, const gfx::point &end,
+                                        uint32_t color, float stroke) {
   int lx = start.x();
   int ly = start.y();
 
@@ -482,8 +473,7 @@ void gfx::scribe::draw_circle(int x0, int y0, int r, uint32_t color) {
   }
 }
 
-void gfx::scribe::draw_circle_helper(int x0, int y0, int r, int cornername,
-                                     uint32_t color) {
+void gfx::scribe::draw_circle_helper(int x0, int y0, int r, int cornername, uint32_t color) {
   // Helper function for drawing circles and circular objects
   short f = 1 - r;
   short ddF_x = 1;
@@ -536,8 +526,7 @@ void gfx::scribe::fill_circle(int x0, int y0, int r, uint32_t color) {
   fill_circle_helper(x0, y0, r, 3, 0, color);
 }
 
-void gfx::scribe::fill_circle_helper(int x0, int y0, int r, int corner,
-                                     int delta, uint32_t color) {
+void gfx::scribe::fill_circle_helper(int x0, int y0, int r, int corner, int delta, uint32_t color) {
   // Helper function for drawing filled circles
   short f = 1 - r;
   short ddF_x = 1;
@@ -607,6 +596,120 @@ void gfx::scribe::draw_frame(const gfx::rect &frame, uint32_t bg, uint32_t fg) {
   }
 }
 
+void gfx::scribe::draw_text(gfx::font &font, const gfx::rect &rect, const ck::string &text, ui::TextAlign align,
+                            uint32_t color, bool elide) {
+  auto lines = text.split('\n', true);
+
+  static const int line_spacing = 0;
+  int line_height = font.line_height() + line_spacing;
+  gfx::rect bounding_rect{0, 0, 0, (static_cast<int>(lines.size()) * line_height) - line_spacing};
+
+  for (auto &line : lines) {
+    auto line_width = font.width(line);
+    if (line_width > bounding_rect.w) bounding_rect.w = line_width;
+  }
+
+  bounding_rect.w = min(bounding_rect.w, rect.w);
+
+  switch (align) {
+    case ui::TextAlign::TopLeft:
+      bounding_rect.set_location(rect.x, rect.y);
+      break;
+    case ui::TextAlign::TopRight:
+      bounding_rect.set_location((rect.right() + 1) - bounding_rect.w, rect.y);
+      break;
+    case ui::TextAlign::CenterLeft:
+      bounding_rect.x = rect.x;
+      bounding_rect.center_vertically_within(rect);
+      break;
+    case ui::TextAlign::CenterRight:
+      bounding_rect.x = (rect.right() + 1) - bounding_rect.w;
+      bounding_rect.center_vertically_within(rect);
+      break;
+    case ui::TextAlign::Center:
+      bounding_rect.center_within(rect);
+      break;
+    case ui::TextAlign::BottomRight:
+      bounding_rect.set_location((rect.right() + 1) - bounding_rect.w, (rect.bottom() + 1) - bounding_rect.h);
+      break;
+    default:
+      panic("INVALID TEXT ALIGNMENT\n");
+  }
+
+
+
+
+  for (size_t i = 0; i < lines.size(); ++i) {
+    auto &line = lines[i];
+    gfx::rect line_rect(bounding_rect.x, bounding_rect.y + static_cast<int>(i) * line_height, bounding_rect.w,
+                        line_height);
+    line_rect.intersect(rect);
+    draw_text_line(font, line_rect, line, align, color, elide);
+  }
+}
+
+
+void gfx::scribe::draw_text_line(gfx::font &font, const gfx::rect &a_rect, const ck::string &text, ui::TextAlign align,
+                                 uint32_t color, bool elide) {
+  auto rect = a_rect;
+  ck::string final_text = text;
+
+
+  if (elide) {
+    int text_width = font.width(final_text);
+    if (text_width > rect.w) {
+      int glyph_spacing = 0;  // TODO: font.glyph_spacing();
+      int byte_offset = 0;
+      int new_width = font.width("...");
+      if (new_width < text_width) {
+        for (auto i = 0; i < final_text.len(); i++) {
+          uint32_t code_point = final_text[i];
+          int glyph_width = font.width(code_point);
+          // NOTE: Glyph spacing should not be added after the last glyph on the line,
+          //       but since we are here because the last glyph does not actually fit on the line,
+          //       we don't have to worry about spacing.
+          int width_with_this_glyph_included = new_width + glyph_width + glyph_spacing;
+          if (width_with_this_glyph_included > rect.w) break;
+          byte_offset = i;
+          new_width += glyph_width + glyph_spacing;
+        }
+
+        auto sub = text.substring_view(0, byte_offset);
+        ck::string builder;
+        for (int i = 0; i < sub.len(); i++) builder.push(sub[i]);
+        builder += "...";
+        final_text.clear();
+        final_text = builder;
+      }
+    }
+  }
+
+
+
+  switch (align) {
+    case ui::TextAlign::TopLeft:
+    case ui::TextAlign::CenterLeft:
+      break;
+    case ui::TextAlign::TopRight:
+    case ui::TextAlign::CenterRight:
+    case ui::TextAlign::BottomRight:
+      rect.x = rect.right() - font.width(final_text);
+      break;
+    case ui::TextAlign::Center: {
+      auto shrunken_rect = rect;
+      shrunken_rect.w = font.width(final_text);
+      shrunken_rect.center_within(rect);
+      rect = shrunken_rect;
+      break;
+    }
+    default:
+      panic("INVALID TEXT ALIGNMENT\n");
+  }
+  // draw_rect(rect, 0xFF00FF);
+  auto p = gfx::printer(*this, font, rect.x, rect.y, rect.w);
+  p.write(final_text.get());
+}
+
 #if 0
 void gfx::scribe::draw_text(struct text_thunk &st, gfx::font &fnt, char c,
                             uint32_t color, int flags) {
@@ -648,8 +751,7 @@ static void scribe_draw_text_callback(char c, void *arg) {
 }
 
 
-extern "C" int vfctprintf(void (*out)(char character, void *arg), void *arg,
-                          const char *format, va_list va);
+extern "C" int vfctprintf(void (*out)(char character, void *arg), void *arg, const char *format, va_list va);
 
 void gfx::printer::printf(const char *fmt, ...) {
   va_list va;
@@ -674,17 +776,17 @@ void gfx::printer::write(char c) {
   };
 
   if (c == '\n') {
-    newline();
+    // newline();
   } else {
     if (x + fnt->width(c) > right_edge) {
-      newline();
+      // newline();
     }
 
     int dy = y + fnt->line_height();
     fnt->draw(x, dy, this->sc, c, color);
   }
 
-	/* flush the position change */
+  /* flush the position change */
   pos.set_x(x);
   pos.set_y(y);
 }

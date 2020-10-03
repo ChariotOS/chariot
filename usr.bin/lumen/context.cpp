@@ -288,8 +288,6 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
       }
     }
 
-
-
     return;
   };
 
@@ -436,15 +434,17 @@ void lumen::context::compose(void) {
 
   /*
 // do nothing if nothing has changed
-if (dirty_regions.size() == 0) {
-printf("nothing to do...\n");
-return;
-}
   */
 
 #ifdef USE_COMPOSE_INTERVAL
-	compose_timer->stop();
+  compose_timer->stop();
 #endif
+	// printf("compose\n");
+
+  if (dirty_regions.size() == 0) {
+    // printf("nothing to do...\n");
+    return;
+  }
 
   // make a tmp bitmap
   gfx::bitmap b(screen.width(), screen.height(), screen.buffer());

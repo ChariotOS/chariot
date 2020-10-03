@@ -41,10 +41,10 @@ void ui::stackview::reflow_impl() {
   each_child(fn(ui::view & entry) {
     last_child = &entry;
     switch (entry.get_size_policy(main_axis)) {
-      case ui::size_policy::calc:
+      case ui::size_policy::Calculate:
         ncalc++;
         break;
-      case ui::size_policy::fixed:
+      case ui::size_policy::Fixed:
         // this element is a fixed size, so we need to
         // adjust the calculated size of other entries from it
         fixed_space_used += entry.size(main_axis);
@@ -67,7 +67,7 @@ void ui::stackview::reflow_impl() {
     // TODO: paddings
     entry.set_size(cross_axis, size(cross_axis));
     switch (entry.get_size_policy(main_axis)) {
-      case ui::size_policy::calc: {
+      case ui::size_policy::Calculate: {
         int size = equal_stretch_size;
         if (&entry == last_child) {
           float round_error = equal_stretch_size - (float)size;
@@ -77,7 +77,7 @@ void ui::stackview::reflow_impl() {
         position += equal_stretch_size;
         break;
       }
-      case ui::size_policy::fixed: {
+      case ui::size_policy::Fixed: {
         position += entry.size(main_axis);
         break;
       }

@@ -15,19 +15,53 @@ ui::window::window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bit
 ui::window::~window(void) {}
 
 
-void ui::window::invalidate(const gfx::rect &r) {
-  auto &app = ui::application::get();
-  struct lumen::invalidate_msg iv;
+void ui::window::invalidate(const gfx::rect &r, bool sync) {
+  if (!m_defer_invalidation) {
+    auto &app = ui::application::get();
+    struct lumen::invalidated_msg response = {0};
+    struct lumen::invalidate_msg iv;
+    iv.id = m_id;
+    iv.nrects = 1;
+    iv.rects[0].x = r.x;
+    iv.rects[0].y = r.y;
+    iv.rects[0].w = r.w;
+    iv.rects[0].h = r.h;
+    app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
+    return;
+  }
 
-  iv.nrects = 1;
-  iv.id = m_id;
-  iv.rects[0].x = r.x;
-  iv.rects[0].y = r.y;
-  iv.rects[0].w = r.w;
-  iv.rects[0].h = r.h;
+  if (m_pending_invalidations.size() == 0) {
+    ck::eventloop::defer([this](void) {
+      auto &app = ui::application::get();
+      struct lumen::invalidated_msg response = {0};
+      struct lumen::invalidate_msg iv;
+      iv.id = m_id;
 
-  struct lumen::invalidated_msg response = {0};
-  app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
+      int nrects = m_pending_invalidations.size();
+      auto *start = m_pending_invalidations.data();
+
+      int n = 0;
+      for (auto &rect : m_pending_invalidations) {
+        iv.rects[n].x = rect.x;
+        iv.rects[n].y = rect.y;
+        iv.rects[n].w = rect.w;
+        iv.rects[n].h = rect.h;
+        n++;
+        if (n == MAX_INVALIDATE) {
+          iv.nrects = n;
+          app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
+          n = 0;
+        }
+      }
+      if (n != 0) {
+        iv.nrects = n;
+        app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
+      }
+
+      m_pending_invalidations.clear();
+    });
+  }
+  m_pending_invalidations.push(r);
 }
 
 void ui::window::flush(void) { invalidate(m_rect); }

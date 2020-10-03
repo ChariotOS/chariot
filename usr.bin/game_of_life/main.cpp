@@ -7,7 +7,7 @@
 #define HEIGHT 40
 #define BOARDSIZE (WIDTH * HEIGHT)
 
-#define SCALE 12
+#define SCALE 8
 
 #define TICKS 30
 
@@ -89,7 +89,6 @@ class gol : public ui::view {
       }
     }
 
-    invalidate();
   }
 
 

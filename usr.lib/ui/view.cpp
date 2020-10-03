@@ -24,6 +24,8 @@ void ui::view::repaint(void) {
   paint_event();
 
   each_child(fn(auto &c) { c.repaint(); });
+
+	invalidate();
 }
 
 

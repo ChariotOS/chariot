@@ -120,7 +120,7 @@ class doomview : public ui::view {
       pr.printf("       %f\n", elapsed);
     }
 
-    invalidate();
+		invalidate();
   }
 
   virtual void on_mouse_move(ui::mouse_event& ev) override { repaint(); }
@@ -151,6 +151,8 @@ extern "C" void DG_Init() {
   memset(s_KeyQueue, 0, KEYQUEUE_SIZE * sizeof(unsigned short));
 
   main_window = main_app.new_window("DOOM", DOOMGENERIC_RESX, DOOMGENERIC_RESY);
+	main_window->defer_invalidation(false);
+
 
   main_widget = &main_window->set_view<doomview>();
 }

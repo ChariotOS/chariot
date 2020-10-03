@@ -19,15 +19,15 @@ namespace gfx {
     int8_t bbY;
     int8_t bbW;
     int8_t bbH;
-		int8_t adv;
+    int8_t adv;
   } __attribute__((packed));
 
 
   struct font_header {
     uint32_t magic;
 
-		uint32_t height; // offset from the "top left" to the baseline
-		uint32_t width; // offset from the "top left" to the baseline
+    uint32_t height;  // offset from the "top left" to the baseline
+    uint32_t width;   // offset from the "top left" to the baseline
 
     // how many chars in the cmap?
     uint32_t charsz;  // size of the char map (bytes)
@@ -38,33 +38,37 @@ namespace gfx {
   };
 
 
-
   class font : public ck::refcounted<font> {
-		protected:
+   protected:
     font(ck::file &, int lh);
 
 
     struct font_header *hdr;
     size_t datasz;
-		int m_line_height;
+    int m_line_height;
+		int m_descent = 0;
 
     ck::map<uint32_t, struct char_map_ent *> cmap;
 
 
-		uint32_t *data(uint32_t off = 0);
-   public:
+    uint32_t *data(uint32_t off = 0);
 
+   public:
     ~font(void);
     static ck::ref<font> open(const char *name, int lh);
     static ck::ref<font> get_default(void);
 
-		inline int line_height(void) {
-			return m_line_height;
-		}
+    inline int line_height(void) const { return m_line_height + m_descent; }
 
 
-		// total width of a codepoint from the left edge
-		uint32_t width(uint32_t cp);
+    // total width of a codepoint from the left edge
+    uint32_t width(uint32_t cp);
+
+    inline uint32_t width(ck::string_view v) {
+      uint32_t w = 0;
+      for (char c : v) w += width(c);
+      return w;
+    }
 
     int draw(int &x, int &y, gfx::scribe &, uint32_t cp, uint32_t color);
   };

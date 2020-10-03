@@ -7,6 +7,7 @@
 #include <gfx/rect.h>
 #include <gfx/scribe.h>
 #include <ui/event.h>
+#include <ui/textalign.h>
 
 namespace ui {
 
@@ -23,9 +24,10 @@ namespace ui {
   enum class direction : uint8_t { vertical, horizontal };
 
   enum class size_policy : uint8_t {
-    fixed,
-    calc,
+    Fixed,
+    Calculate,
   };
+
 
 
 
@@ -64,14 +66,14 @@ namespace ui {
     inline virtual void on_keyup(ui::keyup_event &) {}
 
 
-		inline virtual void on_focused(void) {}
-		inline virtual void on_blur(void) {}
+    inline virtual void on_focused(void) {}
+    inline virtual void on_blur(void) {}
 
 
 
 
-		// make this widget the focused one
-		void set_focused(void);
+    // make this widget the focused one
+    void set_focused(void);
 
     // distribute a mouse event to children or the parent if it's better suited
     // for it
@@ -200,8 +202,8 @@ namespace ui {
 
 
     // by default, calculate width and height
-    ui::size_policy m_width_policy = ui::size_policy::calc;
-    ui::size_policy m_height_policy = ui::size_policy::calc;
+    ui::size_policy m_width_policy = ui::size_policy::Calculate;
+    ui::size_policy m_height_policy = ui::size_policy::Calculate;
 
     /*
      * these two entries are mutually exclusive

@@ -4,7 +4,7 @@
 
 namespace gfx {
 
-  font::font(ck::file &file, int lh) : m_line_height(lh) {
+  font::font(ck::file &file, int lh) {
     file.seek(0, SEEK_SET);
 
 
@@ -16,11 +16,16 @@ namespace gfx {
 
     auto count = hdr->charsz / sizeof(char_map_ent);
 
+
     // parse!
     for (int i = 0; i < (int)count; i++) {
       auto *cp = &hdr->cmap[i];
       cmap[cp->codepoint] = cp;
+			if (m_descent > cp->bbY) m_descent = cp->bbY;
     }
+
+		m_descent = -m_descent;
+		m_line_height = lh;
   }
 
   font::~font(void) { munmap(hdr, datasz); }
@@ -67,7 +72,7 @@ namespace gfx {
     auto *ent = cmap[cp];
     if (ent == NULL) return 0;
     // total width
-    return ent->bbH + ent->bbX;
+    return ent->adv;
   }
 
 
@@ -83,10 +88,11 @@ namespace gfx {
     auto h = ent->bbH;
 
     int x = dx + ent->bbX;
-    int y = dy - ent->bbY;
+    int y = dy - ent->bbY - m_descent;
 
     // s.draw_hline(dx, dy, ent->bbW, 0xFF00FF);
     // s.draw_hline(x, y, ent->bbW, 0x338888);
+		// s.draw_rect(gfx::rect(x, y - h, w, h), 0xFF00FF);
 
     for (int r = 0; r < h; r++) {
       for (int c = 0; c <= w; c++) {

@@ -24,7 +24,7 @@ namespace ui {
     inline int width() { return bmp().width(); }
     inline int height() { return bmp().height(); }
 
-    void invalidate(const gfx::rect &r);
+    void invalidate(const gfx::rect &r, bool sync = false);
 
     inline gfx::bitmap &bmp(void) { return *m_bitmap; }
 
@@ -57,6 +57,10 @@ namespace ui {
       return *(T *)v;
     }
 
+		inline void defer_invalidation(bool d) {
+			m_defer_invalidation = d;
+		}
+
 
     // the whole window needs reflowed, so schedule one
     void schedule_reflow();
@@ -74,9 +78,13 @@ namespace ui {
 
     ck::unique_ptr<ui::view> m_main_view;
 
+		ck::vec<gfx::rect> m_pending_invalidations;
+
     long m_id;
     ck::string m_name;
     gfx::rect m_rect;
+
+		bool m_defer_invalidation = true;
     ck::ref<gfx::shared_bitmap> m_bitmap;
   };
 };  // namespace ui

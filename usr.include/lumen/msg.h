@@ -129,7 +129,7 @@ namespace lumen {
     struct r {
       // where in the window?
       int x, y, w, h;
-    } rects[10];
+    } rects[MAX_INVALIDATE];
   };
 
   struct invalidated_msg {

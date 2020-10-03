@@ -13,31 +13,41 @@ namespace ck {
   template <typename T>
   class basic_string_view {
    protected:
-    T* m_start;
+    const T* m_start;
     size_t m_len;
 
    public:
     // iterator magic
-    typedef char* iterator;
-    typedef const char* const_iterator;
-    inline char* begin() { return m_start; }
-    char* end() { return m_start + m_len; }
-    const char* begin() const { return m_start; }
-    const char* end() const { return m_start + m_len; }
+    typedef const T* iterator;
+    typedef const T* const_iterator;
+    inline const char* begin() { return m_start; }
+    const T* end() { return m_start + m_len; }
+    const T* begin() const { return m_start; }
+    const T* end() const { return m_start + m_len; }
 
-    basic_string_view(T* start, size_t len) : m_start(start), m_len(len) {}
+    basic_string_view(const T* start, size_t len) : m_start(start), m_len(len) {}
+
     basic_string_view(T* start) : m_start(start) {
       for (m_len = 0; start[m_len] != 0; m_len++) {
       }
     }
+
+    basic_string_view(const T* start) : m_start(start) {
+      for (m_len = 0; start[m_len] != 0; m_len++) {
+      }
+    }
     // no destructor, since we don't own anything
-    const char* get(void) { return m_start; }
-    inline size_t len(void) { return m_len; }
+    const char* get(void) const { return m_start; }
+    inline size_t len(void) const { return m_len; }
 
     operator T*(void) { return m_start; }
 
-    inline T& operator[](unsigned int index) { return m_start[index]; }
     inline T operator[](unsigned int index) const { return m_start[index]; }
+
+
+    inline basic_string_view<T> substring_view(off_t start, size_t len) const {
+      return basic_string_view<T>(m_start + start, len);
+    }
   };
 
 
@@ -112,19 +122,37 @@ namespace ck {
 
 
     basic_string(T c) {
-      m_buf = 0;
-      m_cap = 0;
+      m_buf = nullptr;
       m_len = 0;
+      m_cap = 0;
+      INIT_STRING;
       push(c);
     }
 
 
     inline basic_string(T* c, size_t len) {
+      m_buf = nullptr;
+      m_len = 0;
+      m_cap = 0;
+      INIT_STRING;
       for (size_t i = 0; i < len; i++) {
         if (c[i] == 0) break;
         push(c[i]);
       }
     }
+    inline basic_string(const T* c, size_t len) {
+      m_buf = nullptr;
+      m_len = 0;
+      m_cap = 0;
+      INIT_STRING;
+      for (size_t i = 0; i < len; i++) {
+        if (c[i] == 0) break;
+        push(c[i]);
+      }
+    }
+
+    basic_string(basic_string_view<T>& s) { basic_string(s.get(), s.len()); }
+    basic_string(const basic_string_view<T>& s) { basic_string(s.get(), s.len()); }
 
 
     ~basic_string(void) {
@@ -132,11 +160,11 @@ namespace ck {
     }
 
 
-    ck::vec<basic_string<T>> split(T c, bool include_empty = false) {
+    ck::vec<basic_string<T>> split(T c, bool include_empty = false) const {
       ck::vec<basic_string<T>> tokens;
       basic_string token = "";
 
-      basic_string& self = *this;
+      const basic_string& self = *this;
 
       for (unsigned int i = 0; i < len(); i++) {
         if (self[i] == c) {
@@ -200,7 +228,7 @@ namespace ck {
 
 
     inline const T* get() const {
-      m_buf[len()] = 0;  // null terminate
+      if (m_buf != NULL) m_buf[len()] = 0;  // null terminate
       return m_buf;
     }
 
@@ -228,6 +256,7 @@ namespace ck {
       for (T c : s) push(c);
       return *this;
     }
+
     basic_string& operator+=(T c) {
       push(c);
       return *this;
