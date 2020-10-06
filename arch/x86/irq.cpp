@@ -363,12 +363,14 @@ static void pgfault_handle(int i, reg_t *regs) {
       dump_trapframe(regs);
       KERR("Address Space Dump:\n");
       proc->mm->dump();
+			/*
       KERR("FPU State:\n");
       alignas(16) char sse_data[512];
 
       asm volatile("fxsave64 (%0);" ::"r"(sse_data));
 
       hexdump(sse_data, 512, true);
+			*/
       KERR("==================================================================\n");
 
       sched::dispatch_signal(SIGSEGV);

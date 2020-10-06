@@ -51,3 +51,4 @@
 #define SYS_awaitfs                  (0x32)
 #define SYS_kshell                   (0x33)
 #define SYS_futex                    (0x34)
+#define SYS_sysinfo                  (0x35)

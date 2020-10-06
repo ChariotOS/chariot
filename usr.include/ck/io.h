@@ -81,9 +81,11 @@ namespace ck {
       friend class file;
 
       template <typename T>
-      T *as() {
-        return (T *)mem;
+      constexpr T *as(off_t loc = 0) {
+				if (mem == NULL) return NULL;
+        return (T *)((char*)mem + loc);
       }
+
       inline void *data() { return mem; }
 
 

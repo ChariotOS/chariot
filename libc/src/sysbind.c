@@ -215,3 +215,7 @@ int sysbind_futex(int* uaddr, int op, int val, int val2, int* uaddr2, int val3) 
     return (int)__syscall_eintr(52, (unsigned long long)uaddr, (unsigned long long)op, (unsigned long long)val, (unsigned long long)val2, (unsigned long long)uaddr2, (unsigned long long)val3);
 }
 
+int sysbind_sysinfo(struct sysinfo * info) {
+    return (int)__syscall_eintr(53, (unsigned long long)info, 0, 0, 0, 0, 0);
+}
+

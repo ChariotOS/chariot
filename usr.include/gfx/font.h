@@ -46,6 +46,7 @@ namespace gfx {
     struct font_header *hdr;
     size_t datasz;
     int m_line_height;
+		int m_ascent = 0;
 		int m_descent = 0;
 
     ck::map<uint32_t, struct char_map_ent *> cmap;

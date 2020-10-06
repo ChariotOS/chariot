@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/sysinfo.h>
 #else
 #include <types.h>
 #endif
@@ -70,6 +71,7 @@ int sysbind_kill(int pid, int sig);
 int sysbind_awaitfs(struct await_target * fds, int nfds, int flags, long long timeout_time);
 unsigned long sysbind_kshell(char* cmd, int argc, char ** argv, void* data, size_t len);
 int sysbind_futex(int* uaddr, int op, int val, int val2, int* uaddr2, int val3);
+int sysbind_sysinfo(struct sysinfo * info);
 #ifdef __cplusplus
 }
 #endif

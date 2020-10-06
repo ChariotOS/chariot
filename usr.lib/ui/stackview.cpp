@@ -8,7 +8,7 @@ ui::stackview::~stackview() {}
 
 void ui::stackview::reflow_impl() {
   //
-  // get the main and cross axis. For example, if the layout is vertical, this
+  // get the main and cross axis. For example, if the layout is Vertical, this
   // is the result:
   //       +------+------+
   //       |      |      |
@@ -21,9 +21,9 @@ void ui::stackview::reflow_impl() {
   //                        cross axis
   //
   auto main_axis = m_layout;
-  auto cross_axis = main_axis == ui::direction::horizontal
-                        ? ui::direction::vertical
-                        : ui::direction::horizontal;
+  auto cross_axis = main_axis == ui::Direction::Horizontal
+                        ? ui::Direction::Vertical
+                        : ui::Direction::Horizontal;
 
 
   // auto available_size = gfx::point(width(), height());
@@ -32,7 +32,7 @@ void ui::stackview::reflow_impl() {
   int ncalc = 0;
 
   // how much space is avail on the main axis
-  size_t available_size = this->size(main_axis);
+  size_t available_size = this->size(main_axis) - padding.total_for(main_axis) - (bordersize * 2);
   // how much space is used by fixed sized entries
   size_t fixed_space_used = 0;
 
@@ -41,10 +41,10 @@ void ui::stackview::reflow_impl() {
   each_child(fn(ui::view & entry) {
     last_child = &entry;
     switch (entry.get_size_policy(main_axis)) {
-      case ui::size_policy::Calculate:
+      case ui::SizePolicy::Calculate:
         ncalc++;
         break;
-      case ui::size_policy::Fixed:
+      case ui::SizePolicy::Fixed:
         // this element is a fixed size, so we need to
         // adjust the calculated size of other entries from it
         fixed_space_used += entry.size(main_axis);
@@ -58,16 +58,16 @@ void ui::stackview::reflow_impl() {
       (available_size - fixed_space_used) / (float)(ncalc == 0 ? 1 : ncalc);
 
 	// the current position in the layout
-  size_t position = 0;
+  size_t position = padding.base_for(main_axis) + bordersize;
 
   each_child(fn(ui::view & entry) {
-    entry.set_pos(cross_axis, 0);
+    entry.set_pos(cross_axis, padding.base_for(cross_axis) + bordersize);
     // printf("pos: %d\n", position);
     entry.set_pos(main_axis, position);
     // TODO: paddings
-    entry.set_size(cross_axis, size(cross_axis));
+    entry.set_size(cross_axis, size(cross_axis) - padding.total_for(cross_axis) - bordersize * 2);
     switch (entry.get_size_policy(main_axis)) {
-      case ui::size_policy::Calculate: {
+      case ui::SizePolicy::Calculate: {
         int size = equal_stretch_size;
         if (&entry == last_child) {
           float round_error = equal_stretch_size - (float)size;
@@ -77,7 +77,7 @@ void ui::stackview::reflow_impl() {
         position += equal_stretch_size;
         break;
       }
-      case ui::size_policy::Fixed: {
+      case ui::SizePolicy::Fixed: {
         position += entry.size(main_axis);
         break;
       }

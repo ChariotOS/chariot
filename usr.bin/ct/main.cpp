@@ -5,7 +5,18 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <ui/application.h>
+#include <ui/color.h>
 #include <ui/label.h>
+
+
+
+static auto make_label(const char* s, unsigned int fg, unsigned int bg) {
+  auto lbl = new ui::label(s, ui::TextAlign::Center);
+  lbl->set_foreground(fg);
+  lbl->set_background(bg);
+  return lbl;
+};
+
 
 
 
@@ -13,15 +24,12 @@ int main(int argc, char** argv) {
   // connect to the window server
   ui::application app;
 
-  ui::window* win = app.new_window("My Window", 250, 180);
+  ui::window* win = app.new_window("My Window", 250, 250);
 
-  auto &root = win->set_view<ui::stackview>(ui::direction::horizontal);
-	for (int i = 0; i < 3; i++) {
-		char c[32];
-		snprintf(c, 32, "Label %d", i);
-		auto &lbl = root.spawn<ui::label>(c, ui::TextAlign::Center);
-		lbl.set_background(rand());
-	}
+  auto& root = win->set_view<ui::stackview>(ui::Direction::Vertical);
+
+  root << make_label("First Label", ui::Color::White, rand());
+
 
   auto input = ck::file::unowned(0);
   input->on_read([&] {

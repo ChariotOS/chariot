@@ -4,11 +4,48 @@
 #include <ui/window.h>
 
 
+ui::windowframe::windowframe(void) : ui::stackview(ui::Direction::Vertical) {
+  padding = ui::edges(PADDING);
+  padding.top = TITLE_HEIGHT;
+  bordercolor = ui::Color::Black;
+  bordersize = 1;
+
+  background = 0xcecece;
+}
+
+ui::windowframe::~windowframe(void) {}
+
+void ui::windowframe::paint_event(void) {
+  auto s = get_scribe();
+
+  gfx::rect r = gfx::rect(width(), height());
+  r.shrink(1);
+  s.draw_rect_special(r, 0xFFFFFF, 0x9c9c9c);
+
+  r = padded_area();
+  r.grow(1);
+  s.draw_rect(r, 0x000000);
+  r.grow(1);
+  s.draw_rect_special(r, 0x9c9c9c, 0xFFFFFF);
+}
+
+
+
+
 ui::window::window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bitmap> bmp) {
   m_id = id;
   m_name = name;
   m_rect = r;
   m_bitmap = bmp;
+
+  m_frame = new ui::windowframe();
+  m_frame->m_window = this;
+  m_frame->m_parent = NULL;
+
+  m_frame->set_size(m_rect.w, m_rect.h);
+  m_frame->set_pos(0, 0);  // the main widget exists at the top left
+  // tell the main vie to reflow
+  m_frame->do_reflow();
 }
 
 
@@ -110,10 +147,10 @@ void ui::window::handle_input(struct lumen::input_msg &msg) {
 void ui::window::schedule_reflow(void) {
   if (!m_pending_reflow) {
     ck::eventloop::defer(fn() {
-      m_main_view->set_size(m_rect.w, m_rect.h);
-      m_main_view->set_pos(0, 0);  // the main widget exists at the top left
+      m_frame->set_size(m_rect.w, m_rect.h);
+      m_frame->set_pos(0, 0);  // the main widget exists at the top left
       // tell the main vie to reflow
-      m_main_view->do_reflow();
+      m_frame->do_reflow();
       this->m_pending_reflow = false;
     });
   }
@@ -151,9 +188,9 @@ ck::tuple<int, int> ui::window::resize(int w, int h) {
   m_rect.w = width();
   m_rect.h = height();
 
-  m_main_view->set_size(m_rect.w, m_rect.h);
-  m_main_view->set_pos(0, 0);  // the main widget exists at the top left
+  m_frame->set_size(m_rect.w, m_rect.h);
+  m_frame->set_pos(0, 0);  // the main widget exists at the top left
   // tell the main vie to reflow
-  m_main_view->do_reflow();
+  m_frame->do_reflow();
   return ck::tuple(w, h);
 }

@@ -78,7 +78,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSERLAND")
 
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -finstrument-functions ")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -mmmx -fno-omit-frame-pointer -msse -msse2")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-sign-compare")
 
 

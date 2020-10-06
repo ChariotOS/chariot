@@ -6,37 +6,53 @@
 ui::view::view() {}
 
 ui::view::~view(void) {
-  if (m_window->hovered == this) m_window->hovered = NULL;
-  if (m_window->focused == this) m_window->focused = NULL;
-  for (auto &v : m_children) {
-    delete &v;
+  auto *win = window();
+  if (win) {
+    if (win->hovered == this) win->hovered = NULL;
+    if (win->focused == this) win->focused = NULL;
   }
+  m_children.clear();
 }
+
+void ui::view::clear(void) { m_children.clear(); }
 
 
 
 void ui::view::repaint(void) {
-  if (m_use_bg) {
-    auto s = get_scribe();
-    s.clear(m_background);
+  // if we aren't mounted, don't paint - it doesn't make sense
+  if (window() == NULL) return;
+
+  auto s = get_scribe();
+
+  // draw the border
+  gfx::rect border = gfx::rect(0, 0, width(), height());
+  s.fill_rect(border, background);
+
+  for (int i = 0; i < bordersize; i++) {
+    s.draw_rect(border, bordercolor);
+    border.x += 1;
+    border.y += 1;
+    border.w -= 2;
+    border.h -= 2;
   }
 
   paint_event();
 
   each_child(fn(auto &c) { c.repaint(); });
 
-	invalidate();
+  invalidate();
 }
 
 
 void ui::view::set_focused(void) {
-	if (m_window->focused) {
-		m_window->focused->on_blur();
-	}
-
-
-	m_window->focused = this;
-	on_focused();
+  auto *win = window();
+  if (win != NULL) {
+    if (win->focused) {
+      win->focused->on_blur();
+    }
+    win->focused = this;
+    on_focused();
+  }
 }
 
 
@@ -97,7 +113,7 @@ bool ui::view::event(ui::event &ev) {
 
   // walk through the children and try to run the event through them
   for (auto &v : m_children) {
-    if (v.event(ev)) return true;
+    if (v->event(ev)) return true;
   }
 
   return false;  // we didn't absorb this
@@ -139,49 +155,32 @@ void ui::view::do_reflow(void) {
 }
 
 
-
-
-void ui::view::set_background(uint32_t bg) {
-  m_background = bg;
-  m_use_bg = true;
-  repaint();
-}
-
-void ui::view::remove_background() {
-  m_use_bg = false;
-  repaint();
-}
-
-
-void ui::view::set_pos(ui::direction dir, int pos) {
+void ui::view::set_pos(ui::Direction dir, int pos) {
   switch (dir) {
-    case ui::direction::vertical:
+    case ui::Direction::Vertical:
       m_rel.y = pos;
       break;
-    case ui::direction::horizontal:
+    case ui::Direction::Horizontal:
       m_rel.x = pos;
       break;
   }
   return;
 }
-ui::size_policy ui::view::get_size_policy(ui::direction dir) {
-  return dir == ui::direction::vertical ? get_height_policy()
-                                        : get_width_policy();
+ui::SizePolicy ui::view::get_size_policy(ui::Direction dir) {
+  return dir == ui::Direction::Vertical ? get_height_policy() : get_width_policy();
 }
 
 
-int ui::view::size(ui::direction dir) {
-  return dir == ui::direction::vertical ? height() : width();
-}
+int ui::view::size(ui::Direction dir) { return dir == ui::Direction::Vertical ? height() : width(); }
 
 
 
-void ui::view::set_size(ui::direction dir, int sz) {
+void ui::view::set_size(ui::Direction dir, int sz) {
   switch (dir) {
-    case ui::direction::vertical:
+    case ui::Direction::Vertical:
       m_rel.h = sz;
       break;
-    case ui::direction::horizontal:
+    case ui::Direction::Horizontal:
       m_rel.w = sz;
       break;
   }
@@ -209,5 +208,16 @@ gfx::rect ui::view::absolute_rect(void) {
     return r;
   }
   return m_rel;
+}
+
+gfx::rect ui::view::padded_area(void) {
+  gfx::rect r;
+  r.x = padding.left;
+  r.y = padding.top;
+  r.w = width() - r.x - padding.right;
+  r.h = height() - r.y - padding.bottom;
+
+  r.shrink(bordersize);
+  return r;
 }
 

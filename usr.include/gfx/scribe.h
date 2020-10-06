@@ -109,7 +109,7 @@ namespace gfx {
 
       auto &c = s.clip;
 
-      if (x >= c.left() && x < c.right() && y >= c.top() && y < c.bottom()) {
+      if (x >= c.left() && x <= c.right() && y >= c.top() && y <= c.bottom()) {
         set_pixel(x, y, color);
       }
     }
@@ -181,6 +181,8 @@ draw_text(thnk, fnt, str, color, flags);
     // draw a rectangle border
     void draw_rect(const gfx::rect &r, uint32_t color);
     void fill_rect(const gfx::rect &r, uint32_t color);
+
+    void draw_rect_special(const gfx::rect &r, uint32_t top_left, uint32_t bottom_right);
 
     void draw_rect(const gfx::rect &r, int radius, uint32_t color);
     void fill_rect(const gfx::rect &r, int radius, uint32_t color);

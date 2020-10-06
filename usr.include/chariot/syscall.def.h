@@ -53,4 +53,5 @@ int kill(int pid, int sig);
 int awaitfs(struct await_target * fds, int nfds, int flags, long long timeout_time);
 unsigned long kshell(char* cmd, int argc, char ** argv, void* data, size_t len);
 int futex(int* uaddr, int op, int val, int val2, int* uaddr2, int val3);
+int sysinfo(struct sysinfo * info);
 }

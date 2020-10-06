@@ -83,7 +83,7 @@ class gol : public ui::view {
             int d = color;
             if (!is_running && (ox == 0 || oy == 0)) d = 0;
             // int color = (x ^ y) | ((x ^ y) << 8) | ((x ^ y) << 16);
-            scribe.set_pixel(x * SCALE + ox, y * SCALE + oy, d);
+            scribe.draw_pixel(x * SCALE + ox, y * SCALE + oy, d);
           }
         }
       }

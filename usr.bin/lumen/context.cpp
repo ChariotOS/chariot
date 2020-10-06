@@ -119,7 +119,7 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
 
   windows_lock.unlock();
   // compose asap so we can get lower mouse input latencies
-  // compose();
+	compose();
 }
 
 
@@ -484,8 +484,10 @@ void lumen::context::compose(void) {
   dirty_regions_lock.lock();
   for (auto &r : dirty_regions) {
     if (r.intersects(screen.mouse_rect())) draw_mouse = true;
+		scribe.fill_rect(r, 0x9c9cce);
+
     // scribe.fill_rect(r, 0x313032);
-    scribe.fill_rect(r, 0x625373);
+    // scribe.fill_rect(r, 0x625373);
   }
 
   // go back to front and compose each window
@@ -511,6 +513,14 @@ void lumen::context::compose(void) {
     }
     win->window_lock.unlock();
   }
+
+
+	/*
+	int c = rand();
+  for (auto &r : dirty_regions) {
+		scribe.draw_rect(r, c);
+  }
+	*/
 
 
 #if 1

@@ -9,6 +9,7 @@ includes = [
 	'<sys/socket.h>',
 	'<sys/stat.h>',
 	'<sys/types.h>',
+	'<sys/sysinfo.h>',
 ]
 
 [kernel]
@@ -338,4 +339,11 @@ args = [
 	'val2: int',
 	'uaddr2: int*',
 	'val3: int'
+]
+
+
+[sc.sysinfo]
+ret = 'int'
+args = [
+	'info: struct sysinfo *',
 ]

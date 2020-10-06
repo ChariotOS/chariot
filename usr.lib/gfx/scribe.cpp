@@ -81,7 +81,7 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source, const gf
 
 
   // ::printf("w: %4d,  last_row: %4d\n", last_row, clipped_rect.w-1);
-  for (int row = first_row; row < last_row; ++row) {
+  for (int row = first_row; row <= last_row; ++row) {
     memcpy(dst, src, clipped_rect.w * sizeof(uint32_t));
     dst += dst_skip;
     src += src_skip;
@@ -298,7 +298,7 @@ void gfx::scribe::draw_line(int x0, int y0, int x1, int y1, uint32_t color) {
   // horrizontal optimization
   if (x0 == x1) {
     auto end = min(height(), max(y0, y1));
-    for (int y = max(0, min(y0, y1)); y <= end; y++) {
+    for (int y = max(0, min(y0, y1)); y < end; y++) {
       draw_pixel(x0, y, color);
     }
     return;
@@ -306,7 +306,7 @@ void gfx::scribe::draw_line(int x0, int y0, int x1, int y1, uint32_t color) {
   // vertical line optimization
   if (y0 == y1) {
     auto end = min(width(), max(x0, x1));
-    for (int x = max(0, min(x0, x1)); x <= end; x++) {
+    for (int x = max(0, min(x0, x1)); x < end; x++) {
       draw_pixel(x, y0, color);
     }
     return;
@@ -364,27 +364,37 @@ void gfx::scribe::draw_line(int x0, int y0, int x1, int y1, uint32_t color) {
 }
 
 
-
-
-void gfx::scribe::draw_rect(const gfx::rect &r, uint32_t color) {
-  // top
-  draw_line(r.left(), r.top(), r.right(), r.top(), color);
-
-  // left
-  draw_line(r.left(), r.top(), r.left(), r.bottom(), color);
-  // right
-  draw_line(r.right(), r.top(), r.right(), r.bottom(), color);
+void gfx::scribe::draw_rect_special(const gfx::rect &r, uint32_t top_left, uint32_t bottom_right) {
 
   // bottom
-  draw_line(r.left(), r.bottom(), r.right(), r.bottom(), color);
+  draw_hline(r.left(), r.bottom(), r.w, bottom_right);
+  // right
+  draw_vline(r.right(), r.top(), r.h, bottom_right);
+
+  // top
+  draw_hline(r.left(), r.top(), r.w, top_left);
+  // left
+  draw_vline(r.left(), r.top(), r.h, top_left);
+
+}
+
+void gfx::scribe::draw_rect(const gfx::rect &r, uint32_t color) {
+	return draw_rect_special(r, color, color);
 }
 
 void gfx::scribe::fill_rect(const gfx::rect &d, uint32_t color) {
-  auto r = gfx::rect(0, 0, width(), height()).intersect(d);
-  for (int y = r.top(); y < r.bottom(); y++) {
-    for (int x = r.left(); x < r.right(); x++) {
-      draw_pixel(x, y, color);
-    }
+  auto rect = gfx::rect(d.x + translation().x(), d.y + translation().y(), d.w, d.h)
+                  .intersect(bmp.rect())
+                  .intersect(state().clip);
+  if (rect.is_empty()) return;
+
+
+  uint32_t *dst = bmp.scanline(rect.top()) + rect.left();
+  const size_t dst_skip = bmp.width();
+
+  for (int i = rect.h - 1; i >= 0; --i) {
+    for (int j = 0; j < rect.w; ++j) dst[j] = color;
+    dst += dst_skip;
   }
 }
 
@@ -705,8 +715,9 @@ void gfx::scribe::draw_text_line(gfx::font &font, const gfx::rect &a_rect, const
     default:
       panic("INVALID TEXT ALIGNMENT\n");
   }
-  // draw_rect(rect, 0xFF00FF);
+
   auto p = gfx::printer(*this, font, rect.x, rect.y, rect.w);
+  p.set_color(color);
   p.write(final_text.get());
 }
 

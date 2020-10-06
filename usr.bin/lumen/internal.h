@@ -64,6 +64,7 @@ namespace lumen {
     void load_info(void) { ioctl(fd, FB_GET_INFO, &info); }
 
     inline gfx::rect mouse_rect(void) {
+
       return gfx::rect(mouse_pos.x() - 6, mouse_pos.y() - 6,
                        cursors[cursor]->width(), cursors[cursor]->height());
     }

@@ -169,6 +169,9 @@ void ui::application::start(void) { m_eventloop.start(); }
 
 
 ui::window *ui::application::new_window(ck::string name, int w, int h) {
+
+	w += ui::windowframe::PADDING * 2;
+	h += ui::windowframe::PADDING + ui::windowframe::TITLE_HEIGHT;
   struct lumen::create_window_msg msg;
   msg.width = w;
   msg.height = h;

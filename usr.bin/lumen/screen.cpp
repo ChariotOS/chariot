@@ -138,6 +138,7 @@ void lumen::screen::draw_mouse(void) {
 			if (pix == 0xFFFF00FF) {
 				pix = 0xFF'FFFFFF;
 			} else if ((pix & 0xFF000000) >> 24 != 0xFF) {
+				continue;
         /* This is slow */
         uint32_t bg = buf[x + y * w];
         pix = blend(pix, bg);

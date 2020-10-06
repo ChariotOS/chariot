@@ -87,10 +87,15 @@ class doomview : public ui::view {
  public:
   doomview() { doomuifont = gfx::font::open("scientifica-normal", 11); }
   virtual void paint_event(void) override {
-    memcpy(window()->bmp().pixels(), DG_ScreenBuffer,
-           DOOMGENERIC_RESX * DOOMGENERIC_RESY * sizeof(uint32_t));
+    auto s = get_scribe();
 
-    if (0) {
+    gfx::bitmap b(DOOMGENERIC_RESX, DOOMGENERIC_RESY, DG_ScreenBuffer);
+
+    s.blit(gfx::point(0, 0), b, gfx::rect(0, 0, DOOMGENERIC_RESX, DOOMGENERIC_RESY));
+
+
+
+    if (1) {
       frames += 1;
 
       auto now = current_us();
@@ -120,19 +125,15 @@ class doomview : public ui::view {
       pr.printf("       %f\n", elapsed);
     }
 
-		invalidate();
+    invalidate();
   }
 
   virtual void on_mouse_move(ui::mouse_event& ev) override { repaint(); }
 
-  virtual void on_keydown(ui::keydown_event& ev) override {
-    addKeyToQueue(ev.code, ev.c, true);
-  }
+  virtual void on_keydown(ui::keydown_event& ev) override { addKeyToQueue(ev.code, ev.c, true); }
 
 
-  virtual void on_keyup(ui::keyup_event& ev) override {
-    addKeyToQueue(ev.code, ev.c, false);
-  }
+  virtual void on_keyup(ui::keyup_event& ev) override { addKeyToQueue(ev.code, ev.c, false); }
 };
 
 
@@ -151,7 +152,7 @@ extern "C" void DG_Init() {
   memset(s_KeyQueue, 0, KEYQUEUE_SIZE * sizeof(unsigned short));
 
   main_window = main_app.new_window("DOOM", DOOMGENERIC_RESX, DOOMGENERIC_RESY);
-	main_window->defer_invalidation(false);
+  main_window->defer_invalidation(false);
 
 
   main_widget = &main_window->set_view<doomview>();
@@ -197,6 +198,4 @@ extern "C" int DG_GetKey(int* pressed, unsigned char* doomKey) {
 }
 
 
-extern "C" void DG_SetWindowTitle(const char* title) {
-  printf("set window title to '%s'\n", title);
-}
+extern "C" void DG_SetWindowTitle(const char* title) { printf("set window title to '%s'\n", title); }

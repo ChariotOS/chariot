@@ -45,14 +45,23 @@ namespace gfx {
     }
 
     inline int left() const { return x; }
-    inline int right() const { return x + w; }
+    inline int right() const { return x + w - 1; }
     inline int top() const { return y; }
-    inline int bottom() const { return y + h; }
+    inline int bottom() const { return y + h - 1; }
 
 
     inline int center_x(void) const { return x + w / 2; }
 
     inline int center_y(void) const { return y + h / 2; }
+
+    inline void grow(int n = 1) {
+      x -= n;
+      y -= n;
+      w += n * 2;
+      h += n * 2;
+    }
+
+    inline void shrink(int n = 1) { grow(-n); }
 
     inline struct rect intersect(const struct rect &other) const {
       gfx::rect in;
@@ -67,8 +76,8 @@ namespace gfx {
 
       in.x = l;
       in.y = t;
-      in.w = (r - l);  // + 1;
-      in.h = (b - t);  // + 1;
+      in.w = (r - l) + 1;
+      in.h = (b - t) + 1;
 
       return in;
     }

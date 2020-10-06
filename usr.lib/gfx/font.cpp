@@ -22,10 +22,13 @@ namespace gfx {
       auto *cp = &hdr->cmap[i];
       cmap[cp->codepoint] = cp;
 			if (m_descent > cp->bbY) m_descent = cp->bbY;
+			int ascent = cp->bbH - cp->bbY;
+			if (ascent > m_ascent) m_ascent = ascent;
+			// printf("'%c' ascent: %-3d descent: %-3d\n", i, ascent, cp->bbY);
     }
 
 		m_descent = -m_descent;
-		m_line_height = lh;
+		m_line_height = hdr->height;
   }
 
   font::~font(void) { munmap(hdr, datasz); }
@@ -88,11 +91,11 @@ namespace gfx {
     auto h = ent->bbH;
 
     int x = dx + ent->bbX;
-    int y = dy - ent->bbY - m_descent;
+    int y = dy - ent->bbY - (m_descent);
 
     // s.draw_hline(dx, dy, ent->bbW, 0xFF00FF);
     // s.draw_hline(x, y, ent->bbW, 0x338888);
-		// s.draw_rect(gfx::rect(x, y - h, w, h), 0xFF00FF);
+		// s.draw_rect(gfx::rect(x, y - h, w, h), 0xFF0000);
 
     for (int r = 0; r < h; r++) {
       for (int c = 0; c <= w; c++) {

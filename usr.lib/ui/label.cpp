@@ -15,5 +15,5 @@ void ui::label::paint_event(void) {
 
 	auto rect = gfx::rect(0, 0, width(), height());
 	// printf("painting label '%s'\n", m_contents.get());
-	s.draw_text(*font, rect, m_contents, m_align, 0xFFFFFF, true);
+	s.draw_text(*font, rect, m_contents, m_align, foreground, true);
 }
