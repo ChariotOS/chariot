@@ -14,7 +14,9 @@ static auto make_label(const char* s, unsigned int fg, unsigned int bg) {
   auto lbl = new ui::label(s, ui::TextAlign::Center);
   lbl->set_foreground(fg);
   lbl->set_background(bg);
+	lbl->set_border(0xFF00FF, 1);
   return lbl;
+
 };
 
 
@@ -28,7 +30,14 @@ int main(int argc, char** argv) {
 
   auto& root = win->set_view<ui::stackview>(ui::Direction::Vertical);
 
-  root << make_label("First Label", ui::Color::White, rand());
+  root << make_label("Label", 0, ui::Color::White);
+  root << make_label("Label", 0, ui::Color::White);
+  root << make_label("Label", 0, ui::Color::White);
+  root << make_label("Label", 0, ui::Color::White);
+  root << make_label("Label", 0, ui::Color::White);
+  root << make_label("Label", 0, ui::Color::White);
+  root << make_label("Label", 0, ui::Color::White);
+  root << make_label("Label", 0, ui::Color::White);
 
 
   auto input = ck::file::unowned(0);

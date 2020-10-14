@@ -9,7 +9,7 @@
 
 #define SCALE 8
 
-#define TICKS 30
+#define TICKS 10
 
 class gol : public ui::view {
   bool init[WIDTH][HEIGHT];

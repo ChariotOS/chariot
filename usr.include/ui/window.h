@@ -18,6 +18,7 @@ namespace ui {
 
   class windowframe : public ui::stackview {
    public:
+		 static constexpr uint32_t FRAME_COLOR = 0xFFFFFF; //0xcecece;
     static constexpr int TITLE_HEIGHT = 20;
     static constexpr int PADDING = 5;
     windowframe(void);

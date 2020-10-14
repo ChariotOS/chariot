@@ -132,9 +132,10 @@ void sched::run() {
     if (thd == nullptr) {
       // idle loop when there isn't a task
       cpu::current().kstat.iticks++;
-      arch::sti();
-      asm("hlt");
-      arch::cli();
+      // arch::sti();
+      // asm("hlt");
+      // arch::cli();
+			arch::relax();
       continue;
     }
 

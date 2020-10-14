@@ -4,29 +4,62 @@
 #include <ui/window.h>
 
 
+constexpr int clamp(int val, int max, int min) {
+  if (val > max) return max;
+  if (val < min) return min;
+  return val;
+}
+
+static constexpr uint32_t brighten(uint32_t color, float amt) {
+  uint32_t fin = 0;
+  for (int i = 0; i < 3; i++) {
+    int off = i * 8;
+    int c = (color >> off) & 0xFF;
+
+    c = clamp(c * amt, 255, 0);
+    fin |= c << off;
+  }
+
+  return fin;
+}
+
+
 ui::windowframe::windowframe(void) : ui::stackview(ui::Direction::Vertical) {
   padding = ui::edges(PADDING);
   padding.top = TITLE_HEIGHT;
-  bordercolor = ui::Color::Black;
-  bordersize = 1;
+  // bordercolor = ui::Color::Black;
+  bordersize = 0;
 
-  background = 0xcecece;
+  background = FRAME_COLOR;
 }
 
 ui::windowframe::~windowframe(void) {}
 
 void ui::windowframe::paint_event(void) {
   auto s = get_scribe();
+	uint32_t border = 0x666666;
+  float contrast = 0.25;
+  uint32_t bright = brighten(FRAME_COLOR, 1.0 + contrast);
+  uint32_t dark = brighten(FRAME_COLOR, 1.0 - contrast);
 
   gfx::rect r = gfx::rect(width(), height());
-  r.shrink(1);
-  s.draw_rect_special(r, 0xFFFFFF, 0x9c9c9c);
+	// outside border
+  s.draw_rect(r, border);
+
+
+  if constexpr (PADDING > 1) {
+    r.shrink(1);
+    s.draw_rect_special(r, bright, dark);
+  }
 
   r = padded_area();
   r.grow(1);
-  s.draw_rect(r, 0x000000);
-  r.grow(1);
-  s.draw_rect_special(r, 0x9c9c9c, 0xFFFFFF);
+  s.draw_rect(r, border);
+
+  if constexpr (PADDING > 2) {
+    r.grow(1);
+    s.draw_rect_special(r, dark, bright);
+  }
 }
 
 

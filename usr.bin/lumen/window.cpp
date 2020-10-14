@@ -109,6 +109,26 @@ int lumen::window::handle_keyboard_input(keyboard_packet_t &p) {
 gfx::rect lumen::window::bounds() { return rect; }
 
 
+constexpr int clamp(int val, int max, int min) {
+  if (val > max) return max;
+  if (val < min) return min;
+  return val;
+}
+
+static constexpr uint32_t brighten(uint32_t color, float amt) {
+  uint32_t fin = 0;
+  for (int i = 0; i < 3; i++) {
+    int off = i * 8;
+    int c = (color >> off) & 0xFF;
+
+    c = clamp(c * amt, 255, 0);
+    fin |= c << off;
+  }
+
+  return fin;
+}
+
+
 void lumen::window::draw(gfx::scribe &scribe) {
   // draw normal window mode.
   if (mode == window_mode::normal) {
@@ -116,6 +136,34 @@ void lumen::window::draw(gfx::scribe &scribe) {
     auto bmp_rect = bitmap->rect();
 
     scribe.blit(gfx::point(0, 0), *bitmap, bmp_rect);
+
+
+#define BUTTON_PADDING 4
+		gfx::rect button(0, 0, 21, 21);
+
+		// button.x = rect.w - button.w;
+
+		button.shrink(1);
+		button.shrink(BUTTON_PADDING);
+
+
+		scribe.draw_frame(button, 0xFFFFFF, 0x666666);
+		// scribe.fill_rect(button, 0xED6B5F);
+		// scribe.draw_rect(button, brighten(0xED6B5F, 0.8));
+		return;
+
+		// scribe.draw_line(9, 6, 17, 14, 0);
+		// scribe.draw_line(9, 14, 17, 6, 0);
+
+
+		button.x -= button.w + BUTTON_PADDING;
+		scribe.fill_rect(button, 0xF4BF50);
+		scribe.draw_rect(button, brighten(0xF4BF50, 0.8));
+
+
+		button.x -= button.w + BUTTON_PADDING;
+		scribe.fill_rect(button, 0x63C756);
+		scribe.draw_rect(button, brighten(0x63C756, 0.8));
     return;
   }
 
