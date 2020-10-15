@@ -32,9 +32,6 @@ unsigned long arch::read_timestamp(void) {
   uint32_t lo, hi;
   asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
   return lo | ((uint64_t)(hi) << 32);
-  uint64_t ret;
-  asm volatile("pushfq; popq %0" : "=a"(ret));
-  return ret;
 }
 
 
