@@ -470,7 +470,7 @@ extern "C" void mpentry(int apic_id) {
   // we're fully booted now
   args->ready = 1;
 
-  KINFO("starting scheduler on core %d\n", apic_id);
+  KINFO("starting scheduler on core %d. tsc: %llu\n", apic_id, arch::read_timestamp());
   arch::sti();
   sched::run();
 
