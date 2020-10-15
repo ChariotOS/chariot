@@ -3,6 +3,7 @@
 
 
 namespace time {
+	unsigned long long now_ns(void);
 	unsigned long long now_us(void);
 	unsigned long long now_ms(void);
 

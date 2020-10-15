@@ -3,7 +3,6 @@
 
 #include "memory_order.h"
 
-
 namespace ck {
   /**
    *  @brief Generic atomic type, primary class template.

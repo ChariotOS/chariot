@@ -15,7 +15,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-initializer-override -Wstrict-overflow=
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -mno-sse")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-address-of-packed-member -Wno-strict-overflow -DKERNEL ")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++17 -fno-rtti -fno-exceptions")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++17 -fno-rtti -fno-exceptions -Wno-literal-suffix")
 
 
 set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
@@ -25,6 +25,7 @@ set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
 add_definitions(-D FBWIDTH=1024)
 add_definitions(-D FBHEIGHT=768)
 add_definitions(-D__ARCH_${ARCH}__)
+add_definitions(-DKERNEL)
 
 
 file(GLOB_RECURSE KERNEL_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -37,7 +38,12 @@ add_link_options(LINKER:-T ${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld -nostdlib -z ma
 
 set(LDFLAGS -T ${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld -m elf_x86_64 -z max-page-size=0x1000)
 
-include_directories(../usr.include/chariot)
+include_directories(
+	# for core kernel interfaces
+	../usr.include/chariot
+	# for lwip
+	../net/lwip/src/include
+	)
 
 add_executable(chariot ${KERNEL_SOURCES})
 set_target_properties(chariot PROPERTIES OUTPUT_NAME "chariot.elf")

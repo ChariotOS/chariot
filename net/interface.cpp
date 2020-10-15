@@ -10,8 +10,10 @@
 #include <string.h>
 #include <util.h>
 
-
+#include <lwip/dns.h>
+#include <lwip/tcpip.h>
 #include <map.h>
+
 
 static spinlock interfaces_lock;
 static map<string, struct net::interface *> interfaces;
@@ -82,7 +84,7 @@ static __inline uint32_t __bswap_32(uint32_t __x) {
   return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24;
 }
 
-static __inline uint64_t __bswap_64(uint64_t __x) { return (__bswap_32(__x) + 0ULL) << 32 | __bswap_32(__x >> 32); }
+// static __inline uint64_t __bswap_64(uint64_t __x) { return (__bswap_32(__x) + 0ULL) << 32 | __bswap_32(__x >> 32); }
 
 #define bswap_16(x) __bswap_16(x)
 #define bswap_32(x) __bswap_32(x)
@@ -173,7 +175,18 @@ struct pending_packet {
 };
 static chan<ref<net::pkt_buff>> pending_packets;
 
-int net::task(void *) {
+
+
+volatile static int done = 0;
+// static struct nk_net_lwip_config config;
+
+static void donefunc(void *foo) {
+  printk(KERN_DEBUG "Done!\n");
+  done = 1;
+}
+
+int task(void *) {
+
   // initialize all the network interfaces
   //  TODO: this is probably a bad idea, since we are assuming that these addrs
   //  are safe without asking DHCP first.
@@ -197,11 +210,31 @@ printk(KERN_INFO "               gateway:  %I\n", net::host_ord(i.gateway));
     auto pbuf = pending_packets.recv();
     handle_packet(pbuf);
   }
+	return 0;
+}
+
+void net::start(void) {
+
+  // tcpip_init(donefunc, 0);
+
+	/*
+  while (!done) {
+  }
+
+  ip4_addr_t dns;
+
+  dns.addr = htonl(0x08080808);
+
+  dns_setserver(1, &dns);
+	*/
+	sched::proc::create_kthread("net task", task);
+
 }
 
 // When packets are recv'd by adapters, they are sent here for internal parsing
 // and routing
 void net::packet_received(ref<net::pkt_buff> pbuf) {
+	printk("recv!\n");
   // skip non-ethernet packets
   auto eth = pbuf->eth();
   if (eth == NULL) return;

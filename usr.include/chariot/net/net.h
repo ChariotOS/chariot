@@ -97,7 +97,7 @@ static inline uint32_t net_ord(uint32_t n) { return htonl(n); }
 static inline uint16_t host_ord(uint16_t n) { return ntohs(n); }
 static inline uint32_t host_ord(uint32_t n) { return ntohl(n); }
 
-int task(void *);
+void start(void);
 };  // namespace net
 
 #endif

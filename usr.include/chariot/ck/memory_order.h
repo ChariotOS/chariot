@@ -496,11 +496,11 @@ struct __atomic_base<_PTp*> {
   __pointer_type _M_p;
 
   // Factored out to facilitate explicit specialization.
-  constexpr off_t _M_type_size(off_t __d) const {
+  constexpr unsigned long _M_type_size(unsigned long __d) const {
     return __d * sizeof(_PTp);
   }
 
-  constexpr off_t _M_type_size(off_t __d) const volatile {
+  constexpr unsigned long _M_type_size(unsigned long __d) const volatile {
     return __d * sizeof(_PTp);
   }
 
@@ -556,22 +556,22 @@ struct __atomic_base<_PTp*> {
                               int(memory_order_seq_cst));
   }
 
-  __pointer_type operator+=(off_t __d) noexcept {
+  __pointer_type operator+=(unsigned long __d) noexcept {
     return __atomic_add_fetch(&_M_p, _M_type_size(__d),
                               int(memory_order_seq_cst));
   }
 
-  __pointer_type operator+=(off_t __d) volatile noexcept {
+  __pointer_type operator+=(unsigned long __d) volatile noexcept {
     return __atomic_add_fetch(&_M_p, _M_type_size(__d),
                               int(memory_order_seq_cst));
   }
 
-  __pointer_type operator-=(off_t __d) noexcept {
+  __pointer_type operator-=(unsigned long __d) noexcept {
     return __atomic_sub_fetch(&_M_p, _M_type_size(__d),
                               int(memory_order_seq_cst));
   }
 
-  __pointer_type operator-=(off_t __d) volatile noexcept {
+  __pointer_type operator-=(unsigned long __d) volatile noexcept {
     return __atomic_sub_fetch(&_M_p, _M_type_size(__d),
                               int(memory_order_seq_cst));
   }
@@ -639,23 +639,23 @@ struct __atomic_base<_PTp*> {
   }
 
   _GLIBCXX_ALWAYS_INLINE __pointer_type
-  fetch_add(off_t __d, memory_order __m = memory_order_seq_cst) noexcept {
+  fetch_add(unsigned long __d, memory_order __m = memory_order_seq_cst) noexcept {
     return __atomic_fetch_add(&_M_p, _M_type_size(__d), int(__m));
   }
 
   _GLIBCXX_ALWAYS_INLINE __pointer_type
-  fetch_add(off_t __d,
+  fetch_add(unsigned long __d,
             memory_order __m = memory_order_seq_cst) volatile noexcept {
     return __atomic_fetch_add(&_M_p, _M_type_size(__d), int(__m));
   }
 
   _GLIBCXX_ALWAYS_INLINE __pointer_type
-  fetch_sub(off_t __d, memory_order __m = memory_order_seq_cst) noexcept {
+  fetch_sub(unsigned long __d, memory_order __m = memory_order_seq_cst) noexcept {
     return __atomic_fetch_sub(&_M_p, _M_type_size(__d), int(__m));
   }
 
   _GLIBCXX_ALWAYS_INLINE __pointer_type
-  fetch_sub(off_t __d,
+  fetch_sub(unsigned long __d,
             memory_order __m = memory_order_seq_cst) volatile noexcept {
     return __atomic_fetch_sub(&_M_p, _M_type_size(__d), int(__m));
   }

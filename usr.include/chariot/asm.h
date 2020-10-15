@@ -136,6 +136,8 @@ inline constexpr T ceil_div(T a, U b) {
 // implemented in src/mem.cpp
 void *memcpy(void *dst, const void *src, size_t n);
 
+int memcmp(const void *s1_, const void *s2_, size_t n);
+
 #ifndef FANCY_MEM_FUNCS
 
 static inline void O_memset(void *buf, char c, size_t len) {
@@ -154,8 +156,12 @@ static inline int strcmp(const char *l, const char *r) {
 }
 
 
+
+char *strncpy(char *, const char *, size_t);
+int strncmp(const char *s1, const char *s2, size_t limit);
+
 static inline size_t strlen(const char *s) {
-	if (s == NULL) return 0;
+  if (s == NULL) return 0;
   const char *a = s;
   for (; *s; s++)
     ;
@@ -164,8 +170,7 @@ static inline size_t strlen(const char *s) {
 
 static inline void memset(void *buf, char c, size_t len) {
   u64 b = c & 0xFF;
-  u64 val =
-      b | b << 8 | b << 16 | b << 24 | b << 32 | b << 40 | b << 48 | b << 56;
+  u64 val = b | b << 8 | b << 16 | b << 24 | b << 32 | b << 40 | b << 48 | b << 56;
   char *m = (char *)buf;
 #define DO_COPY(T) \
   for (; i < len - sizeof(T); i += sizeof(T)) *(T *)(m + i) = val;
@@ -209,9 +214,7 @@ static inline u64 read_cr0(void) {
   return ret;
 }
 
-static inline void write_cr0(u64 data) {
-  asm volatile("mov %0, %%cr0" : : "r"(data));
-}
+static inline void write_cr0(u64 data) { asm volatile("mov %0, %%cr0" : : "r"(data)); }
 
 static inline u64 read_cr2(void) {
   u64 ret;
@@ -219,9 +222,7 @@ static inline u64 read_cr2(void) {
   return ret;
 }
 
-static inline void write_cr2(u64 data) {
-  asm volatile("mov %0, %%cr2" : : "r"(data));
-}
+static inline void write_cr2(u64 data) { asm volatile("mov %0, %%cr2" : : "r"(data)); }
 
 static inline u64 read_cr3(void) {
   u64 ret;
@@ -229,9 +230,7 @@ static inline u64 read_cr3(void) {
   return ret;
 }
 
-static inline void write_cr3(u64 data) {
-  asm volatile("mov %0, %%cr3" : : "r"(data));
-}
+static inline void write_cr3(u64 data) { asm volatile("mov %0, %%cr3" : : "r"(data)); }
 
 
 
@@ -241,9 +240,7 @@ static inline u64 read_cr4(void) {
   return ret;
 }
 
-static inline void write_cr4(u64 data) {
-  asm volatile("mov %0, %%cr4" : : "r"(data));
-}
+static inline void write_cr4(u64 data) { asm volatile("mov %0, %%cr4" : : "r"(data)); }
 
 uint8_t inb(off_t port);
 uint16_t inw(off_t port);
@@ -276,4 +273,15 @@ static inline u64 readeflags(void) {
   return eflags;
 }
 
+
+
+
+
+
+// lib/util.cpp
+int atoi(const char *);
+extern uint64_t rand_seed;
+void srand(unsigned s);
+int rand(void);
 #endif
+

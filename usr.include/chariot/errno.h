@@ -1,5 +1,12 @@
 #pragma once
 
+#ifndef USERLAND
+
+#include <cpu.h>
+#define errno (curthd->kerrno)
+
+#endif
+
 // taken from the c std
 
 // note: some of these are very obscure and strange

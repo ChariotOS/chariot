@@ -7,7 +7,6 @@
 #include <dev/device.h>
 #include <func.h>
 #include <lock.h>
-#include <net/sock.h>
 #include <stat.h>
 #include <string.h>
 #include <types.h>
@@ -25,6 +24,10 @@ namespace mm {
   struct area;
 	struct vmobject;
 }
+
+namespace net {
+	struct sock;
+};
 
 namespace fs {
   // fwd decl
@@ -505,7 +508,7 @@ int bwrite(fs::blkdev &, void *data, size_t size, off_t byte_offset);
 
 // reclaim some memory
 
-static inline auto bget(fs::blkdev &b, off_t page) {
+inline auto bget(fs::blkdev &b, off_t page) {
   return block::buffer::get(b, page);
 }
 

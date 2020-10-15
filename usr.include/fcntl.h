@@ -40,9 +40,6 @@ int openat(int, const char *, int, ...);
 #define O_EXEC    O_PATH
 
 #define O_ACCMODE (03|O_SEARCH)
-#define O_RDONLY  00
-#define O_WRONLY  01
-#define O_RDWR    02
 
 #define F_OFD_GETLK 36
 #define F_OFD_SETLK 37

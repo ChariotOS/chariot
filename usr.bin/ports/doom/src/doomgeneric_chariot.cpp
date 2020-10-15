@@ -95,7 +95,7 @@ class doomview : public ui::view {
 
 
 
-    if (1) {
+    if (0) {
       frames += 1;
 
       auto now = current_us();

@@ -32,8 +32,8 @@ struct cpu_t {
 
   u32 speed_khz;
   struct thread *current_thread;
-	// filled in by "pick next thread" in the scheduler
-	struct thread *next_thread;
+  // filled in by "pick next thread" in the scheduler
+  struct thread *next_thread;
 
   struct thread_context *sched_ctx;
 };

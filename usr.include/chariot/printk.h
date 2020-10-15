@@ -2,14 +2,16 @@
 
 // some super basic prink stuffs
 
+#ifdef __cplusplus
 #include <types.h>
 
 // use the host's headers as the information within should be header-only :)
 #include <arch.h>
 #include <asm.h>
 #include <dev/RTC.h>
-#include <stdarg.h>
 #include <stddef.h>
+
+
 // #include <string.h>
 //
 //
@@ -19,6 +21,11 @@ namespace arch {
 
 typedef i64 acpi_native_int;
 
+#endif
+
+#include <stdarg.h>
+
+extern "C" {
 void putchar(char);
 int puts(char*);
 void printk_nolock(const char* format, ...);
@@ -30,6 +37,9 @@ int vsnprintk(char* buffer, size_t count, const char* format, va_list va);
 int sscanf(const char* buf, const char* fmt, ...);
 
 const char* human_size(uint64_t bytes, char* buf);
+}
+
+
 
 #define BLK "\e[0;30m"
 #define RED "\e[0;31m"
@@ -66,7 +76,7 @@ inline void do_panic(const char* fmt, T&&... args) {
   printk(fmt, args...);
   printk("\n");
 
-	arch::dump_backtrace();
+  arch::dump_backtrace();
   while (1) {
     arch::halt();
   }

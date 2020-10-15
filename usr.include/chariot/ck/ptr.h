@@ -3,6 +3,12 @@
 #include <template_lib.h>
 #include "atom.h"
 
+#ifdef USERLAND
+#include <chariot.h>
+#else
+#include <printk.h>
+#endif
+
 namespace ck {
 
 

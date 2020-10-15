@@ -15,6 +15,7 @@
 #include <util.h>
 #include <vga.h>
 #include <multiboot.h>
+#include <time.h>
 #include "cpuid.h"
 #include "fpu.h"
 #include "smp.h"
@@ -189,7 +190,6 @@ int kernel_init(void *) {
   // start up the extra cpu cores
   smp::init_cores();
 
-  sched::proc::create_kthread("[net]", net::task);
 
   // open up the disk device for the root filesystem
   // auto rootdev = dev::open(kargs::get("root", "ata0p1"));
@@ -215,6 +215,18 @@ int kernel_init(void *) {
   }
 
 
+	volatile auto last = time::now_ns();
+	while (1) {
+		auto now = time::now_ns();
+		if (last > now) {
+			printk("time travel! %llu %llu\n", last, now);
+		}
+		last = now;
+
+		arch::relax();
+	}
+
+
   // setup stdio stuff for the kernel (to be inherited by spawn)
   int fd = sys::open("/dev/console", O_RDWR, 0);
   assert(fd == 0);
@@ -226,6 +238,10 @@ int kernel_init(void *) {
   auto kproc = sched::proc::kproc();
   kproc->root = fs::inode::acquire(vfs::get_root());
   kproc->cwd = fs::inode::acquire(vfs::get_root());
+
+
+	net::start();
+
 
   string init_paths = kargs::get("init", "/bin/init");
 
