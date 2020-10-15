@@ -31,13 +31,9 @@ extern "C" void swtch(struct thread_context **, struct thread_context *);
 static bool s_enabled = true;
 static sched::impl s_scheduler;
 
-bool sched::init(void) {
-	return true;
-}
+bool sched::init(void) { return true; }
 
-static struct thread *get_next_thread(void) {
-	return s_scheduler.pick_next();
-}
+static struct thread *get_next_thread(void) { return s_scheduler.pick_next(); }
 
 
 static auto pick_next_thread(void) {
@@ -49,13 +45,9 @@ static auto pick_next_thread(void) {
 
 
 // add a task to a mlfq entry based on tsk->priority
-int sched::add_task(struct thread *tsk) {
-	return s_scheduler.add_task(tsk);
-}
+int sched::add_task(struct thread *tsk) { return s_scheduler.add_task(tsk); }
 
-int sched::remove_task(struct thread *t) {
-	return s_scheduler.remove_task(t);
-}
+int sched::remove_task(struct thread *t) { return s_scheduler.remove_task(t); }
 
 static void switch_into(struct thread &thd) {
   thd.locks.run.lock();
@@ -123,19 +115,46 @@ void sched::dumb_sleepticks(unsigned long t) {
 }
 
 
+static int idle_task(void *arg) {
+  (void)arg;
+  /**
+   * The way the idle_task works is pretty simple. It is just a context in
+   * which it is safe to handle exceptions that might block. If the scheduler
+   * itself does a halt wait, it will have to handle an irq in scheduler context
+   * which is not allowed to take locks that are shared with other threads. By
+   * having a "real thread", though, we pay more cycles per idle loop. This is
+   * easier than having to think about being in the scheduler context and fixes
+   * a big class of bugs in one go :^).
+   */
+  while (1) {
+    /*
+     * The loop here is simple. Wait for an interrupt, handle it (implicitly) then
+     * yield back to the scheduler if there is a task ready to run.
+     */
+    arch::halt();
+    // Check for a new thread to run, and if there is one, yield so we can change to it.
+    if (pick_next_thread() != NULL) {
+      sched::yield();
+    }
+  }
+}
+
+
 void sched::run() {
+  // per-scheduler idle threads do not exist in the scheduler queue.
+  auto *idle_thread = sched::proc::spawn_kthread("idle task", idle_task, NULL);
+  // the idle thread should not be preemptable
+  idle_thread->preemptable = false;
+
   cpu::current().in_sched = true;
-  for (;;) {
+  while (1) {
     struct thread *thd = pick_next_thread();
     cpu::current().next_thread = NULL;
 
     if (thd == nullptr) {
       // idle loop when there isn't a task
       cpu::current().kstat.iticks++;
-      // arch::sti();
-      // asm("hlt");
-      // arch::cli();
-			arch::relax();
+      switch_into(*idle_thread);
       continue;
     }
 
@@ -156,6 +175,8 @@ void sched::handle_tick(u64 ticks) {
 
   // grab the current thread
   auto thd = cpu::thread();
+
+  if (thd->preemptable == false) return;
 
   if (thd->proc.ring == RING_KERN) {
     cpu::current().kstat.kticks++;
@@ -374,7 +395,7 @@ void sched::dispatch_signal(int sig) {
         sys::exit_proc(128 + sig);
         return;
       case SIGACT_IGNO:
-				return;
+        return;
       case SIGACT_CONT:
         printk("TODO: SIGACT_CONT!\n");
         return;

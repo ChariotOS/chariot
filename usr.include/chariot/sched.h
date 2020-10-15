@@ -236,8 +236,10 @@ struct thread final {
   process &proc;
 
   volatile int state;
-
   int exit_code;
+
+	int kerrno = 0;
+	bool preemptable = true;
 
 	struct kernel_stack {
 		void *start;
@@ -406,6 +408,8 @@ namespace sched {
 
     pid_t create_kthread(const char *name, int (*func)(void *),
                          void *arg = NULL);
+
+		struct thread *spawn_kthread(const char *name, int (*func)(void*), void *arg = NULL);
 
     void dump_table();
 

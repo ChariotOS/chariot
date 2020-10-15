@@ -210,6 +210,24 @@ struct process *sched::proc::kproc(void) {
   return kernel_process.get();
 }
 
+
+struct thread *sched::proc::spawn_kthread(const char *name, int (*func)(void *), void *arg) {
+
+  auto proc = kproc();
+  auto tid = get_next_pid();
+  auto thd = new thread(tid, *proc);
+  thd->trap_frame[1] = (unsigned long)arg;
+
+
+  arch::reg(REG_PC, thd->trap_frame) = (unsigned long)func;
+  thd->state = PS_RUNNABLE;
+
+  thd->setup_tls();
+
+	return thd;
+}
+
+
 pid_t sched::proc::create_kthread(const char *name, int (*func)(void *), void *arg) {
   auto proc = kproc();
 
