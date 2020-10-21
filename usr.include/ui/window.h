@@ -20,7 +20,7 @@ namespace ui {
    public:
 		 static constexpr uint32_t FRAME_COLOR = 0xFFFFFF; //0xcecece;
     static constexpr int TITLE_HEIGHT = 20;
-    static constexpr int PADDING = 5;
+    static constexpr int PADDING = 3;
     windowframe(void);
     virtual ~windowframe(void);
     virtual void paint_event(void) override;

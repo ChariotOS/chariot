@@ -39,8 +39,8 @@ struct sigaction {
 namespace sched {
   void block();
 
-	using impl = sched::round_robin;
-}
+  using impl = sched::round_robin;
+}  // namespace sched
 
 struct thread_context {
   unsigned long r15;
@@ -132,14 +132,14 @@ struct process final : public refcounted<struct process> {
   mm::space *mm;
 
 
-	ref<fs::file> executable;
+  ref<fs::file> executable;
 
-	struct {
-		bool exists = false;
-		off_t fileoff;
-		size_t memsz;
-		size_t fsize;
-	} tls_info;
+  struct {
+    bool exists = false;
+    off_t fileoff;
+    size_t memsz;
+    size_t fsize;
+  } tls_info;
 
   u64 create_tick = 0;
   // The current working directory of the process.
@@ -186,8 +186,8 @@ struct thread_statistics {
   int current_cpu = -1;
   int last_cpu = -1;
 
-	u64 cycles = 0;
-	u64 last_start_cycle = 0;
+  u64 cycles = 0;
+  u64 last_start_cycle = 0;
 };
 
 struct thread_sched_info {
@@ -238,21 +238,21 @@ struct thread final {
   volatile int state;
   int exit_code;
 
-	int kerrno = 0;
-	bool preemptable = true;
+  int kerrno = 0;
+  bool preemptable = true;
 
-	struct kernel_stack {
-		void *start;
-		long size;
-	};
+  struct kernel_stack {
+    void *start;
+    long size;
+  };
 
   /* Reference to the kernel stack */
-	vec<kernel_stack> stacks;
+  vec<kernel_stack> stacks;
 
 
   thread_blocker *blocker = NULL;
   // the current waitqueue waiter
-  struct waiter *waiter = nullptr;
+  struct wait::waiter *waiter = nullptr;
 
 
   // Masks are per-thread
@@ -264,7 +264,7 @@ struct thread final {
   } sig;
 
 
-	sched::impl::thread_state sched_state;
+  sched::impl::thread_state sched_state;
   struct thread_sched_info sched;
 
 
@@ -279,8 +279,8 @@ struct thread final {
   reg_t *trap_frame;
   struct thread_waitqueue_info wq;
 
-	off_t tls_uaddr;
-	size_t tls_usize;
+  off_t tls_uaddr;
+  size_t tls_usize;
 
   union /* flags */ {
     u64 flags = 0;
@@ -290,8 +290,8 @@ struct thread final {
       unsigned should_die : 1;  // the thread needs to be torn down, must not
                                 // return to userspace
       unsigned kern_idle : 1;   // the thread is a kernel idle thread
-      unsigned exited : 1;  // the thread has exited, it's safe to delete when
-                            // reaped by the parent or another thread
+      unsigned exited : 1;      // the thread has exited, it's safe to delete when
+                                // reaped by the parent or another thread
     };
   };
 
@@ -332,7 +332,7 @@ struct thread final {
   // tell the thread to start running at a certain address.
   bool kickoff(void *rip, int state);
 
-	off_t setup_tls(void);
+  off_t setup_tls(void);
 
   static thread *lookup(pid_t);
   static bool teardown(thread *);
@@ -356,8 +356,8 @@ struct thread final {
 namespace sched {
 
 
-	// run a signal on the current thread
-	void dispatch_signal(int sig);
+  // run a signal on the current thread
+  void dispatch_signal(int sig);
 
   bool init(void);
 
@@ -406,10 +406,9 @@ namespace sched {
     // get the kernel process (creating if it doesnt exist
     struct process *kproc(void);
 
-    pid_t create_kthread(const char *name, int (*func)(void *),
-                         void *arg = NULL);
+    pid_t create_kthread(const char *name, int (*func)(void *), void *arg = NULL);
 
-		struct thread *spawn_kthread(const char *name, int (*func)(void*), void *arg = NULL);
+    struct thread *spawn_kthread(const char *name, int (*func)(void *), void *arg = NULL);
 
     void dump_table();
 
@@ -426,9 +425,9 @@ namespace sched {
 
     int do_waitpid(pid_t, int &status, int options);
 
-		// this takes a lock over the process table while iterating
-		// Return false from the callback to stop.
-		void in_pgrp(pid_t pgid, func<bool(struct process &)>);
+    // this takes a lock over the process table while iterating
+    // Return false from the callback to stop.
+    void in_pgrp(pid_t pgid, func<bool(struct process &)>);
 
 
   };  // namespace proc

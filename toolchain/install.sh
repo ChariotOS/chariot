@@ -9,7 +9,7 @@ mkdir -p $DIR/local
 ARCH="x86_64"
 TARGET="$ARCH-elf-chariot"
 PREFIX="$DIR/local"
-SYSROOT="$DIR/../build/base/"
+SYSROOT="$DIR/../build/root/"
 
 
 

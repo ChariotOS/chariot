@@ -365,7 +365,6 @@ void gfx::scribe::draw_line(int x0, int y0, int x1, int y1, uint32_t color) {
 
 
 void gfx::scribe::draw_rect_special(const gfx::rect &r, uint32_t top_left, uint32_t bottom_right) {
-
   // bottom
   draw_hline(r.left(), r.bottom(), r.w, bottom_right);
   // right
@@ -375,12 +374,9 @@ void gfx::scribe::draw_rect_special(const gfx::rect &r, uint32_t top_left, uint3
   draw_hline(r.left(), r.top(), r.w, top_left);
   // left
   draw_vline(r.left(), r.top(), r.h, top_left);
-
 }
 
-void gfx::scribe::draw_rect(const gfx::rect &r, uint32_t color) {
-	return draw_rect_special(r, color, color);
-}
+void gfx::scribe::draw_rect(const gfx::rect &r, uint32_t color) { return draw_rect_special(r, color, color); }
 
 void gfx::scribe::fill_rect(const gfx::rect &d, uint32_t color) {
   auto rect = gfx::rect(d.x + translation().x(), d.y + translation().y(), d.w, d.h)
@@ -716,43 +712,12 @@ void gfx::scribe::draw_text_line(gfx::font &font, const gfx::rect &a_rect, const
       panic("INVALID TEXT ALIGNMENT\n");
   }
 
-  auto p = gfx::printer(*this, font, rect.x, rect.y, rect.w);
+
+  // draw_rect(rect, 0xFF00FF);
+  auto p = gfx::printer(*this, font, rect.x, rect.y + font.ascent(), rect.w);
   p.set_color(color);
   p.write(final_text.get());
 }
-
-#if 0
-void gfx::scribe::draw_text(struct text_thunk &st, gfx::font &fnt, char c,
-                            uint32_t color, int flags) {
-  int x = st.pos.x();
-  int y = st.pos.y();
-  uint32_t right_edge = st.x0 + st.width;
-
-  // if (getpid() != 6)::printf("'%c' %d %d\n", c, x, y);
-
-  auto newline = [&] {
-    x = st.x0;
-    // int oy = y;
-    y += fnt.line_height();
-    // if (getpid() != 6) ::printf("y: %4d -> %-4d   %d\n", oy, y,
-    // fnt.line_height());
-  };
-
-  if (c == '\n') {
-    newline();
-  } else {
-    if (x + fnt.width(c) > right_edge) {
-      newline();
-    }
-
-    int dy = y + fnt.line_height();
-    fnt.draw(x, dy, *this, c, color);
-  }
-  st.pos.set_x(x);
-  st.pos.set_y(y);
-}
-#endif
-
 
 
 
@@ -777,25 +742,7 @@ void gfx::printer::write(char c) {
   int y = pos.y();
   uint32_t right_edge = this->x0 + width;
 
-
-  auto newline = [&] {
-    x = this->x0;
-    // int oy = y;
-    y += fnt->line_height();
-    // if (getpid() != 6) ::printf("y: %4d -> %-4d   %d\n", oy, y,
-    // fnt.line_height());
-  };
-
-  if (c == '\n') {
-    // newline();
-  } else {
-    if (x + fnt->width(c) > right_edge) {
-      // newline();
-    }
-
-    int dy = y + fnt->line_height();
-    fnt->draw(x, dy, this->sc, c, color);
-  }
+  fnt->draw(x, y, this->sc, c, color);
 
   /* flush the position change */
   pos.set_x(x);
@@ -806,6 +753,7 @@ void gfx::printer::write(char c) {
 void gfx::printer::write(const char *str) {
   for (int i = 0; str[i] != 0; i++) {
     write(str[i]);
+		// pos.set_x(pos.x() + fnt->kerning_for(str[i], str[i+1]));
   }
 }
 

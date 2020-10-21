@@ -1,7 +1,11 @@
 
 
 global setjmp
+global _setjmp
+global __setjmp
 global longjmp
+global _longjmp
+global __longjmp
 
 __setjmp:
 _setjmp:
@@ -22,6 +26,7 @@ setjmp:
 
 
 _longjmp:
+__longjmp:
 longjmp:
 	mov rax, rsi    ; val will be longjmp return
 	test rax, rax

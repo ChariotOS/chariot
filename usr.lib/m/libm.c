@@ -164,26 +164,10 @@ float truncf(float x) { return (unsigned long)x; }
 
 double cos(double angle) { return sin(angle + M_PI_2); }
 
-double ampsin(double angle) {
-  MATH;
-  double looped_angle = fmod(M_PI + angle, M_TAU) - M_PI;
-  double looped_angle_squared = looped_angle * looped_angle;
-
-  double quadratic_term;
-  if (looped_angle > 0) {
-    quadratic_term = -looped_angle_squared;
-  } else {
-    quadratic_term = looped_angle_squared;
-  }
-
-  double linear_term = M_PI * looped_angle;
-
-  return quadratic_term + linear_term;
-}
-
 double sin(double angle) {
-  const double vertical_scaling = M_PI_2 * M_PI_2;
-  return ampsin(angle) / vertical_scaling;
+  double res = 0.0;
+  asm("fsin" : "=t"(res) : "0"(angle));
+  return res;
 }
 
 int abs(int a) {
@@ -316,6 +300,7 @@ double pow(double x, double y) {
       : "st(1)");
   return out;
 }
+float powf(float x, float y) { return pow(x, y); }
 
 double log2(double a) {
   BAD;

@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 extern "C" {
-void *__dso_handle = NULL;
+// void *__dso_handle = NULL;
 }
 
 unsigned __atexit_func_count = 0;

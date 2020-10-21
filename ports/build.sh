@@ -3,23 +3,51 @@
 # PATH=
 
 
+
 ROOT=$(pwd)/..
+SYSROOT=$ROOT/build/root
 TOOLCHAIN=$ROOT/toolchain/local/bin
-PATH=$TOOLCHAIN:$PATH
+export PATH=$TOOLCHAIN:$PATH
 
 
-# pushd ..
-# 	mkdir -p build
-# 	pushd build
-# 		cmake libc -GNinja ../
-# 		ninja libc
-# 		install -D libc/libc.a build/base/lib/libc.a
-# 	popd
-# popd
+
+pushd ../
+	tools/sysroot.sh
+popd
 
 mkdir -p src
 
 pushd src
+
+if [ ! -d freetype-2.10.1 ]; then
+	wget "https://download.savannah.gnu.org/releases/freetype/freetype-2.10.1.tar.gz"
+	tar -xzvf freetype-2.10.1.tar.gz
+	export BUILD_DIR=freetype-2.10.1
+	rm freetype-2.10.1.tar.gz
+
+	pushd freetype-2.10.1
+		patch -p1 < ../../patches/freetype.patch
+	export CC=x86_64-elf-chariot-gcc
+
+	./configure                      \
+				--host=x86_64-elf-chariot  \
+				--with-harfbuzz=no         \
+				--with-bzip2=no            \
+				--with-zlib=no             \
+				--with-png=no              \
+				--disable-shared \
+				"CFLAGS=-I$ROOT/usr.include -fno-stack-protector -DUSERLAND" \
+				"CXXFLAGS=-I$ROOT/usr.include -fno-stack-protector -DUSERLAND"
+	make -j
+	popd
+fi
+
+exit
+
+
+
+
+
 
 if [ ! -d mesa ]; then
 # mesa
@@ -50,23 +78,7 @@ fi
 
 
 
-# llvm libc++
 
-# if [ ! -d llvm-project ]; then
-# 	git clone https://github.com/llvm/llvm-project.git llvm-project --depth 2 || (cd llvm-project ; git pull)
-# fi # todo: move this to the end of this block:
-# 
-# 	pushd llvm-project
-# 		mkdir -p build
-# 		pushd build
-# 		 cmake -DCMAKE_C_COMPILER=$TOOLCHAIN/x86_64-elf-chariot-clang       \
-# 					 -DCMAKE_CXX_COMPILER=$TOOLCHAIN/x86_64-elf-chariot-clang++     \
-# 					 -DLLVM_ENABLE_PROJECTS="libcxx;libcxxabi"                  \
-# 					 --sysroot ${ROOT}/build/base/                              \
-# 					 ../llvm
-# 		popd
-# 	popd
-# 
 
 
 popd # src

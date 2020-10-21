@@ -110,7 +110,7 @@ static void set_irq_line(u8 irq_number) {
 
 static spinlock sb16_lock;
 void *dma_page = NULL;
-static waitqueue sb16_wq;
+static wait::queue sb16_wq;
 
 
 static void dma_start(uint32_t length) {

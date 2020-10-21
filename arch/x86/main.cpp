@@ -1,4 +1,5 @@
 #include <cpu.h>
+#include <cpuid.h>
 #include <dev/serial.h>
 #include <elf/loader.h>
 #include <fs/ext2.h>
@@ -6,16 +7,16 @@
 #include <kargs.h>
 #include <kshell.h>
 #include <module.h>
+#include <multiboot.h>
 #include <net/ipv4.h>
 #include <net/net.h>
 #include <pci.h>
 #include <pit.h>
 #include <syscall.h>
+#include <time.h>
 #include <types.h>
 #include <util.h>
 #include <vga.h>
-#include <multiboot.h>
-#include <time.h>
 #include "cpuid.h"
 #include "fpu.h"
 #include "smp.h"
@@ -97,11 +98,11 @@ static void kmain2(void);
 
 extern void rtc_init(void);
 
+
+
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   serial_install();
-
   rtc_init();
-
   extern u8 boot_cpu_local[];
   cpu::seginit(boot_cpu_local);
 
@@ -109,10 +110,15 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 
   mbinfo = (struct multiboot_info *)(u64)p2v(mbd);
 
+
+  // initialize the video display
+  vga::early_init(mbinfo);
+
   void *new_stack = (void *)((u64)kmalloc(STKSIZE) + STKSIZE);
   call_with_new_stack(new_stack, (void *)kmain2);
   while (1) panic("should not have gotten back here\n");
 }
+
 
 typedef void (*func_ptr)(void);
 extern "C" func_ptr __init_array_start[0], __init_array_end[0];
@@ -139,15 +145,14 @@ static void kmain2(void) {
 
   kargs::init(mbinfo);
 
-  if (!smp::init()) panic("smp failed!\n");
-  KINFO("Discovered SMP Cores\n");
+  if (!kargs::exists("nosmp")) {
+    if (!smp::init()) panic("smp failed!\n");
+    KINFO("Discovered SMP Cores\n");
+  }
 
-
-	dump_multiboot(mbinfo);
+  dump_multiboot(mbinfo);
 
   cpuid::detect_cpu();
-
-
 
   init_pit();
   set_pit_freq(TICK_FREQ);
@@ -160,6 +165,9 @@ static void kmain2(void) {
   // create the initialization thread.
   sched::proc::create_kthread("[kinit]", kernel_init);
 
+	// the first cpu is the timekeeper
+	cpus[0].timekeeper = true;
+
   KINFO("starting scheduler\n");
   sched::run();
 
@@ -168,11 +176,14 @@ static void kmain2(void) {
 }
 
 
+
+
+#define cpuid(in, a, b, c, d) __asm__("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(in));
+
 int kernel_init(void *) {
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
 
-  vga::early_init(mbinfo);
 
   // at this point, the pit is being used for interrupts,
   // so we should go setup lapic for that
@@ -185,10 +196,12 @@ int kernel_init(void *) {
   initialize_builtin_modules();
   KINFO("kernel modules initialized\n");
 
+  if (!kargs::exists("nosmp")) {
+    // start up the extra cpu cores
+    smp::init_cores();
+  }
 
 
-  // start up the extra cpu cores
-  smp::init_cores();
 
 
   // open up the disk device for the root filesystem
@@ -214,19 +227,6 @@ int kernel_init(void *) {
     panic("failed to mount tmpfs");
   }
 
-
-	volatile auto last = time::now_ns();
-	while (1) {
-		auto now = time::now_ns();
-		if (last > now) {
-			printk("time travel! %llu %llu\n", last, now);
-		}
-		last = now;
-
-		arch::relax();
-	}
-
-
   // setup stdio stuff for the kernel (to be inherited by spawn)
   int fd = sys::open("/dev/console", O_RDWR, 0);
   assert(fd == 0);
@@ -240,7 +240,7 @@ int kernel_init(void *) {
   kproc->cwd = fs::inode::acquire(vfs::get_root());
 
 
-	net::start();
+  net::start();
 
 
   string init_paths = kargs::get("init", "/bin/init");

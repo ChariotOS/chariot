@@ -1,5 +1,8 @@
 
-add_link_options(LINKER:-T ${CMAKE_CURRENT_SOURCE_DIR}/../user.ld -z max-page-size=0x1000 -nostdlib)
+add_link_options(LINKER:-T ${CMAKE_CURRENT_SOURCE_DIR}/../user.ld -z max-page-size=0x1000)
+# add_link_options(-z max-page-size=0x1000)
+
+
 # make sure the userspace programs and libraries use this
 
 include_directories(../usr.include ../toolchain/tarballs/gcc-10.1.0/libstdc++-v3/include)

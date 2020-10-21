@@ -12,14 +12,17 @@ set(SOURCES
 
 
 
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a -fdiagnostics-color=always")
+# set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS}")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a -fdiagnostics-color=always")
+
+
+
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
 
-chariot_libc(libcxxrt cxxrt)
-target_link_libraries(libcxxrt libc)
+# chariot_libc(libcxxrt cxxrt)
+# target_link_libraries(libcxxrt PUBLIC libc)
 
-
+#
 
 # add_definitions(-D_GNU_SOURCE)
 # add_library(cxxrt-static STATIC ${CXXRT_SOURCES})

@@ -33,6 +33,11 @@ namespace gfx {
       return res;
     }
 
+
+		inline __attribute__((always_inline)) color_t rgb(unsigned char r, unsigned char b, unsigned char g) {
+			return r << 16 | g << 8 | b;
+		}
+
     inline __attribute__((always_inline)) color_t alpha(color_t c, float a) {
       return (((c)&0xFF'FF'FF) | ((int)(255 * (a)) << 24));
     }

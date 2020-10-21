@@ -47,6 +47,7 @@ for cp in font.codepoints():
 
     # data offset
     c += struct.pack("I", len(dmap))
+    print(gl)
 
     # bounding box
     c += struct.pack("b", gl.bbX)

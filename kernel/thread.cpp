@@ -278,7 +278,7 @@ void thread::interrupt(void) {
 		// take a lock on the waitqueue so we can futz with it
 		scoped_lock l(wq.lock);
 
-		ref<struct waiter> w = waiter;
+		ref<wait::waiter> w = waiter;
 
 		if (w->next != NULL) w->next->prev = w->prev;
 		if (w->prev != NULL) w->prev->next = w->next;

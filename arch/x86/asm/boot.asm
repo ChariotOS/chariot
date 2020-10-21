@@ -32,7 +32,6 @@ mbheader:
 
 
 
-
 ; higher-half virtual memory address
 KERNEL_VMA equ 0xffff880000000000
 

@@ -14,8 +14,7 @@ namespace gfx {
   // allows you to continue drawing text from the last position
   class printer {
    public:
-    inline printer(gfx::scribe &sc, gfx::font &font, int x, int y, int width)
-        : sc(sc) {
+    inline printer(gfx::scribe &sc, gfx::font &font, int x, int y, int width) : sc(sc) {
       set_font(font);
       x0 = x;
       y0 = y;
@@ -82,20 +81,16 @@ namespace gfx {
     ~scribe(void);
 
     // set a pixel in the bmp. not translated
-    inline void set_pixel(int x, int y, uint32_t color) {
-      bmp.set_pixel(x, y, color);
-    }
+    inline void set_pixel(int x, int y, uint32_t color) { bmp.set_pixel(x, y, color); }
 
 
     struct state &state(void) {
       return states.last();
     }
 
-    void draw_generic_bezier(ck::vec<gfx::point> &points, uint32_t color,
-                             float stroke = 1);
+    void draw_generic_bezier(ck::vec<gfx::point> &points, uint32_t color, float stroke = 1);
 
-    void draw_quadratic_bezier(const gfx::point &start, const gfx::point &p1,
-                               const gfx::point &end, uint32_t color,
+    void draw_quadratic_bezier(const gfx::point &start, const gfx::point &p1, const gfx::point &end, uint32_t color,
                                float stroke = 1);
 
     // blend a pixel with a 0-1 alpha
@@ -114,8 +109,23 @@ namespace gfx {
       }
     }
 
-		void draw_text(gfx::font &fnt, const gfx::rect &bounds, const ck::string &text, ui::TextAlign, uint32_t color, bool elide = true);
-		void draw_text_line(gfx::font &fnt, const gfx::rect &bounds, const ck::string &text, ui::TextAlign, uint32_t color, bool elide = true);
+    inline uint32_t get_pixel(int x, int y) {
+      auto &s = state();
+      x += s.offset.x();
+      y += s.offset.y();
+
+      auto &c = s.clip;
+
+      if (x >= c.left() && x <= c.right() && y >= c.top() && y <= c.bottom()) {
+        return bmp.get_pixel(x, y);
+      }
+      return 0;
+    }
+
+    void draw_text(gfx::font &fnt, const gfx::rect &bounds, const ck::string &text, ui::TextAlign, uint32_t color,
+                   bool elide = true);
+    void draw_text_line(gfx::font &fnt, const gfx::rect &bounds, const ck::string &text, ui::TextAlign, uint32_t color,
+                        bool elide = true);
 
 
     // draw text, wrapping within
@@ -148,8 +158,7 @@ draw_text(thnk, fnt, str, color, flags);
     inline uint32_t height() { return bmp.height(); }
 
     // draw a line between two points
-    inline void draw_line(const gfx::point &p1, const gfx::point &p2,
-                          uint32_t color) {
+    inline void draw_line(const gfx::point &p1, const gfx::point &p2, uint32_t color) {
       draw_line(p1.x(), p1.y(), p2.x(), p2.y(), color);
     }
 
@@ -157,18 +166,12 @@ draw_text(thnk, fnt, str, color, flags);
     void draw_line(int x0, int y0, int x1, int y1, uint32_t color);
 
 
-    inline void draw_line_antialias(const gfx::point &p1, const gfx::point &p2,
-                                    uint32_t color, float stroke = 1) {
+    inline void draw_line_antialias(const gfx::point &p1, const gfx::point &p2, uint32_t color, float stroke = 1) {
       draw_line_antialias(p1.x(), p1.y(), p2.x(), p2.y(), color, stroke);
     }
-    void draw_line_antialias(int x0, int y0, int x1, int y1, uint32_t color,
-                             float stroke = 1);
-    inline void draw_vline(int x0, int y0, int h, uint32_t color) {
-      draw_line(x0, y0, x0, y0 + h, color);
-    }
-    inline void draw_hline(int x0, int y0, int w, uint32_t color) {
-      draw_line(x0, y0, x0 + w, y0, color);
-    }
+    void draw_line_antialias(int x0, int y0, int x1, int y1, uint32_t color, float stroke = 1);
+    inline void draw_vline(int x0, int y0, int h, uint32_t color) { draw_line(x0, y0, x0, y0 + h, color); }
+    inline void draw_hline(int x0, int y0, int w, uint32_t color) { draw_line(x0, y0, x0 + w, y0, color); }
 
 
     // just draw a bitmap to a position (no scaling)
@@ -188,13 +191,11 @@ draw_text(thnk, fnt, str, color, flags);
     void fill_rect(const gfx::rect &r, int radius, uint32_t color);
 
     void draw_circle(int x, int y, int r, uint32_t color);
-    void draw_circle_helper(int x, int y, int r, int cornername,
-                            uint32_t color);
+    void draw_circle_helper(int x, int y, int r, int cornername, uint32_t color);
 
 
     void fill_circle(int x, int y, int r, uint32_t color);
-    void fill_circle_helper(int x, int y, int r, int corner, int delta,
-                            uint32_t color);
+    void fill_circle_helper(int x, int y, int r, int corner, int delta, uint32_t color);
   };
 
 

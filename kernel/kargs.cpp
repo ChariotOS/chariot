@@ -33,3 +33,6 @@ const char *kargs::get(const char *keyp, const char *def) {
   }
   return def;
 }
+
+
+bool kargs::exists(const char *name) { return cmdline_map.contains(name); }

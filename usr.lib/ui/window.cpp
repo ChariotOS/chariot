@@ -37,13 +37,13 @@ ui::windowframe::~windowframe(void) {}
 
 void ui::windowframe::paint_event(void) {
   auto s = get_scribe();
-	uint32_t border = 0x666666;
+  uint32_t border = 0x222222; // 0x666666;
   float contrast = 0.25;
   uint32_t bright = brighten(FRAME_COLOR, 1.0 + contrast);
   uint32_t dark = brighten(FRAME_COLOR, 1.0 - contrast);
 
   gfx::rect r = gfx::rect(width(), height());
-	// outside border
+  // outside border
   s.draw_rect(r, border);
 
 
@@ -191,6 +191,9 @@ void ui::window::schedule_reflow(void) {
 
 
 ck::tuple<int, int> ui::window::resize(int w, int h) {
+  w += windowframe::PADDING * 2;
+  h += windowframe::TITLE_HEIGHT + windowframe::PADDING;
+
   // don't change stuff if you dont need to
   if (width() == w && height() == h) {
     return ck::tuple(w, h);

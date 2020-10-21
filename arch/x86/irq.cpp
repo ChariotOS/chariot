@@ -210,11 +210,9 @@ void dump_backtrace(off_t ebp) {
   printk("Backtrace (ebp=%p):\n", ebp);
 
 #if 0
-  off_t stk_end = (off_t)curthd->stack + curthd->stack_size;
   // int i = 0;
   // printk("addr2line -e /tmp/chariot.elf ");
-  for (off_t *stack_ptr = (off_t *)ebp; (off_t)stack_ptr < stk_end /*&& (off_t)stack_ptr >= KERNEL_VIRTUAL_BASE */;
-       stack_ptr = (off_t *)*stack_ptr) {
+  for (off_t *stack_ptr = (off_t *)ebp; VALIDATE_RD(stack_ptr, sizeof(off_t)); stack_ptr = (off_t *)*stack_ptr) {
     // if (!VALIDATE_RD(stack_ptr, 16)) break;
     off_t retaddr = stack_ptr[1];
     printk("0x%p\n", retaddr);
@@ -267,9 +265,8 @@ static void gpf_handler(int i, reg_t *regs) {
   if (curproc) {
     KERR("Address Space Dump:\n");
     curproc->mm->dump();
-    // dump_backtrace(tf->rbp);
+    printk("backtrace:\n");
   }
-
 
   sys::exit_proc(-1);
 
@@ -363,14 +360,14 @@ static void pgfault_handle(int i, reg_t *regs) {
       dump_trapframe(regs);
       KERR("Address Space Dump:\n");
       proc->mm->dump();
-			/*
-      KERR("FPU State:\n");
-      alignas(16) char sse_data[512];
+      /*
+KERR("FPU State:\n");
+alignas(16) char sse_data[512];
 
-      asm volatile("fxsave64 (%0);" ::"r"(sse_data));
+asm volatile("fxsave64 (%0);" ::"r"(sse_data));
 
-      hexdump(sse_data, 512, true);
-			*/
+hexdump(sse_data, 512, true);
+      */
       KERR("==================================================================\n");
 
       sched::dispatch_signal(SIGSEGV);

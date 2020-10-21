@@ -10,7 +10,7 @@ class condvar final {
   unsigned long long main_seq = 0;
   unsigned bcast_seq = 0;
 
-  waitqueue wq;
+	wait::queue wq;
   spinlock lock;
 
  public:

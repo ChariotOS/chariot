@@ -15,6 +15,7 @@
 #include <util.h>
 #include <vga.h>
 #include <wait.h>
+#include <time.h>
 
 #include "../majors.h"
 
@@ -69,7 +70,7 @@
 
 static int ata_dev_init(fs::blkdev& d);
 static int ata_rw_block(fs::blkdev& b, void* data, int block, bool write);
-waitqueue ata_wq;
+wait::queue ata_wq;
 
 struct fs::block_operations ata_blk_ops = {
     .init = ata_dev_init,

@@ -85,45 +85,13 @@ class doomview : public ui::view {
   long start_time = current_us();
 
  public:
-  doomview() { doomuifont = gfx::font::open("scientifica-normal", 11); }
+  doomview() {}
   virtual void paint_event(void) override {
     auto s = get_scribe();
 
     gfx::bitmap b(DOOMGENERIC_RESX, DOOMGENERIC_RESY, DG_ScreenBuffer);
 
     s.blit(gfx::point(0, 0), b, gfx::rect(0, 0, DOOMGENERIC_RESX, DOOMGENERIC_RESY));
-
-
-
-    if (0) {
-      frames += 1;
-
-      auto now = current_us();
-      auto elapsed = (now - start_time) / 1000.0 / 1000.0;
-
-
-      if (elapsed > 3) {
-        start_time = now;
-      }
-
-
-      float fps = frames / elapsed;
-
-
-
-      auto s = get_scribe();
-      auto pr = gfx::printer(s, *doomuifont, 0, 0, width());
-      pr.set_color(0xFFFFFF);
-
-      pr.printf("FPS: %3.8f\n", fps);
-      pr.printf("FRAMES: %d\n", frames);
-
-      pr.printf("\n");
-
-      pr.printf("NOW:   %lld\n", now);
-      pr.printf("START: %lld\n", start_time);
-      pr.printf("       %f\n", elapsed);
-    }
 
     invalidate();
   }

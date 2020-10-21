@@ -7,4 +7,4 @@ set(SOURCES
 chariot_bin(lumen)
 
 
-target_link_libraries(lumen libui)
+target_link_libraries(lumen PUBLIC libui)

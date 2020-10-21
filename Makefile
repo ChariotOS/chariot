@@ -8,6 +8,8 @@ ports:
 kernel:
 	@mkdir -p build
 	@if [ ! -d build/kernel ]; then cd build; cmake -GNinja ../ ; fi
+	# @cd build; ninja libc
+	# @cd build; ninja libstdc++
 	@cd build; ninja install
 	@cp build/compile_commands.json .
 

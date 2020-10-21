@@ -382,9 +382,6 @@ bool smp::init(void) {
     return false;
   }
 
-  cpus[0].timekeeper = true;
-
-  INFO("cpunum = %d\n", cpunum());
 
   // mp table was parsed and loaded into global memory
   INFO("ncpus: %d\n", apic_cpus.size());

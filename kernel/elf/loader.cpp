@@ -132,7 +132,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
   p.file_lock.lock();
   p.open_files[MAGICFD_EXEC] = fd;
   p.executable = fd;
-	p.tls_info.exists = false;
+  p.tls_info.exists = false;
   p.file_lock.unlock();
 
   if (!elf::validate(*fd, ehdr)) {
@@ -143,7 +143,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
   // the binary is valid, so lets read the headers!
   entry = off + ehdr.e_entry;
 
-  auto handle_bss = [&](Elf64_Phdr &ph) -> void {
+  auto handle_bss = [&](Elf64_Phdr &ph, int prot) -> void {
     if (ph.p_memsz > ph.p_filesz) {
       auto addr = ph.p_vaddr;
       // possibly map a new bss region, anonymously in?
@@ -153,7 +153,8 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
       auto page_end = round_up(addr + ph.p_memsz, PGSIZE);
 
       if (page_end > file_page_end) {
-        printk("need a new page!\n");
+        size_t bss_size = page_end - file_page_end;
+        mm.mmap(path, off + file_page_end, bss_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, nullptr, 0);
       }
     }
   };
@@ -199,16 +200,14 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
 
     if (sec.p_type == PT_TLS) {
       printk("Found a TLS template!\n");
-			p.tls_info.exists = true;
-			p.tls_info.fileoff = sec.p_offset;
-			p.tls_info.fsize = sec.p_filesz;
-			p.tls_info.memsz = sec.p_memsz;
+      p.tls_info.exists = true;
+      p.tls_info.fileoff = sec.p_offset;
+      p.tls_info.fsize = sec.p_filesz;
+      p.tls_info.memsz = sec.p_memsz;
     }
 
     if (sec.p_type == PT_LOAD) {
-      auto start = round_down(sec.p_vaddr, 1);
-
-
+      auto start = sec.p_vaddr;
 
       auto prot = 0L;
       if (sec.p_flags & PF_X) prot |= PROT_EXEC;
@@ -216,11 +215,12 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
       if (sec.p_flags & PF_R) prot |= PROT_READ;
 
       if (sec.p_filesz == 0) {
-        mm.mmap(path, off + start, sec.p_memsz, prot, MAP_ANON | MAP_PRIVATE, nullptr, 0);
+        mm.mmap(path, off + start, round_up(sec.p_memsz, 4096), prot, MAP_ANON | MAP_PRIVATE, nullptr, 0);
+        // handle_bss(sec, prot);
         // printk("    is .bss\n");
       } else {
-        mm.mmap(path, off + start, sec.p_memsz, prot, MAP_PRIVATE, fd, sec.p_offset);
-        handle_bss(sec);
+        mm.mmap(path, off + start, round_up(sec.p_filesz, 4096), prot, MAP_PRIVATE, fd, sec.p_offset);
+        handle_bss(sec, prot);
       }
     }
   }

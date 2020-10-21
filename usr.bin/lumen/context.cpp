@@ -407,17 +407,6 @@ bool lumen::context::occluded(lumen::window &win, const gfx::rect &a) {
 }
 
 
-// #define LUMEN_DEBUG
-
-#ifdef LUMEN_DEBUG
-ck::ref<gfx::font> get_debug_font(void) {
-  static ck::ref<gfx::font> font;
-  if (!font) font = gfx::font::open("scientifica-normal", 11);
-  return font;
-}
-#endif
-
-
 
 
 void *lumen::context::compositor_thread_worker(void *arg) {
@@ -507,7 +496,7 @@ void lumen::context::compose(void) {
       struct lumen::invalidated_msg m;
       m.id = win->id;
       win->guest.guest_lock.lock();
-      win->guest.send_raw(LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m, sizeof(msg));
+      win->guest.send_raw(LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m, sizeof(m));
       win->guest.guest_lock.unlock();
       win->pending_invalidation_id = -1;
     }
@@ -624,7 +613,7 @@ long lumen::guest::send_raw(int type, int id, void *payload, size_t payloadsize)
   msg->id = id;
   msg->len = payloadsize;
 
-  if (payloadsize > 0) memcpy(msg + 1, payload, payloadsize);
+  if (payloadsize > 0) memcpy((void*)(msg + 1), payload, payloadsize);
 
   auto w = connection->send((void *)msg, msgsize, MSG_DONTWAIT);
 

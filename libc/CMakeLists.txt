@@ -18,3 +18,18 @@ file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 chariot_libc(libc c)
 
 target_link_libraries(libc crt0 "${CMAKE_CURRENT_LIST_DIR}/libgcc.a" "/usr/lib/libc++.a")
+
+
+file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+	cxxrt/dynamic_cast.cc
+	cxxrt/exception.cc
+	cxxrt/guard.cc
+	cxxrt/stdexcept.cc
+	cxxrt/typeinfo.cc
+	cxxrt/memory.cc
+	cxxrt/auxhelper.cc
+	cxxrt/libelftc_dem_gnu3.c
+)
+
+
+chariot_libc(libstdc++ stdc++)

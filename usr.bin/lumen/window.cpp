@@ -14,11 +14,6 @@
 #define TITLECOLOR 0xFFFFFF
 
 
-auto title_font(void) {
-  static auto fnt = gfx::font::open("chicago-normal", 12);
-  return fnt;
-}
-
 
 static gfx::rect close_button() { return gfx::rect(4, 4, 9, 9); }
 

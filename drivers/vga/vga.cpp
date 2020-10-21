@@ -341,7 +341,10 @@ void vga::early_init(struct multiboot_info *mb) {
   info.width = mb->framebuffer_width;
   info.height = mb->framebuffer_height;
   info.active = false;
+	// memset(p2v(vga_fba), 0xFF, info.width * info.height * sizeof(uint32_t));
+	// while (2) {}
   vga::configure(info);
+
 
   if (vga_fba == NULL) vga_fba = (u32 *)get_framebuffer_address();
 }

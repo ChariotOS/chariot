@@ -377,7 +377,7 @@ namespace fs {
   struct pipe : public fs::inode {
     // uid and gid are the creators of this pipe
 
-    waitqueue wq;
+		wait::queue wq;
 
     unsigned int readers;
     unsigned int writers;

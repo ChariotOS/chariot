@@ -100,26 +100,27 @@ for dir in $mnt/*; do
 done
 
 
+
+# create the build/root sysroot directory
+tools/sysroot.sh
+
 # build the kernel and copy it into the boot dir
 make --no-print-directory -j ARCH=x86_64 || die 'Failed to build the kernel'
 
 
-echo 'copying new filesystem data...'
-sudo rsync -a base/. $mnt/
-sudo rsync -a build/base/. $mnt/
-# sudo cp -rL usr.include/ $mnt/usr/include
-# sudo cp -a base/. $mnt/
+echo 'Copying filesystem data into the mounted image'
+
+sudo rsync -a build/root/. $mnt/
+
 sudo mkdir -p $mnt/dev
 sudo mkdir -p $mnt/tmp
-
-
 sudo chown -R 0:0 $mnt
 
 # install the bootloader (grub, in this case)
 sudo mkdir -p $mnt/boot/grub
 sudo cp kernel/grub.cfg $mnt/boot/grub/
 
-# sudo cp build/kernel/chariot.elf $mnt/boot/chariot.elf
+sudo cp build/root/bin/chariot.elf $mnt/boot/chariot.elf
 
 # only install grub on a new disk
 if [ $disk_exists -eq '0' ]; then

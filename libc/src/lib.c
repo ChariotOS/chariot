@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sys/sysbind.h>
 #include <time.h>
+#include <string.h>
 #include <unistd.h>
 
 int __argc;
@@ -19,29 +20,14 @@ extern int main(int argc, char **argv, char **envp);
 extern void stdio_init(void);
 // in signal.c
 extern void __signal_return_callback(void);
-typedef void (*func_ptr)(void);
-extern func_ptr __init_array_start[0], __init_array_end[0];
 static void handle_executable(int fd);
 
 
-static void call_global_constructors(void) {
-  for (func_ptr *func = __init_array_start; func != __init_array_end; func++) {
-    (*func)();
-  }
-}
-
-
-
-void __ck_before_main(int argc, char **argv, char **envp) __attribute__((weak));
-void __ck_before_main(int argc, char **argv, char **envp) {}
-
-
-void __ck_after_main(int status) __attribute__((weak));
-void __ck_after_main(int status) {}
-
-
+extern void _init(void);
+extern void _fini(void);
 
 void libc_start(int argc, char **argv, char **envp) {
+
   __argc = argc;
   __argv = argv;
   environ = envp;
@@ -52,32 +38,28 @@ void libc_start(int argc, char **argv, char **envp) {
   // initialize stdio seperate from global constructors
   // (chicken/egg problem)
   stdio_init();
-
   srand(time(NULL));
 
-  call_global_constructors();
+	_init();
+	atexit(_fini);
 
+	/*
+  extern void (*__init_array_start[])(int, char **, char **) __attribute__((visibility("hidden")));
+  extern void (*__init_array_end[])(int, char **, char **) __attribute__((visibility("hidden")));
+  const size_t size = __init_array_end - __init_array_start;
+  for (size_t i = 0; i < size; i++) {
+		(*__init_array_start[i])(argc, argv, environ);
+	}
+	*/
 
-	__ck_before_main(__argc, __argv, environ);
   // TODO: parse envp and store in a better format!
   int code = main(__argc, __argv, environ);
-	__ck_after_main(code);
 
   exit(code);
 
   printf("failed to exit!\n");
+
   // TODO: exit!
   while (1) {
   }
-
-  handle_executable(MAGICFD_EXEC);
-}
-
-
-void handle_executable(int fd) {
-  struct stat st;
-  fstat(fd, &st);
-
-  void *buf = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-  munmap(buf, st.st_size);
 }

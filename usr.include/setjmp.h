@@ -20,15 +20,12 @@ int sigsetjmp(sigjmp_buf, int);
 void siglongjmp(sigjmp_buf, int);
 #endif
 
-#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
 int _setjmp(jmp_buf);
 void _longjmp(jmp_buf, int);
-#endif
 
 int setjmp(jmp_buf);
 void longjmp(jmp_buf, int);
 
-#define setjmp setjmp
 
 #ifdef __cplusplus
 }

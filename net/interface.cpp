@@ -177,16 +177,8 @@ static chan<ref<net::pkt_buff>> pending_packets;
 
 
 
-volatile static int done = 0;
-// static struct nk_net_lwip_config config;
-
-static void donefunc(void *foo) {
-  printk(KERN_DEBUG "Done!\n");
-  done = 1;
-}
 
 int task(void *) {
-
   // initialize all the network interfaces
   //  TODO: this is probably a bad idea, since we are assuming that these addrs
   //  are safe without asking DHCP first.
@@ -210,31 +202,38 @@ printk(KERN_INFO "               gateway:  %I\n", net::host_ord(i.gateway));
     auto pbuf = pending_packets.recv();
     handle_packet(pbuf);
   }
-	return 0;
+  return 0;
 }
 
+volatile static int done = 0;
+static semaphore tcpinit_sem(0);
+// static struct nk_net_lwip_config config;
+
+static void donefunc(void *foo) {
+  printk(KERN_DEBUG "Done!\n");
+  done = 1;
+  tcpinit_sem.post();
+}
+
+
 void net::start(void) {
-
-  // tcpip_init(donefunc, 0);
-
-	/*
-  while (!done) {
+  tcpip_init(donefunc, 0);
+  if (tcpinit_sem.wait(false) == false) {
+    panic("unexpected interrupt");
   }
 
+
+  // setup google dns for now, 8.8.8.8
   ip4_addr_t dns;
-
-  dns.addr = htonl(0x08080808);
-
+  dns.addr = net::net_ord(net::ipv4::parse_ip("8.8.8.8"));
   dns_setserver(1, &dns);
-	*/
-	sched::proc::create_kthread("net task", task);
-
+  // sched::proc::create_kthread("net task", task);
 }
 
 // When packets are recv'd by adapters, they are sent here for internal parsing
 // and routing
 void net::packet_received(ref<net::pkt_buff> pbuf) {
-	printk("recv!\n");
+  printk("recv!\n");
   // skip non-ethernet packets
   auto eth = pbuf->eth();
   if (eth == NULL) return;

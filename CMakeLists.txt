@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.16)
 project(ChariotOS C CXX ASM)
 enable_language(ASM_NASM)
 
+
+include(ExternalProject)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # set(CMAKE_INCLUDE_HEADERS_IN_COMPILE_COMMANDS ON)
 set(CMAKE_INSTALL_MESSAGE NEVER)
@@ -40,7 +43,6 @@ set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++)
 # set(CMAKE_CXX_COMPILER clang++)
 # set(CMAKE_C_FLAGS "-target x86_64-chariot-elf -fPIE ")
 
-
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding ")
 
 set(CMAKE_ASM_COMPILER nasm)
@@ -52,17 +54,18 @@ set(CMAKE_AR ${TOOLCHAIN_PREFIX}ar)
 
 
 
-
-
-
-
-set(CMAKE_STAGING_PREFIX ${CMAKE_BINARY_DIR}/base)
-set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/base)
+set(CMAKE_STAGING_PREFIX ${CMAKE_BINARY_DIR}/root)
+set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/root)
 # set(CMAKE_SYSROOT ${PROJECT_SOURCE_DIR}/base)
 
 unset(CMAKE_SYSROOT)
-set(CHARIOT_SYSROOT ${CMAKE_BINARY_DIR}/base)
+set(CHARIOT_SYSROOT ${CMAKE_BINARY_DIR}/root)
 add_link_options(--sysroot ${CHARIOT_SYSROOT})
+
+
+
+set(EXECUTABLE_OUTPUT_PATH "${CHARIOT_SYSROOT}/bin" CACHE PATH "Build directory" FORCE)
+set(LIBRARY_OUTPUT_PATH "${CHARIOT_SYSROOT}/lib" CACHE PATH "Build directory" FORCE)
 
 
 if(NOT DEFINED ARCH)
@@ -78,16 +81,16 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSERLAND")
 
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -finstrument-functions ")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -mmmx -fno-omit-frame-pointer -msse -msse2")
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-sign-compare")
 
 
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -nostdinc++")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -fdiagnostics-color=always")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
 
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcoroutines")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
 
 
@@ -105,13 +108,13 @@ endfunction()
 
 
 
+
 function(chariot_lib target_name fs_name)
+		add_library(${target_name} STATIC ${SOURCES} ${GENERATED_SOURCES})
+		install(TARGETS ${target_name} RUNTIME DESTINATION lib)
 
-    add_library(${target_name} ${SOURCES} ${GENERATED_SOURCES})
-    install(TARGETS ${target_name} ARCHIVE DESTINATION lib)
 
-
-		# target_link_libraries(${target_name} libc)
+		target_link_libraries(${target_name} PUBLIC libc)
 		set_target_properties(${target_name} PROPERTIES OUTPUT_NAME ${fs_name})
 
 		foreach(src ${SOURCES})
@@ -119,7 +122,7 @@ function(chariot_lib target_name fs_name)
 				if (NOT ${target_name} STREQUAL "libck")
 					# message(STATUS "${target_name} is a c++ project")
 					# only link in libck if it is a c++ project
-					target_link_libraries(${target_name} libck libcxxrt)
+					target_link_libraries(${target_name} PUBLIC libstdc++ libck)
 				endif()
 				break()
 			endif()
@@ -134,14 +137,15 @@ endfunction()
 function(chariot_bin target_name)
     add_executable(${target_name} ${SOURCES})
     install(TARGETS ${target_name} RUNTIME DESTINATION bin)
-		target_link_libraries(${target_name} crt0 libc libm)
+		target_link_libraries(${target_name} PUBLIC crt0 libc libm)
+		# target_link_libraries(${target_name} PUBLIC crt0 libc libm)
 
 
 		foreach(src ${SOURCES})
 			if (${src} MATCHES "cpp$")
 				# message(STATUS "${target_name} is a c++ project")
 				# only link in libck if it is a c++ project
-				target_link_libraries(${target_name} libck libcxxrt)
+				target_link_libraries(${target_name} PUBLIC libck)
 				break()
 			endif()
 		endforeach(src)
@@ -163,3 +167,7 @@ add_subdirectory(usr.bin)
 
 
 
+
+chariot_external(libgl ${CMAKE_SOURCE_DIR}/ports/prebuilt/libOSMesa.a)
+chariot_external(libglu ${CMAKE_SOURCE_DIR}/ports/prebuilt/libGLU.a)
+chariot_external(libfreetype ${CMAKE_SOURCE_DIR}/ports/prebuilt/libfreetype.a)
