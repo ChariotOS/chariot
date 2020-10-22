@@ -85,14 +85,11 @@ float sinhf(float x) {
   return (exponentiated - 1 / exponentiated) / 2;
 }
 
-double tan(double a) {
-  BAD;
-  return 0;
-}
-float tanf(float a) {
-  BAD;
-  return 0;
-}
+// bad, slow definition but I don't really think it matters.
+double tan(double a) { return sin(a) / cos(a); }
+float tanf(float a) { return tan(a); }
+
+
 double tanh(double a) {
   BAD;
   return 0;

@@ -12,10 +12,10 @@
 #include <printk.h>
 #include <ptr.h>
 #include <sched.h>
+#include <time.h>
 #include <util.h>
 #include <vga.h>
 #include <wait.h>
-#include <time.h>
 
 #include "../majors.h"
 
@@ -89,12 +89,8 @@ static struct dev::driver_info ata_driver_info {
  */
 static spinlock drive_lock;
 
-/*
- * TODO: determine if we need this function
- static void wait_400ns(u16 io_base) {
- for (int i = 0; i < 4; ++i) inb(io_base + ATA_REG_ALTSTATUS);
- }
- */
+
+
 
 // for the interrupts...
 u16 primary_master_status = 0;
@@ -118,7 +114,6 @@ dev::ata::ata(u16 portbase, bool master) {
   command_port = portbase + 7;
   control_port = portbase + 0x206;
 
-  m_dma_buffer = nullptr;
   drive_lock.unlock();
 }
 
@@ -126,9 +121,6 @@ dev::ata::~ata() {
   drive_lock.lock();
   TRACE;
   kfree(id_buf);
-  if (m_dma_buffer != 0) {
-    phys::free(m_dma_buffer);
-  }
   drive_lock.unlock();
 }
 
@@ -195,6 +187,8 @@ bool dev::ata::identify() {
     }
   });
 
+
+  printk("PCI DEV: %p\n", m_pci_dev);
   if (m_pci_dev != nullptr) {
     m_pci_dev->enable_bus_mastering();
     use_dma = true;
@@ -214,9 +208,9 @@ bool dev::ata::identify() {
       primary_master_bmr_command = bmr_command;
     }
   } else {
-		printk("can't use ata without DMA\n");
-		return false;
-	}
+    printk("can't use ata without DMA\n");
+    return false;
+  }
 
   return true;
 }
@@ -362,8 +356,8 @@ bool dev::ata::read_blocks_dma(u32 sector, u8* data, int n) {
   scoped_lock lck(drive_lock);
 
 
-	int buffer_pages = NPAGES(n * block_size() + sizeof(prdt_t));
-	auto buffer = phys::alloc(buffer_pages);
+  int buffer_pages = NPAGES(n * block_size() + sizeof(prdt_t));
+  auto buffer = phys::alloc(buffer_pages);
   // setup the prdt for DMA
   auto* prdt = static_cast<prdt_t*>(p2v(buffer));
   prdt->transfer_size = sector_size;
@@ -422,17 +416,16 @@ bool dev::ata::read_blocks_dma(u32 sector, u8* data, int n) {
 
   memcpy(data, dma_dst, sector_size * n);
 
-	phys::free(buffer, buffer_pages);
+  phys::free(buffer, buffer_pages);
 
   return true;
 }
 bool dev::ata::write_blocks_dma(u32 sector, const u8* data, int n) {
-
   if (sector & 0xF0000000) return false;
   drive_lock.lock();
 
-	int buffer_pages = NPAGES(n * block_size() + sizeof(prdt_t));
-	auto buffer = phys::alloc(buffer_pages);
+  int buffer_pages = NPAGES(n * block_size() + sizeof(prdt_t));
+  auto buffer = phys::alloc(buffer_pages);
   // setup the prdt for DMA
   auto* prdt = static_cast<prdt_t*>(p2v(buffer));
   prdt->transfer_size = sector_size * n;
@@ -487,13 +480,17 @@ bool dev::ata::write_blocks_dma(u32 sector, const u8* data, int n) {
       break;
     }
   }
-	phys::free(buffer, buffer_pages);
+  phys::free(buffer, buffer_pages);
 
   drive_lock.unlock();
 
 
-	return true;
+  return true;
 }
+
+
+
+
 
 
 static void ata_interrupt(int intr, reg_t* fr) {

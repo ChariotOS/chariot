@@ -83,6 +83,8 @@ namespace ui {
 
 
 
+// #define SIZE_AUTO (-
+
   class view {
     CK_NONCOPYABLE(view);
     CK_MAKE_NONMOVABLE(view);

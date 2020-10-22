@@ -2,16 +2,22 @@
 .DEFAULT_GOAL := default
 
 
+ARCH:=x86_64
+CMAKE_ROOT=$(shell pwd)
+BUILD:=build/$(ARCH)/
+
 ports:
 	@cd ports && ./build.sh
 
+
+
 kernel:
-	@mkdir -p build
-	@if [ ! -d build/kernel ]; then cd build; cmake -GNinja ../ ; fi
-	# @cd build; ninja libc
-	# @cd build; ninja libstdc++
-	@cd build; ninja install
-	@cp build/compile_commands.json .
+	@mkdir -p $(BUILD)
+	@cd $(BUILD); cmake -GNinja $(CMAKE_ROOT)
+	@cd $(BUILD); ninja libc
+	@cd $(BUILD); ninja libstdc++
+	@cd $(BUILD); ninja install
+	@cp $(BUILD)/compile_commands.json .
 
 default: ports kernel
 

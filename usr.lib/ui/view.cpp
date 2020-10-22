@@ -3,7 +3,9 @@
 
 
 
-ui::view::view() {}
+ui::view::view() {
+	// Default state
+}
 
 ui::view::~view(void) {
   auto *win = window();

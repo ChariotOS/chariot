@@ -14,11 +14,15 @@ sudo id > /dev/null || die "Couldn't get sudo"
 # echo "Okay!"
 
 
-IMG=build/chariot.img
-mnt=build/mnt
+# x86_64 by default
+ARCH=${ARCH:=x86_64}
+BUILD=build/$ARCH
+IMG=$BUILD/chariot.img
+mnt=$BUILD/mnt
+
 DISK_SIZE_MB=128
 
-mkdir -p build
+mkdir -p $BUILD
 
 disk_exists=0
 
@@ -105,12 +109,12 @@ done
 tools/sysroot.sh
 
 # build the kernel and copy it into the boot dir
-make --no-print-directory -j ARCH=x86_64 || die 'Failed to build the kernel'
+make --no-print-directory -j ARCH=$ARCH || die 'Failed to build the kernel'
 
 
 echo 'Copying filesystem data into the mounted image'
 
-sudo rsync -a build/root/. $mnt/
+sudo rsync -a $BUILD/root/. $mnt/
 
 sudo mkdir -p $mnt/dev
 sudo mkdir -p $mnt/tmp
@@ -120,7 +124,7 @@ sudo chown -R 0:0 $mnt
 sudo mkdir -p $mnt/boot/grub
 sudo cp kernel/grub.cfg $mnt/boot/grub/
 
-sudo cp build/root/bin/chariot.elf $mnt/boot/chariot.elf
+sudo cp $BUILD/root/bin/chariot.elf $mnt/boot/chariot.elf
 
 # only install grub on a new disk
 if [ $disk_exists -eq '0' ]; then

@@ -4,10 +4,11 @@
 #include <ck/string.h>
 #include <ck/tuple.h>
 #include <gfx/bitmap.h>
+#include <gfx/font.h>
 #include <gfx/rect.h>
 #include <lumen/msg.h>
-#include <ui/view.h>
 #include <ui/color.h>
+#include <ui/view.h>
 
 namespace ui {
 
@@ -17,8 +18,10 @@ namespace ui {
 
 
   class windowframe : public ui::stackview {
+    ck::ref<gfx::font> m_frame_font;
+
    public:
-		 static constexpr uint32_t FRAME_COLOR = 0xFFFFFF; //0xcecece;
+    static constexpr uint32_t FRAME_COLOR = 0xFFFFFF;  // 0xcecece;
     static constexpr int TITLE_HEIGHT = 20;
     static constexpr int PADDING = 3;
     windowframe(void);
@@ -51,10 +54,10 @@ namespace ui {
 
       ui::view *v = new T(forward<Args>(args)...);
 
-			m_frame->clear();
-			m_frame->add(v);
+      m_frame->clear();
+      m_frame->add(v);
 
-			v->set_focused();
+      v->set_focused();
 
       return *(T *)v;
     }
@@ -76,9 +79,10 @@ namespace ui {
    private:
     bool m_pending_reflow = false;
 
-		ck::unique_ptr<ui::windowframe> m_frame;
+    ck::unique_ptr<ui::windowframe> m_frame;
 
     ck::vec<gfx::rect> m_pending_invalidations;
+
 
     long m_id;
     ck::string m_name;

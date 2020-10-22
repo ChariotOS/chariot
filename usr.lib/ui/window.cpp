@@ -3,7 +3,6 @@
 #include <ui/event.h>
 #include <ui/window.h>
 
-
 constexpr int clamp(int val, int max, int min) {
   if (val > max) return max;
   if (val < min) return min;
@@ -31,16 +30,22 @@ ui::windowframe::windowframe(void) : ui::stackview(ui::Direction::Vertical) {
   bordersize = 0;
 
   background = FRAME_COLOR;
+
+  m_frame_font = gfx::font::get_default();
 }
+
 
 ui::windowframe::~windowframe(void) {}
 
 void ui::windowframe::paint_event(void) {
   auto s = get_scribe();
-  uint32_t border = 0x222222; // 0x666666;
+  uint32_t border = 0x222222;  // 0x666666;
   float contrast = 0.25;
   uint32_t bright = brighten(FRAME_COLOR, 1.0 + contrast);
   uint32_t dark = brighten(FRAME_COLOR, 1.0 - contrast);
+
+
+
 
   gfx::rect r = gfx::rect(width(), height());
   // outside border
@@ -59,6 +64,19 @@ void ui::windowframe::paint_event(void) {
   if constexpr (PADDING > 2) {
     r.grow(1);
     s.draw_rect_special(r, dark, bright);
+  }
+
+
+  {
+    gfx::rect r;
+    r.x = 21;
+    r.y = 1;
+    r.h = TITLE_HEIGHT - 2;
+    r.w = width() - r.x - 1;
+    // s.draw_rect(r, 0xFF00FF);
+
+    m_frame_font->set_line_height(12);
+    s.draw_text(*m_frame_font, r, "Window Title", ui::TextAlign::CenterLeft, 0x343434, true);
   }
 }
 

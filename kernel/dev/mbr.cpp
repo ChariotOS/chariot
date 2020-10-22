@@ -1,6 +1,5 @@
 #include <asm.h>
 #include <dev/mbr.h>
-#include <dev/partition.h>
 #include <mem.h>
 
 #define MBR_SIGNATURE 0xaa55
@@ -21,7 +20,7 @@ struct mbr_header {
   u8 code2[216];
   u32 disk_signature;
   u16 disk_signature_zero;
-  mbr_part_entry entry[4];
+	mbr_part_entry entry[4];
   u16 mbr_signature;
 } __attribute__((packed));
 
@@ -32,9 +31,10 @@ dev::mbr::~mbr() {
 }
 
 bool dev::mbr::parse(void *data) {
-  hdr = (struct mbr_header *)data;
+  hdr = new mbr_header;
 
-  if (hdr->mbr_signature != MBR_SIGNATURE) {
+	memcpy(hdr, data, sizeof(*hdr));
+	if (hdr->mbr_signature != MBR_SIGNATURE) {
     // printk("dev::mbr::parse: bad mbr signature %04X\n", hdr->mbr_signature);
     return false;
   }

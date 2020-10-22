@@ -1,6 +1,8 @@
 #!/bin/bash
 
 
+
+
 die() {
     echo "die: $*"
     exit 1
@@ -11,8 +13,10 @@ sudo id > /dev/null || die "Couldn't get sudo"
 
 mkdir -p build
 
-IMG=build/chariot_tiny.img
-mnt=build/mnt
+export ARCH=${ARCH:=x86_64}
+BUILD=build/$ARCH/
+IMG=$BUILD/chariot_tiny.img
+mnt=$BUILD/mnt
 DISK_SIZE_MB=16
 
 
@@ -63,13 +67,11 @@ mkdir -p $mnt
 sudo mount ${dev}p1 $mnt/
 
 
-make --no-print-directory -j ARCH=x86_64 || die 'Failed to build the kernel'
+make --no-print-directory -j ARCH=$ARCH || die 'Failed to build the kernel'
 
 # setup grub
 sudo mkdir -p $mnt/boot/grub
 sudo cp meta/grub_embed.cfg $mnt/boot/grub/grub.cfg
-sudo cp build/kernel/chariot.elf $mnt/boot/chariot.elf
-
-df $mnt/
+sudo cp $BUILD/root/bin/chariot.elf $mnt/boot/chariot.elf
 
 sudo grub-install --boot-directory=$mnt/boot --target=i386-pc --modules="ext2 part_msdos" "$dev"

@@ -1,7 +1,9 @@
 #!/bin/bash
 
-mkdir -p build/root
+ARCH=${ARCH:=x86_64}
+
+mkdir -p build/$ARCH/root
 
 # rsync the root filesystem together
-sudo rsync -a base/. build/root/
-sudo rsync -a usr.include/ build/root/include
+sudo rsync -a base/. build/$ARCH/root/
+sudo rsync -a usr.include/ build/$ARCH/root/include
