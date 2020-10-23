@@ -39,8 +39,7 @@ static inline u32 get_pci_addr(u8 bus, u8 slot, u8 func, u8 off) {
   u32 lbus = (uint32_t)bus;
   u32 lslot = (uint32_t)slot;
   u32 lfun = (uint32_t)func;
-  return 0x80000000u | (lbus << 16u) | (lslot << 11u) | (lfun << 8u) |
-         (off & 0xfc);
+  return 0x80000000u | (lbus << 16u) | (lslot << 11u) | (lfun << 8u) | (off & 0xfc);
 }
 
 uint32_t pci_cfg_readl(uint8_t bus, uint8_t slot, uint8_t fun, uint8_t off) {
@@ -49,8 +48,8 @@ uint32_t pci_cfg_readl(uint8_t bus, uint8_t slot, uint8_t fun, uint8_t off) {
   uint32_t lslot = (uint32_t)slot;
   uint32_t lfun = (uint32_t)fun;
 
-  addr = (lbus << PCI_BUS_SHIFT) | (lslot << PCI_SLOT_SHIFT) |
-         (lfun << PCI_FUN_SHIFT) | PCI_REG_MASK(off) | PCI_ENABLE_BIT;
+  addr = (lbus << PCI_BUS_SHIFT) | (lslot << PCI_SLOT_SHIFT) | (lfun << PCI_FUN_SHIFT) | PCI_REG_MASK(off) |
+         PCI_ENABLE_BIT;
 
   outl(PCI_CFG_ADDR_PORT, addr);
   return inl(PCI_CFG_DATA_PORT);
@@ -69,9 +68,7 @@ void pci::write(u8 bus, u16 dev, u16 func, u32 off, u32 value) {
   outl(pci_data_port, value);
 }
 
-bool pci_device_has_functions(u8 bus, u16 dev) {
-  return pci::read(bus, dev, 0x0, 0x0E) & (1 << 7);
-}
+bool pci_device_has_functions(u8 bus, u16 dev) { return pci::read(bus, dev, 0x0, 0x0E) & (1 << 7); }
 
 enum bar_type {
   bar_memory_mapping = 0,
@@ -191,9 +188,8 @@ static void scan_bus(int bus) {
       const char *class_name = pci_class_names[desc->class_id];
       if (desc->class_id > 0x14) class_name = "Unknown";
 
-      KINFO("pci: %03x.%02x.%1x: %04x:%04x  class=%02x,%02x '%s'\n", bus, dev,
-            func, desc->vendor_id, desc->device_id, desc->class_id,
-            desc->subclass_id, class_name);
+      KINFO("pci: %03x.%02x.%1x: %04x:%04x  class=%02x,%02x '%s'\n", bus, dev, func, desc->vendor_id, desc->device_id,
+            desc->class_id, desc->subclass_id, class_name);
 
       for (int barnum = 0; barnum < 6; barnum++) {
         struct pci_bar bar = pci_get_bar(bus, dev, func, barnum);
@@ -228,19 +224,30 @@ void pci::walk_devices(func<void(device *)> fn) {
   }
 }
 
-u32 pci::device::get_address(u32 off) {
-  return get_pci_addr(bus, dev, func, off);
+
+pci::device *pci::find_generic_device(uint16_t class_id, uint16_t subclass_id) {
+  for (u32 i = 0; i < pci_device_count; i++) {
+    auto *dev = &pci_devices[i];
+    if (dev->class_id == class_id && dev->subclass_id == subclass_id) {
+      return dev;
+    }
+  }
+  return NULL;
 }
 
-bool pci::device::is_device(u16 v, u16 d) {
-  return vendor_id == v && device_id == d;
-}
+u32 pci::device::get_address(u32 off) { return get_pci_addr(bus, dev, func, off); }
+
+bool pci::device::is_device(u16 v, u16 d) { return vendor_id == v && device_id == d; }
 
 void pci::device::enable_bus_mastering(void) {
-  auto value = read<u16>(PCI_COMMAND);
-  value |= (1 << 2);
-  value |= (1 << 0);
-  write<u16>(PCI_COMMAND, value);
+	// set bus mastering and enable io space
+	adjust_ctrl_bits(PCI_CMD_BME | PCI_CMD_IOSE, 0);
+}
+
+void pci::device::adjust_ctrl_bits(int set, int clr) {
+  uint16_t reg = read<u16>(PCI_COMMAND);
+  uint16_t new_reg = (reg | set) & ~clr;
+  write<u16>(PCI_COMMAND, new_reg);
 }
 
 pci::bar pci::device::get_bar(int barnum) {
@@ -272,6 +279,7 @@ pci::bar pci::device::get_bar(int barnum) {
     }
 
     bar.prefetchable = ((bar_val >> 3) & 0x1) == 0x1;
+    bar.addr = (u8 *)(bar_val & ~0xF);
     // dunno
   } else {
     bar.addr = (u8 *)(bar_val & ~0x3);

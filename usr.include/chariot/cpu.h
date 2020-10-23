@@ -67,6 +67,8 @@ namespace cpu {
   inline u64 get_ticks(void) { return current().kstat.ticks; }
 
 
+	int nproc(void);
+
   inline auto &local_queue(void) {
     auto &cpu = current();
     if (cpu.local_queue == NULL) {

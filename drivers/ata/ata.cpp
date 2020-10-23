@@ -178,15 +178,7 @@ bool dev::ata::identify() {
 
   n_sectors = (C * H) * S;
 
-  m_pci_dev = nullptr;
-
-  // find the ATA controller on the PCI system
-  pci::walk_devices([&](pci::device* dev) -> void {
-    if (dev->is_device(0x8086, 0x7010) || dev->is_device(0x8086, 0x7111)) {
-      m_pci_dev = dev;
-    }
-  });
-
+  m_pci_dev = pci::find_generic_device(PCI_CLASS_STORAGE, PCI_SUBCLASS_IDE);
 
   printk("PCI DEV: %p\n", m_pci_dev);
   if (m_pci_dev != nullptr) {
@@ -487,8 +479,6 @@ bool dev::ata::write_blocks_dma(u32 sector, const u8* data, int n) {
 
   return true;
 }
-
-
 
 
 

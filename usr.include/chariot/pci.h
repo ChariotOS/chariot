@@ -1,27 +1,3 @@
-
-/*
- * This file is part of the Nautilus AeroKernel developed
- * by the Hobbes and V3VEE Projects with funding from the
- * United States National  Science Foundation and the Department of Energy.
- *
- * The V3VEE Project is a joint project between Northwestern University
- * and the University of New Mexico.  The Hobbes Project is a collaboration
- * led by Sandia National Laboratories that includes several national
- * laboratories and universities. You can find out more at:
- * http://www.v3vee.org  and
- * http://xstack.sandia.gov/hobbes
- *
- * Copyright (c) 2015, Kyle C. Hale <kh@u.northwestern.edu>
- * Copyright (c) 2017, Peter Dinda <pdinda@northwestern.edu>
- * Copyright (c) 2015, The V3VEE Project  <http://www.v3vee.org>
- *                     The Hobbes Project <http://xstack.sandia.gov/hobbes>
- * All rights reserved.
- *
- * Authors: Kyle C. Hale <kh@u.northwestern.edu>
- *          Peter Dinda <pdinda@northwestern.edu>
- * This is free software.  You are permitted to use,
- * redistribute, and modify it as specified in the file "LICENSE.txt".
- */
 #ifndef __PCI_H__
 #define __PCI_H__
 
@@ -30,7 +6,6 @@
 #include <types.h>
 
 #define __packed __attribute__((packed))
-// #include <nautilus/list.h>
 
 #define PCI_CFG_ADDR_PORT 0xcf8
 #define PCI_CFG_DATA_PORT 0xcfc
@@ -67,6 +42,28 @@
 #define PCI_CLASS_SIG 0x11
 #define PCI_CLASS_NOCLASS 0xff
 
+
+#define PCI_SUBCLASS_IDE 0x1
+#define PCI_SUBCLASS_FLOPPY 0x2
+#define PCI_SUBCLASS_ATA 0x5
+#define PCI_SUBCLASS_SATA 0x6
+#define PCI_SUBCLASS_NVME 0x8
+
+#define PCI_SUBCLASS_ETHERNET 0x0
+
+#define PCI_SUBCLASS_VGA_COMPATIBLE 0x0
+#define PCI_SUBCLASS_XGA 0x1
+
+#define PCI_SUBCLASS_USB 0x3
+
+#define PCI_PROGIF_UHCI 0x20
+#define PCI_PROGIF_OHCI 0x10
+#define PCI_PROGIF_EHCI 0x20
+#define PCI_PROGIF_XHCI 0x30
+
+#define PCI_IO_PORT_CONFIG_ADDRESS 0xCF8
+#define PCI_IO_PORT_CONFIG_DATA 0xCFC
+
 #define PCI_SUBCLASS_BRIDGE_PCI 0x4
 #define PCI_BAR_OFFSET 0x10
 
@@ -87,7 +84,104 @@
 #define PCI_MBAR_IS_64(b) (PCI_GET_MBAR_TYPE(b) == PCI_MBAR_TYPE_64)
 #define PCI_MBAR_IS_32(b) (PCI_GET_MBAR_TYPE(b) == PCI_MBAR_TYPE_32)
 
-struct naut_info;
+
+
+#define PCI_CMD 0x04
+
+#define PCI_CMD_ID_BIT 10
+#define PCI_CMD_FBE_BIT 9
+#define PCI_CMD_SEE_BIT 8
+#define PCI_CMD_PEE_BIT 6
+#define PCI_CMD_VGA_BIT 5
+#define PCI_CMD_MWIE_BIT 4
+#define PCI_CMD_SCE_BIT 3
+#define PCI_CMD_BME_BIT 2
+#define PCI_CMD_MSE_BIT 1
+#define PCI_CMD_IOSE_BIT 0
+
+#define PCI_CMD_ID_BITS 1
+#define PCI_CMD_FBE_BITS 1
+#define PCI_CMD_SEE_BITS 1
+#define PCI_CMD_PEE_BITS 1
+#define PCI_CMD_VGA_BITS 1
+#define PCI_CMD_MWIE_BITS 1
+#define PCI_CMD_SCE_BITS 1
+#define PCI_CMD_BME_BITS 1
+#define PCI_CMD_MSE_BITS 1
+#define PCI_CMD_IOSE_BITS 1
+#define PCI_CMD_ID_MASK ((1U << PCI_CMD_ID_BITS) - 1)
+#define PCI_CMD_FBE_MASK ((1U << PCI_CMD_FBE_BITS) - 1)
+#define PCI_CMD_SEE_MASK ((1U << PCI_CMD_SEE_BITS) - 1)
+#define PCI_CMD_PEE_MASK ((1U << PCI_CMD_PEE_BITS) - 1)
+#define PCI_CMD_VGA_MASK ((1U << PCI_CMD_VGA_BITS) - 1)
+#define PCI_CMD_MWIE_MASK ((1U << PCI_CMD_MWIE_BITS) - 1)
+#define PCI_CMD_SCE_MASK ((1U << PCI_CMD_SCE_BITS) - 1)
+#define PCI_CMD_BME_MASK ((1U << PCI_CMD_BME_BITS) - 1)
+#define PCI_CMD_MSE_MASK ((1U << PCI_CMD_MSE_BITS) - 1)
+#define PCI_CMD_IOSE_MASK ((1U << PCI_CMD_IOSE_BITS) - 1)
+
+// Interrupt pin disable (does not affect MSI)
+#define PCI_CMD_ID (PCI_CMD_ID_MASK << PCI_CMD_ID_BIT)
+
+// Fast back-to-back enable
+#define PCI_CMD_FBE (PCI_CMD_FBE_MASK << PCI_CMD_FBE_BIT)
+
+// SERR# Enable
+#define PCI_CMD_SEE (PCI_CMD_SEE_MASK << PCI_CMD_SEE_BIT)
+
+// Parity error response enable
+#define PCI_CMD_PEE (PCI_CMD_PEE_MASK << PCI_CMD_PEE_BIT)
+
+// VGA palette snooping enable
+#define PCI_CMD_VGA (PCI_CMD_VGA_MASK << PCI_CMD_VGA_BIT)
+
+// Memory write and invalidate enable
+#define PCI_CMD_MWIE (PCI_CMD_MWIE_MASK << PCI_CMD_MWIE_BIT)
+
+// Special cycle enable
+#define PCI_CMD_SCE (PCI_CMD_SCE_MASK << PCI_CMD_SCE_BIT)
+
+// Bus master enable
+#define PCI_CMD_BME (PCI_CMD_BME_MASK << PCI_CMD_BME_BIT)
+
+// Memory space enable
+#define PCI_CMD_MSE (PCI_CMD_MSE_MASK << PCI_CMD_MSE_BIT)
+
+// I/O space enable
+#define PCI_CMD_IOSE (PCI_CMD_IOSE_MASK << PCI_CMD_IOSE_BIT)
+
+#define PCI_CMD_ID_n(n) ((n) << PCI_CMD_ID_BIT)
+#define PCI_CMD_FBE_n(n) ((n) << PCI_CMD_FBE_BIT)
+#define PCI_CMD_SEE_n(n) ((n) << PCI_CMD_SEE_BIT)
+#define PCI_CMD_PEE_n(n) ((n) << PCI_CMD_PEE_BIT)
+#define PCI_CMD_VGA_n(n) ((n) << PCI_CMD_VGA_BIT)
+#define PCI_CMD_MWIE_n(n) ((n) << PCI_CMD_MWIE_BIT)
+#define PCI_CMD_SCE_n(n) ((n) << PCI_CMD_SCE_BIT)
+#define PCI_CMD_BME_n(n) ((n) << PCI_CMD_BME_BIT)
+#define PCI_CMD_MSE_n(n) ((n) << PCI_CMD_MSE_BIT)
+#define PCI_CMD_IOSE_n(n) ((n) << PCI_CMD_IOSE_BIT)
+
+#define PCI_CMD_ID_GET(n) (((n) >> PCI_CMD_ID_BIT) & PCI_CMD_ID_MASK)
+#define PCI_CMD_FBE_GET(n) (((n) >> PCI_CMD_FBE_BIT) & PCI_CMD_FBE_MASK)
+#define PCI_CMD_SEE_GET(n) (((n) >> PCI_CMD_SEE_BIT) & PCI_CMD_SEE_MASK)
+#define PCI_CMD_PEE_GET(n) (((n) >> PCI_CMD_PEE_BIT) & PCI_CMD_PEE_MASK)
+#define PCI_CMD_VGA_GET(n) (((n) >> PCI_CMD_VGA_BIT) & PCI_CMD_VGA_MASK)
+#define PCI_CMD_MWIE_GET(n) (((n) >> PCI_CMD_MWIE_BIT) & PCI_CMD_MWIE_MASK)
+#define PCI_CMD_SCE_GET(n) (((n) >> PCI_CMD_SCE_BIT) & PCI_CMD_SCE_MASK)
+#define PCI_CMD_BME_GET(n) (((n) >> PCI_CMD_BME_BIT) & PCI_CMD_BME_MASK)
+#define PCI_CMD_MSE_GET(n) (((n) >> PCI_CMD_MSE_BIT) & PCI_CMD_MSE_MASK)
+#define PCI_CMD_IOSE_GET(n) (((n) >> PCI_CMD_IOSE_BIT) & PCI_CMD_IOSE_MASK)
+
+#define PCI_CMD_ID_SET(r, n) ((r) = ((r) & ~PCI_CMD_ID) | PCI_CMD_ID_n((n)))
+#define PCI_CMD_FBE_SET(r, n) ((r) = ((r) & ~PCI_CMD_FBE) | PCI_CMD_FBE_n((n)))
+#define PCI_CMD_SEE_SET(r, n) ((r) = ((r) & ~PCI_CMD_SEE) | PCI_CMD_SEE_n((n)))
+#define PCI_CMD_PEE_SET(r, n) ((r) = ((r) & ~PCI_CMD_PEE) | PCI_CMD_PEE_n((n)))
+#define PCI_CMD_VGA_SET(r, n) ((r) = ((r) & ~PCI_CMD_VGA) | PCI_CMD_VGA_n((n)))
+#define PCI_CMD_MWIE_SET(r, n) ((r) = ((r) & ~PCI_CMD_MWIE) | PCI_CMD_MWIE_n((n)))
+#define PCI_CMD_SCE_SET(r, n) ((r) = ((r) & ~PCI_CMD_SCE) | PCI_CMD_SCE_n((n)))
+#define PCI_CMD_BME_SET(r, n) ((r) = ((r) & ~PCI_CMD_BME) | PCI_CMD_BME_n((n)))
+#define PCI_CMD_MSE_SET(r, n) ((r) = ((r) & ~PCI_CMD_MSE) | PCI_CMD_MSE_n((n)))
+#define PCI_CMD_IOSE_SET(r, n) ((r) = ((r) & ~PCI_CMD_IOSE) | PCI_CMD_IOSE_n((n)))
 
 struct pci_bus {
   u32 num;
@@ -187,13 +281,7 @@ struct pci_cfg_space {
 
 typedef enum { PCI_BAR_NONE = 0, PCI_BAR_MEM, PCI_BAR_IO } pci_bar_type_t;
 
-typedef enum {
-  PCI_MSI_NONE = 0,
-  PCI_MSI_32,
-  PCI_MSI_64,
-  PCI_MSI_32_PER_VEC,
-  PCI_MSI_64_PER_VEC
-} pci_msi_type_t;
+typedef enum { PCI_MSI_NONE = 0, PCI_MSI_32, PCI_MSI_64, PCI_MSI_32_PER_VEC, PCI_MSI_64_PER_VEC } pci_msi_type_t;
 
 struct pci_msi_info {
   int enabled;
@@ -299,14 +387,16 @@ namespace pci {
     void write(u32 field, T val) {
       outl(PCI_CFG_ADDR_PORT, get_address(field));
       if constexpr (sizeof(T) == 4) return outl(PCI_CFG_DATA_PORT, val);
-      if constexpr (sizeof(T) == 2)
-        return outw(PCI_CFG_DATA_PORT + (field & 2), val);
-      if constexpr (sizeof(T) == 1)
-        return outb(PCI_CFG_DATA_PORT + (field & 3), val);
+      if constexpr (sizeof(T) == 2) return outw(PCI_CFG_DATA_PORT + (field & 2), val);
+      if constexpr (sizeof(T) == 1) return outb(PCI_CFG_DATA_PORT + (field & 3), val);
 
       panic("invalid PCI write of size %d\n", sizeof(T));
     }
     void enable_bus_mastering(void);
+
+
+    /* change some control bits, setting some, clearing others */
+    void adjust_ctrl_bits(int set, int clr);
   };
 
   void init();
@@ -315,6 +405,8 @@ namespace pci {
   void write(u8 bus, u16 dev, u16 func, u32 reg_off, u32 value);
 
   void walk_devices(func<void(device *)>);
+
+  pci::device *find_generic_device(uint16_t class_id, uint16_t subclass_id);
 
 };  // namespace pci
 

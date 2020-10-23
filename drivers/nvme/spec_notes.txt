@@ -1,0 +1,39 @@
+NVMe - Non Volatile Memory Express
+
+This would be the first driver I implement from spec, so I'm gonna
+take notes here as I work through it.
+
+
+
+THEORY OF OPERATION
+
+NVMe is a scalable host controller designed to access solid state
+drives over PCI Express. The interface provides an optimized
+command submission and completion paths. It seems very parallel,
+supporting 64k I/O queues with up to 64K Commands per I/O Queue.
+
+Key attributes
+ - Does not require MMIO reads in the submission or completion path
+ - Maximum of one MMIO register write is needed in the sub path
+ - Bunch of queues
+ - All information to read 4kb is included in a 64b command, so it's
+   very efficinet and small (fast)
+ - Streamlined command set.
+ - some interrupt stuff (MSI/MSI-X, idk)
+ - Robust error reporting
+ - Doorbell registers
+
+Capabilities are located in the CAP register and as part of the identify
+command.
+
+NVMe is based on a paired submission and completion queue, where commands
+are placed by host software into a submission queue and completions are
+placed into the associated completion queue by the controller. Host
+software creates these queues, determined by the workload. Typically, the
+host will allocate a queue for each processor core.
+
+
+QUEUES
+
+
+
