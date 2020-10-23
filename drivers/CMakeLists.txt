@@ -16,6 +16,13 @@ add_kernel_module(
 		ata/ata.cpp
 )
 
+
+add_kernel_module(
+	NAME nvme
+	INTEL
+	AUTOGLOB nvme/
+)
+
 add_kernel_module(
 	NAME char
 	SOURCES char/generic.cpp
