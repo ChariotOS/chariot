@@ -13,6 +13,8 @@
 cpu_t cpus[16];
 int cpunum = 0;
 
+int cpu::nproc(void) { return cpunum; }
+
 cpu_t *cpu::get() { return &cpu::current(); }
 
 struct process *cpu::proc(void) {
@@ -42,7 +44,7 @@ void cpu::calc_speed_khz(void) {
     if (c.kstat.ticks - start_tick > rec_ms) {
       break;
     }
-		arch::relax();
+    arch::relax();
   }
 
   double cycles = arch::read_timestamp() - start_cycle;
