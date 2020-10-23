@@ -48,32 +48,30 @@ lumen::screen::~screen(void) {
 }
 
 
-void lumen::screen::flip_buffers(void) {
-}
+void lumen::screen::flip_buffers(void) {}
 
 void lumen::screen::set_resolution(int w, int h) {
   if (buf != NULL) {
     munmap(buf, bufsz);
   }
 
-	ck_fb_info old_info;
+  ck_fb_info old_info;
   ioctl(fd, FB_GET_INFO, &old_info);
 
 
   info.width = w;
   info.height = h;
-	if (ioctl(fd, FB_GET_INFO, &info) < 0) {
-		printf("[lumen]: failed to set resolution, loading existing state\n");
-		printf("[lumen]: w: %ld, h: %ld\n", old_info.width, old_info.height);
-		info = old_info;
-	}
+  if (ioctl(fd, FB_GET_INFO, &info) < 0) {
+    printf("[lumen]: failed to set resolution, loading existing state\n");
+    printf("[lumen]: w: %ld, h: %ld\n", old_info.width, old_info.height);
+    info = old_info;
+  }
   m_bounds = gfx::rect(0, 0, info.width, info.height);
   mouse_pos.constrain(m_bounds);
 
 
   bufsz = info.width * info.height * sizeof(uint32_t) * 2;
-  buf =
-      (uint32_t *)mmap(NULL, bufsz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  buf = (uint32_t *)mmap(NULL, bufsz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
   buffer_index = 0;
   front_buffer = buf;
@@ -86,13 +84,12 @@ long xoff = 0;
 long yoff = 0;
 long delta = 10;
 const gfx::point &lumen::screen::handle_mouse_input(struct mouse_packet &pkt) {
-
   mouse_pos.set_x(mouse_pos.x() + pkt.dx);
   mouse_pos.set_y(mouse_pos.y() + pkt.dy);
   /* The mouse is constrained within the visible region */
   gfx::rect sc(0, 0, width() - 1, height() - 1);
   mouse_pos.constrain(sc);
-	mouse_moved = true;
+  mouse_moved = true;
 
   // TODO: buttons
 
@@ -127,7 +124,7 @@ void lumen::screen::draw_mouse(void) {
   auto bottom = draw_rect.bottom();
   auto w = width();
 
-	auto buf = buffer();
+  auto buf = buffer();
 
   for (int y = top; y < bottom; y++) {
     if (y < 0 || y >= height()) continue;
@@ -135,16 +132,10 @@ void lumen::screen::draw_mouse(void) {
       if (x < 0 || x >= w) continue;
 
       uint32_t pix = cur->get_pixel(x - left, y - top);
-			if (pix == 0xFFFF00FF) {
-				pix = 0xFF'FFFFFF;
-			} else if ((pix & 0xFF000000) >> 24 != 0xFF) {
-				continue;
-        /* This is slow */
-        uint32_t bg = buf[x + y * w];
-        pix = blend(pix, bg);
+      if ((pix & 0xFF000000) >> 24 != 0xFF) {
+        pix = blend(pix, buf[x + y * w]);
       }
       buf[x + y * w] = pix;
     }
   }
-
 }
