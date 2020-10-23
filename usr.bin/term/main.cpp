@@ -19,160 +19,76 @@ struct terminalview : public ui::view {
 
   int cw, ch;  // char width and height
 
-  int mouse_x = 0;
-  int mouse_y = 0;
+	int mouse_x, mouse_y;
 
   ck::file font_file;
   ck::unique_ptr<ck::file::mapping> file_mapping;
 
 
+  ck::ref<gfx::font> font;
+
   FT_Library library; /* handle to library     */
   FT_Face face;       /* handle to face object */
 
  public:
-  terminalview(int rows, int cols) {
-    this->rows = rows;
-    this->cols = cols;
+  terminalview() {
+    font = gfx::font::open("SourceCodePro-Regular", 30);
+    cw = font->width('#');  // assume monospace
+    ch = font->line_height();
 
-
-    font_file.open("/usr/res/fonts/JetBrainsMono-Medium.ttf", "r");
-    file_mapping = font_file.mmap();
-    // stbtt_InitFont(&info, file_mapping->as<const unsigned char>(), 0);
-
-
-    if (FT_Init_FreeType(&library)) {
-      panic("could not init freetype\n");
-    }
-
-    if (FT_New_Memory_Face(library, (const FT_Byte *)file_mapping->data(), file_mapping->size(), 0, &face)) {
-      panic("Could not open font face\n");
-    }
+    set_foreground(0xFFFFFF);
+    set_background(0x000000);
   }
 
 
+  void handle_resize(void) {
+		rows = height() / ch;
+		cols = width() / cw;
+	}
 
 
-  virtual void mounted(void) override {}
+  void draw_char(gfx::scribe &s, uint32_t cp, int x, int y, uint32_t fg, uint32_t bg) {
+    gfx::rect r;
+    r.x = x * cw;
+    r.y = y * ch;
+    r.w = cw;
+    r.h = ch;
+
+		if (r.contains(mouse_x, mouse_y)) {
+			auto tmp = bg;
+			bg = fg;
+			fg = tmp;
+		}
+
+    s.fill_rect(r, bg);
+
+    auto p = gfx::printer(s, *font, x * cw, y * ch + font->ascent(), cw);
+    p.set_color(fg);
+    p.write(cp);
+  }
+
+
+  virtual void mounted(void) override {
+		handle_resize();
+  }
+
 
   virtual void on_mouse_move(ui::mouse_event &ev) override {
-    mouse_x = ev.x;
-    mouse_y = ev.y;
-    repaint();
-  }
+		mouse_x = ev.x;
+		mouse_y = ev.y;
+		repaint();
+	}
 
 
 
   virtual void paint_event(void) override {
     auto s = get_scribe();
 
-    // split the foreground up
-    uint32_t fg = 0xFFFFFF;
-    uint32_t bg = 0x000000;
-
-    // uint32_t fg = 0x00FF00;
-    // uint32_t bg = 0xFFFFFF;
-    s.clear(bg);
-
-
-    FT_GlyphSlot slot = face->glyph; /* a small shortcut */
-    FT_UInt glyph_index;
-
-    FT_Set_Pixel_Sizes(face,     /* handle to face object */
-                       0,        /* pixel_width           */
-                       mouse_y); /* pixel_height          */
-
-
-    char text[50];
-    snprintf(text, 50, "Random value: %08x", rand());
-
-    int pen_x = this->mouse_x;
-    int pen_y = this->mouse_y;
-
-    auto mode = FT_RENDER_MODE_NORMAL;
-
-
-    for (int n = 0; n < strlen(text); n++) {
-      FT_UInt glyph_index;
-
-      /* retrieve glyph index from character code */
-      glyph_index = FT_Get_Char_Index(face, text[n]);
-
-      /* load glyph image into the slot (erase previous one) */
-      if (FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT)) continue; /* ignore errors */
-
-      /* convert to an anti-aliased bitmap */
-      if (FT_Render_Glyph(face->glyph, mode)) continue;
-
-      int col_start = slot->metrics.horiBearingX >> 6;
-      int ascender = slot->metrics.horiBearingY >> 6;
-
-
-      // int w = slot->metrics.width >> 6;
-      // s.draw_hline(col_start + pen_x, pen_y - (face->size->metrics.ascender >> 6), w, 0xFF0000);
-      // s.draw_hline(col_start + pen_x, pen_y - (face->size->metrics.descender >> 6), w, 0xFF0000);
-
-
-
-
-      // LCD render mode
-      if (mode == FT_RENDER_MODE_LCD) {
-        float fg_r, fg_g, fg_b;
-        float bg_r, bg_g, bg_b;
-
-        auto split_into = [](uint32_t color, float &r, float &g, float &b) {
-          r = ((color >> 16) & 0xFF) / 255.0;
-          g = ((color >> 8) & 0xFF) / 255.0;
-          b = ((color >> 0) & 0xFF) / 255.0;
-        };
-
-        split_into(fg, fg_r, fg_g, fg_b);
-        split_into(bg, bg_r, bg_g, bg_b);
-
-        for (int y = 0; y < slot->bitmap.rows; y++) {
-          int row = y + pen_y - ascender;
-          // int row = rowStartPos + y;
-          for (int x = 0; x < slot->bitmap.width / 3; x++) {
-            int col = col_start + x + pen_x;
-            // interpret it as bgr (cause it looks nice on my monitor)
-            float b_alpha = slot->bitmap.buffer[y * slot->bitmap.pitch + x * 3] / 255.0;
-            float g_alpha = slot->bitmap.buffer[y * slot->bitmap.pitch + x * 3 + 1] / 255.0;
-            float r_alpha = slot->bitmap.buffer[y * slot->bitmap.pitch + x * 3 + 2] / 255.0;
-
-            if (r_alpha == 0 && g_alpha == 0 && b_alpha == 0) continue;
-
-            // split the background color up
-            uint32_t new_bg = s.get_pixel(col, row);
-            if (new_bg != bg) {
-              bg = new_bg;
-              split_into(bg, bg_r, bg_g, bg_b);
-            }
-
-
-            // The blending function for placing text over a background is
-            //    dst = alpha * src + (1 - alpha) * dst
-            float r = (fg_r * r_alpha) + (bg_r * (1 - r_alpha));
-            float g = (fg_g * g_alpha) + (bg_g * (1 - g_alpha));
-            float b = (fg_b * b_alpha) + (bg_b * (1 - b_alpha));
-            s.draw_pixel(col, row, gfx::color::rgb(r * 255, g * 255, b * 255));
-          }
-        }
+    for (int y = 0; y < rows; y++) {
+      for (int x = 0; x < cols; x++) {
+        uint32_t c = 'A' + (rand() % ('z' - 'A'));
+        draw_char(s, c, x, y, get_foreground(), get_background());
       }
-
-
-      // Normal rendering mode
-      if (mode == FT_RENDER_MODE_NORMAL) {
-        for (int y = 0; y < slot->bitmap.rows; y++) {
-          int row = y + pen_y - ascender;
-          // int row = rowStartPos + y;
-          for (int x = 0; x < slot->bitmap.width; x++) {
-            int col = col_start + x + pen_x;
-            float alpha = slot->bitmap.buffer[y * slot->bitmap.pitch + x] / 255.0;
-            s.blend_pixel(col, row, fg, alpha);
-          }
-        }
-      }
-
-      pen_x += slot->advance.x >> 6;
     }
   }
 };
@@ -182,11 +98,8 @@ struct terminalview : public ui::view {
 int main() {
   ui::application app;
 
-  ui::window *win = app.new_window("Terminal", 640, 480);
-
-  int cols = 80;
-  int rows = 24;
-  win->set_view<terminalview>(rows, cols);
+  ui::window *win = app.new_window("Terminal", 400, 320);
+  win->set_view<terminalview>();
 
   app.start();
   return 0;

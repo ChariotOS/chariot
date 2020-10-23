@@ -23,8 +23,8 @@ set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
 
 
 
-add_definitions(-D FBWIDTH=1024)
-add_definitions(-D FBHEIGHT=768)
+add_definitions(-D FBWIDTH=1680)
+add_definitions(-D FBHEIGHT=1050)
 add_definitions(-D__ARCH_${ARCH}__)
 add_definitions(-DKERNEL)
 
