@@ -22,7 +22,6 @@ unsigned long tsc(void) {
 namespace gfx {
 
 
-
   font::glyph::glyph(FT_GlyphSlot slot, FT_Face face) {
     FT_Bitmap_Init(&bitmap);
 
@@ -55,7 +54,8 @@ namespace gfx {
   }
 
   font::~font(void) {
-    // TODO: free glyphs
+		/*  */
+		FT_Done_Face(face);
   }
 
 
