@@ -133,32 +133,37 @@ void lumen::window::draw(gfx::scribe &scribe) {
     scribe.blit(gfx::point(0, 0), *bitmap, bmp_rect);
 
 
+    if constexpr (0) {
+      auto scaled = bitmap->scale(bitmap->width() / 4, bitmap->height() / 4, gfx::bitmap::SampleMode::Nearest);
+      scribe.blit(gfx::point(50, 50), *scaled, scaled->rect());
+    }
+
 #define BUTTON_PADDING 4
-		gfx::rect button(0, 0, 21, 21);
+    gfx::rect button(0, 0, 21, 21);
 
-		// button.x = rect.w - button.w;
+    // button.x = rect.w - button.w;
 
-		button.shrink(1);
-		button.shrink(BUTTON_PADDING);
-
-
-		scribe.draw_frame(button, 0xFFFFFF, 0x666666);
-		// scribe.fill_rect(button, 0xED6B5F);
-		// scribe.draw_rect(button, brighten(0xED6B5F, 0.8));
-		return;
-
-		// scribe.draw_line(9, 6, 17, 14, 0);
-		// scribe.draw_line(9, 14, 17, 6, 0);
+    button.shrink(1);
+    button.shrink(BUTTON_PADDING);
 
 
-		button.x -= button.w + BUTTON_PADDING;
-		scribe.fill_rect(button, 0xF4BF50);
-		scribe.draw_rect(button, brighten(0xF4BF50, 0.8));
+    scribe.draw_frame(button, 0xFFFFFF, 0x666666);
+    // scribe.fill_rect(button, 0xED6B5F);
+    // scribe.draw_rect(button, brighten(0xED6B5F, 0.8));
+    return;
+
+    // scribe.draw_line(9, 6, 17, 14, 0);
+    // scribe.draw_line(9, 14, 17, 6, 0);
 
 
-		button.x -= button.w + BUTTON_PADDING;
-		scribe.fill_rect(button, 0x63C756);
-		scribe.draw_rect(button, brighten(0x63C756, 0.8));
+    button.x -= button.w + BUTTON_PADDING;
+    scribe.fill_rect(button, 0xF4BF50);
+    scribe.draw_rect(button, brighten(0xF4BF50, 0.8));
+
+
+    button.x -= button.w + BUTTON_PADDING;
+    scribe.fill_rect(button, 0x63C756);
+    scribe.draw_rect(button, brighten(0x63C756, 0.8));
     return;
   }
 

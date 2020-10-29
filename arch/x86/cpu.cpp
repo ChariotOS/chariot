@@ -93,8 +93,6 @@ void cpu::seginit(void *local) {
 
   ltr(SEG_TSS << 3);
 
-
-
   // syscall_init_asm();
 
 #define USER_CS ((unsigned long)(SEG_UCODE << 3) + 3)

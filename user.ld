@@ -76,6 +76,13 @@ SECTIONS
 
 
 
+
+
+	.rodata ALIGN(4K) : {
+        *(.rodata)
+    }
+
+
 	.preinit_array     :
 	{
 		PROVIDE_HIDDEN (__preinit_array_start = .);
@@ -117,33 +124,7 @@ SECTIONS
 		KEEP (*(SORT(.ctors.*)))
 		KEEP (*(.ctors))
 	}
-	.dtors          :
-	{
-		KEEP (*crtbegin.o(.dtors))
-		KEEP (*crtbegin?.o(.dtors))
-		KEEP (*(EXCLUDE_FILE (*crtend.o *crtend?.o ) .dtors))
-		KEEP (*(SORT(.dtors.*)))
-		KEEP (*(.dtors))
-	}
 
-
-
-	.rodata ALIGN(4K) : {
-
-		__init_array_start = .;
-        KEEP (*(.ctors))
-		KEEP (*(.init_array*))
-		__init_array_end = .;
-
-
-		__fini_array_start = .;
-        KEEP (*(.dtors))
-		KEEP (*(.fini_array*))
-		__fini_array_end = .;
-
-
-        *(.rodata)
-    }
 
 
 	/*

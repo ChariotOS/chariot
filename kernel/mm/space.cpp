@@ -1,81 +1,7 @@
-#include <cpu.h>
+#include <lock.h>
 #include <mm.h>
-#include <mshare.h>
 #include <phys.h>
-#include <syscall.h>
-#include <types.h>
-#include <util.h>
-#include "printk.h"
 
-#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
-
-#ifdef PAGE_DEBUG_LIST
-static spinlock debug_page_list_lock;
-static struct mm::page *debug_page_list = NULL;
-
-static void print_debug_page_list(void) {
-  debug_page_list_lock.lock();
-  for (auto *cur = debug_page_list; cur != NULL; cur = cur->dbg_next) {
-    printk("%p freeable: %d\n", cur->pa, cur->freeable);
-  }
-  printk("\n");
-  debug_page_list_lock.unlock();
-}
-
-#endif
-
-mm::page::page(void) {
-#ifdef PAGE_DEBUG_LIST
-  debug_page_list_lock.lock();
-  // add to the debug list
-  dbg_prev = NULL;
-  dbg_next = debug_page_list;
-  debug_page_list = this;
-  debug_page_list_lock.unlock();
-#endif
-
-  writethrough = false;
-  nocache = false;
-  lru = cpu::get_ticks();
-}
-
-mm::page::~page(void) {
-#ifdef PAGE_DEBUG_LIST
-  debug_page_list_lock.lock();
-  // remove from the debug list
-  if (dbg_prev) dbg_prev->dbg_next = dbg_next;
-  if (dbg_next) dbg_next->dbg_prev = dbg_prev;
-  if (debug_page_list == this) debug_page_list = dbg_next;
-  debug_page_list_lock.unlock();
-#endif
-
-  if (freeable) {
-    phys::free((void *)pa);
-    // printk("free %p. %5ld left\n", pa, phys::nfree());
-  }
-  assert(users == 0);
-  pa = 0;
-}
-
-ref<mm::page> mm::page::alloc(void) {
-  auto p = make_ref<mm::page>();
-  p->pa = (u64)phys::alloc();
-  p->users = 0;
-
-  // setup default flags
-  p->freeable = 1;
-  return move(p);
-}
-
-ref<mm::page> mm::page::create(unsigned long page) {
-  auto p = make_ref<mm::page>();
-  p->pa = page;
-  p->users = 0;
-
-  // setup default flags
-  p->freeable = 0;
-  return move(p);
-}
 
 mm::space::space(off_t lo, off_t hi, ref<mm::pagetable> pt) : pt(pt), lo(lo), hi(hi) {}
 
@@ -88,6 +14,8 @@ mm::space::~space(void) {
 }
 
 void mm::space::switch_to() { pt->switch_to(); }
+
+
 
 
 size_t mm::space::copy_out(off_t byte_offset, void *dst, size_t size) {
@@ -138,6 +66,7 @@ mm::area *mm::space::lookup(off_t va) {
   return nullptr;
 }
 
+
 int mm::space::delete_region(off_t va) { return -1; }
 
 int mm::space::pagefault(off_t va, int err) {
@@ -186,6 +115,8 @@ ref<mm::page> mm::space::get_page(off_t uaddr) {
   scoped_lock region_lock(r->lock);
   return get_page_internal(uaddr, *r, 0, false);
 }
+
+
 
 
 ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bool do_map) {
@@ -265,6 +196,7 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
   return r.pages[ind];
 }
 
+
 size_t mm::space::memory_usage(void) {
   scoped_lock l(lock);
 
@@ -285,6 +217,8 @@ size_t mm::space::memory_usage(void) {
 
   return s;
 }
+
+
 
 mm::space *mm::space::fork(void) {
   auto npt = mm::pagetable::create();
@@ -524,167 +458,3 @@ off_t mm::space::find_hole(size_t size) {
   return va;
 }
 
-
-mm::area::area(void) {}
-
-
-mm::area::~area(void) {
-  off_t n = 0;
-  for (auto &p : pages) {
-    if (p) {
-      spinlock::lock(p->lock);
-      p->users--;
-      // if the region was dirty, and we have an object, notify them and ask
-      // them to flush the nth page
-      if (p->dirty && obj) {
-        obj->flush(n);
-      }
-      spinlock::unlock(p->lock);
-    }
-    n += 1;
-  }
-
-
-  pages.clear();
-  // release the object if we have one
-  if (obj) {
-    obj->release();
-  }
-  obj = nullptr;
-}
-
-
-
-static spinlock mshare_lock;
-static map<string, struct mshare_vmobject *> mshare_regions;
-
-
-struct mshare_vmobject final : public mm::vmobject {
-  mshare_vmobject(string name, size_t npages) : vmobject(npages) {
-    this->name = name;
-    for (int i = 0; i < npages; i++) {
-      pages.push(nullptr);
-    }
-    scoped_lock l(mshare_lock);
-    mshare_regions[name] = this;
-
-    // printk("[mshare] new  '%s' %p\n", name.get(), this);
-  }
-
-  virtual ~mshare_vmobject(void){};
-
-
-  // get a shared page (page #n in the mapping)
-  virtual ref<mm::page> get_shared(off_t n) override {
-    scoped_lock l(m_lock);
-    while (n >= pages.size()) {
-      pages.push(nullptr);
-    }
-    if (!pages[n]) pages[n] = mm::page::alloc();
-
-    return pages[n];
-  }
-
-
-  virtual void drop(void) override {
-    scoped_lock l(mshare_lock);
-    assert(mshare_regions.contains(name));
-    mshare_regions.remove(name);
-  }
-
- private:
-  string name;
-  spinlock m_lock;
-  vec<ref<mm::page>> pages;
-};
-
-
-
-
-static string msh_name(char buf[MSHARE_NAMESZ]) {
-  string s;
-  for (int i = 0; i < MSHARE_NAMESZ; i++) {
-    char c = buf[i];
-    if (c == 0) break;
-    s.push(c);
-  }
-  return s;
-}
-
-static void *msh_create(struct mshare_create *arg) {
-  string name = msh_name(arg->name);
-
-
-  if (mshare_regions.contains(name)) {
-    // TODO: errno or something
-    return MAP_FAILED;
-  }
-
-
-  auto pages = NPAGES(arg->size);
-  // this should automatically add it to the global list
-  ref<mm::vmobject> obj = make_ref<mshare_vmobject>(name, pages);
-
-
-  auto addr = curproc->mm->mmap(string::format("[msh '%s' (created)]", name.get()), 0, pages * PGSIZE,
-                                PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
-
-  auto region = curproc->mm->lookup(addr);
-  if (region == nullptr) return MAP_FAILED;
-
-  region->obj = obj;
-
-  // printk("[mshare] new  '%s' %p\n", name.get(), obj.get());
-  // curproc->mm->dump();
-
-  return (void *)addr;
-}
-
-
-static void *msh_acquire(struct mshare_acquire *arg) {
-  string name = msh_name(arg->name);
-
-
-  scoped_lock l(mshare_lock);
-
-  if (!mshare_regions.contains(name)) {
-    return MAP_FAILED;
-  }
-
-
-  // grab the object
-  ref<mm::vmobject> obj = mshare_regions.get(name);
-
-  obj->acquire();
-
-  auto addr = curproc->mm->mmap(string::format("[msh '%s' (acquired)]", name.get()), 0, arg->size,
-                                PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
-  // printk("addr=%p\n", addr);
-
-  auto region = curproc->mm->lookup(addr);
-  if (region == MAP_FAILED) {
-    return MAP_FAILED;
-  }
-
-  region->obj = obj;
-
-  // printk("[mshare] get  '%s' %p\n", name.get(), obj.get());
-  // curproc->mm->dump();
-
-  return (void *)addr;
-}
-
-
-unsigned long sys::mshare(int action, void *arg) {
-  switch (action) {
-    case MSHARE_CREATE:
-      if (!VALIDATE_RD(arg, sizeof(struct mshare_create))) return -1;
-      return (unsigned long)msh_create((struct mshare_create *)arg);
-
-    case MSHARE_ACQUIRE:
-      if (!VALIDATE_RDWR(arg, sizeof(struct mshare_acquire))) return -1;
-      return (unsigned long)msh_acquire((struct mshare_acquire *)arg);
-  }
-
-  return -1;
-}

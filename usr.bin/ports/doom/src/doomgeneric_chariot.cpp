@@ -121,8 +121,6 @@ extern "C" void DG_Init() {
 
   main_window = main_app.new_window("DOOM", DOOMGENERIC_RESX, DOOMGENERIC_RESY);
   main_window->defer_invalidation(false);
-
-
   main_widget = &main_window->set_view<doomview>();
 }
 
@@ -141,9 +139,10 @@ extern "C" void DG_SleepMs(uint32_t ms) {
 }
 
 
+
 extern "C" uint32_t DG_GetTicksMs() {
   last_tick = current_us() / 1000;
-  return last_tick;
+  return last_tick++;
 }
 
 

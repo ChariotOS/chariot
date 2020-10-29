@@ -13,13 +13,20 @@ extern const char **environ;
 #include FT_FREETYPE_H
 
 
+#define max(a, b)           \
+  ({                        \
+    __typeof__(a) _a = (a); \
+    __typeof__(b) _b = (b); \
+    _a > _b ? _a : _b;      \
+  })
+
 
 struct terminalview : public ui::view {
   int rows, cols;
 
   int cw, ch;  // char width and height
 
-	int mouse_x, mouse_y;
+  int mouse_x, mouse_y;
 
   ck::file font_file;
   ck::unique_ptr<ck::file::mapping> file_mapping;
@@ -30,11 +37,16 @@ struct terminalview : public ui::view {
   FT_Library library; /* handle to library     */
   FT_Face face;       /* handle to face object */
 
+  int lineheight = 14;
+
  public:
   terminalview() {
-    font = gfx::font::open("SourceCodePro-Regular", 30);
-    cw = font->width('#');  // assume monospace
-    ch = font->line_height();
+    font = gfx::font::get("Source Code Pro");
+    /* Take some measurements on the font */
+    font->with_line_height(lineheight, [this]() {
+      cw = font->width('#');
+      ch = font->line_height();
+    });
 
     set_foreground(0xFFFFFF);
     set_background(0x000000);
@@ -42,9 +54,9 @@ struct terminalview : public ui::view {
 
 
   void handle_resize(void) {
-		rows = height() / ch;
-		cols = width() / cw;
-	}
+    rows = height() / ch;
+    cols = width() / cw;
+  }
 
 
   void draw_char(gfx::scribe &s, uint32_t cp, int x, int y, uint32_t fg, uint32_t bg) {
@@ -54,34 +66,39 @@ struct terminalview : public ui::view {
     r.w = cw;
     r.h = ch;
 
-		if (r.contains(mouse_x, mouse_y)) {
-			auto tmp = bg;
-			bg = fg;
-			fg = tmp;
-		}
+    if (r.contains(mouse_x, mouse_y)) {
+      auto tmp = bg;
+      bg = fg;
+      fg = tmp;
+    }
 
     s.fill_rect(r, bg);
 
-    auto p = gfx::printer(s, *font, x * cw, y * ch + font->ascent(), cw);
-    p.set_color(fg);
-    p.write(cp);
+    font->with_line_height(lineheight, [&]() {
+      auto p = gfx::printer(s, *font, x * cw, y * ch + font->ascent(), cw);
+      p.set_color(fg);
+      p.write(cp);
+    });
   }
 
 
-  virtual void mounted(void) override {
-		handle_resize();
-  }
+
+  virtual void mounted(void) override { handle_resize(); }
 
 
   virtual void on_mouse_move(ui::mouse_event &ev) override {
-		mouse_x = ev.x;
-		mouse_y = ev.y;
-		repaint();
-	}
+    mouse_x = ev.x;
+    mouse_y = ev.y;
+    /*  */
+    window()->resize(max(mouse_x * 2, 80), max(mouse_y * 2, 80));
+    // handle_resize();
+    // repaint();
+  }
 
 
 
   virtual void paint_event(void) override {
+    handle_resize();
     auto s = get_scribe();
 
     for (int y = 0; y < rows; y++) {
@@ -98,8 +115,11 @@ struct terminalview : public ui::view {
 int main() {
   ui::application app;
 
-  ui::window *win = app.new_window("Terminal", 400, 320);
-  win->set_view<terminalview>();
+  ui::window *win = app.new_window("Terminal", 40, 40);
+  auto &v = win->set_view<terminalview>();
+
+  win->resize(80 * v.cw, 24 * v.ch);
+  v.handle_resize();
 
   app.start();
   return 0;

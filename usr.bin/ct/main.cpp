@@ -214,9 +214,12 @@ class game_view final : public ui::view {
         triProjected.p[2].x *= 0.5f * (float)width();
         triProjected.p[2].y *= 0.5f * (float)height();
 
-        s.draw_line_antialias(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y, 0xFFFFFF);
-        s.draw_line_antialias(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[2].x, triProjected.p[2].y, 0xFFFFFF);
-        s.draw_line_antialias(triProjected.p[1].x, triProjected.p[1].y, triProjected.p[2].x, triProjected.p[2].y, 0xFFFFFF);
+        s.draw_line_antialias(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y,
+                              0xFFFFFF);
+        s.draw_line_antialias(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[2].x, triProjected.p[2].y,
+                              0xFFFFFF);
+        s.draw_line_antialias(triProjected.p[1].x, triProjected.p[1].y, triProjected.p[2].x, triProjected.p[2].y,
+                              0xFFFFFF);
       }
     }
 
@@ -230,7 +233,7 @@ int main(int argc, char** argv) {
   // connect to the window server
   ui::application app;
 
-  ui::window* win = app.new_window("ct (current test)", 240, 240);
+  ui::window* win = app.new_window("ct (current test)", 512, 512);
 
   auto& root = win->set_view<ui::stackview>(ui::Direction::Vertical);
 

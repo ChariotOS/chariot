@@ -45,6 +45,14 @@ namespace gfx {
 
 
 
+		enum SampleMode {
+			Nearest,
+		};
+		ck::ref<gfx::bitmap> scale(int w, int h, gfx::bitmap::SampleMode);
+		uint32_t sample(float x, float y, gfx::bitmap::SampleMode);
+
+
+
 		inline gfx::rect rect(void) const {
 			return gfx::rect(0, 0, width(), height());
 		}

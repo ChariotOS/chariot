@@ -20,7 +20,7 @@ BUILD=build/$ARCH
 IMG=$BUILD/chariot.img
 mnt=$BUILD/mnt
 
-DISK_SIZE_MB=128
+DISK_SIZE_MB=256
 
 mkdir -p $BUILD
 

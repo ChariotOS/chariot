@@ -69,6 +69,9 @@ const char* human_size(uint64_t bytes, char* buf);
 #define KWARN(fmt, args...) printk(KERN_WARN fmt, ##args)
 #define KINFO(fmt, args...) printk(KERN_INFO fmt, ##args)
 
+
+extern void debug_die(void);
+
 template <typename... T>
 inline void do_panic(const char* fmt, T&&... args) {
   // disable interrupts
@@ -76,10 +79,13 @@ inline void do_panic(const char* fmt, T&&... args) {
   printk(fmt, args...);
   printk("\n");
 
+	debug_die();
+	/*
   arch::dump_backtrace();
   while (1) {
     arch::halt();
   }
+	*/
 }
 
 #define panic(fmt, args...)                   \

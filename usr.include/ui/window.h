@@ -33,6 +33,8 @@ namespace ui {
   class window : public ck::object {
     CK_OBJECT(ui::window);
 
+
+		friend windowframe;
    public:
     window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bitmap>);
     ~window();
@@ -44,6 +46,9 @@ namespace ui {
     void invalidate(const gfx::rect &r, bool sync = false);
 
     inline gfx::bitmap &bmp(void) { return *m_bitmap; }
+
+
+    inline const ck::string &name(void) { return m_name; }
 
     void handle_input(struct lumen::input_msg &);
 
@@ -76,7 +81,7 @@ namespace ui {
     ui::view *hovered = NULL;
 
 
-   private:
+   protected:
     bool m_pending_reflow = false;
 
     ck::unique_ptr<ui::windowframe> m_frame;

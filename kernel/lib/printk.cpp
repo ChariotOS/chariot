@@ -10,6 +10,13 @@
 #include <net/ipv4.h>
 
 
+void debug_die(void) {
+  arch::dump_backtrace();
+  while (1) {
+    arch::halt();
+  }
+}
+
 // 'ntoa' conversion buffer size, this must be big enough to hold one converted
 // numeric number including padded zeros (dynamically created on stack)
 // default: 32 byte

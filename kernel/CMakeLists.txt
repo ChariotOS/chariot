@@ -11,7 +11,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__ARCH_${ARCH}__ -mno-red-zone -fno-omit-f
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-protector -mtls-direct-seg-refs -fno-pie -Wno-sign-compare")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -mcmodel=large -Wall -fno-common")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-initializer-override -Wstrict-overflow=5")
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -mno-sse")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-address-of-packed-member -Wno-strict-overflow -DKERNEL ")
 
@@ -23,8 +23,8 @@ set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
 
 
 
-add_definitions(-D FBWIDTH=1680)
-add_definitions(-D FBHEIGHT=1050)
+add_definitions(-D FBWIDTH=1024)
+add_definitions(-D FBHEIGHT=768)
 add_definitions(-D__ARCH_${ARCH}__)
 add_definitions(-DKERNEL)
 

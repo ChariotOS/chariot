@@ -75,8 +75,8 @@ void ui::windowframe::paint_event(void) {
     r.w = width() - r.x - 1;
     // s.draw_rect(r, 0xFF00FF);
 
-    m_frame_font->set_line_height(12);
-    s.draw_text(*m_frame_font, r, "Window Title", ui::TextAlign::CenterLeft, 0x343434, true);
+    m_frame_font->with_line_height(
+        12, [&]() { s.draw_text(*m_frame_font, r, window()->m_name, ui::TextAlign::CenterLeft, 0, true); });
   }
 }
 

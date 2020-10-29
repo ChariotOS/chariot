@@ -39,7 +39,7 @@ namespace gfx {
 
 
 
-  font::font(ck::unique_ptr<ck::file::mapping> &&d, int lh) : data(move(d)) {
+  font::font(ck::unique_ptr<ck::file::mapping> &&d) : data(move(d)) {
     if (!freetype_initialized) {
       FT_Init_FreeType(&library);
       freetype_initialized = true;
@@ -50,12 +50,14 @@ namespace gfx {
       panic("Could not open font face\n");
     }
 
-    set_line_height(lh);
+    // printf("Font: '%s'  '%s'\n", face->family_name, face->style_name);
+
+    set_line_height(14 /* by default */);
   }
 
   font::~font(void) {
-		/*  */
-		FT_Done_Face(face);
+    /*  */
+    FT_Done_Face(face);
   }
 
 
@@ -70,22 +72,47 @@ namespace gfx {
 
   ck::ref<gfx::font> font::get_default(void) {
     static ck::ref<gfx::font> font;
-    if (!font) font = gfx::font::open("Helvetica", 14);
+    if (!font) font = gfx::font::get("Lucida Grande");
     return font;
   }
 
 
-
-  ck::ref<font> font::open(const char *name, int lh) {
+  static bool try_open(ck::file &f, const char *name, const char *ext) {
     char path[100];
-    snprintf(path, 100, "/usr/res/fonts/%s.ttf", name);
+    snprintf(path, 100, "/sys/fonts/%s.%s", name, ext);
+    return f.open(path, "r");
+  }
 
-    ck::file f;
-    if (!f.open(path, "r")) {
-      return nullptr;
+
+
+  static ck::map<ck::string, ck::ref<font>> font_cache;
+
+  ck::ref<font> font::get(const char *name) {
+    static ck::vec<const char *> exts;
+    if (exts.is_empty()) {
+      exts.push("ttf");
+      exts.push("ttc");
+      exts.push("otf");
     }
 
-    return new font(f.mmap(), lh);
+    // First check the font cache (by name)
+    if (font_cache.contains(name)) return font_cache.get(name);
+    /* Because the font wasn't in the cache, we gotta look it up in our system folder */
+
+    ck::file f;
+    /* Try to open the font under some common extensions */
+    for (auto *ext : exts) {
+      if (try_open(f, name, ext)) {
+        // printf("%s found under %s\n", name, ext);
+        break;
+      }
+    }
+    /* if the font wasn't found, return null, we don't have it installed */
+    if (!f) return nullptr;
+
+    ck::ref<font> fnt = new font(f.mmap());
+    font_cache.set(name, fnt);
+    return fnt;
   }
 
   font::glyph *font::load_glyph(uint32_t cp) {
@@ -106,6 +133,7 @@ namespace gfx {
 
   uint32_t font::width(uint32_t cp) {
     auto *gl = load_glyph(cp);
+		if (gl == nullptr) return 0;
     return gl->advance;
   }
 

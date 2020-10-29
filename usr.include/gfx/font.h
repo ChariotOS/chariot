@@ -6,9 +6,10 @@
 #include <gfx/scribe.h>
 #include <stdint.h>
 
-
 #include <ft2build.h>
 #include FT_FREETYPE_H
+
+#include <ck/lock.h>
 
 // #define GFX_FNT_MAGIC 0x464f4e54  // 'FONT'
 
@@ -17,7 +18,7 @@ namespace gfx {
 
   class font : public ck::refcounted<font> {
    protected:
-    font(ck::unique_ptr<ck::file::mapping> &&, int lh);
+    font(ck::unique_ptr<ck::file::mapping> &&);
     ck::unique_ptr<ck::file::mapping> data;
 
     FT_Face face; /* handle to face object */
@@ -45,11 +46,20 @@ namespace gfx {
     /* Load a glyph for the current codepoint, returning null if it fails */
     font::glyph *load_glyph(uint32_t cp);
 
+
+    /* So the printer class can access all this info */
+    friend gfx::printer;
+    ck::mutex m_lock;
+
+    int draw(int &x, int &y, gfx::scribe &, uint32_t cp, uint32_t color);
+
    public:
     ~font(void);
 
+    enum FontStyle { Variable, Monospace };
+
     // public interface
-    static ck::ref<font> open(const char *name, int lh);
+    static ck::ref<font> get(const char *name);
     static ck::ref<font> get_default(void);
 
     int line_height(void);
@@ -63,6 +73,15 @@ namespace gfx {
     void set_line_height(int new_height);
 
 
+    template <typename F>
+    void with_line_height(int lh, F f) {
+      lock();
+      set_line_height(lh);
+      f();
+      unlock();
+    }
+
+
     // total width of a codepoint from the left edge
     uint32_t width(uint32_t cp);
 
@@ -72,7 +91,10 @@ namespace gfx {
       return w;
     }
 
-    int draw(int &x, int &y, gfx::scribe &, uint32_t cp, uint32_t color);
+
+    /* whenever you use the font, you must lock it. The font will not lock itself */
+    inline void lock(void) { m_lock.lock(); }
+    inline void unlock(void) { m_lock.unlock(); }
   };
 
 }  // namespace gfx
