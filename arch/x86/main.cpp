@@ -165,8 +165,8 @@ static void kmain2(void) {
   // create the initialization thread.
   sched::proc::create_kthread("[kinit]", kernel_init);
 
-	// the first cpu is the timekeeper
-	cpus[0].timekeeper = true;
+  // the first cpu is the timekeeper
+  cpus[0].timekeeper = true;
 
   KINFO("starting scheduler\n");
   sched::run();
@@ -177,8 +177,29 @@ static void kmain2(void) {
 
 
 
+struct rsdp_descriptor {
+  char Signature[8];
+  uint8_t Checksum;
+  char OEMID[6];
+  uint8_t Revision;
+  uint32_t RsdtAddress;
+  uint32_t Length;
+  uint64_t XsdtAddress;
+  uint8_t ExtendedChecksum;
+  uint8_t reserved[3];
+} __attribute__((packed));
+
 
 #define cpuid(in, a, b, c, d) __asm__("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(in));
+
+
+#define ACPI_EBDA_PTR_LOCATION          0x0000040E	/* Physical Address */
+#define ACPI_EBDA_PTR_LENGTH            2
+#define ACPI_EBDA_WINDOW_SIZE           1024
+#define ACPI_HI_RSDP_WINDOW_BASE        0x000E0000	/* Physical Address */
+#define ACPI_HI_RSDP_WINDOW_SIZE        0x00020000
+#define ACPI_RSDP_SCAN_STEP             16
+
 
 int kernel_init(void *) {
   pci::init(); /* initialize the PCI subsystem */
@@ -202,6 +223,17 @@ int kernel_init(void *) {
   }
 
 
+	/*
+  // Find the rsdp!
+  off_t ebda_seg = *(uint16_t*)p2v(0x40E);
+	printk("seg: %04x\n", ebda_seg);
+
+	char *ebda = (char*)p2v(ebda_seg << 4);
+	hexdump(ebda, 1024, true);
+
+  while (1) {
+  }
+	*/
 
 
   // open up the disk device for the root filesystem
