@@ -45,9 +45,8 @@ void hexdump(void *vbuf, size_t len, bool use_colors) {
   use_colors = false;
 #endif
 
-  unsigned awidth = 4;
-
-  if (len > 0xFFFFL) awidth = 8;
+  unsigned awidth = 8;
+  // if (len > 0xFFFFL) awidth = 8;
 
   unsigned char *buf = (unsigned char *)vbuf;
   int w = use_binary ? 8 : 16;
@@ -60,7 +59,7 @@ void hexdump(void *vbuf, size_t len, bool use_colors) {
       printk("|");
       set_color(C_GRAY);
 
-      printk("%.*llx", awidth, i);
+      printk("%.*llx", awidth, (off_t)vbuf + i);
 
       set_color(C_RESET);
       printk("|");

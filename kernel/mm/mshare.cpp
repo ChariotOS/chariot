@@ -63,12 +63,11 @@ static void *msh_create(struct mshare_create *arg) {
   string name = string(arg->name, MSHARE_NAMESZ);
 
 
-  if (mshare_regions.contains(name)) {
-    // TODO: errno or something
-    return MAP_FAILED;
-  }
+  if (mshare_regions.contains(name)) return MAP_FAILED;
+  if (arg->size & 0xFFF) return MAP_FAILED;
 
   auto pages = NPAGES(arg->size);
+
   // this should automatically add it to the global list
   ref<mm::vmobject> obj = make_ref<mshare_vmobject>(name, pages);
 
@@ -80,11 +79,10 @@ static void *msh_create(struct mshare_create *arg) {
   if (region == nullptr) return MAP_FAILED;
 
   region->obj = obj;
-  // printk("[mshare] new  '%s' %p\n", name.get(), obj.get());
-  // curproc->mm->dump();
-
   return (void *)addr;
 }
+
+
 
 
 static void *msh_acquire(struct mshare_acquire *arg) {
@@ -93,9 +91,8 @@ static void *msh_acquire(struct mshare_acquire *arg) {
 
   scoped_lock l(mshare_lock);
 
-  if (!mshare_regions.contains(name)) {
-    return MAP_FAILED;
-  }
+  if (!mshare_regions.contains(name)) return MAP_FAILED;
+  if (arg->size & 0xFFF) return MAP_FAILED;
 
 
   // grab the object
@@ -105,10 +102,12 @@ static void *msh_acquire(struct mshare_acquire *arg) {
 
   auto addr = curproc->mm->mmap(string::format("[msh '%s' (acquired)]", name.get()), 0, arg->size,
                                 PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
+  if (addr == -1) return MAP_FAILED;
+
   // printk("addr=%p\n", addr);
 
   auto region = curproc->mm->lookup(addr);
-  if (region == MAP_FAILED) {
+  if (region == nullptr) {
     return MAP_FAILED;
   }
 

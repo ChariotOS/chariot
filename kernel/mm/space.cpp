@@ -1,7 +1,7 @@
+#include <cpu.h>
 #include <lock.h>
 #include <mm.h>
 #include <phys.h>
-
 
 mm::space::space(off_t lo, off_t hi, ref<mm::pagetable> pt) : pt(pt), lo(lo), hi(hi) {}
 
@@ -316,12 +316,13 @@ off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
 
   r->name = name;
   r->va = addr;
-  r->len = size;
+  r->len = pages * 4096;
   r->off = off;
   r->prot = prot;
   r->flags = flags;
   r->fd = fd;
   r->obj = obj;
+	r->pages.ensure_capacity(pages);
 
   for (int i = 0; i < pages; i++) r->pages.push(nullptr);
 
@@ -338,19 +339,21 @@ int mm::space::unmap(off_t ptr, size_t len) {
   off_t va = (off_t)ptr;
   if ((va & 0xFFF) != 0) return -1;
 
+
+  len = round_up(len, 4096);
+
   for (int i = 0; i < regions.size(); i++) {
     auto region = regions[i];
-    if (region->va == va && NPAGES(region->len) == NPAGES(len)) {
-      regions.remove(i);
-      sort_regions();
 
+    if (region->va == va && NPAGES(region->len) == NPAGES(len)) {
       for (off_t v = va; v < va + len; v += 4096) {
         pt->del_mapping(v);
       }
 
+
+      regions.remove(i);
+      sort_regions();
       delete region;
-      // dump();
-      // printk("\n\n");
       return 0;
     }
   }
