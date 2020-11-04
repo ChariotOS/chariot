@@ -126,6 +126,15 @@ SECTIONS
 	}
 
 
+	.resources     :
+	{
+		PROVIDE_HIDDEN (__resources_start = .);
+		KEEP (*(.resources))
+		PROVIDE_HIDDEN (__resources_end = .);
+	}
+
+
+
 
 	/*
 	 * .bss not being last means it doesn't make filesz < memsz

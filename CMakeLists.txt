@@ -95,9 +95,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -fdiagnostics-color=always")
 
 
 
-
-
-
 function(chariot_libc target_name fs_name)
     add_library(${target_name} ${SOURCES})
     set_target_properties(${target_name} PROPERTIES OUTPUT_NAME ${fs_name})
@@ -109,10 +106,10 @@ endfunction()
 
 
 
+# A library is just a normal library. They cannot have resources
 function(chariot_lib target_name fs_name)
 		add_library(${target_name} STATIC ${SOURCES} ${GENERATED_SOURCES})
 		install(TARGETS ${target_name} RUNTIME DESTINATION lib)
-
 
 		target_link_libraries(${target_name} PUBLIC libc)
 		set_target_properties(${target_name} PROPERTIES OUTPUT_NAME ${fs_name})
@@ -133,13 +130,25 @@ endfunction()
 
 
 
+function(add_res target_name file)
+	set(output "${CMAKE_CURRENT_BINARY_DIR}/${target_name}-${file}")
+
+	add_custom_command(
+		OUTPUT "${output}.res.o"
+		DEPENDS ${file}
+		COMMAND
+		"${CMAKE_SOURCE_DIR}/tools/resource_generator.sh" "${CMAKE_CURRENT_SOURCE_DIR}/${file}" "${output}" "${file}"
+		)
+
+	target_sources(${target_name} PRIVATE "${output}.res.o")
+
+endfunction()
 
 function(chariot_bin target_name)
+
     add_executable(${target_name} ${SOURCES})
     install(TARGETS ${target_name} RUNTIME DESTINATION bin)
 		target_link_libraries(${target_name} PUBLIC crt0 libc libm)
-		# target_link_libraries(${target_name} PUBLIC crt0 libc libm)
-
 
 		foreach(src ${SOURCES})
 			if (${src} MATCHES "cpp$")
@@ -158,6 +167,8 @@ function(chariot_external name archive_path)
 	add_library(${name} STATIC IMPORTED GLOBAL)
 	set_property(TARGET ${name} PROPERTY IMPORTED_LOCATION ${archive_path})
 endfunction()
+
+
 
 add_subdirectory(kernel)
 

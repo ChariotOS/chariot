@@ -228,17 +228,42 @@ class game_view final : public ui::view {
 };
 
 
+extern "C" char __resources_start[];
+extern "C" char __resources_end[];
+
+struct resource_ptr {
+  const char* name;
+  void* data;
+  size_t size;
+};
 
 int main(int argc, char** argv) {
+  size_t res_size = (off_t)__resources_end - (off_t)__resources_start;
+
+  printf("Resources: %p - %zu bytes\n", __resources_start, res_size);
+  ck::hexdump(__resources_start, res_size);
+
+
+  size_t n = res_size / sizeof(struct resource_ptr);
+  auto* res = (struct resource_ptr*)__resources_start;
+
+  for (int i = 0; i < n; i++) {
+    printf("res[%d]: %s\n", i, res[i].name);
+		ck::hexdump(res[i].data, res[i].size);
+  }
+
+
+
+  return 0;
+
+
   // connect to the window server
   ui::application app;
 
   ui::window* win = app.new_window("ct (current test)", 512, 512);
 
   auto& root = win->set_view<ui::stackview>(ui::Direction::Vertical);
-
   root << new game_view();
-  // root << make_label("Hello, World", 0x000000, 0xFFFFFF);
 
   auto input = ck::file::unowned(0);
   input->on_read([&] {
