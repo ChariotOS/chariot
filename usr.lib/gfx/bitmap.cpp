@@ -5,6 +5,8 @@
 #include <sys/sysbind.h>
 #include <unistd.h>
 
+
+
 void *mshare_create(const char *name, size_t size) {
   struct mshare_create arg;
   arg.size = size;
@@ -72,7 +74,7 @@ gfx::shared_bitmap::shared_bitmap(const char *name, uint32_t *pix, size_t w, siz
 }
 
 ck::ref<gfx::shared_bitmap> gfx::shared_bitmap::get(const char *name, size_t w, size_t h) {
-  void *buf = mshare_acquire(name, w * h * sizeof(uint32_t));
+  void *buf = mshare_acquire(name, round_up(w * h * sizeof(uint32_t), 4096));
   if (buf == MAP_FAILED) {
     return nullptr;
   }

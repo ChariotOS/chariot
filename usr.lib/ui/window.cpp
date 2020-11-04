@@ -200,7 +200,7 @@ void ui::window::schedule_reflow(void) {
     ck::eventloop::defer(fn() {
       m_frame->set_size(m_rect.w, m_rect.h);
       m_frame->set_pos(0, 0);  // the main widget exists at the top left
-      // tell the main vie to reflow
+      // tell the main view to reflow
       m_frame->do_reflow();
       this->m_pending_reflow = false;
     });
@@ -216,6 +216,16 @@ ck::tuple<int, int> ui::window::resize(int w, int h) {
   if (width() == w && height() == h) {
     return ck::tuple(w, h);
   }
+
+
+  if (0) {
+    auto new_bitmap = gfx::shared_bitmap::get(bmp().shared_name(), bmp().width(), bmp().height());
+    if (!new_bitmap) printf("NOT FOUND!\n");
+    // update the bitmap
+    this->m_bitmap = new_bitmap;
+    return ck::tuple(width(), height());
+  }
+
 
   auto &app = ui::application::get();
 
@@ -235,7 +245,6 @@ ck::tuple<int, int> ui::window::resize(int w, int h) {
   }
 
   auto new_bitmap = gfx::shared_bitmap::get(response.bitmap_name, response.width, response.height);
-
   if (!new_bitmap) printf("NOT FOUND!\n");
   // update the bitmap
   this->m_bitmap = new_bitmap;
@@ -246,5 +255,5 @@ ck::tuple<int, int> ui::window::resize(int w, int h) {
   m_frame->set_pos(0, 0);  // the main widget exists at the top left
   // tell the main vie to reflow
   m_frame->do_reflow();
-  return ck::tuple(w, h);
+  return ck::tuple(width(), height());
 }

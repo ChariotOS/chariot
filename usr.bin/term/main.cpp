@@ -92,7 +92,7 @@ struct terminalview : public ui::view {
     /*  */
     window()->resize(max(mouse_x * 2, 80), max(mouse_y * 2, 80));
     // handle_resize();
-    // repaint();
+    repaint();
   }
 
 
@@ -115,7 +115,7 @@ struct terminalview : public ui::view {
 int main() {
   ui::application app;
 
-  ui::window *win = app.new_window("Terminal", 40, 40);
+  ui::window *win = app.new_window("Terminal", 512, 512);
   auto &v = win->set_view<terminalview>();
 
   win->resize(80 * v.cw, 24 * v.ch);

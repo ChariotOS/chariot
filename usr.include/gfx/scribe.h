@@ -25,8 +25,11 @@ namespace gfx {
 
 
     void printf(const char *fmt, ...);
-    void write(char c);
+    void write(uint32_t c);
     void write(const char *msg);
+
+
+		void write_utf8(const char *msg);
 
     auto set_color(uint32_t c) { color = c; }
     auto get_color(void) { return color; }

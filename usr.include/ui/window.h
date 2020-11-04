@@ -45,7 +45,7 @@ namespace ui {
 
     void invalidate(const gfx::rect &r, bool sync = false);
 
-    inline gfx::bitmap &bmp(void) { return *m_bitmap; }
+    inline gfx::shared_bitmap &bmp(void) { return *m_bitmap; }
 
 
     inline const ck::string &name(void) { return m_name; }

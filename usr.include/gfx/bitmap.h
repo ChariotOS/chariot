@@ -6,6 +6,10 @@
 #include <gfx/point.h>
 #include <stdint.h>
 
+
+#undef round_up
+#define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
+
 namespace gfx {
 
   class bitmap : public ck::refcounted<bitmap> {
@@ -34,7 +38,7 @@ namespace gfx {
 		inline uint32_t *pixels(void) {return m_pixels;}
 		inline uint32_t *scanline(uint32_t y) {return  m_pixels + (y * m_width); }
 
-    inline size_t size(void) { return m_width * m_height * sizeof(uint32_t); }
+    inline size_t size(void) { return round_up(m_width * m_height * sizeof(uint32_t), 4096); }
 
     inline size_t width(void) const { return m_width; }
     inline size_t height(void) const { return m_height; }

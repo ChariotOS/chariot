@@ -716,7 +716,7 @@ void gfx::scribe::draw_text_line(gfx::font &font, const gfx::rect &a_rect, const
   // draw_rect(rect, 0xFF00FF);
   auto p = gfx::printer(*this, font, rect.x, rect.y + font.ascent(), rect.w);
   p.set_color(color);
-  p.write(final_text.get());
+  p.write_utf8(final_text.get());
 }
 
 
@@ -737,7 +737,8 @@ void gfx::printer::printf(const char *fmt, ...) {
 }
 
 
-void gfx::printer::write(char c) {
+
+void gfx::printer::write(uint32_t c) {
   int x = pos.x();
   int y = pos.y();
   uint32_t right_edge = this->x0 + width;
@@ -750,10 +751,89 @@ void gfx::printer::write(char c) {
 }
 
 
+
+
 void gfx::printer::write(const char *str) {
   for (int i = 0; str[i] != 0; i++) {
     write(str[i]);
-		// pos.set_x(pos.x() + fnt->kerning_for(str[i], str[i+1]));
+    // pos.set_x(pos.x() + fnt->kerning_for(str[i], str[i+1]));
   }
 }
 
+
+/*
+ * utf8_to_unicode()
+ *
+ * Convert a UTF-8 sequence to its unicode value, and return the length of
+ * the sequence in bytes.
+ *
+ * NOTE! Invalid UTF-8 will be converted to a one-byte sequence, so you can
+ * either use it as-is (ie as Latin1) or you can check for invalid UTF-8
+ * by checking for a length of 1 and a result > 127.
+ *
+ * NOTE 2! This does *not* verify things like minimality. So overlong forms
+ * are happily accepted and decoded, as are the various "invalid values".
+ */
+static unsigned utf8_to_unicode(char *line, unsigned index, unsigned len, uint32_t *res) {
+  unsigned value;
+  unsigned char c = line[index];
+  unsigned bytes, mask, i;
+
+  *res = c;
+  line += index;
+  len -= index;
+
+  /*
+   * 0xxxxxxx is valid utf8
+   * 10xxxxxx is invalid UTF-8, we assume it is Latin1
+   */
+  if (c < 0xc0) return 1;
+
+  /* Ok, it's 11xxxxxx, do a stupid decode */
+  mask = 0x20;
+  bytes = 2;
+  while (c & mask) {
+    bytes++;
+    mask >>= 1;
+  }
+
+  /* Invalid? Do it as a single byte Latin1 */
+  if (bytes > 6) return 1;
+  if (bytes > len) return 1;
+
+  value = c & (mask - 1);
+
+  /* Ok, do the bytes */
+  for (i = 1; i < bytes; i++) {
+    c = line[i];
+    if ((c & 0xc0) != 0x80) return 1;
+    value = (value << 6) | (c & 0x3f);
+  }
+  *res = value;
+  return bytes;
+}
+
+void gfx::printer::write_utf8(const char *line) {
+  int x = pos.x();
+  int y = pos.y();
+  uint32_t right_edge = this->x0 + width;
+
+
+  int len = strlen(line);
+  // ::printf("len = %d\n", len);
+  // ::printf("line = '%s'\n", line);
+  // ck::hexdump((void *)line, len);
+  for (auto ind = 0; ind < len;) {
+    uint32_t cp = '?';
+    auto step = utf8_to_unicode((char *)line, ind, len, &cp);
+    // ::printf("%04x, %d -> %d\n", cp, ind, ind + step);
+    ind += step;
+    fnt->draw(x, y, this->sc, cp, color);
+  }
+  // ::printf("\n");
+
+
+  /* flush the position change */
+  pos.set_x(x);
+  pos.set_y(y);
+}
