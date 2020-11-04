@@ -959,7 +959,7 @@ static int do_printk(const char *format, va_list va) {
 					prefix = GRN ">" RESET;
 					break;
 				case 3:
-					prefix = MAG "[DBG]" RESET;
+					prefix = MAG ">" RESET;
 					break;
 			}
 			if (prefix != NULL) {
