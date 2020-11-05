@@ -4,13 +4,12 @@
 #include <ck/tuple.h>
 #include <cxxabi.h>
 #include <fcntl.h>
+#include <gfx/image.h>
 #include <math.h>
 #include <sys/mman.h>
 #include <ui/application.h>
 #include <ui/color.h>
 #include <ui/label.h>
-
-
 
 static auto make_label(const char* s, unsigned int fg, unsigned int bg) {
   auto lbl = new ui::label(s, ui::TextAlign::Center);
@@ -70,7 +69,14 @@ class game_view final : public ui::view {
   void apply_perspective(vec3& v) {}
 
  public:
+  ck::ref<gfx::bitmap> bmp = nullptr;
+
   virtual void mounted(void) {
+    bmp = gfx::load_png_from_res("cat.png");
+    if (bmp) {
+      bmp = bmp->scale(bmp->width() / 3, bmp->height() / 3, gfx::bitmap::SampleMode::Nearest);
+    }
+
     // Initialize the cube
     meshCube.tris.clear();
     // SOUTH
@@ -124,6 +130,12 @@ class game_view final : public ui::view {
     auto s = get_scribe();
 
     s.clear(0x000000);
+
+    if (bmp) {
+      s.blit(gfx::point(0, 0), *bmp, bmp->rect());
+    }
+
+
 
 
     // Set up rotation matrices
@@ -228,35 +240,7 @@ class game_view final : public ui::view {
 };
 
 
-extern "C" char __resources_start[];
-extern "C" char __resources_end[];
-
-struct resource_ptr {
-  const char* name;
-  void* data;
-  size_t size;
-};
-
 int main(int argc, char** argv) {
-  size_t res_size = (off_t)__resources_end - (off_t)__resources_start;
-
-  printf("Resources: %p - %zu bytes\n", __resources_start, res_size);
-  ck::hexdump(__resources_start, res_size);
-
-
-  size_t n = res_size / sizeof(struct resource_ptr);
-  auto* res = (struct resource_ptr*)__resources_start;
-
-  for (int i = 0; i < n; i++) {
-    printf("res[%d]: %s\n", i, res[i].name);
-		ck::hexdump(res[i].data, res[i].size);
-  }
-
-
-
-  return 0;
-
-
   // connect to the window server
   ui::application app;
 

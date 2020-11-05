@@ -12,6 +12,7 @@ shift
 
 ASM_FILE="$OUTPUT.res.asm"
 
+rm -rf $ASM_FILE
 touch $ASM_FILE
 echo "[section .resources]" >> $ASM_FILE
 echo "  dq the_name" >> $ASM_FILE
