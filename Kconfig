@@ -29,9 +29,15 @@ menu "Platform"
 		default y
 		depends on X86
 
-
 endmenu
 
+
+menu "Scheduler"
+
+	config PREFETCH_NEXT_THREAD
+		bool "Prefetch next thread in tick irq"
+		default y
+endmenu
 
 
 
@@ -67,6 +73,8 @@ menu "Debug"
 	config LOG_DEBUG
 		bool "Debug Information Logging"
 		default y
+
+
 endmenu
 
 

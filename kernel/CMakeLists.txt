@@ -20,7 +20,7 @@ if(CONFIG_OPTIMIZED)
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-sse")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-address-of-packed-member -Wno-strict-overflow -DKERNEL ")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused -Wno-address-of-packed-member -Wno-strict-overflow -DKERNEL ")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++17 -fno-rtti -fno-exceptions -Wno-literal-suffix")
 

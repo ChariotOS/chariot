@@ -128,6 +128,7 @@ struct mp_table {
 // every CPU has one of these. Stored globally and accessed by the
 // smp::get_state function
 struct cpu_state {
+	int index;
 	smp::mp::mp_table_entry_cpu *entry;
 };
 

@@ -174,7 +174,9 @@ void phys::free(void *v, int len) {
   if (v <= high_kern_end)
     panic("phys::free cannot free below the kernel's end");
 
+
   lock();
+
 
   /* find a spot to place the freed page */
 

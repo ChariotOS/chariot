@@ -13,6 +13,8 @@
 #include <vconsole.h>
 #include <vga.h>
 
+#include <multiboot2.h>
+
 #define VBE_DISPI_IOPORT_INDEX 0x01CE
 #define VBE_DISPI_IOPORT_DATA 0x01CF
 
@@ -62,9 +64,8 @@ static void vga_char_scribe(int col, int row, struct vc_cell *, int flags);
 // manually create
 struct vc_cell static_cells[VC_COLS * VC_ROWS];
 struct vcons vga_console {
-  .state = 0, .cols = VC_COLS, .rows = VC_ROWS, .pos = 0, .x = 0, .y = 0,
-  .saved_x = 0, .saved_y = 0, .scribe = vga_char_scribe, .npar = 0, .ques = 0,
-  .attr = 0x07, .buf = (struct vc_cell *)&static_cells,
+  .state = 0, .cols = VC_COLS, .rows = VC_ROWS, .pos = 0, .x = 0, .y = 0, .saved_x = 0, .saved_y = 0,
+  .scribe = vga_char_scribe, .npar = 0, .ques = 0, .attr = 0x07, .buf = (struct vc_cell *)&static_cells,
 };
 
 static bool cons_enabled = false;
@@ -112,8 +113,7 @@ static void set_info(struct ck_fb_info i) {
   set_register(VBE_DISPI_INDEX_VIRT_HEIGHT, 4096);
   // bits per pixel
   set_register(VBE_DISPI_INDEX_BPP, 32);
-  set_register(VBE_DISPI_INDEX_ENABLE,
-               VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
+  set_register(VBE_DISPI_INDEX_ENABLE, VBE_DISPI_ENABLED | VBE_DISPI_LFB_ENABLED);
   set_register(VBE_DISPI_INDEX_BANK, 0);
 
   info.active = i.active;
@@ -145,7 +145,7 @@ static void *get_framebuffer_address(void) {
       addr = (void *)(dev->get_bar(0).raw & 0xfffffff0l);
     }
   });
-	printk("device: %p\n", vga_dev);
+  printk("device: %p\n", vga_dev);
   return addr;
 }
 
@@ -176,8 +176,7 @@ static int fb_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
   switch (cmd) {
     case FB_SET_INFO:
       if (vga_dev == NULL) return -1;
-      if (!curproc->mm->validate_struct<struct ck_fb_info>(
-              arg, VALIDATE_READ | VALIDATE_WRITE)) {
+      if (!curproc->mm->validate_struct<struct ck_fb_info>(arg, VALIDATE_READ | VALIDATE_WRITE)) {
         return -1;
       }
       set_info(*(struct ck_fb_info *)arg);
@@ -186,8 +185,7 @@ static int fb_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
       break;
 
     case FB_GET_INFO:
-      if (!curproc->mm->validate_struct<struct ck_fb_info>(
-              arg, VALIDATE_READ | VALIDATE_WRITE)) {
+      if (!curproc->mm->validate_struct<struct ck_fb_info>(arg, VALIDATE_READ | VALIDATE_WRITE)) {
         return -1;
       }
       *(struct ck_fb_info *)arg = info;
@@ -201,8 +199,8 @@ static int fb_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
 }
 
 static int fb_open(fs::file &f) {
-	if (!cons_enabled) return -EBUSY;
-	cons_enabled = false;
+  if (!cons_enabled) return -EBUSY;
+  cons_enabled = false;
   return 0;  // allow
 }
 
@@ -214,15 +212,14 @@ static void reset_fb(
   i.active = false;
   i.width = VCONSOLE_WIDTH;
   i.height = VCONSOLE_HEIGHT;
-	cons_enabled = true;
+        cons_enabled = true;
   vga::configure(i);
 }
 */
 
 static void fb_close(fs::file &f) {
-
-	cons_enabled = true;
-	// reset_fb();
+  cons_enabled = true;
+  // reset_fb();
 }
 
 
@@ -247,8 +244,7 @@ struct vga_vmobject final : public mm::vmobject {
 
 
 
-static ref<mm::vmobject> vga_mmap(fs::file &f, size_t npages, int prot,
-                                  int flags, off_t off) {
+static ref<mm::vmobject> vga_mmap(fs::file &f, size_t npages, int prot, int flags, off_t off) {
   // XXX: this is invalid, should be asserted before here :^)
   if (off != 0) {
     printk(KERN_WARN "vga: attempt to mmap at invalid offset (%d != 0)\n", off);
@@ -256,15 +252,13 @@ static ref<mm::vmobject> vga_mmap(fs::file &f, size_t npages, int prot,
   }
 
   if (npages > NPAGES(64 * MB)) {
-    printk(KERN_WARN "vga: attempt to mmap too many pages (%d pixels)\n",
-           (npages * 4096) / sizeof(uint32_t));
+    printk(KERN_WARN "vga: attempt to mmap too many pages (%d pixels)\n", (npages * 4096) / sizeof(uint32_t));
     return nullptr;
   }
 
 
   if (flags & MAP_PRIVATE) {
-    printk(KERN_WARN
-           "vga: attempt to mmap with MAP_PRIVATE doesn't make sense :^)\n");
+    printk(KERN_WARN "vga: attempt to mmap with MAP_PRIVATE doesn't make sense :^)\n");
     return nullptr;
   }
 
@@ -293,13 +287,11 @@ static struct dev::driver_info generic_driver_info {
 
 
 static int fg_colors[] = {
-    0x676767, 0xff6d67, 0x59f68d, 0xf3f89d,
-    0xc9a8fa, 0xff92d0, 0x99ecfd, 0xfeffff,
+    0x676767, 0xff6d67, 0x59f68d, 0xf3f89d, 0xc9a8fa, 0xff92d0, 0x99ecfd, 0xfeffff,
 };
 
 static int bg_colors[] = {
-    0x000000, 0xff6d67, 0x59f68d, 0xf3f89d,
-    0xc9a8fa, 0xff92d0, 0x99ecfd, 0xc7c7c7,
+    0x000000, 0xff6d67, 0x59f68d, 0xf3f89d, 0xc9a8fa, 0xff92d0, 0x99ecfd, 0xc7c7c7,
 };
 
 static void vga_char_scribe(int x, int y, struct vc_cell *cell, int flags) {
@@ -335,15 +327,19 @@ static void vga_char_scribe(int x, int y, struct vc_cell *cell, int flags) {
 
 
 
-void vga::early_init(struct multiboot_info *mb) {
-  vga_fba = (uint32_t *)mb->framebuffer_addr;
-	info.active = 0;
-  info.width = mb->framebuffer_width;
-  info.height = mb->framebuffer_height;
-  info.active = false;
-	// memset(p2v(vga_fba), 0xFF, info.width * info.height * sizeof(uint32_t));
-	// while (2) {}
-  vga::configure(info);
+void vga::early_init(uint64_t mbd) {
+  /*
+
+  */
+
+  mb2::find<struct multiboot_tag_framebuffer_common>(mbd, MULTIBOOT_TAG_TYPE_FRAMEBUFFER, [](auto *i) {
+    vga_fba = (uint32_t *)i->framebuffer_addr;
+    info.active = 0;
+    info.width = i->framebuffer_width;
+    info.height = i->framebuffer_height;
+    info.active = false;
+    vga::configure(info);
+  });
 
 
   if (vga_fba == NULL) vga_fba = (u32 *)get_framebuffer_address();

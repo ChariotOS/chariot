@@ -1,7 +1,7 @@
 #include <errno.h>
 #include <mem.h>
 #include <mm.h>
-#include <multiboot.h>
+#include <multiboot2.h>
 #include <paging.h>
 #include <phys.h>
 #include <types.h>
@@ -113,6 +113,14 @@ int x86::pagetable::del_mapping(off_t va) {
   return 0;
 }
 
+const char *mem_region_types[] = {
+    [0] = "unknown",
+    [MULTIBOOT_MEMORY_AVAILABLE] = "usable RAM",
+    [MULTIBOOT_MEMORY_RESERVED] = "reserved",
+    [MULTIBOOT_MEMORY_ACPI_RECLAIMABLE] = "ACPI reclaimable",
+    [MULTIBOOT_MEMORY_NVS] = "non-volatile storage",
+    [MULTIBOOT_MEMORY_BADRAM] = "bad RAM",
+};
 
 
 void arch::mem_init(unsigned long mbd) {
@@ -120,8 +128,9 @@ void arch::mem_init(unsigned long mbd) {
   phys::free_range((void *)0x184000, (void *)0x1ffe0000);
   mm_info.total_mem = 0x1ffe0000;
 #else
-  multiboot_info_ptr = (multiboot_info_t *)mbd;
 
+
+  struct multiboot_tag *tag;
   size_t total_mem = 0;
   uint32_t n = 0;
 
@@ -129,19 +138,22 @@ void arch::mem_init(unsigned long mbd) {
     panic("ERROR: Unaligned multiboot info struct\n");
   }
 
-  const char *names[] = {
-      [0] = "UNKNOWN",
-      [MULTIBOOT_MEMORY_AVAILABLE] = "usable",
-      [MULTIBOOT_MEMORY_RESERVED] = "reserved",
-      [MULTIBOOT_MEMORY_ACPI_RECLAIMABLE] = "reserved (acpi recl)",
-      [MULTIBOOT_MEMORY_NVS] = "reserved (nvs)",
-      [MULTIBOOT_MEMORY_BADRAM] = "bad ram",
-  };
-  KINFO("Physical Memory Map:\n");
+  tag = (struct multiboot_tag *)(mbd + 8);
+  while (tag->type != MULTIBOOT_TAG_TYPE_MMAP) {
+    tag = (struct multiboot_tag *)((multiboot_uint8_t *)tag + ((tag->size + 7) & ~7));
+  }
 
-  for (auto *mmap = (multiboot_memory_map_t *)(u64)multiboot_info_ptr->mmap_addr;
-       (unsigned long)mmap < multiboot_info_ptr->mmap_addr + multiboot_info_ptr->mmap_length;
-       mmap = (multiboot_memory_map_t *)((unsigned long)mmap + mmap->size + sizeof(mmap->size))) {
+  if (tag->type != MULTIBOOT_TAG_TYPE_MMAP) {
+    panic("ERROR: no mmap tag found\n");
+  }
+
+
+
+  multiboot_memory_map_t *mmap;
+
+  for (mmap = ((struct multiboot_tag_mmap *)tag)->entries;
+       (multiboot_uint8_t *)mmap < (multiboot_uint8_t *)tag + tag->size;
+       mmap = (multiboot_memory_map_t *)((unsigned long)mmap + ((struct multiboot_tag_mmap *)tag)->entry_size)) {
     u64 start, end;
 
     start = round_up(mmap->addr, 4096);
@@ -151,7 +163,7 @@ void arch::mem_init(unsigned long mbd) {
     memory_map[n].len = end - start;
     memory_map[n].type = mmap->type;
 
-    KINFO("mem: [0x%p-0x%p] %s\n", start, end, names[mmap->type]);
+    KINFO("mem: [0x%p-0x%p] %s\n", start, end, mem_region_types[mmap->type]);
 
     total_mem += end - start;
 
@@ -171,7 +183,6 @@ void arch::mem_init(unsigned long mbd) {
     ++mm_info.num_regions;
     ++n;
   }
-
 #endif
 
   auto *kend = (u8 *)high_kern_end;

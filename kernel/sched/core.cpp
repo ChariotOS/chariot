@@ -189,7 +189,7 @@ void sched::handle_tick(u64 ticks) {
 
   // yield?
   if (has_run >= thd->sched.timeslice) {
-#if 1
+#if CONFIG_PREFETCH_NEXT_THREAD
     // pick a thread to go into next. If there is nothing to run,
     // don't yield to the scheduler. This improves some stuff's latencies
     if (pick_next_thread() != NULL) {

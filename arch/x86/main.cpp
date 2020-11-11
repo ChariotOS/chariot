@@ -7,7 +7,6 @@
 #include <kargs.h>
 #include <kshell.h>
 #include <module.h>
-#include <multiboot.h>
 #include <net/ipv4.h>
 #include <net/net.h>
 #include <pci.h>
@@ -17,62 +16,12 @@
 #include <types.h>
 #include <util.h>
 #include <vga.h>
+#include "acpi/acpi.h"
 #include "cpuid.h"
 #include "fpu.h"
 #include "smp.h"
 
 #include <arch.h>
-
-
-void dump_multiboot(struct multiboot_info *mboot_ptr) {
-  KINFO("MULTIBOOT header at 0x%x:\n", (uintptr_t)mboot_ptr);
-  KINFO("Flags : 0x%x\n", mboot_ptr->flags);
-  KINFO("Mem Lo: 0x%x\n", mboot_ptr->mem_lower);
-  KINFO("Mem Hi: 0x%x\n", mboot_ptr->mem_upper);
-  KINFO("Boot d: 0x%x\n", mboot_ptr->boot_device);
-  KINFO("cmdlin: 0x%x\n", mboot_ptr->cmdline);
-  KINFO("Mods  : 0x%x\n", mboot_ptr->mods_count);
-  KINFO("Addr  : 0x%x\n", mboot_ptr->mods_addr);
-  // KINFO("ELF n : 0x%x", mboot_ptr->num);
-  // KINFO("ELF s : 0x%x", mboot_ptr->size);
-  // KINFO("ELF a : 0x%x", mboot_ptr->addr);
-  // KINFO("ELF h : 0x%x", mboot_ptr->shndx);
-  KINFO("MMap  : 0x%x\n", mboot_ptr->mmap_length);
-  KINFO("Addr  : 0x%x\n", mboot_ptr->mmap_addr);
-  KINFO("Drives: 0x%x\n", mboot_ptr->drives_length);
-  KINFO("Addr  : 0x%x\n", mboot_ptr->drives_addr);
-  KINFO("Config: 0x%x\n", mboot_ptr->config_table);
-  KINFO("Loader: 0x%x\n", mboot_ptr->boot_loader_name);
-  KINFO("APM   : 0x%x\n", mboot_ptr->apm_table);
-  KINFO("VBE Co: 0x%x\n", mboot_ptr->vbe_control_info);
-  KINFO("VBE Mo: 0x%x\n", mboot_ptr->vbe_mode_info);
-  KINFO("VBE In: 0x%x\n", mboot_ptr->vbe_mode);
-  KINFO("VBE se: 0x%x\n", mboot_ptr->vbe_interface_seg);
-  KINFO("VBE of: 0x%x\n", mboot_ptr->vbe_interface_off);
-  KINFO("VBE le: 0x%x\n", mboot_ptr->vbe_interface_len);
-  if (mboot_ptr->flags & (1 << 2)) {
-    KINFO("Started with: %s\n", (char *)p2v(mboot_ptr->cmdline));
-  }
-  if (mboot_ptr->flags & (1 << 9)) {
-    KINFO("Booted from: %s\n", (char *)p2v(mboot_ptr->boot_loader_name));
-  }
-  if (mboot_ptr->flags & (1 << 0)) {
-    KINFO("%dkB lower memory\n", mboot_ptr->mem_lower);
-    int mem_mb = mboot_ptr->mem_upper / 1024;
-    KINFO("%dkB higher memory (%dMB)\n", mboot_ptr->mem_upper, mem_mb);
-  }
-  if (mboot_ptr->flags & (1 << 3)) {
-    KINFO("Found %d module(s).\n", mboot_ptr->mods_count);
-    if (mboot_ptr->mods_count > 0) {
-      uint32_t i;
-      for (i = 0; i < mboot_ptr->mods_count; ++i) {
-        uint32_t module_start = *((uint32_t *)p2v(mboot_ptr->mods_addr + 8 * i));
-        uint32_t module_end = *(uint32_t *)p2v(mboot_ptr->mods_addr + 8 * i + 4);
-        KINFO("Module %d is at 0x%x:0x%x\n", i + 1, module_start, module_end);
-      }
-    }
-  }
-}
 
 extern int kernel_end;
 
@@ -81,12 +30,86 @@ extern "C" void enable_sse();
 extern "C" void call_with_new_stack(void *, void *);
 
 
-struct multiboot_info *mbinfo;
 static void kmain2(void);
 
 #ifndef GIT_REVISION
 #define GIT_REVISION "NO-GIT"
 #endif
+
+
+void dump_multiboot(uint64_t mbd) {
+  mb2::foreach (mbd, [](auto *tag) {
+    switch (tag->type) {
+      case MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME: {
+        struct multiboot_tag_string *str = (struct multiboot_tag_string *)tag;
+        debug("Boot loader: %s\n", ((struct multiboot_tag_string *)tag)->string);
+        break;
+      }
+      case MULTIBOOT_TAG_TYPE_ELF_SECTIONS: {
+        struct multiboot_tag_elf_sections *elf = (struct multiboot_tag_elf_sections *)tag;
+        debug("ELF size=%u, num=%u, entsize=%u, shndx=%u, sechdr=%p\n", elf->size, elf->num, elf->entsize, elf->shndx,
+              elf->sections);
+        break;
+      }
+      case MULTIBOOT_TAG_TYPE_MMAP: {
+        debug("Multiboot2 memory map detected\n");
+        break;
+      }
+
+      case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO: {
+        debug("Multiboot2 basic meminfo detected\n");
+        break;
+      }
+      case MULTIBOOT_TAG_TYPE_FRAMEBUFFER: {
+        struct multiboot_tag_framebuffer_common *fb = (struct multiboot_tag_framebuffer_common *)tag;
+        debug("fb addr: %p, fb_width: %u, fb_height: %u\n", (void *)fb->framebuffer_addr, fb->framebuffer_width,
+              fb->framebuffer_height);
+        break;
+      }
+      case MULTIBOOT_TAG_TYPE_CMDLINE: {
+        struct multiboot_tag_string *cmd = (struct multiboot_tag_string *)tag;
+        debug("Kernel Cmd line: %s\n", cmd->string);
+        break;
+      }
+
+      case MULTIBOOT_TAG_TYPE_BOOTDEV: {
+        struct multiboot_tag_bootdev *bd = (struct multiboot_tag_bootdev *)tag;
+        debug("Boot device: (biosdev=0x%x,slice=%u,part=%u)\n", bd->biosdev, bd->slice, bd->part);
+        break;
+      }
+      case MULTIBOOT_TAG_TYPE_ACPI_OLD: {
+        struct multiboot_tag_old_acpi *oacpi = (struct multiboot_tag_old_acpi *)tag;
+        debug("Old ACPI: rsdp=%p\n", oacpi->rsdp);
+        break;
+      }
+      case MULTIBOOT_TAG_TYPE_ACPI_NEW: {
+        struct multiboot_tag_new_acpi *nacpi = (struct multiboot_tag_new_acpi *)tag;
+        debug("New ACPI: rsdp=%p\n", nacpi->rsdp);
+        break;
+      }
+      case MULTIBOOT_TAG_TYPE_IMAGE_BASE: {
+        struct multiboot_tag_image_load_base *imb = (struct multiboot_tag_image_load_base *)tag;
+        debug("Image load base: 0x%x\n", imb->addr);
+        break;
+      }
+      case MULTIBOOT_TAG_TYPE_MODULE: {
+        struct multiboot_tag_module *mod = (struct multiboot_tag_module *)tag;
+        debug("Found module: \n");
+        debug("  type:     0x%08x\n", mod->type);
+        debug("  size:     0x%08x\n", mod->size);
+        debug("  mod_start 0x%08x\n", mod->mod_start);
+        debug("  mod_end   0x%08x\n", mod->mod_end);
+        debug("  args:     %s\n", mod->cmdline);
+        break;
+      }
+      default:
+        debug("Unhandled tag type (0x%x)\n", tag->type);
+        break;
+    }
+    printk("\n");
+  });
+  printk("\n\n");
+}
 
 
 
@@ -99,6 +122,7 @@ static void kmain2(void);
 extern void rtc_init(void);
 
 
+static uint64_t mbd;
 
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   serial_install();
@@ -108,11 +132,10 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 
   arch::mem_init(mbd);
 
-  mbinfo = (struct multiboot_info *)(u64)p2v(mbd);
-
+  ::mbd = mbd;
 
   // initialize the video display
-  vga::early_init(mbinfo);
+  vga::early_init(mbd);
 
   void *new_stack = (void *)((u64)kmalloc(STKSIZE) + STKSIZE);
   call_with_new_stack(new_stack, (void *)kmain2);
@@ -143,14 +166,13 @@ static void kmain2(void) {
 
   call_global_constructors();
 
-  kargs::init(mbinfo);
 
-#ifdef CONFIG_SMP
-  if (!smp::init()) panic("smp failed!\n");
-  KINFO("Discovered SMP Cores\n");
-#endif
+  dump_multiboot(mbd);
 
-  dump_multiboot(mbinfo);
+  kargs::init(mbd);
+  smp::init();
+
+  if (!acpi::init(mbd)) panic("acpi init failed!\n");
 
   cpuid::detect_cpu();
 
@@ -217,10 +239,8 @@ int kernel_init(void *) {
   initialize_builtin_modules();
   KINFO("kernel modules initialized\n");
 
-#ifdef CONFIG_SMP
   // start up the extra cpu cores
   smp::init_cores();
-#endif
 
 
   auto root_name = kargs::get("root", "/dev/ata0p1");
@@ -256,6 +276,7 @@ int kernel_init(void *) {
 
 
   net::start();
+
 
 
   string init_paths = kargs::get("init", "/bin/init");

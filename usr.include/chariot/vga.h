@@ -2,7 +2,6 @@
 
 #include <types.h>
 #include <fb.h>
-#include <multiboot.h>
 
 #define VGA_BASE_ADDR 0xb8000
 #define VGA_WIDTH 80
@@ -21,7 +20,7 @@
 namespace vga {
 
 void init();
-void early_init(struct multiboot_info *mbinfo);
+void early_init(uint64_t mbd);
 void late_init();
 void putchar(char c);
 

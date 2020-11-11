@@ -1,34 +1,30 @@
 extern kmain ;; c entry point
 [extern high_kern_end]
 
-; Declare constants for the multiboot header.
-MBALIGN  equ  1 << 0            ; align loaded modules on page boundaries
-MEMINFO  equ  1 << 1            ; provide memory map
-MBVIDEO equ  1 << 2
-FLAGS    equ  MBALIGN | MEMINFO | MBVIDEO ; this is the Multiboot 'flag' field
-MAGIC    equ  0x1BADB002        ; 'magic number' lets bootloader find the header
-CHECKSUM equ -(MAGIC + FLAGS)   ; checksum of above, to prove we are multiboot
 
 
 section .multiboot
 align 8
 global mbheader
 mbheader:
-	dd MAGIC
-	dd FLAGS
-	dd CHECKSUM
+	dd 0xe85250d6                                ; multiboot magic
+	dd 0                                         ; architecture
+	dd .hdr_end - mbheader                       ; header length
+	dd -(0xe85250d6 + 0 + (.hdr_end - mbheader)) ; checksum
 
-;; other required headers
-	dd 0
-	dd 0
-	dd 0
-	dd 0
-	dd 0
-;; video header
-	dd 0
-	dd CONFIG_FRAMEBUFFER_WIDTH
-	dd CONFIG_FRAMEBUFFER_HEIGHT
-	dd 32
+
+	; framebuffer
+	dw 5
+	dw 0
+	dd 20 ; size
+	dd CONFIG_FRAMEBUFFER_WIDTH ; width
+	dd CONFIG_FRAMEBUFFER_HEIGHT ; height
+	dd 32 ; depth
+
+	; tags end
+	dd 0, 0
+	dq 8
+.hdr_end:
 
 
 

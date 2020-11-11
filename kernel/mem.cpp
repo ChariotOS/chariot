@@ -4,7 +4,6 @@
 #include <lock.h>
 #include <mem.h>
 #include <module.h>
-#include <multiboot.h>
 #include <phys.h>
 #include <printk.h>
 #include <types.h>
@@ -12,8 +11,6 @@
 
 #define ALIGN(x, a) (((x) + (a)-1) & ~((a)-1))
 
-
-multiboot_info_t *multiboot_info_ptr;
 
 // bindings for liballoc
 spinlock alloc_lock;

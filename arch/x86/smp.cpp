@@ -102,6 +102,7 @@ static void lapic_tick_handler(int i, reg_t *tf) {
 
   smp::lapic_eoi();
 
+
   if (cpu::current().timekeeper) {
     time::timekeep();
   }
@@ -114,11 +115,6 @@ static void lapic_tick_handler(int i, reg_t *tf) {
 unsigned long arch::us_this_second(void) {
   unsigned int ticks = 0xffffffff - smp::lapic_read(LAPIC_TCCR);
 
-  /*
-printk("%d / %d\n", ticks,
-   lapic_ticks_per_second / cpu::current().ticks_per_second);
-                           */
-  // printk("1000000\n");
   auto val = ticks / lapic_ticks_per_second;
   // printk("%d\n", val);
   return val;
@@ -284,7 +280,8 @@ static smp::mp::mp_float_ptr_struct *find_mp_floating_ptr(void) {
 }
 
 // global variable that stores the CPUs
-static map<int, smp::cpu_state> apic_cpus;
+static smp::cpu_state apic_cpus[CONFIG_MAX_CPUS];
+static int ncpus = 0;
 
 static u8 mp_entry_lengths[5] = {
     MP_TAB_CPU_LEN,    MP_TAB_BUS_LEN,  MP_TAB_IOAPIC_LEN,
@@ -294,7 +291,9 @@ static u8 mp_entry_lengths[5] = {
 void parse_mp_cpu(smp::mp::mp_table_entry_cpu *ent) {
   // Allocate a new smp::cpu_state and insert it into the cpus vec
   auto state = smp::cpu_state{.entry = ent};
+	state.index = ent->lapic_id;
   apic_cpus[ent->lapic_id] = state;
+	ncpus++;
 
 #if 0
 	INFO("CPU: %p\n", ent);
@@ -370,8 +369,12 @@ smp::cpu_state &smp::get_state(void) {
 }
 
 bool smp::init(void) {
+#ifdef CONFIG_SMP
   mp_floating_ptr = find_mp_floating_ptr();
-  if (mp_floating_ptr == nullptr) return false;
+  if (mp_floating_ptr == nullptr) {
+		debug("MP floating pointer not found!\n");
+		return false;
+	}
 
   // we found the mp floating table, now to parse it...
   INFO("mp_floating_table @ %p\n", mp_floating_ptr);
@@ -379,12 +382,10 @@ bool smp::init(void) {
   u64 table_addr = mp_floating_ptr->mp_cfg_ptr;
 
   if (!parse_mp_table((mp::mp_table *)p2v(table_addr))) {
+		debug("Unable to parse MP table\n");
     return false;
   }
-
-
-  // mp table was parsed and loaded into global memory
-  INFO("ncpus: %d\n", apic_cpus.size());
+#endif
   return true;
 }
 
@@ -485,6 +486,8 @@ extern "C" u64 boot_p4[];
 extern u64 *kernel_page_table;
 
 void smp::init_cores(void) {
+#ifdef CONFIG_SMP
+
   arch::cli();
   // copy the code into the AP region
   void *code = p2v(0x7000);
@@ -496,8 +499,8 @@ void smp::init_cores(void) {
   args->gdtr32 = (unsigned long)gdtr32;
   args->gdtr64 = (unsigned long)gdtr;
   args->boot_pt = (unsigned long)v2p(kernel_page_table);
-  for (auto &kv : apic_cpus) {
-    auto &core = kv.value;
+	for (int i = 0; i < ncpus; i++) {
+    auto &core = apic_cpus[i];
 
     // skip ourselves
     if (core.entry->lapic_id == smp::cpunum()) continue;
@@ -513,5 +516,6 @@ void smp::init_cores(void) {
   }
 
   arch::sti();
+#endif
 }
 

@@ -74,7 +74,7 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags,
 
     loops++;
     // arch::halt();
-    // sched::yield();
+    sched::yield();
   }
 
   return -ETIMEDOUT;

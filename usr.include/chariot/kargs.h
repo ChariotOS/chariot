@@ -1,8 +1,9 @@
 #pragma once
-#include <multiboot.h>
+#include <multiboot2.h>
+#include <types.h>
 
 namespace kargs {
-void init(struct multiboot_info *);
+void init(uint64_t mbd);
 
 bool exists(const char *name);
 const char *get(
