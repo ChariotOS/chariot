@@ -4,6 +4,7 @@ enable_language(ASM_NASM)
 
 
 include(ExternalProject)
+include(config.cmake)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # set(CMAKE_INCLUDE_HEADERS_IN_COMPILE_COMMANDS ON)

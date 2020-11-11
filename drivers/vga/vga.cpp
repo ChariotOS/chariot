@@ -43,8 +43,8 @@ const auto &vga_font = (chariot_kernel_font &)*&build_font_ckf;
 
 
 
-#define VCONSOLE_HEIGHT FBHEIGHT
-#define VCONSOLE_WIDTH FBWIDTH
+#define VCONSOLE_HEIGHT CONFIG_FRAMEBUFFER_HEIGHT
+#define VCONSOLE_WIDTH CONFIG_FRAMEBUFFER_WIDTH
 
 #define EDGE_MARGIN 0
 #define TOTAL_MARGIN (EDGE_MARGIN * 2)

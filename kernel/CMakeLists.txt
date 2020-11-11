@@ -6,8 +6,7 @@ include(CMakeParseArguments)
 
 set(CMAKE_C_FLAGS "")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__ARCH_${ARCH}__ -mno-red-zone -fno-omit-frame-pointer")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__ARCH_${ARCH}__ -mno-red-zone -fno-omit-frame-pointer")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-red-zone -fno-omit-frame-pointer")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-protector -mtls-direct-seg-refs -fno-pie -Wno-sign-compare")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -mcmodel=large -Wall -fno-common")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-initializer-override -Wstrict-overflow=5")
@@ -18,14 +17,10 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-address-of-packed-member -Wno-strict-ov
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++17 -fno-rtti -fno-exceptions -Wno-literal-suffix")
 
 
-set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
+set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc ")
 
 
 
-
-add_definitions(-D FBWIDTH=1280)
-add_definitions(-D FBHEIGHT=768)
-add_definitions(-D__ARCH_${ARCH}__)
 add_definitions(-DKERNEL)
 
 
@@ -63,13 +58,13 @@ function(add_kernel_module)
 		TARGET # prefix of output variables
 		"CORE;INTEL" # Boolean arguments
 		"NAME;QUICK" # Single value arguments
-		"SOURCES;GLOB;ARCH;AUTOGLOB" # multi value arguments
+		"SOURCES;GLOB;AUTOGLOB;NEEDS" # multi value arguments
 
 		${ARGN} # arguments of the function to parse, here we take the all original ones
 	)
 
 	if (TARGET_INTEL)
-		set(TARGET_ARCH ${TARGET_ARCH} x86 x86_64 amd64)
+		set(TARGET_NEEDS ${TARGET_NEEDS} X86)
 	endif()
 
 
@@ -104,15 +99,13 @@ function(add_kernel_module)
 		message(STATUS "${TARGET_NAME} is a core module")
 	endif()
 
-	if (NOT TARGET_ARCH)
-		set(TARGET_ARCH ${ARCH})
+	foreach(need ${TARGET_NEEDS})
+		# we only want modules that are supported on this arch
+		if (NOT need IN_LIST CONFIG_ENABLED_OPTIONS)
+			message(STATUS "${TARGET_NAME} needs ${need} but it was not enabled")
+			return()
 	endif()
-
-	# we only want modules that are supported on this arch
-	if (NOT ARCH IN_LIST TARGET_ARCH)
-		message(STATUS "[arch] ${TARGET_NAME} is not valid for this arch (wants ${TARGET_ARCH}, has ${ARCH})")
-		return()
-	endif()
+	endforeach(need)
 
 	add_library(${TARGET_NAME} STATIC ${TARGET_SOURCES})
 	install(TARGETS ${TARGET_NAME} RUNTIME DESTINATION mod)
@@ -124,7 +117,10 @@ function(add_kernel_module)
 endfunction()
 
 
-add_rooted_subdir(arch/x86)
+if(CONFIG_X86)
+	add_rooted_subdir(arch/x86)
+endif()
+
 add_rooted_subdir(fs)
 add_rooted_subdir(net)
 add_rooted_subdir(drivers)

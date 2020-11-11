@@ -5,6 +5,7 @@
 
 #include "types.h"
 
+
 #ifndef unlikely
 #define unlikely(c) __builtin_expect((c), 0)
 #endif
@@ -205,6 +206,7 @@ static inline i64 max(i64 a, i64 b) {
   return b;
 }
 
+#ifdef CONFIG_X86
 static inline u64 read_rsp(void) {
   u64 ret;
   asm volatile("mov %%rsp, %0" : "=r"(ret));
@@ -275,7 +277,7 @@ static inline u64 readeflags(void) {
   asm volatile("pushf; pop %0" : "=r"(eflags));
   return eflags;
 }
-
+#endif
 
 
 

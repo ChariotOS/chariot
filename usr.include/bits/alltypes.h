@@ -1,7 +1,5 @@
 /* @LICENSE(MUSLC_MIT) */
 
-#define CONFIG_X86_64
-
 #if defined(__NEED_size_t) && !defined(__DEFINED_size_t)
 typedef unsigned long size_t;
 #define __DEFINED_size_t
@@ -13,11 +11,7 @@ typedef long long ssize_t;
 #endif
 
 #if defined(__NEED_ptrdiff_t) && !defined(__DEFINED_ptrdiff_t)
-#ifdef CONFIG_X86_64
 typedef long ptrdiff_t;
-#else
-typedef int ptrdiff_t;
-#endif
 #define __DEFINED_ptrdiff_t
 #endif
 

@@ -26,8 +26,8 @@ mbheader:
 	dd 0
 ;; video header
 	dd 0
-	dd FBWIDTH
-	dd FBHEIGHT
+	dd CONFIG_FRAMEBUFFER_WIDTH
+	dd CONFIG_FRAMEBUFFER_HEIGHT
 	dd 32
 
 

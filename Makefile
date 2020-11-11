@@ -10,8 +10,10 @@ ports:
 	@cd ports && ./build.sh
 
 
+menuconfig:
+	@MENUCONFIG_STYLE="monochrome" python3 tools/menuconfig.py
 
-kernel:
+kernel: .config
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); cmake -GNinja $(CMAKE_ROOT)
 	@cd $(BUILD); ninja libc libstdc++ install

@@ -1,0 +1,84 @@
+
+mainmenu "Chariot Kernel Configuration"
+
+choice
+	prompt "Target Selection"
+	default X86
+
+	config X86
+		bool "x86_64 (Intel, AMD)"
+
+	# eventually.... :^)
+	# config AARCH64
+	# 	bool "AARCH64 (ARM 64bit)"
+endchoice
+
+
+
+menu "General Options"
+
+	config FRAMEBUFFER_WIDTH
+		 int "Width of the VGA framebuffer"
+		 default 1280
+
+	config FRAMEBUFFER_HEIGHT
+		 int "Height of the VGA framebuffer"
+		 default 768
+	
+endmenu
+
+menu "Device Drivers"
+
+	config ATA
+		bool "ATA/IDE"
+		default y
+		depends on X86
+
+	config AHCI
+		bool "[WIP] Support for Advance Host Controller Interface drives"
+		default y
+		depends on X86
+
+	config NVME
+		bool "[WIP] Support for NVMe Drives"
+		default y
+		depends on X86
+
+	config GENERIC_CHAR
+		bool "Generic character devices (urandom, null, etc..) [RECOMMENDED]"
+		default y
+
+	config E1000
+		bool "E1000 network cards"
+		default y
+		depends on X86
+
+	config RTL8139
+		bool "RTL8139 network cards"
+		default y
+		depends on X86
+
+	config PS2_HID
+		bool "PS2 HID devices (keyboard, mouse) [RECOMMENDED]"
+		default y
+		depends on X86
+
+	config VGA
+		bool "VGA displays beyond multiboot's boostrap [RECOMMENDED]"
+		default y
+		depends on X86
+
+	config VMWARE_VIDEO
+		bool "vmware displays"
+		default n
+		depends on X86
+
+
+
+	config SB16
+		bool "[WIP] Soundblaster 16"
+		default y
+		depends on X86
+		
+
+endmenu

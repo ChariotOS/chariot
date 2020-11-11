@@ -6,14 +6,17 @@ build
 ._.DS_Store
 tags
 .gdb_history
-
 .clangd
-
+__pycache__
 compile_commands.json
 
 base/bin
 base/lib
 base/boot
+
+.config*
+autoconf.h
+config.cmake
 
 user/out
 
