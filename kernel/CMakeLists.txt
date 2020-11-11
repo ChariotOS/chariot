@@ -10,8 +10,16 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-red-zone -fno-omit-frame-pointer")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-protector -mtls-direct-seg-refs -fno-pie -Wno-sign-compare")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -mcmodel=large -Wall -fno-common")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-initializer-override -Wstrict-overflow=5")
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -mno-sse")
+
+if(CONFIG_DEBUG_SYMBOLS)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+endif()
+
+if(CONFIG_OPTIMIZED)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2")
+endif()
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-sse")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-address-of-packed-member -Wno-strict-overflow -DKERNEL ")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++17 -fno-rtti -fno-exceptions -Wno-literal-suffix")
@@ -24,11 +32,12 @@ set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc ")
 add_definitions(-DKERNEL)
 
 
-file(GLOB_RECURSE KERNEL_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 	*.cpp
 	*.c
 	*.asm
 )
+
 
 add_link_options(LINKER:-T ${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld -nostdlib -z max-page-size=0x1000)
 
@@ -41,7 +50,7 @@ include_directories(
 	../net/lwip/src/include
 	)
 
-add_executable(chariot ${KERNEL_SOURCES})
+add_executable(chariot ${SOURCES})
 set_target_properties(chariot PROPERTIES OUTPUT_NAME "chariot.elf")
 install(TARGETS chariot RUNTIME DESTINATION boot)
 
@@ -102,9 +111,9 @@ function(add_kernel_module)
 	foreach(need ${TARGET_NEEDS})
 		# we only want modules that are supported on this arch
 		if (NOT need IN_LIST CONFIG_ENABLED_OPTIONS)
-			message(STATUS "${TARGET_NAME} needs ${need} but it was not enabled")
+			# message(STATUS "${TARGET_NAME} needs ${need} but it was not enabled")
 			return()
-	endif()
+		endif()
 	endforeach(need)
 
 	add_library(${TARGET_NAME} STATIC ${TARGET_SOURCES})

@@ -145,10 +145,10 @@ static void kmain2(void) {
 
   kargs::init(mbinfo);
 
-  if (!kargs::exists("nosmp")) {
-    if (!smp::init()) panic("smp failed!\n");
-    KINFO("Discovered SMP Cores\n");
-  }
+#ifdef CONFIG_SMP
+  if (!smp::init()) panic("smp failed!\n");
+  KINFO("Discovered SMP Cores\n");
+#endif
 
   dump_multiboot(mbinfo);
 
@@ -193,12 +193,12 @@ struct rsdp_descriptor {
 #define cpuid(in, a, b, c, d) __asm__("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(in));
 
 
-#define ACPI_EBDA_PTR_LOCATION          0x0000040E	/* Physical Address */
-#define ACPI_EBDA_PTR_LENGTH            2
-#define ACPI_EBDA_WINDOW_SIZE           1024
-#define ACPI_HI_RSDP_WINDOW_BASE        0x000E0000	/* Physical Address */
-#define ACPI_HI_RSDP_WINDOW_SIZE        0x00020000
-#define ACPI_RSDP_SCAN_STEP             16
+#define ACPI_EBDA_PTR_LOCATION 0x0000040E /* Physical Address */
+#define ACPI_EBDA_PTR_LENGTH 2
+#define ACPI_EBDA_WINDOW_SIZE 1024
+#define ACPI_HI_RSDP_WINDOW_BASE 0x000E0000 /* Physical Address */
+#define ACPI_HI_RSDP_WINDOW_SIZE 0x00020000
+#define ACPI_RSDP_SCAN_STEP 16
 
 
 int kernel_init(void *) {
@@ -217,28 +217,11 @@ int kernel_init(void *) {
   initialize_builtin_modules();
   KINFO("kernel modules initialized\n");
 
-  if (!kargs::exists("nosmp")) {
-    // start up the extra cpu cores
-    smp::init_cores();
-  }
+#ifdef CONFIG_SMP
+  // start up the extra cpu cores
+  smp::init_cores();
+#endif
 
-
-	/*
-  // Find the rsdp!
-  off_t ebda_seg = *(uint16_t*)p2v(0x40E);
-	printk("seg: %04x\n", ebda_seg);
-
-	char *ebda = (char*)p2v(ebda_seg << 4);
-	hexdump(ebda, 1024, true);
-
-  while (1) {
-  }
-	*/
-
-
-  // open up the disk device for the root filesystem
-  // auto rootdev = dev::open(kargs::get("root", "ata0p1"));
-  // assert(rootdev);
 
   auto root_name = kargs::get("root", "/dev/ata0p1");
   assert(root_name);

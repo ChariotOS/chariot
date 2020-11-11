@@ -39,7 +39,7 @@ struct cpu_t {
 };
 
 extern int cpunum;
-extern cpu_t cpus[16];
+extern cpu_t cpus[CONFIG_MAX_CPUS];
 
 // Nice macros to allow cleaner access to the current task and proc
 #define curthd cpu::thread()

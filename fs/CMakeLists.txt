@@ -1,6 +1,7 @@
 
 add_kernel_module(
 	NAME ext2fs
+	NEEDS EXT2
 	SOURCES
 		ext2/ext2.cpp
 		ext2/inode.cpp
@@ -8,6 +9,7 @@ add_kernel_module(
 
 add_kernel_module(
 	NAME tmpfs
+	NEEDS TMPFS
 	SOURCES
 		tmpfs/dir.cpp
 		tmpfs/tmpfs.cpp

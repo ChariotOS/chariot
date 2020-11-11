@@ -7,7 +7,9 @@ die() {
     exit 1
 }
 
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+source $DIR/../.config
 
 # echo "Getting sudo so we can mount the disk later on."
 sudo id > /dev/null || die "Couldn't get sudo"
@@ -20,7 +22,7 @@ BUILD=build/$ARCH
 IMG=$BUILD/chariot.img
 mnt=$BUILD/mnt
 
-DISK_SIZE_MB=256
+DISK_SIZE_MB=$CONFIG_DISK_SIZE_MB
 
 mkdir -p $BUILD
 
@@ -109,7 +111,7 @@ done
 tools/sysroot.sh
 
 # build the kernel and copy it into the boot dir
-make --no-print-directory -j ARCH=$ARCH || die 'Failed to build the kernel'
+make --no-print-directory -j || die 'Failed to build the kernel'
 
 
 echo 'Copying filesystem data into the mounted image'

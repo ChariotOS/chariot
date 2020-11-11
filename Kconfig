@@ -1,33 +1,88 @@
 
 mainmenu "Chariot Kernel Configuration"
 
-choice
-	prompt "Target Selection"
-	default X86
 
-	config X86
-		bool "x86_64 (Intel, AMD)"
+menu "Platform"
+	choice
+		prompt "Architecture"
+		default X86
 
-	# eventually.... :^)
-	# config AARCH64
-	# 	bool "AARCH64 (ARM 64bit)"
-endchoice
+		config X86
+			bool "x86_64 (Intel, AMD)"
+
+		# eventually.... :^)
+		# config AARCH64
+		# 	bool "AARCH64 (ARM 64bit)"
+	endchoice
 
 
+	config MAX_CPUS
+	int "Maximum Number of CPUs"
+		range 1 2048
+		default "256"
+		help 
+			Specifies the maximum number of hardware CPUs supported by Chariot
+			For uniprocessor environments, set this to 1
 
-menu "General Options"
+	config SMP
+		bool "Symmetric multi-processing support"
+		default y
+		depends on X86
 
-	config FRAMEBUFFER_WIDTH
-		 int "Width of the VGA framebuffer"
-		 default 1280
 
-	config FRAMEBUFFER_HEIGHT
-		 int "Height of the VGA framebuffer"
-		 default 768
-	
 endmenu
 
-menu "Device Drivers"
+
+
+
+menu "Build"
+	config DEBUG_SYMBOLS
+		bool "Debug Symbols (-g)"
+		default n
+
+	config OPTIMIZED
+		bool "Optimization (-O2)"
+		default y
+
+
+	config DISK_SIZE_MB
+		int "Size of the virtual hard drive in megabytes"
+		default 256
+endmenu
+
+
+menu "Debug"
+	config LOG_ERROR
+		bool "Error Logging"
+		default y
+
+	config LOG_WARN
+		bool "Warning Logging"
+		default y
+
+	config LOG_INFO
+		bool "Info Logging"
+		default y
+
+	config LOG_DEBUG
+		bool "Debug Information Logging"
+		default y
+endmenu
+
+
+menu "Filesystem"
+	config EXT2
+		bool "Ext2 Filesystem"
+		default y
+
+
+	config TMPFS
+		bool "Temp Filesystem"
+		default y
+
+endmenu
+
+menu "Devices"
 
 	config ATA
 		bool "ATA/IDE"
@@ -63,15 +118,26 @@ menu "Device Drivers"
 		default y
 		depends on X86
 
-	config VGA
-		bool "VGA displays beyond multiboot's boostrap [RECOMMENDED]"
-		default y
-		depends on X86
+	menu "Video"
 
-	config VMWARE_VIDEO
-		bool "vmware displays"
-		default n
-		depends on X86
+		config FRAMEBUFFER_WIDTH
+			int "Width of the VGA framebuffer"
+			default 1280
+
+		config FRAMEBUFFER_HEIGHT
+			int "Height of the VGA framebuffer"
+			default 768
+
+		config VGA
+			bool "VGA displays beyond multiboot's boostrap [RECOMMENDED]"
+			default y
+			depends on X86
+
+		config VMWARE_VIDEO
+			bool "vmware displays"
+			default n
+			depends on X86
+	endmenu
 
 
 

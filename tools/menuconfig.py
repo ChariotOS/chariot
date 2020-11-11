@@ -303,13 +303,14 @@ _STYLES = {
     # This style is forced on terminals that do no support colors
     "monochrome": """
     path=bold
-    separator=bold,standout
+    separator=fg:black,bg:yellow,bold
     list=
     selection=bold,standout
     inv-list=bold
     inv-selection=bold,standout
+    selection=fg:black,bg:green,bold
+    frame=fg:black,bg:yellow,bold
     help=bold
-    show-help=
     frame=bold,standout
     body=
     edit=standout

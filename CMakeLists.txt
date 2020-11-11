@@ -30,7 +30,10 @@ endif()
 
 
 set(TOOLCHAIN_PATH ${CMAKE_SOURCE_DIR}/toolchain/local/bin)
-set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/x86_64-elf-chariot-)
+
+if(CONFIG_X86)
+	set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/x86_64-elf-chariot-)
+endif()
 
 
 
@@ -40,11 +43,6 @@ set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/x86_64-elf-chariot-)
 set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc)
 set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++)
 
-# set(CMAKE_C_COMPILER clang)
-# set(CMAKE_CXX_COMPILER clang++)
-# set(CMAKE_C_FLAGS "-target x86_64-chariot-elf -fPIE ")
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding ")
 
 set(CMAKE_ASM_COMPILER nasm)
 set(CMAKE_LINKER ${TOOLCHAIN_PREFIX}ld)
@@ -69,30 +67,25 @@ set(EXECUTABLE_OUTPUT_PATH "${CHARIOT_SYSROOT}/bin" CACHE PATH "Build directory"
 set(LIBRARY_OUTPUT_PATH "${CHARIOT_SYSROOT}/lib" CACHE PATH "Build directory" FORCE)
 
 
-if(NOT DEFINED ARCH)
-set(ARCH x86)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -DUSERLAND")
+
+if(CONFIG_DEBUG_SYMBOLS)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+endif()
+
+if(CONFIG_OPTIMIZED)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 endif()
 
 
+# setup flags with x86 specific things
+if(CONFIG_X86)
+	set(LDFLAGS -m elf_x86_64 -z max-page-size=0x1000)
+	set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmmx -fno-omit-frame-pointer -msse -msse2")
+endif()
 
-set(LDFLAGS -m elf_x86_64 -z max-page-size=0x1000)
-set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc -D __ARCH_${ARCH}__")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__ARCH_${ARCH}__")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSERLAND")
-
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -finstrument-functions ")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -mmmx -fno-omit-frame-pointer -msse -msse2")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-sign-compare")
-
-
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -nostdinc++")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -fdiagnostics-color=always")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
-
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcoroutines")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -nostdinc++ -std=c++20 -fdiagnostics-color=always")
 
 
 
@@ -102,7 +95,6 @@ function(chariot_libc target_name fs_name)
 		install(TARGETS ${target_name} ARCHIVE DESTINATION lib)
 		target_link_directories(${target_name} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 endfunction()
-
 
 
 
@@ -128,6 +120,28 @@ function(chariot_lib target_name fs_name)
 
 endfunction()
 
+
+function(add_src)
+	cmake_parse_arguments(
+		SRC           # prefix of output variables
+		""            # Boolean arguments
+		""            # Single value arguments
+		"FILES;NEEDS" # multi value arguments
+
+		${ARGN} # arguments of the function to parse, here we take the all original ones
+	)
+
+message(STATUS ${CMAKE_CURRENT_LIST_DIR}/${SRC_FILES})
+	foreach(need ${SRC_NEEDS})
+		# we only want modules that are supported on this arch
+		if (NOT need IN_LIST CONFIG_ENABLED_OPTIONS)
+			message(STATUS "need ${need} not satisfied")
+			return()
+		endif()
+	endforeach(need)
+
+	set(SOURCES ${SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/${SRC_FILES} PARENT_SCOPE)
+endfunction()
 
 
 

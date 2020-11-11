@@ -9,8 +9,7 @@
 
 
 
-// 16 CPU structures where each cpu has one
-cpu_t cpus[16];
+cpu_t cpus[CONFIG_MAX_CPUS];
 int cpunum = 0;
 
 int cpu::nproc(void) { return cpunum; }
