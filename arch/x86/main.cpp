@@ -38,77 +38,76 @@ static void kmain2(void);
 
 
 void dump_multiboot(uint64_t mbd) {
+	debug("Multiboot 2 header dump:\n");
   mb2::foreach (mbd, [](auto *tag) {
     switch (tag->type) {
       case MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME: {
         struct multiboot_tag_string *str = (struct multiboot_tag_string *)tag;
-        debug("Boot loader: %s\n", ((struct multiboot_tag_string *)tag)->string);
+        debug("  Boot loader: %s\n", ((struct multiboot_tag_string *)tag)->string);
         break;
       }
       case MULTIBOOT_TAG_TYPE_ELF_SECTIONS: {
         struct multiboot_tag_elf_sections *elf = (struct multiboot_tag_elf_sections *)tag;
-        debug("ELF size=%u, num=%u, entsize=%u, shndx=%u, sechdr=%p\n", elf->size, elf->num, elf->entsize, elf->shndx,
+        debug("  ELF size=%u, num=%u, entsize=%u, shndx=%u, sechdr=%p\n", elf->size, elf->num, elf->entsize, elf->shndx,
               elf->sections);
         break;
       }
       case MULTIBOOT_TAG_TYPE_MMAP: {
-        debug("Multiboot2 memory map detected\n");
+        debug("  Multiboot2 memory map detected\n");
         break;
       }
 
       case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO: {
-        debug("Multiboot2 basic meminfo detected\n");
+        debug("  Multiboot2 basic meminfo detected\n");
         break;
       }
       case MULTIBOOT_TAG_TYPE_FRAMEBUFFER: {
         struct multiboot_tag_framebuffer_common *fb = (struct multiboot_tag_framebuffer_common *)tag;
-        debug("fb addr: %p, fb_width: %u, fb_height: %u\n", (void *)fb->framebuffer_addr, fb->framebuffer_width,
+        debug("  fb addr: %p, fb_width: %u, fb_height: %u\n", (void *)fb->framebuffer_addr, fb->framebuffer_width,
               fb->framebuffer_height);
         break;
       }
       case MULTIBOOT_TAG_TYPE_CMDLINE: {
         struct multiboot_tag_string *cmd = (struct multiboot_tag_string *)tag;
-        debug("Kernel Cmd line: %s\n", cmd->string);
+        debug("  Kernel Cmd line: %s\n", cmd->string);
         break;
       }
 
       case MULTIBOOT_TAG_TYPE_BOOTDEV: {
         struct multiboot_tag_bootdev *bd = (struct multiboot_tag_bootdev *)tag;
-        debug("Boot device: (biosdev=0x%x,slice=%u,part=%u)\n", bd->biosdev, bd->slice, bd->part);
+        debug("  Boot device: (biosdev=0x%x,slice=%u,part=%u)\n", bd->biosdev, bd->slice, bd->part);
         break;
       }
       case MULTIBOOT_TAG_TYPE_ACPI_OLD: {
         struct multiboot_tag_old_acpi *oacpi = (struct multiboot_tag_old_acpi *)tag;
-        debug("Old ACPI: rsdp=%p\n", oacpi->rsdp);
+        debug("  Old ACPI: rsdp=%p\n", oacpi->rsdp);
         break;
       }
       case MULTIBOOT_TAG_TYPE_ACPI_NEW: {
         struct multiboot_tag_new_acpi *nacpi = (struct multiboot_tag_new_acpi *)tag;
-        debug("New ACPI: rsdp=%p\n", nacpi->rsdp);
+        debug("  New ACPI: rsdp=%p\n", nacpi->rsdp);
         break;
       }
       case MULTIBOOT_TAG_TYPE_IMAGE_BASE: {
         struct multiboot_tag_image_load_base *imb = (struct multiboot_tag_image_load_base *)tag;
-        debug("Image load base: 0x%x\n", imb->addr);
+        debug("  Image load base: 0x%x\n", imb->addr);
         break;
       }
       case MULTIBOOT_TAG_TYPE_MODULE: {
         struct multiboot_tag_module *mod = (struct multiboot_tag_module *)tag;
-        debug("Found module: \n");
-        debug("  type:     0x%08x\n", mod->type);
-        debug("  size:     0x%08x\n", mod->size);
-        debug("  mod_start 0x%08x\n", mod->mod_start);
-        debug("  mod_end   0x%08x\n", mod->mod_end);
-        debug("  args:     %s\n", mod->cmdline);
+        debug("  Found module: \n");
+        debug("    type:     0x%08x\n", mod->type);
+        debug("    size:     0x%08x\n", mod->size);
+        debug("    mod_start 0x%08x\n", mod->mod_start);
+        debug("    mod_end   0x%08x\n", mod->mod_end);
+        debug("    args:     %s\n", mod->cmdline);
         break;
       }
       default:
-        debug("Unhandled tag type (0x%x)\n", tag->type);
+        debug("  Unhandled tag type (0x%x)\n", tag->type);
         break;
     }
-    printk("\n");
   });
-  printk("\n\n");
 }
 
 
