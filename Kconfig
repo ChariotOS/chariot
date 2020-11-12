@@ -46,6 +46,10 @@ menu "Build"
 		bool "Debug Symbols (-g)"
 		default n
 
+	config DEBUG_TIMESTAMPS
+		bool "Display timestamps when printing with KERN_*"
+		default y
+
 	config OPTIMIZED
 		bool "Optimization (-O2)"
 		default y

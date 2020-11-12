@@ -57,7 +57,6 @@ extern "C" void ignore_sysret(void);
 
 
 void cpu::seginit(void *local) {
-#ifdef __x86_64__
   if (local == nullptr) local = p2v(phys::alloc());
 
   // make sure the local information segment is zeroed
@@ -111,8 +110,6 @@ void cpu::seginit(void *local) {
 
   // FMASK
   wrmsr(0xC0000084, 0x200);
-
-#endif
 }
 
 static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {

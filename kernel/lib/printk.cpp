@@ -6,6 +6,8 @@
 #include <net/ipv4.h>
 #include <printk.h>
 #include <string.h>
+#include <syscall.h>
+#include <time.h>
 #include <types.h>
 #include <vga.h>
 
@@ -898,29 +900,39 @@ static int do_printk(const char *format, va_list va) {
 #ifndef CONFIG_LOG_ERROR
           return 0;
 #endif
-          prefix = RED "[ERR]" RESET;
+          prefix = RED "[ERR]";
           break;
         case 1:
 #ifndef CONFIG_LOG_WARN
           return 0;
 #endif
-          prefix = YEL "[WRN]" RESET;
+          prefix = YEL "[WRN]";
           break;
         case 2:
 #ifndef CONFIG_LOG_INFO
           return 0;
 #endif
-          prefix = GRN ">" RESET;
+          prefix = GRN ">";
           break;
         case 3:
 #ifndef CONFIG_LOG_DEBUG
           return 0;
 #endif
-          prefix = MAG ">" RESET;
+          prefix = MAG ">";
           break;
       }
       if (prefix != NULL) {
-        printk_nolock("%s ", prefix);
+#ifdef CONFIG_DEBUG_TIMESTAMPS
+        struct tm t;
+        sys::localtime(&t);
+				int tid = 0;
+				if (cpu::in_thread()) {
+					tid = curthd->tid;
+				}
+        printk_nolock("[%02d:%02d:%02d] ", t.tm_hour, t.tm_min, t.tm_sec);
+#endif
+
+        printk_nolock("%s%s ", prefix, RESET);
       }
     } else {
       valid_loglevel = false;

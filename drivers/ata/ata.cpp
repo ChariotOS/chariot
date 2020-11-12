@@ -180,7 +180,6 @@ bool dev::ata::identify() {
 
   m_pci_dev = pci::find_generic_device(PCI_CLASS_STORAGE, PCI_SUBCLASS_IDE);
 
-  printk("PCI DEV: %p\n", m_pci_dev);
   if (m_pci_dev != nullptr) {
     m_pci_dev->enable_bus_mastering();
     use_dma = true;

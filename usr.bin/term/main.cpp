@@ -90,8 +90,7 @@ struct terminalview : public ui::view {
     mouse_x = ev.x;
     mouse_y = ev.y;
     /*  */
-    window()->resize(max(mouse_x * 2, 80), max(mouse_y * 2, 80));
-    // handle_resize();
+    // window()->resize(max(mouse_x * 2, 80), max(mouse_y * 2, 80));
     repaint();
   }
 

@@ -248,6 +248,7 @@ int main(int argc, char** argv) {
 
   auto& root = win->set_view<ui::stackview>(ui::Direction::Vertical);
   root << new game_view();
+  root << make_label("Hello", 0x000000, 0xFFFFFF);
 
   auto input = ck::file::unowned(0);
   input->on_read([&] {

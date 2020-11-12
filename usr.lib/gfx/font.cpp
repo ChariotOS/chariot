@@ -72,7 +72,7 @@ namespace gfx {
 
   ck::ref<gfx::font> font::get_default(void) {
     static ck::ref<gfx::font> font;
-    if (!font) font = gfx::font::get("Lucida Grande");
+    if (!font) font = gfx::font::get("OpenSans Bold");
     return font;
   }
 
@@ -87,12 +87,24 @@ namespace gfx {
 
   static ck::map<ck::string, ck::ref<font>> font_cache;
 
+
+  //
+  ck::ref<font> font::open_absolute(const char *path) {
+    ck::file f;
+    if (!f.open(path, "r")) {
+      return nullptr;
+    }
+    ck::ref<font> fnt = new font(f.mmap());
+    return fnt;
+  }
+
   ck::ref<font> font::get(const char *name) {
     static ck::vec<const char *> exts;
     if (exts.is_empty()) {
       exts.push("ttf");
       exts.push("ttc");
       exts.push("otf");
+      exts.push("bdf");
     }
 
     // First check the font cache (by name)
@@ -133,7 +145,7 @@ namespace gfx {
 
   uint32_t font::width(uint32_t cp) {
     auto *gl = load_glyph(cp);
-		if (gl == nullptr) return 0;
+    if (gl == nullptr) return 0;
     return gl->advance;
   }
 

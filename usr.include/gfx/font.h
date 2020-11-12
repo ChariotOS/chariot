@@ -61,6 +61,9 @@ namespace gfx {
     // public interface
     static ck::ref<font> get(const char *name);
     static ck::ref<font> get_default(void);
+    static ck::ref<font> open_absolute(const char *path);
+
+
 
     int line_height(void);
     // distance from top to baseline
@@ -91,6 +94,8 @@ namespace gfx {
       return w;
     }
 
+
+		inline auto &ft_face() { return this->face; }
 
     /* whenever you use the font, you must lock it. The font will not lock itself */
     inline void lock(void) { m_lock.lock(); }

@@ -1,17 +1,7 @@
-/* This file is very simple... */
-
-#include <ck/eventloop.h>
-#include "internal.h"
 #include <ck/dir.h>
 #include <gfx/font.h>
 
 void scan_fonts(void) {
-
-	FILE *f = fopen("/sys/fonts/fonts.dir", "r");
-	printf("%p\n", f);
-
-	return;
-
 	ck::directory font_dir;
 
 	if (!font_dir.open("/sys/fonts/")) {
@@ -29,21 +19,7 @@ void scan_fonts(void) {
 	}
 }
 
-
-/**
- * the main function for the window server
- */
-int main(int argc, char** argv) {
-  // make an eventloop
-  ck::eventloop loop;
-
+int main() {
 	scan_fonts();
-
-  // construct the context
-  lumen::context ctx;
-
-  // run the loop
-  loop.start();
-
-  return 0;
+	return 0;
 }

@@ -96,38 +96,65 @@ bool acpi::init(uint64_t mbd) {
       string sig = string(tbl->signature, ACPI_NAME_SIZE);
       string oem = string(tbl->oem_id, ACPI_OEM_ID_SIZE);
       debug("[ACPI] table[%d]: sig: '%s', oem: '%s'\n", i++, sig.get(), oem.get());
-    }
-  }
 
-  for (auto *tbl : acpi_tables) {
-    if (!memcmp(tbl->signature, "SRAT", 4)) {
-      char *end = (char *)tbl + tbl->length;
 
-      struct srat_table *srat = (struct srat_table *)tbl;
+      if (!memcmp(tbl->signature, "HPET", 4)) {
+        auto *hpet_tbl = (struct acpi_table_hpet *)tbl;
 
-      int i = 0;
-      for (char *s = (char *)(srat + 1); s < end;) {
-        auto *stbl = (struct srat_subtable *)s;
+        debug("[ACPI:HPET] Initializing HPET Device\n", (void *)hpet_tbl);
+        debug("[ACPI:HPET]\tID: 0x%x\n", hpet_tbl->id);
+        debug("[ACPI:HPET]\tBase Address: %p\n", (void *)hpet_tbl->address.address);
+        debug("[ACPI:HPET]\t\tAccess Width: %u\n", hpet_tbl->address.access_width);
+        debug("[ACPI:HPET]\t\tBit Width:    %u\n", hpet_tbl->address.bit_width);
+        debug("[ACPI:HPET]\t\tBit Offset:   %u\n", hpet_tbl->address.bit_offset);
+        debug("[ACPI:HPET]\t\tAspace ID:  0x%x\n", hpet_tbl->address.space_id);
+        debug("[ACPI:HPET]\tSeq Num: 0x%x\n", hpet_tbl->sequence);
+        debug("[ACPI:HPET]\tMinimum Tick Rate %u\n", hpet_tbl->minimum_tick);
+        debug("[ACPI:HPET]\tFlags: 0x%x\n", hpet_tbl->flags);
+      }
 
-        s += stbl->length;
-        switch (stbl->type) {
-          case 0: {
-            auto *t = (struct srat_proc_lapic_struct *)stbl;
-            uint32_t prox_domain = 0;
-            prox_domain |= t->lo_DM;
-            prox_domain |= t->hi_DM[0] << 8;
-            prox_domain |= t->hi_DM[1] << 16;
-            prox_domain |= t->hi_DM[2] << 24;
-            debug("[SRAT] lapic - apic id: %d, prox domain: %08x\n", t->APIC_ID, prox_domain);
-            break;
-          }
 
-          case 1: {
-            auto *t = (struct srat_mem_struct *)stbl;
-						off_t start = t->lo_base | (off_t)t->hi_base << 32;
-						off_t length = t->lo_length | (off_t)t->hi_length << 32;
-            debug("[SRAT] mem - domain: %d 0x%llx - 0x%llx\n", t->domain, start, start + length);
-            break;
+      if (!memcmp(tbl->signature, "SRAT", 4)) {
+        char *end = (char *)tbl + tbl->length;
+
+        struct srat_table *srat = (struct srat_table *)tbl;
+
+        int i = 0;
+        for (char *s = (char *)(srat + 1); s < end;) {
+          auto *stbl = (struct srat_subtable *)s;
+
+          s += stbl->length;
+          switch (stbl->type) {
+            case ACPI_SRAT_TYPE_CPU_AFFINITY: {
+              auto *p = (struct acpi_srat_cpu_affinity *)stbl;
+              uint32_t proximity_domain = p->proximity_domain_lo;
+
+              if (srat->rev >= 2) {
+                proximity_domain |= p->proximity_domain_hi[0] << 8;
+                proximity_domain |= p->proximity_domain_hi[1] << 16;
+                proximity_domain |= p->proximity_domain_hi[2] << 24;
+              }
+              debug("[ACPI:SRAT] Processor (id[0x%02x] eid[0x%02x]) in proximity domain %d %s\n", p->apic_id,
+                    p->local_sapic_eid, proximity_domain, p->flags & ACPI_SRAT_CPU_ENABLED ? "enabled" : "disabled");
+              break;
+            }
+
+            case ACPI_SRAT_TYPE_MEMORY_AFFINITY: {
+              auto *p = (struct acpi_srat_mem_affinity *)stbl;
+              debug("[ACPI:SRAT] Memory (0x%llx length 0x%llx type 0x%x) in proximity domain %d %s%s\n", p->base_address,
+                    p->length, p->memory_type, p->proximity_domain,
+                    p->flags & ACPI_SRAT_MEM_ENABLED ? "enabled" : "disabled",
+                    p->flags & ACPI_SRAT_MEM_HOT_PLUGGABLE ? " hot-pluggable" : "");
+              break;
+            }
+
+
+            case ACPI_SRAT_TYPE_X2APIC_CPU_AFFINITY: {
+              struct acpi_srat_x2apic_cpu_affinity *p = (struct acpi_srat_x2apic_cpu_affinity *)stbl;
+              debug("[ACPI:SRAT] Processor (x2apicid[0x%08x]) in proximity domain %d %s\n", p->apic_id, p->proximity_domain,
+                    (p->flags & ACPI_SRAT_CPU_ENABLED) ? "enabled" : "disabled");
+              break;
+            }
           }
         }
       }
