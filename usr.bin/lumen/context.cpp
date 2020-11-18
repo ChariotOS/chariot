@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <gfx/disjoint_rects.h>
 #include <gfx/font.h>
 #include <gfx/image.h>
 #include <gfx/scribe.h>
@@ -44,6 +45,8 @@ lumen::context::context(void) : screen(1024, 768) {
       handle_mouse_input(pkt);
     }
   });
+
+	wallpaper = gfx::load_png("/usr/res/lumen/wallpaper.png");
 
 
   server.listen("/usr/servers/lumen", [this] { accept_connection(); });
@@ -119,7 +122,7 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
 
   windows_lock.unlock();
   // compose asap so we can get lower mouse input latencies
-	compose();
+  compose();
 }
 
 
@@ -417,6 +420,59 @@ void *lumen::context::compositor_thread_worker(void *arg) {
   }
 }
 
+
+
+ck::vec<gfx::rect> difference(gfx::rect rectA, gfx::rect rectB) {
+  if (rectB.is_empty() || !rectA.intersects(rectB) || rectB.contains(rectA)) return {};
+
+  ck::vec<gfx::rect> result;
+  gfx::rect top = {}, bottom = {}, left = {}, right = {};
+  int rectCount = 0;
+
+  // compute the top rectangle
+  int raHeight = rectB.y - rectA.y;
+  if (raHeight > 0) {
+    top = gfx::rect(rectA.x, rectA.y, rectA.w, raHeight);
+    rectCount++;
+  }
+
+  // compute the bottom rectangle
+  int rbY = rectB.y + rectB.h;
+  int rbHeight = rectA.h - (rbY - rectA.y);
+  if (rbHeight > 0 && rbY < rectA.y + rectA.h) {
+    bottom = gfx::rect(rectA.x, rbY, rectA.w, rbHeight);
+    rectCount++;
+  }
+
+  int rectAYH = rectA.y + rectA.h;
+  int y1 = rectB.y > rectA.y ? rectB.y : rectA.y;
+  int y2 = rbY < rectAYH ? rbY : rectAYH;
+  int rcHeight = y2 - y1;
+
+  // compute the left rectangle
+  int rcWidth = rectB.x - rectA.x;
+  if (rcWidth > 0 && rcHeight > 0) {
+    left = gfx::rect(rectA.x, y1, rcWidth, rcHeight);
+    rectCount++;
+  }
+
+  // compute the right rectangle
+  int rbX = rectB.x + rectB.w;
+  int rdWidth = rectA.w - (rbX - rectA.x);
+  if (rdWidth > 0) {
+    right = gfx::rect(rbX, y1, rdWidth, rcHeight);
+    rectCount++;
+  }
+
+  if (!top.is_empty()) result.push(top);
+  if (!bottom.is_empty()) result.push(bottom);
+  if (!left.is_empty()) result.push(left);
+  if (!right.is_empty()) result.push(right);
+  return result;
+}
+
+
+
 static long frame = 0;
 void lumen::context::compose(void) {
   frame++;
@@ -428,18 +484,52 @@ void lumen::context::compose(void) {
 #ifdef USE_COMPOSE_INTERVAL
   compose_timer->stop();
 #endif
-	// printf("compose\n");
+  // printf("compose\n");
 
   if (dirty_regions.size() == 0) {
     // printf("nothing to do...\n");
     return;
   }
 
+
   // make a tmp bitmap
   gfx::bitmap b(screen.width(), screen.height(), screen.buffer());
 
   // this scribe is the "compositor scribe", used by everyone in this function
   gfx::scribe scribe(b);
+
+
+	constexpr uint32_t bg_color = 0x0976b7;
+// #define COMPOSITOR_DEBUG_RECTS
+#ifdef COMPOSITOR_DEBUG_RECTS
+
+
+  scribe.clear(bg_color);
+
+  gfx::disjoint_rects rects;
+  for (auto win : windows) {
+  	// rects.add(win->rect, true);
+    scribe.enter();
+    scribe.state().offset = gfx::point(win->rect.x, win->rect.y);
+    scribe.state().clip = win->rect;
+    win->draw(scribe);
+    scribe.leave();
+  }
+
+	for (auto &r : dirty_regions) {
+		rects.add(r);
+	}
+
+  srand(0);
+	printf("%d rects\n", rects.rects().size());
+  for (auto &r : rects.rects()) scribe.draw_rect(r, rand());
+
+  screen.draw_mouse();
+
+  // if we are doing a debug draw, flush the whole buffer
+  memcpy(screen.front_buffer, screen.back_buffer, screen.width() * screen.height() * sizeof(uint32_t));
+
+#else
 
 
   bool draw_mouse = screen.mouse_moved;
@@ -473,10 +563,8 @@ void lumen::context::compose(void) {
   dirty_regions_lock.lock();
   for (auto &r : dirty_regions) {
     if (r.intersects(screen.mouse_rect())) draw_mouse = true;
-		scribe.fill_rect(r, 0x9c9cce);
 
-    // scribe.fill_rect(r, 0x313032);
-    // scribe.fill_rect(r, 0x625373);
+		scribe.blit(gfx::point(r.x, r.y), *wallpaper, r);
   }
 
   // go back to front and compose each window
@@ -487,6 +575,25 @@ void lumen::context::compose(void) {
   if (draw_mouse) {
     screen.draw_mouse();
   }
+
+
+
+  int sw = screen.width();
+  // copy the changes we made to the other buunffer
+  for (auto &r : dirty_regions) {
+    auto off = r.y * sw + r.x;
+    uint32_t *to_ptr = screen.front_buffer + off;
+    uint32_t *from_ptr = screen.back_buffer + off;
+
+    for (int y = 0; y < r.h; y++) {
+      // explicit looping optimizes more
+      for (int i = 0; i < r.w; i++) to_ptr[i] = from_ptr[i];
+      from_ptr += sw;
+      to_ptr += sw;
+    }
+  }
+
+#endif
 
 
   // and now, go through all windows and notify them they have been composed :)
@@ -503,37 +610,8 @@ void lumen::context::compose(void) {
     win->window_lock.unlock();
   }
 
-
-	/*
-	int c = rand();
-  for (auto &r : dirty_regions) {
-		scribe.draw_rect(r, c);
-  }
-	*/
-
-
-#if 1
-  int sw = screen.width();
-  // copy the changes we made to the other buunffer
-  for (auto &r : dirty_regions) {
-    auto off = r.y * sw + r.x;
-    uint32_t *to_ptr = screen.front_buffer + off;
-    uint32_t *from_ptr = screen.back_buffer + off;
-
-    for (int y = 0; y < r.h; y++) {
-      memcpy(to_ptr, from_ptr, r.w * sizeof(uint32_t));
-      from_ptr += sw;
-      to_ptr += sw;
-    }
-  }
   dirty_regions.clear();
 
-
-#else
-  uint32_t *to_ptr = screen.front_buffer;
-  uint32_t *from_ptr = screen.back_buffer;
-  memcpy(to_ptr, from_ptr, screen.width() * screen.height() * sizeof(uint32_t));
-#endif
   dirty_regions_lock.unlock();
   windows_lock.unlock();
 }
@@ -613,7 +691,7 @@ long lumen::guest::send_raw(int type, int id, void *payload, size_t payloadsize)
   msg->id = id;
   msg->len = payloadsize;
 
-  if (payloadsize > 0) memcpy((void*)(msg + 1), payload, payloadsize);
+  if (payloadsize > 0) memcpy((void *)(msg + 1), payload, payloadsize);
 
   auto w = connection->send((void *)msg, msgsize, MSG_DONTWAIT);
 

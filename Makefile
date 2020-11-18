@@ -11,7 +11,7 @@ ports:
 
 
 menuconfig:
-	@MENUCONFIG_STYLE="monochrome" python3 tools/menuconfig.py
+	@python3 tools/menuconfig.py
 
 kernel: .config
 	@mkdir -p $(BUILD)

@@ -103,9 +103,11 @@ static void lapic_tick_handler(int i, reg_t *tf) {
   smp::lapic_eoi();
 
 
+	/*
   if (cpu::current().timekeeper) {
     time::timekeep();
   }
+	*/
 
   sched::handle_tick(cpu.kstat.ticks);
   return;

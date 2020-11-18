@@ -9,6 +9,7 @@ static irq::handler irq_handlers[NIRQS];
 
 // install and remove handlers
 int irq::install(int irq, irq::handler handler, const char *name) {
+
   if (irq < 0 || irq > NIRQS) return -1;
   irq_handlers[irq] = handler;
   arch::irq::enable(irq);

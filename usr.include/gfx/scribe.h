@@ -181,6 +181,9 @@ draw_text(thnk, fnt, str, color, flags);
     void blit(const gfx::point &at, gfx::bitmap &bmp, const gfx::rect &src);
 
 
+    void blit_scaled(gfx::bitmap &bmp, const gfx::rect &r, gfx::bitmap::SampleMode mode = gfx::bitmap::SampleMode::Nearest);
+
+
     // draw a "theme frame" that fits with the chariot design style
     void draw_frame(const gfx::rect &r, uint32_t bg, uint32_t border = 0x000000);
 

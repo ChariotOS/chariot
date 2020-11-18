@@ -139,10 +139,14 @@ extern "C" void DG_SleepMs(uint32_t ms) {
 }
 
 
-
 extern "C" uint32_t DG_GetTicksMs() {
-  last_tick = current_us() / 1000;
-  return last_tick++;
+  auto this_tick = current_us() / 1000;
+  if (this_tick < last_tick) {
+    printf("time travel! %llu -> %llu = -%llu\n", last_tick, this_tick, last_tick - this_tick);
+  } else {
+    last_tick = this_tick;
+  }
+  return last_tick;
 }
 
 

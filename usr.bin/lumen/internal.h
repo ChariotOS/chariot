@@ -213,7 +213,10 @@ namespace lumen {
     ck::ipcsocket server;
 
     ck::ref<ck::timer> compose_timer;
+		ck::ref<gfx::bitmap> wallpaper;
+
     context(void);
+
 
 
 

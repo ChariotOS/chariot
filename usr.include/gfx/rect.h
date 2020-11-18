@@ -1,6 +1,5 @@
 #pragma once
 
-
 #define max(a, b)           \
   ({                        \
     __typeof__(a) _a = (a); \
@@ -17,6 +16,9 @@
   })
 
 #define unlikely(c) __builtin_expect((c), 0)
+
+#include <ck/vec.h>
+
 
 namespace gfx {
 
@@ -53,6 +55,9 @@ namespace gfx {
     inline int center_x(void) const { return x + w / 2; }
 
     inline int center_y(void) const { return y + h / 2; }
+
+
+		ck::vec<gfx::rect, 4> shatter(const gfx::rect& hammer) const;
 
     inline void grow(int n = 1) {
       x -= n;
@@ -107,6 +112,7 @@ namespace gfx {
 
     void center_vertically_within(const rect &other) { y = other.center_y() - h / 2; }
   };
+
 
 };  // namespace gfx
 

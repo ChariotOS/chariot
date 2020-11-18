@@ -543,6 +543,8 @@ static size_t _etoa(out_fct_type out, char* buffer, size_t idx, size_t maxlen, d
 #endif  // PRINTF_SUPPORT_EXPONENTIAL
 #endif  // PRINTF_SUPPORT_FLOAT
 
+
+
 // internal vsnprintf
 static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen, const char* format, va_list va) {
   unsigned int flags, width, precision, n;
@@ -860,6 +862,13 @@ static int _vsnprintf(out_fct_type out, char* buffer, const size_t maxlen, const
   // return written chars without terminating \0
   return (int)idx;
 }
+
+
+/*
+int vsnprintf(char* buffer, const size_t maxlen, const char* format, va_list va) {
+  return _vsnprintf(_out_buffer, buffer, (size_t)-1, format, va);
+}
+*/
 
 ///////////////////////////////////////////////////////////////////////////////
 

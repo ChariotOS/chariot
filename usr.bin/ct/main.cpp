@@ -11,6 +11,7 @@
 #include <ui/color.h>
 #include <ui/label.h>
 
+
 static auto make_label(const char* s, unsigned int fg, unsigned int bg) {
   auto lbl = new ui::label(s, ui::TextAlign::Center);
   lbl->set_foreground(fg);
@@ -72,9 +73,9 @@ class game_view final : public ui::view {
   ck::ref<gfx::bitmap> bmp = nullptr;
 
   virtual void mounted(void) {
-    bmp = gfx::load_png_from_res("cat.png");
+    // bmp = gfx::load_png_from_res("cat.png");
     if (bmp) {
-      bmp = bmp->scale(bmp->width() / 3, bmp->height() / 3, gfx::bitmap::SampleMode::Nearest);
+      // bmp = bmp->scale(bmp->width() / 3, bmp->height() / 3, gfx::bitmap::SampleMode::Nearest);
     }
 
     // Initialize the cube
@@ -240,15 +241,19 @@ class game_view final : public ui::view {
 };
 
 
+
 int main(int argc, char** argv) {
   // connect to the window server
   ui::application app;
 
-  ui::window* win = app.new_window("ct (current test)", 512, 512);
+  for (int i = 0; i < 3; i++) {
+    ui::window* win = app.new_window("Cube Demo", 150 + i * 50, 150 + i * 50);
+    auto& root = win->set_view<ui::stackview>(ui::Direction::Vertical);
+    root << new game_view();
+    // root << make_label("bruh.", 0x000000, 0xFFFFFF);
+  }
 
-  auto& root = win->set_view<ui::stackview>(ui::Direction::Vertical);
-  root << new game_view();
-  root << make_label("Hello", 0x000000, 0xFFFFFF);
+
 
   auto input = ck::file::unowned(0);
   input->on_read([&] {

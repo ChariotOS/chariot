@@ -1,19 +1,17 @@
+#include <arch.h>
+#include <cpu.h>
 #include <dev/CMOS.h>
 #include <dev/RTC.h>
 #include <module.h>
-#include <util.h>
 #include <string.h>
-#include <cpu.h>
 #include <time.h>
+#include <util.h>
 
 static time_t s_boot_time;
 
-inline bool is_leap_year(unsigned year) {
-  return ((year % 4 == 0) && ((year % 100 != 0) || (year % 400) == 0));
-}
+inline bool is_leap_year(unsigned year) { return ((year % 4 == 0) && ((year % 100 != 0) || (year % 400) == 0)); }
 
-static unsigned days_in_months_since_start_of_year(unsigned month,
-						   unsigned year) {
+static unsigned days_in_months_since_start_of_year(unsigned month, unsigned year) {
   // assert(month <= 11);
   unsigned days = 0;
   switch (month) {
@@ -46,9 +44,9 @@ static unsigned days_in_months_since_start_of_year(unsigned month,
       [[fallthrough]];
     case 2:
       if (is_leap_year(year))
-	days += 29;
+        days += 29;
       else
-	days += 28;
+        days += 28;
       [[fallthrough]];
     case 1:
       days += 31;
@@ -68,9 +66,7 @@ static unsigned days_in_years_since_epoch(unsigned year) {
 
 static bool update_in_progress() { return dev::CMOS::read(0x0a) & 0x80; }
 
-void dev::RTC::read_registers(int& year, int& month, int& day,
-			      int& hour, int& minute,
-			      int& second) {
+void dev::RTC::read_registers(int& year, int& month, int& day, int& hour, int& minute, int& second) {
   while (update_in_progress())
     ;
 
@@ -83,7 +79,6 @@ void dev::RTC::read_registers(int& year, int& month, int& day,
 }
 
 time_t dev::RTC::now() {
-
   while (update_in_progress())
     ;
 
@@ -97,15 +92,12 @@ time_t dev::RTC::now() {
   // assert(year >= 2019);
 
 
-  return days_in_years_since_epoch(year - 1) * 86400 +
-	 days_in_months_since_start_of_year(month - 1, year) * 86400 +
-	 (day - 1) * 86400 + hour * 3600 + minute * 60 + second;
+  return days_in_years_since_epoch(year - 1) * 86400 + days_in_months_since_start_of_year(month - 1, year) * 86400 +
+         (day - 1) * 86400 + hour * 3600 + minute * 60 + second;
 }
 
 
-time_t dev::RTC::boot_time() {
-  return s_boot_time;
-}
+time_t dev::RTC::boot_time() { return s_boot_time; }
 
 
 
@@ -114,6 +106,20 @@ void dev::RTC::localtime(struct tm& t) {
 }
 
 
+
+
+
+void rtc_irq_handler(int n, reg_t* regs) {
+	/* the irq occurs twice per second, so we need to ignore one of them */
+  static int count = 0;
+  count++;
+  if (count == 2) {
+    time::timekeep();
+    count = 0;
+  }
+}
+
+// early init
 void rtc_init(void) {
   u8 cmos_mode = dev::CMOS::read(0x0b);
   cmos_mode |= 2;  // 24 hour mode
@@ -122,7 +128,42 @@ void rtc_init(void) {
 
   s_boot_time = dev::RTC::now();
 
-	time::set_second(s_boot_time);
+  // time::set_second(s_boot_time);
+
+	time::timekeep();
 }
 
-// module_init("RTC", rtc_init);
+
+// FIXME: This is a quick & dirty log base 2 with a paramater. Please provide something better in the future.
+static int quick_log2(size_t number) {
+  int count = 0;
+  while (number >>= 1) count++;
+  return count;
+}
+
+// late init
+void rtc_module_init(void) {
+  auto rate = 15;
+
+  irq::install(8, rtc_irq_handler, "x86 RTC");
+
+
+  auto frequency = 32768 >> (rate - 1);
+
+  arch::cli();              // disable interrupts
+  outb(0x70, 0x8B);         // select register B, and disable NMI
+  char prev = inb(0x71);    // read the current value of register B
+  outb(0x70, 0x8B);         // set the index again (a read will reset the index to register D)
+  outb(0x71, prev | 0x40);  // write the previous value ORed with 0x40. This turns on bit 6 of register B
+
+
+  rate &= 0x0F;                      // rate must be above 2 and not over 15
+  outb(0x70, 0x8A);                  // set index to register A, disable NMI
+  prev = inb(0x71);                  // get initial value of register A
+  outb(0x70, 0x8A);                  // reset index to A
+  outb(0x71, (prev & 0xF0) | rate);  // write only our rate to A. Note, rate is the bottom 4 bits.
+
+  arch::sti();
+}
+
+module_init("RTC", rtc_module_init);

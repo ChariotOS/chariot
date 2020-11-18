@@ -5,7 +5,19 @@ add_link_options(LINKER:-T ${CMAKE_CURRENT_SOURCE_DIR}/../user.ld -z max-page-si
 
 # make sure the userspace programs and libraries use this
 
-include_directories(../usr.include ../toolchain/tarballs/gcc-10.1.0/libstdc++-v3/include)
+include_directories(
+	# C++ stuff
+	../toolchain/tarballs/gcc-10.1.0/libstdc++-v3/include/
+	../toolchain/tarballs/gcc-10.1.0/libstdc++-v3/include/c
+	../toolchain/tarballs/gcc-10.1.0/libstdc++-v3/include/c_std
+	# ../toolchain/tarballs/gcc-10.1.0/libstdc++-v3/include/c_compatibility
+	../toolchain/tarballs/gcc-10.1.0/libstdc++-v3/include/c_global
+	../toolchain/tarballs/gcc-10.1.0/libstdc++-v3/include/std
+	../toolchain/tarballs/gcc-10.1.0/libstdc++-v3/libsupc++
+
+	../usr.include
+)
+
 # include_directories(/usr/include/c++/10.2.0/)
 # include_directories(../usr.include ../usr.lib/c++/include)
 

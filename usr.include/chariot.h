@@ -13,8 +13,8 @@
 #define __NEED_ssize_t
 #define __NEED_size_t
 #include <bits/alltypes.h>
+#include <new>
 // placement new
-inline void *operator new(size_t, void *ptr) { return ptr; }
 // #include <new>
 
 extern "C" {

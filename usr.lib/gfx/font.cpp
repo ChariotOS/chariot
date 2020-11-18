@@ -72,7 +72,7 @@ namespace gfx {
 
   ck::ref<gfx::font> font::get_default(void) {
     static ck::ref<gfx::font> font;
-    if (!font) font = gfx::font::get("OpenSans Bold");
+    if (!font) font = gfx::font::get("Lucida Grande");
     return font;
   }
 

@@ -91,6 +91,20 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source, const gf
   return;
 }
 
+void gfx::scribe::blit_scaled(gfx::bitmap &bmp, const gfx::rect &r, gfx::bitmap::SampleMode mode) {
+
+	int ox = translation().x();
+	int oy = translation().y();
+
+
+  for (int y = 0; y < r.w; y++) {
+    for (int x = 0; x < r.h; x++) {
+      float fx = x / (float)r.w;
+      float fy = y / (float)r.h;
+      set_pixel(x + ox, y + oy, bmp.sample(fx, fy, mode));
+    }
+  }
+}
 
 void gfx::scribe::blend_pixel(int x, int y, uint32_t color, float alpha) {
   auto &s = state();

@@ -85,7 +85,7 @@ if(CONFIG_X86)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmmx -fno-omit-frame-pointer -msse -msse2")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -nostdinc++ -std=c++20 -fdiagnostics-color=always")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -nostdinc++ -std=c++17 -fdiagnostics-color=always")
 
 
 
@@ -112,7 +112,7 @@ function(chariot_lib target_name fs_name)
 				if (NOT ${target_name} STREQUAL "libck")
 					# message(STATUS "${target_name} is a c++ project")
 					# only link in libck if it is a c++ project
-					target_link_libraries(${target_name} PUBLIC libstdc++ libck)
+					target_link_libraries(${target_name} PUBLIC libstdc++ libck libcpp)
 				endif()
 				break()
 			endif()
@@ -145,14 +145,14 @@ endfunction()
 
 
 
-function(add_res target_name file)
+function(add_res target_name file symbol)
 	set(output "${CMAKE_CURRENT_BINARY_DIR}/${target_name}-${file}")
 
 	add_custom_command(
 		OUTPUT "${output}.res.o"
 		DEPENDS ${file}
 		COMMAND
-		"${CMAKE_SOURCE_DIR}/tools/resource_generator.sh" "${CMAKE_CURRENT_SOURCE_DIR}/${file}" "${output}" "${file}"
+		"${CMAKE_SOURCE_DIR}/tools/resource_generator.sh" "${CMAKE_CURRENT_SOURCE_DIR}/${file}" "${output}" "${file}" "${symbol}"
 		)
 
 	target_sources(${target_name} PRIVATE "${output}.res.o")
@@ -169,7 +169,7 @@ function(chariot_bin target_name)
 			if (${src} MATCHES "cpp$")
 				# message(STATUS "${target_name} is a c++ project")
 				# only link in libck if it is a c++ project
-				target_link_libraries(${target_name} PUBLIC libck)
+				target_link_libraries(${target_name} PUBLIC libck libcpp)
 				break()
 			endif()
 		endforeach(src)
@@ -193,6 +193,7 @@ add_subdirectory(usr.bin)
 
 
 
+chariot_external(libcpp ${CMAKE_SOURCE_DIR}/toolchain/build/gcc/build-x86_64-pc-linux-gnu/libcpp/libcpp.a)
 
 chariot_external(libgl ${CMAKE_SOURCE_DIR}/ports/prebuilt/libOSMesa.a)
 chariot_external(libglu ${CMAKE_SOURCE_DIR}/ports/prebuilt/libGLU.a)

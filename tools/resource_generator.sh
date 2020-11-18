@@ -10,6 +10,10 @@ shift
 NAME="$1"
 shift
 
+
+SYMBOL="$1"
+shift
+
 ASM_FILE="$OUTPUT.res.asm"
 
 rm -rf $ASM_FILE
@@ -19,7 +23,7 @@ echo "  dq the_name" >> $ASM_FILE
 echo "  dq the_data" >> $ASM_FILE
 echo "  dq the_end - the_data" >> $ASM_FILE
 echo "[section .data]" >> $ASM_FILE
-echo "the_name: db \"$NAME\", 0" >> $ASM_FILE
+echo "the_name: db \"$SYMBOL\", 0" >> $ASM_FILE
 echo "the_data: incbin \"$FILE\"" >> $ASM_FILE
 echo "the_end:" >> $ASM_FILE
 

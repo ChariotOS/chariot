@@ -31,7 +31,7 @@ ui::windowframe::windowframe(void) : ui::stackview(ui::Direction::Vertical) {
 
   background = FRAME_COLOR;
 
-  m_frame_font = gfx::font::get_default();
+  m_frame_font = gfx::font::get("OpenSans ExtraBold");
 }
 
 
@@ -39,44 +39,24 @@ ui::windowframe::~windowframe(void) {}
 
 void ui::windowframe::paint_event(void) {
   auto s = get_scribe();
-  uint32_t border = 0x222222;  // 0x666666;
-  float contrast = 0.25;
-  uint32_t bright = brighten(FRAME_COLOR, 1.0 + contrast);
-  uint32_t dark = brighten(FRAME_COLOR, 1.0 - contrast);
+
+  constexpr uint32_t border_color = 0xAAAAAA; // 0x343a3c;
 
 
-
-
-  gfx::rect r = gfx::rect(width(), height());
   // outside border
-  s.draw_rect(r, border);
+  s.draw_rect(gfx::rect(width(), height()), border_color);
 
-
-  if constexpr (PADDING > 1) {
-    r.shrink(1);
-    s.draw_rect_special(r, bright, dark);
-  }
-
-  r = padded_area();
-  r.grow(1);
-  s.draw_rect(r, border);
-
-  if constexpr (PADDING > 2) {
-    r.grow(1);
-    s.draw_rect_special(r, dark, bright);
-  }
-
-
+	/* Draw the title within the titlebar */
   {
     gfx::rect r;
-    r.x = 21;
-    r.y = 1;
-    r.h = TITLE_HEIGHT - 2;
-    r.w = width() - r.x - 1;
+    r.x = 0;
+    r.y = 0;
+    r.h = TITLE_HEIGHT;
+    r.w = width();
     // s.draw_rect(r, 0xFF00FF);
 
     m_frame_font->with_line_height(
-        12, [&]() { s.draw_text(*m_frame_font, r, window()->m_name, ui::TextAlign::CenterLeft, 0, true); });
+       12, [&]() { s.draw_text(*m_frame_font, r, window()->m_name, ui::TextAlign::Center, 0x454344, true); });
   }
 }
 
