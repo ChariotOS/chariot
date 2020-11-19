@@ -103,6 +103,7 @@ namespace gfx {
     if (exts.is_empty()) {
       exts.push("ttf");
       exts.push("ttc");
+      exts.push("woff");
       exts.push("otf");
       exts.push("bdf");
     }

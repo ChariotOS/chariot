@@ -19,8 +19,11 @@ namespace ui {
 
   class windowframe : public ui::stackview {
     ck::ref<gfx::font> m_frame_font;
+  	ck::ref<gfx::font> m_icon_font;
 
    public:
+
+		void set_theme(uint32_t bg, uint32_t fg, uint32_t border);
     static constexpr uint32_t FRAME_COLOR = 0xe7ebee;
     static constexpr int TITLE_HEIGHT = 29;
     static constexpr int PADDING = 1;
@@ -32,6 +35,7 @@ namespace ui {
 
   class window : public ck::object {
     CK_OBJECT(ui::window);
+
 
 
 		friend windowframe;
@@ -78,6 +82,9 @@ namespace ui {
     // which view is hovered and focused?
     ui::view *focused = NULL;
     ui::view *hovered = NULL;
+
+
+		inline void set_theme(uint32_t bg, uint32_t fg, uint32_t border) { m_frame->set_theme(bg, fg, border); }
 
 
    protected:

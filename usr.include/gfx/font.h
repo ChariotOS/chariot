@@ -51,10 +51,11 @@ namespace gfx {
     friend gfx::printer;
     ck::mutex m_lock;
 
-    int draw(int &x, int &y, gfx::scribe &, uint32_t cp, uint32_t color);
 
    public:
     ~font(void);
+
+    int draw(int &x, int &y, gfx::scribe &, uint32_t cp, uint32_t color);
 
     enum FontStyle { Variable, Monospace };
 

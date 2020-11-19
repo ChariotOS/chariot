@@ -149,7 +149,9 @@ int isinf(double d) {
   return (u.bits.exp == 2047 && u.bits.manl == 0 && u.bits.manh == 0);
 }
 
-int isnan(double d) { return d == NAN; }
+int isnan(double d) {
+	return d != d;
+}
 
 
 

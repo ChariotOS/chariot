@@ -8,6 +8,7 @@
 #include <gfx/rect.h>
 #include <gfx/scribe.h>
 #include <ui/event.h>
+#include <ui/internal/flex.h>
 
 namespace ui {
 

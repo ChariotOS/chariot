@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 #include <ui/application.h>
 #include <ui/color.h>
+#include <ui/icon.h>
 #include <ui/label.h>
 
 
@@ -72,6 +73,7 @@ class game_view final : public ui::view {
  public:
   ck::ref<gfx::bitmap> bmp = nullptr;
 
+
   virtual void mounted(void) {
     // bmp = gfx::load_png_from_res("cat.png");
     if (bmp) {
@@ -118,7 +120,7 @@ class game_view final : public ui::view {
 
 
 
-    set_background(0x000000);
+    set_background(0xFFFFFF);
     draw_timer = ck::timer::make_interval(1000 / 60, [this] { this->repaint(); });
 
     repaint();
@@ -130,7 +132,8 @@ class game_view final : public ui::view {
   virtual void paint_event(void) {
     auto s = get_scribe();
 
-    s.clear(0x000000);
+
+    // s.clear(0xFFFFFF);
 
     if (bmp) {
       s.blit(gfx::point(0, 0), *bmp, bmp->rect());
@@ -227,14 +230,111 @@ class game_view final : public ui::view {
         triProjected.p[2].x *= 0.5f * (float)width();
         triProjected.p[2].y *= 0.5f * (float)height();
 
-        s.draw_line_antialias(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y,
-                              0xFFFFFF);
-        s.draw_line_antialias(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[2].x, triProjected.p[2].y,
-                              0xFFFFFF);
-        s.draw_line_antialias(triProjected.p[1].x, triProjected.p[1].y, triProjected.p[2].x, triProjected.p[2].y,
-                              0xFFFFFF);
+        s.draw_line_antialias(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y, 0);
+        s.draw_line_antialias(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[2].x, triProjected.p[2].y, 0);
+        s.draw_line_antialias(triProjected.p[1].x, triProjected.p[1].y, triProjected.p[2].x, triProjected.p[2].y, 0);
       }
     }
+
+
+    invalidate();
+  }
+};
+
+
+#include <ui/internal/flex.h>
+
+static void self_sizing_callback(struct flex_item* item, float size[2]) {
+  // printf("self sizing %p: %f %f\n", item, size[0], size[1]);
+}
+
+class flex_view final : public ui::view {
+  struct flex_item* root;
+
+
+ public:
+  auto* create(flex_direction dir, float width = NAN, float height = NAN) {
+    auto* item = flex_item_new();
+    flex_item_set_direction(item, dir);
+    flex_item_set_self_sizing(item, self_sizing_callback);
+    flex_item_set_width(item, width);
+    flex_item_set_height(item, height);
+
+    flex_item_set_align_items(item, FLEX_ALIGN_STRETCH);
+    flex_item_set_align_content(item, FLEX_ALIGN_STRETCH);
+    return item;
+  }
+
+  flex_view(void) {
+    root = flex_item_new();
+    flex_item_set_direction(root, FLEX_DIRECTION_ROW);
+
+    flex_item_set_width(root, width());
+    flex_item_set_height(root, height());
+
+    if (1) {
+      auto left = create(FLEX_DIRECTION_COLUMN);
+      flex_item_set_grow(left, 0.4);
+
+      for (int i = 0; i < 10; i++) {
+        flex_item_add(left, create(FLEX_DIRECTION_ROW, NAN, 50));
+      }
+      flex_item_add(root, left);
+    }
+    {
+      auto right = create(FLEX_DIRECTION_COLUMN, NAN, NAN);
+      flex_item_set_grow(right, 0.6);
+      flex_item_set_align_content(right, FLEX_ALIGN_START);
+
+      for (int n = 0; n < 3; n++) {
+        auto container = create(FLEX_DIRECTION_ROW, NAN, NAN);
+        flex_item_set_wrap(container, FLEX_WRAP_WRAP);
+        flex_item_set_align_content(container, FLEX_ALIGN_START);
+        for (int i = 0; i < 30; i++) {
+          int w = rand() % 30 + 12;
+          auto item = create(FLEX_DIRECTION_ROW, w, 12);
+          flex_item_add(container, item);
+        }
+
+        flex_item_add(right, container);
+        auto* item = create(FLEX_DIRECTION_ROW, NAN, 80);
+        flex_item_add(right, item);
+      }
+
+      flex_item_add(root, right);
+    }
+  }
+
+  virtual void mounted(void) { repaint(); }
+
+  void draw_item(gfx::scribe& s, struct flex_item* item, int ox, int oy) {
+    auto color = rand();
+
+    int x = flex_item_get_frame_x(item) + ox;
+    int y = flex_item_get_frame_y(item) + oy;
+    int width = flex_item_get_frame_width(item);
+    int height = flex_item_get_frame_height(item);
+
+    printf("%p %d %d %d %d\n", item, x, y, width, height);
+
+    s.fill_rect(gfx::rect(x, y, width, height), color);
+
+    int children = flex_item_count(item);
+    for (int i = 0; i < children; i++) {
+      auto* child = flex_item_child(item, i);
+      draw_item(s, child, x, y);
+    }
+  }
+
+  virtual void paint_event() {
+    flex_item_set_width(root, width());
+    flex_item_set_height(root, height());
+
+    flex_layout(root);
+
+    srand(0);
+    auto s = get_scribe();
+    draw_item(s, root, 0, 0);
 
     invalidate();
   }
@@ -246,12 +346,11 @@ int main(int argc, char** argv) {
   // connect to the window server
   ui::application app;
 
-  for (int i = 0; i < 3; i++) {
-    ui::window* win = app.new_window("Bruh Demo", 150 + i * 50, 75 + i * 50);
-    auto& root = win->set_view<ui::stackview>(ui::Direction::Vertical);
-    // root << new game_view();
-		root << make_label("bruh.", 0x000000, 0xFFFFFF);
-  }
+
+  ui::window* win = app.new_window("Bruh Demo", 640, 480);
+  auto& root = win->set_view<ui::stackview>(ui::Direction::Vertical);
+
+  root << new flex_view();
 
 
 

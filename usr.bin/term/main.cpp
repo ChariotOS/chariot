@@ -21,6 +21,12 @@ extern const char **environ;
   })
 
 
+#define TERMINAL_BG 0x282a36
+#define TERMINAL_FG 0xf8f8f2
+#define TERMINAL_BORDER 0x44475a
+
+
+
 struct terminalview : public ui::view {
   int rows, cols;
 
@@ -37,7 +43,7 @@ struct terminalview : public ui::view {
   FT_Library library; /* handle to library     */
   FT_Face face;       /* handle to face object */
 
-  int lineheight = 14;
+  int lineheight = 13;
 
  public:
   terminalview() {
@@ -48,8 +54,8 @@ struct terminalview : public ui::view {
       ch = font->line_height();
     });
 
-    set_foreground(0x000000);
-    set_background(0xFFFFFF);
+    set_foreground(TERMINAL_FG);
+    set_background(TERMINAL_BG);
   }
 
 
@@ -115,6 +121,7 @@ int main() {
   ui::application app;
 
   ui::window *win = app.new_window("Terminal", 512, 512);
+	win->set_theme(TERMINAL_BG, TERMINAL_FG, TERMINAL_BORDER);
   auto &v = win->set_view<terminalview>();
 
   win->resize(80 * v.cw, 24 * v.ch);

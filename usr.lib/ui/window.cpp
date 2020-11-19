@@ -1,6 +1,7 @@
 #include <gfx/scribe.h>
 #include <ui/application.h>
 #include <ui/event.h>
+#include <ui/icon.h>
 #include <ui/window.h>
 
 constexpr int clamp(int val, int max, int min) {
@@ -32,6 +33,10 @@ ui::windowframe::windowframe(void) : ui::stackview(ui::Direction::Vertical) {
   background = FRAME_COLOR;
 
   m_frame_font = gfx::font::get("OpenSans ExtraBold");
+  m_icon_font = gfx::font::get("feather");
+
+  set_foreground(0x4a4848);
+  set_background(0xEFEFEF);
 }
 
 
@@ -40,23 +45,31 @@ ui::windowframe::~windowframe(void) {}
 void ui::windowframe::paint_event(void) {
   auto s = get_scribe();
 
-  constexpr uint32_t border_color = 0xAAAAAA; // 0x343a3c;
-
 
   // outside border
-  s.draw_rect(gfx::rect(width(), height()), border_color);
+  s.draw_rect(gfx::rect(width(), height()), get_bordercolor());
 
-	/* Draw the title within the titlebar */
+  /* Draw the title within the titlebar */
   {
     gfx::rect r;
     r.x = 0;
     r.y = 0;
     r.h = TITLE_HEIGHT;
     r.w = width();
-    // s.draw_rect(r, 0xFF00FF);
 
     m_frame_font->with_line_height(
-       12, [&]() { s.draw_text(*m_frame_font, r, window()->m_name, ui::TextAlign::Center, 0x4a4848, true); });
+        12, [&]() { s.draw_text(*m_frame_font, r, window()->m_name, ui::TextAlign::Center, get_foreground(), true); });
+
+
+    if (0) {
+      int lh = 18;
+      m_icon_font->with_line_height(
+          lh, fn() {
+            int x = 5;
+            int y = lh + 4;
+            m_icon_font->draw(x, y, s, ui::icon::x_square, get_foreground());
+          });
+    }
   }
 }
 
@@ -81,6 +94,13 @@ ui::window::window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bit
 
 
 ui::window::~window(void) {}
+
+void ui::windowframe::set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
+  set_background(bg);
+  set_foreground(fg);
+  set_bordercolor(border);
+  repaint();
+}
 
 
 void ui::window::invalidate(const gfx::rect &r, bool sync) {
