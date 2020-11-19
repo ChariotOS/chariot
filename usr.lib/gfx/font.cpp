@@ -151,6 +151,45 @@ namespace gfx {
 
 
 
+  inline __attribute__((always_inline)) uint32_t color_fjoin(float *out) {
+    uint32_t color = 0;
+    auto *c = (char *)&color;
+    for (int i = 0; i < 3; i++) {
+      c[i] = out[i] * 255.0;
+    }
+    return color;
+  }
+
+  inline __attribute__((always_inline)) void color_fsplit(char *in, float *out) {
+    for (int i = 0; i < 3; i++) {
+      out[i] = in[i] / 255.0;
+    }
+  }
+
+  inline __attribute__((always_inline)) void color_fsplit(int in_int, float out[3]) {
+    auto *in = (char *)&in_int;
+    color_fsplit(in, out);
+  }
+
+
+  inline __attribute__((always_inline)) float gamma_blend(float a, float b, float alpha) {
+    return (a * alpha) + ((1 - alpha) * b);
+
+    constexpr float GAMMA = 1.0;
+    float tmp = pow(a, GAMMA) * alpha + pow(b, GAMMA) * (1.0 - alpha);
+    float out = pow(tmp, 1.0 / GAMMA);
+
+		if (out > 1.0) out = 1.0;
+		return out;
+  }
+
+
+  inline __attribute__((always_inline)) void gamma_blend(float alpha, float rgb0[3], float rgb1[3], float out[3]) {
+    for (int i = 0; i < 3; i++) {
+      out[i] = gamma_blend(rgb0[i], rgb1[i], alpha);
+    }
+  }
+
 
   /*
    * Draw a single code point at the location dx and dy. dy represents
@@ -158,22 +197,19 @@ namespace gfx {
    * top line of the font, make sure to add the ascent() to the location.
    */
   int font::draw(int &dx, int &dy, gfx::scribe &s, uint32_t cp, uint32_t fg) {
-    font::glyph *gl = NULL;
-    {
-      // auto start = tsc();
-      gl = load_glyph(cp);
-      // auto end = tsc();
-      // printf("'%c' load took %llu cycles\n", cp, end - start);
-    }
+    font::glyph *gl = load_glyph(cp);
 
     if (gl == NULL) return 0;
-
-
-    // auto start = tsc();
 
     int col_start = gl->metrics.horiBearingX >> 6;
     int ascender = gl->metrics.horiBearingY >> 6;
 
+    float bg[3];
+    float out[3];
+    float fg_color[3];
+    color_fsplit(fg, fg_color);
+
+    constexpr auto GAMMA = 2.2;
     switch (gl->mode) {
       case FT_RENDER_MODE_NORMAL: {
         for (int y = 0; y < gl->bitmap.rows; y++) {
@@ -183,8 +219,16 @@ namespace gfx {
             int col = col_start + x + dx;
             unsigned char c = gl->bitmap.buffer[y * gl->bitmap.pitch + x];
             if (c == 0) continue;
+
             float alpha = c / 255.0;
-            s.blend_pixel(col, row, fg, alpha);
+            if (1) {
+              s.blend_pixel(col, row, fg, alpha);
+              continue;
+            }
+
+            color_fsplit(s.get_pixel(col, row), bg);
+            gamma_blend(alpha, fg_color, bg, out);
+            s.set_pixel(col, row, color_fjoin(out));
           }
         }
 

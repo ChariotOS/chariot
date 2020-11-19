@@ -125,6 +125,10 @@ uint32_t gfx::bitmap::sample(float fx, float fy, gfx::bitmap::SampleMode m) {
     case gfx::bitmap::SampleMode::Nearest:
       return get_pixel(width() * fx, height() * fy);
       break;
+
+    case gfx::bitmap::SampleMode::Bilinear:
+      return get_pixel(width() * fx, height() * fy);
+      break;
   };
 
 

@@ -38,7 +38,7 @@ static void kmain2(void);
 
 
 void dump_multiboot(uint64_t mbd) {
-	debug("Multiboot 2 header dump:\n");
+  debug("Multiboot 2 header dump:\n");
   mb2::foreach (mbd, [](auto *tag) {
     switch (tag->type) {
       case MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME: {
@@ -238,8 +238,11 @@ int kernel_init(void *) {
   initialize_builtin_modules();
   KINFO("kernel modules initialized\n");
 
+
+
   // start up the extra cpu cores
   smp::init_cores();
+
 
 
   auto root_name = kargs::get("root", "/dev/ata0p1");
@@ -306,6 +309,7 @@ int kernel_init(void *) {
 
   panic("main kernel thread reached unreachable code\n");
 }
+
 
 
 extern "C" void _hrt_start(void) {

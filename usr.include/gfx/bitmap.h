@@ -51,6 +51,7 @@ namespace gfx {
 
 		enum SampleMode {
 			Nearest,
+			Bilinear,
 		};
 		ck::ref<gfx::bitmap> scale(int w, int h, gfx::bitmap::SampleMode);
 		uint32_t sample(float x, float y, gfx::bitmap::SampleMode);

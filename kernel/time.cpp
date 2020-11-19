@@ -13,32 +13,38 @@
 
 static unsigned long last_cycle = 0;
 static uint64_t cycles_per_second = 0;
-static uint64_t current_second = 0;
+static volatile uint64_t current_second = 0;
 
+
+
+unsigned long time::cycles_to_ns(unsigned long cycles) {
+  /* hmm */
+  if (cycles_per_second == 0) return 0;
+  return (cycles * NS_PER_SEC) / cycles_per_second;
+}
 
 unsigned long long time::now_ns() {
+  auto cps = cycles_per_second;
+  /* if we haven't be calibrated yet, guess based on the LAPIC tick rate */
+  if (cps == 0) {
+    auto &cpu = cpu::current();
+    cps = cpu.kstat.tsc_per_tick * cpu.ticks_per_second;
+  }
+
   uint64_t now_cycle = arch::read_timestamp();
   uint64_t delta = now_cycle - last_cycle;
-	if (cycles_per_second == 0) {
-		auto &cpu = cpu::current();
-		if (cpu.ticks_per_second != 0) {
-			cycles_per_second = cpu.ticks_per_second * cpu.kstat.tsc_per_tick;
-		}
-	}
-
 
   /*
    * this is a big hack. It accounts for variable IRQ timings
    * and avoids time travel in the case that a second takes
    * a different number of cycles.
    */
-  if (delta > cycles_per_second) delta = cycles_per_second;
+  if (delta > cps) delta = cps;
 
   uint64_t ns = (current_second * NS_PER_SEC);
 
   if (cycles_per_second != 0) {
-    uint64_t perc = (delta * NS_PER_SEC) / cycles_per_second;
-    ns += perc;
+    ns += time::cycles_to_ns(delta);
   }
 
   return ns;

@@ -72,7 +72,6 @@ namespace ui {
 
     // the whole window needs reflowed, so schedule one
     void schedule_reflow();
-
     ck::tuple<int, int> resize(int width, int height);
 
 
@@ -89,6 +88,7 @@ namespace ui {
     ck::vec<gfx::rect> m_pending_invalidations;
 
 
+		bool m_light_theme = true;
     long m_id;
     ck::string m_name;
     gfx::rect m_rect;

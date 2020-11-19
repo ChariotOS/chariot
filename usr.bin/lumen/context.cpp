@@ -48,6 +48,10 @@ lumen::context::context(void) : screen(1024, 768) {
 
 	wallpaper = gfx::load_png("/usr/res/lumen/wallpaper.png");
 
+	if (wallpaper->width() != screen.width() || wallpaper->height() != screen.height()) {
+		wallpaper = wallpaper->scale(screen.width(), screen.height(), gfx::bitmap::SampleMode::Nearest);
+	}
+
 
   server.listen("/usr/servers/lumen", [this] { accept_connection(); });
 
@@ -498,8 +502,6 @@ void lumen::context::compose(void) {
   // this scribe is the "compositor scribe", used by everyone in this function
   gfx::scribe scribe(b);
 
-
-	constexpr uint32_t bg_color = 0x0976b7;
 // #define COMPOSITOR_DEBUG_RECTS
 #ifdef COMPOSITOR_DEBUG_RECTS
 

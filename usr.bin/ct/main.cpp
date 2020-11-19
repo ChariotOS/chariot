@@ -247,10 +247,10 @@ int main(int argc, char** argv) {
   ui::application app;
 
   for (int i = 0; i < 3; i++) {
-    ui::window* win = app.new_window("Cube Demo", 150 + i * 50, 150 + i * 50);
+    ui::window* win = app.new_window("Bruh Demo", 150 + i * 50, 75 + i * 50);
     auto& root = win->set_view<ui::stackview>(ui::Direction::Vertical);
-    root << new game_view();
-    // root << make_label("bruh.", 0x000000, 0xFFFFFF);
+    // root << new game_view();
+		root << make_label("bruh.", 0x000000, 0xFFFFFF);
   }
 
 

@@ -48,8 +48,8 @@ struct terminalview : public ui::view {
       ch = font->line_height();
     });
 
-    set_foreground(0xFFFFFF);
-    set_background(0x000000);
+    set_foreground(0x000000);
+    set_background(0xFFFFFF);
   }
 
 

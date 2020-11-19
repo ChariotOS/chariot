@@ -1,7 +1,7 @@
 #pragma once
 
+#include <math.h>
 #include <stdint.h>
-
 
 // global namespace so we don't have to type `gfx::color_t`
 using color_t = uint32_t;
@@ -9,7 +9,9 @@ using color_t = uint32_t;
 namespace gfx {
 
 
+
   namespace color {
+
 
     // blend the alpha chanels of two colors
     inline __attribute__((always_inline)) color_t blend(color_t a, color_t b) {
@@ -21,6 +23,7 @@ namespace gfx {
       auto result = (unsigned char *)&res;
       auto fg = (unsigned char *)&a;
       auto bg = (unsigned char *)&b;
+
 
       // spooky math follows
       uint32_t alpha = fg[3] + 1;
@@ -34,9 +37,9 @@ namespace gfx {
     }
 
 
-		inline __attribute__((always_inline)) color_t rgb(unsigned char r, unsigned char b, unsigned char g) {
-			return r << 16 | g << 8 | b;
-		}
+    inline __attribute__((always_inline)) color_t rgb(unsigned char r, unsigned char b, unsigned char g) {
+      return r << 16 | g << 8 | b;
+    }
 
     inline __attribute__((always_inline)) color_t alpha(color_t c, float a) {
       return (((c)&0xFF'FF'FF) | ((int)(255 * (a)) << 24));

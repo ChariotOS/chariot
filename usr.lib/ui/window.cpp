@@ -56,7 +56,7 @@ void ui::windowframe::paint_event(void) {
     // s.draw_rect(r, 0xFF00FF);
 
     m_frame_font->with_line_height(
-       12, [&]() { s.draw_text(*m_frame_font, r, window()->m_name, ui::TextAlign::Center, 0x454344, true); });
+       12, [&]() { s.draw_text(*m_frame_font, r, window()->m_name, ui::TextAlign::Center, 0x4a4848, true); });
   }
 }
 
