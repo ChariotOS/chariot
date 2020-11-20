@@ -24,9 +24,12 @@ static constexpr uint32_t brighten(uint32_t color, float amt) {
 }
 
 
-ui::windowframe::windowframe(void) : ui::stackview(ui::Direction::Vertical) {
-  padding = ui::edges(PADDING);
-  padding.top = TITLE_HEIGHT;
+ui::windowframe::windowframe(void) {
+  set_flex_padding_top(TITLE_HEIGHT);
+  set_flex_padding_bottom(PADDING);
+  set_flex_padding_left(PADDING);
+  set_flex_padding_right(PADDING);
+
   // bordercolor = ui::Color::Black;
   bordersize = 0;
 
@@ -44,8 +47,6 @@ ui::windowframe::~windowframe(void) {}
 
 void ui::windowframe::paint_event(void) {
   auto s = get_scribe();
-
-
   // outside border
   s.draw_rect(gfx::rect(width(), height()), get_bordercolor());
 
@@ -87,9 +88,7 @@ ui::window::window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bit
   m_frame->m_parent = NULL;
 
   m_frame->set_size(m_rect.w, m_rect.h);
-  m_frame->set_pos(0, 0);  // the main widget exists at the top left
-  // tell the main vie to reflow
-  m_frame->do_reflow();
+  reflow();
 }
 
 
@@ -195,15 +194,36 @@ void ui::window::handle_input(struct lumen::input_msg &msg) {
 }
 
 
+static void print_flex_item(struct flex_item *item, int depth = 0) {
+  for (int i = 0; i < depth; i++) printf("  ");
+  float fx, fy, fw, fh;
+
+  fx = flex_item_get_frame_x(item);
+  fy = flex_item_get_frame_y(item);
+  fw = flex_item_get_frame_width(item);
+  fh = flex_item_get_frame_height(item);
+
+  printf("%p frame:(x:%f, y:%f, w:%f, h:%f)\n", item, fx, fy, fw, fh);
+  for (int i = 0; i < flex_item_count(item); i++) {
+    print_flex_item(flex_item_child(item, i), depth + 1);
+  }
+}
+
+
+
+void ui::window::reflow() {
+  m_frame->set_size(m_rect.w, m_rect.h);
+  flex_layout(m_frame->m_fi);
+  // ask the window to repaint. This is expensive.
+  m_frame->repaint(false /* do not invalidate, we do that ourselves */);
+
+  this->m_pending_reflow = false;
+  invalidate(m_rect);
+}
+
 void ui::window::schedule_reflow(void) {
   if (!m_pending_reflow) {
-    ck::eventloop::defer(fn() {
-      m_frame->set_size(m_rect.w, m_rect.h);
-      m_frame->set_pos(0, 0);  // the main widget exists at the top left
-      // tell the main view to reflow
-      m_frame->do_reflow();
-      this->m_pending_reflow = false;
-    });
+    ck::eventloop::defer(fn() { reflow(); });
   }
 }
 
@@ -252,8 +272,9 @@ ck::tuple<int, int> ui::window::resize(int w, int h) {
   m_rect.h = height();
 
   m_frame->set_size(m_rect.w, m_rect.h);
-  m_frame->set_pos(0, 0);  // the main widget exists at the top left
+  // m_frame->set_pos(0, 0);  // the main widget exists at the top left
+
   // tell the main vie to reflow
-  m_frame->do_reflow();
+  reflow();
   return ck::tuple(width(), height());
 }

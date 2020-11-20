@@ -21,9 +21,22 @@ extern const char **environ;
   })
 
 
-#define TERMINAL_BG 0x282a36
-#define TERMINAL_FG 0xf8f8f2
-#define TERMINAL_BORDER 0x44475a
+// #define LIGHT
+
+#ifdef LIGHT
+
+#define TERMINAL_BG 0xFFFFFF
+#define TERMINAL_FG 0x000000
+#define TERMINAL_BORDER 0x999999
+
+#else
+
+#define TERMINAL_BG 0x000000
+#define TERMINAL_FG 0xFFFFFF
+#define TERMINAL_BORDER 0x333333
+
+#endif
+
 
 
 
@@ -53,6 +66,8 @@ struct terminalview : public ui::view {
       cw = font->width('#');
       ch = font->line_height();
     });
+
+		set_flex_grow(1.0);
 
     set_foreground(TERMINAL_FG);
     set_background(TERMINAL_BG);
@@ -89,12 +104,15 @@ struct terminalview : public ui::view {
 
 
 
+
+
   virtual void mounted(void) override { handle_resize(); }
 
 
   virtual void on_mouse_move(ui::mouse_event &ev) override {
     mouse_x = ev.x;
     mouse_y = ev.y;
+		printf("mouse move %d %d\n", ev.x, ev.y);
     /*  */
     // window()->resize(max(mouse_x * 2, 80), max(mouse_y * 2, 80));
     repaint();
@@ -120,9 +138,9 @@ struct terminalview : public ui::view {
 int main() {
   ui::application app;
 
-  ui::window *win = app.new_window("Terminal", 512, 512);
+  ui::window *win = app.new_window("Terminal", 256, 256);
 	win->set_theme(TERMINAL_BG, TERMINAL_FG, TERMINAL_BORDER);
-  auto &v = win->set_view<terminalview>();
+	auto &v = win->set_view<terminalview>();
 
   win->resize(80 * v.cw, 24 * v.ch);
   v.handle_resize();

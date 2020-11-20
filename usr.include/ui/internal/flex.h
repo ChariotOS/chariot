@@ -64,6 +64,7 @@ typedef enum { FLEX_WRAP_NO_WRAP = 0, FLEX_WRAP_WRAP, FLEX_WRAP_WRAP_REVERSE } f
 
 // size[0] == width, size[1] == height
 typedef void (*flex_self_sizing)(struct flex_item *item, float size[2]);
+typedef void (*flex_pre_layout)(struct flex_item *item);
 
 #ifndef FLEX_ATTRIBUTE
 #define FLEX_ATTRIBUTE(name, type, def)              \
@@ -79,46 +80,7 @@ typedef void (*flex_self_sizing)(struct flex_item *item, float size[2]);
 
 #endif
 
-// Following are the list of properties associated with an item.
-//
-// Each property is exposed with getter and setter functions, for instance
-// the `width' property can be get and set using the respective
-// `flex_item_get_width()' and `flex_item_set_width()' functions.
-//
-// You can also see the type and default value for each property.
-
-FLEX_ATTRIBUTE(width, float, NAN)
-FLEX_ATTRIBUTE(height, float, NAN)
-
-FLEX_ATTRIBUTE(left, float, NAN)
-FLEX_ATTRIBUTE(right, float, NAN)
-FLEX_ATTRIBUTE(top, float, NAN)
-FLEX_ATTRIBUTE(bottom, float, NAN)
-
-FLEX_ATTRIBUTE(padding_left, float, 0)
-FLEX_ATTRIBUTE(padding_right, float, 0)
-FLEX_ATTRIBUTE(padding_top, float, 0)
-FLEX_ATTRIBUTE(padding_bottom, float, 0)
-
-FLEX_ATTRIBUTE(margin_left, float, 0)
-FLEX_ATTRIBUTE(margin_right, float, 0)
-FLEX_ATTRIBUTE(margin_top, float, 0)
-FLEX_ATTRIBUTE(margin_bottom, float, 0)
-
-FLEX_ATTRIBUTE(justify_content, flex_align, FLEX_ALIGN_START)
-FLEX_ATTRIBUTE(align_content, flex_align, FLEX_ALIGN_STRETCH)
-FLEX_ATTRIBUTE(align_items, flex_align, FLEX_ALIGN_STRETCH)
-FLEX_ATTRIBUTE(align_self, flex_align, FLEX_ALIGN_AUTO)
-
-FLEX_ATTRIBUTE(position, flex_position, FLEX_POSITION_RELATIVE)
-FLEX_ATTRIBUTE(direction, flex_direction, FLEX_DIRECTION_COLUMN)
-FLEX_ATTRIBUTE(wrap, flex_wrap, FLEX_WRAP_NO_WRAP)
-
-FLEX_ATTRIBUTE(grow, float, 0.0)
-FLEX_ATTRIBUTE(shrink, float, 1.0)
-FLEX_ATTRIBUTE(order, int, 0)
-FLEX_ATTRIBUTE(basis, float, NAN)
-
+#include <ui/internal/flex_attributes.h>
 // An item can store an arbitrary pointer, which can be used by bindings as
 // the address of a managed object.
 FLEX_ATTRIBUTE(managed_ptr, void *, NULL)
@@ -127,8 +89,7 @@ FLEX_ATTRIBUTE(managed_ptr, void *, NULL)
 // during layout and which can customize the dimensions (width and height)
 // of the item.
 FLEX_ATTRIBUTE(self_sizing, flex_self_sizing, NULL)
-
-
+FLEX_ATTRIBUTE(pre_layout, flex_pre_layout, NULL)
 
 #undef FLEX_ATTRIBUTE
 

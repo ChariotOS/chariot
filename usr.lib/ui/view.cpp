@@ -1,13 +1,45 @@
 #include <ui/view.h>
 #include <ui/window.h>
 
+static void view_self_sizing_callback(struct flex_item *item, float size[2]) {
+  ui::view *view = (ui::view *)flex_item_get_managed_ptr(item);
+
+  // printf("%f %f\n", size[0], size[1]);
+  view->flex_self_sizing(size[0], size[1]);
+}
+
+static void view_pre_layout_callback(struct flex_item *item) {
+  float w, h;
+
+  w = flex_item_get_width(item);
+  h = flex_item_get_height(item);
+
+
+  if (!isnan(w)) if (w < 0) flex_item_set_width(item, 0.0);
+  if (!isnan(h)) if (h < 0) flex_item_set_height(item, 0.0);
+}
 
 
 ui::view::view() {
-	// Default state
+  m_fi = flex_item_new();
+
+  flex_item_set_managed_ptr(m_fi, (void *)this);
+  flex_item_set_self_sizing(m_fi, view_self_sizing_callback);
+  flex_item_set_pre_layout(m_fi, view_pre_layout_callback);
+  set_flex_direction(FLEX_DIRECTION_COLUMN);
+  // set_flex_grow(1.0);
+
+  set_flex_align_items(FLEX_ALIGN_STRETCH);
+  set_flex_align_content(FLEX_ALIGN_STRETCH);
 }
 
 ui::view::~view(void) {
+  for (int i = flex_item_count(m_fi) - 1; i >= 0; i--) {
+    flex_item_delete(m_fi, i);
+  }
+
+  // just delete the flex item
+  flex_item_free(m_fi);
   auto *win = window();
   if (win) {
     if (win->hovered == this) win->hovered = NULL;
@@ -20,15 +52,19 @@ void ui::view::clear(void) { m_children.clear(); }
 
 
 
-void ui::view::repaint(void) {
+void ui::view::repaint(bool do_invalidate) {
   // if we aren't mounted, don't paint - it doesn't make sense
   if (window() == NULL) return;
+
 
   auto s = get_scribe();
 
   // draw the border
   gfx::rect border = gfx::rect(0, 0, width(), height());
-  s.fill_rect(border, background);
+
+  if (background) {
+    s.fill_rect(border, get_background());
+  }
 
   for (int i = 0; i < bordersize; i++) {
     s.draw_rect(border, bordercolor);
@@ -39,10 +75,8 @@ void ui::view::repaint(void) {
   }
 
   paint_event();
-
-  each_child(fn(auto &c) { c.repaint(); });
-
-  invalidate();
+  each_child(fn(auto &c) { c.repaint(false); });
+  if (do_invalidate) invalidate();
 }
 
 
@@ -61,15 +95,16 @@ void ui::view::set_focused(void) {
 void ui::view::dispatch_mouse_event(ui::mouse_event &event) {
   // copy the event and adjust it to the local bounds
   ui::mouse_event ev = event;
-  ev.x -= m_rel.x;
-  ev.y -= m_rel.y;
+  // printf("mouse move %d %d   %d %d\n", left(), top(), ev.x, ev.y);
+  ev.x -= left();
+  ev.y -= top();
 
   // what we do here is based on what kind of event we have.
   bool sent_to_child = false;
   each_child(fn(auto &child) {
     if (sent_to_child) return;
     // if the mouse event is within the child, send it there instead
-    auto &crel = child.m_rel;
+    auto crel = child.relative();
     if (crel.contains(ev.x, ev.y)) {
       child.dispatch_mouse_event(ev);
       sent_to_child = true;
@@ -87,12 +122,13 @@ void ui::view::dispatch_mouse_event(ui::mouse_event &event) {
 
 
 bool ui::view::event(ui::event &ev) {
+  auto rel = relative();
   // try to handle each type
   switch (ev.get_type()) {
     case ui::event::type::mouse: {
       // translate the mouse event to maybe within this view
       ui::mouse_event mv = ev.as<ui::mouse_event>();
-      if (m_rel.contains(mv.x, mv.y)) {
+      if (rel.contains(mv.x, mv.y)) {
         dispatch_mouse_event(mv);
         return true;
       }
@@ -142,21 +178,12 @@ void ui::view::invalidate(void) { window()->invalidate(absolute_rect()); }
 
 
 void ui::view::do_reflow(void) {
-  /*
-   * reflow all the children so we can get an idea of their sizes
-   * we do this because the layout of the parent is dependent on the
-   * size of the children
-   */
-  each_child(fn(auto &c) { c.do_reflow(); });
-
-  // now, the hard part.
-  reflow_impl();
-
-  // repaint this view after we did a reflow :)
-  repaint();
+  // always just ask the window to reflow.
+  window()->reflow();
 }
 
 
+/*
 void ui::view::set_pos(ui::Direction dir, int pos) {
   switch (dir) {
     case ui::Direction::Vertical:
@@ -168,6 +195,8 @@ void ui::view::set_pos(ui::Direction dir, int pos) {
   }
   return;
 }
+*/
+
 ui::SizePolicy ui::view::get_size_policy(ui::Direction dir) {
   return dir == ui::Direction::Vertical ? get_height_policy() : get_width_policy();
 }
@@ -176,50 +205,67 @@ ui::SizePolicy ui::view::get_size_policy(ui::Direction dir) {
 int ui::view::size(ui::Direction dir) { return dir == ui::Direction::Vertical ? height() : width(); }
 
 
-
-void ui::view::set_size(ui::Direction dir, int sz) {
+void ui::view::set_size(ui::Direction dir, float sz) {
   switch (dir) {
     case ui::Direction::Vertical:
-      m_rel.h = sz;
+      flex_item_set_height(m_fi, sz);
       break;
     case ui::Direction::Horizontal:
-      m_rel.w = sz;
+      flex_item_set_width(m_fi, sz);
       break;
   }
   return;
 }
 
 
-
-void ui::view::set_size(int w, int h) {
-  m_rel.w = w;
-  m_rel.h = h;
+void ui::view::set_size(float w, float h) {
+  flex_item_set_width(m_fi, w);
+  flex_item_set_height(m_fi, h);
 }
 
+/*
 void ui::view::set_pos(int x, int y) {
   m_rel.x = x;
   m_rel.y = y;
 }
+*/
 
 gfx::rect ui::view::absolute_rect(void) {
+  gfx::rect r = relative();
   if (m_parent != NULL) {
     gfx::rect p = parent()->absolute_rect();
-    gfx::rect r = m_rel;
     r.x += p.x;
     r.y += p.y;
     return r;
   }
-  return m_rel;
+  return r;
 }
 
 gfx::rect ui::view::padded_area(void) {
   gfx::rect r;
-  r.x = padding.left;
-  r.y = padding.top;
-  r.w = width() - r.x - padding.right;
-  r.h = height() - r.y - padding.bottom;
+  r.x = get_flex_padding_left();
+  r.y = get_flex_padding_top();
+  r.w = width() - r.x - get_flex_padding_right();
+  r.h = height() - r.y - get_flex_padding_bottom();
 
   r.shrink(bordersize);
   return r;
 }
 
+
+static void recurse_mount(ui::view *v) {
+  v->mounted();
+  v->each_child([](ui::view &other) { recurse_mount(&other); });
+};
+
+
+void ui::view::add(ui::view *v) {
+  v->m_parent = this;
+  m_children.push(ck::unique_ptr(v));
+  // add the child's flexbox on the end
+  flex_item_add(m_fi, v->m_fi);
+  if (window()) {
+    do_reflow();
+    recurse_mount(v);
+  }
+}

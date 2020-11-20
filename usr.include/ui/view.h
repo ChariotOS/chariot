@@ -5,10 +5,14 @@
 #include <ck/macros.h>
 #include <ck/object.h>
 #include <ck/option.h>
+#include <gfx/font.h>
 #include <gfx/rect.h>
 #include <gfx/scribe.h>
+#include <math.h>
 #include <ui/event.h>
 #include <ui/internal/flex.h>
+
+#define STYLE_AUTO NAN
 
 namespace ui {
 
@@ -71,20 +75,25 @@ namespace ui {
    */
 
 
-#define VIEW_RENDER_ATTRIBUTE(type, name, val)        \
- protected:                                           \
-  type name = val;                                    \
-                                                      \
- public:                                              \
-  inline type get_##name(void) { return this->name; } \
-                                                      \
- public:                                              \
-  inline void set_##name(const type &v) { this->name = v; }
+#define VIEW_RENDER_ATTRIBUTE(type, name, val) \
+ protected:                                    \
+  ck::option<type> name = {};                  \
+                                               \
+ public:                                       \
+  inline type get_##name(void) {               \
+    if (this->name) {                          \
+      return this->name.unwrap();              \
+    }                                          \
+    if (parent() != NULL) {                    \
+      return parent()->get_##name();           \
+    }                                          \
+    return val;                                \
+  }                                            \
+                                               \
+ public:                                       \
+  inline void set_##name(const ck::option<type> &v) { this->name = v; }
 
 
-
-
-// #define SIZE_AUTO (-
 
   class view {
     CK_NONCOPYABLE(view);
@@ -108,20 +117,16 @@ namespace ui {
     inline virtual void on_right_click(ui::mouse_event &) {}
     inline virtual void on_scroll(ui::mouse_event &) {}
     inline virtual void on_mouse_move(ui::mouse_event &) {}
-
     inline virtual void paint_event(void) {}
-
-
     inline virtual void on_keydown(ui::keydown_event &) {}
     inline virtual void on_keyup(ui::keyup_event &) {}
-
-
     inline virtual void on_focused(void) {}
     inline virtual void on_blur(void) {}
-
-
     inline virtual void mounted(void) {}
 
+
+		inline virtual void flex_self_sizing(float &width, float &height) {
+		}
 
     // make this widget the focused one
     void set_focused(void);
@@ -131,7 +136,7 @@ namespace ui {
     void dispatch_mouse_event(ui::mouse_event &ev);
 
     // ask the view to repaint at the next possible time
-    void repaint(void);
+    void repaint(bool do_invaldiate = true);
 
 
     /*
@@ -141,15 +146,22 @@ namespace ui {
     virtual void reflowed(void) {}
 
 
+    inline auto relative(void) {
+      return gfx::rect(flex_item_get_frame_x(m_fi), flex_item_get_frame_y(m_fi), flex_item_get_frame_width(m_fi),
+                       flex_item_get_frame_height(m_fi));
+    }
+
+
     /*
      * Geometry relative to the parent view (or window)
      */
-    inline auto left() { return m_rel.left(); }
-    inline auto right() { return m_rel.right(); }
-    inline auto top() { return m_rel.top(); }
-    inline auto bottom() { return m_rel.bottom(); }
-    inline auto width() { return m_rel.w; }
-    inline auto height() { return m_rel.h; }
+    inline int left() { return flex_item_get_frame_x(m_fi); }
+    inline int top() { return flex_item_get_frame_y(m_fi); }
+    inline int width() { return flex_item_get_frame_width(m_fi); }
+    inline int height() { return flex_item_get_frame_height(m_fi); }
+
+    inline int right() { return left() + width() - 1; }
+    inline int bottom() { return top() + height() - 1; }
 
     /*
      * Return the window for this view
@@ -175,17 +187,17 @@ namespace ui {
     void do_reflow(void);
 
     inline void set_border(uint32_t color, uint32_t size) {
-			set_bordercolor(color);
-			set_bordersize(size);
+      set_bordercolor(color);
+      set_bordersize(size);
     }
 
 
-    void set_size(ui::Direction dir, int sz);
-    void set_size(int w, int h);
-    void set_pos(int x, int y);
+    void set_size(ui::Direction dir, float sz);
+    void set_size(float w, float h);
+    // void set_pos(int x, int y);
     gfx::rect absolute_rect(void);
-		// area inside padding
-		gfx::rect padded_area(void);
+    // area inside padding
+    gfx::rect padded_area(void);
 
 
     /**
@@ -215,12 +227,7 @@ namespace ui {
       return *v;
     }
 
-    inline void add(ui::view *v) {
-      v->m_parent = this;
-      m_children.push(ck::unique_ptr(v));
-      do_reflow();
-      v->mounted();
-    }
+    void add(ui::view *v);
 
 
 
@@ -230,7 +237,7 @@ namespace ui {
     }
 
 
-		void clear(void);
+    void clear(void);
 
 
 
@@ -243,35 +250,60 @@ namespace ui {
 
 
 
+
+    void mark_dirty(void);
+
+
+
     VIEW_RENDER_ATTRIBUTE(uint32_t, background, 0xFFFFFF);
-    VIEW_RENDER_ATTRIBUTE(uint32_t, foreground, 0xFFFFFF);
-    VIEW_RENDER_ATTRIBUTE(uint32_t, bordercolor, 0xFFFFFF);
+    VIEW_RENDER_ATTRIBUTE(uint32_t, foreground, 0x000000);
+    VIEW_RENDER_ATTRIBUTE(uint32_t, bordercolor, 0x000000);
     VIEW_RENDER_ATTRIBUTE(uint32_t, bordersize, 0);
 
     VIEW_RENDER_ATTRIBUTE(ui::SizePolicy, width_policy, ui::SizePolicy::Calculate);
     VIEW_RENDER_ATTRIBUTE(ui::SizePolicy, height_policy, ui::SizePolicy::Calculate);
 
-    VIEW_RENDER_ATTRIBUTE(ui::edges, margin, {});
-    VIEW_RENDER_ATTRIBUTE(ui::edges, padding, {});
+    inline auto get_font(void) {
+      if (!m_font) {
+        if (parent() == NULL) return gfx::font::get_default();
+        return parent()->get_font();
+      }
+      return m_font;
+    }
+
+    inline void set_font(const char *name) { m_font = gfx::font::get(name); }
+
+
+    inline void set_font_size(float sz) { m_font_size = sz; }
+    inline int get_font_size(void) {
+      if (isnan(m_font_size)) {
+        if (parent() == NULL) return 12;  // default fon
+        return parent()->get_font_size();
+      }
+      return m_font_size;
+    }
+
+    // VIEW_RENDER_ATTRIBUTE(ui::edges, margin, {});
+    // VIEW_RENDER_ATTRIBUTE(ui::edges, padding, {});
+
+
+#undef FLEX_ATTRIBUTE
+#define FLEX_ATTRIBUTE(name, type, def)                                    \
+  inline type get_flex_##name(void) { return flex_item_get_##name(m_fi); } \
+  inline void set_flex_##name(type val) { flex_item_set_##name(m_fi, val); };
+#include <ui/internal/flex_attributes.h>
+#undef FLEX_ATTRIBUTE
 
 
    protected:
-    // implemented by the subclass
-    virtual void reflow_impl() {}
+    float m_font_size = STYLE_AUTO;
+    ck::ref<gfx::font> m_font = nullptr;
+
 
     friend ui::window;
-    /*
-     * Because views are meant to be nested ad infinitum, they hold information
-     * representing their size within the *parent* view, not the overall window.
-     * This makes layout calculations and whatnot much easier
-     */
-    gfx::rect m_rel;
 
     // bit flags
     bool m_visible = true;
-
-
-    bool m_use_bg = true;
 
     /*
      * these two entries are mutually exclusive
@@ -287,11 +319,18 @@ namespace ui {
      */
     // ck::intrusive_list<ui::view, &ui::view::m_child_node> m_children;
     ck::vec<ck::unique_ptr<ui::view>> m_children;
+
+    /*
+     * Each view has their own flex_item, which is tied into the ui/internal/flex.c code
+     * to do flexbox calculation
+     */
+    struct flex_item *m_fi = NULL;
   };
 
 
 
 
+#if 0
   class stackview : public ui::view {
    public:
     inline auto get_layout(void) const { return m_layout; }
@@ -317,5 +356,6 @@ namespace ui {
     uint32_t m_spacing = 0;
     ui::Direction m_layout;
   };
+#endif
 
 }  // namespace ui

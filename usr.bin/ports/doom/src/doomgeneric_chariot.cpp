@@ -85,7 +85,9 @@ class doomview : public ui::view {
   long start_time = current_us();
 
  public:
-  doomview() {}
+  doomview() {
+		set_flex_grow(1);
+	}
   virtual void paint_event(void) override {
     auto s = get_scribe();
 

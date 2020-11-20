@@ -23,6 +23,7 @@ class gol : public ui::view {
 
  public:
   gol() {
+		set_flex_grow(1);
     tick_timer = ck::timer::make_interval(1000 / TICKS, [this] { this->tick(); });
     tick_timer->stop();
 

@@ -2,6 +2,7 @@
 #include <ui/view.h>
 
 
+/*
 
 ui::stackview::~stackview() {}
 
@@ -84,3 +85,4 @@ void ui::stackview::reflow_impl() {
     }
   });
 }
+*/

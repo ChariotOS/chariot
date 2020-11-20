@@ -13,13 +13,97 @@
 #include <ui/label.h>
 
 
-static auto make_label(const char* s, unsigned int fg, unsigned int bg) {
+static auto make_label(const char* s, unsigned int fg = 0x000000, unsigned int bg = 0xFFFFFF) {
   auto lbl = new ui::label(s, ui::TextAlign::Center);
   lbl->set_foreground(fg);
   lbl->set_background(bg);
-  // lbl->set_border(0xFFFFFF, 0);
+
+  // lbl->set_flex_grow(1.0);
+  // lbl->set_font("Source Code Pro");
+  lbl->set_font_size(12);
   return lbl;
 };
+
+
+class game_view;
+
+
+
+class scrolly_view final : public ui::view {
+ public:
+  virtual void on_scroll(ui::mouse_event& ev) {
+    set_flex_width(get_flex_width() + ev.ds * 5);
+    do_reflow();
+  }
+};
+
+
+template <typename T = ui::view>
+T* create(flex_direction dir, float grow, int color) {
+  auto v = new T();
+
+  v->set_flex_direction(dir);
+  v->set_flex_grow(grow);
+  v->set_background(color);
+
+  return v;
+}
+
+
+int main(int argc, char** argv) {
+  ui::application app;
+
+  ui::window* win = app.new_window("Current Test (Hello World)", 640, 480);
+  // create a root view (column)
+  auto& root = win->set_view<ui::view>();
+  root.set_flex_direction(FLEX_DIRECTION_ROW);
+  root.set_flex_grow(1.0);
+
+
+
+
+
+
+  auto primary = create(FLEX_DIRECTION_COLUMN, 1.0, 0xffffff);
+
+  primary->add(make_label(
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras sodales, velit et mattis dignissim, neque neque auctor nunc, quis consequat quam arcu non dui. Etiam et orci est. Sed pulvinar neque sed sapien hendrerit, sit amet fermentum erat eleifend. Aliquam sodales at ante vel interdum. Vestibulum mattis elit ut aliquet aliquet. Nullam id efficitur metus, ut finibus felis. Nullam aliquam purus sed imperdiet facilisis. Etiam vulputate nulla at ante vehicula, vel dignissim sapien semper. Cras tempor pretium arcu, ut facilisis libero porttitor sit amet. Morbi commodo justo non ipsum tempus, a dictum purus vulputate. Aenean ornare risus condimentum sapien porttitor varius. Donec maximus id felis id aliquam. Quisque vestibulum arcu at ante dictum volutpat. Integer varius, est id malesuada scelerisque, velit quam sollicitudin odio, quis molestie diam urna quis velit. In eget sodales enim. Sed mattis at ante eget tincidunt.",
+      0xFFFFFF, 0x000000));
+
+  primary->add(make_label("Line one is the first line.", 0x000000, 0xFF00FF));
+  primary->add(make_label("The second line has some more content", 0x000000, 0xFFFFFF));
+  primary->add(make_label("The third line is the most interesting", 0xFFFFFF, 0x000000));
+
+
+  auto left = create<scrolly_view>(FLEX_DIRECTION_COLUMN, 0.0, 0x333333);
+  left->set_flex_shrink(0);
+  left->set_flex_width(240);
+
+
+  auto right = create<scrolly_view>(FLEX_DIRECTION_COLUMN, 0.0, 0x333333);
+  right->set_flex_shrink(0);
+  right->set_flex_width(240);
+
+
+	root.add(left);
+	root.add(primary);
+	root.add(right);
+
+
+
+  auto input = ck::file::unowned(0);
+  input->on_read([&] {
+    getchar();
+    ck::eventloop::exit();
+  });
+
+  // start the application!
+  app.start();
+
+
+  return 0;
+}
+
 
 
 struct vec3 {
@@ -241,128 +325,3 @@ class game_view final : public ui::view {
   }
 };
 
-
-#include <ui/internal/flex.h>
-
-static void self_sizing_callback(struct flex_item* item, float size[2]) {
-  // printf("self sizing %p: %f %f\n", item, size[0], size[1]);
-}
-
-class flex_view final : public ui::view {
-  struct flex_item* root;
-
-
- public:
-  auto* create(flex_direction dir, float width = NAN, float height = NAN) {
-    auto* item = flex_item_new();
-    flex_item_set_direction(item, dir);
-    flex_item_set_self_sizing(item, self_sizing_callback);
-    flex_item_set_width(item, width);
-    flex_item_set_height(item, height);
-
-    flex_item_set_align_items(item, FLEX_ALIGN_STRETCH);
-    flex_item_set_align_content(item, FLEX_ALIGN_STRETCH);
-    return item;
-  }
-
-  flex_view(void) {
-    root = flex_item_new();
-    flex_item_set_direction(root, FLEX_DIRECTION_ROW);
-
-    flex_item_set_width(root, width());
-    flex_item_set_height(root, height());
-
-    if (1) {
-      auto left = create(FLEX_DIRECTION_COLUMN);
-      flex_item_set_grow(left, 0.4);
-
-      for (int i = 0; i < 10; i++) {
-        flex_item_add(left, create(FLEX_DIRECTION_ROW, NAN, 50));
-      }
-      flex_item_add(root, left);
-    }
-    {
-      auto right = create(FLEX_DIRECTION_COLUMN, NAN, NAN);
-      flex_item_set_grow(right, 0.6);
-      flex_item_set_align_content(right, FLEX_ALIGN_START);
-
-      for (int n = 0; n < 3; n++) {
-        auto container = create(FLEX_DIRECTION_ROW, NAN, NAN);
-        flex_item_set_wrap(container, FLEX_WRAP_WRAP);
-        flex_item_set_align_content(container, FLEX_ALIGN_START);
-        for (int i = 0; i < 30; i++) {
-          int w = rand() % 30 + 12;
-          auto item = create(FLEX_DIRECTION_ROW, w, 12);
-          flex_item_add(container, item);
-        }
-
-        flex_item_add(right, container);
-        auto* item = create(FLEX_DIRECTION_ROW, NAN, 80);
-        flex_item_add(right, item);
-      }
-
-      flex_item_add(root, right);
-    }
-  }
-
-  virtual void mounted(void) { repaint(); }
-
-  void draw_item(gfx::scribe& s, struct flex_item* item, int ox, int oy) {
-    auto color = rand();
-
-    int x = flex_item_get_frame_x(item) + ox;
-    int y = flex_item_get_frame_y(item) + oy;
-    int width = flex_item_get_frame_width(item);
-    int height = flex_item_get_frame_height(item);
-
-    printf("%p %d %d %d %d\n", item, x, y, width, height);
-
-    s.fill_rect(gfx::rect(x, y, width, height), color);
-
-    int children = flex_item_count(item);
-    for (int i = 0; i < children; i++) {
-      auto* child = flex_item_child(item, i);
-      draw_item(s, child, x, y);
-    }
-  }
-
-  virtual void paint_event() {
-    flex_item_set_width(root, width());
-    flex_item_set_height(root, height());
-
-    flex_layout(root);
-
-    srand(0);
-    auto s = get_scribe();
-    draw_item(s, root, 0, 0);
-
-    invalidate();
-  }
-};
-
-
-
-int main(int argc, char** argv) {
-  // connect to the window server
-  ui::application app;
-
-
-  ui::window* win = app.new_window("Bruh Demo", 640, 480);
-  auto& root = win->set_view<ui::stackview>(ui::Direction::Vertical);
-
-  root << new flex_view();
-
-
-
-  auto input = ck::file::unowned(0);
-  input->on_read([&] {
-    getchar();
-    ck::eventloop::exit();
-  });
-
-  // start the application!
-  app.start();
-
-
-  return 0;
-}

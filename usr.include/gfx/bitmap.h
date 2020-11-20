@@ -30,8 +30,8 @@ namespace gfx {
     }
 
     inline void set_pixel(int x, int y, uint32_t color) {
-      if (x < 0 || x > (int)m_width) return;
-      if (y < 0 || y > (int)m_height) return;
+      if (x < 0 || x >= (int)m_width) return;
+      if (y < 0 || y >= (int)m_height) return;
       m_pixels[x + y * m_width] = color;
     }
 

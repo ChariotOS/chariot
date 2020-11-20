@@ -17,7 +17,7 @@ namespace ui {
 
 
 
-  class windowframe : public ui::stackview {
+  class windowframe : public ui::view {
     ck::ref<gfx::font> m_frame_font;
   	ck::ref<gfx::font> m_icon_font;
 
@@ -74,6 +74,7 @@ namespace ui {
     inline void defer_invalidation(bool d) { m_defer_invalidation = d; }
 
 
+		void reflow();
     // the whole window needs reflowed, so schedule one
     void schedule_reflow();
     ck::tuple<int, int> resize(int width, int height);

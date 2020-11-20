@@ -3,11 +3,24 @@
 #include <sys/mman.h>
 
 
-
-#define STB_TRUETYPE_IMPLEMENTATION
-#include <gfx/stb_truetype.h>
-
 #include FT_BITMAP_H
+
+
+#define max(a, b)           \
+  ({                        \
+    __typeof__(a) _a = (a); \
+    __typeof__(b) _b = (b); \
+    _a > _b ? _a : _b;      \
+  })
+
+
+#define min(a, b)           \
+  ({                        \
+    __typeof__(a) _a = (a); \
+    __typeof__(b) _b = (b); \
+    _a < _b ? _a : _b;      \
+  })
+
 
 
 static bool freetype_initialized = false;
@@ -152,45 +165,6 @@ namespace gfx {
 
 
 
-  inline __attribute__((always_inline)) uint32_t color_fjoin(float *out) {
-    uint32_t color = 0;
-    auto *c = (char *)&color;
-    for (int i = 0; i < 3; i++) {
-      c[i] = out[i] * 255.0;
-    }
-    return color;
-  }
-
-  inline __attribute__((always_inline)) void color_fsplit(char *in, float *out) {
-    for (int i = 0; i < 3; i++) {
-      out[i] = in[i] / 255.0;
-    }
-  }
-
-  inline __attribute__((always_inline)) void color_fsplit(int in_int, float out[3]) {
-    auto *in = (char *)&in_int;
-    color_fsplit(in, out);
-  }
-
-
-  inline __attribute__((always_inline)) float gamma_blend(float a, float b, float alpha) {
-    return (a * alpha) + ((1 - alpha) * b);
-
-    constexpr float GAMMA = 1.0;
-    float tmp = pow(a, GAMMA) * alpha + pow(b, GAMMA) * (1.0 - alpha);
-    float out = pow(tmp, 1.0 / GAMMA);
-
-		if (out > 1.0) out = 1.0;
-		return out;
-  }
-
-
-  inline __attribute__((always_inline)) void gamma_blend(float alpha, float rgb0[3], float rgb1[3], float out[3]) {
-    for (int i = 0; i < 3; i++) {
-      out[i] = gamma_blend(rgb0[i], rgb1[i], alpha);
-    }
-  }
-
 
   /*
    * Draw a single code point at the location dx and dy. dy represents
@@ -205,12 +179,9 @@ namespace gfx {
     int col_start = gl->metrics.horiBearingX >> 6;
     int ascender = gl->metrics.horiBearingY >> 6;
 
-    float bg[3];
-    float out[3];
-    float fg_color[3];
-    color_fsplit(fg, fg_color);
 
-    constexpr auto GAMMA = 2.2;
+		// s.fill_rect(gfx::rect(dx, dy - ascender, gl->bitmap.width, gl->bitmap.rows), 0xFF00FF);
+
     switch (gl->mode) {
       case FT_RENDER_MODE_NORMAL: {
         for (int y = 0; y < gl->bitmap.rows; y++) {
@@ -222,14 +193,7 @@ namespace gfx {
             if (c == 0) continue;
 
             float alpha = c / 255.0;
-            if (1) {
-              s.blend_pixel(col, row, fg, alpha);
-              continue;
-            }
-
-            color_fsplit(s.get_pixel(col, row), bg);
-            gamma_blend(alpha, fg_color, bg, out);
-            s.set_pixel(col, row, color_fjoin(out));
+            s.blend_pixel(col, row, fg, alpha);
           }
         }
 
@@ -242,10 +206,7 @@ namespace gfx {
     }
 
 
-    dx += gl->advance;
-
-    // auto end = tsc();
-    // printf("'%c' draw took %llu cycles\n", cp, end - start);
+    dx += max(gl->bitmap.width, gl->advance);
 
     return 0;
   }

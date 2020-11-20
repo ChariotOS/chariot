@@ -1,10 +1,11 @@
-// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.*/
 // Licensed under the MIT License. See the LICENSE.txt file in the project root
 // for the license information.
 
 #include <assert.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -285,7 +286,7 @@ static void layout_init(struct flex_item *item, float width, float height, struc
     layout->pos2 = layout->vertical ? item->padding_left : item->padding_top;
   }
 
-  layout->need_lines = layout->wrap && item->align_content != FLEX_ALIGN_START;
+  layout->need_lines = layout->wrap; // && item->align_content != FLEX_ALIGN_START;
   layout->lines = NULL;
   layout->lines_count = 0;
   layout->lines_sizes = 0;
@@ -508,9 +509,11 @@ static void layout_items(struct flex_item *item, unsigned int child_begin, unsig
     layout->lines_count++;
     layout->lines_sizes += line->size;
   }
+
 }
 
 static void layout_item(struct flex_item *item, float width, float height) {
+
   if (item->children.count == 0) {
     return;
   }
@@ -578,10 +581,12 @@ static void layout_item(struct flex_item *item, float width, float height) {
     // Call the self_sizing callback if provided. Only non-NAN values
     // are taken into account. If the item's cross-axis align property
     // is set to stretch, ignore the value returned by the callback.
-    if (child->self_sizing != NULL) {
+    if (child->self_sizing != NULL && child->parent != NULL) {
       float size[2] = {child->frame[2], child->frame[3]};
 
+			// printf("self_sizing: %f %f -> ", size[0], size[1]);
       child->self_sizing(child, size);
+			// printf("%f %f\n", size[0], size[1]);
 
       for (unsigned int j = 0; j < 2; j++) {
         unsigned int size_off = j + 2;
@@ -636,6 +641,8 @@ static void layout_item(struct flex_item *item, float width, float height) {
 
   // Layout remaining items in wrap mode, or everything otherwise.
   layout_items(item, last_layout_child, item->children.count, relative_children_count, layout);
+
+
 
   // In wrap mode we may need to tweak the position of each line according to
   // the align_content property as well as the cross-axis size of items that
@@ -701,11 +708,26 @@ static void layout_item(struct flex_item *item, float width, float height) {
 #undef LAYOUT_RESET
 
 
+
+static void pre_recurse(struct flex_item *item) {
+  if (item->pre_layout) item->pre_layout(item);
+
+  for (int i = 0; i < flex_item_count(item); i++) {
+    pre_recurse(flex_item_child(item, i));
+  }
+}
+
+
 void flex_layout(struct flex_item *item) {
   assert(item->parent == NULL);
   assert(!isnan(item->width));
   assert(!isnan(item->height));
-  assert(item->self_sizing == NULL);
+  // assert(item->self_sizing == NULL);
 
+  pre_recurse(item);
   layout_item(item, item->width, item->height);
+
+	/* fix up the width and height for the root node */
+  item->frame[2] = item->width;
+  item->frame[3] = item->height;
 }

@@ -47,12 +47,12 @@ static process::ptr pid_lookup(pid_t pid) {
 void sched::proc::in_pgrp(pid_t pgid, func<bool(struct process &)> cb) {
   ptable_lock.read_lock();
 
-	for (auto kv : proc_table) {
-		auto proc = kv.value;
-		if (proc->pgid == pgid) {
-			if (cb(*proc) == false) break;
-		}
-	}
+  for (auto kv : proc_table) {
+    auto proc = kv.value;
+    if (proc->pgid == pgid) {
+      if (cb(*proc) == false) break;
+    }
+  }
   ptable_lock.read_unlock();
 }
 
@@ -212,7 +212,6 @@ struct process *sched::proc::kproc(void) {
 
 
 struct thread *sched::proc::spawn_kthread(const char *name, int (*func)(void *), void *arg) {
-
   auto proc = kproc();
   auto tid = get_next_pid();
   auto thd = new thread(tid, *proc);
@@ -224,7 +223,7 @@ struct thread *sched::proc::spawn_kthread(const char *name, int (*func)(void *),
 
   thd->setup_tls();
 
-	return thd;
+  return thd;
 }
 
 
@@ -321,6 +320,7 @@ void sched::proc::dump_table(void) {
 #undef ST
 
       printk("state %-10s ", state);
+      printk("rip %p ", t->trap_frame != NULL ? arch::reg(REG_PC, t->trap_frame) : 0);
 
       printk("pri %-3d ", t->sched.priority);
       printk("die %-3d ", t->should_die);
@@ -329,6 +329,7 @@ void sched::proc::dump_table(void) {
       printk("timeslice %-3d ", t->sched.timeslice);
       printk("start %-6d ", t->sched.start_tick);
       printk("cpu %-3d ", t->stats.current_cpu);
+
 
       printk("\n");
     }
@@ -582,6 +583,4 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) { r
 
 
 
-int sys::kill(int pid, int sig) {
-  return sched::proc::send_signal(pid, sig);
-}
+int sys::kill(int pid, int sig) { return sched::proc::send_signal(pid, sig); }
