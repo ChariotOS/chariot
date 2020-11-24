@@ -275,6 +275,7 @@ namespace ui {
 
 
     inline void set_font_size(float sz) { m_font_size = sz; }
+
     inline int get_font_size(void) {
       if (isnan(m_font_size)) {
         if (parent() == NULL) return 12;  // default fon
@@ -296,7 +297,7 @@ namespace ui {
 
 
    protected:
-    float m_font_size = STYLE_AUTO;
+    float m_font_size = NAN;
     ck::ref<gfx::font> m_font = nullptr;
 
 

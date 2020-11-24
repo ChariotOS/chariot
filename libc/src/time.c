@@ -19,7 +19,6 @@ int clock_gettime(int id, struct timespec *s) {
 }
 
 
-
 clock_t clock(void) { return sysbind_gettime_microsecond() / 1000; }
 
 

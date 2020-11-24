@@ -213,6 +213,9 @@ static void layout_init(struct flex_item *item, float width, float height, struc
   assert(item->padding_bottom >= 0);
   width -= item->padding_left + item->padding_right;
   height -= item->padding_top + item->padding_bottom;
+
+	if (width < 0) width = 0;
+	if (height < 0) height = 0;
   assert(width >= 0);
   assert(height >= 0);
 

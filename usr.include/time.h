@@ -14,8 +14,8 @@ extern "C" {
 #define __NEED_clock_t
 #define __NEED_struct_timespec
 
-#if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) || \
-    defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+#if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || \
+    defined(_BSD_SOURCE)
 #define __NEED_clockid_t
 #define __NEED_timer_t
 #define __NEED_pid_t
@@ -41,7 +41,6 @@ struct tm {
 time_t time(time_t *);
 time_t getlocaltime(struct tm *tloc);  // nonstandard
 struct tm *localtime(const time_t *timep);
-
 
 // clock() returns milliseconds
 #define CLOCKS_PER_SEC (1000.0)

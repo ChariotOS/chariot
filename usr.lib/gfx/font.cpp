@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <gfx/font.h>
+#include <math.h>
 #include <sys/mman.h>
 
 
@@ -141,6 +142,17 @@ namespace gfx {
     return fnt;
   }
 
+
+
+
+  uint32_t font::width(uint32_t cp) {
+    auto *gl = load_glyph(cp);
+    if (gl == nullptr) return 0;
+    return gl->advance;
+  }
+
+
+
   font::glyph *font::load_glyph(uint32_t cp) {
     auto &for_size = gcache[line_height()];
 
@@ -155,17 +167,6 @@ namespace gfx {
     return for_size.get(cp).get();
   }
 
-
-
-  uint32_t font::width(uint32_t cp) {
-    auto *gl = load_glyph(cp);
-    if (gl == nullptr) return 0;
-    return gl->advance;
-  }
-
-
-
-
   /*
    * Draw a single code point at the location dx and dy. dy represents
    * the location of the baseline of the font. In order to draw based on the
@@ -179,21 +180,24 @@ namespace gfx {
     int col_start = gl->metrics.horiBearingX >> 6;
     int ascender = gl->metrics.horiBearingY >> 6;
 
-
-		// s.fill_rect(gfx::rect(dx, dy - ascender, gl->bitmap.width, gl->bitmap.rows), 0xFF00FF);
-
     switch (gl->mode) {
       case FT_RENDER_MODE_NORMAL: {
         for (int y = 0; y < gl->bitmap.rows; y++) {
           int row = y + dy - ascender;
-          // int row = rowStartPos + y;
           for (int x = 0; x < gl->bitmap.width; x++) {
             int col = col_start + x + dx;
             unsigned char c = gl->bitmap.buffer[y * gl->bitmap.pitch + x];
+
             if (c == 0) continue;
 
+#if CONFIG_GFX_FONT_MONO
+            if (c > 128) {
+              s.draw_pixel(col, row, fg);
+            }
+#else
             float alpha = c / 255.0;
             s.blend_pixel(col, row, fg, alpha);
+#endif
           }
         }
 

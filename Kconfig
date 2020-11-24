@@ -158,5 +158,14 @@ menu "Devices"
 		default y
 		depends on X86
 		
+endmenu
+
+
+menu "Graphics Library"
+
+	
+	config GFX_FONT_MONO
+		bool "Monochrome font (no blending)"
+		default n
 
 endmenu

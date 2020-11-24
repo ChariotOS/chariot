@@ -15,8 +15,8 @@ static void view_pre_layout_callback(struct flex_item *item) {
   h = flex_item_get_height(item);
 
 
-  if (!isnan(w)) if (w < 0) flex_item_set_width(item, 0.0);
-  if (!isnan(h)) if (h < 0) flex_item_set_height(item, 0.0);
+  if (!isnan(w) && w < 0) flex_item_set_width(item, 0.0);
+  if (!isnan(h) && h < 0) flex_item_set_height(item, 0.0);
 }
 
 

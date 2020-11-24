@@ -18,9 +18,6 @@ static auto make_label(const char* s, unsigned int fg = 0x000000, unsigned int b
   lbl->set_foreground(fg);
   lbl->set_background(bg);
 
-  // lbl->set_flex_grow(1.0);
-  // lbl->set_font("Source Code Pro");
-  lbl->set_font_size(12);
   return lbl;
 };
 
@@ -50,16 +47,72 @@ T* create(flex_direction dir, float grow, int color) {
 }
 
 
+class animation {
+  time_t start_ms;
+  time_t end_ms;
+
+
+  ck::ref<ck::timer> m_timer;
+
+  ui::view& m_view;
+
+ public:
+  animation(ui::view& v) : m_view(v) {}
+
+
+  ~animation(void) { stop(); }
+
+  template <typename T, typename Fn>
+  int start(time_t duration_ms, T start, T end, Fn callback) {
+    if (m_timer) return -EEXIST;
+
+    start_ms = clock();
+    end_ms = start_ms + duration_ms;
+
+    m_timer = ck::timer::make_interval(16, [=]() {
+      auto now = clock();
+      float progress = (now - start_ms) / ((float)duration_ms);
+
+      if (progress >= 1) {
+        progress = 1.0;
+        stop();
+      }
+
+      T range = end - start;
+      T val = (range * curve(progress)) + start;
+
+      callback(val);
+    });
+    return 0;
+  }
+
+  void stop() {
+    if (m_timer) {
+      m_timer->stop();
+      m_timer = nullptr;
+    }
+  }
+
+  virtual float curve(float t) {
+    float s = t * t;
+    return s / (2.0f * (s - t) + 1.0f);
+  }
+};
+
 int main(int argc, char** argv) {
   ui::application app;
 
   ui::window* win = app.new_window("Current Test (Hello World)", 640, 480);
   // create a root view (column)
   auto& root = win->set_view<ui::view>();
+
+
+
+	root.set_font_size(40);
+
+	// root.set_font("Times New Roman");
   root.set_flex_direction(FLEX_DIRECTION_ROW);
   root.set_flex_grow(1.0);
-
-
 
 
 
@@ -67,8 +120,16 @@ int main(int argc, char** argv) {
   auto primary = create(FLEX_DIRECTION_COLUMN, 1.0, 0xffffff);
 
   primary->add(make_label(
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras sodales, velit et mattis dignissim, neque neque auctor nunc, quis consequat quam arcu non dui. Etiam et orci est. Sed pulvinar neque sed sapien hendrerit, sit amet fermentum erat eleifend. Aliquam sodales at ante vel interdum. Vestibulum mattis elit ut aliquet aliquet. Nullam id efficitur metus, ut finibus felis. Nullam aliquam purus sed imperdiet facilisis. Etiam vulputate nulla at ante vehicula, vel dignissim sapien semper. Cras tempor pretium arcu, ut facilisis libero porttitor sit amet. Morbi commodo justo non ipsum tempus, a dictum purus vulputate. Aenean ornare risus condimentum sapien porttitor varius. Donec maximus id felis id aliquam. Quisque vestibulum arcu at ante dictum volutpat. Integer varius, est id malesuada scelerisque, velit quam sollicitudin odio, quis molestie diam urna quis velit. In eget sodales enim. Sed mattis at ante eget tincidunt.",
-      0xFFFFFF, 0x000000));
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras sodales, velit et mattis dignissim, neque neque "
+      "auctor nunc, quis consequat quam arcu non dui. Etiam et orci est. Sed pulvinar neque sed sapien hendrerit, sit "
+      "amet fermentum erat eleifend. Aliquam sodales at ante vel interdum. Vestibulum mattis elit ut aliquet aliquet. "
+      "Nullam id efficitur metus, ut finibus felis. Nullam aliquam purus sed imperdiet facilisis. Etiam vulputate "
+      "nulla at ante vehicula, vel dignissim sapien semper. Cras tempor pretium arcu, ut facilisis libero porttitor "
+      "sit amet. Morbi commodo justo non ipsum tempus, a dictum purus vulputate. Aenean ornare risus condimentum "
+      "sapien porttitor varius. Donec maximus id felis id aliquam. Quisque vestibulum arcu at ante dictum volutpat. "
+      "Integer varius, est id malesuada scelerisque, velit quam sollicitudin odio, quis molestie diam urna quis velit. "
+      "In eget sodales enim. Sed mattis at ante eget tincidunt.",
+      0x000000, 0xffffff));
 
   primary->add(make_label("Line one is the first line.", 0x000000, 0xFF00FF));
   primary->add(make_label("The second line has some more content", 0x000000, 0xFFFFFF));
@@ -77,17 +138,26 @@ int main(int argc, char** argv) {
 
   auto left = create<scrolly_view>(FLEX_DIRECTION_COLUMN, 0.0, 0x333333);
   left->set_flex_shrink(0);
-  left->set_flex_width(240);
+  left->set_flex_width(0);
 
 
   auto right = create<scrolly_view>(FLEX_DIRECTION_COLUMN, 0.0, 0x333333);
   right->set_flex_shrink(0);
-  right->set_flex_width(240);
+  right->set_flex_width(0);
 
 
-	root.add(left);
-	root.add(primary);
-	root.add(right);
+  animation anim(*left);
+  anim.start(
+      250, 0, 50, fn(auto width) {
+        left->set_flex_width(width);
+        right->set_flex_width(width);
+        root.do_reflow();
+      });
+
+
+  root.add(left);
+  root.add(primary);
+  root.add(right);
 
 
 
