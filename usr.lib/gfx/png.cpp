@@ -44,7 +44,7 @@ static auto load_png(void *data, size_t size) {
 
   auto bmp = (T *)pngle_get_user_data(pngle);
 
-  free(pngle);
+	pngle_destroy(pngle);
 
   return ck::ref<T>(bmp);
 }
