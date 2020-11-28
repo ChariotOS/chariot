@@ -188,8 +188,8 @@ endfunction()
 add_subdirectory(kernel)
 
 add_subdirectory(libc)
-add_subdirectory(usr.lib)
-add_subdirectory(usr.bin)
+add_subdirectory(lib)
+add_subdirectory(bin)
 
 
 

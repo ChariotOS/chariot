@@ -36,8 +36,8 @@ if [ ! -d freetype-2.10.1 ]; then
 				--with-zlib=no             \
 				--with-png=no              \
 				--disable-shared \
-				"CFLAGS=-I$ROOT/usr.include -fno-stack-protector -DUSERLAND" \
-				"CXXFLAGS=-I$ROOT/usr.include -fno-stack-protector -DUSERLAND"
+				"CFLAGS=-I$ROOT/include -fno-stack-protector -DUSERLAND" \
+				"CXXFLAGS=-I$ROOT/include -fno-stack-protector -DUSERLAND"
 	make -j
 	popd
 fi
@@ -66,8 +66,8 @@ git clone https://github.com/nickwanninger/mesa-chariot.git mesa --depth 1 || (c
 					--disable-glut                                    \
 					--disable-driglx-direct                           \
 					--disable-gallium                                 \
-					"CFLAGS=-I$ROOT/usr.include -fno-stack-protector" \
-					"CXXFLAGS=-I$ROOT/usr.include -fno-stack-protector"
+					"CFLAGS=-I$ROOT/include -fno-stack-protector" \
+					"CXXFLAGS=-I$ROOT/include -fno-stack-protector"
 
 		make -j --no-print-directory
 		echo "XXX Built Mesa!"

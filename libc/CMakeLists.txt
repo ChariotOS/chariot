@@ -1,5 +1,5 @@
 
-include_directories(../usr.include /usr/include/c++/10.2.0/)
+include_directories(../include /usr/include/c++/10.2.0/)
 
 
 add_library(crt0 STATIC crt0.asm)

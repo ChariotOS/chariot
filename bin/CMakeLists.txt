@@ -15,11 +15,8 @@ include_directories(
 	../toolchain/tarballs/gcc-10.1.0/libstdc++-v3/include/std
 	../toolchain/tarballs/gcc-10.1.0/libstdc++-v3/libsupc++
 
-	../usr.include
+	../include
 )
-
-# include_directories(/usr/include/c++/10.2.0/)
-# include_directories(../usr.include ../usr.lib/c++/include)
 
 MACRO(SUBDIRLIST result curdir)
   FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)

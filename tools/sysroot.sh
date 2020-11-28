@@ -6,4 +6,4 @@ mkdir -p build/$ARCH/root
 
 # rsync the root filesystem together
 sudo rsync -a base/. build/$ARCH/root/
-sudo rsync -a usr.include/ build/$ARCH/root/include
+sudo rsync -a include/ build/$ARCH/root/include

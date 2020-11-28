@@ -4,7 +4,7 @@
 add_link_options(LINKER:-T ${CMAKE_CURRENT_SOURCE_DIR}/../user.ld -z max-page-size=0x1000)
 # add_link_options(-z max-page-size=0x1000)
 
-include_directories(../usr.include ./c++/include)
+include_directories(../include ./c++/include)
 
 
 MACRO(SUBDIRLIST result curdir)

@@ -45,7 +45,7 @@ set(LDFLAGS -T ${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld -m elf_x86_64 -z max-page-s
 
 include_directories(
 	# for core kernel interfaces
-	../usr.include/chariot
+	../include/chariot
 	# for lwip
 	../net/lwip/src/include
 	)
