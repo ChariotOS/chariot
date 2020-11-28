@@ -37,7 +37,7 @@ int ck::command::start(void) {
       argv[i + 1] = strdup(m_args[i].get());
     }
     argv[m_args.size() + 2] = NULL;
-    execvpe((char *)argv[0], (char **)argv, environ);
+    execvpe((const char *)argv[0], (const char **)argv, (const char **)environ);
     exit(-1);
   }
 

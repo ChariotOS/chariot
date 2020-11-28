@@ -85,7 +85,7 @@ if(CONFIG_X86)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmmx -fno-omit-frame-pointer -msse -msse2")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -nostdinc++ -std=c++17 -fdiagnostics-color=always")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -nostdinc++ -std=c++17 -fdiagnostics-color=always ")
 
 
 

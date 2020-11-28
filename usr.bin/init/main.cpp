@@ -17,8 +17,8 @@
 
 #include <ck/command.h>
 #include <ck/dir.h>
-#include <ck/re.h>
 #include <ck/io.h>
+#include <ck/re.h>
 #include <ck/string.h>
 
 #define ENV_PATH "/cfg/environ"
@@ -85,7 +85,7 @@ class service {
   ck::string config_file;
   pid_t pid = -1;
 
-	service(const char *path);
+        service(const char *path);
 };
 
 service::service(const char *path) : config_file(path) {
@@ -145,8 +145,8 @@ int main(int argc, char **argv) {
 
             if (pid == 0) {
               // child
-              char *args[] = {(char *)exec, NULL};
-              execve((char *)exec, args, environ);
+              const char *args[] = {exec, NULL};
+              execve(exec, args, (const char **)environ);
               exit(-1);
             }
 

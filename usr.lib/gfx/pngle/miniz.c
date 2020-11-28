@@ -246,7 +246,7 @@
 
 // Define MINIZ_NO_ZLIB_APIS to remove all ZLIB-style compression/decompression
 // API's.
-#define MINIZ_NO_ZLIB_APIS
+// #define MINIZ_NO_ZLIB_APIS
 
 // Define MINIZ_NO_ZLIB_COMPATIBLE_NAME to disable zlib names, to prevent
 // conflicts against stock zlib.
@@ -544,6 +544,8 @@ const char *mz_error(int err);
 // as a drop-in replacement for the subset of zlib that miniz.c supports. Define
 // MINIZ_NO_ZLIB_COMPATIBLE_NAMES to disable zlib-compatibility if you use zlib
 // in the same project.
+//
+#undef MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #ifndef MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 typedef unsigned char Byte;
 typedef unsigned int uInt;

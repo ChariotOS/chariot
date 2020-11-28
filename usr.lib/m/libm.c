@@ -149,9 +149,7 @@ int isinf(double d) {
   return (u.bits.exp == 2047 && u.bits.manl == 0 && u.bits.manh == 0);
 }
 
-int isnan(double d) {
-	return d != d;
-}
+int isnan(double d) { return d != d; }
 
 
 
@@ -339,3 +337,44 @@ double atanh(double x) { return log((1 + x) / (1 - x)) / 2.0; }
 double hypot(double x, double y) { return sqrt(x * x + y * y); }
 
 int fesetround(int x) { return 0; }
+
+
+
+/*
+ * Floats whose exponent is in [1..INFNAN) (of whatever type) are
+ * `normal'.  Floats whose exponent is INFNAN are either Inf or NaN.
+ * Floats whose exponent is zero are either zero (iff all fraction
+ * bits are zero) or subnormal values.
+ *
+ * A NaN is a `signalling NaN' if its QUIETNAN bit is clear in its
+ * high fraction; if the bit is set, it is a `quiet NaN'.
+ */
+#define	SNG_EXP_INFNAN	255
+#define	DBL_EXP_INFNAN	2047
+#define	EXT_EXP_INFNAN	32767
+struct ieee_double {
+  unsigned int dbl_fracl;
+  unsigned int dbl_frach : 20;
+  unsigned int dbl_exp : 11;
+  unsigned int dbl_sign : 1;
+};
+int fpclassify(double d) {
+  struct ieee_double* p = (struct ieee_double*)&d;
+
+  if (p->dbl_exp == 0) {
+    if (p->dbl_frach == 0 && p->dbl_fracl == 0)
+      return FP_ZERO;
+    else
+      return FP_SUBNORMAL;
+  }
+
+  if (p->dbl_exp == DBL_EXP_INFNAN) {
+    if (p->dbl_frach == 0 && p->dbl_fracl == 0)
+      return FP_INFINITE;
+    else
+      return FP_NAN;
+  }
+
+  return FP_NORMAL;
+}
+

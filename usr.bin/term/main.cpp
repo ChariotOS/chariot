@@ -112,7 +112,7 @@ struct terminalview : public ui::view {
   virtual void on_mouse_move(ui::mouse_event &ev) override {
     mouse_x = ev.x;
     mouse_y = ev.y;
-		printf("mouse move %d %d\n", ev.x, ev.y);
+		// printf("mouse move %d %d\n", ev.x, ev.y);
     /*  */
     // window()->resize(max(mouse_x * 2, 80), max(mouse_y * 2, 80));
     repaint();

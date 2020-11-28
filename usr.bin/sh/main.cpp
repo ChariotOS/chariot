@@ -100,7 +100,7 @@ int run_line(ck::string line) {
 
   pid_t pid = fork();
   if (pid == 0) {
-    execvpe(args[0], (char *const *)args.data(), environ);
+    execvpe(args[0], args.data(), (const char**)environ);
 		printf("execvpe returned errno '%s'\n", strerror(errno));
     exit(-1);
   }

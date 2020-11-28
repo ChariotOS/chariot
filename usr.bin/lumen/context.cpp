@@ -46,11 +46,11 @@ lumen::context::context(void) : screen(1024, 768) {
     }
   });
 
-	wallpaper = gfx::load_png("/usr/res/lumen/wallpaper.png");
+  wallpaper = gfx::load_png("/usr/res/lumen/wallpaper.png");
 
-	if (wallpaper->width() != screen.width() || wallpaper->height() != screen.height()) {
-		wallpaper = wallpaper->scale(screen.width(), screen.height(), gfx::bitmap::SampleMode::Nearest);
-	}
+  if (wallpaper->width() != screen.width() || wallpaper->height() != screen.height()) {
+    wallpaper = wallpaper->scale(screen.width(), screen.height(), gfx::bitmap::SampleMode::Nearest);
+  }
 
 
   server.listen("/usr/servers/lumen", [this] { accept_connection(); });
@@ -196,19 +196,7 @@ void lumen::context::select_window(lumen::window *win) {
 void lumen::context::invalidate(const gfx::rect &r) {
   auto real = r.intersect(screen.bounds());
   dirty_regions_lock.lock();
-  for (auto &d : dirty_regions) {
-    if (real.contains(d)) {
-      d = real;
-      dirty_regions_lock.unlock();
-      return;
-    }
-    // the region is already invalidated
-    if (d.contains(real)) {
-      dirty_regions_lock.unlock();
-      return;
-    }
-  }
-  dirty_regions.push(real);
+  dirty_regions.add(real);
   dirty_regions_lock.unlock();
 
 #ifdef USE_COMPOSE_INTERVAL
@@ -495,50 +483,18 @@ void lumen::context::compose(void) {
     return;
   }
 
-
   // make a tmp bitmap
   gfx::bitmap b(screen.width(), screen.height(), screen.buffer());
 
   // this scribe is the "compositor scribe", used by everyone in this function
   gfx::scribe scribe(b);
 
-// #define COMPOSITOR_DEBUG_RECTS
-#ifdef COMPOSITOR_DEBUG_RECTS
 
-
-  scribe.clear(bg_color);
-
-  gfx::disjoint_rects rects;
-  for (auto win : windows) {
-  	// rects.add(win->rect, true);
-    scribe.enter();
-    scribe.state().offset = gfx::point(win->rect.x, win->rect.y);
-    scribe.state().clip = win->rect;
-    win->draw(scribe);
-    scribe.leave();
-  }
-
-	for (auto &r : dirty_regions) {
-		rects.add(r);
-	}
-
-  srand(0);
-	printf("%d rects\n", rects.rects().size());
-  for (auto &r : rects.rects()) scribe.draw_rect(r, rand());
-
-  screen.draw_mouse();
-
-  // if we are doing a debug draw, flush the whole buffer
-  memcpy(screen.front_buffer, screen.back_buffer, screen.width() * screen.height() * sizeof(uint32_t));
-
-#else
 
 
   bool draw_mouse = screen.mouse_moved;
   // clear that information
   if (draw_mouse) screen.mouse_moved = false;
-
-
 
   auto compose_window = [&](lumen::window &window) -> bool {
     window.window_lock.lock();
@@ -546,12 +502,12 @@ void lumen::context::compose(void) {
     scribe.enter();
     scribe.state().offset = gfx::point(window.rect.x, window.rect.y);
 
-    for (auto &dirty_rect : dirty_regions) {
+    for (auto &dirty_rect : dirty_regions.rects()) {
       if (!dirty_rect.intersects(window.rect)) continue;
       // is this region occluded by another window?
-      if (occluded(window, dirty_rect)) {
-        continue;
-      }
+      // if (occluded(window, dirty_rect)) {
+      // continue;
+      // }
       scribe.state().clip = dirty_rect;
 
       window.draw(scribe);
@@ -563,10 +519,9 @@ void lumen::context::compose(void) {
 
   windows_lock.lock();
   dirty_regions_lock.lock();
-  for (auto &r : dirty_regions) {
+  for (auto &r : dirty_regions.rects()) {
     if (r.intersects(screen.mouse_rect())) draw_mouse = true;
-
-		scribe.blit(gfx::point(r.x, r.y), *wallpaper, r);
+    scribe.blit(gfx::point(r.x, r.y), *wallpaper, r);
   }
 
   // go back to front and compose each window
@@ -582,7 +537,7 @@ void lumen::context::compose(void) {
 
   int sw = screen.width();
   // copy the changes we made to the other buunffer
-  for (auto &r : dirty_regions) {
+  for (auto &r : dirty_regions.rects()) {
     auto off = r.y * sw + r.x;
     uint32_t *to_ptr = screen.front_buffer + off;
     uint32_t *from_ptr = screen.back_buffer + off;
@@ -594,9 +549,6 @@ void lumen::context::compose(void) {
       to_ptr += sw;
     }
   }
-
-#endif
-
 
   // and now, go through all windows and notify them they have been composed :)
   for (auto win : windows) {

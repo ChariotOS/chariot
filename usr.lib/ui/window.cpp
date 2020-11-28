@@ -1,8 +1,10 @@
 #include <gfx/scribe.h>
+#include <sys/sysbind.h>
 #include <ui/application.h>
 #include <ui/event.h>
 #include <ui/icon.h>
 #include <ui/window.h>
+
 
 constexpr int clamp(int val, int max, int min) {
   if (val > max) return max;
@@ -25,15 +27,7 @@ static constexpr uint32_t brighten(uint32_t color, float amt) {
 
 
 ui::windowframe::windowframe(void) {
-  set_flex_padding_top(TITLE_HEIGHT);
-  set_flex_padding_bottom(PADDING);
-  set_flex_padding_left(PADDING);
-  set_flex_padding_right(PADDING);
-
-  // bordercolor = ui::Color::Black;
-  bordersize = 0;
-
-  background = FRAME_COLOR;
+  set_flex_padding(ui::edges(TITLE_HEIGHT, PADDING, PADDING, PADDING));
 
   m_frame_font = gfx::font::get("OpenSans ExtraBold");
   m_icon_font = gfx::font::get("feather");
@@ -48,7 +42,7 @@ ui::windowframe::~windowframe(void) {}
 void ui::windowframe::paint_event(void) {
   auto s = get_scribe();
   // outside border
-  s.draw_rect(gfx::rect(width(), height()), get_bordercolor());
+  // s.draw_rect(gfx::rect(width(), height()), get_bordercolor());
 
   /* Draw the title within the titlebar */
   {
@@ -97,7 +91,7 @@ ui::window::~window(void) {}
 void ui::windowframe::set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
   set_background(bg);
   set_foreground(fg);
-  set_bordercolor(border);
+  // set_bordercolor(border);
   repaint();
 }
 
@@ -117,8 +111,9 @@ void ui::window::invalidate(const gfx::rect &r, bool sync) {
     return;
   }
 
-  if (m_pending_invalidations.size() == 0) {
-    ck::eventloop::defer([this](void) {
+	if (m_pending_invalidations.size() == 0) {
+		auto start_time = sysbind_gettime_microsecond();
+    ck::eventloop::defer([this, start_time](void) {
       auto &app = ui::application::get();
       struct lumen::invalidated_msg response = {0};
       struct lumen::invalidate_msg iv;
@@ -145,6 +140,8 @@ void ui::window::invalidate(const gfx::rect &r, bool sync) {
         app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
       }
 
+      // printf("invalidation of %d region(s) took %.2fus\n", m_pending_invalidations.size(),
+      // (sysbind_gettime_microsecond() - start_time) / 1000.0);
       m_pending_invalidations.clear();
     });
   }
@@ -194,26 +191,21 @@ void ui::window::handle_input(struct lumen::input_msg &msg) {
 }
 
 
-static void print_flex_item(struct flex_item *item, int depth = 0) {
-  for (int i = 0; i < depth; i++) printf("  ");
-  float fx, fy, fw, fh;
+static void print_flex_item(ui::view *v, int depth = 0) {
+  return;
 
-  fx = flex_item_get_frame_x(item);
-  fy = flex_item_get_frame_y(item);
-  fw = flex_item_get_frame_width(item);
-  fh = flex_item_get_frame_height(item);
-
-  printf("%p frame:(x:%f, y:%f, w:%f, h:%f)\n", item, fx, fy, fw, fh);
-  for (int i = 0; i < flex_item_count(item); i++) {
-    print_flex_item(flex_item_child(item, i), depth + 1);
-  }
+  for (int i = 0; i < depth; i++) printf("\t");
+  printf("(x:%6.0f, y:%6.0f, w:%6.0f, h:%6.0f)\n", v->m_frame[0], v->m_frame[1], v->m_frame[2], v->m_frame[3]);
+  for (auto &child : v->m_children) print_flex_item(child.get(), depth + 1);
 }
 
 
 
 void ui::window::reflow() {
   m_frame->set_size(m_rect.w, m_rect.h);
-  flex_layout(m_frame->m_fi);
+  m_frame->layout();
+
+  print_flex_item(m_frame.get());
   // ask the window to repaint. This is expensive.
   m_frame->repaint(false /* do not invalidate, we do that ourselves */);
 

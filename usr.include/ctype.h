@@ -20,10 +20,11 @@ int isxdigit(int);
 int tolower(int);
 int toupper(int);
 
+
+static inline int isascii(int c) { return ((unsigned int)c <= 0177); }
+
 #ifndef __cplusplus
-static __inline int __isspace(int _c) {
-  return _c == ' ' || (unsigned)_c - '\t' < 5;
-}
+static __inline int __isspace(int _c) { return _c == ' ' || (unsigned)_c - '\t' < 5; }
 /*
 #define isalpha(a) (0 ? isalpha(a) : (((unsigned)(a) | 32) - 'a') < 26)
 #define isdigit(a) (0 ? isdigit(a) : ((unsigned)(a) - '0') < 10)

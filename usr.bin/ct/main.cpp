@@ -36,7 +36,7 @@ class scrolly_view final : public ui::view {
 
 
 template <typename T = ui::view>
-T* create(flex_direction dir, float grow, int color) {
+T* create(ui::FlexDirection dir, float grow, int color) {
   auto v = new T();
 
   v->set_flex_direction(dir);
@@ -99,6 +99,8 @@ class animation {
   }
 };
 
+
+
 int main(int argc, char** argv) {
   ui::application app;
 
@@ -108,51 +110,45 @@ int main(int argc, char** argv) {
 
 
 
-	root.set_font_size(40);
+  root.set_font_size(12);
 
-	// root.set_font("Times New Roman");
-  root.set_flex_direction(FLEX_DIRECTION_ROW);
+  // root.set_font("Times New Roman");
+  root.set_flex_direction(ui::FlexDirection::Row);
   root.set_flex_grow(1.0);
 
+  auto primary = create(ui::FlexDirection::Column, 1.0, 0xffffff);
+  primary->set_size(NAN, NAN);
 
 
+  auto container = create(ui::FlexDirection::Column, 0.0, 0xFF00FF);
+  container->log_layouts = true;
+  container->set_size(NAN, NAN);
 
-  auto primary = create(FLEX_DIRECTION_COLUMN, 1.0, 0xffffff);
+  container->add(make_label("Line one is the first line.", 0x000000, 0xFF00FF));
+  container->add(make_label("The second line has some more content", 0x000000, 0xFFFFFF));
+  container->add(make_label("Hello World", 0x000000, 0x000000));
 
-  primary->add(make_label(
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras sodales, velit et mattis dignissim, neque neque "
-      "auctor nunc, quis consequat quam arcu non dui. Etiam et orci est. Sed pulvinar neque sed sapien hendrerit, sit "
-      "amet fermentum erat eleifend. Aliquam sodales at ante vel interdum. Vestibulum mattis elit ut aliquet aliquet. "
-      "Nullam id efficitur metus, ut finibus felis. Nullam aliquam purus sed imperdiet facilisis. Etiam vulputate "
-      "nulla at ante vehicula, vel dignissim sapien semper. Cras tempor pretium arcu, ut facilisis libero porttitor "
-      "sit amet. Morbi commodo justo non ipsum tempus, a dictum purus vulputate. Aenean ornare risus condimentum "
-      "sapien porttitor varius. Donec maximus id felis id aliquam. Quisque vestibulum arcu at ante dictum volutpat. "
-      "Integer varius, est id malesuada scelerisque, velit quam sollicitudin odio, quis molestie diam urna quis velit. "
-      "In eget sodales enim. Sed mattis at ante eget tincidunt.",
-      0x000000, 0xffffff));
+  primary->add(container);
 
-  primary->add(make_label("Line one is the first line.", 0x000000, 0xFF00FF));
-  primary->add(make_label("The second line has some more content", 0x000000, 0xFFFFFF));
-  primary->add(make_label("The third line is the most interesting", 0xFFFFFF, 0x000000));
-
-
-  auto left = create<scrolly_view>(FLEX_DIRECTION_COLUMN, 0.0, 0x333333);
+  auto left = create<scrolly_view>(ui::FlexDirection::Column, 0.0, 0x333333);
   left->set_flex_shrink(0);
-  left->set_flex_width(0);
+  left->set_flex_width(150);
 
 
-  auto right = create<scrolly_view>(FLEX_DIRECTION_COLUMN, 0.0, 0x333333);
+  auto right = create<scrolly_view>(ui::FlexDirection::Column, 0.0, 0x333333);
   right->set_flex_shrink(0);
-  right->set_flex_width(0);
+  right->set_flex_width(150);
 
+  /*
 
-  animation anim(*left);
-  anim.start(
-      250, 0, 50, fn(auto width) {
-        left->set_flex_width(width);
-        right->set_flex_width(width);
-        root.do_reflow();
-      });
+animation anim(*left);
+anim.start(
+250, 0, 50, fn(auto width) {
+  left->set_flex_width(width);
+  right->set_flex_width(width);
+  root.do_reflow();
+});
+                  */
 
 
   root.add(left);

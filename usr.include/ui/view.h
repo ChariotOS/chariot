@@ -10,9 +10,11 @@
 #include <gfx/scribe.h>
 #include <math.h>
 #include <ui/event.h>
-#include <ui/internal/flex.h>
+// #include <ui/internal/flex.h>
 
 #define STYLE_AUTO NAN
+
+
 
 namespace ui {
 
@@ -23,10 +25,6 @@ namespace ui {
 
   enum class Direction : uint8_t { Vertical, Horizontal };
 
-  enum class SizePolicy : uint8_t {
-    Fixed,
-    Calculate,
-  };
 
 
 
@@ -65,7 +63,65 @@ namespace ui {
     }
   };
 
-  using edges = ui::base_edges<int>;
+  using edges = ui::base_edges<float>;
+
+
+
+  enum FlexAlign { Auto = 0, Stretch, Center, Start, End, SpaceBetween, SpaceAround, SpaceEvenly };
+  enum FlexPosition { Relative = 0, Absolute };
+  enum FlexWrap { NoWrap = 0, Wrap, Reverse };
+  enum FlexDirection { Row = 0, RowReverse, Column, ColumnReverse };
+
+
+  class view; /* fwd decl */
+
+
+  struct flex_layout {
+    struct line {
+      unsigned int child_begin;
+      unsigned int child_end;
+      float size;
+    };
+
+
+    bool wrap = false;
+    bool reverse_main = false;   // whether main axis is reversed
+    bool reverse_cross = false;  // whether cross axis is reversed (wrap only)
+    bool vertical = true;
+    float size_dim = 0.0;   // main axis parent size
+    float align_dim = 0.0;  // cross axis parent size
+
+    /* the following are offests into the frame structure */
+    unsigned int frame_main_pos = 0;    // main axis position
+    unsigned int frame_cross_pos = 1;   // cross axis position
+    unsigned int frame_main_size = 2;   // main axis size
+    unsigned int frame_cross_size = 3;  // cross axis size
+    unsigned int *ordered_indices = NULL;
+
+    // Set for each line layout.
+    float line_dim = 0.0;        // the cross axis size
+    float flex_dim = 0.0;        // the flexible part of the main axis size
+    float extra_flex_dim = 0.0;  // sizes of flexible items
+    float flex_grows = 0.0;
+    float flex_shrinks = 0.0;
+    float cross_pos = 0.0;  // cross axis position
+
+    // Calculated layout lines - only tracked when needed:
+    //   - if the root's align_content property isn't set to FLEX_ALIGN_START
+    //   - or if any child item doesn't have a cross-axis size set
+    bool need_lines = false;
+    ck::vec<ui::flex_layout::line> lines;
+    float lines_sizes;
+
+
+    flex_layout();
+    ~flex_layout(void);
+    void init(ui::view &item, float width, float height);
+
+    ui::view *child_at(ui::view *v, int i);
+    void reset(void);
+  };
+
 
 
   /*
@@ -92,6 +148,7 @@ namespace ui {
                                                \
  public:                                       \
   inline void set_##name(const ck::option<type> &v) { this->name = v; }
+
 
 
 
@@ -125,8 +182,7 @@ namespace ui {
     inline virtual void mounted(void) {}
 
 
-		inline virtual void flex_self_sizing(float &width, float &height) {
-		}
+    inline virtual void flex_self_sizing(float &width, float &height) {}
 
     // make this widget the focused one
     void set_focused(void);
@@ -146,19 +202,16 @@ namespace ui {
     virtual void reflowed(void) {}
 
 
-    inline auto relative(void) {
-      return gfx::rect(flex_item_get_frame_x(m_fi), flex_item_get_frame_y(m_fi), flex_item_get_frame_width(m_fi),
-                       flex_item_get_frame_height(m_fi));
-    }
+    inline auto relative(void) { return gfx::rect(left(), top(), width(), height()); }
 
 
     /*
      * Geometry relative to the parent view (or window)
      */
-    inline int left() { return flex_item_get_frame_x(m_fi); }
-    inline int top() { return flex_item_get_frame_y(m_fi); }
-    inline int width() { return flex_item_get_frame_width(m_fi); }
-    inline int height() { return flex_item_get_frame_height(m_fi); }
+    inline int left() { return m_frame[0]; }
+    inline int top() { return m_frame[1]; }
+    inline int width() { return m_frame[2]; }
+    inline int height() { return m_frame[3]; }
 
     inline int right() { return left() + width() - 1; }
     inline int bottom() { return top() + height() - 1; }
@@ -198,15 +251,6 @@ namespace ui {
     gfx::rect absolute_rect(void);
     // area inside padding
     gfx::rect padded_area(void);
-
-
-    /**
-     * Get the size of the view along a certain axis
-     */
-    int size(ui::Direction dir);
-
-    void set_pos(ui::Direction dir, int pos);
-    ui::SizePolicy get_size_policy(ui::Direction dir);
 
 
 
@@ -260,9 +304,6 @@ namespace ui {
     VIEW_RENDER_ATTRIBUTE(uint32_t, bordercolor, 0x000000);
     VIEW_RENDER_ATTRIBUTE(uint32_t, bordersize, 0);
 
-    VIEW_RENDER_ATTRIBUTE(ui::SizePolicy, width_policy, ui::SizePolicy::Calculate);
-    VIEW_RENDER_ATTRIBUTE(ui::SizePolicy, height_policy, ui::SizePolicy::Calculate);
-
     inline auto get_font(void) {
       if (!m_font) {
         if (parent() == NULL) return gfx::font::get_default();
@@ -284,24 +325,35 @@ namespace ui {
       return m_font_size;
     }
 
-    // VIEW_RENDER_ATTRIBUTE(ui::edges, margin, {});
-    // VIEW_RENDER_ATTRIBUTE(ui::edges, padding, {});
-
-
 #undef FLEX_ATTRIBUTE
-#define FLEX_ATTRIBUTE(name, type, def)                                    \
-  inline type get_flex_##name(void) { return flex_item_get_##name(m_fi); } \
-  inline void set_flex_##name(type val) { flex_item_set_##name(m_fi, val); };
-#include <ui/internal/flex_attributes.h>
+#define FLEX_ATTRIBUTE(name, type, def)                         \
+  inline const type &get_flex_##name(void) { return m_##name; } \
+  inline void set_flex_##name(type val) { m_##name = val; };
+#include <ui/internal/view_flex_attribs.h>
 #undef FLEX_ATTRIBUTE
 
 
-   protected:
+
+
+    // ask the view to do a layout (on itself)
+    // returns if it was successful or not.
+    bool layout(void);
+    // layout with a width and height
+    void layout(float width, float height);
+    void layout_items(unsigned int child_begin, unsigned int child_end, unsigned int children_count,
+                      struct flex_layout &layout);
+    ui::FlexAlign child_align();
+
+
+		bool log_layouts = false;
+
+   public:
     float m_font_size = NAN;
     ck::ref<gfx::font> m_font = nullptr;
 
 
     friend ui::window;
+    friend struct flex_layout;
 
     // bit flags
     bool m_visible = true;
@@ -311,52 +363,22 @@ namespace ui {
      */
     ui::window *m_window = NULL;
     ui::view *m_parent = NULL;
-
-    /* intrusive node for child list counting */
-    // ck::intrusive_list_node m_child_node;
-
-    /*
-     * A list of all the children in this view
-     */
-    // ck::intrusive_list<ui::view, &ui::view::m_child_node> m_children;
     ck::vec<ck::unique_ptr<ui::view>> m_children;
+
 
     /*
      * Each view has their own flex_item, which is tied into the ui/internal/flex.c code
      * to do flexbox calculation
      */
-    struct flex_item *m_fi = NULL;
-  };
-
-
-
-
-#if 0
-  class stackview : public ui::view {
    public:
-    inline auto get_layout(void) const { return m_layout; }
-    inline void set_layout(ui::Direction l) {
-      if (l == m_layout) return;
-      m_layout = l;
-      // since we changed the layout, we gotta force a reflow
-      do_reflow();
-    }
-
-    inline stackview(ui::Direction l = ui::Direction::Vertical) : m_layout(l) {}
-    virtual ~stackview();
-
-    inline void set_spacing(uint32_t s) { m_spacing = s; }
-    inline auto spacing(void) const { return m_spacing; }
+    // struct flex_item *m_fi = NULL;
 
 
-   protected:
-    virtual void reflow_impl(void);
-
-
-   private:
-    uint32_t m_spacing = 0;
-    ui::Direction m_layout;
+#define FLEX_ATTRIBUTE(name, type, def) type m_##name = def;
+#include <ui/internal/view_flex_attribs.h>
+    float m_frame[4];
+    bool m_should_order_children = false;
   };
-#endif
+
 
 }  // namespace ui

@@ -92,9 +92,8 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source, const gf
 }
 
 void gfx::scribe::blit_scaled(gfx::bitmap &bmp, const gfx::rect &r, gfx::bitmap::SampleMode mode) {
-
-	int ox = translation().x();
-	int oy = translation().y();
+  int ox = translation().x();
+  int oy = translation().y();
 
 
   for (int y = 0; y < r.w; y++) {

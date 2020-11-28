@@ -102,6 +102,12 @@ int isnan(double d);
 int abs(int);
 
 
+#define	FP_INFINITE	0x01
+#define	FP_NAN		0x02
+#define	FP_NORMAL	0x04
+#define	FP_SUBNORMAL	0x08
+#define	FP_ZERO		0x10
+int fpclassify(double f);
 
 #ifdef __cplusplus
 }

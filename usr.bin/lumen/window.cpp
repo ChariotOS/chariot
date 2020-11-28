@@ -1,5 +1,8 @@
+#include <ck/rand.h>
 #include <gfx/font.h>
 #include <gfx/image.h>
+#include <math.h>
+#include <sys/sysbind.h>
 #include "internal.h"
 
 #define TITLE_HEIGHT 29
@@ -12,6 +15,21 @@
 
 // #define TITLECOLOR 0x6261A1
 #define TITLECOLOR 0xFFFFFF
+
+
+#define min(a, b)           \
+  ({                        \
+    __typeof__(a) _a = (a); \
+    __typeof__(b) _b = (b); \
+    _a < _b ? _a : _b;      \
+  })
+
+#define max(a, b)           \
+  ({                        \
+    __typeof__(a) _a = (a); \
+    __typeof__(b) _b = (b); \
+    _a > _b ? _a : _b;      \
+  })
 
 
 
@@ -48,6 +66,8 @@ void lumen::window::translate_invalidation(gfx::rect &r) {
     return;
   }
 }
+
+
 
 
 int lumen::window::handle_mouse_input(gfx::point &r, struct mouse_packet &p) {
@@ -124,25 +144,154 @@ static constexpr uint32_t brighten(uint32_t color, float amt) {
 }
 
 
-void lumen::window::draw(gfx::scribe &scribe) {
+inline int isqrt(int n) {
+  int g = 0x8000;
+  int c = 0x8000;
+  for (;;) {
+    if (g * g > n) {
+      g ^= c;
+    }
+    c >>= 1;
+    if (c == 0) {
+      return g;
+    }
+    g |= c;
+  }
+}
+
+
+void lumen::window::draw(gfx::scribe &s) {
   // draw normal window mode.
   if (mode == window_mode::normal) {
+    // auto start = sysbind_gettime_microsecond();
+
     // draw the window bitmap, offset by the title bar
     auto bmp_rect = bitmap->rect();
 
-    scribe.blit(gfx::point(0, 0), *bitmap, bmp_rect);
 
-// #define BUTTON_PADDING 4
-    // gfx::rect button(0, 0, 21, 21);
+    int ox = s.translation().x();
+    int oy = s.translation().y();
 
-    // button.x = rect.w - button.w;
+    int width = bitmap->width();
+    int height = bitmap->height();
 
-    // button.shrink(1);
-    // button.shrink(BUTTON_PADDING);
+    gfx::rect dst_rect;
+    dst_rect.x = s.translation().x();
+    dst_rect.y = s.translation().y();
+    dst_rect.w = width;
+    dst_rect.h = height;
 
-    // scribe.draw_frame(button, 0xFFFFFF, 0x666666);
+    auto clipped_rect = dst_rect.intersect(s.state().clip);
+    if (clipped_rect.is_empty()) return;
 
+    const int first_row = clipped_rect.top() - dst_rect.top();
+    const int last_row = clipped_rect.bottom() - dst_rect.top();
+    const int first_column = clipped_rect.left() - dst_rect.left();
+    const int last_column = first_column + clipped_rect.w;
+
+
+    constexpr int border_radius = 6;
+
+
+
+    if constexpr (border_radius > 0) {
+      struct corner {
+        bool enabled;
+        int cx, cy;
+        gfx::rect rect;
+      };
+
+      struct corner corners[4];
+
+      /* top left */
+      corners[0] = {.enabled = false,
+                    .cx = border_radius,
+                    .cy = border_radius,
+                    .rect = gfx::rect(0, 0, border_radius, border_radius)};
+
+
+      /* top right */
+      corners[1] = {.enabled = false,
+                    .cx = width - border_radius - 1,
+                    .cy = border_radius,
+                    .rect = gfx::rect(width - border_radius, 0, border_radius, border_radius)};
+
+      /* bottom left */
+      corners[2] = {.enabled = false,
+                    .cx = border_radius,
+                    .cy = height - border_radius - 1,
+                    .rect = gfx::rect(0, height - border_radius, border_radius, border_radius)};
+
+
+      /* bottom right */
+      corners[3] = {.enabled = false,
+                    .cx = width - border_radius - 1,
+                    .cy = height - border_radius - 1,
+                    .rect = gfx::rect(width - border_radius, height - border_radius, border_radius, border_radius)};
+
+      auto &bmp = *bitmap;
+      for (int i = 0; i < 4; i++) {
+        auto &corner = corners[i];
+
+        int cx = corner.cx;
+        int cy = corner.cy;
+
+        for (int y = corner.rect.top(); y <= corner.rect.bottom(); y++) {
+          for (int x = corner.rect.left(); x <= corner.rect.right(); x++) {
+            uint32_t color = bmp.get_pixel(x, y);
+
+            int dx = x - cx;
+            int dy = y - cy;
+            int idist = isqrt(dx * dx + dy * dy);
+
+            if (abs(idist - border_radius) <= 4) {
+              // between 0 and 4. How many points in the MSAA check were valid?
+              int hits = 0;
+              int total = 0;
+
+              auto check = [&](float mx, float my) {
+                total++;
+                float adx = (x + mx) - (cx + 0.5);
+                float ady = (y + my) - (cy + 0.5);
+                if (sqrt(adx * adx + ady * ady) < border_radius) hits++;
+              };
+
+              constexpr float c = 0.33;
+              check(c, c);
+              check(c, 1 - c);
+              check(1 - c, c);
+              check(1 - c, 1 - c);
+
+              int alpha = (hits * 255) / total;
+
+              s.blend_pixel(x, y, color, hits / (float)total);
+              continue;
+            }
+            if (idist > border_radius) continue;
+
+            s.draw_pixel(x, y, color);
+          }
+        }
+      }
+    }
+
+
+    for (int y = first_row; y <= last_row; ++y) {
+      const uint32_t *src = bitmap->scanline(y);
+      uint32_t *dst = s.bmp.scanline(y + oy) + ox;
+
+      if constexpr (border_radius > 0) {
+        if (unlikely(y < border_radius || y >= height - border_radius)) {
+          for (int x = max(first_column, border_radius); x < min(last_column, width - border_radius); x++) {
+            dst[x] = src[x];
+          }
+          continue;
+        }
+      }
+
+      memcpy(dst + first_column, src + first_column, clipped_rect.w * sizeof(uint32_t));
+    }
+    // auto dur = sysbind_gettime_microsecond() - start;
+    // printf("compose %dx%d in %lluus\n", width, height, dur);
   }
-
-  return;
 }

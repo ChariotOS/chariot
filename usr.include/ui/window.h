@@ -26,7 +26,7 @@ namespace ui {
 		void set_theme(uint32_t bg, uint32_t fg, uint32_t border);
     static constexpr uint32_t FRAME_COLOR = 0xe7ebee;
     static constexpr int TITLE_HEIGHT = 29;
-    static constexpr int PADDING = 1;
+    static constexpr int PADDING = 0;
     windowframe(void);
     virtual ~windowframe(void);
     virtual void paint_event(void) override;

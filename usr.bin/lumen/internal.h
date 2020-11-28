@@ -4,18 +4,19 @@
 #include <chariot/keycode.h>
 #include <chariot/mouse_packet.h>
 #include <ck/io.h>
+#include <ck/lock.h>
 #include <ck/socket.h>
 #include <ck/timer.h>
 #include <gfx/bitmap.h>
+#include <gfx/disjoint_rects.h>
 #include <gfx/point.h>
 #include <gfx/scribe.h>
 #include <lumen/msg.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
-#include <ck/lock.h>
 #include "gfx/rect.h"
-#include <pthread.h>
 
 namespace lumen {
 
@@ -64,9 +65,7 @@ namespace lumen {
     void load_info(void) { ioctl(fd, FB_GET_INFO, &info); }
 
     inline gfx::rect mouse_rect(void) {
-
-      return gfx::rect(mouse_pos.x() - 6, mouse_pos.y() - 6,
-                       cursors[cursor]->width(), cursors[cursor]->height());
+      return gfx::rect(mouse_pos.x() - 6, mouse_pos.y() - 6, cursors[cursor]->width(), cursors[cursor]->height());
     }
 
     screen(int w, int h);
@@ -85,15 +84,11 @@ namespace lumen {
 
 
     inline uint32_t *buffer(void) { return back_buffer; }
-    inline void set_pixel(int x, int y, uint32_t color) {
-      buffer()[x + y * m_bounds.w] = color;
-    }
+    inline void set_pixel(int x, int y, uint32_t color) { buffer()[x + y * m_bounds.w] = color; }
 
 
     // THIS IS VERY SLOW!!!
-    inline uint32_t get_pixel(int x, int y) {
-      return buffer()[x + y * m_bounds.w];
-    }
+    inline uint32_t get_pixel(int x, int y) { return buffer()[x + y * m_bounds.w]; }
 
     inline void clear(uint32_t color) {
       for (int i = 0; i < width() * height(); i++) {
@@ -128,8 +123,8 @@ namespace lumen {
     bool focused = false;
 
 
-		ck::mutex window_lock;
-		long pending_invalidation_id = -1;
+    ck::mutex window_lock;
+    long pending_invalidation_id = -1;
 
     window_mode mode;
 
@@ -173,7 +168,7 @@ namespace lumen {
     ck::ipcsocket *connection;
     ck::map<long, struct window *> windows;
 
-		ck::mutex guest_lock;
+    ck::mutex guest_lock;
 
     guest(long id, struct context &ctx, ck::ipcsocket *conn);
     ~guest(void);
@@ -213,14 +208,14 @@ namespace lumen {
     ck::ipcsocket server;
 
     ck::ref<ck::timer> compose_timer;
-		ck::ref<gfx::bitmap> wallpaper;
+    ck::ref<gfx::bitmap> wallpaper;
 
     context(void);
 
 
 
 
-		pthread_t compositor_thread;
+    pthread_t compositor_thread;
 
     void accept_connection(void);
     void handle_keyboard_input(keyboard_packet_t &pkt);
@@ -235,7 +230,7 @@ namespace lumen {
     void calculate_hover(void);
 
 
-		static void *compositor_thread_worker(void *arg);
+    static void *compositor_thread_worker(void *arg);
     void compose(void);
 
     struct window_ref {
@@ -247,14 +242,14 @@ namespace lumen {
     // ordered list of all the windows (front to back)
     // The currently focused window is at the front
     ck::vec<lumen::window *> windows;
-		ck::mutex windows_lock;
+    ck::mutex windows_lock;
 
     lumen::window *hovered_window = nullptr;
     lumen::window *focused_window = nullptr;
     bool dragging = false;
 
-		ck::mutex dirty_regions_lock;
-    ck::vec<gfx::rect> dirty_regions;
+    ck::mutex dirty_regions_lock;
+    gfx::disjoint_rects dirty_regions;
 
     void invalidate(const gfx::rect &r);
 

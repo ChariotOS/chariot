@@ -71,10 +71,10 @@ void qsort_r(void *bot, size_t nmemb, size_t size, int (*compar)(const void *, c
 int system(const char *command) {
   int pid = fork();
   if (pid == 0) {
-    char *args[] = {"/bin/sh", "-c", (char *)command, NULL};
+    const char *args[] = {"/bin/sh", "-c", (char *)command, NULL};
 
-		// debug_hexdump(args, sizeof(args));
-    execve("/bin/sh", args, environ);
+    // debug_hexdump(args, sizeof(args));
+    execve("/bin/sh", args, (const char **)environ);
     exit(-1);
   }
 
@@ -459,8 +459,8 @@ char *ptsname(int fd) {
 
 int posix_memalign(void **memptr, size_t alignment, size_t size) {
   // printf("posix_memalign sz: %d, align: %d\n", size, alignment);
-	*memptr = malloc(size);
-	return 0;
+  *memptr = malloc(size);
+  return 0;
 }
 
 

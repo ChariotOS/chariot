@@ -29,7 +29,7 @@ namespace gfx {
     void write(const char *msg);
 
 
-		void write_utf8(const char *msg);
+    void write_utf8(const char *msg);
 
     auto set_color(uint32_t c) { color = c; }
     auto get_color(void) { return color; }
@@ -61,10 +61,6 @@ namespace gfx {
    * A scibe draws on bitmaps :^)
    */
   class scribe {
-    gfx::bitmap &bmp;
-
-
-
     struct state {
       gfx::point offset;  // for drawing at offsets
       gfx::rect clip;     // restricting draw regions
@@ -74,6 +70,7 @@ namespace gfx {
     friend class printer;
 
    public:
+    gfx::bitmap &bmp;
     // enter a new state
     void enter();
     // leave the current state
@@ -181,7 +178,8 @@ draw_text(thnk, fnt, str, color, flags);
     void blit(const gfx::point &at, gfx::bitmap &bmp, const gfx::rect &src);
 
 
-    void blit_scaled(gfx::bitmap &bmp, const gfx::rect &r, gfx::bitmap::SampleMode mode = gfx::bitmap::SampleMode::Nearest);
+    void blit_scaled(gfx::bitmap &bmp, const gfx::rect &r,
+                     gfx::bitmap::SampleMode mode = gfx::bitmap::SampleMode::Nearest);
 
 
     // draw a "theme frame" that fits with the chariot design style

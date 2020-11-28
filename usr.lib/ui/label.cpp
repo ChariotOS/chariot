@@ -59,6 +59,7 @@ class word : public ui::view {
     rect.y = 0;
 
 
+
     font->with_line_height(get_font_size(), [&]() {
       auto p = gfx::printer(s, *font, rect.x, rect.y + font->ascent(), rect.w);
       p.set_color(get_foreground());
@@ -71,14 +72,13 @@ class word : public ui::view {
 
 
 ui::label::label(ck::string contents, ui::TextAlign align) : m_align(align) {
-  set_flex_wrap(FLEX_WRAP_WRAP);
+  set_flex_wrap(ui::FlexWrap::Wrap);
   set_size(NAN, NAN);
 
 
-  set_flex_align_items(FLEX_ALIGN_START);
-  set_flex_align_content(FLEX_ALIGN_START);
-
-  set_flex_direction(FLEX_DIRECTION_ROW);
+  set_flex_align_items(ui::FlexAlign::Start);
+  set_flex_align_content(ui::FlexAlign::Start);
+  set_flex_direction(ui::FlexDirection::Row);
 
   set_flex_shrink(0.0);
   // set_flex_grow(1.0);
@@ -122,4 +122,5 @@ void ui::label::set_text(ck::string contents) {
 }
 
 
-void ui::label::paint_event(void) {}
+void ui::label::paint_event(void) {
+}
