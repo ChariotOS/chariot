@@ -82,7 +82,7 @@ uint32_t cpuid::leaf_max(void) {
 }
 
 
-static void get_vendor_string(char buf[13]) {
+static void get_vendor_string(char *buf) {
   memset(buf, 0, 13);
 
   cpuid::ret_t id;
@@ -96,7 +96,7 @@ static void get_vendor_string(char buf[13]) {
 }
 
 void cpuid::detect_cpu(void) {
-  char branding[13];
+  char branding[17];
   get_vendor_string(branding);
   printk(KERN_INFO "Detected %s Processor\n", branding);
 }
@@ -104,13 +104,13 @@ void cpuid::detect_cpu(void) {
 
 
 bool cpuid::is_amd(void) {
-  char name[13];
+  char name[17];
   get_vendor_string(name);
   return !strcmp(name, "AuthenticAMD");
 }
 
 bool cpuid::is_intel(void) {
-  char name[13];
+  char name[17];
   get_vendor_string(name);
   return !strcmp(name, "GenuineIntel");
 }
