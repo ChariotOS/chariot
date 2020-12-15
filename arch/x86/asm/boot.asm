@@ -2,9 +2,7 @@ extern kmain ;; c entry point
 [extern high_kern_end]
 
 
-
-section .multiboot
-align 8
+section multiboot
 global mbheader
 mbheader:
 	dd 0xe85250d6                                ; multiboot magic

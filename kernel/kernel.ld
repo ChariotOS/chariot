@@ -10,7 +10,7 @@ SECTIONS
 	. = 0x8000;
 
 	.init_ap : {
-		*(.multiboot)
+		*(multiboot)
 	}
 
 	. = 1M;
