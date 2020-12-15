@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <ck/command.h>
 
 int main() {
   // TODO: actually login lol

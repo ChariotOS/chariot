@@ -20,12 +20,9 @@ struct await_table_entry {
 };
 
 
-int sys::awaitfs(struct await_target *targs, int nfds, int flags,
-                 long long timeout_time) {
+int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long timeout_time) {
   if (nfds == 0) return -EINVAL;
-  if (!curproc->mm->validate_pointer(targs, sizeof(*targs) * nfds,
-                                     PROT_READ | PROT_WRITE))
-    return -1;
+  if (!curproc->mm->validate_pointer(targs, sizeof(*targs) * nfds, PROT_READ | PROT_WRITE)) return -1;
 
 
   vec<await_table_entry> entries;
@@ -60,7 +57,7 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags,
           return index;
         }
       }
-			// arch::relax();
+      arch::relax();
     }
 
     // do we timeout?
@@ -73,6 +70,7 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags,
     }
 
     loops++;
+    // arch::relax();
     arch::halt();
     // sched::yield();
   }

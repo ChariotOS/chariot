@@ -70,7 +70,7 @@
 
 static int ata_dev_init(fs::blkdev& d);
 static int ata_rw_block(fs::blkdev& b, void* data, int block, bool write);
-wait::queue ata_wq;
+struct wait_queue ata_wq;
 
 struct fs::block_operations ata_blk_ops = {
     .init = ata_dev_init,
@@ -489,7 +489,7 @@ static void ata_interrupt(int intr, reg_t* fr) {
   outb(primary_master_bmr_status, BMR_COMMAND_DMA_STOP);
 
   if (sched::enabled()) {
-    ata_wq.notify();
+    ata_wq.wake_up();
   }
 
   irq::eoi(intr);

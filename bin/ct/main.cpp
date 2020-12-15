@@ -108,9 +108,8 @@ int main(int argc, char** argv) {
   // create a root view (column)
   auto& root = win->set_view<ui::view>();
 
-
-
-  root.set_font_size(12);
+	root.set_font("EditorialNew Regular");
+  root.set_font_size(50);
 
   // root.set_font("Times New Roman");
   root.set_flex_direction(ui::FlexDirection::Row);
@@ -123,10 +122,11 @@ int main(int argc, char** argv) {
   auto container = create(ui::FlexDirection::Column, 0.0, 0xFF00FF);
   container->log_layouts = true;
   container->set_size(NAN, NAN);
+	container->set_background(0x000000);
 
-  container->add(make_label("Line one is the first line.", 0x000000, 0xFF00FF));
-  container->add(make_label("The second line has some more content", 0x000000, 0xFFFFFF));
-  container->add(make_label("Hello World", 0x000000, 0x000000));
+  container->add(make_label("Command Line Interface Guidelines", 0xFFFFFF, 0x000000));
+	// container->add(make_label("The second line has some more content", 0x000000, 0xFFFFFF));
+  // container->add(make_label("Hello World", 0x000000, 0x000000));
 
   primary->add(container);
 
@@ -151,9 +151,9 @@ anim.start(
                   */
 
 
-  root.add(left);
+  // root.add(left);
   root.add(primary);
-  root.add(right);
+  // root.add(right);
 
 
 

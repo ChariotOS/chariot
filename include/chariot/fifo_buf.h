@@ -45,8 +45,8 @@ class fifo_buf {
 	size_t read_ptr = 0;
 	size_t m_size;
 
-	wait::queue wq_readers;
-	wait::queue wq_writers;
+	struct wait_queue wq_readers;
+	struct wait_queue wq_writers;
 
 
 	size_t available(void);

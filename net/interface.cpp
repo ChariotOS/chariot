@@ -164,7 +164,7 @@ static void handle_packet(ref<net::pkt_buff> &pbuf) {
     auto p = new net::arp::hdr;
     memcpy(p, arp, sizeof(*p));
     in->pending_arps.push(p);
-    in->pending_arp_queue.notify_all();
+    in->pending_arp_queue.wake_up_all();
     return;
   }
   print_packet(pbuf);

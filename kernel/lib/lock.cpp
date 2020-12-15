@@ -16,9 +16,7 @@ static inline int arch_atomic_swap(volatile int* x, int v) {
   return v;
 }
 
-static inline void arch_atomic_store(volatile int* p, int x) {
-  asm("movl %1, %0" : "=m"(*p) : "r"(x) : "memory");
-}
+static inline void arch_atomic_store(volatile int* p, int x) { asm("movl %1, %0" : "=m"(*p) : "r"(x) : "memory"); }
 
 void spinlock::lock(void) {
   while (1) {
@@ -51,10 +49,64 @@ void spinlock::unlock_cli(void) {
   if (likely(locked)) {
     arch_atomic_store(&locked, 0);
   }
-	arch::sti();
+  arch::sti();
 }
 
 bool spinlock::is_locked(void) { return locked; }
+
+
+
+// Do not directly use these functions or sti/cli unless you know
+// what you are doing...
+// Instead, use irq_disable_save and a matching irq_enable_restore
+
+static inline uint64_t read_rflags(void) {
+  uint64_t ret;
+  asm volatile("pushfq; popq %0" : "=a"(ret));
+  return ret;
+}
+static inline uint8_t irqs_enabled(void) {
+  uint64_t rflags = read_rflags();
+  return (rflags & RFLAGS_IF) != 0;
+}
+
+static inline uint8_t irq_disable_save(void) {
+  // preempt_disable();
+
+  uint8_t enabled = irqs_enabled();
+
+  if (enabled) {
+    arch::cli();
+  }
+
+  return enabled;
+}
+
+static inline void irq_enable_restore(uint8_t iflag) {
+  if (iflag) {
+    /* Interrupts were originally enabled, so turn them back on */
+    arch::sti();
+  }
+}
+
+
+unsigned long spinlock::lock_irqsave() {
+  unsigned long flags = 0;
+  while (1) {
+    flags = irq_disable_save();
+    if (arch_atomic_swap(&locked, 1) == 0) break;
+    if (cpu::current().in_sched) {
+      irq_enable_restore(flags);
+    }
+  }
+  return flags;
+}
+
+void spinlock::unlock_irqrestore(unsigned long flags) {
+  unlock();
+  irq_enable_restore(flags);
+}
+
 
 static void spin_wait(volatile int* lock) { arch::relax(); }
 void spinlock::lock(volatile int& l) {

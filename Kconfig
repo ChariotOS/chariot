@@ -58,6 +58,7 @@ menu "Build"
 	config DISK_SIZE_MB
 		int "Size of the virtual hard drive in megabytes"
 		default 256
+
 endmenu
 
 
@@ -77,6 +78,11 @@ menu "Debug"
 	config LOG_DEBUG
 		bool "Debug Information Logging"
 		default y
+
+
+	config VERBOSE_PROCESS
+		bool "Verbose process debug"
+		default n
 
 
 endmenu

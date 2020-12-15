@@ -10,7 +10,7 @@ class condvar final {
   unsigned long long main_seq = 0;
   unsigned bcast_seq = 0;
 
-	wait::queue wq;
+  struct wait_queue wq;
   spinlock lock;
 
  public:
@@ -60,7 +60,7 @@ class condvar final {
     // do we have anyone to signal?
     if (main_seq > wakeup_seq) {
       wakeup_seq++;
-      wq.notify();
+      wq.wake_up();
     }
     lock.unlock();
   }
@@ -73,7 +73,7 @@ class condvar final {
       wakeup_seq = main_seq;
       bcast_seq++;
       lock.unlock();
-      wq.notify_all();
+      wq.wake_up_all();
     }
     lock.unlock();
   }

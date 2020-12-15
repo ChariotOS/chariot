@@ -35,7 +35,7 @@ static pid_t do_fork(struct process &p) {
 	// go to the trap_return function instead of whatever it was gonna do otherwise
 	new_td->kern_context->eip = (u64)trap_return;
 
-	new_td->state = PS_RUNNABLE;
+	new_td->state = PS_RUNNING;
 	sched::add_task(new_td);
 
   // return the child pid to the parent

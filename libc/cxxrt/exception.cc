@@ -24,7 +24,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
+#undef _GNU_SOURCE
 #define _GNU_SOURCE
 #include <stdlib.h>
 #include <dlfcn.h>

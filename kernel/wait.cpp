@@ -1,116 +1,84 @@
 #include <cpu.h>
 #include <wait.h>
 
-/* the default "waiter" type */
-class threadwaiter : public wait::waiter {
- public:
-  inline threadwaiter(wait::queue &wq, struct thread *td) : wait::waiter(wq), thd(td) { thd->waiter = this; }
 
-  virtual ~threadwaiter(void) { thd->waiter = nullptr; }
+wait_entry::wait_entry() {
+  wq = NULL;
+  thd = curthd;
+}
 
-  virtual bool notify(int flags) override {
-    // if (flags & NOTIFY_RUDE) printk("rude!\n");
-    thd->awaken(flags);
-    // I absorb this!
-    return true;
+wait_entry::~wait_entry() {
+  if (wq != NULL) {
+    wq->finish(this);
   }
-
-  virtual void start(void) override { sched::do_yield(PS_BLOCKED); }
-
-  struct thread *thd = NULL;
-};
-
-void wait::waiter::interrupt(void) { wq.interrupt(this); }
-
-void wait::queue::interrupt(wait::waiter *w) {
-  scoped_lock l(lock);
-  if (w->flags & WAIT_NOINT) return;
 }
 
 
-bool wait::queue::wait(u32 on, ref<wait::waiter> wt) { return do_wait(on, 0, wt); }
 
-void wait::queue::wait_noint(u32 on, ref<waiter> wt) { do_wait(on, WAIT_NOINT, wt); }
 
-bool wait::queue::do_wait(u32 on, int flags, ref<wait::waiter> waiter) {
-  if (!waiter) {
-    waiter = make_ref<threadwaiter>(*this, curthd);
-  }
-  lock.lock();
-
-  if (navail > 0) {
-    navail--;
-    lock.unlock();
-    return true;
-  }
-
-  assert(navail == 0);
-
-  waiter->flags = flags;
-
-  waiter->next = NULL;
-  waiter->prev = NULL;
-
-  curthd->waiter = waiter.get();
-
-  if (!back) {
-    assert(!front);
-    back = front = waiter;
-  } else {
-    back->next = waiter;
-    waiter->prev = back;
-    back = waiter;
-  }
-
-  lock.unlock();
-
-  waiter->start();
-
-  // TODO: read from the thread if it was rudely notified or not
-  return curthd->wq.rudely_awoken == false;
-}
-
-void wait::queue::notify(int flags) {
-  scoped_lock lck(lock);
-top:
-  if (!front) {
-    navail++;
-  } else {
-    auto waiter = front;
-    if (front == back) back = nullptr;
-    front = waiter->next;
-    // *nicely* awaken the thread
-    if (!waiter->notify(flags)) {
-      goto top;
+void wait_queue::wake_up_common(unsigned int mode, int nr_exclusive, int wake_flags, void *key) {
+  struct wait_entry *curr, *next;
+  list_for_each_entry_safe(curr, next, &task_list, item) {
+    unsigned flags = curr->flags;
+    if (curr->func(curr, mode, wake_flags, key) && (flags & WQ_FLAG_EXCLUSIVE) && !--nr_exclusive) {
+      break;
     }
   }
 }
 
-void wait::queue::notify_all(int flags) {
-  scoped_lock lck(lock);
+void wait_queue::wait(struct wait_entry *ent, int state) {
+	assert(ent->wq == NULL);
 
-  if (!front) {
-    navail++;
-  } else {
-    while (front) {
-      auto waiter = front;
-      if (front == back) back = nullptr;
-      front = waiter->next;
-      // *nicely* awaken the thread
-      waiter->notify(flags);
-    }
+  unsigned long flags;
+	ent->wq = this;
+  ent->flags &= ~WQ_FLAG_EXCLUSIVE;
+  flags = lock.lock_irqsave();
+  if (task_list.is_empty()) {
+    task_list.add(&ent->item);
   }
+  lock.unlock_irqrestore(flags);
+
+  sched::do_yield(state);
 }
 
-bool wait::queue::should_notify(u32 val) {
-  lock.lock();
-  if (front) {
-    if (front->waiting_on <= val) {
-      lock.unlock();
-      return true;
-    }
-  }
-  lock.unlock();
-  return false;
+
+bool wait_queue::wait(void) {
+  struct wait_entry entry;
+  wait(&entry, PS_INTERRUPTIBLE);
+
+  bool rude = (entry.flags & WQ_FLAG_RUDELY) != 0;
+  return rude;
 }
 
+
+void wait_queue::wait_noint(void) {
+  struct wait_entry entry;
+  wait(&entry, PS_UNINTERRUPTIBLE);
+}
+
+
+void wait_queue::finish(struct wait_entry *e) {
+	assert(e->wq == this);
+
+  unsigned long flags;
+  e->thd->state = PS_RUNNING;
+  // "carefully" check if the entry's linkage is empty or not.
+  // If it is, then we lock the waitqueue and unlink it
+  if (!e->item.is_empty_careful()) {
+    flags = lock.lock_irqsave();
+    e->item.del_init();
+    lock.unlock_irqrestore(flags);
+  }
+	e->wq = NULL;
+}
+
+
+bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync, void *key) {
+  bool ret = true;
+
+  if (entry->thd->awaken()) {
+    entry->flags |= WQ_FLAG_RUDELY;
+  }
+  if (ret) entry->item.del_init();
+  return ret;
+}

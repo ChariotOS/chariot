@@ -51,8 +51,8 @@ void fifo_buf::increment_write(void) {
 void fifo_buf::close(void) {
   m_closed = true;
 
-  wq_readers.notify_all();
-  wq_writers.notify_all();
+  wq_readers.wake_up_all();
+  wq_writers.wake_up_all();
 }
 
 
@@ -83,7 +83,7 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
     // printk_nolock("available: %d\n", available());
 
     lock.unlock_cli();
-    wq_readers.notify_all();
+    wq_readers.wake_up_all();
 
     if (!block) return -EAGAIN;
 
@@ -130,7 +130,7 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
     // printk_nolock("unread: %d\n", unread());
 
     lock.unlock_cli();
-    wq_writers.notify_all();
+    wq_writers.wake_up_all();
 
 
     // break early if we are not meant to block

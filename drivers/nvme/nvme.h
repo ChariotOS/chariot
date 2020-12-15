@@ -60,7 +60,7 @@ namespace nvme {
     /* Ideally, this would be abstracted and allow us to use fabrics, but I dont have that hardware so. */
     pci::device &dev;
     volatile nvme::mmio *mmio;
-    wait::queue wq;
+		struct wait_queue wq;
 
 
     // Queue count, including admin queue

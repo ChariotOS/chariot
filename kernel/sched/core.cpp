@@ -52,7 +52,7 @@ int sched::remove_task(struct thread *t) { return s_scheduler.remove_task(t); }
 static void switch_into(struct thread &thd) {
   thd.locks.run.lock();
   cpu::current().current_thread = &thd;
-  thd.state = PS_UNRUNNABLE;
+  thd.state = PS_RUNNING;
   arch::restore_fpu(thd);
 
   // update the statistics of the thread
@@ -94,7 +94,7 @@ void sched::do_yield(int st) {
 }
 
 // helpful functions wrapping different resulting task states
-void sched::block() { sched::do_yield(PS_BLOCKED); }
+void sched::block() { sched::do_yield(PS_INTERRUPTIBLE); }
 
 void sched::yield() {
   // when you yield, you give up the CPU by ''using the rest of your
@@ -102,7 +102,7 @@ void sched::yield() {
   // TODO: do this another way
   // auto tsk = cpu::task().get();
   // tsk->start_tick -= tsk->timeslice;
-  do_yield(PS_RUNNABLE);
+  do_yield(PS_RUNNING);
 }
 void sched::exit() { do_yield(PS_ZOMBIE); }
 

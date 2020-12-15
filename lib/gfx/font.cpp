@@ -118,6 +118,7 @@ namespace gfx {
       exts.push("ttf");
       exts.push("ttc");
       exts.push("woff");
+      exts.push("woff2");
       exts.push("otf");
       exts.push("bdf");
     }

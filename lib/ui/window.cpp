@@ -111,8 +111,8 @@ void ui::window::invalidate(const gfx::rect &r, bool sync) {
     return;
   }
 
-	if (m_pending_invalidations.size() == 0) {
-		auto start_time = sysbind_gettime_microsecond();
+  if (m_pending_invalidations.size() == 0) {
+    auto start_time = sysbind_gettime_microsecond();
     ck::eventloop::defer([this, start_time](void) {
       auto &app = ui::application::get();
       struct lumen::invalidated_msg response = {0};
@@ -140,8 +140,8 @@ void ui::window::invalidate(const gfx::rect &r, bool sync) {
         app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
       }
 
-      // printf("invalidation of %d region(s) took %.2fus\n", m_pending_invalidations.size(),
-      // (sysbind_gettime_microsecond() - start_time) / 1000.0);
+      printf("invalidation of %d region(s) took %.2fms\n", m_pending_invalidations.size(),
+             (sysbind_gettime_microsecond() - start_time) / 1000.0);
       m_pending_invalidations.clear();
     });
   }

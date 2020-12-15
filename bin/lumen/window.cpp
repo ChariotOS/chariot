@@ -190,10 +190,7 @@ void lumen::window::draw(gfx::scribe &s) {
     const int last_column = first_column + clipped_rect.w;
 
 
-    constexpr int border_radius = 6;
-
-
-
+    constexpr int border_radius = 8;
     if constexpr (border_radius > 0) {
       struct corner {
         bool enabled;
@@ -264,7 +261,9 @@ void lumen::window::draw(gfx::scribe &s) {
 
               int alpha = (hits * 255) / total;
 
-              s.blend_pixel(x, y, color, hits / (float)total);
+              if (hits != 0) {
+                s.blend_pixel(x, y, color, hits / (float)total);
+              }
               continue;
             }
             if (idist > border_radius) continue;
@@ -291,7 +290,5 @@ void lumen::window::draw(gfx::scribe &s) {
 
       memcpy(dst + first_column, src + first_column, clipped_rect.w * sizeof(uint32_t));
     }
-    // auto dur = sysbind_gettime_microsecond() - start;
-    // printf("compose %dx%d in %lluus\n", width, height, dur);
   }
 }

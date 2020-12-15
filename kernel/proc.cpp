@@ -219,7 +219,7 @@ struct thread *sched::proc::spawn_kthread(const char *name, int (*func)(void *),
 
 
   arch::reg(REG_PC, thd->trap_frame) = (unsigned long)func;
-  thd->state = PS_RUNNABLE;
+  thd->state = PS_RUNNING;
 
   thd->setup_tls();
 
@@ -236,7 +236,7 @@ pid_t sched::proc::create_kthread(const char *name, int (*func)(void *), void *a
   auto thd = new thread(tid, *proc);
   thd->trap_frame[1] = (unsigned long)arg;
 
-  thd->kickoff((void *)func, PS_RUNNABLE);
+  thd->kickoff((void *)func, PS_RUNNING);
 
   KINFO("Created kernel thread '%s'. tid=%d\n", name, tid);
 
@@ -312,11 +312,11 @@ void sched::proc::dump_table(void) {
       const char *state = "UNKNOWN";
 #define ST(name) \
   if (t->state == PS_##name) state = #name
-      ST(UNRUNNABLE);
-      ST(RUNNABLE);
-      ST(ZOMBIE);
-      ST(BLOCKED);
       ST(EMBRYO);
+      ST(RUNNING);
+      ST(INTERRUPTIBLE);
+      ST(UNINTERRUPTIBLE);
+      ST(ZOMBIE);
 #undef ST
 
       printk("state %-10s ", state);
@@ -406,7 +406,7 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
 
   // construct the thread
   arch::reg(REG_SP, thd->trap_frame) = stack + stack_size - 64;
-  thd->kickoff((void *)entry, PS_RUNNABLE);
+  thd->kickoff((void *)entry, PS_RUNNING);
 
   return 0;
 }
@@ -442,8 +442,6 @@ int sched::proc::send_signal(pid_t p, int sig) {
   return err;
 }
 
-// #define REAP_DEBUG
-
 int sched::proc::reap(process::ptr p) {
   assert(p->is_dead());
   auto *me = curproc;
@@ -452,7 +450,7 @@ int sched::proc::reap(process::ptr p) {
   int f = 0;
   f |= (p->exit_code & 0xFF) << 8;
 
-#ifdef REAP_DEBUG
+#ifdef CONFIG_VERBOSE_PROCESS
   printk("reap (p:%d) on cpu %d\n", p->pid, cpu::current().cpunum);
   auto usage = p->mm->memory_usage();
   printk("  ram usage: %zu Kb (%zu b)\n", usage / KB, usage);
@@ -464,8 +462,8 @@ int sched::proc::reap(process::ptr p) {
   for (auto tid : p->threads) {
     auto *t = thread::lookup(tid);
     assert(t->state == PS_ZOMBIE);
-#ifdef REAP_DEBUG
-    printk(" [t:%d] sc:%d rc:%d\n", t->tid, t->stats.syscall_count, t->stats.run_count);
+#ifdef CONFIG_VERBOSE_PROCESS
+    printk("  [t:%d] sc:%d rc:%d\n", t->tid, t->stats.syscall_count, t->stats.run_count);
 #endif
 
     thread::teardown(t);
@@ -496,8 +494,6 @@ int sched::proc::reap(process::ptr p) {
 
   ptable_remove(p->pid);
 
-  // printk("reap done\n");
-
   return f;
 }
 
@@ -518,6 +514,13 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
   }
 
   pid_t res_pid = pid;
+
+#ifdef CONFIG_VERBOSE_PROCESS
+  printk("Process %d is waiting for pid=%d, options=", me->pid, pid);
+  if (options & WNOHANG) printk("NOHANG ");
+  if (options & WUNTRACED) printk("WUNTRACED ");
+  printk("\n");
+#endif
 
   while (1) {
     {
@@ -571,7 +574,7 @@ int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
   arch::reg(REG_PC, thd->trap_frame) = (unsigned long)fn;
   arch::reg(REG_ARG0, thd->trap_frame) = (unsigned long)arg;
 
-  thd->kickoff(fn, PS_RUNNABLE);
+  thd->kickoff(fn, PS_RUNNING);
 
   return tid;
 }

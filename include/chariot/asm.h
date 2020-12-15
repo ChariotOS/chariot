@@ -134,24 +134,24 @@ inline constexpr T ceil_div(T a, U b) {
 }
 #endif
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // #define FANCY_MEM_FUNCS
 //
 //
 // implemented in src/mem.cpp
 void *memcpy(void *dst, const void *src, size_t n);
-
 int memcmp(const void *s1_, const void *s2_, size_t n);
+void memset(void *buf, char c, size_t len);
 
-#ifndef FANCY_MEM_FUNCS
 
-static inline void O_memset(void *buf, char c, size_t len) {
-  char *m = (char *)buf;
-  for (size_t i = 0; i < len; i++) m[i] = c;
+#ifdef __cplusplus
 }
-
-#else
-
 #endif
+
 
 static inline int strcmp(const char *l, const char *r) {
   for (; *l == *r && *l; l++, r++)
@@ -172,20 +172,6 @@ static inline size_t strlen(const char *s) {
   return s - a;
 }
 
-static inline void memset(void *buf, char c, size_t len) {
-  u64 b = c & 0xFF;
-  u64 val = b | b << 8 | b << 16 | b << 24 | b << 32 | b << 40 | b << 48 | b << 56;
-  char *m = (char *)buf;
-#define DO_COPY(T) \
-  for (; i < len - sizeof(T); i += sizeof(T)) *(T *)(m + i) = val;
-  int i = 0;
-  DO_COPY(u64);
-  DO_COPY(u32);
-  for (; i < len; i++) *(m + i) = val;
-#undef DO_COPY
-}
-
-#define ZERO_OUT(x) memset(&x, 0, sizeof(x))
 
 // memmove is just copy but you clear it out
 static inline void *memmove(void *dst, const void *src, size_t n) {

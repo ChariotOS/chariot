@@ -16,11 +16,21 @@
 #define RING_KERN 0
 #define RING_USER 3
 
+/*
 #define PS_UNRUNNABLE (-1)
 #define PS_RUNNABLE (0)
 #define PS_ZOMBIE (1)
 #define PS_BLOCKED (2)
 #define PS_EMBRYO (3)
+*/
+
+
+#define PS_EMBRYO (-1)
+/* The task is either actively running or is able to be run */
+#define PS_RUNNING (0)
+#define PS_INTERRUPTIBLE (1)
+#define PS_UNINTERRUPTIBLE (2)
+#define PS_ZOMBIE (3)
 
 
 #include <schedulers.h>
@@ -251,9 +261,6 @@ struct thread final {
 
 
   thread_blocker *blocker = NULL;
-  // the current waitqueue waiter
-  struct wait::waiter *waiter = nullptr;
-
 
   // Masks are per-thread
   struct {
@@ -317,13 +324,7 @@ struct thread final {
 
   void setup_stack(reg_t *);
 
-
-  /**
-   * Awaken the thread from it's waitqueue. Being rudely awoken means that the
-   * waitqueue may not have been completed. A thread would be rudely awoken when
-   * the process decides to exit, or a fault occurs.
-   */
-  bool awaken(int flags = 0);
+  bool awaken(bool rude = false);
 
   // Notify a thread that a signal is available, interrupting it from a
   // waitqueue if there is one

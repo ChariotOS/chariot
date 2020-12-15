@@ -68,19 +68,21 @@ struct thread *sched::round_robin::pick_next(void) {
 
 
   for (struct thread *thd = front; thd != NULL; thd = thd->sched_state.next) {
-    if (thd->state == PS_BLOCKED) {
-      if (thd->blocker != NULL) {
-        if (thd->blocker->should_unblock(*thd, time::now_us())) {
-          thd->state = PS_RUNNABLE;
-        }
-      }
-    }
+    /*
+if (thd->state == PS_BLOCKED) {
+if (thd->blocker != NULL) {
+if (thd->blocker->should_unblock(*thd, time::now_us())) {
+thd->state = PS_RUNNABLE;
+}
+}
+}
+    */
 
-		if (thd->state == PS_RUNNABLE) {
-			td = thd;
-			remove_task_impl(td);
-			break;
-		}
+    if (thd->state == PS_RUNNING) {
+      td = thd;
+      remove_task_impl(td);
+      break;
+    }
   }
 
 

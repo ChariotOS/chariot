@@ -83,7 +83,7 @@ int net::ipcsock::disconnect(int flags) {
 
   state.lock.lock();
   state.closed = true;
-  state.wq.notify_all();
+  state.wq.wake_up_all();
   state.lock.unlock();
 
   return 0;
@@ -119,7 +119,7 @@ ssize_t net::ipcsock::sendto(fs::file &fd, void *data, size_t len, int flags,
   }
 
   state.msgs.append(ipcmsg(data, len));
-  state.wq.notify();
+  state.wq.wake_up();
 
 
   return len;

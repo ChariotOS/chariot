@@ -182,7 +182,7 @@ namespace net {
 
     struct {
       single_list<ipcmsg> msgs;
-			wait::queue wq;
+			struct wait_queue wq;
       spinlock lock;
 			bool closed = false;
     } for_server, for_client;

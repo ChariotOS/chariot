@@ -32,10 +32,10 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
 
 
 
-	struct thread::kernel_stack s;
-	s.size = PGSIZE * 2;
-  s.start = (void*)kmalloc(s.size);
-	stacks.push(s);
+  struct thread::kernel_stack s;
+  s.size = PGSIZE * 2;
+  s.start = (void *)kmalloc(s.size);
+  stacks.push(s);
 
   auto sp = (off_t)s.start + s.size;
 
@@ -69,9 +69,13 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
   thread_table_lock.write_unlock();
 
 
-
   // push the tid into the proc's tid list
   proc.threads.push(tid);
+
+
+#if CONFIG_VERBOSE_PROCESS
+  printk("Thread %d:%d created\n", pid, tid);
+#endif
 }
 
 
@@ -112,35 +116,19 @@ thread::~thread(void) {
 
   sched::remove_task(this);
 
-	for (auto &s : stacks) {
-		kfree(s.start);
-	}
+  for (auto &s : stacks) {
+    kfree(s.start);
+  }
   // kfree(stack);
   phys::kfree(fpu.state, 1);
   // assume it doesn't have a destructor, idk
   kfree(sig.arch_priv);
 }
 
-bool thread::awaken(int flags) {
-  bool rudely = (flags & NOTIFY_RUDE) != 0;
-  if (waiter != NULL && (waiter->flags & WAIT_NOINT)) {
-    if (rudely) {
-      return false;
-    }
-  }
-
+bool thread::awaken(bool rudely) {
   // TODO: this should be more complex
   wq.rudely_awoken = rudely;
-	waiter = nullptr;
-
-  // fix up the wq double linked list
-  // wq.current_wq = NULL;
-
-  // assert(state == PS_BLOCKED);
-
-  state = PS_RUNNABLE;
-
-
+  state = PS_RUNNING;
   return true;
 }
 
@@ -198,6 +186,7 @@ static void thread_create_callback(void *) {
 
   auto tf = thd->trap_frame;
 
+
   if (thd->proc.ring == RING_KERN) {
     using fn_t = int (*)(void *);
     auto fn = (fn_t)arch::reg(REG_PC, tf);
@@ -211,6 +200,7 @@ static void thread_create_callback(void *) {
       thd->setup_stack((reg_t *)tf);
     }
     arch::sti();
+
     printk("starting thread %d\n", thd->tid);
     return;
   }
@@ -229,7 +219,9 @@ struct thread *thread::lookup(pid_t tid) {
 }
 
 bool thread::teardown(thread *t) {
-  // printk("thread ran for %llu cycles\n", t->stats.cycles);
+#ifdef CONFIG_VERBOSE_PROCESS
+  printk("thread ran for %llu cycles\n", t->stats.cycles);
+#endif
   thread_table_lock.write_lock();
   assert(thread_table.contains(t->tid));
   thread_table.remove(t->tid);
@@ -244,8 +236,10 @@ bool thread::teardown(thread *t) {
 bool thread::send_signal(int sig) {
   unsigned long pend = (1 << sig);
   this->sig.pending |= pend;
-  // printk("sending signal to tid %d. Blocked=%d\n", tid, state == PS_BLOCKED);
-  if (state == PS_BLOCKED) {
+#ifdef CONFIG_VERBOSE_PROCESS
+  printk("sending signal to tid %d. Blocked=%d\n", tid, state == PS_BLOCKED);
+#endif
+  if (state == PS_INTERRUPTIBLE) {
     this->interrupt();
   }
   return true;
@@ -267,6 +261,8 @@ vec<off_t> thread::backtrace(off_t rbp, off_t rip) {
 }
 
 void thread::interrupt(void) {
+	awaken(true);
+	/*
   if (waiter) {
     if (waiter->flags & WAIT_NOINT) {
       // printk("no interrupt!\n");
@@ -274,19 +270,20 @@ void thread::interrupt(void) {
     }
 
 
-		auto &wq = waiter->wq;
-		// take a lock on the waitqueue so we can futz with it
-		scoped_lock l(wq.lock);
+    auto &wq = waiter->wq;
+    // take a lock on the waitqueue so we can futz with it
+    scoped_lock l(wq.lock);
 
-		ref<wait::waiter> w = waiter;
+    ref<wait::waiter> w = waiter;
 
-		if (w->next != NULL) w->next->prev = w->prev;
-		if (w->prev != NULL) w->prev->next = w->next;
+    if (w->next != NULL) w->next->prev = w->prev;
+    if (w->prev != NULL) w->prev->next = w->next;
 
-		if (wq.front == w) wq.front = w->next;
-		if (wq.back == w) wq.back = w->prev;
+    if (wq.front == w) wq.front = w->next;
+    if (wq.back == w) wq.back = w->prev;
 
-		w->notify(NOTIFY_RUDE);
-		waiter = nullptr;
+    w->notify(NOTIFY_RUDE);
+    waiter = nullptr;
   }
+	*/
 }

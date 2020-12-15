@@ -35,7 +35,7 @@ static uintptr_t tx_phys;
 
 // static list_t *net_queue = NULL;
 static spinlock net_queue_lock;
-static wait::queue e1000wait;
+static wait_queue e1000wait;
 // static list_t *rx_wait;
 
 static uint32_t mmio_read32(uintptr_t addr) {

@@ -11,6 +11,7 @@ class spinlock {
  private:
   // compare and swap dest to spinlock on
   int locked = 0;
+
  public:
   inline spinlock() { locked = 0; }
 
@@ -18,8 +19,11 @@ class spinlock {
   void unlock(void);
 
 
-	void lock_cli();
-	void unlock_cli();
+  void lock_cli();
+  void unlock_cli();
+
+  unsigned long lock_irqsave(void);
+  void unlock_irqrestore(unsigned long flags);
 
   // for just locking ints
   static void lock(volatile int &);

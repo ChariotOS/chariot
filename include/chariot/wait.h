@@ -1,66 +1,73 @@
 #pragma once
 
+#include <list_head.h>
 #include <lock.h>
 #include <ptr.h>
-#include <single_list.h>
 #include <types.h>
 
-#define WAIT_NOINT 1
 
-#define NOTIFY_RUDE (1 << 0)
-#define NOTIFY_URGENT (1 << 1)
+bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync, void *key);
 
+/* these functions return if they were successful in waking or not. */
+typedef bool (*wait_entry_func_t)(struct wait_entry *wait, unsigned mode, int flags, void *key);
+struct wait_entry {
+  unsigned int flags;
+#define WQ_FLAG_EXCLUSIVE 0x01
+#define WQ_FLAG_RUDELY 0x02
+  /* what thread does this wait entry control */
+  struct thread *thd;
+  /* private data */
+  void *_priv = NULL;
+  template <typename T>
+  T *&priv(void) {
+    return (T *&)_priv;
+  }
 
-namespace wait {
+  wait_entry_func_t func = autoremove_wake_function;
+  /* what wait queue is this attached to? */
+  struct wait_queue *wq;
+  /* The inline list_head that is linked into the wait queue */
+  struct list_head item;
 
-  class queue;
-
-  struct waiter : public refcounted<waiter> {
-    inline waiter(wait::queue &wq) : wq(wq) {}
-
-    virtual ~waiter(void) {}
-
-    // returns if the notify was accepted
-    virtual bool notify(int flags) = 0;
-    //
-    virtual void start() = 0;
-
-    void interrupt(void);
-
-
-    size_t waiting_on = 0;
-    int flags = 0;
-		wait::queue &wq;
-		wait::waiter *prev, *next;
-  };
-
-
-  class queue {
-   public:
-    // wait on the queue, interruptable. Returns true if it was not interrupted
-    bool WARN_UNUSED wait(u32 on = 0, ref<waiter> wtr = nullptr);
-
-    // wait, but not interruptable
-    void wait_noint(u32 on = 0, ref<waiter> wtr = nullptr);
-    void notify(int flags = 0);
-
-    void notify_all(int flags = 0);
-
-    bool should_notify(u32 val);
+  wait_entry();
+  // this removes the entry from a waitqueue if there is one
+  ~wait_entry();
+};
 
 
-    void interrupt(waiter *);
-    bool do_wait(u32 on, int flags, ref<waiter> wtr);
-    // navail is the number of unhandled notifications
-    int navail = 0;
 
-    spinlock lock;
+struct wait_queue {
+  spinlock lock;
 
-    // next to pop on notify
-    ref<waiter> front = nullptr;
-    // where to put new tasks
-    ref<waiter> back = nullptr;
-  };
+  struct list_head task_list;
 
-};  // namespace wait
 
+  void wait(struct wait_entry *, int state);
+
+  void wake_up_common(unsigned int mode, int nr_exclusive, int wake_flags, void *key);
+
+	void finish(struct wait_entry *);
+
+
+  /**
+   * __wake_up - wake up threads blocked on a waitqueue.
+   * @mode: which threads
+   * @nr_exclusive: how many wake-one or wake-many threads to wake up
+   * @key: is directly passed to the wakeup function
+   *
+   * It may be assumed that this function implies a write memory barrier before
+   * changing the task state if and only if any tasks are woken up.
+   */
+  inline void __wake_up(unsigned int mode, int nr_exclusive, void *key) {
+    unsigned long flags = lock.lock_irqsave();
+    wake_up_common(mode, nr_exclusive, 0, key);
+    lock.unlock_irqrestore(flags);
+  }
+
+
+  inline void wake_up(void) { __wake_up(0, 1, NULL); }
+  inline void wake_up_all(void) { __wake_up(0, 0, NULL); }
+
+  bool wait();
+  void wait_noint();
+};

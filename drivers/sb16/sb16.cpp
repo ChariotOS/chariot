@@ -110,7 +110,7 @@ static void set_irq_line(u8 irq_number) {
 
 static spinlock sb16_lock;
 void *dma_page = NULL;
-static wait::queue sb16_wq;
+static wait_queue sb16_wq;
 
 
 static void dma_start(uint32_t length) {
@@ -215,7 +215,7 @@ static void sb16_interrupt(int intr, reg_t *fr) {
   inb(DSP_STATUS);                           // 8 bit interrupt
   if (m_major_version >= 4) inb(DSP_R_ACK);  // 16 bit interrupt
 
-  sb16_wq.notify_all();
+  sb16_wq.wake_up_all();
 
   irq::eoi(intr);
 }

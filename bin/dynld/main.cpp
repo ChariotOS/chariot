@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 
 
 void hexdump(void *vbuf, long len) {
-  unsigned char *buf = vbuf;
+  unsigned char *buf = (unsigned char *)vbuf;
 
   int w = 16;
   for (int i = 0; i < len; i += w) {
@@ -60,11 +60,28 @@ int try_file(const char *path) {
 
   if (memcmp(buf, ELFMAG, 4)) exit(EXIT_FAILURE);
 
-  Elf64_Ehdr *e = buf;
+  Elf64_Ehdr *e = (Elf64_Ehdr*)buf;
   if (e->e_machine != EM_AMD64) {
     fprintf(stderr, "Invalid machine type (must be amd64 for now)\n");
     exit(EXIT_FAILURE);
   }
+
+
+#define P(name) printf ("%12s: 0x%-8llx %llu\n", #name, e->name, e->name)
+	P(e_type);
+	P(e_machine);
+	P(e_version);
+	P(e_phoff);
+	P(e_entry);
+	P(e_flags);
+	P(e_ehsize);
+	P(e_phentsize);
+	P(e_phnum);
+	P(e_shentsize);
+	P(e_shnum);
+	P(e_shstrndx);
+#undef P
+
 
   Elf64_Phdr *phdrs = (Elf64_Phdr *)((char *)buf + e->e_phoff);
 

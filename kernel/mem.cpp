@@ -52,14 +52,15 @@ extern "C" void *malloc(unsigned long s) { return kmalloc(s); }
 extern "C" void free(void *p) { kfree(p); }
 
 
-void *memcpy(void *dest, const void *src, size_t n) {
+
+extern "C" void *memcpy(void *dest, const void *src, size_t n) {
   auto *s = (uint8_t *)src;
   auto *d = (uint8_t *)dest;
   for (size_t i = 0; i < n; i++) d[i] = s[i];
   return dest;
 }
 
-int memcmp(const void *s1_, const void *s2_, size_t n) {
+extern "C" int memcmp(const void *s1_, const void *s2_, size_t n) {
   const char *s1 = (const char *)s1_;
   const char *s2 = (const char *)s2_;
 
@@ -76,6 +77,14 @@ int memcmp(const void *s1_, const void *s2_, size_t n) {
   }
 
   return 0;
+}
+
+
+extern "C" void memset(void *buf, char c, size_t len) {
+	unsigned char *ptr = (unsigned char *)buf;
+	for (size_t i = 0; i < len; i++) {
+		ptr[i] = c;
+	}
 }
 
 

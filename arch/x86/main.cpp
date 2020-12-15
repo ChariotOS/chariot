@@ -11,6 +11,7 @@
 #include <net/net.h>
 #include <pci.h>
 #include <pit.h>
+#include <single_list.h>
 #include <syscall.h>
 #include <time.h>
 #include <types.h>
@@ -222,6 +223,8 @@ struct rsdp_descriptor {
 #define ACPI_RSDP_SCAN_STEP 16
 
 
+
+
 int kernel_init(void *) {
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
@@ -242,6 +245,10 @@ int kernel_init(void *) {
 
   // start up the extra cpu cores
   smp::init_cores();
+
+
+  // void test(void);
+  // test();
 
 
 
@@ -280,7 +287,6 @@ int kernel_init(void *) {
   net::start();
 
 
-
   string init_paths = kargs::get("init", "/bin/init");
 
   auto paths = init_paths.split(',');
@@ -317,3 +323,38 @@ extern "C" void _hrt_start(void) {
   while (1) {
   }
 }
+
+/*
+#include <list_head.h>
+
+
+
+
+
+
+
+
+struct wait_queue wq1;
+struct wait_queue wq2;
+
+int notifier_thread(void *) {
+  while (1) {
+    wq1.wake_up_all();
+    sys::usleep(10000);
+    wq2.wake_up_all();
+    sys::usleep(10000);
+  }
+}
+
+
+void test(void) {
+  printk("\n\n====================================================================\n\n\n");
+
+
+
+  while (1) {
+    arch::cli();
+    arch::halt();
+  }
+}
+*/

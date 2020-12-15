@@ -70,7 +70,7 @@ struct interface {
 
   interface(const char *name, struct net::ifops &o);
 
-	wait::queue pending_arp_queue;
+	struct wait_queue pending_arp_queue;
   vec<net::arp::hdr *> pending_arps;
   // network ordered ip to mac
   map<uint32_t, net::macaddr> arp_table;
