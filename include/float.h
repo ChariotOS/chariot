@@ -1,0 +1,4 @@
+#pragma once
+
+#define DBL_MAX __DBL_MAX__ // 1.7976931348623158e+308
+#define DBL_MIN __DBL_MIN__ // 2.2250738585072014e–308
