@@ -16,6 +16,8 @@ wait_entry::~wait_entry() {
 
 
 
+wait_queue::wait_queue(void) { task_list.init(); }
+
 void wait_queue::wake_up_common(unsigned int mode, int nr_exclusive, int wake_flags, void *key) {
   struct wait_entry *curr, *next;
   list_for_each_entry_safe(curr, next, &task_list, item) {
@@ -27,15 +29,13 @@ void wait_queue::wake_up_common(unsigned int mode, int nr_exclusive, int wake_fl
 }
 
 void wait_queue::wait(struct wait_entry *ent, int state) {
-	assert(ent->wq == NULL);
+  assert(ent->wq == NULL);
 
   unsigned long flags;
-	ent->wq = this;
+  ent->wq = this;
   ent->flags &= ~WQ_FLAG_EXCLUSIVE;
   flags = lock.lock_irqsave();
-  if (task_list.is_empty()) {
-    task_list.add(&ent->item);
-  }
+  task_list.add(&ent->item);
   lock.unlock_irqrestore(flags);
 
   sched::do_yield(state);
@@ -51,6 +51,31 @@ bool wait_queue::wait(void) {
 }
 
 
+
+void wait_queue::wait_exclusive(struct wait_entry *ent, int state) {
+  assert(ent->wq == NULL);
+
+  unsigned long flags;
+  ent->wq = this;
+  ent->flags |= WQ_FLAG_EXCLUSIVE;
+  flags = lock.lock_irqsave();
+  task_list.add_tail(&ent->item);
+  lock.unlock_irqrestore(flags);
+
+  sched::do_yield(state);
+}
+
+
+bool wait_queue::wait_exclusive(void) {
+  struct wait_entry entry;
+  wait(&entry, PS_INTERRUPTIBLE);
+
+  bool rude = (entry.flags & WQ_FLAG_RUDELY) != 0;
+  return rude;
+}
+
+
+
 void wait_queue::wait_noint(void) {
   struct wait_entry entry;
   wait(&entry, PS_UNINTERRUPTIBLE);
@@ -58,7 +83,7 @@ void wait_queue::wait_noint(void) {
 
 
 void wait_queue::finish(struct wait_entry *e) {
-	assert(e->wq == this);
+  assert(e->wq == this);
 
   unsigned long flags;
   e->thd->state = PS_RUNNING;
@@ -69,7 +94,7 @@ void wait_queue::finish(struct wait_entry *e) {
     e->item.del_init();
     lock.unlock_irqrestore(flags);
   }
-	e->wq = NULL;
+  e->wq = NULL;
 }
 
 

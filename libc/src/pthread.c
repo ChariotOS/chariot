@@ -36,7 +36,7 @@ struct __pthread {
   /* filled in by __pthread_trampoline */
   void *res;
 
-  /* used to allow the thread to run in the trampoline */
+  /* held while running. Joining means taking the lock until the runner gives it up. */
   pthread_mutex_t runlock;
 
   /* ... */
@@ -52,15 +52,10 @@ static inline void *fs() {
 
 
 static int __pthread_died(struct __pthread *data) {
-  // here, we are still living within the thread, so we can't delete the data
-  // yet...
-  // TODO: clean up better.
-  free(data);
-
-  printf("thread died!\n");
+  // we are done!
+  pthread_mutex_unlock(&data->runlock);
   while (1) {
-    // TODO: exit_thread() to avoid segfault
-    yield();
+    sysbind_exit_thread(0);
   }
 
   return 0;
@@ -71,7 +66,7 @@ static int __pthread_trampoline(void *arg) {
 
 
   // wait till the thread can actually run (sync with the creator)
-  pthread_mutex_lock(&data->runlock);
+  // pthread_mutex_lock(&data->runlock);
 
   // run the thread's function
   data->res = data->fn(data->arg);
@@ -84,26 +79,25 @@ static int __pthread_trampoline(void *arg) {
 pthread_t pthread_self(void) { return 0; }
 
 int pthread_create(pthread_t *thd, const pthread_attr_t *attr, void *(*fn)(void *), void *arg) {
-  printf("fs=%p\n", fs());
+  // printf("fs=%p\n", fs());
   struct __pthread *data = malloc(sizeof(*data));
 
   data->stack_size = PTHREAD_STACK_SIZE;
   data->stack = malloc(data->stack_size);
   data->arg = arg;
   data->fn = fn;
-  pthread_mutex_init(&data->runlock, PTHREAD_MUTEX_DEFAULT);
+
+
+  pthread_mutex_init(&data->runlock, NULL);
   pthread_mutex_lock(&data->runlock);
 
   // int res = pctl(0, PCTL_CREATE_THREAD, &data->pctl_args);
 
   int tid = sysbind_spawnthread(data->stack + data->stack_size, __pthread_trampoline, data, 0);
-  printf("tid=%d\n", tid);
-
 
   if (tid < 0) {
     free(data->stack);
     free(data);
-    printf("oops!\n");
     return errno_wrap(tid);
   }
 
@@ -112,17 +106,25 @@ int pthread_create(pthread_t *thd, const pthread_attr_t *attr, void *(*fn)(void 
 
   // at this point, we know the thread is created, so we start it :)
   // TODO: use a semaphore, lock, or something smarter...
-  pthread_mutex_unlock(&data->runlock);
+  // pthread_mutex_unlock(&data->runlock);
 
   return 0;
 }
 
 int pthread_join(pthread_t t, void **retval) {
   int status;
-  int result = waitpid(t->tid, &status, 0);
-  if (retval) {
-    *retval = t->res;
+
+  int result = sysbind_jointhread(t->tid);
+  if (result != 0) {
+    errno = -result;
+    return -1;
   }
+
+  pthread_mutex_lock(&t->runlock);
+
+  if (retval != NULL) *retval = t->res;
+  free(t->stack);
+  free(t);
   return result;
 }
 
@@ -193,9 +195,15 @@ int pthread_setspecific(pthread_key_t key, const void *data) {
 
 
 
-int pthread_cond_init(pthread_cond_t *c, const pthread_condattr_t *att) { return -1; }
-int pthread_cond_destroy(pthread_cond_t *c) { return -1; }
-int pthread_cond_wait(pthread_cond_t *c, pthread_mutex_t *m) { return -1; }
+int pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr) { return -1; }
+int pthread_cond_destroy(pthread_cond_t *cond) { return 0; }
+
+
+static int cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime) { return -1; }
+
+int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex) { return 0; }
+
+
 int pthread_cond_timedwait(pthread_cond_t *c, pthread_mutex_t *m, const struct timespec *ts) { return -1; }
 int pthread_cond_broadcast(pthread_cond_t *c) { return -1; }
 int pthread_cond_signal(pthread_cond_t *c) { return -1; }

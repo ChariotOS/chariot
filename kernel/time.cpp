@@ -17,6 +17,10 @@ static volatile uint64_t current_second = 0;
 
 
 
+bool time::stabilized(void) {
+	return cycles_per_second != 0;
+}
+
 unsigned long time::cycles_to_ns(unsigned long cycles) {
   /* hmm */
   if (cycles_per_second == 0) return 0;

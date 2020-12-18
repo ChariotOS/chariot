@@ -25,6 +25,8 @@ int sysbind_execve(const char* path, const char ** argv, const char ** envp);
 long sysbind_waitpid(int pid, int* stat, int options);
 int sysbind_fork();
 int sysbind_spawnthread(void * stack, void* func, void* arg, int flags);
+int sysbind_jointhread(int tid);
+int sysbind_prctl(int option, unsigned long arg1, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5);
 int sysbind_open(const char * path, int flags, int mode);
 int sysbind_close(int fd);
 long sysbind_lseek(int fd, long offset, int whence);

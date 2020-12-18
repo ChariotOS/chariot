@@ -14,4 +14,5 @@ struct mouse_packet {
   char dx;
   char dy;
   unsigned int buttons;
+	unsigned long timestamp; // when?
 };

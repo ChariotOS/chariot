@@ -1,25 +1,23 @@
-#pragma once
-
-#include <ck/func.h>
+#include <setjmp.h>
+#include <unistd.h>
 
 namespace ck {
-  struct task_context {};
 
-  template <typename T>
-  struct future {
-    T await(void);
+
+
+  /* TODO: :^) */
+  class future {};
+
+
+  /* The base runtime structure */
+  class runtime {};
+
+
+  /* A stackful coroutine that can be switched between */
+  class fiber {
+    void *stack;
+    size_t stack_size;
+		/* TODO: an implementation */
   };
 
-
-
-
-  template <typename T>
-  ck::future<T> async(ck::func<T()> action) {
-    while (1) {
-    }
-  }
-
-
-
-
-}  // namespace ck
+};  // namespace ck

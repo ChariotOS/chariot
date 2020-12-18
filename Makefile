@@ -22,7 +22,7 @@ kernel: .config
 	@#cd $(BUILD); ninja install
 	@cp $(BUILD)/compile_commands.json .
 
-default: ports kernel
+default: kernel
 
 clean:
 	@rm -rf build

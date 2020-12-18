@@ -7,6 +7,10 @@
 #define GIT_REVISION "NO-GIT"
 #endif
 
+#ifdef CONFIG_X86
+#include "../../arch/x86/arch.h"
+#endif
+
 /*
  * registers are passed around in a cross-platform way using a reg_t*. The first
  * 6 of the entries are as follows: [0] = syscall code & return, [1...6] =

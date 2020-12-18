@@ -16,4 +16,6 @@ namespace time {
   void set_second(unsigned long sec);
 
   unsigned long cycles_to_ns(unsigned long cycles);
+
+	bool stabilized(void);
 };  // namespace time

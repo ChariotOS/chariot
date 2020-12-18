@@ -10,6 +10,7 @@
 #include <sched.h>
 #include <vmware_backdoor.h>
 #include "../majors.h"
+#include <time.h>
 
 static fifo_buf mouse_buffer;
 
@@ -131,6 +132,7 @@ static void mouse_handler(int i, reg_t *) {
       packet.dx = x;
       packet.dy = -y;  // the mouse gives us a negative value for going up
       packet.buttons = 0;
+			packet.timestamp = time::now_us();
       if (mouse_byte[0] & 0x01) {
         packet.buttons |= MOUSE_LEFT_CLICK;
       }

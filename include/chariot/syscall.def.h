@@ -7,6 +7,8 @@ int execve(const char* path, const char ** argv, const char ** envp);
 long waitpid(int pid, int* stat, int options);
 int fork();
 int spawnthread(void * stack, void* func, void* arg, int flags);
+int jointhread(int tid);
+int prctl(int option, unsigned long arg1, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5);
 int open(const char * path, int flags, int mode);
 int close(int fd);
 long lseek(int fd, long offset, int whence);

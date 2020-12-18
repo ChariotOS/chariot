@@ -170,6 +170,11 @@ endmenu
 menu "Graphics Library"
 
 	
+	config FANCY_WINDOWS
+		bool "Fancy Rounded windows"
+		default y
+
+
 	config GFX_FONT_MONO
 		bool "Monochrome font (no blending)"
 		default n

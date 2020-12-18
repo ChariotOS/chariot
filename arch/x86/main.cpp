@@ -226,14 +226,24 @@ struct rsdp_descriptor {
 
 
 int kernel_init(void *) {
-  pci::init(); /* initialize the PCI subsystem */
-  KINFO("Initialized PCI\n");
+
+
+
 
 
   // at this point, the pit is being used for interrupts,
   // so we should go setup lapic for that
   smp::lapic_init();
   syscall_init();
+
+
+  // start up the extra cpu cores
+  smp::init_cores();
+
+
+  pci::init(); /* initialize the PCI subsystem */
+  KINFO("Initialized PCI\n");
+
 
 
   // walk the kernel modules and run their init function
@@ -243,18 +253,15 @@ int kernel_init(void *) {
 
 
 
-  // start up the extra cpu cores
-  smp::init_cores();
-
-
-  // void test(void);
-  // test();
-
-
 
   auto root_name = kargs::get("root", "/dev/ata0p1");
   assert(root_name);
 
+
+	// wait for the time to stabilize
+	while (!time::stabilized()) {
+		arch::halt();
+	}
 
 
   int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);
@@ -292,6 +299,7 @@ int kernel_init(void *) {
   auto paths = init_paths.split(',');
 
   pid_t init_pid = sched::proc::spawn_init(paths);
+
 
   /*
   while (1) {

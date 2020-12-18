@@ -58,6 +58,7 @@ args = [
 	'envp: const char **',
 ]
 
+
 [sc.waitpid]
 ret = 'long'
 args = [
@@ -76,6 +77,25 @@ args = [
 	'func: void*', # the code address to execute at
 	'arg: void*', # argument to be passed as to the function
 	'flags: int', # arguments
+]
+
+# Wait for, then join (teardown), a thread.
+[sc.jointhread]
+ret = 'int' # zero or errno
+args = [
+	'tid: int'
+]
+
+
+[sc.prctl]
+ret = 'int' # errno
+args = [
+	'option: int',
+	'arg1: unsigned long',
+	'arg2: unsigned long',
+	'arg3: unsigned long',
+	'arg4: unsigned long',
+	'arg5: unsigned long',
 ]
 
 [sc.open]

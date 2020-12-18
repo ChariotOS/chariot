@@ -108,6 +108,7 @@ bool thread::kickoff(void *rip, int initial_state) {
   return true;
 }
 
+
 thread::~thread(void) {
   if (tls_uaddr != 0) {
     proc.mm->dump();
@@ -201,7 +202,6 @@ static void thread_create_callback(void *) {
     }
     arch::sti();
 
-    printk("starting thread %d\n", thd->tid);
     return;
   }
 
@@ -237,7 +237,7 @@ bool thread::send_signal(int sig) {
   unsigned long pend = (1 << sig);
   this->sig.pending |= pend;
 #ifdef CONFIG_VERBOSE_PROCESS
-  printk("sending signal to tid %d. Blocked=%d\n", tid, state == PS_BLOCKED);
+  printk("sending signal to tid %d\n", tid);
 #endif
   if (state == PS_INTERRUPTIBLE) {
     this->interrupt();
@@ -261,29 +261,71 @@ vec<off_t> thread::backtrace(off_t rbp, off_t rip) {
 }
 
 void thread::interrupt(void) {
-	awaken(true);
-	/*
-  if (waiter) {
-    if (waiter->flags & WAIT_NOINT) {
-      // printk("no interrupt!\n");
-      return;
+  awaken(true);
+  /*
+if (waiter) {
+if (waiter->flags & WAIT_NOINT) {
+// printk("no interrupt!\n");
+return;
+}
+
+
+auto &wq = waiter->wq;
+// take a lock on the waitqueue so we can futz with it
+scoped_lock l(wq.lock);
+
+ref<wait::waiter> w = waiter;
+
+if (w->next != NULL) w->next->prev = w->prev;
+if (w->prev != NULL) w->prev->next = w->next;
+
+if (wq.front == w) wq.front = w->next;
+if (wq.back == w) wq.back = w->prev;
+
+w->notify(NOTIFY_RUDE);
+waiter = nullptr;
+}
+  */
+}
+
+
+extern int get_next_pid(void);
+
+// TODO: alot of verification, basically
+int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
+  int tid = get_next_pid();
+  auto *thd = new thread(tid, *curproc);
+
+  arch::reg(REG_SP, thd->trap_frame) = (unsigned long)stack;
+  arch::reg(REG_PC, thd->trap_frame) = (unsigned long)fn;
+  arch::reg(REG_ARG0, thd->trap_frame) = (unsigned long)arg;
+
+  thd->kickoff(fn, PS_RUNNING);
+
+  return tid;
+}
+
+int sys::jointhread(int tid) {
+  auto *t = thread::lookup(tid);
+  /* If there isn't a thread, fail */
+  if (t == NULL) return -ENOENT;
+  /* You can't join on other proc's threads */
+  if (t->pid != curthd->pid) return -EPERM;
+  /* If someone else is joining, it's invalid */
+  if (t->joinlock.is_locked()) return -EINVAL;
+
+  /* take the join lock */
+  {
+    scoped_lock joinlock(t->joinlock);
+
+    if (t->state != PS_ZOMBIE) {
+      if (t->joiners.wait()) {
+        return -EINTR;
+      }
     }
-
-
-    auto &wq = waiter->wq;
-    // take a lock on the waitqueue so we can futz with it
-    scoped_lock l(wq.lock);
-
-    ref<wait::waiter> w = waiter;
-
-    if (w->next != NULL) w->next->prev = w->prev;
-    if (w->prev != NULL) w->prev->next = w->next;
-
-    if (wq.front == w) wq.front = w->next;
-    if (wq.back == w) wq.back = w->prev;
-
-    w->notify(NOTIFY_RUDE);
-    waiter = nullptr;
+		// take the run lock
+		t->locks.run.lock();
+    thread::teardown(t);
   }
-	*/
+  return 0;
 }

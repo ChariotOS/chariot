@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <gfx/image.h>
 #include <math.h>
+#include <pthread.h>
 #include <sys/mman.h>
 #include <ui/application.h>
 #include <ui/color.h>
@@ -102,13 +103,14 @@ class animation {
 
 
 int main(int argc, char** argv) {
+
   ui::application app;
 
   ui::window* win = app.new_window("Current Test (Hello World)", 640, 480);
   // create a root view (column)
   auto& root = win->set_view<ui::view>();
 
-	root.set_font("EditorialNew Regular");
+  root.set_font("EditorialNew Regular");
   root.set_font_size(50);
 
   // root.set_font("Times New Roman");
@@ -122,10 +124,10 @@ int main(int argc, char** argv) {
   auto container = create(ui::FlexDirection::Column, 0.0, 0xFF00FF);
   container->log_layouts = true;
   container->set_size(NAN, NAN);
-	container->set_background(0x000000);
+  container->set_background(0x000000);
 
   container->add(make_label("Command Line Interface Guidelines", 0xFFFFFF, 0x000000));
-	// container->add(make_label("The second line has some more content", 0x000000, 0xFFFFFF));
+  // container->add(make_label("The second line has some more content", 0x000000, 0xFFFFFF));
   // container->add(make_label("Hello World", 0x000000, 0x000000));
 
   primary->add(container);

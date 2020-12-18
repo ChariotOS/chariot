@@ -76,12 +76,19 @@ static void switch_into(struct thread &thd) {
   thd.stats.current_cpu = -1;
 
   thd.locks.run.unlock();
+
 }
 
 void sched::do_yield(int st) {
-  arch::cli();
 
   auto &thd = *curthd;
+
+	// if the old thread is now dead, notify joiners
+	if (st == PS_ZOMBIE) {
+		thd.joiners.wake_up();
+	}
+
+  arch::cli();
 
   thd.stats.cycles += arch::read_timestamp() - thd.stats.last_start_cycle;
 
@@ -104,7 +111,9 @@ void sched::yield() {
   // tsk->start_tick -= tsk->timeslice;
   do_yield(PS_RUNNING);
 }
-void sched::exit() { do_yield(PS_ZOMBIE); }
+void sched::exit() {
+	do_yield(PS_ZOMBIE);
+}
 
 void sched::dumb_sleepticks(unsigned long t) {
   auto now = cpu::get_ticks();
@@ -296,7 +305,7 @@ void sched::dispatch_signal(int sig) {
 void sched::before_iret(bool userspace) {
   if (!cpu::in_thread()) return;
   // exit via the scheduler if the task should die.
-  if (userspace && curthd->should_die) sched::exit();
+  if (curthd->should_die) sched::exit();
 
   long sig_to_handle = -1;
 
@@ -343,9 +352,7 @@ bool sleep_blocker::should_unblock(struct thread &t, unsigned long now_us) {
 }
 
 int sys::usleep(unsigned long n) {
-  // optimize short sleeps into a spinloop. Not sure if this is a good idea or
-  // not, but I dont really care about efficiency right now :)
-  if (false && n <= 1000 * 100 /* 100ms */) {
+  if (1) {
     unsigned long end = time::now_us() + n;
     while (1) {
       if (time::now_us() >= end) break;
@@ -353,10 +360,5 @@ int sys::usleep(unsigned long n) {
     }
     return 0;
   }
-
-  if (curthd->block<sleep_blocker>(n) != BLOCKRES_NORMAL) {
-    return -1;
-  }
-  // printk("ret\n");
   return 0;
 }

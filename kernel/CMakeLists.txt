@@ -104,10 +104,6 @@ function(add_kernel_module)
 		set(TARGET_SOURCES ${TARGET_SOURCES} ${GLOB_SOURCES})
 	endif()
 
-	if (TARGET_CORE)
-		message(STATUS "${TARGET_NAME} is a core module")
-	endif()
-
 	foreach(need ${TARGET_NEEDS})
 		# we only want modules that are supported on this arch
 		if (NOT need IN_LIST CONFIG_ENABLED_OPTIONS)

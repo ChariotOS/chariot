@@ -190,7 +190,8 @@ void lumen::window::draw(gfx::scribe &s) {
     const int last_column = first_column + clipped_rect.w;
 
 
-    constexpr int border_radius = 8;
+#ifdef CONFIG_FANCY_WINDOWS
+    constexpr int border_radius = 0;
     if constexpr (border_radius > 0) {
       struct corner {
         bool enabled;
@@ -273,12 +274,13 @@ void lumen::window::draw(gfx::scribe &s) {
         }
       }
     }
+#endif
 
 
     for (int y = first_row; y <= last_row; ++y) {
       const uint32_t *src = bitmap->scanline(y);
       uint32_t *dst = s.bmp.scanline(y + oy) + ox;
-
+#ifdef CONFIG_FANCY_WINDOWS
       if constexpr (border_radius > 0) {
         if (unlikely(y < border_radius || y >= height - border_radius)) {
           for (int x = max(first_column, border_radius); x < min(last_column, width - border_radius); x++) {
@@ -287,6 +289,7 @@ void lumen::window::draw(gfx::scribe &s) {
           continue;
         }
       }
+#endif
 
       memcpy(dst + first_column, src + first_column, clipped_rect.w * sizeof(uint32_t));
     }

@@ -7,6 +7,7 @@
 #include <lumen/msg.h>
 #include <math.h>
 #include <string.h>
+#include <sys/sysbind.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 #include "internal.h"
@@ -77,6 +78,7 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
   screen.handle_mouse_input(pkt);
   invalidate(screen.mouse_rect());
 
+  // printf("mouse took %lldus\n", sysbind_gettime_microsecond() - pkt.timestamp);
 
   if (!dragging) calculate_hover();
 
@@ -496,27 +498,6 @@ void lumen::context::compose(void) {
   // clear that information
   if (draw_mouse) screen.mouse_moved = false;
 
-  auto compose_window = [&](lumen::window &window) -> bool {
-    window.window_lock.lock();
-    // make a state for this window
-    scribe.enter();
-    scribe.state().offset = gfx::point(window.rect.x, window.rect.y);
-
-    for (auto &dirty_rect : dirty_regions.rects()) {
-      if (!dirty_rect.intersects(window.rect)) continue;
-      // is this region occluded by another window?
-      // if (occluded(window, dirty_rect)) {
-      // continue;
-      // }
-      scribe.state().clip = dirty_rect;
-
-      window.draw(scribe);
-    }
-    scribe.leave();
-    window.window_lock.unlock();
-    return true;
-  };
-
   windows_lock.lock();
   dirty_regions_lock.lock();
   for (auto &r : dirty_regions.rects()) {
@@ -526,7 +507,23 @@ void lumen::context::compose(void) {
 
   // go back to front and compose each window
   for (auto win : windows) {
-    compose_window(*win);
+    win->window_lock.lock();
+    // make a state for this window
+    scribe.enter();
+    scribe.state().offset = gfx::point(win->rect.x, win->rect.y);
+
+    for (auto &dirty_rect : dirty_regions.rects()) {
+      if (!dirty_rect.intersects(win->rect)) continue;
+      // is this region occluded by another window?
+      // if (occluded(window, dirty_rect)) {
+      // continue;
+      // }
+      scribe.state().clip = dirty_rect;
+
+      win->draw(scribe);
+    }
+    scribe.leave();
+    win->window_lock.unlock();
   }
 
   if (draw_mouse) {

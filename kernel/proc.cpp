@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <fs.h>
 #include <fs/vfs.h>
+#include <futex.h>
 #include <lock.h>
 #include <mem.h>
 #include <paging.h>
@@ -24,7 +25,7 @@ static spinlock pid_spinlock;
 static rwlock ptable_lock;
 static map<pid_t, process::ptr> proc_table;
 
-static pid_t get_next_pid(void) {
+pid_t get_next_pid(void) {
   pid_spinlock.lock();
   auto p = next_pid++;
   pid_spinlock.unlock();
@@ -564,26 +565,83 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
 }
 
 
-
-// TODO: alot of verification, basically
-int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
-  int tid = get_next_pid();
-  auto *thd = new thread(tid, *curproc);
-
-  arch::reg(REG_SP, thd->trap_frame) = (unsigned long)stack;
-  arch::reg(REG_PC, thd->trap_frame) = (unsigned long)fn;
-  arch::reg(REG_ARG0, thd->trap_frame) = (unsigned long)arg;
-
-  thd->kickoff(fn, PS_RUNNING);
-
-  return tid;
+wait_queue &process::futex_queue(int *uaddr) {
+  futex_lock.lock();
+  if (!m_futex_queues.contains((off_t)uaddr)) {
+    m_futex_queues.set((off_t)uaddr, make_unique<wait_queue>());
+  }
+  auto &wq = *m_futex_queues.ensure((off_t)uaddr);
+  futex_lock.unlock();
+  return wq;
 }
 
 
 
 
-int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) { return -ENOTIMPL; }
+int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
+  /* If the user can't read the address, it's invalid. */
+  if (!VALIDATE_RD(uaddr, 4)) return -EINVAL;
+
+  auto &mm = *curproc->mm;
+
+  off_t addr = (off_t)uaddr;
+  /* the address must be word aligned (4 bytes) */
+  if ((addr & 0x3) != 0) return -EINVAL;
+
+  /* This follows the general idea of Linux's:
+     This operation tests that the value at the futex word pointed to by the address uaddr still contains the expected
+     value val, and if so, then sleeps waiting for  a  FU‐ TEX_WAKE  operation  on  the futex word.  The load of the
+     value of the futex word is an atomic memory access (i.e., using atomic machine instructions of the respective
+                architecture).  This load, the comparison with the expected value, and starting to sleep are performed
+     atomically and totally ordered with respect to other futex oper‐ ations  on  the  same  futex  word.  If the thread
+     starts to sleep, it is considered a waiter on this futex word.  If the futex value does not match val, then the
+     call fails immediately with the error EAGAIN.
+                                                          */
+  if (op == FUTEX_WAIT) {
+    auto &wq = curproc->futex_queue(uaddr);
+    // printk("[%2d] FUTEX_WAIT - wq: %p\n", curthd->tid, &wq);
+    /* Load the item atomically. (ATOMIC ACQUIRE makes sense here I think) */
+    int current_value = __atomic_load_n(uaddr, __ATOMIC_ACQUIRE);
+    /* If the value is not the expected value, return EAGAIN */
+    if (current_value != val) return -EAGAIN;
+
+    // printk("WAIT BEGIN!\n");
+    // printk("wait at task list %p\n", &wq.task_list);
+
+    if (wq.wait_exclusive() /* Rude */) {
+      // printk("FUTEX WAIT WAKEUP (RUDE)\n");
+      return -EINTR;
+    }
+    // printk("FUTEX WAIT WAKEUP\n");
+
+    return 0;
+  }
+
+  if (op == FUTEX_WAKE) {
+    auto &wq = curproc->futex_queue(uaddr);
+
+    if (val == 0) return 0;
+
+    if (wq.task_list.is_empty_careful()) {
+      // printk("task list empty!\n");
+      return 0;
+    }
+    // printk("[%2d] FUTEX_WAKE - wq: %p\n", curthd->tid, &wq);
+
+    wq.__wake_up(0, val, NULL);
+    return 1; /* if someone was woken up, return one */
+  }
+
+  if (op == FUTEX_DSTR) {
+  }
+
+  return -EINVAL;
+}
 
 
 
 int sys::kill(int pid, int sig) { return sched::proc::send_signal(pid, sig); }
+
+int sys::prctl(int option, unsigned long a1, unsigned long a2, unsigned long a3, unsigned long a4, unsigned long a5) {
+  return -ENOTIMPL;
+}

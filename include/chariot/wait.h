@@ -41,12 +41,13 @@ struct wait_queue {
 
   struct list_head task_list;
 
+	wait_queue();
 
   void wait(struct wait_entry *, int state);
 
   void wake_up_common(unsigned int mode, int nr_exclusive, int wake_flags, void *key);
 
-	void finish(struct wait_entry *);
+  void finish(struct wait_entry *);
 
 
   /**
@@ -67,6 +68,10 @@ struct wait_queue {
 
   inline void wake_up(void) { __wake_up(0, 1, NULL); }
   inline void wake_up_all(void) { __wake_up(0, 0, NULL); }
+
+
+  void wait_exclusive(struct wait_entry *, int state);
+  bool wait_exclusive();
 
   bool wait();
   void wait_noint();
