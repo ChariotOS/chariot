@@ -17,7 +17,10 @@ file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 
 chariot_libc(libc c)
 
-target_link_libraries(libc crt0 "${CMAKE_CURRENT_LIST_DIR}/libgcc.a" "/usr/lib/libc++.a")
+target_link_libraries(libc crt0
+	"${CMAKE_CURRENT_LIST_DIR}/libgcc.a"
+	"${CMAKE_CURRENT_LIST_DIR}/libc++.a"
+)
 
 
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
