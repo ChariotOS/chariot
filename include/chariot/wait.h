@@ -8,6 +8,18 @@
 
 bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync, void *key);
 
+#define WAIT_RES_INTR 0b00000001
+
+struct wait_result {
+ private:
+  uint8_t flags;
+
+ public:
+  inline wait_result(uint8_t flags) : flags(flags) {}
+  inline wait_result(void) : flags(0) {}
+  inline bool interrupted(void) { return FIS(flags, WAIT_RES_INTR); }
+};
+
 /* these functions return if they were successful in waking or not. */
 typedef bool (*wait_entry_func_t)(struct wait_entry *wait, unsigned mode, int flags, void *key);
 struct wait_entry {
@@ -29,6 +41,8 @@ struct wait_entry {
   /* The inline list_head that is linked into the wait queue */
   struct list_head item;
 
+	int result = 0; /* WQ_RES_* flags */
+
   wait_entry();
   // this removes the entry from a waitqueue if there is one
   ~wait_entry();
@@ -41,9 +55,8 @@ struct wait_queue {
 
   struct list_head task_list;
 
-	wait_queue();
+  wait_queue();
 
-  void wait(struct wait_entry *, int state);
 
   void wake_up_common(unsigned int mode, int nr_exclusive, int wake_flags, void *key);
 
@@ -70,9 +83,11 @@ struct wait_queue {
   inline void wake_up_all(void) { __wake_up(0, 0, NULL); }
 
 
-  void wait_exclusive(struct wait_entry *, int state);
-  bool wait_exclusive();
+  wait_result wait_exclusive(struct wait_entry *, int state);
+  wait_result wait_exclusive();
 
-  bool wait();
+  wait_result wait(struct wait_entry *, int state);
+  wait_result wait();
+
   void wait_noint();
 };

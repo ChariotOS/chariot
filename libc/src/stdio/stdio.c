@@ -103,6 +103,8 @@ FILE *falloc(void) {
   fp->fd = -1;
   fp->lock = -1;
 
+  pthread_mutex_init(&fp->flock, NULL);
+
   return ofl_add(fp);
 }
 
@@ -129,46 +131,51 @@ int fclose(FILE *fp) {
   return 0;
 }
 
-size_t fwrite(const void *restrict src, size_t size, size_t nmemb, FILE *restrict f) {
+/* unlocked fwrite */
+size_t _fwrite(const void *restrict src, size_t size, size_t nmemb, FILE *restrict f) {
   size_t len = size * nmemb;
-
-  FLOCK(f);
-
   if (f->write != NULL) {
     size_t k = f->write(f, src, len);
 
     if (k != 0) {
-      FUNLOCK(f);
       return k / size;
     }
   }
-
-  FUNLOCK(f);
   return 0;
 }
-
-size_t fread(void *restrict destv, size_t size, size_t nmemb, FILE *restrict f) {
+/* unlocked fread */
+size_t _fread(void *restrict destv, size_t size, size_t nmemb, FILE *restrict f) {
   size_t len = size * nmemb;
-
-  FLOCK(f);
 
   if (f->read != NULL) {
     size_t k = f->read(f, destv, len);
 
     if (k < 0) {
       f->eof = 1;
-      FUNLOCK(f);
       return 0;
     }
 
     if (k != 0) {
-      FUNLOCK(f);
       return k / size;
     }
   }
-
-  FUNLOCK(f);
   return 0;
+}
+
+
+
+size_t fwrite(const void *restrict src, size_t size, size_t nmemb, FILE *restrict f) {
+  FLOCK(f);
+  size_t out = _fwrite(src, size, nmemb, f);
+  FUNLOCK(f);
+  return out;
+}
+
+size_t fread(void *restrict destv, size_t size, size_t nmemb, FILE *restrict f) {
+  FLOCK(f);
+  size_t out = _fread(destv, size, nmemb, f);
+  FUNLOCK(f);
+  return out;
 }
 
 static int _stdio_close(FILE *fp) {

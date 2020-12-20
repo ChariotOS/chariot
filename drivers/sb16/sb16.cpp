@@ -168,7 +168,7 @@ static ssize_t sb16_write(fs::file &fd, const char *buf, size_t sz) {
   // FIXME: Implement auto-initialized output.
   uint8_t command = 0xb0;
   uint16_t sample_count = sz / sizeof(int16_t);
-	// if stereo, double the sample are used
+  // if stereo, double the sample are used
   if (mode & (u8)SampleFormat::Stereo) sample_count >>= 1;
 
   printk(KERN_INFO "SB16: writing %d bytes! %d samples\n", sz, sample_count);
@@ -185,7 +185,7 @@ static ssize_t sb16_write(fs::file &fd, const char *buf, size_t sz) {
 
   // arch::sti();
 
-  printk("%d\n", sb16_wq.wait());
+  printk("%d\n", sb16_wq.wait().interrupted());
   return sz;
 }
 
@@ -222,15 +222,14 @@ static void sb16_interrupt(int intr, reg_t *fr) {
 
 
 void sb16_init(void) {
-
-	// Try to detect the soundblaster 16 card
+  // Try to detect the soundblaster 16 card
   outb(0x226, 1);
   delay(32);
   outb(0x226, 0);
 
   auto data = dsp_read();
   if (data != 0xAA) {
-		// Soundblaster was not found, just return
+    // Soundblaster was not found, just return
     return;
   }
 

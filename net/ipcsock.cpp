@@ -170,7 +170,7 @@ ssize_t net::ipcsock::recvfrom(fs::file &fd, void *data, size_t len, int flags,
 
     if (!block) return -EAGAIN;
 
-    if (state.wq.wait() == false) {
+    if (state.wq.wait().interrupted()) {
       printk("WAIT!\n");
       return -EINTR;
     }

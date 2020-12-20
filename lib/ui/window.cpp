@@ -140,8 +140,10 @@ void ui::window::invalidate(const gfx::rect &r, bool sync) {
         app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
       }
 
+			/*
       printf("invalidation of %d region(s) took %.2fms\n", m_pending_invalidations.size(),
              (sysbind_gettime_microsecond() - start_time) / 1000.0);
+						 */
       m_pending_invalidations.clear();
     });
   }

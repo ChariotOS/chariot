@@ -1,6 +1,8 @@
 #include <chariot.h>
 #include <chariot/dirent.h>
 #include <chariot/futex.h>
+#include <ck/thread.h>
+#include <ck/vec.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -130,24 +132,17 @@ void wake_futex_blocking(int *futex_addr) {
 void futex_test(void) {
   int test = 0;
 
-  pthread_t thd;
-  pthread_create(
-      &thd, NULL,
-      [](void *addr) -> void * {
-        int *shared_data = (int *)addr;
-        printf("child waiting for A\n");
-        wait_on_futex_value(shared_data, 0xA);
 
-        printf("child writing B\n");
-        // Write 0xB to the shared data and wake up parent.
-        *shared_data = 0xB;
-        wake_futex_blocking(shared_data);
+  auto thd = ck::thread([&]() {
+    int *shared_data = &test;
+    printf("child waiting for A\n");
+    wait_on_futex_value(shared_data, 0xA);
 
-        while (1) {
-        }
-        return NULL;
-      },
-      &test);
+    printf("child writing B\n");
+    // Write 0xB to the shared data and wake up parent.
+    *shared_data = 0xB;
+    wake_futex_blocking(shared_data);
+  });
 
   printf("parent writing A\n");
   /* Write 0xA to the shared data and wake up child. */
@@ -156,8 +151,87 @@ void futex_test(void) {
 
   printf("parent waiting for B\n");
   wait_on_futex_value(&test, 0xB);
+}
 
-  pthread_join(thd, NULL);
+
+template <typename T, typename Fn /* T& -> void */>
+void process_array(T *data, size_t tasks, int nthreads, Fn fn) {
+  /* Sanity :^) */
+  if (nthreads < 1) nthreads = 1;
+
+  /* A job argument is passed to a thread */
+  struct job {
+    int id;
+    T *data;
+    int count;
+    Fn *func;
+    pthread_t pthd;
+  };
+  ck::vec<job> jobs;
+
+  int max_per_thread = (tasks + nthreads - 1) / nthreads;
+  int current_start = 0;
+
+
+  /* Build a plan for the threads */
+  for (int i = 0; i < nthreads; i++) {
+    struct job j;
+    j.id = i;
+    j.func = &fn;
+    j.data = data + current_start;
+    j.count = max_per_thread;
+    int nleft = tasks - (current_start + max_per_thread);
+    if (nleft < 0) j.count -= -nleft;
+    current_start += max_per_thread;
+    jobs.push(j);
+  }
+
+
+  /* Execute the plan */
+  for (auto &j : jobs) {
+    if (j.id == 0) continue;
+    pthread_create(
+        &j.pthd, NULL,
+        [](void *vj) -> void * {
+          struct job *j = (struct job *)vj;
+          for (int i = 0; i < j->count; i++) {
+            (*j->func)(j->data[i]);
+          }
+          return NULL;
+        },
+        (void *)&j);
+  }
+
+
+  /* evaluate the first job on the calling thread (to save resources) */
+  {
+    auto &j = jobs[0];
+    for (int i = 0; i < j.count; i++) {
+      (*j.func)(j.data[i]);
+    }
+  }
+
+
+  for (auto &j : jobs) {
+    if (j.id != 0) pthread_join(j.pthd, NULL);
+  }
+}
+
+
+
+
+template <typename T, typename Fn /* T& -> void */>
+void process_vector(ck::vec<T> &vec, int nthreads, Fn fn) {
+  auto tasks = vec.size();
+  T *data = vec.data();
+  process_array(data, tasks, nthreads, fn);
+}
+
+
+void print_vector(ck::vec<int> &vec) {
+  printf("{ ");
+  for (int x : vec) printf("%4d ", x);
+  printf("}\n");
 }
 
 int main(int argc, char **argv) {
@@ -179,17 +253,27 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-
   printf("[init] hello, friend\n");
 
-  printf("================ TEST!\n");
-  futex_test();
-  printf("================ DONE!\n");
-
-  while (1) {
-  }
 
   environ = read_default_environ();
+
+
+  ck::vec<int> things;
+  for (int i = 0; i < 15; i++) things.push(i);
+  print_vector(things);
+  process_vector(things, 4, [](int &i) { i = 0; });
+  print_vector(things);
+
+  // while (1) {}
+
+#if 0
+  for (int i = 0; i < 10; i++) {
+    printf("================\n");
+    futex_test();
+  }
+#endif
+
 
   FILE *loadorder = fopen("/cfg/srv/loadorder", "r");
 

@@ -63,37 +63,51 @@ static int uartgetc(void) {
   return inb(COM1 + 0);
 }
 
-void serial_irq_handle(int i, reg_t *) {
-  size_t nread = 0;
-  char buf[32];
 
+/*
+ * The serial irq just notifies a thread that there is data avail. This avoids
+ * a deadlock in console::feed
+ */
+static wait_queue serial_data_avail;
+
+
+int serial_worker(void *) {
   while (1) {
-    int c = uartgetc();
-    if (c < 0) break;
+    size_t nread = 0;
+    char buf[32];
+    while (1) {
+      int c = uartgetc();
+      if (c < 0) break;
 
-    // serial only sends \r for some reason
-    if (c == '\r') c = '\n';
+      // serial only sends \r for some reason
+      if (c == '\r') c = '\n';
 
-    if (nread > 32) {
-      console::feed(nread, buf);
-      nread = 0;
+      if (nread > 32) {
+        console::feed(nread, buf);
+        nread = 0;
+      }
+
+      buf[nread] = c;
+      nread++;
     }
 
-    buf[nread] = c;
-    nread++;
+    if (nread != 0) console::feed(nread, buf);
+    /* Loop until notified */
+    while (serial_data_avail.wait().interrupted()) {
+    }
   }
-
-  if (nread != 0) console::feed(nread, buf);
+  return 0;
 }
+
+
+void serial_irq_handle(int i, reg_t *) { serial_data_avail.wake_up(); }
 
 
 
 
 static ssize_t com_read(fs::file &f, char *dst, size_t sz) { return -ENOSYS; }
 
-static ssize_t com_write(fs::file &f, const char *dst, size_t sz) {
-  return -ENOSYS;
-}
+static ssize_t com_write(fs::file &f, const char *dst, size_t sz) { return -ENOSYS; }
 
 
 static struct fs::file_operations com_ops = {
@@ -109,6 +123,8 @@ static struct dev::driver_info com_driver {
 
 
 static void serial_mod_init() {
+  sched::proc::create_kthread("[COM Worker]", serial_worker);
+
   // setup interrupts on serial
   irq::install(IRQ_COM1, serial_irq_handle, "COM1 Serial Port");
 
@@ -116,6 +132,8 @@ static void serial_mod_init() {
   // enable interrupts.
   inb(COM1 + 2);
   inb(COM1 + 0);
+
+
 
   dev::register_driver(com_driver);
 

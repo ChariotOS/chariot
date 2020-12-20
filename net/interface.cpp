@@ -218,7 +218,7 @@ static void donefunc(void *foo) {
 
 void net::start(void) {
   tcpip_init(donefunc, 0);
-  if (tcpinit_sem.wait(false) == false) {
+  if (tcpinit_sem.wait(false).interrupted()) {
     panic("unexpected interrupt");
   }
 

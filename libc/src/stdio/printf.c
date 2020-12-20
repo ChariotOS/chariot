@@ -34,6 +34,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "./impl.h"
 #include <stdio.h>
 
 // 'ntoa' conversion buffer size, this must be big enough to hold one converted

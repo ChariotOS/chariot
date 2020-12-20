@@ -124,6 +124,9 @@
 #define for_range(var, start, end) for (auto var = start; var < (end); var++)
 
 
+/* Flag is set? */
+#define FIS(val, flag) (((val) & (flag)) != 0)
+
 #ifdef __cplusplus
 template <typename T, typename U>
 inline constexpr T ceil_div(T a, U b) {

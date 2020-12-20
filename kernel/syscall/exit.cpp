@@ -30,7 +30,7 @@ void sys::exit_proc(int code) {
       auto t = thread::lookup(tid);
       if (t && t != curthd) {
         t->should_die = 1;
-        t->awaken(true);
+				sched::unblock(*t, true);
       }
     }
 

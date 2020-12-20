@@ -117,6 +117,12 @@ thread::~thread(void) {
 
   sched::remove_task(this);
 
+  /* Remove this thread from the parent process */
+  this->proc.threads.remove_first_matching([this](int otid) {
+    /* If the thread id in the vector is the current tid, remove it */
+    return otid == this->tid;
+  });
+
   for (auto &s : stacks) {
     kfree(s.start);
   }
@@ -126,12 +132,6 @@ thread::~thread(void) {
   kfree(sig.arch_priv);
 }
 
-bool thread::awaken(bool rudely) {
-  // TODO: this should be more complex
-  wq.rudely_awoken = rudely;
-  state = PS_RUNNING;
-  return true;
-}
 
 void thread::setup_stack(reg_t *tf) {
   auto sp = arch::reg(REG_SP, tf);
@@ -260,33 +260,7 @@ vec<off_t> thread::backtrace(off_t rbp, off_t rip) {
   return bt;
 }
 
-void thread::interrupt(void) {
-  awaken(true);
-  /*
-if (waiter) {
-if (waiter->flags & WAIT_NOINT) {
-// printk("no interrupt!\n");
-return;
-}
-
-
-auto &wq = waiter->wq;
-// take a lock on the waitqueue so we can futz with it
-scoped_lock l(wq.lock);
-
-ref<wait::waiter> w = waiter;
-
-if (w->next != NULL) w->next->prev = w->prev;
-if (w->prev != NULL) w->prev->next = w->next;
-
-if (wq.front == w) wq.front = w->next;
-if (wq.back == w) wq.back = w->prev;
-
-w->notify(NOTIFY_RUDE);
-waiter = nullptr;
-}
-  */
-}
+void thread::interrupt(void) { sched::unblock(*this, true); }
 
 
 extern int get_next_pid(void);
@@ -319,12 +293,12 @@ int sys::jointhread(int tid) {
     scoped_lock joinlock(t->joinlock);
 
     if (t->state != PS_ZOMBIE) {
-      if (t->joiners.wait()) {
+      if (t->joiners.wait().interrupted()) {
         return -EINTR;
       }
     }
-		// take the run lock
-		t->locks.run.lock();
+    // take the run lock
+    t->locks.run.lock();
     thread::teardown(t);
   }
   return 0;

@@ -88,7 +88,7 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
     if (!block) return -EAGAIN;
 
     if (written < size) {
-      if (wq_writers.wait() == false /* interrupted by signals? */) {
+      if (wq_writers.wait().interrupted()) {
         if (written > 0) return written;
         return -EINTR;
       }
@@ -139,7 +139,7 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
     }
 
     if (collected == 0) {
-      if (wq_readers.wait() == false /* Were we interrupted?? */) {
+      if (wq_readers.wait().interrupted()) {
         // We haven't read anything anyways, just return that there was an
         // interrupt due to signals.
         return -EINTR;

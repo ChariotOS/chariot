@@ -1,3 +1,4 @@
+#pragma once
 
 struct x86_64regs {
   unsigned long rax;  // 0

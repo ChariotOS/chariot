@@ -221,7 +221,10 @@ void dump_backtrace(off_t ebp) {
 #endif
 }
 
+/* This exists so we don't have annoying interleaved trapframe dumping */
+// static spinlock trapframe_dump_lock;
 void dump_trapframe(reg_t *r) {
+	// scoped_lock l(trapframe_dump_lock);
   auto *tf = (struct x86_64regs *)r;
   unsigned int eflags = tf->rflags;
 #define GET(name) (tf->name)

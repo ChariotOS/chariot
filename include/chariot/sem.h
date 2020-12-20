@@ -15,7 +15,7 @@ class condvar final {
 
  public:
   // returns if it successfully waited
-  inline bool WARN_UNUSED wait(spinlock &l, bool interruptable = true) {
+  inline wait_result WARN_UNUSED wait(spinlock &l, bool interruptable = true) {
     // lock the condvar
     lock.lock();
     // release the lock and go to sleep
@@ -32,10 +32,10 @@ class condvar final {
     do {
       lock.unlock();
       if (interruptable) {
-        if (wq.wait() == false /* interrupted? */) {
+        if (wq.wait().interrupted()) {
           // re-take the lock
           lock.lock();
-          return false;
+          return wait_result(WAIT_RES_INTR);
         }
       } else {
         wq.wait_noint();
@@ -52,7 +52,7 @@ class condvar final {
     lock.unlock();
     /* reacquire provided lock */
     l.lock();
-    return true;
+    return wait_result();
   }
 
   inline void signal(void) {
@@ -89,17 +89,18 @@ class semaphore final {
   inline semaphore(int value) : value(value) {}
 
   // returns if it was interrupted or not
-  inline bool WARN_UNUSED wait(bool interruptable = true) {
+  inline wait_result WARN_UNUSED wait(bool interruptable = true) {
     lock.lock();
     while (value <= 0) {
-      if (cond.wait(lock, interruptable) == false /* Interrupted? */) {
+      if (cond.wait(lock, interruptable).interrupted()) {
         lock.unlock();
+				return wait_result(WAIT_RES_INTR);
         return false;
       }
     }
     value--;
     lock.unlock();
-    return true;
+		return wait_result();
   }
 
   inline void post(void) {

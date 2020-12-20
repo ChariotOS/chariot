@@ -36,6 +36,8 @@ bool sched::init(void) { return true; }
 static struct thread *get_next_thread(void) { return s_scheduler.pick_next(); }
 
 
+
+
 static auto pick_next_thread(void) {
   if (cpu::current().next_thread == NULL) {
     cpu::current().next_thread = get_next_thread();
@@ -76,17 +78,20 @@ static void switch_into(struct thread &thd) {
   thd.stats.current_cpu = -1;
 
   thd.locks.run.unlock();
-
 }
 
-void sched::do_yield(int st) {
 
+static spinlock blocked_threads_lock;
+static list_head blocked_threads;
+
+void sched::do_yield(int st) {
   auto &thd = *curthd;
 
-	// if the old thread is now dead, notify joiners
-	if (st == PS_ZOMBIE) {
-		thd.joiners.wake_up();
-	}
+  // if the old thread is now dead, notify joiners
+  if (st == PS_ZOMBIE) {
+    thd.joiners.wake_up();
+  }
+
 
   arch::cli();
 
@@ -95,13 +100,42 @@ void sched::do_yield(int st) {
   thd.state = st;
   thd.stats.last_cpu = thd.stats.current_cpu;
   thd.stats.current_cpu = -1;
+	/*
+
+	if (thd.state == PS_INTERRUPTIBLE) {
+		blocked_threads_lock.lock();
+		blocked_threads.add_tail(&thd.blocked_threads);
+		blocked_threads_lock.unlock();
+	}
+	*/
+
   swtch(&thd.kern_context, cpu::current().sched_ctx);
+
 
   arch::sti();
 }
 
+
+
 // helpful functions wrapping different resulting task states
 void sched::block() { sched::do_yield(PS_INTERRUPTIBLE); }
+
+/* Unblock a thread */
+void sched::unblock(thread &thd, bool interrupt) {
+  if (thd.state != PS_INTERRUPTIBLE) {
+    /* Hmm, not sure what to do here. */
+    // printk(KERN_WARN "Attempt to wake up thread %d which is not PS_INTERRUPTIBLE\n", thd.tid);
+  }
+  thd.wq.rudely_awoken = interrupt;
+  thd.state = PS_RUNNING;
+
+	/*
+  blocked_threads_lock.lock();
+  // assert(!thd.blocked_threads.is_empty());
+	thd.blocked_threads.del_init();
+  blocked_threads_lock.unlock();
+	*/
+}
 
 void sched::yield() {
   // when you yield, you give up the CPU by ''using the rest of your
@@ -111,9 +145,7 @@ void sched::yield() {
   // tsk->start_tick -= tsk->timeslice;
   do_yield(PS_RUNNING);
 }
-void sched::exit() {
-	do_yield(PS_ZOMBIE);
-}
+void sched::exit() { do_yield(PS_ZOMBIE); }
 
 void sched::dumb_sleepticks(unsigned long t) {
   auto now = cpu::get_ticks();

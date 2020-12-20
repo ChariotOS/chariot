@@ -555,7 +555,7 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
     }
 
     // wait on the waiter's semaphore
-    if (me->waiters.wait() == false /* were we interrupted by a signal? */) {
+    if (me->waiters.wait().interrupted()) {
       // Linux does this if WNOHANG was set
       return -EINTR;
     }
@@ -608,7 +608,7 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
     // printk("WAIT BEGIN!\n");
     // printk("wait at task list %p\n", &wq.task_list);
 
-    if (wq.wait_exclusive() /* Rude */) {
+    if (wq.wait_exclusive().interrupted()) {
       // printk("FUTEX WAIT WAKEUP (RUDE)\n");
       return -EINTR;
     }

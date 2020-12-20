@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <ptr.h>
+#include "ptr.h"
 
 #include <func.h>
 #include <map.h>
@@ -23,7 +23,6 @@
 #define PS_BLOCKED (2)
 #define PS_EMBRYO (3)
 */
-
 
 #define PS_EMBRYO (-1)
 /* The task is either actively running or is able to be run */
@@ -48,6 +47,7 @@ struct sigaction {
 
 namespace sched {
   void block();
+	void unblock(thread &, bool interrupt = false);
 
   using impl = sched::round_robin;
 }  // namespace sched
@@ -299,6 +299,9 @@ struct thread final {
 	 */
 	spinlock joinlock;
 
+
+	struct list_head blocked_threads;
+
   off_t tls_uaddr;
   size_t tls_usize;
 
@@ -337,7 +340,7 @@ struct thread final {
 
   void setup_stack(reg_t *);
 
-  bool awaken(bool rude = false);
+  // bool awaken(bool rude = false);
 
   // Notify a thread that a signal is available, interrupting it from a
   // waitqueue if there is one

@@ -67,14 +67,12 @@ void console::feed(size_t sz, char* buf) {
   // lock the input
   cons_input_lock.lock();
 
-  // if (ctty != NULL) {
   for (int i = 0; i < sz; i++) {
     auto c = buf[i];
     if (!handle_special_input(c)) {
       ctty.handle_input(c);
     }
   }
-  // }
   cons_input_lock.unlock();
 }
 
@@ -111,9 +109,7 @@ static void console_close(fs::file& fd) { /* KINFO("[console] close!\n"); */
 }
 
 
-static int console_poll(fs::file& fd, int events) {
-  return console_fifo.poll() & events & AWAITFS_READ;
-}
+static int console_poll(fs::file& fd, int events) { return console_fifo.poll() & events & AWAITFS_READ; }
 
 struct fs::file_operations console_ops = {
     .read = console_read,

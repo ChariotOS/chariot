@@ -24,7 +24,7 @@ void sys_sem_signal(sys_sem_t *sem) { sem->sem->post(); }
 
 u32_t sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout) {
   auto start = time::now_ms();
-  while (sem->sem->wait() == false) {
+  while (sem->sem->wait().interrupted()) {
     printk("lwip sem_wait interrupted\n");
   }
   return time::now_ms() - start;

@@ -28,7 +28,7 @@ void wait_queue::wake_up_common(unsigned int mode, int nr_exclusive, int wake_fl
   }
 }
 
-void wait_queue::wait(struct wait_entry *ent, int state) {
+wait_result wait_queue::wait(struct wait_entry *ent, int state) {
   assert(ent->wq == NULL);
 
   unsigned long flags;
@@ -39,21 +39,21 @@ void wait_queue::wait(struct wait_entry *ent, int state) {
   lock.unlock_irqrestore(flags);
 
   sched::do_yield(state);
+
+  return wait_result(ent->result);
 }
 
 
-bool wait_queue::wait(void) {
+wait_result wait_queue::wait(void) {
   struct wait_entry entry;
-  wait(&entry, PS_INTERRUPTIBLE);
-
-  bool rude = (entry.flags & WQ_FLAG_RUDELY) != 0;
-  return rude;
+  return wait(&entry, PS_INTERRUPTIBLE);
 }
 
 
 
-void wait_queue::wait_exclusive(struct wait_entry *ent, int state) {
+wait_result wait_queue::wait_exclusive(struct wait_entry *ent, int state) {
   assert(ent->wq == NULL);
+
 
   unsigned long flags;
   ent->wq = this;
@@ -63,15 +63,14 @@ void wait_queue::wait_exclusive(struct wait_entry *ent, int state) {
   lock.unlock_irqrestore(flags);
 
   sched::do_yield(state);
+
+  return wait_result(ent->result);
 }
 
 
-bool wait_queue::wait_exclusive(void) {
+wait_result wait_queue::wait_exclusive(void) {
   struct wait_entry entry;
-  wait(&entry, PS_INTERRUPTIBLE);
-
-  bool rude = (entry.flags & WQ_FLAG_RUDELY) != 0;
-  return rude;
+  return wait_exclusive(&entry, PS_INTERRUPTIBLE);
 }
 
 
@@ -101,9 +100,13 @@ void wait_queue::finish(struct wait_entry *e) {
 bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync, void *key) {
   bool ret = true;
 
-  if (entry->thd->awaken()) {
-    entry->flags |= WQ_FLAG_RUDELY;
-  }
+  sched::unblock(*entry->thd, false);
+	entry->result = 0;
+	if (entry->thd->wq.rudely_awoken) {
+		entry->result |= WAIT_RES_INTR;
+	}
+
+  entry->flags |= WQ_FLAG_RUDELY;
   if (ret) entry->item.del_init();
   return ret;
 }
