@@ -1,35 +1,17 @@
 include(CMakeParseArguments)
 
 
-# zero out the C_FLAGS
-# set(CMAKE_C_FLAGS "-target x86_64-chariot-elf -fPIE -Wc99-designator -Wc++20-designator -Wdeprecated-volatile ")
-
-set(CMAKE_C_FLAGS "")
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-red-zone -fno-omit-frame-pointer")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-protector -mtls-direct-seg-refs -fno-pie -Wno-sign-compare")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -mcmodel=large -Wall -fno-common")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-initializer-override -Wstrict-overflow=5")
-
+set(CMAKE_C_FLAGS "-DKERNEL")
 if(CONFIG_DEBUG_SYMBOLS)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 endif()
 
 if(CONFIG_OPTIMIZED)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 endif()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-sse")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused -Wno-address-of-packed-member -Wno-strict-overflow -DKERNEL ")
-
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++17 -fno-rtti -fno-exceptions -Wno-literal-suffix")
-
-
-set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc ")
-
-
-
-add_definitions(-DKERNEL)
+set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} ${ARCH_KERN_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${ARCH_KERN_CXX_FLAGS}")
 
 
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}

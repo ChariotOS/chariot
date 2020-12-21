@@ -7,9 +7,13 @@ mkdir -p $DIR/tarballs
 mkdir -p $DIR/local
 
 ARCH="x86_64"
-TARGET="$ARCH-elf-chariot"
+TARGET="$ARCH-elf"
 PREFIX="$DIR/local"
-SYSROOT="$DIR/../build/root/"
+
+ROOT=$DIR/..
+SYSROOT="$ROOT/build/$ARCH/root/"
+
+
 
 
 
@@ -29,14 +33,8 @@ pushd tarballs
 		tar -xf binutils.tar
 
 		pushd binutils-${BINUTILS_VERSION}
-			echo "Initializing Git Repo..."
-			git init >/dev/null
-			git add . >/dev/null
-			git commit -am "BASE" >/dev/null
-
 			echo "Applying Patch..."
-			git apply ../../binutils.patch >/dev/null
-
+			patch -p1 < ../../binutils.patch
 		popd
 	fi
 
@@ -51,34 +49,21 @@ if [ ! -d gcc-${GCC_VERSION} ]; then
 	tar -xf gcc-${GCC_VERSION}.tar
 
 	pushd gcc-${GCC_VERSION}
-		echo "Initializing Git Repo..."
-
 		echo "Applying Patch..."
 		patch -p1 < ../../gcc.patch
-		# git apply ../../gcc.patch >/dev/null
 	popd
 fi
 
 popd
 
 
+BUILD=$DIR/build
 
-mkdir -p $DIR/build
-mkdir -p $DIR/build/gcc
-mkdir -p $DIR/build/binutils
+mkdir -p $BUILD
+mkdir -p $BUILD/gcc
+mkdir -p $BUILD/binutils
 
 MAKEJOBS=24
-
-
-
-# mkdir -p $PREFIX/bin
-# pushd $PREFIX/bin
-# 	for prog in clang clang++; do
-# 		echo "#!/bin/bash" > $TARGET-$prog
-# 		echo "ARCH=$ARCH CROSS_COMPILE=$TARGET $prog --sysroot $SYSROOT \$@" >> $TARGET-$prog
-# 		echo +x $TARGET-$prog
-# 	done
-# popd
 
 
 pushd build
@@ -98,6 +83,7 @@ pushd build
 
 	# build gcc
 	pushd gcc
+		rm -f ./config.cache # Let's do this in case someone has already built the i686 version
 		"$DIR"/tarballs/gcc-${GCC_VERSION}/configure --prefix="$PREFIX" \
 																			 --target="$TARGET" \
 																			 --with-sysroot="$SYSROOT" \
@@ -106,16 +92,33 @@ pushd build
 																			 --enable-shared \
 																			 --enable-languages=c,c++ || exit 1
 
+
+		# we gotta do this casue libstdc++-v3 wants to check our header files out
+		mkdir -p $SYSROOT
+
+
+		# make -j "$MAKEJOBS"
+		# make install
+		# exit
+
+
+
 		echo "XXX build gcc and libgcc"
 		make -j "$MAKEJOBS" all-gcc all-target-libgcc || exit 1
 		echo "XXX install gcc and libgcc"
 		make install-gcc install-target-libgcc || exit 1
 
 
+		pushd $ROOT
+			make only-libc
+			cp -R include $SYSROOT/
+		popd
+
+
 		echo "XXX build libstdc++"
 		make all-target-libstdc++-v3
-		# echo "XXX install libstdc++"
-		# make install-target-libstdc++-v3 || exit 1
+		echo "XXX install libstdc++"
+		make install-target-libstdc++-v3 || exit 1
 	popd
 popd
 

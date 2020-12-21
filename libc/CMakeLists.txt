@@ -17,8 +17,15 @@ file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 
 chariot_libc(libc c)
 
+# ask the compiler where libgcc is
+execute_process(
+	COMMAND ${CMAKE_C_COMPILER} -print-libgcc-file-name
+	OUTPUT_VARIABLE LIBGCC_LOCATION
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 target_link_libraries(libc crt0
-	"${CMAKE_CURRENT_LIST_DIR}/libgcc.a"
+	"-lgcc"
 	"${CMAKE_CURRENT_LIST_DIR}/libc++.a"
 )
 

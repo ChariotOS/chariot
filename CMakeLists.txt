@@ -2,14 +2,16 @@ cmake_minimum_required(VERSION 3.16)
 project(ChariotOS C CXX ASM)
 enable_language(ASM_NASM)
 
+# The path to the toolchain we build.
+# TODO: as it stands, this isn't different from the plain x86_64-elf-* toolchain you can just download
+#       so I should change to that instead to save a step when building for the first time
+set(TOOLCHAIN_PATH ${CMAKE_SOURCE_DIR}/toolchain/local/bin)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_INSTALL_MESSAGE NEVER)
 
 include(ExternalProject)
 include(config.cmake)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-# set(CMAKE_INCLUDE_HEADERS_IN_COMPILE_COMMANDS ON)
-set(CMAKE_INSTALL_MESSAGE NEVER)
-# set(CMAKE_VERBOSE_MAKEFILE on)'
 
 # Try to use ccache
 find_program(CCACHE_PROGRAM ccache)
@@ -27,16 +29,16 @@ if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "")
 endif()
 
 
-
-
-set(TOOLCHAIN_PATH ${CMAKE_SOURCE_DIR}/toolchain/local/bin)
-
 if(CONFIG_X86)
-	set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/x86_64-elf-chariot-)
+	set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/x86_64-elf-)
+
+	set(CHARIOT_ARCH x86)
 endif()
 
 
 
+
+include(arch/${CHARIOT_ARCH}/config.cmake)
 
 # set(POSITION_INDEPENDENT_CODE TRUE)
 
@@ -67,8 +69,8 @@ set(EXECUTABLE_OUTPUT_PATH "${CHARIOT_SYSROOT}/bin" CACHE PATH "Build directory"
 set(LIBRARY_OUTPUT_PATH "${CHARIOT_SYSROOT}/lib" CACHE PATH "Build directory" FORCE)
 
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -DUSERLAND")
 
+set(CMAKE_C_FLAGS "-DUSERLAND")
 if(CONFIG_DEBUG_SYMBOLS)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 endif()
@@ -77,15 +79,8 @@ if(CONFIG_OPTIMIZED)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 endif()
 
-
-# setup flags with x86 specific things
-if(CONFIG_X86)
-	set(LDFLAGS -m elf_x86_64 -z max-page-size=0x1000)
-	set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc")
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmmx -fno-omit-frame-pointer -msse -msse2")
-endif()
-
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -nostdinc++ -std=c++17 -fdiagnostics-color=always ")
+set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} ${ARCH_USER_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${ARCH_USER_CXX_FLAGS}")
 
 
 
@@ -114,6 +109,23 @@ function(chariot_lib target_name fs_name)
 					# only link in libck if it is a c++ project
 					target_link_libraries(${target_name} PUBLIC libstdc++ libck libcpp)
 				endif()
+				break()
+			endif()
+		endforeach(src)
+
+endfunction()
+
+
+function(chariot_bin target_name)
+    add_executable(${target_name} ${SOURCES})
+    install(TARGETS ${target_name} RUNTIME DESTINATION bin)
+		target_link_libraries(${target_name} PUBLIC crt0 libc libm)
+
+		foreach(src ${SOURCES})
+			if (${src} MATCHES "cpp$")
+				# message(STATUS "${target_name} is a c++ project")
+				# only link in libck if it is a c++ project
+				target_link_libraries(${target_name} PUBLIC libck libcpp)
 				break()
 			endif()
 		endforeach(src)
@@ -159,22 +171,6 @@ function(add_res target_name file symbol)
 
 endfunction()
 
-function(chariot_bin target_name)
-
-    add_executable(${target_name} ${SOURCES})
-    install(TARGETS ${target_name} RUNTIME DESTINATION bin)
-		target_link_libraries(${target_name} PUBLIC crt0 libc libm)
-
-		foreach(src ${SOURCES})
-			if (${src} MATCHES "cpp$")
-				# message(STATUS "${target_name} is a c++ project")
-				# only link in libck if it is a c++ project
-				target_link_libraries(${target_name} PUBLIC libck libcpp)
-				break()
-			endif()
-		endforeach(src)
-
-endfunction()
 
 
 

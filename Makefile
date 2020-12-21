@@ -16,7 +16,7 @@ menuconfig:
 kernel: .config
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); cmake -GNinja $(CMAKE_ROOT)
-	@cd $(BUILD); ninja libc libstdc++ install
+	@@cd $(BUILD); ninja libc libstdc++ install
 	@#cd $(BUILD); ninja libc
 	@#cd $(BUILD); ninja libstdc++
 	@#cd $(BUILD); ninja install
