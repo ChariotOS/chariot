@@ -43,7 +43,6 @@ static inline u32 get_pci_addr(u8 bus, u8 slot, u8 func, u8 off) {
 }
 
 uint32_t pci_cfg_readl(uint8_t bus, uint8_t slot, uint8_t fun, uint8_t off) {
-#ifdef CONFIG_X86
   uint32_t addr;
   uint32_t lbus = (uint32_t)bus;
   uint32_t lslot = (uint32_t)slot;
@@ -54,27 +53,21 @@ uint32_t pci_cfg_readl(uint8_t bus, uint8_t slot, uint8_t fun, uint8_t off) {
 
   outl(PCI_CFG_ADDR_PORT, addr);
   return inl(PCI_CFG_DATA_PORT);
-#endif
 	return 0;
 }
 
 uint32_t pci::read(u8 bus, u8 slot, u8 func, u8 off) {
-#ifdef CONFIG_X86
   outl(PCI_CFG_ADDR_PORT, get_pci_addr(bus, slot, func, off));
   u32 ret = inl(PCI_CFG_DATA_PORT + off);
   return (ret >> ((off & 0x2) * 8));
-#endif
 	return 0;
 }
 
 void pci::write(u8 bus, u16 dev, u16 func, u32 off, u32 value) {
-
-#ifdef CONFIG_X86
   // writing pci is simple. just calculate the id, then write that to the cmd
   // port, then write the data to the data port. simple
   outl(pci_cmd_port, get_pci_addr(bus, dev, func, off));
   outl(pci_data_port, value);
-#endif
 }
 
 bool pci_device_has_functions(u8 bus, u16 dev) { return pci::read(bus, dev, 0x0, 0x0E) & (1 << 7); }

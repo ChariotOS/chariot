@@ -375,25 +375,20 @@ namespace pci {
 
     template <typename T>
     T read(u32 field) {
-#ifdef CONFIG_X86
       outl(PCI_CFG_ADDR_PORT, get_address(field));
       if constexpr (sizeof(T) == 4) return inl(PCI_CFG_DATA_PORT);
       if constexpr (sizeof(T) == 2) return inw(PCI_CFG_DATA_PORT + (field & 2));
       if constexpr (sizeof(T) == 1) return inb(PCI_CFG_DATA_PORT + (field & 3));
-
-#endif
       panic("invalid PCI read of size %d\n", sizeof(T));
 			return {0};
     }
 
     template <typename T>
     void write(u32 field, T val) {
-#ifdef CONFIG_X86
       outl(PCI_CFG_ADDR_PORT, get_address(field));
       if constexpr (sizeof(T) == 4) return outl(PCI_CFG_DATA_PORT, val);
       if constexpr (sizeof(T) == 2) return outw(PCI_CFG_DATA_PORT + (field & 2), val);
       if constexpr (sizeof(T) == 1) return outb(PCI_CFG_DATA_PORT + (field & 3), val);
-#endif
       panic("invalid PCI write of size %d\n", sizeof(T));
     }
     void enable_bus_mastering(void);
