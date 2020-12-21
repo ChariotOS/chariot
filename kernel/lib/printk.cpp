@@ -104,7 +104,7 @@ void putchar(char c) {
 }
 int puts(char *s) {
   int i;
-  for (i = 0; s[i] != '\0'; i++) outb(IO_PORT_PUTCHAR, s[i]);
+  for (i = 0; s[i] != '\0'; i++) console::putc(s[i]);
   return i;
 }
 

@@ -11,10 +11,8 @@ menu "Platform"
 			bool "x86_64 (Intel, AMD)"
 
 		# eventually.... :^)
-		# config AARCH64
-		# 	bool "AARCH64 (ARM 64bit)"
-		config ARM
-			bool "Generic 32bit ARM"
+		config ARM64
+			bool "ARM64"
 	endchoice
 
 

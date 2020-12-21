@@ -14,16 +14,16 @@ set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} ${ARCH_KERN_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${ARCH_KERN_CXX_FLAGS}")
 
 
+if(CONFIG_X86)
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 	*.cpp
 	*.c
 	*.asm
 )
+endif()
 
+add_link_options(LINKER:-T "${ARCH_KERN_LINKER_SCRIPT}" -nostdlib -z max-page-size=0x1000)
 
-add_link_options(LINKER:-T ${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld -nostdlib -z max-page-size=0x1000)
-
-set(LDFLAGS -T ${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld -m elf_x86_64 -z max-page-size=0x1000)
 
 include_directories(
 	# for core kernel interfaces
@@ -108,7 +108,15 @@ if(CONFIG_X86)
 	add_rooted_subdir(arch/x86)
 endif()
 
-add_rooted_subdir(fs)
-add_rooted_subdir(net)
-add_rooted_subdir(drivers)
+
+if(CONFIG_ARM64)
+	add_rooted_subdir(arch/arm64)
+endif()
+
+
+if(CONFIG_X86)
+	add_rooted_subdir(fs)
+	add_rooted_subdir(net)
+	add_rooted_subdir(drivers)
+endif()
 

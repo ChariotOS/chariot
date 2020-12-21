@@ -11,7 +11,7 @@ TARGET="$ARCH-elf"
 PREFIX="$DIR/local"
 
 ROOT=$DIR/..
-SYSROOT="$ROOT/build/$ARCH/root/"
+SYSROOT="$ROOT/build/root/"
 
 
 

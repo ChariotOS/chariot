@@ -1,7 +1,5 @@
-
-
 # make sure the userspace programs and libraries use this
-add_link_options(LINKER:-T ${CMAKE_CURRENT_SOURCE_DIR}/../user.ld -z max-page-size=0x1000)
+add_link_options(LINKER:-T ${ARCH_USER_LINKER_SCRIPT} -z max-page-size=0x1000)
 # add_link_options(-z max-page-size=0x1000)
 
 include_directories(../include ./c++/include)

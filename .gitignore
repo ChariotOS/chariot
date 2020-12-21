@@ -8,6 +8,7 @@ tags
 .gdb_history
 .clangd
 .ccache
+.cache
 __pycache__
 compile_commands.json
 

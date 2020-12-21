@@ -35,10 +35,11 @@ static void handler(int i) { printf("=====================\nsignal handler got %
 // read the initial environ from /etc/environ
 // credit: github.com/The0x539
 char **read_default_environ(void) {
+
   struct stat st;
 
   if (lstat(ENV_PATH, &st) != 0) {
-    printf("[init] WARNING: no /etc/environ found\n");
+    printf("[init] WARNING: no /cfg/environ found\n");
     while (1) {
     }
     return NULL;

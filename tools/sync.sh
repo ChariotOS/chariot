@@ -17,8 +17,7 @@ sudo id > /dev/null || die "Couldn't get sudo"
 
 
 # x86_64 by default
-ARCH=${ARCH:=x86_64}
-BUILD=build/$ARCH
+BUILD=build/
 IMG=$BUILD/chariot.img
 mnt=$BUILD/mnt
 

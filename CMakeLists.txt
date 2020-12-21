@@ -36,21 +36,28 @@ if(CONFIG_X86)
 endif()
 
 
+if(CONFIG_ARM64)
+	set(TOOLCHAIN_PREFIX aarch64-linux-gnu-)
+
+	set(CHARIOT_ARCH arm64)
+endif()
 
 
-include(arch/${CHARIOT_ARCH}/config.cmake)
-
-# set(POSITION_INDEPENDENT_CODE TRUE)
 
 set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc)
 set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++)
 
-
-set(CMAKE_ASM_COMPILER nasm)
 set(CMAKE_LINKER ${TOOLCHAIN_PREFIX}ld)
 set(CMAKE_RANLIB ${TOOLCHAIN_PREFIX}ranlib)
 set(CMAKE_STRIP ${TOOLCHAIN_PREFIX}strip)
 set(CMAKE_AR ${TOOLCHAIN_PREFIX}ar)
+
+include(arch/${CHARIOT_ARCH}/config.cmake)
+
+
+message(STATUS "${CMAKE_LINKER}")
+# set(POSITION_INDEPENDENT_CODE TRUE)
+
 
 
 
@@ -190,7 +197,6 @@ add_subdirectory(bin)
 
 
 chariot_external(libcpp ${CMAKE_SOURCE_DIR}/toolchain/build/gcc/build-x86_64-pc-linux-gnu/libcpp/libcpp.a)
-
 chariot_external(libgl ${CMAKE_SOURCE_DIR}/ports/prebuilt/libOSMesa.a)
 chariot_external(libglu ${CMAKE_SOURCE_DIR}/ports/prebuilt/libGLU.a)
 chariot_external(libfreetype ${CMAKE_SOURCE_DIR}/ports/prebuilt/libfreetype.a)
