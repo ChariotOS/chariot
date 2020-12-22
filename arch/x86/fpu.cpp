@@ -327,7 +327,7 @@ void fpu::init(void) {
 extern "C" void __fpu_xsave64(void *);
 extern "C" void __fpu_xrstor64(void *);
 
-void arch::save_fpu(struct thread &thd) {
+void arch_save_fpu(struct thread &thd) {
   if (fpu::caps.xsave) {
     __fpu_xsave64(thd.fpu.state);
   } else {
@@ -335,7 +335,7 @@ void arch::save_fpu(struct thread &thd) {
   }
 }
 
-void arch::restore_fpu(struct thread &thd) {
+void arch_restore_fpu(struct thread &thd) {
 
 	// printk("cr4=%p\n", read_cr4());
 

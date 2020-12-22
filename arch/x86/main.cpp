@@ -1,6 +1,5 @@
 #include <cpu.h>
 #include <cpuid.h>
-#include <dev/serial.h>
 #include <elf/loader.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
@@ -122,7 +121,9 @@ void dump_multiboot(uint64_t mbd) {
 extern void rtc_init(void);
 
 
+
 static uint64_t mbd;
+void serial_install(void);
 
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   serial_install();
@@ -130,7 +131,7 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   extern u8 boot_cpu_local[];
   cpu::seginit(boot_cpu_local);
 
-  arch::mem_init(mbd);
+  arch_mem_init(mbd);
 
   ::mbd = mbd;
 
@@ -258,9 +259,10 @@ int kernel_init(void *) {
   assert(root_name);
 
 
+
 	// wait for the time to stabilize
 	while (!time::stabilized()) {
-		arch::halt();
+		arch_halt();
 	}
 
 
@@ -301,11 +303,6 @@ int kernel_init(void *) {
   pid_t init_pid = sched::proc::spawn_init(paths);
 
 
-  /*
-  while (1) {
-          arch::us_this_second();
-  }
-  */
   sys::waitpid(init_pid, NULL, 0);
   panic("init died!\n");
 
@@ -317,7 +314,7 @@ int kernel_init(void *) {
 
   // yield back to scheduler, we don't really want to run this thread anymore
   while (1) {
-    arch::halt();
+    arch_halt();
     sched::yield();
   }
 
@@ -361,8 +358,8 @@ void test(void) {
 
 
   while (1) {
-    arch::cli();
-    arch::halt();
+    arch_disable_ints();
+    arch_halt();
   }
 }
 */

@@ -153,7 +153,7 @@ static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
 static void tick_handle(int i, reg_t *tf) {
   auto &cpu = cpu::current();
 
-  u64 now = arch::read_timestamp();
+  u64 now = arch_read_timestamp();
   cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
   cpu.kstat.last_tick_tsc = now;
   cpu.kstat.ticks++;
@@ -248,7 +248,7 @@ void dump_trapframe(reg_t *r) {
 }
 
 
-void arch::dump_backtrace(void) {
+void arch_dump_backtrace(void) {
   off_t rbp = 0;
   asm volatile("mov %%rbp, %0\n\t" : "=r"(rbp));
 
@@ -302,7 +302,7 @@ static void pgfault_handle(int i, reg_t *regs) {
   auto proc = curproc;
   if (curproc == NULL) {
     KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf->rip, read_cr2());
-    // arch::dump_backtrace();
+    // arch_dump_backtrace();
     // lookup the kernel proc if we aren't in one!
     proc = sched::proc::kproc();
   }
@@ -443,7 +443,7 @@ extern "C" void trap(reg_t *regs) {
    *
    * Honestly, I have no idea why this is needed...
    */
-  arch::sti();
+  arch_enable_ints();
 
 
 

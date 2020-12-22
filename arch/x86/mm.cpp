@@ -78,7 +78,7 @@ ref<mm::pagetable> mm::pagetable::create() {
 int x86::pagetable::add_mapping(off_t va, struct mm::pte &p) {
   int flags = PTE_P;
   // TOOD: if (p.prot | PROT_READ)
-  if (va < KERNEL_VIRTUAL_BASE) flags |= PTE_U;
+  if (va < CONFIG_KERNEL_VIRTUAL_BASE) flags |= PTE_U;
   if (p.prot & PROT_WRITE) flags |= PTE_W;
   if ((p.prot & PROT_EXEC) == 0) flags |= PTE_NX;
 
@@ -123,7 +123,7 @@ const char *mem_region_types[] = {
 };
 
 
-void arch::mem_init(unsigned long mbd) {
+void arch_mem_init(unsigned long mbd) {
 #ifdef CHARIOT_HRT
   phys::free_range((void *)0x184000, (void *)0x1ffe0000);
   mm_info.total_mem = 0x1ffe0000;
@@ -242,7 +242,7 @@ void arch::mem_init(unsigned long mbd) {
   // can also reference all of physical memory with virtual memory
   use_kernel_vm = true;
   write_cr3((u64)new_cr3);
-  arch::flush_tlb();  // flush out the TLB
+  arch_flush_mmu();  // flush out the TLB
 }
 
 mm::space *kspace;
@@ -250,7 +250,7 @@ mm::space *kspace;
 mm::space &mm::space::kernel_space(void) {
   if (kspace == NULL) {
     auto kptable = make_ref<x86::pagetable>(kernel_page_table);
-    kspace = new mm::space(KERNEL_VIRTUAL_BASE, KERNEL_VIRTUAL_BASE + 0x100000000, kptable);
+    kspace = new mm::space(CONFIG_KERNEL_VIRTUAL_BASE, CONFIG_KERNEL_VIRTUAL_BASE + 0x100000000, kptable);
     kspace->is_kspace = 1;
   }
 

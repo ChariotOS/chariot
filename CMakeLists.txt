@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
 project(ChariotOS C CXX ASM)
-enable_language(ASM_NASM)
 
 # The path to the toolchain we build.
 # TODO: as it stands, this isn't different from the plain x86_64-elf-* toolchain you can just download
@@ -12,6 +11,16 @@ set(CMAKE_INSTALL_MESSAGE NEVER)
 include(ExternalProject)
 include(config.cmake)
 
+
+
+get_directory_property( DirDefs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMPILE_DEFINITIONS)
+
+set(COMPILE_DEFS "")
+foreach( d ${DirDefs} )
+	set(COMPILE_DEFS ${COMPILE_DEFS} "-D ${d}")
+endforeach()
+
+string(JOIN " " COMPILE_DEFS_STR ${COMPILE_DEFS})
 
 # Try to use ccache
 find_program(CCACHE_PROGRAM ccache)
@@ -39,6 +48,7 @@ endif()
 if(CONFIG_ARM64)
 	set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/aarch64-elf-)
 
+	set(CMAKE_SYSTEM_PROCESSOR aarch64)
 	set(CHARIOT_ARCH arm64)
 endif()
 
@@ -46,6 +56,7 @@ endif()
 
 set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc)
 set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++)
+set(CMAKE_ASM_COMPILER ${TOOLCHAIN_PREFIX}gcc)
 
 set(CMAKE_LINKER ${TOOLCHAIN_PREFIX}ld)
 set(CMAKE_RANLIB ${TOOLCHAIN_PREFIX}ranlib)
@@ -55,12 +66,13 @@ set(CMAKE_AR ${TOOLCHAIN_PREFIX}ar)
 include(arch/${CHARIOT_ARCH}/config.cmake)
 
 
-message(STATUS "${CMAKE_LINKER}")
-# set(POSITION_INDEPENDENT_CODE TRUE)
 
+# "compile" the linker scripts
+set(KERN_LINKER_SCRIPT "${CMAKE_BINARY_DIR}/kernel.ld")
+set(USER_LINKER_SCRIPT "${CMAKE_BINARY_DIR}/user.ld")
 
-
-
+execute_process(COMMAND cpp -P ${ARCH_KERN_LINKER_SCRIPT} -o ${KERN_LINKER_SCRIPT} ${COMPILE_DEFS})
+execute_process(COMMAND cpp -P ${ARCH_USER_LINKER_SCRIPT} -o ${USER_LINKER_SCRIPT} ${COMPILE_DEFS})
 
 set(CMAKE_STAGING_PREFIX ${CMAKE_BINARY_DIR}/root)
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/root)
@@ -190,13 +202,17 @@ endfunction()
 
 add_subdirectory(kernel)
 
-add_subdirectory(libc)
-add_subdirectory(lib)
-add_subdirectory(bin)
-
+if (CONFIG_USERSPACE)
+	add_subdirectory(libc)
+	add_subdirectory(lib)
+	add_subdirectory(bin)
+endif()
 
 
 chariot_external(libcpp ${CMAKE_SOURCE_DIR}/toolchain/build/gcc/build-x86_64-pc-linux-gnu/libcpp/libcpp.a)
 chariot_external(libgl ${CMAKE_SOURCE_DIR}/ports/prebuilt/libOSMesa.a)
 chariot_external(libglu ${CMAKE_SOURCE_DIR}/ports/prebuilt/libGLU.a)
 chariot_external(libfreetype ${CMAKE_SOURCE_DIR}/ports/prebuilt/libfreetype.a)
+
+
+

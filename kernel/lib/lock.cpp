@@ -36,10 +36,10 @@ void spinlock::unlock(void) {
 
 void spinlock::lock_cli(void) {
   while (1) {
-    arch::cli();
+    arch_disable_ints();
     if (arch_atomic_swap(&locked, 1) == 0) break;
     if (cpu::current().in_sched) {
-      arch::sti();
+      arch_enable_ints();
       // sched::yield();
     }
   }
@@ -49,7 +49,7 @@ void spinlock::unlock_cli(void) {
   if (likely(locked)) {
     arch_atomic_store(&locked, 0);
   }
-  arch::sti();
+  arch_enable_ints();
 }
 
 bool spinlock::is_locked(void) { return locked; }
@@ -76,7 +76,7 @@ static inline uint8_t irq_disable_save(void) {
   uint8_t enabled = irqs_enabled();
 
   if (enabled) {
-    arch::cli();
+    arch_disable_ints();
   }
 
   return enabled;
@@ -85,7 +85,7 @@ static inline uint8_t irq_disable_save(void) {
 static inline void irq_enable_restore(uint8_t iflag) {
   if (iflag) {
     /* Interrupts were originally enabled, so turn them back on */
-    arch::sti();
+    arch_enable_ints();
   }
 }
 
@@ -108,7 +108,7 @@ void spinlock::unlock_irqrestore(unsigned long flags) {
 }
 
 
-static void spin_wait(volatile int* lock) { arch::relax(); }
+static void spin_wait(volatile int* lock) { arch_relax(); }
 void spinlock::lock(volatile int& l) {
   volatile int* lock = &l;
   while (likely(arch_atomic_swap(lock, 1))) {

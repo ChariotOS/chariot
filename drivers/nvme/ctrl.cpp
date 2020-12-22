@@ -53,7 +53,7 @@ nvme::ctrl::ctrl(pci::device &dev) : dev(dev) {
 
   // 7.6.1 2) Wait for the controller to indicate that any previous
   // reset is complete
-  while ((mmio->csts & NVME_CSTS_RDY) != 0) arch::relax();
+  while ((mmio->csts & NVME_CSTS_RDY) != 0) arch_relax();
 
   // Attempt to use 64KB/16KB submission/completion queue sizes
   size_t queue_slots = 1024;
@@ -101,7 +101,7 @@ nvme::ctrl::ctrl(pci::device &dev) : dev(dev) {
 
   // 7.6.1 4) Wait for ready
   uint32_t ctrl_status;
-  while (!((ctrl_status = mmio->csts) & (NVME_CSTS_RDY | NVME_CSTS_CFS))) arch::relax();
+  while (!((ctrl_status = mmio->csts) & (NVME_CSTS_RDY | NVME_CSTS_CFS))) arch_relax();
 
 
   if (ctrl_status & NVME_CSTS_CFS) {

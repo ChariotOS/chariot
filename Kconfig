@@ -1,36 +1,6 @@
-
 mainmenu "Chariot Kernel Configuration"
 
-
-menu "Platform"
-	choice
-		prompt "Architecture"
-		default X86
-
-		config X86
-			bool "x86_64 (Intel, AMD)"
-
-		# eventually.... :^)
-		config ARM64
-			bool "ARM64"
-	endchoice
-
-
-	config MAX_CPUS
-	int "Maximum Number of CPUs"
-		range 1 2048
-		default "256"
-		help 
-			Specifies the maximum number of hardware CPUs supported by Chariot
-			For uniprocessor environments, set this to 1
-
-	config SMP
-		bool "Symmetric multi-processing support"
-		default y
-		depends on X86
-
-endmenu
-
+source "arch/Kconfig"
 
 menu "Scheduler"
 
@@ -167,7 +137,13 @@ menu "Devices"
 endmenu
 
 
+config USERSPACE
+	bool "Enable building and running the userspace"
+	default y
+
+
 menu "Graphics Library"
+	depends on USERSPACE
 
 	
 	config FANCY_WINDOWS

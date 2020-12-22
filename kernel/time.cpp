@@ -35,7 +35,7 @@ unsigned long long time::now_ns() {
     cps = cpu.kstat.tsc_per_tick * cpu.ticks_per_second;
   }
 
-  uint64_t now_cycle = arch::read_timestamp();
+  uint64_t now_cycle = arch_read_timestamp();
   uint64_t delta = now_cycle - last_cycle;
 
   /*
@@ -68,7 +68,7 @@ unsigned long long time::now_ms(void) { return now_us() / 1000; }
 void time::timekeep(void) {
   auto now_second = dev::RTC::now();
   if (now_second != current_second) {
-    unsigned long now_cycle = arch::read_timestamp();
+    unsigned long now_cycle = arch_read_timestamp();
     if (last_cycle != 0) {
       cycles_per_second = now_cycle - last_cycle;
     }

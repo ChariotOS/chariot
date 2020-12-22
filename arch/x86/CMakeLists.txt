@@ -1,3 +1,5 @@
+
+
 add_kernel_module(
 	CORE
 	INTEL
@@ -9,3 +11,5 @@ add_kernel_module(
 		*.asm
 )
 
+message(STATUS "-m32 ${ARCH_KERN_BASE_C_FLAGS}")
+set_source_files_properties(early.c PROPERTIES CMAKE_C_FLAGS "-m32 ${ARCH_KERN_BASE_C_FLAGS}")

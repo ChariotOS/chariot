@@ -1,0 +1,41 @@
+# The root architecture configuration
+choice
+	prompt "Architecture"
+	default X86
+
+	config X86
+		bool "x86_64 (Intel, AMD)"
+
+	# eventually.... :^)
+	config ARM64
+		bool "ARM64"
+endchoice
+
+menu "ARM64 Configuration"
+	depends on ARM64
+	source "arch/arm64/Kconfig"
+endmenu
+
+
+menu "x86_64 Configuration"
+	depends on X86
+	source "arch/x86/Kconfig"
+endmenu
+
+menu "Platform Configuration"
+	config MAX_CPUS
+	int "Maximum Number of CPUs"
+		range 1 2048
+		default "256"
+		help 
+			Specifies the maximum number of hardware CPUs supported by Chariot
+			For uniprocessor environments, set this to 1
+
+	config SMP
+		bool "Symmetric multi-processing support"
+		default y
+		help
+			Enable multiprocessing
+endmenu
+
+

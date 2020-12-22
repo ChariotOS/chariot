@@ -55,7 +55,7 @@ static void switch_into(struct thread &thd) {
   thd.locks.run.lock();
   cpu::current().current_thread = &thd;
   thd.state = PS_RUNNING;
-  arch::restore_fpu(thd);
+  arch_restore_fpu(thd);
 
   // update the statistics of the thread
   thd.stats.run_count++;
@@ -65,12 +65,12 @@ static void switch_into(struct thread &thd) {
   // load up the thread's address space
   cpu::switch_vm(&thd);
 
-  thd.stats.last_start_cycle = arch::read_timestamp();
+  thd.stats.last_start_cycle = arch_read_timestamp();
 
   // Switch into the thread!
   swtch(&cpu::current().sched_ctx, thd.kern_context);
 
-  arch::save_fpu(thd);
+  arch_save_fpu(thd);
 
   // Update the stats afterwards
   cpu::current().current_thread = nullptr;
@@ -93,9 +93,9 @@ void sched::do_yield(int st) {
   }
 
 
-  arch::cli();
+  arch_disable_ints();
 
-  thd.stats.cycles += arch::read_timestamp() - thd.stats.last_start_cycle;
+  thd.stats.cycles += arch_read_timestamp() - thd.stats.last_start_cycle;
 
   thd.state = st;
   thd.stats.last_cpu = thd.stats.current_cpu;
@@ -112,7 +112,7 @@ void sched::do_yield(int st) {
   swtch(&thd.kern_context, cpu::current().sched_ctx);
 
 
-  arch::sti();
+  arch_enable_ints();
 }
 
 
@@ -172,7 +172,7 @@ static int idle_task(void *arg) {
      * The loop here is simple. Wait for an interrupt, handle it (implicitly) then
      * yield back to the scheduler if there is a task ready to run.
      */
-    arch::halt();
+    arch_halt();
     // Check for a new thread to run, and if there is one, yield so we can change to it.
     if (pick_next_thread() != NULL) {
       sched::yield();
@@ -330,7 +330,7 @@ void sched::dispatch_signal(int sig) {
   }
 
   // whatver the arch needs to do
-  arch::dispatch_function((void *)action.sa_handler, sig);
+  arch_dispatch_function((void *)action.sa_handler, sig);
 }
 
 
@@ -388,7 +388,7 @@ int sys::usleep(unsigned long n) {
     unsigned long end = time::now_us() + n;
     while (1) {
       if (time::now_us() >= end) break;
-      arch::relax();
+      arch_relax();
     }
     return 0;
   }

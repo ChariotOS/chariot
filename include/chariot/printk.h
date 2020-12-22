@@ -77,15 +77,15 @@ extern void debug_die(void);
 template <typename... T>
 inline void do_panic(const char* fmt, T&&... args) {
   // disable interrupts
-  arch::cli();
+  arch_disable_ints();
   printk(fmt, args...);
   printk("\n");
 
 	debug_die();
 	/*
-  arch::dump_backtrace();
+  arch_dump_backtrace();
   while (1) {
-    arch::halt();
+    arch_halt();
   }
 	*/
 }

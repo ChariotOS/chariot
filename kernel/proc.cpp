@@ -219,7 +219,7 @@ struct thread *sched::proc::spawn_kthread(const char *name, int (*func)(void *),
   thd->trap_frame[1] = (unsigned long)arg;
 
 
-  arch::reg(REG_PC, thd->trap_frame) = (unsigned long)func;
+  arch_reg(REG_PC, thd->trap_frame) = (unsigned long)func;
   thd->state = PS_RUNNING;
 
   thd->setup_tls();
@@ -321,7 +321,7 @@ void sched::proc::dump_table(void) {
 #undef ST
 
       printk("state %-10s ", state);
-      printk("rip %p ", t->trap_frame != NULL ? arch::reg(REG_PC, t->trap_frame) : 0);
+      printk("rip %p ", t->trap_frame != NULL ? arch_reg(REG_PC, t->trap_frame) : 0);
 
       printk("pri %-3d ", t->sched.priority);
       printk("die %-3d ", t->should_die);
@@ -406,7 +406,7 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   }
 
   // construct the thread
-  arch::reg(REG_SP, thd->trap_frame) = stack + stack_size - 64;
+  arch_reg(REG_SP, thd->trap_frame) = stack + stack_size - 64;
   thd->kickoff((void *)entry, PS_RUNNING);
 
   return 0;

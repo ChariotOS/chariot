@@ -29,7 +29,7 @@ int sys::sigaction(int sig, struct sigaction *act, struct sigaction *old) {
 
 
 int sys::sigreturn(void) {
-	arch::sigreturn();
+	arch_sigreturn();
 	return -ENOSYS;
 }
 int sys::sigprocmask(int how, unsigned long set, unsigned long *old_set) {

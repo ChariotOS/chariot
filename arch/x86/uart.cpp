@@ -2,13 +2,14 @@
 #include <asm.h>
 #include <console.h>
 #include <dev/driver.h>
-#include <dev/serial.h>
 #include <errno.h>
 #include <module.h>
 #include <printk.h>
-#include "../majors.h"
+#include "device_majors.h"
 
 #define IRQ_COM1 4
+
+#define COM1 0x3f8
 
 static int uart = 0;
 
@@ -40,10 +41,16 @@ char serial_recv(int device) {
 }
 
 char serial_recv_async(int device) { return inb(device); }
-
 int serial_transmit_empty(int device) { return inb(device + 5) & 0x20; }
 
 void serial_send(int device, char out) {
+	switch (device) {
+		case 1:
+			device = COM1;
+			break;
+		default:
+			return;
+	}
   if (uart) {
     while (!serial_transmit_empty(device)) {
     }

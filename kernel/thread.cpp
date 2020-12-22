@@ -40,7 +40,7 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
   auto sp = (off_t)s.start + s.size;
 
   // get a pointer to the trapframe on the stack
-  sp -= arch::trapframe_size();
+  sp -= arch_trapframe_size();
   trap_frame = (reg_t *)sp;
 
   // 'return' to trapret()
@@ -54,13 +54,13 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
 
   state = PS_EMBRYO;
 
-  arch::reg(REG_SP, trap_frame) = sp;
-  arch::reg(REG_PC, trap_frame) = -1;
+  arch_reg(REG_SP, trap_frame) = sp;
+  arch_reg(REG_PC, trap_frame) = -1;
 
   // set the initial context to the creation boostrap function
   kern_context->eip = (u64)thread_create_callback;
 
-  arch::initialize_trapframe(proc.ring == RING_USER, trap_frame);
+  arch_initialize_trapframe(proc.ring == RING_USER, trap_frame);
 
   thread_table_lock.write_lock();
   assert(!thread_table.contains(tid));
@@ -98,7 +98,7 @@ off_t thread::setup_tls(void) {
 
 
 bool thread::kickoff(void *rip, int initial_state) {
-  arch::reg(REG_PC, trap_frame) = (unsigned long)rip;
+  arch_reg(REG_PC, trap_frame) = (unsigned long)rip;
 
   this->state = initial_state;
 
@@ -134,7 +134,7 @@ thread::~thread(void) {
 
 
 void thread::setup_stack(reg_t *tf) {
-  auto sp = arch::reg(REG_SP, tf);
+  auto sp = arch_reg(REG_SP, tf);
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 #define STACK_ALLOC(T, n)               \
   ({                                    \
@@ -174,7 +174,7 @@ void thread::setup_stack(reg_t *tf) {
 
   // align the stack to 16 bytes. (this is what intel wants, so it what I
   // will give them)
-  arch::reg(REG_SP, tf) = sp & ~0xF;
+  arch_reg(REG_SP, tf) = sp & ~0xF;
   tf[1] = argc;
   tf[2] = (unsigned long)argv;
   tf[3] = (unsigned long)envp;
@@ -190,8 +190,8 @@ static void thread_create_callback(void *) {
 
   if (thd->proc.ring == RING_KERN) {
     using fn_t = int (*)(void *);
-    auto fn = (fn_t)arch::reg(REG_PC, tf);
-    arch::sti();
+    auto fn = (fn_t)arch_reg(REG_PC, tf);
+    arch_enable_ints();
     // run the kernel thread
     int res = fn(NULL);
     // exit the thread with the return code of the func
@@ -200,7 +200,7 @@ static void thread_create_callback(void *) {
     if (thd->pid == thd->tid) {
       thd->setup_stack((reg_t *)tf);
     }
-    arch::sti();
+    arch_enable_ints();
 
     return;
   }
@@ -270,9 +270,9 @@ int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
   int tid = get_next_pid();
   auto *thd = new thread(tid, *curproc);
 
-  arch::reg(REG_SP, thd->trap_frame) = (unsigned long)stack;
-  arch::reg(REG_PC, thd->trap_frame) = (unsigned long)fn;
-  arch::reg(REG_ARG0, thd->trap_frame) = (unsigned long)arg;
+  arch_reg(REG_SP, thd->trap_frame) = (unsigned long)stack;
+  arch_reg(REG_PC, thd->trap_frame) = (unsigned long)fn;
+  arch_reg(REG_ARG0, thd->trap_frame) = (unsigned long)arg;
 
   thd->kickoff(fn, PS_RUNNING);
 

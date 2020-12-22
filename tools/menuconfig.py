@@ -621,7 +621,7 @@ def _init_styles():
 
         # Use the 'default' theme as the base, and add any user-defined style
         # settings from the environment
-        _parse_style("default", True)
+        _parse_style("monochrome", True)
         if "MENUCONFIG_STYLE" in os.environ:
             _parse_style(os.environ["MENUCONFIG_STYLE"], False)
     else:

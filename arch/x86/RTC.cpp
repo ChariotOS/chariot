@@ -150,7 +150,7 @@ void rtc_module_init(void) {
 
   auto frequency = 32768 >> (rate - 1);
 
-  arch::cli();              // disable interrupts
+  arch_disable_ints();              // disable interrupts
   outb(0x70, 0x8B);         // select register B, and disable NMI
   char prev = inb(0x71);    // read the current value of register B
   outb(0x70, 0x8B);         // set the index again (a read will reset the index to register D)
@@ -163,7 +163,7 @@ void rtc_module_init(void) {
   outb(0x70, 0x8A);                  // reset index to A
   outb(0x71, (prev & 0xF0) | rate);  // write only our rate to A. Note, rate is the bottom 4 bits.
 
-  arch::sti();
+  arch_enable_ints();
 }
 
 module_init("RTC", rtc_module_init);

@@ -3,25 +3,25 @@
 #include <time.h>
 
 int sched::round_robin::add_task(struct thread *tsk) {
-  if (cpu::in_thread()) arch::cli();
+  if (cpu::in_thread()) arch_disable_ints();
   big_lock.lock();
 
   int ret = add_task_impl(tsk);
 
   big_lock.unlock();
-  if (cpu::in_thread()) arch::sti();
+  if (cpu::in_thread()) arch_enable_ints();
   return ret;
 }
 
 
 int sched::round_robin::remove_task(struct thread *tsk) {
-  if (cpu::in_thread()) arch::cli();
+  if (cpu::in_thread()) arch_disable_ints();
   big_lock.lock();
 
   int ret = remove_task_impl(tsk);
 
   big_lock.unlock();
-  if (cpu::in_thread()) arch::sti();
+  if (cpu::in_thread()) arch_enable_ints();
   return ret;
 }
 
@@ -63,7 +63,7 @@ struct thread *sched::round_robin::pick_next(void) {
   struct thread *td = NULL;
 
 
-  if (cpu::in_thread()) arch::cli();
+  if (cpu::in_thread()) arch_disable_ints();
   big_lock.lock();
 
 
@@ -87,7 +87,7 @@ thd->state = PS_RUNNABLE;
 
 
   big_lock.unlock();
-  if (cpu::in_thread()) arch::sti();
+  if (cpu::in_thread()) arch_enable_ints();
 
   return td;
 }

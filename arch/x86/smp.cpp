@@ -95,7 +95,7 @@ static void wait_for_tick_change(void) {
 
 static void lapic_tick_handler(int i, reg_t *tf) {
   auto &cpu = cpu::current();
-  u64 now = arch::read_timestamp();
+  u64 now = arch_read_timestamp();
   cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
   cpu.kstat.last_tick_tsc = now;
   cpu.kstat.ticks++;
@@ -103,24 +103,10 @@ static void lapic_tick_handler(int i, reg_t *tf) {
   smp::lapic_eoi();
 
 
-	/*
-  if (cpu::current().timekeeper) {
-    time::timekeep();
-  }
-	*/
-
   sched::handle_tick(cpu.kstat.ticks);
   return;
 }
 
-
-unsigned long arch::us_this_second(void) {
-  unsigned int ticks = 0xffffffff - smp::lapic_read(LAPIC_TCCR);
-
-  auto val = ticks / lapic_ticks_per_second;
-  // printk("%d\n", val);
-  return val;
-}
 
 
 // will screw up the PIT
@@ -470,8 +456,8 @@ extern "C" void mpentry(int apic_id) {
   // we're fully booted now
   args->ready = 1;
 
-  KINFO("starting scheduler on core %d. tsc: %llu\n", apic_id, arch::read_timestamp());
-  arch::sti();
+  KINFO("starting scheduler on core %d. tsc: %llu\n", apic_id, arch_read_timestamp());
+  arch_enable_ints();
   sched::run();
 
   while (1) {
@@ -490,7 +476,7 @@ extern u64 *kernel_page_table;
 void smp::init_cores(void) {
 #ifdef CONFIG_SMP
 
-  arch::cli();
+  arch_disable_ints();
   // copy the code into the AP region
   void *code = p2v(0x7000);
   auto sz = 4096;
@@ -513,11 +499,11 @@ void smp::init_cores(void) {
 
     startap(core.entry->lapic_id, (unsigned long)v2p(code));
     while (args->ready == 0) {
-			arch::relax();
+			arch_relax();
     }
   }
 
-  arch::sti();
+  arch_enable_ints();
 #endif
 }
 

@@ -1,7 +1,6 @@
 #include <asm.h>
 #include <console.h>
 #include <cpu.h>
-#include <dev/serial.h>
 #include <lock.h>
 #include <net/ipv4.h>
 #include <printk.h>
@@ -13,9 +12,9 @@
 
 
 void debug_die(void) {
-  arch::dump_backtrace();
+  arch_dump_backtrace();
   while (1) {
-    arch::halt();
+    arch_halt();
   }
 }
 

@@ -17,13 +17,13 @@ set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${ARCH_KERN_CXX_FLAGS}")
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 	*.cpp
 	*.c
-	*.asm
+	# No asm in the kernel
 )
 
-set(SOURCES ${SOURCES} ${ARCH_KERN_SOURCES})
+# set(SOURCES foo.c)
 
 
-add_link_options(LINKER:-T "${ARCH_KERN_LINKER_SCRIPT}" -nostdlib -z max-page-size=0x1000)
+add_link_options(LINKER:-T "${KERN_LINKER_SCRIPT}" -nostdlib -z max-page-size=0x1000)
 
 
 include_directories(

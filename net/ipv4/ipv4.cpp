@@ -163,7 +163,7 @@ struct net::ipv4::route net::ipv4::route_to(uint32_t target_addr, uint32_t sourc
         break;
       }
       sched::yield();
-      arch::relax();
+      arch_relax();
     }
   }
 

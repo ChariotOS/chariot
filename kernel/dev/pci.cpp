@@ -206,7 +206,7 @@ static void scan_bus(int bus) {
 }
 
 void pci::init(void) {
-	auto start = arch::read_timestamp();
+	auto start = arch_read_timestamp();
   // enumerate PCI devices
   auto header_type = (pci_cfg_readl(0, 0, 0, 0xc) >> 16) & 0xff;
   if ((header_type & 0x80) == 0) {
@@ -218,7 +218,7 @@ void pci::init(void) {
     /* Multiple PCI host controllers */
     for (int bus = 0; bus < 32; bus++) scan_bus(bus);
   }
-  KINFO("discovered %d PCI devices in %llu cycles.\n", pci_device_count, arch::read_timestamp() - start);
+  KINFO("discovered %d PCI devices in %llu cycles.\n", pci_device_count, arch_read_timestamp() - start);
 }
 
 void pci::walk_devices(func<void(device *)> fn) {

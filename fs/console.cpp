@@ -1,6 +1,5 @@
 #include <console.h>
 #include <dev/driver.h>
-#include <dev/serial.h>
 #include <fifo_buf.h>
 #include <fs/tty.h>
 #include <lock.h>
@@ -38,11 +37,11 @@ static struct console_tty ctty;
 static void consputc(int c, bool debug = false) {
   if (debug || true) {
     if (c == CONS_DEL) {
-      serial_send(COM1, '\b');
-      serial_send(COM1, ' ');
-      serial_send(COM1, '\b');
+			serial_send(1, '\b');
+      serial_send(1, ' ');
+      serial_send(1, '\b');
     } else {
-      serial_send(COM1, c);
+      serial_send(1, c);
     }
   }
 

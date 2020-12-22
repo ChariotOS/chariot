@@ -98,12 +98,12 @@ static uint8_t get_irq_line() {
 
 /*
 static void set_irq_line(u8 irq_number) {
-        arch::cli();
+        arch_disable_ints();
   InterruptDisabler disabler;
   if (irq_number == get_irq_line()) return;
   set_irq_register(irq_number);
   change_irq_number(irq_number);
-        arch::sti();
+        arch_enable_ints();
 }
 */
 
@@ -183,7 +183,7 @@ static ssize_t sb16_write(fs::file &fd, const char *buf, size_t sz) {
   dsp_write(sample_count & 0xFF);
   dsp_write((sample_count >> 8) & 0xFF);
 
-  // arch::sti();
+  // arch_enable_ints();
 
   printk("%d\n", sb16_wq.wait().interrupted());
   return sz;

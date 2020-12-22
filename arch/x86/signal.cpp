@@ -12,7 +12,7 @@ struct sig_priv {
 };
 
 
-void arch::sigreturn(void) {
+void arch_sigreturn(void) {
 
   assert(curthd->sig.arch_priv != NULL);
   auto priv = static_cast<struct sig_priv *>(curthd->sig.arch_priv);
@@ -22,7 +22,7 @@ void arch::sigreturn(void) {
 #define SIGSTKSZ 2 /* (pages) */
 
 extern "C" void jmp_to_userspace(uint64_t ip, uint64_t sp, uint64_t a, uint64_t b, uint64_t c);
-void arch::dispatch_function(void *func, long arg) {
+void arch_dispatch_function(void *func, long arg) {
 
   if (curthd->sig.arch_priv == NULL) {
     curthd->sig.arch_priv = (void *)new sig_priv();
@@ -43,7 +43,7 @@ void arch::dispatch_function(void *func, long arg) {
   }
 
 
-  uint64_t old_sp = arch::reg(REG_SP, curthd->trap_frame);
+  uint64_t old_sp = arch_reg(REG_SP, curthd->trap_frame);
   uint64_t new_sp = round_down(old_sp - 128, 16);
 
   uint64_t *pnew_sp = (uint64_t *)new_sp;
@@ -57,9 +57,9 @@ void arch::dispatch_function(void *func, long arg) {
   s.start = (void*)kmalloc(s.size);
 	curthd->stacks.push(move(s));
 
-	arch::cli();
+	arch_disable_ints();
 	cpu::switch_vm(curthd);
-	arch::sti();
+	arch_enable_ints();
 
   jmp_to_userspace((uint64_t)func, new_sp, arg, 0, 0);
 

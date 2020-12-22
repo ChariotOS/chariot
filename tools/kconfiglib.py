@@ -1525,7 +1525,7 @@ class Kconfig(object):
             if sym.orig_type in _BOOL_TRISTATE:
                 if val == "y":
                     add("set({}{} TRUE)\n".format(self.config_prefix, sym.name))
-                    add("add_definitions(-D {}{}=1)\n".format(self.config_prefix, sym.name))
+                    add("add_compile_definitions({}{}=1)\n".format(self.config_prefix, sym.name))
                     enabled.append("{}".format(sym.name))
                 elif val == "m":
                     add("set({}{}_MODULE 1)\n".format(self.config_prefix, sym.name))
@@ -1543,7 +1543,7 @@ class Kconfig(object):
 
                 add("set({}{} {})\n"
                     .format(self.config_prefix, sym.name, val))
-                add("add_definitions(-D {}{}={})\n"
+                add("add_compile_definitions({}{}={})\n"
                     .format(self.config_prefix, sym.name, val))
 
             add('\n')

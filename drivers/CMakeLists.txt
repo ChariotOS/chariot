@@ -71,10 +71,3 @@ add_kernel_module(
 	NEEDS VMWARE_VIDEO
 	AUTOGLOB vmware/
 )
-
-
-add_kernel_module(
-	NAME COM
-	INTEL
-	AUTOGLOB com/
-)

@@ -24,7 +24,7 @@ static pid_t do_fork(struct process &p) {
   auto new_td = new thread(np->pid, *np);
 
   // copy the trapframe
-  memcpy(new_td->trap_frame, old_td->trap_frame, arch::trapframe_size());
+  memcpy(new_td->trap_frame, old_td->trap_frame, arch_trapframe_size());
   new_td->trap_frame[0] = 0;  // return value for child is 0
 
 

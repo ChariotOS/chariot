@@ -120,7 +120,7 @@ u64 *paging::find_mapping(u64 *pml4, u64 va, pgsize size) {
       INFO("new_table = %p\n", new_table);
 
       int pflags = PTE_P | PTE_W;
-      if (va < KERNEL_VIRTUAL_BASE) {
+      if (va < CONFIG_KERNEL_VIRTUAL_BASE) {
         pflags |= PTE_U;
       }
       table[ind] = (u64)(new_table) | pflags;

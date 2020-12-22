@@ -57,7 +57,7 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long time
           return index;
         }
       }
-      arch::relax();
+      arch_relax();
     }
 
     // do we timeout?
@@ -70,8 +70,8 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long time
     }
 
     loops++;
-    // arch::relax();
-    arch::halt();
+    // arch_relax();
+    arch_halt();
     // sched::yield();
   }
 

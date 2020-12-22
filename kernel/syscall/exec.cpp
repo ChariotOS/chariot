@@ -76,8 +76,8 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   delete curproc->mm;
   curproc->mm = new_addr_space;
 
-  arch::reg(REG_SP, tf) = stack + stack_size - 64;
-  arch::reg(REG_PC, tf) = (unsigned long)entry;
+  arch_reg(REG_SP, tf) = stack + stack_size - 64;
+  arch_reg(REG_PC, tf) = (unsigned long)entry;
 
   cpu::switch_vm(curthd);
 

@@ -3,7 +3,7 @@
 #include <printk.h>
 #include "arch.h"
 
-reg_t &arch::reg(int ind, reg_t *r) {
+reg_t &arch_reg(int ind, reg_t *r) {
 #ifdef __x86_64__
   auto *tf = (struct x86_64regs *)r;
   switch (ind) {
@@ -28,7 +28,7 @@ reg_t &arch::reg(int ind, reg_t *r) {
   }
 }
 
-unsigned arch::trapframe_size() {
+unsigned arch_trapframe_size() {
 #ifdef __x86_64__
   // there are 22 registers stored in the x86_64 trapframe
   return sizeof(reg_t) * 22;
@@ -38,7 +38,7 @@ unsigned arch::trapframe_size() {
   return 0;
 }
 
-void arch::initialize_trapframe(bool userspace, reg_t *r) {
+void arch_initialize_trapframe(bool userspace, reg_t *r) {
 #ifdef __x86_64__
   if (userspace) {
     r[18 /* CS */] = (SEG_UCODE << 3) | DPL_USER;
