@@ -37,7 +37,7 @@ endif()
 
 
 if(CONFIG_ARM64)
-	set(TOOLCHAIN_PREFIX aarch64-linux-gnu-)
+	set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/aarch64-elf-)
 
 	set(CHARIOT_ARCH arm64)
 endif()

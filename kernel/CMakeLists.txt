@@ -14,13 +14,14 @@ set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} ${ARCH_KERN_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${ARCH_KERN_CXX_FLAGS}")
 
 
-if(CONFIG_X86)
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 	*.cpp
 	*.c
 	*.asm
 )
-endif()
+
+set(SOURCES ${SOURCES} ${ARCH_KERN_SOURCES})
+
 
 add_link_options(LINKER:-T "${ARCH_KERN_LINKER_SCRIPT}" -nostdlib -z max-page-size=0x1000)
 
@@ -104,14 +105,7 @@ function(add_kernel_module)
 endfunction()
 
 
-if(CONFIG_X86)
-	add_rooted_subdir(arch/x86)
-endif()
-
-
-if(CONFIG_ARM64)
-	add_rooted_subdir(arch/arm64)
-endif()
+add_rooted_subdir(arch/${CHARIOT_ARCH})
 
 
 if(CONFIG_X86)
