@@ -10,8 +10,11 @@
 #include <string.h>
 #include <util.h>
 
+#ifdef CONFIG_USE_LWIP
 #include <lwip/dns.h>
 #include <lwip/tcpip.h>
+#endif
+
 #include <map.h>
 
 
@@ -207,7 +210,6 @@ printk(KERN_INFO "               gateway:  %I\n", net::host_ord(i.gateway));
 
 volatile static int done = 0;
 static semaphore tcpinit_sem(0);
-// static struct nk_net_lwip_config config;
 
 static void donefunc(void *foo) {
   printk(KERN_DEBUG "Done!\n");
@@ -217,6 +219,7 @@ static void donefunc(void *foo) {
 
 
 void net::start(void) {
+#ifdef CONFIG_USE_LWIP
   tcpip_init(donefunc, 0);
   if (tcpinit_sem.wait(false).interrupted()) {
     panic("unexpected interrupt");
@@ -227,6 +230,7 @@ void net::start(void) {
   ip4_addr_t dns;
   dns.addr = net::net_ord(net::ipv4::parse_ip("8.8.8.8"));
   dns_setserver(1, &dns);
+#endif
   // sched::proc::create_kthread("net task", task);
 }
 

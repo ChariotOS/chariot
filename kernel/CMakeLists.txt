@@ -29,9 +29,11 @@ add_link_options(LINKER:-T "${KERN_LINKER_SCRIPT}" -nostdlib -z max-page-size=0x
 include_directories(
 	# for core kernel interfaces
 	../include/chariot
-	# for lwip
-	../net/lwip/src/include
-	)
+)
+
+if(CONFIG_USE_LWIP)
+	include_directories(../net/lwip/include)
+endif()
 
 add_executable(chariot ${SOURCES})
 set_target_properties(chariot PROPERTIES OUTPUT_NAME "chariot.elf")

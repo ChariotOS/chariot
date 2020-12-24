@@ -3,12 +3,26 @@ mainmenu "Chariot Kernel Configuration"
 source "arch/Kconfig"
 
 menu "Scheduler"
-
 	config PREFETCH_NEXT_THREAD
 		bool "Prefetch next thread in tick irq"
 		default y
 endmenu
 
+
+menu "Configuration"
+	config USE_LWIP
+		bool "Enable LWIP (lightweight IP stack)"
+		default y
+
+	config EXT2
+		bool "Ext2 Filesystem"
+		default y
+
+	config TMPFS
+		bool "Temp Filesystem"
+		default y
+
+endmenu
 
 
 menu "Build"
@@ -57,19 +71,6 @@ menu "Debug"
 
 endmenu
 
-
-menu "Filesystem"
-	config EXT2
-		bool "Ext2 Filesystem"
-		default y
-
-
-	config TMPFS
-		bool "Temp Filesystem"
-		default y
-
-endmenu
-
 menu "Devices"
 
 	config ATA
@@ -95,11 +96,13 @@ menu "Devices"
 		bool "E1000 network cards"
 		default y
 		depends on X86
+		depends on USE_LWIP
 
 	config RTL8139
 		bool "RTL8139 network cards"
 		default y
 		depends on X86
+		depends on USE_LWIP
 
 	config PS2_HID
 		bool "PS2 HID devices (keyboard, mouse) [RECOMMENDED]"
@@ -107,7 +110,6 @@ menu "Devices"
 		depends on X86
 
 	menu "Video"
-
 		config FRAMEBUFFER_WIDTH
 			int "Width of the VGA framebuffer"
 			default 1280

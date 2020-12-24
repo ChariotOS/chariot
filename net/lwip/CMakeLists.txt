@@ -1,5 +1,6 @@
 
 add_kernel_module(
 	CORE NAME lwip
-	GLOB src/*.cpp
+	NEEDS USE_LWIP
+	GLOB **.cpp
 )
