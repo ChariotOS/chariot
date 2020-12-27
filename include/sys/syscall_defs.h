@@ -54,3 +54,4 @@
 #define SYS_kshell                   (0x35)
 #define SYS_futex                    (0x36)
 #define SYS_sysinfo                  (0x37)
+#define SYS_dnslookup                (0x38)

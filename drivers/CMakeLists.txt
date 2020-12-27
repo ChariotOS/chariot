@@ -50,11 +50,11 @@ add_kernel_module(
 )
 
 
-add_kernel_module(
-	NAME RTL8139
-	NEEDS RTL8139
-	AUTOGLOB RTL8139/
-)
+# add_kernel_module(
+# 	NAME RTL8139
+# 	NEEDS RTL8139
+# 	AUTOGLOB RTL8139/
+# )
 
 
 add_kernel_module(

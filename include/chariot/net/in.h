@@ -18,8 +18,8 @@ struct in_addr {
 
 /* members are in network byte order */
 struct sockaddr_in {
-  unsigned char sin_len;
   sa_family_t sin_family;
+  unsigned char sin_len;
   in_port_t sin_port;
   struct in_addr sin_addr;
 #define SIN_ZERO_LEN 8

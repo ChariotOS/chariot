@@ -90,6 +90,8 @@
  *  \#define DHCP_GLOBAL_XID_HEADER "stdlib.h"
  *  \#define DHCP_GLOBAL_XID rand()
  */
+#define DHCP_GLOBAL_XID (0xF0F0)
+
 #ifdef DHCP_GLOBAL_XID_HEADER
 #include DHCP_GLOBAL_XID_HEADER /* include optional starting XID generation prototypes */
 #endif
@@ -159,8 +161,8 @@ static u8_t dhcp_discover_request_options[] = {
   };
 
 #ifdef DHCP_GLOBAL_XID
-static u32_t xid;
-static u8_t xid_initialised;
+static u32_t xid = 0xFF00FF;
+static u8_t xid_initialised = 0;
 #endif /* DHCP_GLOBAL_XID */
 
 #define dhcp_option_given(dhcp, idx)          (dhcp_rx_options_given[idx] != 0)
@@ -1812,7 +1814,7 @@ dhcp_create_msg(struct netif *netif, struct dhcp *dhcp, u8_t message_type)
 #if DHCP_CREATE_RAND_XID && defined(LWIP_RAND)
   static u32_t xid;
 #else /* DHCP_CREATE_RAND_XID && defined(LWIP_RAND) */
-  static u32_t xid = 0xABCD0000;
+  static u32_t xid = 0xABCDF0FD;
 #endif /* DHCP_CREATE_RAND_XID && defined(LWIP_RAND) */
 #else
   if (!xid_initialised) {
@@ -1844,7 +1846,9 @@ dhcp_create_msg(struct netif *netif, struct dhcp *dhcp, u8_t message_type)
 #endif /* DHCP_CREATE_RAND_XID && defined(LWIP_RAND) */
     }
     dhcp->xid = xid;
+		// dhcp->xid = rand() & 0xFFFF;
   }
+
   LWIP_DEBUGF(DHCP_DEBUG | LWIP_DBG_TRACE,
               ("transaction id xid(%"X32_F")\n", xid));
 

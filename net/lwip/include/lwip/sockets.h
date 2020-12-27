@@ -41,10 +41,11 @@
 
 #include "lwip/opt.h"
 
-#include <net/socket.h>
-#include <net/in.h>
 
 #if LWIP_SOCKET /* don't build if not configured for use in lwipopts.h */
+
+#include <net/socket.h>
+#include <net/in.h>
 
 #include "lwip/ip_addr.h"
 #include "lwip/err.h"

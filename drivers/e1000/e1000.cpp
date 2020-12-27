@@ -5,7 +5,12 @@
 #include <mem.h>
 #include <module.h>
 #include <net/net.h>
-#include <net/pkt.h>
+// #include <net/pkt.h>
+#include <lwip/dhcp.h>
+#include <lwip/etharp.h>
+#include <lwip/netif.h>
+#include <lwip/snmp.h>
+#include <lwip/tcpip.h>
 #include <pci.h>
 #include <phys.h>
 #include <printk.h>
@@ -25,6 +30,7 @@ static int rx_index = 0;
 static int tx_index = 0;
 
 static pci::device *device;
+struct net::interface *e1000_if = NULL;
 
 static uint8_t *rx_virt[E1000_NUM_RX_DESC];
 static uint8_t *tx_virt[E1000_NUM_TX_DESC];
@@ -34,26 +40,21 @@ static uintptr_t rx_phys;
 static uintptr_t tx_phys;
 
 // static list_t *net_queue = NULL;
-static spinlock net_queue_lock;
 static wait_queue e1000wait;
-// static list_t *rx_wait;
+static struct netif e1000_netif;
+
+
 
 static uint32_t mmio_read32(uintptr_t addr) {
   auto val = *((volatile uint32_t *)p2v(addr));
   // printk("read32(0x%p) -> 0x%08x\n", addr, val);
   return val;
 }
-static void mmio_write32(uintptr_t addr, uint32_t val) {
-  *((volatile uint32_t *)p2v(addr)) = val;
-}
+static void mmio_write32(uintptr_t addr, uint32_t val) { *((volatile uint32_t *)p2v(addr)) = val; }
 
-static void write_command(uint16_t addr, uint32_t val) {
-  mmio_write32(mem_base + addr, val);
-}
+static void write_command(uint16_t addr, uint32_t val) { mmio_write32(mem_base + addr, val); }
 
-static uint32_t read_command(uint16_t addr) {
-  return mmio_read32(mem_base + addr);
-}
+static uint32_t read_command(uint16_t addr) { return mmio_read32(mem_base + addr); }
 
 static int eeprom_detect(void) {
   write_command(E1000_REG_EEPROM, 1);
@@ -73,22 +74,6 @@ static uint16_t eeprom_read(uint8_t addr) {
     ;
   return (uint16_t)((temp >> 16) & 0xFFFF);
 }
-
-/*
-	 static void write_mac(void) {
-	 return;
-	 uint32_t low;
-	 uint32_t high;
-
-	 memcpy(&low, &mac[0], 4);
-	 memcpy(&high, &mac[4], 2);
-	 memset((uint8_t *)&high + 2, 0, 2);
-	 high |= 0x80000000;
-
-	 write_command(E1000_REG_RXADDR + 0, low);
-	 write_command(E1000_REG_RXADDR + 4, high);
-	 }
-	 */
 
 static void read_mac(void) {
   if (has_eeprom) {
@@ -121,13 +106,13 @@ static void init_rx(void) {
 
   rx_index = 0;
 
-  write_command(E1000_REG_RCTRL, RCTL_SBP |	/* store bad packet */
-				     RCTL_UPE | /* unicast promiscuous enable */
-				     RCTL_MPE | /* multicast promiscuous enab */
-				     RCTL_SECRC | /* Strip Ethernet CRC */
-				     RCTL_LPE |	  /* long packet enable */
-				     RCTL_BAM |	  /* broadcast enable */
-				     E1000_RCTL_EN | 0);
+  write_command(E1000_REG_RCTRL, RCTL_SBP |       /* store bad packet */
+                                     RCTL_UPE |   /* unicast promiscuous enable */
+                                     RCTL_MPE |   /* multicast promiscuous enab */
+                                     RCTL_SECRC | /* Strip Ethernet CRC */
+                                     RCTL_LPE |   /* long packet enable */
+                                     RCTL_BAM |   /* broadcast enable */
+                                     E1000_RCTL_EN | 0);
 }
 
 static void init_tx(void) {
@@ -136,15 +121,13 @@ static void init_tx(void) {
   write_command(E1000_TDBAL, (uint32_t)(base & 0xffffffff));
   write_command(E1000_TDBAH, (uint32_t)(base >> 32));
   // tx descriptor length
-  write_command(E1000_TDLEN,
-		(uint32_t)(E1000_NUM_TX_DESC * sizeof(struct tx_desc)));
+  write_command(E1000_TDLEN, (uint32_t)(E1000_NUM_TX_DESC * sizeof(struct tx_desc)));
   // setup head/tail
   write_command(E1000_TDH, 0);
   write_command(E1000_TDT, 0);
   // set tx control register
 
-  write_command(E1000_REG_TCTRL,
-		TCTL_EN | TCTL_PSP | read_command(E1000_REG_TCTRL));
+  write_command(E1000_REG_TCTRL, TCTL_EN | TCTL_PSP | read_command(E1000_REG_TCTRL));
 
   tx_index = 0;
 }
@@ -152,34 +135,6 @@ static void init_tx(void) {
 static void irq_handler(int i, reg_t *) {
   uint32_t status = read_command(E1000_ICR);
   irq::eoi(i);
-
-
-	/*
-  printk("[e1000]: irq status = 0x%02x\n", status);
-  printk(KERN_INFO "[e1000]: irq info\n");
-#define PR_ICR_FLAG(name)        \
-  if (status & E1000_ICR_##name) \
-  printk(KERN_INFO "[e1000]      %s\n", E1000_ICR_MSG_##name)
-  PR_ICR_FLAG(TXDW);
-  PR_ICR_FLAG(TXQE);
-  PR_ICR_FLAG(LSC);
-  PR_ICR_FLAG(RXSEQ);
-  PR_ICR_FLAG(RXDMT0);
-  PR_ICR_FLAG(RXO);
-  PR_ICR_FLAG(RXT0);
-  PR_ICR_FLAG(MDAC);
-  PR_ICR_FLAG(RXCFG);
-  PR_ICR_FLAG(GPI_EN0);
-  PR_ICR_FLAG(GPI_EN1);
-  PR_ICR_FLAG(GPI_EN2);
-  PR_ICR_FLAG(GPI_EN3);
-  PR_ICR_FLAG(TXD_LOW);
-  PR_ICR_FLAG(SRPD);
-  PR_ICR_FLAG(ACK);
-  PR_ICR_FLAG(MNG);
-  PR_ICR_FLAG(DOCK);
-  PR_ICR_FLAG(INT_ASSERTED);
-	*/
 
   if (status & E1000_ICR_LSC) {
     printk(KERN_INFO "[e1000]: status change\n");
@@ -191,15 +146,25 @@ static void irq_handler(int i, reg_t *) {
     for (;;) {
       rx_current = read_command(E1000_REG_RXDESCTAIL);
       if (rx_current == read_command(E1000_REG_RXDESCHEAD)) return;
+
+
       rx_current = (rx_current + 1) % E1000_NUM_RX_DESC;
+
       if (!(rx[rx_current].status & 1)) break;
-      uint8_t *pbuf = (uint8_t *)rx_virt[rx_index];
-      uint16_t plen = rx[rx_index].length;
+      uint8_t *pbuf = (uint8_t *)rx_virt[rx_current];
+      uint16_t plen = rx[rx_current].length;
 
-			auto pkt = net::pkt_buff::create(pbuf, plen);
-			net::packet_received(pkt);
 
-      rx[rx_index].status = 0;
+      auto *pkt = pbuf_alloc(PBUF_RAW, plen, PBUF_RAM);
+      memcpy(pkt->payload, pbuf, plen);
+
+      e1000_netif.input(pkt, &e1000_netif);
+
+      // auto pkt = net::pkt_buff::create(pbuf, plen);
+      // net::packet_received(pkt);
+
+      rx[rx_current].status = 0;
+
       write_command(E1000_REG_RXDESCTAIL, rx_current);
     }
   }
@@ -207,9 +172,7 @@ static void irq_handler(int i, reg_t *) {
   // e1000wait.notify_all();
 }
 
-#define htonl(l)                                                      \
-  ((((l)&0xFF) << 24) | (((l)&0xFF00) << 8) | (((l)&0xFF0000) >> 8) | \
-   (((l)&0xFF000000) >> 24))
+#define htonl(l) ((((l)&0xFF) << 24) | (((l)&0xFF00) << 8) | (((l)&0xFF0000) >> 8) | (((l)&0xFF000000) >> 24))
 #define htons(s) ((((s)&0xFF) << 8) | (((s)&0xFF00) >> 8))
 #define ntohl(l) htonl((l))
 #define ntohs(s) htons((s))
@@ -222,29 +185,21 @@ int e1000_daemon(void *) {
   }
 }
 
-static bool if_init(struct net::interface &i) {
-	i.hwaddr = mac;
-  return true;
-}
 
-static struct net::eth::hdr *e1000_get_packet(struct net::interface &) {
-  return NULL;
-}
 
-static bool e1000_send_packet(struct net::interface &, void *payload,
-			      size_t payload_size) {
+static spinlock send_lock;
+static err_t e1000_netif_linkoutput(struct netif *netif, struct pbuf *p) {
+  // printk("E1000 Link output!\n");
+  // hexdump(p->payload, p->len, true);
+
+
   tx_index = read_command(E1000_REG_TXDESCTAIL);
 
-  /*
-	   printk("[e1000]: sending packet 0x%x, %d desc[%d]:\n", payload,
-     payload_size, tx_index); hexdump(payload, payload_size, true);
-	   */
-
-  net_queue_lock.lock();
-  memcpy(tx_virt[tx_index], payload, payload_size);
+  send_lock.lock();
+  memcpy(tx_virt[tx_index], p->payload, p->len);
 
   auto &desc = tx[tx_index];
-  desc.length = payload_size;
+  desc.length = p->len;
   desc.cmd = CMD_EOP | CMD_IFCS | CMD_RS;  //| CMD_RPS;
   desc.status = 0;
 
@@ -252,18 +207,46 @@ static bool e1000_send_packet(struct net::interface &, void *payload,
 
   write_command(E1000_REG_TXDESCTAIL, tx_index);
   while (!(desc.status & 0x0f)) {
-		arch_relax();
+    arch_relax();
   }
-  net_queue_lock.unlock();
+  send_lock.unlock();
 
-  // e1000wait.wait();
-  return true;
+  return ERR_OK;
 }
 
-struct net::ifops e1000_ifops {
-  .init = if_init, .get_packet = e1000_get_packet,
-  .send_packet = e1000_send_packet,
-};
+static err_t e1000_netif_init(struct netif *netif) {
+  // struct device* dev = netif->state;
+
+#if LWIP_NETIF_HOSTNAME
+  netif->hostname = hostname;
+#endif
+
+  NETIF_INIT_SNMP(netif, snmp_ifType_ethernet_csmacd, 100 * 1024 * 1024);
+
+  netif->name[0] = 'e';
+  netif->name[1] = 'n';
+
+  netif->output = etharp_output;  // e1000_netif_output;
+  netif->linkoutput = e1000_netif_linkoutput;
+
+  // MAC address is 6 long
+  netif->hwaddr_len = 6;
+  memcpy(netif->hwaddr, mac, 6);
+
+  netif->mtu = 1500;
+  netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP | NETIF_FLAG_ETHERNET;
+
+
+  // dev->net.low_level_init(dev->net.internals, dev->net.address, NULL);
+
+  return ERR_OK;
+}
+
+
+
+void send_data(void *data, size_t size) {}
+
+
 
 void e1000_init(void) {
   pci::device *e1000_dev = nullptr;
@@ -285,11 +268,10 @@ void e1000_init(void) {
     printk(KERN_INFO "[e1000]: has_eeprom = %d\n", has_eeprom);
     read_mac();
 
-    printk(KERN_INFO "[e1000]: device mac %02x:%02x:%02x:%02x:%02x:%02x\n",
-	   mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    printk(KERN_INFO "[e1000]: device mac %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4],
+           mac[5]);
 
-    rx = (struct rx_desc *)phys::kalloc(
-	NPAGES(sizeof(struct rx_desc) * E1000_NUM_RX_DESC + 16));
+    rx = (struct rx_desc *)phys::kalloc(NPAGES(sizeof(struct rx_desc) * E1000_NUM_RX_DESC + 16));
 
     rx_phys = (unsigned long)v2p(rx);
     for (int i = 0; i < E1000_NUM_RX_DESC; ++i) {
@@ -298,8 +280,7 @@ void e1000_init(void) {
       rx[i].status = 0;
     }
 
-    tx = (struct tx_desc *)phys::kalloc(
-	NPAGES(sizeof(struct tx_desc) * E1000_NUM_TX_DESC + 16));
+    tx = (struct tx_desc *)phys::kalloc(NPAGES(sizeof(struct tx_desc) * E1000_NUM_TX_DESC + 16));
     tx_phys = (unsigned long)v2p(tx);
 
     for (int i = 0; i < E1000_NUM_TX_DESC; ++i) {
@@ -329,8 +310,8 @@ void e1000_init(void) {
     sched::dumb_sleepticks(1);
 
     uint32_t status = read_command(E1000_REG_CTRL);
-    status |= (1 << 5);	      /* set auto speed detection */
-    status |= (1 << 6);	      /* set link up */
+    status |= (1 << 5);       /* set auto speed detection */
+    status |= (1 << 6);       /* set link up */
     status &= ~(1 << 3);      /* unset link reset */
     status &= ~(1UL << 31UL); /* unset phy reset */
     status &= ~(1 << 7);      /* unset invert loss-of-signal */
@@ -366,14 +347,36 @@ void e1000_init(void) {
     write_command(E1000_CTL, read_command(E1000_CTL) | E1000_CTL_SLU);
 
     int link_is_up = (read_command(E1000_REG_STATUS) & (1 << 1));
-    printk(KERN_INFO
-	   "[e1000]: done. has_eeprom = %d, link is up = %d, irq=%d\n",
-	   has_eeprom, link_is_up, e1000_irq);
+    printk(KERN_INFO "[e1000]: done. has_eeprom = %d, link is up = %d, irq=%d\n", has_eeprom, link_is_up, e1000_irq);
 
-    net::register_interface("e1000", e1000_ifops);
+    ip4_addr_t ip; /* Ipv4 Address */
+    ip4_addr_t nm; /* net mask */
+    ip4_addr_t gw; /* Gateway */
 
-    // sched::proc::create_kthread("[e1000]", e1000_daemon, 0);
+    // interface = new e1000_interface();
+    IP4_ADDR(&ip, 10, 0, 2, 15);
+    IP4_ADDR(&nm, 255, 255, 255, 0);
+    IP4_ADDR(&gw, 10, 0, 2, 2);
+
+
+    netif_add(&e1000_netif, &ip, &nm, &gw, NULL, e1000_netif_init, tcpip_input);
+    netif_set_up(&e1000_netif);
+    netif_set_link_up(&e1000_netif);
+    while (netif_is_up(&e1000_netif) == 0) {
+      arch_relax();
+    }
+
+    netif_set_default(&e1000_netif);
+
+
+    dhcp_start(&e1000_netif);
+    while (!dhcp_supplied_address(&e1000_netif)) {
+      arch_relax();
+    }
+
+    // net::register_interface("e1000", interface);
   }
 }
 
 module_init("e1000", e1000_init);
+

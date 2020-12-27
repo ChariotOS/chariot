@@ -30,8 +30,7 @@ namespace net {
     int (*connect)(net::sock &sk, struct sockaddr *uaddr, int addr_len);
     int (*disconnect)(net::sock &sk, int flags);
 
-    net::sock *(*accept)(net::sock &sk, struct sockaddr *uaddr, int addr_len,
-                         int &err);
+    net::sock *(*accept)(net::sock &sk, struct sockaddr *uaddr, int addr_len, int &err);
 
     int (*init)(net::sock &sk);
     void (*destroy)(net::sock &sk);  // called on ~net::sock()
@@ -48,13 +47,7 @@ namespace net {
    * is T_SOCK
    */
   struct sock {
-    enum class role : uint8_t {
-      none,
-      accepting,
-      listener,
-      connected,
-      connecting
-    };
+    enum class role : uint8_t { none, accepting, listener, connected, connecting };
 
     net::sock::role role = role::none;
 
@@ -92,10 +85,8 @@ namespace net {
     virtual int disconnect(int flags);
 
     // implemented by the network layer (OSI)
-    virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags,
-                           const sockaddr *, size_t);
-    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags,
-                             const sockaddr *, size_t);
+    virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
@@ -114,10 +105,8 @@ namespace net {
     virtual net::sock *accept(struct sockaddr *uaddr, int addr_len, int &err);
 
     // implemented by the network layer (OSI)
-    virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags,
-                           const sockaddr *, size_t);
-    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags,
-                             const sockaddr *, size_t);
+    virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
@@ -145,7 +134,7 @@ namespace net {
 
 
   // ipc messages cannot be partially consumed,
-	// they must be entirely read at once
+  // they must be entirely read at once
   struct ipcmsg {
     vec<uint8_t> data;
 
@@ -164,10 +153,8 @@ namespace net {
     virtual net::sock *accept(struct sockaddr *uaddr, int addr_len, int &err);
 
     // implemented by the network layer (OSI)
-    virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags,
-                           const sockaddr *, size_t);
-    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags,
-                             const sockaddr *, size_t);
+    virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
@@ -182,9 +169,9 @@ namespace net {
 
     struct {
       single_list<ipcmsg> msgs;
-			struct wait_queue wq;
+      struct wait_queue wq;
       spinlock lock;
-			bool closed = false;
+      bool closed = false;
     } for_server, for_client;
 
 
@@ -193,40 +180,34 @@ namespace net {
     struct net::ipcsock *next, *prev;
   };
 
-  struct ipv4sock : public net::sock {
+
+
+
+  /* A generic LWIP socket binding. This ties into the socket api. The implementation is in /net/lwip/api/sockets.cpp */
+  struct ip4sock : public net::sock {
+   private:
+    /* The socket binding */
+    int sock;
+		spinlock lock;
+
    public:
-    ipv4sock(int domain, int type, int proto);
-    virtual ~ipv4sock(void);
+    ip4sock(int type);
+    virtual ~ip4sock(void);
 
-    // send the buffer over ipv4
-    ssize_t send_packet(void *pkt, size_t plen);
 
-    // host ordered
-    uint32_t peer_addr = 0;
-    uint32_t local_addr = 0;
-    uint16_t peer_port = 0;
-    uint16_t local_port = 0;
+    virtual int connect(struct sockaddr *uaddr, int addr_len);
+    virtual int disconnect(int flags);
+    virtual net::sock *accept(struct sockaddr *uaddr, int addr_len, int &err);
 
-    uint32_t bytes_received = 0;
+    // implemented by the network layer (OSI)
+    virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
 
-    uint8_t ttl = 64;
+    virtual int bind(const struct sockaddr *addr, size_t len);
 
-    net::ipv4::route route;
-    spinlock iplock;
-  };
+    virtual int poll(fs::file &f, int events);
 
-  struct udpsock : public net::ipv4sock {
-   public:
-    udpsock(int domain, int type, int proto);
-    virtual ~udpsock(void);
-
-    // implemented by the transport layer (OSI)
-    virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags,
-                           const sockaddr *, size_t);
-    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags,
-                             const sockaddr *, size_t);
-
-    int bind(const struct sockaddr *addr, size_t len);
+		int translate_errno(int);
   };
 
 }  // namespace net

@@ -1,3 +1,4 @@
+#include <asm.h>
 #include <cpu.h>
 #include <cpuid.h>
 #include <elf/loader.h>
@@ -22,6 +23,115 @@
 #include "smp.h"
 
 #include <arch.h>
+#include <lwip/api.h>
+#include <lwip/dns.h>
+#include <lwip/netdb.h>
+#include <lwip/sockets.h>
+#include <lwip/tcp.h>
+
+
+// #define TCP_PORT 8000
+// #define TCP_DOMAIN "fenrir.nickw.io"
+
+#define TCP_PORT 80
+#define TCP_DOMAIN "api.thedogapi.com"
+#define FILE_REQ "/v1/images/search"
+
+void tcp_test(void) {
+  dns_init();
+
+
+#define DATA_SIZE 1024
+
+#if 1
+
+
+	printk(KERN_DEBUG "HTTP GET " TCP_DOMAIN FILE_REQ "\n");
+
+  char *data_buffer = (char *)kmalloc(DATA_SIZE);
+  /* Variables */
+  const char host[] = TCP_DOMAIN;
+  int ret;
+  struct sockaddr_in sin;
+  struct hostent *phe;
+  char *pnum;
+  /* TCP Data buffer */
+  /* ID Client */
+  int CControl;
+  /* HTTP method: HEAD */
+  uint8_t http_req[] = "GET " FILE_REQ " HTTP/1.1\r\nHost: " TCP_DOMAIN "\r\nConnection: close\r\n\r\n";
+  /* Counter request */
+  uint8_t counter_request = 0;
+  /* Fill structure */
+  memset(&sin, 0, sizeof(sin));
+
+  string lhost = host;
+  /* Port for google website is 80 */
+  sin.sin_port = net::htons(TCP_PORT);
+
+  if ((sin.sin_addr.s_addr = inet_addr(lhost.get())) == -1) {
+    if ((phe = lwip_gethostbyname(lhost.get())) == NULL) {
+      /* Impossible get host name */
+      printk("Impossible get host name\n");
+      for (;;)
+        ;
+    }
+    memcpy((char *)&sin.sin_addr, phe->h_addr, phe->h_length);
+  }
+
+
+  sin.sin_family = AF_INET;
+
+  /* Get socket */
+  CControl = lwip_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (CControl == -1) {
+    printk("Failed to get socket\n");
+    for (;;)
+      ;
+  }
+  /* Connect to remote TCP server */
+  ret = lwip_connect(CControl, (struct sockaddr *)&sin, sizeof(sin));
+  if (ret == -1) {
+    /* Close socket */
+    lwip_close(CControl);
+    printk("couldn't connect!\n");
+    for (;;)
+      ;
+  }
+  /* Request HTTP: HEAD */
+  ret = lwip_send(CControl, http_req, sizeof(http_req) - 1, 0);
+  if (ret != sizeof(http_req) - 1) {
+    printk("error sending!\n");
+    /* Error: repeat sending */
+    for (;;)
+      ;
+  }
+  /* Check answer */
+  do {
+    /* Reset buffer */
+    memset(data_buffer, 0x00, DATA_SIZE);
+    /* Read socket */
+    ret = lwip_read(CControl, data_buffer, DATA_SIZE);
+    if (ret > 0) {
+      for (int i = 0; i < ret; i++) {
+        printk("%c", data_buffer[i]);
+      }
+    }
+    /* Debug message */
+    // TSMART_UART_Send(&tsmart_uart3, data_buffer, strlen(data_buffer), 1000 / portTICK_RATE_MS);
+  } while (ret != 0);
+  /* Close connection */
+  lwip_close(CControl);
+
+
+  while (1) {
+  }
+
+
+#endif
+
+  return;
+}
 
 extern int kernel_end;
 
@@ -119,6 +229,7 @@ void dump_multiboot(uint64_t mbd) {
 #define STKSIZE (4096 * 2)
 
 extern void rtc_init(void);
+extern void rtc_late_init(void);
 
 
 
@@ -223,14 +334,8 @@ struct rsdp_descriptor {
 #define ACPI_HI_RSDP_WINDOW_SIZE 0x00020000
 #define ACPI_RSDP_SCAN_STEP 16
 
-
-
-
 int kernel_init(void *) {
-
-
-
-
+  rtc_late_init();
 
   // at this point, the pit is being used for interrupts,
   // so we should go setup lapic for that
@@ -247,23 +352,25 @@ int kernel_init(void *) {
 
 
 
+  // wait for the time to stabilize
+  while (!time::stabilized()) {
+    arch_halt();
+  }
+
+  net::start();
+
   // walk the kernel modules and run their init function
   KINFO("Calling kernel module init functions\n");
   initialize_builtin_modules();
   KINFO("kernel modules initialized\n");
 
 
-
+  // tcp_test();
 
   auto root_name = kargs::get("root", "/dev/ata0p1");
   assert(root_name);
 
 
-
-	// wait for the time to stabilize
-	while (!time::stabilized()) {
-		arch_halt();
-	}
 
 
   int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);
@@ -293,7 +400,6 @@ int kernel_init(void *) {
   kproc->cwd = fs::inode::acquire(vfs::get_root());
 
 
-  net::start();
 
 
   string init_paths = kargs::get("init", "/bin/init");

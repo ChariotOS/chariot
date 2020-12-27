@@ -10,6 +10,7 @@ includes = [
 	'<sys/stat.h>',
 	'<sys/types.h>',
 	'<sys/sysinfo.h>',
+	'<sys/netdb.h>'
 ]
 
 [kernel]
@@ -366,4 +367,12 @@ args = [
 ret = 'int'
 args = [
 	'info: struct sysinfo *',
+]
+
+
+[sc.dnslookup]
+ret = 'int'
+args = [
+	'name: const char *',
+	'ip4: unsigned int*',
 ]

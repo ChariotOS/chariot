@@ -64,6 +64,7 @@
 #endif
 
 #include <string.h>
+#include <map.h>
 
 /* If the netconn API is not required publicly, then we include the necessary
    files here to get the implementation */
@@ -228,6 +229,8 @@ static void sockaddr_to_ipaddr_port(const struct sockaddr *sockaddr, ip_addr_t *
 
 /** Contains all internal pointers and states used for a socket */
 struct lwip_sock {
+	/* The socket's file descriptor */
+	int index;
   /** sockets currently are built on netconns, each socket has one netconn */
   struct netconn *conn;
   /** data that was left from the previous read */
@@ -312,7 +315,11 @@ static void lwip_socket_drop_registered_memberships(int s);
 #endif /* LWIP_IGMP */
 
 /** The global array of available sockets */
-static struct lwip_sock sockets[NUM_SOCKETS];
+// static struct lwip_sock sockets[NUM_SOCKETS];
+
+static spinlock open_sockets_lock;
+static map<int, struct lwip_sock *> open_sockets;
+
 /** The global list of tasks waiting for select */
 static struct lwip_select_cb *select_cb_list;
 /** This counter is increased from lwip_select when the list is changed
@@ -338,6 +345,7 @@ static volatile int select_cb_ctr;
     sk->err = (u8_t)sockerr;  \
     set_errno(sockerr);       \
   } while (0)
+
 
 /* Forward declaration of some functions */
 static void event_callback(struct netconn *conn, enum netconn_evt evt, u16_t len);
@@ -377,13 +385,15 @@ static struct lwip_sock *get_socket(int s) {
 
   s -= LWIP_SOCKET_OFFSET;
 
-  if ((s < 0) || (s >= NUM_SOCKETS)) {
+	scoped_lock l(open_sockets_lock);
+
+  if (!open_sockets.contains(s)) {
     LWIP_DEBUGF(SOCKETS_DEBUG, ("get_socket(%d): invalid\n", s + LWIP_SOCKET_OFFSET));
     set_errno(EBADF);
     return NULL;
   }
 
-  sock = &sockets[s];
+  sock = open_sockets.get(s);
 
   if (!sock->conn) {
     LWIP_DEBUGF(SOCKETS_DEBUG, ("get_socket(%d): not active\n", s + LWIP_SOCKET_OFFSET));
@@ -402,13 +412,19 @@ static struct lwip_sock *get_socket(int s) {
  */
 static struct lwip_sock *tryget_socket(int s) {
   s -= LWIP_SOCKET_OFFSET;
-  if ((s < 0) || (s >= NUM_SOCKETS)) {
+
+	scoped_lock l(open_sockets_lock);
+
+  if (!open_sockets.contains(s)) {
     return NULL;
   }
+
+	/*
   if (!sockets[s].conn) {
     return NULL;
   }
-  return &sockets[s];
+	*/
+  return open_sockets[s];
 }
 
 /**
@@ -423,24 +439,32 @@ static int alloc_socket(struct netconn *newconn, int accepted) {
   int i;
   SYS_ARCH_DECL_PROTECT(lev);
 
+	scoped_lock l(open_sockets_lock);
+
   /* allocate a new socket identifier */
-  for (i = 0; i < NUM_SOCKETS; ++i) {
+  for (i = 0; true; ++i) {
     /* Protect socket array */
     SYS_ARCH_PROTECT(lev);
-    if (!sockets[i].conn) {
-      sockets[i].conn = newconn;
+
+		if (!open_sockets.contains(i)) {
+			/* Allocate the socket */
+			auto *sock = new lwip_sock;
+			sock->index = i;
+			sock->conn = newconn;
+
       /* The socket is not yet known to anyone, so no need to protect
          after having marked it as used. */
       SYS_ARCH_UNPROTECT(lev);
-      sockets[i].lastdata = NULL;
-      sockets[i].lastoffset = 0;
-      sockets[i].rcvevent = 0;
+      sock->lastdata = NULL;
+      sock->lastoffset = 0;
+      sock->rcvevent = 0;
       /* TCP sendbuf is empty, but the socket is not yet writable until connected
        * (unless it has been created by accept()). */
-      sockets[i].sendevent = (NETCONNTYPE_GROUP(newconn->type) == NETCONN_TCP ? (accepted != 0) : 1);
-      sockets[i].errevent = 0;
-      sockets[i].err = 0;
-      sockets[i].select_waiting = 0;
+      sock->sendevent = (NETCONNTYPE_GROUP(newconn->type) == NETCONN_TCP ? (accepted != 0) : 1);
+      sock->errevent = 0;
+      sock->err = 0;
+      sock->select_waiting = 0;
+			open_sockets[i] = sock;
       return i + LWIP_SOCKET_OFFSET;
     }
     SYS_ARCH_UNPROTECT(lev);
@@ -473,6 +497,10 @@ static void free_socket(struct lwip_sock *sock, int is_tcp) {
       netbuf_delete((struct netbuf *)lastdata);
     }
   }
+
+	scoped_lock l(open_sockets_lock);
+	open_sockets.remove(sock->index);
+	delete sock;
 }
 
 /* Below this, the well-known socket functions are implemented.
@@ -525,7 +553,7 @@ int lwip_accept(int s, struct sockaddr *addr, socklen_t *addrlen) {
   }
   LWIP_ASSERT("invalid socket index", (newsock >= LWIP_SOCKET_OFFSET) && (newsock < NUM_SOCKETS + LWIP_SOCKET_OFFSET));
   LWIP_ASSERT("newconn->callback == event_callback", newconn->callback == event_callback);
-  nsock = &sockets[newsock - LWIP_SOCKET_OFFSET];
+  nsock = get_socket(newsock);
 
   /* See event_callback: If data comes in right away after an accept, even
    * though the server task might not have created a new socket yet.
@@ -650,6 +678,8 @@ int lwip_close(int s) {
   set_errno(0);
   return 0;
 }
+
+#include <util.h>
 
 int lwip_connect(int s, const struct sockaddr *name, socklen_t namelen) {
   struct lwip_sock *sock;
@@ -929,7 +959,7 @@ int lwip_send(int s, const void *data, size_t size, int flags) {
   if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) != NETCONN_TCP) {
 #if (LWIP_UDP || LWIP_RAW)
     return lwip_sendto(s, data, size, flags, NULL, 0);
-#else  /* (LWIP_UDP || LWIP_RAW) */
+#else /* (LWIP_UDP || LWIP_RAW) */
     sock_set_errno(sock, err_to_errno(ERR_ARG));
     return -1;
 #endif /* (LWIP_UDP || LWIP_RAW) */
@@ -994,7 +1024,7 @@ int lwip_sendmsg(int s, const struct msghdr *msg, int flags) {
     }
     sock_set_errno(sock, err_to_errno(err));
     return size;
-#else  /* LWIP_TCP */
+#else /* LWIP_TCP */
     sock_set_errno(sock, err_to_errno(ERR_ARG));
     return -1;
 #endif /* LWIP_TCP */
@@ -1044,7 +1074,7 @@ int lwip_sendmsg(int s, const struct msghdr *msg, int flags) {
 #endif /* LWIP_CHECKSUM_ON_COPY */
       err = ERR_OK;
     }
-#else  /* LWIP_NETIF_TX_SINGLE_PBUF */
+#else /* LWIP_NETIF_TX_SINGLE_PBUF */
     /* create a chained netbuf from the IO vectors. NOTE: we assemble a pbuf chain
        manually to avoid having to allocate, chain, and delete a netbuf for each iov */
     for (i = 0; i < msg->msg_iovlen; i++) {
@@ -1089,7 +1119,7 @@ int lwip_sendmsg(int s, const struct msghdr *msg, int flags) {
     sock_set_errno(sock, err_to_errno(err));
     return (err == ERR_OK ? size : -1);
   }
-#else  /* LWIP_UDP || LWIP_RAW */
+#else /* LWIP_UDP || LWIP_RAW */
   sock_set_errno(sock, err_to_errno(ERR_ARG));
   return -1;
 #endif /* LWIP_UDP || LWIP_RAW */
@@ -1110,7 +1140,7 @@ int lwip_sendto(int s, const void *data, size_t size, int flags, const struct so
   if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == NETCONN_TCP) {
 #if LWIP_TCP
     return lwip_send(s, data, size, flags);
-#else  /* LWIP_TCP */
+#else /* LWIP_TCP */
     LWIP_UNUSED_ARG(flags);
     sock_set_errno(sock, err_to_errno(ERR_ARG));
     return -1;
@@ -1163,7 +1193,7 @@ int lwip_sendto(int s, const void *data, size_t size, int flags, const struct so
     }
     err = ERR_OK;
   }
-#else  /* LWIP_NETIF_TX_SINGLE_PBUF */
+#else /* LWIP_NETIF_TX_SINGLE_PBUF */
   err = netbuf_ref(&buf, data, short_size);
 #endif /* LWIP_NETIF_TX_SINGLE_PBUF */
   if (err == ERR_OK) {
@@ -1374,7 +1404,7 @@ int lwip_select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptse
     select_cb.sem_signalled = 0;
 #if LWIP_NETCONN_SEM_PER_THREAD
     select_cb.sem = LWIP_NETCONN_THREAD_SEM_GET();
-#else  /* LWIP_NETCONN_SEM_PER_THREAD */
+#else /* LWIP_NETCONN_SEM_PER_THREAD */
     if (sys_sem_new(&select_cb.sem, 0) != ERR_OK) {
       /* failed to create semaphore */
       set_errno(ENOMEM);
@@ -1486,7 +1516,7 @@ int lwip_select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptse
       /* don't leave the thread-local semaphore signalled */
       sys_arch_sem_wait(select_cb.sem, 1);
     }
-#else  /* LWIP_NETCONN_SEM_PER_THREAD */
+#else /* LWIP_NETCONN_SEM_PER_THREAD */
     sys_sem_free(&select_cb.sem);
 #endif /* LWIP_NETCONN_SEM_PER_THREAD */
 
@@ -1535,6 +1565,47 @@ static void event_callback(struct netconn *conn, enum netconn_evt evt, u16_t len
   SYS_ARCH_DECL_PROTECT(lev);
 
   LWIP_UNUSED_ARG(len);
+
+  if (0) {
+    const char *event = "unknown";
+
+    switch (evt) {
+      case NETCONN_EVT_RCVPLUS:
+        // Used when new incoming data from a remote peer arrives. The amount of data received is passed in len. If len
+        // is 0 then a connection event has occurred: this may be an error, the acceptance of a connection for a
+        // listening connection (called for the listening connection), or deletion of the connection.
+        event = "recv plus";
+        break;
+      case NETCONN_EVT_RCVMINUS:
+        // Used when new incoming data from a remote peer has been received and accepted by higher layers. The amount of
+        // data accepted is passed in len. If len is 0 then this indicates the acceptance of a connection as a result of
+        // a listening port (called for the newly created accepted connection).
+        event = "recv minus";
+        break;
+      case NETCONN_EVT_SENDPLUS:
+        // Used when data has been sent to a remote peer and received by it. This only occurs for TCP connections, and
+        // specifically is only triggered when, as a consequence of TCP acknowledgements from the remote peer, the free
+        // TCP send buffer size now exceeds the configured send buffer low water mark (configured with the
+        // CYGNUM_LWIP_TCP_SNDLOWAT CDL configuration option). The amount of data sent in the most recent transaction is
+        // passed in len. If len is 0 then this indicates the connection has been deleted.
+        event = "send plus";
+        break;
+      case NETCONN_EVT_SENDMINUS:
+        // This is only used for TCP connections, and is triggered when a sufficient amount of data has been sent on the
+        // connection that the amount of free send buffer space is now under the send buffer low water mark (configured
+        // with the CYGNUM_LWIP_TCP_SNDLOWAT CDL configuration option). The amount of data sent in the most recent
+        // transaction is passed in len.
+        event = "send minus";
+        break;
+      case NETCONN_EVT_ERROR:
+        event = "error";
+        break;
+      default:
+        break;
+    }
+
+    printk("event_callback(%p, %s, %d\n", conn, event, len);
+  }
 
   /* Get socket */
   if (conn) {
@@ -1809,7 +1880,7 @@ static void lwip_getsockopt_callback(void *arg) {
   data->err = lwip_getsockopt_impl(data->s, data->level, data->optname,
 #if LWIP_MPU_COMPATIBLE
                                    data->optval,
-#else  /* LWIP_MPU_COMPATIBLE */
+#else /* LWIP_MPU_COMPATIBLE */
                                    data->optval.p,
 #endif /* LWIP_MPU_COMPATIBLE */
                                    &data->optlen);
@@ -2142,7 +2213,7 @@ int lwip_setsockopt(int s, int level, int optname, const void *optval, socklen_t
   LWIP_SETGETSOCKOPT_DATA_VAR_REF(data).optlen = optlen;
 #if LWIP_MPU_COMPATIBLE
   MEMCPY(LWIP_SETGETSOCKOPT_DATA_VAR_REF(data).optval, optval, optlen);
-#else  /* LWIP_MPU_COMPATIBLE */
+#else /* LWIP_MPU_COMPATIBLE */
   LWIP_SETGETSOCKOPT_DATA_VAR_REF(data).optval.pc = (const void *)optval;
 #endif /* LWIP_MPU_COMPATIBLE */
   LWIP_SETGETSOCKOPT_DATA_VAR_REF(data).err = 0;
@@ -2180,7 +2251,7 @@ static void lwip_setsockopt_callback(void *arg) {
   data->err = lwip_setsockopt_impl(data->s, data->level, data->optname,
 #if LWIP_MPU_COMPATIBLE
                                    data->optval,
-#else  /* LWIP_MPU_COMPATIBLE */
+#else /* LWIP_MPU_COMPATIBLE */
                                    data->optval.pc,
 #endif /* LWIP_MPU_COMPATIBLE */
                                    data->optlen);
@@ -2564,7 +2635,7 @@ int lwip_ioctl(int s, long cmd, void *argp) {
       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_ioctl(%d, FIONREAD, %p) = %" U16_F "\n", s, argp, *((u16_t *)argp)));
       sock_set_errno(sock, 0);
       return 0;
-#else  /* LWIP_SO_RCVBUF */
+#else /* LWIP_SO_RCVBUF */
       break;
 #endif /* LWIP_SO_RCVBUF */
 #endif /* LWIP_SO_RCVBUF || LWIP_FIONREAD_LINUXMODE */
@@ -2700,3 +2771,58 @@ static void lwip_socket_drop_registered_memberships(int s) {
 }
 #endif /* LWIP_IGMP */
 #endif /* LWIP_SOCKET */
+
+
+
+
+#include <net/sock.h>
+
+net::ip4sock::ip4sock(int type) : net::sock(AF_INET, type, 0) {
+  sock = lwip_socket(AF_INET, type, 0);
+  // printk("type: %d, sock: %d\n", type, sock);
+}
+
+net::ip4sock::~ip4sock(void) { lwip_close(sock); }
+
+int net::ip4sock::translate_errno(int e) {
+  if (e == -1) {
+    auto *sk = tryget_socket(sock);
+    return -sk->err;
+  }
+  return e;
+}
+
+
+
+int net::ip4sock::connect(struct sockaddr *uaddr, int addr_len) {
+  scoped_lock l(lock);
+  return translate_errno(lwip_connect(sock, uaddr, addr_len));
+}
+
+
+int net::ip4sock::disconnect(int flags) {
+  scoped_lock l(lock);
+  return -ENOTIMPL;
+}
+
+net::sock *net::ip4sock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
+  err = -ENOTIMPL;
+  return NULL;
+}
+
+// implemented by the network layer (OSI)
+ssize_t net::ip4sock::sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *to, size_t tolen) {
+  scoped_lock l(lock);
+  return translate_errno(lwip_sendto(sock, data, len, flags, to, tolen));
+}
+ssize_t net::ip4sock::recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *from, size_t fromlen) {
+  scoped_lock l(lock);
+  return translate_errno(lwip_recvfrom(sock, data, len, flags, (struct sockaddr *)from, &fromlen));
+}
+
+int net::ip4sock::bind(const struct sockaddr *addr, size_t len) {
+  scoped_lock l(lock);
+  return translate_errno(lwip_bind(sock, addr, len));
+}
+
+int net::ip4sock::poll(fs::file &f, int events) { return 0; }

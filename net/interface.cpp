@@ -1,6 +1,9 @@
 #include <chan.h>
+#include <errno.h>
 #include <fifo_buf.h>
 #include <lock.h>
+#include <lwip/dns.h>
+#include <lwip/tcpip.h>
 #include <net/eth.h>
 #include <net/ipv4.h>
 #include <net/net.h>
@@ -9,11 +12,6 @@
 #include <sched.h>
 #include <string.h>
 #include <util.h>
-
-#ifdef CONFIG_USE_LWIP
-#include <lwip/dns.h>
-#include <lwip/tcpip.h>
-#endif
 
 #include <map.h>
 
@@ -29,13 +27,6 @@ void net::each_interface(func<bool(const string &, net::interface &)> fn) {
   interfaces_lock.unlock();
 }
 
-net::interface::interface(const char *name, struct net::ifops &o) : name(name), ops(o) {
-  assert(ops.init);
-  assert(ops.get_packet);
-  assert(ops.get_packet);
-
-  ops.init(*this);
-}
 
 net::interface *net::find_interface(net::macaddr m) {
   for (auto &a : interfaces) {
@@ -46,28 +37,13 @@ net::interface *net::find_interface(net::macaddr m) {
   return nullptr;
 }
 
-int net::interface::send(net::macaddr m, uint16_t proto, void *data, size_t len) {
-  net::pkt_builder b;
-
-  auto &e = b.alloc<net::eth::hdr>();
-  e.src = hwaddr;
-  e.dst = m;
-  e.type = net::net_ord(proto);
-  // better hope the len is less than MTU :)
-  memcpy(b.alloc(len), data, len);
-
-  ops.send_packet(*this, b.get(), b.size());
-  return 0;
-}
-
-int net::register_interface(const char *name, struct net::ifops &ops) {
+int net::register_interface(const char *name, net::interface *i) {
   scoped_lock l(interfaces_lock);
 
   if (interfaces.contains(name)) {
     panic("interface by name '%s' already exists\n", name);
-    return -1;
+    return -EEXIST;
   }
-  auto i = new struct net::interface(name, ops);
 
   interfaces[name] = i;
   printk(KERN_INFO "[net] registered new interface '%s': %02x:%02x:%02x:%02x:%02x:%02x\n", name, i->hwaddr[0],
@@ -219,18 +195,15 @@ static void donefunc(void *foo) {
 
 
 void net::start(void) {
-#ifdef CONFIG_USE_LWIP
   tcpip_init(donefunc, 0);
   if (tcpinit_sem.wait(false).interrupted()) {
     panic("unexpected interrupt");
   }
 
-
   // setup google dns for now, 8.8.8.8
   ip4_addr_t dns;
   dns.addr = net::net_ord(net::ipv4::parse_ip("8.8.8.8"));
-  dns_setserver(1, &dns);
-#endif
+  dns_setserver(0, &dns);
   // sched::proc::create_kthread("net task", task);
 }
 

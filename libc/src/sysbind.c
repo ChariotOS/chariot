@@ -227,3 +227,7 @@ int sysbind_sysinfo(struct sysinfo * info) {
     return (int)__syscall_eintr(55, (unsigned long long)info, 0, 0, 0, 0, 0);
 }
 
+int sysbind_dnslookup(const char * name, unsigned int* ip4) {
+    return (int)__syscall_eintr(56, (unsigned long long)name, (unsigned long long)ip4, 0, 0, 0, 0);
+}
+

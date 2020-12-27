@@ -26,14 +26,11 @@ file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 add_link_options(LINKER:-T "${KERN_LINKER_SCRIPT}" -nostdlib -z max-page-size=0x1000)
 
 
-include_directories(
-	# for core kernel interfaces
-	../include/chariot
-)
+# for core kernel interfaces
+include_directories(../include/chariot)
 
-if(CONFIG_USE_LWIP)
-	include_directories(../net/lwip/include)
-endif()
+# LWIP interface
+include_directories(../net/lwip/include)
 
 add_executable(chariot ${SOURCES})
 set_target_properties(chariot PROPERTIES OUTPUT_NAME "chariot.elf")

@@ -92,6 +92,11 @@ mkdir -p $mnt
 
 sudo mount ${dev}p1 $mnt/
 
+pushd tools/ckfs
+	make
+popd
+sudo tools/ckfs/mkfs.ckfs ${dev}p1
+
 # echo 'removing old filesystem data'
 
 # delete all the directories besides boot/

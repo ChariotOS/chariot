@@ -142,7 +142,7 @@ static int quick_log2(size_t number) {
 }
 
 // late init
-void rtc_module_init(void) {
+void rtc_late_init(void) {
   auto rate = 15;
 
   irq::install(8, rtc_irq_handler, "x86 RTC");
@@ -166,4 +166,4 @@ void rtc_module_init(void) {
   arch_enable_ints();
 }
 
-module_init("RTC", rtc_module_init);
+// module_init("RTC", rtc_module_init);

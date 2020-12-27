@@ -24,9 +24,43 @@
 #include <ck/re.h>
 #include <ck/string.h>
 
+#include <arpa/inet.h>
+#include <sys/socket.h>
+
 #define ENV_PATH "/cfg/environ"
 
 extern char **environ;
+
+
+
+void tcp_test(void) {
+  /* Open a UDP socket */
+
+  // ip: 198.37.25.78
+
+
+	bool worked = false;
+  while (!worked) {
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+
+    struct sockaddr_in servaddr;
+    memset(&servaddr, 0, sizeof(servaddr));
+
+    // Filling server information
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(8080);
+		sysbind_dnslookup("fenrir.nickw.io", &servaddr.sin_addr.s_addr);
+
+		int res = connect(sock, (const struct sockaddr *)&servaddr, (int)sizeof(servaddr));
+    if (res == 0) {
+      const char *msg = "hello world\n";
+			send(sock, msg, strlen(msg), 0);
+			worked = true;
+    }
+		close(sock);
+  }
+
+}
 
 
 static void handler(int i) { printf("=====================\nsignal handler got %d\n=====================\n", i); }
@@ -35,7 +69,6 @@ static void handler(int i) { printf("=====================\nsignal handler got %
 // read the initial environ from /etc/environ
 // credit: github.com/The0x539
 char **read_default_environ(void) {
-
   struct stat st;
 
   if (lstat(ENV_PATH, &st) != 0) {
@@ -256,6 +289,7 @@ int main(int argc, char **argv) {
 
   printf("[init] hello, friend\n");
 
+  // tcp_test();
 
   environ = read_default_environ();
 

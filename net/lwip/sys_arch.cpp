@@ -23,7 +23,20 @@ void sys_sem_free(sys_sem_t *sem) { delete sem->sem; }
 void sys_sem_signal(sys_sem_t *sem) { sem->sem->post(); }
 
 u32_t sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout) {
+  // printk("sys_arch_sem_wait timeout: %u\n", timeout);
+
   auto start = time::now_ms();
+  /*
+while (time::now_ms() - start < timeout) {
+if (mb->ch->avail()) {
+*msg = mb->ch->recv();
+break;
+}
+sched::yield();
+}
+
+return time::now_ms() - start;
+  */
   while (sem->sem->wait().interrupted()) {
     printk("lwip sem_wait interrupted\n");
   }
@@ -38,10 +51,7 @@ void sys_sem_set_invalid(sys_sem_t *sem) {
 }
 
 
-
-
 u32_t sys_now() { return time::now_ms(); }
-
 
 
 err_t sys_mutex_new(sys_mutex_t *mutex) {
@@ -79,8 +89,8 @@ void sys_mbox_free(sys_mbox_t *mb) {
 }
 
 void sys_mbox_post(sys_mbox_t *mb, void *msg) {
-	printk(KERN_DEBUG "mbox	post %p\n", msg);
-	mb->ch->send(move(msg), false);
+  // printk(KERN_DEBUG "mbox post %p\n", msg);
+  mb->ch->send(move(msg), false);
 }
 
 
@@ -91,10 +101,25 @@ err_t sys_mbox_trypost(sys_mbox_t *mb, void *msg) {
 
 
 u32_t sys_arch_mbox_fetch(sys_mbox_t *mb, void **msg, u32_t timeout) {
-  printk(KERN_DEBUG "mbox wait %ums\n", timeout);
   // TODO: we actually need to timeout...
+
   auto start = time::now_ms();
-  *msg = mb->ch->recv();
+  if (msg) *msg = NULL;
+  if (timeout) {
+    while (time::now_ms() - start < timeout) {
+      if (mb->ch->avail()) {
+        *msg = mb->ch->recv();
+        break;
+      }
+      sched::yield();
+    }
+  } else {
+    *msg = mb->ch->recv();
+  }
+
+  if (timeout == 0) return 1;
+
+  // printk(KERN_DEBUG "mbox wait %ums -> %p\n", timeout, *msg);
   return time::now_ms() - start;
 }
 
@@ -124,13 +149,21 @@ sys_thread_t sys_thread_new(char const *name, void (*func)(void *), void *arg, i
 static spinlock big_giant_lock;
 
 sys_prot_t sys_arch_protect(void) {
-  printk(KERN_DEBUG "Protect\n");
+  // printk(KERN_DEBUG "Protect\n");
   big_giant_lock.lock_cli();
   return 0;
 }
 
 void sys_arch_unprotect(sys_prot_t pval) {
-  printk(KERN_DEBUG "Unprotect\n");
+  // printk(KERN_DEBUG "Unprotect\n");
   big_giant_lock.unlock_cli();
-  // spin_unlock_irq_restore(&big_giant_lock, (uint8_t)(uint64_t)pval);
 }
+
+
+
+u32_t lwip_arch_rand(void) {
+  static u32_t x = 0;
+  printk("LWIP RAND!\n");
+  return x++;
+}
+

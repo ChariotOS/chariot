@@ -1,9 +1,11 @@
+#if 0
 #include <errno.h>
 #include <module.h>
 #include <net/in.h>
 #include <net/ipv4.h>
 #include <net/sock.h>
 #include <util.h>
+
 
 static rwlock active_socket_lock;
 static map<uint16_t /* host ordered */, net::udpsock *> active_sockets;
@@ -46,48 +48,7 @@ net::udpsock::~udpsock(void) {
 
 ssize_t net::udpsock::sendto(fs::file&, void *data, size_t len, int flags,
 			     const struct sockaddr *addr, size_t alen) {
-  (void)flags;
-
-  if (addr && alen != sizeof(sockaddr_in)) return -EINVAL;
-
-  // lock this ip socket (we change it's target ip and whatnot)
-  scoped_lock l(iplock);
-
-  if (addr) {
-    // target ip address
-    if (addr->sa_family != AF_INET) return -EINVAL;
-
-    auto in = (const struct sockaddr_in *)addr;
-    // printk("addr = %I\n", net::host_ord(in->sin_addr.s_addr));
-    // printk("port = %04x\n", net::host_ord(in->sin_port));
-    // printk("ipv4 handle sockaddr\n");
-
-    peer_addr = in->sin_addr.s_addr;
-    peer_port = in->sin_port;
-
-    size_t final_len = sizeof(net::udp::hdr) + len;
-
-    if (final_len >= 0xFFFF - sizeof(net::udp::hdr)) {
-      return -E2BIG;
-    }
-
-    auto buf = kmalloc(final_len);
-    auto *udp = (net::udp::hdr *)buf;
-
-    // this should always "succeed"
-    udp->length = net::net_ord((uint16_t)final_len);
-    udp->source_port = local_port;
-    udp->destination_port = peer_port;
-    udp->checksum = 0;
-
-    memcpy(udp + 1, data, len);
-    auto res = send_packet((void *)udp, final_len);
-    total_sent += final_len;
-
-    kfree(buf);
-
-    return res;
-  }
+	return -ENOTIMPL;
 
   return -EDESTADDRREQ;
 }
@@ -126,3 +87,4 @@ int net::udpsock::bind(const struct sockaddr *addr, size_t len) {
 
   return 0;
 }
+#endif
