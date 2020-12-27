@@ -294,11 +294,13 @@ int main(int argc, char **argv) {
   environ = read_default_environ();
 
 
+	/*
   ck::vec<int> things;
   for (int i = 0; i < 15; i++) things.push(i);
   print_vector(things);
   process_vector(things, 4, [](int &i) { i = 0; });
   print_vector(things);
+	*/
 
   // while (1) {}
 
