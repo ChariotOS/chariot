@@ -375,7 +375,6 @@ namespace pci {
 
     template <typename T>
     T read(u32 field) {
-			printk("[PCI] read %zub from %d\n", sizeof(T), field);
       outl(PCI_CFG_ADDR_PORT, get_address(field));
       if constexpr (sizeof(T) == 4) return inl(PCI_CFG_DATA_PORT);
       if constexpr (sizeof(T) == 2) return inw(PCI_CFG_DATA_PORT + (field & 2));
@@ -386,7 +385,6 @@ namespace pci {
 
     template <typename T>
     void write(u32 field, T val) {
-			printk("[PCI] write %llx to %d\n", val, field);
       outl(PCI_CFG_ADDR_PORT, get_address(field));
       if constexpr (sizeof(T) == 4) return outl(PCI_CFG_DATA_PORT, val);
       if constexpr (sizeof(T) == 2) return outw(PCI_CFG_DATA_PORT + (field & 2), val);
