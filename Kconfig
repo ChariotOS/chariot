@@ -153,3 +153,12 @@ menu "Graphics Library"
 		default n
 
 endmenu
+
+
+
+menu "Networking"
+	config LWIP_DEBUG
+		bool "LWIP Debug prints"
+		default n
+endmenu
+

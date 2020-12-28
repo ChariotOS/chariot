@@ -224,6 +224,8 @@ struct thread *sched::proc::spawn_kthread(const char *name, int (*func)(void *),
 
   thd->setup_tls();
 
+
+
   return thd;
 }
 
@@ -320,6 +322,7 @@ void sched::proc::dump_table(void) {
       ST(ZOMBIE);
 #undef ST
 
+      // printk("name %-10s ", t->);
       printk("state %-10s ", state);
       printk("rip %p ", t->trap_frame != NULL ? arch_reg(REG_PC, t->trap_frame) : 0);
 

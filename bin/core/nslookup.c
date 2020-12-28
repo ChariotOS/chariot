@@ -6,7 +6,7 @@
 
 int main(int argc, char **argv) {
 	if (argc == 1) {
-		fprintf(stderr, "usage: dns [names...]\n");
+		fprintf(stderr, "usage: %s [names...]\n", argv[0]);
 		return EXIT_FAILURE;
 	}
 

@@ -419,11 +419,6 @@ static struct lwip_sock *tryget_socket(int s) {
     return NULL;
   }
 
-	/*
-  if (!sockets[s].conn) {
-    return NULL;
-  }
-	*/
   return open_sockets[s];
 }
 
@@ -464,6 +459,7 @@ static int alloc_socket(struct netconn *newconn, int accepted) {
       sock->errevent = 0;
       sock->err = 0;
       sock->select_waiting = 0;
+
 			open_sockets[i] = sock;
       return i + LWIP_SOCKET_OFFSET;
     }
@@ -1169,6 +1165,8 @@ int lwip_sendto(int s, const void *data, size_t size, int flags, const struct so
     ip_addr_set_any(NETCONNTYPE_ISIPV6(netconn_type(sock->conn)), &buf.addr);
   }
   netbuf_fromport(&buf) = remote_port;
+
+
 
 
   LWIP_DEBUGF(SOCKETS_DEBUG,
@@ -2802,6 +2800,7 @@ int net::ip4sock::connect(struct sockaddr *uaddr, int addr_len) {
 
 int net::ip4sock::disconnect(int flags) {
   scoped_lock l(lock);
+	// lwip_shutdown(sock, 0);
   return -ENOTIMPL;
 }
 

@@ -18,17 +18,18 @@
 
 #define LWIP_DNS 1
 
-#if 0
+#ifdef CONFIG_LWIP_DEBUG
 #define LWIP_DEBUG 1
 // #define ETHARP_DEBUG LWIP_DBG_ON
 // #define NETIF_DEBUG LWIP_DBG_ON
 // #define PBUF_DEBUG LWIP_DBG_ON
 // #define DHCP_DEBUG LWIP_DBG_ON
 // #define DNS_DEBUG LWIP_DBG_ON
-#define UDP_DEBUG LWIP_DBG_ON
+// #define UDP_DEBUG LWIP_DBG_ON
 // #define TCP_DEBUG LWIP_DBG_ON
-#define SOCKETS_DEBUG LWIP_DBG_ON
+// #define SOCKETS_DEBUG LWIP_DBG_ON
 // #define INET_DEBUG LWIP_DBG_ON
+#define API_LIB_DEBUG LWIP_DBG_ON
 #endif
 
 
@@ -37,6 +38,8 @@
 #define NUM_SHIFT 4
 #define LWIP_ARP 1
 #define LWIP_ETHERNET 1
+
+
 // * DNS Options *
 #define LWIP_DNS 1
 #define DNS_TABLE_SIZE (4 << NUM_SHIFT)
@@ -49,9 +52,15 @@
 #define LWIP_DNS_SUPPORT_MDNS_QUERIES 0
 
 #define LWIP_UDP 1
+#define LWIP_UDPLITE 1
 #define LWIP_TCP 1
-#define LWIP_DHCP 1
+
 #define DHCP_DOES_ARP_CHECK 1
+
+
+#define LWIP_DHCP 1
+#define LWIP_AUTOIP 1
+#define LWIP_DHCP_AUTOIP_COOP 1
 
 
 
@@ -79,9 +88,25 @@
 // we're not concerned about speed yet
 #define MEM_LIBC_MALLOC 1
 
+
+// use mem_malloc() which calls malloc()
+// instead of creating static memory pools
+#define MEMP_MEM_MALLOC 0
+
+
+#define MEM_SIZE (256 * 1024 * 1024)
+#define MEMP_NUM_UDP_PCB 128
+#define MEMP_NUM_TCP_PCB 128
+#define MEMP_NUM_TCP_PCB_LISTEN 128
+#define MEMP_NUM_NETBUF 32
+#define MEMP_NUM_NETCONN 32
+#define MEMP_NUM_NETDB 32
+
 #define LWIP_COMPAT_SOCKETS 0
 #undef LWIP_DONT_PROVIDE_BYTEORDER_FUNCTIONS
 
+
+#define MEM_ALIGNMENT 8
 
 
 

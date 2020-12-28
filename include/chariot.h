@@ -35,12 +35,15 @@ int yield(void);
     exit(-1);                                   \
   } while (0);
 
+
+#ifndef assert
 #define assert(val)                          \
   do {                                       \
     if (!(val)) {                            \
       panic("assertion failed: %s\n", #val); \
     }                                        \
   } while (0);
+#endif
 
 
 

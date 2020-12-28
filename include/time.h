@@ -49,6 +49,12 @@ clock_t clock(void);
 #define CLOCK_REALTIME 0
 int clock_gettime(int id, struct timespec *s);
 
+
+struct tm* gmtime(const time_t* t);
+struct tm* gmtime_r(const time_t* timep, struct tm* result);
+
+size_t strftime(char* s, size_t max, const char* format, const struct tm*);
+
 #ifdef __cplusplus
 }
 #endif

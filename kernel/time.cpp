@@ -12,14 +12,12 @@
 
 
 static unsigned long last_cycle = 0;
-static uint64_t cycles_per_second = 0;
+static volatile uint64_t cycles_per_second = 0;
 static volatile uint64_t current_second = 0;
 
 
 
-bool time::stabilized(void) {
-	return cycles_per_second != 0;
-}
+bool time::stabilized(void) { return cycles_per_second != 0; }
 
 unsigned long time::cycles_to_ns(unsigned long cycles) {
   /* hmm */
@@ -28,6 +26,12 @@ unsigned long time::cycles_to_ns(unsigned long cycles) {
 }
 
 unsigned long long time::now_ns() {
+  /* If the time is not stabilized yet, wait for it. */
+  if (unlikely(!time::stabilized())) {
+    printk("TIME NOT STABILIZED!\n");
+    while (!time::stabilized()) arch_relax();
+  }
+
   auto cps = cycles_per_second;
   /* if we haven't be calibrated yet, guess based on the LAPIC tick rate */
   if (cps == 0) {

@@ -111,6 +111,8 @@ u32_t sys_arch_mbox_fetch(sys_mbox_t *mb, void **msg, u32_t timeout) {
         *msg = mb->ch->recv();
         break;
       }
+      arch_relax();
+      arch_halt();
       sched::yield();
     }
   } else {
@@ -125,7 +127,9 @@ u32_t sys_arch_mbox_fetch(sys_mbox_t *mb, void **msg, u32_t timeout) {
 
 u32_t sys_arch_mbox_tryfetch(sys_mbox_t *mb, void **msg) {
   if (mb->ch->avail()) {
-    *msg = mb->ch->recv();
+    if (msg != NULL) {
+      *msg = mb->ch->recv();
+    }
     return 0;
   }
   return SYS_MBOX_EMPTY;

@@ -189,8 +189,8 @@ int e1000_daemon(void *) {
 
 static spinlock send_lock;
 static err_t e1000_netif_linkoutput(struct netif *netif, struct pbuf *p) {
-  // printk("E1000 Link output!\n");
-  // hexdump(p->payload, p->len, true);
+  printk("E1000 Link output!\n");
+  hexdump(p->payload, p->len, true);
 
 
   tx_index = read_command(E1000_REG_TXDESCTAIL);
@@ -247,8 +247,7 @@ static err_t e1000_netif_init(struct netif *netif) {
 void send_data(void *data, size_t size) {}
 
 
-
-void e1000_init(void) {
+int e1000_init_thread(void *) {
   pci::device *e1000_dev = nullptr;
   pci::walk_devices([&](pci::device *dev) {
     // check if the device is an e1000 device
@@ -257,125 +256,134 @@ void e1000_init(void) {
     }
   });
 
-  if (e1000_dev != nullptr) {
-    device = e1000_dev;
-
-    device->enable_bus_mastering();
-
-    mem_base = (unsigned long)device->get_bar(0).raw;
-
-    eeprom_detect();
-    printk(KERN_INFO "[e1000]: has_eeprom = %d\n", has_eeprom);
-    read_mac();
-
-    printk(KERN_INFO "[e1000]: device mac %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4],
-           mac[5]);
-
-    rx = (struct rx_desc *)phys::kalloc(NPAGES(sizeof(struct rx_desc) * E1000_NUM_RX_DESC + 16));
-
-    rx_phys = (unsigned long)v2p(rx);
-    for (int i = 0; i < E1000_NUM_RX_DESC; ++i) {
-      rx_virt[i] = (unsigned char *)phys::kalloc(NPAGES(8192 + 16));
-      rx[i].addr = (unsigned long)v2p(rx_virt[i]);
-      rx[i].status = 0;
-    }
-
-    tx = (struct tx_desc *)phys::kalloc(NPAGES(sizeof(struct tx_desc) * E1000_NUM_TX_DESC + 16));
-    tx_phys = (unsigned long)v2p(tx);
-
-    for (int i = 0; i < E1000_NUM_TX_DESC; ++i) {
-      tx_virt[i] = (unsigned char *)phys::kalloc(NPAGES(8192 + 16));
-      tx[i].addr = (unsigned long)v2p(tx_virt[i]);
-      tx[i].status = 0;
-      tx[i].length = 0;
-      tx[i].cmd = (1 << 0);
-    }
-
-    uint32_t ctrl = read_command(E1000_REG_CTRL);
-    /* reset phy */
-    write_command(E1000_REG_CTRL, ctrl | (0x80000000));
-    read_command(E1000_REG_STATUS);
-
-    /* reset mac */
-    write_command(E1000_REG_CTRL, ctrl | (0x04000000));
-    read_command(E1000_REG_STATUS);
-
-    /* Reload EEPROM */
-    write_command(E1000_REG_CTRL, ctrl | (0x00002000));
-    read_command(E1000_REG_STATUS);
-
-    /* initialize */
-    write_command(E1000_REG_CTRL, ctrl | (1 << 26));
-
-    sched::dumb_sleepticks(1);
-
-    uint32_t status = read_command(E1000_REG_CTRL);
-    status |= (1 << 5);       /* set auto speed detection */
-    status |= (1 << 6);       /* set link up */
-    status &= ~(1 << 3);      /* unset link reset */
-    status &= ~(1UL << 31UL); /* unset phy reset */
-    status &= ~(1 << 7);      /* unset invert loss-of-signal */
-    write_command(E1000_REG_CTRL, status);
-
-    /* Disables flow control */
-    write_command(0x0028, 0);
-    write_command(0x002c, 0);
-    write_command(0x0030, 0);
-    write_command(0x0170, 0);
-
-    /* Unset flow control */
-    status = read_command(E1000_REG_CTRL);
-    status &= ~(1 << 30);
-    write_command(E1000_REG_CTRL, status);
-
-    // grab the irq
-    auto e1000_irq = device->interrupt;
-    irq::install(e1000_irq, irq_handler, "e1000");
-
-    for (int i = 0; i < 128; ++i) write_command(0x5200 + i * 4, 0);
-    for (int i = 0; i < 64; ++i) write_command(0x4000 + i * 4, 0);
-
-    /* setup interrupts */
-    write_command(E1000_IMS, 0xFF);
-    read_command(E1000_ICR);
-
-    write_command(E1000_REG_RCTRL, (1 << 4));
-
-    init_rx();
-    init_tx();
-
-    write_command(E1000_CTL, read_command(E1000_CTL) | E1000_CTL_SLU);
-
-    int link_is_up = (read_command(E1000_REG_STATUS) & (1 << 1));
-    printk(KERN_INFO "[e1000]: done. has_eeprom = %d, link is up = %d, irq=%d\n", has_eeprom, link_is_up, e1000_irq);
-
-    ip4_addr_t ip; /* Ipv4 Address */
-    ip4_addr_t nm; /* net mask */
-    ip4_addr_t gw; /* Gateway */
-
-    // interface = new e1000_interface();
-    IP4_ADDR(&ip, 10, 0, 2, 15);
-    IP4_ADDR(&nm, 255, 255, 255, 0);
-    IP4_ADDR(&gw, 10, 0, 2, 2);
-
-
-    netif_add(&e1000_netif, &ip, &nm, &gw, NULL, e1000_netif_init, tcpip_input);
-    netif_set_up(&e1000_netif);
-    netif_set_link_up(&e1000_netif);
-    while (netif_is_up(&e1000_netif) == 0) {
-      arch_relax();
-    }
-
-    netif_set_default(&e1000_netif);
-
-
-    dhcp_start(&e1000_netif);
-    while (!dhcp_supplied_address(&e1000_netif)) {
-      arch_relax();
-    }
-
-    // net::register_interface("e1000", interface);
+  if (e1000_dev == nullptr) {
+    return 0;
   }
+  device = e1000_dev;
+
+  device->enable_bus_mastering();
+
+  mem_base = (unsigned long)device->get_bar(0).raw;
+
+  eeprom_detect();
+  printk(KERN_INFO "[e1000]: has_eeprom = %d\n", has_eeprom);
+  read_mac();
+
+  printk(KERN_INFO "[e1000]: device mac %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4],
+         mac[5]);
+
+  rx = (struct rx_desc *)phys::kalloc(NPAGES(sizeof(struct rx_desc) * E1000_NUM_RX_DESC + 16));
+
+  rx_phys = (unsigned long)v2p(rx);
+  for (int i = 0; i < E1000_NUM_RX_DESC; ++i) {
+    rx_virt[i] = (unsigned char *)phys::kalloc(NPAGES(8192 + 16));
+    rx[i].addr = (unsigned long)v2p(rx_virt[i]);
+    rx[i].status = 0;
+  }
+
+  tx = (struct tx_desc *)phys::kalloc(NPAGES(sizeof(struct tx_desc) * E1000_NUM_TX_DESC + 16));
+  tx_phys = (unsigned long)v2p(tx);
+
+  for (int i = 0; i < E1000_NUM_TX_DESC; ++i) {
+    tx_virt[i] = (unsigned char *)phys::kalloc(NPAGES(8192 + 16));
+    tx[i].addr = (unsigned long)v2p(tx_virt[i]);
+    tx[i].status = 0;
+    tx[i].length = 0;
+    tx[i].cmd = (1 << 0);
+  }
+
+  uint32_t ctrl = read_command(E1000_REG_CTRL);
+  /* reset phy */
+  write_command(E1000_REG_CTRL, ctrl | (0x80000000));
+  read_command(E1000_REG_STATUS);
+
+  /* reset mac */
+  write_command(E1000_REG_CTRL, ctrl | (0x04000000));
+  read_command(E1000_REG_STATUS);
+
+  /* Reload EEPROM */
+  write_command(E1000_REG_CTRL, ctrl | (0x00002000));
+  read_command(E1000_REG_STATUS);
+
+  /* initialize */
+  write_command(E1000_REG_CTRL, ctrl | (1 << 26));
+
+  sched::dumb_sleepticks(1);
+
+  uint32_t status = read_command(E1000_REG_CTRL);
+  status |= (1 << 5);       /* set auto speed detection */
+  status |= (1 << 6);       /* set link up */
+  status &= ~(1 << 3);      /* unset link reset */
+  status &= ~(1UL << 31UL); /* unset phy reset */
+  status &= ~(1 << 7);      /* unset invert loss-of-signal */
+  write_command(E1000_REG_CTRL, status);
+
+  /* Disables flow control */
+  write_command(0x0028, 0);
+  write_command(0x002c, 0);
+  write_command(0x0030, 0);
+  write_command(0x0170, 0);
+
+  /* Unset flow control */
+  status = read_command(E1000_REG_CTRL);
+  status &= ~(1 << 30);
+  write_command(E1000_REG_CTRL, status);
+
+  // grab the irq
+  auto e1000_irq = device->interrupt;
+  irq::install(e1000_irq, irq_handler, "e1000");
+
+  for (int i = 0; i < 128; ++i) write_command(0x5200 + i * 4, 0);
+  for (int i = 0; i < 64; ++i) write_command(0x4000 + i * 4, 0);
+
+  /* setup interrupts */
+  write_command(E1000_IMS, 0xFF);
+  read_command(E1000_ICR);
+
+  write_command(E1000_REG_RCTRL, (1 << 4));
+
+  init_rx();
+  init_tx();
+
+  write_command(E1000_CTL, read_command(E1000_CTL) | E1000_CTL_SLU);
+
+  int link_is_up = (read_command(E1000_REG_STATUS) & (1 << 1));
+  printk(KERN_INFO "[e1000]: done. has_eeprom = %d, link is up = %d, irq=%d\n", has_eeprom, link_is_up, e1000_irq);
+
+  ip4_addr_t ip; /* Ipv4 Address */
+  ip4_addr_t nm; /* net mask */
+  ip4_addr_t gw; /* Gateway */
+
+  // interface = new e1000_interface();
+  IP4_ADDR(&ip, 10, 0, 2, 15);
+  IP4_ADDR(&nm, 255, 255, 255, 0);
+  IP4_ADDR(&gw, 10, 0, 2, 2);
+
+
+  netif_add(&e1000_netif, &ip, &nm, &gw, NULL, e1000_netif_init, tcpip_input);
+  netif_set_up(&e1000_netif);
+  netif_set_link_up(&e1000_netif);
+  while (netif_is_up(&e1000_netif) == 0) {
+    arch_relax();
+  }
+
+  netif_set_default(&e1000_netif);
+
+
+  dhcp_start(&e1000_netif);
+  while (!dhcp_supplied_address(&e1000_netif)) {
+    arch_relax();
+  }
+
+  printk("E1000 DONE!\n");
+  return 0;
+}
+
+
+void e1000_init(void) {
+	e1000_init_thread(NULL);
+	/* Defer this to a thread... */
+	// sched::proc::create_kthread("[e1000 init thread]", e1000_init_thread, NULL);
 }
 
 module_init("e1000", e1000_init);
