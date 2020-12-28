@@ -3,39 +3,55 @@
 #include <sleep.h>
 #include <time.h>
 
-void remove_sleep_blocker(struct processor_state &cpu, struct sleep_blocker *blk) {
-  if (blk == cpu.sleepers) cpu.sleepers = blk->next;
-  if (blk->next != NULL) blk->next->prev = blk->prev;
-  if (blk->prev != NULL) blk->prev->next = blk->next;
+
+sleep_waiter::~sleep_waiter() { this->remove(); }
+
+void sleep_waiter::start(uint64_t us) {
+  wakeup_us = time::now_us() + us;
+  cpu = cpu::get();
+
+  auto flags = cpu->sleepers_lock.lock_irqsave();
+  /* Insert the sleep node to the start of the cpu.sleepers linked list */
+  next = cpu->sleepers;
+  prev = NULL;
+  if (cpu->sleepers != NULL) {
+    cpu->sleepers->prev = this;
+  }
+  cpu->sleepers = this;
+  cpu->sleepers_lock.unlock_irqrestore(flags);
 }
 
-void add_sleep_blocker(struct processor_state &cpu, struct sleep_blocker *blk) {
-  /* Insert the sleep node to the start of the cpu.sleepers linked list */
-  blk->next = cpu.sleepers;
-  blk->prev = NULL;
-  if (cpu.sleepers != NULL) {
-    cpu.sleepers->prev = blk;
+wait_result sleep_waiter::wait(void) {
+  if (cpu == NULL) {
+    panic("sleep_waiter waited on without being bound\n");
   }
-  cpu.sleepers = blk;
+  return wq.wait();
 }
+
+void sleep_waiter::remove(void) {
+  /* If there is no CPU, we aren't added */
+  if (cpu == NULL) {
+    return;
+  }
+
+
+  auto flags = cpu->sleepers_lock.lock_irqsave();
+  if (this == cpu->sleepers) cpu->sleepers = this->next;
+  if (this->next != NULL) this->next->prev = this->prev;
+  if (this->prev != NULL) this->prev->next = this->next;
+
+  cpu->sleepers_lock.unlock_irqrestore(flags);
+}
+
+void remove_sleep_waiter(struct processor_state &cpu, struct sleep_waiter *blk) {}
+
+void add_sleep_waiter(struct processor_state &cpu, struct sleep_waiter *blk) {}
 
 int do_usleep(uint64_t us) {
-  auto &cpu = cpu::current();
+  struct sleep_waiter blocker;
+  blocker.start(us);
 
-  struct sleep_blocker blocker;
-  blocker.wakeup_us = time::now_us() + us;
-
-  auto flags = cpu.sleepers_lock.lock_irqsave();
-	add_sleep_blocker(cpu, &blocker);
-  cpu.sleepers_lock.unlock_irqrestore(flags);
-
-  /* Annoyingly, if we are interrupted, we need to remove the node from the linked list... */
-  if (blocker.wq.wait().interrupted()) {
-    /* We gotta remove it! Ouch! */
-    flags = cpu.sleepers_lock.lock_irqsave();
-    remove_sleep_blocker(cpu, &blocker);
-
-    cpu.sleepers_lock.unlock_irqrestore(flags);
+  if (blocker.wait().interrupted()) {
     return -EINTR;
   }
 
@@ -48,15 +64,13 @@ void check_wakeups_r(void) {
   auto now = time::now_us();
   auto &cpu = cpu::current();
 
-  struct sleep_blocker *blk = cpu.sleepers;
+  struct sleep_waiter *blk = cpu.sleepers;
   while (blk != NULL) {
     /* Grab the next now, as this node might be removed */
     auto *next = blk->next;
 
     /* If a node needs to be woken up, do it :) */
     if (blk->wakeup_us <= now) {
-      /* Gotta remove the node from the linked list */
-      remove_sleep_blocker(cpu, blk);
       /* Wake them up! */
       blk->wq.wake_up_all();
     }

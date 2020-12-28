@@ -30,7 +30,7 @@ struct processor_state {
   unsigned long ticks_per_second = 0;
 
   spinlock sleepers_lock;
-  struct sleep_blocker *sleepers = NULL;
+  struct sleep_waiter *sleepers = NULL;
 
   u32 speed_khz;
   struct thread *current_thread;
