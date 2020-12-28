@@ -65,7 +65,7 @@ static ck::string format_ntp_timestamp(ntp_ts_t ntp_timestamp) {
   char buffer[28];  // YYYY-MM-DDTHH:MM:SS.UUUUUUZ is 27 characters long.
   timeval t = timeval_from_ntp_timestamp(ntp_timestamp);
   struct tm tm;
-  gmtime_r(&t.tv_sec, &tm);
+  // gmtime_r(&t.tv_sec, &tm);
   size_t written = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%T.", &tm);
   assert(written == 20);
   written += snprintf(buffer + written, sizeof(buffer) - written, "%06d", (int)t.tv_usec);

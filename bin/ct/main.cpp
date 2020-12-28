@@ -250,9 +250,17 @@ class game_view final : public ui::view {
 
 
 
-
+#include <sys/sysbind.h>
 
 int main(int argc, char** argv) {
+
+
+	while (1) {
+		printf("usleep for 500 ms\n");
+		sysbind_usleep(500 * 1000);
+	}
+
+
   ui::application app;
 
   ui::window* win = app.new_window("Current Test (Hello World)", 120, 85);

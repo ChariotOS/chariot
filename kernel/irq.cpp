@@ -2,7 +2,7 @@
 #include <cpu.h>
 #include <map.h>
 #include <string.h>
-
+#include <sleep.h>
 #define NIRQS 130
 
 static irq::handler irq_handlers[NIRQS];
@@ -44,4 +44,6 @@ void irq::dispatch(int irq, reg_t*regs) {
   if (handler != nullptr) {
     handler(irq, regs);
   }
+
+	check_wakeups();
 }

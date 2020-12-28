@@ -254,6 +254,17 @@ struct __remove_reference<T &&> {
 
 
 /**
+ * list_for_each_entry	-	iterate over list of given type
+ * @pos:	the type * to use as a loop cursor.
+ * @head:	the head for your list.
+ * @member:	the name of the list_struct within the struct.
+ */
+#define list_for_each_entry(pos, head, member)				\
+	for (pos = list_entry((head)->next, __decltype(*pos), member);	\
+	     __builtin_prefetch((pos->member.next), 0, 1), &pos->member != (head); 	\
+	     pos = list_entry(pos->member.next, __decltype(*pos), member))
+
+/**
  * list_for_each_entry_safe - iterate over list of given type safe against removal of list entry
  * @pos:	the type * to use as a loop cursor.
  * @n:		another type * to use as temporary storage

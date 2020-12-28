@@ -232,19 +232,6 @@ struct thread_waitqueue_info {
 };
 
 
-struct thread_blocker {
-  virtual ~thread_blocker(void) {}
-  virtual bool should_unblock(struct thread &t, unsigned long now_us) = 0;
-};
-
-struct sleep_blocker final : public thread_blocker {
-  // the end time to wait until.
-  unsigned long end_us = 0;
-
-  sleep_blocker(unsigned long us_to_sleep);
-  virtual ~sleep_blocker(void) {}
-  virtual bool should_unblock(struct thread &t, unsigned long now_us);
-};
 
 struct thread final {
   pid_t tid;  // unique thread id
@@ -266,10 +253,6 @@ struct thread final {
 
   /* Reference to the kernel stack */
   vec<kernel_stack> stacks;
-
-
-  thread_blocker *blocker = NULL;
-
   // Masks are per-thread
   struct {
     unsigned long pending = 0;
@@ -320,25 +303,6 @@ struct thread final {
                                 // reaped by the parent or another thread
     };
   };
-
-
-#define BLOCKRES_NORMAL 0
-#define BLOCKRES_SIGNAL 1
-#define BLOCKRES_DEATH 2
-
-  template <typename T, class... Args>
-  [[nodiscard]] int block(Args &&...args) {
-    T t(forward<Args>(args)...);
-    blocker = &t;
-
-    sched::block();
-
-    // remove the blocker
-    blocker = NULL;
-    return BLOCKRES_NORMAL;
-  }
-
-
 
 
   void setup_stack(reg_t *);

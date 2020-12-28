@@ -53,8 +53,9 @@ int gettimeofday(struct timeval *tv, void *idklol) {
 
 
 
-inline int is_leap_year(int year) { return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0); }
-inline unsigned days_in_year(int year) { return 365 + is_leap_year(year); }
+int is_leap_year(int year) { return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0); }
+
+unsigned days_in_year(int year) { return 365 + is_leap_year(year); }
 
 static int day_of_year(int year, unsigned month, int day) {
   assert(month >= 1 && month <= 12);

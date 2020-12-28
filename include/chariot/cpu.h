@@ -2,6 +2,7 @@
 
 #include <lock.h>
 #include <sched.h>
+#include <sleep.h>
 #include <types.h>
 
 struct kstat_cpu {
@@ -28,8 +29,8 @@ struct processor_state {
   bool timekeeper = false;
   unsigned long ticks_per_second = 0;
 
-  // cl_deque<struct thread *> *local_queue = NULL;
-
+  spinlock sleepers_lock;
+  struct sleep_blocker *sleepers = NULL;
 
   u32 speed_khz;
   struct thread *current_thread;
@@ -67,6 +68,6 @@ namespace cpu {
   inline u64 get_ticks(void) { return current().kstat.ticks; }
 
 
-	int nproc(void);
+  int nproc(void);
 
 }  // namespace cpu

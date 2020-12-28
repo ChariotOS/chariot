@@ -8,7 +8,7 @@
 #include <time.h>
 #include <wait.h>
 #include "../../arch/x86/fpu.h"
-
+#include <sleep.h>
 
 #define SIG_ERR ((void (*)(int)) - 1)
 #define SIG_DFL ((void (*)(int))0)
@@ -365,26 +365,10 @@ void sched::before_iret(bool userspace) {
   }
 }
 
-sleep_blocker::sleep_blocker(unsigned long us_to_sleep) {
-  auto now = time::now_us();
-  end_us = now + us_to_sleep;
-  // printk("waiting %zuus from %zu till %zu\n", us_to_sleep, now, end_us);
-}
-
-bool sleep_blocker::should_unblock(struct thread &t, unsigned long now_us) {
-  bool ready = now_us >= end_us;
-
-  if (ready) {
-    // printk("accuracy: %zdus\n", (long)now_us - (long)end_us);
-  } else {
-    // printk("time to go %zuus\n", end_us - now_us);
-  }
-
-  return ready;
-}
 
 int sys::usleep(unsigned long n) {
-  if (1) {
+	/* If the microseconds is less than one millisecond, busy loop... lol */
+  if (n < 1000 * 1) {
     unsigned long end = time::now_us() + n;
     while (1) {
       if (time::now_us() >= end) break;
@@ -392,5 +376,5 @@ int sys::usleep(unsigned long n) {
     }
     return 0;
   }
-  return 0;
+	return do_usleep(n);
 }
