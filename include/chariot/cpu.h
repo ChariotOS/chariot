@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cl_deque.h>
 #include <lock.h>
 #include <sched.h>
 #include <types.h>
@@ -15,7 +14,9 @@ struct kstat_cpu {
   unsigned long tsc_per_tick = 0;
 };
 
-struct cpu_t {
+
+/* This state is a local state to each processor */
+struct processor_state {
   void *local;
   int cpunum;
 
@@ -27,7 +28,7 @@ struct cpu_t {
   bool timekeeper = false;
   unsigned long ticks_per_second = 0;
 
-  cl_deque<struct thread *> *local_queue = NULL;
+  // cl_deque<struct thread *> *local_queue = NULL;
 
 
   u32 speed_khz;
@@ -39,7 +40,7 @@ struct cpu_t {
 };
 
 extern int cpunum;
-extern cpu_t cpus[CONFIG_MAX_CPUS];
+extern struct processor_state cpus[CONFIG_MAX_CPUS];
 
 // Nice macros to allow cleaner access to the current task and proc
 #define curthd cpu::thread()
@@ -47,8 +48,7 @@ extern cpu_t cpus[CONFIG_MAX_CPUS];
 
 namespace cpu {
 
-  // return the current cpu struct
-  cpu_t *get(void);
+  struct processor_state *get(void);
 
   struct process *proc(void);
 
@@ -60,7 +60,7 @@ namespace cpu {
   /**
    * These functions are all implemented in the arch directory
    */
-  cpu_t &current(void);
+  struct processor_state &current(void);
   // setup CPU segment descriptors, run once per cpu
   void seginit(void *local = nullptr);
   void switch_vm(struct thread *);
@@ -68,13 +68,5 @@ namespace cpu {
 
 
 	int nproc(void);
-
-  inline auto &local_queue(void) {
-    auto &cpu = current();
-    if (cpu.local_queue == NULL) {
-      cpu.local_queue = new cl_deque<struct thread *>();
-    }
-    return *cpu.local_queue;
-  }
 
 }  // namespace cpu

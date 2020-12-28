@@ -311,6 +311,11 @@ int main(int argc, char **argv) {
   }
 #endif
 
+#ifdef CONFIG_SIMPLE_INIT
+
+	 system("/bin/sh");
+
+#else
 
   FILE *loadorder = fopen("/cfg/srv/loadorder", "r");
 
@@ -356,6 +361,8 @@ int main(int argc, char **argv) {
 
     fclose(loadorder);
   }
+
+#endif
 
   while (1) {
     pid_t reaped = waitpid(-1, NULL, 0);

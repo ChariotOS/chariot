@@ -139,7 +139,7 @@ config USERSPACE
 	default y
 
 
-menu "Graphics Library"
+menu "Userspace Configuration"
 	depends on USERSPACE
 
 	
@@ -150,6 +150,11 @@ menu "Graphics Library"
 
 	config GFX_FONT_MONO
 		bool "Monochrome font (no blending)"
+		default n
+
+
+	config SIMPLE_INIT
+		bool "Simple init (Only launch a shell, no services)"
 		default n
 
 endmenu

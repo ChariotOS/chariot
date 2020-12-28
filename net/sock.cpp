@@ -147,7 +147,7 @@ ssize_t sys::sendto(int sockfd, const void *buf, size_t len, int flags, const st
     }
   }
 
-  ref<fs::file> file = curproc->get_fd(sockfd);
+  ref<fs::file> file = fget(sockfd);
 
 
   // printk("[%3d] sendto as '%s'\n", curproc->pid, file->pflags == PFLAGS_CLIENT ? "client" : "server");
@@ -172,7 +172,7 @@ ssize_t sys::recvfrom(int sockfd, void *buf, size_t len, int flags, const struct
     }
   }
 
-  ref<fs::file> file = curproc->get_fd(sockfd);
+  ref<fs::file> file = fget(sockfd);
 
 
   // printk("[%3d] recvfrom as '%s'\n", curproc->pid, file->pflags == PFLAGS_CLIENT ? "client" : "server");
@@ -193,7 +193,7 @@ int sys::bind(int sockfd, const struct sockaddr *addr, size_t len) {
     return -EINVAL;
   }
 
-  ref<fs::file> file = curproc->get_fd(sockfd);
+  ref<fs::file> file = fget(sockfd);
   ssize_t res = -EINVAL;
   if (file) {
     if (file->ino->type == T_SOCK) {
@@ -212,7 +212,7 @@ int sys::accept(int sockfd, struct sockaddr *addr, size_t addrlen) {
     return -EINVAL;
   }
 
-  ref<fs::file> file = curproc->get_fd(sockfd);
+  ref<fs::file> file = fget(sockfd);
   ssize_t res = -EINVAL;
   if (file) {
     if (file->ino->type == T_SOCK) {
@@ -248,7 +248,7 @@ int sys::connect(int sockfd, const struct sockaddr *addr, size_t len) {
   }
 
 
-  ref<fs::file> file = curproc->get_fd(sockfd);
+  ref<fs::file> file = fget(sockfd);
   ssize_t res = -EINVAL;
   if (file) {
     if (file->ino->type == T_SOCK) {

@@ -44,9 +44,9 @@ int main(int argc, char **argv) {
 
 
 
-  ck::command term("term");
-  term.start();
-  term.leak();
+  // ck::command term("term");
+  // term.start();
+  // term.leak();
 
   // run the loop
   loop.start();

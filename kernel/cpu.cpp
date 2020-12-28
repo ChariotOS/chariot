@@ -9,12 +9,12 @@
 
 
 
-cpu_t cpus[CONFIG_MAX_CPUS];
+struct processor_state cpus[CONFIG_MAX_CPUS];
 int cpunum = 0;
 
 int cpu::nproc(void) { return cpunum; }
 
-cpu_t *cpu::get() { return &cpu::current(); }
+struct processor_state *cpu::get() { return &cpu::current(); }
 
 struct process *cpu::proc(void) {
   if (curthd == NULL) return NULL;

@@ -25,6 +25,7 @@ static ck::timer *next_timer(void) {
   ck::timer *n = NULL;
 
   for (auto *t : s_timers) {
+		printf("t: %lld\n", t->next_fire());
     if (n == NULL) {
       n = t;
     } else {

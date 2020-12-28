@@ -5,8 +5,8 @@
 #include "msr.h"
 #include "smp.h"
 
-extern "C" cpu_t *__get_cpu_struct(void);
-extern "C" void __set_cpu_struct(cpu_t *);
+extern "C" struct processor_state *__get_cpu_struct(void);
+extern "C" void __set_cpu_struct(struct processor_state *);
 
 extern "C" void wrmsr(u32 msr, u64 val);
 
@@ -71,7 +71,7 @@ void cpu::seginit(void *local) {
   wrmsr(GS_BASE_MSR, ((u64)local) + (PGSIZE / 2));
 
   // zero out the CPU
-  cpu_t *c = &cpus[cpunum++];
+  struct processor_state *c = &cpus[cpunum++];
   __set_cpu_struct(c);
 
   memset(c, 0, sizeof(*c));
@@ -147,7 +147,7 @@ void cpu::switch_vm(struct thread *thd) {
   if (thd->tls_uaddr != 0) wrmsr(FS_BASE_MSR, thd->tls_uaddr);
 }
 
-cpu_t &cpu::current() {
-  cpu_t *c = __get_cpu_struct();
+struct processor_state &cpu::current() {
+  struct processor_state *c = __get_cpu_struct();
   return *c;
 }

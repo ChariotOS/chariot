@@ -2,6 +2,9 @@
 
 #pragma once
 
+
+#ifdef __cplusplus
+
 #include "ptr.h"
 
 #include <func.h>
@@ -47,7 +50,7 @@ struct sigaction {
 
 namespace sched {
   void block();
-	void unblock(thread &, bool interrupt = false);
+  void unblock(thread &, bool interrupt = false);
 
   using impl = sched::round_robin;
 }  // namespace sched
@@ -166,9 +169,9 @@ struct process final : public refcounted<struct process> {
   map<int, ref<fs::file>> open_files;
 
 
-	spinlock futex_lock;
-	wait_queue &futex_queue(int *);
-	map<off_t, unique_ptr<wait_queue>> m_futex_queues;
+  spinlock futex_lock;
+  wait_queue &futex_queue(int *);
+  map<off_t, unique_ptr<wait_queue>> m_futex_queues;
 
   /**
    * exec() - execute a command (implementation for startpid())
@@ -292,15 +295,15 @@ struct thread final {
   struct thread_waitqueue_info wq;
 
 
-	// Threads who are joining on this thread.
-	wait_queue joiners;
-	/* This is simply a flag. Locked when someone is joining (tearing down) this thread.
-	 * Other threads attempt to lock it. If the lock is already held, fail "successfully"
-	 */
-	spinlock joinlock;
+  // Threads who are joining on this thread.
+  wait_queue joiners;
+  /* This is simply a flag. Locked when someone is joining (tearing down) this thread.
+   * Other threads attempt to lock it. If the lock is already held, fail "successfully"
+   */
+  spinlock joinlock;
 
 
-	struct list_head blocked_threads;
+  struct list_head blocked_threads;
 
   off_t tls_uaddr;
   size_t tls_usize;
@@ -324,7 +327,7 @@ struct thread final {
 #define BLOCKRES_DEATH 2
 
   template <typename T, class... Args>
-  [[nodiscard]] int block(Args &&... args) {
+  [[nodiscard]] int block(Args &&...args) {
     T t(forward<Args>(args)...);
     blocker = &t;
 
@@ -451,3 +454,4 @@ namespace sched {
 
 }  // namespace sched
 
+#endif

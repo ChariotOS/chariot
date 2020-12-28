@@ -444,6 +444,9 @@ namespace fs {
 
 };  // namespace fs
 
+
+#define fget(fd) (curproc->get_fd((fd)))
+
 static inline fs::inode *geti(fs::inode *i) { return fs::inode::acquire(i); }
 
 
