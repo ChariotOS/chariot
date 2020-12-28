@@ -189,9 +189,6 @@ int e1000_daemon(void *) {
 
 static spinlock send_lock;
 static err_t e1000_netif_linkoutput(struct netif *netif, struct pbuf *p) {
-  printk("E1000 Link output!\n");
-  hexdump(p->payload, p->len, true);
-
 
   tx_index = read_command(E1000_REG_TXDESCTAIL);
 
