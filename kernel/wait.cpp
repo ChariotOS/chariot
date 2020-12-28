@@ -1,6 +1,14 @@
 #include <cpu.h>
+#include <errno.h>
 #include <wait.h>
 
+#ifndef container_of
+#define container_of(ptr, type, member)                    \
+  ({                                                       \
+    const __decltype(((type *)0)->member) *__mptr = (ptr); \
+    (type *)((char *)__mptr - offsetof(type, member));     \
+  })
+#endif
 
 wait_entry::wait_entry() {
   wq = NULL;
@@ -32,12 +40,13 @@ void wait_queue::wake_up_common(unsigned int mode, int nr_exclusive, int wake_fl
 wait_result wait_queue::wait(struct wait_entry *ent, int state) {
   assert(ent->wq == NULL);
 
-  sched::set_state(state);
 
   unsigned long flags;
   ent->wq = this;
   ent->flags &= ~WQ_FLAG_EXCLUSIVE;
   flags = lock.lock_irqsave();
+  sched::set_state(state);
+
   task_list.add(&ent->item);
   lock.unlock_irqrestore(flags);
 
@@ -57,12 +66,13 @@ wait_result wait_queue::wait(void) {
 wait_result wait_queue::wait_exclusive(struct wait_entry *ent, int state) {
   assert(ent->wq == NULL);
 
-  sched::set_state(state);
 
   unsigned long flags;
   ent->wq = this;
   ent->flags |= WQ_FLAG_EXCLUSIVE;
   flags = lock.lock_irqsave();
+  sched::set_state(state);
+
   task_list.add_tail(&ent->item);
   lock.unlock_irqrestore(flags);
 
@@ -101,6 +111,24 @@ void wait_queue::finish(struct wait_entry *e) {
 }
 
 
+
+wait_result wait_queue::wait_timeout(long long us) {
+  sleep_waiter sw(us);
+  wait_queue *queues[2];
+
+  queues[0] = &sw.wq;
+  queues[1] = this;
+
+  int result = multi_wait(queues, 2);
+
+  if (result == -EINTR) return wait_result(WAIT_RES_INTR);
+
+  if (result == 0) return wait_result(WAIT_RES_TIMEOUT);
+
+  return wait_result(0);
+}
+
+
 bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync, void *key) {
   bool ret = true;
 
@@ -113,4 +141,79 @@ bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync,
   entry->flags |= WQ_FLAG_RUDELY;
   if (ret) entry->item.del_init();
   return ret;
+}
+
+
+
+struct multi_wake_entry {
+  struct wait_entry entry;
+  int index;
+  /* Was this the entry that was awoken? */
+  bool awoken = false;
+};
+
+
+bool multi_wait_wake_function(struct wait_entry *entry, unsigned mode, int sync, void *key) {
+  struct multi_wake_entry *e = container_of(entry, struct multi_wake_entry, entry);
+  e->awoken = true;
+
+  return autoremove_wake_function(entry, mode, sync, key);
+}
+
+int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive) {
+  struct multi_wake_entry ents[nqueues];  // I know, variable stack arrays are bad. Whatever, I wrote all this code.
+
+  /* First, we must go through each of the queues and take their lock.
+   * We have to do this first becasue we can't contend the lock while in the  */
+  for (int i = 0; i < nqueues; i++) {
+    auto *wq = queues[i];
+    wq->lock.lock();
+    ents[i].entry.wq = wq;
+    ents[i].index = i;
+    ents[i].entry.func = multi_wait_wake_function;
+    if (exclusive) {
+      ents[i].entry.flags = WQ_FLAG_EXCLUSIVE;
+    }
+  }
+
+  /* Set the process state now that we have all the locks. This means we won't be interrupted */
+  sched::set_state(PS_INTERRUPTIBLE);
+
+  /* Now, we go through each of the waitqueues and add our entries to them */
+  for (int i = 0; i < nqueues; i++) {
+    auto *wq = queues[i];
+    auto &ent = ents[i].entry;
+    wq->task_list.add(&ent.item);
+  }
+
+  /* Unlock each of the waitqueues now that we have added each of the entries */
+  for (int i = 0; i < nqueues; i++) {
+    auto *wq = queues[i];
+    wq->lock.unlock();
+  }
+
+  /* Yield (block) with the new process state. */
+  sched::yield();
+
+  /* Which of the queues was awoken? If -1, we were interrupted */
+  int which = -1;
+
+  /* Figure out which queue */
+  for (int i = 0; i < nqueues; i++) {
+    auto &ent = ents[i];
+    if (ent.awoken) {
+      which = i;
+      /* If we were awoken, but also interrupted, break with -1  */
+      if (wait_result(ent.entry.result).interrupted()) {
+        which = -1;
+        break;
+      }
+      break;
+    }
+  }
+
+
+  if (which == -1) return -EINTR;
+
+  return which;
 }

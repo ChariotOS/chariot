@@ -104,20 +104,15 @@ u32_t sys_arch_mbox_fetch(sys_mbox_t *mb, void **msg, u32_t timeout) {
   // TODO: we actually need to timeout...
 
   auto start = time::now_ms();
-  if (msg) *msg = NULL;
-  if (timeout) {
-    while (time::now_ms() - start < timeout) {
-      if (mb->ch->avail()) {
-        *msg = mb->ch->recv();
-        break;
-      }
-      arch_relax();
-      arch_halt();
-      sched::yield();
+  if (msg) {
+    *msg = NULL;
+    if (timeout) {
+      mb->ch->recv_timeout(timeout * 1000, msg);
+    } else {
+      *msg = mb->ch->recv();
     }
-  } else {
-    *msg = mb->ch->recv();
   }
+
 
   if (timeout == 0) return 1;
 

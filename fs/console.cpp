@@ -37,7 +37,7 @@ static struct console_tty ctty;
 static void consputc(int c, bool debug = false) {
   if (debug || true) {
     if (c == CONS_DEL) {
-			serial_send(1, '\b');
+      serial_send(1, '\b');
       serial_send(1, ' ');
       serial_send(1, '\b');
     } else {
@@ -108,7 +108,9 @@ static void console_close(fs::file& fd) { /* KINFO("[console] close!\n"); */
 }
 
 
-static int console_poll(fs::file& fd, int events) { return console_fifo.poll() & events & AWAITFS_READ; }
+static int console_poll(fs::file& fd, int events, poll_table& pt) {
+  return console_fifo.poll(pt) & events & AWAITFS_READ;
+}
 
 struct fs::file_operations console_ops = {
     .read = console_read,

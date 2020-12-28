@@ -20,17 +20,17 @@ static ssize_t pts_write(fs::file &f, const char *dst, size_t sz);
 static int pts_ioctl(fs::file &f, unsigned int cmd, off_t arg);
 static ssize_t mx_read(fs::file &f, char *dst, size_t sz);
 static ssize_t mx_write(fs::file &f, const char *dst, size_t sz);
-static int pts_poll(fs::file &f, int events);
+static int pts_poll(fs::file &f, int events, poll_table &pt);
 
 
 void pty::write_in(char c) {
-	DBG("pts::write_in '%c'\n", c);
+  DBG("pts::write_in '%c'\n", c);
   //
   in.write(&c, 1, true);
 }
 
 void pty::write_out(char c, bool block) {
-	DBG("pts::write_out '%c'\n", c);
+  DBG("pts::write_out '%c'\n", c);
   //
   out.write(&c, 1, block);
 }
@@ -132,15 +132,15 @@ static ssize_t mx_write(fs::file &f, const char *dst, size_t sz) {
 
 
 
-static int pts_poll(fs::file &f, int events) {
+static int pts_poll(fs::file &f, int events, poll_table &pt) {
   auto pts = getpts(f.ino->minor);
-  return pts->in.poll() & events & AWAITFS_READ;
+  return pts->in.poll(pt) & events & AWAITFS_READ;
 }
 
 
-static int mx_poll(fs::file &f, int events) {
+static int mx_poll(fs::file &f, int events, poll_table &pt) {
   auto pts = getpts(f.pflags);
-  return pts->out.poll() & events & AWAITFS_READ;
+  return pts->out.poll(pt) & events & AWAITFS_READ;
 }
 
 static int mx_open(fs::file &f) {

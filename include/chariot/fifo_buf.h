@@ -6,6 +6,7 @@
 #include <vec.h>
 #include <wait.h>
 #include <awaitfs.h>
+#include <fs.h>
 
 class fifo_buf {
  public:
@@ -17,10 +18,10 @@ class fifo_buf {
 	}
 
   ssize_t write(const void *, ssize_t, bool block = false);
-  ssize_t read(void *, ssize_t, bool block = true);
+  ssize_t read(void *, ssize_t, bool block = true, long long timeout_us = -1);
   inline int size(void) { return unread(); }
 	void close();
-	int poll();
+	int poll(poll_table &pt);
 	void stats(size_t &avail, size_t &unread);
 
  private:

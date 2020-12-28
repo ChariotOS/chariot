@@ -68,10 +68,10 @@ static void sock_close(fs::file &fd) {
 }
 
 
-static int sock_poll(fs::file &fd, int events) {
+static int sock_poll(fs::file &fd, int events, poll_table &pt) {
   auto f = *fd.ino;
   if (f.sk) {
-    return f.sk->poll(fd, events);
+    return f.sk->poll(fd, events, pt);
   }
   return 0;
 }

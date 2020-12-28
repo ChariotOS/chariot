@@ -113,9 +113,9 @@ struct inode *fs::inode::get_direntry_ino(struct direntry *ent) {
   return ent->ino;
 }
 
-int fs::inode::poll(fs::file &f, int events) {
+int fs::inode::poll(fs::file &f, int events, poll_table &pt) {
 	if (fops && fops->poll) {
-		return fops->poll(f, events);
+		return fops->poll(f, events, pt);
 	}
 	return 0;
 }

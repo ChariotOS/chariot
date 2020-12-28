@@ -4,11 +4,12 @@
 #include <lock.h>
 #include <ptr.h>
 #include <types.h>
-
+#include <vec.h>
 
 bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync, void *key);
 
 #define WAIT_RES_INTR 0b00000001
+#define WAIT_RES_TIMEOUT 0b00000010
 
 struct wait_result {
  private:
@@ -18,12 +19,13 @@ struct wait_result {
   inline wait_result(uint8_t flags) : flags(flags) {}
   inline wait_result(void) : flags(0) {}
   inline bool interrupted(void) { return FIS(flags, WAIT_RES_INTR); }
+  inline bool timed_out(void) { return FIS(flags, WAIT_RES_TIMEOUT); }
 };
 
 /* these functions return if they were successful in waking or not. */
 typedef bool (*wait_entry_func_t)(struct wait_entry *wait, unsigned mode, int flags, void *key);
 struct wait_entry {
-  unsigned int flags;
+  unsigned int flags = 0;
 #define WQ_FLAG_EXCLUSIVE 0x01
 #define WQ_FLAG_RUDELY 0x02
   /* what thread does this wait entry control */
@@ -41,7 +43,7 @@ struct wait_entry {
   /* The inline list_head that is linked into the wait queue */
   struct list_head item;
 
-	int result = 0; /* WQ_RES_* flags */
+  int result = 0; /* WQ_RES_* flags */
 
   wait_entry();
   // this removes the entry from a waitqueue if there is one
@@ -89,5 +91,17 @@ struct wait_queue {
   wait_result wait(struct wait_entry *, int state);
   wait_result wait();
 
+
+  wait_result wait_timeout(long long us);
+
   void wait_noint();
 };
+
+
+/* Wait for several wait queues, returning the index of the queue that woke first, or -EINTR */
+int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive = false);
+
+inline int multi_wait(vec<wait_queue *> &queues, bool exclusive = false) {
+  /* Just forward on to the bespoke impl */
+  return multi_wait(queues.data(), queues.size(), exclusive);
+}

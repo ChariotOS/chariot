@@ -25,7 +25,6 @@ static ck::timer *next_timer(void) {
   ck::timer *n = NULL;
 
   for (auto *t : s_timers) {
-		printf("t: %lld\n", t->next_fire());
     if (n == NULL) {
       n = t;
     } else {
@@ -66,9 +65,12 @@ void ck::eventloop::start(void) {
 }
 
 
-int awaitfs(struct await_target *fds, int nfds, int flags,
-            long long timeout_time) {
-  return errno_wrap(sysbind_awaitfs(fds, nfds, flags, timeout_time));
+int awaitfs(struct await_target *fds, int nfds, int flags, long long timeout_time) {
+  int res = 0;
+  do {
+    res = sysbind_awaitfs(fds, nfds, flags, timeout_time);
+  } while (res == -EINTR);
+  return errno_wrap(res);
 }
 
 
@@ -127,9 +129,7 @@ void ck::eventloop::pump(void) {
   }
 }
 
-void ck::eventloop::post_event(ck::object &obj, ck::event *ev) {
-  m_pending.empend(obj, ev);
-}
+void ck::eventloop::post_event(ck::object &obj, ck::event *ev) { m_pending.empend(obj, ev); }
 
 void ck::eventloop::dispatch(void) {
   // printf("dispatch: %d events\n", m_pending.size());
@@ -214,10 +214,7 @@ void ck::timer::stop(void) {
 
 
 
-ck::fsnotifier::fsnotifier(int fd, int event_mask)
-    : m_fd(fd), m_ev_mask(event_mask) {
-  set_active(true);
-}
+ck::fsnotifier::fsnotifier(int fd, int event_mask) : m_fd(fd), m_ev_mask(event_mask) { set_active(true); }
 
 
 ck::fsnotifier::~fsnotifier(void) { set_active(false); }

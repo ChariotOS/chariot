@@ -2,10 +2,10 @@
 #include <cpu.h>
 #include <errno.h>
 #include <map.h>
+#include <sleep.h>
 #include <syscall.h>
 #include <time.h>
 #include <wait.h>
-
 
 using table_key_t = off_t;
 
@@ -17,7 +17,11 @@ struct await_table_entry {
   short event;
 
   int index = 0;
+  /* The table we pass to the file desc to poll */
+  poll_table pt;
 };
+
+struct await_table_metadata {};
 
 
 int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long timeout_time) {
@@ -39,41 +43,74 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long time
       entry.event = 0;
       entry.index = i;
       entry.file = file;
+
+      int immediate_events = file->ino->poll(*entry.file, entry.awaiting, entry.pt);
+      /* Optimization. If someone is already ready, return such */
+      if (immediate_events & entry.awaiting) {
+				targs[i].occurred = immediate_events;
+        return i;
+      }
+
+			// printk("poll[%d] wq: %d\n" , i, entry.pt.ents.size());
       entries.push(entry);
     }
   }
 
+  struct await_table_metadata {
+    poll_table_entry *pte;
+    await_table_entry *awe;
+  };
+  /* These are both kept in line with eachother. We just simply need a contiguous array of queues for multi_wait */
+  vec<wait_queue *> queues;
+  vec<await_table_metadata> metadata;
 
-  int index = -1;
-  unsigned long loops = 0;
-  // this probably isn't great
-  for (;;) {
-    for (auto &ent : entries) {
-      if (ent.file) {
-        int occurred = ent.file->ino->poll(*ent.file, ent.awaiting);
-        if (occurred & ent.awaiting) {
-          index = ent.index;
-          targs[index].occurred = occurred;
-          return index;
-        }
-      }
-      arch_relax();
+  for (auto &ent : entries) {
+    for (auto &p : ent.pt.ents) {
+      queues.push(p.wq);
+      metadata.push({
+          .pte = &p,
+          .awe = &ent,
+      });
     }
-
-    // do we timeout?
-    if ((long long)timeout_time > 0) {
-      long long now = time::now_ms();
-      long long timeout = timeout_time;
-      if (now >= timeout) {
-        return -ETIMEDOUT;
-      }
-    }
-
-    loops++;
-    // arch_relax();
-    arch_halt();
-    // sched::yield();
   }
 
-  return -ETIMEDOUT;
+
+  // uninitialized sleep waiter
+  sleep_waiter sw;
+	sw.cpu = NULL;
+	int timer_index = -1;
+  if ((long long)timeout_time > 0) {
+    auto now_ms = time::now_ms();
+    long long to_go = timeout_time - now_ms;
+    if (to_go < 0) {
+      return -ETIMEDOUT;
+    }
+    sw.start(to_go * 1000);
+		// printk("time to go %d\n", to_go);
+		timer_index = queues.size();
+    queues.push(&sw.wq);
+    metadata.push({NULL, NULL}); /* idk */
+  }
+
+	// printk("sleep cpu %p\n", sw.cpu);
+
+
+	// printk("multi wait with %d queues.\n", queues.size());
+	int res = multi_wait(queues, true);
+
+	if (res == -EINTR) return -EINTR;
+	/* Check for timeout */
+	if (timeout_time) {
+		if (res == timer_index) {
+			return -ETIMEDOUT;
+		}
+	}
+
+	assert(res < queues.size());
+
+	int index = metadata[res].awe->index;
+
+	/* Update the target entry */
+	targs[index].occurred = metadata[res].pte->events;
+	return index;
 }

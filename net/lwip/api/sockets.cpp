@@ -2824,4 +2824,4 @@ int net::ip4sock::bind(const struct sockaddr *addr, size_t len) {
   return translate_errno(lwip_bind(sock, addr, len));
 }
 
-int net::ip4sock::poll(fs::file &f, int events) { return 0; }
+int net::ip4sock::poll(fs::file &f, int events, poll_table &pt) { return 0; }

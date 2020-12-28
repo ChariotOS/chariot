@@ -204,11 +204,14 @@ int net::ipcsock::bind(const struct sockaddr *addr, size_t len) {
 }
 
 
-int net::ipcsock::poll(fs::file &f, int events) {
+int net::ipcsock::poll(fs::file &f, int events, poll_table &pt) {
   int res = 0;
+
 
   if (f.pflags & PFLAGS_CLIENT) {
     scoped_lock l(for_client.lock);
+
+		pt.wait(for_client.wq, AWAITFS_READ);
     if (!for_client.msgs.is_empty()) {
       res |= AWAITFS_READ;
     }
@@ -221,6 +224,8 @@ int net::ipcsock::poll(fs::file &f, int events) {
 
   if (f.pflags & PFLAGS_SERVER) {
     scoped_lock l(for_server.lock);
+
+		pt.wait(for_server.wq, AWAITFS_READ);
     if (!for_server.msgs.is_empty()) {
       res |= AWAITFS_READ;
     }
@@ -230,6 +235,6 @@ int net::ipcsock::poll(fs::file &f, int events) {
   }
 
   // pending connections are considered a read
-  res |= pending_connections.poll() & AWAITFS_READ;
+  res |= pending_connections.poll(pt) & AWAITFS_READ;
   return (res & events);
 }

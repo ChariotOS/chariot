@@ -458,8 +458,8 @@ static int kbd_open(fs::file& fd) {
 }
 static void kbd_close(fs::file& fd) { owners--; }
 
-static int kbd_poll(fs::file &fd, int events) {
-	return kbd_buf.poll() & events;
+static int kbd_poll(fs::file &fd, int events, poll_table &pt) {
+	return kbd_buf.poll(pt);
 }
 
 

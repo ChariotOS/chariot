@@ -12,6 +12,18 @@
 #include <types.h>
 #include <wait.h>
 
+struct poll_table_entry {
+  wait_queue *wq;
+  short events;
+};
+struct poll_table {
+  vec<poll_table_entry> ents;
+
+  inline void wait(wait_queue &wq, short events) { ents.push({&wq, events}); }
+};
+
+
+
 #define FDIR_READ 1
 #define FDIR_WRITE 2
 
@@ -22,11 +34,11 @@
 // fwd decl
 namespace mm {
   struct area;
-	struct vmobject;
-}
+  struct vmobject;
+}  // namespace mm
 
 namespace net {
-	struct sock;
+  struct sock;
 };
 
 namespace fs {
@@ -64,19 +76,14 @@ namespace fs {
     long count = 0;  // refcount
     spinlock lock;
 
-    inline blkdev(dev_t dev, string name, struct block_operations &ops)
-        : dev(dev), name(move(name)), ops(ops) {
+    inline blkdev(dev_t dev, string name, struct block_operations &ops) : dev(dev), name(move(name)), ops(ops) {
       ops.init(*this);
     }
 
     // nice wrappers for filesystems and all that :)
-    inline int read_block(void *data, int block) {
-      return ops.rw_block(*this, data, block, false);
-    }
+    inline int read_block(void *data, int block) { return ops.rw_block(*this, data, block, false); }
 
-    inline int write_block(void *data, int block) {
-      return ops.rw_block(*this, data, block, true);
-    }
+    inline int write_block(void *data, int block) { return ops.rw_block(*this, data, block, true); }
 
     inline static void acquire(struct blkdev *d) {
       d->lock.lock();
@@ -163,14 +170,12 @@ namespace fs {
     const char *name;
 
     // return a superblock containing the root inode
-    struct fs::superblock *(&mount)(struct sb_information *, const char *args,
-                                    int flags, const char *device);
+    struct fs::superblock *(&mount)(struct sb_information *, const char *args, int flags, const char *device);
 
     struct sb_operations &ops;
   };
 
-  struct inode *bdev_mount(struct sb_information *info, const char *args,
-                           int flags);
+  struct inode *bdev_mount(struct sb_information *info, const char *args, int flags);
 
   struct inode *open(const char *s, u32 flags, u32 opts = 0);
 
@@ -213,6 +218,8 @@ namespace fs {
     int mode;  // the octal part of a file :)
   };
 
+
+
   struct file_operations {
     // seek - used to notify of seeking. Doesn't actually seek
     //        returns -errno on failure (seek wasn't allowed)
@@ -236,14 +243,14 @@ namespace fs {
     void (*close)(fs::file &) = NULL;
 
     /* map a file into a vm area */
-		ref<mm::vmobject> (*mmap)(fs::file &, size_t npages, int prot, int flags, off_t off);
+    ref<mm::vmobject> (*mmap)(fs::file &, size_t npages, int prot, int flags, off_t off);
     // resize a file. if size is zero, it is a truncate
     int (*resize)(fs::file &, size_t);
 
     void (*destroy)(fs::inode &);
 
-		// *quickly* poll for a bitmap of events and return a bitmap of those that match
-		int (*poll)(fs::file &, int events);
+    // *quickly* poll for a bitmap of events and return a bitmap of those that match
+    int (*poll)(fs::file &, int events, poll_table &pt);
   };
 
   // wrapper functions for block devices
@@ -259,8 +266,7 @@ namespace fs {
     // lookup an inode by name in a file
     struct fs::inode *(*lookup)(fs::inode &, const char *);
     // create a device node with a major and minor number
-    int (*mknod)(fs::inode &, const char *name, struct fs::file_ownership &,
-                 int major, int minor);
+    int (*mknod)(fs::inode &, const char *name, struct fs::file_ownership &, int major, int minor);
   };
 
 
@@ -329,7 +335,7 @@ namespace fs {
     };
 
 
-		// if this inode has a socket bound to it, it will be located here.
+    // if this inode has a socket bound to it, it will be located here.
     struct net::sock *sk = NULL;
     struct net::sock *bound_socket = NULL;
 
@@ -350,7 +356,7 @@ namespace fs {
 
     struct direntry *get_direntry_raw(const char *name);
 
-		int poll(fs::file &, int events);
+    int poll(fs::file &, int events, poll_table &pt);
 
     // if the inode is a directory, set its name. NOP otherwise
     int set_name(const string &);
@@ -377,7 +383,7 @@ namespace fs {
   struct pipe : public fs::inode {
     // uid and gid are the creators of this pipe
 
-		struct wait_queue wq;
+    struct wait_queue wq;
 
     unsigned int readers;
     unsigned int writers;
@@ -403,8 +409,7 @@ namespace fs {
 
    public:
     // must construct file descriptors via these factory funcs
-    static ref<file> create(struct fs::inode *, string open_path,
-                            int flags = FDIR_READ | FDIR_WRITE);
+    static ref<file> create(struct fs::inode *, string open_path, int flags = FDIR_READ | FDIR_WRITE);
 
     /*
      * seek - change the offset
@@ -436,10 +441,10 @@ namespace fs {
     string path;
     off_t m_offset = 0;
 
-		bool can_write = false;
-		bool can_read = false;
+    bool can_write = false;
+    bool can_read = false;
 
-		int pflags = 0; // private flags. Also used to track ptmx id
+    int pflags = 0;  // private flags. Also used to track ptmx id
   };
 
 };  // namespace fs
@@ -471,7 +476,7 @@ namespace block {
 
     void register_write(void);
 
-		ref<mm::page> page(void);
+    ref<mm::page> page(void);
 
     // return the backing page data.
     void *data(void);
@@ -482,7 +487,7 @@ namespace block {
       return m_count;  // XXX: race condition (!?!?)
     }
 
-		size_t reclaim(void);
+    size_t reclaim(void);
 
    protected:
     inline static void release(struct blkdev *d) {}
@@ -499,7 +504,7 @@ namespace block {
   };
 
 
-	size_t reclaim_memory(void);
+  size_t reclaim_memory(void);
 
 };  // namespace block
 
@@ -511,35 +516,25 @@ int bwrite(fs::blkdev &, void *data, size_t size, off_t byte_offset);
 
 // reclaim some memory
 
-inline auto bget(fs::blkdev &b, off_t page) {
-  return block::buffer::get(b, page);
-}
+inline auto bget(fs::blkdev &b, off_t page) { return block::buffer::get(b, page); }
 
 // release a block
-static inline auto bput(struct block::buffer *b) {
-  return block::buffer::release(b);
-}
+static inline auto bput(struct block::buffer *b) { return block::buffer::release(b); }
 
 
 struct bref {
-	static inline bref get(fs::blkdev &b, off_t page)  {
-		return block::buffer::get(b, page);
-	}
+  static inline bref get(fs::blkdev &b, off_t page) { return block::buffer::get(b, page); }
 
-	inline bref(struct block::buffer *b) {
-		buf = b;
-	}
+  inline bref(struct block::buffer *b) { buf = b; }
 
-	inline ~bref(void) {
-		if (buf) bput(buf);
-	}
+  inline ~bref(void) {
+    if (buf) bput(buf);
+  }
 
-	inline struct block::buffer *operator->(void) {
-		return buf;
-	}
+  inline struct block::buffer *operator->(void) { return buf; }
 
-	private:
-	struct block::buffer *buf = NULL;
+ private:
+  struct block::buffer *buf = NULL;
 };
 
 #endif

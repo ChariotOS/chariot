@@ -65,7 +65,7 @@ namespace net {
     sock(int domain, int type, int proto);
     virtual ~sock(void);
 
-    inline virtual int poll(fs::file &f, int events) { return 0; }
+    inline virtual int poll(fs::file &f, int events, poll_table &pt) { return 0; }
 
     template <typename T>
     T *&priv(void) {
@@ -110,7 +110,7 @@ namespace net {
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
-    virtual int poll(fs::file &f, int events);
+    virtual int poll(fs::file &f, int events, poll_table &pt);
 
 
     void dump_stats(void);
@@ -158,7 +158,7 @@ namespace net {
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
-    virtual int poll(fs::file &f, int events);
+    virtual int poll(fs::file &f, int events, poll_table &pt);
 
 
     // the inode this (server) socket is bound to
@@ -188,7 +188,7 @@ namespace net {
    private:
     /* The socket binding */
     int sock;
-		spinlock lock;
+    spinlock lock;
 
    public:
     ip4sock(int type);
@@ -205,9 +205,9 @@ namespace net {
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
-    virtual int poll(fs::file &f, int events);
+    virtual int poll(fs::file &f, int events, poll_table &pt);
 
-		int translate_errno(int);
+    int translate_errno(int);
   };
 
 }  // namespace net

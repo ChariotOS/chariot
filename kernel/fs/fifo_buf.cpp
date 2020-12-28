@@ -3,8 +3,8 @@
 #include <fifo_buf.h>
 #include <phys.h>
 #include <sched.h>
+#include <sleep.h>
 #include <util.h>
-
 
 size_t fifo_buf::available(void) {
   if (read_ptr == write_ptr) {
@@ -100,7 +100,7 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
 }
 
 
-ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
+ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block, long long timeout_us) {
   init_if_needed();
 
 
@@ -138,11 +138,18 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block) {
       break;
     }
 
+
     if (collected == 0) {
-      if (wq_readers.wait().interrupted()) {
-        // We haven't read anything anyways, just return that there was an
-        // interrupt due to signals.
-        return -EINTR;
+      if (timeout_us != -1) {
+        auto result = wq_readers.wait_timeout(timeout_us);
+        if (result.interrupted()) return -EINTR;
+        if (result.timed_out()) return -ETIMEDOUT;
+      } else {
+        if (wq_readers.wait().interrupted()) {
+          // We haven't read anything anyways, just return that there was an
+          // interrupt due to signals.
+          return -EINTR;
+        }
       }
     }
   }
@@ -159,10 +166,12 @@ void fifo_buf::stats(size_t &avail, size_t &unread) {
 }
 
 
-
-int fifo_buf::poll(void) {
+int fifo_buf::poll(poll_table &pt) {
   // upon close, it returns AWAITFS_READ (idk, its expected)
   if (m_closed) return AWAITFS_READ;
+
+	pt.wait(wq_readers, AWAITFS_READ);
+	pt.wait(wq_writers, AWAITFS_WRITE);
 
   int ev = 0;
   lock.lock_cli();
