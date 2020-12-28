@@ -28,8 +28,11 @@ void wait_queue::wake_up_common(unsigned int mode, int nr_exclusive, int wake_fl
   }
 }
 
+
 wait_result wait_queue::wait(struct wait_entry *ent, int state) {
   assert(ent->wq == NULL);
+
+  sched::set_state(state);
 
   unsigned long flags;
   ent->wq = this;
@@ -38,7 +41,7 @@ wait_result wait_queue::wait(struct wait_entry *ent, int state) {
   task_list.add(&ent->item);
   lock.unlock_irqrestore(flags);
 
-  sched::do_yield(state);
+  sched::yield();
 
   return wait_result(ent->result);
 }
@@ -54,6 +57,7 @@ wait_result wait_queue::wait(void) {
 wait_result wait_queue::wait_exclusive(struct wait_entry *ent, int state) {
   assert(ent->wq == NULL);
 
+  sched::set_state(state);
 
   unsigned long flags;
   ent->wq = this;
@@ -62,7 +66,7 @@ wait_result wait_queue::wait_exclusive(struct wait_entry *ent, int state) {
   task_list.add_tail(&ent->item);
   lock.unlock_irqrestore(flags);
 
-  sched::do_yield(state);
+  sched::yield();
 
   return wait_result(ent->result);
 }
@@ -101,10 +105,10 @@ bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync,
   bool ret = true;
 
   sched::unblock(*entry->thd, false);
-	entry->result = 0;
-	if (entry->thd->wq.rudely_awoken) {
-		entry->result |= WAIT_RES_INTR;
-	}
+  entry->result = 0;
+  if (entry->thd->wq.rudely_awoken) {
+    entry->result |= WAIT_RES_INTR;
+  }
 
   entry->flags |= WQ_FLAG_RUDELY;
   if (ret) entry->item.del_init();

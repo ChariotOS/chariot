@@ -19,13 +19,6 @@
 #define RING_KERN 0
 #define RING_USER 3
 
-/*
-#define PS_UNRUNNABLE (-1)
-#define PS_RUNNABLE (0)
-#define PS_ZOMBIE (1)
-#define PS_BLOCKED (2)
-#define PS_EMBRYO (3)
-*/
 
 #define PS_EMBRYO (-1)
 /* The task is either actively running or is able to be run */
@@ -353,9 +346,10 @@ namespace sched {
 
   process &kernel_proc(void);
 
+	void set_state(int state);
   void yield(void);
-
   void do_yield(int status);
+
 
 
   // does not return

@@ -4,11 +4,11 @@
 #include <map.h>
 #include <sched.h>
 #include <single_list.h>
+#include <sleep.h>
 #include <syscall.h>
 #include <time.h>
 #include <wait.h>
 #include "../../arch/x86/fpu.h"
-#include <sleep.h>
 
 #define SIG_ERR ((void (*)(int)) - 1)
 #define SIG_DFL ((void (*)(int))0)
@@ -84,35 +84,34 @@ static void switch_into(struct thread &thd) {
 static spinlock blocked_threads_lock;
 static list_head blocked_threads;
 
-void sched::do_yield(int st) {
+
+void sched::yield() {
   auto &thd = *curthd;
 
   // if the old thread is now dead, notify joiners
-  if (st == PS_ZOMBIE) {
+  if (thd.state == PS_ZOMBIE) {
     thd.joiners.wake_up();
   }
 
-
   arch_disable_ints();
-
   thd.stats.cycles += arch_read_timestamp() - thd.stats.last_start_cycle;
-
-  thd.state = st;
   thd.stats.last_cpu = thd.stats.current_cpu;
   thd.stats.current_cpu = -1;
-	/*
-
-	if (thd.state == PS_INTERRUPTIBLE) {
-		blocked_threads_lock.lock();
-		blocked_threads.add_tail(&thd.blocked_threads);
-		blocked_threads_lock.unlock();
-	}
-	*/
-
   swtch(&thd.kern_context, cpu::current().sched_ctx);
-
-
   arch_enable_ints();
+}
+
+
+void sched::set_state(int state) {
+  auto &thd = *curthd;
+  thd.state = state;
+  // memory barrier!
+  asm volatile("" : : : "memory");
+}
+
+void sched::do_yield(int st) {
+  sched::set_state(st);
+  sched::yield();
 }
 
 
@@ -129,22 +128,14 @@ void sched::unblock(thread &thd, bool interrupt) {
   thd.wq.rudely_awoken = interrupt;
   thd.state = PS_RUNNING;
 
-	/*
-  blocked_threads_lock.lock();
-  // assert(!thd.blocked_threads.is_empty());
-	thd.blocked_threads.del_init();
-  blocked_threads_lock.unlock();
-	*/
+  /*
+blocked_threads_lock.lock();
+// assert(!thd.blocked_threads.is_empty());
+  thd.blocked_threads.del_init();
+blocked_threads_lock.unlock();
+  */
 }
 
-void sched::yield() {
-  // when you yield, you give up the CPU by ''using the rest of your
-  // timeslice''
-  // TODO: do this another way
-  // auto tsk = cpu::task().get();
-  // tsk->start_tick -= tsk->timeslice;
-  do_yield(PS_RUNNING);
-}
 void sched::exit() { do_yield(PS_ZOMBIE); }
 
 void sched::dumb_sleepticks(unsigned long t) {
@@ -216,6 +207,9 @@ void sched::handle_tick(u64 ticks) {
 
   // grab the current thread
   auto thd = cpu::thread();
+
+  /* We don't get preempted if we aren't currently runnable. See wait.cpp for why */
+  if (thd->state != PS_RUNNING) return;
 
   if (thd->preemptable == false) return;
 
@@ -367,7 +361,7 @@ void sched::before_iret(bool userspace) {
 
 
 int sys::usleep(unsigned long n) {
-	/* If the microseconds is less than one millisecond, busy loop... lol */
+  /* If the microseconds is less than one millisecond, busy loop... lol */
   if (n < 1000 * 1) {
     unsigned long end = time::now_us() + n;
     while (1) {
@@ -376,5 +370,5 @@ int sys::usleep(unsigned long n) {
     }
     return 0;
   }
-	return do_usleep(n);
+  return do_usleep(n);
 }
