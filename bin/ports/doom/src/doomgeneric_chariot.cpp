@@ -122,6 +122,7 @@ extern "C" void DG_Init() {
   memset(s_KeyQueue, 0, KEYQUEUE_SIZE * sizeof(unsigned short));
 
   main_window = main_app.new_window("DOOM", DOOMGENERIC_RESX, DOOMGENERIC_RESY);
+	main_window->set_theme(0x353535, 0xFFFFFF, 0x353535);
   main_window->defer_invalidation(false);
   main_widget = &main_window->set_view<doomview>();
 }
