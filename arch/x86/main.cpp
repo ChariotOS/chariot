@@ -1,3 +1,4 @@
+#include <arch.h>
 #include <asm.h>
 #include <cpu.h>
 #include <cpuid.h>
@@ -17,11 +18,10 @@
 #include <types.h>
 #include <util.h>
 #include <vga.h>
-#include "acpi/acpi.h"
 #include <x86/cpuid.h>
 #include <x86/fpu.h>
 #include <x86/smp.h>
-#include <arch.h>
+#include "acpi/acpi.h"
 
 // in src/arch/x86/sse.asm
 extern "C" void enable_sse();
@@ -79,7 +79,7 @@ static void kmain2(void) {
   irq::init();
   fpu::init();
 
-	/* Call all the global constructors */
+  /* Call all the global constructors */
   for (func_ptr *func = __init_array_start; func != __init_array_end; func++) {
     (*func)();
   }
@@ -140,6 +140,11 @@ int kernel_init(void *) {
   KINFO("kernel modules initialized\n");
 
 
+	printk(KERN_DEBUG "Kernel booted. Feel free to roam about the cabin.\n");
+
+
+#ifdef CONFIG_USERSPACE
+
   auto root_name = kargs::get("root", "/dev/ata0p1");
   assert(root_name);
 
@@ -148,9 +153,9 @@ int kernel_init(void *) {
     panic("failed to mount root. Error=%d\n", -mnt_res);
   }
 
-	/* Mount /dev and /tmp */
-	vfs::mount("none", "/dev", "devfs", 0, NULL);
-	vfs::mount("none", "/tmp", "tmpfs", 0, NULL);
+  /* Mount /dev and /tmp */
+  vfs::mount("none", "/dev", "devfs", 0, NULL);
+  vfs::mount("none", "/tmp", "tmpfs", 0, NULL);
 
   auto kproc = sched::proc::kproc();
   kproc->root = fs::inode::acquire(vfs::get_root());
@@ -172,6 +177,8 @@ int kernel_init(void *) {
     KERR("check the grub config and make sure that the init command line arg\n");
     KERR("is set to a comma seperated list of possible paths.\n");
   }
+#endif
+
 
   // yield back to scheduler, we don't really want to run this thread anymore
   while (1) {

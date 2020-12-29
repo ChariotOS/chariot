@@ -15,9 +15,6 @@ config RISCV_RAM_MB
 		risc-v doesn't seem to have an obvious way to query
 		ram count, so we have to hard code it I think (idk)
 
-config 64BIT
-	bool "64bit"
-	default y
 
 # choice
 # 	prompt "Architecture size"

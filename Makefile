@@ -9,6 +9,7 @@ ports:
 	@cd ports && ./build.sh
 
 
+cfg: menuconfig
 menuconfig:
 	@python3 tools/menuconfig.py
 
