@@ -117,11 +117,11 @@ args = [ 'fd: int', 'offset: long', 'whence: int', ]
 
 [sc.read]
 ret = 'long'
-args = [ 'fd: int', 'buf: void*', 'len: long', ]
+args = [ 'fd: int', 'buf: void*', 'len: size_t', ]
 
 [sc.write]
 ret = 'long'
-args = [ 'fd: int', 'buf: void*', 'len: long', ]
+args = [ 'fd: int', 'buf: void*', 'len: size_t', ]
 
 [sc.stat]
 ret = 'int'
@@ -200,7 +200,7 @@ args = [
 
 [sc.munmap]
 ret = 'int'
-args = [ 'addr: void*', 'length: unsigned long', ]
+args = [ 'addr: void*', 'length: size_t', ]
 
 
 [sc.mrename]

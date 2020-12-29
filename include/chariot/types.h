@@ -1,6 +1,7 @@
 #ifndef __TYPES_H__
 #define __TYPES_H__
 
+
 typedef __INT8_TYPE__ i8;
 typedef __INT8_TYPE__ int8_t;
 typedef __UINT8_TYPE__ u8;
@@ -20,9 +21,9 @@ typedef __INT64_TYPE__ i64;
 typedef __INT64_TYPE__ int64_t;
 typedef __UINT64_TYPE__ u64;
 
-typedef u64 size_t;
-typedef i64 ssize_t;
-typedef u64 off_t;
+typedef __SIZE_TYPE__ size_t;
+typedef long ssize_t;
+typedef size_t off_t;
 
 // typedef unsigned long long uint64_t;
 typedef unsigned long uint64_t;

@@ -20,15 +20,15 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   // TODO validate the pointers
   vec<string> argv;
   vec<string> envp;
-	// printk("path=%s\n", path);
+  // printk("path=%s\n", path);
   for (int i = 0; uargv[i] != NULL; i++) {
-		// printk("argv[%d] = %p\n", i, uargv[i]);
+    // printk("argv[%d] = %p\n", i, uargv[i]);
     argv.push(uargv[i]);
   }
 
   if (uenvp != NULL) {
     for (int i = 0; uenvp[i] != NULL; i++) {
-			// printk("uenvp[%d] = %p\n", i, uenvp[i]);
+      // printk("uenvp[%d] = %p\n", i, uenvp[i]);
       envp.push(uenvp[i]);
     }
   }
@@ -44,9 +44,14 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
 
   off_t entry = 0;
   auto fd = make_ref<fs::file>(exe, FDIR_READ);
+  mm::space *new_addr_space = nullptr;
 
   // allocate a new address space
-  auto *new_addr_space = new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create());
+#ifdef CONFIG_64BIT
+  new_addr_space = new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create());
+#else
+  panic("need new mm::space on 32bit system!\n");
+#endif
 
   int loaded = elf::load(path, *curproc, *new_addr_space, fd, entry);
   if (loaded < 0) {

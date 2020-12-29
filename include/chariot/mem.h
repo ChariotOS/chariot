@@ -22,8 +22,13 @@ struct mmap_info {
 
 extern bool use_kernel_vm;
 
+#ifdef CONFIG_X86
 #define v2p(addr) (void *)((u64)(addr) & ~(u64)CONFIG_KERNEL_VIRTUAL_BASE)
 #define p2v(addr) (void *)((u64)(addr) | (u64)CONFIG_KERNEL_VIRTUAL_BASE)
+#else
+#define v2p(addr) (void*)(addr)
+#define p2v(addr) (void*)(addr)
+#endif
 
 
 // placement new

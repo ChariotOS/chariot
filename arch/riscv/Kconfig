@@ -1,8 +1,33 @@
-config RISCV_MARCH
-	string "RISC-V Instruction Set"
-	default "rv64gc"
+# config RISCV_MARCH
+# 	string "RISC-V Instruction Set"
+# 	default "rv64g"
+# 
+# 
+# config RISCV_MABI
+# 	string "RISC-V ABI"
+# 	default "lp64"
 
 
-config RISCV_MABI
-	string "RISC-V ABI"
-	default "lp64"
+config RISCV_RAM_MB
+	int "RAM size"
+	default 128
+	help
+		risc-v doesn't seem to have an obvious way to query
+		ram count, so we have to hard code it I think (idk)
+
+config 64BIT
+	bool "64bit"
+	default y
+
+# choice
+# 	prompt "Architecture size"
+# 	default RISCV64
+# 
+# 	config RISCV64
+# 		bool "RISC-V 64bit"
+# 
+# 
+# 	config RISCV32
+# 		bool "RISC-V 32bit"
+# 
+# endchoice

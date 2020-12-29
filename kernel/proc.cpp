@@ -32,7 +32,14 @@ pid_t get_next_pid(void) {
   return p;
 }
 
-mm::space *alloc_user_vm(void) { return new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create()); }
+mm::space *alloc_user_vm(void) {
+#ifdef CONFIG_64BIT
+	return new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create());
+#else
+	panic("Need 32bit mm::space user vm\n");
+	return nullptr;
+#endif
+}
 
 static process::ptr pid_lookup(pid_t pid) {
   ptable_lock.read_lock();

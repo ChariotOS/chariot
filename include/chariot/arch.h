@@ -13,6 +13,11 @@
 #endif
 
 
+#ifdef CONFIG_RISCV
+/* not sure if we need this yet or not... */
+// #include <riscv/arch.h>
+#endif
+
 
 
 /*

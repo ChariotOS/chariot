@@ -1,1 +1,4 @@
 # TODO:
+config KERNEL_VIRTUAL_BASE
+	hex "(expert) Kernel Virtual base address"
+	default ffff880000000000

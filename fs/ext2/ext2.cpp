@@ -216,7 +216,7 @@ long fs::ext2::allocate_inode(void) {
 
 
 
-u32 fs::ext2::balloc(void) {
+uint32_t fs::ext2::balloc(void) {
   scoped_lock l(bglock);
 
   unsigned int block_no = 0;
@@ -278,7 +278,7 @@ u32 fs::ext2::balloc(void) {
 
 
 
-void fs::ext2::bfree(u32 block) {
+void fs::ext2::bfree(uint32_t block) {
   scoped_lock l(m_lock);
 
   //

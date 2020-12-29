@@ -144,5 +144,11 @@ void srand(unsigned s) { rand_seed = s - 1; }
 
 int rand(void) {
   rand_seed = 6364136223846793005ULL * rand_seed + 1;
+
+#ifdef CONFIG_64BIG
   return rand_seed >> 33;
+#else
+	/* hmm, gotta figure out the reasoning for this */
+	return rand_seed;
+#endif
 }

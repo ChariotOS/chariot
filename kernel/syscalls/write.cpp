@@ -1,7 +1,7 @@
 #include <cpu.h>
 #include <syscall.h>
 
-ssize_t sys::write(int fd, void *data, long len) {
+ssize_t sys::write(int fd, void *data, size_t len) {
   int n = -1;
 
   if (!curproc->mm->validate_pointer(data, len, PROT_READ))

@@ -43,11 +43,6 @@ menu "Platform Configuration"
 			Specifies the maximum number of hardware CPUs supported by Chariot
 			For uniprocessor environments, set this to 1
 
-
-	config KERNEL_VIRTUAL_BASE
-		hex "(expert) Kernel Virtual base address"
-		default ffff880000000000
-
 	config SMP
 		bool "Symmetric multi-processing support"
 		default y

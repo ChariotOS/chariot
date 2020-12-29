@@ -22,7 +22,24 @@ SECTIONS
     PROVIDE(_text_end = .);
   }
 
+
   PROVIDE(_global_pointer = .);
+
+	.init_array : {
+		__init_array_start = .;
+		KEEP (*(.init_array*))
+    KEEP (*(.ctors))
+		__init_array_end = .;
+	}
+
+	/* Include the list of termination functions sorted. */
+	.fini_array :	{
+		__fini_array_start = .;
+		KEEP (*(.fini_array*))
+    KEEP (*(.dtors))
+		__fini_array_end = .;
+	}
+
   .rodata : {
     PROVIDE(_rodata_start = .);
     *(.rodata .rodata.*)
@@ -49,7 +66,12 @@ SECTIONS
 	}
 
 	/* This is the boot stack */
-	PROVIDE(_stack = _bss_end + 0x80000);
-
+	. = ALIGN(PAGE_SIZE);
+	PROVIDE(_stack_start = .);
+	. += 0x10000;
+	PROVIDE(_stack = .);
+	/* This should be aligned, but you can't be too safe */
+	. = ALIGN(PAGE_SIZE);
+  PROVIDE(_kernel_end = .); 
 
 }

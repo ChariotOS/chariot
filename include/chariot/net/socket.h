@@ -6,8 +6,10 @@
 extern "C" {
 #endif
 
+#include <types.h>
+
 typedef unsigned short sa_family_t;
-typedef unsigned long socklen_t;
+typedef size_t socklen_t;
 
 
 struct sockaddr {

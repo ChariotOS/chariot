@@ -11,12 +11,7 @@
 
 .global _start
 _start:
-	# j _start
-	# Any hardware threads (hart) that are not bootstrapping
-	# need to wait for an IPI
-	csrr	t0, mhartid
-	bnez	t0, 3f
-	# SATP should be zero, but let's make sure
+	# Paging *should* be disabled, but lets just make sure anyways
 	csrw	satp, zero
 	
 	# Disable linker instruction relaxation for the `la` instruction below.
@@ -26,21 +21,23 @@ _start:
 .option norelax
 	la		gp, _global_pointer
 .option pop
-	# Set all bytes in the BSS section to zero.
-	la 		a0, _bss_start
-	la		a1, _bss_end
-	bgeu	a0, a1, 2f
-1:
-	sd		zero, (a0)
-	addi	a0, a0, 8
-	bltu	a0, a1, 1b
-2:
+
 	# Control registers, set the stack, mstatus, mepc,
 	# and mtvec to return to the main function.
 	# li		t5, 0xffff;
 	# csrw	medeleg, t5
 	# csrw	mideleg, t5
-	la		sp, _stack
+
+
+	# we calculate the starting stack by _stack_start + (2*4096 * (mhartid + 1))
+  # so each HART gets 2 pages of stack
+	la    sp, _stack_start
+	li    t0, 2 * 4096 # 2 page stack
+	csrr  t1, mhartid
+  addi  t1, t1, 1 # t1 = mhartid + 1
+	mul   t0, t0, t1 # t1 = SIZE * (mhartid + 1)
+	add   sp, sp, t0 # sp = stack_start + (SIZE * (mhartid + 1))
+
 	# Setting `mstatus` register:
 	# 0b11 << 11: Machine's previous protection mode is 3 (MPP=3).
 	# 1 << 7    : Machine's previous interrupt-enable bit is 1 (MPIE=1).
@@ -48,7 +45,10 @@ _start:
 	li		t0, (0b11 << 11) | (1 << 7) | (1 << 3)
 	csrw	mstatus, t0
 	# Machine's exception program counter (MEPC) is set to `kmain`.
-	la		t1, kmain
+	# the mepc register is the "return address" from the exception, so
+	# we are essentially "returning to" SAA (supervisor mode) from the current
+  # MAA (machine mode) using mret
+	la		t1, kstart
 	csrw	mepc, t1
 	# Machine's trap vector base address is set to `asm_trap_vector`.
 	la		t2, asm_trap_vector
@@ -59,25 +59,13 @@ _start:
 	# 1 << 11: Machine's external interrupt-enable bit is 1 (MEIE=1).
 	li		t3, (1 << 3) | (1 << 7) | (1 << 11)
 	csrw	mie, t3
-	# Set the return address to infinitely wait for interrupts.
-	la		ra, 4f
+
 	# We use mret here so that the mstatus register is properly updated.
 	mret
-3:
-
-	# Parked harts go here. We need to set these
-	# to only awaken if it receives a software interrupt,
-	# which we're going to call the SIPI (Software Intra-Processor Interrupt).
-	# We only use these to run user-space programs, although this may
-	# change.
-4:
-	wfi
-	j		4b
 
 
-
-.global asm_trap_vector
 # This will be our trap vector when we start
-# handling interrupts. For now, 
+# handling interrupts. For now, do nothing
+.global asm_trap_vector
 asm_trap_vector:
 	mret

@@ -3,7 +3,7 @@
 
 make || exit 1
 
-QEMU_FLAGS="-machine virt -cpu rv64 -smp 1 -m 128M "
+QEMU_FLAGS="-machine virt -cpu rv64 -smp 4 -m 128M "
 QEMU_FLAGS+="-kernel build/root/bin/chariot.elf "
 # No graphics and output serial to the tty :^)
 QEMU_FLAGS+="-nographic -serial mon:stdio -bios none "

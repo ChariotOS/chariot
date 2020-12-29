@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/sysinfo.h>
+#include <sys/netdb.h>
 #else
 #include <types.h>
 #endif
@@ -30,8 +31,8 @@ int sysbind_prctl(int option, unsigned long arg1, unsigned long arg2, unsigned l
 int sysbind_open(const char * path, int flags, int mode);
 int sysbind_close(int fd);
 long sysbind_lseek(int fd, long offset, int whence);
-long sysbind_read(int fd, void* buf, long len);
-long sysbind_write(int fd, void* buf, long len);
+long sysbind_read(int fd, void* buf, size_t len);
+long sysbind_write(int fd, void* buf, size_t len);
 int sysbind_stat(const char* pathname, struct stat* statbuf);
 int sysbind_fstat(int fd, struct stat* statbuf);
 int sysbind_lstat(const char* pathname, struct stat* statbuf);
@@ -50,7 +51,7 @@ int sysbind_geteuid();
 int sysbind_getgid();
 int sysbind_getegid();
 void* sysbind_mmap(void * addr, long length, int prot, int flags, int fd, long offset);
-int sysbind_munmap(void* addr, unsigned long length);
+int sysbind_munmap(void* addr, size_t length);
 int sysbind_mrename(void * addr, char* name);
 int sysbind_mgetname(void* addr, char* name, size_t sz);
 int sysbind_mregions(struct mmap_region * regions, int nregions);

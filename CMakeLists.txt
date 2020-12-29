@@ -54,9 +54,19 @@ endif()
 
 
 if (CONFIG_RISCV)
-	set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/riscv64-elf-)
 
-	set(CMAKE_SYSTEM_PROCESSOR riscv64)
+
+	if(CONFIG_64BIT)
+		set(RISCV_PREFIX "riscv64")
+		set(RISCV_BITS "64")
+	else()
+		set(RISCV_PREFIX "riscv")
+		set(RISCV_BITS "32")
+	endif()
+
+	set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/${RISCV_PREFIX}-elf-)
+
+	set(CMAKE_SYSTEM_PROCESSOR ${RISCV_PREFIX})
 	set(CHARIOT_ARCH riscv)
 endif()
 

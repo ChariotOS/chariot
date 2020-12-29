@@ -2,7 +2,7 @@
 #include <syscall.h>
 #include <util.h>
 
-ssize_t sys::read(int fd, void *data, long len) {
+ssize_t sys::read(int fd, void *data, size_t len) {
   int n = -1;
 
   if (!curproc->mm->validate_pointer(data, len, PROT_WRITE)) return -1;

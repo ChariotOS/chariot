@@ -1,11 +1,17 @@
 #include <arch.h>
 #include <cpu.h>
-
+#include <riscv/arch.h>
+#include <riscv/plic.h>
 
 void arch_disable_ints(void) {}
 void arch_enable_ints(void) {}
 void arch_relax(void) {}
-void arch_halt() {}
+
+/* Simply wait for an interrupt :) */
+void arch_halt() {
+	asm volatile("wfi");
+}
+
 void arch_mem_init(unsigned long mbd) {}
 void arch_initialize_trapframe(bool userspace, reg_t *) {}
 unsigned arch_trapframe_size(void) { return 0; }
@@ -15,18 +21,30 @@ void arch_sigreturn(void) {}
 void arch_flush_mmu(void) {}
 void arch_save_fpu(struct thread &) {}
 void arch_restore_fpu(struct thread &) {}
-unsigned long arch_read_timestamp(void) { return 0; }
 
-static struct processor_state dummy;
+
+unsigned long arch_read_timestamp(void) {
+	rv::xsize_t x;
+	asm volatile("csrr %0, time" : "=r"(x));
+	return x;
+}
+
+/*
+ * Just offset into the cpu array with mhartid :^). I love this arch.
+ * No need for bloated thread pointer bogus or nothin'
+ */
 struct processor_state &cpu::current(void) {
-  /* TODO: */
-  return dummy;
+	return cpus[rv::mhartid()];
 }
 
 
 void cpu::switch_vm(struct thread *thd) { /* TODO: nothin' */ }
 
-void cpu::seginit(void *local) { /* TODO: nothin' */ }
+void cpu::seginit(void *local) {
+	auto &cpu = cpu::current();
+	/* zero out the cpu structure. This might be bad idk... */
+	memset(&cpu, 0, sizeof(struct processor_state));
+}
 
 
 /* TODO */
@@ -50,8 +68,16 @@ mm::space &mm::space::kernel_space(void) {
 }
 
 
+/*
+ * TODO: we don't need some of these, as they are only called from within
+ * x86. I won't implement them as a form of rebellion against complex
+ * instruction sets
+ */
 int arch::irq::init(void) { return 0; /* TODO: */ }
 
-void arch::irq::eoi(int i) {}
+void arch::irq::eoi(int i) {
+	/* Forward to the PLIC */
+	rv::plic::ack();
+}
 void arch::irq::enable(int num) {}
 void arch::irq::disable(int num) {}

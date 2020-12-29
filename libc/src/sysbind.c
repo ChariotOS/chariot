@@ -51,11 +51,11 @@ long sysbind_lseek(int fd, long offset, int whence) {
     return (long)__syscall_eintr(11, (unsigned long long)fd, (unsigned long long)offset, (unsigned long long)whence, 0, 0, 0);
 }
 
-long sysbind_read(int fd, void* buf, long len) {
+long sysbind_read(int fd, void* buf, size_t len) {
     return (long)__syscall_eintr(12, (unsigned long long)fd, (unsigned long long)buf, (unsigned long long)len, 0, 0, 0);
 }
 
-long sysbind_write(int fd, void* buf, long len) {
+long sysbind_write(int fd, void* buf, size_t len) {
     return (long)__syscall_eintr(13, (unsigned long long)fd, (unsigned long long)buf, (unsigned long long)len, 0, 0, 0);
 }
 
@@ -131,7 +131,7 @@ void* sysbind_mmap(void * addr, long length, int prot, int flags, int fd, long o
     return (void*)__syscall_eintr(31, (unsigned long long)addr, (unsigned long long)length, (unsigned long long)prot, (unsigned long long)flags, (unsigned long long)fd, (unsigned long long)offset);
 }
 
-int sysbind_munmap(void* addr, unsigned long length) {
+int sysbind_munmap(void* addr, size_t length) {
     return (int)__syscall_eintr(32, (unsigned long long)addr, (unsigned long long)length, 0, 0, 0, 0);
 }
 
