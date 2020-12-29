@@ -8,7 +8,6 @@
 #include <syscall.h>
 #include <time.h>
 #include <wait.h>
-#include "../../arch/x86/fpu.h"
 
 #define SIG_ERR ((void (*)(int)) - 1)
 #define SIG_DFL ((void (*)(int))0)
@@ -34,8 +33,6 @@ static sched::impl s_scheduler;
 bool sched::init(void) { return true; }
 
 static struct thread *get_next_thread(void) { return s_scheduler.pick_next(); }
-
-
 
 
 static auto pick_next_thread(void) {

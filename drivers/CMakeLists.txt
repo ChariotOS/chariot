@@ -71,3 +71,11 @@ add_kernel_module(
 	NEEDS VMWARE_VIDEO
 	AUTOGLOB vmware/
 )
+
+
+
+add_kernel_module(
+	NAME bus_pci
+	NEEDS X86
+	SOURCES bus/pci/pci.cpp
+)

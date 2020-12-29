@@ -16,8 +16,6 @@
 #define RING_KERNEL 0
 #define RING_USER 3
 
-void syscall_init(void);
-long ksyscall(long n, ...);
 
 #define SYSSYM(name) sys_##name
 #include <net/socket.h>

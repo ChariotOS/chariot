@@ -18,24 +18,10 @@
 #include <util.h>
 #include <vga.h>
 #include "acpi/acpi.h"
-#include "cpuid.h"
-#include "fpu.h"
-#include "smp.h"
-
+#include <x86/cpuid.h>
+#include <x86/fpu.h>
+#include <x86/smp.h>
 #include <arch.h>
-#include <lwip/api.h>
-#include <lwip/dns.h>
-#include <lwip/netdb.h>
-#include <lwip/sockets.h>
-#include <lwip/tcp.h>
-
-
-// #define TCP_PORT 8000
-// #define TCP_DOMAIN "fenrir.nickw.io"
-
-#define TCP_PORT 80
-
-extern int kernel_end;
 
 // in src/arch/x86/sse.asm
 extern "C" void enable_sse();
@@ -48,83 +34,6 @@ static void kmain2(void);
 #define GIT_REVISION "NO-GIT"
 #endif
 
-
-void dump_multiboot(uint64_t mbd) {
-  debug("Multiboot 2 header dump:\n");
-  mb2::foreach (mbd, [](auto *tag) {
-    switch (tag->type) {
-      case MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME: {
-        struct multiboot_tag_string *str = (struct multiboot_tag_string *)tag;
-        debug("  Boot loader: %s\n", ((struct multiboot_tag_string *)tag)->string);
-        break;
-      }
-      case MULTIBOOT_TAG_TYPE_ELF_SECTIONS: {
-        struct multiboot_tag_elf_sections *elf = (struct multiboot_tag_elf_sections *)tag;
-        debug("  ELF size=%u, num=%u, entsize=%u, shndx=%u, sechdr=%p\n", elf->size, elf->num, elf->entsize, elf->shndx,
-              elf->sections);
-        break;
-      }
-      case MULTIBOOT_TAG_TYPE_MMAP: {
-        debug("  Multiboot2 memory map detected\n");
-        break;
-      }
-
-      case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO: {
-        debug("  Multiboot2 basic meminfo detected\n");
-        break;
-      }
-      case MULTIBOOT_TAG_TYPE_FRAMEBUFFER: {
-        struct multiboot_tag_framebuffer_common *fb = (struct multiboot_tag_framebuffer_common *)tag;
-        debug("  fb addr: %p, fb_width: %u, fb_height: %u\n", (void *)fb->framebuffer_addr, fb->framebuffer_width,
-              fb->framebuffer_height);
-        break;
-      }
-      case MULTIBOOT_TAG_TYPE_CMDLINE: {
-        struct multiboot_tag_string *cmd = (struct multiboot_tag_string *)tag;
-        debug("  Kernel Cmd line: %s\n", cmd->string);
-        break;
-      }
-
-      case MULTIBOOT_TAG_TYPE_BOOTDEV: {
-        struct multiboot_tag_bootdev *bd = (struct multiboot_tag_bootdev *)tag;
-        debug("  Boot device: (biosdev=0x%x,slice=%u,part=%u)\n", bd->biosdev, bd->slice, bd->part);
-        break;
-      }
-      case MULTIBOOT_TAG_TYPE_ACPI_OLD: {
-        struct multiboot_tag_old_acpi *oacpi = (struct multiboot_tag_old_acpi *)tag;
-        debug("  Old ACPI: rsdp=%p\n", oacpi->rsdp);
-        break;
-      }
-      case MULTIBOOT_TAG_TYPE_ACPI_NEW: {
-        struct multiboot_tag_new_acpi *nacpi = (struct multiboot_tag_new_acpi *)tag;
-        debug("  New ACPI: rsdp=%p\n", nacpi->rsdp);
-        break;
-      }
-      case MULTIBOOT_TAG_TYPE_IMAGE_BASE: {
-        struct multiboot_tag_image_load_base *imb = (struct multiboot_tag_image_load_base *)tag;
-        debug("  Image load base: 0x%x\n", imb->addr);
-        break;
-      }
-      case MULTIBOOT_TAG_TYPE_MODULE: {
-        struct multiboot_tag_module *mod = (struct multiboot_tag_module *)tag;
-        debug("  Found module: \n");
-        debug("    type:     0x%08x\n", mod->type);
-        debug("    size:     0x%08x\n", mod->size);
-        debug("    mod_start 0x%08x\n", mod->mod_start);
-        debug("    mod_end   0x%08x\n", mod->mod_end);
-        debug("    args:     %s\n", mod->cmdline);
-        break;
-      }
-      default:
-        debug("  Unhandled tag type (0x%x)\n", tag->type);
-        break;
-    }
-  });
-}
-
-
-
-
 /**
  * the size of the (main cpu) scheduler stack
  */
@@ -132,8 +41,6 @@ void dump_multiboot(uint64_t mbd) {
 
 extern void rtc_init(void);
 extern void rtc_late_init(void);
-
-
 
 static uint64_t mbd;
 void serial_install(void);
@@ -160,12 +67,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 typedef void (*func_ptr)(void);
 extern "C" func_ptr __init_array_start[0], __init_array_end[0];
 
-static void call_global_constructors(void) {
-  for (func_ptr *func = __init_array_start; func != __init_array_end; func++) {
-    (*func)();
-  }
-}
-
 // kernel/init.cpp
 int kernel_init(void *);
 
@@ -178,10 +79,10 @@ static void kmain2(void) {
   irq::init();
   fpu::init();
 
-  call_global_constructors();
-
-
-  // dump_multiboot(mbd);
+	/* Call all the global constructors */
+  for (func_ptr *func = __init_array_start; func != __init_array_end; func++) {
+    (*func)();
+  }
 
   kargs::init(mbd);
   smp::init();
@@ -212,23 +113,6 @@ static void kmain2(void) {
 }
 
 
-
-struct rsdp_descriptor {
-  char Signature[8];
-  uint8_t Checksum;
-  char OEMID[6];
-  uint8_t Revision;
-  uint32_t RsdtAddress;
-  uint32_t Length;
-  uint64_t XsdtAddress;
-  uint8_t ExtendedChecksum;
-  uint8_t reserved[3];
-} __attribute__((packed));
-
-
-#define cpuid(in, a, b, c, d) __asm__("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(in));
-
-
 #define ACPI_EBDA_PTR_LOCATION 0x0000040E /* Physical Address */
 #define ACPI_EBDA_PTR_LENGTH 2
 #define ACPI_EBDA_WINDOW_SIZE 1024
@@ -242,25 +126,12 @@ int kernel_init(void *) {
   // at this point, the pit is being used for interrupts,
   // so we should go setup lapic for that
   smp::lapic_init();
-  syscall_init();
-
 
   // start up the extra cpu cores
   smp::init_cores();
 
-
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
-
-
-
-	/*
-  // wait for the time to stabilize
-  while (!time::stabilized()) {
-    arch_halt();
-  }
-	*/
-
   net::start();
 
   // walk the kernel modules and run their init function
@@ -269,41 +140,21 @@ int kernel_init(void *) {
   KINFO("kernel modules initialized\n");
 
 
-  // tcp_test();
-
   auto root_name = kargs::get("root", "/dev/ata0p1");
   assert(root_name);
-
-
-
 
   int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);
   if (mnt_res != 0) {
     panic("failed to mount root. Error=%d\n", -mnt_res);
   }
 
-  if (vfs::mount("none", "/dev", "devfs", 0, NULL) != 0) {
-    panic("failed to mount devfs");
-  }
-
-
-  if (vfs::mount("none", "/tmp", "tmpfs", 0, NULL) != 0) {
-    panic("failed to mount tmpfs");
-  }
-
-  // setup stdio stuff for the kernel (to be inherited by spawn)
-  int fd = sys::open("/dev/console", O_RDWR, 0);
-  assert(fd == 0);
-
-  sys::dup2(fd, 1);
-  sys::dup2(fd, 2);
-
+	/* Mount /dev and /tmp */
+	vfs::mount("none", "/dev", "devfs", 0, NULL);
+	vfs::mount("none", "/tmp", "tmpfs", 0, NULL);
 
   auto kproc = sched::proc::kproc();
   kproc->root = fs::inode::acquire(vfs::get_root());
   kproc->cwd = fs::inode::acquire(vfs::get_root());
-
-
 
 
   string init_paths = kargs::get("init", "/bin/init");
@@ -330,46 +181,3 @@ int kernel_init(void *) {
 
   panic("main kernel thread reached unreachable code\n");
 }
-
-
-
-extern "C" void _hrt_start(void) {
-  kmain(0, 0);
-  while (1) {
-  }
-}
-
-/*
-#include <list_head.h>
-
-
-
-
-
-
-
-
-struct wait_queue wq1;
-struct wait_queue wq2;
-
-int notifier_thread(void *) {
-  while (1) {
-    wq1.wake_up_all();
-    sys::usleep(10000);
-    wq2.wake_up_all();
-    sys::usleep(10000);
-  }
-}
-
-
-void test(void) {
-  printk("\n\n====================================================================\n\n\n");
-
-
-
-  while (1) {
-    arch_disable_ints();
-    arch_halt();
-  }
-}
-*/

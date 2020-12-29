@@ -1,4 +1,4 @@
-#include "smp.h"
+#include <x86/smp.h>
 
 #include <cpu.h>
 #include <func.h>
@@ -10,7 +10,16 @@
 #include <time.h>
 #include <util.h>
 #include <vec.h>
-#include "fpu.h"
+#include <x86/fpu.h>
+
+
+extern "C" void enable_sse();
+extern "C" int gdtr[];
+extern "C" int gdtr32[];
+extern "C" char smp_trampoline_start[];
+extern "C" uint64_t boot_p4[];
+extern uint64_t *kernel_page_table;
+extern uint32_t idt_block[];
 
 #define BASE_MEM_LAST_KILO 0x9fc00
 #define BIOS_ROM_START 0xf0000
@@ -60,16 +69,16 @@ volatile auto *ioapic = (volatile struct ioapic *)p2v(0xFEC00000);
 
 // IO APIC MMIO structure: write reg, then read or write data.
 struct ioapic {
-  u32 reg;
-  u32 pad[3];
-  u32 data;
+  uint32_t reg;
+  uint32_t pad[3];
+  uint32_t data;
 };
 
-#define REG_ID 0x00     // Register index: ID
-#define REG_VER 0x01    // Register index: version
+#define REG_ID 0x00  // Register index: ID
+#define REG_VER 0x01  // Register index: version
 #define REG_TABLE 0x10  // Redirection table base
 
-static void ioapicwrite(int reg, u32 data) {
+static void ioapicwrite(int reg, uint32_t data) {
   ioapic->reg = reg;
   ioapic->data = data;
 }
@@ -88,14 +97,14 @@ static volatile uint32_t *lapic = NULL;
 static uint32_t lapic_ticks_per_second = 0;
 
 static void wait_for_tick_change(void) {
-  volatile u64 start = cpu::get_ticks();
+  volatile uint64_t start = cpu::get_ticks();
   while (cpu::get_ticks() == start) {
   }
 }
 
 static void lapic_tick_handler(int i, reg_t *tf) {
   auto &cpu = cpu::current();
-  u64 now = arch_read_timestamp();
+  uint64_t now = arch_read_timestamp();
   cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
   cpu.kstat.last_tick_tsc = now;
   cpu.kstat.ticks++;
@@ -144,7 +153,7 @@ static void calibrate(void) {
   printk(KERN_INFO "%d ticks per second\n", lapic_ticks_per_second);
 }
 
-static void set_tickrate(u32 per_second) {
+static void set_tickrate(uint32_t per_second) {
   cpu::current().ticks_per_second = per_second;
   smp::lapic_write(LAPIC_TICR,
                    lapic_ticks_per_second / per_second);  // set the tick rate
@@ -161,11 +170,9 @@ void smp::lapic_init(void) {
   lapic_write(LAPIC_TDCR, LAPIC_X1);
 
   if (lapic_ticks_per_second == 0) {
-    KINFO("[LAPIC] freq info: base: %uMHz,  max: %uMHz, bus: %uMHz\n",
-          freq.base, freq.max, freq.bus);
+    KINFO("[LAPIC] freq info: base: %uMHz,  max: %uMHz, bus: %uMHz\n", freq.base, freq.max, freq.bus);
     calibrate();
-    KINFO("[LAPIC] counts per tick: %zu\t0x%08x\n", lapic_ticks_per_second,
-          lapic_ticks_per_second);
+    KINFO("[LAPIC] counts per tick: %zu\t0x%08x\n", lapic_ticks_per_second, lapic_ticks_per_second);
   }
 
 
@@ -227,9 +234,7 @@ int smp::cpunum(void) {
   // often indirectly through acquire and release.
   if (readeflags() & FL_IF) {
     static int n;
-    if (n++ == 0)
-      printk("cpu called from %p with interrupts enabled\n",
-             __builtin_return_address(0));
+    if (n++ == 0) printk("cpu called from %p with interrupts enabled\n", __builtin_return_address(0));
   }
 
   if (!lapic) return 0;
@@ -246,18 +251,18 @@ void smp::lapic_eoi(void) {
 smp::mp::mp_table_entry_ioapic *ioapic_entry = NULL;
 
 static smp::mp::mp_float_ptr_struct *find_mp_floating_ptr(void) {
-  auto *cursor = (u32 *)p2v(BASE_MEM_LAST_KILO);
+  auto *cursor = (uint32_t *)p2v(BASE_MEM_LAST_KILO);
 
-  while ((u64)cursor < (u64)p2v(BASE_MEM_LAST_KILO) + PAGE_SIZE) {
+  while ((uint64_t)cursor < (uint64_t)p2v(BASE_MEM_LAST_KILO) + PAGE_SIZE) {
     if (*cursor == smp::mp::flt_signature) {
       return (smp::mp::mp_float_ptr_struct *)cursor;
     }
     cursor++;
   }
 
-  cursor = (u32 *)p2v(BIOS_ROM_START);
+  cursor = (uint32_t *)p2v(BIOS_ROM_START);
 
-  while ((u64)cursor < (u64)p2v(BIOS_ROM_END)) {
+  while ((uint64_t)cursor < (uint64_t)p2v(BIOS_ROM_END)) {
     if (*cursor == smp::mp::flt_signature) {
       return (smp::mp::mp_float_ptr_struct *)cursor;
     }
@@ -272,16 +277,15 @@ static smp::cpu_state apic_cpus[CONFIG_MAX_CPUS];
 static int ncpus = 0;
 
 static u8 mp_entry_lengths[5] = {
-    MP_TAB_CPU_LEN,    MP_TAB_BUS_LEN,  MP_TAB_IOAPIC_LEN,
-    MP_TAB_IO_INT_LEN, MP_TAB_LINT_LEN,
+    MP_TAB_CPU_LEN, MP_TAB_BUS_LEN, MP_TAB_IOAPIC_LEN, MP_TAB_IO_INT_LEN, MP_TAB_LINT_LEN,
 };
 
 void parse_mp_cpu(smp::mp::mp_table_entry_cpu *ent) {
   // Allocate a new smp::cpu_state and insert it into the cpus vec
   auto state = smp::cpu_state{.entry = ent};
-	state.index = ent->lapic_id;
+  state.index = ent->lapic_id;
   apic_cpus[ent->lapic_id] = state;
-	ncpus++;
+  ncpus++;
 
 #if 0
 	INFO("CPU: %p\n", ent);
@@ -360,17 +364,17 @@ bool smp::init(void) {
 #ifdef CONFIG_SMP
   mp_floating_ptr = find_mp_floating_ptr();
   if (mp_floating_ptr == nullptr) {
-		debug("MP floating pointer not found!\n");
-		return false;
-	}
+    debug("MP floating pointer not found!\n");
+    return false;
+  }
 
   // we found the mp floating table, now to parse it...
   INFO("mp_floating_table @ %p\n", mp_floating_ptr);
 
-  u64 table_addr = mp_floating_ptr->mp_cfg_ptr;
+  uint64_t table_addr = mp_floating_ptr->mp_cfg_ptr;
 
   if (!parse_mp_table((mp::mp_table *)p2v(table_addr))) {
-		debug("Unable to parse MP table\n");
+    debug("Unable to parse MP table\n");
     return false;
   }
 #endif
@@ -435,9 +439,6 @@ struct ap_args {
   unsigned long entry;
 };
 
-extern "C" void enable_sse();
-
-extern u32 idt_block[];
 
 // Enters in 64bit mode
 extern "C" void mpentry(int apic_id) {
@@ -448,8 +449,8 @@ extern "C" void mpentry(int apic_id) {
   cpu::current().cpunum = apic_id;
 
   // load the IDT
-  lidt((u32 *)&idt_block, 4096);
-	fpu::init();
+  lidt((uint32_t *)&idt_block, 4096);
+  fpu::init();
 
   smp::lapic_init();
 
@@ -466,12 +467,6 @@ extern "C" void mpentry(int apic_id) {
   panic("mpentry should not have returned\n");
 }
 
-extern "C" int gdtr[];
-extern "C" int gdtr32[];
-extern "C" char smp_trampoline_start[];
-extern "C" u64 boot_p4[];
-
-extern u64 *kernel_page_table;
 
 void smp::init_cores(void) {
 #ifdef CONFIG_SMP
@@ -487,7 +482,7 @@ void smp::init_cores(void) {
   args->gdtr32 = (unsigned long)gdtr32;
   args->gdtr64 = (unsigned long)gdtr;
   args->boot_pt = (unsigned long)v2p(kernel_page_table);
-	for (int i = 0; i < ncpus; i++) {
+  for (int i = 0; i < ncpus; i++) {
     auto &core = apic_cpus[i];
 
     // skip ourselves
@@ -499,7 +494,7 @@ void smp::init_cores(void) {
 
     startap(core.entry->lapic_id, (unsigned long)v2p(code));
     while (args->ready == 0) {
-			arch_relax();
+      arch_relax();
     }
   }
 

@@ -13,7 +13,7 @@
 #include "internal.h"
 
 // run the compositor at 60fps if there is work to be done.
-#define COMPOSE_INTERVAL (1000 / 30)
+#define COMPOSE_INTERVAL (1000 / 60)
 
 #define USE_COMPOSE_INTERVAL
 

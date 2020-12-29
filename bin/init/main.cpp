@@ -25,6 +25,7 @@
 #include <ck/string.h>
 
 #include <arpa/inet.h>
+#include <ck/futex.h>
 #include <sys/socket.h>
 
 #define ENV_PATH "/cfg/environ"
@@ -39,7 +40,7 @@ void tcp_test(void) {
   // ip: 198.37.25.78
 
 
-	bool worked = false;
+  bool worked = false;
   while (!worked) {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -49,17 +50,16 @@ void tcp_test(void) {
     // Filling server information
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(8080);
-		sysbind_dnslookup("fenrir.nickw.io", &servaddr.sin_addr.s_addr);
+    sysbind_dnslookup("fenrir.nickw.io", &servaddr.sin_addr.s_addr);
 
-		int res = connect(sock, (const struct sockaddr *)&servaddr, (int)sizeof(servaddr));
+    int res = connect(sock, (const struct sockaddr *)&servaddr, (int)sizeof(servaddr));
     if (res == 0) {
       const char *msg = "hello world\n";
-			send(sock, msg, strlen(msg), 0);
-			worked = true;
+      send(sock, msg, strlen(msg), 0);
+      worked = true;
     }
-		close(sock);
+    close(sock);
   }
-
 }
 
 
@@ -115,76 +115,24 @@ char **read_default_environ(void) {
 
 
 
-int futex(int *uaddr, int futex_op, int val, uint32_t timeout, int *uaddr2, int val3) {
-  int r = 0;
-  do {
-    r = errno_wrap(sysbind_futex(uaddr, futex_op, val, 0, uaddr2, val3));
-  } while (errno == EINTR);
-  return r;
-}
-
-
-// Waits for the futex at futex_addr to have the value val, ignoring spurious
-// wakeups. This function only returns when the condition is fulfilled; the only
-// other way out is aborting with an error.
-void wait_on_futex_value(int *futex_addr, int val) {
-  while (1) {
-    int futex_rc = futex(futex_addr, FUTEX_WAIT, val, NULL, NULL, 0);
-    if (futex_rc == -1) {
-      if (errno != EAGAIN) {
-        printf("error: %s\n", strerror(errno));
-        while (1) {
-        }
-        exit(1);
-      }
-    } else if (futex_rc == 0) {
-      if (*futex_addr == val) {
-        // This is a real wakeup.
-        return;
-      }
-    } else {
-      abort();
-    }
-  }
-}
-
-// A blocking wrapper for waking a futex. Only returns when a waiter has been
-// woken up.
-void wake_futex_blocking(int *futex_addr) {
-  while (1) {
-    int futex_rc = futex(futex_addr, FUTEX_WAKE, 1, NULL, NULL, 0);
-    if (futex_rc == -1) {
-      perror("futex wake");
-      exit(1);
-    } else if (futex_rc > 0) {
-      return;
-    }
-  }
-}
-
 
 void futex_test(void) {
-  int test = 0;
+  ck::futex ft;
 
+  printf("=======================================\n");
 
   auto thd = ck::thread([&]() {
-    int *shared_data = &test;
-    printf("child waiting for A\n");
-    wait_on_futex_value(shared_data, 0xA);
-
-    printf("child writing B\n");
-    // Write 0xB to the shared data and wake up parent.
-    *shared_data = 0xB;
-    wake_futex_blocking(shared_data);
+    printf("[C] waiting A\n");
+    ft.wait_on(0xA);
+    printf("[C] waiting B\n");
+    ft.set(0xB);
   });
 
-  printf("parent writing A\n");
   /* Write 0xA to the shared data and wake up child. */
-  test = 0xA;
-  wake_futex_blocking(&test);
-
-  printf("parent waiting for B\n");
-  wait_on_futex_value(&test, 0xB);
+  printf("[P] writing A\n");
+  ft.set(0xA);
+  printf("[P] waiting A\n");
+  ft.wait_on(0xB);
 }
 
 
@@ -293,17 +241,6 @@ int main(int argc, char **argv) {
 
   environ = read_default_environ();
 
-
-	/*
-  ck::vec<int> things;
-  for (int i = 0; i < 15; i++) things.push(i);
-  print_vector(things);
-  process_vector(things, 4, [](int &i) { i = 0; });
-  print_vector(things);
-	*/
-
-  // while (1) {}
-
 #if 0
   for (int i = 0; i < 10; i++) {
     printf("================\n");
@@ -313,7 +250,7 @@ int main(int argc, char **argv) {
 
 #ifdef CONFIG_SIMPLE_INIT
 
-	 system("/bin/sh");
+  system("/bin/sh");
 
 #else
 

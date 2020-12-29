@@ -1,7 +1,7 @@
 #include <arch.h>
 #include <cpu.h>
 #include <phys.h>
-#include "setjmp.h"
+#include <x86/setjmp.h>
 
 #define SIG_ERR ((void (*)(int)) - 1)
 #define SIG_DFL ((void (*)(int))0)

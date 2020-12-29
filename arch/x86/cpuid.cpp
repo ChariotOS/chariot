@@ -1,4 +1,4 @@
-#include "cpuid.h"
+#include <x86/cpuid.h>
 #include <asm.h>
 #include <printk.h>
 #include <util.h>

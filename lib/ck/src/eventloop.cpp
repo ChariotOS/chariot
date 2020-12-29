@@ -10,6 +10,7 @@
 #include <sys/sysbind.h>
 #include <sys/syscall.h>
 #include "ck/event.h"
+#include <ck/rand.h>
 
 
 
@@ -74,6 +75,7 @@ int awaitfs(struct await_target *fds, int nfds, int flags, long long timeout_tim
 }
 
 
+
 void ck::eventloop::pump(void) {
   for (auto &cb : s_defered) {
     cb();
@@ -104,6 +106,14 @@ void ck::eventloop::pump(void) {
   if (nt != NULL) {
     timeout = nt->next_fire();
   }
+
+
+	/* Shuffle the target order */
+	int n = targs.size();
+	for (int i = 0; i < n; i++) {
+		int j = i + ::rand() / (RAND_MAX / (n - i) + 1);
+		swap(targs[i], targs[j]);
+	}
 
   int index = awaitfs(targs.data(), targs.size(), 0, timeout);
   if (index >= 0) {

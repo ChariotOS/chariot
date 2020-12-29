@@ -6,8 +6,8 @@
 #include <sched.h>
 #include <syscall.h>
 
-#include "arch.h"
-#include "smp.h"
+#include <arch.h>
+#include <x86/smp.h>
 
 // implementation of the x86 interrupt request handling system
 extern u32 idt_block[];
@@ -36,23 +36,23 @@ extern void *vectors[];  // in vectors.S: array of 256 entry pointers
 
 // Processor-defined:
 #define TRAP_DIVIDE 0  // divide error
-#define TRAP_DEBUG 1   // debug exception
-#define TRAP_NMI 2     // non-maskable interrupt
-#define TRAP_BRKPT 3   // breakpoint
-#define TRAP_OFLOW 4   // overflow
-#define TRAP_BOUND 5   // bounds check
-#define TRAP_ILLOP 6   // illegal opcode
+#define TRAP_DEBUG 1  // debug exception
+#define TRAP_NMI 2  // non-maskable interrupt
+#define TRAP_BRKPT 3  // breakpoint
+#define TRAP_OFLOW 4  // overflow
+#define TRAP_BOUND 5  // bounds check
+#define TRAP_ILLOP 6  // illegal opcode
 #define TRAP_DEVICE 7  // device not available
 #define TRAP_DBLFLT 8  // double fault
-#define TRAP_TSS 10    // invalid task switch segment
+#define TRAP_TSS 10  // invalid task switch segment
 #define TRAP_SEGNP 11  // segment not present
 #define TRAP_STACK 12  // stack exception
 #define TRAP_GPFLT 13  // general protection fault
 #define TRAP_PGFLT 14  // page fault
 // #define TRAP_RES        15      // reserved
-#define TRAP_FPERR 16    // floating point error
-#define TRAP_ALIGN 17    // aligment check
-#define TRAP_MCHK 18     // machine check
+#define TRAP_FPERR 16  // floating point error
+#define TRAP_ALIGN 17  // aligment check
+#define TRAP_MCHK 18  // machine check
 #define TRAP_SIMDERR 19  // SIMD floating point error
 
 #define EXCP_NAME 0
@@ -224,7 +224,7 @@ void dump_backtrace(off_t ebp) {
 /* This exists so we don't have annoying interleaved trapframe dumping */
 // static spinlock trapframe_dump_lock;
 void dump_trapframe(reg_t *r) {
-	// scoped_lock l(trapframe_dump_lock);
+  // scoped_lock l(trapframe_dump_lock);
   auto *tf = (struct x86_64regs *)r;
   unsigned int eflags = tf->rflags;
 #define GET(name) (tf->name)

@@ -1,5 +1,10 @@
 
 
+include_directories(
+	include/
+)
+
+
 add_kernel_module(
 	CORE
 	INTEL

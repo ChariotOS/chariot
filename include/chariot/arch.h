@@ -9,7 +9,7 @@
 
 /* On x86, import  */
 #ifdef CONFIG_X86
-#include "../../arch/x86/arch.h"
+#include <x86/arch.h>
 #endif
 
 

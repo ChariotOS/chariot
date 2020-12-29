@@ -1,9 +1,9 @@
-#include "fpu.h"
+#include <x86/fpu.h>
 #include <arch.h>
 #include <printk.h>
 #include <sched.h>
-#include "cpuid.h"
-#include "msr.h"
+#include <x86/cpuid.h>
+#include <x86/msr.h>
 
 struct fpu::fpu_caps fpu::caps;
 

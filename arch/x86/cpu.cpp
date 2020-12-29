@@ -2,8 +2,8 @@
 #include <mem.h>
 #include <phys.h>
 
-#include "msr.h"
-#include "smp.h"
+#include <x86/msr.h>
+#include <x86/smp.h>
 
 extern "C" struct processor_state *__get_cpu_struct(void);
 extern "C" void __set_cpu_struct(struct processor_state *);
