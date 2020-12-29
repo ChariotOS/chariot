@@ -44,8 +44,10 @@ static void consputc(int c, bool debug = false) {
       serial_send(1, c);
     }
   }
-
+	/* TODO: factor this somewhere else. Maybe a cool "console printers" subsystem? idk :^) */
+#ifdef CONFIG_X86
   vga::putchar(c);
+#endif
 }
 
 // return true if the char was special (like backspace)

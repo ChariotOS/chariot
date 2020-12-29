@@ -13,13 +13,13 @@ endif()
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} ${ARCH_KERN_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${ARCH_KERN_CXX_FLAGS}")
 
-
+# if(CONFIG_X86)
 file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 	*.cpp
 	*.c
 	# No asm in the kernel
 )
-
+# endif()
 # set(SOURCES foo.c)
 
 
@@ -107,9 +107,7 @@ endfunction()
 add_rooted_subdir(arch/${CHARIOT_ARCH})
 
 
-if(CONFIG_X86)
-	add_rooted_subdir(fs)
-	add_rooted_subdir(net)
-	add_rooted_subdir(drivers)
-endif()
+add_rooted_subdir(fs)
+add_rooted_subdir(net)
+add_rooted_subdir(drivers)
 

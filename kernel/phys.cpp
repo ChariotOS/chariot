@@ -48,8 +48,10 @@ static frame *working_addr(frame *fr) {
   if (use_kernel_vm) {
     fr = (frame *)p2v(fr);
   } else {
+#ifdef CONFIG_X86
     paging::map((u64)phys_mem_scratch, (u64)fr);
     fr = (frame *)phys_mem_scratch;
+#endif
   }
   return fr;
 }
@@ -171,9 +173,10 @@ void phys::free(void *v, int len) {
   if ((u64)v % PGSIZE) {
     panic("phys::free requires page aligned address. Given %p", v);
   }
+	/*
   if (v <= high_kern_end)
     panic("phys::free cannot free below the kernel's end");
-
+		*/
 
   lock();
 

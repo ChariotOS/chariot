@@ -6,20 +6,32 @@ choice
 	config X86
 		bool "x86_64 (Intel, AMD)"
 
-	# eventually.... :^)
+	config RISCV
+		bool "RISCV (RV64GC)"
+
 	config ARM64
 		bool "ARM64"
+
 endchoice
 
-menu "ARM64 Configuration"
-	depends on ARM64
-	source "arch/arm64/Kconfig"
-endmenu
 
 
 menu "x86_64 Configuration"
 	depends on X86
 	source "arch/x86/Kconfig"
+endmenu
+
+
+menu "RISC-V Configuration"
+	depends on RISCV
+	source "arch/riscv/Kconfig"
+endmenu
+
+
+
+menu "ARM64 Configuration"
+	depends on ARM64
+	source "arch/arm64/Kconfig"
 endmenu
 
 menu "Platform Configuration"
@@ -31,11 +43,15 @@ menu "Platform Configuration"
 			Specifies the maximum number of hardware CPUs supported by Chariot
 			For uniprocessor environments, set this to 1
 
+
+	config KERNEL_VIRTUAL_BASE
+		hex "(expert) Kernel Virtual base address"
+		default ffff880000000000
+
 	config SMP
 		bool "Symmetric multi-processing support"
 		default y
 		help
 			Enable multiprocessing
 endmenu
-
 

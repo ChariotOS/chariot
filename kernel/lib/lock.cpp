@@ -12,24 +12,27 @@
 #endif
 
 static inline int arch_atomic_swap(volatile int* x, int v) {
+#ifdef CONFIG_X86
   asm("xchg %0, %1" : "=r"(v), "=m"(*x) : "0"(v) : "memory");
+#endif
   return v;
 }
 
-static inline void arch_atomic_store(volatile int* p, int x) { asm("movl %1, %0" : "=m"(*p) : "r"(x) : "memory"); }
+static inline void arch_atomic_store(volatile int* p, int x) {
+#ifdef CONFIG_X86
+  asm("movl %1, %0" : "=m"(*p) : "r"(x) : "memory");
+#endif
+}
 
 void spinlock::lock(void) {
-  while (1) {
-    if (arch_atomic_swap(&locked, 1) == 0) break;
-    if (cpu::current().in_sched) {
-      // sched::yield();
-    }
+  while (__sync_lock_test_and_set(&locked, 1)) {
+    /* nothing */
   }
 }
 
 void spinlock::unlock(void) {
   if (likely(locked)) {
-    arch_atomic_store(&locked, 0);
+    locked = 0;
   }
 }
 
@@ -61,8 +64,10 @@ bool spinlock::is_locked(void) { return locked; }
 // Instead, use irq_disable_save and a matching irq_enable_restore
 
 static inline uint64_t read_rflags(void) {
-  uint64_t ret;
+  uint64_t ret = 0;
+#ifdef CONFIG_X86
   asm volatile("pushfq; popq %0" : "=a"(ret));
+#endif
   return ret;
 }
 static inline uint8_t irqs_enabled(void) {

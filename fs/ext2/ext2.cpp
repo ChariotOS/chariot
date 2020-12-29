@@ -1,5 +1,5 @@
 #include <asm.h>
-#include <dev/RTC.h>
+#include <time.h>
 #include <dev/disk.h>
 #include <errno.h>
 #include <fs/ext2.h>
@@ -89,7 +89,7 @@ bool fs::ext2::init(fs::blkdev *bdev) {
   }
 
 
-  sb->last_mount = dev::RTC::now();
+  sb->last_mount = time::now_ms() / 1000;
   // solve for the filesystems block size
   block_size = 1024 << sb->blocksize_hint;
 

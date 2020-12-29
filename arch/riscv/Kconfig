@@ -1,0 +1,8 @@
+config RISCV_MARCH
+	string "RISC-V Instruction Set"
+	default "rv64gc"
+
+
+config RISCV_MABI
+	string "RISC-V ABI"
+	default "lp64"

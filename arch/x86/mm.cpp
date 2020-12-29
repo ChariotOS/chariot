@@ -18,7 +18,6 @@ extern u64 kheap_size;
 
 #define MAX_MMAP_ENTRIES 64
 
-bool use_kernel_vm = false;
 
 extern char low_kern_start;
 extern char low_kern_end;

@@ -1,7 +1,9 @@
 #include <arch.h>
 #include <asm.h>
 #include <cpu.h>
+#ifdef CONFIG_X86
 #include <dev/RTC.h>
+#endif
 #include <time.h>
 
 #define MS_PER_SEC (1000)
@@ -71,6 +73,7 @@ unsigned long long time::now_ms(void) { return now_us() / 1000; }
 
 // called every second by the RTC in x86
 void time::timekeep(void) {
+#ifdef CONFIG_X86
   auto now_second = dev::RTC::now();
   if (now_second != current_second) {
     unsigned long now_cycle = arch_read_timestamp();
@@ -80,6 +83,7 @@ void time::timekeep(void) {
     last_cycle = now_cycle;
   }
   time::set_second(now_second);
+#endif
 }
 
 void time::set_second(unsigned long sec) { current_second = sec; }
