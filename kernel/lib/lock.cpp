@@ -11,17 +11,9 @@
 #define INFO(fmt, args...)
 #endif
 
-static inline int arch_atomic_swap(volatile int* x, int v) {
-#ifdef CONFIG_X86
-  asm("xchg %0, %1" : "=r"(v), "=m"(*x) : "0"(v) : "memory");
-#endif
-  return v;
-}
 
 static inline void arch_atomic_store(volatile int* p, int x) {
-#ifdef CONFIG_X86
-  asm("movl %1, %0" : "=m"(*p) : "r"(x) : "memory");
-#endif
+	__atomic_store((int*)p, &x, __ATOMIC_SEQ_CST);
 }
 
 void spinlock::lock(void) {
@@ -40,7 +32,7 @@ void spinlock::unlock(void) {
 void spinlock::lock_cli(void) {
   while (1) {
     arch_disable_ints();
-    if (arch_atomic_swap(&locked, 1) == 0) break;
+    if (__sync_lock_test_and_set(&locked, 1) == 0) break;
     if (cpu::current().in_sched) {
       arch_enable_ints();
       // sched::yield();
@@ -99,7 +91,7 @@ unsigned long spinlock::lock_irqsave() {
   unsigned long flags = 0;
   while (1) {
     flags = irq_disable_save();
-    if (arch_atomic_swap(&locked, 1) == 0) break;
+    if (__sync_lock_test_and_set(&locked, 1) == 0) break;
     if (cpu::current().in_sched) {
       irq_enable_restore(flags);
     }
@@ -116,7 +108,7 @@ void spinlock::unlock_irqrestore(unsigned long flags) {
 static void spin_wait(volatile int* lock) { arch_relax(); }
 void spinlock::lock(volatile int& l) {
   volatile int* lock = &l;
-  while (likely(arch_atomic_swap(lock, 1))) {
+  while (likely(__sync_lock_test_and_set(lock, 1))) {
     spin_wait(lock);
   }
 }
