@@ -5,79 +5,106 @@
 #include <printk.h>
 #include <riscv/arch.h>
 #include <riscv/dis.h>
-#include <riscv/uart.h>
 #include <riscv/plic.h>
+#include <riscv/uart.h>
 #include <util.h>
+
+
 
 
 typedef void (*func_ptr)(void);
 extern "C" func_ptr __init_array_start[0], __init_array_end[0];
 extern "C" void _start(void);
-extern "C" char _kernel_end[];
+
 extern "C" char _bss_start[];
 extern "C" char _bss_end[];
-
-/* For now, aux harts wait on this variable *and* SIPI */
-static volatile int aux_hart_continue = 0;
-
-
-void main_hart_start() {
-  rv::uart_init();
+extern "C" void machine_trapvec();
+extern "C" void supervisor_trapvec();
 
 
-	printk(KERN_DEBUG "Machine ID: %llx\n", RV_READ_CSR(mimpid));
-  /* Zero out the BSS in C++ cause doing it in assembly is ugly :^) */
-  printk(KERN_DEBUG "Zeroing BSS: [%llx-%llx]\n", _bss_start, _bss_end);
-  for (char *c = _bss_start; c != _bss_end; c++) *c = 0;
-
-  use_kernel_vm = true;
-
-  /* Tell the physical allocator about what ram we have */
-  printk(KERN_DEBUG "Freeing %dMB of ram %llx:%llx\n", CONFIG_RISCV_RAM_MB, _kernel_end, PHYSTOP);
-  phys::free_range((void *)_kernel_end, (void *)PHYSTOP);
-
-  /* Call all the global constructors now that we have a memory allocator */
-  for (func_ptr *func = __init_array_start; func != __init_array_end; func++) {
-    (*func)();
-  }
-	/* Initialize the platform interrupt controller */
-	rv::plic::hart_init();
-
-  printk(KERN_DEBUG "Main hart %zu started.\n", rv::mhartid());
-
-  aux_hart_continue = 1;
-
+static inline void hang_forever(void) {
   while (1) {
     arch_halt();
   }
 }
 
-void aux_hart_start() {
-  while (aux_hart_continue == 0) {
-    arch_halt();
-  }
+static volatile bool phys_ready = false;
 
-  printk(KERN_DEBUG "hart %d continuing\n", rv::mhartid());
+void timerinit();
+extern "C" void timervec();
 
-  while (1) {
-    arch_halt();
-  }
-}
+extern void main();
 
-
-/* main entrypoint for C++ code from assembly */
+/*
+ * kstart - C++ entrypoint in machine mode.
+ * The point of this function is to get the hart into supervisor mode quickly.
+ */
 extern "C" void kstart(void) {
-  cpu::seginit(NULL /* no "local" concept on riscv, because we have mhartid */);
-
-	/*
-	 * The spec (riscv-privileged-v1.9.1.pdf) specifies that all riscv implementations
-	 * must provide read access to the Hart ID Register, and that at least one hart must
-	 * have a Hart ID of zero. Here we take advantage of that and consider it to be the
-	 * "boot thread" which we initialize stuff from.
-	 */
-  if (rv::mhartid() == 0) {
-    main_hart_start();
-  } else {
-    aux_hart_start();
+  int id = read_csr(mhartid);
+  if (id == 0) {
+    rv::uart_init();
+    printk(KERN_DEBUG "Zeroing BSS: [%llx-%llx]\n", _bss_start, _bss_end);
+    for (char *c = _bss_start; c != _bss_end; c++) *c = 0;
   }
+
+  struct rv::scratch sc;
+  sc.hartid = id;
+
+  /* set M "previous privilege mode" to supervisor in mstatus, for mret */
+  auto x = read_csr(mstatus);
+  x &= ~MSTATUS_MPP_MASK;  // mstatus.MPP = 0
+  x |= MSTATUS_MPP_S;      // mstatus.MPP = S
+  write_csr(mstatus, x);
+
+  /* mret to a certain routine based on hartid (0 is the main hart) */
+  write_csr(mepc, main);
+
+  /* Disable paging in supervisor mode */
+  write_csr(satp, 0);
+
+  // delegate all interrupts and exceptions to supervisor mode.
+  write_csr(medeleg, 0xffff);
+  write_csr(mideleg, 0xffff);
+  write_csr(sie, read_csr(sie) | SIE_SEIE | SIE_STIE | SIE_SSIE);
+
+
+
+  // ask the CLINT for a timer interrupt.
+  int interval = TICK_INTERVAL;  // cycles; about 1/10th second in qemu.
+  *(uint64_t *)CLINT_MTIMECMP(id) = *(uint64_t *)CLINT_MTIME + interval;
+
+  // prepare information in scratch[] for timervec.
+  // scratch[0..2] : space for timervec to save registers.
+  // scratch[3] : address of CLINT MTIMECMP register.
+  // scratch[4] : desired interval (in cycles) between timer interrupts.
+  sc.tca = CLINT_MTIMECMP(id);
+  sc.interval = interval;
+  write_csr(mscratch, &sc);
+
+  // set the machine-mode trap handler.
+  write_csr(mtvec, timervec);
+
+  // enable machine-mode interrupts.
+  write_csr(mstatus, read_csr(mstatus) | MSTATUS_MIE);
+
+  // enable machine-mode timer interrupts.
+  write_csr(mie, read_csr(mie) | MIE_MTIE);
+
+  rv::set_tp((rv::xsize_t)&sc);
+
+  /* Switch to supervisor mode and jump to main() */
+  asm volatile("mret");
 }
+
+
+
+
+// set up to receive timer interrupts in machine mode,
+// which arrive at timervec in lowlevel.S,
+// which turns them into software interrupts for
+// devintr() in trap.c.
+void timerinit() {
+  // each CPU has a separate source of timer interrupts.
+  int id = read_csr(mhartid);
+}
+

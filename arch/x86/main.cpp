@@ -140,7 +140,6 @@ int kernel_init(void *) {
   KINFO("kernel modules initialized\n");
 
 
-	printk(KERN_DEBUG "Kernel booted. Feel free to roam about the cabin.\n");
 
 
 #ifdef CONFIG_USERSPACE

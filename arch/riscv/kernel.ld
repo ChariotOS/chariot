@@ -23,8 +23,6 @@ SECTIONS
   }
 
 
-  PROVIDE(_global_pointer = .);
-
 	.init_array : {
 		__init_array_start = .;
 		KEEP (*(.init_array*))

@@ -6,16 +6,28 @@
 
 #include <types.h>
 
-#define RV_READ_CSR(name)                       \
-  ({                                            \
-    rv::xsize_t x;                                \
+#define read_csr(name)                         \
+  ({                                           \
+    rv::xsize_t x;                             \
     asm volatile("csrr %0, " #name : "=r"(x)); \
-    x;                                          \
+    x;                                         \
   })
+
+#define write_csr(csr, val)                                             \
+  ({                                                                    \
+    unsigned long __v = (unsigned long)(val);                           \
+    __asm__ __volatile__("csrw " #csr ", %0" : : "rK"(__v) : "memory"); \
+  })
+
+
+#define QEMU_CLOCKS_PER_SECOND 10'000'000
+#define TICKS_PER_SECOND       100
+#define TICK_INTERVAL (QEMU_CLOCKS_PER_SECOND / TICKS_PER_SECOND)
+
 namespace rv /* risc-v namespace */ {
 
 
-	/* xsize-bit integer, as specified in the ISA manual (64 on rv64, 32 on rv32) */
+  /* xsize-bit integer, as specified in the ISA manual (64 on rv64, 32 on rv32) */
   using xsize_t = uint64_t;
 
   static inline rv::xsize_t mhartid(void) {
@@ -23,6 +35,17 @@ namespace rv /* risc-v namespace */ {
     asm volatile("csrr %0, mhartid" : "=r"(x));
     return x;
   }
+
+
+  struct scratch {
+    rv::xsize_t bak[3];   /* Used in timervec */
+    rv::xsize_t tca;      /* address of this HART's MTIMECMP register */
+    rv::xsize_t interval; /* Timer interval */
+
+		int hartid;
+		/* ... */
+  };
+
 
 
 
@@ -162,6 +185,11 @@ namespace rv /* risc-v namespace */ {
   static inline void set_sscratch(rv::xsize_t x) { asm volatile("csrw sscratch, %0" : : "r"(x)); }
 
   static inline void set_mscratch(rv::xsize_t x) { asm volatile("csrw mscratch, %0" : : "r"(x)); }
+  static inline rv::xsize_t get_mscratch(void) {
+    rv::xsize_t x;
+    asm volatile("csrr %0, mscratch" : "=r"(x));
+    return x;
+  }
 
   // Supervisor Trap Cause
   static inline rv::xsize_t get_scause() {
@@ -263,6 +291,20 @@ namespace rv /* risc-v namespace */ {
 // Sv39, to avoid having to sign-extend virtual addresses
 // that have the high bit set.
 #define MAXVA (1L << (9 + 9 + 9 + 12 - 1))
+
+  // are device interrupts enabled?
+  static inline int intr_enabled() {
+    rv::xsize_t x = read_csr(sstatus);
+    return (x & SSTATUS_SIE) != 0;
+  }
+
+
+  // enable device interrupts
+  static inline void intr_on() { set_sstatus(get_sstatus() | SSTATUS_SIE); }
+
+  // disable device interrupts
+  static inline void intr_off() { set_sstatus(get_sstatus() & ~SSTATUS_SIE); }
+
 
 
 }  // namespace rv
