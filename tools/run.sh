@@ -2,6 +2,8 @@
 
 make
 
+source .config
+
 # this parses the arch of the elf into "X86-64", "RISC-V", etc...
 ARCH=$(readelf -h build/root/bin/chariot.elf | grep 'Machine' | awk '{print $(NF)}')
 QEMU_ARCH=""
@@ -23,7 +25,7 @@ case $ARCH in
 	RISC-V)
 		QEMU_ARCH=riscv64
 
-		QEMU_FLAGS+="-machine virt -smp 1 -m 128M -bios none "
+		QEMU_FLAGS+="-machine virt -smp 1 -m ${CONFIG_RISCV_RAM_MB}M -bios none "
 		QEMU_FLAGS+="-kernel build/root/bin/chariot.elf "
 		# virtio keyboard, gpu, and tablet (cursor)
 		QEMU_FLAGS+="-device virtio-tablet-device -device virtio-keyboard-device -device virtio-gpu-device "

@@ -21,8 +21,12 @@
 
 
 #define QEMU_CLOCKS_PER_SECOND 10'000'000
-#define TICKS_PER_SECOND       100
+#define TICKS_PER_SECOND 100
 #define TICK_INTERVAL (QEMU_CLOCKS_PER_SECOND / TICKS_PER_SECOND)
+
+namespace dtb {
+  struct fdt_header;
+};
 
 namespace rv /* risc-v namespace */ {
 
@@ -42,10 +46,18 @@ namespace rv /* risc-v namespace */ {
     rv::xsize_t tca;      /* address of this HART's MTIMECMP register */
     rv::xsize_t interval; /* Timer interval */
 
-		int hartid;
-		/* ... */
+    int hartid;
+
+    struct dtb::fdt_header *dtb; /* Device tree binary */
+    /* ... */
   };
 
+
+
+  /* Get the current scratch pointer on this hart */
+  struct scratch &get_scratch(void);
+
+  static inline auto hartid(void) { return rv::get_scratch().hartid; }
 
 
 

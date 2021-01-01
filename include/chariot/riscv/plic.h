@@ -14,8 +14,15 @@
 namespace rv {
 	namespace plic {
 		void hart_init(void);
-		
-		/* Acknowledge the current interrupt (eoi on x86) */
-		void ack(void);
+
+		/* As the PLIC what interrupt we should handle */
+		int claim(void);
+
+		/* Tell the PLIC we've served an IRQ */
+		void complete(int irq);
+
+
+		void enable(int irq, int priority = 1);
+		void disable(int irq);
 	}
 }

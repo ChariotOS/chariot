@@ -6,7 +6,13 @@
 extern "C" {
 #endif
 
+
+#ifndef USERLAND
 #include <types.h>
+#else
+#include <unistd.h>
+#endif
+
 
 typedef unsigned short sa_family_t;
 typedef size_t socklen_t;

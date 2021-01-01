@@ -49,8 +49,6 @@ void spinlock::unlock_cli(void) {
 
 bool spinlock::is_locked(void) { return locked; }
 
-
-
 // Do not directly use these functions or sti/cli unless you know
 // what you are doing...
 // Instead, use irq_disable_save and a matching irq_enable_restore

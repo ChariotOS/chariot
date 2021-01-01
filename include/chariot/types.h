@@ -1,6 +1,4 @@
-#ifndef __TYPES_H__
-#define __TYPES_H__
-
+#pragma once
 
 typedef __INT8_TYPE__ i8;
 typedef __INT8_TYPE__ int8_t;
@@ -76,4 +74,3 @@ typedef long intptr_t;
 
 #define PGSIZE 4096
 
-#endif

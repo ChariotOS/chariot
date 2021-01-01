@@ -29,21 +29,33 @@ unsigned long arch_read_timestamp(void) {
 	return x;
 }
 
+
+struct rv::scratch &rv::get_scratch(void) {
+	rv::xsize_t sscratch;
+	asm volatile("csrr %0, sscratch" : "=r"(sscratch));
+	return *(struct rv::scratch*)sscratch;
+}
+
 /*
  * Just offset into the cpu array with mhartid :^). I love this arch.
  * No need for bloated thread pointer bogus or nothin'
  */
 struct processor_state &cpu::current(void) {
-	return cpus[rv::mhartid()];
+	return cpus[rv::get_scratch().hartid];
 }
 
 
 void cpu::switch_vm(struct thread *thd) { /* TODO: nothin' */ }
 
 void cpu::seginit(void *local) {
+	auto &sc = rv::get_scratch();
+	printk(KERN_DEBUG "initialize hart %d\n", sc.hartid);
 	auto &cpu = cpu::current();
 	/* zero out the cpu structure. This might be bad idk... */
 	memset(&cpu, 0, sizeof(struct processor_state));
+
+	/* Forward this so other code can read it */
+	cpu.cpunum = sc.hartid;
 }
 
 
@@ -77,7 +89,11 @@ int arch::irq::init(void) { return 0; /* TODO: */ }
 
 void arch::irq::eoi(int i) {
 	/* Forward to the PLIC */
-	rv::plic::ack();
+	rv::plic::complete(i);
 }
-void arch::irq::enable(int num) {}
-void arch::irq::disable(int num) {}
+void arch::irq::enable(int num) {
+	rv::plic::enable(num, 1);
+}
+void arch::irq::disable(int num) {
+	rv::plic::disable(num);
+}

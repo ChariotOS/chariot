@@ -2,7 +2,6 @@
 #include <console.h>
 #include <cpu.h>
 #include <phys.h>
-#include <printk.h>
 #include <riscv/arch.h>
 #include <riscv/dis.h>
 #include <riscv/plic.h>
@@ -12,12 +11,8 @@
 
 
 
-typedef void (*func_ptr)(void);
-extern "C" func_ptr __init_array_start[0], __init_array_end[0];
 extern "C" void _start(void);
 
-extern "C" char _bss_start[];
-extern "C" char _bss_end[];
 extern "C" void machine_trapvec();
 extern "C" void supervisor_trapvec();
 
@@ -39,16 +34,13 @@ extern void main();
  * kstart - C++ entrypoint in machine mode.
  * The point of this function is to get the hart into supervisor mode quickly.
  */
-extern "C" void kstart(void) {
+extern "C" void kstart(rv::xsize_t foo, rv::xsize_t dtb) {
   int id = read_csr(mhartid);
-  if (id == 0) {
-    rv::uart_init();
-    printk(KERN_DEBUG "Zeroing BSS: [%llx-%llx]\n", _bss_start, _bss_end);
-    for (char *c = _bss_start; c != _bss_end; c++) *c = 0;
-  }
+
 
   struct rv::scratch sc;
   sc.hartid = id;
+  sc.dtb = (dtb::fdt_header *)dtb;
 
   /* set M "previous privilege mode" to supervisor in mstatus, for mret */
   auto x = read_csr(mstatus);

@@ -41,11 +41,12 @@ timervec:
 	# scratch[0,8,16] : register save area.
 	# scratch[24] : address of CLINT's MTIMECMP register.
 	# scratch[32] : desired interval between interrupts.
-	
 	csrrw a0, mscratch, a0
 	sd a1, 0(a0)
 	sd a2, 8(a0)
 	sd a3, 16(a0)
+
+
 
 	# schedule the next timer interrupt
 	# by adding interval to mtimecmp.
@@ -114,6 +115,7 @@ kernelvec:
 	sd t6, 240(sp)
 
 # call the C trap handler in trap.c
+	mv a0, sp
 	call kerneltrap
 
 	# restore registers.

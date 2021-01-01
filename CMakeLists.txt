@@ -103,9 +103,9 @@ add_link_options(--sysroot ${CHARIOT_SYSROOT})
 set(EXECUTABLE_OUTPUT_PATH "${CHARIOT_SYSROOT}/bin" CACHE PATH "Build directory" FORCE)
 set(LIBRARY_OUTPUT_PATH "${CHARIOT_SYSROOT}/lib" CACHE PATH "Build directory" FORCE)
 
+# warnings, etc.
 
-
-set(CMAKE_C_FLAGS "-DUSERLAND")
+set(CMAKE_C_FLAGS "-DUSERLAND -ffreestanding -fdiagnostics-color=always ")
 if(CONFIG_DEBUG_SYMBOLS)
 	# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 endif()
@@ -115,7 +115,7 @@ if(CONFIG_OPTIMIZED)
 endif()
 
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} ${ARCH_USER_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${ARCH_USER_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -nostdinc++ -std=c++17 ${ARCH_USER_CXX_FLAGS}")
 
 
 
