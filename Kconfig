@@ -2,25 +2,6 @@ mainmenu "Chariot Kernel Configuration"
 
 source "arch/Kconfig"
 
-menu "Scheduler"
-	config PREFETCH_NEXT_THREAD
-		bool "Prefetch next thread in tick irq"
-		default y
-endmenu
-
-
-menu "Configuration"
-
-	config EXT2
-		bool "Ext2 Filesystem"
-		default y
-
-	config TMPFS
-		bool "Temp Filesystem"
-		default y
-
-endmenu
-
 
 menu "Build"
 	config DEBUG_SYMBOLS
@@ -31,9 +12,14 @@ menu "Build"
 		bool "Display timestamps when printing with KERN_*"
 		default y
 
-	config OPTIMIZED
-		bool "Optimization (-O2)"
-		default y
+	config ADDITIONAL_KERNEL_FLAGS
+		string "[kernel] Additional GCC Flags"
+		default "-O2"
+
+	config ADDITIONAL_USER_FLAGS
+		string "[userspace] Additional GCC Flags"
+		default "-O3"
+
 
 
 	config DISK_SIZE_MB
@@ -65,8 +51,25 @@ menu "Debug"
 		bool "Verbose process debug"
 		default n
 
+endmenu
+
+
+menu "Configuration"
+
+	config PREFETCH_NEXT_THREAD
+		bool "Prefetch next thread in tick irq"
+		default y
+
+	config EXT2
+		bool "Ext2 Filesystem"
+		default y
+
+	config TMPFS
+		bool "Temp Filesystem"
+		default y
 
 endmenu
+
 
 menu "Devices"
 

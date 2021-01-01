@@ -24,7 +24,7 @@
 #define INFO(fmt, args...)
 #endif
 
-extern "C" void swtch(struct thread_context **, struct thread_context *);
+extern "C" void context_switch(struct thread_context **, struct thread_context *);
 
 
 static bool s_enabled = true;
@@ -36,15 +36,23 @@ static struct thread *get_next_thread(void) { return s_scheduler.pick_next(); }
 
 
 static auto pick_next_thread(void) {
+  if (curthd != NULL) {
+    // printk_nolock("pick next thread from %d\n", curthd->tid);
+  }
   if (cpu::current().next_thread == NULL) {
     cpu::current().next_thread = get_next_thread();
+  }
+
+  if (cpu::current().next_thread != NULL) {
+    // printk_nolock("next %d\n", cpu::current().next_thread->tid);
   }
   return cpu::current().next_thread;
 }
 
 
-// add a task to a mlfq entry based on tsk->priority
-int sched::add_task(struct thread *tsk) { return s_scheduler.add_task(tsk); }
+int sched::add_task(struct thread *tsk) {
+	return s_scheduler.add_task(tsk);
+}
 
 int sched::remove_task(struct thread *t) { return s_scheduler.remove_task(t); }
 
@@ -62,10 +70,11 @@ static void switch_into(struct thread &thd) {
   // load up the thread's address space
   cpu::switch_vm(&thd);
 
+
   thd.stats.last_start_cycle = arch_read_timestamp();
 
   // Switch into the thread!
-  swtch(&cpu::current().sched_ctx, thd.kern_context);
+  context_switch(&cpu::current().sched_ctx, thd.kern_context);
 
   arch_save_fpu(thd);
 
@@ -94,7 +103,7 @@ void sched::yield() {
   thd.stats.cycles += arch_read_timestamp() - thd.stats.last_start_cycle;
   thd.stats.last_cpu = thd.stats.current_cpu;
   thd.stats.current_cpu = -1;
-  swtch(&thd.kern_context, cpu::current().sched_ctx);
+  context_switch(&thd.kern_context, cpu::current().sched_ctx);
   arch_enable_ints();
 }
 

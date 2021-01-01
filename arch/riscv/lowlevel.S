@@ -3,6 +3,21 @@
 # Nick Wanninger
 # 29 December, 2020
 
+#ifdef CONFIG_64BIT
+#define RSIZE 8
+#define SREG sd
+#define LREG ld
+#else
+
+#define RSIZE 4
+#define SREG sw
+#define LREG lw
+#endif
+
+
+
+#define ROFF(N, R) N*RSIZE (R)
+
 .option norvc # Disable instruction compression
 .section .data
 
@@ -230,3 +245,50 @@ kernelvec:
 	# return to whatever we were doing in the kernel.
 	sret
 
+
+
+# TODO: 32 vs 64bit :)
+.globl context_switch # (addr_of_old_state_ptr, new_state_ptr)
+context_switch:
+#define CTX_SIZE (13 * RSIZE)
+
+	# a0: address to place stack pointer
+	# a1: new stack pointer
+
+	addi sp, sp, -CTX_SIZE # 128 is a round up, as we only need 104. TODO: 
+
+	SREG ra,  ROFF(0,  sp)
+	SREG s0,  ROFF(1,  sp)
+	SREG s1,  ROFF(2,  sp)
+	SREG s2,  ROFF(3,  sp)
+	SREG s3,  ROFF(4,  sp)
+	SREG s4,  ROFF(5,  sp)
+	SREG s5,  ROFF(6,  sp)
+	SREG s6,  ROFF(7,  sp)
+	SREG s7,  ROFF(8,  sp)
+	SREG s8,  ROFF(9,  sp)
+	SREG s9,  ROFF(10, sp)
+	SREG s10, ROFF(11, sp)
+	SREG s11, ROFF(12, sp)
+
+	SREG sp, (a0)
+	mv sp, a1
+
+
+	LREG ra,  ROFF(0,  sp)
+	LREG s0,  ROFF(1,  sp)
+	LREG s1,  ROFF(2,  sp)
+	LREG s2,  ROFF(3,  sp)
+	LREG s3,  ROFF(4,  sp)
+	LREG s4,  ROFF(5,  sp)
+	LREG s5,  ROFF(6,  sp)
+	LREG s6,  ROFF(7,  sp)
+	LREG s7,  ROFF(8,  sp)
+	LREG s8,  ROFF(9,  sp)
+	LREG s9,  ROFF(10, sp)
+	LREG s10, ROFF(11, sp)
+	LREG s11, ROFF(12, sp)
+
+	addi sp, sp, CTX_SIZE
+	
+	ret

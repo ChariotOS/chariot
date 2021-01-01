@@ -1,5 +1,5 @@
-global swtch
-swtch:
+global context_switch
+context_switch:
 	;; the return address is implicitly at the top of the stack
 	;; right now, so it is accessable within the context_t struct
 

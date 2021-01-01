@@ -3,8 +3,15 @@
 #include <riscv/arch.h>
 #include <riscv/plic.h>
 
-void arch_disable_ints(void) {}
-void arch_enable_ints(void) {}
+void arch_disable_ints(void) {
+	rv::intr_off();
+	
+}
+void arch_enable_ints(void) {
+	rv::intr_on();
+}
+
+
 void arch_relax(void) {}
 
 /* Simply wait for an interrupt :) */
@@ -13,8 +20,22 @@ void arch_halt() {
 }
 
 void arch_mem_init(unsigned long mbd) {}
-void arch_initialize_trapframe(bool userspace, reg_t *) {}
-unsigned arch_trapframe_size(void) { return 0; }
+
+
+void arch_initialize_trapframe(bool userspace, reg_t *r) {
+
+	auto *regs = (rv::regs*)r;
+	printk("pc: %p\n", regs->ra);
+	printk("sp: %p\n", regs->sp);
+	/* ODO: */
+}
+
+
+unsigned arch_trapframe_size(void) {
+	return sizeof(rv::regs); 
+}
+
+
 void arch_dispatch_function(void *func, long arg) {}
 void arch_sigreturn(void) {}
 void arch_flush_mmu(void) {}
@@ -59,16 +80,12 @@ void cpu::seginit(void *local) {
 
 
 /* TODO */
-extern "C" void swtch(void) {}
-
-/* TODO */
 extern "C" void trapret(void) {}
 
 /* TODO */
 ref<mm::pagetable> mm::pagetable::create() { return nullptr; }
 
 
-reg_t &arch_reg(int ind, reg_t *regs) { return regs[0]; /* TODO */ }
 
 
 /* TODO: */

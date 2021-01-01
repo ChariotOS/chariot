@@ -14,6 +14,13 @@
 #include <signals.h>
 #include <string.h>
 #include <vec.h>
+
+
+#ifdef CONFIG_RISCV
+#include <riscv/arch.h>
+#endif
+
+
 #define SIGBIT(n) (1llu << (n))
 
 #define RING_KERN 0
@@ -48,6 +55,7 @@ namespace sched {
   using impl = sched::round_robin;
 }  // namespace sched
 
+#ifdef CONFIG_X86
 struct thread_context {
   unsigned long r15;
   unsigned long r14;
@@ -55,9 +63,30 @@ struct thread_context {
   unsigned long r12;
   unsigned long r11;
   unsigned long rbx;
-  unsigned long ebp;  // rbp
-  unsigned long eip;  // rip;
+  unsigned long rbp;  // rbp
+  unsigned long pc;  // rip;
 };
+#endif
+
+
+#ifdef CONFIG_RISCV
+struct thread_context {
+  rv::xsize_t pc; // 0
+  // callee-saved
+  rv::xsize_t s0; // 8
+  rv::xsize_t s1; // 16
+  rv::xsize_t s2; // 24
+  rv::xsize_t s3; // 32
+  rv::xsize_t s4; // 40
+  rv::xsize_t s5; // 48
+  rv::xsize_t s6; // 56
+  rv::xsize_t s7; // 64
+  rv::xsize_t s8; // 72
+  rv::xsize_t s9; // 80
+  rv::xsize_t s10; // 88
+  rv::xsize_t s11; // 96
+};
+#endif
 
 using pid_t = int;
 using uid_t = int;
@@ -346,7 +375,7 @@ namespace sched {
 
   process &kernel_proc(void);
 
-	void set_state(int state);
+  void set_state(int state);
   void yield(void);
   void do_yield(int status);
 

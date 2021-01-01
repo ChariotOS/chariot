@@ -15,6 +15,23 @@ config RISCV_RAM_MB
 		risc-v doesn't seem to have an obvious way to query
 		ram count, so we have to hard code it I think (idk)
 
+choice
+	prompt "Virtual memory system"
+	default SV48
+
+
+	config SV32
+		bool "Sv32 - 32-bit paging"
+		depends on !64BIT
+
+	config SV39
+		bool "Sv39 - 39-bit paging"
+		depends on 64BIT
+
+	config SV48
+		bool "Sv48 - 48-bit paging"
+		depends on 64BIT
+endchoice
 
 # choice
 # 	prompt "Architecture size"

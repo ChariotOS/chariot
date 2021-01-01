@@ -1,49 +1,40 @@
+#include <cpu.h>
 #include <printk.h>
 #include <riscv/arch.h>
 #include <riscv/plic.h>
+#include <sched.h>
 #include <util.h>
 
-struct ktrapframe {
-  rv::xsize_t ra; /* x1: Return address */
-  rv::xsize_t sp; /* x2: Stack pointer */
-  rv::xsize_t gp; /* x3: Global pointer */
-  rv::xsize_t tp; /* x4: Thread Pointer */
-  rv::xsize_t t0; /* x5: Temp 0 */
-  rv::xsize_t t1; /* x6: Temp 1 */
-  rv::xsize_t t2; /* x7: Temp 2 */
-  rv::xsize_t s0; /* x8: Saved register / Frame Pointer */
-  rv::xsize_t s1; /* x9: Saved register */
-  rv::xsize_t a0; /* Arguments, you get it :) */
-  rv::xsize_t a1;
-  rv::xsize_t a2;
-  rv::xsize_t a3;
-  rv::xsize_t a4;
-  rv::xsize_t a5;
-  rv::xsize_t a6;
-  rv::xsize_t a7;
-  rv::xsize_t s2; /* More Saved registers... */
-  rv::xsize_t s3;
-  rv::xsize_t s4;
-  rv::xsize_t s5;
-  rv::xsize_t s6;
-  rv::xsize_t s7;
-  rv::xsize_t s8;
-  rv::xsize_t s9;
-  rv::xsize_t s10;
-  rv::xsize_t s11;
-  rv::xsize_t t3; /* More temporaries */
-  rv::xsize_t t4;
-  rv::xsize_t t5;
-  rv::xsize_t t6;
-  /* Missing floating point registers in the kernel trap frame */
-};
 
 
-const char *ktrapframe_name[] = {
+reg_t &arch_reg(int ind, reg_t *r) {
+  auto *tf = (struct rv::regs *)r;
+  switch (ind) {
+    case REG_PC:
+      return tf->ra;
+
+    case REG_SP:
+      return tf->sp;
+
+    case REG_BP:
+      return tf->s0;
+
+    case REG_ARG0:
+      return tf->a0;
+    case REG_ARG1:
+      return tf->a1;
+  }
+  panic("INVALID arch_reg() CALL %d\n", ind);
+  while (1) {
+  }
+}
+
+const char *regs_name[] = {
     "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0",  "a1",  "a2", "a3", "a4", "a5", "a6",
     "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6",
-
 };
+
+
 void arch_dump_backtrace(void) { /* Nothing here for now... */
 }
 
@@ -84,17 +75,20 @@ static void print_readable_reg(const char *name, rv::xsize_t value) {
 }
 
 
-static void kernel_unhandled_trap(struct ktrapframe &tf, const char *type) {
+static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
   printk(KERN_ERROR "Unhandled trap '%s' on HART#%d\n", type, rv::hartid());
-	printk(KERN_ERROR);
-	print_readable_reg("PC", tf.ra);
-	printk(", ");
-	print_readable_reg("Bad Address", read_csr(sbadaddr));
-	printk("\n");
+  printk(KERN_ERROR);
+  print_readable_reg("PC", tf.ra);
+  printk(", ");
+  print_readable_reg("Bad Address", read_csr(sbadaddr));
+
+  printk(", ");
+  print_readable_reg("val", read_csr(stval));
+  printk("\n");
 
   int p = 0;
-  for (int i = 0; i < sizeof(struct ktrapframe) / sizeof(rv::xsize_t); i++) {
-    print_readable_reg(ktrapframe_name[i], ((rv::xsize_t *)&tf)[i]);
+  for (int i = 0; i < sizeof(struct rv::regs) / sizeof(rv::xsize_t); i++) {
+    print_readable_reg(regs_name[i], ((rv::xsize_t *)&tf)[i]);
     p++;
     if (p >= 4) {
       printk("\n");
@@ -110,7 +104,7 @@ static void kernel_unhandled_trap(struct ktrapframe &tf, const char *type) {
 
 
 /* Supervisor trap function */
-extern "C" void kernel_trap(struct ktrapframe &tf) {
+extern "C" void kernel_trap(struct rv::regs &tf) {
   int which_dev = 0;
   rv::xsize_t sepc = read_csr(sepc);
   rv::xsize_t sstatus = read_csr(sstatus);
@@ -119,17 +113,28 @@ extern "C" void kernel_trap(struct ktrapframe &tf) {
   if ((sstatus & SSTATUS_SPP) == 0) panic("kerneltrap: not from supervisor mode");
   if (rv::intr_enabled() != 0) panic("kerneltrap: interrupts enabled");
 
+
+
   int interrupt = (scause >> 63);
   int nr = scause & ~(1llu << 63);
   if (interrupt) {
     /* Supervisor software interrupt (from machine mode) */
     if (nr == 1) {
+      auto &cpu = cpu::current();
+      uint64_t now = arch_read_timestamp();
+      cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
+      cpu.kstat.last_tick_tsc = now;
+      cpu.kstat.ticks++;
+
       // acknowledge the software interrupt by clearing
       // the SSIP bit in sip.
       write_csr(sip, read_csr(sip) & ~2);
+      sched::handle_tick(cpu.kstat.ticks);
     }
+
     /* Supervisor External Interrupt */
     if (nr == 9) {
+      rv::intr_on();
       int irq = rv::plic::claim();
       // printk("irq: 0x%d\n", irq);
       irq::dispatch(irq, NULL /* Hmm, not sure what to do with regs */);
@@ -184,4 +189,4 @@ extern "C" void kernel_trap(struct ktrapframe &tf) {
   write_csr(sstatus, sstatus);
 }
 
-extern "C" void machine_trap(struct ktrapframe &tf) {}
+extern "C" void machine_trap(struct rv::regs &tf) {}

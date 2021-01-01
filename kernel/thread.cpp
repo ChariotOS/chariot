@@ -58,7 +58,8 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
   arch_reg(REG_PC, trap_frame) = -1;
 
   // set the initial context to the creation boostrap function
-  kern_context->eip = (u64)thread_create_callback;
+  kern_context->pc = (u64)thread_create_callback;
+
 
   arch_initialize_trapframe(proc.ring == RING_USER, trap_frame);
 

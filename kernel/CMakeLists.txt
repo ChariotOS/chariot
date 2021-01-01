@@ -9,9 +9,7 @@ if(CONFIG_DEBUG_SYMBOLS)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 endif()
 
-if(CONFIG_OPTIMIZED)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
-endif()
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CONFIG_ADDITIONAL_KERNEL_FLAGS}")
 
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} ${ARCH_KERN_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++17 -fno-rtti -fno-exceptions -Wno-literal-suffix ${ARCH_KERN_CXX_FLAGS}")

@@ -34,10 +34,10 @@ pid_t get_next_pid(void) {
 
 mm::space *alloc_user_vm(void) {
 #ifdef CONFIG_64BIT
-	return new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create());
+  return new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create());
 #else
-	panic("Need 32bit mm::space user vm\n");
-	return nullptr;
+  panic("Need 32bit mm::space user vm\n");
+  return nullptr;
 #endif
 }
 
@@ -291,7 +291,7 @@ void sched::proc::dump_table(void) {
   printk("process dump:\n");
 
   printk("   ticks: %zu\n", cpu::get_ticks());
-  printk("   sched: rip=%p\n", cpu::current().sched_ctx->eip);
+  printk("   sched: rip=%p\n", cpu::current().sched_ctx->pc);
   for (auto &p : proc_table) {
     auto &proc = p.value;
     printk("pid %d ", proc->pid);
@@ -682,7 +682,7 @@ static pid_t do_fork(struct process &p) {
   new_td->fpu.initialized = old_td->fpu.initialized;
 
   // go to the trap_return function instead of whatever it was gonna do otherwise
-  new_td->kern_context->eip = (u64)trap_return;
+  new_td->kern_context->pc = (u64)trap_return;
 
   new_td->state = PS_RUNNING;
   sched::add_task(new_td);

@@ -18,7 +18,7 @@ base/boot
 
 .config*
 autoconf.h
-config.cmake
+/config.cmake
 
 user/out
 

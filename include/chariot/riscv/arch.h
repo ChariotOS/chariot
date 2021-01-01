@@ -60,6 +60,43 @@ namespace rv /* risc-v namespace */ {
   static inline auto hartid(void) { return rv::get_scratch().hartid; }
 
 
+  struct regs {
+    rv::xsize_t ra; /* x1: Return address */
+    rv::xsize_t sp; /* x2: Stack pointer */
+    rv::xsize_t gp; /* x3: Global pointer */
+    rv::xsize_t tp; /* x4: Thread Pointer */
+    rv::xsize_t t0; /* x5: Temp 0 */
+    rv::xsize_t t1; /* x6: Temp 1 */
+    rv::xsize_t t2; /* x7: Temp 2 */
+    rv::xsize_t s0; /* x8: Saved register / Frame Pointer */
+    rv::xsize_t s1; /* x9: Saved register */
+    rv::xsize_t a0; /* Arguments, you get it :) */
+    rv::xsize_t a1;
+    rv::xsize_t a2;
+    rv::xsize_t a3;
+    rv::xsize_t a4;
+    rv::xsize_t a5;
+    rv::xsize_t a6;
+    rv::xsize_t a7;
+    rv::xsize_t s2; /* More Saved registers... */
+    rv::xsize_t s3;
+    rv::xsize_t s4;
+    rv::xsize_t s5;
+    rv::xsize_t s6;
+    rv::xsize_t s7;
+    rv::xsize_t s8;
+    rv::xsize_t s9;
+    rv::xsize_t s10;
+    rv::xsize_t s11;
+    rv::xsize_t t3; /* More temporaries */
+    rv::xsize_t t4;
+    rv::xsize_t t5;
+    rv::xsize_t t6;
+    /* Missing floating point registers in the kernel trap frame */
+  };
+
+
+
 
   // Machine Status Register, mstatus
 
@@ -274,35 +311,6 @@ namespace rv /* risc-v namespace */ {
   }
 
 
-#define PGSIZE 4096  // bytes per page
-#define PGSHIFT 12  // bits of offset within a page
-
-#define PGROUNDUP(sz) (((sz) + PGSIZE - 1) & ~(PGSIZE - 1))
-#define PGROUNDDOWN(a) (((a)) & ~(PGSIZE - 1))
-
-#define PTE_V (1L << 0)  // valid
-#define PTE_R (1L << 1)
-#define PTE_W (1L << 2)
-#define PTE_X (1L << 3)
-#define PTE_U (1L << 4)  // 1 -> user can access
-
-// shift a physical address to the right place for a PTE.
-#define PA2PTE(pa) ((((rv::xsize_t)pa) >> 12) << 10)
-
-#define PTE2PA(pte) (((pte) >> 10) << 12)
-
-#define PTE_FLAGS(pte) ((pte)&0x3FF)
-
-// extract the three 9-bit page table indices from a virtual address.
-#define PXMASK 0x1FF  // 9 bits
-#define PXSHIFT(level) (PGSHIFT + (9 * (level)))
-#define PX(level, va) ((((rv::xsize_t)(va)) >> PXSHIFT(level)) & PXMASK)
-
-// one beyond the highest possible virtual address.
-// MAXVA is actually one bit less than the max allowed by
-// Sv39, to avoid having to sign-extend virtual addresses
-// that have the high bit set.
-#define MAXVA (1L << (9 + 9 + 9 + 12 - 1))
 
   // are device interrupts enabled?
   static inline int intr_enabled() {
