@@ -57,7 +57,6 @@ void main() {
   if (rv::hartid() != 0)
     while (1) arch_halt();
 
-
   /* Zero the BSS section */
   for (char *c = _bss_start; c != _bss_end; c++) *c = 0;
 
@@ -76,9 +75,10 @@ void main() {
 
   cpu::seginit(NULL);
 
-
   /* Now that we have a memory allocator, call global constructors */
-  for (func_ptr *func = __init_array_start; func != __init_array_end; func++) (*func)();
+  for (func_ptr *func = __init_array_start; func != __init_array_end; func++) {
+    (*func)();
+  }
 
 
   /* static fdt, might get eaten by physical allocator. We gotta copy it asap :) */
@@ -88,19 +88,21 @@ void main() {
   assert(sched::init());
   KINFO("Initialized the scheduler\n");
 
-  sched::proc::create_kthread("[kinit]", [](void *) -> int {
+	while (1) {
+		arch_halt();
+	}
+
+  sched::proc::create_kthread("task1", [](void *) -> int {
     while (1) {
-      // printk_nolock("0");
-      // sched::yield();
+			arch_halt();
+			sched::yield();
     }
     return 0;
   });
 
-
-  sched::proc::create_kthread("[kinit]", [](void *) -> int {
+  sched::proc::create_kthread("task2", [](void *) -> int {
     while (1) {
-      // printk_nolock("1");
-      // sched::yield();
+			sched::yield();
     }
     return 0;
   });

@@ -140,8 +140,6 @@ int kernel_init(void *) {
   KINFO("kernel modules initialized\n");
 
 
-
-
 #ifdef CONFIG_USERSPACE
 
   auto root_name = kargs::get("root", "/dev/ata0p1");

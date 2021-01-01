@@ -30,8 +30,8 @@ int sched::round_robin::add_task_impl(struct thread *tsk) {
     // this is the only thing in the queue
     front = tsk;
     back = tsk;
-    tsk->sched.next = NULL;
-    tsk->sched.prev = NULL;
+    tsk->sched_state.next = NULL;
+    tsk->sched_state.prev = NULL;
   } else {
     // insert at the end of the list
     back->sched_state.next = tsk;
@@ -45,7 +45,6 @@ int sched::round_robin::add_task_impl(struct thread *tsk) {
 }
 
 
-
 int sched::round_robin::remove_task_impl(struct thread *tsk) {
   if (tsk->sched_state.next) {
     tsk->sched_state.next->sched_state.prev = tsk->sched_state.prev;
@@ -55,6 +54,8 @@ int sched::round_robin::remove_task_impl(struct thread *tsk) {
   }
   if (back == tsk) back = tsk->sched_state.prev;
   if (front == tsk) front = tsk->sched_state.next;
+	if (back == NULL) assert(front == NULL);
+	if (front == NULL) assert(back == NULL);
   return 0;
 }
 

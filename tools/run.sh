@@ -10,7 +10,6 @@ QEMU_ARCH=""
 QEMU_FLAGS="-nographic -serial mon:stdio "
 
 
-
 case $ARCH in 
 	X86-64)
 		tools/sync.sh || exit 1

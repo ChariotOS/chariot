@@ -60,6 +60,10 @@ menu "Configuration"
 		bool "Prefetch next thread in tick irq"
 		default y
 
+	config TICKS_PER_SECOND
+		int "Timer wakeup ticks per second"
+		default 100
+
 	config EXT2
 		bool "Ext2 Filesystem"
 		default y

@@ -51,7 +51,8 @@ static auto pick_next_thread(void) {
 
 
 int sched::add_task(struct thread *tsk) {
-	return s_scheduler.add_task(tsk);
+	int res =  s_scheduler.add_task(tsk);
+	return res;
 }
 
 int sched::remove_task(struct thread *t) { return s_scheduler.remove_task(t); }

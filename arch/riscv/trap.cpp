@@ -134,8 +134,15 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
 
     /* Supervisor External Interrupt */
     if (nr == 9) {
-      rv::intr_on();
+			/* First, we claim the irq from the PLIC */
       int irq = rv::plic::claim();
+			/* *then* enable interrupts, so the irq handler can have interrupts.
+			 * This is a major design problem in chariot, and I gotta figure out
+			 * if I can just have them disabled in irq handlers, and defer to worker
+			 * threads outside of irq context generally.
+			 */
+      rv::intr_on();
+
       // printk("irq: 0x%d\n", irq);
       irq::dispatch(irq, NULL /* Hmm, not sure what to do with regs */);
       rv::plic::complete(irq);

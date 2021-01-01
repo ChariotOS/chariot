@@ -11,8 +11,8 @@ namespace sched {
 
 	struct round_robin {
 		spinlock big_lock;
-		struct thread *front;
-		struct thread *back;
+		struct thread *front = nullptr;
+		struct thread *back = nullptr;
 
 
 		/////////////////////////////////////
