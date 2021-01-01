@@ -93,7 +93,7 @@ inline void do_panic(const char* fmt, T&&... args) {
 #define panic(fmt, args...)                   \
   do {                                        \
     KERR("PANIC: %s\n", __PRETTY_FUNCTION__); \
-    do_panic(fmt, ##args);                    \
+    do_panic(KERN_ERROR fmt, ##args);                    \
   } while (0);
 
 #define assert(val)                          \

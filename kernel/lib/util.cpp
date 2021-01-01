@@ -2,25 +2,15 @@
 #include <printk.h>
 #include <util.h>
 
-#define C_RED 91
-#define C_GREEN 92
-#define C_YELLOW 93
-#define C_BLUE 94
-#define C_MAGENTA 95
-#define C_CYAN 96
-
-#define C_RESET 0
-#define C_GRAY 90
-
 static int current_color = 0;
-static void set_color(int code) {
+void set_color(int code) {
   if (code != current_color) {
     printk("\x1b[%dm", code);
     current_color = code;
   }
 }
 
-static void set_color_for(char c) {
+void set_color_for(char c, int fallback) {
   if (c >= 'A' && c <= 'z') {
     set_color(C_YELLOW);
   } else if (c >= '!' && c <= '~') {
@@ -32,7 +22,7 @@ static void set_color_for(char c) {
   } else if ((unsigned char)c == 0xFF) {
     set_color(C_MAGENTA);
   } else {
-    set_color(C_GRAY);
+    set_color(fallback);
   }
 }
 
@@ -148,7 +138,7 @@ int rand(void) {
 #ifdef CONFIG_64BIG
   return rand_seed >> 33;
 #else
-	/* hmm, gotta figure out the reasoning for this */
-	return rand_seed;
+  /* hmm, gotta figure out the reasoning for this */
+  return rand_seed;
 #endif
 }

@@ -96,6 +96,41 @@ void debug_die(void) {
 
 
 
+#define C_RED 91
+#define C_GREEN 92
+#define C_YELLOW 93
+#define C_BLUE 94
+#define C_MAGENTA 95
+#define C_CYAN 96
+
+#define C_RESET 0
+#define C_GRAY 90
+
+static int current_color = 0;
+static void set_color(int code) {
+  if (code != current_color) {
+    printk("\x1b[%dm", code);
+    current_color = code;
+  }
+}
+
+static void set_color_for(char c) {
+  if (c >= 'A' && c <= 'z') {
+    set_color(C_YELLOW);
+  } else if (c >= '!' && c <= '~') {
+    set_color(C_CYAN);
+  } else if (c == '\n' || c == '\r') {
+    set_color(C_GREEN);
+  } else if (c == '\a' || c == '\b' || c == 0x1b || c == '\f' || c == '\n' || c == '\r') {
+    set_color(C_RED);
+  } else if ((unsigned char)c == 0xFF) {
+    set_color(C_MAGENTA);
+  } else {
+    set_color(C_GRAY);
+  }
+}
+
+
 void putchar(char c) {
   console::putc(c, true /* debug */);
   // vga::putchar(c);

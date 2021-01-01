@@ -15,7 +15,6 @@ void arch_halt() {
 void arch_mem_init(unsigned long mbd) {}
 void arch_initialize_trapframe(bool userspace, reg_t *) {}
 unsigned arch_trapframe_size(void) { return 0; }
-void arch_dump_backtrace(void) {}
 void arch_dispatch_function(void *func, long arg) {}
 void arch_sigreturn(void) {}
 void arch_flush_mmu(void) {}
