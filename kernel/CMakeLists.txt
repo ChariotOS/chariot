@@ -33,9 +33,13 @@ include_directories(../include/chariot)
 # LWIP interface
 include_directories(../net/lwip/include)
 
+
+
+set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}" CACHE PATH "kernel build" FORCE)
+
 add_executable(chariot ${SOURCES})
 set_target_properties(chariot PROPERTIES OUTPUT_NAME "chariot.elf")
-install(TARGETS chariot RUNTIME DESTINATION boot)
+# install(TARGETS chariot RUNTIME DESTINATION boot)
 
 
 macro(add_rooted_subdir dir)
@@ -105,7 +109,7 @@ function(add_kernel_module)
 endfunction()
 
 
-add_rooted_subdir(arch/${CHARIOT_ARCH})
+add_rooted_subdir(arch/${CONFIG_ARCH_DIR})
 
 
 add_rooted_subdir(fs)

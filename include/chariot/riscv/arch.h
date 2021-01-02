@@ -20,8 +20,7 @@
   })
 
 
-#define QEMU_CLOCKS_PER_SECOND 10'000'000
-#define TICK_INTERVAL (QEMU_CLOCKS_PER_SECOND / CONFIG_TICKS_PER_SECOND)
+#define TICK_INTERVAL (CONFIG_RISCV_CLOCKS_PER_SECOND / CONFIG_TICKS_PER_SECOND)
 
 namespace dtb {
   struct fdt_header;
@@ -91,6 +90,9 @@ namespace rv /* risc-v namespace */ {
     rv::xsize_t t4;
     rv::xsize_t t5;
     rv::xsize_t t6;
+
+		/* Exception PC */
+		rv::xsize_t sepc;
     /* Missing floating point registers in the kernel trap frame */
   };
 

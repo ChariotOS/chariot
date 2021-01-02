@@ -6,11 +6,6 @@
 #endif
 #include <time.h>
 
-#define MS_PER_SEC (1000)
-#define US_PER_SEC (MS_PER_SEC * 1000)
-#define NS_PER_SEC (US_PER_SEC * 1000)
-
-
 
 
 static unsigned long last_cycle = 0;
@@ -18,8 +13,17 @@ static volatile uint64_t cycles_per_second = 0;
 static volatile uint64_t current_second = 0;
 
 
+void time::set_cps(unsigned long cps) {
+	cycles_per_second = cps;
+}
 
 bool time::stabilized(void) { return cycles_per_second != 0; }
+
+
+static unsigned long (*g_high_acc)(void) = NULL;
+void time::set_high_accuracy_time_fn(unsigned long (*fn)(void)) {
+	g_high_acc = fn;
+}
 
 unsigned long time::cycles_to_ns(unsigned long cycles) {
   /* hmm */
@@ -28,6 +32,11 @@ unsigned long time::cycles_to_ns(unsigned long cycles) {
 }
 
 unsigned long long time::now_ns() {
+	/* if the arch gives us this func, use it :) */
+	if (g_high_acc != NULL) {
+		return g_high_acc();
+	}
+
   /* If the time is not stabilized yet, wait for it. */
   if (unlikely(!time::stabilized())) {
     printk(KERN_WARN "The time has not been stabilized before access. Waiting for stabilization...\n");
@@ -62,8 +71,6 @@ unsigned long long time::now_ns() {
 }
 
 unsigned long long time::now_us(void) {
-  // TODO: this function can possibly return the same value multiple times?
-  // I'm sure this is fine, but still.
   return now_ns() / 1000;  // (current_second * US_PER_SEC) + us_this_second;
 }
 
@@ -73,8 +80,13 @@ unsigned long long time::now_ms(void) { return now_us() / 1000; }
 
 // called every second by the RTC in x86
 void time::timekeep(void) {
+
 #ifdef CONFIG_X86
   auto now_second = dev::RTC::now();
+#else
+  auto now_second = arch_seconds_since_boot();
+#endif
+
   if (now_second != current_second) {
     unsigned long now_cycle = arch_read_timestamp();
     if (last_cycle != 0) {
@@ -83,7 +95,6 @@ void time::timekeep(void) {
     last_cycle = now_cycle;
   }
   time::set_second(now_second);
-#endif
 }
 
 void time::set_second(unsigned long sec) { current_second = sec; }

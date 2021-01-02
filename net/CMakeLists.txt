@@ -12,4 +12,6 @@ add_kernel_module(
 		ipv4/udp.cpp
 )
 
-add_subdirectory(lwip)
+if (CONFIG_LWIP)
+	add_subdirectory(lwip)
+endif()

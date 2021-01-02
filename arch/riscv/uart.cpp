@@ -1,8 +1,8 @@
 #include <arch.h>
+#include <console.h>
 #include <lock.h>
 #include <printk.h>
 #include <riscv/uart.h>
-#include <console.h>
 
 /* Quick function to get a uart register */
 #define Reg(reg) ((volatile unsigned char *)(UART0 + reg))
@@ -67,27 +67,38 @@ static void uart_start(void) {
 
 
 static void uart_irq(int irq, reg_t *r) {
-	uart_count++;
-	// printk("uart irq: ");
+  uart_count++;
+  // printk("uart irq: ");
   // read and process incoming characters.
+
+  size_t nread = 0;
+  char buf[32];
   while (1) {
     int c = rv::uart_getc();
     if (c == -1) break;
-		/* qemu's UART is only sending \r when I hit enter... */
-		if (c == '\r') c = '\n';
-		console::putc(c, true);
+    /* qemu's UART is only sending \r when I hit enter... */
+    if (c == '\r') c = '\n';
+
+    if (nread > 32) {
+      console::feed(nread, buf);
+      nread = 0;
+    }
+
+    buf[nread] = c;
+    nread++;
   }
-	// printk("\n");
+
+  if (nread != 0) console::feed(nread, buf);
 
   // send buffered characters.
   uart_tx_lock.lock();
-	uart_start();
+  uart_start();
   uart_tx_lock.unlock();
 }
 
 
 void rv::uart_init(void) {
-	uart_tx_w = uart_tx_r = 0;
+  uart_tx_w = uart_tx_r = 0;
   // disable interrupts.
   WriteReg(IER, 0x00);
 
@@ -113,13 +124,11 @@ void rv::uart_init(void) {
 }
 
 void rv::uart_putc(char c) {
-
-
-	  // wait for Transmit Holding Empty to be set in LSR.
-  while((ReadReg(LSR) & LSR_TX_IDLE) == 0)
+  // wait for Transmit Holding Empty to be set in LSR.
+  while ((ReadReg(LSR) & LSR_TX_IDLE) == 0)
     ;
   WriteReg(THR, c);
-	return;
+  return;
 
   // WriteReg(THR /* Transmit holding register */, c);
 
@@ -133,7 +142,7 @@ void rv::uart_putc(char c) {
       uart_tx_w += 1;
       uart_start();
       uart_tx_lock.unlock();
-			break;
+      break;
     }
   }
 }

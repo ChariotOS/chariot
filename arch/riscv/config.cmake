@@ -1,9 +1,9 @@
 
 if(CONFIG_64BIT)
-	set(RISCV_MARCH "rv64g")
+	set(RISCV_MARCH "rv64gc")
 	set(RISCV_MABI  "lp64")
 else()
-	set(RISCV_MARCH "rv32g")
+	set(RISCV_MARCH "rv32gc")
 	set(RISCV_MABI  "ilp32")
 endif()
 
@@ -28,5 +28,5 @@ set(ARCH_KERN_CXX_FLAGS "")
 
 
 
-set(ARCH_KERN_LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/arch/riscv/kernel.ld")
+set(ARCH_KERN_LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/arch/riscv/ld/qemu-virt64-kernel.ld")
 set(ARCH_USER_LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/arch/riscv/user.ld")

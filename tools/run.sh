@@ -1,14 +1,16 @@
 #!/bin/bash
 
-make
 
+make
 source .config
 
 # this parses the arch of the elf into "X86-64", "RISC-V", etc...
-ARCH=$(readelf -h build/root/bin/chariot.elf | grep 'Machine' | awk '{print $(NF)}')
+ARCH=$(readelf -h build/chariot.elf | grep 'Machine' | awk '{print $(NF)}')
 QEMU_ARCH=""
 QEMU_FLAGS="-nographic -serial mon:stdio "
 
+
+dd if=/dev/urandom of=build/random.img bs=4096 count=1024
 
 case $ARCH in 
 	X86-64)
@@ -22,16 +24,18 @@ case $ARCH in
 		;;
 
 	RISC-V)
+
 		QEMU_ARCH=riscv64
 
 		QEMU_FLAGS+="-machine virt -smp 1 -m ${CONFIG_RISCV_RAM_MB}M -bios none "
-		QEMU_FLAGS+="-kernel build/root/bin/chariot.elf "
+		QEMU_FLAGS+="-kernel build/chariot.elf "
+		# QEMU_FLAGS+="-drive file=build/random.img,if=none,format=raw,id=x0 "
+		# QEMU_FLAGS+="-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 "
 		# virtio keyboard, gpu, and tablet (cursor)
-		QEMU_FLAGS+="-device virtio-tablet-device -device virtio-keyboard-device -device virtio-gpu-device "
+		# QEMU_FLAGS+="-device virtio-tablet-device -device virtio-keyboard-device -device virtio-gpu-device "
 		;;
 
 esac
 
 
 qemu-system-${QEMU_ARCH} ${QEMU_FLAGS} $@
-

@@ -2,7 +2,9 @@
 #include <errno.h>
 #include <fs.h>
 #include <lock.h>
+#ifdef CONFIG_LWIP
 #include <lwip/netdb.h>
+#endif
 #include <map.h>
 #include <net/sock.h>
 #include <sched.h>
@@ -17,11 +19,14 @@ net::sock::~sock(void) {}
 extern net::sock *udp_create(int domain, int type, int protocol, int &err);
 
 net::sock *net::sock::create(int domain, int type, int protocol, int &err) {
+
+#ifdef CONFIG_LWIP
   // manually
   if (domain == PF_INET) {
     err = 0;
     return new net::ip4sock(type);
   }
+#endif
 
   if (domain == PF_LOCAL) {
     if (type == SOCK_STREAM) {
@@ -295,6 +300,7 @@ static spinlock dnslookup_lock;
 /* This is a pretty dumb function... There is a bunch more information we are missing */
 int sys::dnslookup(const char *name, unsigned int *ip4) {
   auto proc = cpu::proc();
+#ifdef CONFIG_LWIP
 
   if (!proc->mm->validate_string(name)) {
     return -EINVAL;
@@ -320,4 +326,7 @@ int sys::dnslookup(const char *name, unsigned int *ip4) {
   memcpy((char *)ip4, phe->h_addr, 4);
 
   return 0;
+#else
+	return -ENOSYS;
+#endif
 }

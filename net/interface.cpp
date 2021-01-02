@@ -2,8 +2,10 @@
 #include <errno.h>
 #include <fifo_buf.h>
 #include <lock.h>
+#ifdef CONFIG_LWIP
 #include <lwip/dns.h>
 #include <lwip/tcpip.h>
+#endif
 #include <net/eth.h>
 #include <net/ipv4.h>
 #include <net/net.h>
@@ -195,6 +197,7 @@ static void donefunc(void *foo) {
 
 
 void net::start(void) {
+#ifdef CONFIG_LWIP
   tcpip_init(donefunc, 0);
   if (tcpinit_sem.wait(false).interrupted()) {
     panic("unexpected interrupt");
@@ -204,7 +207,7 @@ void net::start(void) {
   ip4_addr_t dns;
   dns.addr = net::net_ord(net::ipv4::parse_ip("8.8.8.8"));
   dns_setserver(0, &dns);
-  // sched::proc::create_kthread("net task", task);
+#endif
 }
 
 // When packets are recv'd by adapters, they are sent here for internal parsing

@@ -3,6 +3,7 @@
 #include <riscv/arch.h>
 #include <riscv/plic.h>
 #include <sched.h>
+#include <time.h>
 #include <util.h>
 
 
@@ -31,7 +32,7 @@ reg_t &arch_reg(int ind, reg_t *r) {
 
 const char *regs_name[] = {
     "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0",  "a1",  "a2", "a3", "a4", "a5", "a6",
-    "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6",
+    "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6", "sepc",
 };
 
 
@@ -41,7 +42,7 @@ void arch_dump_backtrace(void) { /* Nothing here for now... */
 
 
 static void print_readable_reg(const char *name, rv::xsize_t value) {
-  printk("%3s: ", name);
+  printk("%4s: ", name);
 
   char buf[sizeof(value) * 2 + 1];
   snprintk(buf, sizeof(buf), "%p", value);
@@ -78,7 +79,7 @@ static void print_readable_reg(const char *name, rv::xsize_t value) {
 static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
   printk(KERN_ERROR "Unhandled trap '%s' on HART#%d\n", type, rv::hartid());
   printk(KERN_ERROR);
-  print_readable_reg("PC", tf.ra);
+  print_readable_reg("SEPC", tf.sepc);
   printk(", ");
   print_readable_reg("Bad Address", read_csr(sbadaddr));
 
@@ -126,21 +127,28 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
       cpu.kstat.last_tick_tsc = now;
       cpu.kstat.ticks++;
 
+
       // acknowledge the software interrupt by clearing
       // the SSIP bit in sip.
       write_csr(sip, read_csr(sip) & ~2);
+
+      /* keep time! */
+      // time::timekeep();
+
       sched::handle_tick(cpu.kstat.ticks);
+
+      check_wakeups();
     }
 
     /* Supervisor External Interrupt */
     if (nr == 9) {
-			/* First, we claim the irq from the PLIC */
+      /* First, we claim the irq from the PLIC */
       int irq = rv::plic::claim();
-			/* *then* enable interrupts, so the irq handler can have interrupts.
-			 * This is a major design problem in chariot, and I gotta figure out
-			 * if I can just have them disabled in irq handlers, and defer to worker
-			 * threads outside of irq context generally.
-			 */
+      /* *then* enable interrupts, so the irq handler can have interrupts.
+       * This is a major design problem in chariot, and I gotta figure out
+       * if I can just have them disabled in irq handlers, and defer to worker
+       * threads outside of irq context generally.
+       */
       rv::intr_on();
 
       // printk("irq: 0x%d\n", irq);

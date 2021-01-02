@@ -23,11 +23,9 @@ void arch_mem_init(unsigned long mbd) {}
 
 
 void arch_initialize_trapframe(bool userspace, reg_t *r) {
-
-	auto *regs = (rv::regs*)r;
-	printk("pc: %p\n", regs->ra);
-	printk("sp: %p\n", regs->sp);
-	/* ODO: */
+	// auto *regs = (rv::regs*)r;
+	// printk("pc: %p\n", regs->ra);
+	// printk("sp: %p\n", regs->sp);
 }
 
 

@@ -1,5 +1,6 @@
 #include <asm.h>
 #include <cpu.h>
+#include <dev/virtio_mmio.h>
 #include <devicetree.h>
 #include <phys.h>
 #include <printk.h>
@@ -8,6 +9,8 @@
 #include <riscv/plic.h>
 #include <riscv/uart.h>
 #include <util.h>
+#include <sleep.h>
+#include <time.h>
 
 typedef void (*func_ptr)(void);
 extern "C" func_ptr __init_array_start[0], __init_array_end[0];
@@ -60,6 +63,7 @@ void main() {
   /* Zero the BSS section */
   for (char *c = _bss_start; c != _bss_end; c++) *c = 0;
 
+
   /* Initialize the platform level interrupt controller for this HART */
   rv::plic::hart_init();
 
@@ -80,34 +84,30 @@ void main() {
     (*func)();
   }
 
+	time::set_cps(CONFIG_RISCV_CLOCKS_PER_SECOND);
+	time::set_high_accuracy_time_fn([] () -> unsigned long {
+		return (read_csr(time) * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND;
+	});
+
 
   /* static fdt, might get eaten by physical allocator. We gotta copy it asap :) */
   dtb::device_tree dt(sc->dtb);
+  // dt.dump();
 
 
   assert(sched::init());
   KINFO("Initialized the scheduler\n");
 
-	while (1) {
-		arch_halt();
-	}
-
-  sched::proc::create_kthread("task1", [](void *) -> int {
-    while (1) {
-			arch_halt();
-			sched::yield();
-    }
-    return 0;
-  });
-
-  sched::proc::create_kthread("task2", [](void *) -> int {
-    while (1) {
-			sched::yield();
-    }
-    return 0;
-  });
-
   cpus[0].timekeeper = true;
+
+  sched::proc::create_kthread("test task", [](void *) -> int {
+    while (1)  {
+			printk("time %llums!\n", time::now_ms());
+			do_usleep(1000 * 1000);
+		}
+    return 0;
+  });
+
 
   KINFO("starting scheduler\n");
   sched::run();

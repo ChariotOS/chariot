@@ -15,6 +15,10 @@ config RISCV_RAM_MB
 		risc-v doesn't seem to have an obvious way to query
 		ram count, so we have to hard code it I think (idk)
 
+config RISCV_BOOTSTACK_SIZE
+	int "Per-HART boot stack size (in pages)"
+	default 2
+
 choice
 	prompt "Virtual memory system"
 	default SV48
@@ -32,6 +36,17 @@ choice
 		bool "Sv48 - 48-bit paging"
 		depends on 64BIT
 endchoice
+
+
+config RISCV_QEMU_VIRT
+	bool "[platform] QEMU virt machine"
+	default y
+
+
+config RISCV_CLOCKS_PER_SECOND
+	int "Clocks per second (mtime clock rate, 10MHz in QEMU virt)"
+	default 10000000
+
 
 # choice
 # 	prompt "Architecture size"

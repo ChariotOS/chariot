@@ -63,8 +63,8 @@
 #include "lwip/inet_chksum.h"
 #endif
 
-#include <string.h>
 #include <map.h>
+#include <string.h>
 
 /* If the netconn API is not required publicly, then we include the necessary
    files here to get the implementation */
@@ -229,8 +229,8 @@ static void sockaddr_to_ipaddr_port(const struct sockaddr *sockaddr, ip_addr_t *
 
 /** Contains all internal pointers and states used for a socket */
 struct lwip_sock {
-	/* The socket's file descriptor */
-	int index;
+  /* The socket's file descriptor */
+  int index;
   /** sockets currently are built on netconns, each socket has one netconn */
   struct netconn *conn;
   /** data that was left from the previous read */
@@ -385,7 +385,7 @@ static struct lwip_sock *get_socket(int s) {
 
   s -= LWIP_SOCKET_OFFSET;
 
-	scoped_lock l(open_sockets_lock);
+  scoped_lock l(open_sockets_lock);
 
   if (!open_sockets.contains(s)) {
     LWIP_DEBUGF(SOCKETS_DEBUG, ("get_socket(%d): invalid\n", s + LWIP_SOCKET_OFFSET));
@@ -413,7 +413,7 @@ static struct lwip_sock *get_socket(int s) {
 static struct lwip_sock *tryget_socket(int s) {
   s -= LWIP_SOCKET_OFFSET;
 
-	scoped_lock l(open_sockets_lock);
+  scoped_lock l(open_sockets_lock);
 
   if (!open_sockets.contains(s)) {
     return NULL;
@@ -434,18 +434,18 @@ static int alloc_socket(struct netconn *newconn, int accepted) {
   int i;
   SYS_ARCH_DECL_PROTECT(lev);
 
-	scoped_lock l(open_sockets_lock);
+  scoped_lock l(open_sockets_lock);
 
   /* allocate a new socket identifier */
   for (i = 0; true; ++i) {
     /* Protect socket array */
     SYS_ARCH_PROTECT(lev);
 
-		if (!open_sockets.contains(i)) {
-			/* Allocate the socket */
-			auto *sock = new lwip_sock;
-			sock->index = i;
-			sock->conn = newconn;
+    if (!open_sockets.contains(i)) {
+      /* Allocate the socket */
+      auto *sock = new lwip_sock;
+      sock->index = i;
+      sock->conn = newconn;
 
       /* The socket is not yet known to anyone, so no need to protect
          after having marked it as used. */
@@ -460,7 +460,7 @@ static int alloc_socket(struct netconn *newconn, int accepted) {
       sock->err = 0;
       sock->select_waiting = 0;
 
-			open_sockets[i] = sock;
+      open_sockets[i] = sock;
       return i + LWIP_SOCKET_OFFSET;
     }
     SYS_ARCH_UNPROTECT(lev);
@@ -494,9 +494,9 @@ static void free_socket(struct lwip_sock *sock, int is_tcp) {
     }
   }
 
-	scoped_lock l(open_sockets_lock);
-	open_sockets.remove(sock->index);
-	delete sock;
+  scoped_lock l(open_sockets_lock);
+  open_sockets.remove(sock->index);
+  delete sock;
 }
 
 /* Below this, the well-known socket functions are implemented.
@@ -1420,7 +1420,7 @@ int lwip_select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptse
     }
     select_cb_list = &select_cb;
     /* Increasing this counter tells event_callback that the list has changed. */
-    select_cb_ctr++;
+    select_cb_ctr = select_cb_ctr + 1;
 
     /* Now we can safely unprotect */
     SYS_ARCH_UNPROTECT(lev);
@@ -1506,7 +1506,7 @@ int lwip_select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptse
       select_cb.prev->next = select_cb.next;
     }
     /* Increasing this counter tells event_callback that the list has changed. */
-    select_cb_ctr++;
+    select_cb_ctr = select_cb_ctr + 1;
     SYS_ARCH_UNPROTECT(lev);
 
 #if LWIP_NETCONN_SEM_PER_THREAD
@@ -2800,7 +2800,7 @@ int net::ip4sock::connect(struct sockaddr *uaddr, int addr_len) {
 
 int net::ip4sock::disconnect(int flags) {
   scoped_lock l(lock);
-	// lwip_shutdown(sock, 0);
+  // lwip_shutdown(sock, 0);
   return -ENOTIMPL;
 }
 

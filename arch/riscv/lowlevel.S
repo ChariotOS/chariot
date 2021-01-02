@@ -38,7 +38,7 @@ _start:
 	# we calculate the starting stack by _stack_start + (2*4096 * (mhartid + 1))
   # so each HART gets 2 pages of stack
 	la    sp, _stack_start
-	li    t0, 2 * 4096 # 2 page stack
+	li    t0, CONFIG_RISCV_BOOTSTACK_SIZE * 4096 # 2 page stack
 	csrr  t1, mhartid
   addi  t1, t1, 1 # t1 = mhartid + 1
 	mul   t0, t0, t1 # t1 = SIZE * (mhartid + 1)
@@ -203,9 +203,17 @@ kernelvec:
 	sd t5, 232(sp)
 	sd t6, 240(sp)
 
+	csrr a0, sepc
+	sd a0, 248(sp)
+
+
 # call the C trap handler in trap.c
 	mv a0, sp
 	call kernel_trap
+
+	# read sepc from the stack now, as we need a0 to be restored
+	ld a0, 248(sp)
+	csrw sepc, a0
 
 	# restore registers.
 	ld ra, 0(sp)

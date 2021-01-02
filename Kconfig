@@ -29,32 +29,23 @@ menu "Build"
 endmenu
 
 
-menu "Debug"
-	config LOG_ERROR
-		bool "Error Logging"
+
+menu "Config"
+
+
+	config MAX_CPUS
+		int "Maximum Number of CPUs"
+		range 1 64
+		default "32"
+		help 
+			Specifies the maximum number of hardware CPUs supported by Chariot
+			For uniprocessor environments, set this to 1
+
+	config SMP
+		bool "Symmetric multi-processing support"
 		default y
-
-	config LOG_WARN
-		bool "Warning Logging"
-		default y
-
-	config LOG_INFO
-		bool "Info Logging"
-		default y
-
-	config LOG_DEBUG
-		bool "Debug Information Logging"
-		default y
-
-
-	config VERBOSE_PROCESS
-		bool "Verbose process debug"
-		default n
-
-endmenu
-
-
-menu "Configuration"
+		help
+			Enable multiprocessing
 
 	config PREFETCH_NEXT_THREAD
 		bool "Prefetch next thread in tick irq"
@@ -62,7 +53,12 @@ menu "Configuration"
 
 	config TICKS_PER_SECOND
 		int "Timer wakeup ticks per second"
-		default 100
+		default 1000
+
+
+	config LWIP
+		bool "Enable LWIP"
+		default y
 
 	config EXT2
 		bool "Ext2 Filesystem"
@@ -71,6 +67,32 @@ menu "Configuration"
 	config TMPFS
 		bool "Temp Filesystem"
 		default y
+
+
+
+	menu "Runtime Debugging"
+		config LOG_ERROR
+			bool "Error Logging"
+			default y
+
+		config LOG_WARN
+			bool "Warning Logging"
+			default y
+
+		config LOG_INFO
+			bool "Info Logging"
+			default y
+
+		config LOG_DEBUG
+			bool "Debug Information Logging"
+			default y
+
+
+		config VERBOSE_PROCESS
+			bool "Verbose process debug"
+			default n
+
+	endmenu
 
 endmenu
 
@@ -100,11 +122,13 @@ menu "Devices"
 		bool "E1000 network cards"
 		default y
 		depends on X86
+		depends on LWIP
 
 	config RTL8139
 		bool "RTL8139 network cards"
 		default y
 		depends on X86
+		depends on LWIP
 
 	config PS2_HID
 		bool "PS2 HID devices (keyboard, mouse) [RECOMMENDED]"

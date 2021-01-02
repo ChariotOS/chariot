@@ -98,6 +98,9 @@ void arch_save_fpu(struct thread &);
 void arch_restore_fpu(struct thread &);
 unsigned long arch_read_timestamp(void);
 
+/* get the current second since boot time */
+unsigned long arch_seconds_since_boot(void);
+
 void serial_install();
 int serial_rcvd(int device);
 char serial_recv(int device);

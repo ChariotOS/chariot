@@ -1,3 +1,14 @@
+config ARCH_NAME
+	string
+	default "x86_64" if X86 && 64BIT
+	default "risc64" if RISCV && 64BIT
+	default "riscv" if RISCV && !64BIT
+
+config ARCH_DIR
+	string
+	default "x86" if X86
+	default "riscv" if RISCV
+
 # The root architecture configuration
 choice
 	prompt "Architecture"
@@ -5,6 +16,7 @@ choice
 
 	config X86
 		bool "x86_64 (Intel, AMD)"
+		
 
 	config RISCV
 		bool "RISCV (RV64GC)"
@@ -37,21 +49,5 @@ config 64BIT
 menu "ARM64 Configuration"
 	depends on ARM64
 	source "arch/arm64/Kconfig"
-endmenu
-
-menu "Platform Configuration"
-	config MAX_CPUS
-	int "Maximum Number of CPUs"
-		range 1 2048
-		default "256"
-		help 
-			Specifies the maximum number of hardware CPUs supported by Chariot
-			For uniprocessor environments, set this to 1
-
-	config SMP
-		bool "Symmetric multi-processing support"
-		default y
-		help
-			Enable multiprocessing
 endmenu
 

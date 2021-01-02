@@ -41,7 +41,7 @@ endif()
 if(CONFIG_X86)
 	set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/x86_64-elf-)
 
-	set(CHARIOT_ARCH x86)
+	set(CMAKE_SYSTEM_PROCESSOR x86_64)
 endif()
 
 
@@ -49,13 +49,10 @@ if(CONFIG_ARM64)
 	set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/aarch64-elf-)
 
 	set(CMAKE_SYSTEM_PROCESSOR aarch64)
-	set(CHARIOT_ARCH arm64)
 endif()
 
 
 if (CONFIG_RISCV)
-
-
 	if(CONFIG_64BIT)
 		set(RISCV_PREFIX "riscv64")
 		set(RISCV_BITS "64")
@@ -67,7 +64,6 @@ if (CONFIG_RISCV)
 	set(TOOLCHAIN_PREFIX ${TOOLCHAIN_PATH}/${RISCV_PREFIX}-elf-)
 
 	set(CMAKE_SYSTEM_PROCESSOR ${RISCV_PREFIX})
-	set(CHARIOT_ARCH riscv)
 endif()
 
 set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc)
@@ -79,7 +75,7 @@ set(CMAKE_RANLIB ${TOOLCHAIN_PREFIX}ranlib)
 set(CMAKE_STRIP ${TOOLCHAIN_PREFIX}strip)
 set(CMAKE_AR ${TOOLCHAIN_PREFIX}ar)
 
-include(arch/${CHARIOT_ARCH}/config.cmake)
+include(arch/${CONFIG_ARCH_DIR}/config.cmake)
 
 
 
@@ -223,10 +219,11 @@ if (CONFIG_USERSPACE)
 endif()
 
 
-chariot_external(libcpp ${CMAKE_SOURCE_DIR}/toolchain/build/gcc/build-x86_64-pc-linux-gnu/libcpp/libcpp.a)
-chariot_external(libgl ${CMAKE_SOURCE_DIR}/ports/prebuilt/libOSMesa.a)
-chariot_external(libglu ${CMAKE_SOURCE_DIR}/ports/prebuilt/libGLU.a)
-chariot_external(libfreetype ${CMAKE_SOURCE_DIR}/ports/prebuilt/libfreetype.a)
+chariot_external(libcpp ${CMAKE_SOURCE_DIR}/toolchain/build/${CMAKE_SYSTEM_PROCESSOR}/gcc/libcpp/libcpp.a)
+
+# chariot_external(libgl ${CMAKE_SOURCE_DIR}/ports/prebuilt/libOSMesa.a)
+# chariot_external(libglu ${CMAKE_SOURCE_DIR}/ports/prebuilt/libGLU.a)
+chariot_external(libfreetype ${CMAKE_SOURCE_DIR}/ports/out/${CMAKE_SYSTEM_PROCESSOR}/lib/libfreetype.a)
 
 
 

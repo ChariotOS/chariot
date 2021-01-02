@@ -130,7 +130,7 @@ sudo chown -R 0:0 $mnt
 sudo mkdir -p $mnt/boot/grub
 sudo cp kernel/grub.cfg $mnt/boot/grub/
 
-sudo cp $BUILD/root/bin/chariot.elf $mnt/boot/chariot.elf
+sudo cp $BUILD/chariot.elf $mnt/boot/chariot.elf
 
 # only install grub on a new disk
 if [ $disk_exists -eq '0' ]; then

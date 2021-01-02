@@ -182,7 +182,7 @@ namespace net {
 
 
 
-
+#ifdef CONFIG_LWIP
   /* A generic LWIP socket binding. This ties into the socket api. The implementation is in /net/lwip/api/sockets.cpp */
   struct ip4sock : public net::sock {
    private:
@@ -209,5 +209,6 @@ namespace net {
 
     int translate_errno(int);
   };
+#endif
 
 }  // namespace net
