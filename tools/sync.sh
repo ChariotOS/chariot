@@ -9,7 +9,10 @@ die() {
 
 
 
-# exit
+
+# build the kernel and whatnot
+make --no-print-directory -j || die 'Failed to build the kernel'
+
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
@@ -70,12 +73,18 @@ fi
 
 echo "Device: ${dev}"
 
+fsdev="${dev}p1"
+
+# if [ -n "$CONFIG_X86" ]; then
+# 	fsdev="${dev}"p1
+# fi
+
+
 cleanup() {
 	if [ -d $mnt ]; then
 			sudo umount -f $mnt || ( sleep 1 && sync && sudo umount $mnt )
 			rm -rf $mnt
 	fi
-
 
 	if [ "$(uname)" = "Darwin" ]; then
 		hdiutil detach "${dev}"
@@ -88,12 +97,15 @@ cleanup() {
 trap cleanup EXIT
 
 
-
 # only if the disk wasn't created, create the partition map on the new disk
 if [ $disk_exists -eq '0' ]; then
 	sudo parted -s "${dev}" mklabel msdos mkpart primary ext2 32k 100% -a minimal set 1 boot on || die "couldn't partition disk"
-	sudo mkfs.ext2 -b 4096 "${dev}"p1 || die "couldn't create filesystem"
+	# sudo mkfs.ext2 -b 4096 "${fsdev}" || die "couldn't create filesystem"
+
+	sudo mke2fs -L "Chariot Root" -b 4096 -q -I 128 "${fsdev}" || die "couldn't create filesystem"
 fi
+
+ls ${dev}*
 
 # create the mount dir
 if [ -d $mnt ]; then
@@ -102,23 +114,11 @@ if [ -d $mnt ]; then
 fi
 mkdir -p $mnt
 
-sudo mount ${dev}p1 $mnt/
-
-# pushd tools/ckfs
-# 	make
-# popd
-# sudo tools/ckfs/mkfs.ckfs ${dev}p1
-
-
-for dir in $mnt/*; do
-    [ "$dir" = "$mnt/boot" ] && continue
-done
+sudo mount ${fsdev} $mnt/
 
 # create the build/root sysroot directory
 tools/sysroot.sh
 
-# build the kernel and copy it into the boot dir
-make --no-print-directory -j || die 'Failed to build the kernel'
 
 echo 'Copying filesystem data into the mounted image'
 sudo rsync -a $BUILD/root/. $mnt/
@@ -126,13 +126,15 @@ sudo mkdir -p $mnt/dev
 sudo mkdir -p $mnt/tmp
 sudo chown -R 0:0 $mnt
 
-# install the bootloader (grub, in this case)
-sudo mkdir -p $mnt/boot/grub
-sudo cp kernel/grub.cfg $mnt/boot/grub/
-sudo cp $BUILD/chariot.elf $mnt/boot/chariot.elf
 
-# only install grub on a new disk
-if [ $disk_exists -eq '0' ]; then
-	sudo grub-install --boot-directory=$mnt/boot --target=i386-pc --modules="ext2 part_msdos" "$dev"
+if [ -n "$CONFIG_X86" ]; then
+	# install the bootloader (grub, in this case)
+	sudo mkdir -p $mnt/boot/grub
+	sudo cp kernel/grub.cfg $mnt/boot/grub/
+	sudo cp $BUILD/chariot.elf $mnt/boot/chariot.elf
+	# only install grub on a new disk
+	if [ $disk_exists -eq '0' ]; then
+		sudo grub-install --boot-directory=$mnt/boot --target=i386-pc --modules="ext2 part_msdos" "$dev"
+	fi
 fi
 

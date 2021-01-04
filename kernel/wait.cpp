@@ -40,6 +40,8 @@ void wait_queue::wake_up_common(unsigned int mode, int nr_exclusive, int wake_fl
 wait_result wait_queue::wait(struct wait_entry *ent, int state) {
   assert(ent->wq == NULL);
 
+	// int depth = cpu::current().interrupt_depth;
+	// if (depth != 0) printk_nolock("interrupt_depth: %d\n", depth);
 
   unsigned long flags;
   ent->wq = this;
@@ -49,6 +51,7 @@ wait_result wait_queue::wait(struct wait_entry *ent, int state) {
 
   task_list.add(&ent->item);
   lock.unlock_irqrestore(flags);
+
 
   sched::yield();
 
@@ -67,6 +70,9 @@ wait_result wait_queue::wait_exclusive(struct wait_entry *ent, int state) {
   assert(ent->wq == NULL);
 
 
+	// int depth = cpu::current().interrupt_depth;
+	// if (depth != 0) printk_nolock("interrupt_depth: %d\n", depth);
+
   unsigned long flags;
   ent->wq = this;
   ent->flags |= WQ_FLAG_EXCLUSIVE;
@@ -75,6 +81,7 @@ wait_result wait_queue::wait_exclusive(struct wait_entry *ent, int state) {
 
   task_list.add_tail(&ent->item);
   lock.unlock_irqrestore(flags);
+
 
   sched::yield();
 

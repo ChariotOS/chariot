@@ -66,7 +66,7 @@ static void uart_start(void) {
 }
 
 
-static void uart_irq(int irq, reg_t *r) {
+static void uart_irq(int irq, reg_t *r, void *data) {
   uart_count++;
   // printk("uart irq: ");
   // read and process incoming characters.

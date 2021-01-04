@@ -132,7 +132,7 @@ static void init_tx(void) {
   tx_index = 0;
 }
 
-static void irq_handler(int i, reg_t *) {
+static void irq_handler(int i, reg_t *, void *) {
   uint32_t status = read_command(E1000_ICR);
   irq::eoi(i);
 
@@ -189,7 +189,6 @@ int e1000_daemon(void *) {
 
 static spinlock send_lock;
 static err_t e1000_netif_linkoutput(struct netif *netif, struct pbuf *p) {
-
   tx_index = read_command(E1000_REG_TXDESCTAIL);
 
   send_lock.lock();
@@ -378,9 +377,9 @@ int e1000_init_thread(void *) {
 
 
 void e1000_init(void) {
-	e1000_init_thread(NULL);
-	/* Defer this to a thread... */
-	// sched::proc::create_kthread("[e1000 init thread]", e1000_init_thread, NULL);
+  e1000_init_thread(NULL);
+  /* Defer this to a thread... */
+  // sched::proc::create_kthread("[e1000 init thread]", e1000_init_thread, NULL);
 }
 
 module_init("e1000", e1000_init);

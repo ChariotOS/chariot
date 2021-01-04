@@ -8,9 +8,9 @@
 #include <riscv/dis.h>
 #include <riscv/plic.h>
 #include <riscv/uart.h>
-#include <util.h>
 #include <sleep.h>
 #include <time.h>
+#include <util.h>
 
 typedef void (*func_ptr)(void);
 extern "C" func_ptr __init_array_start[0], __init_array_end[0];
@@ -45,8 +45,8 @@ void print_va(rv::xsize_t va) {
 }
 
 
-void main() {
 
+void main() {
   /* Zero the BSS section */
   for (char *c = _bss_start; c != _bss_end; c++) *c = 0;
 
@@ -64,7 +64,7 @@ void main() {
   if (rv::hartid() != 0)
     while (1) arch_halt();
 
-  
+
 
 
   /* Initialize the platform level interrupt controller for this HART */
@@ -87,15 +87,16 @@ void main() {
     (*func)();
   }
 
-	time::set_cps(CONFIG_RISCV_CLOCKS_PER_SECOND);
-	time::set_high_accuracy_time_fn([] () -> unsigned long {
-		return (read_csr(time) * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND;
-	});
+  time::set_cps(CONFIG_RISCV_CLOCKS_PER_SECOND);
+  time::set_high_accuracy_time_fn(
+      []() -> unsigned long { return (read_csr(time) * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND; });
 
 
   /* static fdt, might get eaten by physical allocator. We gotta copy it asap :) */
   dtb::device_tree dt(sc->dtb);
   // dt.dump();
+
+
 
 
   assert(sched::init());
@@ -104,10 +105,23 @@ void main() {
   cpus[0].timekeeper = true;
 
   sched::proc::create_kthread("test task", [](void *) -> int {
-    while (1)  {
-			printk("time %llums!\n", time::now_ms());
-			do_usleep(1000 * 1000);
-		}
+    /* TODO: use device tree? */
+    virtio::check_mmio(0x10001000);
+    virtio::check_mmio(0x10002000);
+    virtio::check_mmio(0x10003000);
+    virtio::check_mmio(0x10004000);
+    virtio::check_mmio(0x10005000);
+    virtio::check_mmio(0x10006000);
+    virtio::check_mmio(0x10007000);
+    virtio::check_mmio(0x10008000);
+
+    auto begin = time::now_ms();
+    while (1) {
+      // printk("us: %llu\n", time::now_us() - begin);
+
+      begin = time::now_us();
+      do_usleep(1000 * 100);
+    }
     return 0;
   });
 

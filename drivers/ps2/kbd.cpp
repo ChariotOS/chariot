@@ -397,7 +397,7 @@ static void key_state_changed(u8 raw, bool pressed) {
   }
 }
 
-static void kbd_handler(int i, reg_t* tf) {
+static void kbd_handler(int i, reg_t* tf, void*) {
   irq::eoi(i);
 
   for (;;) {

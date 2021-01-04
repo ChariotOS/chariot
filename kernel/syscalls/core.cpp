@@ -48,7 +48,7 @@ static uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_
   return res;
 }
 
-extern "C" void syscall_handle(int i, reg_t *regs) {
+extern "C" void syscall_handle(int i, reg_t *regs, void* data) {
   regs[0] = do_syscall(regs[0], regs[1], regs[2], regs[3], regs[4], regs[5], regs[6]);
 }
 

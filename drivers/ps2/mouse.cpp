@@ -8,9 +8,9 @@
 #include <mouse_packet.h>
 #include <printk.h>
 #include <sched.h>
+#include <time.h>
 #include <vmware_backdoor.h>
 #include "../majors.h"
-#include <time.h>
 
 static fifo_buf mouse_buffer;
 
@@ -75,15 +75,15 @@ uint8_t mouse_read() {
 #define CMD_ABSPOINTER_STATUS 40
 #define CMD_ABSPOINTER_COMMAND 41
 
-static void mouse_handler(int i, reg_t *) {
+static void mouse_handler(int i, reg_t *, void *) {
   uint8_t status = inb(MOUSE_STATUS);
-	arch_disable_ints();
+  arch_disable_ints();
 
-	int loops = 0;
+  int loops = 0;
   while ((status & MOUSE_BBIT) && (status & MOUSE_F_BIT)) {
     bool finalize = false;
     char mouse_in = inb(MOUSE_PORT);
-		loops++;
+    loops++;
     switch (mouse_cycle) {
       case 0:
         mouse_byte[0] = mouse_in;
@@ -132,7 +132,7 @@ static void mouse_handler(int i, reg_t *) {
       packet.dx = x;
       packet.dy = -y;  // the mouse gives us a negative value for going up
       packet.buttons = 0;
-			packet.timestamp = time::now_us();
+      packet.timestamp = time::now_us();
       if (mouse_byte[0] & 0x01) {
         packet.buttons |= MOUSE_LEFT_CLICK;
       }
@@ -158,7 +158,7 @@ static void mouse_handler(int i, reg_t *) {
     break;
   }
 
-	arch_enable_ints();
+  arch_enable_ints();
   irq::eoi(i);
 }
 
@@ -263,9 +263,7 @@ static void mouse_close(fs::file &fd) {
 }
 
 
-static int mouse_poll(fs::file &fd, int events, poll_table &pt) {
-  return mouse_buffer.poll(pt) & events;
-}
+static int mouse_poll(fs::file &fd, int events, poll_table &pt) { return mouse_buffer.poll(pt) & events; }
 
 
 struct fs::file_operations mouse_ops = {

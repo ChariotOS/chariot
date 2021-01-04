@@ -500,9 +500,25 @@ void lumen::context::compose(void) {
 
   windows_lock.lock();
   dirty_regions_lock.lock();
-  for (auto &r : dirty_regions.rects()) {
-    if (r.intersects(screen.mouse_rect())) draw_mouse = true;
-    scribe.blit(gfx::point(r.x, r.y), *wallpaper, r);
+  {
+    uint32_t *wp = wallpaper->pixels();
+    for (auto &r : dirty_regions.rects()) {
+      if (r.intersects(screen.mouse_rect())) draw_mouse = true;
+      // scribe.blit(gfx::point(r.x, r.y), *wallpaper, r);
+
+
+      int sw = screen.width();
+      auto off = r.y * sw + r.x;
+      uint32_t *to_ptr = screen.back_buffer + off;
+      uint32_t *from_ptr = wp + off;
+
+      for (int y = 0; y < r.h; y++) {
+        // explicit looping optimizes more
+        for (int i = 0; i < r.w; i++) to_ptr[i] = from_ptr[i];
+        from_ptr += sw;
+        to_ptr += sw;
+      }
+    }
   }
 
   // go back to front and compose each window
@@ -514,10 +530,6 @@ void lumen::context::compose(void) {
 
     for (auto &dirty_rect : dirty_regions.rects()) {
       if (!dirty_rect.intersects(win->rect)) continue;
-      // is this region occluded by another window?
-      // if (occluded(window, dirty_rect)) {
-      // continue;
-      // }
       scribe.state().clip = dirty_rect;
 
       win->draw(scribe);

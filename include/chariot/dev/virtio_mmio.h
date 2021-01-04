@@ -288,5 +288,12 @@ namespace virtio {
     uint64_t sector;
   } __packed;
 
+
+
+  /* Given an address, check it for MMIO magic numbers */
+  int check_mmio(void *addr);
+  /* So we can just write addresses as hex, not having to worry about casting to void* at the call site */
+  inline int check_mmio(off_t addr) { return check_mmio((void *)addr); }
+
 }  // namespace virtio
 #endif

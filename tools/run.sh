@@ -1,7 +1,10 @@
 #!/bin/bash
 
 
-make
+# make
+
+tools/sync.sh || exit 1
+
 source .config
 
 # this parses the arch of the elf into "X86-64", "RISC-V", etc...
@@ -14,7 +17,6 @@ QEMU_FLAGS="-nographic -serial mon:stdio "
 
 case $ARCH in 
 	X86-64)
-		tools/sync.sh || exit 1
 		QEMU_ARCH="x86_64"
 
 		QEMU_FLAGS+="-m 4G -smp 1 "
@@ -29,8 +31,8 @@ case $ARCH in
 
 		QEMU_FLAGS+="-machine virt -smp 1 -m ${CONFIG_RISCV_RAM_MB}M -bios none "
 		QEMU_FLAGS+="-kernel build/chariot.elf "
-		# QEMU_FLAGS+="-drive file=build/random.img,if=none,format=raw,id=x0 "
-		# QEMU_FLAGS+="-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 "
+		QEMU_FLAGS+="-drive file=build/chariot.img,if=none,format=raw,id=x0 "
+		QEMU_FLAGS+="-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 "
 		# virtio keyboard, gpu, and tablet (cursor)
 		# QEMU_FLAGS+="-device virtio-tablet-device -device virtio-keyboard-device -device virtio-gpu-device "
 		;;

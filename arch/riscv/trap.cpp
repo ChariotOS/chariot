@@ -87,8 +87,14 @@ static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
   print_readable_reg("val", read_csr(stval));
   printk("\n");
 
+  printk(KERN_ERROR);
+  print_readable_reg("sscratch", read_csr(sscratch));
+  printk("\n");
+
   int p = 0;
   for (int i = 0; i < sizeof(struct rv::regs) / sizeof(rv::xsize_t); i++) {
+    if (p == 0) printk(KERN_ERROR);
+
     print_readable_reg(regs_name[i], ((rv::xsize_t *)&tf)[i]);
     p++;
     if (p >= 4) {
@@ -98,6 +104,7 @@ static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
       printk(" ");
     }
   }
+
   if (p != 0) printk("\n");
 
   panic("Halting hart!\n");
@@ -132,12 +139,12 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
       // the SSIP bit in sip.
       write_csr(sip, read_csr(sip) & ~2);
 
-      /* keep time! */
-      // time::timekeep();
+      /* Does anyone need to wake up? */
+      if (check_wakeups()) {
+        /* TODO */
+      }
 
       sched::handle_tick(cpu.kstat.ticks);
-
-      check_wakeups();
     }
 
     /* Supervisor External Interrupt */

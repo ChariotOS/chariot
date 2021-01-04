@@ -44,13 +44,13 @@ char serial_recv_async(int device) { return inb(device); }
 int serial_transmit_empty(int device) { return inb(device + 5) & 0x20; }
 
 void serial_send(int device, char out) {
-	switch (device) {
-		case 1:
-			device = COM1;
-			break;
-		default:
-			return;
-	}
+  switch (device) {
+    case 1:
+      device = COM1;
+      break;
+    default:
+      return;
+  }
   if (uart) {
     while (!serial_transmit_empty(device)) {
     }
@@ -107,7 +107,7 @@ int serial_worker(void *) {
 }
 
 
-void serial_irq_handle(int i, reg_t *) { serial_data_avail.wake_up(); }
+void serial_irq_handle(int i, reg_t *, void *) { serial_data_avail.wake_up(); }
 
 
 

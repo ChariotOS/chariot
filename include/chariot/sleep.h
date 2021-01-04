@@ -29,4 +29,5 @@ struct sleep_waiter {
 
 /* returns 0 or -ERRNO */
 int do_usleep(uint64_t us);
-void check_wakeups(void);
+/* Check if any threads need to be awoken, and return true if there were any */
+bool check_wakeups(void);

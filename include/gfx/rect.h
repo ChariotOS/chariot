@@ -1,13 +1,22 @@
 #pragma once
 
+#define unlikely(c) __builtin_expect((c), 0)
+
+#include <ck/vec.h>
+
+
+
+#ifndef max
 #define max(a, b)           \
   ({                        \
     __typeof__(a) _a = (a); \
     __typeof__(b) _b = (b); \
     _a > _b ? _a : _b;      \
   })
+#endif
 
 
+#ifndef min
 #define min(a, b)           \
   ({                        \
     __typeof__(a) _a = (a); \
@@ -15,9 +24,7 @@
     _a < _b ? _a : _b;      \
   })
 
-#define unlikely(c) __builtin_expect((c), 0)
-
-#include <ck/vec.h>
+#endif
 
 
 namespace gfx {

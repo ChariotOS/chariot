@@ -20,28 +20,27 @@ static uint8_t pic_data[2] = {0x21, 0xa1};
 void set_pit_timeout(u16 ms) {
   if (ms == 0) ms = 1;
   u64 t = 1193182 / (1000 / (ms * 1000));
-  outb(0x43, 0x34);		// select the device
-  outb(0x40, t & 0xFF);		// send the lower half
-  outb(0x40, (t >> 8) & 0xFF);	// and the upper half
+  outb(0x43, 0x34);             // select the device
+  outb(0x40, t & 0xFF);         // send the lower half
+  outb(0x40, (t >> 8) & 0xFF);  // and the upper half
 }
 
 
 
 void set_pit_freq(u16 per_sec) {
+  if (per_sec == 0) {
+    outb(0x43, 0x30);  // disable the pit's functionality
 
-	if (per_sec == 0) {
-  	outb(0x43, 0x30); // disable the pit's functionality
-
-		outb(0x40, 0); // send the lower half
-		outb(0x40, 0); // and the upper half
-		return;
-	}
+    outb(0x40, 0);  // send the lower half
+    outb(0x40, 0);  // and the upper half
+    return;
+  }
   // find the divisor
   u64 t = 1193182 / per_sec;
 
-  outb(0x43, 0x36);		// select the device
-  outb(0x40, t & 0xFF);		// send the lower half
-  outb(0x40, (t >> 8) & 0xFF);	// and the upper half
+  outb(0x43, 0x36);             // select the device
+  outb(0x40, t & 0xFF);         // send the lower half
+  outb(0x40, (t >> 8) & 0xFF);  // and the upper half
 }
 
 void init_pit(void) {
@@ -105,7 +104,7 @@ static spinlock pit_result_lock;
 
 int waiting_10ms_remaining = 0;
 
-void pit_irq_handler(int i, reg_t *) { pit_result_lock.unlock(); }
+void pit_irq_handler(int i, reg_t *, void *) { pit_result_lock.unlock(); }
 
 void pit::dumb_sleep(unsigned ms) {
   pit_sleep_lock.lock();

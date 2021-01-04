@@ -60,10 +60,12 @@ int do_usleep(uint64_t us) {
 
 
 
-void check_wakeups_r(void) {
+bool check_wakeups_r(void) {
   auto now = time::now_us();
   auto &cpu = cpu::current();
 
+
+  bool found = false;
   struct sleep_waiter *blk = cpu.sleepers;
   while (blk != NULL) {
     /* Grab the next now, as this node might be removed */
@@ -73,21 +75,26 @@ void check_wakeups_r(void) {
     if (blk->wakeup_us <= now) {
       /* Wake them up! */
       blk->wq.wake_up_all();
+      found = true;
     }
 
     /* Continue the loop */
     blk = next;
   }
+
+  return found;
 }
 
 
-void check_wakeups(void) {
-  if (!time::stabilized()) return;
-  if (cpu::get() == NULL) return;
+bool check_wakeups(void) {
+  if (!time::stabilized()) return false;
+  if (cpu::get() == NULL) return false; /* if we get an interrupt before initializing the cpu? */
   auto &cpu = cpu::current();
   auto flags = cpu.sleepers_lock.lock_irqsave();
 
-  check_wakeups_r();
+  auto b = check_wakeups_r();
 
   cpu.sleepers_lock.unlock_irqrestore(flags);
+
+  return b;
 }

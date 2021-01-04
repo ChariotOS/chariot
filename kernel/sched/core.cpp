@@ -51,8 +51,8 @@ static auto pick_next_thread(void) {
 
 
 int sched::add_task(struct thread *tsk) {
-	int res =  s_scheduler.add_task(tsk);
-	return res;
+  int res = s_scheduler.add_task(tsk);
+  return res;
 }
 
 int sched::remove_task(struct thread *t) { return s_scheduler.remove_task(t); }
@@ -101,6 +101,8 @@ void sched::yield() {
   }
 
   arch_disable_ints();
+
+
   thd.stats.cycles += arch_read_timestamp() - thd.stats.last_start_cycle;
   thd.stats.last_cpu = thd.stats.current_cpu;
   thd.stats.current_cpu = -1;
@@ -110,6 +112,11 @@ void sched::yield() {
 
 
 void sched::set_state(int state) {
+  if (curthd == NULL) {
+    void *addr = __builtin_extract_return_addr(__builtin_return_address(0));
+
+    panic("NO THREAD from %p!\n", addr);
+  }
   auto &thd = *curthd;
   thd.state = state;
   // memory barrier!
@@ -117,6 +124,7 @@ void sched::set_state(int state) {
 }
 
 void sched::do_yield(int st) {
+  if (curthd == NULL) printk("NO THREAD!\n");
   sched::set_state(st);
   sched::yield();
 }

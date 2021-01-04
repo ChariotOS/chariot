@@ -58,10 +58,10 @@ namespace arch {
 // core kernel irq (implemented in src/irq.cpp)
 namespace irq {
 
-  using handler = void (*)(int i, reg_t *);
+  using handler = void (*)(int i, reg_t *, void *data);
 
   // install and remove handlers
-  int install(int irq, irq::handler handler, const char *name);
+  int install(int irq, irq::handler handler, const char *name, void *data = 0);
   irq::handler uninstall(int irq);
 
   int init(void);

@@ -207,7 +207,7 @@ static struct dev::driver_info sb16_driver {
 };
 
 
-static void sb16_interrupt(int intr, reg_t *fr) {
+static void sb16_interrupt(int intr, reg_t *fr, void *) {
   printk(KERN_INFO "SB16 INTERRUPT\n");
   // Stop sound output ready for the next block.
   dsp_write(0xd5);

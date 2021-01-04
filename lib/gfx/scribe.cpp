@@ -57,6 +57,40 @@ void gfx::scribe::clear(uint32_t color) {
   }
 }
 
+void gfx::scribe::blit_fast(const gfx::point &position, gfx::bitmap &source, const gfx::rect &_src_rect) {
+	return;
+  auto src_rect = _src_rect.intersect(source.rect());
+  int dx = position.x() + translation().y();
+  int dy = position.y() + translation().y();
+  gfx::rect dst_rect;
+  dst_rect.x = position.x() + translation().x();
+  dst_rect.y = position.y() + translation().y();
+  dst_rect.w = src_rect.w;
+  dst_rect.h = src_rect.h;
+
+
+  const int first_row = dst_rect.top();
+  const int last_row = dst_rect.bottom();
+  const int first_column = dst_rect.left();
+
+
+  uint32_t *src = source.scanline(src_rect.y) + src_rect.x;
+  uint32_t *dst = bmp.scanline(position.y()) + position.x();
+
+  const size_t src_skip = source.width();
+  const size_t dst_skip = bmp.width();
+
+  for (int row = 0; row <= dst_rect.h; ++row) {
+    char *d = (char *)dst;
+    char *s = (char *)src;
+    for (int i = 0; i < dst_rect.w * sizeof(uint32_t); i++) {
+      d[i] = s[i];
+    }
+    dst += dst_skip;
+    src += src_skip;
+  }
+}
+
 void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source, const gfx::rect &src_rect) {
   auto safe_src_rect = src_rect.intersect(source.rect());
   // assert(source.rect().contains(safe_src_rect));
@@ -79,16 +113,16 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source, const gf
   const uint32_t *src = source.scanline(src_rect.top() + first_row) + src_rect.left() + first_column;
   const size_t src_skip = source.width();
 
-
   // ::printf("w: %4d,  last_row: %4d\n", last_row, clipped_rect.w-1);
   for (int row = first_row; row <= last_row; ++row) {
-    memcpy(dst, src, clipped_rect.w * sizeof(uint32_t));
+    char *d = (char *)dst;
+    char *s = (char *)src;
+    for (int i = 0; i < clipped_rect.w * sizeof(uint32_t); i++) {
+      d[i] = s[i];
+    }
     dst += dst_skip;
     src += src_skip;
   }
-
-  // draw_pixel(dst_rect.x, dst_rect.y, 0xFF00FF);
-  return;
 }
 
 void gfx::scribe::blit_scaled(gfx::bitmap &bmp, const gfx::rect &r, gfx::bitmap::SampleMode mode) {

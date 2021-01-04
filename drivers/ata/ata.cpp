@@ -482,7 +482,7 @@ bool dev::ata::write_blocks_dma(u32 sector, const u8* data, int n) {
 
 
 
-static void ata_interrupt(int intr, reg_t* fr) {
+static void ata_interrupt(int intr, reg_t* fr, void*) {
   inb(primary_master_status);
   inb(primary_master_bmr_status);
 

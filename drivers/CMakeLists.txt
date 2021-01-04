@@ -65,7 +65,11 @@ add_kernel_module(
 
 
 # add_kernel_module(NAME sb16)
-# add_kernel_module(NAME virtio)
+add_kernel_module(
+	NAME virtio
+	AUTOGLOB virtio
+)
+
 add_kernel_module(
 	NAME vmware
 	NEEDS VMWARE_VIDEO

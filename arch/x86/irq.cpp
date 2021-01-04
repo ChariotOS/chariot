@@ -150,7 +150,7 @@ static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
 
 // boot time tick handler
 // Will be replaced by the lapic
-static void tick_handle(int i, reg_t *tf) {
+static void tick_handle(int i, reg_t *tf, void *) {
   auto &cpu = cpu::current();
 
   u64 now = arch_read_timestamp();
@@ -285,7 +285,7 @@ static void illegal_instruction_handler(int i, reg_t *regs) {
   sys::exit_proc(-1);
 }
 
-extern "C" void syscall_handle(int i, reg_t *tf);
+extern "C" void syscall_handle(int i, reg_t *tf, void *);
 
 #define PGFLT_PRESENT (1 << 0)
 #define PGFLT_WRITE (1 << 1)
@@ -424,7 +424,7 @@ int arch::irq::init(void) {
 
   // setup the ancient systemcall interface
   mkgate(idt, 0x80, vectors[0x80], 3, 0);
-  ::irq::install(0x80 - 32, syscall_handle, "System Call");
+  // ::irq::install(0x80 - 32, syscall_handle, "System Call");
 
   KINFO("Registered basic interrupt handlers\n");
 
@@ -443,7 +443,7 @@ extern "C" void trap(reg_t *regs) {
    *
    * Honestly, I have no idea why this is needed...
    */
-  arch_enable_ints();
+  // arch_enable_ints();
 
 
 
@@ -455,12 +455,16 @@ extern "C" void trap(reg_t *regs) {
 
   int nr = tf->trapno;
 
-  if (nr >= 32) {
-    irq::dispatch(nr - 32, regs);
+  if (nr == 0x80) {
+    arch_enable_ints();
+		syscall_handle(0x80, regs, NULL);
   } else {
-    isr_functions[nr](nr, regs);
+    if (nr >= 32) {
+      irq::dispatch(nr - 32, regs);
+    } else {
+      isr_functions[nr](nr, regs);
+    }
   }
-
 
 
   irq::eoi(tf->trapno);
@@ -468,58 +472,4 @@ extern "C" void trap(reg_t *regs) {
   // TODO: generalize
   sched::before_iret(from_userspace);
 }
-
-
-
-
-#if 0
-struct irq_state {
-	void *fpu_state = NULL;
-	struct irq_state *prev;
-};
-
-
-struct {
-	struct irq_state *irq_state = NULL;
-} current_thread;
-
-
-
-void on_nm_irq(void) {
-	struct irq_state *state = current_thread.irq_state->prev;
-
-	if (state->fpu_state == NULL) {
-		state->fpu_state = kmalloc(4096);
-	}
-
-
-	enable_fpu();
-	save_fpu(state->fpu_state);
-}
-
-
-
-void on_irq(void) {
-	struct irq_state state;
-	state.prev = current_thread.irq_state;
-	current_thread.irq_state = &state;
-	// in the nk code, fpu is disabled until you use it, so we can save/restore
-	disable_fpu();
-
-
-	// do stuff with the irq
-	auto handler = handler_table[irq]
-	handler();
-	nk_sched_need_resched();
-
-	current_thread.irq_state = current_thread.irq_state->prev;
-
-	if (state.fpu_state != NULL) {
-		restore_fpu(state.fpu_state);
-		kfree(state.fpu_state);
-	}
-
-	// if fpu was already enabled, re-enable it here.
-}
-#endif
 

@@ -102,7 +102,7 @@ static void wait_for_tick_change(void) {
   }
 }
 
-static void lapic_tick_handler(int i, reg_t *tf) {
+static void lapic_tick_handler(int i, reg_t *tf, void*) {
   auto &cpu = cpu::current();
   uint64_t now = arch_read_timestamp();
   cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;

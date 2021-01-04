@@ -109,7 +109,7 @@ void dev::RTC::localtime(struct tm& t) {
 
 
 
-void rtc_irq_handler(int n, reg_t* regs) {
+void rtc_irq_handler(int n, reg_t* regs, void *) {
 	/* the irq occurs twice per second, so we need to ignore one of them */
   static int count = 0;
   count++;

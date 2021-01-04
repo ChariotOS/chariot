@@ -38,6 +38,9 @@ struct processor_state {
   struct thread *next_thread;
 
   struct thread_context *sched_ctx;
+
+	/* The depth of interrupts. If this is not zero, we aren't in an interrupt context */
+	int interrupt_depth = 0;
 };
 
 extern int cpunum;
