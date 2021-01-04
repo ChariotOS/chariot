@@ -69,7 +69,6 @@ else
 fi
 
 echo "Device: ${dev}"
-lx /dev/disk*
 
 cleanup() {
 	if [ -d $mnt ]; then
@@ -87,8 +86,6 @@ cleanup() {
 }
 # clean up when we can
 trap cleanup EXIT
-
-exit
 
 
 
