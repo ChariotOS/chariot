@@ -956,15 +956,6 @@ static int do_printk(const char *format, va_list va) {
           break;
       }
       if (prefix != NULL) {
-#ifdef CONFIG_DEBUG_TIMESTAMPS
-        struct tm t;
-        sys::localtime(&t);
-				int tid = 0;
-				if (cpu::in_thread()) {
-					tid = curthd->tid;
-				}
-        printk_nolock("[%02d:%02d:%02d] ", t.tm_hour, t.tm_min, t.tm_sec);
-#endif
 
         printk_nolock("%s%s ", prefix, RESET);
       }

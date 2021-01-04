@@ -46,6 +46,10 @@ void print_va(rv::xsize_t va) {
 
 
 void main() {
+
+  /* Zero the BSS section */
+  for (char *c = _bss_start; c != _bss_end; c++) *c = 0;
+
   /*
    * Machine mode passes us the scratch structure through
    * the thread pointer register. We need to then move it
@@ -60,8 +64,7 @@ void main() {
   if (rv::hartid() != 0)
     while (1) arch_halt();
 
-  /* Zero the BSS section */
-  for (char *c = _bss_start; c != _bss_end; c++) *c = 0;
+  
 
 
   /* Initialize the platform level interrupt controller for this HART */
@@ -72,7 +75,7 @@ void main() {
 
   rv::intr_on();
 
-  printk(KERN_DEBUG "Freeing %dMB of ram %llx:%llx\n", CONFIG_RISCV_RAM_MB, _kernel_end, PHYSTOP);
+  // printk(KERN_DEBUG "Freeing %dMB of ram %llx:%llx\n", CONFIG_RISCV_RAM_MB, _kernel_end, PHYSTOP);
 
   use_kernel_vm = 1;
   phys::free_range((void *)_kernel_end, (void *)PHYSTOP);

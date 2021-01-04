@@ -8,12 +8,20 @@ fi
 
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+export PATH="/usr/local/bin:/usr/bin:/bin"
 
-mkdir -p $DIR/tarballs
+
+ROOT=$DIR/..
+SYSROOT="$ROOT/build/root/"
+
+BINUTILS_VERSION="2.33.1"
+GCC_VERSION="10.1.0"
+
+mkdir -p $DIR/src
 mkdir -p $DIR/local
 
 # Download all the sources we need
-pushd tarballs
+pushd src
 	if [ ! -f binutils.tar ]; then
 		wget ftp://ftp.gnu.org/gnu/binutils/binutils-${BINUTILS_VERSION}.tar.xz -O binutils.tar
 	fi
@@ -32,8 +40,21 @@ pushd tarballs
 		echo "Unpacking gcc..."
 		tar -xf gcc-${GCC_VERSION}.tar
 	fi
+
+  if [ "$(uname)" = "Darwin" ]; then
+  	pushd "gcc-${GCC_VERSION}"
+    	./contrib/download_prerequisites
+    popd
+  fi
 popd
 
+
+
+if [ "$(uname)" = "Darwin" ]; then
+ 	# export CC=clang
+	# export CXX=clang++
+	echo "MACOS"
+fi
 
 
 for ARCH in "$@"
@@ -42,37 +63,40 @@ do
 	TARGET="$ARCH-elf"
 	PREFIX="$DIR/local"
 
-	ROOT=$DIR/..
-	SYSROOT="$ROOT/build/root/"
 
-	BINUTILS_VERSION="2.33.1"
-	GCC_VERSION="10.1.0"
 
 	BUILD=$DIR/build/$ARCH
 	mkdir -p $BUILD
 	mkdir -p $BUILD/gcc
 	mkdir -p $BUILD/binutils
-	MAKEJOBS=24
+	MAKEJOBS=$(nproc)
 
 
 	pushd $BUILD
+
 		# build binutils
 		pushd binutils
-			rm -f ./config.cache # Let's do this in case someone has already built the i686 version
-			"$DIR"/tarballs/binutils-${BINUTILS_VERSION}/configure --prefix="$PREFIX" \
+
+			figlet "BINUTILS CONFIGURE"
+
+			"$DIR"/src/binutils-${BINUTILS_VERSION}/configure --prefix="$PREFIX" \
 																							--target="$TARGET" \
 																							--with-sysroot="$SYSROOT" \
 																							--enable-shared \
 																							--disable-nls || exit 1
+			figlet "BINUTILS MAKE"
 			make -j "$MAKEJOBS" || exit 1
 			make install || exit 1
 		popd
 
+		figlet "BINUTILS DONE"
+
 
 		# build gcc
 		pushd gcc
-			rm -f ./config.cache # Let's do this in case someone has already built the i686 version
-			"$DIR"/tarballs/gcc-${GCC_VERSION}/configure --prefix="$PREFIX" \
+			figlet "GCC CONFIGURE"
+
+			"$DIR"/src/gcc-${GCC_VERSION}/configure --prefix="$PREFIX" \
 																				 --target="$TARGET" \
 																				 --with-sysroot="$SYSROOT" \
 																				 --disable-nls \
@@ -82,12 +106,33 @@ do
 
 			# we gotta do this casue libstdc++-v3 wants to check our header files out
 			mkdir -p $SYSROOT
+			figlet "GCC CONFIGURE DONE"
 
+			if [ "$(uname)" = "Darwin" ]; then
+      	# under macOS generated makefiles are not resolving the "intl"
+        # dependency properly to allow linking its own copy of
+        # libintl when building with --enable-shared.
+        make -j "$MAKEJOBS" || true
+        pushd intl
+        	make all-yes
+        popd
+      fi
+
+			figlet "GCC MAKE"
 			echo "XXX build gcc and libgcc"
 			make -j "$MAKEJOBS" all-gcc all-target-libgcc || exit 1
 			echo "XXX install gcc and libgcc"
 			make install-gcc install-target-libgcc || exit 1
 		popd
+
+
+
+
+
+
+
+
+		
 	popd
 
 done

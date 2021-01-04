@@ -10,7 +10,7 @@ QEMU_ARCH=""
 QEMU_FLAGS="-nographic -serial mon:stdio "
 
 
-dd if=/dev/urandom of=build/random.img bs=4096 count=1024
+# dd if=/dev/urandom of=build/random.img bs=4096 count=1024
 
 case $ARCH in 
 	X86-64)
@@ -36,6 +36,5 @@ case $ARCH in
 		;;
 
 esac
-
 
 qemu-system-${QEMU_ARCH} ${QEMU_FLAGS} $@

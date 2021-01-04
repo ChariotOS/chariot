@@ -67,7 +67,7 @@ void cpu::switch_vm(struct thread *thd) { /* TODO: nothin' */ }
 
 void cpu::seginit(void *local) {
 	auto &sc = rv::get_scratch();
-	printk(KERN_DEBUG "initialize hart %d\n", sc.hartid);
+	// printk(KERN_DEBUG "initialize hart %d\n", sc.hartid);
 	auto &cpu = cpu::current();
 	/* zero out the cpu structure. This might be bad idk... */
 	memset(&cpu, 0, sizeof(struct processor_state));

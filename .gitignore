@@ -22,7 +22,7 @@ autoconf.h
 
 user/out
 
-toolchain/tarballs
+toolchain/src
 toolchain/build
 toolchain/local
 

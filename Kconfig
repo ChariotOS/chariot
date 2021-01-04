@@ -8,10 +8,6 @@ menu "Build"
 		bool "Debug Symbols (-g)"
 		default n
 
-	config DEBUG_TIMESTAMPS
-		bool "Display timestamps when printing with KERN_*"
-		default y
-
 	config ADDITIONAL_KERNEL_FLAGS
 		string "[kernel] Additional GCC Flags"
 		default "-O2"
@@ -26,6 +22,15 @@ menu "Build"
 		int "Size of the virtual hard drive in megabytes"
 		default 256
 
+
+	config OVERRIDE_TOOLCHAIN
+		bool "Override toolchain prefix"
+		default n
+
+	config TOOLCHAIN_PREFIX
+		string "Toolchain prefix"
+		depends on OVERRIDE_TOOLCHAIN
+		default "toolchain/..."
 endmenu
 
 
