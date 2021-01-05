@@ -15,7 +15,7 @@
 // typedef	unsigned long	uintptr_t;
 
 // This lets you prefix malloc and friends
-#define PREFIX(func) k ## func
+#define PREFIX(func) k##func
 
 /** This function is supposed to lock the memory data structures. It
  * could be as simple as disabling interrupts or acquiring a spinlock.
@@ -55,10 +55,10 @@ extern int liballoc_free(void *, unsigned long);
 
 extern void *PREFIX(malloc)(unsigned long);  ///< The standard function.
 extern void *PREFIX(realloc)(void *,
-			     unsigned long);  ///< The standard function.
+                             unsigned long);  ///< The standard function.
 extern void *PREFIX(calloc)(unsigned long,
-			    unsigned long);  ///< The standard function.
-extern void PREFIX(free)(void *);	     ///< The standard function.
+                            unsigned long);  ///< The standard function.
+extern void PREFIX(free)(void *);            ///< The standard function.
 
 /** @} */
 

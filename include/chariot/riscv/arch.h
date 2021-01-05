@@ -30,7 +30,11 @@ namespace rv /* risc-v namespace */ {
 
 
   /* xsize-bit integer, as specified in the ISA manual (64 on rv64, 32 on rv32) */
+#ifdef CONFIG_64BIT
   using xsize_t = uint64_t;
+#else
+	using xsize_t = uint32_t;
+#endif
 
   static inline rv::xsize_t mhartid(void) {
     rv::xsize_t x;

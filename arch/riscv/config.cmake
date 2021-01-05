@@ -1,16 +1,14 @@
 
 if(CONFIG_64BIT)
 	set(RISCV_MARCH "rv64gc")
-	set(RISCV_MABI  "lp64")
+	set(RISCV_MABI  "lp64d")
 else()
 	set(RISCV_MARCH "rv32gc")
-	set(RISCV_MABI  "ilp32")
+	set(RISCV_MABI  "ilp32d")
 endif()
 
 # core gcc flags to select the riscv arch correctly
 set(RISCV_FLAGS "-march=${RISCV_MARCH} -mabi=${RISCV_MABI} -mcmodel=medany")
-
-message(STATUS "${RISCV_FLAGS}")
 
 # universal
 set(LDFLAGS -m elf_riscv64 -z max-page-size=0x1000 --no-relax)

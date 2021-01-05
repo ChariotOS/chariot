@@ -9,7 +9,7 @@ source .config
 
 # this parses the arch of the elf into "X86-64", "RISC-V", etc...
 ARCH=$(readelf -h build/chariot.elf | grep 'Machine' | awk '{print $(NF)}')
-QEMU_ARCH=""
+QEMU_ARCH="${CONFIG_ARCH_NAME}"
 QEMU_FLAGS="-nographic -serial mon:stdio "
 
 
@@ -17,7 +17,6 @@ QEMU_FLAGS="-nographic -serial mon:stdio "
 
 case $ARCH in 
 	X86-64)
-		QEMU_ARCH="x86_64"
 
 		QEMU_FLAGS+="-m 4G -smp 1 "
 		QEMU_FLAGS+="-hda build/chariot.img "
@@ -27,7 +26,6 @@ case $ARCH in
 
 	RISC-V)
 
-		QEMU_ARCH=riscv64
 
 		QEMU_FLAGS+="-machine virt -smp 1 -m ${CONFIG_RISCV_RAM_MB}M -bios none "
 		QEMU_FLAGS+="-kernel build/chariot.elf "

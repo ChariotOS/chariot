@@ -45,10 +45,10 @@ size_t mem_size();
 
 // kernel dynamic memory allocation functions
 // NOTE: all of the internals of this API will change, but the API will not
-void *kmalloc(u64 size);
-void *kzalloc(size_t size);
+void *kmalloc(unsigned long size);
+void *kzalloc(unsigned long size);
 void kfree(void *ptr);
-void *krealloc(void *ptr, u64 newsize);
+void *krealloc(void *ptr, unsigned long newsize);
 
 void init_kernel_virtual_memory();
 

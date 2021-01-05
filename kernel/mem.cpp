@@ -12,6 +12,16 @@
 #define ALIGN(x, a) (((x) + (a)-1) & ~((a)-1))
 
 
+
+extern "C" size_t strlen(const char *s) {
+  if (s == NULL) return 0;
+  const char *a = s;
+  for (; *s; s++)
+    ;
+  return s - a;
+}
+
+
 // bindings for liballoc
 spinlock alloc_lock;
 
@@ -29,7 +39,7 @@ int liballoc_unlock() {
 
 static unsigned long kmalloc_usage = 0;
 
-void *liballoc_alloc(size_t s) {
+void *liballoc_alloc(unsigned long s) {
   void *p = phys::kalloc(s);
   if (p == NULL) panic("Can't find region for malloc");
   kmalloc_usage += s * PGSIZE;
@@ -39,7 +49,7 @@ void *liballoc_alloc(size_t s) {
 }
 
 
-int liballoc_free(void *buf, size_t sz) {
+int liballoc_free(void *buf, unsigned long sz) {
   phys::kfree(buf, sz);
   kmalloc_usage -= sz * PGSIZE;
 
@@ -81,10 +91,10 @@ extern "C" int memcmp(const void *s1_, const void *s2_, size_t n) {
 
 
 extern "C" void memset(void *buf, char c, size_t len) {
-	unsigned char *ptr = (unsigned char *)buf;
-	for (size_t i = 0; i < len; i++) {
-		ptr[i] = c;
-	}
+  unsigned char *ptr = (unsigned char *)buf;
+  for (size_t i = 0; i < len; i++) {
+    ptr[i] = c;
+  }
 }
 
 

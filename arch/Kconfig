@@ -1,8 +1,9 @@
 config ARCH_NAME
 	string
 	default "x86_64" if X86 && 64BIT
-	default "risc64" if RISCV && 64BIT
-	default "riscv" if RISCV && !64BIT
+	default "i386" if X86 && !64BIT
+	default "riscv64" if RISCV && 64BIT
+	default "riscv32" if RISCV && !64BIT
 
 config ARCH_DIR
 	string
@@ -42,7 +43,8 @@ endmenu
 
 
 config 64BIT
-	bool "64bit"
+	# bool "64bit"
+	bool
 	default y
 
 

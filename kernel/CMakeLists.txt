@@ -111,6 +111,7 @@ endfunction()
 
 add_rooted_subdir(arch/${CONFIG_ARCH_DIR})
 
+# target_link_libraries(chariot -Wl,--whole-archive ${CMAKE_SOURCE_DIR}/toolchain/build/${CMAKE_SYSTEM_PROCESSOR}/gcc/gcc/libgcc.a)
 
 add_rooted_subdir(fs)
 add_rooted_subdir(net)

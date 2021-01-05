@@ -123,7 +123,11 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
 
 
 
+#ifdef CONFIG_64BIT
   int interrupt = (scause >> 63);
+#else
+  int interrupt = (scause >> 31);
+#endif
   int nr = scause & ~(1llu << 63);
   if (interrupt) {
     /* Supervisor software interrupt (from machine mode) */

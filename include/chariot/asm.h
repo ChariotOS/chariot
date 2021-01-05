@@ -167,13 +167,7 @@ static inline int strcmp(const char *l, const char *r) {
 char *strncpy(char *, const char *, size_t);
 int strncmp(const char *s1, const char *s2, size_t limit);
 
-static inline size_t strlen(const char *s) {
-  if (s == NULL) return 0;
-  const char *a = s;
-  for (; *s; s++)
-    ;
-  return s - a;
-}
+extern "C" size_t strlen(const char *s);
 
 
 // memmove is just copy but you clear it out
@@ -267,7 +261,6 @@ static inline u64 readeflags(void) {
   return eflags;
 }
 #endif
-
 
 
 

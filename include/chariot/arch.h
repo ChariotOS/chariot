@@ -12,6 +12,7 @@
 #include <x86/arch.h>
 #endif
 
+#include <types.h>
 
 #ifdef CONFIG_RISCV
 /* not sure if we need this yet or not... */
@@ -26,7 +27,12 @@
  * syscall arguments. Anything beyond that, like the PC, SP, BP etc... must be
  * accessed through arch:: funcs
  */
-typedef unsigned long reg_t;
+#ifdef CONFIG_64BIT
+typedef uint64_t reg_t;
+#else
+typedef uint32_t reg_t;
+#endif
+
 
 
 struct regs;

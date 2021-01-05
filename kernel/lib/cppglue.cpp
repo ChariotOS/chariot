@@ -7,6 +7,10 @@ void *__dso_handle;
 unsigned __atexit_func_count = 0;
 atexit_func_entry_t __atexit_funcs[ATEXIT_MAX_FUNCS];
 
+
+extern "C" void abort(void) {
+	panic("ABORT");
+}
 #define BAD() panic("Undefined C++ function (%s)\n", __func__);
 
 // Called when a pure virtual function call is attempted
@@ -43,6 +47,7 @@ void __cxa_finalize(void *f) {
   }
 }
 
+#if 0
 // Not really needed since we will compile with -fno-rtti and -fno-exceptions
 void _Unwind_Resume(void) { BAD(); }
 
@@ -104,6 +109,7 @@ extern "C" uint64_t _Unwind_GetDataRelBase(struct _Unwind_Context *context) {
   BAD();
   return 0;
 }
+#endif
 
 void *operator new(size_t size) {
   // printk("operator new %zu\n", size);

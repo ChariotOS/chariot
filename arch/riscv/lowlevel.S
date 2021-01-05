@@ -52,106 +52,26 @@ _start:
 .globl timervec
 .align 4
 timervec:
-#if 0
-
-	# make room to save registers.
-	addi sp, sp, -256
-
-	# save the registers.
-	sd ra, 0(sp)
-	sd sp, 8(sp)
-	sd gp, 16(sp)
-	sd tp, 24(sp)
-	sd t0, 32(sp)
-	sd t1, 40(sp)
-	sd t2, 48(sp)
-	sd s0, 56(sp)
-	sd s1, 64(sp)
-	sd a0, 72(sp)
-	sd a1, 80(sp)
-	sd a2, 88(sp)
-	sd a3, 96(sp)
-	sd a4, 104(sp)
-	sd a5, 112(sp)
-	sd a6, 120(sp)
-	sd a7, 128(sp)
-	sd s2, 136(sp)
-	sd s3, 144(sp)
-	sd s4, 152(sp)
-	sd s5, 160(sp)
-	sd s6, 168(sp)
-	sd s7, 176(sp)
-	sd s8, 184(sp)
-	sd s9, 192(sp)
-	sd s10, 200(sp)
-	sd s11, 208(sp)
-	sd t3, 216(sp)
-	sd t4, 224(sp)
-	sd t5, 232(sp)
-	sd t6, 240(sp)
-
-# call the C trap handler in trap.c
-	mv a0, sp
-	call kerneltrap
-
-	# restore registers.
-	ld ra, 0(sp)
-	ld sp, 8(sp)
-	ld gp, 16(sp)
-	# not this, in case we moved CPUs: ld tp, 24(sp)
-	ld t0, 32(sp)
-	ld t1, 40(sp)
-	ld t2, 48(sp)
-	ld s0, 56(sp)
-	ld s1, 64(sp)
-	ld a0, 72(sp)
-	ld a1, 80(sp)
-	ld a2, 88(sp)
-	ld a3, 96(sp)
-	ld a4, 104(sp)
-	ld a5, 112(sp)
-	ld a6, 120(sp)
-	ld a7, 128(sp)
-	ld s2, 136(sp)
-	ld s3, 144(sp)
-	ld s4, 152(sp)
-	ld s5, 160(sp)
-	ld s6, 168(sp)
-	ld s7, 176(sp)
-	ld s8, 184(sp)
-	ld s9, 192(sp)
-	ld s10, 200(sp)
-	ld s11, 208(sp)
-	ld t3, 216(sp)
-	ld t4, 224(sp)
-	ld t5, 232(sp)
-	ld t6, 240(sp)
-
-	addi sp, sp, 256
-
-	mret
-#endif
-
 	csrrw a0, mscratch, a0
-	sd a1, 0(a0)
-	sd a2, 8(a0)
-	sd a3, 16(a0)
+	SREG a1, 0(a0)
+	SREG a2, 8(a0)
+	SREG a3, 16(a0)
 
 	# schedule the next timer interrupt
 	# by adding interval to mtimecmp.
-	ld a1, 24(a0) # CLINT_MTIMECMP(hart)
-	ld a2, 32(a0) # interval
-	ld a3, 0(a1)
+	LREG a1, 24(a0) # CLINT_MTIMECMP(hart)
+	LREG a2, 32(a0) # interval
+	LREG a3, 0(a1)
 	add a3, a3, a2
-	sd a3, 0(a1)
+	SREG a3, 0(a1)
 
 	# raise a supervisor software interrupt.
 	li a1, 2
 	csrw sip, a1
 
-	ld a3, 16(a0)
-	ld a2, 8(a0)
-	ld a1, 0(a0)
+	LREG a3, ROFF(2, a0)
+	LREG a2, ROFF(1, a0)
+	LREG a1, ROFF(0, a0)
 	csrrw a0, mscratch, a0
 
 	mret
@@ -168,43 +88,43 @@ timervec:
 .align 4
 kernelvec:
 	# make room to save registers.
-	addi sp, sp, -256
+	addi sp, sp, -32 * RSIZE
 
 	# save the registers.
-	sd ra, 0(sp)
-	sd sp, 8(sp)
-	sd gp, 16(sp)
-	sd tp, 24(sp)
-	sd t0, 32(sp)
-	sd t1, 40(sp)
-	sd t2, 48(sp)
-	sd s0, 56(sp)
-	sd s1, 64(sp)
-	sd a0, 72(sp)
-	sd a1, 80(sp)
-	sd a2, 88(sp)
-	sd a3, 96(sp)
-	sd a4, 104(sp)
-	sd a5, 112(sp)
-	sd a6, 120(sp)
-	sd a7, 128(sp)
-	sd s2, 136(sp)
-	sd s3, 144(sp)
-	sd s4, 152(sp)
-	sd s5, 160(sp)
-	sd s6, 168(sp)
-	sd s7, 176(sp)
-	sd s8, 184(sp)
-	sd s9, 192(sp)
-	sd s10, 200(sp)
-	sd s11, 208(sp)
-	sd t3, 216(sp)
-	sd t4, 224(sp)
-	sd t5, 232(sp)
-	sd t6, 240(sp)
+	SREG ra, ROFF(0, sp)
+	SREG sp, ROFF(1, sp)
+	SREG gp, ROFF(2, sp)
+	SREG tp, ROFF(3, sp)
+	SREG t0, ROFF(4, sp)
+	SREG t1, ROFF(5, sp)
+	SREG t2, ROFF(6, sp)
+	SREG s0, ROFF(7, sp)
+	SREG s1, ROFF(8, sp)
+	SREG a0, ROFF(9, sp)
+	SREG a1, ROFF(10,sp)
+	SREG a2, ROFF(11, sp)
+	SREG a3, ROFF(12, sp)
+	SREG a4, ROFF(13, sp)
+	SREG a5, ROFF(14, sp)
+	SREG a6, ROFF(15, sp)
+	SREG a7, ROFF(16, sp)
+	SREG s2, ROFF(17, sp)
+	SREG s3, ROFF(18, sp)
+	SREG s4, ROFF(19, sp)
+	SREG s5, ROFF(20, sp)
+	SREG s6, ROFF(21, sp)
+	SREG s7, ROFF(22, sp)
+	SREG s8, ROFF(23, sp)
+	SREG s9, ROFF(24, sp)
+	SREG s10, ROFF(25, sp)
+	SREG s11, ROFF(26, sp)
+	SREG t3, ROFF(27, sp)
+	SREG t4, ROFF(28, sp)
+	SREG t5, ROFF(29, sp)
+	SREG t6, ROFF(30, sp)
 
 	csrr a0, sepc
-	sd a0, 248(sp)
+	SREG a0, ROFF(31, sp)
 
 
 # call the C trap handler in trap.c
@@ -212,43 +132,43 @@ kernelvec:
 	call kernel_trap
 
 	# read sepc from the stack now, as we need a0 to be restored
-	ld a0, 248(sp)
+	LREG a0, ROFF(31, sp)
 	csrw sepc, a0
 
 	# restore registers.
-	ld ra, 0(sp)
-	ld sp, 8(sp)
-	ld gp, 16(sp)
-	# not this, in case we moved CPUs: ld tp, 24(sp)
-	ld t0, 32(sp)
-	ld t1, 40(sp)
-	ld t2, 48(sp)
-	ld s0, 56(sp)
-	ld s1, 64(sp)
-	ld a0, 72(sp)
-	ld a1, 80(sp)
-	ld a2, 88(sp)
-	ld a3, 96(sp)
-	ld a4, 104(sp)
-	ld a5, 112(sp)
-	ld a6, 120(sp)
-	ld a7, 128(sp)
-	ld s2, 136(sp)
-	ld s3, 144(sp)
-	ld s4, 152(sp)
-	ld s5, 160(sp)
-	ld s6, 168(sp)
-	ld s7, 176(sp)
-	ld s8, 184(sp)
-	ld s9, 192(sp)
-	ld s10, 200(sp)
-	ld s11, 208(sp)
-	ld t3, 216(sp)
-	ld t4, 224(sp)
-	ld t5, 232(sp)
-	ld t6, 240(sp)
+	LREG ra, ROFF(0, sp)
+	LREG sp, ROFF(1, sp)
+	LREG gp, ROFF(2, sp)
+	# SREG tp, ROFF(3, sp) ;; not this!
+	LREG t0, ROFF(4, sp)
+	LREG t1, ROFF(5, sp)
+	LREG t2, ROFF(6, sp)
+	LREG s0, ROFF(7, sp)
+	LREG s1, ROFF(8, sp)
+	LREG a0, ROFF(9, sp)
+	LREG a1, ROFF(10,sp)
+	LREG a2, ROFF(11, sp)
+	LREG a3, ROFF(12, sp)
+	LREG a4, ROFF(13, sp)
+	LREG a5, ROFF(14, sp)
+	LREG a6, ROFF(15, sp)
+	LREG a7, ROFF(16, sp)
+	LREG s2, ROFF(17, sp)
+	LREG s3, ROFF(18, sp)
+	LREG s4, ROFF(19, sp)
+	LREG s5, ROFF(20, sp)
+	LREG s6, ROFF(21, sp)
+	LREG s7, ROFF(22, sp)
+	LREG s8, ROFF(23, sp)
+	LREG s9, ROFF(24, sp)
+	LREG s10, ROFF(25, sp)
+	LREG s11, ROFF(26, sp)
+	LREG t3, ROFF(27, sp)
+	LREG t4, ROFF(28, sp)
+	LREG t5, ROFF(29, sp)
+	LREG t6, ROFF(30, sp)
 
-	addi sp, sp, 256
+	addi sp, sp, 32*RSIZE
 
 	# return to whatever we were doing in the kernel.
 	sret

@@ -14,6 +14,7 @@ menuconfig:
 	@python3 tools/menuconfig.py
 
 kernel: .config
+	@tools/build_toolchain.sh
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); cmake -GNinja $(CMAKE_ROOT)
 	@cd $(BUILD); ninja install

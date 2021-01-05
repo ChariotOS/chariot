@@ -91,9 +91,9 @@ static unsigned int l_pageSize =
     4096;  ///< The size of an individual page. Set up in liballoc_init.
 static unsigned int l_pageCount =
     16;  ///< The number of pages to request per chunk. Set up in liballoc_init.
-static unsigned long long l_allocated =
+static unsigned long l_allocated =
     0;                                  ///< Running total of allocated memory.
-static unsigned long long l_inuse = 0;  ///< Running total of used memory.
+static unsigned long l_inuse = 0;  ///< Running total of used memory.
 
 static long long l_warningCount = 0;      ///< Number of warnings encountered
 static long long l_errorCount = 0;        ///< Number of actual errors
@@ -216,7 +216,7 @@ static struct liballoc_major *allocate_new_page(unsigned int size) {
 
 void *PREFIX(malloc)(unsigned long req_size) {
   int startedBet = 0;
-  unsigned long long bestSize = 0;
+  unsigned long bestSize = 0;
   void *p = NULL;
   uintptr_t diff;
   struct liballoc_major *maj;
