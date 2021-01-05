@@ -20,6 +20,14 @@ GCC_VERSION="10.1.0"
 mkdir -p $DIR/src
 mkdir -p $DIR/local
 
+
+MESSAGE="echo"
+if which figlet >/dev/null 2>&1; then
+	MESSAGE="figlet"
+fi
+
+
+
 # Download all the sources we need
 pushd src
 	if [ ! -f binutils.tar ]; then
@@ -77,24 +85,25 @@ do
 		# build binutils
 		pushd binutils
 
-			figlet "BINUTILS CONFIGURE"
+			$MESSAGE "BINUTILS CONFIGURE"
 
 			"$DIR"/src/binutils-${BINUTILS_VERSION}/configure --prefix="$PREFIX" \
 																							--target="$TARGET" \
 																							--with-sysroot="$SYSROOT" \
 																							--enable-shared \
 																							--disable-nls || exit 1
-			figlet "BINUTILS MAKE"
+			$MESSAGE "BINUTILS MAKE"
 			make -j "$MAKEJOBS" || exit 1
 			make install || exit 1
 		popd
 
-		figlet "BINUTILS DONE"
+		$MESSAGE "BINUTILS DONE"
 
 
 		# build gcc
 		pushd gcc
-			figlet "GCC CONFIGURE"
+
+			$MESSAGE "GCC CONFIGURE"
 
 			"$DIR"/src/gcc-${GCC_VERSION}/configure --prefix="$PREFIX" \
 																				 --target="$TARGET" \
@@ -106,7 +115,7 @@ do
 
 			# we gotta do this casue libstdc++-v3 wants to check our header files out
 			mkdir -p $SYSROOT
-			figlet "GCC CONFIGURE DONE"
+			$MESSAGE "GCC CONFIGURE DONE"
 
 			if [ "$(uname)" = "Darwin" ]; then
       	# under macOS generated makefiles are not resolving the "intl"
@@ -118,19 +127,12 @@ do
         popd
       fi
 
-			figlet "GCC MAKE"
+			$MESSAGE "GCC MAKE"
 			echo "XXX build gcc and libgcc"
 			make -j "$MAKEJOBS" all-gcc all-target-libgcc || exit 1
 			echo "XXX install gcc and libgcc"
 			make install-gcc install-target-libgcc || exit 1
 		popd
-
-
-
-
-
-
-
 
 		
 	popd
