@@ -224,7 +224,7 @@ virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(re
   write_reg(VIRTIO_MMIO_STATUS, status);
 }
 
-void virtio_mmio_disk::disk_rw(uint32_t sector, uint8_t *data, int n, int write) {
+void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
   vdisk_lock.lock();
 
   // the spec's Section 5.2 says that legacy block operations use
@@ -339,6 +339,23 @@ void virtio_mmio_disk::irq(void) {
 }
 
 
+bool virtio_mmio_disk::read_blocks(uint32_t sector, void *data, int nsec) {
+  disk_rw(sector, data, nsec, 0 /* read mode */);
+  return true;
+}
+
+bool virtio_mmio_disk::write_blocks(uint32_t sector, const void *data, int nsec) {
+  disk_rw(sector, (uint8_t *)data, nsec, 1 /* read mode */);
+  return true;
+}
+
+size_t virtio_mmio_disk::block_size(void) { return 512; }
+
+size_t virtio_mmio_disk::block_count(void) {
+  panic("virtio disk block_count\n");
+  return 512;
+}
+
 #define REG(off) ((volatile uint32_t *)((off_t)regs + off))
 
 
@@ -347,21 +364,7 @@ int virtio_check_mmio_disk(volatile uint32_t *regs) {
   printk(KERN_INFO "Virtio disk at %p\n", regs);
   auto *disk = new virtio_mmio_disk(regs);
 
-
-  void *first_sector = kmalloc(512);
-  disk->read(0, first_sector, 1);
-
-  dev::mbr m;
-  if (m.parse(first_sector)) {
-    for (int i = 0; i < m.part_count(); i++) {
-      auto p = m.partition(i);
-      printk("Partition: %d  %d\n", p.off * 512, p.len * 512);
-    }
-  } else {
-    printk("mbr not found\n");
-  }
-
-  kfree(first_sector);
+	dev::register_disk(disk);
 
   printk("\n\n");
   return 0;

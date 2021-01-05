@@ -142,7 +142,7 @@ int kernel_init(void *) {
 
 #ifdef CONFIG_USERSPACE
 
-  auto root_name = kargs::get("root", "/dev/ata0p1");
+  auto root_name = kargs::get("root", "/dev/disk0p1");
   assert(root_name);
 
   int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);

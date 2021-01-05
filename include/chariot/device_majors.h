@@ -15,6 +15,7 @@ typedef enum {
 	MAJOR_NULL,
 	MAJOR_MEM,
 	MAJOR_ATA,
+	MAJOR_DISK,
 
 	MAJOR_COM,
 

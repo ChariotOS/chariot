@@ -1,5 +1,6 @@
 #pragma once
 
+#include <dev/disk.h>
 #include <dev/virtio_mmio.h>
 
 #include <errno.h>
@@ -74,7 +75,7 @@ class virtio_mmio_dev {
 };
 
 
-class virtio_mmio_disk : public virtio_mmio_dev {
+class virtio_mmio_disk : public virtio_mmio_dev, public dev::disk {
   // track info about in-flight operations,
   // for use when completion interrupt arrives.
   // indexed by first descriptor index of chain.
@@ -92,10 +93,12 @@ class virtio_mmio_disk : public virtio_mmio_dev {
  public:
   virtio_mmio_disk(volatile uint32_t *regs);
 
-  void disk_rw(uint32_t sector, uint8_t *data, int n, int write);
+  void disk_rw(uint32_t sector, void *data, int n, int write);
 
-  inline void read(uint32_t sector, void *data, int nsec = 1) { return disk_rw(sector, (uint8_t *)data, nsec, 0); }
-  inline void write(uint32_t sector, void *data, int nsec = 1) { return disk_rw(sector, (uint8_t *)data, nsec, 1); }
+	virtual size_t block_size();
+	virtual size_t block_count();
+  virtual bool read_blocks(uint32_t sector, void *data, int nsec = 1);
+  virtual bool write_blocks(uint32_t sector, const void *data, int nsec = 1);
 
-	virtual void irq(void);
+  virtual void irq(void);
 };
