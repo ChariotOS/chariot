@@ -1,7 +1,7 @@
 #include <dev/driver.h>
 #include <errno.h>
-#include <fs.h>
 #include <fcntl.h>
+#include <fs.h>
 
 ref<fs::file> fs::bdev_to_file(fs::blkdev *bdev) {
   fs::inode *ino = new fs::inode(T_BLK, fs::DUMMY_SB /* TODO */);
@@ -14,8 +14,8 @@ ref<fs::file> fs::bdev_to_file(fs::blkdev *bdev) {
 
   dev::populate_inode_device(*ino);
 
-	string name = "/dev/";
-	name += bdev->name;
+  string name = "/dev/";
+  name += bdev->name;
 
   return fs::file::create(ino, name, FDIR_READ | FDIR_WRITE);
 }
@@ -39,26 +39,22 @@ fs::file::file(struct fs::inode *f, int flags) : ino(f) {
     int o_res = 0;
     if (ops && ops->open) o_res = ops->open(*this);
     if (o_res != 0) {
-			m_error = o_res;
+      m_error = o_res;
       fs::inode::release(ino);
       ino = NULL;
     }
   }
 
-	if (ino != NULL) {
-		if (flags & O_APPEND) {
-			seek(0, SEEK_END);
-		}
-	}
+  if (ino != NULL) {
+    if (flags & O_APPEND) {
+      seek(0, SEEK_END);
+    }
+  }
 }
 
 fs::file::~file(void) {
   if (ino != nullptr) {
-    /*
-    // close the fileriptor
-    ino->close(*this);
-    */
-
+    // close the file
     auto ops = fops();
     if (ops && ops->close) ops->close(*this);
     fs::inode::release(ino);
@@ -73,8 +69,8 @@ fs::file_operations *fs::file::fops(void) {
 
 off_t fs::file::seek(off_t offset, int whence) {
   // TODO: check if the file is actually seekable
-	//
-	if (!ino) return -EINVAL;
+  //
+  if (!ino) return -EINVAL;
 
   off_t new_off;
 

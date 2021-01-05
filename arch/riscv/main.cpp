@@ -2,6 +2,8 @@
 #include <cpu.h>
 #include <dev/virtio_mmio.h>
 #include <devicetree.h>
+#include <fs/vfs.h>
+#include <module.h>
 #include <phys.h>
 #include <printk.h>
 #include <riscv/arch.h>
@@ -9,6 +11,7 @@
 #include <riscv/plic.h>
 #include <riscv/uart.h>
 #include <sleep.h>
+#include <syscall.h>
 #include <time.h>
 #include <util.h>
 
@@ -105,6 +108,11 @@ void main() {
   cpus[0].timekeeper = true;
 
   sched::proc::create_kthread("test task", [](void *) -> int {
+    KINFO("Calling kernel module init functions\n");
+    initialize_builtin_modules();
+    KINFO("kernel modules initialized\n");
+
+
     /* TODO: use device tree? */
     virtio::check_mmio(0x10001000);
     virtio::check_mmio(0x10002000);
@@ -114,6 +122,29 @@ void main() {
     virtio::check_mmio(0x10006000);
     virtio::check_mmio(0x10007000);
     virtio::check_mmio(0x10008000);
+
+    int mnt_res = vfs::mount("/dev/disk0p1", "/", "ext2", 0, NULL);
+    if (mnt_res != 0) {
+      panic("failed to mount root. Error=%d\n", -mnt_res);
+    }
+
+
+    char *buf = (char *)kmalloc(4096);
+    for (int i = 0; i < 10; i++) {
+      auto begin = time::now_ms();
+      auto file = vfs::fdopen("/usr/res/misc/lorem.txt", O_RDONLY, 0);
+
+      if (!file) {
+        panic("no file!\n");
+      }
+      auto res = file.read((void *)buf, 4096);
+      file.seek(0, SEEK_SET);
+      printk("%db took %dms\n", res, time::now_ms() - begin);
+
+      // printk("%llu reclaimed\n", block::reclaim_memory());
+    }
+    kfree((void *)buf);
+
 
     auto begin = time::now_ms();
     while (1) {

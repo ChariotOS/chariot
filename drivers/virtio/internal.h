@@ -14,9 +14,8 @@
 #define VIO_NUM_DESC 8
 
 class virtio_mmio_dev {
-  volatile uint32_t *regs = NULL;
-
  protected:
+  volatile uint32_t *regs = NULL;
   /* virtio communicates mostly through RAM, so this is the pointer to those pages */
   void *pages = NULL;
 
@@ -95,10 +94,12 @@ class virtio_mmio_disk : public virtio_mmio_dev, public dev::disk {
 
   void disk_rw(uint32_t sector, void *data, int n, int write);
 
-	virtual size_t block_size();
-	virtual size_t block_count();
+  virtual size_t block_size();
+  virtual size_t block_count();
   virtual bool read_blocks(uint32_t sector, void *data, int nsec = 1);
   virtual bool write_blocks(uint32_t sector, const void *data, int nsec = 1);
 
   virtual void irq(void);
+
+  inline auto &config(void) { return *(virtio::blk_config *)((off_t)this->regs + 0x100); }
 };

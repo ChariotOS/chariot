@@ -222,11 +222,12 @@ virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(re
   // tell device that feature negotiation is complete.
   status |= VIRTIO_CONFIG_S_FEATURES_OK;
   write_reg(VIRTIO_MMIO_STATUS, status);
+
 }
 
 void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
   vdisk_lock.lock();
-
+	
   // the spec's Section 5.2 says that legacy block operations use
   // three descriptors: one for type/reserved/sector, one for the
   // data, one for a 1-byte status result.
@@ -306,6 +307,7 @@ void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
   free_chain(idx[0]);
 
   vdisk_lock.unlock();
+
   return;
 }
 
@@ -349,11 +351,12 @@ bool virtio_mmio_disk::write_blocks(uint32_t sector, const void *data, int nsec)
   return true;
 }
 
-size_t virtio_mmio_disk::block_size(void) { return 512; }
+size_t virtio_mmio_disk::block_size(void) {
+	return config().blk_size;
+}
 
 size_t virtio_mmio_disk::block_count(void) {
-  panic("virtio disk block_count\n");
-  return 512;
+	return config().capacity;
 }
 
 #define REG(off) ((volatile uint32_t *)((off_t)regs + off))
