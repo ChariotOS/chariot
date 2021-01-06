@@ -108,6 +108,7 @@ do
 			"$DIR"/src/gcc-${GCC_VERSION}/configure --prefix="$PREFIX" \
 																				 --target="$TARGET" \
 																				 --with-sysroot="$SYSROOT" \
+																				 --disable-bootstrap \
 																				 --disable-nls \
 																				 --with-newlib \
 																				 --enable-shared \

@@ -24,9 +24,17 @@ void *mshare_acquire(const char *name, size_t size) {
 
 
 static unsigned long read_timestamp(void) {
+#ifdef CONFIG_X86
   uint32_t lo, hi;
   asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
   return lo | ((uint64_t)(hi) << 32);
+#endif
+
+#ifdef CONFIG_RISCV
+  unsigned long val;
+  asm volatile("csrr %0, time" : "=r"(val));
+  return val;
+#endif
 }
 
 static ck::string unique_ident(void) {

@@ -43,14 +43,6 @@ struct __pthread {
 };
 
 
-static inline void *fs() {
-  void *self;
-  __asm__("mov %%fs, %0" : "=r"(self));
-  return self;
-}
-
-
-
 static int __pthread_died(struct __pthread *data) {
   // we are done!
   pthread_mutex_unlock(&data->runlock);
@@ -79,7 +71,6 @@ static int __pthread_trampoline(void *arg) {
 pthread_t pthread_self(void) { return 0; }
 
 int pthread_create(pthread_t *thd, const pthread_attr_t *attr, void *(*fn)(void *), void *arg) {
-  // printf("fs=%p\n", fs());
   struct __pthread *data = malloc(sizeof(*data));
 
   data->stack_size = PTHREAD_STACK_SIZE;

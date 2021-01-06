@@ -28,14 +28,22 @@
 /* You need to include a file with fairly(ish) compliant printf prototype,
  * Decimal and String support like %s and %d and this is truely all you need! */
 #include <stdio.h> /* for printf(); */
+#include <chariot.h>
 
 /* Required Declarations */
 int do_intel(void);
 int do_amd(void);
 void printregs(int eax, int ebx, int ecx, int edx);
 
+#ifdef CONFIG_X86
 #define cpuid(in, a, b, c, d) \
   __asm__("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(in));
+#endif
+
+#ifdef CONFIG_RISCV
+#define cpuid(in, a, b, c, d) panic("Cannot run cpudet on RISCV\n")
+#endif
+
 
 /* Simply call this function detect_cpu(); */
 int main(void) { /* or main() if your trying to port this as an

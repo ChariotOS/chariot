@@ -163,7 +163,10 @@ double cos(double angle) { return sin(angle + M_PI_2); }
 
 double sin(double angle) {
   double res = 0.0;
+#ifdef CONFIG_X86
   asm("fsin" : "=t"(res) : "0"(angle));
+#endif
+	/* TODO: riscv */
   return res;
 }
 
@@ -244,14 +247,20 @@ float log10f(float a) {
 double sqrt(double x) {
   MATH;
   double res;
+#ifdef CONFIG_X86
   __asm__("fsqrt" : "=t"(res) : "0"(x));
+#endif
+	/* TODO: riscv */
   return res;
 }
 
 float sqrtf(float x) {
   MATH;
   float res;
+#ifdef CONFIG_X86
   __asm__("fsqrt" : "=t"(res) : "0"(x));
+#endif
+	/* TODO: riscv */
   return res;
 }
 double modf(double a, double* b) {
@@ -277,6 +286,7 @@ float ldexpf(float a, int exp) {
 double pow(double x, double y) {
   MATH;
   double out;
+#ifdef CONFIG_X86
   asm volatile(
       "fyl2x;"
       "fld %%st;"
@@ -295,6 +305,8 @@ double pow(double x, double y) {
       : "=t"(out)
       : "0"(x), "u"(y)
       : "st(1)");
+#endif
+	/* TODO: riscv */
   return out;
 }
 float powf(float x, float y) { return pow(x, y); }

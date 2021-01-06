@@ -49,6 +49,10 @@ void print_va(rv::xsize_t va) {
 
 
 
+static unsigned long riscv_high_acc_time_func(void) {
+  return (read_csr(time) * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND;
+}
+
 void main() {
   /* Zero the BSS section */
   for (char *c = _bss_start; c != _bss_end; c++) *c = 0;
@@ -91,8 +95,8 @@ void main() {
   }
 
   time::set_cps(CONFIG_RISCV_CLOCKS_PER_SECOND);
-  time::set_high_accuracy_time_fn(
-      []() -> unsigned long { return (read_csr(time) * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND; });
+  time::set_high_accuracy_time_fn(riscv_high_acc_time_func);
+
 
 
   /* static fdt, might get eaten by physical allocator. We gotta copy it asap :) */
@@ -111,7 +115,6 @@ void main() {
     KINFO("Calling kernel module init functions\n");
     initialize_builtin_modules();
     KINFO("kernel modules initialized\n");
-
 
     /* TODO: use device tree? */
     virtio::check_mmio(0x10001000);

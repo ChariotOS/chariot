@@ -11,13 +11,13 @@ endif()
 set(RISCV_FLAGS "-march=${RISCV_MARCH} -mabi=${RISCV_MABI} -mcmodel=medany")
 
 # universal
-set(LDFLAGS -m elf_riscv64 -z max-page-size=0x1000 --no-relax)
+set(LDFLAGS -m elf_riscv64 -z max-page-size=0x1000 --no-relax -nostdlib)
 
 set(CMAKE_ASM_FLAGS "${RISCV_FLAGS} -mno-relax ")
 
 
 # TODO: riscv userspace flags
-set(ARCH_USER_C_FLAGS "")
+set(ARCH_USER_C_FLAGS "${RISCV_FLAGS}")
 set(ARCH_USER_CXX_FLAGS "")
 
 # Kernelspace Flags

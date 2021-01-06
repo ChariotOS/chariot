@@ -139,14 +139,14 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
       cpu.kstat.ticks++;
 
 
-      // acknowledge the software interrupt by clearing
-      // the SSIP bit in sip.
-      write_csr(sip, read_csr(sip) & ~2);
-
       /* Does anyone need to wake up? */
       if (check_wakeups()) {
         /* TODO */
       }
+
+      // acknowledge the software interrupt by clearing
+      // the SSIP bit in sip.
+      write_csr(sip, read_csr(sip) & ~2);
 
       sched::handle_tick(cpu.kstat.ticks);
     }
