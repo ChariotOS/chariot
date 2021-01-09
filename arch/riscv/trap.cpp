@@ -1,6 +1,7 @@
 #include <cpu.h>
 #include <printk.h>
 #include <riscv/arch.h>
+#include <riscv/paging.h>
 #include <riscv/plic.h>
 #include <sched.h>
 #include <time.h>
@@ -76,18 +77,47 @@ static void print_readable_reg(const char *name, rv::xsize_t value) {
 }
 
 
+#define NBITS(N) ((1LL << (N)) - 1)
+
 static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
+  rv::xsize_t bad_addr = read_csr(sbadaddr);
   printk(KERN_ERROR "Unhandled trap '%s' on HART#%d\n", type, rv::hartid());
   printk(KERN_ERROR);
   print_readable_reg("SEPC", tf.sepc);
   printk(", ");
-  print_readable_reg("Bad Address", read_csr(sbadaddr));
-
+  print_readable_reg("Bad Address", bad_addr);
   printk(", ");
-  print_readable_reg("val", read_csr(stval));
+  print_readable_reg("satp", read_csr(satp));
   printk("\n");
 
+
+
+
+  /* Print the VM walk of the address */
   printk(KERN_ERROR);
+  printk(" VM walk (b): ");
+  int mask = (1LLU << VM_PART_BITS) - 1;
+  int awidth = (VM_PART_BITS * VM_PART_NUM) + 12;
+  for (int i = VM_PART_NUM - 1; i >= 0; i--) {
+    printk("%0*b ", VM_PART_BITS, (bad_addr >> (VM_PART_BITS * i + 12)) & mask);
+  }
+  printk("+ %012b", bad_addr & 0xFFF);
+  printk("\n");
+
+
+  printk(KERN_ERROR);
+  printk("         (d): ");
+  for (int i = VM_PART_NUM - 1; i >= 0; i--) {
+    printk("% *d ", VM_PART_BITS, (bad_addr >> (VM_PART_BITS * i + 12)) & mask);
+  }
+  printk("+ %12d", bad_addr & 0xFFF);
+	printk(" max va: %p\n",  MAXVA);
+  printk("\n");
+
+
+  printk(KERN_ERROR);
+  print_readable_reg("val", read_csr(stval));
+  printk(", ");
   print_readable_reg("sscratch", read_csr(sscratch));
   printk("\n");
 
@@ -149,10 +179,8 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
       write_csr(sip, read_csr(sip) & ~2);
 
       sched::handle_tick(cpu.kstat.ticks);
-    }
-
-    /* Supervisor External Interrupt */
-    if (nr == 9) {
+    } else if (nr == 9) {
+      /* Supervisor External Interrupt */
       /* First, we claim the irq from the PLIC */
       int irq = rv::plic::claim();
       /* *then* enable interrupts, so the irq handler can have interrupts.
@@ -160,7 +188,7 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
        * if I can just have them disabled in irq handlers, and defer to worker
        * threads outside of irq context generally.
        */
-      rv::intr_on();
+      // rv::intr_on();
 
       // printk("irq: 0x%d\n", irq);
       irq::dispatch(irq, NULL /* Hmm, not sure what to do with regs */);

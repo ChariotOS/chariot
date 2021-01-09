@@ -36,10 +36,7 @@ _start:
 	# call into kstart in machine mode.
 	call kstart
 
-
-.section .text
-.globl timervec
-.align 4
+.global timervec
 timervec:
 	csrrw a0, mscratch, a0
 	REG_S a1, 0(a0)
@@ -66,15 +63,11 @@ timervec:
 	mret
 
 
-	#
-        # interrupts and exceptions while in supervisor
-        # mode come here.
-        #
-        # push all registers, call kerneltrap(), restore, return.
-        #
-.globl kernel_trap
-.globl kernelvec
-.align 4
+# interrupts and exceptions while in supervisor
+# mode come here.
+#
+# push all registers, call kerneltrap(), restore, return.
+#
 
 ENTRY(kernelvec)
 

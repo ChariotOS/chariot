@@ -38,6 +38,7 @@ choice
 endchoice
 
 
+
 config RISCV_QEMU_VIRT
 	bool "[platform] QEMU virt machine"
 	default y

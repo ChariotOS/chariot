@@ -6,37 +6,34 @@
 #include <riscv/dis.h>
 #include <riscv/plic.h>
 #include <riscv/uart.h>
+#include <riscv/paging.h>
 #include <util.h>
 
-
-
-
 extern "C" void _start(void);
-
+extern "C" void timervec();
 extern "C" void machine_trapvec();
 extern "C" void supervisor_trapvec();
-
-
-static inline void hang_forever(void) {
-  while (1) {
-    arch_halt();
-  }
-}
-
 static volatile bool phys_ready = false;
-
 void timerinit();
-extern "C" void timervec();
 
 extern void main();
+
+static __initdata void *main_ptr = (void*)main;
+static __initdata void *timervec_ptr = (void*)timervec;
+
+
+extern "C" rv::xsize_t kernel_page_table[];
+
+
+
 
 /*
  * kstart - C++ entrypoint in machine mode.
  * The point of this function is to get the hart into supervisor mode quickly.
  */
-extern "C" void kstart(rv::xsize_t foo, rv::xsize_t dtb) {
-  int id = read_csr(mhartid);
+extern "C" void __init kstart(rv::xsize_t foo, rv::xsize_t dtb) {
 
+  int id = read_csr(mhartid);
 
   struct rv::scratch sc;
   sc.hartid = id;
@@ -49,16 +46,23 @@ extern "C" void kstart(rv::xsize_t foo, rv::xsize_t dtb) {
   write_csr(mstatus, x);
 
   /* mret to a certain routine based on hartid (0 is the main hart) */
-  write_csr(mepc, main);
+  write_csr(mepc, main_ptr);
 
-  /* Disable paging in supervisor mode */
-  write_csr(satp, 0);
+	kernel_page_table[0] =   0 | PT_R | PT_W | PT_X | PT_V;
+	for (int i = 1; i < 4096 / sizeof(rv::xsize_t); i++) {
+		kernel_page_table[i] = kernel_page_table[0];
+	}
+
+
+  write_csr(satp, ((off_t)kernel_page_table >> 12) | SATP_MODE_MASK);
+
+  // write_csr(satp, 0);
+	asm volatile("sfence.vma zero, zero");
 
   // delegate all interrupts and exceptions to supervisor mode.
   write_csr(medeleg, 0xffff);
   write_csr(mideleg, 0xffff);
   write_csr(sie, read_csr(sie) | SIE_SEIE | SIE_STIE | SIE_SSIE);
-
 
 
   // ask the CLINT for a timer interrupt.
@@ -74,7 +78,7 @@ extern "C" void kstart(rv::xsize_t foo, rv::xsize_t dtb) {
   write_csr(mscratch, &sc);
 
   // set the machine-mode trap handler.
-  write_csr(mtvec, timervec);
+  write_csr(mtvec, timervec_ptr);
 
   // enable machine-mode interrupts.
   write_csr(mstatus, read_csr(mstatus) | MSTATUS_MIE);

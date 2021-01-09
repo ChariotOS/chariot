@@ -118,6 +118,8 @@ static void *late_phys_alloc(size_t npages) {
   frame *p = NULL;
   frame *c = (frame *)p2v(kmem.freelist);
 
+	printk("c: %p\n", c);
+
   if (v2p(c) == NULL) panic("OOM!\n");
 
   while (v2p(c) != NULL) {

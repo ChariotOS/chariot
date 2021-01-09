@@ -1,16 +1,52 @@
 #pragma once
 
+
+#ifndef CONFIG_RISCV
+#error "paging_impl.h only works on riscv."
+#endif
+
 #define PGSIZE 4096  // bytes per page
-#define PGSHIFT 12  // bits of offset within a page
+#define PGSHIFT 12   // bits of offset within a page
 
 #define PGROUNDUP(sz) (((sz) + PGSIZE - 1) & ~(PGSIZE - 1))
 #define PGROUNDDOWN(a) (((a)) & ~(PGSIZE - 1))
 
-#define PTE_V (1L << 0)  // valid
-#define PTE_R (1L << 1)
-#define PTE_W (1L << 2)
-#define PTE_X (1L << 3)
-#define PTE_U (1L << 4)  // 1 -> user can access
+
+
+/*
+ * VM_BITS      - the overall bits (typically XX in SVXX)
+ * VM_PART_BITS - how many bits per VPN[x]
+ * VM_PART_NUM  - how many parts are there?
+ */
+
+/* Riscv sv32 - 32 bit virtual memory on 64bit */
+#ifdef CONFIG_SV32
+#define VM_PART_BITS 10
+#define VM_PART_NUM 2
+#endif
+
+/* Riscv sv39 - 39 bit virtual memory on 64bit */
+#ifdef CONFIG_SV39
+#define VM_PART_BITS 9
+#define VM_PART_NUM 3
+#endif
+
+/* Riscv sv48 - 48 bit virtual memory on 64bit */
+#ifdef CONFIG_SV48
+#define VM_PART_BITS 9
+#define VM_PART_NUM 4
+#endif
+
+#define VM_BITS ((VM_PART_BITS * VM_PART_NUM) + PGSHIFT)
+
+#define PT_V (1 << 0)
+#define PT_R (1 << 1)
+#define PT_W (1 << 2)
+#define PT_X (1 << 3)
+#define PT_U (1 << 4)
+#define PT_G (1 << 5)
+#define PT_A (1 << 6)
+#define PT_D (1 << 7)
 
 // shift a physical address to the right place for a PTE.
 #define PA2PTE(pa) ((((rv::xsize_t)pa) >> 12) << 10)
@@ -19,21 +55,41 @@
 
 #define PTE_FLAGS(pte) ((pte)&0x3FF)
 
-// extract the three 9-bit page table indices from a virtual address.
-#define PXMASK 0x1FF  // 9 bits
-#define PXSHIFT(level) (PGSHIFT + (9 * (level)))
+// extract the three N-bit page table indices from a virtual address.
+#define PXMASK ((1llu << MV_PART_BITS) - 1)  // N bits
+#define PXSHIFT(level) (PGSHIFT + (VM_PART_BITS * (level)))
 #define PX(level, va) ((((rv::xsize_t)(va)) >> PXSHIFT(level)) & PXMASK)
 
 // one beyond the highest possible virtual address.
 // MAXVA is actually one bit less than the max allowed by
-// Sv39, to avoid having to sign-extend virtual addresses
+// SvXX, to avoid having to sign-extend virtual addresses
 // that have the high bit set.
-#define MAXVA (1L << (9 + 9 + 9 + 12 - 1))
+#define MAXVA (1L << ((VM_PART_BITS * VM_PART_NUM) + 12 - 1))
+
+
+#ifdef CONFIG_64BIT
+
+#define SATP_MODE_SHIFT 60
+
+#ifdef CONFIG_SV39
+#define SATP_MODE 8llu
+#endif
+
+#ifdef CONFIG_SV48
+#define SATP_MODE 9llu
+#endif
+
+#else
+
+#define SATP_MODE_SHIFT 30
+#define SATP_MODE 1llu
+
+#endif
+
+#define SATP_MODE_MASK (SATP_MODE << SATP_MODE_SHIFT)
 
 
 namespace rv {
 
-	namespace paging {
-		
-	};
-};
+  namespace paging {};
+};  // namespace rv

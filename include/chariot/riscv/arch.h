@@ -19,8 +19,12 @@
     __asm__ __volatile__("csrw " #csr ", %0" : : "rK"(__v) : "memory"); \
   })
 
+#define __init __attribute__ ((section (".boot.text")))
+#define __initdata __attribute__ ((section (".boot.data")))
+
 
 #define TICK_INTERVAL (CONFIG_RISCV_CLOCKS_PER_SECOND / CONFIG_TICKS_PER_SECOND)
+
 
 namespace dtb {
   struct fdt_header;
@@ -49,7 +53,6 @@ namespace rv /* risc-v namespace */ {
     rv::xsize_t interval; /* Timer interval */
 
     int hartid;
-
     struct dtb::fdt_header *dtb; /* Device tree binary */
     /* ... */
   };

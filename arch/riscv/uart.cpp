@@ -1,11 +1,13 @@
 #include <arch.h>
 #include <console.h>
 #include <lock.h>
+#include <mem.h>
 #include <printk.h>
 #include <riscv/uart.h>
 
 /* Quick function to get a uart register */
-#define Reg(reg) ((volatile unsigned char *)(UART0 + reg))
+// #define Reg(reg) ((volatile unsigned char *)(p2v((UART0 + reg))))
+#define Reg(reg) ((volatile unsigned char *)(((UART0 + reg))))
 
 // the UART control registers.
 // some have different meanings for
@@ -67,9 +69,7 @@ static void uart_start(void) {
 
 
 static void uart_irq(int irq, reg_t *r, void *data) {
-  uart_count++;
-  // printk("uart irq: ");
-  // read and process incoming characters.
+	uart_count++;
 
   size_t nread = 0;
   char buf[32];

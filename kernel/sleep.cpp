@@ -90,6 +90,9 @@ bool check_wakeups(void) {
   if (!time::stabilized()) return false;
   if (cpu::get() == NULL) return false; /* if we get an interrupt before initializing the cpu? */
   auto &cpu = cpu::current();
+
+  if (cpu.sleepers_lock.is_locked()) return false;
+
   auto flags = cpu.sleepers_lock.lock_irqsave();
 
   auto b = check_wakeups_r();

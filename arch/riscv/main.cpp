@@ -15,11 +15,17 @@
 #include <time.h>
 #include <util.h>
 
+#define PAGING_IMPL_BOOTCODE
+#include "paging_impl.h"
+
 typedef void (*func_ptr)(void);
 extern "C" func_ptr __init_array_start[0], __init_array_end[0];
 extern "C" char _kernel_end[];
 extern "C" char _bss_start[];
 extern "C" char _bss_end[];
+
+extern "C" char _stack_start[];
+extern "C" char _stack[];
 
 volatile long count = 0;
 
@@ -29,22 +35,18 @@ extern "C" void kernelvec(void);
 
 extern int uart_count;
 
-void print_va(rv::xsize_t va) {
-  int offset = va & 0xFFF;
-  int vpn[4];
+#define NBITS(N) ((1LL << (N)) - 1)
 
-  {
-    auto vpns = va >> 12;
-    for (int i = 0; i < 4; i++) {
-      vpn[i] = vpns & 0b111'111'111; /* lowest 9 bits */
-      vpns >>= 9;
-    }
+void print_va(rv::xsize_t va, int entry_width, int count) {
+  int mask = (1LLU << entry_width) - 1;
+  int awidth = (entry_width * count) + 12;
+  printk("0x%0*llx: ", awidth / 4, va & NBITS(awidth));
+
+  for (int i = count - 1; i >= 0; i--) {
+    printk("%0*b ", entry_width, (va >> (entry_width * i + 12)) & mask);
+    // printk("%3d ", (va >> (entry_width * i + 12)) & mask);
   }
-  printk("vpn: ");
-  for (int i = 0; i < 4; i++) {
-    printk("%3d ", vpn[i]);
-  }
-  printk("\n");
+  printk("+ %012b\n", va & 0xFFF);
 }
 
 
@@ -71,13 +73,11 @@ void main() {
   if (rv::hartid() != 0)
     while (1) arch_halt();
 
-
-
-
   /* Initialize the platform level interrupt controller for this HART */
   rv::plic::hart_init();
 
   rv::uart_init();
+
   write_csr(stvec, kernelvec);
 
   rv::intr_on();
@@ -99,12 +99,6 @@ void main() {
 
 
 
-  /* static fdt, might get eaten by physical allocator. We gotta copy it asap :) */
-  dtb::device_tree dt(sc->dtb);
-  // dt.dump();
-
-
-
 
   assert(sched::init());
   KINFO("Initialized the scheduler\n");
@@ -112,6 +106,11 @@ void main() {
   cpus[0].timekeeper = true;
 
   sched::proc::create_kthread("test task", [](void *) -> int {
+    /* static fdt, might get eaten by physical allocator. We gotta copy it asap :) */
+    dtb::device_tree dt(rv::get_scratch().dtb);
+    // dt.dump();
+
+
     KINFO("Calling kernel module init functions\n");
     initialize_builtin_modules();
     KINFO("kernel modules initialized\n");
@@ -131,22 +130,25 @@ void main() {
       panic("failed to mount root. Error=%d\n", -mnt_res);
     }
 
+    if (0) {
+      char *buf = (char *)kmalloc(4096);
+      for (int i = 0; i < 10; i++) {
+        {
+          auto begin = time::now_ms();
+          auto file = vfs::fdopen("/usr/res/misc/lorem.txt", O_RDONLY, 0);
 
-    char *buf = (char *)kmalloc(4096);
-    for (int i = 0; i < 10; i++) {
-      auto begin = time::now_ms();
-      auto file = vfs::fdopen("/usr/res/misc/lorem.txt", O_RDONLY, 0);
+          if (!file) {
+            panic("no file!\n");
+          }
+          auto res = file.read((void *)buf, 4096);
+          file.seek(0, SEEK_SET);
+          printk("%db took %dms\n", res, time::now_ms() - begin);
+        }
 
-      if (!file) {
-        panic("no file!\n");
+        printk("%llu reclaimed\n", block::reclaim_memory());
       }
-      auto res = file.read((void *)buf, 4096);
-      file.seek(0, SEEK_SET);
-      printk("%db took %dms\n", res, time::now_ms() - begin);
-
-      // printk("%llu reclaimed\n", block::reclaim_memory());
+      kfree((void *)buf);
     }
-    kfree((void *)buf);
 
 
     auto begin = time::now_ms();

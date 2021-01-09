@@ -14,7 +14,6 @@
 #define likely(c) __builtin_expect((c), 1)
 #endif
 
-#define BOOTCODE __attribute__((__section__(".boot")))
 #define __packed __attribute__((packed))
 
 #define RFLAGS_CF (1 << 0)
