@@ -185,7 +185,9 @@ struct process final : public refcounted<struct process> {
   spinlock datalock;
 
   /* threads stuck in a waitpid() call */
-  semaphore waiters = semaphore(0);
+  // semaphore waiters = semaphore(0);
+
+	wait_queue child_wq;
 
   spinlock file_lock;
   map<int, ref<fs::file>> open_files;

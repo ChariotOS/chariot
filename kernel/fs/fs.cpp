@@ -43,7 +43,7 @@ static void destruct_dir(struct inode *ino) {
   assert(ino->type == T_DIR);
 
   if (ino->dir.name) {
-    kfree((void *)ino->dir.name);
+    free((void *)ino->dir.name);
     ino->dir.name = NULL;
   }
 
@@ -229,7 +229,7 @@ int fs::inode::set_name(const string &s) {
   }
   if (dir.name != NULL) return 0;
 
-  auto name = (char *)kmalloc(s.size() + 1);
+  auto name = (char *)malloc(s.size() + 1);
   memcpy(name, s.get(), s.size() + 1);
   dir.name = name;
   return 0;

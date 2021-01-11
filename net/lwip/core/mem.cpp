@@ -64,9 +64,9 @@
 
 #include <mem.h>
 
-#define malloc kmalloc
+#define malloc malloc
 #define calloc mem_calloc
-#define free kfree
+#define free free
 
 #if MEM_LIBC_MALLOC || MEM_USE_POOLS
 

@@ -26,7 +26,7 @@ struct mbr_header {
 
 dev::mbr::~mbr() {
   if (hdr != nullptr) {
-    kfree(hdr);
+    free(hdr);
   }
 }
 

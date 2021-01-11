@@ -58,7 +58,7 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   // initialize the video display
   vga::early_init(mbd);
 
-  void *new_stack = (void *)((u64)kmalloc(STKSIZE) + STKSIZE);
+  void *new_stack = (void *)((u64)malloc(STKSIZE) + STKSIZE);
   call_with_new_stack(new_stack, (void *)kmain2);
   while (1) panic("should not have gotten back here\n");
 }
@@ -138,7 +138,6 @@ int kernel_init(void *) {
   KINFO("Calling kernel module init functions\n");
   initialize_builtin_modules();
   KINFO("kernel modules initialized\n");
-
 
 #ifdef CONFIG_USERSPACE
 

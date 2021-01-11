@@ -4,11 +4,11 @@
 
 int sched::round_robin::add_task(struct thread *tsk) {
   if (cpu::in_thread()) arch_disable_ints();
-  big_lock.lock();
+  auto lf = big_lock.lock_irqsave();
 
   int ret = add_task_impl(tsk);
 
-  big_lock.unlock();
+  big_lock.unlock_irqrestore(lf);
   if (cpu::in_thread()) arch_enable_ints();
   return ret;
 }
@@ -16,11 +16,11 @@ int sched::round_robin::add_task(struct thread *tsk) {
 
 int sched::round_robin::remove_task(struct thread *tsk) {
   if (cpu::in_thread()) arch_disable_ints();
-  big_lock.lock();
+  auto lf = big_lock.lock_irqsave();
 
   int ret = remove_task_impl(tsk);
 
-  big_lock.unlock();
+  big_lock.unlock_irqrestore(lf);
   if (cpu::in_thread()) arch_enable_ints();
   return ret;
 }
@@ -65,20 +65,10 @@ struct thread *sched::round_robin::pick_next(void) {
 
 
   if (cpu::in_thread()) arch_disable_ints();
-  big_lock.lock();
+  auto lf = big_lock.lock_irqsave();
 
 
   for (struct thread *thd = front; thd != NULL; thd = thd->sched_state.next) {
-    /*
-if (thd->state == PS_BLOCKED) {
-if (thd->blocker != NULL) {
-if (thd->blocker->should_unblock(*thd, time::now_us())) {
-thd->state = PS_RUNNABLE;
-}
-}
-}
-    */
-
     if (thd->state == PS_RUNNING) {
       td = thd;
       remove_task_impl(td);
@@ -87,7 +77,7 @@ thd->state = PS_RUNNABLE;
   }
 
 
-  big_lock.unlock();
+  big_lock.unlock_irqrestore(lf);
   if (cpu::in_thread()) arch_enable_ints();
 
   return td;

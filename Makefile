@@ -26,5 +26,8 @@ kernel: .config
 
 default: kernel
 
+run:
+	@tools/run.sh
+
 clean:
 	@rm -rf build

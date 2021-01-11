@@ -105,3 +105,22 @@ inline int multi_wait(vec<wait_queue *> &queues, bool exclusive = false) {
   /* Just forward on to the bespoke impl */
   return multi_wait(queues.data(), queues.size(), exclusive);
 }
+
+
+
+/*
+ * The usage of these functions is as follows:
+ * static wait_queue wq; // global
+ * 
+ * struct wait_entry ent;
+ * for (;;) {
+ *   prepare_to_wait(wq, ent, true);
+ *   if (cond) break;
+ *   sched::yield();
+ * }
+ * finish_wait();
+ */
+void prepare_to_wait(struct wait_queue &wq, struct wait_entry &ent, bool interruptible = true);
+void prepare_to_wait_exclusive(struct wait_queue &wq, struct wait_entry &ent, bool interruptible = true);
+wait_result do_wait(struct wait_entry &ent);
+void finish_wait(struct wait_queue &wq, struct wait_entry &ent);

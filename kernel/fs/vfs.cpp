@@ -99,7 +99,7 @@ int vfs::mount(const char *src, const char *targ, const char *type,
 
     // copy the last entry into the name of the guest root
     auto end = string(targ).split('/').last();
-    auto name = (char *)kmalloc(end.size() + 1);
+    auto name = malloc<char>(end.size() + 1);
     memcpy(name, end.get(), end.size() + 1);
     mp->sb->root->dir.name = name;
 

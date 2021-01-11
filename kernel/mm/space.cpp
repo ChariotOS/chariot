@@ -2,7 +2,6 @@
 #include <lock.h>
 #include <mm.h>
 #include <phys.h>
-
 mm::space::space(off_t lo, off_t hi, ref<mm::pagetable> pt) : pt(pt), lo(lo), hi(hi) {}
 
 mm::space::~space(void) {
@@ -270,8 +269,6 @@ mm::space *mm::space::fork(void) {
   }
 
   n->sort_regions();
-  // this->dump();
-  // n->dump();
 
   return n;
 }

@@ -7,10 +7,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#define kfree free
-#define kmalloc malloc
-#define krealloc realloc
-
 #else
 
 #include <asm.h>
@@ -107,7 +103,7 @@ class typed_transfer {
 template <typename T, int inline_capacity = 0>
 class vec {
  private:
-  void del(T* buf) { kfree(buf); }
+  void del(T* buf) { free(buf); }
 
  public:
   vec() : m_capacity(inline_capacity) {}
@@ -386,7 +382,7 @@ class vec {
     if (m_capacity >= needed_capacity) return;
     int new_capacity = needed_capacity;
 
-    auto* new_buffer = (T*)kmalloc(new_capacity * sizeof(T));
+    auto* new_buffer = (T*)malloc(new_capacity * sizeof(T));
 
     if constexpr (Traits<T>::is_trivial()) {
       typed_transfer<T>::copy(new_buffer, data(), m_size);

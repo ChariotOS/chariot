@@ -13,14 +13,12 @@ dev::disk::disk() {}
 dev::disk::~disk(void) {}
 
 
-dev::disk_part::disk_part(dev::disk* parent, u32 start, u32 len) : start(start), len(len) {
-  this->parent = parent;
-}
+dev::disk_part::disk_part(dev::disk* parent, u32 start, u32 len) : start(start), len(len) { this->parent = parent; }
 dev::disk_part::~disk_part() {}
 
 bool dev::disk_part::read_blocks(uint32_t sector, void* data, int n) {
   if (sector > len) return false;
-	// auto *d = (dev::ata*)parent;
+  // auto *d = (dev::ata*)parent;
   return parent->read_blocks(sector + start, data, n);
 }
 
@@ -107,7 +105,7 @@ int dev::register_disk(dev::disk* disk) {
 
 
   /* Try to get mbr partitions */
-  void* first_sector = kmalloc(disk->block_size());
+  void* first_sector = malloc(disk->block_size());
   disk->read_blocks(0, (u8*)first_sector, 1);
 
   if (dev::mbr mbr; mbr.parse(first_sector)) {
@@ -123,7 +121,7 @@ int dev::register_disk(dev::disk* disk) {
 
 
 
-  kfree(first_sector);
+  free(first_sector);
 
   return minor;
 }
