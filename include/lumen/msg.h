@@ -42,7 +42,7 @@ namespace lumen {
 
     // "unique" id for this message. That way we know who to notify
     // when a response is gotten.
-    unsigned short id;
+    unsigned long id;
     unsigned short window_id = -1;  // -1 means no window
     int len = 0;                    // the size of data[]
 
