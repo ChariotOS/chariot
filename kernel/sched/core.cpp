@@ -88,9 +88,6 @@ static void switch_into(struct thread &thd) {
 }
 
 
-static spinlock blocked_threads_lock;
-static list_head blocked_threads;
-
 
 void sched::yield() {
   auto &thd = *curthd;
@@ -142,13 +139,6 @@ void sched::unblock(thread &thd, bool interrupt) {
   }
   thd.wq.rudely_awoken = interrupt;
   thd.state = PS_RUNNING;
-
-  /*
-blocked_threads_lock.lock();
-// assert(!thd.blocked_threads.is_empty());
-  thd.blocked_threads.del_init();
-blocked_threads_lock.unlock();
-  */
 }
 
 void sched::exit() { do_yield(PS_ZOMBIE); }

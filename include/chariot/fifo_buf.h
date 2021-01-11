@@ -14,7 +14,7 @@ class fifo_buf {
 		init_if_needed();
 	}
   inline ~fifo_buf() {
-		if (buffer != NULL) kfree(buffer);
+		if (buffer != NULL) free(buffer);
 	}
 
   ssize_t write(const void *, ssize_t, bool block = false);

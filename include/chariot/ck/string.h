@@ -156,7 +156,7 @@ namespace ck {
 
 
     ~basic_string(void) {
-      if (m_buf != nullptr) kfree(m_buf);
+      if (m_buf != nullptr) free(m_buf);
     }
 
 
@@ -268,13 +268,13 @@ namespace ck {
       new_cap = round_up(new_cap, 16);
       if (m_buf == nullptr) {
         assert(m_cap == 0);
-        m_buf = (T*)kmalloc(new_cap * sizeof(T));
+        m_buf = (T*)malloc(new_cap * sizeof(T));
         memset(m_buf, 0, new_cap);
 
         assert(m_buf != nullptr);
       } else {
         if (new_cap <= m_cap) return;
-        m_buf = (T*)krealloc(m_buf, new_cap * sizeof(T));
+        m_buf = (T*)realloc(m_buf, new_cap * sizeof(T));
       }
       m_cap = new_cap;
     }

@@ -217,3 +217,4 @@ void paging::free_table(void *cr3) {
 
   phys::free(cr3);
 }
+

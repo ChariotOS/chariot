@@ -59,7 +59,7 @@ void fifo_buf::close(void) {
 void fifo_buf::init_if_needed(void) {
   if (buffer == NULL) {
     m_size = 4096 * 16;  // 16 pages
-    buffer = (char *)kmalloc(m_size);
+    buffer = (char *)malloc(m_size);
   }
 }
 

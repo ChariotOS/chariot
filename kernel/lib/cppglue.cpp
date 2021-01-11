@@ -113,24 +113,24 @@ extern "C" uint64_t _Unwind_GetDataRelBase(struct _Unwind_Context *context) {
 
 void *operator new(size_t size) {
   // printk("operator new %zu\n", size);
-  return kzalloc(size);
+  return zalloc(size);
 }
 
-void *operator new[](size_t size) { return kzalloc(size); }
+void *operator new[](size_t size) { return zalloc(size); }
 
 template <typename T>
 void *operator new(size_t size, T*&dst) {
-  dst = kzalloc(size);
+  dst = zalloc(size);
   return dst;
 }
 
-void operator delete(void *ptr) { kfree(ptr); }
+void operator delete(void *ptr) { free(ptr); }
 
-void operator delete[](void *ptr) { kfree(ptr); }
+void operator delete[](void *ptr) { free(ptr); }
 
-void operator delete(void *ptr, size_t s) { kfree(ptr); }
+void operator delete(void *ptr, size_t s) { free(ptr); }
 
-void operator delete[](void *ptr, size_t s) { kfree(ptr); }
+void operator delete[](void *ptr, size_t s) { free(ptr); }
 
 
 

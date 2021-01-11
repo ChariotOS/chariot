@@ -94,6 +94,7 @@ void arch_enable_ints(void);
 void arch_relax(void);
 void arch_halt();
 void arch_mem_init(unsigned long mbd);
+
 void arch_initialize_trapframe(bool userspace, reg_t *);
 unsigned arch_trapframe_size(void);
 void arch_dump_backtrace(void);

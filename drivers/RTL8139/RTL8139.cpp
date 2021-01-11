@@ -17,7 +17,7 @@
 // TODO: make this not global
 static rtl8139 *main_dev = NULL;
 
-static void rtl_irq_handler(int i, reg_t *tf) {
+static void rtl_irq_handler(int i, reg_t *tf, void *) {
   printk("here\n");
   if (main_dev != NULL) {
     main_dev->handle_irq();
@@ -54,7 +54,7 @@ rtl8139::rtl8139(pci::device &dev, u8 irq) : m_dev(dev) {
     INFO("TX buffer %d: P%p\n", i, m_tx_buffer_addr[i]);
   }
 
-  m_packet_buffer = kmalloc(PACKET_SIZE_MAX);
+  m_packet_buffer = malloc(PACKET_SIZE_MAX);
 
   reset();
 
@@ -68,7 +68,7 @@ rtl8139::rtl8139(pci::device &dev, u8 irq) : m_dev(dev) {
   irq::install(m_interrupt_line, rtl_irq_handler, "RTL8139 Ethernet Card");
 }
 
-rtl8139::~rtl8139() { kfree(m_packet_buffer); }
+rtl8139::~rtl8139() { free(m_packet_buffer); }
 
 void rtl8139::out8(u16 a, u8 d) { outb(m_io_base + a, d); }
 void rtl8139::out16(u16 a, u16 d) { outw(m_io_base + a, d); }

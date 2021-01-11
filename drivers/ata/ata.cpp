@@ -122,7 +122,7 @@ dev::ata::ata(u16 portbase, bool master) {
 dev::ata::~ata() {
   drive_lock.lock();
   TRACE;
-  kfree(id_buf);
+  free(id_buf);
   drive_lock.unlock();
 }
 
@@ -171,7 +171,7 @@ bool dev::ata::identify() {
     return false;
   }
 
-  id_buf = (u16*)kmalloc(sizeof(u16) * 256);
+  id_buf = (u16*)malloc(sizeof(u16) * 256);
   for (u16 i = 0; i < 256; i++) id_buf[i] = data_port.in();
 
   uint8_t C = id_buf[1];

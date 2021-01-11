@@ -34,7 +34,7 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
 
   struct thread::kernel_stack s;
   s.size = PGSIZE * 2;
-  s.start = (void *)kmalloc(s.size);
+  s.start = (void *)malloc(s.size);
   stacks.push(s);
 
   auto sp = (off_t)s.start + s.size;
@@ -125,12 +125,12 @@ thread::~thread(void) {
   });
 
   for (auto &s : stacks) {
-    kfree(s.start);
+    free(s.start);
   }
-  // kfree(stack);
-  phys::kfree(fpu.state, 1);
+  // free(stack);
+  phys::free(fpu.state, 1);
   // assume it doesn't have a destructor, idk
-  kfree(sig.arch_priv);
+  free(sig.arch_priv);
 }
 
 

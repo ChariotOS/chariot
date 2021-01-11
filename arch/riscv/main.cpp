@@ -131,7 +131,7 @@ void main() {
     }
 
     if (0) {
-      char *buf = (char *)kmalloc(4096);
+      char *buf = (char *)malloc(4096);
       for (int i = 0; i < 10; i++) {
         {
           auto begin = time::now_ms();
@@ -147,7 +147,7 @@ void main() {
 
         printk("%llu reclaimed\n", block::reclaim_memory());
       }
-      kfree((void *)buf);
+      free((void *)buf);
     }
 
 

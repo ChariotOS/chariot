@@ -81,7 +81,7 @@ int elf::each_symbol(fs::file &fd, func<bool(const char *sym, off_t)> cb) {
   for (int i = 0; i < ehdr.e_shnum; i++) {
     auto &sh = sec_hdrs[i];
     if (sh.sh_type == SHT_SYMTAB) {
-      symtab = (Elf64_Sym *)kmalloc(sh.sh_size);
+      symtab = (Elf64_Sym *)malloc(sh.sh_size);
 
       symcount = sh.sh_size / sizeof(*symtab);
 
@@ -91,7 +91,7 @@ int elf::each_symbol(fs::file &fd, func<bool(const char *sym, off_t)> cb) {
     }
 
     if (sh.sh_type == SHT_STRTAB && strtab == NULL) {
-      strtab = (char *)kmalloc(sh.sh_size);
+      strtab = (char *)malloc(sh.sh_size);
       fd.seek(sh.sh_offset, SEEK_SET);
       fd.read(strtab, sh.sh_size);
       strtab_size = sh.sh_size;
@@ -114,11 +114,11 @@ int elf::each_symbol(fs::file &fd, func<bool(const char *sym, off_t)> cb) {
       if (!cb(strtab + sym.st_name, sym.st_value)) break;
     }
 
-    kfree(symtab);
+    free(symtab);
   }
 
-  if (symtab != NULL) kfree(symtab);
-  if (strtab != NULL) kfree(strtab);
+  if (symtab != NULL) free(symtab);
+  if (strtab != NULL) free(strtab);
 
   return err;
 }

@@ -63,7 +63,9 @@ void tcp_test(void) {
 }
 
 
-static void handler(int i) { printf("=====================\nsignal handler got %d\n=====================\n", i); }
+static void handler(int i) {
+  // printf("=====================\nsignal handler got %d\n=====================\n", i);
+}
 
 
 // read the initial environ from /etc/environ
@@ -216,19 +218,34 @@ void print_vector(ck::vec<int> &vec) {
   printf("}\n");
 }
 
+
+pid_t spawn(const char *command) {
+  int pid = fork();
+  if (pid == 0) {
+    const char *args[] = {"/bin/sh", "-c", (char *)command, NULL};
+
+    // debug_hexdump(args, sizeof(args));
+    execve("/bin/sh", args, (const char **)environ);
+    exit(-1);
+  }
+  return pid;
+}
+
 int main(int argc, char **argv) {
   // open up file descriptor 1, 2, and 3
   for (int i = 0; i < 3; i++) close(i);
   open("/dev/console", O_RDWR);
   open("/dev/console", O_RDWR);
   open("/dev/console", O_RDWR);
-  sigset_t set;
-  sigemptyset(&set);
-  for (int i = 0; i < 32; i++) {
-    sigaddset(&set, i);
-    signal(i, handler);
-  }
-  sigprocmask(SIG_SETMASK, &set, NULL);
+  /*
+sigset_t set;
+sigemptyset(&set);
+for (int i = 0; i < 32; i++) {
+sigaddset(&set, i);
+signal(i, handler);
+}
+sigprocmask(SIG_SETMASK, &set, NULL);
+  */
 
   if (getpid() != 1) {
     fprintf(stderr, "init: must be run as pid 1\n");
@@ -237,69 +254,31 @@ int main(int argc, char **argv) {
 
   printf("[init] hello, friend\n");
 
-  // tcp_test();
-
   environ = read_default_environ();
 
-#if 0
-  for (int i = 0; i < 10; i++) {
-    printf("================\n");
-    futex_test();
-  }
+#ifndef CONFIG_SIMPLE_INIT
+
+  spawn("/bin/lumen");
+
 #endif
 
-#ifdef CONFIG_SIMPLE_INIT
+	/*
+	int count = 0;
+  while (1) {
 
-  system("/bin/sh");
-
-#else
-
-  FILE *loadorder = fopen("/cfg/srv/loadorder", "r");
-
-  if (loadorder == NULL) {
-    fprintf(stderr, "[init] loadorder file not found. No services shall be managed\n");
-  } else {
-    char buf[255];
-
-    while (!feof(loadorder)) {
-      if (fgets(buf, 255, loadorder) != NULL) {
-        for (int i = strlen(buf); i >= 0; i--) {
-          if (buf[i] == '\n') {
-            buf[i] = '\0';
-            break;
-          }
-        }
-        buf[strlen(buf)] = 0;
-        ini_t *i = ini_load(buf);
-
-        if (i) {
-          const char *exec = ini_get(i, "service", "exec");
-          const char *name = ini_get(i, "service", "name");
-
-          if (exec != NULL) {
-            pid_t pid = fork();
-
-            if (pid == 0) {
-              // child
-              const char *args[] = {exec, NULL};
-              execve(exec, args, (const char **)environ);
-              exit(-1);
-            }
-
-            printf("[init] %s spawned on pid %d\n", name, pid);
-          } else {
-            printf("[init] WARN: service %s has no service.exec field\n", buf);
-          }
-
-          ini_free(i);
-        }
-      }
+    int pid = fork();
+    if (pid == 0) {
+			usleep(1000 * 1000);
+			// printf("fork: %d %d\n", getpid(), gettid());
+      exit(-1);
     }
-
-    fclose(loadorder);
+    int stat;
+    waitpid(pid, &stat, 0);
+		printf("%d\n", count++);
   }
+	*/
 
-#endif
+  spawn("/bin/sh");
 
   while (1) {
     pid_t reaped = waitpid(-1, NULL, 0);

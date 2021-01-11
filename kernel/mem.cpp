@@ -24,42 +24,44 @@ extern "C" size_t strlen(const char *s) {
 
 // bindings for liballoc
 spinlock alloc_lock;
+static volatile long lock_flags = 0;
 
 int liballoc_lock() {
-  alloc_lock.lock();
+	alloc_lock.lock();
+  // lock_flags = alloc_lock.lock_irqsave();
   return 0;
 }
 
 
 int liballoc_unlock() {
-  alloc_lock.unlock();
+	alloc_lock.unlock();
+  // alloc_lock.unlock_irqrestore(lock_flags);
   return 0;
 }
 
 
-static unsigned long kmalloc_usage = 0;
+static unsigned long malloc_usage = 0;
 
 void *liballoc_alloc(unsigned long s) {
   void *p = phys::kalloc(s);
   if (p == NULL) panic("Can't find region for malloc");
-  kmalloc_usage += s * PGSIZE;
+  malloc_usage += s * PGSIZE;
 
-  // printk("liballoc_alloc(%zu) = %p  (total: %zu);\n", s, p, kmalloc_usage);
+  // printk("liballoc_alloc(%zu) = %p  (total: %zu);\n", s, p, malloc_usage);
   return p;
 }
 
 
 int liballoc_free(void *buf, unsigned long sz) {
   phys::kfree(buf, sz);
-  kmalloc_usage -= sz * PGSIZE;
+  malloc_usage -= sz * PGSIZE;
 
-  // printk("liballoc_free(%p, %zu)  (total: %zu);\n", buf, sz, kmalloc_usage);
+  // printk("liballoc_free(%p, %zu)  (total: %zu);\n", buf, sz, malloc_usage);
   return 0;
 }
 
-extern "C" void *malloc(unsigned long s) { return kmalloc(s); }
-
-extern "C" void free(void *p) { kfree(p); }
+// extern "C" void *malloc(unsigned long s) { return malloc(s); }
+// extern "C" void free(void *p) { kfree(p); }
 
 
 
@@ -126,8 +128,8 @@ char *strncpy(char *d, const char *s, size_t n) {
 }
 
 
-void *kzalloc(unsigned long sz) {
-  auto p = kmalloc(sz);
+void *zalloc(unsigned long sz) {
+  auto p = malloc(sz);
   memset(p, 0, sz);
   return p;
 }
@@ -136,9 +138,9 @@ void *kzalloc(unsigned long sz) {
 static unsigned long mem_kshell(vec<string> &args, void *data, int dlen) {
   if (args.size() > 0) {
     if (args[0] == "dump") {
-      printk("kmalloc usage: %zu bytes\n", kmalloc_usage);
+      printk("malloc usage: %zu bytes\n", malloc_usage);
       printk("physical free: %zu bytes\n", phys::bytes_free());
-      return kmalloc_usage;
+      return malloc_usage;
     }
   }
   return 0;

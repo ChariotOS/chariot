@@ -13,46 +13,25 @@
 extern u32 idt_block[];
 extern void *vectors[];  // in vectors.S: array of 256 entry pointers
 
-// Set up a normal interrupt/trap gate descriptor.
-// - istrap: 1 for a trap (= exception) gate, 0 for an interrupt gate.
-//   interrupt gate clears FL_IF, trap gate leaves FL_IF alone
-// - sel: Code segment selector for interrupt/trap handler
-// - off: Offset in code segment for interrupt/trap handler
-// - dpl: Descriptor Privilege Level -
-//        the privilege level required for software to invoke
-//        this interrupt/trap gate explicitly using an int instruction.
-#define SETGATE(gate, istrap, sel, off, d)        \
-  {                                               \
-    (gate).off_15_0 = (u32)(off)&0xffff;          \
-    (gate).cs = (sel);                            \
-    (gate).args = 0;                              \
-    (gate).rsv1 = 0;                              \
-    (gate).type = (istrap) ? STS_TG32 : STS_IG32; \
-    (gate).s = 0;                                 \
-    (gate).dpl = (d);                             \
-    (gate).p = 1;                                 \
-    (gate).off_31_16 = (u32)(off) >> 16;          \
-  }
-
 // Processor-defined:
 #define TRAP_DIVIDE 0  // divide error
-#define TRAP_DEBUG 1  // debug exception
-#define TRAP_NMI 2  // non-maskable interrupt
-#define TRAP_BRKPT 3  // breakpoint
-#define TRAP_OFLOW 4  // overflow
-#define TRAP_BOUND 5  // bounds check
-#define TRAP_ILLOP 6  // illegal opcode
+#define TRAP_DEBUG 1   // debug exception
+#define TRAP_NMI 2     // non-maskable interrupt
+#define TRAP_BRKPT 3   // breakpoint
+#define TRAP_OFLOW 4   // overflow
+#define TRAP_BOUND 5   // bounds check
+#define TRAP_ILLOP 6   // illegal opcode
 #define TRAP_DEVICE 7  // device not available
 #define TRAP_DBLFLT 8  // double fault
-#define TRAP_TSS 10  // invalid task switch segment
+#define TRAP_TSS 10    // invalid task switch segment
 #define TRAP_SEGNP 11  // segment not present
 #define TRAP_STACK 12  // stack exception
 #define TRAP_GPFLT 13  // general protection fault
 #define TRAP_PGFLT 14  // page fault
 // #define TRAP_RES        15      // reserved
-#define TRAP_FPERR 16  // floating point error
-#define TRAP_ALIGN 17  // aligment check
-#define TRAP_MCHK 18  // machine check
+#define TRAP_FPERR 16    // floating point error
+#define TRAP_ALIGN 17    // aligment check
+#define TRAP_MCHK 18     // machine check
 #define TRAP_SIMDERR 19  // SIMD floating point error
 
 #define EXCP_NAME 0
@@ -209,16 +188,12 @@ extern const char *ksym_find(off_t);
 void dump_backtrace(off_t ebp) {
   printk("Backtrace (ebp=%p):\n", ebp);
 
-#if 0
-  // int i = 0;
-  // printk("addr2line -e /tmp/chariot.elf ");
   for (off_t *stack_ptr = (off_t *)ebp; VALIDATE_RD(stack_ptr, sizeof(off_t)); stack_ptr = (off_t *)*stack_ptr) {
-    // if (!VALIDATE_RD(stack_ptr, 16)) break;
+    if (!VALIDATE_RD(stack_ptr, 16)) break;
     off_t retaddr = stack_ptr[1];
     printk("0x%p\n", retaddr);
   }
   printk("\n");
-#endif
 }
 
 /* This exists so we don't have annoying interleaved trapframe dumping */
@@ -443,7 +418,7 @@ extern "C" void trap(reg_t *regs) {
    *
    * Honestly, I have no idea why this is needed...
    */
-  // arch_enable_ints();
+  arch_enable_ints();
 
 
 
@@ -457,7 +432,7 @@ extern "C" void trap(reg_t *regs) {
 
   if (nr == 0x80) {
     arch_enable_ints();
-		syscall_handle(0x80, regs, NULL);
+    syscall_handle(0x80, regs, NULL);
   } else {
     if (nr >= 32) {
       irq::dispatch(nr - 32, regs);

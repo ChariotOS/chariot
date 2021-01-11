@@ -477,6 +477,8 @@ int sched::proc::reap(process::ptr p) {
     printk("  [t:%d] sc:%d rc:%d\n", t->tid, t->stats.syscall_count, t->stats.run_count);
 #endif
 
+    /* make sure... */
+    t->locks.run.lock();
     thread::teardown(t);
   }
   p->threads.clear();
@@ -508,6 +510,137 @@ int sched::proc::reap(process::ptr p) {
   return f;
 }
 
+
+
+
+static spinlock dumb_waitpid_lock;
+
+void sys::exit_thread(int code) {
+  // if we are the main thread, exit the group instead.
+  if (curthd->pid == curthd->tid) {
+    sys::exit_proc(code);
+    return;
+  }
+  // defer to later!
+  curthd->should_die = 1;
+
+  panic("TODO: sys::exit_thread!\n");
+
+  sched::exit();
+}
+
+void sys::exit_proc(int code) {
+  if (curproc->pid == 1) panic("INIT DIED!\n");
+
+  {
+    scoped_lock l(curproc->datalock);
+    for (auto tid : curproc->threads) {
+      auto t = thread::lookup(tid);
+      if (t && t != curthd) {
+        t->should_die = 1;
+        sched::unblock(*t, true);
+      }
+    }
+
+    /* all the threads should be rudely awoken now... */
+    for (auto tid : curproc->threads) {
+      auto t = thread::lookup(tid);
+      if (t && t != curthd) {
+        // take the run lock for now... This ensures that the thread has completed.
+        t->locks.run.lock();
+        assert(t->state != PS_ZOMBIE);
+        t->locks.run.unlock();
+      }
+    }
+  }
+
+
+
+  dumb_waitpid_lock.lock();
+  curproc->exit_code = code;
+  curproc->exited = true;
+
+  sched::proc::send_signal(curproc->parent->pid, SIGCHLD);
+
+  curproc->parent->datalock.lock();
+  curproc->child_wq.wake_up_common(0, 1, 0, (void *)curproc);
+  curproc->parent->datalock.unlock();
+
+  dumb_waitpid_lock.unlock();
+
+  sched::exit();
+}
+
+
+/* The state  */
+struct wait_object {
+  int req;     /* first argument in waitpid */
+  int options; /* Third argument... duh :) */
+
+  /* The process we found :) */
+  struct process *proc;
+};
+
+
+
+static bool waitpid_consider(struct wait_object &wo, struct process *proc) {
+  bool accept = false;
+
+  if (!proc->is_dead()) return false;
+  if (wo.req == -1) return true;
+  if (wo.req == proc->pid) return true;
+
+  return false;
+}
+
+/* curproc->datalock is held by the waker */
+static bool waitpid_wake_function(struct wait_entry *entry, unsigned int mode, int sync, void *key) {
+  /* Key is the proc that wakes us up */
+  struct process *proc = (struct process *)key;
+
+  auto *wo = entry->priv<wait_object>();
+  printk("wake up with %p\n", key);
+
+  if (waitpid_consider(*wo, proc)) {
+    /* enter the  */
+    wo->proc = proc;
+    return autoremove_wake_function(entry, mode, sync, key);
+  } else {
+    /* don't wake us up */
+    return false;
+  }
+}
+
+
+int wait_check(struct process *me, int pid /* 1st arg to waitpid */, int &status, int options) {
+  scoped_lock l(me->datalock);
+  process::ptr targ = nullptr;
+  if (pid == -1) {
+    for (auto c : me->children) {
+      if (c) {
+        if (c->is_dead()) {
+          status = sched::proc::reap(c);
+          return c->pid;
+        }
+      }
+    }
+  } else if (pid != -1) {
+    targ = pid_lookup(pid);
+    if (!targ) return -1;
+    if (targ->parent != me) {
+      return -ECHILD;
+    }
+  }
+
+  if (targ) {
+    if (targ->is_dead()) {
+      status = sched::proc::reap(targ);
+      return targ->pid;
+    }
+  }
+  return 0;
+}
+
 int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
   auto *me = curproc;
 
@@ -524,54 +657,48 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
     return -1;
   }
 
-  pid_t res_pid = pid;
 
 #ifdef CONFIG_VERBOSE_PROCESS
-  printk("Process %d is waiting for pid=%d, options=", me->pid, pid);
+  printk(KERN_DEBUG "Process %d is waiting for pid=%d, options=", me->pid, pid);
   if (options & WNOHANG) printk("NOHANG ");
   if (options & WUNTRACED) printk("WUNTRACED ");
   printk("\n");
 #endif
 
+  struct wait_object wo;
+  wo.req = pid;
+  wo.options = options;
+
+  /* Look through existing proces for dead ones. Maybe we don't have to wait? */
+
+  struct wait_entry ent;
+  ent.priv<wait_object>() = &wo;
+  ent.func = waitpid_wake_function;
+
+  int result = -EINVAL;
+
   while (1) {
-    {
-      scoped_lock l(me->datalock);
-      process::ptr targ = nullptr;
-      if (pid == -1) {
-        for (auto c : me->children) {
-          if (c) {
-            if (c->is_dead()) {
-              status = sched::proc::reap(c);
-              return c->pid;
-            }
-          }
-        }
-      } else if (pid != -1) {
-        targ = pid_lookup(pid);
-        if (!targ) return -1;
-        if (targ->parent != me) {
-          return -ECHILD;
-        }
-      }
+    dumb_waitpid_lock.lock();
 
-      if (targ) {
-        if (targ->is_dead()) {
-          status = sched::proc::reap(targ);
-          return targ->pid;
-        }
-      }
-      //
-      if (options & WNOHANG) return -1;
+		printk("trying...\n");
+    prepare_to_wait_exclusive(me->child_wq, ent);
+
+    result = wait_check(me, pid, status, options);
+
+    dumb_waitpid_lock.unlock();
+    if (result != 0) break;
+    if (options & WNOHANG) {
+      result = -1;
+      break;
     }
 
-    // wait on the waiter's semaphore
-    if (me->waiters.wait().interrupted()) {
-      // Linux does this if WNOHANG was set
-      return -EINTR;
-    }
+		printk("yield\n");
+
+    sched::yield();
   }
+  finish_wait(me->child_wq, ent);
 
-  return res_pid;
+  return result;
 }
 
 
@@ -661,10 +788,12 @@ int sys::prctl(int option, unsigned long a1, unsigned long a2, unsigned long a3,
 static void trap_return(void) { return; }
 
 static pid_t do_fork(struct process &p) {
-  auto new_mm = p.mm->fork();
-  delete new_mm;
-
   auto np = sched::proc::spawn_process(&p, SPAWN_FORK);
+  sched::yield();
+
+  /* TLB Flush */
+  arch_flush_mmu();
+  int new_pid = np->pid;
 
   np->embryonic = false;
   p.children.push(np);
@@ -687,8 +816,9 @@ static pid_t do_fork(struct process &p) {
   new_td->state = PS_RUNNING;
   sched::add_task(new_td);
 
+
   // return the child pid to the parent
-  return np->pid;
+  return new_pid;
 }
 
 

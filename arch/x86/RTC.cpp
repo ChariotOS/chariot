@@ -114,9 +114,11 @@ void rtc_irq_handler(int n, reg_t* regs, void *) {
   static int count = 0;
   count++;
   if (count == 2) {
-    time::timekeep();
     count = 0;
   }
+
+  time::timekeep();
+
 }
 
 // early init

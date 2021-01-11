@@ -62,7 +62,7 @@ static int get_fdt_prop_type(const char *c) {
 }
 
 dtb::device_tree::device_tree(struct dtb::fdt_header *hdr) {
-  fdt = (struct fdt_header *)kmalloc(b2l(hdr->totalsize));
+  fdt = (struct fdt_header *)malloc(b2l(hdr->totalsize));
   memcpy(fdt, hdr, b2l(hdr->totalsize));
 
   be32p_t sp = (uint32_t *)((off_t)fdt + b2l(fdt->off_dt_struct));
@@ -121,7 +121,7 @@ dtb::device_tree::device_tree(struct dtb::fdt_header *hdr) {
 }
 
 
-dtb::device_tree::~device_tree(void) { kfree((void *)fdt); }
+dtb::device_tree::~device_tree(void) { free((void *)fdt); }
 
 void dtb::device_tree::node::dump(int depth) {
   for (int i = 0; i < depth; i++) printk("    ");

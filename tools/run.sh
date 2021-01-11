@@ -12,7 +12,8 @@ source .config
 # this parses the arch of the elf into "X86-64", "RISC-V", etc...
 ARCH=$(readelf -h build/chariot.elf | grep 'Machine' | awk '{print $(NF)}')
 QEMU_ARCH="${CONFIG_ARCH_NAME}"
-QEMU_FLAGS="-nographic -serial mon:stdio "
+# QEMU_FLAGS="-nographic -serial mon:stdio "
+QEMU_FLAGS="-serial mon:stdio "
 
 
 # dd if=/dev/urandom of=build/random.img bs=4096 count=1024
@@ -20,10 +21,11 @@ QEMU_FLAGS="-nographic -serial mon:stdio "
 case $ARCH in 
 	X86-64)
 
-		QEMU_FLAGS+="-m 4G -smp 4 "
+		# QEMU_FLAGS+="-enable-kvm -cpu host "
+		QEMU_FLAGS+="-m 4G -smp 1 "
 		QEMU_FLAGS+="-hda build/chariot.img "
-		QEMU_FLAGS+="-netdev user,id=u1  -device e1000,netdev=u1 "
-		QEMU_FLAGS+="-rtc base=localtime "
+		# QEMU_FLAGS+="-netdev user,id=u1  -device e1000,netdev=u1 "
+		# QEMU_FLAGS+="-rtc base=localtime "
 		;;
 
 	RISC-V)

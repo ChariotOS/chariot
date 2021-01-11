@@ -229,6 +229,7 @@ void lumen::context::guest_closed(long id) {
 
 
 void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
+	printf("Process message %d from %d. type=%d\n", msg.id, c.id, msg.type);
   // compose();  // XXX: remove me!
   HANDLE_TYPE(LUMEN_MSG_CREATE_WINDOW, lumen::create_window_msg) {
     (void)arg;

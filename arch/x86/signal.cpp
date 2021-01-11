@@ -23,7 +23,6 @@ void arch_sigreturn(void) {
 
 extern "C" void jmp_to_userspace(uint64_t ip, uint64_t sp, uint64_t a, uint64_t b, uint64_t c);
 void arch_dispatch_function(void *func, long arg) {
-
   if (curthd->sig.arch_priv == NULL) {
     curthd->sig.arch_priv = (void *)new sig_priv();
   }
@@ -35,7 +34,7 @@ void arch_dispatch_function(void *func, long arg) {
   if (setjmp(priv->jb)) {
 
 		auto s = curthd->stacks.take_last();
-		kfree(s.start);
+		free(s.start);
 
 		cpu::switch_vm(curthd);
 
@@ -54,7 +53,7 @@ void arch_dispatch_function(void *func, long arg) {
 
 	struct thread::kernel_stack s;
 	s.size = SIGSTKSZ * PGSIZE;
-  s.start = (void*)kmalloc(s.size);
+  s.start = (void*)malloc(s.size);
 	curthd->stacks.push(move(s));
 
 	arch_disable_ints();

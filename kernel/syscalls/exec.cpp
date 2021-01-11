@@ -59,6 +59,8 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
     return -EINVAL;
   }
 
+	// printk(KERN_DEBUG "pid %d exec '%s'\n", curproc->pid, path);
+
 
   // allocate a 1mb stack
   // TODO: this size is arbitrary.

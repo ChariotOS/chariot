@@ -38,9 +38,11 @@ unsigned long long time::now_ns() {
 	}
 
   /* If the time is not stabilized yet, wait for it. */
-  if (unlikely(!time::stabilized())) {
+  if (false && unlikely(!time::stabilized())) {
     printk(KERN_WARN "The time has not been stabilized before access. Waiting for stabilization...\n");
-    while (!time::stabilized()) arch_relax();
+    while (!time::stabilized()) {
+			arch_relax();
+	}
     printk(KERN_WARN "Time stabilized.\n");
   }
 

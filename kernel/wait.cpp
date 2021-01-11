@@ -103,6 +103,7 @@ void wait_queue::wait_noint(void) {
 
 
 void wait_queue::finish(struct wait_entry *e) {
+	if (e->wq == NULL) return;
   assert(e->wq == this);
 
   unsigned long flags;
@@ -125,7 +126,6 @@ wait_result wait_queue::wait_timeout(long long us) {
 
   queues[0] = &sw.wq;
   queues[1] = this;
-
   int result = multi_wait(queues, 2);
 
   if (result == -EINTR) return wait_result(WAIT_RES_INTR);
@@ -223,4 +223,41 @@ int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive) {
   if (which == -1) return -EINTR;
 
   return which;
+}
+
+
+
+void prepare_to_wait(struct wait_queue &wq, struct wait_entry &ent, bool in) {
+	int state = in ? PS_INTERRUPTIBLE : PS_UNINTERRUPTIBLE;
+
+  unsigned long flags;
+  ent.wq = &wq;
+  ent.flags &= ~WQ_FLAG_EXCLUSIVE;
+  flags = wq.lock.lock_irqsave();
+  sched::set_state(state);
+  wq.task_list.add(&ent.item);
+  wq.lock.unlock_irqrestore(flags);
+}
+
+void prepare_to_wait_exclusive(struct wait_queue &wq, struct wait_entry &ent, bool in) {
+	int state = in ? PS_INTERRUPTIBLE : PS_UNINTERRUPTIBLE;
+
+  unsigned long flags;
+  ent.wq = &wq;
+  ent.flags |= WQ_FLAG_EXCLUSIVE;
+  flags = wq.lock.lock_irqsave();
+  sched::set_state(state);
+  wq.task_list.add_tail(&ent.item);
+  wq.lock.unlock_irqrestore(flags);
+}
+
+wait_result do_wait(struct wait_entry &ent) {
+	sched::yield();
+
+	return wait_result(ent.result);
+}
+
+
+void finish_wait(struct wait_queue &wq, struct wait_entry &ent) {
+	wq.finish(&ent);
 }

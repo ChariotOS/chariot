@@ -104,7 +104,7 @@ int block_from_index(fs::inode &node, int i_block, int set_to = 0) {
   for (int i = 0; i < n - 1; i++) {
     int off = path[i];
     if (p->blk_bufs[i] == NULL || p->cached_path[i] != off) {
-      if (p->blk_bufs[i] == NULL) p->blk_bufs[i] = (int *)kmalloc(bsize);
+      if (p->blk_bufs[i] == NULL) p->blk_bufs[i] = (int *)malloc(bsize);
       if (!efs->read_block(table[off], p->blk_bufs[i])) {
         return -EIO;
       }
@@ -243,7 +243,7 @@ static int access_block_path(fs::inode &ino, int n, int *path,
   for (int i = 0; i < n; i++) {
     int off = path[i];
     if (p->blk_bufs[i] == NULL || p->cached_path[i] != off) {
-      if (p->blk_bufs[i] == NULL) p->blk_bufs[i] = (int *)kmalloc(blocksize);
+      if (p->blk_bufs[i] == NULL) p->blk_bufs[i] = (int *)malloc(blocksize);
       p->cached_path[i] = off;
     }
   }
@@ -471,7 +471,7 @@ typedef struct __ext2_dir_entry {
 
 static void ext2_traverse_dir(fs::inode &ino,
                               func<void(u32 ino, const char *name)> fn) {
-  auto *ents = (ext2_dir *)kmalloc(ino.size);
+  auto *ents = (ext2_dir *)malloc(ino.size);
 
   // read the entire file into the buffer
   int res = ext2_raw_rw(ino, (char *)ents, ino.size, 0, false);
@@ -489,7 +489,7 @@ static void ext2_traverse_dir(fs::inode &ino,
     }
   }
 
-  kfree(ents);
+  free(ents);
 }
 
 static int flush_info(fs::inode &ino) {
@@ -676,7 +676,7 @@ static int ext2_resize(fs::file &, size_t) {
 fs::ext2_idata::~ext2_idata() {
   for (int i = 0; i < 4; i++) {
     if (blk_bufs[i] != nullptr) {
-      kfree(blk_bufs[i]);
+      free(blk_bufs[i]);
     }
   }
 }
