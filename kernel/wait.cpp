@@ -27,6 +27,10 @@ wait_entry::~wait_entry() {
 wait_queue::wait_queue(void) { task_list.init(); }
 
 void wait_queue::wake_up_common(unsigned int mode, int nr_exclusive, int wake_flags, void *key) {
+
+	int pid = 0;
+	if (curproc) pid = curproc->pid;
+
   struct wait_entry *curr, *next;
   list_for_each_entry_safe(curr, next, &task_list, item) {
     unsigned flags = curr->flags;

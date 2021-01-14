@@ -532,6 +532,7 @@ void sys::exit_thread(int code) {
 void sys::exit_proc(int code) {
   if (curproc->pid == 1) panic("INIT DIED!\n");
 
+
   {
     scoped_lock l(curproc->datalock);
     for (auto tid : curproc->threads) {
@@ -563,7 +564,9 @@ void sys::exit_proc(int code) {
   sched::proc::send_signal(curproc->parent->pid, SIGCHLD);
 
   curproc->parent->datalock.lock();
-  curproc->child_wq.wake_up_common(0, 1, 0, (void *)curproc);
+  curproc->child_wq.wake_up_all();
+
+  // curproc->child_wq.wake_up_common(0, 1, 0, (void *)curproc);
   curproc->parent->datalock.unlock();
 
   dumb_waitpid_lock.unlock();
@@ -665,19 +668,17 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
   printk("\n");
 #endif
 
-  struct wait_object wo;
-  wo.req = pid;
-  wo.options = options;
-
   /* Look through existing proces for dead ones. Maybe we don't have to wait? */
-
-  struct wait_entry ent;
-  ent.priv<wait_object>() = &wo;
-  ent.func = waitpid_wake_function;
 
   int result = -EINVAL;
 
   while (1) {
+		/*
+		 * "Allocate" one of these on each go around on this, so
+		 * it gets destructed when breaking or continuing
+		 */
+    struct wait_entry ent;
+
     dumb_waitpid_lock.lock();
 
     prepare_to_wait_exclusive(me->child_wq, ent);
@@ -693,7 +694,7 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
 
     sched::yield();
   }
-  finish_wait(me->child_wq, ent);
+  // finish_wait(me->child_wq, ent);
 
   return result;
 }

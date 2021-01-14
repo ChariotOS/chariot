@@ -103,6 +103,7 @@ if [ $disk_exists -eq '0' ]; then
 	# sudo mkfs.ext2 -b 4096 "${fsdev}" || die "couldn't create filesystem"
 
 	sudo mke2fs -L "Chariot Root" -b 4096 -q -I 128 "${fsdev}" || die "couldn't create filesystem"
+	# sudo mkfs.fat -n "Chariot Root" -S 4096 -F 32 "${fsdev}" || die "couldn't create filesystem"
 fi
 
 ls ${dev}*
@@ -118,6 +119,7 @@ sudo mount ${fsdev} $mnt/
 
 # create the build/root sysroot directory
 tools/sysroot.sh
+
 
 
 echo 'Copying filesystem data into the mounted image'
