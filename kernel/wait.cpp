@@ -198,10 +198,11 @@ int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive) {
     wq->lock.unlock();
   }
 
-  if (irqs_enabled)
+  if (irqs_enabled) {
     arch_enable_ints();
-  else
-    panic("interrupts were disabled at the start of multi_wait\n");
+  } else {
+    printk("interrupts were disabled at the start of multi_wait\n");
+  }
 
   /* Yield (block) with the new process state. */
   sched::yield();
