@@ -75,9 +75,9 @@ struct wait_queue {
    * changing the task state if and only if any tasks are woken up.
    */
   inline void __wake_up(unsigned int mode, int nr_exclusive, void *key) {
-    unsigned long flags = lock.lock_irqsave();
+    bool en = lock.lock_irqsave();
     wake_up_common(mode, nr_exclusive, 0, key);
-    lock.unlock_irqrestore(flags);
+    lock.unlock_irqrestore(en);
   }
 
 

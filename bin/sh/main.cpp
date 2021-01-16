@@ -62,8 +62,7 @@ auto read_line(int fd, char *prompt) {
 
 
   ck::string s = buf;
-
-  ck::hexdump((void*)s.get(), s.len());
+  // ck::hexdump((void*)s.get(), s.len());
   free(buf);
   return s;
 }
@@ -115,9 +114,9 @@ struct exec_cmd : public cmd {
 
 
   bool try_builtin(void) {
-		printf("try builtin: ");
-		dump();
-		printf("\n");
+		// printf("try builtin: ");
+		// dump();
+		// printf("\n");
     if (argv.size() > 0) {
       if (builtins.contains(argv[0])) {
         auto &f = builtins.get(argv[0]);
@@ -404,9 +403,9 @@ int run_line(ck::string line, int flags = 0) {
     return -1;
   }
 
-  printf("command: ");
-  cmd->dump();
-  printf("\n");
+  // printf("command: ");
+  // cmd->dump();
+  // printf("\n");
 
   if (auto *e = cmd->as_exec(); e != NULL) {
     if (e->try_builtin()) {

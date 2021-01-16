@@ -77,7 +77,6 @@ uint8_t mouse_read() {
 
 static void mouse_handler(int i, reg_t *, void *) {
   uint8_t status = inb(MOUSE_STATUS);
-  arch_disable_ints();
 
   int loops = 0;
   while ((status & MOUSE_BBIT) && (status & MOUSE_F_BIT)) {
@@ -158,7 +157,6 @@ static void mouse_handler(int i, reg_t *, void *) {
     break;
   }
 
-  arch_enable_ints();
   irq::eoi(i);
 }
 

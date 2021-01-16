@@ -55,7 +55,6 @@ void irq::dispatch(int irq, reg_t *regs) {
     handler(irq, regs, irq_handlers[irq].data);
   }
 
-  check_wakeups();
 
   if (cpu != NULL) cpu->interrupt_depth--;
 }

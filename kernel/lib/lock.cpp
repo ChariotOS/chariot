@@ -29,46 +29,12 @@ void spinlock::unlock(void) {
 }
 
 
-void spinlock::lock_cli(void) {
-  while (1) {
-    arch_disable_ints();
-    if (__sync_lock_test_and_set(&locked, 1) == 0) break;
-    if (cpu::current().in_sched) {
-      arch_enable_ints();
-      // sched::yield();
-    }
-  }
-}
-
-void spinlock::unlock_cli(void) {
-  if (likely(locked)) {
-    arch_atomic_store(&locked, 0);
-  }
-  arch_enable_ints();
-}
-
 bool spinlock::is_locked(void) { return locked; }
 
-// Do not directly use these functions or sti/cli unless you know
-// what you are doing...
-// Instead, use irq_disable_save and a matching irq_enable_restore
-
-static inline uint64_t read_rflags(void) {
-  uint64_t ret = 0;
-#ifdef CONFIG_X86
-  asm volatile("pushfq; popq %0" : "=a"(ret));
-#endif
-  return ret;
-}
-static inline uint8_t irqs_enabled(void) {
-  uint64_t rflags = read_rflags();
-  return (rflags & RFLAGS_IF) != 0;
-}
-
-static inline uint8_t irq_disable_save(void) {
+static inline bool irq_disable_save(void) {
   // preempt_disable();
 
-  uint8_t enabled = irqs_enabled();
+  bool enabled = arch_irqs_enabled();
 
   if (enabled) {
     arch_disable_ints();
@@ -77,27 +43,32 @@ static inline uint8_t irq_disable_save(void) {
   return enabled;
 }
 
-static inline void irq_enable_restore(uint8_t iflag) {
-  if (iflag) {
+static inline void irq_enable_restore(bool enabled) {
+  if (enabled) {
     /* Interrupts were originally enabled, so turn them back on */
     arch_enable_ints();
   }
 }
 
 
-unsigned long spinlock::lock_irqsave() {
-  unsigned long flags = 0;
+bool spinlock::lock_irqsave() {
+  bool en = 0;
   while (1) {
-    flags = irq_disable_save();
+    en = irq_disable_save();
     if (__sync_lock_test_and_set(&locked, 1) == 0) break;
     if (cpu::current().in_sched) {
-      irq_enable_restore(flags);
+      // irq_enable_restore(en);
     }
+		arch_relax();
   }
-  return flags;
+	if (cpu::in_thread())
+		held_by = curthd->tid;
+	else held_by = -2;
+  return en;
 }
 
-void spinlock::unlock_irqrestore(unsigned long flags) {
+void spinlock::unlock_irqrestore(bool flags) {
+	held_by = 0;
   unlock();
   irq_enable_restore(flags);
 }

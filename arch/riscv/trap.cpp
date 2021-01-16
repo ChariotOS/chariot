@@ -168,12 +168,6 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
       cpu.kstat.last_tick_tsc = now;
       cpu.kstat.ticks++;
 
-
-      /* Does anyone need to wake up? */
-      if (check_wakeups()) {
-        /* TODO */
-      }
-
       // acknowledge the software interrupt by clearing
       // the SSIP bit in sip.
       write_csr(sip, read_csr(sip) & ~2);

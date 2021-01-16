@@ -210,6 +210,8 @@ bool sched::enabled() { return s_enabled; }
 void sched::handle_tick(u64 ticks) {
   if (!enabled() || !cpu::in_thread()) return;
 
+  check_wakeups();
+
   // grab the current thread
   auto thd = cpu::thread();
 

@@ -418,7 +418,6 @@ extern "C" void trap(reg_t *regs) {
    *
    * Honestly, I have no idea why this is needed...
    */
-  arch_enable_ints();
 
 
 
@@ -437,6 +436,7 @@ extern "C" void trap(reg_t *regs) {
     if (nr >= 32) {
       irq::dispatch(nr - 32, regs);
     } else {
+			arch_enable_ints();
       isr_functions[nr](nr, regs);
     }
   }

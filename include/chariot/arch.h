@@ -91,6 +91,7 @@ reg_t &arch_reg(int ind, reg_t *);
 
 void arch_disable_ints(void);
 void arch_enable_ints(void);
+bool arch_irqs_enabled(void);
 void arch_relax(void);
 void arch_halt();
 void arch_mem_init(unsigned long mbd);

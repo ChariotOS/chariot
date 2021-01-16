@@ -71,7 +71,7 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
 
   size_t written = 0;
   while (written < size) {
-    lock.lock_cli();
+    auto flags = lock.lock_irqsave();
 
     while (available() > 0 && written < size) {
       buffer[write_ptr] = ibuf[written];
@@ -79,11 +79,8 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
       written++;
     }
 
-
-    // printk_nolock("available: %d\n", available());
-
-    lock.unlock_cli();
     wq_readers.wake_up_all();
+    lock.unlock_irqrestore(flags);
 
     if (!block) return -EAGAIN;
 
@@ -103,9 +100,8 @@ ssize_t fifo_buf::write(const void *vbuf, ssize_t size, bool block) {
 ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block, long long timeout_us) {
   init_if_needed();
 
-
   if (!block) {
-    scoped_lock l(lock);
+    scoped_irqlock l(lock);
 
     if (unread() == 0) {
       if (m_closed) return 0;
@@ -113,12 +109,11 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block, long long timeout_u
     }
   }
 
-
   auto obuf = (char *)vbuf;
 
   size_t collected = 0;
   while (collected == 0) {
-    lock.lock_cli();
+    auto flags = lock.lock_irqsave();
 
     while (unread() > 0 && collected < size) {
       obuf[collected] = buffer[read_ptr];
@@ -126,18 +121,11 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block, long long timeout_u
       collected++;
     }
 
-
-    // printk_nolock("unread: %d\n", unread());
-
-    lock.unlock_cli();
     wq_writers.wake_up_all();
-
+    lock.unlock_irqrestore(flags);
 
     // break early if we are not meant to block
-    if (!block) {
-      break;
-    }
-
+    if (!block) break;
 
     if (collected == 0) {
       if (timeout_us != -1) {
@@ -154,7 +142,6 @@ ssize_t fifo_buf::read(void *vbuf, ssize_t size, bool block, long long timeout_u
     }
   }
 
-
   return collected;
 }
 
@@ -170,11 +157,12 @@ int fifo_buf::poll(poll_table &pt) {
   // upon close, it returns AWAITFS_READ (idk, its expected)
   if (m_closed) return AWAITFS_READ;
 
-	pt.wait(wq_readers, AWAITFS_READ);
-	pt.wait(wq_writers, AWAITFS_WRITE);
+  pt.wait(wq_readers, AWAITFS_READ);
+  pt.wait(wq_writers, AWAITFS_WRITE);
 
   int ev = 0;
-  lock.lock_cli();
+  auto flags = lock.lock_irqsave();
+
   if (unread() > 0) {
     ev |= AWAITFS_READ;
   }
@@ -182,7 +170,8 @@ int fifo_buf::poll(poll_table &pt) {
   if (available() > 0) {
     ev |= AWAITFS_WRITE;
   }
-  lock.unlock_cli();
+
+  lock.unlock_irqrestore(flags);
   return ev;
 }
 

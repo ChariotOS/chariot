@@ -77,6 +77,7 @@ void cpu::seginit(void *local) {
   memset(c, 0, sizeof(*c));
   c->local = local;
   c->cpunum = smp::cpunum();
+	c->kstat.ticks = 0;
 
   auto addr = (u64)tss;
   gdt[0] = 0x0000000000000000;

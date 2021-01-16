@@ -11,6 +11,7 @@ class spinlock {
  private:
   // compare and swap dest to spinlock on
   int locked = 0;
+	int held_by = 0;
 
  public:
   inline spinlock() { locked = 0; }
@@ -18,12 +19,11 @@ class spinlock {
   void lock(void);
   void unlock(void);
 
+  // void lock_cli();
+  // void unlock_cli();
 
-  void lock_cli();
-  void unlock_cli();
-
-  unsigned long lock_irqsave(void);
-  void unlock_irqrestore(unsigned long flags);
+  bool lock_irqsave(void);
+  void unlock_irqrestore(bool was_enabled);
 
   // for just locking ints
   static void lock(volatile int &);
@@ -53,3 +53,12 @@ class scoped_lock {
   inline ~scoped_lock(void) { lck.unlock(); }
 };
 
+
+class scoped_irqlock {
+  bool f;
+  spinlock &lck;
+
+ public:
+  inline scoped_irqlock(spinlock &lck) : lck(lck) { f = lck.lock_irqsave(); }
+  inline ~scoped_irqlock(void) { lck.unlock_irqrestore(f); }
+};

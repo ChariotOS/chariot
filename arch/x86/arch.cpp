@@ -2,6 +2,12 @@
 #include <types.h>
 #include <printk.h>
 
+bool arch_irqs_enabled(void) {
+  uint64_t rflags = 0;
+  asm volatile("pushfq; popq %0" : "=a"(rflags));
+  return (rflags & RFLAGS_IF) != 0;
+}
+
 void arch_disable_ints(void) {
   asm volatile("cli");
 }

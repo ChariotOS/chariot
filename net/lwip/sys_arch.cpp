@@ -147,15 +147,16 @@ sys_thread_t sys_thread_new(char const *name, void (*func)(void *), void *arg, i
 
 static spinlock big_giant_lock;
 
+static long current_flags = 0;
 sys_prot_t sys_arch_protect(void) {
   // printk(KERN_DEBUG "Protect\n");
-  big_giant_lock.lock_cli();
+  current_flags = big_giant_lock.lock_irqsave();
   return 0;
 }
 
 void sys_arch_unprotect(sys_prot_t pval) {
   // printk(KERN_DEBUG "Unprotect\n");
-  big_giant_lock.unlock_cli();
+  big_giant_lock.unlock_irqrestore(current_flags);
 }
 
 

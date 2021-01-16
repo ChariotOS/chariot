@@ -27,9 +27,8 @@ wait_entry::~wait_entry() {
 wait_queue::wait_queue(void) { task_list.init(); }
 
 void wait_queue::wake_up_common(unsigned int mode, int nr_exclusive, int wake_flags, void *key) {
-
-	int pid = 0;
-	if (curproc) pid = curproc->pid;
+  int pid = 0;
+  if (curproc) pid = curproc->pid;
 
   struct wait_entry *curr, *next;
   list_for_each_entry_safe(curr, next, &task_list, item) {
@@ -44,9 +43,6 @@ void wait_queue::wake_up_common(unsigned int mode, int nr_exclusive, int wake_fl
 wait_result wait_queue::wait(struct wait_entry *ent, int state) {
   assert(ent->wq == NULL);
 
-	// int depth = cpu::current().interrupt_depth;
-	// if (depth != 0) printk_nolock("interrupt_depth: %d\n", depth);
-
   unsigned long flags;
   ent->wq = this;
   ent->flags &= ~WQ_FLAG_EXCLUSIVE;
@@ -55,7 +51,6 @@ wait_result wait_queue::wait(struct wait_entry *ent, int state) {
 
   task_list.add(&ent->item);
   lock.unlock_irqrestore(flags);
-
 
   sched::yield();
 
@@ -72,10 +67,6 @@ wait_result wait_queue::wait(void) {
 
 wait_result wait_queue::wait_exclusive(struct wait_entry *ent, int state) {
   assert(ent->wq == NULL);
-
-
-	// int depth = cpu::current().interrupt_depth;
-	// if (depth != 0) printk_nolock("interrupt_depth: %d\n", depth);
 
   unsigned long flags;
   ent->wq = this;
@@ -107,7 +98,7 @@ void wait_queue::wait_noint(void) {
 
 
 void wait_queue::finish(struct wait_entry *e) {
-	if (e->wq == NULL) return;
+  if (e->wq == NULL) return;
   assert(e->wq == this);
 
   unsigned long flags;
@@ -159,6 +150,7 @@ bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync,
 struct multi_wake_entry {
   struct wait_entry entry;
   int index;
+  bool en; /* idk im trying my best. */
   /* Was this the entry that was awoken? */
   bool awoken = false;
 };
@@ -174,11 +166,14 @@ bool multi_wait_wake_function(struct wait_entry *entry, unsigned mode, int sync,
 int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive) {
   struct multi_wake_entry ents[nqueues];  // I know, variable stack arrays are bad. Whatever, I wrote all this code.
 
+  bool irqs_enabled = false;
   /* First, we must go through each of the queues and take their lock.
    * We have to do this first becasue we can't contend the lock while in the  */
   for (int i = 0; i < nqueues; i++) {
     auto *wq = queues[i];
-    wq->lock.lock();
+    bool en = wq->lock.lock_irqsave();
+    if (i == 0) irqs_enabled = en;
+
     ents[i].entry.wq = wq;
     ents[i].index = i;
     ents[i].entry.func = multi_wait_wake_function;
@@ -202,6 +197,11 @@ int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive) {
     auto *wq = queues[i];
     wq->lock.unlock();
   }
+
+  if (irqs_enabled)
+    arch_enable_ints();
+  else
+    panic("interrupts were disabled at the start of multi_wait\n");
 
   /* Yield (block) with the new process state. */
   sched::yield();
@@ -232,7 +232,7 @@ int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive) {
 
 
 void prepare_to_wait(struct wait_queue &wq, struct wait_entry &ent, bool in) {
-	int state = in ? PS_INTERRUPTIBLE : PS_UNINTERRUPTIBLE;
+  int state = in ? PS_INTERRUPTIBLE : PS_UNINTERRUPTIBLE;
 
   unsigned long flags;
   ent.wq = &wq;
@@ -244,7 +244,7 @@ void prepare_to_wait(struct wait_queue &wq, struct wait_entry &ent, bool in) {
 }
 
 void prepare_to_wait_exclusive(struct wait_queue &wq, struct wait_entry &ent, bool in) {
-	int state = in ? PS_INTERRUPTIBLE : PS_UNINTERRUPTIBLE;
+  int state = in ? PS_INTERRUPTIBLE : PS_UNINTERRUPTIBLE;
 
   unsigned long flags;
   ent.wq = &wq;
@@ -256,12 +256,10 @@ void prepare_to_wait_exclusive(struct wait_queue &wq, struct wait_entry &ent, bo
 }
 
 wait_result do_wait(struct wait_entry &ent) {
-	sched::yield();
+  sched::yield();
 
-	return wait_result(ent.result);
+  return wait_result(ent.result);
 }
 
 
-void finish_wait(struct wait_queue &wq, struct wait_entry &ent) {
-	wq.finish(&ent);
-}
+void finish_wait(struct wait_queue &wq, struct wait_entry &ent) { wq.finish(&ent); }

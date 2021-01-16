@@ -191,7 +191,7 @@ void lumen::window::draw(gfx::scribe &s) {
 
 
 #ifdef CONFIG_FANCY_WINDOWS
-    constexpr int border_radius = 0;
+    constexpr int border_radius = 6;
     if constexpr (border_radius > 0) {
       struct corner {
         bool enabled;
