@@ -76,6 +76,7 @@ unsigned long sysbind_kshell(char* cmd, int argc, char ** argv, void* data, size
 int sysbind_futex(int* uaddr, int op, int val, int val2, int* uaddr2, int val3);
 int sysbind_sysinfo(struct sysinfo * info);
 int sysbind_dnslookup(const char * name, unsigned int* ip4);
+int sysbind_shutdown();
 #ifdef __cplusplus
 }
 #endif

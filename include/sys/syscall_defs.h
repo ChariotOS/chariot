@@ -55,3 +55,4 @@
 #define SYS_futex                    (0x36)
 #define SYS_sysinfo                  (0x37)
 #define SYS_dnslookup                (0x38)
+#define SYS_shutdown                 (0x39)

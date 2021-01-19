@@ -57,4 +57,5 @@ unsigned long kshell(char* cmd, int argc, char ** argv, void* data, size_t len);
 int futex(int* uaddr, int op, int val, int val2, int* uaddr2, int val3);
 int sysinfo(struct sysinfo * info);
 int dnslookup(const char * name, unsigned int* ip4);
+int shutdown();
 }

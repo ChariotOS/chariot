@@ -55,3 +55,4 @@ __SYSCALL(0x35, kshell, char* cmd, int argc, char ** argv, void* data, size_t le
 __SYSCALL(0x36, futex, int* uaddr, int op, int val, int val2, int* uaddr2, int val3)
 __SYSCALL(0x37, sysinfo, struct sysinfo * info)
 __SYSCALL(0x38, dnslookup, const char * name, unsigned int* ip4)
+__SYSCALL(0x39, shutdown)

@@ -231,3 +231,7 @@ int sysbind_dnslookup(const char * name, unsigned int* ip4) {
     return (int)__syscall_eintr(56, (unsigned long long)name, (unsigned long long)ip4, 0, 0, 0, 0);
 }
 
+int sysbind_shutdown() {
+    return (int)__syscall_eintr(57, 0, 0, 0, 0, 0, 0);
+}
+

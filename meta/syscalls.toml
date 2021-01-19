@@ -376,3 +376,9 @@ args = [
 	'name: const char *',
 	'ip4: unsigned int*',
 ]
+
+
+# Shutdown the host.
+[sc.shutdown]
+ret = 'int'
+args = []

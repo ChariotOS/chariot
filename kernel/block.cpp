@@ -38,9 +38,7 @@ static map<uint32_t, map<off_t, block::buffer *>> buffer_cache;
 
 
 
-static uint32_t to_key(dev_t device) {
-  return ((uint32_t)device.major() << 16) | ((uint32_t)device.minor());
-}
+static uint32_t to_key(dev_t device) { return ((uint32_t)device.major() << 16) | ((uint32_t)device.minor()); }
 
 
 size_t block::reclaim_memory(void) {
@@ -59,6 +57,20 @@ size_t block::reclaim_memory(void) {
   return reclaimed;
 }
 
+
+void block::sync_all(void) {
+  buffer_cache_lock.lock();
+
+  for (auto &blk : buffer_cache) {
+    for (auto &off : blk.value) {
+      if (off.value) {
+        off.value->flush();
+      }
+    }
+  }
+
+  buffer_cache_lock.unlock();
+}
 #if 0
 static auto oldest_block_slow(void) {
   struct block::buffer *oldest = nullptr;
@@ -199,8 +211,7 @@ namespace block {
 }  // namespace block
 
 
-static ssize_t block_rw(fs::blkdev &b, void *dst, size_t size,
-                        off_t byte_offset, bool write) {
+static ssize_t block_rw(fs::blkdev &b, void *dst, size_t size, off_t byte_offset, bool write) {
   // how many more bytes are needed
   long to_access = size;
   // the offset within the current page
@@ -318,13 +329,9 @@ static ssize_t blk_rw(fs::file &f, char *data, size_t len, bool write) {
   return n;
 }
 
-static ssize_t blk_read(fs::file &f, char *data, size_t len) {
-  return blk_rw(f, data, len, false);
-}
+static ssize_t blk_read(fs::file &f, char *data, size_t len) { return blk_rw(f, data, len, false); }
 
-static ssize_t blk_write(fs::file &f, const char *data, size_t len) {
-  return blk_rw(f, (char *)data, len, true);
-}
+static ssize_t blk_write(fs::file &f, const char *data, size_t len) { return blk_rw(f, (char *)data, len, true); }
 
 static int blk_ioctl(fs::file &f, unsigned int num, off_t val) {
   struct fs::blkdev *dev = f.ino->blk.dev;

@@ -505,6 +505,7 @@ namespace block {
 
 
   size_t reclaim_memory(void);
+	void sync_all(void);
 
 };  // namespace block
 
