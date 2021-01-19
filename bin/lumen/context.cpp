@@ -24,6 +24,14 @@
     _a < _b ? _a : _b;      \
   })
 
+#define max(a, b)           \
+  ({                        \
+    __typeof__(a) _a = (a); \
+    __typeof__(b) _b = (b); \
+    _a > _b ? _a : _b;      \
+  })
+
+
 
 lumen::context::context(void) : screen(1024, 768) {
   keyboard.open("/dev/keyboard", "r+");
@@ -229,7 +237,7 @@ void lumen::context::guest_closed(long id) {
 
 
 void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
-	// printf("Process message %d from %d. type=%d\n", msg.id, c.id, msg.type);
+  // printf("Process message %d from %d. type=%d\n", msg.id, c.id, msg.type);
   // compose();  // XXX: remove me!
   HANDLE_TYPE(LUMEN_MSG_CREATE_WINDOW, lumen::create_window_msg) {
     (void)arg;
@@ -269,7 +277,11 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
     auto *win = c.windows[arg->id];
     if (win == NULL) return;
 
-    win->pending_invalidation_id = msg.id;
+    if (arg->sync) {
+      win->pending_invalidation_id = msg.id;
+    } else {
+      win->pending_invalidation_id = -1;
+    }
 
     for (int i = 0; i < min(arg->nrects, MAX_INVALIDATE); i++) {
       auto &r = arg->rects[i];
@@ -289,7 +301,6 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
     return;
   };
 
-
   HANDLE_TYPE(LUMEN_MSG_RESIZE, lumen::resize_msg) {
     struct lumen::resized_msg res;
     res.id = -1;
@@ -301,6 +312,25 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
     }
 
     auto new_bitmap = ck::make_ref<gfx::shared_bitmap>(arg->width, arg->height);
+
+    {
+      /*
+       * poorly copy the old bitmap to the new one, to reduce flicker
+       * (and to force the pages to be allocated before rendering)
+       */
+
+      auto start = sysbind_gettime_microsecond();
+      int sw = min(arg->width, win->rect.w);
+      int sh = min(arg->height, win->rect.h);
+      auto *pix = new_bitmap->pixels();
+      for (int i = 0; i < arg->width * arg->height; i++) pix[i] = 0xFF00FF;
+      for (int y = 0; y < sh; y++) {
+        const uint32_t *src = win->bitmap->scanline(y);
+        uint32_t *dst = new_bitmap->scanline(y);
+        memcpy(dst, src, sw * sizeof(uint32_t));
+      }
+    }
+
     // update the window
     invalidate(win->rect);
     win->bitmap = new_bitmap;
@@ -546,6 +576,14 @@ void lumen::context::compose(void) {
 
 
   int sw = screen.width();
+
+#if 0
+  for (int i = 0; i < screen.width() * screen.height(); i++) {
+    screen.front_buffer[i] = 0xfcfc00;
+  }
+#endif
+
+  // memset(screen.front_buffer, screen.width() * screen.height()
   // copy the changes we made to the other buunffer
   for (auto &r : dirty_regions.rects()) {
     auto off = r.y * sw + r.x;

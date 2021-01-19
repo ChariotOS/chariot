@@ -71,7 +71,7 @@ void pic_enable(uint8_t irq) {
     mask = inb(pic_data[1]);
     mask = mask & ~(1 << irq);
     outb(pic_data[1], mask);
-    pic_enable(2);
+    // pic_enable(2);
   }
 }
 

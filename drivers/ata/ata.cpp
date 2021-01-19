@@ -502,18 +502,17 @@ static void ata_interrupt(int intr, reg_t* fr, void*) {
 
 
 static void query_and_add_drive(u16 addr, int id, bool master) {
+  printk(KERN_DEBUG "ATA Query %04x:%d\n", addr, id);
   auto drive = new dev::ata(addr, master);
 
   if (drive->identify()) {
     // auto name = dev::next_disk_name();
     string name = string::format("ata%d", id);
 
-		dev::register_disk(drive);
+    dev::register_disk(drive);
   }
 }
-static void ata_initialize(void) {
-
-}
+static void ata_initialize(void) {}
 
 
 

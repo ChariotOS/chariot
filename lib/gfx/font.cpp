@@ -27,19 +27,6 @@
 static bool freetype_initialized = false;
 static FT_Library library;
 
-static unsigned long tsc(void) {
-#ifdef CONFIG_X86
-  uint32_t lo, hi;
-  asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
-  return lo | ((uint64_t)(hi) << 32);
-#endif
-
-#ifdef CONFIG_RISCV
-  unsigned long val;
-  asm volatile("csrr %0, time" : "=r"(val));
-  return val;
-#endif
-}
 
 namespace gfx {
 
@@ -54,11 +41,11 @@ namespace gfx {
     metrics = slot->metrics;
   }
 
+
   font::glyph::~glyph(void) {
     /* Free the bitmap */
     FT_Bitmap_Done(library, &bitmap);
   }
-
 
 
   font::font(ck::unique_ptr<ck::file::mapping> &&d) : data(move(d)) {
@@ -67,15 +54,12 @@ namespace gfx {
       freetype_initialized = true;
     }
 
-
-    if (FT_New_Memory_Face(library, (const FT_Byte *)data->data(), data->size(), 0, &face)) {
+    if (FT_New_Memory_Face(library, (const FT_Byte *)data->data(), data->size(), 0, &face))
       panic("Could not open font face\n");
-    }
-
-    // printf("Font: '%s'  '%s'\n", face->family_name, face->style_name);
 
     set_line_height(14 /* by default */);
   }
+
 
   font::~font(void) {
     /*  */
@@ -167,14 +151,26 @@ namespace gfx {
 
     if (!for_size.contains(cp)) {
       FT_UInt glyph_index = FT_Get_Char_Index(face, cp);
-      if (FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT)) return NULL;
+
+      auto load_mode = FT_LOAD_DEFAULT;
+#ifdef CONFIG_GFX_FONT_MONO
+      load_mode |= FT_LOAD_TARGET_MONO;
+#else
+			load_mode |= FT_LOAD_TARGET_NORMAL;
+#endif
+      if (FT_Load_Glyph(face, glyph_index, load_mode)) return NULL;
       auto mode = FT_RENDER_MODE_NORMAL;
+#ifdef CONFIG_GFX_FONT_MONO
+      mode = FT_RENDER_MODE_MONO;
+#endif
       if (FT_Render_Glyph(face->glyph, mode)) return NULL;
       for_size[cp] = ck::make_unique<font::glyph>(face->glyph, face);
       for_size[cp]->mode = mode;
     }
     return for_size.get(cp).get();
   }
+
+
 
   /*
    * Draw a single code point at the location dx and dy. dy represents
@@ -198,18 +194,30 @@ namespace gfx {
             unsigned char c = gl->bitmap.buffer[y * gl->bitmap.pitch + x];
 
             if (c == 0) continue;
-
-#if CONFIG_GFX_FONT_MONO
-            if (c > 128) {
-              s.draw_pixel(col, row, fg);
-            }
-#else
             float alpha = c / 255.0;
             s.blend_pixel(col, row, fg, alpha);
-#endif
           }
         }
 
+        break;
+      }
+
+      case FT_RENDER_MODE_MONO: {
+        /* Render the bitmap font (hopefully fast) */
+        int ox = s.translation().x() + dx + col_start;
+        int oy = s.translation().y() + dy;
+
+        uint8_t *src = (uint8_t *)gl->bitmap.buffer;
+        for (int y = 0; y < gl->bitmap.rows; y++) {
+          uint32_t *dest = s.bmp.scanline(y + oy - ascender) + ox;
+          for (int x = 0; x < gl->bitmap.width; x++) {
+            if ((src[(x) / 8]) & (1 << (7 - ((x) % 8)))) {
+              *dest = fg;
+            }
+            dest++; /* next pixel */
+          }
+          src += gl->bitmap.pitch;
+        }
         break;
       }
 

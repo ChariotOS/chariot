@@ -113,8 +113,6 @@ int lumen::window::handle_keyboard_input(keyboard_packet_t &p) {
   m.keyboard.flags = p.flags;
   m.keyboard.keycode = p.key;
 
-
-
   guest.send_msg(LUMEN_MSG_INPUT, m);
   return 0;
 }
@@ -191,7 +189,7 @@ void lumen::window::draw(gfx::scribe &s) {
 
 
 #ifdef CONFIG_FANCY_WINDOWS
-    constexpr int border_radius = 6;
+    constexpr int border_radius = 0;
     if constexpr (border_radius > 0) {
       struct corner {
         bool enabled;

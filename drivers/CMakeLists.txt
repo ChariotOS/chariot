@@ -17,6 +17,15 @@ add_kernel_module(
 )
 
 
+
+
+add_kernel_module(
+	NAME usb
+	NEEDS XHCI # for now!
+	AUTOGLOB usb/
+)
+
+
 add_kernel_module(
 	NAME nvme
 	NEEDS NVME X86

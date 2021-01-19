@@ -109,6 +109,12 @@ menu "Devices"
 		default y
 		depends on X86
 
+	
+	config XHCI
+		bool "XHCI USB Host Controller"
+		default y
+		depends on X86
+
 	config AHCI
 		bool "[WIP] Support for Advance Host Controller Interface drives"
 		default y

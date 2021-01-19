@@ -58,8 +58,8 @@ do
 					--with-zlib=no                                          \
 					--with-png=no                                           \
 					--disable-shared                                        \
-					"CFLAGS=-I$ROOT/include -fno-stack-protector -DUSERLAND -nostdlib" \
-					"CXXFLAGS=-I$ROOT/include -fno-stack-protector -DUSERLAND -nostdlib"
+					"CFLAGS=-I$ROOT/include -fno-stack-protector -DUSERLAND -nostdlib -s " \
+					"CXXFLAGS=-I$ROOT/include -fno-stack-protector -DUSERLAND -nostdlib -s "
 
 			
 			make -j

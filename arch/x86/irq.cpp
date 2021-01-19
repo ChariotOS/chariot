@@ -107,7 +107,9 @@ void arch::irq::eoi(int i) {
 }
 
 void arch::irq::enable(int num) {
+#ifdef CONFIG_SMP
   smp::ioapicenable(num, /* TODO */ 0);
+#endif
   pic_enable(num);
 }
 

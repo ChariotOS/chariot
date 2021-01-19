@@ -6,6 +6,23 @@
 #include <ui/window.h>
 
 
+
+#define min(a, b)           \
+  ({                        \
+    __typeof__(a) _a = (a); \
+    __typeof__(b) _b = (b); \
+    _a < _b ? _a : _b;      \
+  })
+
+#define max(a, b)           \
+  ({                        \
+    __typeof__(a) _a = (a); \
+    __typeof__(b) _b = (b); \
+    _a > _b ? _a : _b;      \
+  })
+
+
+
 constexpr int clamp(int val, int max, int min) {
   if (val > max) return max;
   if (val < min) return min;
@@ -97,18 +114,17 @@ void ui::windowframe::set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
 
 
 void ui::window::invalidate(const gfx::rect &r, bool sync) {
-
-  if (!m_defer_invalidation || true) {
+  if (!m_defer_invalidation) {
     auto &app = ui::application::get();
-    struct lumen::invalidated_msg response = {0};
     struct lumen::invalidate_msg iv;
+    iv.sync = false;
     iv.id = m_id;
     iv.nrects = 1;
     iv.rects[0].x = r.x;
     iv.rects[0].y = r.y;
     iv.rects[0].w = r.w;
     iv.rects[0].h = r.h;
-    app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
+    app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
     return;
   }
 
@@ -125,6 +141,7 @@ void ui::window::invalidate(const gfx::rect &r, bool sync) {
 
       int n = 0;
       for (auto &rect : m_pending_invalidations) {
+        iv.sync = true;
         iv.rects[n].x = rect.x;
         iv.rects[n].y = rect.y;
         iv.rects[n].w = rect.w;
@@ -180,6 +197,12 @@ void ui::window::handle_input(struct lumen::input_msg &msg) {
     ev.dy = msg.mouse.dy;
     ev.left = (msg.mouse.buttons & LUMEN_MOUSE_LEFT_CLICK) != 0;
     ev.right = (msg.mouse.buttons & LUMEN_MOUSE_RIGHT_CLICK) != 0;
+
+    gfx::rect r = m_rect;
+    r.shrink(4);
+    if (!r.contains(ev.x, ev.y)) {
+      printf("Resize!\n");
+    }
 
     if (msg.mouse.buttons & LUMEN_MOUSE_SCROLL_UP) {
       ev.ds = 1;
@@ -242,6 +265,8 @@ ck::tuple<int, int> ui::window::resize(int w, int h) {
   }
 
 
+
+
   auto &app = ui::application::get();
 
   // allocate the messages
@@ -267,6 +292,10 @@ ck::tuple<int, int> ui::window::resize(int w, int h) {
   m_rect.h = height();
 
   m_frame->set_size(m_rect.w, m_rect.h);
+
+	
+
+
   // m_frame->set_pos(0, 0);  // the main widget exists at the top left
 
   // tell the main vie to reflow

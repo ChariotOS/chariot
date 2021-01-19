@@ -26,6 +26,12 @@ case $ARCH in
 		QEMU_FLAGS+="-hda build/chariot.img "
 		# QEMU_FLAGS+="-netdev user,id=u1  -device e1000,netdev=u1 "
 		# QEMU_FLAGS+="-rtc base=localtime "
+		
+
+		# Playing around with USB
+		QEMU_FLAGS+="-device nec-usb-xhci,id=xhci "
+		QEMU_FLAGS+="-device usb-bot "
+
 		;;
 
 	RISC-V)

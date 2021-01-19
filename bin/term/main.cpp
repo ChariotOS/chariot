@@ -21,7 +21,7 @@ extern const char **environ;
   })
 
 
-// #define LIGHT
+#define LIGHT
 
 #ifdef LIGHT
 
@@ -36,8 +36,6 @@ extern const char **environ;
 #define TERMINAL_BORDER 0x333333
 
 #endif
-
-
 
 
 struct terminalview : public ui::view {
@@ -114,7 +112,7 @@ struct terminalview : public ui::view {
     mouse_y = ev.y;
 		// printf("mouse move %d %d\n", ev.x, ev.y);
     /*  */
-    // window()->resize(max(mouse_x * 2, 80), max(mouse_y * 2, 80));
+    window()->resize(max(mouse_x * 2, 80), max(mouse_y * 2, 80));
     repaint();
   }
 

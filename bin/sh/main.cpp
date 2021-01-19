@@ -4,9 +4,11 @@
 #include <ck/func.h>
 #include <ck/io.h>
 #include <ck/map.h>
+#include <ck/parser.h>
 #include <ck/ptr.h>
 #include <ck/string.h>
 #include <ck/vec.h>
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -36,7 +38,6 @@ size_t current_us() { return syscall(SYS_gettime_microsecond); }
 
 extern char **environ;
 
-static ck::map<ck::string, bool (*)(ck::vec<ck::string> &)> builtins;
 
 #define MAX_ARGS 255
 
@@ -60,8 +61,7 @@ auto read_line(int fd, char *prompt) {
   fgets(buf, 4096, stdin);
   buf[strlen(buf) - 1] = '\0';
 
-
-  ck::string s = buf;
+  ck::string s = (const char *)buf;
   // ck::hexdump((void*)s.get(), s.len());
   free(buf);
   return s;
@@ -86,8 +86,6 @@ struct exec_cmd : public cmd {
 
   virtual void exec(void) override {
     /* idk how to bubble this up... */
-    if (try_builtin()) return;
-
     if (argv.size() == 0) {
       /* TODO: parse better? */
       exit(EXIT_FAILURE);
@@ -114,13 +112,26 @@ struct exec_cmd : public cmd {
 
 
   bool try_builtin(void) {
-		// printf("try builtin: ");
-		// dump();
-		// printf("\n");
     if (argv.size() > 0) {
-      if (builtins.contains(argv[0])) {
-        auto &f = builtins.get(argv[0]);
-        if (f(argv)) return true;
+			/* Change directory builtin */
+      if (argv[0] == "cd") {
+        const char *destination = NULL;
+        if (argv.size() == 1) {
+          // CD to home
+          uid_t uid = getuid();
+          struct passwd *pwd = getpwuid(uid);
+          // TODO: get user $HOME and go there instead
+          destination = pwd->pw_dir;
+        } else {
+          destination = argv[1].get();
+        }
+
+
+        int res = chdir(destination);
+        if (res != 0) {
+          printf("cd: '%s' could not be entered\n", destination);
+        }
+				return true;
       }
     }
     return false;
@@ -487,32 +498,9 @@ int run_line(ck::string line, int flags = 0) {
 
 
 
-static bool cd_builtin(ck::vec<ck::string> &args) {
-  const char *destination = NULL;
-  if (args.size() == 1) {
-    // CD to home
-    uid_t uid = getuid();
-    struct passwd *pwd = getpwuid(uid);
-    // TODO: get user $HOME and go there instead
-    destination = pwd->pw_dir;
-  } else {
-    destination = args[1].get();
-  }
-
-
-  int res = chdir(destination);
-  if (res != 0) {
-    printf("cd: '%s' could not be entered\n", destination);
-  }
-
-  return true;
-}
-
+void lispy_thing(ck::string &command);
 
 int main(int argc, char **argv, char **envp) {
-  builtins.set("cd", cd_builtin);
-
-
 
   char ch;
   const char *flags = "c:";
@@ -573,10 +561,440 @@ int main(int argc, char **argv, char **envp) {
     ck::string line = read_line(0, prompt);
     if (line.len() == 0) continue;
 
-
+    // ck::hexdump((void *)line.get(), line.len());
     run_line(line);
   }
 
   return 0;
 }
 
+
+
+#if 0
+// allow programatic access to defining token
+// types, but by only actually defining them once
+#define FOREACH_TOKEN_TYPE(V) \
+  V(tok_number, 1)            \
+  V(tok_string, 2)            \
+  V(tok_right_paren, 3)       \
+  V(tok_left_paren, 4)        \
+  V(tok_symbol, 6)            \
+  V(tok_keyword, 7)           \
+  V(tok_quote, 8)             \
+  V(tok_unq, 9)               \
+  V(tok_splice, 10)           \
+  V(tok_backquote, 11)        \
+  V(tok_left_bracket, 12)     \
+  V(tok_right_bracket, 13)    \
+  V(tok_left_curly, 14)       \
+  V(tok_right_curly, 15)      \
+  V(tok_hash_modifier, 16)    \
+  V(tok_backslash, 17)
+
+enum tok {
+#define V(name, code) name = code,
+  FOREACH_TOKEN_TYPE(V)
+#undef V
+};
+
+
+class lispy_lexer : public ck::lexer {
+  ck::map<char, char> esc_mappings;
+
+ public:
+  lispy_lexer(ck::string &s) : ck::lexer(s) {
+    esc_mappings['a'] = 0x07;
+    esc_mappings['b'] = 0x08;
+    esc_mappings['f'] = 0x0C;
+    esc_mappings['n'] = 0x0A;
+    esc_mappings['r'] = 0x0D;
+    esc_mappings['t'] = 0x09;
+    esc_mappings['v'] = 0x0B;
+    esc_mappings['\\'] = 0x5C;
+    esc_mappings['"'] = 0x22;
+    esc_mappings['e'] = 0x1B;
+  }
+  virtual ~lispy_lexer(void) {
+    // nah
+  }
+
+  virtual ck::token lex(void) {
+    skip_spaces();
+    int32_t c = next();
+
+    auto in_set = [](ck::string &set, int c) {
+      for (auto &n : set) {
+        if (n == c) return true;
+      }
+      return false;
+    };
+
+    auto accept_run = [&](ck::string set) {
+      ck::string buf;
+      while (in_set(set, peek())) {
+        buf += next();
+      }
+      return buf;
+    };
+
+    if (c == ';' || c == '#') {
+      if (c == '#' && peek() != '!') goto skip_comment;
+      while (peek() != '\n' && (int32_t)peek() != -1) next();
+
+      return lex();
+    }
+  skip_comment:
+
+    // skip over spaces by calling again
+    if (isspace(c) || c == ',') return lex();
+
+    if (c == EOF || c == 0) {
+      return tok(TOK_EOF, "");
+    }
+    if (c == '`') {
+      return tok(tok_backquote, "`");
+    }
+
+    if (c == '~') {
+      if (peek() == '@') {
+        next();
+        return tok(tok_splice, ",@");
+      }
+      return tok(tok_unq, "~");
+    }
+
+    if (c == '#') {
+      ck::string t;
+      t += '#';
+
+      /* Parse raw string literals */
+      if (peek() == '"') {
+        next();
+        ck::string buf;
+        while (true) {
+          c = next();
+          if ((int32_t)c == -1) return tok(TOK_ERR, "unterminated string");
+          if (c == '"') break;
+          if (c == '\\') {
+            if (peek() == '"') {
+              buf += '"';
+              next();
+              continue;
+            } else if (peek() == '\\') {
+              buf += '\\';
+              next();
+              continue;
+            } else {
+              buf += '\\';
+              continue;
+            }
+          }
+          buf += c;
+        }
+        return tok(tok_string, buf);
+      }
+
+      if (isalpha(peek())) {
+        t += next();
+      } else {
+        return tok(TOK_ERR, "invalid hash modifier syntax");
+      }
+      return tok(tok_hash_modifier, t);
+    }
+    if (c == '\\') return tok(tok_backslash, "\\");
+
+    if (c == '(') return tok(tok_left_paren, "(");
+
+    if (c == ')') return tok(tok_right_paren, ")");
+
+    if (c == '[') return tok(tok_left_bracket, "[");
+
+    if (c == ']') return tok(tok_right_bracket, "]");
+
+    if (c == '{') return tok(tok_left_curly, "{");
+
+    if (c == '}') return tok(tok_right_curly, "}");
+
+    if (c == '\'') return tok(tok_quote, "'");
+
+    if (c == '"') {
+      ck::string buf;
+
+      bool escaped = false;
+      // ignore the first quote because a string shouldn't
+      // contain the encapsulating quotes in it's internal representation
+      while (true) {
+        c = next();
+        if ((int32_t)c == EOF) return tok(TOK_ERR, "unterminated string");
+        // also ignore the last double quote for the same reason as above
+        if (c == '"') break;
+        escaped = c == '\\';
+        if (escaped) {
+          char e = next();
+          if (e == 'U' || e == 'u') {
+            /*
+// parse 32 bit unicode literals
+std::string hex;
+
+int l = 8;
+
+if (e == 'u') l = 4;
+
+for (int i = 0; i < l; i++) {
+hex += next();
+}
+std::cout << hex << std::endl;
+c = (int32_t)std::stoul(hex, nullptr, 16);
+printf("%u\n", c);
+            */
+          } else {
+            c = esc_mappings[e];
+            if (c == 0) {
+              return tok(TOK_ERR, "unknown escape sequence");
+            }
+          }
+          escaped = false;
+        }
+        buf += c;
+      }
+      return tok(tok_string, buf);
+    }
+
+    // parse a number
+    if (isdigit(c) || c == '.' || (c == '-' && isdigit(peek()))) {
+      // it's a number (or it should be) so we should parse it as such
+
+      ck::string buf;
+
+      buf += c;
+      bool has_decimal = c == '.';
+
+
+      if (peek() == 'x') {
+        next();
+        ck::string hex = accept_run("0123456789abcdefABCDEF");
+        unsigned long long x;
+        sscanf(hex.get(), "%llx", &x);
+        char buf[64];
+        snprintf(buf, 64, "%lld", x);
+        return tok(tok_number, buf);
+      }
+
+
+      if (peek() == 'o') {
+        next();
+        ck::string oct = accept_run("012345567");
+        unsigned long long x;
+        sscanf(oct.get(), "%llo", &x);
+        char buf[64];
+        snprintf(buf, 64, "%lld", x);
+        return tok(tok_number, buf);
+      }
+
+
+      while (isdigit(peek()) || peek() == '.') {
+        c = next();
+        buf += c;
+        if (c == '.') {
+          if (has_decimal) {
+            return tok(tok_symbol, buf);
+          }
+          has_decimal = true;
+        }
+      }
+
+      if (buf == ".") {
+        return tok(tok_symbol, buf);
+      }
+      return tok(tok_number, buf);
+    }  // digit parsing
+
+    // it wasn't anything else, so it must be
+    // either an symbol or a keyword token
+
+    ck::string symbol;
+    symbol += c;
+
+    while (!in_charset(peek(), " \n\t(){}[],'`@")) {
+      auto v = next();
+      if (v == EOF || v == 0) break;
+      symbol += v;
+    }
+
+    if (symbol.len() == 0) return tok(TOK_ERR, "lexer encountered zero-length identifier");
+
+    uint8_t type = tok_symbol;
+
+    if (symbol[0] == ':') {
+      if (symbol.size() == 1) return tok(TOK_ERR, "Keyword token must have at least one character after the ':'");
+      type = tok_keyword;
+    }
+
+    return tok(type, symbol);
+  }
+};
+
+#endif
+
+enum tok {
+  tok_arg,
+  tok_str,
+  tok_var,
+  tok_right_paren,
+  tok_left_paren,
+  tok_dollar,
+  tok_left_bracket,
+  tok_right_bracket,
+  tok_left_curly,
+  tok_right_curly
+};
+
+class shell_lexer : public ck::lexer {
+  ck::map<char, char> esc_mappings;
+
+ public:
+  shell_lexer(ck::string &s) : ck::lexer(s) {
+    esc_mappings['a'] = 0x07;
+    esc_mappings['b'] = 0x08;
+    esc_mappings['f'] = 0x0C;
+    esc_mappings['n'] = 0x0A;
+    esc_mappings['r'] = 0x0D;
+    esc_mappings['t'] = 0x09;
+    esc_mappings['v'] = 0x0B;
+    esc_mappings['\\'] = 0x5C;
+    esc_mappings['"'] = 0x22;
+    esc_mappings['e'] = 0x1B;
+  }
+  virtual ~shell_lexer(void) {
+    // nah
+  }
+
+  virtual ck::token lex(void) {
+    skip_spaces();
+    int32_t c = next();
+
+    auto in_set = [](ck::string &set, int c) {
+      for (auto &n : set) {
+        if (n == c) return true;
+      }
+      return false;
+    };
+
+    auto accept_run = [&](ck::string set) {
+      ck::string buf;
+      while (in_set(set, peek())) {
+        buf += next();
+      }
+      return buf;
+    };
+
+    if (c == '#') {
+      // if (c == '#' && peek() != '!') goto skip_comment;
+      while (peek() != '\n' && (int32_t)peek() != -1) next();
+
+      return lex();
+    }
+  skip_comment:
+
+    skip_spaces();
+
+    if (c == EOF || c == 0) {
+      return tok(TOK_EOF, "");
+    }
+
+    // if (c == '\\') return tok(tok_backslash, "\\");
+    if (c == '(') return tok(tok_left_paren, "(");
+
+    if (c == ')') return tok(tok_right_paren, ")");
+
+    if (c == '[') return tok(tok_left_bracket, "[");
+
+    if (c == ']') return tok(tok_right_bracket, "]");
+
+    if (c == '{') return tok(tok_left_curly, "{");
+
+    if (c == '}') return tok(tok_right_curly, "}");
+
+    if (c == '"') {
+      ck::string buf;
+
+      bool escaped = false;
+      // ignore the first quote because a string shouldn't
+      // contain the encapsulating quotes in it's internal representation
+      while (true) {
+        c = next();
+        if ((int32_t)c == EOF) return tok(TOK_ERR, "unterminated string");
+        // also ignore the last double quote for the same reason as above
+        if (c == '"') break;
+        escaped = c == '\\';
+        if (escaped) {
+          char e = next();
+          if (e == 'U' || e == 'u') {
+            /*
+// parse 32 bit unicode literals
+std::string hex;
+
+int l = 8;
+
+if (e == 'u') l = 4;
+
+for (int i = 0; i < l; i++) {
+hex += next();
+}
+std::cout << hex << std::endl;
+c = (int32_t)std::stoul(hex, nullptr, 16);
+printf("%u\n", c);
+            */
+          } else {
+            c = esc_mappings[e];
+            if (c == 0) {
+              return tok(TOK_ERR, "unknown escape sequence");
+            }
+          }
+          escaped = false;
+        }
+        buf += c;
+      }
+      return tok(tok_str, buf);
+    }
+
+
+    // it wasn't anything else, so it must be
+    // either an symbol or a keyword token
+
+    ck::string symbol;
+    symbol += c;
+
+    while (!in_charset(peek(), " \n\t(){}[],'`@")) {
+      auto v = next();
+      if (v == EOF || v == 0) break;
+      symbol += v;
+    }
+
+    if (symbol.len() == 0) return tok(TOK_ERR, "lexer encountered zero-length identifier");
+
+    uint8_t type = tok_arg;
+
+    if (symbol[0] == '$') {
+      if (symbol.size() == 1) return tok(tok_dollar, "$");
+      type = tok_var;
+    }
+
+    return tok(type, symbol);
+  }
+};
+
+
+void lispy_thing(ck::string &src) {
+  shell_lexer l(src);
+
+  while (1) {
+    auto t = l.lex();
+
+    if (t.type == TOK_EOF) break;
+
+    // auto val = src.substring(t.start, t.end + 1);
+
+    printf("%d '%s' %d %d\n", t.type, t.value.get(), t.start, t.end);
+  }
+}

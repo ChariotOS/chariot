@@ -196,6 +196,14 @@ namespace ck {
     operator basic_string_view<T>(void) { return substring_view(0, len()); }
 
 
+
+    inline basic_string<T> substring(off_t start, off_t end) const {
+      basic_string<T> s;
+      for (int i = start; i < end; i++) s += (*this)[i];
+      return s;
+    }
+
+
     size_t len() const { return m_len; }
     size_t size() const { return m_len; }
 

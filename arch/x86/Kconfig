@@ -1,1 +1,5 @@
-# TODO:
+# TODO
+config ACPI
+	bool "Enable ACPI"
+	default y
+

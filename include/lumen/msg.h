@@ -126,6 +126,7 @@ namespace lumen {
   struct invalidate_msg {
     int id;  // window id
     int nrects;
+		bool sync; /* do I expect a response message? */
     struct r {
       // where in the window?
       int x, y, w, h;

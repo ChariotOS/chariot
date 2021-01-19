@@ -87,7 +87,9 @@ static void kmain2(void) {
   kargs::init(mbd);
   smp::init();
 
+#ifdef CONFIG_ACPI
   if (!acpi::init(mbd)) panic("acpi init failed!\n");
+#endif
 
   cpuid::detect_cpu();
 
@@ -139,6 +141,13 @@ int kernel_init(void *) {
   initialize_builtin_modules();
   KINFO("kernel modules initialized\n");
 
+
+	KINFO("Bootup complete. It is now safe to move about the cabin.\n");
+
+
+
+
+
 #ifdef CONFIG_USERSPACE
 
   auto root_name = kargs::get("root", "/dev/disk0p1");
@@ -173,8 +182,8 @@ int kernel_init(void *) {
     KERR("check the grub config and make sure that the init command line arg\n");
     KERR("is set to a comma seperated list of possible paths.\n");
   }
-#endif
 
+#endif
 
   // yield back to scheduler, we don't really want to run this thread anymore
   while (1) {
