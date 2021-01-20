@@ -30,6 +30,7 @@ case $ARCH in
 
 		# Playing around with USB
 		QEMU_FLAGS+="-device nec-usb-xhci,id=xhci "
+		# QEMU_FLAGS+="-usb "
 		QEMU_FLAGS+="-device usb-bot "
 
 		;;

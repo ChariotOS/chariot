@@ -489,6 +489,8 @@ namespace block {
 
     size_t reclaim(void);
 
+    inline bool dirty(void) { return m_dirty; }
+
    protected:
     inline static void release(struct blkdev *d) {}
 
@@ -505,7 +507,7 @@ namespace block {
 
 
   size_t reclaim_memory(void);
-	void sync_all(void);
+  void sync_all(void);
 
 };  // namespace block
 

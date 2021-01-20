@@ -37,6 +37,10 @@ pushd src
 			patch -p1 < ../../patches/freetype.patch
 		popd
 	fi
+
+	# if [ ! -d chariot-sdl ]; then
+	# 	git clone git@github.com:nickwanninger/chariot-sdl.git --depth 1
+	# fi
 popd
 
 

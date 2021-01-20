@@ -73,11 +73,20 @@ static void switch_into(struct thread &thd) {
 
 
   thd.stats.last_start_cycle = arch_read_timestamp();
+	bool ts = time::stabilized();
+	long start_us = 0;
+	if (ts) {
+		start_us = time::now_us();
+	}
 
   // Switch into the thread!
   context_switch(&cpu::current().sched_ctx, thd.kern_context);
 
   arch_save_fpu(thd);
+
+	if (ts) {
+		thd.ktime_us += time::now_us() - start_us;
+	}
 
   // Update the stats afterwards
   cpu::current().current_thread = nullptr;
@@ -339,6 +348,11 @@ void sched::before_iret(bool userspace) {
   if (!cpu::in_thread()) return;
   // exit via the scheduler if the task should die.
   if (curthd->should_die) sched::exit();
+
+
+	if (time::stabilized()) {
+		curthd->last_start_utime_us = time::now_us();
+	}
 
   long sig_to_handle = -1;
 

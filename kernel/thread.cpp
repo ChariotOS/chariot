@@ -6,6 +6,7 @@
 #include <phys.h>
 #include <sched.h>
 #include <syscall.h>
+#include <time.h>
 #include <util.h>
 /**
  * A thread needs to bootstrap itself somehow, and it uses this function to do
@@ -198,6 +199,9 @@ static void thread_create_callback(void *) {
     // exit the thread with the return code of the func
     sys::exit_thread(res);
   } else {
+    if (time::stabilized()) {
+      thd->last_start_utime_us = time::now_us();
+    }
     if (thd->pid == thd->tid) {
       thd->setup_stack((reg_t *)tf);
     }
@@ -223,6 +227,8 @@ bool thread::teardown(thread *t) {
 #ifdef CONFIG_VERBOSE_PROCESS
   printk("thread ran for %llu cycles\n", t->stats.cycles);
 #endif
+
+  printk("thread %d ran for %llu us\n", t->tid, t->ktime_us);
   thread_table_lock.write_lock();
   assert(thread_table.contains(t->tid));
   thread_table.remove(t->tid);

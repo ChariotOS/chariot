@@ -258,7 +258,7 @@ sigprocmask(SIG_SETMASK, &set, NULL);
 
 #ifndef CONFIG_SIMPLE_INIT
 
-  spawn("/bin/lumen");
+  spawn("lumen-server");
 
 #endif
 

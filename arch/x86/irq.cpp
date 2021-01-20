@@ -1,4 +1,5 @@
 #include <arch.h>
+#include <time.h>
 #include <cpu.h>
 #include <paging.h>
 #include <pit.h>
@@ -425,8 +426,11 @@ extern "C" void trap(reg_t *regs) {
 
   auto *tf = (struct x86_64regs *)regs;
   bool from_userspace = tf->cs == 0x23;
+	bool ts = time::stabilized();
   if (cpu::in_thread() && from_userspace) {
-    curthd->trap_frame = regs;
+		auto *thd = curthd;
+		thd->utime_us += time::now_us() - thd->last_start_utime_us;
+    thd->trap_frame = regs;
   }
 
   int nr = tf->trapno;
@@ -446,7 +450,9 @@ extern "C" void trap(reg_t *regs) {
 
   irq::eoi(tf->trapno);
 
+
   // TODO: generalize
   sched::before_iret(from_userspace);
+
 }
 

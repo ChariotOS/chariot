@@ -113,7 +113,7 @@ struct exec_cmd : public cmd {
 
   bool try_builtin(void) {
     if (argv.size() > 0) {
-			/* Change directory builtin */
+      /* Change directory builtin */
       if (argv[0] == "cd") {
         const char *destination = NULL;
         if (argv.size() == 1) {
@@ -131,7 +131,7 @@ struct exec_cmd : public cmd {
         if (res != 0) {
           printf("cd: '%s' could not be entered\n", destination);
         }
-				return true;
+        return true;
       }
     }
     return false;
@@ -155,7 +155,10 @@ struct seq_cmd : public cmd {
       exit(EXIT_SUCCESS);
     }
 
-    waitpid(pid, NULL, 0);
+    int res = 0;
+    do waitpid(pid, &res, 0);
+    while (errno == EINTR);
+    printf("seq res = %d\n", res);
     right->exec();
     exit(EXIT_SUCCESS);
   }
@@ -432,9 +435,12 @@ int run_line(ck::string line, int flags = 0) {
       exit(EXIT_FAILURE);
     }
 
+    int res = 0;
     /* wait for the subproc */
-    do waitpid(pid, NULL, 0);
+    do waitpid(pid, &res, 0);
     while (errno == EINTR);
+
+    printf("root res = %d\n", res);
   } else {
     /* Don't fork */
     cmd->exec();
@@ -501,7 +507,6 @@ int run_line(ck::string line, int flags = 0) {
 void lispy_thing(ck::string &command);
 
 int main(int argc, char **argv, char **envp) {
-
   char ch;
   const char *flags = "c:";
   while ((ch = getopt(argc, argv, flags)) != -1) {

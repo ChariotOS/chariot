@@ -310,6 +310,13 @@ struct thread final {
   spinlock joinlock;
 
 
+	/* Time spent in kernelspace */
+	long ktime_us = 0;
+	/* Time spent in userspace */
+	long utime_us = 0;
+	/* The last time that the kernel entered userspace */
+	long last_start_utime_us = 0;
+
   struct list_head blocked_threads;
 
   off_t tls_uaddr;

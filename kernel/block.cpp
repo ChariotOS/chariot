@@ -63,7 +63,7 @@ void block::sync_all(void) {
 
   for (auto &blk : buffer_cache) {
     for (auto &off : blk.value) {
-      if (off.value) {
+      if (off.value && off.value->dirty()) {
         off.value->flush();
       }
     }
