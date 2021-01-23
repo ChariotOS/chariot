@@ -130,6 +130,16 @@ namespace lumen {
 
     ck::ref<gfx::shared_bitmap> bitmap;
 
+		/* used for mouse tracking */
+		int mouse_down = 0; /* Current mouse press state */
+
+		/* The last location the mouse was hovered at */
+		gfx::point last_hover;
+		/* The last locations the mouse was clicked at */
+		gfx::point last_lclick; /* Left click */
+		gfx::point last_rclick; /* Right click */
+
+
     window(int id, lumen::guest &c, int w, int h);
     ~window(void);
 
@@ -214,6 +224,9 @@ namespace lumen {
 
 
 
+		/* Are we currently clicking? */
+		int mouse_down = 0; /* MOUSE_*_CLICK masked */
+
 
     pthread_t compositor_thread;
 
@@ -238,6 +251,8 @@ namespace lumen {
       long client, id;
     };
 
+
+		void move_window(lumen::window *, int dx, int dy);
 
     // ordered list of all the windows (front to back)
     // The currently focused window is at the front

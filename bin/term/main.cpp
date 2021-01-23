@@ -1,9 +1,13 @@
 #include <ui/application.h>
 // #include "terminalview.h"
 #include <ck/dir.h>
+#include <ck/timer.h>
 #include <gfx/color.h>
 #include <gfx/font.h>
+#include <gfx/image.h>
 #include <gfx/scribe.h>
+#include <sys/sysbind.h>
+
 
 extern const char **environ;
 
@@ -21,19 +25,21 @@ extern const char **environ;
   })
 
 
+
+
 #define LIGHT
 
 #ifdef LIGHT
 
-#define TERMINAL_BG 0xFFFFFF
-#define TERMINAL_FG 0x000000
-#define TERMINAL_BORDER 0x999999
+#define TERMINAL_BG 0xFFFFFFFF
+#define TERMINAL_FG 0xFF000000
+#define TERMINAL_BORDER 0xFF999999
 
 #else
 
-#define TERMINAL_BG 0x000000
-#define TERMINAL_FG 0xFFFFFF
-#define TERMINAL_BORDER 0x333333
+#define TERMINAL_BG 0xFF000000
+#define TERMINAL_FG 0xFFFFFFFF
+#define TERMINAL_BORDER 0xFF333333
 
 #endif
 
@@ -44,6 +50,7 @@ struct terminalview : public ui::view {
   int cw, ch;  // char width and height
 
   int mouse_x, mouse_y;
+  bool clicked = false;
 
   ck::file font_file;
   ck::unique_ptr<ck::file::mapping> file_mapping;
@@ -56,6 +63,8 @@ struct terminalview : public ui::view {
 
   int lineheight = 13;
 
+  ck::ref<gfx::bitmap> emoji;
+
  public:
   terminalview() {
     font = gfx::font::get("Source Code Pro");
@@ -65,10 +74,13 @@ struct terminalview : public ui::view {
       ch = font->line_height();
     });
 
-		set_flex_grow(1.0);
+    set_flex_grow(1.0);
 
     set_foreground(TERMINAL_FG);
     set_background(TERMINAL_BG);
+
+    emoji = gfx::load_png("/sys/fonts/Emoji/emoji_u1f602.png");// ->scale(14, 14, gfx::bitmap::SampleMode::Nearest);
+
   }
 
 
@@ -93,13 +105,14 @@ struct terminalview : public ui::view {
 
     s.fill_rect(r, bg);
 
-    font->with_line_height(lineheight, [&]() {
-      auto p = gfx::printer(s, *font, x * cw, y * ch + font->ascent(), cw);
-      p.set_color(fg);
-      p.write(cp);
-    });
+    /*
+font->with_line_height(lineheight, [&]() {
+auto p = gfx::printer(s, *font, x * cw, y * ch + font->ascent(), cw);
+p.set_color(fg);
+p.write(cp);
+});
+    */
   }
-
 
 
 
@@ -107,12 +120,11 @@ struct terminalview : public ui::view {
   virtual void mounted(void) override { handle_resize(); }
 
 
-  virtual void on_mouse_move(ui::mouse_event &ev) override {
-    mouse_x = ev.x;
-    mouse_y = ev.y;
-		// printf("mouse move %d %d\n", ev.x, ev.y);
-    /*  */
-    window()->resize(max(mouse_x * 2, 80), max(mouse_y * 2, 80));
+  virtual void mouse_event(ui::mouse_event &ev) override {
+    mouse_x = ev.pos().x();
+    mouse_y = ev.pos().y();
+    clicked = ev.left;
+    // surface()->resize(max(mouse_x * 2, 80), max(mouse_y * 2, 80));
     repaint();
   }
 
@@ -125,11 +137,34 @@ struct terminalview : public ui::view {
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
         uint32_t c = 'A' + (rand() % ('z' - 'A'));
-        draw_char(s, c, x, y, get_foreground(), get_background());
+        draw_char(s, c, x, y, get_foreground(), clicked ? 0x00FF00 : get_background());
       }
     }
+
+    s.draw_line_antialias(gfx::point(mouse_x, mouse_y), gfx::point(width() / 2, height() / 2), 0xFF0000);
+    // ck::hexdump(bmp->pixels(), bmp->width() * 4);
+    // uint32_t first = bmp->pixels()[0];
+    // printf("first pixel: %08x\n", gfx::color::blend(bmp->pixels()[0], 0xFFFF0000));
+    // printf("\n");
+    s.blit_alpha(gfx::point(mouse_x, mouse_y), *emoji, emoji->rect());
+
+
+		/*
+		gfx::rect r = emoji->rect().shifted(mouse_x, mouse_y);
+		r.w = r.h = 256;
+		for (int i = 0; i < 8; i++) {
+			s.blit_scaled(*emoji, r);
+
+			r.x += r.w;
+			r.w >>= 1;
+			r.h >>= 1;
+
+		}
+		*/
+    // s.blit(gfx::point(mouse_x - emoji->width(), mouse_y), *emoji, emoji->rect());
   }
 };
+
 
 
 
@@ -137,11 +172,26 @@ int main() {
   ui::application app;
 
   ui::window *win = app.new_window("Terminal", 256, 256);
-	win->set_theme(TERMINAL_BG, TERMINAL_FG, TERMINAL_BORDER);
-	auto &v = win->set_view<terminalview>();
+  win->set_theme(TERMINAL_BG, TERMINAL_FG, TERMINAL_BORDER);
+  auto &v = win->set_view<terminalview>();
 
   win->resize(80 * v.cw, 24 * v.ch);
   v.handle_resize();
+
+
+  /*
+  double x = 0;
+  auto t = ck::timer::make_interval(16, [&]() {
+                  int dx = (rand() % 10) - 5;
+                  int dy = (rand() % 10) - 5;
+                  struct lumen::move_request movreq {
+                          .id = win->id(),
+                          .dx = dx, .dy = dy,
+                  };
+
+                  app.send_msg(LUMEN_MSG_MOVEREQ, movreq);
+  });
+  */
 
   app.start();
   return 0;

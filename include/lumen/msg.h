@@ -35,6 +35,8 @@ namespace lumen {
 #define LUMEN_MSG_INPUT (3)
 
 
+#define LUMEN_MSG_MOVEREQ (7 | FOR_WINDOW_SERVER)
+
   struct msg {
     unsigned short magic = LUMEN_MAGIC;
     unsigned short type = -1;
@@ -49,8 +51,6 @@ namespace lumen {
     char data[];
   };
 
-
-
   struct greet_msg {
     int pid;  // the pid of the process
   };
@@ -60,8 +60,6 @@ namespace lumen {
     unsigned short magic;
     int guest_id;
   };
-
-
 
   struct create_window_msg {
     int width, height;
@@ -79,14 +77,11 @@ namespace lumen {
 #define LUMEN_INPUT_KEYBOARD 1
 #define LUMEN_INPUT_MOUSE 2
 
-
 #define LUMEN_MOUSE_LEFT_CLICK 0x01
 #define LUMEN_MOUSE_RIGHT_CLICK 0x02
 #define LUMEN_MOUSE_MIDDLE_CLICK 0x04
 #define LUMEN_MOUSE_SCROLL_DOWN 0x08
 #define LUMEN_MOUSE_SCROLL_UP 0x10
-
-
 
 
 #define LUMEN_KBD_MOD_NONE 0x00
@@ -100,6 +95,7 @@ namespace lumen {
 #define LUMEN_KBD_PRESS 0x80
 
 
+
   struct input_msg {
     unsigned short type;
 
@@ -107,10 +103,9 @@ namespace lumen {
     union {
       // mouse data
       struct {
-        uint16_t xpos;
-        uint16_t ypos;
-        int8_t dx, dy;
-        int buttons;
+        int16_t dx, dy; /* Move delta */
+        int16_t hx, hy; /* Hover locaiton */
+        uint8_t buttons; /* The current buttons that are currently active */
       } mouse;
 
       struct {
@@ -126,7 +121,7 @@ namespace lumen {
   struct invalidate_msg {
     int id;  // window id
     int nrects;
-		bool sync; /* do I expect a response message? */
+    bool sync; /* do I expect a response message? */
     struct r {
       // where in the window?
       int x, y, w, h;
@@ -141,15 +136,22 @@ namespace lumen {
 
   struct resize_msg {
     int id;  // window id
-		int width, height;
+    int width, height;
   };
 
   struct resized_msg {
     int id;  // window id
-		// confirmation
-		int width, height;
+    // confirmation
+    int width, height;
     char bitmap_name[LUMEN_NAMESZ];
   };
 
+
+  /* Ask the compositor to move the window. This can be ignored. */
+  struct move_request {
+    int id;  // window id
+    /* The delta to move. */
+    int dx, dy;
+  };
 
 }  // namespace lumen

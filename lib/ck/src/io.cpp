@@ -255,7 +255,7 @@ void ck::file::update_notifier(void) {
 
 
 
-void ck::hexdump(void *buf, size_t sz) { debug_hexdump(buf, sz); }
+void ck::hexdump(void *buf, size_t sz, int grouping) { debug_hexdump_grouped(buf, sz, grouping); }
 
 
 void ck::hexdump(const ck::buffer &buf) {

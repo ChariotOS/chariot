@@ -10,6 +10,8 @@
 #include <gfx/scribe.h>
 #include <math.h>
 #include <ui/event.h>
+#include <ui/surface.h>
+
 // #include <ui/internal/flex.h>
 
 #define STYLE_AUTO NAN
@@ -170,10 +172,7 @@ namespace ui {
 
     // default handlers
     // core mouse events
-    inline virtual void on_left_click(ui::mouse_event &) {}
-    inline virtual void on_right_click(ui::mouse_event &) {}
-    inline virtual void on_scroll(ui::mouse_event &) {}
-    inline virtual void on_mouse_move(ui::mouse_event &) {}
+    inline virtual void mouse_event(ui::mouse_event &) {}
     inline virtual void paint_event(void) {}
     inline virtual void on_keydown(ui::keydown_event &) {}
     inline virtual void on_keyup(ui::keyup_event &) {}
@@ -204,6 +203,9 @@ namespace ui {
 
     inline auto relative(void) { return gfx::rect(left(), top(), width(), height()); }
 
+    /* Is a point within the relative size */
+    inline bool within_self(const gfx::point &p) { return gfx::rect(width(), height()).contains(p.x(), p.y()); }
+
 
     /*
      * Geometry relative to the parent view (or window)
@@ -219,11 +221,11 @@ namespace ui {
     /*
      * Return the window for this view
      */
-    inline ui::window *window() {
+    inline ui::surface *surface() {
       if (m_parent == NULL) {
-        return m_window;
+        return m_surface;
       }
-      return m_parent->window();
+      return m_parent->surface();
     }
 
     /*
@@ -264,7 +266,7 @@ namespace ui {
      * parent view is in existence.
      */
     template <typename T, typename... Args>
-    inline T &spawn(Args &&... args) {
+    inline T &spawn(Args &&...args) {
       auto v = new T(forward<Args>(args)...);
       auto &r = *v;
       add(move(v));
@@ -345,7 +347,7 @@ namespace ui {
     ui::FlexAlign child_align();
 
 
-		bool log_layouts = false;
+    bool log_layouts = false;
 
    public:
     float m_font_size = NAN;
@@ -361,8 +363,10 @@ namespace ui {
     /*
      * these two entries are mutually exclusive
      */
-    ui::window *m_window = NULL;
+    ui::surface *m_surface = NULL;
     ui::view *m_parent = NULL;
+
+    /* A list of the children owned by this view */
     ck::vec<ck::unique_ptr<ui::view>> m_children;
 
 

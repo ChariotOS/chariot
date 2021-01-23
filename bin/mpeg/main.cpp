@@ -74,8 +74,8 @@ struct mpegview : public ui::view {
 
 
 
-  virtual void on_mouse_move(ui::mouse_event &ev) override {
-    float seek_to = plm_get_duration(plm) * ((float)ev.x / (float)width());
+  virtual void mouse_event(ui::mouse_event &ev) override {
+    float seek_to = plm_get_duration(plm) * ((float)ev.pos().x() / (float)width());
     plm_seek(plm, seek_to, 1);
     if (!timer->running()) timer->start(1000 / FPS, true);
   }

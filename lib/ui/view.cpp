@@ -23,10 +23,10 @@ flex_item_delete(m_fi, i);
 flex_item_free(m_fi);
   */
 
-  auto *win = window();
-  if (win) {
-    if (win->hovered == this) win->hovered = NULL;
-    if (win->focused == this) win->focused = NULL;
+  auto *srf = surface();
+  if (srf) {
+    if (srf->hovered == this) srf->hovered = NULL;
+    if (srf->focused == this) srf->focused = NULL;
   }
   m_children.clear();
 }
@@ -37,7 +37,7 @@ void ui::view::clear(void) { m_children.clear(); }
 
 void ui::view::repaint(bool do_invalidate) {
   // if we aren't mounted, don't paint - it doesn't make sense
-  if (window() == NULL) return;
+  if (surface() == NULL) return;
 
 
   auto s = get_scribe();
@@ -64,7 +64,7 @@ void ui::view::repaint(bool do_invalidate) {
 
 
 void ui::view::set_focused(void) {
-  auto *win = window();
+  auto *win = surface();
   if (win != NULL) {
     if (win->focused) {
       win->focused->on_blur();
@@ -78,7 +78,6 @@ void ui::view::set_focused(void) {
 void ui::view::dispatch_mouse_event(ui::mouse_event &event) {
   // copy the event and adjust it to the local bounds
   ui::mouse_event ev = event;
-  // printf("mouse move %d %d   %d %d\n", left(), top(), ev.x, ev.y);
   ev.x -= left();
   ev.y -= top();
 
@@ -95,11 +94,7 @@ void ui::view::dispatch_mouse_event(ui::mouse_event &event) {
   });
 
   if (!sent_to_child) {
-    if (ev.left) on_left_click(ev);
-    if (ev.right) on_right_click(ev);
-    if (ev.ds) on_scroll(ev);
-
-    if (ev.dx || ev.dy) on_mouse_move(ev);
+		this->mouse_event(ev);
   }
 }
 
@@ -142,7 +137,7 @@ bool ui::view::event(ui::event &ev) {
 
 
 gfx::scribe ui::view::get_scribe(void) {
-  gfx::scribe s(window()->bmp());
+  gfx::scribe s(*surface()->bmp());
 
   s.enter();
   auto r = absolute_rect();
@@ -155,14 +150,14 @@ gfx::scribe ui::view::get_scribe(void) {
 
 
 // invalidate the whole view
-void ui::view::invalidate(void) { window()->invalidate(absolute_rect()); }
+void ui::view::invalidate(void) { surface()->invalidate(absolute_rect()); }
 
 
 
 
 void ui::view::do_reflow(void) {
   // always just ask the window to reflow.
-  window()->reflow();
+  surface()->reflow();
 }
 
 
@@ -221,7 +216,7 @@ void ui::view::add(ui::view *v) {
   m_children.push(ck::unique_ptr(v));
   // add the child's flexbox on the end
   // flex_item_add(m_fi, v->m_fi);
-  if (window()) {
+  if (surface()) {
     do_reflow();
     recurse_mount(v);
   }

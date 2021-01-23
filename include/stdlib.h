@@ -60,6 +60,7 @@ char *path_join(char *a, char *b);
 
 // pretty print hexdump to the terminal
 void debug_hexdump(void *, size_t);
+void debug_hexdump_grouped(void *, size_t, int grouping);
 #endif
 
 

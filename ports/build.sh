@@ -38,6 +38,8 @@ pushd src
 		popd
 	fi
 
+
+
 	# if [ ! -d chariot-sdl ]; then
 	# 	git clone git@github.com:nickwanninger/chariot-sdl.git --depth 1
 	# fi
@@ -47,8 +49,37 @@ popd
 for ARCH in "$@"
 do
 
+
 	mkdir -p build/$ARCH
 	pushd build/$ARCH
+
+
+
+		if [ ! -d cairo ]; then
+			git clone git@github.com:freedesktop/cairo.git --depth 1 cairo
+			pushd cairo
+			popd
+		fi
+
+		pushd cairo
+			./autogen.sh
+
+			./configure                                                 \
+					--host=$ARCH-elf                                        \
+					--prefix=$ROOT/ports/out/$ARCH/                         \
+					--disable-shared                                        \
+					--enable-ps=no --enable-pdf=no --enable-win32-font=no   \
+					--enable-win32=no --enable-quartz-font=no               \
+					--enable-quartz=no --enable-xlib-xrender=no --enable-xlib=no \
+					--enable-ft-font=no                                                \
+					"CFLAGS=-I$ROOT/include -fno-stack-protector -DUSERLAND -nostdlib -s " \
+					"CXXFLAGS=-I$ROOT/include -fno-stack-protector -DUSERLAND -nostdlib -s "
+			
+
+			make -j
+			mkdir -p $ROOT/ports/out/$ARCH/lib/
+			cp src/.libs/libcairo.a $ROOT/ports/out/$ARCH/lib/
+		popd
 
 		mkdir -p freetype
 		pushd freetype

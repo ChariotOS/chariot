@@ -1,3 +1,4 @@
+#include <ck/cmp.h>
 #include <errno.h>
 #include <gfx/disjoint_rects.h>
 #include <gfx/font.h>
@@ -17,20 +18,20 @@
 
 #define USE_COMPOSE_INTERVAL
 
-#define min(a, b)           \
-  ({                        \
-    __typeof__(a) _a = (a); \
-    __typeof__(b) _b = (b); \
-    _a < _b ? _a : _b;      \
-  })
 
-#define max(a, b)           \
-  ({                        \
-    __typeof__(a) _a = (a); \
-    __typeof__(b) _b = (b); \
-    _a > _b ? _a : _b;      \
-  })
 
+extern char **environ;
+pid_t spawn(const char *command) {
+  int pid = fork();
+  if (pid == 0) {
+    const char *args[] = {"/bin/sh", "-c", (char *)command, NULL};
+
+    // debug_hexdump(args, sizeof(args));
+    execve("/bin/sh", args, (const char **)environ);
+    exit(-1);
+  }
+  return pid;
+}
 
 
 lumen::context::context(void) : screen(1024, 768) {
@@ -44,6 +45,9 @@ lumen::context::context(void) : screen(1024, 768) {
     }
   });
 
+  int x = 0;
+  unsigned long y = 1;
+  auto out = ck::max(x, y);
 
   mouse.open("/dev/mouse", "r+");
   mouse.on_read([this] {
@@ -61,7 +65,6 @@ lumen::context::context(void) : screen(1024, 768) {
     wallpaper = wallpaper->scale(screen.width(), screen.height(), gfx::bitmap::SampleMode::Nearest);
   }
 
-
   server.listen("/usr/servers/lumen", [this] { accept_connection(); });
 
 #ifdef USE_COMPOSE_INTERVAL
@@ -70,6 +73,8 @@ lumen::context::context(void) : screen(1024, 768) {
   pthread_create(&compositor_thread, NULL, lumen::context::compositor_thread_worker, (void *)this);
 #endif
   invalidate(screen.bounds());
+
+  spawn("term");
 }
 
 
@@ -86,27 +91,77 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
   screen.handle_mouse_input(pkt);
   invalidate(screen.mouse_rect());
 
-  // printf("mouse took %lldus\n", sysbind_gettime_microsecond() - pkt.timestamp);
+  int dx = screen.mouse_pos.x() - old_pos.x();
+  int dy = screen.mouse_pos.y() - old_pos.y();
 
-  if (!dragging) calculate_hover();
 
-  if (dragging && !(pkt.buttons & MOUSE_LEFT_CLICK)) {
+  /* What buttons are pressed? */
+  int clicked = (pkt.buttons & (MOUSE_LEFT_CLICK | MOUSE_RIGHT_CLICK));
+  /* What buttons where pressed */
+  int pressed = ~mouse_down & clicked;
+  /* And which were released */
+  int released = mouse_down & ~clicked;
+  int prev_down = mouse_down;
+  /* Update the current click state */
+  mouse_down = clicked;
+
+  /* If you aren't currently clicking, calculate a new hovered window.
+   * This makes sure the last window gets all mouse events while the mouse is held on it
+   */
+  if (prev_down == 0) calculate_hover();
+
+
+  assert((released & pressed) == 0);
+
+
+  if (dragging && !(mouse_down & MOUSE_LEFT_CLICK)) {
     dragging = false;
     // TODO: pull from window's state
   }
 
   if (focused_window != hovered_window) {
-    if (pkt.buttons & (MOUSE_LEFT_CLICK | MOUSE_RIGHT_CLICK)) {
+    if (pressed & (MOUSE_LEFT_CLICK | MOUSE_RIGHT_CLICK)) {
       select_window(hovered_window);
+      /* TODO: notify the window of it's new focus state :) */
     }
   }
 
-  if (hovered_window) {
+  if (hovered_window != NULL) {
     hovered_window->window_lock.lock();
+
+    auto mrel =
+        gfx::point(screen.mouse_pos.x() - hovered_window->rect.x, screen.mouse_pos.y() - hovered_window->rect.y);
+
+
+    hovered_window->last_hover = mrel;
+
+    if (hovered_window == focused_window) {
+      /* Deal with pointer events */
+      hovered_window->mouse_down = mouse_down;
+
+      if (pressed & MOUSE_LEFT_CLICK) hovered_window->last_lclick = mrel;
+      if (pressed & MOUSE_RIGHT_CLICK) hovered_window->last_rclick = mrel;
+
+
+      struct lumen::input_msg m;
+      m.window_id = hovered_window->id;
+      m.type = LUMEN_INPUT_MOUSE;
+
+      m.mouse.dx = dx;
+      m.mouse.dy = dy;
+      m.mouse.hx = mrel.x();
+      m.mouse.hy = mrel.y();
+
+      m.mouse.buttons = pkt.buttons;
+
+      hovered_window->guest.send_msg(LUMEN_MSG_INPUT, m);
+    }
+
+
+#if 0
     if (!dragging) {
       auto pos =
           gfx::point(screen.mouse_pos.x() - hovered_window->rect.x, screen.mouse_pos.y() - hovered_window->rect.y);
-
 
       int res = hovered_window->handle_mouse_input(pos, pkt);
       if (res == WINDOW_REGION_DRAG) {
@@ -122,12 +177,15 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
     }
 
     if (dragging) {
+			printf("dragging from (%3d %3d) by (%d, %d)\n");
+			/*
       screen.cursor = mouse_cursor::grabbing;
-      invalidate(hovered_window->rect);
-      hovered_window->rect.x -= old_pos.x() - screen.mouse_pos.x();
-      hovered_window->rect.y -= old_pos.y() - screen.mouse_pos.y();
-      invalidate(hovered_window->rect);
+      int dx = screen.mouse_pos.x() - old_pos.x();
+      int dy = screen.mouse_pos.y() - old_pos.y();
+      move_window(hovered_window, dx, dy);
+			*/
     }
+#endif
     hovered_window->window_lock.unlock();
   } else {
     screen.cursor = mouse_cursor::pointer;
@@ -235,6 +293,29 @@ void lumen::context::guest_closed(long id) {
 
 
 
+void lumen::context::move_window(lumen::window *win, int dx, int dy) {
+  /* Invalidate the old position */
+  invalidate(win->rect);
+
+  win->rect.x += dx;
+  win->rect.y += dy;
+
+  /* Make sure the window doesn't go off the top of the screen */
+  if (win->rect.y < 0) win->rect.y = 0;
+
+  /* Right check */
+  if (win->rect.x > screen.width() - 1) win->rect.x = screen.width() - 1 - win->rect.w;
+
+  /* Left check */
+  if (win->rect.right() <= 0) win->rect.x = 1 - win->rect.w;
+
+  /* Bottom Check */
+  if (win->rect.y > screen.height()) win->rect.y = screen.height() - 1;
+
+  /* And the new position :) */
+  invalidate(win->rect);
+}
+
 
 void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
   // printf("Process message %d from %d. type=%d\n", msg.id, c.id, msg.type);
@@ -283,7 +364,7 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
       win->pending_invalidation_id = -1;
     }
 
-    for (int i = 0; i < min(arg->nrects, MAX_INVALIDATE); i++) {
+    for (int i = 0; i < ck::min(arg->nrects, MAX_INVALIDATE); i++) {
       auto &r = arg->rects[i];
       // offset to the location that the window is at
       r.x += win->rect.x;
@@ -300,6 +381,15 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
 
     return;
   };
+
+  HANDLE_TYPE(LUMEN_MSG_MOVEREQ, lumen::move_request) {
+    auto *win = c.windows[arg->id];
+    if (win == NULL) return;
+
+    move_window(win, arg->dx, arg->dy);
+
+    return;
+  }
 
   HANDLE_TYPE(LUMEN_MSG_RESIZE, lumen::resize_msg) {
     struct lumen::resized_msg res;
@@ -320,8 +410,8 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
        */
 
       auto start = sysbind_gettime_microsecond();
-      int sw = min(arg->width, win->rect.w);
-      int sh = min(arg->height, win->rect.h);
+      int sw = ck::min(arg->width, win->rect.w);
+      int sh = ck::min(arg->height, win->rect.h);
       auto *pix = new_bitmap->pixels();
       for (int i = 0; i < arg->width * arg->height; i++) pix[i] = 0xFF00FF;
       for (int y = 0; y < sh; y++) {

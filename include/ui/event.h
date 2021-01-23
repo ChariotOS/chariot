@@ -3,6 +3,7 @@
 #include <lumen/msg.h>
 #include <stdint.h>
 #include <chariot/keycode.h>
+#include <gfx/point.h>
 
 namespace ui {
 
@@ -30,10 +31,23 @@ namespace ui {
 #define EV(klass, t) klass() : ui::event(t) {}
 
   struct mouse_event : public event {
+		/* If left or right is pressed, x and y are the location of the press and ox and oy
+		 * are the current offset from the press.
+		 *
+		 * If the buttons are not pressed, x and y are the current cursor position. ox and
+		 * oy will be zero in this situation
+		 */
     int x, y;
+		int ox, oy;
 		int dx, dy, ds; // change in x, y, scroll
 		bool left, right, middle;
 
+		int pressed; /* Newly pressed buttons */
+		int released; /* Newly released buttons */
+		/* The absolute position of the mouse event (within the view's rect, obv) */
+		inline gfx::point pos(void) {
+			return gfx::point(x + ox, y + oy);
+		}
    public:
 		EV(mouse_event, ui::event::type::mouse);
   };

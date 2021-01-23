@@ -64,7 +64,7 @@ namespace gfx {
     inline int center_y(void) const { return y + h / 2; }
 
 
-		ck::vec<gfx::rect, 4> shatter(const gfx::rect& hammer) const;
+    ck::vec<gfx::rect, 4> shatter(const gfx::rect &hammer) const;
 
     inline void grow(int n = 1) {
       x -= n;
@@ -94,6 +94,13 @@ namespace gfx {
       return in;
     }
 
+
+    inline gfx::rect shifted(int dx, int dy) {
+      auto r = *this;
+      r.x += dx;
+      r.y += dy;
+      return r;
+    }
 
     inline bool is_empty() const { return w <= 0 || w <= 0; }
 

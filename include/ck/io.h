@@ -189,14 +189,25 @@ namespace ck {
 
 
   // print a nice and pretty hexdump to the screen
-  void hexdump(void *buf, size_t);
+  void hexdump(void *buf, size_t, int grouping = 1);
+
   // hexdump a ck::buffer (special case)
   void hexdump(const ck::buffer &);
 
   // hexdump a struct :^)
   template <typename T>
   void hexdump(const T &val) {
-    ck::hexdump((void *)&val, sizeof(T));
+    ck::hexdump((void *)&val, sizeof(T), sizeof(T));
   }
+
+
+
+  template <typename T>
+  void hexdump_array(T *val, size_t count) {
+    ck::hexdump((void *)val, count * sizeof(T), sizeof(T));
+  }
+
+
+
 
 }  // namespace ck

@@ -176,6 +176,8 @@ draw_text(thnk, fnt, str, color, flags);
 
     // just draw a bitmap to a position (no scaling)
     void blit(const gfx::point &at, gfx::bitmap &bmp, const gfx::rect &src);
+		/* Do alpha blending, (pretty slow) */
+    void blit_alpha(const gfx::point &at, gfx::bitmap &bmp, const gfx::rect &src);
 		/* Blit quickly with no checks */
     void blit_fast(const gfx::point &at, gfx::bitmap &bmp, const gfx::rect &src);
 

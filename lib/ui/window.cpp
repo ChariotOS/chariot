@@ -6,7 +6,6 @@
 #include <ui/window.h>
 
 
-
 #define min(a, b)           \
   ({                        \
     __typeof__(a) _a = (a); \
@@ -46,7 +45,7 @@ static constexpr uint32_t brighten(uint32_t color, float amt) {
 ui::windowframe::windowframe(void) {
   set_flex_padding(ui::edges(TITLE_HEIGHT, PADDING, PADDING, PADDING));
 
-  m_frame_font = gfx::font::get("OpenSans ExtraBold");
+	m_frame_font = gfx::font::get("OpenSans ExtraBold");
   m_icon_font = gfx::font::get("feather");
 
   set_foreground(0x4a4848);
@@ -55,6 +54,17 @@ ui::windowframe::windowframe(void) {
 
 
 ui::windowframe::~windowframe(void) {}
+
+
+void ui::windowframe::mouse_event(ui::mouse_event &ev) {
+  if (ev.left) {
+    struct lumen::move_request movreq {
+      .id = ((ui::window *)surface())->id(), .dx = ev.dx, .dy = ev.dy,
+    };
+
+    ui::application::get().send_msg(LUMEN_MSG_MOVEREQ, movreq);
+  }
+}
 
 void ui::windowframe::paint_event(void) {
   auto s = get_scribe();
@@ -69,8 +79,10 @@ void ui::windowframe::paint_event(void) {
     r.h = TITLE_HEIGHT;
     r.w = width();
 
-    m_frame_font->with_line_height(
-        12, [&]() { s.draw_text(*m_frame_font, r, window()->m_name, ui::TextAlign::Center, get_foreground(), true); });
+    m_frame_font->with_line_height(12, [&]() {
+       s.draw_text(*m_frame_font, r, ((ui::window *)surface())->m_name, ui::TextAlign::Center, get_foreground(), true);
+    });
+
 
 
     if (0) {
@@ -83,8 +95,8 @@ void ui::windowframe::paint_event(void) {
           });
     }
   }
+  invalidate();
 }
-
 
 
 
@@ -95,7 +107,7 @@ ui::window::window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bit
   m_bitmap = bmp;
 
   m_frame = new ui::windowframe();
-  m_frame->m_window = this;
+  m_frame->m_surface = this;
   m_frame->m_parent = NULL;
 
   m_frame->set_size(m_rect.w, m_rect.h);
@@ -168,7 +180,8 @@ printf("invalidation of %d region(s) took %.2fms\n", m_pending_invalidations.siz
   m_pending_invalidations.push(r);
 }
 
-void ui::window::flush(void) { invalidate(m_rect); }
+
+ui::view *ui::window::root_view(void) { return m_frame.get(); }
 
 gfx::point last_pos;
 
@@ -190,61 +203,66 @@ void ui::window::handle_input(struct lumen::input_msg &msg) {
       if (focused) focused->event(ev);
     }
   } else if (msg.type == LUMEN_INPUT_MOUSE) {
+
+    int clicked = (msg.mouse.buttons & (LUMEN_MOUSE_LEFT_CLICK | LUMEN_MOUSE_RIGHT_CLICK));
+    /* What buttons where pressed */
+    int pressed = ~mouse_down & clicked;
+    /* And which were released */
+    int released = mouse_down & ~clicked;
+    /* Update the current click state */
+    mouse_down = clicked;
+
+    auto pos = gfx::point(msg.mouse.hx, msg.mouse.hy);
+
+
+    if (pressed & LUMEN_MOUSE_LEFT_CLICK) last_lclick = pos;
+    if (pressed & LUMEN_MOUSE_RIGHT_CLICK) last_rclick = pos;
+
+		if ((clicked | released) & LUMEN_MOUSE_LEFT_CLICK) pos = last_lclick;
+		if ((clicked | released) & LUMEN_MOUSE_RIGHT_CLICK) pos = last_rclick;
+
+
     ui::mouse_event ev;
-    ev.x = msg.mouse.xpos;
-    ev.y = msg.mouse.ypos;
+    ev.x = pos.x();
+    ev.y = pos.y();
+
+		ev.ox = msg.mouse.hx - ev.x;
+		ev.oy = msg.mouse.hy - ev.y;
     ev.dx = msg.mouse.dx;
     ev.dy = msg.mouse.dy;
     ev.left = (msg.mouse.buttons & LUMEN_MOUSE_LEFT_CLICK) != 0;
     ev.right = (msg.mouse.buttons & LUMEN_MOUSE_RIGHT_CLICK) != 0;
+		ev.pressed = pressed;
+		ev.released = pressed;
 
-    gfx::rect r = m_rect;
-    r.shrink(4);
-    if (!r.contains(ev.x, ev.y)) {
-      printf("Resize!\n");
-    }
+    /*
+if (pressed & LUMEN_MOUSE_LEFT_CLICK) printf("pressed left click\n");
+if (pressed & LUMEN_MOUSE_RIGHT_CLICK) printf("pressed right click\n");
+
+if (released & LUMEN_MOUSE_LEFT_CLICK) printf("released left click\n");
+if (released & LUMEN_MOUSE_RIGHT_CLICK) printf("released right click\n");
+    */
 
     if (msg.mouse.buttons & LUMEN_MOUSE_SCROLL_UP) {
       ev.ds = 1;
     } else if (msg.mouse.buttons & LUMEN_MOUSE_SCROLL_DOWN) {
       ev.ds = -1;
     }
-    if (focused) {
-      focused->event(ev);
-    }
+    /* Calculate who gets the mouse event */
+    root_view()->event(ev);
     // TODO: forward to the main widget or something
   }
 }
 
 
-static void print_flex_item(ui::view *v, int depth = 0) {
-  return;
 
-  for (int i = 0; i < depth; i++) printf("\t");
-  printf("(x:%6.0f, y:%6.0f, w:%6.0f, h:%6.0f)\n", v->m_frame[0], v->m_frame[1], v->m_frame[2], v->m_frame[3]);
-  for (auto &child : v->m_children) print_flex_item(child.get(), depth + 1);
-}
-
-
-
-void ui::window::reflow() {
-  m_frame->set_size(m_rect.w, m_rect.h);
-  m_frame->layout();
-
-  print_flex_item(m_frame.get());
-  // ask the window to repaint. This is expensive.
-  m_frame->repaint(false /* do not invalidate, we do that ourselves */);
-
-  this->m_pending_reflow = false;
-  invalidate(m_rect);
-}
+void ui::window::did_reflow(void) { this->m_pending_reflow = false; }
 
 void ui::window::schedule_reflow(void) {
   if (!m_pending_reflow) {
     ck::eventloop::defer(fn() { reflow(); });
   }
 }
-
 
 ck::tuple<int, int> ui::window::resize(int w, int h) {
   w += windowframe::PADDING * 2;
@@ -253,15 +271,6 @@ ck::tuple<int, int> ui::window::resize(int w, int h) {
   // don't change stuff if you dont need to
   if (width() == w && height() == h) {
     return ck::tuple(w, h);
-  }
-
-
-  if (0) {
-    auto new_bitmap = gfx::shared_bitmap::get(bmp().shared_name(), bmp().width(), bmp().height());
-    if (!new_bitmap) printf("NOT FOUND!\n");
-    // update the bitmap
-    this->m_bitmap = new_bitmap;
-    return ck::tuple(width(), height());
   }
 
 
@@ -293,7 +302,7 @@ ck::tuple<int, int> ui::window::resize(int w, int h) {
 
   m_frame->set_size(m_rect.w, m_rect.h);
 
-	
+
 
 
   // m_frame->set_pos(0, 0);  // the main widget exists at the top left

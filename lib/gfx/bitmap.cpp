@@ -1,10 +1,11 @@
 #include <chariot/mshare.h>
 #include <gfx/bitmap.h>
+#include <gfx/color.h>
+#include <math.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/sysbind.h>
 #include <unistd.h>
-
 
 
 void *mshare_create(const char *name, size_t size) {
@@ -128,15 +129,47 @@ ck::ref<gfx::bitmap> gfx::bitmap::scale(int w, int h, gfx::bitmap::SampleMode m)
 }
 
 
+static inline float normalize(float x) {
+    x = fmod(x, 1.0f);
+    if (x < 0.0) {
+        x += 1.0;
+    }
+    return x;
+}
+
 uint32_t gfx::bitmap::sample(float fx, float fy, gfx::bitmap::SampleMode m) {
+	fx = normalize(fx);
   switch (m) {
     case gfx::bitmap::SampleMode::Nearest:
       return get_pixel(width() * fx, height() * fy);
       break;
 
     case gfx::bitmap::SampleMode::Bilinear:
-      return get_pixel(width() * fx, height() * fy);
-      break;
+      float x = fx * width();
+      float y = fy * height();
+
+
+      float x1 = floorf(x);
+      float y1 = floorf(y);
+
+
+      float x2 = ceilf(x);
+      float y2 = ceilf(y);
+
+			bool border = x1 == 0 || (x2 > width()) || y1 == 0 || y2 > height();
+			if (border) return get_pixel(x1, y1);
+
+      auto blend = [](uint32_t c1, uint32_t c2, float a) {
+        return gfx::color::blend(gfx::color::alpha(c1, 1 - a), c2);
+      };
+
+      float t_x = (x - x1) / (x2 - x1);
+      float t_y = (y - y1) / (y2 - y1);
+      uint32_t f_x_y1 = blend(get_pixel(x1, y1), get_pixel(x2, y1), t_x);
+      uint32_t f_x_y2 = blend(get_pixel(x1, y2), get_pixel(x2, y2), t_x);
+
+
+      return blend(f_x_y1, f_x_y2, t_y);
   };
 
 

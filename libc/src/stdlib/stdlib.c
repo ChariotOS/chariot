@@ -269,7 +269,7 @@ static int validate_address(void *p) {
   return 1;
 }
 
-void debug_hexdump(void *vbuf, size_t len) {
+void debug_hexdump_grouped(void *vbuf, size_t len, int grouping) {
   unsigned awidth = 4;
 
   if (len > 0xFFFFL) awidth = 8;
@@ -309,9 +309,7 @@ void debug_hexdump(void *vbuf, size_t len) {
     set_color(C_RESET);
     printf("|");
     for (int c = 0; c < w; c++) {
-      if (c % 8 == 0) {
-        printf(" ");
-      }
+      if (c % grouping == 0) printf(" ");
 
       if (valid[c] == 0) {
         set_color(C_RED);
@@ -323,12 +321,12 @@ void debug_hexdump(void *vbuf, size_t len) {
         printf("   ");
       } else {
         set_color_for(line[c]);
-        printf("%02X ", line[c]);
+        printf("%02X", line[c]);
       }
     }
 
     set_color(C_RESET);
-    printf("|");
+    printf(" |");
     for (int c = 0; c < w; c++) {
       if (c != 0 && (c % 8 == 0)) {
         set_color(C_RESET);
@@ -353,6 +351,8 @@ void debug_hexdump(void *vbuf, size_t len) {
     printf("|\n");
   }
 }
+
+void debug_hexdump(void *vbuf, size_t len) { return debug_hexdump_grouped(vbuf, len, 1); }
 
 
 
@@ -465,22 +465,18 @@ int posix_memalign(void **memptr, size_t alignment, size_t size) {
 
 
 void *bsearch(const void *key, const void *base, size_t nel, size_t width, int (*cmp)(const void *, const void *)) {
-  void *try
-    ;
+  void *try;
   int sign;
   while (nel > 0) {
-    try
-      = (char *)base + width * (nel / 2);
+    try = (char *)base + width * (nel / 2);
     sign = cmp(key, try);
     if (sign < 0) {
       nel /= 2;
     } else if (sign > 0) {
-      base = (char *)try
-        +width;
+      base = (char *)try + width;
       nel -= nel / 2 + 1;
     } else {
-      return try
-        ;
+      return try;
     }
   }
   return NULL;

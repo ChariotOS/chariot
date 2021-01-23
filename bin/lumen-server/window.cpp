@@ -78,12 +78,9 @@ int lumen::window::handle_mouse_input(gfx::point &r, struct mouse_packet &p) {
     y = r.y();
   }
 
-  if (y < TITLE_HEIGHT) {
-    // this region is draggable
-    return WINDOW_REGION_DRAG;
-  }
 
   if (x >= 0 && x < (int)bitmap->width() && y >= 0 && y < (int)bitmap->height()) {
+		/*
     struct lumen::input_msg m;
 
     m.window_id = this->id;
@@ -95,11 +92,16 @@ int lumen::window::handle_mouse_input(gfx::point &r, struct mouse_packet &p) {
     m.mouse.buttons = p.buttons;
 
     guest.send_msg(LUMEN_MSG_INPUT, m);
-    return WINDOW_REGION_NORM;
+		*/
+  }
+
+  if (y < TITLE_HEIGHT) {
+    // this region is draggable
+    return WINDOW_REGION_DRAG;
   }
 
 
-  return 0;
+  return WINDOW_REGION_NORM;
 }
 
 

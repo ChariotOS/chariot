@@ -23,7 +23,7 @@ class gol : public ui::view {
 
  public:
   gol() {
-		set_flex_grow(1);
+    set_flex_grow(1);
     tick_timer = ck::timer::make_interval(1000 / TICKS, [this] { this->tick(); });
     tick_timer->stop();
 
@@ -73,7 +73,7 @@ class gol : public ui::view {
     for (int y = 0; y < HEIGHT; y++) {
       for (int x = 0; x < WIDTH; x++) {
         // int color = is_running ? 0xFFFFFF : 0x777777;
-				int color = 0xFFFFFF;
+        int color = 0xFFFFFF;
         if ((is_running ? current : init)[x][y]) {
           color = 0x000000;
         }
@@ -83,34 +83,28 @@ class gol : public ui::view {
           for (int oy = 0; oy < SCALE; oy++) {
             int d = color;
             if (!is_running && (ox == 0 || oy == 0)) d = 0;
-            // int color = (x ^ y) | ((x ^ y) << 8) | ((x ^ y) << 16);
+            int color = (x ^ y) | ((x ^ y) << 8) | ((x ^ y) << 16);
             scribe.draw_pixel(x * SCALE + ox, y * SCALE + oy, d);
           }
         }
       }
     }
-
   }
-
 
 
   int set_to = 1;
-  bool clicked = false;
-  virtual void on_mouse_move(ui::mouse_event& ev) override {
-    // how we detect release :^)
-    if (ev.left == false) clicked = false;
-  }
+  virtual void mouse_event(ui::mouse_event& ev) override {
+    auto p = ev.pos();
+    if (within_self(p)) {
+      if (ev.pressed & LUMEN_MOUSE_LEFT_CLICK) {
+        set_to = !init[ev.x / SCALE][ev.y / SCALE];
+      }
 
-
-  virtual void on_left_click(ui::mouse_event& ev) override {
-    if (ev.left && !clicked) {
-      set_to = !init[ev.x / SCALE][ev.y / SCALE];
+      if (ev.left) {
+        init[p.x() / SCALE][p.y() / SCALE] = set_to;
+        repaint();
+      }
     }
-    clicked = ev.left;
-    if (clicked && !tick_timer->running()) {
-      init[ev.x / SCALE][ev.y / SCALE] = set_to;
-    }
-    repaint();
   }
 
 

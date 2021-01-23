@@ -113,21 +113,51 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source, const gf
   const uint32_t *src = source.scanline(src_rect.top() + first_row) + src_rect.left() + first_column;
   const size_t src_skip = source.width();
 
-  // ::printf("w: %4d,  last_row: %4d\n", last_row, clipped_rect.w-1);
   for (int row = first_row; row <= last_row; ++row) {
-    char *d = (char *)dst;
-    char *s = (char *)src;
-    for (int i = 0; i < clipped_rect.w * sizeof(uint32_t); i++) {
-      d[i] = s[i];
+    for (int i = 0; i < clipped_rect.w; i++) {
+      dst[i] = (src[i] | 0xFF'00'00'00); /* Blit it with full alpha */
     }
     dst += dst_skip;
     src += src_skip;
   }
 }
 
+
+
+void gfx::scribe::blit_alpha(const gfx::point &position, gfx::bitmap &source, const gfx::rect &src_rect) {
+  auto safe_src_rect = src_rect.intersect(source.rect());
+
+  gfx::rect dst_rect;
+  dst_rect.x = position.x() + translation().x();
+  dst_rect.y = position.y() + translation().y();
+  dst_rect.w = safe_src_rect.w;
+  dst_rect.h = safe_src_rect.h;
+
+  auto clipped_rect = dst_rect.intersect(state().clip);
+  if (clipped_rect.is_empty()) return;
+
+  const int first_row = clipped_rect.top() - dst_rect.top();
+  const int last_row = clipped_rect.bottom() - dst_rect.top();
+  const int first_column = clipped_rect.left() - dst_rect.left();
+  uint32_t *dst = bmp.scanline(clipped_rect.y) + clipped_rect.x;
+  const size_t dst_skip = bmp.width();
+
+  const uint32_t *src = source.scanline(src_rect.top() + first_row) + src_rect.left() + first_column;
+  const size_t src_skip = source.width();
+
+  for (int row = first_row; row <= last_row; ++row) {
+    for (int i = 0; i < clipped_rect.w; i++) {
+      dst[i] = color::blend(src[i], dst[i] | (0xFF << 24));
+    }
+    dst += dst_skip;
+    src += src_skip;
+  }
+}
+
+
 void gfx::scribe::blit_scaled(gfx::bitmap &bmp, const gfx::rect &r, gfx::bitmap::SampleMode mode) {
-  int ox = translation().x();
-  int oy = translation().y();
+  int ox = translation().x() + r.x;
+  int oy = translation().y() + r.y;
 
 
   for (int y = 0; y < r.w; y++) {

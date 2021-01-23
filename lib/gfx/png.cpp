@@ -32,7 +32,7 @@ static auto load_png(void *data, size_t size) {
   }
 
   bmp = new T(ihdr.width, ihdr.height);
-  spng_decode_image(ctx, bmp->pixels(), bmp->size(), SPNG_FMT_RGBA8, SPNG_DECODE_TRNS | SPNG_DECODE_GAMMA);
+  spng_decode_image(ctx, bmp->pixels(), bmp->size(), SPNG_FMT_RGBA8, SPNG_DECODE_TRNS);
 
   // they give us rgba8, we need arg8 because we are sane.
   for (off_t i = 0; i < bmp->width() * bmp->height(); i++) {

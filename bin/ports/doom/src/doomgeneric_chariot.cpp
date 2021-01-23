@@ -98,11 +98,7 @@ class doomview : public ui::view {
     invalidate();
   }
 
-  virtual void on_mouse_move(ui::mouse_event& ev) override { repaint(); }
-
   virtual void on_keydown(ui::keydown_event& ev) override { addKeyToQueue(ev.code, ev.c, true); }
-
-
   virtual void on_keyup(ui::keyup_event& ev) override { addKeyToQueue(ev.code, ev.c, false); }
 };
 
