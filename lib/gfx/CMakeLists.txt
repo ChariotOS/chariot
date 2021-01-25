@@ -4,4 +4,4 @@ chariot_lib(libgfx gfx)
 
 target_link_libraries(libgfx PUBLIC libm)
 # set_target_properties(libgfx PROPERTIES INTERFACE_LINK_LIBRARIES libfreetype)
-target_link_libraries(libgfx INTERFACE libfreetype libcairo)
+target_link_libraries(libgfx INTERFACE libfreetype)

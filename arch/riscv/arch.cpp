@@ -11,6 +11,10 @@ void arch_enable_ints(void) {
 	rv::intr_on();
 }
 
+bool arch_irqs_enabled(void) {
+	return rv::intr_enabled();
+}
+
 
 void arch_relax(void) {}
 

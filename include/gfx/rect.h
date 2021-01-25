@@ -95,7 +95,7 @@ namespace gfx {
     }
 
 
-    inline gfx::rect shifted(int dx, int dy) {
+    inline gfx::rect shifted(int dx, int dy) const {
       auto r = *this;
       r.x += dx;
       r.y += dy;

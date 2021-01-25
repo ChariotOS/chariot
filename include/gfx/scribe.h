@@ -96,6 +96,9 @@ namespace gfx {
     // blend a pixel with a 0-1 alpha
     void blend_pixel(int x, int y, uint32_t color, float alpha);
 
+
+		void stackblur(int radius, const gfx::rect &area);
+
     // draw a pixel, offset in the state and within the clip rect
     inline void draw_pixel(int x, int y, uint32_t color) {
       auto &s = state();

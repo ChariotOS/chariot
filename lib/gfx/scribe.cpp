@@ -3,11 +3,11 @@
 #include <gfx/font.h>
 #include <gfx/point.h>
 #include <gfx/scribe.h>
+#include <gfx/stackblur.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-
 
 gfx::scribe::scribe(gfx::bitmap &b) : bmp(b) {
   enter();  // initial state
@@ -58,7 +58,7 @@ void gfx::scribe::clear(uint32_t color) {
 }
 
 void gfx::scribe::blit_fast(const gfx::point &position, gfx::bitmap &source, const gfx::rect &_src_rect) {
-	return;
+  return;
   auto src_rect = _src_rect.intersect(source.rect());
   int dx = position.x() + translation().y();
   int dy = position.y() + translation().y();
@@ -731,6 +731,10 @@ void gfx::scribe::draw_text(gfx::font &font, const gfx::rect &rect, const ck::st
   }
 }
 
+
+void gfx::scribe::stackblur(int radius, const gfx::rect &area) {
+  gfx::stackblur(bmp.pixels(), bmp.width(), bmp.height(), radius, area.shifted(translation().x(), translation().y()));
+}
 
 void gfx::scribe::draw_text_line(gfx::font &font, const gfx::rect &a_rect, const ck::string &text, ui::TextAlign align,
                                  uint32_t color, bool elide) {

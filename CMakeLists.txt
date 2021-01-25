@@ -252,8 +252,9 @@ chariot_external(libcpp ${CMAKE_SOURCE_DIR}/toolchain/build/${CMAKE_SYSTEM_PROCE
 
 # chariot_external(libgl ${CMAKE_SOURCE_DIR}/ports/prebuilt/libOSMesa.a)
 # chariot_external(libglu ${CMAKE_SOURCE_DIR}/ports/prebuilt/libGLU.a)
+
 chariot_external(libfreetype ${CMAKE_SOURCE_DIR}/ports/out/${CMAKE_SYSTEM_PROCESSOR}/lib/libfreetype.a)
-chariot_external(libcairo ${CMAKE_SOURCE_DIR}/ports/out/${CMAKE_SYSTEM_PROCESSOR}/lib/libcairo.a)
+# chariot_external(libcairo ${CMAKE_SOURCE_DIR}/ports/out/${CMAKE_SYSTEM_PROCESSOR}/lib/libcairo.a)
 
 
 

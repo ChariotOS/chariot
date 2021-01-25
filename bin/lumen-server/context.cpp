@@ -680,6 +680,7 @@ void lumen::context::compose(void) {
     uint32_t *to_ptr = screen.front_buffer + off;
     uint32_t *from_ptr = screen.back_buffer + off;
 
+
     for (int y = 0; y < r.h; y++) {
       // explicit looping optimizes more
       for (int i = 0; i < r.w; i++) to_ptr[i] = from_ptr[i];

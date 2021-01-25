@@ -112,8 +112,6 @@ static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
   }
   printk("+ %12d", bad_addr & 0xFFF);
 	printk(" max va: %p\n",  MAXVA);
-  printk("\n");
-
 
   printk(KERN_ERROR);
   print_readable_reg("val", read_csr(stval));

@@ -17,6 +17,7 @@ extern const char **environ;
 #include FT_FREETYPE_H
 
 
+
 #define max(a, b)           \
   ({                        \
     __typeof__(a) _a = (a); \
@@ -79,8 +80,7 @@ struct terminalview : public ui::view {
     set_foreground(TERMINAL_FG);
     set_background(TERMINAL_BG);
 
-    emoji = gfx::load_png("/sys/fonts/Emoji/emoji_u1f602.png");// ->scale(14, 14, gfx::bitmap::SampleMode::Nearest);
-
+    emoji = gfx::load_png("/sys/fonts/Emoji/emoji_u1f602.png");  // ->scale(14, 14, gfx::bitmap::SampleMode::Nearest);
   }
 
 
@@ -148,19 +148,18 @@ p.write(cp);
     // printf("\n");
     s.blit_alpha(gfx::point(mouse_x, mouse_y), *emoji, emoji->rect());
 
+    /*
+    gfx::rect r = emoji->rect().shifted(mouse_x, mouse_y);
+    r.w = r.h = 256;
+    for (int i = 0; i < 8; i++) {
+            s.blit_scaled(*emoji, r);
 
-		/*
-		gfx::rect r = emoji->rect().shifted(mouse_x, mouse_y);
-		r.w = r.h = 256;
-		for (int i = 0; i < 8; i++) {
-			s.blit_scaled(*emoji, r);
+            r.x += r.w;
+            r.w >>= 1;
+            r.h >>= 1;
 
-			r.x += r.w;
-			r.w >>= 1;
-			r.h >>= 1;
-
-		}
-		*/
+    }
+    */
     // s.blit(gfx::point(mouse_x - emoji->width(), mouse_y), *emoji, emoji->rect());
   }
 };

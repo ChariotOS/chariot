@@ -2,13 +2,6 @@
 #include <fs.h>
 #include <syscall.h>
 
-
-static inline void a20_reboot(void) {
-  /* resetting A20 should be a bit quicker */
-  outb(0x92, 1);
-}
-
-
 int sys::shutdown(void) {
 
 	printk(KERN_WARN "Shutting down...\n");
@@ -16,6 +9,7 @@ int sys::shutdown(void) {
   block::sync_all();
   /* TODO: kill everyone! */
 
+#ifdef CONFIG_X86
 
 	printk(KERN_WARN "Trying BOCHS/Old-Qemu method\n");
 	/* Bochs and old QEMU */
@@ -29,6 +23,8 @@ int sys::shutdown(void) {
 
 	printk(KERN_WARN "Trying QEMU isa-debug-exit method\n");
   outb(0x501, 0x00);
+
+#endif
 
 	printk(KERN_ERROR "Failed to shutdown. Guess I gotta implement ACPI AML?\n");
 

@@ -246,7 +246,7 @@ void sb16_init(void) {
   set_irq_register(SB16_DEFAULT_IRQ);
   printk(KERN_INFO "SB16: IRQ %d\n", get_irq_line());
 
-  irq::install(SB16_DEFAULT_IRQ, sb16_interrupt, "Sound Blaster 16");
+  irq::install(get_irq_line(), sb16_interrupt, "Sound Blaster 16");
   // finally initialize
   dev::register_driver(sb16_driver);
 

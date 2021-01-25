@@ -44,8 +44,6 @@ SECTIONS
 
 	. += KERNEL_VMA;
 
-	/* . = 0xFFFF80000000; */
-
   .text : AT(ADDR(.text) - KERNEL_VMA) {
     PROVIDE(_text_start = .);
 		*(.text .text.*)
