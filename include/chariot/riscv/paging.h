@@ -19,6 +19,12 @@
  * VM_PART_NUM  - how many parts are there?
  */
 
+#define VM_NORMAL_PAGE (0x1000L)
+#define VM_MEGA_PAGE   (VM_NORMAL_PAGE << 9)
+#define VM_GIGA_PAGE   (VM_MEGA_PAGE << 9)
+#define VM_TERA_PAGE   (VM_GIGA_PAGE << 9)
+
+
 /* Riscv sv32 - 32 bit virtual memory on 64bit */
 #ifdef CONFIG_SV32
 #define VM_PART_BITS 10
@@ -36,6 +42,8 @@
 #define VM_PART_BITS 9
 #define VM_PART_NUM 4
 #endif
+
+#define VM_BIGGEST_PAGE (VM_NORMAL_PAGE << ((VM_PART_NUM - 1) * VM_PART_BITS))
 
 #define VM_BITS ((VM_PART_BITS * VM_PART_NUM) + PGSHIFT)
 
@@ -55,10 +63,13 @@
 
 #define PTE_FLAGS(pte) ((pte)&0x3FF)
 
+#define MAKE_PTE(pa, flags) (PA2PTE(pa) | (flags))
+
 // extract the three N-bit page table indices from a virtual address.
 #define PXMASK ((1llu << MV_PART_BITS) - 1)  // N bits
 #define PXSHIFT(level) (PGSHIFT + (VM_PART_BITS * (level)))
 #define PX(level, va) ((((rv::xsize_t)(va)) >> PXSHIFT(level)) & PXMASK)
+
 
 // one beyond the highest possible virtual address.
 // MAXVA is actually one bit less than the max allowed by
@@ -67,26 +78,20 @@
 #define MAXVA (1L << ((VM_PART_BITS * VM_PART_NUM) + 12 - 1))
 
 
-#ifdef CONFIG_64BIT
-
-#define SATP_MODE_SHIFT 60
 
 #ifdef CONFIG_SV39
-#define SATP_MODE 8llu
+#define SATP_MODE (8L << 60)
 #endif
 
 #ifdef CONFIG_SV48
-#define SATP_MODE 9llu
+#define SATP_MODE (9L << 60)
 #endif
 
-#else
-
-#define SATP_MODE_SHIFT 30
-#define SATP_MODE 1llu
-
+#ifdef CONFIG_SV32
+#define SATP_MODE (1L << 30)
 #endif
 
-#define SATP_MODE_MASK (SATP_MODE << SATP_MODE_SHIFT)
+#define MAKE_SATP(page_table) (SATP_MODE | (((rv::xsize_t)page_table) >> 12))
 
 
 namespace rv {

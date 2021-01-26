@@ -223,11 +223,6 @@ namespace rv /* risc-v namespace */ {
   // Machine-mode interrupt vector
   static inline void set_mtvec(rv::xsize_t x) { asm volatile("csrw mtvec, %0" : : "r"(x)); }
 
-// use riscv's sv39 page table scheme.
-#define SATP_SV39 (8L << 60)
-
-#define MAKE_SATP(pagetable) (SATP_SV39 | (((rv::xsize_t)pagetable) >> 12))
-
   // supervisor address translation and protection;
   // holds the address of the page table.
   static inline void set_satp(rv::xsize_t x) { asm volatile("csrw satp, %0" : : "r"(x)); }

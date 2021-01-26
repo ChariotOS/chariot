@@ -4,9 +4,9 @@
 #include <phys.h>
 #include <riscv/arch.h>
 #include <riscv/dis.h>
+#include <riscv/paging.h>
 #include <riscv/plic.h>
 #include <riscv/uart.h>
-#include <riscv/paging.h>
 #include <util.h>
 
 extern "C" void _start(void);
@@ -18,22 +18,46 @@ void timerinit();
 
 extern void main();
 
-static __initdata void *main_ptr = (void*)main;
-static __initdata void *timervec_ptr = (void*)timervec;
+static __initdata void *main_ptr = (void *)main;
+static __initdata void *timervec_ptr = (void *)timervec;
 
 
-extern "C" rv::xsize_t kernel_page_table[];
+// extern "C" rv::xsize_t kernel_page_table[];
+
+__initdata rv::xsize_t kernel_page_table[4096 / sizeof(rv::xsize_t)] __attribute__((aligned(4096)));
 
 
 
+static void __init fill_page_table(void) {
+  int entries = 4096 / sizeof(rv::xsize_t);
+  int half = entries / 2;
+
+  for (int i = 0; i < half; i++) {
+    rv::xsize_t pa = VM_BIGGEST_PAGE * i;
+		rv::xsize_t pte = ((pa >> 12) << 10) | PT_R | PT_W | PT_X | PT_V | PT_A | PT_D;
+    kernel_page_table[i] = pte;
+    kernel_page_table[i + half] = pte | PT_G;
+  }
+}
+
+
+extern "C" char _bss_start[];
+extern "C" char _bss_end[];
 
 /*
  * kstart - C++ entrypoint in machine mode.
  * The point of this function is to get the hart into supervisor mode quickly.
  */
 extern "C" void __init kstart(rv::xsize_t foo, rv::xsize_t dtb) {
-
   int id = read_csr(mhartid);
+
+  if (id != 0) {
+    while (1) {
+    }
+  }
+
+
+  for (char *c = _bss_start; c != _bss_end; c++) *c = 0;
 
   struct rv::scratch sc;
   sc.hartid = id;
@@ -48,16 +72,15 @@ extern "C" void __init kstart(rv::xsize_t foo, rv::xsize_t dtb) {
   /* mret to a certain routine based on hartid (0 is the main hart) */
   write_csr(mepc, main_ptr);
 
-	kernel_page_table[0] =   0 | PT_R | PT_W | PT_X | PT_V;
-	for (int i = 1; i < 4096 / sizeof(rv::xsize_t); i++) {
-		kernel_page_table[i] = kernel_page_table[0];
-	}
+  fill_page_table();
 
+  asm volatile("" ::: "memory");
 
-  write_csr(satp, ((off_t)kernel_page_table >> 12) | SATP_MODE_MASK);
+  write_csr(satp, MAKE_SATP(kernel_page_table));
+
 
   // write_csr(satp, 0);
-	asm volatile("sfence.vma zero, zero");
+  asm volatile("sfence.vma zero, zero");
 
   // delegate all interrupts and exceptions to supervisor mode.
   write_csr(medeleg, 0xffff);
@@ -86,7 +109,7 @@ extern "C" void __init kstart(rv::xsize_t foo, rv::xsize_t dtb) {
   // enable machine-mode timer interrupts.
   write_csr(mie, read_csr(mie) | MIE_MTIE);
 
-  rv::set_tp((rv::xsize_t)&sc);
+	asm volatile("mv tp, %0" : : "r"(&sc));
 
   /* Switch to supervisor mode and jump to main() */
   asm volatile("mret");

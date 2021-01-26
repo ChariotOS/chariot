@@ -21,8 +21,6 @@
 typedef void (*func_ptr)(void);
 extern "C" func_ptr __init_array_start[0], __init_array_end[0];
 extern "C" char _kernel_end[];
-extern "C" char _bss_start[];
-extern "C" char _bss_end[];
 
 extern "C" char _stack_start[];
 extern "C" char _stack[];
@@ -31,7 +29,6 @@ volatile long count = 0;
 
 /* lowlevel.S, calls kerneltrap() */
 extern "C" void kernelvec(void);
-
 
 extern int uart_count;
 
@@ -57,7 +54,6 @@ static unsigned long riscv_high_acc_time_func(void) {
 
 void main() {
   /* Zero the BSS section */
-  for (char *c = _bss_start; c != _bss_end; c++) *c = 0;
 
   /*
    * Machine mode passes us the scratch structure through
@@ -85,10 +81,10 @@ void main() {
 
 	dtb::parse(rv::get_scratch().dtb);
 
-  // printk(KERN_DEBUG "Freeing %dMB of ram %llx:%llx\n", CONFIG_RISCV_RAM_MB, _kernel_end, PHYSTOP);
+  printk(KERN_DEBUG "Freeing %dMB of ram %llx:%llx\n", CONFIG_RISCV_RAM_MB, _kernel_end - CONFIG_KERNEL_VIRTUAL_BASE, PHYSTOP);
 
   use_kernel_vm = 1;
-  phys::free_range((void *)_kernel_end, (void *)PHYSTOP);
+  phys::free_range((void *)(_kernel_end - CONFIG_KERNEL_VIRTUAL_BASE), (void *)PHYSTOP);
 
   cpu::seginit(NULL);
 
@@ -107,6 +103,8 @@ void main() {
   KINFO("Initialized the scheduler\n");
 
   cpus[0].timekeeper = true;
+
+	while (1) {}
 
   sched::proc::create_kthread("test task", [](void *) -> int {
 

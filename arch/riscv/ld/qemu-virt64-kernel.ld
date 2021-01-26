@@ -6,8 +6,7 @@ ENTRY( _start )
 
 
 PAGE_SIZE  = 0x1000;
-/* KERNEL_VMA = CONFIG_KERNEL_VIRTUAL_BASE;*/
-KERNEL_VMA = 0;
+KERNEL_VMA = CONFIG_KERNEL_VIRTUAL_BASE;
 
 SECTIONS
 {
@@ -30,11 +29,6 @@ SECTIONS
     *(.boot.data* )
     PROVIDE(_boot_data_end = .);
 	}
-
-	/* The kernel uses a boot page table */
-	. = ALIGN(PAGE_SIZE);
-	PROVIDE(kernel_page_table = .);
-	. += PAGE_SIZE;
 
 	/* This is the boot stack */
 	. = ALIGN(PAGE_SIZE);
@@ -74,7 +68,7 @@ SECTIONS
 
   .data : AT(ADDR(.data) - KERNEL_VMA) {
     . = ALIGN(4096);
-    PROVIDE(_data_start = .);
+    PROVIDE(_data_start = . - KERNEL_VMA);
     *(.sdata .sdata.*) *(.data .data.*)
 
 		/* TODO: you don't need this. Restructure phys.cpp */
@@ -82,14 +76,14 @@ SECTIONS
 		phys_mem_scratch = .;
 		. += 0x1000;
 
-    PROVIDE(_data_end = .);
+    PROVIDE(_data_end = . - KERNEL_VMA);
   }
 
 
   .bss : AT(ADDR(.bss) - KERNEL_VMA) {
-    PROVIDE(_bss_start = .);
+    PROVIDE(_bss_start = . - KERNEL_VMA);
     *(.sbss .sbss.*) *(.bss .bss.*)
-    PROVIDE(_bss_end = .);
+    PROVIDE(_bss_end = . - KERNEL_VMA);
 	}
 
 	/* This should be aligned, but you can't be too safe */

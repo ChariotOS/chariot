@@ -35,8 +35,8 @@ config KERNEL_VIRTUAL_BASE
 	default ffff880000000000 if X86
 	# riscv
 	default 0x80000000 if SV32 && RISCV
-	default 0xffffffff80000000 if SV39 && RISCV
-	default 0xffffffff80000000 if SV48 && RISCV
+	default 0xffffffc000000000 if SV39 && RISCV
+	default 0xffff800000000000 if SV48 && RISCV
 
 	# arm64S
 	default 0xffffffff80000000 if ARM64
