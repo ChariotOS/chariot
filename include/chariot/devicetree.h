@@ -22,6 +22,46 @@ namespace dtb {
   };
 
 
+  struct reg {
+    off_t address;
+    size_t length;
+  };
+
+  struct node {
+    // name@address
+    char name[32];
+    off_t address;
+    struct dtb::node *parent;
+    char compatible[32];
+		bool is_device;
+
+    int address_cells;
+    int size_cells;
+
+		dtb::reg reg;
+
+    /* The list of children */
+    struct dtb::node *children; /* A pointer to the start of a sibling list */
+    struct dtb::node *sibling;  /* A pointer to the next sibling of the parent's children */
+    inline int get_addr_cells(void) {
+      if (address_cells != -1) return address_cells;
+      if (parent != NULL) return parent->get_addr_cells();
+      return 0;
+    }
+
+    inline int get_size_cells(void) {
+      if (size_cells != -1) return size_cells;
+      if (parent != NULL) return parent->get_size_cells();
+      return 0;
+    }
+  };
+
+
+  /* Return the number of devices nodes found */
+  int parse(dtb::fdt_header *hdr);
+	/* Walk the devices with a callback. Continue if the callback returns true */
+	void walk_devices(bool(*callback)(dtb::node *));
+
   struct device_tree {
     struct node {
       string name;

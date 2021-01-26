@@ -82,6 +82,9 @@ void main() {
 
   rv::intr_on();
 
+
+	dtb::parse(rv::get_scratch().dtb);
+
   // printk(KERN_DEBUG "Freeing %dMB of ram %llx:%llx\n", CONFIG_RISCV_RAM_MB, _kernel_end, PHYSTOP);
 
   use_kernel_vm = 1;
@@ -106,9 +109,6 @@ void main() {
   cpus[0].timekeeper = true;
 
   sched::proc::create_kthread("test task", [](void *) -> int {
-    /* static fdt, might get eaten by physical allocator. We gotta copy it asap :) */
-    dtb::device_tree dt(rv::get_scratch().dtb);
-    // dt.dump();
 
 
     KINFO("Calling kernel module init functions\n");

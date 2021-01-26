@@ -1,4 +1,7 @@
 
+#include <asmdefs.h>
+
+# start.S - Boot level functionality for ChariotOS on arm64
 
 # AArch64 mode
  
@@ -14,6 +17,22 @@
 # x3 -> 0
 # x4 -> 32 bit kernel entry point, _start location
 _start:
+		/* Disable all interrupts */
+		msr daifset, #2
+
+		/* Save the FDT pointer passed in x0 to x20 */
+		mov x20, x0
+
+		/* Disable the MMU */
+		dsb sy /* Data sync barrier */
+		mrs x2, sctlr_el1
+		bic x2, x2, #0x1
+		msr sctlr_el1, x2
+		isb /* Instruction sync barrier */
+
+
+
+
     # set stack before our code
     ldr     x5, =_start
     mov     sp, x5

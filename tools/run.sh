@@ -51,7 +51,8 @@ case $ARCH in
 
 
 	AArch64)
-		QEMU_FLAGS+="-M virt -cpu cortex-a53 -kernel build/chariot.elf -m 1024M "
+		QEMU_FLAGS+="-M virt -cpu cortex-a53 -m 1024M "
+		QEMU_FLAGS+="-kernel build/chariot.elf "
 		;;
 
 esac

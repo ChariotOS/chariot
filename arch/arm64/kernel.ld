@@ -8,7 +8,7 @@ SECTIONS
     /* Starts at LOADER_ADDR. */
     /* . = 0x80000; */
 
-  	. = 0x40010000;
+  	. = 0x40000000;
 
     __start = .;
     __text_start = .;

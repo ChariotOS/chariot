@@ -1,4 +1,4 @@
-# low.S - All low level functionality (boot and util)
+# lowlevel.S - All low level functionality (boot and util)
 # riscv64 bootloader for ChariotOS
 # Nick Wanninger
 # 29 December, 2020
