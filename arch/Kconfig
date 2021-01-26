@@ -4,11 +4,13 @@ config ARCH_NAME
 	default "i386" if X86 && !64BIT
 	default "riscv64" if RISCV && 64BIT
 	default "riscv32" if RISCV && !64BIT
+	default "aarch64" if ARM64
 
 config ARCH_DIR
 	string
 	default "x86" if X86
 	default "riscv" if RISCV
+	default "arm64" if ARM64
 
 # The root architecture configuration
 choice
@@ -35,6 +37,9 @@ config KERNEL_VIRTUAL_BASE
 	default 0x80000000 if SV32 && RISCV
 	default 0xffffffff80000000 if SV39 && RISCV
 	default 0xffffffff80000000 if SV48 && RISCV
+
+	# arm64S
+	default 0xffffffff80000000 if ARM64
 
 
 menu "x86_64 Configuration"

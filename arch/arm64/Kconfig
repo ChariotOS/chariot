@@ -11,3 +11,4 @@ config QEMU_VIRT_ARM64
 	bool "Virtual ARM64 Processor used by QEMU"
 	default n
 
+

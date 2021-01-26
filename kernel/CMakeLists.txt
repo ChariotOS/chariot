@@ -41,6 +41,8 @@ add_executable(chariot ${SOURCES})
 set_target_properties(chariot PROPERTIES OUTPUT_NAME "chariot.elf")
 # install(TARGETS chariot RUNTIME DESTINATION boot)
 
+target_link_libraries(chariot libgcc)
+
 
 macro(add_rooted_subdir dir)
 	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../${dir} ${CMAKE_CURRENT_BINARY_DIR}/kroot/${dir})

@@ -64,27 +64,61 @@ struct thread_context {
   unsigned long r11;
   unsigned long rbx;
   unsigned long rbp;  // rbp
-  unsigned long pc;  // rip;
+  unsigned long pc;   // rip;
 };
 #endif
 
 
 #ifdef CONFIG_RISCV
 struct thread_context {
-  rv::xsize_t pc; // 0
+  rv::xsize_t pc;  // 0
   // callee-saved
-  rv::xsize_t s0; // 8
-  rv::xsize_t s1; // 16
-  rv::xsize_t s2; // 24
-  rv::xsize_t s3; // 32
-  rv::xsize_t s4; // 40
-  rv::xsize_t s5; // 48
-  rv::xsize_t s6; // 56
-  rv::xsize_t s7; // 64
-  rv::xsize_t s8; // 72
-  rv::xsize_t s9; // 80
-  rv::xsize_t s10; // 88
-  rv::xsize_t s11; // 96
+  rv::xsize_t s0;   // 8
+  rv::xsize_t s1;   // 16
+  rv::xsize_t s2;   // 24
+  rv::xsize_t s3;   // 32
+  rv::xsize_t s4;   // 40
+  rv::xsize_t s5;   // 48
+  rv::xsize_t s6;   // 56
+  rv::xsize_t s7;   // 64
+  rv::xsize_t s8;   // 72
+  rv::xsize_t s9;   // 80
+  rv::xsize_t s10;  // 88
+  rv::xsize_t s11;  // 96
+};
+#endif
+
+
+#ifdef CONFIG_ARM64
+struct thread_context {
+  // svc mode registers
+  unsigned long r4;
+  unsigned long r5;
+  unsigned long r6;
+  unsigned long r7;
+  unsigned long r8;
+  unsigned long r9;
+  unsigned long r10;
+  unsigned long r11;
+  unsigned long r12;
+  unsigned long r13;
+  unsigned long r14;
+  unsigned long r15;
+  unsigned long r16;
+  unsigned long r17;
+  unsigned long r18;
+  unsigned long r19;
+  unsigned long r20;
+  unsigned long r21;
+  unsigned long r22;
+  unsigned long r23;
+  unsigned long r24;
+  unsigned long r25;
+  unsigned long r26;
+  unsigned long r27;
+  unsigned long r28;
+  unsigned long r29;
+  unsigned long pc;  // technically, this register is lr (x30), but chariot expects 
 };
 #endif
 
@@ -187,7 +221,7 @@ struct process final : public refcounted<struct process> {
   /* threads stuck in a waitpid() call */
   // semaphore waiters = semaphore(0);
 
-	wait_queue child_wq;
+  wait_queue child_wq;
 
   spinlock file_lock;
   map<int, ref<fs::file>> open_files;
@@ -310,12 +344,12 @@ struct thread final {
   spinlock joinlock;
 
 
-	/* Time spent in kernelspace */
-	long ktime_us = 0;
-	/* Time spent in userspace */
-	long utime_us = 0;
-	/* The last time that the kernel entered userspace */
-	long last_start_utime_us = 0;
+  /* Time spent in kernelspace */
+  long ktime_us = 0;
+  /* Time spent in userspace */
+  long utime_us = 0;
+  /* The last time that the kernel entered userspace */
+  long last_start_utime_us = 0;
 
   struct list_head blocked_threads;
 

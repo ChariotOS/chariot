@@ -49,6 +49,11 @@ case $ARCH in
 		# QEMU_FLAGS+="-device virtio-tablet-device -device virtio-keyboard-device -device virtio-gpu-device "
 		;;
 
+
+	AArch64)
+		QEMU_FLAGS+="-M virt -cpu cortex-a53 -kernel build/chariot.elf -m 1024M "
+		;;
+
 esac
 
 echo '======================================================================'

@@ -6,7 +6,9 @@ ENTRY(_start)
 SECTIONS
 {
     /* Starts at LOADER_ADDR. */
-    . = 0x80000;
+    /* . = 0x80000; */
+
+  	. = 0x40010000;
 
     __start = .;
     __text_start = .;
