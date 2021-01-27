@@ -230,6 +230,12 @@ virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(re
 void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
 
 
+	/*
+	 * God knows where `data` points to. It could be a virtual address that can't be
+	 * easily converted to a physical one. For this reason, we need to allocate one
+	 * that we know is physically contiguous. Just use malloc for this, as it's physically
+	 * contiguous (for now) TODO: be smart later :^)
+	 */
 	void *tmp_buf = malloc(block_size());
 
   vdisk_lock.lock();
