@@ -105,7 +105,6 @@ module_init("virtio", virtio_pci_init);
 
 
 virtio_mmio_dev::virtio_mmio_dev(volatile uint32_t *regs) : regs((uint32_t *)p2v(regs)) {
-  printk("regs: %p\n", regs);
   /* allocate 2 pages */
   pages = phys::alloc(VIO_PGCOUNT);
 
@@ -223,13 +222,20 @@ virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(re
   // tell device that feature negotiation is complete.
   status |= VIRTIO_CONFIG_S_FEATURES_OK;
   write_reg(VIRTIO_MMIO_STATUS, status);
+
+
+	
 }
 
 void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
+
+
+	void *tmp_buf = malloc(block_size());
+
   vdisk_lock.lock();
 
-  printk(KERN_INFO "read sector %d\n", sector);
 
+	if (write) memcpy(tmp_buf, data, block_size());
   // the spec's Section 5.2 says that legacy block operations use
   // three descriptors: one for type/reserved/sector, one for the
   // data, one for a 1-byte status result.
@@ -256,12 +262,12 @@ void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
   buf0->reserved = 0;
   buf0->sector = sector;
 
-  desc[idx[0]].addr = (uint64_t)buf0;
+  desc[idx[0]].addr = (uint64_t)v2p(buf0);
   desc[idx[0]].len = sizeof(virtio::blk_req);
   desc[idx[0]].flags = VRING_DESC_F_NEXT;
   desc[idx[0]].next = idx[1];
 
-  desc[idx[1]].addr = (uint64_t)data;
+  desc[idx[1]].addr = (uint64_t)v2p(tmp_buf);
   desc[idx[1]].len = 512 * n;
   if (write)
     desc[idx[1]].flags = 0;  // device reads b->data
@@ -271,13 +277,13 @@ void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
   desc[idx[1]].next = idx[2];
 
   info[idx[0]].status = 0xff;  // device writes 0 on success
-  desc[idx[2]].addr = (uint64_t)&info[idx[0]].status;
+  desc[idx[2]].addr = (uint64_t)v2p(&info[idx[0]].status);
   desc[idx[2]].len = 1;
   desc[idx[2]].flags = VRING_DESC_F_WRITE;  // device writes the status
   desc[idx[2]].next = 0;
 
   // record struct buf for virtio_disk_intr().
-  info[idx[0]].data = data;
+  info[idx[0]].data = p2v(tmp_buf);
 
   // tell the device the first index in our chain of descriptors.
   avail->ring[avail->idx % VIO_NUM_DESC] = idx[0];
@@ -310,8 +316,14 @@ void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
 
   vdisk_lock.unlock();
 
+
+	if (!write) memcpy(data, tmp_buf, block_size());
+
+	::free(tmp_buf);
+
   return;
 }
+
 
 
 
@@ -332,7 +344,7 @@ void virtio_mmio_disk::irq(void) {
     __sync_synchronize();
     int id = used->ring[used_idx % VIO_NUM_DESC].id;
 
-    if (info[id].status != 0) panic("virtio_disk_intr status");
+    if (info[id].status != 0) panic("virtio_disk_intr status: %02x", info[id].status);
 
     auto *b = &info[id];
     b->wq.wake_up_all();
@@ -357,7 +369,7 @@ size_t virtio_mmio_disk::block_size(void) { return config().blk_size; }
 
 size_t virtio_mmio_disk::block_count(void) { return config().capacity; }
 
-#define REG(off) ((volatile uint32_t *)((off_t)p2v(regs) + off))
+#define REG(off) ((volatile uint32_t *)((off_t)regs + off))
 
 
 int virtio_check_mmio_disk(volatile uint32_t *regs) {
@@ -371,7 +383,7 @@ int virtio_check_mmio_disk(volatile uint32_t *regs) {
 
 
 int virtio::check_mmio(void *addr) {
-  auto *regs = (volatile uint32_t *)addr;
+  auto *regs = (volatile uint32_t *)p2v(addr);
 
   uint32_t magic = *REG(VIRTIO_MMIO_MAGIC_VALUE);
   if (memcmp(&magic, "virt", 4) != 0) {
