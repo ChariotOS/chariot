@@ -25,24 +25,19 @@ static __initdata void *timervec_ptr = (void *)timervec;
 // extern "C" rv::xsize_t kernel_page_table[];
 
 __initdata rv::xsize_t kernel_page_table[4096 / sizeof(rv::xsize_t)] __attribute__((aligned(4096)));
-
-
-
-static void __init fill_page_table(void) {
-  int entries = 4096 / sizeof(rv::xsize_t);
-  int half = entries / 2;
-
-  for (int i = 0; i < half; i++) {
-    rv::xsize_t pa = VM_BIGGEST_PAGE * i;
-		rv::xsize_t pte = ((pa >> 12) << 10) | PT_R | PT_W | PT_X | PT_V | PT_A | PT_D;
-    kernel_page_table[i] = pte;
-    kernel_page_table[i + half] = pte | PT_G;
-  }
-}
-
-
 extern "C" char _bss_start[];
 extern "C" char _bss_end[];
+extern "C" char _stack_start[];
+extern "C" void __init mret_stackchange(rv::xsize_t sp);
+
+
+
+
+
+// core local interruptor (CLINT), which contains the timer.
+#define CLINT 0x2000000L /* Not virtual, as this is used in machine modew */
+#define CLINT_MTIMECMP(hartid) (CLINT + 0x4000 + 8 * (hartid))
+#define CLINT_MTIME (CLINT + 0xBFF8)  // cycles since boot.
 
 /*
  * kstart - C++ entrypoint in machine mode.
@@ -69,19 +64,33 @@ extern "C" void __init kstart(rv::xsize_t foo, rv::xsize_t dtb) {
   x |= MSTATUS_MPP_S;      // mstatus.MPP = S
   write_csr(mstatus, x);
 
-  /* mret to a certain routine based on hartid (0 is the main hart) */
-  write_csr(mepc, main_ptr);
 
-  fill_page_table();
+  {
+    int entries = 4096 / sizeof(rv::xsize_t);
+    int half = entries / 2;
 
-  asm volatile("" ::: "memory");
+    rv::xsize_t pa = 0;
 
-  write_csr(satp, MAKE_SATP(kernel_page_table));
+    auto start = PX(VM_PART_NUM - 1, (off_t)CONFIG_KERNEL_VIRTUAL_BASE);
 
 
-  // write_csr(satp, 0);
-  asm volatile("sfence.vma zero, zero");
+    for (int i = start; i < entries; i++) {
+      rv::xsize_t pte = ((pa >> 12) << 10) | PT_R | PT_W | PT_X | PT_V;
+      // kernel_page_table[i] = pte;
+      kernel_page_table[i] = pte | PT_G;
 
+      pa += VM_BIGGEST_PAGE;
+    }
+
+
+    asm volatile("" ::: "memory");
+
+    write_csr(satp, MAKE_SATP(kernel_page_table));
+
+
+    // write_csr(satp, 0);
+    asm volatile("sfence.vma zero, zero");
+  }
   // delegate all interrupts and exceptions to supervisor mode.
   write_csr(medeleg, 0xffff);
   write_csr(mideleg, 0xffff);
@@ -109,10 +118,16 @@ extern "C" void __init kstart(rv::xsize_t foo, rv::xsize_t dtb) {
   // enable machine-mode timer interrupts.
   write_csr(mie, read_csr(mie) | MIE_MTIE);
 
-	asm volatile("mv tp, %0" : : "r"(&sc));
+  asm volatile("mv tp, %0" : : "r"(&sc));
 
+
+  /* mret to a certain routine based on hartid (0 is the main hart) */
+  write_csr(mepc, main_ptr);
+
+
+  mret_stackchange((rv::xsize_t)p2v(&sc));
   /* Switch to supervisor mode and jump to main() */
-  asm volatile("mret");
+  // asm volatile("mret");
 }
 
 

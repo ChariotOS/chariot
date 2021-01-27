@@ -15,6 +15,7 @@
 
 class virtio_mmio_dev {
  protected:
+	 /* Virtual address of the registers */
   volatile uint32_t *regs = NULL;
   /* virtio communicates mostly through RAM, so this is the pointer to those pages */
   void *pages = NULL;

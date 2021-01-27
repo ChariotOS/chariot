@@ -45,19 +45,17 @@ u64 phys::nfree(void) { return kmem.nfree; }
 u64 phys::bytes_free(void) { return nfree() << 12; }
 
 static frame *working_addr(frame *fr) {
-	/* In x86, we have aren't 1:1 mapped (kernel is high, user is low), so we gotta
-	 * make a working address early on. On riscv, however, we don't have to worry about
-	 * that because I don't quite care about convention and the userspace gets the high
-	 * part (so the kernel can 1:1 map the physical address space)
-	 */
-#ifdef CONFIG_X86
   if (use_kernel_vm) {
     fr = (frame *)p2v(fr);
   } else {
+#ifdef CONFIG_X86
     paging::map((u64)phys_mem_scratch, (u64)fr);
     fr = (frame *)phys_mem_scratch;
-  }
+#else
+		panic("PAGING ERROR OOF\n");
 #endif
+
+  }
   return fr;
 }
 

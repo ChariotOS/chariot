@@ -36,12 +36,19 @@ _start:
 	# call into kstart in machine mode.
 	call kstart
 
+
+.global mret_stackchange
+mret_stackchange:
+	add sp, a0, zero
+	mret
+	
+
 .global timervec
 timervec:
 	csrrw a0, mscratch, a0
-	REG_S a1, 0(a0)
-	REG_S a2, 8(a0)
-	REG_S a3, 16(a0)
+	REG_S a1, ROFF(0, a0)
+	REG_S a2, ROFF(1, a0)
+	REG_S a3, ROFF(2, a0)
 
 	# schedule the next timer interrupt
 	# by adding interval to mtimecmp.
@@ -63,6 +70,8 @@ timervec:
 	mret
 
 
+
+	
 # interrupts and exceptions while in supervisor
 # mode come here.
 #

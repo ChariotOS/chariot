@@ -55,7 +55,7 @@ unsigned long arch_read_timestamp(void) {
 struct rv::scratch &rv::get_scratch(void) {
 	rv::xsize_t sscratch;
 	asm volatile("csrr %0, sscratch" : "=r"(sscratch));
-	return *(struct rv::scratch*)sscratch;
+	return *(struct rv::scratch*)p2v(sscratch);
 }
 
 /*
@@ -84,18 +84,7 @@ void cpu::seginit(void *local) {
 /* TODO */
 extern "C" void trapret(void) {}
 
-/* TODO */
-ref<mm::pagetable> mm::pagetable::create() { return nullptr; }
 
-
-
-
-/* TODO: */
-static mm::space kspace(0, 0x1000, nullptr);
-mm::space &mm::space::kernel_space(void) {
-  /* TODO: something real :) */
-  return kspace;
-}
 
 
 /*

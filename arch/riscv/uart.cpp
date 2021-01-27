@@ -1,4 +1,5 @@
 #include <arch.h>
+#include <mem.h>
 #include <console.h>
 #include <lock.h>
 #include <mem.h>
@@ -7,7 +8,7 @@
 
 /* Quick function to get a uart register */
 // #define Reg(reg) ((volatile unsigned char *)(p2v((UART0 + reg))))
-#define Reg(reg) ((volatile unsigned char *)(((UART0 + reg))))
+#define Reg(reg) ((volatile unsigned char *)((((off_t)p2v(UART0) + reg))))
 
 // the UART control registers.
 // some have different meanings for

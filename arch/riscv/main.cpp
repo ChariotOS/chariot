@@ -8,6 +8,7 @@
 #include <printk.h>
 #include <riscv/arch.h>
 #include <riscv/dis.h>
+#include <riscv/paging.h>
 #include <riscv/plic.h>
 #include <riscv/uart.h>
 #include <sleep.h>
@@ -38,9 +39,8 @@ void print_va(rv::xsize_t va, int entry_width, int count) {
   int mask = (1LLU << entry_width) - 1;
   int awidth = (entry_width * count) + 12;
   printk("0x%0*llx: ", awidth / 4, va & NBITS(awidth));
-
   for (int i = count - 1; i >= 0; i--) {
-    printk("%0*b ", entry_width, (va >> (entry_width * i + 12)) & mask);
+    printk("%3d ", (va >> (entry_width * i + 12)) & mask);
     // printk("%3d ", (va >> (entry_width * i + 12)) & mask);
   }
   printk("+ %012b\n", va & 0xFFF);
@@ -53,16 +53,15 @@ static unsigned long riscv_high_acc_time_func(void) {
 }
 
 void main() {
-  /* Zero the BSS section */
-
   /*
    * Machine mode passes us the scratch structure through
    * the thread pointer register. We need to then move it
    * to our sscratch register
    */
   struct rv::scratch *sc = (rv::scratch *)rv::get_tp();
+	/* The scratch register is a physical address. This is so the timervec doesn't have to
+	 * do any address translation or whatnot. We just pay the cost everywhere else! :^) */
   rv::set_sscratch((rv::xsize_t)sc);
-
 
   int hartid = rv::hartid();
   /* TODO: release these somehow :) */
@@ -79,9 +78,10 @@ void main() {
   rv::intr_on();
 
 
-	dtb::parse(rv::get_scratch().dtb);
+  dtb::parse((dtb::fdt_header*)p2v(rv::get_scratch().dtb));
 
-  printk(KERN_DEBUG "Freeing %dMB of ram %llx:%llx\n", CONFIG_RISCV_RAM_MB, _kernel_end - CONFIG_KERNEL_VIRTUAL_BASE, PHYSTOP);
+  printk(KERN_DEBUG "Freeing %dMB of ram %llx:%llx\n", CONFIG_RISCV_RAM_MB, _kernel_end - CONFIG_KERNEL_VIRTUAL_BASE,
+         PHYSTOP);
 
   use_kernel_vm = 1;
   phys::free_range((void *)(_kernel_end - CONFIG_KERNEL_VIRTUAL_BASE), (void *)PHYSTOP);
@@ -104,11 +104,7 @@ void main() {
 
   cpus[0].timekeeper = true;
 
-	while (1) {}
-
   sched::proc::create_kthread("test task", [](void *) -> int {
-
-
     KINFO("Calling kernel module init functions\n");
     initialize_builtin_modules();
     KINFO("kernel modules initialized\n");
@@ -128,7 +124,7 @@ void main() {
       panic("failed to mount root. Error=%d\n", -mnt_res);
     }
 
-    if (0) {
+    if (1) {
       char *buf = (char *)malloc(4096);
       for (int i = 0; i < 10; i++) {
         {

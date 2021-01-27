@@ -25,6 +25,10 @@ extern bool use_kernel_vm;
 #define v2p(addr) (void *)((off_t)(addr) & ~(off_t)CONFIG_KERNEL_VIRTUAL_BASE)
 #define p2v(addr) (void *)((off_t)(addr) | (off_t)CONFIG_KERNEL_VIRTUAL_BASE)
 
+#define USERSPACE_HIGH_ADDR ((off_t)CONFIG_KERNEL_VIRTUAL_BASE - 1)
+
+
+
 // placement new
 inline void *operator new(size_t, void *ptr) { return ptr; }
 

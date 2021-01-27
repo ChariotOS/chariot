@@ -66,7 +66,7 @@
 #define MAKE_PTE(pa, flags) (PA2PTE(pa) | (flags))
 
 // extract the three N-bit page table indices from a virtual address.
-#define PXMASK ((1llu << MV_PART_BITS) - 1)  // N bits
+#define PXMASK ((1llu << VM_PART_BITS) - 1)  // N bits
 #define PXSHIFT(level) (PGSHIFT + (VM_PART_BITS * (level)))
 #define PX(level, va) ((((rv::xsize_t)(va)) >> PXSHIFT(level)) & PXMASK)
 

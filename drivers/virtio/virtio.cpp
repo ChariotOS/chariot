@@ -104,7 +104,8 @@ module_init("virtio", virtio_pci_init);
 #endif
 
 
-virtio_mmio_dev::virtio_mmio_dev(volatile uint32_t *regs) : regs(regs) {
+virtio_mmio_dev::virtio_mmio_dev(volatile uint32_t *regs) : regs((uint32_t *)p2v(regs)) {
+  printk("regs: %p\n", regs);
   /* allocate 2 pages */
   pages = phys::alloc(VIO_PGCOUNT);
 
@@ -123,9 +124,9 @@ virtio_mmio_dev::virtio_mmio_dev(volatile uint32_t *regs) : regs(regs) {
   // desc = pages -- num * virtq_desc
   // avail = pages + 0x40 -- 2 * uint16, then num * uint16
   // used = pages + 4096 -- 2 * uint16, then num * vRingUsedElem
-  desc = (struct virtio::virtq_desc *)pages;
-  avail = (struct virtio::virtq_avail *)((off_t)pages + VIO_NUM_DESC * sizeof(virtio::virtq_desc));
-  used = (struct virtio::virtq_used *)((off_t)pages + PGSIZE);
+  desc = (struct virtio::virtq_desc *)p2v(pages);
+  avail = (struct virtio::virtq_avail *)p2v((off_t)pages + VIO_NUM_DESC * sizeof(virtio::virtq_desc));
+  used = (struct virtio::virtq_used *)p2v((off_t)pages + PGSIZE);
 
   // all NUM descriptors start out unused.
   for (int i = 0; i < VIO_NUM_DESC; i++) free[i] = 1;
@@ -222,12 +223,13 @@ virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(re
   // tell device that feature negotiation is complete.
   status |= VIRTIO_CONFIG_S_FEATURES_OK;
   write_reg(VIRTIO_MMIO_STATUS, status);
-
 }
 
 void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
   vdisk_lock.lock();
-	
+
+  printk(KERN_INFO "read sector %d\n", sector);
+
   // the spec's Section 5.2 says that legacy block operations use
   // three descriptors: one for type/reserved/sector, one for the
   // data, one for a 1-byte status result.
@@ -351,25 +353,19 @@ bool virtio_mmio_disk::write_blocks(uint32_t sector, const void *data, int nsec)
   return true;
 }
 
-size_t virtio_mmio_disk::block_size(void) {
-	return config().blk_size;
-}
+size_t virtio_mmio_disk::block_size(void) { return config().blk_size; }
 
-size_t virtio_mmio_disk::block_count(void) {
-	return config().capacity;
-}
+size_t virtio_mmio_disk::block_count(void) { return config().capacity; }
 
-#define REG(off) ((volatile uint32_t *)((off_t)regs + off))
+#define REG(off) ((volatile uint32_t *)((off_t)p2v(regs) + off))
 
 
 int virtio_check_mmio_disk(volatile uint32_t *regs) {
-  printk("\n\n");
   printk(KERN_INFO "Virtio disk at %p\n", regs);
   auto *disk = new virtio_mmio_disk(regs);
 
-	dev::register_disk(disk);
+  dev::register_disk(disk);
 
-  printk("\n\n");
   return 0;
 }
 

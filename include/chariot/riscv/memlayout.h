@@ -1,3 +1,5 @@
+#include <mem.h>
+
 #define UART0 0x10000000L
 #define UART0_IRQ 10
 
@@ -6,15 +8,11 @@
 #define VIRTIO0_IRQ 1
 
 
-// core local interruptor (CLINT), which contains the timer.
-#define CLINT 0x2000000L
-#define CLINT_MTIMECMP(hartid) (CLINT + 0x4000 + 8*(hartid))
-#define CLINT_MTIME (CLINT + 0xBFF8) // cycles since boot.
 
 #define MREG(r) (*(uint32_t*)(r))
 
 // qemu puts platform-level interrupt controller (PLIC) here.
-#define PLIC 0x0c000000L
+#define PLIC ((rv::xsize_t)p2v(0x0c000000L))
 #define PLIC_PRIORITY        MREG(PLIC + 0x0)
 #define PLIC_PENDING         MREG(PLIC + 0x1000)
 #define PLIC_MENABLE(hart)   MREG(PLIC + 0x2000 + (hart)*0x100)
