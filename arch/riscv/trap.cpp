@@ -187,45 +187,64 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
       rv::plic::complete(irq);
     }
   } else {
+		printk("exception %d\n", nr);
     switch (nr) {
       case 0:
         kernel_unhandled_trap(tf, "Instruction address misaligned");
         break;
 
       case 1:
-        kernel_unhandled_trap(tf, "Instruction access fault");
+        kernel_unhandled_trap(tf, "Instruction Access Fault");
         break;
 
       case 2:
         kernel_unhandled_trap(tf, "Illegal Instruction");
         break;
 
-      case 3:
+			case 3:
         kernel_unhandled_trap(tf, "Breakpoint");
         break;
 
-      case 4: /* Shouldn't get this.. I hope */
-        kernel_unhandled_trap(tf, "Reserved");
+			case 4:
+        kernel_unhandled_trap(tf, "Load Address Misaligned");
         break;
 
-      case 5:
-        kernel_unhandled_trap(tf, "Load access fault");
+			case 5:
+        kernel_unhandled_trap(tf, "Load Access Fault");
         break;
 
-      case 6:
-        kernel_unhandled_trap(tf, "AMO address misaligned");
+			case 6:
+        kernel_unhandled_trap(tf, "Store/AMO Address Misaligned");
         break;
 
-      case 7:
-        kernel_unhandled_trap(tf, "Store/AMO access fault");
+			case 7:
+        kernel_unhandled_trap(tf, "Store/AMO Access Fault");
         break;
 
-      case 8:
-        kernel_unhandled_trap(tf, "Environment call");
+			case 8:
+        kernel_unhandled_trap(tf, "Environment Call from U-Mode");
+        break;
+
+			case 9:
+        kernel_unhandled_trap(tf, "Environment Call from S-Mode");
+        break;
+
+
+			case 11:
+        kernel_unhandled_trap(tf, "Environment Call from M-Mode");
+        break;
+
+
+			case 12:
+        kernel_unhandled_trap(tf, "Instruction Page Fault");
+        break;
+
+			case 15:
+        kernel_unhandled_trap(tf, "Store/AMO Page Fault");
         break;
 
       default:
-        kernel_unhandled_trap(tf, ">=9 Reserved");
+        kernel_unhandled_trap(tf, "Reserved");
         break;
     }
   }

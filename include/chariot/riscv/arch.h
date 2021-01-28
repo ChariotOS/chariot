@@ -313,6 +313,11 @@ namespace rv /* risc-v namespace */ {
     asm volatile("sfence.vma zero, zero");
   }
 
+  static inline void sfence_vma(off_t va) {
+    // the zero, zero means flush all TLB entries.
+    asm volatile("sfence.vma %0" : : "r"(va) : "memory");
+  }
+
 
 
   // are device interrupts enabled?

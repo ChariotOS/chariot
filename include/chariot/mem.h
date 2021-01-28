@@ -28,6 +28,9 @@ extern bool use_kernel_vm;
 #define USERSPACE_HIGH_ADDR ((off_t)CONFIG_KERNEL_VIRTUAL_BASE - 1)
 
 
+#define Tp2v(addr) (decltype(addr))(p2v(addr))
+#define Tv2p(addr) (decltype(addr))(v2p(addr))
+
 
 // placement new
 inline void *operator new(size_t, void *ptr) { return ptr; }

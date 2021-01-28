@@ -59,8 +59,8 @@ void main() {
    * to our sscratch register
    */
   struct rv::scratch *sc = (rv::scratch *)rv::get_tp();
-	/* The scratch register is a physical address. This is so the timervec doesn't have to
-	 * do any address translation or whatnot. We just pay the cost everywhere else! :^) */
+  /* The scratch register is a physical address. This is so the timervec doesn't have to
+   * do any address translation or whatnot. We just pay the cost everywhere else! :^) */
   rv::set_sscratch((rv::xsize_t)sc);
 
   int hartid = rv::hartid();
@@ -78,7 +78,7 @@ void main() {
   rv::intr_on();
 
 
-  dtb::parse((dtb::fdt_header*)p2v(rv::get_scratch().dtb));
+  dtb::parse((dtb::fdt_header *)p2v(rv::get_scratch().dtb));
 
   printk(KERN_DEBUG "Freeing %dMB of ram %llx:%llx\n", CONFIG_RISCV_RAM_MB, _kernel_end - CONFIG_KERNEL_VIRTUAL_BASE,
          PHYSTOP);
@@ -124,7 +124,26 @@ void main() {
       panic("failed to mount root. Error=%d\n", -mnt_res);
     }
 
-    if (1) {
+
+    /* Mount /dev and /tmp */
+    vfs::mount("none", "/dev", "devfs", 0, NULL);
+    vfs::mount("none", "/tmp", "tmpfs", 0, NULL);
+
+    auto kproc = sched::proc::kproc();
+    kproc->root = fs::inode::acquire(vfs::get_root());
+    kproc->cwd = fs::inode::acquire(vfs::get_root());
+
+
+    string init_paths = "/bin/init,/init";
+    auto paths = init_paths.split(',');
+    pid_t init_pid = sched::proc::spawn_init(paths);
+    printk("init pid: %d\n", init_pid);
+
+
+
+
+
+    if (0) {
       char *buf = (char *)malloc(4096);
       for (int i = 0; i < 10; i++) {
         {
@@ -136,10 +155,10 @@ void main() {
           }
           auto res = file.read((void *)buf, 4096);
           file.seek(0, SEEK_SET);
-          printk("%db took %dms\n", res, time::now_ms() - begin);
+          printk("%db took %dms    %dB free\n", res, time::now_ms() - begin, phys::nfree() * 4096);
         }
 
-        printk("%llu reclaimed\n", block::reclaim_memory());
+        block::reclaim_memory();
       }
       free((void *)buf);
     }

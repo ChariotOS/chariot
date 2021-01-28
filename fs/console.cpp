@@ -64,7 +64,20 @@ static bool handle_special_input(char c) {
   return false;
 }
 
+
+/* Hitting f12 will enter the monitor */
+#define MONITOR_ENTRY ("\x1b\x5b\x32\x34\x7e")
+#define MON_ENTRY_SIZE (sizeof(MONITOR_ENTRY) - 1)
+
 void console::feed(size_t sz, char* buf) {
+
+	if (sz == MON_ENTRY_SIZE) {
+		if (memcmp(MONITOR_ENTRY, buf, sz) == 0) {
+			printk("monitor entry!\n");
+			return;
+		}
+	}
+
   // lock the input
   cons_input_lock.lock();
 
