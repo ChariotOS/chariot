@@ -133,7 +133,7 @@ void main() {
 
 
 
-    if (1) {
+    if (0) {
       char *buf = (char *)malloc(4096);
       for (int i = 0; i < 10; i++) {
         {

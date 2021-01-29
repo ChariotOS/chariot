@@ -42,9 +42,9 @@ case $ARCH in
 		# QEMU_FLAGS+="-bios none -kernel build/chariot.elf "
 		QEMU_FLAGS+="-bios default -device loader,file=build/chariot.elf "
 
-		# QEMU_FLAGS+="-kernel build/chariot.elf "
 		QEMU_FLAGS+="-drive file=build/chariot.img,if=none,format=raw,id=x0 "
 		QEMU_FLAGS+="-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 "
+
 		# virtio keyboard, gpu, and tablet (cursor)
 		# QEMU_FLAGS+="-device virtio-tablet-device -device virtio-keyboard-device -device virtio-gpu-device "
 		;;
