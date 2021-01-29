@@ -1,5 +1,6 @@
 #include <elf/loader.h>
 #include <errno.h>
+#include <util.h>
 #include <fs/magicfd.h>
 #include <printk.h>
 
@@ -27,15 +28,14 @@ bool elf::validate(fs::file &fd, Elf64_Ehdr &ehdr) {
     }
   }
 
-  switch (ehdr.e_machine) {
-    case EM_X86_64:
-    case EM_ARM:
-    case EM_AARCH64:
-      break;
-    default:
-      return false;
-      break;
-  }
+#ifdef CONFIG_X86
+	if (ehdr.e_machine != EM_X86_64) return false;
+#endif
+
+
+#ifdef CONFIG_RISCV
+	if (ehdr.e_machine != EM_RISCV) return false;
+#endif
 
   return true;
 }
