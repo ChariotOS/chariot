@@ -177,42 +177,24 @@ void thread::setup_stack(reg_t *tf) {
   // align the stack to 16 bytes. (this is what intel wants, so it what I
   // will give them)
   arch_reg(REG_SP, tf) = sp & ~0xF;
+#ifdef CONFIG_X86
   tf[1] = argc;
   tf[2] = (unsigned long)argv;
   tf[3] = (unsigned long)envp;
+#endif
+
+#ifdef CONFIG_RISCV
+	rv::regs *regs = (rv::regs*)tf;
+	regs->a0 = argc;
+  regs->a1 = (unsigned long)argv;
+  regs->a2 = (unsigned long)envp;
+#endif
 }
 
 
 
 static void thread_create_callback(void *) {
-  auto thd = curthd;
-
-  auto tf = thd->trap_frame;
-
-
-  if (thd->proc.ring == RING_KERN) {
-    using fn_t = int (*)(void *);
-    auto fn = (fn_t)arch_reg(REG_PC, tf);
-    arch_enable_ints();
-    // run the kernel thread
-    int res = fn(NULL);
-    // exit the thread with the return code of the func
-    sys::exit_thread(res);
-  } else {
-    if (time::stabilized()) {
-      thd->last_start_utime_us = time::now_us();
-    }
-    if (thd->pid == thd->tid) {
-      thd->setup_stack((reg_t *)tf);
-    }
-    arch_enable_ints();
-
-    return;
-  }
-
-  sys::exit_proc(-1);
-  while (1) {
-  }
+	arch_thread_create_callback();
 }
 
 struct thread *thread::lookup(pid_t tid) {

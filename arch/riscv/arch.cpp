@@ -2,6 +2,54 @@
 #include <cpu.h>
 #include <riscv/arch.h>
 #include <riscv/plic.h>
+#include <time.h>
+#include <syscall.h>
+#include <util.h>
+#include <riscv/dis.h>
+
+extern "C" void rv_enter_userspace(rv::regs *sp);
+
+void arch_thread_create_callback() {
+  auto thd = curthd;
+
+  auto tf = thd->trap_frame;
+
+  if (thd->proc.ring == RING_KERN) {
+    using fn_t = int (*)(void *);
+    auto fn = (fn_t)arch_reg(REG_PC, tf);
+    arch_enable_ints();
+    // run the kernel thread
+    int res = fn(NULL);
+    // exit the thread with the return code of the func
+    sys::exit_thread(res);
+  } else {
+    if (time::stabilized()) {
+      thd->last_start_utime_us = time::now_us();
+    }
+		auto *regs = (rv::regs *)tf;
+    arch_enable_ints();
+
+    if (thd->pid == thd->tid) {
+      thd->setup_stack((reg_t *)tf);
+    }
+
+
+		printk("ra=%p, sp=%p\n", arch_reg(REG_PC, tf), arch_reg(REG_SP, tf));
+		hexdump(regs, sizeof(*regs), true);
+
+		regs->sepc = arch_reg(REG_PC, tf);
+		rv_enter_userspace(regs);
+		
+		/* Jump into userspace :) */
+    return;
+  }
+
+  sys::exit_proc(-1);
+  while (1) {
+  }
+}
+
+
 
 void arch_disable_ints(void) {
 	rv::intr_off();
@@ -67,7 +115,10 @@ struct processor_state &cpu::current(void) {
 }
 
 
-void cpu::switch_vm(struct thread *thd) { /* TODO: nothin' */ }
+void cpu::switch_vm(struct thread *thd) {
+	// printk("switch_vm to %d %d\n", thd->pid, thd->tid);
+	thd->proc.mm->switch_to();
+}
 
 void cpu::seginit(void *local) {
 	auto &sc = rv::get_scratch();
