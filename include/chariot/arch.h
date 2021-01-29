@@ -109,6 +109,8 @@ unsigned long arch_read_timestamp(void);
 /* get the current second since boot time */
 unsigned long arch_seconds_since_boot(void);
 
+void arch_thread_create_callback();
+
 void serial_install();
 int serial_rcvd(int device);
 char serial_recv(int device);

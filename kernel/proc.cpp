@@ -33,12 +33,7 @@ pid_t get_next_pid(void) {
 }
 
 mm::space *alloc_user_vm(void) {
-#ifdef CONFIG_64BIT
   return new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create());
-#else
-  panic("Need 32bit mm::space user vm\n");
-  return nullptr;
-#endif
 }
 
 static process::ptr pid_lookup(pid_t pid) {
@@ -196,6 +191,7 @@ pid_t sched::proc::spawn_init(vec<string> &paths) {
     argv.push(path);
 
     int res = proc.exec(path, argv, envp);
+		printk("exec '%s' res: %d\n", path.get(), res);
     if (res == 0) return pid;
   }
 
@@ -673,10 +669,10 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
   int result = -EINVAL;
 
   while (1) {
-		/*
-		 * "Allocate" one of these on each go around on this, so
-		 * it gets destructed when breaking or continuing
-		 */
+    /*
+     * "Allocate" one of these on each go around on this, so
+     * it gets destructed when breaking or continuing
+     */
     struct wait_entry ent;
 
     dumb_waitpid_lock.lock();
