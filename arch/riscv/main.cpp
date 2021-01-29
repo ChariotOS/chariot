@@ -73,6 +73,7 @@ void main() {
 
   rv::uart_init();
 
+  /* Set the supervisor trap vector location */
   write_csr(stvec, kernelvec);
 
   rv::intr_on();
@@ -89,12 +90,14 @@ void main() {
   cpu::seginit(NULL);
 
   /* Now that we have a memory allocator, call global constructors */
-  for (func_ptr *func = __init_array_start; func != __init_array_end; func++) {
-    (*func)();
-  }
+  for (func_ptr *func = __init_array_start; func != __init_array_end; func++) (*func)();
 
   time::set_cps(CONFIG_RISCV_CLOCKS_PER_SECOND);
   time::set_high_accuracy_time_fn(riscv_high_acc_time_func);
+  /* set SUM bit in sstatus so kernel can access userspace pages */
+  write_csr(sstatus, read_csr(sstatus) | (1 << 18));
+
+  cpus[0].timekeeper = true;
 
 
 
@@ -102,10 +105,10 @@ void main() {
   assert(sched::init());
   KINFO("Initialized the scheduler\n");
 
-  cpus[0].timekeeper = true;
 
   sched::proc::create_kthread("test task", [](void *) -> int {
     KINFO("Calling kernel module init functions\n");
+    printk("ints enabled: %d\n", rv::intr_enabled());
     initialize_builtin_modules();
     KINFO("kernel modules initialized\n");
 
@@ -124,26 +127,13 @@ void main() {
       panic("failed to mount root. Error=%d\n", -mnt_res);
     }
 
-
     /* Mount /dev and /tmp */
     vfs::mount("none", "/dev", "devfs", 0, NULL);
     vfs::mount("none", "/tmp", "tmpfs", 0, NULL);
 
-    auto kproc = sched::proc::kproc();
-    kproc->root = fs::inode::acquire(vfs::get_root());
-    kproc->cwd = fs::inode::acquire(vfs::get_root());
 
 
-    string init_paths = "/bin/init,/init";
-    auto paths = init_paths.split(',');
-    pid_t init_pid = sched::proc::spawn_init(paths);
-    printk("init pid: %d\n", init_pid);
-
-
-
-
-
-    if (0) {
+    if (1) {
       char *buf = (char *)malloc(4096);
       for (int i = 0; i < 10; i++) {
         {
@@ -164,13 +154,17 @@ void main() {
     }
 
 
-    auto begin = time::now_ms();
-    while (1) {
-      // printk("us: %llu\n", time::now_us() - begin);
+    auto kproc = sched::proc::kproc();
+    kproc->root = fs::inode::acquire(vfs::get_root());
+    kproc->cwd = fs::inode::acquire(vfs::get_root());
 
-      begin = time::now_us();
-      do_usleep(1000 * 100);
-    }
+    string init_paths = "/bin/init,/init";
+    auto paths = init_paths.split(',');
+    pid_t init_pid = sched::proc::spawn_init(paths);
+    printk("init pid: %d\n", init_pid);
+
+    while (1) arch_halt();
+
     return 0;
   });
 
@@ -178,8 +172,6 @@ void main() {
   KINFO("starting scheduler\n");
   sched::run();
 
-  while (1) {
-    arch_halt();
-  }
+  while (1) arch_halt();
 }
 

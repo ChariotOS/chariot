@@ -42,6 +42,7 @@ void arch_dump_backtrace(void) { /* Nothing here for now... */
 
 
 
+
 static void print_readable_reg(const char *name, rv::xsize_t value) {
   printk("%4s: ", name);
 
@@ -111,7 +112,7 @@ static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
     printk("% *d ", VM_PART_BITS, (bad_addr >> (VM_PART_BITS * i + 12)) & mask);
   }
   printk("+ %12d", bad_addr & 0xFFF);
-	printk(" max va: %p\n",  MAXVA);
+  printk(" max va: %p\n", MAXVA);
 
   printk(KERN_ERROR);
   print_readable_reg("val", read_csr(stval));
@@ -136,6 +137,34 @@ static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
   if (p != 0) printk("\n");
 
   panic("Halting hart!\n");
+}
+
+
+static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
+  auto addr = read_csr(sbadaddr);
+  auto page = addr >> 12;
+
+  // Now that we have the addr, we can re-enable interrupts
+	// (further irqs might corrupt the csr)
+  arch_enable_ints();
+
+  printk("%s addr %p from pc:%p\n", type_name, addr, tf.sepc);
+
+
+  auto proc = curproc;
+  if (curproc == NULL) {
+    KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf.sepc, addr);
+    // arch_dump_backtrace();
+    // lookup the kernel proc if we aren't in one!
+    proc = sched::proc::kproc();
+  }
+
+  int res = proc->mm->pagefault(addr, err);
+
+  if (res == -1) {
+    printk("dead\n");
+    sched::dispatch_signal(SIGSEGV);
+  }
 }
 
 
@@ -187,7 +216,6 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
       rv::plic::complete(irq);
     }
   } else {
-		printk("exception %d\n", nr);
     switch (nr) {
       case 0:
         kernel_unhandled_trap(tf, "Instruction address misaligned");
@@ -201,46 +229,50 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
         kernel_unhandled_trap(tf, "Illegal Instruction");
         break;
 
-			case 3:
+      case 3:
         kernel_unhandled_trap(tf, "Breakpoint");
         break;
 
-			case 4:
+      case 4:
         kernel_unhandled_trap(tf, "Load Address Misaligned");
         break;
 
-			case 5:
+      case 5:
         kernel_unhandled_trap(tf, "Load Access Fault");
         break;
 
-			case 6:
+      case 6:
         kernel_unhandled_trap(tf, "Store/AMO Address Misaligned");
         break;
 
-			case 7:
+      case 7:
         kernel_unhandled_trap(tf, "Store/AMO Access Fault");
         break;
 
-			case 8:
+      case 8:
         kernel_unhandled_trap(tf, "Environment Call from U-Mode");
         break;
 
-			case 9:
+      case 9:
         kernel_unhandled_trap(tf, "Environment Call from S-Mode");
         break;
 
 
-			case 11:
+      case 11:
         kernel_unhandled_trap(tf, "Environment Call from M-Mode");
         break;
 
 
-			case 12:
-        kernel_unhandled_trap(tf, "Instruction Page Fault");
+      case 12:
+        pgfault_trap(tf, "Instruction Page Fault", FAULT_EXEC);
         break;
 
-			case 15:
-        kernel_unhandled_trap(tf, "Store/AMO Page Fault");
+      case 13:
+        pgfault_trap(tf, "Load Page Fault", FAULT_READ);
+        break;
+
+      case 15:
+        pgfault_trap(tf, "Store/AMO Page Fault", FAULT_WRITE);
         break;
 
       default:

@@ -124,6 +124,9 @@ ENTRY(kernelvec)
 	mv a0, sp
 	call kernel_trap
 
+
+trapreturn:
+
 	# read sepc from the stack now, as we need a0 to be restored
 	REG_L a0, ROFF(31, sp)
 	csrw sepc, a0
@@ -167,6 +170,12 @@ ENTRY(kernelvec)
 	sret
 
 END(kernelvec)
+
+
+ENTRY(rv_enter_userspace)
+	move sp, a0
+	j trapreturn
+END(rv_enter_userspace)
 
 # TODO: 32 vs 64bit :)
 ENTRY(context_switch)
