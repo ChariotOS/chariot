@@ -175,7 +175,10 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
   rv::xsize_t sstatus = read_csr(sstatus);
   rv::xsize_t scause = read_csr(scause);
 
-  if ((sstatus & SSTATUS_SPP) == 0) panic("kerneltrap: not from supervisor mode");
+  if ((sstatus & SSTATUS_SPP) == 0) {
+
+		// printk("kerneltrap: not from supervisor mode: pc=%p", tf.sepc);
+	}
   if (rv::intr_enabled() != 0) panic("kerneltrap: interrupts enabled");
 
 
