@@ -174,6 +174,7 @@ void thread::setup_stack(reg_t *tf) {
 
   envp[envc] = NULL;
 
+
   // align the stack to 16 bytes. (this is what intel wants, so it what I
   // will give them)
   arch_reg(REG_SP, tf) = sp & ~0xF;

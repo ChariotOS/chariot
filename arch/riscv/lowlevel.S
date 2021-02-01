@@ -174,7 +174,48 @@ END(kernelvec)
 
 ENTRY(rv_enter_userspace)
 	move sp, a0
-	j trapreturn
+	REG_L a0, ROFF(31, sp)
+	csrw sepc, a0
+
+	# restore registers.
+	REG_L ra, ROFF(0, sp)
+	REG_L gp, ROFF(2, sp)
+	# REG_S tp, ROFF(3, sp) ;; not this!
+	REG_L t0, ROFF(4, sp)
+	REG_L t1, ROFF(5, sp)
+	REG_L t2, ROFF(6, sp)
+	REG_L s0, ROFF(7, sp)
+	REG_L s1, ROFF(8, sp)
+	REG_L a0, ROFF(9, sp)
+	REG_L a1, ROFF(10,sp)
+	REG_L a2, ROFF(11, sp)
+	REG_L a3, ROFF(12, sp)
+	REG_L a4, ROFF(13, sp)
+	REG_L a5, ROFF(14, sp)
+	REG_L a6, ROFF(15, sp)
+	REG_L a7, ROFF(16, sp)
+	REG_L s2, ROFF(17, sp)
+	REG_L s3, ROFF(18, sp)
+	REG_L s4, ROFF(19, sp)
+	REG_L s5, ROFF(20, sp)
+	REG_L s6, ROFF(21, sp)
+	REG_L s7, ROFF(22, sp)
+	REG_L s8, ROFF(23, sp)
+	REG_L s9, ROFF(24, sp)
+	REG_L s10, ROFF(25, sp)
+	REG_L s11, ROFF(26, sp)
+	REG_L t3, ROFF(27, sp)
+	REG_L t4, ROFF(28, sp)
+	REG_L t5, ROFF(29, sp)
+	REG_L t6, ROFF(30, sp)
+
+
+	/* grab the starting stack pointer at the end :) */
+	REG_L sp, ROFF(1, sp)
+
+	sret
+
+
 END(rv_enter_userspace)
 
 # TODO: 32 vs 64bit :)
