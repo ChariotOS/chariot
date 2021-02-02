@@ -12,7 +12,7 @@ enum http_method { GET };
 
 int main(int argc, char **argv) {
   http_method method = GET;
-  char ch;
+  int ch;
   const char *flags = "";
   while ((ch = getopt(argc, argv, flags)) != -1) {
     switch (ch) {

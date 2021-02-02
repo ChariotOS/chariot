@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
 
   buf = mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 
-  char ch;
+  int ch;
   const char *flags = "lwcf";
   while ((ch = getopt(argc, argv, flags)) != -1) {
     switch (ch) {

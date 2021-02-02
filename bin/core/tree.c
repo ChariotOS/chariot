@@ -109,7 +109,7 @@ void usage(void) {
 int main(int argc, char *argv[]) {
   int ftw_flags = 0;
 
-  char ch;
+  int ch;
 
   const char *flags = "L:qhH";
   while ((ch = getopt(argc, argv, flags)) != -1) {

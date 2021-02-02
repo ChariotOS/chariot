@@ -232,6 +232,9 @@ pid_t spawn(const char *command) {
   return pid;
 }
 
+
+
+
 int main(int argc, char **argv) {
   // open up file descriptor 1, 2, and 3
   for (int i = 0; i < 3; i++) close(i);
@@ -249,15 +252,16 @@ sigprocmask(SIG_SETMASK, &set, NULL);
   */
 
 
-#if 1
+
+#if 0
   for (int i = 0; 1; i++) {
     auto start = sysbind_gettime_microsecond();
-    int pid = fork();
+    int pid = 0;
+    pid = fork();
     if (pid == 0) exit(-1);
     waitpid(pid, NULL, 0);
     printf("pid=%6d  took %lluus\n", pid, sysbind_gettime_microsecond() - start);
   }
-  printf("Done!\n");
 
 #endif
 
@@ -278,25 +282,7 @@ sigprocmask(SIG_SETMASK, &set, NULL);
 
 #endif
 
-  /*
-  int count = 0;
-while (1) {
-
-int pid = fork();
-if (pid == 0) {
-                  usleep(1000 * 1000);
-                  // printf("fork: %d %d\n", getpid(), gettid());
-exit(-1);
-}
-int stat;
-waitpid(pid, &stat, 0);
-          printf("%d\n", count++);
-}
-  */
-
   spawn("/bin/sh");
-
-
 
   while (1) {
     pid_t reaped = waitpid(-1, NULL, 0);

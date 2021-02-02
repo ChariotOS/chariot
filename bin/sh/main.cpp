@@ -440,7 +440,7 @@ int run_line(ck::string line, int flags = 0) {
     do waitpid(pid, &res, 0);
     while (errno == EINTR);
 
-    printf("root res = %d\n", res);
+    // printf("root res = %d\n", res);
   } else {
     /* Don't fork */
     cmd->exec();
@@ -507,7 +507,7 @@ int run_line(ck::string line, int flags = 0) {
 void lispy_thing(ck::string &command);
 
 int main(int argc, char **argv, char **envp) {
-  char ch;
+  int ch;
   const char *flags = "c:";
   while ((ch = getopt(argc, argv, flags)) != -1) {
     switch (ch) {

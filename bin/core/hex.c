@@ -142,7 +142,7 @@ void usage(void) {
 }
 
 int main(int argc, char **argv) {
-  char ch;
+  int ch;
 
   while ((ch = getopt(argc, argv, flags)) != -1) {
     switch (ch) {

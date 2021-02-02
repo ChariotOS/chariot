@@ -343,7 +343,7 @@ int do_ls(char *path, long flags) {
 }
 
 int main(int argc, char **argv) {
-  char ch;
+  int ch;
 
   long todo = 0;
 
