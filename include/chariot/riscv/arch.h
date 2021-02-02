@@ -46,8 +46,7 @@ namespace rv /* risc-v namespace */ {
     return x;
   }
 
-
-  struct scratch {
+  struct hart_state {
 		// offset 0
 		rv::xsize_t bak1;
 		// offset 1
@@ -59,7 +58,9 @@ namespace rv /* risc-v namespace */ {
 		// offset 4
     rv::xsize_t interval; /* Timer interval */
 		// offset 5
-		rv::xsize_t kernel_stack;
+		rv::xsize_t kernel_sp;
+		// offset 6
+		rv::xsize_t user_sp;
 
     int hartid;
     struct dtb::fdt_header *dtb; /* Device tree binary */
@@ -69,9 +70,9 @@ namespace rv /* risc-v namespace */ {
 
 
   /* Get the current scratch pointer on this hart */
-  struct scratch &get_scratch(void);
+	rv::hart_state &get_hstate(void);
 
-  static inline auto hartid(void) { return rv::get_scratch().hartid; }
+  static inline auto hartid(void) { return rv::get_hstate().hartid; }
 
 
   struct regs {
@@ -108,7 +109,11 @@ namespace rv /* risc-v namespace */ {
     rv::xsize_t t6;
 
 		/* Exception PC */
-		rv::xsize_t sepc;
+		rv::xsize_t sepc; /* 31 */
+		rv::xsize_t status; /* 32 */
+		rv::xsize_t tval; /* 33 */
+		rv::xsize_t cause; /* 34 */
+		rv::xsize_t scratch;  /* 35 */
     /* Missing floating point registers in the kernel trap frame */
   };
 

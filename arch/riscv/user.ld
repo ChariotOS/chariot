@@ -66,6 +66,10 @@ SECTIONS
 	}
 
 
+
+	/* . += 4096; */
+
+
 	.tdata      : { *(.tdata .tdata.* .gnu.linkonce.td.*) }
 	.tbss       : { *(.tbss .tbss.* .gnu.linkonce.tb.*) *(.tcommon) }
 
@@ -74,8 +78,8 @@ SECTIONS
 
 
 	.rodata ALIGN(4K) : {
-        *(.rodata)
-    }
+  	*(.rodata)
+  }
 
 
 	.preinit_array     :

@@ -123,6 +123,8 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
   pte.prot = r.prot;
 
 
+
+  bool display = false; //r.name == "[stack]";
   // the page index within the region
   auto ind = (uaddr >> 12) - (r.va >> 12);
 
@@ -162,6 +164,7 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
   // If the fault was due to a write, and this region
   // is writable, handle COW if needed
   if ((err & FAULT_WRITE) && (r.prot & PROT_WRITE)) {
+    // printk(KERN_WARN "[pid=%d] WOW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(), uaddr);
     pte.prot = r.prot;
 
     if (r.flags & MAP_SHARED) {
@@ -174,11 +177,13 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
 
       if (old_page->users > 1 || r.fd) {
         auto np = mm::page::alloc();
-        // printk(KERN_WARN "[pid=%d]    COW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(), uaddr);
+        if (display) printk(KERN_WARN "[pid=%d] COW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(), uaddr);
         np->users = 1;
         old_page->users--;
         memcpy(p2v(np->pa), p2v(old_page->pa), PGSIZE);
         r.pages[ind] = np;
+      } else {
+        if (display) printk(KERN_WARN "[pid=%d] OWN [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(), uaddr);
       }
 
       spinlock::unlock(old_page->lock);
@@ -186,7 +191,7 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
   }
 
   if (do_map) {
-    // printk("[%3d] map %p to %p\n", curproc->pid, uaddr & ~0xFFF, r.pages[ind]->pa);
+    if (display) printk(KERN_WARN "[pid=%d] map %p to %p\n", curproc->pid, uaddr & ~0xFFF, r.pages[ind]->pa);
     pte.ppn = r.pages[ind]->pa >> 12;
     auto va = (r.va + (ind << 12));
     pt->add_mapping(va, pte);
@@ -217,8 +222,7 @@ size_t mm::space::memory_usage(void) {
 
   return s;
 }
-
-
+#define DO_COW
 
 mm::space *mm::space::fork(void) {
   auto npt = mm::pagetable::create();
@@ -228,6 +232,7 @@ mm::space *mm::space::fork(void) {
 
 
   for (auto &r : regions) {
+    // printk(KERN_WARN "[pid=%d] fork %s\n", curproc->pid, r->name.get());
     auto copy = new mm::area;
     copy->name = r->name;
     copy->va = r->va;
@@ -241,9 +246,13 @@ mm::space *mm::space::fork(void) {
       copy->obj = r->obj;
       r->obj->acquire();
     }
+		// printk("prot: %b, flags: %b\n", r->prot, r->flags);
 
+    int i = 0;
     for (auto &p : r->pages) {
+      i++;
       if (p) {
+      	// printk(KERN_WARN "[pid=%d]       page %d: %p\n", curproc->pid, i, p->pa);
         spinlock::lock(p->lock);
         p->users++;
         copy->pages.push(p);
@@ -263,6 +272,7 @@ mm::space *mm::space::fork(void) {
         // for copy on write
         pte.prot = r->prot & ~PROT_WRITE;
         pt->add_mapping(r->va + (i * 4096), pte);
+        n->pt->add_mapping(r->va + (i * 4096), pte);
       }
     }
 

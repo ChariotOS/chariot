@@ -160,11 +160,11 @@ namespace mm {
   };
 
   class space {
+   public:
     ref<mm::pagetable> pt;
 
     off_t lo, hi;
 
-   public:
     space(off_t lo, off_t hi, ref<mm::pagetable>);
     ~space(void);
 

@@ -193,7 +193,6 @@ pid_t sched::proc::spawn_init(vec<string> &paths) {
     argv.push(path);
 
     int res = proc.exec(path, argv, envp);
-    printk("exec '%s' res: %d\n", path.get(), res);
     if (res == 0) return pid;
   }
 
@@ -781,19 +780,27 @@ int sys::prctl(int option, unsigned long a1, unsigned long a2, unsigned long a3,
 
 #ifdef CONFIG_RISCV
 extern "C" void rv_enter_userspace(rv::regs *sp);
-#endif
 
-static void trap_return(void) {
-#ifdef CONFIG_RISCV
-
+static void rv_fork_return(void) {
   auto thd = curthd;
+  cpu::switch_vm(thd);
   auto tf = thd->trap_frame;
   auto *regs = (rv::regs *)tf;
-  arch_enable_ints();
+  /* return value is zero */
+  regs->a0 = 0;
 
-  write_csr(sstatus, read_csr(sstatus) & ~SSTATUS_SPP);
-  regs->sepc = arch_reg(REG_PC, tf);
+  regs->status = read_csr(sstatus) & ~SSTATUS_SPP;
+
+  arch_enable_ints();
+  // printk(KERN_INFO "entering pid %d\n", thd->pid);
   rv_enter_userspace(regs);
+}
+#endif
+
+
+static void fork_return(void) {
+#ifdef CONFIG_RISCV
+  rv_fork_return();
 #endif
   return;
 }
@@ -804,10 +811,9 @@ extern "C" void trapreturn(void);
 
 static pid_t do_fork(struct process &p) {
   auto np = sched::proc::spawn_process(&p, SPAWN_FORK);
-  sched::yield();
 
   /* TLB Flush */
-  arch_flush_mmu();
+  // arch_flush_mmu();
   int new_pid = np->pid;
 
   np->embryonic = false;
@@ -818,24 +824,20 @@ static pid_t do_fork(struct process &p) {
 
   // copy the trapframe
   memcpy(new_td->trap_frame, old_td->trap_frame, arch_trapframe_size());
-#ifdef CONFIG_RISCV
-  /* Return value for child is zero */
-  ((rv::regs *)new_td->trap_frame)->a0 = 0;
-#else
+
+#ifdef CONFIG_X86
   new_td->trap_frame[0] = 0;  // return value for child is 0
 #endif
-
 
   // copy floating point
   memcpy(new_td->fpu.state, old_td->fpu.state, 4096);
   new_td->fpu.initialized = old_td->fpu.initialized;
 
-  // go to the trap_return function instead of whatever it was gonna do otherwise
-  new_td->kern_context->pc = (u64)trap_return;
+  // go to the fork_return function instead of whatever it was gonna do otherwise
+  new_td->kern_context->pc = (u64)fork_return;
 
   new_td->state = PS_RUNNING;
   sched::add_task(new_td);
-
 
   // return the child pid to the parent
   return new_pid;

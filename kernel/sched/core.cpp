@@ -84,6 +84,10 @@ static void switch_into(struct thread &thd) {
 
   arch_save_fpu(thd);
 
+	if (thd.proc.ring == RING_USER) {
+		// printk_nolock("exiting pid=%d, tid=%d, state=%d\n", thd.pid, thd.tid, thd.state);
+	}
+	ts = time::stabilized();
 	if (ts) {
 		thd.ktime_us += time::now_us() - start_us;
 	}

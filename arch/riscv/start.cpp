@@ -54,9 +54,9 @@ extern "C" void __init kstart(rv::xsize_t foo, rv::xsize_t dtb) {
 
   for (char *c = _bss_start; c != _bss_end; c++) *c = 0;
 
-  struct rv::scratch sc;
-  sc.hartid = id;
-  sc.dtb = (dtb::fdt_header *)dtb;
+  struct rv::hart_state hs;
+  hs.hartid = id;
+  hs.dtb = (dtb::fdt_header *)dtb;
 
   /* set M "previous privilege mode" to supervisor in mstatus, for mret */
   auto x = read_csr(mstatus);
@@ -105,9 +105,9 @@ extern "C" void __init kstart(rv::xsize_t foo, rv::xsize_t dtb) {
   // scratch[0..2] : space for timervec to save registers.
   // scratch[3] : address of CLINT MTIMECMP register.
   // scratch[4] : desired interval (in cycles) between timer interrupts.
-  sc.tca = CLINT_MTIMECMP(id);
-  sc.interval = interval;
-  write_csr(mscratch, &sc);
+  hs.tca = CLINT_MTIMECMP(id);
+  hs.interval = interval;
+  write_csr(mscratch, &hs);
 
   // set the machine-mode trap handler.
   write_csr(mtvec, timervec_ptr);
@@ -118,14 +118,14 @@ extern "C" void __init kstart(rv::xsize_t foo, rv::xsize_t dtb) {
   // enable machine-mode timer interrupts.
   write_csr(mie, read_csr(mie) | MIE_MTIE);
 
-  asm volatile("mv tp, %0" : : "r"(&sc));
+  asm volatile("mv tp, %0" : : "r"(&hs));
 
 
   /* mret to a certain routine based on hartid (0 is the main hart) */
   write_csr(mepc, main_ptr);
 
 
-  mret_stackchange((rv::xsize_t)p2v(&sc));
+  mret_stackchange((rv::xsize_t)p2v(&hs));
   /* Switch to supervisor mode and jump to main() */
   // asm volatile("mret");
 }

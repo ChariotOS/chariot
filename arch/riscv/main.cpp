@@ -56,14 +56,16 @@ void main() {
   /*
    * Machine mode passes us the scratch structure through
    * the thread pointer register. We need to then move it
-   * to our sscratch register
+   * to our sscratch register after copying it
    */
-  struct rv::scratch *sc = (rv::scratch *)rv::get_tp();
+  struct rv::hart_state *sc = (rv::hart_state *)p2v(rv::get_tp());
+
+
   /* The scratch register is a physical address. This is so the timervec doesn't have to
    * do any address translation or whatnot. We just pay the cost everywhere else! :^) */
-  rv::set_sscratch((rv::xsize_t)p2v(sc));
+  rv::set_tp((rv::xsize_t)p2v(sc));
 
-	rv::get_scratch().kernel_stack = 0;
+  rv::get_hstate().kernel_sp = 0;
 
   int hartid = rv::hartid();
   /* TODO: release these somehow :) */
@@ -81,7 +83,7 @@ void main() {
   rv::intr_on();
 
 
-  dtb::parse((dtb::fdt_header *)p2v(rv::get_scratch().dtb));
+  dtb::parse((dtb::fdt_header *)p2v(rv::get_hstate().dtb));
 
   printk(KERN_DEBUG "Freeing %dMB of ram %llx:%llx\n", CONFIG_RISCV_RAM_MB, _kernel_end - CONFIG_KERNEL_VIRTUAL_BASE,
          PHYSTOP);
@@ -108,7 +110,7 @@ void main() {
   KINFO("Initialized the scheduler\n");
 
 
-  sched::proc::create_kthread("test task", [](void *) -> int {
+  sched::proc::create_kthread("main task", [](void *) -> int {
     KINFO("Calling kernel module init functions\n");
     printk("ints enabled: %d\n", rv::intr_enabled());
     initialize_builtin_modules();
@@ -124,6 +126,10 @@ void main() {
     virtio::check_mmio(0x10007000);
     virtio::check_mmio(0x10008000);
 
+
+    // printk("waiting!\n");
+    // do_usleep(1000 * 1000);
+
     int mnt_res = vfs::mount("/dev/disk0p1", "/", "ext2", 0, NULL);
     if (mnt_res != 0) {
       panic("failed to mount root. Error=%d\n", -mnt_res);
@@ -134,6 +140,23 @@ void main() {
     vfs::mount("none", "/tmp", "tmpfs", 0, NULL);
 
 
+#if 0
+    sched::proc::create_kthread("test task 1", [](void *) -> int {
+      while (1) {
+        printk_nolock("#");
+      }
+    });
+    sched::proc::create_kthread("test task 2", [](void *) -> int {
+      while (1) {
+        printk_nolock(" ");
+      }
+    });
+
+    while (1) {
+			do_usleep(1000);
+      sched::yield();
+    }
+#endif
 
     if (0) {
       char *buf = (char *)malloc(4096);

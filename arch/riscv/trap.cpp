@@ -81,9 +81,9 @@ static void print_readable_reg(const char *name, rv::xsize_t value) {
 #define NBITS(N) ((1LL << (N)) - 1)
 
 static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
-  rv::xsize_t bad_addr = read_csr(sbadaddr);
-  printk(KERN_ERROR "Unhandled trap '%s' on HART#%d\n", type, rv::hartid());
-  printk(KERN_ERROR);
+  rv::xsize_t bad_addr = tf.tval;
+	printk("===========================================================================================\n");
+  printk("Unhandled trap '%s' on HART#%d\n", type, rv::hartid());
   print_readable_reg("SEPC", tf.sepc);
   printk(", ");
   print_readable_reg("Bad Address", bad_addr);
@@ -92,10 +92,7 @@ static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
   printk("\n");
 
 
-
-
   /* Print the VM walk of the address */
-  printk(KERN_ERROR);
   printk(" VM walk (b): ");
   int mask = (1LLU << VM_PART_BITS) - 1;
   int awidth = (VM_PART_BITS * VM_PART_NUM) + 12;
@@ -106,24 +103,20 @@ static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
   printk("\n");
 
 
-  printk(KERN_ERROR);
   printk("         (d): ");
   for (int i = VM_PART_NUM - 1; i >= 0; i--) {
     printk("% *d ", VM_PART_BITS, (bad_addr >> (VM_PART_BITS * i + 12)) & mask);
   }
   printk("+ %12d", bad_addr & 0xFFF);
-  printk(" max va: %p\n", MAXVA);
+  printk("\n");
 
-  printk(KERN_ERROR);
-  print_readable_reg("val", read_csr(stval));
+  print_readable_reg("val", tf.tval);
   printk(", ");
-  print_readable_reg("sscratch", read_csr(sscratch));
+  print_readable_reg("scr", tf.scratch);
   printk("\n");
 
   int p = 0;
   for (int i = 0; i < sizeof(struct rv::regs) / sizeof(rv::xsize_t); i++) {
-    if (p == 0) printk(KERN_ERROR);
-
     print_readable_reg(regs_name[i], ((rv::xsize_t *)&tf)[i]);
     p++;
     if (p >= 4) {
@@ -136,21 +129,29 @@ static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
 
   if (p != 0) printk("\n");
 
+	if (cpu::in_thread()) {
+		printk("\n");
+		printk("Address Space:\n");
+		auto proc = curproc;
+		proc->mm->dump();
+	}
+
+	printk("===========================================================================================\n");
   panic("Halting hart!\n");
 }
 
 
 static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
-  auto addr = read_csr(sbadaddr);
+  auto addr = tf.tval;
   auto page = addr >> 12;
+
+
+  auto proc = curproc;
 
   // Now that we have the addr, we can re-enable interrupts
   // (further irqs might corrupt the csr)
   arch_enable_ints();
 
-
-
-  auto proc = curproc;
   if (curproc == NULL) {
     KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf.sepc, addr);
     // arch_dump_backtrace();
@@ -162,12 +163,15 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
   // printk(KERN_WARN "[pid=%d] %s addr %p from pc:%p\n", proc->pid, type_name, addr, tf.sepc);
 	if (addr == 0) panic("DEAD\n");
 
-  int res = proc->mm->pagefault(addr & ~0xFFF, err);
+  int res = proc->mm->pagefault(addr, err);
 
   if (res == -1) {
     printk("pid %d dead\n", proc->pid);
     sched::dispatch_signal(SIGSEGV);
+		return;
   }
+
+	rv::sfence_vma(addr);
 }
 
 
@@ -175,10 +179,15 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
 extern uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f);
 
 void rv_handle_syscall(rv::regs &tf) {
+  tf.sepc += 4;
+
   // printk(KERN_INFO "do syscall: %d\n", tf.a0);
   tf.a0 = do_syscall(tf.a0, tf.a1, tf.a2, tf.a3, tf.a4, tf.a5, tf.a6);
   // printk(KERN_INFO " res = %p\n", tf.a0);
-  tf.sepc += 4;
+}
+
+void from_userspace(struct rv::regs &tf) {
+	(void)tf;
 }
 
 /* Supervisor trap function */
@@ -191,27 +200,25 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
     curthd->trap_frame = (reg_t *)&tf;
   }
 
-  rv::xsize_t sepc = read_csr(sepc);
-  rv::xsize_t sstatus = read_csr(sstatus);
-  rv::xsize_t scause = read_csr(scause);
   /* The previous stack pointer located in the scratch */
-  rv::xsize_t previous_kernel_stack = rv::get_scratch().kernel_stack;
+  rv::xsize_t previous_kernel_stack = rv::get_hstate().kernel_sp;
   /* Zero it out so the next interrupt doesn't use it again (we are in kernelspace) */
-  rv::get_scratch().kernel_stack = 0;
+  rv::get_hstate().kernel_sp = 0;
 
-  if ((sstatus & SSTATUS_SPP) == 0) {
-    // printk("kerneltrap: not from supervisor mode: pc=%p", tf.sepc);
+  if ((tf.status & SSTATUS_SPP) == 0) {
+		from_userspace(tf);
+  	// printk("kerneltrap: not from supervisor mode: pc=%p", tf.sepc);
   }
   if (rv::intr_enabled() != 0) panic("kerneltrap: interrupts enabled");
 
 
 
 #ifdef CONFIG_64BIT
-  int interrupt = (scause >> 63);
+  int interrupt = (tf.cause >> 63);
 #else
-  int interrupt = (scause >> 31);
+  int interrupt = (tf.cause >> 31);
 #endif
-  int nr = scause & ~(1llu << 63);
+  int nr = tf.cause & ~(1llu << 63);
   if (interrupt) {
     /* Supervisor software interrupt (from machine mode) */
     if (nr == 1) {
@@ -306,12 +313,6 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
         break;
     }
   }
-
-	arch_disable_ints();
-  /* restore these regs in case other code causes traps */
-  write_csr(sepc, sepc);
-  write_csr(sstatus, sstatus);
-  rv::get_scratch().kernel_stack = previous_kernel_stack;
 
   if (cpu::in_thread()) curthd->trap_frame = old_trapframe;
 }

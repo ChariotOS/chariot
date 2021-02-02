@@ -223,6 +223,7 @@ pid_t spawn(const char *command) {
   int pid = fork();
   if (pid == 0) {
     const char *args[] = {"/bin/sh", "-c", (char *)command, NULL};
+    printf("args: %s\n", args[0]);
 
     // debug_hexdump(args, sizeof(args));
     execve("/bin/sh", args, (const char **)environ);
@@ -248,8 +249,20 @@ sigprocmask(SIG_SETMASK, &set, NULL);
   */
 
 
+#if 1
+  for (int i = 0; 1; i++) {
+    auto start = sysbind_gettime_microsecond();
+    int pid = fork();
+    if (pid == 0) exit(-1);
+    waitpid(pid, NULL, 0);
+    printf("pid=%6d  took %lluus\n", pid, sysbind_gettime_microsecond() - start);
+  }
+  printf("Done!\n");
 
-	printf("init pid: %d\n", getpid());
+#endif
+
+
+
   if (getpid() != 1) {
     fprintf(stderr, "init: must be run as pid 1\n");
     return -1;
@@ -265,23 +278,25 @@ sigprocmask(SIG_SETMASK, &set, NULL);
 
 #endif
 
-	/*
-	int count = 0;
-  while (1) {
+  /*
+  int count = 0;
+while (1) {
 
-    int pid = fork();
-    if (pid == 0) {
-			usleep(1000 * 1000);
-			// printf("fork: %d %d\n", getpid(), gettid());
-      exit(-1);
-    }
-    int stat;
-    waitpid(pid, &stat, 0);
-		printf("%d\n", count++);
-  }
-	*/
+int pid = fork();
+if (pid == 0) {
+                  usleep(1000 * 1000);
+                  // printf("fork: %d %d\n", getpid(), gettid());
+exit(-1);
+}
+int stat;
+waitpid(pid, &stat, 0);
+          printf("%d\n", count++);
+}
+  */
 
   spawn("/bin/sh");
+
+
 
   while (1) {
     pid_t reaped = waitpid(-1, NULL, 0);

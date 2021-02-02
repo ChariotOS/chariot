@@ -6,6 +6,7 @@
 #include <syscall.h>
 #include <time.h>
 #include <util.h>
+#include <riscv/paging.h>
 
 extern "C" void rv_enter_userspace(rv::regs *sp);
 
@@ -33,7 +34,8 @@ void arch_thread_create_callback() {
       thd->setup_stack((reg_t *)tf);
     }
 
-		write_csr(sstatus, read_csr(sstatus) & ~SSTATUS_SPP);
+		/* Jumping to userspace */
+    regs->status = read_csr(sstatus) & ~SSTATUS_SPP;
     regs->sepc = arch_reg(REG_PC, tf);
     rv_enter_userspace(regs);
 
@@ -86,10 +88,10 @@ unsigned long arch_read_timestamp(void) {
 }
 
 
-struct rv::scratch &rv::get_scratch(void) {
+struct rv::hart_state &rv::get_hstate(void) {
   rv::xsize_t sscratch;
-  asm volatile("csrr %0, sscratch" : "=r"(sscratch));
-  return *(struct rv::scratch *)p2v(sscratch);
+  // asm volatile("csrr %0, sscratch" : "=r"(sscratch));
+  return *(struct rv::hart_state *)p2v(rv::get_tp());
 }
 
 /*
@@ -97,12 +99,14 @@ struct rv::scratch &rv::get_scratch(void) {
  * No need for bloated thread pointer bogus or nothin'
  */
 struct processor_state &cpu::current(void) {
-  return cpus[rv::get_scratch().hartid];
+  return cpus[rv::get_hstate().hartid];
 }
 
 
 void cpu::switch_vm(struct thread *thd) {
-  // printk("switch_vm to %d %d\n", thd->pid, thd->tid);
+  if (thd->proc.ring == RING_USER) {
+    // printk_nolock("switch_vm to pid=%d, tid=%d pt:%p\n", thd->pid, thd->tid, ((rv::pagetable*)thd->proc.mm->pt.get())->table);
+  }
   thd->proc.mm->switch_to();
   auto &stk = thd->stacks.last();
   auto stack_addr = (rv::xsize_t)stk.start + stk.size + 8;
@@ -110,22 +114,23 @@ void cpu::switch_vm(struct thread *thd) {
 
   switch (thd->proc.ring) {
     case RING_KERN:
-      rv::get_scratch().kernel_stack = 0;
+      rv::get_hstate().kernel_sp = 0;
       break;
 
 
     case RING_USER:
-      rv::get_scratch().kernel_stack = stack_addr;
+      rv::get_hstate().kernel_sp = stack_addr;
       break;
 
     default:
       panic("unknown ring %d in cpu::switch_vm\n", thd->proc.ring);
       break;
   }
+	rv::sfence_vma();
 }
 
 void cpu::seginit(void *local) {
-  auto &sc = rv::get_scratch();
+  auto &sc = rv::get_hstate();
   // printk(KERN_DEBUG "initialize hart %d\n", sc.hartid);
   auto &cpu = cpu::current();
   /* zero out the cpu structure. This might be bad idk... */

@@ -208,10 +208,9 @@ struct thread *thread::lookup(pid_t tid) {
 
 bool thread::teardown(thread *t) {
 #ifdef CONFIG_VERBOSE_PROCESS
-  printk("thread ran for %llu cycles\n", t->stats.cycles);
+  printk("thread ran for %llu cycles, %llu us\n", t->stats.cycles, t->ktime_us);
 #endif
 
-  printk("thread %d ran for %llu us\n", t->tid, t->ktime_us);
   thread_table_lock.write_lock();
   assert(thread_table.contains(t->tid));
   thread_table.remove(t->tid);

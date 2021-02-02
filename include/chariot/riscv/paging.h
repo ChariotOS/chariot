@@ -103,9 +103,8 @@ namespace rv {
 
 
   class pagetable : public mm::pagetable {
-    rv::xsize_t *table;
-
    public:
+    rv::xsize_t *table;
     pagetable(rv::xsize_t *table);
     virtual ~pagetable();
 
