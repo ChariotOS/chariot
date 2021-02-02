@@ -85,7 +85,6 @@ static void free_pd(rv::xsize_t *pd, int depth) {
 rv::pagetable::~pagetable(void) {
   auto pptable = (rv::xsize_t *)p2v(table);
 
-	// printk(KERN_INFO "nfree: %d\n", phys::nfree());
   int entries = 4096 / sizeof(rv::xsize_t);
   int half = entries / 2;
 
@@ -94,7 +93,6 @@ rv::pagetable::~pagetable(void) {
     auto pte = pptable[i];
     if (pte == 0) continue;
     if ((pte & PT_V) && (pte & (PT_R | PT_W | PT_X)) == 0) {
-      // printk(KERN_INFO "%d: %p\n", i, pte);
       auto pa = PTE2PA(pte);
       free_pd((rv::xsize_t *)p2v(pa), 1);
     }

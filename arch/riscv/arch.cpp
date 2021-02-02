@@ -104,28 +104,7 @@ struct processor_state &cpu::current(void) {
 
 
 void cpu::switch_vm(struct thread *thd) {
-  if (thd->proc.ring == RING_USER) {
-    // printk_nolock("switch_vm to pid=%d, tid=%d pt:%p\n", thd->pid, thd->tid, ((rv::pagetable*)thd->proc.mm->pt.get())->table);
-  }
   thd->proc.mm->switch_to();
-  auto &stk = thd->stacks.last();
-  auto stack_addr = (rv::xsize_t)stk.start + stk.size + 8;
-
-
-  switch (thd->proc.ring) {
-    case RING_KERN:
-      rv::get_hstate().kernel_sp = 0;
-      break;
-
-
-    case RING_USER:
-      rv::get_hstate().kernel_sp = stack_addr;
-      break;
-
-    default:
-      panic("unknown ring %d in cpu::switch_vm\n", thd->proc.ring);
-      break;
-  }
 	rv::sfence_vma();
 }
 

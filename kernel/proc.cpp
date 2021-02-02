@@ -36,7 +36,15 @@ pid_t get_next_pid(void) {
   return p;
 }
 
-mm::space *alloc_user_vm(void) { return new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create()); }
+mm::space *alloc_user_vm(void) {
+
+
+	unsigned long top = 0x7ff000000000;
+#ifdef CONFIG_SV39
+	top = 0x3ff0000000;
+#endif
+	return new mm::space(0x1000, top, mm::pagetable::create());
+}
 
 static process::ptr pid_lookup(pid_t pid) {
   ptable_lock.read_lock();
