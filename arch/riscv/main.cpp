@@ -103,11 +103,9 @@ void main() {
 
   cpus[0].timekeeper = true;
 
-
-
-
   assert(sched::init());
   KINFO("Initialized the scheduler\n");
+
 
 
   sched::proc::create_kthread("main task", [](void *) -> int {
@@ -140,23 +138,6 @@ void main() {
     vfs::mount("none", "/tmp", "tmpfs", 0, NULL);
 
 
-#if 0
-    sched::proc::create_kthread("test task 1", [](void *) -> int {
-      while (1) {
-        printk_nolock("#");
-      }
-    });
-    sched::proc::create_kthread("test task 2", [](void *) -> int {
-      while (1) {
-        printk_nolock(" ");
-      }
-    });
-
-    while (1) {
-			do_usleep(1000);
-      sched::yield();
-    }
-#endif
 
     if (0) {
       char *buf = (char *)malloc(4096);
@@ -189,7 +170,8 @@ void main() {
     pid_t init_pid = sched::proc::spawn_init(paths);
     printk("init pid: %d\n", init_pid);
 
-    while (1) arch_halt();
+		sys::waitpid(init_pid, NULL, 0);
+		panic("INIT DIED!\n");
 
     return 0;
   });
