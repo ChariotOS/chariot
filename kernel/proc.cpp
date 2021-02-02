@@ -18,6 +18,10 @@
 #include <util.h>
 #include <wait_flags.h>
 
+#ifdef CONFIG_RISCV
+#include <riscv/arch.h>
+#endif
+
 // start out at pid 2, so init is pid 1 regardless of if kernel threads are
 // created before init is spawned
 pid_t next_pid = 2;
@@ -32,9 +36,7 @@ pid_t get_next_pid(void) {
   return p;
 }
 
-mm::space *alloc_user_vm(void) {
-  return new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create());
-}
+mm::space *alloc_user_vm(void) { return new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create()); }
 
 static process::ptr pid_lookup(pid_t pid) {
   ptable_lock.read_lock();
@@ -191,7 +193,7 @@ pid_t sched::proc::spawn_init(vec<string> &paths) {
     argv.push(path);
 
     int res = proc.exec(path, argv, envp);
-		printk("exec '%s' res: %d\n", path.get(), res);
+    printk("exec '%s' res: %d\n", path.get(), res);
     if (res == 0) return pid;
   }
 
@@ -777,9 +779,28 @@ int sys::prctl(int option, unsigned long a1, unsigned long a2, unsigned long a3,
   return -ENOTIMPL;
 }
 
+#ifdef CONFIG_RISCV
+extern "C" void rv_enter_userspace(rv::regs *sp);
+#endif
 
+static void trap_return(void) {
+#ifdef CONFIG_RISCV
 
-static void trap_return(void) { return; }
+  auto thd = curthd;
+  auto tf = thd->trap_frame;
+  auto *regs = (rv::regs *)tf;
+  arch_enable_ints();
+
+  write_csr(sstatus, read_csr(sstatus) & ~SSTATUS_SPP);
+  regs->sepc = arch_reg(REG_PC, tf);
+  rv_enter_userspace(regs);
+#endif
+  return;
+}
+
+#ifdef CONFIG_RISCV
+extern "C" void trapreturn(void);
+#endif
 
 static pid_t do_fork(struct process &p) {
   auto np = sched::proc::spawn_process(&p, SPAWN_FORK);
@@ -797,7 +818,12 @@ static pid_t do_fork(struct process &p) {
 
   // copy the trapframe
   memcpy(new_td->trap_frame, old_td->trap_frame, arch_trapframe_size());
+#ifdef CONFIG_RISCV
+  /* Return value for child is zero */
+  ((rv::regs *)new_td->trap_frame)->a0 = 0;
+#else
   new_td->trap_frame[0] = 0;  // return value for child is 0
+#endif
 
 
   // copy floating point

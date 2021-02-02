@@ -85,6 +85,7 @@ struct thread_context {
   rv::xsize_t s9;   // 80
   rv::xsize_t s10;  // 88
   rv::xsize_t s11;  // 96
+	rv::xsize_t ra; // return address
 };
 #endif
 

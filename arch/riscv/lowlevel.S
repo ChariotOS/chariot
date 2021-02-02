@@ -71,21 +71,72 @@ timervec:
 
 
 
-	
-# interrupts and exceptions while in supervisor
-# mode come here.
-#
-# push all registers, call kerneltrap(), restore, return.
-#
+
+
+
+
+
+
+
+
+#define BUFFER_SPACE 0
+
+# When the processor gets an interrupt or traps, it jumps here and sets some CSRs
+# like sstatus, sbadaddr, stval etc... The only problem is that we don't switch
+# stacks when jumping from userspace. To fix this, we gotta do some extra nonsense
+# to avoid losing register states
 
 ENTRY(kernelvec)
 
-	# make room to save registers.
-	addi sp, sp, -32 * SZREG
+	# bypass redzone
+	addi sp, sp, -BUFFER_SPACE
+
+	# First, we need to figure out if we have a stack to change to or not. This is done
+	# by checking sscratch->kernel_stack
+
+ 	# swap sscratch and a0
+	csrrw a0, sscratch, a0
+	REG_S a1, ROFF(0, a0)
+	REG_S a2, ROFF(1, a0)
+	REG_S a3, ROFF(2, a0)
+
+	# check if we are trapping from userspace (SPP bit in sstatus is 0)
+	csrr a1, sstatus
+	# check the 8th bit
+	srli a1, a1, 8 # shift by 8 bits (SPP is bit 8)
+	andi a1, a1, 1 # check the first bit
+	# when we are coming from U-mode, use the kernel stack
+	beqz a1, .trap_from_userspace
+
+.trap_from_supervisor:
+	move a1, sp # a1 becomes our current stack pointer
+	j .allocate_stack_space
+
+.trap_from_userspace:
+	# read the kernel stack register from offest 5 in scratch
+	REG_L a1, ROFF(5, a0) # a1 is the kernel stack
+	# fallthrough
+
+.allocate_stack_space:
+	# allocate space in the kernel stack for the trapframe
+	addi a1, a1, -32 * SZREG
+	# save the previous stack pointer in the location
+	REG_S sp, ROFF(1, a1)
+	# the working stack pointer becomes the value of a1
+	move sp, a1
+
+	# restore our scratchpad
+	REG_L a3, ROFF(2, a0)
+	REG_L a2, ROFF(1, a0)
+	REG_L a1, ROFF(0, a0)
+	csrrw a0, sscratch, a0
+
+
 
 	# save the registers.
 	REG_S ra, ROFF(0, sp)
-	REG_S sp, ROFF(1, sp)
+	# sp is saved above
+	# REG_S sp, ROFF(1, sp)
 	REG_S gp, ROFF(2, sp)
 	REG_S tp, ROFF(3, sp)
 	REG_S t0, ROFF(4, sp)
@@ -124,7 +175,7 @@ ENTRY(kernelvec)
 	mv a0, sp
 	call kernel_trap
 
-
+.global trapreturn
 trapreturn:
 
 	# read sepc from the stack now, as we need a0 to be restored
@@ -133,7 +184,7 @@ trapreturn:
 
 	# restore registers.
 	REG_L ra, ROFF(0, sp)
-	REG_L sp, ROFF(1, sp)
+  # sp is restored last
 	REG_L gp, ROFF(2, sp)
 	# REG_S tp, ROFF(3, sp) ;; not this!
 	REG_L t0, ROFF(4, sp)
@@ -164,9 +215,14 @@ trapreturn:
 	REG_L t5, ROFF(29, sp)
 	REG_L t6, ROFF(30, sp)
 
-	addi sp, sp, 32*SZREG
+	# restore the old stack pointer (from before we allocated space for the trapframe)
+	REG_L sp, ROFF(1, sp)
 
-	# return to whatever we were doing in the kernel.
+	# un-bypass redzone
+	addi sp, sp, BUFFER_SPACE
+	# addi sp, sp, 32*SZREG
+
+	# return to whatever we were doing before.
 	sret
 
 END(kernelvec)

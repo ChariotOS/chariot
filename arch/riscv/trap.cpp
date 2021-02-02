@@ -145,10 +145,9 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
   auto page = addr >> 12;
 
   // Now that we have the addr, we can re-enable interrupts
-	// (further irqs might corrupt the csr)
+  // (further irqs might corrupt the csr)
   arch_enable_ints();
 
-  printk("%s addr %p from pc:%p\n", type_name, addr, tf.sepc);
 
 
   auto proc = curproc;
@@ -159,26 +158,50 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
     proc = sched::proc::kproc();
   }
 
-  int res = proc->mm->pagefault(addr, err);
+
+  // printk(KERN_WARN "[pid=%d] %s addr %p from pc:%p\n", proc->pid, type_name, addr, tf.sepc);
+	if (addr == 0) panic("DEAD\n");
+
+  int res = proc->mm->pagefault(addr & ~0xFFF, err);
 
   if (res == -1) {
-    printk("dead\n");
+    printk("pid %d dead\n", proc->pid);
     sched::dispatch_signal(SIGSEGV);
   }
 }
 
 
+
+extern uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f);
+
+void rv_handle_syscall(rv::regs &tf) {
+  // printk(KERN_INFO "do syscall: %d\n", tf.a0);
+  tf.a0 = do_syscall(tf.a0, tf.a1, tf.a2, tf.a3, tf.a4, tf.a5, tf.a6);
+  // printk(KERN_INFO " res = %p\n", tf.a0);
+  tf.sepc += 4;
+}
+
 /* Supervisor trap function */
 extern "C" void kernel_trap(struct rv::regs &tf) {
   int which_dev = 0;
+
+  reg_t *old_trapframe = NULL;
+  if (cpu::in_thread()) {
+    old_trapframe = curthd->trap_frame;
+    curthd->trap_frame = (reg_t *)&tf;
+  }
+
   rv::xsize_t sepc = read_csr(sepc);
   rv::xsize_t sstatus = read_csr(sstatus);
   rv::xsize_t scause = read_csr(scause);
+  /* The previous stack pointer located in the scratch */
+  rv::xsize_t previous_kernel_stack = rv::get_scratch().kernel_stack;
+  /* Zero it out so the next interrupt doesn't use it again (we are in kernelspace) */
+  rv::get_scratch().kernel_stack = 0;
 
   if ((sstatus & SSTATUS_SPP) == 0) {
-
-		// printk("kerneltrap: not from supervisor mode: pc=%p", tf.sepc);
-	}
+    // printk("kerneltrap: not from supervisor mode: pc=%p", tf.sepc);
+  }
   if (rv::intr_enabled() != 0) panic("kerneltrap: interrupts enabled");
 
 
@@ -253,7 +276,7 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
         break;
 
       case 8:
-        kernel_unhandled_trap(tf, "Environment Call from U-Mode");
+        rv_handle_syscall(tf);
         break;
 
       case 9:
@@ -284,9 +307,13 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
     }
   }
 
+	arch_disable_ints();
   /* restore these regs in case other code causes traps */
   write_csr(sepc, sepc);
   write_csr(sstatus, sstatus);
+  rv::get_scratch().kernel_stack = previous_kernel_stack;
+
+  if (cpu::in_thread()) curthd->trap_frame = old_trapframe;
 }
 
 extern "C" void machine_trap(struct rv::regs &tf) {}

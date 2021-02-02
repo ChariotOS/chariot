@@ -247,6 +247,9 @@ signal(i, handler);
 sigprocmask(SIG_SETMASK, &set, NULL);
   */
 
+
+
+	printf("init pid: %d\n", getpid());
   if (getpid() != 1) {
     fprintf(stderr, "init: must be run as pid 1\n");
     return -1;

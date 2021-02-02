@@ -4,6 +4,7 @@
 #include <phys.h>
 #include <riscv/arch.h>
 #include <riscv/paging.h>
+#include <util.h>
 
 #define VM_FLAG_BITS 0x3ff
 #define VM_PTE_BITS ~(VM_FLAG_BITS)
@@ -94,8 +95,8 @@ int rv::pagetable::add_mapping(off_t va, struct mm::pte &p) {
   if (p.prot & VPROT_EXEC) prot |= PT_X;
   if (!(p.prot & VPROT_SUPER)) prot |= PT_U;
 
+	/*
 	printk("add mapping: %p -> %p ", va, p.ppn << 12);
-
 	if (prot & PT_R) printk(" read");
 	if (prot & PT_W) printk(" write");
 	if (prot & PT_X) printk(" exec");
@@ -103,6 +104,7 @@ int rv::pagetable::add_mapping(off_t va, struct mm::pte &p) {
 	if (prot & PT_V) printk(" valid");
 	if (prot & PT_G) printk(" global");
 	printk("\n");
+	*/
 
   /* Write the page table entry */
   *pte = MAKE_PTE(p.ppn << 12, prot);

@@ -48,9 +48,18 @@ namespace rv /* risc-v namespace */ {
 
 
   struct scratch {
-    rv::xsize_t bak[3];   /* Used in timervec */
-    rv::xsize_t tca;      /* address of this HART's MTIMECMP register */
+		// offset 0
+		rv::xsize_t bak1;
+		// offset 1
+		rv::xsize_t bak2;
+		// offset 2
+		rv::xsize_t bak3;
+		// offset 3
+    rv::xsize_t tca;
+		// offset 4
     rv::xsize_t interval; /* Timer interval */
+		// offset 5
+		rv::xsize_t kernel_stack;
 
     int hartid;
     struct dtb::fdt_header *dtb; /* Device tree binary */

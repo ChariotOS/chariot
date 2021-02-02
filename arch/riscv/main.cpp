@@ -61,7 +61,9 @@ void main() {
   struct rv::scratch *sc = (rv::scratch *)rv::get_tp();
   /* The scratch register is a physical address. This is so the timervec doesn't have to
    * do any address translation or whatnot. We just pay the cost everywhere else! :^) */
-  rv::set_sscratch((rv::xsize_t)sc);
+  rv::set_sscratch((rv::xsize_t)p2v(sc));
+
+	rv::get_scratch().kernel_stack = 0;
 
   int hartid = rv::hartid();
   /* TODO: release these somehow :) */
@@ -152,6 +154,7 @@ void main() {
       }
       free((void *)buf);
     }
+
 
 
     auto kproc = sched::proc::kproc();

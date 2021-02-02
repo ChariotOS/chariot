@@ -11,11 +11,11 @@
 #include <util.h>
 #include <vga.h>
 
-#define SYSSYM(name) sys_##name
-
 void sys::restart() {}
 
-pid_t sys::getpid(void) { return curthd->pid; }
+pid_t sys::getpid(void) {
+	return curthd->pid;
+}
 
 pid_t sys::gettid(void) { return curthd->tid; }
 
@@ -34,8 +34,8 @@ void set_syscall(const char *name, int num, void *handler) {
 }
 
 
-static uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f) {
-  if (num & !0xFF) return -1;
+uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f) {
+  if (num & ~0xFF) return -1;
 
   if (syscall_table[num].handler == NULL) {
     return -1;

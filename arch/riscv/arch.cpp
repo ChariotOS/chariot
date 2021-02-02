@@ -1,11 +1,11 @@
 #include <arch.h>
 #include <cpu.h>
 #include <riscv/arch.h>
-#include <riscv/plic.h>
-#include <time.h>
-#include <syscall.h>
-#include <util.h>
 #include <riscv/dis.h>
+#include <riscv/plic.h>
+#include <syscall.h>
+#include <time.h>
+#include <util.h>
 
 extern "C" void rv_enter_userspace(rv::regs *sp);
 
@@ -26,21 +26,18 @@ void arch_thread_create_callback() {
     if (time::stabilized()) {
       thd->last_start_utime_us = time::now_us();
     }
-		auto *regs = (rv::regs *)tf;
+    auto *regs = (rv::regs *)tf;
     arch_enable_ints();
 
     if (thd->pid == thd->tid) {
       thd->setup_stack((reg_t *)tf);
     }
 
+		write_csr(sstatus, read_csr(sstatus) & ~SSTATUS_SPP);
+    regs->sepc = arch_reg(REG_PC, tf);
+    rv_enter_userspace(regs);
 
-		printk("ra=%p, sp=%p\n", arch_reg(REG_PC, tf), arch_reg(REG_SP, tf));
-		hexdump(regs, sizeof(*regs), true);
-
-		regs->sepc = arch_reg(REG_PC, tf);
-		rv_enter_userspace(regs);
-		
-		/* Jump into userspace :) */
+    /* Jump into userspace :) */
     return;
   }
 
@@ -51,39 +48,28 @@ void arch_thread_create_callback() {
 
 
 
-void arch_disable_ints(void) {
-	rv::intr_off();
-	
-}
-void arch_enable_ints(void) {
-	rv::intr_on();
-}
+void arch_disable_ints(void) { rv::intr_off(); }
+void arch_enable_ints(void) { rv::intr_on(); }
 
-bool arch_irqs_enabled(void) {
-	return rv::intr_enabled();
-}
+bool arch_irqs_enabled(void) { return rv::intr_enabled(); }
 
 
 void arch_relax(void) {}
 
 /* Simply wait for an interrupt :) */
-void arch_halt() {
-	asm volatile("wfi");
-}
+void arch_halt() { asm volatile("wfi"); }
 
 void arch_mem_init(unsigned long mbd) {}
 
 
 void arch_initialize_trapframe(bool userspace, reg_t *r) {
-	// auto *regs = (rv::regs*)r;
-	// printk("pc: %p\n", regs->ra);
-	// printk("sp: %p\n", regs->sp);
+  // auto *regs = (rv::regs*)r;
+  // printk("pc: %p\n", regs->ra);
+  // printk("sp: %p\n", regs->sp);
 }
 
 
-unsigned arch_trapframe_size(void) {
-	return sizeof(rv::regs); 
-}
+unsigned arch_trapframe_size(void) { return sizeof(rv::regs); }
 
 
 void arch_dispatch_function(void *func, long arg) {}
@@ -94,16 +80,16 @@ void arch_restore_fpu(struct thread &) {}
 
 
 unsigned long arch_read_timestamp(void) {
-	rv::xsize_t x;
-	asm volatile("csrr %0, time" : "=r"(x));
-	return x;
+  rv::xsize_t x;
+  asm volatile("csrr %0, time" : "=r"(x));
+  return x;
 }
 
 
 struct rv::scratch &rv::get_scratch(void) {
-	rv::xsize_t sscratch;
-	asm volatile("csrr %0, sscratch" : "=r"(sscratch));
-	return *(struct rv::scratch*)p2v(sscratch);
+  rv::xsize_t sscratch;
+  asm volatile("csrr %0, sscratch" : "=r"(sscratch));
+  return *(struct rv::scratch *)p2v(sscratch);
 }
 
 /*
@@ -111,24 +97,42 @@ struct rv::scratch &rv::get_scratch(void) {
  * No need for bloated thread pointer bogus or nothin'
  */
 struct processor_state &cpu::current(void) {
-	return cpus[rv::get_scratch().hartid];
+  return cpus[rv::get_scratch().hartid];
 }
 
 
 void cpu::switch_vm(struct thread *thd) {
-	// printk("switch_vm to %d %d\n", thd->pid, thd->tid);
-	thd->proc.mm->switch_to();
+  // printk("switch_vm to %d %d\n", thd->pid, thd->tid);
+  thd->proc.mm->switch_to();
+  auto &stk = thd->stacks.last();
+  auto stack_addr = (rv::xsize_t)stk.start + stk.size + 8;
+
+
+  switch (thd->proc.ring) {
+    case RING_KERN:
+      rv::get_scratch().kernel_stack = 0;
+      break;
+
+
+    case RING_USER:
+      rv::get_scratch().kernel_stack = stack_addr;
+      break;
+
+    default:
+      panic("unknown ring %d in cpu::switch_vm\n", thd->proc.ring);
+      break;
+  }
 }
 
 void cpu::seginit(void *local) {
-	auto &sc = rv::get_scratch();
-	// printk(KERN_DEBUG "initialize hart %d\n", sc.hartid);
-	auto &cpu = cpu::current();
-	/* zero out the cpu structure. This might be bad idk... */
-	memset(&cpu, 0, sizeof(struct processor_state));
+  auto &sc = rv::get_scratch();
+  // printk(KERN_DEBUG "initialize hart %d\n", sc.hartid);
+  auto &cpu = cpu::current();
+  /* zero out the cpu structure. This might be bad idk... */
+  memset(&cpu, 0, sizeof(struct processor_state));
 
-	/* Forward this so other code can read it */
-	cpu.cpunum = sc.hartid;
+  /* Forward this so other code can read it */
+  cpu.cpunum = sc.hartid;
 }
 
 
@@ -146,12 +150,8 @@ extern "C" void trapret(void) {}
 int arch::irq::init(void) { return 0; /* TODO: */ }
 
 void arch::irq::eoi(int i) {
-	/* Forward to the PLIC */
-	rv::plic::complete(i);
+  /* Forward to the PLIC */
+  rv::plic::complete(i);
 }
-void arch::irq::enable(int num) {
-	rv::plic::enable(num, 1);
-}
-void arch::irq::disable(int num) {
-	rv::plic::disable(num);
-}
+void arch::irq::enable(int num) { rv::plic::enable(num, 1); }
+void arch::irq::disable(int num) { rv::plic::disable(num); }

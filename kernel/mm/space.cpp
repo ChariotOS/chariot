@@ -174,7 +174,7 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
 
       if (old_page->users > 1 || r.fd) {
         auto np = mm::page::alloc();
-        // printk(KERN_WARN "COW [page %d in '%s'] %p\n", ind, r.name.get(), uaddr);
+        // printk(KERN_WARN "[pid=%d]    COW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(), uaddr);
         np->users = 1;
         old_page->users--;
         memcpy(p2v(np->pa), p2v(old_page->pa), PGSIZE);
@@ -192,6 +192,7 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
     pt->add_mapping(va, pte);
   }
 
+  // printk(KERN_WARN "[pid=%d]    get_page_internal(%p) = %p\n", curthd->pid, uaddr, r.pages[ind].get());
   return r.pages[ind];
 }
 
@@ -319,7 +320,7 @@ off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
   r->flags = flags;
   r->fd = fd;
   r->obj = obj;
-	r->pages.ensure_capacity(pages);
+  r->pages.ensure_capacity(pages);
 
   for (int i = 0; i < pages; i++) r->pages.push(nullptr);
 
