@@ -13,7 +13,7 @@ reg_t &arch_reg(int ind, reg_t *r) {
   auto *tf = (struct rv::regs *)r;
   switch (ind) {
     case REG_PC:
-      return tf->ra;
+      return tf->sepc;
 
     case REG_SP:
       return tf->sp;
@@ -33,7 +33,7 @@ reg_t &arch_reg(int ind, reg_t *r) {
 
 const char *regs_name[] = {
     "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0",  "a1",  "a2", "a3", "a4", "a5", "a6",
-    "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6", "sepc",
+    "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6", "sepc"
 };
 
 
@@ -116,7 +116,7 @@ static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
   printk("\n");
 
   int p = 0;
-  for (int i = 0; i < sizeof(struct rv::regs) / sizeof(rv::xsize_t); i++) {
+  for (int i = 0; i < 32; i++) {
     print_readable_reg(regs_name[i], ((rv::xsize_t *)&tf)[i]);
     p++;
     if (p >= 4) {
