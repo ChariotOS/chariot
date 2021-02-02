@@ -59,9 +59,13 @@ int sched::remove_task(struct thread *t) { return s_scheduler.remove_task(t); }
 
 static void switch_into(struct thread &thd) {
   thd.locks.run.lock();
+
+	// auto start = time::now_us();
+
   cpu::current().current_thread = &thd;
   thd.state = PS_RUNNING;
   arch_restore_fpu(thd);
+
 
   // update the statistics of the thread
   thd.stats.run_count++;
@@ -84,10 +88,6 @@ static void switch_into(struct thread &thd) {
 
   arch_save_fpu(thd);
 
-	if (thd.proc.ring == RING_USER) {
-		// printk_nolock("exiting pid=%d, tid=%d, state=%d\n", thd.pid, thd.tid, thd.state);
-	}
-	ts = time::stabilized();
 	if (ts) {
 		thd.ktime_us += time::now_us() - start_us;
 	}
@@ -97,6 +97,7 @@ static void switch_into(struct thread &thd) {
   thd.stats.last_cpu = thd.stats.current_cpu;
   thd.stats.current_cpu = -1;
 
+	// printk_nolock("took %llu us\n", time::now_us() - start);
   thd.locks.run.unlock();
 }
 
@@ -181,7 +182,7 @@ static int idle_task(void *arg) {
      * The loop here is simple. Wait for an interrupt, handle it (implicitly) then
      * yield back to the scheduler if there is a task ready to run.
      */
-    arch_halt();
+		arch_halt();
     // Check for a new thread to run, and if there is one, yield so we can change to it.
     if (pick_next_thread() != NULL) {
       sched::yield();
