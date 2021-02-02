@@ -208,22 +208,30 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
 
     if (sec.p_type == PT_LOAD) {
       auto start = sec.p_vaddr;
-
+			// printk("LOAD %p, mem: %llu, file: %llu\n", start, sec.p_memsz, sec.p_filesz);
       auto prot = 0L;
       if (sec.p_flags & PF_X) prot |= PROT_EXEC;
       if (sec.p_flags & PF_W) prot |= PROT_WRITE;
       if (sec.p_flags & PF_R) prot |= PROT_READ;
 
+			string name = path;
+			if (prot & PROT_EXEC) {
+				name += " exec";
+			} else {
+				name += " data";
+			}
+
       if (sec.p_filesz == 0) {
-        mm.mmap(path, off + start, round_up(sec.p_memsz, 4096), prot, MAP_ANON | MAP_PRIVATE, nullptr, 0);
-        // handle_bss(sec, prot);
-        // printk("    is .bss\n");
+				name += " .bss";
+        mm.mmap(name, off + start, round_up(sec.p_memsz, 4096), prot, MAP_ANON | MAP_PRIVATE, nullptr, 0);
       } else {
-        mm.mmap(path, off + start, round_up(sec.p_filesz, 4096), prot, MAP_PRIVATE, fd, sec.p_offset);
+        mm.mmap(name, off + start, round_up(sec.p_filesz, 4096), prot, MAP_PRIVATE, fd, sec.p_offset);
         handle_bss(sec, prot);
       }
     }
   }
+
+	// mm.dump();
 
   delete[] phdr;
 
