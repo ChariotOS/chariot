@@ -1,7 +1,7 @@
 #include <cpu.h>
 #include <elf/loader.h>
 #include <syscall.h>
-
+#include <util.h>
 
 
 // kernel/proc.cpp
@@ -59,7 +59,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
     return -EINVAL;
   }
 
-	// printk(KERN_DEBUG "pid %d exec '%s'\n", curproc->pid, path);
+  // printk(KERN_DEBUG "pid %d exec '%s'\n", curproc->pid, path);
 
 
   // allocate a 1mb stack
@@ -80,6 +80,8 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
 
   curproc->args = argv;
   curproc->env = envp;
+  new_addr_space->switch_to();
+
   delete curproc->mm;
   curproc->mm = new_addr_space;
 
@@ -90,6 +92,13 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
 
   curthd->setup_tls();
   curthd->setup_stack(tf);
+
+  /* TODO: on riscv, we overwrite the a0 value with the return value from the systemcall. Instead, we ought to
+   * do something smarter, but for now, success means returning the success value from the sys::exec syscall on riscv
+   */
+#ifdef CONFIG_RISCV
+  return ((rv::regs *)tf)->a0;
+#endif
 
   return 0;
 }
