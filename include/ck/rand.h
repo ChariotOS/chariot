@@ -10,7 +10,10 @@ namespace ck {
 
     inline auto tsc(void) {
       uint32_t lo, hi;
+			/* TODO; */
+#ifdef CONFIG_X86
       asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
+#endif
       return lo | ((uint64_t)(hi) << 32);
     }
 

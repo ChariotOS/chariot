@@ -255,6 +255,24 @@ class game_view final : public ui::view {
 int main(int argc, char** argv) {
 
 
+	auto font = gfx::font::get("Lato");
+
+
+	int x = 0;
+	int y = 0;
+
+
+	gfx::bitmap bmp(40, 40);
+
+	font->with_line_height(12, [&]() {
+		gfx::scribe s(bmp);
+		font->draw(x, y, s, 'A', 0xFFFFFF);
+	});
+
+	ck::hexdump(bmp.pixels(), bmp.size());
+
+	return 0;
+
 	while (1) {
 		printf("usleep for 500 ms\n");
 		sysbind_usleep(500 * 1000);

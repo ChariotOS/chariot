@@ -52,9 +52,8 @@ static frame *working_addr(frame *fr) {
     paging::map((u64)phys_mem_scratch, (u64)fr);
     fr = (frame *)phys_mem_scratch;
 #else
-		panic("PAGING ERROR OOF\n");
+    panic("PAGING ERROR OOF\n");
 #endif
-
   }
   return fr;
 }
@@ -116,7 +115,7 @@ static void *late_phys_alloc(size_t npages) {
   frame *p = NULL;
   frame *c = (frame *)p2v(kmem.freelist);
 
-	// printk("c: %p\n", c);
+  // printk("c: %p\n", c);
 
   if (v2p(c) == NULL) panic("OOM!\n");
 
@@ -151,15 +150,14 @@ static void *late_phys_alloc(size_t npages) {
 
 // physical memory allocator implementation
 void *phys::alloc(int npages) {
-
-	lock();
-	// reclaim block cache if the free pages drops below 32 pages
-	if (kmem.nfree < 32) {
-		unlock();
-		printk("gotta reclaim!\n");
-		block::reclaim_memory();
-		lock();
-	}
+  lock();
+  // reclaim block cache if the free pages drops below 32 pages
+  if (kmem.nfree < 32) {
+    unlock();
+    printk("gotta reclaim!\n");
+    block::reclaim_memory();
+    lock();
+  }
 
   void *p = use_kernel_vm ? late_phys_alloc(npages) : early_phys_alloc(npages);
 
@@ -175,10 +173,10 @@ void phys::free(void *v, int len) {
   if ((u64)v % PGSIZE) {
     panic("phys::free requires page aligned address. Given %p", v);
   }
-	/*
-  if (v <= high_kern_end)
-    panic("phys::free cannot free below the kernel's end");
-		*/
+  /*
+if (v <= high_kern_end)
+panic("phys::free cannot free below the kernel's end");
+          */
 
   lock();
 
@@ -253,8 +251,14 @@ void phys::free_range(void *vstart, void *vend) {
     df->next = kmem.freelist;
     kmem.freelist = (frame *)v2p(fr);
   } else {
+#ifdef CONFIG_RISCV
+    auto fl = (frame *)p2v(kmem.freelist);
+    df->next = fl->next;
+    fl->next = fr;
+#else
     df->next = kmem.freelist->next;
     kmem.freelist->next = fr;
+#endif
   }
   kmem.nfree += df->page_len;
   unlock();

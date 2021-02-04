@@ -260,7 +260,7 @@ sigprocmask(SIG_SETMASK, &set, NULL);
     pid = fork();
     if (pid == 0) exit(-1);
     waitpid(pid, NULL, 0);
-    printf("pid=%6d  took %lluus\n", pid, sysbind_gettime_microsecond() - start);
+    printf("pid=%08x  took %lluus\n", pid, sysbind_gettime_microsecond() - start);
   }
 
 #endif

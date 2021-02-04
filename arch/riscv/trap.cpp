@@ -202,16 +202,12 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
 
   /* The previous stack pointer located in the scratch */
   rv::xsize_t previous_kernel_stack = rv::get_hstate().kernel_sp;
-  /* Zero it out so the next interrupt doesn't use it again (we are in kernelspace) */
-  rv::get_hstate().kernel_sp = 0;
 
   if ((tf.status & SSTATUS_SPP) == 0) {
 		from_userspace(tf);
   	// printk("kerneltrap: not from supervisor mode: pc=%p", tf.sepc);
   }
   if (rv::intr_enabled() != 0) panic("kerneltrap: interrupts enabled");
-
-
 
 #ifdef CONFIG_64BIT
   int interrupt = (tf.cause >> 63);
@@ -290,11 +286,9 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
         kernel_unhandled_trap(tf, "Environment Call from S-Mode");
         break;
 
-
       case 11:
         kernel_unhandled_trap(tf, "Environment Call from M-Mode");
         break;
-
 
       case 12:
         pgfault_trap(tf, "Instruction Page Fault", FAULT_EXEC);

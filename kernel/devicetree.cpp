@@ -94,7 +94,7 @@ static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *v
     int addr_cells = node->get_addr_cells();
     int size_cells = node->get_size_cells();
 
-    printk("%s: addr %d, size %d\n", node->name, addr_cells, size_cells);
+    // printk("%s: addr %d, size %d\n", node->name, addr_cells, size_cells);
     if (addr_cells > 0) {
       if (addr_cells == 1) node->reg.address = __builtin_bswap32(*(uint32_t *)val);
       if (addr_cells == 2) node->reg.address = __builtin_bswap64(*(uint64_t *)val);
@@ -109,13 +109,23 @@ static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *v
 
     return;
   }
+
+	if (STREQ(name, "compatible")) {
+		node->is_device = true;
+		strncpy(node->compatible, (const char*)val, sizeof(node->compatible));
+		// printk("compatible: %s\n", val);
+
+		return;
+	}
   // printk("   %s@%llx\t%s = %p\n", node->name, node->address, name, val);
 }
 
 
 void dtb::walk_devices(bool (*callback)(dtb::node *)) {
   for (int i = 0; i < next_device; i++) {
-    if (!callback(&devices[i])) break;
+		if (devices[i].is_device) {
+    	if (!callback(&devices[i])) break;
+		}
   }
 }
 
@@ -215,7 +225,7 @@ int dtb::parse(dtb::fdt_header *fdt) {
     }
   }
 
-  dump_dtb(node, 0);
+  // dump_dtb(node, 0);
   return next_device;
 }
 

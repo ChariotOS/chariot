@@ -182,7 +182,7 @@ static int idle_task(void *arg) {
      * The loop here is simple. Wait for an interrupt, handle it (implicitly) then
      * yield back to the scheduler if there is a task ready to run.
      */
-		arch_halt();
+		// arch_halt();
     // Check for a new thread to run, and if there is one, yield so we can change to it.
     if (pick_next_thread() != NULL) {
       sched::yield();

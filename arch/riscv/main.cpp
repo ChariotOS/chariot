@@ -52,6 +52,9 @@ static unsigned long riscv_high_acc_time_func(void) {
   return (read_csr(time) * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND;
 }
 
+static off_t dtb_ram_start = 0;
+static size_t dtb_ram_size = 0;
+
 void main() {
   /*
    * Machine mode passes us the scratch structure through
@@ -83,15 +86,41 @@ void main() {
   rv::intr_on();
 
 
+  off_t boot_free_start = (off_t)v2p(_kernel_end);
+  off_t boot_free_end = boot_free_start + 1 * MB;
+  printk(KERN_DEBUG "Freeing bootup ram %llx:%llx\n", boot_free_start, boot_free_end);
+
+
+  /* Tell the device tree to copy the device tree and parse it */
   dtb::parse((dtb::fdt_header *)p2v(rv::get_hstate().dtb));
 
-  printk(KERN_DEBUG "Freeing %dMB of ram %llx:%llx\n", CONFIG_RISCV_RAM_MB, _kernel_end - CONFIG_KERNEL_VIRTUAL_BASE,
-         PHYSTOP);
-
   use_kernel_vm = 1;
-  phys::free_range((void *)(_kernel_end - CONFIG_KERNEL_VIRTUAL_BASE), (void *)PHYSTOP);
+  phys::free_range((void *)boot_free_start, (void *)boot_free_end);
 
   cpu::seginit(NULL);
+
+  dtb::walk_devices([](dtb::node *node) -> bool {
+    if (!strcmp(node->name, "memory")) {
+      /* We found the ram (there might be more, but idk for now) */
+      dtb_ram_size = node->reg.length;
+      dtb_ram_start = node->reg.address;
+      return false;
+    }
+    return true;
+  });
+
+  if (dtb_ram_start == 0) {
+    printk(KERN_ERROR "dtb didn't contain a memory segment, guessing 128mb :)\n");
+    dtb_ram_size = 128 * MB;
+    dtb_ram_start = boot_free_start;
+  }
+
+  off_t dtb_ram_end = dtb_ram_start + dtb_ram_size;
+  dtb_ram_start = max(dtb_ram_start, boot_free_end + 4096);
+  if (dtb_ram_end - dtb_ram_start > 0) {
+    printk(KERN_DEBUG "Freeing discovered ram %llx:%llx\n", dtb_ram_start, dtb_ram_end);
+    phys::free_range((void *)dtb_ram_start, (void *)dtb_ram_end);
+  }
 
   /* Now that we have a memory allocator, call global constructors */
   for (func_ptr *func = __init_array_start; func != __init_array_end; func++) (*func)();
@@ -104,26 +133,22 @@ void main() {
   cpus[0].timekeeper = true;
 
   assert(sched::init());
-  KINFO("Initialized the scheduler\n");
+  KINFO("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
 
 
 
   sched::proc::create_kthread("main task", [](void *) -> int {
     KINFO("Calling kernel module init functions\n");
-    printk("ints enabled: %d\n", rv::intr_enabled());
     initialize_builtin_modules();
     KINFO("kernel modules initialized\n");
 
-    /* TODO: use device tree? */
-    virtio::check_mmio(0x10001000);
-    virtio::check_mmio(0x10002000);
-    virtio::check_mmio(0x10003000);
-    virtio::check_mmio(0x10004000);
-    virtio::check_mmio(0x10005000);
-    virtio::check_mmio(0x10006000);
-    virtio::check_mmio(0x10007000);
-    virtio::check_mmio(0x10008000);
 
+    dtb::walk_devices([](dtb::node *node) -> bool {
+      if (!strcmp(node->compatible, "virtio,mmio")) {
+        virtio::check_mmio(node->address);
+      }
+      return true;
+    });
 
     // printk("waiting!\n");
     // do_usleep(1000 * 1000);
@@ -170,8 +195,8 @@ void main() {
     pid_t init_pid = sched::proc::spawn_init(paths);
     printk("init pid: %d\n", init_pid);
 
-		sys::waitpid(init_pid, NULL, 0);
-		panic("INIT DIED!\n");
+    sys::waitpid(init_pid, NULL, 0);
+    panic("INIT DIED!\n");
 
     return 0;
   });
