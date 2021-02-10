@@ -205,6 +205,11 @@ const char *name(uint32_t insn) {
   return "???";
 }
 
+static const char *reg_names[] = {
+    "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0",  "a1",  "a2", "a3", "a4", "a5", "a6",
+    "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6", "sepc"
+};
+
 
 void rv::disassembler::dis(uint32_t insn) {
   this->insn = insn;
@@ -215,11 +220,13 @@ void rv::disassembler::dis(uint32_t insn) {
 	memset(m_op1, 0, 32);
 	memset(m_op2, 0, 32);
 
+  
+
   /* op 0 */
   switch (format(e.opcode)) {
     case R:
     case I:
-      snprintk(m_op0, 32, "x%d ", e.rd);
+      snprintk(m_op0, 32, "%s ", reg_names[e.rd]);
       break;
     case S:
       snprintk(m_op0, 32, "x%d ", e.rs2);
@@ -239,7 +246,7 @@ void rv::disassembler::dis(uint32_t insn) {
     case R:
     case I:
     case S:
-      snprintk(m_op1, 32, "x%d ", e.rs1);
+      snprintk(m_op1, 32, "%s ", reg_names[e.rs1]);
       break;
     case B:
       snprintk(m_op1, 32, "x%d ", e.rs2);
@@ -256,7 +263,7 @@ void rv::disassembler::dis(uint32_t insn) {
   /* op 2 */
   switch (format(e.opcode)) {
     case R:
-      snprintk(m_op2, 32, "x%d ", e.rs2);
+      snprintk(m_op2, 32, "%s ", reg_names[e.rs2]);
       break;
     case I:
       snprintk(m_op2, 32, "%d ", e.i.i11_0);

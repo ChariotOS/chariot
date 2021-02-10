@@ -1,9 +1,9 @@
 
 if(CONFIG_64BIT)
-	set(RISCV_MARCH "rv64gc")
+	set(RISCV_MARCH "rv64g")
 	set(RISCV_MABI  "lp64d")
 else()
-	set(RISCV_MARCH "rv32gc")
+	set(RISCV_MARCH "rv32g")
 	set(RISCV_MABI  "ilp32d")
 endif()
 

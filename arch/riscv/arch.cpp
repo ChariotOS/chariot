@@ -74,11 +74,21 @@ void arch_initialize_trapframe(bool userspace, reg_t *r) {
 unsigned arch_trapframe_size(void) { return sizeof(rv::regs); }
 
 
-void arch_dispatch_function(void *func, long arg) {}
-void arch_sigreturn(void) {}
+
+
+
 void arch_flush_mmu(void) {}
-void arch_save_fpu(struct thread &) {}
-void arch_restore_fpu(struct thread &) {}
+
+
+extern "C" void __rv_save_fpu(void*);
+extern "C" void __rv_load_fpu(void*);
+
+void arch_save_fpu(struct thread &thd) {
+	__rv_save_fpu(thd.fpu.state);
+}
+void arch_restore_fpu(struct thread &thd) {
+	__rv_load_fpu(thd.fpu.state);
+}
 
 
 unsigned long arch_read_timestamp(void) {
