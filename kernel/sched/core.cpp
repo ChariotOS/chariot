@@ -36,17 +36,11 @@ static struct thread *get_next_thread(void) { return s_scheduler.pick_next(); }
 
 
 static auto pick_next_thread(void) {
-  if (curthd != NULL) {
-    // printk_nolock("pick next thread from %d\n", curthd->tid);
+  auto &cpu = cpu::current();
+  if (cpu.next_thread == NULL) {
+    cpu.next_thread = get_next_thread();
   }
-  if (cpu::current().next_thread == NULL) {
-    cpu::current().next_thread = get_next_thread();
-  }
-
-  if (cpu::current().next_thread != NULL) {
-    // printk_nolock("next %d\n", cpu::current().next_thread->tid);
-  }
-  return cpu::current().next_thread;
+  return cpu.next_thread;
 }
 
 
@@ -60,7 +54,7 @@ int sched::remove_task(struct thread *t) { return s_scheduler.remove_task(t); }
 static void switch_into(struct thread &thd) {
   thd.locks.run.lock();
 
-	// auto start = time::now_us();
+  // auto start = time::now_us();
 
   cpu::current().current_thread = &thd;
   thd.state = PS_RUNNING;
@@ -77,27 +71,27 @@ static void switch_into(struct thread &thd) {
 
 
   thd.stats.last_start_cycle = arch_read_timestamp();
-	bool ts = time::stabilized();
-	long start_us = 0;
-	if (ts) {
-		start_us = time::now_us();
-	}
+  bool ts = time::stabilized();
+  long start_us = 0;
+  if (ts) {
+    start_us = time::now_us();
+  }
 
   // Switch into the thread!
   context_switch(&cpu::current().sched_ctx, thd.kern_context);
 
   arch_save_fpu(thd);
 
-	if (ts) {
-		thd.ktime_us += time::now_us() - start_us;
-	}
+  if (ts) {
+    thd.ktime_us += time::now_us() - start_us;
+  }
 
   // Update the stats afterwards
   cpu::current().current_thread = nullptr;
   thd.stats.last_cpu = thd.stats.current_cpu;
   thd.stats.current_cpu = -1;
 
-	// printk_nolock("took %llu us\n", time::now_us() - start);
+  // printk_nolock("took %llu us\n", time::now_us() - start);
   thd.locks.run.unlock();
 }
 
@@ -144,7 +138,6 @@ void sched::do_yield(int st) {
 
 // helpful functions wrapping different resulting task states
 void sched::block() { sched::do_yield(PS_INTERRUPTIBLE); }
-
 /* Unblock a thread */
 void sched::unblock(thread &thd, bool interrupt) {
   if (thd.state != PS_INTERRUPTIBLE) {
@@ -182,22 +175,21 @@ static int idle_task(void *arg) {
      * The loop here is simple. Wait for an interrupt, handle it (implicitly) then
      * yield back to the scheduler if there is a task ready to run.
      */
-		// arch_halt();
-    // Check for a new thread to run, and if there is one, yield so we can change to it.
-    if (pick_next_thread() != NULL) {
-      sched::yield();
-    }
+    arch_enable_ints(); /* just to be sure. */
+    arch_halt();
+    // sched::yield();
   }
 }
 
 
 void sched::run() {
+	arch_disable_ints();
   // per-scheduler idle threads do not exist in the scheduler queue.
   auto *idle_thread = sched::proc::spawn_kthread("idle task", idle_task, NULL);
-  // the idle thread should not be preemptable
-  idle_thread->preemptable = false;
+  idle_thread->preemptable = true;
 
   cpu::current().in_sched = true;
+  unsigned long nothing_count = 0;
   while (1) {
     struct thread *thd = pick_next_thread();
     cpu::current().next_thread = NULL;
@@ -209,7 +201,6 @@ void sched::run() {
       continue;
     }
 
-    s_enabled = true;
 
     switch_into(*thd);
 
@@ -219,10 +210,9 @@ void sched::run() {
   panic("scheduler should not have gotten back here\n");
 }
 
-bool sched::enabled() { return s_enabled; }
 
 void sched::handle_tick(u64 ticks) {
-  if (!enabled() || !cpu::in_thread()) return;
+  if (!cpu::in_thread()) return;
 
   check_wakeups();
 
@@ -231,9 +221,7 @@ void sched::handle_tick(u64 ticks) {
 
   /* We don't get preempted if we aren't currently runnable. See wait.cpp for why */
   if (thd->state != PS_RUNNING) return;
-
   if (thd->preemptable == false) return;
-
   if (thd->proc.ring == RING_KERN) {
     cpu::current().kstat.kticks++;
   } else {
@@ -312,6 +300,11 @@ static int default_signal_action(int signal) {
 }
 
 void sched::dispatch_signal(int sig) {
+  if (!cpu::in_thread()) {
+    panic("not in cpu when getting signal %d\n", sig);
+  }
+
+
   // sanity check
   if (sig < 0 || sig > 63) return;
 
@@ -355,9 +348,9 @@ void sched::before_iret(bool userspace) {
   if (curthd->should_die) sched::exit();
 
 
-	if (time::stabilized()) {
-		curthd->last_start_utime_us = time::now_us();
-	}
+  if (time::stabilized()) {
+    curthd->last_start_utime_us = time::now_us();
+  }
 
   long sig_to_handle = -1;
 

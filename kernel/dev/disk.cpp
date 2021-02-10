@@ -9,12 +9,17 @@
 
 // #include "../../drivers/ata/ata.h"
 
-dev::disk::disk() {}
-dev::disk::~disk(void) {}
+dev::disk::disk() {
+}
+dev::disk::~disk(void) {
+}
 
 
-dev::disk_part::disk_part(dev::disk* parent, u32 start, u32 len) : start(start), len(len) { this->parent = parent; }
-dev::disk_part::~disk_part() {}
+dev::disk_part::disk_part(dev::disk* parent, u32 start, u32 len) : start(start), len(len) {
+  this->parent = parent;
+}
+dev::disk_part::~disk_part() {
+}
 
 bool dev::disk_part::read_blocks(uint32_t sector, void* data, int n) {
   if (sector > len) return false;
@@ -27,9 +32,13 @@ bool dev::disk_part::write_blocks(uint32_t sector, const void* data, int n) {
   return parent->write_blocks(sector + start, data, n);
 }
 
-size_t dev::disk_part::block_size(void) { return parent->block_size(); }
+size_t dev::disk_part::block_size(void) {
+  return parent->block_size();
+}
 
-size_t dev::disk_part::block_count(void) { return len; }
+size_t dev::disk_part::block_count(void) {
+  return len;
+}
 
 
 

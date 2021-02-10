@@ -4,7 +4,7 @@
 
 
 #define SPNG_USE_MINIZ
-#include "../pngle/miniz.h"
+#include <miniz.h>
 
 
 #include "spng.h"

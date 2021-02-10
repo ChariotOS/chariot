@@ -119,272 +119,193 @@ virtio_mmio_dev::virtio_mmio_dev(volatile uint32_t *regs) : regs((uint32_t *)p2v
   if (max < VIO_NUM_DESC) panic("virtio disk max queue too short");
   write_reg(VIRTIO_MMIO_QUEUE_NUM, VIO_NUM_DESC);
   write_reg(VIRTIO_MMIO_QUEUE_PFN, ((off_t)pages) >> 12);
+#if 0
 
   // desc = pages -- num * virtq_desc
   // avail = pages + 0x40 -- 2 * uint16, then num * uint16
   // used = pages + 4096 -- 2 * uint16, then num * vRingUsedElem
   desc = (struct virtio::virtq_desc *)p2v(pages);
-  avail = (struct virtio::virtq_avail *)p2v((off_t)pages + VIO_NUM_DESC * sizeof(virtio::virtq_desc));
+  avail =
+      (struct virtio::virtq_avail *)p2v((off_t)pages + VIO_NUM_DESC * sizeof(virtio::virtq_desc));
   used = (struct virtio::virtq_used *)p2v((off_t)pages + PGSIZE);
 
   // all NUM descriptors start out unused.
-  for (int i = 0; i < VIO_NUM_DESC; i++) free[i] = 1;
+  for (int i = 0; i < VIO_NUM_DESC; i++)
+    free[i] = 1;
+#endif
 }
 
-virtio_mmio_dev::~virtio_mmio_dev(void) { phys::free(pages, VIO_PGCOUNT); }
+virtio_mmio_dev::~virtio_mmio_dev(void) {
+  phys::free(pages, VIO_PGCOUNT);
+}
 
 
+int virtio_mmio_dev::alloc_ring(int index, int len) {
+  /* Some logical asserts */
+  assert(index >= 0 && index < VIO_MAX_RINGS);
+  assert(ring[index].active == false);
 
-int virtio_mmio_dev::alloc_desc() {
-  for (int i = 0; i < VIO_NUM_DESC; i++) {
-    if (free[i]) {
-      free[i] = 0;
-      return i;
-    }
+
+  struct vring *ring = &this->ring[index];
+
+
+  size_t size = vring_size(len, PGSIZE);
+  int npages = round_up(size, 4096) >> 12;
+  printk("need %zu bytes (%d pages)\n", size, npages);
+
+
+  off_t pa = (off_t)phys::alloc(npages);
+  void *vptr = p2v(pa);
+
+  printk("allocated virtio_ring at pa %p\n", pa);
+
+  /* initialize the ring */
+  vring_init(ring, len, vptr, PGSIZE);
+  ring[index].free_list = 0xffff;
+  ring[index].free_count = 0;
+
+  /* add all the descriptors to the free list */
+  for (int i = 0; i < len; i++) {
+    free_desc(index, i);
   }
-  return -1;
-}
 
-inline void virtio_mmio_dev::free_desc(int i) {
-  if (i >= VIO_NUM_DESC) panic("free_desc 1");
-  if (free[i]) panic("free_desc 2");
-  desc[i].addr = 0;
-  desc[i].len = 0;
-  desc[i].flags = 0;
-  desc[i].next = 0;
-  free[i] = 1;
-  // wakeup(&free[0]);
-}
+  /* Select the index of this ring */
+  write_reg(VIRTIO_MMIO_QUEUE_SEL, index);
+  write_reg(VIRTIO_MMIO_GUEST_PAGE_SIZE, PGSIZE);
+  write_reg(VIRTIO_MMIO_QUEUE_NUM, len);
+  write_reg(VIRTIO_MMIO_QUEUE_ALIGN, 4096);
+  write_reg(VIRTIO_MMIO_QUEUE_PFN, pa / PGSIZE);
 
+	ring->active = true;
 
-void virtio_mmio_dev::free_chain(int i) {
-  while (1) {
-    int flag = desc[i].flags;
-    int nxt = desc[i].next;
-    free_desc(i);
-    if (flag & VRING_DESC_F_NEXT)
-      i = nxt;
-    else
-      break;
-  }
-}
-
-
-int virtio_mmio_dev::alloc3_desc(int *idx) {
-  for (int i = 0; i < 3; i++) {
-    idx[i] = alloc_desc();
-    if (idx[i] < 0) {
-      for (int j = 0; j < i; j++) free_desc(idx[j]);
-      return -1;
-    }
-  }
+  /* mark the ring active */
+  // dev->active_rings_bitmap |= (1 << index);
   return 0;
 }
 
 
 
-static void virtio_irq_handler(int i, reg_t *r, void *data) {
-  auto *dev = (virtio_mmio_dev *)data;
-  dev->irq();
+
+uint16_t virtio_mmio_dev::alloc_desc(int ring_index) {
+  if (ring[ring_index].free_count == 0) return 0xffff;
+  assert(ring[ring_index].free_list != 0xffff);
+
+  uint16_t i = ring[ring_index].free_list;
+  auto *desc = &ring[ring_index].desc[i];
+  ring[ring_index].free_list = desc->next;
+  ring[ring_index].free_count--;
+
+  return i;
 }
 
 
+void virtio_mmio_dev::submit_chain(int ring_index, int desc_index) {
+  /* add the chain to the available list */
+  auto *avail = ring[ring_index].avail;
 
-
-virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(regs) {
-  uint32_t status = 0;
-
-  status |= VIRTIO_CONFIG_S_ACKNOWLEDGE;
-  write_reg(VIRTIO_MMIO_STATUS, status);
-
-  status |= VIRTIO_CONFIG_S_DRIVER;
-  write_reg(VIRTIO_MMIO_STATUS, status);
-
-  char vendor[5];
-  uint32_t vendor_id = read_reg(VIRTIO_MMIO_VENDOR_ID);
-  memcpy(vendor, &vendor_id, 4);
-  vendor[4] = 0;
-  printk(KERN_INFO " - Vendor: %s\n", vendor);
-
-  // negotiate features
-  uint64_t features = read_reg(VIRTIO_MMIO_DEVICE_FEATURES);
-  features &= ~(1 << VIRTIO_BLK_F_RO);
-  features &= ~(1 << VIRTIO_BLK_F_SCSI);
-  features &= ~(1 << VIRTIO_BLK_F_CONFIG_WCE);
-  features &= ~(1 << VIRTIO_BLK_F_MQ);
-  features &= ~(1 << VIRTIO_F_ANY_LAYOUT);
-  features &= ~(1 << VIRTIO_RING_F_EVENT_IDX);
-  features &= ~(1 << VIRTIO_RING_F_INDIRECT_DESC);
-  write_reg(VIRTIO_MMIO_DRIVER_FEATURES, features);
-
-  irq::install(1, virtio_irq_handler, "virtio disk", (void *)this);
-
-  // tell device that feature negotiation is complete.
-  status |= VIRTIO_CONFIG_S_FEATURES_OK;
-  write_reg(VIRTIO_MMIO_STATUS, status);
-
-
-	
-}
-
-void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
-
-
-	/*
-	 * God knows where `data` points to. It could be a virtual address that can't be
-	 * easily converted to a physical one. For this reason, we need to allocate one
-	 * that we know is physically contiguous. Just use malloc for this, as it's physically
-	 * contiguous (for now) TODO: be smart later :^)
-	 */
-	void *tmp_buf = malloc(block_size());
-
-  vdisk_lock.lock();
-
-
-	if (write) memcpy(tmp_buf, data, block_size());
-  // the spec's Section 5.2 says that legacy block operations use
-  // three descriptors: one for type/reserved/sector, one for the
-  // data, one for a 1-byte status result.
-
-  // allocate the three descriptors.
-  int idx[3];
-  while (1) {
-    if (alloc3_desc(idx) == 0) {
-      break;
-    }
-    panic("oof\n");
-    // sleep(&free[0], &vdisk_lock);
-  }
-
-  // format the three descriptors.
-  // qemu's virtio-blk.c reads them.
-
-  struct virtio::blk_req *buf0 = &ops[idx[0]];
-
-  if (write)
-    buf0->type = VIRTIO_BLK_T_OUT;  // write the disk
-  else
-    buf0->type = VIRTIO_BLK_T_IN;  // read the disk
-  buf0->reserved = 0;
-  buf0->sector = sector;
-
-  desc[idx[0]].addr = (uint64_t)v2p(buf0);
-  desc[idx[0]].len = sizeof(virtio::blk_req);
-  desc[idx[0]].flags = VRING_DESC_F_NEXT;
-  desc[idx[0]].next = idx[1];
-
-  desc[idx[1]].addr = (uint64_t)v2p(tmp_buf);
-  desc[idx[1]].len = 512 * n;
-  if (write)
-    desc[idx[1]].flags = 0;  // device reads b->data
-  else
-    desc[idx[1]].flags = VRING_DESC_F_WRITE;  // device writes b->data
-  desc[idx[1]].flags |= VRING_DESC_F_NEXT;
-  desc[idx[1]].next = idx[2];
-
-  info[idx[0]].status = 0xff;  // device writes 0 on success
-  desc[idx[2]].addr = (uint64_t)v2p(&info[idx[0]].status);
-  desc[idx[2]].len = 1;
-  desc[idx[2]].flags = VRING_DESC_F_WRITE;  // device writes the status
-  desc[idx[2]].next = 0;
-
-  // record struct buf for virtio_disk_intr().
-  info[idx[0]].data = p2v(tmp_buf);
-
-  // tell the device the first index in our chain of descriptors.
-  avail->ring[avail->idx % VIO_NUM_DESC] = idx[0];
-
+  avail->ring[avail->idx & ring[ring_index].num_mask] = desc_index;
   __sync_synchronize();
-
-  // tell the device another avail ring entry is available.
-  avail->idx += 1;  // not % NUM ...
-
-  __sync_synchronize();
+  // mb();
+  avail->idx++;
+}
 
 
-  struct wait_entry ent;
-  ent.flags = 0;
-  ent.wq = &info[idx[0]].wq;
-
-  ent.wq->lock.lock();
-
-  sched::set_state(PS_UNINTERRUPTIBLE);
-  ent.wq->task_list.add(&ent.item);
-
-  ent.wq->lock.unlock();
-
-  write_reg(VIRTIO_MMIO_QUEUE_NOTIFY, 0);  // value is queue number
-
-  sched::yield();
-
-  info[idx[0]].data = NULL;
-  free_chain(idx[0]);
-
-  vdisk_lock.unlock();
-
-
-	if (!write) memcpy(data, tmp_buf, block_size());
-
-	::free(tmp_buf);
-
-  return;
+void virtio_mmio_dev::free_desc(int ring_index, int desc_index) {
+  // printk("ring %u index %u free_count %u\n", ring_index, desc_index, ring[ring_index].free_count);
+  ring[ring_index].desc[desc_index].next = ring[ring_index].free_list;
+  ring[ring_index].free_list = desc_index;
+  ring[ring_index].free_count++;
 }
 
 
 
 
-void virtio_mmio_disk::irq(void) {
+void virtio_mmio_dev::irq(void) {
+	// printk_nolock("irq!\n");
+
   // the device won't raise another interrupt until we tell it
   // we've seen this interrupt, which the following line does.
   // this may race with the device writing new entries to
   // the "used" ring, in which case we may process the new
   // completion entries in this interrupt, and have nothing to do
   // in the next interrupt, which is harmless.
-  write_reg(VIRTIO_MMIO_INTERRUPT_ACK, read_reg(VIRTIO_MMIO_INTERRUPT_STATUS) & 0x3);
 
-  __sync_synchronize();
+  int irq_status = read_reg(VIRTIO_MMIO_INTERRUPT_STATUS);
 
-  // the device increments disk.used->idx when it
-  // adds an entry to the used ring.
-  while (used_idx != used->idx) {
-    __sync_synchronize();
-    int id = used->ring[used_idx % VIO_NUM_DESC].id;
+  if (irq_status & 0x1) { /* used ring update */
+    // XXX is this safe?
+    write_reg(VIRTIO_MMIO_INTERRUPT_ACK, 0x1);
 
-    if (info[id].status != 0) panic("virtio_disk_intr status: %02x", info[id].status);
+    /* cycle through all the active rings */
+    for (int r = 0; r < VIO_MAX_RINGS; r++) {
+      auto *ring = &this->ring[r];
+      if (!ring->active) continue;
 
-    auto *b = &info[id];
-    b->wq.wake_up_all();
-    __sync_synchronize();
 
-    used_idx += 1;
+      int cur_idx = ring->used->idx;
+      for (int i = ring->last_used; i != (cur_idx & ring->num_mask); i = (i + 1) & ring->num_mask) {
+
+        // process chain
+        auto *used_elem = &ring->used->ring[i];
+        // LTRACEF("id %u, len %u\n", used_elem->id, used_elem->len);
+
+        // DEBUG_ASSERT(dev->irq_driver_callback);
+        this->irq(r, used_elem);
+
+        ring->last_used = (ring->last_used + 1) & ring->num_mask;
+      }
+    }
+  }
+  if (irq_status & 0x2) { /* config change */
+    write_reg(VIRTIO_MMIO_INTERRUPT_ACK, 0x2);
+    panic("virtio config change!\n");
   }
 }
 
 
-bool virtio_mmio_disk::read_blocks(uint32_t sector, void *data, int nsec) {
-  disk_rw(sector, data, nsec, 0 /* read mode */);
-  return true;
+
+void virtio_irq_handler(int i, reg_t *r, void *data) {
+  auto *dev = (virtio_mmio_dev *)data;
+  dev->irq();
 }
 
-bool virtio_mmio_disk::write_blocks(uint32_t sector, const void *data, int nsec) {
-  disk_rw(sector, (uint8_t *)data, nsec, 1 /* read mode */);
-  return true;
-}
 
-size_t virtio_mmio_disk::block_size(void) { return config().blk_size; }
-
-size_t virtio_mmio_disk::block_count(void) { return config().capacity; }
 
 #define REG(off) ((volatile uint32_t *)((off_t)regs + off))
 
 
-int virtio_check_mmio_disk(volatile uint32_t *regs) {
-  printk(KERN_INFO "Virtio disk at %p\n", regs);
-  auto *disk = new virtio_mmio_disk(regs);
 
-  dev::register_disk(disk);
+virtio::virtq_desc *virtio_mmio_dev::alloc_desc_chain(int ring_index, int count,
+                                                      uint16_t *start_index) {
+  if (ring[ring_index].free_count < count) return NULL;
 
-  return 0;
+  /* start popping entries off the chain */
+  virtio::virtq_desc *last = 0;
+  uint16_t last_index = 0;
+  while (count > 0) {
+    uint16_t i = ring[ring_index].free_list;
+    auto *desc = &ring[ring_index].desc[i];
+
+
+    ring[ring_index].free_list = desc->next;
+    ring[ring_index].free_count--;
+
+    if (last) {
+      desc->flags = VRING_DESC_F_NEXT;
+      desc->next = last_index;
+    } else {
+      // first one
+      desc->flags = 0;
+      desc->next = 0;
+    }
+    last = desc;
+    last_index = i;
+    count--;
+  }
+
+  if (start_index) *start_index = last_index;
+
+  return last;
 }
 
 
@@ -400,11 +321,28 @@ int virtio::check_mmio(void *addr) {
 
   uint32_t dev_id = *REG(VIRTIO_MMIO_DEVICE_ID);
   switch (dev_id) {
+    case 0:
+      return -ENODEV;
     /* virtio disk */
-    case 2:
-      return virtio_check_mmio_disk(regs);
+    case 2: {
+      printk(KERN_INFO "[VIRTIO] Disk Device at %p\n", addr);
+
+      auto *disk = new virtio_mmio_disk(regs);
+
+      dev::register_disk(disk);
+      return 0;
+    }
+
+
+    case 16: {
+      return -ENODEV;
+      printk(KERN_INFO "[VIRTIO] GPU Device at %p\n", addr);
+      /* TODO: do something with this? */
+      auto *gpu = new virtio_mmio_gpu(regs);
+      return 0;
+    }
     default:
-      // printk("No handler for device id %d\n", dev_id);
+      printk("No handler for device id %d at %p\n", dev_id, addr);
       return -ENODEV;
   }
 

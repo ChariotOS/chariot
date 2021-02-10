@@ -719,6 +719,7 @@ static int ext2_unlink(fs::inode &, const char *) {
 static struct fs::inode *ext2_lookup(fs::inode &node, const char *needle) {
   if (node.type != T_DIR) panic("ext2_lookup on non-dir\n");
 
+
   bool found = false;
   auto efs = static_cast<fs::ext2 *>(&node.sb);
   int nr = -1;

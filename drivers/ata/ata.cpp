@@ -492,9 +492,6 @@ static void ata_interrupt(int intr, reg_t* fr, void*) {
 
   outb(primary_master_bmr_status, BMR_COMMAND_DMA_STOP);
 
-  if (sched::enabled()) {
-    ata_wq.wake_up();
-  }
 
   irq::eoi(intr);
   // INFO("interrupt: err=%d\n", fr->err);

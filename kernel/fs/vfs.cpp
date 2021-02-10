@@ -182,12 +182,9 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
   char name[256];
   bool last = false;
 
-  // printk("namei %s\n", path);
-  // hexdump((void*)path, strlen(path), true);
 
-  // int i = 0;
+  int i = 0;
   while ((path = skipelem((char *)path, name, last)) != 0) {
-    // printk("  %d: %s\n", i++, name);
     // attempting to go above the current root is a nop
     if (!strcmp(name, "..") && ino == uroot) {
       continue;

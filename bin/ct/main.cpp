@@ -134,7 +134,7 @@ class game_view final : public ui::view {
   virtual void paint_event(void) {
     auto s = get_scribe();
 
-		printf("paint %d %d\n", width(), height());
+    printf("paint %d %d\n", width(), height());
 
 
     // s.clear(0xFFFFFF);
@@ -247,47 +247,74 @@ class game_view final : public ui::view {
 
 
 
-
-
-
 #include <sys/sysbind.h>
 
+
+
+void display_font(const char* name) {
+  auto font = gfx::font::get(name);
+
+
+  font->with_line_height(15, [&]() {
+    gfx::bitmap bmp(120, font->line_height());
+
+    for (int y = 0; y < bmp.height(); y++) {
+      for (int x = 0; x < bmp.width(); x++) {
+        bmp.set_pixel(x, y, 0xFFFFFF);
+      }
+    }
+
+    int x = 0;
+    int y = font->line_height();
+    gfx::scribe s(bmp);
+    uint32_t color = 0x000000;
+    s.draw_text(*font, bmp.rect(), name, ui::TextAlign::CenterLeft, 0x000000, false);
+    for (int y = 0; y < bmp.height(); y++) {
+      for (int x = 0; x < bmp.width(); x++) {
+        uint32_t c = bmp.get_pixel(x, y);
+        if (c == color) {
+          printf(" ");
+          color = c;
+          continue;
+        }
+        color = c;
+
+        uint8_t r = (c >> 16) & 0xFF;
+        uint8_t g = (c >> 8) & 0xFF;
+        uint8_t b = c & 0xFF;
+
+        printf("\x1b[48;2;%d;%d;%dm ", r, g, b);
+      }
+			/* Reset */
+			color = 0x000000;
+      printf("\x1b[0m\n");
+    }
+    // printf("\n");
+  });
+}
+
+
 int main(int argc, char** argv) {
+  display_font("Times New Roman");
+  display_font("Lato");
+  display_font("OpenSans");
+  display_font("OpenSans Bold");
+  display_font("Source Code Pro");
+  display_font("Avenir");
+  display_font("Arial");
 
-
-	auto font = gfx::font::get("Lato");
-
-
-	int x = 0;
-	int y = 0;
-
-
-	gfx::bitmap bmp(40, 40);
-
-	font->with_line_height(12, [&]() {
-		gfx::scribe s(bmp);
-		font->draw(x, y, s, 'A', 0xFFFFFF);
-	});
-
-	ck::hexdump(bmp.pixels(), bmp.size());
-
-	return 0;
-
-	while (1) {
-		printf("usleep for 500 ms\n");
-		sysbind_usleep(500 * 1000);
-	}
+  return 0;
 
 
   ui::application app;
 
   ui::window* win = app.new_window("Current Test (Hello World)", 120, 85);
   // create a root view (column)
-	//
+  //
   auto& root = win->set_view<game_view>();
 
-	root.set_flex_grow(1.0);
-	root.set_flex_height(85);
+  root.set_flex_grow(1.0);
+  root.set_flex_height(85);
   // root.set_font("Roboto Regular");
   // root.add(make_label("Command Line Interface Guidelines", 0x000000, 0xFFFFFF));
 

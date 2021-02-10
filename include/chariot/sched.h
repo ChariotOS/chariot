@@ -268,7 +268,7 @@ struct thread_statistics {
 };
 
 struct thread_sched_info {
-  int timeslice = 2;
+  int timeslice = 1;
   int priority = 0;
   u64 ticks = 0;
   u64 start_tick = 0;

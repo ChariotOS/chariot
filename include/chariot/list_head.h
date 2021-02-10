@@ -238,13 +238,13 @@ struct __remove_reference<T &&> {
   typedef T type;
 };
 
-#define __decltype(t) __remove_reference<decltype(t)>::type
+#define __decltype(t) typename __remove_reference<decltype(t)>::type
 
 /**
  * list_entry - get the struct for this entry
  * @ptr:	the &struct list_head pointer.
  * @type:	the type of the struct this is embedded in.
- * @member:	the name of the list_struct within the struct.
+ * @member:	the name of the list_head within the struct.
  */
 #define list_entry(ptr, type, member)                      \
   ({                                                       \

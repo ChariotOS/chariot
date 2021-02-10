@@ -1,5 +1,4 @@
 #include <asm.h>
-#include <time.h>
 #include <dev/disk.h>
 #include <errno.h>
 #include <fs/ext2.h>
@@ -8,6 +7,7 @@
 #include <module.h>
 #include <phys.h>
 #include <string.h>
+#include <time.h>
 #include <util.h>
 
 
@@ -53,7 +53,9 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-fs::ext2::ext2(void) { TRACE; }
+fs::ext2::ext2(void) {
+  TRACE;
+}
 
 fs::ext2::~ext2(void) {
   TRACE;
@@ -126,7 +128,7 @@ int fs::ext2::write_superblock(void) {
 bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {
   TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
-	auto bgd_bb = bref::get(*bdev, first_bgd);
+  auto bgd_bb = bref::get(*bdev, first_bgd);
   auto *bgd = (block_group_desc *)bgd_bb->data() + bg;
 
   // find the index and seek to the inode
@@ -134,10 +136,9 @@ bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {
   u32 block = (index * sb->s_inode_size) / block_size;
 
 
-	auto inode_bb = bref::get(*bdev, bgd->inode_table + block);
+  auto inode_bb = bref::get(*bdev, bgd->inode_table + block);
 
-  auto *_inode =
-      (ext2_inode_info *)inode_bb->data() + (index % (block_size / sb->s_inode_size));
+  auto *_inode = (ext2_inode_info *)inode_bb->data() + (index % (block_size / sb->s_inode_size));
 
   memcpy(&dst, _inode, sizeof(ext2_inode_info));
 
@@ -148,20 +149,19 @@ bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
   TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
 
-	auto bgd_bb = bref::get(*bdev, first_bgd);
+  auto bgd_bb = bref::get(*bdev, first_bgd);
   auto *bgd = (block_group_desc *)bgd_bb->data() + bg;
 
   // find the index and seek to the inode
   u32 index = (inode - 1) % sb->inodes_in_blockgroup;
   u32 block = (index * sb->s_inode_size) / block_size;
 
-	auto inode_bb = bref::get(*bdev, bgd->inode_table + block);
+  auto inode_bb = bref::get(*bdev, bgd->inode_table + block);
 
-  auto *_inode =
-      (ext2_inode_info *)inode_bb->data() + (index % (block_size / sb->s_inode_size));
+  auto *_inode = (ext2_inode_info *)inode_bb->data() + (index % (block_size / sb->s_inode_size));
 
   memcpy(_inode, &src, sizeof(ext2_inode_info));
-	inode_bb->register_write();
+  inode_bb->register_write();
 
   return true;
 }
@@ -179,7 +179,7 @@ long fs::ext2::allocate_inode(void) {
   int res = -1;
 
   // now that we have which BGF the inode is in, load that desc
-	auto first_bgd_bb = bref::get(*bdev, first_bgd);
+  auto first_bgd_bb = bref::get(*bdev, first_bgd);
 
   // space for the bitmap (a little wasteful with memory, but fast)
   //    (allocates a full page)
@@ -190,8 +190,7 @@ long fs::ext2::allocate_inode(void) {
     auto *bgd = (block_group_desc *)first_bgd_bb->data() + i;
 
     if (res == -1 && bgd->num_of_unalloc_inode > 0) {
-
-			auto bitmap_bb = bref::get(*bdev, bgd->inode_bitmap);
+      auto bitmap_bb = bref::get(*bdev, bgd->inode_bitmap);
       auto bitmap = (char *)bitmap_bb->data();
 
       int j = 0;
@@ -200,12 +199,12 @@ long fs::ext2::allocate_inode(void) {
       // evaluate to the actual inode number
       res = j + i * sb->inodes_in_blockgroup + 1;
       bitmap[j / 8] |= static_cast<u8>((1u << (j % 8)));
-			bitmap_bb->register_write();
+      bitmap_bb->register_write();
       sb->unallocatedinodes--;
       bgd->num_of_unalloc_inode--;
-			first_bgd_bb->register_write();
-			write_superblock();
-			return res;
+      first_bgd_bb->register_write();
+      write_superblock();
+      return res;
     }
 
     nfree += bgd->num_of_unalloc_inode;
@@ -233,7 +232,7 @@ uint32_t fs::ext2::balloc(void) {
     auto bgblk = bref::get(*bdev, bgd[bg_idx].block_bitmap);
     auto bg_buffer = bgblk->data();
 
-		// hexdump(bg_buffer, block_size, true);
+    // hexdump(bg_buffer, block_size, true);
 
     auto words = reinterpret_cast<uint32_t *>(bg_buffer);
 
@@ -254,12 +253,12 @@ uint32_t fs::ext2::balloc(void) {
         write_superblock();
 
 
-				// clear out the new block we just allocated
-				// TODO: allow this to happen without reading the block
+        // clear out the new block we just allocated
+        // TODO: allow this to happen without reading the block
         auto newblk = bref::get(*bdev, block_no);
         memset(newblk->data(), 0x00, block_size);
 
-				// register everything we've changed :^)
+        // register everything we've changed :^)
         newblk->register_write();
         first_bgd_bb->register_write();
         bgblk->register_write();
@@ -307,18 +306,23 @@ struct fs::inode *fs::ext2::get_inode(u32 index) {
   return inodes[index];
 }
 
-int ext2_sb_init(struct fs::superblock &sb) { return -ENOTIMPL; }
+int ext2_sb_init(struct fs::superblock &sb) {
+  return -ENOTIMPL;
+}
 
-int ext2_write_super(struct fs::superblock &sb) { return -ENOTIMPL; }
+int ext2_write_super(struct fs::superblock &sb) {
+  return -ENOTIMPL;
+}
 
-int ext2_sync(struct fs::superblock &sb, int flags) { return -ENOTIMPL; }
+int ext2_sync(struct fs::superblock &sb, int flags) {
+  return -ENOTIMPL;
+}
 
 struct fs::sb_operations ext2_ops {
   .init = ext2_sb_init, .write_super = ext2_write_super, .sync = ext2_sync,
 };
 
-static struct fs::superblock *ext2_mount(struct fs::sb_information *,
-                                         const char *args, int flags,
+static struct fs::superblock *ext2_mount(struct fs::sb_information *, const char *args, int flags,
                                          const char *device) {
   struct fs::blkdev *bdev = fs::bdev_from_path(device);
   if (bdev == NULL) return NULL;
@@ -337,6 +341,8 @@ struct fs::sb_information ext2_info {
   .name = "ext2", .mount = ext2_mount, .ops = ext2_ops,
 };
 
-static void ext2_init(void) { vfs::register_filesystem(ext2_info); }
+static void ext2_init(void) {
+  vfs::register_filesystem(ext2_info);
+}
 
 module_init("fs::ext2", ext2_init);

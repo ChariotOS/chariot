@@ -39,11 +39,12 @@ case $ARCH in
 
 
 		QEMU_FLAGS+="-machine virt -smp 1 -m ${CONFIG_RISCV_RAM_MB}M "
-		# QEMU_FLAGS+="-bios none -kernel build/chariot.elf "
-		QEMU_FLAGS+="-bios default -device loader,file=build/chariot.elf "
+		QEMU_FLAGS+="-bios none -kernel build/chariot.elf "
+		# QEMU_FLAGS+="-bios default -device loader,file=build/chariot.elf "
 
 		QEMU_FLAGS+="-drive file=build/chariot.img,if=none,format=raw,id=x0 "
 		QEMU_FLAGS+="-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 "
+		QEMU_FLAGS+="-device virtio-gpu-device,bus=virtio-mmio-bus.1 "
 
 		# virtio keyboard, gpu, and tablet (cursor)
 		# QEMU_FLAGS+="-device virtio-tablet-device -device virtio-keyboard-device -device virtio-gpu-device "

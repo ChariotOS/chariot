@@ -1,8 +1,10 @@
 #include <cpu.h>
-#include <syscall.h>
 #include <stat.h>
+#include <syscall.h>
 
-int sys::stat(const char *pathname, struct stat *statbuf) { return -1; }
+int sys::stat(const char *pathname, struct stat *statbuf) {
+  return -1;
+}
 
 int sys::fstat(int fd, struct stat *statbuf) {
   auto proc = cpu::proc();
@@ -25,8 +27,9 @@ int sys::lstat(const char *pathname, struct stat *statbuf) {
 
   struct fs::inode *ino;
 
+  int err = vfs::namei(pathname, 0, 0, curproc->cwd, ino);
   // TODO: flags!
-  if (vfs::namei(pathname, 0, 0, curproc->cwd, ino) != 0) return -1;
+  if (err != 0) return err;
 
   if (ino) return ino->stat(statbuf);
   return -1;

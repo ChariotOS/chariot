@@ -535,6 +535,8 @@ struct bref {
   }
 
   inline struct block::buffer *operator->(void) { return buf; }
+  inline struct block::buffer *get(void) { return buf; }
+
 
  private:
   struct block::buffer *buf = NULL;

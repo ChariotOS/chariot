@@ -1,12 +1,10 @@
 #pragma once
 
+#ifndef __ASSEMBLER__
 #include <riscv/arch.h>
 #include <mm.h>
-
-
-#ifndef CONFIG_RISCV
-#error "paging_impl.h only works on riscv."
 #endif
+
 
 #define PGSIZE 4096  // bytes per page
 #define PGSHIFT 12   // bits of offset within a page
@@ -83,20 +81,27 @@
 
 
 #ifdef CONFIG_SV39
+#define SATP_FLAG 8
+#define SATP_SHIFT 60
 #define SATP_MODE (8L << 60)
 #endif
 
 #ifdef CONFIG_SV48
+#define SATP_FLAG 9
+#define SATP_SHIFT 60
 #define SATP_MODE (9L << 60)
 #endif
 
 #ifdef CONFIG_SV32
+#define SATP_FLAG 1
+#define SATP_SHIFT 30
 #define SATP_MODE (1L << 30)
 #endif
 
 #define MAKE_SATP(page_table) (SATP_MODE | (((rv::xsize_t)page_table) >> 12))
 
 
+#ifndef __ASSEMBLER__
 namespace rv {
 
 	using pte_t = rv::xsize_t;
@@ -118,3 +123,5 @@ namespace rv {
 
 	rv::pte_t *page_walk(rv::pte_t *tbl, off_t va);
 };  // namespace rv
+
+#endif

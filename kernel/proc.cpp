@@ -296,6 +296,7 @@ void sched::proc::dump_table(void) {
   printk("process dump:\n");
 
   printk("   ticks: %zu\n", cpu::get_ticks());
+  printk("  iticks: %zu\n", cpu::current().kstat.iticks);
   printk("   sched: rip=%p\n", cpu::current().sched_ctx->pc);
   for (auto &p : proc_table) {
     auto &proc = p.value;
