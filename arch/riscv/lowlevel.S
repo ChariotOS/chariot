@@ -66,17 +66,17 @@ _start:
 	bne     t0, zero, 0b
 
 	# we calculate the starting stack by _stack_start + (2*4096 * (mhartid + 1))
-  # so each HART gets 2 pages of stack
+	# so each HART gets 2 pages of stack
 	la      sp, _stack_start
 	li      t0, CONFIG_RISCV_BOOTSTACK_SIZE * 4096 # 2 page stack
 	csrr    t1, mhartid
-  addi    t1, t1, 1 # t1 = mhartid + 1
+	addi    t1, t1, 1 # t1 = mhartid + 1
 	mul     t0, t0, t1 # t1 = SIZE * (mhartid + 1)
 	add     sp, sp, t0 # sp = stack_start + (SIZE * (mhartid + 1))
 
 	j 1f
-  lla     t0, _bss_start
-  lla     t1, _bss_end
+	lla     t0, _bss_start
+	lla     t1, _bss_end
 	beq     t0, t1, 1f
 0:
 	REG_S   zero, (t0)
