@@ -38,7 +38,7 @@ config KERNEL_VIRTUAL_BASE
 	default 0xffffffc000000000 if SV39 && RISCV
 	default 0xffff800000000000 if SV48 && RISCV
 
-	# arm64S
+	# arm64
 	default 0xffffffff80000000 if ARM64
 
 
