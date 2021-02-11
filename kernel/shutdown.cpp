@@ -1,6 +1,9 @@
 #include <asm.h>
 #include <fs.h>
 #include <syscall.h>
+#ifdef CONFIG_SBI
+#include <riscv/sbi.h>
+#endif
 
 int sys::shutdown(void) {
 
@@ -26,6 +29,10 @@ int sys::shutdown(void) {
 
 #endif
 
+
+#if defined(CONFIG_RISCV) && defined(CONFIG_SBI)
+	sbi_call(SBI_SHUTDOWN);
+#endif
 	printk(KERN_ERROR "Failed to shutdown. Guess I gotta implement ACPI AML?\n");
 
   return -ENOTIMPL;

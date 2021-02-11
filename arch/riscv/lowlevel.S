@@ -51,7 +51,8 @@
 
 .global _start
 _start:
-	
+
+
 	# Disable linker instruction relaxation for the `la` instruction below.
 	# This disallows the assembler from assuming that `gp` is already initialized.
 	# This causes the value stored in `gp` to be calculated from `pc`.
@@ -60,17 +61,20 @@ _start:
 	# la		gp, _global_pointer
 .option pop
 
+# OpenSBI passes us the hartid through a0. If we don't have OpenSBI,
+# grab it for ourselves (we are in M-mode right now)
+#ifndef CONFIG_SBI
+	csrr    a0, mhartid
+#endif
 
-	csrr    t0, mhartid
 0:
-	bne     t0, zero, 0b
+	bne     a0, zero, 0b
 
 	# we calculate the starting stack by _stack_start + (2*4096 * (mhartid + 1))
 	# so each HART gets 2 pages of stack
 	la      sp, _stack_start
 	li      t0, CONFIG_RISCV_BOOTSTACK_SIZE * 4096 # 2 page stack
-	csrr    t1, mhartid
-	addi    t1, t1, 1 # t1 = mhartid + 1
+	addi    t1, a0, 1 # t1 = mhartid + 1
 	mul     t0, t0, t1 # t1 = SIZE * (mhartid + 1)
 	add     sp, sp, t0 # sp = stack_start + (SIZE * (mhartid + 1))
 
@@ -85,6 +89,8 @@ _start:
 1:
 
 
+	# supervisor mode expects 
+
 	# setup the base high-half identity mapping
 	li      t0, PT_R | PT_W | PT_X | PT_V # t0: current physical address (PTE)
 	la      t1, kernel_page_table         # t1: current location in the page table
@@ -95,6 +101,7 @@ _start:
 
 	# shift the current pointer to the halfway point
 	srai    t3, t3, 1                     # t3 /= 2
+	move    t4, t1                        # t4 is the pointer to the lower half
 	add     t1, t1, t3                    # t1 += 4096 / 2
 
 	li      t3, VM_BIGGEST_PAGE           # t3: physical memory stride
@@ -102,10 +109,12 @@ _start:
 
 	# store the PTE at the location pointed to by t1
 	REG_S   t0, 0(t1)
+	REG_S   t0, 0(t4)
 	# move the PTE (t0) forward by the stride (t3)
 	add     t0, t0, t3
-	# step the pointer forward
+	# step the pointer(s) forward
 	addi    t1, t1, SZREG
+	addi    t4, t4, SZREG
 	bne     t1, t2, 0b                    # jump back if we aren't done
 
 
@@ -117,14 +126,18 @@ _start:
 	# t1 is the eventual value of SATP
 	li      t1, SATP_FLAG      # t1 = SATP_FLAG
 	slli    t1, t1, SATP_SHIFT # t1 = t1 << SATP_SHIFT
-
 	add     t1, t1, t0         # t1 = t1 + kernel_page_table
-
 	csrw    satp, t1           # satp = t1
 
+	# ensure it's written out
+	fence   w,w
+	# flush tlb and whatnot
 	sfence.vma  zero, zero
 
 
+breakpoint:
+
+#ifndef CONFIG_SBI
 
 	# set M-mode trap handler
 	la      t0, timervec
@@ -135,37 +148,46 @@ _start:
 	csrw    medeleg, t0
 	csrw    mideleg, t0
 
-
 	# set M-mode previous priv mode to S-mode for mret
 	li      t0, MSTATUS_MPP_MASK
 	csrc    mstatus, t0 # mstatus.MPP = 0
 	li      t0, MSTATUS_MPP_S
 	csrs    mstatus, t0 # mstatus.MPP = S
 
+
 	# set mepc so we can return to the right place
 	la      t0, main_ptr
 	REG_L   t0, 0(t0)
 	csrw    mepc, t0
 
+#endif
+
 	# allocate alot of space for the scratch pad
 	addi    sp, sp, -32 * SZREG
+
+#ifndef CONFIG_SBI
 
 	csrw    mscratch, sp
 
 	# ask C code to setup the local hart state, cause it's annoying to work with structs in asm
-	move    a0, sp
+	move    a2, sp # a0 = hartid, a1 = device tree, a2 = hart id
 	# a1 is still the pointer to the device tree binary
 	call    setup_mhart_state
 
+#endif
 
-	
+#ifndef CONFIG_SBI
+
 	# enable machine mode interrupts
 	li      t0, MSTATUS_MIE
 	csrs    mstatus, t0
 
+
 	# enable machine mode timer interrupts
 	li      t0, MIE_MTIE
 	csrs    mie, t0
+
+#endif
 
 	li      t0, SIE_SEIE | SIE_STIE | SIE_SSIE
 	csrs    sie, t0
@@ -176,16 +198,18 @@ _start:
 	REG_L   t0, 0(t0)
 	add     sp, sp, t0 # load the new virtual stack pointer
 
+
+#ifdef CONFIG_SBI
+
+	la      t0, main_ptr
+	REG_L   t0, 0(t0)
+	jr      t0
+
+#endif
+
 	mret
 
-
-.balign 8
-main_ptr:
-.quad main
-# place the kernel virtual base here, so we don't have to manage calculation in assembly
-virt_mask:
-.quad CONFIG_KERNEL_VIRTUAL_BASE
-
+#ifndef CONFIG_SBI
 
 .global timervec
 timervec:
@@ -213,9 +237,17 @@ timervec:
 
 	mret
 
+#endif
 
 
 
+.section .boot.data
+.balign 8
+main_ptr:
+.quad main
+# place the kernel virtual base here, so we don't have to manage calculation in assembly
+virt_mask:
+.quad CONFIG_KERNEL_VIRTUAL_BASE
 
 
 

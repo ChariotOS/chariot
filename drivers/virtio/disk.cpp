@@ -42,6 +42,7 @@ void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
    * contiguous (for now) TODO: be smart later :^)
    */
   void *tmp_buf = malloc(block_size());
+	
   if (write) memcpy(tmp_buf, data, block_size());
 
 	if (!arch_irqs_enabled()) {

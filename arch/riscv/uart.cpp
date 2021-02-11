@@ -5,6 +5,7 @@
 #include <mem.h>
 #include <printk.h>
 #include <riscv/uart.h>
+#include <riscv/sbi.h>
 
 /* Quick function to get a uart register */
 // #define Reg(reg) ((volatile unsigned char *)(p2v((UART0 + reg))))
@@ -45,6 +46,7 @@ uint64_t uart_tx_r;  // read next from uart_tx_buf[uar_tx_r % UART_TX_BUF_SIZE]
 int uart_count = 0;
 
 static void uart_start(void) {
+	/* if we have sbi, there's no reason to do all this stuff :) */
   while (1) {
     if (uart_tx_w == uart_tx_r) {
       // transmit buffer is empty.
@@ -98,6 +100,7 @@ static void uart_irq(int irq, reg_t *r, void *data) {
 }
 
 
+
 void rv::uart_init(void) {
   uart_tx_w = uart_tx_r = 0;
   // disable interrupts.
@@ -125,6 +128,10 @@ void rv::uart_init(void) {
 }
 
 void rv::uart_putc(char c) {
+	/* If we have SBI, ask it to print things. This might be a little slower, but it should work okay */
+#ifdef CONFIG_SBI
+	sbi_call(SBI_CONSOLE_PUTCHAR, c);
+#else
   // wait for Transmit Holding Empty to be set in LSR.
   while ((ReadReg(LSR) & LSR_TX_IDLE) == 0)
     ;
@@ -146,6 +153,7 @@ void rv::uart_putc(char c) {
       break;
     }
   }
+#endif
 }
 
 int rv::uart_getc(void) {

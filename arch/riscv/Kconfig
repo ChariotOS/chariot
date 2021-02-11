@@ -10,7 +10,7 @@
 
 config RISCV_RAM_MB
 	int "RAM size"
-	default 128
+	default 1024
 	help
 		risc-v doesn't seem to have an obvious way to query
 		ram count, so we have to hard code it I think (idk)
@@ -18,6 +18,10 @@ config RISCV_RAM_MB
 config RISCV_BOOTSTACK_SIZE
 	int "Per-HART boot stack size (in pages)"
 	default 2
+
+config SBI
+	bool "Use OpenSBI for M-mode actions"
+	default y
 
 choice
 	prompt "Virtual memory system"

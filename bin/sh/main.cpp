@@ -560,7 +560,8 @@ int main(int argc, char **argv, char **envp) {
       disp_cwd = "~";
     }
 
-    snprintf(prompt, 256, "[%s@%s %s]%c ", uname, hostname, disp_cwd, uid == 0 ? '#' : '$');
+    // snprintf(prompt, 256, "[%s@%s %s]%c ", uname, hostname, disp_cwd, uid == 0 ? '#' : '$');
+    snprintf(prompt, 256, "%s %c ", disp_cwd, uid == 0 ? '#' : '$');
 
 
     ck::string line = read_line(0, prompt);

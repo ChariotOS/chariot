@@ -1,9 +1,9 @@
 
 if(CONFIG_64BIT)
-	set(RISCV_MARCH "rv64g")
+	set(RISCV_MARCH "rv64gc")
 	set(RISCV_MABI  "lp64d")
 else()
-	set(RISCV_MARCH "rv32g")
+	set(RISCV_MARCH "rv32gc")
 	set(RISCV_MABI  "ilp32d")
 endif()
 
@@ -17,11 +17,11 @@ set(CMAKE_ASM_FLAGS "${RISCV_FLAGS} -mno-relax ")
 
 
 # TODO: riscv userspace flags
-set(ARCH_USER_C_FLAGS "${RISCV_FLAGS}")
+set(ARCH_USER_C_FLAGS "${RISCV_FLAGS} -fno-omit-frame-pointer")
 set(ARCH_USER_CXX_FLAGS "")
 
 # Kernelspace Flags
-set(ARCH_KERN_C_FLAGS "-mno-relax ${RISCV_FLAGS} -fno-stack-protector")
+set(ARCH_KERN_C_FLAGS "-mno-relax ${RISCV_FLAGS} -fno-stack-protector -fno-omit-frame-pointer")
 set(ARCH_KERN_CXX_FLAGS "")
 
 

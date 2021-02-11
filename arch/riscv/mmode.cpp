@@ -38,8 +38,8 @@ extern "C" char _stack_start[];
 #define CLINT_MTIME (CLINT + 0xBFF8)  // cycles since boot.
 
 
-
-extern "C" void __init setup_mhart_state(rv::hart_state *hs, rv::xsize_t dtb) {
+#ifndef CONFIG_SBI
+extern "C" void __init setup_mhart_state(int hartid, rv::xsize_t dtb, rv::hart_state *hs) {
   int id = read_csr(mhartid);
 
   hs->hartid = id;
@@ -57,5 +57,4 @@ extern "C" void __init setup_mhart_state(rv::hart_state *hs, rv::xsize_t dtb) {
   hs->tca = CLINT_MTIMECMP(id);
   hs->interval = interval;
 }
-
-
+#endif

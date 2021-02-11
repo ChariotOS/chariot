@@ -38,9 +38,12 @@ case $ARCH in
 	RISC-V)
 
 
+		QEMU_FLAGS+="-cpu rv64,x-h=true "
 		QEMU_FLAGS+="-machine virt -smp 1 -m ${CONFIG_RISCV_RAM_MB}M "
-		QEMU_FLAGS+="-bios none -kernel build/chariot.elf "
-		# QEMU_FLAGS+="-bios default -device loader,file=build/chariot.elf "
+		# QEMU_FLAGS+="-bios arch/riscv/firmware/generic/fw_jump.bin "
+		# QEMU_FLAGS+="-bios none "
+		QEMU_FLAGS+="-bios default "
+		QEMU_FLAGS+="-kernel build/chariot.elf "
 
 		QEMU_FLAGS+="-drive file=build/chariot.img,if=none,format=raw,id=x0 "
 		QEMU_FLAGS+="-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 "

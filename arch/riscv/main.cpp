@@ -10,6 +10,7 @@
 #include <riscv/dis.h>
 #include <riscv/paging.h>
 #include <riscv/plic.h>
+#include <riscv/sbi.h>
 #include <riscv/uart.h>
 #include <sleep.h>
 #include <syscall.h>
@@ -191,10 +192,10 @@ void test_rbtree(void) {
 
   auto *node = rb_search(&mytree, [&](auto *node) -> int {
     struct mytype *mt = rb_entry(node, struct mytype, node);
-		printk("checking %p\n", mt);
+    printk("checking %p\n", mt);
     return strcmp("hello", mt->keystring);
   });
-	printk("node with hello: %p\n", node);
+  printk("node with hello: %p\n", node);
   print_tree_linear(&mytree);
   print_tree_nice(&mytree);
 }
@@ -209,7 +210,13 @@ static off_t dtb_ram_start = 0;
 static size_t dtb_ram_size = 0;
 
 static int wakes = 0;
-void main() {
+void main(int hartid, void *fdt) {
+
+#ifdef CONFIG_SBI
+	// get the information from SBI right away so we can use it early on
+	sbi_early_init();
+#endif
+
 
   /*
    * Machine mode passes us the scratch structure through
@@ -217,7 +224,8 @@ void main() {
    * to our sscratch register after copying it
    */
   struct rv::hart_state *sc = (rv::hart_state *)p2v(rv::get_tp());
-
+  sc->hartid = hartid;
+  sc->dtb = (dtb::fdt_header *)fdt;
 
   /* The scratch register is a physical address. This is so the timervec doesn't have to
    * do any address translation or whatnot. We just pay the cost everywhere else! :^) */
@@ -225,16 +233,17 @@ void main() {
 
   rv::get_hstate().kernel_sp = 0;
 
-  int hartid = rv::hartid();
   /* TODO: release these somehow :) */
   if (rv::hartid() != 0)
     while (1)
       arch_halt();
 
+
   /* Initialize the platform level interrupt controller for this HART */
   rv::plic::hart_init();
 
   rv::uart_init();
+
 
   /* Set the supervisor trap vector location */
   write_csr(stvec, kernelvec);
@@ -285,6 +294,13 @@ void main() {
 
   arch_enable_ints();
 
+#ifdef CONFIG_SBI
+	sbi_init();
+	/* set the timer with sbi :) */
+  sbi_set_timer(rv::get_time() + TICK_INTERVAL);
+#endif
+
+
   time::set_cps(CONFIG_RISCV_CLOCKS_PER_SECOND);
   time::set_high_accuracy_time_fn(riscv_high_acc_time_func);
   /* set SUM bit in sstatus so kernel can access userspace pages. Also enable floating point */
@@ -324,12 +340,6 @@ void main() {
       return true;
     });
 
-
-    // test_rbtree();
-
-
-    // printk("waiting!\n");
-    // do_usleep(1000 * 1000);
 
     int mnt_res = vfs::mount("/dev/disk0p1", "/", "ext2", 0, NULL);
     if (mnt_res != 0) {

@@ -8,6 +8,7 @@
 #include <util.h>
 
 
+#include <riscv/sbi.h>
 
 // core local interruptor (CLINT), which contains the timer.
 #define CLINT 0x2000000L /* Not virtual, as this is used in machine modew */
@@ -37,10 +38,9 @@ reg_t &arch_reg(int ind, reg_t *r) {
   }
 }
 
-const char *regs_name[] = {
-    "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0",  "a1",  "a2", "a3", "a4", "a5", "a6",
-    "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6", "sepc"
-};
+const char *regs_name[] = {"ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s1", "a0",  "a1",
+                           "a2", "a3", "a4", "a5",  "a6",  "a7", "s2", "s3", "s4", "s5",  "s6",
+                           "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6", "sepc"};
 
 
 void arch_dump_backtrace(void) { /* Nothing here for now... */
@@ -88,7 +88,9 @@ static void print_readable_reg(const char *name, rv::xsize_t value) {
 
 static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
   rv::xsize_t bad_addr = tf.tval;
-	printk("===========================================================================================\n");
+  printk(
+      "==========================================================================================="
+      "\n");
   printk("Unhandled trap '%s' on HART#%d\n", type, rv::hartid());
   print_readable_reg("SEPC", tf.sepc);
   printk(", ");
@@ -135,14 +137,16 @@ static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
 
   if (p != 0) printk("\n");
 
-	if (cpu::in_thread()) {
-		printk("\n");
-		printk("Address Space:\n");
-		auto proc = curproc;
-		proc->mm->dump();
-	}
+  if (cpu::in_thread()) {
+    printk("\n");
+    printk("Address Space:\n");
+    auto proc = curproc;
+    proc->mm->dump();
+  }
 
-	printk("===========================================================================================\n");
+  printk(
+      "==========================================================================================="
+      "\n");
   panic("Halting hart!\n");
 }
 
@@ -167,36 +171,36 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
 
 
   // printk(KERN_WARN "[pid=%d] %s addr %p from pc:%p\n", proc->pid, type_name, addr, tf.sepc);
-	if (addr == 0) {
+  if (addr == 0) {
     printk("pid %d dead accessing %p\n", proc->pid, addr);
-		panic("addr2line -e build/chariot.elf 0x%p\n", tf.sepc);
-	}
+    panic("addr2line -e build/chariot.elf 0x%p\n", tf.sepc);
+  }
 
   int res = proc->mm->pagefault(addr, err);
 
   if (res == -1) {
     printk("pid %d dead accessing %p\n", proc->pid, addr);
-		panic("addr2line -e build/chariot.elf 0x%p\n", tf.sepc);
+    panic("addr2line -e build/chariot.elf 0x%p\n", tf.sepc);
     sched::dispatch_signal(SIGSEGV);
-		return;
+    return;
   }
 
-	rv::sfence_vma(addr);
+  rv::sfence_vma(addr);
 }
 
 
 
-extern uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f);
+extern uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e,
+                           uint64_t f);
 
 void rv_handle_syscall(rv::regs &tf) {
-	arch_enable_ints();
+  arch_enable_ints();
   tf.sepc += 4;
 
   // printk(KERN_INFO "do syscall: %d\n", tf.a0);
   tf.a0 = do_syscall(tf.a0, tf.a1, tf.a2, tf.a3, tf.a4, tf.a5, tf.a6);
   // printk(KERN_INFO " res = %p\n", tf.a0);
 }
-
 
 /* Supervisor trap function */
 extern "C" void kernel_trap(struct rv::regs &tf) {
@@ -213,11 +217,11 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
   /* The previous stack pointer located in the scratch */
   rv::xsize_t previous_kernel_stack = rv::get_hstate().kernel_sp;
 
-	bool from_userspace = false;
+  bool from_userspace = false;
 
   if ((tf.status & SSTATUS_SPP) == 0) {
-		from_userspace = true;
-  	// printk("kerneltrap: not from supervisor mode: pc=%p", tf.sepc);
+    from_userspace = true;
+    // printk("kerneltrap: not from supervisor mode: pc=%p", tf.sepc);
   }
   if (rv::intr_enabled() != 0) panic("kerneltrap: interrupts enabled");
 
@@ -230,25 +234,27 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
   if (interrupt) {
     /* Supervisor software interrupt (from machine mode) */
     if (nr == 1) {
-
+#ifndef CONFIG_SBI
+			/* TODO: move this to the  */
+#endif
+    } else if (nr == 5) {
       auto &cpu = cpu::current();
       uint64_t now = arch_read_timestamp();
       cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
       cpu.kstat.last_tick_tsc = now;
       cpu.kstat.ticks++;
 
-			/* Write the next time */
-#if 0
-			volatile uint64_t *mtimecmp = (uint64_t*)(p2v(CLINT_MTIMECMP(rv::get_hstate().hartid)));
-			printk_nolock("mtimecmp: %p\n", *mtimecmp);
-#endif
-
-
+#ifdef CONFIG_SBI
+      /* TODO: write the next time */
+			sbi_set_timer(rv::get_time() + TICK_INTERVAL);
+#else
       // acknowledge the software interrupt by clearing
       // the SSIP bit in sip.
+			// TODO: move this to the right place :)
       write_csr(sip, read_csr(sip) & ~2);
+#endif
 
-			arch_enable_ints();
+      arch_enable_ints();
 
       sched::handle_tick(cpu.kstat.ticks);
     } else if (nr == 9) {
@@ -336,4 +342,5 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
   sched::before_iret(from_userspace);
 }
 
-extern "C" void machine_trap(struct rv::regs &tf) {}
+extern "C" void machine_trap(struct rv::regs &tf) {
+}
