@@ -7,9 +7,6 @@ else()
 	set(RISCV_MABI  "ilp32d")
 endif()
 
-# core gcc flags to select the riscv arch correctly
-set(RISCV_FLAGS "-march=${RISCV_MARCH} -mabi=${RISCV_MABI} -mcmodel=medany")
-
 # universal
 set(LDFLAGS -m elf_riscv64 -z max-page-size=0x1000 --no-relax -nostdlib)
 
@@ -17,11 +14,11 @@ set(CMAKE_ASM_FLAGS "${RISCV_FLAGS} -mno-relax ")
 
 
 # TODO: riscv userspace flags
-set(ARCH_USER_C_FLAGS "${RISCV_FLAGS} -fno-omit-frame-pointer")
+set(ARCH_USER_C_FLAGS "-march=${RISCV_MARCH} -mabi=${RISCV_MABI} -fno-omit-frame-pointer")
 set(ARCH_USER_CXX_FLAGS "")
 
 # Kernelspace Flags
-set(ARCH_KERN_C_FLAGS "-mno-relax ${RISCV_FLAGS} -fno-stack-protector -fno-omit-frame-pointer")
+set(ARCH_KERN_C_FLAGS "-mno-relax -march=${RISCV_MARCH} -mabi=${RISCV_MABI} -mcmodel=medany -fno-stack-protector -fno-omit-frame-pointer")
 set(ARCH_KERN_CXX_FLAGS "")
 
 
