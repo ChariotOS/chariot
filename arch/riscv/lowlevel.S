@@ -530,20 +530,6 @@ ENTRY (__sigsetjmp)
 	REG_S s11,12*SZREG(a0)
 	REG_S sp, 13*SZREG(a0)
 
-#ifndef __riscv_float_abi_soft
-	FREG_S fs0, 14*SZREG+ 0*SZFREG(a0)
-	FREG_S fs1, 14*SZREG+ 1*SZFREG(a0)
-	FREG_S fs2, 14*SZREG+ 2*SZFREG(a0)
-	FREG_S fs3, 14*SZREG+ 3*SZFREG(a0)
-	FREG_S fs4, 14*SZREG+ 4*SZFREG(a0)
-	FREG_S fs5, 14*SZREG+ 5*SZFREG(a0)
-	FREG_S fs6, 14*SZREG+ 6*SZFREG(a0)
-	FREG_S fs7, 14*SZREG+ 7*SZFREG(a0)
-	FREG_S fs8, 14*SZREG+ 8*SZFREG(a0)
-	FREG_S fs9, 14*SZREG+ 9*SZFREG(a0)
-	FREG_S fs10,14*SZREG+10*SZFREG(a0)
-	FREG_S fs11,14*SZREG+11*SZFREG(a0)
-#endif
 
 /* TODO: save signal mask? */
   li a0, 0
@@ -567,21 +553,6 @@ ENTRY (longjmp)
 	REG_L s10,11*SZREG(a0)
 	REG_L s11,12*SZREG(a0)
 	REG_L sp, 13*SZREG(a0)
-
-#ifndef __riscv_float_abi_soft
-	FREG_L fs0, 14*SZREG+ 0*SZFREG(a0)
-	FREG_L fs1, 14*SZREG+ 1*SZFREG(a0)
-	FREG_L fs2, 14*SZREG+ 2*SZFREG(a0)
-	FREG_L fs3, 14*SZREG+ 3*SZFREG(a0)
-	FREG_L fs4, 14*SZREG+ 4*SZFREG(a0)
-	FREG_L fs5, 14*SZREG+ 5*SZFREG(a0)
-	FREG_L fs6, 14*SZREG+ 6*SZFREG(a0)
-	FREG_L fs7, 14*SZREG+ 7*SZFREG(a0)
-	FREG_L fs8, 14*SZREG+ 8*SZFREG(a0)
-	FREG_L fs9, 14*SZREG+ 9*SZFREG(a0)
-	FREG_L fs10,14*SZREG+10*SZFREG(a0)
-	FREG_L fs11,14*SZREG+11*SZFREG(a0)
-#endif
 
 	seqz a0, a1
 	add  a0, a0, a1   # a0 = (a1 == 0) ? 1 : a1
