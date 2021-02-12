@@ -47,7 +47,7 @@
 #ifndef ENTRY
 #define ENTRY(name)     \
 	.text;                \
-	.align 16;            \
+	.balign 16;           \
 	.global name;         \
 	C_LABEL(name)
 
