@@ -37,13 +37,11 @@ pid_t get_next_pid(void) {
 }
 
 mm::space *alloc_user_vm(void) {
-
-
-	unsigned long top = 0x7ff000000000;
+  unsigned long top = 0x7ff000000000;
 #ifdef CONFIG_SV39
-	top = 0x3ff0000000;
+  top = 0x3ff0000000;
 #endif
-	return new mm::space(0x1000, top, mm::pagetable::create());
+  return new mm::space(0x1000, top, mm::pagetable::create());
 }
 
 static process::ptr pid_lookup(pid_t pid) {
@@ -402,7 +400,8 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   // TODO: this size is arbitrary.
   auto stack_size = 1024 * 1024;
 
-  stack = new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, nullptr, 0);
+  stack = new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ | PROT_WRITE,
+                               MAP_ANON | MAP_PRIVATE, nullptr, 0);
 
   // TODO: push argv and arguments onto the stack
   this->args = argv;
@@ -436,6 +435,7 @@ int sched::proc::send_signal(pid_t p, int sig) {
 
   if (sig < 0 || sig >= 64) return -EINVAL;
   ptable_lock.read_lock();
+
 
   int err = -ESRCH;
 
@@ -603,7 +603,8 @@ static bool waitpid_consider(struct wait_object &wo, struct process *proc) {
 }
 
 /* curproc->datalock is held by the waker */
-static bool waitpid_wake_function(struct wait_entry *entry, unsigned int mode, int sync, void *key) {
+static bool waitpid_wake_function(struct wait_entry *entry, unsigned int mode, int sync,
+                                  void *key) {
   /* Key is the proc that wakes us up */
   struct process *proc = (struct process *)key;
 
@@ -687,7 +688,7 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
 
     dumb_waitpid_lock.lock();
 
-    prepare_to_wait_exclusive(me->child_wq, ent);
+    prepare_to_wait(me->child_wq, ent, true);
 
     result = wait_check(me, pid, status, options);
 
@@ -698,9 +699,12 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
       break;
     }
 
-    sched::yield();
+    auto sres = ent.start();
+    if (sres.interrupted()) {
+      result = -EINTR;
+      break;
+    }
   }
-  // finish_wait(me->child_wq, ent);
 
   return result;
 }
@@ -730,13 +734,14 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
   if ((addr & 0x3) != 0) return -EINVAL;
 
   /* This follows the general idea of Linux's:
-     This operation tests that the value at the futex word pointed to by the address uaddr still contains the expected
-     value val, and if so, then sleeps waiting for  a  FU‐ TEX_WAKE  operation  on  the futex word.  The load of the
-     value of the futex word is an atomic memory access (i.e., using atomic machine instructions of the respective
-                architecture).  This load, the comparison with the expected value, and starting to sleep are performed
-     atomically and totally ordered with respect to other futex oper‐ ations  on  the  same  futex  word.  If the thread
-     starts to sleep, it is considered a waiter on this futex word.  If the futex value does not match val, then the
-     call fails immediately with the error EAGAIN.
+     This operation tests that the value at the futex word pointed to by the address uaddr still
+     contains the expected value val, and if so, then sleeps waiting for  a  FU‐ TEX_WAKE  operation
+     on  the futex word.  The load of the value of the futex word is an atomic memory access (i.e.,
+     using atomic machine instructions of the respective architecture).  This load, the comparison
+     with the expected value, and starting to sleep are performed atomically and totally ordered
+     with respect to other futex oper‐ ations  on  the  same  futex  word.  If the thread starts to
+     sleep, it is considered a waiter on this futex word.  If the futex value does not match val,
+     then the call fails immediately with the error EAGAIN.
                                                           */
   if (op == FUTEX_WAIT) {
     auto &wq = curproc->futex_queue(uaddr);
@@ -781,9 +786,12 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
 
 
 
-int sys::kill(int pid, int sig) { return sched::proc::send_signal(pid, sig); }
+int sys::kill(int pid, int sig) {
+  return sched::proc::send_signal(pid, sig);
+}
 
-int sys::prctl(int option, unsigned long a1, unsigned long a2, unsigned long a3, unsigned long a4, unsigned long a5) {
+int sys::prctl(int option, unsigned long a1, unsigned long a2, unsigned long a3, unsigned long a4,
+               unsigned long a5) {
   return -ENOTIMPL;
 }
 
@@ -853,4 +861,6 @@ static pid_t do_fork(struct process &p) {
 }
 
 
-int sys::fork(void) { return do_fork(*curproc); }
+int sys::fork(void) {
+  return do_fork(*curproc);
+}
