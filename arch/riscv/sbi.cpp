@@ -91,12 +91,6 @@ void sbi_init(void) {
   printk(KERN_INFO "RISCV: SBI extension RFENCE %d\n", sbi_ext_present(SBI_EXTENSION_RFENCE));
   printk(KERN_INFO "RISCV: SBI extension HSM %d\n", sbi_ext_present(SBI_EXTENSION_HSM));
   printk(KERN_INFO "RISCV: SBI extension SRST %d\n", sbi_ext_present(SBI_EXTENSION_SRST));
-
-  // print a line via the console
-  const char test[] = "SBI console test\n\r";
-  for (const char *c = test; *c != 0; c++) {
-    sbi_call(SBI_CONSOLE_PUTCHAR, *c);
-  }
 }
 
 #endif
