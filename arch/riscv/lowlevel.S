@@ -258,15 +258,6 @@ virt_mask:
 .section .text
 
 
-
-
-
-
-
-
-
-#define BUFFER_SPACE 0
-
 # When the processor gets an interrupt or traps, it jumps here and sets some CSRs
 # like sstatus, sbadaddr, stval etc... The only problem is that we don't switch
 # stacks when jumping from userspace. To fix this, we gotta do some extra nonsense
