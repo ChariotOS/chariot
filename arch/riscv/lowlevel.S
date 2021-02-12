@@ -135,8 +135,6 @@ _start:
 	sfence.vma  zero, zero
 
 
-breakpoint:
-
 #ifndef CONFIG_SBI
 
 	# set M-mode trap handler
