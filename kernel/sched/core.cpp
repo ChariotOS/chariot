@@ -97,7 +97,8 @@ static void switch_into(struct thread &thd) {
 
 
 
-void sched::yield() {
+sched::yieldres sched::yield() {
+  sched::yieldres r = sched::yieldres::None;
   auto &thd = *curthd;
 
   // if the old thread is now dead, notify joiners
@@ -112,7 +113,11 @@ void sched::yield() {
   thd.stats.last_cpu = thd.stats.current_cpu;
   thd.stats.current_cpu = -1;
   context_switch(&thd.kern_context, cpu::current().sched_ctx);
+
+  if (thd.wq.rudely_awoken) r = sched::yieldres::Interrupt;
+
   arch_enable_ints();
+  return r;
 }
 
 
@@ -128,27 +133,32 @@ void sched::set_state(int state) {
   asm volatile("" : : : "memory");
 }
 
-void sched::do_yield(int st) {
+sched::yieldres sched::do_yield(int st) {
   if (curthd == NULL) printk("NO THREAD!\n");
   sched::set_state(st);
-  sched::yield();
+  return sched::yield();
 }
 
 
 
 // helpful functions wrapping different resulting task states
-void sched::block() { sched::do_yield(PS_INTERRUPTIBLE); }
+void sched::block() {
+  sched::do_yield(PS_INTERRUPTIBLE);
+}
 /* Unblock a thread */
 void sched::unblock(thread &thd, bool interrupt) {
   if (thd.state != PS_INTERRUPTIBLE) {
     /* Hmm, not sure what to do here. */
-    // printk(KERN_WARN "Attempt to wake up thread %d which is not PS_INTERRUPTIBLE\n", thd.tid);
+    printk(KERN_WARN "Attempt to wake up thread %d which is not PS_INTERRUPTIBLE\n", thd.tid);
+    return;
   }
   thd.wq.rudely_awoken = interrupt;
   thd.state = PS_RUNNING;
 }
 
-void sched::exit() { do_yield(PS_ZOMBIE); }
+void sched::exit() {
+  do_yield(PS_ZOMBIE);
+}
 
 void sched::dumb_sleepticks(unsigned long t) {
   auto now = cpu::get_ticks();

@@ -420,8 +420,16 @@ namespace sched {
   process &kernel_proc(void);
 
   void set_state(int state);
-  void yield(void);
-  void do_yield(int status);
+
+
+
+	enum yieldres {
+		None,
+		Interrupt
+	};
+
+  yieldres yield(void);
+  yieldres do_yield(int status);
 
 
 

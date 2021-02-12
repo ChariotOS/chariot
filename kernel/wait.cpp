@@ -21,6 +21,17 @@ wait_entry::~wait_entry() {
   }
 }
 
+wait_result wait_entry::start(void) {
+	/* Yield right away */
+	auto res = sched::yield();
+
+	if (res == sched::yieldres::Interrupt) {
+		this->result |= WAIT_RES_INTR;
+	}
+
+	return wait_result(this->result);
+}
+
 
 
 
@@ -52,9 +63,7 @@ wait_result wait_queue::wait(struct wait_entry *ent, int state) {
   task_list.add(&ent->item);
   lock.unlock_irqrestore(flags);
 
-  sched::yield();
-
-  return wait_result(ent->result);
+	return ent->start();
 }
 
 
@@ -77,10 +86,7 @@ wait_result wait_queue::wait_exclusive(struct wait_entry *ent, int state) {
   task_list.add_tail(&ent->item);
   lock.unlock_irqrestore(flags);
 
-
-  sched::yield();
-
-  return wait_result(ent->result);
+	return ent->start();
 }
 
 
@@ -133,9 +139,9 @@ wait_result wait_queue::wait_timeout(long long us) {
 
 bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync, void *key) {
   bool ret = true;
-
   sched::unblock(*entry->thd, false);
   entry->result = 0;
+
   if (entry->thd->wq.rudely_awoken) {
     entry->result |= WAIT_RES_INTR;
   }

@@ -48,6 +48,8 @@ struct wait_entry {
   wait_entry();
   // this removes the entry from a waitqueue if there is one
   ~wait_entry();
+
+	wait_result start(void);
 };
 
 
