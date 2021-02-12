@@ -28,10 +28,10 @@ virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(re
   status |= VIRTIO_CONFIG_S_FEATURES_OK;
   write_reg(VIRTIO_MMIO_STATUS, status);
 
-	int ndesc = 64;
+  int ndesc = 64;
 
   alloc_ring(0, ndesc);
-	ops = new virtio::blk_req[ndesc];
+  ops = new virtio::blk_req[ndesc];
 }
 
 void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
@@ -42,12 +42,12 @@ void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
    * contiguous (for now) TODO: be smart later :^)
    */
   void *tmp_buf = malloc(block_size());
-	
+
   if (write) memcpy(tmp_buf, data, block_size());
 
-	if (!arch_irqs_enabled()) {
-		panic("wut\n");
-	}
+  if (!arch_irqs_enabled()) {
+    panic("wut\n");
+  }
 
   vdisk_lock.lock();
 
@@ -73,7 +73,7 @@ void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
   desc[0] = start;
   desc[1] = index_to_desc(0, desc[0]->next);
   desc[2] = index_to_desc(0, desc[1]->next);
-	assert(desc[2] != NULL);
+  assert(desc[2] != NULL);
 
 
   struct virtio::blk_req *buf0 = &ops[first_index];
@@ -128,7 +128,7 @@ void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
   __sync_synchronize();
 
 #ifdef VIRTIO_BLK_WAITQUEUE
-  sched::yield();
+  auto wres = ent.start();
 #endif
 
   int loops = 0;

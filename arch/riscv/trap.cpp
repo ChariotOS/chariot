@@ -204,18 +204,7 @@ void rv_handle_syscall(rv::regs &tf) {
 
 /* Supervisor trap function */
 extern "C" void kernel_trap(struct rv::regs &tf) {
-  int which_dev = 0;
 
-  reg_t *old_trapframe = NULL;
-  if (cpu::in_thread()) {
-    old_trapframe = curthd->trap_frame;
-    curthd->trap_frame = (reg_t *)&tf;
-  }
-
-
-
-  /* The previous stack pointer located in the scratch */
-  rv::xsize_t previous_kernel_stack = rv::get_hstate().kernel_sp;
 
   bool from_userspace = false;
 
@@ -223,6 +212,31 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
     from_userspace = true;
     // printk("kerneltrap: not from supervisor mode: pc=%p", tf.sepc);
   }
+
+  int which_dev = 0;
+
+  reg_t *old_trapframe = NULL;
+  if (cpu::in_thread()) {
+    old_trapframe = curthd->trap_frame;
+    curthd->trap_frame = (reg_t *)&tf;
+		if (from_userspace) {
+			curthd->userspace_sp = tf.sp;
+		}
+  }
+
+
+  /* The previous stack pointer located in the scratch */
+  rv::xsize_t previous_kernel_stack = rv::get_hstate().kernel_sp;
+
+  if (cpu::in_thread()) {
+    if (curthd->stacks.size() != 1) {
+      printk_nolock(KERN_DEBUG "previous kernel stack: %p\n");
+      for (auto &stk : curthd->stacks) {
+        printk_nolock(KERN_DEBUG "   %d %p\n", stk.size, stk.start);
+      }
+    }
+  }
+
   if (rv::intr_enabled() != 0) panic("kerneltrap: interrupts enabled");
 
 #ifdef CONFIG_64BIT
@@ -235,7 +249,7 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
     /* Supervisor software interrupt (from machine mode) */
     if (nr == 1) {
 #ifndef CONFIG_SBI
-			/* TODO: move this to the  */
+      /* TODO: move this to the  */
 #endif
     } else if (nr == 5) {
       auto &cpu = cpu::current();
@@ -246,11 +260,11 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
 
 #ifdef CONFIG_SBI
       /* TODO: write the next time */
-			sbi_set_timer(rv::get_time() + TICK_INTERVAL);
+      sbi_set_timer(rv::get_time() + TICK_INTERVAL);
 #else
       // acknowledge the software interrupt by clearing
       // the SSIP bit in sip.
-			// TODO: move this to the right place :)
+      // TODO: move this to the right place :)
       write_csr(sip, read_csr(sip) & ~2);
 #endif
 
@@ -336,10 +350,11 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
     }
   }
 
+  sched::before_iret(from_userspace);
+
   if (cpu::in_thread()) curthd->trap_frame = old_trapframe;
 
-
-  sched::before_iret(from_userspace);
+  rv::get_hstate().kernel_sp = previous_kernel_stack;
 }
 
 extern "C" void machine_trap(struct rv::regs &tf) {

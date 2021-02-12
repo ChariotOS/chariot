@@ -334,6 +334,7 @@ struct thread final {
   // register contexts
   struct thread_context *kern_context;
   reg_t *trap_frame;
+	off_t userspace_sp = 0;
   struct thread_waitqueue_info wq;
 
 

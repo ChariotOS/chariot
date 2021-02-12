@@ -30,9 +30,13 @@ extern "C" void context_switch(struct thread_context **, struct thread_context *
 static bool s_enabled = true;
 static sched::impl s_scheduler;
 
-bool sched::init(void) { return true; }
+bool sched::init(void) {
+  return true;
+}
 
-static struct thread *get_next_thread(void) { return s_scheduler.pick_next(); }
+static struct thread *get_next_thread(void) {
+  return s_scheduler.pick_next();
+}
 
 
 static auto pick_next_thread(void) {
@@ -49,7 +53,9 @@ int sched::add_task(struct thread *tsk) {
   return res;
 }
 
-int sched::remove_task(struct thread *t) { return s_scheduler.remove_task(t); }
+int sched::remove_task(struct thread *t) {
+  return s_scheduler.remove_task(t);
+}
 
 static void switch_into(struct thread &thd) {
   thd.locks.run.lock();
@@ -193,7 +199,7 @@ static int idle_task(void *arg) {
 
 
 void sched::run() {
-	arch_disable_ints();
+  arch_disable_ints();
   // per-scheduler idle threads do not exist in the scheduler queue.
   auto *idle_thread = sched::proc::spawn_kthread("idle task", idle_task, NULL);
   idle_thread->preemptable = true;
@@ -314,6 +320,9 @@ void sched::dispatch_signal(int sig) {
     panic("not in cpu when getting signal %d\n", sig);
   }
 
+  assert(curthd->sig.handling == -1);
+  curthd->sig.handling = sig; /* TODO this might need some more signal-speicifc logic */
+
 
   // sanity check
   if (sig < 0 || sig > 63) return;
@@ -349,6 +358,8 @@ void sched::dispatch_signal(int sig) {
 
   // whatver the arch needs to do
   arch_dispatch_function((void *)action.sa_handler, sig);
+
+  curthd->sig.handling = -1;
 }
 
 
@@ -362,42 +373,35 @@ void sched::before_iret(bool userspace) {
     curthd->last_start_utime_us = time::now_us();
   }
 
-  long sig_to_handle = -1;
+  int sig_to_handle = -1;
 
-
-  while (1) {
-    sig_to_handle = -1;
-    if (curthd->sig.pending != 0) {
-      for (int i = 0; i < 63; i++) {
-        if ((curthd->sig.pending & SIGBIT(i)) != 0) {
-          if (true || (curthd->sig.mask & SIGBIT(i))) {
-            // Mark this signal as handled.
-            curthd->sig.pending &= ~SIGBIT(i);
-            sig_to_handle = i;
-            break;
+  if (curthd->sig.handling == -1) {
+    while (1) {
+      sig_to_handle = -1;
+      if (curthd->sig.pending != 0) {
+        for (int i = 0; i < 63; i++) {
+          if ((curthd->sig.pending & SIGBIT(i)) != 0) {
+            if (curthd->sig.mask & SIGBIT(i)) {
+              // Mark this signal as handled.
+              curthd->sig.pending &= ~SIGBIT(i);
+              sig_to_handle = i;
+              break;
+            }
           }
         }
       }
-    }
 
-    if (sig_to_handle != -1) {
-      sched::dispatch_signal(sig_to_handle);
-    } else {
-      break;
+
+      if (sig_to_handle != -1) {
+        sched::dispatch_signal(sig_to_handle);
+      } else {
+        break;
+      }
     }
   }
 }
 
 
 int sys::usleep(unsigned long n) {
-  /* If the microseconds is less than one millisecond, busy loop... lol */
-  if (n < 1000 * 1) {
-    unsigned long end = time::now_us() + n;
-    while (1) {
-      if (time::now_us() >= end) break;
-      arch_relax();
-    }
-    return 0;
-  }
   return do_usleep(n);
 }

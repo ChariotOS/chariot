@@ -86,8 +86,8 @@ off_t thread::setup_tls(void) {
   // TODO maybe move TLS to userspace?
   if (proc.tls_info.exists) {
     tls_usize = proc.tls_info.memsz;
-    tls_uaddr = proc.mm->mmap(string::format("[tid %d TLS]", this->tid), 0, proc.tls_info.memsz, PROT_READ | PROT_WRITE,
-                              MAP_PRIVATE | MAP_ANON, nullptr, 0);
+    tls_uaddr = proc.mm->mmap(string::format("[tid %d TLS]", this->tid), 0, proc.tls_info.memsz,
+                              PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, nullptr, 0);
 
     printk("============================== %p\n", tls_uaddr);
     proc.mm->dump();
@@ -147,7 +147,8 @@ void thread::setup_stack(reg_t *tf) {
 
   size_t sz = 0;
   sz += proc.args.size() * sizeof(char *);
-  for (auto &a : proc.args) sz += a.size() + 1;
+  for (auto &a : proc.args)
+    sz += a.size() + 1;
 
   auto region = (void *)STACK_ALLOC(char, sz);
 
@@ -185,8 +186,8 @@ void thread::setup_stack(reg_t *tf) {
 #endif
 
 #ifdef CONFIG_RISCV
-	rv::regs *regs = (rv::regs*)tf;
-	regs->a0 = argc;
+  rv::regs *regs = (rv::regs *)tf;
+  regs->a0 = argc;
   regs->a1 = (unsigned long)argv;
   regs->a2 = (unsigned long)envp;
 #endif
@@ -195,7 +196,7 @@ void thread::setup_stack(reg_t *tf) {
 
 
 static void thread_create_callback(void *) {
-	arch_thread_create_callback();
+  arch_thread_create_callback();
 }
 
 struct thread *thread::lookup(pid_t tid) {
@@ -223,14 +224,20 @@ bool thread::teardown(thread *t) {
 
 
 bool thread::send_signal(int sig) {
+  bool is_self = curthd == this;
+
   unsigned long pend = (1 << sig);
   this->sig.pending |= pend;
 #ifdef CONFIG_VERBOSE_PROCESS
-  printk("sending signal to tid %d\n", tid);
+  printk("sending signal %d to tid %d\n", sig, tid);
 #endif
+
+  bool f;
+  if (!is_self) f = locks.run.lock_irqsave();
   if (state == PS_INTERRUPTIBLE) {
     this->interrupt();
   }
+  if (!is_self) locks.run.unlock_irqrestore(f);
   return true;
 }
 
@@ -249,7 +256,9 @@ vec<off_t> thread::backtrace(off_t rbp, off_t rip) {
   return bt;
 }
 
-void thread::interrupt(void) { sched::unblock(*this, true); }
+void thread::interrupt(void) {
+  sched::unblock(*this, true);
+}
 
 
 extern int get_next_pid(void);
