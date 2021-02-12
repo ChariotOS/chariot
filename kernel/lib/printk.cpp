@@ -923,14 +923,19 @@ static int _vsnprintf(out_fct_type out, char *buffer, const size_t maxlen, const
         idx = _ntoa_long(out, buffer, idx, maxlen, val >> 32,
                          false, 16U, precision, width / 2, flags);
 
-        out('.', buffer, idx++, maxlen);
+        out('`', buffer, idx++, maxlen);
 
+        idx = _ntoa_long(out, buffer, idx, maxlen, val & 0xFFFF'FFFF,
+                         false, 16U, precision, width / 2, flags);
+
+				/*
         idx = _ntoa_long(out, buffer, idx, maxlen, (val >> 12) & 0xF'FFFF,
                          false, 16U, precision, (width / 2) - 3, flags);
 
-        out('.', buffer, idx++, maxlen);
+        out(',', buffer, idx++, maxlen);
         idx = _ntoa_long(out, buffer, idx, maxlen, val & 0xFFF,
                          false, 16U, precision, 3, flags);
+												 */
         format++;
         break;
       }
