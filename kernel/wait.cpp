@@ -139,8 +139,20 @@ wait_result wait_queue::wait_timeout(long long us) {
 
 bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync, void *key) {
   bool ret = true;
+
+
+#if 0
+	/* If we don't already have a next thread chosen, use the one we are waking up. */
+	if (cpu::current().next_thread == NULL) {
+		/* The thread is blocked,  */
+		sched::remove_task(entry->thd); /* Remove the thread from  */
+		cpu::current().next_thread = entry->thd;
+	}
+#endif
+
   sched::unblock(*entry->thd, false);
   entry->result = 0;
+
 
   if (entry->thd->wq.rudely_awoken) {
     entry->result |= WAIT_RES_INTR;

@@ -155,7 +155,7 @@ void sched::block() {
 void sched::unblock(thread &thd, bool interrupt) {
   if (thd.state != PS_INTERRUPTIBLE) {
     /* Hmm, not sure what to do here. */
-    printk(KERN_WARN "Attempt to wake up thread %d which is not PS_INTERRUPTIBLE\n", thd.tid);
+    // printk(KERN_WARN "Attempt to wake up thread %d which is not PS_INTERRUPTIBLE\n", thd.tid);
     return;
   }
   thd.wq.rudely_awoken = interrupt;
@@ -249,15 +249,7 @@ void sched::handle_tick(u64 ticks) {
 
   // yield?
   if (has_run >= thd->sched.timeslice) {
-#if CONFIG_PREFETCH_NEXT_THREAD
-    // pick a thread to go into next. If there is nothing to run,
-    // don't yield to the scheduler. This improves some stuff's latencies
-    if (pick_next_thread() != NULL) {
-      sched::yield();
-    }
-#else
-    sched::yield();
-#endif
+    pick_next_thread();
   }
 }
 
@@ -320,6 +312,7 @@ void sched::dispatch_signal(int sig) {
     panic("not in cpu when getting signal %d\n", sig);
   }
 
+  printk("pid %d dispatch %d\n", curthd->pid, sig);
   assert(curthd->sig.handling == -1);
   curthd->sig.handling = sig; /* TODO this might need some more signal-speicifc logic */
 
@@ -363,16 +356,7 @@ void sched::dispatch_signal(int sig) {
 }
 
 
-void sched::before_iret(bool userspace) {
-  if (!cpu::in_thread()) return;
-  // exit via the scheduler if the task should die.
-  if (curthd->should_die) sched::exit();
-
-
-  if (time::stabilized()) {
-    curthd->last_start_utime_us = time::now_us();
-  }
-
+static void handle_signal(void) {
   int sig_to_handle = -1;
 
   if (curthd->sig.handling == -1) {
@@ -386,6 +370,8 @@ void sched::before_iret(bool userspace) {
               curthd->sig.pending &= ~SIGBIT(i);
               sig_to_handle = i;
               break;
+            } else if (default_signal_action(i) == SIGACT_TERM) {
+              sys::exit_proc(128 + i);
             }
           }
         }
@@ -398,6 +384,22 @@ void sched::before_iret(bool userspace) {
         break;
       }
     }
+  }
+}
+
+
+void sched::before_iret(bool userspace) {
+  if (!cpu::in_thread()) return;
+  // exit via the scheduler if the task should die.
+  if (curthd->should_die) sched::exit();
+
+
+  if (time::stabilized()) curthd->last_start_utime_us = time::now_us();
+
+  handle_signal();
+
+  if (cpu::current().next_thread != NULL) {
+    sched::yield();
   }
 }
 
