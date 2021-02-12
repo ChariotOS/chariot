@@ -2,6 +2,7 @@
 #pragma once
 #ifdef USERLAND
 #include <chariot/awaitfs_types.h>
+#include <chariot/mountopts.h>
 #include <dirent.h>
 #include <time.h>
 #include <signal.h>
@@ -13,6 +14,7 @@
 #include <sys/netdb.h>
 #else
 #include <types.h>
+#include <mountopts.h>
 #endif
 
 #ifdef __cplusplus
@@ -77,6 +79,7 @@ int sysbind_futex(int* uaddr, int op, int val, int val2, int* uaddr2, int val3);
 int sysbind_sysinfo(struct sysinfo * info);
 int sysbind_dnslookup(const char * name, unsigned int* ip4);
 int sysbind_shutdown();
+int sysbind_mount(struct mountopts * opts);
 #ifdef __cplusplus
 }
 #endif

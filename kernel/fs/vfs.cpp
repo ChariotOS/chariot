@@ -111,6 +111,16 @@ int vfs::mount(const char *src, const char *targ, const char *type,
   return 0;
 }
 
+int sys::mount(struct mountopts *opts) {
+  if (!curproc->mm->validate_pointer(opts, sizeof(*opts), PROT_WRITE)) return -EINVAL;
+	/* TODO: permissions :) */
+	if (curproc->user.uid != 0) return -EPERM;
+
+	/* TODO: take the last argument for real! */
+	return vfs::mount(opts->device, opts->dir, opts->type, opts->flags, "");
+}
+
+
 struct fs::inode *vfs::open(string spath, int opts, int mode) {
   struct fs::inode *ino = NULL;
 

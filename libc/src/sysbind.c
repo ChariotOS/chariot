@@ -235,3 +235,7 @@ int sysbind_shutdown() {
     return (int)__syscall_eintr(57, 0, 0, 0, 0, 0, 0);
 }
 
+int sysbind_mount(struct mountopts * opts) {
+    return (int)__syscall_eintr(58, (unsigned long long)opts, 0, 0, 0, 0, 0);
+}
+

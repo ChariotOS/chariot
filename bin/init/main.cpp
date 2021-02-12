@@ -192,6 +192,13 @@ char **read_default_environ(void) {
 
 
 int main(int argc, char **argv) {
+
+
+	int parent_pid = getpid();
+	/* Mount devfs, tmpfs */
+	system("mount none /dev devfs");
+	system("mount none /tmp tmpfs");
+
   // open up file descriptor 1, 2, and 3
   for (int i = 0; i < 3; i++)
     close(i);
@@ -199,8 +206,6 @@ int main(int argc, char **argv) {
   open("/dev/console", O_RDWR);
   open("/dev/console", O_RDWR);
 
-
-#if 0
   sigset_t set;
   sigemptyset(&set);
   for (int i = 0; i < 32; i++) {
@@ -209,47 +214,23 @@ int main(int argc, char **argv) {
   }
   sigprocmask(SIG_SETMASK, &set, NULL);
 
-	if (fork() == 0) {
+  printf("[init] hello, friend\n");
+	system("cat /cfg/motd");
 
+
+
+	if (fork() == 0) {
 		while (1) {
   		usleep(10 * 1000);
-			kill(1, SIGINT);
+			// kill(parent_pid, SIGUSR1);
 		}
 	}
-#endif
-
-#if 0
-  for (int i = 0; 1; i++) {
-    auto start = sysbind_gettime_microsecond();
-    auto sl = rand() % 100;
-    int pid = 0;
-    pid = fork();
-    if (pid == 0) {
-      usleep(100);
-      exit(-1);
-    }
-    int loops = 0;
-    waitpid(pid, NULL, 0);
-    if (0) {
-      while (waitpid(pid, NULL, WNOHANG) != pid) {
-        loops++;
-        // usleep((rand() % 100) * 100);
-      }
-    }
-
-    printf("pid=%08x  took %lluus  %d loops\n", pid, sysbind_gettime_microsecond() - start, loops);
-  }
-
-#endif
-
-
 
   if (getpid() != 1) {
     fprintf(stderr, "init: must be run as pid 1\n");
     return -1;
   }
 
-  printf("[init] hello, friend\n");
 
   environ = read_default_environ();
 
@@ -263,6 +244,7 @@ int main(int argc, char **argv) {
 
   while (1) {
     pid_t reaped = waitpid(-1, NULL, 0);
+		// if (reaped == -1) continue;
     printf("[init] reaped pid %d\n", reaped);
   }
 }

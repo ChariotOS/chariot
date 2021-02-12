@@ -56,3 +56,4 @@ __SYSCALL(0x36, futex, int* uaddr, int op, int val, int val2, int* uaddr2, int v
 __SYSCALL(0x37, sysinfo, struct sysinfo * info)
 __SYSCALL(0x38, dnslookup, const char * name, unsigned int* ip4)
 __SYSCALL(0x39, shutdown)
+__SYSCALL(0x3a, mount, struct mountopts * opts)

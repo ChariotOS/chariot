@@ -2,6 +2,7 @@
 [userspace]
 includes = [
 	'<chariot/awaitfs_types.h>',
+	'<chariot/mountopts.h>',
 	'<dirent.h>',
 	'<time.h>',
 	'<signal.h>',
@@ -15,7 +16,8 @@ includes = [
 
 [kernel]
 includes = [
-	'<types.h>'
+	'<types.h>',
+	'<mountopts.h>'
 ]
 
 
@@ -382,3 +384,10 @@ args = [
 [sc.shutdown]
 ret = 'int'
 args = []
+
+
+[sc.mount]
+ret = 'int'
+args = [
+	'opts: struct mountopts *'
+]

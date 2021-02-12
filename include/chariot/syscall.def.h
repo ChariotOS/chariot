@@ -1,4 +1,5 @@
 #include <types.h>
+#include <mountopts.h>
 namespace sys {
 void restart();
 void exit_thread(int code);
@@ -58,4 +59,5 @@ int futex(int* uaddr, int op, int val, int val2, int* uaddr2, int val3);
 int sysinfo(struct sysinfo * info);
 int dnslookup(const char * name, unsigned int* ip4);
 int shutdown();
+int mount(struct mountopts * opts);
 }
