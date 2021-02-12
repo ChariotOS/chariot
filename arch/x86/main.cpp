@@ -158,10 +158,6 @@ int kernel_init(void *) {
     panic("failed to mount root. Error=%d\n", -mnt_res);
   }
 
-  /* Mount /dev and /tmp */
-  vfs::mount("none", "/dev", "devfs", 0, NULL);
-  vfs::mount("none", "/tmp", "tmpfs", 0, NULL);
-
   auto kproc = sched::proc::kproc();
   kproc->root = fs::inode::acquire(vfs::get_root());
   kproc->cwd = fs::inode::acquire(vfs::get_root());

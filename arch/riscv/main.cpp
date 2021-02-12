@@ -211,10 +211,9 @@ static size_t dtb_ram_size = 0;
 
 static int wakes = 0;
 void main(int hartid, void *fdt) {
-
 #ifdef CONFIG_SBI
-	// get the information from SBI right away so we can use it early on
-	sbi_early_init();
+  // get the information from SBI right away so we can use it early on
+  sbi_early_init();
 #endif
 
 
@@ -255,6 +254,9 @@ void main(int hartid, void *fdt) {
 
 
 
+
+
+
   /* Tell the device tree to copy the device tree and parse it */
   dtb::parse((dtb::fdt_header *)p2v(rv::get_hstate().dtb));
 
@@ -286,8 +288,6 @@ void main(int hartid, void *fdt) {
     phys::free_range((void *)dtb_ram_start, (void *)dtb_ram_end);
   }
 
-
-
   /* Now that we have a memory allocator, call global constructors */
   for (func_ptr *func = __init_array_start; func != __init_array_end; func++)
     (*func)();
@@ -295,8 +295,8 @@ void main(int hartid, void *fdt) {
   arch_enable_ints();
 
 #ifdef CONFIG_SBI
-	sbi_init();
-	/* set the timer with sbi :) */
+  sbi_init();
+  /* set the timer with sbi :) */
   sbi_set_timer(rv::get_time() + TICK_INTERVAL);
 #endif
 
@@ -345,11 +345,6 @@ void main(int hartid, void *fdt) {
     if (mnt_res != 0) {
       panic("failed to mount root. Error=%d\n", -mnt_res);
     }
-
-    /* Mount /dev and /tmp. TODO: move this to userspace in /init? */
-    vfs::mount("none", "/dev", "devfs", 0, NULL);
-    vfs::mount("none", "/tmp", "tmpfs", 0, NULL);
-
 
     auto kproc = sched::proc::kproc();
     kproc->root = fs::inode::acquire(vfs::get_root());
