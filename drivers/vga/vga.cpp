@@ -233,8 +233,8 @@ struct vga_vmobject final : public mm::vmobject {
   virtual ref<mm::page> get_shared(off_t n) override {
     auto p = mm::page::create((unsigned long)vga_fba + (n * PGSIZE));
 
-    p->nocache = true;
-    p->writethrough = true;
+
+		p->fset(PG_NOCACHE | PG_WRTHRU);
 
     return p;
   }

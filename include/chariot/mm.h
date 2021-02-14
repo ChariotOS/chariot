@@ -6,6 +6,7 @@
 #include <fs.h>
 #include <mmap_flags.h>
 #include <ptr.h>
+#include <rbtree.h>
 #include <string.h>
 #include <vec.h>
 
@@ -24,7 +25,8 @@
 
 #define VALIDATE_WR(ptr, size) curproc->mm->validate_pointer((void *)ptr, size, PROT_WRITE)
 
-#define VALIDATE_RDWR(ptr, size) curproc->mm->validate_pointer((void *)ptr, size, PROT_WRITE | PROT_READ)
+#define VALIDATE_RDWR(ptr, size) \
+  curproc->mm->validate_pointer((void *)ptr, size, PROT_WRITE | PROT_READ)
 
 #define VALIDATE_EXEC(ptr, size) curproc->mm->validate_pointer((void *)ptr, size, PROT_EXEC)
 
@@ -32,14 +34,21 @@
 namespace mm {
 
 
-  // #define PAGE_DEBUG_LIST
-
   // every physical page in mm circulation is kept track of via a heap-allocated
   // `struct page`.
   struct page : public refcounted<mm::page> {
-    bool dirty = false;
-    unsigned long lru = 0;
-    unsigned long pa = 0;
+    int32_t lock = 0;
+
+#define PG_DIRTY (1ul << 0)
+#define PG_OWNED (1ul << 1)
+#define PG_WRTHRU (1ul << 2)
+#define PG_NOCACHE (1ul << 3)
+#define PG_BCACHE (1ul << 4)
+
+
+    /* A bitmap of PG_* */
+    uint16_t flags = 0;
+
     /**
      * users is a representation of how many holders of this page there are.
      * This is useful for COW mappings, because you must copy the page on write
@@ -47,13 +56,28 @@ namespace mm {
      * it, decrement the users count, and replace your reference with the new
      * one
      */
-    unsigned users = 0;
-    int lock = 0;
+    uint16_t users = 0;
+    unsigned long lru = 0;
+    unsigned long pa = 0;
 
-    // non-freeable pages are needed (for example when mmapping mmio regions)
-    bool freeable : 1;
-    bool writethrough : 1;
-    bool nocache : 1;
+
+    struct rb_node rb_node;
+    // struct list_head lh;
+
+
+    inline void fset(int set) {
+      flags |= set;
+    }
+
+    inline void fclr(int set) {
+      flags &= ~set;
+    }
+
+    /* return if a certain (set of) flag(s) is set or not */
+    inline bool fcheck(int set) {
+      return !((flags & set) == 0);
+    }
+
 
     page(void);
     ~page(void);
@@ -62,11 +86,6 @@ namespace mm {
     // create a page mapping for some physical memory
     // note: this page isn't owned.
     static ref<page> create(unsigned long pa);
-
-#ifdef PAGE_DEBUG_LIST
-    struct page *dbg_prev;
-    struct page *dbg_next;
-#endif
   };
 
   struct pte {
@@ -98,7 +117,8 @@ namespace mm {
 
   // vm areas can optionally have a vmobject that represents them.
   struct vmobject : public refcounted<vmobject> {
-    inline vmobject(size_t npages) : n_pages(npages) {}
+    inline vmobject(size_t npages) : n_pages(npages) {
+    }
 
     virtual ~vmobject(void){};
 
@@ -114,14 +134,18 @@ namespace mm {
     }
 
     // all owners have dropped you!
-    virtual void drop(void) {}
+    virtual void drop(void) {
+    }
 
     // get a shared page (page #n in the mapping)
     virtual ref<mm::page> get_shared(off_t n) = 0;
     // tell the region to flush a page
-    virtual void flush(off_t n) {}
+    virtual void flush(off_t n) {
+    }
 
-    inline size_t size(void) { return n_pages * PGSIZE; }
+    inline size_t size(void) {
+      return n_pages * PGSIZE;
+    }
 
    private:
     spinlock m_lock;
@@ -156,7 +180,9 @@ namespace mm {
     ~area(void);
 
 
-    static inline int compare(area &a, area &b) { return a.va - a.va; }
+    static inline int compare(area &a, area &b) {
+      return a.va - a.va;
+    }
   };
 
   class space {
@@ -171,7 +197,9 @@ namespace mm {
 
     size_t copy_out(off_t addr, void *into, size_t len);
 
-    inline auto get_pt(void) { return pt; }
+    inline auto get_pt(void) {
+      return pt;
+    }
     void switch_to();
     mm::area *lookup(off_t va);
 

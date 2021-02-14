@@ -38,3 +38,5 @@ node_modules
 
 /ports/src
 /ports/out
+
+.idea

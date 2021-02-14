@@ -148,8 +148,8 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
       // anonymous mapping
       page = mm::page::alloc();
     } else {
-      pte.nocache = page->nocache;
-      pte.writethrough = page->writethrough;
+      pte.nocache = page->fcheck(PG_NOCACHE);
+      pte.writethrough = page->fcheck(PG_WRTHRU);
     }
 
 
@@ -170,7 +170,7 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
     if (r.flags & MAP_SHARED) {
       // TODO: handle shared
       // printk(KERN_INFO "Write to shared page %p\n", r.pages[ind]->pa);
-      r.pages[ind]->dirty = true;
+			r.pages[ind]->fset(PG_DIRTY);
     } else {
       auto old_page = r.pages[ind];
       spinlock::lock(old_page->lock);

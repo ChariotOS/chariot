@@ -132,7 +132,7 @@ sudo chown -R 0:0 $mnt
 if [ -n "$CONFIG_X86" ]; then
 	# install the bootloader (grub, in this case)
 	sudo mkdir -p $mnt/boot/grub
-	sudo cp kernel/grub.cfg $mnt/boot/grub/
+	sudo cp arch/x86/grub.cfg $mnt/boot/grub/
 	sudo cp $BUILD/chariot.elf $mnt/boot/chariot.elf
 	# only install grub on a new disk
 	if [ $disk_exists -eq '0' ]; then

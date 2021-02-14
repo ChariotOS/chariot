@@ -12,7 +12,7 @@ mm::area::~area(void) {
       p->users--;
       // if the region was dirty, and we have an object, notify them and ask
       // them to flush the nth page
-      if (p->dirty && obj) {
+      if (p->fcheck(PG_DIRTY) && obj) {
         obj->flush(i);
       }
       spinlock::unlock(p->lock);

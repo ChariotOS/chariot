@@ -185,6 +185,7 @@ namespace block {
     if (!m_page) {
       // get the page if there isn't one and read the blocks
       m_page = mm::page::alloc();
+			m_page->fset(PG_BCACHE);
 
       int blocks = PGSIZE / bdev.block_size;
       auto *buf = (char *)p2v(m_page->pa);
