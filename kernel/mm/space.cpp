@@ -1,21 +1,53 @@
 #include <cpu.h>
+#include <errno.h>
 #include <lock.h>
 #include <mm.h>
 #include <phys.h>
-mm::space::space(off_t lo, off_t hi, ref<mm::pagetable> pt) : pt(pt), lo(lo), hi(hi) {}
 
-mm::space::~space(void) {
-  for (auto &r : regions) {
-    delete r;
-  }
-  // clear out our handle to each area
-  regions.clear();
+
+mm::space::space(off_t lo, off_t hi, ref<mm::pagetable> pt) : pt(pt), lo(lo), hi(hi) {
 }
 
-void mm::space::switch_to() { pt->switch_to(); }
+mm::space::~space(void) {
+  for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
+    delete rb_entry(node, struct mm::area, node);
+  }
+}
+
+void mm::space::switch_to() {
+  pt->switch_to();
+}
 
 
 
+bool mm::space::add_region(mm::area *region) {
+  /* This is a normal rbtree insert procedure, but with some extent logic */
+  struct rb_node **n = &(regions.rb_node);
+  struct rb_node *parent = NULL;
+
+  /* Figure out where to put new node */
+  while (*n != NULL) {
+    auto *self = rb_entry(*n, struct mm::area, node);
+    long result = (long)region->va - (long)self->va;
+
+    parent = *n;
+
+    if (result < 0)
+      n = &((*n)->rb_left);
+    else if (result > 0)
+      n = &((*n)->rb_right);
+    else {
+      printk("PA %p is already in the pg_tree\n", region->va);
+      return false;
+    }
+  }
+
+  /* Add new node and rebalance tree. */
+  rb_link_node(&region->node, parent, n);
+  rb_insert_color(&region->node, &regions);
+
+  return true;
+}
 
 size_t mm::space::copy_out(off_t byte_offset, void *dst, size_t size) {
   // how many more bytes are needed
@@ -53,20 +85,39 @@ size_t mm::space::copy_out(off_t byte_offset, void *dst, size_t size) {
 }
 
 mm::area *mm::space::lookup(off_t va) {
-  // just dumbly walk over the list of regions and find the right region
-  for (auto &r : regions) {
-    off_t start = r->va;
+  struct rb_node **n = &(regions.rb_node);
+  struct rb_node *parent = NULL;
 
-    if (va >= start && va < start + r->len) {
+	int steps = 0;
+
+  /* Figure out where to put new node */
+  while (*n != NULL) {
+    auto *r = rb_entry(*n, struct mm::area, node);
+
+    auto start = r->va;
+    auto end = r->va + r->len;
+    parent = *n;
+
+		steps++;
+
+    if (va < start) {
+      n = &((*n)->rb_left);
+    } else if (va >= end) {
+      n = &((*n)->rb_right);
+    } else {
+			// printk("va: %p, found in %d steps\n", va, steps);
       return r;
     }
   }
 
-  return nullptr;
+  return NULL;
+
 }
 
 
-int mm::space::delete_region(off_t va) { return -1; }
+int mm::space::delete_region(off_t va) {
+  return -1;
+}
 
 int mm::space::pagefault(off_t va, int err) {
   scoped_lock l(this->lock);
@@ -124,7 +175,7 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
 
 
 
-  bool display = false; //r.name == "[stack]";
+  bool display = false;  // r.name == "[stack]";
   // the page index within the region
   auto ind = (uaddr >> 12) - (r.va >> 12);
 
@@ -164,26 +215,31 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
   // If the fault was due to a write, and this region
   // is writable, handle COW if needed
   if ((err & FAULT_WRITE) && (r.prot & PROT_WRITE)) {
-    // printk(KERN_WARN "[pid=%d] WOW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(), uaddr);
+    // printk(KERN_WARN "[pid=%d] WOW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(),
+    // uaddr);
     pte.prot = r.prot;
 
     if (r.flags & MAP_SHARED) {
       // TODO: handle shared
       // printk(KERN_INFO "Write to shared page %p\n", r.pages[ind]->pa);
-			r.pages[ind]->fset(PG_DIRTY);
+      r.pages[ind]->fset(PG_DIRTY);
     } else {
       auto old_page = r.pages[ind];
       spinlock::lock(old_page->lock);
 
       if (old_page->users > 1 || r.fd) {
         auto np = mm::page::alloc();
-        if (display) printk(KERN_WARN "[pid=%d] COW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(), uaddr);
+        if (display)
+          printk(KERN_WARN "[pid=%d] COW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(),
+                 uaddr);
         np->users = 1;
         old_page->users--;
         memcpy(p2v(np->pa), p2v(old_page->pa), PGSIZE);
         r.pages[ind] = np;
       } else {
-        if (display) printk(KERN_WARN "[pid=%d] OWN [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(), uaddr);
+        if (display)
+          printk(KERN_WARN "[pid=%d] OWN [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(),
+                 uaddr);
       }
 
       spinlock::unlock(old_page->lock);
@@ -191,13 +247,15 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
   }
 
   if (do_map) {
-    if (display) printk(KERN_WARN "[pid=%d] map %p to %p\n", curproc->pid, uaddr & ~0xFFF, r.pages[ind]->pa);
+    if (display)
+      printk(KERN_WARN "[pid=%d] map %p to %p\n", curproc->pid, uaddr & ~0xFFF, r.pages[ind]->pa);
     pte.ppn = r.pages[ind]->pa >> 12;
     auto va = (r.va + (ind << 12));
     pt->add_mapping(va, pte);
   }
 
-  // printk(KERN_WARN "[pid=%d]    get_page_internal(%p) = %p\n", curthd->pid, uaddr, r.pages[ind].get());
+  // printk(KERN_WARN "[pid=%d]    get_page_internal(%p) = %p\n", curthd->pid, uaddr,
+  // r.pages[ind].get());
   return r.pages[ind];
 }
 
@@ -207,7 +265,8 @@ size_t mm::space::memory_usage(void) {
 
   size_t s = 0;
 
-  for (auto &r : regions) {
+  for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
+    auto *r = rb_entry(node, struct mm::area, node);
     r->lock.lock();
     for (auto &p : r->pages)
       if (p) {
@@ -231,7 +290,8 @@ mm::space *mm::space::fork(void) {
   scoped_lock self_lock(lock);
 
 
-  for (auto &r : regions) {
+  for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
+    auto *r = rb_entry(node, struct mm::area, node);
     // printk(KERN_WARN "[pid=%d] fork %s\n", curproc->pid, r->name.get());
     auto copy = new mm::area;
     copy->name = r->name;
@@ -246,13 +306,13 @@ mm::space *mm::space::fork(void) {
       copy->obj = r->obj;
       r->obj->acquire();
     }
-		// printk("prot: %b, flags: %b\n", r->prot, r->flags);
+    // printk("prot: %b, flags: %b\n", r->prot, r->flags);
 
     int i = 0;
     for (auto &p : r->pages) {
       i++;
       if (p) {
-      	// printk(KERN_WARN "[pid=%d]       page %d: %p\n", curproc->pid, i, p->pa);
+        // printk(KERN_WARN "[pid=%d]       page %d: %p\n", curproc->pid, i, p->pa);
         spinlock::lock(p->lock);
         p->users++;
         copy->pages.push(p);
@@ -276,10 +336,10 @@ mm::space *mm::space::fork(void) {
       }
     }
 
-    n->regions.push(copy);
+    n->add_region(copy);
   }
 
-  n->sort_regions();
+  // n->sort_regions();
 
   return n;
 }
@@ -288,7 +348,8 @@ off_t mm::space::mmap(off_t req, size_t size, int prot, int flags, ref<fs::file>
   return mmap("", req, size, prot, flags, move(fd), off);
 }
 
-off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags, ref<fs::file> fd, off_t off) {
+off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags, ref<fs::file> fd,
+                      off_t off) {
   if (addr & 0xFFF) return -1;
 
   if ((flags & (MAP_PRIVATE | MAP_SHARED)) == 0) {
@@ -332,11 +393,11 @@ off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
   r->obj = obj;
   r->pages.ensure_capacity(pages);
 
-  for (int i = 0; i < pages; i++) r->pages.push(nullptr);
+  for (int i = 0; i < pages; i++)
+    r->pages.push(nullptr);
 
-  regions.push(r);
 
-  sort_regions();
+  add_region(r);
 
   return addr;
 }
@@ -350,21 +411,18 @@ int mm::space::unmap(off_t ptr, size_t len) {
 
   len = round_up(len, 4096);
 
-  for (int i = 0; i < regions.size(); i++) {
-    auto region = regions[i];
-
-    if (region->va == va && NPAGES(region->len) == NPAGES(len)) {
-      for (off_t v = va; v < va + len; v += 4096) {
-        pt->del_mapping(v);
-      }
-
-
-      regions.remove(i);
-      sort_regions();
-      delete region;
-      return 0;
-    }
+  auto *region = lookup(va);
+  if (region == NULL) {
+    return -ESRCH;
   }
+
+  rb_erase(&region->node, &regions);
+
+  for (off_t v = va; v < va + len; v += 4096)
+    pt->del_mapping(v);
+
+  delete region;
+
 
   return -1;
 }
@@ -383,7 +441,8 @@ bool mm::space::validate_pointer(void *raw_va, size_t len, int mode) {
       return false;
     }
 
-    if ((mode & PROT_READ && !(r->prot & PROT_READ)) || (mode & PROT_WRITE && !(r->prot & PROT_WRITE)) ||
+    if ((mode & PROT_READ && !(r->prot & PROT_READ)) ||
+        (mode & PROT_WRITE && !(r->prot & PROT_WRITE)) ||
         (mode & PROT_EXEC && !(r->prot & PROT_EXEC))) {
       printk(KERN_WARN "validate_pointer(%p) - protection!\n", raw_va);
       return false;
@@ -411,28 +470,9 @@ int mm::space::schedule_mapping(off_t va, off_t pa, int prot) {
 }
 
 
-int mm::space::sort_regions(void) {
-  int const len = regions.size();
-  if (len == 1) return 0;
-  int n = 0;
-  for (int i = 1; i < len; i++) {
-    for (int j = i; j > 0; j--) {
-      auto &t1 = regions.at(j - 1);
-      auto &t2 = regions.at(j);
-      if (t1->va > t2->va) {
-        swap(t1, t2);
-        n++;
-      } else {
-        break;
-      }
-    }
-  }
-
-  return n;
-}
-
 void mm::space::dump(void) {
-  for (auto &r : regions) {
+  for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
+    auto *r = rb_entry(node, struct mm::area, node);
     printk("%p-%p ", r->va, r->va + r->len);
     printk("%c", r->prot & VPROT_READ ? 'r' : '-');
     printk("%c", r->prot & VPROT_WRITE ? 'w' : '-');
@@ -456,9 +496,11 @@ off_t mm::space::find_hole(size_t size) {
   off_t va = hi - size;
   off_t lim = va + size;
 
-  for (int i = regions.size() - 1; i >= 0; i--) {
-    auto rva = regions[i]->va;
-    auto rlim = rva + regions[i]->len;
+  for (struct rb_node *node = rb_last(&regions); node; node = rb_prev(node)) {
+    auto *r = rb_entry(node, struct mm::area, node);
+
+    auto rva = r->va;
+    auto rlim = rva + r->len;
 
     if (va <= rlim && rva < lim) {
       va = rva - size;

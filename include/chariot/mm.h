@@ -154,7 +154,7 @@ namespace mm {
   };
 
 
-  struct area : public refcounted<area> {
+  struct area {
     string name;
 
     off_t va;
@@ -175,6 +175,10 @@ namespace mm {
     // This is required if the region is not anonymous. If a region is mapped
     // and it isn't anon but has no obj field, it acts like an anon mapping
     ref<vmobject> obj = nullptr;
+
+    /* The entry in the rbtree */
+    rb_node node;
+
 
     area(void);
     ~area(void);
@@ -211,6 +215,9 @@ namespace mm {
     int unmap(off_t addr, size_t sz);
 
 
+    /* Add a region to the appropriate location in the rbtree */
+    bool add_region(mm::area *region);
+
     // returns the number of bytes resident
     size_t memory_usage(void);
 
@@ -234,7 +241,6 @@ namespace mm {
 
     int is_kspace = 0;
     int schedule_mapping(off_t va, off_t pa, int prot);
-    int sort_regions(void);
     off_t find_hole(size_t size);
 
 
@@ -245,7 +251,8 @@ namespace mm {
     ref<mm::page> get_page_internal(off_t uaddr, mm::area &area, int pagefault_err, bool do_map);
 
     spinlock lock;
-    vec<mm::area *> regions;
+    rb_root regions;
+    // vec<mm::area *> regions;
 
     struct pending_mapping {
       off_t va;

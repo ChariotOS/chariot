@@ -3,8 +3,7 @@
 #include <mmap_flags.h>
 #include <syscall.h>
 
-void *sys::mmap(void *addr, long length, int prot, int flags, int fd,
-                long offset) {
+void *sys::mmap(void *addr, long length, int prot, int flags, int fd, long offset) {
   auto proc = cpu::proc();
   off_t va;
   ref<fs::file> f = nullptr;
@@ -86,7 +85,11 @@ int sys::mgetname(void *addr, char *name, size_t bufsz) {
 int sys::mregions(struct mmap_region *dst, int nregions) {
   auto &mm = *curproc->mm;
 
-  int regions = mm.regions.size();
+
+  int regions = 0;
+  for (struct rb_node *node = rb_first(&mm.regions); node; node = rb_next(node)) {
+    regions++;
+  }
 
   // if passed null, return the number of regions
   if (dst == 0) {
@@ -107,17 +110,20 @@ int sys::mregions(struct mmap_region *dst, int nregions) {
   auto *tmp = new mmap_region[want];
 
   mm.lock.lock();
-  for (int i = 0; i < want; i++) {
-		auto &region = mm.regions[i];
-		tmp[i].id = 0;
-		tmp[i].flags = region->flags;
-		tmp[i].prot = region->prot;
-		tmp[i].off = region->va;
-		tmp[i].len = region->len;
+  int i = 0;
+  for (struct rb_node *node = rb_first(&mm.regions); node; node = rb_next(node)) {
+    auto *r = rb_entry(node, struct mm::area, node);
+    i++;
+    if (i >= want) break;
+    tmp[i].id = 0;
+    tmp[i].flags = r->flags;
+    tmp[i].prot = r->prot;
+    tmp[i].off = r->va;
+    tmp[i].len = r->len;
 
-		int nl = min(63, region->name.len());
-		memcpy(tmp[i].name, region->name.get(), nl + 1);
-		// tmp[i].name
+    int nl = min(63, r->name.len());
+    memcpy(tmp[i].name, r->name.get(), nl + 1);
+    // tmp[i].name
   }
   mm.lock.unlock();
 
