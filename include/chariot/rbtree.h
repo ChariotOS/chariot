@@ -19,8 +19,8 @@
 
 
 #include <asm.h>
-#include <types.h>
 #include <list_head.h>
+#include <types.h>
 
 #define rcu_check_sparse(p, space)
 // #include <linux/kernel.h>
@@ -32,15 +32,15 @@
 
 
 
-#define rcu_assign_pointer(p, v)                                    \
-  do {                                                              \
-    uintptr_t _r_a_p__v = (uintptr_t)(v);                           \
-    rcu_check_sparse(p, __rcu);                                     \
-                                                                    \
-    if (__builtin_constant_p(v) && (_r_a_p__v) == (uintptr_t)NULL)  \
-      WRITE_ONCE((p), (__decltype(p))(_r_a_p__v));                      \
-    else                                                            \
-			__atomic_store((unsigned long*)&p, (unsigned long*)&_r_a_p__v, __ATOMIC_RELEASE); \
+#define rcu_assign_pointer(p, v)                                                          \
+  do {                                                                                    \
+    uintptr_t _r_a_p__v = (uintptr_t)(v);                                                 \
+    rcu_check_sparse(p, __rcu);                                                           \
+                                                                                          \
+    if (__builtin_constant_p(v) && (_r_a_p__v) == (uintptr_t)NULL)                        \
+      WRITE_ONCE((p), (__decltype(p))(_r_a_p__v));                                        \
+    else                                                                                  \
+      __atomic_store((unsigned long *)&p, (unsigned long *)&_r_a_p__v, __ATOMIC_RELEASE); \
   } while (0)
 
 struct rb_node {
@@ -60,7 +60,7 @@ struct rb_root {
   (struct rb_root) { \
     NULL,            \
   }
-#define rb_entry(ptr, type, member)                      \
+#define rb_entry(ptr, type, member)                        \
   ({                                                       \
     const __decltype(((type *)0)->member) *__mptr = (ptr); \
     (type *)((char *)__mptr - offsetof(type, member));     \
@@ -180,6 +180,37 @@ static inline void rb_replace_node_cached(struct rb_node *victim, struct rb_node
   if (root->rb_leftmost == victim) root->rb_leftmost = newnode;
   rb_replace_node(victim, newnode, &root->rb_root);
 }
+
+/* The return value of the callback function to rb_insert */
+#define RB_INSERT_GO_LEFT (-1)
+#define RB_INSERT_GO_RIGHT (+1)
+#define RB_INSERT_GO_HERE (0)
+
+/* "generic" rbtree insert with a comparision callback */
+template <typename Fn>
+inline bool rb_insert(struct rb_root &root, struct rb_node *node, Fn callback) {
+  struct rb_node **n = &(root.rb_node);
+  struct rb_node *parent = NULL;
+
+  while (*n != NULL) {
+    int result = callback(*n);
+    parent = *n;
+
+    if (result == RB_INSERT_GO_LEFT) {
+      n = &((*n)->rb_left);
+    } else if (result == RB_INSERT_GO_RIGHT) {
+      n = &((*n)->rb_right);
+    } else if (result == RB_INSERT_GO_HERE) {
+      return false;
+    }
+  }
+
+  /* Add new node and rebalance tree. */
+  rb_link_node(node, parent, n);
+  rb_insert_color(node, &root);
+	return true;
+}
+
 
 #endif /* _LINUX_RBTREE_H */
 

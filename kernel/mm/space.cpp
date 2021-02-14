@@ -21,32 +21,18 @@ void mm::space::switch_to() {
 
 
 bool mm::space::add_region(mm::area *region) {
-  /* This is a normal rbtree insert procedure, but with some extent logic */
-  struct rb_node **n = &(regions.rb_node);
-  struct rb_node *parent = NULL;
-
-  /* Figure out where to put new node */
-  while (*n != NULL) {
-    auto *self = rb_entry(*n, struct mm::area, node);
-    long result = (long)region->va - (long)self->va;
-
-    parent = *n;
+  return rb_insert(regions, &region->node, [&](struct rb_node *other) {
+    auto *other_region = rb_entry(other, struct mm::area, node);
+    long result = (long)region->va - (long)other_region->va;
 
     if (result < 0)
-      n = &((*n)->rb_left);
+      return RB_INSERT_GO_LEFT;
     else if (result > 0)
-      n = &((*n)->rb_right);
+      return RB_INSERT_GO_RIGHT;
     else {
-      printk("PA %p is already in the pg_tree\n", region->va);
-      return false;
+      return RB_INSERT_GO_HERE;
     }
-  }
-
-  /* Add new node and rebalance tree. */
-  rb_link_node(&region->node, parent, n);
-  rb_insert_color(&region->node, &regions);
-
-  return true;
+  });
 }
 
 size_t mm::space::copy_out(off_t byte_offset, void *dst, size_t size) {
@@ -88,7 +74,7 @@ mm::area *mm::space::lookup(off_t va) {
   struct rb_node **n = &(regions.rb_node);
   struct rb_node *parent = NULL;
 
-	int steps = 0;
+  int steps = 0;
 
   /* Figure out where to put new node */
   while (*n != NULL) {
@@ -98,20 +84,19 @@ mm::area *mm::space::lookup(off_t va) {
     auto end = r->va + r->len;
     parent = *n;
 
-		steps++;
+    steps++;
 
     if (va < start) {
       n = &((*n)->rb_left);
     } else if (va >= end) {
       n = &((*n)->rb_right);
     } else {
-			// printk("va: %p, found in %d steps\n", va, steps);
+      // printk("va: %p, found in %d steps\n", va, steps);
       return r;
     }
   }
 
   return NULL;
-
 }
 
 
