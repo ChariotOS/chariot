@@ -200,8 +200,8 @@ void arch_mem_init(unsigned long mbd) {
   }
 
 
-  /* Map whichever is larger, the physical memory or 4gb */
-  off_t mem_end = max(mm_info.last_pfn << 12, 4L * 1024 * 1024 * 1024);
+  /* Map whichever is larger, the physical memory or 32gb */
+  off_t mem_end = max(mm_info.last_pfn << 12, 32L * 1024 * 1024 * 1024);
   /* We mapped 1GiB in arch/x86/asm/boot.asm, so we don't need to do that again */
   size_t nmapped = 4096L * 512L * 512L;
   if (mem_end > nmapped) {
@@ -225,6 +225,8 @@ void arch_mem_init(unsigned long mbd) {
     }
     arch_flush_mmu();  // flush out the TLB
   }
+
+	printk("done!\n");
 
 
   // setup memory regions

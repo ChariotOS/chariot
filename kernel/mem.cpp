@@ -25,7 +25,6 @@ extern "C" size_t strlen(const char *s) {
 // bindings for liballoc
 spinlock alloc_lock;
 static volatile long lock_flags = 0;
-
 int liballoc_lock() {
 	alloc_lock.lock();
   // lock_flags = alloc_lock.lock_irqsave();
@@ -35,7 +34,7 @@ int liballoc_lock() {
 
 int liballoc_unlock() {
 	alloc_lock.unlock();
-  // alloc_lock.unlock_irqrestore(lock_flags);
+	// alloc_lock.unlock_irqrestore(lock_flags);
   return 0;
 }
 
@@ -47,7 +46,7 @@ void *liballoc_alloc(unsigned long s) {
   if (p == NULL) panic("Can't find region for malloc");
   malloc_usage += s * PGSIZE;
 
-  // printk("liballoc_alloc(%zu) = %p  (total: %zu);\n", s, p, malloc_usage);
+  // printk("alloc %4d  total: %12zu, free: %12zuB);\n", s, malloc_usage, phys::bytes_free());
   return p;
 }
 
@@ -56,13 +55,9 @@ int liballoc_free(void *buf, unsigned long sz) {
   phys::kfree(buf, sz);
   malloc_usage -= sz * PGSIZE;
 
-  // printk("liballoc_free(%p, %zu)  (total: %zu);\n", buf, sz, malloc_usage);
+  // printk("free  %4d  (total: %zu, free: %zuB);\n", sz, malloc_usage, phys::bytes_free());
   return 0;
 }
-
-// extern "C" void *malloc(unsigned long s) { return malloc(s); }
-// extern "C" void free(void *p) { kfree(p); }
-
 
 
 extern "C" void *memcpy(void *dest, const void *src, size_t n) {
