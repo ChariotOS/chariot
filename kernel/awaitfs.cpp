@@ -21,16 +21,27 @@ struct await_table_entry {
   poll_table pt;
 };
 
-struct await_table_metadata {};
 
+
+  struct await_table_metadata {
+    poll_table_entry *pte;
+    await_table_entry *awe;
+  };
 
 int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long timeout_time) {
   if (nfds == 0) return -EINVAL;
-  if (!curproc->mm->validate_pointer(targs, sizeof(*targs) * nfds, PROT_READ | PROT_WRITE)) return -1;
+  if (!curproc->mm->validate_pointer(targs, sizeof(*targs) * nfds, PROT_READ | PROT_WRITE))
+    return -1;
 
-
+	unsigned nqueues = 0;
   vec<await_table_entry> entries;
+  /* These are both kept in line with eachother. We just simply need a contiguous array of queues
+   * for multi_wait */
+  vec<wait_queue *> queues;
+  vec<await_table_metadata> metadata;
 
+  /* To avoid reallocation */
+  entries.ensure_capacity(nfds);
 
   // build up the entry list
   for (int i = 0; i < nfds; i++) {
@@ -47,22 +58,25 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long time
       int immediate_events = file->ino->poll(*entry.file, entry.awaiting, entry.pt);
       /* Optimization. If someone is already ready, return such */
       if (immediate_events & entry.awaiting) {
-				targs[i].occurred = immediate_events;
+        targs[i].occurred = immediate_events;
         return i;
       }
 
-			// printk("poll[%d] wq: %d\n" , i, entry.pt.ents.size());
+			nqueues += entry.pt.ents.size();
+
+      // printk("poll[%d] wq: %d\n" , i, entry.pt.ents.size());
       entries.push(entry);
     }
   }
 
-  struct await_table_metadata {
-    poll_table_entry *pte;
-    await_table_entry *awe;
-  };
-  /* These are both kept in line with eachother. We just simply need a contiguous array of queues for multi_wait */
-  vec<wait_queue *> queues;
-  vec<await_table_metadata> metadata;
+	/* If there is a timer, add it on the end of the queues, so we need one more! */
+  if ((long long)timeout_time > 0) {
+		nqueues += 1;
+	}
+
+
+	queues.ensure_capacity(nqueues);
+	metadata.ensure_capacity(nqueues);
 
   for (auto &ent : entries) {
     for (auto &p : ent.pt.ents) {
@@ -74,11 +88,10 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long time
     }
   }
 
-
   // uninitialized sleep waiter
   sleep_waiter sw;
-	sw.cpu = NULL;
-	int timer_index = -1;
+  sw.cpu = NULL;
+  int timer_index = -1;
   if ((long long)timeout_time > 0) {
     auto now_ms = time::now_ms();
     long long to_go = timeout_time - now_ms;
@@ -86,31 +99,31 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long time
       return -ETIMEDOUT;
     }
     sw.start(to_go * 1000);
-		// printk("time to go %d\n", to_go);
-		timer_index = queues.size();
+    // printk("time to go %d\n", to_go);
+    timer_index = queues.size();
     queues.push(&sw.wq);
     metadata.push({NULL, NULL}); /* idk */
   }
 
-	// printk("sleep cpu %p\n", sw.cpu);
+  // printk("sleep cpu %p\n", sw.cpu);
 
 
-	// printk("multi wait with %d queues.\n", queues.size());
-	int res = multi_wait(queues, true);
+  // printk("multi wait with %d queues.\n", queues.size());
+  int res = multi_wait(queues, true);
 
-	if (res == -EINTR) return -EINTR;
-	/* Check for timeout */
-	if (timeout_time) {
-		if (res == timer_index) {
-			return -ETIMEDOUT;
-		}
-	}
+  if (res == -EINTR) return -EINTR;
+  /* Check for timeout */
+  if (timeout_time) {
+    if (res == timer_index) {
+      return -ETIMEDOUT;
+    }
+  }
 
-	assert(res < queues.size());
+  assert(res < queues.size());
 
-	int index = metadata[res].awe->index;
+  int index = metadata[res].awe->index;
 
-	/* Update the target entry */
-	targs[index].occurred = metadata[res].pte->events;
-	return index;
+  /* Update the target entry */
+  targs[index].occurred = metadata[res].pte->events;
+  return index;
 }
