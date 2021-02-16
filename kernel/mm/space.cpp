@@ -143,12 +143,19 @@ int mm::space::pagefault(off_t va, int err) {
 
 // return the page at an address (allocate if needed)
 ref<mm::page> mm::space::get_page(off_t uaddr) {
-  scoped_lock l(this->lock);
+  this->lock.lock();
   auto r = lookup(uaddr);
-  if (!r) return nullptr;
+  if (!r) {
+    this->lock.unlock();
+    return nullptr;
+  }
 
-  scoped_lock region_lock(r->lock);
-  return get_page_internal(uaddr, *r, 0, false);
+
+  r->lock.lock();
+  auto pg = get_page_internal(uaddr, *r, 0, false);
+  r->lock.unlock();
+  this->lock.unlock();
+  return pg;
 }
 
 
@@ -414,6 +421,7 @@ int mm::space::unmap(off_t ptr, size_t len) {
 
 #define PGMASK (~(PGSIZE - 1))
 bool mm::space::validate_pointer(void *raw_va, size_t len, int mode) {
+  scoped_lock l(this->lock);
   if (is_kspace) return true;
   off_t start = (off_t)raw_va & PGMASK;
   off_t end = ((off_t)raw_va + len) & PGMASK;
@@ -459,7 +467,7 @@ void mm::space::dump(void) {
   for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
     auto *r = rb_entry(node, struct mm::area, node);
     printk("%p-%p ", r->va, r->va + r->len);
-		printk("%10zupgs ", r->pages.size());
+    printk("%10zupgs ", r->pages.size());
     printk("%c", r->prot & VPROT_READ ? 'r' : '-');
     printk("%c", r->prot & VPROT_WRITE ? 'w' : '-');
     printk("%c", r->prot & VPROT_EXEC ? 'x' : '-');
