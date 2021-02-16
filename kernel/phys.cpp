@@ -27,11 +27,11 @@ struct frame {
 static spinlock phys_lck;
 
 static void lock(void) {
-  if (use_kernel_vm) phys_lck.lock();
+  phys_lck.lock();
 }
 
 static void unlock(void) {
-  if (use_kernel_vm) phys_lck.unlock();
+  phys_lck.unlock();
 }
 
 static struct {
@@ -45,17 +45,7 @@ u64 phys::nfree(void) { return kmem.nfree; }
 u64 phys::bytes_free(void) { return nfree() << 12; }
 
 static frame *working_addr(frame *fr) {
-  if (use_kernel_vm) {
-    fr = (frame *)p2v(fr);
-  } else {
-#ifdef CONFIG_X86
-    paging::map((u64)phys_mem_scratch, (u64)fr);
-    fr = (frame *)phys_mem_scratch;
-#else
-    panic("PAGING ERROR OOF\n");
-#endif
-  }
-  return fr;
+  return (frame *)p2v(fr);
 }
 
 static void *early_phys_alloc(int npages) {
@@ -85,30 +75,7 @@ static void *early_phys_alloc(int npages) {
   return r;
 }
 
-#ifdef PHYS_DEBUG
-static void print_free(void) {
-  if (use_kernel_vm) {
-    size_t nbytes = kmem.nfree * 4096;
-    printk("phys: %zu kb\n", nbytes / 1024);
 
-    auto f = working_addr(kmem.freelist);
-    while (1) {
-      printk("   %p ", v2p(f));
-
-      if (f->getnext() <= f && f->next != NULL) {
-        printk("!!");
-      } else {
-        printk("  ");
-      }
-
-      printk(" %p ", (char *)v2p(f) + f->page_len * PGSIZE);
-      printk(" %zu pages\n", f->page_len);
-      if (f->next == NULL) break;
-      f = f->getnext();
-    }
-  }
-}
-#endif
 
 static void *late_phys_alloc(size_t npages) {
   // if (npages > 1) print_free();
@@ -159,24 +126,16 @@ void *phys::alloc(int npages) {
     lock();
   }
 
-  void *p = use_kernel_vm ? late_phys_alloc(npages) : early_phys_alloc(npages);
+  void *p = early_phys_alloc(npages);
 
   unlock();
   return p;
 }
 
 void phys::free(void *v, int len) {
-  if (!use_kernel_vm) {
-    panic("phys::free(%p) before kernel vm enabled\n", v);
-  }
-
   if ((u64)v % PGSIZE) {
     panic("phys::free requires page aligned address. Given %p", v);
   }
-  /*
-if (v <= high_kern_end)
-panic("phys::free cannot free below the kernel's end");
-          */
 
   lock();
 

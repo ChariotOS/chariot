@@ -20,8 +20,6 @@ struct mmap_info {
   off_t vmhi = 0;
 };
 
-extern bool use_kernel_vm;
-
 #define v2p(addr) (void *)((off_t)(addr) & ~(off_t)CONFIG_KERNEL_VIRTUAL_BASE)
 #define p2v(addr) (void *)((off_t)(addr) | (off_t)CONFIG_KERNEL_VIRTUAL_BASE)
 

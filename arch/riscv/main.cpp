@@ -260,7 +260,6 @@ void main(int hartid, void *fdt) {
   /* Tell the device tree to copy the device tree and parse it */
   dtb::parse((dtb::fdt_header *)p2v(rv::get_hstate().dtb));
 
-  use_kernel_vm = 1;
   phys::free_range((void *)boot_free_start, (void *)boot_free_end);
 
   cpu::seginit(NULL);

@@ -69,38 +69,25 @@ STACK_ALIGN equ 16
 align PAGE_SIZE
 [global boot_p4]
 boot_p4:
+
 	dq (boot_p3 + PG_PRESENT + PG_WRITABLE)
 	times 271 dq 0
-	dq (high_p3 + PG_PRESENT + PG_WRITABLE)
+	dq (boot_p3 + PG_PRESENT + PG_WRITABLE)
 	times 239 dq 0
 
 boot_p3:
 	dq (boot_p2 + PG_PRESENT + PG_WRITABLE)
 	times 511 dq 0
 
+
 boot_p2:
-	dq (boot_p1 + PG_PRESENT + PG_WRITABLE)
-	times 511 dq 0
-
-;; ID map the first bit 512 pages of memory
-boot_p1:
-	%assign pg 0
-  %rep 512
-    dq (pg + PG_PRESENT + PG_WRITABLE)
-    %assign pg pg+PAGE_SIZE
-  %endrep
-
-
-high_p3:
-	dq (high_p2 + PG_PRESENT + PG_WRITABLE)
-	times 511 dq 0
-
-high_p2:
 	%assign pg 0
   %rep 512
     dq (pg + PG_PRESENT + PG_BIG + PG_WRITABLE)
-    %assign pg pg+PAGE_SIZE*512
+    %assign pg pg + PAGE_SIZE * 512
   %endrep
+
+
 
 BOOT_STACK_SIZE equ 256
 boot_stack:

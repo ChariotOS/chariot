@@ -1,9 +1,6 @@
 #include <mm.h>
 
 
-bool use_kernel_vm = false;
-
-
 mm::pagetable::pagetable() {
   // TODO: add to some global list
 }

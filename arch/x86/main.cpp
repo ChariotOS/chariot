@@ -48,8 +48,11 @@ void serial_install(void);
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   serial_install();
   rtc_init();
+
+
   extern u8 boot_cpu_local[];
   cpu::seginit(boot_cpu_local);
+
 
   arch_mem_init(mbd);
 
@@ -78,6 +81,7 @@ int kernel_init(void *);
 static void kmain2(void) {
   irq::init();
   fpu::init();
+
 
   /* Call all the global constructors */
   for (func_ptr *func = __init_array_start; func != __init_array_end; func++) {

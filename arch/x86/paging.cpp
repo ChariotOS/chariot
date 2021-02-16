@@ -21,13 +21,7 @@ u64 *alloc_page_dir(void) {
   auto new_table = (u64 *)phys::alloc();
   INFO("new_table = %p\n", new_table);
 
-  auto va = (u64 *)new_table;
-
-  if (use_kernel_vm) {
-    va = (u64 *)p2v(new_table);
-  } else {
-    paging::map((u64)new_table, (u64)new_table);
-  }
+  auto va = (u64 *)p2v(new_table);
 
   for (int i = 0; i < 512; i++) va[i] = 0;
   return new_table;
@@ -74,7 +68,7 @@ static u64 size_flag(paging::pgsize size) {
 }
 
 static inline u64 *paging_p2v(u64 *pa) {
-  u64 *va = (u64 *)(use_kernel_vm ? p2v(pa) : (void *)(pa));
+  u64 *va = (u64 *)p2v(pa);
   // printk("paging_p2v(%p) = %p\n", pa, va);
   return va;
 }

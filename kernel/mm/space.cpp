@@ -459,6 +459,7 @@ void mm::space::dump(void) {
   for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
     auto *r = rb_entry(node, struct mm::area, node);
     printk("%p-%p ", r->va, r->va + r->len);
+		printk("%10zupgs ", r->pages.size());
     printk("%c", r->prot & VPROT_READ ? 'r' : '-');
     printk("%c", r->prot & VPROT_WRITE ? 'w' : '-');
     printk("%c", r->prot & VPROT_EXEC ? 'x' : '-');
