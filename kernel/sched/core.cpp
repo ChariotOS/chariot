@@ -312,7 +312,6 @@ void sched::dispatch_signal(int sig) {
     panic("not in cpu when getting signal %d\n", sig);
   }
 
-  printk("pid %d dispatch %d\n", curthd->pid, sig);
   assert(curthd->sig.handling == -1);
   curthd->sig.handling = sig; /* TODO this might need some more signal-speicifc logic */
 

@@ -6,6 +6,7 @@
 #include <paging.h>
 #include <phys.h>
 #include <printk.h>
+#include <time.h>
 #include <types.h>
 
 // #define PHYS_DEBUG
@@ -20,8 +21,12 @@ struct frame {
   struct frame *next;
   u64 page_len;
 
-  inline struct frame *getnext(void) { return (frame *)p2v(next); }
-  inline void setnext(frame *f) { next = (frame *)v2p(f); }
+  inline struct frame *getnext(void) {
+    return (frame *)p2v(next);
+  }
+  inline void setnext(frame *f) {
+    next = (frame *)v2p(f);
+  }
 };
 
 static spinlock phys_lck;
@@ -40,9 +45,13 @@ static struct {
   u64 nfree;
 } kmem;
 
-u64 phys::nfree(void) { return kmem.nfree; }
+u64 phys::nfree(void) {
+  return kmem.nfree;
+}
 
-u64 phys::bytes_free(void) { return nfree() << 12; }
+u64 phys::bytes_free(void) {
+  return nfree() << 12;
+}
 
 static frame *working_addr(frame *fr) {
   return (frame *)p2v(fr);
@@ -95,8 +104,12 @@ void *phys::alloc(int npages) {
     lock();
   }
 
+
+  // auto start = time::now_ns();
+
   void *p = late_phys_alloc(npages);
 
+  // printk("phys::alloc(%d) took %llu ns\n", npages, time::now_ns() - start);
   unlock();
   return p;
 }
