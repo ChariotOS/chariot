@@ -8,7 +8,7 @@ int vfs::getcwd(fs::inode &cwd, string &dst) {
   fs::inode *cur = &cwd;
   fs::inode *next = NULL;
 
-  string name;
+
   string sep = "/";
 
   dst.clear();
@@ -17,7 +17,7 @@ int vfs::getcwd(fs::inode &cwd, string &dst) {
   if (cur == root) {
     dst = "/";
   } else {
-    int depth = 25; // lol idk
+    int depth = 50; // lol idk
     while (cur != root) {
       if (cur->type != T_DIR) return -ENOTDIR;
 

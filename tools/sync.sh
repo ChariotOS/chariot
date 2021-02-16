@@ -58,7 +58,7 @@ if [ $disk_exists -eq '0' ]; then
 		hdiutil create -size ${CONFIG_DISK_SIZE_MB}m -volname Chariot $IMG
 	else
 		# create the disk image file of size DISK_SIZE_MB
-		dd if=/dev/zero of=$IMG bs=1000000 count=$DISK_SIZE_MB || die "can't create disk image"
+		dd if=/dev/zero of=$IMG bs=1000000 count=$CONFIG_DISK_SIZE_MB || die "can't create disk image"
 		chmod 666 $IMG
   fi
 fi
@@ -99,14 +99,16 @@ trap cleanup EXIT
 
 # only if the disk wasn't created, create the partition map on the new disk
 if [ $disk_exists -eq '0' ]; then
+	printf "Running parted..."
 	sudo parted -s "${dev}" mklabel msdos mkpart primary ext2 32k 100% -a minimal set 1 boot on || die "couldn't partition disk"
 	# sudo mkfs.ext2 -b 4096 "${fsdev}" || die "couldn't create filesystem"
+	printf "Done.\n"
 
+	printf "Running mke2fs..."
 	sudo mke2fs -L "Chariot Root" -b 4096 -q -I 128 "${fsdev}" || die "couldn't create filesystem"
-	# sudo mkfs.fat -n "Chariot Root" -S 4096 -F 32 "${fsdev}" || die "couldn't create filesystem"
-fi
+	printf "Done.\n"
 
-ls ${dev}*
+fi
 
 # create the mount dir
 if [ -d $mnt ]; then
@@ -128,6 +130,10 @@ sudo mkdir -p $mnt/dev
 sudo mkdir -p $mnt/tmp
 sudo chown -R 0:0 $mnt
 
+
+pushd $mnt
+	du -d 1 -h
+popd
 
 if [ -n "$CONFIG_X86" ]; then
 	# install the bootloader (grub, in this case)

@@ -1,8 +1,11 @@
 #include "liballoc_1_1.h"
+#include <printk.h>
+
+// #define MALLOC_SPAM_PRINT
 
 typedef unsigned long uintptr_t;
 
-#define NULL 0
+// #define NULL 0
 /**  Durand's Amazing Super Duper Memory functions.  */
 
 #define VERSION "1.1"
@@ -215,6 +218,12 @@ static struct liballoc_major *allocate_new_page(unsigned int size) {
 }
 
 void *PREFIX(malloc)(unsigned long req_size) {
+
+#ifdef MALLOC_SPAM_PRINT
+	void *ret_addr = __builtin_extract_return_addr (__builtin_return_address (0));
+	printk_nolock("malloc %-20zu from addr2line -e build/chariot.elf 0x%p\n", req_size, ret_addr);
+#endif
+
   int startedBet = 0;
   unsigned long bestSize = 0;
   void *p = NULL;
@@ -532,6 +541,10 @@ void *PREFIX(malloc)(unsigned long req_size) {
 }
 
 void PREFIX(free)(void *ptr) {
+#ifdef MALLOC_SPAM_PRINT
+	printk("free(%P)\n", ptr);
+#endif
+
   struct liballoc_minor *min;
   struct liballoc_major *maj;
 

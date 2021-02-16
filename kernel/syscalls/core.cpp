@@ -11,11 +11,16 @@
 #include <util.h>
 #include <vga.h>
 
-void sys::restart() {}
+void sys::restart() {
+}
 
-pid_t sys::getpid(void) { return curthd->pid; }
+pid_t sys::getpid(void) {
+  return curthd->pid;
+}
 
-pid_t sys::gettid(void) { return curthd->tid; }
+pid_t sys::gettid(void) {
+  return curthd->tid;
+}
 
 // WARNING: HACK
 struct syscall {
@@ -32,9 +37,11 @@ void set_syscall(const char *name, int num, void *handler) {
 }
 
 
-uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f) {
+uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e,
+                    uint64_t f) {
   if (num == 0xFF) {
-    printk(KERN_DEBUG "[pid %d] debug syscall: %llx %llx %llx %llx %llx %llx\n", curproc->pid, a, b, c, d, e, f);
+    printk(KERN_DEBUG "[pid %d] debug syscall: %llx %llx %llx %llx %llx %llx\n", curproc->pid, a, b,
+           c, d, e, f);
     return 0;
   }
   if (num & ~0xFF) return -1;
@@ -43,11 +50,15 @@ uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, ui
     return -1;
   }
 
-  // printk(KERN_INFO "[pid=%d] syscall %s  0x%llx 0x%llx 0x%llx 0x%llx 0x%llx 0x%llx\n", curthd->pid,
-  // syscall_table[num].name, a, b, c, d, e, f);
+#if 0
+  printk(KERN_INFO "[pid=%d] syscall %s  0x%llx 0x%llx 0x%llx 0x%llx 0x%llx 0x%llx\n", curthd->pid,
+         syscall_table[num].name, a, b, c, d, e, f);
+#endif
   curthd->stats.syscall_count++;
 
-  auto *func = (uint64_t(*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))syscall_table[num].handler;
+  auto *func =
+      (uint64_t(*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))syscall_table[num]
+          .handler;
   auto res = func(a, b, c, d, e, f);
   return res;
 }

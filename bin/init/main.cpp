@@ -219,12 +219,14 @@ int main(int argc, char **argv) {
 
 
 
+	/*
 	if (fork() == 0) {
 		while (1) {
   		usleep(10 * 1000);
 			// kill(parent_pid, SIGUSR1);
 		}
 	}
+	*/
 
   if (getpid() != 1) {
     fprintf(stderr, "init: must be run as pid 1\n");
