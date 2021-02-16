@@ -10,8 +10,11 @@ static rb_root pg_tree = RB_ROOT;
 
 
 static void remove_page_from_tree(mm::page &pg) {
-scoped_irqlock l(pg_tree_lock);
+
+#ifdef PAGE_ENABLE_RBTREE
+  scoped_irqlock l(pg_tree_lock);
   rb_erase(&pg.rb_node, &pg_tree);
+#endif
 
 #if 0
 
@@ -33,8 +36,11 @@ scoped_irqlock l(pg_tree_lock);
 }
 
 static void update_page_address(mm::page *pg, unsigned long pa) {
-  scoped_irqlock l(pg_tree_lock);
   pg->pa = pa;
+
+
+#ifdef PAGE_ENABLE_RBTREE
+  scoped_irqlock l(pg_tree_lock);
 
   // printk("update page address %p\n", pa);
 
@@ -65,12 +71,17 @@ static void update_page_address(mm::page *pg, unsigned long pa) {
   rb_link_node(&pg->rb_node, parent, n);
   rb_insert_color(&pg->rb_node, &pg_tree);
   // printk("%p steps:%d\n", pa, steps);
+#endif
 }
 
 mm::page::page(void) {
   fclr(PG_WRTHRU | PG_NOCACHE | PG_DIRTY);
   pa = 0;
+	/*
   lru = cpu::get_ticks();
+	auto bf = phys::bytes_free();
+	printk_nolock("nfree: %12zu bytes: %p\n", bf, bf);
+	*/
 }
 
 mm::page::~page(void) {

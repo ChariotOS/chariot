@@ -46,6 +46,7 @@ namespace mm {
 #define PG_BCACHE (1ul << 4)
 
 
+
     /* A bitmap of PG_* */
     uint16_t flags = 0;
 
@@ -60,10 +61,10 @@ namespace mm {
     unsigned long lru = 0;
     unsigned long pa = 0;
 
-
+// #define PAGE_ENABLE_RBTREE
+#ifdef PAGE_ENABLE_RBTREE
     struct rb_node rb_node;
-    // struct list_head lh;
-
+#endif
 
     inline void fset(int set) {
       flags |= set;
