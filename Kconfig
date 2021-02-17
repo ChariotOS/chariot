@@ -74,6 +74,10 @@ menu "Config"
 		default y
 
 
+	config LOW_MEMORY
+		bool "Low memory mode (flush block cache when all refs are released, etc...)"
+		default n
+
 
 	menu "Runtime Debugging"
 		config LOG_ERROR

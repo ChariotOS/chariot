@@ -147,6 +147,13 @@ namespace block {
     // count is decremented here iff it is not dirty
     b->m_count--;
 
+#if CONFIG_LOW_MEMORY
+		if (b->m_count == 0) {
+      b->m_page = nullptr;  // release the page
+      // return PGSIZE;
+		}
+#endif
+
     b->m_lock.unlock();
   }
 
