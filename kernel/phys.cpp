@@ -42,7 +42,8 @@ static void unlock(void) {
 static struct {
   int use_lock;
   frame *freelist;
-  u64 nfree;
+  uint64_t nfree;    /* how many pages are currently free */
+  uint64_t max_free; /* The maximum free memory we've seen */
 } kmem;
 
 u64 phys::nfree(void) {
@@ -109,6 +110,8 @@ void *phys::alloc(int npages) {
 
   void *p = late_phys_alloc(npages);
 
+  // printk_nolock("phys memory left: %zu%% (%zu bytes)\n", (100L * kmem.nfree) / kmem.max_free, kmem.nfree * 4096);
+
   // printk("phys::alloc(%d) took %llu ns\n", npages, time::now_ns() - start);
   unlock();
   return p;
@@ -163,6 +166,9 @@ void phys::free(void *v, int len) {
   }
   // increment how many pages are freed
   kmem.nfree += len;
+	if (kmem.nfree > kmem.max_free) {
+		kmem.max_free = kmem.nfree;
+	}
 
 
   // printk("free ram: %lu Kb\n", kmem.nfree * PGSIZE / 1024);
@@ -180,6 +186,7 @@ void phys::free_range(void *vstart, void *vend) {
   u64 end_pn = PGROUNDUP((u64)vend) >> 12;
 
   u64 pl = end_pn - start_pn;
+
 
   if (pl <= 0) {
     panic("zero free_range\n");
@@ -202,6 +209,9 @@ void phys::free_range(void *vstart, void *vend) {
 #endif
   }
   kmem.nfree += df->page_len;
+	if (kmem.nfree > kmem.max_free) {
+		kmem.max_free = kmem.nfree;
+	}
   unlock();
 }
 
