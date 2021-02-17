@@ -151,13 +151,13 @@ int virtio_mmio_dev::alloc_ring(int index, int len) {
 
   size_t size = vring_size(len, PGSIZE);
   int npages = round_up(size, 4096) >> 12;
-  printk("need %zu bytes (%d pages)\n", size, npages);
+  // printk("need %zu bytes (%d pages)\n", size, npages);
 
 
   off_t pa = (off_t)phys::alloc(npages);
   void *vptr = p2v(pa);
 
-  printk("allocated virtio_ring at pa %p\n", pa);
+  // printk("allocated virtio_ring at pa %p\n", pa);
 
   /* initialize the ring */
   vring_init(ring, len, vptr, PGSIZE);
