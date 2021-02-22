@@ -6686,7 +6686,8 @@ def _save_old(path):
         copy_fn = copy
 
     try:
-        copy_fn(path, path + ".old")
+        pass
+        # copy_fn(path, path + ".old")
     except Exception:
         # Ignore errors from 'path' missing as well as other errors.
         # <filename>.old file is usually more of a nice-to-have, and not worth

@@ -3,7 +3,7 @@
 # Nick Wanninger
 # 29 December, 2020
 #include <asmdefs.h>
-#include <riscv/paging.h>
+#include <riscv/paging_flags.h>
 
 /* Status register flags */
 #define SR_SIE		(0x00000002UL) /* Supervisor Interrupt Enable */
@@ -42,7 +42,7 @@
 #define MIE_MSIE (1L << 3)  // software
 
 
-.option norvc # Disable instruction compression
+# .option norvc # Disable instruction compression
 .section .data
 
 
@@ -78,7 +78,7 @@ _start:
 	mul     t0, t0, t1 # t1 = SIZE * (mhartid + 1)
 	add     sp, sp, t0 # sp = stack_start + (SIZE * (mhartid + 1))
 
-	j 1f
+	# zero out bss
 	lla     t0, _bss_start
 	lla     t1, _bss_end
 	beq     t0, t1, 1f
@@ -87,6 +87,18 @@ _start:
 	add     t0, t0, SZREG
 	blt     t1, t0, 0b  # if t1 is less than t0 
 1:
+
+
+
+	# allocate space for the scratch pad
+	addi    sp, sp, -32 * SZREG
+
+
+
+
+
+
+
 
 
 	# supervisor mode expects 
@@ -115,6 +127,8 @@ _start:
 	# step the pointer(s) forward
 	addi    t1, t1, SZREG
 	addi    t4, t4, SZREG
+	# ensure it's written out
+	fence   w,w
 	bne     t1, t2, 0b                    # jump back if we aren't done
 
 
@@ -127,14 +141,30 @@ _start:
 	li      t1, SATP_FLAG      # t1 = SATP_FLAG
 	slli    t1, t1, SATP_SHIFT # t1 = t1 << SATP_SHIFT
 	add     t1, t1, t0         # t1 = t1 + kernel_page_table
+
 	csrw    satp, t1           # satp = t1
 
-	# ensure it's written out
-	fence   w,w
 	# flush tlb and whatnot
 	sfence.vma  zero, zero
 
 
+
+	#	enable supervisor interrupts
+	li      t0, SIE_SEIE | SIE_STIE | SIE_SSIE
+	csrs    sie, t0
+
+	# Load the virtual address for the stack pointer
+	mv      tp, sp
+	la      t0, virt_mask
+	REG_L   t0, 0(t0)
+	add     sp, sp, t0
+
+
+	la      t0, main_ptr
+	REG_L   t0, 0(t0)
+
+
+	/* if SBI is disabled, we mret into supervisor mode */
 #ifndef CONFIG_SBI
 
 	# set M-mode trap handler
@@ -158,23 +188,11 @@ _start:
 	REG_L   t0, 0(t0)
 	csrw    mepc, t0
 
-#endif
-
-	# allocate alot of space for the scratch pad
-	addi    sp, sp, -32 * SZREG
-
-#ifndef CONFIG_SBI
-
 	csrw    mscratch, sp
-
 	# ask C code to setup the local hart state, cause it's annoying to work with structs in asm
 	move    a2, sp # a0 = hartid, a1 = device tree, a2 = hart id
 	# a1 is still the pointer to the device tree binary
 	call    setup_mhart_state
-
-#endif
-
-#ifndef CONFIG_SBI
 
 	# enable machine mode interrupts
 	li      t0, MSTATUS_MIE
@@ -185,27 +203,14 @@ _start:
 	li      t0, MIE_MTIE
 	csrs    mie, t0
 
+	mret
 #endif
 
-	li      t0, SIE_SEIE | SIE_STIE | SIE_SSIE
-	csrs    sie, t0
-	
-	move    tp, sp # tp is how we communicate with the supervisor mode
-
-	la      t0, virt_mask
-	REG_L   t0, 0(t0)
-	add     sp, sp, t0 # load the new virtual stack pointer
-
-
-#ifdef CONFIG_SBI
-
-	la      t0, main_ptr
-	REG_L   t0, 0(t0)
 	jr      t0
 
-#endif
 
-	mret
+
+
 
 #ifndef CONFIG_SBI
 

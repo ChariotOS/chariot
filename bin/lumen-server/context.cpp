@@ -74,7 +74,7 @@ lumen::context::context(void) : screen(1024, 768) {
 #endif
   invalidate(screen.bounds());
 
-  spawn("term");
+  // spawn("term");
 }
 
 
