@@ -40,7 +40,6 @@ case $ARCH in
 
 		# QEMU_FLAGS+="-cpu rv64,x-h=true "
 		QEMU_FLAGS+="-machine virt -smp 1 -m ${CONFIG_RISCV_RAM_MB}M "
-		# QEMU_FLAGS+="-bios arch/riscv/firmware/generic/fw_jump.bin "
 		# QEMU_FLAGS+="-bios none "
 		QEMU_FLAGS+="-bios default "
 		QEMU_FLAGS+="-kernel build/chariot.elf "
