@@ -98,6 +98,10 @@ SECTIONS
 		*(.symtab*)
 		_symtab_end = .;
 
+		_initrd_start = .;
+		*(.initrd*)
+		_initrd_end = .;
+
     PROVIDE(_data_end = . - KERNEL_VMA);
   } :data
 

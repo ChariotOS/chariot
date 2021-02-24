@@ -6,6 +6,7 @@
 
 echo '======================================================================'
 tools/sync.sh || exit 1
+tools/initrd.sh || exit 1
 
 source .config
 
@@ -15,8 +16,6 @@ QEMU_ARCH="${CONFIG_ARCH_NAME}"
 # QEMU_FLAGS="-nographic -serial mon:stdio "
 QEMU_FLAGS="-serial mon:stdio "
 
-
-# dd if=/dev/urandom of=build/random.img bs=4096 count=1024
 
 case $ARCH in 
 	X86-64)
@@ -42,7 +41,7 @@ case $ARCH in
 		QEMU_FLAGS+="-machine virt -smp 1 -m ${CONFIG_RISCV_RAM_MB}M "
 		# QEMU_FLAGS+="-bios none "
 		QEMU_FLAGS+="-bios default "
-		QEMU_FLAGS+="-kernel build/chariot.elf "
+		QEMU_FLAGS+="-kernel build/chariot_initrd.elf "
 
 		QEMU_FLAGS+="-drive file=build/chariot.img,if=none,format=raw,id=x0 "
 		QEMU_FLAGS+="-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 "
