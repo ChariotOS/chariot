@@ -104,7 +104,15 @@ struct exec_cmd : public cmd {
       args[i] = argv[i].get();
     }
 
-    execvpe((const char *)args[0], (const char **)args, (const char **)environ);
+    int res = execvpe((const char *)args[0], (const char **)args, (const char **)environ);
+		int err = errno; // grab errno now (curse you globals)
+
+		const char *serr = strerror(err);
+		if (errno == ENOENT) {
+			serr = "command not found";
+		}
+
+		printf("%s: \x1b[31m%s\x1b[0m\n", args[0], serr);
     exit(EXIT_FAILURE);
   }
 
