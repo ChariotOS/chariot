@@ -198,7 +198,7 @@ struct init_job {};
 static void sigchld_handler(int) {
   pid_t reaped = waitpid(-1, NULL, 0);
   // if (reaped == -1) continue;
-  printf("[init] reaped pid %d\n", reaped);
+  // printf("[init] reaped pid %d\n", reaped);
 }
 
 
@@ -253,19 +253,6 @@ int main(int argc, char **argv) {
   spawn("lumen-server");
 
 #endif
-
-
-  chdir("/tmp");
-  system("touch /tmp/bar");
-  system("mkdir /tmp/foo1");
-  system("mkdir foo2");
-  system("mkdir foo2");
-
-  chdir("/");
-
-  printf("\n\n");
-  system("ls -la /tmp");
-  system("ls -la /");
 
   spawn("/bin/sh");
 

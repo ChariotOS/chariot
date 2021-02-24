@@ -43,6 +43,7 @@ static int tmpfs_unlink(fs::inode &node, const char *entry) {
 
   return node.remove_direntry(entry);
 }
+
 // lookup an inode by name in a file
 static struct fs::inode *tmpfs_lookup(fs::inode &node, const char *needle) {
   if (node.type != T_DIR) panic("tmpfs_lookup on non-dir\n");
