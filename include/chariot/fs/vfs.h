@@ -57,9 +57,11 @@ fs::file fdopen(string path, int opts = 0, int mode = 0000);
  *
  * main "low level" interface for opening a file. Must have all arguments
  * passed.
+ *
+ * parent: stop at the parent directory of the last entry
  */
 int namei(const char *path, int flags, int mode, struct fs::inode *cwd,
-	  struct fs::inode *&res);
+	  struct fs::inode *&res, bool get_last = false);
 
 
 int unlink(const char *path, struct fs::inode *cwd);

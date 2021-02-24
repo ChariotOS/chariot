@@ -9,6 +9,7 @@ static int tmpfs_create(fs::inode &ino, const char *name,
                         struct fs::file_ownership &own) {
   if (ino.type != T_DIR) panic("tmpfs_create on non-dir\n");
 
+
   auto &sb = tmp::getsb(ino);
 
   // make a normal file
@@ -20,9 +21,21 @@ static int tmpfs_create(fs::inode &ino, const char *name,
   return 0;
 }
 // create a directory in a dir
-static int tmpfs_mkdir(fs::inode &, const char *, struct fs::file_ownership &) {
-  UNIMPL();
-  return -ENOTIMPL;
+static int tmpfs_mkdir(fs::inode &ino, const char *name, struct fs::file_ownership &own) {
+
+	fs::inode *dir = tmp::getsb(ino).create_inode(T_DIR);
+  dir->gid = own.gid;
+  dir->uid = own.uid;
+  dir->mode = own.mode;
+	dir->set_name(name);
+  ino.register_direntry(name, ENT_MEM, dir->ino, dir);
+
+	// make ./
+	dir->register_direntry(".", ENT_MEM, dir->ino, dir);
+	// make ../
+	dir->register_direntry("..", ENT_MEM, ino.ino, &ino);
+
+  return 0;
 }
 // remove a file from a directory
 static int tmpfs_unlink(fs::inode &node, const char *entry) {

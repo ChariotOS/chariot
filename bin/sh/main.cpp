@@ -34,7 +34,9 @@
 #define C_GRAY "\x1b[90m"
 
 
-size_t current_us() { return syscall(SYS_gettime_microsecond); }
+size_t current_us() {
+  return syscall(SYS_gettime_microsecond);
+}
 
 extern char **environ;
 
@@ -76,13 +78,16 @@ struct cmd {
   virtual void exec(void){};
   virtual void dump(void){};
 
-  virtual exec_cmd *as_exec(void) { return nullptr; }
+  virtual exec_cmd *as_exec(void) {
+    return nullptr;
+  }
 };
 
 struct exec_cmd : public cmd {
   ck::vec<ck::string> argv;
 
-  virtual ~exec_cmd(void) {}
+  virtual ~exec_cmd(void) {
+  }
 
   virtual void exec(void) override {
     /* idk how to bubble this up... */
@@ -129,15 +134,20 @@ struct exec_cmd : public cmd {
 
         int res = chdir(destination);
         if (res != 0) {
-          printf("cd: '%s' could not be entered\n", destination);
+          printf("cd: '%s' could not be entered (%s)\n", destination, strerror(errno));
         }
         return true;
+      }
+      if (argv[0] == "exit") {
+        exit(0);
       }
     }
     return false;
   }
 
-  virtual exec_cmd *as_exec(void) override { return (exec_cmd *)this; }
+  virtual exec_cmd *as_exec(void) override {
+    return (exec_cmd *)this;
+  }
 };
 
 
@@ -147,7 +157,8 @@ struct seq_cmd : public cmd {
     this->right = right;
   }
 
-  virtual ~seq_cmd(void) {}
+  virtual ~seq_cmd(void) {
+  }
   virtual void exec(void) override {
     int pid = fork();
     if (pid == 0) {
@@ -156,7 +167,8 @@ struct seq_cmd : public cmd {
     }
 
     int res = 0;
-    do waitpid(pid, &res, 0);
+    do
+      waitpid(pid, &res, 0);
     while (errno == EINTR);
     printf("seq res = %d\n", res);
     right->exec();
@@ -178,10 +190,15 @@ struct seq_cmd : public cmd {
 
 
 struct bg_cmd : public cmd {
-  bg_cmd(struct cmd *c) { this->cmd = c; }
-  virtual ~bg_cmd(void) {}
+  bg_cmd(struct cmd *c) {
+    this->cmd = c;
+  }
+  virtual ~bg_cmd(void) {
+  }
 
-  virtual void exec(void) override { exit(EXIT_FAILURE); }
+  virtual void exec(void) override {
+    exit(EXIT_FAILURE);
+  }
 
   virtual void dump(void) override {
     printf("(bg (");
@@ -199,9 +216,12 @@ struct pipe_cmd : public cmd {
     this->right = right;
   }
 
-  virtual ~pipe_cmd(void) {}
+  virtual ~pipe_cmd(void) {
+  }
 
-  virtual void exec(void) override { printf("pipe_cmd\n"); }
+  virtual void exec(void) override {
+    printf("pipe_cmd\n");
+  }
 
   virtual void dump(void) override {
     printf("(pipe (");
@@ -224,9 +244,12 @@ struct redir_cmd : public cmd {
     this->fd = fd;
   }
 
-  virtual ~redir_cmd(void) {}
+  virtual ~redir_cmd(void) {
+  }
 
-  virtual void exec(void) override { printf("redir_cmd\n"); }
+  virtual void exec(void) override {
+    printf("redir_cmd\n");
+  }
 
 
   virtual void dump(void) override {
@@ -252,7 +275,8 @@ int gettoken(char **ps, char *es, char **q, char **eq) {
   int ret;
 
   s = *ps;
-  while (s < es && strchr(whitespace, *s)) s++;
+  while (s < es && strchr(whitespace, *s))
+    s++;
   if (q) *q = s;
   ret = *s;
   switch (*s) {
@@ -275,12 +299,14 @@ int gettoken(char **ps, char *es, char **q, char **eq) {
       break;
     default:
       ret = 'a';
-      while (s < es && !strchr(whitespace, *s) && !strchr(symbols, *s)) s++;
+      while (s < es && !strchr(whitespace, *s) && !strchr(symbols, *s))
+        s++;
       break;
   }
   if (eq) *eq = s;
 
-  while (s < es && strchr(whitespace, *s)) s++;
+  while (s < es && strchr(whitespace, *s))
+    s++;
   *ps = s;
   return ret;
 }
@@ -289,7 +315,8 @@ int peek(char **ps, char *es, const char *toks) {
   char *s;
 
   s = *ps;
-  while (s < es && strchr(whitespace, *s)) s++;
+  while (s < es && strchr(whitespace, *s))
+    s++;
   *ps = s;
   return *s && strchr(toks, *s);
 }
@@ -437,7 +464,8 @@ int run_line(ck::string line, int flags = 0) {
 
     int res = 0;
     /* wait for the subproc */
-    do waitpid(pid, &res, 0);
+    do
+      waitpid(pid, &res, 0);
     while (errno == EINTR);
 
     // printf("root res = %d\n", res);
@@ -460,7 +488,8 @@ int run_line(ck::string line, int flags = 0) {
   }
 
   // convert it to a format that is usable by execvpe
-  for (auto &p : parts) args.push(p.get());
+  for (auto &p : parts)
+    args.push(p.get());
   args.push(nullptr);
 
   if (parts[0] == "cd") {
@@ -506,6 +535,12 @@ int run_line(ck::string line, int flags = 0) {
 
 void lispy_thing(ck::string &command);
 
+
+char hostname[256];
+char prompt[256];
+char uname[128];
+char cwd[255];
+
 int main(int argc, char **argv, char **envp) {
   int ch;
   const char *flags = "c:";
@@ -523,28 +558,22 @@ int main(int argc, char **argv, char **envp) {
     }
   }
 
-  char prompt[256];
-  char uname[32];
-  char *cwd[255];
-  char hostname[50];
 
+	/* Read the hostname */
   int hn = open("/cfg/hostname", O_RDONLY);
-
-  int n = read(hn, (void *)hostname, 50);
+  int n = read(hn, (void *)hostname, 256);
   if (n >= 0) {
     hostname[n] = 0;
     for (int i = n; i > 0; i--) {
       if (hostname[i] == '\n') hostname[i] = 0;
     }
   }
-
   close(hn);
 
 
   uid_t uid = getuid();
   struct passwd *pwd = getpwuid(uid);
   strncpy(uname, pwd->pw_name, 32);
-
 
   setenv("USER", pwd->pw_name, 1);
   setenv("SHELL", pwd->pw_shell, 1);
@@ -560,8 +589,8 @@ int main(int argc, char **argv, char **envp) {
       disp_cwd = "~";
     }
 
-    // snprintf(prompt, 256, "[%s@%s %s]%c ", uname, hostname, disp_cwd, uid == 0 ? '#' : '$');
-    snprintf(prompt, 256, "%s %c ", disp_cwd, uid == 0 ? '#' : '$');
+    snprintf(prompt, 256, "[%s@%s %s]%c ", uname, hostname, disp_cwd, uid == 0 ? '#' : '$');
+    // snprintf(prompt, 256, "%s %c ", disp_cwd, uid == 0 ? '#' : '$');
 
 
     ck::string line = read_line(0, prompt);
@@ -574,273 +603,6 @@ int main(int argc, char **argv, char **envp) {
   return 0;
 }
 
-
-
-#if 0
-// allow programatic access to defining token
-// types, but by only actually defining them once
-#define FOREACH_TOKEN_TYPE(V) \
-  V(tok_number, 1)            \
-  V(tok_string, 2)            \
-  V(tok_right_paren, 3)       \
-  V(tok_left_paren, 4)        \
-  V(tok_symbol, 6)            \
-  V(tok_keyword, 7)           \
-  V(tok_quote, 8)             \
-  V(tok_unq, 9)               \
-  V(tok_splice, 10)           \
-  V(tok_backquote, 11)        \
-  V(tok_left_bracket, 12)     \
-  V(tok_right_bracket, 13)    \
-  V(tok_left_curly, 14)       \
-  V(tok_right_curly, 15)      \
-  V(tok_hash_modifier, 16)    \
-  V(tok_backslash, 17)
-
-enum tok {
-#define V(name, code) name = code,
-  FOREACH_TOKEN_TYPE(V)
-#undef V
-};
-
-
-class lispy_lexer : public ck::lexer {
-  ck::map<char, char> esc_mappings;
-
- public:
-  lispy_lexer(ck::string &s) : ck::lexer(s) {
-    esc_mappings['a'] = 0x07;
-    esc_mappings['b'] = 0x08;
-    esc_mappings['f'] = 0x0C;
-    esc_mappings['n'] = 0x0A;
-    esc_mappings['r'] = 0x0D;
-    esc_mappings['t'] = 0x09;
-    esc_mappings['v'] = 0x0B;
-    esc_mappings['\\'] = 0x5C;
-    esc_mappings['"'] = 0x22;
-    esc_mappings['e'] = 0x1B;
-  }
-  virtual ~lispy_lexer(void) {
-    // nah
-  }
-
-  virtual ck::token lex(void) {
-    skip_spaces();
-    int32_t c = next();
-
-    auto in_set = [](ck::string &set, int c) {
-      for (auto &n : set) {
-        if (n == c) return true;
-      }
-      return false;
-    };
-
-    auto accept_run = [&](ck::string set) {
-      ck::string buf;
-      while (in_set(set, peek())) {
-        buf += next();
-      }
-      return buf;
-    };
-
-    if (c == ';' || c == '#') {
-      if (c == '#' && peek() != '!') goto skip_comment;
-      while (peek() != '\n' && (int32_t)peek() != -1) next();
-
-      return lex();
-    }
-  skip_comment:
-
-    // skip over spaces by calling again
-    if (isspace(c) || c == ',') return lex();
-
-    if (c == EOF || c == 0) {
-      return tok(TOK_EOF, "");
-    }
-    if (c == '`') {
-      return tok(tok_backquote, "`");
-    }
-
-    if (c == '~') {
-      if (peek() == '@') {
-        next();
-        return tok(tok_splice, ",@");
-      }
-      return tok(tok_unq, "~");
-    }
-
-    if (c == '#') {
-      ck::string t;
-      t += '#';
-
-      /* Parse raw string literals */
-      if (peek() == '"') {
-        next();
-        ck::string buf;
-        while (true) {
-          c = next();
-          if ((int32_t)c == -1) return tok(TOK_ERR, "unterminated string");
-          if (c == '"') break;
-          if (c == '\\') {
-            if (peek() == '"') {
-              buf += '"';
-              next();
-              continue;
-            } else if (peek() == '\\') {
-              buf += '\\';
-              next();
-              continue;
-            } else {
-              buf += '\\';
-              continue;
-            }
-          }
-          buf += c;
-        }
-        return tok(tok_string, buf);
-      }
-
-      if (isalpha(peek())) {
-        t += next();
-      } else {
-        return tok(TOK_ERR, "invalid hash modifier syntax");
-      }
-      return tok(tok_hash_modifier, t);
-    }
-    if (c == '\\') return tok(tok_backslash, "\\");
-
-    if (c == '(') return tok(tok_left_paren, "(");
-
-    if (c == ')') return tok(tok_right_paren, ")");
-
-    if (c == '[') return tok(tok_left_bracket, "[");
-
-    if (c == ']') return tok(tok_right_bracket, "]");
-
-    if (c == '{') return tok(tok_left_curly, "{");
-
-    if (c == '}') return tok(tok_right_curly, "}");
-
-    if (c == '\'') return tok(tok_quote, "'");
-
-    if (c == '"') {
-      ck::string buf;
-
-      bool escaped = false;
-      // ignore the first quote because a string shouldn't
-      // contain the encapsulating quotes in it's internal representation
-      while (true) {
-        c = next();
-        if ((int32_t)c == EOF) return tok(TOK_ERR, "unterminated string");
-        // also ignore the last double quote for the same reason as above
-        if (c == '"') break;
-        escaped = c == '\\';
-        if (escaped) {
-          char e = next();
-          if (e == 'U' || e == 'u') {
-            /*
-// parse 32 bit unicode literals
-std::string hex;
-
-int l = 8;
-
-if (e == 'u') l = 4;
-
-for (int i = 0; i < l; i++) {
-hex += next();
-}
-std::cout << hex << std::endl;
-c = (int32_t)std::stoul(hex, nullptr, 16);
-printf("%u\n", c);
-            */
-          } else {
-            c = esc_mappings[e];
-            if (c == 0) {
-              return tok(TOK_ERR, "unknown escape sequence");
-            }
-          }
-          escaped = false;
-        }
-        buf += c;
-      }
-      return tok(tok_string, buf);
-    }
-
-    // parse a number
-    if (isdigit(c) || c == '.' || (c == '-' && isdigit(peek()))) {
-      // it's a number (or it should be) so we should parse it as such
-
-      ck::string buf;
-
-      buf += c;
-      bool has_decimal = c == '.';
-
-
-      if (peek() == 'x') {
-        next();
-        ck::string hex = accept_run("0123456789abcdefABCDEF");
-        unsigned long long x;
-        sscanf(hex.get(), "%llx", &x);
-        char buf[64];
-        snprintf(buf, 64, "%lld", x);
-        return tok(tok_number, buf);
-      }
-
-
-      if (peek() == 'o') {
-        next();
-        ck::string oct = accept_run("012345567");
-        unsigned long long x;
-        sscanf(oct.get(), "%llo", &x);
-        char buf[64];
-        snprintf(buf, 64, "%lld", x);
-        return tok(tok_number, buf);
-      }
-
-
-      while (isdigit(peek()) || peek() == '.') {
-        c = next();
-        buf += c;
-        if (c == '.') {
-          if (has_decimal) {
-            return tok(tok_symbol, buf);
-          }
-          has_decimal = true;
-        }
-      }
-
-      if (buf == ".") {
-        return tok(tok_symbol, buf);
-      }
-      return tok(tok_number, buf);
-    }  // digit parsing
-
-    // it wasn't anything else, so it must be
-    // either an symbol or a keyword token
-
-    ck::string symbol;
-    symbol += c;
-
-    while (!in_charset(peek(), " \n\t(){}[],'`@")) {
-      auto v = next();
-      if (v == EOF || v == 0) break;
-      symbol += v;
-    }
-
-    if (symbol.len() == 0) return tok(TOK_ERR, "lexer encountered zero-length identifier");
-
-    uint8_t type = tok_symbol;
-
-    if (symbol[0] == ':') {
-      if (symbol.size() == 1) return tok(TOK_ERR, "Keyword token must have at least one character after the ':'");
-      type = tok_keyword;
-    }
-
-    return tok(type, symbol);
-  }
-};
-
-#endif
 
 enum tok {
   tok_arg,
@@ -896,7 +658,8 @@ class shell_lexer : public ck::lexer {
 
     if (c == '#') {
       // if (c == '#' && peek() != '!') goto skip_comment;
-      while (peek() != '\n' && (int32_t)peek() != -1) next();
+      while (peek() != '\n' && (int32_t)peek() != -1)
+        next();
 
       return lex();
     }

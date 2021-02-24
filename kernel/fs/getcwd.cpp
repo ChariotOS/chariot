@@ -22,7 +22,9 @@ int vfs::getcwd(fs::inode &cwd, string &dst) {
       if (cur->type != T_DIR) return -ENOTDIR;
 
       next = cur->get_direntry("..");
-      if (cur->dir.name == NULL) return -EINVAL;
+      if (cur->dir.name == NULL) {
+				return -EINVAL;
+			}
 
       // this is terrible
       string s = sep + cur->dir.name + dst;

@@ -1,6 +1,5 @@
 set(SOURCES
 	main.cpp
-	bdf.c
 	ini.c
 	util.c
 )

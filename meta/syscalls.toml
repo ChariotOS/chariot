@@ -89,6 +89,14 @@ args = [
 	'tid: int'
 ]
 
+# Wait on any signal
+[sc.sigwait]
+ret = 'int'
+args = [
+	# TODO:
+	# 'mask: int'
+]
+
 
 [sc.prctl]
 ret = 'int' # errno
@@ -146,6 +154,14 @@ args = [ 'fd: int' ]
 ret = 'int'
 args = [ 'old: int', 'newfd: int' ]
 
+
+
+[sc.mkdir]
+ret = 'int'
+args = [
+	'path: const char*',
+	'mode: int'
+]
 
 [sc.chdir]
 ret = 'int'

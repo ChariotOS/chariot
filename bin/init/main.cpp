@@ -28,7 +28,7 @@
 #include <ck/futex.h>
 #include <sys/socket.h>
 
-#include <zip.h>
+#include "ini.h"
 
 #define ENV_PATH "/cfg/environ"
 
@@ -134,7 +134,7 @@ pid_t spawn(const char *command) {
 static volatile int got_signal = 0;
 static void handler(int i) {
   //
-  printf("[pid=%d] signal handler got %d\n", getpid(), i);
+  // printf("[pid=%d] signal handler got %d\n", getpid(), i);
   got_signal = 1;
 }
 
@@ -191,13 +191,23 @@ char **read_default_environ(void) {
 
 
 
+
+struct init_job {};
+
+
+static void sigchld_handler(int) {
+  pid_t reaped = waitpid(-1, NULL, 0);
+  // if (reaped == -1) continue;
+  printf("[init] reaped pid %d\n", reaped);
+}
+
+
+
 int main(int argc, char **argv) {
-
-
-	int parent_pid = getpid();
-	/* Mount devfs, tmpfs */
-	system("mount none /dev devfs");
-	system("mount none /tmp tmpfs");
+  int parent_pid = getpid();
+  /* Mount devfs, tmpfs */
+  system("mount none /dev devfs");
+  system("mount none /tmp tmpfs");
 
   // open up file descriptor 1, 2, and 3
   for (int i = 0; i < 3; i++)
@@ -215,26 +225,28 @@ int main(int argc, char **argv) {
   sigprocmask(SIG_SETMASK, &set, NULL);
 
   printf("[init] hello, friend\n");
-	system("cat /cfg/motd");
+  system("cat /cfg/motd");
 
+  /* Handle SIGCHLD in the  */
+  signal(SIGCHLD, sigchld_handler);
 
-
-	/*
-	if (fork() == 0) {
-		while (1) {
-  		usleep(10 * 1000);
-			// kill(parent_pid, SIGUSR1);
-		}
-	}
-	*/
 
   if (getpid() != 1) {
     fprintf(stderr, "init: must be run as pid 1\n");
     return -1;
   }
 
-
   environ = read_default_environ();
+
+
+  ck::directory d;
+  d.open("/cfg/init");
+
+
+  for (auto &file : d.all_files()) {
+    printf("file: %s\n", file.get());
+  }
+
 
 #ifndef CONFIG_SIMPLE_INIT
 
@@ -242,12 +254,24 @@ int main(int argc, char **argv) {
 
 #endif
 
+
+  chdir("/tmp");
+  system("touch /tmp/bar");
+  system("mkdir /tmp/foo1");
+  system("mkdir foo2");
+  system("mkdir foo2");
+
+  chdir("/");
+
+  printf("\n\n");
+  system("ls -la /tmp");
+  system("ls -la /");
+
   spawn("/bin/sh");
 
   while (1) {
-    pid_t reaped = waitpid(-1, NULL, 0);
-		// if (reaped == -1) continue;
-    printf("[init] reaped pid %d\n", reaped);
+    sysbind_sigwait();
+    printf("got a signal!\n");
   }
 }
 

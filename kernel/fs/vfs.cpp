@@ -14,7 +14,8 @@ void vfs::register_filesystem(struct fs::sb_information &info) {
   filesystems.push(&info);
 }
 
-void vfs::deregister_filesystem(struct fs::sb_information &) {}
+void vfs::deregister_filesystem(struct fs::sb_information &) {
+}
 
 struct fs::inode *vfs::cwd(void) {
   if (cpu::in_thread()) {
@@ -37,13 +38,12 @@ int vfs::mount_root(const char *src, const char *type) {
   return vfs::mount(src, "/", type, 0, 0);
 }
 
-int vfs::mount(const char *src, const char *targ, const char *type,
-               unsigned long flags, const char *options) {
+int vfs::mount(const char *src, const char *targ, const char *type, unsigned long flags,
+               const char *options) {
   // printk(KERN_INFO "mount %s with fs %s to %s\n", src, type, targ);
 
   if (get_root() == NULL && strcmp(targ, "/") != 0) {
-    printk(KERN_WARN
-           "Mounting non-root filesystem when there is no root is invalid");
+    printk(KERN_WARN "Mounting non-root filesystem when there is no root is invalid");
     return -EINVAL;
   }
 
@@ -113,12 +113,55 @@ int vfs::mount(const char *src, const char *targ, const char *type,
 
 int sys::mount(struct mountopts *opts) {
   if (!curproc->mm->validate_pointer(opts, sizeof(*opts), PROT_WRITE)) return -EINVAL;
-	/* TODO: permissions :) */
-	if (curproc->user.uid != 0) return -EPERM;
+  /* TODO: permissions :) */
+  if (curproc->user.uid != 0) return -EPERM;
 
-	/* TODO: take the last argument for real! */
-	return vfs::mount(opts->device, opts->dir, opts->type, opts->flags, "");
+  /* TODO: take the last argument for real! */
+  return vfs::mount(opts->device, opts->dir, opts->type, opts->flags, "");
 }
+
+
+
+
+int sys::mkdir(const char *upath, int mode) {
+  if (!curproc->mm->validate_string(upath)) return -EINVAL;
+
+  char path[256];
+  strncpy(path, upath, sizeof(path));
+
+  int last_slash = -1;
+  for (int i = 0; path[i] != '\0'; i++)
+    if (path[i] == '/') last_slash = i;
+
+  // by default, the name is the whole path (no slash in the provided slash)
+  const char *name = path;
+  // if there was a slash in the name, fix up the name and the path so it points after
+  if (last_slash != -1) name = path + last_slash + 1;
+
+  struct fs::inode *dir = NULL;
+  // get the last directory in the name, (hence the true)
+  int err = vfs::namei(path, 0, mode, vfs::cwd(), dir, true);
+  if (err < 0) return err;
+  if (dir == NULL) return -ENOENT;
+  if (dir->type != T_DIR) return -ENOTDIR;
+  if (dir->dops == NULL) return -ENOTIMPL;
+
+  // check that the file doesn't exist first. This means we don't
+  // have to check in the filesystem driver.
+  if (dir->get_direntry(name) != NULL) return -EEXIST;
+
+
+  fs::file_ownership fown;
+  // TODO: real permissions
+  fown.uid = curproc->user.uid;
+  fown.gid = curproc->user.gid;
+  fown.mode = mode;  // from the argument passed from the user
+  int res = dir->dops->mkdir(*dir, name, fown);
+
+  return res;
+}
+
+
 
 
 struct fs::inode *vfs::open(string spath, int opts, int mode) {
@@ -150,7 +193,8 @@ static const char *skipelem(const char *path, char *name, bool &last) {
   const char *s;
   int len;
 
-  while (*path == '/') path++;
+  while (*path == '/')
+    path++;
   if (*path == 0) return 0;
   s = path;
   last = false;
@@ -171,12 +215,13 @@ static const char *skipelem(const char *path, char *name, bool &last) {
       name[len] = 0;
     }
   }
-  while (*path == '/') path++;
+  while (*path == '/')
+    path++;
   return path;
 }
 
-int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
-               struct fs::inode *&res) {
+int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd, struct fs::inode *&res,
+               bool get_last) {
   assert(path != NULL);
   auto ino = cwd;
 
@@ -198,6 +243,11 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd,
     // attempting to go above the current root is a nop
     if (!strcmp(name, "..") && ino == uroot) {
       continue;
+    }
+
+    if (last && get_last) {
+      res = ino;
+      return 0;
     }
 
     auto found = ino->get_direntry(name);
@@ -252,7 +302,7 @@ int vfs::unlink(const char *path, struct fs::inode *cwd) {
     }
 
     auto next = ino->get_direntry(name);
-		if (next == NULL) return -ENOENT;
+    if (next == NULL) return -ENOENT;
 
     if (last) {
       if (next->type == T_DIR) {

@@ -14,14 +14,18 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CONFIG_ADDITIONAL_KERNEL_FLAGS}")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} ${ARCH_KERN_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++17 -fno-rtti -Wno-invalid-offsetof -fno-exceptions -Wno-literal-suffix ${ARCH_KERN_CXX_FLAGS}")
 
-# if(CONFIG_X86)
-file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+
+# get the kernel sources
+file(GLOB_RECURSE KERNEL_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 	*.cpp
 	*.c
-	# No asm in the kernel
 )
-# endif()
-# set(SOURCES foo.c)
+
+list(TRANSFORM TARGET_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
+
+SET(KERNEL_SOURCES  "${KERNEL_SOURCES}" CACHE INTERNAL "KERNEL_SOURCES")
+
+
 
 
 add_link_options(LINKER:-T "${KERN_LINKER_SCRIPT}" -nostdlib -z max-page-size=0x1000)
@@ -37,11 +41,6 @@ include_directories(../net/lwip/include)
 
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}" CACHE PATH "kernel build" FORCE)
 
-add_executable(chariot ${SOURCES})
-set_target_properties(chariot PROPERTIES OUTPUT_NAME "chariot.elf")
-# install(TARGETS chariot RUNTIME DESTINATION boot)
-
-target_link_libraries(chariot libgcc)
 
 
 macro(add_rooted_subdir dir)
@@ -78,6 +77,8 @@ function(add_kernel_module)
 	endif()
 
 
+
+
 	if (TARGET_GLOB)
 		file(GLOB_RECURSE GLOB_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${TARGET_GLOB})
 		set(TARGET_SOURCES ${TARGET_SOURCES} ${GLOB_SOURCES})
@@ -96,18 +97,29 @@ function(add_kernel_module)
 	foreach(need ${TARGET_NEEDS})
 		# we only want modules that are supported on this arch
 		if (NOT need IN_LIST CONFIG_ENABLED_OPTIONS)
-			# message(STATUS "${TARGET_NAME} needs ${need} but it was not enabled")
+			# message(STATUS "- MODULE ${TARGET_NAME} needs ${need} but it was not enabled")
 			return()
 		endif()
 	endforeach(need)
 
-	add_library(${TARGET_NAME} STATIC ${TARGET_SOURCES})
-	install(TARGETS ${TARGET_NAME} RUNTIME DESTINATION mod)
-	set_target_properties(${TARGET_NAME} PROPERTIES OUTPUT_NAME "${TARGET_NAME}.klib")
+
+	list(TRANSFORM TARGET_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
+
+
+
+	# message(STATUS "+ MODULE ${TARGET_NAME} with ${TARGET_SOURCES}")
+
+	# add_library(${TARGET_NAME} STATIC ${TARGET_SOURCES})
+	# install(TARGETS ${TARGET_NAME} RUNTIME DESTINATION mod)
+	# set_target_properties(${TARGET_NAME} PROPERTIES OUTPUT_NAME "${TARGET_NAME}.klib")
 
 	# add the library to the kernel's dependencies
-	target_link_libraries(chariot -Wl,--whole-archive ${TARGET_NAME})
+	# target_link_libraries(chariot -Wl,--whole-archive ${TARGET_NAME})
 
+	# list(APPEND KERNEL_SOURCES ${TARGET_SOURCES}) 
+
+	set(NEW_SOURCES ${KERNEL_SOURCES} ${TARGET_SOURCES})
+	SET(KERNEL_SOURCES  "${NEW_SOURCES}" CACHE INTERNAL "KERNEL_SOURCES")
 endfunction()
 
 
@@ -118,4 +130,17 @@ add_rooted_subdir(arch/${CONFIG_ARCH_DIR})
 add_rooted_subdir(fs)
 add_rooted_subdir(net)
 add_rooted_subdir(drivers)
+
+
+
+# add_executable(chariot ${KERNEL_SOURCES})
+add_library(chariot STATIC ${KERNEL_SOURCES})
+set_target_properties(chariot PROPERTIES OUTPUT_NAME "chariot")
+
+install(TARGETS chariot RUNTIME DESTINATION bin)
+
+# Link (without) an initrd. See `tools/initrd.sh` to see how an initrd is linked
+add_executable(chariot_exe $<TARGET_OBJECTS:chariot>)
+set_target_properties(chariot_exe PROPERTIES OUTPUT_NAME "chariot.elf")
+target_link_libraries(chariot_exe libgcc)
 

@@ -864,3 +864,27 @@ static pid_t do_fork(struct process &p) {
 int sys::fork(void) {
   return do_fork(*curproc);
 }
+
+
+int sys::sigwait() {
+	// :^) this is a bit of a hack. Just allocate a waitqueue on
+	// the stack and wait on it (allowing signals)
+	wait_queue wq;
+	wait_entry ent;
+
+  ent.flags = 0;
+  ent.wq = &wq;
+
+  ent.wq->lock.lock();
+
+  sched::set_state(PS_INTERRUPTIBLE);
+  ent.wq->task_list.add(&ent.item);
+
+  ent.wq->lock.unlock();
+
+
+	ent.start();
+
+	/* TODO: Mask? Return which signal was handled? */
+	return 0;
+}

@@ -95,3 +95,5 @@ E(EDQUOT,       "Quota exceeded")
 E(ENOMEDIUM,    "No medium found")
 E(EMEDIUMTYPE,  "Wrong medium type")
 E(EMULTIHOP,    "Multihop attempted")
+
+E(ENOTIMPL,     "Not Implemented")
