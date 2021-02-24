@@ -3,6 +3,8 @@
 #define O_WRONLY 1
 #define O_RDWR 2
 #define O_CREAT        0100
+// haha ken. you suck nerd.
+#define O_CREATE       O_CREAT
 #define O_EXCL         0200
 #define O_NOCTTY       0400
 #define O_TRUNC       01000
