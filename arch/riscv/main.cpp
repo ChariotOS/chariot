@@ -27,178 +27,43 @@ typedef void (*func_ptr)(void);
 extern "C" func_ptr __init_array_start[0], __init_array_end[0];
 extern "C" char _kernel_end[];
 
+
+extern "C" char _initrd_start[];
+extern "C" char _initrd_end[];
+
+
 /* lowlevel.S, calls kerneltrap() */
 extern "C" void kernelvec(void);
 
-/*
- * Data nodes in an rbtree tree are structures containing a struct rb_node member::
- */
-struct mytype {
-  struct rb_node node;
-  const char *keystring;
-  mytype(const char *k) : keystring(k) {
-  }
-};
 
-// When dealing with a pointer to the embedded struct rb_node, the containing data
-// structure may be accessed with the standard container_of() macro.  In addition,
-// individual members may be accessed directly via rb_entry(node, type, member).
-//
-// At the root of each rbtree is an rb_root structure, which is initialized to be
-// empty via:
-struct rb_root mytree = RB_ROOT;
+struct cpio_hdr {
+  unsigned short magic;
+  unsigned short dev;
+  unsigned short ino;
+  unsigned short mode;
+  unsigned short uid;
+  unsigned short gid;
+  unsigned short nlink;
+  unsigned short rdev;
+  unsigned int mtime;
+  unsigned short namesize;
+  unsigned int filesize;
+  char name[0];
+} __attribute__((packed));
 
-// Searching for a value in an rbtree
-// ----------------------------------
-//
-// Writing a search function for your tree is fairly straightforward: start at the
-// root, compare each value, and follow the left or right branch as necessary.
 
-struct mytype *my_search(struct rb_root *root, char *string) {
-  // grab a pointer to the root node
-  struct rb_node *node = root->rb_node;
 
-  while (node) {
-    // get the data at the node
-    struct mytype *data = rb_entry(node, struct mytype, node);
-    int result;
-
-    result = strcmp(string, data->keystring);
-
-    /* Compare and go left, right, or return the data */
-    if (result < 0)
-      node = node->rb_left;
-    else if (result > 0)
-      node = node->rb_right;
-    else
-      return data;
-  }
-  return NULL;
+static uint16_t bswap_16(uint16_t __x) {
+  return __x << 8 | __x >> 8;
+}
+static uint32_t bswap_32(uint32_t __x) {
+  return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24;
 }
 
-// Inserting data into an rbtree
-// -----------------------------
-//
-// Inserting data in the tree involves first searching for the place to insert the
-// new node, then inserting the node and rebalancing ("recoloring") the tree.
-//
-// The search for insertion differs from the previous search by finding the
-// location of the pointer on which to graft the new node.  The new node also
-// needs a link to its parent node for rebalancing purposes.
-//
-// Example::
-
-int my_insert(struct rb_root *root, struct mytype *data) {
-  printk("insert %p\n", data);
-  struct rb_node **n = &(root->rb_node), *parent = NULL;
-
-  /* Figure out where to put new node */
-  while (*n) {
-    struct mytype *self = rb_entry(*n, struct mytype, node);
-    int result = strcmp(data->keystring, self->keystring);
-
-    parent = *n;
-    if (result < 0)
-      n = &((*n)->rb_left);
-    else if (result > 0)
-      n = &((*n)->rb_right);
-    else
-      return false;
-  }
-
-  /* Add new node and rebalance tree. */
-  rb_link_node(&data->node, parent, n);
-  rb_insert_color(&data->node, root);
-
-  return true;
+void initrd_dump(void *vbuf, size_t size) {
+	hexdump(vbuf, size, true);
 }
 
-template <typename Fn>
-struct rb_node *rb_search(struct rb_root *root, Fn compare) {
-  struct rb_node **n = &(root->rb_node), *parent = NULL;
-
-  while (*n) {
-    auto *cur = *n;
-    int result = compare(cur);
-
-    parent = *n;
-    if (result < 0)
-      n = &((*n)->rb_left);
-    else if (result > 0)
-      n = &((*n)->rb_right);
-    else
-      return *n;
-  }
-  return NULL;
-}
-
-// To remove an existing node from a tree, call::
-//
-//   void rb_erase(struct rb_node *victim, struct rb_root *tree);
-//
-// Example::
-//
-//   struct mytype *data = mysearch(&mytree, "walrus");
-//
-//   if (data) {
-//   	rb_erase(&data->node, &mytree);
-//   	myfree(data);
-//   }
-//
-// To replace an existing node in a tree with a new one with the same key, call::
-//
-//   void rb_replace_node(struct rb_node *old, struct rb_node *new,
-//   			struct rb_root *tree);
-//
-// Replacing a node this way does not re-sort the tree: If the new node doesn't
-// have the same key as the old node, the rbtree will probably become corrupted.
-//
-// Iterating through the elements stored in an rbtree (in sort order)
-
-void print_tree_linear(struct rb_root *root) {
-  for (struct rb_node *node = rb_first(&mytree); node; node = rb_next(node))
-    printk("key=%s\n", rb_entry(node, struct mytype, node)->keystring);
-}
-
-
-void print_tree_node(struct rb_node *node, int depth) {
-  if (node == NULL) {
-    return;
-  }
-
-  for (int i = 0; i < depth; i++)
-    printk("->");
-
-  struct mytype *self = rb_entry(node, struct mytype, node);
-  printk(" '%s' %c\n", self->keystring, node->__rb_parent_color & RB_BLACK ? 'B' : 'R');
-
-  print_tree_node(node->rb_left, depth + 1);
-  print_tree_node(node->rb_right, depth + 1);
-}
-
-void print_tree_nice(struct rb_root *root) {
-  print_tree_node(root->rb_node, 0);
-}
-
-
-void test_rbtree(void) {
-  my_insert(&mytree, new mytype("hello"));
-  my_insert(&mytree, new mytype("world"));
-  my_insert(&mytree, new mytype("how"));
-  my_insert(&mytree, new mytype("are"));
-  my_insert(&mytree, new mytype("you"));
-  my_insert(&mytree, new mytype("aaaaa"));
-
-
-  auto *node = rb_search(&mytree, [&](auto *node) -> int {
-    struct mytype *mt = rb_entry(node, struct mytype, node);
-    printk("checking %p\n", mt);
-    return strcmp("hello", mt->keystring);
-  });
-  printk("node with hello: %p\n", node);
-  print_tree_linear(&mytree);
-  print_tree_nice(&mytree);
-}
 
 
 
@@ -217,6 +82,7 @@ void main(int hartid, void *fdt) {
 #endif
 
 
+
   /*
    * Machine mode passes us the scratch structure through
    * the thread pointer register. We need to then move it
@@ -231,6 +97,7 @@ void main(int hartid, void *fdt) {
   rv::set_tp((rv::xsize_t)p2v(sc));
 
   rv::get_hstate().kernel_sp = 0;
+
 
   /* TODO: release these somehow :) */
   if (rv::hartid() != 0)
@@ -254,8 +121,11 @@ void main(int hartid, void *fdt) {
 
 
 
-
-
+#if 0
+  auto initrd_size = (off_t)_initrd_end - (off_t)_initrd_start;
+  initrd_dump((void *)_initrd_start, initrd_size);
+  panic("Done.\n");
+#endif
 
   /* Tell the device tree to copy the device tree and parse it */
   dtb::parse((dtb::fdt_header *)p2v(rv::get_hstate().dtb));
@@ -274,11 +144,14 @@ void main(int hartid, void *fdt) {
     return true;
   });
 
+
   if (dtb_ram_start == 0) {
-    printk(KERN_ERROR "dtb didn't contain a memory segment, guessing 128mb :)\n");
+    printk(KERN_ERROR "dtb didn't contain a memory segment, guessing 128mb :^)\n");
     dtb_ram_size = 128 * MB;
     dtb_ram_start = boot_free_start;
   }
+
+
 
   off_t dtb_ram_end = dtb_ram_start + dtb_ram_size;
   dtb_ram_start = max(dtb_ram_start, boot_free_end + 4096);
@@ -340,10 +213,15 @@ void main(int hartid, void *fdt) {
     });
 
 
+
+
     int mnt_res = vfs::mount("/dev/disk0p1", "/", "ext2", 0, NULL);
     if (mnt_res != 0) {
       panic("failed to mount root. Error=%d\n", -mnt_res);
     }
+
+
+    KINFO("Bootup complete. It is now safe to move about the cabin.\n");
 
     auto kproc = sched::proc::kproc();
     kproc->root = fs::inode::acquire(vfs::get_root());
