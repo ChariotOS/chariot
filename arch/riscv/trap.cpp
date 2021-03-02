@@ -199,7 +199,7 @@ void rv_handle_syscall(rv::regs &tf) {
 extern "C" void kernel_trap(struct rv::regs &tf) {
   bool from_userspace = false;
 
-	auto *thd = curthd;
+  auto *thd = curthd;
 
   if ((tf.status & SSTATUS_SPP) == 0) {
     from_userspace = true;
@@ -345,31 +345,32 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
 
 
   sched::before_iret(from_userspace);
+  /* Only try to handle a signal if we are returning to userspace */
+  if (from_userspace) {
+    int sig = 0;
+    void *handler = NULL;
+    if (sched::claim_next_signal(sig, handler) != -1) {
+      uint64_t sp = tf.sp;
 
-  int sig = 0;
-  void *handler = NULL;
-  if (sched::claim_next_signal(sig, handler) != -1) {
+      sp -= sizeof(tf);
+      auto *uctx = (rv::regs *)sp;
+      /* save the old context to the user stack */
+      if (!VALIDATE_RDWR(uctx, sizeof(*uctx))) {
+        printk("not sure what to do here. uctx = %p\n", uctx);
+        curproc->mm->dump();
+        return;
+      }
 
-		uint64_t sp = tf.sp;
+      /* Copy the old user context */
+      memcpy(uctx, &tf, sizeof(tf));
 
-		sp -= sizeof(tf);
-		auto *uctx = (rv::regs *)sp;
-		/* save the old context to the user stack */
-		if (!VALIDATE_RDWR(uctx, sizeof(*uctx))) {
-			printk("not sure what to do here. uctx = %p\n", uctx);
-			curproc->mm->dump();
-			return;
-		}
-
-		/* Copy the old user context */
-		memcpy(uctx, &tf, sizeof(tf));
-
-		tf.sp = sp;
-		tf.a0 = sig;
-		tf.a1 = 0;
-		tf.a2 = sp; // third argument to a sa_sigaction is the ucontext
-		tf.sepc = (rv::xsize_t)handler;
-		tf.ra = curproc->sig.ret;
+      tf.sp = sp;
+      tf.a0 = sig;
+      tf.a1 = 0;
+      tf.a2 = sp;  // third argument to a sa_sigaction is the ucontext
+      tf.sepc = (rv::xsize_t)handler;
+      tf.ra = curproc->sig.ret;
+    }
   }
 
   if (cpu::in_thread()) thd->trap_frame = old_trapframe;
