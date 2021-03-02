@@ -17,15 +17,12 @@ struct sig_priv {
 extern "C" void rv_enter_userspace(rv::regs *sp);
 
 void arch_sigreturn(void *ucontext) {
-  printk("ucontext sigreturn %p\n", ucontext);
-
   rv::regs *regs = (rv::regs*)curthd->trap_frame;
-
   if (!VALIDATE_RD(ucontext, sizeof(*regs))) {
     curproc->terminate(SIGSEGV);
   }
 
-	memcpy(regs, ucontext, sizeof(*regs));
+	memcpy(regs, ucontext, 32 * sizeof(rv::xsize_t));
 	/* jump to returning to userspace :^) */
 	rv_enter_userspace(regs);
 }

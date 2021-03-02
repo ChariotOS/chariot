@@ -24,8 +24,8 @@ choice
 	config RISCV
 		bool "RISCV (RV64GC)"
 
-	config ARM64
-		bool "ARM64"
+	# config ARM64
+	# 	bool "ARM64"
 
 endchoice
 

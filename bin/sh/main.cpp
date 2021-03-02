@@ -1,5 +1,6 @@
 #define _CHARIOT_SRC
 #include <chariot.h>
+#include <chariot/ucontext.h>
 #include <ck/command.h>
 #include <ck/func.h>
 #include <ck/io.h>
@@ -183,8 +184,17 @@ char prompt[256];
 char uname[128];
 char cwd[255];
 
-void sigint_handler(int sig) {
-	printf("SIGINT!\n");
+void sigint_handler(int sig, void *, void *uc) {
+#if 0
+  // printf("SIGINT!\n");
+  auto *ctx = (struct ucontext *)uc;
+#ifdef CONFIG_X86
+	printf("SIGINT from rip=%p\n", ctx->rip);
+	ctx->resv3 = 0;
+	ctx->resv4 = 0;
+#endif
+#endif
+
   if (fg_pid != -1) {
     kill(-fg_pid, sig);
   }
@@ -210,7 +220,7 @@ int main(int argc, char **argv, char **envp) {
   }
 
 
-  signal(SIGINT, sigint_handler);
+  signal(SIGINT, (void (*)(int))sigint_handler);
 
   /* TODO: is this right? */
   sigset_t set;
