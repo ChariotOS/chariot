@@ -1,13 +1,12 @@
 #include <arch.h>
-#include <time.h>
 #include <cpu.h>
 #include <paging.h>
 #include <pit.h>
 #include <printk.h>
 #include <sched.h>
 #include <syscall.h>
-
-#include <arch.h>
+#include <time.h>
+#include <util.h>
 #include <x86/smp.h>
 
 // implementation of the x86 interrupt request handling system
@@ -191,7 +190,8 @@ extern const char *ksym_find(off_t);
 void dump_backtrace(off_t ebp) {
   printk("Backtrace (ebp=%p):\n", ebp);
 
-  for (off_t *stack_ptr = (off_t *)ebp; VALIDATE_RD(stack_ptr, sizeof(off_t)); stack_ptr = (off_t *)*stack_ptr) {
+  for (off_t *stack_ptr = (off_t *)ebp; VALIDATE_RD(stack_ptr, sizeof(off_t));
+       stack_ptr = (off_t *)*stack_ptr) {
     if (!VALIDATE_RD(stack_ptr, 16)) break;
     off_t retaddr = stack_ptr[1];
     printk("0x%p\n", retaddr);
@@ -217,10 +217,11 @@ void dump_trapframe(reg_t *r) {
          "\n"
          "RIP=" REGFMT " RFL=%08x [%c%c%c%c%c%c%c]\n",
 
-         GET(rax), GET(rbx), GET(rcx), GET(rdx), GET(rsi), GET(rdi), GET(rbp), GET(rsp), GET(r8), GET(r9), GET(r10),
-         GET(r11), GET(r12), GET(r13), GET(r14), GET(r15), GET(rip), eflags, eflags & DF_MASK ? 'D' : '-',
-         eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-', eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-',
-         eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
+         GET(rax), GET(rbx), GET(rcx), GET(rdx), GET(rsi), GET(rdi), GET(rbp), GET(rsp), GET(r8),
+         GET(r9), GET(r10), GET(r11), GET(r12), GET(r13), GET(r14), GET(r15), GET(rip), eflags,
+         eflags & DF_MASK ? 'D' : '-', eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-',
+         eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-', eflags & CC_P ? 'P' : '-',
+         eflags & CC_C ? 'C' : '-');
 
   // dump_backtrace(tf->rbp);
 }
@@ -351,7 +352,7 @@ hexdump(sse_data, 512, true);
       */
       KERR("==================================================================\n");
 
-      sched::dispatch_signal(SIGSEGV);
+      curthd->send_signal(SIGSEGV);
 
       // XXX: just block, cause its an easy way to get the proc to stop running
       // sched::block();
@@ -373,7 +374,8 @@ int arch::irq::init(void) {
   u32 *idt = (u32 *)&idt_block;
 
   // fill up the idt with the correct trap vectors.
-  for (int n = 0; n < 130; n++) mkgate(idt, n, vectors[n], 0, 0);
+  for (int n = 0; n < 130; n++)
+    mkgate(idt, n, vectors[n], 0, 0);
 
   int i;
   // for (i = 32; i < 48; i++) irq::disable(i);
@@ -412,6 +414,9 @@ int arch::irq::init(void) {
   return 0;
 }
 
+
+extern "C" void x86_enter_userspace(x86_64regs *);
+
 // just forward the trap on to the irq subsystem
 // This function is called from arch/x86/trap.asm
 extern "C" void trap(reg_t *regs) {
@@ -442,7 +447,7 @@ extern "C" void trap(reg_t *regs) {
     if (nr >= 32) {
       irq::dispatch(nr - 32, regs);
     } else {
-			arch_enable_ints();
+      arch_enable_ints();
       isr_functions[nr](nr, regs);
     }
   }
@@ -454,5 +459,44 @@ extern "C" void trap(reg_t *regs) {
   // TODO: generalize
   sched::before_iret(from_userspace);
 
+  if (from_userspace) {
+    /* Handle signals */
+    int sig = 0;
+    void *handler = NULL;
+    if (sched::claim_next_signal(sig, handler) != -1) {
+      // arch_disable_ints();
+      uint64_t sp = tf->rsp;
+      sp -= 128;  // red zone BS
+      int frame_size = sizeof(x86_64regs);
+      sp -= frame_size;
+
+      auto *uctx = (x86_64regs *)sp;
+
+      /* save the old context to the user stack */
+      if (!VALIDATE_RDWR(uctx, frame_size)) {
+        printk("not sure what to do here. uctx = %p\n", uctx);
+        curproc->mm->dump();
+        return;
+      }
+
+      /* Copy the old user context */
+      memcpy(uctx, tf, frame_size);
+
+      tf->rdi = sig;
+      tf->rsi = 0;
+      tf->rdx = sp;
+
+      // push the return address
+      sp -= 8;
+      *(uint64_t *)sp = curproc->sig.ret;
+      tf->rsp = sp;
+      tf->rip = (uint64_t)handler;
+
+      tf->cs = (SEG_UCODE << 3) | DPL_USER;
+      tf->ds = (SEG_UDATA << 3) | DPL_USER;
+      x86_enter_userspace(tf);
+      // arch_enable_ints();
+    }
+  }
 }
 

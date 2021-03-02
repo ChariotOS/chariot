@@ -16,10 +16,12 @@ typedef int (*exec_fn_t)(const char *, const char **, const char **);
 extern const char **environ;
 
 int execve(const char *path, const char *argv[], const char *envp[]) {
-  return sysbind_execve((char *)path, (const char **)argv, (const char **)envp);
+  return errno_wrap(sysbind_execve((char *)path, (const char **)argv, (const char **)envp));
 }
 
-int execvp(const char *file, const char *argv[]) { return execvpe(file, argv, environ); }
+int execvp(const char *file, const char *argv[]) {
+  return execvpe(file, argv, environ);
+}
 
 #define NAME_MAX 255
 #define PATH_MAX 4096
@@ -82,7 +84,8 @@ int execl(const char *path, const char *arg0, ... /*, (char *)0 */) {
     const char *argv[argc + 1];
     va_start(ap, arg0);
     argv[0] = (char *)arg0;
-    for (i = 1; i < argc; i++) argv[i] = va_arg(ap, char *);
+    for (i = 1; i < argc; i++)
+      argv[i] = va_arg(ap, char *);
     argv[i] = NULL;
     va_end(ap);
     return execv(path, argv);
@@ -102,7 +105,8 @@ int execle(const char *path, const char *argv0, ...) {
     const char *argv[argc + 1];
     va_start(ap, argv0);
     argv[0] = (char *)argv0;
-    for (i = 1; i <= argc; i++) argv[i] = va_arg(ap, char *);
+    for (i = 1; i <= argc; i++)
+      argv[i] = va_arg(ap, char *);
     const char **envp = va_arg(ap, const char **);
     va_end(ap);
     return execve(path, argv, envp);
@@ -121,7 +125,8 @@ int execlp(const char *file, const char *argv0, ...) {
     const char *argv[argc + 1];
     va_start(ap, argv0);
     argv[0] = (char *)argv0;
-    for (i = 1; i < argc; i++) argv[i] = va_arg(ap, char *);
+    for (i = 1; i < argc; i++)
+      argv[i] = va_arg(ap, char *);
     argv[i] = NULL;
     va_end(ap);
     return execvp(file, argv);
@@ -129,9 +134,22 @@ int execlp(const char *file, const char *argv0, ...) {
 }
 
 
-int execv(const char *path, const char *argv[]) { return execve(path, argv, (const char **)environ); }
+int execv(const char *path, const char *argv[]) {
+  return execve(path, argv, (const char **)environ);
+}
 
 
-pid_t getpid(void) { return sysbind_getpid(); }
+pid_t getpid(void) {
+  return sysbind_getpid();
+}
 
-pid_t gettid(void) { return sysbind_gettid(); }
+pid_t gettid(void) {
+  return sysbind_gettid();
+}
+
+int setpgid(pid_t pid, pid_t pgid) {
+  return sysbind_setpgid(pid, pgid);
+}
+pid_t getpgid(pid_t pid) {
+  return sysbind_getpgid(pid);
+}

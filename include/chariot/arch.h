@@ -99,8 +99,9 @@ void arch_mem_init(unsigned long mbd);
 void arch_initialize_trapframe(bool userspace, reg_t *);
 unsigned arch_trapframe_size(void);
 void arch_dump_backtrace(void);
-void arch_dispatch_function(void *func, long arg);
-void arch_sigreturn(void);
+void arch_dispatch_signal(int sig, void *handler, void *ucontext);
+
+void arch_sigreturn(void *ucontext);
 void arch_flush_mmu(void);
 void arch_save_fpu(struct thread &);
 void arch_restore_fpu(struct thread &);

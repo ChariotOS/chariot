@@ -28,9 +28,11 @@ int sys::sigaction(int sig, struct sigaction *act, struct sigaction *old) {
 }
 
 
-int sys::sigreturn(void) {
-	arch_sigreturn();
-	return -ENOSYS;
+int sys::sigreturn(void *ucontext) {
+	assert(curthd->sig.handling != -1);
+  curthd->sig.handling = -1;
+	arch_sigreturn(ucontext);
+	return 0;
 }
 int sys::sigprocmask(int how, unsigned long set, unsigned long *old_set) {
   if (old_set) {

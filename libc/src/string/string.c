@@ -551,7 +551,7 @@ char *strerror(int e) {
   switch (e) {
 #define E(a, b) \
   case a:       \
-    return #b;  \
+    return b;  \
     break;
 #include "../stdio/__strerror.h"
 

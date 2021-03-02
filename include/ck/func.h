@@ -3,4 +3,4 @@
 #include <chariot/ck/func.h>
 
 
-#define fn(...) [&] (__VA_ARGS__)
+// #define fn(...) [&] (__VA_ARGS__)

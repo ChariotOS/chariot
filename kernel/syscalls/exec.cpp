@@ -56,7 +56,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   int loaded = elf::load(path, *curproc, *new_addr_space, fd, entry);
   if (loaded < 0) {
     delete new_addr_space;
-    return -EINVAL;
+    return loaded;
   }
 
   // printk(KERN_DEBUG "pid %d exec '%s'\n", curproc->pid, path);

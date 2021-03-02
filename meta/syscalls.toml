@@ -205,6 +205,21 @@ ret = 'int'
 [sc.getegid]
 ret = 'int'
 
+
+[sc.setpgid]
+ret = 'int'
+args = [
+	'pid: int',
+	'pgid: int'
+]
+
+
+[sc.getpgid]
+ret = 'int'
+args = [
+	'pid: int'
+]
+
 [sc.mmap]
 ret = 'void*'
 args = [
@@ -330,6 +345,9 @@ args = [
 
 [sc.sigreturn]
 ret = 'int'
+args = [
+	'ucontext: void*'
+]
 
 [sc.sigprocmask]
 ret = 'int'

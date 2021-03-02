@@ -170,18 +170,11 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
   }
 
 
-  // printk(KERN_WARN "[pid=%d] %s addr %p from pc:%p\n", proc->pid, type_name, addr, tf.sepc);
-  if (addr == 0) {
-    printk("pid %d dead accessing %p\n", proc->pid, addr);
-    panic("addr2line -e build/chariot.elf 0x%p\n", tf.sepc);
-  }
-
   int res = proc->mm->pagefault(addr, err);
 
   if (res == -1) {
-    printk("pid %d dead accessing %p\n", proc->pid, addr);
-    panic("addr2line -e build/chariot.elf 0x%p\n", tf.sepc);
-    sched::dispatch_signal(SIGSEGV);
+    /* send to the current thread and return (handle at the bottom of kernel_vec) */
+    curthd->send_signal(SIGSEGV);
     return;
   }
 
@@ -204,9 +197,9 @@ void rv_handle_syscall(rv::regs &tf) {
 
 /* Supervisor trap function */
 extern "C" void kernel_trap(struct rv::regs &tf) {
-
-
   bool from_userspace = false;
+
+	auto *thd = curthd;
 
   if ((tf.status & SSTATUS_SPP) == 0) {
     from_userspace = true;
@@ -217,11 +210,11 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
 
   reg_t *old_trapframe = NULL;
   if (cpu::in_thread()) {
-    old_trapframe = curthd->trap_frame;
-    curthd->trap_frame = (reg_t *)&tf;
-		if (from_userspace) {
-			curthd->userspace_sp = tf.sp;
-		}
+    old_trapframe = thd->trap_frame;
+    thd->trap_frame = (reg_t *)&tf;
+    if (from_userspace) {
+      thd->userspace_sp = tf.sp;
+    }
   }
 
 
@@ -229,9 +222,9 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
   rv::xsize_t previous_kernel_stack = rv::get_hstate().kernel_sp;
 
   if (cpu::in_thread()) {
-    if (curthd->stacks.size() != 1) {
+    if (thd->stacks.size() != 1) {
       printk_nolock(KERN_DEBUG "previous kernel stack: %p\n");
-      for (auto &stk : curthd->stacks) {
+      for (auto &stk : thd->stacks) {
         printk_nolock(KERN_DEBUG "   %d %p\n", stk.size, stk.start);
       }
     }
@@ -350,9 +343,36 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
     }
   }
 
+
   sched::before_iret(from_userspace);
 
-  if (cpu::in_thread()) curthd->trap_frame = old_trapframe;
+  int sig = 0;
+  void *handler = NULL;
+  if (sched::claim_next_signal(sig, handler) != -1) {
+
+		uint64_t sp = tf.sp;
+
+		sp -= sizeof(tf);
+		auto *uctx = (rv::regs *)sp;
+		/* save the old context to the user stack */
+		if (!VALIDATE_RDWR(uctx, sizeof(*uctx))) {
+			printk("not sure what to do here. uctx = %p\n", uctx);
+			curproc->mm->dump();
+			return;
+		}
+
+		/* Copy the old user context */
+		memcpy(uctx, &tf, sizeof(tf));
+
+		tf.sp = sp;
+		tf.a0 = sig;
+		tf.a1 = 0;
+		tf.a2 = sp; // third argument to a sa_sigaction is the ucontext
+		tf.sepc = (rv::xsize_t)handler;
+		tf.ra = curproc->sig.ret;
+  }
+
+  if (cpu::in_thread()) thd->trap_frame = old_trapframe;
 
   rv::get_hstate().kernel_sp = previous_kernel_stack;
 }

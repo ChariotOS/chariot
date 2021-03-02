@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <pwd.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +23,7 @@
 #include <sys/sysbind.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
+#include <termios.h>
 #include <unistd.h>
 
 #define C_RED "\x1b[31m"
@@ -42,6 +44,29 @@ extern char **environ;
 
 
 #define MAX_ARGS 255
+
+void reset_pgid() {
+  pid_t pgid = getpgid(0);
+
+  tcsetpgrp(0, pgid);
+}
+
+
+pid_t shell_fork() {
+  pid_t pid = fork();
+
+  if (pid == 0) {
+    // create a new group for the process
+    int res = setpgid(0, 0);
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGCHLD);
+    sigaddset(&mask, SIGINT);
+    sigaddset(&mask, SIGTSTP);
+    sigprocmask(SIG_UNBLOCK, &mask, NULL);
+  }
+  return pid;
+}
 
 struct readline_history_entry {
   char *value;
@@ -69,424 +94,14 @@ auto read_line(int fd, char *prompt) {
   return s;
 }
 
-struct exec_cmd;
-
-struct cmd {
-  using ptr = ck::unique_ptr<cmd>;
-  virtual ~cmd(){};
-
-  virtual void exec(void){};
-  virtual void dump(void){};
-
-  virtual exec_cmd *as_exec(void) {
-    return nullptr;
-  }
-};
-
-struct exec_cmd : public cmd {
-  ck::vec<ck::string> argv;
-
-  virtual ~exec_cmd(void) {
-  }
-
-  virtual void exec(void) override {
-    /* idk how to bubble this up... */
-    if (argv.size() == 0) {
-      /* TODO: parse better? */
-      exit(EXIT_FAILURE);
-    }
-
-    /* the first argument to exec */
-    auto args = new const char *[argv.size() + 1];
-    args[argv.size()] = NULL;
-
-    for (int i = 0; i < argv.size(); i++) {
-      args[i] = argv[i].get();
-    }
-
-    int res = execvpe((const char *)args[0], (const char **)args, (const char **)environ);
-		int err = errno; // grab errno now (curse you globals)
-
-		const char *serr = strerror(err);
-		if (errno == ENOENT) {
-			serr = "command not found";
-		}
-
-		printf("%s: \x1b[31m%s\x1b[0m\n", args[0], serr);
-    exit(EXIT_FAILURE);
-  }
-
-  virtual void dump(void) override {
-    printf("exec");
-    for (auto &arg : argv) {
-      printf(" '%s'", arg.get());
-    }
-  }
-
-
-  bool try_builtin(void) {
-    if (argv.size() > 0) {
-      /* Change directory builtin */
-      if (argv[0] == "cd") {
-        const char *destination = NULL;
-        if (argv.size() == 1) {
-          // CD to home
-          uid_t uid = getuid();
-          struct passwd *pwd = getpwuid(uid);
-          // TODO: get user $HOME and go there instead
-          destination = pwd->pw_dir;
-        } else {
-          destination = argv[1].get();
-        }
-
-
-        int res = chdir(destination);
-        if (res != 0) {
-          printf("cd: '%s' could not be entered (%s)\n", destination, strerror(errno));
-        }
-        return true;
-      }
-      if (argv[0] == "exit") {
-        exit(0);
-      }
-    }
-    return false;
-  }
-
-  virtual exec_cmd *as_exec(void) override {
-    return (exec_cmd *)this;
-  }
-};
-
-
-struct seq_cmd : public cmd {
-  seq_cmd(struct cmd *left, struct cmd *right) {
-    this->left = left;
-    this->right = right;
-  }
-
-  virtual ~seq_cmd(void) {
-  }
-  virtual void exec(void) override {
-    int pid = fork();
-    if (pid == 0) {
-      left->exec();
-      exit(EXIT_SUCCESS);
-    }
-
-    int res = 0;
-    do
-      waitpid(pid, &res, 0);
-    while (errno == EINTR);
-    printf("seq res = %d\n", res);
-    right->exec();
-    exit(EXIT_SUCCESS);
-  }
-
-  virtual void dump(void) override {
-    printf("(seq (");
-    left->dump();
-    printf(") (");
-    right->dump();
-    printf("))");
-  }
-
-  cmd::ptr left, right;
-};
-
-
-
-
-struct bg_cmd : public cmd {
-  bg_cmd(struct cmd *c) {
-    this->cmd = c;
-  }
-  virtual ~bg_cmd(void) {
-  }
-
-  virtual void exec(void) override {
-    exit(EXIT_FAILURE);
-  }
-
-  virtual void dump(void) override {
-    printf("(bg (");
-    cmd->dump();
-    printf("))");
-  }
-
-  cmd::ptr cmd;
-};
-
-
-struct pipe_cmd : public cmd {
-  pipe_cmd(struct cmd *left, struct cmd *right) {
-    this->left = left;
-    this->right = right;
-  }
-
-  virtual ~pipe_cmd(void) {
-  }
-
-  virtual void exec(void) override {
-    printf("pipe_cmd\n");
-  }
-
-  virtual void dump(void) override {
-    printf("(pipe (");
-    left->dump();
-    printf(") (");
-    right->dump();
-    printf("))");
-  }
-
-  cmd::ptr left;
-  cmd::ptr right;
-};
-
-
-struct redir_cmd : public cmd {
-  redir_cmd(struct cmd *subcmd, ck::string file, int mode, int fd) {
-    this->cmd = subcmd;
-    this->file = file;
-    this->mode = mode;
-    this->fd = fd;
-  }
-
-  virtual ~redir_cmd(void) {
-  }
-
-  virtual void exec(void) override {
-    printf("redir_cmd\n");
-  }
-
-
-  virtual void dump(void) override {
-    printf("(redir (");
-    cmd->dump();
-    printf(") \"%s\")", file.get());
-  }
-
-  ck::string file;
-  cmd::ptr cmd;
-  int mode;
-  int fd;
-};
-
-
-
-
-char whitespace[] = " \t\r\n\v";
-char symbols[] = "<|>&;()";
-
-int gettoken(char **ps, char *es, char **q, char **eq) {
-  char *s;
-  int ret;
-
-  s = *ps;
-  while (s < es && strchr(whitespace, *s))
-    s++;
-  if (q) *q = s;
-  ret = *s;
-  switch (*s) {
-    case 0:
-      break;
-    case '|':
-    case '(':
-    case ')':
-    case ';':
-    case '&':
-    case '<':
-      s++;
-      break;
-    case '>':
-      s++;
-      if (*s == '>') {
-        ret = '+';
-        s++;
-      }
-      break;
-    default:
-      ret = 'a';
-      while (s < es && !strchr(whitespace, *s) && !strchr(symbols, *s))
-        s++;
-      break;
-  }
-  if (eq) *eq = s;
-
-  while (s < es && strchr(whitespace, *s))
-    s++;
-  *ps = s;
-  return ret;
-}
-
-int peek(char **ps, char *es, const char *toks) {
-  char *s;
-
-  s = *ps;
-  while (s < es && strchr(whitespace, *s))
-    s++;
-  *ps = s;
-  return *s && strchr(toks, *s);
-}
-
-
-struct cmd *parseline(char **, char *);
-struct cmd *parsepipe(char **, char *);
-struct cmd *parseexec(char **, char *);
-
-struct cmd *parse_cmd(char *s) {
-  char *es;
-  struct cmd *cmd;
-
-  es = s + strlen(s);
-  cmd = parseline(&s, es);
-  peek(&s, es, "");
-  if (s != es) {
-    fprintf(stderr, "leftovers: %s\n", s);
-    panic("syntax");
-  }
-  return cmd;
-}
-
-
-struct cmd *parseredirs(struct cmd *cmd, char **ps, char *es) {
-  int tok;
-  char *q, *eq;
-
-  while (peek(ps, es, "<>")) {
-    tok = gettoken(ps, es, 0, 0);
-    if (gettoken(ps, es, &q, &eq) != 'a') panic("missing file for redirection");
-    ck::string s = ck::string(q, ((off_t)es - (off_t)q));
-    switch (tok) {
-      case '<':
-        cmd = new redir_cmd(cmd, s, O_RDONLY, 0);
-        break;
-      case '>':
-        cmd = new redir_cmd(cmd, s, O_WRONLY | O_CREAT | O_TRUNC, 1);
-        break;
-      case '+':  // >>
-        cmd = new redir_cmd(cmd, s, O_WRONLY | O_CREAT, 1);
-        break;
-    }
-  }
-  return cmd;
-}
-
-
-
-
-struct cmd *parseblock(char **ps, char *es) {
-  struct cmd *cmd;
-
-  if (!peek(ps, es, "(")) panic("parseblock");
-  gettoken(ps, es, 0, 0);
-  cmd = parseline(ps, es);
-  if (!peek(ps, es, ")")) panic("syntax - missing )");
-  gettoken(ps, es, 0, 0);
-  cmd = parseredirs(cmd, ps, es);
-  return cmd;
-}
-
-struct cmd *parseexec(char **ps, char *es) {
-  char *q, *eq;
-  int tok;
-  struct exec_cmd *cmd;
-  struct cmd *ret;
-
-  if (peek(ps, es, "(")) return parseblock(ps, es);
-
-  ret = new exec_cmd();
-  cmd = (struct exec_cmd *)ret;
-
-  ret = parseredirs(ret, ps, es);
-  while (!peek(ps, es, "|)&;")) {
-    if ((tok = gettoken(ps, es, &q, &eq)) == 0) break;
-    if (tok != 'a') panic("syntax");
-    int len = (off_t)eq - (off_t)q;
-    cmd->argv.push(ck::string(q, len));
-    ret = parseredirs(ret, ps, es);
-  }
-  return ret;
-}
-
-
-struct cmd *parsepipe(char **ps, char *es) {
-  struct cmd *cmd;
-
-  cmd = parseexec(ps, es);
-  if (peek(ps, es, "|")) {
-    gettoken(ps, es, 0, 0);
-    cmd = new pipe_cmd(cmd, parsepipe(ps, es));
-  }
-  return cmd;
-}
-
-
-
-struct cmd *parseline(char **ps, char *es) {
-  struct cmd *cmd;
-
-  cmd = parsepipe(ps, es);
-  while (peek(ps, es, "&")) {
-    gettoken(ps, es, 0, 0);
-    cmd = new bg_cmd(cmd);
-  }
-  if (peek(ps, es, ";")) {
-    gettoken(ps, es, 0, 0);
-    cmd = new seq_cmd(cmd, parseline(ps, es));
-  }
-  return cmd;
-}
-
-
 
 #define RUN_NOFORK 1
 
 
 
+pid_t fg_pid = -1;
+
 int run_line(ck::string line, int flags = 0) {
-  auto *cmd = parse_cmd((char *)line.get());
-
-  if (cmd == NULL) {
-    fprintf(stderr, "sh: Syntax error in '%s'\n", line.get());
-    return -1;
-  }
-
-  // printf("command: ");
-  // cmd->dump();
-  // printf("\n");
-
-  if (auto *e = cmd->as_exec(); e != NULL) {
-    if (e->try_builtin()) {
-      // delete cmd;
-      return 0;
-    }
-  }
-
-  if ((flags & RUN_NOFORK) == 0) {
-    int pid = fork();
-    if (pid == 0) {
-      cmd->exec();
-      exit(EXIT_FAILURE);
-    }
-
-    int res = 0;
-    /* wait for the subproc */
-    do
-      waitpid(pid, &res, 0);
-    while (errno == EINTR);
-
-    // printf("root res = %d\n", res);
-  } else {
-    /* Don't fork */
-    cmd->exec();
-  }
-
-
-  // delete cmd;
-  return 0;
-
-
   int err = 0;
   ck::vec<ck::string> parts = line.split(' ', false);
   ck::vec<const char *> args;
@@ -520,19 +135,41 @@ int run_line(ck::string line, int flags = 0) {
   }
 
 
-  pid_t pid = fork();
+
+  pid_t pid = 0;
+  if ((flags & RUN_NOFORK) == 0) {
+    pid = fork();
+  }
+
   if (pid == 0) {
+    setpgid(0, 0);  // TODO: is this right?
+
     execvpe(args[0], args.data(), (const char **)environ);
-    printf("execvpe returned errno '%s'\n", strerror(errno));
+    int err = errno;  // grab errno now (curse you globals)
+
+    const char *serr = strerror(err);
+    if (errno == ENOENT) {
+      serr = "command not found";
+    }
+    printf("%s: \x1b[31m%s\x1b[0m\n", args[0], serr);
+    exit(EXIT_FAILURE);
     exit(-1);
   }
 
-  int stat = 0;
-  waitpid(pid, &stat, 0);
+  fg_pid = pid;
 
-  int exit_code = WEXITSTATUS(stat);
-  if (exit_code != 0) {
-    fprintf(stderr, "%s: exited with code %d\n", args[0], exit_code);
+  int res = 0;
+  /* wait for the subproc */
+  do
+    waitpid(pid, &res, 0);
+  while (errno == EINTR);
+
+  fg_pid = -1;
+
+  if (WIFSIGNALED(res)) {
+    printf("%s: \x1b[31mterminated with signal %d\x1b[0m\n", args[0], WTERMSIG(res));
+  } else if (WIFEXITED(res) && WEXITSTATUS(res) != 0) {
+    printf("%s: \x1b[31mexited with code %d\x1b[0m\n", args[0], WEXITSTATUS(res));
   }
 
 
@@ -541,13 +178,19 @@ int run_line(ck::string line, int flags = 0) {
 
 
 
-void lispy_thing(ck::string &command);
-
-
 char hostname[256];
 char prompt[256];
 char uname[128];
 char cwd[255];
+
+void sigint_handler(int sig) {
+	printf("SIGINT!\n");
+  if (fg_pid != -1) {
+    kill(-fg_pid, sig);
+  }
+}
+
+
 
 int main(int argc, char **argv, char **envp) {
   int ch;
@@ -567,7 +210,18 @@ int main(int argc, char **argv, char **envp) {
   }
 
 
-	/* Read the hostname */
+  signal(SIGINT, sigint_handler);
+
+  /* TODO: is this right? */
+  sigset_t set;
+  sigemptyset(&set);
+  sigaddset(&set, SIGINT);
+  sigprocmask(SIG_UNBLOCK, &set, NULL);
+
+  /* TODO: isatty() :) */
+  reset_pgid();
+
+  /* Read the hostname */
   int hn = open("/cfg/hostname", O_RDONLY);
   int n = read(hn, (void *)hostname, 256);
   if (n >= 0) {
@@ -597,7 +251,8 @@ int main(int argc, char **argv, char **envp) {
       disp_cwd = "~";
     }
 
-    snprintf(prompt, 256, "[%s@%s %s]%c ", uname, hostname, disp_cwd, uid == 0 ? '#' : '$');
+    snprintf(prompt, 256, "[\x1b[33m%s\x1b[0m@\x1b[34m%s \x1b[35m%s\x1b[0m]%c ", uname, hostname,
+             disp_cwd, uid == 0 ? '#' : '$');
     // snprintf(prompt, 256, "%s %c ", disp_cwd, uid == 0 ? '#' : '$');
 
 
@@ -606,172 +261,8 @@ int main(int argc, char **argv, char **envp) {
 
     // ck::hexdump((void *)line.get(), line.len());
     run_line(line);
+    reset_pgid();
   }
 
   return 0;
-}
-
-
-enum tok {
-  tok_arg,
-  tok_str,
-  tok_var,
-  tok_right_paren,
-  tok_left_paren,
-  tok_dollar,
-  tok_left_bracket,
-  tok_right_bracket,
-  tok_left_curly,
-  tok_right_curly
-};
-
-class shell_lexer : public ck::lexer {
-  ck::map<char, char> esc_mappings;
-
- public:
-  shell_lexer(ck::string &s) : ck::lexer(s) {
-    esc_mappings['a'] = 0x07;
-    esc_mappings['b'] = 0x08;
-    esc_mappings['f'] = 0x0C;
-    esc_mappings['n'] = 0x0A;
-    esc_mappings['r'] = 0x0D;
-    esc_mappings['t'] = 0x09;
-    esc_mappings['v'] = 0x0B;
-    esc_mappings['\\'] = 0x5C;
-    esc_mappings['"'] = 0x22;
-    esc_mappings['e'] = 0x1B;
-  }
-  virtual ~shell_lexer(void) {
-    // nah
-  }
-
-  virtual ck::token lex(void) {
-    skip_spaces();
-    int32_t c = next();
-
-    auto in_set = [](ck::string &set, int c) {
-      for (auto &n : set) {
-        if (n == c) return true;
-      }
-      return false;
-    };
-
-    auto accept_run = [&](ck::string set) {
-      ck::string buf;
-      while (in_set(set, peek())) {
-        buf += next();
-      }
-      return buf;
-    };
-
-    if (c == '#') {
-      // if (c == '#' && peek() != '!') goto skip_comment;
-      while (peek() != '\n' && (int32_t)peek() != -1)
-        next();
-
-      return lex();
-    }
-  skip_comment:
-
-    skip_spaces();
-
-    if (c == EOF || c == 0) {
-      return tok(TOK_EOF, "");
-    }
-
-    // if (c == '\\') return tok(tok_backslash, "\\");
-    if (c == '(') return tok(tok_left_paren, "(");
-
-    if (c == ')') return tok(tok_right_paren, ")");
-
-    if (c == '[') return tok(tok_left_bracket, "[");
-
-    if (c == ']') return tok(tok_right_bracket, "]");
-
-    if (c == '{') return tok(tok_left_curly, "{");
-
-    if (c == '}') return tok(tok_right_curly, "}");
-
-    if (c == '"') {
-      ck::string buf;
-
-      bool escaped = false;
-      // ignore the first quote because a string shouldn't
-      // contain the encapsulating quotes in it's internal representation
-      while (true) {
-        c = next();
-        if ((int32_t)c == EOF) return tok(TOK_ERR, "unterminated string");
-        // also ignore the last double quote for the same reason as above
-        if (c == '"') break;
-        escaped = c == '\\';
-        if (escaped) {
-          char e = next();
-          if (e == 'U' || e == 'u') {
-            /*
-// parse 32 bit unicode literals
-std::string hex;
-
-int l = 8;
-
-if (e == 'u') l = 4;
-
-for (int i = 0; i < l; i++) {
-hex += next();
-}
-std::cout << hex << std::endl;
-c = (int32_t)std::stoul(hex, nullptr, 16);
-printf("%u\n", c);
-            */
-          } else {
-            c = esc_mappings[e];
-            if (c == 0) {
-              return tok(TOK_ERR, "unknown escape sequence");
-            }
-          }
-          escaped = false;
-        }
-        buf += c;
-      }
-      return tok(tok_str, buf);
-    }
-
-
-    // it wasn't anything else, so it must be
-    // either an symbol or a keyword token
-
-    ck::string symbol;
-    symbol += c;
-
-    while (!in_charset(peek(), " \n\t(){}[],'`@")) {
-      auto v = next();
-      if (v == EOF || v == 0) break;
-      symbol += v;
-    }
-
-    if (symbol.len() == 0) return tok(TOK_ERR, "lexer encountered zero-length identifier");
-
-    uint8_t type = tok_arg;
-
-    if (symbol[0] == '$') {
-      if (symbol.size() == 1) return tok(tok_dollar, "$");
-      type = tok_var;
-    }
-
-    return tok(type, symbol);
-  }
-};
-
-
-void lispy_thing(ck::string &src) {
-  shell_lexer l(src);
-
-  while (1) {
-    auto t = l.lex();
-
-    if (t.type == TOK_EOF) break;
-
-    // auto val = src.substring(t.start, t.end + 1);
-
-    printf("%d '%s' %d %d\n", t.type, t.value.get(), t.start, t.end);
-  }
 }

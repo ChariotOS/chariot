@@ -10,3 +10,8 @@ _start:
 .invalid:
 	j .invalid
 	
+
+.global __signal_return_callback
+__signal_return_callback:
+	move a0, sp
+	call sysbind_sigreturn

@@ -1,6 +1,7 @@
 #include <chariot.h>
 #include <chariot/dirent.h>
 #include <chariot/futex.h>
+#include <ck/eventloop.h>
 #include <ck/thread.h>
 #include <ck/vec.h>
 #include <errno.h>
@@ -38,7 +39,7 @@ extern char **environ;
 
 
 template <typename T, typename Fn /* T& -> void */>
-void process_array(T *data, size_t tasks, int nthreads, Fn fn) {
+void process_array(T *data, size_t tasks, int nthreads, Fn cb) {
   /* Sanity :^) */
   if (nthreads < 1) nthreads = 1;
 
@@ -60,7 +61,7 @@ void process_array(T *data, size_t tasks, int nthreads, Fn fn) {
   for (int i = 0; i < nthreads; i++) {
     struct job j;
     j.id = i;
-    j.func = &fn;
+    j.func = &cb;
     j.data = data + current_start;
     j.count = max_per_thread;
     int nleft = tasks - (current_start + max_per_thread);
@@ -104,10 +105,10 @@ void process_array(T *data, size_t tasks, int nthreads, Fn fn) {
 
 
 template <typename T, typename Fn /* T& -> void */>
-void process_vector(ck::vec<T> &vec, int nthreads, Fn fn) {
+void process_vector(ck::vec<T> &vec, int nthreads, Fn cb) {
   auto tasks = vec.size();
   T *data = vec.data();
-  process_array(data, tasks, nthreads, fn);
+  process_array(data, tasks, nthreads, cb);
 }
 
 
@@ -122,6 +123,9 @@ void print_vector(ck::vec<int> &vec) {
 pid_t spawn(const char *command) {
   int pid = fork();
   if (pid == 0) {
+
+		// they get their own pgid
+		setpgid(0, 0);
     const char *args[] = {"/bin/sh", "-c", (char *)command, NULL};
     // debug_hexdump(args, sizeof(args));
     execve("/bin/sh", args, (const char **)environ);
@@ -196,9 +200,20 @@ struct init_job {};
 
 
 static void sigchld_handler(int) {
-  pid_t reaped = waitpid(-1, NULL, 0);
-  // if (reaped == -1) continue;
-  // printf("[init] reaped pid %d\n", reaped);
+	while (1) {
+		int status = 0;
+		/* Reap everyone available to be reaped */
+  	pid_t pid = waitpid(-1, &status, WNOWAIT);
+		if (pid < 0) break;
+
+
+		if (WIFSIGNALED(status)) {
+			printf("[init] process %d terminated by signal %d\n", pid, WTERMSIG(status));
+		} else {
+			printf("[init] process %d exited with code %d\n", pid, WEXITSTATUS(status));
+		}
+
+	}
 }
 
 
@@ -253,6 +268,58 @@ int main(int argc, char **argv) {
   spawn("lumen-server");
 
 #endif
+
+
+
+  if (0) {
+    int ptmxfd = open("/dev/ptmx", O_RDWR | O_CLOEXEC);
+
+
+    system("ls -la /dev");
+
+    ck::eventloop ev;
+    int pid = sysbind_fork();
+    if (pid == 0) {
+      const char *pts_name = ptsname(ptmxfd);
+      printf("pts: %s\n", pts_name);
+      ck::file pts;
+      pts.open(pts_name, "r+");
+
+
+      pts.on_read([&]() {
+        char data[32];
+        auto n = pts.read(data, 32);
+        printf("got %d, %d\n", n, errno);
+        if (n < 0) return;
+        ck::hexdump(data, n);
+      });
+
+      ev.start();
+    } else {
+      ck::file ptmx(ptmxfd);
+
+      // send input
+      ck::in.on_read([&]() {
+        int c = getchar();
+        if (c == EOF) return;
+        ptmx.write(&c, 1);
+      });
+
+
+      // echo output
+      ptmx.on_read([&]() {
+        char buf[512];
+        auto n = ptmx.read(buf, 512);
+        if (n < 0) {
+          perror("ptmx read");
+          return;
+        }
+        ck::out.write(buf, n);
+      });
+
+      ev.start();
+    }
+  }
 
   spawn("/bin/sh");
 

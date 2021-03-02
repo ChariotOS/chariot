@@ -45,7 +45,7 @@ static constexpr uint32_t brighten(uint32_t color, float amt) {
 ui::windowframe::windowframe(void) {
   set_flex_padding(ui::edges(TITLE_HEIGHT, PADDING, PADDING, PADDING));
 
-	m_frame_font = gfx::font::get("OpenSans ExtraBold");
+  m_frame_font = gfx::font::get("OpenSans ExtraBold");
   m_icon_font = gfx::font::get("feather");
 
   set_foreground(0x4a4848);
@@ -53,7 +53,8 @@ ui::windowframe::windowframe(void) {
 }
 
 
-ui::windowframe::~windowframe(void) {}
+ui::windowframe::~windowframe(void) {
+}
 
 
 void ui::windowframe::mouse_event(ui::mouse_event &ev) {
@@ -80,19 +81,19 @@ void ui::windowframe::paint_event(void) {
     r.w = width();
 
     m_frame_font->with_line_height(12, [&]() {
-       s.draw_text(*m_frame_font, r, ((ui::window *)surface())->m_name, ui::TextAlign::Center, get_foreground(), true);
+      s.draw_text(*m_frame_font, r, ((ui::window *)surface())->m_name, ui::TextAlign::Center,
+                  get_foreground(), true);
     });
 
 
 
     if (0) {
       int lh = 18;
-      m_icon_font->with_line_height(
-          lh, fn() {
-            int x = 5;
-            int y = lh + 4;
-            m_icon_font->draw(x, y, s, ui::icon::x_square, get_foreground());
-          });
+      m_icon_font->with_line_height(lh, [&]() {
+        int x = 5;
+        int y = lh + 4;
+        m_icon_font->draw(x, y, s, ui::icon::x_square, get_foreground());
+      });
     }
   }
   invalidate();
@@ -115,7 +116,8 @@ ui::window::window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bit
 }
 
 
-ui::window::~window(void) {}
+ui::window::~window(void) {
+}
 
 void ui::windowframe::set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
   set_background(bg);
@@ -181,7 +183,9 @@ printf("invalidation of %d region(s) took %.2fms\n", m_pending_invalidations.siz
 }
 
 
-ui::view *ui::window::root_view(void) { return m_frame.get(); }
+ui::view *ui::window::root_view(void) {
+  return m_frame.get();
+}
 
 gfx::point last_pos;
 
@@ -203,7 +207,6 @@ void ui::window::handle_input(struct lumen::input_msg &msg) {
       if (focused) focused->event(ev);
     }
   } else if (msg.type == LUMEN_INPUT_MOUSE) {
-
     int clicked = (msg.mouse.buttons & (LUMEN_MOUSE_LEFT_CLICK | LUMEN_MOUSE_RIGHT_CLICK));
     /* What buttons where pressed */
     int pressed = ~mouse_down & clicked;
@@ -218,22 +221,22 @@ void ui::window::handle_input(struct lumen::input_msg &msg) {
     if (pressed & LUMEN_MOUSE_LEFT_CLICK) last_lclick = pos;
     if (pressed & LUMEN_MOUSE_RIGHT_CLICK) last_rclick = pos;
 
-		if ((clicked | released) & LUMEN_MOUSE_LEFT_CLICK) pos = last_lclick;
-		if ((clicked | released) & LUMEN_MOUSE_RIGHT_CLICK) pos = last_rclick;
+    if ((clicked | released) & LUMEN_MOUSE_LEFT_CLICK) pos = last_lclick;
+    if ((clicked | released) & LUMEN_MOUSE_RIGHT_CLICK) pos = last_rclick;
 
 
     ui::mouse_event ev;
     ev.x = pos.x();
     ev.y = pos.y();
 
-		ev.ox = msg.mouse.hx - ev.x;
-		ev.oy = msg.mouse.hy - ev.y;
+    ev.ox = msg.mouse.hx - ev.x;
+    ev.oy = msg.mouse.hy - ev.y;
     ev.dx = msg.mouse.dx;
     ev.dy = msg.mouse.dy;
     ev.left = (msg.mouse.buttons & LUMEN_MOUSE_LEFT_CLICK) != 0;
     ev.right = (msg.mouse.buttons & LUMEN_MOUSE_RIGHT_CLICK) != 0;
-		ev.pressed = pressed;
-		ev.released = pressed;
+    ev.pressed = pressed;
+    ev.released = pressed;
 
     /*
 if (pressed & LUMEN_MOUSE_LEFT_CLICK) printf("pressed left click\n");
@@ -256,11 +259,13 @@ if (released & LUMEN_MOUSE_RIGHT_CLICK) printf("released right click\n");
 
 
 
-void ui::window::did_reflow(void) { this->m_pending_reflow = false; }
+void ui::window::did_reflow(void) {
+  this->m_pending_reflow = false;
+}
 
 void ui::window::schedule_reflow(void) {
   if (!m_pending_reflow) {
-    ck::eventloop::defer(fn() { reflow(); });
+    ck::eventloop::defer([this]() { reflow(); });
   }
 }
 

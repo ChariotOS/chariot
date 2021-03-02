@@ -85,7 +85,7 @@ struct thread_context {
   rv::xsize_t s9;   // 80
   rv::xsize_t s10;  // 88
   rv::xsize_t s11;  // 96
-	rv::xsize_t ra; // return address
+  rv::xsize_t ra;   // return address
 };
 #endif
 
@@ -119,13 +119,14 @@ struct thread_context {
   unsigned long r27;
   unsigned long r28;
   unsigned long r29;
-  unsigned long pc;  // technically, this register is lr (x30), but chariot expects 
+  unsigned long pc;  // technically, this register is lr (x30), but chariot expects
 };
 #endif
 
 using pid_t = int;
 using uid_t = int;
 using gid_t = int;
+
 
 struct process_user_info {
   // user and group information
@@ -197,7 +198,8 @@ struct process final : public refcounted<struct process> {
   vec<string> env;
 
   bool exited = 0;
-  int exit_code = 0;
+  uint8_t exit_code = 0;
+  uint8_t exit_signal = 0;
 
   mm::space *mm;
 
@@ -245,7 +247,10 @@ struct process final : public refcounted<struct process> {
   // just walks the threads and checks they are all zombie
   bool is_dead(void);
 
-  inline process() {}
+  void terminate(int signal);
+
+  inline process() {
+  }
   process(const process &) = delete;
   ~process(void);
 };
@@ -334,7 +339,7 @@ struct thread final {
   // register contexts
   struct thread_context *kern_context;
   reg_t *trap_frame;
-	off_t userspace_sp = 0;
+  off_t userspace_sp = 0;
   struct thread_waitqueue_info wq;
 
 
@@ -410,6 +415,17 @@ namespace sched {
   // run a signal on the current thread
   void dispatch_signal(int sig);
 
+  /* 
+	 * Claims a signal to be handled next. This is called from the
+   * architecture before returning to userspace.
+   * 
+	 * Returns -1 if there is no signal, 0 if there is one
+	 *
+	 * This function may not return if the default action (or the required action)
+	 * is to kill the process.
+   */
+  int claim_next_signal(int &sig, void *&handler);
+
   bool init(void);
 
   bool enabled();
@@ -424,10 +440,7 @@ namespace sched {
 
 
 
-	enum yieldres {
-		None,
-		Interrupt
-	};
+  enum yieldres { None, Interrupt };
 
   yieldres yield(void);
   yieldres do_yield(int status);

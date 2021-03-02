@@ -6,7 +6,7 @@
 #include <module.h>
 
 
-#define PTY_DEBUG
+// #define PTY_DEBUG
 
 #ifdef PTY_DEBUG
 #define DBG(fmt, args...) printk(KERN_DEBUG fmt, ##args);
@@ -24,13 +24,13 @@ static int pts_poll(fs::file &f, int events, poll_table &pt);
 
 
 void pty::write_in(char c) {
-  DBG("pts::write_in '%c'\n", c);
+  // DBG("pts::write_in '%c'\n", c);
   //
   in.write(&c, 1, true);
 }
 
 void pty::write_out(char c, bool block) {
-  DBG("pts::write_out '%c'\n", c);
+  // DBG("pts::write_out '%c'\n", c);
   //
   out.write(&c, 1, block);
 }
@@ -67,7 +67,7 @@ static int allocate_pts() {
     if (!pts.contains(i)) {
       pts[i] = new pty();
 
-      dev::register_name(pts_driver, string::format("vpty%d", i), i);
+      dev::register_name(pts_driver, string::format("vtty%d", i), i);
       break;
     } else {
       // if nobody is controlling this pts, return it

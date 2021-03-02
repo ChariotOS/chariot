@@ -6,6 +6,7 @@ section .data
 section .text
 
 extern libc_start
+extern sysbind_sigreturn
 
 global _start
 _start:
@@ -21,6 +22,11 @@ _start:
 	.invalid_loop:
 		mov rax, [0x00]
 		jmp .invalid_loop
+
+global __signal_return_callback
+__signal_return_callback:
+	mov rdi, rsp
+	call sysbind_sigreturn
 
 ; set the dynamic linker
 ; section .interp

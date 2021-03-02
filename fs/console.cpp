@@ -127,9 +127,15 @@ static int console_poll(fs::file& fd, int events, poll_table& pt) {
   return console_fifo.poll(pt) & events & AWAITFS_READ;
 }
 
+static int console_ioctl(fs::file &fd, unsigned int cmd, off_t arg) {
+	return ctty.ioctl(cmd, arg);
+}
+
+
 struct fs::file_operations console_ops = {
     .read = console_read,
     .write = console_write,
+		.ioctl = console_ioctl,
     .open = console_open,
     .close = console_close,
     .poll = console_poll,

@@ -82,6 +82,12 @@ jmp_to_userspace:
     iretq
 
 
+;; rsi is the stack pointer
+global x86_enter_userspace
+x86_enter_userspace:
+	mov rsp, rdi
+	jmp trapret
+
 
 global fork_return
 fork_return:

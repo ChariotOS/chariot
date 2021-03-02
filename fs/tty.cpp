@@ -1,7 +1,11 @@
 #include <dev/driver.h>
 #include <fs/tty.h>
+#include <errno.h>
+#include <termios.h>
 
-static int is_control(int c) { return c < ' ' || c == 0x7F; }
+static int is_control(int c) {
+  return c < ' ' || c == 0x7F;
+}
 
 
 void tty::reset(void) {
@@ -33,7 +37,7 @@ void tty::reset(void) {
 
 
 tty::tty(void) {
-	reset();
+  reset();
 }
 tty::~tty(void) {
   // TODO: remove from the storage
@@ -44,7 +48,22 @@ void tty::write_in(char c) { in.write(&c, 1, true); }
 void tty::write_out(char c, bool block) { out.write(&c, 1, block); }
 */
 
-string tty::name(void) { return string::format("/dev/pts%d", index); }
+string tty::name(void) {
+  return string::format("/dev/pts%d", index);
+}
+
+int tty::ioctl(unsigned int cmd, off_t arg) {
+  if (cmd == TIOCSPGRP) {
+    fg_proc = arg;
+    // printk(KERN_INFO "Setting PTY group to %d", fg_proc);
+    return 0;
+  }
+  if (cmd == TIOCSPGRP) {
+    return TIOCSPGRP;
+  }
+
+	return -EINVAL;
+}
 
 void tty::handle_input(char c) {
   if (next_is_verbatim) {
@@ -78,11 +97,10 @@ void tty::handle_input(char c) {
       }
       canonical_buf.clear();
       if (fg_proc) {
-        printk("[tty] would send signal %d to group %d\n", sig, fg_proc);
+				sched::proc::send_signal(-fg_proc, sig);
       } else {
-
         printk("[tty] would send signal %d but has no group\n", sig);
-			}
+      }
       return;
     }
   }
@@ -217,5 +235,4 @@ void tty::output(char c, bool block) {
 
   write_out(c, block);
 }
-
 

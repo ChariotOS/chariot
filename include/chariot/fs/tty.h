@@ -45,6 +45,8 @@ struct tty : public refcounted<tty> {
   inline void echo(char c) { output(c, false); }
   void dump_input_buffer(void);
 
+	int ioctl(unsigned int cmd, off_t arg);
+
   void erase_one(int erase);
 
   string name(void);

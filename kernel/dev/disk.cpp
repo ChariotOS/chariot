@@ -90,7 +90,7 @@ static struct dev::driver_info disk_driver_info {
 };
 
 static int add_drive(const string& name, dev::disk* drive) {
-  printk(KERN_INFO "Add drive '%s' %p\n", name.get(), drive);
+  printk(KERN_INFO "Add drive '%s'\n", name.get());
   int minor = m_disks.size();
   // KINFO("Detected ATA drive '%s'\n", name.get(), MAJOR_ATA);
   m_disks.push(drive);

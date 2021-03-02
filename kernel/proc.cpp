@@ -82,7 +82,7 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
 
 
 
-  // This check is needed because the kernel syscall.has no parent.
+  // This check is needed because the kernel has no parent.
   if (proc.parent) {
     proc.user = proc.parent->user;  // inherit the user information
     proc.ppid = proc.parent->pid;
@@ -90,6 +90,9 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
 
     proc.root = geti(proc.parent->root);
     proc.cwd = geti(proc.parent->cwd);
+
+		/* copy the signal structure */
+		proc.sig = proc.parent->sig;
 
 
     // are we forking?
@@ -124,12 +127,6 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
   return proc_ptr;
 }
 
-/**
- * Internally, there is no "process table" that keeps track of processes. They
- * are only accessed (and owned) by the tasks that are a member of them. Very
- * democratic. This assures that the lifetime of a process is no longer than
- * that of the constituent tasks.
- */
 process::ptr sched::proc::spawn_process(struct process *parent, int flags) {
   // grab the next pid (will be the tid of the main thread when it is executed)
   pid_t pid = get_next_pid();
@@ -142,7 +139,7 @@ process::ptr sched::proc::spawn_process(struct process *parent, int flags) {
   if (proc_ptr.get() == NULL) return nullptr;
 
   proc_ptr->pid = pid;
-  proc_ptr->pgid = pid;  // pgid == pid (if no parent)
+  proc_ptr->pgid = parent == NULL ? pid : parent->pgid;  // pgid == pid (if no parent)
 
   // Set up initial data for the process.
   proc_ptr->parent = parent;
@@ -430,6 +427,14 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
 int sched::proc::send_signal(pid_t p, int sig) {
   // TODO: handle process group signals
   if (p < 0) {
+    int err = -ESRCH;
+    pid_t pgid = -p;
+    sched::proc::in_pgrp(pgid, [&](struct process &p) -> bool {
+      err = sched::proc::send_signal(p.pid, sig);
+      if (err < 0) return false;
+      return true;
+    });
+
     return -ENOTIMPL;
   }
 
@@ -465,10 +470,12 @@ int sched::proc::reap(process::ptr p) {
 
 
   int f = 0;
+
+  f |= (p->exit_signal & 0xFF);
   f |= (p->exit_code & 0xFF) << 8;
 
 #ifdef CONFIG_VERBOSE_PROCESS
-  printk("reap (p:%d) on cpu %d\n", p->pid, cpu::current().cpunum);
+  printk("reap (p:%d, pg:%d) on cpu %d\n", p->pid, p->pgid, cpu::current().cpunum);
   auto usage = p->mm->memory_usage();
   printk("  ram usage: %zu Kb (%zu b)\n", usage / KB, usage);
 #endif
@@ -514,6 +521,14 @@ int sched::proc::reap(process::ptr p) {
   ptable_remove(p->pid);
 
   return f;
+}
+
+
+void process::terminate(int signal) {
+  /* top bit of the first byte means it was signalled. Everything else is the signal that killed it
+   */
+  this->exit_signal = signal | 0x80;
+  sys::exit_proc(signal + 128);
 }
 
 
@@ -867,10 +882,10 @@ int sys::fork(void) {
 
 
 int sys::sigwait() {
-	// :^) this is a bit of a hack. Just allocate a waitqueue on
-	// the stack and wait on it (allowing signals)
-	wait_queue wq;
-	wait_entry ent;
+  // :^) this is a bit of a hack. Just allocate a waitqueue on
+  // the stack and wait on it (allowing signals)
+  wait_queue wq;
+  wait_entry ent;
 
   ent.flags = 0;
   ent.wq = &wq;
@@ -883,8 +898,8 @@ int sys::sigwait() {
   ent.wq->lock.unlock();
 
 
-	ent.start();
+  ent.start();
 
-	/* TODO: Mask? Return which signal was handled? */
-	return 0;
+  /* TODO: Mask? Return which signal was handled? */
+  return 0;
 }

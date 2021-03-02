@@ -24,11 +24,11 @@ int sigfillset(sigset_t *s) {
 }
 
 int sigaddset(sigset_t *set, int sig) {
-  if (sig < 1 || sig > 32) {
+  if (sig < 0 || sig > 32) {
     errno = EINVAL;
     return -1;
   }
-  *set |= 1 << (sig - 1);
+  *set |= 1 << (sig);
   return 0;
 }
 
@@ -78,13 +78,6 @@ signal_handler_t signal(int sig, signal_handler_t handler) {
   new_act.sa_mask = 0;
   int rc = sigaction(sig, &new_act, &old_act);
   if (rc < 0) return SIG_ERR;
+
   return old_act.sa_handler;
-}
-
-
-void __signal_return_callback(void) {
-  // just forward to the sigreturn syscall (no libc binding)
-  sysbind_sigreturn();
-
-  /* [does not return] */
 }

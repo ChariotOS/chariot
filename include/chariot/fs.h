@@ -212,6 +212,9 @@ namespace fs {
 #define T_SYML 6
 #define T_SOCK 7
 
+// TTY file
+#define T_TTY 8
+
   struct file_ownership {
     int uid;
     int gid;

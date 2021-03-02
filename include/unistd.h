@@ -46,6 +46,9 @@ pid_t gettid(void);
 pid_t getpid(void);
 
 
+int setpgid(pid_t pid, pid_t pgid);
+pid_t getpgid(pid_t pid);
+
 uid_t getuid(void);
 uid_t geteuid(void);
 gid_t getgid(void);

@@ -58,7 +58,7 @@ void ui::view::repaint(bool do_invalidate) {
   }
 
   paint_event();
-  each_child(fn(auto &c) { c.repaint(false); });
+  each_child([](auto &c) { c.repaint(false); });
   if (do_invalidate) invalidate();
 }
 
@@ -83,7 +83,7 @@ void ui::view::dispatch_mouse_event(ui::mouse_event &event) {
 
   // what we do here is based on what kind of event we have.
   bool sent_to_child = false;
-  each_child(fn(auto &child) {
+  each_child([&](auto &child) {
     if (sent_to_child) return;
     // if the mouse event is within the child, send it there instead
     auto crel = child.relative();

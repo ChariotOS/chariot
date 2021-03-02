@@ -39,7 +39,6 @@ unsigned arch_trapframe_size() {
 }
 
 void arch_initialize_trapframe(bool userspace, reg_t *r) {
-#ifdef __x86_64__
   if (userspace) {
     r[18 /* CS */] = (SEG_UCODE << 3) | DPL_USER;
     r[21 /* DS */] = (SEG_UDATA << 3) | DPL_USER;
@@ -49,9 +48,5 @@ void arch_initialize_trapframe(bool userspace, reg_t *r) {
     r[21 /* DS */] = (SEG_UDATA << 3) | DPL_KERN;
     r[19 /* FL */] = FL_IF | readeflags();
   }
-  return;
-#endif
-
-  panic("initialize_trapframe: unimplemneted\n");
 }
 

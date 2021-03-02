@@ -135,115 +135,123 @@ int sysbind_getegid() {
     return (int)__syscall_eintr(32, 0, 0, 0, 0, 0, 0);
 }
 
+int sysbind_setpgid(int pid, int pgid) {
+    return (int)__syscall_eintr(33, (unsigned long long)pid, (unsigned long long)pgid, 0, 0, 0, 0);
+}
+
+int sysbind_getpgid(int pid) {
+    return (int)__syscall_eintr(34, (unsigned long long)pid, 0, 0, 0, 0, 0);
+}
+
 void* sysbind_mmap(void * addr, long length, int prot, int flags, int fd, long offset) {
-    return (void*)__syscall_eintr(33, (unsigned long long)addr, (unsigned long long)length, (unsigned long long)prot, (unsigned long long)flags, (unsigned long long)fd, (unsigned long long)offset);
+    return (void*)__syscall_eintr(35, (unsigned long long)addr, (unsigned long long)length, (unsigned long long)prot, (unsigned long long)flags, (unsigned long long)fd, (unsigned long long)offset);
 }
 
 int sysbind_munmap(void* addr, size_t length) {
-    return (int)__syscall_eintr(34, (unsigned long long)addr, (unsigned long long)length, 0, 0, 0, 0);
+    return (int)__syscall_eintr(36, (unsigned long long)addr, (unsigned long long)length, 0, 0, 0, 0);
 }
 
 int sysbind_mrename(void * addr, char* name) {
-    return (int)__syscall_eintr(35, (unsigned long long)addr, (unsigned long long)name, 0, 0, 0, 0);
+    return (int)__syscall_eintr(37, (unsigned long long)addr, (unsigned long long)name, 0, 0, 0, 0);
 }
 
 int sysbind_mgetname(void* addr, char* name, size_t sz) {
-    return (int)__syscall_eintr(36, (unsigned long long)addr, (unsigned long long)name, (unsigned long long)sz, 0, 0, 0);
+    return (int)__syscall_eintr(38, (unsigned long long)addr, (unsigned long long)name, (unsigned long long)sz, 0, 0, 0);
 }
 
 int sysbind_mregions(struct mmap_region * regions, int nregions) {
-    return (int)__syscall_eintr(37, (unsigned long long)regions, (unsigned long long)nregions, 0, 0, 0, 0);
+    return (int)__syscall_eintr(39, (unsigned long long)regions, (unsigned long long)nregions, 0, 0, 0, 0);
 }
 
 unsigned long sysbind_mshare(int action, void* arg) {
-    return (unsigned long)__syscall_eintr(38, (unsigned long long)action, (unsigned long long)arg, 0, 0, 0, 0);
+    return (unsigned long)__syscall_eintr(40, (unsigned long long)action, (unsigned long long)arg, 0, 0, 0, 0);
 }
 
 int sysbind_dirent(int fd, struct dirent * ent, int offset, int count) {
-    return (int)__syscall_eintr(39, (unsigned long long)fd, (unsigned long long)ent, (unsigned long long)offset, (unsigned long long)count, 0, 0);
+    return (int)__syscall_eintr(41, (unsigned long long)fd, (unsigned long long)ent, (unsigned long long)offset, (unsigned long long)count, 0, 0);
 }
 
 time_t sysbind_localtime(struct tm* tloc) {
-    return (time_t)__syscall_eintr(40, (unsigned long long)tloc, 0, 0, 0, 0, 0);
+    return (time_t)__syscall_eintr(42, (unsigned long long)tloc, 0, 0, 0, 0, 0);
 }
 
 size_t sysbind_gettime_microsecond() {
-    return (size_t)__syscall_eintr(41, 0, 0, 0, 0, 0, 0);
+    return (size_t)__syscall_eintr(43, 0, 0, 0, 0, 0, 0);
 }
 
 int sysbind_usleep(unsigned long usec) {
-    return (int)__syscall_eintr(42, (unsigned long long)usec, 0, 0, 0, 0, 0);
+    return (int)__syscall_eintr(44, (unsigned long long)usec, 0, 0, 0, 0, 0);
 }
 
 int sysbind_socket(int domain, int type, int proto) {
-    return (int)__syscall_eintr(43, (unsigned long long)domain, (unsigned long long)type, (unsigned long long)proto, 0, 0, 0);
+    return (int)__syscall_eintr(45, (unsigned long long)domain, (unsigned long long)type, (unsigned long long)proto, 0, 0, 0);
 }
 
 ssize_t sysbind_sendto(int sockfd, const void * buf, size_t len, int flags, const struct sockaddr* addr, size_t addrlen) {
-    return (ssize_t)__syscall_eintr(44, (unsigned long long)sockfd, (unsigned long long)buf, (unsigned long long)len, (unsigned long long)flags, (unsigned long long)addr, (unsigned long long)addrlen);
+    return (ssize_t)__syscall_eintr(46, (unsigned long long)sockfd, (unsigned long long)buf, (unsigned long long)len, (unsigned long long)flags, (unsigned long long)addr, (unsigned long long)addrlen);
 }
 
 ssize_t sysbind_recvfrom(int sockfd, void * buf, size_t len, int flags, const struct sockaddr* addr, size_t addrlen) {
-    return (ssize_t)__syscall_eintr(45, (unsigned long long)sockfd, (unsigned long long)buf, (unsigned long long)len, (unsigned long long)flags, (unsigned long long)addr, (unsigned long long)addrlen);
+    return (ssize_t)__syscall_eintr(47, (unsigned long long)sockfd, (unsigned long long)buf, (unsigned long long)len, (unsigned long long)flags, (unsigned long long)addr, (unsigned long long)addrlen);
 }
 
 int sysbind_bind(int sockfd, const struct sockaddr* addr, size_t addrlen) {
-    return (int)__syscall_eintr(46, (unsigned long long)sockfd, (unsigned long long)addr, (unsigned long long)addrlen, 0, 0, 0);
-}
-
-int sysbind_accept(int sockfd, struct sockaddr* addr, size_t addrlen) {
-    return (int)__syscall_eintr(47, (unsigned long long)sockfd, (unsigned long long)addr, (unsigned long long)addrlen, 0, 0, 0);
-}
-
-int sysbind_connect(int sockfd, const struct sockaddr* addr, size_t addrlen) {
     return (int)__syscall_eintr(48, (unsigned long long)sockfd, (unsigned long long)addr, (unsigned long long)addrlen, 0, 0, 0);
 }
 
+int sysbind_accept(int sockfd, struct sockaddr* addr, size_t addrlen) {
+    return (int)__syscall_eintr(49, (unsigned long long)sockfd, (unsigned long long)addr, (unsigned long long)addrlen, 0, 0, 0);
+}
+
+int sysbind_connect(int sockfd, const struct sockaddr* addr, size_t addrlen) {
+    return (int)__syscall_eintr(50, (unsigned long long)sockfd, (unsigned long long)addr, (unsigned long long)addrlen, 0, 0, 0);
+}
+
 int sysbind_signal_init(void * sigret) {
-    return (int)__syscall_eintr(49, (unsigned long long)sigret, 0, 0, 0, 0, 0);
+    return (int)__syscall_eintr(51, (unsigned long long)sigret, 0, 0, 0, 0, 0);
 }
 
 int sysbind_sigaction(int sig, struct sigaction* new_action, struct sigaction* old) {
-    return (int)__syscall_eintr(50, (unsigned long long)sig, (unsigned long long)new_action, (unsigned long long)old, 0, 0, 0);
+    return (int)__syscall_eintr(52, (unsigned long long)sig, (unsigned long long)new_action, (unsigned long long)old, 0, 0, 0);
 }
 
-int sysbind_sigreturn() {
-    return (int)__syscall_eintr(51, 0, 0, 0, 0, 0, 0);
+int sysbind_sigreturn(void* ucontext) {
+    return (int)__syscall_eintr(53, (unsigned long long)ucontext, 0, 0, 0, 0, 0);
 }
 
 int sysbind_sigprocmask(int how, unsigned long set, unsigned long* old_set) {
-    return (int)__syscall_eintr(52, (unsigned long long)how, (unsigned long long)set, (unsigned long long)old_set, 0, 0, 0);
+    return (int)__syscall_eintr(54, (unsigned long long)how, (unsigned long long)set, (unsigned long long)old_set, 0, 0, 0);
 }
 
 int sysbind_kill(int pid, int sig) {
-    return (int)__syscall_eintr(53, (unsigned long long)pid, (unsigned long long)sig, 0, 0, 0, 0);
+    return (int)__syscall_eintr(55, (unsigned long long)pid, (unsigned long long)sig, 0, 0, 0, 0);
 }
 
 int sysbind_awaitfs(struct await_target * fds, int nfds, int flags, long long timeout_time) {
-    return (int)__syscall_eintr(54, (unsigned long long)fds, (unsigned long long)nfds, (unsigned long long)flags, (unsigned long long)timeout_time, 0, 0);
+    return (int)__syscall_eintr(56, (unsigned long long)fds, (unsigned long long)nfds, (unsigned long long)flags, (unsigned long long)timeout_time, 0, 0);
 }
 
 unsigned long sysbind_kshell(char* cmd, int argc, char ** argv, void* data, size_t len) {
-    return (unsigned long)__syscall_eintr(55, (unsigned long long)cmd, (unsigned long long)argc, (unsigned long long)argv, (unsigned long long)data, (unsigned long long)len, 0);
+    return (unsigned long)__syscall_eintr(57, (unsigned long long)cmd, (unsigned long long)argc, (unsigned long long)argv, (unsigned long long)data, (unsigned long long)len, 0);
 }
 
 int sysbind_futex(int* uaddr, int op, int val, int val2, int* uaddr2, int val3) {
-    return (int)__syscall_eintr(56, (unsigned long long)uaddr, (unsigned long long)op, (unsigned long long)val, (unsigned long long)val2, (unsigned long long)uaddr2, (unsigned long long)val3);
+    return (int)__syscall_eintr(58, (unsigned long long)uaddr, (unsigned long long)op, (unsigned long long)val, (unsigned long long)val2, (unsigned long long)uaddr2, (unsigned long long)val3);
 }
 
 int sysbind_sysinfo(struct sysinfo * info) {
-    return (int)__syscall_eintr(57, (unsigned long long)info, 0, 0, 0, 0, 0);
+    return (int)__syscall_eintr(59, (unsigned long long)info, 0, 0, 0, 0, 0);
 }
 
 int sysbind_dnslookup(const char * name, unsigned int* ip4) {
-    return (int)__syscall_eintr(58, (unsigned long long)name, (unsigned long long)ip4, 0, 0, 0, 0);
+    return (int)__syscall_eintr(60, (unsigned long long)name, (unsigned long long)ip4, 0, 0, 0, 0);
 }
 
 int sysbind_shutdown() {
-    return (int)__syscall_eintr(59, 0, 0, 0, 0, 0, 0);
+    return (int)__syscall_eintr(61, 0, 0, 0, 0, 0, 0);
 }
 
 int sysbind_mount(struct mountopts * opts) {
-    return (int)__syscall_eintr(60, (unsigned long long)opts, 0, 0, 0, 0, 0);
+    return (int)__syscall_eintr(62, (unsigned long long)opts, 0, 0, 0, 0, 0);
 }
 

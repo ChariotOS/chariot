@@ -226,14 +226,16 @@ bool thread::teardown(thread *t) {
 bool thread::send_signal(int sig) {
   bool is_self = curthd == this;
 
-  unsigned long pend = (1 << sig);
-  this->sig.pending |= pend;
 #ifdef CONFIG_VERBOSE_PROCESS
   printk("sending signal %d to tid %d\n", sig, tid);
 #endif
 
   bool f;
   if (!is_self) f = locks.run.lock_irqsave();
+
+  unsigned long pend = (1 << sig);
+  this->sig.pending |= pend;
+
   if (state == PS_INTERRUPTIBLE) {
     this->interrupt();
   }

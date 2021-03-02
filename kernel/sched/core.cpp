@@ -263,7 +263,7 @@ void sched::handle_tick(u64 ticks) {
 
 
 static int default_signal_action(int signal) {
-  ASSERT(signal && signal < 64);
+  ASSERT(signal >= 0 && signal < 64);
 
   switch (signal) {
     case SIGHUP:
@@ -307,55 +307,9 @@ static int default_signal_action(int signal) {
   return SIGACT_TERM;
 }
 
-void sched::dispatch_signal(int sig) {
-  if (!cpu::in_thread()) {
-    panic("not in cpu when getting signal %d\n", sig);
-  }
-
-  assert(curthd->sig.handling == -1);
-  curthd->sig.handling = sig; /* TODO this might need some more signal-speicifc logic */
 
 
-  // sanity check
-  if (sig < 0 || sig > 63) return;
-
-  auto &action = curproc->sig.handlers[sig];
-
-  if (sig == SIGSTOP) {
-    printk("TODO: SIGSTOP\n");
-    return;
-  }
-
-  if (sig == SIGCONT) {
-    printk("TODO: SIGCONT\n");
-    // resume_from_stopped();
-  }
-
-  if (action.sa_handler == SIG_DFL) {
-    // handle the default action
-    switch (default_signal_action(sig)) {
-      case SIGACT_STOP:
-        printk("TODO: SIGACT_STOP!\n");
-        return;
-      case SIGACT_TERM:
-        sys::exit_proc(128 + sig);
-        return;
-      case SIGACT_IGNO:
-        return;
-      case SIGACT_CONT:
-        printk("TODO: SIGACT_CONT!\n");
-        return;
-    }
-  }
-
-  // whatver the arch needs to do
-  arch_dispatch_function((void *)action.sa_handler, sig);
-
-  curthd->sig.handling = -1;
-}
-
-
-static void handle_signal(void) {
+int sched::claim_next_signal(int &sig, void *&handler) {
   int sig_to_handle = -1;
 
   if (curthd->sig.handling == -1) {
@@ -370,7 +324,7 @@ static void handle_signal(void) {
               sig_to_handle = i;
               break;
             } else if (default_signal_action(i) == SIGACT_TERM) {
-              sys::exit_proc(128 + i);
+              curproc->terminate(i);
             }
           }
         }
@@ -378,12 +332,54 @@ static void handle_signal(void) {
 
 
       if (sig_to_handle != -1) {
-        sched::dispatch_signal(sig_to_handle);
+        if (!cpu::in_thread()) {
+          panic("not in cpu when getting signal %d\n", sig);
+        }
+
+        assert(curthd->sig.handling == -1);
+
+
+        auto &action = curproc->sig.handlers[sig];
+
+        if (sig == SIGSTOP) {
+          printk("TODO: SIGSTOP\n");
+          return -1;
+        }
+
+        if (sig == SIGCONT) {
+          printk("TODO: SIGCONT\n");
+          // resume_from_stopped();
+        }
+
+        if (action.sa_handler == SIG_DFL) {
+          // handle the default action
+          switch (default_signal_action(sig)) {
+            case SIGACT_STOP:
+              printk("TODO: SIGACT_STOP!\n");
+              return -1;
+            case SIGACT_TERM:
+              curproc->terminate(sig);
+              return -1;
+            case SIGACT_IGNO:
+              return -1;
+            case SIGACT_CONT:
+              printk("TODO: SIGACT_CONT!\n");
+              return -1;
+          }
+        }
+
+        sig = sig_to_handle;
+        curthd->sig.handling = sig; /* TODO this might need some more signal-speicifc logic */
+        handler = (void *)action.sa_handler;
+
+
+        return 0;
       } else {
         break;
       }
     }
   }
+  return -1;
 }
 
 
@@ -392,10 +388,7 @@ void sched::before_iret(bool userspace) {
   // exit via the scheduler if the task should die.
   if (curthd->should_die) sched::exit();
 
-
   if (time::stabilized()) curthd->last_start_utime_us = time::now_us();
-
-  handle_signal();
 
   if (cpu::current().next_thread != NULL) {
     sched::yield();

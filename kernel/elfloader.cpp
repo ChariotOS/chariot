@@ -46,13 +46,13 @@ int elf::each_symbol(fs::file &fd, func<bool(const char *sym, off_t)> cb) {
 
 
   if (!elf::validate(fd, ehdr)) {
-    printk("[ELF LOADER] elf not valid\n");
-    return -1;
+    // printk("[ELF LOADER] elf not valid\n");
+    return -ENOEXEC;
   }
 
 
   if (ehdr.e_shstrndx == SHN_UNDEF) {
-    return -ENOENT;
+    return -ENOEXEC;
   }
 
 
@@ -136,8 +136,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
   p.file_lock.unlock();
 
   if (!elf::validate(*fd, ehdr)) {
-    printk("[ELF LOADER] elf not valid\n");
-    return -1;
+    return -ENOEXEC;
   }
 
   // the binary is valid, so lets read the headers!
@@ -168,7 +167,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
   if (hdrs_read != hdrs_size) {
     delete[] phdr;
     printk("hdrs_read != hdrs_size\n");
-    return -1;
+    return -ENOEXEC;
   }
 
   size_t i = 0;
@@ -179,7 +178,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
   if (i == ehdr.e_phnum) {
     delete[] phdr;
     printk("i == ehdr.e_phnum\n");
-    return -1;
+    return -ENOEXEC;
   }
 
   // Elf places the PT_LOAD segments in ascending order of vaddresses.
