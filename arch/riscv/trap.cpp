@@ -6,7 +6,7 @@
 #include <sched.h>
 #include <time.h>
 #include <util.h>
-
+#include <ucontext.h>
 
 #include <riscv/sbi.h>
 
@@ -195,6 +195,10 @@ void rv_handle_syscall(rv::regs &tf) {
   // printk(KERN_INFO " res = %p\n", tf.a0);
 }
 
+
+extern "C" void __rv_save_fpu(void*);
+extern "C" void __rv_load_fpu(void*);
+
 /* Supervisor trap function */
 extern "C" void kernel_trap(struct rv::regs &tf) {
   bool from_userspace = false;
@@ -352,8 +356,8 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
     if (sched::claim_next_signal(sig, handler) != -1) {
       uint64_t sp = tf.sp;
 
-      sp -= sizeof(tf);
-      auto *uctx = (rv::regs *)sp;
+      sp -= sizeof(struct ucontext);
+      auto *uctx = (struct ucontext *)sp;
       /* save the old context to the user stack */
       if (!VALIDATE_RDWR(uctx, sizeof(*uctx))) {
         printk("not sure what to do here. uctx = %p\n", uctx);
@@ -363,6 +367,9 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
 
       /* Copy the old user context */
       memcpy(uctx, &tf, sizeof(tf));
+			/* Save the fpu */
+			__rv_save_fpu(uctx->fpu);
+
 
       tf.sp = sp;
       tf.a0 = sig;

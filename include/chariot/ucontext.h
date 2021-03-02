@@ -72,7 +72,8 @@ struct ucontext {
   unsigned long resv2; /* 33 */
   unsigned long resv3; /* 34 */
   unsigned long resv4; /* 35 */
-  /* Missing floating point registers in the kernel trap frame */
+
+	unsigned long fpu[32];
 };
 
 #endif
