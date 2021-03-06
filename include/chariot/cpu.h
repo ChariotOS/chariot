@@ -41,6 +41,9 @@ struct processor_state {
 
 	/* The depth of interrupts. If this is not zero, we aren't in an interrupt context */
 	int interrupt_depth = 0;
+
+	// set if the core woke up a thread in this irq context
+	bool woke_someone_up = false;
 };
 
 extern int cpunum;

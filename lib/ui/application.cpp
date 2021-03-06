@@ -11,7 +11,9 @@
 
 static ui::application *the_app = NULL;
 
-ui::application &ui::application::get(void) { return *the_app; }
+ui::application &ui::application::get(void) {
+  return *the_app;
+}
 
 ui::application::application(void) {
   if (the_app != NULL) {
@@ -22,18 +24,20 @@ ui::application::application(void) {
   the_app = this;
   sock.connect("/usr/servers/lumen");
 
-  sock.on_read([this] {
-    drain_messages();
-    dispatch_messages();
-  });
+  if (sock.connected()) {
+    sock.on_read([this] {
+      drain_messages();
+      dispatch_messages();
+    });
 
 
-  struct lumen::greet_msg greet = {0};
-  struct lumen::greetback_msg greetback = {0};
+    struct lumen::greet_msg greet = {0};
+    struct lumen::greetback_msg greetback = {0};
 
-  greet.pid = getpid();
-  if (send_msg_sync(LUMEN_MSG_GREET, greet, &greetback)) {
-    // printf("my guest id is %d!\n", greetback.guest_id);
+    greet.pid = getpid();
+    if (send_msg_sync(LUMEN_MSG_GREET, greet, &greetback)) {
+      // printf("my guest id is %d!\n", greetback.guest_id);
+    }
   }
 }
 
@@ -53,7 +57,7 @@ long ui::application::send_raw(int type, void *payload, size_t payloadsize) {
   size_t msgsize = payloadsize + sizeof(lumen::msg);
   auto msg = (lumen::msg *)malloc(msgsize);
 
-	long id = nextmsgid();
+  long id = nextmsgid();
 
   msg->magic = LUMEN_MAGIC;
   msg->type = type;
@@ -66,7 +70,7 @@ long ui::application::send_raw(int type, void *payload, size_t payloadsize) {
   // msg->type);
   auto w = sock.write((const void *)msg, msgsize);
 
-	if (w < 0) return -1;
+  if (w < 0) return -1;
 
   free(msg);
   return id;
@@ -103,10 +107,9 @@ static ck::vec<lumen::msg *> drain_messages_from(ck::ipcsocket &sock, bool &fail
   return msgs;
 }
 
-lumen::msg *ui::application::send_raw_sync(int type, void *payload,
-                                           size_t payloadsize) {
-	long req_id = send_raw(type, payload, payloadsize);
-	if (req_id == -1) return NULL;
+lumen::msg *ui::application::send_raw_sync(int type, void *payload, size_t payloadsize) {
+  long req_id = send_raw(type, payload, payloadsize);
+  if (req_id == -1) return NULL;
 
   lumen::msg *response = NULL;
 
@@ -134,8 +137,8 @@ void ui::application::drain_messages(void) {
 
 
   for (auto *msg : msgs) {
-		m_pending_messages.push(msg);
-	}
+    m_pending_messages.push(msg);
+  }
 }
 
 
@@ -165,13 +168,14 @@ void ui::application::dispatch_messages(void) {
 }
 
 
-void ui::application::start(void) { m_eventloop.start(); }
+void ui::application::start(void) {
+  m_eventloop.start();
+}
 
 
 ui::window *ui::application::new_window(ck::string name, int w, int h) {
-
-	w += ui::windowframe::PADDING * 2;
-	h += ui::windowframe::PADDING + ui::windowframe::TITLE_HEIGHT;
+  w += ui::windowframe::PADDING * 2;
+  h += ui::windowframe::PADDING + ui::windowframe::TITLE_HEIGHT;
   struct lumen::create_window_msg msg;
   msg.width = w;
   msg.height = h;
@@ -181,13 +185,12 @@ ui::window *ui::application::new_window(ck::string name, int w, int h) {
   struct lumen::window_created_msg res = {0};
 
 
-	bool response = send_msg_sync(LUMEN_MSG_CREATE_WINDOW, msg, &res);
+  bool response = send_msg_sync(LUMEN_MSG_CREATE_WINDOW, msg, &res);
 
   if (response) {
     if (res.window_id >= 0) {
-      auto win = ck::make_unique<ui::window>(
-          res.window_id, name, gfx::rect(0, 0, w, h),
-          gfx::shared_bitmap::get(res.bitmap_name, w, h));
+      auto win = ck::make_unique<ui::window>(res.window_id, name, gfx::rect(0, 0, w, h),
+                                             gfx::shared_bitmap::get(res.bitmap_name, w, h));
       m_windows.set(res.window_id, move(win));
       return m_windows.get(res.window_id).get();
     }

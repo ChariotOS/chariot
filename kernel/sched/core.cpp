@@ -19,9 +19,9 @@
 #define TIMESLICE_MIN 4
 
 #ifdef SCHED_DEBUG
-#define INFO(fmt, args...) printk("[SCHED] " fmt, ##args)
+#  define INFO(fmt, args...) printk("[SCHED] " fmt, ##args)
 #else
-#define INFO(fmt, args...)
+#  define INFO(fmt, args...)
 #endif
 
 extern "C" void context_switch(struct thread_context **, struct thread_context *);
@@ -386,9 +386,18 @@ int sched::claim_next_signal(int &sig, void *&handler) {
 
 
 void sched::before_iret(bool userspace) {
+  auto &c = cpu::current();
+
+  if (c.woke_someone_up) {
+		c.woke_someone_up = false;
+    sched::yield();
+    return;
+  }
+
   if (!cpu::in_thread()) return;
   // exit via the scheduler if the task should die.
   if (curthd->should_die) sched::exit();
+
 
   if (time::stabilized()) curthd->last_start_utime_us = time::now_us();
 

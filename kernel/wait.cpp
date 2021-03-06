@@ -41,13 +41,20 @@ void wait_queue::wake_up_common(unsigned int mode, int nr_exclusive, int wake_fl
   int pid = 0;
   if (curproc) pid = curproc->pid;
 
+	bool woke_someone = false;
+
   struct wait_entry *curr, *next;
   list_for_each_entry_safe(curr, next, &task_list, item) {
     unsigned flags = curr->flags;
-    if (curr->func(curr, mode, wake_flags, key) && (flags & WQ_FLAG_EXCLUSIVE) && !--nr_exclusive) {
+		bool woke_up = curr->func(curr, mode, wake_flags, key);
+		/* TODO: you could do a priority system here? */
+		if (woke_up) woke_someone = true;
+    if (woke_up && (flags & WQ_FLAG_EXCLUSIVE) && !--nr_exclusive) {
       break;
     }
   }
+
+	if (woke_someone) cpu::current().woke_someone_up = true;
 }
 
 

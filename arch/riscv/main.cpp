@@ -1,6 +1,6 @@
 #include <asm.h>
 #include <cpu.h>
-#include <dev/virtio_mmio.h>
+#include <dev/virtio/mmio.h>
 #include <devicetree.h>
 #include <fs/vfs.h>
 #include <module.h>
@@ -207,7 +207,7 @@ void main(int hartid, void *fdt) {
         hexdump(flash, 256, true);
       }
       if (!strcmp(node->compatible, "virtio,mmio")) {
-        virtio::check_mmio(node->address);
+        virtio::check_mmio((void*)node->address, node->irq);
       }
       return true;
     });

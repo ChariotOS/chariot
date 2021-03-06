@@ -35,8 +35,9 @@ namespace dtb {
     char compatible[32];
 		bool is_device;
 
-    int address_cells;
-    int size_cells;
+    short address_cells;
+    short size_cells;
+		short irq;
 
 		dtb::reg reg;
 

@@ -370,7 +370,6 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
 			/* Save the fpu */
 			__rv_save_fpu(uctx->fpu);
 
-
       tf.sp = sp;
       tf.a0 = sig;
       tf.a1 = 0;

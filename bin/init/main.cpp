@@ -2,6 +2,7 @@
 #include <chariot/dirent.h>
 #include <chariot/futex.h>
 #include <ck/eventloop.h>
+#include <ck/socket.h>
 #include <ck/thread.h>
 #include <ck/vec.h>
 #include <errno.h>
@@ -123,9 +124,8 @@ void print_vector(ck::vec<int> &vec) {
 pid_t spawn(const char *command) {
   int pid = fork();
   if (pid == 0) {
-
-		// they get their own pgid
-		setpgid(0, 0);
+    // they get their own pgid
+    setpgid(0, 0);
     const char *args[] = {"/bin/sh", "-c", (char *)command, NULL};
     // debug_hexdump(args, sizeof(args));
     execve("/bin/sh", args, (const char **)environ);
@@ -200,20 +200,19 @@ struct init_job {};
 
 
 static void sigchld_handler(int) {
-	while (1) {
-		int status = 0;
-		/* Reap everyone available to be reaped */
-  	pid_t pid = waitpid(-1, &status, WNOWAIT);
-		if (pid < 0) break;
+  while (1) {
+    int status = 0;
+    /* Reap everyone available to be reaped */
+    pid_t pid = waitpid(-1, &status, WNOWAIT);
+    if (pid < 0) break;
 
 
-		if (WIFSIGNALED(status)) {
-			printf("[init] process %d terminated by signal %d\n", pid, WTERMSIG(status));
-		} else {
-			printf("[init] process %d exited with code %d\n", pid, WEXITSTATUS(status));
-		}
-
-	}
+    if (WIFSIGNALED(status)) {
+      printf("[init] process %d terminated by signal %d\n", pid, WTERMSIG(status));
+    } else {
+      printf("[init] process %d exited with code %d\n", pid, WEXITSTATUS(status));
+    }
+  }
 }
 
 
@@ -240,7 +239,7 @@ int main(int argc, char **argv) {
   sigprocmask(SIG_SETMASK, &set, NULL);
 
   printf("[init] hello, friend\n");
-  system("cat /cfg/motd");
+  // system("cat /cfg/motd");
 
   /* Handle SIGCHLD in the  */
   signal(SIGCHLD, sigchld_handler);
@@ -269,63 +268,21 @@ int main(int argc, char **argv) {
 
 #endif
 
+  ck::eventloop ev;
 
+  ck::ipcsocket server;
 
-  if (0) {
-    int ptmxfd = open("/dev/ptmx", O_RDWR | O_CLOEXEC);
-
-
-    system("ls -la /dev");
-
-    ck::eventloop ev;
-    int pid = sysbind_fork();
-    if (pid == 0) {
-      const char *pts_name = ptsname(ptmxfd);
-      printf("pts: %s\n", pts_name);
-      ck::file pts;
-      pts.open(pts_name, "r+");
-
-
-      pts.on_read([&]() {
-        char data[32];
-        auto n = pts.read(data, 32);
-        printf("got %d, %d\n", n, errno);
-        if (n < 0) return;
-        ck::hexdump(data, n);
-      });
-
-      ev.start();
-    } else {
-      ck::file ptmx(ptmxfd);
-
-      // send input
-      ck::in.on_read([&]() {
-        int c = getchar();
-        if (c == EOF) return;
-        ptmx.write(&c, 1);
-      });
-
-
-      // echo output
-      ptmx.on_read([&]() {
-        char buf[512];
-        auto n = ptmx.read(buf, 512);
-        if (n < 0) {
-          perror("ptmx read");
-          return;
-        }
-        ck::out.write(buf, n);
-      });
-
-      ev.start();
-    }
-  }
+  system("touch /tmp/initd.sock");
+  server.listen("/tmp/initd.sock", [] { printf("nice.\n"); });
 
   spawn("/bin/sh");
+
+  ev.start();
 
   while (1) {
     sysbind_sigwait();
     printf("got a signal!\n");
   }
 }
+
 

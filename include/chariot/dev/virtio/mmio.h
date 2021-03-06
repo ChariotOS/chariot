@@ -9,22 +9,22 @@ namespace virtio {
 
 
 #define VIRTIO_MMIO_MAGIC_VALUE 0x000  // 0x74726976
-#define VIRTIO_MMIO_VERSION 0x004  // version; 1 is legacy
-#define VIRTIO_MMIO_DEVICE_ID 0x008  // device type; 1 is net, 2 is disk
-#define VIRTIO_MMIO_VENDOR_ID 0x00c  // 0x554d4551
+#define VIRTIO_MMIO_VERSION 0x004      // version; 1 is legacy
+#define VIRTIO_MMIO_DEVICE_ID 0x008    // device type; 1 is net, 2 is disk
+#define VIRTIO_MMIO_VENDOR_ID 0x00c    // 0x554d4551
 #define VIRTIO_MMIO_DEVICE_FEATURES 0x010
 #define VIRTIO_MMIO_DRIVER_FEATURES 0x020
-#define VIRTIO_MMIO_GUEST_PAGE_SIZE 0x028  // page size for PFN, write-only
-#define VIRTIO_MMIO_QUEUE_SEL 0x030  // select queue, write-only
-#define VIRTIO_MMIO_QUEUE_NUM_MAX 0x034  // max size of current queue, read-only
-#define VIRTIO_MMIO_QUEUE_NUM 0x038  // size of current queue, write-only
-#define VIRTIO_MMIO_QUEUE_ALIGN 0x03c  // used ring alignment, write-only
-#define VIRTIO_MMIO_QUEUE_PFN 0x040  // physical page number for queue, read/write
-#define VIRTIO_MMIO_QUEUE_READY 0x044  // ready bit
-#define VIRTIO_MMIO_QUEUE_NOTIFY 0x050  // write-only
+#define VIRTIO_MMIO_GUEST_PAGE_SIZE 0x028   // page size for PFN, write-only
+#define VIRTIO_MMIO_QUEUE_SEL 0x030         // select queue, write-only
+#define VIRTIO_MMIO_QUEUE_NUM_MAX 0x034     // max size of current queue, read-only
+#define VIRTIO_MMIO_QUEUE_NUM 0x038         // size of current queue, write-only
+#define VIRTIO_MMIO_QUEUE_ALIGN 0x03c       // used ring alignment, write-only
+#define VIRTIO_MMIO_QUEUE_PFN 0x040         // physical page number for queue, read/write
+#define VIRTIO_MMIO_QUEUE_READY 0x044       // ready bit
+#define VIRTIO_MMIO_QUEUE_NOTIFY 0x050      // write-only
 #define VIRTIO_MMIO_INTERRUPT_STATUS 0x060  // read-only
-#define VIRTIO_MMIO_INTERRUPT_ACK 0x064  // write-only
-#define VIRTIO_MMIO_STATUS 0x070  // read/write
+#define VIRTIO_MMIO_INTERRUPT_ACK 0x064     // write-only
+#define VIRTIO_MMIO_STATUS 0x070            // read/write
 
 // status register bits, from qemu virtio_config.h
 #define VIRTIO_CONFIG_S_ACKNOWLEDGE 1
@@ -32,10 +32,10 @@ namespace virtio {
 #define VIRTIO_CONFIG_S_DRIVER_OK 4
 #define VIRTIO_CONFIG_S_FEATURES_OK 8
 
-#define VIRTIO_BLK_F_RO 5 /* Disk is read-only */
-#define VIRTIO_BLK_F_SCSI 7 /* Supports scsi command passthru */
+#define VIRTIO_BLK_F_RO 5          /* Disk is read-only */
+#define VIRTIO_BLK_F_SCSI 7        /* Supports scsi command passthru */
 #define VIRTIO_BLK_F_CONFIG_WCE 11 /* Writeback mode available in config */
-#define VIRTIO_BLK_F_MQ 12 /* support more than one vq */
+#define VIRTIO_BLK_F_MQ 12         /* support more than one vq */
 #define VIRTIO_F_ANY_LAYOUT 27
 #define VIRTIO_RING_F_INDIRECT_DESC 28
 #define VIRTIO_RING_F_EVENT_IDX 29
@@ -239,7 +239,7 @@ namespace virtio {
     volatile uint32_t config[0];
   } __packed;
 
-	/* The config space for a block device */
+  /* The config space for a block device */
   struct blk_config {
     /* The capacity (in 512-byte sectors). */
     uint64_t capacity;
@@ -319,7 +319,7 @@ namespace virtio {
     uint16_t flags;
     uint16_t next;
   };
-#define VRING_DESC_F_NEXT 1  // chained with another descriptor
+#define VRING_DESC_F_NEXT 1   // chained with another descriptor
 #define VRING_DESC_F_WRITE 2  // device writes (vs read)
 
   // the (entire) avail ring, from the spec.
@@ -345,7 +345,7 @@ namespace virtio {
 
 
 
-#define VIRTIO_BLK_T_IN 0  // read the disk
+#define VIRTIO_BLK_T_IN 0   // read the disk
 #define VIRTIO_BLK_T_OUT 1  // write the disk
 
   // the format of the first descriptor in a disk request.
@@ -360,9 +360,86 @@ namespace virtio {
 
 
   /* Given an address, check it for MMIO magic numbers */
-  int check_mmio(void *addr);
-  /* So we can just write addresses as hex, not having to worry about casting to void* at the call site */
-  inline int check_mmio(off_t addr) { return check_mmio((void *)addr); }
+  int check_mmio(void *addr, int irq);
 
 }  // namespace virtio
+
+
+#define VIO_PGCOUNT 2
+#define VIO_NUM_DESC 8
+#define VIO_MAX_RINGS 4
+
+
+struct vring {
+  bool active = false;
+  uint32_t num;
+  uint32_t num_mask;
+
+  uint16_t free_list; /* head of a free list of descriptors per ring. 0xffff is NULL */
+  uint16_t free_count;
+
+  uint16_t last_used;
+
+  struct virtio::virtq_desc *desc;
+  struct virtio::virtq_avail *avail;
+  struct virtio::virtq_used *used;
+};
+
+
+struct virtio_config {
+  int irqnr; /* The IRQ number for this device */
+             /* TODO: more config :) */
+};
+
+class virtio_mmio_dev {
+ protected:
+  /* Virtual address of the registers */
+  volatile uint32_t *regs = NULL;
+
+ public:
+  struct vring ring[VIO_MAX_RINGS];
+
+
+  inline auto &mmio_regs(void) {
+    return *(virtio::mmio_regs *)regs;
+  }
+  inline volatile uint32_t read_reg(int off) {
+    return *(volatile uint32_t *)((off_t)regs + off);
+  }
+  inline void write_reg(int off, uint32_t val) {
+    *(volatile uint32_t *)((off_t)regs + off) = val;
+  }
+  virtio_mmio_dev(volatile uint32_t *regs);
+  virtual ~virtio_mmio_dev(void);
+
+  virtual bool initialize(const struct virtio_config &config) {
+    return false;
+  }
+
+  void irq(void);
+  virtual void irq(int ring_index, virtio::virtq_used_elem *) {
+  }
+
+  int alloc_ring(int index, int len);
+
+  // find a free descriptor, mark it non-free, return its index.
+  uint16_t alloc_desc(int ring_index);
+
+  // mark a descriptor as free.
+  void free_desc(int ring_index, int i);
+  void submit_chain(int ring_index, int desc_index);
+
+  virtio::virtq_desc *alloc_desc_chain(int ring_index, int count, uint16_t *start_index);
+  inline virtio::virtq_desc *index_to_desc(int ring_index, int index) {
+    auto d = &ring[ring_index].desc[index];
+    return d;
+  }
+
+  inline void kick(int ring) {
+    write_reg(VIRTIO_MMIO_QUEUE_NOTIFY, ring);
+    __sync_synchronize();
+  }
+};
+
+
 #endif

@@ -115,6 +115,10 @@ extern "C" void DG_PumpEventLoop() {
 
 
 extern "C" void DG_Init() {
+	if (!main_app.connected()) {
+		printf("No connection to the window server.\n");
+		exit(EXIT_FAILURE);
+	}
   memset(s_KeyQueue, 0, KEYQUEUE_SIZE * sizeof(unsigned short));
 
   main_window = main_app.new_window("DOOM", DOOMGENERIC_RESX, DOOMGENERIC_RESY);

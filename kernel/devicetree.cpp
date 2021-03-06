@@ -76,6 +76,7 @@ static dtb::node *alloc_device(const char *name) {
 #define STREQ(s1, s2) (!strcmp((s1), (s2)))
 
 static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *val) {
+	// printk("%s.%s\n", node->name, name);
   if (STREQ(name, "#address-cells")) {
     node->address_cells = *be32p_t((uint32_t *)val);
     return;
@@ -85,6 +86,11 @@ static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *v
     node->size_cells = *be32p_t((uint32_t *)val);
     return;
   }
+  if (STREQ(name, "interrupts")) {
+    int size_cells = node->get_size_cells();
+		node->irq = __builtin_bswap32(*(uint32_t *)val);
+		return;
+	}
 
   if (STREQ(name, "reg")) {
     node->is_device = true;
@@ -225,7 +231,7 @@ int dtb::parse(dtb::fdt_header *fdt) {
     }
   }
 
-  // dump_dtb(node, 0);
+  dump_dtb(node, 0);
   return next_device;
 }
 

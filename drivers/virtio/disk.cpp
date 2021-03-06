@@ -1,8 +1,12 @@
-#include <dev/virtio_mmio.h>
+#include <dev/virtio/mmio.h>
 #include "internal.h"
 
 
 virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(regs) {
+}
+
+
+bool virtio_mmio_disk::initialize(const struct virtio_config &config) {
   uint32_t status = 0;
 
   status |= VIRTIO_CONFIG_S_ACKNOWLEDGE;
@@ -22,7 +26,7 @@ virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(re
   features &= ~(1 << VIRTIO_RING_F_INDIRECT_DESC);
   write_reg(VIRTIO_MMIO_DRIVER_FEATURES, features);
 
-  irq::install(1, virtio_irq_handler, "virtio disk", (void *)this);
+  irq::install(config.irqnr, virtio_irq_handler, "virtio disk", (void *)this);
 
   // tell device that feature negotiation is complete.
   status |= VIRTIO_CONFIG_S_FEATURES_OK;
@@ -32,6 +36,9 @@ virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(re
 
   alloc_ring(0, ndesc);
   ops = new virtio::blk_req[ndesc];
+
+	dev::register_disk(this);
+  return true;
 }
 
 void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {

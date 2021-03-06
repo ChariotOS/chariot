@@ -154,7 +154,7 @@ void tty::handle_input(char c) {
       if (canonical_buf.size() > 0) {
         dump_input_buffer();
       } else {
-        printk("[tty] interrupt input (^D)\n");
+        printk("[tty] TODO: interrupt input (^D)\n");
       }
       return;
     }
