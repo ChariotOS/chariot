@@ -64,8 +64,9 @@ static void vga_char_scribe(int col, int row, struct vc_cell *, int flags);
 // manually create
 struct vc_cell static_cells[VC_COLS * VC_ROWS];
 struct vcons vga_console {
-  .state = 0, .cols = VC_COLS, .rows = VC_ROWS, .pos = 0, .x = 0, .y = 0, .saved_x = 0, .saved_y = 0,
-  .scribe = vga_char_scribe, .npar = 0, .ques = 0, .attr = 0x07, .buf = (struct vc_cell *)&static_cells,
+  .state = 0, .cols = VC_COLS, .rows = VC_ROWS, .pos = 0, .x = 0, .y = 0, .saved_x = 0,
+  .saved_y = 0, .scribe = vga_char_scribe, .npar = 0, .ques = 0, .attr = 0x07,
+  .buf = (struct vc_cell *)&static_cells,
 };
 
 static bool cons_enabled = false;
@@ -96,9 +97,13 @@ static void flush_vga_console() {
 
 
 // returns the userspace address
-void *vga::get_fba(void) { return (void *)p2v(vga_fba); }
+void *vga::get_fba(void) {
+  return (void *)p2v(vga_fba);
+}
 
-void vga::putchar(char c) { vc_feed(&vga_console, c); }
+void vga::putchar(char c) {
+  vc_feed(&vga_console, c);
+}
 
 static void set_register(u16 index, u16 data) {
   outw(VBE_DISPI_IOPORT_INDEX, index);
@@ -225,7 +230,8 @@ static void fb_close(fs::file &f) {
 
 
 struct vga_vmobject final : public mm::vmobject {
-  vga_vmobject(size_t npages) : vmobject(npages) {}
+  vga_vmobject(size_t npages) : vmobject(npages) {
+  }
 
   virtual ~vga_vmobject(void){};
 
@@ -234,7 +240,7 @@ struct vga_vmobject final : public mm::vmobject {
     auto p = mm::page::create((unsigned long)vga_fba + (n * PGSIZE));
 
 
-		p->fset(PG_NOCACHE | PG_WRTHRU);
+    p->fset(PG_NOCACHE | PG_WRTHRU);
 
     return p;
   }
@@ -251,7 +257,8 @@ static ref<mm::vmobject> vga_mmap(fs::file &f, size_t npages, int prot, int flag
   }
 
   if (npages > NPAGES(64 * MB)) {
-    printk(KERN_WARN "vga: attempt to mmap too many pages (%d pixels)\n", (npages * 4096) / sizeof(uint32_t));
+    printk(KERN_WARN "vga: attempt to mmap too many pages (%d pixels)\n",
+           (npages * 4096) / sizeof(uint32_t));
     return nullptr;
   }
 
@@ -331,14 +338,15 @@ void vga::early_init(uint64_t mbd) {
 
   */
 
-  mb2::find<struct multiboot_tag_framebuffer_common>(mbd, MULTIBOOT_TAG_TYPE_FRAMEBUFFER, [](auto *i) {
-    vga_fba = (uint32_t *)i->framebuffer_addr;
-    info.active = 0;
-    info.width = i->framebuffer_width;
-    info.height = i->framebuffer_height;
-    info.active = false;
-    vga::configure(info);
-  });
+  mb2::find<struct multiboot_tag_framebuffer_common>(mbd, MULTIBOOT_TAG_TYPE_FRAMEBUFFER,
+                                                     [](auto *i) {
+                                                       vga_fba = (uint32_t *)i->framebuffer_addr;
+                                                       info.active = 0;
+                                                       info.width = i->framebuffer_width;
+                                                       info.height = i->framebuffer_height;
+                                                       info.active = false;
+                                                       vga::configure(info);
+                                                     });
 
 
   if (vga_fba == NULL) vga_fba = (u32 *)get_framebuffer_address();

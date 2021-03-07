@@ -4,14 +4,13 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-extern long __syscall(int num, unsigned long long a, unsigned long long b,
-                      unsigned long long c, unsigned long long d,
-                      unsigned long long e, unsigned long long f);
+extern long __syscall(int num, unsigned long long a, unsigned long long b, unsigned long long c,
+                      unsigned long long d, unsigned long long e, unsigned long long f);
 
 
 extern long __syscall_eintr(int num, unsigned long long a, unsigned long long b,
-                            unsigned long long c, unsigned long long d,
-                            unsigned long long e, unsigned long long f) {
+                            unsigned long long c, unsigned long long d, unsigned long long e,
+                            unsigned long long f) {
   long count = 0;
   long res = 0;
   do {  // Loop while the syscall was interrupted. This isn't cool but it's way

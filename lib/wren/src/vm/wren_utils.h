@@ -13,55 +13,46 @@ typedef struct sObjString ObjString;
 // We need buffers of a few different types. To avoid lots of casting between
 // void* and back, we'll use the preprocessor as a poor man's generics and let
 // it generate a few type-specific ones.
-#define DECLARE_BUFFER(name, type)                                             \
-    typedef struct                                                             \
-    {                                                                          \
-      type* data;                                                              \
-      int count;                                                               \
-      int capacity;                                                            \
-    } name##Buffer;                                                            \
-    void wren##name##BufferInit(name##Buffer* buffer);                         \
-    void wren##name##BufferClear(WrenVM* vm, name##Buffer* buffer);            \
-    void wren##name##BufferFill(WrenVM* vm, name##Buffer* buffer, type data,   \
-                                int count);                                    \
-    void wren##name##BufferWrite(WrenVM* vm, name##Buffer* buffer, type data)
+#define DECLARE_BUFFER(name, type)                                                     \
+  typedef struct {                                                                     \
+    type* data;                                                                        \
+    int count;                                                                         \
+    int capacity;                                                                      \
+  } name##Buffer;                                                                      \
+  void wren##name##BufferInit(name##Buffer* buffer);                                   \
+  void wren##name##BufferClear(WrenVM* vm, name##Buffer* buffer);                      \
+  void wren##name##BufferFill(WrenVM* vm, name##Buffer* buffer, type data, int count); \
+  void wren##name##BufferWrite(WrenVM* vm, name##Buffer* buffer, type data)
 
 // This should be used once for each type instantiation, somewhere in a .c file.
-#define DEFINE_BUFFER(name, type)                                              \
-    void wren##name##BufferInit(name##Buffer* buffer)                          \
-    {                                                                          \
-      buffer->data = NULL;                                                     \
-      buffer->capacity = 0;                                                    \
-      buffer->count = 0;                                                       \
-    }                                                                          \
-                                                                               \
-    void wren##name##BufferClear(WrenVM* vm, name##Buffer* buffer)             \
-    {                                                                          \
-      wrenReallocate(vm, buffer->data, 0, 0);                                  \
-      wren##name##BufferInit(buffer);                                          \
-    }                                                                          \
-                                                                               \
-    void wren##name##BufferFill(WrenVM* vm, name##Buffer* buffer, type data,   \
-                                int count)                                     \
-    {                                                                          \
-      if (buffer->capacity < buffer->count + count)                            \
-      {                                                                        \
-        int capacity = wrenPowerOf2Ceil(buffer->count + count);                \
-        buffer->data = (type*)wrenReallocate(vm, buffer->data,                 \
-            buffer->capacity * sizeof(type), capacity * sizeof(type));         \
-        buffer->capacity = capacity;                                           \
-      }                                                                        \
-                                                                               \
-      for (int i = 0; i < count; i++)                                          \
-      {                                                                        \
-        buffer->data[buffer->count++] = data;                                  \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-    void wren##name##BufferWrite(WrenVM* vm, name##Buffer* buffer, type data)  \
-    {                                                                          \
-      wren##name##BufferFill(vm, buffer, data, 1);                             \
-    }
+#define DEFINE_BUFFER(name, type)                                                             \
+  void wren##name##BufferInit(name##Buffer* buffer) {                                         \
+    buffer->data = NULL;                                                                      \
+    buffer->capacity = 0;                                                                     \
+    buffer->count = 0;                                                                        \
+  }                                                                                           \
+                                                                                              \
+  void wren##name##BufferClear(WrenVM* vm, name##Buffer* buffer) {                            \
+    wrenReallocate(vm, buffer->data, 0, 0);                                                   \
+    wren##name##BufferInit(buffer);                                                           \
+  }                                                                                           \
+                                                                                              \
+  void wren##name##BufferFill(WrenVM* vm, name##Buffer* buffer, type data, int count) {       \
+    if (buffer->capacity < buffer->count + count) {                                           \
+      int capacity = wrenPowerOf2Ceil(buffer->count + count);                                 \
+      buffer->data = (type*)wrenReallocate(vm, buffer->data, buffer->capacity * sizeof(type), \
+                                           capacity * sizeof(type));                          \
+      buffer->capacity = capacity;                                                            \
+    }                                                                                         \
+                                                                                              \
+    for (int i = 0; i < count; i++) {                                                         \
+      buffer->data[buffer->count++] = data;                                                   \
+    }                                                                                         \
+  }                                                                                           \
+                                                                                              \
+  void wren##name##BufferWrite(WrenVM* vm, name##Buffer* buffer, type data) {                 \
+    wren##name##BufferFill(vm, buffer, data, 1);                                              \
+  }
 
 DECLARE_BUFFER(Byte, uint8_t);
 DECLARE_BUFFER(Int, int);
@@ -78,17 +69,14 @@ void wrenSymbolTableInit(SymbolTable* symbols);
 void wrenSymbolTableClear(WrenVM* vm, SymbolTable* symbols);
 
 // Adds name to the symbol table. Returns the index of it in the table.
-int wrenSymbolTableAdd(WrenVM* vm, SymbolTable* symbols,
-                       const char* name, size_t length);
+int wrenSymbolTableAdd(WrenVM* vm, SymbolTable* symbols, const char* name, size_t length);
 
 // Adds name to the symbol table. Returns the index of it in the table. Will
 // use an existing symbol if already present.
-int wrenSymbolTableEnsure(WrenVM* vm, SymbolTable* symbols,
-                          const char* name, size_t length);
+int wrenSymbolTableEnsure(WrenVM* vm, SymbolTable* symbols, const char* name, size_t length);
 
 // Looks up name in the symbol table. Returns its index if found or -1 if not.
-int wrenSymbolTableFind(const SymbolTable* symbols,
-                        const char* name, size_t length);
+int wrenSymbolTableFind(const SymbolTable* symbols, const char* name, size_t length);
 
 void wrenBlackenSymbolTable(WrenVM* vm, SymbolTable* symbolTable);
 

@@ -4,7 +4,9 @@
 #include <time.h>
 
 
-sleep_waiter::~sleep_waiter() { this->remove(); }
+sleep_waiter::~sleep_waiter() {
+  this->remove();
+}
 
 void sleep_waiter::start(uint64_t us) {
   wakeup_us = time::now_us() + us;
@@ -43,9 +45,11 @@ void sleep_waiter::remove(void) {
   cpu->sleepers_lock.unlock_irqrestore(flags);
 }
 
-void remove_sleep_waiter(struct processor_state &cpu, struct sleep_waiter *blk) {}
+void remove_sleep_waiter(struct processor_state &cpu, struct sleep_waiter *blk) {
+}
 
-void add_sleep_waiter(struct processor_state &cpu, struct sleep_waiter *blk) {}
+void add_sleep_waiter(struct processor_state &cpu, struct sleep_waiter *blk) {
+}
 
 int do_usleep(uint64_t us) {
   struct sleep_waiter blocker;

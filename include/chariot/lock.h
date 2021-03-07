@@ -11,10 +11,12 @@ class spinlock {
  private:
   // compare and swap dest to spinlock on
   int locked = 0;
-	int held_by = 0;
+  int held_by = 0;
 
  public:
-  inline spinlock() { locked = 0; }
+  inline spinlock() {
+    locked = 0;
+  }
 
   void lock(void);
   void unlock(void);
@@ -48,9 +50,13 @@ class scoped_lock {
   spinlock &lck;
 
  public:
-  inline scoped_lock(spinlock &lck) : lck(lck) { lck.lock(); }
+  inline scoped_lock(spinlock &lck) : lck(lck) {
+    lck.lock();
+  }
 
-  inline ~scoped_lock(void) { lck.unlock(); }
+  inline ~scoped_lock(void) {
+    lck.unlock();
+  }
 };
 
 
@@ -59,6 +65,10 @@ class scoped_irqlock {
   spinlock &lck;
 
  public:
-  inline scoped_irqlock(spinlock &lck) : lck(lck) { f = lck.lock_irqsave(); }
-  inline ~scoped_irqlock(void) { lck.unlock_irqrestore(f); }
+  inline scoped_irqlock(spinlock &lck) : lck(lck) {
+    f = lck.lock_irqsave();
+  }
+  inline ~scoped_irqlock(void) {
+    lck.unlock_irqrestore(f);
+  }
 };

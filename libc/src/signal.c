@@ -7,7 +7,7 @@
 
 
 int kill(pid_t pid, int sig) {
-	return errno_wrap(sysbind_kill(pid, sig));
+  return errno_wrap(sysbind_kill(pid, sig));
 }
 
 // zero out the set

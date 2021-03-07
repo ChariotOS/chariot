@@ -134,24 +134,29 @@ bool acpi::init(uint64_t mbd) {
                 proximity_domain |= p->proximity_domain_hi[1] << 16;
                 proximity_domain |= p->proximity_domain_hi[2] << 24;
               }
-              debug("[ACPI:SRAT] Processor (id[0x%02x] eid[0x%02x]) in proximity domain %d %s\n", p->apic_id,
-                    p->local_sapic_eid, proximity_domain, p->flags & ACPI_SRAT_CPU_ENABLED ? "enabled" : "disabled");
+              debug("[ACPI:SRAT] Processor (id[0x%02x] eid[0x%02x]) in proximity domain %d %s\n",
+                    p->apic_id, p->local_sapic_eid, proximity_domain,
+                    p->flags & ACPI_SRAT_CPU_ENABLED ? "enabled" : "disabled");
               break;
             }
 
             case ACPI_SRAT_TYPE_MEMORY_AFFINITY: {
               auto *p = (struct acpi_srat_mem_affinity *)stbl;
-              debug("[ACPI:SRAT] Memory (0x%llx length 0x%llx type 0x%x) in proximity domain %d %s%s\n", p->base_address,
-                    p->length, p->memory_type, p->proximity_domain,
-                    p->flags & ACPI_SRAT_MEM_ENABLED ? "enabled" : "disabled",
-                    p->flags & ACPI_SRAT_MEM_HOT_PLUGGABLE ? " hot-pluggable" : "");
+              debug(
+                  "[ACPI:SRAT] Memory (0x%llx length 0x%llx type 0x%x) in proximity domain %d "
+                  "%s%s\n",
+                  p->base_address, p->length, p->memory_type, p->proximity_domain,
+                  p->flags & ACPI_SRAT_MEM_ENABLED ? "enabled" : "disabled",
+                  p->flags & ACPI_SRAT_MEM_HOT_PLUGGABLE ? " hot-pluggable" : "");
               break;
             }
 
 
             case ACPI_SRAT_TYPE_X2APIC_CPU_AFFINITY: {
-              struct acpi_srat_x2apic_cpu_affinity *p = (struct acpi_srat_x2apic_cpu_affinity *)stbl;
-              debug("[ACPI:SRAT] Processor (x2apicid[0x%08x]) in proximity domain %d %s\n", p->apic_id, p->proximity_domain,
+              struct acpi_srat_x2apic_cpu_affinity *p =
+                  (struct acpi_srat_x2apic_cpu_affinity *)stbl;
+              debug("[ACPI:SRAT] Processor (x2apicid[0x%08x]) in proximity domain %d %s\n",
+                    p->apic_id, p->proximity_domain,
                     (p->flags & ACPI_SRAT_CPU_ENABLED) ? "enabled" : "disabled");
               break;
             }
@@ -163,4 +168,3 @@ bool acpi::init(uint64_t mbd) {
 
   return true;
 }
-

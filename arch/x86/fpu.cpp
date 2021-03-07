@@ -63,7 +63,7 @@ struct fpu::fpu_caps fpu::caps;
 
 uint16_t fpu::get_x87_status(void) {
   uint16_t status;
-  asm volatile("fnstsw %[_a]" : [ _a ] "=a"(status) : :);
+  asm volatile("fnstsw %[_a]" : [_a] "=a"(status) : :);
 
   return status;
 }
@@ -73,10 +73,14 @@ void fpu::set_x87_ctrl(uint16_t val) {
 }
 
 
-void fpu::clear_x87_excp(void) { asm volatile("fnclex" :::); }
+void fpu::clear_x87_excp(void) {
+  asm volatile("fnclex" :::);
+}
 
 
-bool fpu::has_x87() { return FPU_EDX_FEAT_QUERY(fpu); }
+bool fpu::has_x87() {
+  return FPU_EDX_FEAT_QUERY(fpu);
+}
 
 
 void fpu::enable_x87(void) {
@@ -104,35 +108,75 @@ void fpu::enable_x87(void) {
 }
 
 
-static uint8_t has_clflush(void) { return FPU_EDX_FEAT_QUERY(clfsh); }
-static uint8_t has_mmx(void) { return FPU_EDX_FEAT_QUERY(mmx); }
-static uint8_t amd_has_mmx_ext(void) { return AMD_FPU_EDX_FEAT_QUERY(mmx_ext); }
-static uint8_t amd_has_3dnow(void) { return AMD_FPU_EDX_FEAT_QUERY(amd3dnow); }
+static uint8_t has_clflush(void) {
+  return FPU_EDX_FEAT_QUERY(clfsh);
+}
+static uint8_t has_mmx(void) {
+  return FPU_EDX_FEAT_QUERY(mmx);
+}
+static uint8_t amd_has_mmx_ext(void) {
+  return AMD_FPU_EDX_FEAT_QUERY(mmx_ext);
+}
+static uint8_t amd_has_3dnow(void) {
+  return AMD_FPU_EDX_FEAT_QUERY(amd3dnow);
+}
 static uint8_t amd_has_3dnow_ext(void) {
   return AMD_FPU_EDX_FEAT_QUERY(amd3dnowext);
 }
-static uint8_t has_sse(void) { return FPU_EDX_FEAT_QUERY(sse); }
-static uint8_t has_sse2(void) { return FPU_EDX_FEAT_QUERY(sse2); }
-static uint8_t has_sse3(void) { return FPU_ECX_FEAT_QUERY(sse3); }
-static uint8_t has_ssse3(void) { return FPU_ECX_FEAT_QUERY(ssse3); }
-static uint8_t has_sse4d1(void) { return FPU_ECX_FEAT_QUERY(sse4dot1); }
-static uint8_t has_sse4d2(void) { return FPU_ECX_FEAT_QUERY(sse4dot2); }
-static uint8_t amd_has_sse4a(void) { return AMD_FPU_ECX_FEAT_QUERY(sse4a); }
+static uint8_t has_sse(void) {
+  return FPU_EDX_FEAT_QUERY(sse);
+}
+static uint8_t has_sse2(void) {
+  return FPU_EDX_FEAT_QUERY(sse2);
+}
+static uint8_t has_sse3(void) {
+  return FPU_ECX_FEAT_QUERY(sse3);
+}
+static uint8_t has_ssse3(void) {
+  return FPU_ECX_FEAT_QUERY(ssse3);
+}
+static uint8_t has_sse4d1(void) {
+  return FPU_ECX_FEAT_QUERY(sse4dot1);
+}
+static uint8_t has_sse4d2(void) {
+  return FPU_ECX_FEAT_QUERY(sse4dot2);
+}
+static uint8_t amd_has_sse4a(void) {
+  return AMD_FPU_ECX_FEAT_QUERY(sse4a);
+}
 static uint8_t amd_has_prefetch(void) {
   return AMD_FPU_ECX_FEAT_QUERY(prefetch3d);
 }
 static uint8_t amd_has_misal_sse(void) {
   return AMD_FPU_ECX_FEAT_QUERY(misalignsse);
 }
-static uint8_t has_fma4(void) { return FPU_ECX_FEAT_QUERY(fma); }
-static uint8_t amd_has_fma4(void) { return AMD_FPU_ECX_FEAT_QUERY(fma4); }
-static uint8_t has_cvt16(void) { return FPU_ECX_FEAT_QUERY(f16c); }
-static uint8_t has_cx16(void) { return FPU_ECX_FEAT_QUERY(cx16); }
-static uint8_t has_avx(void) { return FPU_ECX_FEAT_QUERY(avx); }
-static uint8_t has_avx2(void) { return FPU_EBX_EXT_FEAT_QUERY(avx2); }
-static uint8_t has_avx512f(void) { return FPU_EBX_EXT_FEAT_QUERY(avx512f); }
-static uint8_t has_fxsr(void) { return FPU_EDX_FEAT_QUERY(fxsr); }
-static uint8_t has_xsave(void) { return FPU_ECX_FEAT_QUERY(xsave); }
+static uint8_t has_fma4(void) {
+  return FPU_ECX_FEAT_QUERY(fma);
+}
+static uint8_t amd_has_fma4(void) {
+  return AMD_FPU_ECX_FEAT_QUERY(fma4);
+}
+static uint8_t has_cvt16(void) {
+  return FPU_ECX_FEAT_QUERY(f16c);
+}
+static uint8_t has_cx16(void) {
+  return FPU_ECX_FEAT_QUERY(cx16);
+}
+static uint8_t has_avx(void) {
+  return FPU_ECX_FEAT_QUERY(avx);
+}
+static uint8_t has_avx2(void) {
+  return FPU_EBX_EXT_FEAT_QUERY(avx2);
+}
+static uint8_t has_avx512f(void) {
+  return FPU_EBX_EXT_FEAT_QUERY(avx512f);
+}
+static uint8_t has_fxsr(void) {
+  return FPU_EDX_FEAT_QUERY(fxsr);
+}
+static uint8_t has_xsave(void) {
+  return FPU_ECX_FEAT_QUERY(xsave);
+}
 
 
 static uint32_t get_xsave_features(void) {
@@ -336,8 +380,7 @@ void arch_save_fpu(struct thread &thd) {
 }
 
 void arch_restore_fpu(struct thread &thd) {
-
-	// printk("cr4=%p\n", read_cr4());
+  // printk("cr4=%p\n", read_cr4());
 
   if (!thd.fpu.initialized) {
     asm volatile("fninit");

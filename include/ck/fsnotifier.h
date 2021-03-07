@@ -15,7 +15,8 @@ namespace ck {
     ck::func<void(int event)> on_event;
 
     fsnotifier(int fd, int event_mask = 0);
-    inline fsnotifier() {}
+    inline fsnotifier() {
+    }
     ~fsnotifier(void);
 
 
@@ -26,14 +27,18 @@ namespace ck {
     }
 
     void set_event_mask(int ev) {
-			m_ev_mask = ev;
-		}
+      m_ev_mask = ev;
+    }
 
     void set_active(bool);
 
 
-    inline int fd(void) { return m_fd; }
-    inline int ev_mask(void) { return m_ev_mask; }
+    inline int fd(void) {
+      return m_fd;
+    }
+    inline int ev_mask(void) {
+      return m_ev_mask;
+    }
 
 
     virtual bool event(const ck::event&) override;

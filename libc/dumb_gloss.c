@@ -1,1 +1,2 @@
-void _____gloss_placeholder(void) {}
+void _____gloss_placeholder(void) {
+}

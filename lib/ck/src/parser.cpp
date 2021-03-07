@@ -32,9 +32,9 @@ int ck::lexer::peek() {
 }
 
 void ck::lexer::skip_spaces(void) {
-    while (in_charset(peek(), " \n\t")) {
-      auto v = next();
-      if (v == EOF || v == 0) break;
-			prev_start++;
-    }
+  while (in_charset(peek(), " \n\t")) {
+    auto v = next();
+    if (v == EOF || v == 0) break;
+    prev_start++;
+  }
 }

@@ -15,8 +15,7 @@ namespace rv {
 
 
    public:
-
-		void dis(uint32_t insn);
-		void dump(uint32_t insn);
+    void dis(uint32_t insn);
+    void dump(uint32_t insn);
   };
 };  // namespace rv

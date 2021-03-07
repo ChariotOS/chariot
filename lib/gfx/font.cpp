@@ -156,7 +156,7 @@ namespace gfx {
 #ifdef CONFIG_GFX_FONT_MONO
       load_mode |= FT_LOAD_TARGET_MONO;
 #else
-			load_mode |= FT_LOAD_TARGET_NORMAL;
+      load_mode |= FT_LOAD_TARGET_NORMAL;
 #endif
       if (FT_Load_Glyph(face, glyph_index, load_mode)) return NULL;
       auto mode = FT_RENDER_MODE_NORMAL;
@@ -248,8 +248,14 @@ namespace gfx {
   }
 
 
-  int font::ascent(void) { return face->size->metrics.ascender >> 6; }
-  int font::descent(void) { return face->size->metrics.descender >> 6; }
-  int font::line_height(void) { return face->size->metrics.height >> 6; }
+  int font::ascent(void) {
+    return face->size->metrics.ascender >> 6;
+  }
+  int font::descent(void) {
+    return face->size->metrics.descender >> 6;
+  }
+  int font::line_height(void) {
+    return face->size->metrics.height >> 6;
+  }
 
 };  // namespace gfx

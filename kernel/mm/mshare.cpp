@@ -49,7 +49,8 @@ struct mshare_vmobject final : public mm::vmobject {
   }
 
 
-  virtual void drop(void) override {}
+  virtual void drop(void) override {
+  }
 
  private:
   string name;
@@ -72,8 +73,9 @@ static void *msh_create(struct mshare_create *arg) {
   ref<mm::vmobject> obj = make_ref<mshare_vmobject>(name, pages);
 
 
-  auto addr = curproc->mm->mmap(string::format("[msh '%s' (created)]", name.get()), 0, pages * PGSIZE,
-                                PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
+  auto addr =
+      curproc->mm->mmap(string::format("[msh '%s' (created)]", name.get()), 0, pages * PGSIZE,
+                        PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
 
   auto region = curproc->mm->lookup(addr);
   if (region == nullptr) return MAP_FAILED;

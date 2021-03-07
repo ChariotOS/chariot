@@ -33,7 +33,9 @@
 
 
 
-static gfx::rect close_button() { return gfx::rect(4, 4, 9, 9); }
+static gfx::rect close_button() {
+  return gfx::rect(4, 4, 9, 9);
+}
 
 
 lumen::window::window(int id, lumen::guest &g, int w, int h) : id(id), guest(g) {
@@ -43,7 +45,8 @@ lumen::window::window(int id, lumen::guest &g, int w, int h) : id(id), guest(g) 
   set_mode(window_mode::normal);
 }
 
-lumen::window::~window(void) {}
+lumen::window::~window(void) {
+}
 
 void lumen::window::set_mode(window_mode mode) {
   this->mode = mode;
@@ -80,19 +83,19 @@ int lumen::window::handle_mouse_input(gfx::point &r, struct mouse_packet &p) {
 
 
   if (x >= 0 && x < (int)bitmap->width() && y >= 0 && y < (int)bitmap->height()) {
-		/*
-    struct lumen::input_msg m;
+    /*
+struct lumen::input_msg m;
 
-    m.window_id = this->id;
-    m.type = LUMEN_INPUT_MOUSE;
-    m.mouse.xpos = x;
-    m.mouse.ypos = y;
-    m.mouse.dx = p.dx;
-    m.mouse.dy = p.dy;
-    m.mouse.buttons = p.buttons;
+m.window_id = this->id;
+m.type = LUMEN_INPUT_MOUSE;
+m.mouse.xpos = x;
+m.mouse.ypos = y;
+m.mouse.dx = p.dx;
+m.mouse.dy = p.dy;
+m.mouse.buttons = p.buttons;
 
-    guest.send_msg(LUMEN_MSG_INPUT, m);
-		*/
+guest.send_msg(LUMEN_MSG_INPUT, m);
+    */
   }
 
   if (y < TITLE_HEIGHT) {
@@ -121,7 +124,9 @@ int lumen::window::handle_keyboard_input(keyboard_packet_t &p) {
 
 
 
-gfx::rect lumen::window::bounds() { return rect; }
+gfx::rect lumen::window::bounds() {
+  return rect;
+}
 
 
 constexpr int clamp(int val, int max, int min) {
@@ -225,7 +230,8 @@ void lumen::window::draw(gfx::scribe &s) {
       corners[3] = {.enabled = false,
                     .cx = width - border_radius - 1,
                     .cy = height - border_radius - 1,
-                    .rect = gfx::rect(width - border_radius, height - border_radius, border_radius, border_radius)};
+                    .rect = gfx::rect(width - border_radius, height - border_radius, border_radius,
+                                      border_radius)};
 
       auto &bmp = *bitmap;
       for (int i = 0; i < 4; i++) {
@@ -283,7 +289,8 @@ void lumen::window::draw(gfx::scribe &s) {
 #ifdef CONFIG_FANCY_WINDOWS
       if constexpr (border_radius > 0) {
         if (unlikely(y < border_radius || y >= height - border_radius)) {
-          for (int x = max(first_column, border_radius); x < min(last_column, width - border_radius); x++) {
+          for (int x = max(first_column, border_radius);
+               x < min(last_column, width - border_radius); x++) {
             dst[x] = src[x];
           }
           continue;

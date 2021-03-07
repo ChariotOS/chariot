@@ -27,7 +27,7 @@ namespace ui {
       long attr_num(ui::attr);
       ck::string attr(ui::attr);
 
-			void set_attr(ui::attr a, ck::string val);
+      void set_attr(ui::attr a, ck::string val);
 
      private:
       friend class ui::layout::parser;
@@ -35,9 +35,9 @@ namespace ui {
     };
 
     class parser {
+      const char *buf;
+      size_t len;
 
-			const char *buf;
-			size_t len;
      public:
       parser(const char *buf, size_t len);
     };

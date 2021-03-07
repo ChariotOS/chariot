@@ -2,7 +2,7 @@
 #include <sem.h>
 
 
-wait_result condvar::wait(spinlock &given_lock, bool interruptable ) {
+wait_result condvar::wait(spinlock &given_lock, bool interruptable) {
   // lock the condvar
   lock.lock();
 

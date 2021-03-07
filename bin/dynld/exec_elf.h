@@ -37,11 +37,11 @@
 
 typedef uint8_t Elf_Byte;
 
-typedef uint32_t Elf32_Addr; /* Unsigned program address */
-typedef uint32_t Elf32_Off;  /* Unsigned file offset */
-typedef uint32_t Elf32_Sword;     /* Signed large integer */
-typedef uint32_t Elf32_Word; /* Unsigned large integer */
-typedef uint16_t Elf32_Half; /* Unsigned medium integer */
+typedef uint32_t Elf32_Addr;  /* Unsigned program address */
+typedef uint32_t Elf32_Off;   /* Unsigned file offset */
+typedef uint32_t Elf32_Sword; /* Signed large integer */
+typedef uint32_t Elf32_Word;  /* Unsigned large integer */
+typedef uint16_t Elf32_Half;  /* Unsigned medium integer */
 typedef uint64_t Elf32_Lword;
 
 typedef uint64_t Elf64_Addr;
@@ -286,28 +286,28 @@ typedef struct {
 #define SHT_GNU_HASH 0x6ffffff6 /* GNU-style hash table section */
 
 /* Section names */
-#define ELF_BSS ".bss"               /* uninitialized data */
-#define ELF_DATA ".data"             /* initialized data */
-#define ELF_CTF ".SUNW_ctf"          /* CTF data */
-#define ELF_DEBUG ".debug"           /* debug */
-#define ELF_DYNAMIC ".dynamic"       /* dynamic linking information */
-#define ELF_DYNSTR ".dynstr"         /* dynamic string table */
-#define ELF_DYNSYM ".dynsym"         /* dynamic symbol table */
-#define ELF_FINI ".fini"             /* termination code */
-#define ELF_GOT ".got"               /* global offset table */
-#define ELF_HASH ".hash"             /* symbol hash table */
-#define ELF_INIT ".init"             /* initialization code */
-#define ELF_REL_DATA ".rel.data"     /* relocation data */
-#define ELF_REL_FINI ".rel.fini"     /* relocation termination code */
-#define ELF_REL_INIT ".rel.init"     /* relocation initialization code */
-#define ELF_REL_DYN ".rel.dyn"       /* relocation dynamic link info */
-#define ELF_REL_RODATA ".rel.rodata" /* relocation read-only data */
-#define ELF_REL_TEXT ".rel.text"     /* relocation code */
-#define ELF_RODATA ".rodata"         /* read-only data */
-#define ELF_SHSTRTAB ".shstrtab"     /* section header string table */
-#define ELF_STRTAB ".strtab"         /* string table */
-#define ELF_SYMTAB ".symtab"         /* symbol table */
-#define ELF_TEXT ".text"             /* code */
+#define ELF_BSS ".bss"                              /* uninitialized data */
+#define ELF_DATA ".data"                            /* initialized data */
+#define ELF_CTF ".SUNW_ctf"                         /* CTF data */
+#define ELF_DEBUG ".debug"                          /* debug */
+#define ELF_DYNAMIC ".dynamic"                      /* dynamic linking information */
+#define ELF_DYNSTR ".dynstr"                        /* dynamic string table */
+#define ELF_DYNSYM ".dynsym"                        /* dynamic symbol table */
+#define ELF_FINI ".fini"                            /* termination code */
+#define ELF_GOT ".got"                              /* global offset table */
+#define ELF_HASH ".hash"                            /* symbol hash table */
+#define ELF_INIT ".init"                            /* initialization code */
+#define ELF_REL_DATA ".rel.data"                    /* relocation data */
+#define ELF_REL_FINI ".rel.fini"                    /* relocation termination code */
+#define ELF_REL_INIT ".rel.init"                    /* relocation initialization code */
+#define ELF_REL_DYN ".rel.dyn"                      /* relocation dynamic link info */
+#define ELF_REL_RODATA ".rel.rodata"                /* relocation read-only data */
+#define ELF_REL_TEXT ".rel.text"                    /* relocation code */
+#define ELF_RODATA ".rodata"                        /* read-only data */
+#define ELF_SHSTRTAB ".shstrtab"                    /* section header string table */
+#define ELF_STRTAB ".strtab"                        /* string table */
+#define ELF_SYMTAB ".symtab"                        /* symbol table */
+#define ELF_TEXT ".text"                            /* code */
 #define ELF_OPENBSDRANDOMDATA ".openbsd.randomdata" /* constant randomdata */
 
 /* Section Attribute Flags - sh_flags */
@@ -651,10 +651,10 @@ struct elfcore_procinfo {
   uint32_t cpi_sigmask;   /* blocked signals */
   uint32_t cpi_sigignore; /* ignored signals */
   uint32_t cpi_sigcatch;  /* signals being caught by user */
-  uint32_t cpi_pid;        /* process ID */
-  uint32_t cpi_ppid;       /* parent process ID */
-  uint32_t cpi_pgrp;       /* process group ID */
-  uint32_t cpi_sid;        /* session ID */
+  uint32_t cpi_pid;       /* process ID */
+  uint32_t cpi_ppid;      /* parent process ID */
+  uint32_t cpi_pgrp;      /* process group ID */
+  uint32_t cpi_sid;       /* session ID */
   uint32_t cpi_ruid;      /* real user ID */
   uint32_t cpi_euid;      /* effective user ID */
   uint32_t cpi_svuid;     /* saved user ID */

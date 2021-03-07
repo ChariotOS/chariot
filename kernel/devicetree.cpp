@@ -14,11 +14,16 @@ struct be32p_t {
   uint32_t *p;
 
  public:
-  be32p_t(uint32_t *p) : p(p) {}
+  be32p_t(uint32_t *p) : p(p) {
+  }
 
-  uint32_t operator*(void) { return b2l(*p); }
+  uint32_t operator*(void) {
+    return b2l(*p);
+  }
 
-  uint32_t *get(void) { return p; };
+  uint32_t *get(void) {
+    return p;
+  };
 
   auto &operator++(int) {
     p++;
@@ -76,7 +81,7 @@ static dtb::node *alloc_device(const char *name) {
 #define STREQ(s1, s2) (!strcmp((s1), (s2)))
 
 static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *val) {
-	// printk("%s.%s\n", node->name, name);
+  // printk("%s.%s\n", node->name, name);
   if (STREQ(name, "#address-cells")) {
     node->address_cells = *be32p_t((uint32_t *)val);
     return;
@@ -88,9 +93,9 @@ static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *v
   }
   if (STREQ(name, "interrupts")) {
     int size_cells = node->get_size_cells();
-		node->irq = __builtin_bswap32(*(uint32_t *)val);
-		return;
-	}
+    node->irq = __builtin_bswap32(*(uint32_t *)val);
+    return;
+  }
 
   if (STREQ(name, "reg")) {
     node->is_device = true;
@@ -116,27 +121,28 @@ static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *v
     return;
   }
 
-	if (STREQ(name, "compatible")) {
-		node->is_device = true;
-		strncpy(node->compatible, (const char*)val, sizeof(node->compatible));
-		// printk("compatible: %s\n", val);
+  if (STREQ(name, "compatible")) {
+    node->is_device = true;
+    strncpy(node->compatible, (const char *)val, sizeof(node->compatible));
+    // printk("compatible: %s\n", val);
 
-		return;
-	}
+    return;
+  }
   // printk("   %s@%llx\t%s = %p\n", node->name, node->address, name, val);
 }
 
 
 void dtb::walk_devices(bool (*callback)(dtb::node *)) {
   for (int i = 0; i < next_device; i++) {
-		if (devices[i].is_device) {
-    	if (!callback(&devices[i])) break;
-		}
+    if (devices[i].is_device) {
+      if (!callback(&devices[i])) break;
+    }
   }
 }
 
 static void spaces(int n) {
-  for (int i = 0; i < n; i++) printk("  ");
+  for (int i = 0; i < n; i++)
+    printk("  ");
 }
 
 void dump_dtb(dtb::node *node, int depth = 0) {
@@ -162,7 +168,7 @@ void dump_dtb(dtb::node *node, int depth = 0) {
 }
 
 int dtb::parse(dtb::fdt_header *fdt) {
-	global_fdt_header = fdt;
+  global_fdt_header = fdt;
 
   assert(next_device == 0);
   auto *root = alloc_device("");
@@ -191,7 +197,8 @@ int dtb::parse(dtb::fdt_header *fdt) {
         name = (const char *)sp.get();
 
         len = round_up(strlen(name) + 1, 4) / 4;
-        for (int i = 0; i < len; i++) sp++;
+        for (int i = 0; i < len; i++)
+          sp++;
         new_node = alloc_device(name);
 
         new_node->parent = node;
@@ -217,7 +224,8 @@ int dtb::parse(dtb::fdt_header *fdt) {
         sp++;
         valptr = (const char *)sp.get();
         node_set_prop(node, strings + nameoff, len, (uint8_t *)valptr);
-        for (int i = 0; i < round_up(len, 4) / 4; i++) sp++;
+        for (int i = 0; i < round_up(len, 4) / 4; i++)
+          sp++;
 
         break;
 
@@ -231,7 +239,7 @@ int dtb::parse(dtb::fdt_header *fdt) {
     }
   }
 
-  dump_dtb(node, 0);
+  // dump_dtb(node, 0);
   return next_device;
 }
 
@@ -285,7 +293,8 @@ dtb::device_tree::device_tree(struct dtb::fdt_header *hdr) {
         name = (const char *)sp.get();
 
         len = round_up(strlen(name) + 1, 4) / 4;
-        for (int i = 0; i < len; i++) sp++;
+        for (int i = 0; i < len; i++)
+          sp++;
         node = node->spawn(name);
         depth++;
 
@@ -303,7 +312,8 @@ dtb::device_tree::device_tree(struct dtb::fdt_header *hdr) {
         valptr = (const char *)sp.get();
         node->set_prop(strings + nameoff, len, (uint8_t *)valptr);
 
-        for (int i = 0; i < round_up(len, 4) / 4; i++) sp++;
+        for (int i = 0; i < round_up(len, 4) / 4; i++)
+          sp++;
 
         break;
 
@@ -319,14 +329,18 @@ dtb::device_tree::device_tree(struct dtb::fdt_header *hdr) {
 }
 
 
-dtb::device_tree::~device_tree(void) { free((void *)fdt); }
+dtb::device_tree::~device_tree(void) {
+  free((void *)fdt);
+}
 
 void dtb::device_tree::node::dump(int depth) {
-  for (int i = 0; i < depth; i++) printk("    ");
+  for (int i = 0; i < depth; i++)
+    printk("    ");
   printk("%s {\n", name.get());
 
   for (auto &propkv : props) {
-    for (int i = 0; i < depth + 1; i++) printk("    ");
+    for (int i = 0; i < depth + 1; i++)
+      printk("    ");
 
     void *raw = (void *)propkv.value.data();
     auto len = propkv.value.size();
@@ -357,7 +371,9 @@ void dtb::device_tree::node::dump(int depth) {
   }
 
 
-  for (auto *c : children) c->dump(depth + 1);
-  for (int i = 0; i < depth; i++) printk("    ");
+  for (auto *c : children)
+    c->dump(depth + 1);
+  for (int i = 0; i < depth; i++)
+    printk("    ");
   printk("};\n\n");
 }

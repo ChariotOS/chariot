@@ -25,9 +25,15 @@ struct [[gnu::packed]] ntp_pkt {
   ntp_ts_t receive_timestamp;
   ntp_ts_t transmit_timestamp;
 
-  uint8_t leap_information() const { return li_vn_mode >> 6; }
-  uint8_t version_number() const { return (li_vn_mode >> 3) & 7; }
-  uint8_t mode() const { return li_vn_mode & 7; }
+  uint8_t leap_information() const {
+    return li_vn_mode >> 6;
+  }
+  uint8_t version_number() const {
+    return (li_vn_mode >> 3) & 7;
+  }
+  uint8_t mode() const {
+    return li_vn_mode & 7;
+  }
 };
 static_assert(sizeof(ntp_pkt) == 48);
 
@@ -45,9 +51,10 @@ static ntp_ts_t ntp_timestamp_from_timeval(const timeval& t) {
   // Seconds just need translation to the different origin.
   uint32_t seconds = t.tv_sec + SecondsFrom1900To1970;
 
-  // Fractional bits are decimal fixed point (*1'000'000) in timeval, but binary fixed-point (* 2**32) in NTP
-  // timestamps.
-  uint32_t fractional_bits = static_cast<uint32_t>((static_cast<uint64_t>(t.tv_usec) << 32) / 1'000'000);
+  // Fractional bits are decimal fixed point (*1'000'000) in timeval, but binary fixed-point (*
+  // 2**32) in NTP timestamps.
+  uint32_t fractional_bits =
+      static_cast<uint32_t>((static_cast<uint64_t>(t.tv_usec) << 32) / 1'000'000);
 
   return (static_cast<ntp_ts_t>(seconds) << 32) | fractional_bits;
 }
@@ -56,7 +63,8 @@ static ntp_ts_t ntp_timestamp_from_timeval(const timeval& t) {
 static struct timeval timeval_from_ntp_timestamp(const ntp_ts_t& ntp_timestamp) {
   struct timeval t;
   t.tv_sec = static_cast<time_t>(ntp_timestamp >> 32) - SecondsFrom1900To1970;
-  t.tv_usec = static_cast<suseconds_t>((static_cast<uint64_t>(ntp_timestamp & 0xFFFFFFFFu) * 1'000'000) >> 32);
+  t.tv_usec = static_cast<suseconds_t>(
+      (static_cast<uint64_t>(ntp_timestamp & 0xFFFFFFFFu) * 1'000'000) >> 32);
   return t;
 }
 
@@ -117,10 +125,11 @@ int main(int argc, char** argv) {
   packet.transmit_timestamp = random_transmit_timestamp;
 
 
-  ssize_t rc = sendto(fd, &packet, sizeof(packet), 0, (const struct sockaddr*)&peer_address, sizeof(peer_address));
+  ssize_t rc = sendto(fd, &packet, sizeof(packet), 0, (const struct sockaddr*)&peer_address,
+                      sizeof(peer_address));
 
-	// const char msg[] = "Hello\n";
-	// sendto(fd, msg, sizeof(msg), 0, (const struct sockaddr*)&peer_address, sizeof(peer_address));
+  // const char msg[] = "Hello\n";
+  // sendto(fd, msg, sizeof(msg), 0, (const struct sockaddr*)&peer_address, sizeof(peer_address));
 
 
   if (rc < 0) {

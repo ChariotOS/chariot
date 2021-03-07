@@ -67,26 +67,26 @@ static inline void rb_insert_augmented_cached(struct rb_node *node, struct rb_ro
  * RBCOMPUTE:   name of function that recomputes the RBAUGMENTED data
  */
 
-#define RB_DECLARE_CALLBACKS(RBSTATIC, RBNAME, RBSTRUCT, RBFIELD, RBAUGMENTED, RBCOMPUTE)          \
-  static inline void RBNAME##_propagate(struct rb_node *rb, struct rb_node *stop) {      \
-    while (rb != stop) {                                                                 \
-      RBSTRUCT *node = rb_entry(rb, RBSTRUCT, RBFIELD);                                  \
-      if (RBCOMPUTE(node, true)) break;                                                  \
-      rb = rb_parent(&node->RBFIELD);                                                    \
-    }                                                                                    \
-  }                                                                                      \
-  static inline void RBNAME##_copy(struct rb_node *rb_old, struct rb_node *rb_newnode) { \
-    RBSTRUCT *old = rb_entry(rb_old, RBSTRUCT, RBFIELD);                                 \
-    RBSTRUCT *newnode = rb_entry(rb_newnode, RBSTRUCT, RBFIELD);                         \
-    newnode->RBAUGMENTED = old->RBAUGMENTED;                                             \
-  }                                                                                      \
-  static void RBNAME##_rotate(struct rb_node *rb_old, struct rb_node *rb_newnode) {      \
-    RBSTRUCT *old = rb_entry(rb_old, RBSTRUCT, RBFIELD);                                 \
-    RBSTRUCT *newnode = rb_entry(rb_newnode, RBSTRUCT, RBFIELD);                         \
-    newnode->RBAUGMENTED = old->RBAUGMENTED;                                             \
-    RBCOMPUTE(old, false);                                                               \
-  }                                                                                      \
-  RBSTATIC const struct rb_augment_callbacks RBNAME = {                                  \
+#define RB_DECLARE_CALLBACKS(RBSTATIC, RBNAME, RBSTRUCT, RBFIELD, RBAUGMENTED, RBCOMPUTE) \
+  static inline void RBNAME##_propagate(struct rb_node *rb, struct rb_node *stop) {       \
+    while (rb != stop) {                                                                  \
+      RBSTRUCT *node = rb_entry(rb, RBSTRUCT, RBFIELD);                                   \
+      if (RBCOMPUTE(node, true)) break;                                                   \
+      rb = rb_parent(&node->RBFIELD);                                                     \
+    }                                                                                     \
+  }                                                                                       \
+  static inline void RBNAME##_copy(struct rb_node *rb_old, struct rb_node *rb_newnode) {  \
+    RBSTRUCT *old = rb_entry(rb_old, RBSTRUCT, RBFIELD);                                  \
+    RBSTRUCT *newnode = rb_entry(rb_newnode, RBSTRUCT, RBFIELD);                          \
+    newnode->RBAUGMENTED = old->RBAUGMENTED;                                              \
+  }                                                                                       \
+  static void RBNAME##_rotate(struct rb_node *rb_old, struct rb_node *rb_newnode) {       \
+    RBSTRUCT *old = rb_entry(rb_old, RBSTRUCT, RBFIELD);                                  \
+    RBSTRUCT *newnode = rb_entry(rb_newnode, RBSTRUCT, RBFIELD);                          \
+    newnode->RBAUGMENTED = old->RBAUGMENTED;                                              \
+    RBCOMPUTE(old, false);                                                                \
+  }                                                                                       \
+  RBSTATIC const struct rb_augment_callbacks RBNAME = {                                   \
       .propagate = RBNAME##_propagate, .copy = RBNAME##_copy, .rotate = RBNAME##_rotate};
 
 /*

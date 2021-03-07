@@ -102,39 +102,39 @@
 
 
 class rtl8139 /* TODO: superclass for network adapter */ {
-  public:
-    rtl8139(pci::device &, u8 irq);
-    ~rtl8139();
+ public:
+  rtl8139(pci::device &, u8 irq);
+  ~rtl8139();
 
 
 
-    void out8(u16 address, u8 data);
-    void out16(u16 address, u16 data);
-    void out32(u16 address, u32 data);
-    u8 in8(u16 address);
-    u16 in16(u16 address);
-    u32 in32(u16 address);
+  void out8(u16 address, u8 data);
+  void out16(u16 address, u16 data);
+  void out32(u16 address, u32 data);
+  u8 in8(u16 address);
+  u16 in16(u16 address);
+  u32 in32(u16 address);
 
 
-    void send_raw(const void* data, int length);
+  void send_raw(const void *data, int length);
 
 
-    void reset();
-    void read_mac_address();
-    void receive();
+  void reset();
+  void read_mac_address();
+  void receive();
 
-    void handle_irq();
+  void handle_irq();
 
-  private:
-    pci::device &m_dev;
+ private:
+  pci::device &m_dev;
 
-    u16 m_io_base = 0;
-    u8 m_interrupt_line = 0;
-    u64 m_rx_buffer_addr = 0;
-    u16 m_rx_buffer_offset = 0;
-    u64 m_tx_buffer_addr[RTL8139_TX_BUFFER_COUNT];
-    u8 m_tx_next_buffer = 0;
-    void *m_packet_buffer;
+  u16 m_io_base = 0;
+  u8 m_interrupt_line = 0;
+  u64 m_rx_buffer_addr = 0;
+  u16 m_rx_buffer_offset = 0;
+  u64 m_tx_buffer_addr[RTL8139_TX_BUFFER_COUNT];
+  u8 m_tx_next_buffer = 0;
+  void *m_packet_buffer;
 
-    u8 mac[6];
+  u8 mac[6];
 };

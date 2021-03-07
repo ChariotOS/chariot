@@ -62,7 +62,7 @@ int tty::ioctl(unsigned int cmd, off_t arg) {
     return TIOCSPGRP;
   }
 
-	return -EINVAL;
+  return -EINVAL;
 }
 
 void tty::handle_input(char c) {
@@ -97,7 +97,7 @@ void tty::handle_input(char c) {
       }
       canonical_buf.clear();
       if (fg_proc) {
-				sched::proc::send_signal(-fg_proc, sig);
+        sched::proc::send_signal(-fg_proc, sig);
       } else {
         printk("[tty] would send signal %d but has no group\n", sig);
       }
@@ -235,4 +235,3 @@ void tty::output(char c, bool block) {
 
   write_out(c, block);
 }
-

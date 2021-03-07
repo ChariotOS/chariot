@@ -53,45 +53,45 @@ extern "C" {
 #endif
 
 #if LWIP_STATS_LARGE
-#define STAT_COUNTER     u32_t
-#define STAT_COUNTER_F   U32_F
+#define STAT_COUNTER u32_t
+#define STAT_COUNTER_F U32_F
 #else
-#define STAT_COUNTER     u16_t
-#define STAT_COUNTER_F   U16_F
+#define STAT_COUNTER u16_t
+#define STAT_COUNTER_F U16_F
 #endif
 
 /** Protocol related stats */
 struct stats_proto {
-  STAT_COUNTER xmit;             /* Transmitted packets. */
-  STAT_COUNTER recv;             /* Received packets. */
-  STAT_COUNTER fw;               /* Forwarded packets. */
-  STAT_COUNTER drop;             /* Dropped packets. */
-  STAT_COUNTER chkerr;           /* Checksum error. */
-  STAT_COUNTER lenerr;           /* Invalid length error. */
-  STAT_COUNTER memerr;           /* Out of memory error. */
-  STAT_COUNTER rterr;            /* Routing error. */
-  STAT_COUNTER proterr;          /* Protocol error. */
-  STAT_COUNTER opterr;           /* Error in options. */
-  STAT_COUNTER err;              /* Misc error. */
+  STAT_COUNTER xmit;    /* Transmitted packets. */
+  STAT_COUNTER recv;    /* Received packets. */
+  STAT_COUNTER fw;      /* Forwarded packets. */
+  STAT_COUNTER drop;    /* Dropped packets. */
+  STAT_COUNTER chkerr;  /* Checksum error. */
+  STAT_COUNTER lenerr;  /* Invalid length error. */
+  STAT_COUNTER memerr;  /* Out of memory error. */
+  STAT_COUNTER rterr;   /* Routing error. */
+  STAT_COUNTER proterr; /* Protocol error. */
+  STAT_COUNTER opterr;  /* Error in options. */
+  STAT_COUNTER err;     /* Misc error. */
   STAT_COUNTER cachehit;
 };
 
 /** IGMP stats */
 struct stats_igmp {
-  STAT_COUNTER xmit;             /* Transmitted packets. */
-  STAT_COUNTER recv;             /* Received packets. */
-  STAT_COUNTER drop;             /* Dropped packets. */
-  STAT_COUNTER chkerr;           /* Checksum error. */
-  STAT_COUNTER lenerr;           /* Invalid length error. */
-  STAT_COUNTER memerr;           /* Out of memory error. */
-  STAT_COUNTER proterr;          /* Protocol error. */
-  STAT_COUNTER rx_v1;            /* Received v1 frames. */
-  STAT_COUNTER rx_group;         /* Received group-specific queries. */
-  STAT_COUNTER rx_general;       /* Received general queries. */
-  STAT_COUNTER rx_report;        /* Received reports. */
-  STAT_COUNTER tx_join;          /* Sent joins. */
-  STAT_COUNTER tx_leave;         /* Sent leaves. */
-  STAT_COUNTER tx_report;        /* Sent reports. */
+  STAT_COUNTER xmit;       /* Transmitted packets. */
+  STAT_COUNTER recv;       /* Received packets. */
+  STAT_COUNTER drop;       /* Dropped packets. */
+  STAT_COUNTER chkerr;     /* Checksum error. */
+  STAT_COUNTER lenerr;     /* Invalid length error. */
+  STAT_COUNTER memerr;     /* Out of memory error. */
+  STAT_COUNTER proterr;    /* Protocol error. */
+  STAT_COUNTER rx_v1;      /* Received v1 frames. */
+  STAT_COUNTER rx_group;   /* Received group-specific queries. */
+  STAT_COUNTER rx_general; /* Received general queries. */
+  STAT_COUNTER rx_report;  /* Received reports. */
+  STAT_COUNTER tx_join;    /* Sent joins. */
+  STAT_COUNTER tx_leave;   /* Sent leaves. */
+  STAT_COUNTER tx_report;  /* Sent reports. */
 };
 
 /** Memory stats */
@@ -308,11 +308,13 @@ void stats_init(void);
 
 #define STATS_INC(x) ++lwip_stats.x
 #define STATS_DEC(x) --lwip_stats.x
-#define STATS_INC_USED(x, y) do { lwip_stats.x.used += y; \
-                                if (lwip_stats.x.max < lwip_stats.x.used) { \
-                                    lwip_stats.x.max = lwip_stats.x.used; \
-                                } \
-                             } while(0)
+#define STATS_INC_USED(x, y)                    \
+  do {                                          \
+    lwip_stats.x.used += y;                     \
+    if (lwip_stats.x.max < lwip_stats.x.used) { \
+      lwip_stats.x.max = lwip_stats.x.used;     \
+    }                                           \
+  } while (0)
 #define STATS_GET(x) lwip_stats.x
 #else /* LWIP_STATS */
 #define stats_init()
@@ -399,11 +401,11 @@ void stats_init(void);
 #define MEM_STATS_DISPLAY()
 #endif
 
- #if MEMP_STATS
+#if MEMP_STATS
 #define MEMP_STATS_DEC(x, i) STATS_DEC(memp[i]->x)
 #define MEMP_STATS_DISPLAY(i) stats_display_memp(lwip_stats.memp[i], i)
 #define MEMP_STATS_GET(x, i) STATS_GET(memp[i]->x)
- #else
+#else
 #define MEMP_STATS_DEC(x, i)
 #define MEMP_STATS_DISPLAY(i)
 #define MEMP_STATS_GET(x, i) 0

@@ -9,7 +9,9 @@
 
 static time_t s_boot_time;
 
-inline bool is_leap_year(unsigned year) { return ((year % 4 == 0) && ((year % 100 != 0) || (year % 400) == 0)); }
+inline bool is_leap_year(unsigned year) {
+  return ((year % 4 == 0) && ((year % 100 != 0) || (year % 400) == 0));
+}
 
 static unsigned days_in_months_since_start_of_year(unsigned month, unsigned year) {
   // assert(month <= 11);
@@ -64,9 +66,12 @@ static unsigned days_in_years_since_epoch(unsigned year) {
   return days;
 }
 
-static bool update_in_progress() { return dev::CMOS::read(0x0a) & 0x80; }
+static bool update_in_progress() {
+  return dev::CMOS::read(0x0a) & 0x80;
+}
 
-void dev::RTC::read_registers(int& year, int& month, int& day, int& hour, int& minute, int& second) {
+void dev::RTC::read_registers(int& year, int& month, int& day, int& hour, int& minute,
+                              int& second) {
   while (update_in_progress())
     ;
 
@@ -92,12 +97,15 @@ time_t dev::RTC::now() {
   // assert(year >= 2019);
 
 
-  return days_in_years_since_epoch(year - 1) * 86400 + days_in_months_since_start_of_year(month - 1, year) * 86400 +
-         (day - 1) * 86400 + hour * 3600 + minute * 60 + second;
+  return days_in_years_since_epoch(year - 1) * 86400 +
+         days_in_months_since_start_of_year(month - 1, year) * 86400 + (day - 1) * 86400 +
+         hour * 3600 + minute * 60 + second;
 }
 
 
-time_t dev::RTC::boot_time() { return s_boot_time; }
+time_t dev::RTC::boot_time() {
+  return s_boot_time;
+}
 
 
 
@@ -108,9 +116,8 @@ void dev::RTC::localtime(struct tm& t) {
 
 
 
-
-void rtc_irq_handler(int n, reg_t* regs, void *) {
-	/* the irq occurs twice per second, so we need to ignore one of them */
+void rtc_irq_handler(int n, reg_t* regs, void*) {
+  /* the irq occurs twice per second, so we need to ignore one of them */
   static int count = 0;
   count++;
   if (count == 2) {
@@ -118,7 +125,6 @@ void rtc_irq_handler(int n, reg_t* regs, void *) {
   }
 
   time::timekeep();
-
 }
 
 // early init
@@ -132,14 +138,16 @@ void rtc_init(void) {
 
   // time::set_second(s_boot_time);
 
-	time::timekeep();
+  time::timekeep();
 }
 
 
-// FIXME: This is a quick & dirty log base 2 with a paramater. Please provide something better in the future.
+// FIXME: This is a quick & dirty log base 2 with a paramater. Please provide something better in
+// the future.
 static int quick_log2(size_t number) {
   int count = 0;
-  while (number >>= 1) count++;
+  while (number >>= 1)
+    count++;
   return count;
 }
 
@@ -152,11 +160,12 @@ void rtc_late_init(void) {
 
   auto frequency = 32768 >> (rate - 1);
 
-  arch_disable_ints();              // disable interrupts
-  outb(0x70, 0x8B);         // select register B, and disable NMI
-  char prev = inb(0x71);    // read the current value of register B
-  outb(0x70, 0x8B);         // set the index again (a read will reset the index to register D)
-  outb(0x71, prev | 0x40);  // write the previous value ORed with 0x40. This turns on bit 6 of register B
+  arch_disable_ints();    // disable interrupts
+  outb(0x70, 0x8B);       // select register B, and disable NMI
+  char prev = inb(0x71);  // read the current value of register B
+  outb(0x70, 0x8B);       // set the index again (a read will reset the index to register D)
+  outb(0x71,
+       prev | 0x40);  // write the previous value ORed with 0x40. This turns on bit 6 of register B
 
 
   rate &= 0x0F;                      // rate must be above 2 and not over 15

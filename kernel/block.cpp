@@ -38,7 +38,9 @@ static map<uint32_t, map<off_t, block::buffer *>> buffer_cache;
 
 
 
-static uint32_t to_key(dev_t device) { return ((uint32_t)device.major() << 16) | ((uint32_t)device.minor()); }
+static uint32_t to_key(dev_t device) {
+  return ((uint32_t)device.major() << 16) | ((uint32_t)device.minor());
+}
 
 
 size_t block::reclaim_memory(void) {
@@ -132,7 +134,9 @@ namespace block {
     return buf;
   }
 
-  void buffer::register_write(void) { m_dirty = true; }
+  void buffer::register_write(void) {
+    m_dirty = true;
+  }
 
   void buffer::release(struct buffer *b) {
     b->m_lock.lock();
@@ -148,10 +152,10 @@ namespace block {
     b->m_count--;
 
 #if CONFIG_LOW_MEMORY
-		if (b->m_count == 0) {
+    if (b->m_count == 0) {
       b->m_page = nullptr;  // release the page
-      // return PGSIZE;
-		}
+                            // return PGSIZE;
+    }
 #endif
 
     b->m_lock.unlock();
@@ -192,7 +196,7 @@ namespace block {
     if (!m_page) {
       // get the page if there isn't one and read the blocks
       m_page = mm::page::alloc();
-			m_page->fset(PG_BCACHE);
+      m_page->fset(PG_BCACHE);
 
       int blocks = PGSIZE / bdev.block_size;
       auto *buf = (char *)p2v(m_page->pa);
@@ -337,9 +341,13 @@ static ssize_t blk_rw(fs::file &f, char *data, size_t len, bool write) {
   return n;
 }
 
-static ssize_t blk_read(fs::file &f, char *data, size_t len) { return blk_rw(f, data, len, false); }
+static ssize_t blk_read(fs::file &f, char *data, size_t len) {
+  return blk_rw(f, data, len, false);
+}
 
-static ssize_t blk_write(fs::file &f, const char *data, size_t len) { return blk_rw(f, (char *)data, len, true); }
+static ssize_t blk_write(fs::file &f, const char *data, size_t len) {
+  return blk_rw(f, (char *)data, len, true);
+}
 
 static int blk_ioctl(fs::file &f, unsigned int num, off_t val) {
   struct fs::blkdev *dev = f.ino->blk.dev;

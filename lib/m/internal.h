@@ -84,4 +84,3 @@ static inline void fp_force_eval(double x) {
   y = x;
 }
 #endif
-

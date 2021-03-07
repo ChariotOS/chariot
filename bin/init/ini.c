@@ -46,7 +46,7 @@ static int strcmpci(const char *a, const char *b) {
 }
 
 /* Returns the next string in the split data */
-static char* next(ini_t *ini, char *p) {
+static char *next(ini_t *ini, char *p) {
   p += strlen(p);
   while (p < ini->end && *p == '\0') {
     p++;
@@ -60,7 +60,7 @@ static void trim_back(ini_t *ini, char *p) {
   }
 }
 
-static char* discard_line(ini_t *ini, char *p) {
+static char *discard_line(ini_t *ini, char *p) {
   while (p < ini->end && *p != '\n') {
     *p++ = '\0';
   }
@@ -78,13 +78,22 @@ static char *unescape_quoted_value(ini_t *ini, char *p) {
       /* Handle escaped char */
       p++;
       switch (*p) {
-        default   : *q = *p;    break;
-        case 'r'  : *q = '\r';  break;
-        case 'n'  : *q = '\n';  break;
-        case 't'  : *q = '\t';  break;
-        case '\r' :
-        case '\n' :
-        case '\0' : goto end;
+        default:
+          *q = *p;
+          break;
+        case 'r':
+          *q = '\r';
+          break;
+        case 'n':
+          *q = '\n';
+          break;
+        case 't':
+          *q = '\t';
+          break;
+        case '\r':
+        case '\n':
+        case '\0':
+          goto end;
       }
 
     } else {
@@ -174,7 +183,7 @@ static void split_data(ini_t *ini) {
 
 
 
-ini_t* ini_load(const char *filename) {
+ini_t *ini_load(const char *filename) {
   ini_t *ini = NULL;
   FILE *fp = NULL;
   int n, sz;
@@ -200,7 +209,7 @@ ini_t* ini_load(const char *filename) {
   /* Load file content into memory, null terminate, init end var */
   ini->data = malloc(sz + 1);
   ini->data[sz] = '\0';
-  ini->end = ini->data  + sz;
+  ini->end = ini->data + sz;
   n = fread(ini->data, 1, sz, fp);
   if (n != sz) {
     goto fail;
@@ -226,7 +235,7 @@ void ini_free(ini_t *ini) {
 }
 
 
-const char* ini_get(ini_t *ini, const char *section, const char *key) {
+const char *ini_get(ini_t *ini, const char *section, const char *key) {
   char *current_section = "";
   char *val;
   char *p = ini->data;
@@ -258,10 +267,7 @@ const char* ini_get(ini_t *ini, const char *section, const char *key) {
 }
 
 
-int ini_sget(
-  ini_t *ini, const char *section, const char *key,
-  const char *scanfmt, void *dst
-) {
+int ini_sget(ini_t *ini, const char *section, const char *key, const char *scanfmt, void *dst) {
   const char *val = ini_get(ini, section, key);
   if (!val) {
     return 0;
@@ -269,7 +275,7 @@ int ini_sget(
   if (scanfmt) {
     sscanf(val, scanfmt, dst);
   } else {
-    *((const char**) dst) = val;
+    *((const char **)dst) = val;
   }
   return 1;
 }

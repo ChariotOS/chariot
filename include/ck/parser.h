@@ -16,7 +16,8 @@ namespace ck {
     ck::string format(void);
 
     explicit inline token(int type, ck::string value, int start, int end)
-        : type(type), value(value), start(start), end(end) {}
+        : type(type), value(value), start(start), end(end) {
+    }
   };
 
   /* base class, to be implemented by your workload */
@@ -42,11 +43,13 @@ namespace ck {
       prev_start = index;
       return t;
     }
-    inline lexer(const ck::string_view &v) : source(v) { prev_start = index = 0; };
+    inline lexer(const ck::string_view &v) : source(v) {
+      prev_start = index = 0;
+    };
     virtual ~lexer(void);
     virtual ck::token lex() = 0;
 
-		void skip_spaces(void);
+    void skip_spaces(void);
   };
 
 

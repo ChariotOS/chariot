@@ -129,8 +129,8 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
   if (hovered_window != NULL) {
     hovered_window->window_lock.lock();
 
-    auto mrel =
-        gfx::point(screen.mouse_pos.x() - hovered_window->rect.x, screen.mouse_pos.y() - hovered_window->rect.y);
+    auto mrel = gfx::point(screen.mouse_pos.x() - hovered_window->rect.x,
+                           screen.mouse_pos.y() - hovered_window->rect.y);
 
 
     hovered_window->last_hover = mrel;
@@ -289,7 +289,8 @@ void lumen::context::guest_closed(long id) {
 }
 
 
-#define HANDLE_TYPE(t, data_type) if (auto arg = (data_type *)msg.data; msg.type == t && msg.len == sizeof(data_type))
+#define HANDLE_TYPE(t, data_type) \
+  if (auto arg = (data_type *)msg.data; msg.type == t && msg.len == sizeof(data_type))
 
 
 
@@ -413,7 +414,8 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
       int sw = ck::min(arg->width, win->rect.w);
       int sh = ck::min(arg->height, win->rect.h);
       auto *pix = new_bitmap->pixels();
-      for (int i = 0; i < arg->width * arg->height; i++) pix[i] = 0xFF00FF;
+      for (int i = 0; i < arg->width * arg->height; i++)
+        pix[i] = 0xFF00FF;
       for (int y = 0; y < sh; y++) {
         const uint32_t *src = win->bitmap->scanline(y);
         uint32_t *dst = new_bitmap->scanline(y);
@@ -635,7 +637,8 @@ void lumen::context::compose(void) {
 
       for (int y = 0; y < r.h; y++) {
         // explicit looping optimizes more
-        for (int i = 0; i < r.w; i++) to_ptr[i] = from_ptr[i];
+        for (int i = 0; i < r.w; i++)
+          to_ptr[i] = from_ptr[i];
         from_ptr += sw;
         to_ptr += sw;
       }
@@ -683,7 +686,8 @@ void lumen::context::compose(void) {
 
     for (int y = 0; y < r.h; y++) {
       // explicit looping optimizes more
-      for (int i = 0; i < r.w; i++) to_ptr[i] = from_ptr[i];
+      for (int i = 0; i < r.w; i++)
+        to_ptr[i] = from_ptr[i];
       from_ptr += sw;
       to_ptr += sw;
     }
@@ -696,7 +700,8 @@ void lumen::context::compose(void) {
       struct lumen::invalidated_msg m;
       m.id = win->id;
       win->guest.guest_lock.lock();
-      win->guest.send_raw(LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m, sizeof(m));
+      win->guest.send_raw(LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m,
+                          sizeof(m));
       win->guest.guest_lock.unlock();
       win->pending_invalidation_id = -1;
     }
@@ -712,7 +717,8 @@ void lumen::context::compose(void) {
 
 
 
-lumen::guest::guest(long id, struct context &ctx, ck::ipcsocket *conn) : id(id), ctx(ctx), connection(conn) {
+lumen::guest::guest(long id, struct context &ctx, ck::ipcsocket *conn)
+    : id(id), ctx(ctx), connection(conn) {
   connection->on_read([this] { this->on_read(); });
 }
 

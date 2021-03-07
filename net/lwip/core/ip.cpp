@@ -4,19 +4,19 @@
  *
  * @defgroup ip IP
  * @ingroup callbackstyle_api
- * 
+ *
  * @defgroup ip4 IPv4
  * @ingroup ip
  *
  * @defgroup ip6 IPv6
  * @ingroup ip
- * 
+ *
  * @defgroup ipaddr IP address handling
  * @ingroup infrastructure
- * 
+ *
  * @defgroup ip4addr IPv4 only
  * @ingroup ipaddr
- * 
+ *
  * @defgroup ip6addr IPv6 only
  * @ingroup ipaddr
  */
@@ -76,11 +76,9 @@ const ip_addr_t ip_addr_any_type = IPADDR_ANY_TYPE_INIT;
  * @param addr conversion result is stored here
  * @return 1 on success, 0 on error
  */
-int
-ipaddr_aton(const char *cp, ip_addr_t *addr)
-{
+int ipaddr_aton(const char *cp, ip_addr_t *addr) {
   if (cp != NULL) {
-    const char* c;
+    const char *c;
     for (c = cp; *c != 0; c++) {
       if (*c == ':') {
         /* contains a colon: IPv6 address */
@@ -107,9 +105,7 @@ ipaddr_aton(const char *cp, ip_addr_t *addr)
  * If both IP versions are enabled, this function can dispatch packets to the correct one.
  * Don't call directly, pass to netif_add() and call netif->input().
  */
-err_t
-ip_input(struct pbuf *p, struct netif *inp)
-{
+err_t ip_input(struct pbuf *p, struct netif *inp) {
   if (p != NULL) {
     if (IP_HDR_GET_VERSION(p->payload) == 6) {
       return ip6_input(p, inp);

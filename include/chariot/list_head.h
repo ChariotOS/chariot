@@ -12,7 +12,9 @@ struct list_head {
   struct list_head *next = this;
 
 
-  inline void init(void) { prev = next = this; }
+  inline void init(void) {
+    prev = next = this;
+  }
 
   /*
    * Insert a new entry between two known consecutive entries.
@@ -35,7 +37,9 @@ struct list_head {
    * Insert a new entry after the specified head.
    * This is good for implementing stacks.
    */
-  inline void add(struct list_head *n) { __add(n, this, this->next); }
+  inline void add(struct list_head *n) {
+    __add(n, this, this->next);
+  }
 
   /**
    * add_tail - add a new entry
@@ -45,7 +49,9 @@ struct list_head {
    * Insert a new entry before the specified head.
    * This is useful for implementing queues.
    */
-  inline void add_tail(struct list_head *n) { __add(n, this->prev, this); }
+  inline void add_tail(struct list_head *n) {
+    __add(n, this->prev, this);
+  }
 
 
 
@@ -121,13 +127,17 @@ struct list_head {
    * is_last - tests whether @entry is the last entry in list @this
    * @entry: the entry to test
    */
-  inline bool is_last(struct list_head *entry) { return entry->next == this; }
+  inline bool is_last(struct list_head *entry) {
+    return entry->next == this;
+  }
 
 
   /**
    * is_empty - test whether the list is empty
    */
-  inline bool is_empty() { return prev == next; }
+  inline bool is_empty() {
+    return prev == next;
+  }
   /**
    * list_empty_careful - tests whether a list is empty and not being modified
    *
@@ -147,7 +157,8 @@ struct list_head {
 
 
 
-  static inline void __splice(const struct list_head *list, struct list_head *prev, struct list_head *next) {
+  static inline void __splice(const struct list_head *list, struct list_head *prev,
+                              struct list_head *next) {
     struct list_head *first = list->next;
     struct list_head *last = list->prev;
 
@@ -210,8 +221,12 @@ struct list_head {
     }
 
 
-    bool operator==(const iter &other) const { return item == other.item; }
-    bool operator!=(const iter &other) const { return item != other.item; }
+    bool operator==(const iter &other) const {
+      return item == other.item;
+    }
+    bool operator!=(const iter &other) const {
+      return item != other.item;
+    }
   };
 
 
@@ -259,10 +274,10 @@ struct __remove_reference<T &&> {
  * @head:	the head for your list.
  * @member:	the name of the list_struct within the struct.
  */
-#define list_for_each_entry(pos, head, member)				\
-	for (pos = list_entry((head)->next, __decltype(*pos), member);	\
-	     __builtin_prefetch((pos->member.next), 0, 1), &pos->member != (head); 	\
-	     pos = list_entry(pos->member.next, __decltype(*pos), member))
+#define list_for_each_entry(pos, head, member)                               \
+  for (pos = list_entry((head)->next, __decltype(*pos), member);             \
+       __builtin_prefetch((pos->member.next), 0, 1), &pos->member != (head); \
+       pos = list_entry(pos->member.next, __decltype(*pos), member))
 
 /**
  * list_for_each_entry_safe - iterate over list of given type safe against removal of list entry

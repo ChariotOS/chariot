@@ -45,11 +45,10 @@
 
 #include "lwip/opt.h"
 
-#if LWIP_IPV6_DHCP6  /* don't build if not configured for use in lwipopts.h */
+#if LWIP_IPV6_DHCP6 /* don't build if not configured for use in lwipopts.h */
 
 
-struct dhcp6
-{
+struct dhcp6 {
   /*@todo: implement DHCP6*/
 };
 

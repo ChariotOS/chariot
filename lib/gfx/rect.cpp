@@ -25,7 +25,8 @@ ck::vec<gfx::rect, 4> gfx::rect::shatter(const gfx::rect& hammer) const {
   }
   gfx::rect top_shard{x, y, w, hammer.y - y};
   gfx::rect bottom_shard{x, hammer.y + hammer.h, w, (y + h) - (hammer.y + hammer.h)};
-  gfx::rect left_shard{x, max(hammer.y, y), hammer.x - x, min((hammer.y + hammer.h), (y + h)) - max(hammer.y, y)};
+  gfx::rect left_shard{x, max(hammer.y, y), hammer.x - x,
+                       min((hammer.y + hammer.h), (y + h)) - max(hammer.y, y)};
   gfx::rect right_shard{hammer.x + hammer.w, max(hammer.y, y), right() - hammer.right(),
                         min((hammer.y + hammer.h), (y + h)) - max(hammer.y, y)};
   if (!top_shard.is_empty()) pieces.push(top_shard);

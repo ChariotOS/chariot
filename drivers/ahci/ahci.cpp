@@ -110,8 +110,7 @@ static void probe_port(ahci::hba_mem *abar) {
  * init_device - using a PCI device, initialize all the drives
  */
 static void init_device(pci::device *dev) {
-  AHCI_INFO("Found Host Bus Adapter [%04x:%04x]\n", dev->vendor_id,
-            dev->device_id);
+  AHCI_INFO("Found Host Bus Adapter [%04x:%04x]\n", dev->vendor_id, dev->device_id);
 
   /* AHCI stores it's ABAR in bar5 of the HBA's PCI registers */
   u64 bar = dev->get_bar(5).raw;
@@ -123,8 +122,8 @@ static void init_device(pci::device *dev) {
 }
 
 
-ahci::disk::disk(struct hba_mem *abar, struct hba_port *port)
-    : abar(abar), port(port) {}
+ahci::disk::disk(struct hba_mem *abar, struct hba_port *port) : abar(abar), port(port) {
+}
 
 volatile struct ahci::hba_cmd_hdr *ahci::disk::get_cmd_hdr(void) {
   u64 clb = port->clb | ((u64)port->clbu << 32);
@@ -133,8 +132,7 @@ volatile struct ahci::hba_cmd_hdr *ahci::disk::get_cmd_hdr(void) {
 }
 volatile struct ahci::hba_cmd *ahci::disk::get_cmd_table(void) {
   auto cmd_hdr = get_cmd_hdr();
-  auto cmd_table =
-      (struct ahci::hba_cmd *)p2v(cmd_hdr->ctba | ((u64)cmd_hdr->ctbau << 32));
+  auto cmd_table = (struct ahci::hba_cmd *)p2v(cmd_hdr->ctba | ((u64)cmd_hdr->ctbau << 32));
   return cmd_table;
 }
 
@@ -154,8 +152,7 @@ void ahci::disk::rebase(void) {
 }
 
 bool ahci::disk::read(off_t sector, uint32_t count, void *dst) {
-
-	return true;
+  return true;
 }
 
 
@@ -196,14 +193,14 @@ void ahci::disk::start_cmd(void) {
 void intel_ahci(pci::device *dev) {
   //
   printk(KERN_INFO "intel ahci device %p\n", dev);
-	init_device(dev);
+  init_device(dev);
 }
 
 
 void intel_ahci_mobile(pci::device *dev) {
   //
   printk(KERN_INFO "intel ahci mobile device %p\n", dev);
-	init_device(dev);
+  init_device(dev);
 }
 
 #define INTEL 0x8086

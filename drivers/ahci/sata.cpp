@@ -3,7 +3,7 @@
 #include "ahci.h"
 
 int ahci::init_sata(unique_ptr<struct ahci::disk> disk) {
-	return -1;
+  return -1;
   AHCI_INFO("disk: %p\n", disk.get());
 
   u64 clb = disk->port->clb | ((u64)disk->port->clbu << 32);
@@ -20,13 +20,13 @@ int ahci::init_sata(unique_ptr<struct ahci::disk> disk) {
     void *buf = p2v(dba);
     printk("%d: %p\n", i, dba);
     hexdump(buf, ent.dbc, true);
-		printk("\n");
+    printk("\n");
   }
 
-	// char buf[512];
-	// memset(buf, 0, 512);
-	// disk->read(0, 1, buf);
-	// hexdump(buf, 512, true);
+  // char buf[512];
+  // memset(buf, 0, 512);
+  // disk->read(0, 1, buf);
+  // hexdump(buf, 512, true);
 
   AHCI_INFO("CLB=%p\n", clb);
   return -1;

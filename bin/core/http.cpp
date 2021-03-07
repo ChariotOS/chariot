@@ -34,21 +34,20 @@ int main(int argc, char **argv) {
   }
 
 
-	char *save;
+  char *save;
 
-	char *domain = strtok_r(argv[0], "/", &save);
-	domain = strdup(domain);
+  char *domain = strtok_r(argv[0], "/", &save);
+  domain = strdup(domain);
 
 
-	printf("domain: %s\n", domain);
+  printf("domain: %s\n", domain);
 
-	printf("argv: %s\n", argv[0]);
-	char *end = argv[0] + strlen(domain);
-	end[0] = '/';
-	printf("end: %s\n", end);
+  printf("argv: %s\n", argv[0]);
+  char *end = argv[0] + strlen(domain);
+  end[0] = '/';
+  printf("end: %s\n", end);
 
-	free(domain);
+  free(domain);
 
   return EXIT_SUCCESS;
 }
-

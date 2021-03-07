@@ -47,7 +47,8 @@ class semaphore final {
   spinlock lock;
 
  public:
-  inline semaphore(int value) : value(value) {}
+  inline semaphore(int value) : value(value) {
+  }
 
   // returns if it was interrupted or not
   inline wait_result WARN_UNUSED wait(bool interruptable = true) {

@@ -12,16 +12,22 @@
 struct processor_state cpus[CONFIG_MAX_CPUS];
 int cpunum = 0;
 
-int cpu::nproc(void) { return cpunum; }
+int cpu::nproc(void) {
+  return cpunum;
+}
 
-struct processor_state *cpu::get() { return &cpu::current(); }
+struct processor_state *cpu::get() {
+  return &cpu::current();
+}
 
 struct process *cpu::proc(void) {
   if (curthd == NULL) return NULL;
   return &curthd->proc;
 }
 
-bool cpu::in_thread(void) { return (bool)thread(); }
+bool cpu::in_thread(void) {
+  return (bool)thread();
+}
 
 struct thread *cpu::thread() {
   return current().current_thread;
@@ -54,4 +60,3 @@ void cpu::calc_speed_khz(void) {
   c.speed_khz = hz / 1000;
   KINFO("%zu khz\n", c.speed_khz);
 }
-

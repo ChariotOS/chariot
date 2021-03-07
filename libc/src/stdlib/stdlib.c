@@ -16,7 +16,8 @@
 extern char **environ;
 
 
-static void insertion_sort(void *bot, size_t nmemb, size_t size, int (*compar)(const void *, const void *)) {
+static void insertion_sort(void *bot, size_t nmemb, size_t size,
+                           int (*compar)(const void *, const void *)) {
   int cnt;
   unsigned char ch;
   char *s1, *s2, *t1, *t2, *top;
@@ -27,7 +28,8 @@ static void insertion_sort(void *bot, size_t nmemb, size_t size, int (*compar)(c
     if (t1 != (t2 += size)) {
       for (cnt = size; cnt--; ++t1) {
         ch = *t1;
-        for (s1 = s2 = t1; (s2 -= size) >= t2; s1 = s2) *s1 = *s2;
+        for (s1 = s2 = t1; (s2 -= size) >= t2; s1 = s2)
+          *s1 = *s2;
         *s1 = ch;
       }
     } else
@@ -35,8 +37,8 @@ static void insertion_sort(void *bot, size_t nmemb, size_t size, int (*compar)(c
   }
 }
 
-static void insertion_sort_r(void *bot, size_t nmemb, size_t size, int (*compar)(const void *, const void *, void *),
-                             void *arg) {
+static void insertion_sort_r(void *bot, size_t nmemb, size_t size,
+                             int (*compar)(const void *, const void *, void *), void *arg) {
   int cnt;
   unsigned char ch;
   char *s1, *s2, *t1, *t2, *top;
@@ -47,7 +49,8 @@ static void insertion_sort_r(void *bot, size_t nmemb, size_t size, int (*compar)
     if (t1 != (t2 += size)) {
       for (cnt = size; cnt--; ++t1) {
         ch = *t1;
-        for (s1 = s2 = t1; (s2 -= size) >= t2; s1 = s2) *s1 = *s2;
+        for (s1 = s2 = t1; (s2 -= size) >= t2; s1 = s2)
+          *s1 = *s2;
         *s1 = ch;
       }
     } else
@@ -61,7 +64,8 @@ void qsort(void *bot, size_t nmemb, size_t size, int (*compar)(const void *, con
   insertion_sort(bot, nmemb, size, compar);
 }
 
-void qsort_r(void *bot, size_t nmemb, size_t size, int (*compar)(const void *, const void *, void *), void *arg) {
+void qsort_r(void *bot, size_t nmemb, size_t size,
+             int (*compar)(const void *, const void *, void *), void *arg) {
   if (nmemb <= 1) return;
 
   insertion_sort_r(bot, nmemb, size, compar, arg);
@@ -214,7 +218,9 @@ char *path_join(char *a, char *b) {
 
 static uint64_t seed;
 
-void srand(unsigned s) { seed = s - 1; }
+void srand(unsigned s) {
+  seed = s - 1;
+}
 
 int rand(void) {
   seed = 6364136223846793005ULL * seed + 1;
@@ -352,7 +358,9 @@ void debug_hexdump_grouped(void *vbuf, size_t len, int grouping) {
   }
 }
 
-void debug_hexdump(void *vbuf, size_t len) { return debug_hexdump_grouped(vbuf, len, 1); }
+void debug_hexdump(void *vbuf, size_t len) {
+  return debug_hexdump_grouped(vbuf, len, 1);
+}
 
 
 
@@ -380,7 +388,8 @@ long long strtoll_l(const char *__restrict nptr, char **__restrict endptr, int b
     if (c == '+') c = *s++;
   }
   if ((base == 0 || base == 16) && c == '0' && (*s == 'x' || *s == 'X') &&
-      ((s[1] >= '0' && s[1] <= '9') || (s[1] >= 'A' && s[1] <= 'F') || (s[1] >= 'a' && s[1] <= 'f'))) {
+      ((s[1] >= '0' && s[1] <= '9') || (s[1] >= 'A' && s[1] <= 'F') ||
+       (s[1] >= 'a' && s[1] <= 'f'))) {
     c = s[1];
     s += 2;
     base = 16;
@@ -440,7 +449,9 @@ long long strtoll_l(const char *__restrict nptr, char **__restrict endptr, int b
   return (acc);
 }
 
-long int strtol(const char *nptr, char **endptr, int base) { return strtoll(nptr, endptr, base); }
+long int strtol(const char *nptr, char **endptr, int base) {
+  return strtoll(nptr, endptr, base);
+}
 long long strtoll(const char *__restrict nptr, char **__restrict endptr, int base) {
   return strtoll_l(nptr, endptr, base);
 }
@@ -464,7 +475,8 @@ int posix_memalign(void **memptr, size_t alignment, size_t size) {
 }
 
 
-void *bsearch(const void *key, const void *base, size_t nel, size_t width, int (*cmp)(const void *, const void *)) {
+void *bsearch(const void *key, const void *base, size_t nel, size_t width,
+              int (*cmp)(const void *, const void *)) {
   void *try;
   int sign;
   while (nel > 0) {

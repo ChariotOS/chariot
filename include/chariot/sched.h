@@ -415,14 +415,14 @@ namespace sched {
   // run a signal on the current thread
   void dispatch_signal(int sig);
 
-  /* 
-	 * Claims a signal to be handled next. This is called from the
+  /*
+   * Claims a signal to be handled next. This is called from the
    * architecture before returning to userspace.
-   * 
-	 * Returns -1 if there is no signal, 0 if there is one
-	 *
-	 * This function may not return if the default action (or the required action)
-	 * is to kill the process.
+   *
+   * Returns -1 if there is no signal, 0 if there is one
+   *
+   * This function may not return if the default action (or the required action)
+   * is to kill the process.
    */
   int claim_next_signal(int &sig, void *&handler);
 

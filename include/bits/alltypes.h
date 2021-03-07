@@ -24,7 +24,7 @@ typedef __builtin_va_list va_list;
 
 #else
 #if defined(__NEED_va_list) && !defined(__DEFINED_va_list)
-typedef struct __va_list * va_list;
+typedef struct __va_list* va_list;
 #define __DEFINED_va_list
 #endif
 
@@ -67,33 +67,33 @@ typedef signed char int8_t;
 #endif
 
 #if defined(__NEED_int16_t) && !defined(__DEFINED_int16_t)
-typedef short       int16_t;
+typedef short int16_t;
 #define __DEFINED_int16_t
 #endif
 
 #if defined(__NEED_int32_t) && !defined(__DEFINED_int32_t)
-typedef int         int32_t;
+typedef int int32_t;
 #define __DEFINED_int32_t
 #endif
 
 #if defined(__NEED_int64_t) && !defined(__DEFINED_int64_t)
-typedef long long   int64_t;
+typedef long long int64_t;
 #define __DEFINED_int64_t
 #endif
 
 
 #if defined(__NEED_uint8_t) && !defined(__DEFINED_uint8_t)
-typedef unsigned char      uint8_t;
+typedef unsigned char uint8_t;
 #define __DEFINED_uint8_t
 #endif
 
 #if defined(__NEED_uint16_t) && !defined(__DEFINED_uint16_t)
-typedef unsigned short     uint16_t;
+typedef unsigned short uint16_t;
 #define __DEFINED_uint16_t
 #endif
 
 #if defined(__NEED_uint32_t) && !defined(__DEFINED_uint32_t)
-typedef unsigned int       uint32_t;
+typedef unsigned int uint32_t;
 #define __DEFINED_uint32_t
 #endif
 
@@ -104,12 +104,12 @@ typedef unsigned long long uint64_t;
 
 
 #if defined(__NEED___uint16_t) && !defined(__DEFINED___uint16_t)
-typedef unsigned short     __uint16_t;
+typedef unsigned short __uint16_t;
 #define __DEFINED___uint16_t
 #endif
 
 #if defined(__NEED___uint32_t) && !defined(__DEFINED___uint32_t)
-typedef unsigned int       __uint32_t;
+typedef unsigned int __uint32_t;
 #define __DEFINED___uint32_t
 #endif
 
@@ -120,49 +120,49 @@ typedef unsigned long long __uint64_t;
 
 
 #if defined(__NEED_int_fast8_t) && !defined(__DEFINED_int_fast8_t)
-typedef int8_t    int_fast8_t;
+typedef int8_t int_fast8_t;
 #define __DEFINED_int_fast8_t
 #endif
 
 #if defined(__NEED_int_fast16_t) && !defined(__DEFINED_int_fast16_t)
-typedef int       int_fast16_t;
+typedef int int_fast16_t;
 #define __DEFINED_int_fast16_t
 #endif
 
 #if defined(__NEED_int_fast32_t) && !defined(__DEFINED_int_fast32_t)
-typedef int       int_fast32_t;
+typedef int int_fast32_t;
 #define __DEFINED_int_fast32_t
 #endif
 
 #if defined(__NEED_int_fast64_t) && !defined(__DEFINED_int_fast64_t)
-typedef int64_t   int_fast64_t;
+typedef int64_t int_fast64_t;
 #define __DEFINED_int_fast64_t
 #endif
 
 
 #if defined(__NEED_uint_fast8_t) && !defined(__DEFINED_uint_fast8_t)
-typedef unsigned char      uint_fast8_t;
+typedef unsigned char uint_fast8_t;
 #define __DEFINED_uint_fast8_t
 #endif
 
 #if defined(__NEED_uint_fast16_t) && !defined(__DEFINED_uint_fast16_t)
-typedef unsigned int       uint_fast16_t;
+typedef unsigned int uint_fast16_t;
 #define __DEFINED_uint_fast16_t
 #endif
 
 #if defined(__NEED_uint_fast32_t) && !defined(__DEFINED_uint_fast32_t)
-typedef unsigned int       uint_fast32_t;
+typedef unsigned int uint_fast32_t;
 #define __DEFINED_uint_fast32_t
 #endif
 
 #if defined(__NEED_uint_fast64_t) && !defined(__DEFINED_uint_fast64_t)
-typedef uint64_t           uint_fast64_t;
+typedef uint64_t uint_fast64_t;
 #define __DEFINED_uint_fast64_t
 #endif
 
 
 #if defined(__NEED_intptr_t) && !defined(__DEFINED_intptr_t)
-typedef long          intptr_t;
+typedef long intptr_t;
 #define __DEFINED_intptr_t
 #endif
 
@@ -207,12 +207,18 @@ typedef int suseconds_t;
 #endif
 
 #if defined(__NEED_struct_timeval) && !defined(__DEFINED_struct_timeval)
-struct timeval { time_t tv_sec; int tv_usec; };
+struct timeval {
+  time_t tv_sec;
+  int tv_usec;
+};
 #define __DEFINED_struct_timeval
 #endif
 
 #if defined(__NEED_struct_timespec) && !defined(__DEFINED_struct_timespec)
-struct timespec { time_t tv_sec; long tv_nsec; };
+struct timespec {
+  time_t tv_sec;
+  long tv_nsec;
+};
 #define __DEFINED_struct_timespec
 #endif
 
@@ -244,7 +250,7 @@ typedef int key_t;
 
 
 #if defined(__NEED_pthread_t) && !defined(__DEFINED_pthread_t)
-typedef struct __pthread * pthread_t;
+typedef struct __pthread *pthread_t;
 #define __DEFINED_pthread_t
 #endif
 
@@ -265,7 +271,12 @@ typedef int pthread_spinlock_t;
 
 
 #if defined(__NEED_pthread_attr_t) && !defined(__DEFINED_pthread_attr_t)
-typedef struct { union { int __i[9]; size_t __s[9]; } __u; } pthread_attr_t;
+typedef struct {
+  union {
+    int __i[9];
+    size_t __s[9];
+  } __u;
+} pthread_attr_t;
 #define __DEFINED_pthread_attr_t
 #endif
 
@@ -287,7 +298,9 @@ typedef unsigned pthread_barrierattr_t;
 #endif
 
 #if defined(__NEED_pthread_rwlockattr_t) && !defined(__DEFINED_pthread_rwlockattr_t)
-typedef struct { unsigned __attr[2]; } pthread_rwlockattr_t;
+typedef struct {
+  unsigned __attr[2];
+} pthread_rwlockattr_t;
 #define __DEFINED_pthread_rwlockattr_t
 #endif
 
@@ -299,17 +312,32 @@ typedef struct { union { int __i[6]; void *__p[6]; } __u; } pthread_mutex_t;
 */
 
 #if defined(__NEED_pthread_cond_t) && !defined(__DEFINED_pthread_cond_t)
-typedef struct { union { int __i[12]; void *__p[12]; } __u; } pthread_cond_t;
+typedef struct {
+  union {
+    int __i[12];
+    void *__p[12];
+  } __u;
+} pthread_cond_t;
 #define __DEFINED_pthread_cond_t
 #endif
 
 #if defined(__NEED_pthread_rwlock_t) && !defined(__DEFINED_pthread_rwlock_t)
-typedef struct { union { int __i[8]; void *__p[8]; } __u; } pthread_rwlock_t;
+typedef struct {
+  union {
+    int __i[8];
+    void *__p[8];
+  } __u;
+} pthread_rwlock_t;
 #define __DEFINED_pthread_rwlock_t
 #endif
 
 #if defined(__NEED_pthread_barrier_t) && !defined(__DEFINED_pthread_barrier_t)
-typedef struct { union { int __i[5]; void *__p[5]; } __u; } pthread_barrier_t;
+typedef struct {
+  union {
+    int __i[5];
+    void *__p[5];
+  } __u;
+} pthread_barrier_t;
 #define __DEFINED_pthread_barrier_t
 #endif
 
@@ -363,7 +391,7 @@ typedef unsigned long long fsfilcnt_t;
 
 
 #if defined(__NEED_timer_t) && !defined(__DEFINED_timer_t)
-typedef void * timer_t;
+typedef void *timer_t;
 #define __DEFINED_timer_t
 #endif
 
@@ -410,7 +438,9 @@ typedef unsigned int in_addr_t;
 #endif
 
 #if defined(__NEED_struct_in_addr) && !defined(__DEFINED_struct_in_addr)
-struct in_addr { in_addr_t s_addr; };
+struct in_addr {
+  in_addr_t s_addr;
+};
 #define __DEFINED_struct_in_addr
 #endif
 
@@ -428,14 +458,15 @@ typedef int nl_item;
 
 
 #if defined(__NEED_locale_t) && !defined(__DEFINED_locale_t)
-typedef struct __locale * locale_t;
+typedef struct __locale *locale_t;
 #define __DEFINED_locale_t
 #endif
 
 
 #if defined(__NEED_struct_iovec) && !defined(__DEFINED_struct_iovec)
-struct iovec { void *iov_base; size_t iov_len; };
+struct iovec {
+  void *iov_base;
+  size_t iov_len;
+};
 #define __DEFINED_struct_iovec
 #endif
-
-

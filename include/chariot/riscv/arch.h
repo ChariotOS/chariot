@@ -19,8 +19,8 @@
     __asm__ __volatile__("csrw " #csr ", %0" : : "rK"(__v) : "memory"); \
   })
 
-#define __init __attribute__ ((section (".boot.text")))
-#define __initdata __attribute__ ((section (".boot.data")))
+#define __init __attribute__((section(".boot.text")))
+#define __initdata __attribute__((section(".boot.data")))
 
 
 #define TICK_INTERVAL (CONFIG_RISCV_CLOCKS_PER_SECOND / CONFIG_TICKS_PER_SECOND)
@@ -37,7 +37,7 @@ namespace rv /* risc-v namespace */ {
 #ifdef CONFIG_64BIT
   using xsize_t = uint64_t;
 #else
-	using xsize_t = uint32_t;
+  using xsize_t = uint32_t;
 #endif
 
   static inline rv::xsize_t mhartid(void) {
@@ -47,20 +47,20 @@ namespace rv /* risc-v namespace */ {
   }
 
   struct hart_state {
-		// offset 0
-		rv::xsize_t bak1;
-		// offset 1
-		rv::xsize_t bak2;
-		// offset 2
-		rv::xsize_t bak3;
-		// offset 3
+    // offset 0
+    rv::xsize_t bak1;
+    // offset 1
+    rv::xsize_t bak2;
+    // offset 2
+    rv::xsize_t bak3;
+    // offset 3
     rv::xsize_t tca;
-		// offset 4
+    // offset 4
     rv::xsize_t interval; /* Timer interval */
-		// offset 5
-		rv::xsize_t kernel_sp;
-		// offset 6
-		rv::xsize_t user_sp;
+    // offset 5
+    rv::xsize_t kernel_sp;
+    // offset 6
+    rv::xsize_t user_sp;
 
     int hartid;
     struct dtb::fdt_header *dtb; /* Device tree binary */
@@ -70,9 +70,11 @@ namespace rv /* risc-v namespace */ {
 
 
   /* Get the current scratch pointer on this hart */
-	rv::hart_state &get_hstate(void);
+  rv::hart_state &get_hstate(void);
 
-  static inline auto hartid(void) { return rv::get_hstate().hartid; }
+  static inline auto hartid(void) {
+    return rv::get_hstate().hartid;
+  }
 
 
   struct regs {
@@ -108,12 +110,12 @@ namespace rv /* risc-v namespace */ {
     rv::xsize_t t5;
     rv::xsize_t t6;
 
-		/* Exception PC */
-		rv::xsize_t sepc; /* 31 */
-		rv::xsize_t status; /* 32 */
-		rv::xsize_t tval; /* 33 */
-		rv::xsize_t cause; /* 34 */
-		rv::xsize_t scratch;  /* 35 */
+    /* Exception PC */
+    rv::xsize_t sepc;    /* 31 */
+    rv::xsize_t status;  /* 32 */
+    rv::xsize_t tval;    /* 33 */
+    rv::xsize_t cause;   /* 34 */
+    rv::xsize_t scratch; /* 35 */
     /* Missing floating point registers in the kernel trap frame */
   };
 
@@ -134,22 +136,26 @@ namespace rv /* risc-v namespace */ {
     return x;
   }
 
-  static inline void set_mstatus(rv::xsize_t x) { asm volatile("csrw mstatus, %0" : : "r"(x)); }
+  static inline void set_mstatus(rv::xsize_t x) {
+    asm volatile("csrw mstatus, %0" : : "r"(x));
+  }
 
 
   // machine exception program counter, holds the
   // instruction address to which a return from
   // exception will go.
-  static inline void set_mepc(rv::xsize_t x) { asm volatile("csrw mepc, %0" : : "r"(x)); }
+  static inline void set_mepc(rv::xsize_t x) {
+    asm volatile("csrw mepc, %0" : : "r"(x));
+  }
 
 
   // Supervisor Status Register, sstatus
 
-#define SSTATUS_SPP (1L << 8)  // Previous mode, 1=Supervisor, 0=User
+#define SSTATUS_SPP (1L << 8)   // Previous mode, 1=Supervisor, 0=User
 #define SSTATUS_SPIE (1L << 5)  // Supervisor Previous Interrupt Enable
 #define SSTATUS_UPIE (1L << 4)  // User Previous Interrupt Enable
-#define SSTATUS_SIE (1L << 1)  // Supervisor Interrupt Enable
-#define SSTATUS_UIE (1L << 0)  // User Interrupt Enable
+#define SSTATUS_SIE (1L << 1)   // Supervisor Interrupt Enable
+#define SSTATUS_UIE (1L << 0)   // User Interrupt Enable
 
 
   static inline rv::xsize_t get_sstatus() {
@@ -158,7 +164,9 @@ namespace rv /* risc-v namespace */ {
     return x;
   }
 
-  static inline void set_sstatus(rv::xsize_t x) { asm volatile("csrw sstatus, %0" : : "r"(x)); }
+  static inline void set_sstatus(rv::xsize_t x) {
+    asm volatile("csrw sstatus, %0" : : "r"(x));
+  }
 
   // Supervisor Interrupt Pending
   static inline rv::xsize_t get_sip() {
@@ -167,7 +175,9 @@ namespace rv /* risc-v namespace */ {
     return x;
   }
 
-  static inline void set_sip(rv::xsize_t x) { asm volatile("csrw sip, %0" : : "r"(x)); }
+  static inline void set_sip(rv::xsize_t x) {
+    asm volatile("csrw sip, %0" : : "r"(x));
+  }
 
   // Supervisor Interrupt Enable
 #define SIE_SEIE (1L << 9)  // external
@@ -179,26 +189,32 @@ namespace rv /* risc-v namespace */ {
     return x;
   }
 
-  static inline void set_sie(rv::xsize_t x) { asm volatile("csrw sie, %0" : : "r"(x)); }
+  static inline void set_sie(rv::xsize_t x) {
+    asm volatile("csrw sie, %0" : : "r"(x));
+  }
 
 
   // Machine-mode Interrupt Enable
 #define MIE_MEIE (1L << 11)  // external
-#define MIE_MTIE (1L << 7)  // timer
-#define MIE_MSIE (1L << 3)  // software
+#define MIE_MTIE (1L << 7)   // timer
+#define MIE_MSIE (1L << 3)   // software
   static inline rv::xsize_t get_mie() {
     rv::xsize_t x;
     asm volatile("csrr %0, mie" : "=r"(x));
     return x;
   }
 
-  static inline void set_mie(rv::xsize_t x) { asm volatile("csrw mie, %0" : : "r"(x)); }
+  static inline void set_mie(rv::xsize_t x) {
+    asm volatile("csrw mie, %0" : : "r"(x));
+  }
 
 
   // machine exception program counter, holds the
   // instruction address to which a return from
   // exception will go.
-  static inline void set_sepc(rv::xsize_t x) { asm volatile("csrw sepc, %0" : : "r"(x)); }
+  static inline void set_sepc(rv::xsize_t x) {
+    asm volatile("csrw sepc, %0" : : "r"(x));
+  }
 
   static inline rv::xsize_t get_sepc() {
     rv::xsize_t x;
@@ -213,7 +229,9 @@ namespace rv /* risc-v namespace */ {
     return x;
   }
 
-  static inline void set_medeleg(rv::xsize_t x) { asm volatile("csrw medeleg, %0" : : "r"(x)); }
+  static inline void set_medeleg(rv::xsize_t x) {
+    asm volatile("csrw medeleg, %0" : : "r"(x));
+  }
 
   // Machine Interrupt Delegation
   static inline rv::xsize_t get_mideleg() {
@@ -222,11 +240,15 @@ namespace rv /* risc-v namespace */ {
     return x;
   }
 
-  static inline void set_mideleg(rv::xsize_t x) { asm volatile("csrw mideleg, %0" : : "r"(x)); }
+  static inline void set_mideleg(rv::xsize_t x) {
+    asm volatile("csrw mideleg, %0" : : "r"(x));
+  }
 
   // Supervisor Trap-Vector Base Address
   // low two bits are mode.
-  static inline void set_stvec(rv::xsize_t x) { asm volatile("csrw stvec, %0" : : "r"(x)); }
+  static inline void set_stvec(rv::xsize_t x) {
+    asm volatile("csrw stvec, %0" : : "r"(x));
+  }
 
   static inline rv::xsize_t get_stvec() {
     rv::xsize_t x;
@@ -235,11 +257,15 @@ namespace rv /* risc-v namespace */ {
   }
 
   // Machine-mode interrupt vector
-  static inline void set_mtvec(rv::xsize_t x) { asm volatile("csrw mtvec, %0" : : "r"(x)); }
+  static inline void set_mtvec(rv::xsize_t x) {
+    asm volatile("csrw mtvec, %0" : : "r"(x));
+  }
 
   // supervisor address translation and protection;
   // holds the address of the page table.
-  static inline void set_satp(rv::xsize_t x) { asm volatile("csrw satp, %0" : : "r"(x)); }
+  static inline void set_satp(rv::xsize_t x) {
+    asm volatile("csrw satp, %0" : : "r"(x));
+  }
 
   static inline rv::xsize_t get_satp() {
     rv::xsize_t x;
@@ -248,9 +274,13 @@ namespace rv /* risc-v namespace */ {
   }
 
   // Supervisor Scratch register, for early trap handler in trampoline.S.
-  static inline void set_sscratch(rv::xsize_t x) { asm volatile("csrw sscratch, %0" : : "r"(x)); }
+  static inline void set_sscratch(rv::xsize_t x) {
+    asm volatile("csrw sscratch, %0" : : "r"(x));
+  }
 
-  static inline void set_mscratch(rv::xsize_t x) { asm volatile("csrw mscratch, %0" : : "r"(x)); }
+  static inline void set_mscratch(rv::xsize_t x) {
+    asm volatile("csrw mscratch, %0" : : "r"(x));
+  }
   static inline rv::xsize_t get_mscratch(void) {
     rv::xsize_t x;
     asm volatile("csrr %0, mscratch" : "=r"(x));
@@ -272,7 +302,9 @@ namespace rv /* risc-v namespace */ {
   }
 
   // Machine-mode Counter-Enable
-  static inline void set_mcounteren(rv::xsize_t x) { asm volatile("csrw mcounteren, %0" : : "r"(x)); }
+  static inline void set_mcounteren(rv::xsize_t x) {
+    asm volatile("csrw mcounteren, %0" : : "r"(x));
+  }
 
   static inline rv::xsize_t get_mcounteren() {
     rv::xsize_t x;
@@ -288,10 +320,14 @@ namespace rv /* risc-v namespace */ {
   }
 
   // enable device interrupts
-  static inline void intget_on() { set_sstatus(get_sstatus() | SSTATUS_SIE); }
+  static inline void intget_on() {
+    set_sstatus(get_sstatus() | SSTATUS_SIE);
+  }
 
   // disable device interrupts
-  static inline void intget_off() { set_sstatus(get_sstatus() & ~SSTATUS_SIE); }
+  static inline void intget_off() {
+    set_sstatus(get_sstatus() & ~SSTATUS_SIE);
+  }
 
   // are device interrupts enabled?
   static inline int intget_get() {
@@ -313,7 +349,9 @@ namespace rv /* risc-v namespace */ {
     return x;
   }
 
-  static inline void set_tp(rv::xsize_t x) { asm volatile("mv tp, %0" : : "r"(x)); }
+  static inline void set_tp(rv::xsize_t x) {
+    asm volatile("mv tp, %0" : : "r"(x));
+  }
 
   static inline rv::xsize_t get_ra() {
     rv::xsize_t x;
@@ -342,10 +380,14 @@ namespace rv /* risc-v namespace */ {
 
 
   // enable device interrupts
-  static inline void intr_on() { set_sstatus(get_sstatus() | SSTATUS_SIE); }
+  static inline void intr_on() {
+    set_sstatus(get_sstatus() | SSTATUS_SIE);
+  }
 
   // disable device interrupts
-  static inline void intr_off() { set_sstatus(get_sstatus() & ~SSTATUS_SIE); }
+  static inline void intr_off() {
+    set_sstatus(get_sstatus() & ~SSTATUS_SIE);
+  }
 
 
 

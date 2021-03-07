@@ -5,7 +5,9 @@
 #include <sys/wait.h>
 #include <time.h>
 
-static size_t current_ms() { return sysbind_gettime_microsecond() / 1000; }
+static size_t current_ms() {
+  return sysbind_gettime_microsecond() / 1000;
+}
 
 
 int main(int argc, char **argv) {
@@ -16,7 +18,8 @@ int main(int argc, char **argv) {
 
 
   auto cmd = ck::command(argv[1]);
-  for (int i = 2; i < argc; i++) cmd.arg(argv[i]);
+  for (int i = 2; i < argc; i++)
+    cmd.arg(argv[i]);
 
 
   auto start = current_ms();

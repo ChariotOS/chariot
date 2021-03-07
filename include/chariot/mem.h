@@ -31,7 +31,9 @@ struct mmap_info {
 
 
 // placement new
-inline void *operator new(size_t, void *ptr) { return ptr; }
+inline void *operator new(size_t, void *ptr) {
+  return ptr;
+}
 
 
 extern int kmem_revision;
@@ -51,11 +53,15 @@ void *realloc(void *ptr, unsigned long newsize);
 
 void init_kernel_virtual_memory();
 
-template<typename T>
-	inline T *malloc() { return (T*)malloc(sizeof(T)); }
+template <typename T>
+inline T *malloc() {
+  return (T *)malloc(sizeof(T));
+}
 
 
 
-template<typename T>
-	inline T *malloc(int count) { return (T*)malloc(sizeof(T) * count); }
+template <typename T>
+inline T *malloc(int count) {
+  return (T *)malloc(sizeof(T) * count);
+}
 #endif

@@ -35,19 +35,26 @@ namespace ck {
 
     bool connect(struct sockaddr *addr, size_t size);
 
-    inline bool connected(void) { return m_connected; }
-    inline bool listening(void) { return m_listening; }
+    inline bool connected(void) {
+      return m_connected;
+    }
+    inline bool listening(void) {
+      return m_listening;
+    }
 
 
     CK_OBJECT(ck::socket);
   };
 
   class localsocket : public ck::socket {
-    inline localsocket(int fd) : socket(fd, AF_UNIX, SOCK_STREAM, 0) {}
+    inline localsocket(int fd) : socket(fd, AF_UNIX, SOCK_STREAM, 0) {
+    }
 
    public:
-    inline localsocket(void) : socket(AF_UNIX, SOCK_STREAM) {}
-    inline virtual ~localsocket(void) {}
+    inline localsocket(void) : socket(AF_UNIX, SOCK_STREAM) {
+    }
+    inline virtual ~localsocket(void) {
+    }
 
     bool connect(ck::string path);
     int listen(ck::string path, ck::func<void()> cb);
@@ -64,11 +71,14 @@ namespace ck {
 
 
   class ipcsocket : public ck::socket {
-    inline ipcsocket(int fd) : socket(fd, AF_CKIPC, SOCK_DGRAM, 0) {}
+    inline ipcsocket(int fd) : socket(fd, AF_CKIPC, SOCK_DGRAM, 0) {
+    }
 
    public:
-    inline ipcsocket(void) : socket(AF_CKIPC, SOCK_DGRAM) {}
-    inline virtual ~ipcsocket(void) {}
+    inline ipcsocket(void) : socket(AF_CKIPC, SOCK_DGRAM) {
+    }
+    inline virtual ~ipcsocket(void) {
+    }
 
     bool connect(ck::string path);
     int listen(ck::string path, ck::func<void()> cb);

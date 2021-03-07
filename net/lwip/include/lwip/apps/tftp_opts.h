@@ -1,17 +1,21 @@
-/****************************************************************//**
- *
- * @file tftp_opts.h
- *
- * @author   Logan Gunthorpe <logang@deltatee.com>
- *
- * @brief    Trivial File Transfer Protocol (RFC 1350) implementation options
- *
- * Copyright (c) Deltatee Enterprises Ltd. 2013
- * All rights reserved.
- *
- ********************************************************************/
+/****************************************************************/ /**
+                                                                    *
+                                                                    * @file tftp_opts.h
+                                                                    *
+                                                                    * @author   Logan Gunthorpe
+                                                                    *<logang@deltatee.com>
+                                                                    *
+                                                                    * @brief    Trivial File
+                                                                    *Transfer Protocol (RFC 1350)
+                                                                    *implementation options
+                                                                    *
+                                                                    * Copyright (c) Deltatee
+                                                                    *Enterprises Ltd. 2013 All
+                                                                    *rights reserved.
+                                                                    *
+                                                                    ********************************************************************/
 
-/* 
+/*
  * Redistribution and use in source and binary forms, with or without
  * modification,are permitted provided that the following conditions are met:
  *
@@ -53,35 +57,35 @@
  * Enable TFTP debug messages
  */
 #if !defined TFTP_DEBUG || defined __DOXYGEN__
-#define TFTP_DEBUG            LWIP_DBG_ON
+#define TFTP_DEBUG LWIP_DBG_ON
 #endif
 
 /**
  * TFTP server port
  */
 #if !defined TFTP_PORT || defined __DOXYGEN__
-#define TFTP_PORT             69
+#define TFTP_PORT 69
 #endif
 
 /**
  * TFTP timeout
  */
 #if !defined TFTP_TIMEOUT_MSECS || defined __DOXYGEN__
-#define TFTP_TIMEOUT_MSECS    10000
+#define TFTP_TIMEOUT_MSECS 10000
 #endif
 
 /**
  * Max. number of retries when a file is read from server
  */
 #if !defined TFTP_MAX_RETRIES || defined __DOXYGEN__
-#define TFTP_MAX_RETRIES      5
+#define TFTP_MAX_RETRIES 5
 #endif
 
 /**
  * TFTP timer cyclic interval
  */
 #if !defined TFTP_TIMER_MSECS || defined __DOXYGEN__
-#define TFTP_TIMER_MSECS      50
+#define TFTP_TIMER_MSECS 50
 #endif
 
 /**
@@ -95,7 +99,7 @@
  * Max. length of TFTP mode
  */
 #if !defined TFTP_MAX_MODE_LEN || defined __DOXYGEN__
-#define TFTP_MAX_MODE_LEN     7
+#define TFTP_MAX_MODE_LEN 7
 #endif
 
 /**

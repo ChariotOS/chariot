@@ -37,4 +37,3 @@ FLEX_ATTRIBUTE(grow, float, 0.0)
 FLEX_ATTRIBUTE(shrink, float, 1.0)
 FLEX_ATTRIBUTE(order, int, 0)
 FLEX_ATTRIBUTE(basis, float, NAN)
-

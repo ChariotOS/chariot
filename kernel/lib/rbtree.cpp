@@ -80,8 +80,8 @@ static inline void __rb_rotate_set_parents(struct rb_node *old, struct rb_node *
 }
 
 static inline void __rb_insert(struct rb_node *node, struct rb_root *root,
-                                        void (*augment_rotate)(struct rb_node *old,
-                                                               struct rb_node *newnode)) {
+                               void (*augment_rotate)(struct rb_node *old,
+                                                      struct rb_node *newnode)) {
   struct rb_node *parent = rb_red_parent(node), *gparent, *tmp;
 
   while (true) {
@@ -214,8 +214,8 @@ static inline void __rb_insert(struct rb_node *node, struct rb_root *root,
  * and eliminate the dummy_rotate callback there
  */
 static inline void ____rb_erase_color(struct rb_node *parent, struct rb_root *root,
-                                               void (*augment_rotate)(struct rb_node *old,
-                                                                      struct rb_node *newnode)) {
+                                      void (*augment_rotate)(struct rb_node *old,
+                                                             struct rb_node *newnode)) {
   struct rb_node *node = NULL, *sibling, *tmp1, *tmp2;
 
   while (true) {

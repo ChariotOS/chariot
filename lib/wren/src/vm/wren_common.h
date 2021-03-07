@@ -26,7 +26,7 @@
 //
 // Defaults to on.
 #ifndef WREN_NAN_TAGGING
-  #define WREN_NAN_TAGGING 1
+#define WREN_NAN_TAGGING 1
 #endif
 
 // If true, the VM's interpreter loop uses computed gotos. See this for more:
@@ -36,23 +36,23 @@
 //
 // Defaults to true on supported compilers.
 #ifndef WREN_COMPUTED_GOTO
-  #ifdef _MSC_VER
-    // No computed gotos in Visual Studio.
-    #define WREN_COMPUTED_GOTO 0
-  #else
-    #define WREN_COMPUTED_GOTO 1
-  #endif
+#ifdef _MSC_VER
+// No computed gotos in Visual Studio.
+#define WREN_COMPUTED_GOTO 0
+#else
+#define WREN_COMPUTED_GOTO 1
+#endif
 #endif
 
 // The VM includes a number of optional modules. You can choose to include
 // these or not. By default, they are all available. To disable one, set the
 // corresponding `WREN_OPT_<name>` define to `0`.
 #ifndef WREN_OPT_META
-  #define WREN_OPT_META 1
+#define WREN_OPT_META 1
 #endif
 
 #ifndef WREN_OPT_RANDOM
-  #define WREN_OPT_RANDOM 1
+#define WREN_OPT_RANDOM 1
 #endif
 
 // These flags are useful for debugging and hacking on Wren itself. They are not
@@ -114,37 +114,34 @@
 #define MAX_FIELDS 255
 
 // Use the VM's allocator to allocate an object of [type].
-#define ALLOCATE(vm, type)                                                     \
-    ((type*)wrenReallocate(vm, NULL, 0, sizeof(type)))
+#define ALLOCATE(vm, type) ((type*)wrenReallocate(vm, NULL, 0, sizeof(type)))
 
 // Use the VM's allocator to allocate an object of [mainType] containing a
 // flexible array of [count] objects of [arrayType].
-#define ALLOCATE_FLEX(vm, mainType, arrayType, count)                          \
-    ((mainType*)wrenReallocate(vm, NULL, 0,                                    \
-        sizeof(mainType) + sizeof(arrayType) * (count)))
+#define ALLOCATE_FLEX(vm, mainType, arrayType, count) \
+  ((mainType*)wrenReallocate(vm, NULL, 0, sizeof(mainType) + sizeof(arrayType) * (count)))
 
 // Use the VM's allocator to allocate an array of [count] elements of [type].
-#define ALLOCATE_ARRAY(vm, type, count)                                        \
-    ((type*)wrenReallocate(vm, NULL, 0, sizeof(type) * (count)))
+#define ALLOCATE_ARRAY(vm, type, count) ((type*)wrenReallocate(vm, NULL, 0, sizeof(type) * (count)))
 
 // Use the VM's allocator to free the previously allocated memory at [pointer].
 #define DEALLOCATE(vm, pointer) wrenReallocate(vm, pointer, 0, 0)
 
 // The Microsoft compiler does not support the "inline" modifier when compiling
 // as plain C.
-#if defined( _MSC_VER ) && !defined(__cplusplus)
-  #define inline _inline
+#if defined(_MSC_VER) && !defined(__cplusplus)
+#define inline _inline
 #endif
 
 // This is used to clearly mark flexible-sized arrays that appear at the end of
 // some dynamically-allocated structs, known as the "struct hack".
 #if __STDC_VERSION__ >= 199901L
-  // In C99, a flexible array member is just "[]".
-  #define FLEXIBLE_ARRAY
+// In C99, a flexible array member is just "[]".
+#define FLEXIBLE_ARRAY
 #else
-  // Elsewhere, use a zero-sized array. It's technically undefined behavior,
-  // but works reliably in most known compilers.
-  #define FLEXIBLE_ARRAY 0
+// Elsewhere, use a zero-sized array. It's technically undefined behavior,
+// but works reliably in most known compilers.
+#define FLEXIBLE_ARRAY 0
 #endif
 
 // Assertions are used to validate program invariants. They indicate things the
@@ -154,46 +151,45 @@
 // Assertions add significant overhead, so are only enabled in debug builds.
 #ifdef DEBUG
 
-  #include <stdio.h>
+#include <stdio.h>
 
-  #define ASSERT(condition, message)                                           \
-      do                                                                       \
-      {                                                                        \
-        if (!(condition))                                                      \
-        {                                                                      \
-          fprintf(stderr, "[%s:%d] Assert failed in %s(): %s\n",               \
-              __FILE__, __LINE__, __func__, message);                          \
-          abort();                                                             \
-        }                                                                      \
-      } while (false)
+#define ASSERT(condition, message)                                                         \
+  do {                                                                                     \
+    if (!(condition)) {                                                                    \
+      fprintf(stderr, "[%s:%d] Assert failed in %s(): %s\n", __FILE__, __LINE__, __func__, \
+              message);                                                                    \
+      abort();                                                                             \
+    }                                                                                      \
+  } while (false)
 
-  // Indicates that we know execution should never reach this point in the
-  // program. In debug mode, we assert this fact because it's a bug to get here.
-  //
-  // In release mode, we use compiler-specific built in functions to tell the
-  // compiler the code can't be reached. This avoids "missing return" warnings
-  // in some cases and also lets it perform some optimizations by assuming the
-  // code is never reached.
-  #define UNREACHABLE()                                                        \
-      do                                                                       \
-      {                                                                        \
-        fprintf(stderr, "[%s:%d] This code should not be reached in %s()\n",   \
-            __FILE__, __LINE__, __func__);                                     \
-        abort();                                                               \
-      } while (false)
+// Indicates that we know execution should never reach this point in the
+// program. In debug mode, we assert this fact because it's a bug to get here.
+//
+// In release mode, we use compiler-specific built in functions to tell the
+// compiler the code can't be reached. This avoids "missing return" warnings
+// in some cases and also lets it perform some optimizations by assuming the
+// code is never reached.
+#define UNREACHABLE()                                                                        \
+  do {                                                                                       \
+    fprintf(stderr, "[%s:%d] This code should not be reached in %s()\n", __FILE__, __LINE__, \
+            __func__);                                                                       \
+    abort();                                                                                 \
+  } while (false)
 
 #else
 
-  #define ASSERT(condition, message) do { } while (false)
+#define ASSERT(condition, message) \
+  do {                             \
+  } while (false)
 
-  // Tell the compiler that this part of the code will never be reached.
-  #if defined( _MSC_VER )
-    #define UNREACHABLE() __assume(0)
-  #elif (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5))
-    #define UNREACHABLE() __builtin_unreachable()
-  #else
-    #define UNREACHABLE()
-  #endif
+// Tell the compiler that this part of the code will never be reached.
+#if defined(_MSC_VER)
+#define UNREACHABLE() __assume(0)
+#elif (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5))
+#define UNREACHABLE() __builtin_unreachable()
+#else
+#define UNREACHABLE()
+#endif
 
 #endif
 

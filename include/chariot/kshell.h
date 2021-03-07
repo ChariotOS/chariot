@@ -8,7 +8,7 @@
 // Imagine it like an actually command line interface, but as an IPC interface to the kernel.
 // They all require root (uid=0) to run :)
 namespace kshell {
-	using handler = unsigned long (*)(vec<string> &, void *data, int dlen);
-	void add(string command, handler h);
-	unsigned long call(string command, vec<string> args, void *data, size_t dlen);
-};
+  using handler = unsigned long (*)(vec<string> &, void *data, int dlen);
+  void add(string command, handler h);
+  unsigned long call(string command, vec<string> args, void *data, size_t dlen);
+};  // namespace kshell

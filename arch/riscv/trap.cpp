@@ -196,8 +196,8 @@ void rv_handle_syscall(rv::regs &tf) {
 }
 
 
-extern "C" void __rv_save_fpu(void*);
-extern "C" void __rv_load_fpu(void*);
+extern "C" void __rv_save_fpu(void *);
+extern "C" void __rv_load_fpu(void *);
 
 /* Supervisor trap function */
 extern "C" void kernel_trap(struct rv::regs &tf) {
@@ -367,8 +367,8 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
 
       /* Copy the old user context */
       memcpy(uctx, &tf, sizeof(tf));
-			/* Save the fpu */
-			__rv_save_fpu(uctx->fpu);
+      /* Save the fpu */
+      __rv_save_fpu(uctx->fpu);
 
       tf.sp = sp;
       tf.a0 = sig;

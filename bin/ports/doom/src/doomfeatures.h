@@ -36,5 +36,3 @@
 #undef FEATURE_SOUND
 
 #endif /* #ifndef DOOM_FEATURES_H */
-
-

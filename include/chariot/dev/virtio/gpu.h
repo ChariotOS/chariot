@@ -200,19 +200,19 @@ class virtio_mmio_gpu : public virtio_mmio_dev {
 
   /* Update the pmode field with the current mode */
   int get_display_info(void);
-	int allocate_2d_resource(uint32_t &id_out, uint32_t width, uint32_t height);
-	int attach_backing(uint32_t resource_id, void *ptr, size_t buf_len);
+  int allocate_2d_resource(uint32_t &id_out, uint32_t width, uint32_t height);
+  int attach_backing(uint32_t resource_id, void *ptr, size_t buf_len);
 
   int send_command_raw(const void *cmd, size_t cmd_len, void **_res, size_t res_len);
-	template<typename Rq, typename Rs>
-		inline int send_command(const Rq &req, Rs *&res) {
-			return send_command_raw(&req, sizeof(Rq), (void**)&res, sizeof(Rs));
-		}
+  template <typename Rq, typename Rs>
+  inline int send_command(const Rq &req, Rs *&res) {
+    return send_command_raw(&req, sizeof(Rq), (void **)&res, sizeof(Rs));
+  }
 
-	int set_scanout(int pmode_id, uint32_t resource_id, uint32_t width, uint32_t height);
+  int set_scanout(int pmode_id, uint32_t resource_id, uint32_t width, uint32_t height);
 
-	int transfer_to_host_2d(int resource_id, uint32_t width, uint32_t height);
-	int flush_resource(int resource_id, uint32_t width, uint32_t height);
+  int transfer_to_host_2d(int resource_id, uint32_t width, uint32_t height);
+  int flush_resource(int resource_id, uint32_t width, uint32_t height);
 
  public:
   virtio_mmio_gpu(volatile uint32_t *regs);

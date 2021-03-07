@@ -12,13 +12,13 @@
 #define FORMAT(thing) (ck::format(thing).get())
 
 namespace ck {
-	/*
-	ck::string format(char);
-	ck::string format(unsigned char);
+  /*
+  ck::string format(char);
+  ck::string format(unsigned char);
 
-	ck::string format(int);
-	ck::string format(unsigned int);
-	ck::string format(long);
-	ck::string format(unsigned long);
-	*/
+  ck::string format(int);
+  ck::string format(unsigned int);
+  ck::string format(long);
+  ck::string format(unsigned long);
+  */
 }

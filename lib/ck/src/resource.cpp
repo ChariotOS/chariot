@@ -7,7 +7,9 @@
 extern "C" char __resources_start[];
 extern "C" char __resources_end[];
 
-static size_t rsize(void) { return (off_t)__resources_end - (off_t)__resources_start; }
+static size_t rsize(void) {
+  return (off_t)__resources_end - (off_t)__resources_start;
+}
 
 
 struct resource_ptr {

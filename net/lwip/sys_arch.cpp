@@ -11,16 +11,21 @@
 #define FLOOR_DIV(x, y) (((x) / (y)))
 #define CEIL_DIV(x, y) (((x) / (y)) + (!!((x) % (y))))
 
-void sys_init(void) {}
+void sys_init(void) {
+}
 
 err_t sys_sem_new(sys_sem_t *sem, u8_t count) {
   sem->sem = new semaphore(count);
   return ERR_OK;
 }
 
-void sys_sem_free(sys_sem_t *sem) { delete sem->sem; }
+void sys_sem_free(sys_sem_t *sem) {
+  delete sem->sem;
+}
 
-void sys_sem_signal(sys_sem_t *sem) { sem->sem->post(); }
+void sys_sem_signal(sys_sem_t *sem) {
+  sem->sem->post();
+}
 
 u32_t sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout) {
   // printk("sys_arch_sem_wait timeout: %u\n", timeout);
@@ -43,7 +48,9 @@ return time::now_ms() - start;
   return time::now_ms() - start;
 }
 
-int sys_sem_valid(sys_sem_t *sem) { return sem->sem != NULL; }
+int sys_sem_valid(sys_sem_t *sem) {
+  return sem->sem != NULL;
+}
 
 void sys_sem_set_invalid(sys_sem_t *sem) {
   delete sem->sem;
@@ -51,7 +58,9 @@ void sys_sem_set_invalid(sys_sem_t *sem) {
 }
 
 
-u32_t sys_now() { return time::now_ms(); }
+u32_t sys_now() {
+  return time::now_ms();
+}
 
 
 err_t sys_mutex_new(sys_mutex_t *mutex) {
@@ -60,22 +69,32 @@ err_t sys_mutex_new(sys_mutex_t *mutex) {
   return ERR_OK;
 }
 
-void sys_mutex_lock(sys_mutex_t *mutex) { spinlock::lock(mutex->locked); }
+void sys_mutex_lock(sys_mutex_t *mutex) {
+  spinlock::lock(mutex->locked);
+}
 
-void sys_mutex_unlock(sys_mutex_t *mutex) { spinlock::unlock(mutex->locked); }
+void sys_mutex_unlock(sys_mutex_t *mutex) {
+  spinlock::unlock(mutex->locked);
+}
 
 void sys_mutex_free(sys_mutex_t *mutex) {
   //
 }
-int sys_mutex_valid(sys_mutex_t *mutex) { return mutex->valid == 1; }
+int sys_mutex_valid(sys_mutex_t *mutex) {
+  return mutex->valid == 1;
+}
 
 
-void sys_mutex_set_invalid(sys_mutex_t *mutex) { mutex->valid = false; }
+void sys_mutex_set_invalid(sys_mutex_t *mutex) {
+  mutex->valid = false;
+}
 
 
 
 
-int sys_mbox_valid(sys_mbox_t *mbox) { return mbox->ch != NULL; }
+int sys_mbox_valid(sys_mbox_t *mbox) {
+  return mbox->ch != NULL;
+}
 
 err_t sys_mbox_new(sys_mbox_t *mb, int size) {
   mb->ch = new chan<void *>();
@@ -138,7 +157,8 @@ void sys_mbox_set_invalid(sys_mbox_t *mb) {
 
 
 
-sys_thread_t sys_thread_new(char const *name, void (*func)(void *), void *arg, int stacksize, int prio) {
+sys_thread_t sys_thread_new(char const *name, void (*func)(void *), void *arg, int stacksize,
+                            int prio) {
   printk("[lwip] thread named '%s'\n", name);
   return sched::proc::create_kthread(name, (int (*)(void *))func, arg);
 }
@@ -166,4 +186,3 @@ u32_t lwip_arch_rand(void) {
   printk("LWIP RAND!\n");
   return x++;
 }
-

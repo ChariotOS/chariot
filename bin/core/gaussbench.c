@@ -14,7 +14,8 @@ static void serialgauss(float **A, float *B, float *X) {
   for (norm = 0; norm < N - 1; norm++) {
     for (row = norm + 1; row < N; row++) {
       multiplier = A[row][norm] / A[norm][norm];
-      for (col = norm; col < N; col++) A[row][col] -= A[norm][col] * multiplier;
+      for (col = norm; col < N; col++)
+        A[row][col] -= A[norm][col] * multiplier;
       B[row] -= B[norm] * multiplier;
     }
   }

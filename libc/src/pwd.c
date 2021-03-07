@@ -34,8 +34,7 @@ struct passwd *fgetpwent(FILE *stream) {
   /* Tokenize */
   char *p, *tokens[8], *last;
   int i = 0;
-  for ((p = strtok_r(pw_blob, ":", &last)); p;
-       (p = strtok_r(NULL, ":", &last)), i++) {
+  for ((p = strtok_r(pw_blob, ":", &last)); p; (p = strtok_r(NULL, ":", &last)), i++) {
     tokens[i] = p;
   }
 
@@ -110,4 +109,3 @@ struct passwd *getpwuid(uid_t uid) {
 
   return NULL;
 }
-

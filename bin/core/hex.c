@@ -50,8 +50,7 @@ void set_color_for(char c) {
     set_color(C_CYAN);
   } else if (c == '\n' || c == '\r') {
     set_color(C_GREEN);
-  } else if (c == '\a' || c == '\b' || c == 0x1b || c == '\f' || c == '\n' ||
-             c == '\r') {
+  } else if (c == '\a' || c == '\b' || c == 0x1b || c == '\f' || c == '\n' || c == '\r') {
     set_color(C_RED);
   } else {
     set_color(C_GRAY);

@@ -63,13 +63,13 @@ namespace cpuid {
         uint8_t smx : 1;       // Safer mode extensions
         uint8_t eist : 1;      // Enchanced Intel SpeedStep technology
         uint8_t tm2 : 1;       // Thermal Monitor 2
-        uint8_t ssse3 : 1;  // Supplemental Streaming SIMD Extensions 3 (SSSE3)
-        uint8_t cnxt_id : 1;  // L1 Context ID
-        uint8_t sdbg : 1;     // supports IA32_DEBUG_INTERFACE MSR
-        uint8_t fma : 1;      // FMA extensions using YMM state
-        uint8_t cx16 : 1;     // CMPXCHG16B instruction available
-        uint8_t xtpr : 1;     // xTPR update control
-        uint8_t pdcm : 1;     // perfmon and debug capability
+        uint8_t ssse3 : 1;     // Supplemental Streaming SIMD Extensions 3 (SSSE3)
+        uint8_t cnxt_id : 1;   // L1 Context ID
+        uint8_t sdbg : 1;      // supports IA32_DEBUG_INTERFACE MSR
+        uint8_t fma : 1;       // FMA extensions using YMM state
+        uint8_t cx16 : 1;      // CMPXCHG16B instruction available
+        uint8_t xtpr : 1;      // xTPR update control
+        uint8_t pdcm : 1;      // perfmon and debug capability
         uint8_t rsvd0 : 1;
         uint8_t pcid : 1;       // process-context identifiers
         uint8_t dca : 1;        // can prefetch data from memory mapped device
@@ -96,13 +96,12 @@ namespace cpuid {
     union {
       uint32_t val;
       struct {
-        uint8_t fpu : 1;  // floating point unit on-chip
-        uint8_t vme : 1;  // virtual 8086 mode enhancements
-        uint8_t de : 1;   // debugging extensions
-        uint8_t pse : 1;  // page size extension
-        uint8_t tsc : 1;  // time stamp counter
-        uint8_t
-            msr : 1;  // model specific registers RDMSR and WRMSR instructions
+        uint8_t fpu : 1;   // floating point unit on-chip
+        uint8_t vme : 1;   // virtual 8086 mode enhancements
+        uint8_t de : 1;    // debugging extensions
+        uint8_t pse : 1;   // page size extension
+        uint8_t tsc : 1;   // time stamp counter
+        uint8_t msr : 1;   // model specific registers RDMSR and WRMSR instructions
         uint8_t pae : 1;   // physical address extension
         uint8_t mce : 1;   // machine check exception
         uint8_t cx8 : 1;   // cmpxchg8b instruction
@@ -216,39 +215,36 @@ namespace cpuid {
       struct {
         uint8_t fsgsbase : 1; /* Access to base of %fs and %gs */
         uint8_t ia32_tsc_adjust : 1;
-        uint8_t sgx : 1;     /* software guard extensions */
-        uint8_t bmi1 : 1;    /* bit manipulation instruction set 1 */
-        uint8_t hle : 1;     /* transactional synchronization extensions */
-        uint8_t avx2 : 1;    /* advanced vector extensions 2 */
-        uint8_t rsvd1 : 1;   /* reserved */
-        uint8_t smep : 1;    /* supervisor mode execution protection */
-        uint8_t bmi2 : 1;    /* bit manipulation instruction set 2 */
-        uint8_t erms : 1;    /* enhanced REP MOVSB/STOSB */
-        uint8_t invpcid : 1; /* INVPCID instruction */
-        uint8_t rtm : 1;     /* transactional synchronization extensions */
-        uint8_t pqm : 1;     /* Platform quality of service monitoring */
+        uint8_t sgx : 1;                /* software guard extensions */
+        uint8_t bmi1 : 1;               /* bit manipulation instruction set 1 */
+        uint8_t hle : 1;                /* transactional synchronization extensions */
+        uint8_t avx2 : 1;               /* advanced vector extensions 2 */
+        uint8_t rsvd1 : 1;              /* reserved */
+        uint8_t smep : 1;               /* supervisor mode execution protection */
+        uint8_t bmi2 : 1;               /* bit manipulation instruction set 2 */
+        uint8_t erms : 1;               /* enhanced REP MOVSB/STOSB */
+        uint8_t invpcid : 1;            /* INVPCID instruction */
+        uint8_t rtm : 1;                /* transactional synchronization extensions */
+        uint8_t pqm : 1;                /* Platform quality of service monitoring */
         uint8_t deprecate_fpu : 1;      /*deprecates FPU CS and FPU DS values */
         uint8_t intel_mem_prot_ext : 1; /* memory protection extensions */
-        uint8_t pqe : 1;      /* platform quality of service enforcement */
-        uint8_t avx512f : 1;  /* AVX512 Foundation (core extension) */
-        uint8_t avx512dq : 1; /* AVX512 Doubleword and Quadword Extensions */
-        uint8_t rdseed : 1;   /* RDSEED instruction */
-        uint8_t
-            adx : 1; /* ADX (multi-precision add-carry instruction extensions */
-        uint8_t smap : 1; /* Supervisor mode access prevention */
-        uint8_t
-            avx512ifma : 1; /* AVX512 Integer fused multiply-add instructions */
-        uint8_t pcommit : 1;    /* PCOMMIT instruction */
-        uint8_t clflushopt : 1; /* CLFLUSHOPT instruction */
-        uint8_t clwb : 1;       /* CLWB Instruction */
-        uint8_t ipt : 1;        /* intel processor trace */
-        uint8_t avx512pf : 1;   /* AVX512 Prefetch Instructions */
-        uint8_t
-            avx512er : 1; /* AVX512 Exponential and Reciprocal Instructions */
-        uint8_t avx512cd : 1; /* AVX512 Conflict Detection Instructions */
-        uint8_t sha : 1;      /* Intel SHA extensions */
-        uint8_t avx512bw : 1; /* AVX512 Byte and Word Instructions */
-        uint8_t avx512vl : 1; /* AVX512 Vector Length Extensions */
+        uint8_t pqe : 1;                /* platform quality of service enforcement */
+        uint8_t avx512f : 1;            /* AVX512 Foundation (core extension) */
+        uint8_t avx512dq : 1;           /* AVX512 Doubleword and Quadword Extensions */
+        uint8_t rdseed : 1;             /* RDSEED instruction */
+        uint8_t adx : 1;                /* ADX (multi-precision add-carry instruction extensions */
+        uint8_t smap : 1;               /* Supervisor mode access prevention */
+        uint8_t avx512ifma : 1;         /* AVX512 Integer fused multiply-add instructions */
+        uint8_t pcommit : 1;            /* PCOMMIT instruction */
+        uint8_t clflushopt : 1;         /* CLFLUSHOPT instruction */
+        uint8_t clwb : 1;               /* CLWB Instruction */
+        uint8_t ipt : 1;                /* intel processor trace */
+        uint8_t avx512pf : 1;           /* AVX512 Prefetch Instructions */
+        uint8_t avx512er : 1;           /* AVX512 Exponential and Reciprocal Instructions */
+        uint8_t avx512cd : 1;           /* AVX512 Conflict Detection Instructions */
+        uint8_t sha : 1;                /* Intel SHA extensions */
+        uint8_t avx512bw : 1;           /* AVX512 Byte and Word Instructions */
+        uint8_t avx512vl : 1;           /* AVX512 Vector Length Extensions */
       } __packed;
     } __packed;
   } __packed;
@@ -278,7 +274,7 @@ namespace cpuid {
   int run_sub(uint32_t func, uint32_t sub_func, cpuid::ret_t &ret);
 
 
-	bool is_intel();
-	bool is_amd();
+  bool is_intel();
+  bool is_amd();
 
 };  // namespace cpuid

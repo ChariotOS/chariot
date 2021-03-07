@@ -87,10 +87,13 @@ static void stdio_exit(void) {
   fflush(stdout);
   fflush(stderr);
   // go through all the files and flush them
-  for (FILE *f = ofl_head; f != NULL; f = f->next) fflush(f);
+  for (FILE *f = ofl_head; f != NULL; f = f->next)
+    fflush(f);
 }
 
-void stdio_init(void) { atexit(stdio_exit); }
+void stdio_init(void) {
+  atexit(stdio_exit);
+}
 
 static FILE *falloc();
 static void ffree(FILE *);
@@ -338,16 +341,25 @@ int fgetc(FILE *stream) {
   return (unsigned char)buf[0];
 }
 
-int feof(FILE *stream) { return stream->eof; }
+int feof(FILE *stream) {
+  return stream->eof;
+}
 
-int ferror(FILE *s) { return 0; }
-void clearerr(FILE *s) {}
+int ferror(FILE *s) {
+  return 0;
+}
+void clearerr(FILE *s) {
+}
 
 int getc(FILE *stream) __attribute__((weak, alias("fgetc")));
 
-int getchar(void) { return fgetc(stdin); }
+int getchar(void) {
+  return fgetc(stdin);
+}
 
-int ungetc(int c, FILE *stream) { return EOF; }
+int ungetc(int c, FILE *stream) {
+  return EOF;
+}
 
 char *fgets(char *s, int size, FILE *stream) {
   int c;
@@ -374,13 +386,21 @@ char *fgets(char *s, int size, FILE *stream) {
   return NULL;
 }
 
-int putchar(int c) { return fputc(c, stdout); }
+int putchar(int c) {
+  return fputc(c, stdout);
+}
 
-int fseek(FILE *stream, long offset, int whence) { return lseek(stream->fd, offset, whence); }
+int fseek(FILE *stream, long offset, int whence) {
+  return lseek(stream->fd, offset, whence);
+}
 
-long ftell(FILE *stream) { return lseek(stream->fd, 0, SEEK_CUR); }
+long ftell(FILE *stream) {
+  return lseek(stream->fd, 0, SEEK_CUR);
+}
 
-void rewind(FILE *stream) { fseek(stream, 0, SEEK_SET); }
+void rewind(FILE *stream) {
+  fseek(stream, 0, SEEK_SET);
+}
 
 int fputs(const char *s, FILE *stream) {
   int len = strlen(s);
@@ -393,7 +413,9 @@ int puts(const char *s) {
   return r;
 }
 
-int remove(const char *pathname) { return -1; }
+int remove(const char *pathname) {
+  return -1;
+}
 
 void perror(const char *msg) {
   // store errno in case something else in this function fiddles with it
@@ -402,9 +424,13 @@ void perror(const char *msg) {
   printf("%s: %s\n", msg, strerror(e));
 }
 
-void setbuf(FILE *stream, char *buf) { setvbuf(stream, buf, buf ? _IOFBF : _IONBF, BUFSIZ); }
-void setbuffer(FILE *stream, char *buf, size_t size) {}
-void setlinebuf(FILE *stream) {}
+void setbuf(FILE *stream, char *buf) {
+  setvbuf(stream, buf, buf ? _IOFBF : _IONBF, BUFSIZ);
+}
+void setbuffer(FILE *stream, char *buf, size_t size) {
+}
+void setlinebuf(FILE *stream) {
+}
 
 int setvbuf(FILE *restrict f, char *restrict buf, int type, size_t size) {
   // f->lbf = EOF;
@@ -424,7 +450,9 @@ int setvbuf(FILE *restrict f, char *restrict buf, int type, size_t size) {
   return 0;
 }
 
-FILE *tmpfile(void) { return NULL; }
+FILE *tmpfile(void) {
+  return NULL;
+}
 
 
 
@@ -436,4 +464,6 @@ int rename(const char *old_filename, const char *new_filename) {
 
 
 // TODO:
-int fscanf(FILE *stream, const char *format, ...) { return -1; }
+int fscanf(FILE *stream, const char *format, ...) {
+  return -1;
+}

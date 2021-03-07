@@ -34,7 +34,7 @@ void arch_thread_create_callback() {
       thd->setup_stack((reg_t *)tf);
     }
 
-		/* Jumping to userspace */
+    /* Jumping to userspace */
     regs->status = read_csr(sstatus) & ~SSTATUS_SPP;
     regs->sepc = arch_reg(REG_PC, tf);
     rv_enter_userspace(regs);
@@ -50,18 +50,28 @@ void arch_thread_create_callback() {
 
 
 
-void arch_disable_ints(void) { rv::intr_off(); }
-void arch_enable_ints(void) { rv::intr_on(); }
+void arch_disable_ints(void) {
+  rv::intr_off();
+}
+void arch_enable_ints(void) {
+  rv::intr_on();
+}
 
-bool arch_irqs_enabled(void) { return rv::intr_enabled(); }
+bool arch_irqs_enabled(void) {
+  return rv::intr_enabled();
+}
 
 
-void arch_relax(void) {}
+void arch_relax(void) {
+}
 
 /* Simply wait for an interrupt :) */
-void arch_halt() { asm volatile("wfi"); }
+void arch_halt() {
+  asm volatile("wfi");
+}
 
-void arch_mem_init(unsigned long mbd) {}
+void arch_mem_init(unsigned long mbd) {
+}
 
 
 void arch_initialize_trapframe(bool userspace, reg_t *r) {
@@ -71,23 +81,25 @@ void arch_initialize_trapframe(bool userspace, reg_t *r) {
 }
 
 
-unsigned arch_trapframe_size(void) { return sizeof(rv::regs); }
+unsigned arch_trapframe_size(void) {
+  return sizeof(rv::regs);
+}
 
 
 
 
+void arch_flush_mmu(void) {
+}
 
-void arch_flush_mmu(void) {}
 
-
-extern "C" void __rv_save_fpu(void*);
-extern "C" void __rv_load_fpu(void*);
+extern "C" void __rv_save_fpu(void *);
+extern "C" void __rv_load_fpu(void *);
 
 void arch_save_fpu(struct thread &thd) {
-	__rv_save_fpu(thd.fpu.state);
+  __rv_save_fpu(thd.fpu.state);
 }
 void arch_restore_fpu(struct thread &thd) {
-	__rv_load_fpu(thd.fpu.state);
+  __rv_load_fpu(thd.fpu.state);
 }
 
 
@@ -115,7 +127,7 @@ struct processor_state &cpu::current(void) {
 
 void cpu::switch_vm(struct thread *thd) {
   thd->proc.mm->switch_to();
-	rv::sfence_vma();
+  rv::sfence_vma();
 }
 
 void cpu::seginit(void *local) {
@@ -131,7 +143,8 @@ void cpu::seginit(void *local) {
 
 
 /* TODO */
-extern "C" void trapret(void) {}
+extern "C" void trapret(void) {
+}
 
 
 
@@ -141,11 +154,17 @@ extern "C" void trapret(void) {}
  * x86. I won't implement them as a form of rebellion against complex
  * instruction sets
  */
-int arch::irq::init(void) { return 0; /* TODO: */ }
+int arch::irq::init(void) {
+  return 0; /* TODO: */
+}
 
 void arch::irq::eoi(int i) {
   /* Forward to the PLIC */
   rv::plic::complete(i);
 }
-void arch::irq::enable(int num) { rv::plic::enable(num, 1); }
-void arch::irq::disable(int num) { rv::plic::disable(num); }
+void arch::irq::enable(int num) {
+  rv::plic::enable(num, 1);
+}
+void arch::irq::disable(int num) {
+  rv::plic::disable(num);
+}

@@ -68,7 +68,9 @@ static int __pthread_trampoline(void *arg) {
   return 0;
 }
 
-pthread_t pthread_self(void) { return 0; }
+pthread_t pthread_self(void) {
+  return 0;
+}
 
 int pthread_create(pthread_t *thd, const pthread_attr_t *attr, void *(*fn)(void *), void *arg) {
   struct __pthread *data = malloc(sizeof(*data));
@@ -151,7 +153,9 @@ int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr) 
   return 0;
 }
 
-int pthread_mutex_destroy(pthread_mutex_t *mutex) { return 0; }
+int pthread_mutex_destroy(pthread_mutex_t *mutex) {
+  return 0;
+}
 
 /////////////////////////////////////////////////////////////////
 
@@ -176,7 +180,9 @@ int pthread_once(pthread_once_t *control, void (*init)(void)) {
   return 0;
 }
 
-void *pthread_getspecific(pthread_key_t key) { return threadDataTable[key]; }
+void *pthread_getspecific(pthread_key_t key) {
+  return threadDataTable[key];
+}
 
 int pthread_setspecific(pthread_key_t key, const void *data) {
   threadDataTable[key] = (void *)data;
@@ -186,15 +192,29 @@ int pthread_setspecific(pthread_key_t key, const void *data) {
 
 
 
-int pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr) { return -1; }
-int pthread_cond_destroy(pthread_cond_t *cond) { return 0; }
+int pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr) {
+  return -1;
+}
+int pthread_cond_destroy(pthread_cond_t *cond) {
+  return 0;
+}
 
 
-static int cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime) { return -1; }
+static int cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime) {
+  return -1;
+}
 
-int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex) { return 0; }
+int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex) {
+  return 0;
+}
 
 
-int pthread_cond_timedwait(pthread_cond_t *c, pthread_mutex_t *m, const struct timespec *ts) { return -1; }
-int pthread_cond_broadcast(pthread_cond_t *c) { return -1; }
-int pthread_cond_signal(pthread_cond_t *c) { return -1; }
+int pthread_cond_timedwait(pthread_cond_t *c, pthread_mutex_t *m, const struct timespec *ts) {
+  return -1;
+}
+int pthread_cond_broadcast(pthread_cond_t *c) {
+  return -1;
+}
+int pthread_cond_signal(pthread_cond_t *c) {
+  return -1;
+}

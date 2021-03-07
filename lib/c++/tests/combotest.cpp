@@ -14,50 +14,48 @@
 #include "testframework.h"
 
 bool canInsertIntoVectorInMap() {
-	std::map<std::string, std::vector<void *> > test;
+  std::map<std::string, std::vector<void *> > test;
 
-	std::vector<void *> tempvec;
+  std::vector<void *> tempvec;
 
-	tempvec.clear();
-	tempvec.push_back((void *)1);
-	tempvec.push_back((void *)2);
-	test["2e"] = tempvec;
+  tempvec.clear();
+  tempvec.push_back((void *)1);
+  tempvec.push_back((void *)2);
+  test["2e"] = tempvec;
 
-	tempvec.clear();
-	tempvec.push_back((void *)1);
-	test["1e"] = tempvec;
+  tempvec.clear();
+  tempvec.push_back((void *)1);
+  test["1e"] = tempvec;
 
-	tempvec.clear();
-	test["0e"] = tempvec;
+  tempvec.clear();
+  test["0e"] = tempvec;
 
-	if( test["0e"].size() != 0 ){
-		return false;
-	}
-	if( test["1e"].size() != 1 ){
-		return false;
-	}
-	if( test["2e"].size() != 2 ){
-		return false;
-	}
+  if (test["0e"].size() != 0) {
+    return false;
+  }
+  if (test["1e"].size() != 1) {
+    return false;
+  }
+  if (test["2e"].size() != 2) {
+    return false;
+  }
 
-	test["2e"].push_back((void *)7);
-	if( test["2e"].size() != 3 ){
-		return false;
-	}
+  test["2e"].push_back((void *)7);
+  if (test["2e"].size() != 3) {
+    return false;
+  }
 
 
-	return true;
+  return true;
 }
 
 
 int main() {
+  std::cout << "Beginning combo tests" << std::endl;
 
-	std::cout << "Beginning combo tests" << std::endl;
+  TestFramework::init();
 
-        TestFramework::init();
+  TestFramework::AssertReturns<bool>(canInsertIntoVectorInMap, true);
 
-        TestFramework::AssertReturns<bool>(canInsertIntoVectorInMap, true);
-
-        TestFramework::results();
-
+  TestFramework::results();
 }

@@ -28,8 +28,8 @@ inline void vmware_out(struct vmware::command& command) {
   hexdump(&command, sizeof(command), true);
 
   asm volatile("in %%dx, %0"
-               : "+a"(command.ax), "+b"(command.bx), "+c"(command.cx),
-                 "+d"(command.dx), "+S"(command.si), "+D"(command.di));
+               : "+a"(command.ax), "+b"(command.bx), "+c"(command.cx), "+d"(command.dx),
+                 "+S"(command.si), "+D"(command.di));
 
 
   printk("got out:\n");
@@ -41,16 +41,16 @@ inline void vmware_high_bandwidth_send(struct vmware::command& command) {
   command.port = VMWARE_PORT_HIGHBANDWIDTH;
 
   asm volatile("cld; rep; outsb"
-               : "+a"(command.ax), "+b"(command.bx), "+c"(command.cx),
-                 "+d"(command.dx), "+S"(command.si), "+D"(command.di));
+               : "+a"(command.ax), "+b"(command.bx), "+c"(command.cx), "+d"(command.dx),
+                 "+S"(command.si), "+D"(command.di));
 }
 
 inline void vmware_high_bandwidth_get(struct vmware::command& command) {
   command.magic = VMWARE_MAGIC;
   command.port = VMWARE_PORT_HIGHBANDWIDTH;
   asm volatile("cld; rep; insb"
-               : "+a"(command.ax), "+b"(command.bx), "+c"(command.cx),
-                 "+d"(command.dx), "+S"(command.si), "+D"(command.di));
+               : "+a"(command.ax), "+b"(command.bx), "+c"(command.cx), "+d"(command.dx),
+                 "+S"(command.si), "+D"(command.di));
 }
 
 
@@ -89,8 +89,8 @@ void vmware::send(struct vmware::command& command) {
 
 /*
 static bool detect_vmmouse() {
-	if (!supported())
-		return false;
+        if (!supported())
+                return false;
   struct vmware::command command;
   command.bx = VMMOUSE_READ_ID;
   command.cmd = VMMOUSE_COMMAND;
@@ -105,7 +105,9 @@ static bool detect_vmmouse() {
 
 static bool mouse_absolute = false;
 
-bool vmware::vmmouse_is_absolute(void) { return mouse_absolute; }
+bool vmware::vmmouse_is_absolute(void) {
+  return mouse_absolute;
+}
 
 void vmware::enable_absolute_vmmouse(void) {
   if (!supported()) return;
@@ -126,10 +128,8 @@ void vmware::enable_absolute_vmmouse(void) {
   command.cmd = VMMOUSE_COMMAND;
   send(command);
   mouse_absolute = true;
-
 }
 
 void vmware::disable_absolute_vmmouse(void) {
   if (!supported()) return;
-
 }

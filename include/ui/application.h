@@ -18,14 +18,20 @@ namespace ui {
     application(void);
     ~application(void);
 
-    inline bool connected(void) { return sock.connected(); }
+    inline bool connected(void) {
+      return sock.connected();
+    }
 
     long send_raw(int type, void *payload, size_t payloadsize);
     lumen::msg *send_raw_sync(int type, void *payload, size_t payloadsize);
 
     // send a bare message
-    inline int send_msg(int type) { return send_raw(type, NULL, 0); }
-    inline int send_msg_sync(int type) { return send_raw(type, NULL, 0); }
+    inline int send_msg(int type) {
+      return send_raw(type, NULL, 0);
+    }
+    inline int send_msg_sync(int type) {
+      return send_raw(type, NULL, 0);
+    }
 
     template <typename T>
     inline int send_msg(int type, const T &payload) {
@@ -63,7 +69,9 @@ namespace ui {
 
     void start(void);
 
-    auto &eventloop(void) { return m_eventloop; }
+    auto &eventloop(void) {
+      return m_eventloop;
+    }
 
 #define THE_APP ui::application::get()
     static ui::application &get(void);

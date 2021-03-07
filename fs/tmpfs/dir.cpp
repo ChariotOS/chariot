@@ -5,8 +5,7 @@
 
 
 // create a file in the directory
-static int tmpfs_create(fs::inode &ino, const char *name,
-                        struct fs::file_ownership &own) {
+static int tmpfs_create(fs::inode &ino, const char *name, struct fs::file_ownership &own) {
   if (ino.type != T_DIR) panic("tmpfs_create on non-dir\n");
 
 
@@ -22,18 +21,17 @@ static int tmpfs_create(fs::inode &ino, const char *name,
 }
 // create a directory in a dir
 static int tmpfs_mkdir(fs::inode &ino, const char *name, struct fs::file_ownership &own) {
-
-	fs::inode *dir = tmp::getsb(ino).create_inode(T_DIR);
+  fs::inode *dir = tmp::getsb(ino).create_inode(T_DIR);
   dir->gid = own.gid;
   dir->uid = own.uid;
   dir->mode = own.mode;
-	dir->set_name(name);
+  dir->set_name(name);
   ino.register_direntry(name, ENT_MEM, dir->ino, dir);
 
-	// make ./
-	dir->register_direntry(".", ENT_MEM, dir->ino, dir);
-	// make ../
-	dir->register_direntry("..", ENT_MEM, ino.ino, &ino);
+  // make ./
+  dir->register_direntry(".", ENT_MEM, dir->ino, dir);
+  // make ../
+  dir->register_direntry("..", ENT_MEM, ino.ino, &ino);
 
   return 0;
 }
@@ -57,8 +55,8 @@ static struct fs::inode *tmpfs_lookup(fs::inode &node, const char *needle) {
   return NULL;
 }
 // create a device node with a major and minor number
-static int tmpfs_mknod(fs::inode &, const char *name,
-                       struct fs::file_ownership &, int major, int minor) {
+static int tmpfs_mknod(fs::inode &, const char *name, struct fs::file_ownership &, int major,
+                       int minor) {
   UNIMPL();
   return -ENOTIMPL;
 }

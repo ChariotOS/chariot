@@ -36,7 +36,9 @@ namespace tmp {
   };
 
 
-  inline auto &getsb(fs::inode &i) { return *(tmp::superblock *)&i.sb; }
+  inline auto &getsb(fs::inode &i) {
+    return *(tmp::superblock *)&i.sb;
+  }
 
 
   /*
@@ -46,4 +48,3 @@ namespace tmp {
 
 
 }  // namespace tmp
-

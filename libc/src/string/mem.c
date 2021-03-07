@@ -14,7 +14,8 @@
 void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
   unsigned char *d = dest;
   const unsigned char *s = src;
-  for (size_t i = 0; i < n; i++) d[i] = s[i];
+  for (size_t i = 0; i < n; i++)
+    d[i] = s[i];
   return dest;
 }
 
@@ -39,10 +40,12 @@ void *memmove(void *dest, const void *src, size_t n) {
         if (!n--) return dest;
         *d++ = *s++;
       }
-      for (; n >= WS; n -= WS, d += WS, s += WS) *(WT *)d = *(WT *)s;
+      for (; n >= WS; n -= WS, d += WS, s += WS)
+        *(WT *)d = *(WT *)s;
     }
 #endif
-    for (; n; n--) *d++ = *s++;
+    for (; n; n--)
+      *d++ = *s++;
   } else {
 #ifdef __GNUC__
     if ((uintptr_t)s % WS == (uintptr_t)d % WS) {
@@ -50,10 +53,12 @@ void *memmove(void *dest, const void *src, size_t n) {
         if (!n--) return dest;
         d[n] = s[n];
       }
-      while (n >= WS) n -= WS, *(WT *)(d + n) = *(WT *)(s + n);
+      while (n >= WS)
+        n -= WS, *(WT *)(d + n) = *(WT *)(s + n);
     }
 #endif
-    while (n) n--, d[n] = s[n];
+    while (n)
+      n--, d[n] = s[n];
   }
 
   return dest;

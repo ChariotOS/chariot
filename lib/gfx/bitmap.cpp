@@ -75,7 +75,8 @@ gfx::shared_bitmap::shared_bitmap(size_t w, size_t h) : m_name(unique_ident()) {
   m_original_size = size();
 }
 
-gfx::shared_bitmap::shared_bitmap(const char *name, uint32_t *pix, size_t w, size_t h) : m_name(name) {
+gfx::shared_bitmap::shared_bitmap(const char *name, uint32_t *pix, size_t w, size_t h)
+    : m_name(name) {
   m_pixels = pix;
   m_width = w;
   m_height = h;
@@ -111,7 +112,8 @@ ck::ref<gfx::shared_bitmap> gfx::shared_bitmap::resize(size_t w, size_t h) {
 }
 
 
-gfx::shared_bitmap::~shared_bitmap(void) {}
+gfx::shared_bitmap::~shared_bitmap(void) {
+}
 
 
 
@@ -130,15 +132,15 @@ ck::ref<gfx::bitmap> gfx::bitmap::scale(int w, int h, gfx::bitmap::SampleMode m)
 
 
 static inline float normalize(float x) {
-    x = fmod(x, 1.0f);
-    if (x < 0.0) {
-        x += 1.0;
-    }
-    return x;
+  x = fmod(x, 1.0f);
+  if (x < 0.0) {
+    x += 1.0;
+  }
+  return x;
 }
 
 uint32_t gfx::bitmap::sample(float fx, float fy, gfx::bitmap::SampleMode m) {
-	fx = normalize(fx);
+  fx = normalize(fx);
   switch (m) {
     case gfx::bitmap::SampleMode::Nearest:
       return get_pixel(width() * fx, height() * fy);
@@ -156,8 +158,8 @@ uint32_t gfx::bitmap::sample(float fx, float fy, gfx::bitmap::SampleMode m) {
       float x2 = ceilf(x);
       float y2 = ceilf(y);
 
-			bool border = x1 == 0 || (x2 > width()) || y1 == 0 || y2 > height();
-			if (border) return get_pixel(x1, y1);
+      bool border = x1 == 0 || (x2 > width()) || y1 == 0 || y2 > height();
+      if (border) return get_pixel(x1, y1);
 
       auto blend = [](uint32_t c1, uint32_t c2, float a) {
         return gfx::color::blend(gfx::color::alpha(c1, 1 - a), c2);

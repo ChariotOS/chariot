@@ -29,7 +29,9 @@ class redblack {
       return parent->left == this ? parent->right : parent->left;
     }
 
-    auto get_parent(void) { return parent ?: parent; }
+    auto get_parent(void) {
+      return parent ?: parent;
+    }
 
     auto get_grandparent(void) {
       auto p = get_parent();

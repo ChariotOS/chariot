@@ -110,7 +110,8 @@ void *phys::alloc(int npages) {
 
   void *p = late_phys_alloc(npages);
 
-  // printk_nolock("phys memory left: %zu%% (%zu bytes)\n", (100L * kmem.nfree) / kmem.max_free, kmem.nfree * 4096);
+  // printk_nolock("phys memory left: %zu%% (%zu bytes)\n", (100L * kmem.nfree) / kmem.max_free,
+  // kmem.nfree * 4096);
 
   // printk("phys::alloc(%d) took %llu ns\n", npages, time::now_ns() - start);
   unlock();
@@ -166,9 +167,9 @@ void phys::free(void *v, int len) {
   }
   // increment how many pages are freed
   kmem.nfree += len;
-	if (kmem.nfree > kmem.max_free) {
-		kmem.max_free = kmem.nfree;
-	}
+  if (kmem.nfree > kmem.max_free) {
+    kmem.max_free = kmem.nfree;
+  }
 
 
   // printk("free ram: %lu Kb\n", kmem.nfree * PGSIZE / 1024);
@@ -209,9 +210,8 @@ void phys::free_range(void *vstart, void *vend) {
 #endif
   }
   kmem.nfree += df->page_len;
-	if (kmem.nfree > kmem.max_free) {
-		kmem.max_free = kmem.nfree;
-	}
+  if (kmem.nfree > kmem.max_free) {
+    kmem.max_free = kmem.nfree;
+  }
   unlock();
 }
-

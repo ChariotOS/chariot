@@ -63,4 +63,3 @@ extern void PREFIX(free)(void *);            ///< The standard function.
 /** @} */
 
 #endif
-

@@ -1,19 +1,19 @@
 /*
  * Mesa 3-D graphics library
  * Version:  6.1
- * 
+ *
  * Copyright (C) 1999-2004  Brian Paul   All Rights Reserved.
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
  * to deal in the Software without restriction, including without limitation
  * the rights to use, copy, modify, merge, publish, distribute, sublicense,
  * and/or sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included
  * in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
  * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
@@ -59,87 +59,86 @@ extern "C" {
 /*
  * Create a new Visual and set graphics mode.
  */
-DMesaVisual DMesaCreateVisual (GLint width,        /* X res */
-                               GLint height,       /* Y res */
-                               GLint colDepth,     /* BPP */
-                               GLint refresh,      /* refresh rate: 0=default */
-                               GLboolean dbFlag,   /* double-buffered */
-                               GLboolean rgbFlag,  /* RGB mode */
-                               GLint alphaSize,    /* requested bits/alpha */
-                               GLint depthSize,    /* requested bits/depth */
-                               GLint stencilSize,  /* requested bits/stencil */
-                               GLint accumSize);   /* requested bits/accum */
+DMesaVisual DMesaCreateVisual(GLint width,       /* X res */
+                              GLint height,      /* Y res */
+                              GLint colDepth,    /* BPP */
+                              GLint refresh,     /* refresh rate: 0=default */
+                              GLboolean dbFlag,  /* double-buffered */
+                              GLboolean rgbFlag, /* RGB mode */
+                              GLint alphaSize,   /* requested bits/alpha */
+                              GLint depthSize,   /* requested bits/depth */
+                              GLint stencilSize, /* requested bits/stencil */
+                              GLint accumSize);  /* requested bits/accum */
 
 /*
  * Destroy Visual and restore screen.
  */
-void DMesaDestroyVisual (DMesaVisual v);
+void DMesaDestroyVisual(DMesaVisual v);
 
 
 
 /*
  * Create a new Context for rendering.
  */
-DMesaContext DMesaCreateContext (DMesaVisual visual, DMesaContext share);
+DMesaContext DMesaCreateContext(DMesaVisual visual, DMesaContext share);
 
 /*
  * Destroy Context.
  */
-void DMesaDestroyContext (DMesaContext c);
+void DMesaDestroyContext(DMesaContext c);
 
 /*
  * Return a handle to the current context.
  */
-DMesaContext DMesaGetCurrentContext (void);
+DMesaContext DMesaGetCurrentContext(void);
 
 
 
 /*
  * Create a new Buffer (window).
  */
-DMesaBuffer DMesaCreateBuffer (DMesaVisual visual,
-                               GLint xpos, GLint ypos,
-                               GLint width, GLint height);
+DMesaBuffer DMesaCreateBuffer(DMesaVisual visual, GLint xpos, GLint ypos, GLint width,
+                              GLint height);
 
 /*
  * Destroy Buffer.
  */
-void DMesaDestroyBuffer (DMesaBuffer b);
+void DMesaDestroyBuffer(DMesaBuffer b);
 
 /*
  * Return a handle to the current buffer.
  */
-DMesaBuffer DMesaGetCurrentBuffer (void);
+DMesaBuffer DMesaGetCurrentBuffer(void);
 
 /*
  * Swap the front and back buffers for the given Buffer.
  * No action is taken if the buffer is not double buffered.
  */
-void DMesaSwapBuffers (DMesaBuffer b);
+void DMesaSwapBuffers(DMesaBuffer b);
 
 /*
  * Bind Buffer to Context and make the Context the current one.
  */
-GLboolean DMesaMakeCurrent (DMesaContext c, DMesaBuffer b);
+GLboolean DMesaMakeCurrent(DMesaContext c, DMesaBuffer b);
 
 
 
 /*
  * Move/Resize current Buffer.
  */
-GLboolean DMesaMoveBuffer (GLint xpos, GLint ypos);
-GLboolean DMesaResizeBuffer (GLint width, GLint height);
+GLboolean DMesaMoveBuffer(GLint xpos, GLint ypos);
+GLboolean DMesaResizeBuffer(GLint width, GLint height);
 
 /*
  * Set palette index, using normalized values.
  */
-void DMesaSetCI (int ndx, GLfloat red, GLfloat green, GLfloat blue);
+void DMesaSetCI(int ndx, GLfloat red, GLfloat green, GLfloat blue);
 
 /*
  * DMesa functions
  */
-typedef void (*DMesaProc) ();
-DMesaProc DMesaGetProcAddress (const char *name);
+typedef void (*DMesaProc)();
+DMesaProc DMesaGetProcAddress(const char *name);
 
 /*
  * DMesa state retrieval.
@@ -151,7 +150,7 @@ DMesaProc DMesaGetProcAddress (const char *name);
 
 #define DMESA_DRIVER_DBL_BIT 0x1 /* double-buffered */
 #define DMESA_DRIVER_YUP_BIT 0x2 /* lower-left window origin */
-int DMesaGetIntegerv (GLenum pname, GLint *params);
+int DMesaGetIntegerv(GLenum pname, GLint *params);
 
 #ifdef __cplusplus
 }

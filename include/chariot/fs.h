@@ -19,7 +19,9 @@ struct poll_table_entry {
 struct poll_table {
   vec<poll_table_entry> ents;
 
-  inline void wait(wait_queue &wq, short events) { ents.push({&wq, events}); }
+  inline void wait(wait_queue &wq, short events) {
+    ents.push({&wq, events});
+  }
 };
 
 
@@ -76,14 +78,19 @@ namespace fs {
     long count = 0;  // refcount
     spinlock lock;
 
-    inline blkdev(dev_t dev, string name, struct block_operations &ops) : dev(dev), name(move(name)), ops(ops) {
+    inline blkdev(dev_t dev, string name, struct block_operations &ops)
+        : dev(dev), name(move(name)), ops(ops) {
       ops.init(*this);
     }
 
     // nice wrappers for filesystems and all that :)
-    inline int read_block(void *data, int block) { return ops.rw_block(*this, data, block, false); }
+    inline int read_block(void *data, int block) {
+      return ops.rw_block(*this, data, block, false);
+    }
 
-    inline int write_block(void *data, int block) { return ops.rw_block(*this, data, block, true); }
+    inline int write_block(void *data, int block) {
+      return ops.rw_block(*this, data, block, true);
+    }
 
     inline static void acquire(struct blkdev *d) {
       d->lock.lock();
@@ -170,7 +177,8 @@ namespace fs {
     const char *name;
 
     // return a superblock containing the root inode
-    struct fs::superblock *(&mount)(struct sb_information *, const char *args, int flags, const char *device);
+    struct fs::superblock *(&mount)(struct sb_information *, const char *args, int flags,
+                                    const char *device);
 
     struct sb_operations &ops;
   };
@@ -412,7 +420,8 @@ namespace fs {
 
    public:
     // must construct file descriptors via these factory funcs
-    static ref<file> create(struct fs::inode *, string open_path, int flags = FDIR_READ | FDIR_WRITE);
+    static ref<file> create(struct fs::inode *, string open_path,
+                            int flags = FDIR_READ | FDIR_WRITE);
 
     /*
      * seek - change the offset
@@ -426,19 +435,26 @@ namespace fs {
 
     int close();
 
-    inline off_t offset(void) { return m_offset; }
+    inline off_t offset(void) {
+      return m_offset;
+    }
 
     fs::file_operations *fops(void);
 
-    inline int errorcode() { return m_error; };
+    inline int errorcode() {
+      return m_error;
+    };
 
     ~file(void);
 
 
     file(struct fs::inode *, int flags);
-    inline file() : file(NULL, 0) {}
+    inline file() : file(NULL, 0) {
+    }
 
-    inline operator bool() { return ino != NULL; }
+    inline operator bool() {
+      return ino != NULL;
+    }
 
     struct fs::inode *ino;
     string path;
@@ -453,7 +469,9 @@ namespace fs {
 };  // namespace fs
 
 
-static inline fs::inode *geti(fs::inode *i) { return fs::inode::acquire(i); }
+static inline fs::inode *geti(fs::inode *i) {
+  return fs::inode::acquire(i);
+}
 
 
 
@@ -483,17 +501,22 @@ namespace block {
     void *data(void);
     off_t index(void);
     int flush(void);
-    inline uint64_t last_used(void) { return m_last_used; }
+    inline uint64_t last_used(void) {
+      return m_last_used;
+    }
     inline auto owners(void) {
       return m_count;  // XXX: race condition (!?!?)
     }
 
     size_t reclaim(void);
 
-    inline bool dirty(void) { return m_dirty; }
+    inline bool dirty(void) {
+      return m_dirty;
+    }
 
    protected:
-    inline static void release(struct blkdev *d) {}
+    inline static void release(struct blkdev *d) {
+    }
 
     buffer(fs::blkdev &, off_t);
 
@@ -520,23 +543,35 @@ int bwrite(fs::blkdev &, void *data, size_t size, off_t byte_offset);
 
 // reclaim some memory
 
-inline auto bget(fs::blkdev &b, off_t page) { return block::buffer::get(b, page); }
+inline auto bget(fs::blkdev &b, off_t page) {
+  return block::buffer::get(b, page);
+}
 
 // release a block
-static inline auto bput(struct block::buffer *b) { return block::buffer::release(b); }
+static inline auto bput(struct block::buffer *b) {
+  return block::buffer::release(b);
+}
 
 
 struct bref {
-  static inline bref get(fs::blkdev &b, off_t page) { return block::buffer::get(b, page); }
+  static inline bref get(fs::blkdev &b, off_t page) {
+    return block::buffer::get(b, page);
+  }
 
-  inline bref(struct block::buffer *b) { buf = b; }
+  inline bref(struct block::buffer *b) {
+    buf = b;
+  }
 
   inline ~bref(void) {
     if (buf) bput(buf);
   }
 
-  inline struct block::buffer *operator->(void) { return buf; }
-  inline struct block::buffer *get(void) { return buf; }
+  inline struct block::buffer *operator->(void) {
+    return buf;
+  }
+  inline struct block::buffer *get(void) {
+    return buf;
+  }
 
 
  private:

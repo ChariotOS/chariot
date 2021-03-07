@@ -9,7 +9,8 @@
 
 extern char **environ;
 
-ck::command::command(ck::string exe) : m_exe(exe) {}
+ck::command::command(ck::string exe) : m_exe(exe) {
+}
 
 
 ck::command::~command(void) {
@@ -19,7 +20,9 @@ ck::command::~command(void) {
 }
 
 
-void ck::command::arg(ck::string arg) { m_args.push(arg); }
+void ck::command::arg(ck::string arg) {
+  m_args.push(arg);
+}
 
 
 
@@ -76,4 +79,3 @@ ck::string ck::format(const ck::command &cmd) {
 
   return s;
 }
-

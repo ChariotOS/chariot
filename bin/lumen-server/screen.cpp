@@ -48,7 +48,8 @@ lumen::screen::~screen(void) {
 }
 
 
-void lumen::screen::flip_buffers(void) {}
+void lumen::screen::flip_buffers(void) {
+}
 
 void lumen::screen::set_resolution(int w, int h) {
   if (buf != NULL) {
@@ -97,8 +98,12 @@ const gfx::point &lumen::screen::handle_mouse_input(struct mouse_packet &pkt) {
 }
 
 
-inline int abs(int a) { return a < 0 ? -a : a; }
-inline int min(int a, int b) { return a < b ? a : b; }
+inline int abs(int a) {
+  return a < 0 ? -a : a;
+}
+inline int min(int a, int b) {
+  return a < b ? a : b;
+}
 
 
 void draw_rect(lumen::screen &s, const gfx::rect &bound, uint32_t color) {

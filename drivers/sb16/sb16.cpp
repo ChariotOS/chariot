@@ -26,7 +26,8 @@ int m_major_version = 0;
 
 
 static inline void delay(size_t microseconds) {
-  for (size_t i = 0; i < microseconds; ++i) inb(0x80);
+  for (size_t i = 0; i < microseconds; ++i)
+    inb(0x80);
 }
 
 /* Write a value to the DSP write register */

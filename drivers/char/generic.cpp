@@ -22,11 +22,13 @@ static inline uint64_t next_random(void) {
 }
 
 static size_t read_random(char *m, size_t len) {
-#define DO_COPY(T) \
-  for (; i < len - sizeof(T); i += sizeof(T)) *(T *)(m + i) = next_random();
+#define DO_COPY(T)                            \
+  for (; i < len - sizeof(T); i += sizeof(T)) \
+    *(T *)(m + i) = next_random();
   int i = 0;
   DO_COPY(u32);
-  for (; i < len; i++) *(m + i) = next_random();
+  for (; i < len; i++)
+    *(m + i) = next_random();
 #undef DO_COPY
   return len;
 }
@@ -60,10 +62,10 @@ static struct dev::driver_info generic_driver_info {
 };
 
 static void dev_init(void) {
-	dev::register_driver(generic_driver_info);
+  dev::register_driver(generic_driver_info);
 
-	dev::register_name(generic_driver_info, "urandom", MINOR_RANDOM);
-	dev::register_name(generic_driver_info, "random", MINOR_RANDOM);
+  dev::register_name(generic_driver_info, "urandom", MINOR_RANDOM);
+  dev::register_name(generic_driver_info, "random", MINOR_RANDOM);
 }
 
 module_init("char", dev_init);

@@ -44,15 +44,15 @@ namespace ck {
 
 
     result() {
-			printf("result()\n");
-		};
+      printf("result()\n");
+    };
     result(result&&) = default;
 
     ~result(void) {
       if (!valid) return;
-			valid = false;
+      valid = false;
 
-			printf("~result\n");
+      printf("~result\n");
       if (success) {
         ((S*)data.success_buf)->~S();
       } else {
@@ -60,7 +60,9 @@ namespace ck {
       }
     }
 
-    inline operator bool(void) { return success; }
+    inline operator bool(void) {
+      return success;
+    }
 
     // unwrap and panic
     inline auto unwrap(void) {

@@ -48,12 +48,10 @@ void print_st_mode(int m) {
 static int human_readable_size(char *_out, int bufsz, size_t s) {
   if (s >= 1 << 20) {
     size_t t = s / (1 << 20);
-    return snprintf(_out, bufsz, "%d.%1dM", (int)t,
-                    (int)(s - t * (1 << 20)) / ((1 << 20) / 10));
+    return snprintf(_out, bufsz, "%d.%1dM", (int)t, (int)(s - t * (1 << 20)) / ((1 << 20) / 10));
   } else if (s >= 1 << 10) {
     size_t t = s / (1 << 10);
-    return snprintf(_out, bufsz, "%d.%1dK", (int)t,
-                    (int)(s - t * (1 << 10)) / ((1 << 10) / 10));
+    return snprintf(_out, bufsz, "%d.%1dK", (int)t, (int)(s - t * (1 << 10)) / ((1 << 10) / 10));
   } else {
     return snprintf(_out, bufsz, "%d", (int)s);
   }
@@ -206,7 +204,9 @@ void print_entries_long(struct lsfile **ents, int entc, long flags) {
     fputs("\n", stdout);
   }
 }
-static inline int max(int a, int b) { return (a > b) ? a : b; }
+static inline int max(int a, int b) {
+  return (a > b) ? a : b;
+}
 
 void print_entry(struct lsfile *ent, int colwidth) {
   int n = print_filename(ent->name, ent->st.st_mode);
@@ -394,4 +394,3 @@ int main(int argc, char **argv) {
 
   return 0;
 }
-

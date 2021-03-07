@@ -28,9 +28,9 @@ case $ARCH in
 		
 
 		# Playing around with USB
-		QEMU_FLAGS+="-device nec-usb-xhci,id=xhci "
-		# QEMU_FLAGS+="-usb "
-		QEMU_FLAGS+="-device usb-bot "
+		# QEMU_FLAGS+="-device nec-usb-xhci,id=xhci "
+		# QEMU_FLAGS+="-device usb-bot "
+		QEMU_FLAGS+="-display sdl "
 
 		;;
 
@@ -44,8 +44,9 @@ case $ARCH in
 		QEMU_FLAGS+="-kernel build/chariot_initrd.elf "
 
 		QEMU_FLAGS+="-drive file=build/chariot.img,if=none,format=raw,id=x0 "
-		QEMU_FLAGS+="-device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 "
-		QEMU_FLAGS+="-device virtio-gpu-device,bus=virtio-mmio-bus.1 "
+		QEMU_FLAGS+="-device virtio-blk-device,drive=x0 "
+		QEMU_FLAGS+="-device virtio-gpu-device,stats=true "
+		QEMU_FLAGS+="-display sdl "
 
 		# virtio keyboard, gpu, and tablet (cursor)
 		# QEMU_FLAGS+="-device virtio-tablet-device -device virtio-keyboard-device -device virtio-gpu-device "

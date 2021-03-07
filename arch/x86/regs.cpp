@@ -49,4 +49,3 @@ void arch_initialize_trapframe(bool userspace, reg_t *r) {
     r[19 /* FL */] = FL_IF | readeflags();
   }
 }
-

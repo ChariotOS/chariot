@@ -100,10 +100,14 @@ void hexdump(void *vbuf, size_t len, bool use_colors) {
 }
 
 
-int isspace(int c) { return (c == '\f' || c == '\n' || c == '\r' || c == '\t' || c == '\v' || c == ' '); }
+int isspace(int c) {
+  return (c == '\f' || c == '\n' || c == '\r' || c == '\t' || c == '\v' || c == ' ');
+}
 
 
-int isdigit(int c) { return (c >= '0' && c <= '9'); }
+int isdigit(int c) {
+  return (c >= '0' && c <= '9');
+}
 
 int atoi(const char *s) {
   int n = 0;
@@ -130,7 +134,9 @@ int atoi(const char *s) {
 
 
 uint64_t rand_seed;
-void srand(unsigned s) { rand_seed = s - 1; }
+void srand(unsigned s) {
+  rand_seed = s - 1;
+}
 
 int rand(void) {
   rand_seed = 6364136223846793005ULL * rand_seed + 1;

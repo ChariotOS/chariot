@@ -17,21 +17,20 @@ int fcntl(int fd, int cmd, ...) {
 }
 
 int open(const char *filename, int flags, ...) {
+  mode_t mode = 0;
 
-	mode_t mode = 0;
+  if ((flags & O_CREAT) || (flags & O_TMPFILE) == O_TMPFILE) {
+    va_list ap;
+    va_start(ap, flags);
+    mode = va_arg(ap, mode_t);
+    va_end(ap);
+  }
 
-	if ((flags & O_CREAT) || (flags & O_TMPFILE) == O_TMPFILE) {
-		va_list ap;
-		va_start(ap, flags);
-		mode = va_arg(ap, mode_t);
-		va_end(ap);
-	}
-
-	int fd = sysbind_open(filename, flags, mode);
-	// if (fd>=0 && (flags & O_CLOEXEC)) {
-	//  __syscall(SYS_fcntl, fd, F_SETFD, FD_CLOEXEC);
+  int fd = sysbind_open(filename, flags, mode);
+  // if (fd>=0 && (flags & O_CLOEXEC)) {
+  //  __syscall(SYS_fcntl, fd, F_SETFD, FD_CLOEXEC);
   // }
 
 
-	return __syscall_ret(fd);
+  return __syscall_ret(fd);
 }

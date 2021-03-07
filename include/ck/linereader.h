@@ -10,18 +10,15 @@ namespace ck {
     linereader(ck::stream &);
 
 
-		// run with no prompt
-		ck::option<ck::string> next();
+    // run with no prompt
+    ck::option<ck::string> next();
 
-		// run with a prompt
-		ck::option<ck::string> next(const ck::string &prompt);
-
-   private:
-
+    // run with a prompt
+    ck::option<ck::string> next(const ck::string &prompt);
 
    private:
-
-		bool m_echo = false;
+   private:
+    bool m_echo = false;
 
     ck::stream &m_stream;
     ck::vec<char> m_buf;

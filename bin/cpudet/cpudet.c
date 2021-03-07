@@ -36,8 +36,7 @@ int do_amd(void);
 void printregs(int eax, int ebx, int ecx, int edx);
 
 #ifdef CONFIG_X86
-#define cpuid(in, a, b, c, d) \
-  __asm__("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(in));
+#define cpuid(in, a, b, c, d) __asm__("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(in));
 #endif
 
 #ifdef CONFIG_RISCV
@@ -47,7 +46,7 @@ void printregs(int eax, int ebx, int ecx, int edx);
 
 /* Simply call this function detect_cpu(); */
 int main(void) { /* or main() if your trying to port this as an
-			  independant application */
+                          independant application */
   unsigned long ebx, unused;
   cpuid(0, unused, ebx, unused, unused);
   switch (ebx) {
@@ -66,57 +65,57 @@ int main(void) { /* or main() if your trying to port this as an
 
 /* Intel Specific brand list */
 char *Intel[] = {"Brand ID Not Supported.",
-		 "Intel(R) Celeron(R) processor",
-		 "Intel(R) Pentium(R) III processor",
-		 "Intel(R) Pentium(R) III Xeon(R) processor",
-		 "Intel(R) Pentium(R) III processor",
-		 "Reserved",
-		 "Mobile Intel(R) Pentium(R) III processor-M",
-		 "Mobile Intel(R) Celeron(R) processor",
-		 "Intel(R) Pentium(R) 4 processor",
-		 "Intel(R) Pentium(R) 4 processor",
-		 "Intel(R) Celeron(R) processor",
-		 "Intel(R) Xeon(R) Processor",
-		 "Intel(R) Xeon(R) processor MP",
-		 "Reserved",
-		 "Mobile Intel(R) Pentium(R) 4 processor-M",
-		 "Mobile Intel(R) Pentium(R) Celeron(R) processor",
-		 "Reserved",
-		 "Mobile Genuine Intel(R) processor",
-		 "Intel(R) Celeron(R) M processor",
-		 "Mobile Intel(R) Celeron(R) processor",
-		 "Intel(R) Celeron(R) processor",
-		 "Mobile Geniune Intel(R) processor",
-		 "Intel(R) Pentium(R) M processor",
-		 "Mobile Intel(R) Celeron(R) processor"};
+                 "Intel(R) Celeron(R) processor",
+                 "Intel(R) Pentium(R) III processor",
+                 "Intel(R) Pentium(R) III Xeon(R) processor",
+                 "Intel(R) Pentium(R) III processor",
+                 "Reserved",
+                 "Mobile Intel(R) Pentium(R) III processor-M",
+                 "Mobile Intel(R) Celeron(R) processor",
+                 "Intel(R) Pentium(R) 4 processor",
+                 "Intel(R) Pentium(R) 4 processor",
+                 "Intel(R) Celeron(R) processor",
+                 "Intel(R) Xeon(R) Processor",
+                 "Intel(R) Xeon(R) processor MP",
+                 "Reserved",
+                 "Mobile Intel(R) Pentium(R) 4 processor-M",
+                 "Mobile Intel(R) Pentium(R) Celeron(R) processor",
+                 "Reserved",
+                 "Mobile Genuine Intel(R) processor",
+                 "Intel(R) Celeron(R) M processor",
+                 "Mobile Intel(R) Celeron(R) processor",
+                 "Intel(R) Celeron(R) processor",
+                 "Mobile Geniune Intel(R) processor",
+                 "Intel(R) Pentium(R) M processor",
+                 "Mobile Intel(R) Celeron(R) processor"};
 
 /* This table is for those brand strings that have two values depending on the
  * processor signature. It should have the same number of entries as the above
  * table. */
 char *Intel_Other[] = {"Reserved",
-		       "Reserved",
-		       "Reserved",
-		       "Intel(R) Celeron(R) processor",
-		       "Reserved",
-		       "Reserved",
-		       "Reserved",
-		       "Reserved",
-		       "Reserved",
-		       "Reserved",
-		       "Reserved",
-		       "Intel(R) Xeon(R) processor MP",
-		       "Reserved",
-		       "Reserved",
-		       "Intel(R) Xeon(R) processor",
-		       "Reserved",
-		       "Reserved",
-		       "Reserved",
-		       "Reserved",
-		       "Reserved",
-		       "Reserved",
-		       "Reserved",
-		       "Reserved",
-		       "Reserved"};
+                       "Reserved",
+                       "Reserved",
+                       "Intel(R) Celeron(R) processor",
+                       "Reserved",
+                       "Reserved",
+                       "Reserved",
+                       "Reserved",
+                       "Reserved",
+                       "Reserved",
+                       "Reserved",
+                       "Intel(R) Xeon(R) processor MP",
+                       "Reserved",
+                       "Reserved",
+                       "Intel(R) Xeon(R) processor",
+                       "Reserved",
+                       "Reserved",
+                       "Reserved",
+                       "Reserved",
+                       "Reserved",
+                       "Reserved",
+                       "Reserved",
+                       "Reserved",
+                       "Reserved"};
 
 /* Intel-specific information */
 int do_intel(void) {
@@ -176,66 +175,66 @@ int do_intel(void) {
       break;
     case 4:
       switch (model) {
-	case 0:
-	case 1:
-	  printf("DX");
-	  break;
-	case 2:
-	  printf("SX");
-	  break;
-	case 3:
-	  printf("487/DX2");
-	  break;
-	case 4:
-	  printf("SL");
-	  break;
-	case 5:
-	  printf("SX2");
-	  break;
-	case 7:
-	  printf("Write-back enhanced DX2");
-	  break;
-	case 8:
-	  printf("DX4");
-	  break;
+        case 0:
+        case 1:
+          printf("DX");
+          break;
+        case 2:
+          printf("SX");
+          break;
+        case 3:
+          printf("487/DX2");
+          break;
+        case 4:
+          printf("SL");
+          break;
+        case 5:
+          printf("SX2");
+          break;
+        case 7:
+          printf("Write-back enhanced DX2");
+          break;
+        case 8:
+          printf("DX4");
+          break;
       }
       break;
     case 5:
       switch (model) {
-	case 1:
-	  printf("60/66");
-	  break;
-	case 2:
-	  printf("75-200");
-	  break;
-	case 3:
-	  printf("for 486 system");
-	  break;
-	case 4:
-	  printf("MMX");
-	  break;
+        case 1:
+          printf("60/66");
+          break;
+        case 2:
+          printf("75-200");
+          break;
+        case 3:
+          printf("for 486 system");
+          break;
+        case 4:
+          printf("MMX");
+          break;
       }
       break;
     case 6:
       switch (model) {
-	case 1:
-	  printf("Pentium Pro");
-	  break;
-	case 3:
-	  printf("Pentium II Model 3");
-	  break;
-	case 5:
-	  printf("Pentium II Model 5/Xeon/Celeron");
-	  break;
-	case 6:
-	  printf("Celeron");
-	  break;
-	case 7:
-	  printf("Pentium III/Pentium III Xeon - external L2 cache");
-	  break;
-	case 8:
-	  printf("Pentium III/Pentium III Xeon - internal L2 cache");
-	  break;
+        case 1:
+          printf("Pentium Pro");
+          break;
+        case 3:
+          printf("Pentium II Model 3");
+          break;
+        case 5:
+          printf("Pentium II Model 5/Xeon/Celeron");
+          break;
+        case 6:
+          printf("Celeron");
+          break;
+        case 7:
+          printf("Pentium III/Pentium III Xeon - external L2 cache");
+          break;
+        case 8:
+          printf("Pentium III/Pentium III Xeon - internal L2 cache");
+          break;
       }
       break;
     case 15:
@@ -270,9 +269,9 @@ int do_intel(void) {
     printf("Brand %d - ", brand);
     if (brand < 0x18) {
       if (signature == 0x000006B1 || signature == 0x00000F13) {
-	printf("%s\n", Intel_Other[brand]);
+        printf("%s\n", Intel_Other[brand]);
       } else {
-	printf("%s\n", Intel[brand]);
+        printf("%s\n", Intel[brand]);
       }
     } else {
       printf("Reserved\n");
@@ -313,44 +312,44 @@ int do_amd(void) {
       break;
     case 5:
       switch (model) {
-	case 0:
-	case 1:
-	case 2:
-	case 3:
-	case 6:
-	case 7:
-	  printf("K6 Model %d", model);
-	  break;
-	case 8:
-	  printf("K6-2 Model 8");
-	  break;
-	case 9:
-	  printf("K6-III Model 9");
-	  break;
-	default:
-	  printf("K5/K6 Model %d", model);
-	  break;
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+        case 6:
+        case 7:
+          printf("K6 Model %d", model);
+          break;
+        case 8:
+          printf("K6-2 Model 8");
+          break;
+        case 9:
+          printf("K6-III Model 9");
+          break;
+        default:
+          printf("K5/K6 Model %d", model);
+          break;
       }
       break;
     case 6:
       switch (model) {
-	case 1:
-	case 2:
-	case 4:
-	  printf("Athlon Model %d", model);
-	  break;
-	case 3:
-	  printf("Duron Model 3");
-	  break;
-	case 6:
-	  printf("Athlon MP/Mobile Athlon Model 6");
-	  break;
-	case 7:
-	  printf("Mobile Duron Model 7");
-	  break;
-	default:
-	  printf("Duron/Athlon Model %d", model);
-	  break;
+        case 1:
+        case 2:
+        case 4:
+          printf("Athlon Model %d", model);
+          break;
+        case 3:
+          printf("Duron Model 3");
+          break;
+        case 6:
+          printf("Athlon MP/Mobile Athlon Model 6");
+          break;
+        case 7:
+          printf("Mobile Duron Model 7");
+          break;
+        default:
+          printf("Duron/Athlon Model %d", model);
+          break;
       }
       break;
   }

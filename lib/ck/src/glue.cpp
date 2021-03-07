@@ -13,7 +13,7 @@ unsigned __atexit_func_count = 0;
 atexit_func_entry_t __atexit_funcs[ATEXIT_MAX_FUNCS];
 
 template <typename... T>
-inline void do_panic(const char *fmt, T &&... args) {
+inline void do_panic(const char *fmt, T &&...args) {
   // disable interrupts
   printf(fmt, args...);
   while (1) {
@@ -84,23 +84,35 @@ extern "C" uint64_t _Unwind_GetDataRelBase(struct _Unwind_Context *context) {
 
 
 #if 1
-void *operator new(size_t size) { return malloc(size); }
+void *operator new(size_t size) {
+  return malloc(size);
+}
 
-void *operator new[](size_t size) { return malloc(size); }
+void *operator new[](size_t size) {
+  return malloc(size);
+}
 
-void operator delete(void *ptr) noexcept { free(ptr); }
+void operator delete(void *ptr) noexcept {
+  free(ptr);
+}
 
-void operator delete[](void *ptr) noexcept { free(ptr); }
+void operator delete[](void *ptr) noexcept {
+  free(ptr);
+}
 
-void operator delete(void *ptr, size_t s) noexcept { free(ptr); }
+void operator delete(void *ptr, size_t s) noexcept {
+  free(ptr);
+}
 
-void operator delete[](void *ptr, size_t s) noexcept { free(ptr); }
+void operator delete[](void *ptr, size_t s) noexcept {
+  free(ptr);
+}
 
 #endif
 
-extern "C" void __stack_chk_fail(void) { panic("stack pointer smashed!\n"); }
-
-
+extern "C" void __stack_chk_fail(void) {
+  panic("stack pointer smashed!\n");
+}
 
 
 
@@ -150,5 +162,3 @@ extern "C" int __gxx_personality_v0(int version, void *actions, void *exception_
 }
 
 #endif
-
-

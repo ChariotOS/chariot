@@ -9,10 +9,10 @@
 
 namespace arm64 {
 
-	using reg_t = uint64_t;
+  using reg_t = uint64_t;
 
   struct regs {
-		arm64::reg_t sp;  // user mode sp
+    arm64::reg_t sp;  // user mode sp
     arm64::reg_t pc;  // user mode pc (elr)
     arm64::reg_t spsr;
     arm64::reg_t r0;
@@ -47,4 +47,4 @@ namespace arm64 {
     arm64::reg_t r29;
     arm64::reg_t r30;  // user mode lr
   };
-};  // namespace arm6g
+};  // namespace arm64

@@ -76,7 +76,8 @@ long long int strtoll(const char *nptr, char **endptr, int base);
 int posix_memalign(void **memptr, size_t alignment, size_t size);
 
 
-void *bsearch(const void *key, const void *base, size_t nel, size_t width, int (*cmp)(const void *, const void *));
+void *bsearch(const void *key, const void *base, size_t nel, size_t width,
+              int (*cmp)(const void *, const void *));
 
 
 #ifdef __cplusplus

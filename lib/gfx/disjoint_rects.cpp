@@ -6,7 +6,7 @@ namespace gfx {
   bool disjoint_rects::add_no_shatter(const gfx::rect& new_rect, bool allow_contained) {
     if (new_rect.is_empty()) return false;
     for (auto& rect : m_rects) {
-    	if (!allow_contained && rect.contains(new_rect)) return false;
+      if (!allow_contained && rect.contains(new_rect)) return false;
     }
 
     m_rects.push(new_rect);
@@ -28,9 +28,11 @@ namespace gfx {
           if (!r1.intersects(r2)) continue;
           pass_had_intersections = true;
           auto pieces = r1.shatter(r2);
-          for (auto& piece : pieces) output.push(piece);
+          for (auto& piece : pieces)
+            output.push(piece);
           m_rects.remove(i);
-          for (; i < m_rects.size(); ++i) output.push(m_rects[i]);
+          for (; i < m_rects.size(); ++i)
+            output.push(m_rects[i]);
           goto next_pass;
         }
         output.push(r1);
@@ -110,7 +112,8 @@ namespace gfx {
 
     disjoint_rects shards;
     for (auto& rect : m_rects) {
-      for (auto& shard : rect.shatter(hammer)) shards.add_no_shatter(shard);
+      for (auto& shard : rect.shatter(hammer))
+        shards.add_no_shatter(shard);
     }
     // Since there should be no overlaps, we don't need to call shatter()
     return shards;

@@ -128,7 +128,7 @@ set(LIBRARY_OUTPUT_PATH "${CHARIOT_SYSROOT}/lib" CACHE PATH "Build directory" FO
 
 # warnings, etc.
 
-set(CMAKE_C_FLAGS "-DUSERLAND -ffreestanding -fdiagnostics-color=always ")
+set(CMAKE_C_FLAGS "-ffreestanding -fdiagnostics-color=always ")
 if(CONFIG_DEBUG_SYMBOLS)
 	# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 endif()

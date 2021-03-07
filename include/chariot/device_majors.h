@@ -12,29 +12,29 @@ extern "C" {
 #endif
 
 typedef enum {
-	MAJOR_NULL,
-	MAJOR_MEM,
-	MAJOR_ATA,
-	MAJOR_DISK,
+  MAJOR_NULL,
+  MAJOR_MEM,
+  MAJOR_ATA,
+  MAJOR_DISK,
 
-	MAJOR_COM,
+  MAJOR_COM,
 
-	// PS2
-	MAJOR_MOUSE,
-	MAJOR_KEYBOARD,
+  // PS2
+  MAJOR_MOUSE,
+  MAJOR_KEYBOARD,
 
-	// console
-	MAJOR_CONSOLE,
+  // console
+  MAJOR_CONSOLE,
 
-	// VGA framebuffer
-	MAJOR_FB,
+  // VGA framebuffer
+  MAJOR_FB,
 
-	// Soundblaster 16
-	MAJOR_SB16,
+  // Soundblaster 16
+  MAJOR_SB16,
 
-	// Pseudoterminal
-	MAJOR_PTMX,
-	MAJOR_PTS,
+  // Pseudoterminal
+  MAJOR_PTMX,
+  MAJOR_PTS,
 
 } major_numbers;
 
@@ -42,4 +42,3 @@ typedef enum {
 #ifdef __cplusplus
 }
 #endif
-

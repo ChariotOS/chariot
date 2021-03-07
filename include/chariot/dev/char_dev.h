@@ -4,7 +4,6 @@
 #include <dev/device.h>
 #include <dev/driver.h>
 
-namespace dev {
-};  // namespace dev
+namespace dev {};  // namespace dev
 
 #endif

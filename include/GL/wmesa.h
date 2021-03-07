@@ -27,13 +27,13 @@
  *
  ***************************************************************
  *                     WMesa                                   *
- *                     version 2.3                             *	
+ *                     version 2.3                             *
  *                                                             *
  *                        By                                   *
  *                      Li Wei                                 *
  *       Institute of Artificial Intelligence & Robotics       *
  *       Xi'an Jiaotong University                             *
- *       Email: liwei@aiar.xjtu.edu.cn                         * 
+ *       Email: liwei@aiar.xjtu.edu.cn                         *
  *       Web page: http://sun.aiar.xjtu.edu.cn                 *
  *                                                             *
  *	       July 7th, 1997				       *
@@ -53,22 +53,24 @@ extern "C" {
 #include "GL/gl.h"
 
 #if defined(_MSV_VER) && !defined(__GNUC__)
-#  pragma warning (disable:4273)
-#  pragma warning( disable : 4244 ) /* '=' : conversion from 'const double ' to 'float ', possible loss of data */
-#  pragma warning( disable : 4018 ) /* '<' : signed/unsigned mismatch */
-#  pragma warning( disable : 4305 ) /* '=' : truncation from 'const double ' to 'float ' */
-#  pragma warning( disable : 4013 ) /* 'function' undefined; assuming extern returning int */
-#  pragma warning( disable : 4761 ) /* integral size mismatch in argument; conversion supplied */
-#  pragma warning( disable : 4273 ) /* 'identifier' : inconsistent DLL linkage. dllexport assumed */
-#  if (MESA_WARNQUIET>1)
-#    pragma warning( disable : 4146 ) /* unary minus operator applied to unsigned type, result still unsigned */
-#  endif
+#pragma warning(disable : 4273)
+#pragma warning(disable : 4244) /* '=' : conversion from 'const double ' to 'float ', possible \
+                                   loss of data */
+#pragma warning(disable : 4018) /* '<' : signed/unsigned mismatch */
+#pragma warning(disable : 4305) /* '=' : truncation from 'const double ' to 'float ' */
+#pragma warning(disable : 4013) /* 'function' undefined; assuming extern returning int */
+#pragma warning(disable : 4761) /* integral size mismatch in argument; conversion supplied */
+#pragma warning(disable : 4273) /* 'identifier' : inconsistent DLL linkage. dllexport assumed */
+#if (MESA_WARNQUIET > 1)
+#pragma warning( \
+    disable : 4146) /* unary minus operator applied to unsigned type, result still unsigned */
+#endif
 #endif
 
 /*
  * This is the WMesa context 'handle':
  */
-typedef struct wmesa_context *WMesaContext;
+typedef struct wmesa_context* WMesaContext;
 
 
 
@@ -91,29 +93,27 @@ typedef struct wmesa_context *WMesaContext;
  *
  * Return:  a WMesa_context or NULL if error.
  */
-extern WMesaContext WMesaCreateContext(HDC hDC,HPALETTE* pPal,
-                                       GLboolean rgb_flag,
-                                       GLboolean db_flag,
-                                       GLboolean alpha_flag);
+extern WMesaContext WMesaCreateContext(HDC hDC, HPALETTE* pPal, GLboolean rgb_flag,
+                                       GLboolean db_flag, GLboolean alpha_flag);
 
 
 /*
  * Destroy a rendering context as returned by WMesaCreateContext()
  */
-extern void WMesaDestroyContext( WMesaContext ctx );
+extern void WMesaDestroyContext(WMesaContext ctx);
 
 
 
 /*
  * Make the specified context the current one.
  */
-extern void WMesaMakeCurrent( WMesaContext ctx, HDC hdc );
+extern void WMesaMakeCurrent(WMesaContext ctx, HDC hdc);
 
 
 /*
  * Return a handle to the current context.
  */
-extern WMesaContext WMesaGetCurrentContext( void );
+extern WMesaContext WMesaGetCurrentContext(void);
 
 
 /*
@@ -138,4 +138,3 @@ void WMesaShareLists(WMesaContext ctx_to_share, WMesaContext ctx);
 
 
 #endif
-

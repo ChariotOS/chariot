@@ -1,17 +1,20 @@
-/****************************************************************//**
- *
- * @file tftp_server.h
- *
- * @author   Logan Gunthorpe <logang@deltatee.com>
- *
- * @brief    Trivial File Transfer Protocol (RFC 1350)
- *
- * Copyright (c) Deltatee Enterprises Ltd. 2013
- * All rights reserved.
- *
- ********************************************************************/
+/****************************************************************/ /**
+                                                                    *
+                                                                    * @file tftp_server.h
+                                                                    *
+                                                                    * @author   Logan Gunthorpe
+                                                                    *<logang@deltatee.com>
+                                                                    *
+                                                                    * @brief    Trivial File
+                                                                    *Transfer Protocol (RFC 1350)
+                                                                    *
+                                                                    * Copyright (c) Deltatee
+                                                                    *Enterprises Ltd. 2013 All
+                                                                    *rights reserved.
+                                                                    *
+                                                                    ********************************************************************/
 
-/* 
+/*
  * Redistribution and use in source and binary forms, with or without
  * modification,are permitted provided that the following conditions are met:
  *
@@ -67,7 +70,7 @@ struct tftp_context {
    */
   void (*close)(void* handle);
   /**
-   * Read from file 
+   * Read from file
    * @param handle File handle returned by open()
    * @param buf Target buffer to copy read data to
    * @param bytes Number of bytes to copy to buf

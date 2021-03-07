@@ -24,7 +24,6 @@ void kargs::init(uint64_t mbd) {
       }
     }
   });
-
 }
 
 const char *kargs::get(const char *keyp, const char *def) {
@@ -36,4 +35,6 @@ const char *kargs::get(const char *keyp, const char *def) {
 }
 
 
-bool kargs::exists(const char *name) { return cmdline_map.contains(name); }
+bool kargs::exists(const char *name) {
+  return cmdline_map.contains(name);
+}

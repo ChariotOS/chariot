@@ -34,43 +34,30 @@
 // ctype bits to be inlined go here. Non-inlinable (ie virtual do_*)
 // functions go in ctype.cc
 
-namespace std _GLIBCXX_VISIBILITY(default)
-{
-_GLIBCXX_BEGIN_NAMESPACE_VERSION
+namespace std _GLIBCXX_VISIBILITY(default) {
+  _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
-  bool
-  ctype<char>::
-  is(mask __m, char __c) const
-  { return _M_table[static_cast<unsigned char>(__c)] & __m; }
+  bool ctype<char>::is(mask __m, char __c) const {
+    return _M_table[static_cast<unsigned char>(__c)] & __m;
+  }
 
-  const char*
-  ctype<char>::
-  is(const char* __low, const char* __high, mask* __vec) const
-  {
+  const char* ctype<char>::is(const char* __low, const char* __high, mask* __vec) const {
     while (__low < __high)
       *__vec++ = _M_table[static_cast<unsigned char>(*__low++)];
     return __high;
   }
 
-  const char*
-  ctype<char>::
-  scan_is(mask __m, const char* __low, const char* __high) const
-  {
-    while (__low < __high
-	   && !(_M_table[static_cast<unsigned char>(*__low)] & __m))
+  const char* ctype<char>::scan_is(mask __m, const char* __low, const char* __high) const {
+    while (__low < __high && !(_M_table[static_cast<unsigned char>(*__low)] & __m))
       ++__low;
     return __low;
   }
 
-  const char*
-  ctype<char>::
-  scan_not(mask __m, const char* __low, const char* __high) const
-  {
-    while (__low < __high
-	   && (_M_table[static_cast<unsigned char>(*__low)] & __m) != 0)
+  const char* ctype<char>::scan_not(mask __m, const char* __low, const char* __high) const {
+    while (__low < __high && (_M_table[static_cast<unsigned char>(*__low)] & __m) != 0)
       ++__low;
     return __low;
   }
 
-_GLIBCXX_END_NAMESPACE_VERSION
-} // namespace
+  _GLIBCXX_END_NAMESPACE_VERSION
+}  // namespace )

@@ -81,19 +81,19 @@ inline void do_panic(const char* fmt, T&&... args) {
   printk(fmt, args...);
   printk("\n");
 
-	debug_die();
-	/*
-  arch_dump_backtrace();
-  while (1) {
-    arch_halt();
-  }
-	*/
+  debug_die();
+  /*
+arch_dump_backtrace();
+while (1) {
+arch_halt();
+}
+  */
 }
 
 #define panic(fmt, args...)                   \
   do {                                        \
     KERR("PANIC: %s\n", __PRETTY_FUNCTION__); \
-    do_panic(KERN_ERROR fmt, ##args);                    \
+    do_panic(KERN_ERROR fmt, ##args);         \
   } while (0);
 
 #define assert(val)                          \
@@ -111,7 +111,9 @@ class scope_logger {
     printk("...");
   }
 
-  ~scope_logger() { printk("OK\n"); }
+  ~scope_logger() {
+    printk("OK\n");
+  }
 };
 
 class time_logger {

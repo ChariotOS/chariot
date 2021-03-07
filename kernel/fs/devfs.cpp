@@ -11,26 +11,26 @@ static struct fs::inode *devfs_lookup(fs::inode &node, const char *needle) {
   // walk the linked list to get the inode num
   for (auto *it = node.dir.entries; it != NULL; it = it->next) {
     if (!strcmp(it->name.get(), needle)) {
-			return it->ino;
+      return it->ino;
     }
   }
   return NULL;
 }
 
-static int devfs_create(fs::inode &node, const char *name,
-			struct fs::file_ownership &) {
+static int devfs_create(fs::inode &node, const char *name, struct fs::file_ownership &) {
   return -EPERM;
 }
 
-static int devfs_mkdir(fs::inode &, const char *name,
-		       struct fs::file_ownership &) {
+static int devfs_mkdir(fs::inode &, const char *name, struct fs::file_ownership &) {
   return -EPERM;
 }
 
-static int devfs_unlink(fs::inode &, const char *) { return -EPERM; }
+static int devfs_unlink(fs::inode &, const char *) {
+  return -EPERM;
+}
 
-static int devfs_mknod(fs::inode &, const char *name,
-		       struct fs::file_ownership &, int major, int minor) {
+static int devfs_mknod(fs::inode &, const char *name, struct fs::file_ownership &, int major,
+                       int minor) {
   return -EPERM;
 }
 
@@ -64,8 +64,8 @@ static auto *devfs_create_inode(int type) {
   ino->ino = next_inode_nr++;
   ino->uid = 0;
   ino->gid = 0;
-	ino->size = 512; // idk, whatever
-	ino->mode = 07755;
+  ino->size = 512;  // idk, whatever
+  ino->mode = 07755;
   ino->link_count = 3;
   ino->dops = &devfs_dir_ops;
   return fs::inode::acquire(ino);
@@ -86,7 +86,7 @@ void devfs_register_device(string name, int type, int major, int minor) {
   auto node = devfs_create_inode(type);
   node->major = major;
   node->minor = minor;
-	dev::populate_inode_device(*node);
+  dev::populate_inode_device(*node);
   root->register_direntry(name, ENT_MEM, node->ino, node);
 }
 
@@ -95,13 +95,12 @@ struct fs::sb_operations devfs_sb_ops {
 };
 
 
-static struct fs::superblock *devfs_mount(struct fs::sb_information *,
-						const char *args, int flags,
-						const char *device) {
-	devfs_sb.ops = &devfs_sb_ops;
-	devfs_sb.arguments = args;
-	devfs_sb.root = devfs_get_root();
-	return &devfs_sb;
+static struct fs::superblock *devfs_mount(struct fs::sb_information *, const char *args, int flags,
+                                          const char *device) {
+  devfs_sb.ops = &devfs_sb_ops;
+  devfs_sb.arguments = args;
+  devfs_sb.root = devfs_get_root();
+  return &devfs_sb;
 }
 
 
@@ -109,6 +108,8 @@ struct fs::sb_information devfs_info {
   .name = "devfs", .mount = devfs_mount, .ops = devfs_sb_ops,
 };
 
-static void devfs_init(void) { vfs::register_filesystem(devfs_info); }
+static void devfs_init(void) {
+  vfs::register_filesystem(devfs_info);
+}
 
 module_init("fs::devfs", devfs_init);

@@ -3,7 +3,7 @@
  * MDNS responder private definitions
  */
 
- /*
+/*
  * Copyright (c) 2015 Verisure Innovation AB
  * All rights reserved.
  *

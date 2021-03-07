@@ -23,31 +23,34 @@ namespace ck {
       operator=(move(t));
     }
 
-		func(void) {
-			m_callable_wrapper = nullptr;
-		}
+    func(void) {
+      m_callable_wrapper = nullptr;
+    }
 
     Out operator()(In... args) const {
       assert(m_callable_wrapper);
       return m_callable_wrapper->call(args...);
     }
 
-    operator bool(void) { return m_callable_wrapper.get() != NULL; }
+    operator bool(void) {
+      return m_callable_wrapper.get() != NULL;
+    }
 
-		using ReturnType = Out;
+    using ReturnType = Out;
 
    private:
     class CallableWrapperBase {
      public:
-      virtual ~CallableWrapperBase() {}
+      virtual ~CallableWrapperBase() {
+      }
       virtual Out call(In...) const = 0;
     };
 
     template <typename CallableType>
     class CallableWrapper final : public CallableWrapperBase {
      public:
-      explicit CallableWrapper(CallableType&& callable)
-          : m_callable(move(callable)) {}
+      explicit CallableWrapper(CallableType&& callable) : m_callable(move(callable)) {
+      }
 
       CallableWrapper(const CallableWrapper&) = delete;
       CallableWrapper& operator=(const CallableWrapper&) = delete;

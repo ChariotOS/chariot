@@ -9,34 +9,34 @@ namespace sched {
 
 
 
-	struct round_robin {
-		spinlock big_lock;
-		struct thread *front = nullptr;
-		struct thread *back = nullptr;
+  struct round_robin {
+    spinlock big_lock;
+    struct thread *front = nullptr;
+    struct thread *back = nullptr;
 
 
-		/////////////////////////////////////
-		// required methods
-		int add_task(struct thread *);
-		int remove_task(struct thread *t);
-		struct thread *pick_next(void);
-		/////////////////////////////////////
+    /////////////////////////////////////
+    // required methods
+    int add_task(struct thread *);
+    int remove_task(struct thread *t);
+    struct thread *pick_next(void);
+    /////////////////////////////////////
 
 
-		int add_task_impl(struct thread *t);
-		int remove_task_impl(struct thread *t);
+    int add_task_impl(struct thread *t);
+    int remove_task_impl(struct thread *t);
 
 
-		// expects the big_lock to be held
-		void dump(void);
+    // expects the big_lock to be held
+    void dump(void);
 
 
-		struct thread_state {
-			struct thread *next;
-			struct thread *prev;
-		};
+    struct thread_state {
+      struct thread *next;
+      struct thread *prev;
+    };
 
-		using thread_state = thread_state;
-	};
+    using thread_state = thread_state;
+  };
 
-};
+};  // namespace sched

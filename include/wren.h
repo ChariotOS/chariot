@@ -11,17 +11,14 @@
 
 namespace wren {
   class vm : public ck::object {
-		WrenVM *m_vm;
+    WrenVM *m_vm;
 
-		public:
-
-
-			vm(void);
-			~vm(void);
-			WrenInterpretResult run_file(const char *path);
-			WrenInterpretResult run_expr(const char *expr);
-
-	};
+   public:
+    vm(void);
+    ~vm(void);
+    WrenInterpretResult run_file(const char *path);
+    WrenInterpretResult run_expr(const char *expr);
+  };
 };  // namespace wren
 
 #endif

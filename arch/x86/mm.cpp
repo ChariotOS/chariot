@@ -53,7 +53,6 @@ namespace x86 {
 
 
 x86::pagetable::pagetable(u64 *pml4) : pml4(pml4) {
-
   auto kptable = (u64 *)p2v(kernel_page_table);
   auto pptable = (u64 *)p2v(pml4);
 
@@ -226,7 +225,7 @@ void arch_mem_init(unsigned long mbd) {
     arch_flush_mmu();  // flush out the TLB
   }
 
-	printk("done!\n");
+  printk("done!\n");
 
 
   // setup memory regions

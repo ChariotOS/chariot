@@ -7,16 +7,15 @@
 namespace ck {
 
 
-	class mutex {
-		private:
-			pthread_mutex_t m_mutex;
+  class mutex {
+   private:
+    pthread_mutex_t m_mutex;
 
-		public:
-			mutex(void);
-			~mutex(void);
+   public:
+    mutex(void);
+    ~mutex(void);
 
-			void lock(void);
-			void unlock(void);
-
-	};
-}
+    void lock(void);
+    void unlock(void);
+  };
+}  // namespace ck

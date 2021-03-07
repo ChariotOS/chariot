@@ -210,18 +210,17 @@ ulperr_exp: 0.509 ULP (ULP error of exp, 0.511 ULP without fma)
 #define N (1 << POW_LOG_TABLE_BITS)
 #define OFF 0x3fe6955500000000
 
-double __math_xflow(uint32_t sign, double y)
-{
-	return fp_barrier(sign ? -y : y) * y;
+double __math_xflow(uint32_t sign, double y) {
+  return fp_barrier(sign ? -y : y) * y;
 }
 
 
 double __math_uflow(uint32_t sign) {
-	return __math_xflow(sign, 0x1p-767);
+  return __math_xflow(sign, 0x1p-767);
 }
 
 double __math_oflow(uint32_t sign) {
-	return __math_xflow(sign, 0x1p769);
+  return __math_xflow(sign, 0x1p769);
 }
 
 

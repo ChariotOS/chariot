@@ -11,13 +11,15 @@ ck::prompt::prompt(void) {
 
 
 
-ck::prompt::~prompt(void) { free(buf); }
+ck::prompt::~prompt(void) {
+  free(buf);
+}
 
 
 // the number of ANSI paramters
 #define NPAR 16
 ck::string ck::prompt::readline(const char *prompt) {
-	ck::string value;
+  ck::string value;
   /*
 int state = 0;
 static unsigned long npar, par[NPAR];
@@ -25,11 +27,13 @@ int ques = 0;
 
 int history_index = -1;
 */
-	return value;
+  return value;
 }
 
 
-void ck::prompt::add_history_item(ck::string item) { m_history.push(item); }
+void ck::prompt::add_history_item(ck::string item) {
+  m_history.push(item);
+}
 
 
 void ck::prompt::insert(char c) {
@@ -73,7 +77,8 @@ void ck::prompt::display(const char *prompt) {
   int dist = len - ind;
   if (dist != 0) {
     if (dist > 6 /* arbitrary */) {
-      for (int i = 0; i < dist; i++) fputc('\b', stderr);
+      for (int i = 0; i < dist; i++)
+        fputc('\b', stderr);
     } else {
       fprintf(stderr, "\x1b[%dD", dist);
     }

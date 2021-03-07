@@ -14,9 +14,9 @@
  */
 
 #define VM_NORMAL_PAGE (0x1000L)
-#define VM_MEGA_PAGE   (VM_NORMAL_PAGE << 9)
-#define VM_GIGA_PAGE   (VM_MEGA_PAGE << 9)
-#define VM_TERA_PAGE   (VM_GIGA_PAGE << 9)
+#define VM_MEGA_PAGE (VM_NORMAL_PAGE << 9)
+#define VM_GIGA_PAGE (VM_MEGA_PAGE << 9)
+#define VM_TERA_PAGE (VM_GIGA_PAGE << 9)
 
 
 /* Riscv sv32 - 32 bit virtual memory on 32bit */

@@ -24,24 +24,33 @@
 
 namespace std {
 
-  _UCXXEXPORT logic_error::logic_error() _UCXX_USE_NOEXCEPT : mstring() {}
+  _UCXXEXPORT logic_error::logic_error() _UCXX_USE_NOEXCEPT : mstring() {
+  }
 
-  _UCXXEXPORT logic_error::logic_error(const string& what_arg) : mstring(what_arg) {}
+  _UCXXEXPORT logic_error::logic_error(const string& what_arg) : mstring(what_arg) {
+  }
 
-  _UCXXEXPORT const char* logic_error::what() const _UCXX_USE_NOEXCEPT { return mstring.c_str(); }
+  _UCXXEXPORT const char* logic_error::what() const _UCXX_USE_NOEXCEPT {
+    return mstring.c_str();
+  }
 
 
-  _UCXXEXPORT out_of_range::out_of_range() : logic_error() {}
+  _UCXXEXPORT out_of_range::out_of_range() : logic_error() {
+  }
 
-  _UCXXEXPORT out_of_range::out_of_range(const string& what_arg) : logic_error(what_arg) {}
+  _UCXXEXPORT out_of_range::out_of_range(const string& what_arg) : logic_error(what_arg) {
+  }
 
-  _UCXXEXPORT runtime_error::runtime_error() : mstring() {}
+  _UCXXEXPORT runtime_error::runtime_error() : mstring() {
+  }
 
-  _UCXXEXPORT runtime_error::runtime_error(const string& what_arg) : mstring(what_arg) {}
+  _UCXXEXPORT runtime_error::runtime_error(const string& what_arg) : mstring(what_arg) {
+  }
 
-  _UCXXEXPORT const char* runtime_error::what() const _UCXX_USE_NOEXCEPT { return mstring.c_str(); }
+  _UCXXEXPORT const char* runtime_error::what() const _UCXX_USE_NOEXCEPT {
+    return mstring.c_str();
+  }
 
 }  // namespace std
 
 #endif
-

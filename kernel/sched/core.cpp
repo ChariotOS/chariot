@@ -19,9 +19,9 @@
 #define TIMESLICE_MIN 4
 
 #ifdef SCHED_DEBUG
-#  define INFO(fmt, args...) printk("[SCHED] " fmt, ##args)
+#define INFO(fmt, args...) printk("[SCHED] " fmt, ##args)
 #else
-#  define INFO(fmt, args...)
+#define INFO(fmt, args...)
 #endif
 
 extern "C" void context_switch(struct thread_context **, struct thread_context *);
@@ -64,7 +64,7 @@ static void switch_into(struct thread &thd) {
 
   cpu::current().current_thread = &thd;
   thd.state = PS_RUNNING;
-  arch_restore_fpu(thd);
+  if (thd.proc.ring == RING_USER) arch_restore_fpu(thd);
 
 
   // update the statistics of the thread
@@ -86,7 +86,8 @@ static void switch_into(struct thread &thd) {
   // Switch into the thread!
   context_switch(&cpu::current().sched_ctx, thd.kern_context);
 
-  arch_save_fpu(thd);
+  // arch_save_fpu(thd);
+  if (thd.proc.ring == RING_USER) arch_save_fpu(thd);
 
   if (ts) {
     thd.ktime_us += time::now_us() - start_us;
@@ -389,7 +390,7 @@ void sched::before_iret(bool userspace) {
   auto &c = cpu::current();
 
   if (c.woke_someone_up) {
-		c.woke_someone_up = false;
+    c.woke_someone_up = false;
     sched::yield();
     return;
   }

@@ -13,19 +13,17 @@
 // Implements the well equidistributed long-period linear PRNG (WELL512a).
 //
 // https://en.wikipedia.org/wiki/Well_equidistributed_long-period_linear
-typedef struct
-{
+typedef struct {
   uint32_t state[16];
   uint32_t index;
 } Well512;
 
 // Code from: http://www.lomont.org/Math/Papers/2008/Lomont_PRNG_2008.pdf
-static uint32_t advanceState(Well512* well)
-{
+static uint32_t advanceState(Well512* well) {
   uint32_t a, b, c, d;
   a = well->state[well->index];
   c = well->state[(well->index + 13) & 15];
-  b =  a ^ c ^ (a << 16) ^ (c << 15);
+  b = a ^ c ^ (a << 16) ^ (c << 15);
   c = well->state[(well->index + 9) & 15];
   c ^= (c >> 11);
   a = well->state[well->index] = b ^ c;
@@ -37,46 +35,38 @@ static uint32_t advanceState(Well512* well)
   return well->state[well->index];
 }
 
-static void randomAllocate(WrenVM* vm)
-{
+static void randomAllocate(WrenVM* vm) {
   Well512* well = (Well512*)wrenSetSlotNewForeign(vm, 0, 0, sizeof(Well512));
   well->index = 0;
 }
 
-static void randomSeed0(WrenVM* vm)
-{
+static void randomSeed0(WrenVM* vm) {
   Well512* well = (Well512*)wrenGetSlotForeign(vm, 0);
 
   srand((uint32_t)time(NULL));
-  for (int i = 0; i < 16; i++)
-  {
+  for (int i = 0; i < 16; i++) {
     well->state[i] = rand();
   }
 }
 
-static void randomSeed1(WrenVM* vm)
-{
+static void randomSeed1(WrenVM* vm) {
   Well512* well = (Well512*)wrenGetSlotForeign(vm, 0);
 
   srand((uint32_t)wrenGetSlotDouble(vm, 1));
-  for (int i = 0; i < 16; i++)
-  {
+  for (int i = 0; i < 16; i++) {
     well->state[i] = rand();
   }
 }
 
-static void randomSeed16(WrenVM* vm)
-{
+static void randomSeed16(WrenVM* vm) {
   Well512* well = (Well512*)wrenGetSlotForeign(vm, 0);
 
-  for (int i = 0; i < 16; i++)
-  {
+  for (int i = 0; i < 16; i++) {
     well->state[i] = (uint32_t)wrenGetSlotDouble(vm, i + 1);
   }
 }
 
-static void randomFloat(WrenVM* vm)
-{
+static void randomFloat(WrenVM* vm) {
   Well512* well = (Well512*)wrenGetSlotForeign(vm, 0);
 
   // A double has 53 bits of precision in its mantissa, and we'd like to take
@@ -95,22 +85,18 @@ static void randomFloat(WrenVM* vm)
   wrenSetSlotDouble(vm, 0, result);
 }
 
-static void randomInt0(WrenVM* vm)
-{
+static void randomInt0(WrenVM* vm) {
   Well512* well = (Well512*)wrenGetSlotForeign(vm, 0);
 
   wrenSetSlotDouble(vm, 0, (double)advanceState(well));
 }
 
-const char* wrenRandomSource()
-{
+const char* wrenRandomSource() {
   return randomModuleSource;
 }
 
-WrenForeignClassMethods wrenRandomBindForeignClass(WrenVM* vm,
-                                                   const char* module,
-                                                   const char* className)
-{
+WrenForeignClassMethods wrenRandomBindForeignClass(WrenVM* vm, const char* module,
+                                                   const char* className) {
   ASSERT(strcmp(className, "Random") == 0, "Should be in Random class.");
   WrenForeignClassMethods methods;
   methods.allocate = randomAllocate;
@@ -118,25 +104,21 @@ WrenForeignClassMethods wrenRandomBindForeignClass(WrenVM* vm,
   return methods;
 }
 
-WrenForeignMethodFn wrenRandomBindForeignMethod(WrenVM* vm,
-                                                const char* className,
-                                                bool isStatic,
-                                                const char* signature)
-{
+WrenForeignMethodFn wrenRandomBindForeignMethod(WrenVM* vm, const char* className, bool isStatic,
+                                                const char* signature) {
   ASSERT(strcmp(className, "Random") == 0, "Should be in Random class.");
-  
+
   if (strcmp(signature, "<allocate>") == 0) return randomAllocate;
   if (strcmp(signature, "seed_()") == 0) return randomSeed0;
   if (strcmp(signature, "seed_(_)") == 0) return randomSeed1;
-  
-  if (strcmp(signature, "seed_(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_)") == 0)
-  {
+
+  if (strcmp(signature, "seed_(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_)") == 0) {
     return randomSeed16;
   }
-  
+
   if (strcmp(signature, "float()") == 0) return randomFloat;
   if (strcmp(signature, "int()") == 0) return randomInt0;
-  
+
   ASSERT(false, "Unknown method.");
   return NULL;
 }

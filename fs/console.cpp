@@ -21,13 +21,18 @@ static fifo_buf console_fifo;
 
 struct console_tty : public tty {
  public:
-  virtual ~console_tty() {}
+  virtual ~console_tty() {
+  }
 
   // write to the global console fifo
-  virtual void write_in(char c) { console_fifo.write(&c, 1, false); }
+  virtual void write_in(char c) {
+    console_fifo.write(&c, 1, false);
+  }
 
   // write to the console using putc. We don't care about blocking
-  virtual void write_out(char c, bool block = true) { console::putc(c); }
+  virtual void write_out(char c, bool block = true) {
+    console::putc(c);
+  }
 };
 
 
@@ -44,7 +49,7 @@ static void consputc(int c, bool debug = false) {
       serial_send(1, c);
     }
   }
-	/* TODO: factor this somewhere else. Maybe a cool "console printers" subsystem? idk :^) */
+  /* TODO: factor this somewhere else. Maybe a cool "console printers" subsystem? idk :^) */
 #ifdef CONFIG_X86
   vga::putchar(c);
 #endif
@@ -70,13 +75,12 @@ static bool handle_special_input(char c) {
 #define MON_ENTRY_SIZE (sizeof(MONITOR_ENTRY) - 1)
 
 void console::feed(size_t sz, char* buf) {
-
-	if (sz == MON_ENTRY_SIZE) {
-		if (memcmp(MONITOR_ENTRY, buf, sz) == 0) {
-			printk("monitor entry!\n");
-			return;
-		}
-	}
+  if (sz == MON_ENTRY_SIZE) {
+    if (memcmp(MONITOR_ENTRY, buf, sz) == 0) {
+      printk("monitor entry!\n");
+      return;
+    }
+  }
 
   // lock the input
   cons_input_lock.lock();
@@ -92,7 +96,9 @@ void console::feed(size_t sz, char* buf) {
 
 
 
-void console::putc(char c, bool debug) { consputc(c, debug); }
+void console::putc(char c, bool debug) {
+  consputc(c, debug);
+}
 
 
 
@@ -111,14 +117,17 @@ static ssize_t console_write(fs::file& fd, const char* buf, size_t sz) {
   if (fd) {
     auto minor = fd.ino->minor;
     if (minor != 0) return -1;
-    for (size_t i = 0; i < sz; i++) consputc(buf[i]);
+    for (size_t i = 0; i < sz; i++)
+      consputc(buf[i]);
     return sz;
   }
   return -1;
 }
 
 
-static int console_open(fs::file& fd) { return 0; }
+static int console_open(fs::file& fd) {
+  return 0;
+}
 static void console_close(fs::file& fd) { /* KINFO("[console] close!\n"); */
 }
 
@@ -127,15 +136,15 @@ static int console_poll(fs::file& fd, int events, poll_table& pt) {
   return console_fifo.poll(pt) & events & AWAITFS_READ;
 }
 
-static int console_ioctl(fs::file &fd, unsigned int cmd, off_t arg) {
-	return ctty.ioctl(cmd, arg);
+static int console_ioctl(fs::file& fd, unsigned int cmd, off_t arg) {
+  return ctty.ioctl(cmd, arg);
 }
 
 
 struct fs::file_operations console_ops = {
     .read = console_read,
     .write = console_write,
-		.ioctl = console_ioctl,
+    .ioctl = console_ioctl,
     .open = console_open,
     .close = console_close,
     .poll = console_poll,

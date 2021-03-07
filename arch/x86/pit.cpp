@@ -104,7 +104,9 @@ static spinlock pit_result_lock;
 
 int waiting_10ms_remaining = 0;
 
-void pit_irq_handler(int i, reg_t *, void *) { pit_result_lock.unlock(); }
+void pit_irq_handler(int i, reg_t *, void *) {
+  pit_result_lock.unlock();
+}
 
 void pit::dumb_sleep(unsigned ms) {
   pit_sleep_lock.lock();
@@ -119,4 +121,3 @@ void pit::dumb_sleep(unsigned ms) {
 
   pit_sleep_lock.unlock();
 }
-

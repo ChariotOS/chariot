@@ -40,8 +40,7 @@ static const int days_in_month[2][13] = {
 };
 
 /* leap year -- account for gregorian reformation in 1752 */
-#define leap_year(yr) \
-  ((yr) <= 1752 ? !((yr) % 4) : (!((yr) % 4) && ((yr) % 100)) || !((yr) % 400))
+#define leap_year(yr) ((yr) <= 1752 ? !((yr) % 4) : (!((yr) % 4) && ((yr) % 100)) || !((yr) % 400))
 
 /* number of centuries since 1700, not inclusive */
 #define centuries_since_1700(yr) ((yr) > 1700 ? (yr) / 100 - 17 : 0)
@@ -131,8 +130,7 @@ void center(const char *str, int len, int separate) {
 int day_in_week(int day, int month, int year) {
   long temp;
 
-  temp = (long)(year - 1) * 365 + leap_years_since_year_1(year - 1) +
-         day_in_year(day, month, year);
+  temp = (long)(year - 1) * 365 + leap_years_since_year_1(year - 1) + day_in_year(day, month, year);
   if (temp < FIRST_MISSING_DAY) return ((temp - 1 + SATURDAY) % 7);
   if (temp >= (FIRST_MISSING_DAY + NUMBER_MISSING_DAYS))
     return (((temp - 1 + SATURDAY) - NUMBER_MISSING_DAYS) % 7);
@@ -143,6 +141,7 @@ int day_in_year(int day, int month, int year) {
   int i, leap;
 
   leap = leap_year(year);
-  for (i = 1; i < month; i++) day += days_in_month[leap][i];
+  for (i = 1; i < month; i++)
+    day += days_in_month[leap][i];
   return (day);
 }

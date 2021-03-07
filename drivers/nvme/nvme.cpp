@@ -52,9 +52,6 @@ namespace nvme {
 
 
 
-
-
-
 #endif
 
 
@@ -72,7 +69,7 @@ void nvme_init(void) {
       controllers.push(ck::make_unique<nvme::ctrl>(*dev));
     }
   });
-	printk(KERN_INFO "That's all the NVMe nonsense!\n");
+  printk(KERN_INFO "That's all the NVMe nonsense!\n");
 }
 
 module_init("NVMe", nvme_init);

@@ -19,7 +19,6 @@ static unsigned int sbi_ext;
 
 
 
-
 static inline bool sbi_ext_present(enum sbi_extension e) {
   return sbi_ext & (1 << e);
 }
@@ -81,9 +80,9 @@ void sbi_early_init(void) {
 
 void sbi_init(void) {
   printk(KERN_INFO "RISCV: SBI spec version %ld impl id %ld version %ld\n",
-          sbi_generic_call_2(SBI_GET_SBI_SPEC_VERSION).value,
-          sbi_generic_call_2(SBI_GET_SBI_IMPL_ID).value,
-          sbi_generic_call_2(SBI_GET_SBI_IMPL_VERSION).value);
+         sbi_generic_call_2(SBI_GET_SBI_SPEC_VERSION).value,
+         sbi_generic_call_2(SBI_GET_SBI_IMPL_ID).value,
+         sbi_generic_call_2(SBI_GET_SBI_IMPL_VERSION).value);
 
   // print the extensions detected
   printk(KERN_INFO "RISCV: SBI extension TIMER %d\n", sbi_ext_present(SBI_EXTENSION_TIMER));

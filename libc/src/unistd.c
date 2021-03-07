@@ -6,17 +6,19 @@
 
 
 pid_t fork(void) {
-	return sysbind_fork();
+  return sysbind_fork();
 }
 
 #undef errno
 int errno;
 
-int *__errno_location(void) { return &errno; }
+int *__errno_location(void) {
+  return &errno;
+}
 
 ssize_t write(int fd, const void *buf, size_t count) {
   // just forward to the system call
-  return errno_wrap(sysbind_write(fd, (void*)buf, count));
+  return errno_wrap(sysbind_write(fd, (void *)buf, count));
 }
 
 ssize_t read(int fd, void *buf, size_t count) {
@@ -30,18 +32,22 @@ off_t lseek(int fd, off_t offset, int whence) {
 
 
 int unlink(const char *path) {
-	return errno_wrap(sysbind_unlink(path));
+  return errno_wrap(sysbind_unlink(path));
 }
 
-int close(int fd) { return errno_wrap(sysbind_close(fd)); }
+int close(int fd) {
+  return errno_wrap(sysbind_close(fd));
+}
 
-int chdir(const char *path) { return errno_wrap(sysbind_chdir(path)); }
+int chdir(const char *path) {
+  return errno_wrap(sysbind_chdir(path));
+}
 
 int opterr = 1, /* if error message should be printed */
     optind = 1, /* index into parent argv vector */
-    optopt,	/* character checked for validity */
-    optreset;	/* reset getopt */
-char *optarg;	/* argument associated with option */
+    optopt,     /* character checked for validity */
+    optreset;   /* reset getopt */
+char *optarg;   /* argument associated with option */
 
 #define BADCH (int)'?'
 #define BADARG (int)':'
@@ -53,7 +59,7 @@ char *optarg;	/* argument associated with option */
  */
 int getopt(int nargc, char *const nargv[], const char *ostr) {
   static char *place = EMSG; /* option letter processing */
-  const char *oli;	     /* option letter list index */
+  const char *oli;           /* option letter list index */
 
   if (optreset || !*place) { /* update scanning pointer */
     optreset = 0;
@@ -80,7 +86,7 @@ int getopt(int nargc, char *const nargv[], const char *ostr) {
   if (*++oli != ':') { /* don't need argument */
     optarg = NULL;
     if (!*place) ++optind;
-  } else {	/* need an argument */
+  } else {      /* need an argument */
     if (*place) /* no white space */
       optarg = place;
     else if (nargc <= ++optind) { /* no arg */
@@ -96,18 +102,30 @@ int getopt(int nargc, char *const nargv[], const char *ostr) {
   return (optopt); /* dump back option letter */
 }
 
-uid_t getuid(void) { return sysbind_getuid(); }
-uid_t geteuid(void) { return sysbind_geteuid(); }
-gid_t getgid(void) { return sysbind_getgid(); }
-gid_t getegid(void) { return sysbind_getegid(); }
+uid_t getuid(void) {
+  return sysbind_getuid();
+}
+uid_t geteuid(void) {
+  return sysbind_geteuid();
+}
+gid_t getgid(void) {
+  return sysbind_getgid();
+}
+gid_t getegid(void) {
+  return sysbind_getegid();
+}
 
 int access(const char *path, int amode) {
   // TODO: access syscall
   return 0;
 }
 
-int dup(int fd) { return sysbind_dup(fd); }
-int dup2(int old, int new) { return sysbind_dup2(old, new); }
+int dup(int fd) {
+  return sysbind_dup(fd);
+}
+int dup2(int old, int new) {
+  return sysbind_dup2(old, new);
+}
 
 int usleep(unsigned long usec) {
   sysbind_usleep(usec);
@@ -117,16 +135,14 @@ int usleep(unsigned long usec) {
 
 // TODO: ftruncate systemcall
 int ftruncate(int fildes, off_t length) {
-	return -ENOSYS;
+  return -ENOSYS;
 }
 
 int fsync(int fd) {
-	return -ENOSYS;
+  return -ENOSYS;
 }
 
 char *getcwd(char *buf, size_t sz) {
-	if (sysbind_getcwd(buf, sz) < 0) return NULL;
-	return buf;
+  if (sysbind_getcwd(buf, sz) < 0) return NULL;
+  return buf;
 }
-
-

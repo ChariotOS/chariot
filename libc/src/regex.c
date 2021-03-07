@@ -90,8 +90,8 @@ static int nope = 0; /* for use in asserts; shuts lint up */
 #define ASSIGN(d, s) ((d) = (s))
 #define EQ(a, b) ((a) == (b))
 #define STATEVARS long dummy /* dummy version */
-#define STATESETUP(m, n) /* nothing */
-#define STATETEARDOWN(m) /* nothing */
+#define STATESETUP(m, n)     /* nothing */
+#define STATETEARDOWN(m)     /* nothing */
 #define SETUP(v) ((v) = 0)
 #define onestate long
 #define INIT(o, n) ((o) = (unsigned long)1 << (n))

@@ -221,41 +221,35 @@ static char shift_map[0x80] = {
 
 
 static keycode unshifted_key_map[0x80] = {
-    key_invalid,    key_escape,    key_1,           key_2,
-    key_3,          key_4,         key_5,           key_6,
-    key_7,          key_8,         key_9,           key_0,
-    key_minus,      key_equal,     key_backspace,
+    key_invalid,    key_escape,  key_1,         key_2,         key_3,           key_4,
+    key_5,          key_6,       key_7,         key_8,         key_9,           key_0,
+    key_minus,      key_equal,   key_backspace,
     key_tab,  // 15
-    key_q,          key_w,         key_e,           key_r,
-    key_t,          key_y,         key_u,           key_i,
-    key_o,          key_p,         key_leftbracket, key_rightbracket,
+    key_q,          key_w,       key_e,         key_r,         key_t,           key_y,
+    key_u,          key_i,       key_o,         key_p,         key_leftbracket, key_rightbracket,
     key_return,   // 28
     key_control,  // 29
-    key_a,          key_s,         key_d,           key_f,
-    key_g,          key_h,         key_j,           key_k,
-    key_l,          key_semicolon, key_apostrophe,  key_backtick,
+    key_a,          key_s,       key_d,         key_f,         key_g,           key_h,
+    key_j,          key_k,       key_l,         key_semicolon, key_apostrophe,  key_backtick,
     key_leftshift,  // 42
-    key_backslash,  key_z,         key_x,           key_c,
-    key_v,          key_b,         key_n,           key_m,
-    key_comma,      key_period,    key_slash,
+    key_backslash,  key_z,       key_x,         key_c,         key_v,           key_b,
+    key_n,          key_m,       key_comma,     key_period,    key_slash,
     key_rightshift,  // 54
     key_invalid,
     key_alt,      // 56
     key_space,    // 57
     key_invalid,  // 58
-    key_f1,         key_f2,        key_f3,          key_f4,
-    key_f5,         key_f6,        key_f7,          key_f8,
-    key_f9,         key_f10,       key_invalid,
+    key_f1,         key_f2,      key_f3,        key_f4,        key_f5,          key_f6,
+    key_f7,         key_f8,      key_f9,        key_f10,       key_invalid,
     key_invalid,  // 70
-    key_home,       key_up,        key_pageup,      key_invalid,
-    key_left,       key_invalid,
+    key_home,       key_up,      key_pageup,    key_invalid,   key_left,        key_invalid,
     key_right,  // 77
     key_invalid,    key_end,
     key_down,  // 80
     key_pagedown,   key_invalid,
     key_delete,  // 83
-    key_invalid,    key_invalid,   key_backslash,   key_f11,
-    key_f12,        key_invalid,   key_invalid,     key_logo,
+    key_invalid,    key_invalid, key_backslash, key_f11,       key_f12,         key_invalid,
+    key_invalid,    key_logo,
 };
 
 static keycode shifted_key_map[0x100] = {
@@ -365,8 +359,7 @@ static void update_modifier(u8 modifier, bool state) {
 static void key_state_changed(u8 raw, bool pressed) {
   keyboard_packet_t event;
   event.magic = KEY_EVENT_MAGIC;
-  event.key =
-      (m_modifiers & mod_shift) ? shifted_key_map[raw] : unshifted_key_map[raw];
+  event.key = (m_modifiers & mod_shift) ? shifted_key_map[raw] : unshifted_key_map[raw];
   event.character = (m_modifiers & mod_shift) ? shift_map[raw] : keymap[raw];
   event.flags = m_modifiers;
   if (pressed) event.flags |= is_pressed;
@@ -402,8 +395,7 @@ static void kbd_handler(int i, reg_t* tf, void*) {
 
   for (;;) {
     u8 status = inb(I8042_STATUS);
-    if (!(((status & I8042_WHICH_BUFFER) == I8042_KEYBOARD_BUFFER) &&
-          (status & I8042_BUFFER_FULL)))
+    if (!(((status & I8042_WHICH_BUFFER) == I8042_KEYBOARD_BUFFER) && (status & I8042_BUFFER_FULL)))
       return;
     u8 raw = inb(I8042_BUFFER);
     u8 ch = raw & 0x7f;
@@ -445,7 +437,7 @@ static ssize_t kbd_read(fs::file& fd, char* buf, size_t sz) {
       return -EINVAL;
     }
 
-		// this is a nonblocking api
+    // this is a nonblocking api
     return kbd_buf.read(buf, sz, false);
   }
   return -1;
@@ -456,10 +448,12 @@ static int kbd_open(fs::file& fd) {
   owners++;
   return 0;
 }
-static void kbd_close(fs::file& fd) { owners--; }
+static void kbd_close(fs::file& fd) {
+  owners--;
+}
 
-static int kbd_poll(fs::file &fd, int events, poll_table &pt) {
-	return kbd_buf.poll(pt);
+static int kbd_poll(fs::file& fd, int events, poll_table& pt) {
+  return kbd_buf.poll(pt);
 }
 
 
@@ -467,7 +461,7 @@ struct fs::file_operations kbd_ops = {
     .read = kbd_read,
     .open = kbd_open,
     .close = kbd_close,
-		.poll = kbd_poll,
+    .poll = kbd_poll,
 };
 
 static struct dev::driver_info keyboard_driver_info {
@@ -481,7 +475,8 @@ static void kbd_init(void) {
   irq::install(IRQ_KEYBOARD, kbd_handler, "PS2 Keyboard");
 
   // clear out the buffer...
-  while (inb(I8042_STATUS) & I8042_BUFFER_FULL) inb(I8042_BUFFER);
+  while (inb(I8042_STATUS) & I8042_BUFFER_FULL)
+    inb(I8042_BUFFER);
 
 
   dev::register_driver(keyboard_driver_info);

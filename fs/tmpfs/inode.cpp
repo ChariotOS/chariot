@@ -30,13 +30,13 @@ static int tfs_seek(fs::file &, off_t, off_t) {
 static int tfs_open(fs::file &) {
   return 0;
 }
-static void tfs_close(fs::file &) {}
+static void tfs_close(fs::file &) {
+}
 
 
 
 
-static ref<mm::vmobject> tfs_mmap(fs::file &f, size_t npages, int prot,
-                                  int flags, off_t off) {
+static ref<mm::vmobject> tfs_mmap(fs::file &f, size_t npages, int prot, int flags, off_t off) {
   UNIMPL();
   // XXX: this is invalid, should be asserted before here :^)
   if (off & 0xFFF) return nullptr;
@@ -55,8 +55,8 @@ static int tfs_resize(fs::file &, size_t) {
  * Free the tmp::file object in the inode
  */
 static void tfs_destroy(fs::inode &v) {
-	// printk(KERN_DEBUG "Destroy tmpfs inode\n");
-	delete v.priv<tmp::priv>();
+  // printk(KERN_DEBUG "Destroy tmpfs inode\n");
+  delete v.priv<tmp::priv>();
 }
 
 fs::file_operations tmp::fops = {

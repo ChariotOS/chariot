@@ -130,10 +130,22 @@ struct keyboard_packet_t {
   keycode key{key_invalid};
   unsigned char character{0};
   unsigned char flags{0};
-  bool alt() const { return flags & mod_alt; }
-  bool ctrl() const { return flags & mod_ctrl; }
-  bool shift() const { return flags & mod_shift; }
-  bool logo() const { return flags & mod_logo; }
-  unsigned modifiers() const { return flags & mod_mask; }
-  bool is_press() const { return flags & is_pressed; }
+  bool alt() const {
+    return flags & mod_alt;
+  }
+  bool ctrl() const {
+    return flags & mod_ctrl;
+  }
+  bool shift() const {
+    return flags & mod_shift;
+  }
+  bool logo() const {
+    return flags & mod_logo;
+  }
+  unsigned modifiers() const {
+    return flags & mod_mask;
+  }
+  bool is_press() const {
+    return flags & is_pressed;
+  }
 };

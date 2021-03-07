@@ -19,14 +19,14 @@
 
 namespace vga {
 
-void init();
-void early_init(uint64_t mbd);
-void late_init();
-void putchar(char c);
+  void init();
+  void early_init(uint64_t mbd);
+  void late_init();
+  void putchar(char c);
 
 
-void configure(struct ck_fb_info &);
+  void configure(struct ck_fb_info &);
 
-void *get_fba();
+  void *get_fba();
 
 };  // namespace vga

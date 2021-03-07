@@ -30,7 +30,9 @@ class interpreter {
     mem = (unsigned char *)malloc(memorysize);
   }
 
-  ~interpreter() { free(mem); }
+  ~interpreter() {
+    free(mem);
+  }
 
 
   int execute(void) {
@@ -146,8 +148,7 @@ int main(int argc, const char **argv) {
 
   // map the file into memory and parse it for files
   size_t size = stream.size();
-  auto code = (unsigned char *)mmap(NULL, size, PROT_READ, MAP_PRIVATE,
-                                    stream.fileno(), 0);
+  auto code = (unsigned char *)mmap(NULL, size, PROT_READ, MAP_PRIVATE, stream.fileno(), 0);
 
   interpreter i(code, size);
 

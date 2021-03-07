@@ -35,7 +35,8 @@ void pty::write_out(char c, bool block) {
   out.write(&c, 1, block);
 }
 
-pty::~pty(void) {}
+pty::~pty(void) {
+}
 
 
 
@@ -57,7 +58,9 @@ static struct dev::driver_info pts_driver {
 };
 
 
-static auto getpts(int id) { return pts.get(id); }
+static auto getpts(int id) {
+  return pts.get(id);
+}
 
 static int allocate_pts() {
   pts_lock.lock();
@@ -88,7 +91,9 @@ static int allocate_pts() {
 }
 
 
-static int pts_ioctl(fs::file &f, unsigned int cmd, off_t arg) { return 0; }
+static int pts_ioctl(fs::file &f, unsigned int cmd, off_t arg) {
+  return 0;
+}
 
 static void close_pts(int ptsid) {
   pts_lock.lock();
@@ -112,7 +117,8 @@ static ssize_t pts_read(fs::file &f, char *dst, size_t sz) {
 static ssize_t pts_write(fs::file &f, const char *dst, size_t sz) {
   auto pts = getpts(f.ino->minor);
   DBG("pts_write %dB to %p\n", sz, pts.get());
-  for (size_t s = 0; s < sz; s++) pts->output(dst[s]);
+  for (size_t s = 0; s < sz; s++)
+    pts->output(dst[s]);
   return sz;
 }
 
@@ -126,7 +132,8 @@ static ssize_t mx_read(fs::file &f, char *dst, size_t sz) {
 static ssize_t mx_write(fs::file &f, const char *dst, size_t sz) {
   auto pts = getpts(f.pflags);
   DBG("mx_write %dB to %p\n", sz, pts.get());
-  for (size_t s = 0; s < sz; s++) pts->handle_input(dst[s]);
+  for (size_t s = 0; s < sz; s++)
+    pts->handle_input(dst[s]);
   return sz;
 }
 

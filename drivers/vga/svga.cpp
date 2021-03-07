@@ -40,36 +40,25 @@ static void vmw_print_capabilities(uint32_t capabilities) {
   printk(KERN_DEBUG "Capabilities:\n");
   if (capabilities & SVGA_CAP_RECT_COPY) printk(KERN_DEBUG "  Rect copy.\n");
   if (capabilities & SVGA_CAP_CURSOR) printk(KERN_DEBUG "  Cursor.\n");
-  if (capabilities & SVGA_CAP_CURSOR_BYPASS)
-    printk(KERN_DEBUG "  Cursor bypass.\n");
-  if (capabilities & SVGA_CAP_CURSOR_BYPASS_2)
-    printk(KERN_DEBUG "  Cursor bypass 2.\n");
-  if (capabilities & SVGA_CAP_8BIT_EMULATION)
-    printk(KERN_DEBUG "  8bit emulation.\n");
-  if (capabilities & SVGA_CAP_ALPHA_CURSOR)
-    printk(KERN_DEBUG "  Alpha cursor.\n");
+  if (capabilities & SVGA_CAP_CURSOR_BYPASS) printk(KERN_DEBUG "  Cursor bypass.\n");
+  if (capabilities & SVGA_CAP_CURSOR_BYPASS_2) printk(KERN_DEBUG "  Cursor bypass 2.\n");
+  if (capabilities & SVGA_CAP_8BIT_EMULATION) printk(KERN_DEBUG "  8bit emulation.\n");
+  if (capabilities & SVGA_CAP_ALPHA_CURSOR) printk(KERN_DEBUG "  Alpha cursor.\n");
   if (capabilities & SVGA_CAP_3D) printk(KERN_DEBUG "  3D.\n");
-  if (capabilities & SVGA_CAP_EXTENDED_FIFO)
-    printk(KERN_DEBUG "  Extended Fifo.\n");
+  if (capabilities & SVGA_CAP_EXTENDED_FIFO) printk(KERN_DEBUG "  Extended Fifo.\n");
   if (capabilities & SVGA_CAP_MULTIMON) printk(KERN_DEBUG "  Multimon.\n");
   if (capabilities & SVGA_CAP_PITCHLOCK) printk(KERN_DEBUG "  Pitchlock.\n");
   if (capabilities & SVGA_CAP_IRQMASK) printk(KERN_DEBUG "  Irq mask.\n");
-  if (capabilities & SVGA_CAP_DISPLAY_TOPOLOGY)
-    printk(KERN_DEBUG "  Display Topology.\n");
+  if (capabilities & SVGA_CAP_DISPLAY_TOPOLOGY) printk(KERN_DEBUG "  Display Topology.\n");
   if (capabilities & SVGA_CAP_GMR) printk(KERN_DEBUG "  GMR.\n");
   if (capabilities & SVGA_CAP_TRACES) printk(KERN_DEBUG "  Traces.\n");
   if (capabilities & SVGA_CAP_GMR2) printk(KERN_DEBUG "  GMR2.\n");
-  if (capabilities & SVGA_CAP_SCREEN_OBJECT_2)
-    printk(KERN_DEBUG "  Screen Object 2.\n");
-  if (capabilities & SVGA_CAP_COMMAND_BUFFERS)
-    printk(KERN_DEBUG "  Command Buffers.\n");
-  if (capabilities & SVGA_CAP_CMD_BUFFERS_2)
-    printk(KERN_DEBUG "  Command Buffers 2.\n");
-  if (capabilities & SVGA_CAP_GBOBJECTS)
-    printk(KERN_DEBUG "  Guest Backed Resources.\n");
+  if (capabilities & SVGA_CAP_SCREEN_OBJECT_2) printk(KERN_DEBUG "  Screen Object 2.\n");
+  if (capabilities & SVGA_CAP_COMMAND_BUFFERS) printk(KERN_DEBUG "  Command Buffers.\n");
+  if (capabilities & SVGA_CAP_CMD_BUFFERS_2) printk(KERN_DEBUG "  Command Buffers 2.\n");
+  if (capabilities & SVGA_CAP_GBOBJECTS) printk(KERN_DEBUG "  Guest Backed Resources.\n");
   if (capabilities & SVGA_CAP_DX) printk(KERN_DEBUG "  DX Features.\n");
-  if (capabilities & SVGA_CAP_HP_CMD_QUEUE)
-    printk(KERN_DEBUG "  HP Command Queue.\n");
+  if (capabilities & SVGA_CAP_HP_CMD_QUEUE) printk(KERN_DEBUG "  HP Command Queue.\n");
 }
 
 
@@ -77,7 +66,6 @@ static void vmw_print_capabilities(uint32_t capabilities) {
 #define SVGA_IO_MUL 1
 #define SVGA_INDEX_PORT 0
 #define SVGA_VALUE_PORT 1
-
 
 
 
@@ -127,10 +115,8 @@ enum {
   SVGA_REG_IRQMASK = 33,             /* Interrupt mask */
 
   /* Legacy multi-monitor support */
-  SVGA_REG_NUM_GUEST_DISPLAYS =
-      34, /* Number of guest displays in X/Y direction */
-  SVGA_REG_DISPLAY_ID =
-      35, /* Display ID for the following display attributes */
+  SVGA_REG_NUM_GUEST_DISPLAYS = 34, /* Number of guest displays in X/Y direction */
+  SVGA_REG_DISPLAY_ID = 35,         /* Display ID for the following display attributes */
   SVGA_REG_DISPLAY_IS_PRIMARY = 36, /* Whether this is a primary display */
   SVGA_REG_DISPLAY_POSITION_X = 37, /* The display position x */
   SVGA_REG_DISPLAY_POSITION_Y = 38, /* The display position y */
@@ -143,11 +129,11 @@ enum {
   SVGA_REG_GMR_MAX_IDS = 43,
   SVGA_REG_GMR_MAX_DESCRIPTOR_LENGTH = 44,
 
-  SVGA_REG_TRACES = 45, /* Enable trace-based updates even when FIFO is on */
+  SVGA_REG_TRACES = 45,         /* Enable trace-based updates even when FIFO is on */
   SVGA_REG_GMRS_MAX_PAGES = 46, /* Maximum number of 4KB pages for all GMRs */
-  SVGA_REG_MEMORY_SIZE = 47,  /* Total dedicated device memory excluding FIFO */
-  SVGA_REG_COMMAND_LOW = 48,  /* Lower 32 bits and submits commands */
-  SVGA_REG_COMMAND_HIGH = 49, /* Upper 32 bits of command buffer PA */
+  SVGA_REG_MEMORY_SIZE = 47,    /* Total dedicated device memory excluding FIFO */
+  SVGA_REG_COMMAND_LOW = 48,    /* Lower 32 bits and submits commands */
+  SVGA_REG_COMMAND_HIGH = 49,   /* Upper 32 bits of command buffer PA */
 
   /*
    * Max primary memory.
@@ -157,7 +143,7 @@ enum {
   SVGA_REG_MAX_PRIMARY_BOUNDING_BOX_MEM = 50,
 
   SVGA_REG_SUGGESTED_GBOBJECT_MEM_SIZE_KB = 51, /* Sugested limit on mob mem */
-  SVGA_REG_DEV_CAP = 52, /* Write dev cap index, read value */
+  SVGA_REG_DEV_CAP = 52,                        /* Write dev cap index, read value */
   SVGA_REG_CMD_PREPEND_LOW = 53,
   SVGA_REG_CMD_PREPEND_HIGH = 54,
   SVGA_REG_SCREENTARGET_MAX_WIDTH = 55,
@@ -224,7 +210,7 @@ vmware_write(SVGA_REG_ENABLE, 1);
 }
 
 void svga_mod_init(void) {
-	return;
+  return;
   // void *addr = nullptr;
   pci::walk_devices([&](pci::device *dev) {
     // vmware SVGA II Adapter

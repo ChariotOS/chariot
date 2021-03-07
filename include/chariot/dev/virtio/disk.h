@@ -36,4 +36,3 @@ class virtio_mmio_disk : public virtio_mmio_dev, public dev::disk {
     return *(virtio::blk_config *)((off_t)this->regs + 0x100);
   }
 };
-

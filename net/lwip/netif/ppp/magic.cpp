@@ -40,37 +40,37 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 /*****************************************************************************
-* randm.c - Random number generator program file.
-*
-* Copyright (c) 2003 by Marc Boucher, Services Informatiques (MBSI) inc.
-* Copyright (c) 1998 by Global Election Systems Inc.
-*
-* The authors hereby grant permission to use, copy, modify, distribute,
-* and license this software and its documentation for any purpose, provided
-* that existing copyright notices are retained in all copies and that this
-* notice and the following disclaimer are included verbatim in any
-* distributions. No written agreement, license, or royalty fee is required
-* for any of the authorized uses.
-*
-* THIS SOFTWARE IS PROVIDED BY THE CONTRIBUTORS *AS IS* AND ANY EXPRESS OR
-* IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-* OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-* IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-* INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-* NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-* THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*
-******************************************************************************
-* REVISION HISTORY
-*
-* 03-01-01 Marc Boucher <marc@mbsi.ca>
-*   Ported to lwIP.
-* 98-06-03 Guy Lancaster <lancasterg@acm.org>, Global Election Systems Inc.
-*   Extracted from avos.
-*****************************************************************************/
+ * randm.c - Random number generator program file.
+ *
+ * Copyright (c) 2003 by Marc Boucher, Services Informatiques (MBSI) inc.
+ * Copyright (c) 1998 by Global Election Systems Inc.
+ *
+ * The authors hereby grant permission to use, copy, modify, distribute,
+ * and license this software and its documentation for any purpose, provided
+ * that existing copyright notices are retained in all copies and that this
+ * notice and the following disclaimer are included verbatim in any
+ * distributions. No written agreement, license, or royalty fee is required
+ * for any of the authorized uses.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE CONTRIBUTORS *AS IS* AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ ******************************************************************************
+ * REVISION HISTORY
+ *
+ * 03-01-01 Marc Boucher <marc@mbsi.ca>
+ *   Ported to lwIP.
+ * 98-06-03 Guy Lancaster <lancasterg@acm.org>, Global Election Systems Inc.
+ *   Extracted from avos.
+ *****************************************************************************/
 
 #include "netif/ppp/ppp_opts.h"
 #if PPP_SUPPORT /* don't build if not configured for use in lwipopts.h */
@@ -83,9 +83,9 @@
 #include "netif/ppp/pppcrypt.h"
 
 #define MD5_HASH_SIZE 16
-static char magic_randpool[MD5_HASH_SIZE];   /* Pool of randomness. */
-static long magic_randcount;      /* Pseudo-random incrementer */
-static u32_t magic_randomseed;    /* Seed used for random number generation. */
+static char magic_randpool[MD5_HASH_SIZE]; /* Pool of randomness. */
+static long magic_randcount;               /* Pseudo-random incrementer */
+static u32_t magic_randomseed;             /* Seed used for random number generation. */
 
 /*
  * Churn the randomness pool on a random event.  Call this early and often
@@ -124,7 +124,7 @@ static void magic_churnrand(char *rand_data, u32_t rand_len) {
   }
   lwip_md5_finish(&md5_ctx, (u_char *)magic_randpool);
   lwip_md5_free(&md5_ctx);
-/*  LWIP_DEBUGF(LOG_INFO, ("magic_churnrand: -> 0\n")); */
+  /*  LWIP_DEBUGF(LOG_INFO, ("magic_churnrand: -> 0\n")); */
 }
 
 /*
@@ -196,9 +196,9 @@ u32_t magic(void) {
 /*** LOCAL DATA STRUCTURES ***/
 /*****************************/
 #ifndef LWIP_RAND
-static int  magic_randomized;       /* Set when truely randomized. */
+static int magic_randomized;   /* Set when truely randomized. */
 #endif /* LWIP_RAND */
-static u32_t magic_randomseed;      /* Seed used for random number generation. */
+static u32_t magic_randomseed; /* Seed used for random number generation. */
 
 
 /***********************************/
@@ -263,7 +263,7 @@ void magic_randomize(void) {
 u32_t magic(void) {
 #ifdef LWIP_RAND
   return LWIP_RAND() + magic_randomseed;
-#else /* LWIP_RAND */
+#else  /* LWIP_RAND */
   return ((u32_t)rand() << 16) + (u32_t)rand() + magic_randomseed;
 #endif /* LWIP_RAND */
 }
@@ -288,7 +288,7 @@ void magic_random_bytes(unsigned char *buf, u32_t buf_len) {
  * Return a new random number between 0 and (2^pow)-1 included.
  */
 u32_t magic_pow(u8_t pow) {
-  return magic() & ~(~0UL<<pow);
+  return magic() & ~(~0UL << pow);
 }
 
 #endif /* PPP_SUPPORT */

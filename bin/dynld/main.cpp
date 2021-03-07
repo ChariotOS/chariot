@@ -23,9 +23,8 @@ void hexdump(void *vbuf, long len) {
 
   int w = 16;
   for (int i = 0; i < len; i += w) {
-
     unsigned char *line = buf + i;
-    printf("%p: ", (void*)(long)i);
+    printf("%p: ", (void *)(long)i);
     for (int c = 0; c < w; c++) {
       if (i + c >= len) {
         printf("   ");
@@ -60,26 +59,26 @@ int try_file(const char *path) {
 
   if (memcmp(buf, ELFMAG, 4)) exit(EXIT_FAILURE);
 
-  Elf64_Ehdr *e = (Elf64_Ehdr*)buf;
+  Elf64_Ehdr *e = (Elf64_Ehdr *)buf;
   if (e->e_machine != EM_AMD64) {
     fprintf(stderr, "Invalid machine type (must be amd64 for now)\n");
     exit(EXIT_FAILURE);
   }
 
 
-#define P(name) printf ("%12s: 0x%-8llx %llu\n", #name, e->name, e->name)
-	P(e_type);
-	P(e_machine);
-	P(e_version);
-	P(e_phoff);
-	P(e_entry);
-	P(e_flags);
-	P(e_ehsize);
-	P(e_phentsize);
-	P(e_phnum);
-	P(e_shentsize);
-	P(e_shnum);
-	P(e_shstrndx);
+#define P(name) printf("%12s: 0x%-8llx %llu\n", #name, e->name, e->name)
+  P(e_type);
+  P(e_machine);
+  P(e_version);
+  P(e_phoff);
+  P(e_entry);
+  P(e_flags);
+  P(e_ehsize);
+  P(e_phentsize);
+  P(e_phnum);
+  P(e_shentsize);
+  P(e_shnum);
+  P(e_shstrndx);
 #undef P
 
 
@@ -91,27 +90,26 @@ int try_file(const char *path) {
     Elf64_Phdr *p = phdrs + i;
 
 
-		if (p->p_type == PT_LOAD) {
-			printf("PT_LOAD\n");
-		}
+    if (p->p_type == PT_LOAD) {
+      printf("PT_LOAD\n");
+    }
 
 
     if (p->p_type == PT_INTERP) {
       printf("PT_INTERP\n");
-      hexdump((char*)buf + p->p_offset, p->p_filesz);
+      hexdump((char *)buf + p->p_offset, p->p_filesz);
     }
 
     if (p->p_type == PT_DYNAMIC) {
       printf("PT_DYNAMIC\n");
-      Elf64_Dyn *d = (Elf64_Dyn*)((char*)buf + p->p_offset);
+      Elf64_Dyn *d = (Elf64_Dyn *)((char *)buf + p->p_offset);
 
       for (int i = 0; i < p->p_filesz / sizeof(*d); i++) {
         // break on DT_NULL
         if (d[i].d_tag == DT_NULL) break;
         // printf("tag=%-10llx val=%-10llx\n", d[i].d_tag, d[i].d_un.d_val);
 
-        switch(d[i].d_tag) {
-
+        switch (d[i].d_tag) {
           case DT_SYMTAB:
             printf("symtab %llx\n", d[i].d_un.d_val);
             break;
@@ -126,7 +124,6 @@ int try_file(const char *path) {
         }
       }
     }
-
   }
 
 

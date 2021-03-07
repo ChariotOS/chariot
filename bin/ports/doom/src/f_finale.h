@@ -14,7 +14,7 @@
 //
 // DESCRIPTION:
 //
-//    
+//
 
 
 #ifndef __F_FINALE__
@@ -28,16 +28,16 @@
 //
 
 // Called by main loop.
-boolean F_Responder (event_t* ev);
+boolean F_Responder(event_t* ev);
 
 // Called by main loop.
-void F_Ticker (void);
+void F_Ticker(void);
 
 // Called by main loop.
-void F_Drawer (void);
+void F_Drawer(void);
 
 
-void F_StartFinale (void);
+void F_StartFinale(void);
 
 
 

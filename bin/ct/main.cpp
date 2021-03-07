@@ -40,7 +40,9 @@ struct mesh {
 struct mat4x4 {
   float m[4][4];
 
-  mat4x4(void) { memset(this, 0, sizeof(*this)); }
+  mat4x4(void) {
+    memset(this, 0, sizeof(*this));
+  }
 };
 
 class game_view final : public ui::view {
@@ -70,7 +72,8 @@ class game_view final : public ui::view {
   }
 
 
-  void apply_perspective(vec3& v) {}
+  void apply_perspective(vec3& v) {
+  }
 
  public:
   ck::ref<gfx::bitmap> bmp = nullptr;
@@ -127,7 +130,8 @@ class game_view final : public ui::view {
 
     repaint();
   }
-  virtual ~game_view(void) {}
+  virtual ~game_view(void) {
+  }
 
 
 
@@ -210,7 +214,8 @@ class game_view final : public ui::view {
       normal.y /= l;
       normal.z /= l;
 
-      if (normal.x * (triTranslated.p[0].x - vCamera.x) + normal.y * (triTranslated.p[0].y - vCamera.y) +
+      if (normal.x * (triTranslated.p[0].x - vCamera.x) +
+              normal.y * (triTranslated.p[0].y - vCamera.y) +
               normal.z * (triTranslated.p[0].z - vCamera.z) <
           0) {
         // Project triangles from 3D --> 2D
@@ -234,9 +239,12 @@ class game_view final : public ui::view {
         triProjected.p[2].x *= 0.5f * (float)width();
         triProjected.p[2].y *= 0.5f * (float)height();
 
-        s.draw_line_antialias(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y, 0);
-        s.draw_line_antialias(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[2].x, triProjected.p[2].y, 0);
-        s.draw_line_antialias(triProjected.p[1].x, triProjected.p[1].y, triProjected.p[2].x, triProjected.p[2].y, 0);
+        s.draw_line_antialias(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x,
+                              triProjected.p[1].y, 0);
+        s.draw_line_antialias(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[2].x,
+                              triProjected.p[2].y, 0);
+        s.draw_line_antialias(triProjected.p[1].x, triProjected.p[1].y, triProjected.p[2].x,
+                              triProjected.p[2].y, 0);
       }
     }
 
@@ -285,8 +293,8 @@ void display_font(const char* name) {
 
         printf("\x1b[48;2;%d;%d;%dm ", r, g, b);
       }
-			/* Reset */
-			color = 0x000000;
+      /* Reset */
+      color = 0x000000;
       printf("\x1b[0m\n");
     }
     // printf("\n");
@@ -330,4 +338,3 @@ int main(int argc, char** argv) {
 
   return 0;
 }
-

@@ -31,7 +31,7 @@ int yield(void);
 #define panic(fmt, args...)                     \
   do {                                          \
     printf("PANIC: %s\n", __PRETTY_FUNCTION__); \
-    printf(fmt, ##args);               \
+    printf(fmt, ##args);                        \
     exit(-1);                                   \
   } while (0);
 
@@ -44,8 +44,6 @@ int yield(void);
     }                                        \
   } while (0);
 #endif
-
-
 
 
 

@@ -27,7 +27,10 @@ struct mpegview : public ui::view {
 
     // nice lol
     plm_set_video_decode_callback(
-        plm, [](plm_t *mpeg, plm_frame_t *frame, void *user) { ((mpegview *)user)->handle_frame(frame); },
+        plm,
+        [](plm_t *mpeg, plm_frame_t *frame, void *user) {
+          ((mpegview *)user)->handle_frame(frame);
+        },
         (void *)this);
 
     plm_set_audio_decode_callback(
@@ -40,17 +43,19 @@ struct mpegview : public ui::view {
     set_flex_grow(1.0);
   }
 
-  virtual ~mpegview(void) { plm_destroy(plm); }
+  virtual ~mpegview(void) {
+    plm_destroy(plm);
+  }
 
   void tick(void) {
     if (!plm_has_ended(plm)) {
       double current_time = (double)clock() / 1000.0;
       double elapsed_time = current_time - last_time;
-			/*
-      if (elapsed_time > 1.0 / (float)FPS) {
-        elapsed_time = 1.0 / (float)FPS;
-      }
-			*/
+      /*
+if (elapsed_time > 1.0 / (float)FPS) {
+elapsed_time = 1.0 / (float)FPS;
+}
+      */
       last_time = current_time;
       // printf("delta: %f seconds\n", elapsed_time);
       plm_decode(plm, elapsed_time);

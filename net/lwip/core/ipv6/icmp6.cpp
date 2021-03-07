@@ -58,10 +58,10 @@
 #include <string.h>
 
 #ifndef LWIP_ICMP6_DATASIZE
-#define LWIP_ICMP6_DATASIZE   8
+#define LWIP_ICMP6_DATASIZE 8
 #endif
 #if LWIP_ICMP6_DATASIZE == 0
-#define LWIP_ICMP6_DATASIZE   8
+#define LWIP_ICMP6_DATASIZE 8
 #endif
 
 /* Forward declarations */
@@ -77,9 +77,7 @@ static void icmp6_send_response(struct pbuf *p, u8_t code, u32_t data, u8_t type
  * @param p the mld packet, p->payload pointing to the icmpv6 header
  * @param inp the netif on which this packet was received
  */
-void
-icmp6_input(struct pbuf *p, struct netif *inp)
-{
+void icmp6_input(struct pbuf *p, struct netif *inp) {
   struct icmp6_hdr *icmp6hdr;
   struct pbuf *r;
   const ip6_addr_t *reply_src;
@@ -111,95 +109,93 @@ icmp6_input(struct pbuf *p, struct netif *inp)
 #endif /* CHECKSUM_CHECK_ICMP6 */
 
   switch (icmp6hdr->type) {
-  case ICMP6_TYPE_NA: /* Neighbor advertisement */
-  case ICMP6_TYPE_NS: /* Neighbor solicitation */
-  case ICMP6_TYPE_RA: /* Router advertisement */
-  case ICMP6_TYPE_RD: /* Redirect */
-  case ICMP6_TYPE_PTB: /* Packet too big */
-    nd6_input(p, inp);
-    return;
-    break;
-  case ICMP6_TYPE_RS:
-#if LWIP_IPV6_FORWARD
-    /* @todo implement router functionality */
-#endif
-    break;
-#if LWIP_IPV6_MLD
-  case ICMP6_TYPE_MLQ:
-  case ICMP6_TYPE_MLR:
-  case ICMP6_TYPE_MLD:
-    mld6_input(p, inp);
-    return;
-    break;
-#endif
-  case ICMP6_TYPE_EREQ:
-#if !LWIP_MULTICAST_PING
-    /* multicast destination address? */
-    if (ip6_addr_ismulticast(ip6_current_dest_addr())) {
-      /* drop */
-      pbuf_free(p);
-      ICMP6_STATS_INC(icmp6.drop);
+    case ICMP6_TYPE_NA:  /* Neighbor advertisement */
+    case ICMP6_TYPE_NS:  /* Neighbor solicitation */
+    case ICMP6_TYPE_RA:  /* Router advertisement */
+    case ICMP6_TYPE_RD:  /* Redirect */
+    case ICMP6_TYPE_PTB: /* Packet too big */
+      nd6_input(p, inp);
       return;
-    }
+      break;
+    case ICMP6_TYPE_RS:
+#if LWIP_IPV6_FORWARD
+      /* @todo implement router functionality */
+#endif
+      break;
+#if LWIP_IPV6_MLD
+    case ICMP6_TYPE_MLQ:
+    case ICMP6_TYPE_MLR:
+    case ICMP6_TYPE_MLD:
+      mld6_input(p, inp);
+      return;
+      break;
+#endif
+    case ICMP6_TYPE_EREQ:
+#if !LWIP_MULTICAST_PING
+      /* multicast destination address? */
+      if (ip6_addr_ismulticast(ip6_current_dest_addr())) {
+        /* drop */
+        pbuf_free(p);
+        ICMP6_STATS_INC(icmp6.drop);
+        return;
+      }
 #endif /* LWIP_MULTICAST_PING */
 
-    /* Allocate reply. */
-    r = pbuf_alloc(PBUF_IP, p->tot_len, PBUF_RAM);
-    if (r == NULL) {
-      /* drop */
-      pbuf_free(p);
-      ICMP6_STATS_INC(icmp6.memerr);
-      return;
-    }
+      /* Allocate reply. */
+      r = pbuf_alloc(PBUF_IP, p->tot_len, PBUF_RAM);
+      if (r == NULL) {
+        /* drop */
+        pbuf_free(p);
+        ICMP6_STATS_INC(icmp6.memerr);
+        return;
+      }
 
-    /* Copy echo request. */
-    if (pbuf_copy(r, p) != ERR_OK) {
-      /* drop */
-      pbuf_free(p);
-      pbuf_free(r);
-      ICMP6_STATS_INC(icmp6.err);
-      return;
-    }
-
-    /* Determine reply source IPv6 address. */
-#if LWIP_MULTICAST_PING
-    if (ip6_addr_ismulticast(ip6_current_dest_addr())) {
-      reply_src = ip_2_ip6(ip6_select_source_address(inp, ip6_current_src_addr()));
-      if (reply_src == NULL) {
+      /* Copy echo request. */
+      if (pbuf_copy(r, p) != ERR_OK) {
         /* drop */
         pbuf_free(p);
         pbuf_free(r);
-        ICMP6_STATS_INC(icmp6.rterr);
+        ICMP6_STATS_INC(icmp6.err);
         return;
       }
-    }
-    else
-#endif /* LWIP_MULTICAST_PING */
-    {
-      reply_src = ip6_current_dest_addr();
-    }
 
-    /* Set fields in reply. */
-    ((struct icmp6_echo_hdr *)(r->payload))->type = ICMP6_TYPE_EREP;
-    ((struct icmp6_echo_hdr *)(r->payload))->chksum = 0;
+      /* Determine reply source IPv6 address. */
+#if LWIP_MULTICAST_PING
+      if (ip6_addr_ismulticast(ip6_current_dest_addr())) {
+        reply_src = ip_2_ip6(ip6_select_source_address(inp, ip6_current_src_addr()));
+        if (reply_src == NULL) {
+          /* drop */
+          pbuf_free(p);
+          pbuf_free(r);
+          ICMP6_STATS_INC(icmp6.rterr);
+          return;
+        }
+      } else
+#endif /* LWIP_MULTICAST_PING */
+      {
+        reply_src = ip6_current_dest_addr();
+      }
+
+      /* Set fields in reply. */
+      ((struct icmp6_echo_hdr *)(r->payload))->type = ICMP6_TYPE_EREP;
+      ((struct icmp6_echo_hdr *)(r->payload))->chksum = 0;
 #if CHECKSUM_GEN_ICMP6
-    IF__NETIF_CHECKSUM_ENABLED(inp, NETIF_CHECKSUM_GEN_ICMP6) {
-      ((struct icmp6_echo_hdr *)(r->payload))->chksum = ip6_chksum_pseudo(r,
-          IP6_NEXTH_ICMP6, r->tot_len, reply_src, ip6_current_src_addr());
-    }
+      IF__NETIF_CHECKSUM_ENABLED(inp, NETIF_CHECKSUM_GEN_ICMP6) {
+        ((struct icmp6_echo_hdr *)(r->payload))->chksum =
+            ip6_chksum_pseudo(r, IP6_NEXTH_ICMP6, r->tot_len, reply_src, ip6_current_src_addr());
+      }
 #endif /* CHECKSUM_GEN_ICMP6 */
 
-    /* Send reply. */
-    ICMP6_STATS_INC(icmp6.xmit);
-    ip6_output_if(r, reply_src, ip6_current_src_addr(),
-        LWIP_ICMP6_HL, 0, IP6_NEXTH_ICMP6, inp);
-    pbuf_free(r);
+      /* Send reply. */
+      ICMP6_STATS_INC(icmp6.xmit);
+      ip6_output_if(r, reply_src, ip6_current_src_addr(), LWIP_ICMP6_HL, 0, IP6_NEXTH_ICMP6, inp);
+      pbuf_free(r);
 
-    break;
-  default:
-    ICMP6_STATS_INC(icmp6.proterr);
-    ICMP6_STATS_INC(icmp6.drop);
-    break;
+      break;
+    default:
+      ICMP6_STATS_INC(icmp6.proterr);
+      ICMP6_STATS_INC(icmp6.drop);
+      break;
   }
 
   pbuf_free(p);
@@ -213,9 +209,7 @@ icmp6_input(struct pbuf *p, struct netif *inp)
  *          p->payload pointing to the IPv6 header
  * @param c ICMPv6 code for the unreachable type
  */
-void
-icmp6_dest_unreach(struct pbuf *p, enum icmp6_dur_code c)
-{
+void icmp6_dest_unreach(struct pbuf *p, enum icmp6_dur_code c) {
   icmp6_send_response(p, c, 0, ICMP6_TYPE_DUR);
 }
 
@@ -226,9 +220,7 @@ icmp6_dest_unreach(struct pbuf *p, enum icmp6_dur_code c)
  *          p->payload pointing to the IPv6 header
  * @param mtu the maximum mtu that we can accept
  */
-void
-icmp6_packet_too_big(struct pbuf *p, u32_t mtu)
-{
+void icmp6_packet_too_big(struct pbuf *p, u32_t mtu) {
   icmp6_send_response(p, 0, mtu, ICMP6_TYPE_PTB);
 }
 
@@ -239,9 +231,7 @@ icmp6_packet_too_big(struct pbuf *p, u32_t mtu)
  *          p->payload pointing to the IPv6 header
  * @param c ICMPv6 code for the time exceeded type
  */
-void
-icmp6_time_exceeded(struct pbuf *p, enum icmp6_te_code c)
-{
+void icmp6_time_exceeded(struct pbuf *p, enum icmp6_te_code c) {
   icmp6_send_response(p, c, 0, ICMP6_TYPE_TE);
 }
 
@@ -253,9 +243,7 @@ icmp6_time_exceeded(struct pbuf *p, enum icmp6_te_code c)
  * @param c ICMPv6 code for the param problem type
  * @param pointer the pointer to the byte where the parameter is found
  */
-void
-icmp6_param_problem(struct pbuf *p, enum icmp6_pp_code c, u32_t pointer)
-{
+void icmp6_param_problem(struct pbuf *p, enum icmp6_pp_code c, u32_t pointer) {
   icmp6_send_response(p, c, pointer, ICMP6_TYPE_PP);
 }
 
@@ -268,9 +256,7 @@ icmp6_param_problem(struct pbuf *p, enum icmp6_pp_code c, u32_t pointer)
  * @param data Additional 32-bit parameter in the ICMPv6 header
  * @param type Type of the ICMPv6 header
  */
-static void
-icmp6_send_response(struct pbuf *p, u8_t code, u32_t data, u8_t type)
-{
+static void icmp6_send_response(struct pbuf *p, u8_t code, u32_t data, u8_t type) {
   struct pbuf *q;
   struct icmp6_hdr *icmp6hdr;
   const ip6_addr_t *reply_src;
@@ -280,15 +266,14 @@ icmp6_send_response(struct pbuf *p, u8_t code, u32_t data, u8_t type)
   struct netif *netif;
 
   /* ICMPv6 header + IPv6 header + data */
-  q = pbuf_alloc(PBUF_IP, sizeof(struct icmp6_hdr) + IP6_HLEN + LWIP_ICMP6_DATASIZE,
-                 PBUF_RAM);
+  q = pbuf_alloc(PBUF_IP, sizeof(struct icmp6_hdr) + IP6_HLEN + LWIP_ICMP6_DATASIZE, PBUF_RAM);
   if (q == NULL) {
     LWIP_DEBUGF(ICMP_DEBUG, ("icmp_time_exceeded: failed to allocate pbuf for ICMPv6 packet.\n"));
     ICMP6_STATS_INC(icmp6.memerr);
     return;
   }
   LWIP_ASSERT("check that first pbuf can hold icmp 6message",
-             (q->len >= (sizeof(struct icmp6_hdr) + IP6_HLEN + LWIP_ICMP6_DATASIZE)));
+              (q->len >= (sizeof(struct icmp6_hdr) + IP6_HLEN + LWIP_ICMP6_DATASIZE)));
 
   icmp6hdr = (struct icmp6_hdr *)q->payload;
   icmp6hdr->type = type;
@@ -300,8 +285,7 @@ icmp6_send_response(struct pbuf *p, u8_t code, u32_t data, u8_t type)
           IP6_HLEN + LWIP_ICMP6_DATASIZE);
 
   /* Get the destination address and netif for this ICMP message. */
-  if ((ip_current_netif() == NULL) ||
-      ((code == ICMP6_TE_FRAG) && (type == ICMP6_TYPE_TE))) {
+  if ((ip_current_netif() == NULL) || ((code == ICMP6_TE_FRAG) && (type == ICMP6_TYPE_TE))) {
     /* Special case, as ip6_current_xxx is either NULL, or points
      * to a different packet than the one that expired.
      * We must use the addresses that are stored in the expired packet. */
@@ -318,8 +302,7 @@ icmp6_send_response(struct pbuf *p, u8_t code, u32_t data, u8_t type)
       ICMP6_STATS_INC(icmp6.rterr);
       return;
     }
-  }
-  else {
+  } else {
     netif = ip_current_netif();
     reply_dest = ip6_current_src_addr();
 
@@ -337,8 +320,7 @@ icmp6_send_response(struct pbuf *p, u8_t code, u32_t data, u8_t type)
   icmp6hdr->chksum = 0;
 #if CHECKSUM_GEN_ICMP6
   IF__NETIF_CHECKSUM_ENABLED(netif, NETIF_CHECKSUM_GEN_ICMP6) {
-    icmp6hdr->chksum = ip6_chksum_pseudo(q, IP6_NEXTH_ICMP6, q->tot_len,
-      reply_src, reply_dest);
+    icmp6hdr->chksum = ip6_chksum_pseudo(q, IP6_NEXTH_ICMP6, q->tot_len, reply_src, reply_dest);
   }
 #endif /* CHECKSUM_GEN_ICMP6 */
 

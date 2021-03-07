@@ -19,9 +19,11 @@ namespace ck {
     virtual ssize_t tell(void) override;
     virtual int seek(long offset, int whence) override;
 
-		// just return the buffer :)
-		const ck::string &get(void);
-		inline const char *buf(void) { return get().get(); }
+    // just return the buffer :)
+    const ck::string &get(void);
+    inline const char *buf(void) {
+      return get().get();
+    }
   };
 
 }  // namespace ck

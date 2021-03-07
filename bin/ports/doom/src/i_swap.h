@@ -24,4 +24,3 @@
 #define LONG(x) ((signed int)(x))
 
 #endif
-

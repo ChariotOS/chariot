@@ -22,39 +22,41 @@ wait_entry::~wait_entry() {
 }
 
 wait_result wait_entry::start(void) {
-	/* Yield right away */
-	auto res = sched::yield();
+  /* Yield right away */
+  auto res = sched::yield();
 
-	if (res == sched::yieldres::Interrupt) {
-		this->result |= WAIT_RES_INTR;
-	}
+  if (res == sched::yieldres::Interrupt) {
+    this->result |= WAIT_RES_INTR;
+  }
 
-	return wait_result(this->result);
+  return wait_result(this->result);
 }
 
 
 
 
-wait_queue::wait_queue(void) { task_list.init(); }
+wait_queue::wait_queue(void) {
+  task_list.init();
+}
 
 void wait_queue::wake_up_common(unsigned int mode, int nr_exclusive, int wake_flags, void *key) {
   int pid = 0;
   if (curproc) pid = curproc->pid;
 
-	bool woke_someone = false;
+  bool woke_someone = false;
 
   struct wait_entry *curr, *next;
   list_for_each_entry_safe(curr, next, &task_list, item) {
     unsigned flags = curr->flags;
-		bool woke_up = curr->func(curr, mode, wake_flags, key);
-		/* TODO: you could do a priority system here? */
-		if (woke_up) woke_someone = true;
+    bool woke_up = curr->func(curr, mode, wake_flags, key);
+    /* TODO: you could do a priority system here? */
+    if (woke_up) woke_someone = true;
     if (woke_up && (flags & WQ_FLAG_EXCLUSIVE) && !--nr_exclusive) {
       break;
     }
   }
 
-	if (woke_someone) cpu::current().woke_someone_up = true;
+  if (woke_someone) cpu::current().woke_someone_up = true;
 }
 
 
@@ -70,7 +72,7 @@ wait_result wait_queue::wait(struct wait_entry *ent, int state) {
   task_list.add(&ent->item);
   lock.unlock_irqrestore(flags);
 
-	return ent->start();
+  return ent->start();
 }
 
 
@@ -93,7 +95,7 @@ wait_result wait_queue::wait_exclusive(struct wait_entry *ent, int state) {
   task_list.add_tail(&ent->item);
   lock.unlock_irqrestore(flags);
 
-	return ent->start();
+  return ent->start();
 }
 
 
@@ -189,7 +191,8 @@ bool multi_wait_wake_function(struct wait_entry *entry, unsigned mode, int sync,
 }
 
 int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive) {
-  struct multi_wake_entry ents[nqueues];  // I know, variable stack arrays are bad. Whatever, I wrote all this code.
+  struct multi_wake_entry
+      ents[nqueues];  // I know, variable stack arrays are bad. Whatever, I wrote all this code.
 
   bool irqs_enabled = false;
   /* First, we must go through each of the queues and take their lock.
@@ -288,4 +291,6 @@ wait_result do_wait(struct wait_entry &ent) {
 }
 
 
-void finish_wait(struct wait_queue &wq, struct wait_entry &ent) { wq.finish(&ent); }
+void finish_wait(struct wait_queue &wq, struct wait_entry &ent) {
+  wq.finish(&ent);
+}

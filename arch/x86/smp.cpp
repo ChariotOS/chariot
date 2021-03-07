@@ -74,8 +74,8 @@ struct ioapic {
   uint32_t data;
 };
 
-#define REG_ID 0x00  // Register index: ID
-#define REG_VER 0x01  // Register index: version
+#define REG_ID 0x00     // Register index: ID
+#define REG_VER 0x01    // Register index: version
 #define REG_TABLE 0x10  // Redirection table base
 
 static void ioapicwrite(int reg, uint32_t data) {
@@ -102,7 +102,7 @@ static void wait_for_tick_change(void) {
   }
 }
 
-static void lapic_tick_handler(int i, reg_t *tf, void*) {
+static void lapic_tick_handler(int i, reg_t *tf, void *) {
   auto &cpu = cpu::current();
   uint64_t now = arch_read_timestamp();
   cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
@@ -170,7 +170,8 @@ void smp::lapic_init(void) {
   lapic_write(LAPIC_TDCR, LAPIC_X1);
 
   if (lapic_ticks_per_second == 0) {
-    KINFO("[LAPIC] freq info: base: %uMHz,  max: %uMHz, bus: %uMHz\n", freq.base, freq.max, freq.bus);
+    KINFO("[LAPIC] freq info: base: %uMHz,  max: %uMHz, bus: %uMHz\n", freq.base, freq.max,
+          freq.bus);
     calibrate();
     KINFO("[LAPIC] counts per tick: %zu\t0x%08x\n", lapic_ticks_per_second, lapic_ticks_per_second);
   }
@@ -222,7 +223,9 @@ void smp::lapic_write(int ind, int value) {
   lapic[ind] = value;
   (void)lapic[ind];  // wait for write to finish, by reading
 }
-unsigned smp::lapic_read(int ind) { return lapic[ind]; }
+unsigned smp::lapic_read(int ind) {
+  return lapic[ind];
+}
 
 int smp::cpunum(void) {
   // int n = 0;
@@ -234,7 +237,8 @@ int smp::cpunum(void) {
   // often indirectly through acquire and release.
   if (readeflags() & FL_IF) {
     static int n;
-    if (n++ == 0) printk("cpu called from %p with interrupts enabled\n", __builtin_return_address(0));
+    if (n++ == 0)
+      printk("cpu called from %p with interrupts enabled\n", __builtin_return_address(0));
   }
 
   if (!lapic) return 0;
@@ -300,10 +304,14 @@ void parse_mp_cpu(smp::mp::mp_table_entry_cpu *ent) {
 #endif
 }
 
-void parse_mp_bus(smp::mp::mp_table_entry_bus *ent) {}
-void parse_mp_ioapic(smp::mp::mp_table_entry_ioapic *ent) {}
-void parse_mp_ioint(smp::mp::mp_table_entry_ioint *ent) {}
-void parse_mp_lint(smp::mp::mp_table_entry_lint *ent) {}
+void parse_mp_bus(smp::mp::mp_table_entry_bus *ent) {
+}
+void parse_mp_ioapic(smp::mp::mp_table_entry_ioapic *ent) {
+}
+void parse_mp_ioint(smp::mp::mp_table_entry_ioint *ent) {
+}
+void parse_mp_lint(smp::mp::mp_table_entry_lint *ent) {
+}
 
 static void walk_mp_table(smp::mp::mp_table *table, func<void(u8, void *)> fn) {
   auto count = table->entry_cnt;
@@ -501,4 +509,3 @@ void smp::init_cores(void) {
   arch_enable_ints();
 #endif
 }
-

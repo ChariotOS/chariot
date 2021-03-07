@@ -52,7 +52,8 @@ uint16_t net::ipv4::checksum(const net::ipv4::hdr &p) {
   uint16_t *s = (uint16_t *)&p;
 
   /* TODO: Checksums for options? */
-  for (int i = 0; i < 10; ++i) sum += net::ntohs(s[i]);
+  for (int i = 0; i < 10; ++i)
+    sum += net::ntohs(s[i]);
 
   if (sum > 0xFFFF) sum = (sum >> 16) + (sum & 0xFFFF);
 
@@ -67,4 +68,3 @@ static uint16_t generate_ip_id(void) {
   ip_id_lock.unlock();
   return r;
 }
-

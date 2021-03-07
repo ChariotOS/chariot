@@ -91,13 +91,23 @@ namespace net {
     void handle_packet(struct pbuf *buf);
 
     /* Set this interface as the default */
-    inline void set_default(void) { netif_set_default(&netif); }
+    inline void set_default(void) {
+      netif_set_default(&netif);
+    }
 
-    inline void set_up(void) { netif_set_up(&netif); }
-    inline void set_down(void) { netif_set_down(&netif); }
+    inline void set_up(void) {
+      netif_set_up(&netif);
+    }
+    inline void set_down(void) {
+      netif_set_down(&netif);
+    }
 
-    inline void set_link_up(void) { netif_set_link_up(&netif); }
-    inline void set_link_down(void) { netif_set_link_down(&netif); }
+    inline void set_link_up(void) {
+      netif_set_link_up(&netif);
+    }
+    inline void set_link_down(void) {
+      netif_set_link_down(&netif);
+    }
   };
 
   net::interface *find_interface(net::macaddr);
@@ -112,10 +122,18 @@ namespace net {
   uint16_t ntohs(uint16_t n);
   uint32_t ntohl(uint32_t n);
 
-  static inline uint16_t net_ord(uint16_t n) { return htons(n); }
-  static inline uint32_t net_ord(uint32_t n) { return htonl(n); }
-  static inline uint16_t host_ord(uint16_t n) { return ntohs(n); }
-  static inline uint32_t host_ord(uint32_t n) { return ntohl(n); }
+  static inline uint16_t net_ord(uint16_t n) {
+    return htons(n);
+  }
+  static inline uint32_t net_ord(uint32_t n) {
+    return htonl(n);
+  }
+  static inline uint16_t host_ord(uint16_t n) {
+    return ntohs(n);
+  }
+  static inline uint32_t host_ord(uint32_t n) {
+    return ntohl(n);
+  }
 
   void start(void);
 };  // namespace net

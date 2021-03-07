@@ -15,9 +15,8 @@
 
 // A monotonically increasing numeric representation of the version number. Use
 // this if you want to do range checks over versions.
-#define WREN_VERSION_NUMBER (WREN_VERSION_MAJOR * 1000000 +                    \
-                             WREN_VERSION_MINOR * 1000 +                       \
-                             WREN_VERSION_PATCH)
+#define WREN_VERSION_NUMBER \
+  (WREN_VERSION_MAJOR * 1000000 + WREN_VERSION_MINOR * 1000 + WREN_VERSION_PATCH)
 
 // A single virtual machine for executing Wren code.
 //
@@ -62,23 +61,21 @@ typedef void (*WrenFinalizerFn)(void* data);
 // potentially taking into account the (previously resolved) name of the module
 // that contains the import. Typically, this is used to implement relative
 // imports.
-typedef const char* (*WrenResolveModuleFn)(WrenVM* vm,
-    const char* importer, const char* name);
+typedef const char* (*WrenResolveModuleFn)(WrenVM* vm, const char* importer, const char* name);
 
 // Loads and returns the source code for the module [name].
 typedef char* (*WrenLoadModuleFn)(WrenVM* vm, const char* name);
 
 // Returns a pointer to a foreign method on [className] in [module] with
 // [signature].
-typedef WrenForeignMethodFn (*WrenBindForeignMethodFn)(WrenVM* vm,
-    const char* module, const char* className, bool isStatic,
-    const char* signature);
+typedef WrenForeignMethodFn (*WrenBindForeignMethodFn)(WrenVM* vm, const char* module,
+                                                       const char* className, bool isStatic,
+                                                       const char* signature);
 
 // Displays a string of text to the user.
 typedef void (*WrenWriteFn)(WrenVM* vm, const char* text);
 
-typedef enum
-{
+typedef enum {
   // A syntax or resolution error detected at compile time.
   WREN_ERROR_COMPILE,
 
@@ -101,12 +98,10 @@ typedef enum
 // made for each line in the stack trace. Each of those has the resolved
 // [module] and [line] where the method or function is defined and [message] is
 // the name of the method or function.
-typedef void (*WrenErrorFn)(
-    WrenVM* vm, WrenErrorType type, const char* module, int line,
-    const char* message);
+typedef void (*WrenErrorFn)(WrenVM* vm, WrenErrorType type, const char* module, int line,
+                            const char* message);
 
-typedef struct
-{
+typedef struct {
   // The callback invoked when the foreign object is created.
   //
   // This must be provided. Inside the body of this, it must call
@@ -122,11 +117,10 @@ typedef struct
 
 // Returns a pair of pointers to the foreign methods used to allocate and
 // finalize the data for instances of [className] in resolved [module].
-typedef WrenForeignClassMethods (*WrenBindForeignClassFn)(
-    WrenVM* vm, const char* module, const char* className);
+typedef WrenForeignClassMethods (*WrenBindForeignClassFn)(WrenVM* vm, const char* module,
+                                                          const char* className);
 
-typedef struct
-{
+typedef struct {
   // The callback Wren will use to allocate, reallocate, and deallocate memory.
   //
   // If `NULL`, defaults to a built-in function that uses `realloc` and `free`.
@@ -246,8 +240,7 @@ typedef struct
 
 } WrenConfiguration;
 
-typedef enum
-{
+typedef enum {
   WREN_RESULT_SUCCESS,
   WREN_RESULT_COMPILE_ERROR,
   WREN_RESULT_RUNTIME_ERROR
@@ -257,8 +250,7 @@ typedef enum
 //
 // This is not necessarily the object's *class*, but instead its low level
 // representation type.
-typedef enum
-{
+typedef enum {
   WREN_TYPE_BOOL,
   WREN_TYPE_NUM,
   WREN_TYPE_FOREIGN,
@@ -291,8 +283,7 @@ void wrenCollectGarbage(WrenVM* vm);
 
 // Runs [source], a string of Wren source code in a new fiber in [vm] in the
 // context of resolved [module].
-WrenInterpretResult wrenInterpret(WrenVM* vm, const char* module,
-                                  const char* source);
+WrenInterpretResult wrenInterpret(WrenVM* vm, const char* module, const char* source);
 
 // Creates a handle that can be used to invoke a method with [signature] on
 // using a receiver and arguments that are set up on the stack.
@@ -491,13 +482,11 @@ void wrenSetMapValue(WrenVM* vm, int mapSlot, int keySlot, int valueSlot);
 // Removes a value from the map in [mapSlot], with the key from [keySlot],
 // and place it in [removedValueSlot]. If not found, [removedValueSlot] is
 // set to null, the same behaviour as the Wren Map API.
-void wrenRemoveMapValue(WrenVM* vm, int mapSlot, int keySlot,
-                        int removedValueSlot);
+void wrenRemoveMapValue(WrenVM* vm, int mapSlot, int keySlot, int removedValueSlot);
 
 // Looks up the top level variable with [name] in resolved [module] and stores
 // it in [slot].
-void wrenGetVariable(WrenVM* vm, const char* module, const char* name,
-                     int slot);
+void wrenGetVariable(WrenVM* vm, const char* module, const char* name, int slot);
 
 // Sets the current fiber to be aborted, and uses the value in [slot] as the
 // runtime error object.

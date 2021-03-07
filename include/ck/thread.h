@@ -17,7 +17,8 @@ namespace ck {
       joinable = true;
       struct payload {
         Fn fn;
-        payload(Fn &&fn) : fn(fn) {}
+        payload(Fn &&fn) : fn(fn) {
+        }
       };
 
       auto *pl = new payload(move(fn));
@@ -35,7 +36,9 @@ namespace ck {
 
 
     /* Default constructor */
-    inline thread(void) { joinable = false; }
+    inline thread(void) {
+      joinable = false;
+    }
 
     /* No copy constructor (doesn't make sense) */
     thread(const thread &) = delete;

@@ -67,7 +67,7 @@ namespace fs {
   // Freed on release
   struct ext2_idata {
     // block pointers
-		spinlock path_cache_lock;
+    spinlock path_cache_lock;
     ext2_inode_info info;
     int cached_path[4] = {0, 0, 0, 0};
     int *blk_bufs[4] = {NULL, NULL, NULL, NULL};
@@ -106,9 +106,9 @@ namespace fs {
 
     bool write_inode(ext2_inode_info &dst, u32 inode);
 
-		inline struct block::buffer *bget(uint32_t block) {
-			return ::bget(*bdev, block);
-		}
+    inline struct block::buffer *bget(uint32_t block) {
+      return ::bget(*bdev, block);
+    }
 
     uint32_t balloc(void);
     void bfree(uint32_t);
@@ -209,8 +209,8 @@ namespace fs {
     // blocks are read here for access. This is so the filesystem can cut down
     // on allocations when doing general maintainence
 
-		// the size of a single disk sector
-		long sector_size;
+    // the size of a single disk sector
+    long sector_size;
 
     map<u32, struct fs::inode *> inodes;
 
@@ -220,7 +220,7 @@ namespace fs {
     spinlock cache_lock;
 
     ref<fs::file> disk;
-		fs::blkdev *bdev;
+    fs::blkdev *bdev;
 
     spinlock m_lock;
   };

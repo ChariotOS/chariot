@@ -29,12 +29,12 @@ bool elf::validate(fs::file &fd, Elf64_Ehdr &ehdr) {
   }
 
 #ifdef CONFIG_X86
-	if (ehdr.e_machine != EM_X86_64) return false;
+  if (ehdr.e_machine != EM_X86_64) return false;
 #endif
 
 
 #ifdef CONFIG_RISCV
-	if (ehdr.e_machine != EM_RISCV) return false;
+  if (ehdr.e_machine != EM_RISCV) return false;
 #endif
 
   return true;
@@ -153,7 +153,8 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
 
       if (page_end > file_page_end) {
         size_t bss_size = page_end - file_page_end;
-        mm.mmap(path, off + file_page_end, bss_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, nullptr, 0);
+        mm.mmap(path, off + file_page_end, bss_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE,
+                nullptr, 0);
       }
     }
   };
@@ -173,7 +174,8 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
   size_t i = 0;
 
   // skip to the first loadable header
-  while (i < ehdr.e_phnum && phdr[i].p_type != PT_LOAD) i++;
+  while (i < ehdr.e_phnum && phdr[i].p_type != PT_LOAD)
+    i++;
 
   if (i == ehdr.e_phnum) {
     delete[] phdr;
@@ -187,7 +189,8 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
   auto *last_load = &phdr[ehdr.e_phnum - 1];
 
   // walk the last_load back
-  while (last_load > first_load && last_load->p_type != PT_LOAD) last_load--;
+  while (last_load > first_load && last_load->p_type != PT_LOAD)
+    last_load--;
 
   // Total memory size of phdr between first and last PT_LOAD.
   // size_t span = last_load->p_vaddr + last_load->p_memsz -
@@ -207,30 +210,32 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
 
     if (sec.p_type == PT_LOAD) {
       auto start = sec.p_vaddr;
-			// printk("LOAD %p, mem: %llu, file: %llu\n", start, sec.p_memsz, sec.p_filesz);
+      // printk("LOAD %p, mem: %llu, file: %llu\n", start, sec.p_memsz, sec.p_filesz);
       auto prot = 0L;
       if (sec.p_flags & PF_X) prot |= PROT_EXEC;
       if (sec.p_flags & PF_W) prot |= PROT_WRITE;
       if (sec.p_flags & PF_R) prot |= PROT_READ;
 
-			string name = path;
-			if (prot & PROT_EXEC) {
-				name += " exec";
-			} else {
-				name += " data";
-			}
+      string name = path;
+      if (prot & PROT_EXEC) {
+        name += " exec";
+      } else {
+        name += " data";
+      }
 
       if (sec.p_filesz == 0) {
-				name += " .bss";
-        mm.mmap(name, off + start, round_up(sec.p_memsz, 4096), prot, MAP_ANON | MAP_PRIVATE, nullptr, 0);
+        name += " .bss";
+        mm.mmap(name, off + start, round_up(sec.p_memsz, 4096), prot, MAP_ANON | MAP_PRIVATE,
+                nullptr, 0);
       } else {
-        mm.mmap(name, off + start, round_up(sec.p_filesz, 4096), prot, MAP_PRIVATE, fd, sec.p_offset);
+        mm.mmap(name, off + start, round_up(sec.p_filesz, 4096), prot, MAP_PRIVATE, fd,
+                sec.p_offset);
         handle_bss(sec, prot);
       }
     }
   }
 
-	// mm.dump();
+  // mm.dump();
 
   delete[] phdr;
 

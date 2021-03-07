@@ -261,7 +261,9 @@ static void mouse_close(fs::file &fd) {
 }
 
 
-static int mouse_poll(fs::file &fd, int events, poll_table &pt) { return mouse_buffer.poll(pt) & events; }
+static int mouse_poll(fs::file &fd, int events, poll_table &pt) {
+  return mouse_buffer.poll(pt) & events;
+}
 
 
 struct fs::file_operations mouse_ops = {

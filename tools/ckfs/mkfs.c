@@ -79,8 +79,10 @@ int main(int argc, char **argv) {
   printf("\n\n\n");
   printf("================================\n");
 
-  printf("[ckfs] inode size: %zu. Per page: %f\n", sizeof(struct ckfs_inode), 4096 / (float)sizeof(struct ckfs_inode));
-  printf("[ext2] inode size: %zu. Per page: %f\n", sizeof(struct ext2_inode), 4096 / (float)sizeof(struct ext2_inode));
+  printf("[ckfs] inode size: %zu. Per page: %f\n", sizeof(struct ckfs_inode),
+         4096 / (float)sizeof(struct ckfs_inode));
+  printf("[ext2] inode size: %zu. Per page: %f\n", sizeof(struct ext2_inode),
+         4096 / (float)sizeof(struct ext2_inode));
 
   int fd = open(argv[1], O_RDWR);
 

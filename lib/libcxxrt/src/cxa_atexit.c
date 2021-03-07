@@ -32,11 +32,11 @@ static struct atexit_handler {
   void *p;
   void *d;
   struct atexit_handler *next;
-} *head;
+} * head;
 
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
-int __cxa_atexit( void (*f)(void *), void *p, void *d) {
+int __cxa_atexit(void (*f)(void *), void *p, void *d) {
   pthread_mutex_lock(&lock);
   struct atexit_handler *h = malloc(sizeof(*h));
   if (!h) {
@@ -52,10 +52,10 @@ int __cxa_atexit( void (*f)(void *), void *p, void *d) {
   return 0;
 }
 
-void __cxa_finalize(void *d ) {
+void __cxa_finalize(void *d) {
   pthread_mutex_lock(&lock);
   struct atexit_handler **last = &head;
-  for (struct atexit_handler *h = head ; h ; h = h->next) {
+  for (struct atexit_handler *h = head; h; h = h->next) {
     if ((h->d == d) || (d == 0)) {
       *last = h->next;
       h->f(h->p);

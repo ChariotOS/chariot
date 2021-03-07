@@ -24,7 +24,9 @@ ck::ref<gfx::font> doomuifont;
 #define KEYQUEUE_SIZE 128
 
 
-static inline auto current_us(void) { return sysbind_gettime_microsecond(); }
+static inline auto current_us(void) {
+  return sysbind_gettime_microsecond();
+}
 
 static unsigned short s_KeyQueue[KEYQUEUE_SIZE];
 static unsigned int s_KeyQueueWriteIndex = 0;
@@ -86,8 +88,8 @@ class doomview : public ui::view {
 
  public:
   doomview() {
-		set_flex_grow(1);
-	}
+    set_flex_grow(1);
+  }
   virtual void paint_event(void) override {
     auto s = get_scribe();
 
@@ -98,8 +100,12 @@ class doomview : public ui::view {
     invalidate();
   }
 
-  virtual void on_keydown(ui::keydown_event& ev) override { addKeyToQueue(ev.code, ev.c, true); }
-  virtual void on_keyup(ui::keyup_event& ev) override { addKeyToQueue(ev.code, ev.c, false); }
+  virtual void on_keydown(ui::keydown_event& ev) override {
+    addKeyToQueue(ev.code, ev.c, true);
+  }
+  virtual void on_keyup(ui::keyup_event& ev) override {
+    addKeyToQueue(ev.code, ev.c, false);
+  }
 };
 
 
@@ -115,14 +121,14 @@ extern "C" void DG_PumpEventLoop() {
 
 
 extern "C" void DG_Init() {
-	if (!main_app.connected()) {
-		printf("No connection to the window server.\n");
-		exit(EXIT_FAILURE);
-	}
+  if (!main_app.connected()) {
+    printf("No connection to the window server.\n");
+    exit(EXIT_FAILURE);
+  }
   memset(s_KeyQueue, 0, KEYQUEUE_SIZE * sizeof(unsigned short));
 
   main_window = main_app.new_window("DOOM", DOOMGENERIC_RESX, DOOMGENERIC_RESY);
-	main_window->set_theme(0x353535, 0xFFFFFF, 0x353535);
+  main_window->set_theme(0x353535, 0xFFFFFF, 0x353535);
   main_window->defer_invalidation(false);
   main_widget = &main_window->set_view<doomview>();
 }
@@ -172,4 +178,6 @@ extern "C" int DG_GetKey(int* pressed, unsigned char* doomKey) {
 }
 
 
-extern "C" void DG_SetWindowTitle(const char* title) { printf("set window title to '%s'\n", title); }
+extern "C" void DG_SetWindowTitle(const char* title) {
+  printf("set window title to '%s'\n", title);
+}

@@ -24,36 +24,31 @@
 
 FT_BEGIN_HEADER
 
-  /*
-   * A trivial service used to retrieve the PostScript name of a given font
-   * when available.  The `get_name' field should never be `NULL`.
-   *
-   * The corresponding function can return `NULL` to indicate that the
-   * PostScript name is not available.
-   *
-   * The name is owned by the face and will be destroyed with it.
-   */
+/*
+ * A trivial service used to retrieve the PostScript name of a given font
+ * when available.  The `get_name' field should never be `NULL`.
+ *
+ * The corresponding function can return `NULL` to indicate that the
+ * PostScript name is not available.
+ *
+ * The name is owned by the face and will be destroyed with it.
+ */
 
-#define FT_SERVICE_ID_POSTSCRIPT_FONT_NAME  "postscript-font-name"
-
-
-  typedef const char*
-  (*FT_PsName_GetFunc)( FT_Face  face );
+#define FT_SERVICE_ID_POSTSCRIPT_FONT_NAME "postscript-font-name"
 
 
-  FT_DEFINE_SERVICE( PsFontName )
-  {
-    FT_PsName_GetFunc  get_ps_font_name;
-  };
+typedef const char* (*FT_PsName_GetFunc)(FT_Face face);
 
 
-#define FT_DEFINE_SERVICE_PSFONTNAMEREC( class_, get_ps_font_name_ ) \
-  static const FT_Service_PsFontNameRec  class_ =                    \
-  {                                                                  \
-    get_ps_font_name_                                                \
-  };
+FT_DEFINE_SERVICE(PsFontName) {
+  FT_PsName_GetFunc get_ps_font_name;
+};
 
-  /* */
+
+#define FT_DEFINE_SERVICE_PSFONTNAMEREC(class_, get_ps_font_name_) \
+  static const FT_Service_PsFontNameRec class_ = {get_ps_font_name_};
+
+/* */
 
 
 FT_END_HEADER

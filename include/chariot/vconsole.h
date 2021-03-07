@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 struct vc_cell {
-  char c;	       // the char at this cell
+  char c;              // the char at this cell
   unsigned char attr;  // the attribute of this cell
 } __attribute__((packed));
 
@@ -35,7 +35,7 @@ struct vcons {
   vc_scribe_func scribe;
 
   unsigned int npar;
-	unsigned int par[VC_NPAR];
+  unsigned int par[VC_NPAR];
   unsigned int ques;
   unsigned int attr;
 
@@ -46,8 +46,7 @@ struct vcons {
 void vc_init(struct vcons *, int col, int row, vc_scribe_func);
 
 // initialize a static vconsole with some cells
-void vc_init_static(struct vcons *, int col, int row, vc_scribe_func,
-		    struct vc_cell *cells);
+void vc_init_static(struct vcons *, int col, int row, vc_scribe_func, struct vc_cell *cells);
 void vc_resize(struct vcons *, int col, int row);
 void vc_feed(struct vcons *, char c);
 
@@ -59,4 +58,3 @@ struct vc_cell *vc_get_cell(struct vcons *, int col, int row);
 #ifdef __cplusplus
 }
 #endif
-

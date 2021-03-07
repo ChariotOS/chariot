@@ -3,7 +3,7 @@
 
 
 int sched_yield(void) {
-	sysbind_yield();
+  sysbind_yield();
 
-	return 0;
+  return 0;
 }

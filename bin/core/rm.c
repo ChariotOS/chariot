@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
     if (unlink(argv[i]) < 0) {
       int e = errno;
       fprintf(stderr, "Failed to remove '%s', %s\n", argv[i], strerror(e));
-			res = 1;
+      res = 1;
     }
     sysbind_unlink(argv[i]);
   }

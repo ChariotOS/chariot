@@ -35,11 +35,10 @@ static inline uintptr_t uart_to_ptr(unsigned int n) {
 
 /* Early serial initialization */
 void serial_install() {
-
-	for (size_t i = 0; i < NUM_UART; i++) {
-			UARTREG(uart_to_ptr(i), UART_CR) = (1<<8)|(1<<0); // tx_enable, uarten
-	}
-	return;
+  for (size_t i = 0; i < NUM_UART; i++) {
+    UARTREG(uart_to_ptr(i), UART_CR) = (1 << 8) | (1 << 0);  // tx_enable, uarten
+  }
+  return;
   for (size_t i = 0; i < NUM_UART; i++) {
     // create circular buffer to hold received data
     // cbuf_initialize(&uart_rx_buf[i], RXBUF_SIZE);

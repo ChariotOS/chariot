@@ -41,8 +41,7 @@ net::ipcsock::~ipcsock(void) {
 }
 
 
-net::sock *net::ipcsock::accept(struct sockaddr *uaddr, int addr_len,
-                                int &err) {
+net::sock *net::ipcsock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
   // wait on a client
   auto *client = pending_connections.recv();
   return client;
@@ -109,8 +108,8 @@ printk(
 // #define IPCSOCK_DEBUG
 
 
-ssize_t net::ipcsock::sendto(fs::file &fd, void *data, size_t len, int flags,
-                             const sockaddr *, size_t) {
+ssize_t net::ipcsock::sendto(fs::file &fd, void *data, size_t len, int flags, const sockaddr *,
+                             size_t) {
   auto &state = (fd.pflags & PFLAGS_SERVER) ? for_client : for_server;
 
   scoped_lock l(state.lock);
@@ -127,8 +126,8 @@ ssize_t net::ipcsock::sendto(fs::file &fd, void *data, size_t len, int flags,
 
 
 
-ssize_t net::ipcsock::recvfrom(fs::file &fd, void *data, size_t len, int flags,
-                               const sockaddr *, size_t) {
+ssize_t net::ipcsock::recvfrom(fs::file &fd, void *data, size_t len, int flags, const sockaddr *,
+                               size_t) {
   auto &state = (fd.pflags & PFLAGS_SERVER) ? for_server : for_client;
   bool block = (flags & MSG_DONTWAIT) == 0;
 
@@ -211,7 +210,7 @@ int net::ipcsock::poll(fs::file &f, int events, poll_table &pt) {
   if (f.pflags & PFLAGS_CLIENT) {
     scoped_lock l(for_client.lock);
 
-		pt.wait(for_client.wq, AWAITFS_READ);
+    pt.wait(for_client.wq, AWAITFS_READ);
     if (!for_client.msgs.is_empty()) {
       res |= AWAITFS_READ;
     }
@@ -225,7 +224,7 @@ int net::ipcsock::poll(fs::file &f, int events, poll_table &pt) {
   if (f.pflags & PFLAGS_SERVER) {
     scoped_lock l(for_server.lock);
 
-		pt.wait(for_server.wq, AWAITFS_READ);
+    pt.wait(for_server.wq, AWAITFS_READ);
     if (!for_server.msgs.is_empty()) {
       res |= AWAITFS_READ;
     }

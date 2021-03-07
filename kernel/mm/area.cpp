@@ -1,7 +1,8 @@
 #include <mm.h>
 
 
-mm::area::area(void) {}
+mm::area::area(void) {
+}
 
 
 mm::area::~area(void) {
@@ -20,7 +21,7 @@ mm::area::~area(void) {
     pages[i] = nullptr;
   }
 
-	pages.clear();
+  pages.clear();
 
   // release the object if we have one
   if (obj) {

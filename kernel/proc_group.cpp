@@ -5,7 +5,7 @@ int sys::setpgid(int pid, int pgid) {
   /* TODO: EACCESS (has execve'd) */
   if (pgid < 0) return -EINVAL;
 
-	if (pgid == 0) pgid = curproc->pid;
+  if (pgid == 0) pgid = curproc->pid;
 
   process *proc = NULL;
   if (pid == 0) {

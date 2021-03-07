@@ -63,14 +63,14 @@ void xhci_init(void) {
   });
 
 
-	for (int i = 0; i < xhci_devices.size(); i++) {
-		auto &xhci = xhci_devices[i];
-		if (xhci->initialized) {
-			printk(XHCI_DEBUG "Device %d initialized.\n", i);
-		} else {
-			printk(XHCI_WARN "Device %d not initialized.\n", i);
-		}
-	}
+  for (int i = 0; i < xhci_devices.size(); i++) {
+    auto &xhci = xhci_devices[i];
+    if (xhci->initialized) {
+      printk(XHCI_DEBUG "Device %d initialized.\n", i);
+    } else {
+      printk(XHCI_WARN "Device %d not initialized.\n", i);
+    }
+  }
 
 #if 0
   auto *ops = (volatile struct xhci_op_regs *)p2v(addr + regs->caplength);
@@ -95,7 +95,6 @@ void xhci_init(void) {
 	}
   // hexdump((void*)ops, sizeof(*ops), true);
 #endif
-
 }
 
 module_init("eXtensible Host Controller Interface", xhci_init);
@@ -208,12 +207,14 @@ printk(XHCI_DEBUG "rts_off:     %x\n", regs->rts_off);
 
   /* Find the right interrupt vector, using MSIs if avail */
   this->irq = dev->interrupt;
-	printk(XHCI_DEBUG "irq: %d\n", irq);
+  printk(XHCI_DEBUG "irq: %d\n", irq);
 
-	initialized = true;
+  initialized = true;
 }
 
-xhci::~xhci(void) { printk(XHCI_DEBUG "~xhci\n"); }
+xhci::~xhci(void) {
+  printk(XHCI_DEBUG "~xhci\n");
+}
 
 uint32_t xhci::read_cap_reg32(uint32_t reg) {
   /* Read the register */
@@ -246,7 +247,8 @@ bool xhci::controller_halt(void) {
 }
 
 bool xhci::controller_reset(void) {
-  printk(XHCI_DEBUG "ControllerReset() cmd: 0x%08x sts: 0x%08x\n", read_op_reg32(XHCI_CMD), read_op_reg32(XHCI_STS));
+  printk(XHCI_DEBUG "ControllerReset() cmd: 0x%08x sts: 0x%08x\n", read_op_reg32(XHCI_CMD),
+         read_op_reg32(XHCI_STS));
   write_op_reg32(XHCI_CMD, read_op_reg32(XHCI_CMD) | CMD_HCRST);
 
   if (!wait_op_bits(XHCI_CMD, CMD_HCRST, 0)) {
@@ -271,7 +273,8 @@ bool xhci::wait_op_bits(uint32_t reg, uint32_t mask, uint32_t expected) {
     if (loops == 100) {
       printk(XHCI_DEBUG "delay waiting on reg 0x%08x match 0x%08x (0x%08x)\n", reg, expected, mask);
     } else if (loops > 250) {
-      printk(XHCI_DEBUG "timeout waiting on reg 0x%08x match 0x%08x (0x%08x)\n", reg, expected, mask);
+      printk(XHCI_DEBUG "timeout waiting on reg 0x%08x match 0x%08x (0x%08x)\n", reg, expected,
+             mask);
       return false;
     }
     loops++;

@@ -281,7 +281,13 @@ struct pci_cfg_space {
 
 typedef enum { PCI_BAR_NONE = 0, PCI_BAR_MEM, PCI_BAR_IO } pci_bar_type_t;
 
-typedef enum { PCI_MSI_NONE = 0, PCI_MSI_32, PCI_MSI_64, PCI_MSI_32_PER_VEC, PCI_MSI_64_PER_VEC } pci_msi_type_t;
+typedef enum {
+  PCI_MSI_NONE = 0,
+  PCI_MSI_32,
+  PCI_MSI_64,
+  PCI_MSI_32_PER_VEC,
+  PCI_MSI_64_PER_VEC
+} pci_msi_type_t;
 
 struct pci_msi_info {
   int enabled;
@@ -380,7 +386,7 @@ namespace pci {
       if constexpr (sizeof(T) == 2) return inw(PCI_CFG_DATA_PORT + (field & 2));
       if constexpr (sizeof(T) == 1) return inb(PCI_CFG_DATA_PORT + (field & 3));
       panic("invalid PCI read of size %d\n", sizeof(T));
-			return {0};
+      return {0};
     }
 
     template <typename T>

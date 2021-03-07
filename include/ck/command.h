@@ -32,9 +32,15 @@ namespace ck {
     void arg(ck::string);
 
 
-    inline const ck::string &exe(void) const { return m_exe; }
-    inline int argc(void) const { return m_args.size(); }
-    inline ck::vec<ck::string> argv(void) const { return m_args; }
+    inline const ck::string &exe(void) const {
+      return m_exe;
+    }
+    inline int argc(void) const {
+      return m_args.size();
+    }
+    inline ck::vec<ck::string> argv(void) const {
+      return m_args;
+    }
 
     // start the command
     int start(void);

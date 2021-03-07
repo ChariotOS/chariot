@@ -96,11 +96,9 @@ struct inode *fs::inode::get_direntry_ino(struct direntry *ent) {
     return ent->ino;
   }
 
-  if (dops == NULL)
-    panic("dir_ops null in get_direntry_ino despite being a directory\n");
+  if (dops == NULL) panic("dir_ops null in get_direntry_ino despite being a directory\n");
   if (dops->lookup == NULL)
-    panic(
-        "dir_ops->lookup null in get_direntry_ino despite being a directory\n");
+    panic("dir_ops->lookup null in get_direntry_ino despite being a directory\n");
 
   // otherwise attempt to resolve that entry
   ent->ino = dops->lookup(*this, ent->name.get());
@@ -114,10 +112,10 @@ struct inode *fs::inode::get_direntry_ino(struct direntry *ent) {
 }
 
 int fs::inode::poll(fs::file &f, int events, poll_table &pt) {
-	if (fops && fops->poll) {
-		return fops->poll(f, events, pt);
-	}
-	return 0;
+  if (fops && fops->poll) {
+    return fops->poll(f, events, pt);
+  }
+  return 0;
 }
 
 int fs::inode::add_mount(const char *name, struct fs::inode *guest) {
@@ -159,8 +157,7 @@ struct inode *fs::inode::get_direntry(const char *name) {
   return ino;  // nothing found!
 }
 
-int fs::inode::register_direntry(string name, int enttype, int nr,
-                                 struct inode *ino) {
+int fs::inode::register_direntry(string name, int enttype, int nr, struct inode *ino) {
   assert(type == T_DIR);
   lock.lock();
 
@@ -235,8 +232,7 @@ int fs::inode::set_name(const string &s) {
   return 0;
 }
 
-void fs::inode::walk_direntries(
-    func<bool(const string &, struct inode *)> func) {
+void fs::inode::walk_direntries(func<bool(const string &, struct inode *)> func) {
   assert(type == T_DIR);
 
   for_in_ll(ent, dir.entries) {
@@ -251,7 +247,9 @@ vec<string> fs::inode::direntries(void) {
   assert(type == T_DIR);
 
   vec<string> e;
-  for_in_ll(ent, dir.entries) { e.push(ent->name); }
+  for_in_ll(ent, dir.entries) {
+    e.push(ent->name);
+  }
   return e;
 }
 

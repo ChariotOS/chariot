@@ -42,11 +42,13 @@ static void item_property_changed(struct flex_item *item, flex_property property
   }
 }
 
-#define FLEX_ATTRIBUTE(name, type, def)                                    \
-  type flex_item_get_##name(struct flex_item *item) { return item->name; } \
-  void flex_item_set_##name(struct flex_item *item, type value) {          \
-    item->name = value;                                                    \
-    item_property_changed(item, FLEX_PROPERTY_##name);                     \
+#define FLEX_ATTRIBUTE(name, type, def)                           \
+  type flex_item_get_##name(struct flex_item *item) {             \
+    return item->name;                                            \
+  }                                                               \
+  void flex_item_set_##name(struct flex_item *item, type value) { \
+    item->name = value;                                           \
+    item_property_changed(item, FLEX_PROPERTY_##name);            \
   }
 #include <ui/internal/flex.h>
 
@@ -91,8 +93,8 @@ static void grow_if_needed(struct flex_item *item) {
     item->children.cap++;
     assert(item->children.count < item->children.cap);
 
-    item->children.ary =
-        (struct flex_item **)realloc(item->children.ary, sizeof(struct flex_item *) * item->children.cap);
+    item->children.ary = (struct flex_item **)realloc(
+        item->children.ary, sizeof(struct flex_item *) * item->children.cap);
     assert(item->children.ary != NULL);
   }
 }
@@ -139,7 +141,9 @@ struct flex_item *flex_item_delete(struct flex_item *item, unsigned int index) {
 }
 
 
-unsigned int flex_item_count(struct flex_item *item) { return item->children.count; }
+unsigned int flex_item_count(struct flex_item *item) {
+  return item->children.count;
+}
 
 
 struct flex_item *flex_item_child(struct flex_item *item, unsigned int index) {
@@ -161,8 +165,10 @@ struct flex_item *flex_item_root(struct flex_item *item) {
   return item;
 }
 
-#define FRAME_GETTER(name, index) \
-  float flex_item_get_frame_##name(struct flex_item *item) { return item->frame[index]; }
+#define FRAME_GETTER(name, index)                            \
+  float flex_item_get_frame_##name(struct flex_item *item) { \
+    return item->frame[index];                               \
+  }
 
 FRAME_GETTER(x, 0)
 FRAME_GETTER(y, 1)
@@ -206,7 +212,8 @@ struct flex_layout {
   float lines_sizes;
 };
 
-static void layout_init(struct flex_item *item, float width, float height, struct flex_layout *layout) {
+static void layout_init(struct flex_item *item, float width, float height,
+                        struct flex_layout *layout) {
   assert(item->padding_left >= 0);
   assert(item->padding_right >= 0);
   assert(item->padding_top >= 0);
@@ -214,8 +221,8 @@ static void layout_init(struct flex_item *item, float width, float height, struc
   width -= item->padding_left + item->padding_right;
   height -= item->padding_top + item->padding_bottom;
 
-	if (width < 0) width = 0;
-	if (height < 0) height = 0;
+  if (width < 0) width = 0;
+  if (height < 0) height = 0;
   assert(width >= 0);
   assert(height >= 0);
 
@@ -289,7 +296,7 @@ static void layout_init(struct flex_item *item, float width, float height, struc
     layout->pos2 = layout->vertical ? item->padding_left : item->padding_top;
   }
 
-  layout->need_lines = layout->wrap; // && item->align_content != FLEX_ALIGN_START;
+  layout->need_lines = layout->wrap;  // && item->align_content != FLEX_ALIGN_START;
   layout->lines = NULL;
   layout->lines_count = 0;
   layout->lines_sizes = 0;
@@ -331,8 +338,8 @@ static void layout_cleanup(struct flex_layout *layout) {
 
 static void layout_item(struct flex_item *item, float width, float height);
 
-static bool layout_align(flex_align align, float flex_dim, unsigned int children_count, float *pos_p, float *spacing_p,
-                         bool stretch_allowed) {
+static bool layout_align(flex_align align, float flex_dim, unsigned int children_count,
+                         float *pos_p, float *spacing_p, bool stretch_allowed) {
   assert(flex_dim > 0);
 
   float pos = 0;
@@ -410,7 +417,8 @@ static void layout_items(struct flex_item *item, unsigned int child_begin, unsig
   float pos = 0;
   float spacing = 0;
   if (layout->flex_grows == 0 && layout->flex_dim > 0) {
-    assert(layout_align(item->justify_content, layout->flex_dim, children_count, &pos, &spacing, false) &&
+    assert(layout_align(item->justify_content, layout->flex_dim, children_count, &pos, &spacing,
+                        false) &&
            "incorrect justify_content");
     if (layout->reverse) {
       pos = layout->size_dim - pos;
@@ -463,7 +471,8 @@ static void layout_items(struct flex_item *item, unsigned int child_begin, unsig
 
       case FLEX_ALIGN_STRETCH:
         if (align_size == 0) {
-          CHILD_SIZE2(child) = layout->line_dim - (CHILD_MARGIN(child, left, top) + CHILD_MARGIN(child, right, bottom));
+          CHILD_SIZE2(child) = layout->line_dim - (CHILD_MARGIN(child, left, top) +
+                                                   CHILD_MARGIN(child, right, bottom));
         }
         // fall through
 
@@ -500,8 +509,8 @@ static void layout_items(struct flex_item *item, unsigned int child_begin, unsig
   }
 
   if (layout->need_lines) {
-    layout->lines =
-        (struct flex_layout_line *)realloc(layout->lines, sizeof(struct flex_layout_line) * (layout->lines_count + 1));
+    layout->lines = (struct flex_layout_line *)realloc(
+        layout->lines, sizeof(struct flex_layout_line) * (layout->lines_count + 1));
     assert(layout->lines != NULL);
 
     struct flex_layout_line *line = &layout->lines[layout->lines_count];
@@ -512,11 +521,9 @@ static void layout_items(struct flex_item *item, unsigned int child_begin, unsig
     layout->lines_count++;
     layout->lines_sizes += line->size;
   }
-
 }
 
 static void layout_item(struct flex_item *item, float width, float height) {
-
   if (item->children.count == 0) {
     return;
   }
@@ -534,9 +541,11 @@ static void layout_item(struct flex_item *item, float width, float height) {
     // Items with an absolute position have their frames determined
     // directly and are skipped during layout.
     if (child->position == FLEX_POSITION_ABSOLUTE) {
-#define ABSOLUTE_SIZE(val, pos1, pos2, dim) (!isnan(val) ? val : (!isnan(pos1) && !isnan(pos2) ? dim - pos2 - pos1 : 0))
+#define ABSOLUTE_SIZE(val, pos1, pos2, dim) \
+  (!isnan(val) ? val : (!isnan(pos1) && !isnan(pos2) ? dim - pos2 - pos1 : 0))
 
-#define ABSOLUTE_POS(pos1, pos2, size, dim) (!isnan(pos1) ? pos1 : (!isnan(pos2) ? dim - size - pos2 : 0))
+#define ABSOLUTE_POS(pos1, pos2, size, dim) \
+  (!isnan(pos1) ? pos1 : (!isnan(pos2) ? dim - size - pos2 : 0))
 
       float child_width = ABSOLUTE_SIZE(child->width, child->left, child->right, width);
 
@@ -576,8 +585,8 @@ static void layout_item(struct flex_item *item, float width, float height) {
       if (layout->wrap) {
         layout->need_lines = true;
       } else {
-        CHILD_SIZE2(child) =
-            (layout->vertical ? width : height) - CHILD_MARGIN(child, left, top) - CHILD_MARGIN(child, right, bottom);
+        CHILD_SIZE2(child) = (layout->vertical ? width : height) - CHILD_MARGIN(child, left, top) -
+                             CHILD_MARGIN(child, right, bottom);
       }
     }
 
@@ -587,9 +596,9 @@ static void layout_item(struct flex_item *item, float width, float height) {
     if (child->self_sizing != NULL && child->parent != NULL) {
       float size[2] = {child->frame[2], child->frame[3]};
 
-			// printf("self_sizing: %f %f -> ", size[0], size[1]);
+      // printf("self_sizing: %f %f -> ", size[0], size[1]);
       child->self_sizing(child, size);
-			// printf("%f %f\n", size[0], size[1]);
+      // printf("%f %f\n", size[0], size[1]);
 
       for (unsigned int j = 0; j < 2; j++) {
         unsigned int size_off = j + 2;
@@ -633,7 +642,8 @@ static void layout_item(struct flex_item *item, float width, float height) {
     layout->flex_grows += child->grow;
     layout->flex_shrinks += child->shrink;
 
-    layout->flex_dim -= child_size + (CHILD_MARGIN(child, top, left) + CHILD_MARGIN(child, bottom, right));
+    layout->flex_dim -=
+        child_size + (CHILD_MARGIN(child, top, left) + CHILD_MARGIN(child, bottom, right));
 
     relative_children_count++;
 
@@ -655,8 +665,9 @@ static void layout_item(struct flex_item *item, float width, float height) {
     float spacing = 0;
     float flex_dim = layout->align_dim - layout->lines_sizes;
     if (flex_dim > 0) {
-      assert(layout_align(item->align_content, flex_dim, layout->lines_count, &pos, &spacing, true) &&
-             "incorrect align_content");
+      assert(
+          layout_align(item->align_content, flex_dim, layout->lines_count, &pos, &spacing, true) &&
+          "incorrect align_content");
     }
 
     float old_pos = 0;
@@ -685,7 +696,8 @@ static void layout_item(struct flex_item *item, float width, float height) {
         if (isnan(CHILD_SIZE2(child))) {
           // If the child's cross axis size hasn't been set it, it
           // defaults to the line size.
-          CHILD_SIZE2(child) = line->size + (item->align_content == FLEX_ALIGN_STRETCH ? spacing : 0);
+          CHILD_SIZE2(child) =
+              line->size + (item->align_content == FLEX_ALIGN_STRETCH ? spacing : 0);
         }
         CHILD_POS2(child) = pos + (CHILD_POS2(child) - old_pos);
       }
@@ -730,7 +742,7 @@ void flex_layout(struct flex_item *item) {
   pre_recurse(item);
   layout_item(item, item->width, item->height);
 
-	/* fix up the width and height for the root node */
+  /* fix up the width and height for the root node */
   item->frame[2] = item->width;
   item->frame[3] = item->height;
 }

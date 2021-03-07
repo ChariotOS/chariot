@@ -91,8 +91,8 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
     proc.root = geti(proc.parent->root);
     proc.cwd = geti(proc.parent->cwd);
 
-		/* copy the signal structure */
-		proc.sig = proc.parent->sig;
+    /* copy the signal structure */
+    proc.sig = proc.parent->sig;
 
 
     // are we forking?

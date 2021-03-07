@@ -34,4 +34,3 @@ void arch_sigreturn(void *ucontext) {
 
 #define round_down(x, y) ((x) & ~((y)-1))
 #define SIGSTKSZ 2 /* (pages) */
-

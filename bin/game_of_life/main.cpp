@@ -29,7 +29,8 @@ class gol : public ui::view {
 
     memset(init, 0, sizeof(init));
   }
-  ~gol(void) {}
+  ~gol(void) {
+  }
 
   int get_neighbours(int i, int j, int l_size, int c_size) {
     int n = 0;

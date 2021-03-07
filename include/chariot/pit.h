@@ -15,7 +15,7 @@ void pic_ack(uint8_t irq);
 
 
 namespace pit {
-	void dumb_sleep(unsigned ms);
+  void dumb_sleep(unsigned ms);
 }
 
 

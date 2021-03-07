@@ -44,7 +44,8 @@
  * This must be uppercase until NETBIOS_STRCMP() is defined to a string
  * comparision function that is case insensitive.
  * If you want to use the netif's hostname, use this (with LWIP_NETIF_HOSTNAME):
- * (ip_current_netif() != NULL ? ip_current_netif()->hostname != NULL ? ip_current_netif()->hostname : "" : "")
+ * (ip_current_netif() != NULL ? ip_current_netif()->hostname != NULL ? ip_current_netif()->hostname
+ * : "" : "")
  *
  * If this is not defined, netbiosns_set_name() can be called at runtime to change the name.
  */

@@ -23,5 +23,5 @@ long ui::layout::node::attr_num(ui::attr a) {
 
 
 void ui::layout::node::set_attr(ui::attr a, ck::string val) {
-	m_attrs[a] = val;
+  m_attrs[a] = val;
 }

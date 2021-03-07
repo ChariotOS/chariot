@@ -58,7 +58,7 @@ void ui::stackview::reflow_impl() {
   float equal_stretch_size =
       (available_size - fixed_space_used) / (float)(ncalc == 0 ? 1 : ncalc);
 
-	// the current position in the layout
+        // the current position in the layout
   size_t position = padding.base_for(main_axis) + bordersize;
 
   each_child(fn(ui::view & entry) {

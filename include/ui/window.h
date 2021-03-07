@@ -40,7 +40,9 @@ namespace ui {
    public:
     window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bitmap>);
     ~window();
-    inline const ck::string &name(void) { return m_name; }
+    inline const ck::string &name(void) {
+      return m_name;
+    }
 
     void handle_input(struct lumen::input_msg &);
 
@@ -53,21 +55,28 @@ namespace ui {
       return *(T *)v;
     }
 
-    inline void defer_invalidation(bool d) { m_defer_invalidation = d; }
-    inline void set_theme(uint32_t bg, uint32_t fg, uint32_t border) { m_frame->set_theme(bg, fg, border); }
+    inline void defer_invalidation(bool d) {
+      m_defer_invalidation = d;
+    }
+    inline void set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
+      m_frame->set_theme(bg, fg, border);
+    }
     void schedule_reflow();
-		
+
     virtual ck::tuple<int, int> resize(int width, int height);
     virtual void invalidate(const gfx::rect &r, bool sync = false);
-    virtual inline gfx::bitmap *bmp(void) { return m_bitmap.get(); }
-		virtual ui::view *root_view(void);
+    virtual inline gfx::bitmap *bmp(void) {
+      return m_bitmap.get();
+    }
+    virtual ui::view *root_view(void);
 
 
-		inline int id(void) { return m_id; }
+    inline int id(void) {
+      return m_id;
+    }
 
    protected:
-
-		virtual void did_reflow(void);
+    virtual void did_reflow(void);
 
     ck::unique_ptr<ui::windowframe> m_frame;
 
@@ -82,14 +91,13 @@ namespace ui {
     ck::ref<gfx::shared_bitmap> m_bitmap;
 
 
-		/* used for mouse tracking */
-		int mouse_down = 0; /* Current mouse press state */
+    /* used for mouse tracking */
+    int mouse_down = 0; /* Current mouse press state */
 
-		/* The last location the mouse was hovered at */
-		gfx::point last_hover;
-		/* The last locations the mouse was clicked at */
-		gfx::point last_lclick; /* Left click */
-		gfx::point last_rclick; /* Right click */
-
+    /* The last location the mouse was hovered at */
+    gfx::point last_hover;
+    /* The last locations the mouse was clicked at */
+    gfx::point last_lclick; /* Left click */
+    gfx::point last_rclick; /* Right click */
   };
 };  // namespace ui

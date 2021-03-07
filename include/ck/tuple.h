@@ -15,14 +15,15 @@ namespace ck {
      */
     template <typename F, typename... Rest>
     struct tuple_core : public tuple_core<Rest...> {
-      tuple_core(F first, Rest... rest)
-          : tuple_core<Rest...>(rest...), first(first) {}
+      tuple_core(F first, Rest... rest) : tuple_core<Rest...>(rest...), first(first) {
+      }
       F first;
     };
 
     template <typename F>
     struct tuple_core<F> {
-      tuple_core(F first) : first(first) {}
+      tuple_core(F first) : first(first) {
+      }
       F first;
     };
 
@@ -43,17 +44,21 @@ namespace ck {
 
   template <typename F, typename... Rest>
   struct tuple : public ck::detail::tuple_core<F, Rest...> {
-    tuple(F first, Rest... rest)
-        : detail::tuple_core<F, Rest...>(first, rest...) {}
+    tuple(F first, Rest... rest) : detail::tuple_core<F, Rest...>(first, rest...) {
+    }
 
     template <int index>
     auto &get() {
       return ck::detail::get_impl<index, F, Rest...>::value(this);
     }
 
-		// some common useful functions
-    auto &first() { return get<0>(); }
-    auto &second() { return get<1>(); }
+    // some common useful functions
+    auto &first() {
+      return get<0>();
+    }
+    auto &second() {
+      return get<1>();
+    }
   };
 #else
 
@@ -76,8 +81,9 @@ namespace ck {
     template <typename _Tp, _Tp... _Np, size_t... _Extra>
     struct __repeat<__integer_sequence<_Tp, _Np...>, _Extra...> {
       typedef __integer_sequence<_Tp, _Np..., sizeof...(_Np) + _Np..., 2 * sizeof...(_Np) + _Np...,
-                                 3 * sizeof...(_Np) + _Np..., 4 * sizeof...(_Np) + _Np..., 5 * sizeof...(_Np) + _Np...,
-                                 6 * sizeof...(_Np) + _Np..., 7 * sizeof...(_Np) + _Np..., _Extra...>
+                                 3 * sizeof...(_Np) + _Np..., 4 * sizeof...(_Np) + _Np...,
+                                 5 * sizeof...(_Np) + _Np..., 6 * sizeof...(_Np) + _Np...,
+                                 7 * sizeof...(_Np) + _Np..., _Extra...>
           type;
     };
 
@@ -142,29 +148,33 @@ namespace ck {
     template <>
     struct __parity<4> {
       template <size_t _Np>
-      struct __pmake : __repeat<typename __make<_Np / 8>::type, _Np - 4, _Np - 3, _Np - 2, _Np - 1> {};
+      struct __pmake
+          : __repeat<typename __make<_Np / 8>::type, _Np - 4, _Np - 3, _Np - 2, _Np - 1> {};
     };
     template <>
     struct __parity<5> {
       template <size_t _Np>
-      struct __pmake : __repeat<typename __make<_Np / 8>::type, _Np - 5, _Np - 4, _Np - 3, _Np - 2, _Np - 1> {};
+      struct __pmake
+          : __repeat<typename __make<_Np / 8>::type, _Np - 5, _Np - 4, _Np - 3, _Np - 2, _Np - 1> {
+      };
     };
     template <>
     struct __parity<6> {
       template <size_t _Np>
-      struct __pmake : __repeat<typename __make<_Np / 8>::type, _Np - 6, _Np - 5, _Np - 4, _Np - 3, _Np - 2, _Np - 1> {
-      };
+      struct __pmake : __repeat<typename __make<_Np / 8>::type, _Np - 6, _Np - 5, _Np - 4, _Np - 3,
+                                _Np - 2, _Np - 1> {};
     };
     template <>
     struct __parity<7> {
       template <size_t _Np>
-      struct __pmake
-          : __repeat<typename __make<_Np / 8>::type, _Np - 7, _Np - 6, _Np - 5, _Np - 4, _Np - 3, _Np - 2, _Np - 1> {};
+      struct __pmake : __repeat<typename __make<_Np / 8>::type, _Np - 7, _Np - 6, _Np - 5, _Np - 4,
+                                _Np - 3, _Np - 2, _Np - 1> {};
     };
 
 
     template <size_t _Ep, size_t _Sp>
-    using __make_indices_imp = typename detail::__make<_Ep - _Sp>::type::template __to_tuple_indices<_Sp>;
+    using __make_indices_imp =
+        typename detail::__make<_Ep - _Sp>::type::template __to_tuple_indices<_Sp>;
     template <size_t _Ep, size_t _Sp = 0>
     struct make_tuple_indices {
       static_assert(_Sp <= _Ep, "__make_tuple_indices input error");
@@ -178,7 +188,7 @@ namespace ck {
 
   template <size_t _Ip, class _Hp>
   class __tuple_leaf {
-		public:
+   public:
     _Hp __value_;
   };
 
@@ -192,7 +202,7 @@ namespace ck {
   template <class... _Tp>
   class tuple {
     typedef __tuple_impl<typename detail::make_tuple_indices<sizeof...(_Tp)>::type, _Tp...> _BaseT;
-		_BaseT base;
+    _BaseT base;
   };
 #endif
 

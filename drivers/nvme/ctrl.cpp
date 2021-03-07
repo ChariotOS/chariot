@@ -26,7 +26,8 @@ nvme::ctrl::ctrl(pci::device &dev) : dev(dev) {
 
   /* Grab the mmio region from the bar0 of the pci device */
   mmio = (volatile nvme::mmio *)p2v(dev.get_bar(0).addr);
-  printk(KERN_INFO "Found NVMe Controller at version %d.%d.%d\n", mmio->vs.mjr, mmio->vs.mnr, mmio->vs.ter);
+  printk(KERN_INFO "Found NVMe Controller at version %d.%d.%d\n", mmio->vs.mjr, mmio->vs.mnr,
+         mmio->vs.ter);
   printk(KERN_INFO "mqes:                      %d\n", mqes());
   printk(KERN_INFO "timeout:                   %d\n", timeout());
   printk(KERN_INFO "stride:                    %d\n", stride());
@@ -38,7 +39,7 @@ nvme::ctrl::ctrl(pci::device &dev) : dev(dev) {
 
 
 
-	return;
+  return;
   /* idk, honestly */
   size_t requested_queue_count = cpu::nproc() + 1;
 
@@ -53,7 +54,8 @@ nvme::ctrl::ctrl(pci::device &dev) : dev(dev) {
 
   // 7.6.1 2) Wait for the controller to indicate that any previous
   // reset is complete
-  while ((mmio->csts & NVME_CSTS_RDY) != 0) arch_relax();
+  while ((mmio->csts & NVME_CSTS_RDY) != 0)
+    arch_relax();
 
   // Attempt to use 64KB/16KB submission/completion queue sizes
   size_t queue_slots = 1024;
@@ -86,8 +88,8 @@ nvme::ctrl::ctrl(pci::device &dev) : dev(dev) {
 
 
   // 7.6.1 4) The controller settings should be configured
-  uint32_t cc = NVME_CC_IOCQES_n(ilog2(sizeof(nvme::cmpl))) | NVME_CC_IOSQES_n(ilog2(sizeof(nvme::cmd))) |
-                NVME_CC_MPS_n(0) | NVME_CC_CCS_n(0);
+  uint32_t cc = NVME_CC_IOCQES_n(ilog2(sizeof(nvme::cmpl))) |
+                NVME_CC_IOSQES_n(ilog2(sizeof(nvme::cmd))) | NVME_CC_MPS_n(0) | NVME_CC_CCS_n(0);
 
 
   // Try to enable weighted round robin with urgent
@@ -101,7 +103,8 @@ nvme::ctrl::ctrl(pci::device &dev) : dev(dev) {
 
   // 7.6.1 4) Wait for ready
   uint32_t ctrl_status;
-  while (!((ctrl_status = mmio->csts) & (NVME_CSTS_RDY | NVME_CSTS_CFS))) arch_relax();
+  while (!((ctrl_status = mmio->csts) & (NVME_CSTS_RDY | NVME_CSTS_CFS)))
+    arch_relax();
 
 
   if (ctrl_status & NVME_CSTS_CFS) {
@@ -119,7 +122,8 @@ nvme::ctrl::ctrl(pci::device &dev) : dev(dev) {
   // number of supported queues
 
   // nvme::cmd *sub_queue_ptr = (nvme::cmd *)queue_memory;
-  // nvme::cmpl *cmp_queue_ptr = (nvme::cmpl *)(sub_queue_ptr + requested_queue_count * queue_slots);
+  // nvme::cmpl *cmp_queue_ptr = (nvme::cmpl *)(sub_queue_ptr + requested_queue_count *
+  // queue_slots);
 
 
   // queues.reset(new (ext::nothrow) nvme_queue_state_t[requested_queue_count]);

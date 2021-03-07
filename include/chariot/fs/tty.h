@@ -31,25 +31,25 @@ struct tty : public refcounted<tty> {
 
 
 
-	tty();
+  tty();
   virtual ~tty(void);
 
 
   void reset();
 
-  virtual void write_in(char c) {};
-  virtual void write_out(char c, bool block = true) {};
+  virtual void write_in(char c){};
+  virtual void write_out(char c, bool block = true){};
 
   void handle_input(char c);
   void output(char c, bool block = true);
-  inline void echo(char c) { output(c, false); }
+  inline void echo(char c) {
+    output(c, false);
+  }
   void dump_input_buffer(void);
 
-	int ioctl(unsigned int cmd, off_t arg);
+  int ioctl(unsigned int cmd, off_t arg);
 
   void erase_one(int erase);
 
   string name(void);
 };
-
-

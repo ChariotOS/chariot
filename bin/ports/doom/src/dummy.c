@@ -40,8 +40,7 @@ boolean drone = false;
  *  public functions                                                   *
  *---------------------------------------------------------------------*/
 
-void I_InitTimidityConfig(void)
-{
+void I_InitTimidityConfig(void) {
 }
 
 /*---------------------------------------------------------------------*

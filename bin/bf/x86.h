@@ -171,10 +171,12 @@ namespace x86 {
 
     void encode(x86::code &code);
 
-		// the size, in bytes, of this instruction
-		uint32_t size();
+    // the size, in bytes, of this instruction
+    uint32_t size();
 
-    inline inst(void) { clear(); }
+    inline inst(void) {
+      clear();
+    }
 
     inline void clear() {
       set_opcode(0x90);
@@ -268,10 +270,10 @@ namespace x86 {
     }
 
     inline x86::code &operator<<(inst i) {
-			auto *c = buf + size;
+      auto *c = buf + size;
       i.encode(*this);
 
-			ck::hexdump(c, i.size());
+      ck::hexdump(c, i.size());
 
       return *this;
     }
@@ -283,16 +285,14 @@ namespace x86 {
 
     template <typename T>
     inline uint64_t write_to(uint64_t i, T val) const {
-      if (finalized)
-        panic("x86: unable to modify finalized code");
+      if (finalized) panic("x86: unable to modify finalized code");
       *(T *)(void *)(buf + i) = val;
       return size;
     }
 
     template <typename T>
     inline uint64_t write(T val) {
-      if (finalized)
-        panic("x86: unable to modify finalized code");
+      if (finalized) panic("x86: unable to modify finalized code");
       if (size + sizeof(val) >= cap - 1) {
         uint8_t *new_code = new uint8_t[cap * 2];
         memcpy(new_code, buf, cap);
@@ -305,19 +305,28 @@ namespace x86 {
       return addr;
     }
 
-    inline void bytes(void) {}
-    inline void bytes(unsigned char c) { write<unsigned char>(c); }
+    inline void bytes(void) {
+    }
+    inline void bytes(unsigned char c) {
+      write<unsigned char>(c);
+    }
 
     template <typename... Args>
-    inline void bytes(unsigned char c, Args const &... args) {
+    inline void bytes(unsigned char c, Args const &...args) {
       bytes(c);
       bytes(args...);
     }
 
-    inline uint64_t get_size() { return size; }
-    inline uint64_t get_cap() { return cap; }
+    inline uint64_t get_size() {
+      return size;
+    }
+    inline uint64_t get_cap() {
+      return cap;
+    }
 
-    inline void copy(void *dest) { memcpy(dest, buf, size); }
+    inline void copy(void *dest) {
+      memcpy(dest, buf, size);
+    }
 
     static inline int dump_bytes(uint8_t *code, size_t len) {
       return 1;
@@ -328,10 +337,9 @@ namespace x86 {
       if (finalized) panic("x86: unable re-finalize code");
 
       finalized = true;
-    	ck::func<R(Args...)> f;
+      ck::func<R(Args...)> f;
 
-      auto ptr = (R(*)(Args...))mmap(NULL, get_size(),
-                                     PROT_READ | PROT_EXEC | PROT_WRITE,
+      auto ptr = (R(*)(Args...))mmap(NULL, get_size(), PROT_READ | PROT_EXEC | PROT_WRITE,
                                      MAP_ANON | MAP_PRIVATE, -1, 0);
 
       mapped_region = (void *)ptr;
@@ -340,7 +348,9 @@ namespace x86 {
       return f;
     }
 
-    inline int dump(void) { return dump_bytes(buf, size); }
+    inline int dump(void) {
+      return dump_bytes(buf, size);
+    }
 
     void prologue(void);
     void epilogue(void);

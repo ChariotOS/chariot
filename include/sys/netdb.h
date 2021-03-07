@@ -8,7 +8,7 @@ extern "C" {
 
 
 struct sysbind_dnslookup_args {
-	char name[253]; /* Official name of the host */
+  char name[253]; /* Official name of the host */
 };
 
 

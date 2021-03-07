@@ -16,6 +16,6 @@ int lstat(const char *path, struct stat *statbuf) {
 }
 
 int mkdir(const char *path, int mode) {
-	errno = ENOTIMPL;
-	return -1;
+  errno = ENOTIMPL;
+  return -1;
 }

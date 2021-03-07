@@ -42,12 +42,12 @@ void libc_start(int argc, char **argv, char **envp) {
   // _init();
   // atexit(_fini);
 
-	extern void (*__init_array_start[])(int, char **, char **) __attribute__((visibility("hidden")));
-	extern void (*__init_array_end[])(int, char **, char **) __attribute__((visibility("hidden")));
-	const size_t size = __init_array_end - __init_array_start;
-	for (size_t i = 0; i < size; i++) {
-	  (*__init_array_start[i])(argc, argv, environ);
-	}
+  extern void (*__init_array_start[])(int, char **, char **) __attribute__((visibility("hidden")));
+  extern void (*__init_array_end[])(int, char **, char **) __attribute__((visibility("hidden")));
+  const size_t size = __init_array_end - __init_array_start;
+  for (size_t i = 0; i < size; i++) {
+    (*__init_array_start[i])(argc, argv, environ);
+  }
 
   // TODO: parse envp and store in a better format!
   int code = main(__argc, __argv, environ);

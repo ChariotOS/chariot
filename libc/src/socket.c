@@ -23,7 +23,9 @@ int connect(int sockfd, const struct sockaddr *addr, int addrlen) {
   return errno_wrap(sysbind_connect(sockfd, addr, addrlen));
 }
 
-static uint16_t bswap_16(uint16_t __x) { return __x << 8 | __x >> 8; }
+static uint16_t bswap_16(uint16_t __x) {
+  return __x << 8 | __x >> 8;
+}
 
 static uint32_t bswap_32(uint32_t __x) {
   return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24;
@@ -81,7 +83,9 @@ int inet_aton(const char *s0, struct in_addr *dest) {
   return 1;
 }
 
-in_addr_t inet_network(const char *p) { return ntohl(inet_addr(p)); }
+in_addr_t inet_network(const char *p) {
+  return ntohl(inet_addr(p));
+}
 
 char *inet_ntoa(struct in_addr in) {
   static char buf[16];
@@ -97,7 +101,9 @@ static int hexval(unsigned c) {
   return -1;
 }
 
-static inline int isdigit(int c) { return (unsigned)c - '0' < 10; }
+static inline int isdigit(int c) {
+  return (unsigned)c - '0' < 10;
+}
 
 int inet_pton(int af, const char *restrict s, void *restrict a0) {
   uint16_t ip[8];
@@ -106,7 +112,8 @@ int inet_pton(int af, const char *restrict s, void *restrict a0) {
 
   if (af == AF_INET) {
     for (i = 0; i < 4; i++) {
-      for (v = j = 0; j < 3 && isdigit(s[j]); j++) v = 10 * v + s[j] - '0';
+      for (v = j = 0; j < 3 && isdigit(s[j]); j++)
+        v = 10 * v + s[j] - '0';
       if (j == 0 || (j > 1 && s[0] == '0') || v > 255) return 0;
       a[i] = v;
       if (s[j] == 0 && i == 3) return 1;
@@ -129,7 +136,8 @@ int inet_pton(int af, const char *restrict s, void *restrict a0) {
       if (i == 7) return 0;
       continue;
     }
-    for (v = j = 0; j < 4 && (d = hexval(s[j])) >= 0; j++) v = 16 * v + d;
+    for (v = j = 0; j < 4 && (d = hexval(s[j])) >= 0; j++)
+      v = 16 * v + d;
     if (j == 0) return 0;
     ip[i & 7] = v;
     if (!s[j] && (brk >= 0 || i == 7)) break;
@@ -144,7 +152,8 @@ int inet_pton(int af, const char *restrict s, void *restrict a0) {
   }
   if (brk >= 0) {
     memmove(ip + brk + 7 - i, ip + brk, 2 * (i + 1 - brk));
-    for (j = 0; j < 7 - i; j++) ip[brk + j] = 0;
+    for (j = 0; j < 7 - i; j++)
+      ip[brk + j] = 0;
   }
   for (j = 0; j < 8; j++) {
     *a++ = ip[j] >> 8;
@@ -154,8 +163,7 @@ int inet_pton(int af, const char *restrict s, void *restrict a0) {
   return 1;
 }
 
-const char *inet_ntop(int af, const void *restrict a0, char *restrict s,
-                      int l) {
+const char *inet_ntop(int af, const void *restrict a0, char *restrict s, int l) {
   const unsigned char *a = a0;
   int i, j, max, best;
   char buf[100];
@@ -166,15 +174,13 @@ const char *inet_ntop(int af, const void *restrict a0, char *restrict s,
       break;
     case AF_INET6:
       if (memcmp(a, "\0\0\0\0\0\0\0\0\0\0\377\377", 12))
-        snprintf(buf, sizeof buf, "%x:%x:%x:%x:%x:%x:%x:%x", 256 * a[0] + a[1],
-                 256 * a[2] + a[3], 256 * a[4] + a[5], 256 * a[6] + a[7],
-                 256 * a[8] + a[9], 256 * a[10] + a[11], 256 * a[12] + a[13],
-                 256 * a[14] + a[15]);
+        snprintf(buf, sizeof buf, "%x:%x:%x:%x:%x:%x:%x:%x", 256 * a[0] + a[1], 256 * a[2] + a[3],
+                 256 * a[4] + a[5], 256 * a[6] + a[7], 256 * a[8] + a[9], 256 * a[10] + a[11],
+                 256 * a[12] + a[13], 256 * a[14] + a[15]);
       else
-        snprintf(buf, sizeof buf, "%x:%x:%x:%x:%x:%x:%d.%d.%d.%d",
-                 256 * a[0] + a[1], 256 * a[2] + a[3], 256 * a[4] + a[5],
-                 256 * a[6] + a[7], 256 * a[8] + a[9], 256 * a[10] + a[11],
-                 a[12], a[13], a[14], a[15]);
+        snprintf(buf, sizeof buf, "%x:%x:%x:%x:%x:%x:%d.%d.%d.%d", 256 * a[0] + a[1],
+                 256 * a[2] + a[3], 256 * a[4] + a[5], 256 * a[6] + a[7], 256 * a[8] + a[9],
+                 256 * a[10] + a[11], a[12], a[13], a[14], a[15]);
       /* Replace longest /(^0|:)[:0]{2,}/ with "::" */
       for (i = best = 0, max = 2; buf[i]; i++) {
         if (i && buf[i] != ':') continue;
@@ -223,14 +229,14 @@ in_addr_t inet_netof(struct in_addr in) {
 }
 
 
-ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
-               const struct sockaddr *dest_addr, size_t addrlen) {
+ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr,
+               size_t addrlen) {
   return errno_wrap(sysbind_sendto(sockfd, buf, len, flags, dest_addr, addrlen));
 }
 
 
-ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
-                 const struct sockaddr *dest_addr, size_t *addrlen) {
+ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags, const struct sockaddr *dest_addr,
+                 size_t *addrlen) {
   size_t alen = 0;
   if (addrlen != NULL) {
     alen = *addrlen;
@@ -246,4 +252,3 @@ ssize_t recv(int socket, void *buffer, size_t length, int flags) {
 ssize_t send(int socket, const void *buffer, size_t length, int flags) {
   return sendto(socket, buffer, length, flags, NULL, 0);
 }
-

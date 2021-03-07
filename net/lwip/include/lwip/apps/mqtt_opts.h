@@ -39,7 +39,7 @@
 
 #include "lwip/opt.h"
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -58,7 +58,8 @@ extern "C" {
 
 /**
  * Number of bytes in receive buffer, must be at least the size of the longest incoming topic + 8
- * If one wants to avoid fragmented incoming publish, set length to max incoming topic length + max payload length + 8
+ * If one wants to avoid fragmented incoming publish, set length to max incoming topic length + max
+ * payload length + 8
  */
 #ifndef MQTT_VAR_HEADER_BUFFER_LEN
 #define MQTT_VAR_HEADER_BUFFER_LEN 128

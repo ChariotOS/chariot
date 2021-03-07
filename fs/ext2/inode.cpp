@@ -40,8 +40,7 @@ static int ilog2(int x) {
  * @boundary: an optional pointer to an integer that contains how many blocks
  *            remain in the last offset's block pointer
  */
-static int block_to_path(fs::inode *node, int i_block, int offsets[4],
-                         int *boundary = nullptr) {
+static int block_to_path(fs::inode *node, int i_block, int offsets[4], int *boundary = nullptr) {
   int ptrs = EXT2_ADDR_PER_BLOCK(node);
   int ptrs_bits = ilog2(ptrs);
 
@@ -148,8 +147,7 @@ static vec<uint32_t> read_blocklist(fs::inode &ino,
 
 
 
-#define LEVEL_PRINT(n, block) \
-  printk("%4d: %*d\n", block_count - blocks_remaining, n * 8, block)
+#define LEVEL_PRINT(n, block) printk("%4d: %*d\n", block_count - blocks_remaining, n * 8, block)
 
 
   auto &e2inode = ino.priv<fs::ext2_idata>()->info;
@@ -213,8 +211,7 @@ static vec<uint32_t> read_blocklist(fs::inode &ino,
 }
 #endif
 
-static int access_block_path(fs::inode &ino, int n, int *path,
-                             func<bool(uint32_t &)> cb) {
+static int access_block_path(fs::inode &ino, int n, int *path, func<bool(uint32_t &)> cb) {
   fs::ext2 *efs = static_cast<fs::ext2 *>(&ino.sb);
 
   auto p = ino.priv<fs::ext2_idata>();
@@ -340,7 +337,9 @@ static int append_block(fs::inode &ino, int dest) {
 
 
 // TODO: remove a block from the end of a file, used for shrinking
-static int pop_block(fs::inode &ino) { return 0; }
+static int pop_block(fs::inode &ino) {
+  return 0;
+}
 
 static int truncate(fs::inode &ino, size_t new_size) {
   auto old_size = ino.size;
@@ -375,7 +374,7 @@ static int truncate(fs::inode &ino, size_t new_size) {
   } else if (bafter < bbefore) {
     // auto blocks_to_remove = bbefore - bafter;
     // printk("need to remove %d\n", blocks_to_remove);
-		pop_block(ino);
+    pop_block(ino);
     return -ENOTIMPL;
   }
 
@@ -389,8 +388,7 @@ static int truncate(fs::inode &ino, size_t new_size) {
 
 
 // returns the number of bytes read or negative values on failure
-static ssize_t ext2_raw_rw(fs::inode &ino, char *buf, size_t sz, off_t offset,
-                           bool write) {
+static ssize_t ext2_raw_rw(fs::inode &ino, char *buf, size_t sz, off_t offset, bool write) {
   fs::ext2 *efs = static_cast<fs::ext2 *>(&ino.sb);
 
   if (write) {
@@ -469,8 +467,7 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-static void ext2_traverse_dir(fs::inode &ino,
-                              func<void(u32 ino, const char *name)> fn) {
+static void ext2_traverse_dir(fs::inode &ino, func<void(u32 ino, const char *name)> fn) {
   auto *ents = (ext2_dir *)malloc(ino.size);
 
   // read the entire file into the buffer
@@ -544,9 +541,8 @@ static int injest_info(fs::inode &ino, fs::ext2_inode_info &info) {
 
   if (ino.type == T_DIR) {
     // TODO: clear out the dirents
-    ext2_traverse_dir(ino, [&](u32 nr, const char *name) {
-      ino.register_direntry(name, ENT_RES, nr);
-    });
+    ext2_traverse_dir(ino,
+                      [&](u32 nr, const char *name) { ino.register_direntry(name, ENT_RES, nr); });
   } else if (ino.type == T_CHAR || ino.type == T_BLK) {
     // parse the major/minor
     unsigned dev = info.dbp[0];
@@ -562,8 +558,7 @@ static int ext2_seek(fs::file &, off_t, off_t) {
   return 0;  // allow seek
 }
 
-static ssize_t ext2_do_read_write(fs::file &f, char *buf, size_t nbytes,
-                                  bool is_write) {
+static ssize_t ext2_do_read_write(fs::file &f, char *buf, size_t nbytes, bool is_write) {
   ssize_t nread = ext2_raw_rw(*f.ino, buf, nbytes, f.offset(), is_write);
   if (nread >= 0) {
     f.seek(nread, SEEK_CUR);
@@ -586,8 +581,11 @@ static int ext2_ioctl(fs::file &, unsigned int, off_t) {
   return -ENOTIMPL;
 }
 
-static int ext2_open(fs::file &) { return 0; }
-static void ext2_close(fs::file &) {}
+static int ext2_open(fs::file &) {
+  return 0;
+}
+static void ext2_close(fs::file &) {
+}
 
 
 
@@ -614,8 +612,7 @@ struct ext2_vmobject final : public mm::vmobject {
     if (buf == NULL) {
       fs::ext2 *efs = static_cast<fs::ext2 *>(&m_ino->sb);
 
-      auto i_block =
-          (m_off / efs->block_size) + ((n * PGSIZE) / efs->block_size);
+      auto i_block = (m_off / efs->block_size) + ((n * PGSIZE) / efs->block_size);
       int block = block_from_index(*m_ino, i_block);
 
       // we hold the buffer hostage and don't release it back till this region
@@ -629,19 +626,19 @@ struct ext2_vmobject final : public mm::vmobject {
 
   // get a shared page (page #n in the mapping)
   virtual ref<mm::page> get_shared(off_t n) override {
-		// printk("get_shared(%d)\n", n);
-		auto blk = bget(n);
+    // printk("get_shared(%d)\n", n);
+    auto blk = bget(n);
 
-		// hexdump(blk->data(), PGSIZE, true);
+    // hexdump(blk->data(), PGSIZE, true);
 
     return blk->page();
   }
 
-	virtual void flush(off_t n) override {
-		auto blk = bget(n);
-		// TODO: do this in a more async way (hand off to syncd or something)
-		blk->flush();
-	}
+  virtual void flush(off_t n) override {
+    auto blk = bget(n);
+    // TODO: do this in a more async way (hand off to syncd or something)
+    blk->flush();
+  }
 
 
  private:
@@ -655,8 +652,7 @@ struct ext2_vmobject final : public mm::vmobject {
 
 
 
-static ref<mm::vmobject> ext2_mmap(fs::file &f, size_t npages, int prot,
-                                   int flags, off_t off) {
+static ref<mm::vmobject> ext2_mmap(fs::file &f, size_t npages, int prot, int flags, off_t off) {
   // XXX: this is invalid, should be asserted before here :^)
   if (off & 0xFFF) return nullptr;
 
@@ -681,7 +677,9 @@ fs::ext2_idata::~ext2_idata() {
   }
 }
 
-static void ext2_destroy_priv(fs::inode &v) { delete v.priv<fs::ext2_idata>(); }
+static void ext2_destroy_priv(fs::inode &v) {
+  delete v.priv<fs::ext2_idata>();
+}
 
 fs::file_operations ext2_file_ops{
     .seek = ext2_seek,
@@ -696,8 +694,7 @@ fs::file_operations ext2_file_ops{
 };
 
 
-static int ext2_create(fs::inode &node, const char *name,
-                       struct fs::file_ownership &) {
+static int ext2_create(fs::inode &node, const char *name, struct fs::file_ownership &) {
   // fs::ext2 *efs = static_cast<fs::ext2 *>(&node.sb);
   // int ino = efs->allocate_inode();
   // printk("ino=%d\n", ino);
@@ -705,8 +702,7 @@ static int ext2_create(fs::inode &node, const char *name,
   return -ENOTIMPL;
 }
 
-static int ext2_mkdir(fs::inode &, const char *name,
-                      struct fs::file_ownership &) {
+static int ext2_mkdir(fs::inode &, const char *name, struct fs::file_ownership &) {
   UNIMPL();
   return -ENOTIMPL;
 }
@@ -743,8 +739,8 @@ static struct fs::inode *ext2_lookup(fs::inode &node, const char *needle) {
   return NULL;
 }
 
-static int ext2_mknod(fs::inode &, const char *name,
-                      struct fs::file_ownership &, int major, int minor) {
+static int ext2_mknod(fs::inode &, const char *name, struct fs::file_ownership &, int major,
+                      int minor) {
   UNIMPL();
   return -ENOTIMPL;
 }

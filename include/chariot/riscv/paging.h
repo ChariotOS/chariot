@@ -6,7 +6,7 @@
 
 namespace rv {
 
-	using pte_t = rv::xsize_t;
+  using pte_t = rv::xsize_t;
 
 
   class pagetable : public mm::pagetable {
@@ -23,5 +23,5 @@ namespace rv {
   };
 
 
-	rv::pte_t *page_walk(rv::pte_t *tbl, off_t va);
+  rv::pte_t *page_walk(rv::pte_t *tbl, off_t va);
 };  // namespace rv

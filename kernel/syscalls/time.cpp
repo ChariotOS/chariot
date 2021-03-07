@@ -21,5 +21,5 @@ time_t sys::localtime(struct tm *tloc) {
 }
 
 size_t sys::gettime_microsecond(void) {
-	return time::now_us();
+  return time::now_us();
 }

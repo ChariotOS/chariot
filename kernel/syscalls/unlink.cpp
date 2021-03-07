@@ -6,6 +6,6 @@ int sys::unlink(const char *path) {
     return -EINVAL;
   }
 
-	// just defer to the vfs
+  // just defer to the vfs
   return vfs::unlink(path, curproc->cwd);
 }

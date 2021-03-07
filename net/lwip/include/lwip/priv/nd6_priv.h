@@ -46,7 +46,7 @@
 
 #include "lwip/opt.h"
 
-#if LWIP_IPV6  /* don't build if not configured for use in lwipopts.h */
+#if LWIP_IPV6 /* don't build if not configured for use in lwipopts.h */
 
 #include "lwip/pbuf.h"
 #include "lwip/ip6_addr.h"
@@ -59,8 +59,8 @@ extern "C" {
 
 #if LWIP_ND6_QUEUEING
 /** struct for queueing outgoing packets for unknown address
-  * defined here to be accessed by memp.h
-  */
+ * defined here to be accessed by memp.h
+ */
 struct nd6_q_entry {
   struct nd6_q_entry *next;
   struct pbuf *p;
@@ -76,7 +76,7 @@ struct nd6_neighbor_cache_entry {
 #if LWIP_ND6_QUEUEING
   /** Pointer to queue of pending outgoing packets on this entry. */
   struct nd6_q_entry *q;
-#else /* LWIP_ND6_QUEUEING */
+#else  /* LWIP_ND6_QUEUEING */
   /** Pointer to a single pending outgoing packet on this entry. */
   struct pbuf *q;
 #endif /* LWIP_ND6_QUEUEING */
@@ -86,7 +86,7 @@ struct nd6_neighbor_cache_entry {
     u32_t reachable_time; /* in ms since value may originate from network packet */
     u32_t delay_time;     /* ticks (ND6_TMR_INTERVAL) */
     u32_t probes_sent;
-    u32_t stale_time;     /* ticks (ND6_TMR_INTERVAL) */
+    u32_t stale_time; /* ticks (ND6_TMR_INTERVAL) */
   } counter;
 };
 

@@ -92,7 +92,7 @@ with open('include/sys/sysbind.h', 'w+') as f:
     f.write("#pragma once\n")
 
 
-    f.write('#ifdef USERLAND\n')
+    f.write('#ifndef KERNEL\n')
     for inc in src['userspace']['includes']:
         f.write(f'#include {inc}\n')
     f.write('#else\n')

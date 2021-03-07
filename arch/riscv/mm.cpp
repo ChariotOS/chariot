@@ -10,7 +10,9 @@
 #define VM_PTE_BITS ~(VM_FLAG_BITS)
 
 /* Return a PHYSICAL address to a page newly allocated page table */
-static rv::pte_t *alloc_page_table() { return (rv::pte_t *)phys::alloc(1); }
+static rv::pte_t *alloc_page_table() {
+  return (rv::pte_t *)phys::alloc(1);
+}
 
 /*
  * Walk the page directory, allocating tables if needed. Returns a pointer to
@@ -68,18 +70,19 @@ rv::pagetable::pagetable(rv::xsize_t *table) : table(table) {
   int entries = 4096 / sizeof(rv::xsize_t);
   int half = entries / 2;
 
-  for (int i = half; i < entries; i++) pptable[i] = kptable[i];
+  for (int i = half; i < entries; i++)
+    pptable[i] = kptable[i];
 }
 
 static void free_pd(rv::xsize_t *pd, int depth) {
-    for (int i = 0; i < 4096 / sizeof(rv::xsize_t); i++) {
-      auto pte = pd[i];
-      if ((pte & PT_V) && (pte & (PT_R | PT_W | PT_X)) == 0) {
-        auto pa = PTE2PA(pte);
-        free_pd((rv::xsize_t *)p2v(pa), depth + 1);
-      }
+  for (int i = 0; i < 4096 / sizeof(rv::xsize_t); i++) {
+    auto pte = pd[i];
+    if ((pte & PT_V) && (pte & (PT_R | PT_W | PT_X)) == 0) {
+      auto pa = PTE2PA(pte);
+      free_pd((rv::xsize_t *)p2v(pa), depth + 1);
     }
-    phys::free(v2p(pd), 1);
+  }
+  phys::free(v2p(pd), 1);
 }
 
 rv::pagetable::~pagetable(void) {
@@ -98,7 +101,7 @@ rv::pagetable::~pagetable(void) {
     }
   }
 
-	phys::free(v2p(table));
+  phys::free(v2p(table));
 }
 
 

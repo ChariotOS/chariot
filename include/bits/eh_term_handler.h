@@ -32,8 +32,8 @@
    In a freestanding environment, we default to this latter approach.  */
 
 #if _GLIBCXX_HOSTED && _GLIBCXX_VERBOSE && __cpp_exceptions
-# define _GLIBCXX_DEFAULT_TERM_HANDLER __gnu_cxx::__verbose_terminate_handler
+#define _GLIBCXX_DEFAULT_TERM_HANDLER __gnu_cxx::__verbose_terminate_handler
 #else
-# include <cstdlib>
-# define _GLIBCXX_DEFAULT_TERM_HANDLER std::abort
+#include <cstdlib>
+#define _GLIBCXX_DEFAULT_TERM_HANDLER std::abort
 #endif

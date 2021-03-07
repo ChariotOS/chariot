@@ -54,8 +54,8 @@ int sched::round_robin::remove_task_impl(struct thread *tsk) {
   }
   if (back == tsk) back = tsk->sched_state.prev;
   if (front == tsk) front = tsk->sched_state.next;
-	if (back == NULL) assert(front == NULL);
-	if (front == NULL) assert(back == NULL);
+  if (back == NULL) assert(front == NULL);
+  if (front == NULL) assert(back == NULL);
   return 0;
 }
 
@@ -93,4 +93,3 @@ void sched::round_robin::dump(void) {
   }
   printk("\n");
 }
-

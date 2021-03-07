@@ -6,10 +6,10 @@
 #define MMU_MAPPING_FLAG_DEVICE 1
 
 struct mmu_region {
-	off_t start;
-	size_t size;
-	int flags;
-	const char *name;
+  off_t start;
+  size_t size;
+  int flags;
+  const char *name;
 };
 
 /*

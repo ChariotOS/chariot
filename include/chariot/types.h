@@ -38,7 +38,7 @@ typedef char sint8_t;
 typedef long time_t;
 
 struct tm {
-  int tm_sec;     //	int	seconds after the minute	0-61*
+  int tm_sec;    //	int	seconds after the minute	0-61*
   int tm_min;    // int	minutes after the hour	0-59
   int tm_hour;   // int	hours since midnight	0-23
   int tm_mday;   // int	day of the month	1-31
@@ -73,4 +73,3 @@ typedef long intptr_t;
 #endif
 
 #define PGSIZE 4096
-

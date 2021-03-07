@@ -37,7 +37,7 @@ bool virtio_mmio_disk::initialize(const struct virtio_config &config) {
   alloc_ring(0, ndesc);
   ops = new virtio::blk_req[ndesc];
 
-	dev::register_disk(this);
+  dev::register_disk(this);
   return true;
 }
 
@@ -205,4 +205,3 @@ size_t virtio_mmio_disk::block_size(void) {
 size_t virtio_mmio_disk::block_count(void) {
   return config().capacity;
 }
-

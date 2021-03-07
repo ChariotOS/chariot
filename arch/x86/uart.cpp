@@ -32,7 +32,9 @@ void serial_install() {
   uart = 1;
 }
 
-int serial_rcvd(int device) { return inb(device + 5) & 1; }
+int serial_rcvd(int device) {
+  return inb(device + 5) & 1;
+}
 
 char serial_recv(int device) {
   while (!serial_rcvd(device)) {
@@ -40,8 +42,12 @@ char serial_recv(int device) {
   return inb(device);
 }
 
-char serial_recv_async(int device) { return inb(device); }
-int serial_transmit_empty(int device) { return inb(device + 5) & 0x20; }
+char serial_recv_async(int device) {
+  return inb(device);
+}
+int serial_transmit_empty(int device) {
+  return inb(device + 5) & 0x20;
+}
 
 void serial_send(int device, char out) {
   switch (device) {
@@ -107,14 +113,20 @@ int serial_worker(void *) {
 }
 
 
-void serial_irq_handle(int i, reg_t *, void *) { serial_data_avail.wake_up(); }
+void serial_irq_handle(int i, reg_t *, void *) {
+  serial_data_avail.wake_up();
+}
 
 
 
 
-static ssize_t com_read(fs::file &f, char *dst, size_t sz) { return -ENOSYS; }
+static ssize_t com_read(fs::file &f, char *dst, size_t sz) {
+  return -ENOSYS;
+}
 
-static ssize_t com_write(fs::file &f, const char *dst, size_t sz) { return -ENOSYS; }
+static ssize_t com_write(fs::file &f, const char *dst, size_t sz) {
+  return -ENOSYS;
+}
 
 
 static struct fs::file_operations com_ops = {

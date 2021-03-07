@@ -33,13 +33,13 @@ namespace dtb {
     off_t address;
     struct dtb::node *parent;
     char compatible[32];
-		bool is_device;
+    bool is_device;
 
     short address_cells;
     short size_cells;
-		short irq;
+    short irq;
 
-		dtb::reg reg;
+    dtb::reg reg;
 
     /* The list of children */
     struct dtb::node *children; /* A pointer to the start of a sibling list */
@@ -60,8 +60,8 @@ namespace dtb {
 
   /* Return the number of devices nodes found */
   int parse(dtb::fdt_header *hdr);
-	/* Walk the devices with a callback. Continue if the callback returns true */
-	void walk_devices(bool(*callback)(dtb::node *));
+  /* Walk the devices with a callback. Continue if the callback returns true */
+  void walk_devices(bool (*callback)(dtb::node *));
 
   struct device_tree {
     struct node {
@@ -70,7 +70,8 @@ namespace dtb {
 
       /*
        * Some of the standard props
-       * source: https://devicetree-specification.readthedocs.io/en/v0.2/devicetree-basics.html#sect-property-values
+       * source:
+       * https://devicetree-specification.readthedocs.io/en/v0.2/devicetree-basics.html#sect-property-values
        */
       map<string, vec<uint8_t>> props;
 
@@ -78,7 +79,8 @@ namespace dtb {
 
       inline void set_prop(string name, int vlen, void *value) {
         vec<uint8_t> v;
-        for (int i = 0; i < vlen; i++) v.push(((uint8_t *)value)[i]);
+        for (int i = 0; i < vlen; i++)
+          v.push(((uint8_t *)value)[i]);
         props[name] = move(v);
       }
 
@@ -96,11 +98,12 @@ namespace dtb {
     device_tree(struct fdt_header *fdt);
     ~device_tree(void);
 
-    inline void dump(void) { root.dump(); }
+    inline void dump(void) {
+      root.dump();
+    }
 
     struct fdt_header *fdt = NULL;
     struct node root;
   };
 
 };  // namespace dtb
-

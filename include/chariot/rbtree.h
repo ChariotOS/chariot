@@ -208,9 +208,8 @@ inline bool rb_insert(struct rb_root &root, struct rb_node *node, Fn callback) {
   /* Add new node and rebalance tree. */
   rb_link_node(node, parent, n);
   rb_insert_color(node, &root);
-	return true;
+  return true;
 }
 
 
 #endif /* _LINUX_RBTREE_H */
-

@@ -46,7 +46,7 @@ uint64_t uart_tx_r;  // read next from uart_tx_buf[uar_tx_r % UART_TX_BUF_SIZE]
 int uart_count = 0;
 
 static void uart_start(void) {
-	/* if we have sbi, there's no reason to do all this stuff :) */
+  /* if we have sbi, there's no reason to do all this stuff :) */
   while (1) {
     if (uart_tx_w == uart_tx_r) {
       // transmit buffer is empty.
@@ -72,7 +72,7 @@ static void uart_start(void) {
 
 
 static void uart_irq(int irq, reg_t *r, void *data) {
-	uart_count++;
+  uart_count++;
 
   size_t nread = 0;
   char buf[32];
@@ -128,9 +128,10 @@ void rv::uart_init(void) {
 }
 
 void rv::uart_putc(char c) {
-	/* If we have SBI, ask it to print things. This might be a little slower, but it should work okay */
+  /* If we have SBI, ask it to print things. This might be a little slower, but it should work okay
+   */
 #ifdef CONFIG_SBI
-	sbi_call(SBI_CONSOLE_PUTCHAR, c);
+  sbi_call(SBI_CONSOLE_PUTCHAR, c);
 #else
   // wait for Transmit Holding Empty to be set in LSR.
   while ((ReadReg(LSR) & LSR_TX_IDLE) == 0)
@@ -166,14 +167,24 @@ int rv::uart_getc(void) {
 }
 
 
-void serial_install() { rv::uart_init(); }
+void serial_install() {
+  rv::uart_init();
+}
 
 
-int serial_rcvd(int device) { return 0; }
-char serial_recv(int device) { return 0; }
-char serial_recv_async(int device) { return 0; }
+int serial_rcvd(int device) {
+  return 0;
+}
+char serial_recv(int device) {
+  return 0;
+}
+char serial_recv_async(int device) {
+  return 0;
+}
 
-int serial_transmit_empty(int device) { return 0; }
+int serial_transmit_empty(int device) {
+  return 0;
+}
 
 void serial_send(int device, char out) {
   /* We only support uart 1 */
@@ -193,4 +204,3 @@ void serial_string(int device, char *out) {
     rv::uart_putc(out[i]);
   }
 }
-

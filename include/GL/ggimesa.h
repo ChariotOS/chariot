@@ -33,7 +33,7 @@ extern "C" {
 
 #include <ggi/ggi.h>
 #include "GL/gl.h"
-  
+
 typedef struct ggi_mesa_context *ggi_mesa_context_t;
 
 /*
@@ -54,11 +54,10 @@ int ggiMesaAttach(ggi_visual_t vis);
  */
 int ggiMesaDetach(ggi_visual_t vis);
 
-int ggiMesaExtendVisual(ggi_visual_t vis, GLboolean alpha_flag,
-			GLboolean stereo_flag, GLint depth_size,
-			GLint stencil_size, GLint accum_red_size,
-			GLint accum_green_size, GLint accum_blue_size,
-			GLint accum_alpha_size, GLint num_samples);
+int ggiMesaExtendVisual(ggi_visual_t vis, GLboolean alpha_flag, GLboolean stereo_flag,
+                        GLint depth_size, GLint stencil_size, GLint accum_red_size,
+                        GLint accum_green_size, GLint accum_blue_size, GLint accum_alpha_size,
+                        GLint num_samples);
 
 /*
  * Create a new context capable of displaying on the visual vis.

@@ -20,10 +20,10 @@ namespace time {
 
   unsigned long cycles_to_ns(unsigned long cycles);
 
-	void set_cps(unsigned long cps);
+  void set_cps(unsigned long cps);
 
-	/* this function is a callback to get the current NS (if the arch can handle it) */
-	void set_high_accuracy_time_fn(unsigned long(*fn)(void));
+  /* this function is a callback to get the current NS (if the arch can handle it) */
+  void set_high_accuracy_time_fn(unsigned long (*fn)(void));
 
-	bool stabilized(void);
+  bool stabilized(void);
 };  // namespace time

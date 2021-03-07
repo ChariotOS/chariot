@@ -45,22 +45,21 @@
 LWIP_MEMPOOL_DECLARE(PPPAPI_MSG, MEMP_NUM_PPP_API_MSG, sizeof(struct pppapi_msg), "PPPAPI_MSG")
 #endif
 
-#define PPPAPI_VAR_REF(name)               API_VAR_REF(name)
-#define PPPAPI_VAR_DECLARE(name)           API_VAR_DECLARE(struct pppapi_msg, name)
-#define PPPAPI_VAR_ALLOC(name)             API_VAR_ALLOC_POOL(struct pppapi_msg, PPPAPI_MSG, name, ERR_MEM)
-#define PPPAPI_VAR_ALLOC_RETURN_NULL(name) API_VAR_ALLOC_POOL(struct pppapi_msg, PPPAPI_MSG, name, NULL)
-#define PPPAPI_VAR_FREE(name)              API_VAR_FREE_POOL(PPPAPI_MSG, name)
+#define PPPAPI_VAR_REF(name) API_VAR_REF(name)
+#define PPPAPI_VAR_DECLARE(name) API_VAR_DECLARE(struct pppapi_msg, name)
+#define PPPAPI_VAR_ALLOC(name) API_VAR_ALLOC_POOL(struct pppapi_msg, PPPAPI_MSG, name, ERR_MEM)
+#define PPPAPI_VAR_ALLOC_RETURN_NULL(name) \
+  API_VAR_ALLOC_POOL(struct pppapi_msg, PPPAPI_MSG, name, NULL)
+#define PPPAPI_VAR_FREE(name) API_VAR_FREE_POOL(PPPAPI_MSG, name)
 
 /**
  * Call ppp_set_default() inside the tcpip_thread context.
  */
-static err_t
-pppapi_do_ppp_set_default(struct tcpip_api_call_data *m)
-{
-  /* cast through void* to silence alignment warnings. 
+static err_t pppapi_do_ppp_set_default(struct tcpip_api_call_data *m) {
+  /* cast through void* to silence alignment warnings.
    * We know it works because the structs have been instantiated as struct pppapi_msg */
-  struct pppapi_msg *msg = (struct pppapi_msg *)(void*)m;
-  
+  struct pppapi_msg *msg = (struct pppapi_msg *)(void *)m;
+
   ppp_set_default(msg->msg.ppp);
   return ERR_OK;
 }
@@ -69,9 +68,7 @@ pppapi_do_ppp_set_default(struct tcpip_api_call_data *m)
  * Call ppp_set_default() in a thread-safe way by running that function inside the
  * tcpip_thread context.
  */
-err_t
-pppapi_set_default(ppp_pcb *pcb)
-{
+err_t pppapi_set_default(ppp_pcb *pcb) {
   err_t err;
   PPPAPI_VAR_DECLARE(msg);
   PPPAPI_VAR_ALLOC(msg);
@@ -87,12 +84,10 @@ pppapi_set_default(ppp_pcb *pcb)
 /**
  * Call ppp_set_notify_phase_callback() inside the tcpip_thread context.
  */
-static err_t
-pppapi_do_ppp_set_notify_phase_callback(struct tcpip_api_call_data *m)
-{
-  /* cast through void* to silence alignment warnings. 
+static err_t pppapi_do_ppp_set_notify_phase_callback(struct tcpip_api_call_data *m) {
+  /* cast through void* to silence alignment warnings.
    * We know it works because the structs have been instantiated as struct pppapi_msg */
-   struct pppapi_msg *msg = (struct pppapi_msg *)(void*)m;
+  struct pppapi_msg *msg = (struct pppapi_msg *)(void *)m;
 
   ppp_set_notify_phase_callback(msg->msg.ppp, msg->msg.msg.setnotifyphasecb.notify_phase_cb);
   return ERR_OK;
@@ -102,9 +97,7 @@ pppapi_do_ppp_set_notify_phase_callback(struct tcpip_api_call_data *m)
  * Call ppp_set_notify_phase_callback() in a thread-safe way by running that function inside the
  * tcpip_thread context.
  */
-err_t
-pppapi_set_notify_phase_callback(ppp_pcb *pcb, ppp_notify_phase_cb_fn notify_phase_cb)
-{
+err_t pppapi_set_notify_phase_callback(ppp_pcb *pcb, ppp_notify_phase_cb_fn notify_phase_cb) {
   err_t err;
   PPPAPI_VAR_DECLARE(msg);
   PPPAPI_VAR_ALLOC(msg);
@@ -122,15 +115,14 @@ pppapi_set_notify_phase_callback(ppp_pcb *pcb, ppp_notify_phase_cb_fn notify_pha
 /**
  * Call pppos_create() inside the tcpip_thread context.
  */
-static err_t
-pppapi_do_pppos_create(struct tcpip_api_call_data *m)
-{
-  /* cast through void* to silence alignment warnings. 
+static err_t pppapi_do_pppos_create(struct tcpip_api_call_data *m) {
+  /* cast through void* to silence alignment warnings.
    * We know it works because the structs have been instantiated as struct pppapi_msg */
-  struct pppapi_msg *msg = (struct pppapi_msg *)(void*)m;
+  struct pppapi_msg *msg = (struct pppapi_msg *)(void *)m;
 
-  msg->msg.ppp = pppos_create(msg->msg.msg.serialcreate.pppif, msg->msg.msg.serialcreate.output_cb,
-    msg->msg.msg.serialcreate.link_status_cb, msg->msg.msg.serialcreate.ctx_cb);
+  msg->msg.ppp =
+      pppos_create(msg->msg.msg.serialcreate.pppif, msg->msg.msg.serialcreate.output_cb,
+                   msg->msg.msg.serialcreate.link_status_cb, msg->msg.msg.serialcreate.ctx_cb);
   return ERR_OK;
 }
 
@@ -138,11 +130,9 @@ pppapi_do_pppos_create(struct tcpip_api_call_data *m)
  * Call pppos_create() in a thread-safe way by running that function inside the
  * tcpip_thread context.
  */
-ppp_pcb*
-pppapi_pppos_create(struct netif *pppif, pppos_output_cb_fn output_cb,
-               ppp_link_status_cb_fn link_status_cb, void *ctx_cb)
-{
-  ppp_pcb* result;
+ppp_pcb *pppapi_pppos_create(struct netif *pppif, pppos_output_cb_fn output_cb,
+                             ppp_link_status_cb_fn link_status_cb, void *ctx_cb) {
+  ppp_pcb *result;
   PPPAPI_VAR_DECLARE(msg);
   PPPAPI_VAR_ALLOC_RETURN_NULL(msg);
 
@@ -163,16 +153,15 @@ pppapi_pppos_create(struct netif *pppif, pppos_output_cb_fn output_cb,
 /**
  * Call pppoe_create() inside the tcpip_thread context.
  */
-static err_t
-pppapi_do_pppoe_create(struct tcpip_api_call_data *m)
-{
-  /* cast through void* to silence alignment warnings. 
+static err_t pppapi_do_pppoe_create(struct tcpip_api_call_data *m) {
+  /* cast through void* to silence alignment warnings.
    * We know it works because the structs have been instantiated as struct pppapi_msg */
-  struct pppapi_msg *msg = (struct pppapi_msg *)(void*)m;
+  struct pppapi_msg *msg = (struct pppapi_msg *)(void *)m;
 
-  msg->msg.ppp = pppoe_create(msg->msg.msg.ethernetcreate.pppif, msg->msg.msg.ethernetcreate.ethif,
-    msg->msg.msg.ethernetcreate.service_name, msg->msg.msg.ethernetcreate.concentrator_name,
-    msg->msg.msg.ethernetcreate.link_status_cb, msg->msg.msg.ethernetcreate.ctx_cb);
+  msg->msg.ppp = pppoe_create(
+      msg->msg.msg.ethernetcreate.pppif, msg->msg.msg.ethernetcreate.ethif,
+      msg->msg.msg.ethernetcreate.service_name, msg->msg.msg.ethernetcreate.concentrator_name,
+      msg->msg.msg.ethernetcreate.link_status_cb, msg->msg.msg.ethernetcreate.ctx_cb);
   return ERR_OK;
 }
 
@@ -180,12 +169,10 @@ pppapi_do_pppoe_create(struct tcpip_api_call_data *m)
  * Call pppoe_create() in a thread-safe way by running that function inside the
  * tcpip_thread context.
  */
-ppp_pcb*
-pppapi_pppoe_create(struct netif *pppif, struct netif *ethif, const char *service_name,
-                            const char *concentrator_name, ppp_link_status_cb_fn link_status_cb,
-                            void *ctx_cb)
-{
-  ppp_pcb* result;
+ppp_pcb *pppapi_pppoe_create(struct netif *pppif, struct netif *ethif, const char *service_name,
+                             const char *concentrator_name, ppp_link_status_cb_fn link_status_cb,
+                             void *ctx_cb) {
+  ppp_pcb *result;
   PPPAPI_VAR_DECLARE(msg);
   PPPAPI_VAR_ALLOC_RETURN_NULL(msg);
 
@@ -208,23 +195,20 @@ pppapi_pppoe_create(struct netif *pppif, struct netif *ethif, const char *servic
 /**
  * Call pppol2tp_create() inside the tcpip_thread context.
  */
-static err_t
-pppapi_do_pppol2tp_create(struct tcpip_api_call_data *m)
-{
-  /* cast through void* to silence alignment warnings. 
+static err_t pppapi_do_pppol2tp_create(struct tcpip_api_call_data *m) {
+  /* cast through void* to silence alignment warnings.
    * We know it works because the structs have been instantiated as struct pppapi_msg */
-  struct pppapi_msg *msg = (struct pppapi_msg *)(void*)m;
+  struct pppapi_msg *msg = (struct pppapi_msg *)(void *)m;
 
-  msg->msg.ppp = pppol2tp_create(msg->msg.msg.l2tpcreate.pppif,
-    msg->msg.msg.l2tpcreate.netif, API_EXPR_REF(msg->msg.msg.l2tpcreate.ipaddr), msg->msg.msg.l2tpcreate.port,
+  msg->msg.ppp =
+      pppol2tp_create(msg->msg.msg.l2tpcreate.pppif, msg->msg.msg.l2tpcreate.netif,
+                      API_EXPR_REF(msg->msg.msg.l2tpcreate.ipaddr), msg->msg.msg.l2tpcreate.port,
 #if PPPOL2TP_AUTH_SUPPORT
-    msg->msg.msg.l2tpcreate.secret,
-    msg->msg.msg.l2tpcreate.secret_len,
-#else /* PPPOL2TP_AUTH_SUPPORT */
-    NULL,
-    0,
+                      msg->msg.msg.l2tpcreate.secret, msg->msg.msg.l2tpcreate.secret_len,
+#else  /* PPPOL2TP_AUTH_SUPPORT */
+                      NULL, 0,
 #endif /* PPPOL2TP_AUTH_SUPPORT */
-    msg->msg.msg.l2tpcreate.link_status_cb, msg->msg.msg.l2tpcreate.ctx_cb);
+                      msg->msg.msg.l2tpcreate.link_status_cb, msg->msg.msg.l2tpcreate.ctx_cb);
   return ERR_OK;
 }
 
@@ -232,12 +216,10 @@ pppapi_do_pppol2tp_create(struct tcpip_api_call_data *m)
  * Call pppol2tp_create() in a thread-safe way by running that function inside the
  * tcpip_thread context.
  */
-ppp_pcb*
-pppapi_pppol2tp_create(struct netif *pppif, struct netif *netif, ip_addr_t *ipaddr, u16_t port,
-                        const u8_t *secret, u8_t secret_len,
-                        ppp_link_status_cb_fn link_status_cb, void *ctx_cb)
-{
-  ppp_pcb* result;
+ppp_pcb *pppapi_pppol2tp_create(struct netif *pppif, struct netif *netif, ip_addr_t *ipaddr,
+                                u16_t port, const u8_t *secret, u8_t secret_len,
+                                ppp_link_status_cb_fn link_status_cb, void *ctx_cb) {
+  ppp_pcb *result;
   PPPAPI_VAR_DECLARE(msg);
   PPPAPI_VAR_ALLOC_RETURN_NULL(msg);
 #if !PPPOL2TP_AUTH_SUPPORT
@@ -267,12 +249,10 @@ pppapi_pppol2tp_create(struct netif *pppif, struct netif *netif, ip_addr_t *ipad
 /**
  * Call ppp_connect() inside the tcpip_thread context.
  */
-static err_t
-pppapi_do_ppp_connect(struct tcpip_api_call_data *m)
-{
-  /* cast through void* to silence alignment warnings. 
+static err_t pppapi_do_ppp_connect(struct tcpip_api_call_data *m) {
+  /* cast through void* to silence alignment warnings.
    * We know it works because the structs have been instantiated as struct pppapi_msg */
-  struct pppapi_msg *msg = (struct pppapi_msg *)(void*)m;
+  struct pppapi_msg *msg = (struct pppapi_msg *)(void *)m;
 
   return ppp_connect(msg->msg.ppp, msg->msg.msg.connect.holdoff);
 }
@@ -281,9 +261,7 @@ pppapi_do_ppp_connect(struct tcpip_api_call_data *m)
  * Call ppp_connect() in a thread-safe way by running that function inside the
  * tcpip_thread context.
  */
-err_t
-pppapi_connect(ppp_pcb *pcb, u16_t holdoff)
-{
+err_t pppapi_connect(ppp_pcb *pcb, u16_t holdoff) {
   err_t err;
   PPPAPI_VAR_DECLARE(msg);
   PPPAPI_VAR_ALLOC(msg);
@@ -300,12 +278,10 @@ pppapi_connect(ppp_pcb *pcb, u16_t holdoff)
 /**
  * Call ppp_listen() inside the tcpip_thread context.
  */
-static err_t
-pppapi_do_ppp_listen(struct tcpip_api_call_data *m)
-{
-  /* cast through void* to silence alignment warnings. 
+static err_t pppapi_do_ppp_listen(struct tcpip_api_call_data *m) {
+  /* cast through void* to silence alignment warnings.
    * We know it works because the structs have been instantiated as struct pppapi_msg */
-  struct pppapi_msg *msg = (struct pppapi_msg *)(void*)m;
+  struct pppapi_msg *msg = (struct pppapi_msg *)(void *)m;
 
   return ppp_listen(msg->msg.ppp);
 }
@@ -314,9 +290,7 @@ pppapi_do_ppp_listen(struct tcpip_api_call_data *m)
  * Call ppp_listen() in a thread-safe way by running that function inside the
  * tcpip_thread context.
  */
-err_t
-pppapi_listen(ppp_pcb *pcb)
-{
+err_t pppapi_listen(ppp_pcb *pcb) {
   err_t err;
   PPPAPI_VAR_DECLARE(msg);
   PPPAPI_VAR_ALLOC(msg);
@@ -332,12 +306,10 @@ pppapi_listen(ppp_pcb *pcb)
 /**
  * Call ppp_close() inside the tcpip_thread context.
  */
-static err_t
-pppapi_do_ppp_close(struct tcpip_api_call_data *m)
-{
-  /* cast through void* to silence alignment warnings. 
+static err_t pppapi_do_ppp_close(struct tcpip_api_call_data *m) {
+  /* cast through void* to silence alignment warnings.
    * We know it works because the structs have been instantiated as struct pppapi_msg */
-  struct pppapi_msg *msg = (struct pppapi_msg *)(void*)m;
+  struct pppapi_msg *msg = (struct pppapi_msg *)(void *)m;
 
   return ppp_close(msg->msg.ppp, msg->msg.msg.close.nocarrier);
 }
@@ -346,9 +318,7 @@ pppapi_do_ppp_close(struct tcpip_api_call_data *m)
  * Call ppp_close() in a thread-safe way by running that function inside the
  * tcpip_thread context.
  */
-err_t
-pppapi_close(ppp_pcb *pcb, u8_t nocarrier)
-{
+err_t pppapi_close(ppp_pcb *pcb, u8_t nocarrier) {
   err_t err;
   PPPAPI_VAR_DECLARE(msg);
   PPPAPI_VAR_ALLOC(msg);
@@ -364,12 +334,10 @@ pppapi_close(ppp_pcb *pcb, u8_t nocarrier)
 /**
  * Call ppp_free() inside the tcpip_thread context.
  */
-static err_t
-pppapi_do_ppp_free(struct tcpip_api_call_data *m)
-{
-  /* cast through void* to silence alignment warnings. 
+static err_t pppapi_do_ppp_free(struct tcpip_api_call_data *m) {
+  /* cast through void* to silence alignment warnings.
    * We know it works because the structs have been instantiated as struct pppapi_msg */
-  struct pppapi_msg *msg = (struct pppapi_msg *)(void*)m;
+  struct pppapi_msg *msg = (struct pppapi_msg *)(void *)m;
 
   return ppp_free(msg->msg.ppp);
 }
@@ -378,9 +346,7 @@ pppapi_do_ppp_free(struct tcpip_api_call_data *m)
  * Call ppp_free() in a thread-safe way by running that function inside the
  * tcpip_thread context.
  */
-err_t
-pppapi_free(ppp_pcb *pcb)
-{
+err_t pppapi_free(ppp_pcb *pcb) {
   err_t err;
   PPPAPI_VAR_DECLARE(msg);
   PPPAPI_VAR_ALLOC(msg);
@@ -395,12 +361,10 @@ pppapi_free(ppp_pcb *pcb)
 /**
  * Call ppp_ioctl() inside the tcpip_thread context.
  */
-static err_t
-pppapi_do_ppp_ioctl(struct tcpip_api_call_data *m)
-{
-  /* cast through void* to silence alignment warnings. 
+static err_t pppapi_do_ppp_ioctl(struct tcpip_api_call_data *m) {
+  /* cast through void* to silence alignment warnings.
    * We know it works because the structs have been instantiated as struct pppapi_msg */
-  struct pppapi_msg *msg = (struct pppapi_msg *)(void*)m;
+  struct pppapi_msg *msg = (struct pppapi_msg *)(void *)m;
 
   return ppp_ioctl(msg->msg.ppp, msg->msg.msg.ioctl.cmd, msg->msg.msg.ioctl.arg);
 }
@@ -409,9 +373,7 @@ pppapi_do_ppp_ioctl(struct tcpip_api_call_data *m)
  * Call ppp_ioctl() in a thread-safe way by running that function inside the
  * tcpip_thread context.
  */
-err_t
-pppapi_ioctl(ppp_pcb *pcb, u8_t cmd, void *arg)
-{
+err_t pppapi_ioctl(ppp_pcb *pcb, u8_t cmd, void *arg) {
   err_t err;
   PPPAPI_VAR_DECLARE(msg);
   PPPAPI_VAR_ALLOC(msg);

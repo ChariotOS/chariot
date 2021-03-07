@@ -42,10 +42,10 @@ int dhcp_setup(int sk, struct sockaddr_in *a) {
   d.magic = htonl(DHCP_MAGIC);
 
   int n = sendto(sk, &d, sizeof(d), 0, (struct sockaddr *)a, sizeof(*a));
-	if (n < 0) {
-		perror("dhcp_setup send");
-		exit(-1);
-	}
+  if (n < 0) {
+    perror("dhcp_setup send");
+    exit(-1);
+  }
   return 0;
 }
 
@@ -82,7 +82,7 @@ for (int i = 0; i < 1; i++) {
 char buf[50];
 sprintf(buf, "msg %d\n", i);
 int n = sendto(sk, buf, strlen(buf) + 1, 0,
-	     (const struct sockaddr *)&servaddr, sizeof(servaddr));
+             (const struct sockaddr *)&servaddr, sizeof(servaddr));
 if (n < 0) {
 perror("sendto");
 close(sk);

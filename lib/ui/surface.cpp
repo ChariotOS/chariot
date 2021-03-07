@@ -11,4 +11,3 @@ void ui::surface::reflow() {
   did_reflow();
   // invalidate(m_rect);
 }
-

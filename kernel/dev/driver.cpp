@@ -19,8 +19,7 @@ static map<string, dev_t> device_names;
 int dev::register_driver(struct dev::driver_info &info) {
   assert(info.major != -1);
   assert(info.type == DRIVER_CHAR || info.type == DRIVER_BLOCK);
-  assert(info.type == DRIVER_CHAR ? info.char_ops != NULL
-				  : info.block_ops != NULL);
+  assert(info.type == DRIVER_CHAR ? info.char_ops != NULL : info.block_ops != NULL);
 
   drivers_lock.write_lock();
 
@@ -32,8 +31,7 @@ int dev::register_driver(struct dev::driver_info &info) {
 }
 
 extern void devfs_register_device(string name, int type, int major, int minor);
-int dev::register_name(struct dev::driver_info &info, string name,
-		       minor_t min) {
+int dev::register_name(struct dev::driver_info &info, string name, minor_t min) {
   // create the block device if it is one
   if (info.type == DRIVER_BLOCK) {
     auto bdev = new fs::blkdev(dev_t(info.major, min), name, *info.block_ops);
@@ -43,15 +41,15 @@ int dev::register_name(struct dev::driver_info &info, string name,
 
   drivers_lock.write_lock();
 
-  printk(KERN_INFO "register name %s [maj:%d, min:%d] (%d total)\n", name.get(),
-	 info.major, min, device_names.size());
+  printk(KERN_INFO "register name %s [maj:%d, min:%d] (%d total)\n", name.get(), info.major, min,
+         device_names.size());
 
   device_names.set(name, dev_t(info.major, min));
   drivers_lock.write_unlock();
 
-	int ftype = info.type == DRIVER_BLOCK ? T_BLK : T_CHAR;
+  int ftype = info.type == DRIVER_BLOCK ? T_BLK : T_CHAR;
 
-	devfs_register_device(name, ftype, info.major, min);
+  devfs_register_device(name, ftype, info.major, min);
 
   return 0;
 }
@@ -84,10 +82,8 @@ void dev::populate_inode_device(fs::inode &ino) {
   }
 }
 
-struct fs::inode *devicei(struct dev::driver_info &d, string name,
-			  minor_t min) {
-  fs::inode *ino =
-      new fs::inode(d.type == DRIVER_BLOCK ? T_BLK : T_CHAR, fs::DUMMY_SB);
+struct fs::inode *devicei(struct dev::driver_info &d, string name, minor_t min) {
+  fs::inode *ino = new fs::inode(d.type == DRIVER_BLOCK ? T_BLK : T_CHAR, fs::DUMMY_SB);
 
   ino->major = d.major;
   ino->minor = min;
@@ -130,31 +126,30 @@ string dev::next_disk_name(void) {
 struct fs::blkdev *fs::bdev_from_path(const char *n) {
   struct fs::blkdev *bdev = nullptr;
 
-	// if we don't have root yet, we need to emulate devfs
-	if (vfs::get_root() == NULL) {
+  // if we don't have root yet, we need to emulate devfs
+  if (vfs::get_root() == NULL) {
+    string name = n;
 
-  string name = n;
+    auto parts = name.split('/');
 
-  auto parts = name.split('/');
+    if (parts.size() != 2 || parts[0] != "dev") {
+      panic("invalid blkdev path %s\n", n);
+    }
 
-  if (parts.size() != 2 || parts[0] != "dev") {
-    panic("invalid blkdev path %s\n", n);
+
+    drivers_lock.read_lock();
+    if (device_names.contains(parts[1])) {
+      dev_t d = device_names.get(parts[1]);
+      // pretty sure the two maps should always be in sync
+      auto *driver = drivers.get(d.major());
+      if (driver != NULL) {
+        if (driver->type == DRIVER_BLOCK) {
+          bdev = driver->block_devices[d.minor()];
+        }
+      }
+    }
+    drivers_lock.read_unlock();
   }
-
-
-  drivers_lock.read_lock();
-	if (device_names.contains(parts[1])) {
-		dev_t d = device_names.get(parts[1]);
-		// pretty sure the two maps should always be in sync
-		auto *driver = drivers.get(d.major());
-		if (driver != NULL) {
-			if (driver->type == DRIVER_BLOCK) {
-				bdev = driver->block_devices[d.minor()];
-			}
-		}
-	}
-  drivers_lock.read_unlock();
-	}
 
 
   return bdev;

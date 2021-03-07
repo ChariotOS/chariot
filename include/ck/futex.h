@@ -16,6 +16,6 @@ namespace ck {
 
     void wait_on(int val);
 
-		void set(int val);
+    void set(int val);
   };
 }  // namespace ck

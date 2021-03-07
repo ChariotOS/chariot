@@ -30,7 +30,7 @@ bool virtio_mmio_gpu::initialize(const struct virtio_config &config) {
 
   uint64_t features = read_reg(VIRTIO_MMIO_DEVICE_FEATURES);
   /* TODO: actually negotiate features */
-  printk(KERN_INFO "[gpu] features: 0x%llb\n", features);
+  printk(KERN_INFO "[gpu] features: b%llb\n", features);
   write_reg(VIRTIO_MMIO_DRIVER_FEATURES, features);
 
   irq::install(config.irqnr, virtio_irq_handler, "virtio gpu", (void *)this);
@@ -69,24 +69,23 @@ bool virtio_mmio_gpu::initialize(const struct virtio_config &config) {
     return false;
   }
 
-  int off = 0;
+  int y = 0;
   while (1) {
-    for (int y = 0; y < pmode.r.height; y++) {
-      for (int x = 0; x < pmode.r.width; x++) {
-				uint32_t color = 0;
-				if ((x + y + off) & 1) 
-					color = 0xFFFFFF;
-
-				fb[y * pmode.r.width + x] = color;
-      }
-    }
-    off += 1;
     auto start = time::now_us();
+    // memset(fb, 0, len);
+    for (int x = 0; x < pmode.r.width; x++) {
+      uint32_t color = 0xFF00FF;
+      fb[y * pmode.r.width + x] = rand();
+    }
+    y += 1;
+    if (y >= pmode.r.height) {
+      y = 0;
+      memset(fb, 0, len);
+    }
     transfer_to_host_2d(display_resource_id, pmode.r.width, pmode.r.height);
     flush_resource(display_resource_id, pmode.r.width, pmode.r.height);
-    printk("blit took %llu us\n", time::now_us() - start);
+    // printk("blit took %llu us\n", time::now_us() - start);
     // do_usleep(1000 * 100);
-		break;
   }
   return true;
 }
@@ -157,7 +156,7 @@ int virtio_mmio_gpu::get_display_info(void) {
   }
 
   for (int i = 0; i < VIRTIO_GPU_MAX_SCANOUTS; i++) {
-    if (true || info->pmodes[i].enabled) {
+    if (info->pmodes[i].enabled) {
       printk("[virtio gpu] pmode[%u]: x %u y %u w %u h %u flags 0x%x\n", i, info->pmodes[i].r.x,
              info->pmodes[i].r.y, info->pmodes[i].r.width, info->pmodes[i].r.height,
              info->pmodes[i].flags);
@@ -307,4 +306,3 @@ void virtio_mmio_gpu::irq(int ring, virtio::virtq_used_elem *e) {
   }
   iowait.wake_up();
 }
-

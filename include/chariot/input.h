@@ -8,9 +8,9 @@
 #define INPUT_MOUSE 2
 
 typedef struct {
-	int type; // INPUT_*
-	union {
-		struct keyboard_packet_t kbd;
-		struct mouse_packet mouse;
-	};
+  int type;  // INPUT_*
+  union {
+    struct keyboard_packet_t kbd;
+    struct mouse_packet mouse;
+  };
 } input_packet_t;

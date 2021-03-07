@@ -61,7 +61,7 @@ static uint32_t bswap_32(uint32_t __x) {
 }
 
 void initrd_dump(void *vbuf, size_t size) {
-	hexdump(vbuf, size, true);
+  hexdump(vbuf, size, true);
 }
 
 
@@ -207,7 +207,7 @@ void main(int hartid, void *fdt) {
         hexdump(flash, 256, true);
       }
       if (!strcmp(node->compatible, "virtio,mmio")) {
-        virtio::check_mmio((void*)node->address, node->irq);
+        virtio::check_mmio((void *)node->address, node->irq);
       }
       return true;
     });
@@ -244,4 +244,3 @@ void main(int hartid, void *fdt) {
   while (1)
     arch_halt();
 }
-

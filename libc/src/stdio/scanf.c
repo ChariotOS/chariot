@@ -21,8 +21,7 @@ unsigned long simple_strtoul(const char *cp, char **endp, unsigned int base) {
       }
     }
   }
-  while (isxdigit(*cp) &&
-         (value = isdigit(*cp) ? *cp - '0' : toupper(*cp) - 'A' + 10) < base) {
+  while (isxdigit(*cp) && (value = isdigit(*cp) ? *cp - '0' : toupper(*cp) - 'A' + 10) < base) {
     result = result * base + value;
     cp++;
   }
@@ -47,8 +46,7 @@ long simple_strtol(const char *cp, char **endp, unsigned int base) {
  * @endp: A pointer to the end of the parsed string will be placed here
  * @base: The number base to use
  */
-unsigned long long simple_strtoull(const char *cp, char **endp,
-                                   unsigned int base) {
+unsigned long long simple_strtoull(const char *cp, char **endp, unsigned int base) {
   unsigned long long result = 0, value;
 
   if (!base) {
@@ -63,9 +61,8 @@ unsigned long long simple_strtoull(const char *cp, char **endp,
     }
   }
   while (isxdigit(*cp) &&
-         (value = isdigit(*cp) ? *cp - '0'
-                               : (islower(*cp) ? toupper(*cp) : *cp) - 'A' +
-                                     10) < base) {
+         (value = isdigit(*cp) ? *cp - '0' : (islower(*cp) ? toupper(*cp) : *cp) - 'A' + 10) <
+             base) {
     result = result * base + value;
     cp++;
   }
@@ -87,7 +84,8 @@ long long simple_strtoll(const char *cp, char **endp, unsigned int base) {
 static int skip_atoi(const char **s) {
   int i = 0;
 
-  while (isdigit(**s)) i = i * 10 + *((*s)++) - '0';
+  while (isdigit(**s))
+    i = i * 10 + *((*s)++) - '0';
   return i;
 }
 
@@ -113,8 +111,10 @@ int vsscanf(const char *buf, const char *fmt, va_list args) {
      * white space, including none, in the input.
      */
     if (isspace(*fmt)) {
-      while (isspace(*fmt)) ++fmt;
-      while (isspace(*str)) ++str;
+      while (isspace(*fmt))
+        ++fmt;
+      while (isspace(*str))
+        ++str;
     }
 
     /* anything that is not a conversion must match exactly */
@@ -130,8 +130,10 @@ int vsscanf(const char *buf, const char *fmt, va_list args) {
      * advance both strings to next white space
      */
     if (*fmt == '*') {
-      while (!isspace(*fmt) && *fmt) fmt++;
-      while (!isspace(*str) && *str) str++;
+      while (!isspace(*fmt) && *fmt)
+        fmt++;
+      while (!isspace(*str) && *str)
+        str++;
       continue;
     }
 
@@ -141,8 +143,7 @@ int vsscanf(const char *buf, const char *fmt, va_list args) {
 
     /* get conversion qualifier */
     qualifier = -1;
-    if (*fmt == 'h' || *fmt == 'l' || *fmt == 'L' || *fmt == 'Z' ||
-        *fmt == 'z') {
+    if (*fmt == 'h' || *fmt == 'l' || *fmt == 'L' || *fmt == 'Z' || *fmt == 'z') {
       qualifier = *fmt;
       fmt++;
     }
@@ -165,7 +166,8 @@ int vsscanf(const char *buf, const char *fmt, va_list args) {
         char *s = (char *)va_arg(args, char *);
         if (field_width == -1) field_width = sizeof(int);
         /* first, skip leading white space in buffer */
-        while (isspace(*str)) str++;
+        while (isspace(*str))
+          str++;
 
         /* now copy until next white space */
         while (*str && !isspace(*str) && field_width--) {
@@ -207,15 +209,14 @@ int vsscanf(const char *buf, const char *fmt, va_list args) {
     /* have some sort of integer conversion.
      * first, skip white space in buffer.
      */
-    while (isspace(*str)) str++;
+    while (isspace(*str))
+      str++;
 
     digit = *str;
     if (is_sign && digit == '-') digit = *(str + 1);
 
-    if (!digit || (base == 16 && !isxdigit(digit)) ||
-        (base == 10 && !isdigit(digit)) ||
-        (base == 8 && (!isdigit(digit) || digit > '7')) ||
-        (base == 0 && !isdigit(digit)))
+    if (!digit || (base == 16 && !isxdigit(digit)) || (base == 10 && !isdigit(digit)) ||
+        (base == 8 && (!isdigit(digit) || digit > '7')) || (base == 0 && !isdigit(digit)))
       break;
 
     switch (qualifier) {
@@ -242,8 +243,7 @@ int vsscanf(const char *buf, const char *fmt, va_list args) {
           long long *l = (long long *)va_arg(args, long long *);
           *l = simple_strtoll(str, &next, base);
         } else {
-          unsigned long long *l =
-              (unsigned long long *)va_arg(args, unsigned long long *);
+          unsigned long long *l = (unsigned long long *)va_arg(args, unsigned long long *);
           *l = simple_strtoull(str, &next, base);
         }
         break;

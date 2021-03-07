@@ -108,17 +108,18 @@ err_t pppapi_set_default(ppp_pcb *pcb);
 err_t pppapi_set_notify_phase_callback(ppp_pcb *pcb, ppp_notify_phase_cb_fn notify_phase_cb);
 #endif /* PPP_NOTIFY_PHASE */
 #if PPPOS_SUPPORT
-ppp_pcb *pppapi_pppos_create(struct netif *pppif, pppos_output_cb_fn output_cb, ppp_link_status_cb_fn link_status_cb, void *ctx_cb);
+ppp_pcb *pppapi_pppos_create(struct netif *pppif, pppos_output_cb_fn output_cb,
+                             ppp_link_status_cb_fn link_status_cb, void *ctx_cb);
 #endif /* PPPOS_SUPPORT */
 #if PPPOE_SUPPORT
 ppp_pcb *pppapi_pppoe_create(struct netif *pppif, struct netif *ethif, const char *service_name,
-                                const char *concentrator_name, ppp_link_status_cb_fn link_status_cb,
-                                void *ctx_cb);
+                             const char *concentrator_name, ppp_link_status_cb_fn link_status_cb,
+                             void *ctx_cb);
 #endif /* PPPOE_SUPPORT */
 #if PPPOL2TP_SUPPORT
-ppp_pcb *pppapi_pppol2tp_create(struct netif *pppif, struct netif *netif, ip_addr_t *ipaddr, u16_t port,
-                            const u8_t *secret, u8_t secret_len,
-                            ppp_link_status_cb_fn link_status_cb, void *ctx_cb);
+ppp_pcb *pppapi_pppol2tp_create(struct netif *pppif, struct netif *netif, ip_addr_t *ipaddr,
+                                u16_t port, const u8_t *secret, u8_t secret_len,
+                                ppp_link_status_cb_fn link_status_cb, void *ctx_cb);
 #endif /* PPPOL2TP_SUPPORT */
 err_t pppapi_connect(ppp_pcb *pcb, u16_t holdoff);
 #if PPP_SERVER

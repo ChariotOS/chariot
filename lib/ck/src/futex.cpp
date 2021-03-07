@@ -14,9 +14,11 @@ static int _futex(int *uaddr, int futex_op, int val, uint32_t timeout, int *uadd
   return r;
 }
 
-ck::futex::futex() : uaddr(0) {}
+ck::futex::futex() : uaddr(0) {
+}
 
-ck::futex::futex(int i) : uaddr(i) {}
+ck::futex::futex(int i) : uaddr(i) {
+}
 
 
 void ck::futex::wait_on(int val) {

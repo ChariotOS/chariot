@@ -19,7 +19,7 @@ int sys::chroot(const char *path) {
   if (new_root->type != T_DIR) return -ENOTDIR;
 
   fs::inode::release(proc->root);
-	proc->root = geti(new_root);
+  proc->root = geti(new_root);
 
 
   string cwd;

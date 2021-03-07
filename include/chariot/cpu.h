@@ -39,11 +39,11 @@ struct processor_state {
 
   struct thread_context *sched_ctx;
 
-	/* The depth of interrupts. If this is not zero, we aren't in an interrupt context */
-	int interrupt_depth = 0;
+  /* The depth of interrupts. If this is not zero, we aren't in an interrupt context */
+  int interrupt_depth = 0;
 
-	// set if the core woke up a thread in this irq context
-	bool woke_someone_up = false;
+  // set if the core woke up a thread in this irq context
+  bool woke_someone_up = false;
 };
 
 extern int cpunum;
@@ -71,7 +71,9 @@ namespace cpu {
   // setup CPU segment descriptors, run once per cpu
   void seginit(void *local = nullptr);
   void switch_vm(struct thread *);
-  inline u64 get_ticks(void) { return current().kstat.ticks; }
+  inline u64 get_ticks(void) {
+    return current().kstat.ticks;
+  }
 
 
   int nproc(void);

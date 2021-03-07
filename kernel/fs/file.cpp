@@ -121,4 +121,3 @@ int fs::file::ioctl(int cmd, unsigned long arg) {
   if (ops && ops->ioctl) return ops->ioctl(*this, cmd, arg);
   return -EINVAL;
 }
-

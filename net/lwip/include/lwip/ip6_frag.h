@@ -52,13 +52,13 @@ extern "C" {
 #endif
 
 
-#if LWIP_IPV6 && LWIP_IPV6_REASS  /* don't build if not configured for use in lwipopts.h */
+#if LWIP_IPV6 && LWIP_IPV6_REASS /* don't build if not configured for use in lwipopts.h */
 
 /** IP6_FRAG_COPYHEADER==1: for platforms where sizeof(void*) > 4, this needs to
  * be enabled (to not overwrite part of the data). When enabled, the IPv6 header
  * is copied instead of referencing it, which gives more room for struct ip6_reass_helper */
 #ifndef IPV6_FRAG_COPYHEADER
-#define IPV6_FRAG_COPYHEADER   0
+#define IPV6_FRAG_COPYHEADER 0
 #endif
 
 /** The IPv6 reassembly timer interval in milliseconds. */
@@ -93,7 +93,7 @@ struct pbuf *ip6_reass(struct pbuf *p);
 
 #endif /* LWIP_IPV6 && LWIP_IPV6_REASS */
 
-#if LWIP_IPV6 && LWIP_IPV6_FRAG  /* don't build if not configured for use in lwipopts.h */
+#if LWIP_IPV6 && LWIP_IPV6_FRAG /* don't build if not configured for use in lwipopts.h */
 
 #ifndef LWIP_PBUF_CUSTOM_REF_DEFINED
 #define LWIP_PBUF_CUSTOM_REF_DEFINED

@@ -54,20 +54,17 @@ int print_filename(const char *name, int mode) {
 int print_filesize(long s) {
   if (s >= 1 << 20) {
     size_t t = s / (1 << 20);
-    return printf("%d.%1dM", (int)t,
-                  (int)(s - t * (1 << 20)) / ((1 << 20) / 10));
+    return printf("%d.%1dM", (int)t, (int)(s - t * (1 << 20)) / ((1 << 20) / 10));
   } else if (s >= 1 << 10) {
     size_t t = s / (1 << 10);
-    return printf("%d.%1dK", (int)t,
-                  (int)(s - t * (1 << 10)) / ((1 << 10) / 10));
+    return printf("%d.%1dK", (int)t, (int)(s - t * (1 << 10)) / ((1 << 10) / 10));
   } else {
     return printf("%dB", (int)s);
   }
 }
 
 
-static int display_info(const char *fpath, const struct stat *sb, int tflag,
-                        struct FTW *ftwbuf) {
+static int display_info(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf) {
   const char *name = fpath + ftwbuf->base;
 
   if (tflag & FTW_D) {
@@ -79,7 +76,8 @@ static int display_info(const char *fpath, const struct stat *sb, int tflag,
 
   if (!quiet) {
     if (ftwbuf->level != 0) {
-      for (int i = 1; i < ftwbuf->level; i++) printf("|   ");
+      for (int i = 1; i < ftwbuf->level; i++)
+        printf("|   ");
       printf("+-- ");
     }
 

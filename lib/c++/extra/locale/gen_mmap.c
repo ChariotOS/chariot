@@ -47,185 +47,191 @@
 
 /*  #define COMMON_MMIDX(X) \ */
 /*  	unsigned char	__PASTE3(lc_,X,_rows)[__PASTE3(__lc_,X,_rows_LEN)]; \ */
-/*  	uint16_t		__PASTE3(lc_,X,_item_offsets)[__PASTE3(__lc_,X,_item_offsets_LEN)]; \ */
+/*  	uint16_t		__PASTE3(lc_,X,_item_offsets)[__PASTE3(__lc_,X,_item_offsets_LEN)];
+ * \
+ */
 /*  	uint16_t		__PASTE3(lc_,X,_item_idx)[__PASTE3(__lc_,X,_item_idx_LEN)]; \ */
 
-#define WRITE_COMMON_MMAP(X) \
-	fseek(fp, (long) offsetof(__locale_mmap_t, __PASTE3(lc_,X,_data)), SEEK_SET); \
-	for (i=0 ; i < __PASTE3(__lc_,X,_data_LEN) ; i++) { \
-		putc(__PASTE3(__lc_,X,_data)[i], fp); \
-	}
+#define WRITE_COMMON_MMAP(X)                                                     \
+  fseek(fp, (long)offsetof(__locale_mmap_t, __PASTE3(lc_, X, _data)), SEEK_SET); \
+  for (i = 0; i < __PASTE3(__lc_, X, _data_LEN); i++) {                          \
+    putc(__PASTE3(__lc_, X, _data)[i], fp);                                      \
+  }
 
-#define WRITE_COMMON_MMIDX(X) \
-	fseek(fp, (long) offsetof(__locale_mmap_t, __PASTE3(lc_,X,_rows)), SEEK_SET); \
-	for (i=0 ; i < __PASTE3(__lc_,X,_rows_LEN) ; i++) { \
-		putc(__PASTE3(__lc_,X,_rows)[i], fp); \
-	} \
-	fseek(fp, (long) offsetof(__locale_mmap_t, __PASTE3(lc_,X,_item_offsets)), SEEK_SET); \
-	for (i=0 ; i < __PASTE3(__lc_,X,_item_offsets_LEN) ; i++) { \
-		putc( ((unsigned char *) &(__PASTE3(__lc_,X,_item_offsets)[i]))[0], fp); \
-		putc( ((unsigned char *) &(__PASTE3(__lc_,X,_item_offsets)[i]))[1], fp); \
-	} \
-	fseek(fp, (long) offsetof(__locale_mmap_t, __PASTE3(lc_,X,_item_idx)), SEEK_SET); \
-	for (i=0 ; i < __PASTE3(__lc_,X,_item_idx_LEN) ; i++) { \
-		putc( ((unsigned char *) &(__PASTE3(__lc_,X,_item_idx)[i]))[0], fp); \
-		putc( ((unsigned char *) &(__PASTE3(__lc_,X,_item_idx)[i]))[1], fp); \
-	}
+#define WRITE_COMMON_MMIDX(X)                                                            \
+  fseek(fp, (long)offsetof(__locale_mmap_t, __PASTE3(lc_, X, _rows)), SEEK_SET);         \
+  for (i = 0; i < __PASTE3(__lc_, X, _rows_LEN); i++) {                                  \
+    putc(__PASTE3(__lc_, X, _rows)[i], fp);                                              \
+  }                                                                                      \
+  fseek(fp, (long)offsetof(__locale_mmap_t, __PASTE3(lc_, X, _item_offsets)), SEEK_SET); \
+  for (i = 0; i < __PASTE3(__lc_, X, _item_offsets_LEN); i++) {                          \
+    putc(((unsigned char *)&(__PASTE3(__lc_, X, _item_offsets)[i]))[0], fp);             \
+    putc(((unsigned char *)&(__PASTE3(__lc_, X, _item_offsets)[i]))[1], fp);             \
+  }                                                                                      \
+  fseek(fp, (long)offsetof(__locale_mmap_t, __PASTE3(lc_, X, _item_idx)), SEEK_SET);     \
+  for (i = 0; i < __PASTE3(__lc_, X, _item_idx_LEN); i++) {                              \
+    putc(((unsigned char *)&(__PASTE3(__lc_, X, _item_idx)[i]))[0], fp);                 \
+    putc(((unsigned char *)&(__PASTE3(__lc_, X, _item_idx)[i]))[1], fp);                 \
+  }
 
-#define WRITE_WC_DATA(X) \
-	fseek(fp, (long) offsetof(__locale_mmap_t, __PASTE2(tblw,X)), SEEK_SET); \
-	for (i=0 ; i < __PASTE3(WC,X,_TBL_LEN) ; i++) { \
-		putc(__PASTE3(WC,X,_data)[i], fp); \
-	}
+#define WRITE_WC_DATA(X)                                                   \
+  fseek(fp, (long)offsetof(__locale_mmap_t, __PASTE2(tblw, X)), SEEK_SET); \
+  for (i = 0; i < __PASTE3(WC, X, _TBL_LEN); i++) {                        \
+    putc(__PASTE3(WC, X, _data)[i], fp);                                   \
+  }
 
-#define WRITE_WC_I16_DATA(X) \
-	fseek(fp, (long) offsetof(__locale_mmap_t, __PASTE2(tblw,X)), SEEK_SET); \
-	for (i=0 ; i < __PASTE3(WC,X,_TBL_LEN) ; i++) { \
-		putc( ((unsigned char *) &(__PASTE3(WC,X,_data)[i]))[0], fp); \
-		putc( ((unsigned char *) &(__PASTE3(WC,X,_data)[i]))[1], fp); \
-	}
+#define WRITE_WC_I16_DATA(X)                                               \
+  fseek(fp, (long)offsetof(__locale_mmap_t, __PASTE2(tblw, X)), SEEK_SET); \
+  for (i = 0; i < __PASTE3(WC, X, _TBL_LEN); i++) {                        \
+    putc(((unsigned char *)&(__PASTE3(WC, X, _data)[i]))[0], fp);          \
+    putc(((unsigned char *)&(__PASTE3(WC, X, _data)[i]))[1], fp);          \
+  }
 
-#define WRITE_C_DATA(X) \
-	fseek(fp, (long) offsetof(__locale_mmap_t, __PASTE2(tbl8,X)), SEEK_SET); \
-	for (i=0 ; i < __PASTE3(C,X,_TBL_LEN) ; i++) { \
-		putc(__PASTE3(C,X,_data)[i], fp); \
-	}
+#define WRITE_C_DATA(X)                                                    \
+  fseek(fp, (long)offsetof(__locale_mmap_t, __PASTE2(tbl8, X)), SEEK_SET); \
+  for (i = 0; i < __PASTE3(C, X, _TBL_LEN); i++) {                         \
+    putc(__PASTE3(C, X, _data)[i], fp);                                    \
+  }
 
-#define WRITE_C_U16_DATA(X) \
-	fseek(fp, (long) offsetof(__locale_mmap_t, __PASTE2(tbl8,X)), SEEK_SET); \
-	for (i=0 ; i < __PASTE3(C,X,_TBL_LEN) ; i++) { \
-		putc( ((unsigned char *) &(__PASTE3(C,X,_data)[i]))[0], fp); \
-		putc( ((unsigned char *) &(__PASTE3(C,X,_data)[i]))[1], fp); \
-	}
+#define WRITE_C_U16_DATA(X)                                                \
+  fseek(fp, (long)offsetof(__locale_mmap_t, __PASTE2(tbl8, X)), SEEK_SET); \
+  for (i = 0; i < __PASTE3(C, X, _TBL_LEN); i++) {                         \
+    putc(((unsigned char *)&(__PASTE3(C, X, _data)[i]))[0], fp);           \
+    putc(((unsigned char *)&(__PASTE3(C, X, _data)[i]))[1], fp);           \
+  }
 
 /**********************************************************************/
 
-#define COMMON_OFFSETS(X) \
-	offsetof(__locale_mmap_t, __PASTE3(lc_,X,_rows)), \
-	offsetof(__locale_mmap_t, __PASTE3(lc_,X,_item_offsets)), \
-	offsetof(__locale_mmap_t, __PASTE3(lc_,X,_item_idx)), \
-	offsetof(__locale_mmap_t, __PASTE3(lc_,X,_data)) \
+#define COMMON_OFFSETS(X)                                         \
+  offsetof(__locale_mmap_t, __PASTE3(lc_, X, _rows)),             \
+      offsetof(__locale_mmap_t, __PASTE3(lc_, X, _item_offsets)), \
+      offsetof(__locale_mmap_t, __PASTE3(lc_, X, _item_idx)),     \
+      offsetof(__locale_mmap_t, __PASTE3(lc_, X, _data))
 
 
-static const size_t common_tbl_offsets[CATEGORIES*4] = {
-	0, 0, 0, 0,					/* ctype */
-	COMMON_OFFSETS(numeric),
-	COMMON_OFFSETS(monetary),
-	COMMON_OFFSETS(time),
-	0, 0, 0, 0,					/* collate */
-	COMMON_OFFSETS(messages),
+static const size_t common_tbl_offsets[CATEGORIES * 4] = {
+    0,
+    0,
+    0,
+    0, /* ctype */
+    COMMON_OFFSETS(numeric),
+    COMMON_OFFSETS(monetary),
+    COMMON_OFFSETS(time),
+    0,
+    0,
+    0,
+    0, /* collate */
+    COMMON_OFFSETS(messages),
 };
 
 
 
 
+int main(void) {
+  FILE *fp;
+  size_t i;
+  unsigned char *p;
 
-int main(void)
-{
-	FILE *fp;
-	size_t i;
-	unsigned char *p;
+  if (!(fp = fopen("locale.mmap", "w"))) {
+    printf("error - can't open locale.mmap for writing!");
+    return EXIT_FAILURE;
+  }
 
-	if (!(fp = fopen("locale.mmap", "w"))) {
-		printf("error - can't open locale.mmap for writing!");
-		return EXIT_FAILURE;
-	}
-
-	for (i=0 ; i < sizeof(__locale_mmap_t) ; i++) {
-		putc(0, fp);			/* Zero out the file. */
-	}
+  for (i = 0; i < sizeof(__locale_mmap_t); i++) {
+    putc(0, fp); /* Zero out the file. */
+  }
 
 #ifdef __CTYPE_HAS_8_BIT_LOCALES
-	WRITE_C_DATA(ctype);
-	WRITE_C_DATA(uplow);
+  WRITE_C_DATA(ctype);
+  WRITE_C_DATA(uplow);
 #ifdef __WCHAR_ENABLED
-	WRITE_C_U16_DATA(c2wc);
-	WRITE_C_DATA(wc2c);
-	/* translit  */
+  WRITE_C_U16_DATA(c2wc);
+  WRITE_C_DATA(wc2c);
+  /* translit  */
 #endif /* __WCHAR_ENABLED */
 #endif /* __CTYPE_HAS_8_BIT_LOCALES */
 
 #ifdef __WCHAR_ENABLED
-	WRITE_WC_DATA(ctype);
-	WRITE_WC_DATA(uplow);
-	WRITE_WC_I16_DATA(uplow_diff);
-/* 	WRITE_WC_DATA(comb); */
-	/* width?? */
+  WRITE_WC_DATA(ctype);
+  WRITE_WC_DATA(uplow);
+  WRITE_WC_I16_DATA(uplow_diff);
+  /* 	WRITE_WC_DATA(comb); */
+  /* width?? */
 #endif /* __WCHAR_ENABLED */
 
-	WRITE_COMMON_MMAP(numeric);
-	WRITE_COMMON_MMAP(monetary);
-	WRITE_COMMON_MMAP(time);
-	/* TODO -- collate*/
-	WRITE_COMMON_MMAP(messages);
+  WRITE_COMMON_MMAP(numeric);
+  WRITE_COMMON_MMAP(monetary);
+  WRITE_COMMON_MMAP(time);
+  /* TODO -- collate*/
+  WRITE_COMMON_MMAP(messages);
 
 #ifdef __CTYPE_HAS_8_BIT_LOCALES
-	fseek(fp, (long) offsetof(__locale_mmap_t, codeset_8_bit), SEEK_SET); \
-	p = (unsigned char *) codeset_8_bit;
-	for (i=0 ; i < sizeof(codeset_8_bit) ; i++) {
-		putc(p[i], fp);
-	}
+  fseek(fp, (long)offsetof(__locale_mmap_t, codeset_8_bit), SEEK_SET);
+  p = (unsigned char *)codeset_8_bit;
+  for (i = 0; i < sizeof(codeset_8_bit); i++) {
+    putc(p[i], fp);
+  }
 #endif /* __CTYPE_HAS_8_BIT_LOCALES */
 
-	WRITE_COMMON_MMIDX(numeric);
-	WRITE_COMMON_MMIDX(monetary);
-	WRITE_COMMON_MMIDX(time);
-	/* TODO -- collate*/
-	WRITE_COMMON_MMIDX(messages);
+  WRITE_COMMON_MMIDX(numeric);
+  WRITE_COMMON_MMIDX(monetary);
+  WRITE_COMMON_MMIDX(time);
+  /* TODO -- collate*/
+  WRITE_COMMON_MMIDX(messages);
 
-	fseek(fp, (long) offsetof(__locale_mmap_t, lc_common_item_offsets_LEN), SEEK_SET);
-	putc(1, fp);				/* ctype -- (codeset) handled specially */
-	putc(__lc_numeric_item_offsets_LEN, fp);
-	putc(__lc_monetary_item_offsets_LEN, fp);
-	putc(__lc_time_item_offsets_LEN, fp);
-	putc(0, fp);				/* collate */
-	putc(__lc_messages_item_offsets_LEN, fp);
+  fseek(fp, (long)offsetof(__locale_mmap_t, lc_common_item_offsets_LEN), SEEK_SET);
+  putc(1, fp); /* ctype -- (codeset) handled specially */
+  putc(__lc_numeric_item_offsets_LEN, fp);
+  putc(__lc_monetary_item_offsets_LEN, fp);
+  putc(__lc_time_item_offsets_LEN, fp);
+  putc(0, fp); /* collate */
+  putc(__lc_messages_item_offsets_LEN, fp);
 
-	fseek(fp, (long) offsetof(__locale_mmap_t, lc_common_tbl_offsets), SEEK_SET);
-	for (i=0 ; i < sizeof(common_tbl_offsets) ; i++) {
-		putc(((unsigned char *)common_tbl_offsets)[i], fp);
-	}
+  fseek(fp, (long)offsetof(__locale_mmap_t, lc_common_tbl_offsets), SEEK_SET);
+  for (i = 0; i < sizeof(common_tbl_offsets); i++) {
+    putc(((unsigned char *)common_tbl_offsets)[i], fp);
+  }
 
 #ifdef NUM_LOCALES
-	fseek(fp, (long) offsetof(__locale_mmap_t, locales), SEEK_SET);
-	for (i=0 ; i < (NUM_LOCALES * WIDTH_LOCALES) ; i++) {
-		putc(__locales[i], fp);
-	}
+  fseek(fp, (long)offsetof(__locale_mmap_t, locales), SEEK_SET);
+  for (i = 0; i < (NUM_LOCALES * WIDTH_LOCALES); i++) {
+    putc(__locales[i], fp);
+  }
 
-	fseek(fp, (long) offsetof(__locale_mmap_t, locale_names5), SEEK_SET);
-	for (i=0 ; i < 5 * NUM_LOCALE_NAMES ; i++) {
-		putc(__locale_names5[i], fp);
-	}
+  fseek(fp, (long)offsetof(__locale_mmap_t, locale_names5), SEEK_SET);
+  for (i = 0; i < 5 * NUM_LOCALE_NAMES; i++) {
+    putc(__locale_names5[i], fp);
+  }
 
 #ifdef LOCALE_AT_MODIFIERS_LENGTH
-	fseek(fp, (long) offsetof(__locale_mmap_t, locale_at_modifiers), SEEK_SET);
-	for (i=0 ; i < LOCALE_AT_MODIFIERS_LENGTH ; i++) {
-		putc(__locale_at_modifiers[i], fp);
-	}
+  fseek(fp, (long)offsetof(__locale_mmap_t, locale_at_modifiers), SEEK_SET);
+  for (i = 0; i < LOCALE_AT_MODIFIERS_LENGTH; i++) {
+    putc(__locale_at_modifiers[i], fp);
+  }
 #endif /* LOCALE_AT_MODIFIERS_LENGTH */
 #endif /* NUM_LOCALES */
 
-	fseek(fp, (long) offsetof(__locale_mmap_t, lc_names), SEEK_SET);
-	for (i=0 ; i < lc_names_LEN ; i++) {
-		putc(lc_names[i], fp);
-	}
+  fseek(fp, (long)offsetof(__locale_mmap_t, lc_names), SEEK_SET);
+  for (i = 0; i < lc_names_LEN; i++) {
+    putc(lc_names[i], fp);
+  }
 
 #ifdef __CTYPE_HAS_8_BIT_LOCALES
-	fseek(fp, (long) offsetof(__locale_mmap_t, codeset_list), SEEK_SET);
-	for (i=0 ; i < sizeof(CODESET_LIST) ; i++) {
-		putc((unsigned char)(CODESET_LIST[i]), fp);
-	}
+  fseek(fp, (long)offsetof(__locale_mmap_t, codeset_list), SEEK_SET);
+  for (i = 0; i < sizeof(CODESET_LIST); i++) {
+    putc((unsigned char)(CODESET_LIST[i]), fp);
+  }
 #endif /* __CTYPE_HAS_8_BIT_LOCALES */
 
 
-	if (ferror(fp) || (fclose(fp) == EOF)) {
-		printf("error - stream in error state or fclose failed!");
-		return EXIT_FAILURE;
-	}
+  if (ferror(fp) || (fclose(fp) == EOF)) {
+    printf("error - stream in error state or fclose failed!");
+    return EXIT_FAILURE;
+  }
 
-	printf("sizeof(__locale_mmap_t) = %zd\n", sizeof(__locale_mmap_t));
+  printf("sizeof(__locale_mmap_t) = %zd\n", sizeof(__locale_mmap_t));
 
-	return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }
 
 /* TODO:

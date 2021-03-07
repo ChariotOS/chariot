@@ -28,8 +28,7 @@ rtl8139::rtl8139(pci::device &dev, u8 irq) : m_dev(dev) {
   m_dev.enable_bus_mastering();
 
   m_io_base = m_dev.get_bar(0).raw & ~1;
-  m_interrupt_line =
-      m_dev.read<u8>(0x3C /* magic constant :: PCI_INTERRUPT_LINE */);
+  m_interrupt_line = m_dev.read<u8>(0x3C /* magic constant :: PCI_INTERRUPT_LINE */);
 
   INFO("IO port base: %x\n", m_io_base);
   INFO("Interrupt line: %u\n", m_interrupt_line);
@@ -45,8 +44,7 @@ rtl8139::rtl8139(pci::device &dev, u8 irq) : m_dev(dev) {
 
   INFO("%d\n", TX_BUFFER_SIZE * RTL8139_TX_BUFFER_COUNT);
 
-  auto tx_pgcount =
-      round_up(TX_BUFFER_SIZE * RTL8139_TX_BUFFER_COUNT, PGSIZE) / PGSIZE;
+  auto tx_pgcount = round_up(TX_BUFFER_SIZE * RTL8139_TX_BUFFER_COUNT, PGSIZE) / PGSIZE;
   INFO("tx_pgcount = %d\n", tx_pgcount);
   auto tx_buffer_addr = (u64)phys::alloc(tx_pgcount);
   for (int i = 0; i < RTL8139_TX_BUFFER_COUNT; i++) {
@@ -61,21 +59,35 @@ rtl8139::rtl8139(pci::device &dev, u8 irq) : m_dev(dev) {
   read_mac_address();
 
   main_dev = this;
-  INFO("MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2],
-       mac[3], mac[4], mac[5]);
+  INFO("MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4],
+       mac[5]);
 
 
   irq::install(m_interrupt_line, rtl_irq_handler, "RTL8139 Ethernet Card");
 }
 
-rtl8139::~rtl8139() { free(m_packet_buffer); }
+rtl8139::~rtl8139() {
+  free(m_packet_buffer);
+}
 
-void rtl8139::out8(u16 a, u8 d) { outb(m_io_base + a, d); }
-void rtl8139::out16(u16 a, u16 d) { outw(m_io_base + a, d); }
-void rtl8139::out32(u16 a, u32 d) { outl(m_io_base + a, d); }
-u8 rtl8139::in8(u16 address) { return inb(m_io_base + address); }
-u16 rtl8139::in16(u16 address) { return inw(m_io_base + address); }
-u32 rtl8139::in32(u16 address) { return inl(m_io_base + address); }
+void rtl8139::out8(u16 a, u8 d) {
+  outb(m_io_base + a, d);
+}
+void rtl8139::out16(u16 a, u16 d) {
+  outw(m_io_base + a, d);
+}
+void rtl8139::out32(u16 a, u32 d) {
+  outl(m_io_base + a, d);
+}
+u8 rtl8139::in8(u16 address) {
+  return inb(m_io_base + address);
+}
+u16 rtl8139::in16(u16 address) {
+  return inw(m_io_base + address);
+}
+u32 rtl8139::in32(u16 address) {
+  return inl(m_io_base + address);
+}
 
 void rtl8139::reset(void) {
   m_rx_buffer_offset = 0;
@@ -106,15 +118,15 @@ void rtl8139::reset(void) {
   // configure rx: accept physical (MAC) match, multicast, and broadcast,
   // use the optional contiguous packet feature, the maximum dma transfer
   // size, a 32k buffer, and no fifo threshold
-  out32(REG_RXCFG, RXCFG_APM | RXCFG_AM | RXCFG_AB | RXCFG_WRAP_INHIBIT |
-                       RXCFG_MAX_DMA_UNLIMITED | RXCFG_RBLN_32K |
-                       RXCFG_FTH_NONE);
+  out32(REG_RXCFG, RXCFG_APM | RXCFG_AM | RXCFG_AB | RXCFG_WRAP_INHIBIT | RXCFG_MAX_DMA_UNLIMITED |
+                       RXCFG_RBLN_32K | RXCFG_FTH_NONE);
   // configure tx: default retry count (16), max DMA burst size of 1024
   // bytes, interframe gap time of the only allowable value. the DMA burst
   // size is important - silent failures have been observed with 2048 bytes.
   out32(REG_TXCFG, TXCFG_TXRR_ZERO | TXCFG_MAX_DMA_1K | TXCFG_IFG11);
   // tell the chip where we want it to DMA from for outgoing packets.
-  for (int i = 0; i < 4; i++) out32(REG_TXADDR0 + (i * 4), m_tx_buffer_addr[i]);
+  for (int i = 0; i < 4; i++)
+    out32(REG_TXADDR0 + (i * 4), m_tx_buffer_addr[i]);
   // re-lock config registers
   out8(REG_CFG9346, CFG9346_NONE);
   // enable rx/tx again in case they got turned off (apparently some cards
@@ -122,10 +134,8 @@ void rtl8139::reset(void) {
   out8(REG_COMMAND, COMMAND_RX_ENABLE | COMMAND_TX_ENABLE);
 
   // choose irqs, then clear any pending
-  out16(REG_IMR, INT_RXOK | INT_RXERR | INT_TXOK | INT_TXERR |
-                     INT_RX_BUFFER_OVERFLOW | INT_LINK_CHANGE |
-                     INT_RX_FIFO_OVERFLOW | INT_LENGTH_CHANGE |
-                     INT_SYSTEM_ERROR);
+  out16(REG_IMR, INT_RXOK | INT_RXERR | INT_TXOK | INT_TXERR | INT_RX_BUFFER_OVERFLOW |
+                     INT_LINK_CHANGE | INT_RX_FIFO_OVERFLOW | INT_LENGTH_CHANGE | INT_SYSTEM_ERROR);
   out16(REG_ISR, 0xffff);
 }
 
@@ -137,9 +147,8 @@ void rtl8139::handle_irq() {
     INFO(".handle_irq status=%#04x\n", status);
 
     if ((status &
-         (INT_RXOK | INT_RXERR | INT_TXOK | INT_TXERR | INT_RX_BUFFER_OVERFLOW |
-          INT_LINK_CHANGE | INT_RX_FIFO_OVERFLOW | INT_LENGTH_CHANGE |
-          INT_SYSTEM_ERROR)) == 0)
+         (INT_RXOK | INT_RXERR | INT_TXOK | INT_TXERR | INT_RX_BUFFER_OVERFLOW | INT_LINK_CHANGE |
+          INT_RX_FIFO_OVERFLOW | INT_LENGTH_CHANGE | INT_SYSTEM_ERROR)) == 0)
       break;
 
     if (status & INT_RXOK) {
@@ -178,7 +187,8 @@ void rtl8139::handle_irq() {
 }
 
 void rtl8139::read_mac_address(void) {
-  for (int i = 0; i < 6; i++) mac[i] = in8(REG_MAC + i);
+  for (int i = 0; i < 6; i++)
+    mac[i] = in8(REG_MAC + i);
 }
 
 void rtl8139::receive(void) {
@@ -187,14 +197,11 @@ void rtl8139::receive(void) {
   u16 status = *(const u16 *)(start_of_packet + 0);
   u16 length = *(const u16 *)(start_of_packet + 2);
 
-  INFO(".receive status=%04x length=%d offset=%d\n", status, length,
-       m_rx_buffer_offset);
+  INFO(".receive status=%04x length=%d offset=%d\n", status, length, m_rx_buffer_offset);
   if (!(status & RX_OK) ||
-      (status &
-       (RX_INVALID_SYMBOL_ERROR | RX_CRC_ERROR | RX_FRAME_ALIGNMENT_ERROR)) ||
+      (status & (RX_INVALID_SYMBOL_ERROR | RX_CRC_ERROR | RX_FRAME_ALIGNMENT_ERROR)) ||
       (length >= PACKET_SIZE_MAX) || (length < PACKET_SIZE_MIN)) {
-    KERR("rtl8139::receive got bad packet status=%04x length=%d\n", status,
-         length);
+    KERR("rtl8139::receive got bad packet status=%04x length=%d\n", status, length);
     reset();
     return;
   }
@@ -204,8 +211,7 @@ void rtl8139::receive(void) {
   // past the end of the alloted space.
   memcpy((u8 *)m_packet_buffer, (const u8 *)(start_of_packet + 4), length - 4);
   // let the card know that we've read this data
-  m_rx_buffer_offset =
-      ((m_rx_buffer_offset + length + 4 + 3) & ~3) % RX_BUFFER_SIZE;
+  m_rx_buffer_offset = ((m_rx_buffer_offset + length + 4 + 3) & ~3) % RX_BUFFER_SIZE;
   out16(REG_CAPR, m_rx_buffer_offset - 0x10);
   m_rx_buffer_offset %= RX_BUFFER_SIZE;
 
@@ -239,8 +245,7 @@ void rtl8139::send_raw(const void *data, int length) {
   }
 
   memcpy((void *)(p2v(m_tx_buffer_addr[hw_buffer])), data, length);
-  memset((void *)((u64)p2v(m_tx_buffer_addr[hw_buffer]) + length), 0,
-         TX_BUFFER_SIZE - length);
+  memset((void *)((u64)p2v(m_tx_buffer_addr[hw_buffer]) + length), 0, TX_BUFFER_SIZE - length);
 
   // the rtl8139 will not actually emit packets onto the network if they're
   // smaller than 64 bytes. the rtl8139 adds a checksum to the end of each

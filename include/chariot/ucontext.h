@@ -73,7 +73,7 @@ struct ucontext {
   unsigned long resv3; /* 34 */
   unsigned long resv4; /* 35 */
 
-	unsigned long fpu[32];
+  unsigned long fpu[32];
 };
 
 #endif

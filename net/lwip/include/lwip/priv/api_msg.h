@@ -57,17 +57,17 @@ extern "C" {
 
 #if LWIP_MPU_COMPATIBLE
 #if LWIP_NETCONN_SEM_PER_THREAD
-#define API_MSG_M_DEF_SEM(m)  *m
+#define API_MSG_M_DEF_SEM(m) *m
 #else
-#define API_MSG_M_DEF_SEM(m)  API_MSG_M_DEF(m)
+#define API_MSG_M_DEF_SEM(m) API_MSG_M_DEF(m)
 #endif
 #else /* LWIP_MPU_COMPATIBLE */
-#define API_MSG_M_DEF_SEM(m)  API_MSG_M_DEF(m)
+#define API_MSG_M_DEF_SEM(m) API_MSG_M_DEF(m)
 #endif /* LWIP_MPU_COMPATIBLE */
 
 /* For the netconn API, these values are use as a bitmask! */
-#define NETCONN_SHUT_RD   1
-#define NETCONN_SHUT_WR   2
+#define NETCONN_SHUT_RD 1
+#define NETCONN_SHUT_WR 2
 #define NETCONN_SHUT_RDWR (NETCONN_SHUT_RD | NETCONN_SHUT_WR)
 
 /* IP addresses and port numbers are expected to be in
@@ -120,7 +120,7 @@ struct api_msg {
       u8_t shut;
 #if LWIP_SO_SNDTIMEO || LWIP_SO_LINGER
       u32_t time_started;
-#else /* LWIP_SO_SNDTIMEO || LWIP_SO_LINGER */
+#else  /* LWIP_SO_SNDTIMEO || LWIP_SO_LINGER */
       u8_t polls_left;
 #endif /* LWIP_SO_SNDTIMEO || LWIP_SO_LINGER */
     } sd;
@@ -140,14 +140,14 @@ struct api_msg {
 #endif /* TCP_LISTEN_BACKLOG */
   } msg;
 #if LWIP_NETCONN_SEM_PER_THREAD
-  sys_sem_t* op_completed_sem;
+  sys_sem_t *op_completed_sem;
 #endif /* LWIP_NETCONN_SEM_PER_THREAD */
 };
 
 #if LWIP_NETCONN_SEM_PER_THREAD
-#define LWIP_API_MSG_SEM(msg)          ((msg)->op_completed_sem)
+#define LWIP_API_MSG_SEM(msg) ((msg)->op_completed_sem)
 #else /* LWIP_NETCONN_SEM_PER_THREAD */
-#define LWIP_API_MSG_SEM(msg)          (&(msg)->conn->op_completed)
+#define LWIP_API_MSG_SEM(msg) (&(msg)->conn->op_completed)
 #endif /* LWIP_NETCONN_SEM_PER_THREAD */
 
 
@@ -160,7 +160,7 @@ struct dns_api_msg {
   /** Hostname to query or dotted IP address string */
 #if LWIP_MPU_COMPATIBLE
   char name[DNS_MAX_NAME_LENGTH];
-#else /* LWIP_MPU_COMPATIBLE */
+#else  /* LWIP_MPU_COMPATIBLE */
   const char *name;
 #endif /* LWIP_MPU_COMPATIBLE */
   /** The resolved address is stored here */
@@ -181,21 +181,21 @@ struct dns_api_msg {
 extern u8_t netconn_aborted;
 #endif /* LWIP_TCP */
 
-void lwip_netconn_do_newconn         (void *m);
-void lwip_netconn_do_delconn         (void *m);
-void lwip_netconn_do_bind            (void *m);
-void lwip_netconn_do_connect         (void *m);
-void lwip_netconn_do_disconnect      (void *m);
-void lwip_netconn_do_listen          (void *m);
-void lwip_netconn_do_send            (void *m);
-void lwip_netconn_do_recv            (void *m);
+void lwip_netconn_do_newconn(void *m);
+void lwip_netconn_do_delconn(void *m);
+void lwip_netconn_do_bind(void *m);
+void lwip_netconn_do_connect(void *m);
+void lwip_netconn_do_disconnect(void *m);
+void lwip_netconn_do_listen(void *m);
+void lwip_netconn_do_send(void *m);
+void lwip_netconn_do_recv(void *m);
 #if TCP_LISTEN_BACKLOG
-void lwip_netconn_do_accepted        (void *m);
+void lwip_netconn_do_accepted(void *m);
 #endif /* TCP_LISTEN_BACKLOG */
-void lwip_netconn_do_write           (void *m);
-void lwip_netconn_do_getaddr         (void *m);
-void lwip_netconn_do_close           (void *m);
-void lwip_netconn_do_shutdown        (void *m);
+void lwip_netconn_do_write(void *m);
+void lwip_netconn_do_getaddr(void *m);
+void lwip_netconn_do_close(void *m);
+void lwip_netconn_do_shutdown(void *m);
 #if LWIP_IGMP || (LWIP_IPV6 && LWIP_IPV6_MLD)
 void lwip_netconn_do_join_leave_group(void *m);
 #endif /* LWIP_IGMP || (LWIP_IPV6 && LWIP_IPV6_MLD) */
@@ -204,7 +204,7 @@ void lwip_netconn_do_join_leave_group(void *m);
 void lwip_netconn_do_gethostbyname(void *arg);
 #endif /* LWIP_DNS */
 
-struct netconn* netconn_alloc(enum netconn_type t, netconn_callback callback);
+struct netconn *netconn_alloc(enum netconn_type t, netconn_callback callback);
 void netconn_free(struct netconn *conn);
 
 #ifdef __cplusplus

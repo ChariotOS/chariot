@@ -91,16 +91,23 @@ namespace gfx {
 
     inline uint32_t width(ck::string_view v) {
       uint32_t w = 0;
-      for (char c : v) w += width(c);
+      for (char c : v)
+        w += width(c);
       return w;
     }
 
 
-		inline auto &ft_face() { return this->face; }
+    inline auto &ft_face() {
+      return this->face;
+    }
 
     /* whenever you use the font, you must lock it. The font will not lock itself */
-    inline void lock(void) { m_lock.lock(); }
-    inline void unlock(void) { m_lock.unlock(); }
+    inline void lock(void) {
+      m_lock.lock();
+    }
+    inline void unlock(void) {
+      m_lock.unlock();
+    }
   };
 
 }  // namespace gfx

@@ -13,7 +13,7 @@
 
 
 static inline void arch_atomic_store(volatile int* p, int x) {
-	__atomic_store((int*)p, &x, __ATOMIC_SEQ_CST);
+  __atomic_store((int*)p, &x, __ATOMIC_SEQ_CST);
 }
 
 void spinlock::lock(void) {
@@ -29,7 +29,9 @@ void spinlock::unlock(void) {
 }
 
 
-bool spinlock::is_locked(void) { return locked; }
+bool spinlock::is_locked(void) {
+  return locked;
+}
 
 static inline bool irq_disable_save(void) {
   // preempt_disable();
@@ -59,22 +61,25 @@ bool spinlock::lock_irqsave() {
     if (cpu::current().in_sched) {
       // irq_enable_restore(en);
     }
-		arch_relax();
+    arch_relax();
   }
-	if (cpu::in_thread())
-		held_by = curthd->tid;
-	else held_by = -2;
+  if (cpu::in_thread())
+    held_by = curthd->tid;
+  else
+    held_by = -2;
   return en;
 }
 
 void spinlock::unlock_irqrestore(bool flags) {
-	held_by = 0;
+  held_by = 0;
   unlock();
   irq_enable_restore(flags);
 }
 
 
-static void spin_wait(volatile int* lock) { arch_relax(); }
+static void spin_wait(volatile int* lock) {
+  arch_relax();
+}
 void spinlock::lock(volatile int& l) {
   volatile int* lock = &l;
   while (likely(__sync_lock_test_and_set(lock, 1))) {

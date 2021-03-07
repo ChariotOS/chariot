@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
   long tc = 0;
   long tl = 0;
 
-  buf = mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+  buf = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 
   int ch;
   const char *flags = "lwcf";
@@ -123,4 +123,3 @@ int main(int argc, char **argv) {
 
   return 0;
 }
-

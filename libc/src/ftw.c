@@ -9,8 +9,7 @@
 
 #define PATH_MAX 255
 
-int ftw(const char *path, int (*fn)(const char *, const struct stat *, int),
-        int fd_limit) {
+int ftw(const char *path, int (*fn)(const char *, const struct stat *, int), int fd_limit) {
   /* The following cast assumes that calling a function with one
    * argument more than it needs behaves as expected. This is
    * actually undefined, but works on all real-world machines. */
@@ -28,9 +27,7 @@ struct history {
 #undef dirfd
 #define dirfd(d) (*(int *)d)
 
-static int do_nftw(char *path,
-                   int (*fn)(const char *, const struct stat *, int,
-                             struct FTW *),
+static int do_nftw(char *path, int (*fn)(const char *, const struct stat *, int, struct FTW *),
                    int fd_limit, int flags, struct history *h) {
   size_t l = strlen(path), j = l && path[l - 1] == '/' ? l - 1 : l;
   struct stat st;
@@ -92,8 +89,7 @@ static int do_nftw(char *path,
     if (d) {
       struct dirent *de;
       while ((de = readdir(d))) {
-        if (de->d_name[0] == '.' &&
-            (!de->d_name[1] || (de->d_name[1] == '.' && !de->d_name[2])))
+        if (de->d_name[0] == '.' && (!de->d_name[1] || (de->d_name[1] == '.' && !de->d_name[2])))
           continue;
         if (strlen(de->d_name) >= PATH_MAX - l) {
           errno = ENAMETOOLONG;
@@ -119,10 +115,9 @@ static int do_nftw(char *path,
   return 0;
 }
 
-int nftw(const char *path,
-         int (*fn)(const char *, const struct stat *, int, struct FTW *),
+int nftw(const char *path, int (*fn)(const char *, const struct stat *, int, struct FTW *),
          int fd_limit, int flags) {
-  int r; //, cs;
+  int r;  //, cs;
   size_t l;
   char pathbuf[PATH_MAX + 1];
 

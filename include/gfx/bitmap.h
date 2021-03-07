@@ -19,7 +19,7 @@ namespace gfx {
 
    public:
     bitmap(size_t w, size_t h);
-		// create with an unowned buffer (not freed)
+    // create with an unowned buffer (not freed)
     bitmap(size_t w, size_t h, uint32_t *buffer);
     virtual ~bitmap(void);
 
@@ -35,38 +35,49 @@ namespace gfx {
       m_pixels[x + y * m_width] = color;
     }
 
-		inline uint32_t *pixels(void) {return m_pixels;}
-		inline uint32_t *scanline(uint32_t y) {return  m_pixels + (y * m_width); }
+    inline uint32_t *pixels(void) {
+      return m_pixels;
+    }
+    inline uint32_t *scanline(uint32_t y) {
+      return m_pixels + (y * m_width);
+    }
 
-    inline size_t size(void) { return round_up(m_width * m_height * sizeof(uint32_t), 4096); }
+    inline size_t size(void) {
+      return round_up(m_width * m_height * sizeof(uint32_t), 4096);
+    }
 
-    inline size_t width(void) const { return m_width; }
-    inline size_t height(void) const { return m_height; }
+    inline size_t width(void) const {
+      return m_width;
+    }
+    inline size_t height(void) const {
+      return m_height;
+    }
 
     inline void clear(uint32_t c) {
-      for (size_t i = 0; i < width() * height(); i++) m_pixels[i] = c;
+      for (size_t i = 0; i < width() * height(); i++)
+        m_pixels[i] = c;
     }
 
 
 
-		enum SampleMode {
-			Nearest,
-			Bilinear,
-		};
-		ck::ref<gfx::bitmap> scale(int w, int h, gfx::bitmap::SampleMode);
-		uint32_t sample(float x, float y, gfx::bitmap::SampleMode);
+    enum SampleMode {
+      Nearest,
+      Bilinear,
+    };
+    ck::ref<gfx::bitmap> scale(int w, int h, gfx::bitmap::SampleMode);
+    uint32_t sample(float x, float y, gfx::bitmap::SampleMode);
 
 
 
-		inline gfx::rect rect(void) const {
-			return gfx::rect(0, 0, width(), height());
-		}
+    inline gfx::rect rect(void) const {
+      return gfx::rect(0, 0, width(), height());
+    }
 
 
    protected:
     bitmap(){};  // protected constructor
     size_t m_width, m_height;
-		bool m_owned = true;
+    bool m_owned = true;
     uint32_t *m_pixels = NULL;
   };
 
@@ -79,10 +90,11 @@ namespace gfx {
 
    public:
    public:
-    inline const char *shared_name(void) const { return m_name.get(); }
+    inline const char *shared_name(void) const {
+      return m_name.get();
+    }
 
-    static ck::ref<gfx::shared_bitmap> get(const char *name, size_t w,
-                                           size_t h);
+    static ck::ref<gfx::shared_bitmap> get(const char *name, size_t w, size_t h);
     shared_bitmap(size_t w, size_t h);
 
     virtual ~shared_bitmap(void);

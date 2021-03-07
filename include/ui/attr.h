@@ -12,7 +12,10 @@ namespace ui {
 
 template <>
 struct Traits<ui::attr> {
-
-  static unsigned long hash(ui::attr c) { return (unsigned long)c; }
-  static bool equals(ui::attr a, ui::attr b) { return a == b; }
+  static unsigned long hash(ui::attr c) {
+    return (unsigned long)c;
+  }
+  static bool equals(ui::attr a, ui::attr b) {
+    return a == b;
+  }
 };

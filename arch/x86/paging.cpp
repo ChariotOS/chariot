@@ -23,14 +23,14 @@ u64 *alloc_page_dir(void) {
 
   auto va = (u64 *)p2v(new_table);
 
-  for (int i = 0; i < 512; i++) va[i] = 0;
+  for (int i = 0; i < 512; i++)
+    va[i] = 0;
   return new_table;
 }
 
 static void assert_page_size_alignment(u64 addr, u64 psize, const char *str) {
   if ((addr & (psize - 1)) != 0) {
-    panic("[PAGING] address %p is not aligned correctly for %s mapping\n", addr,
-          str);
+    panic("[PAGING] address %p is not aligned correctly for %s mapping\n", addr, str);
   }
 }
 static void assert_page_alignment(u64 addr, paging::pgsize size) {
@@ -163,7 +163,9 @@ void paging::map(u64 va, u64 pa, pgsize size, u16 flags) {
   return paging::map_into(p4, va, pa, size, flags);
 }
 
-u64 paging::get_physical(u64 va) { return 0; }
+u64 paging::get_physical(u64 va) {
+  return 0;
+}
 
 static void free_p2(off_t *p2_p) {
   off_t *p2 = (off_t *)p2v(p2_p);
@@ -172,7 +174,7 @@ static void free_p2(off_t *p2_p) {
       off_t e = p2[i];
       if ((e & PTE_P) == 0) continue;
       if (e & PTE_PS) {
-        phys::free((void*)(e & ~0xFFF));
+        phys::free((void *)(e & ~0xFFF));
         continue;
       }
       phys::free((off_t *)(e & ~0xFFF));
@@ -189,7 +191,7 @@ static void free_p3(off_t *p3_p) {
 
       if ((e & PTE_P) == 0) continue;
       if (e & PTE_PS) {
-        phys::free((void*)(e & ~0xFFF));
+        phys::free((void *)(e & ~0xFFF));
         continue;
       }
 
@@ -211,4 +213,3 @@ void paging::free_table(void *cr3) {
 
   phys::free(cr3);
 }
-

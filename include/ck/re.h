@@ -5,19 +5,20 @@
 namespace ck {
 
 
-	// regular expression state
-	class re {
-  	regex_t regex;
-		bool valid = false;
-		public:
-			re();
+  // regular expression state
+  class re {
+    regex_t regex;
+    bool valid = false;
 
-			bool compile(const char *expr, int flags = REG_EXTENDED);
+   public:
+    re();
 
-			bool matches(const char *text);
+    bool compile(const char *expr, int flags = REG_EXTENDED);
 
-			static bool matches(const char *regex, const char *text);
+    bool matches(const char *text);
 
-			// bool matches(const char *text);
-	};
-}
+    static bool matches(const char *regex, const char *text);
+
+    // bool matches(const char *text);
+  };
+}  // namespace ck

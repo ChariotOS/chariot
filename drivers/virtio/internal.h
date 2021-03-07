@@ -14,7 +14,6 @@
 
 
 
-
 static inline unsigned log2_uint(unsigned val) {
   if (val == 0) return 0;  // undefined
   unsigned int count = 0;
@@ -48,5 +47,3 @@ static inline void vring_init(struct vring *vr, unsigned int num, void *p, unsig
 
 
 extern void virtio_irq_handler(int i, reg_t *r, void *data);
-
-

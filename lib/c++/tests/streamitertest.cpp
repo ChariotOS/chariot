@@ -3,19 +3,19 @@
 #include <iterator>
 
 
-int main(){
-	char buffer [100];
-	int i = 0;
-	std::istream_iterator<char> s(std::cin);
-	
-	std::cin.unsetf(std::ios::skipws);
+int main() {
+  char buffer[100];
+  int i = 0;
+  std::istream_iterator<char> s(std::cin);
 
-	while(*s != '\n' && i < 100){
-		buffer[i++] = *s++;
-	}
-	buffer[i] = '\0';
+  std::cin.unsetf(std::ios::skipws);
 
-	std::cout << "Read: " << buffer << std::endl;
+  while (*s != '\n' && i < 100) {
+    buffer[i++] = *s++;
+  }
+  buffer[i] = '\0';
 
-	return 0;
+  std::cout << "Read: " << buffer << std::endl;
+
+  return 0;
 }

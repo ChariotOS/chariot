@@ -34,14 +34,14 @@
 
 #include <ext/algorithm>
 #if __cplusplus >= 201103L
-# include <ext/aligned_buffer.h>
+#include <ext/aligned_buffer.h>
 #endif
 #include <ext/alloc_traits.h>
 #include <ext/atomicity.h>
 #include <ext/bitmap_allocator.h>
 #include <ext/cast.h>
 #if __cplusplus >= 201103L
-# include <ext/cmath>
+#include <ext/cmath>
 #endif
 #include <ext/concurrence.h>
 #include <ext/debug_allocator.h>
@@ -58,7 +58,7 @@
 #include <ext/pointer.h>
 #include <ext/pool_allocator.h>
 #if __cplusplus >= 201103L
-# include <ext/random>
+#include <ext/random>
 #endif
 #include <ext/rb_tree>
 #include <ext/rope>
@@ -78,6 +78,6 @@
 #include <ext/pb_ds/trie_policy.hpp>
 
 #ifdef _GLIBCXX_HAVE_ICONV
- #include <ext/codecvt_specializations.h>
- #include <ext/enc_filebuf.h>
+#include <ext/codecvt_specializations.h>
+#include <ext/enc_filebuf.h>
 #endif

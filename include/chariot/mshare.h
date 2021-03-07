@@ -11,13 +11,13 @@ extern "C" {
 #define MSHARE_NAMESZ 128
 
 struct mshare_create {
-	unsigned long size; // the size of the region
-	char name[MSHARE_NAMESZ]; // eventual name of the region
+  unsigned long size;        // the size of the region
+  char name[MSHARE_NAMESZ];  // eventual name of the region
 };
 
 struct mshare_acquire {
-  unsigned long size;  // How much of the region to map (can be over-mapped)
-	char name[MSHARE_NAMESZ]; // the name of the region to acquire
+  unsigned long size;        // How much of the region to map (can be over-mapped)
+  char name[MSHARE_NAMESZ];  // the name of the region to acquire
 };
 
 
@@ -25,4 +25,3 @@ struct mshare_acquire {
 #ifdef __cplusplus
 }
 #endif
-

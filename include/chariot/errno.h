@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef USERLAND
+#ifdef KERNEL
 
 #include <cpu.h>
 #define errno (curthd->kerrno)
@@ -145,4 +145,4 @@
 #define ENOTRECOVERABLE 131
 #define ERFKILL 132
 #define EHWPOISON 133
-#define ENOTIMPL  134
+#define ENOTIMPL 134

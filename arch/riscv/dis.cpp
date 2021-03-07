@@ -205,10 +205,10 @@ const char *name(uint32_t insn) {
   return "???";
 }
 
-static const char *reg_names[] = {
-    "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0",  "a1",  "a2", "a3", "a4", "a5", "a6",
-    "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6", "sepc"
-};
+static const char *reg_names[] = {"ra", "sp",  "gp",  "tp", "t0", "t1", "t2", "s0",
+                                  "s1", "a0",  "a1",  "a2", "a3", "a4", "a5", "a6",
+                                  "a7", "s2",  "s3",  "s4", "s5", "s6", "s7", "s8",
+                                  "s9", "s10", "s11", "t3", "t4", "t5", "t6", "sepc"};
 
 
 void rv::disassembler::dis(uint32_t insn) {
@@ -216,11 +216,11 @@ void rv::disassembler::dis(uint32_t insn) {
 
   union encoding e = {insn};
 
-	memset(m_op0, 0, 32);
-	memset(m_op1, 0, 32);
-	memset(m_op2, 0, 32);
+  memset(m_op0, 0, 32);
+  memset(m_op1, 0, 32);
+  memset(m_op2, 0, 32);
 
-  
+
 
   /* op 0 */
   switch (format(e.opcode)) {
@@ -255,7 +255,8 @@ void rv::disassembler::dis(uint32_t insn) {
       snprintk(m_op1, 32, "0x%x ", e.u.i31_12);
       break;
     case J:
-      snprintk(m_op1, 32, "%d ", (e.j.i20 << 20) | (e.j.i19_12 << 12) | (e.j.i11 << 11) | (e.j.i10_1 << 1));
+      snprintk(m_op1, 32, "%d ",
+               (e.j.i20 << 20) | (e.j.i19_12 << 12) | (e.j.i11 << 11) | (e.j.i10_1 << 1));
       break;
   }
 
@@ -272,7 +273,8 @@ void rv::disassembler::dis(uint32_t insn) {
       snprintk(m_op2, 32, "%d ", (e.s.i11_5 << 5) | e.s.i4_0);
       break;
     case B:
-      snprintk(m_op2, 32, "%d ", (e.b.i12 << 12) | (e.b.i11 << 11) | (e.b.i10_5 << 5) | (e.b.i4_1 << 1));
+      snprintk(m_op2, 32, "%d ",
+               (e.b.i12 << 12) | (e.b.i11 << 11) | (e.b.i10_5 << 5) | (e.b.i4_1 << 1));
       break;
     case U:
       break;

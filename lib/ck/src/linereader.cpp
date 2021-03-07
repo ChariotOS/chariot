@@ -3,7 +3,8 @@
 
 
 
-ck::linereader::linereader(ck::stream &s) : m_stream(s) {}
+ck::linereader::linereader(ck::stream &s) : m_stream(s) {
+}
 
 
 ck::option<ck::string> ck::linereader::next(void) {
@@ -11,8 +12,8 @@ ck::option<ck::string> ck::linereader::next(void) {
 
   while (!m_stream.eof()) {
     int c = m_stream.getc();
-		if (c == EOF) break;
-		if (c == '\n') break;
+    if (c == EOF) break;
+    if (c == '\n') break;
     buf.push(c);
   }
 
@@ -22,5 +23,5 @@ ck::option<ck::string> ck::linereader::next(void) {
 ck::option<ck::string> ck::linereader::next(const ck::string &prompt) {
   printf("%s", prompt.get());
   fflush(::stdout);
-	return next();
+  return next();
 }

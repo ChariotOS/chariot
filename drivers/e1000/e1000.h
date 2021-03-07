@@ -46,28 +46,29 @@ struct rx_desc {
   volatile uint16_t special;
 } __attribute__((packed)); /* this looks like it should pack fine as-is */
 
-#define RCTL_EN (1 << 1)	    /* Receiver Enable */
-#define RCTL_SBP (1 << 2)	    /* Store Bad Packets */
-#define RCTL_UPE (1 << 3)	    /* Unicast Promiscuous Enabled */
-#define RCTL_MPE (1 << 4)	    /* Multicast Promiscuous Enabled */
-#define RCTL_LPE (1 << 5)	    /* Long Packet Reception Enable */
-#define RCTL_LBM_NONE (0 << 6)	    /* No Loopback */
-#define RCTL_LBM_PHY (3 << 6)	    /* PHY or external SerDesc loopback */
-#define RTCL_RDMTS_HALF (0 << 8)    /* Free Buffer Threshold is 1/2 of RDLEN */
-#define RTCL_RDMTS_QUARTER (1 << 8) /* Free Buffer Threshold is 1/4 of RDLEN \
-				     */
-#define RTCL_RDMTS_EIGHTH (2 << 8)  /* Free Buffer Threshold is 1/8 of RDLEN */
-#define RCTL_MO_36 (0 << 12)	    /* Multicast Offset - bits 47:36 */
-#define RCTL_MO_35 (1 << 12)	    /* Multicast Offset - bits 46:35 */
-#define RCTL_MO_34 (2 << 12)	    /* Multicast Offset - bits 45:34 */
-#define RCTL_MO_32 (3 << 12)	    /* Multicast Offset - bits 43:32 */
-#define RCTL_BAM (1 << 15)	    /* Broadcast Accept Mode */
-#define RCTL_VFE (1 << 18)	    /* VLAN Filter Enable */
-#define RCTL_CFIEN (1 << 19)	    /* Canonical Form Indicator Enable */
-#define RCTL_CFI (1 << 20)	    /* Canonical Form Indicator Bit Value */
-#define RCTL_DPF (1 << 22)	    /* Discard Pause Frames */
-#define RCTL_PMCF (1 << 23)	    /* Pass MAC Control Frames */
-#define RCTL_SECRC (1 << 26)	    /* Strip Ethernet CRC */
+#define RCTL_EN (1 << 1)         /* Receiver Enable */
+#define RCTL_SBP (1 << 2)        /* Store Bad Packets */
+#define RCTL_UPE (1 << 3)        /* Unicast Promiscuous Enabled */
+#define RCTL_MPE (1 << 4)        /* Multicast Promiscuous Enabled */
+#define RCTL_LPE (1 << 5)        /* Long Packet Reception Enable */
+#define RCTL_LBM_NONE (0 << 6)   /* No Loopback */
+#define RCTL_LBM_PHY (3 << 6)    /* PHY or external SerDesc loopback */
+#define RTCL_RDMTS_HALF (0 << 8) /* Free Buffer Threshold is 1/2 of RDLEN */
+#define RTCL_RDMTS_QUARTER                                                  \
+  (1 << 8)                         /* Free Buffer Threshold is 1/4 of RDLEN \
+                                    */
+#define RTCL_RDMTS_EIGHTH (2 << 8) /* Free Buffer Threshold is 1/8 of RDLEN */
+#define RCTL_MO_36 (0 << 12)       /* Multicast Offset - bits 47:36 */
+#define RCTL_MO_35 (1 << 12)       /* Multicast Offset - bits 46:35 */
+#define RCTL_MO_34 (2 << 12)       /* Multicast Offset - bits 45:34 */
+#define RCTL_MO_32 (3 << 12)       /* Multicast Offset - bits 43:32 */
+#define RCTL_BAM (1 << 15)         /* Broadcast Accept Mode */
+#define RCTL_VFE (1 << 18)         /* VLAN Filter Enable */
+#define RCTL_CFIEN (1 << 19)       /* Canonical Form Indicator Enable */
+#define RCTL_CFI (1 << 20)         /* Canonical Form Indicator Bit Value */
+#define RCTL_DPF (1 << 22)         /* Discard Pause Frames */
+#define RCTL_PMCF (1 << 23)        /* Pass MAC Control Frames */
+#define RCTL_SECRC (1 << 26)       /* Strip Ethernet CRC */
 
 #define RCTL_BSIZE_256 (3 << 16)
 #define RCTL_BSIZE_512 (2 << 16)
@@ -79,15 +80,15 @@ struct rx_desc {
 
 #define TCTL_EN (1 << 1)      /* Transmit Enable */
 #define TCTL_PSP (1 << 3)     /* Pad Short Packets */
-#define TCTL_CT_SHIFT 4	      /* Collision Threshold */
+#define TCTL_CT_SHIFT 4       /* Collision Threshold */
 #define TCTL_COLD_SHIFT 12    /* Collision Distance */
 #define TCTL_SWXOFF (1 << 22) /* Software XOFF Transmission */
 #define TCTL_RTLC (1 << 24)   /* Re-transmit on Late Collision */
 
 #define CMD_EOP (1 << 0)  /* End of Packet */
 #define CMD_IFCS (1 << 1) /* Insert FCS */
-#define CMD_IC (1 << 2)	  /* Insert Checksum */
-#define CMD_RS (1 << 3)	  /* Report Status */
+#define CMD_IC (1 << 2)   /* Insert Checksum */
+#define CMD_RS (1 << 3)   /* Report Status */
 #define CMD_RPS (1 << 4)  /* Report Packet Sent */
 #define CMD_VLE (1 << 6)  /* VLAN Packet Enable */
 #define CMD_IDE (1 << 7)  /* Interrupt Delay Enable */
@@ -110,8 +111,7 @@ struct rx_desc {
 #define E1000_ICR_MSG_ACK "Receive Ack frame"
 #define E1000_ICR_MSG_MNG "Manageability event"
 #define E1000_ICR_MSG_DOCK "Dock/Undock"
-#define E1000_ICR_MSG_INT_ASSERTED \
-  "If this bit asserted, the driver should claim the interrupt"
+#define E1000_ICR_MSG_INT_ASSERTED "If this bit asserted, the driver should claim the interrupt"
 
 /* Interrupt Cause Read */
 #define E1000_ICR_TXDW 0x00000001    /* Transmit desc written back */
@@ -134,23 +134,16 @@ struct rx_desc {
 #define E1000_ICR_DOCK 0x00080000 /* Dock/Undock */
 #define E1000_ICR_INT_ASSERTED \
   0x80000000 /* If this bit asserted, the driver should claim the interrupt */
-#define E1000_ICR_RXD_FIFO_PAR0 \
-  0x00100000 /* queue 0 Rx descriptor FIFO parity error */
-#define E1000_ICR_TXD_FIFO_PAR0 \
-  0x00200000 /* queue 0 Tx descriptor FIFO parity error */
-#define E1000_ICR_HOST_ARB_PAR \
-  0x00400000			    /* host arb read buffer parity error */
-#define E1000_ICR_PB_PAR 0x00800000 /* packet buffer parity error */
-#define E1000_ICR_RXD_FIFO_PAR1 \
-  0x01000000 /* queue 1 Rx descriptor FIFO parity error */
-#define E1000_ICR_TXD_FIFO_PAR1 \
-  0x02000000 /* queue 1 Tx descriptor FIFO parity error */
-#define E1000_ICR_ALL_PARITY 0x03F00000 /* all parity error bits */
-#define E1000_ICR_DSW \
-  0x00000020 /* FW changed the status of DISSW bit in the FWSM */
-#define E1000_ICR_PHYINT \
-  0x00001000 /* LAN connected device generates an interrupt */
-#define E1000_ICR_EPRST 0x00100000 /* ME hardware reset occurs */
+#define E1000_ICR_RXD_FIFO_PAR0 0x00100000 /* queue 0 Rx descriptor FIFO parity error */
+#define E1000_ICR_TXD_FIFO_PAR0 0x00200000 /* queue 0 Tx descriptor FIFO parity error */
+#define E1000_ICR_HOST_ARB_PAR 0x00400000  /* host arb read buffer parity error */
+#define E1000_ICR_PB_PAR 0x00800000        /* packet buffer parity error */
+#define E1000_ICR_RXD_FIFO_PAR1 0x01000000 /* queue 1 Rx descriptor FIFO parity error */
+#define E1000_ICR_TXD_FIFO_PAR1 0x02000000 /* queue 1 Tx descriptor FIFO parity error */
+#define E1000_ICR_ALL_PARITY 0x03F00000    /* all parity error bits */
+#define E1000_ICR_DSW 0x00000020           /* FW changed the status of DISSW bit in the FWSM */
+#define E1000_ICR_PHYINT 0x00001000        /* LAN connected device generates an interrupt */
+#define E1000_ICR_EPRST 0x00100000         /* ME hardware reset occurs */
 
 /* Registers */
 #define E1000_CTL (0x0000)   /* Device Control Register - RW */
@@ -184,8 +177,8 @@ struct rx_desc {
 #define E1000_CTL_RST 0x00400000     /* full reset */
 
 /* EEPROM */
-#define E1000_EERD_ADDR 8	 /* num of bit shifts to get to addr section */
-#define E1000_EERD_DATA 16	 /* num of bit shifts to get to data section */
+#define E1000_EERD_ADDR 8        /* num of bit shifts to get to addr section */
+#define E1000_EERD_DATA 16       /* num of bit shifts to get to data section */
 #define E1000_EERD_READ (1 << 0) /* 0th bit */
 #define E1000_EERD_DONE (1 << 4) /* 4th bit */
 
@@ -205,53 +198,53 @@ struct rx_desc {
 #define E1000_TCTL_MULR 0x10000000   /* Multiple request support */
 
 /* Receive Control */
-#define E1000_RCTL_RST 0x00000001	  /* Software reset */
-#define E1000_RCTL_EN 0x00000002	  /* enable */
-#define E1000_RCTL_SBP 0x00000004	  /* store bad packet */
-#define E1000_RCTL_UPE 0x00000008	  /* unicast promiscuous enable */
-#define E1000_RCTL_MPE 0x00000010	  /* multicast promiscuous enab */
-#define E1000_RCTL_LPE 0x00000020	  /* long packet enable */
-#define E1000_RCTL_LBM_NO 0x00000000	  /* no loopback mode */
-#define E1000_RCTL_LBM_MAC 0x00000040	  /* MAC loopback mode */
-#define E1000_RCTL_LBM_SLP 0x00000080	  /* serial link loopback mode */
-#define E1000_RCTL_LBM_TCVR 0x000000C0	  /* tcvr loopback mode */
-#define E1000_RCTL_DTYP_MASK 0x00000C00	  /* Descriptor type mask */
-#define E1000_RCTL_DTYP_PS 0x00000400	  /* Packet Split descriptor */
+#define E1000_RCTL_RST 0x00000001         /* Software reset */
+#define E1000_RCTL_EN 0x00000002          /* enable */
+#define E1000_RCTL_SBP 0x00000004         /* store bad packet */
+#define E1000_RCTL_UPE 0x00000008         /* unicast promiscuous enable */
+#define E1000_RCTL_MPE 0x00000010         /* multicast promiscuous enab */
+#define E1000_RCTL_LPE 0x00000020         /* long packet enable */
+#define E1000_RCTL_LBM_NO 0x00000000      /* no loopback mode */
+#define E1000_RCTL_LBM_MAC 0x00000040     /* MAC loopback mode */
+#define E1000_RCTL_LBM_SLP 0x00000080     /* serial link loopback mode */
+#define E1000_RCTL_LBM_TCVR 0x000000C0    /* tcvr loopback mode */
+#define E1000_RCTL_DTYP_MASK 0x00000C00   /* Descriptor type mask */
+#define E1000_RCTL_DTYP_PS 0x00000400     /* Packet Split descriptor */
 #define E1000_RCTL_RDMTS_HALF 0x00000000  /* rx desc min threshold size */
 #define E1000_RCTL_RDMTS_QUAT 0x00000100  /* rx desc min threshold size */
 #define E1000_RCTL_RDMTS_EIGTH 0x00000200 /* rx desc min threshold size */
-#define E1000_RCTL_MO_SHIFT 12		  /* multicast offset shift */
-#define E1000_RCTL_MO_0 0x00000000	  /* multicast offset 11:0 */
-#define E1000_RCTL_MO_1 0x00001000	  /* multicast offset 12:1 */
-#define E1000_RCTL_MO_2 0x00002000	  /* multicast offset 13:2 */
-#define E1000_RCTL_MO_3 0x00003000	  /* multicast offset 15:4 */
-#define E1000_RCTL_MDR 0x00004000	  /* multicast desc ring 0 */
-#define E1000_RCTL_BAM 0x00008000	  /* broadcast enable */
+#define E1000_RCTL_MO_SHIFT 12            /* multicast offset shift */
+#define E1000_RCTL_MO_0 0x00000000        /* multicast offset 11:0 */
+#define E1000_RCTL_MO_1 0x00001000        /* multicast offset 12:1 */
+#define E1000_RCTL_MO_2 0x00002000        /* multicast offset 13:2 */
+#define E1000_RCTL_MO_3 0x00003000        /* multicast offset 15:4 */
+#define E1000_RCTL_MDR 0x00004000         /* multicast desc ring 0 */
+#define E1000_RCTL_BAM 0x00008000         /* broadcast enable */
 /* these buffer sizes are valid if E1000_RCTL_BSEX is 0 */
 #define E1000_RCTL_SZ_2048 0x00000000 /* rx buffer size 2048 */
 #define E1000_RCTL_SZ_1024 0x00010000 /* rx buffer size 1024 */
 #define E1000_RCTL_SZ_512 0x00020000  /* rx buffer size 512 */
 #define E1000_RCTL_SZ_256 0x00030000  /* rx buffer size 256 */
 /* these buffer sizes are valid if E1000_RCTL_BSEX is 1 */
-#define E1000_RCTL_SZ_16384 0x00010000	  /* rx buffer size 16384 */
-#define E1000_RCTL_SZ_8192 0x00020000	  /* rx buffer size 8192 */
-#define E1000_RCTL_SZ_4096 0x00030000	  /* rx buffer size 4096 */
-#define E1000_RCTL_VFE 0x00040000	  /* vlan filter enable */
-#define E1000_RCTL_CFIEN 0x00080000	  /* canonical form enable */
-#define E1000_RCTL_CFI 0x00100000	  /* canonical form indicator */
-#define E1000_RCTL_DPF 0x00400000	  /* discard pause frames */
-#define E1000_RCTL_PMCF 0x00800000	  /* pass MAC control frames */
-#define E1000_RCTL_BSEX 0x02000000	  /* Buffer size extension */
-#define E1000_RCTL_SECRC 0x04000000	  /* Strip Ethernet CRC */
+#define E1000_RCTL_SZ_16384 0x00010000    /* rx buffer size 16384 */
+#define E1000_RCTL_SZ_8192 0x00020000     /* rx buffer size 8192 */
+#define E1000_RCTL_SZ_4096 0x00030000     /* rx buffer size 4096 */
+#define E1000_RCTL_VFE 0x00040000         /* vlan filter enable */
+#define E1000_RCTL_CFIEN 0x00080000       /* canonical form enable */
+#define E1000_RCTL_CFI 0x00100000         /* canonical form indicator */
+#define E1000_RCTL_DPF 0x00400000         /* discard pause frames */
+#define E1000_RCTL_PMCF 0x00800000        /* pass MAC control frames */
+#define E1000_RCTL_BSEX 0x02000000        /* Buffer size extension */
+#define E1000_RCTL_SECRC 0x04000000       /* Strip Ethernet CRC */
 #define E1000_RCTL_FLXBUF_MASK 0x78000000 /* Flexible buffer size */
-#define E1000_RCTL_FLXBUF_SHIFT 27	  /* Flexible buffer shift */
+#define E1000_RCTL_FLXBUF_SHIFT 27        /* Flexible buffer shift */
 
 #define DATA_MAX 1518
 
 /* Transmit Descriptor command definitions [E1000 3.3.3.1] */
-#define E1000_TXD_CMD_EOP 0x01	/* End of Packet */
+#define E1000_TXD_CMD_EOP 0x01  /* End of Packet */
 #define E1000_TXD_CMD_IFCS 0x02 /* Insert FCS (Ethernet CRC) */
-#define E1000_TXD_CMD_RS 0x08	/* Report Status */
+#define E1000_TXD_CMD_RS 0x08   /* Report Status */
 #define E1000_TXD_CMD_DEXT 0x20 /* Descriptor extension (0 = legacy) */
 
 /* Transmit Descriptor status definitions [E1000 3.3.3.2] */

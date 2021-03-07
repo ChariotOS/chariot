@@ -15,7 +15,9 @@ net::pkt_buff::pkt_buff(void *data, size_t size) {
   memcpy(buffer, data, size);
 }
 
-net::eth::hdr *net::pkt_buff::eth(void) { return (net::eth::hdr *)buffer; }
+net::eth::hdr *net::pkt_buff::eth(void) {
+  return (net::eth::hdr *)buffer;
+}
 
 net::ipv4::hdr *net::pkt_buff::iph(void) {
   auto *eth = this->eth();
@@ -29,14 +31,18 @@ net::arp::hdr *net::pkt_buff::arph(void) {
   return NULL;
 }
 
-net::pkt_buff::~pkt_buff() { phys::kfree(buffer, 1); }
+net::pkt_buff::~pkt_buff() {
+  phys::kfree(buffer, 1);
+}
 
 net::pkt_builder::pkt_builder(void) {
   // 1 page (much less than 1500 MTU)
   buffer = phys::kalloc(1);
 }
 
-net::pkt_builder::~pkt_builder(void) { phys::kfree(buffer, 1); }
+net::pkt_builder::~pkt_builder(void) {
+  phys::kfree(buffer, 1);
+}
 
 int net::pkt_builder::append(void *data, int len) {
   if (length + len > 4096) {

@@ -231,8 +231,7 @@ extern ssize_t zip_entry_read(struct zip_t *zip, void **buf, size_t *bufsize);
  * @return the return code - the number of bytes actually read on success.
  *         Otherwise a -1 on error (e.g. bufsize is not large enough).
  */
-extern ssize_t zip_entry_noallocread(struct zip_t *zip, void *buf,
-                                     size_t bufsize);
+extern ssize_t zip_entry_noallocread(struct zip_t *zip, void *buf, size_t bufsize);
 
 /**
  * Extracts the current zip entry into output file.
@@ -254,11 +253,10 @@ extern int zip_entry_fread(struct zip_t *zip, const char *filename);
  *
  * @return the return code - 0 on success, negative number (< 0) on error.
  */
-extern int
-zip_entry_extract(struct zip_t *zip,
-                  size_t (*on_extract)(void *arg, unsigned long long offset,
-                                       const void *data, size_t size),
-                  void *arg);
+extern int zip_entry_extract(struct zip_t *zip,
+                             size_t (*on_extract)(void *arg, unsigned long long offset,
+                                                  const void *data, size_t size),
+                             void *arg);
 
 /**
  * Returns the number of all entries (files and directories) in the zip archive.
@@ -298,8 +296,7 @@ extern int zip_create(const char *zipname, const char *filenames[], size_t len);
  * @return the return code - 0 on success, negative number (< 0) on error.
  */
 extern int zip_extract(const char *zipname, const char *dir,
-                       int (*on_extract_entry)(const char *filename, void *arg),
-                       void *arg);
+                       int (*on_extract_entry)(const char *filename, void *arg), void *arg);
 
 /**
  * Extracts a zip archive stream into directory.
@@ -319,9 +316,7 @@ extern int zip_extract(const char *zipname, const char *dir,
  * @return the return code - 0 on success, negative number (< 0) on error.
  */
 extern int zip_extract_stream(const char *stream, size_t size, const char *dir,
-                              int (*on_extract)(const char *filename,
-                                                void *arg),
-                              void *arg);
+                              int (*on_extract)(const char *filename, void *arg), void *arg);
 
 /**
  * Opens zip archive stream into memory.
@@ -341,8 +336,7 @@ extern struct zip_t *zip_open_stream(const char *stream, size_t size);
  * @param len the number of entries to be deleted.
  * @return the number of deleted entries, or negative number (< 0) on error.
  */
-extern int zip_entries_delete(struct zip_t *zip, char *const entries[],
-                              size_t len);
+extern int zip_entries_delete(struct zip_t *zip, char *const entries[], size_t len);
 /** @} */
 #ifdef __cplusplus
 }

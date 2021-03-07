@@ -72,7 +72,7 @@ do
 					--enable-win32=no --enable-quartz-font=no               \
 					--enable-quartz=no --enable-xlib-xrender=no --enable-xlib=no \
 					--enable-ft-font=no                                                \
-					"CFLAGS=-I$ROOT/include -fno-stack-protector -DUSERLAND -nostdlib -s " \
+					"CFLAGS=-I$ROOT/include -fno-stack-protector -nostdlib -s " \
 					"CXXFLAGS=-I$ROOT/include -fno-stack-protector -DUSERLAND -nostdlib -s "
 			
 

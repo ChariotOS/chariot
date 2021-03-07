@@ -8,7 +8,8 @@ unsigned int getsize(const char *in) {
   unsigned int j;
   unsigned int count = 1;
 
-  for (j = 11; j > 0; j--, count *= 8) size += ((in[j - 1] - '0') * count);
+  for (j = 11; j > 0; j--, count *= 8)
+    size += ((in[j - 1] - '0') * count);
 
   return size;
 }
@@ -24,9 +25,12 @@ struct tar_header {
   char typeflag[1];
 
 
-  unsigned int getsize() { return ::getsize(size); }
-  inline char *content(void) { return (char *)this + 512; }
-
+  unsigned int getsize() {
+    return ::getsize(size);
+  }
+  inline char *content(void) {
+    return (char *)this + 512;
+  }
 };
 
 

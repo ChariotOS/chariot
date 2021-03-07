@@ -204,8 +204,7 @@ void D_Display(void) {
       if (!gametic) break;
       if (automapactive) AM_Drawer();
       if (wipe || (viewheight != 200 && fullscreen)) redrawsbar = true;
-      if (inhelpscreensstate && !inhelpscreens)
-        redrawsbar = true;  // just put away the help screen
+      if (inhelpscreensstate && !inhelpscreens) redrawsbar = true;  // just put away the help screen
       ST_Drawer(viewheight == 200, redrawsbar);
       fullscreen = viewheight == 200;
       break;
@@ -460,7 +459,9 @@ void D_PageDrawer(void) {
 // D_AdvanceDemo
 // Called after each demo or intro demosequence finishes
 //
-void D_AdvanceDemo(void) { advancedemo = true; }
+void D_AdvanceDemo(void) {
+  advancedemo = true;
+}
 
 
 //
@@ -538,8 +539,7 @@ void D_DoAdvanceDemo(void) {
 
   // The Doom 3: BFG Edition version of doom2.wad does not have a
   // TITLETPIC lump. Use INTERPIC instead as a workaround.
-  if (bfgedition && !strcasecmp(pagename, "TITLEPIC") &&
-      W_CheckNumForName("titlepic") < 0) {
+  if (bfgedition && !strcasecmp(pagename, "TITLEPIC") && W_CheckNumForName("titlepic") < 0) {
     pagename = DEH_String("INTERPIC");
   }
 }
@@ -616,15 +616,13 @@ static char *GetGameName(char *gamename) {
       gamename_size = strlen(deh_sub) + 10;
       gamename = Z_Malloc(gamename_size, PU_STATIC, 0);
       version = G_VanillaVersionCode();
-      M_snprintf(gamename, gamename_size, deh_sub, version / 100,
-                 version % 100);
+      M_snprintf(gamename, gamename_size, deh_sub, version / 100, version % 100);
 
       while (gamename[0] != '\0' && isspace((int)gamename[0])) {
         memmove(gamename, gamename + 1, gamename_size - 1);
       }
 
-      while (gamename[0] != '\0' &&
-             isspace((int)gamename[strlen(gamename) - 1])) {
+      while (gamename[0] != '\0' && isspace((int)gamename[strlen(gamename) - 1])) {
         gamename[strlen(gamename) - 1] = '\0';
       }
 
@@ -881,8 +879,7 @@ static void InitGameVersion(void) {
       printf("Supported game versions:\n");
 
       for (i = 0; gameversions[i].description != NULL; ++i) {
-        printf("\t%s (%s)\n", gameversions[i].cmdline,
-               gameversions[i].description);
+        printf("\t%s (%s)\n", gameversions[i].cmdline, gameversions[i].description);
       }
 
       I_Error("Unknown game version '%s'", myargv[p + 1]);
@@ -958,8 +955,7 @@ static void D_Endoom(void) {
   // in screensaver or control test mode. Only show it once the
   // game has actually started.
 
-  if (!show_endoom || !main_loop_started || screensaver_mode ||
-      M_CheckParm("-testcontrols") > 0) {
+  if (!show_endoom || !main_loop_started || screensaver_mode || M_CheckParm("-testcontrols") > 0) {
     return;
   }
 
@@ -1348,8 +1344,7 @@ void D_DoomMain(void) {
     }
 
     if (D_AddFile(file)) {
-      M_StringCopy(demolumpname, lumpinfo[numlumps - 1].name,
-                   sizeof(demolumpname));
+      M_StringCopy(demolumpname, lumpinfo[numlumps - 1].name, sizeof(demolumpname));
     } else {
       // If file failed to load, still continue trying to play
       // the demo in the same way as Vanilla Doom.  This makes
@@ -1408,11 +1403,9 @@ void D_DoomMain(void) {
   if (modifiedgame) {
     // These are the lumps that will be checked in IWAD,
     // if any one is not present, execution will be aborted.
-    char name[23][8] = {"e2m1",   "e2m2",   "e2m3",    "e2m4",   "e2m5",
-                        "e2m6",   "e2m7",   "e2m8",    "e2m9",   "e3m1",
-                        "e3m3",   "e3m3",   "e3m4",    "e3m5",   "e3m6",
-                        "e3m7",   "e3m8",   "e3m9",    "dphoof", "bfgga0",
-                        "heada1", "cybra1", "spida1d1"};
+    char name[23][8] = {"e2m1", "e2m2", "e2m3",   "e2m4",   "e2m5",   "e2m6",   "e2m7",    "e2m8",
+                        "e2m9", "e3m1", "e3m3",   "e3m3",   "e3m4",   "e3m5",   "e3m6",    "e3m7",
+                        "e3m8", "e3m9", "dphoof", "bfgga0", "heada1", "cybra1", "spida1d1"};
     int i;
 
     if (gamemode == shareware)
@@ -1615,8 +1608,7 @@ void D_DoomMain(void) {
   // Moved this here so that MAP01 isn't constantly looked up
   // in the main loop.
 
-  if (gamemode == commercial && W_CheckNumForName("map01") < 0)
-    storedemo = true;
+  if (gamemode == commercial && W_CheckNumForName("map01") < 0) storedemo = true;
 
   if (M_CheckParmWithArgs("-statdump", 1)) {
     I_AtExit(StatDump, true);
@@ -1665,4 +1657,3 @@ void D_DoomMain(void) {
 
   D_DoomLoop();  // never returns
 }
-

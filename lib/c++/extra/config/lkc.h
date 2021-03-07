@@ -13,10 +13,10 @@ extern "C" {
 #endif
 
 #ifdef LKC_DIRECT_LINK
-#define P(name,type,arg)	extern type name arg
+#define P(name, type, arg) extern type name arg
 #else
 #include "lkc_defs.h"
-#define P(name,type,arg)	extern type (*name ## _p) arg
+#define P(name, type, arg) extern type(*name##_p) arg
 #endif
 #include "lkc_proto.h"
 #undef P
@@ -50,7 +50,8 @@ void menu_end_menu(void);
 void menu_add_entry(struct symbol *sym);
 void menu_end_entry(void);
 void menu_add_dep(struct expr *dep);
-struct property *menu_add_prop(enum prop_type type, char *prompt, struct expr *expr, struct expr *dep);
+struct property *menu_add_prop(enum prop_type type, char *prompt, struct expr *expr,
+                               struct expr *dep);
 void menu_add_prompt(enum prop_type type, char *prompt, struct expr *dep);
 void menu_add_expr(enum prop_type type, struct expr *expr, struct expr *dep);
 void menu_add_symbol(enum prop_type type, struct symbol *sym, struct expr *dep);
@@ -70,40 +71,33 @@ struct symbol *sym_check_deps(struct symbol *sym);
 struct property *prop_alloc(enum prop_type type, struct symbol *sym);
 struct symbol *prop_get_symbol(struct property *prop);
 
-static inline tristate sym_get_tristate_value(struct symbol *sym)
-{
-	return sym->curr.tri;
+static inline tristate sym_get_tristate_value(struct symbol *sym) {
+  return sym->curr.tri;
 }
 
 
-static inline struct symbol *sym_get_choice_value(struct symbol *sym)
-{
-	return (struct symbol *)sym->curr.val;
+static inline struct symbol *sym_get_choice_value(struct symbol *sym) {
+  return (struct symbol *)sym->curr.val;
 }
 
-static inline bool sym_set_choice_value(struct symbol *ch, struct symbol *chval)
-{
-	return sym_set_tristate_value(chval, yes);
+static inline bool sym_set_choice_value(struct symbol *ch, struct symbol *chval) {
+  return sym_set_tristate_value(chval, yes);
 }
 
-static inline bool sym_is_choice(struct symbol *sym)
-{
-	return sym->flags & SYMBOL_CHOICE ? true : false;
+static inline bool sym_is_choice(struct symbol *sym) {
+  return sym->flags & SYMBOL_CHOICE ? true : false;
 }
 
-static inline bool sym_is_choice_value(struct symbol *sym)
-{
-	return sym->flags & SYMBOL_CHOICEVAL ? true : false;
+static inline bool sym_is_choice_value(struct symbol *sym) {
+  return sym->flags & SYMBOL_CHOICEVAL ? true : false;
 }
 
-static inline bool sym_is_optional(struct symbol *sym)
-{
-	return sym->flags & SYMBOL_OPTIONAL ? true : false;
+static inline bool sym_is_optional(struct symbol *sym) {
+  return sym->flags & SYMBOL_OPTIONAL ? true : false;
 }
 
-static inline bool sym_has_value(struct symbol *sym)
-{
-	return sym->flags & SYMBOL_NEW ? false : true;
+static inline bool sym_has_value(struct symbol *sym) {
+  return sym->flags & SYMBOL_NEW ? false : true;
 }
 
 #ifdef __cplusplus

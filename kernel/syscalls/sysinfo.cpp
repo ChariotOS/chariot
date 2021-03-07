@@ -10,7 +10,7 @@ int sys::sysinfo(struct sysinfo *u_info) {
     return -EINVAL;
   }
 
-	// struct sysinfo i;
+  // struct sysinfo i;
 
 
   return 0;

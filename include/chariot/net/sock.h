@@ -65,7 +65,9 @@ namespace net {
     sock(int domain, int type, int proto);
     virtual ~sock(void);
 
-    inline virtual int poll(fs::file &f, int events, poll_table &pt) { return 0; }
+    inline virtual int poll(fs::file &f, int events, poll_table &pt) {
+      return 0;
+    }
 
     template <typename T>
     T *&priv(void) {
@@ -86,7 +88,8 @@ namespace net {
 
     // implemented by the network layer (OSI)
     virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
-    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *,
+                             size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
@@ -106,7 +109,8 @@ namespace net {
 
     // implemented by the network layer (OSI)
     virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
-    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *,
+                             size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
@@ -154,7 +158,8 @@ namespace net {
 
     // implemented by the network layer (OSI)
     virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
-    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *,
+                             size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
@@ -183,7 +188,8 @@ namespace net {
 
 
 #ifdef CONFIG_LWIP
-  /* A generic LWIP socket binding. This ties into the socket api. The implementation is in /net/lwip/api/sockets.cpp */
+  /* A generic LWIP socket binding. This ties into the socket api. The implementation is in
+   * /net/lwip/api/sockets.cpp */
   struct ip4sock : public net::sock {
    private:
     /* The socket binding */
@@ -201,7 +207,8 @@ namespace net {
 
     // implemented by the network layer (OSI)
     virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
-    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *,
+                             size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 

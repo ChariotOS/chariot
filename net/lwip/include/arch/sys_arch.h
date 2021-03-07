@@ -11,19 +11,19 @@
 typedef int sys_thread_t;
 // typedef struct nk_msg_queue sys_mbox;
 
-typedef struct{
-	int locked;
-	int valid;
+typedef struct {
+  int locked;
+  int valid;
 } sys_mutex_t;
 
 typedef struct {
-	int valid;
-	semaphore *sem;
+  int valid;
+  semaphore *sem;
 } sys_sem_t;
 
 
 typedef struct {
-	chan<void *> *ch;
+  chan<void *> *ch;
 } sys_mbox_t;
 
 #endif

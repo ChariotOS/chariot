@@ -7,7 +7,9 @@
 volatile int ready = 0;
 
 
-static void sigusr1(int i) { ready = 1; }
+static void sigusr1(int i) {
+  ready = 1;
+}
 
 int main() {
   pid_t parent = getpid();
@@ -23,7 +25,8 @@ int main() {
     }
   }
 
-  while (!ready) sched_yield();
+  while (!ready)
+    sched_yield();
   kill(pid, SIGKILL);
 
   int status = 0;

@@ -426,37 +426,33 @@ class xhci /* TODO: bus subsystem? */ {
   xhci(pci::device *dev);
   ~xhci(void);
 
-	/* Don't write, please :) */
-	bool initialized = false;
+  /* Don't write, please :) */
+  bool initialized = false;
 
  private:
   spinlock lock;
   pci::device *dev = NULL;
 
 
-	int irq;
+  int irq;
   volatile struct xhci_regs *regs;
   uint32_t cap_register_offset;
   uint32_t op_register_offset;
 
-	semaphore cmd_complete;
-	semaphore finish_transfers;
-	semaphore event;
+  semaphore cmd_complete;
+  semaphore finish_transfers;
+  semaphore event;
 
-	bool context_size_shift;
+  bool context_size_shift;
 
-	uint32_t read_cap_reg32(uint32_t reg);
-	void write_cap_reg32(uint32_t reg, uint32_t val);
+  uint32_t read_cap_reg32(uint32_t reg);
+  void write_cap_reg32(uint32_t reg, uint32_t val);
 
-	uint32_t read_op_reg32(uint32_t reg);
-	void write_op_reg32(uint32_t reg, uint32_t val);
+  uint32_t read_op_reg32(uint32_t reg);
+  void write_op_reg32(uint32_t reg, uint32_t val);
 
-	bool controller_halt(void);
-	bool controller_reset(void);
+  bool controller_halt(void);
+  bool controller_reset(void);
 
-	bool wait_op_bits(uint32_t reg, uint32_t mask, uint32_t expected);
-
-
-
-
+  bool wait_op_bits(uint32_t reg, uint32_t mask, uint32_t expected);
 };

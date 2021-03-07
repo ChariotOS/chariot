@@ -19,7 +19,6 @@
 
 
 
-
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,7 +37,7 @@
 #include "w_wad.h"
 
 
-void I_EndRead (void);
+void I_EndRead(void);
 
 typedef struct {
   // Should be "IWAD" or "PWAD".
@@ -229,7 +228,9 @@ wad_file_t *W_AddFile(char *filename) {
 //
 // W_NumLumps
 //
-int W_NumLumps(void) { return numlumps; }
+int W_NumLumps(void) {
+  return numlumps;
+}
 
 
 
@@ -418,7 +419,9 @@ void W_ReleaseLumpNum(int lumpnum) {
   }
 }
 
-void W_ReleaseLumpName(char *name) { W_ReleaseLumpNum(W_GetNumForName(name)); }
+void W_ReleaseLumpName(char *name) {
+  W_ReleaseLumpNum(W_GetNumForName(name));
+}
 
 #if 0
 
@@ -544,11 +547,10 @@ void W_CheckCorrectIWAD(GameMission_t mission) {
             "\nYou are trying to use a %s IWAD file with "
             "the %s%s binary.\nThis isn't going to work.\n"
             "You probably want to use the %s%s binary.",
-            D_SuggestGameName(unique_lumps[i].mission, indetermined),
-            PROGRAM_PREFIX, D_GameMissionString(mission), PROGRAM_PREFIX,
+            D_SuggestGameName(unique_lumps[i].mission, indetermined), PROGRAM_PREFIX,
+            D_GameMissionString(mission), PROGRAM_PREFIX,
             D_GameMissionString(unique_lumps[i].mission));
       }
     }
   }
 }
-

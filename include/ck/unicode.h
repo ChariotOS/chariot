@@ -6,8 +6,7 @@
 namespace ck {
 
 
-  inline unsigned utf8_to_unicode(char *line, unsigned index, unsigned len,
-                                  uint32_t &res) {
+  inline unsigned utf8_to_unicode(char *line, unsigned index, unsigned len, uint32_t &res) {
     unsigned value;
     unsigned char c = line[index];
     unsigned bytes, mask, i;

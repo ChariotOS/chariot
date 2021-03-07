@@ -53,37 +53,37 @@
  * _POSIX_C_SOURCE, we will assume that it wants the broader compilation
  * environment (and in fact we will never get here).
  */
-#if defined(_ANSI_SOURCE)   /* Hide almost everything. */
-#define __POSIX_VISIBLE     0
-#define __XSI_VISIBLE       0
-#define __BSD_VISIBLE       0
-#define __ISO_C_VISIBLE     1990
-#elif defined(_C99_SOURCE)  /* Localism to specify strict C99 env. */
-#define __POSIX_VISIBLE     0
-#define __XSI_VISIBLE       0
-#define __BSD_VISIBLE       0
-#define __ISO_C_VISIBLE     1999
-#else               /* Default environment: show everything. */
-#define __POSIX_VISIBLE     200809
-#define __XSI_VISIBLE       700
-#define __BSD_VISIBLE       1
-#define __ISO_C_VISIBLE     1999
+#if defined(_ANSI_SOURCE) /* Hide almost everything. */
+#define __POSIX_VISIBLE 0
+#define __XSI_VISIBLE 0
+#define __BSD_VISIBLE 0
+#define __ISO_C_VISIBLE 1990
+#elif defined(_C99_SOURCE) /* Localism to specify strict C99 env. */
+#define __POSIX_VISIBLE 0
+#define __XSI_VISIBLE 0
+#define __BSD_VISIBLE 0
+#define __ISO_C_VISIBLE 1999
+#else /* Default environment: show everything. */
+#define __POSIX_VISIBLE 200809
+#define __XSI_VISIBLE 700
+#define __BSD_VISIBLE 1
+#define __ISO_C_VISIBLE 1999
 #endif
 
 /*
  * Default values.
  */
 #ifndef __XPG_VISIBLE
-# define __XPG_VISIBLE          700
+#define __XPG_VISIBLE 700
 #endif
 #ifndef __POSIX_VISIBLE
-# define __POSIX_VISIBLE        200809
+#define __POSIX_VISIBLE 200809
 #endif
 #ifndef __ISO_C_VISIBLE
-# define __ISO_C_VISIBLE        1999
+#define __ISO_C_VISIBLE 1999
 #endif
 #ifndef __BSD_VISIBLE
-# define __BSD_VISIBLE          1
+#define __BSD_VISIBLE 1
 #endif
 
 
@@ -108,30 +108,28 @@
  *  #endif
  */
 #ifdef __GNUC__
-#define __GNUC_PREREQ__(x, y)                       \
-    ((__GNUC__ == (x) && __GNUC_MINOR__ >= (y)) ||          \
-     (__GNUC__ > (x)))
+#define __GNUC_PREREQ__(x, y) ((__GNUC__ == (x) && __GNUC_MINOR__ >= (y)) || (__GNUC__ > (x)))
 #else
-#define __GNUC_PREREQ__(x, y)   0
+#define __GNUC_PREREQ__(x, y) 0
 #endif
 
 #if defined(__cplusplus)
-#define __BEGIN_DECLS       extern "C" {
-#define __END_DECLS     }
-#define __static_cast(x,y)  static_cast<x>(y)
+#define __BEGIN_DECLS extern "C" {
+#define __END_DECLS }
+#define __static_cast(x, y) static_cast<x>(y)
 #else
 #define __BEGIN_DECLS
 #define __END_DECLS
-#define __static_cast(x,y)  (x)y
+#define __static_cast(x, y) (x) y
 #endif
 
 #if defined(__cplusplus)
-#define __inline    inline      /* convert to C++ keyword */
+#define __inline inline /* convert to C++ keyword */
 #else
 #if !defined(__GNUC__) && !defined(__lint__)
-#define __inline            /* delete GCC keyword */
-#endif /* !__GNUC__  && !__lint__ */
-#endif /* !__cplusplus */
+#define __inline /* delete GCC keyword */
+#endif           /* !__GNUC__  && !__lint__ */
+#endif           /* !__cplusplus */
 
 #if __GNUC_PREREQ__(3, 1)
 #define __always_inline __attribute__((__always_inline__))

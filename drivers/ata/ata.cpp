@@ -172,7 +172,8 @@ bool dev::ata::identify() {
   }
 
   id_buf = (u16*)malloc(sizeof(u16) * 256);
-  for (u16 i = 0; i < 256; i++) id_buf[i] = data_port.in();
+  for (u16 i = 0; i < 256; i++)
+    id_buf[i] = data_port.in();
 
   uint8_t C = id_buf[1];
   uint8_t H = id_buf[3];
@@ -340,7 +341,9 @@ size_t dev::ata::block_size() {
   return sector_size;
 }
 
-size_t dev::ata::block_count() { return n_sectors; }
+size_t dev::ata::block_count() {
+  return n_sectors;
+}
 
 bool dev::ata::read_blocks_dma(uint32_t sector, void* data, int n) {
   TRACE;
@@ -509,7 +512,8 @@ static void query_and_add_drive(u16 addr, int id, bool master) {
     dev::register_disk(drive);
   }
 }
-static void ata_initialize(void) {}
+static void ata_initialize(void) {
+}
 
 
 

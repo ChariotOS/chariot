@@ -39,8 +39,7 @@
 
 extern "C++" {
 
-namespace std
-{
+namespace std {
   /**
    * @defgroup exceptions Exceptions
    * @ingroup diagnostics
@@ -57,10 +56,10 @@ namespace std
    *  your own %exception classes, or use a different hierarchy, or to
    *  throw non-class data (e.g., fundamental types).
    */
-  class exception
-  {
-  public:
-    exception() _GLIBCXX_NOTHROW { }
+  class exception {
+   public:
+    exception() _GLIBCXX_NOTHROW {
+    }
     virtual ~exception() _GLIBCXX_TXN_SAFE_DYN _GLIBCXX_NOTHROW;
 #if __cplusplus >= 201103L
     exception(const exception&) = default;
@@ -71,12 +70,10 @@ namespace std
 
     /** Returns a C-style character string describing the general cause
      *  of the current error.  */
-    virtual const char*
-    what() const _GLIBCXX_TXN_SAFE_DYN _GLIBCXX_NOTHROW;
+    virtual const char* what() const _GLIBCXX_TXN_SAFE_DYN _GLIBCXX_NOTHROW;
   };
 
-} // namespace std
-
+}  // namespace std
 }
 
 #pragma GCC visibility pop

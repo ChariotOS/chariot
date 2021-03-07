@@ -74,8 +74,5 @@ unsigned long arch_read_timestamp(void) {
 
 
 void arch_relax(void) {
-	asm("pause");
+  asm("pause");
 }
-
-
-

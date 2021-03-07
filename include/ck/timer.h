@@ -24,9 +24,13 @@ namespace ck {
     void start(uint64_t interval, bool repeat);
     void stop();
 
-    inline long long next_fire(void) { return m_next_fire; }
+    inline long long next_fire(void) {
+      return m_next_fire;
+    }
 
-    inline bool running() { return active; }
+    inline bool running() {
+      return active;
+    }
 
     //
     void trigger();

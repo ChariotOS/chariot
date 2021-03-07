@@ -9,12 +9,14 @@ atexit_func_entry_t __atexit_funcs[ATEXIT_MAX_FUNCS];
 
 
 extern "C" void abort(void) {
-	panic("ABORT");
+  panic("ABORT");
 }
 #define BAD() panic("Undefined C++ function (%s)\n", __func__);
 
 // Called when a pure virtual function call is attempted
-void __cxa_pure_virtual(void) { BAD(); }
+void __cxa_pure_virtual(void) {
+  BAD();
+}
 
 int __cxa_atexit(void (*destructor)(void *), void *arg, void *dso_handle) {
   if (__atexit_func_count >= ATEXIT_MAX_FUNCS) {
@@ -116,21 +118,31 @@ void *operator new(size_t size) {
   return zalloc(size);
 }
 
-void *operator new[](size_t size) { return zalloc(size); }
+void *operator new[](size_t size) {
+  return zalloc(size);
+}
 
 template <typename T>
-void *operator new(size_t size, T*&dst) {
+void *operator new(size_t size, T *&dst) {
   dst = zalloc(size);
   return dst;
 }
 
-void operator delete(void *ptr) { free(ptr); }
+void operator delete(void *ptr) {
+  free(ptr);
+}
 
-void operator delete[](void *ptr) { free(ptr); }
+void operator delete[](void *ptr) {
+  free(ptr);
+}
 
-void operator delete(void *ptr, size_t s) { free(ptr); }
+void operator delete(void *ptr, size_t s) {
+  free(ptr);
+}
 
-void operator delete[](void *ptr, size_t s) { free(ptr); }
+void operator delete[](void *ptr, size_t s) {
+  free(ptr);
+}
 
 
 
@@ -187,5 +199,3 @@ extern "C" void __cxa_guard_release(uint64_t *guard_object) {
 
   // TODO: release a global mutex
 }
-
-

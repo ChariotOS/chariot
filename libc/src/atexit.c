@@ -62,10 +62,11 @@ void __funcs_on_exit() {
       LOCK(lock);
     }
 
-	call_global_destructors();
+  call_global_destructors();
 }
 
-void __cxa_finalize(void *dso) {}
+void __cxa_finalize(void *dso) {
+}
 
 int __cxa_atexit(void (*func)(void *), void *arg, void *dso) {
   LOCK(lock);
@@ -94,7 +95,9 @@ int __cxa_atexit(void (*func)(void *), void *arg, void *dso) {
   return 0;
 }
 
-static void call(void *p) { ((void (*)(void))(uintptr_t)p)(); }
+static void call(void *p) {
+  ((void (*)(void))(uintptr_t)p)();
+}
 
 int atexit(void (*func)(void)) {
   return __cxa_atexit(call, (void *)(uintptr_t)func, 0);

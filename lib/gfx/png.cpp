@@ -72,10 +72,14 @@ static ck::ref<T> load_png(ck::string path) {
 }
 
 
-ck::ref<gfx::bitmap> gfx::load_png(ck::string path) { return ::load_png<gfx::bitmap>(path); }
+ck::ref<gfx::bitmap> gfx::load_png(ck::string path) {
+  return ::load_png<gfx::bitmap>(path);
+}
 
 
-ck::ref<gfx::shared_bitmap> gfx::load_png_shared(ck::string path) { return ::load_png<gfx::shared_bitmap>(path); }
+ck::ref<gfx::shared_bitmap> gfx::load_png_shared(ck::string path) {
+  return ::load_png<gfx::shared_bitmap>(path);
+}
 
 
 ck::ref<gfx::bitmap> gfx::load_png_from_res(ck::string path) {

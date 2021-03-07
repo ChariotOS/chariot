@@ -36,8 +36,11 @@ namespace ui {
     T left = 0, right = 0, top = 0, bottom = 0;
 
 
-    inline base_edges() {}
-    inline base_edges(T v) { left = right = top = bottom = v; }
+    inline base_edges() {
+    }
+    inline base_edges(T v) {
+      left = right = top = bottom = v;
+    }
     inline base_edges(T tb, T lr) {
       top = bottom = tb;
       left = right = lr;
@@ -133,23 +136,25 @@ namespace ui {
    */
 
 
-#define VIEW_RENDER_ATTRIBUTE(type, name, val) \
- protected:                                    \
-  ck::option<type> name = {};                  \
-                                               \
- public:                                       \
-  inline type get_##name(void) {               \
-    if (this->name) {                          \
-      return this->name.unwrap();              \
-    }                                          \
-    if (parent() != NULL) {                    \
-      return parent()->get_##name();           \
-    }                                          \
-    return val;                                \
-  }                                            \
-                                               \
- public:                                       \
-  inline void set_##name(const ck::option<type> &v) { this->name = v; }
+#define VIEW_RENDER_ATTRIBUTE(type, name, val)        \
+ protected:                                           \
+  ck::option<type> name = {};                         \
+                                                      \
+ public:                                              \
+  inline type get_##name(void) {                      \
+    if (this->name) {                                 \
+      return this->name.unwrap();                     \
+    }                                                 \
+    if (parent() != NULL) {                           \
+      return parent()->get_##name();                  \
+    }                                                 \
+    return val;                                       \
+  }                                                   \
+                                                      \
+ public:                                              \
+  inline void set_##name(const ck::option<type> &v) { \
+    this->name = v;                                   \
+  }
 
 
 
@@ -172,16 +177,24 @@ namespace ui {
 
     // default handlers
     // core mouse events
-    inline virtual void mouse_event(ui::mouse_event &) {}
-    inline virtual void paint_event(void) {}
-    inline virtual void on_keydown(ui::keydown_event &) {}
-    inline virtual void on_keyup(ui::keyup_event &) {}
-    inline virtual void on_focused(void) {}
-    inline virtual void on_blur(void) {}
-    inline virtual void mounted(void) {}
+    inline virtual void mouse_event(ui::mouse_event &) {
+    }
+    inline virtual void paint_event(void) {
+    }
+    inline virtual void on_keydown(ui::keydown_event &) {
+    }
+    inline virtual void on_keyup(ui::keyup_event &) {
+    }
+    inline virtual void on_focused(void) {
+    }
+    inline virtual void on_blur(void) {
+    }
+    inline virtual void mounted(void) {
+    }
 
 
-    inline virtual void flex_self_sizing(float &width, float &height) {}
+    inline virtual void flex_self_sizing(float &width, float &height) {
+    }
 
     // make this widget the focused one
     void set_focused(void);
@@ -198,25 +211,42 @@ namespace ui {
      * called when the view has been reflowed (layout recalculated and it
      * changed position, size, etc)
      */
-    virtual void reflowed(void) {}
+    virtual void reflowed(void) {
+    }
 
 
-    inline auto relative(void) { return gfx::rect(left(), top(), width(), height()); }
+    inline auto relative(void) {
+      return gfx::rect(left(), top(), width(), height());
+    }
 
     /* Is a point within the relative size */
-    inline bool within_self(const gfx::point &p) { return gfx::rect(width(), height()).contains(p.x(), p.y()); }
+    inline bool within_self(const gfx::point &p) {
+      return gfx::rect(width(), height()).contains(p.x(), p.y());
+    }
 
 
     /*
      * Geometry relative to the parent view (or window)
      */
-    inline int left() { return m_frame[0]; }
-    inline int top() { return m_frame[1]; }
-    inline int width() { return m_frame[2]; }
-    inline int height() { return m_frame[3]; }
+    inline int left() {
+      return m_frame[0];
+    }
+    inline int top() {
+      return m_frame[1];
+    }
+    inline int width() {
+      return m_frame[2];
+    }
+    inline int height() {
+      return m_frame[3];
+    }
 
-    inline int right() { return left() + width() - 1; }
-    inline int bottom() { return top() + height() - 1; }
+    inline int right() {
+      return left() + width() - 1;
+    }
+    inline int bottom() {
+      return top() + height() - 1;
+    }
 
     /*
      * Return the window for this view
@@ -231,7 +261,9 @@ namespace ui {
     /*
      * Return a pointer to the view which owns this view as a child
      */
-    inline ui::view *parent() const { return m_parent; }
+    inline ui::view *parent() const {
+      return m_parent;
+    }
 
 
 
@@ -314,10 +346,14 @@ namespace ui {
       return m_font;
     }
 
-    inline void set_font(const char *name) { m_font = gfx::font::get(name); }
+    inline void set_font(const char *name) {
+      m_font = gfx::font::get(name);
+    }
 
 
-    inline void set_font_size(float sz) { m_font_size = sz; }
+    inline void set_font_size(float sz) {
+      m_font_size = sz;
+    }
 
     inline int get_font_size(void) {
       if (isnan(m_font_size)) {
@@ -328,9 +364,13 @@ namespace ui {
     }
 
 #undef FLEX_ATTRIBUTE
-#define FLEX_ATTRIBUTE(name, type, def)                         \
-  inline const type &get_flex_##name(void) { return m_##name; } \
-  inline void set_flex_##name(type val) { m_##name = val; };
+#define FLEX_ATTRIBUTE(name, type, def)      \
+  inline const type &get_flex_##name(void) { \
+    return m_##name;                         \
+  }                                          \
+  inline void set_flex_##name(type val) {    \
+    m_##name = val;                          \
+  };
 #include <ui/internal/view_flex_attribs.h>
 #undef FLEX_ATTRIBUTE
 

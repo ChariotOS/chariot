@@ -431,10 +431,10 @@ extern "C" void trap(reg_t *regs) {
 
   auto *tf = (struct x86_64regs *)regs;
   bool from_userspace = tf->cs == 0x23;
-	bool ts = time::stabilized();
+  bool ts = time::stabilized();
   if (cpu::in_thread() && from_userspace) {
-		auto *thd = curthd;
-		thd->utime_us += time::now_us() - thd->last_start_utime_us;
+    auto *thd = curthd;
+    thd->utime_us += time::now_us() - thd->last_start_utime_us;
     thd->trap_frame = regs;
   }
 
@@ -499,4 +499,3 @@ extern "C" void trap(reg_t *regs) {
     }
   }
 }
-

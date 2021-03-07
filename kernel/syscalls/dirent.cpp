@@ -3,8 +3,8 @@
 #include <syscall.h>
 
 int sys::dirent(int fd, struct dirent *ents, int off, int count) {
-  if (ents != NULL && !curproc->mm->validate_pointer(
-                          ents, count * sizeof(struct dirent), VALIDATE_WRITE))
+  if (ents != NULL &&
+      !curproc->mm->validate_pointer(ents, count * sizeof(struct dirent), VALIDATE_WRITE))
     return -1;
 
   ref<fs::file> file = curproc->get_fd(fd);

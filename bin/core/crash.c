@@ -3,21 +3,21 @@
 #include <stdlib.h>
 
 void segv_handler(int sig) {
-	printf("segfaulted!\n");
+  printf("segfaulted!\n");
 
-	int *x = NULL;
+  int *x = NULL;
 
-	// will always segfault
-	*x = 0;
-	exit(EXIT_FAILURE);
+  // will always segfault
+  *x = 0;
+  exit(EXIT_FAILURE);
 }
 
 int main() {
-	int *x = NULL;
+  int *x = NULL;
 
-	signal(SIGSEGV, segv_handler);
+  signal(SIGSEGV, segv_handler);
 
-	// will always segfault
-	*x = 0;
-	return 0;
+  // will always segfault
+  *x = 0;
+  return 0;
 }

@@ -75,9 +75,7 @@
  * @return
  * - ERR_OK or the return value of @ref nd6_get_next_hop_addr_or_queue.
  */
-err_t
-ethip6_output(struct netif *netif, struct pbuf *q, const ip6_addr_t *ip6addr)
-{
+err_t ethip6_output(struct netif *netif, struct pbuf *q, const ip6_addr_t *ip6addr) {
   struct eth_addr dest;
   const u8_t *hwaddr;
   err_t result;
@@ -93,7 +91,7 @@ ethip6_output(struct netif *netif, struct pbuf *q, const ip6_addr_t *ip6addr)
     dest.addr[5] = ((const u8_t *)(&(ip6addr->addr[3])))[3];
 
     /* Send out. */
-    return ethernet_output(netif, q, (const struct eth_addr*)(netif->hwaddr), &dest, ETHTYPE_IPV6);
+    return ethernet_output(netif, q, (const struct eth_addr *)(netif->hwaddr), &dest, ETHTYPE_IPV6);
   }
 
   /* We have a unicast destination IP address */
@@ -112,7 +110,7 @@ ethip6_output(struct netif *netif, struct pbuf *q, const ip6_addr_t *ip6addr)
 
   /* Send out the packet using the returned hardware address. */
   SMEMCPY(dest.addr, hwaddr, 6);
-  return ethernet_output(netif, q, (const struct eth_addr*)(netif->hwaddr), &dest, ETHTYPE_IPV6);
+  return ethernet_output(netif, q, (const struct eth_addr *)(netif->hwaddr), &dest, ETHTYPE_IPV6);
 }
 
 #endif /* LWIP_IPV6 && LWIP_ETHERNET */

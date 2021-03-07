@@ -85,6 +85,10 @@ int closedir(DIR *dir) {
   return ret;
 }
 
-void rewinddir(DIR *d) { d->pos = 0; }
+void rewinddir(DIR *d) {
+  d->pos = 0;
+}
 
-int dirfd(DIR *d) { return d->fd; }
+int dirfd(DIR *d) {
+  return d->fd;
+}

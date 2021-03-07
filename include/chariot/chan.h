@@ -13,8 +13,10 @@ class chan {
   fifo_buf backing;
 
  public:
-  inline chan(void) {}
-  inline ~chan(void) {}
+  inline chan(void) {
+  }
+  inline ~chan(void) {
+  }
 
   // sit and wait on data to be recv'd
   inline T recv(void) {
@@ -52,12 +54,14 @@ class chan {
     backing.write(buf, sizeof(T), wait);
   }
 
-  inline bool avail(void) { return backing.size() >= sizeof(T); }
+  inline bool avail(void) {
+    return backing.size() >= sizeof(T);
+  }
 
   inline int poll(poll_table &pt) {
     int ev = 0;
 
-		ev |= backing.poll(pt);
+    ev |= backing.poll(pt);
 
     if (avail()) ev |= AWAITFS_READ;
     ev |= AWAITFS_WRITE;

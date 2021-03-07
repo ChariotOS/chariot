@@ -16,10 +16,16 @@ struct wait_result {
   uint8_t flags;
 
  public:
-  inline wait_result(uint8_t flags) : flags(flags) {}
-  inline wait_result(void) : flags(0) {}
-  inline bool interrupted(void) { return FIS(flags, WAIT_RES_INTR); }
-  inline bool timed_out(void) { return FIS(flags, WAIT_RES_TIMEOUT); }
+  inline wait_result(uint8_t flags) : flags(flags) {
+  }
+  inline wait_result(void) : flags(0) {
+  }
+  inline bool interrupted(void) {
+    return FIS(flags, WAIT_RES_INTR);
+  }
+  inline bool timed_out(void) {
+    return FIS(flags, WAIT_RES_TIMEOUT);
+  }
 };
 
 /* these functions return if they were successful in waking or not. */
@@ -49,7 +55,7 @@ struct wait_entry {
   // this removes the entry from a waitqueue if there is one
   ~wait_entry();
 
-	wait_result start(void);
+  wait_result start(void);
 };
 
 
@@ -83,8 +89,12 @@ struct wait_queue {
   }
 
 
-  inline void wake_up(void) { __wake_up(0, 1, NULL); }
-  inline void wake_up_all(void) { __wake_up(0, 0, NULL); }
+  inline void wake_up(void) {
+    __wake_up(0, 1, NULL);
+  }
+  inline void wake_up_all(void) {
+    __wake_up(0, 0, NULL);
+  }
 
 
   wait_result wait_exclusive(struct wait_entry *, int state);
@@ -113,7 +123,7 @@ inline int multi_wait(vec<wait_queue *> &queues, bool exclusive = false) {
 /*
  * The usage of these functions is as follows:
  * static wait_queue wq; // global
- * 
+ *
  * struct wait_entry ent;
  * for (;;) {
  *   prepare_to_wait(wq, ent, true);
@@ -123,6 +133,7 @@ inline int multi_wait(vec<wait_queue *> &queues, bool exclusive = false) {
  * finish_wait();
  */
 void prepare_to_wait(struct wait_queue &wq, struct wait_entry &ent, bool interruptible = true);
-void prepare_to_wait_exclusive(struct wait_queue &wq, struct wait_entry &ent, bool interruptible = true);
+void prepare_to_wait_exclusive(struct wait_queue &wq, struct wait_entry &ent,
+                               bool interruptible = true);
 wait_result do_wait(struct wait_entry &ent);
 void finish_wait(struct wait_queue &wq, struct wait_entry &ent);

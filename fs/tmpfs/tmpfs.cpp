@@ -3,35 +3,40 @@
 #include <fs/vfs.h>
 #include <errno.h>
 
-static struct fs::superblock *tmpfs_mount(struct fs::sb_information *,
-                                         const char *args, int flags,
-                                         const char *device) {
-	/*
-  struct fs::blkdev *bdev = fs::bdev_from_path(device);
-  if (bdev == NULL) return NULL;
+static struct fs::superblock *tmpfs_mount(struct fs::sb_information *, const char *args, int flags,
+                                          const char *device) {
+  /*
+struct fs::blkdev *bdev = fs::bdev_from_path(device);
+if (bdev == NULL) return NULL;
 
-  auto *sb = new fs::tmpfs();
+auto *sb = new fs::tmpfs();
 
-  if (!sb->init(bdev)) {
-    delete sb;
-    return NULL;
-  }
+if (!sb->init(bdev)) {
+delete sb;
+return NULL;
+}
+
+return sb;
+  */
+
+  auto *sb = new tmp::superblock(args, flags);
+
 
   return sb;
-	*/
-
-	auto *sb = new tmp::superblock(args, flags);
-
-
-	return sb;
 }
 
 
-int tmpfs_sb_init(struct fs::superblock &sb) { return -ENOTIMPL; }
+int tmpfs_sb_init(struct fs::superblock &sb) {
+  return -ENOTIMPL;
+}
 
-int tmpfs_write_super(struct fs::superblock &sb) { return -ENOTIMPL; }
+int tmpfs_write_super(struct fs::superblock &sb) {
+  return -ENOTIMPL;
+}
 
-int tmpfs_sync(struct fs::superblock &sb, int flags) { return -ENOTIMPL; }
+int tmpfs_sync(struct fs::superblock &sb, int flags) {
+  return -ENOTIMPL;
+}
 
 
 struct fs::sb_operations tmpfs_ops {
@@ -43,5 +48,7 @@ struct fs::sb_information tmpfs_info {
 };
 
 
-static void tmpfs_init(void) { vfs::register_filesystem(tmpfs_info); }
+static void tmpfs_init(void) {
+  vfs::register_filesystem(tmpfs_info);
+}
 module_init("fs::tmpfs", tmpfs_init);

@@ -47,7 +47,7 @@ extern "C" {
 /** This is the packed version of ip4_addr_t,
     used in network headers that are itself packed */
 #ifdef PACK_STRUCT_USE_INCLUDES
-#  include "arch/bpstruct.h"
+#include "arch/bpstruct.h"
 #endif
 PACK_STRUCT_BEGIN
 struct ip4_addr_packed {
@@ -55,7 +55,7 @@ struct ip4_addr_packed {
 } PACK_STRUCT_STRUCT;
 PACK_STRUCT_END
 #ifdef PACK_STRUCT_USE_INCLUDES
-#  include "arch/epstruct.h"
+#include "arch/epstruct.h"
 #endif
 
 typedef struct ip4_addr_packed ip4_addr_p_t;
@@ -64,7 +64,7 @@ typedef struct ip4_addr_packed ip4_addr_p_t;
 #define IP_HLEN 20
 
 #ifdef PACK_STRUCT_USE_INCLUDES
-#  include "arch/bpstruct.h"
+#include "arch/bpstruct.h"
 #endif
 PACK_STRUCT_BEGIN
 /* The IPv4 header */
@@ -79,10 +79,10 @@ struct ip_hdr {
   PACK_STRUCT_FIELD(u16_t _id);
   /* fragment offset field */
   PACK_STRUCT_FIELD(u16_t _offset);
-#define IP_RF 0x8000U        /* reserved fragment flag */
-#define IP_DF 0x4000U        /* don't fragment flag */
-#define IP_MF 0x2000U        /* more fragments flag */
-#define IP_OFFMASK 0x1fffU   /* mask for fragmenting bits */
+#define IP_RF 0x8000U      /* reserved fragment flag */
+#define IP_DF 0x4000U      /* don't fragment flag */
+#define IP_MF 0x2000U      /* more fragments flag */
+#define IP_OFFMASK 0x1fffU /* mask for fragmenting bits */
   /* time to live */
   PACK_STRUCT_FLD_8(u8_t _ttl);
   /* protocol*/
@@ -95,11 +95,11 @@ struct ip_hdr {
 } PACK_STRUCT_STRUCT;
 PACK_STRUCT_END
 #ifdef PACK_STRUCT_USE_INCLUDES
-#  include "arch/epstruct.h"
+#include "arch/epstruct.h"
 #endif
 
 /* Macros to get struct ip_hdr fields: */
-#define IPH_V(hdr)  ((hdr)->_v_hl >> 4)
+#define IPH_V(hdr) ((hdr)->_v_hl >> 4)
 #define IPH_HL(hdr) ((hdr)->_v_hl & 0x0f)
 #define IPH_TOS(hdr) ((hdr)->_tos)
 #define IPH_LEN(hdr) ((hdr)->_len)

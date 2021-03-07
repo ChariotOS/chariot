@@ -431,4 +431,3 @@ namespace mb2 {
 #endif
 
 #endif /* ! MULTIBOOT_HEADER */
-

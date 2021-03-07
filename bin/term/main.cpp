@@ -80,7 +80,8 @@ struct terminalview : public ui::view {
     set_foreground(TERMINAL_FG);
     set_background(TERMINAL_BG);
 
-    emoji = gfx::load_png("/sys/fonts/Emoji/emoji_u1f602.png");  // ->scale(14, 14, gfx::bitmap::SampleMode::Nearest);
+    emoji = gfx::load_png(
+        "/sys/fonts/Emoji/emoji_u1f607.png");  // ->scale(14, 14, gfx::bitmap::SampleMode::Nearest);
   }
 
 
@@ -117,7 +118,9 @@ p.write(cp);
 
 
 
-  virtual void mounted(void) override { handle_resize(); }
+  virtual void mounted(void) override {
+    handle_resize();
+  }
 
 
   virtual void mouse_event(ui::mouse_event &ev) override {
@@ -141,7 +144,8 @@ p.write(cp);
       }
     }
 
-    s.draw_line_antialias(gfx::point(mouse_x, mouse_y), gfx::point(width() / 2, height() / 2), 0xFF0000);
+    s.draw_line_antialias(gfx::point(mouse_x, mouse_y), gfx::point(width() / 2, height() / 2),
+                          0xFF0000);
     // ck::hexdump(bmp->pixels(), bmp->width() * 4);
     // uint32_t first = bmp->pixels()[0];
     // printf("first pixel: %08x\n", gfx::color::blend(bmp->pixels()[0], 0xFFFF0000));

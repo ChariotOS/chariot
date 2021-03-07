@@ -431,7 +431,7 @@ bool mm::space::validate_pointer(void *raw_va, size_t len, int mode) {
     auto r = lookup(va);
     if (!r) {
       printk(KERN_WARN "validate_pointer(%p) - region not found!\n", raw_va);
-			this->dump();
+      this->dump();
       return false;
     }
 
@@ -505,4 +505,3 @@ off_t mm::space::find_hole(size_t size) {
 
   return va;
 }
-

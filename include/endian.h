@@ -19,10 +19,10 @@
 #define BYTE_ORDER __BYTE_ORDER__
 
 // define a macro that unconditionally swaps
-#define SWAP_32(x) \
-    (((uint32_t)(x) << 24) | (((uint32_t)(x) & 0xff00) << 8) |(((uint32_t)(x) & 0x00ff0000) >> 8) | ((uint32_t)(x) >> 24))
-#define SWAP_16(x) \
-    ((((uint16_t)(x) & 0xff) << 8) | ((uint16_t)(x) >> 8))
+#define SWAP_32(x)                                                                             \
+  (((uint32_t)(x) << 24) | (((uint32_t)(x)&0xff00) << 8) | (((uint32_t)(x)&0x00ff0000) >> 8) | \
+   ((uint32_t)(x) >> 24))
+#define SWAP_16(x) ((((uint16_t)(x)&0xff) << 8) | ((uint16_t)(x) >> 8))
 #define SWAP_64(x) ((((uint64_t)(SWAP_32((uint64_t)(x)))) << 32) | (SWAP_32(((uint64_t)(x)) >> 32)))
 
 // standard swap macros
@@ -61,18 +61,17 @@
 #if __POWERPC__
 #include <ppc_intrinsics.h>
 
-#define READ_MEM_WORD(ptr)      __lwbrx((word *)(ptr), 0)
-#define READ_MEM_HALFWORD(ptr)  __lhbrx((halfword *)(ptr), 0)
-#define READ_MEM_BYTE(ptr)      (*(byte *)(ptr))
-#define WRITE_MEM_WORD(ptr, data)   __stwbrx(data, (word *)(ptr), 0)
-#define WRITE_MEM_HALFWORD(ptr, data)   __sthbrx(data, (halfword *)(ptr), 0)
-#define WRITE_MEM_BYTE(ptr, data)   (*(byte *)(ptr) = (data))
+#define READ_MEM_WORD(ptr) __lwbrx((word *)(ptr), 0)
+#define READ_MEM_HALFWORD(ptr) __lhbrx((halfword *)(ptr), 0)
+#define READ_MEM_BYTE(ptr) (*(byte *)(ptr))
+#define WRITE_MEM_WORD(ptr, data) __stwbrx(data, (word *)(ptr), 0)
+#define WRITE_MEM_HALFWORD(ptr, data) __sthbrx(data, (halfword *)(ptr), 0)
+#define WRITE_MEM_BYTE(ptr, data) (*(byte *)(ptr) = (data))
 #else
-#define READ_MEM_WORD(ptr)      SWAPIT_32(*(word *)(ptr))
-#define READ_MEM_HALFWORD(ptr)  SWAPIT_16(*(halfword *)(ptr))
-#define READ_MEM_BYTE(ptr)      (*(byte *)(ptr))
-#define WRITE_MEM_WORD(ptr, data)   (*(word *)(ptr) = SWAPIT_32(data))
-#define WRITE_MEM_HALFWORD(ptr, data)   (*(halfword *)(ptr) = SWAPIT_16(data))
-#define WRITE_MEM_BYTE(ptr, data)   (*(byte *)(ptr) = (data))
+#define READ_MEM_WORD(ptr) SWAPIT_32(*(word *)(ptr))
+#define READ_MEM_HALFWORD(ptr) SWAPIT_16(*(halfword *)(ptr))
+#define READ_MEM_BYTE(ptr) (*(byte *)(ptr))
+#define WRITE_MEM_WORD(ptr, data) (*(word *)(ptr) = SWAPIT_32(data))
+#define WRITE_MEM_HALFWORD(ptr, data) (*(halfword *)(ptr) = SWAPIT_16(data))
+#define WRITE_MEM_BYTE(ptr, data) (*(byte *)(ptr) = (data))
 #endif
-

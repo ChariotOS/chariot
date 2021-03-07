@@ -103,8 +103,8 @@ namespace lumen {
     union {
       // mouse data
       struct {
-        int16_t dx, dy; /* Move delta */
-        int16_t hx, hy; /* Hover locaiton */
+        int16_t dx, dy;  /* Move delta */
+        int16_t hx, hy;  /* Hover locaiton */
         uint8_t buttons; /* The current buttons that are currently active */
       } mouse;
 

@@ -3,8 +3,8 @@
 #include <wait_flags.h>
 
 long sys::waitpid(int pid, int *status_ptr, int flags) {
-  if (status_ptr != NULL && !curproc->mm->validate_pointer(
-                                status_ptr, sizeof(*status_ptr), PROT_WRITE)) {
+  if (status_ptr != NULL &&
+      !curproc->mm->validate_pointer(status_ptr, sizeof(*status_ptr), PROT_WRITE)) {
     return -1;
   }
 

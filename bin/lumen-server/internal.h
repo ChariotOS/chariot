@@ -62,13 +62,15 @@ namespace lumen {
       }
     }
 
-    void load_info(void) { ioctl(fd, FB_GET_INFO, &info); }
+    void load_info(void) {
+      ioctl(fd, FB_GET_INFO, &info);
+    }
 
     inline gfx::rect mouse_rect(void) {
-			int w = cursors[cursor]->width();
-			int h = cursors[cursor]->height();
+      int w = cursors[cursor]->width();
+      int h = cursors[cursor]->height();
 
-      return gfx::rect(mouse_pos.x() - (w/2), mouse_pos.y() - (h/2), w, h);
+      return gfx::rect(mouse_pos.x() - (w / 2), mouse_pos.y() - (h / 2), w, h);
     }
 
     screen(int w, int h);
@@ -82,16 +84,26 @@ namespace lumen {
     void draw_mouse(void);
 
     void set_resolution(int w, int h);
-    inline size_t screensize(void) { return bufsz; }
-    inline uint32_t *pixels(void) { return buf; }
+    inline size_t screensize(void) {
+      return bufsz;
+    }
+    inline uint32_t *pixels(void) {
+      return buf;
+    }
 
 
-    inline uint32_t *buffer(void) { return back_buffer; }
-    inline void set_pixel(int x, int y, uint32_t color) { buffer()[x + y * m_bounds.w] = color; }
+    inline uint32_t *buffer(void) {
+      return back_buffer;
+    }
+    inline void set_pixel(int x, int y, uint32_t color) {
+      buffer()[x + y * m_bounds.w] = color;
+    }
 
 
     // THIS IS VERY SLOW!!!
-    inline uint32_t get_pixel(int x, int y) { return buffer()[x + y * m_bounds.w]; }
+    inline uint32_t get_pixel(int x, int y) {
+      return buffer()[x + y * m_bounds.w];
+    }
 
     inline void clear(uint32_t color) {
       for (int i = 0; i < width() * height(); i++) {
@@ -99,10 +111,16 @@ namespace lumen {
       }
     }
 
-    inline int width(void) { return m_bounds.w; }
-    inline int height(void) { return m_bounds.h; }
+    inline int width(void) {
+      return m_bounds.w;
+    }
+    inline int height(void) {
+      return m_bounds.h;
+    }
 
-    inline const gfx::rect &bounds(void) { return m_bounds; }
+    inline const gfx::rect &bounds(void) {
+      return m_bounds;
+    }
   };
 
 
@@ -133,14 +151,14 @@ namespace lumen {
 
     ck::ref<gfx::shared_bitmap> bitmap;
 
-		/* used for mouse tracking */
-		int mouse_down = 0; /* Current mouse press state */
+    /* used for mouse tracking */
+    int mouse_down = 0; /* Current mouse press state */
 
-		/* The last location the mouse was hovered at */
-		gfx::point last_hover;
-		/* The last locations the mouse was clicked at */
-		gfx::point last_lclick; /* Left click */
-		gfx::point last_rclick; /* Right click */
+    /* The last location the mouse was hovered at */
+    gfx::point last_hover;
+    /* The last locations the mouse was clicked at */
+    gfx::point last_lclick; /* Left click */
+    gfx::point last_rclick; /* Right click */
 
 
     window(int id, lumen::guest &c, int w, int h);
@@ -227,8 +245,8 @@ namespace lumen {
 
 
 
-		/* Are we currently clicking? */
-		int mouse_down = 0; /* MOUSE_*_CLICK masked */
+    /* Are we currently clicking? */
+    int mouse_down = 0; /* MOUSE_*_CLICK masked */
 
 
     pthread_t compositor_thread;
@@ -255,7 +273,7 @@ namespace lumen {
     };
 
 
-		void move_window(lumen::window *, int dx, int dy);
+    void move_window(lumen::window *, int dx, int dy);
 
     // ordered list of all the windows (front to back)
     // The currently focused window is at the front

@@ -63,7 +63,9 @@ class cl_deque {
       segment = new atom<T>[1 << log_size];
     }
 
-    long size() { return 1 << log_size; }
+    long size() {
+      return 1 << log_size;
+    }
 
     /**
      * load a value atomically from the segment
@@ -88,7 +90,8 @@ class cl_deque {
     auto grow(long long b, long long t) {
       // create a new circular array of twice the size
       auto* a = new circular_array(log_size + 1);
-      for (long long i = t; i < b; i++) a->put(i, get(i));
+      for (long long i = t; i < b; i++)
+        a->put(i, get(i));
       return a;
     }
   };
@@ -101,24 +104,22 @@ class cl_deque {
 
  private:
   bool cas_top(long long oldval, long long newval) {
-    return top.compare_exchange_strong(
-        oldval, newval, memory_order_seq_cst, memory_order_relaxed);
+    return top.compare_exchange_strong(oldval, newval, memory_order_seq_cst, memory_order_relaxed);
   }
 
  public:
-
-	// for some reason, the CPUs don't initialize the buffers, so we need to
-	// do it manually.
-	void init() {
+  // for some reason, the CPUs don't initialize the buffers, so we need to
+  // do it manually.
+  void init() {
     buffer = new circular_array(1);
     top = 0;
     bottom = 0;
-		printk("init! buffer = %p\n", buffer);
-	}
+    printk("init! buffer = %p\n", buffer);
+  }
 
 
   cl_deque() {
-		init();
+    init();
   }
 
   ~cl_deque() {
@@ -130,7 +131,7 @@ class cl_deque {
   long long size(void) {
     long long b = bottom.load(memory_order_relaxed);
     long long t = top.load(memory_order_relaxed);
-    return b-t;
+    return b - t;
   }
 
   /**

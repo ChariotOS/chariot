@@ -57,10 +57,11 @@ namespace nvme {
 
   /* A kernel level representation of a controller */
   struct ctrl {
-    /* Ideally, this would be abstracted and allow us to use fabrics, but I dont have that hardware so. */
+    /* Ideally, this would be abstracted and allow us to use fabrics, but I dont have that hardware
+     * so. */
     pci::device &dev;
     volatile nvme::mmio *mmio;
-		struct wait_queue wq;
+    struct wait_queue wq;
 
 
     // Queue count, including admin queue
@@ -75,14 +76,30 @@ namespace nvme {
     ctrl(pci::device &dev);
 
     /* Nice wrappers around the CAP field */
-    inline auto version(void) { return mmio->vs.raw; }
-    inline auto timeout(void) { return NVME_CAP_TO_GET(mmio->cap); }
-    inline auto mqes(void) { return NVME_CAP_MQES_GET(mmio->cap); }
-    inline auto stride(void) { return NVME_CAP_DSTRD_GET(mmio->cap); }
-    inline auto css(void) { return NVME_CAP_CSS_GET(mmio->cap); }
-    inline auto mps_min(void) { return NVME_CAP_MPSMIN_GET(mmio->cap); }
-    inline auto mps_max(void) { return NVME_CAP_MPSMAX_GET(mmio->cap); }
-    inline auto subsystem_reset_control(void) { return NVME_CAP_NSSRS_GET(mmio->cap); }
+    inline auto version(void) {
+      return mmio->vs.raw;
+    }
+    inline auto timeout(void) {
+      return NVME_CAP_TO_GET(mmio->cap);
+    }
+    inline auto mqes(void) {
+      return NVME_CAP_MQES_GET(mmio->cap);
+    }
+    inline auto stride(void) {
+      return NVME_CAP_DSTRD_GET(mmio->cap);
+    }
+    inline auto css(void) {
+      return NVME_CAP_CSS_GET(mmio->cap);
+    }
+    inline auto mps_min(void) {
+      return NVME_CAP_MPSMIN_GET(mmio->cap);
+    }
+    inline auto mps_max(void) {
+      return NVME_CAP_MPSMAX_GET(mmio->cap);
+    }
+    inline auto subsystem_reset_control(void) {
+      return NVME_CAP_NSSRS_GET(mmio->cap);
+    }
   };
 
 
@@ -158,8 +175,8 @@ namespace nvme {
   template <typename T>
   struct queue {
    public:
-    void init(T *entries, uint32_t count, uint32_t volatile *head_doorbell, uint32_t volatile *tail_doorbell,
-              bool phase) {
+    void init(T *entries, uint32_t count, uint32_t volatile *head_doorbell,
+              uint32_t volatile *tail_doorbell, bool phase) {
       // Only makes sense to have one doorbell
       // Submission queues have tail doorbells
       // Completion queues have head doorbells
@@ -174,13 +191,23 @@ namespace nvme {
 
 
     /* Return a pointer to the queue buffer */
-    T *data() { return entries; }
+    T *data() {
+      return entries;
+    }
 
 
-    uint32_t get_tail() const { return tail; }
-    bool get_phase() const { return phase; }
-    bool is_empty() const { return head == tail; }
-    bool is_full() const { return next(tail) == head; }
+    uint32_t get_tail() const {
+      return tail;
+    }
+    bool get_phase() const {
+      return phase;
+    }
+    bool is_empty() const {
+      return head == tail;
+    }
+    bool is_full() const {
+      return next(tail) == head;
+    }
 
 
     template <typename... Args>
@@ -198,10 +225,14 @@ namespace nvme {
     }
 
     // Returns the number of items ready to be dequeued
-    uint32_t count() const { return (tail - head) & mask; }
+    uint32_t count() const {
+      return (tail - head) & mask;
+    }
 
     // Returns the number of items that may be enqueued
-    uint32_t space() const { return (head - tail) & mask; }
+    uint32_t space() const {
+      return (head - tail) & mask;
+    }
 
     uint32_t enqueued(uint32_t count) {
       uint32_t index = (tail + count) & mask;
@@ -222,7 +253,9 @@ namespace nvme {
     }
 
     // Used when processing completions to free up submission queue entries
-    void take_until(uint32_t new_head) { phase ^= set_head(new_head); }
+    void take_until(uint32_t new_head) {
+      phase ^= set_head(new_head);
+    }
 
     T const &at_head(uint32_t head_offset, bool &expect_phase) const {
       uint32_t index = (head + head_offset) & mask;
@@ -231,13 +264,16 @@ namespace nvme {
     }
 
     void reset() {
-      while (!is_empty()) dequeue();
+      while (!is_empty())
+        dequeue();
       head = 0;
       tail = 0;
     }
 
    private:
-    uint32_t next(uint32_t index) const { return (index + 1) & mask; }
+    uint32_t next(uint32_t index) const {
+      return (index + 1) & mask;
+    }
 
     // Returns 1 if the queue wrapped
     bool set_head(uint32_t new_head) {

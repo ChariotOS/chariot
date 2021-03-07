@@ -279,10 +279,10 @@ int virtio::check_mmio(void *addr, int irq) {
     return -ENODEV;
   }
 
-	struct virtio_config config;
-	config.irqnr = irq;
+  struct virtio_config config;
+  config.irqnr = irq;
 
-	virtio_mmio_dev *dev = NULL;
+  virtio_mmio_dev *dev = NULL;
 
 
   uint32_t dev_id = *REG(VIRTIO_MMIO_DEVICE_ID);
@@ -292,7 +292,7 @@ int virtio::check_mmio(void *addr, int irq) {
     /* virtio disk */
     case 2: {
       printk(KERN_INFO "[VIRTIO] Disk Device at %p with irq %d\n", addr, irq);
-			dev = new virtio_mmio_disk(regs);
+      dev = new virtio_mmio_disk(regs);
       break;
     }
 
@@ -309,13 +309,13 @@ int virtio::check_mmio(void *addr, int irq) {
       return -ENODEV;
   }
 
-	if (dev == NULL) return -ENODEV;
+  if (dev == NULL) return -ENODEV;
 
-	if (!dev->initialize(config)) {
-		delete dev;
-		printk(KERN_ERROR "virtio device at %p failed to initialize!\n", regs);
-		return -ENODEV;
-	}
+  if (!dev->initialize(config)) {
+    delete dev;
+    printk(KERN_ERROR "virtio device at %p failed to initialize!\n", regs);
+    return -ENODEV;
+  }
 
   return 0;
 }

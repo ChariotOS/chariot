@@ -174,4 +174,3 @@ int fifo_buf::poll(poll_table &pt) {
   lock.unlock_irqrestore(flags);
   return ev;
 }
-

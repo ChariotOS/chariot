@@ -12,14 +12,15 @@
 #include <util.h>
 #include "mm.h"
 
-net::sock::sock(int dom, int type, int protocol) : domain(dom), type(type), protocol(protocol) {}
+net::sock::sock(int dom, int type, int protocol) : domain(dom), type(type), protocol(protocol) {
+}
 
-net::sock::~sock(void) {}
+net::sock::~sock(void) {
+}
 
 extern net::sock *udp_create(int domain, int type, int protocol, int &err);
 
 net::sock *net::sock::create(int domain, int type, int protocol, int &err) {
-
 #ifdef CONFIG_LWIP
   // manually
   if (domain == PF_INET) {
@@ -52,13 +53,15 @@ static int sock_seek(fs::file &, off_t old_off, off_t new_off) {
 }
 
 static ssize_t sock_read(fs::file &f, char *b, size_t s) {
-  // printk("[%3d] recvfrom as '%s'\n", curproc->pid, f.pflags == PFLAGS_CLIENT ? "client" : "server");
+  // printk("[%3d] recvfrom as '%s'\n", curproc->pid, f.pflags == PFLAGS_CLIENT ? "client" :
+  // "server");
   if (f.ino->sk->connected) return -ENOTCONN;
   return f.ino->sk->recvfrom(f, (void *)b, s, 0, nullptr, 0);
 }
 
 static ssize_t sock_write(fs::file &f, const char *b, size_t s) {
-  // printk("[%3d] sendto as '%s'\n", curproc->pid, f.pflags == PFLAGS_CLIENT ? "client" : "server");
+  // printk("[%3d] sendto as '%s'\n", curproc->pid, f.pflags == PFLAGS_CLIENT ? "client" :
+  // "server");
   if (f.ino->sk->connected) return -ENOTCONN;
   return f.ino->sk->sendto(f, (void *)b, s, 0, nullptr, 0);
 }
@@ -142,8 +145,8 @@ int sys::socket(int d, int t, int p) {
   return curproc->add_fd(move(fd));
 }
 
-ssize_t sys::sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr,
-                    size_t addrlen) {
+ssize_t sys::sendto(int sockfd, const void *buf, size_t len, int flags,
+                    const struct sockaddr *dest_addr, size_t addrlen) {
   if (!VALIDATE_RD((void *)buf, len)) return -EINVAL;
 
   if (dest_addr != NULL) {
@@ -155,7 +158,8 @@ ssize_t sys::sendto(int sockfd, const void *buf, size_t len, int flags, const st
   ref<fs::file> file = curproc->get_fd(sockfd);
 
 
-  // printk("[%3d] sendto as '%s'\n", curproc->pid, file->pflags == PFLAGS_CLIENT ? "client" : "server");
+  // printk("[%3d] sendto as '%s'\n", curproc->pid, file->pflags == PFLAGS_CLIENT ? "client" :
+  // "server");
 
   ssize_t res = -EINVAL;
   if (file) {
@@ -168,7 +172,8 @@ ssize_t sys::sendto(int sockfd, const void *buf, size_t len, int flags, const st
 }
 
 
-ssize_t sys::recvfrom(int sockfd, void *buf, size_t len, int flags, const struct sockaddr *dest_addr, size_t addrlen) {
+ssize_t sys::recvfrom(int sockfd, void *buf, size_t len, int flags,
+                      const struct sockaddr *dest_addr, size_t addrlen) {
   if (!VALIDATE_WR((void *)buf, len)) return -EINVAL;
 
   if (dest_addr != NULL) {
@@ -180,7 +185,8 @@ ssize_t sys::recvfrom(int sockfd, void *buf, size_t len, int flags, const struct
   ref<fs::file> file = curproc->get_fd(sockfd);
 
 
-  // printk("[%3d] recvfrom as '%s'\n", curproc->pid, file->pflags == PFLAGS_CLIENT ? "client" : "server");
+  // printk("[%3d] recvfrom as '%s'\n", curproc->pid, file->pflags == PFLAGS_CLIENT ? "client" :
+  // "server");
 
 
   ssize_t res = -EINVAL;
@@ -274,25 +280,36 @@ int sys::connect(int sockfd, const struct sockaddr *addr, size_t len) {
 
 
 
-int net::sock::ioctl(int cmd, unsigned long arg) { return -ENOTIMPL; }
+int net::sock::ioctl(int cmd, unsigned long arg) {
+  return -ENOTIMPL;
+}
 
-int net::sock::connect(struct sockaddr *uaddr, int addr_len) { return -ENOTIMPL; }
+int net::sock::connect(struct sockaddr *uaddr, int addr_len) {
+  return -ENOTIMPL;
+}
 
 
-int net::sock::disconnect(int flags) { return -ENOTIMPL; }
+int net::sock::disconnect(int flags) {
+  return -ENOTIMPL;
+}
 
 net::sock *net::sock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
   err = -ENOTIMPL;
   return NULL;
 }
 
-ssize_t net::sock::sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t) { return -ENOTIMPL; }
-ssize_t net::sock::recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t) {
+ssize_t net::sock::sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t) {
+  return -ENOTIMPL;
+}
+ssize_t net::sock::recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *,
+                            size_t) {
   return -ENOTIMPL;
 }
 
 
-int net::sock::bind(const struct sockaddr *addr, size_t len) { return -ENOTIMPL; }
+int net::sock::bind(const struct sockaddr *addr, size_t len) {
+  return -ENOTIMPL;
+}
 
 
 
@@ -309,7 +326,8 @@ int sys::dnslookup(const char *name, unsigned int *ip4) {
   if (!proc->mm->validate_pointer(ip4, 4, VALIDATE_WRITE)) {
     return -EINVAL;
   }
-  /* we need a copy of the name in the kernel because the LWIP thread doesn't have access to userspace */
+  /* we need a copy of the name in the kernel because the LWIP thread doesn't have access to
+   * userspace */
   string s = name;
 
   scoped_lock l(dnslookup_lock);
@@ -327,6 +345,6 @@ int sys::dnslookup(const char *name, unsigned int *ip4) {
 
   return 0;
 #else
-	return -ENOSYS;
+  return -ENOSYS;
 #endif
 }

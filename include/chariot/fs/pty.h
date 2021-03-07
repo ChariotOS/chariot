@@ -8,7 +8,7 @@ struct pty : public tty {
   fifo_buf in;
   fifo_buf out;
 
-	virtual ~pty(void);
+  virtual ~pty(void);
   virtual void write_in(char c) override;
   virtual void write_out(char c, bool block = true) override;
 };

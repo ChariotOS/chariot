@@ -65,8 +65,8 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   // allocate a 1mb stack
   // TODO: this size is arbitrary.
   auto stack_size = 1024 * 1024;
-  off_t stack =
-      new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, nullptr, 0);
+  off_t stack = new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ | PROT_WRITE,
+                                     MAP_ANON | MAP_PRIVATE, nullptr, 0);
 
   // kill the other threads
   for (auto tid : curproc->threads) {
@@ -93,8 +93,9 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   curthd->setup_tls();
   curthd->setup_stack(tf);
 
-  /* TODO: on riscv, we overwrite the a0 value with the return value from the systemcall. Instead, we ought to
-   * do something smarter, but for now, success means returning the success value from the sys::exec syscall on riscv
+  /* TODO: on riscv, we overwrite the a0 value with the return value from the systemcall. Instead,
+   * we ought to do something smarter, but for now, success means returning the success value from
+   * the sys::exec syscall on riscv
    */
 #ifdef CONFIG_RISCV
   return ((rv::regs *)tf)->a0;

@@ -10,7 +10,6 @@ static rb_root pg_tree = RB_ROOT;
 
 
 static void remove_page_from_tree(mm::page &pg) {
-
 #ifdef PAGE_ENABLE_RBTREE
   scoped_irqlock l(pg_tree_lock);
   rb_erase(&pg.rb_node, &pg_tree);
@@ -77,11 +76,11 @@ static void update_page_address(mm::page *pg, unsigned long pa) {
 mm::page::page(void) {
   fclr(PG_WRTHRU | PG_NOCACHE | PG_DIRTY);
   pa = 0;
-	/*
-  lru = cpu::get_ticks();
-	auto bf = phys::bytes_free();
-	printk_nolock("nfree: %12zu bytes: %p\n", bf, bf);
-	*/
+  /*
+lru = cpu::get_ticks();
+  auto bf = phys::bytes_free();
+  printk_nolock("nfree: %12zu bytes: %p\n", bf, bf);
+  */
 }
 
 mm::page::~page(void) {

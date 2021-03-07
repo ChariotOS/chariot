@@ -12,14 +12,15 @@ extern "C" {
 
 #ifndef assert
 #ifdef NDEBUG
-#define	assert(x) (void)0
+#define assert(x) (void)0
 #else
-#define assert(x) ((void)((x) || (__assert_fail(#x, __FILE__, __LINE__, __func__),0)))
+#define assert(x) ((void)((x) || (__assert_fail(#x, __FILE__, __LINE__, __func__), 0)))
 #endif
 #endif
 
 
-extern void __assert_fail(const char * assertion, const char * file, unsigned int line, const char * function);
+extern void __assert_fail(const char* assertion, const char* file, unsigned int line,
+                          const char* function);
 
 #ifdef __cplusplus
 }

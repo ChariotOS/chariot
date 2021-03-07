@@ -8,9 +8,7 @@
 #if WREN_OPT_META
 
 const char* wrenMetaSource();
-WrenForeignMethodFn wrenMetaBindForeignMethod(WrenVM* vm,
-                                              const char* className,
-                                              bool isStatic,
+WrenForeignMethodFn wrenMetaBindForeignMethod(WrenVM* vm, const char* className, bool isStatic,
                                               const char* signature);
 
 #endif

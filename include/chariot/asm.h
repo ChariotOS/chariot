@@ -201,7 +201,9 @@ static inline u64 read_cr0(void) {
   return ret;
 }
 
-static inline void write_cr0(u64 data) { asm volatile("mov %0, %%cr0" : : "r"(data)); }
+static inline void write_cr0(u64 data) {
+  asm volatile("mov %0, %%cr0" : : "r"(data));
+}
 
 static inline u64 read_cr2(void) {
   u64 ret;
@@ -209,7 +211,9 @@ static inline u64 read_cr2(void) {
   return ret;
 }
 
-static inline void write_cr2(u64 data) { asm volatile("mov %0, %%cr2" : : "r"(data)); }
+static inline void write_cr2(u64 data) {
+  asm volatile("mov %0, %%cr2" : : "r"(data));
+}
 
 static inline u64 read_cr3(void) {
   u64 ret;
@@ -217,7 +221,9 @@ static inline u64 read_cr3(void) {
   return ret;
 }
 
-static inline void write_cr3(u64 data) { asm volatile("mov %0, %%cr3" : : "r"(data)); }
+static inline void write_cr3(u64 data) {
+  asm volatile("mov %0, %%cr3" : : "r"(data));
+}
 
 
 
@@ -227,7 +233,9 @@ static inline u64 read_cr4(void) {
   return ret;
 }
 
-static inline void write_cr4(u64 data) { asm volatile("mov %0, %%cr4" : : "r"(data)); }
+static inline void write_cr4(u64 data) {
+  asm volatile("mov %0, %%cr4" : : "r"(data));
+}
 
 uint8_t inb(off_t port);
 uint16_t inw(off_t port);
@@ -270,4 +278,3 @@ extern uint64_t rand_seed;
 void srand(unsigned s);
 int rand(void);
 #endif
-

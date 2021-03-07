@@ -11,14 +11,21 @@ namespace ui {
   /* A surface is the base class for window-like objects. */
   class surface {
    public:
-    virtual ~surface(void) {}
+    virtual ~surface(void) {
+    }
 
     /* get the backing bitmap for this surface, however it's maintained */
     virtual gfx::bitmap *bmp(void) = 0;
 
-    inline int width() { return bmp()->width(); }
-    inline int height() { return bmp()->height(); }
-    inline void flush(void) { invalidate(m_rect); }
+    inline int width() {
+      return bmp()->width();
+    }
+    inline int height() {
+      return bmp()->height();
+    }
+    inline void flush(void) {
+      invalidate(m_rect);
+    }
 
     /* Tell the surface that a region is invalidated  */
     virtual void invalidate(const gfx::rect &r, bool sync = false) = 0;

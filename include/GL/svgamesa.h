@@ -73,21 +73,21 @@ typedef struct svgamesa_context *SVGAMesaContext;
 /*
  * doubleBuffer flag new in version 2.4
  */
-extern int SVGAMesaInit( int GraphMode );
+extern int SVGAMesaInit(int GraphMode);
 
-extern int SVGAMesaClose( void );
+extern int SVGAMesaClose(void);
 
-extern SVGAMesaContext SVGAMesaCreateContext( GLboolean doubleBuffer );
+extern SVGAMesaContext SVGAMesaCreateContext(GLboolean doubleBuffer);
 
-extern void SVGAMesaDestroyContext( SVGAMesaContext ctx );
+extern void SVGAMesaDestroyContext(SVGAMesaContext ctx);
 
-extern void SVGAMesaMakeCurrent( SVGAMesaContext ctx );
+extern void SVGAMesaMakeCurrent(SVGAMesaContext ctx);
 
-extern void SVGAMesaSwapBuffers( void );
+extern void SVGAMesaSwapBuffers(void);
 
 extern void SVGAMesaSetCI(int ndx, GLubyte red, GLubyte green, GLubyte blue);
 
-extern SVGAMesaContext SVGAMesaGetCurrentContext( void );
+extern SVGAMesaContext SVGAMesaGetCurrentContext(void);
 
 #ifdef __cplusplus
 }

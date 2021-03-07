@@ -117,7 +117,8 @@ static err_t netconn_apimsg(tcpip_callback_fn fn, struct api_msg *apimsg) {
  * @return a newly allocated struct netconn or
  *         NULL on memory error
  */
-struct netconn *netconn_new_with_proto_and_callback(enum netconn_type t, u8_t proto, netconn_callback callback) {
+struct netconn *netconn_new_with_proto_and_callback(enum netconn_type t, u8_t proto,
+                                                    netconn_callback callback) {
   struct netconn *conn;
   API_MSG_VAR_DECLARE(msg);
   API_MSG_VAR_ALLOC_RETURN_NULL(msg);
@@ -579,7 +580,8 @@ static err_t netconn_recv_data(struct netconn *conn, void **new_buf) {
  *         ERR_ARG if conn is not a TCP netconn
  */
 err_t netconn_recv_tcp_pbuf(struct netconn *conn, struct pbuf **new_buf) {
-  LWIP_ERROR("netconn_recv: invalid conn", (conn != NULL) && NETCONNTYPE_GROUP(netconn_type(conn)) == NETCONN_TCP,
+  LWIP_ERROR("netconn_recv: invalid conn",
+             (conn != NULL) && NETCONNTYPE_GROUP(netconn_type(conn)) == NETCONN_TCP,
              return ERR_ARG;);
 
   return netconn_recv_data(conn, (void **)new_buf);
@@ -709,7 +711,8 @@ err_t netconn_write_partly(struct netconn *conn, const void *dataptr, size_t siz
   u8_t dontblock;
 
   LWIP_ERROR("netconn_write: invalid conn", (conn != NULL), return ERR_ARG;);
-  LWIP_ERROR("netconn_write: invalid conn->type", (NETCONNTYPE_GROUP(conn->type) == NETCONN_TCP), return ERR_VAL;);
+  LWIP_ERROR("netconn_write: invalid conn->type", (NETCONNTYPE_GROUP(conn->type) == NETCONN_TCP),
+             return ERR_VAL;);
   if (size == 0) {
     return ERR_OK;
   }
@@ -816,7 +819,8 @@ err_t netconn_close(struct netconn *conn) {
  * @return ERR_OK if the netconn was closed, any other err_t on error
  */
 err_t netconn_shutdown(struct netconn *conn, u8_t shut_rx, u8_t shut_tx) {
-  return netconn_close_shutdown(conn, (shut_rx ? NETCONN_SHUT_RD : 0) | (shut_tx ? NETCONN_SHUT_WR : 0));
+  return netconn_close_shutdown(conn,
+                                (shut_rx ? NETCONN_SHUT_RD : 0) | (shut_tx ? NETCONN_SHUT_WR : 0));
 }
 
 #if LWIP_IGMP || (LWIP_IPV6 && LWIP_IPV6_MLD)
@@ -831,8 +835,8 @@ err_t netconn_shutdown(struct netconn *conn, u8_t shut_rx, u8_t shut_tx) {
  * @param join_or_leave flag whether to send a join- or leave-message
  * @return ERR_OK if the action was taken, any err_t on error
  */
-err_t netconn_join_leave_group(struct netconn *conn, const ip_addr_t *multiaddr, const ip_addr_t *netif_addr,
-                               enum netconn_igmp join_or_leave) {
+err_t netconn_join_leave_group(struct netconn *conn, const ip_addr_t *multiaddr,
+                               const ip_addr_t *netif_addr, enum netconn_igmp join_or_leave) {
   API_MSG_VAR_DECLARE(msg);
   err_t err;
 
@@ -947,7 +951,8 @@ void netconn_thread_init(void) {
   if ((sem == NULL) || !sys_sem_valid(sem)) {
     /* call alloc only once */
     LWIP_NETCONN_THREAD_SEM_ALLOC();
-    LWIP_ASSERT("LWIP_NETCONN_THREAD_SEM_ALLOC() failed", sys_sem_valid(LWIP_NETCONN_THREAD_SEM_GET()));
+    LWIP_ASSERT("LWIP_NETCONN_THREAD_SEM_ALLOC() failed",
+                sys_sem_valid(LWIP_NETCONN_THREAD_SEM_GET()));
   }
 }
 

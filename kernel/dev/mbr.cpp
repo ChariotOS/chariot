@@ -20,7 +20,7 @@ struct mbr_header {
   u8 code2[216];
   u32 disk_signature;
   u16 disk_signature_zero;
-	mbr_part_entry entry[4];
+  mbr_part_entry entry[4];
   u16 mbr_signature;
 } __attribute__((packed));
 
@@ -33,8 +33,8 @@ dev::mbr::~mbr() {
 bool dev::mbr::parse(void *data) {
   hdr = new mbr_header;
 
-	memcpy(hdr, data, sizeof(*hdr));
-	if (hdr->mbr_signature != MBR_SIGNATURE) {
+  memcpy(hdr, data, sizeof(*hdr));
+  if (hdr->mbr_signature != MBR_SIGNATURE) {
     // printk("dev::mbr::parse: bad mbr signature %04X\n", hdr->mbr_signature);
     return false;
   }
@@ -52,9 +52,11 @@ bool dev::mbr::parse(void *data) {
   return true;
 }
 
-u32 dev::mbr::part_count(void) { return m_partitions.size(); }
+u32 dev::mbr::part_count(void) {
+  return m_partitions.size();
+}
 
 struct dev::part_info dev::mbr::partition(u32 index) {
   assert(index < part_count());
-	return m_partitions[index];
+  return m_partitions[index];
 }

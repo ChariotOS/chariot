@@ -12,17 +12,17 @@
  */
 
 namespace rv {
-	namespace plic {
-		void hart_init(void);
+  namespace plic {
+    void hart_init(void);
 
-		/* As the PLIC what interrupt we should handle */
-		int claim(void);
+    /* As the PLIC what interrupt we should handle */
+    int claim(void);
 
-		/* Tell the PLIC we've served an IRQ */
-		void complete(int irq);
+    /* Tell the PLIC we've served an IRQ */
+    void complete(int irq);
 
 
-		void enable(int irq, int priority = 1);
-		void disable(int irq);
-	}
-}
+    void enable(int irq, int priority = 1);
+    void disable(int irq);
+  }  // namespace plic
+}  // namespace rv

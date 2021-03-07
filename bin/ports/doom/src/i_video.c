@@ -190,17 +190,15 @@ void I_InitGraphics(void) {
   printf(
       "I_InitGraphics: framebuffer: x_res: %d, y_res: %d, x_virtual: %d, "
       "y_virtual: %d, bpp: %d\n",
-      s_Fb.xres, s_Fb.yres, s_Fb.xres_virtual, s_Fb.yres_virtual,
-      s_Fb.bits_per_pixel);
+      s_Fb.xres, s_Fb.yres, s_Fb.xres_virtual, s_Fb.yres_virtual, s_Fb.bits_per_pixel);
 
   printf(
       "I_InitGraphics: framebuffer: RGBA: %d%d%d%d, red_off: %d, green_off: "
       "%d, blue_off: %d, transp_off: %d\n",
-      s_Fb.red.length, s_Fb.green.length, s_Fb.blue.length, s_Fb.transp.length,
-      s_Fb.red.offset, s_Fb.green.offset, s_Fb.blue.offset, s_Fb.transp.offset);
+      s_Fb.red.length, s_Fb.green.length, s_Fb.blue.length, s_Fb.transp.length, s_Fb.red.offset,
+      s_Fb.green.offset, s_Fb.blue.offset, s_Fb.transp.offset);
 
-  printf("I_InitGraphics: DOOM screen size: w x h: %d x %d\n", SCREENWIDTH,
-         SCREENHEIGHT);
+  printf("I_InitGraphics: DOOM screen size: w x h: %d x %d\n", SCREENWIDTH, SCREENHEIGHT);
 
 
   i = M_CheckParmWithArgs("-scaling", 1);
@@ -211,8 +209,7 @@ void I_InitGraphics(void) {
     printf("I_InitGraphics: Scaling factor: %d\n", fb_scaling);
   } else {
     fb_scaling = s_Fb.xres / SCREENWIDTH;
-    if (s_Fb.yres / SCREENHEIGHT < fb_scaling)
-      fb_scaling = s_Fb.yres / SCREENHEIGHT;
+    if (s_Fb.yres / SCREENHEIGHT < fb_scaling) fb_scaling = s_Fb.yres / SCREENHEIGHT;
     printf("I_InitGraphics: Auto-scaling factor: %d\n", fb_scaling);
   }
 
@@ -227,13 +224,19 @@ void I_InitGraphics(void) {
   I_InitInput();
 }
 
-void I_ShutdownGraphics(void) { Z_Free(I_VideoBuffer); }
+void I_ShutdownGraphics(void) {
+  Z_Free(I_VideoBuffer);
+}
 
-void I_StartFrame(void) {}
+void I_StartFrame(void) {
+}
 
-void I_StartTic(void) { I_GetEvent(); }
+void I_StartTic(void) {
+  I_GetEvent();
+}
 
-void I_UpdateNoBlit(void) {}
+void I_UpdateNoBlit(void) {
+}
 
 //
 // I_FinishUpdate
@@ -248,19 +251,14 @@ void I_FinishUpdate(void) {
   /* 600 = s_Fb heigt, 200 screenheight */
   /* 600 = s_Fb heigt, 200 screenheight */
   /* 2048 =s_Fb width, 320 screenwidth */
-  y_offset =
-      (((s_Fb.yres - (SCREENHEIGHT * fb_scaling)) * s_Fb.bits_per_pixel / 8)) /
-      2;
-  x_offset =
-      (((s_Fb.xres - (SCREENWIDTH * fb_scaling)) * s_Fb.bits_per_pixel / 8)) /
-      2;  // XXX: siglent FB hack: /4 instead of /2, since it seems to handle
-          // the resolution in a funny way
+  y_offset = (((s_Fb.yres - (SCREENHEIGHT * fb_scaling)) * s_Fb.bits_per_pixel / 8)) / 2;
+  x_offset = (((s_Fb.xres - (SCREENWIDTH * fb_scaling)) * s_Fb.bits_per_pixel / 8)) /
+             2;  // XXX: siglent FB hack: /4 instead of /2, since it seems to handle
+                 // the resolution in a funny way
   // x_offset     = 0;
-  x_offset_end =
-      ((s_Fb.xres - (SCREENWIDTH * fb_scaling)) * s_Fb.bits_per_pixel / 8) -
-      x_offset;
+  x_offset_end = ((s_Fb.xres - (SCREENWIDTH * fb_scaling)) * s_Fb.bits_per_pixel / 8) - x_offset;
 
-	(void)y_offset;
+  (void)y_offset;
 
   /* DRAW SCREEN */
   line_in = (unsigned char *)I_VideoBuffer;
@@ -282,8 +280,7 @@ void I_FinishUpdate(void) {
       // cmap_to_rgb565((void*)line_out, (void*)line_in, SCREENWIDTH);
       cmap_to_fb((void *)line_out, (void *)line_in, SCREENWIDTH);
 #endif
-      line_out +=
-          (SCREENWIDTH * fb_scaling * (s_Fb.bits_per_pixel / 8)) + x_offset_end;
+      line_out += (SCREENWIDTH * fb_scaling * (s_Fb.bits_per_pixel / 8)) + x_offset_end;
     }
     line_in += SCREENWIDTH;
   }
@@ -367,20 +364,30 @@ int I_GetPaletteIndex(int r, int g, int b) {
   return best;
 }
 
-void I_BeginRead(void) {}
+void I_BeginRead(void) {
+}
 
-void I_EndRead(void) {}
+void I_EndRead(void) {
+}
 
-void I_SetWindowTitle(char *title) { DG_SetWindowTitle(title); }
+void I_SetWindowTitle(char *title) {
+  DG_SetWindowTitle(title);
+}
 
-void I_GraphicsCheckCommandLine(void) {}
+void I_GraphicsCheckCommandLine(void) {
+}
 
-void I_SetGrabMouseCallback(grabmouse_callback_t func) {}
+void I_SetGrabMouseCallback(grabmouse_callback_t func) {
+}
 
-void I_EnableLoadingDisk(void) {}
+void I_EnableLoadingDisk(void) {
+}
 
-void I_BindVideoVariables(void) {}
+void I_BindVideoVariables(void) {
+}
 
-void I_DisplayFPSDots(boolean dots_on) {}
+void I_DisplayFPSDots(boolean dots_on) {
+}
 
-void I_CheckIsScreensaver(void) {}
+void I_CheckIsScreensaver(void) {
+}

@@ -8,6 +8,6 @@ typedef struct {
 } jmp_buf[1];
 
 extern "C" {
-	int setjmp(jmp_buf);
-	void longjmp(jmp_buf, int);
+int setjmp(jmp_buf);
+void longjmp(jmp_buf, int);
 }

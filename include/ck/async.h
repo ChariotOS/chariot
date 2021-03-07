@@ -17,7 +17,7 @@ namespace ck {
   class fiber {
     void *stack;
     size_t stack_size;
-		/* TODO: an implementation */
+    /* TODO: an implementation */
   };
 
 };  // namespace ck

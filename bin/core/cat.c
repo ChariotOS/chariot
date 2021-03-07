@@ -7,13 +7,12 @@
 #define BSIZE 4096
 
 int main(int argc, char **argv) {
-
   if (argc == 1) {
-		while (1) {
-			int c = fgetc(stdin);
-			if (c == EOF) return 0;
-			putc(c, stdout);
-		}
+    while (1) {
+      int c = fgetc(stdin);
+      if (c == EOF) return 0;
+      putc(c, stdout);
+    }
   }
 
   char *buf = malloc(BSIZE);

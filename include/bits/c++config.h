@@ -46,35 +46,35 @@
 //   _GLIBCXX_NOTHROW
 //   _GLIBCXX_VISIBILITY
 #ifndef _GLIBCXX_PURE
-# define _GLIBCXX_PURE __attribute__ ((__pure__))
+#define _GLIBCXX_PURE __attribute__((__pure__))
 #endif
 
 #ifndef _GLIBCXX_CONST
-# define _GLIBCXX_CONST __attribute__ ((__const__))
+#define _GLIBCXX_CONST __attribute__((__const__))
 #endif
 
 #ifndef _GLIBCXX_NORETURN
-# define _GLIBCXX_NORETURN __attribute__ ((__noreturn__))
+#define _GLIBCXX_NORETURN __attribute__((__noreturn__))
 #endif
 
 // See below for C++
 #ifndef _GLIBCXX_NOTHROW
-# ifndef __cplusplus
-#  define _GLIBCXX_NOTHROW __attribute__((__nothrow__))
-# endif
+#ifndef __cplusplus
+#define _GLIBCXX_NOTHROW __attribute__((__nothrow__))
+#endif
 #endif
 
 // Macros for visibility attributes.
 //   _GLIBCXX_HAVE_ATTRIBUTE_VISIBILITY
 //   _GLIBCXX_VISIBILITY
-# define _GLIBCXX_HAVE_ATTRIBUTE_VISIBILITY 1
+#define _GLIBCXX_HAVE_ATTRIBUTE_VISIBILITY 1
 
 #if _GLIBCXX_HAVE_ATTRIBUTE_VISIBILITY
-# define _GLIBCXX_VISIBILITY(V) __attribute__ ((__visibility__ (#V)))
+#define _GLIBCXX_VISIBILITY(V) __attribute__((__visibility__(#V)))
 #else
 // If this is not supplied by the OS-specific or CPU-specific
 // headers included below, it will be defined to an empty default.
-# define _GLIBCXX_VISIBILITY(V) _GLIBCXX_PSEUDO_VISIBILITY(V)
+#define _GLIBCXX_VISIBILITY(V) _GLIBCXX_PSEUDO_VISIBILITY(V)
 #endif
 
 // Macros for deprecated attributes.
@@ -83,37 +83,37 @@
 //   _GLIBCXX17_DEPRECATED
 //   _GLIBCXX20_DEPRECATED( string-literal )
 #ifndef _GLIBCXX_USE_DEPRECATED
-# define _GLIBCXX_USE_DEPRECATED 1
+#define _GLIBCXX_USE_DEPRECATED 1
 #endif
 
 #if defined(__DEPRECATED) && (__cplusplus >= 201103L)
-# define _GLIBCXX_DEPRECATED __attribute__ ((__deprecated__))
+#define _GLIBCXX_DEPRECATED __attribute__((__deprecated__))
 #else
-# define _GLIBCXX_DEPRECATED
+#define _GLIBCXX_DEPRECATED
 #endif
 
 #if defined(__DEPRECATED) && (__cplusplus >= 201703L)
-# define _GLIBCXX17_DEPRECATED [[__deprecated__]]
+#define _GLIBCXX17_DEPRECATED [[__deprecated__]]
 #else
-# define _GLIBCXX17_DEPRECATED
+#define _GLIBCXX17_DEPRECATED
 #endif
 
 #if defined(__DEPRECATED) && (__cplusplus > 201703L)
-# define _GLIBCXX20_DEPRECATED(MSG) [[deprecated(MSG)]]
+#define _GLIBCXX20_DEPRECATED(MSG) [[deprecated(MSG)]]
 #else
-# define _GLIBCXX20_DEPRECATED(MSG)
+#define _GLIBCXX20_DEPRECATED(MSG)
 #endif
 
 // Macros for ABI tag attributes.
 #ifndef _GLIBCXX_ABI_TAG_CXX11
-# define _GLIBCXX_ABI_TAG_CXX11 __attribute ((__abi_tag__ ("cxx11")))
+#define _GLIBCXX_ABI_TAG_CXX11 __attribute((__abi_tag__("cxx11")))
 #endif
 
 // Macro to warn about unused results.
 #if __cplusplus >= 201703L
-# define _GLIBCXX_NODISCARD [[__nodiscard__]]
+#define _GLIBCXX_NODISCARD [[__nodiscard__]]
 #else
-# define _GLIBCXX_NODISCARD
+#define _GLIBCXX_NODISCARD
 #endif
 
 
@@ -122,77 +122,77 @@
 
 // Macro for constexpr, to support in mixed 03/0x mode.
 #ifndef _GLIBCXX_CONSTEXPR
-# if __cplusplus >= 201103L
-#  define _GLIBCXX_CONSTEXPR constexpr
-#  define _GLIBCXX_USE_CONSTEXPR constexpr
-# else
-#  define _GLIBCXX_CONSTEXPR
-#  define _GLIBCXX_USE_CONSTEXPR const
-# endif
+#if __cplusplus >= 201103L
+#define _GLIBCXX_CONSTEXPR constexpr
+#define _GLIBCXX_USE_CONSTEXPR constexpr
+#else
+#define _GLIBCXX_CONSTEXPR
+#define _GLIBCXX_USE_CONSTEXPR const
+#endif
 #endif
 
 #ifndef _GLIBCXX14_CONSTEXPR
-# if __cplusplus >= 201402L
-#  define _GLIBCXX14_CONSTEXPR constexpr
-# else
-#  define _GLIBCXX14_CONSTEXPR
-# endif
+#if __cplusplus >= 201402L
+#define _GLIBCXX14_CONSTEXPR constexpr
+#else
+#define _GLIBCXX14_CONSTEXPR
+#endif
 #endif
 
 #ifndef _GLIBCXX17_CONSTEXPR
-# if __cplusplus >= 201703L
-#  define _GLIBCXX17_CONSTEXPR constexpr
-# else
-#  define _GLIBCXX17_CONSTEXPR
-# endif
+#if __cplusplus >= 201703L
+#define _GLIBCXX17_CONSTEXPR constexpr
+#else
+#define _GLIBCXX17_CONSTEXPR
+#endif
 #endif
 
 #ifndef _GLIBCXX20_CONSTEXPR
-# if __cplusplus > 201703L
-#  define _GLIBCXX20_CONSTEXPR constexpr
-# else
-#  define _GLIBCXX20_CONSTEXPR
-# endif
+#if __cplusplus > 201703L
+#define _GLIBCXX20_CONSTEXPR constexpr
+#else
+#define _GLIBCXX20_CONSTEXPR
+#endif
 #endif
 
 #ifndef _GLIBCXX17_INLINE
-# if __cplusplus >= 201703L
-#  define _GLIBCXX17_INLINE inline
-# else
-#  define _GLIBCXX17_INLINE
-# endif
+#if __cplusplus >= 201703L
+#define _GLIBCXX17_INLINE inline
+#else
+#define _GLIBCXX17_INLINE
+#endif
 #endif
 
 // Macro for noexcept, to support in mixed 03/0x mode.
 #ifndef _GLIBCXX_NOEXCEPT
-# if __cplusplus >= 201103L
-#  define _GLIBCXX_NOEXCEPT noexcept
-#  define _GLIBCXX_NOEXCEPT_IF(...) noexcept(__VA_ARGS__)
-#  define _GLIBCXX_USE_NOEXCEPT noexcept
-#  define _GLIBCXX_THROW(_EXC)
-# else
-#  define _GLIBCXX_NOEXCEPT
-#  define _GLIBCXX_NOEXCEPT_IF(...)
-#  define _GLIBCXX_USE_NOEXCEPT throw()
-#  define _GLIBCXX_THROW(_EXC) throw(_EXC)
-# endif
+#if __cplusplus >= 201103L
+#define _GLIBCXX_NOEXCEPT noexcept
+#define _GLIBCXX_NOEXCEPT_IF(...) noexcept(__VA_ARGS__)
+#define _GLIBCXX_USE_NOEXCEPT noexcept
+#define _GLIBCXX_THROW(_EXC)
+#else
+#define _GLIBCXX_NOEXCEPT
+#define _GLIBCXX_NOEXCEPT_IF(...)
+#define _GLIBCXX_USE_NOEXCEPT throw()
+#define _GLIBCXX_THROW(_EXC) throw(_EXC)
+#endif
 #endif
 
 #ifndef _GLIBCXX_NOTHROW
-# define _GLIBCXX_NOTHROW _GLIBCXX_USE_NOEXCEPT
+#define _GLIBCXX_NOTHROW _GLIBCXX_USE_NOEXCEPT
 #endif
 
 #ifndef _GLIBCXX_THROW_OR_ABORT
-# if __cpp_exceptions
-#  define _GLIBCXX_THROW_OR_ABORT(_EXC) (throw (_EXC))
-# else
-#  define _GLIBCXX_THROW_OR_ABORT(_EXC) (__builtin_abort())
-# endif
+#if __cpp_exceptions
+#define _GLIBCXX_THROW_OR_ABORT(_EXC) (throw(_EXC))
+#else
+#define _GLIBCXX_THROW_OR_ABORT(_EXC) (__builtin_abort())
+#endif
 #endif
 
 #if __cpp_noexcept_function_type
 #define _GLIBCXX_NOEXCEPT_PARM , bool _NE
-#define _GLIBCXX_NOEXCEPT_QUAL noexcept (_NE)
+#define _GLIBCXX_NOEXCEPT_QUAL noexcept(_NE)
 #else
 #define _GLIBCXX_NOEXCEPT_PARM
 #define _GLIBCXX_NOEXCEPT_QUAL
@@ -208,7 +208,7 @@
 // Special case: _GLIBCXX_EXTERN_TEMPLATE == -1 disallows extern
 // templates only in basic_string, thus activating its debug-mode
 // checks even at -O0.
-# define _GLIBCXX_EXTERN_TEMPLATE 1
+#define _GLIBCXX_EXTERN_TEMPLATE 1
 
 /*
   Outline of libstdc++ namespaces.
@@ -233,7 +233,7 @@
     }
 
     namespace tr2 { }
-    
+
     namespace decimal { }
 
     namespace chrono { }				// C++11
@@ -258,119 +258,114 @@
   For full details see:
   http://gcc.gnu.org/onlinedocs/libstdc++/latest-doxygen/namespaces.html
 */
-namespace std
-{
-  typedef __SIZE_TYPE__ 	size_t;
-  typedef __PTRDIFF_TYPE__	ptrdiff_t;
+namespace std {
+  typedef __SIZE_TYPE__ size_t;
+  typedef __PTRDIFF_TYPE__ ptrdiff_t;
 
 #if __cplusplus >= 201103L
-  typedef decltype(nullptr)	nullptr_t;
+  typedef decltype(nullptr) nullptr_t;
 #endif
-}
+}  // namespace std
 
-# define _GLIBCXX_USE_DUAL_ABI 1
+#define _GLIBCXX_USE_DUAL_ABI 1
 
-#if ! _GLIBCXX_USE_DUAL_ABI
+#if !_GLIBCXX_USE_DUAL_ABI
 // Ignore any pre-defined value of _GLIBCXX_USE_CXX11_ABI
-# undef _GLIBCXX_USE_CXX11_ABI
+#undef _GLIBCXX_USE_CXX11_ABI
 #endif
 
 #ifndef _GLIBCXX_USE_CXX11_ABI
-# define _GLIBCXX_USE_CXX11_ABI 1
+#define _GLIBCXX_USE_CXX11_ABI 1
 #endif
 
 #if _GLIBCXX_USE_CXX11_ABI
-namespace std
-{
-  inline namespace __cxx11 __attribute__((__abi_tag__ ("cxx11"))) { }
-}
-namespace __gnu_cxx
-{
-  inline namespace __cxx11 __attribute__((__abi_tag__ ("cxx11"))) { }
-}
-# define _GLIBCXX_NAMESPACE_CXX11 __cxx11::
-# define _GLIBCXX_BEGIN_NAMESPACE_CXX11 namespace __cxx11 {
-# define _GLIBCXX_END_NAMESPACE_CXX11 }
-# define _GLIBCXX_DEFAULT_ABI_TAG _GLIBCXX_ABI_TAG_CXX11
+namespace std {
+  inline namespace __cxx11 __attribute__((__abi_tag__("cxx11"))) {
+  }
+}  // namespace std
+namespace __gnu_cxx {
+  inline namespace __cxx11 __attribute__((__abi_tag__("cxx11"))) {
+  }
+}  // namespace __gnu_cxx
+#define _GLIBCXX_NAMESPACE_CXX11 __cxx11::
+#define _GLIBCXX_BEGIN_NAMESPACE_CXX11 namespace __cxx11 {
+#define _GLIBCXX_END_NAMESPACE_CXX11 }
+#define _GLIBCXX_DEFAULT_ABI_TAG _GLIBCXX_ABI_TAG_CXX11
 #else
-# define _GLIBCXX_NAMESPACE_CXX11
-# define _GLIBCXX_BEGIN_NAMESPACE_CXX11
-# define _GLIBCXX_END_NAMESPACE_CXX11
-# define _GLIBCXX_DEFAULT_ABI_TAG
+#define _GLIBCXX_NAMESPACE_CXX11
+#define _GLIBCXX_BEGIN_NAMESPACE_CXX11
+#define _GLIBCXX_END_NAMESPACE_CXX11
+#define _GLIBCXX_DEFAULT_ABI_TAG
 #endif
 
 // Defined if inline namespaces are used for versioning.
-# define _GLIBCXX_INLINE_VERSION 0 
+#define _GLIBCXX_INLINE_VERSION 0
 
 // Inline namespace for symbol versioning.
 #if _GLIBCXX_INLINE_VERSION
-# define _GLIBCXX_BEGIN_NAMESPACE_VERSION namespace __8 {
-# define _GLIBCXX_END_NAMESPACE_VERSION }
+#define _GLIBCXX_BEGIN_NAMESPACE_VERSION namespace __8 {
+#define _GLIBCXX_END_NAMESPACE_VERSION }
 
-namespace std
-{
-inline _GLIBCXX_BEGIN_NAMESPACE_VERSION
+namespace std {
+  inline _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #if __cplusplus >= 201402L
-  inline namespace literals {
-    inline namespace chrono_literals { }
-    inline namespace complex_literals { }
-    inline namespace string_literals { }
+      inline namespace literals {
+    inline namespace chrono_literals {}
+    inline namespace complex_literals {}
+    inline namespace string_literals {}
 #if __cplusplus > 201402L
-    inline namespace string_view_literals { }
-#endif // C++17
+    inline namespace string_view_literals {}
+#endif  // C++17
   }
-#endif // C++14
-_GLIBCXX_END_NAMESPACE_VERSION
-}
+#endif  // C++14
+  _GLIBCXX_END_NAMESPACE_VERSION
+}  // namespace std
 
-namespace __gnu_cxx
-{
-inline _GLIBCXX_BEGIN_NAMESPACE_VERSION
-_GLIBCXX_END_NAMESPACE_VERSION
+namespace __gnu_cxx {
+  inline _GLIBCXX_BEGIN_NAMESPACE_VERSION _GLIBCXX_END_NAMESPACE_VERSION
 }
 
 #else
-# define _GLIBCXX_BEGIN_NAMESPACE_VERSION
-# define _GLIBCXX_END_NAMESPACE_VERSION
+#define _GLIBCXX_BEGIN_NAMESPACE_VERSION
+#define _GLIBCXX_END_NAMESPACE_VERSION
 #endif
 
 // Inline namespaces for special modes: debug, parallel.
 #if defined(_GLIBCXX_DEBUG) || defined(_GLIBCXX_PARALLEL)
-namespace std
-{
-_GLIBCXX_BEGIN_NAMESPACE_VERSION
+namespace std {
+  _GLIBCXX_BEGIN_NAMESPACE_VERSION
 
   // Non-inline namespace for components replaced by alternates in active mode.
-  namespace __cxx1998
-  {
-# if _GLIBCXX_USE_CXX11_ABI
-  inline namespace __cxx11 __attribute__((__abi_tag__ ("cxx11"))) { }
-# endif
-  }
+  namespace __cxx1998 {
+#if _GLIBCXX_USE_CXX11_ABI
+    inline namespace __cxx11 __attribute__((__abi_tag__("cxx11"))) {
+    }
+#endif
+  }  // namespace __cxx1998
 
-_GLIBCXX_END_NAMESPACE_VERSION
+  _GLIBCXX_END_NAMESPACE_VERSION
 
   // Inline namespace for debug mode.
-# ifdef _GLIBCXX_DEBUG
-  inline namespace __debug { }
-# endif
+#ifdef _GLIBCXX_DEBUG
+  inline namespace __debug {}
+#endif
 
   // Inline namespaces for parallel mode.
-# ifdef _GLIBCXX_PARALLEL
-  inline namespace __parallel { }
-# endif
-}
+#ifdef _GLIBCXX_PARALLEL
+  inline namespace __parallel {}
+#endif
+}  // namespace std
 
 // Check for invalid usage and unsupported mixed-mode use.
-# if defined(_GLIBCXX_DEBUG) && defined(_GLIBCXX_PARALLEL)
-#  error illegal use of multiple inlined namespaces
-# endif
+#if defined(_GLIBCXX_DEBUG) && defined(_GLIBCXX_PARALLEL)
+#error illegal use of multiple inlined namespaces
+#endif
 
 // Check for invalid use due to lack for weak symbols.
-# if __NO_INLINE__ && !__GXX_WEAK__
-#  warning currently using inlined namespace mode which may fail \
+#if __NO_INLINE__ && !__GXX_WEAK__
+#warning currently using inlined namespace mode which may fail \
    without inlining due to lack of weak symbols
-# endif
+#endif
 #endif
 
 // Macros for namespace scope. Either namespace std:: or the name
@@ -384,25 +379,23 @@ _GLIBCXX_END_NAMESPACE_VERSION
 // _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
 // _GLIBCXX_END_NAMESPACE_CONTAINER
 #if defined(_GLIBCXX_DEBUG)
-# define _GLIBCXX_STD_C __cxx1998
-# define _GLIBCXX_BEGIN_NAMESPACE_CONTAINER \
-	 namespace _GLIBCXX_STD_C {
-# define _GLIBCXX_END_NAMESPACE_CONTAINER }
+#define _GLIBCXX_STD_C __cxx1998
+#define _GLIBCXX_BEGIN_NAMESPACE_CONTAINER namespace _GLIBCXX_STD_C {
+#define _GLIBCXX_END_NAMESPACE_CONTAINER }
 #else
-# define _GLIBCXX_STD_C std
-# define _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
-# define _GLIBCXX_END_NAMESPACE_CONTAINER
+#define _GLIBCXX_STD_C std
+#define _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
+#define _GLIBCXX_END_NAMESPACE_CONTAINER
 #endif
 
 #ifdef _GLIBCXX_PARALLEL
-# define _GLIBCXX_STD_A __cxx1998
-# define _GLIBCXX_BEGIN_NAMESPACE_ALGO \
-	 namespace _GLIBCXX_STD_A {
-# define _GLIBCXX_END_NAMESPACE_ALGO }
+#define _GLIBCXX_STD_A __cxx1998
+#define _GLIBCXX_BEGIN_NAMESPACE_ALGO namespace _GLIBCXX_STD_A {
+#define _GLIBCXX_END_NAMESPACE_ALGO }
 #else
-# define _GLIBCXX_STD_A std
-# define _GLIBCXX_BEGIN_NAMESPACE_ALGO
-# define _GLIBCXX_END_NAMESPACE_ALGO
+#define _GLIBCXX_STD_A std
+#define _GLIBCXX_BEGIN_NAMESPACE_ALGO
+#define _GLIBCXX_END_NAMESPACE_ALGO
 #endif
 
 // GLIBCXX_ABI Deprecated
@@ -411,68 +404,62 @@ _GLIBCXX_END_NAMESPACE_VERSION
 
 // Inline namespace for long double 128 mode.
 #if defined _GLIBCXX_LONG_DOUBLE_COMPAT && defined __LONG_DOUBLE_128__
-namespace std
-{
-  inline namespace __gnu_cxx_ldbl128 { }
-}
-# define _GLIBCXX_NAMESPACE_LDBL __gnu_cxx_ldbl128::
-# define _GLIBCXX_BEGIN_NAMESPACE_LDBL namespace __gnu_cxx_ldbl128 {
-# define _GLIBCXX_END_NAMESPACE_LDBL }
+namespace std {
+  inline namespace __gnu_cxx_ldbl128 {}
+}  // namespace std
+#define _GLIBCXX_NAMESPACE_LDBL __gnu_cxx_ldbl128::
+#define _GLIBCXX_BEGIN_NAMESPACE_LDBL namespace __gnu_cxx_ldbl128 {
+#define _GLIBCXX_END_NAMESPACE_LDBL }
 #else
-# define _GLIBCXX_NAMESPACE_LDBL
-# define _GLIBCXX_BEGIN_NAMESPACE_LDBL
-# define _GLIBCXX_END_NAMESPACE_LDBL
+#define _GLIBCXX_NAMESPACE_LDBL
+#define _GLIBCXX_BEGIN_NAMESPACE_LDBL
+#define _GLIBCXX_END_NAMESPACE_LDBL
 #endif
 #if _GLIBCXX_USE_CXX11_ABI
-# define _GLIBCXX_NAMESPACE_LDBL_OR_CXX11 _GLIBCXX_NAMESPACE_CXX11
-# define _GLIBCXX_BEGIN_NAMESPACE_LDBL_OR_CXX11 _GLIBCXX_BEGIN_NAMESPACE_CXX11
-# define _GLIBCXX_END_NAMESPACE_LDBL_OR_CXX11 _GLIBCXX_END_NAMESPACE_CXX11
+#define _GLIBCXX_NAMESPACE_LDBL_OR_CXX11 _GLIBCXX_NAMESPACE_CXX11
+#define _GLIBCXX_BEGIN_NAMESPACE_LDBL_OR_CXX11 _GLIBCXX_BEGIN_NAMESPACE_CXX11
+#define _GLIBCXX_END_NAMESPACE_LDBL_OR_CXX11 _GLIBCXX_END_NAMESPACE_CXX11
 #else
-# define _GLIBCXX_NAMESPACE_LDBL_OR_CXX11 _GLIBCXX_NAMESPACE_LDBL
-# define _GLIBCXX_BEGIN_NAMESPACE_LDBL_OR_CXX11 _GLIBCXX_BEGIN_NAMESPACE_LDBL
-# define _GLIBCXX_END_NAMESPACE_LDBL_OR_CXX11 _GLIBCXX_END_NAMESPACE_LDBL
+#define _GLIBCXX_NAMESPACE_LDBL_OR_CXX11 _GLIBCXX_NAMESPACE_LDBL
+#define _GLIBCXX_BEGIN_NAMESPACE_LDBL_OR_CXX11 _GLIBCXX_BEGIN_NAMESPACE_LDBL
+#define _GLIBCXX_END_NAMESPACE_LDBL_OR_CXX11 _GLIBCXX_END_NAMESPACE_LDBL
 #endif
 
 // Debug Mode implies checking assertions.
 #if defined(_GLIBCXX_DEBUG) && !defined(_GLIBCXX_ASSERTIONS)
-# define _GLIBCXX_ASSERTIONS 1
+#define _GLIBCXX_ASSERTIONS 1
 #endif
 
 // Disable std::string explicit instantiation declarations in order to assert.
 #ifdef _GLIBCXX_ASSERTIONS
-# undef _GLIBCXX_EXTERN_TEMPLATE
-# define _GLIBCXX_EXTERN_TEMPLATE -1
+#undef _GLIBCXX_EXTERN_TEMPLATE
+#define _GLIBCXX_EXTERN_TEMPLATE -1
 #endif
 
 // Assert.
-#if defined(_GLIBCXX_ASSERTIONS) \
-  || defined(_GLIBCXX_PARALLEL) || defined(_GLIBCXX_PARALLEL_ASSERTIONS)
-namespace std
-{
+#if defined(_GLIBCXX_ASSERTIONS) || defined(_GLIBCXX_PARALLEL) || \
+    defined(_GLIBCXX_PARALLEL_ASSERTIONS)
+namespace std {
   // Avoid the use of assert, because we're trying to keep the <cassert>
   // include out of the mix.
-  extern "C++" inline void
-  __replacement_assert(const char* __file, int __line,
-		       const char* __function, const char* __condition)
-  {
-    __builtin_printf("%s:%d: %s: Assertion '%s' failed.\n", __file, __line,
-		     __function, __condition);
+  extern "C++" inline void __replacement_assert(const char* __file, int __line,
+                                                const char* __function, const char* __condition) {
+    __builtin_printf("%s:%d: %s: Assertion '%s' failed.\n", __file, __line, __function,
+                     __condition);
     __builtin_abort();
   }
-}
-#define __glibcxx_assert_impl(_Condition)				 \
-  do 									 \
-  {							      		 \
-    if (! (_Condition))                                                  \
-      std::__replacement_assert(__FILE__, __LINE__, __PRETTY_FUNCTION__, \
-				#_Condition);				 \
+}  // namespace std
+#define __glibcxx_assert_impl(_Condition)                                              \
+  do {                                                                                 \
+    if (!(_Condition))                                                                 \
+      std::__replacement_assert(__FILE__, __LINE__, __PRETTY_FUNCTION__, #_Condition); \
   } while (false)
 #endif
 
 #if defined(_GLIBCXX_ASSERTIONS)
-# define __glibcxx_assert(_Condition) __glibcxx_assert_impl(_Condition)
+#define __glibcxx_assert(_Condition) __glibcxx_assert_impl(_Condition)
 #else
-# define __glibcxx_assert(_Condition)
+#define __glibcxx_assert(_Condition)
 #endif
 
 // Macros for race detectors.
@@ -497,21 +484,21 @@ namespace std
 // accesses occurred when the refcount was positive do not race with
 // memory accesses which occurred after the refcount became zero.
 #ifndef _GLIBCXX_SYNCHRONIZATION_HAPPENS_BEFORE
-# define  _GLIBCXX_SYNCHRONIZATION_HAPPENS_BEFORE(A)
+#define _GLIBCXX_SYNCHRONIZATION_HAPPENS_BEFORE(A)
 #endif
 #ifndef _GLIBCXX_SYNCHRONIZATION_HAPPENS_AFTER
-# define  _GLIBCXX_SYNCHRONIZATION_HAPPENS_AFTER(A)
+#define _GLIBCXX_SYNCHRONIZATION_HAPPENS_AFTER(A)
 #endif
 
 // Macros for C linkage: define extern "C" linkage only when using C++.
-# define _GLIBCXX_BEGIN_EXTERN_C extern "C" {
-# define _GLIBCXX_END_EXTERN_C }
+#define _GLIBCXX_BEGIN_EXTERN_C extern "C" {
+#define _GLIBCXX_END_EXTERN_C }
 
-# define _GLIBCXX_USE_ALLOCATOR_NEW 1
+#define _GLIBCXX_USE_ALLOCATOR_NEW 1
 
-#else // !__cplusplus
-# define _GLIBCXX_BEGIN_EXTERN_C
-# define _GLIBCXX_END_EXTERN_C
+#else  // !__cplusplus
+#define _GLIBCXX_BEGIN_EXTERN_C
+#define _GLIBCXX_END_EXTERN_C
 #endif
 
 
@@ -526,14 +513,14 @@ namespace std
 // If platform uses neither visibility nor psuedo-visibility,
 // specify empty default for namespace annotation macros.
 #ifndef _GLIBCXX_PSEUDO_VISIBILITY
-# define _GLIBCXX_PSEUDO_VISIBILITY(V)
+#define _GLIBCXX_PSEUDO_VISIBILITY(V)
 #endif
 
 // Certain function definitions that are meant to be overridable from
 // user code are decorated with this macro.  For some targets, this
 // macro causes these definitions to be weak.
 #ifndef _GLIBCXX_WEAK_DEFINITION
-# define _GLIBCXX_WEAK_DEFINITION
+#define _GLIBCXX_WEAK_DEFINITION
 #endif
 
 // By default, we assume that __GXX_WEAK__ also means that there is support
@@ -541,16 +528,15 @@ namespace std
 // allows for referring to functions provided by other libraries (e.g.,
 // libitm) without depending on them if the respective features are not used.
 #ifndef _GLIBCXX_USE_WEAK_REF
-# define _GLIBCXX_USE_WEAK_REF __GXX_WEAK__
+#define _GLIBCXX_USE_WEAK_REF __GXX_WEAK__
 #endif
 
 // Conditionally enable annotations for the Transactional Memory TS on C++11.
 // Most of the following conditions are due to limitations in the current
 // implementation.
-#if __cplusplus >= 201103L && _GLIBCXX_USE_CXX11_ABI			\
-  && _GLIBCXX_USE_DUAL_ABI && __cpp_transactional_memory >= 201500L	\
-  &&  !_GLIBCXX_FULLY_DYNAMIC_STRING && _GLIBCXX_USE_WEAK_REF		\
-  && _GLIBCXX_USE_ALLOCATOR_NEW
+#if __cplusplus >= 201103L && _GLIBCXX_USE_CXX11_ABI && _GLIBCXX_USE_DUAL_ABI && \
+    __cpp_transactional_memory >= 201500L && !_GLIBCXX_FULLY_DYNAMIC_STRING &&   \
+    _GLIBCXX_USE_WEAK_REF && _GLIBCXX_USE_ALLOCATOR_NEW
 #define _GLIBCXX_TXN_SAFE transaction_safe
 #define _GLIBCXX_TXN_SAFE_DYN transaction_safe_dynamic
 #else
@@ -560,10 +546,10 @@ namespace std
 
 #if __cplusplus > 201402L
 // In C++17 mathematical special functions are in namespace std.
-# define _GLIBCXX_USE_STD_SPEC_FUNCS 1
+#define _GLIBCXX_USE_STD_SPEC_FUNCS 1
 #elif __cplusplus >= 201103L && __STDCPP_WANT_MATH_SPEC_FUNCS__ != 0
 // For C++11 and C++14 they are in namespace std when requested.
-# define _GLIBCXX_USE_STD_SPEC_FUNCS 1
+#define _GLIBCXX_USE_STD_SPEC_FUNCS 1
 #endif
 
 // The remainder of the prewritten config is automatic; all the
@@ -571,16 +557,16 @@ namespace std
 
 // Create a boolean flag to be used to determine if --fast-math is set.
 #ifdef __FAST_MATH__
-# define _GLIBCXX_FAST_MATH 1
+#define _GLIBCXX_FAST_MATH 1
 #else
-# define _GLIBCXX_FAST_MATH 0
+#define _GLIBCXX_FAST_MATH 0
 #endif
 
 // This marks string literals in header files to be extracted for eventual
 // translation.  It is primarily used for messages in thrown exceptions; see
 // src/functexcept.cc.  We use __N because the more traditional _N is used
 // for something else under certain OSes (see BADNAMES).
-#define __N(msgid)     (msgid)
+#define __N(msgid) (msgid)
 
 // For example, <windows.h> is known to #define min and max as macros...
 #undef min
@@ -589,48 +575,48 @@ namespace std
 // N.B. these _GLIBCXX_USE_C99_XXX macros are defined unconditionally
 // so they should be tested with #if not with #ifdef.
 #if __cplusplus >= 201103L
-# ifndef _GLIBCXX_USE_C99_MATH
-#  define _GLIBCXX_USE_C99_MATH _GLIBCXX11_USE_C99_MATH
-# endif
-# ifndef _GLIBCXX_USE_C99_COMPLEX
-# define _GLIBCXX_USE_C99_COMPLEX _GLIBCXX11_USE_C99_COMPLEX
-# endif
-# ifndef _GLIBCXX_USE_C99_STDIO
-# define _GLIBCXX_USE_C99_STDIO _GLIBCXX11_USE_C99_STDIO
-# endif
-# ifndef _GLIBCXX_USE_C99_STDLIB
-# define _GLIBCXX_USE_C99_STDLIB _GLIBCXX11_USE_C99_STDLIB
-# endif
-# ifndef _GLIBCXX_USE_C99_WCHAR
-# define _GLIBCXX_USE_C99_WCHAR _GLIBCXX11_USE_C99_WCHAR
-# endif
+#ifndef _GLIBCXX_USE_C99_MATH
+#define _GLIBCXX_USE_C99_MATH _GLIBCXX11_USE_C99_MATH
+#endif
+#ifndef _GLIBCXX_USE_C99_COMPLEX
+#define _GLIBCXX_USE_C99_COMPLEX _GLIBCXX11_USE_C99_COMPLEX
+#endif
+#ifndef _GLIBCXX_USE_C99_STDIO
+#define _GLIBCXX_USE_C99_STDIO _GLIBCXX11_USE_C99_STDIO
+#endif
+#ifndef _GLIBCXX_USE_C99_STDLIB
+#define _GLIBCXX_USE_C99_STDLIB _GLIBCXX11_USE_C99_STDLIB
+#endif
+#ifndef _GLIBCXX_USE_C99_WCHAR
+#define _GLIBCXX_USE_C99_WCHAR _GLIBCXX11_USE_C99_WCHAR
+#endif
 #else
-# ifndef _GLIBCXX_USE_C99_MATH
-#  define _GLIBCXX_USE_C99_MATH _GLIBCXX98_USE_C99_MATH
-# endif
-# ifndef _GLIBCXX_USE_C99_COMPLEX
-# define _GLIBCXX_USE_C99_COMPLEX _GLIBCXX98_USE_C99_COMPLEX
-# endif
-# ifndef _GLIBCXX_USE_C99_STDIO
-# define _GLIBCXX_USE_C99_STDIO _GLIBCXX98_USE_C99_STDIO
-# endif
-# ifndef _GLIBCXX_USE_C99_STDLIB
-# define _GLIBCXX_USE_C99_STDLIB _GLIBCXX98_USE_C99_STDLIB
-# endif
-# ifndef _GLIBCXX_USE_C99_WCHAR
-# define _GLIBCXX_USE_C99_WCHAR _GLIBCXX98_USE_C99_WCHAR
-# endif
+#ifndef _GLIBCXX_USE_C99_MATH
+#define _GLIBCXX_USE_C99_MATH _GLIBCXX98_USE_C99_MATH
+#endif
+#ifndef _GLIBCXX_USE_C99_COMPLEX
+#define _GLIBCXX_USE_C99_COMPLEX _GLIBCXX98_USE_C99_COMPLEX
+#endif
+#ifndef _GLIBCXX_USE_C99_STDIO
+#define _GLIBCXX_USE_C99_STDIO _GLIBCXX98_USE_C99_STDIO
+#endif
+#ifndef _GLIBCXX_USE_C99_STDLIB
+#define _GLIBCXX_USE_C99_STDLIB _GLIBCXX98_USE_C99_STDLIB
+#endif
+#ifndef _GLIBCXX_USE_C99_WCHAR
+#define _GLIBCXX_USE_C99_WCHAR _GLIBCXX98_USE_C99_WCHAR
+#endif
 #endif
 
 // Unless explicitly specified, enable char8_t extensions only if the core
 // language char8_t feature macro is defined.
 #ifndef _GLIBCXX_USE_CHAR8_T
-# ifdef __cpp_char8_t
-#  define _GLIBCXX_USE_CHAR8_T 1
-# endif
+#ifdef __cpp_char8_t
+#define _GLIBCXX_USE_CHAR8_T 1
+#endif
 #endif
 #ifdef _GLIBCXX_USE_CHAR8_T
-# define __cpp_lib_char8_t 201907L
+#define __cpp_lib_char8_t 201907L
 #endif
 
 /* Define if __float128 is supported on this host. */
@@ -640,31 +626,31 @@ namespace std
 
 #if __GNUC__ >= 7
 // Assume these are available if the compiler claims to be a recent GCC:
-# define _GLIBCXX_HAVE_BUILTIN_HAS_UNIQ_OBJ_REP 1
-# define _GLIBCXX_HAVE_BUILTIN_IS_AGGREGATE 1
-# define _GLIBCXX_HAVE_BUILTIN_LAUNDER 1
-# define _GLIBCXX_BUILTIN_IS_SAME_AS(T, U) __is_same_as(T, U)
-# if __GNUC__ >= 9
-#  define _GLIBCXX_HAVE_BUILTIN_IS_CONSTANT_EVALUATED 1
-# endif
+#define _GLIBCXX_HAVE_BUILTIN_HAS_UNIQ_OBJ_REP 1
+#define _GLIBCXX_HAVE_BUILTIN_IS_AGGREGATE 1
+#define _GLIBCXX_HAVE_BUILTIN_LAUNDER 1
+#define _GLIBCXX_BUILTIN_IS_SAME_AS(T, U) __is_same_as(T, U)
+#if __GNUC__ >= 9
+#define _GLIBCXX_HAVE_BUILTIN_IS_CONSTANT_EVALUATED 1
+#endif
 #elif defined(__is_identifier) && defined(__has_builtin)
 // For non-GNU compilers:
-# if ! __is_identifier(__has_unique_object_representations)
-#  define _GLIBCXX_HAVE_BUILTIN_HAS_UNIQ_OBJ_REP 1
-# endif
-# if ! __is_identifier(__is_aggregate)
-#  define _GLIBCXX_HAVE_BUILTIN_IS_AGGREGATE 1
-# endif
-# if __has_builtin(__builtin_launder)
-#  define _GLIBCXX_HAVE_BUILTIN_LAUNDER 1
-# endif
-# if __has_builtin(__builtin_is_constant_evaluated)
-#  define _GLIBCXX_HAVE_BUILTIN_IS_CONSTANT_EVALUATED 1
-# endif
-# if ! __is_identifier(__is_same)
-#  define _GLIBCXX_BUILTIN_IS_SAME_AS(T, U) __is_same(T, U)
-# endif
-#endif // GCC
+#if !__is_identifier(__has_unique_object_representations)
+#define _GLIBCXX_HAVE_BUILTIN_HAS_UNIQ_OBJ_REP 1
+#endif
+#if !__is_identifier(__is_aggregate)
+#define _GLIBCXX_HAVE_BUILTIN_IS_AGGREGATE 1
+#endif
+#if __has_builtin(__builtin_launder)
+#define _GLIBCXX_HAVE_BUILTIN_LAUNDER 1
+#endif
+#if __has_builtin(__builtin_is_constant_evaluated)
+#define _GLIBCXX_HAVE_BUILTIN_IS_CONSTANT_EVALUATED 1
+#endif
+#if !__is_identifier(__is_same)
+#define _GLIBCXX_BUILTIN_IS_SAME_AS(T, U) __is_same(T, U)
+#endif
+#endif  // GCC
 
 // PSTL configuration
 
@@ -675,22 +661,22 @@ namespace std
 // #define PSTL_VERSION 9000
 
 // For now this defaults to being based on the presence of Thread Building Blocks
-# ifndef _GLIBCXX_USE_TBB_PAR_BACKEND
-#  define _GLIBCXX_USE_TBB_PAR_BACKEND __has_include(<tbb/tbb.h>)
-# endif
+#ifndef _GLIBCXX_USE_TBB_PAR_BACKEND
+#define _GLIBCXX_USE_TBB_PAR_BACKEND __has_include(<tbb/tbb.h>)
+#endif
 // This section will need some rework when a new (default) backend type is added
-# if _GLIBCXX_USE_TBB_PAR_BACKEND
-#  define _PSTL_PAR_BACKEND_TBB
-# else
-#  define _PSTL_PAR_BACKEND_SERIAL
-# endif
+#if _GLIBCXX_USE_TBB_PAR_BACKEND
+#define _PSTL_PAR_BACKEND_TBB
+#else
+#define _PSTL_PAR_BACKEND_SERIAL
+#endif
 
-# define _PSTL_ASSERT(_Condition) __glibcxx_assert(_Condition)
-# define _PSTL_ASSERT_MSG(_Condition, _Message) __glibcxx_assert(_Condition)
+#define _PSTL_ASSERT(_Condition) __glibcxx_assert(_Condition)
+#define _PSTL_ASSERT_MSG(_Condition, _Message) __glibcxx_assert(_Condition)
 
 #include <pstl/pstl_config.h>
-#endif // __has_include
-#endif // C++17
+#endif  // __has_include
+#endif  // C++17
 
 // End of prewritten config; the settings discovered at configure time follow.
 /* config.h.  Generated from config.h.in by configure.  */
@@ -1451,10 +1437,10 @@ namespace std
 #define _GLIBCXX_HAVE___CXA_THREAD_ATEXIT_IMPL 1
 
 /* Define as const if the declaration of iconv() needs const. */
-#define _GLIBCXX_ICONV_CONST 
+#define _GLIBCXX_ICONV_CONST
 
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
+ */
 #define LT_OBJDIR ".libs/"
 
 /* Name of package */
@@ -1501,7 +1487,7 @@ namespace std
 
 /* Enable large inode numbers on Mac OS X 10.5.  */
 #ifndef _GLIBCXX_DARWIN_USE_64_BIT_INODE
-# define _GLIBCXX_DARWIN_USE_64_BIT_INODE 1
+#define _GLIBCXX_DARWIN_USE_64_BIT_INODE 1
 #endif
 
 /* Number of bits in a file offset, on hosts where this is settable. */
@@ -1644,7 +1630,7 @@ namespace std
 #define _GLIBCXX_USE_C99_STDINT_TR1 1
 
 /* Defined if clock_gettime syscall has monotonic and realtime clock support.
-   */
+ */
 /* #undef _GLIBCXX_USE_CLOCK_GETTIME_SYSCALL */
 
 /* Defined if clock_gettime has monotonic clock support. */
@@ -1770,324 +1756,324 @@ namespace std
 /* #undef __CORRECT_ISO_CPP11_MATH_H_PROTO_INT */
 #endif
 
-#if defined (_GLIBCXX_HAVE__ACOSF) && ! defined (_GLIBCXX_HAVE_ACOSF)
-# define _GLIBCXX_HAVE_ACOSF 1
-# define acosf _acosf
+#if defined(_GLIBCXX_HAVE__ACOSF) && !defined(_GLIBCXX_HAVE_ACOSF)
+#define _GLIBCXX_HAVE_ACOSF 1
+#define acosf _acosf
 #endif
 
-#if defined (_GLIBCXX_HAVE__ACOSL) && ! defined (_GLIBCXX_HAVE_ACOSL)
-# define _GLIBCXX_HAVE_ACOSL 1
-# define acosl _acosl
+#if defined(_GLIBCXX_HAVE__ACOSL) && !defined(_GLIBCXX_HAVE_ACOSL)
+#define _GLIBCXX_HAVE_ACOSL 1
+#define acosl _acosl
 #endif
 
-#if defined (_GLIBCXX_HAVE__ASINF) && ! defined (_GLIBCXX_HAVE_ASINF)
-# define _GLIBCXX_HAVE_ASINF 1
-# define asinf _asinf
+#if defined(_GLIBCXX_HAVE__ASINF) && !defined(_GLIBCXX_HAVE_ASINF)
+#define _GLIBCXX_HAVE_ASINF 1
+#define asinf _asinf
 #endif
 
-#if defined (_GLIBCXX_HAVE__ASINL) && ! defined (_GLIBCXX_HAVE_ASINL)
-# define _GLIBCXX_HAVE_ASINL 1
-# define asinl _asinl
+#if defined(_GLIBCXX_HAVE__ASINL) && !defined(_GLIBCXX_HAVE_ASINL)
+#define _GLIBCXX_HAVE_ASINL 1
+#define asinl _asinl
 #endif
 
-#if defined (_GLIBCXX_HAVE__ATAN2F) && ! defined (_GLIBCXX_HAVE_ATAN2F)
-# define _GLIBCXX_HAVE_ATAN2F 1
-# define atan2f _atan2f
+#if defined(_GLIBCXX_HAVE__ATAN2F) && !defined(_GLIBCXX_HAVE_ATAN2F)
+#define _GLIBCXX_HAVE_ATAN2F 1
+#define atan2f _atan2f
 #endif
 
-#if defined (_GLIBCXX_HAVE__ATAN2L) && ! defined (_GLIBCXX_HAVE_ATAN2L)
-# define _GLIBCXX_HAVE_ATAN2L 1
-# define atan2l _atan2l
+#if defined(_GLIBCXX_HAVE__ATAN2L) && !defined(_GLIBCXX_HAVE_ATAN2L)
+#define _GLIBCXX_HAVE_ATAN2L 1
+#define atan2l _atan2l
 #endif
 
-#if defined (_GLIBCXX_HAVE__ATANF) && ! defined (_GLIBCXX_HAVE_ATANF)
-# define _GLIBCXX_HAVE_ATANF 1
-# define atanf _atanf
+#if defined(_GLIBCXX_HAVE__ATANF) && !defined(_GLIBCXX_HAVE_ATANF)
+#define _GLIBCXX_HAVE_ATANF 1
+#define atanf _atanf
 #endif
 
-#if defined (_GLIBCXX_HAVE__ATANL) && ! defined (_GLIBCXX_HAVE_ATANL)
-# define _GLIBCXX_HAVE_ATANL 1
-# define atanl _atanl
+#if defined(_GLIBCXX_HAVE__ATANL) && !defined(_GLIBCXX_HAVE_ATANL)
+#define _GLIBCXX_HAVE_ATANL 1
+#define atanl _atanl
 #endif
 
-#if defined (_GLIBCXX_HAVE__CEILF) && ! defined (_GLIBCXX_HAVE_CEILF)
-# define _GLIBCXX_HAVE_CEILF 1
-# define ceilf _ceilf
+#if defined(_GLIBCXX_HAVE__CEILF) && !defined(_GLIBCXX_HAVE_CEILF)
+#define _GLIBCXX_HAVE_CEILF 1
+#define ceilf _ceilf
 #endif
 
-#if defined (_GLIBCXX_HAVE__CEILL) && ! defined (_GLIBCXX_HAVE_CEILL)
-# define _GLIBCXX_HAVE_CEILL 1
-# define ceill _ceill
+#if defined(_GLIBCXX_HAVE__CEILL) && !defined(_GLIBCXX_HAVE_CEILL)
+#define _GLIBCXX_HAVE_CEILL 1
+#define ceill _ceill
 #endif
 
-#if defined (_GLIBCXX_HAVE__COSF) && ! defined (_GLIBCXX_HAVE_COSF)
-# define _GLIBCXX_HAVE_COSF 1
-# define cosf _cosf
+#if defined(_GLIBCXX_HAVE__COSF) && !defined(_GLIBCXX_HAVE_COSF)
+#define _GLIBCXX_HAVE_COSF 1
+#define cosf _cosf
 #endif
 
-#if defined (_GLIBCXX_HAVE__COSHF) && ! defined (_GLIBCXX_HAVE_COSHF)
-# define _GLIBCXX_HAVE_COSHF 1
-# define coshf _coshf
+#if defined(_GLIBCXX_HAVE__COSHF) && !defined(_GLIBCXX_HAVE_COSHF)
+#define _GLIBCXX_HAVE_COSHF 1
+#define coshf _coshf
 #endif
 
-#if defined (_GLIBCXX_HAVE__COSHL) && ! defined (_GLIBCXX_HAVE_COSHL)
-# define _GLIBCXX_HAVE_COSHL 1
-# define coshl _coshl
+#if defined(_GLIBCXX_HAVE__COSHL) && !defined(_GLIBCXX_HAVE_COSHL)
+#define _GLIBCXX_HAVE_COSHL 1
+#define coshl _coshl
 #endif
 
-#if defined (_GLIBCXX_HAVE__COSL) && ! defined (_GLIBCXX_HAVE_COSL)
-# define _GLIBCXX_HAVE_COSL 1
-# define cosl _cosl
+#if defined(_GLIBCXX_HAVE__COSL) && !defined(_GLIBCXX_HAVE_COSL)
+#define _GLIBCXX_HAVE_COSL 1
+#define cosl _cosl
 #endif
 
-#if defined (_GLIBCXX_HAVE__EXPF) && ! defined (_GLIBCXX_HAVE_EXPF)
-# define _GLIBCXX_HAVE_EXPF 1
-# define expf _expf
+#if defined(_GLIBCXX_HAVE__EXPF) && !defined(_GLIBCXX_HAVE_EXPF)
+#define _GLIBCXX_HAVE_EXPF 1
+#define expf _expf
 #endif
 
-#if defined (_GLIBCXX_HAVE__EXPL) && ! defined (_GLIBCXX_HAVE_EXPL)
-# define _GLIBCXX_HAVE_EXPL 1
-# define expl _expl
+#if defined(_GLIBCXX_HAVE__EXPL) && !defined(_GLIBCXX_HAVE_EXPL)
+#define _GLIBCXX_HAVE_EXPL 1
+#define expl _expl
 #endif
 
-#if defined (_GLIBCXX_HAVE__FABSF) && ! defined (_GLIBCXX_HAVE_FABSF)
-# define _GLIBCXX_HAVE_FABSF 1
-# define fabsf _fabsf
+#if defined(_GLIBCXX_HAVE__FABSF) && !defined(_GLIBCXX_HAVE_FABSF)
+#define _GLIBCXX_HAVE_FABSF 1
+#define fabsf _fabsf
 #endif
 
-#if defined (_GLIBCXX_HAVE__FABSL) && ! defined (_GLIBCXX_HAVE_FABSL)
-# define _GLIBCXX_HAVE_FABSL 1
-# define fabsl _fabsl
+#if defined(_GLIBCXX_HAVE__FABSL) && !defined(_GLIBCXX_HAVE_FABSL)
+#define _GLIBCXX_HAVE_FABSL 1
+#define fabsl _fabsl
 #endif
 
-#if defined (_GLIBCXX_HAVE__FINITE) && ! defined (_GLIBCXX_HAVE_FINITE)
-# define _GLIBCXX_HAVE_FINITE 1
-# define finite _finite
+#if defined(_GLIBCXX_HAVE__FINITE) && !defined(_GLIBCXX_HAVE_FINITE)
+#define _GLIBCXX_HAVE_FINITE 1
+#define finite _finite
 #endif
 
-#if defined (_GLIBCXX_HAVE__FINITEF) && ! defined (_GLIBCXX_HAVE_FINITEF)
-# define _GLIBCXX_HAVE_FINITEF 1
-# define finitef _finitef
+#if defined(_GLIBCXX_HAVE__FINITEF) && !defined(_GLIBCXX_HAVE_FINITEF)
+#define _GLIBCXX_HAVE_FINITEF 1
+#define finitef _finitef
 #endif
 
-#if defined (_GLIBCXX_HAVE__FINITEL) && ! defined (_GLIBCXX_HAVE_FINITEL)
-# define _GLIBCXX_HAVE_FINITEL 1
-# define finitel _finitel
+#if defined(_GLIBCXX_HAVE__FINITEL) && !defined(_GLIBCXX_HAVE_FINITEL)
+#define _GLIBCXX_HAVE_FINITEL 1
+#define finitel _finitel
 #endif
 
-#if defined (_GLIBCXX_HAVE__FLOORF) && ! defined (_GLIBCXX_HAVE_FLOORF)
-# define _GLIBCXX_HAVE_FLOORF 1
-# define floorf _floorf
+#if defined(_GLIBCXX_HAVE__FLOORF) && !defined(_GLIBCXX_HAVE_FLOORF)
+#define _GLIBCXX_HAVE_FLOORF 1
+#define floorf _floorf
 #endif
 
-#if defined (_GLIBCXX_HAVE__FLOORL) && ! defined (_GLIBCXX_HAVE_FLOORL)
-# define _GLIBCXX_HAVE_FLOORL 1
-# define floorl _floorl
+#if defined(_GLIBCXX_HAVE__FLOORL) && !defined(_GLIBCXX_HAVE_FLOORL)
+#define _GLIBCXX_HAVE_FLOORL 1
+#define floorl _floorl
 #endif
 
-#if defined (_GLIBCXX_HAVE__FMODF) && ! defined (_GLIBCXX_HAVE_FMODF)
-# define _GLIBCXX_HAVE_FMODF 1
-# define fmodf _fmodf
+#if defined(_GLIBCXX_HAVE__FMODF) && !defined(_GLIBCXX_HAVE_FMODF)
+#define _GLIBCXX_HAVE_FMODF 1
+#define fmodf _fmodf
 #endif
 
-#if defined (_GLIBCXX_HAVE__FMODL) && ! defined (_GLIBCXX_HAVE_FMODL)
-# define _GLIBCXX_HAVE_FMODL 1
-# define fmodl _fmodl
+#if defined(_GLIBCXX_HAVE__FMODL) && !defined(_GLIBCXX_HAVE_FMODL)
+#define _GLIBCXX_HAVE_FMODL 1
+#define fmodl _fmodl
 #endif
 
-#if defined (_GLIBCXX_HAVE__FPCLASS) && ! defined (_GLIBCXX_HAVE_FPCLASS)
-# define _GLIBCXX_HAVE_FPCLASS 1
-# define fpclass _fpclass
+#if defined(_GLIBCXX_HAVE__FPCLASS) && !defined(_GLIBCXX_HAVE_FPCLASS)
+#define _GLIBCXX_HAVE_FPCLASS 1
+#define fpclass _fpclass
 #endif
 
-#if defined (_GLIBCXX_HAVE__FREXPF) && ! defined (_GLIBCXX_HAVE_FREXPF)
-# define _GLIBCXX_HAVE_FREXPF 1
-# define frexpf _frexpf
+#if defined(_GLIBCXX_HAVE__FREXPF) && !defined(_GLIBCXX_HAVE_FREXPF)
+#define _GLIBCXX_HAVE_FREXPF 1
+#define frexpf _frexpf
 #endif
 
-#if defined (_GLIBCXX_HAVE__FREXPL) && ! defined (_GLIBCXX_HAVE_FREXPL)
-# define _GLIBCXX_HAVE_FREXPL 1
-# define frexpl _frexpl
+#if defined(_GLIBCXX_HAVE__FREXPL) && !defined(_GLIBCXX_HAVE_FREXPL)
+#define _GLIBCXX_HAVE_FREXPL 1
+#define frexpl _frexpl
 #endif
 
-#if defined (_GLIBCXX_HAVE__HYPOT) && ! defined (_GLIBCXX_HAVE_HYPOT)
-# define _GLIBCXX_HAVE_HYPOT 1
-# define hypot _hypot
+#if defined(_GLIBCXX_HAVE__HYPOT) && !defined(_GLIBCXX_HAVE_HYPOT)
+#define _GLIBCXX_HAVE_HYPOT 1
+#define hypot _hypot
 #endif
 
-#if defined (_GLIBCXX_HAVE__HYPOTF) && ! defined (_GLIBCXX_HAVE_HYPOTF)
-# define _GLIBCXX_HAVE_HYPOTF 1
-# define hypotf _hypotf
+#if defined(_GLIBCXX_HAVE__HYPOTF) && !defined(_GLIBCXX_HAVE_HYPOTF)
+#define _GLIBCXX_HAVE_HYPOTF 1
+#define hypotf _hypotf
 #endif
 
-#if defined (_GLIBCXX_HAVE__HYPOTL) && ! defined (_GLIBCXX_HAVE_HYPOTL)
-# define _GLIBCXX_HAVE_HYPOTL 1
-# define hypotl _hypotl
+#if defined(_GLIBCXX_HAVE__HYPOTL) && !defined(_GLIBCXX_HAVE_HYPOTL)
+#define _GLIBCXX_HAVE_HYPOTL 1
+#define hypotl _hypotl
 #endif
 
-#if defined (_GLIBCXX_HAVE__ISINF) && ! defined (_GLIBCXX_HAVE_ISINF)
-# define _GLIBCXX_HAVE_ISINF 1
-# define isinf _isinf
+#if defined(_GLIBCXX_HAVE__ISINF) && !defined(_GLIBCXX_HAVE_ISINF)
+#define _GLIBCXX_HAVE_ISINF 1
+#define isinf _isinf
 #endif
 
-#if defined (_GLIBCXX_HAVE__ISINFF) && ! defined (_GLIBCXX_HAVE_ISINFF)
-# define _GLIBCXX_HAVE_ISINFF 1
-# define isinff _isinff
+#if defined(_GLIBCXX_HAVE__ISINFF) && !defined(_GLIBCXX_HAVE_ISINFF)
+#define _GLIBCXX_HAVE_ISINFF 1
+#define isinff _isinff
 #endif
 
-#if defined (_GLIBCXX_HAVE__ISINFL) && ! defined (_GLIBCXX_HAVE_ISINFL)
-# define _GLIBCXX_HAVE_ISINFL 1
-# define isinfl _isinfl
+#if defined(_GLIBCXX_HAVE__ISINFL) && !defined(_GLIBCXX_HAVE_ISINFL)
+#define _GLIBCXX_HAVE_ISINFL 1
+#define isinfl _isinfl
 #endif
 
-#if defined (_GLIBCXX_HAVE__ISNAN) && ! defined (_GLIBCXX_HAVE_ISNAN)
-# define _GLIBCXX_HAVE_ISNAN 1
-# define isnan _isnan
+#if defined(_GLIBCXX_HAVE__ISNAN) && !defined(_GLIBCXX_HAVE_ISNAN)
+#define _GLIBCXX_HAVE_ISNAN 1
+#define isnan _isnan
 #endif
 
-#if defined (_GLIBCXX_HAVE__ISNANF) && ! defined (_GLIBCXX_HAVE_ISNANF)
-# define _GLIBCXX_HAVE_ISNANF 1
-# define isnanf _isnanf
+#if defined(_GLIBCXX_HAVE__ISNANF) && !defined(_GLIBCXX_HAVE_ISNANF)
+#define _GLIBCXX_HAVE_ISNANF 1
+#define isnanf _isnanf
 #endif
 
-#if defined (_GLIBCXX_HAVE__ISNANL) && ! defined (_GLIBCXX_HAVE_ISNANL)
-# define _GLIBCXX_HAVE_ISNANL 1
-# define isnanl _isnanl
+#if defined(_GLIBCXX_HAVE__ISNANL) && !defined(_GLIBCXX_HAVE_ISNANL)
+#define _GLIBCXX_HAVE_ISNANL 1
+#define isnanl _isnanl
 #endif
 
-#if defined (_GLIBCXX_HAVE__LDEXPF) && ! defined (_GLIBCXX_HAVE_LDEXPF)
-# define _GLIBCXX_HAVE_LDEXPF 1
-# define ldexpf _ldexpf
+#if defined(_GLIBCXX_HAVE__LDEXPF) && !defined(_GLIBCXX_HAVE_LDEXPF)
+#define _GLIBCXX_HAVE_LDEXPF 1
+#define ldexpf _ldexpf
 #endif
 
-#if defined (_GLIBCXX_HAVE__LDEXPL) && ! defined (_GLIBCXX_HAVE_LDEXPL)
-# define _GLIBCXX_HAVE_LDEXPL 1
-# define ldexpl _ldexpl
+#if defined(_GLIBCXX_HAVE__LDEXPL) && !defined(_GLIBCXX_HAVE_LDEXPL)
+#define _GLIBCXX_HAVE_LDEXPL 1
+#define ldexpl _ldexpl
 #endif
 
-#if defined (_GLIBCXX_HAVE__LOG10F) && ! defined (_GLIBCXX_HAVE_LOG10F)
-# define _GLIBCXX_HAVE_LOG10F 1
-# define log10f _log10f
+#if defined(_GLIBCXX_HAVE__LOG10F) && !defined(_GLIBCXX_HAVE_LOG10F)
+#define _GLIBCXX_HAVE_LOG10F 1
+#define log10f _log10f
 #endif
 
-#if defined (_GLIBCXX_HAVE__LOG10L) && ! defined (_GLIBCXX_HAVE_LOG10L)
-# define _GLIBCXX_HAVE_LOG10L 1
-# define log10l _log10l
+#if defined(_GLIBCXX_HAVE__LOG10L) && !defined(_GLIBCXX_HAVE_LOG10L)
+#define _GLIBCXX_HAVE_LOG10L 1
+#define log10l _log10l
 #endif
 
-#if defined (_GLIBCXX_HAVE__LOGF) && ! defined (_GLIBCXX_HAVE_LOGF)
-# define _GLIBCXX_HAVE_LOGF 1
-# define logf _logf
+#if defined(_GLIBCXX_HAVE__LOGF) && !defined(_GLIBCXX_HAVE_LOGF)
+#define _GLIBCXX_HAVE_LOGF 1
+#define logf _logf
 #endif
 
-#if defined (_GLIBCXX_HAVE__LOGL) && ! defined (_GLIBCXX_HAVE_LOGL)
-# define _GLIBCXX_HAVE_LOGL 1
-# define logl _logl
+#if defined(_GLIBCXX_HAVE__LOGL) && !defined(_GLIBCXX_HAVE_LOGL)
+#define _GLIBCXX_HAVE_LOGL 1
+#define logl _logl
 #endif
 
-#if defined (_GLIBCXX_HAVE__MODF) && ! defined (_GLIBCXX_HAVE_MODF)
-# define _GLIBCXX_HAVE_MODF 1
-# define modf _modf
+#if defined(_GLIBCXX_HAVE__MODF) && !defined(_GLIBCXX_HAVE_MODF)
+#define _GLIBCXX_HAVE_MODF 1
+#define modf _modf
 #endif
 
-#if defined (_GLIBCXX_HAVE__MODFF) && ! defined (_GLIBCXX_HAVE_MODFF)
-# define _GLIBCXX_HAVE_MODFF 1
-# define modff _modff
+#if defined(_GLIBCXX_HAVE__MODFF) && !defined(_GLIBCXX_HAVE_MODFF)
+#define _GLIBCXX_HAVE_MODFF 1
+#define modff _modff
 #endif
 
-#if defined (_GLIBCXX_HAVE__MODFL) && ! defined (_GLIBCXX_HAVE_MODFL)
-# define _GLIBCXX_HAVE_MODFL 1
-# define modfl _modfl
+#if defined(_GLIBCXX_HAVE__MODFL) && !defined(_GLIBCXX_HAVE_MODFL)
+#define _GLIBCXX_HAVE_MODFL 1
+#define modfl _modfl
 #endif
 
-#if defined (_GLIBCXX_HAVE__POWF) && ! defined (_GLIBCXX_HAVE_POWF)
-# define _GLIBCXX_HAVE_POWF 1
-# define powf _powf
+#if defined(_GLIBCXX_HAVE__POWF) && !defined(_GLIBCXX_HAVE_POWF)
+#define _GLIBCXX_HAVE_POWF 1
+#define powf _powf
 #endif
 
-#if defined (_GLIBCXX_HAVE__POWL) && ! defined (_GLIBCXX_HAVE_POWL)
-# define _GLIBCXX_HAVE_POWL 1
-# define powl _powl
+#if defined(_GLIBCXX_HAVE__POWL) && !defined(_GLIBCXX_HAVE_POWL)
+#define _GLIBCXX_HAVE_POWL 1
+#define powl _powl
 #endif
 
-#if defined (_GLIBCXX_HAVE__QFPCLASS) && ! defined (_GLIBCXX_HAVE_QFPCLASS)
-# define _GLIBCXX_HAVE_QFPCLASS 1
-# define qfpclass _qfpclass
+#if defined(_GLIBCXX_HAVE__QFPCLASS) && !defined(_GLIBCXX_HAVE_QFPCLASS)
+#define _GLIBCXX_HAVE_QFPCLASS 1
+#define qfpclass _qfpclass
 #endif
 
-#if defined (_GLIBCXX_HAVE__SINCOS) && ! defined (_GLIBCXX_HAVE_SINCOS)
-# define _GLIBCXX_HAVE_SINCOS 1
-# define sincos _sincos
+#if defined(_GLIBCXX_HAVE__SINCOS) && !defined(_GLIBCXX_HAVE_SINCOS)
+#define _GLIBCXX_HAVE_SINCOS 1
+#define sincos _sincos
 #endif
 
-#if defined (_GLIBCXX_HAVE__SINCOSF) && ! defined (_GLIBCXX_HAVE_SINCOSF)
-# define _GLIBCXX_HAVE_SINCOSF 1
-# define sincosf _sincosf
+#if defined(_GLIBCXX_HAVE__SINCOSF) && !defined(_GLIBCXX_HAVE_SINCOSF)
+#define _GLIBCXX_HAVE_SINCOSF 1
+#define sincosf _sincosf
 #endif
 
-#if defined (_GLIBCXX_HAVE__SINCOSL) && ! defined (_GLIBCXX_HAVE_SINCOSL)
-# define _GLIBCXX_HAVE_SINCOSL 1
-# define sincosl _sincosl
+#if defined(_GLIBCXX_HAVE__SINCOSL) && !defined(_GLIBCXX_HAVE_SINCOSL)
+#define _GLIBCXX_HAVE_SINCOSL 1
+#define sincosl _sincosl
 #endif
 
-#if defined (_GLIBCXX_HAVE__SINF) && ! defined (_GLIBCXX_HAVE_SINF)
-# define _GLIBCXX_HAVE_SINF 1
-# define sinf _sinf
+#if defined(_GLIBCXX_HAVE__SINF) && !defined(_GLIBCXX_HAVE_SINF)
+#define _GLIBCXX_HAVE_SINF 1
+#define sinf _sinf
 #endif
 
-#if defined (_GLIBCXX_HAVE__SINHF) && ! defined (_GLIBCXX_HAVE_SINHF)
-# define _GLIBCXX_HAVE_SINHF 1
-# define sinhf _sinhf
+#if defined(_GLIBCXX_HAVE__SINHF) && !defined(_GLIBCXX_HAVE_SINHF)
+#define _GLIBCXX_HAVE_SINHF 1
+#define sinhf _sinhf
 #endif
 
-#if defined (_GLIBCXX_HAVE__SINHL) && ! defined (_GLIBCXX_HAVE_SINHL)
-# define _GLIBCXX_HAVE_SINHL 1
-# define sinhl _sinhl
+#if defined(_GLIBCXX_HAVE__SINHL) && !defined(_GLIBCXX_HAVE_SINHL)
+#define _GLIBCXX_HAVE_SINHL 1
+#define sinhl _sinhl
 #endif
 
-#if defined (_GLIBCXX_HAVE__SINL) && ! defined (_GLIBCXX_HAVE_SINL)
-# define _GLIBCXX_HAVE_SINL 1
-# define sinl _sinl
+#if defined(_GLIBCXX_HAVE__SINL) && !defined(_GLIBCXX_HAVE_SINL)
+#define _GLIBCXX_HAVE_SINL 1
+#define sinl _sinl
 #endif
 
-#if defined (_GLIBCXX_HAVE__SQRTF) && ! defined (_GLIBCXX_HAVE_SQRTF)
-# define _GLIBCXX_HAVE_SQRTF 1
-# define sqrtf _sqrtf
+#if defined(_GLIBCXX_HAVE__SQRTF) && !defined(_GLIBCXX_HAVE_SQRTF)
+#define _GLIBCXX_HAVE_SQRTF 1
+#define sqrtf _sqrtf
 #endif
 
-#if defined (_GLIBCXX_HAVE__SQRTL) && ! defined (_GLIBCXX_HAVE_SQRTL)
-# define _GLIBCXX_HAVE_SQRTL 1
-# define sqrtl _sqrtl
+#if defined(_GLIBCXX_HAVE__SQRTL) && !defined(_GLIBCXX_HAVE_SQRTL)
+#define _GLIBCXX_HAVE_SQRTL 1
+#define sqrtl _sqrtl
 #endif
 
-#if defined (_GLIBCXX_HAVE__STRTOF) && ! defined (_GLIBCXX_HAVE_STRTOF)
-# define _GLIBCXX_HAVE_STRTOF 1
-# define strtof _strtof
+#if defined(_GLIBCXX_HAVE__STRTOF) && !defined(_GLIBCXX_HAVE_STRTOF)
+#define _GLIBCXX_HAVE_STRTOF 1
+#define strtof _strtof
 #endif
 
-#if defined (_GLIBCXX_HAVE__STRTOLD) && ! defined (_GLIBCXX_HAVE_STRTOLD)
-# define _GLIBCXX_HAVE_STRTOLD 1
-# define strtold _strtold
+#if defined(_GLIBCXX_HAVE__STRTOLD) && !defined(_GLIBCXX_HAVE_STRTOLD)
+#define _GLIBCXX_HAVE_STRTOLD 1
+#define strtold _strtold
 #endif
 
-#if defined (_GLIBCXX_HAVE__TANF) && ! defined (_GLIBCXX_HAVE_TANF)
-# define _GLIBCXX_HAVE_TANF 1
-# define tanf _tanf
+#if defined(_GLIBCXX_HAVE__TANF) && !defined(_GLIBCXX_HAVE_TANF)
+#define _GLIBCXX_HAVE_TANF 1
+#define tanf _tanf
 #endif
 
-#if defined (_GLIBCXX_HAVE__TANHF) && ! defined (_GLIBCXX_HAVE_TANHF)
-# define _GLIBCXX_HAVE_TANHF 1
-# define tanhf _tanhf
+#if defined(_GLIBCXX_HAVE__TANHF) && !defined(_GLIBCXX_HAVE_TANHF)
+#define _GLIBCXX_HAVE_TANHF 1
+#define tanhf _tanhf
 #endif
 
-#if defined (_GLIBCXX_HAVE__TANHL) && ! defined (_GLIBCXX_HAVE_TANHL)
-# define _GLIBCXX_HAVE_TANHL 1
-# define tanhl _tanhl
+#if defined(_GLIBCXX_HAVE__TANHL) && !defined(_GLIBCXX_HAVE_TANHL)
+#define _GLIBCXX_HAVE_TANHL 1
+#define tanhl _tanhl
 #endif
 
-#if defined (_GLIBCXX_HAVE__TANL) && ! defined (_GLIBCXX_HAVE_TANL)
-# define _GLIBCXX_HAVE_TANL 1
-# define tanl _tanl
+#if defined(_GLIBCXX_HAVE__TANL) && !defined(_GLIBCXX_HAVE_TANL)
+#define _GLIBCXX_HAVE_TANL 1
+#define tanl _tanl
 #endif
 
-#endif // _GLIBCXX_CXX_CONFIG_H
+#endif  // _GLIBCXX_CXX_CONFIG_H

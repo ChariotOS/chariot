@@ -26,15 +26,15 @@ extern "C" size_t strlen(const char *s) {
 spinlock alloc_lock;
 static volatile long lock_flags = 0;
 int liballoc_lock() {
-	alloc_lock.lock();
+  alloc_lock.lock();
   // lock_flags = alloc_lock.lock_irqsave();
   return 0;
 }
 
 
 int liballoc_unlock() {
-	alloc_lock.unlock();
-	// alloc_lock.unlock_irqrestore(lock_flags);
+  alloc_lock.unlock();
+  // alloc_lock.unlock_irqrestore(lock_flags);
   return 0;
 }
 
@@ -63,7 +63,8 @@ int liballoc_free(void *buf, unsigned long sz) {
 extern "C" void *memcpy(void *dest, const void *src, size_t n) {
   auto *s = (uint8_t *)src;
   auto *d = (uint8_t *)dest;
-  for (size_t i = 0; i < n; i++) d[i] = s[i];
+  for (size_t i = 0; i < n; i++)
+    d[i] = s[i];
   return dest;
 }
 
@@ -140,7 +141,9 @@ static unsigned long mem_kshell(vec<string> &args, void *data, int dlen) {
   }
   return 0;
 }
-static void mem_init(void) { kshell::add("mem", mem_kshell); }
+static void mem_init(void) {
+  kshell::add("mem", mem_kshell);
+}
 
 
 

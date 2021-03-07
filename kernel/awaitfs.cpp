@@ -23,17 +23,17 @@ struct await_table_entry {
 
 
 
-  struct await_table_metadata {
-    poll_table_entry *pte;
-    await_table_entry *awe;
-  };
+struct await_table_metadata {
+  poll_table_entry *pte;
+  await_table_entry *awe;
+};
 
 int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long timeout_time) {
   if (nfds == 0) return -EINVAL;
   if (!curproc->mm->validate_pointer(targs, sizeof(*targs) * nfds, PROT_READ | PROT_WRITE))
     return -1;
 
-	unsigned nqueues = 0;
+  unsigned nqueues = 0;
   vec<await_table_entry> entries;
   /* These are both kept in line with eachother. We just simply need a contiguous array of queues
    * for multi_wait */
@@ -62,21 +62,21 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long time
         return i;
       }
 
-			nqueues += entry.pt.ents.size();
+      nqueues += entry.pt.ents.size();
 
       // printk("poll[%d] wq: %d\n" , i, entry.pt.ents.size());
       entries.push(entry);
     }
   }
 
-	/* If there is a timer, add it on the end of the queues, so we need one more! */
+  /* If there is a timer, add it on the end of the queues, so we need one more! */
   if ((long long)timeout_time > 0) {
-		nqueues += 1;
-	}
+    nqueues += 1;
+  }
 
 
-	queues.ensure_capacity(nqueues);
-	metadata.ensure_capacity(nqueues);
+  queues.ensure_capacity(nqueues);
+  metadata.ensure_capacity(nqueues);
 
   for (auto &ent : entries) {
     for (auto &p : ent.pt.ents) {

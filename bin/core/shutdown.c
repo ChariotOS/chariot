@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 int main() {
-	sysbind_shutdown();
-	perror("Couldn't shutdown");
-	return 0;
+  sysbind_shutdown();
+  perror("Couldn't shutdown");
+  return 0;
 }

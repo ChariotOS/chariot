@@ -12,7 +12,9 @@ struct sleep_waiter {
   wait_queue wq;
 
   sleep_waiter() = default;
-  inline sleep_waiter(uint64_t us) { start(us); }
+  inline sleep_waiter(uint64_t us) {
+    start(us);
+  }
 
   /* Removes if needed */
   ~sleep_waiter();

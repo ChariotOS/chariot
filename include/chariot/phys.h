@@ -15,10 +15,10 @@ namespace phys {
 
 
   // free one page of physical memory
-  void free(void*, int len = 1);
+  void free(void *, int len = 1);
 
 
-  void free_range(void *, void*);
+  void free_range(void *, void *);
 
   u64 nfree(void);
 
@@ -31,6 +31,6 @@ namespace phys {
   inline void kfree(void *p, int npages) {
     return phys::free(v2p(p), npages);
   }
-};
+};  // namespace phys
 
 #endif

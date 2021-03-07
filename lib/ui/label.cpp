@@ -37,8 +37,8 @@ class word : public ui::view {
   }
 
   virtual void mounted(void) {
-		calculate();
-	}
+    calculate();
+  }
 
   virtual void flex_self_sizing(float &width, float &height) {
     float current_size = get_font_size();
@@ -86,7 +86,8 @@ ui::label::label(ck::string contents, ui::TextAlign align) : m_align(align) {
   set_text(contents);
 }
 
-ui::label::~label(void) {}
+ui::label::~label(void) {
+}
 
 void ui::label::flex_self_sizing(float &width, float &height) {
   int max_bottom = 0;

@@ -24,7 +24,8 @@
 #if 1
 
 
-extern "C" void __cxa_throw_bad_array_new_length(void) {}
+extern "C" void __cxa_throw_bad_array_new_length(void) {
+}
 
 extern "C" void *__cxa_allocate_exception(size_t thrown_size) {
   void *retval;
@@ -47,16 +48,17 @@ extern "C" void *__cxa_allocate_exception(size_t thrown_size) {
   return ((char *)retval + sizeof(__cxa_exception));
 }
 
-extern "C" void __cxa_free_exception(void *thrown_exception) {}
+extern "C" void __cxa_free_exception(void *thrown_exception) {
+}
 
-extern "C" void __cxa_throw(void *thrown_exception, void *tinfo, void (*dest)(void *)){
+extern "C" void __cxa_throw(void *thrown_exception, void *tinfo, void (*dest)(void *)) {
 }
 
 
 namespace std {
-	void terminate(void) {
-		exit(1);
-	}
-}
+  void terminate(void) {
+    exit(1);
+  }
+}  // namespace std
 
 #endif

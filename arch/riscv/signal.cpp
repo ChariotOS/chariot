@@ -13,18 +13,17 @@
 extern "C" void rv_enter_userspace(rv::regs *sp);
 
 
-extern "C" void __rv_load_fpu(void*);
+extern "C" void __rv_load_fpu(void *);
 void arch_sigreturn(void *ucontext) {
-  rv::regs *regs = (rv::regs*)curthd->trap_frame;
+  rv::regs *regs = (rv::regs *)curthd->trap_frame;
   if (!VALIDATE_RD(ucontext, sizeof(*regs))) {
     curproc->terminate(SIGSEGV);
   }
 
-	auto *uctx = (struct ucontext*)ucontext;
+  auto *uctx = (struct ucontext *)ucontext;
 
-	memcpy(regs, ucontext, 32 * sizeof(rv::xsize_t));
-	__rv_load_fpu(uctx->fpu);
-	/* jump to returning to userspace :^) */
-	rv_enter_userspace(regs);
+  memcpy(regs, ucontext, 32 * sizeof(rv::xsize_t));
+  __rv_load_fpu(uctx->fpu);
+  /* jump to returning to userspace :^) */
+  rv_enter_userspace(regs);
 }
-

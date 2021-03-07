@@ -8,12 +8,14 @@
 /*
  * macro for automatically implementing some basic ck::object methods
  */
-#define CK_OBJECT(klass)                                             \
- public:                                                             \
-  virtual const char* class_name() const override { return #klass; } \
-  template <class... Args>                                           \
-  static inline ck::ref<klass> create(Args&&... args) {              \
-    return ck::make_ref<klass>(forward<Args>(args)...);              \
+#define CK_OBJECT(klass)                                \
+ public:                                                \
+  virtual const char* class_name() const override {     \
+    return #klass;                                      \
+  }                                                     \
+  template <class... Args>                              \
+  static inline ck::ref<klass> create(Args&&... args) { \
+    return ck::make_ref<klass>(forward<Args>(args)...); \
   }
 
 
@@ -44,18 +46,22 @@ namespace ck {
     /**
      * class_name - returns the name of the object's class as a string
      */
-    virtual const char* class_name(void) const { return "ck::object"; };
+    virtual const char* class_name(void) const {
+      return "ck::object";
+    };
 
 
     /*
      * event - notify the ck::object of some external event. Returns if it has
      * consumed the event.
      */
-    virtual bool event(const ck::event&) { return false; }
+    virtual bool event(const ck::event&) {
+      return false;
+    }
 
-		/**
-		 * return a list of all the ck::objects alive
-		 */
+    /**
+     * return a list of all the ck::objects alive
+     */
     ck::intrusive_list<ck::object, &ck::object::m_all_list>& all_objects();
   };
 }  // namespace ck

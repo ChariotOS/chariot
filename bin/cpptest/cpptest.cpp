@@ -4,8 +4,8 @@
 
 
 int main() {
-	void *p = malloc(100);
-	ck::hexdump((void*)((off_t)p - 200), 300);
+  void *p = malloc(100);
+  ck::hexdump((void *)((off_t)p - 200), 300);
 
   return 0;
 }

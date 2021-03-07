@@ -31,7 +31,9 @@ flex_item_free(m_fi);
   m_children.clear();
 }
 
-void ui::view::clear(void) { m_children.clear(); }
+void ui::view::clear(void) {
+  m_children.clear();
+}
 
 
 
@@ -94,7 +96,7 @@ void ui::view::dispatch_mouse_event(ui::mouse_event &event) {
   });
 
   if (!sent_to_child) {
-		this->mouse_event(ev);
+    this->mouse_event(ev);
   }
 }
 
@@ -150,7 +152,9 @@ gfx::scribe ui::view::get_scribe(void) {
 
 
 // invalidate the whole view
-void ui::view::invalidate(void) { surface()->invalidate(absolute_rect()); }
+void ui::view::invalidate(void) {
+  surface()->invalidate(absolute_rect());
+}
 
 
 
@@ -244,7 +248,8 @@ void ui::view::add(ui::view *v) {
   (layout.vertical ? child->m_margin.if_vertical : child->m_margin.if_horizontal)
 
 
-ui::flex_layout::flex_layout(void) {}
+ui::flex_layout::flex_layout(void) {
+}
 
 ui::view *ui::flex_layout::child_at(ui::view *v, int i) {
   return v->m_children[(ordered_indices != NULL ? ordered_indices[i] : i)].get();
@@ -360,8 +365,8 @@ ui::flex_layout::~flex_layout(void) {
 }
 
 
-static bool layout_align(ui::FlexAlign align, float flex_dim, unsigned int children_count, float *pos_p,
-                         float *spacing_p, bool stretch_allowed) {
+static bool layout_align(ui::FlexAlign align, float flex_dim, unsigned int children_count,
+                         float *pos_p, float *spacing_p, bool stretch_allowed) {
   assert(flex_dim > 0);
 
   float pos = 0;
@@ -447,9 +452,11 @@ void ui::view::layout(float width, float height) {
     // Items with an absolute position have their frames determined
     // directly and are skipped during layout.
     if (child->m_position == ui::FlexPosition::Absolute) {
-#define ABSOLUTE_SIZE(val, pos1, pos2, dim) (!isnan(val) ? val : (!isnan(pos1) && !isnan(pos2) ? dim - pos2 - pos1 : 0))
+#define ABSOLUTE_SIZE(val, pos1, pos2, dim) \
+  (!isnan(val) ? val : (!isnan(pos1) && !isnan(pos2) ? dim - pos2 - pos1 : 0))
 
-#define ABSOLUTE_POS(pos1, pos2, size, dim) (!isnan(pos1) ? pos1 : (!isnan(pos2) ? dim - size - pos2 : 0))
+#define ABSOLUTE_POS(pos1, pos2, size, dim) \
+  (!isnan(pos1) ? pos1 : (!isnan(pos2) ? dim - size - pos2 : 0))
 
       float child_width = ABSOLUTE_SIZE(child->m_width, child->m_left, child->m_right, width);
 
@@ -489,8 +496,9 @@ void ui::view::layout(float width, float height) {
       if (layout.wrap) {
         layout.need_lines = true;
       } else {
-        CHILD_CROSS_SIZE(child) =
-            (layout.vertical ? width : height) - CHILD_MARGIN(child, left, top) - CHILD_MARGIN(child, right, bottom);
+        CHILD_CROSS_SIZE(child) = (layout.vertical ? width : height) -
+                                  CHILD_MARGIN(child, left, top) -
+                                  CHILD_MARGIN(child, right, bottom);
       }
     }
 
@@ -545,7 +553,8 @@ void ui::view::layout(float width, float height) {
     layout.flex_grows += child->m_grow;
     layout.flex_shrinks += child->m_shrink;
 
-    layout.flex_dim -= child_size + (CHILD_MARGIN(child, top, left) + CHILD_MARGIN(child, bottom, right));
+    layout.flex_dim -=
+        child_size + (CHILD_MARGIN(child, top, left) + CHILD_MARGIN(child, bottom, right));
 
     relative_children_count++;
 
@@ -604,7 +613,8 @@ void ui::view::layout(float width, float height) {
         if (isnan(CHILD_CROSS_SIZE(child))) {
           // If the child's cross axis size hasn't been set it, it
           // defaults to the line size.
-          CHILD_CROSS_SIZE(child) = line->size + (m_align_content == ui::FlexAlign::Stretch ? spacing : 0);
+          CHILD_CROSS_SIZE(child) =
+              line->size + (m_align_content == ui::FlexAlign::Stretch ? spacing : 0);
         }
         CHILD_CROSS_POS(child) = pos + (CHILD_CROSS_POS(child) - old_pos);
       }
@@ -621,8 +631,8 @@ void ui::view::layout(float width, float height) {
 
 
 
-void ui::view::layout_items(unsigned int child_begin, unsigned int child_end, unsigned int children_count,
-                            struct flex_layout &layout) {
+void ui::view::layout_items(unsigned int child_begin, unsigned int child_end,
+                            unsigned int children_count, struct flex_layout &layout) {
   assert(children_count <= (child_end - child_begin));
   if (children_count <= 0) {
     return;
@@ -638,8 +648,9 @@ void ui::view::layout_items(unsigned int child_begin, unsigned int child_end, un
   float pos = 0;
   float spacing = 0;
   if (layout.flex_grows == 0 && layout.flex_dim > 0) {
-    assert(layout_align(m_justify_content, layout.flex_dim, children_count, &pos, &spacing, false) &&
-           "incorrect justify_content");
+    assert(
+        layout_align(m_justify_content, layout.flex_dim, children_count, &pos, &spacing, false) &&
+        "incorrect justify_content");
     if (layout.reverse_main) {
       pos = layout.size_dim - pos;
     }
@@ -691,8 +702,8 @@ void ui::view::layout_items(unsigned int child_begin, unsigned int child_end, un
 
       case ui::FlexAlign::Stretch:
         if (align_size == 0) {
-          CHILD_CROSS_SIZE(child) =
-              layout.line_dim - (CHILD_MARGIN(child, left, top) + CHILD_MARGIN(child, right, bottom));
+          CHILD_CROSS_SIZE(child) = layout.line_dim - (CHILD_MARGIN(child, left, top) +
+                                                       CHILD_MARGIN(child, right, bottom));
         }
         // fall through
 
@@ -746,4 +757,3 @@ ui::FlexAlign ui::view::child_align(void) {
   }
   return align;
 }
-

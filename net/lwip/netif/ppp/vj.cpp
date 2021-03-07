@@ -44,9 +44,7 @@
 #define INCR(counter)
 #endif
 
-void
-vj_compress_init(struct vjcompress *comp)
-{
+void vj_compress_init(struct vjcompress *comp) {
   u8_t i;
   struct cstate *tstate = comp->tstate;
 
@@ -54,7 +52,7 @@ vj_compress_init(struct vjcompress *comp)
   memset((char *)comp, 0, sizeof(*comp));
 #endif
   comp->maxSlotIndex = MAX_SLOTS - 1;
-  comp->compressSlot = 0;    /* Disable slot ID compression by default. */
+  comp->compressSlot = 0; /* Disable slot ID compression by default. */
   for (i = MAX_SLOTS - 1; i > 0; --i) {
     tstate[i].cs_id = i;
     tstate[i].cs_next = &tstate[i - 1];
@@ -72,61 +70,66 @@ vj_compress_init(struct vjcompress *comp)
  * checks for zero (since zero has to be encoded in the long, 3 byte
  * form).
  */
-#define ENCODE(n) { \
-  if ((u16_t)(n) >= 256) { \
-    *cp++ = 0; \
-    cp[1] = (u8_t)(n); \
-    cp[0] = (u8_t)((n) >> 8); \
-    cp += 2; \
-  } else { \
-    *cp++ = (u8_t)(n); \
-  } \
-}
-#define ENCODEZ(n) { \
-  if ((u16_t)(n) >= 256 || (u16_t)(n) == 0) { \
-    *cp++ = 0; \
-    cp[1] = (u8_t)(n); \
-    cp[0] = (u8_t)((n) >> 8); \
-    cp += 2; \
-  } else { \
-    *cp++ = (u8_t)(n); \
-  } \
-}
+#define ENCODE(n)               \
+  {                             \
+    if ((u16_t)(n) >= 256) {    \
+      *cp++ = 0;                \
+      cp[1] = (u8_t)(n);        \
+      cp[0] = (u8_t)((n) >> 8); \
+      cp += 2;                  \
+    } else {                    \
+      *cp++ = (u8_t)(n);        \
+    }                           \
+  }
+#define ENCODEZ(n)                              \
+  {                                             \
+    if ((u16_t)(n) >= 256 || (u16_t)(n) == 0) { \
+      *cp++ = 0;                                \
+      cp[1] = (u8_t)(n);                        \
+      cp[0] = (u8_t)((n) >> 8);                 \
+      cp += 2;                                  \
+    } else {                                    \
+      *cp++ = (u8_t)(n);                        \
+    }                                           \
+  }
 
-#define DECODEL(f) { \
-  if (*cp == 0) {\
-    u32_t tmp_ = lwip_ntohl(f) + ((cp[1] << 8) | cp[2]); \
-    (f) = lwip_htonl(tmp_); \
-    cp += 3; \
-  } else { \
-    u32_t tmp_ = lwip_ntohl(f) + (u32_t)*cp++; \
-    (f) = lwip_htonl(tmp_); \
-  } \
-}
+#define DECODEL(f)                                         \
+  {                                                        \
+    if (*cp == 0) {                                        \
+      u32_t tmp_ = lwip_ntohl(f) + ((cp[1] << 8) | cp[2]); \
+      (f) = lwip_htonl(tmp_);                              \
+      cp += 3;                                             \
+    } else {                                               \
+      u32_t tmp_ = lwip_ntohl(f) + (u32_t)*cp++;           \
+      (f) = lwip_htonl(tmp_);                              \
+    }                                                      \
+  }
 
-#define DECODES(f) { \
-  if (*cp == 0) {\
-    u16_t tmp_ = lwip_ntohs(f) + (((u16_t)cp[1] << 8) | cp[2]); \
-    (f) = lwip_htons(tmp_); \
-    cp += 3; \
-  } else { \
-    u16_t tmp_ = lwip_ntohs(f) + (u16_t)*cp++; \
-    (f) = lwip_htons(tmp_); \
-  } \
-}
+#define DECODES(f)                                                \
+  {                                                               \
+    if (*cp == 0) {                                               \
+      u16_t tmp_ = lwip_ntohs(f) + (((u16_t)cp[1] << 8) | cp[2]); \
+      (f) = lwip_htons(tmp_);                                     \
+      cp += 3;                                                    \
+    } else {                                                      \
+      u16_t tmp_ = lwip_ntohs(f) + (u16_t)*cp++;                  \
+      (f) = lwip_htons(tmp_);                                     \
+    }                                                             \
+  }
 
-#define DECODEU(f) { \
-  if (*cp == 0) {\
-    (f) = lwip_htons(((u16_t)cp[1] << 8) | cp[2]); \
-    cp += 3; \
-  } else { \
-    (f) = lwip_htons((u16_t)*cp++); \
-  } \
-}
+#define DECODEU(f)                                   \
+  {                                                  \
+    if (*cp == 0) {                                  \
+      (f) = lwip_htons(((u16_t)cp[1] << 8) | cp[2]); \
+      cp += 3;                                       \
+    } else {                                         \
+      (f) = lwip_htons((u16_t)*cp++);                \
+    }                                                \
+  }
 
 /* Helper structures for unaligned *u32_t and *u16_t accesses */
 #ifdef PACK_STRUCT_USE_INCLUDES
-#  include "arch/bpstruct.h"
+#include "arch/bpstruct.h"
 #endif
 PACK_STRUCT_BEGIN
 struct vj_u32_t {
@@ -134,11 +137,11 @@ struct vj_u32_t {
 } PACK_STRUCT_STRUCT;
 PACK_STRUCT_END
 #ifdef PACK_STRUCT_USE_INCLUDES
-#  include "arch/epstruct.h"
+#include "arch/epstruct.h"
 #endif
 
 #ifdef PACK_STRUCT_USE_INCLUDES
-#  include "arch/bpstruct.h"
+#include "arch/bpstruct.h"
 #endif
 PACK_STRUCT_BEGIN
 struct vj_u16_t {
@@ -146,7 +149,7 @@ struct vj_u16_t {
 } PACK_STRUCT_STRUCT;
 PACK_STRUCT_END
 #ifdef PACK_STRUCT_USE_INCLUDES
-#  include "arch/epstruct.h"
+#include "arch/epstruct.h"
 #endif
 
 /*
@@ -156,9 +159,7 @@ PACK_STRUCT_END
  * Return the VJ type code indicating whether or not the packet was
  * compressed.
  */
-u8_t
-vj_compress_tcp(struct vjcompress *comp, struct pbuf **pb)
-{
+u8_t vj_compress_tcp(struct vjcompress *comp, struct pbuf **pb) {
   struct pbuf *np = *pb;
   struct ip_hdr *ip = (struct ip_hdr *)np->payload;
   struct cstate *cs = comp->last_cs->cs_next;
@@ -187,8 +188,8 @@ vj_compress_tcp(struct vjcompress *comp, struct pbuf **pb)
   if ((IPH_OFFSET(ip) & PP_HTONS(0x3fff)) || np->tot_len < 40) {
     return (TYPE_IP);
   }
-  th = (struct tcp_hdr *)&((struct vj_u32_t*)ip)[ilen];
-  if ((TCPH_FLAGS(th) & (TCP_SYN|TCP_FIN|TCP_RST|TCP_ACK)) != TCP_ACK) {
+  th = (struct tcp_hdr *)&((struct vj_u32_t *)ip)[ilen];
+  if ((TCPH_FLAGS(th) & (TCP_SYN | TCP_FIN | TCP_RST | TCP_ACK)) != TCP_ACK) {
     return (TYPE_IP);
   }
 
@@ -223,9 +224,8 @@ vj_compress_tcp(struct vjcompress *comp, struct pbuf **pb)
    * again & we don't have to do any reordering if it's used.
    */
   INCR(vjs_packets);
-  if (!ip4_addr_cmp(&ip->src, &cs->cs_ip.src)
-      || !ip4_addr_cmp(&ip->dest, &cs->cs_ip.dest)
-      || (*(struct vj_u32_t*)th).v != (((struct vj_u32_t*)&cs->cs_ip)[IPH_HL(&cs->cs_ip)]).v) {
+  if (!ip4_addr_cmp(&ip->src, &cs->cs_ip.src) || !ip4_addr_cmp(&ip->dest, &cs->cs_ip.dest) ||
+      (*(struct vj_u32_t *)th).v != (((struct vj_u32_t *)&cs->cs_ip)[IPH_HL(&cs->cs_ip)]).v) {
     /*
      * Wasn't the first -- search for it.
      *
@@ -242,11 +242,11 @@ vj_compress_tcp(struct vjcompress *comp, struct pbuf **pb)
     struct cstate *lastcs = comp->last_cs;
 
     do {
-      lcs = cs; cs = cs->cs_next;
+      lcs = cs;
+      cs = cs->cs_next;
       INCR(vjs_searches);
-      if (ip4_addr_cmp(&ip->src, &cs->cs_ip.src)
-          && ip4_addr_cmp(&ip->dest, &cs->cs_ip.dest)
-          && (*(struct vj_u32_t*)th).v == (((struct vj_u32_t*)&cs->cs_ip)[IPH_HL(&cs->cs_ip)]).v) {
+      if (ip4_addr_cmp(&ip->src, &cs->cs_ip.src) && ip4_addr_cmp(&ip->dest, &cs->cs_ip.dest) &&
+          (*(struct vj_u32_t *)th).v == (((struct vj_u32_t *)&cs->cs_ip)[IPH_HL(&cs->cs_ip)]).v) {
         goto found;
       }
     } while (cs != lastcs);
@@ -263,7 +263,7 @@ vj_compress_tcp(struct vjcompress *comp, struct pbuf **pb)
     comp->last_cs = lcs;
     goto uncompressed;
 
-    found:
+  found:
     /*
      * Found it -- move to the front on the connection list.
      */
@@ -276,7 +276,7 @@ vj_compress_tcp(struct vjcompress *comp, struct pbuf **pb)
     }
   }
 
-  oth = (struct tcp_hdr *)&((struct vj_u32_t*)&cs->cs_ip)[ilen];
+  oth = (struct tcp_hdr *)&((struct vj_u32_t *)&cs->cs_ip)[ilen];
   deltaS = ilen;
 
   /*
@@ -290,12 +290,12 @@ vj_compress_tcp(struct vjcompress *comp, struct pbuf **pb)
    * different between the previous & current datagram, we send the
    * current datagram `uncompressed'.
    */
-  if ((((struct vj_u16_t*)ip)[0]).v != (((struct vj_u16_t*)&cs->cs_ip)[0]).v
-      || (((struct vj_u16_t*)ip)[3]).v != (((struct vj_u16_t*)&cs->cs_ip)[3]).v
-      || (((struct vj_u16_t*)ip)[4]).v != (((struct vj_u16_t*)&cs->cs_ip)[4]).v
-      || TCPH_HDRLEN(th) != TCPH_HDRLEN(oth)
-      || (deltaS > 5 && BCMP(ip + 1, &cs->cs_ip + 1, (deltaS - 5) << 2))
-      || (TCPH_HDRLEN(th) > 5 && BCMP(th + 1, oth + 1, (TCPH_HDRLEN(th) - 5) << 2))) {
+  if ((((struct vj_u16_t *)ip)[0]).v != (((struct vj_u16_t *)&cs->cs_ip)[0]).v ||
+      (((struct vj_u16_t *)ip)[3]).v != (((struct vj_u16_t *)&cs->cs_ip)[3]).v ||
+      (((struct vj_u16_t *)ip)[4]).v != (((struct vj_u16_t *)&cs->cs_ip)[4]).v ||
+      TCPH_HDRLEN(th) != TCPH_HDRLEN(oth) ||
+      (deltaS > 5 && BCMP(ip + 1, &cs->cs_ip + 1, (deltaS - 5) << 2)) ||
+      (TCPH_HDRLEN(th) > 5 && BCMP(th + 1, oth + 1, (TCPH_HDRLEN(th) - 5) << 2))) {
     goto uncompressed;
   }
 
@@ -340,48 +340,47 @@ vj_compress_tcp(struct vjcompress *comp, struct pbuf **pb)
     changes |= NEW_S;
   }
 
-  switch(changes) {
-  case 0:
-    /*
-     * Nothing changed. If this packet contains data and the
-     * last one didn't, this is probably a data packet following
-     * an ack (normal on an interactive connection) and we send
-     * it compressed.  Otherwise it's probably a retransmit,
-     * retransmitted ack or window probe.  Send it uncompressed
-     * in case the other side missed the compressed version.
-     */
-    if (IPH_LEN(ip) != IPH_LEN(&cs->cs_ip) &&
-      lwip_ntohs(IPH_LEN(&cs->cs_ip)) == hlen) {
+  switch (changes) {
+    case 0:
+      /*
+       * Nothing changed. If this packet contains data and the
+       * last one didn't, this is probably a data packet following
+       * an ack (normal on an interactive connection) and we send
+       * it compressed.  Otherwise it's probably a retransmit,
+       * retransmitted ack or window probe.  Send it uncompressed
+       * in case the other side missed the compressed version.
+       */
+      if (IPH_LEN(ip) != IPH_LEN(&cs->cs_ip) && lwip_ntohs(IPH_LEN(&cs->cs_ip)) == hlen) {
+        break;
+      }
+      /* no break */
+      /* fall through */
+
+    case SPECIAL_I:
+    case SPECIAL_D:
+      /*
+       * actual changes match one of our special case encodings --
+       * send packet uncompressed.
+       */
+      goto uncompressed;
+
+    case NEW_S | NEW_A:
+      if (deltaS == deltaA && deltaS == lwip_ntohs(IPH_LEN(&cs->cs_ip)) - hlen) {
+        /* special case for echoed terminal traffic */
+        changes = SPECIAL_I;
+        cp = new_seq;
+      }
       break;
-    }
-    /* no break */
-    /* fall through */
 
-  case SPECIAL_I:
-  case SPECIAL_D:
-    /*
-     * actual changes match one of our special case encodings --
-     * send packet uncompressed.
-     */
-    goto uncompressed;
-
-  case NEW_S|NEW_A:
-    if (deltaS == deltaA && deltaS == lwip_ntohs(IPH_LEN(&cs->cs_ip)) - hlen) {
-      /* special case for echoed terminal traffic */
-      changes = SPECIAL_I;
-      cp = new_seq;
-    }
-    break;
-
-  case NEW_S:
-    if (deltaS == lwip_ntohs(IPH_LEN(&cs->cs_ip)) - hlen) {
-      /* special case for data xfer */
-      changes = SPECIAL_D;
-      cp = new_seq;
-    }
-    break;
-  default:
-     break;
+    case NEW_S:
+      if (deltaS == lwip_ntohs(IPH_LEN(&cs->cs_ip)) - hlen) {
+        /* special case for data xfer */
+        changes = SPECIAL_D;
+        cp = new_seq;
+      }
+      break;
+    default:
+      break;
   }
 
   deltaS = (u16_t)(lwip_ntohs(IPH_ID(ip)) - lwip_ntohs(IPH_ID(&cs->cs_ip)));
@@ -412,11 +411,11 @@ vj_compress_tcp(struct vjcompress *comp, struct pbuf **pb)
   if (!comp->compressSlot || comp->last_xmit != cs->cs_id) {
     comp->last_xmit = cs->cs_id;
     hlen -= deltaS + 4;
-    if (pbuf_header(np, -(s16_t)hlen)){
+    if (pbuf_header(np, -(s16_t)hlen)) {
       /* Can we cope with this failing?  Just assert for now */
       LWIP_ASSERT("pbuf_header failed\n", 0);
     }
-    cp = (u8_t*)np->payload;
+    cp = (u8_t *)np->payload;
     *cp++ = (u8_t)(changes | NEW_C);
     *cp++ = cs->cs_id;
   } else {
@@ -425,7 +424,7 @@ vj_compress_tcp(struct vjcompress *comp, struct pbuf **pb)
       /* Can we cope with this failing?  Just assert for now */
       LWIP_ASSERT("pbuf_header failed\n", 0);
     }
-    cp = (u8_t*)np->payload;
+    cp = (u8_t *)np->payload;
     *cp++ = (u8_t)changes;
   }
   *cp++ = (u8_t)(deltaA >> 8);
@@ -449,9 +448,7 @@ uncompressed:
 /*
  * Called when we may have missed a packet.
  */
-void
-vj_uncompress_err(struct vjcompress *comp)
-{
+void vj_uncompress_err(struct vjcompress *comp) {
   comp->flags |= VJF_TOSS;
   INCR(vjs_errorin);
 }
@@ -460,28 +457,24 @@ vj_uncompress_err(struct vjcompress *comp)
  * "Uncompress" a packet of type TYPE_UNCOMPRESSED_TCP.
  * Return 0 on success, -1 on failure.
  */
-int
-vj_uncompress_uncomp(struct pbuf *nb, struct vjcompress *comp)
-{
+int vj_uncompress_uncomp(struct pbuf *nb, struct vjcompress *comp) {
   u32_t hlen;
   struct cstate *cs;
   struct ip_hdr *ip;
 
   ip = (struct ip_hdr *)nb->payload;
   hlen = IPH_HL(ip) << 2;
-  if (IPH_PROTO(ip) >= MAX_SLOTS
-      || hlen + sizeof(struct tcp_hdr) > nb->len
-      || (hlen += TCPH_HDRLEN(((struct tcp_hdr *)&((char *)ip)[hlen])) << 2)
-          > nb->len
-      || hlen > MAX_HDR) {
-    PPPDEBUG(LOG_INFO, ("vj_uncompress_uncomp: bad cid=%d, hlen=%d buflen=%d\n",
-      IPH_PROTO(ip), hlen, nb->len));
+  if (IPH_PROTO(ip) >= MAX_SLOTS || hlen + sizeof(struct tcp_hdr) > nb->len ||
+      (hlen += TCPH_HDRLEN(((struct tcp_hdr *)&((char *)ip)[hlen])) << 2) > nb->len ||
+      hlen > MAX_HDR) {
+    PPPDEBUG(LOG_INFO, ("vj_uncompress_uncomp: bad cid=%d, hlen=%d buflen=%d\n", IPH_PROTO(ip),
+                        hlen, nb->len));
     comp->flags |= VJF_TOSS;
     INCR(vjs_errorin);
     return -1;
   }
   cs = &comp->rstate[comp->last_recv = IPH_PROTO(ip)];
-  comp->flags &=~ VJF_TOSS;
+  comp->flags &= ~VJF_TOSS;
   IPH_PROTO_SET(ip, IP_PROTO_TCP);
   MEMCPY(&cs->cs_ip, ip, hlen);
   cs->cs_hlen = (u16_t)hlen;
@@ -497,9 +490,7 @@ vj_uncompress_uncomp(struct pbuf *nb, struct vjcompress *comp)
  * This procedure replaces the compressed header with the uncompressed
  * header and returns the length of the VJ header.
  */
-int
-vj_uncompress_tcp(struct pbuf **nb, struct vjcompress *comp)
-{
+int vj_uncompress_tcp(struct pbuf **nb, struct vjcompress *comp) {
   u8_t *cp;
   struct tcp_hdr *th;
   struct cstate *cs;
@@ -509,7 +500,7 @@ vj_uncompress_tcp(struct pbuf **nb, struct vjcompress *comp)
   u32_t vjlen, hlen, changes;
 
   INCR(vjs_compressedin);
-  cp = (u8_t*)n0->payload;
+  cp = (u8_t *)n0->payload;
   changes = *cp++;
   if (changes & NEW_C) {
     /*
@@ -521,7 +512,7 @@ vj_uncompress_tcp(struct pbuf **nb, struct vjcompress *comp)
       goto bad;
     }
 
-    comp->flags &=~ VJF_TOSS;
+    comp->flags &= ~VJF_TOSS;
     comp->last_recv = *cp++;
   } else {
     /*
@@ -537,7 +528,7 @@ vj_uncompress_tcp(struct pbuf **nb, struct vjcompress *comp)
   }
   cs = &comp->rstate[comp->last_recv];
   hlen = IPH_HL(&cs->cs_ip) << 2;
-  th = (struct tcp_hdr *)&((u8_t*)&cs->cs_ip)[hlen];
+  th = (struct tcp_hdr *)&((u8_t *)&cs->cs_ip)[hlen];
   th->chksum = lwip_htons((*cp << 8) | cp[1]);
   cp += 2;
   if (changes & TCP_PUSH_BIT) {
@@ -547,40 +538,38 @@ vj_uncompress_tcp(struct pbuf **nb, struct vjcompress *comp)
   }
 
   switch (changes & SPECIALS_MASK) {
-  case SPECIAL_I:
-    {
+    case SPECIAL_I: {
       u32_t i = lwip_ntohs(IPH_LEN(&cs->cs_ip)) - cs->cs_hlen;
       /* some compilers can't nest inline assembler.. */
       tmp = lwip_ntohl(th->ackno) + i;
       th->ackno = lwip_htonl(tmp);
       tmp = lwip_ntohl(th->seqno) + i;
       th->seqno = lwip_htonl(tmp);
-    }
-    break;
+    } break;
 
-  case SPECIAL_D:
-    /* some compilers can't nest inline assembler.. */
-    tmp = lwip_ntohl(th->seqno) + lwip_ntohs(IPH_LEN(&cs->cs_ip)) - cs->cs_hlen;
-    th->seqno = lwip_htonl(tmp);
-    break;
+    case SPECIAL_D:
+      /* some compilers can't nest inline assembler.. */
+      tmp = lwip_ntohl(th->seqno) + lwip_ntohs(IPH_LEN(&cs->cs_ip)) - cs->cs_hlen;
+      th->seqno = lwip_htonl(tmp);
+      break;
 
-  default:
-    if (changes & NEW_U) {
-      TCPH_SET_FLAG(th, TCP_URG);
-      DECODEU(th->urgp);
-    } else {
-      TCPH_UNSET_FLAG(th, TCP_URG);
-    }
-    if (changes & NEW_W) {
-      DECODES(th->wnd);
-    }
-    if (changes & NEW_A) {
-      DECODEL(th->ackno);
-    }
-    if (changes & NEW_S) {
-      DECODEL(th->seqno);
-    }
-    break;
+    default:
+      if (changes & NEW_U) {
+        TCPH_SET_FLAG(th, TCP_URG);
+        DECODEU(th->urgp);
+      } else {
+        TCPH_UNSET_FLAG(th, TCP_URG);
+      }
+      if (changes & NEW_W) {
+        DECODES(th->wnd);
+      }
+      if (changes & NEW_A) {
+        DECODEL(th->ackno);
+      }
+      if (changes & NEW_S) {
+        DECODEL(th->seqno);
+      }
+      break;
   }
   if (changes & NEW_I) {
     DECODES(cs->cs_ip._id);
@@ -594,14 +583,13 @@ vj_uncompress_tcp(struct pbuf **nb, struct vjcompress *comp)
    * packet.  Fill in the IP total length and update the IP
    * header checksum.
    */
-  vjlen = (u16_t)(cp - (u8_t*)n0->payload);
+  vjlen = (u16_t)(cp - (u8_t *)n0->payload);
   if (n0->len < vjlen) {
     /*
      * We must have dropped some characters (crc should detect
      * this but the old slip framing won't)
      */
-    PPPDEBUG(LOG_INFO, ("vj_uncompress_tcp: head buffer %d too short %d\n",
-          n0->len, vjlen));
+    PPPDEBUG(LOG_INFO, ("vj_uncompress_tcp: head buffer %d too short %d\n", n0->len, vjlen));
     goto bad;
   }
 
@@ -613,14 +601,14 @@ vj_uncompress_tcp(struct pbuf **nb, struct vjcompress *comp)
 #endif
 
   /* recompute the ip header checksum */
-  bp = (struct vj_u16_t*) &cs->cs_ip;
+  bp = (struct vj_u16_t *)&cs->cs_ip;
   IPH_CHKSUM_SET(&cs->cs_ip, 0);
   for (tmp = 0; hlen > 0; hlen -= 2) {
     tmp += (*bp++).v;
   }
   tmp = (tmp & 0xffff) + (tmp >> 16);
   tmp = (tmp & 0xffff) + (tmp >> 16);
-  IPH_CHKSUM_SET(&cs->cs_ip,  (u16_t)(~tmp));
+  IPH_CHKSUM_SET(&cs->cs_ip, (u16_t)(~tmp));
 
   /* Remove the compressed header and prepend the uncompressed header. */
   if (pbuf_header(n0, -(s16_t)vjlen)) {
@@ -629,7 +617,7 @@ vj_uncompress_tcp(struct pbuf **nb, struct vjcompress *comp)
     goto bad;
   }
 
-  if(LWIP_MEM_ALIGN(n0->payload) != n0->payload) {
+  if (LWIP_MEM_ALIGN(n0->payload) != n0->payload) {
     struct pbuf *np, *q;
     u8_t *bufptr;
 
@@ -639,10 +627,10 @@ vj_uncompress_tcp(struct pbuf **nb, struct vjcompress *comp)
      * forwarded (to Ethernet for example).
      */
     np = pbuf_alloc(PBUF_LINK, n0->len + cs->cs_hlen, PBUF_POOL);
-#else /* IP_FORWARD */
+#else  /* IP_FORWARD */
     np = pbuf_alloc(PBUF_RAW, n0->len + cs->cs_hlen, PBUF_POOL);
 #endif /* IP_FORWARD */
-    if(!np) {
+    if (!np) {
       PPPDEBUG(LOG_WARNING, ("vj_uncompress_tcp: realign failed\n"));
       goto bad;
     }
@@ -653,13 +641,13 @@ vj_uncompress_tcp(struct pbuf **nb, struct vjcompress *comp)
       goto bad;
     }
 
-    bufptr = (u8_t*)n0->payload;
-    for(q = np; q != NULL; q = q->next) {
+    bufptr = (u8_t *)n0->payload;
+    for (q = np; q != NULL; q = q->next) {
       MEMCPY(q->payload, bufptr, q->len);
       bufptr += q->len;
     }
 
-    if(n0->next) {
+    if (n0->next) {
       pbuf_chain(np, n0->next);
       pbuf_dechain(n0);
     }
@@ -670,9 +658,10 @@ vj_uncompress_tcp(struct pbuf **nb, struct vjcompress *comp)
   if (pbuf_header(n0, (s16_t)cs->cs_hlen)) {
     struct pbuf *np;
 
-    LWIP_ASSERT("vj_uncompress_tcp: cs->cs_hlen <= PBUF_POOL_BUFSIZE", cs->cs_hlen <= PBUF_POOL_BUFSIZE);
+    LWIP_ASSERT("vj_uncompress_tcp: cs->cs_hlen <= PBUF_POOL_BUFSIZE",
+                cs->cs_hlen <= PBUF_POOL_BUFSIZE);
     np = pbuf_alloc(PBUF_RAW, cs->cs_hlen, PBUF_POOL);
-    if(!np) {
+    if (!np) {
       PPPDEBUG(LOG_WARNING, ("vj_uncompress_tcp: prepend failed\n"));
       goto bad;
     }

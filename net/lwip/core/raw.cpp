@@ -4,7 +4,7 @@
  * different types of protocols besides (or overriding) those
  * already available in lwIP.\n
  * See also @ref raw_raw
- * 
+ *
  * @defgroup raw_raw RAW
  * @ingroup callbackstyle_api
  * Implementation of raw protocol PCBs for low-level handling of
@@ -64,9 +64,7 @@
 /** The list of RAW PCBs */
 static struct raw_pcb *raw_pcbs;
 
-static u8_t
-raw_input_match(struct raw_pcb *pcb, u8_t broadcast)
-{
+static u8_t raw_input_match(struct raw_pcb *pcb, u8_t broadcast) {
   LWIP_UNUSED_ARG(broadcast); /* in IPv6 only case */
 
 #if LWIP_IPV4 && LWIP_IPV6
@@ -97,9 +95,8 @@ raw_input_match(struct raw_pcb *pcb, u8_t broadcast)
       }
     } else
 #endif /* LWIP_IPV4 */
-    /* Handle IPv4 and IPv6: catch all or exact match */
-    if (ip_addr_isany(&pcb->local_ip) ||
-       ip_addr_cmp(&pcb->local_ip, ip_current_dest_addr())) {
+        /* Handle IPv4 and IPv6: catch all or exact match */
+        if (ip_addr_isany(&pcb->local_ip) || ip_addr_cmp(&pcb->local_ip, ip_current_dest_addr())) {
       return 1;
     }
   }
@@ -124,9 +121,7 @@ raw_input_match(struct raw_pcb *pcb, u8_t broadcast)
  *           caller).
  *
  */
-u8_t
-raw_input(struct pbuf *p, struct netif *inp)
-{
+u8_t raw_input(struct pbuf *p, struct netif *inp) {
   struct raw_pcb *pcb, *prev;
   s16_t proto;
   u8_t eaten = 0;
@@ -161,7 +156,7 @@ raw_input(struct pbuf *p, struct netif *inp)
       /* receive callback function available? */
       if (pcb->recv != NULL) {
 #ifndef LWIP_NOASSERT
-        void* old_payload = p->payload;
+        void *old_payload = p->payload;
 #endif
         /* the receive callback function did not eat the packet? */
         eaten = pcb->recv(pcb->recv_arg, pcb, p, ip_current_src_addr());
@@ -170,8 +165,8 @@ raw_input(struct pbuf *p, struct netif *inp)
           p = NULL;
           eaten = 1;
           if (prev != NULL) {
-          /* move the pcb to the front of raw_pcbs so that is
-             found faster next time */
+            /* move the pcb to the front of raw_pcbs so that is
+               found faster next time */
             prev->next = pcb->next;
             pcb->next = raw_pcbs;
             raw_pcbs = pcb;
@@ -179,7 +174,7 @@ raw_input(struct pbuf *p, struct netif *inp)
         } else {
           /* sanity-check that the receive callback did not alter the pbuf */
           LWIP_ASSERT("raw pcb recv callback altered pbuf payload pointer without eating packet",
-            p->payload == old_payload);
+                      p->payload == old_payload);
         }
       }
       /* no receive callback function was set for this raw PCB */
@@ -206,9 +201,7 @@ raw_input(struct pbuf *p, struct netif *inp)
  *
  * @see raw_disconnect()
  */
-err_t
-raw_bind(struct raw_pcb *pcb, const ip_addr_t *ipaddr)
-{
+err_t raw_bind(struct raw_pcb *pcb, const ip_addr_t *ipaddr) {
   if ((pcb == NULL) || (ipaddr == NULL) || !IP_ADDR_PCB_VERSION_MATCH(pcb, ipaddr)) {
     return ERR_VAL;
   }
@@ -230,9 +223,7 @@ raw_bind(struct raw_pcb *pcb, const ip_addr_t *ipaddr)
  *
  * @see raw_disconnect() and raw_sendto()
  */
-err_t
-raw_connect(struct raw_pcb *pcb, const ip_addr_t *ipaddr)
-{
+err_t raw_connect(struct raw_pcb *pcb, const ip_addr_t *ipaddr) {
   if ((pcb == NULL) || (ipaddr == NULL) || !IP_ADDR_PCB_VERSION_MATCH(pcb, ipaddr)) {
     return ERR_VAL;
   }
@@ -251,9 +242,7 @@ raw_connect(struct raw_pcb *pcb, const ip_addr_t *ipaddr)
  * - not free the packet, and return zero. The packet will be matched
  *   against further PCBs and/or forwarded to another protocol layers.
  */
-void
-raw_recv(struct raw_pcb *pcb, raw_recv_fn recv, void *recv_arg)
-{
+void raw_recv(struct raw_pcb *pcb, raw_recv_fn recv, void *recv_arg) {
   /* remember recv() callback and user data */
   pcb->recv = recv;
   pcb->recv_arg = recv_arg;
@@ -272,9 +261,7 @@ raw_recv(struct raw_pcb *pcb, raw_recv_fn recv, void *recv_arg)
  * @param ipaddr the destination address of the IP packet
  *
  */
-err_t
-raw_sendto(struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *ipaddr)
-{
+err_t raw_sendto(struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *ipaddr) {
   err_t err;
   struct netif *netif;
   const ip_addr_t *src_ip;
@@ -289,11 +276,11 @@ raw_sendto(struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *ipaddr)
 
   header_size = (
 #if LWIP_IPV4 && LWIP_IPV6
-    IP_IS_V6(ipaddr) ? IP6_HLEN : IP_HLEN);
+      IP_IS_V6(ipaddr) ? IP6_HLEN : IP_HLEN);
 #elif LWIP_IPV4
-    IP_HLEN);
+      IP_HLEN);
 #else
-    IP6_HLEN);
+      IP6_HLEN);
 #endif
 
   /* not enough space to add an IP header to first pbuf in given p chain? */
@@ -302,7 +289,8 @@ raw_sendto(struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *ipaddr)
     q = pbuf_alloc(PBUF_IP, 0, PBUF_RAM);
     /* new header pbuf could not be allocated? */
     if (q == NULL) {
-      LWIP_DEBUGF(RAW_DEBUG | LWIP_DBG_TRACE | LWIP_DBG_LEVEL_SERIOUS, ("raw_sendto: could not allocate header\n"));
+      LWIP_DEBUGF(RAW_DEBUG | LWIP_DBG_TRACE | LWIP_DBG_LEVEL_SERIOUS,
+                  ("raw_sendto: could not allocate header\n"));
       return ERR_MEM;
     }
     if (p->tot_len != 0) {
@@ -310,7 +298,8 @@ raw_sendto(struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *ipaddr)
       pbuf_chain(q, p);
     }
     /* { first pbuf q points to header pbuf } */
-    LWIP_DEBUGF(RAW_DEBUG, ("raw_sendto: added header pbuf %p before given pbuf %p\n", (void *)q, (void *)p));
+    LWIP_DEBUGF(RAW_DEBUG,
+                ("raw_sendto: added header pbuf %p before given pbuf %p\n", (void *)q, (void *)p));
   } else {
     /* first pbuf q equals given pbuf */
     q = p;
@@ -320,7 +309,7 @@ raw_sendto(struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *ipaddr)
     }
   }
 
-  if(IP_IS_ANY_TYPE_VAL(pcb->local_ip)) {
+  if (IP_IS_ANY_TYPE_VAL(pcb->local_ip)) {
     /* Don't call ip_route() with IP_ANY_TYPE */
     netif = ip_route(IP46_ADDR_ANY(IP_GET_TYPE(ipaddr)), ipaddr);
   } else {
@@ -338,11 +327,11 @@ raw_sendto(struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *ipaddr)
   }
 
 #if IP_SOF_BROADCAST
-  if (IP_IS_V4(ipaddr))
-  {
+  if (IP_IS_V4(ipaddr)) {
     /* broadcast filter? */
     if (!ip_get_option(pcb, SOF_BROADCAST) && ip_addr_isbroadcast(ipaddr, netif)) {
-      LWIP_DEBUGF(RAW_DEBUG | LWIP_DBG_LEVEL_WARNING, ("raw_sendto: SOF_BROADCAST not enabled on pcb %p\n", (void *)pcb));
+      LWIP_DEBUGF(RAW_DEBUG | LWIP_DBG_LEVEL_WARNING,
+                  ("raw_sendto: SOF_BROADCAST not enabled on pcb %p\n", (void *)pcb));
       /* free any temporary header pbuf allocated by pbuf_header() */
       if (q != p) {
         pbuf_free(q);
@@ -372,7 +361,8 @@ raw_sendto(struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *ipaddr)
   /* If requested, based on the IPV6_CHECKSUM socket option per RFC3542,
      compute the checksum and update the checksum in the payload. */
   if (IP_IS_V6(ipaddr) && pcb->chksum_reqd) {
-    u16_t chksum = ip6_chksum_pseudo(p, pcb->protocol, p->tot_len, ip_2_ip6(src_ip), ip_2_ip6(ipaddr));
+    u16_t chksum =
+        ip6_chksum_pseudo(p, pcb->protocol, p->tot_len, ip_2_ip6(src_ip), ip_2_ip6(ipaddr));
     LWIP_ASSERT("Checksum must fit into first pbuf", p->len >= (pcb->chksum_offset + 2));
     SMEMCPY(((u8_t *)p->payload) + pcb->chksum_offset, &chksum, sizeof(u16_t));
   }
@@ -398,9 +388,7 @@ raw_sendto(struct raw_pcb *pcb, struct pbuf *p, const ip_addr_t *ipaddr)
  * @param p the IP payload to send
  *
  */
-err_t
-raw_send(struct raw_pcb *pcb, struct pbuf *p)
-{
+err_t raw_send(struct raw_pcb *pcb, struct pbuf *p) {
   return raw_sendto(pcb, p, &pcb->remote_ip);
 }
 
@@ -413,9 +401,7 @@ raw_send(struct raw_pcb *pcb, struct pbuf *p)
  *
  * @see raw_new()
  */
-void
-raw_remove(struct raw_pcb *pcb)
-{
+void raw_remove(struct raw_pcb *pcb) {
   struct raw_pcb *pcb2;
   /* pcb to be removed is first in list? */
   if (raw_pcbs == pcb) {
@@ -446,9 +432,7 @@ raw_remove(struct raw_pcb *pcb)
  *
  * @see raw_remove()
  */
-struct raw_pcb *
-raw_new(u8_t proto)
-{
+struct raw_pcb *raw_new(u8_t proto) {
   struct raw_pcb *pcb;
 
   LWIP_DEBUGF(RAW_DEBUG | LWIP_DBG_TRACE, ("raw_new\n"));
@@ -481,17 +465,15 @@ raw_new(u8_t proto)
  *
  * @see raw_remove()
  */
-struct raw_pcb *
-raw_new_ip_type(u8_t type, u8_t proto)
-{
+struct raw_pcb *raw_new_ip_type(u8_t type, u8_t proto) {
   struct raw_pcb *pcb;
   pcb = raw_new(proto);
 #if LWIP_IPV4 && LWIP_IPV6
   if (pcb != NULL) {
-    IP_SET_TYPE_VAL(pcb->local_ip,  type);
+    IP_SET_TYPE_VAL(pcb->local_ip, type);
     IP_SET_TYPE_VAL(pcb->remote_ip, type);
   }
-#else /* LWIP_IPV4 && LWIP_IPV6 */
+#else  /* LWIP_IPV4 && LWIP_IPV6 */
   LWIP_UNUSED_ARG(type);
 #endif /* LWIP_IPV4 && LWIP_IPV6 */
   return pcb;
@@ -502,9 +484,8 @@ raw_new_ip_type(u8_t type, u8_t proto)
  * @param old_addr IP address of the netif before change
  * @param new_addr IP address of the netif after change
  */
-void raw_netif_ip_addr_changed(const ip_addr_t* old_addr, const ip_addr_t* new_addr)
-{
-  struct raw_pcb* rpcb;
+void raw_netif_ip_addr_changed(const ip_addr_t *old_addr, const ip_addr_t *new_addr) {
+  struct raw_pcb *rpcb;
 
   if (!ip_addr_isany(old_addr) && !ip_addr_isany(new_addr)) {
     for (rpcb = raw_pcbs; rpcb != NULL; rpcb = rpcb->next) {

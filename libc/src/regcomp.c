@@ -67,7 +67,20 @@ typedef unsigned char uch;
 #endif
 #include "regex_internal.h"
 
-typedef enum { CALNUM, CALPHA, CBLANK, CCNTRL, CDIGIT, CGRAPH, CLOWER, CPRINT, CPUNCT, CSPACE, CUPPER, CXDIGIT } citype;
+typedef enum {
+  CALNUM,
+  CALPHA,
+  CBLANK,
+  CCNTRL,
+  CDIGIT,
+  CGRAPH,
+  CLOWER,
+  CPRINT,
+  CPUNCT,
+  CSPACE,
+  CUPPER,
+  CXDIGIT
+} citype;
 
 /* character-class table */
 static struct cclass {
@@ -441,7 +454,8 @@ int stop; /* character this ERE should end at */
   for (;;) {
     /* do a bunch of concatenated expressions */
     conc = HERE();
-    while (MORE() && (c = PEEK()) != '|' && c != stop) p_ere_exp(p);
+    while (MORE() && (c = PEEK()) != '|' && c != stop)
+      p_ere_exp(p);
     (void)REQUIRE(HERE() != conc, REG_EMPTY); /* require nonempty */
 
     if (!EAT('|')) break; /* NOTE BREAK OUT */
@@ -593,7 +607,8 @@ static void p_ere_exp(p) struct parse *p;
         count2 = count;
       repeat(p, pos, count, count2);
       if (!EAT('}')) { /* error heuristics */
-        while (MORE() && PEEK() != '}') NEXT();
+        while (MORE() && PEEK() != '}')
+          NEXT();
         (void)REQUIRE(MORE(), REG_EBRACE);
         SETERROR(REG_BADBR);
       }
@@ -613,7 +628,8 @@ static void p_ere_exp(p) struct parse *p;
 static void p_str(p) struct parse *p;
 {
   (void)REQUIRE(MORE(), REG_EMPTY);
-  while (MORE()) ordinary(p, GETNEXT());
+  while (MORE())
+    ordinary(p, GETNEXT());
 }
 
 /*
@@ -759,7 +775,8 @@ int starordinary; /* is a leading * an ordinary character? */
       count2 = count;
     repeat(p, pos, count, count2);
     if (!EATTWO('\\', '}')) { /* error heuristics */
-      while (MORE() && !SEETWO('\\', '}')) NEXT();
+      while (MORE() && !SEETWO('\\', '}'))
+        NEXT();
       (void)REQUIRE(MORE(), REG_EBRACE);
       SETERROR(REG_BADBR);
     }
@@ -817,7 +834,8 @@ static void p_bracket(p) struct parse *p;
     CHadd(cs, ']');
   else if (EAT('-'))
     CHadd(cs, '-');
-  while (MORE() && PEEK() != ']' && !SEETWO('-', ']')) p_b_term(p, cs);
+  while (MORE() && PEEK() != ']' && !SEETWO('-', ']'))
+    p_b_term(p, cs);
   if (EAT('-')) CHadd(cs, '-');
   (void)MUSTEAT(']', REG_EBRACK);
 
@@ -915,8 +933,9 @@ cset *cs;
       if (start == finish)
         CHadd(cs, start);
       else {
-          (void)REQUIRE((uch)start <= (uch)finish, REG_ERANGE);
-          for (i = (uch)start; i <= (uch)finish; i++) CHadd(cs, i);
+        (void)REQUIRE((uch)start <= (uch)finish, REG_ERANGE);
+        for (i = (uch)start; i <= (uch)finish; i++)
+          CHadd(cs, i);
       }
       break;
   }
@@ -934,7 +953,8 @@ cset *cs;
   struct cclass *cp;
   size_t len;
 
-  while (MORE() && isalpha((uch)PEEK())) NEXT();
+  while (MORE() && isalpha((uch)PEEK()))
+    NEXT();
   len = p->next - sp;
   for (cp = cclasses; cp->name != NULL; cp++)
     if (strncmp(cp->name, sp, len) == 0 && cp->name[len] == '\0') break;
@@ -1045,16 +1065,18 @@ int endc; /* name ended by endc,']' */
   struct cname *cp;
   int len;
 
-  while (MORE() && !SEETWO(endc, ']')) NEXT();
+  while (MORE() && !SEETWO(endc, ']'))
+    NEXT();
   if (!MORE()) {
     SETERROR(REG_EBRACK);
     return (0);
   }
   len = p->next - sp;
   for (cp = cnames; cp->name != NULL; cp++)
-    if (strncmp(cp->name, sp, len) == 0 && cp->name[len] == '\0') return (cp->code); /* known name */
-  if (len == 1) return (*sp);                                                        /* single character */
-  SETERROR(REG_ECOLLATE);                                                            /* neither */
+    if (strncmp(cp->name, sp, len) == 0 && cp->name[len] == '\0')
+      return (cp->code);      /* known name */
+  if (len == 1) return (*sp); /* single character */
+  SETERROR(REG_ECOLLATE);     /* neither */
   return (0);
 }
 
@@ -1254,7 +1276,8 @@ static cset *allocset(p) struct parse *p;
     else {
       p->g->setbits = (uch *)realloc((char *)p->g->setbits, nbytes);
       /* xxx this isn't right if setbits is now NULL */
-      for (i = 0; i < no; i++) p->g->sets[i].ptr = p->g->setbits + css * (i / CHAR_BIT);
+      for (i = 0; i < no; i++)
+        p->g->sets[i].ptr = p->g->setbits + css * (i / CHAR_BIT);
     }
     if (p->g->sets != NULL && p->g->setbits != NULL)
       (void)memset((char *)p->g->setbits + (nbytes - css), 0, css);
@@ -1287,7 +1310,8 @@ cset *cs;
   cset *top = &p->g->sets[p->g->ncsets];
   size_t css = (size_t)p->g->csetsize;
 
-  for (i = 0; i < css; i++) CHsub(cs, i);
+  for (i = 0; i < css; i++)
+    CHsub(cs, i);
   if (cs == top - 1) /* recover only the easy case */
     p->g->ncsets--;
 }
@@ -1805,7 +1829,8 @@ struct re_guts *g;
   cp = g->must;
   scan = start;
   for (i = g->mlen; i > 0; i--) {
-    while (OP(s = *scan++) != OCHAR) continue;
+    while (OP(s = *scan++) != OCHAR)
+      continue;
     assert(cp < g->must + g->mlen);
     *cp++ = (char)OPND(s);
   }
@@ -1825,29 +1850,24 @@ int offset;
 int mccs;
 {
   int largest;
-  int try
-    ;
+  int try;
   sop s;
 
   /* If we gave up already on offsets, return */
   if (offset == -1) return -1;
 
   largest = 0;
-  try
-    = 0;
+  try = 0;
   s = *scan++;
   while (OP(s) != O_QUEST && OP(s) != O_CH) {
     switch (OP(s)) {
       case OOR1:
-        if (try > largest) largest = try
-            ;
-        try
-          = 0;
+        if (try > largest) largest = try;
+        try = 0;
         break;
       case OQUEST_:
       case OCH_:
-        try
-          = altoffset(scan, try, mccs);
+        try = altoffset(scan, try, mccs);
         if (try == -1) return -1;
         scan--;
         do {
@@ -1864,8 +1884,7 @@ int mccs;
         if (mccs) return -1;
       case OCHAR:
       case OANY:
-        try
-          ++;
+        try++;
       case OBOW:
       case OEOW:
       case OLPAREN:
@@ -1873,16 +1892,14 @@ int mccs;
       case OOR2:
         break;
       default:
-        try
-          = -1;
+        try = -1;
         break;
     }
     if (try == -1) return -1;
     s = *scan++;
   }
 
-  if (try > largest) largest = try
-      ;
+  if (try > largest) largest = try;
 
   return largest + offset;
 }
@@ -1916,14 +1933,16 @@ struct re_guts *g;
   /* If the character does not exist in the pattern, the jump
    * is equal to the number of characters in the pattern.
    */
-  for (ch = CHAR_MIN; ch < (CHAR_MAX + 1); ch++) g->charjump[ch] = g->mlen;
+  for (ch = CHAR_MIN; ch < (CHAR_MAX + 1); ch++)
+    g->charjump[ch] = g->mlen;
 
   /* If the character does exist, compute the jump that would
    * take us to the last character in the pattern equal to it
    * (notice that we match right to left, so that last character
    * is the first one that would be matched).
    */
-  for (mindex = 0; mindex < g->mlen; mindex++) g->charjump[(unsigned char)g->must[mindex]] = g->mlen - mindex - 1;
+  for (mindex = 0; mindex < g->mlen; mindex++)
+    g->charjump[(unsigned char)g->must[mindex]] = g->mlen - mindex - 1;
 }
 
 /*
@@ -1964,7 +1983,8 @@ struct re_guts *g;
     return;
 
   /* Set maximum possible jump for each character in the pattern */
-  for (mindex = 0; mindex < g->mlen; mindex++) g->matchjump[mindex] = 2 * g->mlen - mindex - 1;
+  for (mindex = 0; mindex < g->mlen; mindex++)
+    g->matchjump[mindex] = 2 * g->mlen - mindex - 1;
 
   /* Compute pmatches[] */
   for (mindex = g->mlen - 1, suffix = g->mlen; mindex >= 0; mindex--, suffix--) {

@@ -48,4 +48,3 @@ void code::epilogue() {
   *this << x86::pop(x86::ebp);
   *this << ret();
 }
-

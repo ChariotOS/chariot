@@ -16,29 +16,27 @@ int sys::signal_init(void *sigret) {
 }
 
 int sys::sigaction(int sig, struct sigaction *act, struct sigaction *old) {
-	if (!VALIDATE_RD(act, sizeof(*act))) return -EINVAL;
-	if (!VALIDATE_WR(old, sizeof(*old))) return -EINVAL;
+  if (!VALIDATE_RD(act, sizeof(*act))) return -EINVAL;
+  if (!VALIDATE_WR(old, sizeof(*old))) return -EINVAL;
 
 
-	if (sig < 0 || sig >= 64) return -EINVAL;
-	*old = curproc->sig.handlers[sig];
-	curproc->sig.handlers[sig] = *act;
+  if (sig < 0 || sig >= 64) return -EINVAL;
+  *old = curproc->sig.handlers[sig];
+  curproc->sig.handlers[sig] = *act;
 
-	return 0;
+  return 0;
 }
 
 
 int sys::sigreturn(void *ucontext) {
-	assert(curthd->sig.handling != -1);
+  assert(curthd->sig.handling != -1);
   curthd->sig.handling = -1;
-	arch_sigreturn(ucontext);
-	return 0;
+  arch_sigreturn(ucontext);
+  return 0;
 }
 int sys::sigprocmask(int how, unsigned long set, unsigned long *old_set) {
   if (old_set) {
-    if (!curproc->mm->validate_pointer(old_set, sizeof(*old_set),
-				       VALIDATE_WRITE))
-      return -EFAULT;
+    if (!curproc->mm->validate_pointer(old_set, sizeof(*old_set), VALIDATE_WRITE)) return -EFAULT;
 
     *old_set = curthd->sig.mask;
   }
@@ -57,4 +55,3 @@ int sys::sigprocmask(int how, unsigned long set, unsigned long *old_set) {
   }
   return 0;
 }
-

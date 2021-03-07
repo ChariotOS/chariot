@@ -7,7 +7,4 @@
 
 /* This is the namespace with everything signal related */
 
-namespace sig {
-
-	
-};
+namespace sig {};

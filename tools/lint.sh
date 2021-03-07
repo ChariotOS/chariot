@@ -19,5 +19,5 @@ files=$(echo "${files[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
 for FILE in $files
 do
 	echo $FILE
-	clang-format --dry-run $FILE
+	clang-format -style=file -i $FILE
 done

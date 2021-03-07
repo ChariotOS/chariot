@@ -918,24 +918,24 @@ static int _vsnprintf(out_fct_type out, char *buffer, const size_t maxlen, const
       case 'P': {
         width = sizeof(void *) * 2U;
         flags |= FLAGS_ZEROPAD;  // | FLAGS_UPPERCASE;
-				unsigned long val = (unsigned long)((uintptr_t)va_arg(va, void *));
+        unsigned long val = (unsigned long)((uintptr_t)va_arg(va, void *));
 
-        idx = _ntoa_long(out, buffer, idx, maxlen, val >> 32,
-                         false, 16U, precision, width / 2, flags);
+        idx = _ntoa_long(out, buffer, idx, maxlen, val >> 32, false, 16U, precision, width / 2,
+                         flags);
 
         out('`', buffer, idx++, maxlen);
 
-        idx = _ntoa_long(out, buffer, idx, maxlen, val & 0xFFFF'FFFF,
-                         false, 16U, precision, width / 2, flags);
+        idx = _ntoa_long(out, buffer, idx, maxlen, val & 0xFFFF'FFFF, false, 16U, precision,
+                         width / 2, flags);
 
-				/*
-        idx = _ntoa_long(out, buffer, idx, maxlen, (val >> 12) & 0xF'FFFF,
-                         false, 16U, precision, (width / 2) - 3, flags);
+        /*
+idx = _ntoa_long(out, buffer, idx, maxlen, (val >> 12) & 0xF'FFFF,
+ false, 16U, precision, (width / 2) - 3, flags);
 
-        out(',', buffer, idx++, maxlen);
-        idx = _ntoa_long(out, buffer, idx, maxlen, val & 0xFFF,
-                         false, 16U, precision, 3, flags);
-												 */
+out(',', buffer, idx++, maxlen);
+idx = _ntoa_long(out, buffer, idx, maxlen, val & 0xFFF,
+ false, 16U, precision, 3, flags);
+                                                                         */
         format++;
         break;
       }

@@ -677,4 +677,3 @@ int fpclassify(double d) {
 
   return FP_NORMAL;
 }
-

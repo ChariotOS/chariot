@@ -30,73 +30,69 @@
 FT_BEGIN_HEADER
 
 
-  typedef TT_Face  CFF_Face;
+typedef TT_Face CFF_Face;
 
 
-  /**************************************************************************
-   *
-   * @type:
-   *   CFF_Size
-   *
-   * @description:
-   *   A handle to an OpenType size object.
-   */
-  typedef struct  CFF_SizeRec_
-  {
-    FT_SizeRec  root;
-    FT_ULong    strike_index;    /* 0xFFFFFFFF to indicate invalid */
+/**************************************************************************
+ *
+ * @type:
+ *   CFF_Size
+ *
+ * @description:
+ *   A handle to an OpenType size object.
+ */
+typedef struct CFF_SizeRec_ {
+  FT_SizeRec root;
+  FT_ULong strike_index; /* 0xFFFFFFFF to indicate invalid */
 
-  } CFF_SizeRec, *CFF_Size;
-
-
-  /**************************************************************************
-   *
-   * @type:
-   *   CFF_GlyphSlot
-   *
-   * @description:
-   *   A handle to an OpenType glyph slot object.
-   */
-  typedef struct  CFF_GlyphSlotRec_
-  {
-    FT_GlyphSlotRec  root;
-
-    FT_Bool  hint;
-    FT_Bool  scaled;
-
-    FT_Fixed  x_scale;
-    FT_Fixed  y_scale;
-
-  } CFF_GlyphSlotRec, *CFF_GlyphSlot;
+} CFF_SizeRec, *CFF_Size;
 
 
-  /**************************************************************************
-   *
-   * @type:
-   *   CFF_Internal
-   *
-   * @description:
-   *   The interface to the 'internal' field of `FT_Size`.
-   */
-  typedef struct  CFF_InternalRec_
-  {
-    PSH_Globals  topfont;
-    PSH_Globals  subfonts[CFF_MAX_CID_FONTS];
+/**************************************************************************
+ *
+ * @type:
+ *   CFF_GlyphSlot
+ *
+ * @description:
+ *   A handle to an OpenType glyph slot object.
+ */
+typedef struct CFF_GlyphSlotRec_ {
+  FT_GlyphSlotRec root;
 
-  } CFF_InternalRec, *CFF_Internal;
+  FT_Bool hint;
+  FT_Bool scaled;
+
+  FT_Fixed x_scale;
+  FT_Fixed y_scale;
+
+} CFF_GlyphSlotRec, *CFF_GlyphSlot;
 
 
-  /**************************************************************************
-   *
-   * Subglyph transformation record.
-   */
-  typedef struct  CFF_Transform_
-  {
-    FT_Fixed    xx, xy;     /* transformation matrix coefficients */
-    FT_Fixed    yx, yy;
-    FT_F26Dot6  ox, oy;     /* offsets                            */
+/**************************************************************************
+ *
+ * @type:
+ *   CFF_Internal
+ *
+ * @description:
+ *   The interface to the 'internal' field of `FT_Size`.
+ */
+typedef struct CFF_InternalRec_ {
+  PSH_Globals topfont;
+  PSH_Globals subfonts[CFF_MAX_CID_FONTS];
 
-  } CFF_Transform;
+} CFF_InternalRec, *CFF_Internal;
+
+
+/**************************************************************************
+ *
+ * Subglyph transformation record.
+ */
+typedef struct CFF_Transform_ {
+  FT_Fixed xx, xy; /* transformation matrix coefficients */
+  FT_Fixed yx, yy;
+  FT_F26Dot6 ox, oy; /* offsets                            */
+
+} CFF_Transform;
 
 
 FT_END_HEADER

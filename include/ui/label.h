@@ -14,10 +14,9 @@ namespace ui {
     label(ck::string contents, ui::TextAlign align = ui::TextAlign::TopLeft);
     virtual ~label(void);
 
-		void set_text(ck::string contents);
+    void set_text(ck::string contents);
 
-		virtual void flex_self_sizing(float &width, float &height);
+    virtual void flex_self_sizing(float &width, float &height);
     virtual void paint_event(void);
   };
 };  // namespace ui
-
