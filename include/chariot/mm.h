@@ -230,6 +230,34 @@ namespace mm {
     bool validate_string(const char *);
 
 
+    template <typename T>
+    inline bool validate_null_terminated(const T *str) {
+      /* Safe first guess :^) */
+      if (str == NULL) return false;
+      /* Validate the first byte */
+      if (!validate_pointer((void *)str, 1, VALIDATE_READ)) return false;
+
+      // the current virtual page number that we know is valid
+      off_t valid_vpn = (off_t)str >> 12;
+
+      // TODO: protect against other threads remapping memory under the string
+      int len = 0;
+      for (len = 0; true; len++) {
+        const T *cur = str + len;
+        off_t current_vpn = (off_t)cur >> 12;
+        if (current_vpn != valid_vpn) {
+          /* If it's not valid, and we have not hit a \0, the string is not valid */
+          if (!validate_pointer((void *)cur, 1, VALIDATE_READ)) return false;
+          /* We have validate the current_vpn */
+          valid_vpn = current_vpn;
+        }
+        /* Since we have validated the pointer, we can now check the byte */
+        if (*cur == 0) break;
+      }
+
+      return true;
+    }
+
     template <typename T, typename V>
     bool validate_struct(V val, int mode) {
       return validate_pointer((void *)(val), sizeof(T), mode);

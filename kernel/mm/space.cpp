@@ -430,8 +430,8 @@ bool mm::space::validate_pointer(void *raw_va, size_t len, int mode) {
     // see if there is a region at the requested offset
     auto r = lookup(va);
     if (!r) {
-      printk(KERN_WARN "validate_pointer(%p) - region not found!\n", raw_va);
-      this->dump();
+      // printk(KERN_WARN "validate_pointer(%p) - region not found!\n", raw_va);
+      // this->dump();
       return false;
     }
 
@@ -447,15 +447,7 @@ bool mm::space::validate_pointer(void *raw_va, size_t len, int mode) {
 }
 
 bool mm::space::validate_string(const char *str) {
-  // TODO: this is really unsafe
-  if (validate_pointer((void *)str, 1, VALIDATE_READ)) {
-    int len = 0;
-    for (len = 0; str[len] != '\0'; len++)
-      ;
-    return validate_pointer((void *)str, len, VALIDATE_READ);
-  }
-
-  return false;
+	return validate_null_terminated(str);
 }
 
 int mm::space::schedule_mapping(off_t va, off_t pa, int prot) {

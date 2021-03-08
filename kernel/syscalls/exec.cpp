@@ -15,24 +15,29 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   if (path == NULL) return -EINVAL;
   if (uargv == NULL) return -EINVAL;
 
+	/* Validate the arguments (top level) */
   if (!curproc->mm->validate_string(path)) return -EINVAL;
+  if (!curproc->mm->validate_null_terminated(uargv)) return -EINVAL;
+  if (!curproc->mm->validate_null_terminated(uenvp)) return -EINVAL;
 
-  // TODO validate the pointers
   vec<string> argv;
   vec<string> envp;
-  // printk("path=%s\n", path);
+
   for (int i = 0; uargv[i] != NULL; i++) {
-    // printk("argv[%d] = %p\n", i, uargv[i]);
+		/* Validate the string :^) */
+    if (!curproc->mm->validate_string(uargv[i])) return -EINVAL;
     argv.push(uargv[i]);
   }
 
   if (uenvp != NULL) {
     for (int i = 0; uenvp[i] != NULL; i++) {
-      // printk("uenvp[%d] = %p\n", i, uenvp[i]);
+			/* Validate the string :^) */
+      if (!curproc->mm->validate_string(uenvp[i])) return -EINVAL;
       envp.push(uenvp[i]);
     }
   }
 
+	printk("here\n");
 
   // try to load the binary
   fs::inode *exe = NULL;
