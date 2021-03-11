@@ -96,6 +96,14 @@ extern "C" void memset(void *buf, char c, size_t len) {
 }
 
 
+extern "C" void memset32(void *buf, uint32_t c, size_t len) {
+  uint32_t *ptr = (uint32_t *)buf;
+  for (size_t i = 0; i < len; i++) {
+    ptr[i] = c;
+  }
+}
+
+
 int strncmp(const char *s1, const char *s2, size_t limit) {
   size_t i = 0;
 

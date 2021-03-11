@@ -36,6 +36,9 @@ typedef enum {
   MAJOR_PTMX,
   MAJOR_PTS,
 
+	// Generic Video Interface
+	MAJOR_VIDEO,
+
 } major_numbers;
 
 

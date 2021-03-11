@@ -12,7 +12,7 @@
 #include <util.h>
 #include <vconsole.h>
 #include <vga.h>
-
+#include <dev/video.h>
 #include <multiboot2.h>
 
 #define VBE_DISPI_IOPORT_INDEX 0x01CE
@@ -102,6 +102,7 @@ void *vga::get_fba(void) {
 }
 
 void vga::putchar(char c) {
+	/* TODO(nick): move the virtual console stuff into the GVI interface */
   vc_feed(&vga_console, c);
 }
 
@@ -353,11 +354,29 @@ void vga::early_init(uint64_t mbd) {
 }
 
 
+class vga_vdev : public dev::video_device {
+
+    virtual ~vga_vdev() {}
+    virtual int get_mode(gvi_video_mode &mode) {
+			mode.width = info.width;
+			mode.height = info.height;
+			return 0;
+		}
+    // virtual int set_mode(const gvi_video_mode &mode);
+    virtual uint32_t *get_framebuffer(void) {
+			return vga_fba;
+		}
+};
+
+
 void vga_mod_init(void) {
   if (vga_fba != NULL) {
-    printk(KERN_INFO "Standard VGA Framebuffer found!\n");
-    dev::register_driver(generic_driver_info);
-    dev::register_name(generic_driver_info, "fb", 0);
+		auto *vdev = new vga_vdev;
+		info.active = true;
+		dev::video_device::register_device(vdev);
+    // printk(KERN_INFO "Standard VGA Framebuffer found!\n");
+    // dev::register_driver(generic_driver_info);
+    // dev::register_name(generic_driver_info, "fb", 0);
   }
 }
 

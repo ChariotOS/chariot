@@ -19,6 +19,7 @@
 
 #include <rbtree.h>
 #include <rbtree_augmented.h>
+#include <ioctl.h>
 
 #define PAGING_IMPL_BOOTCODE
 #include "paging_impl.h"
@@ -64,9 +65,6 @@ void initrd_dump(void *vbuf, size_t size) {
   hexdump(vbuf, size, true);
 }
 
-
-
-
 static unsigned long riscv_high_acc_time_func(void) {
   return (read_csr(time) * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND;
 }
@@ -76,12 +74,11 @@ static size_t dtb_ram_size = 0;
 
 static int wakes = 0;
 void main(int hartid, void *fdt) {
+
 #ifdef CONFIG_SBI
   // get the information from SBI right away so we can use it early on
   sbi_early_init();
 #endif
-
-
 
   /*
    * Machine mode passes us the scratch structure through
@@ -163,6 +160,8 @@ void main(int hartid, void *fdt) {
   /* Now that we have a memory allocator, call global constructors */
   for (func_ptr *func = __init_array_start; func != __init_array_end; func++)
     (*func)();
+
+
 
   arch_enable_ints();
 

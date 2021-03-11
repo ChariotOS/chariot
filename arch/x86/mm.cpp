@@ -225,8 +225,6 @@ void arch_mem_init(unsigned long mbd) {
     arch_flush_mmu();  // flush out the TLB
   }
 
-  printk("done!\n");
-
 
   // setup memory regions
   for (int i = 0; i < mm_info.num_regions; i++) {

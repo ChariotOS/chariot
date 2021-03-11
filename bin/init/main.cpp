@@ -222,6 +222,7 @@ int main(int argc, char **argv) {
   /* Mount devfs, tmpfs */
   system("mount none /dev devfs");
   system("mount none /tmp tmpfs");
+  system("mount none /tmp procfs");
 
   // open up file descriptor 1, 2, and 3
   for (int i = 0; i < 3; i++)

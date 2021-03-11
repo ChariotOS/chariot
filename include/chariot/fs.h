@@ -390,31 +390,6 @@ namespace fs {
     struct inode *get_direntry_ino(struct direntry *);
   };
 
-  // src/fs/pipe.cpp
-  struct pipe : public fs::inode {
-    // uid and gid are the creators of this pipe
-
-    struct wait_queue wq;
-
-    unsigned int readers;
-    unsigned int writers;
-
-    uint8_t *data = NULL;
-
-    uint32_t write_ind;
-    uint32_t read_ind;
-    uint32_t capacity;
-    uint32_t used_bytes;
-
-    // ctor
-    pipe();
-    virtual ~pipe(void);
-
-    // main interface
-    virtual ssize_t do_read(file &, void *, size_t);
-    virtual ssize_t do_write(file &, void *, size_t);
-  };
-
   class file : public refcounted<file> {
     int m_error = 0;
 

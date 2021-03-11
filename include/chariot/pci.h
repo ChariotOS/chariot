@@ -184,25 +184,25 @@
 #define PCI_CMD_IOSE_SET(r, n) ((r) = ((r) & ~PCI_CMD_IOSE) | PCI_CMD_IOSE_n((n)))
 
 struct pci_bus {
-  u32 num;
+  uint32_t num;
   // struct list_head bus_node;
   // struct list_head dev_list;
   struct pci_info *pci;
 };
 
 struct pci_cfg_space {
-  u16 vendor_id;
-  u16 device_id;
-  u16 cmd;
-  u16 status;
-  u8 rev_id;
-  u8 prog_if;
-  u8 subclass;
-  u8 class_code;
-  u8 cl_size;
-  u8 lat_timer;
-  u8 hdr_type;
-  u8 bist;
+  uint16_t vendor_id;
+  uint16_t device_id;
+  uint16_t cmd;
+  uint16_t status;
+  uint8_t rev_id;
+  uint8_t prog_if;
+  uint8_t subclass;
+  uint8_t class_code;
+  uint8_t cl_size;
+  uint8_t lat_timer;
+  uint8_t hdr_type;
+  uint8_t bist;
 
   union {
     // type = 00h (device)
@@ -349,38 +349,38 @@ namespace pci {
     bar_type type;
     bool prefetchable;
     bool valid;
-    u8 *addr;
-    u32 size;
-    u32 raw;
+    uint8_t *addr;
+    uint32_t size;
+    uint32_t raw;
   };
 
   class device {
    public:
     bool valid = false;
-    u16 bus, dev, func;
+    uint16_t bus, dev, func;
 
-    u32 port_base;
-    u8 interrupt;
+    uint32_t port_base;
+    uint8_t interrupt;
 
-    u16 vendor_id;
-    u16 device_id;
+    uint16_t vendor_id;
+    uint16_t device_id;
 
-    u8 class_id;
-    u8 subclass_id;
-    u8 interface_id;
-    u8 revision;
+    uint8_t class_id;
+    uint8_t subclass_id;
+    uint8_t interface_id;
+    uint8_t revision;
 
-    u32 get_address(u32);
+    uint32_t get_address(uint32_t);
 
 
     struct pci_cfg_space cfg;  // snapshot at boot!
 
     pci::bar get_bar(int barnum);
 
-    bool is_device(u16 vendor, u16 device);
+    bool is_device(uint16_t vendor, uint16_t device);
 
     template <typename T>
-    T read(u32 field) {
+    T read(uint32_t field) {
       outl(PCI_CFG_ADDR_PORT, get_address(field));
       if constexpr (sizeof(T) == 4) return inl(PCI_CFG_DATA_PORT);
       if constexpr (sizeof(T) == 2) return inw(PCI_CFG_DATA_PORT + (field & 2));
@@ -390,7 +390,7 @@ namespace pci {
     }
 
     template <typename T>
-    void write(u32 field, T val) {
+    void write(uint32_t field, T val) {
       outl(PCI_CFG_ADDR_PORT, get_address(field));
       if constexpr (sizeof(T) == 4) return outl(PCI_CFG_DATA_PORT, val);
       if constexpr (sizeof(T) == 2) return outw(PCI_CFG_DATA_PORT + (field & 2), val);
@@ -406,8 +406,8 @@ namespace pci {
 
   void init();
 
-  u32 read(u8 bus, u8 dev, u8 func, u8 off);
-  void write(u8 bus, u16 dev, u16 func, u32 reg_off, u32 value);
+  uint32_t read(uint8_t bus, uint8_t dev, uint8_t func, uint8_t off);
+  void write(uint8_t bus, uint16_t dev, uint16_t func, uint32_t reg_off, uint32_t value);
 
   void walk_devices(func<void(device *)>);
 

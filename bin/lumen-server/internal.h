@@ -12,6 +12,7 @@
 #include <gfx/point.h>
 #include <gfx/scribe.h>
 #include <lumen/msg.h>
+#include <chariot/gvi.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -39,7 +40,7 @@ namespace lumen {
     int fd = -1;
     size_t bufsz = 0;
     uint32_t *buf = NULL;
-    struct ck_fb_info info;
+    struct gvi_video_mode info;
 
 
     int buffer_index = 0;
@@ -56,7 +57,7 @@ namespace lumen {
 
 
     void flush_info(void) {
-      info.active = 1;
+      // info.active = 1;
       if (ioctl(fd, FB_SET_INFO, &info) < 0) {
         ioctl(fd, FB_GET_INFO, &info);
       }
@@ -66,6 +67,11 @@ namespace lumen {
       ioctl(fd, FB_GET_INFO, &info);
     }
 
+    inline bool hardware_double_buffered(void) {
+      return (info.caps & GVI_CAP_DOUBLE_BUFFER) != 0;
+    }
+
+    void flush_fb();
     inline gfx::rect mouse_rect(void) {
       int w = cursors[cursor]->width();
       int h = cursors[cursor]->height();
@@ -93,6 +99,7 @@ namespace lumen {
 
 
     inline uint32_t *buffer(void) {
+			if (hardware_double_buffered()) return front_buffer;
       return back_buffer;
     }
     inline void set_pixel(int x, int y, uint32_t color) {

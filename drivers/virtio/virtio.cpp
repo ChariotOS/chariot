@@ -184,8 +184,6 @@ void virtio_mmio_dev::free_desc(int ring_index, int desc_index) {
 
 
 void virtio_mmio_dev::irq(void) {
-  // printk_nolock("irq!\n");
-
   // the device won't raise another interrupt until we tell it
   // we've seen this interrupt, which the following line does.
   // this may race with the device writing new entries to

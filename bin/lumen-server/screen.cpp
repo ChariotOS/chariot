@@ -4,6 +4,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include "internal.h"
+#include <chariot/gvi.h>
 
 
 
@@ -31,7 +32,14 @@ uint32_t blend(uint32_t fgi, uint32_t bgi) {
 
 
 lumen::screen::screen(int w, int h) {
-  fd = open("/dev/fb", O_RDWR);
+  fd = open("/dev/video0", O_RDWR);
+  if (fd == -1) {
+    /* TODO: do this somewhere else? */
+    fprintf(stderr, "lumen-server: Failed to open /dev/video0. (do you have a graphics device?)\n");
+    exit(EXIT_FAILURE);
+  }
+  /* TRUST that /dev/video0 is a gvi device :^) */
+
   set_resolution(w, h);
   // these are leaked, but thats okay...
   cursors[mouse_cursor::pointer] = gfx::load_png("/usr/res/icons/pointer.png");
@@ -56,30 +64,30 @@ void lumen::screen::set_resolution(int w, int h) {
     munmap(buf, bufsz);
   }
 
-  ck_fb_info old_info;
-  ioctl(fd, FB_GET_INFO, &old_info);
+  ioctl(fd, GVI_GET_MODE, &info);
 
 
-  info.width = w;
-  info.height = h;
-  if (ioctl(fd, FB_GET_INFO, &info) < 0) {
-    printf("[lumen]: failed to set resolution, loading existing state\n");
-    printf("[lumen]: w: %ld, h: %ld\n", old_info.width, old_info.height);
-    info = old_info;
-  }
   m_bounds = gfx::rect(0, 0, info.width, info.height);
   mouse_pos.constrain(m_bounds);
 
 
-  bufsz = info.width * info.height * sizeof(uint32_t) * 2;
-  buf = (uint32_t *)mmap(NULL, bufsz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  bufsz = info.width * info.height * sizeof(uint32_t);
 
   buffer_index = 0;
-  front_buffer = buf;
-  back_buffer = buf + (width() * height());
+  front_buffer = (uint32_t *)mmap(NULL, bufsz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (hardware_double_buffered()) {
+    back_buffer = NULL;
+  } else {
+    back_buffer =
+        (uint32_t *)mmap(NULL, bufsz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+  }
+  printf("[lumen] front: %p, back: %p\n", front_buffer, back_buffer);
 }
 
 
+void lumen::screen::flush_fb() {
+  ioctl(fd, GVI_FLUSH_FB);
+}
 
 long xoff = 0;
 long yoff = 0;

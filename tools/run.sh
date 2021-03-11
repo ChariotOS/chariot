@@ -30,26 +30,21 @@ case $ARCH in
 		# Playing around with USB
 		# QEMU_FLAGS+="-device nec-usb-xhci,id=xhci "
 		# QEMU_FLAGS+="-device usb-bot "
-		QEMU_FLAGS+="-display sdl "
+		# QEMU_FLAGS+="-display sdl "
+
+		QEMU_FLAGS+="-device virtio-mouse-pci "
 
 		;;
 
 	RISC-V)
-
-
-		# QEMU_FLAGS+="-cpu rv64,x-h=true "
 		QEMU_FLAGS+="-machine virt -smp 1 -m ${CONFIG_RISCV_RAM_MB}M "
-		# QEMU_FLAGS+="-bios none "
 		QEMU_FLAGS+="-bios default "
 		QEMU_FLAGS+="-kernel build/chariot_initrd.elf "
 
 		QEMU_FLAGS+="-drive file=build/chariot.img,if=none,format=raw,id=x0 "
 		QEMU_FLAGS+="-device virtio-blk-device,drive=x0 "
-		QEMU_FLAGS+="-device virtio-gpu-device,stats=true "
+		QEMU_FLAGS+="-device virtio-gpu-device,xres=${CONFIG_FRAMEBUFFER_WIDTH},yres=${CONFIG_FRAMEBUFFER_HEIGHT} "
 		QEMU_FLAGS+="-display sdl "
-
-		# virtio keyboard, gpu, and tablet (cursor)
-		# QEMU_FLAGS+="-device virtio-tablet-device -device virtio-keyboard-device -device virtio-gpu-device "
 		;;
 
 

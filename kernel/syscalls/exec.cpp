@@ -37,8 +37,6 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
     }
   }
 
-	printk("here\n");
-
   // try to load the binary
   fs::inode *exe = NULL;
 

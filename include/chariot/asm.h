@@ -149,6 +149,9 @@ void *memcpy(void *dst, const void *src, size_t n);
 int memcmp(const void *s1_, const void *s2_, size_t n);
 void memset(void *buf, char c, size_t len);
 
+void memset32(void *buf, uint32_t val, size_t len);
+
+
 
 #ifdef __cplusplus
 }

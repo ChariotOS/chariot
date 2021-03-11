@@ -128,6 +128,7 @@ echo 'Copying filesystem data into the mounted image'
 sudo rsync -a $BUILD/root/. $mnt/
 sudo mkdir -p $mnt/dev
 sudo mkdir -p $mnt/tmp
+sudo mkdir -p $mnt/proc
 sudo chown -R 0:0 $mnt
 
 

@@ -157,6 +157,9 @@ void dump_dtb(dtb::node *node, int depth = 0) {
     printk("- #size-cells: %d\n", node->size_cells);
   }
 
+	spaces(depth);
+	printk("- compatible: %s\n", node->compatible);
+
 
   if (node->is_device) {
     spaces(depth);
@@ -168,6 +171,7 @@ void dump_dtb(dtb::node *node, int depth = 0) {
 }
 
 int dtb::parse(dtb::fdt_header *fdt) {
+	printk(KERN_INFO "fdt at %p\n", fdt);
   global_fdt_header = fdt;
 
   assert(next_device == 0);

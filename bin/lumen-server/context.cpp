@@ -35,29 +35,31 @@ pid_t spawn(const char *command) {
 
 
 lumen::context::context(void) : screen(1024, 768) {
-  keyboard.open("/dev/keyboard", "r+");
-  keyboard.on_read([this] {
-    while (1) {
-      keyboard_packet_t pkt;
-      keyboard.read(&pkt, sizeof(pkt));
-      if (errno == EAGAIN) break;
-      handle_keyboard_input(pkt);
-    }
-  });
+  if (keyboard.open("/dev/keyboard", "r+")) {
+    keyboard.on_read([this] {
+      while (1) {
+        keyboard_packet_t pkt;
+        keyboard.read(&pkt, sizeof(pkt));
+        if (errno == EAGAIN) break;
+        handle_keyboard_input(pkt);
+      }
+    });
+  }
 
   int x = 0;
   unsigned long y = 1;
   auto out = ck::max(x, y);
 
-  mouse.open("/dev/mouse", "r+");
-  mouse.on_read([this] {
-    while (1) {
-      struct mouse_packet pkt;
-      mouse.read(&pkt, sizeof(pkt));
-      if (errno == EAGAIN) break;
-      handle_mouse_input(pkt);
-    }
-  });
+  if (mouse.open("/dev/mouse", "r+")) {
+    mouse.on_read([this] {
+      while (1) {
+        struct mouse_packet pkt;
+        mouse.read(&pkt, sizeof(pkt));
+        if (errno == EAGAIN) break;
+        handle_mouse_input(pkt);
+      }
+    });
+  }
 
   wallpaper = gfx::load_png("/usr/res/lumen/wallpaper.png");
 
@@ -73,6 +75,7 @@ lumen::context::context(void) : screen(1024, 768) {
   pthread_create(&compositor_thread, NULL, lumen::context::compositor_thread_worker, (void *)this);
 #endif
   invalidate(screen.bounds());
+
 
   // spawn("term");
 }
@@ -611,10 +614,9 @@ void lumen::context::compose(void) {
   // make a tmp bitmap
   gfx::bitmap b(screen.width(), screen.height(), screen.buffer());
 
+
   // this scribe is the "compositor scribe", used by everyone in this function
   gfx::scribe scribe(b);
-
-
 
 
   bool draw_mouse = screen.mouse_moved;
@@ -632,7 +634,7 @@ void lumen::context::compose(void) {
 
       int sw = screen.width();
       auto off = r.y * sw + r.x;
-      uint32_t *to_ptr = screen.back_buffer + off;
+      uint32_t *to_ptr = b.pixels() + off;
       uint32_t *from_ptr = wp + off;
 
       for (int y = 0; y < r.h; y++) {
@@ -667,45 +669,40 @@ void lumen::context::compose(void) {
   }
 
 
-
-  int sw = screen.width();
-
-#if 0
-  for (int i = 0; i < screen.width() * screen.height(); i++) {
-    screen.front_buffer[i] = 0xfcfc00;
-  }
-#endif
-
-  // memset(screen.front_buffer, screen.width() * screen.height()
-  // copy the changes we made to the other buunffer
-  for (auto &r : dirty_regions.rects()) {
-    auto off = r.y * sw + r.x;
-    uint32_t *to_ptr = screen.front_buffer + off;
-    uint32_t *from_ptr = screen.back_buffer + off;
+  if (!screen.hardware_double_buffered()) {
+    int sw = screen.width();
+    // copy the changes we made to the other buunffer
+    for (auto &r : dirty_regions.rects()) {
+      auto off = r.y * sw + r.x;
+      uint32_t *to_ptr = screen.front_buffer + off;
+      uint32_t *from_ptr = screen.back_buffer + off;
 
 
-    for (int y = 0; y < r.h; y++) {
-      // explicit looping optimizes more
-      for (int i = 0; i < r.w; i++)
-        to_ptr[i] = from_ptr[i];
-      from_ptr += sw;
-      to_ptr += sw;
+      for (int y = 0; y < r.h; y++) {
+        // explicit looping optimizes more
+        for (int i = 0; i < r.w; i++)
+          to_ptr[i] = from_ptr[i];
+        from_ptr += sw;
+        to_ptr += sw;
+      }
     }
-  }
 
-  // and now, go through all windows and notify them they have been composed :)
-  for (auto win : windows) {
-    win->window_lock.lock();
-    if (win->pending_invalidation_id != -1) {
-      struct lumen::invalidated_msg m;
-      m.id = win->id;
-      win->guest.guest_lock.lock();
-      win->guest.send_raw(LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m,
-                          sizeof(m));
-      win->guest.guest_lock.unlock();
-      win->pending_invalidation_id = -1;
+    // and now, go through all windows and notify them they have been composed :)
+    for (auto win : windows) {
+      win->window_lock.lock();
+      if (win->pending_invalidation_id != -1) {
+        struct lumen::invalidated_msg m;
+        m.id = win->id;
+        win->guest.guest_lock.lock();
+        win->guest.send_raw(LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m,
+                            sizeof(m));
+        win->guest.guest_lock.unlock();
+        win->pending_invalidation_id = -1;
+      }
+      win->window_lock.unlock();
     }
-    win->window_lock.unlock();
+  } else {
+    screen.flush_fb();
   }
 
   dirty_regions.clear();

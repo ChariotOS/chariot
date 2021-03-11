@@ -3,7 +3,7 @@
 #include <dev/virtio/mmio.h>
 #include <lock.h>
 #include <wait.h>
-
+#include <dev/video.h>
 
 /* taken from qemu sources */
 enum virtio_gpu_ctrl_type {
@@ -146,6 +146,19 @@ struct virtio_gpu_resp_display_info {
   struct virtio_gpu_display_one pmodes[VIRTIO_GPU_MAX_SCANOUTS];
 };
 
+struct virtio_gpu_get_edid {
+  struct virtio_gpu_ctrl_hdr hdr;
+  uint32_t scanout;
+  uint32_t padding;
+};
+
+struct virtio_gpu_resp_edid {
+  struct virtio_gpu_ctrl_hdr hdr;
+  uint32_t size;
+  uint32_t padding;
+  uint8_t edid[1024];
+};
+
 #define VIRTIO_GPU_EVENT_DISPLAY (1 << 0)
 
 struct virtio_gpu_config {
@@ -169,8 +182,34 @@ enum virtio_gpu_formats {
   VIRTIO_GPU_FORMAT_R8G8B8X8_UNORM = 134,
 };
 
+class virtio_mmio_gpu;
 
-class virtio_mmio_gpu : public virtio_mmio_dev {
+class virtio_gpu_resource {
+ public:
+  uint32_t id;
+  uint32_t width, height;
+  uint32_t x, y;
+  uint32_t *fb = NULL;
+
+  virtio_mmio_gpu &gpu;
+
+  ~virtio_gpu_resource();
+
+  int transfer(void);
+  int flush(void);
+  inline uint32_t npixels(void) {
+    return width * height;
+  }
+
+ protected:
+  friend class virtio_mmio_gpu;
+  virtio_gpu_resource(virtio_mmio_gpu &gpu, uint32_t id, uint32_t width, uint32_t height);
+};
+
+
+class virtio_mmio_gpu : public virtio_mmio_dev, public dev::video_device {
+  friend class virtio_gpu_resource;
+
   spinlock lock;
 
   void *gpu_request;
@@ -209,10 +248,19 @@ class virtio_mmio_gpu : public virtio_mmio_dev {
     return send_command_raw(&req, sizeof(Rq), (void **)&res, sizeof(Rs));
   }
 
-  int set_scanout(int pmode_id, uint32_t resource_id, uint32_t width, uint32_t height);
+  int set_scanout(int pmode_id, uint32_t resource_id, uint32_t width, uint32_t height,
+                  uint32_t x = 0, uint32_t y = 0);
 
-  int transfer_to_host_2d(int resource_id, uint32_t width, uint32_t height);
-  int flush_resource(int resource_id, uint32_t width, uint32_t height);
+  int transfer_to_host_2d(int resource_id, uint32_t width, uint32_t height, uint32_t x = 0,
+                          uint32_t y = 0);
+  int flush_resource(int resource_id, uint32_t width, uint32_t height, uint32_t x = 0,
+                     uint32_t y = 0);
+
+  /* CALLER HOLDS LOCK */
+  struct virtio_gpu_resp_edid *get_edid();
+
+
+  unique_ptr<virtio_gpu_resource> allocate_resource(uint32_t width, uint32_t height);
 
  public:
   virtio_mmio_gpu(volatile uint32_t *regs);
@@ -225,4 +273,11 @@ class virtio_mmio_gpu : public virtio_mmio_dev {
 
 
   virtual void irq(int ring_index, virtio::virtq_used_elem *);
+
+
+  // ^dev::video_device
+  virtual int get_mode(gvi_video_mode &mode);
+  virtual int set_mode(const gvi_video_mode &mode);
+  virtual uint32_t *get_framebuffer(void);
+	virtual int flush_fb(void);
 };
