@@ -290,36 +290,17 @@ process::~process(void) {
 void sched::proc::dump_table(void) {
   printk("process dump:\n");
 
-  printk("   ticks: %zu\n", cpu::get_ticks());
-  printk("  iticks: %zu\n", cpu::current().kstat.iticks);
-  printk("   sched: rip=%p\n", cpu::current().sched_ctx->pc);
+
+
+  printk("-------------------------------------\n\n");
   for (auto &p : proc_table) {
     auto &proc = p.value;
-    printk("pid %d ", proc->pid);
-    printk("threadc=%-3d ", proc->threads.size());
-
-    printk("dead= %d ", proc->is_dead());
-
-    printk("files={");
-
-    int ifd = 0;
-    for (auto &fd : proc->open_files) {
-      printk("%d", fd.key);
-
-      ifd++;
-      if (ifd <= proc->open_files.size() - 1) {
-        printk(", ");
-      }
-    }
-    printk("} ");
-    printk("embryo=%d ", proc->embryonic);
-
-    printk("\n");
+    printk("Process %d %s\n", proc->pid, proc->name.get());
 
     for (auto tid : proc->threads) {
       auto t = thread::lookup(tid);
-      printk("tid %-3d ", tid);
-      printk("ticks %-4d ", t->sched.ticks);
+      printk("  %3d.%-3d", proc->pid, tid);
+
       const char *state = "UNKNOWN";
 #define ST(name) \
   if (t->state == PS_##name) state = #name
@@ -329,25 +310,23 @@ void sched::proc::dump_table(void) {
       ST(UNINTERRUPTIBLE);
       ST(ZOMBIE);
 #undef ST
+      printk(" %s\n", state);
 
-      // printk("name %-10s ", t->);
-      printk("state %-10s ", state);
-      printk("rip %p ", t->trap_frame != NULL ? arch_reg(REG_PC, t->trap_frame) : 0);
+      printk("          Ticks:       %d\n", t->sched.ticks);
+      printk("          Syscalls:    %d\n", t->stats.syscall_count);
+      printk("          Run Count:   %d\n", t->stats.run_count);
+      printk("          Current CPU: %d\n", t->stats.current_cpu);
+      if (t->trap_frame != NULL) {
+        printk("          PC:          0x%p\n", arch_reg(REG_PC, t->trap_frame));
+      }
 
-      printk("pri %-3d ", t->sched.priority);
-      printk("die %-3d ", t->should_die);
-      printk("SC %-7d ", t->stats.syscall_count);
-      printk("RC %-7d ", t->stats.run_count);
-      printk("timeslice %-3d ", t->sched.timeslice);
-      printk("start %-6d ", t->sched.start_tick);
-      printk("cpu %-3d ", t->stats.current_cpu);
+      printk("\n");
+      continue;
 
 
       printk("\n");
     }
-
-    // proc->mm->dump();
-    printk("\n");
+    printk("\n-------------------------------------\n\n");
   }
 }
 

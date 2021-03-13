@@ -623,6 +623,8 @@ void lumen::context::compose(void) {
   // clear that information
   if (draw_mouse) screen.mouse_moved = false;
 
+  auto start = sysbind_gettime_microsecond();
+
   windows_lock.lock();
   dirty_regions_lock.lock();
   {
@@ -655,6 +657,7 @@ void lumen::context::compose(void) {
     scribe.state().offset = gfx::point(win->rect.x, win->rect.y);
 
     for (auto &dirty_rect : dirty_regions.rects()) {
+      if (dirty_rect.intersects(screen.mouse_rect())) draw_mouse = true;
       if (!dirty_rect.intersects(win->rect)) continue;
       scribe.state().clip = dirty_rect;
 
@@ -669,9 +672,11 @@ void lumen::context::compose(void) {
   }
 
 
+  // printf("compose took %llu microseconds\n", end - start);
+
   if (!screen.hardware_double_buffered()) {
     int sw = screen.width();
-    // copy the changes we made to the other buunffer
+    // copy the changes we made to the other buffer
     for (auto &r : dirty_regions.rects()) {
       auto off = r.y * sw + r.x;
       uint32_t *to_ptr = screen.front_buffer + off;
@@ -687,23 +692,24 @@ void lumen::context::compose(void) {
       }
     }
 
-    // and now, go through all windows and notify them they have been composed :)
-    for (auto win : windows) {
-      win->window_lock.lock();
-      if (win->pending_invalidation_id != -1) {
-        struct lumen::invalidated_msg m;
-        m.id = win->id;
-        win->guest.guest_lock.lock();
-        win->guest.send_raw(LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m,
-                            sizeof(m));
-        win->guest.guest_lock.unlock();
-        win->pending_invalidation_id = -1;
-      }
-      win->window_lock.unlock();
-    }
   } else {
     screen.flush_fb();
   }
+
+  // and now, go through all windows and notify them they have been composed :)
+	for (auto win : windows) {
+		win->window_lock.lock();
+		if (win->pending_invalidation_id != -1) {
+			struct lumen::invalidated_msg m;
+			m.id = win->id;
+			win->guest.guest_lock.lock();
+			win->guest.send_raw(LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m,
+													sizeof(m));
+			win->guest.guest_lock.unlock();
+			win->pending_invalidation_id = -1;
+		}
+		win->window_lock.unlock();
+	}
 
   dirty_regions.clear();
 

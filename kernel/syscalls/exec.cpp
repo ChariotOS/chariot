@@ -81,6 +81,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
     }
   }
 
+	curproc->name = path;
   curproc->args = argv;
   curproc->env = envp;
   new_addr_space->switch_to();

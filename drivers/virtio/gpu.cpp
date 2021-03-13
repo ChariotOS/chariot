@@ -79,20 +79,6 @@ bool virtio_mmio_gpu::initialize(const struct virtio_config &config) {
   transfer_to_host_2d(display_resource_id, pmode.r.width, pmode.r.height);
   flush_resource(display_resource_id, pmode.r.width, pmode.r.height);
 
-  /*
-auto ref = allocate_resource(pmode.r.width, pmode.r.height);
-ref->x = 0;
-ref->y = 0;
-  set_scanout(pmode_id, ref->id, ref->width, ref->height, ref->x, ref->y);
-
-memset32(ref->fb, 0x00FF00, ref->npixels());
-ref->transfer();
-ref->flush();
-
-  while (1) {}
-  */
-
-
 	dev::video_device::register_device(this);
 
 

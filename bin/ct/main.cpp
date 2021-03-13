@@ -123,16 +123,16 @@ class game_view final : public ui::view {
     matProj.m[2][3] = 1.0f;
     matProj.m[3][3] = 0.0f;
 
+    set_background(0x000000);
 
-
-    set_background(0xFFFFFF);
     draw_timer = ck::timer::make_interval(1000 / 60, [this] { this->repaint(); });
 
-    repaint();
-  }
-  virtual ~game_view(void) {
+    // repaint();
   }
 
+
+  virtual ~game_view(void) {
+  }
 
 
   virtual void paint_event(void) {
@@ -140,6 +140,11 @@ class game_view final : public ui::view {
 
     printf("paint %d %d\n", width(), height());
 
+
+    s.clear(rand());
+
+    invalidate();
+    return;
 
     // s.clear(0xFFFFFF);
 
@@ -239,12 +244,12 @@ class game_view final : public ui::view {
         triProjected.p[2].x *= 0.5f * (float)width();
         triProjected.p[2].y *= 0.5f * (float)height();
 
-        s.draw_line_antialias(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x,
-                              triProjected.p[1].y, 0);
-        s.draw_line_antialias(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[2].x,
-                              triProjected.p[2].y, 0);
-        s.draw_line_antialias(triProjected.p[1].x, triProjected.p[1].y, triProjected.p[2].x,
-                              triProjected.p[2].y, 0);
+        s.draw_line(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x,
+                    triProjected.p[1].y, 0);
+        s.draw_line(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[2].x,
+                    triProjected.p[2].y, 0);
+        s.draw_line(triProjected.p[1].x, triProjected.p[1].y, triProjected.p[2].x,
+                    triProjected.p[2].y, 0);
       }
     }
 
@@ -254,85 +259,17 @@ class game_view final : public ui::view {
 };
 
 
-
-#include <sys/sysbind.h>
-
-
-
-void display_font(const char* name) {
-  auto font = gfx::font::get(name);
-
-
-  font->with_line_height(15, [&]() {
-    gfx::bitmap bmp(120, font->line_height());
-
-    for (int y = 0; y < bmp.height(); y++) {
-      for (int x = 0; x < bmp.width(); x++) {
-        bmp.set_pixel(x, y, 0xFFFFFF);
-      }
-    }
-
-    int x = 0;
-    int y = font->line_height();
-    gfx::scribe s(bmp);
-    uint32_t color = 0x000000;
-    s.draw_text(*font, bmp.rect(), name, ui::TextAlign::CenterLeft, 0x000000, false);
-    for (int y = 0; y < bmp.height(); y++) {
-      for (int x = 0; x < bmp.width(); x++) {
-        uint32_t c = bmp.get_pixel(x, y);
-        if (c == color) {
-          printf(" ");
-          color = c;
-          continue;
-        }
-        color = c;
-
-        uint8_t r = (c >> 16) & 0xFF;
-        uint8_t g = (c >> 8) & 0xFF;
-        uint8_t b = c & 0xFF;
-
-        printf("\x1b[48;2;%d;%d;%dm ", r, g, b);
-      }
-      /* Reset */
-      color = 0x000000;
-      printf("\x1b[0m\n");
-    }
-    // printf("\n");
-  });
-}
-
-
 int main(int argc, char** argv) {
-  display_font("Times New Roman");
-  display_font("Lato");
-  display_font("OpenSans");
-  display_font("OpenSans Bold");
-  display_font("Source Code Pro");
-  display_font("Avenir");
-  display_font("Arial");
-
-  return 0;
-
-
   ui::application app;
 
-  ui::window* win = app.new_window("Current Test (Hello World)", 120, 85);
-  // create a root view (column)
-  //
-  auto& root = win->set_view<game_view>();
 
-  root.set_flex_grow(1.0);
-  root.set_flex_height(85);
-  // root.set_font("Roboto Regular");
-  // root.add(make_label("Command Line Interface Guidelines", 0x000000, 0xFFFFFF));
+  auto t = ck::timer::make_interval(1000 / 60, [] { printf("ya yeet\n"); });
 
-  auto input = ck::file::unowned(0);
-  input->on_read([&] {
-    getchar();
-    ck::eventloop::exit();
-  });
+  ui::window* win = app.new_window("Test", 120, 85);
+	win->defer_invalidation(false);
+  // auto& root = win->set_view<game_view>();
 
-  // start the application!
+
   app.start();
 
 

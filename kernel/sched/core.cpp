@@ -87,7 +87,7 @@ static void switch_into(struct thread &thd) {
   context_switch(&cpu::current().sched_ctx, thd.kern_context);
 
   // arch_save_fpu(thd);
-  if (thd.proc.ring == RING_USER) arch_save_fpu(thd);
+  if (true || thd.proc.ring == RING_USER) arch_save_fpu(thd);
 
   if (ts) {
     thd.ktime_us += time::now_us() - start_us;
@@ -229,9 +229,11 @@ void sched::run() {
 
 
 void sched::handle_tick(u64 ticks) {
+	// always check wakeups
+  check_wakeups();
+
   if (!cpu::in_thread()) return;
 
-  check_wakeups();
 
   // grab the current thread
   auto thd = cpu::thread();

@@ -391,6 +391,7 @@ struct thread final {
   off_t setup_tls(void);
 
   static thread *lookup(pid_t);
+  static thread *lookup_r(pid_t);
   static bool teardown(thread *);
 
   // sends a signal to the thread and returns if it succeeded or not

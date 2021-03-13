@@ -199,10 +199,14 @@ static void thread_create_callback(void *) {
   arch_thread_create_callback();
 }
 
+struct thread *thread::lookup_r(pid_t tid) {
+	return thread_table.get(tid);
+}
+
 struct thread *thread::lookup(pid_t tid) {
   thread_table_lock.read_lock();
   assert(thread_table.contains(tid));
-  auto t = thread_table.get(tid);
+  auto t = thread::lookup_r(tid);
   thread_table_lock.read_unlock();
   return t;
 }
