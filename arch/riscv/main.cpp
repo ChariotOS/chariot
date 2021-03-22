@@ -229,6 +229,7 @@ void main(int hartid, void *fdt) {
     string init_paths = "/bin/init,/init";
     auto paths = init_paths.split(',');
     pid_t init_pid = sched::proc::spawn_init(paths);
+		printk("init_pid: %d\n", init_pid);
 
     sys::waitpid(init_pid, NULL, 0);
     panic("INIT DIED!\n");

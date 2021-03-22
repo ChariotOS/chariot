@@ -241,11 +241,9 @@ endfunction()
 
 add_subdirectory(kernel)
 
-if (CONFIG_USERSPACE)
-	add_subdirectory(libc)
-	add_subdirectory(lib)
-	add_subdirectory(bin)
-endif()
+add_subdirectory(libc)
+add_subdirectory(lib)
+add_subdirectory(bin)
 
 
 chariot_external(libcpp ${CMAKE_SOURCE_DIR}/toolchain/build/${CMAKE_SYSTEM_PROCESSOR}/gcc/libcpp/libcpp.a)

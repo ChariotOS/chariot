@@ -18,14 +18,11 @@ choice
 	default X86
 
 	config X86
-		bool "x86_64 (Intel, AMD)"
+		bool "x86_64"
 		
 
 	config RISCV
-		bool "RISCV (RV64GC)"
-
-	# config ARM64
-	# 	bool "ARM64"
+		bool "RISC-V"
 
 endchoice
 

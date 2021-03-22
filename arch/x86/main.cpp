@@ -152,7 +152,6 @@ int kernel_init(void *) {
 
 
 
-#ifdef CONFIG_USERSPACE
 
   auto root_name = kargs::get("root", "/dev/disk0p1");
   assert(root_name);
@@ -182,8 +181,6 @@ int kernel_init(void *) {
     KERR("check the grub config and make sure that the init command line arg\n");
     KERR("is set to a comma seperated list of possible paths.\n");
   }
-
-#endif
 
   // yield back to scheduler, we don't really want to run this thread anymore
   while (1) {

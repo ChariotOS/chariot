@@ -61,10 +61,6 @@ menu "Config"
 		default 1000
 
 
-	config LWIP
-		bool "Enable LWIP"
-		default y
-
 	config EXT2
 		bool "Ext2 Filesystem"
 		default y
@@ -170,8 +166,6 @@ menu "Devices"
 			depends on X86
 	endmenu
 
-
-
 	config SB16
 		bool "[WIP] Soundblaster 16"
 		default y
@@ -180,13 +174,19 @@ menu "Devices"
 endmenu
 
 
-config USERSPACE
-	bool "Enable building and running the userspace"
-	default y
+menu "Networking"
+	config LWIP
+		bool "Enable LWIP"
+		default y
 
+	config LWIP_DEBUG
+		depends on LWIP
+		bool "LWIP Debug prints"
+		default n
+endmenu
 
-menu "Userspace Configuration"
-	depends on USERSPACE
+menu "Userspace"
+	# depends on USERSPACE
 
 	
 	config FANCY_WINDOWS
@@ -207,9 +207,4 @@ endmenu
 
 
 
-menu "Networking"
-	config LWIP_DEBUG
-		bool "LWIP Debug prints"
-		default n
-endmenu
 
