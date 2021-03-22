@@ -436,6 +436,7 @@ class virtio_mmio_dev {
   }
 
   inline void kick(int ring) {
+    __sync_synchronize();
     write_reg(VIRTIO_MMIO_QUEUE_NOTIFY, ring);
     __sync_synchronize();
   }

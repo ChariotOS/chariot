@@ -4,6 +4,7 @@
 #include <dev/virtio/mmio.h>
 #include <dev/virtio/disk.h>
 #include <dev/virtio/gpu.h>
+#include <dev/virtio/input.h>
 
 #include <errno.h>
 #include <phys.h>

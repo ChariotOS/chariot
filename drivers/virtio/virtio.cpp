@@ -296,14 +296,20 @@ int virtio::check_mmio(void *addr, int irq) {
 
 
     case 16: {
-      printk("\n\n\n\n\n");
       printk(KERN_INFO "[VIRTIO] GPU Device at %p with irq %d\n", addr, irq);
       /* TODO: do something with this? */
       dev = new virtio_mmio_gpu(regs);
       break;
     }
+
+    case 18: {
+      printk(KERN_INFO "[VIRTIO] Input Device at %p with irq %d\n", addr, irq);
+
+			dev = new virtio_mmio_input(regs);
+			break;
+    }
     default:
-      printk("No handler for device id %d at %p\n", dev_id, addr);
+      printk(KERN_WARN "[VIRTIO] No handler for device id %d at %p\n", dev_id, addr);
       return -ENODEV;
   }
 
