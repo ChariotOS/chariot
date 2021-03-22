@@ -25,15 +25,6 @@ case $ARCH in
 		QEMU_FLAGS+="-hda build/chariot.img "
 		# QEMU_FLAGS+="-netdev user,id=u1  -device e1000,netdev=u1 "
 		# QEMU_FLAGS+="-rtc base=localtime "
-		
-
-		# Playing around with USB
-		# QEMU_FLAGS+="-device nec-usb-xhci,id=xhci "
-		# QEMU_FLAGS+="-device usb-bot "
-		# QEMU_FLAGS+="-display sdl "
-
-		QEMU_FLAGS+="-device virtio-mouse-pci "
-
 		;;
 
 	RISC-V)
@@ -44,6 +35,9 @@ case $ARCH in
 		QEMU_FLAGS+="-drive file=build/chariot.img,if=none,format=raw,id=x0 "
 		QEMU_FLAGS+="-device virtio-blk-device,drive=x0 "
 		QEMU_FLAGS+="-device virtio-gpu-device,xres=${CONFIG_FRAMEBUFFER_WIDTH},yres=${CONFIG_FRAMEBUFFER_HEIGHT} "
+
+		QEMU_FLAGS+="-device virtio-keyboard-device "
+		QEMU_FLAGS+="-device virtio-mouse-device "
 		QEMU_FLAGS+="-display sdl "
 		;;
 
