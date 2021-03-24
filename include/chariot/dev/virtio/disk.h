@@ -1,5 +1,8 @@
 #pragma once
 
+#include <lock.h>
+#include <wait.h>
+#include <dev/disk.h>
 #include <dev/virtio/mmio.h>
 
 
