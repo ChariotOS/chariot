@@ -31,14 +31,6 @@ struct frame {
 
 static spinlock phys_lck;
 
-static void lock(void) {
-  phys_lck.lock();
-}
-
-static void unlock(void) {
-  phys_lck.unlock();
-}
-
 static struct {
   int use_lock;
   frame *freelist;
@@ -96,25 +88,14 @@ static void *late_phys_alloc(size_t npages) {
 
 // physical memory allocator implementation
 void *phys::alloc(int npages) {
-  lock();
   // reclaim block cache if the free pages drops below 32 pages
   if (kmem.nfree < 32) {
-    unlock();
     printk("gotta reclaim!\n");
     block::reclaim_memory();
-    lock();
   }
 
-
-  // auto start = time::now_ns();
-
+  scoped_irqlock l(phys_lck);
   void *p = late_phys_alloc(npages);
-
-  // printk_nolock("phys memory left: %zu%% (%zu bytes)\n", (100L * kmem.nfree) / kmem.max_free,
-  // kmem.nfree * 4096);
-
-  // printk("phys::alloc(%d) took %llu ns\n", npages, time::now_ns() - start);
-  unlock();
   return p;
 }
 
@@ -123,10 +104,7 @@ void phys::free(void *v, int len) {
     panic("phys::free requires page aligned address. Given %p", v);
   }
 
-  lock();
-
-
-  /* find a spot to place the freed page */
+  scoped_irqlock l(phys_lck);
 
   frame *r = working_addr((frame *)v);
 
@@ -170,16 +148,11 @@ void phys::free(void *v, int len) {
   if (kmem.nfree > kmem.max_free) {
     kmem.max_free = kmem.nfree;
   }
-
-
-  // printk("free ram: %lu Kb\n", kmem.nfree * PGSIZE / 1024);
-
-  unlock();
 }
 
 // add page frames to the allocator
 void phys::free_range(void *vstart, void *vend) {
-  lock();
+  scoped_irqlock l(phys_lck);
 
   auto *fr = (frame *)PGROUNDUP((u64)vstart);
 
@@ -213,5 +186,4 @@ void phys::free_range(void *vstart, void *vend) {
   if (kmem.nfree > kmem.max_free) {
     kmem.max_free = kmem.nfree;
   }
-  unlock();
 }
