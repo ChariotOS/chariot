@@ -225,14 +225,17 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
   /* The previous stack pointer located in the scratch */
   rv::xsize_t previous_kernel_stack = rv::get_hstate().kernel_sp;
 
-  if (cpu::in_thread()) {
-    if (thd->stacks.size() != 1) {
-      printk_nolock(KERN_DEBUG "previous kernel stack: %p\n");
-      for (auto &stk : thd->stacks) {
-        printk_nolock(KERN_DEBUG "   %d %p\n", stk.size, stk.start);
-      }
-    }
-  }
+
+  /*
+if (cpu::in_thread()) {
+if (thd->stacks.size() != 1) {
+printk_nolock(KERN_DEBUG "previous kernel stack: %p\n");
+for (auto &stk : thd->stacks) {
+  printk_nolock(KERN_DEBUG "   %d %p\n", stk.size, stk.start);
+}
+}
+}
+  */
 
   if (rv::intr_enabled() != 0) panic("kerneltrap: interrupts enabled");
 

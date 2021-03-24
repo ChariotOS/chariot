@@ -18,7 +18,7 @@ static void thread_create_callback(void *);
 // implemented in arch/$ARCH/trap.asm most likely
 extern "C" void trapret(void);
 
-static rwlock thread_table_lock;
+static spinlock thread_table_lock;
 static map<pid_t, struct thread *> thread_table;
 
 thread::thread(pid_t tid, struct process &proc) : proc(proc) {
@@ -63,12 +63,12 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
 
 
   arch_initialize_trapframe(proc.ring == RING_USER, trap_frame);
-
-  thread_table_lock.write_lock();
-  assert(!thread_table.contains(tid));
-  // printk("inserting %d\n", tid);
-  thread_table.set(tid, this);
-  thread_table_lock.write_unlock();
+  {
+    scoped_irqlock l(thread_table_lock);
+    assert(!thread_table.contains(tid));
+    // printk("inserting %d\n", tid);
+    thread_table.set(tid, this);
+  }
 
 
   // push the tid into the proc's tid list
@@ -204,10 +204,9 @@ struct thread *thread::lookup_r(pid_t tid) {
 }
 
 struct thread *thread::lookup(pid_t tid) {
-  thread_table_lock.read_lock();
+  scoped_irqlock l(thread_table_lock);
   assert(thread_table.contains(tid));
   auto t = thread::lookup_r(tid);
-  thread_table_lock.read_unlock();
   return t;
 }
 
@@ -216,10 +215,11 @@ bool thread::teardown(thread *t) {
   printk("thread ran for %llu cycles, %llu us\n", t->stats.cycles, t->ktime_us);
 #endif
 
-  thread_table_lock.write_lock();
-  assert(thread_table.contains(t->tid));
-  thread_table.remove(t->tid);
-  thread_table_lock.write_unlock();
+  {
+    scoped_irqlock l(thread_table_lock);
+    assert(thread_table.contains(t->tid));
+    thread_table.remove(t->tid);
+  }
 
   delete t;
   return true;

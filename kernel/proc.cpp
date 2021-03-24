@@ -380,8 +380,6 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   delete this->mm;
   this->mm = new_addr_space;
 
-  //
-
   struct thread *thd;
   if (threads.size() != 0) {
     thd = thread::lookup(this->pid);
@@ -454,8 +452,6 @@ int sched::proc::reap(process::ptr p) {
   printk("  ram usage: %zu Kb (%zu b)\n", usage / KB, usage);
 #endif
 
-  process::ptr init = proc_table[1];
-  assert(init);
 
   for (auto tid : p->threads) {
     auto *t = thread::lookup(tid);
@@ -465,7 +461,7 @@ int sched::proc::reap(process::ptr p) {
 #endif
 
     /* make sure... */
-    // t->locks.run.lock();
+    t->locks.run.lock();
     thread::teardown(t);
   }
 
@@ -485,21 +481,29 @@ int sched::proc::reap(process::ptr p) {
   fs::inode::release(p->root);
   p->root = NULL;
 
-  // if (me != init) init->datalock.lock();
-  for (auto &c : p->children) {
-    init->children.push(c);
-    c->parent = init;
+
+  // If the process had children, we need to give them to init
+  if (p->children.size() != 0) {
+    // grab a pointer to init
+    process::ptr init = pid_lookup(1);
+    assert(init);
+    init->datalock.lock();
+    for (auto &c : p->children) {
+      init->children.push(c);
+      c->parent = init;
+    }
+    init->datalock.unlock();
   }
-  // if (me != init) init->datalock.unlock();
 
   ptable_remove(p->pid);
-
 
   return f;
 }
 
 
 void process::terminate(int signal) {
+  pprintk("Terminate with signal %d\n", signal);
+  signal &= 0x7F;
   /* top bit of the first byte means it was signalled. Everything else is the signal that killed it
    */
   this->exit_signal = signal | 0x80;
@@ -546,7 +550,6 @@ void sys::exit_proc(int code) {
         // printk("checking %d\n", tid);
         auto t = thread::lookup(tid);
         if (t && t != curthd) {
-          // take the run lock for now... This ensures that the thread has completed.
           if (t->get_state() != PS_ZOMBIE) {
             everyone_dead = false;
           }
@@ -558,18 +561,14 @@ void sys::exit_proc(int code) {
     }
   }
 
-
-  dumb_waitpid_lock.lock();
   curthd->set_state(PS_ZOMBIE);
 
   curproc->exit_code = code;
   curproc->exited = true;
 
-  sched::proc::send_signal(curproc->parent->pid, SIGCHLD);
-
   curproc->parent->child_wq.wake_up_all();
-  // dumb_waitpid_wq.wake_up_all();
-  dumb_waitpid_lock.unlock();
+
+  sched::proc::send_signal(curproc->parent->pid, SIGCHLD);
 
   sched::exit();
 }
@@ -676,6 +675,7 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
   int result = -EINVAL;
 
   for (int i = 0; 1; i++) {
+    dumb_waitpid_lock.lock();
     /*
      * "Allocate" one of these on each go around on this, so
      * it gets destructed when breaking or continuing
@@ -683,20 +683,14 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
     struct wait_entry ent;
     prepare_to_wait(curproc->child_wq, ent, true);
 
-    dumb_waitpid_lock.lock();
     auto target = wait_check(me, pid, status, options, result);
 
     dumb_waitpid_lock.unlock();
 
-
     if (target && target->is_dead()) {
       result = sched::proc::reap(target);
-      // dumb_waitpid_lock.unlock();
       break;
     }
-
-
-    // dumb_waitpid_lock.unlock();
 
 
     if (result < 0) break;
