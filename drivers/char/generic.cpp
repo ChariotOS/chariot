@@ -15,7 +15,7 @@ static uint32_t seed;  // The state can be seeded with any value.
 // It may help to make this inline, but you should see if it benefits your
 // code.
 static inline uint64_t next_random(void) {
-  uint32_t z = (seed += 0x6D2B79F5UL);
+  uint64_t z = (seed += 0x6D2B79F5UL);
   z = (z ^ (z >> 15)) * (z | 1UL);
   z ^= z + (z ^ (z >> 7)) * (z | 61UL);
   return z ^ (z >> 14);
@@ -26,7 +26,7 @@ static size_t read_random(char *m, size_t len) {
   for (; i < len - sizeof(T); i += sizeof(T)) \
     *(T *)(m + i) = next_random();
   int i = 0;
-  DO_COPY(u32);
+  DO_COPY(u64);
   for (; i < len; i++)
     *(m + i) = next_random();
 #undef DO_COPY

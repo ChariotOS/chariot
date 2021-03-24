@@ -136,7 +136,6 @@ void cpu::seginit(void *local) {
   auto &cpu = cpu::current();
   /* zero out the cpu structure. This might be bad idk... */
   memset(&cpu, 0, sizeof(struct processor_state));
-
   /* Forward this so other code can read it */
   cpu.cpunum = sc.hartid;
 }

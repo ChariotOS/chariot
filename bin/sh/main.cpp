@@ -243,6 +243,21 @@ int main(int argc, char **argv, char **envp) {
   close(hn);
 
 
+
+  volatile int x = 0;
+
+
+  while (0) {
+    int pid = fork();
+    if (pid == 0) {
+      x++;
+      exit(0);
+    }
+    printf("pid: %d\n", pid);
+    waitpid(pid, NULL, 0);
+  }
+
+
   uid_t uid = getuid();
   struct passwd *pwd = getpwuid(uid);
   strncpy(uname, pwd->pw_name, 32);

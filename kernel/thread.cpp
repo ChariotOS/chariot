@@ -53,7 +53,7 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
   kern_context = (struct thread_context *)sp;
   memset(kern_context, 0, sizeof(struct thread_context));
 
-  state = PS_EMBRYO;
+  set_state(PS_EMBRYO);
 
   arch_reg(REG_SP, trap_frame) = sp;
   arch_reg(REG_PC, trap_frame) = -1;
@@ -200,7 +200,7 @@ static void thread_create_callback(void *) {
 }
 
 struct thread *thread::lookup_r(pid_t tid) {
-	return thread_table.get(tid);
+  return thread_table.get(tid);
 }
 
 struct thread *thread::lookup(pid_t tid) {
@@ -235,15 +235,12 @@ bool thread::send_signal(int sig) {
 #endif
 
   bool f;
-  if (!is_self) f = locks.run.lock_irqsave();
 
   unsigned long pend = (1 << sig);
   this->sig.pending |= pend;
 
-  if (state == PS_INTERRUPTIBLE) {
-    this->interrupt();
-  }
-  if (!is_self) locks.run.unlock_irqrestore(f);
+  if (state == PS_INTERRUPTIBLE) this->interrupt();
+
   return true;
 }
 
@@ -306,4 +303,14 @@ int sys::jointhread(int tid) {
     thread::teardown(t);
   }
   return 0;
+}
+
+
+void thread::set_state(int st) {
+  // store with sequential consistency
+  __atomic_store(&this->state, &st, __ATOMIC_SEQ_CST);
+}
+
+int thread::get_state(void) {
+  return __atomic_load_n(&this->state, __ATOMIC_ACQUIRE);
 }

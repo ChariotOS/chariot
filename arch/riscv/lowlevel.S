@@ -67,9 +67,6 @@ _start:
 	csrr    a0, mhartid
 #endif
 
-0:
-	bne     a0, zero, 0b
-
 	# we calculate the starting stack by _stack_start + (2*4096 * (mhartid + 1))
 	# so each HART gets 2 pages of stack
 	la      sp, _stack_start
@@ -92,13 +89,6 @@ _start:
 
 	# allocate space for the scratch pad
 	addi    sp, sp, -32 * SZREG
-
-
-
-
-
-
-
 
 
 	# supervisor mode expects 
@@ -185,7 +175,7 @@ _start:
 
 	# set mepc so we can return to the right place
 	la      t0, main_ptr
-	REG_L   t0, 0(t0)
+	reg_l   t0, 0(t0)
 	csrw    mepc, t0
 
 	csrw    mscratch, sp
@@ -208,6 +198,41 @@ _start:
 
 	jr      t0
 
+
+.global secondary_core_stack
+secondary_core_stack:
+	.quad 0
+
+.global secondary_core_startup_sbi
+secondary_core_startup_sbi:
+	ld sp, secondary_core_stack
+
+
+
+	# now, load the kernel page table into satp 
+	la      t0, kernel_page_table
+	srai    t0, t0, 12 # shift the page table to be just the PPN
+
+	# t1 is the eventual value of SATP
+	li      t1, SATP_FLAG      # t1 = SATP_FLAG
+	slli    t1, t1, SATP_SHIFT # t1 = t1 << SATP_SHIFT
+	add     t1, t1, t0         # t1 = t1 + kernel_page_table
+
+	csrw    satp, t1           # satp = t1
+
+	# flush tlb and whatnot
+	sfence.vma  zero, zero
+
+	#	enable supervisor interrupts
+	li      t0, SIE_SEIE | SIE_STIE | SIE_SSIE
+	csrs    sie, t0
+
+	la      t0, second_entry_ptr
+	REG_L   t0, 0(t0)
+	jr      t0
+
+second_entry_ptr:
+	.quad secondary_entry
 
 
 

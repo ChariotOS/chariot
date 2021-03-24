@@ -72,9 +72,110 @@ static unsigned long riscv_high_acc_time_func(void) {
 static off_t dtb_ram_start = 0;
 static size_t dtb_ram_size = 0;
 
+extern "C" uint8_t secondary_core_startup_sbi[];
+extern "C" volatile uint64_t secondary_core_stack;
+static volatile bool second_done = false;
+
+extern "C" void secondary_entry(int hartid) {
+  struct rv::hart_state sc;
+  sc.hartid = hartid;
+  sc.kernel_sp = 0;
+
+  rv::set_tp((rv::xsize_t)&sc);
+  cpu::seginit(NULL);
+  /* Initialize the platform level interrupt controller for this HART */
+  rv::plic::hart_init();
+  /* Set the supervisor trap vector location */
+  write_csr(stvec, kernelvec);
+  /* set SUM bit in sstatus so kernel can access userspace pages. Also enable floating point */
+  write_csr(sstatus, read_csr(sstatus) | (1 << 18) | (1 << 13));
+  cpus[rv::hartid()].timekeeper = false;
+
+  /* set the timer with sbi :) */
+  sbi_set_timer(rv::get_time() + TICK_INTERVAL);
+
+  second_done = true;
+
+  arch_enable_ints();
+
+  sched::run();
+
+  while (1) {
+  }
+}
+
+int start_secondary(void) {
+  // start secondary cpus
+  for (int i = 0; i < CONFIG_MAX_CPUS; i++) {
+    // allocate 2 pages for the secondary core
+    secondary_core_stack = (uint64_t)malloc(CONFIG_RISCV_BOOTSTACK_SIZE * 4096);
+    secondary_core_stack += CONFIG_RISCV_BOOTSTACK_SIZE * 4096;
+
+    second_done = false;
+    __sync_synchronize();
+
+
+    auto ret = sbi_call(SBI_EXT_HSM, SBI_EXT_HSM_HART_START, i, secondary_core_startup_sbi, 0);
+    if (ret.error != SBI_SUCCESS) {
+      continue;
+    }
+
+    while (second_done != true) {
+    }
+    printk(KERN_INFO "HART #%d started\n", i);
+  }
+
+  return 0;
+}
+
+
+#if 0
+template <typename T>
+struct lref {
+ public:
+  lref(T &val) : val(val) {
+    val.lock();
+  }
+
+  ~lref(void) {
+    val.unlock();
+  }
+
+  T *operator->(void) {
+    return &val;
+  }
+
+  T *operator*(void) {
+    return &val;
+  }
+
+ private:
+  T &val;
+};
+
+struct lockable {
+  void do_thing(void) {
+    printk("do thing\n");
+  }
+
+  void lock(void) {
+    printk("lock\n");
+  }
+  void unlock(void) {
+    printk("unlock\n");
+  }
+};
+
+static lockable *g_lockable = NULL;
+auto get_lockable(void) {
+  if (g_lockable == NULL) g_lockable = new lockable;
+  return lref(*g_lockable);
+}
+#endif
+
+
 static int wakes = 0;
 void main(int hartid, void *fdt) {
-
 #ifdef CONFIG_SBI
   // get the information from SBI right away so we can use it early on
   sbi_early_init();
@@ -88,25 +189,14 @@ void main(int hartid, void *fdt) {
   struct rv::hart_state *sc = (rv::hart_state *)p2v(rv::get_tp());
   sc->hartid = hartid;
   sc->dtb = (dtb::fdt_header *)fdt;
-
-  /* The scratch register is a physical address. This is so the timervec doesn't have to
-   * do any address translation or whatnot. We just pay the cost everywhere else! :^) */
   rv::set_tp((rv::xsize_t)p2v(sc));
 
   rv::get_hstate().kernel_sp = 0;
-
-
-  /* TODO: release these somehow :) */
-  if (rv::hartid() != 0)
-    while (1)
-      arch_halt();
-
 
   /* Initialize the platform level interrupt controller for this HART */
   rv::plic::hart_init();
 
   rv::uart_init();
-
 
   /* Set the supervisor trap vector location */
   write_csr(stvec, kernelvec);
@@ -115,7 +205,6 @@ void main(int hartid, void *fdt) {
   off_t boot_free_start = (off_t)v2p(_kernel_end);
   off_t boot_free_end = boot_free_start + 1 * MB;
   printk(KERN_DEBUG "Freeing bootup ram %llx:%llx\n", boot_free_start, boot_free_end);
-
 
 
 #if 0
@@ -161,8 +250,6 @@ void main(int hartid, void *fdt) {
   for (func_ptr *func = __init_array_start; func != __init_array_end; func++)
     (*func)();
 
-
-
   arch_enable_ints();
 
 #ifdef CONFIG_SBI
@@ -177,10 +264,7 @@ void main(int hartid, void *fdt) {
   /* set SUM bit in sstatus so kernel can access userspace pages. Also enable floating point */
   write_csr(sstatus, read_csr(sstatus) | (1 << 18) | (1 << 13));
 
-  cpus[0].timekeeper = true;
-
-
-
+  cpus[rv::hartid()].timekeeper = true;
 
   assert(sched::init());
   KINFO("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(),
@@ -195,29 +279,19 @@ void main(int hartid, void *fdt) {
 
 
     dtb::walk_devices([](dtb::node *node) -> bool {
-      if (false && !strcmp(node->compatible, "cfi-flash")) {
-        void *flash = p2v(node->address);
-        uint32_t *ifl = (uint32_t *)flash;
-        ifl[0]++;
-        printk("%08x\n", ifl[0]);
-        __sync_synchronize();
-
-        printk("flash: %p\n", flash);
-        hexdump(flash, 256, true);
-      }
       if (!strcmp(node->compatible, "virtio,mmio")) {
         virtio::check_mmio((void *)node->address, node->irq);
       }
       return true;
     });
 
-
-
+    start_secondary();
 
     int mnt_res = vfs::mount("/dev/disk0p1", "/", "ext2", 0, NULL);
     if (mnt_res != 0) {
       panic("failed to mount root. Error=%d\n", -mnt_res);
     }
+
 
 
     KINFO("Bootup complete. It is now safe to move about the cabin.\n");
@@ -229,7 +303,6 @@ void main(int hartid, void *fdt) {
     string init_paths = "/bin/init,/init";
     auto paths = init_paths.split(',');
     pid_t init_pid = sched::proc::spawn_init(paths);
-		printk("init_pid: %d\n", init_pid);
 
     sys::waitpid(init_pid, NULL, 0);
     panic("INIT DIED!\n");

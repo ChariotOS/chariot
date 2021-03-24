@@ -150,9 +150,6 @@ int kernel_init(void *) {
   KINFO("Bootup complete. It is now safe to move about the cabin.\n");
 
 
-
-
-
   auto root_name = kargs::get("root", "/dev/disk0p1");
   assert(root_name);
 

@@ -31,6 +31,8 @@ class spinlock {
   static void lock(volatile int &);
   static void unlock(volatile int &);
   bool is_locked(void);
+
+  bool try_lock(void);
 };
 
 class rwlock {
@@ -45,6 +47,35 @@ class rwlock {
   spinlock m_lock;
   unsigned m_readers = 0;
 };
+
+
+class scoped_rlock {
+  rwlock &lck;
+
+ public:
+  inline scoped_rlock(rwlock &lck) : lck(lck) {
+    lck.read_lock();
+  }
+
+  inline ~scoped_rlock(void) {
+    lck.read_unlock();
+  }
+};
+
+class scoped_wlock {
+  rwlock &lck;
+
+ public:
+  inline scoped_wlock(rwlock &lck) : lck(lck) {
+    lck.write_lock();
+  }
+
+  inline ~scoped_wlock(void) {
+    lck.write_unlock();
+  }
+};
+
+
 
 class scoped_lock {
   spinlock &lck;

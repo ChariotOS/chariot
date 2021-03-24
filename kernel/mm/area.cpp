@@ -6,22 +6,21 @@ mm::area::area(void) {
 
 
 mm::area::~area(void) {
-  for (int i = 0; i < pages.size(); i++) {
-    auto &p = pages[i];
-    if (p) {
-      spinlock::lock(p->lock);
-      p->users--;
+  for (int i = 0; i < mappings.size(); i++) {
+    auto &m = mappings[i];
+    if (m) {
+      m->lock();
       // if the region was dirty, and we have an object, notify them and ask
       // them to flush the nth page
-      if (p->fcheck(PG_DIRTY) && obj) {
+      if (m->fcheck(PG_DIRTY) && obj) {
         obj->flush(i);
       }
-      spinlock::unlock(p->lock);
+      m->unlock();
     }
-    pages[i] = nullptr;
+    mappings[i].set_page(nullptr);
   }
 
-  pages.clear();
+  mappings.clear();
 
   // release the object if we have one
   if (obj) {

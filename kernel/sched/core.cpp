@@ -58,6 +58,9 @@ int sched::remove_task(struct thread *t) {
 }
 
 static void switch_into(struct thread &thd) {
+  if (thd.held_lock != NULL) {
+    if (!thd.held_lock->try_lock()) return;
+  }
   thd.locks.run.lock();
 
   // auto start = time::now_us();
@@ -100,16 +103,21 @@ static void switch_into(struct thread &thd) {
 
   // printk_nolock("took %llu us\n", time::now_us() - start);
   thd.locks.run.unlock();
+  if (thd.held_lock != NULL) thd.held_lock->unlock();
 }
 
 
 
-sched::yieldres sched::yield() {
+sched::yieldres sched::yield(spinlock *held_lock) {
   sched::yieldres r = sched::yieldres::None;
   auto &thd = *curthd;
 
+  thd.held_lock = held_lock;
+
+  // curthd->yield_from = (off_t)__builtin_extract_return_addr(__builtin_return_address(0));
+
   // if the old thread is now dead, notify joiners
-  if (thd.state == PS_ZOMBIE) {
+  if (thd.get_state() == PS_ZOMBIE) {
     thd.joiners.wake_up();
   }
 
@@ -135,7 +143,7 @@ void sched::set_state(int state) {
     panic("NO THREAD from %p!\n", addr);
   }
   auto &thd = *curthd;
-  thd.state = state;
+  thd.set_state(state);
   // memory barrier!
   asm volatile("" : : : "memory");
 }
@@ -154,13 +162,16 @@ void sched::block() {
 }
 /* Unblock a thread */
 void sched::unblock(thread &thd, bool interrupt) {
+#if 0
   if (thd.state != PS_INTERRUPTIBLE) {
     /* Hmm, not sure what to do here. */
     // printk(KERN_WARN "Attempt to wake up thread %d which is not PS_INTERRUPTIBLE\n", thd.tid);
     return;
   }
+#endif
   thd.wq.rudely_awoken = interrupt;
-  thd.state = PS_RUNNING;
+  thd.set_state(PS_RUNNING);
+  __sync_synchronize();
 }
 
 void sched::exit() {
@@ -229,24 +240,27 @@ void sched::run() {
 
 
 void sched::handle_tick(u64 ticks) {
-	// always check wakeups
-  check_wakeups();
+  // always check wakeups
 
   if (!cpu::in_thread()) return;
 
+  //
+  check_wakeups();
 
   // grab the current thread
   auto thd = cpu::thread();
 
-  /* We don't get preempted if we aren't currently runnable. See wait.cpp for why */
-  if (thd->state != PS_RUNNING) return;
-  if (thd->preemptable == false) return;
   if (thd->proc.ring == RING_KERN) {
     cpu::current().kstat.kticks++;
   } else {
     cpu::current().kstat.uticks++;
   }
   thd->sched.ticks++;
+
+
+  /* We don't get preempted if we aren't currently runnable. See wait.cpp for why */
+  if (thd->state != PS_RUNNING) return;
+  if (thd->preemptable == false) return;
 
   auto has_run = ticks - thd->sched.start_tick;
 
@@ -391,11 +405,6 @@ int sched::claim_next_signal(int &sig, void *&handler) {
 void sched::before_iret(bool userspace) {
   auto &c = cpu::current();
 
-  if (c.woke_someone_up) {
-    c.woke_someone_up = false;
-    sched::yield();
-    return;
-  }
 
   if (!cpu::in_thread()) return;
   // exit via the scheduler if the task should die.
@@ -404,7 +413,8 @@ void sched::before_iret(bool userspace) {
 
   if (time::stabilized()) curthd->last_start_utime_us = time::now_us();
 
-  if (cpu::current().next_thread != NULL) {
+  if (cpu::current().next_thread != NULL /* || c.woke_someone_up */) {
+    c.woke_someone_up = false;
     sched::yield();
   }
 }

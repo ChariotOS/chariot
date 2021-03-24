@@ -22,7 +22,6 @@ static FILE _stdin = {
 };
 
 static char _stdout_buffer[BUFSIZ];
-
 static FILE _stdout = {
     .close = NULL,
     .write = _stdio_write,

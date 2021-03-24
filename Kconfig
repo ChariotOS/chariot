@@ -177,7 +177,7 @@ endmenu
 menu "Networking"
 	config LWIP
 		bool "Enable LWIP"
-		default y
+		default n
 
 	config LWIP_DEBUG
 		depends on LWIP

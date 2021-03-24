@@ -8,6 +8,7 @@
 #include <syscall.h>
 #include <time.h>
 #include <types.h>
+#include <cpu.h>
 #include <vga.h>
 
 
@@ -1027,6 +1028,21 @@ void printk_nolock(const char *format, ...) {
 static spinlock printk_lock;
 int printk(const char *format, ...) {
   printk_lock.lock();
+  va_list va;
+  va_start(va, format);
+  const int ret = do_printk(format, va);
+  va_end(va);
+  printk_lock.unlock();
+  return ret;
+}
+
+int pprintk(const char *format, ...) {
+  printk_lock.lock();
+  if (cpu::in_thread()) {
+    int color = curthd->tid % 5 + 31;
+    printk_nolock("\e[0;%dm(c:%d p:%d t:%d) %s:\e[0m ", color, cpu::current().cpunum, curthd->pid,
+                  curthd->tid, curproc->name.get());
+  }
   va_list va;
   va_start(va, format);
   const int ret = do_printk(format, va);

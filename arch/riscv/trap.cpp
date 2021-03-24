@@ -158,9 +158,6 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
 
   auto proc = curproc;
 
-  // Now that we have the addr, we can re-enable interrupts
-  // (further irqs might corrupt the csr)
-  arch_enable_ints();
 
   if (curproc == NULL) {
     KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf.sepc, addr);
@@ -169,6 +166,9 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
     proc = sched::proc::kproc();
   }
 
+  // Now that we have the addr, we can re-enable interrupts
+  // (further irqs might corrupt the csr)
+  arch_enable_ints();
 
   int res = proc->mm->pagefault(addr, err);
 
@@ -242,6 +242,8 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
   int interrupt = (tf.cause >> 31);
 #endif
   int nr = tf.cause & ~(1llu << 63);
+
+
   if (interrupt) {
     /* Supervisor software interrupt (from machine mode) */
     if (nr == 1) {
@@ -254,16 +256,8 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
       cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
       cpu.kstat.last_tick_tsc = now;
       cpu.kstat.ticks++;
-
-#ifdef CONFIG_SBI
       /* TODO: write the next time */
       sbi_set_timer(rv::get_time() + TICK_INTERVAL);
-#else
-      // acknowledge the software interrupt by clearing
-      // the SSIP bit in sip.
-      // TODO: move this to the right place :)
-      write_csr(sip, read_csr(sip) & ~2);
-#endif
 
       arch_enable_ints();
 

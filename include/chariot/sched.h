@@ -218,7 +218,6 @@ struct process final : public refcounted<struct process> {
   fs::inode *cwd = nullptr;
   fs::inode *root = nullptr;
   string cwd_string;
-  bool embryonic = false;
   spinlock datalock;
 
   /* threads stuck in a waitpid() call */
@@ -315,6 +314,12 @@ struct thread final {
     long size;
   };
 
+  off_t yield_from = 0;
+
+  // If this lock is not null, it is released after the runlock is released.
+  // If this is not null, it is acquired after the runlock is acquired
+  spinlock *held_lock = nullptr;
+
   /* Reference to the kernel stack */
   vec<kernel_stack> stacks;
   // Masks are per-thread
@@ -325,14 +330,10 @@ struct thread final {
     void *arch_priv = nullptr;
   } sig;
 
-
   sched::impl::thread_state sched_state;
   struct thread_sched_info sched;
-
-
   struct thread_fpu_info fpu;
   struct thread_statistics stats;
-
   // bundle locks into a single struct
   struct thread_locks locks;
 
@@ -342,15 +343,12 @@ struct thread final {
   off_t userspace_sp = 0;
   struct thread_waitqueue_info wq;
 
-
   // Threads who are joining on this thread.
   wait_queue joiners;
   /* This is simply a flag. Locked when someone is joining (tearing down) this thread.
    * Other threads attempt to lock it. If the lock is already held, fail "successfully"
    */
   spinlock joinlock;
-
-
   /* Time spent in kernelspace */
   long ktime_us = 0;
   /* Time spent in userspace */
@@ -358,14 +356,11 @@ struct thread final {
   /* The last time that the kernel entered userspace */
   long last_start_utime_us = 0;
 
-  struct list_head blocked_threads;
-
   off_t tls_uaddr;
   size_t tls_usize;
 
   union /* flags */ {
     u64 flags = 0;
-
     struct /* bitmask */ {
       unsigned kthread : 1;
       unsigned should_die : 1;  // the thread needs to be torn down, must not
@@ -376,24 +371,18 @@ struct thread final {
     };
   };
 
-
+  void set_state(int st);
+  int get_state(void);
   void setup_stack(reg_t *);
-
-  // bool awaken(bool rude = false);
-
   // Notify a thread that a signal is available, interrupting it from a
   // waitqueue if there is one
   void interrupt(void);
-
   // tell the thread to start running at a certain address.
   bool kickoff(void *rip, int state);
-
   off_t setup_tls(void);
-
   static thread *lookup(pid_t);
   static thread *lookup_r(pid_t);
   static bool teardown(thread *);
-
   // sends a signal to the thread and returns if it succeeded or not
   bool send_signal(int sig);
 
@@ -443,7 +432,7 @@ namespace sched {
 
   enum yieldres { None, Interrupt };
 
-  yieldres yield(void);
+  yieldres yield(spinlock *held_lock = nullptr);
   yieldres do_yield(int status);
 
 

@@ -26,7 +26,8 @@
 // created before init is spawned
 pid_t next_pid = 2;
 static spinlock pid_spinlock;
-static rwlock ptable_lock;
+// static rwlock ptable_lock;
+static spinlock ptable_lock;
 static map<pid_t, process::ptr> proc_table;
 
 pid_t get_next_pid(void) {
@@ -45,26 +46,25 @@ mm::space *alloc_user_vm(void) {
 }
 
 static process::ptr pid_lookup(pid_t pid) {
-  ptable_lock.read_lock();
+  scoped_irqlock l(ptable_lock);
   process::ptr p = nullptr;
-  if (proc_table.contains(pid)) p = proc_table.get(pid);
+  if (proc_table.contains(pid)) {
+    p = proc_table.get(pid);
+  }
 
-  ptable_lock.read_unlock();
   return p;
 }
 
 
 
 void sched::proc::in_pgrp(pid_t pgid, func<bool(struct process &)> cb) {
-  ptable_lock.read_lock();
-
+  scoped_irqlock l(ptable_lock);
   for (auto kv : proc_table) {
     auto proc = kv.value;
     if (proc->pgid == pgid) {
       if (cb(*proc) == false) break;
     }
   }
-  ptable_lock.read_unlock();
 }
 
 static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
@@ -74,13 +74,9 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
 
 
   scoped_lock lck(proc.datalock);
-
   proc.create_tick = cpu::get_ticks();
-  proc.embryonic = true;
 
   proc.ring = flags & SPAWN_KERN ? RING_KERN : RING_USER;
-
-
 
   // This check is needed because the kernel has no parent.
   if (proc.parent) {
@@ -131,30 +127,34 @@ process::ptr sched::proc::spawn_process(struct process *parent, int flags) {
   // grab the next pid (will be the tid of the main thread when it is executed)
   pid_t pid = get_next_pid();
 
-  // allocate the process
-  ptable_lock.write_lock();
-  auto proc_ptr = make_ref<process>();
-  proc_table.set(pid, proc_ptr);
-  ptable_lock.write_unlock();
-  if (proc_ptr.get() == NULL) return nullptr;
 
-  proc_ptr->pid = pid;
-  proc_ptr->pgid = parent == NULL ? pid : parent->pgid;  // pgid == pid (if no parent)
+  process::ptr proc;
+  proc = make_ref<process>();
+  // allocate the process
+  {
+    scoped_irqlock l(ptable_lock);
+    proc_table.set(pid, proc);
+  }
+  if (parent != NULL) {
+    proc->name = parent->name;
+  }
+
+  proc->pid = pid;
+  proc->pgid = parent == NULL ? pid : parent->pgid;  // pgid == pid (if no parent)
 
   // Set up initial data for the process.
-  proc_ptr->parent = parent;
-  return do_spawn_proc(proc_ptr, flags);
+  proc->parent = parent;
+  return do_spawn_proc(proc, flags);
 };
 
 bool sched::proc::ptable_remove(pid_t p) {
+  scoped_irqlock l(ptable_lock);
   bool succ = false;
 
-  ptable_lock.write_lock();
   if (proc_table.contains(p)) {
     proc_table.remove(p);
     succ = true;
   }
-  ptable_lock.write_unlock();
 
   return succ;
 }
@@ -163,21 +163,18 @@ pid_t sched::proc::spawn_init(vec<string> &paths) {
   pid_t pid = 1;
 
   process::ptr proc_ptr;
+  proc_ptr = make_ref<process>();
+  if (proc_ptr.get() == NULL) {
+    return -1;
+  }
+
+  proc_ptr->pid = pid;
+  proc_ptr->pgid = pid;  // pgid == pid (if no parent)
 
   {
-    ptable_lock.write_lock();
-    proc_ptr = make_ref<process>();
-    if (proc_ptr.get() == NULL) {
-      ptable_lock.write_unlock();
-      return -1;
-    }
-
-    proc_ptr->pid = pid;
-    proc_ptr->pgid = pid;  // pgid == pid (if no parent)
-
+    scoped_irqlock l(ptable_lock);
     assert(!proc_table.contains(pid));
     proc_table.set(pid, proc_ptr);
-    ptable_lock.write_unlock();
   }
 
   proc_ptr->parent = sched::proc::kproc();
@@ -209,7 +206,7 @@ struct process *sched::proc::kproc(void) {
     // spawn the kernel process
     kernel_process = sched::proc::spawn_process(nullptr, SPAWN_KERN);
     kernel_process->pid = 0;  // just lower than init (pid 1)
-    kernel_process->embryonic = false;
+    kernel_process->name = "kernel";
     // auto &vm = kernel_process->mm;
     delete kernel_process->mm;
     kernel_process->mm = &mm::space::kernel_space();
@@ -227,11 +224,8 @@ struct thread *sched::proc::spawn_kthread(const char *name, int (*func)(void *),
 
 
   arch_reg(REG_PC, thd->trap_frame) = (unsigned long)func;
-  thd->state = PS_RUNNING;
-
+  thd->set_state(PS_RUNNING);
   thd->setup_tls();
-
-
 
   return thd;
 }
@@ -295,6 +289,7 @@ void sched::proc::dump_table(void) {
   printk("-------------------------------------\n\n");
   for (auto &p : proc_table) {
     auto &proc = p.value;
+    if (proc->pid == 0) continue;
     printk("Process %d %s\n", proc->pid, proc->name.get());
 
     for (auto tid : proc->threads) {
@@ -319,6 +314,7 @@ void sched::proc::dump_table(void) {
       if (t->trap_frame != NULL) {
         printk("          PC:          0x%p\n", arch_reg(REG_PC, t->trap_frame));
       }
+      printk("          Yield From:  0x%p\n", t->yield_from);
 
       printk("\n");
       continue;
@@ -334,9 +330,8 @@ bool process::is_dead(void) {
   for (auto tid : threads) {
     auto t = thread::lookup(tid);
     assert(t);
-    scoped_lock l(t->locks.generic);
 
-    if (t->state != PS_ZOMBIE) {
+    if (t->get_state() != PS_ZOMBIE) {
       return false;
     }
   }
@@ -386,7 +381,6 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   this->mm = new_addr_space;
 
   //
-  this->embryonic = false;
 
   struct thread *thd;
   if (threads.size() != 0) {
@@ -408,37 +402,38 @@ int sched::proc::send_signal(pid_t p, int sig) {
   if (p < 0) {
     int err = -ESRCH;
     pid_t pgid = -p;
+    vec<pid_t> targs;
     sched::proc::in_pgrp(pgid, [&](struct process &p) -> bool {
-      err = sched::proc::send_signal(p.pid, sig);
-      if (err < 0) return false;
+      targs.push(p.pid);
       return true;
     });
 
-    return -ENOTIMPL;
+    for (pid_t pid : targs)
+      sched::proc::send_signal(pid, sig);
+
+    return 0;
   }
 
-  if (sig < 0 || sig >= 64) return -EINVAL;
-  ptable_lock.read_lock();
-
+  if (sig < 0 || sig >= 64) {
+    return -EINVAL;
+  }
 
   int err = -ESRCH;
+  {
+    auto targ = pid_lookup(p);
 
-  if (proc_table.contains(p)) {
-    auto &targ = proc_table[p];
-
-
-    // find a thread
-    for (auto &tid : targ->threads) {
-      auto *thd = thread::lookup(tid);
-      assert(thd != NULL);
-      if (thd->send_signal(sig)) {
-        err = 0;
-        break;
+    if (targ) {
+      // find a thread
+      for (auto &tid : targ->threads) {
+        auto *thd = thread::lookup(tid);
+        assert(thd != NULL);
+        if (thd->send_signal(sig)) {
+          err = 0;
+          break;
+        }
       }
     }
   }
-
-  ptable_lock.read_unlock();
 
   return err;
 }
@@ -464,15 +459,16 @@ int sched::proc::reap(process::ptr p) {
 
   for (auto tid : p->threads) {
     auto *t = thread::lookup(tid);
-    assert(t->state == PS_ZOMBIE);
+    assert(t->get_state() == PS_ZOMBIE);
 #ifdef CONFIG_VERBOSE_PROCESS
     printk("  [t:%d] sc:%d rc:%d\n", t->tid, t->stats.syscall_count, t->stats.run_count);
 #endif
 
     /* make sure... */
-    t->locks.run.lock();
+    // t->locks.run.lock();
     thread::teardown(t);
   }
+
   p->threads.clear();
   /* remove the child from our list */
   for (int i = 0; i < me->children.size(); i++) {
@@ -489,15 +485,15 @@ int sched::proc::reap(process::ptr p) {
   fs::inode::release(p->root);
   p->root = NULL;
 
-  if (me != init) init->datalock.lock();
+  // if (me != init) init->datalock.lock();
   for (auto &c : p->children) {
-    printk("pid %d adopted by init\n", c->pid);
     init->children.push(c);
     c->parent = init;
   }
-  if (me != init) init->datalock.unlock();
+  // if (me != init) init->datalock.unlock();
 
   ptable_remove(p->pid);
+
 
   return f;
 }
@@ -514,6 +510,7 @@ void process::terminate(int signal) {
 
 
 static spinlock dumb_waitpid_lock;
+static wait_queue dumb_waitpid_wq;
 
 void sys::exit_thread(int code) {
   // if we are the main thread, exit the group instead.
@@ -524,14 +521,13 @@ void sys::exit_thread(int code) {
   // defer to later!
   curthd->should_die = 1;
 
-  panic("TODO: sys::exit_thread!\n");
+  pprintk("TODO: sys::exit_thread!\n");
 
   sched::exit();
 }
 
 void sys::exit_proc(int code) {
   if (curproc->pid == 1) panic("INIT DIED!\n");
-
 
   {
     scoped_lock l(curproc->datalock);
@@ -543,32 +539,36 @@ void sys::exit_proc(int code) {
       }
     }
 
-    /* all the threads should be rudely awoken now... */
-    for (auto tid : curproc->threads) {
-      auto t = thread::lookup(tid);
-      if (t && t != curthd) {
-        // take the run lock for now... This ensures that the thread has completed.
-        t->locks.run.lock();
-        assert(t->state != PS_ZOMBIE);
-        t->locks.run.unlock();
+    while (1) {
+      bool everyone_dead = true;
+      /* all the threads should be rudely awoken now... */
+      for (auto tid : curproc->threads) {
+        // printk("checking %d\n", tid);
+        auto t = thread::lookup(tid);
+        if (t && t != curthd) {
+          // take the run lock for now... This ensures that the thread has completed.
+          if (t->get_state() != PS_ZOMBIE) {
+            everyone_dead = false;
+          }
+        }
       }
+
+      if (everyone_dead) break;
+      sched::yield();
     }
   }
 
 
-
   dumb_waitpid_lock.lock();
+  curthd->set_state(PS_ZOMBIE);
+
   curproc->exit_code = code;
   curproc->exited = true;
 
   sched::proc::send_signal(curproc->parent->pid, SIGCHLD);
 
-  curproc->parent->datalock.lock();
-  curproc->child_wq.wake_up_all();
-
-  // curproc->child_wq.wake_up_common(0, 1, 0, (void *)curproc);
-  curproc->parent->datalock.unlock();
-
+  curproc->parent->child_wq.wake_up_all();
+  // dumb_waitpid_wq.wake_up_all();
   dumb_waitpid_lock.unlock();
 
   sched::exit();
@@ -616,33 +616,35 @@ static bool waitpid_wake_function(struct wait_entry *entry, unsigned int mode, i
 }
 
 
-int wait_check(struct process *me, int pid /* 1st arg to waitpid */, int &status, int options) {
-  scoped_lock l(me->datalock);
+static process::ptr wait_check(struct process *me, int pid /* 1st arg to waitpid */, int &status,
+                               int options, int &result) {
   process::ptr targ = nullptr;
   if (pid == -1) {
     for (auto c : me->children) {
-      if (c) {
-        if (c->is_dead()) {
-          status = sched::proc::reap(c);
-          return c->pid;
-        }
+      if (c && c->is_dead()) {
+        targ = c;
+        break;
       }
     }
   } else if (pid != -1) {
     targ = pid_lookup(pid);
-    if (!targ) return -1;
+    if (!targ) {
+      result = -ESRCH;
+      return nullptr;
+    }
     if (targ->parent != me) {
-      return -ECHILD;
+      result = -ECHILD;
+      return nullptr;
+    }
+
+    if (!targ->is_dead()) {
+      targ = nullptr;
+      result = 0;
     }
   }
 
-  if (targ) {
-    if (targ->is_dead()) {
-      status = sched::proc::reap(targ);
-      return targ->pid;
-    }
-  }
-  return 0;
+  result = 0;
+  return targ;
 }
 
 int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
@@ -673,32 +675,44 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
 
   int result = -EINVAL;
 
-  while (1) {
+  for (int i = 0; 1; i++) {
     /*
      * "Allocate" one of these on each go around on this, so
      * it gets destructed when breaking or continuing
      */
     struct wait_entry ent;
+    prepare_to_wait(curproc->child_wq, ent, true);
 
     dumb_waitpid_lock.lock();
-
-    prepare_to_wait(me->child_wq, ent, true);
-
-    result = wait_check(me, pid, status, options);
+    auto target = wait_check(me, pid, status, options, result);
 
     dumb_waitpid_lock.unlock();
-    if (result != 0) break;
+
+
+    if (target && target->is_dead()) {
+      result = sched::proc::reap(target);
+      // dumb_waitpid_lock.unlock();
+      break;
+    }
+
+
+    // dumb_waitpid_lock.unlock();
+
+
+    if (result < 0) break;
     if (options & WNOHANG) {
       result = -1;
       break;
     }
 
     auto sres = ent.start();
+    // printk("[%d] I'm back! %d\n", curproc->pid, i);
     if (sres.interrupted()) {
       result = -EINTR;
       break;
     }
   }
+
 
   return result;
 }
@@ -827,7 +841,6 @@ static pid_t do_fork(struct process &p) {
   // arch_flush_mmu();
   int new_pid = np->pid;
 
-  np->embryonic = false;
   p.children.push(np);
 
   auto old_td = curthd;
@@ -847,7 +860,7 @@ static pid_t do_fork(struct process &p) {
   // go to the fork_return function instead of whatever it was gonna do otherwise
   new_td->kern_context->pc = (u64)fork_return;
 
-  new_td->state = PS_RUNNING;
+  new_td->set_state(PS_RUNNING);
   sched::add_task(new_td);
 
   // return the child pid to the parent

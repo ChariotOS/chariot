@@ -35,9 +35,7 @@ fs::inode *procfs::superblock::create_inode(int type) {
 
 static struct fs::superblock *procfs_mount(struct fs::sb_information *, const char *args, int flags,
                                            const char *device) {
-  printk("mount!\n");
   auto *sb = new procfs::superblock(args, flags);
-
 
   return sb;
 }

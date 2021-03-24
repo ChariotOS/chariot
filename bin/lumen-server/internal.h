@@ -4,7 +4,6 @@
 #include <chariot/keycode.h>
 #include <chariot/mouse_packet.h>
 #include <ck/io.h>
-#include <ck/lock.h>
 #include <ck/socket.h>
 #include <ck/timer.h>
 #include <gfx/bitmap.h>
@@ -13,7 +12,6 @@
 #include <gfx/scribe.h>
 #include <lumen/msg.h>
 #include <chariot/gvi.h>
-#include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
@@ -99,7 +97,7 @@ namespace lumen {
 
 
     inline uint32_t *buffer(void) {
-			if (hardware_double_buffered()) return front_buffer;
+      if (hardware_double_buffered()) return front_buffer;
       return back_buffer;
     }
     inline void set_pixel(int x, int y, uint32_t color) {
@@ -151,7 +149,6 @@ namespace lumen {
     bool focused = false;
 
 
-    ck::mutex window_lock;
     long pending_invalidation_id = -1;
 
     window_mode mode;
@@ -206,7 +203,6 @@ namespace lumen {
     ck::ipcsocket *connection;
     ck::map<long, struct window *> windows;
 
-    ck::mutex guest_lock;
 
     guest(long id, struct context &ctx, ck::ipcsocket *conn);
     ~guest(void);
@@ -255,9 +251,6 @@ namespace lumen {
     /* Are we currently clicking? */
     int mouse_down = 0; /* MOUSE_*_CLICK masked */
 
-
-    pthread_t compositor_thread;
-
     void accept_connection(void);
     void handle_keyboard_input(keyboard_packet_t &pkt);
     void handle_mouse_input(struct mouse_packet &pkt);
@@ -270,8 +263,6 @@ namespace lumen {
 
     void calculate_hover(void);
 
-
-    static void *compositor_thread_worker(void *arg);
     void compose(void);
 
     struct window_ref {
@@ -285,13 +276,11 @@ namespace lumen {
     // ordered list of all the windows (front to back)
     // The currently focused window is at the front
     ck::vec<lumen::window *> windows;
-    ck::mutex windows_lock;
 
     lumen::window *hovered_window = nullptr;
     lumen::window *focused_window = nullptr;
     bool dragging = false;
 
-    ck::mutex dirty_regions_lock;
     gfx::disjoint_rects dirty_regions;
 
     void invalidate(const gfx::rect &r);

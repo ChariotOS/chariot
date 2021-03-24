@@ -36,6 +36,13 @@ int vsnprintk(char* buffer, size_t count, const char* format, va_list va);
 
 int sscanf(const char* buf, const char* fmt, ...);
 
+
+// process printk, if you are running in the kernel context of a thread of /bin/sh
+// pprintk("hello, world\n") outputs:
+// [/bin/sh %d] hello, world
+//
+int pprintk(const char* format, ...);
+
 const char* human_size(uint64_t bytes, char* buf);
 }
 

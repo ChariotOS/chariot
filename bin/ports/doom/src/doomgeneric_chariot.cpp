@@ -152,6 +152,7 @@ extern "C" uint32_t DG_GetTicksMs() {
   auto this_tick = current_us() / 1000;
   if (this_tick < last_tick) {
     printf("time travel! %llu -> %llu = -%llu\n", last_tick, this_tick, last_tick - this_tick);
+		exit(EXIT_FAILURE);
   } else {
     last_tick = this_tick;
   }

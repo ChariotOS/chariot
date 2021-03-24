@@ -17,6 +17,8 @@ QEMU_ARCH="${CONFIG_ARCH_NAME}"
 QEMU_FLAGS="-serial mon:stdio "
 
 
+# QEMU_FLAGS+="-d int -D ints.out "
+
 case $ARCH in 
 	X86-64)
 
@@ -28,7 +30,7 @@ case $ARCH in
 		;;
 
 	RISC-V)
-		QEMU_FLAGS+="-machine virt -smp 1 -m ${CONFIG_RISCV_RAM_MB}M "
+		QEMU_FLAGS+="-machine virt -smp 4 -m ${CONFIG_RISCV_RAM_MB}M "
 		QEMU_FLAGS+="-bios default "
 		QEMU_FLAGS+="-kernel build/chariot_initrd.elf "
 

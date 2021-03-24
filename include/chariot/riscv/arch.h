@@ -19,6 +19,20 @@
     __asm__ __volatile__("csrw " #csr ", %0" : : "rK"(__v) : "memory"); \
   })
 
+
+#define set_csr(csr, val)                                               \
+  ({                                                                    \
+    unsigned long __v = (unsigned long)(val);                           \
+    __asm__ __volatile__("csrs " #csr ", %0" : : "rK"(__v) : "memory"); \
+  })
+
+
+#define clear_csr(csr, val)                                               \
+  ({                                                                    \
+    unsigned long __v = (unsigned long)(val);                           \
+    __asm__ __volatile__("csrc " #csr ", %0" : : "rK"(__v) : "memory"); \
+  })
+
 #define __init __attribute__((section(".boot.text")))
 #define __initdata __attribute__((section(".boot.data")))
 
@@ -40,11 +54,6 @@ namespace rv /* risc-v namespace */ {
   using xsize_t = uint32_t;
 #endif
 
-  static inline rv::xsize_t mhartid(void) {
-    rv::xsize_t x;
-    asm volatile("csrr %0, mhartid" : "=r"(x));
-    return x;
-  }
 
   struct hart_state {
     // offset 0
@@ -381,12 +390,12 @@ namespace rv /* risc-v namespace */ {
 
   // enable device interrupts
   static inline void intr_on() {
-    set_sstatus(get_sstatus() | SSTATUS_SIE);
+    set_csr(sstatus, SSTATUS_SIE);
   }
 
   // disable device interrupts
   static inline void intr_off() {
-    set_sstatus(get_sstatus() & ~SSTATUS_SIE);
+    clear_csr(sstatus, SSTATUS_SIE);
   }
 
 

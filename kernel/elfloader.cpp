@@ -134,6 +134,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
   p.executable = fd;
   p.tls_info.exists = false;
   p.file_lock.unlock();
+	p.name = path;
 
   if (!elf::validate(*fd, ehdr)) {
     return -ENOEXEC;

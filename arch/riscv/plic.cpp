@@ -3,6 +3,8 @@
 #include <riscv/memlayout.h>
 #include <printk.h>
 
+int boot_hart = -1;
+
 void rv::plic::hart_init(void) {
   int hart = rv::hartid();
   /* Clear the "supervisor enable" field. This is the register that enables or disables
@@ -11,6 +13,12 @@ void rv::plic::hart_init(void) {
 
   /* set this hart's S-mode priority threshold to 0. */
   PLIC_SPRIORITY(hart) = 0;
+
+  if (boot_hart == -1) {
+    boot_hart = hart;
+  } else {
+    PLIC_SENABLE(rv::hartid()) = PLIC_SENABLE(boot_hart);
+  }
 }
 
 

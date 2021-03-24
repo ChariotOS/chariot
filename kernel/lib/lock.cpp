@@ -87,6 +87,12 @@ void spinlock::lock(volatile int& l) {
   }
 }
 
+
+bool spinlock::try_lock(void) {
+  if (__sync_lock_test_and_set(&locked, 1)) return false;
+  return true;
+}
+
 void spinlock::unlock(volatile int& l) {
   volatile int* lock = &l;
   if (likely(lock[0])) {

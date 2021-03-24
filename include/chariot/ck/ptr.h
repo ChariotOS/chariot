@@ -1,7 +1,6 @@
 #pragma once
 
 #include <template_lib.h>
-#include "atom.h"
 
 #ifdef KERNEL
 #include <printk.h>
@@ -170,7 +169,7 @@ namespace ck {
    public:
     void ref_retain() {
       assert(m_ref_count);
-      m_ref_count.store(m_ref_count.load() + 1);
+      __atomic_add_fetch(&m_ref_count, 1, __ATOMIC_ACQ_REL);
     }
 
     int ref_count() const {
@@ -194,11 +193,11 @@ namespace ck {
 
     void deref_base() {
       assert(m_ref_count);
-      m_ref_count.store(m_ref_count.load() - 1);
+      __atomic_sub_fetch(&m_ref_count, 1, __ATOMIC_ACQ_REL);
     }
 
 
-    atom<unsigned> m_ref_count = 1;
+    unsigned int m_ref_count = 1;
   };
 
 

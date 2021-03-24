@@ -37,46 +37,27 @@ namespace mm {
   // every physical page in mm circulation is kept track of via a heap-allocated
   // `struct page`.
   struct page : public refcounted<mm::page> {
-    int32_t lock = 0;
-
 #define PG_DIRTY (1ul << 0)
 #define PG_OWNED (1ul << 1)
 #define PG_WRTHRU (1ul << 2)
 #define PG_NOCACHE (1ul << 3)
 #define PG_BCACHE (1ul << 4)
 
-
-
-    /* A bitmap of PG_* */
-    uint16_t flags = 0;
-
-    /**
-     * users is a representation of how many holders of this page there are.
-     * This is useful for COW mappings, because you must copy the page on write
-     * if and only if users > 1 (just you). If any other users exist, you copy
-     * it, decrement the users count, and replace your reference with the new
-     * one
-     */
-    uint16_t users = 0;
-    unsigned long lru = 0;
-    unsigned long pa = 0;
-
-// #define PAGE_ENABLE_RBTREE
-#ifdef PAGE_ENABLE_RBTREE
-    struct rb_node rb_node;
-#endif
-
     inline void fset(int set) {
-      flags |= set;
+      m_paf |= set;
     }
 
     inline void fclr(int set) {
-      flags &= ~set;
+      m_paf &= ~set;
+    }
+
+    inline int flags(void) {
+      return m_paf & 0xFFF;
     }
 
     /* return if a certain (set of) flag(s) is set or not */
     inline bool fcheck(int set) {
-      return !((flags & set) == 0);
+      return !((m_paf & set) == 0);
     }
 
 
@@ -87,6 +68,104 @@ namespace mm {
     // create a page mapping for some physical memory
     // note: this page isn't owned.
     static ref<page> create(unsigned long pa);
+
+    inline unsigned long pa(void) {
+      return m_paf & ~0xFFF;
+    }
+
+    inline void set_pa(unsigned long pa) {
+      m_paf = (pa & ~0xFFF) | flags();
+    }
+
+    inline void lock(void) {
+      // printk("lock page %p\n", this);
+      spinlock::lock(m_lock);
+    }
+    inline void unlock(void) {
+      // printk("unlock page %p\n", this);
+      spinlock::unlock(m_lock);
+    }
+
+    inline uint32_t users(void) {
+      return __atomic_load_n(&m_users, __ATOMIC_ACQUIRE);
+    }
+
+
+    struct list_head mappings;
+    /**
+     * users is a representation of how many holders of this page there are.
+     * This is useful for COW mappings, because you must copy the page on write
+     * if and only if users > 1 (just you). If any other users exist, you copy
+     * it, decrement the users count, and replace your reference with the new
+     * one.
+     *
+     * This field is only used by the mm::page_mapping structure. Any writing
+     * outside of that class is illegal and will result in race conditions
+     */
+    volatile uint32_t m_users = 0;
+
+   private:
+    int32_t m_lock = 0;
+    unsigned long m_lru = 0;
+    /* Physical address and the flags stored in the lower 12 bits */
+    unsigned long m_paf = 0;
+  };
+
+  class page_mapping {
+   public:
+    inline page_mapping(ref<mm::page> pg) {
+      set_page(pg);
+    }
+
+    inline page_mapping(void) {
+      set_page(nullptr);
+    }
+
+    inline page_mapping(nullptr_t v) {
+      set_page(v);
+    }
+
+    // expects pg's lock to be held
+    inline void set_page(ref<mm::page> pg) {
+      if (!is_null()) {
+        // decrement users
+        __atomic_sub_fetch(&page->m_users, 1, __ATOMIC_ACQ_REL);
+        page = nullptr;
+      }
+
+      if (!pg.is_null()) {
+        __atomic_add_fetch(&pg->m_users, 1, __ATOMIC_ACQ_REL);
+        page = pg;
+      }
+    }
+
+    inline bool is_null(void) {
+      return page.is_null();
+    }
+    inline operator bool(void) {
+      return !is_null();
+    }
+
+
+    inline auto *operator->(void) {
+      return page.get();
+    }
+    inline auto get(void) {
+      return page;
+    }
+
+
+    inline page_mapping &operator=(ref<mm::page> pg) {
+      // printk("operator= %p\n", pg.get());
+      set_page(pg);
+      return *this;
+    }
+
+   protected:
+    friend mm::page;
+
+    struct list_head mappings;
+    ref<mm::page> page;
   };
 
   struct pte {
@@ -170,7 +249,7 @@ namespace mm {
 
     // TODO: unify shared mappings in the fileriptor somehow
     ref<fs::file> fd;
-    vec<ref<mm::page>> pages;  // backing memory
+    vec<mm::page_mapping> mappings;  // backing memory
 
     // optional. If it exists, it is queried for each page
     // This is required if the region is not anonymous. If a region is mapped

@@ -21,9 +21,10 @@ wait_entry::~wait_entry() {
   }
 }
 
-wait_result wait_entry::start(void) {
+wait_result wait_entry::start(spinlock *held_lock) {
+  curthd->yield_from = (off_t)__builtin_extract_return_addr(__builtin_return_address(0));
   /* Yield right away */
-  auto res = sched::yield();
+  auto res = sched::yield(held_lock);
 
   if (res == sched::yieldres::Interrupt) {
     this->result |= WAIT_RES_INTR;
@@ -117,7 +118,8 @@ void wait_queue::finish(struct wait_entry *e) {
   assert(e->wq == this);
 
   unsigned long flags;
-  e->thd->state = PS_RUNNING;
+  e->thd->set_state(PS_RUNNING);
+
   // "carefully" check if the entry's linkage is empty or not.
   // If it is, then we lock the waitqueue and unlink it
   if (!e->item.is_empty_careful()) {
@@ -148,16 +150,6 @@ wait_result wait_queue::wait_timeout(long long us) {
 
 bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync, void *key) {
   bool ret = true;
-
-
-#if 0
-	/* If we don't already have a next thread chosen, use the one we are waking up. */
-	if (cpu::current().next_thread == NULL) {
-		/* The thread is blocked,  */
-		sched::remove_task(entry->thd); /* Remove the thread from  */
-		cpu::current().next_thread = entry->thd;
-	}
-#endif
 
   sched::unblock(*entry->thd, false);
   entry->result = 0;

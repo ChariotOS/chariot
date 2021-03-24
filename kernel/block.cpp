@@ -167,7 +167,7 @@ namespace block {
     // flush even if we aren't dirty.
     if (m_page) {
       int blocks = PGSIZE / bdev.block_size;
-      auto *buf = (char *)p2v(m_page->pa);
+      auto *buf = (char *)p2v(m_page->pa());
 
       for (int i = 0; i < blocks; i++) {
         // printk("write block %d\n", m_index * blocks + i);
@@ -199,15 +199,15 @@ namespace block {
       m_page->fset(PG_BCACHE);
 
       int blocks = PGSIZE / bdev.block_size;
-      auto *buf = (char *)p2v(m_page->pa);
+      auto *buf = (char *)p2v(m_page->pa());
 
       for (int i = 0; i < blocks; i++) {
         bdev.read_block(buf + (bdev.block_size * i), m_index * blocks + i);
       }
     }
 
-    if (m_page && m_page->pa) {
-      return p2v(m_page->pa);
+    if (m_page && m_page->pa()) {
+      return p2v(m_page->pa());
     }
     return nullptr;
   }

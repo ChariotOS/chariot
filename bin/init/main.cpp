@@ -245,7 +245,6 @@ int main(int argc, char **argv) {
   /* Handle SIGCHLD in the  */
   signal(SIGCHLD, sigchld_handler);
 
-
   if (getpid() != 1) {
     fprintf(stderr, "init: must be run as pid 1\n");
     return -1;

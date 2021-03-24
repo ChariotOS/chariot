@@ -69,13 +69,14 @@ lumen::context::context(void) : screen(1024, 768) {
 
   server.listen("/usr/servers/lumen", [this] { accept_connection(); });
 
-#ifdef USE_COMPOSE_INTERVAL
   compose_timer = ck::timer::make_interval(COMPOSE_INTERVAL, [this] { this->compose(); });
-#else
-  pthread_create(&compositor_thread, NULL, lumen::context::compositor_thread_worker, (void *)this);
-#endif
   invalidate(screen.bounds());
 
+
+
+  for (int i = 0; i < 6; i++) {
+    spawn("doom");
+  }
 
   // spawn("term");
 }
@@ -88,7 +89,6 @@ void lumen::context::handle_keyboard_input(keyboard_packet_t &pkt) {
 }
 
 void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
-  windows_lock.lock();
   auto old_pos = screen.mouse_pos;
   invalidate(screen.mouse_rect());
   screen.handle_mouse_input(pkt);
@@ -130,8 +130,6 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
   }
 
   if (hovered_window != NULL) {
-    hovered_window->window_lock.lock();
-
     auto mrel = gfx::point(screen.mouse_pos.x() - hovered_window->rect.x,
                            screen.mouse_pos.y() - hovered_window->rect.y);
 
@@ -189,13 +187,11 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
 			*/
     }
 #endif
-    hovered_window->window_lock.unlock();
   } else {
     screen.cursor = mouse_cursor::pointer;
   }
 
 
-  windows_lock.unlock();
   // compose asap so we can get lower mouse input latencies
   compose();
 }
@@ -266,9 +262,7 @@ void lumen::context::select_window(lumen::window *win) {
 
 void lumen::context::invalidate(const gfx::rect &r) {
   auto real = r.intersect(screen.bounds());
-  dirty_regions_lock.lock();
   dirty_regions.add(real);
-  dirty_regions_lock.unlock();
 
 #ifdef USE_COMPOSE_INTERVAL
   if (!compose_timer->running()) {
@@ -449,9 +443,6 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
 
 
 void lumen::context::window_opened(lumen::window *w) {
-  // TODO lock
-
-  windows_lock.lock();
   // [sanity check] make sure the window isn't already in the list :^)
   for (auto *e : windows) {
     if (w == e) {
@@ -483,14 +474,10 @@ void lumen::context::window_opened(lumen::window *w) {
 
   // TODO: set the focused window to the new one
   select_window(w);
-  windows_lock.unlock();
 }
 
 
 void lumen::context::window_closed(lumen::window *w) {
-  windows_lock.lock();
-  // TODO lock
-
   // Remove the window from our list
   for (int i = 0; i < windows.size(); i++) {
     if (windows[i] == w) {
@@ -511,7 +498,6 @@ void lumen::context::window_closed(lumen::window *w) {
     focused_window = NULL;
     calculate_hover();
   }
-  windows_lock.unlock();
 }
 
 
@@ -529,16 +515,6 @@ bool lumen::context::occluded(lumen::window &win, const gfx::rect &a) {
   return false;
 }
 
-
-
-
-void *lumen::context::compositor_thread_worker(void *arg) {
-  lumen::context *self = (lumen::context *)arg;
-  while (1) {
-    self->compose();
-    usleep(1000);
-  }
-}
 
 
 
@@ -625,8 +601,6 @@ void lumen::context::compose(void) {
 
   auto start = sysbind_gettime_microsecond();
 
-  windows_lock.lock();
-  dirty_regions_lock.lock();
   {
     uint32_t *wp = wallpaper->pixels();
     for (auto &r : dirty_regions.rects()) {
@@ -651,7 +625,6 @@ void lumen::context::compose(void) {
 
   // go back to front and compose each window
   for (auto win : windows) {
-    win->window_lock.lock();
     // make a state for this window
     scribe.enter();
     scribe.state().offset = gfx::point(win->rect.x, win->rect.y);
@@ -664,15 +637,11 @@ void lumen::context::compose(void) {
       win->draw(scribe);
     }
     scribe.leave();
-    win->window_lock.unlock();
   }
 
   if (draw_mouse) {
     screen.draw_mouse();
   }
-
-
-  // printf("compose took %llu microseconds\n", end - start);
 
   if (!screen.hardware_double_buffered()) {
     int sw = screen.width();
@@ -691,30 +660,20 @@ void lumen::context::compose(void) {
         to_ptr += sw;
       }
     }
-
   } else {
     screen.flush_fb();
   }
 
   // and now, go through all windows and notify them they have been composed :)
-	for (auto win : windows) {
-		win->window_lock.lock();
-		if (win->pending_invalidation_id != -1) {
-			struct lumen::invalidated_msg m;
-			m.id = win->id;
-			win->guest.guest_lock.lock();
-			win->guest.send_raw(LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m,
-													sizeof(m));
-			win->guest.guest_lock.unlock();
-			win->pending_invalidation_id = -1;
-		}
-		win->window_lock.unlock();
-	}
-
-  dirty_regions.clear();
-
-  dirty_regions_lock.unlock();
-  windows_lock.unlock();
+  for (auto win : windows) {
+    if (win->pending_invalidation_id != -1) {
+      struct lumen::invalidated_msg m;
+      m.id = win->id;
+      win->guest.send_raw(LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m,
+                          sizeof(m));
+      win->pending_invalidation_id = -1;
+    }
+  }
 }
 
 
@@ -777,10 +736,8 @@ struct lumen::window *lumen::guest::new_window(ck::string name, int w, int h) {
 }
 
 void lumen::guest::process_message(lumen::msg &msg) {
-  guest_lock.lock();
   // defer to the window server's function
   ctx.process_message(*this, msg);
-  guest_lock.unlock();
 }
 
 
