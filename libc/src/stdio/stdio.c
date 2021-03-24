@@ -32,7 +32,7 @@ static FILE _stdout = {
 
     .buffered = 1,
     .buf_len = 0,
-    .buf_cap = 512,
+    .buf_cap = BUFSIZ,
     .buffer = _stdout_buffer,
 };
 
@@ -47,7 +47,7 @@ static FILE _stderr = {
 
     .buffered = 1,
     .buf_len = 0,
-    .buf_cap = 512,
+    .buf_cap = BUFSIZ,
     .buffer = _stderr_buffer,
 };
 
