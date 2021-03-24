@@ -23,31 +23,23 @@ struct console_tty : public tty {
  public:
   virtual ~console_tty() {
   }
-
   // write to the global console fifo
   virtual void write_in(char c) {
     console_fifo.write(&c, 1, false);
   }
-
   // write to the console using putc. We don't care about blocking
   virtual void write_out(char c, bool block = true) {
     console::putc(c);
   }
-};
-
-
-static struct console_tty ctty;
-
+} ctty;
 
 static void consputc(int c, bool debug = false) {
-  if (debug || true) {
-    if (c == CONS_DEL) {
-      serial_send(1, '\b');
-      serial_send(1, ' ');
-      serial_send(1, '\b');
-    } else {
-      serial_send(1, c);
-    }
+  if (unlikely(c == CONS_DEL)) {
+    serial_send(1, '\b');
+    serial_send(1, ' ');
+    serial_send(1, '\b');
+  } else {
+    serial_send(1, c);
   }
   /* TODO: factor this somewhere else. Maybe a cool "console printers" subsystem? idk :^) */
 #ifdef CONFIG_X86
@@ -117,8 +109,9 @@ static ssize_t console_write(fs::file& fd, const char* buf, size_t sz) {
   if (fd) {
     auto minor = fd.ino->minor;
     if (minor != 0) return -1;
-    for (size_t i = 0; i < sz; i++)
+    for (size_t i = 0; i < sz; i++) {
       consputc(buf[i]);
+    }
     return sz;
   }
   return -1;
