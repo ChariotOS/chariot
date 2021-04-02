@@ -24,17 +24,14 @@
 
 // start out at pid 2, so init is pid 1 regardless of if kernel threads are
 // created before init is spawned
-pid_t next_pid = 2;
-static spinlock pid_spinlock;
+volatile pid_t next_pid = 2;
+
 // static rwlock ptable_lock;
 static spinlock ptable_lock;
 static map<pid_t, process::ptr> proc_table;
 
 pid_t get_next_pid(void) {
-  pid_spinlock.lock();
-  auto p = next_pid++;
-  pid_spinlock.unlock();
-  return p;
+  return __atomic_add_fetch(&next_pid, 1, __ATOMIC_ACQUIRE);
 }
 
 mm::space *alloc_user_vm(void) {
@@ -199,7 +196,10 @@ pid_t sched::proc::spawn_init(vec<string> &paths) {
   return -1;
 }
 
+
+
 static process::ptr kernel_process = nullptr;
+
 
 struct process *sched::proc::kproc(void) {
   if (kernel_process.get() == nullptr) {
@@ -279,51 +279,6 @@ process::~process(void) {
 
   sched::proc::ptable_remove(this->pid);
   delete mm;
-}
-
-void sched::proc::dump_table(void) {
-  printk("process dump:\n");
-
-
-
-  printk("-------------------------------------\n\n");
-  for (auto &p : proc_table) {
-    auto &proc = p.value;
-    if (proc->pid == 0) continue;
-    printk("Process %d %s\n", proc->pid, proc->name.get());
-
-    for (auto tid : proc->threads) {
-      auto t = thread::lookup(tid);
-      printk("  %3d.%-3d", proc->pid, tid);
-
-      const char *state = "UNKNOWN";
-#define ST(name) \
-  if (t->state == PS_##name) state = #name
-      ST(EMBRYO);
-      ST(RUNNING);
-      ST(INTERRUPTIBLE);
-      ST(UNINTERRUPTIBLE);
-      ST(ZOMBIE);
-#undef ST
-      printk(" %s\n", state);
-
-      printk("          Ticks:       %d\n", t->sched.ticks);
-      printk("          Syscalls:    %d\n", t->stats.syscall_count);
-      printk("          Run Count:   %d\n", t->stats.run_count);
-      printk("          Current CPU: %d\n", t->stats.current_cpu);
-      if (t->trap_frame != NULL) {
-        printk("          PC:          0x%p\n", arch_reg(REG_PC, t->trap_frame));
-      }
-      printk("          Yield From:  0x%p\n", t->yield_from);
-
-      printk("\n");
-      continue;
-
-
-      printk("\n");
-    }
-    printk("\n-------------------------------------\n\n");
-  }
 }
 
 bool process::is_dead(void) {
@@ -447,19 +402,15 @@ int sched::proc::reap(process::ptr p) {
   f |= (p->exit_code & 0xFF) << 8;
 
 #ifdef CONFIG_VERBOSE_PROCESS
-  printk("reap (p:%d, pg:%d) on cpu %d\n", p->pid, p->pgid, cpu::current().cpunum);
+  pprintk("reap (p:%d, pg:%d) on cpu %d\n", p->pid, p->pgid, cpu::current().cpunum);
   auto usage = p->mm->memory_usage();
-  printk("  ram usage: %zu Kb (%zu b)\n", usage / KB, usage);
+  pprintk("  ram usage: %zu Kb (%zu b)\n", usage / KB, usage);
 #endif
 
 
   for (auto tid : p->threads) {
     auto *t = thread::lookup(tid);
     assert(t->get_state() == PS_ZOMBIE);
-#ifdef CONFIG_VERBOSE_PROCESS
-    printk("  [t:%d] sc:%d rc:%d\n", t->tid, t->stats.syscall_count, t->stats.run_count);
-#endif
-
     /* make sure... */
     t->locks.run.lock();
     thread::teardown(t);
@@ -476,10 +427,7 @@ int sched::proc::reap(process::ptr p) {
 
   // release the CWD and root
   fs::inode::release(p->cwd);
-  p->cwd = NULL;
-
   fs::inode::release(p->root);
-  p->root = NULL;
 
 
   // If the process had children, we need to give them to init
@@ -513,8 +461,173 @@ void process::terminate(int signal) {
 
 
 
-static spinlock dumb_waitpid_lock;
-static wait_queue dumb_waitpid_wq;
+/*
+ * The waitpid subsystem consists of two lists: Zombies and Waiters. When a process wants become a
+ * zombie (exit), it first looks through waiting threads to see if anyone is interested in reaping
+ * them. If no thread is available to reap it, it creates an entry in the zombie_list for future
+ * waiters to manage.
+ */
+static spinlock waitlist_lock;
+static list_head zombie_list = LIST_HEAD_INIT(zombie_list);  // locked by waitlist_lock
+static list_head waiter_list = LIST_HEAD_INIT(waiter_list);  // locked by waitlist_lock
+
+struct zombie_entry {
+  // an entry in the zombie_list
+  struct list_head node;
+  // the zombie process
+  process::ptr proc;
+  zombie_entry(process::ptr proc) : proc(proc) {
+    node.init();
+  }
+  ~zombie_entry(void) {
+  }
+};
+
+struct waiter_entry {
+  // an entry in the waiter_list
+  struct list_head node;
+  pid_t seeking;  // the pid that this waiter is interested in (waitpid systemcall semantics)
+  // systemcall wait flags
+  int wait_flags = 0;
+  // the process that we caught
+  process::ptr proc;
+  // the waiting thread
+  struct thread *thd;
+  // the waitqueue that the process sits on
+  wait_queue wq;
+};
+
+
+
+
+static bool can_reap(struct thread *reaper, process::ptr zombie, pid_t seeking, int reap_flags) {
+  // a process may not reap another process's children.
+  if (zombie->parent->pid != reaper->proc.pid) return false;
+
+  if (zombie->pid == seeking) {
+    return true;
+  }
+
+  // if you seek -1, and the process is your child, you can reap it
+  if (seeking == -1) {
+    return true;
+  }
+
+
+  // if the pid is less than -1, you are actually waiting on a process group
+  if (seeking < -1) {
+    if (zombie->pgid == -seeking) {
+      return true;
+    }
+  }
+
+  // all checks have failed
+  return false;
+}
+
+
+
+
+int sched::proc::do_waitpid(pid_t pid, int &status, int wait_flags) {
+  auto *me = curproc;
+
+  if (!me) return -1;
+
+  if (pid > 0) {
+    if (pid_lookup(pid).get() == NULL) {
+      return -ECHILD;
+    }
+  }
+
+  if (pid < -1) {
+    KWARN("waitpid(<-1) not implemented\n");
+    return -1;
+  }
+
+  int result = -EINVAL;
+
+
+  for (int loops = 0; 1; loops++) {
+    struct zombie_entry *zomb = NULL;
+    process::ptr found_process = nullptr;
+
+
+    auto f = waitlist_lock.lock_irqsave();
+
+    bool found = false;
+    list_for_each_entry(zomb, &zombie_list, node) {
+      if (can_reap(curthd, zomb->proc, pid, wait_flags)) {
+        // simply remove the zombie from the zombie_list
+        zomb->node.del_init();
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      zomb = NULL;
+    }
+
+
+    if (zomb != NULL) {
+      found_process = zomb->proc;
+      zomb->proc = nullptr;
+      // zomb->node.init();
+    }
+
+    if (found_process.is_null()) {
+      if (wait_flags & WNOHANG) {
+        result = -1;
+        waitlist_lock.unlock_irqrestore(f);
+        break;
+      }
+
+      struct wait_entry ent;
+
+      struct waiter_entry went;
+      went.thd = curthd;
+      went.wait_flags = wait_flags;
+      went.seeking = pid;
+      went.node.init();
+      went.proc = nullptr;
+
+      prepare_to_wait(went.wq, ent);
+      waiter_list.add(&went.node);
+
+      waitlist_lock.unlock_irqrestore(f);
+
+
+      auto sres = ent.start();
+      if (sres.interrupted()) {
+        result = -EINTR;
+        break;
+      }
+
+      if (!went.proc) {
+        continue;
+      }
+
+      found_process = went.proc;
+    } else {
+      waitlist_lock.unlock_irqrestore(f);
+    }
+
+    if (zomb != NULL) {
+      assert(zomb->node.is_empty());
+      assert(zomb->proc.is_null());
+			delete zomb;
+    }
+
+    pid_t pid = found_process->pid;
+    result = sched::proc::reap(found_process);
+    break;
+  }
+
+
+  return result;
+}
+
+
+
 
 void sys::exit_thread(int code) {
   // if we are the main thread, exit the group instead.
@@ -527,7 +640,41 @@ void sys::exit_thread(int code) {
 
   pprintk("TODO: sys::exit_thread!\n");
 
-  sched::exit();
+  // sched::exit();
+}
+
+
+static void zombify(struct zombie_entry *zomb) {
+  bool f = waitlist_lock.lock_irqsave();
+
+  // first, go over the list of waiters and look for a candidate
+  struct waiter_entry *went = NULL;
+  list_for_each_entry(went, &waiter_list, node) {
+    // if the waiter can reap, remove them from the list, fill in the zent field, memory sync, and
+    // wake them up
+    if (can_reap(went->thd, zomb->proc, went->seeking, went->wait_flags)) {
+      went->node.del_init();
+      went->proc = zomb->proc;
+      // memory barrier. The above ought to be atomic, really
+      __sync_synchronize();
+      // release the lock so we can wake up the waiter
+      waitlist_lock.unlock_irqrestore(f);
+
+
+			// free the zombie_entry here, now that we have no locks held
+			delete zomb;
+
+      // wake up the waiter
+      went->wq.wake_up_all();
+
+      return;
+    }
+  }
+
+
+  // ... and add the zombie entry to the list. We didn't find any waiter >_<
+  zombie_list.add_tail(&zomb->node);
+  waitlist_lock.unlock_irqrestore(f);
 }
 
 void sys::exit_proc(int code) {
@@ -561,154 +708,19 @@ void sys::exit_proc(int code) {
     }
   }
 
-  curthd->set_state(PS_ZOMBIE);
-
   curproc->exit_code = code;
   curproc->exited = true;
 
-  curproc->parent->child_wq.wake_up_all();
+  curthd->set_state(PS_ZOMBIE);
 
-  sched::proc::send_signal(curproc->parent->pid, SIGCHLD);
+  // send a signal that we died to the parent process
+  // sched::proc::send_signal(curproc->parent->pid, SIGCHLD);
+
+	// to be freed in zombify OR waitpid
+  struct zombie_entry *zomb = new zombie_entry(curproc);
+  zombify(zomb);
 
   sched::exit();
-}
-
-
-/* The state  */
-struct wait_object {
-  int req;     /* first argument in waitpid */
-  int options; /* Third argument... duh :) */
-
-  /* The process we found :) */
-  struct process *proc;
-};
-
-
-
-static bool waitpid_consider(struct wait_object &wo, struct process *proc) {
-  bool accept = false;
-
-  if (!proc->is_dead()) return false;
-  if (wo.req == -1) return true;
-  if (wo.req == proc->pid) return true;
-
-  return false;
-}
-
-/* curproc->datalock is held by the waker */
-static bool waitpid_wake_function(struct wait_entry *entry, unsigned int mode, int sync,
-                                  void *key) {
-  /* Key is the proc that wakes us up */
-  struct process *proc = (struct process *)key;
-
-  auto *wo = entry->priv<wait_object>();
-  printk("wake up with %p\n", key);
-
-  if (waitpid_consider(*wo, proc)) {
-    /* enter the  */
-    wo->proc = proc;
-    return autoremove_wake_function(entry, mode, sync, key);
-  } else {
-    /* don't wake us up */
-    return false;
-  }
-}
-
-
-static process::ptr wait_check(struct process *me, int pid /* 1st arg to waitpid */, int &status,
-                               int options, int &result) {
-  process::ptr targ = nullptr;
-  if (pid == -1) {
-    for (auto c : me->children) {
-      if (c && c->is_dead()) {
-        targ = c;
-        break;
-      }
-    }
-  } else if (pid != -1) {
-    targ = pid_lookup(pid);
-    if (!targ) {
-      result = -ESRCH;
-      return nullptr;
-    }
-    if (targ->parent != me) {
-      result = -ECHILD;
-      return nullptr;
-    }
-
-    if (!targ->is_dead()) {
-      targ = nullptr;
-      result = 0;
-    }
-  }
-
-  result = 0;
-  return targ;
-}
-
-int sched::proc::do_waitpid(pid_t pid, int &status, int options) {
-  auto *me = curproc;
-
-  if (!me) return -1;
-
-  if (pid != -1) {
-    if (pid_lookup(pid).get() == NULL) {
-      return -ECHILD;
-    }
-  }
-
-  if (pid < -1) {
-    KWARN("waitpid(<-1) not implemented\n");
-    return -1;
-  }
-
-
-#ifdef CONFIG_VERBOSE_PROCESS
-  printk(KERN_DEBUG "Process %d is waiting for pid=%d, options=", me->pid, pid);
-  if (options & WNOHANG) printk("NOHANG ");
-  if (options & WUNTRACED) printk("WUNTRACED ");
-  printk("\n");
-#endif
-
-  /* Look through existing proces for dead ones. Maybe we don't have to wait? */
-
-  int result = -EINVAL;
-
-  for (int i = 0; 1; i++) {
-    dumb_waitpid_lock.lock();
-    /*
-     * "Allocate" one of these on each go around on this, so
-     * it gets destructed when breaking or continuing
-     */
-    struct wait_entry ent;
-    prepare_to_wait(curproc->child_wq, ent, true);
-
-    auto target = wait_check(me, pid, status, options, result);
-
-    dumb_waitpid_lock.unlock();
-
-    if (target && target->is_dead()) {
-      result = sched::proc::reap(target);
-      break;
-    }
-
-
-    if (result < 0) break;
-    if (options & WNOHANG) {
-      result = -1;
-      break;
-    }
-
-    auto sres = ent.start();
-    // printk("[%d] I'm back! %d\n", curproc->pid, i);
-    if (sres.interrupted()) {
-      result = -EINTR;
-      break;
-    }
-  }
-
-
-  return result;
 }
 
 
@@ -863,7 +875,9 @@ static pid_t do_fork(struct process &p) {
 
 
 int sys::fork(void) {
-  return do_fork(*curproc);
+	int pid = do_fork(*curproc);
+	// sched::yield();
+	return pid;
 }
 
 
@@ -889,3 +903,85 @@ int sys::sigwait() {
   /* TODO: Mask? Return which signal was handled? */
   return 0;
 }
+
+
+void sched::proc::dump_table(void) {
+#if 0
+  printk("process dump:\n");
+
+
+  printk("-------------------------------------\n\n");
+  for (auto &p : proc_table) {
+    auto &proc = p.value;
+    if (proc->pid == 0) continue;
+    printk("Process %d %s\n", proc->pid, proc->name.get());
+
+    for (auto tid : proc->threads) {
+      auto t = thread::lookup(tid);
+      printk("  %3d.%-3d", proc->pid, tid);
+
+      const char *state = "UNKNOWN";
+#define ST(name) \
+  if (t->state == PS_##name) state = #name
+      ST(EMBRYO);
+      ST(RUNNING);
+      ST(INTERRUPTIBLE);
+      ST(UNINTERRUPTIBLE);
+      ST(ZOMBIE);
+#undef ST
+      printk(" %s\n", state);
+
+      printk("          Ticks:       %d\n", t->sched.ticks);
+      printk("          Syscalls:    %d\n", t->stats.syscall_count);
+      printk("          Run Count:   %d\n", t->stats.run_count);
+      printk("          Current CPU: %d\n", t->stats.current_cpu);
+      if (t->trap_frame != NULL) {
+        printk("          PC:          0x%p\n", arch_reg(REG_PC, t->trap_frame));
+      }
+      printk("          Yield From:  0x%p\n", t->yield_from);
+
+      printk("\n");
+      continue;
+
+
+      printk("\n");
+    }
+    printk("\n-------------------------------------\n\n");
+  }
+#endif
+
+  pprintk("Process States: \n");
+  for (auto &p : proc_table) {
+    auto &proc = p.value;
+
+    for (auto tid : proc->threads) {
+      auto t = thread::lookup(tid);
+
+      const char *state = "UNKNOWN";
+#define ST(name) \
+  if (t->state == PS_##name) state = #name
+      ST(EMBRYO);
+      ST(RUNNING);
+      ST(INTERRUPTIBLE);
+      ST(UNINTERRUPTIBLE);
+      ST(ZOMBIE);
+#undef ST
+      pprintk("  process %d, thread %d: %s\n", proc->pid, t->tid, state);
+    }
+  }
+
+
+  scoped_irqlock l(waitlist_lock);
+  pprintk("Zombie list: \n");
+  struct zombie_entry *zent = NULL;
+  list_for_each_entry(zent, &zombie_list, node) {
+    pprintk("  process %d\n", zent->proc->pid);
+  }
+
+  pprintk("Waiter List: \n");
+  struct waiter_entry *went = NULL;
+  list_for_each_entry(went, &waiter_list, node) {
+    pprintk("  process %d, seeking %d\n", went->thd->tid, went->seeking);
+  }
+}
+

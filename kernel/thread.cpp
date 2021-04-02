@@ -19,7 +19,7 @@ static void thread_create_callback(void *);
 extern "C" void trapret(void);
 
 static spinlock thread_table_lock;
-static map<pid_t, struct thread *> thread_table;
+static map<pid_t, thread *> thread_table;
 
 thread::thread(pid_t tid, struct process &proc) : proc(proc) {
   this->tid = tid;
@@ -67,6 +67,7 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
     scoped_irqlock l(thread_table_lock);
     assert(!thread_table.contains(tid));
     // printk("inserting %d\n", tid);
+    // thread_table.set(tid, unique_ptr(this));
     thread_table.set(tid, this);
   }
 
@@ -130,8 +131,10 @@ thread::~thread(void) {
   }
   // free(stack);
   phys::free(fpu.state, 1);
-  // assume it doesn't have a destructor, idk
-  free(sig.arch_priv);
+  if (sig.arch_priv != NULL) {
+    // assume it doesn't have a destructor, idk
+    free(sig.arch_priv);
+  }
 }
 
 
@@ -212,16 +215,21 @@ struct thread *thread::lookup(pid_t tid) {
 
 bool thread::teardown(thread *t) {
 #ifdef CONFIG_VERBOSE_PROCESS
-  printk("thread ran for %llu cycles, %llu us\n", t->stats.cycles, t->ktime_us);
+  pprintk("thread ran for %llu cycles, %llu us\n", t->stats.cycles, t->ktime_us);
 #endif
+
 
   {
     scoped_irqlock l(thread_table_lock);
     assert(thread_table.contains(t->tid));
+    // important: we cannot free() something while in an irqlock. As such, we must leak the pointer
+    // from the table, then free it later.
+    // thread_table.get(t->tid).leak_ptr();
     thread_table.remove(t->tid);
   }
 
   delete t;
+
   return true;
 }
 

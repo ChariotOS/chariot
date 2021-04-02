@@ -157,7 +157,6 @@ struct process final : public refcounted<struct process> {
    * pctl() a pid that is in this list. When a task startpid()'s a pid, it will
    * be moved from this list to the children list.
    */
-  vec<process::ptr> embryos;
   vec<process::ptr> children;
 
   unsigned ring = RING_USER;
@@ -295,8 +294,8 @@ struct thread_waitqueue_info {
 };
 
 
-
 struct thread final {
+
   pid_t tid;  // unique thread id
   pid_t pid;  // process id. If this thread is the main thread, tid == pid
 

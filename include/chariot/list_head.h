@@ -3,6 +3,9 @@
 #define LIST_POISON1 ((void *)0x00100100)
 #define LIST_POISON2 ((void *)0x00200200)
 
+
+#define LIST_HEAD_INIT(name) { &(name), &(name) }
+
 /*
  * a list_head is a concept I blatently stole from the linux kernel. These are meant
  * to exist within a structure so you can point around
@@ -267,17 +270,46 @@ struct __remove_reference<T &&> {
     (type *)((char *)__mptr - offsetof(type, member));     \
   })
 
+/**
+ * list_first_entry - get the first element from a list
+ * @ptr:	the list head to take the element from.
+ * @type:	the type of the struct this is embedded in.
+ * @member:	the name of the list_head within the struct.
+ *
+ * Note, that list is expected to be not empty.
+ */
+#define list_first_entry(ptr, type, member) \
+	list_entry((ptr)->next, type, member)
+
+/**
+ * list_next_entry - get the next element in list
+ * @pos:	the type * to cursor
+ * @member:	the name of the list_head within the struct.
+ */
+#define list_next_entry(pos, member) \
+	list_entry((pos)->member.next, __decltype(*(pos)), member)
+
+/**
+ * list_entry_is_head - test if the entry points to the head of the list
+ * @pos:	the type * to cursor
+ * @head:	the head for your list.
+ * @member:	the name of the list_head within the struct.
+ */
+#define list_entry_is_head(pos, head, member)				\
+	(&pos->member == (head))
+
 
 /**
  * list_for_each_entry	-	iterate over list of given type
  * @pos:	the type * to use as a loop cursor.
  * @head:	the head for your list.
- * @member:	the name of the list_struct within the struct.
+ * @member:	the name of the list_head within the struct.
  */
-#define list_for_each_entry(pos, head, member)                               \
-  for (pos = list_entry((head)->next, __decltype(*pos), member);             \
-       __builtin_prefetch((pos->member.next), 0, 1), &pos->member != (head); \
-       pos = list_entry(pos->member.next, __decltype(*pos), member))
+#define list_for_each_entry(pos, head, member)				\
+	for (pos = list_first_entry(head, __decltype(*pos), member);	\
+	     !list_entry_is_head(pos, head, member);			\
+	     pos = list_next_entry(pos, member))
+
 
 /**
  * list_for_each_entry_safe - iterate over list of given type safe against removal of list entry

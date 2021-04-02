@@ -4,6 +4,7 @@
 #include <lock.h>
 #include <mem.h>
 #include <module.h>
+#include <util.h>
 #include <phys.h>
 #include <printk.h>
 #include <types.h>

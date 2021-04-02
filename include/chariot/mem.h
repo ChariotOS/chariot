@@ -51,6 +51,9 @@ void *zalloc(unsigned long size);
 void free(void *ptr);
 void *realloc(void *ptr, unsigned long newsize);
 
+
+void malloc_dump();
+
 void init_kernel_virtual_memory();
 
 template <typename T>

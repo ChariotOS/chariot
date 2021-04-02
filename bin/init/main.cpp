@@ -216,6 +216,22 @@ static void sigchld_handler(int) {
 }
 
 
+void thingy(int depth) {
+  if (depth == 0) return;
+
+  unsigned long start = sysbind_gettime_microsecond();
+  int pid = fork();
+  if (pid == 0) {
+    exit(0);
+  }
+  thingy(depth - 1);
+  // usleep(1000);
+  // printf("pid %4d\n", pid);
+  waitpid(pid, NULL, 0);
+
+  unsigned long end = sysbind_gettime_microsecond();
+  printf("pid %6d wait took %6dus\n", pid, (end - start));
+}
 
 int main(int argc, char **argv) {
   int parent_pid = getpid();
@@ -244,6 +260,10 @@ int main(int argc, char **argv) {
 
   /* Handle SIGCHLD in the  */
   signal(SIGCHLD, sigchld_handler);
+
+  while (0) {
+    thingy(10);
+  }
 
   if (getpid() != 1) {
     fprintf(stderr, "init: must be run as pid 1\n");

@@ -48,13 +48,6 @@ typedef unsigned long uintptr_t;
 #define LIBALLOC_MAGIC 0xc001c0de
 #define LIBALLOC_DEAD 0xdeaddead
 
-#if defined DEBUG || defined INFO
-#include <stdio.h>
-#include <stdlib.h>
-
-#define FLUSH() fflush(stdout)
-
-#endif
 
 /** A structure found at the top of all system allocated
  * memory blocks. It details the usage of the memory block.
@@ -127,37 +120,33 @@ static void *liballoc_memcpy(void *s1, const void *s2, unsigned long n) {
   return s1;
 }
 
-#if defined DEBUG || defined INFO
-static void liballoc_dump() {
-#ifdef DEBUG
+void malloc_dump() {
+	liballoc_lock();
   struct liballoc_major *maj = l_memRoot;
   struct liballoc_minor *min = NULL;
-#endif
 
-  printf("liballoc: ------ Memory data ---------------\n");
-  printf("liballoc: System memory allocated: %i bytes\n", l_allocated);
-  printf("liballoc: Memory in used (malloc'ed): %i bytes\n", l_inuse);
-  printf("liballoc: Warning count: %i\n", l_warningCount);
-  printf("liballoc: Error count: %i\n", l_errorCount);
-  printf("liballoc: Possible overruns: %i\n", l_possibleOverruns);
+  pprintk("liballoc: ------ Memory data ---------------\n");
+  pprintk("liballoc: System memory allocated: %i bytes\n", l_allocated);
+  pprintk("liballoc: Memory in used (malloc'ed): %i bytes\n", l_inuse);
+  pprintk("liballoc: Warning count: %i\n", l_warningCount);
+  pprintk("liballoc: Error count: %i\n", l_errorCount);
+  pprintk("liballoc: Possible overruns: %i\n", l_possibleOverruns);
 
-#ifdef DEBUG
+#if 0
   while (maj != NULL) {
-    printf("liballoc: %x: total = %i, used = %i\n", maj, maj->size, maj->usage);
+    pprintk("liballoc: %x: total = %i, used = %i\n", maj, maj->size, maj->usage);
 
     min = maj->first;
     while (min != NULL) {
-      printf("liballoc:    %x: %i bytes\n", min, min->size);
+      pprintk("liballoc:    %x: %i bytes\n", min, min->size);
       min = min->next;
     }
 
     maj = maj->next;
   }
 #endif
-
-  FLUSH();
+	liballoc_unlock();
 }
-#endif
 
 // ***************************************************************
 
@@ -183,10 +172,7 @@ static struct liballoc_major *allocate_new_page(unsigned int size) {
 
   if (maj == NULL) {
     l_warningCount += 1;
-#if defined DEBUG || defined INFO
-    printf("liballoc: WARNING: liballoc_alloc( %i ) return NULL\n", st);
-    FLUSH();
-#endif
+    pprintk("liballoc: WARNING: liballoc_alloc( %i ) return NULL\n", st);
     return NULL;  // uh oh, we ran out of memory.
   }
 
@@ -236,10 +222,7 @@ void *PREFIX(malloc)(unsigned long req_size) {
 
   if (size == 0) {
     l_warningCount += 1;
-#if defined DEBUG || defined INFO
-    printf("liballoc: WARNING: alloc( 0 ) called from %x\n", __builtin_return_address(0));
-    FLUSH();
-#endif
+    pprintk("liballoc: WARNING: alloc( 0 ) called from %p\n", __builtin_return_address(0));
     liballoc_unlock();
     return PREFIX(malloc)(1);
   }
@@ -535,10 +518,7 @@ void PREFIX(free)(void *ptr) {
 
   if (ptr == NULL) {
     l_warningCount += 1;
-#if defined DEBUG || defined INFO
-    printf("liballoc: WARNING: PREFIX(free)( NULL ) called from %x\n", __builtin_return_address(0));
-    FLUSH();
-#endif
+    pprintk("liballoc: WARNING: PREFIX(free)( NULL ) called from %p\n", __builtin_return_address(0));
     return;
   }
 

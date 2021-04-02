@@ -86,12 +86,8 @@ static void print_readable_reg(const char *name, rv::xsize_t value) {
 
 #define NBITS(N) ((1LL << (N)) - 1)
 
-static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
+static void dump_tf(struct rv::regs &tf) {
   rv::xsize_t bad_addr = tf.tval;
-  printk(
-      "==========================================================================================="
-      "\n");
-  printk("Unhandled trap '%s' on HART#%d\n", type, rv::hartid());
   print_readable_reg("SEPC", tf.sepc);
   printk(", ");
   print_readable_reg("Bad Address", bad_addr);
@@ -109,7 +105,6 @@ static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
   }
   printk("+ %012b", bad_addr & 0xFFF);
   printk("\n");
-
 
   printk("         (d): ");
   for (int i = VM_PART_NUM - 1; i >= 0; i--) {
@@ -143,7 +138,15 @@ static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
     auto proc = curproc;
     proc->mm->dump();
   }
+}
 
+static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
+  printk(
+      "==========================================================================================="
+      "\n");
+  printk("Unhandled trap '%s' on HART#%d\n", type, rv::hartid());
+
+  dump_tf(tf);
   printk(
       "==========================================================================================="
       "\n");
@@ -157,7 +160,6 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
 
 
   auto proc = curproc;
-
 
   if (curproc == NULL) {
     KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf.sepc, addr);
@@ -173,6 +175,8 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
   int res = proc->mm->pagefault(addr, err);
 
   if (res == -1) {
+		pprintk("SEGFAULT!\n");
+		dump_tf(tf);
     /* send to the current thread and return (handle at the bottom of kernel_vec) */
     curthd->send_signal(SIGSEGV);
     return;
@@ -265,18 +269,11 @@ for (auto &stk : thd->stacks) {
       arch_enable_ints();
 
       sched::handle_tick(cpu.kstat.ticks);
+      // arch_disable_ints();
     } else if (nr == 9) {
       /* Supervisor External Interrupt */
       /* First, we claim the irq from the PLIC */
       int irq = rv::plic::claim();
-      /* *then* enable interrupts, so the irq handler can have interrupts.
-       * This is a major design problem in chariot, and I gotta figure out
-       * if I can just have them disabled in irq handlers, and defer to worker
-       * threads outside of irq context generally.
-       */
-      // rv::intr_on();
-
-      // printk("irq: 0x%d\n", irq);
       irq::dispatch(irq, NULL /* Hmm, not sure what to do with regs */);
       rv::plic::complete(irq);
     }

@@ -184,7 +184,7 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
   // If the fault was due to a write, and this region
   // is writable, handle COW if needed
   if ((err & FAULT_WRITE) && (r.prot & PROT_WRITE)) {
-    pte.prot = r.prot;
+    pte.prot |= PROT_WRITE;
 
     // a shared mapping
     if (r.flags & MAP_SHARED) {

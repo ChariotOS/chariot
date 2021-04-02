@@ -130,7 +130,7 @@ int rv::pagetable::add_mapping(off_t va, struct mm::pte &p) {
   auto old_pa = PTE2PA(ent);
 
 #if 0
-  printk(KERN_INFO "[pid=%d] add mapping 0x%llx to 0x%llx ", curproc->pid, va, p.ppn << 12);
+  printk("[pid=%d] add mapping 0x%p to 0x%p ", curproc->pid, va, p.ppn << 12);
   if (old_pa != 0) {
     printk("old pa: 0x%llx  ", old_pa);
   }
@@ -151,9 +151,8 @@ int rv::pagetable::add_mapping(off_t va, struct mm::pte &p) {
   /* Write the page table entry */
   *pte = MAKE_PTE(p.ppn << 12, prot);
 
-  // printk(KERN_INFO "ent=%p, new=%p\n", ent, *pte);
 
-  asm volatile("" ::: "memory");
+  __sync_synchronize();
 
   if (*pte != ent) {
     /* Flush that bit in the TLB: TODO: tell other cpus? */
