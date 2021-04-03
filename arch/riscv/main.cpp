@@ -83,6 +83,8 @@ extern "C" void secondary_entry(int hartid) {
 
   rv::set_tp((rv::xsize_t)&sc);
   cpu::seginit(NULL);
+	cpu::current().primary = false;
+
   /* Initialize the platform level interrupt controller for this HART */
   rv::plic::hart_init();
   /* Set the supervisor trap vector location */
@@ -249,6 +251,9 @@ void main(int hartid, void *fdt) {
   /* Now that we have a memory allocator, call global constructors */
   for (func_ptr *func = __init_array_start; func != __init_array_end; func++)
     (*func)();
+
+
+	cpu::current().primary = true;
 
   arch_enable_ints();
 

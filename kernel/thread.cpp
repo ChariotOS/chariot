@@ -29,7 +29,8 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
   fpu.initialized = false;
   fpu.state = phys::kalloc(1);
 
-  sched.priority = PRIORITY_HIGH;
+  sched.priority = 0;
+	sched.next = sched.prev = NULL;
 
 
 

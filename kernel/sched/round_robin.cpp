@@ -2,6 +2,7 @@
 #include <sched.h>
 #include <time.h>
 
+#if 0
 int sched::round_robin::add_task(struct thread *tsk) {
   if (cpu::in_thread()) arch_disable_ints();
   auto lf = big_lock.lock_irqsave();
@@ -93,3 +94,5 @@ void sched::round_robin::dump(void) {
   }
   printk("\n");
 }
+
+#endif

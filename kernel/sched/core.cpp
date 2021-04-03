@@ -3,7 +3,6 @@
 #include <lock.h>
 #include <map.h>
 #include <sched.h>
-#include <single_list.h>
 #include <sleep.h>
 #include <syscall.h>
 #include <time.h>
@@ -13,10 +12,173 @@
 #define SIG_DFL ((void (*)(int))0)
 #define SIG_IGN ((void (*)(int))1)
 
-// #define SCHED_DEBUG
-//
 
-#define TIMESLICE_MIN 4
+
+// copied from
+#define MLFQ_NQUEUES 30
+// minimum timeslice of 1 tick
+#define MLFQ_MIN_RT 4
+// how many ticks get added to the timeslice for each priority
+#define MLFQ_MUL_RT 10
+
+struct mlfq {
+  enum Behavior {
+    Good = 0,        // the thread ran for at most as long as it was allowed
+    Bad = 1,         // the thread used all of it's timeslice (demote it)
+    Unknown = Good,  // Make no decision, effectively Behavior::Good
+  };
+
+  struct queue {
+    struct thread *front = NULL;
+    struct thread *back = NULL;
+    void add_task(struct thread *tsk) {
+      if (front == nullptr) {
+        // this is the only thing in the queue
+        front = tsk;
+        back = tsk;
+        tsk->sched.next = NULL;
+        tsk->sched.prev = NULL;
+      } else {
+        // insert at the end of the list
+        back->sched.next = tsk;
+        tsk->sched.next = NULL;
+        tsk->sched.prev = back;
+        // the new task is the end
+        back = tsk;
+      }
+    }
+
+    void remove_task(struct thread *tsk) {
+      if (tsk->sched.next) {
+        tsk->sched.next->sched.prev = tsk->sched.prev;
+      }
+      if (tsk->sched.prev) {
+        tsk->sched.prev->sched.next = tsk->sched.next;
+      }
+      if (back == tsk) back = tsk->sched.prev;
+      if (front == tsk) front = tsk->sched.next;
+      if (back == NULL) assert(front == NULL);
+      if (front == NULL) assert(back == NULL);
+
+      tsk->sched.next = tsk->sched.prev = NULL;
+    }
+    thread *pick_next(void) {
+      struct thread *td = NULL;
+
+      for (struct thread *thd = front; thd != NULL; thd = thd->sched.next) {
+        if (thd->get_state() == PS_RUNNING) {
+          td = thd;
+          remove_task(td);
+          break;
+        }
+      }
+
+      return td;
+    }
+  };
+
+  int core;  // what cpu core?
+  // is this queue active?
+  bool active = false;
+  // a lock (must be held with no interrupts)
+  spinlock lock;
+  // the priority queues.
+  //    queues[0] is the highest priority, lowest runtime
+  //    queues[MLFQ_NQUEUES-1] is the lowest priority, highest runtime
+  mlfq::queue queues[MLFQ_NQUEUES];
+
+  void add(thread *thd, mlfq::Behavior b = mlfq::Behavior::Unknown) {
+    scoped_irqlock l(lock);
+    thd->stats.current_cpu = core;
+
+    int old = thd->sched.priority;
+    // lower priority is better, so increment it if it's being bad
+    if (b == mlfq::Behavior::Bad) {
+      thd->sched.good_streak = 0;
+      thd->sched.priority++;
+    }
+
+    if (b == mlfq::Behavior::Good) {
+      // if the thread is not still running (blocked on I/O), imrove their priority
+      if (false && thd->get_state() != PS_RUNNING) {
+        thd->sched.priority--;
+        thd->sched.good_streak = 0;
+      } else {
+        thd->sched.good_streak++;
+        if (thd->sched.good_streak > (thd->sched.priority * 2) + MLFQ_NQUEUES) {
+          thd->sched.good_streak = 0;
+          thd->sched.priority--;
+        }
+      }
+    }
+
+    if (thd->sched.priority < 0) thd->sched.priority = 0;
+    if (thd->sched.priority >= MLFQ_NQUEUES) thd->sched.priority = MLFQ_NQUEUES - 1;
+
+
+    thd->sched.timeslice = MLFQ_MIN_RT + (thd->sched.priority * 2);
+    queues[thd->sched.priority].add_task(thd);
+
+    if (false && old != thd->sched.priority) {
+      printk_nolock("\e[2J");
+
+      for (int prio = 0; prio < MLFQ_NQUEUES; prio++) {
+        auto &q = queues[prio];
+        printk_nolock("prio %02d:", prio);
+        for (struct thread *thd = q.front; thd != NULL; thd = thd->sched.next) {
+          printk_nolock(" '%s(good: %d)'", thd->proc.name.get(), thd->sched.good_streak);
+        }
+        printk_nolock("\n");
+      }
+      printk_nolock("\n");
+    }
+  }
+
+  thread *get_next(void) {
+    scoped_irqlock l(lock);
+    for (int prio = 0; prio < MLFQ_NQUEUES; prio++) {
+      if (thread *cur = queues[prio].pick_next(); cur != NULL) return cur;
+    }
+    return nullptr;
+  }
+
+  void remove(thread *thd) {
+    scoped_irqlock l(lock);
+    assert(thd->stats.current_cpu == core);
+    thd->stats.current_cpu = -1;
+    queues[thd->sched.priority].remove_task(thd);
+  }
+
+  void boost(void) {
+    scoped_irqlock l(lock);
+
+    for (int prio = 1; prio < MLFQ_NQUEUES; prio++) {
+      auto &q = queues[prio];
+      for (struct thread *thd = q.front; thd != NULL; thd = thd->sched.next) {
+        q.remove_task(thd);
+        thd->sched.priority /= 2;  // get one better :)
+        queues[thd->sched.priority].add_task(thd);
+      }
+    }
+  }
+
+  // return the number of runnable threads in this scheduler (incremented and decremented on
+  // add/remove)
+  int num_runnable(void) {
+    return __atomic_load_n(&m_running, __ATOMIC_ACQUIRE);
+  }
+
+ private:
+  int m_running = 0;
+};
+
+
+// each cpu has their own MLFQ. If a core does not have any threads in it's queue, it can steal
+// runnable threads from other queues.
+static struct mlfq queues[CONFIG_MAX_CPUS];
+
+
+
 
 #ifdef SCHED_DEBUG
 #define INFO(fmt, args...) printk("[SCHED] " fmt, ##args)
@@ -28,18 +190,25 @@ extern "C" void context_switch(struct thread_context **, struct thread_context *
 
 
 static bool s_enabled = true;
-static sched::impl s_scheduler;
+
+static auto &my_queue(void) {
+  return queues[cpu::current().cpunum];
+}
+
 
 bool sched::init(void) {
+  auto &q = my_queue();
+  q.core = cpu::current().cpunum;
+  q.active = true;
   return true;
 }
 
 static struct thread *get_next_thread(void) {
-  return s_scheduler.pick_next();
+  return my_queue().get_next();
 }
 
 
-static auto pick_next_thread(void) {
+static thread *pick_next_thread(void) {
   auto &cpu = cpu::current();
   if (cpu.next_thread == NULL) {
     cpu.next_thread = get_next_thread();
@@ -49,12 +218,19 @@ static auto pick_next_thread(void) {
 
 
 int sched::add_task(struct thread *tsk) {
-  int res = s_scheduler.add_task(tsk);
-  return res;
+  auto b = mlfq::Behavior::Good;
+  if (tsk->sched.has_run >= tsk->sched.timeslice) b = mlfq::Behavior::Bad;
+
+  my_queue().add(tsk, b);
+  return 0;
 }
 
 int sched::remove_task(struct thread *t) {
-  return s_scheduler.remove_task(t);
+  if (t->stats.current_cpu >= 0) {
+    // assert(t->stats.current_cpu != -1);  // sanity check
+    queues[t->stats.current_cpu].remove(t);
+  }
+  return 0;
 }
 
 static void switch_into(struct thread &thd) {
@@ -72,12 +248,12 @@ static void switch_into(struct thread &thd) {
 
   // update the statistics of the thread
   thd.stats.run_count++;
-  thd.sched.start_tick = cpu::get_ticks();
   thd.stats.current_cpu = cpu::current().cpunum;
+
+  thd.sched.has_run = 0;
 
   // load up the thread's address space
   cpu::switch_vm(&thd);
-
 
   thd.stats.last_start_cycle = arch_read_timestamp();
   bool ts = time::stabilized();
@@ -89,8 +265,7 @@ static void switch_into(struct thread &thd) {
   // Switch into the thread!
   context_switch(&cpu::current().sched_ctx, thd.kern_context);
 
-  // arch_save_fpu(thd);
-  if (true || thd.proc.ring == RING_USER) arch_save_fpu(thd);
+  if (thd.proc.ring == RING_USER) arch_save_fpu(thd);
 
   if (ts) {
     thd.ktime_us += time::now_us() - start_us;
@@ -98,8 +273,6 @@ static void switch_into(struct thread &thd) {
 
   // Update the stats afterwards
   cpu::current().current_thread = nullptr;
-  thd.stats.last_cpu = thd.stats.current_cpu;
-  thd.stats.current_cpu = -1;
 
   // printk_nolock("took %llu us\n", time::now_us() - start);
   thd.locks.run.unlock();
@@ -217,26 +390,37 @@ void sched::run() {
   idle_thread->preemptable = true;
 
   cpu::current().in_sched = true;
-  unsigned long nothing_count = 0;
+  unsigned long has_run = 0;
+
   while (1) {
+    if (has_run++ >= 100) {
+      has_run = 0;
+      my_queue().boost();
+    }
+
     struct thread *thd = pick_next_thread();
     cpu::current().next_thread = NULL;
 
     if (thd == nullptr) {
       // idle loop when there isn't a task
       cpu::current().kstat.iticks++;
+      idle_thread->sched.timeslice = 1;
+      idle_thread->sched.has_run = 0;
       switch_into(*idle_thread);
       continue;
     }
 
 
-    switch_into(*thd);
 
+    mlfq::Behavior b = mlfq::Behavior::Unknown;
+
+    switch_into(*thd);
+    // add the task back to the scheduler
     sched::add_task(thd);
-    // boost();
   }
   panic("scheduler should not have gotten back here\n");
 }
+
 
 
 void sched::handle_tick(u64 ticks) {
@@ -249,25 +433,25 @@ void sched::handle_tick(u64 ticks) {
 
   // grab the current thread
   auto thd = cpu::thread();
+  thd->sched.has_run++;
 
   if (thd->proc.ring == RING_KERN) {
     cpu::current().kstat.kticks++;
   } else {
     cpu::current().kstat.uticks++;
   }
-  thd->sched.ticks++;
 
 
   /* We don't get preempted if we aren't currently runnable. See wait.cpp for why */
-  if (thd->state != PS_RUNNING) return;
+  if (thd->get_state() != PS_RUNNING) return;
   if (thd->preemptable == false) return;
 
-  auto has_run = ticks - thd->sched.start_tick;
-
+#ifdef CONFIG_PREFETCH_NEXT_THREAD
   // yield?
-  if (has_run >= thd->sched.timeslice) {
+  if (thd->sched.has_run >= thd->sched.timeslice) {
     pick_next_thread();
   }
+#endif
 }
 
 
@@ -413,7 +597,8 @@ void sched::before_iret(bool userspace) {
 
   if (time::stabilized()) curthd->last_start_utime_us = time::now_us();
 
-  if (cpu::current().next_thread != NULL /* || c.woke_someone_up */) {
+  if (curthd->sched.has_run >= curthd->sched.timeslice || cpu::current().next_thread != NULL
+      /* || c.woke_someone_up */) {
     c.woke_someone_up = false;
     sched::yield();
   }

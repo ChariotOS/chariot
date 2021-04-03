@@ -95,7 +95,7 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long time
   if ((long long)timeout_time > 0) {
     auto now_ms = time::now_ms();
     long long to_go = timeout_time - now_ms;
-    if (to_go < 0) {
+    if (to_go <= 0) {
       return -ETIMEDOUT;
     }
     sw.start(to_go * 1000);
@@ -125,5 +125,6 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long time
 
   /* Update the target entry */
   targs[index].occurred = metadata[res].pte->events;
+	// pprintk("awaitfs -> %d\n", index);
   return index;
 }

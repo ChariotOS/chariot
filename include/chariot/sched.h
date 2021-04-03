@@ -35,7 +35,7 @@
 #define PS_ZOMBIE (3)
 
 
-#include <schedulers.h>
+// #include <schedulers.h>
 
 
 
@@ -52,7 +52,7 @@ namespace sched {
   void block();
   void unblock(thread &, bool interrupt = false);
 
-  using impl = sched::round_robin;
+  // using impl = sched::round_robin;
 }  // namespace sched
 
 #ifdef CONFIG_X86
@@ -271,14 +271,14 @@ struct thread_statistics {
 };
 
 struct thread_sched_info {
+  int has_run = 0;
   int timeslice = 1;
-  int priority = 0;
-  u64 ticks = 0;
-  u64 start_tick = 0;
+  int priority = 0;  // highest priority to start out. Only gets worse :)
 
-  // for waitqueues
-  struct thread *next = nullptr;
-  struct thread *prev = nullptr;
+	int good_streak = 0;
+
+	thread *next;
+	thread *prev;
 };
 
 struct thread_locks {
@@ -295,7 +295,6 @@ struct thread_waitqueue_info {
 
 
 struct thread final {
-
   pid_t tid;  // unique thread id
   pid_t pid;  // process id. If this thread is the main thread, tid == pid
 
@@ -329,7 +328,7 @@ struct thread final {
     void *arch_priv = nullptr;
   } sig;
 
-  sched::impl::thread_state sched_state;
+  // sched::impl::thread_state sched_state;
   struct thread_sched_info sched;
   struct thread_fpu_info fpu;
   struct thread_statistics stats;

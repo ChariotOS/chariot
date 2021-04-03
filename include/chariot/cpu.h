@@ -21,6 +21,7 @@ struct processor_state {
   void *local;
   int cpunum;
 
+	bool primary = false;
   bool in_sched = false;
 
   struct kstat_cpu kstat;
