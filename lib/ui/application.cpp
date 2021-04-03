@@ -78,35 +78,6 @@ long ui::application::send_raw(int type, void *payload, size_t payloadsize) {
 
 
 
-static ck::vec<lumen::msg *> drain_messages_from(ck::ipcsocket &sock, bool &failed) {
-  failed = false;
-  ck::vec<lumen::msg *> msgs;
-
-  while (1) {
-    uint8_t buf;
-    int sz = sock.recv(&buf, 1, MSG_IPC_QUERY | MSG_DONTWAIT);
-    if (sz < 0) {
-      if (errno == EAGAIN) break;
-      failed = true;
-      break;
-    }
-
-    char *buffer = (char *)malloc(sz);
-    int nread = sock.recv(buffer, sz, 0);
-    if (nread != sz) {
-      free(buffer);
-      failed = true;
-      break;
-    }
-    auto *msg = (lumen::msg *)buffer;
-    msgs.push(msg);
-  }
-
-
-
-  return msgs;
-}
-
 lumen::msg *ui::application::send_raw_sync(int type, void *payload, size_t payloadsize) {
   long req_id = send_raw(type, payload, payloadsize);
   if (req_id == -1) return NULL;
@@ -132,9 +103,7 @@ lumen::msg *ui::application::send_raw_sync(int type, void *payload, size_t paylo
 
 
 void ui::application::drain_messages(void) {
-  bool failed = false;
-  auto msgs = drain_messages_from(sock, failed);
-
+  auto msgs = sock.drain<lumen::msg>();
 
   for (auto *msg : msgs) {
     m_pending_messages.push(msg);
@@ -159,7 +128,7 @@ void ui::application::dispatch_messages(void) {
             wid);
       }
     } else {
-      printf("unhandled message %d (%p)\n", msg->id, msg);
+      printf("unhandled message %d. Type %d. (%p)\n", msg->id, msg->type, msg);
     }
 
     delete msg;

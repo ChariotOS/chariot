@@ -112,13 +112,18 @@ ssize_t net::ipcsock::sendto(fs::file &fd, void *data, size_t len, int flags, co
                              size_t) {
   auto &state = (fd.pflags & PFLAGS_SERVER) ? for_client : for_server;
 
-  scoped_lock l(state.lock);
-  if (state.closed) {
-    return 0;
-  }
+  {
+    scoped_lock l(state.lock);
+    if (state.closed) {
+      return 0;
+    }
 
-  state.msgs.append(ipcmsg(data, len));
+    // printk("%3d - send message, %d live\n", curproc->pid, state.msgs.size_slow());
+
+    state.msgs.append(ipcmsg(data, len));
+  }
   state.wq.wake_up();
+  sched::yield();
 
 
   return len;
@@ -131,22 +136,13 @@ ssize_t net::ipcsock::recvfrom(fs::file &fd, void *data, size_t len, int flags, 
   auto &state = (fd.pflags & PFLAGS_SERVER) ? for_server : for_client;
   bool block = (flags & MSG_DONTWAIT) == 0;
 
-
-  if (!block) {
-    scoped_lock l(state.lock);
-
-    if (state.msgs.is_empty()) {
-      if (state.closed) return 0;
-      return -EAGAIN;
-    }
-  }
-
-
   while (1) {
+    struct wait_entry ent;
     {
       scoped_lock l(state.lock);
 
       if (!state.msgs.is_empty()) {
+        // pprintk("take data!\n");
         auto &front = state.msgs.first();
         if (flags & MSG_IPC_QUERY) {
           return front.data.size();
@@ -159,17 +155,21 @@ ssize_t net::ipcsock::recvfrom(fs::file &fd, void *data, size_t len, int flags, 
         size_t nread = front.data.size();
         state.msgs.take_first();
 
+        // printk("%3d - recv message, %d live\n", curproc->pid, state.msgs.size_slow());
+
         return nread;
       }
+
       if (state.closed) {
         return 0;
       }
+      if (!block) return -EAGAIN;
+      prepare_to_wait(state.wq, ent, true);
     }
 
 
-    if (!block) return -EAGAIN;
 
-    if (state.wq.wait().interrupted()) {
+    if (ent.start().interrupted()) {
       printk("WAIT!\n");
       return -EINTR;
     }

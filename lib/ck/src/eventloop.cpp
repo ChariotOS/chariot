@@ -107,11 +107,24 @@ void ck::eventloop::pump(void) {
   }
 
   long long timeout = -1;
-  auto nt = next_timer();
+  long long now = current_ms();
+  ck::timer *nt = NULL;
 
-  if (nt != NULL) {
+  while (1) {
+    nt = next_timer();
+    if (nt == NULL) break;
+
+
     timeout = nt->next_fire();
+    if (timeout > now) break;
+
+    if (now > timeout <= now) {
+      nt->trigger();
+      nt = NULL;
+      timeout = -1;
+    }
   }
+
 
 
   /* Shuffle the target order */

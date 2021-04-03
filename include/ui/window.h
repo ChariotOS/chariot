@@ -58,13 +58,17 @@ namespace ui {
     inline void defer_invalidation(bool d) {
       m_defer_invalidation = d;
     }
+
+    inline void compositor_sync(bool d) {
+      m_compositor_sync = d;
+    }
     inline void set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
       m_frame->set_theme(bg, fg, border);
     }
     void schedule_reflow();
 
     virtual ck::tuple<int, int> resize(int width, int height);
-    virtual void invalidate(const gfx::rect &r, bool sync = false);
+    virtual void invalidate(const gfx::rect &r);
     virtual inline gfx::bitmap *bmp(void) {
       return m_bitmap.get();
     }
@@ -87,6 +91,8 @@ namespace ui {
     int m_id;
     ck::string m_name;
 
+    // software "vsync" with the compositor
+    bool m_compositor_sync = false;
     bool m_defer_invalidation = true;
     ck::ref<gfx::shared_bitmap> m_bitmap;
 

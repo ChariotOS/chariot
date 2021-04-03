@@ -87,7 +87,7 @@ void ui::windowframe::paint_event(void) {
 
 
 
-    if (0) {
+    if (1) {
       int lh = 18;
       m_icon_font->with_line_height(lh, [&]() {
         int x = 5;
@@ -127,18 +127,23 @@ void ui::windowframe::set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
 }
 
 
-void ui::window::invalidate(const gfx::rect &r, bool sync) {
+void ui::window::invalidate(const gfx::rect &r) {
   if (!m_defer_invalidation) {
     auto &app = ui::application::get();
     struct lumen::invalidate_msg iv;
-    iv.sync = false;
+    iv.sync = this->m_compositor_sync;
     iv.id = m_id;
     iv.nrects = 1;
     iv.rects[0].x = r.x;
     iv.rects[0].y = r.y;
     iv.rects[0].w = r.w;
     iv.rects[0].h = r.h;
-    app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
+    if (iv.sync) {
+      struct lumen::invalidated_msg response = {0};
+      app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
+    } else {
+      app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
+    }
     return;
   }
 
@@ -155,7 +160,7 @@ void ui::window::invalidate(const gfx::rect &r, bool sync) {
 
       int n = 0;
       for (auto &rect : m_pending_invalidations) {
-        iv.sync = true;
+        iv.sync = this->m_compositor_sync;
         iv.rects[n].x = rect.x;
         iv.rects[n].y = rect.y;
         iv.rects[n].w = rect.w;
@@ -163,20 +168,29 @@ void ui::window::invalidate(const gfx::rect &r, bool sync) {
         n++;
         if (n == MAX_INVALIDATE) {
           iv.nrects = n;
-          app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
+          if (iv.sync) {
+            app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
+          } else {
+            app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
+          }
           n = 0;
         }
       }
       if (n != 0) {
         iv.nrects = n;
-        app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
+        if (iv.sync) {
+          app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
+        } else {
+          app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
+        }
+        // app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
       }
 
-      /*
-printf("invalidation of %d region(s) took %.2fms\n", m_pending_invalidations.size(),
-(sysbind_gettime_microsecond() - start_time) / 1000.0);
-                               */
       m_pending_invalidations.clear();
+
+      if (0)
+        printf("invalidation of %d region(s) took %.2fms\n", m_pending_invalidations.size(),
+               (sysbind_gettime_microsecond() - start_time) / 1000.0);
     });
   }
   m_pending_invalidations.push(r);

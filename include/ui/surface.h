@@ -28,7 +28,7 @@ namespace ui {
     }
 
     /* Tell the surface that a region is invalidated  */
-    virtual void invalidate(const gfx::rect &r, bool sync = false) = 0;
+    virtual void invalidate(const gfx::rect &r) = 0;
 
 
     /*

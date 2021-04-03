@@ -14,7 +14,8 @@
 #include "internal.h"
 
 // run the compositor at 60fps if there is work to be done.
-#define COMPOSE_INTERVAL (1000 / 60)
+#define FPS (60)
+#define COMPOSE_INTERVAL (1000 / FPS)
 
 #define USE_COMPOSE_INTERVAL
 
@@ -60,12 +61,21 @@ lumen::context::context(void) : screen(1024, 768) {
       }
     });
   }
+bool load_wallpaper = false;
+
+	if (load_wallpaper) {
 
   wallpaper = gfx::load_png("/usr/res/lumen/wallpaper.png");
 
   if (wallpaper->width() != screen.width() || wallpaper->height() != screen.height()) {
     wallpaper = wallpaper->scale(screen.width(), screen.height(), gfx::bitmap::SampleMode::Nearest);
   }
+	} else {
+		wallpaper = new gfx::bitmap(screen.width(), screen.height());
+		for (int i = 0; i < screen.width() * screen.height(); i++) {
+			wallpaper->pixels()[i] = 0x333333;
+		}
+	}
 
   server.listen("/usr/servers/lumen", [this] { accept_connection(); });
 
@@ -73,10 +83,9 @@ lumen::context::context(void) : screen(1024, 768) {
   invalidate(screen.bounds());
 
 
-
-  for (int i = 0; i < 6; i++) {
-    spawn("doom");
-  }
+	spawn("fluidsim");
+	// spawn("term");
+	// spawn("doom");
 
   // spawn("term");
 }
@@ -154,7 +163,6 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
       m.mouse.hy = mrel.y();
 
       m.mouse.buttons = pkt.buttons;
-
       hovered_window->guest.send_msg(LUMEN_MSG_INPUT, m);
     }
 
@@ -193,7 +201,7 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
 
 
   // compose asap so we can get lower mouse input latencies
-  compose();
+  // compose();
 }
 
 
@@ -316,8 +324,6 @@ void lumen::context::move_window(lumen::window *win, int dx, int dy) {
 
 
 void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
-  // printf("Process message %d from %d. type=%d\n", msg.id, c.id, msg.type);
-  // compose();  // XXX: remove me!
   HANDLE_TYPE(LUMEN_MSG_CREATE_WINDOW, lumen::create_window_msg) {
     (void)arg;
 
