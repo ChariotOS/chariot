@@ -61,21 +61,35 @@ lumen::context::context(void) : screen(1024, 768) {
       }
     });
   }
-bool load_wallpaper = false;
+  bool load_wallpaper = true;
 
-	if (load_wallpaper) {
+  if (load_wallpaper) {
+    wallpaper = gfx::load_png("/usr/res/lumen/wallpaper.png");
 
-  wallpaper = gfx::load_png("/usr/res/lumen/wallpaper.png");
+    if (wallpaper->width() != screen.width() || wallpaper->height() != screen.height()) {
+      wallpaper =
+          wallpaper->scale(screen.width(), screen.height(), gfx::bitmap::SampleMode::Nearest);
+    }
+  } else {
+    wallpaper = new gfx::bitmap(screen.width(), screen.height());
+    int w = screen.width();
+    int h = screen.height();
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        uint32_t c = rand();
 
-  if (wallpaper->width() != screen.width() || wallpaper->height() != screen.height()) {
-    wallpaper = wallpaper->scale(screen.width(), screen.height(), gfx::bitmap::SampleMode::Nearest);
+        int n = ((x - (w / 2)) * (w / 4));
+        int m = (y - (h / 2));
+        if (m != 0 && n % m) c = 0;
+        wallpaper->set_pixel(x, y, c);
+      }
+    }
+    /*
+for (int i = 0; i < screen.width() * screen.height(); i++) {
+wallpaper->pixels()[i] = 0x333333;
+}
+    */
   }
-	} else {
-		wallpaper = new gfx::bitmap(screen.width(), screen.height());
-		for (int i = 0; i < screen.width() * screen.height(); i++) {
-			wallpaper->pixels()[i] = 0x333333;
-		}
-	}
 
   server.listen("/usr/servers/lumen", [this] { accept_connection(); });
 
@@ -83,9 +97,9 @@ bool load_wallpaper = false;
   invalidate(screen.bounds());
 
 
-	spawn("fluidsim");
-	// spawn("term");
-	// spawn("doom");
+  // spawn("fluidsim");
+  // spawn("term");
+  spawn("doom");
 
   // spawn("term");
 }
@@ -584,7 +598,7 @@ void lumen::context::compose(void) {
   */
 
 #ifdef USE_COMPOSE_INTERVAL
-  // compose_timer->stop();
+  compose_timer->stop();
 #endif
   // printf("compose\n");
 

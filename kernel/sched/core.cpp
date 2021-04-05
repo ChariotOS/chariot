@@ -15,11 +15,11 @@
 
 
 // copied from
-#define MLFQ_NQUEUES 30
-// minimum timeslice of 1 tick
-#define MLFQ_MIN_RT 4
+#define MLFQ_NQUEUES 32
+// minimum timeslice
+#define MLFQ_MIN_RT 1
 // how many ticks get added to the timeslice for each priority
-#define MLFQ_MUL_RT 10
+#define MLFQ_MUL_RT 1
 
 struct mlfq {
   enum Behavior {
