@@ -21,10 +21,8 @@ class spinlock {
   void lock(void);
   void unlock(void);
 
-  // void lock_cli();
-  // void unlock_cli();
-
   bool lock_irqsave(void);
+  bool /* was_enabled */ try_lock_irqsave(bool &success);
   void unlock_irqrestore(bool was_enabled);
 
   // for just locking ints

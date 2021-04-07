@@ -13,7 +13,7 @@
 
 
 void debug_die(void) {
-  arch_dump_backtrace();
+  // arch_dump_backtrace();
   while (1) {
     arch_halt();
   }

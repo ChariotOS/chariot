@@ -133,10 +133,12 @@ static void dump_tf(struct rv::regs &tf) {
   if (p != 0) printk("\n");
 
   if (cpu::in_thread()) {
+		/*
     printk("\n");
     printk("Address Space:\n");
     auto proc = curproc;
     proc->mm->dump();
+		*/
   }
 }
 

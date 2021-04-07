@@ -59,13 +59,15 @@ lumen::context::context(void) : screen(1024, 768) {
         if (errno == EAGAIN) break;
         handle_mouse_input(pkt);
       }
+
+			// get lower latencies
+			this->compose();
     });
   }
-  bool load_wallpaper = true;
 
+  bool load_wallpaper = true;
   if (load_wallpaper) {
     wallpaper = gfx::load_png("/usr/res/lumen/wallpaper.png");
-
     if (wallpaper->width() != screen.width() || wallpaper->height() != screen.height()) {
       wallpaper =
           wallpaper->scale(screen.width(), screen.height(), gfx::bitmap::SampleMode::Nearest);
@@ -98,8 +100,7 @@ wallpaper->pixels()[i] = 0x333333;
 
 
   // spawn("fluidsim");
-  // spawn("term");
-  spawn("doom");
+  spawn("term");
 
   // spawn("term");
 }
@@ -212,10 +213,6 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
   } else {
     screen.cursor = mouse_cursor::pointer;
   }
-
-
-  // compose asap so we can get lower mouse input latencies
-  // compose();
 }
 
 

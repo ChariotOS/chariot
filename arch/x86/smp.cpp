@@ -466,6 +466,7 @@ extern "C" void mpentry(int apic_id) {
   args->ready = 1;
 
   KINFO("starting scheduler on core %d. tsc: %llu\n", apic_id, arch_read_timestamp());
+  sched::init();
   arch_enable_ints();
   sched::run();
 

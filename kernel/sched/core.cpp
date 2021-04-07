@@ -13,6 +13,9 @@
 #define SIG_IGN ((void (*)(int))1)
 
 
+volatile bool did_panic = false; // printk.h
+static bool s_enabled = true;
+
 
 // copied from
 #define MLFQ_NQUEUES 32
@@ -62,6 +65,7 @@ struct mlfq {
 
       tsk->sched.next = tsk->sched.prev = NULL;
     }
+
     thread *pick_next(void) {
       struct thread *td = NULL;
 
@@ -77,7 +81,8 @@ struct mlfq {
     }
   };
 
-  int core;  // what cpu core?
+  int core;                // what cpu core?
+  int next_worksteal = 0;  // what core to next steal from
   // is this queue active?
   bool active = false;
   // a lock (must be held with no interrupts)
@@ -142,6 +147,27 @@ struct mlfq {
     return nullptr;
   }
 
+
+
+  // steal to another cpu, `thieff`
+  thread *steal(int thief) {
+    bool locked = false;
+    auto f = lock.try_lock_irqsave(locked);
+
+    if (locked) {
+      for (int prio = 0; prio < MLFQ_NQUEUES; prio++) {
+        // TODO: make sure it can be taken by the thief
+        if (thread *cur = queues[prio].pick_next(); cur != NULL) {
+          lock.unlock_irqrestore(f);
+					// printk_nolock("cpu %d stealing thread %d\n", cpu::current().cpunum, cur->tid);
+          return cur;
+        }
+      }
+      lock.unlock_irqrestore(f);
+    }
+    return nullptr;
+  }
+
   void remove(thread *thd) {
     scoped_irqlock l(lock);
     assert(thd->stats.current_cpu == core);
@@ -189,7 +215,6 @@ static struct mlfq queues[CONFIG_MAX_CPUS];
 extern "C" void context_switch(struct thread_context **, struct thread_context *);
 
 
-static bool s_enabled = true;
 
 static auto &my_queue(void) {
   return queues[cpu::current().cpunum];
@@ -203,8 +228,46 @@ bool sched::init(void) {
   return true;
 }
 
+
+
+// work-steal from other cores if they have runnable threads
+static struct thread *worksteal(void) {
+  int nproc = cpu::nproc();
+  // printk_nolock("nproc: %d\n", nproc);
+  // divide by zero and infinite loop safety
+  if (nproc <= 1) return NULL;
+
+  auto &q = my_queue();
+  unsigned int target = q.core;
+
+  do {
+    target = (q.next_worksteal++) % nproc;
+    // printk_nolock("target: %d\n", target);
+  } while (target == q.core);
+
+  if (q.next_worksteal >= nproc) q.next_worksteal = 0;
+  if (!queues[target].active) return nullptr;
+
+  auto *t = queues[target].steal(q.core);
+
+  // printk_nolock("cpu %d stealing from cpu %d : %d\n", q.core, target, t);
+
+  // work steal!
+  return t;
+}
+
+
+
+
 static struct thread *get_next_thread(void) {
-  return my_queue().get_next();
+  auto *t = my_queue().get_next();
+
+  if (t == NULL) {
+    t = worksteal();
+    // if (t != NULL) printk_nolock("nothing to do on cpu %d. stole %p\n", cpu::current().cpunum,
+    // t);
+  }
+  return t;
 }
 
 
@@ -372,6 +435,7 @@ static int idle_task(void *arg) {
    * a big class of bugs in one go :^).
    */
   while (1) {
+		if (did_panic) debug_die();
     /*
      * The loop here is simple. Wait for an interrupt, handle it (implicitly) then
      * yield back to the scheduler if there is a task ready to run.
@@ -393,6 +457,8 @@ void sched::run() {
   unsigned long has_run = 0;
 
   while (1) {
+
+		if (did_panic) debug_die();
     if (has_run++ >= 100) {
       has_run = 0;
       my_queue().boost();

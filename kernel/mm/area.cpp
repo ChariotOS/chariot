@@ -25,6 +25,6 @@ mm::area::~area(void) {
   // release the object if we have one
   if (obj) {
     obj->release();
+    obj = nullptr;
   }
-  obj = nullptr;
 }

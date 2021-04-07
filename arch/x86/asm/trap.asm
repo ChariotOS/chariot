@@ -32,8 +32,16 @@ alltraps:
   push rdi
   push rax
 
+
   mov rdi, rsp ; frame in arg1
+	push QWORD [rdi + (8 * 17)]
+	;; lea rbp [rdi + (8 * 9)]
+	mov rbp, rsp
+
   call trap
+
+	;; pop the previous stuff off the stack
+	pop rax
 
 	;; Return falls through to trapret...
 global trapret

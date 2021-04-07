@@ -57,6 +57,7 @@
  */
 
 #include <rbtree_augmented.h>
+#include <printk.h>
 
 static inline void rb_set_black(struct rb_node *rb) {
   rb->__rb_parent_color |= RB_BLACK;
@@ -442,6 +443,7 @@ struct rb_node *rb_first(const struct rb_root *root) {
 struct rb_node *rb_last(const struct rb_root *root) {
   struct rb_node *n;
 
+	// pprintk("root: %pr root->rb_node: %p\n", root, root->rb_node);
   n = root->rb_node;
   if (!n) return NULL;
   while (n->rb_right)
@@ -460,6 +462,7 @@ struct rb_node *rb_next(const struct rb_node *node) {
    */
   if (node->rb_right) {
     node = node->rb_right;
+		// pprintk("node=%p\n", node);
     while (node->rb_left)
       node = node->rb_left;
     return (struct rb_node *)node;

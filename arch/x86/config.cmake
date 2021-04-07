@@ -13,7 +13,7 @@ set(CMAKE_ASM_NASM_FLAGS "-f elf64 -w-zext-reloc ${COMPILE_DEFS_STR}")
 
 
 # Kernelspace Flags
-set(ARCH_KERN_C_FLAGS "-mno-red-zone -fno-omit-frame-pointer")
+set(ARCH_KERN_C_FLAGS "-mno-red-zone ")
 set(ARCH_KERN_C_FLAGS "${ARCH_KERN_C_FLAGS} -fno-stack-protector -mtls-direct-seg-refs")
 set(ARCH_KERN_C_FLAGS "${ARCH_KERN_C_FLAGS} -mno-sse -mcmodel=large")
 set(ARCH_KERN_CXX_FLAGS "")

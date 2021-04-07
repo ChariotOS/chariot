@@ -242,12 +242,15 @@ static void gpf_handler(int i, reg_t *regs) {
   // TODO: die
   KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", curthd->pid, curthd->tid, tf->rip, tf->err);
 
+	panic("GPF\n");
   dump_trapframe(regs);
 
   if (curproc) {
-    KERR("Address Space Dump:\n");
-    curproc->mm->dump();
-    printk("backtrace:\n");
+    /*
+KERR("Address Space Dump:\n");
+curproc->mm->dump();
+printk("backtrace:\n");
+    */
   }
 
   sys::exit_proc(-1);
@@ -312,8 +315,8 @@ static void pgfault_handle(int i, reg_t *regs) {
       if (tf->err & PGFLT_WRITE) printk("WRITE ");
       if (tf->err & PGFLT_USER) printk("USER ");
       if (tf->err & PGFLT_INSTR) printk("INSTR ");
-      printk("\n");
 
+      printk("\n");
 
 #define CHECK(reg)                                             \
   if ((tf->reg) == addr) {                                     \
@@ -339,9 +342,14 @@ static void pgfault_handle(int i, reg_t *regs) {
 
 #undef CHECK
 
-      dump_trapframe(regs);
-      KERR("Address Space Dump:\n");
-      proc->mm->dump();
+      printk("\n");
+
+
+      panic("DEAD!\n");
+
+      // dump_trapframe(regs);
+      // KERR("Address Space Dump:\n");
+      // proc->mm->dump();
       /*
 KERR("FPU State:\n");
 alignas(16) char sse_data[512];
@@ -420,14 +428,6 @@ extern "C" void x86_enter_userspace(x86_64regs *);
 // just forward the trap on to the irq subsystem
 // This function is called from arch/x86/trap.asm
 extern "C" void trap(reg_t *regs) {
-  /**
-   * TODO: why do some traps disable interrupts?
-   * it seems like its only with irq 32 (ticks)
-   *
-   * Honestly, I have no idea why this is needed...
-   */
-
-
 
   auto *tf = (struct x86_64regs *)regs;
   bool from_userspace = tf->cs == 0x23;

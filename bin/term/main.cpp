@@ -28,7 +28,7 @@ extern const char **environ;
 
 
 
-#define LIGHT
+// #define LIGHT
 
 #ifdef LIGHT
 
@@ -81,7 +81,7 @@ struct terminalview : public ui::view {
     set_background(TERMINAL_BG);
 
     emoji = gfx::load_png(
-        "/sys/fonts/Emoji/emoji_u1f607.png");  // ->scale(14, 14, gfx::bitmap::SampleMode::Nearest);
+        "/sys/fonts/Emoji/emoji_u1f4a9.png");  // ->scale(14, 14, gfx::bitmap::SampleMode::Nearest);
   }
 
 
@@ -106,13 +106,11 @@ struct terminalview : public ui::view {
 
     s.fill_rect(r, bg);
 
-    /*
-font->with_line_height(lineheight, [&]() {
-auto p = gfx::printer(s, *font, x * cw, y * ch + font->ascent(), cw);
-p.set_color(fg);
-p.write(cp);
-});
-    */
+    font->with_line_height(lineheight, [&]() {
+      auto p = gfx::printer(s, *font, x * cw, y * ch + font->ascent(), cw);
+      p.set_color(fg);
+      p.write(cp);
+    });
   }
 
 
@@ -137,6 +135,8 @@ p.write(cp);
     handle_resize();
     auto s = get_scribe();
 
+    // s.blit_alpha(gfx::point(mouse_x, mouse_y), *emoji, emoji->rect());
+
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
         uint32_t c = 'A' + (rand() % ('z' - 'A'));
@@ -144,27 +144,9 @@ p.write(cp);
       }
     }
 
+
     s.draw_line_antialias(gfx::point(mouse_x, mouse_y), gfx::point(width() / 2, height() / 2),
                           0xFF0000);
-    // ck::hexdump(bmp->pixels(), bmp->width() * 4);
-    // uint32_t first = bmp->pixels()[0];
-    // printf("first pixel: %08x\n", gfx::color::blend(bmp->pixels()[0], 0xFFFF0000));
-    // printf("\n");
-    s.blit_alpha(gfx::point(mouse_x, mouse_y), *emoji, emoji->rect());
-
-    /*
-    gfx::rect r = emoji->rect().shifted(mouse_x, mouse_y);
-    r.w = r.h = 256;
-    for (int i = 0; i < 8; i++) {
-            s.blit_scaled(*emoji, r);
-
-            r.x += r.w;
-            r.w >>= 1;
-            r.h >>= 1;
-
-    }
-    */
-    // s.blit(gfx::point(mouse_x - emoji->width(), mouse_y), *emoji, emoji->rect());
   }
 };
 
@@ -175,6 +157,10 @@ int main() {
   ui::application app;
 
   ui::window *win = app.new_window("Terminal", 256, 256);
+  win->defer_invalidation(false);
+  win->compositor_sync(true);
+
+
   win->set_theme(TERMINAL_BG, TERMINAL_FG, TERMINAL_BORDER);
   auto &v = win->set_view<terminalview>();
 

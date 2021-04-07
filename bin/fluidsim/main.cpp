@@ -2,9 +2,12 @@
 #include <gfx/font.h>
 #include <ui/application.h>
 #include <sys/sysbind.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
 
 #define N 128
-#define SCALE 4
+#define SCALE 2
 
 #define TICKS 60
 
@@ -35,7 +38,7 @@ class fluidsim : public ui::view {
       float dx = cos(T) * 10;
       float dy = sin(T) * 10;
       T += 0.1;
-      add_velocity(N/2, N/2, dx, dy);
+      add_velocity(N / 2, N / 2, dx, dy);
       add_density(N / 2, N / 2, 10);
 
       this->step();
@@ -174,6 +177,7 @@ class fluidsim : public ui::view {
   void add_density(int x, int y, float amt) {
     if (x < 0 || x > N) return;
     if (y < 0 || y > N) return;
+    if (density[IX(x, y)] <= 0 && amt < 0) return;
     density[IX(x, y)] += amt;
   }
 
@@ -222,27 +226,14 @@ class fluidsim : public ui::view {
         add_density(pos.x() / SCALE, pos.y() / SCALE, 1);
         add_velocity(pos.x() / SCALE, pos.y() / SCALE, ev.dx, ev.dy);
       }
+
+
+      if (ev.right) {
+        auto pos = ev.pos();
+        add_density(pos.x() / SCALE, pos.y() / SCALE, -5);
+        add_velocity(pos.x() / SCALE, pos.y() / SCALE, ev.dx, ev.dy);
+      }
     }
-  }
-
-
-  virtual void on_keydown(ui::keydown_event& ev) override {
-    /*
-if (ev.code == key_space) {
-if (tick_timer->running()) {
-tick_timer->stop();
-} else {
-memcpy(current, init, sizeof(current));
-tick_timer->start(1000 / TICKS, true);
-}
-repaint();
-}
-// reset lol
-if (ev.code == key_r) {
-memset(init, 0, sizeof(init));
-repaint();
-}
-    */
   }
 };
 
@@ -254,11 +245,10 @@ int main() {
   ui::application app;
 
   ui::window* win = app.new_window("Fluid Simulation", N * SCALE, N * SCALE);
-  win->defer_invalidation(false);
-  win->compositor_sync(false);
+  // win->defer_invalidation(false);
+  // win->compositor_sync(false);
 
-  auto& game = win->set_view<fluidsim>(0.2, 0, 0.00000001);
-  (void)game;
+  win->set_view<fluidsim>(0.2, 0, 0.00000001);
 
   // start the application!
   app.start();

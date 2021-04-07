@@ -109,7 +109,7 @@ static inline void rb_link_node_rcu(struct rb_node *node, struct rb_node *parent
 
 #define rb_entry_safe(ptr, type, member)              \
   ({                                                  \
-    typeof(ptr) ____ptr = (ptr);                      \
+    __decltype(ptr) ____ptr = (ptr);                      \
     ____ptr ? rb_entry(____ptr, type, member) : NULL; \
   })
 
@@ -131,9 +131,9 @@ static inline void rb_link_node_rcu(struct rb_node *node, struct rb_node *parent
  * rb_erase() may rebalance the tree, causing us to miss some nodes.
  */
 #define rbtree_postorder_for_each_entry_safe(pos, n, root, field)                \
-  for (pos = rb_entry_safe(rb_first_postorder(root), typeof(*pos), field);       \
+  for (pos = rb_entry_safe(rb_first_postorder(root), __decltype(*pos), field);       \
        pos && ({                                                                 \
-         n = rb_entry_safe(rb_next_postorder(&pos->field), typeof(*pos), field); \
+         n = rb_entry_safe(rb_next_postorder(&pos->field), __decltype(*pos), field); \
          1;                                                                      \
        });                                                                       \
        pos = n)

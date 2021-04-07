@@ -8,9 +8,11 @@
 mm::space::space(off_t lo, off_t hi, ref<mm::pagetable> pt) : pt(pt), lo(lo), hi(hi) {
 }
 
+
 mm::space::~space(void) {
-  for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
-    delete rb_entry(node, struct mm::area, node);
+  mm::area *n, *node;
+  rbtree_postorder_for_each_entry_safe(node, n, &regions, node) {
+    delete node;
   }
 }
 
@@ -191,7 +193,7 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
       r.mappings[ind]->fset(PG_DIRTY);
     }
 
-		// a private mapping must be copied if there are two users
+    // a private mapping must be copied if there are two users
     if (r.flags & MAP_PRIVATE) {
       auto old_page = r.mappings[ind].get();
       old_page->lock();
@@ -360,29 +362,31 @@ off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
   return addr;
 }
 
-int mm::space::unmap(off_t ptr, size_t len) {
-  scoped_lock l(lock);
-
+int mm::space::unmap(off_t ptr, size_t ulen) {
   off_t va = (off_t)ptr;
   if ((va & 0xFFF) != 0) return -1;
 
 
-  len = round_up(len, 4096);
+  size_t len = round_up(ulen, 4096);
 
+  scoped_irqlock l1(lock);
   auto *region = lookup(va);
-  if (region == NULL) {
-    return -ESRCH;
-  }
+  if (region == NULL) return -ESRCH;
+
+  scoped_irqlock l2(region->lock);
 
   rb_erase(&region->node, &regions);
 
-  for (off_t v = va; v < va + len; v += 4096)
-    pt->del_mapping(v);
+  for (int i = 0; i < region->mappings.size(); i++) {
+    off_t addr = va + (i * 4096);
+    if (!region->mappings[i].is_null()) {
+      pt->del_mapping(addr);
+    }
+  }
 
-  delete region;
+  // delete region;
 
-
-  return -1;
+  return 0;
 }
 
 #define PGMASK (~(PGSIZE - 1))

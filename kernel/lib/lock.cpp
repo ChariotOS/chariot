@@ -20,8 +20,7 @@ static inline void arch_atomic_store(volatile int* p, int x) {
 }
 
 void spinlock::lock(void) {
-  while (ATOMIC_SET(&locked)) {\
-    // MESI protocol optimization
+  while (ATOMIC_SET(&locked)) {  // MESI protocol optimization
     while (__atomic_load_n(&locked, __ATOMIC_RELAXED) == 1) {
     }
   }
@@ -66,12 +65,25 @@ bool spinlock::lock_irqsave() {
   while (1) {
     en = irq_disable_save();
     if (ATOMIC_SET(&locked) == 0) break;
-		irq_enable_restore(en);
+    irq_enable_restore(en);
 
     // MESI protocol optimization
     while (__atomic_load_n(&locked, __ATOMIC_RELAXED) == 1) {
     }
   }
+  return en;
+}
+
+bool spinlock::try_lock_irqsave(bool& success) {
+  bool en = 0;
+  while (1) {
+    en = irq_disable_save();
+    if (ATOMIC_SET(&locked) == 0) break;
+    irq_enable_restore(en);
+    success = false;
+    return false;
+  }
+  success = true;
   return en;
 }
 

@@ -6,7 +6,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-initializer-override -Wstrict-overflow=
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused -Wno-address-of-packed-member -Wno-strict-overflow")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-pie -Wno-sign-compare")
 if(CONFIG_DEBUG_SYMBOLS)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3")
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CONFIG_ADDITIONAL_KERNEL_FLAGS}")
