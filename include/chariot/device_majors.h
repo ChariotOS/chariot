@@ -31,6 +31,8 @@ typedef enum {
 
   // Soundblaster 16
   MAJOR_SB16,
+	// AC97 audio device
+  MAJOR_AC97,
 
   // Pseudoterminal
   MAJOR_PTMX,

@@ -11,7 +11,7 @@
 
 #define SB16_DEFAULT_IRQ 5
 
-enum class SampleFormat : u8 {
+enum class SampleFormat : uint8_t {
   Signed = 0x10,
   Stereo = 0x20,
 };
@@ -49,15 +49,15 @@ static uint8_t dsp_read() {
 /* Changes the sample rate of sound output */
 static void set_sample_rate(uint16_t hz) {
   dsp_write(0x41);  // output
-  dsp_write((u8)(hz >> 8));
-  dsp_write((u8)hz);
+  dsp_write((uint8_t)(hz >> 8));
+  dsp_write((uint8_t)hz);
   dsp_write(0x42);  // input
-  dsp_write((u8)(hz >> 8));
-  dsp_write((u8)hz);
+  dsp_write((uint8_t)(hz >> 8));
+  dsp_write((uint8_t)hz);
 }
 
 
-static void set_irq_register(u8 irq_number) {
+static void set_irq_register(uint8_t irq_number) {
   uint8_t bitmask = 0;
   switch (irq_number) {
     case 2:
@@ -96,19 +96,6 @@ static uint8_t get_irq_line() {
   return bitmask;
 }
 
-
-/*
-static void set_irq_line(u8 irq_number) {
-        arch_disable_ints();
-  InterruptDisabler disabler;
-  if (irq_number == get_irq_line()) return;
-  set_irq_register(irq_number);
-  change_irq_number(irq_number);
-        arch_enable_ints();
-}
-*/
-
-
 static spinlock sb16_lock;
 void *dma_page = NULL;
 static wait_queue sb16_wq;
@@ -117,8 +104,8 @@ static wait_queue sb16_wq;
 static void dma_start(uint32_t length) {
   const auto addr = (off_t)v2p(dma_page);
   printk(KERN_INFO "DMA START %p %d. page=%04x\n", addr, length, addr >> 16);
-  const u8 channel = 5;  // 16-bit samples use DMA channel 5 (on the master DMA controller)
-  const u8 mode = 0x48;
+  const uint8_t channel = 5;  // 16-bit samples use DMA channel 5 (on the master DMA controller)
+  const uint8_t mode = 0x48;
 
   // Disable the DMA channel
   outb(0xd4, 4 + (channel % 4));
@@ -131,12 +118,12 @@ static void dma_start(uint32_t length) {
 
   // Write the offset of the buffer
   uint16_t offset = (addr / 2) % 65536;
-  outb(0xc4, (u8)offset);
-  outb(0xc4, (u8)(offset >> 8));
+  outb(0xc4, (uint8_t)offset);
+  outb(0xc4, (uint8_t)(offset >> 8));
 
   // Write the transfer length
-  outb(0xc6, (u8)(length - 1));
-  outb(0xc6, (u8)((length - 1) >> 8));
+  outb(0xc6, (uint8_t)(length - 1));
+  outb(0xc6, (uint8_t)((length - 1) >> 8));
 
   // Write the buffer
   outw(0x8b, addr >> 16);
@@ -150,8 +137,10 @@ static ssize_t sb16_write(fs::file &fd, const char *buf, size_t sz) {
   // limit to single access
   scoped_lock l(sb16_lock);
   if (dma_page == NULL) {
-    dma_page = phys::kalloc(1);
+    dma_page = phys::alloc(1);
   }
+
+	printk("dma_page: %p\n", dma_page);
 
 
 
@@ -170,7 +159,7 @@ static ssize_t sb16_write(fs::file &fd, const char *buf, size_t sz) {
   uint8_t command = 0xb0;
   uint16_t sample_count = sz / sizeof(int16_t);
   // if stereo, double the sample are used
-  if (mode & (u8)SampleFormat::Stereo) sample_count >>= 1;
+  if (mode & (uint8_t)SampleFormat::Stereo) sample_count >>= 1;
 
   printk(KERN_INFO "SB16: writing %d bytes! %d samples\n", sz, sample_count);
 
@@ -184,14 +173,12 @@ static ssize_t sb16_write(fs::file &fd, const char *buf, size_t sz) {
   dsp_write(sample_count & 0xFF);
   dsp_write((sample_count >> 8) & 0xFF);
 
-  // arch_enable_ints();
 
-  printk("%d\n", sb16_wq.wait().interrupted());
+	sb16_wq.wait_noint();
   return sz;
 }
 
 static int sb16_open(fs::file &fd) {
-  printk("here\n");
   return 0;
 }
 
@@ -235,7 +222,7 @@ void sb16_init(void) {
   }
 
   // Turn the speaker on
-  dsp_write(0xD1);
+  // dsp_write(0xD1);
 
   // Get the version info
   dsp_write(0xe1);

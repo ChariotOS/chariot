@@ -25,6 +25,8 @@ case $ARCH in
 		# QEMU_FLAGS+="-enable-kvm -cpu host "
 		QEMU_FLAGS+="-m 4G -smp 4 "
 		QEMU_FLAGS+="-hda build/chariot.img "
+		# QEMU_FLAGS+="-soundhw pcspk "
+		QEMU_FLAGS+="-device AC97 "
 		# QEMU_FLAGS+="-netdev user,id=u1  -device e1000,netdev=u1 "
 		# QEMU_FLAGS+="-rtc base=localtime "
 		;;

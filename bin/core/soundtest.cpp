@@ -8,11 +8,11 @@ int main() {
   uint16_t *buffer = (uint16_t *)malloc(4096);
 
   for (int i = 0; i < 4096 / sizeof(uint16_t); i++) {
-    buffer[i] = i;
+    buffer[i] = rand();
   }
 
 
-  int fd = open("/dev/sb16", O_WRONLY);
+  int fd = open("/dev/ac97", O_WRONLY);
 
   printf("%d\n", fd);
 

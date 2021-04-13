@@ -170,6 +170,12 @@ menu "Devices"
 		bool "[WIP] Soundblaster 16"
 		default y
 		depends on X86
+
+
+	config AC97
+		bool "[WIP] AC97 Audio Driver"
+		default y
+		depends on X86
 		
 endmenu
 
