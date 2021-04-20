@@ -61,7 +61,7 @@ lumen::context::context(void) : screen(1024, 768) {
       }
 
 			// get lower latencies
-			this->compose();
+			// this->compose();
     });
   }
 
@@ -98,11 +98,7 @@ wallpaper->pixels()[i] = 0x333333;
   compose_timer = ck::timer::make_interval(COMPOSE_INTERVAL, [this] { this->compose(); });
   invalidate(screen.bounds());
 
-
-  // spawn("fluidsim");
   spawn("term");
-
-  // spawn("term");
 }
 
 
@@ -612,6 +608,13 @@ void lumen::context::compose(void) {
   gfx::scribe scribe(b);
 
 
+#if 0
+	printf("compose %d rects\n", dirty_regions.size());
+	for (auto &r : dirty_regions.rects()) {
+		printf(" - %3d, %3d, %3d, %3d\n", r.x, r.y, r.w, r.h);
+	}
+#endif
+
   bool draw_mouse = screen.mouse_moved;
   // clear that information
   if (draw_mouse) screen.mouse_moved = false;
@@ -680,6 +683,8 @@ void lumen::context::compose(void) {
   } else {
     screen.flush_fb();
   }
+
+	dirty_regions.clear();
 
   // and now, go through all windows and notify them they have been composed :)
   for (auto win : windows) {
