@@ -62,6 +62,34 @@ int tty::ioctl(unsigned int cmd, off_t arg) {
     return TIOCSPGRP;
   }
 
+  if (cmd == TIOISATTY) return TIOISATTY_RET;
+
+
+  if (cmd == TCSETSW) {
+    // TODO: drain
+    cmd = TCSETS;
+  }
+
+  if (cmd == TCSETSF) {
+    // TODO: flush
+    cmd = TCSETS;
+  }
+
+  if (cmd == TCSETS) {
+    struct termios *t = (struct termios *)arg;
+
+    if (!VALIDATE_RD(t, sizeof(*t))) return -EINVAL;
+    this->tios = *t;
+    return 0;
+  }
+
+  if (cmd == TCGETS) {
+    struct termios *t = (struct termios *)arg;
+    if (!VALIDATE_WR(t, sizeof(*t))) return -EINVAL;
+    *t = this->tios;
+    return 0;
+  }
+
   return -EINVAL;
 }
 

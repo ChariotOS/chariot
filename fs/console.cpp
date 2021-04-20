@@ -67,12 +67,14 @@ static bool handle_special_input(char c) {
 #define MON_ENTRY_SIZE (sizeof(MONITOR_ENTRY) - 1)
 
 void console::feed(size_t sz, char* buf) {
+	/*
   if (sz == MON_ENTRY_SIZE) {
     if (memcmp(MONITOR_ENTRY, buf, sz) == 0) {
       printk("monitor entry!\n");
       return;
     }
   }
+	*/
 
   // lock the input
   cons_input_lock.lock();

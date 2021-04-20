@@ -466,3 +466,55 @@ int rename(const char *old_filename, const char *new_filename) {
 int fscanf(FILE *stream, const char *format, ...) {
   return -1;
 }
+
+
+
+
+ssize_t getdelim(char **lineptr, size_t *n, int delim, FILE *stream) {
+  if (!lineptr || !n) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (*lineptr == NULL || *n == 0) {
+    *n = BUFSIZ;
+    if ((*lineptr = (char *)(malloc(*n))) == NULL) {
+      return -1;
+    }
+  }
+
+  char *ptr;
+  char *eptr;
+  for (ptr = *lineptr, eptr = *lineptr + *n;;) {
+    int c = fgetc(stream);
+    if (c == -1) {
+      if (feof(stream)) {
+        *ptr = '\0';
+        return ptr == *lineptr ? -1 : ptr - *lineptr;
+      } else {
+        return -1;
+      }
+    }
+    *ptr++ = c;
+    if (c == delim) {
+      *ptr = '\0';
+      return ptr - *lineptr;
+    }
+    if (ptr + 2 >= eptr) {
+      char *nbuf;
+      size_t nbuf_sz = *n * 2;
+      ssize_t d = ptr - *lineptr;
+      if ((nbuf = (char *)(realloc(*lineptr, nbuf_sz))) == NULL) {
+        return -1;
+      }
+      *lineptr = nbuf;
+      *n = nbuf_sz;
+      eptr = nbuf + nbuf_sz;
+      ptr = nbuf + d;
+    }
+  }
+}
+
+ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
+  return getdelim(lineptr, n, '\n', stream);
+}

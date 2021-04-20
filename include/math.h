@@ -99,6 +99,8 @@ int isinf(double d);
 int isnan(double d);
 
 
+#define isfinite(d) (!isinf((d)))
+
 int abs(int);
 
 

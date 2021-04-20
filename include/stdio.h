@@ -35,9 +35,14 @@ extern "C" {
 #define TMP_MAX 10000
 #define L_tmpnam 20
 
+#define STDIN_FILENO 0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+
 #define __NEED_FILE
 #define __NEED___isoc_va_list
 #define __NEED_size_t
+#define __NEED_ssize_t
 #define __NEED_ptrdiff_t
 #define __NEED_off_t
 
@@ -115,8 +120,14 @@ int rename(const char *old_filename, const char *new_filename);
 
 
 
+ssize_t getdelim(char **lineptr, size_t *n, int delimiter, FILE *stream);
+ssize_t getline(char **lineptr, size_t *n, FILE *stream);
+
+
 // STUB
 FILE *tmpfile(void);
+
+
 
 #ifdef __cplusplus
 }

@@ -93,7 +93,7 @@ int serial_worker(void *) {
       if (c < 0) break;
 
       // serial only sends \r for some reason
-      if (c == '\r') c = '\n';
+      // if (c == '\r') c = '\n';
 
       if (nread > 32) {
         console::feed(nread, buf);

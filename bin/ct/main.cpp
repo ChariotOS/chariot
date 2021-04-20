@@ -12,7 +12,7 @@
 #include <ui/color.h>
 #include <ui/icon.h>
 #include <ui/label.h>
-
+#include <js/js.h>
 
 static auto make_label(const char* s, unsigned int fg = 0x000000, unsigned int bg = 0xFFFFFF) {
   auto lbl = new ui::label(s, ui::TextAlign::Center);
@@ -259,19 +259,76 @@ class game_view final : public ui::view {
 };
 
 
+
+static js_ret_t native_print(js_context* ctx) {
+  js_push_string(ctx, " ");
+  js_insert(ctx, 0);
+  js_join(ctx, js_get_top(ctx) - 1);
+  printf("%s\n", js_to_string(ctx, -1));
+  return 0;
+}
+
+static void eval_string(js_context* ctx, const char* expr) {
+  // printf("=== eval: '%s' ===\n", expr);
+  js_push_string(ctx, expr);
+  int rc = js_peval(ctx);
+  if (rc != 0) {
+    js_safe_to_stacktrace(ctx, -1);
+  } else {
+    js_safe_to_string(ctx, -1);
+  }
+  const char* res = js_get_string(ctx, -1);
+  printf("\e[32m%s\e[0m\n", res ? res : "null");
+  js_pop(ctx);
+}
+
+
+ck::string read_line(int fd, const char *prompt) {
+	printf("%s", prompt);
+	fflush(stdout);
+	char *buf = (char*)malloc(4096);
+	memset(buf, 0, 4096);
+	fgets(buf, 4096, stdin);
+	buf[strlen(buf) - 1] = '\0';
+	ck::string s = (const char *)buf;
+	free(buf);
+	return s;
+}
+
 int main(int argc, char** argv) {
+  js_context* ctx = NULL;
+  int i;
+  js_int_t rc;
+
+  ctx = js_create_heap_default();
+  printf("ctx: %p\n", ctx);
+  if (ctx == NULL) {
+    printf("context is null!\n");
+    return -1;
+  }
+
+
+  js_push_c_function(ctx, native_print, JS_VARARGS);
+  js_put_global_string(ctx, "print");
+
+	eval_string(ctx, "x = 'hello'");
+	eval_string(ctx, "y = 'world'");
+	eval_string(ctx, "print(x + ' ' + y)");
+
+	while (1) {
+		ck::string s = read_line(0, ">> ");
+		eval_string(ctx, s.get());
+	}
+
+
+  js_destroy_heap(ctx);
+
+	return 0;
+
   ui::application app;
 
-
-  auto t = ck::timer::make_interval(1000 / 60, [] { printf("ya yeet\n"); });
-
   ui::window* win = app.new_window("Test", 120, 85);
-	win->defer_invalidation(false);
-  // auto& root = win->set_view<game_view>();
-
-
+  win->defer_invalidation(false);
   app.start();
-
-
   return 0;
 }

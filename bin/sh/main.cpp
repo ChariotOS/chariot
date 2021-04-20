@@ -266,7 +266,11 @@ int main(int argc, char **argv, char **envp) {
   setenv("SHELL", pwd->pw_shell, 1);
   setenv("HOME", pwd->pw_dir, 1);
 
+
+	struct termios tios;
   while (1) {
+
+		tcgetattr(0, &tios);
     syscall(SYS_getcwd, cwd, 255);
     setenv("CWD", (const char *)cwd, 1);
 
@@ -286,6 +290,7 @@ int main(int argc, char **argv, char **envp) {
 
     // ck::hexdump((void *)line.get(), line.len());
     run_line(line);
+		tcsetattr(0, TCSANOW, &tios);
     reset_pgid();
   }
 

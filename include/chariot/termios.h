@@ -177,6 +177,9 @@ struct termios {
 #define TIOCGSOFTCAR 0x4014
 #define TIOCSSOFTCAR 0x4015
 
+#define TIOISATTY 0x40FF
+// idk, this is just me being lazy :^)
+#define TIOISATTY_RET 0xFFA3 
 #ifdef __cplusplus
 }
 #endif

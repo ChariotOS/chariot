@@ -28,7 +28,7 @@ case $ARCH in
 		# QEMU_FLAGS+="-soundhw pcspk "
 		QEMU_FLAGS+="-device AC97 "
 		# QEMU_FLAGS+="-netdev user,id=u1  -device e1000,netdev=u1 "
-		# QEMU_FLAGS+="-rtc base=localtime "
+		QEMU_FLAGS+="-rtc base=localtime "
 		;;
 
 	RISC-V)

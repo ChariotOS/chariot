@@ -50,10 +50,13 @@ clock_t clock(void);
 int clock_gettime(int id, struct timespec* s);
 
 
+time_t mktime(struct tm*);
 struct tm* gmtime(const time_t* t);
 struct tm* gmtime_r(const time_t* timep, struct tm* result);
 
 size_t strftime(char* s, size_t max, const char* format, const struct tm*);
+double difftime(time_t a, time_t b);
+
 
 #ifdef __cplusplus
 }

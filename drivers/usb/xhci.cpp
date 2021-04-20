@@ -50,7 +50,6 @@ struct xhci_op_regs {
 static vec<unique_ptr<xhci>> xhci_devices;
 
 void xhci_init(void) {
-  printk("xhci init!\n");
   pci::walk_devices([&](pci::device *dev) {
     // check if the device is an e1000 device
 

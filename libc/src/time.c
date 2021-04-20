@@ -162,6 +162,24 @@ static time_t tm_to_time(struct tm *tm, long timezone_adjust_seconds) {
 }
 
 
+double difftime(time_t t1, time_t t0) {
+  return (double)(t1 - t0);
+}
+
+time_t mktime(struct tm *tm) {
+  return tm_to_time(tm, 0);
+}
+
+struct tm *gmtime_r(const time_t *t, struct tm *tm) {
+  if (!t) return NULL;
+  time_to_tm(tm, *t);
+  return tm;
+}
+
+struct tm *gmtime(const time_t *t) {
+  static struct tm tm_buf;
+  return gmtime_r(t, &tm_buf);
+}
 
 size_t strftime(char *destination, size_t max_size, const char *format, const struct tm *tm) {
   const char wday_short_names[7][4] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};

@@ -155,6 +155,10 @@ namespace gfx {
     void center_vertically_within(const rect &other) {
       y = other.center_y() - h / 2;
     }
+
+    bool is_impossible() {
+      return w < 0 || h < 0;
+    }
   };
 
 

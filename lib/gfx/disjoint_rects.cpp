@@ -28,11 +28,17 @@ namespace gfx {
           if (!r1.intersects(r2)) continue;
           pass_had_intersections = true;
           auto pieces = r1.shatter(r2);
-          for (auto& piece : pieces)
-            output.push(piece);
+          for (auto& piece : pieces) {
+            if (!piece.is_impossible()) {
+              output.push(piece);
+            }
+          }
           m_rects.remove(i);
-          for (; i < m_rects.size(); ++i)
-            output.push(m_rects[i]);
+          for (; i < m_rects.size(); ++i) {
+            if (!m_rects[i].is_impossible()) {
+              output.push(m_rects[i]);
+            }
+          }
           goto next_pass;
         }
         output.push(r1);

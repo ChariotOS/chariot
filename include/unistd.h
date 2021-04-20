@@ -99,6 +99,9 @@ int execve(const char *path, const char *argv[], const char *envp[]);
 int execvp(const char *file, const char *argv[]);
 int execvpe(const char *file, const char *argv[], const char *envp[]);
 
+
+int isatty(int fd);
+
 #ifdef __cplusplus
 }
 #endif

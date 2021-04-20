@@ -7,11 +7,107 @@
 
 
 #define N 128
-#define SCALE 2
+#define SCALE 3
 
 #define TICKS 60
 
 #define IX(x, y) ((x) + ((y)*N))
+
+typedef struct RgbColor {
+  unsigned char r;
+  unsigned char g;
+  unsigned char b;
+} RgbColor;
+
+typedef struct HsvColor {
+  unsigned char h;
+  unsigned char s;
+  unsigned char v;
+} HsvColor;
+
+RgbColor HsvToRgb(HsvColor hsv) {
+  RgbColor rgb;
+  unsigned char region, remainder, p, q, t;
+
+  if (hsv.s == 0) {
+    rgb.r = hsv.v;
+    rgb.g = hsv.v;
+    rgb.b = hsv.v;
+    return rgb;
+  }
+
+  region = hsv.h / 43;
+  remainder = (hsv.h - (region * 43)) * 6;
+
+  p = (hsv.v * (255 - hsv.s)) >> 8;
+  q = (hsv.v * (255 - ((hsv.s * remainder) >> 8))) >> 8;
+  t = (hsv.v * (255 - ((hsv.s * (255 - remainder)) >> 8))) >> 8;
+
+  switch (region) {
+    case 0:
+      rgb.r = hsv.v;
+      rgb.g = t;
+      rgb.b = p;
+      break;
+    case 1:
+      rgb.r = q;
+      rgb.g = hsv.v;
+      rgb.b = p;
+      break;
+    case 2:
+      rgb.r = p;
+      rgb.g = hsv.v;
+      rgb.b = t;
+      break;
+    case 3:
+      rgb.r = p;
+      rgb.g = q;
+      rgb.b = hsv.v;
+      break;
+    case 4:
+      rgb.r = t;
+      rgb.g = p;
+      rgb.b = hsv.v;
+      break;
+    default:
+      rgb.r = hsv.v;
+      rgb.g = p;
+      rgb.b = q;
+      break;
+  }
+
+  return rgb;
+}
+
+HsvColor RgbToHsv(RgbColor rgb) {
+  HsvColor hsv;
+  unsigned char rgbMin, rgbMax;
+
+  rgbMin = rgb.r < rgb.g ? (rgb.r < rgb.b ? rgb.r : rgb.b) : (rgb.g < rgb.b ? rgb.g : rgb.b);
+  rgbMax = rgb.r > rgb.g ? (rgb.r > rgb.b ? rgb.r : rgb.b) : (rgb.g > rgb.b ? rgb.g : rgb.b);
+
+  hsv.v = rgbMax;
+  if (hsv.v == 0) {
+    hsv.h = 0;
+    hsv.s = 0;
+    return hsv;
+  }
+
+  hsv.s = 255 * long(rgbMax - rgbMin) / hsv.v;
+  if (hsv.s == 0) {
+    hsv.h = 0;
+    return hsv;
+  }
+
+  if (rgbMax == rgb.r)
+    hsv.h = 0 + 43 * (rgb.g - rgb.b) / (rgbMax - rgbMin);
+  else if (rgbMax == rgb.g)
+    hsv.h = 85 + 43 * (rgb.b - rgb.r) / (rgbMax - rgbMin);
+  else
+    hsv.h = 171 + 43 * (rgb.r - rgb.g) / (rgbMax - rgbMin);
+
+  return hsv;
+}
 
 class fluidsim : public ui::view {
   ck::ref<ck::timer> tick_timer;
@@ -31,16 +127,23 @@ class fluidsim : public ui::view {
 
   float T = 0;
 
+
+  ck::ref<gfx::font> m_font;
+  // mouse x and y
+  int mx = 0, my = 0;
+
  public:
   fluidsim(float dt, float diffusion, float viscocity) : dt(dt), diff(diffusion), visc(viscocity) {
     set_flex_grow(1);
+    m_font = gfx::font::get_default();
     tick_timer = ck::timer::make_interval(1000 / TICKS, [this] {
+#if 1
       float dx = cos(T) * 10;
       float dy = sin(T) * 10;
       T += 0.1;
       add_velocity(N / 2, N / 2, dx, dy);
       add_density(N / 2, N / 2, 10);
-
+#endif
       this->step();
       repaint();
     });
@@ -193,20 +296,22 @@ class fluidsim : public ui::view {
     auto scribe = get_scribe();
     bool is_running = tick_timer->running();
 
+    scribe.clear(0x000000);
     // draw all the cells
+#if 0
     for (int y = 0; y < N; y++) {
       for (int x = 0; x < N; x++) {
-        // int color = is_running ? 0xFFFFFF : 0x777777;
-        int color = 0x000000;
         float d = density[IX(x, y)];
-        if (d < 0) d = 0;
-        if (d >= 1) d = 1;
-        int gray = (255 * d);
-        if (gray > 255) gray = 0xFF;
-        color |= gray;
-        color |= gray << 8;
-        color |= gray << 16;
 
+        int h = d * 255;
+        h %= 255;
+
+        HsvColor hsv;
+        hsv.h = h;
+        hsv.v = 0xFF;
+        hsv.s = 0xFF;
+        auto c = HsvToRgb(hsv);
+        uint32_t color = (c.r << 16) | (c.g << 8) | (c.b);
         for (int ox = 0; ox < SCALE; ox++) {
           for (int oy = 0; oy < SCALE; oy++) {
             scribe.draw_pixel(x * SCALE + ox, y * SCALE + oy, color);
@@ -214,16 +319,58 @@ class fluidsim : public ui::view {
         }
       }
     }
+#endif
+
+    // draw vector lines
+    for (int y = 0; y < N; y++) {
+      for (int x = 0; x < N; x++) {
+        float vx = Vx[IX(x, y)] * 10.0;
+        float vy = Vy[IX(x, y)] * 10.0;
+
+        gfx::point root(x * SCALE + SCALE / 2, y * SCALE + SCALE / 2);
+
+
+        float d = sqrt(vx * vx + vy * vy);  // density[IX(x, y)];
+
+        int h = d * 255;
+        h %= 255;
+
+        HsvColor hsv;
+        hsv.h = h;
+        hsv.v = 0xFF;
+        hsv.s = 0xFF;
+        auto c = HsvToRgb(hsv);
+        uint32_t color = (c.r << 16) | (c.g << 8) | (c.b);
+
+        scribe.draw_line_antialias(root, root.translated(vx * SCALE, vy * SCALE), color);
+      }
+    }
+
+    if (mx >= 0 && mx < N) {
+      if (my >= 0 && my < N) {
+        m_font->with_line_height(12, [&]() {
+          float d = density[IX(mx, my)];
+
+          float vx = Vx[IX(mx, my)];
+          float vy = Vy[IX(mx, my)];
+          char buf[64];
+          snprintf(buf, sizeof(buf), "%3d,%3d: d:%g, v:%g,%g", mx, my, d, vx, vy);
+          scribe.draw_text(*m_font, gfx::rect(0, 0, width(), 12), buf, ui::TextAlign::CenterLeft,
+                           0xFFFFFF, true);
+        });
+      }
+    }
   }
 
 
-  int set_to = 1;
   virtual void mouse_event(ui::mouse_event& ev) override {
     auto p = ev.pos();
+    mx = p.x() / SCALE;
+    my = p.y() / SCALE;
     if (within_self(p)) {
       if (ev.left) {
         auto pos = ev.pos();
-        add_density(pos.x() / SCALE, pos.y() / SCALE, 1);
+        add_density(pos.x() / SCALE, pos.y() / SCALE, 10);
         add_velocity(pos.x() / SCALE, pos.y() / SCALE, ev.dx, ev.dy);
       }
 
@@ -245,10 +392,9 @@ int main() {
   ui::application app;
 
   ui::window* win = app.new_window("Fluid Simulation", N * SCALE, N * SCALE);
-  // win->defer_invalidation(false);
-  // win->compositor_sync(false);
-
-  win->set_view<fluidsim>(0.2, 0, 0.00000001);
+  win->compositor_sync(true);
+  win->set_theme(0x000000, 0xFFFFFF, 0x000000);
+  win->set_view<fluidsim>(0.2, 0, 0.0000000001);
 
   // start the application!
   app.start();

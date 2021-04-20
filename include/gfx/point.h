@@ -26,6 +26,10 @@ namespace gfx {
         set_y(rect.bottom());
     }
 
+		inline point_impl<T> translated(T dx, T dy) {
+			return point_impl<T>(m_x + dx, m_y + dy);
+		}
+
     inline int x(void) const {
       return m_x;
     }

@@ -3,7 +3,8 @@
 #include <sys/syscall.h>
 #include <sys/sysbind.h>
 #include <unistd.h>
-
+#include <termios.h>
+#include <sys/ioctl.h>
 
 pid_t fork(void) {
   return sysbind_fork();
@@ -145,4 +146,10 @@ int fsync(int fd) {
 char *getcwd(char *buf, size_t sz) {
   if (sysbind_getcwd(buf, sz) < 0) return NULL;
   return buf;
+}
+
+
+
+int isatty(int fd) {
+  return ioctl(fd, TIOISATTY) == TIOISATTY_RET;
 }
