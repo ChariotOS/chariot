@@ -15,7 +15,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   if (path == NULL) return -EINVAL;
   if (uargv == NULL) return -EINVAL;
 
-	/* Validate the arguments (top level) */
+  /* Validate the arguments (top level) */
   if (!curproc->mm->validate_string(path)) return -EINVAL;
   if (!curproc->mm->validate_null_terminated(uargv)) return -EINVAL;
   if (!curproc->mm->validate_null_terminated(uenvp)) return -EINVAL;
@@ -24,14 +24,14 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   vec<string> envp;
 
   for (int i = 0; uargv[i] != NULL; i++) {
-		/* Validate the string :^) */
+    /* Validate the string :^) */
     if (!curproc->mm->validate_string(uargv[i])) return -EINVAL;
     argv.push(uargv[i]);
   }
 
   if (uenvp != NULL) {
     for (int i = 0; uenvp[i] != NULL; i++) {
-			/* Validate the string :^) */
+      /* Validate the string :^) */
       if (!curproc->mm->validate_string(uenvp[i])) return -EINVAL;
       envp.push(uenvp[i]);
     }
@@ -49,12 +49,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   auto fd = make_ref<fs::file>(exe, FDIR_READ);
   mm::space *new_addr_space = nullptr;
 
-  // allocate a new address space
-#ifdef CONFIG_64BIT
-  new_addr_space = new mm::space(0x1000, 0x7ff000000000, mm::pagetable::create());
-#else
-  panic("need new mm::space on 32bit system!\n");
-#endif
+  new_addr_space = alloc_user_vm();
 
   int loaded = elf::load(path, *curproc, *new_addr_space, fd, entry);
   if (loaded < 0) {
@@ -81,7 +76,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
     }
   }
 
-	curproc->name = path;
+  curproc->name = path;
   curproc->args = argv;
   curproc->env = envp;
   new_addr_space->switch_to();
