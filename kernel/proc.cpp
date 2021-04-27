@@ -39,6 +39,8 @@ mm::space *alloc_user_vm(void) {
 #ifdef CONFIG_SV39
   top = 0x3ff0000000;
 #endif
+
+	top -= rand() & 0xFFFFF000;
   return new mm::space(0x1000, top, mm::pagetable::create());
 }
 
