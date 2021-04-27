@@ -242,20 +242,9 @@ static void gpf_handler(int i, reg_t *regs) {
   // TODO: die
   KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", curthd->pid, curthd->tid, tf->rip, tf->err);
 
-	panic("GPF\n");
-  dump_trapframe(regs);
 
-  if (curproc) {
-    /*
-KERR("Address Space Dump:\n");
-curproc->mm->dump();
-printk("backtrace:\n");
-    */
-  }
 
-  sys::exit_proc(-1);
-
-  sched::exit();
+  curthd->send_signal(SIGSEGV);
 }
 
 static void illegal_instruction_handler(int i, reg_t *regs) {
@@ -345,7 +334,7 @@ static void pgfault_handle(int i, reg_t *regs) {
       printk("\n");
 
 
-      panic("DEAD!\n");
+      // panic("DEAD!\n");
 
       // dump_trapframe(regs);
       // KERR("Address Space Dump:\n");
