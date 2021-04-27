@@ -1,5 +1,7 @@
 #include <ui/application.h>
 // #include "terminalview.h"
+#include <unistd.h>
+#include <fcntl.h>
 #include <ck/dir.h>
 #include <ck/timer.h>
 #include <gfx/color.h>
@@ -79,9 +81,6 @@ struct terminalview : public ui::view {
 
     set_foreground(TERMINAL_FG);
     set_background(TERMINAL_BG);
-
-    emoji = gfx::load_png(
-        "/sys/fonts/Emoji/emoji_u1f4a9.png");  // ->scale(14, 14, gfx::bitmap::SampleMode::Nearest);
   }
 
 
@@ -131,18 +130,22 @@ struct terminalview : public ui::view {
 
 
 
+	virtual void on_keydown(ui::keydown_event &ev) override {
+		printf("keypress %02x '%c'\n", ev.code, ev.c);
+	}
+
   virtual void paint_event(void) override {
     handle_resize();
     auto s = get_scribe();
 
-    // s.blit_alpha(gfx::point(mouse_x, mouse_y), *emoji, emoji->rect());
-
+		/*
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
         uint32_t c = 'A' + (rand() % ('z' - 'A'));
         draw_char(s, c, x, y, get_foreground(), clicked ? 0x00FF00 : get_background());
       }
     }
+		*/
 
 
     s.draw_line_antialias(gfx::point(mouse_x, mouse_y), gfx::point(width() / 2, height() / 2),
@@ -158,7 +161,7 @@ int main() {
 
   ui::window *win = app.new_window("Terminal", 256, 256);
   win->defer_invalidation(false);
-  win->compositor_sync(true);
+  win->compositor_sync(false);
 
 
   win->set_theme(TERMINAL_BG, TERMINAL_FG, TERMINAL_BORDER);
@@ -166,7 +169,6 @@ int main() {
 
   win->resize(80 * v.cw, 24 * v.ch);
   v.handle_resize();
-
 
   /*
   double x = 0;
@@ -185,15 +187,9 @@ int main() {
   app.start();
   return 0;
 
-#if 0
-  const char *cmd[] = {"/bin/echo", "hello, world", NULL};
-  int ret = sysbind_execve(cmd[0], cmd, environ);
-  perror("exec");
-  exit(ret);
-
+#if 1
   int ptmxfd = open("/dev/ptmx", O_RDWR | O_CLOEXEC);
 
-  ck::eventloop ev;
   int pid = sysbind_fork();
   if (pid == 0) {
     ck::file pts;
@@ -206,12 +202,11 @@ int main() {
       ck::hexdump(data, n);
     }
 
-    ev.start();
   } else {
     ck::file ptmx(ptmxfd);
 
     // send input
-    ck::in.on_read(fn() {
+    ck::in.on_read([&]() {
       int c = getchar();
       if (c == EOF) return;
       ptmx.write(&c, 1);
@@ -219,7 +214,7 @@ int main() {
 
 
     // echo
-    ptmx.on_read(fn() {
+    ptmx.on_read([&]() {
       char buf[512];
       auto n = ptmx.read(buf, 512);
       if (n < 0) {
@@ -229,7 +224,6 @@ int main() {
       ck::out.write(buf, n);
     });
 
-    ev.start();
   }
 #endif
   return 0;

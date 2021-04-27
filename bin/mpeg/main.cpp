@@ -18,7 +18,7 @@ struct mpegview : public ui::view {
   double last_time = 0;
 
   ck::ref<gfx::bitmap> backing_bitmap = nullptr;
-  static constexpr int FPS = 5;
+  static constexpr int FPS = 24;
 
  public:
   mpegview(const char *file) {
@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
 
   ui::window *win = app.new_window("MPEG Viewer", 640, 360);
   auto &v = win->set_view<mpegview>("/usr/res/misc/bunny.mpg");
-  win->defer_invalidation(false);
+  // win->defer_invalidation(false);
 
 
   app.start();

@@ -16,15 +16,15 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_CROSS_COMPILING TRUE)
 
 foreach(lang ASM C CXX OBJC OBJCXX)
-    unset(CMAKE_${lang}_OSX_COMPATIBILITY_VERSION_FLAG)
-    unset(CMAKE_${lang}_OSX_CURRENT_VERSION_FLAG)
-    unset(CMAKE_${lang}_LINK_FLAGS)
-    unset(CMAKE_SHARED_LIBRARY_CREATE_${lang}_FLAGS)
-    unset(CMAKE_SHARED_MODULE_CREATE_${lang}_FLAGS)
-    unset(CMAKE_SHARED_MODULE_LOADER_${lang}_FLAG )
-    unset(CMAKE_${lang}_OSX_DEPLOYMENT_TARGET_FLAG)
-    unset(CMAKE_${lang}_SYSROOT_FLAG)
-    unset(CMAKE_SHARED_LIBRARY_SONAME_${lang}_FLAG)
+	# unset(CMAKE_${lang}_OSX_COMPATIBILITY_VERSION_FLAG)
+	#unset(CMAKE_${lang}_OSX_CURRENT_VERSION_FLAG)
+	# unset(CMAKE_${lang}_LINK_FLAGS)
+ 	# unset(CMAKE_SHARED_LIBRARY_CREATE_${lang}_FLAGS)
+ 	# unset(CMAKE_SHARED_MODULE_CREATE_${lang}_FLAGS)
+ 	# unset(CMAKE_SHARED_MODULE_LOADER_${lang}_FLAG )
+ 	# unset(CMAKE_${lang}_OSX_DEPLOYMENT_TARGET_FLAG)
+ 	# unset(CMAKE_${lang}_SYSROOT_FLAG)
+ 	# unset(CMAKE_SHARED_LIBRARY_SONAME_${lang}_FLAG)
 endforeach()
 
 
@@ -128,7 +128,7 @@ set(LIBRARY_OUTPUT_PATH "${CHARIOT_SYSROOT}/lib" CACHE PATH "Build directory" FO
 
 # warnings, etc.
 
-set(CMAKE_C_FLAGS "-ffreestanding -fdiagnostics-color=always ")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -fdiagnostics-color=always ")
 if(CONFIG_DEBUG_SYMBOLS)
 	# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 endif()
@@ -170,6 +170,7 @@ function(chariot_lib target_name fs_name)
 		endforeach(src)
 
 endfunction()
+
 
 
 function(chariot_bin target_name)
