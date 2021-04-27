@@ -1,3 +1,4 @@
+#define _CHARIOT_SRC
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +11,42 @@
 
 int try_file(const char *);
 
+
+
+
+#define ALIGN(x, a) (((x) + (a)-1) & ~((a)-1))
+// allocation only, no free, as nearly all things in the dynamic linker is long-lived
+static void *ld_malloc(long sz) {
+  sz = ALIGN(sz, 16);
+  static long heap_remaining = 0;
+  static void *heap_top = NULL;
+
+  if (heap_remaining - sz < 0 || heap_top == NULL) {
+    // allocate 32kb (8 pages) and throw away the old heap_top
+    heap_remaining = 8 * 4096;
+    heap_top = mmap(NULL, heap_remaining, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+  }
+
+  void *ptr = heap_top;
+  heap_top = (void *)((char *)heap_top + sz);
+  heap_remaining -= sz;
+
+  return ptr;
+}
+
+
+
+
 int main(int argc, char **argv) {
+
+	int *x = (int*)ld_malloc(sizeof(int));
+
+	*x = 40;
+
+	printf("x: %d\n", *x);
+  try_file("/lib/libshared.so");
+
+  return 0;
   for (int i = 1; i < argc; i++) {
     try_file(argv[i]);
   }
@@ -18,30 +54,7 @@ int main(int argc, char **argv) {
 }
 
 
-void hexdump(void *vbuf, long len) {
-  unsigned char *buf = (unsigned char *)vbuf;
 
-  int w = 16;
-  for (int i = 0; i < len; i += w) {
-    unsigned char *line = buf + i;
-    printf("%p: ", (void *)(long)i);
-    for (int c = 0; c < w; c++) {
-      if (i + c >= len) {
-        printf("   ");
-      } else {
-        printf("%02x ", line[c]);
-      }
-    }
-    printf(" |");
-    for (int c = 0; c < w; c++) {
-      if (i + c >= len) {
-      } else {
-        printf("%c", (line[c] < 0x20) || (line[c] > 0x7e) ? '.' : line[c]);
-      }
-    }
-    printf("|\n");
-  }
-}
 
 int try_file(const char *path) {
   struct stat st;
@@ -89,6 +102,8 @@ int try_file(const char *path) {
   for (int i = 0; i < e->e_phnum; i++) {
     Elf64_Phdr *p = phdrs + i;
 
+		printf("type: %d\n", p->p_type);
+
 
     if (p->p_type == PT_LOAD) {
       printf("PT_LOAD\n");
@@ -97,7 +112,6 @@ int try_file(const char *path) {
 
     if (p->p_type == PT_INTERP) {
       printf("PT_INTERP\n");
-      hexdump((char *)buf + p->p_offset, p->p_filesz);
     }
 
     if (p->p_type == PT_DYNAMIC) {
@@ -124,6 +138,8 @@ int try_file(const char *path) {
         }
       }
     }
+
+    debug_hexdump((char *)buf + p->p_offset, p->p_filesz);
   }
 
 
