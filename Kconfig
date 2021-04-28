@@ -31,6 +31,12 @@ menu "Build"
 		string "Toolchain prefix"
 		depends on OVERRIDE_TOOLCHAIN
 		default "toolchain/..."
+
+
+	config GCC_VERSION
+		string "GCC Version"
+		default "11.1.0"
+
 endmenu
 
 

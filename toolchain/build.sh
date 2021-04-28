@@ -11,11 +11,16 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export PATH="/usr/local/bin:/usr/bin:/bin"
 
 
+
+source $DIR/../.config
+
+
 ROOT=$DIR/..
 SYSROOT="$ROOT/build/root/"
 
 BINUTILS_VERSION="2.33.1"
-GCC_VERSION="10.1.0"
+GCC_VERSION="$CONFIG_GCC_VERSION"
+
 
 mkdir -p $DIR/src
 mkdir -p $DIR/local
