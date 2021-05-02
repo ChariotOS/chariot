@@ -30,7 +30,7 @@ extern const char **environ;
 
 
 
-// #define LIGHT
+#define LIGHT
 
 #ifdef LIGHT
 
@@ -64,7 +64,7 @@ struct terminalview : public ui::view {
   FT_Library library; /* handle to library     */
   FT_Face face;       /* handle to face object */
 
-  int lineheight = 13;
+  int lineheight = 12;
 
   ck::ref<gfx::bitmap> emoji;
 
@@ -130,26 +130,30 @@ struct terminalview : public ui::view {
 
 
 
-	virtual void on_keydown(ui::keydown_event &ev) override {
-		printf("keypress %02x '%c'\n", ev.code, ev.c);
-	}
+  virtual void on_keydown(ui::keydown_event &ev) override {
+    printf("keypress %02x '%c'\n", ev.code, ev.c);
+  }
 
   virtual void paint_event(void) override {
     handle_resize();
     auto s = get_scribe();
 
-		/*
+    // /*
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
         uint32_t c = 'A' + (rand() % ('z' - 'A'));
         draw_char(s, c, x, y, get_foreground(), clicked ? 0x00FF00 : get_background());
       }
     }
-		*/
+    // */
 
+		static auto img = gfx::load_image("/sys/fonts/Emoji/emoji_u1f9d2.png");
 
-    s.draw_line_antialias(gfx::point(mouse_x, mouse_y), gfx::point(width() / 2, height() / 2),
-                          0xFF0000);
+		s.blit_alpha(gfx::point(mouse_x, mouse_y), *img, img->rect());
+
+    // s.draw_line_antialias(gfx::point(mouse_x, mouse_y), gfx::point(width() / 2, height() / 2),
+    // 0xFF0000);
+		//
   }
 };
 
@@ -161,7 +165,7 @@ int main() {
 
   ui::window *win = app.new_window("Terminal", 256, 256);
   win->defer_invalidation(false);
-  win->compositor_sync(false);
+  win->compositor_sync(true);
 
 
   win->set_theme(TERMINAL_BG, TERMINAL_FG, TERMINAL_BORDER);
@@ -223,7 +227,6 @@ int main() {
       }
       ck::out.write(buf, n);
     });
-
   }
 #endif
   return 0;

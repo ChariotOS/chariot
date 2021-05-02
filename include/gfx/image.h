@@ -4,6 +4,9 @@
 #include <ck/string.h>
 
 namespace gfx {
+
+	// load any image style
+	ck::ref<gfx::bitmap> load_image(ck::string path);
   // load .bmp files
   ck::ref<gfx::bitmap> load_bmp(ck::string path);
 

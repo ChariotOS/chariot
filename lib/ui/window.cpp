@@ -45,7 +45,7 @@ static constexpr uint32_t brighten(uint32_t color, float amt) {
 ui::windowframe::windowframe(void) {
   set_flex_padding(ui::edges(TITLE_HEIGHT, PADDING, PADDING, PADDING));
 
-  m_frame_font = gfx::font::get("OpenSans ExtraBold");
+  m_frame_font = gfx::font::get("OpenSans");
   m_icon_font = gfx::font::get("feather");
 
   set_foreground(0x4a4848);

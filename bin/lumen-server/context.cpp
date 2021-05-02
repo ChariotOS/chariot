@@ -60,14 +60,15 @@ lumen::context::context(void) : screen(1024, 768) {
         handle_mouse_input(pkt);
       }
 
-			// get lower latencies
-			// this->compose();
+      // get lower latencies
+      // this->compose();
     });
   }
 
   bool load_wallpaper = true;
   if (load_wallpaper) {
-    wallpaper = gfx::load_png("/usr/res/lumen/wallpaper.png");
+    wallpaper = gfx::load_image("/usr/res/lumen/wallpaper.jpg");
+    // wallpaper = gfx::load_png("/usr/res/lumen/wallpaper.png");
     if (wallpaper->width() != screen.width() || wallpaper->height() != screen.height()) {
       wallpaper =
           wallpaper->scale(screen.width(), screen.height(), gfx::bitmap::SampleMode::Nearest);
@@ -684,7 +685,7 @@ void lumen::context::compose(void) {
     screen.flush_fb();
   }
 
-	dirty_regions.clear();
+  dirty_regions.clear();
 
   // and now, go through all windows and notify them they have been composed :)
   for (auto win : windows) {
