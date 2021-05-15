@@ -12,7 +12,7 @@ int main() {
   }
 
 
-  int fd = open("/dev/ac97", O_WRONLY);
+  int fd = open("/dev/sb16", O_WRONLY);
 
   printf("%d\n", fd);
 
