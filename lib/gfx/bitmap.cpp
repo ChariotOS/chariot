@@ -49,9 +49,8 @@ static ck::string unique_ident(void) {
 
 
 gfx::bitmap::bitmap(size_t w, size_t h) : m_width(w), m_height(h) {
-  // m_pixels = (uint32_t *)mmap(NULL, size(), PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1,
-  // 0);
-  m_pixels = (uint32_t *)malloc(size());
+  m_pixels = (uint32_t *)mmap(NULL, size(), PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+  // m_pixels = (uint32_t *)malloc(size());
 }
 
 
@@ -64,9 +63,9 @@ gfx::bitmap::bitmap(size_t w, size_t h, uint32_t *buf) {
 
 gfx::bitmap::~bitmap(void) {
   if (m_pixels && m_owned) {
-    // munmap(m_pixels, size());
-    free(m_pixels);
-    m_pixels = 0;
+    munmap(m_pixels, size());
+    // free(m_pixels);
+    m_pixels = NULL;
   }
 }
 
