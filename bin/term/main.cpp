@@ -147,9 +147,8 @@ struct terminalview : public ui::view {
     }
     // */
 
-		static auto img = gfx::load_image("/sys/fonts/Emoji/emoji_u1f9d2.png");
-
-		s.blit_alpha(gfx::point(mouse_x, mouse_y), *img, img->rect());
+		// static auto img = gfx::load_image("/sys/fonts/Emoji/emoji_u1f9d2.png");
+		// s.blit_alpha(gfx::point(mouse_x, mouse_y), *img, img->rect());
 
     // s.draw_line_antialias(gfx::point(mouse_x, mouse_y), gfx::point(width() / 2, height() / 2),
     // 0xFF0000);

@@ -45,7 +45,7 @@ static constexpr uint32_t brighten(uint32_t color, float amt) {
 ui::windowframe::windowframe(void) {
   set_flex_padding(ui::edges(TITLE_HEIGHT, PADDING, PADDING, PADDING));
 
-  m_frame_font = gfx::font::get("OpenSans");
+  m_frame_font = gfx::font::get("OpenSans SemiBold");
   m_icon_font = gfx::font::get("feather");
 
   set_foreground(0x4a4848);
@@ -87,7 +87,7 @@ void ui::windowframe::paint_event(void) {
 
 
 
-    if (1) {
+    if (0) {
       int lh = 18;
       m_icon_font->with_line_height(lh, [&]() {
         int x = 5;
