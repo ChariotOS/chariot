@@ -2,6 +2,8 @@
 
 #include <chariot.h>
 #include <ck/func.h>
+#include <stdint.h>
+#include <assert.h>
 
 namespace ck {
 #define ALWAYS_INLINE [[gnu::always_inline]] inline
@@ -104,7 +106,7 @@ namespace ck {
       return released_value;
     }
 
-    ALWAYS_INLINE T unwrap_or(const T& fallback) const {
+    ALWAYS_INLINE T& unwrap_or(const T& fallback) const {
       if (m_has_value) return unwrap();
       return fallback;
     }
@@ -115,9 +117,12 @@ namespace ck {
       // ASSERT(m_has_value);
       return *reinterpret_cast<const T*>(&m_storage);
     }
-    unsigned char m_storage[sizeof(T)]{0};
+    uint8_t m_storage[sizeof(T)]{0};
     bool m_has_value = false;
   };
+
+
+
 
 #define Some(val) ck::option<decltype(val)>(val)
 #define None \
