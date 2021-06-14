@@ -1,16 +1,20 @@
 #pragma once
 
 #include <ck/func.h>
+#include <gfx/direction.h>
 #include <ck/intrusive_list.h>
 #include <ck/macros.h>
 #include <ck/object.h>
 #include <ck/option.h>
 #include <gfx/font.h>
+#include <gfx/geom.h>
 #include <gfx/rect.h>
 #include <gfx/scribe.h>
 #include <math.h>
 #include <ui/event.h>
 #include <ui/surface.h>
+#include <ui/layout.h>
+#include <ui/edges.h>
 
 // #include <ui/internal/flex.h>
 
@@ -23,54 +27,6 @@ namespace ui {
 
   // fwd decl
   class window;
-
-
-  enum class Direction : uint8_t { Vertical, Horizontal };
-
-
-
-
-  // used for things like paddings or margins
-  template <typename T>
-  struct base_edges {
-    T left = 0, right = 0, top = 0, bottom = 0;
-
-
-    inline base_edges() {
-    }
-    inline base_edges(T v) {
-      left = right = top = bottom = v;
-    }
-    inline base_edges(T tb, T lr) {
-      top = bottom = tb;
-      left = right = lr;
-    }
-
-
-    inline base_edges(T t, T r, T b, T l) {
-      top = t;
-      right = r;
-      bottom = b;
-      left = l;
-    }
-
-    inline T total_for(ui::Direction dir) {
-      if (dir == ui::Direction::Horizontal) return left + right;
-      if (dir == ui::Direction::Vertical) return top + bottom;
-      return 0;
-    }
-
-
-    inline T base_for(ui::Direction dir) {
-      if (dir == ui::Direction::Horizontal) return left;
-      if (dir == ui::Direction::Vertical) return top;
-      return 0;
-    }
-  };
-
-  using edges = ui::base_edges<float>;
-
-
 
   enum FlexAlign { Auto = 0, Stretch, Center, Start, End, SpaceBetween, SpaceAround, SpaceEvenly };
   enum FlexPosition { Relative = 0, Absolute };
@@ -136,25 +92,23 @@ namespace ui {
    */
 
 
-#define VIEW_RENDER_ATTRIBUTE(type, name, val)        \
- protected:                                           \
-  ck::option<type> name = {};                         \
-                                                      \
- public:                                              \
-  inline type get_##name(void) {                      \
-    if (this->name) {                                 \
-      return this->name.unwrap();                     \
-    }                                                 \
-    if (parent() != NULL) {                           \
-      return parent()->get_##name();                  \
-    }                                                 \
-    return val;                                       \
-  }                                                   \
-                                                      \
- public:                                              \
-  inline void set_##name(const ck::option<type> &v) { \
-    this->name = v;                                   \
-  }
+#define VIEW_RENDER_ATTRIBUTE(type, name, val) \
+ protected:                                    \
+  ck::option<type> name = {};                  \
+                                               \
+ public:                                       \
+  inline type get_##name(void) {               \
+    if (this->name) {                          \
+      return this->name.unwrap();              \
+    }                                          \
+    if (parent() != NULL) {                    \
+      return parent()->get_##name();           \
+    }                                          \
+    return val;                                \
+  }                                            \
+                                               \
+ public:                                       \
+  inline void set_##name(const ck::option<type> &v) { this->name = v; }
 
 
 
@@ -177,26 +131,19 @@ namespace ui {
 
     // default handlers
     // core mouse events
-    inline virtual void mouse_event(ui::mouse_event &) {
-    }
-    inline virtual void paint_event(void) {
-    }
-    inline virtual void on_keydown(ui::keydown_event &) {
-    }
-    inline virtual void on_keyup(ui::keyup_event &) {
-    }
-    inline virtual void on_focused(void) {
-    }
-    inline virtual void on_blur(void) {
-    }
-    inline virtual void mounted(void) {
-    }
+    virtual void mouse_event(ui::mouse_event &) {}
+    virtual void paint_event(gfx::scribe &) {}
+    virtual void on_keydown(ui::keydown_event &) {}
+    virtual void on_keyup(ui::keyup_event &) {}
+    virtual void on_focused(void) {}
+    virtual void on_blur(void) {}
+    virtual void mounted(void) {}
+    virtual void custom_layout(void) {}
 
 
-    inline virtual void flex_self_sizing(float &width, float &height) {
-    }
+    inline virtual void flex_self_sizing(float &width, float &height) {}
 
-    // make this widget the focused one
+    // make this view the focused one
     void set_focused(void);
 
     // distribute a mouse event to children or the parent if it's better suited
@@ -204,20 +151,17 @@ namespace ui {
     void dispatch_mouse_event(ui::mouse_event &ev);
 
     // ask the view to repaint at the next possible time
-    void repaint(bool do_invaldiate = true);
+    void repaint(gfx::rect &relative_dirty_region);
 
 
     /*
      * called when the view has been reflowed (layout recalculated and it
-     * changed position, size, etc)
+     * changed position, size, etc). No painting is to occur here.
      */
-    virtual void reflowed(void) {
-    }
+    virtual void reflowed(void) {}
 
 
-    inline auto relative(void) {
-      return gfx::rect(left(), top(), width(), height());
-    }
+    inline auto relative(void) { return gfx::rect(left(), top(), width(), height()); }
 
     /* Is a point within the relative size */
     inline bool within_self(const gfx::point &p) {
@@ -225,33 +169,89 @@ namespace ui {
     }
 
 
-    /*
-     * Geometry relative to the parent view (or window)
-     */
-    inline int left() {
-      return m_frame[0];
-    }
-    inline int top() {
-      return m_frame[1];
-    }
-    inline int width() {
-      return m_frame[2];
-    }
-    inline int height() {
-      return m_frame[3];
+
+    inline ui::layout *layout(void) { return m_layout.get(); }
+    void set_layout(ck::ref<ui::layout>);
+
+    template <class T, class... Args>
+    inline T &set_layout(Args &&...args) {
+      auto l = ck::make_ref<T>(forward<Args>(args)...);
+      set_layout(l);
+      return *l;
     }
 
-    inline int right() {
-      return left() + width() - 1;
-    }
-    inline int bottom() {
-      return top() + height() - 1;
+    void run_layout(void);
+
+    gfx::isize min_size() const { return m_min_size; }
+    void set_min_size(const gfx::isize &sz) { m_min_size = sz; }
+    void set_min_size(int width, int height) { set_min_size({width, height}); }
+
+    int min_width() const { return m_min_size.width(); }
+    int min_height() const { return m_min_size.height(); }
+    void set_min_width(int width) { set_min_size(width, min_height()); }
+    void set_min_height(int height) { set_min_size(min_width(), height); }
+
+    gfx::isize max_size() const { return m_max_size; }
+    void set_max_size(const gfx::isize &sz) { m_max_size = sz; }
+    void set_max_size(int width, int height) { set_max_size({width, height}); }
+
+    int max_width() const { return m_max_size.width(); }
+    int max_height() const { return m_max_size.height(); }
+    void set_max_width(int width) { set_max_size(width, max_height()); }
+    void set_max_height(int height) { set_max_size(max_width(), height); }
+
+    void set_fixed_size(const gfx::isize &size) {
+      set_min_size(size);
+      set_max_size(size);
     }
 
-    /*
-     * Return the window for this view
-     */
-    inline ui::surface *surface() {
+    void set_width(int w) { m_relative_rect.w = w; }
+    void set_height(int h) { m_relative_rect.h = h; }
+
+
+    void set_fixed_size(int width, int height) { set_fixed_size({width, height}); }
+
+    void set_fixed_width(int width) {
+      set_min_width(width);
+      set_max_width(width);
+    }
+
+    void set_fixed_height(int height) {
+      set_min_height(height);
+      set_max_height(height);
+    }
+
+    void set_shrink_to_fit(bool b) {
+      if (m_shrink_to_fit == b) return;
+      m_shrink_to_fit = b;
+      surface()->reflow();
+    }
+    bool is_shrink_to_fit() const { return m_shrink_to_fit; }
+
+    // relative positions within the parent
+    inline int left() const { return m_relative_rect.x; }
+    inline int top() const { return m_relative_rect.y; }
+    inline int width() const { return m_relative_rect.w; }
+    inline int height() const { return m_relative_rect.h; }
+    inline int right() const { return left() + width() - 1; }
+    inline int bottom() const { return top() + height() - 1; }
+    // self-sized rectangle
+    gfx::rect rect() const { return {0, 0, width(), height()}; }
+    gfx::isize size() const { return {width(), height()}; }
+    // set the location of this view within the parent view
+    void set_relative_rect(gfx::rect &r);
+    // interior padding
+    const ui::edges &padding(void) const { return m_padding; }
+    void set_padding(const ui::edges &p) { m_padding = p; }
+    void set_padding(int p) { set_padding({p, p, p, p}); }
+    void set_padding(int tb, int lr) { set_padding({lr, lr, tb, tb}); }
+    // exterior margins
+    const ui::edges &margins(void) const { return m_margins; }
+    void set_margins(const ui::edges &p) { m_margins = p; }
+    void set_margins(int p) { set_margins({p, p, p, p}); }
+    void set_margins(int tb, int lr) { set_margins({lr, lr, tb, tb}); }
+    // get the
+    inline ui::surface *surface() const {
       if (m_parent == NULL) {
         return m_surface;
       }
@@ -261,16 +261,12 @@ namespace ui {
     /*
      * Return a pointer to the view which owns this view as a child
      */
-    inline ui::view *parent() const {
-      return m_parent;
-    }
-
-
-
+    inline ui::view *parent() const { return m_parent; }
 
     // get a scribe for this view's bounding box
     gfx::scribe get_scribe(void);
-    void invalidate(void);
+    void update(void);
+
     void do_reflow(void);
 
     inline void set_border(uint32_t color, uint32_t size) {
@@ -278,15 +274,7 @@ namespace ui {
       set_bordersize(size);
     }
 
-
-    void set_size(ui::Direction dir, float sz);
-    void set_size(float w, float h);
-    // void set_pos(int x, int y);
     gfx::rect absolute_rect(void);
-    // area inside padding
-    gfx::rect padded_area(void);
-
-
 
     /**
      * Because the view tree is strict (views cannot live in multiple places,
@@ -305,19 +293,14 @@ namespace ui {
       return *v;
     }
 
-    void add(ui::view *v);
-
-
+    ui::view &add(ui::view *v);
 
     friend inline ui::view &operator<<(ui::view &lhs, ui::view *rhs) {
       lhs.add(rhs);
       return lhs;
     }
 
-
     void clear(void);
-
-
 
     template <typename Fn>
     inline void each_child(Fn cb) {
@@ -326,12 +309,7 @@ namespace ui {
       }
     }
 
-
-
-
     void mark_dirty(void);
-
-
 
     VIEW_RENDER_ATTRIBUTE(uint32_t, background, 0xFFFFFF);
     VIEW_RENDER_ATTRIBUTE(uint32_t, foreground, 0x000000);
@@ -346,14 +324,10 @@ namespace ui {
       return m_font;
     }
 
-    inline void set_font(const char *name) {
-      m_font = gfx::font::get(name);
-    }
+    inline void set_font(const char *name) { m_font = gfx::font::get(name); }
 
 
-    inline void set_font_size(float sz) {
-      m_font_size = sz;
-    }
+    inline void set_font_size(float sz) { m_font_size = sz; }
 
     inline int get_font_size(void) {
       if (isnan(m_font_size)) {
@@ -362,29 +336,6 @@ namespace ui {
       }
       return m_font_size;
     }
-
-#undef FLEX_ATTRIBUTE
-#define FLEX_ATTRIBUTE(name, type, def)      \
-  inline const type &get_flex_##name(void) { \
-    return m_##name;                         \
-  }                                          \
-  inline void set_flex_##name(type val) {    \
-    m_##name = val;                          \
-  };
-#include <ui/internal/view_flex_attribs.h>
-#undef FLEX_ATTRIBUTE
-
-
-
-
-    // ask the view to do a layout (on itself)
-    // returns if it was successful or not.
-    bool layout(void);
-    // layout with a width and height
-    void layout(float width, float height);
-    void layout_items(unsigned int child_begin, unsigned int child_end, unsigned int children_count,
-                      struct flex_layout &layout);
-    ui::FlexAlign child_align();
 
 
     bool log_layouts = false;
@@ -397,31 +348,37 @@ namespace ui {
     friend ui::window;
     friend struct flex_layout;
 
-    // bit flags
-    bool m_visible = true;
 
+
+    /* A list of the children owned by this view */
+    ck::vec<ck::unique_ptr<ui::view>> m_children;
+
+    void dump_hierarchy(int depth = 0);
+
+   private:
     /*
      * these two entries are mutually exclusive
      */
     ui::surface *m_surface = NULL;
     ui::view *m_parent = NULL;
 
-    /* A list of the children owned by this view */
-    ck::vec<ck::unique_ptr<ui::view>> m_children;
+
+    // bit flags
+    bool m_visible{true};
+    bool m_enabled{true};
+    bool m_shrink_to_fit{false};
 
 
-    /*
-     * Each view has their own flex_item, which is tied into the ui/internal/flex.c code
-     * to do flexbox calculation
-     */
-   public:
-    // struct flex_item *m_fi = NULL;
+    ck::ref<ui::layout> m_layout;
 
+    // where in the parent is this view located
+    gfx::rect m_relative_rect;
 
-#define FLEX_ATTRIBUTE(name, type, def) type m_##name = def;
-#include <ui/internal/view_flex_attribs.h>
-    float m_frame[4];
-    bool m_should_order_children = false;
+    ui::edges m_margins;
+    ui::edges m_padding;
+    // minimum and maximum size constraints on this view. -1 means none
+    gfx::isize m_min_size{-1, -1};
+    gfx::isize m_max_size{-1, -1};
   };
 
 

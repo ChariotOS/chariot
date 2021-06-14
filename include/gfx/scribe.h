@@ -31,25 +31,17 @@ namespace gfx {
 
     void write_utf8(const char *msg);
 
-    auto set_color(uint32_t c) {
-      color = c;
-    }
-    auto get_color(void) {
-      return color;
-    }
+    auto set_color(uint32_t c) { color = c; }
+    auto get_color(void) { return color; }
 
     /*
      * The font management is a little goofy, It requires that the owner
      * maintains a reference to the original font, as we don't take in a
      * ck::ref<gfx::font> here...
      */
-    void set_font(gfx::font &fnt) {
-      this->fnt = &fnt;
-    }
+    void set_font(gfx::font &fnt) { this->fnt = &fnt; }
 
-    auto get_pos() {
-      return pos;
-    }
+    auto get_pos() { return pos; }
 
 
 
@@ -89,9 +81,7 @@ namespace gfx {
     ~scribe(void);
 
     // set a pixel in the bmp. not translated
-    inline void set_pixel(int x, int y, uint32_t color) {
-      bmp.set_pixel(x, y, color);
-    }
+    inline void set_pixel(int x, int y, uint32_t color) { bmp.set_pixel(x, y, color); }
 
 
     struct state &state(void) {
@@ -164,17 +154,11 @@ draw_text(thnk, fnt, str, color, flags);
     // clear the region (clipped) with a color
     void clear(uint32_t);
 
-    inline gfx::point translation() {
-      return state().offset;
-    }
+    inline gfx::point translation() { return state().offset; }
 
 
-    inline uint32_t width() {
-      return bmp.width();
-    }
-    inline uint32_t height() {
-      return bmp.height();
-    }
+    inline uint32_t width() { return bmp.width(); }
+    inline uint32_t height() { return bmp.height(); }
 
     // draw a line between two points
     inline void draw_line(const gfx::point &p1, const gfx::point &p2, uint32_t color) {

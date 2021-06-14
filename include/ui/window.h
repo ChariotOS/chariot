@@ -29,8 +29,9 @@ namespace ui {
     static constexpr int PADDING = 0;
     windowframe(void);
     virtual ~windowframe(void);
-    virtual void paint_event(void) override;
+    virtual void paint_event(gfx::scribe &) override;
     virtual void mouse_event(ui::mouse_event &) override;
+    virtual void custom_layout(void) override;
   };
 
 
@@ -40,9 +41,7 @@ namespace ui {
    public:
     window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bitmap>);
     ~window();
-    inline const ck::string &name(void) {
-      return m_name;
-    }
+    inline const ck::string &name(void) { return m_name; }
 
     void handle_input(struct lumen::input_msg &);
 
@@ -55,13 +54,9 @@ namespace ui {
       return *(T *)v;
     }
 
-    inline void defer_invalidation(bool d) {
-      m_defer_invalidation = d;
-    }
+    inline void defer_invalidation(bool d) { m_defer_invalidation = d; }
 
-    inline void compositor_sync(bool d) {
-      m_compositor_sync = d;
-    }
+    inline void compositor_sync(bool d) { m_compositor_sync = d; }
     inline void set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
       m_frame->set_theme(bg, fg, border);
     }
@@ -69,17 +64,14 @@ namespace ui {
 
     virtual ck::tuple<int, int> resize(int width, int height);
     virtual void invalidate(const gfx::rect &r);
-    virtual inline gfx::bitmap *bmp(void) {
-      return m_bitmap.get();
-    }
+    virtual inline gfx::bitmap *bmp(void) { return m_bitmap.get(); }
     virtual ui::view *root_view(void);
 
 
-    inline int id(void) {
-      return m_id;
-    }
+    inline int id(void) { return m_id; }
 
    protected:
+    void actually_do_invalidations(void);
     virtual void did_reflow(void);
 
     ck::unique_ptr<ui::windowframe> m_frame;

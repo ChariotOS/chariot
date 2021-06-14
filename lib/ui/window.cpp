@@ -4,7 +4,7 @@
 #include <ui/event.h>
 #include <ui/icon.h>
 #include <ui/window.h>
-
+#include <gfx/disjoint_rects.h>
 
 #define min(a, b)           \
   ({                        \
@@ -43,17 +43,34 @@ static constexpr uint32_t brighten(uint32_t color, float amt) {
 
 
 ui::windowframe::windowframe(void) {
-  set_flex_padding(ui::edges(TITLE_HEIGHT, PADDING, PADDING, PADDING));
+  // set_flex_padding(ui::edges(TITLE_HEIGHT, PADDING, PADDING, PADDING));
 
   m_frame_font = gfx::font::get("OpenSans SemiBold");
-  m_icon_font = gfx::font::get("feather");
+  // m_icon_font = gfx::font::get("feather");
 
   set_foreground(0x4a4848);
   set_background(0xEFEFEF);
 }
 
 
-ui::windowframe::~windowframe(void) {
+ui::windowframe::~windowframe(void) {}
+
+
+void ui::windowframe::custom_layout(void) {
+  if (m_children.size() == 0) return;
+  assert(m_children.size() == 1);
+
+  ck::unique_ptr<ui::view> &child = m_children[0];
+  auto area = this->rect();
+  area.take_from_top(TITLE_HEIGHT);
+  child->set_relative_rect(area);
+}
+
+void ui::windowframe::set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
+  set_background(bg);
+  set_foreground(fg);
+  // set_bordercolor(border);
+  update();
 }
 
 
@@ -62,42 +79,28 @@ void ui::windowframe::mouse_event(ui::mouse_event &ev) {
     struct lumen::move_request movreq {
       .id = ((ui::window *)surface())->id(), .dx = ev.dx, .dy = ev.dy,
     };
-
     ui::application::get().send_msg(LUMEN_MSG_MOVEREQ, movreq);
   }
 }
 
-void ui::windowframe::paint_event(void) {
-  auto s = get_scribe();
-  // outside border
-  // s.draw_rect(gfx::rect(width(), height()), get_bordercolor());
-
+void ui::windowframe::paint_event(gfx::scribe &s) {
   /* Draw the title within the titlebar */
-  {
-    gfx::rect r;
-    r.x = 0;
-    r.y = 0;
-    r.h = TITLE_HEIGHT;
-    r.w = width();
+  gfx::rect r = {0, 0, width(), TITLE_HEIGHT};
+  // r.x = 0;
+  // r.y = 0;
+  // r.h = TITLE_HEIGHT;
+  // r.w = width();
 
-    m_frame_font->with_line_height(12, [&]() {
-      s.draw_text(*m_frame_font, r, ((ui::window *)surface())->m_name, ui::TextAlign::Center,
-                  get_foreground(), true);
-    });
+  m_frame_font->with_line_height(12, [&]() {
+    s.draw_text(*m_frame_font, r, ((ui::window *)surface())->m_name, ui::TextAlign::Center,
+                get_foreground(), true);
+  });
 
-
-
-    if (0) {
-      int lh = 18;
-      m_icon_font->with_line_height(lh, [&]() {
-        int x = 5;
-        int y = lh + 4;
-        m_icon_font->draw(x, y, s, ui::icon::x_square, get_foreground());
-      });
-    }
+  for (auto &child : m_children) {
+    s.draw_rect(child->rect(), child->get_background());
   }
-  invalidate();
 }
+
 
 
 
@@ -111,23 +114,67 @@ ui::window::window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bit
   m_frame->m_surface = this;
   m_frame->m_parent = NULL;
 
-  m_frame->set_size(m_rect.w, m_rect.h);
   reflow();
 }
 
 
-ui::window::~window(void) {
-}
+ui::window::~window(void) {}
 
-void ui::windowframe::set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
-  set_background(bg);
-  set_foreground(fg);
-  // set_bordercolor(border);
-  repaint();
+
+
+void ui::window::actually_do_invalidations(void) {
+  if (m_pending_invalidations.size() == 0) return;
+  gfx::disjoint_rects invals;
+  invals.add_many(m_pending_invalidations);
+
+
+  auto &app = ui::application::get();
+  struct lumen::invalidated_msg response = {0};
+  struct lumen::invalidate_msg iv;
+  iv.id = m_id;
+
+  auto &rects = invals.rects();
+
+  int nrects = rects.size();
+  auto *start = rects.data();
+
+  int n = 0;
+  for (auto &rect : rects) {
+    iv.sync = this->m_compositor_sync;
+    iv.rects[n].x = rect.x;
+    iv.rects[n].y = rect.y;
+    iv.rects[n].w = rect.w;
+    iv.rects[n].h = rect.h;
+    n++;
+    if (n == MAX_INVALIDATE) {
+      iv.nrects = n;
+      if (iv.sync) {
+        app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
+      } else {
+        app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
+      }
+      n = 0;
+    }
+  }
+  if (n != 0) {
+    iv.nrects = n;
+    if (iv.sync) {
+      app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
+    } else {
+      app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
+    }
+    // app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
+  }
+
+  m_pending_invalidations.clear();
 }
 
 
 void ui::window::invalidate(const gfx::rect &r) {
+  // printf("window got an invalidation request from %d %d %d %d\n", r.x, r.y, r.w, r.h);
+  // printf("currently %d invalidations\n", m_pending_invalidations.size());
+
+#if 0
   if (!m_defer_invalidation) {
     auto &app = ui::application::get();
     struct lumen::invalidate_msg iv;
@@ -146,60 +193,15 @@ void ui::window::invalidate(const gfx::rect &r) {
     }
     return;
   }
+#endif
 
-  if (m_pending_invalidations.size() == 0) {
-    auto start_time = sysbind_gettime_microsecond();
-    ck::eventloop::defer([this, start_time](void) {
-      auto &app = ui::application::get();
-      struct lumen::invalidated_msg response = {0};
-      struct lumen::invalidate_msg iv;
-      iv.id = m_id;
-
-      int nrects = m_pending_invalidations.size();
-      auto *start = m_pending_invalidations.data();
-
-      int n = 0;
-      for (auto &rect : m_pending_invalidations) {
-        iv.sync = this->m_compositor_sync;
-        iv.rects[n].x = rect.x;
-        iv.rects[n].y = rect.y;
-        iv.rects[n].w = rect.w;
-        iv.rects[n].h = rect.h;
-        n++;
-        if (n == MAX_INVALIDATE) {
-          iv.nrects = n;
-          if (iv.sync) {
-            app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
-          } else {
-            app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
-          }
-          n = 0;
-        }
-      }
-      if (n != 0) {
-        iv.nrects = n;
-        if (iv.sync) {
-          app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
-        } else {
-          app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
-        }
-        // app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
-      }
-
-      m_pending_invalidations.clear();
-
-      if (0)
-        printf("invalidation of %d region(s) took %.2fms\n", m_pending_invalidations.size(),
-               (sysbind_gettime_microsecond() - start_time) / 1000.0);
-    });
-  }
+  ck::eventloop::defer([this](void) { actually_do_invalidations(); });
   m_pending_invalidations.push(r);
 }
 
 
-ui::view *ui::window::root_view(void) {
-  return m_frame.get();
-}
+
+ui::view *ui::window::root_view(void) { return m_frame.get(); }
 
 gfx::point last_pos;
 
@@ -273,9 +275,7 @@ if (released & LUMEN_MOUSE_RIGHT_CLICK) printf("released right click\n");
 
 
 
-void ui::window::did_reflow(void) {
-  this->m_pending_reflow = false;
-}
+void ui::window::did_reflow(void) { this->m_pending_reflow = false; }
 
 void ui::window::schedule_reflow(void) {
   if (!m_pending_reflow) {
@@ -291,8 +291,6 @@ ck::tuple<int, int> ui::window::resize(int w, int h) {
   if (width() == w && height() == h) {
     return ck::tuple(w, h);
   }
-
-
 
 
   auto &app = ui::application::get();
@@ -319,14 +317,7 @@ ck::tuple<int, int> ui::window::resize(int w, int h) {
   m_rect.w = width();
   m_rect.h = height();
 
-  m_frame->set_size(m_rect.w, m_rect.h);
-
-
-
-
-  // m_frame->set_pos(0, 0);  // the main widget exists at the top left
-
-  // tell the main vie to reflow
+  // tell the main view to reflow
   reflow();
   return ck::tuple(width(), height());
 }

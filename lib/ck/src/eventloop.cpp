@@ -19,9 +19,7 @@ static ck::HashTable<ck::fsnotifier *> s_notifiers;
 static ck::HashTable<ck::timer *> s_timers;
 
 
-static size_t current_ms() {
-  return sysbind_gettime_microsecond() / 1000;
-}
+static size_t current_ms() { return sysbind_gettime_microsecond() / 1000; }
 
 static ck::timer *next_timer(void) {
   // TODO: take a lock
@@ -41,16 +39,9 @@ static ck::timer *next_timer(void) {
 }
 
 ck::eventloop *active_eventloop = NULL;
-
-void ck::eventloop::defer(ck::func<void(void)> cb) {
-  s_defered.push(move(cb));
-}
-
-ck::eventloop::eventloop(void) {
-}
-
-ck::eventloop::~eventloop(void) {
-}
+void ck::eventloop::defer(ck::func<void(void)> cb) { s_defered.push(move(cb)); }
+ck::eventloop::eventloop(void) {}
+ck::eventloop::~eventloop(void) {}
 
 void ck::eventloop::exit(void) {
   if (active_eventloop == NULL) return;
@@ -158,9 +149,7 @@ void ck::eventloop::pump(void) {
   }
 }
 
-void ck::eventloop::post_event(ck::object &obj, ck::event *ev) {
-  m_pending.empend(obj, ev);
-}
+void ck::eventloop::post_event(ck::object &obj, ck::event *ev) { m_pending.empend(obj, ev); }
 
 void ck::eventloop::dispatch(void) {
   // printf("dispatch: %d events\n", m_pending.size());
@@ -174,9 +163,7 @@ void ck::eventloop::dispatch(void) {
 }
 
 
-ck::eventloop *ck::eventloop::current(void) {
-  return active_eventloop;
-}
+ck::eventloop *ck::eventloop::current(void) { return active_eventloop; }
 
 
 void ck::eventloop::register_notifier(ck::fsnotifier &n) {
@@ -252,9 +239,7 @@ ck::fsnotifier::fsnotifier(int fd, int event_mask) : m_fd(fd), m_ev_mask(event_m
 }
 
 
-ck::fsnotifier::~fsnotifier(void) {
-  set_active(false);
-}
+ck::fsnotifier::~fsnotifier(void) { set_active(false); }
 
 void ck::fsnotifier::set_active(bool a) {
   if (a) {

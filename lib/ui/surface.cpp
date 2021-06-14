@@ -3,11 +3,13 @@
 
 void ui::surface::reflow() {
   auto *rv = root_view();
-  rv->set_size(m_rect.w, m_rect.h);
-  rv->layout();
+  rv->set_fixed_size({m_rect.w, m_rect.h});
+  rv->set_width(m_rect.w);
+  rv->set_height(m_rect.h);
 
-  // ask the window to repaint. This is expensive.
-  rv->repaint(false /* do not invalidate, let the view do that. */);
+  rv->run_layout();
   did_reflow();
+
+  rv->update();
   // invalidate(m_rect);
 }

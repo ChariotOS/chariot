@@ -33,9 +33,7 @@
 
 
 
-static gfx::rect close_button() {
-  return gfx::rect(4, 4, 9, 9);
-}
+static gfx::rect close_button() { return gfx::rect(4, 4, 9, 9); }
 
 
 lumen::window::window(int id, lumen::guest &g, int w, int h) : id(id), guest(g) {
@@ -45,8 +43,7 @@ lumen::window::window(int id, lumen::guest &g, int w, int h) : id(id), guest(g) 
   set_mode(window_mode::normal);
 }
 
-lumen::window::~window(void) {
-}
+lumen::window::~window(void) {}
 
 void lumen::window::set_mode(window_mode mode) {
   this->mode = mode;
@@ -124,9 +121,7 @@ int lumen::window::handle_keyboard_input(keyboard_packet_t &p) {
 
 
 
-gfx::rect lumen::window::bounds() {
-  return rect;
-}
+gfx::rect lumen::window::bounds() { return rect; }
 
 
 constexpr int clamp(int val, int max, int min) {
@@ -196,7 +191,7 @@ void lumen::window::draw(gfx::scribe &s) {
 
 
 #ifdef CONFIG_FANCY_WINDOWS
-    constexpr int border_radius = 3;
+    constexpr int border_radius = 0;
     if constexpr (border_radius > 0) {
       struct corner {
         bool enabled;

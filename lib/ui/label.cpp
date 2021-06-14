@@ -17,9 +17,8 @@ class word : public ui::view {
  public:
   word(ck::string word) : m_word(word) {
     set_background(None);
-    // set_flex_margin_bottom(10);
-    set_flex_shrink(0.0);
-    set_flex_grow(0.0);
+    // set_flex_shrink(0.0);
+    // set_flex_grow(0.0);
   }
 
 
@@ -27,24 +26,16 @@ class word : public ui::view {
     auto font = get_font();
     calculated_font_size = get_font_size();
 
-    font->with_line_height(calculated_font_size, [&]() {
-      auto space_size = font->width(' ');
-      // set_flex_margin_right(space_size);
-      set_flex_basis(font->width(m_word) + space_size);
-      /* Set the size based off the size of the word */
-      set_size(STYLE_AUTO, font->line_height() + -font->descent());
-    });
+    font->with_line_height(calculated_font_size, [&]() { auto space_size = font->width(' '); });
   }
 
-  virtual void mounted(void) {
-    calculate();
-  }
+  virtual void mounted(void) { calculate(); }
 
   virtual void flex_self_sizing(float &width, float &height) {
     float current_size = get_font_size();
     if (calculated_font_size != current_size) {
       calculate();
-      height = get_flex_width();
+      // height = get_flex_width();
     }
   }
 
@@ -72,6 +63,7 @@ class word : public ui::view {
 
 
 ui::label::label(ck::string contents, ui::TextAlign align) : m_align(align) {
+#if 0
   set_flex_wrap(ui::FlexWrap::Wrap);
   set_size(NAN, NAN);
 
@@ -84,11 +76,12 @@ ui::label::label(ck::string contents, ui::TextAlign align) : m_align(align) {
   // set_flex_grow(1.0);
 
   set_text(contents);
+#endif
 }
 
-ui::label::~label(void) {
-}
+ui::label::~label(void) {}
 
+#if 0
 void ui::label::flex_self_sizing(float &width, float &height) {
   int max_bottom = 0;
 
@@ -109,7 +102,7 @@ void ui::label::flex_self_sizing(float &width, float &height) {
   });
   height = lines * lh;
 }
-
+#endif
 
 void ui::label::set_text(ck::string contents) {
   auto parts = contents.split(' ');
@@ -123,5 +116,4 @@ void ui::label::set_text(ck::string contents) {
 }
 
 
-void ui::label::paint_event(void) {
-}
+void ui::label::paint_event(void) {}

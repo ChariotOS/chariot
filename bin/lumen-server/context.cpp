@@ -99,6 +99,7 @@ wallpaper->pixels()[i] = 0x333333;
   compose_timer = ck::timer::make_interval(COMPOSE_INTERVAL, [this] { this->compose(); });
   invalidate(screen.bounds());
 
+	spawn("ct");
 	// spawn("term");
   // spawn("fluidsim");
   // spawn("doom");

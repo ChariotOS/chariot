@@ -1,46 +1,36 @@
 #pragma once
 
-#include <ck/io.h>
-#include <ck/map.h>
 #include <ck/ptr.h>
-#include <ck/vec.h>
-#include <ui/attr.h>
-
-/**
- * The UI system can use HTML files to define view layouts. The style of HTML
- * that it uses is a pretty barebones version, but it works :)
- */
-
-#define LAYOUT_INT_ERR 0xFADEFADE
+#include <gfx/geom.h>
+#include <ui/edges.h>
 
 namespace ui {
 
-  namespace layout {
+  // fwd decl
+  class view;
 
-    class parser;
+  class layout : public ck::refcounted<ui::layout> {
+   public:
+    virtual ~layout(void);
 
-    struct node {
-      ck::string name;
-      ck::vec<ck::unique_ptr<ui::layout::node>> children;
+    void notify_adopted(ui::view &);
+    void notify_disowned(ui::view &);
+
+    virtual void run(ui::view &) = 0;
+    virtual gfx::isize preferred_size() const = 0;
 
 
-      long attr_num(ui::attr);
-      ck::string attr(ui::attr);
+    const ui::edges &margins() const;
+    const ui::edges &padding() const;
 
-      void set_attr(ui::attr a, ck::string val);
 
-     private:
-      friend class ui::layout::parser;
-      ck::map<ui::attr, ck::string> m_attrs;
-    };
+    int spacing() const { return m_spacing; }
+    void set_spacing(int);
 
-    class parser {
-      const char *buf;
-      size_t len;
+   protected:
+    ui::view *m_owner;
 
-     public:
-      parser(const char *buf, size_t len);
-    };
-
-  }  // namespace layout
+    ui::edges m_margins;
+    int m_spacing = 0;
+  };
 }  // namespace ui

@@ -1,27 +1,29 @@
 #include <ui/layout.h>
+#include <ui/view.h>
+
+ui::layout::~layout(void) {}
 
 
+void ui::layout::notify_adopted(ui::view &v) { m_owner = &v; }
 
-ck::string ui::layout::node::attr(ui::attr a) {
-  if (m_attrs.contains(a)) {
-    return m_attrs[a];
-  }
-  return {};
-}
-
-long ui::layout::node::attr_num(ui::attr a) {
-  if (m_attrs.contains(a)) {
-    long n = 0;
-    if (sscanf(m_attrs[a].get(), "%ld", &n) == 0) {
-      ck::err.fmt("ui::layout::node attr '%s' is an invalid integer\n", m_attrs[a].get());
-      return LAYOUT_INT_ERR;
-    }
-    return n;
-  }
-  return LAYOUT_INT_ERR;
+void ui::layout::notify_disowned(ui::view &v) {
+  assert(&v == m_owner);
+  m_owner = nullptr;
 }
 
 
-void ui::layout::node::set_attr(ui::attr a, ck::string val) {
-  m_attrs[a] = val;
+void ui::layout::set_spacing(int spacing) {
+  if (m_spacing == spacing) return;
+  m_spacing = spacing;
+}
+
+
+const ui::edges &ui::layout::margins() const {
+  assert(m_owner);
+  return m_owner->margins();
+}
+
+const ui::edges &ui::layout::padding() const {
+  assert(m_owner);
+  return m_owner->padding();
 }

@@ -24,9 +24,7 @@ ck::ref<gfx::font> doomuifont;
 #define KEYQUEUE_SIZE 128
 
 
-static inline auto current_us(void) {
-  return sysbind_gettime_microsecond();
-}
+static inline auto current_us(void) { return sysbind_gettime_microsecond(); }
 
 static unsigned short s_KeyQueue[KEYQUEUE_SIZE];
 static unsigned int s_KeyQueueWriteIndex = 0;
@@ -87,25 +85,19 @@ class doomview : public ui::view {
   long start_time = current_us();
 
  public:
-  doomview() {
-    set_flex_grow(1);
-  }
-  virtual void paint_event(void) override {
-    auto s = get_scribe();
+  doomview() {}
 
+
+  virtual void paint_event(gfx::scribe& s) override {
     gfx::bitmap b(DOOMGENERIC_RESX, DOOMGENERIC_RESY, DG_ScreenBuffer);
 
     s.blit(gfx::point(0, 0), b, gfx::rect(0, 0, DOOMGENERIC_RESX, DOOMGENERIC_RESY));
 
-    invalidate();
+    update();
   }
 
-  virtual void on_keydown(ui::keydown_event& ev) override {
-    addKeyToQueue(ev.code, ev.c, true);
-  }
-  virtual void on_keyup(ui::keyup_event& ev) override {
-    addKeyToQueue(ev.code, ev.c, false);
-  }
+  virtual void on_keydown(ui::keydown_event& ev) override { addKeyToQueue(ev.code, ev.c, true); }
+  virtual void on_keyup(ui::keyup_event& ev) override { addKeyToQueue(ev.code, ev.c, false); }
 };
 
 
@@ -147,7 +139,7 @@ extern "C" uint32_t DG_GetTicksMs() {
   auto this_tick = current_us() / 1000;
   if (this_tick < last_tick) {
     printf("time travel! %llu -> %llu = -%llu\n", last_tick, this_tick, last_tick - this_tick);
-		exit(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   } else {
     last_tick = this_tick;
   }
