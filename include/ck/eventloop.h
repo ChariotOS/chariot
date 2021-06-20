@@ -51,13 +51,15 @@ namespace ck {
 
     static void defer(ck::func<void(void)> cb);
 
+    static void defer_unique(const char *name, ck::func<void(void)> cb);
+
+
    private:
     bool m_finished = false;
 
 
     struct pending_event {
-      inline pending_event(ck::object &obj, ck::event *ev) : obj(obj), ev(ev) {
-      }
+      inline pending_event(ck::object &obj, ck::event *ev) : obj(obj), ev(ev) {}
       ~pending_event() = default;
 
       ck::object &obj;

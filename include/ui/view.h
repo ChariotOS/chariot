@@ -110,7 +110,23 @@ namespace ui {
  public:                                       \
   inline void set_##name(const ck::option<type> &v) { this->name = v; }
 
-
+#define OPTIONAL_VIEW_RENDER_ATTRIBUTE(type, name, val)                     \
+ protected:                                                                 \
+  ck::option<type> o_##name = {};                                           \
+                                                                            \
+ public:                                                                    \
+  inline type get_##name(void) {                                            \
+    if (this->o_##name) {                                                   \
+      return this->o_##name.unwrap();                                       \
+    } else {                                                                \
+      return val;                                                           \
+    }                                                                       \
+  }                                                                         \
+                                                                            \
+ public:                                                                    \
+  inline void set_##name(const ck::option<type> &v) { this->o_##name = v; } \
+  inline void clear_##name(void) { this->o_##name = None; }                 \
+  inline bool has_##name(void) { return this->o_##name.has_value(); }
 
 
   class view {
@@ -180,7 +196,7 @@ namespace ui {
       return *l;
     }
 
-    void run_layout(void);
+    void run_layout(int depth = 0);
 
     gfx::isize min_size() const { return m_min_size; }
     void set_min_size(const gfx::isize &sz) { m_min_size = sz; }
@@ -224,7 +240,7 @@ namespace ui {
     void set_shrink_to_fit(bool b) {
       if (m_shrink_to_fit == b) return;
       m_shrink_to_fit = b;
-      surface()->reflow();
+      surface()->schedule_reflow();
     }
     bool is_shrink_to_fit() const { return m_shrink_to_fit; }
 
@@ -242,14 +258,20 @@ namespace ui {
     void set_relative_rect(gfx::rect &r);
     // interior padding
     const ui::edges &padding(void) const { return m_padding; }
-    void set_padding(const ui::edges &p) { m_padding = p; }
+    void set_padding(const ui::edges &p) {
+      m_padding = p;
+      update_layout();
+    }
     void set_padding(int p) { set_padding({p, p, p, p}); }
-    void set_padding(int tb, int lr) { set_padding({lr, lr, tb, tb}); }
+    void set_padding(int tb, int lr) { set_padding(base_edges(tb, lr)); }
     // exterior margins
     const ui::edges &margins(void) const { return m_margins; }
-    void set_margins(const ui::edges &p) { m_margins = p; }
+    void set_margins(const ui::edges &p) {
+      m_margins = p;
+      update_layout();
+    }
     void set_margins(int p) { set_margins({p, p, p, p}); }
-    void set_margins(int tb, int lr) { set_margins({lr, lr, tb, tb}); }
+    void set_margins(int tb, int lr) { set_margins(base_edges(tb, lr)); }
     // get the
     inline ui::surface *surface() const {
       if (m_parent == NULL) {
@@ -266,8 +288,10 @@ namespace ui {
     // get a scribe for this view's bounding box
     gfx::scribe get_scribe(void);
     void update(void);
+    void update(gfx::rect);
 
-    void do_reflow(void);
+
+    void update_layout(void);
 
     inline void set_border(uint32_t color, uint32_t size) {
       set_bordercolor(color);
@@ -311,10 +335,10 @@ namespace ui {
 
     void mark_dirty(void);
 
-    VIEW_RENDER_ATTRIBUTE(uint32_t, background, 0xFFFFFF);
-    VIEW_RENDER_ATTRIBUTE(uint32_t, foreground, 0x000000);
-    VIEW_RENDER_ATTRIBUTE(uint32_t, bordercolor, 0x000000);
-    VIEW_RENDER_ATTRIBUTE(uint32_t, bordersize, 0);
+    OPTIONAL_VIEW_RENDER_ATTRIBUTE(uint32_t, background, 0xFFFFFF);
+    OPTIONAL_VIEW_RENDER_ATTRIBUTE(uint32_t, foreground, 0x000000);
+    OPTIONAL_VIEW_RENDER_ATTRIBUTE(uint32_t, bordercolor, 0x000000);
+    OPTIONAL_VIEW_RENDER_ATTRIBUTE(uint32_t, bordersize, 0);
 
     inline auto get_font(void) {
       if (!m_font) {
@@ -346,8 +370,6 @@ namespace ui {
 
 
     friend ui::window;
-    friend struct flex_layout;
-
 
 
     /* A list of the children owned by this view */
@@ -356,6 +378,7 @@ namespace ui {
     void dump_hierarchy(int depth = 0);
 
    private:
+    // void needs_relayout() { m_needs_relayout = true; }
     /*
      * these two entries are mutually exclusive
      */
@@ -364,10 +387,10 @@ namespace ui {
 
 
     // bit flags
-    bool m_visible{true};
-    bool m_enabled{true};
-    bool m_shrink_to_fit{false};
-
+    bool m_visible = true;
+    bool m_enabled = true;
+    // can this view shrink to fit within the parent's layout?
+    bool m_shrink_to_fit = false;
 
     ck::ref<ui::layout> m_layout;
 

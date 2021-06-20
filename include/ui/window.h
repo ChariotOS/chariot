@@ -10,6 +10,7 @@
 #include <ui/color.h>
 #include <ui/surface.h>
 #include <ui/view.h>
+#include "gfx/disjoint_rects.h"
 
 namespace ui {
 
@@ -24,8 +25,7 @@ namespace ui {
 
    public:
     void set_theme(uint32_t bg, uint32_t fg, uint32_t border);
-    static constexpr uint32_t FRAME_COLOR = 0xe7ebee;
-    static constexpr int TITLE_HEIGHT = 29;
+    static constexpr int TITLE_HEIGHT = 24;
     static constexpr int PADDING = 0;
     windowframe(void);
     virtual ~windowframe(void);
@@ -54,13 +54,11 @@ namespace ui {
       return *(T *)v;
     }
 
-    inline void defer_invalidation(bool d) { m_defer_invalidation = d; }
 
     inline void compositor_sync(bool d) { m_compositor_sync = d; }
     inline void set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
       m_frame->set_theme(bg, fg, border);
     }
-    void schedule_reflow();
 
     virtual ck::tuple<int, int> resize(int width, int height);
     virtual void invalidate(const gfx::rect &r);
@@ -77,7 +75,7 @@ namespace ui {
     ck::unique_ptr<ui::windowframe> m_frame;
 
     bool m_pending_reflow = false;
-    ck::vec<gfx::rect> m_pending_invalidations;
+    gfx::disjoint_rects m_pending_invalidations;
 
     bool m_light_theme = true;
     int m_id;
@@ -85,7 +83,6 @@ namespace ui {
 
     // software "vsync" with the compositor
     bool m_compositor_sync = false;
-    bool m_defer_invalidation = true;
     ck::ref<gfx::shared_bitmap> m_bitmap;
 
 

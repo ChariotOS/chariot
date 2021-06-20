@@ -12,16 +12,16 @@ namespace ui {
 
     gfx::Direction direction(void) const { return m_direction; }
 
-    virtual void run(ui::view&) override;
-    virtual gfx::isize preferred_size() const override;
+    virtual void run(ui::view &) override;
+    virtual gfx::isize preferred_size(ui::view &) const override;
 
 
    protected:
     explicit boxlayout(gfx::Direction dir) : m_direction(dir) {}
 
    private:
-    int preferred_primary_size() const;
-    int preferred_secondary_size() const;
+    int preferred_primary_size(ui::view &) const;
+    int preferred_secondary_size(ui::view &) const;
     gfx::Direction m_direction;
   };
 

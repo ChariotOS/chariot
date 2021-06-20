@@ -11,21 +11,16 @@ namespace ck {
   template <typename T>
   class alignas(T) option {
    public:
-    option() {
-    }
+    option() {}
 
-    option(const T& value) : m_has_value(true) {
-      new (&m_storage) T(value);
-    }
+    option(const T& value) : m_has_value(true) { new (&m_storage) T(value); }
 
     template <typename U>
     option(const U& value) : m_has_value(true) {
       new (&m_storage) T(value);
     }
 
-    option(T&& value) : m_has_value(true) {
-      new (&m_storage) T(move(value));
-    }
+    option(T&& value) : m_has_value(true) { new (&m_storage) T(move(value)); }
 
     option(option&& other) : m_has_value(other.m_has_value) {
       if (other.has_value()) {
@@ -60,9 +55,7 @@ namespace ck {
       return *this;
     }
 
-    ALWAYS_INLINE ~option() {
-      clear();
-    }
+    ALWAYS_INLINE ~option() { clear(); }
 
     ALWAYS_INLINE void clear() {
       if (m_has_value) {
@@ -71,12 +64,8 @@ namespace ck {
       }
     }
 
-    ALWAYS_INLINE bool has_value() const {
-      return m_has_value;
-    }
-    ALWAYS_INLINE operator bool(void) const {
-      return m_has_value;
-    }
+    ALWAYS_INLINE bool has_value() const { return m_has_value; }
+    ALWAYS_INLINE operator bool(void) const { return m_has_value; }
 
 
     template <typename R>

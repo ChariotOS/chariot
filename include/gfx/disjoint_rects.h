@@ -12,14 +12,10 @@ namespace gfx {
     disjoint_rects(const disjoint_rects &) = delete;
     disjoint_rects &operator=(const disjoint_rects &) = delete;
 
-    disjoint_rects() {
-    }
-    ~disjoint_rects() {
-    }
+    disjoint_rects() {}
+    ~disjoint_rects() {}
 
-    disjoint_rects(const gfx::rect &rect) {
-      m_rects.push(rect);
-    }
+    disjoint_rects(const gfx::rect &rect) { m_rects.push(rect); }
 
     disjoint_rects(disjoint_rects &&) = default;
     disjoint_rects &operator=(disjoint_rects &&) = default;
@@ -31,12 +27,12 @@ namespace gfx {
     }
 
     void move_by(int dx, int dy);
-    void move_by(const gfx::point &delta) {
-      move_by(delta.x(), delta.y());
-    }
+    void move_by(const gfx::point &delta) { move_by(delta.x(), delta.y()); }
 
-    void add(const gfx::rect &rect, bool allow_contained = false) {
-      if (add_no_shatter(rect, allow_contained) && m_rects.size() > 1) shatter();
+    bool add(const gfx::rect &rect, bool allow_contained = false) {
+      bool added = add_no_shatter(rect, allow_contained);
+      if (added && m_rects.size() > 1) shatter();
+      return added;
     }
 
     template <typename Container>
@@ -100,25 +96,13 @@ namespace gfx {
       return true;
     }
 
-    bool is_empty() const {
-      return m_rects.is_empty();
-    }
-    size_t size() const {
-      return m_rects.size();
-    }
+    bool is_empty() const { return m_rects.is_empty(); }
+    size_t size() const { return m_rects.size(); }
 
-    void clear() {
-      m_rects.clear();
-    }
-    void clear_with_capacity() {
-      m_rects.clear_with_capacity();
-    }
-    const ck::vec<gfx::rect, 32> &rects() const {
-      return m_rects;
-    }
-    ck::vec<gfx::rect, 32> take_rects() {
-      return move(m_rects);
-    }
+    void clear() { m_rects.clear(); }
+    void clear_with_capacity() { m_rects.clear_with_capacity(); }
+    const ck::vec<gfx::rect, 32> &rects() const { return m_rects; }
+    ck::vec<gfx::rect, 32> take_rects() { return move(m_rects); }
 
    private:
     bool add_no_shatter(const gfx::rect &, bool allow_contained = false);

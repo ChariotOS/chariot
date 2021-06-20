@@ -9,12 +9,31 @@
 #include <chariot/awaitfs_types.h>
 #include <sys/sysbind.h>
 #include <sys/syscall.h>
-#include "ck/event.h"
+#include <ck/ptr.h>
+#include <ck/event.h>
 #include <ck/rand.h>
+#include <ck/tuple.h>
 
 
+static volatile bool currently_running_defered_functions = false;
+static ck::vec<ck::tuple<const char *, ck::func<void(void)>>> s_defered;
 
-static ck::vec<ck::func<void(void)>> s_defered;
+void ck::eventloop::defer(ck::func<void(void)> cb) {
+  s_defered.push(ck::tuple((const char *)nullptr, move(cb)));
+  // printf("adding. now %llu\n", s_defered.size());
+}
+
+void ck::eventloop::defer_unique(const char *name, ck::func<void(void)> cb) {
+  for (auto &existing : s_defered) {
+    const char *existing_name = existing.first();
+    if (existing_name == NULL) continue;
+    if (strcmp(existing_name, name) == 0) {
+      return;
+    }
+  }
+  s_defered.push(ck::tuple(name, move(cb)));
+  // printf("uniquely defered '%s'\n", name);
+}
 static ck::HashTable<ck::fsnotifier *> s_notifiers;
 static ck::HashTable<ck::timer *> s_timers;
 
@@ -39,7 +58,7 @@ static ck::timer *next_timer(void) {
 }
 
 ck::eventloop *active_eventloop = NULL;
-void ck::eventloop::defer(ck::func<void(void)> cb) { s_defered.push(move(cb)); }
+
 ck::eventloop::eventloop(void) {}
 ck::eventloop::~eventloop(void) {}
 
@@ -72,13 +91,22 @@ int awaitfs(struct await_target *fds, int nfds, int flags, long long timeout_tim
 }
 
 
-
+static long nonce = 0;
 void ck::eventloop::pump(void) {
-  for (auto &cb : s_defered) {
-    cb();
-  }
-  s_defered.clear();
+  currently_running_defered_functions = true;
 
+
+  while (s_defered.size() != 0) {
+    auto this_defered = move(s_defered);
+    s_defered.clear();
+
+    for (auto &cb : this_defered) {
+      cb.second()();
+    }
+    // printf("%d defered left.\n", s_defered.size());
+  }
+
+  currently_running_defered_functions = false;
 
   ck::vec<struct await_target> targs;
   auto add_fd = [&](int fd, int mask, ck::object *obj) {
@@ -88,7 +116,6 @@ void ck::eventloop::pump(void) {
     targ.priv = (void *)obj;
     targs.push(move(targ));
   };
-
 
   for (auto &notifier : s_notifiers) {
     int fd = notifier->fd();
@@ -152,9 +179,6 @@ void ck::eventloop::pump(void) {
 void ck::eventloop::post_event(ck::object &obj, ck::event *ev) { m_pending.empend(obj, ev); }
 
 void ck::eventloop::dispatch(void) {
-  // printf("dispatch: %d events\n", m_pending.size());
-  // just loop through each event that needs to be dispatched and send them to
-  // the clients
   for (auto &ev : m_pending) {
     ev.obj.event(*ev.ev);
     delete ev.ev;

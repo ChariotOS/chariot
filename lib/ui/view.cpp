@@ -5,9 +5,7 @@
 
 static unsigned long view_id = 0;
 
-ui::view::view() {
-  // printf("view %d created\n", view_id++);
-}
+ui::view::view() {}
 
 ui::view::~view(void) {
   auto *srf = surface();
@@ -20,14 +18,11 @@ ui::view::~view(void) {
 
 void ui::view::clear(void) { m_children.clear(); }
 
-
-
 void ui::view::repaint(gfx::rect &relative_dirty_region) {
-  // printf("paint %3d %3d %3d %3d\n", m_relative_rect.x, m_relative_rect.y, m_relative_rect.w,
-  //        m_relative_rect.h);
-
   // if we aren't mounted, don't paint - it doesn't make sense
   if (surface() == NULL) return;
+
+  // printf("repaint w:%3d h:%3d\n", width(), height(), get_background());
 
   auto s = get_scribe();
   s.state().clip.x += relative_dirty_region.x;
@@ -35,25 +30,20 @@ void ui::view::repaint(gfx::rect &relative_dirty_region) {
   s.state().clip.w = relative_dirty_region.w;
   s.state().clip.h = relative_dirty_region.h;
 
-  s.fill_rect(rect(), get_background());
-
   // draw the border
   gfx::rect border = gfx::rect(0, 0, width(), height());
-  if (background) {
-    s.fill_rect(border, get_background());
-  }
 
-  for (int i = 0; i < bordersize; i++) {
-    s.draw_rect(border, bordercolor);
+  for (int i = 0; i < get_bordersize(); i++) {
+    s.draw_rect(border, get_bordercolor());
     border.x += 1;
     border.y += 1;
     border.w -= 2;
     border.h -= 2;
   }
 
+  if (has_background()) s.fill_rect(border, get_background());
 
-  gfx::scribe sc = get_scribe();
-  paint_event(sc);
+  paint_event(s);
 
   each_child([&relative_dirty_region](ui::view &c) {
     auto r = c.relative();
@@ -72,7 +62,7 @@ static void indent(int depth) {
 
 void ui::view::dump_hierarchy(int depth) {
   indent(depth);
-  printf("%d %d %d %d\n", m_relative_rect.x, m_relative_rect.y, m_relative_rect.w,
+  printf("%-4d %-4d %-4d %-4d\n", m_relative_rect.x, m_relative_rect.y, m_relative_rect.w,
          m_relative_rect.h);
 
   for (auto &child : m_children) {
@@ -167,30 +157,26 @@ gfx::scribe ui::view::get_scribe(void) {
 
 
 // invalidate the whole view
-void ui::view::update(void) {
+void ui::view::update(void) { update(absolute_rect()); }
+
+void ui::view::update(gfx::rect dirty_area) {
   auto *win = surface();
-
   if (win == nullptr) return;
-  gfx::rect r = rect();
-  repaint(r);
-
-  r = absolute_rect();
-  surface()->invalidate(r);
+  win->invalidate(dirty_area);
 }
 
 
-void ui::view::do_reflow(void) {
+void ui::view::update_layout(void) {
   if (surface()) {
-    // always just ask the window to reflow.
-    surface()->reflow();
+    // always just ask the surface to reflow.
+    surface()->schedule_reflow();
   }
 }
 
 
-
 gfx::rect ui::view::absolute_rect(void) {
   gfx::rect r = relative();
-  if (m_parent != NULL) {
+  if (parent() != NULL) {
     gfx::rect p = parent()->absolute_rect();
     r.x += p.x;
     r.y += p.y;
@@ -198,7 +184,6 @@ gfx::rect ui::view::absolute_rect(void) {
   }
   return r;
 }
-
 
 
 static void recurse_mount(ui::view *v) {
@@ -210,10 +195,8 @@ static void recurse_mount(ui::view *v) {
 ui::view &ui::view::add(ui::view *v) {
   v->m_parent = this;
   m_children.push(ck::unique_ptr(v));
-  // add the child's flexbox on the end
-  // flex_item_add(m_fi, v->m_fi);
   if (surface()) {
-    do_reflow();
+    update_layout();
     recurse_mount(v);
   }
   return *v;
@@ -224,7 +207,6 @@ ui::view &ui::view::add(ui::view *v) {
 void ui::view::set_layout(ck::ref<ui::layout> l) {
   if (m_layout) {
     m_layout->notify_disowned(*this);
-    // m_layout->remove_from_parent();
   }
   m_layout = move(l);
   if (m_layout) {
@@ -236,13 +218,18 @@ void ui::view::set_layout(ck::ref<ui::layout> l) {
 }
 
 
-void ui::view::run_layout(void) {
-  each_child([&](auto &child) { child.run_layout(); });
-
+void ui::view::run_layout(int depth) {
   custom_layout();
-  if (!m_layout) return;
 
-  m_layout->run(*this);
+
+  // layout where each child will go if a layout is provided.
+  if (layout()) layout()->run(*this);
+
+  // then layout each child with their new sizes that we decided
+  // by this parent
+  for (auto &child : m_children) {
+    child->run_layout(depth + 1);
+  }
 
   reflowed();
   update();

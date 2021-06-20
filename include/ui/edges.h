@@ -8,6 +8,12 @@ namespace ui {
   struct base_edges {
     T left = 0, right = 0, top = 0, bottom = 0;
 
+    inline base_edges(const base_edges<T>& o) {
+      left = o.left;
+      right = o.right;
+      top = o.top;
+      bottom = o.bottom;
+    }
 
     inline base_edges() {}
     inline base_edges(T v) { left = right = top = bottom = v; }

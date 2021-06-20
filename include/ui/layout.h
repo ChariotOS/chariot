@@ -17,7 +17,7 @@ namespace ui {
     void notify_disowned(ui::view &);
 
     virtual void run(ui::view &) = 0;
-    virtual gfx::isize preferred_size() const = 0;
+    virtual gfx::isize preferred_size(ui::view &) const = 0;
 
 
     const ui::edges &margins() const;

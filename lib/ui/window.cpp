@@ -63,6 +63,7 @@ void ui::windowframe::custom_layout(void) {
   ck::unique_ptr<ui::view> &child = m_children[0];
   auto area = this->rect();
   area.take_from_top(TITLE_HEIGHT);
+  // printf("windowframe custom layout: %d %d %d %d\n", area.x, area.y, area.w, area.h);
   child->set_relative_rect(area);
 }
 
@@ -86,10 +87,9 @@ void ui::windowframe::mouse_event(ui::mouse_event &ev) {
 void ui::windowframe::paint_event(gfx::scribe &s) {
   /* Draw the title within the titlebar */
   gfx::rect r = {0, 0, width(), TITLE_HEIGHT};
-  // r.x = 0;
-  // r.y = 0;
-  // r.h = TITLE_HEIGHT;
   // r.w = width();
+
+  s.fill_rect(r, 0xEEEEEE);
 
   m_frame_font->with_line_height(12, [&]() {
     s.draw_text(*m_frame_font, r, ((ui::window *)surface())->m_name, ui::TextAlign::Center,
@@ -114,7 +114,7 @@ ui::window::window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bit
   m_frame->m_surface = this;
   m_frame->m_parent = NULL;
 
-  reflow();
+  schedule_reflow();
 }
 
 
@@ -124,22 +124,24 @@ ui::window::~window(void) {}
 
 void ui::window::actually_do_invalidations(void) {
   if (m_pending_invalidations.size() == 0) return;
-  gfx::disjoint_rects invals;
-  invals.add_many(m_pending_invalidations);
-
+  // printf("actually do %d invalidation(s)\n", m_pending_invalidations.size());
 
   auto &app = ui::application::get();
   struct lumen::invalidated_msg response = {0};
   struct lumen::invalidate_msg iv;
   iv.id = m_id;
 
-  auto &rects = invals.rects();
+  auto *rv = root_view();
+  if (rv != NULL) {
+    for (auto &rect : m_pending_invalidations.rects()) {
+      gfx::rect rect_copy = rect;
+      rv->repaint(rect_copy);
+    }
+  }
 
-  int nrects = rects.size();
-  auto *start = rects.data();
 
   int n = 0;
-  for (auto &rect : rects) {
+  for (auto &rect : m_pending_invalidations.rects()) {
     iv.sync = this->m_compositor_sync;
     iv.rects[n].x = rect.x;
     iv.rects[n].y = rect.y;
@@ -171,34 +173,10 @@ void ui::window::actually_do_invalidations(void) {
 
 
 void ui::window::invalidate(const gfx::rect &r) {
-  // printf("window got an invalidation request from %d %d %d %d\n", r.x, r.y, r.w, r.h);
-  // printf("currently %d invalidations\n", m_pending_invalidations.size());
-
-#if 0
-  if (!m_defer_invalidation) {
-    auto &app = ui::application::get();
-    struct lumen::invalidate_msg iv;
-    iv.sync = this->m_compositor_sync;
-    iv.id = m_id;
-    iv.nrects = 1;
-    iv.rects[0].x = r.x;
-    iv.rects[0].y = r.y;
-    iv.rects[0].w = r.w;
-    iv.rects[0].h = r.h;
-    if (iv.sync) {
-      struct lumen::invalidated_msg response = {0};
-      app.send_msg_sync(LUMEN_MSG_WINDOW_INVALIDATE, iv, &response);
-    } else {
-      app.send_msg(LUMEN_MSG_WINDOW_INVALIDATE, iv);
-    }
-    return;
-  }
-#endif
-
-  ck::eventloop::defer([this](void) { actually_do_invalidations(); });
-  m_pending_invalidations.push(r);
+  m_pending_invalidations.add(r);
+  ck::eventloop::defer_unique("ui::window::invalidate",
+                              [this](void) { actually_do_invalidations(); });
 }
-
 
 
 ui::view *ui::window::root_view(void) { return m_frame.get(); }
@@ -254,14 +232,7 @@ void ui::window::handle_input(struct lumen::input_msg &msg) {
     ev.pressed = pressed;
     ev.released = pressed;
 
-    /*
-if (pressed & LUMEN_MOUSE_LEFT_CLICK) printf("pressed left click\n");
-if (pressed & LUMEN_MOUSE_RIGHT_CLICK) printf("pressed right click\n");
-
-if (released & LUMEN_MOUSE_LEFT_CLICK) printf("released left click\n");
-if (released & LUMEN_MOUSE_RIGHT_CLICK) printf("released right click\n");
-    */
-
+    ev.ds = 0;
     if (msg.mouse.buttons & LUMEN_MOUSE_SCROLL_UP) {
       ev.ds = 1;
     } else if (msg.mouse.buttons & LUMEN_MOUSE_SCROLL_DOWN) {
@@ -277,11 +248,6 @@ if (released & LUMEN_MOUSE_RIGHT_CLICK) printf("released right click\n");
 
 void ui::window::did_reflow(void) { this->m_pending_reflow = false; }
 
-void ui::window::schedule_reflow(void) {
-  if (!m_pending_reflow) {
-    ck::eventloop::defer([this]() { reflow(); });
-  }
-}
 
 ck::tuple<int, int> ui::window::resize(int w, int h) {
   w += windowframe::PADDING * 2;
@@ -318,6 +284,6 @@ ck::tuple<int, int> ui::window::resize(int w, int h) {
   m_rect.h = height();
 
   // tell the main view to reflow
-  reflow();
+  schedule_reflow();
   return ck::tuple(width(), height());
 }
