@@ -5,12 +5,13 @@
 #include "ui/event.h"
 #include <ck/timer.h>
 #include <ui/frame.h>
+#include <ck/pair.h>
 
 class blinky : public ui::view {
  public:
   blinky(uint32_t color) : main_color(color) {
     set_background(color);
-    set_margins(5);
+    // set_margins(5);
   }
   virtual ~blinky() = default;
 
@@ -40,53 +41,56 @@ class blinky : public ui::view {
 
 ui::view* create_box(uint32_t c) {
   ui::view* v = new blinky(c);
-  v->set_border(0x000000, 2);
-  return v;
-}
-
-ui::view* create_box(uint32_t c, uint32_t max_height) {
-  ui::view* v = new blinky(c);
-  v->set_border(0x000000, 2);
-  v->set_max_height(max_height);
+  // v->set_border(0x000000, 2);
   return v;
 }
 
 
 static void reset_window(ui::window* win) {
-  auto start = sysbind_gettime_microsecond();
-  ck::eventloop::defer([start] {
-    auto end = sysbind_gettime_microsecond();
-    printf("took %llu us\n", end - start);
-  });
   // printf("\n\n\n\nresetting!\n");
   auto& root = win->set_view<ui::view>();
 
-  root.set_layout<ui::hboxlayout>();
+  auto& l = root.set_layout<ui::hboxlayout>();
+  l.set_spacing(0);
 
-
-  for (int i = 0; i < 6; i++) {
+  int count = 5;
+  for (int i = 0; i < count; i++) {
     auto& c = root.add(new ui::frame());
     c.set_layout<ui::vboxlayout>();
 
-    for (int j = 0; j < 6; j++) {
-      auto& d = c.add(create_box(rand(), rand() % 400));
-      d.set_padding(20);
+    for (int j = 0; j < count; j++) {
+      auto& d = c.add(create_box(0xFFFFFF));
+      // d.set_padding(20);
     }
   }
 }
 
 
-
+ck::pair<int, int> floor_ceil(float x) { return ck::pair(floor(x), ceil(x)); }
 
 int main(int argc, char** argv) {
+  // {
+  //   auto p = floor_ceil(3.14);
+  //   auto [f, c] = p;
+  //   printf("f: %d, c: %d\n", f, c);
+  // }
+
+  // return 0;
+
   ui::application app;
-  ui::window* win = app.new_window("Test", 900, 700);
+  ui::window* win = app.new_window("Test", 400, 400);
 
+  win->set_double_buffer(true);
 
-  win->compositor_sync(true);
+  // win->compositor_sync(true);
   reset_window(win);
 
-  // auto t = ck::timer::make_interval(16, [win] { reset_window(win); });
+  // float v = 0.0;
+  // auto t = ck::timer::make_interval(25, [win, &v] {
+  //   v += 0.04;
+  //   win->resize(400 + 200 * sin(v), 400 + 200 * cos(v));
+  //   // reset_window(win);
+  // });
 
   app.start();
   return 0;

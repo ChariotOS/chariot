@@ -3,7 +3,7 @@
 #include "sys/sysbind.h"
 #include <sys/sysbind.h>
 
-ui::frame::frame(void) { set_frame_thickness(2); }
+ui::frame::frame(void) { set_frame_thickness(0); }
 
 ui::frame::~frame(void) {}
 

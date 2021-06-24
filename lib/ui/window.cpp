@@ -89,7 +89,7 @@ void ui::windowframe::paint_event(gfx::scribe &s) {
   gfx::rect r = {0, 0, width(), TITLE_HEIGHT};
   // r.w = width();
 
-  s.fill_rect(r, 0xEEEEEE);
+  // s.fill_rect(r, 0xEEEEEE);
 
   m_frame_font->with_line_height(12, [&]() {
     s.draw_text(*m_frame_font, r, ((ui::window *)surface())->m_name, ui::TextAlign::Center,
@@ -108,7 +108,9 @@ ui::window::window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bit
   m_id = id;
   m_name = name;
   m_rect = r;
-  m_bitmap = bmp;
+  m_shared_bitmap = bmp;
+
+  update_private_buffer();
 
   m_frame = new ui::windowframe();
   m_frame->m_surface = this;
@@ -121,6 +123,26 @@ ui::window::window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bit
 ui::window::~window(void) {}
 
 
+
+void ui::window::set_double_buffer(bool to) {
+  if (m_double_buffer == to) return;
+
+  m_double_buffer = to;
+  update_private_buffer();
+}
+
+void ui::window::update_private_buffer(void) {
+  // if we dont want to use a double buffer, make sure we dont have one
+  if (!m_double_buffer) {
+    if (m_private_bitmap) m_private_bitmap.clear();
+  } else {
+    if (!m_private_bitmap || (m_private_bitmap->width() != m_shared_bitmap->width() ||
+                              m_private_bitmap->height() != m_shared_bitmap->height())) {
+      m_private_bitmap =
+          ck::make_ref<gfx::bitmap>(m_shared_bitmap->width(), m_shared_bitmap->height());
+    }
+  }
+}
 
 void ui::window::actually_do_invalidations(void) {
   if (m_pending_invalidations.size() == 0) return;
@@ -138,6 +160,33 @@ void ui::window::actually_do_invalidations(void) {
       rv->repaint(rect_copy);
     }
   }
+
+
+  // now, copy the changes from the private bitmap to the shared one
+  if (double_buffer()) {
+    assert(m_private_bitmap);
+    gfx::scribe s(*m_shared_bitmap);
+    bool debug = true;
+
+    if (debug) {
+      // if we are in debug draw mode, (debug == true), then we want to draw a green
+      // rectangle around all the dirty regions inside the window. But this requires
+      // that previous green rectangles are cleared, meaning we need to copy all the
+      // window's content over to the shared buffer, invalidating the entire window.
+      s.blit(gfx::point(0, 0), *m_private_bitmap, m_private_bitmap->rect());
+      for (auto &rect : m_pending_invalidations.rects()) {
+        s.draw_rect(rect, 0x00FF00);
+      }
+      // invalidate the entire window instead
+      m_pending_invalidations.clear();
+      m_pending_invalidations.add(m_private_bitmap->rect());
+    } else {
+      for (auto &rect : m_pending_invalidations.rects()) {
+        s.blit(gfx::point(rect.x, rect.y), *m_private_bitmap, rect);
+      }
+    }
+  }
+
 
 
   int n = 0;
@@ -174,8 +223,14 @@ void ui::window::actually_do_invalidations(void) {
 
 void ui::window::invalidate(const gfx::rect &r) {
   m_pending_invalidations.add(r);
-  ck::eventloop::defer_unique("ui::window::invalidate",
-                              [this](void) { actually_do_invalidations(); });
+
+  auto start = sysbind_gettime_microsecond();
+  ck::eventloop::defer_unique("ui::window::invalidate", [this, start](void) {
+    actually_do_invalidations();
+
+    auto end = sysbind_gettime_microsecond();
+    printf("ui::window::invalidate took %llu us\n", end - start);
+  });
 }
 
 
@@ -249,13 +304,13 @@ void ui::window::handle_input(struct lumen::input_msg &msg) {
 void ui::window::did_reflow(void) { this->m_pending_reflow = false; }
 
 
-ck::tuple<int, int> ui::window::resize(int w, int h) {
+ck::pair<int, int> ui::window::resize(int w, int h) {
   w += windowframe::PADDING * 2;
   h += windowframe::TITLE_HEIGHT + windowframe::PADDING;
 
   // don't change stuff if you dont need to
   if (width() == w && height() == h) {
-    return ck::tuple(w, h);
+    return ck::pair(w, h);
   }
 
 
@@ -273,17 +328,21 @@ ck::tuple<int, int> ui::window::resize(int w, int h) {
   // failure case
   if (response.id != m.id) {
     // nothing changed, so we just return the old size
-    return ck::tuple(width(), height());
+    return ck::pair(width(), height());
   }
 
   auto new_bitmap = gfx::shared_bitmap::get(response.bitmap_name, response.width, response.height);
   if (!new_bitmap) printf("NOT FOUND!\n");
   // update the bitmap
-  this->m_bitmap = new_bitmap;
-  m_rect.w = width();
-  m_rect.h = height();
+  this->m_shared_bitmap = new_bitmap;
+  m_rect.w = response.width;
+  m_rect.h = response.height;
+
+
+  update_private_buffer();
+
 
   // tell the main view to reflow
   schedule_reflow();
-  return ck::tuple(width(), height());
+  return ck::pair(width(), height());
 }

@@ -60,15 +60,21 @@ namespace ui {
       m_frame->set_theme(bg, fg, border);
     }
 
-    virtual ck::tuple<int, int> resize(int width, int height);
+    virtual ck::pair<int, int> resize(int width, int height);
     virtual void invalidate(const gfx::rect &r);
-    virtual inline gfx::bitmap *bmp(void) { return m_bitmap.get(); }
+    virtual inline gfx::bitmap *bmp(void) {
+      return double_buffer() ? m_private_bitmap.get() : m_shared_bitmap.get();
+    }
     virtual ui::view *root_view(void);
 
 
     inline int id(void) { return m_id; }
 
+    bool double_buffer(void) const { return m_double_buffer; }
+    void set_double_buffer(bool);
+
    protected:
+    void update_private_buffer(void);
     void actually_do_invalidations(void);
     virtual void did_reflow(void);
 
@@ -83,8 +89,11 @@ namespace ui {
 
     // software "vsync" with the compositor
     bool m_compositor_sync = false;
-    ck::ref<gfx::shared_bitmap> m_bitmap;
+    ck::ref<gfx::bitmap> m_private_bitmap;
+    ck::ref<gfx::shared_bitmap> m_shared_bitmap;
 
+
+    bool m_double_buffer = false;
 
     /* used for mouse tracking */
     int mouse_down = 0; /* Current mouse press state */

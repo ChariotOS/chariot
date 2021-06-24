@@ -22,19 +22,14 @@ namespace ck {
     // Safely constructs resource. Operator new is called by the user. Once
     // constructed the unique_ptr will own the resource. std::move is used because
     // it is used to indicate that an object may be moved from other resource.
-    explicit unique_ptr(T* raw_resource) noexcept : m_ptr(move(raw_resource)) {
-    }
-    unique_ptr(nullptr_t) : m_ptr(nullptr) {
-    }
+    explicit unique_ptr(T* raw_resource) noexcept : m_ptr(move(raw_resource)) {}
+    unique_ptr(nullptr_t) : m_ptr(nullptr) {}
 
-    unique_ptr() noexcept : m_ptr(nullptr) {
-    }
+    unique_ptr() noexcept : m_ptr(nullptr) {}
 
     // destroys the resource when object goes out of scope. This will either call
     // the default delete operator or a user-defined one.
-    ~unique_ptr() noexcept {
-      delete m_ptr;
-    }
+    ~unique_ptr() noexcept { delete m_ptr; }
     // Disables the copy/ctor and copy assignment operator. We cannot have two
     // copies exist or it'll bypass the RAII concept.
     unique_ptr(const unique_ptr<T>&) noexcept = delete;
@@ -49,9 +44,7 @@ namespace ck {
    public:
     // Allows move-semantics. While the unique_ptr cannot be copied it can be
     // safely moved.
-    unique_ptr(unique_ptr<T>&& move) noexcept {
-      move.swap(*this);
-    }
+    unique_ptr(unique_ptr<T>&& move) noexcept { move.swap(*this); }
     // ptr = std::move(resource)
     unique_ptr<T>& operator=(unique_ptr<T>&& move) noexcept {
       move.swap(*this);
@@ -81,23 +74,15 @@ namespace ck {
       return *this;
     }
 
-    explicit operator bool() const noexcept {
-      return this->m_ptr;
-    }
+    explicit operator bool() const noexcept { return this->m_ptr; }
     // releases the ownership of the resource. The user is now responsible for
     // memory clean-up.
-    T* release() noexcept {
-      return exchange(m_ptr, nullptr);
-    }
+    T* release() noexcept { return exchange(m_ptr, nullptr); }
     // returns a pointer to the resource
-    T* get() const noexcept {
-      return m_ptr;
-    }
+    T* get() const noexcept { return m_ptr; }
 
     // swaps the resources
-    void swap(unique_ptr<T>& resource_ptr) noexcept {
-      ::swap(m_ptr, resource_ptr.m_ptr);
-    }
+    void swap(unique_ptr<T>& resource_ptr) noexcept { ::swap(m_ptr, resource_ptr.m_ptr); }
     // replaces the resource. the old one is destroyed and a new one will take
     // it's place.
     void reset(T* resource_ptr) noexcept(false) {
@@ -121,18 +106,14 @@ namespace ck {
 
    public:
     // overloaded operators
-    T* operator->() const noexcept {
-      return this->m_ptr;
-    }
-    T& operator*() const noexcept {
-      return *this->m_ptr;
-    }
+    T* operator->() const noexcept { return this->m_ptr; }
+    T& operator*() const noexcept { return *this->m_ptr; }
     // May be used to check for nullptr
   };
 
   template <typename T, typename... Args>
   unique_ptr<T> make_unique(Args&&... args) {
-    return unique_ptr<T>(new T(forward<Args>(args)...));
+    return unique_ptr<T>(new T(::forward<Args>(args)...));
   }
 
 
@@ -148,9 +129,7 @@ namespace ck {
     return {};
   }
 
-  constexpr auto call_will_be_destroyed_if_present(...) -> FalseType {
-    return {};
-  }
+  constexpr auto call_will_be_destroyed_if_present(...) -> FalseType { return {}; }
 
   template <class T>
   constexpr auto call_one_ref_left_if_present(T* object)
@@ -159,9 +138,7 @@ namespace ck {
     return {};
   }
 
-  constexpr auto call_one_ref_left_if_present(...) -> FalseType {
-    return {};
-  }
+  constexpr auto call_one_ref_left_if_present(...) -> FalseType { return {}; }
 
 
   template <typename T>
@@ -172,9 +149,7 @@ namespace ck {
       __atomic_add_fetch(&m_ref_count, 1, __ATOMIC_ACQ_REL);
     }
 
-    int ref_count() const {
-      return m_ref_count;
-    }
+    int ref_count() const { return m_ref_count; }
     void ref_release() {
       deref_base();
       if (m_ref_count == 0) {
@@ -186,8 +161,7 @@ namespace ck {
     }
 
    protected:
-    refcounted() {
-    }
+    refcounted() {}
     ~refcounted() { /* assert(m_ref_count == 0); */
     }
 
@@ -215,24 +189,14 @@ namespace ck {
    public:
     enum AdoptTag { Adopt };
 
-    ref() {
-    }
-    ref(const T* ptr) : m_ptr(const_cast<T*>(ptr)) {
-      retain_if_not_null(m_ptr);
-    }
-    ref(const T& object) : m_ptr(const_cast<T*>(&object)) {
-      m_ptr->ref();
-    }
-    ref(AdoptTag, T& object) : m_ptr(&object) {
-    }
-    ref(ref&& other) : m_ptr(other.leak_ref()) {
-    }
+    ref() {}
+    ref(const T* ptr) : m_ptr(const_cast<T*>(ptr)) { retain_if_not_null(m_ptr); }
+    ref(const T& object) : m_ptr(const_cast<T*>(&object)) { m_ptr->ref(); }
+    ref(AdoptTag, T& object) : m_ptr(&object) {}
+    ref(ref&& other) : m_ptr(other.leak_ref()) {}
     template <typename U>
-    ref(ref<U>&& other) : m_ptr(static_cast<T*>(other.leak_ref())) {
-    }
-    ref(const ref& other) : m_ptr(const_cast<T*>(other.ptr())) {
-      retain_if_not_null(m_ptr);
-    }
+    ref(ref<U>&& other) : m_ptr(static_cast<T*>(other.leak_ref())) {}
+    ref(const ref& other) : m_ptr(const_cast<T*>(other.ptr())) { retain_if_not_null(m_ptr); }
     template <typename U>
     ref(const ref<U>& other) : m_ptr(static_cast<T*>(const_cast<U*>(other.ptr()))) {
       retain_if_not_null(m_ptr);
@@ -245,8 +209,7 @@ namespace ck {
       else
         m_ptr = (T*)(NULL);
     }
-    ref(nullptr_t) {
-    }
+    ref(nullptr_t) {}
 
     template <typename U>
     ref(const unique_ptr<U>&) = delete;
@@ -306,23 +269,13 @@ namespace ck {
       m_ptr = nullptr;
     }
 
-    bool operator!() const {
-      return !m_ptr;
-    }
+    bool operator!() const { return !m_ptr; }
 
-    [[nodiscard]] T* leak_ref() {
-      return exchange(m_ptr, nullptr);
-    }
+    [[nodiscard]] T* leak_ref() { return exchange(m_ptr, nullptr); }
 
-    T* ptr() {
-      return m_ptr;
-    }
-    T* get() {
-      return m_ptr;
-    }
-    const T* ptr() const {
-      return m_ptr;
-    }
+    T* ptr() { return m_ptr; }
+    T* get() { return m_ptr; }
+    const T* ptr() const { return m_ptr; }
 
     T* operator->() {
       if (!m_ptr) {
@@ -346,55 +299,27 @@ namespace ck {
       return *m_ptr;
     }
 
-    operator const T*() const {
-      return m_ptr;
-    }
-    operator T*() {
-      return m_ptr;
-    }
+    operator const T*() const { return m_ptr; }
+    operator T*() { return m_ptr; }
 
-    operator bool() {
-      return !!m_ptr;
-    }
+    operator bool() { return !!m_ptr; }
 
-    bool operator==(nullptr_t) const {
-      return !m_ptr;
-    }
-    bool operator!=(nullptr_t) const {
-      return m_ptr;
-    }
+    bool operator==(nullptr_t) const { return !m_ptr; }
+    bool operator!=(nullptr_t) const { return m_ptr; }
 
-    bool operator==(const ref& other) const {
-      return m_ptr == other.m_ptr;
-    }
-    bool operator!=(const ref& other) const {
-      return m_ptr != other.m_ptr;
-    }
+    bool operator==(const ref& other) const { return m_ptr == other.m_ptr; }
+    bool operator!=(const ref& other) const { return m_ptr != other.m_ptr; }
 
-    bool operator==(ref& other) {
-      return m_ptr == other.m_ptr;
-    }
-    bool operator!=(ref& other) {
-      return m_ptr != other.m_ptr;
-    }
+    bool operator==(ref& other) { return m_ptr == other.m_ptr; }
+    bool operator!=(ref& other) { return m_ptr != other.m_ptr; }
 
-    bool operator==(const T* other) const {
-      return m_ptr == other;
-    }
-    bool operator!=(const T* other) const {
-      return m_ptr != other;
-    }
+    bool operator==(const T* other) const { return m_ptr == other; }
+    bool operator!=(const T* other) const { return m_ptr != other; }
 
-    bool operator==(T* other) {
-      return m_ptr == other;
-    }
-    bool operator!=(T* other) {
-      return m_ptr != other;
-    }
+    bool operator==(T* other) { return m_ptr == other; }
+    bool operator!=(T* other) { return m_ptr != other; }
 
-    bool is_null() const {
-      return !m_ptr;
-    }
+    bool is_null() const { return !m_ptr; }
 
    private:
     T* m_ptr = nullptr;
@@ -423,7 +348,7 @@ namespace ck {
 
   template <typename T, typename... Args>
   ck::ref<T> make_ref(Args&&... args) {
-    return ck::ref<T>(ck::ref<T>::AdoptTag::Adopt, *new T(forward<Args>(args)...));
+    return ck::ref<T>(ck::ref<T>::AdoptTag::Adopt, *new T(::forward<Args>(args)...));
   }
 
 

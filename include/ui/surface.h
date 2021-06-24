@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ck/tuple.h>
+#include <ck/pair.h>
 #include <gfx/bitmap.h>
 
 namespace ui {
@@ -15,7 +15,7 @@ namespace ui {
 
     virtual gfx::bitmap *bmp(void) = 0;
     virtual void invalidate(const gfx::rect &r) = 0;
-    virtual ck::tuple<int, int> resize(int width, int height) = 0;
+    virtual ck::pair<int, int> resize(int width, int height) = 0;
     virtual ui::view *root_view(void) = 0;
     virtual void did_reflow(void) = 0;
 

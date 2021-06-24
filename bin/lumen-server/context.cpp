@@ -99,8 +99,8 @@ wallpaper->pixels()[i] = 0x333333;
   compose_timer = ck::timer::make_interval(COMPOSE_INTERVAL, [this] { this->compose(); });
   invalidate(screen.bounds());
 
-	spawn("ct");
-	// spawn("term");
+  spawn("ct");
+  // spawn("term");
   // spawn("fluidsim");
   // spawn("doom");
 }
@@ -428,8 +428,8 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
       int sw = ck::min(arg->width, win->rect.w);
       int sh = ck::min(arg->height, win->rect.h);
       auto *pix = new_bitmap->pixels();
-      for (int i = 0; i < arg->width * arg->height; i++)
-        pix[i] = 0xFF00FF;
+      // for (int i = 0; i < arg->width * arg->height; i++)
+      //   pix[i] = 0xFF00FF;
       for (int y = 0; y < sh; y++) {
         const uint32_t *src = win->bitmap->scanline(y);
         uint32_t *dst = new_bitmap->scanline(y);
