@@ -224,12 +224,12 @@ void ui::window::actually_do_invalidations(void) {
 void ui::window::invalidate(const gfx::rect &r) {
   m_pending_invalidations.add(r);
 
-  auto start = sysbind_gettime_microsecond();
-  ck::eventloop::defer_unique("ui::window::invalidate", [this, start](void) {
+  // auto start = sysbind_gettime_microsecond();
+  ck::eventloop::defer_unique("ui::window::invalidate", [this](void) {
     actually_do_invalidations();
 
-    auto end = sysbind_gettime_microsecond();
-    printf("ui::window::invalidate took %llu us\n", end - start);
+    // auto end = sysbind_gettime_microsecond();
+    // printf("ui::window::invalidate took %llu us\n", end - start);
   });
 }
 
@@ -325,12 +325,13 @@ ck::pair<int, int> ui::window::resize(int w, int h) {
 
   app.send_msg_sync(LUMEN_MSG_RESIZE, m, &response);
 
-  // failure case
+  // failure case: nothing changed, so we just return the old size
   if (response.id != m.id) {
-    // nothing changed, so we just return the old size
     return ck::pair(width(), height());
   }
 
+
+  // printf("name: %s\n", response.bitmap_name);
   auto new_bitmap = gfx::shared_bitmap::get(response.bitmap_name, response.width, response.height);
   if (!new_bitmap) printf("NOT FOUND!\n");
   // update the bitmap
@@ -338,9 +339,7 @@ ck::pair<int, int> ui::window::resize(int w, int h) {
   m_rect.w = response.width;
   m_rect.h = response.height;
 
-
   update_private_buffer();
-
 
   // tell the main view to reflow
   schedule_reflow();
