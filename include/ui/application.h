@@ -18,20 +18,14 @@ namespace ui {
     application(void);
     ~application(void);
 
-    inline bool connected(void) {
-      return sock.connected();
-    }
+    inline bool connected(void) { return sock.connected(); }
 
     long send_raw(int type, void *payload, size_t payloadsize);
     lumen::msg *send_raw_sync(int type, void *payload, size_t payloadsize);
 
     // send a bare message
-    inline int send_msg(int type) {
-      return send_raw(type, NULL, 0);
-    }
-    inline int send_msg_sync(int type) {
-      return send_raw(type, NULL, 0);
-    }
+    inline int send_msg(int type) { return send_raw(type, NULL, 0); }
+    inline int send_msg_sync(int type) { return send_raw(type, NULL, 0); }
 
     template <typename T>
     inline int send_msg(int type, const T &payload) {
@@ -59,7 +53,6 @@ namespace ui {
     }
 
 
-    ui::window *new_window(ck::string initial_title, int w, int h);
 
 
     void drain_messages(void);
@@ -69,16 +62,19 @@ namespace ui {
 
     void start(void);
 
-    auto &eventloop(void) {
-      return m_eventloop;
-    }
+    auto &eventloop(void) { return m_eventloop; }
 
 #define THE_APP ui::application::get()
     static ui::application &get(void);
 
+   protected:
+    friend ui::window;
+    void add_window(int id, ui::window *);
+    void remove_window(int id);
+
    private:
     // all the windows in the application
-    ck::map<int, ck::unique_ptr<ui::window>> m_windows;
+    ck::map<int, ui::window *> m_windows;
     ck::vec<lumen::msg *> m_pending_messages;
     ck::eventloop m_eventloop;
   };

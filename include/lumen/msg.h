@@ -23,6 +23,9 @@ namespace lumen {
 #define LUMEN_MSG_CREATE_WINDOW (2 | FOR_WINDOW_SERVER)
 #define LUMEN_MSG_WINDOW_CREATED (3)
 
+
+#define LUMEN_MSG_DELETE_WINDOW (3 | FOR_WINDOW_SERVER)
+
 // invalidate a region of the window
 #define LUMEN_MSG_WINDOW_INVALIDATE (4 | FOR_WINDOW_SERVER)
 #define LUMEN_MSG_WINDOW_INVALIDATED (4)
@@ -67,11 +70,24 @@ namespace lumen {
     char name[LUMEN_NAMESZ];
   };
 
+
+
   struct window_created_msg {
     // if this is -1, it failed
     int window_id;
     char bitmap_name[LUMEN_NAMESZ];
   };
+
+
+  struct delete_window_msg {
+    int id;
+  };
+
+
+
+  // struct window_deleted_msg {
+  //   int success;
+  // };
 
 
 #define LUMEN_INPUT_KEYBOARD 1

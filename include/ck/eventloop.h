@@ -38,10 +38,7 @@ namespace ck {
     void dispatch(void);
 
 
-
-
     static ck::eventloop *current(void);
-
 
     static void register_notifier(ck::fsnotifier &);
     static void deregister_notifier(ck::fsnotifier &);

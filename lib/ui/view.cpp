@@ -7,6 +7,17 @@ static unsigned long view_id = 0;
 
 ui::view::view() {}
 
+// ui::view::view(ck::vec<ck::unique_ptr<ui::view>> children) {
+//   for (auto &c : children) {
+//     add(c.leak_ptr());
+//   }
+// }
+ui::view::view(std::initializer_list<ui::view *> children) {
+  for (auto *c : children) {
+    add(c);
+  }
+}
+
 ui::view::~view(void) {
   auto *srf = surface();
   if (srf) {
@@ -63,7 +74,7 @@ static void indent(int depth) {
 void ui::view::dump_hierarchy(int depth) {
   indent(depth);
   printf("%-4d %-4d %-4d %-4d\n", m_relative_rect.x, m_relative_rect.y, m_relative_rect.w,
-         m_relative_rect.h);
+      m_relative_rect.h);
 
   for (auto &child : m_children) {
     child->dump_hierarchy(depth + 1);
@@ -192,9 +203,9 @@ static void recurse_mount(ui::view *v) {
 };
 
 
-ui::view &ui::view::add(ui::view *v) {
+ui::view &ui::view::add(ck::ref<ui::view> v) {
   v->m_parent = this;
-  m_children.push(ck::unique_ptr(v));
+  m_children.push(v);
   if (surface()) {
     update_layout();
     recurse_mount(v);
@@ -244,4 +255,35 @@ void ui::view::set_relative_rect(gfx::rect &a_rect) {
 
   // TODO:
   // if (rect == m_relative_rect) return;
+}
+
+
+void ui::view::load_style(const ui::style &cfg) {
+  if (cfg.background) {
+    set_background(cfg.background.unwrap());
+  }
+
+  if (cfg.foreground) {
+    set_foreground(cfg.foreground.unwrap());
+  }
+
+  if (cfg.bordersize) {
+    set_bordersize(cfg.bordersize.unwrap());
+  }
+
+  if (cfg.bordercolor) {
+    set_bordercolor(cfg.bordercolor.unwrap());
+  }
+
+
+  if (cfg.layout) {
+    set_layout(cfg.layout);
+  }
+
+  if (cfg.margins) {
+    set_margins(cfg.margins.unwrap());
+  }
+  if (cfg.padding) {
+    set_padding(cfg.padding.unwrap());
+  }
 }

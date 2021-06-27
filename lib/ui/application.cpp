@@ -12,6 +12,7 @@
 static ui::application *the_app = NULL;
 
 ui::application &ui::application::get(void) {
+  if (the_app == NULL) panic("No application constructed\n");
   return *the_app;
 }
 
@@ -118,7 +119,7 @@ void ui::application::dispatch_messages(void) {
 
       int wid = inp->window_id;
       if (m_windows.contains(wid)) {
-        auto *win = m_windows.get(wid).get();
+        auto *win = m_windows.get(wid);
         assert(win != NULL);
         win->handle_input(*inp);
       } else {
@@ -137,34 +138,17 @@ void ui::application::dispatch_messages(void) {
 }
 
 
-void ui::application::start(void) {
-  m_eventloop.start();
+void ui::application::add_window(int id, ui::window *win) {
+  assert(!m_windows.contains(id));
+
+  m_windows[id] = win;
 }
 
 
-ui::window *ui::application::new_window(ck::string name, int w, int h) {
-  w += ui::windowframe::PADDING * 2;
-  h += ui::windowframe::PADDING + ui::windowframe::TITLE_HEIGHT;
-  struct lumen::create_window_msg msg;
-  msg.width = w;
-  msg.height = h;
-  strncpy(msg.name, name.get(), LUMEN_NAMESZ - 1);
+void ui::application::remove_window(int id) {
+  assert(m_windows.contains(id));
 
-  // the response message
-  struct lumen::window_created_msg res = {0};
-
-
-  bool response = send_msg_sync(LUMEN_MSG_CREATE_WINDOW, msg, &res);
-
-  if (response) {
-    if (res.window_id >= 0) {
-      auto win = ck::make_unique<ui::window>(res.window_id, name, gfx::rect(0, 0, w, h),
-                                             gfx::shared_bitmap::get(res.bitmap_name, w, h));
-      m_windows.set(res.window_id, move(win));
-      return m_windows.get(res.window_id).get();
-    }
-  }
-
-
-  return nullptr;
+  m_windows.remove(id);
 }
+
+void ui::application::start(void) { m_eventloop.start(); }

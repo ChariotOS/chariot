@@ -13,6 +13,7 @@
 #include <ck/event.h>
 #include <ck/rand.h>
 #include <ck/tuple.h>
+#include <ck/time.h>
 
 
 static volatile bool currently_running_defered_functions = false;
@@ -93,37 +94,17 @@ int awaitfs(struct await_target *fds, int nfds, int flags, long long timeout_tim
 
 static long nonce = 0;
 void ck::eventloop::pump(void) {
-  currently_running_defered_functions = true;
-
-
+  // step 1: run any defered functions
   while (s_defered.size() != 0) {
     auto this_defered = move(s_defered);
     s_defered.clear();
 
-    for (auto &cb : this_defered) {
+    for (auto &cb : this_defered)
       cb.second()();
-    }
-    // printf("%d defered left.\n", s_defered.size());
   }
 
-  currently_running_defered_functions = false;
-
-  ck::vec<struct await_target> targs;
-  auto add_fd = [&](int fd, int mask, ck::object *obj) {
-    struct await_target targ = {0};
-    targ.fd = fd;
-    targ.awaiting = mask;
-    targ.priv = (void *)obj;
-    targs.push(move(targ));
-  };
-
-  for (auto &notifier : s_notifiers) {
-    int fd = notifier->fd();
-    int event = notifier->ev_mask();
-
-    add_fd(fd, event, notifier);
-  }
-
+  // step 2: check the timers for any pending timer ticks. If there are any, run them. When no more
+  // pending timer ticks are avail, pick the closest timeout as the timeout for the awaitfs call
   long long timeout = -1;
   long long now = current_ms();
   ck::timer *nt = NULL;
@@ -131,7 +112,6 @@ void ck::eventloop::pump(void) {
   while (1) {
     nt = next_timer();
     if (nt == NULL) break;
-
 
     timeout = nt->next_fire();
     if (timeout > now) break;
@@ -143,14 +123,34 @@ void ck::eventloop::pump(void) {
     }
   }
 
+  // auto t = ck::time::tracker();
+
+  // step 3: construct an array of await_targets for the awaitfs call
+  ck::vec<struct await_target> targs;
+  targs.ensure_capacity(s_notifiers.size());
+  auto add_fd = [&](int fd, int mask, ck::object *obj) {
+    struct await_target targ = {0};
+    targ.fd = fd;
+    targ.awaiting = mask;
+    targ.priv = (void *)obj;
+    targs.push(move(targ));
+  };
+
+  for (auto &notifier : s_notifiers) {
+    int fd = notifier->fd();
+    int event = notifier->ev_mask();
+    add_fd(fd, event, notifier);
+  }
 
 
   /* Shuffle the target order */
   int n = targs.size();
   for (int i = 0; i < n; i++) {
     int j = i + ::rand() / (RAND_MAX / (n - i) + 1);
+    if (j == i) continue;
     swap(targs[i], targs[j]);
   }
+
 
   int index = awaitfs(targs.data(), targs.size(), 0, timeout);
   if (index >= 0) {

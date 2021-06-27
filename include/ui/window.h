@@ -39,21 +39,17 @@ namespace ui {
     friend windowframe;
 
    public:
-    window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bitmap>);
-    ~window();
-    inline const ck::string &name(void) { return m_name; }
+    window(ck::string name, int w, int h, int flags = 0);
+    virtual ~window();
 
+
+   public:
+    inline const ck::string &name(void) { return m_name; }
     void handle_input(struct lumen::input_msg &);
 
-    template <typename T, typename... Args>
-    inline T &set_view(Args &&...args) {
-      ui::view *v = new T(forward<Args>(args)...);
-      m_frame->clear();
-      m_frame->add(v);
-      v->set_focused();
-      return *(T *)v;
-    }
-
+    // build the certain window you are implementing.
+    virtual ck::ref<ui::view> build(void) { return make<ui::view>(); }
+    void rebuild(void);
 
     inline void compositor_sync(bool d) { m_compositor_sync = d; }
     inline void set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
@@ -74,11 +70,17 @@ namespace ui {
     void set_double_buffer(bool);
 
    protected:
+    inline void set_view(ck::ref<ui::view> v) {
+      m_frame->clear();
+      m_frame->add(v);
+      v->set_focused();
+    }
+
     void update_private_buffer(void);
     void actually_do_invalidations(void);
     virtual void did_reflow(void);
 
-    ck::unique_ptr<ui::windowframe> m_frame;
+    ck::ref<ui::windowframe> m_frame;
 
     bool m_pending_reflow = false;
     gfx::disjoint_rects m_pending_invalidations;
@@ -92,8 +94,8 @@ namespace ui {
     ck::ref<gfx::bitmap> m_private_bitmap;
     ck::ref<gfx::shared_bitmap> m_shared_bitmap;
 
-
-    bool m_double_buffer = false;
+    // by default, double buffer
+    bool m_double_buffer = true;
 
     /* used for mouse tracking */
     int mouse_down = 0; /* Current mouse press state */

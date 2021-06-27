@@ -155,7 +155,7 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
 
   if (hovered_window != NULL) {
     auto mrel = gfx::point(screen.mouse_pos.x() - hovered_window->rect.x,
-                           screen.mouse_pos.y() - hovered_window->rect.y);
+        screen.mouse_pos.y() - hovered_window->rect.y);
 
 
     hovered_window->last_hover = mrel;
@@ -355,6 +355,18 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
     invalidate(window->rect);
 
     c.respond(msg, LUMEN_MSG_WINDOW_CREATED, res);
+    return;
+  }
+
+  HANDLE_TYPE(LUMEN_MSG_DELETE_WINDOW, lumen::delete_window_msg) {
+    int id = arg->id;
+
+    window *win = c.windows[id];
+    if (win != NULL) {
+      c.windows.remove(id);
+      window_closed(win);
+      delete win;
+    }
     return;
   }
 
@@ -695,8 +707,8 @@ void lumen::context::compose(void) {
     if (win->pending_invalidation_id != -1) {
       struct lumen::invalidated_msg m;
       m.id = win->id;
-      win->guest.send_raw(LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m,
-                          sizeof(m));
+      win->guest.send_raw(
+          LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m, sizeof(m));
       win->pending_invalidation_id = -1;
     }
   }

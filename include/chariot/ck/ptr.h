@@ -358,40 +358,46 @@ namespace ck {
 
 
 
+// a convenient `make` function which produces a ref
+template <typename Type, typename... Args>
+inline ck::ref<Type> make(Args&&... args) {
+  return ck::ref<Type>(new Type(::forward<Args>(args)...));
+}
+
 // comparaison operators
 template <class T, class U>
 bool operator==(const ck::ref<T>& l,
-                const ck::ref<U>& r) throw()  // never throws
+    const ck::ref<U>& r) throw()  // never throws
 {
   return (l.get() == r.get());
 }
 template <class T, class U>
 bool operator!=(const ck::ref<T>& l,
-                const ck::ref<U>& r) throw()  // never throws
+    const ck::ref<U>& r) throw()  // never throws
 {
   return (l.get() != r.get());
 }
 template <class T, class U>
 bool operator<=(const ck::ref<T>& l,
-                const ck::ref<U>& r) throw()  // never throws
+    const ck::ref<U>& r) throw()  // never throws
 {
   return (l.get() <= r.get());
 }
 template <class T, class U>
 bool operator<(const ck::ref<T>& l,
-               const ck::ref<U>& r) throw()  // never throws
+    const ck::ref<U>& r) throw()  // never throws
 {
   return (l.get() < r.get());
 }
 template <class T, class U>
 bool operator>=(const ck::ref<T>& l,
-                const ck::ref<U>& r) throw()  // never throws
+    const ck::ref<U>& r) throw()  // never throws
 {
   return (l.get() >= r.get());
 }
 template <class T, class U>
 bool operator>(const ck::ref<T>& l,
-               const ck::ref<U>& r) throw()  // never throws
+    const ck::ref<U>& r) throw()  // never throws
 {
   return (l.get() > r.get());
 }

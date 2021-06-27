@@ -5,6 +5,7 @@
 #include <ui/icon.h>
 #include <ui/window.h>
 #include <gfx/disjoint_rects.h>
+#include <ck/eventloop.h>
 
 #define min(a, b)           \
   ({                        \
@@ -60,7 +61,7 @@ void ui::windowframe::custom_layout(void) {
   if (m_children.size() == 0) return;
   assert(m_children.size() == 1);
 
-  ck::unique_ptr<ui::view> &child = m_children[0];
+  ck::ref<ui::view> &child = m_children[0];
   auto area = this->rect();
   area.take_from_top(TITLE_HEIGHT);
   // printf("windowframe custom layout: %d %d %d %d\n", area.x, area.y, area.w, area.h);
@@ -93,7 +94,7 @@ void ui::windowframe::paint_event(gfx::scribe &s) {
 
   m_frame_font->with_line_height(12, [&]() {
     s.draw_text(*m_frame_font, r, ((ui::window *)surface())->m_name, ui::TextAlign::Center,
-                get_foreground(), true);
+        get_foreground(), true);
   });
 
   for (auto &child : m_children) {
@@ -104,11 +105,34 @@ void ui::windowframe::paint_event(gfx::scribe &s) {
 
 
 
-ui::window::window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bitmap> bmp) {
-  m_id = id;
+ui::window::window(ck::string name, int w, int h, int flags) {
+  auto &app = ui::application::get();
+
+  w += ui::windowframe::PADDING * 2;
+  h += ui::windowframe::PADDING + ui::windowframe::TITLE_HEIGHT;
+  struct lumen::create_window_msg msg;
+  msg.width = w;
+  msg.height = h;
+  strncpy(msg.name, name.get(), LUMEN_NAMESZ - 1);
+
+  // the response message
+  struct lumen::window_created_msg res = {0};
+
+  if (!app.send_msg_sync(LUMEN_MSG_CREATE_WINDOW, msg, &res)) {
+    panic("failed to create window on server");
+  }
+
+  if (res.window_id >= 0) {
+    app.add_window(res.window_id, this);
+  } else {
+    panic("invalid res.window_id");
+  }
+
+
+  m_id = res.window_id;
   m_name = name;
-  m_rect = r;
-  m_shared_bitmap = bmp;
+  m_rect = gfx::rect(0, 0, w, h);
+  m_shared_bitmap = gfx::shared_bitmap::get(res.bitmap_name, w, h);
 
   update_private_buffer();
 
@@ -116,13 +140,31 @@ ui::window::window(int id, ck::string name, gfx::rect r, ck::ref<gfx::shared_bit
   m_frame->m_surface = this;
   m_frame->m_parent = NULL;
 
-  schedule_reflow();
+  // sadly, we have to defer this, as we rely on the subclass's virtual functions, which you cannot
+  // do in the parent constructor. So defer for some time in the future. This shouldn't add much
+  // runtime at all, but it feels very hacky :^)
+  // TODO: add some kind of "ui::window::init" which is called by the application later on
+  ck::eventloop::defer([this] { this->rebuild(); });
 }
 
 
-ui::window::~window(void) {}
+ui::window::~window(void) {
+  auto &app = ui::application::get();
+
+  lumen::delete_window_msg msg;
+  msg.id = m_id;
+  if (!app.send_msg(LUMEN_MSG_DELETE_WINDOW, msg)) {
+    panic("failed to delete window");
+  }
+
+  app.remove_window(m_id);
+}
 
 
+void ui::window::rebuild(void) {
+  set_view(build());
+  schedule_reflow();
+}
 
 void ui::window::set_double_buffer(bool to) {
   if (m_double_buffer == to) return;
@@ -137,7 +179,7 @@ void ui::window::update_private_buffer(void) {
     if (m_private_bitmap) m_private_bitmap.clear();
   } else {
     if (!m_private_bitmap || (m_private_bitmap->width() != m_shared_bitmap->width() ||
-                              m_private_bitmap->height() != m_shared_bitmap->height())) {
+                                 m_private_bitmap->height() != m_shared_bitmap->height())) {
       m_private_bitmap =
           ck::make_ref<gfx::bitmap>(m_shared_bitmap->width(), m_shared_bitmap->height());
     }
@@ -166,9 +208,9 @@ void ui::window::actually_do_invalidations(void) {
   if (double_buffer()) {
     assert(m_private_bitmap);
     gfx::scribe s(*m_shared_bitmap);
-    bool debug = true;
+    constexpr bool debug = false;
 
-    if (debug) {
+    if constexpr (debug) {
       // if we are in debug draw mode, (debug == true), then we want to draw a green
       // rectangle around all the dirty regions inside the window. But this requires
       // that previous green rectangles are cleared, meaning we need to copy all the

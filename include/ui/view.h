@@ -15,6 +15,7 @@
 #include <ui/surface.h>
 #include <ui/layout.h>
 #include <ui/edges.h>
+#include <std.h>
 
 // #include <ui/internal/flex.h>
 
@@ -36,6 +37,17 @@ namespace ui {
 
   class view; /* fwd decl */
 
+
+  // a structure which you can use to initialize the styling of a view
+  struct style {
+    ck::option<uint32_t> background;
+    ck::option<uint32_t> foreground;
+    ck::option<uint32_t> bordercolor;
+    ck::option<uint32_t> bordersize;
+    ck::ref<ui::layout> layout;
+    ck::option<ui::edges> margins;
+    ck::option<ui::edges> padding;
+  };
 
   struct flex_layout {
     struct line {
@@ -85,6 +97,7 @@ namespace ui {
 
 
 
+
   /*
    * A view defines a generic object that can be rendered in a view stack.
    * The base class defines a generic 'event' method that passes an event
@@ -129,12 +142,17 @@ namespace ui {
   inline bool has_##name(void) { return this->o_##name.has_value(); }
 
 
-  class view {
+  class view : public ck::refcounted<ui::view> {
     CK_NONCOPYABLE(view);
     CK_MAKE_NONMOVABLE(view);
 
    public:
     view();
+
+    // a helper function to create a view with some children
+    // view(ck::vec<ck::ref<ui::view>> children);
+    view(std::initializer_list<ui::view *> children);
+
     virtual ~view();
     /*
      * Called on each `view` recursively. This method is optionally overloaded,
@@ -317,7 +335,7 @@ namespace ui {
       return *v;
     }
 
-    ui::view &add(ui::view *v);
+    ui::view &add(ck::ref<ui::view> v);
 
     friend inline ui::view &operator<<(ui::view &lhs, ui::view *rhs) {
       lhs.add(rhs);
@@ -373,9 +391,14 @@ namespace ui {
 
 
     /* A list of the children owned by this view */
-    ck::vec<ck::unique_ptr<ui::view>> m_children;
+    ck::vec<ck::ref<ui::view>> m_children;
 
     void dump_hierarchy(int depth = 0);
+
+
+
+
+    void load_style(const ui::style &cfg);
 
    private:
     // void needs_relayout() { m_needs_relayout = true; }
@@ -403,6 +426,81 @@ namespace ui {
     gfx::isize m_min_size{-1, -1};
     gfx::isize m_max_size{-1, -1};
   };
+
+
+
+  template <typename T>
+  ck::ref<T> styled(ck::ref<T> v, const ui::style &st) {
+    v->load_style(st);
+    return v;
+  }
+
+  template <typename T>
+  ck::ref<T> with_children(ck::ref<T> v, std::initializer_list<ck::ref<ui::view>> children) {
+    for (auto &c : children) {
+      v->add(c);
+    }
+    return v;
+  }
+
+  // a convenient `make` function which produces a ref
+  template <typename Type, typename... Args>
+  inline ck::ref<Type> make(Args &&...args) {
+    return ck::ref<Type>(new Type(::forward<Args>(args)...));
+  }
+
+  // a convenient `make` function which produces a ref
+  // template <typename Type, typename... Args>
+  // inline ck::ref<Type> make(const ui::cfg &cfg, Args &&...args) {
+  //   auto v = ck::ref<Type>(new Type(::forward<Args>(args)...));
+  //   v->load_config(cfg);
+  //   return v;
+  // }
+
+  // a convenient `make` function which produces a ref
+  template <typename Type>
+  inline ck::ref<Type> make(std::initializer_list<ck::ref<ui::view>> children) {
+    auto v = ck::ref<Type>(new Type());
+    return ui::with_children(v, children);
+  }
+
+  // a convenient `make` function which produces a ref
+  template <typename Type, typename... Args>
+  inline ck::ref<Type> make(std::initializer_list<ck::ref<ui::view>> children, Args &&...args) {
+    auto v = ck::ref<Type>(new Type(::forward<Args>(args)...));
+    return ui::with_children(v, children);
+  }
+
+  template <typename Type, typename... Args>
+  inline ck::ref<Type> make(
+      ui::style style, std::initializer_list<ck::ref<ui::view>> children, Args &&...args) {
+    auto v = ck::ref<Type>(new Type(::forward<Args>(args)...));
+    return styled(ui::with_children(v, children), style);
+  }
+
+  template <typename Type, typename... Args>
+  inline ck::ref<Type> make(ui::style style, Args &&...args) {
+    auto v = ck::ref<Type>(new Type(::forward<Args>(args)...));
+    return styled(v, style);
+  }
+
+
+
+#define STYLED(v, ...) ui::styled(v, {__VA_ARGS__})
+
+  // a convenient `make` function which produces a ref
+  // template <typename Type, typename... Args>
+  // inline ck::ref<Type> make(
+  //     const ui::cfg &cfg, std::initializer_list<ck::ref<ui::view>> children, Args &&...args) {
+  //   auto v = ck::ref<Type>(new Type(::forward<Args>(args)...));
+  //   for (auto &c : children) {
+  //     v->add(c);
+  //   }
+  //   v->load_config(cfg);
+  //   return v;
+  // }
+
+
 
 
 }  // namespace ui

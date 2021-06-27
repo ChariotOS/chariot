@@ -7,13 +7,13 @@
 #include <ui/frame.h>
 #include <ck/pair.h>
 
-class blinky : public ui::view {
+class colorview : public ui::view {
  public:
-  blinky(uint32_t color) : main_color(color) {
+  colorview(uint32_t color) : main_color(color) {
     set_background(color);
     // set_margins(5);
   }
-  virtual ~blinky() = default;
+  virtual ~colorview() = default;
 
 
   virtual void mouse_event(ui::mouse_event& ev) {
@@ -40,57 +40,82 @@ class blinky : public ui::view {
 };
 
 ui::view* create_box(uint32_t c) {
-  ui::view* v = new blinky(c);
+  ui::view* v = new colorview(c);
   // v->set_border(0x000000, 2);
   return v;
 }
 
 
-static void reset_window(ui::window* win) {
-  // printf("\n\n\n\nresetting!\n");
-  auto& root = win->set_view<ui::view>();
 
-  auto& l = root.set_layout<ui::hboxlayout>();
-  l.set_spacing(0);
+// idea for a ck::future api?
+namespace ck {
 
-  int count = 5;
-  for (int i = 0; i < count; i++) {
-    auto& c = root.add(new ui::frame());
-    c.set_layout<ui::vboxlayout>();
+  enum class FutureState {
+    Pending,
+    Fulfilled,
+    Rejected,
+  };
 
-    for (int j = 0; j < count; j++) {
-      auto& d = c.add(create_box(0xFFFFFF));
-      // d.set_padding(20);
-    }
+  // templated on the return type of the future upon completion
+  template <typename T>
+  class future {
+   public:
+    constexpr ck::FutureState state(void) const { return m_state; }
+
+   private:
+    ck::FutureState m_state = ck::FutureState::Pending;
+  };
+}  // namespace ck
+
+
+
+#define BLD(T, style, children, ...) \
+  ui::styled(ui::with_children(ui::make<T>(__VA_ARGS__), children), style)
+
+
+class ct_window : public ui::window {
+ public:
+  ct_window(void) : ui::window("current test", 400, 400) {}
+
+  virtual ck::ref<ui::view> build(void) {
+    // clang-format off
+
+    return ui::make<ui::vbox>({
+      ui::make<colorview>({
+          .layout = new ui::hboxlayout(),
+          .margins = 30,
+          .padding = 10,
+        },
+        {
+          ui::make<colorview>(rand()),
+          ui::make<colorview>(rand()),
+          ui::make<colorview>(rand()),
+        },
+        0xFF0000),
+  
+        ui::make<colorview>({.margins = 5}, rand()),
+        ui::make<colorview>(rand()),
+    });
+
+    // clang-format on
   }
-}
+};
 
-
-ck::pair<int, int> floor_ceil(float x) { return ck::pair(floor(x), ceil(x)); }
 
 int main(int argc, char** argv) {
-  // {
-  //   auto p = floor_ceil(3.14);
-  //   auto [f, c] = p;
-  //   printf("f: %d, c: %d\n", f, c);
-  // }
-
-  // return 0;
-
   ui::application app;
-  ui::window* win = app.new_window("Test", 400, 400);
 
-  win->set_double_buffer(true);
+  // create the window
+  ct_window* win = new ct_window;
 
-  // win->compositor_sync(true);
-  reset_window(win);
+  auto t = ck::timer::make_interval(30, [&win] {
+    if (win != NULL) {
+      delete win;
+      win = NULL;
+    }
 
-  // float v = 0.0;
-  // auto t = ck::timer::make_interval(25, [win, &v] {
-  //   v += 0.04;
-  //   win->resize(400 + 200 * sin(v), 400 + 200 * cos(v));
-  //   // reset_window(win);
-  // });
+    win = new ct_window;
+  });
 
   app.start();
   return 0;

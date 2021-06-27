@@ -20,6 +20,7 @@ AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: true
 BinPackParameters: true
+AlignAfterOpenBracket: DontAlign
 BraceWrapping:
   AfterClass:      false
   AfterControlStatement: false
@@ -145,4 +146,6 @@ Standard:        Auto
 TabWidth:        8
 UseTab:          Never
 ...
+
+
 

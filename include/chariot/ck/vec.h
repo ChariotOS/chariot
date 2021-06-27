@@ -13,6 +13,8 @@
 #include <stdint.h>
 #endif
 
+#include "../../std.h"
+
 #include "../template_lib.h"
 
 
@@ -95,6 +97,14 @@ namespace ck {
 
     ~vec() { clear(); }
 
+
+    vec(std::initializer_list<T> data) {
+      ensure_capacity(data.size());
+
+      for (const auto& el : data) {
+        push(el);
+      }
+    }
     vec(vec&& other)
         : m_size(other.m_size),
           m_capacity(other.m_capacity),
