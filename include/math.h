@@ -37,6 +37,9 @@ extern "C" {
   })
 
 
+#define CLAMP(a, low, high) MAX(MIN((a), (high)), (low))
+
+
 double acos(double);
 float acosf(float);
 double asin(double);

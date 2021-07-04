@@ -8,14 +8,40 @@
 #include <gfx/font.h>
 #include <ui/application.h>
 #include <ui/view.h>
+#include <ui/boxlayout.h>
+#include <ck/timer.h>
 
 
 extern "C" {
 #include "doomgeneric.h"
 }
 
+
+class doomview;
+
+
+#define SCALE 1
+
+class doom_window : public ui::window {
+ public:
+  doom_window(void) : ui::window("DOOM", DOOMGENERIC_RESX * SCALE, DOOMGENERIC_RESY * SCALE) {
+    // set_theme(0x353535, 0xFFFFFF, 0x353535);
+    // compositor_sync(true);
+  }
+
+  virtual ck::ref<ui::view> build(void) {
+    // clang-format off
+
+    return ui::make<ui::hbox>({ui::make<doomview>()});
+
+    // clang-format on
+  }
+};
+
+
+
 static ui::application main_app;
-static ui::window* main_window;
+static doom_window* main_window;
 static ui::view* main_widget;
 static size_t last_tick = 0;
 
@@ -83,17 +109,16 @@ static void addKeyToQueue(int code, char c, bool pressed) {
 class doomview : public ui::view {
   long frames = 0;
   long start_time = current_us();
+  ck::ref<ck::timer> wew;
+  float v = 0.0;
 
  public:
-  doomview() {}
+  doomview() { main_widget = this; }
 
 
   virtual void paint_event(gfx::scribe& s) override {
     gfx::bitmap b(DOOMGENERIC_RESX, DOOMGENERIC_RESY, DG_ScreenBuffer);
-
-    s.blit(gfx::point(0, 0), b, gfx::rect(0, 0, DOOMGENERIC_RESX, DOOMGENERIC_RESY));
-
-    update();
+    s.blit_scaled(b, gfx::rect(0, 0, width(), height()));
   }
 
   virtual void on_keydown(ui::keydown_event& ev) override { addKeyToQueue(ev.code, ev.c, true); }
@@ -102,9 +127,14 @@ class doomview : public ui::view {
 
 
 extern "C" void DG_PumpEventLoop() {
+  main_app.eventloop().run_deferred();
+  main_app.eventloop().check_timers();
+
   main_app.drain_messages();
   main_app.dispatch_messages();
 }
+
+
 
 
 extern "C" void DG_Init() {
@@ -114,16 +144,15 @@ extern "C" void DG_Init() {
   }
   memset(s_KeyQueue, 0, KEYQUEUE_SIZE * sizeof(unsigned short));
 
-  main_window = main_app.new_window("DOOM", DOOMGENERIC_RESX, DOOMGENERIC_RESY);
-  main_window->set_theme(0x353535, 0xFFFFFF, 0x353535);
-  main_window->defer_invalidation(false);
-  main_widget = &main_window->set_view<doomview>();
+  main_window = new doom_window();
 }
 
 
 
 extern "C" void DG_DrawFrame() {
-  main_widget->repaint();
+  if (main_widget != NULL) {
+    main_widget->update();
+  }
   DG_PumpEventLoop();
 }
 

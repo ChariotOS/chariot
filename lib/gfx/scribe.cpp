@@ -8,15 +8,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <ck/time.h>
+
 
 gfx::scribe::scribe(gfx::bitmap &b) : bmp(b) {
   enter();  // initial state
 }
 
 
-gfx::scribe::~scribe(void) {
-  leave();
-}
+gfx::scribe::~scribe(void) { leave(); }
 
 void gfx::scribe::enter(void) {
   if (states.size() == 0) {
@@ -37,34 +37,31 @@ void gfx::scribe::leave() {
 }
 
 // static inline int abs(int a) { return a < 0 ? -a : a; }
-static inline int min(int a, int b) {
-  return a < b ? a : b;
-}
-static inline int max(int a, int b) {
-  return a > b ? a : b;
-}
+static inline int min(int a, int b) { return a < b ? a : b; }
+static inline int max(int a, int b) { return a > b ? a : b; }
 
 
 
 
 void gfx::scribe::clear(uint32_t color) {
-  auto rect = state().clip;
-  if (rect.is_empty()) return;
+  fill_rect(state().clip, color);
+  // auto rect = state().clip;
+  // if (rect.is_empty()) return;
 
-  uint32_t *dst = bmp.scanline(rect.top()) + rect.left();
-  const size_t dst_skip = bmp.width();
+  // uint32_t *dst = bmp.scanline(rect.top()) + rect.left();
+  // const size_t dst_skip = bmp.width();
 
-  for (int i = rect.h - 1; i >= 0; --i) {
-    // fast_u32_fill(dst, color, rect.w);
-    for (int o = 0; o < rect.w; o++) {
-      dst[o] = color;
-    }
-    dst += dst_skip;
-  }
+  // for (int i = rect.h - 1; i >= 0; --i) {
+  //   // fast_u32_fill(dst, color, rect.w);
+  //   for (int o = 0; o < rect.w; o++) {
+  //     dst[o] = color;
+  //   }
+  //   dst += dst_skip;
+  // }
 }
 
-void gfx::scribe::blit_fast(const gfx::point &position, gfx::bitmap &source,
-                            const gfx::rect &_src_rect) {
+void gfx::scribe::blit_fast(
+    const gfx::point &position, gfx::bitmap &source, const gfx::rect &_src_rect) {
   return;
   auto src_rect = _src_rect.intersect(source.rect());
   int dx = position.x() + translation().y();
@@ -132,8 +129,8 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source, const gf
 
 
 
-void gfx::scribe::blit_alpha(const gfx::point &position, gfx::bitmap &source,
-                             const gfx::rect &src_rect) {
+void gfx::scribe::blit_alpha(
+    const gfx::point &position, gfx::bitmap &source, const gfx::rect &src_rect) {
   auto safe_src_rect = src_rect.intersect(source.rect());
 
   gfx::rect dst_rect;
@@ -165,30 +162,69 @@ void gfx::scribe::blit_alpha(const gfx::point &position, gfx::bitmap &source,
 }
 
 
-void gfx::scribe::blit_scaled(gfx::bitmap &bmp, const gfx::rect &r, gfx::bitmap::SampleMode mode) {
+void gfx::scribe::blit_scaled(
+    gfx::bitmap &source, const gfx::rect &r, gfx::bitmap::SampleMode mode) {
+  // ck::time::tracker t;
   int ox = translation().x() + r.x;
   int oy = translation().y() + r.y;
+  int sw = source.width();
+  int sh = source.height();
 
 
-  for (int y = 0; y < r.w; y++) {
-    for (int x = 0; x < r.h; x++) {
-      float fx = x / (float)r.w;
-      float fy = y / (float)r.h;
-      set_pixel(x + ox, y + oy, bmp.sample(fx, fy, mode));
+  if (mode == gfx::bitmap::SampleMode::Nearest) {
+    float dfx = sw / (float)r.w;
+    float dfy = sh / (float)r.h;
+
+    int start_y = max(0, -oy);
+    int end_y = min(r.h, bmp.height() - oy);
+    // if (oy < 0) start_y = -oy - 1;
+
+    float fy = dfy * start_y;
+
+    int start_x = max(0, -ox);
+    int end_x = min(r.w, bmp.width() - ox);
+    // grab the scanline at the top left of the dst image
+    uint32_t *dst = bmp.scanline(start_y + oy) + ox;
+
+    for (int y = start_y; y < end_y; y++) {
+      // grab the scanline that we sample from
+      uint32_t *src = source.scanline(fy);
+
+      float fx = start_x * dfx;
+      for (int x = start_x; x < end_x; x++) {
+        dst[x] = src[(int)fx];
+        fx += dfx;
+      }
+      fy += dfy;
+      // go to the next scanline on the dst image
+      dst += bmp.width();
+    }
+
+
+  } else {
+    for (int y = 0; y < r.h; y++) {
+      for (int x = 0; x < r.w; x++) {
+        float fx = x / (float)r.w;
+        float fy = y / (float)r.h;
+        set_pixel(x + ox, y + oy, source.sample(fx, fy, mode));
+      }
     }
   }
+
+  // printf("blit_scaled (%d, %d - %d, %d) took %llu us\n", ox, oy, r.w, r.h, t.us());
 }
 
 void gfx::scribe::blend_pixel(int x, int y, uint32_t color, float alpha) {
   auto &s = state();
-  x += s.offset.x();
-  y += s.offset.y();
+  // x += s.offset.x();
+  // y += s.offset.y();
   if (!s.clip.contains(x, y)) return;
 
 
   uint32_t fgi = (color & 0xFF'FF'FF) | ((int)(255 * alpha) << 24);
-  uint32_t bgi = bmp.get_pixel(x, y);  // this could be slow, cause we read from vga memory...
-  set_pixel(x, y, gfx::color::blend(fgi, bgi));
+  uint32_t bgi = bmp.get_pixel(
+      x + s.offset.x(), y + s.offset.y());  // this could be slow, cause we read from vga memory...
+  draw_pixel(x, y, gfx::color::blend(fgi, bgi));
 }
 
 #define __ipart(X) ((int)(X))
@@ -204,8 +240,8 @@ void gfx::scribe::blend_pixel(int x, int y, uint32_t color, float alpha) {
     __y = __tmp;                 \
   })
 
-void gfx::scribe::draw_line_antialias(int x0i, int y0i, int x1i, int y1i, uint32_t color,
-                                      float wd) {
+void gfx::scribe::draw_line_antialias(
+    int x0i, int y0i, int x1i, int y1i, uint32_t color, float wd) {
   double x0 = x0i;
   double y0 = y0i;
   double x1 = x1i;
@@ -359,7 +395,7 @@ draw_line_antialias(p1, p2, color, stroke);
 
 
 void gfx::scribe::draw_quadratic_bezier(const gfx::point &start, const gfx::point &p1,
-                                        const gfx::point &end, uint32_t color, float stroke) {
+    const gfx::point &end, uint32_t color, float stroke) {
   int lx = start.x();
   int ly = start.y();
 
@@ -700,7 +736,7 @@ void gfx::scribe::draw_frame(const gfx::rect &frame, uint32_t bg, uint32_t fg) {
 }
 
 void gfx::scribe::draw_text(gfx::font &font, const gfx::rect &rect, const ck::string &text,
-                            ui::TextAlign align, uint32_t color, bool elide) {
+    ui::TextAlign align, uint32_t color, bool elide) {
   auto lines = text.split('\n', true);
 
   static const int line_spacing = 0;
@@ -733,11 +769,22 @@ void gfx::scribe::draw_text(gfx::font &font, const gfx::rect &rect, const ck::st
       bounding_rect.center_within(rect);
       break;
     case ui::TextAlign::BottomRight:
-      bounding_rect.set_location((rect.right() + 1) - bounding_rect.w,
-                                 (rect.bottom() + 1) - bounding_rect.h);
+      bounding_rect.set_location(
+          (rect.right() + 1) - bounding_rect.w, (rect.bottom() + 1) - bounding_rect.h);
+      break;
+    case ui::TextAlign::BottomLeft:
+      bounding_rect.set_location(rect.x, (rect.bottom() + 1) - bounding_rect.h);
+      break;
+    case ui::TextAlign::BottomCenter:
+      bounding_rect.y = (rect.bottom() + 1) - bounding_rect.h;
+      bounding_rect.center_horizontally_within(rect);
+      break;
+    case ui::TextAlign::TopCenter:
+      bounding_rect.y = rect.y;
+      bounding_rect.center_horizontally_within(rect);
       break;
     default:
-      panic("INVALID TEXT ALIGNMENT\n");
+      panic("INVALID TEXT ALIGNMENT %d\n", align);
   }
 
 
@@ -746,7 +793,7 @@ void gfx::scribe::draw_text(gfx::font &font, const gfx::rect &rect, const ck::st
   for (size_t i = 0; i < lines.size(); ++i) {
     auto &line = lines[i];
     gfx::rect line_rect(bounding_rect.x, bounding_rect.y + static_cast<int>(i) * line_height,
-                        bounding_rect.w, line_height);
+        bounding_rect.w, line_height);
     line_rect.intersect(rect);
     draw_text_line(font, line_rect, line, align, color, elide);
   }
@@ -755,11 +802,11 @@ void gfx::scribe::draw_text(gfx::font &font, const gfx::rect &rect, const ck::st
 
 void gfx::scribe::stackblur(int radius, const gfx::rect &area) {
   gfx::stackblur(bmp.pixels(), bmp.width(), bmp.height(), radius,
-                 area.shifted(translation().x(), translation().y()));
+      area.shifted(translation().x(), translation().y()));
 }
 
 void gfx::scribe::draw_text_line(gfx::font &font, const gfx::rect &a_rect, const ck::string &text,
-                                 ui::TextAlign align, uint32_t color, bool elide) {
+    ui::TextAlign align, uint32_t color, bool elide) {
   auto rect = a_rect;
   ck::string final_text = text;
 
@@ -813,7 +860,8 @@ void gfx::scribe::draw_text_line(gfx::font &font, const gfx::rect &a_rect, const
       break;
     }
     default:
-      panic("INVALID TEXT ALIGNMENT\n");
+      break;
+      // panic("INVALID TEXT ALIGNMENT\n");
   }
 
 
@@ -824,6 +872,79 @@ void gfx::scribe::draw_text_line(gfx::font &font, const gfx::rect &a_rect, const
 }
 
 
+void gfx::scribe::draw_triangle(
+    const gfx::point &a, const gfx::point &b, const gfx::point &c, uint32_t rgba) {
+  int ox = state().offset.x();
+  int oy = state().offset.y();
+
+  gfx::point p0(a.translated(ox, oy));
+  gfx::point p1(b.translated(ox, oy));
+  gfx::point p2(c.translated(ox, oy));
+
+  // sort points from top to bottom
+  if (p0.y() > p1.y()) swap(p0, p1);
+  if (p0.y() > p2.y()) swap(p0, p2);
+  if (p1.y() > p2.y()) swap(p1, p2);
+
+  // return if top and bottom points are on same line
+  if (p0.y() == p2.y()) return;
+
+  // return if top is below clip rect or bottom is above clip rect
+  auto clip = clip_rect();
+  if (p0.y() >= clip.bottom()) return;
+  if (p2.y() < clip.top()) return;
+
+  float dx02 = (float)(p2.x() - p0.x()) / (p2.y() - p0.y());
+  float x01 = p0.x();
+  float x02 = p0.x();
+
+  if (p0.y() != p1.y()) {  // p0 and p1 are on different lines
+    float dx01 = (float)(p1.x() - p0.x()) / (p1.y() - p0.y());
+
+    int top = p0.y();
+    if (top < clip.top()) {
+      x01 += dx01 * (clip.top() - top);
+      x02 += dx02 * (clip.top() - top);
+      top = clip.top();
+    }
+
+    for (int y = top; y < p1.y() && y < clip.bottom(); ++y) {  // XXX <=?
+      int start = x01 > x02 ? max((int)x02, clip.left()) : max((int)x01, clip.left());
+      int end = x01 > x02 ? min((int)x01, clip.right()) : min((int)x02, clip.right());
+      auto *scanline = bmp.scanline(y);
+      for (int x = start; x < end; x++) {
+        scanline[x] = rgba;
+      }
+      x01 += dx01;
+      x02 += dx02;
+    }
+  }
+
+  // return if middle point and bottom point are on same line
+  if (p1.y() == p2.y()) return;
+
+  float x12 = p1.x();
+  float dx12 = (float)(p2.x() - p1.x()) / (p2.y() - p1.y());
+  int top = p1.y();
+  if (top < clip.top()) {
+    x02 += dx02 * (clip.top() - top);
+    x12 += dx12 * (clip.top() - top);
+    top = clip.top();
+  }
+
+  for (int y = top; y < p2.y() && y < clip.bottom(); ++y) {  // XXX <=?
+    int start = x12 > x02 ? max((int)x02, clip.left()) : max((int)x12, clip.left());
+    int end = x12 > x02 ? min((int)x12, clip.right()) : min((int)x02, clip.right());
+    auto *scanline = bmp.scanline(y);
+    for (int x = start; x < end; x++) {
+      scanline[x] = rgba;
+    }
+    x02 += dx02;
+    x12 += dx12;
+  }
+}
+
+
 
 static void scribe_draw_text_callback(char c, void *arg) {
   auto *f = (gfx::printer *)arg;
@@ -831,8 +952,8 @@ static void scribe_draw_text_callback(char c, void *arg) {
 }
 
 
-extern "C" int vfctprintf(void (*out)(char character, void *arg), void *arg, const char *format,
-                          va_list va);
+extern "C" int vfctprintf(
+    void (*out)(char character, void *arg), void *arg, const char *format, va_list va);
 
 void gfx::printer::printf(const char *fmt, ...) {
   va_list va;

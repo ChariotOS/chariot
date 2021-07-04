@@ -106,4 +106,12 @@ namespace ui {
     gfx::point last_lclick; /* Left click */
     gfx::point last_rclick; /* Right click */
   };
+
+
+  template <typename T>
+  class simple_window : public ui::window {
+   public:
+    simple_window(ck::string name, int w, int h, int flags = 0) : window(move(name), w, h, flags) {}
+    virtual ck::ref<ui::view> build(void) override { return ui::make<T>(); }
+  };
 };  // namespace ui

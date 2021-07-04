@@ -3,9 +3,11 @@
 #include <ui/boxlayout.h>
 #include "sys/sysbind.h"
 #include "ui/event.h"
+#include "ui/textalign.h"
 #include <ck/timer.h>
 #include <ui/frame.h>
 #include <ck/pair.h>
+#include <ui/label.h>
 
 class colorview : public ui::view {
  public:
@@ -68,11 +70,6 @@ namespace ck {
 }  // namespace ck
 
 
-
-#define BLD(T, style, children, ...) \
-  ui::styled(ui::with_children(ui::make<T>(__VA_ARGS__), children), style)
-
-
 class ct_window : public ui::window {
  public:
   ct_window(void) : ui::window("current test", 400, 400) {}
@@ -80,21 +77,32 @@ class ct_window : public ui::window {
   virtual ck::ref<ui::view> build(void) {
     // clang-format off
 
+    ui::style st = {
+      .background = 0xE0E0E0,
+      .margins = 10,
+      .padding = 10,
+    };
+
     return ui::make<ui::vbox>({
-      ui::make<colorview>({
-          .layout = new ui::hboxlayout(),
-          .margins = 30,
-          .padding = 10,
-        },
-        {
-          ui::make<colorview>(rand()),
-          ui::make<colorview>(rand()),
-          ui::make<colorview>(rand()),
-        },
-        0xFF0000),
+      ui::make<ui::hbox>(st, {
+          ui::make<ui::label>("Top Left", ui::TextAlign::TopLeft),
+          ui::make<ui::label>("Top Center", ui::TextAlign::TopCenter),
+          ui::make<ui::label>("Top Right", ui::TextAlign::TopRight),
+        }),
+
+      ui::make<ui::hbox>(st, {
+          ui::make<ui::label>("Left", ui::TextAlign::CenterLeft),
+          ui::make<ui::label>("Center", ui::TextAlign::Center),
+          ui::make<ui::label>("Right", ui::TextAlign::CenterRight),
+        }),
+
+      
+      ui::make<ui::hbox>(st, {
+          ui::make<ui::label>("Bottom Left", ui::TextAlign::BottomLeft),
+          ui::make<ui::label>("Bottom Center", ui::TextAlign::BottomCenter),
+          ui::make<ui::label>("Bottom Right", ui::TextAlign::BottomRight),
+        }),
   
-        ui::make<colorview>({.margins = 5}, rand()),
-        ui::make<colorview>(rand()),
     });
 
     // clang-format on
@@ -102,20 +110,10 @@ class ct_window : public ui::window {
 };
 
 
+
 int main(int argc, char** argv) {
   ui::application app;
-
-  // create the window
   ct_window* win = new ct_window;
-
-  auto t = ck::timer::make_interval(30, [&win] {
-    if (win != NULL) {
-      delete win;
-      win = NULL;
-    }
-
-    win = new ct_window;
-  });
 
   app.start();
   return 0;

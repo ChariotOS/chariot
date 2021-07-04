@@ -91,10 +91,7 @@ int awaitfs(struct await_target *fds, int nfds, int flags, long long timeout_tim
   return errno_wrap(res);
 }
 
-
-static long nonce = 0;
-void ck::eventloop::pump(void) {
-  // step 1: run any defered functions
+void ck::eventloop::run_deferred() {
   while (s_defered.size() != 0) {
     auto this_defered = move(s_defered);
     s_defered.clear();
@@ -102,13 +99,13 @@ void ck::eventloop::pump(void) {
     for (auto &cb : this_defered)
       cb.second()();
   }
+}
 
-  // step 2: check the timers for any pending timer ticks. If there are any, run them. When no more
-  // pending timer ticks are avail, pick the closest timeout as the timeout for the awaitfs call
+ck::pair<ck::timer *, long long> ck::eventloop::check_timers() {
   long long timeout = -1;
   long long now = current_ms();
-  ck::timer *nt = NULL;
 
+  ck::timer *nt = nullptr;
   while (1) {
     nt = next_timer();
     if (nt == NULL) break;
@@ -122,8 +119,18 @@ void ck::eventloop::pump(void) {
       timeout = -1;
     }
   }
+  return {nt, timeout};
+}
 
-  // auto t = ck::time::tracker();
+
+static long nonce = 0;
+void ck::eventloop::pump(void) {
+  // step 1: run any defered functions
+  run_deferred();
+
+  // step 2: check the timers for any pending timer ticks. If there are any, run them. When no more
+  // pending timer ticks are avail, pick the closest timeout as the timeout for the awaitfs call
+  auto [nt, timeout] = check_timers();
 
   // step 3: construct an array of await_targets for the awaitfs call
   ck::vec<struct await_target> targs;
@@ -176,7 +183,7 @@ void ck::eventloop::pump(void) {
   }
 }
 
-void ck::eventloop::post_event(ck::object &obj, ck::event *ev) { m_pending.empend(obj, ev); }
+void ck::eventloop::post_event(ck::object &obj, ck::event *ev) { m_pending.push({obj, ev}); }
 
 void ck::eventloop::dispatch(void) {
   for (auto &ev : m_pending) {

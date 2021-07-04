@@ -97,17 +97,11 @@ namespace gfx {
     }
 
 
-    inline auto &ft_face() {
-      return this->face;
-    }
+    inline auto &ft_face() { return this->face; }
 
     /* whenever you use the font, you must lock it. The font will not lock itself */
-    inline void lock(void) {
-      m_lock.lock();
-    }
-    inline void unlock(void) {
-      m_lock.unlock();
-    }
+    inline void lock(void) { m_lock.lock(); }
+    inline void unlock(void) { m_lock.unlock(); }
   };
 
 }  // namespace gfx

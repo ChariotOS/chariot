@@ -76,6 +76,8 @@ namespace gfx {
     // leave the current state
     void leave();
 
+    inline const gfx::rect &clip_rect(void) { return state().clip; }
+
 
     scribe(gfx::bitmap &b);
     ~scribe(void);
@@ -91,7 +93,7 @@ namespace gfx {
     void draw_generic_bezier(ck::vec<gfx::point> &points, uint32_t color, float stroke = 1);
 
     void draw_quadratic_bezier(const gfx::point &start, const gfx::point &p1, const gfx::point &end,
-                               uint32_t color, float stroke = 1);
+        uint32_t color, float stroke = 1);
 
     // blend a pixel with a 0-1 alpha
     void blend_pixel(int x, int y, uint32_t color, float alpha);
@@ -126,9 +128,9 @@ namespace gfx {
     }
 
     void draw_text(gfx::font &fnt, const gfx::rect &bounds, const ck::string &text, ui::TextAlign,
-                   uint32_t color, bool elide = true);
+        uint32_t color, bool elide = true);
     void draw_text_line(gfx::font &fnt, const gfx::rect &bounds, const ck::string &text,
-                        ui::TextAlign, uint32_t color, bool elide = true);
+        ui::TextAlign, uint32_t color, bool elide = true);
 
 
     // draw text, wrapping within
@@ -169,8 +171,8 @@ draw_text(thnk, fnt, str, color, flags);
     void draw_line(int x0, int y0, int x1, int y1, uint32_t color);
 
 
-    inline void draw_line_antialias(const gfx::point &p1, const gfx::point &p2, uint32_t color,
-                                    float stroke = 1) {
+    inline void draw_line_antialias(
+        const gfx::point &p1, const gfx::point &p2, uint32_t color, float stroke = 1) {
       draw_line_antialias(p1.x(), p1.y(), p2.x(), p2.y(), color, stroke);
     }
     void draw_line_antialias(int x0, int y0, int x1, int y1, uint32_t color, float stroke = 1);
@@ -191,7 +193,7 @@ draw_text(thnk, fnt, str, color, flags);
 
 
     void blit_scaled(gfx::bitmap &bmp, const gfx::rect &r,
-                     gfx::bitmap::SampleMode mode = gfx::bitmap::SampleMode::Nearest);
+        gfx::bitmap::SampleMode mode = gfx::bitmap::SampleMode::Nearest);
 
 
     // draw a "theme frame" that fits with the chariot design style
@@ -212,6 +214,10 @@ draw_text(thnk, fnt, str, color, flags);
 
     void fill_circle(int x, int y, int r, uint32_t color);
     void fill_circle_helper(int x, int y, int r, int corner, int delta, uint32_t color);
+
+
+    void draw_triangle(
+        const gfx::point &a, const gfx::point &b, const gfx::point &c, uint32_t color);
   };
 
 

@@ -49,51 +49,47 @@ namespace ui {
     ck::option<ui::edges> padding;
   };
 
-  struct flex_layout {
-    struct line {
-      unsigned int child_begin;
-      unsigned int child_end;
-      float size;
-    };
 
+#define VIEW_RENDER_ATTRIBUTE(type, name, val)        \
+ protected:                                           \
+  type m_##name = val;                                \
+                                                      \
+ public:                                              \
+  inline type name(void) { return this->m_##name; }   \
+                                                      \
+ public:                                              \
+  inline void set_##name(const ck::option<type> &v) { \
+    this->m_##name = v;                               \
+    update();                                         \
+  }
 
-    bool wrap = false;
-    bool reverse_main = false;   // whether main axis is reversed
-    bool reverse_cross = false;  // whether cross axis is reversed (wrap only)
-    bool vertical = true;
-    float size_dim = 0.0;   // main axis parent size
-    float align_dim = 0.0;  // cross axis parent size
-
-    /* the following are offests into the frame structure */
-    unsigned int frame_main_pos = 0;    // main axis position
-    unsigned int frame_cross_pos = 1;   // cross axis position
-    unsigned int frame_main_size = 2;   // main axis size
-    unsigned int frame_cross_size = 3;  // cross axis size
-    unsigned int *ordered_indices = NULL;
-
-    // Set for each line layout.
-    float line_dim = 0.0;        // the cross axis size
-    float flex_dim = 0.0;        // the flexible part of the main axis size
-    float extra_flex_dim = 0.0;  // sizes of flexible items
-    float flex_grows = 0.0;
-    float flex_shrinks = 0.0;
-    float cross_pos = 0.0;  // cross axis position
-
-    // Calculated layout lines - only tracked when needed:
-    //   - if the root's align_content property isn't set to FLEX_ALIGN_START
-    //   - or if any child item doesn't have a cross-axis size set
-    bool need_lines = false;
-    ck::vec<ui::flex_layout::line> lines;
-    float lines_sizes;
-
-
-    flex_layout();
-    ~flex_layout(void);
-    void init(ui::view &item, float width, float height);
-
-    ui::view *child_at(ui::view *v, int i);
-    void reset(void);
-  };
+#define OPTIONAL_VIEW_RENDER_ATTRIBUTE(type, name, val) \
+ protected:                                             \
+  ck::option<type> o_##name = {};                       \
+                                                        \
+ public:                                                \
+  inline type get_##name(void) {                        \
+    if (this->o_##name) {                               \
+      return this->o_##name.unwrap();                   \
+    } else {                                            \
+      return val;                                       \
+    }                                                   \
+  }                                                     \
+                                                        \
+ public:                                                \
+  inline void set_##name(const ck::option<type> &v) {   \
+    this->o_##name = v;                                 \
+    update();                                           \
+  }                                                     \
+  inline void clear_##name(void) {                      \
+    this->o_##name = None;                              \
+    update();                                           \
+  }                                                     \
+  inline bool has_##name(void) {                        \
+    return this->o_##name.has_value();                  \
+    ;                                                   \
+    update();                                           \
+  }
 
 
 
@@ -103,44 +99,6 @@ namespace ui {
    * The base class defines a generic 'event' method that passes an event
    * down the stack to every view element
    */
-
-
-#define VIEW_RENDER_ATTRIBUTE(type, name, val) \
- protected:                                    \
-  ck::option<type> name = {};                  \
-                                               \
- public:                                       \
-  inline type get_##name(void) {               \
-    if (this->name) {                          \
-      return this->name.unwrap();              \
-    }                                          \
-    if (parent() != NULL) {                    \
-      return parent()->get_##name();           \
-    }                                          \
-    return val;                                \
-  }                                            \
-                                               \
- public:                                       \
-  inline void set_##name(const ck::option<type> &v) { this->name = v; }
-
-#define OPTIONAL_VIEW_RENDER_ATTRIBUTE(type, name, val)                     \
- protected:                                                                 \
-  ck::option<type> o_##name = {};                                           \
-                                                                            \
- public:                                                                    \
-  inline type get_##name(void) {                                            \
-    if (this->o_##name) {                                                   \
-      return this->o_##name.unwrap();                                       \
-    } else {                                                                \
-      return val;                                                           \
-    }                                                                       \
-  }                                                                         \
-                                                                            \
- public:                                                                    \
-  inline void set_##name(const ck::option<type> &v) { this->o_##name = v; } \
-  inline void clear_##name(void) { this->o_##name = None; }                 \
-  inline bool has_##name(void) { return this->o_##name.has_value(); }
-
 
   class view : public ck::refcounted<ui::view> {
     CK_NONCOPYABLE(view);

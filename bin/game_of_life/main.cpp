@@ -3,8 +3,8 @@
 #include <ui/application.h>
 
 
-#define WIDTH 40
-#define HEIGHT 40
+#define WIDTH 80
+#define HEIGHT 80
 #define BOARDSIZE (WIDTH * HEIGHT)
 
 #define SCALE 8
@@ -23,14 +23,12 @@ class gol : public ui::view {
 
  public:
   gol() {
-    set_flex_grow(1);
     tick_timer = ck::timer::make_interval(1000 / TICKS, [this] { this->tick(); });
     tick_timer->stop();
 
     memset(init, 0, sizeof(init));
   }
-  ~gol(void) {
-  }
+  ~gol(void) {}
 
   int get_neighbours(int i, int j, int l_size, int c_size) {
     int n = 0;
@@ -61,13 +59,11 @@ class gol : public ui::view {
     memcpy(current, next, sizeof(current));
     alive = 0;
     // for (int i = 0; i < WIDTH * HEIGHT; i++) alive += ((bool*)current)[i];
-    repaint();
+    update();
   }
 
-  virtual void paint_event(void) override {
-    auto scribe = get_scribe();
+  virtual void paint_event(gfx::scribe& s) override {
     bool is_running = tick_timer->running();
-    // scribe.clear();
 
 
     // draw all the dudes
@@ -83,9 +79,9 @@ class gol : public ui::view {
         for (int ox = 0; ox < SCALE; ox++) {
           for (int oy = 0; oy < SCALE; oy++) {
             int d = color;
-            if (!is_running && (ox == 0 || oy == 0)) d = 0;
-            int color = (x ^ y) | ((x ^ y) << 8) | ((x ^ y) << 16);
-            scribe.draw_pixel(x * SCALE + ox, y * SCALE + oy, d);
+            if (!is_running && (ox == 0 || oy == 0)) d = 0x333333;
+            // int color = (x ^ y) | ((x ^ y) << 8) | ((x ^ y) << 16);
+            s.draw_pixel(x * SCALE + ox, y * SCALE + oy, d);
           }
         }
       }
@@ -103,7 +99,7 @@ class gol : public ui::view {
 
       if (ev.left) {
         init[p.x() / SCALE][p.y() / SCALE] = set_to;
-        repaint();
+        update();
       }
     }
   }
@@ -117,12 +113,12 @@ class gol : public ui::view {
         memcpy(current, init, sizeof(current));
         tick_timer->start(1000 / TICKS, true);
       }
-      repaint();
+      update();
     }
     // reset lol
     if (ev.code == key_r) {
       memset(init, 0, sizeof(init));
-      repaint();
+      update();
     }
   }
 };
@@ -134,10 +130,7 @@ int main() {
   // connect to the window server
   ui::application app;
 
-  ui::window* win = app.new_window("Game of Life", WIDTH * SCALE, HEIGHT * SCALE);
-
-  auto& game = win->set_view<gol>();
-  (void)game;
+  auto win = ui::simple_window<gol>("Game of Life", WIDTH * SCALE, HEIGHT * SCALE);
 
   // start the application!
   app.start();

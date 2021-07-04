@@ -9,10 +9,8 @@ namespace gfx {
   template <typename T>
   class point_impl {
    public:
-    inline point_impl() : m_x(0), m_y(0) {
-    }
-    inline point_impl(int x, int y) : m_x(x), m_y(y) {
-    }
+    inline point_impl() : m_x(0), m_y(0) {}
+    inline point_impl(int x, int y) : m_x(x), m_y(y) {}
 
 
     inline void constrain(const gfx::rect &rect) {
@@ -26,22 +24,12 @@ namespace gfx {
         set_y(rect.bottom());
     }
 
-		inline point_impl<T> translated(T dx, T dy) {
-			return point_impl<T>(m_x + dx, m_y + dy);
-		}
+    inline point_impl<T> translated(T dx, T dy) const { return point_impl<T>(m_x + dx, m_y + dy); }
 
-    inline int x(void) const {
-      return m_x;
-    }
-    inline int y(void) const {
-      return m_y;
-    }
-    inline void set_x(int x) {
-      m_x = x;
-    }
-    inline void set_y(int y) {
-      m_y = y;
-    }
+    inline int x(void) const { return m_x; }
+    inline int y(void) const { return m_y; }
+    inline void set_x(int x) { m_x = x; }
+    inline void set_y(int y) { m_y = y; }
 
 
     inline point_impl operator+(const point_impl &other) {
@@ -53,9 +41,7 @@ namespace gfx {
       return point_impl<T>(m_x - other.x(), m_y - other.y());
     }
 
-    inline point_impl operator*(const T &o) {
-      return point_impl<T>(m_x * o, m_y * o);
-    }
+    inline point_impl operator*(const T &o) { return point_impl<T>(m_x * o, m_y * o); }
 
     template <typename V>
     point_impl<T> &operator=(const point_impl<V> &o) {

@@ -114,8 +114,7 @@ ck::ref<gfx::shared_bitmap> gfx::shared_bitmap::resize(size_t w, size_t h) {
 }
 
 
-gfx::shared_bitmap::~shared_bitmap(void) {
-}
+gfx::shared_bitmap::~shared_bitmap(void) {}
 
 
 

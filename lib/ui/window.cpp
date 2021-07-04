@@ -71,7 +71,7 @@ void ui::windowframe::custom_layout(void) {
 void ui::windowframe::set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
   set_background(bg);
   set_foreground(fg);
-  // set_bordercolor(border);
+  set_bordercolor(border);
   update();
 }
 

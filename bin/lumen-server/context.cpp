@@ -87,11 +87,6 @@ lumen::context::context(void) : screen(1024, 768) {
         wallpaper->set_pixel(x, y, c);
       }
     }
-    /*
-for (int i = 0; i < screen.width() * screen.height(); i++) {
-wallpaper->pixels()[i] = 0x333333;
-}
-    */
   }
 
   server.listen("/usr/servers/lumen", [this] { accept_connection(); });
@@ -100,8 +95,6 @@ wallpaper->pixels()[i] = 0x333333;
   invalidate(screen.bounds());
 
   spawn("ct");
-  // spawn("term");
-  // spawn("fluidsim");
   // spawn("doom");
 }
 
@@ -546,58 +539,6 @@ bool lumen::context::occluded(lumen::window &win, const gfx::rect &a) {
 
 
 
-
-ck::vec<gfx::rect> difference(gfx::rect rectA, gfx::rect rectB) {
-  if (rectB.is_empty() || !rectA.intersects(rectB) || rectB.contains(rectA)) return {};
-
-  ck::vec<gfx::rect> result;
-  gfx::rect top = {}, bottom = {}, left = {}, right = {};
-  int rectCount = 0;
-
-  // compute the top rectangle
-  int raHeight = rectB.y - rectA.y;
-  if (raHeight > 0) {
-    top = gfx::rect(rectA.x, rectA.y, rectA.w, raHeight);
-    rectCount++;
-  }
-
-  // compute the bottom rectangle
-  int rbY = rectB.y + rectB.h;
-  int rbHeight = rectA.h - (rbY - rectA.y);
-  if (rbHeight > 0 && rbY < rectA.y + rectA.h) {
-    bottom = gfx::rect(rectA.x, rbY, rectA.w, rbHeight);
-    rectCount++;
-  }
-
-  int rectAYH = rectA.y + rectA.h;
-  int y1 = rectB.y > rectA.y ? rectB.y : rectA.y;
-  int y2 = rbY < rectAYH ? rbY : rectAYH;
-  int rcHeight = y2 - y1;
-
-  // compute the left rectangle
-  int rcWidth = rectB.x - rectA.x;
-  if (rcWidth > 0 && rcHeight > 0) {
-    left = gfx::rect(rectA.x, y1, rcWidth, rcHeight);
-    rectCount++;
-  }
-
-  // compute the right rectangle
-  int rbX = rectB.x + rectB.w;
-  int rdWidth = rectA.w - (rbX - rectA.x);
-  if (rdWidth > 0) {
-    right = gfx::rect(rbX, y1, rdWidth, rcHeight);
-    rectCount++;
-  }
-
-  if (!top.is_empty()) result.push(top);
-  if (!bottom.is_empty()) result.push(bottom);
-  if (!left.is_empty()) result.push(left);
-  if (!right.is_empty()) result.push(right);
-  return result;
-}
-
-
-
 static long frame = 0;
 void lumen::context::compose(void) {
   frame++;
@@ -623,14 +564,6 @@ void lumen::context::compose(void) {
   // this scribe is the "compositor scribe", used by everyone in this function
   gfx::scribe scribe(b);
 
-
-#if 0
-	printf("compose %d rects\n", dirty_regions.size());
-	for (auto &r : dirty_regions.rects()) {
-		printf(" - %3d, %3d, %3d, %3d\n", r.x, r.y, r.w, r.h);
-	}
-#endif
-
   bool draw_mouse = screen.mouse_moved;
   // clear that information
   if (draw_mouse) screen.mouse_moved = false;
@@ -641,8 +574,6 @@ void lumen::context::compose(void) {
     uint32_t *wp = wallpaper->pixels();
     for (auto &r : dirty_regions.rects()) {
       if (r.intersects(screen.mouse_rect())) draw_mouse = true;
-      // scribe.blit(gfx::point(r.x, r.y), *wallpaper, r);
-
 
       int sw = screen.width();
       auto off = r.y * sw + r.x;

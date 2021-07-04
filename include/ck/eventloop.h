@@ -5,10 +5,12 @@
 #include <ck/object.h>
 #include <ck/ptr.h>
 #include <ck/vec.h>
+#include <ck/pair.h>
 
 
 
 namespace ck {
+  class timer;
   class eventloop {
    public:
     eventloop(void);
@@ -50,6 +52,9 @@ namespace ck {
 
     static void defer_unique(const char *name, ck::func<void(void)> cb);
 
+    void run_deferred();
+    ck::pair<ck::timer *, long long> check_timers();
+
 
    private:
     bool m_finished = false;
@@ -58,6 +63,8 @@ namespace ck {
     struct pending_event {
       inline pending_event(ck::object &obj, ck::event *ev) : obj(obj), ev(ev) {}
       ~pending_event() = default;
+
+      pending_event(pending_event &&) = default;
 
       ck::object &obj;
       ck::event *ev;

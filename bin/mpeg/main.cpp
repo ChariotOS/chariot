@@ -18,12 +18,12 @@ struct mpegview : public ui::view {
   double last_time = 0;
 
   ck::ref<gfx::bitmap> backing_bitmap = nullptr;
-  static constexpr int FPS = 24;
+  static constexpr int FPS = 30;
 
  public:
-  mpegview(const char *file) {
+  mpegview() {
     last_time = (double)clock() / 1000.0;
-    plm = plm_create_with_filename("/usr/res/misc/bunny.mpg");
+    plm = plm_create_with_filename("/usr/res/misc/apple.mpg");
 
     // nice lol
     plm_set_video_decode_callback(
@@ -38,14 +38,9 @@ struct mpegview : public ui::view {
 
     /* Create a 30fps timer */
     timer = ck::timer::make_interval(1000 / FPS, [this]() { this->tick(); });
-
-
-    set_flex_grow(1.0);
   }
 
-  virtual ~mpegview(void) {
-    plm_destroy(plm);
-  }
+  virtual ~mpegview(void) { plm_destroy(plm); }
 
   void tick(void) {
     if (!plm_has_ended(plm)) {
@@ -72,9 +67,15 @@ elapsed_time = 1.0 / (float)FPS;
       printf("allocate a new %dx%d bitmap\n", frame->width, frame->height);
       backing_bitmap = new gfx::bitmap(frame->width, frame->height);
     }
+
+    auto *win = surface();
+
+    if (win != NULL && (width() != frame->width || height() != frame->height)) {
+      win->resize(frame->width, frame->height);
+    }
     plm_frame_to_bgra(frame, (uint8_t *)backing_bitmap->pixels(), backing_bitmap->width() * 4);
 
-    repaint();
+    update();
   }
 
 
@@ -85,9 +86,8 @@ elapsed_time = 1.0 / (float)FPS;
     if (!timer->running()) timer->start(1000 / FPS, true);
   }
 
-  virtual void paint_event(void) override {
+  virtual void paint_event(gfx::scribe &s) override {
     if (backing_bitmap.is_null()) return;
-    auto s = get_scribe();
 
     gfx::rect r(0, 0, width(), height());
 
@@ -99,10 +99,7 @@ elapsed_time = 1.0 / (float)FPS;
 int main(int argc, char **argv) {
   ui::application app;
 
-  ui::window *win = app.new_window("MPEG Viewer", 640, 360);
-  auto &v = win->set_view<mpegview>("/usr/res/misc/bunny.mpg");
-  // win->defer_invalidation(false);
-
+  ui::window *win = new ui::simple_window<mpegview>("MPEG Viewer", 640, 360);
 
   app.start();
 
