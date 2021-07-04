@@ -35,16 +35,11 @@ namespace ck {
     inline atom& operator=(const atom&) = delete;
     inline atom& operator=(const atom&) volatile = delete;
 
-    constexpr atom(T __i) noexcept : _M_i(__i) {
-    }
+    constexpr atom(T __i) noexcept : _M_i(__i) {}
 
-    operator T() const noexcept {
-      return load();
-    }
+    operator T() const noexcept { return load(); }
 
-    operator T() const volatile noexcept {
-      return load();
-    }
+    operator T() const volatile noexcept { return load(); }
 
     T operator=(T __i) noexcept {
       store(__i);
@@ -55,6 +50,75 @@ namespace ck {
       store(__i);
       return __i;
     }
+
+
+
+    T operator++(int) noexcept { return fetch_add(1); }
+
+    T operator++(int) volatile noexcept { return fetch_add(1); }
+
+    T operator--(int) noexcept { return fetch_sub(1); }
+
+    T operator--(int) volatile noexcept { return fetch_sub(1); }
+
+
+    T operator++() noexcept { return __atomic_add_fetch(&_M_i, 1, int(memory_order_seq_cst)); }
+
+    T operator++() volatile noexcept {
+      return __atomic_add_fetch(&_M_i, 1, int(memory_order_seq_cst));
+    }
+
+    T operator--() noexcept { return __atomic_sub_fetch(&_M_i, 1, int(memory_order_seq_cst)); }
+
+    T operator--() volatile noexcept {
+      return __atomic_sub_fetch(&_M_i, 1, int(memory_order_seq_cst));
+    }
+
+
+
+
+    T operator+=(T __i) noexcept {
+      return __atomic_add_fetch(&_M_i, __i, int(memory_order_seq_cst));
+    }
+
+    T operator+=(T __i) volatile noexcept {
+      return __atomic_add_fetch(&_M_i, __i, int(memory_order_seq_cst));
+    }
+
+    T operator-=(T __i) noexcept {
+      return __atomic_sub_fetch(&_M_i, __i, int(memory_order_seq_cst));
+    }
+
+    T operator-=(T __i) volatile noexcept {
+      return __atomic_sub_fetch(&_M_i, __i, int(memory_order_seq_cst));
+    }
+
+    T operator&=(T __i) noexcept {
+      return __atomic_and_fetch(&_M_i, __i, int(memory_order_seq_cst));
+    }
+
+    T operator&=(T __i) volatile noexcept {
+      return __atomic_and_fetch(&_M_i, __i, int(memory_order_seq_cst));
+    }
+
+    T operator|=(T __i) noexcept {
+      return __atomic_or_fetch(&_M_i, __i, int(memory_order_seq_cst));
+    }
+
+    T operator|=(T __i) volatile noexcept {
+      return __atomic_or_fetch(&_M_i, __i, int(memory_order_seq_cst));
+    }
+
+    T operator^=(T __i) noexcept {
+      return __atomic_xor_fetch(&_M_i, __i, int(memory_order_seq_cst));
+    }
+
+    T operator^=(T __i) volatile noexcept {
+      return __atomic_xor_fetch(&_M_i, __i, int(memory_order_seq_cst));
+    }
+
+
+
 
     bool is_lock_free() const noexcept {
       // Produce a fake, minimally aligned pointer.
@@ -110,39 +174,83 @@ namespace ck {
       return __atomic_compare_exchange(&(_M_i), &(__e), &(__i), true, int(__s), int(__f));
     }
 
-    inline bool compare_exchange_weak(T& __e, T __i, memory_order __s,
-                                      memory_order __f) volatile noexcept {
+    inline bool compare_exchange_weak(
+        T& __e, T __i, memory_order __s, memory_order __f) volatile noexcept {
       return __atomic_compare_exchange(&(_M_i), &(__e), &(__i), true, int(__s), int(__f));
     }
 
-    inline bool compare_exchange_weak(T& __e, T __i,
-                                      memory_order __m = memory_order_seq_cst) noexcept {
+    inline bool compare_exchange_weak(
+        T& __e, T __i, memory_order __m = memory_order_seq_cst) noexcept {
       return compare_exchange_weak(__e, __i, __m, __cmpexch_failure_order(__m));
     }
 
-    inline bool compare_exchange_weak(T& __e, T __i,
-                                      memory_order __m = memory_order_seq_cst) volatile noexcept {
+    inline bool compare_exchange_weak(
+        T& __e, T __i, memory_order __m = memory_order_seq_cst) volatile noexcept {
       return compare_exchange_weak(__e, __i, __m, __cmpexch_failure_order(__m));
     }
 
-    inline bool compare_exchange_strong(T& __e, T __i, memory_order __s,
-                                        memory_order __f) noexcept {
+    inline bool compare_exchange_strong(
+        T& __e, T __i, memory_order __s, memory_order __f) noexcept {
       return __atomic_compare_exchange(&(_M_i), &(__e), &(__i), false, int(__s), int(__f));
     }
 
-    inline bool compare_exchange_strong(T& __e, T __i, memory_order __s,
-                                        memory_order __f) volatile noexcept {
+    inline bool compare_exchange_strong(
+        T& __e, T __i, memory_order __s, memory_order __f) volatile noexcept {
       return __atomic_compare_exchange(&(_M_i), &(__e), &(__i), false, int(__s), int(__f));
     }
 
-    inline bool compare_exchange_strong(T& __e, T __i,
-                                        memory_order __m = memory_order_seq_cst) noexcept {
+    inline bool compare_exchange_strong(
+        T& __e, T __i, memory_order __m = memory_order_seq_cst) noexcept {
       return compare_exchange_strong(__e, __i, __m, __cmpexch_failure_order(__m));
     }
 
-    inline bool compare_exchange_strong(T& __e, T __i,
-                                        memory_order __m = memory_order_seq_cst) volatile noexcept {
+    inline bool compare_exchange_strong(
+        T& __e, T __i, memory_order __m = memory_order_seq_cst) volatile noexcept {
       return compare_exchange_strong(__e, __i, __m, __cmpexch_failure_order(__m));
+    }
+
+
+
+    _GLIBCXX_ALWAYS_INLINE T fetch_add(
+        unsigned long __d, memory_order __m = memory_order_seq_cst) noexcept {
+      return __atomic_fetch_add(&_M_i, sizeof(__d), int(__m));
+    }
+
+    _GLIBCXX_ALWAYS_INLINE T fetch_add(
+        unsigned long __d, memory_order __m = memory_order_seq_cst) volatile noexcept {
+      return __atomic_fetch_add(&_M_i, sizeof(__d), int(__m));
+    }
+
+    _GLIBCXX_ALWAYS_INLINE T fetch_sub(
+        unsigned long __d, memory_order __m = memory_order_seq_cst) noexcept {
+      return __atomic_fetch_sub(&_M_i, sizeof(__d), int(__m));
+    }
+
+    _GLIBCXX_ALWAYS_INLINE T fetch_sub(
+        unsigned long __d, memory_order __m = memory_order_seq_cst) volatile noexcept {
+      return __atomic_fetch_sub(&_M_i, sizeof(__d), int(__m));
+    }
+
+
+
+    _GLIBCXX_ALWAYS_INLINE T add_fetch(
+        unsigned long __d, memory_order __m = memory_order_seq_cst) noexcept {
+      return __atomic_add_fetch(&_M_i, sizeof(__d), int(__m));
+    }
+
+    _GLIBCXX_ALWAYS_INLINE T add_fetch(
+        unsigned long __d, memory_order __m = memory_order_seq_cst) volatile noexcept {
+      return __atomic_add_fetch(&_M_i, sizeof(__d), int(__m));
+    }
+
+    _GLIBCXX_ALWAYS_INLINE T sub_fetch(
+        unsigned long __d, memory_order __m = memory_order_seq_cst) noexcept {
+      return __atomic_sub_fetch(&_M_i, sizeof(__d), int(__m));
+    }
+
+    _GLIBCXX_ALWAYS_INLINE T sub_fetch(
+        unsigned long __d, memory_order __m = memory_order_seq_cst) volatile noexcept {
+      return __atomic_sub_fetch(&_M_i, sizeof(__d), int(__m));
     }
   };
 }  // namespace ck

@@ -2,14 +2,31 @@
 
 #include <template_lib.h>
 
+#include "atom.h"
 #ifdef KERNEL
 #include <printk.h>
+#define PRINT(...) printk(__VA_ARGS__)
 #else
 #include <chariot.h>
+
+// TODO: remove this.
+#include <stdio.h>
+#define PRINT(...) printf(__VA_ARGS__)
 #endif
+
+#undef PRINT
+#define PRINT(...)
 
 namespace ck {
 
+  // fwd decl
+  template <class T>
+  class weak_ref;
+
+
+  // fwd decl
+  template <class T>
+  class ref;
 
   // Takes in a default deleter. unique_ptr_deleters operator will be invoked by
   // default.
@@ -141,8 +158,56 @@ namespace ck {
   constexpr auto call_one_ref_left_if_present(...) -> FalseType { return {}; }
 
 
+
+  namespace impl {
+    // a structure that all ck::weak_ref<T> hold when they reference something
+    // shared by a ck::ref<T>. This is only a boolean that tracks if the ref
+    // pointer is alive, and also a refcount to the control block itself.
+    class weak_ref_control_block {
+      // assume allocation
+      ck::atom<bool> m_allocated = true;
+      ck::atom<unsigned int> m_ref_count = 1;
+
+     public:
+      weak_ref_control_block(void) { PRINT("WCB CREATED\n"); }
+      ~weak_ref_control_block(void) { PRINT("WCB DELETED\n"); }
+
+      inline bool allocated(void) { return m_allocated.load(); }
+
+      static inline void release(ck::impl::weak_ref_control_block* self) {
+        if (self == nullptr) return;  ///< do nothing=
+        auto new_count = --self->m_ref_count;
+        PRINT("release: new_count = %d\n", new_count);
+        if (new_count <= 0) {
+          PRINT("delete ck::impl::weak_ref_control_block\n");
+          delete self;
+        }
+      }
+
+      static inline weak_ref_control_block* acquire(ck::impl::weak_ref_control_block* self) {
+        if (self != NULL) {
+          auto new_count = ++self->m_ref_count;
+          PRINT("acquire: new_count = %d\n", new_count);
+        }
+        return self;
+      }
+
+
+      static inline void report_deletion(ck::impl::weak_ref_control_block* self) {
+        PRINT("report deletion\n");
+        if (self == nullptr) return;
+        self->m_allocated.store(false);
+        ck::impl::weak_ref_control_block::release(self);
+      }
+    };
+  }  // namespace impl
+
+
+
   template <typename T>
   class refcounted {
+    friend ck::ref<T>;
+
    public:
     void ref_retain() {
       assert(m_ref_count);
@@ -150,6 +215,7 @@ namespace ck {
     }
 
     int ref_count() const { return m_ref_count; }
+
     void ref_release() {
       deref_base();
       if (m_ref_count == 0) {
@@ -160,9 +226,25 @@ namespace ck {
       }
     }
 
+    // TODO: I'm not sure if this is thread safe or not.
+    ck::impl::weak_ref_control_block* weak_ref_control_block() {
+      if (m_wcb == NULL) {
+        auto w = new ck::impl::weak_ref_control_block;
+        auto* old = m_wcb.exchange(w, memory_order_acq_rel);
+        // this is the thread unsafeness... :)
+        if (old != NULL) panic("weak_ref control block was already set...\n");
+      }
+
+      return m_wcb;
+    }
+
    protected:
-    refcounted() {}
-    ~refcounted() { /* assert(m_ref_count == 0); */
+    refcounted() = default;
+    ~refcounted() {
+      if (m_wcb) {
+        // tell the weak_ref control block that the backing pointer was deleted.
+        ck::impl::weak_ref_control_block::report_deletion(m_wcb);
+      }
     }
 
     void deref_base() {
@@ -172,7 +254,9 @@ namespace ck {
 
 
     unsigned int m_ref_count = 1;
+    ck::atom<ck::impl::weak_ref_control_block*> m_wcb = nullptr;
   };
+
 
 
 
@@ -184,9 +268,12 @@ namespace ck {
   inline void release_if_not_null(T* ptr) {
     if (ptr) ptr->ref_release();
   }
+
+
   template <typename T>
   class ref {
    public:
+    friend class weak_ref<T>;
     enum AdoptTag { Adopt };
 
     ref() {}
@@ -321,6 +408,15 @@ namespace ck {
 
     bool is_null() const { return !m_ptr; }
 
+
+   protected:
+    ck::impl::weak_ref_control_block* weak_ref_control_block(void) {
+      if (m_ptr) {
+        return m_ptr->weak_ref_control_block();
+      }
+      return nullptr;
+    }
+
    private:
     T* m_ptr = nullptr;
   };
@@ -351,6 +447,156 @@ namespace ck {
     return ck::ref<T>(ck::ref<T>::AdoptTag::Adopt, *new T(::forward<Args>(args)...));
   }
 
+
+
+
+  template <class T>
+  class weak_ref {
+   public:
+    // constructors
+    constexpr weak_ref(void) = default;
+
+    template <class Y>
+    weak_ref(const weak_ref<Y>& r) {
+      *this = r;
+    }
+
+
+    weak_ref(const ref<T>& r) {
+      PRINT("weak_ref gets a ref\n");
+      *this = r;
+    }
+
+
+
+    template <class Y>
+    weak_ref(const ref<Y>& r) {
+      PRINT("weak_ref gets a ref\n");
+
+      *this = r;
+    }
+
+    weak_ref(weak_ref&& r) { *this = r; }
+
+    template <class Y>
+    weak_ref(weak_ref<Y>&& r) {
+      *this = r;
+    }
+
+
+    // destructor
+    ~weak_ref(void) {
+      // simply call the reset method
+      reset();
+    }
+
+    // Replaces the managed object with the one managed by r. The object is shared with r. If r
+    // manages no object, *this manages no object too.
+
+    weak_ref& operator=(const ref<T>& r) {
+      reset();
+      m_ptr = r.m_ptr;
+      if (m_ptr) {
+        swap_wcb(m_ptr->weak_ref_control_block());
+      }
+      return *this;
+    }
+
+
+    template <class Y>
+    weak_ref& operator=(const ref<Y>& r) {
+      reset();
+      m_ptr = r.m_ptr;
+      if (m_ptr) {
+        swap_wcb(m_ptr->weak_ref_control_block());
+      }
+      return *this;
+    }
+
+    weak_ref& operator=(const weak_ref& r) {
+      swap_wcb(r.m_wcb);
+      m_ptr = r.m_ptr;
+      return *this;
+    }
+
+    template <class Y>
+    weak_ref& operator=(const weak_ref<Y>& r) {
+      swap_wcb(r.m_wcb);
+      m_ptr = r.m_ptr;
+      return *this;
+    }
+
+    weak_ref& operator=(weak_ref&& r) noexcept {
+      reset();
+      m_wcb = r.m_wcb;
+      m_ptr = r.m_ptr;
+      r.reset();
+      return *this;
+    };
+
+    template <class Y>
+    weak_ref& operator=(weak_ref<Y>&& r) noexcept {
+      reset();
+      m_wcb = r.m_wcb;
+      m_ptr = r.m_ptr;
+      r.reset();
+      return *this;
+    };
+
+
+    // Releases the reference to the managed object. After the call *this manages no object and will
+    // segfault.
+    void reset(void) noexcept {
+      ck::impl::weak_ref_control_block::release(m_wcb);
+      m_ptr = nullptr;
+      m_wcb = nullptr;
+    }
+
+
+    bool expired(void) {
+      if (m_ptr == NULL) return false;
+      if (m_wcb == NULL) panic("what??");
+      return !m_wcb->allocated();
+    }
+
+    operator bool(void) { return !expired(); }
+
+    // return a ref to the current ptr, if there is one. null if no pointer is available, or
+    // it is currently dangling.
+    ck::ref<T> get(void) {
+      if (m_ptr != NULL && m_wcb != NULL) {
+        if (m_wcb->allocated()) {
+          return m_ptr;
+        }
+      }
+      return nullptr;
+    }
+
+
+    const T* get_unsafe(void) { return get().get(); }
+
+
+    template <typename Fn>
+    inline auto map(Fn f) -> decltype(f(nullptr)) {
+      return f(get());
+    }
+
+    template <class R, class Fn>
+    inline R map_default(R default_value, Fn f) {
+      auto r = get();
+      if (r) return f(r);
+      return default_value;
+    }
+
+   private:
+    void swap_wcb(ck::impl::weak_ref_control_block* new_wcb) {
+      auto* old = m_wcb;
+      m_wcb = ck::impl::weak_ref_control_block::acquire(new_wcb);
+      ck::impl::weak_ref_control_block::release(old);
+    }
+    T* m_ptr = nullptr;
+    ck::impl::weak_ref_control_block* m_wcb = nullptr;
+  };
 
 
 };  // namespace ck
@@ -401,3 +647,6 @@ bool operator>(const ck::ref<T>& l,
 {
   return (l.get() > r.get());
 }
+
+
+#undef PRINT
