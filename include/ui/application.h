@@ -53,8 +53,6 @@ namespace ui {
     }
 
 
-
-
     void drain_messages(void);
     void dispatch_messages(void);
 

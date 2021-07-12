@@ -13,19 +13,13 @@ static volatile uint64_t cycles_per_second = 0;
 static volatile uint64_t current_second = 0;
 
 
-void time::set_cps(unsigned long cps) {
-  cycles_per_second = cps;
-}
+void time::set_cps(unsigned long cps) { cycles_per_second = cps; }
 
-bool time::stabilized(void) {
-  return cycles_per_second != 0;
-}
+bool time::stabilized(void) { return cycles_per_second != 0; }
 
 
 static unsigned long (*g_high_acc)(void) = NULL;
-void time::set_high_accuracy_time_fn(unsigned long (*fn)(void)) {
-  g_high_acc = fn;
-}
+void time::set_high_accuracy_time_fn(unsigned long (*fn)(void)) { g_high_acc = fn; }
 
 unsigned long time::cycles_to_ns(unsigned long cycles) {
   /* hmm */
@@ -40,9 +34,9 @@ unsigned long long time::now_ns() {
   }
 
   /* If the time is not stabilized yet, wait for it. */
-  if (false && unlikely(!time::stabilized())) {
-    printk(KERN_WARN
-           "The time has not been stabilized before access. Waiting for stabilization...\n");
+  if (unlikely(!time::stabilized())) {
+    printk(
+        KERN_WARN "The time has not been stabilized before access. Waiting for stabilization...\n");
     while (!time::stabilized()) {
       arch_relax();
     }
@@ -79,9 +73,7 @@ unsigned long long time::now_us(void) {
   return now_ns() / 1000;  // (current_second * US_PER_SEC) + us_this_second;
 }
 
-unsigned long long time::now_ms(void) {
-  return now_us() / 1000;
-}
+unsigned long long time::now_ms(void) { return now_us() / 1000; }
 
 
 
@@ -103,6 +95,4 @@ void time::timekeep(void) {
   time::set_second(now_second);
 }
 
-void time::set_second(unsigned long sec) {
-  current_second = sec;
-}
+void time::set_second(unsigned long sec) { current_second = sec; }

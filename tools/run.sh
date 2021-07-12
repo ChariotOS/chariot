@@ -16,18 +16,25 @@ QEMU_ARCH="${CONFIG_ARCH_NAME}"
 # QEMU_FLAGS="-nographic -serial mon:stdio "
 QEMU_FLAGS="-serial mon:stdio "
 
+# -chardev stdio,id=stdout,mux=on
+# -device virtconsole,chardev=stdout
+# -device isa-debugcon,chardev=stdout
 
-# QEMU_FLAGS+="-d int -D ints.out "
+#  QEMU_FLAGS+="-d int -D ints.out "
 
 case $ARCH in 
 	X86-64)
 
 		# QEMU_FLAGS+="-enable-kvm -cpu host "
-		QEMU_FLAGS+="-m 4G -smp 4 "
+		QEMU_FLAGS+="-global kvm-pit.lost_tick_policy=discard "
+		QEMU_FLAGS+="-m 4G "
+		# QEMU_FLAGS+="-d int "
+		# QEMU_FLAGS+="-smp 4 "
 		QEMU_FLAGS+="-hda build/chariot.img "
 		# QEMU_FLAGS+="-soundhw pcspk "
 		# QEMU_FLAGS+="-device AC97 "
 		QEMU_FLAGS+="-device sb16 "
+		QEMU_FLAGS+="-device VGA,vgamem_mb=64 "
 		# QEMU_FLAGS+="-netdev user,id=u1  -device e1000,netdev=u1 "
 		QEMU_FLAGS+="-rtc base=localtime "
 		;;

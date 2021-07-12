@@ -12,6 +12,8 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include "internal.h"
+#include <gfx/color.h>
+#include <ck/time.h>
 
 // run the compositor at 60fps if there is work to be done.
 #define FPS (60)
@@ -35,7 +37,7 @@ pid_t spawn(const char *command) {
 }
 
 
-lumen::context::context(void) : screen(1024, 768) {
+lumen::context::context(void) : screen(CONFIG_FRAMEBUFFER_WIDTH, CONFIG_FRAMEBUFFER_HEIGHT) {
   if (keyboard.open("/dev/keyboard", "r+")) {
     keyboard.on_read([this] {
       while (1) {
@@ -275,6 +277,8 @@ void lumen::context::select_window(lumen::window *win) {
 void lumen::context::invalidate(const gfx::rect &r) {
   auto real = r.intersect(screen.bounds());
   dirty_regions.add(real);
+
+  // printf("next tick: %lld\n", compose_timer->next_fire() - ck::time::ms());
 
 #ifdef USE_COMPOSE_INTERVAL
   if (!compose_timer->running()) {
@@ -548,7 +552,7 @@ void lumen::context::compose(void) {
   */
 
 #ifdef USE_COMPOSE_INTERVAL
-  compose_timer->stop();
+  // compose_timer->stop();
 #endif
   // printf("compose\n");
 
@@ -569,6 +573,29 @@ void lumen::context::compose(void) {
   if (draw_mouse) screen.mouse_moved = false;
 
   auto start = sysbind_gettime_microsecond();
+
+#if 1
+  {
+    gfx::bitmap b(screen.width(), screen.height(), screen.get_front_buffer_unsafe());
+
+    for (auto &r : dirty_regions.rects()) {
+      int sw = screen.width();
+      auto off = r.y * sw + r.x;
+      uint32_t *to_ptr = b.pixels() + off;
+
+      uint32_t hi = (rand() & 0x00FFFFFF) | 0xAA000000;
+
+      for (int y = 0; y < r.h; y++) {
+        // explicit looping optimizes more
+        for (int i = 0; i < r.w; i++)
+          to_ptr[i] = gfx::color::blend(hi, to_ptr[i]);
+        to_ptr += sw;
+      }
+    }
+  }
+  usleep(100 * 1000);
+#endif
+
 
   {
     uint32_t *wp = wallpaper->pixels();
@@ -593,7 +620,6 @@ void lumen::context::compose(void) {
   // go back to front and compose each window
   for (auto win : windows) {
     // make a state for this window
-    scribe.enter();
     scribe.state().offset = gfx::point(win->rect.x, win->rect.y);
 
     for (auto &dirty_rect : dirty_regions.rects()) {
@@ -603,12 +629,9 @@ void lumen::context::compose(void) {
 
       win->draw(scribe);
     }
-    scribe.leave();
   }
 
-  if (draw_mouse) {
-    screen.draw_mouse();
-  }
+  if (draw_mouse) screen.draw_mouse();
 
   if (!screen.hardware_double_buffered()) {
     int sw = screen.width();
@@ -621,8 +644,9 @@ void lumen::context::compose(void) {
 
       for (int y = 0; y < r.h; y++) {
         // explicit looping optimizes more
-        for (int i = 0; i < r.w; i++)
+        for (int i = 0; i < r.w; i++) {
           to_ptr[i] = from_ptr[i];
+        }
         from_ptr += sw;
         to_ptr += sw;
       }

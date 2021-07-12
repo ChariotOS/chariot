@@ -456,6 +456,7 @@ namespace ck {
     // constructors
     constexpr weak_ref(void) = default;
 
+    weak_ref(const weak_ref& r) { *this = r; }
     template <class Y>
     weak_ref(const weak_ref<Y>& r) {
       *this = r;

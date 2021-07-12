@@ -156,7 +156,7 @@ static void calibrate(void) {
 static void set_tickrate(uint32_t per_second) {
   cpu::current().ticks_per_second = per_second;
   smp::lapic_write(LAPIC_TICR,
-                   lapic_ticks_per_second / per_second);  // set the tick rate
+      lapic_ticks_per_second / per_second);  // set the tick rate
 }
 
 void smp::lapic_init(void) {
@@ -170,8 +170,8 @@ void smp::lapic_init(void) {
   lapic_write(LAPIC_TDCR, LAPIC_X1);
 
   if (lapic_ticks_per_second == 0) {
-    KINFO("[LAPIC] freq info: base: %uMHz,  max: %uMHz, bus: %uMHz\n", freq.base, freq.max,
-          freq.bus);
+    KINFO(
+        "[LAPIC] freq info: base: %uMHz,  max: %uMHz, bus: %uMHz\n", freq.base, freq.max, freq.bus);
     calibrate();
     KINFO("[LAPIC] counts per tick: %zu\t0x%08x\n", lapic_ticks_per_second, lapic_ticks_per_second);
   }
@@ -223,9 +223,7 @@ void smp::lapic_write(int ind, int value) {
   lapic[ind] = value;
   (void)lapic[ind];  // wait for write to finish, by reading
 }
-unsigned smp::lapic_read(int ind) {
-  return lapic[ind];
-}
+unsigned smp::lapic_read(int ind) { return lapic[ind]; }
 
 int smp::cpunum(void) {
   // int n = 0;
@@ -281,7 +279,11 @@ static smp::cpu_state apic_cpus[CONFIG_MAX_CPUS];
 static int ncpus = 0;
 
 static u8 mp_entry_lengths[5] = {
-    MP_TAB_CPU_LEN, MP_TAB_BUS_LEN, MP_TAB_IOAPIC_LEN, MP_TAB_IO_INT_LEN, MP_TAB_LINT_LEN,
+    MP_TAB_CPU_LEN,
+    MP_TAB_BUS_LEN,
+    MP_TAB_IOAPIC_LEN,
+    MP_TAB_IO_INT_LEN,
+    MP_TAB_LINT_LEN,
 };
 
 void parse_mp_cpu(smp::mp::mp_table_entry_cpu *ent) {
@@ -304,14 +306,10 @@ void parse_mp_cpu(smp::mp::mp_table_entry_cpu *ent) {
 #endif
 }
 
-void parse_mp_bus(smp::mp::mp_table_entry_bus *ent) {
-}
-void parse_mp_ioapic(smp::mp::mp_table_entry_ioapic *ent) {
-}
-void parse_mp_ioint(smp::mp::mp_table_entry_ioint *ent) {
-}
-void parse_mp_lint(smp::mp::mp_table_entry_lint *ent) {
-}
+void parse_mp_bus(smp::mp::mp_table_entry_bus *ent) {}
+void parse_mp_ioapic(smp::mp::mp_table_entry_ioapic *ent) {}
+void parse_mp_ioint(smp::mp::mp_table_entry_ioint *ent) {}
+void parse_mp_lint(smp::mp::mp_table_entry_lint *ent) {}
 
 static void walk_mp_table(smp::mp::mp_table *table, func<void(u8, void *)> fn) {
   auto count = table->entry_cnt;

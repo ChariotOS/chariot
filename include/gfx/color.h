@@ -18,21 +18,12 @@ namespace gfx {
       struct color {
         color_t value;
 
-        constexpr uint8_t red() const {
-          return (value >> 16) & 0xff;
-        }
-        constexpr uint8_t green() const {
-          return (value >> 8) & 0xff;
-        }
-        constexpr uint8_t blue() const {
-          return value & 0xff;
-        }
-        constexpr uint8_t alpha() const {
-          return (value >> 24) & 0xff;
-        }
+        constexpr uint8_t red() const { return (value >> 16) & 0xff; }
+        constexpr uint8_t green() const { return (value >> 8) & 0xff; }
+        constexpr uint8_t blue() const { return value & 0xff; }
+        constexpr uint8_t alpha() const { return (value >> 24) & 0xff; }
 
-        color(color_t v) : value(v) {
-        }
+        color(color_t v) : value(v) {}
 
         color blend(color source) const {
           if (!alpha() || source.alpha() == 255) return source;
@@ -93,8 +84,8 @@ namespace gfx {
     }
 
 
-    inline __attribute__((always_inline)) color_t rgb(unsigned char r, unsigned char b,
-                                                      unsigned char g) {
+    inline __attribute__((always_inline)) color_t rgb(
+        unsigned char r, unsigned char b, unsigned char g) {
       return r << 16 | g << 8 | b;
     }
 

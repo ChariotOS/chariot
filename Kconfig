@@ -160,6 +160,9 @@ menu "Devices"
 		config FRAMEBUFFER_HEIGHT
 			int "Height of the VGA framebuffer"
 			default 768
+		config FRAMEBUFFER_AUTODETECT
+			bool "Autodetect framebuffer dimensions from BIOS/grub"
+			default y
 
 		config VGA
 			bool "VGA displays beyond multiboot's boostrap [RECOMMENDED]"

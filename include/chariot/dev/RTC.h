@@ -10,6 +10,8 @@ namespace dev {
 
     void localtime(struct tm&);
 
+
+    int read_seconds(void);
     void read_registers(int& year, int& month, int& day, int& hour, int& minute, int& second);
   };  // namespace RTC
 }  // namespace dev

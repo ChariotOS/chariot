@@ -2,6 +2,8 @@
 
 #include <ck/pair.h>
 #include <gfx/bitmap.h>
+#include <ck/timer.h>
+#include <ck/ptr.h>
 
 namespace ui {
 
@@ -11,6 +13,7 @@ namespace ui {
   /* A surface is the base class for window-like objects. */
   class surface {
    public:
+    surface();
     virtual ~surface(void) {}
 
     virtual gfx::bitmap *bmp(void) = 0;
@@ -31,10 +34,15 @@ namespace ui {
     ui::view *focused = NULL;
     ui::view *hovered = NULL;
 
+    // ask that a ui::animation_event be sent at the next possible moment
+    void request_animation_frame(ck::weak_ref<ui::view> view);
+
    protected:
     void do_reflow();
     bool m_pending_reflow = false;
     gfx::rect m_rect;
+    ck::timer m_animation_timer;
+    ck::vec<ck::weak_ref<ui::view>> m_views_wanting_animation;
   };
 
 };  // namespace ui

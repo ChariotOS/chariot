@@ -287,3 +287,6 @@ void ui::view::load_style(const ui::style &cfg) {
     set_padding(cfg.padding.unwrap());
   }
 }
+
+
+void ui::view::handle_animation_frame(void) { printf("animation frame!\n"); }

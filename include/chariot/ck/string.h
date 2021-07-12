@@ -20,21 +20,12 @@ namespace ck {
     // iterator magic
     typedef const T* iterator;
     typedef const T* const_iterator;
-    inline const char* begin() {
-      return m_start;
-    }
-    const T* end() {
-      return m_start + m_len;
-    }
-    const T* begin() const {
-      return m_start;
-    }
-    const T* end() const {
-      return m_start + m_len;
-    }
+    inline const char* begin() { return m_start; }
+    const T* end() { return m_start + m_len; }
+    const T* begin() const { return m_start; }
+    const T* end() const { return m_start + m_len; }
 
-    basic_string_view(const T* start, size_t len) : m_start(start), m_len(len) {
-    }
+    basic_string_view(const T* start, size_t len) : m_start(start), m_len(len) {}
 
     basic_string_view(T* start) : m_start(start) {
       for (m_len = 0; start[m_len] != 0; m_len++) {
@@ -46,20 +37,12 @@ namespace ck {
       }
     }
     // no destructor, since we don't own anything
-    const char* get(void) const {
-      return m_start;
-    }
-    inline size_t len(void) const {
-      return m_len;
-    }
+    const char* get(void) const { return m_start; }
+    inline size_t len(void) const { return m_len; }
 
-    operator T*(void) {
-      return m_start;
-    }
+    operator T*(void) { return m_start; }
 
-    inline T operator[](unsigned int index) const {
-      return m_start[index];
-    }
+    inline T operator[](unsigned int index) const { return m_start[index]; }
 
 
     inline basic_string_view<T> substring_view(off_t start, size_t len) const {
@@ -81,18 +64,10 @@ namespace ck {
     // iterator magic
     typedef T* iterator;
     typedef const T* const_iterator;
-    inline T* begin() {
-      return m_buf;
-    }
-    T* end() {
-      return m_buf + m_len;
-    }
-    const T* begin() const {
-      return m_buf;
-    }
-    const T* end() const {
-      return m_buf + m_len;
-    }
+    inline T* begin() { return m_buf; }
+    T* end() { return m_buf + m_len; }
+    const T* begin() const { return m_buf; }
+    const T* end() const { return m_buf + m_len; }
 
 
 
@@ -177,12 +152,8 @@ namespace ck {
       }
     }
 
-    basic_string(basic_string_view<T>& s) {
-      basic_string(s.get(), s.len());
-    }
-    basic_string(const basic_string_view<T>& s) {
-      basic_string(s.get(), s.len());
-    }
+    basic_string(basic_string_view<T>& s) { basic_string(s.get(), s.len()); }
+    basic_string(const basic_string_view<T>& s) { basic_string(s.get(), s.len()); }
 
 
     ~basic_string(void) {
@@ -223,9 +194,7 @@ namespace ck {
     }
 
 
-    operator basic_string_view<T>(void) {
-      return substring_view(0, len());
-    }
+    operator basic_string_view<T>(void) { return substring_view(0, len()); }
 
 
 
@@ -237,12 +206,8 @@ namespace ck {
     }
 
 
-    size_t len() const {
-      return m_len;
-    }
-    size_t size() const {
-      return m_len;
-    }
+    size_t len() const { return m_len; }
+    size_t size() const { return m_len; }
 
     T pop() {
       T c = -1;
@@ -286,8 +251,7 @@ namespace ck {
       return *this;
     }
 
-    static void foo() {
-    }
+    static void foo() {}
 
     basic_string& operator=(const T* s) {
       if (s == NULL) return *this;
@@ -348,9 +312,12 @@ namespace ck {
     static basic_string format(const char* fmt, ...);
     int scan(const char* fmt, ...);
 
+    void appendf(const char* fmt, ...);
 
-    friend ck::basic_string<T> operator+(const ck::basic_string<T>& lhs,
-                                         const ck::basic_string<T>& rhs) {
+
+
+    friend ck::basic_string<T> operator+(
+        const ck::basic_string<T>& lhs, const ck::basic_string<T>& rhs) {
       return basic_string(lhs) += rhs;
     }
 

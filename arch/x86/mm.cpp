@@ -65,9 +65,7 @@ x86::pagetable::pagetable(u64 *pml4) : pml4(pml4) {
     }
   }
 }
-x86::pagetable::~pagetable(void) {
-  paging::free_table(pml4);
-}
+x86::pagetable::~pagetable(void) { paging::free_table(pml4); }
 
 bool x86::pagetable::switch_to(void) {
   auto kptable = (u64 *)p2v(kernel_page_table);
@@ -246,8 +244,8 @@ mm::space *kspace;
 mm::space &mm::space::kernel_space(void) {
   if (kspace == NULL) {
     auto kptable = make_ref<x86::pagetable>(kernel_page_table);
-    kspace = new mm::space(CONFIG_KERNEL_VIRTUAL_BASE, CONFIG_KERNEL_VIRTUAL_BASE + 0x100000000,
-                           kptable);
+    kspace = new mm::space(
+        CONFIG_KERNEL_VIRTUAL_BASE, CONFIG_KERNEL_VIRTUAL_BASE + 0x100000000, kptable);
     kspace->is_kspace = 1;
   }
 

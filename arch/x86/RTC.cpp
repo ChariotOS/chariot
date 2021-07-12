@@ -66,12 +66,13 @@ static unsigned days_in_years_since_epoch(unsigned year) {
   return days;
 }
 
-static bool update_in_progress() {
-  return dev::CMOS::read(0x0a) & 0x80;
-}
+static bool update_in_progress() { return dev::CMOS::read(0x0a) & 0x80; }
 
-void dev::RTC::read_registers(int& year, int& month, int& day, int& hour, int& minute,
-                              int& second) {
+
+int dev::RTC::read_seconds(void) { return CMOS::read(0x00); }
+
+void dev::RTC::read_registers(
+    int& year, int& month, int& day, int& hour, int& minute, int& second) {
   while (update_in_progress())
     ;
 
@@ -80,7 +81,7 @@ void dev::RTC::read_registers(int& year, int& month, int& day, int& hour, int& m
   day = CMOS::read(0x07);
   hour = CMOS::read(0x04);
   minute = CMOS::read(0x02);
-  second = CMOS::read(0x00);
+  second = read_seconds();
 }
 
 time_t dev::RTC::now() {
@@ -103,9 +104,7 @@ time_t dev::RTC::now() {
 }
 
 
-time_t dev::RTC::boot_time() {
-  return s_boot_time;
-}
+time_t dev::RTC::boot_time() { return s_boot_time; }
 
 
 
@@ -115,14 +114,27 @@ void dev::RTC::localtime(struct tm& t) {
 
 
 
+static uint8_t read_register_c(void) {
+  // select register C
+  outb(0x70, 0x0C);
+  // read register C so we get interrupts later
+  return inb(0x70);
+}
+
+
 
 void rtc_irq_handler(int n, reg_t* regs, void*) {
+  // read this register so we can get an interrupt later
+  auto c = dev::CMOS::read(0x8C);
+
   /* the irq occurs twice per second, so we need to ignore one of them */
-  static int count = 0;
-  count++;
-  if (count == 2) {
-    count = 0;
-  }
+  // static int count = 0;
+  // count++;
+  // if (count == 2) {
+  //   count = 0;
+  // }
+
+
 
   time::timekeep();
 }
@@ -165,7 +177,7 @@ void rtc_late_init(void) {
   char prev = inb(0x71);  // read the current value of register B
   outb(0x70, 0x8B);       // set the index again (a read will reset the index to register D)
   outb(0x71,
-       prev | 0x40);  // write the previous value ORed with 0x40. This turns on bit 6 of register B
+      prev | 0x40);  // write the previous value ORed with 0x40. This turns on bit 6 of register B
 
 
   rate &= 0x0F;                      // rate must be above 2 and not over 15
@@ -174,6 +186,8 @@ void rtc_late_init(void) {
   outb(0x70, 0x8A);                  // reset index to A
   outb(0x71, (prev & 0xF0) | rate);  // write only our rate to A. Note, rate is the bottom 4 bits.
 
+
+  read_register_c();
   arch_enable_ints();
 }
 

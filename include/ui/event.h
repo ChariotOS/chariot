@@ -17,12 +17,9 @@ namespace ui {
     };
 
 
-    event(ui::event::type type) : m_type(type) {
-    }
+    event(ui::event::type type) : m_type(type) {}
 
-    auto get_type(void) const {
-      return m_type;
-    }
+    auto get_type(void) const { return m_type; }
 
     template <typename T>
     inline auto &as() {
@@ -33,9 +30,8 @@ namespace ui {
     ui::event::type m_type;
   };
 
-#define EV(klass, t)       \
-  klass() : ui::event(t) { \
-  }
+#define EV(klass, t) \
+  klass() : ui::event(t) {}
 
   struct mouse_event : public event {
     /* If left or right is pressed, x and y are the location of the press and ox and oy
@@ -52,9 +48,7 @@ namespace ui {
     int pressed;  /* Newly pressed buttons */
     int released; /* Newly released buttons */
     /* The absolute position of the mouse event (within the view's rect, obv) */
-    inline gfx::point pos(void) {
-      return gfx::point(x + ox, y + oy);
-    }
+    inline gfx::point pos(void) { return gfx::point(x + ox, y + oy); }
 
    public:
     EV(mouse_event, ui::event::type::mouse);
@@ -81,6 +75,11 @@ namespace ui {
   };
 
 
+
+  struct animation_event : public event {
+   public:
+    EV(animation_event, ui::event::type::keyup);
+  };
 
 
 #undef EV

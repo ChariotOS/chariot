@@ -2,11 +2,10 @@
 #include <errno.h>
 #include <sleep.h>
 #include <time.h>
+#include "printk.h"
 
 
-sleep_waiter::~sleep_waiter() {
-  this->remove();
-}
+sleep_waiter::~sleep_waiter() { this->remove(); }
 
 void sleep_waiter::start(uint64_t us) {
   wakeup_us = time::now_us() + us;
@@ -45,11 +44,9 @@ void sleep_waiter::remove(void) {
   cpu->sleepers_lock.unlock_irqrestore(flags);
 }
 
-void remove_sleep_waiter(struct processor_state &cpu, struct sleep_waiter *blk) {
-}
+void remove_sleep_waiter(struct processor_state &cpu, struct sleep_waiter *blk) {}
 
-void add_sleep_waiter(struct processor_state &cpu, struct sleep_waiter *blk) {
-}
+void add_sleep_waiter(struct processor_state &cpu, struct sleep_waiter *blk) {}
 
 int do_usleep(uint64_t us) {
   struct sleep_waiter blocker;
@@ -69,6 +66,7 @@ bool check_wakeups_r(void) {
   auto &cpu = cpu::current();
 
 
+  int woke = 0;
   bool found = false;
   struct sleep_waiter *blk = cpu.sleepers;
   while (blk != NULL) {
@@ -79,12 +77,14 @@ bool check_wakeups_r(void) {
     if (blk->wakeup_us <= now) {
       /* Wake them up! */
       blk->wq.wake_up_all();
+      woke++;
       found = true;
     }
 
     /* Continue the loop */
     blk = next;
   }
+  // if (woke > 0) printk_nolock("woke up %d threads\n", woke);
 
   return found;
 }

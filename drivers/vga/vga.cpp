@@ -14,6 +14,7 @@
 #include <vga.h>
 #include <dev/video.h>
 #include <multiboot2.h>
+#include "arch.h"
 
 #define VBE_DISPI_IOPORT_INDEX 0x01CE
 #define VBE_DISPI_IOPORT_DATA 0x01CF
@@ -97,12 +98,10 @@ static void flush_vga_console() {
 
 
 // returns the userspace address
-void *vga::get_fba(void) {
-  return (void *)p2v(vga_fba);
-}
+void *vga::get_fba(void) { return (void *)p2v(vga_fba); }
 
 void vga::putchar(char c) {
-	/* TODO(nick): move the virtual console stuff into the GVI interface */
+  /* TODO(nick): move the virtual console stuff into the GVI interface */
   vc_feed(&vga_console, c);
 }
 
@@ -231,8 +230,7 @@ static void fb_close(fs::file &f) {
 
 
 struct vga_vmobject final : public mm::vmobject {
-  vga_vmobject(size_t npages) : vmobject(npages) {
-  }
+  vga_vmobject(size_t npages) : vmobject(npages) {}
 
   virtual ~vga_vmobject(void){};
 
@@ -259,7 +257,7 @@ static ref<mm::vmobject> vga_mmap(fs::file &f, size_t npages, int prot, int flag
 
   if (npages > NPAGES(64 * MB)) {
     printk(KERN_WARN "vga: attempt to mmap too many pages (%d pixels)\n",
-           (npages * 4096) / sizeof(uint32_t));
+        (npages * 4096) / sizeof(uint32_t));
     return nullptr;
   }
 
@@ -294,11 +292,25 @@ static struct dev::driver_info generic_driver_info {
 
 
 static int fg_colors[] = {
-    0x676767, 0xff6d67, 0x59f68d, 0xf3f89d, 0xc9a8fa, 0xff92d0, 0x99ecfd, 0xfeffff,
+    0x676767,
+    0xff6d67,
+    0x59f68d,
+    0xf3f89d,
+    0xc9a8fa,
+    0xff92d0,
+    0x99ecfd,
+    0xfeffff,
 };
 
 static int bg_colors[] = {
-    0x000000, 0xff6d67, 0x59f68d, 0xf3f89d, 0xc9a8fa, 0xff92d0, 0x99ecfd, 0xc7c7c7,
+    0x000000,
+    0xff6d67,
+    0x59f68d,
+    0xf3f89d,
+    0xc9a8fa,
+    0xff92d0,
+    0x99ecfd,
+    0xc7c7c7,
 };
 
 static void vga_char_scribe(int x, int y, struct vc_cell *cell, int flags) {
@@ -339,15 +351,25 @@ void vga::early_init(uint64_t mbd) {
 
   */
 
-  mb2::find<struct multiboot_tag_framebuffer_common>(mbd, MULTIBOOT_TAG_TYPE_FRAMEBUFFER,
-                                                     [](auto *i) {
-                                                       vga_fba = (uint32_t *)i->framebuffer_addr;
-                                                       info.active = 0;
-                                                       info.width = i->framebuffer_width;
-                                                       info.height = i->framebuffer_height;
-                                                       info.active = false;
-                                                       vga::configure(info);
-                                                     });
+
+  mb2::find<struct multiboot_tag_framebuffer_common>(
+      mbd, MULTIBOOT_TAG_TYPE_FRAMEBUFFER, [](auto *i) {
+        vga_fba = (uint32_t *)i->framebuffer_addr;
+        info.active = 0;
+#ifdef CONFIG_FRAMEBUFFER_AUTODETECT
+
+        info.width = i->framebuffer_width;
+        info.height = i->framebuffer_height;
+#else
+        info.height = CONFIG_FRAMEBUFFER_HEIGHT;
+        info.width = CONFIG_FRAMEBUFFER_WIDTH;
+#endif
+
+        info.active = false;
+
+        KINFO("width: %d, height: %d, addr: %p\n", info.width, info.height, i->framebuffer_addr);
+        vga::configure(info);
+      });
 
 
   if (vga_fba == NULL) vga_fba = (u32 *)get_framebuffer_address();
@@ -355,25 +377,22 @@ void vga::early_init(uint64_t mbd) {
 
 
 class vga_vdev : public dev::video_device {
-
-    virtual ~vga_vdev() {}
-    virtual int get_mode(gvi_video_mode &mode) {
-			mode.width = info.width;
-			mode.height = info.height;
-			return 0;
-		}
-    // virtual int set_mode(const gvi_video_mode &mode);
-    virtual uint32_t *get_framebuffer(void) {
-			return vga_fba;
-		}
+  virtual ~vga_vdev() {}
+  virtual int get_mode(gvi_video_mode &mode) {
+    mode.width = info.width;
+    mode.height = info.height;
+    return 0;
+  }
+  // virtual int set_mode(const gvi_video_mode &mode);
+  virtual uint32_t *get_framebuffer(void) { return vga_fba; }
 };
 
 
 void vga_mod_init(void) {
   if (vga_fba != NULL) {
-		auto *vdev = new vga_vdev;
-		info.active = true;
-		dev::video_device::register_device(vdev);
+    auto *vdev = new vga_vdev;
+    info.active = true;
+    dev::video_device::register_device(vdev);
     // printk(KERN_INFO "Standard VGA Framebuffer found!\n");
     // dev::register_driver(generic_driver_info);
     // dev::register_name(generic_driver_info, "fb", 0);

@@ -8,6 +8,9 @@
 #include <ui/frame.h>
 #include <ck/pair.h>
 #include <ui/label.h>
+#include <ck/json.h>
+#include <ck/time.h>
+
 
 class colorview : public ui::view {
  public:
@@ -112,6 +115,15 @@ class ct_window : public ui::window {
 
 
 int main(int argc, char** argv) {
+  // ck::json::value val = "hello\"";
+  // printf("val: %s\n", val.format().get());
+  // sysbind_shutdown();
+  // return 0;
+
+  // while (1) {
+  //   printf("now: %lld\n", ck::time::ms());
+  // }
+
   ui::application app;
   ct_window* win = new ct_window;
 

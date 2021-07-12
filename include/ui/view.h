@@ -105,6 +105,9 @@ namespace ui {
     CK_MAKE_NONMOVABLE(view);
 
    public:
+    using ref = ck::ref<ui::view>;
+    using weak_ref = ck::weak_ref<ui::view>;
+
     view();
 
     // a helper function to create a view with some children
@@ -276,23 +279,6 @@ namespace ui {
 
     gfx::rect absolute_rect(void);
 
-    /**
-     * Because the view tree is strict (views cannot live in multiple places,
-     * and must have a parent or a window) new views are created by spawning
-     * them within another view. This means that in order to create a view, you
-     * *must* spawn it or it breaks assumptions about view ownership.
-     *
-     * It is safe to share this return value as long as you use it while the
-     * parent view is in existence.
-     */
-    template <typename T, typename... Args>
-    inline T &spawn(Args &&...args) {
-      auto v = new T(forward<Args>(args)...);
-      auto &r = *v;
-      add(move(v));
-      return *v;
-    }
-
     ui::view &add(ck::ref<ui::view> v);
 
     friend inline ui::view &operator<<(ui::view &lhs, ui::view *rhs) {
@@ -338,33 +324,30 @@ namespace ui {
     }
 
 
-    bool log_layouts = false;
 
-   public:
-    float m_font_size = NAN;
-    ck::ref<gfx::font> m_font = nullptr;
-
-
-    friend ui::window;
-
-
-    /* A list of the children owned by this view */
-    ck::vec<ck::ref<ui::view>> m_children;
 
     void dump_hierarchy(int depth = 0);
-
-
-
-
     void load_style(const ui::style &cfg);
 
-   private:
+    auto &children(void) { return m_children; }
+
+   protected:
+    friend ui::surface;
+    friend ui::window;
+
+    void handle_animation_frame(void);
+
     // void needs_relayout() { m_needs_relayout = true; }
     /*
      * these two entries are mutually exclusive
      */
     ui::surface *m_surface = NULL;
     ui::view *m_parent = NULL;
+
+    /* A list of the children owned by this view */
+    ck::vec<ck::ref<ui::view>> m_children;
+    float m_font_size = NAN;
+    ck::ref<gfx::font> m_font = nullptr;
 
 
     // bit flags

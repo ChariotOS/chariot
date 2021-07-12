@@ -52,44 +52,57 @@ fi
 # echo $DEV
 # hdiutil detach $DEV
 
-if [ $disk_exists -eq '0' ]; then
-  if [ "$(uname)" = "Darwin" ]; then
-		rm -rf chariot.dmg
-		hdiutil create -size ${CONFIG_DISK_SIZE_MB}m -volname Chariot $IMG
+
+USING_LOOPBACK="no"
+
+if test -z "$dev"; then
+	USING_LOOPBACK="yes"
+	if [ $disk_exists -eq '0' ]; then
+		if [ "$(uname)" = "Darwin" ]; then
+				rm -rf chariot.dmg
+				hdiutil create -size ${CONFIG_DISK_SIZE_MB}m -volname Chariot $IMG
+			else
+				# create the disk image file of size DISK_SIZE_MB
+				dd if=/dev/zero of=$IMG bs=1000000 count=$CONFIG_DISK_SIZE_MB || die "can't create disk image"
+				chmod 666 $IMG
+		fi
+	fi
+	# mount the disk with loopback or whatever
+	if [ "$(uname)" = "Darwin" ]; then
+		dev=$(hdiutil attach -nomount $IMG | head -n 1 | awk '{print $1}')
 	else
-		# create the disk image file of size DISK_SIZE_MB
-		dd if=/dev/zero of=$IMG bs=1000000 count=$CONFIG_DISK_SIZE_MB || die "can't create disk image"
-		chmod 666 $IMG
-  fi
-fi
-
-
-# mount the disk with loopback or whatever
-if [ "$(uname)" = "Darwin" ]; then
-	dev=$(hdiutil attach -nomount $IMG | head -n 1 | awk '{print $1}')
+		dev=$(sudo losetup --find --partscan --show $IMG)
+	fi
+	
 else
-	dev=$(sudo losetup --find --partscan --show $IMG)
+	disk_exists=1
 fi
 
-echo "Device: ${dev}"
 
-fsdev="${dev}p1"
 
-# if [ -n "$CONFIG_X86" ]; then
-# 	fsdev="${dev}"p1
-# fi
+echo "Device: ${dev}, losetup: ${USING_LOOPBACK}, ${disk_exists}"
+
+
+if [ "$CONFIG_X86" != "" ]; then
+	if [ "$fsdev" == "" ]; then
+		fsdev="${dev}p1"
+	fi
+fi
 
 
 cleanup() {
+	echo "Cleanup"
 	if [ -d $mnt ]; then
 			sudo umount -f $mnt || ( sleep 1 && sync && sudo umount $mnt )
 			rm -rf $mnt
 	fi
 
-	if [ "$(uname)" = "Darwin" ]; then
-		hdiutil detach "${dev}"
-	else
-		sudo losetup -d "${dev}"
+	if [ "${USING_LOOPBACK}" == "yes" ]; then
+		if [ "$(uname)" = "Darwin" ]; then
+			hdiutil detach "${dev}"
+		else
+			sudo losetup -d "${dev}"
+		fi
 	fi
 
 }
@@ -105,7 +118,7 @@ if [ $disk_exists -eq '0' ]; then
 	printf "Done.\n"
 
 	printf "Running mke2fs..."
-	sudo mke2fs -L "Chariot Root" -b 4096 -q -I 128 "${fsdev}" || die "couldn't create filesystem"
+	sudo mke2fs -L "Chariot Root" -v -b 4096 -q -I 128 "${fsdev}" || die "couldn't create filesystem"
 	printf "Done.\n"
 
 fi
@@ -116,6 +129,7 @@ if [ -d $mnt ]; then
 	rm -rf $mnt
 fi
 mkdir -p $mnt
+
 
 sudo mount ${fsdev} $mnt/
 

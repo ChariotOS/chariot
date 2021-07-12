@@ -23,7 +23,7 @@ struct mpegview : public ui::view {
  public:
   mpegview() {
     last_time = (double)clock() / 1000.0;
-    plm = plm_create_with_filename("/usr/res/misc/apple.mpg");
+    plm = plm_create_with_filename("/usr/res/misc/bunny.mpg");
 
     // nice lol
     plm_set_video_decode_callback(

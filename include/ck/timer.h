@@ -27,12 +27,12 @@ namespace ck {
 
     inline long long next_fire(void) { return m_next_fire; }
     inline bool running() { return active; }
+    ck::func<void()> on_tick;
 
    protected:
     long long m_interval = -1;
     long long m_next_fire = -1;
     bool repeat = false;
     bool active = false;
-    ck::func<void()> on_tick;
   };
 }  // namespace ck

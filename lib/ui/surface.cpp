@@ -3,8 +3,27 @@
 #include "ck/eventloop.h"
 #include <sys/sysbind.h>
 
-static void do_surface_reflow(ui::surface *s) {}
 
+ui::surface::surface(void) {}
+
+
+void ui::surface::request_animation_frame(ck::weak_ref<ui::view> view) {
+  m_views_wanting_animation.push(view);
+
+  if (!m_animation_timer.running()) {
+    // start the tick
+    m_animation_timer.start(1000 / 60, false);
+    m_animation_timer.on_tick = [this] {
+      // copy the vector. Not smart lol, but it works and avoids race problems if the view
+      auto views_wanting_animation = m_views_wanting_animation;
+      m_views_wanting_animation.clear();
+      for (auto &view : views_wanting_animation) {
+        ui::view::ref v = view.get();
+        if (v) v->handle_animation_frame();
+      }
+    };
+  }
+}
 
 void ui::surface::do_reflow(void) {
   // printf("do reflow!\n");
@@ -13,14 +32,8 @@ void ui::surface::do_reflow(void) {
   rv->set_width(width());
   rv->set_height(height());
 
-  // printf("running layout.\n");
   rv->run_layout();
-  // printf("ran layout.\n");
   did_reflow();
-
-  // rv->dump_hierarchy();
-
-  // rv->update();
 }
 
 void ui::surface::schedule_reflow() {

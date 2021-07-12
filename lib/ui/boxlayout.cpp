@@ -13,7 +13,7 @@ gfx::isize ui::boxlayout::preferred_size(ui::view& view) const {
 int ui::boxlayout::preferred_primary_size(ui::view& view) const {
   int size = 0;
 
-  for (auto& child : view.m_children) {
+  for (auto& child : view.children()) {
     // TODO: is_visible()
     int min_size = child->min_size().primary_size_for_direction(direction());
     int max_size = child->max_size().primary_size_for_direction(direction());
@@ -38,7 +38,7 @@ int ui::boxlayout::preferred_primary_size(ui::view& view) const {
 
 int ui::boxlayout::preferred_secondary_size(ui::view& view) const {
   int size = 0;
-  for (auto& entry : view.m_children) {
+  for (auto& entry : view.children()) {
     // TODO: is_visible()
     int min_size = entry->min_size().secondary_size_for_direction(direction());
     int preferred_secondary_size = -1;
@@ -60,7 +60,7 @@ int ui::boxlayout::preferred_secondary_size(ui::view& view) const {
 void ui::boxlayout::run(ui::view& view) {
   // printf("run box layout!\n");
   if (m_owner == NULL) return;
-  if (view.m_children.is_empty()) return;
+  if (view.children().is_empty()) return;
 
   // printf("m_owner!\n");
   struct Item {
@@ -72,9 +72,9 @@ void ui::boxlayout::run(ui::view& view) {
   };
 
   ck::vec<Item> items;
-  items.ensure_capacity(view.m_children.size());
+  items.ensure_capacity(view.children().size());
 
-  auto& ents = view.m_children;
+  auto& ents = view.children();
 
   for (size_t i = 0; i < ents.size(); i++) {
     auto& entry = ents[i];

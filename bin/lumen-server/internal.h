@@ -61,13 +61,9 @@ namespace lumen {
       }
     }
 
-    void load_info(void) {
-      ioctl(fd, FB_GET_INFO, &info);
-    }
+    void load_info(void) { ioctl(fd, FB_GET_INFO, &info); }
 
-    inline bool hardware_double_buffered(void) {
-      return (info.caps & GVI_CAP_DOUBLE_BUFFER) != 0;
-    }
+    inline bool hardware_double_buffered(void) { return (info.caps & GVI_CAP_DOUBLE_BUFFER) != 0; }
 
     void flush_fb();
     inline gfx::rect mouse_rect(void) {
@@ -88,27 +84,22 @@ namespace lumen {
     void draw_mouse(void);
 
     void set_resolution(int w, int h);
-    inline size_t screensize(void) {
-      return bufsz;
-    }
-    inline uint32_t *pixels(void) {
-      return buf;
-    }
+    inline size_t screensize(void) { return bufsz; }
+    inline uint32_t *pixels(void) { return buf; }
 
 
     inline uint32_t *buffer(void) {
       if (hardware_double_buffered()) return front_buffer;
       return back_buffer;
     }
-    inline void set_pixel(int x, int y, uint32_t color) {
-      buffer()[x + y * m_bounds.w] = color;
-    }
+
+    inline uint32_t *get_front_buffer_unsafe(void) { return front_buffer; }
+
+    inline void set_pixel(int x, int y, uint32_t color) { buffer()[x + y * m_bounds.w] = color; }
 
 
     // THIS IS VERY SLOW!!!
-    inline uint32_t get_pixel(int x, int y) {
-      return buffer()[x + y * m_bounds.w];
-    }
+    inline uint32_t get_pixel(int x, int y) { return buffer()[x + y * m_bounds.w]; }
 
     inline void clear(uint32_t color) {
       for (int i = 0; i < width() * height(); i++) {
@@ -116,16 +107,10 @@ namespace lumen {
       }
     }
 
-    inline int width(void) {
-      return m_bounds.w;
-    }
-    inline int height(void) {
-      return m_bounds.h;
-    }
+    inline int width(void) { return m_bounds.w; }
+    inline int height(void) { return m_bounds.h; }
 
-    inline const gfx::rect &bounds(void) {
-      return m_bounds;
-    }
+    inline const gfx::rect &bounds(void) { return m_bounds; }
   };
 
 

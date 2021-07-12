@@ -7,13 +7,14 @@
 #include <syscall.h>
 #include <time.h>
 #include <wait.h>
+#include "printk.h"
 
 #define SIG_ERR ((void (*)(int)) - 1)
 #define SIG_DFL ((void (*)(int))0)
 #define SIG_IGN ((void (*)(int))1)
 
 
-volatile bool did_panic = false; // printk.h
+volatile bool did_panic = false;  // printk.h
 static bool s_enabled = true;
 
 
@@ -159,7 +160,7 @@ struct mlfq {
         // TODO: make sure it can be taken by the thief
         if (thread *cur = queues[prio].pick_next(); cur != NULL) {
           lock.unlock_irqrestore(f);
-					// printk_nolock("cpu %d stealing thread %d\n", cpu::current().cpunum, cur->tid);
+          // printk_nolock("cpu %d stealing thread %d\n", cpu::current().cpunum, cur->tid);
           return cur;
         }
       }
@@ -190,9 +191,7 @@ struct mlfq {
 
   // return the number of runnable threads in this scheduler (incremented and decremented on
   // add/remove)
-  int num_runnable(void) {
-    return __atomic_load_n(&m_running, __ATOMIC_ACQUIRE);
-  }
+  int num_runnable(void) { return __atomic_load_n(&m_running, __ATOMIC_ACQUIRE); }
 
  private:
   int m_running = 0;
@@ -216,9 +215,7 @@ extern "C" void context_switch(struct thread_context **, struct thread_context *
 
 
 
-static auto &my_queue(void) {
-  return queues[cpu::current().cpunum];
-}
+static auto &my_queue(void) { return queues[cpu::current().cpunum]; }
 
 
 bool sched::init(void) {
@@ -393,9 +390,7 @@ sched::yieldres sched::do_yield(int st) {
 
 
 // helpful functions wrapping different resulting task states
-void sched::block() {
-  sched::do_yield(PS_INTERRUPTIBLE);
-}
+void sched::block() { sched::do_yield(PS_INTERRUPTIBLE); }
 /* Unblock a thread */
 void sched::unblock(thread &thd, bool interrupt) {
 #if 0
@@ -410,9 +405,7 @@ void sched::unblock(thread &thd, bool interrupt) {
   __sync_synchronize();
 }
 
-void sched::exit() {
-  do_yield(PS_ZOMBIE);
-}
+void sched::exit() { do_yield(PS_ZOMBIE); }
 
 void sched::dumb_sleepticks(unsigned long t) {
   auto now = cpu::get_ticks();
@@ -435,14 +428,14 @@ static int idle_task(void *arg) {
    * a big class of bugs in one go :^).
    */
   while (1) {
-		if (did_panic) debug_die();
+    if (did_panic) debug_die();
     /*
      * The loop here is simple. Wait for an interrupt, handle it (implicitly) then
      * yield back to the scheduler if there is a task ready to run.
      */
     arch_enable_ints(); /* just to be sure. */
     arch_halt();
-    // sched::yield();
+    sched::yield();
   }
 }
 
@@ -457,8 +450,7 @@ void sched::run() {
   unsigned long has_run = 0;
 
   while (1) {
-
-		if (did_panic) debug_die();
+    if (did_panic) debug_die();
     if (has_run++ >= 100) {
       has_run = 0;
       my_queue().boost();
@@ -512,12 +504,12 @@ void sched::handle_tick(u64 ticks) {
   if (thd->get_state() != PS_RUNNING) return;
   if (thd->preemptable == false) return;
 
-#ifdef CONFIG_PREFETCH_NEXT_THREAD
   // yield?
   if (thd->sched.has_run >= thd->sched.timeslice) {
+#ifdef CONFIG_PREFETCH_NEXT_THREAD
     pick_next_thread();
-  }
 #endif
+  }
 }
 
 
@@ -671,6 +663,4 @@ void sched::before_iret(bool userspace) {
 }
 
 
-int sys::usleep(unsigned long n) {
-  return do_usleep(n);
-}
+int sys::usleep(unsigned long n) { return do_usleep(n); }
