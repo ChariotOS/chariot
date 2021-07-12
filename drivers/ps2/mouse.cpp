@@ -165,18 +165,6 @@ static void mouse_handler(int i, reg_t *, void *) {
     }
 
     if (finalize) {
-      if (vmware_backdoor_mouse_enabled) {
-        struct mouse_packet packet;
-        memset(&packet, 0, sizeof(packet));
-        packet.magic = MOUSE_MAGIC;
-        if (vmware_handle_mouse(packet) && open) {
-          mouse_buffer.write(&packet, sizeof(packet), false /* dont block */);
-        }
-
-        break;
-      }
-
-
       mouse_cycle = 0;
       /* We now have a full mouse packet ready to use */
       struct mouse_packet packet;
@@ -217,6 +205,17 @@ static void mouse_handler(int i, reg_t *, void *) {
         } else if ((char)mouse_byte[3] < 0) {
           packet.buttons |= MOUSE_SCROLL_UP;
         }
+      }
+
+      if (vmware_backdoor_mouse_enabled) {
+        // printk("old - x: %d, y: %d\n", packet.x, packet.y);
+        struct mouse_packet packet;
+        memset(&packet, 0, sizeof(packet));
+        packet.magic = MOUSE_MAGIC;
+        if (vmware_handle_mouse(packet) && open) {
+          mouse_buffer.write(&packet, sizeof(packet), false /* dont block */);
+        }
+        break;
       }
 
 
