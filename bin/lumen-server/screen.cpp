@@ -56,8 +56,7 @@ lumen::screen::~screen(void) {
 }
 
 
-void lumen::screen::flip_buffers(void) {
-}
+void lumen::screen::flip_buffers(void) {}
 
 void lumen::screen::set_resolution(int w, int h) {
   if (buf != NULL) {
@@ -85,33 +84,35 @@ void lumen::screen::set_resolution(int w, int h) {
 }
 
 
-void lumen::screen::flush_fb() {
-  ioctl(fd, GVI_FLUSH_FB);
-}
+void lumen::screen::flush_fb() { ioctl(fd, GVI_FLUSH_FB); }
 
 long xoff = 0;
 long yoff = 0;
 long delta = 10;
 const gfx::point &lumen::screen::handle_mouse_input(struct mouse_packet &pkt) {
-  mouse_pos.set_x(mouse_pos.x() + pkt.dx);
-  mouse_pos.set_y(mouse_pos.y() + pkt.dy);
+  if (pkt.is_relative) {
+    mouse_pos.set_x(mouse_pos.x() + pkt.x);
+    mouse_pos.set_y(mouse_pos.y() + pkt.y);
+  } else {
+    int pos_x = (pkt.x / (float)0xFFFF) * width();
+    int pos_y = (pkt.y / (float)0xFFFF) * height();
+    // printf("%d,%d: x:%d, y:%d\n", pkt.x, pkt.y, pos_x, pos_y);
+    mouse_pos.set_x(pos_x);
+    mouse_pos.set_y(pos_y);
+  }
+
+  mouse_moved = true;
+
+
   /* The mouse is constrained within the visible region */
   gfx::rect sc(0, 0, width() - 1, height() - 1);
   mouse_pos.constrain(sc);
-  mouse_moved = true;
-
-  // TODO: buttons
-
   return mouse_pos;
 }
 
 
-inline int abs(int a) {
-  return a < 0 ? -a : a;
-}
-inline int min(int a, int b) {
-  return a < b ? a : b;
-}
+inline int abs(int a) { return a < 0 ? -a : a; }
+inline int min(int a, int b) { return a < b ? a : b; }
 
 
 void draw_rect(lumen::screen &s, const gfx::rect &bound, uint32_t color) {

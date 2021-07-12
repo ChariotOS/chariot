@@ -8,6 +8,15 @@ namespace vmware {
 #define VMMOUSE_STATUS 40
 #define VMMOUSE_COMMAND 41
 
+
+#define CMD_ABSPOINTER_DATA 39
+#define CMD_ABSPOINTER_STATUS 40
+#define CMD_ABSPOINTER_COMMAND 41
+
+#define ABSPOINTER_ENABLE 0x45414552 /* Q E A E */
+#define ABSPOINTER_RELATIVE 0xF5
+#define ABSPOINTER_ABSOLUTE 0x53424152 /* R A B S */
+
   struct command {
     union {
       uint32_t ax;

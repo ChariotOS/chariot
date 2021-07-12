@@ -18,10 +18,63 @@ static fifo_buf mouse_buffer;
 #define MOUSE_SCROLLWHEEL 1
 #define MOUSE_BUTTONS 2
 
+#define VMMOUSE_LEFT_CLICK 0x20
+#define VMMOUSE_RIGHT_CLICK 0x10
+#define VMMOUSE_MIDDLE_CLICK 0x08
+
+
 static bool open = false;
 static uint8_t mouse_cycle = 0;
 static char mouse_byte[5];
 static char mouse_mode = MOUSE_DEFAULT;
+
+static bool vmware_backdoor_mouse_enabled = false;
+
+
+
+bool vmware_handle_mouse(struct mouse_packet &pkt) {
+  if (!vmware_backdoor_mouse_enabled) return false;
+  vmware::command cmd;
+  /* Read the mouse status */
+  cmd.bx = 0;
+  cmd.cmd = VMMOUSE_STATUS;
+  vmware::send(cmd);
+
+  /* Mouse status is in EAX */
+  if (cmd.ax == 0xFFFF0000) {
+    panic(
+        "an error occured reading the mouse. I recommend restarting it, but am too lazy to "
+        "implement that.");
+    // /* An error has occured, let's turn the device off and back on */
+    // mouse_off();
+    // mouse_absolute();
+    return false;
+  }
+
+  /* The status command returns a size we need to read, should be at least 4. */
+  if ((cmd.ax & 0xFFFF) < 4) return false;
+
+  /* Read 4 bytes of mouse data */
+  cmd.bx = 4;
+  cmd.cmd = VMMOUSE_DATA;
+  vmware::send(cmd);
+
+  int buttons = (cmd.ax & 0xFFFF);
+  int x = (cmd.bx);
+  int y = (cmd.cx);
+  int s = (i8)(cmd.dx);  // signed 8 bit value only!
+
+  pkt.is_relative = false;
+  pkt.x = x;
+  pkt.y = y;
+
+  if (buttons & VMMOUSE_LEFT_CLICK) pkt.buttons |= MOUSE_LEFT_CLICK;
+  if (buttons & VMMOUSE_RIGHT_CLICK) pkt.buttons |= MOUSE_RIGHT_CLICK;
+  if (buttons & VMMOUSE_MIDDLE_CLICK) pkt.buttons |= MOUSE_MIDDLE_CLICK;
+  if (s < 0) pkt.buttons |= MOUSE_SCROLL_UP;
+  if (s > 0) pkt.buttons |= MOUSE_SCROLL_DOWN;
+  return true;
+}
 
 #define PACKETS_IN_PIPE 1024
 #define DISCARD_POINT 32
@@ -78,10 +131,14 @@ uint8_t mouse_read() {
 static void mouse_handler(int i, reg_t *, void *) {
   uint8_t status = inb(MOUSE_STATUS);
 
+
+
   int loops = 0;
   while ((status & MOUSE_BBIT) && (status & MOUSE_F_BIT)) {
     bool finalize = false;
     char mouse_in = inb(MOUSE_PORT);
+
+
     loops++;
     switch (mouse_cycle) {
       case 0:
@@ -108,6 +165,18 @@ static void mouse_handler(int i, reg_t *, void *) {
     }
 
     if (finalize) {
+      if (vmware_backdoor_mouse_enabled) {
+        struct mouse_packet packet;
+        memset(&packet, 0, sizeof(packet));
+        packet.magic = MOUSE_MAGIC;
+        if (vmware_handle_mouse(packet) && open) {
+          mouse_buffer.write(&packet, sizeof(packet), false /* dont block */);
+        }
+
+        break;
+      }
+
+
       mouse_cycle = 0;
       /* We now have a full mouse packet ready to use */
       struct mouse_packet packet;
@@ -128,10 +197,10 @@ static void mouse_handler(int i, reg_t *, void *) {
         x = 0;
         y = 0;
       }
-      packet.dx = x;
-      packet.dy = -y;  // the mouse gives us a negative value for going up
+      packet.x = x;
+      packet.y = -y;  // the mouse gives us a negative value for going up
       packet.buttons = 0;
-      packet.timestamp = time::now_us();
+      // packet.timestamp = time::now_us();
       if (mouse_byte[0] & 0x01) {
         packet.buttons |= MOUSE_LEFT_CLICK;
       }
@@ -149,6 +218,7 @@ static void mouse_handler(int i, reg_t *, void *) {
           packet.buttons |= MOUSE_SCROLL_UP;
         }
       }
+
 
       if (open) {
         mouse_buffer.write(&packet, sizeof(packet), false /* dont block */);
@@ -282,9 +352,43 @@ static struct dev::driver_info mouse_driver_info {
   .char_ops = &mouse_ops,
 };
 
+
+
+
+void mouse_absolute(void) {
+  // if (vmware::supported()) {
+  vmware::command cmd;
+
+  /* Enable */
+  cmd.bx = ABSPOINTER_ENABLE;
+  cmd.cmd = CMD_ABSPOINTER_COMMAND;
+  vmware::send(cmd);
+
+  /* Status */
+  cmd.bx = 0;
+  cmd.cmd = CMD_ABSPOINTER_STATUS;
+  vmware::send(cmd);
+
+  /* Read data (1) */
+  cmd.bx = 1;
+  cmd.cmd = CMD_ABSPOINTER_DATA;
+  vmware::send(cmd);
+
+  /* Enable absolute */
+  cmd.bx = ABSPOINTER_ABSOLUTE;
+  cmd.cmd = CMD_ABSPOINTER_COMMAND;
+  vmware::send(cmd);
+  vmware_backdoor_mouse_enabled = true;
+  // }
+}
+
+
+
 static void mouse_init(void) {
   mouse_install();
 
+
+  mouse_absolute();
 
   dev::register_driver(mouse_driver_info);
   dev::register_name(mouse_driver_info, "mouse", 0);

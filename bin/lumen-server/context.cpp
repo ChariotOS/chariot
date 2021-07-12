@@ -574,7 +574,7 @@ void lumen::context::compose(void) {
 
   auto start = sysbind_gettime_microsecond();
 
-#if 1
+#if 0
   {
     gfx::bitmap b(screen.width(), screen.height(), screen.get_front_buffer_unsafe());
 

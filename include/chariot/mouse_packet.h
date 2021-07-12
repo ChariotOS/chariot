@@ -11,8 +11,9 @@
 
 struct mouse_packet {
   unsigned int magic;
-  char dx;
-  char dy;
+  int x;
+  int y;
+  char is_relative;
   unsigned int buttons;
-  unsigned long timestamp;  // when?
+  // unsigned long timestamp;  // when?;
 };
