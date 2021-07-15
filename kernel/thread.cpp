@@ -88,7 +88,7 @@ off_t thread::setup_tls(void) {
   // TODO maybe move TLS to userspace?
   if (proc.tls_info.exists) {
     tls_usize = proc.tls_info.memsz;
-    tls_uaddr = proc.mm->mmap(string::format("[tid %d TLS]", this->tid), 0, proc.tls_info.memsz,
+    tls_uaddr = proc.mm->mmap(ck::string::format("[tid %d TLS]", this->tid), 0, proc.tls_info.memsz,
         PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, nullptr, 0);
 
     printk("============================== %p\n", tls_uaddr);

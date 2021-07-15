@@ -218,7 +218,7 @@ int elf::load(
       if (sec.p_flags & PF_W) prot |= PROT_WRITE;
       if (sec.p_flags & PF_R) prot |= PROT_READ;
 
-      string name = path;
+      ck::string name = path;
       if (prot & PROT_EXEC) {
         name += " exec";
       } else {

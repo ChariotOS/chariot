@@ -5,7 +5,7 @@
 #include <printk.h>
 
 ck::ref<net::pkt_buff> net::pkt_buff::create(void *data, size_t size) {
-  return make_ref<net::pkt_buff>(data, size);
+  return ck::make_ref<net::pkt_buff>(data, size);
 }
 
 net::pkt_buff::pkt_buff(void *data, size_t size) {

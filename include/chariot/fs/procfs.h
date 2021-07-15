@@ -12,7 +12,7 @@ namespace procfs {
 
 
   struct superblock : public fs::superblock {
-    superblock(string args, int flags);
+    superblock(ck::string args, int flags);
 
     /* create an inode and acquire it */
     fs::inode *create_inode(int type);
@@ -25,7 +25,7 @@ namespace procfs {
 
 
   struct inode : public fs::inode {
-		using fs::inode::inode;
+    using fs::inode::inode;
     virtual ~inode();
   };
 

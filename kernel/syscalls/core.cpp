@@ -2,7 +2,7 @@
 #include <cpu.h>
 #include <errno.h>
 #include <fs/vfs.h>
-#include <map.h>
+#include <ck/map.h>
 #include <mem.h>
 #include <mmap_flags.h>
 #include <module.h>
@@ -11,16 +11,11 @@
 #include <util.h>
 #include <vga.h>
 
-void sys::restart() {
-}
+void sys::restart() {}
 
-pid_t sys::getpid(void) {
-  return curthd->pid;
-}
+pid_t sys::getpid(void) { return curthd->pid; }
 
-pid_t sys::gettid(void) {
-  return curthd->tid;
-}
+pid_t sys::gettid(void) { return curthd->tid; }
 
 // WARNING: HACK
 struct syscall {
@@ -37,11 +32,11 @@ void set_syscall(const char *name, int num, void *handler) {
 }
 
 
-uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e,
-                    uint64_t f) {
+uint64_t do_syscall(
+    long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f) {
   if (num == 0xFF) {
     printk(KERN_DEBUG "[pid %d] debug syscall: %llx %llx %llx %llx %llx %llx\n", curproc->pid, a, b,
-           c, d, e, f);
+        c, d, e, f);
     return 0;
   }
   if (num & ~0xFF) return -1;

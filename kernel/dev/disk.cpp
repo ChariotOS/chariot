@@ -82,7 +82,7 @@ static struct dev::driver_info disk_driver_info {
   .block_ops = &generic_disk_blk_ops,
 };
 
-static int add_drive(const string& name, dev::disk* drive) {
+static int add_drive(const ck::string& name, dev::disk* drive) {
   printk(KERN_INFO "Add drive '%s'\n", name.get());
   int minor = m_disks.size();
   // KINFO("Detected ATA drive '%s'\n", name.get(), MAJOR_ATA);
@@ -102,7 +102,7 @@ int dev::register_disk(dev::disk* disk) {
 
 
   int minor = m_disks.size();
-  string name = string::format("disk%d", minor);
+  ck::string name = ck::string::format("disk%d", minor);
   add_drive(name, disk);
 
 
@@ -113,7 +113,7 @@ int dev::register_disk(dev::disk* disk) {
   if (dev::mbr mbr; mbr.parse(first_sector)) {
     for (int i = 0; i < mbr.part_count(); i++) {
       auto part = mbr.partition(i);
-      auto pname = string::format("%sp%d", name.get(), i + 1);
+      auto pname = ck::string::format("%sp%d", name.get(), i + 1);
 
       auto part_disk = new dev::disk_part(disk, part.off, part.len);
 

@@ -3,10 +3,10 @@
 
 #include <dev/disk.h>
 #include <fs.h>
-#include <func.h>
+#include <ck/func.h>
 #include <lock.h>
-#include <map.h>
-#include <vec.h>
+#include <ck/map.h>
+#include <ck/vec.h>
 
 /*
  * Ext2 directory file types.  Only the low 3 bits are used.  The

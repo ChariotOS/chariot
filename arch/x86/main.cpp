@@ -12,7 +12,7 @@
 #include <net/net.h>
 #include <pci.h>
 #include <pit.h>
-#include <single_list.h>
+#include <ck/single_list.h>
 #include <syscall.h>
 #include <time.h>
 #include <types.h>
@@ -162,7 +162,7 @@ int kernel_init(void *) {
   kproc->cwd = fs::inode::acquire(vfs::get_root());
 
 
-  string init_paths = kargs::get("init", "/bin/init");
+  ck::string init_paths = kargs::get("init", "/bin/init");
 
   auto paths = init_paths.split(',');
 

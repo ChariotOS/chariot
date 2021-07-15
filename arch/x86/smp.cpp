@@ -1,7 +1,7 @@
 #include <x86/smp.h>
 
 #include <cpu.h>
-#include <func.h>
+#include <ck/func.h>
 #include <idt.h>
 #include <mem.h>
 #include <paging.h>
@@ -9,7 +9,7 @@
 #include <pit.h>
 #include <time.h>
 #include <util.h>
-#include <vec.h>
+#include <ck/vec.h>
 #include <x86/fpu.h>
 
 

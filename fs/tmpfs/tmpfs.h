@@ -3,7 +3,7 @@
 
 #include <fs.h>
 #include <mm.h>
-#include <vec.h>
+#include <ck/vec.h>
 
 namespace tmp {
 
@@ -28,7 +28,7 @@ namespace tmp {
     uint64_t next_inode = 0;
 
 
-    superblock(string args, int flags);
+    superblock(ck::string args, int flags);
 
 
     /* create an inode and acquire it */

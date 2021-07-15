@@ -11,11 +11,11 @@
 
 
 static spinlock mshare_lock;
-static ck::map<string, struct mshare_vmobject *> mshare_regions;
+static ck::map<ck::string, struct mshare_vmobject *> mshare_regions;
 
 
 struct mshare_vmobject final : public mm::vmobject {
-  mshare_vmobject(string name, size_t npages) : vmobject(npages) {
+  mshare_vmobject(ck::string name, size_t npages) : vmobject(npages) {
     this->name = name;
     // printk("CREATE %s!\n", name.get());
     for (int i = 0; i < npages; i++) {
@@ -52,7 +52,7 @@ struct mshare_vmobject final : public mm::vmobject {
   virtual void drop(void) override {}
 
  private:
-  string name;
+  ck::string name;
   spinlock m_lock;
   ck::vec<ck::ref<mm::page>> pages;
 };
@@ -60,7 +60,7 @@ struct mshare_vmobject final : public mm::vmobject {
 
 
 static void *msh_create(struct mshare_create *arg) {
-  string name = string(arg->name, MSHARE_NAMESZ);
+  ck::string name = ck::string(arg->name, MSHARE_NAMESZ);
 
 
   if (mshare_regions.contains(name)) return MAP_FAILED;
@@ -69,10 +69,10 @@ static void *msh_create(struct mshare_create *arg) {
   auto pages = NPAGES(arg->size);
 
   // this should automatically add it to the global list
-  ck::ref<mm::vmobject> obj = make_ref<mshare_vmobject>(name, pages);
+  ck::ref<mm::vmobject> obj = ck::make_ref<mshare_vmobject>(name, pages);
 
 
-  auto addr = curproc->mm->mmap(string::format("[msh '%s' (created)]", name.get()), 0,
+  auto addr = curproc->mm->mmap(ck::string::format("[msh '%s' (created)]", name.get()), 0,
       pages * PGSIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
 
   auto region = curproc->mm->lookup(addr);
@@ -86,7 +86,7 @@ static void *msh_create(struct mshare_create *arg) {
 
 
 static void *msh_acquire(struct mshare_acquire *arg) {
-  string name(arg->name, MSHARE_NAMESZ);
+  ck::string name(arg->name, MSHARE_NAMESZ);
 
 
   scoped_lock l(mshare_lock);
@@ -100,8 +100,8 @@ static void *msh_acquire(struct mshare_acquire *arg) {
 
   obj->acquire();
 
-  auto addr = curproc->mm->mmap(string::format("[msh '%s' (acquired)]", name.get()), 0, arg->size,
-      PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
+  auto addr = curproc->mm->mmap(ck::string::format("[msh '%s' (acquired)]", name.get()), 0,
+      arg->size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
   if (addr == -1) return MAP_FAILED;
 
   // printk("addr=%p\n", addr);

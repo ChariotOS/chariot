@@ -6,7 +6,7 @@
 #include <mm.h>
 #include <sched.h>
 #include "exec_elf.h"
-#include <func.h>
+#include <ck/func.h>
 
 namespace elf {
 

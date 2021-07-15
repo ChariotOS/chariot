@@ -4,7 +4,7 @@
 #include <lock.h>
 #include <net/ipv4.h>
 #include <printk.h>
-#include <string.h>
+#include <ck/string.h>
 #include <syscall.h>
 #include <time.h>
 #include <types.h>
@@ -1088,13 +1088,13 @@ int fctprintf(void (*out)(char character, void *arg), void *arg, const char *for
 // size_t maxlen);
 
 static void string_out_fct(char c, void *buf, size_t idx, size_t maxlen) {
-  auto *s = (string *)buf;
+  auto *s = (ck::string *)buf;
   s->push(c);
 }
 
 template <>
-string ck::basic_string<char>::format(const char *fmt, ...) {
-  string dst;
+ck::string ck::basic_string<char>::format(const char *fmt, ...) {
+  ck::string dst;
 
   va_list va;
   va_start(va, fmt);
@@ -1406,7 +1406,7 @@ int sscanf(const char *buf, const char *fmt, ...) {
 }
 
 template <>
-int string::scan(const char *fmt, ...) {
+int ck::string::scan(const char *fmt, ...) {
   va_list args;
   int i;
 

@@ -20,7 +20,7 @@ int sys::chdir(const char *path) {
   geti(ncwd);
   fs::inode::release(proc->cwd);
 
-  string cwd;
+  ck::string cwd;
   if (vfs::getcwd(*ncwd, cwd) != 0) return -EINVAL;
 
   proc->cwd_string = cwd;
@@ -32,7 +32,7 @@ int sys::chdir(const char *path) {
 int sys::getcwd(char *dst, int dlen) {
   if (!curproc->mm->validate_pointer(dst, dlen, PROT_WRITE)) return -1;
 
-  string s;
+  ck::string s;
   int res = vfs::getcwd(*curproc->cwd, s);
 
   if (res == 0) {

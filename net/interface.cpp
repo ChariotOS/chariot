@@ -12,16 +12,16 @@
 #include <net/pkt.h>
 #include <printk.h>
 #include <sched.h>
-#include <string.h>
+#include <ck/string.h>
 #include <util.h>
 
-#include <map.h>
+#include <ck/map.h>
 
 
 static spinlock interfaces_lock;
-static ck::map<string, struct net::interface *> interfaces;
+static ck::map<ck::string, struct net::interface *> interfaces;
 
-void net::each_interface(func<bool(const string &, net::interface &)> fn) {
+void net::each_interface(ck::func<bool(const ck::string &, net::interface &)> fn) {
   interfaces_lock.lock();
   for (auto &a : interfaces) {
     if (!fn(a.key, *a.value)) break;
@@ -105,7 +105,7 @@ uint32_t net::ntohl(uint32_t n) {
 
 static long total_bytes_recv = 0;
 
-static void print_packet(ref<net::pkt_buff> &pbuf) {
+static void print_packet(ck::ref<net::pkt_buff> &pbuf) {
   auto eth = pbuf->eth();
   auto arp = pbuf->arph();
   auto ip = pbuf->iph();
@@ -135,7 +135,7 @@ static void print_packet(ref<net::pkt_buff> &pbuf) {
   }
 }
 
-static void handle_packet(ref<net::pkt_buff> &pbuf) {
+static void handle_packet(ck::ref<net::pkt_buff> &pbuf) {
   auto eth = pbuf->eth();
   auto in = net::find_interface(eth->dst);
   if (in == NULL) return;
@@ -165,8 +165,8 @@ int task(void *) {
   //  TODO: this is probably a bad idea, since we are assuming that these addrs
   //  are safe without asking DHCP first.
   int octet = 15;
-  net::each_interface([&](const string &name, net::interface &i) -> bool {
-    i.address = net::net_ord(net::ipv4::parse_ip(string::format("10.0.0.%d", octet++).get()));
+  net::each_interface([&](const ck::string &name, net::interface &i) -> bool {
+    i.address = net::net_ord(net::ipv4::parse_ip(ck::string::format("10.0.0.%d", octet++).get()));
     i.netmask = net::net_ord(net::ipv4::parse_ip("255.255.255.0"));
     i.gateway = net::net_ord(net::ipv4::parse_ip("10.0.2.2"));
 
@@ -213,7 +213,7 @@ void net::start(void) {
 
 // When packets are recv'd by adapters, they are sent here for internal parsing
 // and routing
-void net::packet_received(ref<net::pkt_buff> pbuf) {
+void net::packet_received(ck::ref<net::pkt_buff> pbuf) {
   printk("recv!\n");
   // skip non-ethernet packets
   auto eth = pbuf->eth();

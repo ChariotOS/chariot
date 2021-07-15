@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <fs/pty.h>
 #include <ioctl.h>
-#include <map.h>
+#include <ck/map.h>
 #include <module.h>
 
 
@@ -67,7 +67,7 @@ static int allocate_pts() {
     if (!pts.contains(i)) {
       pts[i] = new pty();
 
-      dev::register_name(pts_driver, string::format("vtty%d", i), i);
+      dev::register_name(pts_driver, ck::string::format("vtty%d", i), i);
       break;
     } else {
       // if nobody is controlling this pts, return it

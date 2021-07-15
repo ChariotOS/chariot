@@ -1,8 +1,8 @@
 #pragma once
 
 #include <dev/disk.h>
-#include <ptr.h>
-#include <vec.h>
+#include <ck/ptr.h>
+#include <ck/vec.h>
 
 struct mbr_header;
 

@@ -267,7 +267,7 @@ static ck::ref<mm::vmobject> vga_mmap(fs::file &f, size_t npages, int prot, int 
     return nullptr;
   }
 
-  return make_ref<vga_vmobject>(npages);
+  return ck::make_ref<vga_vmobject>(npages);
 }
 
 

@@ -2,14 +2,14 @@
 #include <fs/vfs.h>
 #include <cpu.h>
 
-int vfs::getcwd(fs::inode &cwd, string &dst) {
+int vfs::getcwd(fs::inode &cwd, ck::string &dst) {
   int err = 0;
 
   fs::inode *cur = &cwd;
   fs::inode *next = NULL;
 
 
-  string sep = "/";
+  ck::string sep = "/";
 
   dst.clear();
   auto root = curproc->root;
@@ -27,7 +27,7 @@ int vfs::getcwd(fs::inode &cwd, string &dst) {
       }
 
       // this is terrible
-      string s = sep + cur->dir.name + dst;
+      ck::string s = sep + cur->dir.name + dst;
       dst = s.get();
       cur = next;
       depth--;

@@ -1,7 +1,7 @@
 #include <cpu.h>
 #include <mem.h>
 #include <phys.h>
-#include <vec.h>
+#include <ck/vec.h>
 #include "nvme.h"
 
 static int ilog2(int x) {
@@ -27,7 +27,7 @@ nvme::ctrl::ctrl(pci::device &dev) : dev(dev) {
   /* Grab the mmio region from the bar0 of the pci device */
   mmio = (volatile nvme::mmio *)p2v(dev.get_bar(0).addr);
   printk(KERN_INFO "Found NVMe Controller at version %d.%d.%d\n", mmio->vs.mjr, mmio->vs.mnr,
-         mmio->vs.ter);
+      mmio->vs.ter);
   printk(KERN_INFO "mqes:                      %d\n", mqes());
   printk(KERN_INFO "timeout:                   %d\n", timeout());
   printk(KERN_INFO "stride:                    %d\n", stride());

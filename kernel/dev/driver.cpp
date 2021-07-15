@@ -1,6 +1,6 @@
 #include <dev/driver.h>
 #include <errno.h>
-#include <map.h>
+#include <ck/map.h>
 #include <printk.h>
 #include <fs/vfs.h>
 
@@ -14,7 +14,7 @@
 
 static rwlock drivers_lock;
 static ck::map<major_t, struct dev::driver_info *> drivers;
-static ck::map<string, dev_t> device_names;
+static ck::map<ck::string, dev_t> device_names;
 
 int dev::register_driver(struct dev::driver_info &info) {
   assert(info.major != -1);
@@ -30,8 +30,8 @@ int dev::register_driver(struct dev::driver_info &info) {
   return 0;
 }
 
-extern void devfs_register_device(string name, int type, int major, int minor);
-int dev::register_name(struct dev::driver_info &info, string name, minor_t min) {
+extern void devfs_register_device(ck::string name, int type, int major, int minor);
+int dev::register_name(struct dev::driver_info &info, ck::string name, minor_t min) {
   // create the block device if it is one
   if (info.type == DRIVER_BLOCK) {
     auto bdev = new fs::blkdev(dev_t(info.major, min), name, *info.block_ops);
@@ -54,7 +54,7 @@ int dev::register_name(struct dev::driver_info &info, string name, minor_t min) 
   return 0;
 }
 
-int dev::deregister_name(struct dev::driver_info &, string name) {
+int dev::deregister_name(struct dev::driver_info &, ck::string name) {
   drivers_lock.write_lock();
   device_names.remove(name);
   drivers_lock.write_unlock();
@@ -82,7 +82,7 @@ void dev::populate_inode_device(fs::inode &ino) {
   }
 }
 
-struct fs::inode *devicei(struct dev::driver_info &d, string name, minor_t min) {
+struct fs::inode *devicei(struct dev::driver_info &d, ck::string name, minor_t min) {
   fs::inode *ino = new fs::inode(d.type == DRIVER_BLOCK ? T_BLK : T_CHAR, fs::DUMMY_SB);
 
   ino->major = d.major;
@@ -93,7 +93,7 @@ struct fs::inode *devicei(struct dev::driver_info &d, string name, minor_t min) 
   return ino;
 }
 
-ck::ref<fs::file> dev::open(string name) {
+ck::ref<fs::file> dev::open(ck::string name) {
   if (device_names.contains(name)) {
     auto dev = device_names.get(name);
     int maj = dev.major();
@@ -105,7 +105,7 @@ ck::ref<fs::file> dev::open(string name) {
     if (drivers.contains(maj)) {
       auto *d = drivers[maj];
 
-      string path = string::format("/dev/%s", name.get());
+      ck::string path = ck::string::format("/dev/%s", name.get());
 
       auto ino = devicei(*d, name, min);
       return fs::file::create(ino, path, FDIR_READ | FDIR_WRITE);
@@ -116,7 +116,7 @@ ck::ref<fs::file> dev::open(string name) {
 }
 
 static int disk_count = 0;
-string dev::next_disk_name(void) { return string::format("disk%d", disk_count); }
+ck::string dev::next_disk_name(void) { return ck::string::format("disk%d", disk_count); }
 
 /**
  * look up a device
@@ -126,7 +126,7 @@ struct fs::blkdev *fs::bdev_from_path(const char *n) {
 
   // if we don't have root yet, we need to emulate devfs
   if (vfs::get_root() == NULL) {
-    string name = n;
+    ck::string name = n;
 
     auto parts = name.split('/');
 

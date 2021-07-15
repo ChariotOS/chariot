@@ -1,6 +1,6 @@
 #include <devicetree.h>
 #include <util.h>
-#include <vec.h>
+#include <ck/vec.h>
 
 //! Byte swap int
 static int32_t b2l(int32_t val) {
@@ -14,16 +14,11 @@ struct be32p_t {
   uint32_t *p;
 
  public:
-  be32p_t(uint32_t *p) : p(p) {
-  }
+  be32p_t(uint32_t *p) : p(p) {}
 
-  uint32_t operator*(void) {
-    return b2l(*p);
-  }
+  uint32_t operator*(void) { return b2l(*p); }
 
-  uint32_t *get(void) {
-    return p;
-  };
+  uint32_t *get(void) { return p; };
 
   auto &operator++(int) {
     p++;
@@ -157,8 +152,8 @@ void dump_dtb(dtb::node *node, int depth = 0) {
     printk("- #size-cells: %d\n", node->size_cells);
   }
 
-	spaces(depth);
-	printk("- compatible: %s\n", node->compatible);
+  spaces(depth);
+  printk("- compatible: %s\n", node->compatible);
 
 
   if (node->is_device) {
@@ -171,7 +166,7 @@ void dump_dtb(dtb::node *node, int depth = 0) {
 }
 
 int dtb::parse(dtb::fdt_header *fdt) {
-	printk(KERN_INFO "fdt at %p\n", fdt);
+  printk(KERN_INFO "fdt at %p\n", fdt);
   global_fdt_header = fdt;
 
   assert(next_device == 0);
@@ -254,11 +249,19 @@ static struct {
   const char *name;
   int type;
 } fdt_types[] = {
-    {"compatible", FDT_T_STRING}, {"model", FDT_T_STRING},       {"phandle", FDT_T_INT},
-    {"status", FDT_T_STRING},     {"#address-cells", FDT_T_INT}, {"#size-cells", FDT_T_INT},
-    {"reg", FDT_T_INT},           {"virtual-reg", FDT_T_INT},    {"ranges", FDT_T_EMPTY},
+    {"compatible", FDT_T_STRING},
+    {"model", FDT_T_STRING},
+    {"phandle", FDT_T_INT},
+    {"status", FDT_T_STRING},
+    {"#address-cells", FDT_T_INT},
+    {"#size-cells", FDT_T_INT},
+    {"reg", FDT_T_INT},
+    {"virtual-reg", FDT_T_INT},
+    {"ranges", FDT_T_EMPTY},
     {"dma-ranges", FDT_T_EMPTY}, /* TODO: <prop-encoded-array> */
-    {"name", FDT_T_STRING},       {"device_type", FDT_T_STRING}, {0, 0},
+    {"name", FDT_T_STRING},
+    {"device_type", FDT_T_STRING},
+    {0, 0},
 };
 
 static int get_fdt_prop_type(const char *c) {
@@ -333,9 +336,7 @@ dtb::device_tree::device_tree(struct dtb::fdt_header *hdr) {
 }
 
 
-dtb::device_tree::~device_tree(void) {
-  free((void *)fdt);
-}
+dtb::device_tree::~device_tree(void) { free((void *)fdt); }
 
 void dtb::device_tree::node::dump(int depth) {
   for (int i = 0; i < depth; i++)

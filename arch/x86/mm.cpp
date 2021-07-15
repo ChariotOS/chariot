@@ -78,7 +78,7 @@ bool x86::pagetable::switch_to(void) {
 
 ck::ref<mm::pagetable> mm::pagetable::create() {
   u64 *pml4 = (u64 *)p2v(phys::alloc(1));
-  return make_ref<x86::pagetable>(pml4);
+  return ck::make_ref<x86::pagetable>(pml4);
 }
 
 int x86::pagetable::add_mapping(off_t va, struct mm::pte &p) {
@@ -243,7 +243,7 @@ mm::space *kspace;
 
 mm::space &mm::space::kernel_space(void) {
   if (kspace == NULL) {
-    auto kptable = make_ref<x86::pagetable>(kernel_page_table);
+    auto kptable = ck::make_ref<x86::pagetable>(kernel_page_table);
     kspace = new mm::space(
         CONFIG_KERNEL_VIRTUAL_BASE, CONFIG_KERNEL_VIRTUAL_BASE + 0x100000000, kptable);
     kspace->is_kspace = 1;

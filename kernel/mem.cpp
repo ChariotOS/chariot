@@ -140,7 +140,7 @@ void *zalloc(unsigned long sz) {
 }
 
 
-static unsigned long mem_kshell(ck::vec<string> &args, void *data, int dlen) {
+static unsigned long mem_kshell(ck::vec<ck::string> &args, void *data, int dlen) {
   if (args.size() > 0) {
     if (args[0] == "dump") {
       printk("malloc usage: %zu bytes\n", malloc_usage);

@@ -94,7 +94,7 @@ ck::unique_ptr<virtio_gpu_resource> virtio_mmio_gpu::allocate_resource(
     return NULL;
   }
 
-  return unique_ptr(new virtio_gpu_resource(*this, res_id, width, height));
+  return ck::unique_ptr(new virtio_gpu_resource(*this, res_id, width, height));
 }
 
 

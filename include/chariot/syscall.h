@@ -4,11 +4,11 @@
 #include <errno.h>
 #include <fs.h>
 #include <fs/vfs.h>
-#include <func.h>
+#include <ck/func.h>
 #include <lock.h>
 #include <sched.h>
 #include <stat.h>
-#include <string.h>
+#include <ck/string.h>
 
 #include <fcntl.h>
 #include <awaitfs.h>

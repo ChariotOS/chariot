@@ -14,17 +14,17 @@ ck::ref<fs::file> fs::bdev_to_file(fs::blkdev *bdev) {
 
   dev::populate_inode_device(*ino);
 
-  string name = "/dev/";
+  ck::string name = "/dev/";
   name += bdev->name;
 
   return fs::file::create(ino, name, FDIR_READ | FDIR_WRITE);
 }
 
-ck::ref<fs::file> fs::file::create(struct fs::inode *f, string path, int flags) {
+ck::ref<fs::file> fs::file::create(struct fs::inode *f, ck::string path, int flags) {
   // fail if f is null
   if (!f) return nullptr;
   // otherwise construct
-  auto n = make_ref<fs::file>(f, flags);
+  auto n = ck::make_ref<fs::file>(f, flags);
   n->path = move(path);
   return move(n);
 }

@@ -4,12 +4,12 @@
 #define __CHARIOT_NET_H
 
 #include <asm.h>
-#include <func.h>
-#include <map.h>
-#include <ptr.h>
-#include <string.h>
+#include <ck/func.h>
+#include <ck/map.h>
+#include <ck/ptr.h>
+#include <ck/string.h>
 #include <types.h>
-#include <vec.h>
+#include <ck/vec.h>
 #include <wait.h>
 
 #include <lwip/netif.h>
@@ -101,7 +101,7 @@ namespace net {
   };
 
   net::interface *find_interface(net::macaddr);
-  void each_interface(func<bool(const string &, net::interface &)>);
+  void each_interface(ck::func<bool(const ck::string &, net::interface &)>);
 
   int register_interface(const char *name, net::interface *);
   struct net::interface *get_interface(const char *name);

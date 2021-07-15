@@ -302,8 +302,8 @@ off_t mm::space::mmap(
   return mmap("", req, size, prot, flags, move(fd), off);
 }
 
-off_t mm::space::mmap(
-    string name, off_t addr, size_t size, int prot, int flags, ck::ref<fs::file> fd, off_t off) {
+off_t mm::space::mmap(ck::string name, off_t addr, size_t size, int prot, int flags,
+    ck::ref<fs::file> fd, off_t off) {
   if (addr & 0xFFF) return -1;
 
   if ((flags & (MAP_PRIVATE | MAP_SHARED)) == 0) {

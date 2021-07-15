@@ -52,7 +52,7 @@ int net::localsock::connect(struct sockaddr *addr, int len) {
   }
 
   auto un = (struct sockaddr_un *)addr;
-  string path;
+  ck::string path;
   for (int i = 0; i < UNIX_PATH_MAX; i++) {
     char c = un->sun_path[i];
     if (c == '\0') break;
@@ -103,22 +103,22 @@ void net::localsock::dump_stats(void) {
   for_server.stats(server_avail, server_unread);
   for_client.stats(client_avail, client_unread);
   printk(KERN_DEBUG "stats: server: (a: %-4zu, u: %-4zu) client: (a: %-4zu, u: %-4zu)\n",
-         server_avail, server_unread, client_avail, client_unread);
+      server_avail, server_unread, client_avail, client_unread);
 #endif
 }
 
 
 
 
-ssize_t net::localsock::sendto(fs::file &fd, void *data, size_t len, int flags, const sockaddr *,
-                               size_t) {
+ssize_t net::localsock::sendto(
+    fs::file &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
   auto &buf = (fd.pflags & PFLAGS_SERVER) ? for_client : for_server;
   auto n = buf.write(data, len, (flags & MSG_DONTWAIT) == 0);
   dump_stats();
   return n;
 }
-ssize_t net::localsock::recvfrom(fs::file &fd, void *data, size_t len, int flags, const sockaddr *,
-                                 size_t) {
+ssize_t net::localsock::recvfrom(
+    fs::file &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
   auto &buf = (fd.pflags & PFLAGS_SERVER) ? for_server : for_client;
   auto n = buf.read(data, len, (flags & MSG_DONTWAIT) == 0);
   dump_stats();
@@ -131,7 +131,7 @@ int net::localsock::bind(const struct sockaddr *addr, size_t len) {
 
   auto un = (struct sockaddr_un *)addr;
 
-  string path;
+  ck::string path;
   for (int i = 0; i < UNIX_PATH_MAX; i++) {
     char c = un->sun_path[i];
     if (c == '\0') break;

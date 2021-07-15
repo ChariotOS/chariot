@@ -2,9 +2,9 @@
 
 #include <list_head.h>
 #include <lock.h>
-#include <ptr.h>
+#include <ck/ptr.h>
 #include <types.h>
-#include <vec.h>
+#include <ck/vec.h>
 
 bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync, void *key);
 

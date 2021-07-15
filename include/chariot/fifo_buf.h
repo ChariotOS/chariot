@@ -2,26 +2,22 @@
 
 #include <lock.h>
 #include <mem.h>
-#include <single_list.h>
-#include <vec.h>
+#include <ck/single_list.h>
+#include <ck/vec.h>
 #include <wait.h>
 #include <awaitfs.h>
 #include <fs.h>
 
 class fifo_buf {
  public:
-  inline fifo_buf() {
-    init_if_needed();
-  }
+  inline fifo_buf() { init_if_needed(); }
   inline ~fifo_buf() {
     if (buffer != NULL) free(buffer);
   }
 
   ssize_t write(const void *, ssize_t, bool block = false);
   ssize_t read(void *, ssize_t, bool block = true, long long timeout_us = -1);
-  inline int size(void) {
-    return unread();
-  }
+  inline int size(void) { return unread(); }
   void close();
   int poll(poll_table &pt);
   void stats(size_t &avail, size_t &unread);

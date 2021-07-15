@@ -2,7 +2,7 @@
 #include <module.h>
 #include <pci.h>
 #include <printk.h>
-#include <vec.h>
+#include <ck/vec.h>
 #include <wait.h>
 #include "nvme.bits.h"
 

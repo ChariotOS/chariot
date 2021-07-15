@@ -1,7 +1,7 @@
 #include <asm.h>
 #include <cpu.h>
 #include <lock.h>
-#include <map.h>
+#include <ck/map.h>
 #include <sched.h>
 #include <sleep.h>
 #include <syscall.h>

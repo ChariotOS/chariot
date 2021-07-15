@@ -5,9 +5,9 @@
 #include <lock.h>
 #include <net/ipv4.h>
 #include <net/socket.h>
-#include <ptr.h>
+#include <ck/ptr.h>
 #include <sem.h>
-#include <single_list.h>
+#include <ck/single_list.h>
 #include <types.h>
 
 

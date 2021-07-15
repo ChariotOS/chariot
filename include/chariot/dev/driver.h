@@ -2,10 +2,10 @@
 
 #include <dev/device.h>
 #include <fs.h>
-#include <ptr.h>
-#include <string.h>
+#include <ck/ptr.h>
+#include <ck/string.h>
 #include <types.h>
-#include <map.h>
+#include <ck/map.h>
 
 #define MAX_MAJOR 255
 
@@ -52,15 +52,15 @@ namespace dev {
   int register_driver(struct driver_info &);
   int deregister_driver(struct driver_info &);
 
-  int register_name(struct driver_info &, string name, minor_t minor);
-  int deregister_name(struct driver_info &, string name);
+  int register_name(struct driver_info &, ck::string name, minor_t minor);
+  int deregister_name(struct driver_info &, ck::string name);
 
   /* return the next diskN where n is the next disk number
    * ie: disk1, disk2, disk3
    */
-  string next_disk_name(void);
+  ck::string next_disk_name(void);
 
   // useful functions for the kernel to access devices by name or maj/min
-  ck::ref<fs::file> open(string name);
+  ck::ref<fs::file> open(ck::string name);
 
 };  // namespace dev

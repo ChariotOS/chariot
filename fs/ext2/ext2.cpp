@@ -6,7 +6,7 @@
 #include <mem.h>
 #include <module.h>
 #include <phys.h>
-#include <string.h>
+#include <ck/string.h>
 #include <time.h>
 #include <util.h>
 
@@ -53,9 +53,7 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-fs::ext2::ext2(void) {
-  TRACE;
-}
+fs::ext2::ext2(void) { TRACE; }
 
 fs::ext2::~ext2(void) {
   TRACE;
@@ -306,24 +304,18 @@ struct fs::inode *fs::ext2::get_inode(u32 index) {
   return inodes[index];
 }
 
-int ext2_sb_init(struct fs::superblock &sb) {
-  return -ENOTIMPL;
-}
+int ext2_sb_init(struct fs::superblock &sb) { return -ENOTIMPL; }
 
-int ext2_write_super(struct fs::superblock &sb) {
-  return -ENOTIMPL;
-}
+int ext2_write_super(struct fs::superblock &sb) { return -ENOTIMPL; }
 
-int ext2_sync(struct fs::superblock &sb, int flags) {
-  return -ENOTIMPL;
-}
+int ext2_sync(struct fs::superblock &sb, int flags) { return -ENOTIMPL; }
 
 struct fs::sb_operations ext2_ops {
   .init = ext2_sb_init, .write_super = ext2_write_super, .sync = ext2_sync,
 };
 
-static struct fs::superblock *ext2_mount(struct fs::sb_information *, const char *args, int flags,
-                                         const char *device) {
+static struct fs::superblock *ext2_mount(
+    struct fs::sb_information *, const char *args, int flags, const char *device) {
   struct fs::blkdev *bdev = fs::bdev_from_path(device);
   if (bdev == NULL) return NULL;
 
@@ -341,8 +333,6 @@ struct fs::sb_information ext2_info {
   .name = "ext2", .mount = ext2_mount, .ops = ext2_ops,
 };
 
-static void ext2_init(void) {
-  vfs::register_filesystem(ext2_info);
-}
+static void ext2_init(void) { vfs::register_filesystem(ext2_info); }
 
 module_init("fs::ext2", ext2_init);

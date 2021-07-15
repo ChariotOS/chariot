@@ -1,16 +1,16 @@
 #include <kargs.h>
-#include <string.h>
+#include <ck/string.h>
 
 
-#include <map.h>
+#include <ck/map.h>
 #include <printk.h>
-#include <vec.h>
+#include <ck/vec.h>
 
-static ck::map<string, string> cmdline_map;
+static ck::map<ck::string, ck::string> cmdline_map;
 
 void kargs::init(uint64_t mbd) {
   mb2::find<struct multiboot_tag_string>(mbd, MULTIBOOT_TAG_TYPE_CMDLINE, [](auto *info) {
-    string cmdline((char *)(u64)p2v(info->string));
+    ck::string cmdline((char *)(u64)p2v(info->string));
     KINFO("Command line arguments:\n");
     int i = 0;
     for (auto arg : cmdline.split(' ')) {
@@ -27,7 +27,7 @@ void kargs::init(uint64_t mbd) {
 }
 
 const char *kargs::get(const char *keyp, const char *def) {
-  string key = keyp;  // optimize away the string copies
+  ck::string key = keyp;  // optimize away the ck::string copies
   if (cmdline_map.contains(key)) {
     return cmdline_map[key].get();
   }

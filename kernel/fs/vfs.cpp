@@ -1,7 +1,7 @@
 #include <cpu.h>
 #include <errno.h>
 #include <fs/vfs.h>
-#include <map.h>
+#include <ck/map.h>
 #include <syscall.h>
 #include <util.h>
 
@@ -97,7 +97,7 @@ int vfs::mount(
     mp->sb->root->add_mount("..", parent);
 
     // copy the last entry into the name of the guest root
-    auto end = string(targ).split('/').last();
+    auto end = ck::string(targ).split('/').last();
     auto name = malloc<char>(end.size() + 1);
     memcpy(name, end.get(), end.size() + 1);
     mp->sb->root->dir.name = name;
@@ -163,7 +163,7 @@ int sys::mkdir(const char *upath, int mode) {
 
 
 
-struct fs::inode *vfs::open(string spath, int opts, int mode) {
+struct fs::inode *vfs::open(ck::string spath, int opts, int mode) {
   struct fs::inode *ino = NULL;
 
   if (!cpu::in_thread()) {
@@ -324,7 +324,7 @@ int vfs::unlink(const char *path, struct fs::inode *cwd) {
 }
 
 
-fs::file vfs::fdopen(string path, int opts, int mode) {
+fs::file vfs::fdopen(ck::string path, int opts, int mode) {
   int fd_dirs = 0;
 
   if (opts & O_RDWR) fd_dirs |= FDIR_READ | FDIR_WRITE;

@@ -3,9 +3,7 @@
 #include <errno.h>
 #include <termios.h>
 
-static int is_control(int c) {
-  return c < ' ' || c == 0x7F;
-}
+static int is_control(int c) { return c < ' ' || c == 0x7F; }
 
 
 void tty::reset(void) {
@@ -36,9 +34,7 @@ void tty::reset(void) {
 
 
 
-tty::tty(void) {
-  reset();
-}
+tty::tty(void) { reset(); }
 tty::~tty(void) {
   // TODO: remove from the storage
 }
@@ -48,9 +44,7 @@ void tty::write_in(char c) { in.write(&c, 1, true); }
 void tty::write_out(char c, bool block) { out.write(&c, 1, block); }
 */
 
-string tty::name(void) {
-  return string::format("/dev/pts%d", index);
-}
+ck::string tty::name(void) { return ck::string::format("/dev/pts%d", index); }
 
 int tty::ioctl(unsigned int cmd, off_t arg) {
   if (cmd == TIOCSPGRP) {

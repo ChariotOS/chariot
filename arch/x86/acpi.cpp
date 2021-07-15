@@ -1,9 +1,9 @@
 #include "acpi/acpi.h"
 #include <multiboot2.h>
 #include <printk.h>
-#include <string.h>
+#include <ck/string.h>
 #include <util.h>
-#include <vec.h>
+#include <ck/vec.h>
 
 
 static ck::vec<acpi_table_header *> acpi_tables;
@@ -93,8 +93,8 @@ bool acpi::init(uint64_t mbd) {
   {
     int i = 0;
     for (auto *tbl : acpi_tables) {
-      string sig = string(tbl->signature, ACPI_NAME_SIZE);
-      string oem = string(tbl->oem_id, ACPI_OEM_ID_SIZE);
+      ck::string sig = ck::string(tbl->signature, ACPI_NAME_SIZE);
+      ck::string oem = ck::string(tbl->oem_id, ACPI_OEM_ID_SIZE);
       debug("[ACPI] table[%d]: sig: '%s', oem: '%s'\n", i++, sig.get(), oem.get());
 
 

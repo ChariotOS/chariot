@@ -25,12 +25,10 @@ static int devfs_mkdir(fs::inode &, const char *name, struct fs::file_ownership 
   return -EPERM;
 }
 
-static int devfs_unlink(fs::inode &, const char *) {
-  return -EPERM;
-}
+static int devfs_unlink(fs::inode &, const char *) { return -EPERM; }
 
-static int devfs_mknod(fs::inode &, const char *name, struct fs::file_ownership &, int major,
-                       int minor) {
+static int devfs_mknod(
+    fs::inode &, const char *name, struct fs::file_ownership &, int major, int minor) {
   return -EPERM;
 }
 
@@ -80,7 +78,7 @@ static struct fs::inode *devfs_get_root(void) {
   return devfs_root;
 }
 
-void devfs_register_device(string name, int type, int major, int minor) {
+void devfs_register_device(ck::string name, int type, int major, int minor) {
   auto root = devfs_get_root();
 
   auto node = devfs_create_inode(type);
@@ -95,8 +93,8 @@ struct fs::sb_operations devfs_sb_ops {
 };
 
 
-static struct fs::superblock *devfs_mount(struct fs::sb_information *, const char *args, int flags,
-                                          const char *device) {
+static struct fs::superblock *devfs_mount(
+    struct fs::sb_information *, const char *args, int flags, const char *device) {
   devfs_sb.ops = &devfs_sb_ops;
   devfs_sb.arguments = args;
   devfs_sb.root = devfs_get_root();
@@ -108,8 +106,6 @@ struct fs::sb_information devfs_info {
   .name = "devfs", .mount = devfs_mount, .ops = devfs_sb_ops,
 };
 
-static void devfs_init(void) {
-  vfs::register_filesystem(devfs_info);
-}
+static void devfs_init(void) { vfs::register_filesystem(devfs_info); }
 
 module_init("fs::devfs", devfs_init);

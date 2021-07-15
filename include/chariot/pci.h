@@ -2,7 +2,7 @@
 #define __PCI_H__
 
 #include <asm.h>
-#include <func.h>
+#include <ck/func.h>
 #include <types.h>
 
 #define __packed __attribute__((packed))

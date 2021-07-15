@@ -7,13 +7,13 @@
 
 #include "ptr.h"
 
-#include <func.h>
-#include <map.h>
+#include <ck/func.h>
+#include <ck/map.h>
 #include <mm.h>
 #include <sem.h>
 #include <signals.h>
-#include <string.h>
-#include <vec.h>
+#include <ck/string.h>
+#include <ck/vec.h>
 
 
 #ifdef CONFIG_RISCV
@@ -139,7 +139,7 @@ struct process_user_info {
 /**
  * a process is a group of information that is shared among many tasks
  */
-struct process final : public refcounted<struct process> {
+struct process final : public ck::refcounted<struct process> {
   using ptr = ck::ref<process>;
 
   pid_t pid;   // process id, and pid of the creator task
@@ -192,9 +192,9 @@ struct process final : public refcounted<struct process> {
    * Metadata like name, arguments and envionment variables are converted
    * to kernel structures and stored in the process information.
    */
-  string name;
-  ck::vec<string> args;
-  ck::vec<string> env;
+  ck::string name;
+  ck::vec<ck::string> args;
+  ck::vec<ck::string> env;
 
   bool exited = 0;
   uint8_t exit_code = 0;
@@ -216,7 +216,7 @@ struct process final : public refcounted<struct process> {
   // The current working directory of the process.
   fs::inode *cwd = nullptr;
   fs::inode *root = nullptr;
-  string cwd_string;
+  ck::string cwd_string;
   spinlock datalock;
 
   /* threads stuck in a waitpid() call */
@@ -235,10 +235,10 @@ struct process final : public refcounted<struct process> {
   /**
    * exec() - execute a command (implementation for startpid())
    */
-  int exec(string &path, ck::vec<string> &argv, ck::vec<string> &envp);
+  int exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::string> &envp);
 
   ck::ref<fs::file> get_fd(int fd);
-  int add_fd(ref<fs::file>);
+  int add_fd(ck::ref<fs::file>);
 
   pid_t create_thread(void *ip, int state);
 
@@ -474,7 +474,7 @@ namespace sched {
 
     // spawn init (pid 1) and try to execute each of the paths in order,
     // stopping on the first success. Returns -1
-    pid_t spawn_init(ck::vec<string> &paths);
+    pid_t spawn_init(ck::vec<ck::string> &paths);
 
     /* remove a process from the ptable */
     bool ptable_remove(pid_t);

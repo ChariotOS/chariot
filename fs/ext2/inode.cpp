@@ -654,7 +654,7 @@ static ck::ref<mm::vmobject> ext2_mmap(fs::file &f, size_t npages, int prot, int
   // if (flags & MAP_PRIVATE) printk("ext2 map private\n");
   // if (flags & MAP_SHARED) printk("ext2 map shared\n");
 
-  return make_ref<ext2_vmobject>(f.ino, npages, off);
+  return ck::make_ref<ext2_vmobject>(f.ino, npages, off);
 }
 
 

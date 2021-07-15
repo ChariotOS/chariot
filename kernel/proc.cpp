@@ -126,7 +126,7 @@ process::ptr sched::proc::spawn_process(struct process *parent, int flags) {
 
 
   process::ptr proc;
-  proc = make_ref<process>();
+  proc = ck::make_ref<process>();
   // allocate the process
   {
     scoped_irqlock l(ptable_lock);
@@ -156,11 +156,11 @@ bool sched::proc::ptable_remove(pid_t p) {
   return succ;
 }
 
-pid_t sched::proc::spawn_init(ck::vec<string> &paths) {
+pid_t sched::proc::spawn_init(ck::vec<ck::string> &paths) {
   pid_t pid = 1;
 
   process::ptr proc_ptr;
-  proc_ptr = make_ref<process>();
+  proc_ptr = ck::make_ref<process>();
   if (proc_ptr.get() == NULL) {
     return -1;
   }
@@ -184,9 +184,9 @@ pid_t sched::proc::spawn_init(ck::vec<string> &paths) {
   proc_ptr->cwd = geti(vfs::get_root());
   auto &proc = *proc_ptr;
 
-  ck::vec<string> envp;
+  ck::vec<ck::string> envp;
   for (auto &path : paths) {
-    ck::vec<string> argv;
+    ck::vec<ck::string> argv;
     argv.push(path);
 
     int res = proc.exec(path, argv, envp);
@@ -259,7 +259,7 @@ ck::ref<fs::file> process::get_fd(int fd) {
   return file;
 }
 
-int process::add_fd(ref<fs::file> file) {
+int process::add_fd(ck::ref<fs::file> file) {
   int fd = 0;
   scoped_lock l(file_lock);
 
@@ -294,7 +294,7 @@ bool process::is_dead(void) {
   return true;
 }
 
-int process::exec(string &path, ck::vec<string> &argv, ck::vec<string> &envp) {
+int process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::string> &envp) {
   scoped_lock lck(this->datalock);
 
 
@@ -308,7 +308,7 @@ int process::exec(string &path, ck::vec<string> &argv, ck::vec<string> &envp) {
   // TODO check execution permissions
 
   off_t entry = 0;
-  auto fd = make_ref<fs::file>(exe, FDIR_READ);
+  auto fd = ck::make_ref<fs::file>(exe, FDIR_READ);
 
   // allocate a new address space
   auto *new_addr_space = alloc_user_vm();
@@ -724,7 +724,7 @@ void sys::exit_proc(int code) {
 wait_queue &process::futex_queue(int *uaddr) {
   futex_lock.lock();
   if (!m_futex_queues.contains((off_t)uaddr)) {
-    m_futex_queues.set((off_t)uaddr, make_unique<wait_queue>());
+    m_futex_queues.set((off_t)uaddr, ck::make_unique<wait_queue>());
   }
   auto &wq = *m_futex_queues.ensure((off_t)uaddr);
   futex_lock.unlock();

@@ -5,10 +5,10 @@
 
 #include <atom.h>
 #include <dev/device.h>
-#include <func.h>
+#include <ck/func.h>
 #include <lock.h>
 #include <stat.h>
-#include <string.h>
+#include <ck/string.h>
 #include <types.h>
 #include <wait.h>
 
@@ -51,7 +51,7 @@ namespace fs {
 
   struct directory_entry {
     u32 inode;
-    string name;
+    ck::string name;
   };
 
   struct block_operations {
@@ -66,7 +66,7 @@ namespace fs {
 
   struct blkdev {
     dev_t dev;
-    string name;  // ex. hda or ata0
+    ck::string name;  // ex. hda or ata0
 
     size_t block_count;
     size_t block_size;
@@ -76,7 +76,7 @@ namespace fs {
     long count = 0;  // refcount
     spinlock lock;
 
-    inline blkdev(dev_t dev, string name, struct block_operations &ops)
+    inline blkdev(dev_t dev, ck::string name, struct block_operations &ops)
         : dev(dev), name(move(name)), ops(ops) {
       ops.init(*this);
     }
@@ -128,7 +128,7 @@ namespace fs {
     struct sb_operations *ops;
     struct sb_information *info;
     struct inode *root;
-    string arguments;
+    ck::string arguments;
 
     rwlock lock;
     long count = 0;  // refcount
@@ -193,7 +193,7 @@ namespace fs {
   // directories have entries (linked list)
   struct direntry {
     int type = ENT_RES;
-    string name;
+    ck::string name;
     int nr = -1;  // for unresolved
     struct inode *ino;
 
@@ -351,12 +351,12 @@ namespace fs {
      * entry contains a NULL inode, it calls 'resolve_direntry' which returns
      * the backing inode.
      */
-    int register_direntry(string name, int type, int nr, struct inode * = NULL);
-    int remove_direntry(string name);
+    int register_direntry(ck::string name, int type, int nr, struct inode * = NULL);
+    int remove_direntry(ck::string name);
     struct inode *get_direntry(const char *name);
     int get_direntry_r(const char *name);
-    void walk_direntries(func<bool(const string &, struct inode *)>);
-    ck::vec<string> direntries(void);
+    void walk_direntries(ck::func<bool(const ck::string &, struct inode *)>);
+    ck::vec<ck::string> direntries(void);
     int add_mount(const char *name, struct inode *other_root);
 
     struct direntry *get_direntry_raw(const char *name);
@@ -364,7 +364,7 @@ namespace fs {
     int poll(fs::file &, int events, poll_table &pt);
 
     // if the inode is a directory, set its name. NOP otherwise
-    int set_name(const string &);
+    int set_name(const ck::string &);
 
     inode(int type, fs::superblock &sb);
     virtual ~inode();
@@ -384,13 +384,13 @@ namespace fs {
     struct inode *get_direntry_ino(struct direntry *);
   };
 
-  class file : public refcounted<file> {
+  class file : public ck::refcounted<file> {
     int m_error = 0;
 
    public:
     // must construct file descriptors via these factory funcs
     static ck::ref<file> create(
-        struct fs::inode *, string open_path, int flags = FDIR_READ | FDIR_WRITE);
+        struct fs::inode *, ck::string open_path, int flags = FDIR_READ | FDIR_WRITE);
 
     /*
      * seek - change the offset
@@ -419,7 +419,7 @@ namespace fs {
     inline operator bool() { return ino != NULL; }
 
     struct fs::inode *ino;
-    string path;
+    ck::string path;
     off_t m_offset = 0;
 
     bool can_write = false;

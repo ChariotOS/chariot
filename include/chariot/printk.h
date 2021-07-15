@@ -12,7 +12,7 @@
 #include <stddef.h>
 
 
-// #include <string.h>
+// #include <ck/string.h>
 //
 //
 namespace arch {
@@ -88,8 +88,8 @@ inline void do_panic(const char* fmt, T&&... args) {
   printk(fmt, args...);
   printk("\n");
 
-	did_panic = true;
-	// todo: notify everyone that we died
+  did_panic = true;
+  // todo: notify everyone that we died
 
   debug_die();
 }
@@ -115,9 +115,7 @@ class scope_logger {
     printk("...");
   }
 
-  ~scope_logger() {
-    printk("OK\n");
-  }
+  ~scope_logger() { printk("OK\n"); }
 };
 
 class time_logger {

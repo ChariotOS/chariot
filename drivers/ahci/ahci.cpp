@@ -7,7 +7,7 @@
 
 #include <dev/driver.h>
 #include <lock.h>
-#include <map.h>
+#include <ck/map.h>
 #include <mem.h>
 #include <module.h>
 #include <pci.h>
@@ -90,7 +90,7 @@ static void probe_port(ahci::hba_mem *abar) {
       int dt = check_type(port);
       if (dt == AHCI_DEV_SATA) {
         AHCI_INFO("SATA drive found at port %d\n", i);
-        ahci::init_sata(make_unique<ahci::disk>(abar, port));
+        ahci::init_sata(ck::make_unique<ahci::disk>(abar, port));
       } else if (dt == AHCI_DEV_SATAPI) {
         AHCI_INFO("SATAPI drive found at port %d\n", i);
       } else if (dt == AHCI_DEV_SEMB) {

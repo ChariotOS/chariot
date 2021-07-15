@@ -2,8 +2,8 @@
 
 #include <dev/device.h>
 #include <fs.h>
-#include <ptr.h>
-#include <string.h>
+#include <ck/ptr.h>
+#include <ck/string.h>
 
 namespace fs {
   // fwd decl
@@ -28,7 +28,7 @@ namespace vfs {
     struct fs::inode *host;
     int mountflags;
 
-    string devname;
+    ck::string devname;
 
     int id;
 
@@ -41,15 +41,15 @@ namespace vfs {
 
   // mount a device to a target with a certain filesystem
   int mount(const char *source, const char *targ, const char *type, unsigned long /* TODO */ flags,
-            const char *options);
+      const char *options);
 
   /*
    * open a a file, rooted at task_process::cwd() if the path is not rooted at
    * `/`, and return the inode pointer. NULL on failure to open
    */
-  fs::inode *open(string path, int opts = 0, int mode = 0000);
+  fs::inode *open(ck::string path, int opts = 0, int mode = 0000);
 
-  fs::file fdopen(string path, int opts = 0, int mode = 0000);
+  fs::file fdopen(ck::string path, int opts = 0, int mode = 0000);
 
   /*
    * namei()
@@ -60,7 +60,7 @@ namespace vfs {
    * parent: stop at the parent directory of the last entry
    */
   int namei(const char *path, int flags, int mode, struct fs::inode *cwd, struct fs::inode *&res,
-            bool get_last = false);
+      bool get_last = false);
 
 
   int unlink(const char *path, struct fs::inode *cwd);
@@ -72,7 +72,7 @@ namespace vfs {
    * we are not in a task, use vfs_root (/)
    */
   struct fs::inode *cwd(void);
-  int getcwd(fs::inode &, string &dst);
+  int getcwd(fs::inode &, ck::string &dst);
 
   struct fs::inode *get_root(void);
 

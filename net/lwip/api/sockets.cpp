@@ -63,7 +63,7 @@
 #include "lwip/inet_chksum.h"
 #endif
 
-#include <map.h>
+#include <ck/map.h>
 #include <string.h>
 
 /* If the netconn API is not required publicly, then we include the necessary

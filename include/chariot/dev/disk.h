@@ -3,7 +3,7 @@
 
 #include <dev/device.h>
 #include <dev/driver.h>
-#include <ptr.h>
+#include <ck/ptr.h>
 
 namespace dev {
   class disk {

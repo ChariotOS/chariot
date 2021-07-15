@@ -47,7 +47,7 @@ int sys::mrename(void *addr, char *name) {
 
   if (!proc->mm->validate_string(name)) return -1;
 
-  string sname = name;
+  ck::string sname = name;
   for (auto &c : sname) {
     if (c < ' ') c = ' ';
     if (c > '~') c = ' ';

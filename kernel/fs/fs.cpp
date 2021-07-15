@@ -157,7 +157,7 @@ struct inode *fs::inode::get_direntry(const char *name) {
   return ino;  // nothing found!
 }
 
-int fs::inode::register_direntry(string name, int enttype, int nr, struct inode *ino) {
+int fs::inode::register_direntry(ck::string name, int enttype, int nr, struct inode *ino) {
   assert(type == T_DIR);
   lock.lock();
 
@@ -188,7 +188,7 @@ int fs::inode::register_direntry(string name, int enttype, int nr, struct inode 
   return 0;
 }
 
-int fs::inode::remove_direntry(string name) {
+int fs::inode::remove_direntry(ck::string name) {
   assert(type == T_DIR);
   lock.lock();
 
@@ -220,7 +220,7 @@ int fs::inode::remove_direntry(string name) {
   return -ENOENT;
 }
 
-int fs::inode::set_name(const string &s) {
+int fs::inode::set_name(const ck::string &s) {
   if (type != T_DIR) {
     return -ENOTDIR;
   }
@@ -232,7 +232,7 @@ int fs::inode::set_name(const string &s) {
   return 0;
 }
 
-void fs::inode::walk_direntries(func<bool(const string &, struct inode *)> func) {
+void fs::inode::walk_direntries(ck::func<bool(const ck::string &, struct inode *)> func) {
   assert(type == T_DIR);
 
   for_in_ll(ent, dir.entries) {
@@ -243,10 +243,10 @@ void fs::inode::walk_direntries(func<bool(const string &, struct inode *)> func)
   }
 }
 
-ck::vec<string> fs::inode::direntries(void) {
+ck::vec<ck::string> fs::inode::direntries(void) {
   assert(type == T_DIR);
 
-  ck::vec<string> e;
+  ck::vec<ck::string> e;
   for_in_ll(ent, dir.entries) { e.push(ent->name); }
   return e;
 }

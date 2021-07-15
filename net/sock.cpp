@@ -5,7 +5,7 @@
 #ifdef CONFIG_LWIP
 #include <lwip/netdb.h>
 #endif
-#include <map.h>
+#include <ck/map.h>
 #include <net/sock.h>
 #include <sched.h>
 #include <syscall.h>

@@ -53,7 +53,7 @@ int net::ipcsock::connect(struct sockaddr *addr, int len) {
   }
 
   auto un = (struct sockaddr_un *)addr;
-  string path;
+  ck::string path;
   for (int i = 0; i < UNIX_PATH_MAX; i++) {
     char c = un->sun_path[i];
     if (c == '\0') break;
@@ -108,8 +108,8 @@ printk(
 // #define IPCSOCK_DEBUG
 
 
-ssize_t net::ipcsock::sendto(fs::file &fd, void *data, size_t len, int flags, const sockaddr *,
-                             size_t) {
+ssize_t net::ipcsock::sendto(
+    fs::file &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
   auto &state = (fd.pflags & PFLAGS_SERVER) ? for_client : for_server;
 
   {
@@ -131,8 +131,8 @@ ssize_t net::ipcsock::sendto(fs::file &fd, void *data, size_t len, int flags, co
 
 
 
-ssize_t net::ipcsock::recvfrom(fs::file &fd, void *data, size_t len, int flags, const sockaddr *,
-                               size_t) {
+ssize_t net::ipcsock::recvfrom(
+    fs::file &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
   auto &state = (fd.pflags & PFLAGS_SERVER) ? for_server : for_client;
   bool block = (flags & MSG_DONTWAIT) == 0;
 
@@ -184,7 +184,7 @@ int net::ipcsock::bind(const struct sockaddr *addr, size_t len) {
 
   auto un = (struct sockaddr_un *)addr;
 
-  string path;
+  ck::string path;
   for (int i = 0; i < UNIX_PATH_MAX; i++) {
     char c = un->sun_path[i];
     if (c == '\0') break;

@@ -2,7 +2,7 @@
 
 
 
-tmp::superblock::superblock(string args, int flags) {
+tmp::superblock::superblock(ck::string args, int flags) {
   /* by default, use 256 mb of pages */
   allowed_pages = 256 * MB / PGSIZE;
   used_pages = 0;

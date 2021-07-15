@@ -1,18 +1,18 @@
 #include <kshell.h>
 #include <errno.h>
-#include <map.h>
+#include <ck/map.h>
 #include <syscall.h>
 #include <cpu.h>
 
-static ck::map<string, kshell::handler> commands;
+static ck::map<ck::string, kshell::handler> commands;
 
 
 
 
-void kshell::add(string command, kshell::handler h) { commands[command] = h; }
+void kshell::add(ck::string command, kshell::handler h) { commands[command] = h; }
 
 
-unsigned long kshell::call(string command, ck::vec<string> args, void *data, size_t dlen) {
+unsigned long kshell::call(ck::string command, ck::vec<ck::string> args, void *data, size_t dlen) {
   if (commands.contains(command)) {
     return commands[command](args, data, dlen);
   }
@@ -41,7 +41,7 @@ unsigned long sys::kshell(char *cmd, int argc, char **argv, void *data, size_t d
     }
   }
 
-  ck::vec<string> args;
+  ck::vec<ck::string> args;
   for (int i = 0; i < argc; i++) {
     args.push(argv[i]);
   }

@@ -3,7 +3,7 @@
 #include <dev/CMOS.h>
 #include <dev/RTC.h>
 #include <module.h>
-#include <string.h>
+#include <ck/string.h>
 #include <time.h>
 #include <util.h>
 

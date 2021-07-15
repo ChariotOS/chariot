@@ -70,7 +70,7 @@ static ck::ref<mm::vmobject> gvi_mmap(fs::file &fd, size_t npages, int prot, int
     return nullptr;
   }
 
-  return make_ref<gvi_vmobject>(*vdev, npages);
+  return ck::make_ref<gvi_vmobject>(*vdev, npages);
 }
 
 static int gvi_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
@@ -114,7 +114,7 @@ void dev::video_device::register_device(dev::video_device *vdev) {
 
 
   int minor = m_video_devices.size();
-  string name = string::format("video%d", minor);
+  ck::string name = ck::string::format("video%d", minor);
   m_video_devices.push(vdev);
   dev::register_name(gvi_driver_info, name, minor);
 }

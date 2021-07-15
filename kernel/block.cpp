@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <fs.h>
 #include <kshell.h>
-#include <map.h>
+#include <ck/map.h>
 #include <mm.h>
 #include <module.h>
 #include <sched.h>
@@ -271,7 +271,7 @@ int bwrite(fs::blkdev &b, void *data, size_t size, off_t byte_offset) {
 
 
 
-static unsigned long blk_kshell(ck::vec<string> &args, void *data, int dlen) {
+static unsigned long blk_kshell(ck::vec<ck::string> &args, void *data, int dlen) {
   if (args.size() > 0) {
     if (args[0] == "reclaim") {
       auto reclaimed = block::reclaim_memory();

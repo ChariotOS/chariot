@@ -1,8 +1,8 @@
 #include <arch.h>
 #include <cpu.h>
-#include <map.h>
+#include <ck/map.h>
 #include <sleep.h>
-#include <string.h>
+#include <ck/string.h>
 #define NIRQS 130
 
 struct irq_registration {

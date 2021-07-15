@@ -6,12 +6,12 @@
 #include <net/arp.h>
 #include <net/ipv4.h>
 #include <net/eth.h>
-#include <ptr.h>
+#include <ck/ptr.h>
 #include <types.h>
 
 namespace net {
 
-  struct pkt_buff : public refcounted<pkt_buff> {
+  struct pkt_buff : public ck::refcounted<pkt_buff> {
    private:
     long length = 0;
     void *buffer = nullptr;  // allocated with physical memory (1 page is enough
@@ -31,7 +31,7 @@ namespace net {
   };
 
   // takes an owned buffer (newly allocated, most likely)
-  void packet_received(ref<pkt_buff>);
+  void packet_received(ck::ref<pkt_buff>);
 
   class pkt_builder {
     long length = 0;

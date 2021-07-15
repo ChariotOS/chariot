@@ -22,7 +22,7 @@ int sys::chroot(const char *path) {
   proc->root = geti(new_root);
 
 
-  string cwd;
+  ck::string cwd;
   if (vfs::getcwd(*new_root, cwd) != 0) return -EINVAL;
   proc->cwd_string = cwd;
   proc->cwd = geti(new_root);

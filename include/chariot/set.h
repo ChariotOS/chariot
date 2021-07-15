@@ -1,6 +1,6 @@
 #pragma once
 
-#include <map.h>
+#include <ck/map.h>
 
 #ifndef __CHARIOT_SET_H
 #define __CHARIOT_SET_H
@@ -8,12 +8,8 @@
 template <typename T, typename KeyTraits = Traits<T>>
 class set {
   struct entry_traits {
-    static hash_t hash(const T& entry) {
-      return KeyTraits::hash(entry);
-    }
-    static bool equals(const T& a, const T& b) {
-      return KeyTraits::equals(a, b);
-    }
+    static hash_t hash(const T& entry) { return KeyTraits::hash(entry); }
+    static bool equals(const T& a, const T& b) { return KeyTraits::equals(a, b); }
   };
 
   typedef HashTable<T, entry_traits> HashTableType;
@@ -22,61 +18,37 @@ class set {
 
  private:
  public:
-  set() {
-  }
-  ~set() {
-  }
+  set() {}
+  ~set() {}
 
-  bool is_empty() const {
-    return m_table.is_empty();
-  }
-  int size() const {
-    return m_table.size();
-  }
-  int capacity() const {
-    return m_table.capacity();
-  }
-  void clear() {
-    m_table.clear();
-  }
+  bool is_empty() const { return m_table.is_empty(); }
+  int size() const { return m_table.size(); }
+  int capacity() const { return m_table.capacity(); }
+  void clear() { m_table.clear(); }
 
-  void add(const T& v) {
-    m_table.set(v);
-  }
-  bool contains(const T& key) const {
-    return find(key) != end();
-  }
+  void add(const T& v) { m_table.set(v); }
+  bool contains(const T& key) const { return find(key) != end(); }
 
   void remove(const T& value) {
     auto it = find(value);
     if (it != end()) remove(it);
   }
 
-  void remove(IteratorType it) {
-    m_table.remove(it);
-  }
+  void remove(IteratorType it) { m_table.remove(it); }
 
 
-  IteratorType begin() {
-    return m_table.begin();
-  }
-  IteratorType end() {
-    return m_table.end();
-  }
+  IteratorType begin() { return m_table.begin(); }
+  IteratorType end() { return m_table.end(); }
   IteratorType find(const T& key) {
-    return m_table.find(KeyTraits::hash(key),
-                        [&](auto& entry) { return KeyTraits::equals(key, entry); });
+    return m_table.find(
+        KeyTraits::hash(key), [&](auto& entry) { return KeyTraits::equals(key, entry); });
   }
 
-  ConstIteratorType begin() const {
-    return m_table.begin();
-  }
-  ConstIteratorType end() const {
-    return m_table.end();
-  }
+  ConstIteratorType begin() const { return m_table.begin(); }
+  ConstIteratorType end() const { return m_table.end(); }
   ConstIteratorType find(const T& key) const {
-    return m_table.find(KeyTraits::hash(key),
-                        [&](auto& entry) { return KeyTraits::equals(key, entry); });
+    return m_table.find(
+        KeyTraits::hash(key), [&](auto& entry) { return KeyTraits::equals(key, entry); });
   }
 
  private:

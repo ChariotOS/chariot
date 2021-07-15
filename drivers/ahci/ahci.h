@@ -3,7 +3,7 @@
 #include <lock.h>
 #include <types.h>
 #include <printk.h>
-#include <ptr.h>
+#include <ck/ptr.h>
 
 
 #define AHCI_INFO(fmt, args...) KINFO("[AHCI] " fmt, ##args)

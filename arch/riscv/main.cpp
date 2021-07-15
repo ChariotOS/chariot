@@ -54,16 +54,12 @@ struct cpio_hdr {
 
 
 
-static uint16_t bswap_16(uint16_t __x) {
-  return __x << 8 | __x >> 8;
-}
+static uint16_t bswap_16(uint16_t __x) { return __x << 8 | __x >> 8; }
 static uint32_t bswap_32(uint32_t __x) {
   return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24;
 }
 
-void initrd_dump(void *vbuf, size_t size) {
-  hexdump(vbuf, size, true);
-}
+void initrd_dump(void *vbuf, size_t size) { hexdump(vbuf, size, true); }
 
 static unsigned long riscv_high_acc_time_func(void) {
   return (read_csr(time) * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND;
@@ -83,7 +79,7 @@ extern "C" void secondary_entry(int hartid) {
 
   rv::set_tp((rv::xsize_t)&sc);
   cpu::seginit(NULL);
-	cpu::current().primary = false;
+  cpu::current().primary = false;
 
   /* Initialize the platform level interrupt controller for this HART */
   rv::plic::hart_init();
@@ -253,7 +249,7 @@ void main(int hartid, void *fdt) {
     (*func)();
 
 
-	cpu::current().primary = true;
+  cpu::current().primary = true;
 
   arch_enable_ints();
 
@@ -273,7 +269,7 @@ void main(int hartid, void *fdt) {
 
   assert(sched::init());
   KINFO("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(),
-        phys::bytes_free());
+      phys::bytes_free());
 
 
 
@@ -305,7 +301,7 @@ void main(int hartid, void *fdt) {
     kproc->root = fs::inode::acquire(vfs::get_root());
     kproc->cwd = fs::inode::acquire(vfs::get_root());
 
-    string init_paths = "/bin/init,/init";
+    ck::string init_paths = "/bin/init,/init";
     auto paths = init_paths.split(',');
     pid_t init_pid = sched::proc::spawn_init(paths);
 

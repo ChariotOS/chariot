@@ -5,10 +5,10 @@
 
 #include <fs.h>
 #include <mmap_flags.h>
-#include <ptr.h>
+#include <ck/ptr.h>
 #include <rbtree.h>
-#include <string.h>
-#include <vec.h>
+#include <ck/string.h>
+#include <ck/vec.h>
 
 #define VPROT_READ (1 << 0)
 #define VPROT_WRITE (1 << 1)
@@ -36,7 +36,7 @@ namespace mm {
 
   // every physical page in mm circulation is kept track of via a heap-allocated
   // `struct page`.
-  struct page : public refcounted<mm::page> {
+  struct page : public ck::refcounted<mm::page> {
 #define PG_DIRTY (1ul << 0)
 #define PG_OWNED (1ul << 1)
 #define PG_WRTHRU (1ul << 2)
@@ -99,14 +99,14 @@ namespace mm {
 
   class page_mapping {
    public:
-    inline page_mapping(ref<mm::page> pg) { set_page(pg); }
+    inline page_mapping(ck::ref<mm::page> pg) { set_page(pg); }
 
     inline page_mapping(void) { set_page(nullptr); }
 
     inline page_mapping(nullptr_t v) { set_page(v); }
 
     // expects pg's lock to be held
-    inline void set_page(ref<mm::page> pg) {
+    inline void set_page(ck::ref<mm::page> pg) {
       if (!is_null()) {
         // decrement users
         __atomic_sub_fetch(&page->m_users, 1, __ATOMIC_ACQ_REL);
@@ -127,7 +127,7 @@ namespace mm {
     inline auto get(void) { return page; }
 
 
-    inline page_mapping &operator=(ref<mm::page> pg) {
+    inline page_mapping &operator=(ck::ref<mm::page> pg) {
       // printk("operator= %p\n", pg.get());
       set_page(pg);
       return *this;
@@ -151,7 +151,7 @@ namespace mm {
    * Page tables are created and implemented by the specific arch.
    * Implementations are found in arch/.../
    */
-  class pagetable : public refcounted<pagetable> {
+  class pagetable : public ck::refcounted<pagetable> {
    public:
     pagetable(void);
     virtual ~pagetable(void);
@@ -168,7 +168,7 @@ namespace mm {
   class space;
 
   // vm areas can optionally have a vmobject that represents them.
-  struct vmobject : public refcounted<vmobject> {
+  struct vmobject : public ck::refcounted<vmobject> {
     inline vmobject(size_t npages) : n_pages(npages) {}
 
     virtual ~vmobject(void){};
@@ -202,7 +202,7 @@ namespace mm {
 
 
   struct area {
-    string name;
+    ck::string name;
 
     off_t va;
     size_t len;  // in bytes
@@ -255,7 +255,7 @@ namespace mm {
     off_t mmap(off_t req, size_t size, int prot, int flags, ck::ref<fs::file>, off_t off);
 
     off_t mmap(
-        string name, off_t req, size_t size, int prot, int flags, ck::ref<fs::file>, off_t off);
+        ck::string name, off_t req, size_t size, int prot, int flags, ck::ref<fs::file>, off_t off);
     int unmap(off_t addr, size_t sz);
 
 

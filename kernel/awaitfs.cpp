@@ -1,7 +1,7 @@
 #include <awaitfs.h>
 #include <cpu.h>
 #include <errno.h>
-#include <map.h>
+#include <ck/map.h>
 #include <sleep.h>
 #include <syscall.h>
 #include <time.h>

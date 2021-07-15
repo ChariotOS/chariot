@@ -4,7 +4,7 @@
 #include <fs/vfs.h>
 #include <errno.h>
 
-procfs::superblock::superblock(string args, int flags) {
+procfs::superblock::superblock(ck::string args, int flags) {
   /* TODO */
 
   /* Create the root INODE */
@@ -15,7 +15,7 @@ procfs::superblock::superblock(string args, int flags) {
 
 
 fs::inode *procfs::superblock::create_inode(int type) {
-	scoped_lock l(lock);
+  scoped_lock l(lock);
   auto ino = new procfs::inode(type, *this);
   ino->ino = next_inode++;
   ino->uid = 0;
@@ -33,25 +33,19 @@ fs::inode *procfs::superblock::create_inode(int type) {
 }
 
 
-static struct fs::superblock *procfs_mount(struct fs::sb_information *, const char *args, int flags,
-                                           const char *device) {
+static struct fs::superblock *procfs_mount(
+    struct fs::sb_information *, const char *args, int flags, const char *device) {
   auto *sb = new procfs::superblock(args, flags);
 
   return sb;
 }
 
 
-int procfs_sb_init(struct fs::superblock &sb) {
-  return -ENOTIMPL;
-}
+int procfs_sb_init(struct fs::superblock &sb) { return -ENOTIMPL; }
 
-int procfs_write_super(struct fs::superblock &sb) {
-  return -ENOTIMPL;
-}
+int procfs_write_super(struct fs::superblock &sb) { return -ENOTIMPL; }
 
-int procfs_sync(struct fs::superblock &sb, int flags) {
-  return -ENOTIMPL;
-}
+int procfs_sync(struct fs::superblock &sb, int flags) { return -ENOTIMPL; }
 
 
 struct fs::sb_operations procfs_ops {
@@ -63,7 +57,5 @@ struct fs::sb_information procfs_info {
 };
 
 
-static void procfs_init(void) {
-  vfs::register_filesystem(procfs_info);
-}
+static void procfs_init(void) { vfs::register_filesystem(procfs_info); }
 module_init("fs::procfs", procfs_init);

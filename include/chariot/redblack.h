@@ -1,5 +1,5 @@
 #include <printk.h>
-#include <ptr.h>
+#include <ck/ptr.h>
 #include <types.h>
 
 template <typename K, typename V>
@@ -29,9 +29,7 @@ class redblack {
       return parent->left == this ? parent->right : parent->left;
     }
 
-    auto get_parent(void) {
-      return parent ?: parent;
-    }
+    auto get_parent(void) { return parent ?: parent; }
 
     auto get_grandparent(void) {
       auto p = get_parent();
@@ -95,9 +93,7 @@ class redblack {
       nnew->parent = p;
     }
 
-    void insert_repair_tree(void) {
-      node *n = this;
-    }
+    void insert_repair_tree(void) { node *n = this; }
 
     void insert_recurse(node *n) {
       if (n->key < key) {

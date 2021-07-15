@@ -4,7 +4,7 @@
 #include <pci.h>
 #include <sleep.h>
 #include <util.h>
-#include <vec.h>
+#include <ck/vec.h>
 
 #define REG_CAPLENGTH 0x00
 #define REG_HCIVERSION 0x02

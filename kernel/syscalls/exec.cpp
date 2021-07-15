@@ -20,8 +20,8 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   if (!curproc->mm->validate_null_terminated(uargv)) return -EINVAL;
   if (!curproc->mm->validate_null_terminated(uenvp)) return -EINVAL;
 
-  ck::vec<string> argv;
-  ck::vec<string> envp;
+  ck::vec<ck::string> argv;
+  ck::vec<ck::string> envp;
 
   for (int i = 0; uargv[i] != NULL; i++) {
     /* Validate the string :^) */
@@ -46,7 +46,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   }
 
   off_t entry = 0;
-  auto fd = make_ref<fs::file>(exe, FDIR_READ);
+  auto fd = ck::make_ref<fs::file>(exe, FDIR_READ);
   mm::space *new_addr_space = nullptr;
 
   new_addr_space = alloc_user_vm();

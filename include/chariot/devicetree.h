@@ -1,9 +1,9 @@
 #pragma once
 
-#include <map.h>
-#include <string.h>
+#include <ck/map.h>
+#include <ck/string.h>
 #include <types.h>
-#include <vec.h>
+#include <ck/vec.h>
 
 namespace dtb {
 
@@ -65,7 +65,7 @@ namespace dtb {
 
   struct device_tree {
     struct node {
-      string name;
+      ck::string name;
       struct node *parent = NULL;
 
       /*
@@ -73,11 +73,11 @@ namespace dtb {
        * source:
        * https://devicetree-specification.readthedocs.io/en/v0.2/devicetree-basics.html#sect-property-values
        */
-      ck::map<string, ck::vec<uint8_t>> props;
+      ck::map<ck::string, ck::vec<uint8_t>> props;
 
       ck::vec<struct node *> children;
 
-      inline void set_prop(string name, int vlen, void *value) {
+      inline void set_prop(ck::string name, int vlen, void *value) {
         ck::vec<uint8_t> v;
         for (int i = 0; i < vlen; i++)
           v.push(((uint8_t *)value)[i]);
