@@ -84,7 +84,7 @@ namespace ck {
   template <typename T, typename TraitsForT>
   class HashTable {
    private:
-    using Bucket = single_list<T>;
+    using Bucket = ck::single_list<T>;
 
    public:
     HashTable() {}

@@ -171,7 +171,7 @@ namespace net {
 
 
     struct {
-      single_list<ipcmsg> msgs;
+      ck::single_list<ipcmsg> msgs;
       struct wait_queue wq;
       spinlock lock;
       bool closed = false;
