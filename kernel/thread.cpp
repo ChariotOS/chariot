@@ -30,7 +30,7 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
   fpu.state = phys::kalloc(1);
 
   sched.priority = 0;
-	sched.next = sched.prev = NULL;
+  sched.next = sched.prev = NULL;
 
 
 
@@ -89,7 +89,7 @@ off_t thread::setup_tls(void) {
   if (proc.tls_info.exists) {
     tls_usize = proc.tls_info.memsz;
     tls_uaddr = proc.mm->mmap(string::format("[tid %d TLS]", this->tid), 0, proc.tls_info.memsz,
-                              PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, nullptr, 0);
+        PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, nullptr, 0);
 
     printk("============================== %p\n", tls_uaddr);
     proc.mm->dump();
@@ -199,9 +199,7 @@ void thread::setup_stack(reg_t *tf) {
 
 
 
-static void thread_create_callback(void *) {
-  arch_thread_create_callback();
-}
+static void thread_create_callback(void *) { arch_thread_create_callback(); }
 
 struct thread *thread::lookup_r(pid_t tid) {
   return thread_table.get(tid);
@@ -255,8 +253,8 @@ bool thread::send_signal(int sig) {
 
 
 
-vec<off_t> thread::backtrace(off_t rbp, off_t rip) {
-  vec<off_t> bt;
+ck::vec<off_t> thread::backtrace(off_t rbp, off_t rip) {
+  ck::vec<off_t> bt;
   bt.push(rip);
 
   for (auto sp = (off_t *)rbp; VALIDATE_RD(sp, sizeof(off_t) * 2); sp = (off_t *)sp[0]) {
@@ -268,9 +266,7 @@ vec<off_t> thread::backtrace(off_t rbp, off_t rip) {
   return bt;
 }
 
-void thread::interrupt(void) {
-  sched::unblock(*this, true);
-}
+void thread::interrupt(void) { sched::unblock(*this, true); }
 
 
 extern int get_next_pid(void);
@@ -320,6 +316,4 @@ void thread::set_state(int st) {
   __atomic_store(&this->state, &st, __ATOMIC_SEQ_CST);
 }
 
-int thread::get_state(void) {
-  return __atomic_load_n(&this->state, __ATOMIC_ACQUIRE);
-}
+int thread::get_state(void) { return __atomic_load_n(&this->state, __ATOMIC_ACQUIRE); }

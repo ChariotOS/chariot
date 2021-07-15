@@ -20,8 +20,8 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   if (!curproc->mm->validate_null_terminated(uargv)) return -EINVAL;
   if (!curproc->mm->validate_null_terminated(uenvp)) return -EINVAL;
 
-  vec<string> argv;
-  vec<string> envp;
+  ck::vec<string> argv;
+  ck::vec<string> envp;
 
   for (int i = 0; uargv[i] != NULL; i++) {
     /* Validate the string :^) */
@@ -63,8 +63,8 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   // allocate a 1mb stack
   // TODO: this size is arbitrary.
   auto stack_size = 1024 * 1024;
-  off_t stack = new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ | PROT_WRITE,
-                                     MAP_ANON | MAP_PRIVATE, nullptr, 0);
+  off_t stack = new_addr_space->mmap(
+      "[stack]", 0, stack_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, nullptr, 0);
 
   // kill the other threads
   for (auto tid : curproc->threads) {

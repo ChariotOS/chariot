@@ -134,9 +134,7 @@ namespace block {
     return buf;
   }
 
-  void buffer::register_write(void) {
-    m_dirty = true;
-  }
+  void buffer::register_write(void) { m_dirty = true; }
 
   void buffer::release(struct buffer *b) {
     b->m_lock.lock();
@@ -273,7 +271,7 @@ int bwrite(fs::blkdev &b, void *data, size_t size, off_t byte_offset) {
 
 
 
-static unsigned long blk_kshell(vec<string> &args, void *data, int dlen) {
+static unsigned long blk_kshell(ck::vec<string> &args, void *data, int dlen) {
   if (args.size() > 0) {
     if (args[0] == "reclaim") {
       auto reclaimed = block::reclaim_memory();
@@ -341,9 +339,7 @@ static ssize_t blk_rw(fs::file &f, char *data, size_t len, bool write) {
   return n;
 }
 
-static ssize_t blk_read(fs::file &f, char *data, size_t len) {
-  return blk_rw(f, data, len, false);
-}
+static ssize_t blk_read(fs::file &f, char *data, size_t len) { return blk_rw(f, data, len, false); }
 
 static ssize_t blk_write(fs::file &f, const char *data, size_t len) {
   return blk_rw(f, (char *)data, len, true);

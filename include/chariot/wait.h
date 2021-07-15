@@ -16,16 +16,10 @@ struct wait_result {
   uint8_t flags;
 
  public:
-  inline wait_result(uint8_t flags) : flags(flags) {
-  }
-  inline wait_result(void) : flags(0) {
-  }
-  inline bool interrupted(void) {
-    return FIS(flags, WAIT_RES_INTR);
-  }
-  inline bool timed_out(void) {
-    return FIS(flags, WAIT_RES_TIMEOUT);
-  }
+  inline wait_result(uint8_t flags) : flags(flags) {}
+  inline wait_result(void) : flags(0) {}
+  inline bool interrupted(void) { return FIS(flags, WAIT_RES_INTR); }
+  inline bool timed_out(void) { return FIS(flags, WAIT_RES_TIMEOUT); }
 };
 
 /* these functions return if they were successful in waking or not. */
@@ -89,12 +83,8 @@ struct wait_queue {
   }
 
 
-  inline void wake_up(void) {
-    __wake_up(0, 1, NULL);
-  }
-  inline void wake_up_all(void) {
-    __wake_up(0, 0, NULL);
-  }
+  inline void wake_up(void) { __wake_up(0, 1, NULL); }
+  inline void wake_up_all(void) { __wake_up(0, 0, NULL); }
 
 
   wait_result wait_exclusive(struct wait_entry *, int state);
@@ -113,7 +103,7 @@ struct wait_queue {
 /* Wait for several wait queues, returning the index of the queue that woke first, or -EINTR */
 int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive = false);
 
-inline int multi_wait(vec<wait_queue *> &queues, bool exclusive = false) {
+inline int multi_wait(ck::vec<wait_queue *> &queues, bool exclusive = false) {
   /* Just forward on to the bespoke impl */
   return multi_wait(queues.data(), queues.size(), exclusive);
 }
@@ -133,7 +123,7 @@ inline int multi_wait(vec<wait_queue *> &queues, bool exclusive = false) {
  * finish_wait();
  */
 void prepare_to_wait(struct wait_queue &wq, struct wait_entry &ent, bool interruptible = true);
-void prepare_to_wait_exclusive(struct wait_queue &wq, struct wait_entry &ent,
-                               bool interruptible = true);
+void prepare_to_wait_exclusive(
+    struct wait_queue &wq, struct wait_entry &ent, bool interruptible = true);
 wait_result do_wait(struct wait_entry &ent);
 void finish_wait(struct wait_queue &wq, struct wait_entry &ent);

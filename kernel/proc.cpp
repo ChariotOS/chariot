@@ -30,9 +30,7 @@ volatile pid_t next_pid = 2;
 static spinlock ptable_lock;
 static map<pid_t, process::ptr> proc_table;
 
-pid_t get_next_pid(void) {
-  return __atomic_add_fetch(&next_pid, 1, __ATOMIC_ACQUIRE);
-}
+pid_t get_next_pid(void) { return __atomic_add_fetch(&next_pid, 1, __ATOMIC_ACQUIRE); }
 
 mm::space *alloc_user_vm(void) {
   unsigned long top = 0x7ff000000000;
@@ -40,7 +38,7 @@ mm::space *alloc_user_vm(void) {
   top = 0x3ff0000000;
 #endif
 
-	top -= rand() & 0xFFFFF000;
+  top -= rand() & 0xFFFFF000;
   return new mm::space(0x1000, top, mm::pagetable::create());
 }
 
@@ -158,7 +156,7 @@ bool sched::proc::ptable_remove(pid_t p) {
   return succ;
 }
 
-pid_t sched::proc::spawn_init(vec<string> &paths) {
+pid_t sched::proc::spawn_init(ck::vec<string> &paths) {
   pid_t pid = 1;
 
   process::ptr proc_ptr;
@@ -186,9 +184,9 @@ pid_t sched::proc::spawn_init(vec<string> &paths) {
   proc_ptr->cwd = geti(vfs::get_root());
   auto &proc = *proc_ptr;
 
-  vec<string> envp;
+  ck::vec<string> envp;
   for (auto &path : paths) {
-    vec<string> argv;
+    ck::vec<string> argv;
     argv.push(path);
 
     int res = proc.exec(path, argv, envp);
@@ -296,7 +294,7 @@ bool process::is_dead(void) {
   return true;
 }
 
-int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
+int process::exec(string &path, ck::vec<string> &argv, ck::vec<string> &envp) {
   scoped_lock lck(this->datalock);
 
 
@@ -328,8 +326,8 @@ int process::exec(string &path, vec<string> &argv, vec<string> &envp) {
   // TODO: this size is arbitrary.
   auto stack_size = 1024 * 1024;
 
-  stack = new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ | PROT_WRITE,
-                               MAP_ANON | MAP_PRIVATE, nullptr, 0);
+  stack = new_addr_space->mmap(
+      "[stack]", 0, stack_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, nullptr, 0);
 
   // TODO: push argv and arguments onto the stack
   this->args = argv;
@@ -357,7 +355,7 @@ int sched::proc::send_signal(pid_t p, int sig) {
   if (p < 0) {
     int err = -ESRCH;
     pid_t pgid = -p;
-    vec<pid_t> targs;
+    ck::vec<pid_t> targs;
     sched::proc::in_pgrp(pgid, [&](struct process &p) -> bool {
       targs.push(p.pid);
       return true;
@@ -478,11 +476,8 @@ struct zombie_entry {
   struct list_head node;
   // the zombie process
   process::ptr proc;
-  zombie_entry(process::ptr proc) : proc(proc) {
-    node.init();
-  }
-  ~zombie_entry(void) {
-  }
+  zombie_entry(process::ptr proc) : proc(proc) { node.init(); }
+  ~zombie_entry(void) {}
 };
 
 struct waiter_entry {
@@ -616,7 +611,7 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int wait_flags) {
     if (zomb != NULL) {
       assert(zomb->node.is_empty());
       assert(zomb->proc.is_null());
-			delete zomb;
+      delete zomb;
     }
 
     pid_t pid = found_process->pid;
@@ -663,8 +658,8 @@ static void zombify(struct zombie_entry *zomb) {
       waitlist_lock.unlock_irqrestore(f);
 
 
-			// free the zombie_entry here, now that we have no locks held
-			delete zomb;
+      // free the zombie_entry here, now that we have no locks held
+      delete zomb;
 
       // wake up the waiter
       went->wq.wake_up_all();
@@ -718,7 +713,7 @@ void sys::exit_proc(int code) {
   // send a signal that we died to the parent process
   // sched::proc::send_signal(curproc->parent->pid, SIGCHLD);
 
-	// to be freed in zombify OR waitpid
+  // to be freed in zombify OR waitpid
   struct zombie_entry *zomb = new zombie_entry(curproc);
   zombify(zomb);
 
@@ -802,12 +797,10 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
 
 
 
-int sys::kill(int pid, int sig) {
-  return sched::proc::send_signal(pid, sig);
-}
+int sys::kill(int pid, int sig) { return sched::proc::send_signal(pid, sig); }
 
 int sys::prctl(int option, unsigned long a1, unsigned long a2, unsigned long a3, unsigned long a4,
-               unsigned long a5) {
+    unsigned long a5) {
   return -ENOTIMPL;
 }
 
@@ -877,9 +870,9 @@ static pid_t do_fork(struct process &p) {
 
 
 int sys::fork(void) {
-	int pid = do_fork(*curproc);
-	// sched::yield();
-	return pid;
+  int pid = do_fork(*curproc);
+  // sched::yield();
+  return pid;
 }
 
 
@@ -976,9 +969,7 @@ void sched::proc::dump_table(void) {
   scoped_irqlock l(waitlist_lock);
   pprintk("Zombie list: \n");
   struct zombie_entry *zent = NULL;
-  list_for_each_entry(zent, &zombie_list, node) {
-    pprintk("  process %d\n", zent->proc->pid);
-  }
+  list_for_each_entry(zent, &zombie_list, node) { pprintk("  process %d\n", zent->proc->pid); }
 
   pprintk("Waiter List: \n");
   struct waiter_entry *went = NULL;
@@ -986,4 +977,3 @@ void sched::proc::dump_table(void) {
     pprintk("  process %d, seeking %d\n", went->thd->tid, went->seeking);
   }
 }
-

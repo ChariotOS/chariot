@@ -26,7 +26,7 @@ namespace dev {
 
    protected:
     struct mbr_header *hdr = nullptr;
-    vec<part_info> m_partitions;
+    ck::vec<part_info> m_partitions;
   };
 
 };  // namespace dev

@@ -65,9 +65,7 @@ namespace net {
     sock(int domain, int type, int proto);
     virtual ~sock(void);
 
-    inline virtual int poll(fs::file &f, int events, poll_table &pt) {
-      return 0;
-    }
+    inline virtual int poll(fs::file &f, int events, poll_table &pt) { return 0; }
 
     template <typename T>
     T *&priv(void) {
@@ -88,8 +86,8 @@ namespace net {
 
     // implemented by the network layer (OSI)
     virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
-    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *,
-                             size_t);
+    virtual ssize_t recvfrom(
+        fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
@@ -109,8 +107,8 @@ namespace net {
 
     // implemented by the network layer (OSI)
     virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
-    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *,
-                             size_t);
+    virtual ssize_t recvfrom(
+        fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
@@ -140,7 +138,7 @@ namespace net {
   // ipc messages cannot be partially consumed,
   // they must be entirely read at once
   struct ipcmsg {
-    vec<uint8_t> data;
+    ck::vec<uint8_t> data;
 
     inline ipcmsg(void *buf, size_t sz) {
       data.ensure_capacity(sz);
@@ -158,8 +156,8 @@ namespace net {
 
     // implemented by the network layer (OSI)
     virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
-    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *,
-                             size_t);
+    virtual ssize_t recvfrom(
+        fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
@@ -207,8 +205,8 @@ namespace net {
 
     // implemented by the network layer (OSI)
     virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
-    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *,
-                             size_t);
+    virtual ssize_t recvfrom(
+        fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 

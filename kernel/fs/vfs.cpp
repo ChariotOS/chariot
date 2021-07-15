@@ -6,16 +6,15 @@
 #include <util.h>
 
 struct fs::inode *vfs_root = NULL;
-static vec<struct fs::sb_information *> filesystems;
-static vec<struct vfs::mountpoint *> mountpoints;
+static ck::vec<struct fs::sb_information *> filesystems;
+static ck::vec<struct vfs::mountpoint *> mountpoints;
 
 void vfs::register_filesystem(struct fs::sb_information &info) {
   printk(KERN_INFO "filesystem '%s' registered\n", info.name);
   filesystems.push(&info);
 }
 
-void vfs::deregister_filesystem(struct fs::sb_information &) {
-}
+void vfs::deregister_filesystem(struct fs::sb_information &) {}
 
 struct fs::inode *vfs::cwd(void) {
   if (cpu::in_thread()) {
@@ -38,8 +37,8 @@ int vfs::mount_root(const char *src, const char *type) {
   return vfs::mount(src, "/", type, 0, 0);
 }
 
-int vfs::mount(const char *src, const char *targ, const char *type, unsigned long flags,
-               const char *options) {
+int vfs::mount(
+    const char *src, const char *targ, const char *type, unsigned long flags, const char *options) {
   // printk(KERN_INFO "mount %s with fs %s to %s\n", src, type, targ);
 
   if (get_root() == NULL && strcmp(targ, "/") != 0) {
@@ -221,7 +220,7 @@ static const char *skipelem(const char *path, char *name, bool &last) {
 }
 
 int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd, struct fs::inode *&res,
-               bool get_last) {
+    bool get_last) {
   assert(path != NULL);
   auto ino = cwd;
 

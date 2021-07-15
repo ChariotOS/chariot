@@ -243,13 +243,11 @@ void fs::inode::walk_direntries(func<bool(const string &, struct inode *)> func)
   }
 }
 
-vec<string> fs::inode::direntries(void) {
+ck::vec<string> fs::inode::direntries(void) {
   assert(type == T_DIR);
 
-  vec<string> e;
-  for_in_ll(ent, dir.entries) {
-    e.push(ent->name);
-  }
+  ck::vec<string> e;
+  for_in_ll(ent, dir.entries) { e.push(ent->name); }
   return e;
 }
 

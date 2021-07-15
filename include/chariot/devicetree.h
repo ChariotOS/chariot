@@ -73,12 +73,12 @@ namespace dtb {
        * source:
        * https://devicetree-specification.readthedocs.io/en/v0.2/devicetree-basics.html#sect-property-values
        */
-      map<string, vec<uint8_t>> props;
+      map<string, ck::vec<uint8_t>> props;
 
-      vec<struct node *> children;
+      ck::vec<struct node *> children;
 
       inline void set_prop(string name, int vlen, void *value) {
-        vec<uint8_t> v;
+        ck::vec<uint8_t> v;
         for (int i = 0; i < vlen; i++)
           v.push(((uint8_t *)value)[i]);
         props[name] = move(v);
@@ -98,9 +98,7 @@ namespace dtb {
     device_tree(struct fdt_header *fdt);
     ~device_tree(void);
 
-    inline void dump(void) {
-      root.dump();
-    }
+    inline void dump(void) { root.dump(); }
 
     struct fdt_header *fdt = NULL;
     struct node root;

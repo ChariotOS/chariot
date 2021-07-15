@@ -43,22 +43,14 @@ namespace mm {
 #define PG_NOCACHE (1ul << 3)
 #define PG_BCACHE (1ul << 4)
 
-    inline void fset(int set) {
-      m_paf |= set;
-    }
+    inline void fset(int set) { m_paf |= set; }
 
-    inline void fclr(int set) {
-      m_paf &= ~set;
-    }
+    inline void fclr(int set) { m_paf &= ~set; }
 
-    inline int flags(void) {
-      return m_paf & 0xFFF;
-    }
+    inline int flags(void) { return m_paf & 0xFFF; }
 
     /* return if a certain (set of) flag(s) is set or not */
-    inline bool fcheck(int set) {
-      return !((m_paf & set) == 0);
-    }
+    inline bool fcheck(int set) { return !((m_paf & set) == 0); }
 
 
     page(void);
@@ -69,13 +61,9 @@ namespace mm {
     // note: this page isn't owned.
     static ref<page> create(unsigned long pa);
 
-    inline unsigned long pa(void) {
-      return m_paf & ~0xFFF;
-    }
+    inline unsigned long pa(void) { return m_paf & ~0xFFF; }
 
-    inline void set_pa(unsigned long pa) {
-      m_paf = (pa & ~0xFFF) | flags();
-    }
+    inline void set_pa(unsigned long pa) { m_paf = (pa & ~0xFFF) | flags(); }
 
     inline void lock(void) {
       // printk("lock page %p\n", this);
@@ -86,9 +74,7 @@ namespace mm {
       spinlock::unlock(m_lock);
     }
 
-    inline uint32_t users(void) {
-      return __atomic_load_n(&m_users, __ATOMIC_ACQUIRE);
-    }
+    inline uint32_t users(void) { return __atomic_load_n(&m_users, __ATOMIC_ACQUIRE); }
 
 
     struct list_head mappings;
@@ -113,17 +99,11 @@ namespace mm {
 
   class page_mapping {
    public:
-    inline page_mapping(ref<mm::page> pg) {
-      set_page(pg);
-    }
+    inline page_mapping(ref<mm::page> pg) { set_page(pg); }
 
-    inline page_mapping(void) {
-      set_page(nullptr);
-    }
+    inline page_mapping(void) { set_page(nullptr); }
 
-    inline page_mapping(nullptr_t v) {
-      set_page(v);
-    }
+    inline page_mapping(nullptr_t v) { set_page(v); }
 
     // expects pg's lock to be held
     inline void set_page(ref<mm::page> pg) {
@@ -139,20 +119,12 @@ namespace mm {
       }
     }
 
-    inline bool is_null(void) {
-      return page.is_null();
-    }
-    inline operator bool(void) {
-      return !is_null();
-    }
+    inline bool is_null(void) { return page.is_null(); }
+    inline operator bool(void) { return !is_null(); }
 
 
-    inline auto *operator->(void) {
-      return page.get();
-    }
-    inline auto get(void) {
-      return page;
-    }
+    inline auto *operator->(void) { return page.get(); }
+    inline auto get(void) { return page; }
 
 
     inline page_mapping &operator=(ref<mm::page> pg) {
@@ -197,8 +169,7 @@ namespace mm {
 
   // vm areas can optionally have a vmobject that represents them.
   struct vmobject : public refcounted<vmobject> {
-    inline vmobject(size_t npages) : n_pages(npages) {
-    }
+    inline vmobject(size_t npages) : n_pages(npages) {}
 
     virtual ~vmobject(void){};
 
@@ -214,18 +185,14 @@ namespace mm {
     }
 
     // all owners have dropped you!
-    virtual void drop(void) {
-    }
+    virtual void drop(void) {}
 
     // get a shared page (page #n in the mapping)
     virtual ref<mm::page> get_shared(off_t n) = 0;
     // tell the region to flush a page
-    virtual void flush(off_t n) {
-    }
+    virtual void flush(off_t n) {}
 
-    inline size_t size(void) {
-      return n_pages * PGSIZE;
-    }
+    inline size_t size(void) { return n_pages * PGSIZE; }
 
    private:
     spinlock m_lock;
@@ -249,7 +216,7 @@ namespace mm {
 
     // TODO: unify shared mappings in the fileriptor somehow
     ref<fs::file> fd;
-    vec<mm::page_mapping> mappings;  // backing memory
+    ck::vec<mm::page_mapping> mappings;  // backing memory
 
     // optional. If it exists, it is queried for each page
     // This is required if the region is not anonymous. If a region is mapped
@@ -264,9 +231,7 @@ namespace mm {
     ~area(void);
 
 
-    static inline int compare(area &a, area &b) {
-      return a.va - a.va;
-    }
+    static inline int compare(area &a, area &b) { return a.va - a.va; }
   };
 
   class space {
@@ -281,9 +246,7 @@ namespace mm {
 
     size_t copy_out(off_t addr, void *into, size_t len);
 
-    inline auto get_pt(void) {
-      return pt;
-    }
+    inline auto get_pt(void) { return pt; }
     void switch_to();
     mm::area *lookup(off_t va);
 
@@ -360,7 +323,7 @@ namespace mm {
 
     spinlock lock;
     rb_root regions;
-    // vec<mm::area *> regions;
+    // ck::vec<mm::area *> regions;
 
     struct pending_mapping {
       off_t va;
@@ -370,7 +333,7 @@ namespace mm {
 
     unsigned long revision;
     unsigned long kmem_revision;
-    vec<pending_mapping> pending_mappings;
+    ck::vec<pending_mapping> pending_mappings;
   };
 };  // namespace mm
 

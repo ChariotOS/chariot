@@ -34,11 +34,11 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long time
     return -1;
 
   unsigned nqueues = 0;
-  vec<await_table_entry> entries;
+  ck::vec<await_table_entry> entries;
   /* These are both kept in line with eachother. We just simply need a contiguous array of queues
    * for multi_wait */
-  vec<wait_queue *> queues;
-  vec<await_table_metadata> metadata;
+  ck::vec<wait_queue *> queues;
+  ck::vec<await_table_metadata> metadata;
 
   /* To avoid reallocation */
   entries.ensure_capacity(nfds);
@@ -125,6 +125,6 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long time
 
   /* Update the target entry */
   targs[index].occurred = metadata[res].pte->events;
-	// pprintk("awaitfs -> %d\n", index);
+  // pprintk("awaitfs -> %d\n", index);
   return index;
 }

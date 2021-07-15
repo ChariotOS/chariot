@@ -60,7 +60,7 @@ namespace nvme {
 
 
 
-static vec<ck::unique_ptr<nvme::ctrl>> controllers;
+static ck::vec<ck::unique_ptr<nvme::ctrl>> controllers;
 
 
 void nvme_init(void) {

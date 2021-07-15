@@ -4,30 +4,20 @@
 #include <errno.h>
 #include <phys.h>
 
-dev::video_device::~video_device() {
-  /* TODO */
-}
+dev::video_device::~video_device() { /* TODO */ }
 
 // default
-int dev::video_device::get_mode(gvi_video_mode &) {
-  return -ENOTIMPL;
-}
+int dev::video_device::get_mode(gvi_video_mode &) { return -ENOTIMPL; }
 
-int dev::video_device::flush_fb(void) {
-  return -ENOTIMPL;
-}
+int dev::video_device::flush_fb(void) { return -ENOTIMPL; }
 
 // default
-int dev::video_device::set_mode(const gvi_video_mode &) {
-  return -ENOTIMPL;
-}
+int dev::video_device::set_mode(const gvi_video_mode &) { return -ENOTIMPL; }
 
-uint32_t *dev::video_device::get_framebuffer(void) {
-  return NULL;
-}
+uint32_t *dev::video_device::get_framebuffer(void) { return NULL; }
 
 static bool initialized = false;
-static vec<dev::video_device *> m_video_devices;
+static ck::vec<dev::video_device *> m_video_devices;
 
 static dev::video_device *get_vdev(int minor) {
   if (minor >= 0 && minor < m_video_devices.size()) {
@@ -38,8 +28,7 @@ static dev::video_device *get_vdev(int minor) {
 
 struct gvi_vmobject final : public mm::vmobject {
   dev::video_device &vdev;
-  gvi_vmobject(dev::video_device &vdev, size_t npages) : vmobject(npages), vdev(vdev) {
-  }
+  gvi_vmobject(dev::video_device &vdev, size_t npages) : vmobject(npages), vdev(vdev) {}
 
   virtual ~gvi_vmobject(void){};
 
@@ -71,7 +60,7 @@ static ref<mm::vmobject> gvi_mmap(fs::file &fd, size_t npages, int prot, int fla
 
   if (npages > NPAGES(size)) {
     printk(KERN_WARN "gvi: attempt to mmap too many pages (%d pixels)\n",
-           (npages * 4096) / sizeof(uint32_t));
+        (npages * 4096) / sizeof(uint32_t));
     return nullptr;
   }
 

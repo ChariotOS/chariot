@@ -120,7 +120,7 @@ int block_from_index(fs::inode &node, int i_block, int set_to = 0) {
 
 #if 0
 // I know, this is slow.
-static vec<uint32_t> read_blocklist(fs::inode &ino,
+static ck::vec<uint32_t> read_blocklist(fs::inode &ino,
                                     bool include_block_list_blocks = true) {
   fs::ext2 *efs = static_cast<fs::ext2 *>(&ino.sb);
 
@@ -129,7 +129,7 @@ static vec<uint32_t> read_blocklist(fs::inode &ino,
 
   auto block_count = ceil_div(ino.size, blocksize);
   auto blocks_remaining = block_count;
-  vec<uint32_t> list;
+  ck::vec<uint32_t> list;
   auto add_block = [&](uint32_t bi) {
     if (blocks_remaining) {
       list.push(bi);
@@ -337,9 +337,7 @@ static int append_block(fs::inode &ino, int dest) {
 
 
 // TODO: remove a block from the end of a file, used for shrinking
-static int pop_block(fs::inode &ino) {
-  return 0;
-}
+static int pop_block(fs::inode &ino) { return 0; }
 
 static int truncate(fs::inode &ino, size_t new_size) {
   auto old_size = ino.size;
@@ -541,8 +539,8 @@ static int injest_info(fs::inode &ino, fs::ext2_inode_info &info) {
 
   if (ino.type == T_DIR) {
     // TODO: clear out the dirents
-    ext2_traverse_dir(ino,
-                      [&](u32 nr, const char *name) { ino.register_direntry(name, ENT_RES, nr); });
+    ext2_traverse_dir(
+        ino, [&](u32 nr, const char *name) { ino.register_direntry(name, ENT_RES, nr); });
   } else if (ino.type == T_CHAR || ino.type == T_BLK) {
     // parse the major/minor
     unsigned dev = info.dbp[0];
@@ -581,11 +579,8 @@ static int ext2_ioctl(fs::file &, unsigned int, off_t) {
   return -ENOTIMPL;
 }
 
-static int ext2_open(fs::file &) {
-  return 0;
-}
-static void ext2_close(fs::file &) {
-}
+static int ext2_open(fs::file &) { return 0; }
+static void ext2_close(fs::file &) {}
 
 
 
@@ -677,9 +672,7 @@ fs::ext2_idata::~ext2_idata() {
   }
 }
 
-static void ext2_destroy_priv(fs::inode &v) {
-  delete v.priv<fs::ext2_idata>();
-}
+static void ext2_destroy_priv(fs::inode &v) { delete v.priv<fs::ext2_idata>(); }
 
 fs::file_operations ext2_file_ops{
     .seek = ext2_seek,
@@ -739,8 +732,8 @@ static struct fs::inode *ext2_lookup(fs::inode &node, const char *needle) {
   return NULL;
 }
 
-static int ext2_mknod(fs::inode &, const char *name, struct fs::file_ownership &, int major,
-                      int minor) {
+static int ext2_mknod(
+    fs::inode &, const char *name, struct fs::file_ownership &, int major, int minor) {
   UNIMPL();
   return -ENOTIMPL;
 }

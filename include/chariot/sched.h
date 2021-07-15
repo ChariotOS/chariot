@@ -150,14 +150,14 @@ struct process final : public refcounted<struct process> {
    * array of tasks that are in this process. The order doesn't matter and is
    * probably random.
    */
-  vec<pid_t> threads;
+  ck::vec<pid_t> threads;
 
   /**
    * when a process spawns a new process, it is an embryo. A process can only
    * pctl() a pid that is in this list. When a task startpid()'s a pid, it will
    * be moved from this list to the children list.
    */
-  vec<process::ptr> children;
+  ck::vec<process::ptr> children;
 
   unsigned ring = RING_USER;
 
@@ -193,8 +193,8 @@ struct process final : public refcounted<struct process> {
    * to kernel structures and stored in the process information.
    */
   string name;
-  vec<string> args;
-  vec<string> env;
+  ck::vec<string> args;
+  ck::vec<string> env;
 
   bool exited = 0;
   uint8_t exit_code = 0;
@@ -235,7 +235,7 @@ struct process final : public refcounted<struct process> {
   /**
    * exec() - execute a command (implementation for startpid())
    */
-  int exec(string &path, vec<string> &argv, vec<string> &envp);
+  int exec(string &path, ck::vec<string> &argv, ck::vec<string> &envp);
 
   ref<fs::file> get_fd(int fd);
   int add_fd(ref<fs::file>);
@@ -247,8 +247,7 @@ struct process final : public refcounted<struct process> {
 
   void terminate(int signal);
 
-  inline process() {
-  }
+  inline process() {}
   process(const process &) = delete;
   ~process(void);
 };
@@ -275,10 +274,10 @@ struct thread_sched_info {
   int timeslice = 1;
   int priority = 0;  // highest priority to start out. Only gets worse :)
 
-	int good_streak = 0;
+  int good_streak = 0;
 
-	thread *next;
-	thread *prev;
+  thread *next;
+  thread *prev;
 };
 
 struct thread_locks {
@@ -319,7 +318,7 @@ struct thread final {
   spinlock *held_lock = nullptr;
 
   /* Reference to the kernel stack */
-  vec<kernel_stack> stacks;
+  ck::vec<kernel_stack> stacks;
   // Masks are per-thread
   struct {
     unsigned long pending = 0;
@@ -393,7 +392,7 @@ struct thread final {
   ~thread(void);
 
   // return a list of instruction pointers (recent -> older)
-  vec<off_t> backtrace(off_t rbp, off_t rip);
+  ck::vec<off_t> backtrace(off_t rbp, off_t rip);
 };
 
 
@@ -475,7 +474,7 @@ namespace sched {
 
     // spawn init (pid 1) and try to execute each of the paths in order,
     // stopping on the first success. Returns -1
-    pid_t spawn_init(vec<string> &paths);
+    pid_t spawn_init(ck::vec<string> &paths);
 
     /* remove a process from the ptable */
     bool ptable_remove(pid_t);

@@ -47,7 +47,7 @@ struct xhci_op_regs {
 } __packed;
 
 
-static vec<unique_ptr<xhci>> xhci_devices;
+static ck::vec<unique_ptr<xhci>> xhci_devices;
 
 void xhci_init(void) {
   pci::walk_devices([&](pci::device *dev) {

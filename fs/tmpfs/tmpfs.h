@@ -10,7 +10,7 @@ namespace tmp {
   // private data per inode
   struct priv {
     /* The data pages */
-    vec<ref<mm::page>> pages;
+    ck::vec<ref<mm::page>> pages;
   };
 
 
@@ -36,9 +36,7 @@ namespace tmp {
   };
 
 
-  inline auto &getsb(fs::inode &i) {
-    return *(tmp::superblock *)&i.sb;
-  }
+  inline auto &getsb(fs::inode &i) { return *(tmp::superblock *)&i.sb; }
 
 
   /*

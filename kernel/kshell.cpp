@@ -9,12 +9,10 @@ static map<string, kshell::handler> commands;
 
 
 
-void kshell::add(string command, kshell::handler h) {
-  commands[command] = h;
-}
+void kshell::add(string command, kshell::handler h) { commands[command] = h; }
 
 
-unsigned long kshell::call(string command, vec<string> args, void *data, size_t dlen) {
+unsigned long kshell::call(string command, ck::vec<string> args, void *data, size_t dlen) {
   if (commands.contains(command)) {
     return commands[command](args, data, dlen);
   }
@@ -43,7 +41,7 @@ unsigned long sys::kshell(char *cmd, int argc, char **argv, void *data, size_t d
     }
   }
 
-  vec<string> args;
+  ck::vec<string> args;
   for (int i = 0; i < argc; i++) {
     args.push(argv[i]);
   }

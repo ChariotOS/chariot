@@ -49,13 +49,12 @@ struct mshare_vmobject final : public mm::vmobject {
   }
 
 
-  virtual void drop(void) override {
-  }
+  virtual void drop(void) override {}
 
  private:
   string name;
   spinlock m_lock;
-  vec<ref<mm::page>> pages;
+  ck::vec<ref<mm::page>> pages;
 };
 
 
@@ -73,9 +72,8 @@ static void *msh_create(struct mshare_create *arg) {
   ref<mm::vmobject> obj = make_ref<mshare_vmobject>(name, pages);
 
 
-  auto addr =
-      curproc->mm->mmap(string::format("[msh '%s' (created)]", name.get()), 0, pages * PGSIZE,
-                        PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
+  auto addr = curproc->mm->mmap(string::format("[msh '%s' (created)]", name.get()), 0,
+      pages * PGSIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
 
   auto region = curproc->mm->lookup(addr);
   if (region == nullptr) return MAP_FAILED;
@@ -103,7 +101,7 @@ static void *msh_acquire(struct mshare_acquire *arg) {
   obj->acquire();
 
   auto addr = curproc->mm->mmap(string::format("[msh '%s' (acquired)]", name.get()), 0, arg->size,
-                                PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
+      PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
   if (addr == -1) return MAP_FAILED;
 
   // printk("addr=%p\n", addr);
