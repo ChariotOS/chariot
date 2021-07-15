@@ -31,7 +31,6 @@ static char mouse_mode = MOUSE_DEFAULT;
 static bool vmware_backdoor_mouse_enabled = false;
 
 
-
 bool vmware_handle_mouse(struct mouse_packet &pkt) {
   if (!vmware_backdoor_mouse_enabled) return false;
   vmware::command cmd;

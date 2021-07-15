@@ -11,68 +11,6 @@
 #include <ck/json.h>
 #include <ck/time.h>
 
-
-class colorview : public ui::view {
- public:
-  colorview(uint32_t color) : main_color(color) {
-    set_background(color);
-    // set_margins(5);
-  }
-  virtual ~colorview() = default;
-
-
-  virtual void mouse_event(ui::mouse_event& ev) {
-    if (ev.ds != 0) {
-      // set_min_height(ev.ds + min_height());
-      set_max_height(ev.ds + height());
-      update_layout();
-    }
-    if (ev.left && !clicked) {
-      set_background(0xFF0000);
-      clicked = true;
-      update();
-    } else if (!ev.left && clicked) {
-      clicked = false;
-      clear_background();
-      // set_background(main_color);
-      update();
-    }
-  }
-
- private:
-  bool clicked = false;
-  uint32_t main_color;
-};
-
-ui::view* create_box(uint32_t c) {
-  ui::view* v = new colorview(c);
-  // v->set_border(0x000000, 2);
-  return v;
-}
-
-
-
-// idea for a ck::future api?
-namespace ck {
-
-  enum class FutureState {
-    Pending,
-    Fulfilled,
-    Rejected,
-  };
-
-  // templated on the return type of the future upon completion
-  template <typename T>
-  class future {
-   public:
-    constexpr ck::FutureState state(void) const { return m_state; }
-
-   private:
-    ck::FutureState m_state = ck::FutureState::Pending;
-  };
-}  // namespace ck
-
-
 class ct_window : public ui::window {
  public:
   ct_window(void) : ui::window("current test", 400, 400) {}
@@ -114,16 +52,8 @@ class ct_window : public ui::window {
 
 
 
+
 int main(int argc, char** argv) {
-  // ck::json::value val = "hello\"";
-  // printf("val: %s\n", val.format().get());
-  // sysbind_shutdown();
-  // return 0;
-
-  // while (1) {
-  //   printf("now: %lld\n", ck::time::ms());
-  // }
-
   ui::application app;
   ct_window* win = new ct_window;
 
