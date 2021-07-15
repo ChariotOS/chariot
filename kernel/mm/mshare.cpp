@@ -11,7 +11,7 @@
 
 
 static spinlock mshare_lock;
-static map<string, struct mshare_vmobject *> mshare_regions;
+static ck::map<string, struct mshare_vmobject *> mshare_regions;
 
 
 struct mshare_vmobject final : public mm::vmobject {

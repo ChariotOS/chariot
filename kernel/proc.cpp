@@ -28,7 +28,7 @@ volatile pid_t next_pid = 2;
 
 // static rwlock ptable_lock;
 static spinlock ptable_lock;
-static map<pid_t, process::ptr> proc_table;
+static ck::map<pid_t, process::ptr> proc_table;
 
 pid_t get_next_pid(void) { return __atomic_add_fetch(&next_pid, 1, __ATOMIC_ACQUIRE); }
 

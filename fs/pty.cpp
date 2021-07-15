@@ -35,13 +35,12 @@ void pty::write_out(char c, bool block) {
   out.write(&c, 1, block);
 }
 
-pty::~pty(void) {
-}
+pty::~pty(void) {}
 
 
 
 static spinlock pts_lock;
-static map<int, ref<struct pty>> pts;
+static ck::map<int, ref<struct pty>> pts;
 
 
 static struct fs::file_operations pts_ops = {
@@ -58,9 +57,7 @@ static struct dev::driver_info pts_driver {
 };
 
 
-static auto getpts(int id) {
-  return pts.get(id);
-}
+static auto getpts(int id) { return pts.get(id); }
 
 static int allocate_pts() {
   pts_lock.lock();
@@ -91,9 +88,7 @@ static int allocate_pts() {
 }
 
 
-static int pts_ioctl(fs::file &f, unsigned int cmd, off_t arg) {
-  return 0;
-}
+static int pts_ioctl(fs::file &f, unsigned int cmd, off_t arg) { return 0; }
 
 static void close_pts(int ptsid) {
   pts_lock.lock();

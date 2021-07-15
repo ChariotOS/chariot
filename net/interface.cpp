@@ -19,7 +19,7 @@
 
 
 static spinlock interfaces_lock;
-static map<string, struct net::interface *> interfaces;
+static ck::map<string, struct net::interface *> interfaces;
 
 void net::each_interface(func<bool(const string &, net::interface &)> fn) {
   interfaces_lock.lock();
@@ -49,7 +49,7 @@ int net::register_interface(const char *name, net::interface *i) {
 
   interfaces[name] = i;
   printk(KERN_INFO "[net] registered new interface '%s': %02x:%02x:%02x:%02x:%02x:%02x\n", name,
-         i->hwaddr[0], i->hwaddr[1], i->hwaddr[2], i->hwaddr[3], i->hwaddr[4], i->hwaddr[5]);
+      i->hwaddr[0], i->hwaddr[1], i->hwaddr[2], i->hwaddr[3], i->hwaddr[4], i->hwaddr[5]);
 
   return 0;
 }
@@ -59,9 +59,7 @@ struct net::interface *net::get_interface(const char *name) {
   return interfaces.get(name);
 }
 
-static __inline uint16_t __bswap_16(uint16_t __x) {
-  return __x << 8 | __x >> 8;
-}
+static __inline uint16_t __bswap_16(uint16_t __x) { return __x << 8 | __x >> 8; }
 
 static __inline uint32_t __bswap_32(uint32_t __x) {
   return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24;

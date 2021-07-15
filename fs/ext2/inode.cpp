@@ -639,7 +639,7 @@ struct ext2_vmobject final : public mm::vmobject {
  private:
   // offset -> block
   spinlock m_lock;
-  map<uint32_t, block::buffer *> buffers;
+  ck::map<uint32_t, block::buffer *> buffers;
   fs::inode *m_ino;
   off_t m_off = 0;
 };

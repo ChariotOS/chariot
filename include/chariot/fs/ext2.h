@@ -106,9 +106,7 @@ namespace fs {
 
     bool write_inode(ext2_inode_info &dst, u32 inode);
 
-    inline struct block::buffer *bget(uint32_t block) {
-      return ::bget(*bdev, block);
-    }
+    inline struct block::buffer *bget(uint32_t block) { return ::bget(*bdev, block); }
 
     uint32_t balloc(void);
     void bfree(uint32_t);
@@ -212,7 +210,7 @@ namespace fs {
     // the size of a single disk sector
     long sector_size;
 
-    map<u32, struct fs::inode *> inodes;
+    ck::map<u32, struct fs::inode *> inodes;
 
     // how many entries in the disk cache
     int cache_size;

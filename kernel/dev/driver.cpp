@@ -13,8 +13,8 @@
 #endif
 
 static rwlock drivers_lock;
-static map<major_t, struct dev::driver_info *> drivers;
-static map<string, dev_t> device_names;
+static ck::map<major_t, struct dev::driver_info *> drivers;
+static ck::map<string, dev_t> device_names;
 
 int dev::register_driver(struct dev::driver_info &info) {
   assert(info.major != -1);
@@ -42,7 +42,7 @@ int dev::register_name(struct dev::driver_info &info, string name, minor_t min) 
   drivers_lock.write_lock();
 
   printk(KERN_INFO "register name %s [maj:%d, min:%d] (%d total)\n", name.get(), info.major, min,
-         device_names.size());
+      device_names.size());
 
   device_names.set(name, dev_t(info.major, min));
   drivers_lock.write_unlock();
@@ -116,9 +116,7 @@ ref<fs::file> dev::open(string name) {
 }
 
 static int disk_count = 0;
-string dev::next_disk_name(void) {
-  return string::format("disk%d", disk_count);
-}
+string dev::next_disk_name(void) { return string::format("disk%d", disk_count); }
 
 /**
  * look up a device

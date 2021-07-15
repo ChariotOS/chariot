@@ -225,12 +225,12 @@ struct process final : public refcounted<struct process> {
   wait_queue child_wq;
 
   spinlock file_lock;
-  map<int, ref<fs::file>> open_files;
+  ck::map<int, ref<fs::file>> open_files;
 
 
   spinlock futex_lock;
   wait_queue &futex_queue(int *);
-  map<off_t, unique_ptr<wait_queue>> m_futex_queues;
+  ck::map<off_t, unique_ptr<wait_queue>> m_futex_queues;
 
   /**
    * exec() - execute a command (implementation for startpid())

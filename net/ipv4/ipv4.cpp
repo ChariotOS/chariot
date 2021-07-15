@@ -11,7 +11,7 @@
 #include <sched.h>
 #include <util.h>
 
-static map<uint32_t, net::macaddr> arp_table;
+static ck::map<uint32_t, net::macaddr> arp_table;
 
 uint32_t net::ipv4::parse_ip(const char *name) {
   // TODO: not sure this is the smartest way to do this.

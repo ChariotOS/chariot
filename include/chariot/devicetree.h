@@ -73,7 +73,7 @@ namespace dtb {
        * source:
        * https://devicetree-specification.readthedocs.io/en/v0.2/devicetree-basics.html#sect-property-values
        */
-      map<string, ck::vec<uint8_t>> props;
+      ck::map<string, ck::vec<uint8_t>> props;
 
       ck::vec<struct node *> children;
 

@@ -19,7 +19,7 @@ static void thread_create_callback(void *);
 extern "C" void trapret(void);
 
 static spinlock thread_table_lock;
-static map<pid_t, thread *> thread_table;
+static ck::map<pid_t, thread *> thread_table;
 
 thread::thread(pid_t tid, struct process &proc) : proc(proc) {
   this->tid = tid;

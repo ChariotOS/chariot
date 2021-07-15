@@ -4,7 +4,7 @@
 #include <syscall.h>
 #include <cpu.h>
 
-static map<string, kshell::handler> commands;
+static ck::map<string, kshell::handler> commands;
 
 
 

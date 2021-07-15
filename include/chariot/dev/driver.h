@@ -42,7 +42,7 @@ namespace dev {
     rwlock lock;
 
     // TODO: figure out char devices
-    map<minor_t, fs::blkdev *> block_devices;
+    ck::map<minor_t, fs::blkdev *> block_devices;
 
     // ...
   };

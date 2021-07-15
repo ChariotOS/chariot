@@ -8,7 +8,7 @@
 
 
 static rwlock active_socket_lock;
-static map<uint16_t /* host ordered */, net::udpsock *> active_sockets;
+static ck::map<uint16_t /* host ordered */, net::udpsock *> active_sockets;
 
 #define MIN_EPHEMERAL 49152
 #define MAX_EPHEMERAL 65535

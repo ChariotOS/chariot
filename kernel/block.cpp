@@ -34,7 +34,7 @@ static int block_flush_task(void *) {
 
 static spinlock buffer_cache_lock;
 static uint64_t total_blocks_in_cache = 0;
-static map<uint32_t, map<off_t, block::buffer *>> buffer_cache;
+static ck::map<uint32_t, ck::map<off_t, block::buffer *>> buffer_cache;
 
 
 

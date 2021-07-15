@@ -6,7 +6,7 @@
 #include <printk.h>
 #include <vec.h>
 
-static map<string, string> cmdline_map;
+static ck::map<string, string> cmdline_map;
 
 void kargs::init(uint64_t mbd) {
   mb2::find<struct multiboot_tag_string>(mbd, MULTIBOOT_TAG_TYPE_CMDLINE, [](auto *info) {
@@ -35,6 +35,4 @@ const char *kargs::get(const char *keyp, const char *def) {
 }
 
 
-bool kargs::exists(const char *name) {
-  return cmdline_map.contains(name);
-}
+bool kargs::exists(const char *name) { return cmdline_map.contains(name); }

@@ -28,7 +28,7 @@
 #define HBA_PORT_IPM_ACTIVE 1
 #define HBA_PORT_DET_PRESENT 3
 
-static map<int, struct ahci::disk *> ahci_table;
+static ck::map<int, struct ahci::disk *> ahci_table;
 static spinlock ahci_table_lock;
 
 // register an ahci port to a device minor number
@@ -122,8 +122,7 @@ static void init_device(pci::device *dev) {
 }
 
 
-ahci::disk::disk(struct hba_mem *abar, struct hba_port *port) : abar(abar), port(port) {
-}
+ahci::disk::disk(struct hba_mem *abar, struct hba_port *port) : abar(abar), port(port) {}
 
 volatile struct ahci::hba_cmd_hdr *ahci::disk::get_cmd_hdr(void) {
   u64 clb = port->clb | ((u64)port->clbu << 32);
@@ -151,9 +150,7 @@ void ahci::disk::rebase(void) {
   start_cmd();
 }
 
-bool ahci::disk::read(off_t sector, uint32_t count, void *dst) {
-  return true;
-}
+bool ahci::disk::read(off_t sector, uint32_t count, void *dst) { return true; }
 
 
 void ahci::disk::stop_cmd(void) {
