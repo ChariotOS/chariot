@@ -11,7 +11,7 @@ namespace ui {
   class view;
 
   /* A surface is the base class for window-like objects. */
-  class surface {
+  class surface : public ck::weakable<ui::surface> {
    public:
     surface();
     virtual ~surface(void) {}

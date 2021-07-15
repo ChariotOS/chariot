@@ -114,4 +114,6 @@ namespace ui {
     simple_window(ck::string name, int w, int h, int flags = 0) : window(move(name), w, h, flags) {}
     virtual ck::ref<ui::view> build(void) override { return ui::make<T>(); }
   };
+
+
 };  // namespace ui

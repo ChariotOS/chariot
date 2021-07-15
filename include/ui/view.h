@@ -100,7 +100,7 @@ namespace ui {
    * down the stack to every view element
    */
 
-  class view : public ck::refcounted<ui::view> {
+  class view : public ck::weakable<ui::view> {
     CK_NONCOPYABLE(view);
     CK_MAKE_NONMOVABLE(view);
 

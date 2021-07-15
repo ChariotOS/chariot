@@ -226,6 +226,43 @@ namespace ck {
       }
     }
 
+   protected:
+    refcounted() = default;
+    ~refcounted() {}
+
+    void deref_base() {
+      assert(m_ref_count);
+      __atomic_sub_fetch(&m_ref_count, 1, __ATOMIC_ACQ_REL);
+    }
+
+
+    unsigned int m_ref_count = 1;
+  };
+
+
+
+  template <typename T>
+  class weakable {
+    friend ck::ref<T>;
+
+   public:
+    void ref_retain() {
+      assert(m_ref_count);
+      __atomic_add_fetch(&m_ref_count, 1, __ATOMIC_ACQ_REL);
+    }
+
+    int ref_count() const { return m_ref_count; }
+
+    void ref_release() {
+      deref_base();
+      if (m_ref_count == 0) {
+        call_will_be_destroyed_if_present(static_cast<T*>(this));
+        delete static_cast<T*>(this);
+      } else if (m_ref_count == 1) {
+        call_one_ref_left_if_present(static_cast<T*>(this));
+      }
+    }
+
     // TODO: I'm not sure if this is thread safe or not.
     ck::impl::weak_ref_control_block* weak_ref_control_block() {
       if (m_wcb == NULL) {
@@ -239,8 +276,8 @@ namespace ck {
     }
 
    protected:
-    refcounted() = default;
-    ~refcounted() {
+    weakable() = default;
+    ~weakable() {
       if (m_wcb) {
         // tell the weak_ref control block that the backing pointer was deleted.
         ck::impl::weak_ref_control_block::report_deletion(m_wcb);
@@ -256,8 +293,6 @@ namespace ck {
     unsigned int m_ref_count = 1;
     ck::atom<ck::impl::weak_ref_control_block*> m_wcb = nullptr;
   };
-
-
 
 
   template <typename T>
