@@ -49,21 +49,21 @@ namespace ck {
     ~unique_ptr() noexcept { delete m_ptr; }
     // Disables the copy/ctor and copy assignment operator. We cannot have two
     // copies exist or it'll bypass the RAII concept.
-    unique_ptr(const unique_ptr<T>&) noexcept = delete;
+    unique_ptr(const ck::unique_ptr<T>&) noexcept = delete;
     unique_ptr& operator=(const unique_ptr&) noexcept = delete;
 
     template <typename U>
-    unique_ptr(const unique_ptr<U>&) = delete;
+    unique_ptr(const ck::unique_ptr<U>&) = delete;
 
     template <typename U>
-    unique_ptr& operator=(const unique_ptr<U>&) = delete;
+    unique_ptr& operator=(const ck::unique_ptr<U>&) = delete;
 
    public:
     // Allows move-semantics. While the unique_ptr cannot be copied it can be
     // safely moved.
     unique_ptr(unique_ptr<T>&& move) noexcept { move.swap(*this); }
     // ptr = std::move(resource)
-    unique_ptr<T>& operator=(unique_ptr<T>&& move) noexcept {
+    ck::unique_ptr<T>& operator=(unique_ptr<T>&& move) noexcept {
       move.swap(*this);
       return *this;
     }
@@ -85,7 +85,7 @@ namespace ck {
       return *this;
     }
 
-    unique_ptr<T>& operator=(T* ptr) {
+    ck::unique_ptr<T>& operator=(T* ptr) {
       if (m_ptr != ptr) delete m_ptr;
       m_ptr = ptr;
       return *this;
@@ -129,8 +129,8 @@ namespace ck {
   };
 
   template <typename T, typename... Args>
-  unique_ptr<T> make_unique(Args&&... args) {
-    return unique_ptr<T>(new T(::forward<Args>(args)...));
+  ck::unique_ptr<T> make_unique(Args&&... args) {
+    return ck::unique_ptr<T>(new T(::forward<Args>(args)...));
   }
 
 
@@ -334,9 +334,9 @@ namespace ck {
     ref(nullptr_t) {}
 
     template <typename U>
-    ref(const unique_ptr<U>&) = delete;
+    ref(const ck::unique_ptr<U>&) = delete;
     template <typename U>
-    ref& operator=(const unique_ptr<U>&) = delete;
+    ref& operator=(const ck::unique_ptr<U>&) = delete;
 
     template <typename U>
     void swap(ref<U>& other) {

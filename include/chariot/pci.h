@@ -409,7 +409,7 @@ namespace pci {
   uint32_t read(uint8_t bus, uint8_t dev, uint8_t func, uint8_t off);
   void write(uint8_t bus, uint16_t dev, uint16_t func, uint32_t reg_off, uint32_t value);
 
-  void walk_devices(func<void(device *)>);
+  void walk_devices(ck::func<void(device *)>);
 
   pci::device *find_generic_device(uint16_t class_id, uint16_t subclass_id);
 

@@ -230,7 +230,7 @@ struct process final : public refcounted<struct process> {
 
   spinlock futex_lock;
   wait_queue &futex_queue(int *);
-  ck::map<off_t, unique_ptr<wait_queue>> m_futex_queues;
+  ck::map<off_t, ck::unique_ptr<wait_queue>> m_futex_queues;
 
   /**
    * exec() - execute a command (implementation for startpid())
@@ -487,7 +487,7 @@ namespace sched {
 
     // this takes a lock over the process table while iterating
     // Return false from the callback to stop.
-    void in_pgrp(pid_t pgid, func<bool(struct process &)>);
+    void in_pgrp(pid_t pgid, ck::func<bool(struct process &)>);
 
 
   };  // namespace proc

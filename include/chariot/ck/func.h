@@ -55,6 +55,6 @@ namespace ck {
       CallableType m_callable;
     };
 
-    unique_ptr<CallableWrapperBase> m_callable_wrapper;
+    ck::unique_ptr<CallableWrapperBase> m_callable_wrapper;
   };
 }  // namespace ck

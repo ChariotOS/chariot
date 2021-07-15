@@ -47,7 +47,7 @@ struct xhci_op_regs {
 } __packed;
 
 
-static ck::vec<unique_ptr<xhci>> xhci_devices;
+static ck::vec<ck::unique_ptr<xhci>> xhci_devices;
 
 void xhci_init(void) {
   pci::walk_devices([&](pci::device *dev) {
@@ -55,7 +55,7 @@ void xhci_init(void) {
 
     // All xHCI controllers will have a Class ID of 0x0C and a Sublcass ID of 0x03
     if (dev->class_id == 0x0C && dev->subclass_id == 0x03) {
-      xhci_devices.push(make_unique<xhci>(dev));
+      xhci_devices.push(ck::make_unique<xhci>(dev));
       printk(KERN_DEBUG "\n");
       printk(KERN_DEBUG "\n");
     }

@@ -3,6 +3,4 @@
 
 #include <ck/vec.h>
 
-using namespace ck;
-
 #endif

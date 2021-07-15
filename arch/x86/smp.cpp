@@ -311,7 +311,7 @@ void parse_mp_ioapic(smp::mp::mp_table_entry_ioapic *ent) {}
 void parse_mp_ioint(smp::mp::mp_table_entry_ioint *ent) {}
 void parse_mp_lint(smp::mp::mp_table_entry_lint *ent) {}
 
-static void walk_mp_table(smp::mp::mp_table *table, func<void(u8, void *)> fn) {
+static void walk_mp_table(smp::mp::mp_table *table, ck::func<void(u8, void *)> fn) {
   auto count = table->entry_cnt;
   u8 *mp_entry;
   mp_entry = (u8 *)&table->entries;

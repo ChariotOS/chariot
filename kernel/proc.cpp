@@ -54,7 +54,7 @@ static process::ptr pid_lookup(pid_t pid) {
 
 
 
-void sched::proc::in_pgrp(pid_t pgid, func<bool(struct process &)> cb) {
+void sched::proc::in_pgrp(pid_t pgid, ck::func<bool(struct process &)> cb) {
   scoped_irqlock l(ptable_lock);
   for (auto kv : proc_table) {
     auto proc = kv.value;

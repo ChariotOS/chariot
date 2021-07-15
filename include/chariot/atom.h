@@ -4,4 +4,3 @@
 #include <types.h>
 
 #include <ck/atom.h>
-using namespace ck;

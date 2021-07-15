@@ -60,34 +60,20 @@ rtl8139::rtl8139(pci::device &dev, u8 irq) : m_dev(dev) {
 
   main_dev = this;
   INFO("MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4],
-       mac[5]);
+      mac[5]);
 
 
   irq::install(m_interrupt_line, rtl_irq_handler, "RTL8139 Ethernet Card");
 }
 
-rtl8139::~rtl8139() {
-  free(m_packet_buffer);
-}
+rtl8139::~rtl8139() { free(m_packet_buffer); }
 
-void rtl8139::out8(u16 a, u8 d) {
-  outb(m_io_base + a, d);
-}
-void rtl8139::out16(u16 a, u16 d) {
-  outw(m_io_base + a, d);
-}
-void rtl8139::out32(u16 a, u32 d) {
-  outl(m_io_base + a, d);
-}
-u8 rtl8139::in8(u16 address) {
-  return inb(m_io_base + address);
-}
-u16 rtl8139::in16(u16 address) {
-  return inw(m_io_base + address);
-}
-u32 rtl8139::in32(u16 address) {
-  return inl(m_io_base + address);
-}
+void rtl8139::out8(u16 a, u8 d) { outb(m_io_base + a, d); }
+void rtl8139::out16(u16 a, u16 d) { outw(m_io_base + a, d); }
+void rtl8139::out32(u16 a, u32 d) { outl(m_io_base + a, d); }
+u8 rtl8139::in8(u16 address) { return inb(m_io_base + address); }
+u16 rtl8139::in16(u16 address) { return inw(m_io_base + address); }
+u32 rtl8139::in32(u16 address) { return inl(m_io_base + address); }
 
 void rtl8139::reset(void) {
   m_rx_buffer_offset = 0;
@@ -146,9 +132,9 @@ void rtl8139::handle_irq() {
 
     INFO(".handle_irq status=%#04x\n", status);
 
-    if ((status &
-         (INT_RXOK | INT_RXERR | INT_TXOK | INT_TXERR | INT_RX_BUFFER_OVERFLOW | INT_LINK_CHANGE |
-          INT_RX_FIFO_OVERFLOW | INT_LENGTH_CHANGE | INT_SYSTEM_ERROR)) == 0)
+    if ((status & (INT_RXOK | INT_RXERR | INT_TXOK | INT_TXERR | INT_RX_BUFFER_OVERFLOW |
+                      INT_LINK_CHANGE | INT_RX_FIFO_OVERFLOW | INT_LENGTH_CHANGE |
+                      INT_SYSTEM_ERROR)) == 0)
       break;
 
     if (status & INT_RXOK) {
@@ -259,7 +245,7 @@ void rtl8139::send_raw(const void *data, int length) {
   out32(REG_TXSTATUS0 + (hw_buffer * 4), length);
 }
 
-unique_ptr<rtl8139> d;
+ck::unique_ptr<rtl8139> d;
 void RTL8139_init(void) {
   pci::device *edev = nullptr;
   pci::walk_devices([&](pci::device *dev) {

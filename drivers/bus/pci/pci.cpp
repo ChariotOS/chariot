@@ -152,8 +152,7 @@ bool read_device_descriptor(pci::device *desc, uint8_t bus, uint8_t dev, uint8_t
   return true;
 }
 
-void pci_check_device(uint8_t bus, uint8_t device) {
-}
+void pci_check_device(uint8_t bus, uint8_t device) {}
 
 int pci_device_count = 0;
 pci::device pci_devices[256];
@@ -195,7 +194,7 @@ static void scan_bus(int bus) {
       if (desc->class_id > 0x14) class_name = "Unknown";
 
       KINFO("pci: %03x.%02x.%1x: %04x:%04x  class=%02x,%02x '%s'\n", bus, dev, func,
-            desc->vendor_id, desc->device_id, desc->class_id, desc->subclass_id, class_name);
+          desc->vendor_id, desc->device_id, desc->class_id, desc->subclass_id, class_name);
 
       for (int barnum = 0; barnum < 6; barnum++) {
         struct pci_bar bar = pci_get_bar(bus, dev, func, barnum);
@@ -224,10 +223,10 @@ void pci::init(void) {
       scan_bus(bus);
   }
   KINFO("discovered %d PCI devices in %llu cycles.\n", pci_device_count,
-        arch_read_timestamp() - start);
+      arch_read_timestamp() - start);
 }
 
-void pci::walk_devices(func<void(device *)> fn) {
+void pci::walk_devices(ck::func<void(device *)> fn) {
   for (uint32_t i = 0; i < pci_device_count; i++) {
     fn(&pci_devices[i]);
   }
@@ -244,13 +243,9 @@ pci::device *pci::find_generic_device(uint16_t class_id, uint16_t subclass_id) {
   return NULL;
 }
 
-uint32_t pci::device::get_address(uint32_t off) {
-  return get_pci_addr(bus, dev, func, off);
-}
+uint32_t pci::device::get_address(uint32_t off) { return get_pci_addr(bus, dev, func, off); }
 
-bool pci::device::is_device(uint16_t v, uint16_t d) {
-  return vendor_id == v && device_id == d;
-}
+bool pci::device::is_device(uint16_t v, uint16_t d) { return vendor_id == v && device_id == d; }
 
 void pci::device::enable_bus_mastering(void) {
   // set bus mastering and enable io space

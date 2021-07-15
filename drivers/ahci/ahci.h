@@ -313,5 +313,5 @@ namespace ahci {
   struct ahci::disk *get_disk(int minor);
 
   /* Initialize a SATA disk. impl in sata.cpp */
-  int init_sata(unique_ptr<struct ahci::disk>);
+  int init_sata(ck::unique_ptr<struct ahci::disk>);
 };  // namespace ahci

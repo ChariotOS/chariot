@@ -197,9 +197,7 @@ class virtio_gpu_resource {
 
   int transfer(void);
   int flush(void);
-  inline uint32_t npixels(void) {
-    return width * height;
-  }
+  inline uint32_t npixels(void) { return width * height; }
 
  protected:
   friend class virtio_mmio_gpu;
@@ -249,18 +247,18 @@ class virtio_mmio_gpu : public virtio_mmio_dev, public dev::video_device {
   }
 
   int set_scanout(int pmode_id, uint32_t resource_id, uint32_t width, uint32_t height,
-                  uint32_t x = 0, uint32_t y = 0);
+      uint32_t x = 0, uint32_t y = 0);
 
-  int transfer_to_host_2d(int resource_id, uint32_t width, uint32_t height, uint32_t x = 0,
-                          uint32_t y = 0);
-  int flush_resource(int resource_id, uint32_t width, uint32_t height, uint32_t x = 0,
-                     uint32_t y = 0);
+  int transfer_to_host_2d(
+      int resource_id, uint32_t width, uint32_t height, uint32_t x = 0, uint32_t y = 0);
+  int flush_resource(
+      int resource_id, uint32_t width, uint32_t height, uint32_t x = 0, uint32_t y = 0);
 
   /* CALLER HOLDS LOCK */
   struct virtio_gpu_resp_edid *get_edid();
 
 
-  unique_ptr<virtio_gpu_resource> allocate_resource(uint32_t width, uint32_t height);
+  ck::unique_ptr<virtio_gpu_resource> allocate_resource(uint32_t width, uint32_t height);
 
  public:
   virtio_mmio_gpu(volatile uint32_t *regs);
@@ -279,5 +277,5 @@ class virtio_mmio_gpu : public virtio_mmio_dev, public dev::video_device {
   virtual int get_mode(gvi_video_mode &mode);
   virtual int set_mode(const gvi_video_mode &mode);
   virtual uint32_t *get_framebuffer(void);
-	virtual int flush_fb(void);
+  virtual int flush_fb(void);
 };

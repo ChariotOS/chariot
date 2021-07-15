@@ -55,31 +55,25 @@ class cl_deque {
   class circular_array {
    private:
     long long log_size = 0;
-    atom<T>* segment;
+    ck::atom<T>* segment;
 
    public:
     circular_array(long long sz) {
       log_size = sz;
-      segment = new atom<T>[1 << log_size];
+      segment = new ck::atom<T>[1 << log_size];
     }
 
-    long size() {
-      return 1 << log_size;
-    }
+    long size() { return 1 << log_size; }
 
     /**
      * load a value atomically from the segment
      */
-    T get(long i) {
-      return segment[i % size()].load(memory_order_relaxed);
-    }
+    T get(long i) { return segment[i % size()].load(memory_order_relaxed); }
 
     /**
      * store a value atomically in the segment
      */
-    void put(long long i, T x) {
-      segment[i % size()].store(x, memory_order_relaxed);
-    }
+    void put(long long i, T x) { segment[i % size()].store(x, memory_order_relaxed); }
 
     /**
      * "resize" the deque and return a new circular array pointer
@@ -98,8 +92,8 @@ class cl_deque {
 
 
 
-  atom<circular_array*> buffer;
-  atom<long long> top, bottom;
+  ck::atom<circular_array*> buffer;
+  ck::atom<long long> top, bottom;
 
 
  private:
@@ -118,9 +112,7 @@ class cl_deque {
   }
 
 
-  cl_deque() {
-    init();
-  }
+  cl_deque() { init(); }
 
   ~cl_deque() {
     auto* p = buffer.load(memory_order_relaxed);

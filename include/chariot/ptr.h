@@ -4,9 +4,6 @@
 #include <template_lib.h>
 
 #include <ck/ptr.h>
-using namespace ck;
-
-
 
 
 #endif

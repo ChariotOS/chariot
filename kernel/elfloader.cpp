@@ -41,7 +41,7 @@ bool elf::validate(fs::file &fd, Elf64_Ehdr &ehdr) {
 }
 
 
-int elf::each_symbol(fs::file &fd, func<bool(const char *sym, off_t)> cb) {
+int elf::each_symbol(fs::file &fd, ck::func<bool(const char *sym, off_t)> cb) {
   Elf64_Ehdr ehdr;
 
 

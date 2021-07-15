@@ -211,7 +211,7 @@ static ck::vec<uint32_t> read_blocklist(fs::inode &ino,
 }
 #endif
 
-static int access_block_path(fs::inode &ino, int n, int *path, func<bool(uint32_t &)> cb) {
+static int access_block_path(fs::inode &ino, int n, int *path, ck::func<bool(uint32_t &)> cb) {
   fs::ext2 *efs = static_cast<fs::ext2 *>(&ino.sb);
 
   auto p = ino.priv<fs::ext2_idata>();
@@ -465,7 +465,7 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-static void ext2_traverse_dir(fs::inode &ino, func<void(u32 ino, const char *name)> fn) {
+static void ext2_traverse_dir(fs::inode &ino, ck::func<void(u32 ino, const char *name)> fn) {
   auto *ents = (ext2_dir *)malloc(ino.size);
 
   // read the entire file into the buffer
