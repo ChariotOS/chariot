@@ -17,7 +17,7 @@ mm::page::~page(void) {
   set_pa(0);
 }
 
-ref<mm::page> mm::page::alloc(void) {
+ck::ref<mm::page> mm::page::alloc(void) {
   auto p = make_ref<mm::page>();
   p->set_pa((unsigned long)phys::alloc());
   p->m_users = 0;
@@ -27,7 +27,7 @@ ref<mm::page> mm::page::alloc(void) {
   return move(p);
 }
 
-ref<mm::page> mm::page::create(unsigned long page) {
+ck::ref<mm::page> mm::page::create(unsigned long page) {
   auto p = make_ref<mm::page>();
   p->set_pa((unsigned long)page);
   p->m_users = 0;

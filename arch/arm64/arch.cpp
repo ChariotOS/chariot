@@ -28,20 +28,16 @@ return tf->s0;
   }
 }
 
-void arch_dump_backtrace(void) {
-}
+void arch_dump_backtrace(void) {}
 
 
-extern "C" void context_switch(void) {
-}
+extern "C" void context_switch(void) {}
 
 void arch_disable_ints(void) {
   /* TODO: look into the meaning of this */
   asm("MSR DAIFSET, #2" :::);
 }
-void arch_enable_ints(void) {
-  asm("MSR DAIFCLR, #2" :::);
-}
+void arch_enable_ints(void) { asm("MSR DAIFCLR, #2" :::); }
 
 bool arch_irqs_enabled(void) {
   uint32_t val;
@@ -52,16 +48,12 @@ bool arch_irqs_enabled(void) {
 }
 
 
-void arch_relax(void) {
-}
+void arch_relax(void) {}
 
 /* Simply wait for an interrupt :) */
-void arch_halt() {
-  asm volatile("wfi");
-}
+void arch_halt() { asm volatile("wfi"); }
 
-void arch_mem_init(unsigned long mbd) {
-}
+void arch_mem_init(unsigned long mbd) {}
 
 
 void arch_initialize_trapframe(bool userspace, reg_t *r) {
@@ -71,21 +63,14 @@ void arch_initialize_trapframe(bool userspace, reg_t *r) {
 }
 
 
-unsigned arch_trapframe_size(void) {
-  return sizeof(arm64::regs);
-}
+unsigned arch_trapframe_size(void) { return sizeof(arm64::regs); }
 
 
-void arch_dispatch_function(void *func, long arg) {
-}
-void arch_sigreturn(void) {
-}
-void arch_flush_mmu(void) {
-}
-void arch_save_fpu(struct thread &) {
-}
-void arch_restore_fpu(struct thread &) {
-}
+void arch_dispatch_function(void *func, long arg) {}
+void arch_sigreturn(void) {}
+void arch_flush_mmu(void) {}
+void arch_save_fpu(struct thread &) {}
+void arch_restore_fpu(struct thread &) {}
 
 unsigned long arch_read_timestamp(void) {
   /* TODO figure out about arm's time model */
@@ -100,13 +85,10 @@ unsigned long arch_seconds_since_boot(void) {
 
 
 /* TODO */
-extern "C" void trapret(void) {
-}
+extern "C" void trapret(void) {}
 
 /* TODO */
-ref<mm::pagetable> mm::pagetable::create() {
-  return nullptr;
-}
+ck::ref<mm::pagetable> mm::pagetable::create() { return nullptr; }
 
 /* TODO: */
 static mm::space kspace(0, 0x1000, nullptr);
@@ -121,19 +103,11 @@ mm::space &mm::space::kernel_space(void) {
  * x86. I won't implement them as a form of rebellion against complex
  * instruction sets
  */
-int arch::irq::init(void) {
-  return 0; /* TODO: */
-}
+int arch::irq::init(void) { return 0; /* TODO: */ }
 
-void arch::irq::eoi(int i) {
-  /* TODO */
-}
-void arch::irq::enable(int num) {
-  /* TODO */
-}
-void arch::irq::disable(int num) {
-  /* TODO */
-}
+void arch::irq::eoi(int i) { /* TODO */ }
+void arch::irq::enable(int num) { /* TODO */ }
+void arch::irq::disable(int num) { /* TODO */ }
 
 
 

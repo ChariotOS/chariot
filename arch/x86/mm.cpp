@@ -76,7 +76,7 @@ bool x86::pagetable::switch_to(void) {
   return true;
 }
 
-ref<mm::pagetable> mm::pagetable::create() {
+ck::ref<mm::pagetable> mm::pagetable::create() {
   u64 *pml4 = (u64 *)p2v(phys::alloc(1));
   return make_ref<x86::pagetable>(pml4);
 }

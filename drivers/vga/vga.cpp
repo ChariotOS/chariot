@@ -235,7 +235,7 @@ struct vga_vmobject final : public mm::vmobject {
   virtual ~vga_vmobject(void){};
 
   // get a shared page (page #n in the mapping)
-  virtual ref<mm::page> get_shared(off_t n) override {
+  virtual ck::ref<mm::page> get_shared(off_t n) override {
     auto p = mm::page::create((unsigned long)vga_fba + (n * PGSIZE));
 
 
@@ -248,7 +248,7 @@ struct vga_vmobject final : public mm::vmobject {
 
 
 
-static ref<mm::vmobject> vga_mmap(fs::file &f, size_t npages, int prot, int flags, off_t off) {
+static ck::ref<mm::vmobject> vga_mmap(fs::file &f, size_t npages, int prot, int flags, off_t off) {
   // XXX: this is invalid, should be asserted before here :^)
   if (off != 0) {
     printk(KERN_WARN "vga: attempt to mmap at invalid offset (%d != 0)\n", off);

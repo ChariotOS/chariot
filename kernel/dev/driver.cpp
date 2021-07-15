@@ -93,7 +93,7 @@ struct fs::inode *devicei(struct dev::driver_info &d, string name, minor_t min) 
   return ino;
 }
 
-ref<fs::file> dev::open(string name) {
+ck::ref<fs::file> dev::open(string name) {
   if (device_names.contains(name)) {
     auto dev = device_names.get(name);
     int maj = dev.major();

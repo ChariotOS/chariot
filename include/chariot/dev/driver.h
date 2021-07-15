@@ -61,6 +61,6 @@ namespace dev {
   string next_disk_name(void);
 
   // useful functions for the kernel to access devices by name or maj/min
-  ref<fs::file> open(string name);
+  ck::ref<fs::file> open(string name);
 
 };  // namespace dev

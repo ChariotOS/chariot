@@ -11,7 +11,7 @@ using table_key_t = off_t;
 
 
 struct await_table_entry {
-  ref<fs::file> file;
+  ck::ref<fs::file> file;
   // what are we waiting on?
   short awaiting;
   short event;

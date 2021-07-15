@@ -37,7 +37,7 @@ struct mshare_vmobject final : public mm::vmobject {
 
 
   // get a shared page (page #n in the mapping)
-  virtual ref<mm::page> get_shared(off_t n) override {
+  virtual ck::ref<mm::page> get_shared(off_t n) override {
     // printk("GET %s! (pid=%d, page=%d)\n", this->name.get(), curproc->pid, n);
     scoped_lock l(m_lock);
     while (n >= pages.size()) {
@@ -54,7 +54,7 @@ struct mshare_vmobject final : public mm::vmobject {
  private:
   string name;
   spinlock m_lock;
-  ck::vec<ref<mm::page>> pages;
+  ck::vec<ck::ref<mm::page>> pages;
 };
 
 
@@ -69,7 +69,7 @@ static void *msh_create(struct mshare_create *arg) {
   auto pages = NPAGES(arg->size);
 
   // this should automatically add it to the global list
-  ref<mm::vmobject> obj = make_ref<mshare_vmobject>(name, pages);
+  ck::ref<mm::vmobject> obj = make_ref<mshare_vmobject>(name, pages);
 
 
   auto addr = curproc->mm->mmap(string::format("[msh '%s' (created)]", name.get()), 0,
@@ -96,7 +96,7 @@ static void *msh_acquire(struct mshare_acquire *arg) {
 
 
   // grab the object
-  ref<mm::vmobject> obj = mshare_regions.get(name);
+  ck::ref<mm::vmobject> obj = mshare_regions.get(name);
 
   obj->acquire();
 

@@ -217,7 +217,7 @@ namespace fs {
     int cache_time = 0;
     spinlock cache_lock;
 
-    ref<fs::file> disk;
+    ck::ref<fs::file> disk;
     fs::blkdev *bdev;
 
     spinlock m_lock;

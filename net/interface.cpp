@@ -153,9 +153,9 @@ static void handle_packet(ref<net::pkt_buff> &pbuf) {
 }
 
 struct pending_packet {
-  ref<net::pkt_buff> pbuf;
+  ck::ref<net::pkt_buff> pbuf;
 };
-static chan<ref<net::pkt_buff>> pending_packets;
+static chan<ck::ref<net::pkt_buff>> pending_packets;
 
 
 

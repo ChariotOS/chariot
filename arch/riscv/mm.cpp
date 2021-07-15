@@ -10,9 +10,7 @@
 #define VM_PTE_BITS ~(VM_FLAG_BITS)
 
 /* Return a PHYSICAL address to a page newly allocated page table */
-static rv::pte_t *alloc_page_table() {
-  return (rv::pte_t *)phys::alloc(1);
-}
+static rv::pte_t *alloc_page_table() { return (rv::pte_t *)phys::alloc(1); }
 
 /*
  * Walk the page directory, allocating tables if needed. Returns a pointer to
@@ -54,7 +52,7 @@ rv::pte_t *rv::page_walk(rv::pte_t *tbl, off_t va) {
 
 
 
-ref<mm::pagetable> mm::pagetable::create() {
+ck::ref<mm::pagetable> mm::pagetable::create() {
   auto p = (rv::xsize_t *)p2v(phys::alloc(1));
   return make_ref<rv::pagetable>(p);
 }

@@ -7,7 +7,7 @@ int sys::dirent(int fd, struct dirent *ents, int off, int count) {
       !curproc->mm->validate_pointer(ents, count * sizeof(struct dirent), VALIDATE_WRITE))
     return -1;
 
-  ref<fs::file> file = curproc->get_fd(fd);
+  ck::ref<fs::file> file = curproc->get_fd(fd);
 
   if (file) {
     if (file->ino->type != T_DIR) return -ENOTDIR;

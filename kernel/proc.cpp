@@ -66,7 +66,7 @@ void sched::proc::in_pgrp(pid_t pgid, func<bool(struct process &)> cb) {
 
 static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
   // get a reference, they are nicer to look at.
-  // (and we spend less time in ref<process>::{ref,deref}())
+  // (and we spend less time in ck::ref<process>::{ref,deref}())
   auto &proc = *proc_ptr;
 
 
@@ -247,8 +247,8 @@ pid_t sched::proc::create_kthread(const char *name, int (*func)(void *), void *a
   return tid;
 }
 
-ref<fs::file> process::get_fd(int fd) {
-  ref<fs::file> file;
+ck::ref<fs::file> process::get_fd(int fd) {
+  ck::ref<fs::file> file;
 
   scoped_lock l(file_lock);
   auto it = open_files.find(fd);

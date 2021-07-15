@@ -181,7 +181,7 @@ namespace fs {
 
   struct inode *open(const char *s, u32 flags, u32 opts = 0);
 
-  ref<fs::file> bdev_to_file(fs::blkdev *);
+  ck::ref<fs::file> bdev_to_file(fs::blkdev *);
 
 // memory only
 #define ENT_MEM 0
@@ -248,7 +248,7 @@ namespace fs {
     void (*close)(fs::file &) = NULL;
 
     /* map a file into a vm area */
-    ref<mm::vmobject> (*mmap)(fs::file &, size_t npages, int prot, int flags, off_t off);
+    ck::ref<mm::vmobject> (*mmap)(fs::file &, size_t npages, int prot, int flags, off_t off);
     // resize a file. if size is zero, it is a truncate
     int (*resize)(fs::file &, size_t);
 
@@ -389,7 +389,7 @@ namespace fs {
 
    public:
     // must construct file descriptors via these factory funcs
-    static ref<file> create(
+    static ck::ref<file> create(
         struct fs::inode *, string open_path, int flags = FDIR_READ | FDIR_WRITE);
 
     /*
@@ -455,7 +455,7 @@ namespace block {
 
     void register_write(void);
 
-    ref<mm::page> page(void);
+    ck::ref<mm::page> page(void);
 
     // return the backing page data.
     void *data(void);
@@ -481,7 +481,7 @@ namespace block {
     uint64_t m_count = 0;
     off_t m_index;
     uint64_t m_last_used = 0;
-    ref<mm::page> m_page;
+    ck::ref<mm::page> m_page;
   };
 
 

@@ -40,7 +40,7 @@ pty::~pty(void) {}
 
 
 static spinlock pts_lock;
-static ck::map<int, ref<struct pty>> pts;
+static ck::map<int, ck::ref<struct pty>> pts;
 
 
 static struct fs::file_operations pts_ops = {

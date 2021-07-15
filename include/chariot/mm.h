@@ -56,10 +56,10 @@ namespace mm {
     page(void);
     ~page(void);
 
-    static ref<page> alloc(void);
+    static ck::ref<page> alloc(void);
     // create a page mapping for some physical memory
     // note: this page isn't owned.
-    static ref<page> create(unsigned long pa);
+    static ck::ref<page> create(unsigned long pa);
 
     inline unsigned long pa(void) { return m_paf & ~0xFFF; }
 
@@ -137,7 +137,7 @@ namespace mm {
     friend mm::page;
 
     struct list_head mappings;
-    ref<mm::page> page;
+    ck::ref<mm::page> page;
   };
 
   struct pte {
@@ -162,7 +162,7 @@ namespace mm {
     virtual int del_mapping(off_t va) = 0;
 
     // implemented in arch, returns subclass
-    static ref<pagetable> create();
+    static ck::ref<pagetable> create();
   };
 
   class space;
@@ -188,7 +188,7 @@ namespace mm {
     virtual void drop(void) {}
 
     // get a shared page (page #n in the mapping)
-    virtual ref<mm::page> get_shared(off_t n) = 0;
+    virtual ck::ref<mm::page> get_shared(off_t n) = 0;
     // tell the region to flush a page
     virtual void flush(off_t n) {}
 
@@ -215,13 +215,13 @@ namespace mm {
     spinlock lock;
 
     // TODO: unify shared mappings in the fileriptor somehow
-    ref<fs::file> fd;
+    ck::ref<fs::file> fd;
     ck::vec<mm::page_mapping> mappings;  // backing memory
 
     // optional. If it exists, it is queried for each page
     // This is required if the region is not anonymous. If a region is mapped
     // and it isn't anon but has no obj field, it acts like an anon mapping
-    ref<vmobject> obj = nullptr;
+    ck::ref<vmobject> obj = nullptr;
 
     /* The entry in the rbtree */
     rb_node node;
@@ -236,11 +236,11 @@ namespace mm {
 
   class space {
    public:
-    ref<mm::pagetable> pt;
+    ck::ref<mm::pagetable> pt;
 
     off_t lo, hi;
 
-    space(off_t lo, off_t hi, ref<mm::pagetable>);
+    space(off_t lo, off_t hi, ck::ref<mm::pagetable>);
     ~space(void);
 
 
@@ -252,9 +252,10 @@ namespace mm {
 
     int delete_region(off_t va);
     int pagefault(off_t va, int err);
-    off_t mmap(off_t req, size_t size, int prot, int flags, ref<fs::file>, off_t off);
+    off_t mmap(off_t req, size_t size, int prot, int flags, ck::ref<fs::file>, off_t off);
 
-    off_t mmap(string name, off_t req, size_t size, int prot, int flags, ref<fs::file>, off_t off);
+    off_t mmap(
+        string name, off_t req, size_t size, int prot, int flags, ck::ref<fs::file>, off_t off);
     int unmap(off_t addr, size_t sz);
 
 
@@ -317,9 +318,10 @@ namespace mm {
 
 
     // expects nothing to be locked
-    ref<mm::page> get_page(off_t uaddr);
+    ck::ref<mm::page> get_page(off_t uaddr);
     // expects the area, and space to be locked
-    ref<mm::page> get_page_internal(off_t uaddr, mm::area &area, int pagefault_err, bool do_map);
+    ck::ref<mm::page> get_page_internal(
+        off_t uaddr, mm::area &area, int pagefault_err, bool do_map);
 
     spinlock lock;
     rb_root regions;

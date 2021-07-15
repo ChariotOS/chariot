@@ -620,7 +620,7 @@ struct ext2_vmobject final : public mm::vmobject {
   }
 
   // get a shared page (page #n in the mapping)
-  virtual ref<mm::page> get_shared(off_t n) override {
+  virtual ck::ref<mm::page> get_shared(off_t n) override {
     // printk("get_shared(%d)\n", n);
     auto blk = bget(n);
 
@@ -647,7 +647,7 @@ struct ext2_vmobject final : public mm::vmobject {
 
 
 
-static ref<mm::vmobject> ext2_mmap(fs::file &f, size_t npages, int prot, int flags, off_t off) {
+static ck::ref<mm::vmobject> ext2_mmap(fs::file &f, size_t npages, int prot, int flags, off_t off) {
   // XXX: this is invalid, should be asserted before here :^)
   if (off & 0xFFF) return nullptr;
 

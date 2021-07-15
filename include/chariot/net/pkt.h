@@ -16,14 +16,10 @@ namespace net {
     long length = 0;
     void *buffer = nullptr;  // allocated with physical memory (1 page is enough
    public:
-    static ref<pkt_buff> create(void *data, size_t size);
+    static ck::ref<pkt_buff> create(void *data, size_t size);
 
-    inline void *get(void) {
-      return buffer;
-    }
-    inline long size(void) {
-      return length;
-    }
+    inline void *get(void) { return buffer; }
+    inline long size(void) { return length; }
 
     pkt_buff(void *data, size_t size);
     ~pkt_buff();
@@ -42,28 +38,18 @@ namespace net {
     void *buffer = nullptr;  // allocated with physical memory (1 page is enough
                              // for most MTU things)
    public:
-    inline void *get(void) {
-      return buffer;
-    }
+    inline void *get(void) { return buffer; }
 
     template <typename T>
     inline int append(T &hdr) {
       return append((void *)&hdr, sizeof(T));
     }
     int append(void *data, int len);
-    inline long size(void) {
-      return length;
-    }
+    inline long size(void) { return length; }
 
-    inline auto &u8(void) {
-      return alloc<uint8_t>();
-    }
-    inline auto &u16(void) {
-      return alloc<uint16_t>();
-    }
-    inline auto &u32(void) {
-      return alloc<uint32_t>();
-    }
+    inline auto &u8(void) { return alloc<uint8_t>(); }
+    inline auto &u16(void) { return alloc<uint16_t>(); }
+    inline auto &u32(void) { return alloc<uint32_t>(); }
 
     template <typename T>
     inline T &alloc(void) {

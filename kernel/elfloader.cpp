@@ -123,7 +123,8 @@ int elf::each_symbol(fs::file &fd, func<bool(const char *sym, off_t)> cb) {
   return err;
 }
 
-int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> fd, off_t &entry) {
+int elf::load(
+    const char *path, struct process &p, mm::space &mm, ck::ref<fs::file> fd, off_t &entry) {
   Elf64_Ehdr ehdr;
 
   off_t off = 0;
@@ -134,7 +135,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
   p.executable = fd;
   p.tls_info.exists = false;
   p.file_lock.unlock();
-	p.name = path;
+  p.name = path;
 
   if (!elf::validate(*fd, ehdr)) {
     return -ENOEXEC;
@@ -155,7 +156,7 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
       if (page_end > file_page_end) {
         size_t bss_size = page_end - file_page_end;
         mm.mmap(path, off + file_page_end, bss_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE,
-                nullptr, 0);
+            nullptr, 0);
       }
     }
   };
@@ -227,10 +228,10 @@ int elf::load(const char *path, struct process &p, mm::space &mm, ref<fs::file> 
       if (sec.p_filesz == 0) {
         name += " .bss";
         mm.mmap(name, off + start, round_up(sec.p_memsz, 4096), prot, MAP_ANON | MAP_PRIVATE,
-                nullptr, 0);
+            nullptr, 0);
       } else {
-        mm.mmap(name, off + start, round_up(sec.p_filesz, 4096), prot, MAP_PRIVATE, fd,
-                sec.p_offset);
+        mm.mmap(
+            name, off + start, round_up(sec.p_filesz, 4096), prot, MAP_PRIVATE, fd, sec.p_offset);
         handle_bss(sec, prot);
       }
     }

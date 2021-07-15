@@ -5,20 +5,15 @@
 #include <phys.h>
 
 
-mm::space::space(off_t lo, off_t hi, ref<mm::pagetable> pt) : pt(pt), lo(lo), hi(hi) {
-}
+mm::space::space(off_t lo, off_t hi, ck::ref<mm::pagetable> pt) : pt(pt), lo(lo), hi(hi) {}
 
 
 mm::space::~space(void) {
   mm::area *n, *node;
-  rbtree_postorder_for_each_entry_safe(node, n, &regions, node) {
-    delete node;
-  }
+  rbtree_postorder_for_each_entry_safe(node, n, &regions, node) { delete node; }
 }
 
-void mm::space::switch_to() {
-  pt->switch_to();
-}
+void mm::space::switch_to() { pt->switch_to(); }
 
 
 
@@ -102,9 +97,7 @@ mm::area *mm::space::lookup(off_t va) {
 }
 
 
-int mm::space::delete_region(off_t va) {
-  return -1;
-}
+int mm::space::delete_region(off_t va) { return -1; }
 
 int mm::space::pagefault(off_t va, int err) {
   scoped_lock l(this->lock);
@@ -134,7 +127,7 @@ int mm::space::pagefault(off_t va, int err) {
 
 
 // return the page at an address (allocate if needed)
-ref<mm::page> mm::space::get_page(off_t uaddr) {
+ck::ref<mm::page> mm::space::get_page(off_t uaddr) {
   scoped_lock l(this->lock);
   auto r = lookup(uaddr);
   if (!r) {
@@ -151,7 +144,7 @@ ref<mm::page> mm::space::get_page(off_t uaddr) {
 
 
 
-ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bool do_map) {
+ck::ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bool do_map) {
   struct mm::pte pte;
   pte.prot = r.prot;
 
@@ -162,7 +155,7 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
 
   if (r.mappings[ind].is_null()) {
     bool got_from_vmobj = false;
-    ref<mm::page> page = nullptr;
+    ck::ref<mm::page> page = nullptr;
     if (r.obj) {
       page = r.obj->get_shared(ind);
       got_from_vmobj = true;
@@ -203,7 +196,7 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
         // no need to take the new page's lock here, it's only referenced here.
         if (display)
           printk(KERN_WARN "[pid=%d] COW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(),
-                 uaddr);
+              uaddr);
         memcpy(p2v(np->pa()), p2v(old_page->pa()), PGSIZE);
         r.mappings[ind] = np;
       }
@@ -215,8 +208,8 @@ ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bo
 
   if (do_map) {
     if (display)
-      printk(KERN_WARN "[pid=%d] map %p to %p\n", curproc->pid, uaddr & ~0xFFF,
-             r.mappings[ind]->pa());
+      printk(
+          KERN_WARN "[pid=%d] map %p to %p\n", curproc->pid, uaddr & ~0xFFF, r.mappings[ind]->pa());
     pte.ppn = r.mappings[ind]->pa() >> 12;
     auto va = (r.va + (ind << 12));
     pt->add_mapping(va, pte);
@@ -304,12 +297,13 @@ mm::space *mm::space::fork(void) {
   return n;
 }
 
-off_t mm::space::mmap(off_t req, size_t size, int prot, int flags, ref<fs::file> fd, off_t off) {
+off_t mm::space::mmap(
+    off_t req, size_t size, int prot, int flags, ck::ref<fs::file> fd, off_t off) {
   return mmap("", req, size, prot, flags, move(fd), off);
 }
 
-off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags, ref<fs::file> fd,
-                      off_t off) {
+off_t mm::space::mmap(
+    string name, off_t addr, size_t size, int prot, int flags, ck::ref<fs::file> fd, off_t off) {
   if (addr & 0xFFF) return -1;
 
   if ((flags & (MAP_PRIVATE | MAP_SHARED)) == 0) {
@@ -326,7 +320,7 @@ off_t mm::space::mmap(string name, off_t addr, size_t size, int prot, int flags,
 
   off_t pages = round_up(size, 4096) / 4096;
 
-  ref<mm::vmobject> obj = nullptr;
+  ck::ref<mm::vmobject> obj = nullptr;
 
   // if there is a file descriptor, try to call it's mmap. Otherwise fail
   if (fd) {
@@ -416,9 +410,7 @@ bool mm::space::validate_pointer(void *raw_va, size_t len, int mode) {
   return true;
 }
 
-bool mm::space::validate_string(const char *str) {
-  return validate_null_terminated(str);
-}
+bool mm::space::validate_string(const char *str) { return validate_null_terminated(str); }
 
 int mm::space::schedule_mapping(off_t va, off_t pa, int prot) {
   pending_mappings.push({.va = va, .pa = pa, .prot = prot});

@@ -4,7 +4,8 @@
 #include <errno.h>
 #include <phys.h>
 
-dev::video_device::~video_device() { /* TODO */ }
+dev::video_device::~video_device() { /* TODO */
+}
 
 // default
 int dev::video_device::get_mode(gvi_video_mode &) { return -ENOTIMPL; }
@@ -32,7 +33,7 @@ struct gvi_vmobject final : public mm::vmobject {
 
   virtual ~gvi_vmobject(void){};
 
-  virtual ref<mm::page> get_shared(off_t n) override {
+  virtual ck::ref<mm::page> get_shared(off_t n) override {
     auto fb = (unsigned long)vdev.get_framebuffer();
     if (fb == 0) return nullptr;
     auto p = mm::page::create(fb + (n * PGSIZE));
@@ -43,7 +44,7 @@ struct gvi_vmobject final : public mm::vmobject {
   }
 };
 
-static ref<mm::vmobject> gvi_mmap(fs::file &fd, size_t npages, int prot, int flags, off_t off) {
+static ck::ref<mm::vmobject> gvi_mmap(fs::file &fd, size_t npages, int prot, int flags, off_t off) {
   auto *vdev = get_vdev(fd.ino->minor);
   if (vdev == NULL) return nullptr;
 

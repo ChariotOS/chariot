@@ -140,7 +140,7 @@ struct process_user_info {
  * a process is a group of information that is shared among many tasks
  */
 struct process final : public refcounted<struct process> {
-  using ptr = ref<process>;
+  using ptr = ck::ref<process>;
 
   pid_t pid;   // process id, and pid of the creator task
   pid_t pgid;  // process group id. Normally the same as the pid itself.
@@ -203,7 +203,7 @@ struct process final : public refcounted<struct process> {
   mm::space *mm;
 
 
-  ref<fs::file> executable;
+  ck::ref<fs::file> executable;
 
   struct {
     bool exists = false;
@@ -225,7 +225,7 @@ struct process final : public refcounted<struct process> {
   wait_queue child_wq;
 
   spinlock file_lock;
-  ck::map<int, ref<fs::file>> open_files;
+  ck::map<int, ck::ref<fs::file>> open_files;
 
 
   spinlock futex_lock;
@@ -237,7 +237,7 @@ struct process final : public refcounted<struct process> {
    */
   int exec(string &path, ck::vec<string> &argv, ck::vec<string> &envp);
 
-  ref<fs::file> get_fd(int fd);
+  ck::ref<fs::file> get_fd(int fd);
   int add_fd(ref<fs::file>);
 
   pid_t create_thread(void *ip, int state);

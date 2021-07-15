@@ -211,7 +211,7 @@ namespace block {
   }
 
 
-  ref<mm::page> buffer::page(void) {
+  ck::ref<mm::page> buffer::page(void) {
     // ::data() asserts that the page is there.
     (void)this->data();
     assert(m_page);
