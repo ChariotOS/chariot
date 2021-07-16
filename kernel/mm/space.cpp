@@ -378,7 +378,7 @@ int mm::space::unmap(off_t ptr, size_t ulen) {
     }
   }
 
-  // delete region;
+  delete region;
 
   return 0;
 }

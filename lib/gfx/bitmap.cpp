@@ -23,7 +23,6 @@ void *mshare_acquire(const char *name, size_t size) {
   return (void *)sysbind_mshare(MSHARE_ACQUIRE, &arg);
 }
 
-
 static unsigned long read_timestamp(void) {
 #ifdef CONFIG_X86
   uint32_t lo, hi;
@@ -75,6 +74,7 @@ gfx::shared_bitmap::shared_bitmap(size_t w, size_t h) : m_name(unique_ident()) {
   m_width = w;
   m_pixels = (uint32_t *)mshare_create(shared_name(), size());
   m_original_size = size();
+  m_owned = true;
 }
 
 gfx::shared_bitmap::shared_bitmap(const char *name, uint32_t *pix, size_t w, size_t h)
@@ -83,6 +83,7 @@ gfx::shared_bitmap::shared_bitmap(const char *name, uint32_t *pix, size_t w, siz
   m_width = w;
   m_height = h;
   m_original_size = size();
+  m_owned = true;
 }
 
 ck::ref<gfx::shared_bitmap> gfx::shared_bitmap::get(const char *name, size_t w, size_t h) {

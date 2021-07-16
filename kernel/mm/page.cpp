@@ -7,6 +7,7 @@
 
 mm::page::page(void) {
   fclr(PG_WRTHRU | PG_NOCACHE | PG_DIRTY);
+
   set_pa(0);
 }
 
