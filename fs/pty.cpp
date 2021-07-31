@@ -121,7 +121,7 @@ static ssize_t pts_write(fs::file &f, const char *dst, size_t sz) {
 static ssize_t mx_read(fs::file &f, char *dst, size_t sz) {
   auto pts = getpts(f.pflags);
   DBG("mx_read %dB from %p\n", sz, pts.get());
-  return pts->out.read(dst, sz);
+  return pts->out.read(dst, sz, false /* block? */);
 }
 
 static ssize_t mx_write(fs::file &f, const char *dst, size_t sz) {
