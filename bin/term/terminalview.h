@@ -38,6 +38,27 @@ class terminalview : public ui::view {
   bool m_blink = true;
   ck::ref<ck::timer> cursor_blink_timer;
 
+  static constexpr int DRAW_FPS = 60;
+
+  // the terminal does not draw as chars change, and instead redraws on a timer
+  ck::ref<ck::timer> draw_timer;
+
+  void schedule_draw(void) {
+    // update();
+    // return;
+    if (!draw_timer) {
+      draw_timer = ck::timer::make_interval(1000 / DRAW_FPS, [this] {
+        update();
+        draw_timer->stop();
+      });
+    }
+    if (!draw_timer->running()) {
+      draw_timer->start(1000 / DRAW_FPS, true);
+    }
+  }
+
+
+  int m_chars_written_since_last_frame = 0;
   int m_scroll_offset = 0;
 
   int shell_pid = -1;

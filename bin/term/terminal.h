@@ -4,6 +4,7 @@
 #include <ck/vec.h>
 #include <stdint.h>
 #include <math.h>
+#include <ck/time.h>
 
 
 namespace term {
@@ -120,109 +121,37 @@ namespace term {
 
   class buffer {
    public:
-    buffer(int width, int height) : m_width(width), m_height(height) {
-      m_cells.resize(m_width * m_height);
-    }
+    buffer(int width, int height);
+    ~buffer(void);
 
     int width() const { return m_width; }
     int height() const { return m_height; }
 
-    const term::cell at(int x, int y) const {
-      if (x >= 0 && x < m_width && y >= 0 && y < m_height) {
-        return m_cells[y * m_width + x];
-      }
-      return {U' ', {}, true};
-    }
+    const term::cell at(int x, int y) const;
+    void set(int x, int y, term::cell cell);
 
-    void set(int x, int y, term::cell cell) {
-      if (x >= 0 && x < m_width && y >= 0 && y < m_height) {
-        auto old_cell = m_cells[y * m_width + x];
-
-        if (old_cell.cp != cell.cp || old_cell.attr != cell.attr) {
-          m_cells[y * m_width + x] = cell;
-          m_cells[y * m_width + x].dirty = true;
-        }
-      }
-    }
-
-
-    void undirty(int x, int y) {
-      if (x >= 0 && x < m_width && y >= 0 && y < m_height) {
-        m_cells[y * m_width + x].dirty = false;
-      }
-    }
-
-    void clear(int fromx, int fromy, int tox, int toy, term::attributes attributes) {
-      for (int i = fromx + fromy * m_width; i < tox + toy * m_width; i++) {
-        set(i % m_width, i / m_width, (term::cell){U' ', attributes, true});
-      }
-    }
-
-
-    void clear_all(term::attributes attributes) { clear(0, 0, m_width, m_height, attributes); }
-
-    void clear_line(int line, term::attributes attributes) {
-      if (line >= 0 && line < m_height) {
-        for (int i = 0; i < m_width; i++) {
-          set(i, line, (term::cell){U' ', attributes, true});
-        }
-      }
-    }
-
-
-    void resize(int width, int height) {
-      ck::vec<term::cell> new_buffer;
-      new_buffer.resize(width * height);
-
-      for (int i = 0; i < width * height; i++) {
-        new_buffer[i] = {U' ', {}, true};
-      }
-
-      for (int x = 0; x < MIN(width, m_width); x++) {
-        for (int y = 0; y < MIN(height, m_height); y++) {
-          new_buffer[y * width + x] = at(x, y);
-        }
-      }
-
-      m_cells = new_buffer;
-
-      m_width = width;
-      m_height = height;
-    }
-
-
-
-    void scroll(int how_many_line, term::attributes attributes) {
-      if (how_many_line < 0) {
-        for (int line = 0; line < how_many_line; line++) {
-          for (int i = (width() * height()) - 1; i >= height(); i++) {
-            int x = i % width();
-            int y = i / width();
-
-            set(x, y, at(x, y - 1));
-          }
-
-          clear_line(0, attributes);
-        }
-      } else if (how_many_line > 0) {
-        for (int line = 0; line < how_many_line; line++) {
-          for (int i = 0; i < width() * (height() - 1); i++) {
-            int x = i % width();
-            int y = i / width();
-
-            set(x, y, at(x, y + 1));
-          }
-
-          clear_line(height() - 1, attributes);
-        }
-      }
-    }
+    void undirty(int x, int y);
+    void clear(int fromx, int fromy, int tox, int toy, term::attributes attributes);
+    void clear_all(term::attributes attributes);
+    void clear_line(int line, term::attributes attributes);
+    void resize(int width, int height);
+    void scroll(int how_many_line, term::attributes attributes);
 
 
    private:
+    term::cell *allocate_row(void);
+    void release_row(term::cell *);
+
     int m_width;
     int m_height;
-    ck::vec<term::cell> m_cells;
+
+    // a vector of the rows in this buffer, lazily allocated on ::set().
+    // Each entry is of length m_width.
+    ck::vec<term::cell *> m_rows;
+
+    // when a row is scrolled off the top of the buffer, it goes
+    // here, so future allocations can resuse it.
+    ck::vec<term::cell *> m_preallocated_rows;
   };
 
 
@@ -234,7 +163,7 @@ namespace term {
 
     int sollback() { return m_scrollback; }
 
-    surface(int width, int height) : m_buffer{width, 100} {
+    surface(int width, int height) : m_buffer{width, 1000} {
       m_width = width;
       m_height = height;
     }
@@ -273,6 +202,7 @@ namespace term {
     int m_width;
 
     int m_scrollback = 0;
+
 
     int convert_y(int y) const { return m_buffer.height() - m_height + y; }
   };

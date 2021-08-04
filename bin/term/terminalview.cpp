@@ -56,8 +56,7 @@ static uint32_t terminal_color_theme[term::_COLOR_COUNT] = {
 terminalview::terminalview(void) {
   cursor_blink_timer = ck::timer::make_interval(250, [this]() {
     this->blink();
-    // TODO: optimize :)
-    update();
+    schedule_draw();
   });
   set_font("Source Code Pro");
   set_foreground(terminal_color_theme[term::FOREGROUND]);
@@ -79,6 +78,7 @@ terminalview::terminalview(void) {
     int rc = login_tty(fd);
     pid_t pgid = getpgid(0);
     tcsetpgrp(0, pgid);
+
     printf("rc=%d\n", rc);
     execl("/bin/sh", "/bin/sh", NULL);
   }
@@ -134,8 +134,12 @@ void terminalview::draw_char(gfx::scribe &s, uint32_t cp, int x, int y, uint32_t
 }
 
 void terminalview::paint_event(gfx::scribe &s) {
-  //   ck::time::logger l("oldterminalview::paint_event");
+  // ck::time::logger l("oldterminalview::paint_event");
   handle_resize();
+
+
+  // printf("since last frame: %d\n", m_chars_written_since_last_frame);
+  m_chars_written_since_last_frame = 0;
 
   int cx = m_term->cursor().x;
   int cy = m_term->cursor().y;
@@ -145,19 +149,19 @@ void terminalview::paint_event(gfx::scribe &s) {
     for (int x = 0; x < m_term->width(); x++) {
       auto cell = m_term->surface().at(x, y);
 
-      //   if (cell.dirty) {
-      auto fg = terminal_color_theme[cell.attr.fg];
-      auto bg = terminal_color_theme[cell.attr.bg];
+      if (true || cell.dirty) {
+        auto fg = terminal_color_theme[cell.attr.fg];
+        auto bg = terminal_color_theme[cell.attr.bg];
 
-      if (cx == x && cy == y && m_blink) {
-        uint32_t tmp = fg;
-        fg = bg;
-        bg = tmp;
+        if (cx == x && cy == y && m_blink) {
+          uint32_t tmp = fg;
+          fg = bg;
+          bg = tmp;
+        }
+
+        draw_char(s, cell.cp, x, y, fg, bg);
+        m_term->surface().undirty(x, y);
       }
-
-      draw_char(s, cell.cp, x, y, fg, bg);
-      m_term->surface().undirty(x, y);
-      //   }
     }
   }
 
@@ -167,7 +171,7 @@ void terminalview::paint_event(gfx::scribe &s) {
 
 
 
-void terminalview::mouse_event(ui::mouse_event &ev) { update(); }
+void terminalview::mouse_event(ui::mouse_event &ev) {}
 
 
 void terminalview::handle_read(void) {
@@ -184,12 +188,14 @@ void terminalview::handle_read(void) {
     // printf("read %zd bytes\n", sz);
 
     if (sz > 0) {
-      ck::time::logger l("consume read");
+      // ck::time::logger l("consume read");
       m_term->write(buf, sz);
+      m_chars_written_since_last_frame += sz;
     } else {
       break;
     }
-    update();
+    schedule_draw();
+    // update();
 
     break;
   }
@@ -313,5 +319,6 @@ void terminalview::on_keydown(ui::keydown_event &ev) {
     break;
   }
 
-  update();
+  schedule_draw();
+  // update();
 }

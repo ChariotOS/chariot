@@ -3,6 +3,169 @@
 
 
 
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+term::buffer::buffer(int width, int height) : m_width(width), m_height(height) {
+  m_rows.resize(m_height);
+  for (int i = 0; i < m_height; i++) {
+    m_rows[i] = {};
+  }
+  // m_cells.resize(m_width * m_height);
+}
+
+
+term::buffer::~buffer(void) {}
+
+const term::cell term::buffer::at(int x, int y) const {
+  if (x >= 0 && x < m_width && y >= 0 && y < m_height) {
+    if (m_rows[y] != NULL) {
+      return m_rows[y][x];
+    }
+    // return m_cells[y * m_width + x];
+  }
+  return {U' ', {}, true};
+}
+
+void term::buffer::set(int x, int y, term::cell cell) {
+  if (x >= 0 && x < m_width && y >= 0 && y < m_height) {
+    if (m_rows[y] == NULL) {
+      // allocate the row
+      m_rows[y] = new term::cell[m_width];
+    }
+
+    term::cell old_cell = m_rows[y][x];  // m_cells[y * m_width + x];
+
+    if (old_cell.cp != cell.cp || old_cell.attr != cell.attr) {
+      m_rows[y][x] = cell;
+      m_rows[y][x].dirty = true;
+    }
+  }
+}
+
+
+void term::buffer::undirty(int x, int y) {
+  if (x >= 0 && x < m_width && y >= 0 && y < m_height) {
+    if (m_rows[y] == NULL) {
+      m_rows[y] = allocate_row();
+    }
+    m_rows[y][x].dirty = false;
+  }
+}
+
+void term::buffer::clear(int fromx, int fromy, int tox, int toy, term::attributes attributes) {
+  for (int i = fromx + fromy * m_width; i < tox + toy * m_width; i++) {
+    set(i % m_width, i / m_width, (term::cell){U' ', attributes, true});
+  }
+}
+
+
+void term::buffer::clear_all(term::attributes attributes) {
+  clear(0, 0, m_width, m_height, attributes);
+}
+
+void term::buffer::clear_line(int line, term::attributes attributes) {
+  if (line >= 0 && line < m_height) {
+    for (int i = 0; i < m_width; i++) {
+      set(i, line, (term::cell){U' ', attributes, true});
+    }
+  }
+}
+
+void term::buffer::resize(int width, int height) {
+  // make a new buffer to replace the old one
+  decltype(m_rows) new_buffer;
+  new_buffer.resize(width * height);
+
+  if (width != m_width) {
+    while (!m_preallocated_rows.is_empty()) {
+      delete allocate_row();
+    }
+  }
+
+  // TODO: use realloc :)
+  for (int row = 0; row < MIN(height, m_height); row++) {
+    if (m_rows[row] != NULL) {
+      new_buffer[row] = allocate_row();
+      for (int col = 0; col < MIN(width, m_width); col++) {
+        new_buffer[row][col] = m_rows[row][col];
+      }
+      // delete the old row backing storage
+      if (width != m_width) {
+        delete m_rows[row];
+      } else {
+        release_row(m_rows[row]);
+      }
+      m_rows[row] = NULL;
+    }
+  }
+
+  m_rows = move(new_buffer);
+
+  m_width = width;
+  m_height = height;
+}
+
+
+
+void term::buffer::scroll(int how_many_line, term::attributes attributes) {
+  if (how_many_line < 0) {
+    // move cells down
+    // TODO: heavily optimize this lol
+    for (int line = 0; line < how_many_line; line++) {
+      for (int i = (width() * height()) - 1; i >= height(); i++) {
+        int x = i % width();
+        int y = i / width();
+        // move the cell down a line
+        set(x, y, at(x, y - 1));
+      }
+
+      clear_line(0, attributes);
+    }
+  } else if (how_many_line > 0) {
+    // move cells up
+
+    // delete the top lines
+    for (int line = 0; line < how_many_line; line++) {
+      release_row(m_rows[line]);
+      m_rows[line] = NULL;
+    }
+
+    for (int row = how_many_line; row < m_height - how_many_line; row++) {
+      m_rows[row] = m_rows[row + how_many_line];
+      m_rows[row + how_many_line] = NULL;
+    }
+  }
+}
+
+
+term::cell *term::buffer::allocate_row(void) {
+  return new term::cell[m_width];
+
+  printf("%d\n", m_preallocated_rows.size());
+  if (m_preallocated_rows.is_empty()) {
+    return new term::cell[m_width];
+  }
+
+  int last = m_preallocated_rows.size() - 1;
+  auto *row = m_preallocated_rows[last];
+  m_preallocated_rows.remove(last);
+
+  return row;
+}
+
+void term::buffer::release_row(term::cell *row) {
+  delete row;
+  return;
+  m_preallocated_rows.push(row);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+
 term::terminal::terminal(int width, int height) : m_surface(width, height) {
   for (auto &p : m_parameters) {
     p.empty = true;
@@ -59,17 +222,27 @@ void term::terminal::backspace() { cursor_move(-1, 0); }
 
 
 void term::terminal::append(uint32_t codepoint) {
-  if (codepoint == U'\n') {
-    new_line();
-  } else if (codepoint == U'\r') {
-    cursor_move(-m_cursor.x, 0);
-  } else if (codepoint == U'\t') {
-    cursor_move(8 - (m_cursor.x % 8), 0);
-  } else if (codepoint == U'\b') {
-    backspace();
-  } else {
-    m_surface.set(m_cursor.x, m_cursor.y, {codepoint, m_attributes, true});
-    cursor_move(1, 0);
+  switch (codepoint) {
+    case U'\n':
+      new_line();
+      break;
+
+    case U'\r':
+      cursor_move(-m_cursor.x, 0);
+      break;
+
+    case U'\t':
+      cursor_move(8 - (m_cursor.x % 8), 0);
+      break;
+
+    case U'\b':
+      backspace();
+      break;
+
+    default:
+      m_surface.set(m_cursor.x, m_cursor.y, {codepoint, m_attributes, true});
+      cursor_move(1, 0);
+      break;
   }
 }
 
@@ -233,7 +406,11 @@ void term::terminal::do_ansi(uint32_t codepoint) {
 void term::terminal::write(uint32_t codepoint) {
   switch (m_state) {
     case State::WAIT_ESC:
-      if (codepoint == U'\e') {
+      // common case
+      if (codepoint != U'\e') {
+        m_state = State::WAIT_ESC;
+        append(codepoint);
+      } else {
         for (auto &p : m_parameters) {
           p.empty = true;
           p.value = 0;
@@ -242,9 +419,6 @@ void term::terminal::write(uint32_t codepoint) {
         m_parameters_top = 0;
 
         m_state = State::EXPECT_BRACKET;
-      } else {
-        m_state = State::WAIT_ESC;
-        append(codepoint);
       }
       break;
 

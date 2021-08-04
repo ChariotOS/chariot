@@ -49,11 +49,8 @@ ck::string tty::name(void) { return ck::string::format("/dev/pts%d", index); }
 int tty::ioctl(unsigned int cmd, off_t arg) {
   if (cmd == TIOCSPGRP) {
     fg_proc = arg;
-    // printk(KERN_INFO "Setting PTY group to %d", fg_proc);
+    printk(KERN_INFO "[tty %s] Setting PTY group to %d", name().get(), fg_proc);
     return 0;
-  }
-  if (cmd == TIOCSPGRP) {
-    return TIOCSPGRP;
   }
 
   if (cmd == TIOISATTY) return TIOISATTY_RET;
@@ -121,7 +118,8 @@ void tty::handle_input(char c) {
       if (fg_proc) {
         sched::proc::send_signal(-fg_proc, sig);
       } else {
-        printk("[tty] would send signal %d but has no group\n", sig);
+        printk("[tty %s] would send signal %d but has no group. Currently %d\n", name().get(), sig,
+            fg_proc);
       }
       return;
     }

@@ -66,7 +66,7 @@ static int allocate_pts() {
     // if there isn't a pts at this location, allocate one
     if (!pts.contains(i)) {
       pts[i] = new pty();
-
+      pts[i]->index = 0;
       dev::register_name(pts_driver, ck::string::format("vtty%d", i), i);
       break;
     } else {
