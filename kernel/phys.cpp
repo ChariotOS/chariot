@@ -8,6 +8,9 @@
 #include <printk.h>
 #include <time.h>
 #include <types.h>
+#include <syscall.h>
+
+
 
 // #define PHYS_DEBUG
 
@@ -21,12 +24,8 @@ struct frame {
   struct frame *next;
   u64 page_len;
 
-  inline struct frame *getnext(void) {
-    return (frame *)p2v(next);
-  }
-  inline void setnext(frame *f) {
-    next = (frame *)v2p(f);
-  }
+  inline struct frame *getnext(void) { return (frame *)p2v(next); }
+  inline void setnext(frame *f) { next = (frame *)v2p(f); }
 };
 
 static spinlock phys_lck;
@@ -38,17 +37,27 @@ static struct {
   uint64_t max_free; /* The maximum free memory we've seen */
 } kmem;
 
-u64 phys::nfree(void) {
-  return kmem.nfree;
+u64 phys::nfree(void) { return kmem.nfree; }
+
+u64 phys::bytes_free(void) { return nfree() << 12; }
+
+
+int sys::getraminfo(unsigned long long *avail, unsigned long long *total) {
+  if (!VALIDATE_WR(avail, sizeof(*avail))) return -EFAULT;
+  if (!VALIDATE_WR(total, sizeof(*total))) return -EFAULT;
+  // write to the location to cause a pagefault if it isnt mapped.
+  (void)(*avail = 0);
+  (void)(*total = 0);
+
+
+  scoped_irqlock l(phys_lck);
+  *avail = kmem.nfree << 12;
+  *total = kmem.max_free << 12;
+  return 0;
 }
 
-u64 phys::bytes_free(void) {
-  return nfree() << 12;
-}
 
-static frame *working_addr(frame *fr) {
-  return (frame *)p2v(fr);
-}
+static frame *working_addr(frame *fr) { return (frame *)p2v(fr); }
 
 
 static void *late_phys_alloc(size_t npages) {
@@ -56,6 +65,9 @@ static void *late_phys_alloc(size_t npages) {
   frame *c = (frame *)p2v(kmem.freelist);
 
   if (v2p(c) == NULL) panic("OOM!\n");
+
+  // printk_nolock("phys::alloc - remaining = %lld\n", kmem.nfree);
+
 
   while (v2p(c) != NULL) {
     if (c->page_len >= npages) break;

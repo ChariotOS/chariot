@@ -425,3 +425,12 @@ ret = 'int'
 args = [
 	'opts: struct mountopts *'
 ]
+
+
+# TODO: don't use this. Instead implement procfs :)
+[sc.getraminfo]
+ret = 'int'
+args = [
+	'avail: unsigned long long *',
+	'total: unsigned long long *'
+]

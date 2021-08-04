@@ -961,7 +961,8 @@ void sched::proc::dump_table(void) {
       ST(UNINTERRUPTIBLE);
       ST(ZOMBIE);
 #undef ST
-      pprintk("  process %d, thread %d: %s\n", proc->pid, t->tid, state);
+      pprintk("  process %d, thread %d: %s, %llu\n", proc->pid, t->tid, state,
+          proc->mm->memory_usage());
     }
   }
 
