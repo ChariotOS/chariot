@@ -85,7 +85,7 @@ namespace gfx {
 
 
     inline __attribute__((always_inline)) color_t rgb(
-        unsigned char r, unsigned char b, unsigned char g) {
+        unsigned char r, unsigned char g, unsigned char b) {
       return r << 16 | g << 8 | b;
     }
 

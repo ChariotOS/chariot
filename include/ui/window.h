@@ -23,6 +23,12 @@ namespace ui {
     ck::ref<gfx::font> m_frame_font;
     ck::ref<gfx::font> m_icon_font;
 
+    bool is_moving = false;
+    bool is_resizing = false;
+
+    int resize_hdir = 0;
+    int resize_vdir = 0;
+
    public:
     void set_theme(uint32_t bg, uint32_t fg, uint32_t border);
     static constexpr int TITLE_HEIGHT = 24;

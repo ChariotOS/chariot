@@ -4,9 +4,9 @@
 #include <sys/sysbind.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <ck/time.h>
 
-
-#define N 128
+#define N 256
 #define SCALE 3
 
 #define TICKS 60
@@ -133,10 +133,10 @@ class fluidsim : public ui::view {
   int mx = 0, my = 0;
 
  public:
-  fluidsim(float dt, float diffusion, float viscocity) : dt(dt), diff(diffusion), visc(viscocity) {
-    set_flex_grow(1);
+  fluidsim() : dt(0.2), diff(0), visc(0.0000000001) {
     m_font = gfx::font::get_default();
     tick_timer = ck::timer::make_interval(1000 / TICKS, [this] {
+    // ck::time::logger l("fluidsim tick");
 #if 1
       float dx = cos(T) * 10;
       float dy = sin(T) * 10;
@@ -145,12 +145,10 @@ class fluidsim : public ui::view {
       add_density(N / 2, N / 2, 10);
 #endif
       this->step();
-      repaint();
     });
   }
 
-  ~fluidsim(void) {
-  }
+  ~fluidsim(void) {}
 
 
   void set_bnd(int b, float* x) {
@@ -176,7 +174,7 @@ class fluidsim : public ui::view {
       for (int j = 1; j < N - 1; j++) {
         for (int i = 1; i < N - 1; i++) {
           x[IX(i, j)] = (x0[IX(i, j)] + a * (x[IX(i + 1, j)] + x[IX(i - 1, j)] + x[IX(i, j + 1)] +
-                                             x[IX(i, j - 1)])) *
+                                                x[IX(i, j - 1)])) *
                         cRecip;
         }
       }
@@ -193,7 +191,7 @@ class fluidsim : public ui::view {
     for (int j = 1; j < N - 1; j++) {
       for (int i = 1; i < N - 1; i++) {
         div[IX(i, j)] = (-0.5 * (velocX[IX(i + 1, j)] - velocX[IX(i - 1, j)] +
-                                 velocY[IX(i, j + 1)] - velocY[IX(i, j - 1)])) /
+                                    velocY[IX(i, j + 1)] - velocY[IX(i, j - 1)])) /
                         N;
         p[IX(i, j)] = 0;
       }
@@ -275,6 +273,8 @@ class fluidsim : public ui::view {
     project(Vx, Vy, Vx0, Vy0, 4);
     diffuse(0, s, density, diff, dt, 4);
     advect(0, density, s, Vx, Vy, dt);
+
+    update();
   }
 
   void add_density(int x, int y, float amt) {
@@ -292,13 +292,12 @@ class fluidsim : public ui::view {
     Vy[IX(x, y)] += dy;
   }
 
-  virtual void paint_event(void) override {
-    auto scribe = get_scribe();
+  virtual void paint_event(gfx::scribe& scribe) override {
     bool is_running = tick_timer->running();
 
     scribe.clear(0x000000);
     // draw all the cells
-#if 0
+#if 1
     for (int y = 0; y < N; y++) {
       for (int x = 0; x < N; x++) {
         float d = density[IX(x, y)];
@@ -321,6 +320,8 @@ class fluidsim : public ui::view {
     }
 #endif
 
+
+#if 0
     // draw vector lines
     for (int y = 0; y < N; y++) {
       for (int x = 0; x < N; x++) {
@@ -328,10 +329,7 @@ class fluidsim : public ui::view {
         float vy = Vy[IX(x, y)] * 10.0;
 
         gfx::point root(x * SCALE + SCALE / 2, y * SCALE + SCALE / 2);
-
-
         float d = sqrt(vx * vx + vy * vy);  // density[IX(x, y)];
-
         int h = d * 255;
         h %= 255;
 
@@ -345,6 +343,12 @@ class fluidsim : public ui::view {
         scribe.draw_line_antialias(root, root.translated(vx * SCALE, vy * SCALE), color);
       }
     }
+#endif
+
+    scribe.stackblur(SCALE, rect());
+    // scribe.noise(0.05, rect());
+
+
 
     if (mx >= 0 && mx < N) {
       if (my >= 0 && my < N) {
@@ -356,7 +360,7 @@ class fluidsim : public ui::view {
           char buf[64];
           snprintf(buf, sizeof(buf), "%3d,%3d: d:%g, v:%g,%g", mx, my, d, vx, vy);
           scribe.draw_text(*m_font, gfx::rect(0, 0, width(), 12), buf, ui::TextAlign::CenterLeft,
-                           0xFFFFFF, true);
+              0xFFFFFF, true);
         });
       }
     }
@@ -388,13 +392,10 @@ class fluidsim : public ui::view {
 
 
 int main() {
-  // connect to the window server
   ui::application app;
 
-  ui::window* win = app.new_window("Fluid Simulation", N * SCALE, N * SCALE);
-  win->compositor_sync(true);
-  win->set_theme(0x000000, 0xFFFFFF, 0x000000);
-  win->set_view<fluidsim>(0.2, 0, 0.0000000001);
+  auto win = ui::simple_window<fluidsim>("Fluid Simluation", N * SCALE, N * SCALE);
+  win.set_double_buffer(true);
 
   // start the application!
   app.start();

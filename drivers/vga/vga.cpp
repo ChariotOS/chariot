@@ -239,7 +239,7 @@ struct vga_vmobject final : public mm::vmobject {
     auto p = mm::page::create((unsigned long)vga_fba + (n * PGSIZE));
 
 
-    p->fset(PG_NOCACHE | PG_WRTHRU);
+    // p->fset(PG_NOCACHE | PG_WRTHRU);
 
     return p;
   }

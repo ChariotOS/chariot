@@ -91,6 +91,7 @@ long yoff = 0;
 long delta = 10;
 const gfx::point &lumen::screen::handle_mouse_input(struct mouse_packet &pkt) {
   if (pkt.is_relative) {
+    printf("%d, %d\n", pkt.x, pkt.y);
     mouse_pos.set_x(mouse_pos.x() + pkt.x);
     mouse_pos.set_y(mouse_pos.y() + pkt.y);
   } else {

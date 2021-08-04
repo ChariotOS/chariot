@@ -32,8 +32,8 @@ ck::buffer::~buffer(void) {
 
 
 
-extern "C" int vfctprintf(void (*out)(char character, void *arg), void *arg, const char *format,
-                          va_list va);
+extern "C" int vfctprintf(
+    void (*out)(char character, void *arg), void *arg, const char *format, va_list va);
 
 
 static void ck_file_writef_callback(char c, void *arg) {
@@ -60,9 +60,7 @@ ck::unique_ptr<ck::file::mapping> ck::file::mmap(off_t off, size_t size) {
   return ck::unique_ptr(new ck::file::mapping(mem, size));
 }
 
-ck::file::mapping::~mapping(void) {
-  ::munmap(mem, len);
-}
+ck::file::mapping::~mapping(void) { ::munmap(mem, len); }
 
 ssize_t ck::file::read(void *buf, size_t sz) {
   if (eof()) return 0;
@@ -123,9 +121,7 @@ ssize_t ck::file::tell(void) {
   return lseek(m_fd, 0, SEEK_CUR);
 }
 
-int ck::file::seek(long offset, int whence) {
-  return lseek(m_fd, offset, whence);
-}
+int ck::file::seek(long offset, int whence) { return lseek(m_fd, offset, whence); }
 
 int ck::file::stat(struct stat &s) {
   if (m_fd == -1) return -1;
@@ -184,9 +180,7 @@ static int string_to_mode(const char *mode) {
 }
 
 
-ck::file::file(void) {
-  m_fd = -1;
-}
+ck::file::file(void) { m_fd = -1; }
 
 ck::file::file(ck::string path, const char *mode) {
   m_fd = -1;
@@ -198,12 +192,14 @@ ck::file::file(ck::string path, const char *mode) {
 bool ck::file::open(ck::string path, const char *mode) {
   int fmode = string_to_mode(mode);
   if (fmode == -1) {
-    fprintf(::stderr, "[ck::file::open] '%s' is an invalid mode\n", mode);
+    fprintf(::stderr, "[ck::file::open] '%d' is an invalid mode\n", fmode);
     notifier.set_active(false);
     return false;
   }
+  return open(path, fmode);
+}
 
-
+bool ck::file::open(ck::string path, int fmode) {
   int new_fd = ::open(path.get(), fmode);
 
   if (new_fd < 0) {
@@ -258,14 +254,10 @@ void ck::file::update_notifier(void) {
 
 
 
-void ck::hexdump(void *buf, size_t sz, int grouping) {
-  debug_hexdump_grouped(buf, sz, grouping);
-}
+void ck::hexdump(void *buf, size_t sz, int grouping) { debug_hexdump_grouped(buf, sz, grouping); }
 
 
-void ck::hexdump(const ck::buffer &buf) {
-  debug_hexdump(buf.get(), buf.size());
-}
+void ck::hexdump(const ck::buffer &buf) { debug_hexdump(buf.get(), buf.size()); }
 
 
 
@@ -284,8 +276,7 @@ ck::socket::socket(int fd, int domain, int type, int protocol) : ck::file(fd) {
 
 
 ck::socket::socket(int domain, int type, int protocol)
-    : ck::socket(::socket(domain, type, 0), domain, type, 0) {
-}
+    : ck::socket(::socket(domain, type, 0), domain, type, 0) {}
 
 
 ck::socket::~socket(void) {

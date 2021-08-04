@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdio.h>
+#include <unistd.h>
 
 namespace ck {
   namespace time {
@@ -21,9 +23,18 @@ namespace ck {
       inline auto start_ms(void) { return start_us() / 1000; }
       inline auto start_sec(void) { return start_ms() / 1000; }
 
+     private:
+      uint64_t m_start_us = 0;
+    };
 
+
+    class logger : public tracker {
+     public:
+      inline logger(const char *msg) : msg(msg) { restart(); }
+      ~logger() { printf("[%d] '%s' took %llu us\n", getpid(), msg, us()); }
 
      private:
+      const char *msg = "unknown";
       uint64_t m_start_us = 0;
     };
 

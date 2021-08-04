@@ -4,13 +4,14 @@
 #include <sys/sysbind.h>
 #include <unistd.h>
 #include "doomkeys.h"
+#include "ui/textalign.h"
 
 #include <gfx/font.h>
 #include <ui/application.h>
 #include <ui/view.h>
 #include <ui/boxlayout.h>
 #include <ck/timer.h>
-
+#include <ck/time.h>
 
 extern "C" {
 #include "doomgeneric.h"
@@ -20,7 +21,7 @@ extern "C" {
 class doomview;
 
 
-#define SCALE 1
+#define SCALE 2
 
 class doom_window : public ui::window {
  public:
@@ -109,16 +110,59 @@ static void addKeyToQueue(int code, char c, bool pressed) {
 class doomview : public ui::view {
   long frames = 0;
   long start_time = current_us();
-  ck::ref<ck::timer> wew;
   float v = 0.0;
 
+  float scale = 1.0;
+
  public:
-  doomview() { main_widget = this; }
+  doomview() {
+    main_widget = this;
+    set_font("Source Code Pro");
+  }
+
+
+  virtual void mouse_event(ui::mouse_event& ev) override {
+    if (ev.ds != 0) {
+      scale *= 1.0 + (ev.ds * 0.01);
+      scale = fmax(0.1, scale);
+      surface()->resize((DOOMGENERIC_RESX * SCALE) * scale, (DOOMGENERIC_RESY * SCALE) * scale);
+    }
+  }
 
 
   virtual void paint_event(gfx::scribe& s) override {
     gfx::bitmap b(DOOMGENERIC_RESX, DOOMGENERIC_RESY, DG_ScreenBuffer);
-    s.blit_scaled(b, gfx::rect(0, 0, width(), height()));
+
+
+    auto font = get_font();
+    assert(font);
+
+    font->with_line_height(16, [&] {
+      unsigned long long nfree;
+      unsigned long long total;
+
+      gfx::scribe s = gfx::scribe(b);
+
+      sysbind_getraminfo(&nfree, &total);
+      auto label = ck::string::format(
+          "Memory: %3.4f%% 0x%012x", ((float)nfree / (float)total) * 100.0f, nfree);
+      gfx::rect r = rect();
+      s.draw_text(*font, r, label, ui::TextAlign::TopLeft, 0xFFFFFF, true);
+    });
+
+
+
+    gfx::rect r = gfx::rect(0, 0, width(), height());
+    {
+      // ck::time::logger l("doom blit and effect");
+
+      s.blit_scaled(b, r);
+
+      // s.saturation(sin(ck::time::ms() / 1000.0), r);
+      // s.sepia((sin(ck::time::ms() / 1000.0) + 1) / 2.0, r);
+      // s.stackblur(10, r);
+      // s.noise(0.05, r);
+    }
   }
 
   virtual void on_keydown(ui::keydown_event& ev) override { addKeyToQueue(ev.code, ev.c, true); }

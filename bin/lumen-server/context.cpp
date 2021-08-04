@@ -61,9 +61,6 @@ lumen::context::context(void) : screen(CONFIG_FRAMEBUFFER_WIDTH, CONFIG_FRAMEBUF
         if (errno == EAGAIN) break;
         handle_mouse_input(pkt);
       }
-
-      // get lower latencies
-      // this->compose();
     });
   }
 
@@ -81,15 +78,21 @@ lumen::context::context(void) : screen(CONFIG_FRAMEBUFFER_WIDTH, CONFIG_FRAMEBUF
     int h = screen.height();
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
-        uint32_t c = rand();
-
-        int n = ((x - (w / 2)) * (w / 4));
-        int m = (y - (h / 2));
-        if (m != 0 && n % m) c = 0;
-        wallpaper->set_pixel(x, y, c);
+        wallpaper->set_pixel(x, y, 0x333333);
       }
     }
   }
+
+
+  if constexpr (0) {
+    ck::time::logger l("wallpaper filters");
+    gfx::scribe s(*wallpaper);
+    // s.saturation(0.2P5, wallpaper->rect());
+    s.stackblur(5, wallpaper->rect());
+    s.noise(0.05, wallpaper->rect());
+  }
+
+
 
   server.listen("/usr/servers/lumen", [this] { accept_connection(); });
 
@@ -97,6 +100,7 @@ lumen::context::context(void) : screen(CONFIG_FRAMEBUFFER_WIDTH, CONFIG_FRAMEBUF
   invalidate(screen.bounds());
 
   spawn("ct");
+  spawn("term");
   // spawn("doom");
 }
 
@@ -631,6 +635,8 @@ void lumen::context::compose(void) {
     }
   }
 
+
+
   if (draw_mouse) screen.draw_mouse();
 
   if (!screen.hardware_double_buffered()) {
@@ -651,6 +657,8 @@ void lumen::context::compose(void) {
         to_ptr += sw;
       }
     }
+
+
   } else {
     screen.flush_fb();
   }

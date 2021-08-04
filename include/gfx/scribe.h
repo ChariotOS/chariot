@@ -100,6 +100,9 @@ namespace gfx {
 
 
     void stackblur(int radius, const gfx::rect &area);
+    void noise(float opacity, const gfx::rect &area);
+    void saturation(float value, const gfx::rect &area);
+    void sepia(float value, const gfx::rect &area);
 
     // draw a pixel, offset in the state and within the clip rect
     inline void draw_pixel(int x, int y, uint32_t color) {

@@ -15,6 +15,7 @@ include_directories(
 	../toolchain/src/gcc-${CONFIG_GCC_VERSION}/libstdc++-v3/libsupc++
 
 	../include
+
 )
 
 MACRO(SUBDIRLIST result curdir)

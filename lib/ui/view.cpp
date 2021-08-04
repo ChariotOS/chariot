@@ -112,7 +112,7 @@ void ui::view::dispatch_mouse_event(ui::mouse_event &event) {
     }
   });
 
-  if (!sent_to_child) {
+  if (!sent_to_child || get_mouse_captured()) {
     this->mouse_event(ev);
   }
 }

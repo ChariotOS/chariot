@@ -331,6 +331,9 @@ namespace ui {
 
     auto &children(void) { return m_children; }
 
+    bool get_mouse_captured(void) const { return m_mouse_captured; }
+    void set_mouse_captured(bool b) { m_mouse_captured = b; }
+
    protected:
     friend ui::surface;
     friend ui::window;
@@ -355,6 +358,9 @@ namespace ui {
     bool m_enabled = true;
     // can this view shrink to fit within the parent's layout?
     bool m_shrink_to_fit = false;
+
+    // always get mouse events
+    bool m_mouse_captured = false;
 
     ck::ref<ui::layout> m_layout;
 

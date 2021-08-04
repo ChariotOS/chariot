@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <ck/time.h>
 
 #include <ui/application.h>
 
@@ -55,6 +56,7 @@ static unsigned long nextmsgid(void) {
 }
 
 long ui::application::send_raw(int type, void *payload, size_t payloadsize) {
+  // ck::time::logger l("async ipc send");
   size_t msgsize = payloadsize + sizeof(lumen::msg);
   auto msg = (lumen::msg *)malloc(msgsize);
 
@@ -74,6 +76,7 @@ long ui::application::send_raw(int type, void *payload, size_t payloadsize) {
   if (w < 0) return -1;
 
   free(msg);
+
   return id;
 }
 

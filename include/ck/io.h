@@ -24,12 +24,8 @@ namespace ck {
       return (T *)get();
     }
 
-    inline void *get(void) const {
-      return m_buf;
-    }
-    inline size_t size(void) const {
-      return m_size;
-    }
+    inline void *get(void) const { return m_buf; }
+    inline size_t size(void) const { return m_size; }
 
     inline void resize(size_t s) {
       if (s == 0) {
@@ -49,25 +45,13 @@ namespace ck {
 
    public:
     virtual ~stream(){};
-    inline virtual ssize_t write(const void *buf, size_t) {
-      return -1;
-    }
-    inline virtual ssize_t read(void *buf, size_t) {
-      return -1;
-    }
-    virtual ssize_t size(void) {
-      return 0;
-    }
-    virtual ssize_t tell(void) {
-      return 0;
-    }
-    virtual int seek(long offset, int whence) {
-      return -1;
-    }
+    inline virtual ssize_t write(const void *buf, size_t) { return -1; }
+    inline virtual ssize_t read(void *buf, size_t) { return -1; }
+    virtual ssize_t size(void) { return 0; }
+    virtual ssize_t tell(void) { return 0; }
+    virtual int seek(long offset, int whence) { return -1; }
 
-    inline bool eof(void) {
-      return m_eof;
-    }
+    inline bool eof(void) { return m_eof; }
 
     int fmt(const char *format, ...);
 
@@ -80,9 +64,7 @@ namespace ck {
     }
 
    protected:
-    inline void set_eof(bool e) {
-      m_eof = e;
-    }
+    inline void set_eof(bool e) { m_eof = e; }
 
 
     CK_OBJECT(ck::stream);
@@ -104,19 +86,14 @@ namespace ck {
         return (T *)((char *)mem + loc);
       }
 
-      inline void *data() {
-        return mem;
-      }
+      inline void *data() { return mem; }
 
 
-      inline auto size(void) {
-        return len;
-      }
+      inline auto size(void) { return len; }
       ~mapping();
 
      protected:
-      mapping(void *mem, size_t len) : mem(mem), len(len) {
-      }
+      mapping(void *mem, size_t len) : mem(mem), len(len) {}
       void *mem;
       size_t len;
     };
@@ -137,6 +114,8 @@ namespace ck {
     virtual int seek(long offset, int whence) override;
 
     bool open(ck::string path, const char *mode);
+    bool open(ck::string path, int mode);
+
 
     static inline auto unowned(int fd) {
       auto f = ck::file::create(fd);
@@ -146,9 +125,7 @@ namespace ck {
 
 
 
-    inline ck::unique_ptr<ck::file::mapping> mmap(/* Whole file */) {
-      return mmap(0, size());
-    }
+    inline ck::unique_ptr<ck::file::mapping> mmap(/* Whole file */) { return mmap(0, size()); }
     ck::unique_ptr<ck::file::mapping> mmap(off_t off, size_t len);
 
     int stat(struct stat &);
@@ -156,13 +133,9 @@ namespace ck {
 
     using stream::read;
 
-    inline operator bool(void) const {
-      return m_fd != -1;
-    }
+    inline operator bool(void) const { return m_fd != -1; }
 
-    inline int fileno(void) {
-      return m_fd;
-    }
+    inline int fileno(void) { return m_fd; }
 
     void flush(void);
 
@@ -174,9 +147,7 @@ namespace ck {
     // if size == 0, disable buffer.
     // otherwise allocate a buffer.
     void set_buffer(size_t size);
-    inline bool buffered(void) {
-      return buf_cap > 0;
-    }
+    inline bool buffered(void) { return buf_cap > 0; }
 
 
     inline auto on_read(ck::func<void()> cb) {

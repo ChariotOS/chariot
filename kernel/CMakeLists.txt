@@ -132,6 +132,13 @@ add_rooted_subdir(net)
 add_rooted_subdir(drivers)
 
 
+# recompile libck for the kernel, as it needs some special macros to work correctly
+# add_kernel_module(
+# 	NAME ck-kernel
+# 	AUTOGLOB ../lib/ck/
+# )
+
+
 
 # add_executable(chariot ${KERNEL_SOURCES})
 add_library(chariot STATIC ${KERNEL_SOURCES})

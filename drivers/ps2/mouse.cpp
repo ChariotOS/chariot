@@ -164,13 +164,24 @@ static void mouse_handler(int i, reg_t *, void *) {
     }
 
     if (finalize) {
+      if (vmware_backdoor_mouse_enabled) {
+        // printk("old - x: %d, y: %d\n", packet.x, packet.y);
+        struct mouse_packet packet;
+        memset(&packet, 0, sizeof(packet));
+        packet.magic = MOUSE_MAGIC;
+        if (vmware_handle_mouse(packet) && open) {
+          mouse_buffer.write(&packet, sizeof(packet), false /* dont block */);
+        }
+        break;
+      }
+
       mouse_cycle = 0;
       /* We now have a full mouse packet ready to use */
       struct mouse_packet packet;
       memset(&packet, 0, sizeof(packet));
       packet.magic = MOUSE_MAGIC;
-      int x = mouse_byte[1];
-      int y = mouse_byte[2];
+      char x = mouse_byte[1];
+      char y = mouse_byte[2];
       if (x && mouse_byte[0] & (1 << 4)) {
         /* Sign bit */
         x = x - 0x100;
@@ -187,6 +198,7 @@ static void mouse_handler(int i, reg_t *, void *) {
       packet.x = x;
       packet.y = -y;  // the mouse gives us a negative value for going up
       packet.buttons = 0;
+      packet.is_relative = true;
       // packet.timestamp = time::now_us();
       if (mouse_byte[0] & 0x01) {
         packet.buttons |= MOUSE_LEFT_CLICK;
@@ -206,16 +218,7 @@ static void mouse_handler(int i, reg_t *, void *) {
         }
       }
 
-      if (vmware_backdoor_mouse_enabled) {
-        // printk("old - x: %d, y: %d\n", packet.x, packet.y);
-        struct mouse_packet packet;
-        memset(&packet, 0, sizeof(packet));
-        packet.magic = MOUSE_MAGIC;
-        if (vmware_handle_mouse(packet) && open) {
-          mouse_buffer.write(&packet, sizeof(packet), false /* dont block */);
-        }
-        break;
-      }
+
 
 
       if (open) {
@@ -384,8 +387,6 @@ void mouse_absolute(void) {
 
 static void mouse_init(void) {
   mouse_install();
-
-
   mouse_absolute();
 
   dev::register_driver(mouse_driver_info);

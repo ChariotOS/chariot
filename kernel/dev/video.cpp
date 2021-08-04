@@ -38,7 +38,7 @@ struct gvi_vmobject final : public mm::vmobject {
     if (fb == 0) return nullptr;
     auto p = mm::page::create(fb + (n * PGSIZE));
 
-    p->fset(PG_NOCACHE | PG_WRTHRU);
+    // p->fset(PG_NOCACHE | PG_WRTHRU);
 
     return p;
   }

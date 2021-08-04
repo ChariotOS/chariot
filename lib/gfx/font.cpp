@@ -69,8 +69,8 @@ namespace gfx {
 
   void font::set_line_height(int lg) {
     FT_Set_Pixel_Sizes(face, /* handle to face object */
-                       0,    /* pixel_width           */
-                       lg);  /* pixel_height          */
+        0,                   /* pixel_width           */
+        lg);                 /* pixel_height          */
   }
 
 
@@ -239,23 +239,17 @@ namespace gfx {
     kerning.x = 0;
     kerning.y = 0;
 
-    FT_Get_Kerning(face,               /* handle to face object */
-                   a,                  /* left glyph index      */
-                   b,                  /* right glyph index     */
-                   FT_KERNING_DEFAULT, /* kerning mode          */
-                   &kerning);          /* target vector         */
+    FT_Get_Kerning(face,    /* handle to face object */
+        a,                  /* left glyph index      */
+        b,                  /* right glyph index     */
+        FT_KERNING_DEFAULT, /* kerning mode          */
+        &kerning);          /* target vector         */
     return kerning.x;
   }
 
 
-  int font::ascent(void) {
-    return face->size->metrics.ascender >> 6;
-  }
-  int font::descent(void) {
-    return face->size->metrics.descender >> 6;
-  }
-  int font::line_height(void) {
-    return face->size->metrics.height >> 6;
-  }
+  int font::ascent(void) { return face->size->metrics.ascender >> 6; }
+  int font::descent(void) { return face->size->metrics.descender >> 6; }
+  int font::line_height(void) { return face->size->metrics.height >> 6; }
 
 };  // namespace gfx

@@ -47,10 +47,10 @@ ui::windowframe::windowframe(void) {
   // set_flex_padding(ui::edges(TITLE_HEIGHT, PADDING, PADDING, PADDING));
 
   m_frame_font = gfx::font::get("OpenSans SemiBold");
-  // m_icon_font = gfx::font::get("feather");
 
   set_foreground(0x4a4848);
   set_background(0xEFEFEF);
+  // set_mouse_captured(true);
 }
 
 
@@ -68,6 +68,7 @@ void ui::windowframe::custom_layout(void) {
   child->set_relative_rect(area);
 }
 
+
 void ui::windowframe::set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
   set_background(bg);
   set_foreground(fg);
@@ -77,7 +78,69 @@ void ui::windowframe::set_theme(uint32_t bg, uint32_t fg, uint32_t border) {
 
 
 void ui::windowframe::mouse_event(ui::mouse_event &ev) {
+  // pull the mouse location for reasons
+  int x = ev.pos().x();
+  int y = ev.pos().y();
+
+  // check for resize
+  if (false && !is_moving) {
+    gfx::rect outer = this->rect();
+    gfx::rect smaller = outer;
+    smaller.shrink(5);
+    bool in_border = outer.contains(x, y) && !smaller.contains(x, y);
+
+
+    if (ev.left && (is_resizing || in_border)) {
+      if (!is_resizing && in_border) {
+        int middle_x = width() / 2;
+        int middle_y = height() / 2;
+
+        resize_hdir = x > middle_x ? 1 : -1;
+        resize_vdir = y > middle_y ? 1 : -1;
+      }
+
+      printf("resize? %4d %4d\n", resize_hdir, resize_vdir);
+
+
+      is_resizing = true;
+
+      if (ev.dx != 0 && ev.dy != 0) {
+        bool needs_move = resize_hdir < 0 || resize_vdir < 0;
+
+        printf("needs move\n");
+        if (needs_move) {
+          struct lumen::move_request movreq {
+            .id = ((ui::window *)surface())->id(), .dx = ev.dx, .dy = ev.dy,
+          };
+          ui::application::get().send_msg(LUMEN_MSG_MOVEREQ, movreq);
+        }
+
+        auto [w, h] = surface()->resize(surface()->width() + ev.dx * resize_hdir,
+            surface()->height() + ev.dy * resize_vdir - TITLE_HEIGHT);
+      }
+
+
+    } else {
+      is_resizing = false;
+    }
+  }
+
+
+  if (is_resizing) return;
+
+  bool can_move = false;
+  // we only move if we click on the title bar (or super is pressed)
   if (ev.left) {
+    if (ev.pos().y() <= TITLE_HEIGHT) {
+      is_moving = true;
+      can_move = true;
+    }
+  }
+
+  // if the left mouse button is released, we stop moving
+  if (!ev.left) is_moving = false;
+
+  if (can_move || is_moving) {
     struct lumen::move_request movreq {
       .id = ((ui::window *)surface())->id(), .dx = ev.dx, .dy = ev.dy,
     };

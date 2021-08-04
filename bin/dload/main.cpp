@@ -38,15 +38,14 @@ static void *ld_malloc(long sz) {
 
 
 int main(int argc, char **argv) {
+  int *x = (int *)ld_malloc(sizeof(int));
 
-	int *x = (int*)ld_malloc(sizeof(int));
+  *x = 40;
 
-	*x = 40;
-
-	printf("x: %d\n", *x);
+  printf("x: %d\n", *x);
   try_file("/lib/libshared.so");
 
-  return 0;
+  // return 0;
   for (int i = 1; i < argc; i++) {
     try_file(argv[i]);
   }
@@ -102,7 +101,7 @@ int try_file(const char *path) {
   for (int i = 0; i < e->e_phnum; i++) {
     Elf64_Phdr *p = phdrs + i;
 
-		printf("type: %d\n", p->p_type);
+    printf("type: %d\n", p->p_type);
 
 
     if (p->p_type == PT_LOAD) {
@@ -139,7 +138,7 @@ int try_file(const char *path) {
       }
     }
 
-    debug_hexdump((char *)buf + p->p_offset, p->p_filesz);
+    // debug_hexdump((char *)buf + p->p_offset, p->p_filesz);
   }
 
 

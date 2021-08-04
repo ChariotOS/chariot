@@ -9,7 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <ck/time.h>
-
+#include <ck/rand.h>
 
 gfx::scribe::scribe(gfx::bitmap &b) : bmp(b) {
   enter();  // initial state
@@ -218,12 +218,11 @@ void gfx::scribe::blend_pixel(int x, int y, uint32_t color, float alpha) {
   auto &s = state();
   // x += s.offset.x();
   // y += s.offset.y();
-  if (!s.clip.contains(x, y)) return;
+  // if (!s.clip.contains(x, y)) return;
 
 
   uint32_t fgi = (color & 0xFF'FF'FF) | ((int)(255 * alpha) << 24);
-  uint32_t bgi = bmp.get_pixel(
-      x + s.offset.x(), y + s.offset.y());  // this could be slow, cause we read from vga memory...
+  uint32_t bgi = bmp.get_pixel(x + s.offset.x(), y + s.offset.y());
   draw_pixel(x, y, gfx::color::blend(fgi, bgi));
 }
 
@@ -801,9 +800,93 @@ void gfx::scribe::draw_text(gfx::font &font, const gfx::rect &rect, const ck::st
 
 
 void gfx::scribe::stackblur(int radius, const gfx::rect &area) {
-  gfx::stackblur(bmp.pixels(), bmp.width(), bmp.height(), radius,
-      area.shifted(translation().x(), translation().y()));
+  gfx::rect a = area.shifted(translation().x(), translation().y());
+  a.w += 1;
+  a.h += 1;
+  gfx::stackblur(bmp.pixels(), bmp.width(), bmp.height(), radius, a);
 }
+
+void gfx::scribe::noise(float opacity, const gfx::rect &area) {
+  auto rect = gfx::rect(area.x + translation().x(), area.y + translation().y(), area.w, area.h)
+                  .intersect(bmp.rect())
+                  .intersect(state().clip);
+  if (rect.is_empty()) return;
+  ck::rand rng(0xDEADBEEF | ((rect.x << 16) & 0xFFFF) | (rect.y & 0xFFFF));
+
+
+  uint32_t alpha_mask = ((uint32_t)(255 * opacity) << 24);
+  uint32_t *dst = bmp.scanline(rect.top()) + rect.left();
+  const size_t dst_skip = bmp.width();
+
+  for (int i = rect.h - 1; i >= 0; --i) {
+    for (int j = 0; j < rect.w; ++j) {
+      float noise = rng.next() & 0xFF;
+
+      uint32_t fgi = (gfx::color::rgb(noise, noise, noise) & 0xFF'FF'FF) | alpha_mask;
+      dst[j] = gfx::color::blend(fgi, dst[j]);
+    }
+    dst += dst_skip;
+  }
+}
+
+void gfx::scribe::saturation(float value, const gfx::rect &area) {
+  auto rect = gfx::rect(area.x + translation().x(), area.y + translation().y(), area.w, area.h)
+                  .intersect(bmp.rect())
+                  .intersect(state().clip);
+  if (rect.is_empty()) return;
+  ck::rand rng(0xDEADBEEF | ((rect.x << 16) & 0xFFFF) | (rect.y & 0xFFFF));
+
+
+  uint32_t *dst = bmp.scanline(rect.top()) + rect.left();
+  const size_t dst_skip = bmp.width();
+
+  for (int i = rect.h - 1; i >= 0; --i) {
+    for (int j = 0; j < rect.w; ++j) {
+      gfx::color::impl::color color = dst[j];
+
+      // weights from CCIR 601 spec
+      // https://stackoverflow.com/questions/13806483/increase-or-decrease-color-saturation
+      double gray = 0.2989 * color.red() + 0.5870 * color.green() + 0.1140 * color.blue();
+
+      uint8_t red = (uint8_t)CLAMP(-gray * value + color.red() * (1 + value), 0, 255);
+      uint8_t green = (uint8_t)CLAMP(-gray * value + color.green() * (1 + value), 0, 255);
+      uint8_t blue = (uint8_t)CLAMP(-gray * value + color.blue() * (1 + value), 0, 255);
+
+      dst[j] = gfx::color::rgb(red, green, blue);
+    }
+    dst += dst_skip;
+  }
+}
+
+
+void gfx::scribe::sepia(float value, const gfx::rect &area) {
+  auto rect = gfx::rect(area.x + translation().x(), area.y + translation().y(), area.w, area.h)
+                  .intersect(bmp.rect())
+                  .intersect(state().clip);
+  if (rect.is_empty()) return;
+  ck::rand rng(0xDEADBEEF | ((rect.x << 16) & 0xFFFF) | (rect.y & 0xFFFF));
+
+
+  uint32_t *dst = bmp.scanline(rect.top()) + rect.left();
+  const size_t dst_skip = bmp.width();
+  uint32_t alpha_mask = ((uint32_t)(255 * value) << 24);
+
+  for (int i = rect.h - 1; i >= 0; --i) {
+    for (int j = 0; j < rect.w; ++j) {
+      gfx::color::impl::color color = dst[j];
+
+      uint32_t red = (color.red() * 0.393) + (color.green() * 0.769) + (color.blue() * 0.189);
+      uint32_t green = (color.red() * 0.349) + (color.green() * 0.686) + (color.blue() * 0.168);
+      uint32_t blue = (color.red() * 0.272) + (color.green() * 0.534) + (color.blue() * 0.131);
+
+      uint32_t sepia_color = gfx::color::rgb(MIN(255, red), MIN(255, green), MIN(blue, 255));
+
+      dst[j] = gfx::color::blend(color.value | 0xFF'000000, sepia_color | alpha_mask);
+    }
+    dst += dst_skip;
+  }
+}
+
 
 void gfx::scribe::draw_text_line(gfx::font &font, const gfx::rect &a_rect, const ck::string &text,
     ui::TextAlign align, uint32_t color, bool elide) {
