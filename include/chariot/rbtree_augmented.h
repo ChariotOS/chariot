@@ -13,7 +13,7 @@
 #define _LINUX_RBTREE_AUGMENTED_H
 
 // #include <linux/compiler.h>
-#include <rbtree.h>
+#include "rbtree.h"
 // #include <linux/rcupdate.h>
 
 /*
@@ -31,8 +31,7 @@ struct rb_augment_callbacks {
 };
 
 extern void __rb_insert_augmented(struct rb_node *node, struct rb_root *root,
-                                  void (*augment_rotate)(struct rb_node *old,
-                                                         struct rb_node *newnode));
+    void (*augment_rotate)(struct rb_node *old, struct rb_node *newnode));
 
 /*
  * Fixup the rbtree and update the augmented information when rebalancing.
@@ -44,14 +43,13 @@ extern void __rb_insert_augmented(struct rb_node *node, struct rb_root *root,
  * a user provided function to update the augmented information on the
  * affected subtrees.
  */
-static inline void rb_insert_augmented(struct rb_node *node, struct rb_root *root,
-                                       const struct rb_augment_callbacks *augment) {
+static inline void rb_insert_augmented(
+    struct rb_node *node, struct rb_root *root, const struct rb_augment_callbacks *augment) {
   __rb_insert_augmented(node, root, augment->rotate);
 }
 
 static inline void rb_insert_augmented_cached(struct rb_node *node, struct rb_root_cached *root,
-                                              bool newnodeleft,
-                                              const struct rb_augment_callbacks *augment) {
+    bool newnodeleft, const struct rb_augment_callbacks *augment) {
   if (newnodeleft) root->rb_leftmost = node;
   rb_insert_augmented(node, &root->rb_root, augment);
 }
@@ -102,23 +100,23 @@ static inline void rb_insert_augmented_cached(struct rb_node *node, struct rb_ro
  * RBCOMPUTE:   name of function that returns the per-node RBTYPE scalar
  */
 
-#define RB_DECLARE_CALLBACKS_MAX(RBSTATIC, RBNAME, RBSTRUCT, RBFIELD, RBTYPE, RBAUGMENTED, \
-                                 RBCOMPUTE)                                                \
-  static inline bool RBNAME##_compute_max(RBSTRUCT *node, bool exit) {                     \
-    RBSTRUCT *child;                                                                       \
-    RBTYPE max = RBCOMPUTE(node);                                                          \
-    if (node->RBFIELD.rb_left) {                                                           \
-      child = rb_entry(node->RBFIELD.rb_left, RBSTRUCT, RBFIELD);                          \
-      if (child->RBAUGMENTED > max) max = child->RBAUGMENTED;                              \
-    }                                                                                      \
-    if (node->RBFIELD.rb_right) {                                                          \
-      child = rb_entry(node->RBFIELD.rb_right, RBSTRUCT, RBFIELD);                         \
-      if (child->RBAUGMENTED > max) max = child->RBAUGMENTED;                              \
-    }                                                                                      \
-    if (exit && node->RBAUGMENTED == max) return true;                                     \
-    node->RBAUGMENTED = max;                                                               \
-    return false;                                                                          \
-  }                                                                                        \
+#define RB_DECLARE_CALLBACKS_MAX(                                        \
+    RBSTATIC, RBNAME, RBSTRUCT, RBFIELD, RBTYPE, RBAUGMENTED, RBCOMPUTE) \
+  static inline bool RBNAME##_compute_max(RBSTRUCT *node, bool exit) {   \
+    RBSTRUCT *child;                                                     \
+    RBTYPE max = RBCOMPUTE(node);                                        \
+    if (node->RBFIELD.rb_left) {                                         \
+      child = rb_entry(node->RBFIELD.rb_left, RBSTRUCT, RBFIELD);        \
+      if (child->RBAUGMENTED > max) max = child->RBAUGMENTED;            \
+    }                                                                    \
+    if (node->RBFIELD.rb_right) {                                        \
+      child = rb_entry(node->RBFIELD.rb_right, RBSTRUCT, RBFIELD);       \
+      if (child->RBAUGMENTED > max) max = child->RBAUGMENTED;            \
+    }                                                                    \
+    if (exit && node->RBAUGMENTED == max) return true;                   \
+    node->RBAUGMENTED = max;                                             \
+    return false;                                                        \
+  }                                                                      \
   RB_DECLARE_CALLBACKS(RBSTATIC, RBNAME, RBSTRUCT, RBFIELD, RBAUGMENTED, RBNAME##_compute_max)
 
 
@@ -142,8 +140,8 @@ static inline void rb_set_parent_color(struct rb_node *rb, struct rb_node *p, in
   rb->__rb_parent_color = (unsigned long)p | color;
 }
 
-static inline void __rb_change_child(struct rb_node *old, struct rb_node *newnode,
-                                     struct rb_node *parent, struct rb_root *root) {
+static inline void __rb_change_child(
+    struct rb_node *old, struct rb_node *newnode, struct rb_node *parent, struct rb_root *root) {
   if (parent) {
     if (parent->rb_left == old)
       WRITE_ONCE(parent->rb_left, newnode);
@@ -153,8 +151,8 @@ static inline void __rb_change_child(struct rb_node *old, struct rb_node *newnod
     WRITE_ONCE(root->rb_node, newnode);
 }
 
-static inline void __rb_change_child_rcu(struct rb_node *old, struct rb_node *newnode,
-                                         struct rb_node *parent, struct rb_root *root) {
+static inline void __rb_change_child_rcu(
+    struct rb_node *old, struct rb_node *newnode, struct rb_node *parent, struct rb_root *root) {
   if (parent) {
     if (parent->rb_left == old)
       rcu_assign_pointer(parent->rb_left, newnode);
@@ -165,10 +163,10 @@ static inline void __rb_change_child_rcu(struct rb_node *old, struct rb_node *ne
 }
 
 extern void __rb_erase_color(struct rb_node *parent, struct rb_root *root,
-                             void (*augment_rotate)(struct rb_node *old, struct rb_node *newnode));
+    void (*augment_rotate)(struct rb_node *old, struct rb_node *newnode));
 
-static inline struct rb_node *__rb_erase_augmented(struct rb_node *node, struct rb_root *root,
-                                                   const struct rb_augment_callbacks *augment) {
+static inline struct rb_node *__rb_erase_augmented(
+    struct rb_node *node, struct rb_root *root, const struct rb_augment_callbacks *augment) {
   struct rb_node *child = node->rb_right;
   struct rb_node *tmp = node->rb_left;
   struct rb_node *parent, *rebalance;
@@ -267,14 +265,14 @@ static inline struct rb_node *__rb_erase_augmented(struct rb_node *node, struct 
   return rebalance;
 }
 
-static inline void rb_erase_augmented(struct rb_node *node, struct rb_root *root,
-                                      const struct rb_augment_callbacks *augment) {
+static inline void rb_erase_augmented(
+    struct rb_node *node, struct rb_root *root, const struct rb_augment_callbacks *augment) {
   struct rb_node *rebalance = __rb_erase_augmented(node, root, augment);
   if (rebalance) __rb_erase_color(rebalance, root, augment->rotate);
 }
 
-static inline void rb_erase_augmented_cached(struct rb_node *node, struct rb_root_cached *root,
-                                             const struct rb_augment_callbacks *augment) {
+static inline void rb_erase_augmented_cached(
+    struct rb_node *node, struct rb_root_cached *root, const struct rb_augment_callbacks *augment) {
   if (root->rb_leftmost == node) root->rb_leftmost = rb_next(node);
   rb_erase_augmented(node, &root->rb_root, augment);
 }

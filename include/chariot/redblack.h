@@ -1,6 +1,13 @@
+
+
+#ifdef KERNEL
 #include <printk.h>
 #include <ck/ptr.h>
 #include <types.h>
+
+#else  // USERLAND
+
+#endif
 
 template <typename K, typename V>
 class redblack {

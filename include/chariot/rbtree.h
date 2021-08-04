@@ -17,10 +17,13 @@
 #ifndef _LINUX_RBTREE_H
 #define _LINUX_RBTREE_H
 
-
+#ifdef KERNEL
 #include <asm.h>
-#include <list_head.h>
 #include <types.h>
+#else
+#endif
+
+#include "list_head.h"
 
 #define rcu_check_sparse(p, space)
 // #include <linux/kernel.h>
@@ -56,10 +59,8 @@ struct rb_root {
 
 #define rb_parent(r) ((struct rb_node *)((r)->__rb_parent_color & ~3))
 
-#define RB_ROOT      \
-  (struct rb_root) { \
-    NULL,            \
-  }
+#define RB_ROOT \
+  (struct rb_root) { NULL, }
 #define rb_entry(ptr, type, member)                        \
   ({                                                       \
     const __decltype(((type *)0)->member) *__mptr = (ptr); \
@@ -91,16 +92,16 @@ extern struct rb_node *rb_next_postorder(const struct rb_node *);
 extern void rb_replace_node(struct rb_node *victim, struct rb_node *node, struct rb_root *root);
 extern void rb_replace_node_rcu(struct rb_node *victim, struct rb_node *node, struct rb_root *root);
 
-static inline void rb_link_node(struct rb_node *node, struct rb_node *parent,
-                                struct rb_node **rb_link) {
+static inline void rb_link_node(
+    struct rb_node *node, struct rb_node *parent, struct rb_node **rb_link) {
   node->__rb_parent_color = (unsigned long)parent;
   node->rb_left = node->rb_right = NULL;
 
   *rb_link = node;
 }
 
-static inline void rb_link_node_rcu(struct rb_node *node, struct rb_node *parent,
-                                    struct rb_node **rb_link) {
+static inline void rb_link_node_rcu(
+    struct rb_node *node, struct rb_node *parent, struct rb_node **rb_link) {
   node->__rb_parent_color = (unsigned long)parent;
   node->rb_left = node->rb_right = NULL;
 
@@ -109,7 +110,7 @@ static inline void rb_link_node_rcu(struct rb_node *node, struct rb_node *parent
 
 #define rb_entry_safe(ptr, type, member)              \
   ({                                                  \
-    __decltype(ptr) ____ptr = (ptr);                      \
+    __decltype(ptr) ____ptr = (ptr);                  \
     ____ptr ? rb_entry(____ptr, type, member) : NULL; \
   })
 
@@ -130,12 +131,11 @@ static inline void rb_link_node_rcu(struct rb_node *node, struct rb_node *parent
  * rbtree it is iterating over. This includes calling rb_erase() on @pos, as
  * rb_erase() may rebalance the tree, causing us to miss some nodes.
  */
-#define rbtree_postorder_for_each_entry_safe(pos, n, root, field)                \
-  for (pos = rb_entry_safe(rb_first_postorder(root), __decltype(*pos), field);       \
-       pos && ({                                                                 \
-         n = rb_entry_safe(rb_next_postorder(&pos->field), __decltype(*pos), field); \
-         1;                                                                      \
-       });                                                                       \
+#define rbtree_postorder_for_each_entry_safe(pos, n, root, field)                        \
+  for (pos = rb_entry_safe(rb_first_postorder(root), __decltype(*pos), field); pos && ({ \
+         n = rb_entry_safe(rb_next_postorder(&pos->field), __decltype(*pos), field);     \
+         1;                                                                              \
+       });                                                                               \
        pos = n)
 
 /*
@@ -164,8 +164,8 @@ struct rb_root_cached {
 /* Same as rb_first(), but O(1) */
 #define rb_first_cached(root) (root)->rb_leftmost
 
-static inline void rb_insert_color_cached(struct rb_node *node, struct rb_root_cached *root,
-                                          bool leftmost) {
+static inline void rb_insert_color_cached(
+    struct rb_node *node, struct rb_root_cached *root, bool leftmost) {
   if (leftmost) root->rb_leftmost = node;
   rb_insert_color(node, &root->rb_root);
 }
@@ -175,8 +175,8 @@ static inline void rb_erase_cached(struct rb_node *node, struct rb_root_cached *
   rb_erase(node, &root->rb_root);
 }
 
-static inline void rb_replace_node_cached(struct rb_node *victim, struct rb_node *newnode,
-                                          struct rb_root_cached *root) {
+static inline void rb_replace_node_cached(
+    struct rb_node *victim, struct rb_node *newnode, struct rb_root_cached *root) {
   if (root->rb_leftmost == victim) root->rb_leftmost = newnode;
   rb_replace_node(victim, newnode, &root->rb_root);
 }
