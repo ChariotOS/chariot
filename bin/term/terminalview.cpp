@@ -137,7 +137,6 @@ void terminalview::paint_event(gfx::scribe &s) {
   // ck::time::logger l("oldterminalview::paint_event");
   handle_resize();
 
-
   // printf("since last frame: %d\n", m_chars_written_since_last_frame);
   m_chars_written_since_last_frame = 0;
 
@@ -160,13 +159,10 @@ void terminalview::paint_event(gfx::scribe &s) {
         }
 
         draw_char(s, cell.cp, x, y, fg, bg);
-        m_term->surface().undirty(x, y);
+        // m_term->surface().undirty(x, y);
       }
     }
   }
-
-  // s.stackblur(10, rect());
-  // s.noise(0.05, rect());
 }
 
 

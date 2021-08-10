@@ -33,6 +33,7 @@ void ck::eventloop::defer_unique(const char *name, ck::func<void(void)> cb) {
     }
   }
   s_defered.push(ck::tuple(name, move(cb)));
+
   // printf("uniquely defered '%s'\n", name);
 }
 static ck::HashTable<ck::fsnotifier *> s_notifiers;

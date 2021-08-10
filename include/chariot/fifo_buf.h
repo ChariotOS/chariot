@@ -18,6 +18,9 @@ class fifo_buf {
   ssize_t write(const void *, ssize_t, bool block = false);
   ssize_t read(void *, ssize_t, bool block = true, long long timeout_us = -1);
   inline int size(void) { return unread(); }
+
+
+  inline size_t buffer_size(void) { return m_size; }
   void close();
   int poll(poll_table &pt);
   void stats(size_t &avail, size_t &unread);
