@@ -73,9 +73,9 @@ long ui::application::send_raw(int type, void *payload, size_t payloadsize) {
   // msg->type);
   auto w = sock.write((const void *)msg, msgsize);
 
-  if (w < 0) return -1;
-
   free(msg);
+
+  if (w < 0) return -1;
 
   return id;
 }
