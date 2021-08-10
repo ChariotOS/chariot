@@ -2,11 +2,7 @@
 #include <ctype.h>
 
 
-
-
 ////////////////////////////////////////////////////////////////////////////////////////
-
-
 
 
 term::buffer::buffer(int width, int height) : m_width(width), m_height(height) {
@@ -34,7 +30,8 @@ void term::buffer::set(int x, int y, term::cell cell) {
   if (x >= 0 && x < m_width && y >= 0 && y < m_height) {
     if (m_rows[y] == NULL) {
       // allocate the row
-      m_rows[y] = new term::cell[m_width];
+      m_rows[y] = allocate_row();
+      // m_rows[y] = new term::cell[m_width];
     }
 
     term::cell old_cell = m_rows[y][x];  // m_cells[y * m_width + x];
@@ -56,6 +53,7 @@ void term::buffer::undirty(int x, int y) {
   }
 }
 
+
 void term::buffer::clear(int fromx, int fromy, int tox, int toy, term::attributes attributes) {
   for (int i = fromx + fromy * m_width; i < tox + toy * m_width; i++) {
     set(i % m_width, i / m_width, (term::cell){U' ', attributes, true});
@@ -67,13 +65,17 @@ void term::buffer::clear_all(term::attributes attributes) {
   clear(0, 0, m_width, m_height, attributes);
 }
 
+
 void term::buffer::clear_line(int line, term::attributes attributes) {
   if (line >= 0 && line < m_height) {
-    for (int i = 0; i < m_width; i++) {
-      set(i, line, (term::cell){U' ', attributes, true});
+    if (m_rows[line] != NULL) {
+      for (int i = 0; i < m_width; i++) {
+        set(i, line, (term::cell){U' ', attributes, true});
+      }
     }
   }
 }
+
 
 void term::buffer::resize(int width, int height) {
   // make a new buffer to replace the old one
@@ -110,7 +112,6 @@ void term::buffer::resize(int width, int height) {
 }
 
 
-
 void term::buffer::scroll(int how_many_line, term::attributes attributes) {
   if (how_many_line < 0) {
     // move cells down
@@ -122,7 +123,6 @@ void term::buffer::scroll(int how_many_line, term::attributes attributes) {
         // move the cell down a line
         set(x, y, at(x, y - 1));
       }
-
       clear_line(0, attributes);
     }
   } else if (how_many_line > 0) {
@@ -134,7 +134,7 @@ void term::buffer::scroll(int how_many_line, term::attributes attributes) {
       m_rows[line] = NULL;
     }
 
-    for (int row = how_many_line; row < m_height - how_many_line; row++) {
+    for (int row = 0; row < m_height - how_many_line; row++) {
       m_rows[row] = m_rows[row + how_many_line];
       m_rows[row + how_many_line] = NULL;
     }
@@ -143,25 +143,20 @@ void term::buffer::scroll(int how_many_line, term::attributes attributes) {
 
 
 term::cell *term::buffer::allocate_row(void) {
-  return new term::cell[m_width];
-
-  printf("%d\n", m_preallocated_rows.size());
-  if (m_preallocated_rows.is_empty()) {
-    return new term::cell[m_width];
-  }
-
-  int last = m_preallocated_rows.size() - 1;
-  auto *row = m_preallocated_rows[last];
-  m_preallocated_rows.remove(last);
+  // printf(">>\n");
+  auto *row = new term::cell[m_width];
+  // printf("<<\n");
 
   return row;
 }
 
+
 void term::buffer::release_row(term::cell *row) {
-  delete row;
-  return;
-  m_preallocated_rows.push(row);
+  delete[] row;
+  // return;
+  // m_preallocated_rows.push(row);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
