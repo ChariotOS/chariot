@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <ck/option.h>
+
 
 namespace ck {
 
@@ -39,14 +41,29 @@ namespace ck {
     }
   };
 
+
+
+  struct reader {
+    virtual ~reader() {}
+    virtual ck::option<size_t> read(void *, size_t) = 0;
+  };
+
+  struct writer {
+    virtual ~writer() {}
+    virtual ck::option<size_t> write(const void *, size_t) = 0;
+    // return true if the flush was successful
+    virtual bool flush(void) { return true; }
+  };
+
+
   // an abstract type which can be read from and written to
-  class stream : public ck::object {
+  class stream : public ck::object, public writer, public reader {
     bool m_eof = false;
 
    public:
-    virtual ~stream(){};
-    inline virtual ssize_t write(const void *buf, size_t) { return -1; }
-    inline virtual ssize_t read(void *buf, size_t) { return -1; }
+    virtual ~stream() {}
+    virtual ck::option<size_t> write(const void *buf, size_t) override { return {}; }
+    virtual ck::option<size_t> read(void *buf, size_t) override { return {}; }
     virtual ssize_t size(void) { return 0; }
     virtual ssize_t tell(void) { return 0; }
     virtual int seek(long offset, int whence) { return -1; }
@@ -107,8 +124,8 @@ namespace ck {
 
     virtual ~file(void);
 
-    virtual ssize_t write(const void *buf, size_t) override;
-    virtual ssize_t read(void *buf, size_t) override;
+    ck::option<size_t> write(const void *buf, size_t) override;
+    ck::option<size_t> read(void *buf, size_t) override;
     virtual ssize_t size(void) override;
     virtual ssize_t tell(void) override;
     virtual int seek(long offset, int whence) override;
@@ -137,7 +154,7 @@ namespace ck {
 
     inline int fileno(void) { return m_fd; }
 
-    void flush(void);
+    bool flush(void) override;
 
     template <typename T>
     int ioctl(int req, T arg) {

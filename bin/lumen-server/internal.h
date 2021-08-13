@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
+#include <ui/surface.h>
 #include "gfx/rect.h"
 
 namespace lumen {
@@ -33,7 +34,7 @@ namespace lumen {
 
   // represents a framebuffer for a screen. This also renders the mouse cursor
   // with double buffering
-  class screen {
+  class screen : public ui::surface {
    public:
     int fd = -1;
     size_t bufsz = 0;
@@ -50,8 +51,24 @@ namespace lumen {
     gfx::rect m_bounds;
     gfx::point mouse_pos;
 
+    ck::ref<gfx::bitmap> m_bitmap;
+
     lumen::mouse_cursor cursor = lumen::mouse_cursor::pointer;
     ck::ref<gfx::bitmap> cursors[mouse_cursor::mouse_count];
+
+
+
+
+    // ^ui::view
+    virtual gfx::bitmap *bmp(void);
+    virtual void invalidate(const gfx::rect &r);
+    // screen resize doesnt work
+    virtual ck::pair<int, int> resize(int width, int height) {
+      return {m_bounds.width(), m_bounds.height()};
+    }
+    virtual ui::view *root_view(void);
+    virtual void did_reflow(void);
+    // ---------
 
 
     void flush_info(void) {
@@ -74,7 +91,7 @@ namespace lumen {
     }
 
     screen(int w, int h);
-    ~screen(void);
+    virtual ~screen(void);
 
     void flip_buffers(void);
 
@@ -184,12 +201,12 @@ namespace lumen {
   // guests can have many windows
   struct guest {
     unsigned long id = 0;
-    struct context &ctx;  // the context we live in
+    struct server &ctx;  // the context we live in
     ck::ipcsocket *connection;
     ck::map<long, struct window *> windows;
 
 
-    guest(long id, struct context &ctx, ck::ipcsocket *conn);
+    guest(long id, struct server &ctx, ck::ipcsocket *conn);
     ~guest(void);
 
     void process_message(lumen::msg &);
@@ -220,43 +237,32 @@ namespace lumen {
   /**
    * contains all the state needed to run the window server
    */
-  struct context {
-    lumen::screen screen;
-
-    ck::file keyboard, mouse;
-    ck::ipcsocket server;
-
-    ck::ref<ck::timer> compose_timer;
-    ck::ref<gfx::bitmap> wallpaper;
-
-    context(void);
-
-
-
-    /* Are we currently clicking? */
-    int mouse_down = 0; /* MOUSE_*_CLICK masked */
+  struct server {
+    server(void);
 
     void accept_connection(void);
     void handle_keyboard_input(keyboard_packet_t &pkt);
     void handle_mouse_input(struct mouse_packet &pkt);
     void process_message(lumen::guest &c, lumen::msg &);
     void guest_closed(long id);
-
-
     void window_opened(window *);
     void window_closed(window *);
-
     void calculate_hover(void);
-
+    void invalidate(const gfx::rect &r);
+    void select_window(lumen::window *win);
+    bool occluded(lumen::window &win, const gfx::rect &r);
     void compose(void);
-
-    struct window_ref {
-      // the client and the window id
-      long client, id;
-    };
-
-
     void move_window(lumen::window *, int dx, int dy);
+
+
+    lumen::screen screen;
+    ck::file keyboard, mouse;
+    ck::ipcsocket ipc_server;
+    ck::ref<ck::timer> compose_timer;
+    ck::ref<gfx::bitmap> wallpaper;
+
+    /* Are we currently clicking? */
+    int mouse_down = 0; /* MOUSE_*_CLICK masked */
 
     // ordered list of all the windows (front to back)
     // The currently focused window is at the front
@@ -267,15 +273,6 @@ namespace lumen {
     bool dragging = false;
 
     gfx::disjoint_rects dirty_regions;
-
-    void invalidate(const gfx::rect &r);
-
-    // select a window, moving it around the view stack and all that fun stuff
-    void select_window(lumen::window *win);
-
-    // return if a rect in a window is occluded
-    bool occluded(lumen::window &win, const gfx::rect &r);
-
 
    private:
     ck::map<long, lumen::guest *> guests;

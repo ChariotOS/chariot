@@ -217,11 +217,11 @@ void dump_trapframe(reg_t *r) {
          "\n"
          "RIP=" REGFMT " RFL=%08x [%c%c%c%c%c%c%c]\n",
 
-         GET(rax), GET(rbx), GET(rcx), GET(rdx), GET(rsi), GET(rdi), GET(rbp), GET(rsp), GET(r8),
-         GET(r9), GET(r10), GET(r11), GET(r12), GET(r13), GET(r14), GET(r15), GET(rip), eflags,
-         eflags & DF_MASK ? 'D' : '-', eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-',
-         eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-', eflags & CC_P ? 'P' : '-',
-         eflags & CC_C ? 'C' : '-');
+      GET(rax), GET(rbx), GET(rcx), GET(rdx), GET(rsi), GET(rdi), GET(rbp), GET(rsp), GET(r8),
+      GET(r9), GET(r10), GET(r11), GET(r12), GET(r13), GET(r14), GET(r15), GET(rip), eflags,
+      eflags & DF_MASK ? 'D' : '-', eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-',
+      eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-', eflags & CC_P ? 'P' : '-',
+      eflags & CC_C ? 'C' : '-');
 
   // dump_backtrace(tf->rbp);
 }
@@ -272,7 +272,7 @@ static void pgfault_handle(int i, reg_t *regs) {
 
   auto proc = curproc;
   if (curproc == NULL) {
-    KERR("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf->rip, read_cr2());
+    panic("not in a proc while pagefaulting (rip=%p, addr=%p)\n", tf->rip, read_cr2());
     // arch_dump_backtrace();
     // lookup the kernel proc if we aren't in one!
     proc = sched::proc::kproc();
@@ -417,7 +417,6 @@ extern "C" void x86_enter_userspace(x86_64regs *);
 // just forward the trap on to the irq subsystem
 // This function is called from arch/x86/trap.asm
 extern "C" void trap(reg_t *regs) {
-
   auto *tf = (struct x86_64regs *)regs;
   bool from_userspace = tf->cs == 0x23;
   bool ts = time::stabilized();

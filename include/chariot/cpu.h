@@ -4,12 +4,13 @@
 #include <sched.h>
 #include <sleep.h>
 #include <types.h>
+#include <cpu_usage.h>
 
 struct kstat_cpu {
-  unsigned long ticks;   // total ticks
-  unsigned long uticks;  // user tasks
-  unsigned long kticks;  // kernel tasks
-  unsigned long iticks;  // idle
+  unsigned long ticks;         // total ticks
+  unsigned long user_ticks;    // user tasks
+  unsigned long kernel_ticks;  // kernel tasks
+  unsigned long idle_ticks;    // idle
 
   unsigned long last_tick_tsc = 0;
   unsigned long tsc_per_tick = 0;
@@ -21,7 +22,7 @@ struct processor_state {
   void *local;
   int cpunum;
 
-	bool primary = false;
+  bool primary = false;
   bool in_sched = false;
 
   struct kstat_cpu kstat;
@@ -32,6 +33,7 @@ struct processor_state {
 
   spinlock sleepers_lock;
   struct sleep_waiter *sleepers = NULL;
+
 
   u32 speed_khz;
   struct thread *current_thread;
@@ -72,9 +74,7 @@ namespace cpu {
   // setup CPU segment descriptors, run once per cpu
   void seginit(void *local = nullptr);
   void switch_vm(struct thread *);
-  inline u64 get_ticks(void) {
-    return current().kstat.ticks;
-  }
+  inline u64 get_ticks(void) { return current().kstat.ticks; }
 
 
   int nproc(void);

@@ -2,9 +2,9 @@
 
 set(SOURCES
     main.cpp
-		context.cpp
-		window.cpp
-		screen.cpp
+	server.cpp
+	window.cpp
+	screen.cpp
 )
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)

@@ -56,6 +56,14 @@ lumen::screen::~screen(void) {
 }
 
 
+
+
+gfx::bitmap *lumen::screen::bmp(void) { return nullptr; }
+void lumen::screen::invalidate(const gfx::rect &r) {}
+ui::view *lumen::screen::root_view(void) { return nullptr; }
+void lumen::screen::did_reflow(void) {}
+
+
 void lumen::screen::flip_buffers(void) {}
 
 void lumen::screen::set_resolution(int w, int h) {

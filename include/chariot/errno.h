@@ -2,9 +2,17 @@
 
 #ifdef KERNEL
 
+#ifdef __cplusplus
 #include <cpu.h>
-#define errno (curthd->kerrno)
+#endif
 
+#ifdef __cplusplus
+extern "C"
+#endif
+    int
+    get_errno(void);
+
+#define errno (get_errno())
 #endif
 
 // taken from the c std

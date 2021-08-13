@@ -44,6 +44,8 @@ int main() {
   // win.compositor_sync(true);
   win.set_double_buffer(false);
 
+  win.set_theme(0x000000, 0xFFFFFF, 0x333333);
+
   // start the application!
   app.start();
   return 0;

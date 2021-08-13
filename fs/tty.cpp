@@ -49,7 +49,7 @@ ck::string tty::name(void) { return ck::string::format("/dev/pts%d", index); }
 int tty::ioctl(unsigned int cmd, off_t arg) {
   if (cmd == TIOCSPGRP) {
     fg_proc = arg;
-    printk(KERN_INFO "[tty %s] Setting PTY group to %d", name().get(), fg_proc);
+    // printk(KERN_INFO "[tty %s] Setting PTY group to %d", name().get(), fg_proc);
     return 0;
   }
 

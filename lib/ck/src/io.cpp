@@ -62,22 +62,22 @@ ck::unique_ptr<ck::file::mapping> ck::file::mmap(off_t off, size_t size) {
 
 ck::file::mapping::~mapping(void) { ::munmap(mem, len); }
 
-ssize_t ck::file::read(void *buf, size_t sz) {
-  if (eof()) return 0;
+ck::option<size_t> ck::file::read(void *buf, size_t sz) {
+  if (eof()) return {};
 
-  if (m_fd == -1) return 0;
+  if (m_fd == -1) return {};
 
   size_t k = ::read(m_fd, buf, sz);
 
   if (k < 0) {
     set_eof(true);
-    return 0;
+    return {};
   }
   return k;
 }
 
-ssize_t ck::file::write(const void *buf, size_t sz) {
-  if (m_fd == -1) return 0;
+ck::option<size_t> ck::file::write(const void *buf, size_t sz) {
+  if (m_fd == -1) return {};
 
   auto *src = (const unsigned char *)buf;
 
@@ -99,7 +99,7 @@ ssize_t ck::file::write(const void *buf, size_t sz) {
   }
 
   long k = errno_wrap(sysbind_write(m_fd, (void *)src, sz));
-  if (k < 0) return 0;
+  if (k < 0) return {};
 
   return k;
 }
@@ -129,13 +129,14 @@ int ck::file::stat(struct stat &s) {
 }
 
 
-void ck::file::flush(void) {
+bool ck::file::flush(void) {
   if (buffered()) {
     errno_wrap(sysbind_write(m_fd, m_buffer, buf_len));
     // ck::hexdump(m_buffer, buf_len);
     buf_len = 0;
     // memset(m_buffer, 0, buf_cap);
   }
+  return true;
 }
 
 

@@ -21,6 +21,7 @@ void scan_fonts(void) {
   for (auto &file : files) {
     ck::string path = "/sys/fonts/";
     path += file;
+    // printf("%s\n", file.get());
     auto font = gfx::font::open_absolute(path.get());
 
     if (font) {
@@ -36,13 +37,10 @@ void scan_fonts(void) {
 int main(int argc, char **argv) {
   // make an eventloop
   ck::eventloop loop;
-
   // scan_fonts();
 
   // construct the context
-  lumen::context ctx;
-
-
+  lumen::server ctx;
 
   // ck::command term("term");
   // term.start();

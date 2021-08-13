@@ -1,5 +1,6 @@
 #include <types.h>
 #include <mountopts.h>
+#include <cpu_usage.h>
 namespace sys {
 void restart();
 void exit_thread(int code);
@@ -65,4 +66,6 @@ int dnslookup(const char * name, unsigned int* ip4);
 int shutdown();
 int mount(struct mountopts * opts);
 int getraminfo(unsigned long long * avail, unsigned long long * total);
+int get_core_usage(unsigned int core, struct chariot_core_usage * usage);
+int get_nproc();
 }

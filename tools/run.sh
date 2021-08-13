@@ -28,7 +28,6 @@ case $ARCH in
 		QEMU_FLAGS+="-enable-kvm -cpu host "
 		QEMU_FLAGS+="-global kvm-pit.lost_tick_policy=discard "
 		QEMU_FLAGS+="-m 4G "
-		# QEMU_FLAGS+="-d int "
 		QEMU_FLAGS+="-smp 4 "
 		QEMU_FLAGS+="-hda build/chariot.img "
 		# QEMU_FLAGS+="-soundhw pcspk "

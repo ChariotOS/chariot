@@ -632,12 +632,14 @@ void sys::exit_thread(int code) {
     sys::exit_proc(code);
     return;
   }
+
+  // pprintk("TODO: sys::exit_thread!\n");
+
   // defer to later!
   curthd->should_die = 1;
 
-  pprintk("TODO: sys::exit_thread!\n");
 
-  // sched::exit();
+  sched::exit();
 }
 
 

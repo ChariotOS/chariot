@@ -32,7 +32,7 @@ static int login_tty(int fd) {
 
 // this is basically dracula
 static uint32_t terminal_color_theme[term::_COLOR_COUNT] = {
-    [term::BLACK] = 0x21222C,
+    [term::BLACK] = 0x000000,  // 0x21222C,
     [term::RED] = 0xFF5555,
     [term::GREEN] = 0x50FA7B,
     [term::YELLOW] = 0xF1FA8C,
@@ -49,7 +49,7 @@ static uint32_t terminal_color_theme[term::_COLOR_COUNT] = {
     [term::BRIGHT_CYAN] = 0xA4FFFF,
     [term::BRIGHT_GREY] = 0xFFFFFF,
     [term::FOREGROUND] = 0xF8F8F2,
-    [term::BACKGROUND] = 0x21222C,
+    [term::BACKGROUND] = 0x000000,  // 0x21222C,
 };
 
 
@@ -61,7 +61,7 @@ terminalview::terminalview(void) {
   set_font("Source Code Pro");
   set_foreground(terminal_color_theme[term::FOREGROUND]);
   set_background(terminal_color_theme[term::BACKGROUND]);
-  set_font_size(16);
+  set_font_size(14);
   update_charsz();
 
   ptmx.open("/dev/ptmx", O_RDWR | O_CLOEXEC);
@@ -79,7 +79,7 @@ terminalview::terminalview(void) {
     pid_t pgid = getpgid(0);
     tcsetpgrp(0, pgid);
 
-    printf("rc=%d\n", rc);
+    // printf("rc=%d\n", rc);
     execl("/bin/sh", "/bin/sh", NULL);
   }
 }
@@ -174,17 +174,15 @@ void terminalview::handle_read(void) {
   constexpr int bufsz = 4096 * 4;
   char buf[bufsz];
   while (1) {
-    ssize_t sz = ptmx.read(buf, bufsz);
+    auto res = ptmx.read(buf, bufsz);
 
-    if (sz == 0) {
-      printf("EOF\n");
+    if (!res.has_value() && ptmx.eof()) {
+      // EOF!
       return;
     }
 
-    // printf("read %zd bytes\n", sz);
-
+    auto sz = res.unwrap();
     if (sz > 0) {
-      // ck::time::logger l("consume read");
       m_term->write(buf, sz);
       m_chars_written_since_last_frame += sz;
     } else {

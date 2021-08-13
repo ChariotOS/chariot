@@ -51,9 +51,9 @@ struct tm {
 
 typedef u64 addr_t;
 
-#ifndef __cplusplus
-typedef u8 bool;
-#endif
+// #ifndef __cplusplus
+// typedef u8 bool;
+// #endif
 
 typedef unsigned long uintptr_t;
 typedef long intptr_t;

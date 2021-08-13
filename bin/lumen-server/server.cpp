@@ -37,7 +37,7 @@ pid_t spawn(const char *command) {
 }
 
 
-lumen::context::context(void) : screen(CONFIG_FRAMEBUFFER_WIDTH, CONFIG_FRAMEBUFFER_HEIGHT) {
+lumen::server::server(void) : screen(CONFIG_FRAMEBUFFER_WIDTH, CONFIG_FRAMEBUFFER_HEIGHT) {
   if (keyboard.open("/dev/keyboard", "r+")) {
     keyboard.on_read([this] {
       while (1) {
@@ -94,24 +94,24 @@ lumen::context::context(void) : screen(CONFIG_FRAMEBUFFER_WIDTH, CONFIG_FRAMEBUF
 
 
 
-  server.listen("/usr/servers/lumen", [this] { accept_connection(); });
+  ipc_server.listen("/usr/servers/lumen", [this] { accept_connection(); });
 
   compose_timer = ck::timer::make_interval(COMPOSE_INTERVAL, [this] { this->compose(); });
   invalidate(screen.bounds());
 
-  spawn("ct");
+  // spawn("ct");
   spawn("term");
   // spawn("doom");
 }
 
 
-void lumen::context::handle_keyboard_input(keyboard_packet_t &pkt) {
+void lumen::server::handle_keyboard_input(keyboard_packet_t &pkt) {
   if (focused_window != NULL) {
     focused_window->handle_keyboard_input(pkt);
   }
 }
 
-void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
+void lumen::server::handle_mouse_input(struct mouse_packet &pkt) {
   auto old_pos = screen.mouse_pos;
   invalidate(screen.mouse_rect());
   screen.handle_mouse_input(pkt);
@@ -215,7 +215,7 @@ void lumen::context::handle_mouse_input(struct mouse_packet &pkt) {
 }
 
 
-void lumen::context::calculate_hover(void) {
+void lumen::server::calculate_hover(void) {
   auto *old = hovered_window;
 
   auto mp = screen.mouse_pos;
@@ -250,7 +250,7 @@ void lumen::context::calculate_hover(void) {
 }
 
 
-void lumen::context::select_window(lumen::window *win) {
+void lumen::server::select_window(lumen::window *win) {
   // de-select all windows
   if (win == NULL) {
     // TODO: tell the window it lost focus
@@ -278,7 +278,7 @@ void lumen::context::select_window(lumen::window *win) {
   focused_window = win;
 }
 
-void lumen::context::invalidate(const gfx::rect &r) {
+void lumen::server::invalidate(const gfx::rect &r) {
   auto real = r.intersect(screen.bounds());
   dirty_regions.add(real);
 
@@ -292,14 +292,14 @@ void lumen::context::invalidate(const gfx::rect &r) {
 }
 
 
-void lumen::context::accept_connection() {
+void lumen::server::accept_connection() {
   auto id = next_guest_id++;
   // accept the connection
-  auto *guest = server.accept();
+  auto *guest = ipc_server.accept();
   guests.set(id, new lumen::guest(id, *this, guest));
 }
 
-void lumen::context::guest_closed(long id) {
+void lumen::server::guest_closed(long id) {
   auto c = guests[id];
   guests.remove(id);
   delete c;
@@ -311,7 +311,7 @@ void lumen::context::guest_closed(long id) {
 
 
 
-void lumen::context::move_window(lumen::window *win, int dx, int dy) {
+void lumen::server::move_window(lumen::window *win, int dx, int dy) {
   /* Invalidate the old position */
   invalidate(win->rect);
 
@@ -335,7 +335,7 @@ void lumen::context::move_window(lumen::window *win, int dx, int dy) {
 }
 
 
-void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
+void lumen::server::process_message(lumen::guest &c, lumen::msg &msg) {
   HANDLE_TYPE(LUMEN_MSG_CREATE_WINDOW, lumen::create_window_msg) {
     (void)arg;
 
@@ -472,7 +472,7 @@ void lumen::context::process_message(lumen::guest &c, lumen::msg &msg) {
 
 
 
-void lumen::context::window_opened(lumen::window *w) {
+void lumen::server::window_opened(lumen::window *w) {
   // [sanity check] make sure the window isn't already in the list :^)
   for (auto *e : windows) {
     if (w == e) {
@@ -507,7 +507,7 @@ void lumen::context::window_opened(lumen::window *w) {
 }
 
 
-void lumen::context::window_closed(lumen::window *w) {
+void lumen::server::window_closed(lumen::window *w) {
   // Remove the window from our list
   for (int i = 0; i < windows.size(); i++) {
     if (windows[i] == w) {
@@ -531,7 +531,7 @@ void lumen::context::window_closed(lumen::window *w) {
 }
 
 
-bool lumen::context::occluded(lumen::window &win, const gfx::rect &a) {
+bool lumen::server::occluded(lumen::window &win, const gfx::rect &a) {
   auto r = win.rect.intersect(a);
   for (int i = windows.size() - 1; i >= 0; i--) {
     auto other = windows[i];
@@ -548,7 +548,7 @@ bool lumen::context::occluded(lumen::window &win, const gfx::rect &a) {
 
 
 static long frame = 0;
-void lumen::context::compose(void) {
+void lumen::server::compose(void) {
   frame++;
 
   /*
@@ -680,7 +680,7 @@ void lumen::context::compose(void) {
 
 
 
-lumen::guest::guest(long id, struct context &ctx, ck::ipcsocket *conn)
+lumen::guest::guest(long id, struct server &ctx, ck::ipcsocket *conn)
     : id(id), ctx(ctx), connection(conn) {
   connection->on_read([this] { this->on_read(); });
 }

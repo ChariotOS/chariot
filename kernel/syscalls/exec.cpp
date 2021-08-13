@@ -45,6 +45,22 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
     return -ENOENT;
   }
 
+
+
+  {
+    ck::vec<int> to_close;
+    scoped_lock l(curproc->file_lock);
+    for (auto [fd, file] : curproc->open_files) {
+      if (fd >= 3) {
+        to_close.push(fd);
+      }
+    }
+
+    for (int fd : to_close) {
+      curproc->open_files.remove(fd);
+    }
+  }
+
   off_t entry = 0;
   auto fd = ck::make_ref<fs::file>(exe, FDIR_READ);
   mm::space *new_addr_space = nullptr;
@@ -91,6 +107,8 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
 
   curthd->setup_tls();
   curthd->setup_stack(tf);
+
+
 
   /* TODO: on riscv, we overwrite the a0 value with the return value from the systemcall. Instead,
    * we ought to do something smarter, but for now, success means returning the success value from

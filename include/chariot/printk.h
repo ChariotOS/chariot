@@ -59,9 +59,9 @@ const char* human_size(uint64_t bytes, char* buf);
 
 #define RESET "\e[0m"
 
-#define KLOG(PREFIX, fmt, args...)   \
-  do {                               \
-    printk(PREFIX ": " fmt, ##args); \
+#define KLOG(PREFIX, fmt, args...)                              \
+  do {                                                          \
+    printk(PREFIX " %s:%s - " fmt, __FILE__, __LINE__, ##args); \
   } while (0);
 
 

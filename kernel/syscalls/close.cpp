@@ -1,7 +1,10 @@
 #include <syscall.h>
 #include <cpu.h>
+#include <fs/magicfd.h>
 
 int sys::close(int fd) {
+  if ((fd & MAGICFD_MASK) != 0) return -EPERM;
+
   auto proc = cpu::proc();
   assert(proc != NULL);
 

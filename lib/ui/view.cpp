@@ -168,11 +168,23 @@ gfx::scribe ui::view::get_scribe(void) {
 
 
 // invalidate the whole view
-void ui::view::update(void) { update(absolute_rect()); }
+void ui::view::update(void) {
+  auto *win = surface();
+  if (win == nullptr) return;
+
+  auto abs = absolute_rect();
+  // dirty_area.x += abs.x;
+  // dirty_area.y += abs.y;
+  win->invalidate(abs);
+}
 
 void ui::view::update(gfx::rect dirty_area) {
   auto *win = surface();
   if (win == nullptr) return;
+
+  auto abs = absolute_rect();
+  // dirty_area.x += abs.x;
+  // dirty_area.y += abs.y;
   win->invalidate(dirty_area);
 }
 

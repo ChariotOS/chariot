@@ -23,6 +23,16 @@
 
 #define EXT2_FT_MAX 8
 
+
+template <typename T, typename U>
+inline constexpr T ceil_div(T a, U b) {
+  static_assert(sizeof(T) == sizeof(U));
+  T result = a / b;
+  if ((a % b) != 0) ++result;
+  return result;
+}
+
+
 namespace fs {
 
 

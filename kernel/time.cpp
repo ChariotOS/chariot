@@ -35,6 +35,7 @@ unsigned long long time::now_ns() {
 
   /* If the time is not stabilized yet, wait for it. */
   if (unlikely(!time::stabilized())) {
+    return 0;
     printk(
         KERN_WARN "The time has not been stabilized before access. Waiting for stabilization...\n");
     while (!time::stabilized()) {

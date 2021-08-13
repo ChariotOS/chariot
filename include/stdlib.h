@@ -28,6 +28,9 @@ double atof(const char *);
 void *malloc(size_t sz);
 void free(void *);
 
+unsigned long long malloc_total(void);
+unsigned long long malloc_allocated(void);
+
 void *calloc(size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
 void *reallocarray(void *ptr, size_t nmemb, size_t size);
@@ -77,7 +80,7 @@ int posix_memalign(void **memptr, size_t alignment, size_t size);
 
 
 void *bsearch(const void *key, const void *base, size_t nel, size_t width,
-              int (*cmp)(const void *, const void *));
+    int (*cmp)(const void *, const void *));
 
 
 #ifdef __cplusplus

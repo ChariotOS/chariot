@@ -1,11 +1,6 @@
 
-
 global setjmp
-global _setjmp
-global __setjmp
 global longjmp
-global _longjmp
-global __longjmp
 
 __setjmp:
 _setjmp:
@@ -26,7 +21,6 @@ setjmp:
 
 
 _longjmp:
-__longjmp:
 longjmp:
 	mov rax, rsi    ; val will be longjmp return
 	test rax, rax
@@ -43,3 +37,14 @@ longjmp:
 	mov rsp, rdx
 	mov rdx, [rdi + 56] ; this is the instruction pointer
 	jmp rdx
+
+
+
+;; new stack in rdi, func in rsi
+global _call_with_new_stack
+_call_with_new_stack:
+	mov rsp, rdi
+	mov rbp, rdi
+	;; the third arg is the arg to the function, so move it around
+	mov rdi, rdx
+	call rsi

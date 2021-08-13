@@ -109,7 +109,6 @@ namespace ui {
     using weak_ref = ck::weak_ref<ui::view>;
 
     view();
-
     // a helper function to create a view with some children
     // view(ck::vec<ck::ref<ui::view>> children);
     view(std::initializer_list<ui::view *> children);
