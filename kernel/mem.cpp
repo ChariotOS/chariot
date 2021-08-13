@@ -132,11 +132,75 @@ char *strncpy(char *d, const char *s, size_t n) {
   return d;
 }
 
+char *strcpy(char *d, const char *s) {
+  for (; (*d = *s); s++, d++)
+    ;
+
+  return d;
+}
+
 
 void *zalloc(unsigned long sz) {
   auto p = malloc(sz);
   memset(p, 0, sz);
   return p;
+}
+
+static void insertion_sort(
+    void *bot, size_t nmemb, size_t size, int (*compar)(const void *, const void *)) {
+  int cnt;
+  unsigned char ch;
+  char *s1, *s2, *t1, *t2, *top;
+  top = (char *)bot + nmemb * size;
+  for (t1 = (char *)bot + size; t1 < top;) {
+    for (t2 = t1; (t2 -= size) >= (char *)bot && compar(t1, t2) < 0;)
+      ;
+    if (t1 != (t2 += size)) {
+      for (cnt = size; cnt--; ++t1) {
+        ch = *t1;
+        for (s1 = s2 = t1; (s2 -= size) >= t2; s1 = s2)
+          *s1 = *s2;
+        *s1 = ch;
+      }
+    } else
+      t1 += size;
+  }
+}
+
+static void insertion_sort_r(void *bot, size_t nmemb, size_t size,
+    int (*compar)(const void *, const void *, void *), void *arg) {
+  int cnt;
+  unsigned char ch;
+  char *s1, *s2, *t1, *t2, *top;
+  top = (char *)bot + nmemb * size;
+  for (t1 = (char *)bot + size; t1 < top;) {
+    for (t2 = t1; (t2 -= size) >= (char *)bot && compar(t1, t2, arg) < 0;)
+      ;
+    if (t1 != (t2 += size)) {
+      for (cnt = size; cnt--; ++t1) {
+        ch = *t1;
+        for (s1 = s2 = t1; (s2 -= size) >= t2; s1 = s2)
+          *s1 = *s2;
+        *s1 = ch;
+      }
+    } else
+      t1 += size;
+  }
+}
+
+extern "C" void qsort(
+    void *bot, size_t nmemb, size_t size, int (*compar)(const void *, const void *)) {
+  if (nmemb <= 1) return;
+
+  insertion_sort(bot, nmemb, size, compar);
+}
+
+
+extern "C" void qsort_r(void *bot, size_t nmemb, size_t size,
+    int (*compar)(const void *, const void *, void *), void *arg) {
+  if (nmemb <= 1) return;
+
+  insertion_sort_r(bot, nmemb, size, compar, arg);
 }
 
 

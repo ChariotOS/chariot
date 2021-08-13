@@ -6,6 +6,12 @@
 #include "types.h"
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+
 #ifndef unlikely
 #define unlikely(c) __builtin_expect((c), 0)
 #endif
@@ -126,20 +132,8 @@
 /* Flag is set? */
 #define FIS(val, flag) (((val) & (flag)) != 0)
 
-#ifdef __cplusplus
-template <typename T, typename U>
-inline constexpr T ceil_div(T a, U b) {
-  static_assert(sizeof(T) == sizeof(U));
-  T result = a / b;
-  if ((a % b) != 0) ++result;
-  return result;
-}
-#endif
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // #define FANCY_MEM_FUNCS
 //
@@ -152,10 +146,8 @@ void memset(void *buf, char c, size_t len);
 void memset32(void *buf, uint32_t val, size_t len);
 
 
+void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
 
-#ifdef __cplusplus
-}
-#endif
 
 
 static inline int strcmp(const char *l, const char *r) {
@@ -163,13 +155,11 @@ static inline int strcmp(const char *l, const char *r) {
     ;
   return *(unsigned char *)l - *(unsigned char *)r;
 }
-
-
+char *strcpy(char *, const char *);
 
 char *strncpy(char *, const char *, size_t);
 int strncmp(const char *s1, const char *s2, size_t limit);
-
-extern "C" size_t strlen(const char *s);
+size_t strlen(const char *s);
 
 
 // memmove is just copy but you clear it out
@@ -204,9 +194,7 @@ static inline u64 read_cr0(void) {
   return ret;
 }
 
-static inline void write_cr0(u64 data) {
-  asm volatile("mov %0, %%cr0" : : "r"(data));
-}
+static inline void write_cr0(u64 data) { asm volatile("mov %0, %%cr0" : : "r"(data)); }
 
 static inline u64 read_cr2(void) {
   u64 ret;
@@ -214,9 +202,7 @@ static inline u64 read_cr2(void) {
   return ret;
 }
 
-static inline void write_cr2(u64 data) {
-  asm volatile("mov %0, %%cr2" : : "r"(data));
-}
+static inline void write_cr2(u64 data) { asm volatile("mov %0, %%cr2" : : "r"(data)); }
 
 static inline u64 read_cr3(void) {
   u64 ret;
@@ -224,9 +210,7 @@ static inline u64 read_cr3(void) {
   return ret;
 }
 
-static inline void write_cr3(u64 data) {
-  asm volatile("mov %0, %%cr3" : : "r"(data));
-}
+static inline void write_cr3(u64 data) { asm volatile("mov %0, %%cr3" : : "r"(data)); }
 
 
 
@@ -236,9 +220,7 @@ static inline u64 read_cr4(void) {
   return ret;
 }
 
-static inline void write_cr4(u64 data) {
-  asm volatile("mov %0, %%cr4" : : "r"(data));
-}
+static inline void write_cr4(u64 data) { asm volatile("mov %0, %%cr4" : : "r"(data)); }
 
 uint8_t inb(off_t port);
 uint16_t inw(off_t port);
@@ -280,4 +262,10 @@ int atoi(const char *);
 extern uint64_t rand_seed;
 void srand(unsigned s);
 int rand(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+
 #endif

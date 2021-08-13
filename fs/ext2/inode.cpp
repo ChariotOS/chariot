@@ -574,7 +574,8 @@ static ssize_t ext2_write(fs::file &f, const char *src, size_t sz) {
   return ext2_do_read_write(f, (char *)src, sz, true);
 }
 
-static int ext2_ioctl(fs::file &, unsigned int, off_t) {
+static int ext2_ioctl(fs::file &, unsigned int cmd, off_t) {
+  // printk("cmd: %d\n", cmd);
   UNIMPL();
   return -ENOTIMPL;
 }
