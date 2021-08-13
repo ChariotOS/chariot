@@ -99,6 +99,10 @@ static long long l_warningCount = 0;      ///< Number of warnings encountered
 static long long l_errorCount = 0;        ///< Number of actual errors
 static long long l_possibleOverruns = 0;  ///< Number of possible overruns
 
+
+
+unsigned long long malloc_total(void) { return l_allocated; }
+unsigned long long malloc_allocated(void) { return l_inuse; }
 // ***********   HELPER FUNCTIONS  *******************************
 
 static void *liballoc_memset(void *s, int c, size_t n) {
@@ -204,7 +208,7 @@ static struct liballoc_major *allocate_new_page(unsigned int size) {
 
 #ifdef DEBUG
   printf("liballoc: Resource allocated %p of %i pages (%i bytes) for %i size.\n", maj, st,
-         maj->size, size);
+      maj->size, size);
 
   printf("liballoc: Total memory usage = %i KB\n", (int)((l_allocated / (1024))));
   FLUSH();
@@ -553,7 +557,7 @@ void PREFIX(free)(void *ptr) {
       l_possibleOverruns += 1;
 #if defined DEBUG || defined INFO
       printf("liballoc: ERROR: Possible 1-3 byte overrun for magic %p != %p\n", min->magic,
-             LIBALLOC_MAGIC);
+          LIBALLOC_MAGIC);
       FLUSH();
 #endif
     }
@@ -561,13 +565,13 @@ void PREFIX(free)(void *ptr) {
     if (min->magic == LIBALLOC_DEAD) {
 #if defined DEBUG || defined INFO
       printf("liballoc: ERROR: multiple PREFIX(free)() attempt on %p from %p.\n", ptr,
-             __builtin_return_address(0));
+          __builtin_return_address(0));
       FLUSH();
 #endif
     } else {
 #if defined DEBUG || defined INFO
       printf("liballoc: ERROR: Bad PREFIX(free)( %p ) called from %p\n", ptr,
-             __builtin_return_address(0));
+          __builtin_return_address(0));
       FLUSH();
 #endif
     }
@@ -670,7 +674,7 @@ void *PREFIX(realloc)(void *p, size_t size) {
       l_possibleOverruns += 1;
 #if defined DEBUG || defined INFO
       printf("liballoc: ERROR: Possible 1-3 byte overrun for magic %p != %p\n", min->magic,
-             LIBALLOC_MAGIC);
+          LIBALLOC_MAGIC);
       FLUSH();
 #endif
     }
@@ -678,13 +682,13 @@ void *PREFIX(realloc)(void *p, size_t size) {
     if (min->magic == LIBALLOC_DEAD) {
 #if defined DEBUG || defined INFO
       printf("liballoc: ERROR: multiple PREFIX(free)() attempt on %p from %p.\n", ptr,
-             __builtin_return_address(0));
+          __builtin_return_address(0));
       FLUSH();
 #endif
     } else {
 #if defined DEBUG || defined INFO
       printf("liballoc: ERROR: Bad PREFIX(free)( %p ) called from %p\n", ptr,
-             __builtin_return_address(0));
+          __builtin_return_address(0));
       FLUSH();
 #endif
     }

@@ -12,9 +12,11 @@
 #include <sys/types.h>
 #include <sys/sysinfo.h>
 #include <sys/netdb.h>
+#include <chariot/cpu_usage.h>
 #else
 #include <types.h>
 #include <mountopts.h>
+#include <cpu_usage.h>
 #endif
 
 #ifdef __cplusplus
@@ -85,6 +87,8 @@ int sysbind_dnslookup(const char * name, unsigned int* ip4);
 int sysbind_shutdown();
 int sysbind_mount(struct mountopts * opts);
 int sysbind_getraminfo(unsigned long long * avail, unsigned long long * total);
+int sysbind_get_core_usage(unsigned int core, struct chariot_core_usage * usage);
+int sysbind_get_nproc();
 #ifdef __cplusplus
 }
 #endif

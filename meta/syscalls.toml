@@ -11,13 +11,15 @@ includes = [
 	'<sys/stat.h>',
 	'<sys/types.h>',
 	'<sys/sysinfo.h>',
-	'<sys/netdb.h>'
+	'<sys/netdb.h>',
+	'<chariot/cpu_usage.h>'
 ]
 
 [kernel]
 includes = [
 	'<types.h>',
-	'<mountopts.h>'
+	'<mountopts.h>',
+	'<cpu_usage.h>'
 ]
 
 
@@ -434,3 +436,16 @@ args = [
 	'avail: unsigned long long *',
 	'total: unsigned long long *'
 ]
+
+
+
+[sc.get_core_usage]
+ret = 'int'
+args = [
+	'core: unsigned int',
+	'usage: struct chariot_core_usage *'
+]
+
+[sc.get_nproc]
+ret = 'int'
+args = []

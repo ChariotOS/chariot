@@ -441,6 +441,7 @@ static int idle_task(void *arg) {
 
 
 void sched::run() {
+
   arch_disable_ints();
   // per-scheduler idle threads do not exist in the scheduler queue.
   auto *idle_thread = sched::proc::spawn_kthread("idle task", idle_task, NULL);
@@ -461,18 +462,30 @@ void sched::run() {
 
     if (thd == nullptr) {
       // idle loop when there isn't a task
-      cpu::current().kstat.iticks++;
       idle_thread->sched.timeslice = 1;
       idle_thread->sched.has_run = 0;
+
+      auto start = cpu::get_ticks();
       switch_into(*idle_thread);
+      auto end = cpu::get_ticks();
+
+      cpu::current().kstat.idle_ticks += end - start;
       continue;
     }
 
-
-
     mlfq::Behavior b = mlfq::Behavior::Unknown;
 
+    auto start = cpu::get_ticks();
     switch_into(*thd);
+    auto end = cpu::get_ticks();
+
+    if (thd->proc.ring == RING_KERN) {
+      cpu::current().kstat.kernel_ticks += end - start;
+    } else {
+      cpu::current().kstat.user_ticks += end - start;
+    }
+
+
     // add the task back to the scheduler
     sched::add_task(thd);
   }
@@ -492,13 +505,6 @@ void sched::handle_tick(u64 ticks) {
   // grab the current thread
   auto thd = cpu::thread();
   thd->sched.has_run++;
-
-  if (thd->proc.ring == RING_KERN) {
-    cpu::current().kstat.kticks++;
-  } else {
-    cpu::current().kstat.uticks++;
-  }
-
 
   /* We don't get preempted if we aren't currently runnable. See wait.cpp for why */
   if (thd->get_state() != PS_RUNNING) return;

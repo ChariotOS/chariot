@@ -259,3 +259,11 @@ int sysbind_getraminfo(unsigned long long * avail, unsigned long long * total) {
     return (int)__syscall_eintr(63, (unsigned long long)avail, (unsigned long long)total, 0, 0, 0, 0);
 }
 
+int sysbind_get_core_usage(unsigned int core, struct chariot_core_usage * usage) {
+    return (int)__syscall_eintr(64, (unsigned long long)core, (unsigned long long)usage, 0, 0, 0, 0);
+}
+
+int sysbind_get_nproc() {
+    return (int)__syscall_eintr(65, 0, 0, 0, 0, 0, 0);
+}
+
