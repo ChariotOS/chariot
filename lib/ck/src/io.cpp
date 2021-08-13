@@ -354,7 +354,9 @@ ck::localsocket *ck::localsocket::accept(void) {
 
   if (client < 0) return nullptr;
 
-  return new ck::localsocket(client);
+  auto s = new ck::localsocket(client);
+  s->set_connected(true);
+  return s;
 }
 
 
@@ -399,5 +401,7 @@ ck::ipcsocket *ck::ipcsocket::accept(void) {
 
   if (client < 0) return nullptr;
 
-  return new ck::ipcsocket(client);
+  auto s = new ck::ipcsocket(client);
+  s->set_connected(true);
+  return s;
 }

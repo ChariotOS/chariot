@@ -7,25 +7,31 @@ import itertools
 import sys
 
 grammar = '''
-start: (namespace | source )+
+start: (namespace | source | header )+
 
 namespace: "namespace" NAME
 
-source: SRC_TYPE "{" message+ "}"
+source: SRC_TYPE "{" message* "}"
 
-message: MSG_TYPE NAME "{" field+ "}"
+message: MSG_TYPE NAME "(" [ field ("," field)* ] ")"
 
-field: NAME NAME ";"
+field: NAME NAME ("=" (STRING | NUMBER))?
+
+
+header: "header" PATH
+
+PATH: /[\w\.\/]/+
  
 NAME: /[\w:]/+
 
 SRC_TYPE: "client"|"server"
 MSG_TYPE: "sync"|"async"
 
-COMMENT: /#.*/
+COMMENT: /\/\/.*/
 
 %import common.LETTER
-%import common.INT -> NUMBER
+%import common.ESCAPED_STRING   -> STRING
+%import common.SIGNED_NUMBER    -> NUMBER
 %import common.WS
 %ignore WS
 %ignore COMMENT
@@ -38,9 +44,16 @@ parser = Lark(grammar)
 class Field:
    type: str
    name: str
+   default: str
 
    def __repr__(self):
       return f'{self.type} {self.name};'
+
+   def default_str(self):
+      if self.default is None:
+         return ''
+      return f' = {self.default}'
+
 
 @dataclass
 class Message:
@@ -61,6 +74,10 @@ class Source:
 class Namespace:
    name: str
 
+@dataclass
+class Header:
+   hdr: str
+
 
 class MyTransformer(Transformer):
 
@@ -74,8 +91,11 @@ class MyTransformer(Transformer):
       return str(name)
 
    def field(self, f):
-      (t, n) = f
-      return Field(t, n)
+      if len(f) == 3:
+         (t, n, d) = f
+         return Field(t, n, d)
+
+      return Field(f[0], f[1], None)
 
    def message(self, m):
       return Message(m[0], m[1], m[2:])
@@ -92,12 +112,17 @@ class MyTransformer(Transformer):
    def namespace(self, n):
       return Namespace(n[0])
 
+   def header(self, h):
+      return Header(str(h[0]))
+
 
 
 class IPCCompiler:
    def __init__(self, tree):
       self.tree = tree
       self.namespace = None
+      self.header = None
+
 
       self.client_messages = []
       self.server_messages = []
@@ -106,10 +131,14 @@ class IPCCompiler:
       self.send_map = {}
       self.recv_map = {}
 
+
       # go over the top level and decode it
       for tl in tree:
          if isinstance(tl, Namespace):
             self.namespace = tl.name
+
+         if isinstance(tl, Header):
+            self.header = tl.hdr
 
          if isinstance(tl, Source):
             self.all_msgs.extend(tl.msgs)
@@ -123,6 +152,10 @@ class IPCCompiler:
 
       if self.namespace is None:
          raise Exception("No namespace defined")
+
+      
+      if self.header is None:
+         raise Exception("No header defined")
 
 
 
@@ -179,47 +212,55 @@ class IPCCompiler:
       for tl in self.tree:
          if isinstance(tl, Source):
             typename = tl.type
-            out(f'  class {typename}_stub : public ck::ipc::impl::{typename} {{')
+            out(f'  class {typename}_connection_stub : public ck::ipc::impl::socket_connection {{')
             out(f'    public:')
-            out(f'      virtual ~{typename}_stub(void) {{}}')
+            out(f'      {typename}_connection_stub(ck::ref<ck::ipcsocket> s) : ck::ipc::impl::socket_connection(s, "{self.namespace}", {"true" if typename == "server" else "false"}) {{}}')
+            out(f'      virtual ~{typename}_connection_stub(void) {{}}')
             out('')
 
             out(f'      // methods to send messages')
             for m in self.send_map[typename]:
-               args = [f'{f.type} {f.name}' for f in m.fields]
-               args = [f'{f.type} {f.name}' for f in m.fields]
+               args = [f'{f.type} {f.name}{f.default_str()}' for f in m.fields]
                out(f'      inline void {m.name}({", ".join(args)}) {{')
-               out(f'        ck::ipc::encoder e;')
-               out(f'        e << (uint32_t){self.namespace}::Message::{m.name.upper()});')
-               out(f'        e << {" << ".join(f.name for f in m.fields)};')
+               out(f'        ck::ipc::encoder __e = begin_send();')
+               out(f'        __e << (uint32_t){self.namespace}::Message::{m.name.upper()};')
+               for field in m.fields:
+                  out(f'        ck::ipc::encode(__e, {field.name});')
 
-               out(f'        this->send_raw_{m.type}(e.buffer(), e.size());')
+               out(f'        this->finish_send();')
                out(f'      }}')
                out()
 
             out('')
             out(f'      // handle these in your subclass')
             for m in self.recv_map[typename]:
-               args = [f'{f.type} {f.name}' for f in m.fields]
+               args = [f'{f.type} {f.name}{f.default_str()}' for f in m.fields]
                out(f'      virtual void on_{m.name}({", ".join(args)}) = 0;')
             out('')
             out('')
 
             out(f'    protected:')
-            out(f'      // ^ck::ipc::base_{typename}')
+            out(f'      // ^ck::ipc::impl::{typename}_connection')
             out(f'      virtual inline void dispatch_received_message(void *data, size_t len) {{')
             out(f'        ck::ipc::decoder __decoder(data, len);')
-            out(f'        auto msg_type = ck::ipc::decode<uint32_t>(__decoder);')
+            out(f'        {self.namespace}::Message msg_type = ({self.namespace}::Message)ck::ipc::decode<uint32_t>(__decoder);')
+
             out(f'        switch (msg_type) {{')
             for m in self.recv_map[typename]:
-               out(f'          case {m.name.upper()}: {{')
+               out(f'          case {self.namespace}::Message::{m.name.upper()}: {{')
                for field in m.fields:
-                  out(f'            auto {field.name} = ipc::decode<{field.type}>(__decoder);')
+                  out(f'            {field.type} {field.name};')
+                  out(f'            ck::ipc::decode(__decoder, {field.name});')
+
                args = [f'{f.name}' for f in m.fields]
 
                out(f'            on_{m.name}({", ".join(args)});')
                out(f'            break;')
                out(f'          }}')
+
+            out(f'          default:')
+            out(f'            panic("Unhandled message type %d", msg_type);')
+            out(f'            break;')
 
             out(f'        }}')
             out(f'      }}\n')
@@ -229,7 +270,7 @@ class IPCCompiler:
 
 
    def compile(self, basename):
-      with open(basename + '.h', 'w') as f:
+      with open('./' + self.header, 'w') as f:
          self.compile_header(f)
 
 

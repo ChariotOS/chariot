@@ -135,11 +135,19 @@ ssize_t net::ipcsock::recvfrom(
     fs::file &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
   auto &state = (fd.pflags & PFLAGS_SERVER) ? for_server : for_client;
   bool block = (flags & MSG_DONTWAIT) == 0;
-
   while (1) {
     struct wait_entry ent;
     {
       scoped_lock l(state.lock);
+
+      // printk_nolock("%3d - recv message, %d live\n", curproc->pid, state.msgs.size_slow());
+
+
+      if (flags & MSG_IPC_CLEAR) {
+        state.msgs.clear();
+        // return the len :)
+        return len;
+      }
 
       if (!state.msgs.is_empty()) {
         // pprintk("take data!\n");
@@ -148,6 +156,7 @@ ssize_t net::ipcsock::recvfrom(
           return front.data.size();
         }
 
+
         // the buffer needs to be big enough
         if (front.data.size() > len) return -EMSGSIZE;
 
@@ -155,7 +164,6 @@ ssize_t net::ipcsock::recvfrom(
         size_t nread = front.data.size();
         state.msgs.take_first();
 
-        // printk("%3d - recv message, %d live\n", curproc->pid, state.msgs.size_slow());
 
         return nread;
       }

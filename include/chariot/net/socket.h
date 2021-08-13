@@ -282,6 +282,8 @@ struct sockaddr_storage {
 #define PF_CKIPC AF_CKIPC
 // returns the size of the next message, -EAGAIN if there isn't one left.
 #define MSG_IPC_QUERY 0x80000000
+#define MSG_IPC_CLEAR 0x80000001
+
 
 #ifdef __cplusplus
 }

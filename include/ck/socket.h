@@ -38,12 +38,14 @@ namespace ck {
     inline bool connected(void) { return m_connected; }
     inline bool listening(void) { return m_listening; }
 
+    void set_connected(bool to = true) { m_connected = to; }
+
 
     CK_OBJECT(ck::socket);
   };
 
   class localsocket : public ck::socket {
-    inline localsocket(int fd) : socket(fd, AF_UNIX, SOCK_STREAM, 0) {}
+    inline localsocket(int fd) : socket(fd, AF_UNIX, SOCK_STREAM, 0) { m_connected = true; }
 
    public:
     inline localsocket(void) : socket(AF_UNIX, SOCK_STREAM) {}

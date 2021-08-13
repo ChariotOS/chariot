@@ -1,0 +1,18 @@
+// the C++ namespace
+namespace test
+
+// where to put the generated header file
+header /bin/ct/test.h
+
+// messages sent from the client
+client {
+    // a basic greet message :^)
+    async greet(uint32_t number, uint64_t time)
+}
+
+
+// the server doesn't do anything in this protocol yet
+server {
+}
+
+

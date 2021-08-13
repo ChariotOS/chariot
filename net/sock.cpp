@@ -183,8 +183,8 @@ ssize_t sys::recvfrom(int sockfd, void *buf, size_t len, int flags,
   ck::ref<fs::file> file = curproc->get_fd(sockfd);
 
 
-  // printk("[%3d] recvfrom as '%s'\n", curproc->pid, file->pflags == PFLAGS_CLIENT ? "client" :
-  // "server");
+  // printk("[%3d] recvfrom as '%s'\n", curproc->pid,
+  //     file->pflags == PFLAGS_CLIENT ? "client" : "server");
 
 
   ssize_t res = -EINVAL;
