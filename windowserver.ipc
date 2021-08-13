@@ -1,0 +1,26 @@
+namespace windowserver
+
+client {
+    async resize_window {
+        uint32_t window;
+        uint32_t width;
+        uint32_t height;
+        uint32_t height;
+    }
+
+    async create_window {
+        ck::string name;
+    }
+}
+
+server {
+    async window_resized {
+        uint32_t window;
+        ck::string bitmap_name;
+    }
+
+
+    async window_resized {
+        uint32_t window;
+    }
+}
