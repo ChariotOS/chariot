@@ -26,14 +26,10 @@ void spinlock::lock(void) {
   }
 }
 
-void spinlock::unlock(void) {
-  ATOMIC_CLEAR(&locked);
-}
+void spinlock::unlock(void) { ATOMIC_CLEAR(&locked); }
 
 
-bool spinlock::is_locked(void) {
-  return locked;
-}
+bool spinlock::is_locked(void) { return locked; }
 
 static inline bool irq_disable_save(void) {
   // preempt_disable();
@@ -94,9 +90,7 @@ void spinlock::unlock_irqrestore(bool flags) {
 }
 
 
-static void spin_wait(volatile int* lock) {
-  arch_relax();
-}
+static void spin_wait(volatile int* lock) { arch_relax(); }
 void spinlock::lock(volatile int& l) {
   volatile int* lock = &l;
   while (likely(__sync_lock_test_and_set(lock, 1))) {
@@ -106,9 +100,7 @@ void spinlock::lock(volatile int& l) {
 
 
 
-void spinlock::unlock(volatile int& l) {
-  ATOMIC_CLEAR(&l);
-}
+void spinlock::unlock(volatile int& l) { ATOMIC_CLEAR(&l); }
 
 int rwlock::read_lock(void) {
   m_lock.lock();

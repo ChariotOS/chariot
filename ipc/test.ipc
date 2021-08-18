@@ -6,13 +6,13 @@ header /bin/ct/test.h
 
 // messages sent from the client
 client {
-    // a basic greet message :^)
-    async greet(uint32_t number, uint64_t time)
+    // the client can ask the server to map a vector
+    map(ck::vec<uint32_t> vec) return (ck::vec<uint32_t> vec)
 }
 
-
-// the server doesn't do anything in this protocol yet
 server {
+    // the server can ask the client to compute
+    compute(uint32_t val) return (uint32_t result)
 }
 
 

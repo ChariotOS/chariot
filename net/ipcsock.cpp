@@ -117,13 +117,14 @@ ssize_t net::ipcsock::sendto(
     if (state.closed) {
       return 0;
     }
-
+    // printk_nolock("%d send\n", curproc->pid);
     // printk("%3d - send message, %d live\n", curproc->pid, state.msgs.size_slow());
 
     state.msgs.append(ipcmsg(data, len));
   }
-  state.wq.wake_up();
-  sched::yield();
+  state.wq.wake_up_all();
+
+  // sched::yield();
 
 
   return len;
@@ -138,12 +139,12 @@ ssize_t net::ipcsock::recvfrom(
   while (1) {
     struct wait_entry ent;
     {
+      // printk("%3d - recv message, %d live\n", curproc->pid, state.msgs.size_slow());
+
       scoped_lock l(state.lock);
 
-      // printk_nolock("%3d - recv message, %d live\n", curproc->pid, state.msgs.size_slow());
 
-
-      if (flags & MSG_IPC_CLEAR) {
+      if (flags == MSG_IPC_CLEAR) {
         state.msgs.clear();
         // return the len :)
         return len;

@@ -4,6 +4,7 @@
 #include "sys/sysbind.h"
 #include "chariot/ck/ptr.h"
 #include "ck/eventloop.h"
+#include "lumen.h"
 #include "stdlib.h"
 #include "ui/event.h"
 #include "ui/textalign.h"
@@ -15,8 +16,10 @@
 #include <ck/time.h>
 #include <sys/sysbind.h>
 #include <alloca.h>
+#include <errno.h>
+#include <sys/syscall.h>
 #include <chariot/fs/magicfd.h>
-
+#include <sys/wait.h>
 
 class ct_window : public ui::window {
  public:
@@ -263,63 +266,118 @@ class client_connection : public test::client_connection_stub {
  public:
   client_connection(ck::ref<ck::ipcsocket> s) : test::client_connection_stub(s) {}
 
+
+  ck::option<test::server_compute_response> on_compute(uint32_t val) override {
+    // printf("compute %d\n", val);
+    return test::server_compute_response({val * 2});
+  }
   virtual ~client_connection() {}
 };
-
-void run_client() {
-  ck::eventloop ev;
-
-  ck::ref<ck::ipcsocket> sock = ck::make_ref<ck::ipcsocket>();
-  // wait for the server to come up lol
-  usleep(200 * 1000);
-
-  sock->connect("/usr/servers/ct");
-  if (!sock->connected()) panic("ouchie");
-
-  printf("connected!\n");
-
-  client_connection c(sock);
-  int i = 0;
-  auto t = ck::timer::make_interval(1, [&] { c.greet(i++, ck::time::us()); });
-  ev.start();
-}
-
-
-
 
 class server_connection : public test::server_connection_stub {
  public:
   server_connection(ck::ref<ck::ipcsocket> s) : test::server_connection_stub(s) {}
 
   virtual ~server_connection() {}
-  virtual void on_greet(uint32_t number, uint64_t time) {
-    auto mytime = ck::time::us();
-    // print it out!
-    printf("greeted with '%d'. %llu\n", number, mytime - time);
+
+
+  // handle these in your subclass
+  ck::option<test::client_map_response> on_map(ck::vec<uint32_t> vec) override {
+    // printf("map over %zu values\n", vec.size());
+    for (auto& val : vec) {
+      // printf("asking to compute on %d\n", val);
+      auto r = compute(val);
+      if (!r.has_value()) {
+        return None;
+      }
+      val = r.unwrap().result;
+    }
+    return test::client_map_response{vec};
   }
 };
+
+
+void run_client(ck::string path) {
+  ck::eventloop ev;
+
+  ck::ref<ck::ipcsocket> sock = ck::make_ref<ck::ipcsocket>();
+  sock->connect(path);
+  if (!sock->connected()) panic("ouchie");
+
+  printf("connected!\n");
+
+
+  client_connection c(sock);
+  ck::vec<uint32_t> vec;
+  for (int v = 0; v < 100; v++) {
+    vec.push(v);
+  }
+  for (int trial = 0; true; trial++) {
+    printf("trial %d, size: %d\n", trial, vec.size());
+    test::client_map_response r;
+    {
+      ck::time::logger l("ipc");
+      auto o = c.map(vec);
+
+      if (!o.has_value()) {
+        assert(c.closed());
+        printf("server dead!\n");
+        exit(0);
+        break;
+      } else {
+        r = o.take();
+      }
+    }
+
+    for (int i = 0; i < vec.size(); i++) {
+      assert(vec[i] * 2 == r.vec[i]);
+    }
+  }
+
+  ev.start();
+}
+
 
 void run_server() {
   ck::eventloop ev;
 
   ck::ipcsocket server;
   ck::vec<ck::ref<server_connection>> stubs;
-  server.listen("/usr/servers/ct", [&] {
+  int client_pid = 0;
+
+  ck::string path = ck::string::format("/tmp/ct.%d.sock", rand());
+
+  system(ck::string::format("touch %s", path.get()).get());
+
+  server.listen(path, [&] {
     printf("got a connection!\n");
-    auto conn = server.accept();
-    stubs.push(ck::make_ref<server_connection>(conn));
+    auto sock = server.accept();
+
+    stubs.push(ck::make_ref<server_connection>(sock));
   });
+
+  auto t = ck::timer::make_timeout(500, [&server] {
+    // die!
+    exit(0);
+  });
+
+  client_pid = fork();
+  if (client_pid == 0) {
+    run_client(path);
+  }
+
+  printf("client pid = %d\n", client_pid);
 
   ev.start();
 }
 
 int main(int argc, char** argv) {
-  if (fork() != 0) {
-    run_client();
-  } else {
+  int server_pid = fork();
+
+  if (server_pid == 0) {
     run_server();
   }
-  sysbind_shutdown();
+  waitpid(server_pid, NULL, 0);
   return 0;
 
 

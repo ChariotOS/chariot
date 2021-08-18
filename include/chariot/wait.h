@@ -53,6 +53,9 @@ struct wait_entry {
 };
 
 
+extern spinlock exclusive_wakeup;
+
+
 
 struct wait_queue {
   spinlock lock;
@@ -102,11 +105,9 @@ struct wait_queue {
 
 /* Wait for several wait queues, returning the index of the queue that woke first, or -EINTR */
 int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive = false);
+int multi_wait_prelocked(
+    wait_queue **queues, size_t nqueues, bool irqs_enabled, bool exclusive = false);
 
-inline int multi_wait(ck::vec<wait_queue *> &queues, bool exclusive = false) {
-  /* Just forward on to the bespoke impl */
-  return multi_wait(queues.data(), queues.size(), exclusive);
-}
 
 
 

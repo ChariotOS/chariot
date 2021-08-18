@@ -24,7 +24,7 @@ namespace ck {
 
     option(option&& other) : m_has_value(other.m_has_value) {
       if (other.has_value()) {
-        new (&m_storage) T(other.release());
+        new (&m_storage) T(other.take());
         other.m_has_value = false;
       }
     }
@@ -50,7 +50,7 @@ namespace ck {
       if (this != &other) {
         clear();
         m_has_value = other.m_has_value;
-        if (other.has_value()) new (&m_storage) T(other.release());
+        if (other.has_value()) new (&m_storage) T(other.take());
       }
       return *this;
     }
@@ -86,7 +86,7 @@ namespace ck {
       return value_without_consume_state();
     }
 
-    T release() {
+    T take() {
       assert(m_has_value);
 
       T released_value = move(unwrap());

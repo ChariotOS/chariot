@@ -10,6 +10,8 @@
   })
 #endif
 
+spinlock exclusive_wakeup;
+
 wait_entry::wait_entry() {
   wq = NULL;
   thd = curthd;
@@ -36,11 +38,10 @@ wait_result wait_entry::start(spinlock *held_lock) {
 
 
 
-wait_queue::wait_queue(void) {
-  task_list.init();
-}
+wait_queue::wait_queue(void) { task_list.init(); }
 
 void wait_queue::wake_up_common(unsigned int mode, int nr_exclusive, int wake_flags, void *key) {
+  scoped_lock l(exclusive_wakeup);
   int pid = 0;
   if (curproc) pid = curproc->pid;
 
@@ -148,6 +149,8 @@ wait_result wait_queue::wait_timeout(long long us) {
 }
 
 
+
+
 bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync, void *key) {
   bool ret = true;
 
@@ -164,6 +167,12 @@ bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync,
   return ret;
 }
 
+
+//////////////////////////
+//
+//  M U L T I - W A I T
+//
+//////////////////////////
 
 
 struct multi_wake_entry {
@@ -182,17 +191,25 @@ bool multi_wait_wake_function(struct wait_entry *entry, unsigned mode, int sync,
   return autoremove_wake_function(entry, mode, sync, key);
 }
 
-int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive) {
-  struct multi_wake_entry
-      ents[nqueues];  // I know, variable stack arrays are bad. Whatever, I wrote all this code.
 
+int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive) {
   bool irqs_enabled = false;
-  /* First, we must go through each of the queues and take their lock.
-   * We have to do this first becasue we can't contend the lock while in the  */
   for (int i = 0; i < nqueues; i++) {
     auto *wq = queues[i];
     bool en = wq->lock.lock_irqsave();
     if (i == 0) irqs_enabled = en;
+  }
+  return multi_wait_prelocked(queues, nqueues, irqs_enabled, exclusive);
+}
+
+int multi_wait_prelocked(wait_queue **queues, size_t nqueues, bool irqs_enabled, bool exclusive) {
+  // I know, variable stack arrays are bad. Whatever, I wrote all this code.
+  struct multi_wake_entry ents[nqueues];
+
+  /* First, we must go through each of the queues and take their lock.
+   * We have to do this first becasue we can't contend the lock while in the  */
+  for (int i = 0; i < nqueues; i++) {
+    auto *wq = queues[i];
 
     ents[i].entry.wq = wq;
     ents[i].index = i;
@@ -204,6 +221,7 @@ int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive) {
 
   /* Set the process state now that we have all the locks. This means we won't be interrupted */
   sched::set_state(PS_INTERRUPTIBLE);
+
 
   /* Now, we go through each of the waitqueues and add our entries to them */
   for (int i = 0; i < nqueues; i++) {
@@ -217,6 +235,8 @@ int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive) {
     auto *wq = queues[i];
     wq->lock.unlock();
   }
+
+
 
   if (irqs_enabled) {
     arch_enable_ints();
@@ -283,6 +303,4 @@ wait_result do_wait(struct wait_entry &ent) {
 }
 
 
-void finish_wait(struct wait_queue &wq, struct wait_entry &ent) {
-  wq.finish(&ent);
-}
+void finish_wait(struct wait_queue &wq, struct wait_entry &ent) { wq.finish(&ent); }

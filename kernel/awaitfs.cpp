@@ -10,6 +10,12 @@
 using table_key_t = off_t;
 
 
+void poll_table::wait(wait_queue &wq, short events) {
+  wq.lock.lock_irqsave();
+  ents.push({&wq, events});
+}
+
+
 struct await_table_entry {
   ck::ref<fs::file> file;
   // what are we waiting on?
@@ -28,10 +34,22 @@ struct await_table_metadata {
   await_table_entry *awe;
 };
 
+
+
+static inline void unlock_awaitfs_ents(ck::vec<await_table_entry> &ents, bool irqs_enabled) {
+  for (auto &e : ents) {
+    for (auto &p : e.pt.ents) {
+      p.wq->lock.unlock_irqrestore(irqs_enabled);
+    }
+  }
+}
+
 int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long timeout_time) {
   if (nfds == 0) return -EINVAL;
   if (!curproc->mm->validate_pointer(targs, sizeof(*targs) * nfds, PROT_READ | PROT_WRITE))
     return -1;
+
+  bool irqs_enabled = arch_irqs_enabled();
 
   unsigned nqueues = 0;
   ck::vec<await_table_entry> entries;
@@ -56,24 +74,22 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long time
       entry.file = file;
 
       int immediate_events = file->ino->poll(*entry.file, entry.awaiting, entry.pt);
-      /* Optimization. If someone is already ready, return such */
-      if (immediate_events & entry.awaiting) {
-        targs[i].occurred = immediate_events;
-        return i;
-      }
 
       nqueues += entry.pt.ents.size();
-
-      // printk("poll[%d] wq: %d\n" , i, entry.pt.ents.size());
       entries.push(entry);
+
+
+      // /* Optimization. If someone is already ready, return such */
+      if (immediate_events & entry.awaiting) {
+        targs[i].occurred = immediate_events;
+        unlock_awaitfs_ents(entries, irqs_enabled);
+        return i;
+      }
     }
   }
 
   /* If there is a timer, add it on the end of the queues, so we need one more! */
-  if ((long long)timeout_time > 0) {
-    nqueues += 1;
-  }
-
+  if ((long long)timeout_time > 0) nqueues += 1;
 
   queues.ensure_capacity(nqueues);
   metadata.ensure_capacity(nqueues);
@@ -96,27 +112,22 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long time
     auto now_ms = time::now_ms();
     long long to_go = timeout_time - now_ms;
     if (to_go <= 0) {
+      unlock_awaitfs_ents(entries, irqs_enabled);
       return -ETIMEDOUT;
     }
     sw.start(to_go * 1000);
-    // printk("time to go %d\n", to_go);
     timer_index = queues.size();
     queues.push(&sw.wq);
     metadata.push({NULL, NULL}); /* idk */
   }
 
-  // printk("sleep cpu %p\n", sw.cpu);
 
-
-  // printk("multi wait with %d queues.\n", queues.size());
-  int res = multi_wait(queues, true);
+  int res = multi_wait_prelocked(queues.data(), queues.size(), irqs_enabled, true);
 
   if (res == -EINTR) return -EINTR;
   /* Check for timeout */
-  if (timeout_time) {
-    if (res == timer_index) {
-      return -ETIMEDOUT;
-    }
+  if (timeout_time && res == timer_index) {
+    return -ETIMEDOUT;
   }
 
   assert(res < queues.size());
@@ -125,6 +136,5 @@ int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long time
 
   /* Update the target entry */
   targs[index].occurred = metadata[res].pte->events;
-  // pprintk("awaitfs -> %d\n", index);
   return index;
 }

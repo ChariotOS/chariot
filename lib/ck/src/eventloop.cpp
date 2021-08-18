@@ -159,8 +159,9 @@ void ck::eventloop::pump(void) {
     swap(targs[i], targs[j]);
   }
 
-
+  // printf("<\n");
   int index = awaitfs(targs.data(), targs.size(), 0, timeout);
+  // printf(">\n");
   if (index >= 0) {
     auto occ = targs[index].occurred;
     if (occ & AWAITFS_READ) {

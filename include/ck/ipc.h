@@ -5,10 +5,23 @@
 #include <ck/socket.h>
 #include <ck/ptr.h>
 #include <pthread.h>
+#include <ck/pair.h>
+
+// #define IPC_USE_SHM
+
 
 namespace ck {
 
   namespace ipc {
+
+
+    // using 32bits means the ``header'' of each sync message is 8 bytes total.
+    // This size is *ONLY* worse than a 64bit nonce if you send 4,294,967,295
+    // messages without receiving them on the peer connection. This would be
+    // insane, and I'm not sure the rest of the system would even be able to
+    // handle it. Seeing as the overhead of each message in the kernel is AT
+    // LEAST 64 bytes... you need alot of ram
+    using nonce_t = uint32_t;
 
     class encoder;
     class decoder;
@@ -119,6 +132,9 @@ namespace ck {
 
       template <typename T>
       T& next(void) {
+        if (head >= sz) {
+          printf("head: %d, sz: %d\n", head, sz);
+        }
         assert(head < sz);
         auto curhead = head;
         head += sizeof(T);
@@ -180,6 +196,15 @@ namespace ck {
       return true;
     }
 
+    template <typename T>
+    inline bool decode(ck::ipc::decoder& d, ck::vec<T>& v) {
+      auto sz = d.read<uint32_t>();
+      for (int i = 0; i < sz; i++) {
+        v.push(d.read<T>());
+      }
+      return true;
+    }
+
 #undef SIMPLE_DECODER
 
 
@@ -192,11 +217,32 @@ namespace ck {
         socket_connection(ck::ref<ck::ipcsocket> s, const char* ns, bool is_server);
         virtual ~socket_connection(void) { printf("ipc connection killed!\n"); }
 
+        // a closed socket connection is just one without a socket :^)
+        void close(void) { m_sock = nullptr; }
+        bool closed(void) { return !m_sock; }
+
+
+
        protected:
         // the encoder writes directly to the send_queue, finish-send just hits the doorbell
         ipc::encoder begin_send(void);
         void finish_send();
+        void dispatch(void);
+        void handshake(void);
+        void drain_messages(void);
+        virtual void dispatch_received_message(void* data, size_t len) = 0;
+        // wait for a message where the first uint32_t is the needle.
+        // Return a copy of the message when found, blocking forever
+        // if no message is found. Any other messages are placed
+        // in the stored_messages vector that needs to be dispatched
+        // via dispatch_stored
+        ck::pair<void*, size_t> sync_wait(uint32_t msg_type, ck::ipc::nonce_t nonce);
 
+        struct stored_message {
+          void* data;
+          size_t len;
+        };
+        ck::vec<struct stored_message> stored_messages;
 
 
 
@@ -228,9 +274,7 @@ namespace ck {
           return out;
         }
 
-        void handshake(void);
-        void drain_messages(void);
-        virtual void dispatch_received_message(void* data, size_t len) = 0;
+
         ck::ref<ck::ipcsocket> m_sock;
         const char* ns;
         bool is_server;
@@ -241,11 +285,22 @@ namespace ck {
 
         // server recvs from position 0, sends to position 1
         // client recvs from position 1, sends to position 0
-        struct shared_msg_queue* recv_queue;
-        struct shared_msg_queue* send_queue;
+        struct shared_msg_queue* recv_queue = NULL;
+        struct shared_msg_queue* send_queue = NULL;
 
 
+#ifdef IPC_USE_SHM
         ck::string shm_name;
+#else
+        void* msg_buffer = NULL;
+        size_t msg_size = 0;
+#endif
+
+        nonce_t get_nonce(void) {
+          auto n = next_nonce++;
+          return n;
+        }
+        nonce_t next_nonce = 0;
       };
 
     }  // namespace impl

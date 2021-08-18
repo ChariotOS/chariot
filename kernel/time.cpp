@@ -41,7 +41,8 @@ unsigned long long time::now_ns() {
     while (!time::stabilized()) {
       arch_relax();
     }
-    printk(KERN_WARN "Time stabilized.\n");
+    printk(KERN_WARN "Time stabilized at %llu cyc/s\n", cycles_per_second);
+    
   }
 
   auto cps = cycles_per_second;

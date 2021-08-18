@@ -441,7 +441,6 @@ static int idle_task(void *arg) {
 
 
 void sched::run() {
-
   arch_disable_ints();
   // per-scheduler idle threads do not exist in the scheduler queue.
   auto *idle_thread = sched::proc::spawn_kthread("idle task", idle_task, NULL);
