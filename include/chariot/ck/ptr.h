@@ -599,7 +599,7 @@ namespace ck {
 
     // return a ref to the current ptr, if there is one. null if no pointer is available, or
     // it is currently dangling.
-    ck::ref<T> get(void) {
+    ck::ref<T> get(void) const {
       if (m_ptr != NULL && m_wcb != NULL) {
         if (m_wcb->allocated()) {
           return m_ptr;
