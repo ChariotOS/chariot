@@ -20,6 +20,9 @@
 #include <sys/syscall.h>
 #include <chariot/fs/magicfd.h>
 #include <sys/wait.h>
+#include <ck/thread.h>
+#include <ck/ipc.h>
+#include <chariot/elf/exec_elf.h>
 
 class ct_window : public ui::window {
  public:
@@ -62,100 +65,6 @@ class ct_window : public ui::window {
 
 
 
-#include <ck/thread.h>
-#include <ck/ipc.h>
-
-
-static void* ck_fiber_setsp_unoptimisable;
-
-#define set_stack_pointer(x) \
-  ck_fiber_setsp_unoptimisable = alloca((char*)alloca(sizeof(size_t)) - (char*)(x));
-
-
-
-extern "C" void _call_with_new_stack(void* sp, void* func, void* arg);
-
-
-
-class fiber : public ck::weakable<fiber> {
-  CK_NONCOPYABLE(fiber);
-  CK_MAKE_NONMOVABLE(fiber);
-
- public:
-  using Fn = ck::func<void(fiber*)>;
-
-
-  fiber(Fn fn) : func(move(fn)) {
-    stk = (char*)malloc(STACK_SIZE);
-    stack_base = stk;
-    stack_base += STACK_SIZE;
-  }
-  ~fiber(void) { free(stk); }
-
-  void yield(void) {
-    if (setjmp(ctx) == 0) {
-      longjmp(m_return_ctx, 1);
-    }
-  }
-
-  bool is_done(void) const { return m_done; }
-  void resume(void) {
-    if (is_done()) {
-      fprintf(stderr, "Error: Resuming a complete fiberutine\n");
-      return;
-    }
-
-    if (setjmp(m_return_ctx) == 0) {
-      if (!m_initialized) {
-        m_initialized = true;
-        // calculate the new stack pointer
-        size_t sp = (size_t)(stk);
-        sp += STACK_SIZE;
-        sp &= ~15;
-
-        set_stack_pointer(sp - 8);
-        // func(this);
-
-        _call_with_new_stack((void*)((char*)sp - 8), (void*)fiber_new_stack_callback, (void*)this);
-        return;
-      }
-      longjmp(ctx, 1);
-      return;
-    }
-
-    return;
-  }
-
-
- private:
-  jmp_buf ctx;
-  jmp_buf m_return_ctx;
-  bool m_done = false;
-  Fn func;
-
-
-  // static ck::weak_ref<fiber> spawn(Fn) {}
-
-  char* stk = nullptr;
-  char* stack_base = nullptr;
-  bool m_initialized = false;
-
-  static constexpr long STACK_SIZE = 4096 * 8;
-
-
-  static void fiber_new_stack_callback(void* _c) {
-    fiber* c = (fiber*)_c;
-    c->func(c);
-    c->m_done = true;
-    // switch back to the calling context
-    longjmp(c->m_return_ctx, 1);
-  }
-};
-
-
-#undef set_stack_pointer
-
-#include <chariot/elf/exec_elf.h>
 
 void dump_symbols(int fd) {
   Elf64_Ehdr ehdr;
@@ -357,8 +266,8 @@ void run_server() {
   });
 
   auto t = ck::timer::make_timeout(500, [&server] {
+    ck::eventloop::current()->exit();
     // die!
-    exit(0);
   });
 
   client_pid = fork();
@@ -371,7 +280,35 @@ void run_server() {
   ev.start();
 }
 
+#include <ck/future.h>
+
+
+
 int main(int argc, char** argv) {
+  {
+    ck::future<float> y;
+    ck::future<long> x;
+
+    y = x.map([](auto x) -> float {
+      printf("the value is %d as an int\n", x);
+      return (float)x;
+    });
+
+    auto x_copy = x;
+    x_copy.resolve(42);
+    y.then([](float x) { printf("the value is %f as a float\n", x); });
+  }
+
+
+  return 0;
+
+  while (1) {
+    auto start = tsc();
+    sysbind_get_nproc();
+    // (void)ck::time::us();
+    auto end = tsc();
+    printf("%llu\n", (end - start));
+  }
   int server_pid = fork();
 
   if (server_pid == 0) {
@@ -379,9 +316,6 @@ int main(int argc, char** argv) {
   }
   waitpid(server_pid, NULL, 0);
   return 0;
-
-
-
 
 #if 0
   auto start = malloc_allocated();
@@ -413,40 +347,6 @@ int main(int argc, char** argv) {
 
   return 0;
 
-  // auto size = 1024 * 48;
-  // for (int i = 0; i < 100; i++) {
-  //   auto start = ck::time::us();
-  //   void* p = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-
-  //   auto end = ck::time::us();
-  //   printf("%llu us\n", end - start);
-  //   munmap(p, size);
-  // }
-  // return 0;
-
-
-
-
-#if 0
-  ck::vec<ck::unique_ptr<ck::thread>> threads;
-  for (int i = 0; i < 1000; i++) {
-    threads.push(ck::make_unique<ck::thread>([i] {
-      printf("in thread %d\n", i);
-      return;
-    }));
-  }
-
-  printf("joining...\n");
-
-
-  for (auto& thread : threads) {
-    thread->join();
-  }
-
-  printf("joined.\n");
-
-  return 0;
-#endif
 
   ui::application app;
   ct_window* win = new ct_window;
