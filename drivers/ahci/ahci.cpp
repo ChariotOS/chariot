@@ -155,7 +155,7 @@ bool ahci::disk::read(off_t sector, uint32_t count, void *dst) { return true; }
 
 void ahci::disk::stop_cmd(void) {
   // Clear ST (bit0)
-  port->cmd &= ~HBA_PxCMD_ST;
+  port->cmd = port->cmd & ~HBA_PxCMD_ST;
 
   // Wait until FR (bit14), CR (bit15) are cleared
   while (1) {
@@ -165,7 +165,7 @@ void ahci::disk::stop_cmd(void) {
   }
 
   // Clear FRE (bit4)
-  port->cmd &= ~HBA_PxCMD_FRE;
+  port->cmd = port->cmd & ~HBA_PxCMD_FRE;
 }
 
 void ahci::disk::start_cmd(void) {
@@ -174,8 +174,8 @@ void ahci::disk::start_cmd(void) {
     ;
 
   // Set FRE (bit4) and ST (bit0)
-  port->cmd |= HBA_PxCMD_FRE;
-  port->cmd |= HBA_PxCMD_ST;
+  port->cmd = port->cmd | HBA_PxCMD_FRE;
+  port->cmd = port->cmd | HBA_PxCMD_ST;
 }
 
 

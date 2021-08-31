@@ -50,7 +50,7 @@ nvme::ctrl::ctrl(pci::device &dev) : dev(dev) {
   dev.adjust_ctrl_bits(PCI_CMD_BME | PCI_CMD_MSE, PCI_CMD_IOSE);
 
   // Disable the controller
-  if (mmio->cc & NVME_CC_EN) mmio->cc &= ~NVME_CC_EN;
+  if (mmio->cc & NVME_CC_EN) mmio->cc = mmio->cc & ~NVME_CC_EN;
 
   // 7.6.1 2) Wait for the controller to indicate that any previous
   // reset is complete

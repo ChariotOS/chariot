@@ -136,7 +136,7 @@ endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CONFIG_ADDITIONAL_USER_FLAGS}")
 
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} ${ARCH_USER_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -nostdinc++ -std=c++17 ${ARCH_USER_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -nostdinc++ -std=c++20 -fconcepts ${ARCH_USER_CXX_FLAGS}")
 
 
 

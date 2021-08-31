@@ -12,7 +12,7 @@ set(LDFLAGS -m elf_aarch64 -z max-page-size=0x1000)
 # flags for C and C++ in userspace
 set(ARCH_USER_C_FLAGS "-ffreestanding -fno-omit-frame-pointer -fdiagnostics-color=always ")
 # unique flags to C++ in userspace
-set(ARCH_USER_CXX_FLAGS "-nostdinc++ -std=c++17")
+set(ARCH_USER_CXX_FLAGS "-nostdinc++ -std=c++20")
 
 # Kernelspace Flags
 set(ARCH_KERN_C_FLAGS "-nostdlib")
@@ -21,7 +21,7 @@ set(ARCH_KERN_C_FLAGS "${ARCH_KERN_C_FLAGS} -ffreestanding -Wall -fno-common")
 set(ARCH_KERN_C_FLAGS "${ARCH_KERN_C_FLAGS} -Wno-initializer-overrides -Wstrict-overflow=5")
 set(ARCH_KERN_C_FLAGS "${ARCH_KERN_C_FLAGS} -Wno-unused -Wno-address-of-packed-member -Wno-strict-overflow -DKERNEL ")
 
-set(ARCH_KERN_CXX_FLAGS "-std=c++17 -fno-rtti -fno-exceptions -Wno-reserved-user-defined-literal")
+set(ARCH_KERN_CXX_FLAGS "-std=c++20 -fno-rtti -fno-exceptions -Wno-reserved-user-defined-literal")
 
 
 

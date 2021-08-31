@@ -53,8 +53,6 @@ struct wait_entry {
 };
 
 
-extern spinlock exclusive_wakeup;
-
 
 
 struct wait_queue {

@@ -12,7 +12,7 @@ endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CONFIG_ADDITIONAL_KERNEL_FLAGS}")
 
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} ${ARCH_KERN_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++17 -fno-rtti -Wno-invalid-offsetof -fno-exceptions -Wno-literal-suffix -fpermissive ${ARCH_KERN_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++20 -fconcepts -fconcepts-diagnostics-depth=4 -fno-rtti -Wno-invalid-offsetof -fno-exceptions -Wno-literal-suffix -fpermissive ${ARCH_KERN_CXX_FLAGS}")
 
 
 # get the kernel sources

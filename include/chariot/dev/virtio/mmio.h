@@ -400,25 +400,16 @@ class virtio_mmio_dev {
   struct vring ring[VIO_MAX_RINGS];
 
 
-  inline auto &mmio_regs(void) {
-    return *(virtio::mmio_regs *)regs;
-  }
-  inline volatile uint32_t read_reg(int off) {
-    return *(volatile uint32_t *)((off_t)regs + off);
-  }
-  inline void write_reg(int off, uint32_t val) {
-    *(volatile uint32_t *)((off_t)regs + off) = val;
-  }
+  inline auto &mmio_regs(void) { return *(virtio::mmio_regs *)regs; }
+  inline uint32_t read_reg(int off) { return *(volatile uint32_t *)((off_t)regs + off); }
+  inline void write_reg(int off, uint32_t val) { *(volatile uint32_t *)((off_t)regs + off) = val; }
   virtio_mmio_dev(volatile uint32_t *regs);
   virtual ~virtio_mmio_dev(void);
 
-  virtual bool initialize(const struct virtio_config &config) {
-    return false;
-  }
+  virtual bool initialize(const struct virtio_config &config) { return false; }
 
   void irq(void);
-  virtual void irq(int ring_index, virtio::virtq_used_elem *) {
-  }
+  virtual void irq(int ring_index, virtio::virtq_used_elem *) {}
 
   int alloc_ring(int index, int len);
 
