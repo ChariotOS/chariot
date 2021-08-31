@@ -28,11 +28,13 @@ extern "C" {
 int yield(void);
 
 
-#define panic(fmt, args...)                     \
-  do {                                          \
-    printf("PANIC: %s\n", __PRETTY_FUNCTION__); \
-    printf(fmt, ##args);                        \
-    exit(-1);                                   \
+#define panic(fmt, args...)                              \
+  do {                                                   \
+    fprintf(stderr, "PANIC: %s\n", __PRETTY_FUNCTION__); \
+    fprintf(stderr, fmt, ##args);                        \
+    fprintf(stderr, "\n");                               \
+    fflush(stderr);                                      \
+    exit(-1);                                            \
   } while (0);
 
 
