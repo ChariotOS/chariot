@@ -191,7 +191,7 @@ void lumen::window::draw(gfx::scribe &s) {
 
 
 #ifdef CONFIG_FANCY_WINDOWS
-    constexpr int border_radius = 0;
+    constexpr int border_radius = 7;
     if constexpr (border_radius > 0) {
       struct corner {
         bool enabled;
@@ -203,30 +203,30 @@ void lumen::window::draw(gfx::scribe &s) {
 
       /* top left */
       corners[0] = {.enabled = false,
-                    .cx = border_radius,
-                    .cy = border_radius,
-                    .rect = gfx::rect(0, 0, border_radius, border_radius)};
+          .cx = border_radius,
+          .cy = border_radius,
+          .rect = gfx::rect(0, 0, border_radius, border_radius)};
 
 
       /* top right */
       corners[1] = {.enabled = false,
-                    .cx = width - border_radius - 1,
-                    .cy = border_radius,
-                    .rect = gfx::rect(width - border_radius, 0, border_radius, border_radius)};
+          .cx = width - border_radius - 1,
+          .cy = border_radius,
+          .rect = gfx::rect(width - border_radius, 0, border_radius, border_radius)};
 
       /* bottom left */
       corners[2] = {.enabled = false,
-                    .cx = border_radius,
-                    .cy = height - border_radius - 1,
-                    .rect = gfx::rect(0, height - border_radius, border_radius, border_radius)};
+          .cx = border_radius,
+          .cy = height - border_radius - 1,
+          .rect = gfx::rect(0, height - border_radius, border_radius, border_radius)};
 
 
       /* bottom right */
       corners[3] = {.enabled = false,
-                    .cx = width - border_radius - 1,
-                    .cy = height - border_radius - 1,
-                    .rect = gfx::rect(width - border_radius, height - border_radius, border_radius,
-                                      border_radius)};
+          .cx = width - border_radius - 1,
+          .cy = height - border_radius - 1,
+          .rect = gfx::rect(
+              width - border_radius, height - border_radius, border_radius, border_radius)};
 
       auto &bmp = *bitmap;
       for (int i = 0; i < 4; i++) {
