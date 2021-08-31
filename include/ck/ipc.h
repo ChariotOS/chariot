@@ -7,7 +7,7 @@
 #include <pthread.h>
 #include <ck/pair.h>
 
-// #define IPC_USE_SHM
+#define IPC_USE_SHM
 
 
 namespace ck {
@@ -25,6 +25,7 @@ namespace ck {
 
     class encoder;
     class decoder;
+
 
 
     template <typename T>
@@ -221,7 +222,7 @@ namespace ck {
         void close(void) { m_sock = nullptr; }
         bool closed(void) { return !m_sock; }
 
-
+        ck::func<void()> on_close;
 
        protected:
         // the encoder writes directly to the send_queue, finish-send just hits the doorbell
@@ -304,6 +305,47 @@ namespace ck {
       };
 
     }  // namespace impl
+
+    template <typename Connection>
+    class server {
+     public:
+      server(void) = default;
+
+
+
+      // start the server listening on a given path
+      void listen(ck::string listen_path) {
+        assert(!m_server.listening());
+        m_server.listen(listen_path, [this] {
+          ck::ipcsocket* sock = m_server.accept();
+
+          this->handle_connection(ck::make_unique<Connection>(sock));
+        });
+        m_listen_path = listen_path;
+      }
+
+     private:
+      void handle_connection(ck::unique_ptr<Connection>&& s) {
+        printf("SERVER GOT A CONNECTION!\n");
+        Connection* sp = s.get();
+        sp->on_close = [this, sp] {
+          for (int i = 0; i < this->m_connections.size(); i++) {
+            if (this->m_connections[i].get() == sp) {
+              this->m_connections.remove(i);
+              break;
+            }
+          }
+        };
+
+        m_connections.push(move(s));
+      }
+
+      ck::vec<ck::unique_ptr<Connection>> m_connections;
+      ck::string m_listen_path;
+      ck::ipcsocket m_server;
+    };
+
+
 
   }  // namespace ipc
 }  // namespace ck
