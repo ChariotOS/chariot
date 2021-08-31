@@ -4,6 +4,7 @@
 #include <ck/utility.h>
 #include <ck/func.h>
 #include <ck/option.h>
+#include <ck/lock.h>
 
 namespace ck {
 
@@ -23,13 +24,19 @@ namespace ck {
     }
 
     void resolve(R&& v) {
+      auto l = lock();
       assert(!value.has_value());
       value = move(v);
-
       if (on_ready) {
         fire();
       }
     }
+
+    ck::scoped_lock lock(void) { return ck::scoped_lock(m_lock); }
+
+
+   private:
+    ck::mutex m_lock;
   };
 
   template <typename R>
@@ -61,8 +68,9 @@ namespace ck {
     template <typename F>
     auto map(F f) -> ck::future<decltype(f(R{}))>;
     void resolve(R&& v) { get_control()->resolve(move(v)); }
-    bool resolved(void) const { return get_control()->value.has_value() || fired(); }
-    bool fired(void) const { return get_control()->fired; }
+    // A future has been resolved if it has a value or it has fired.
+    bool resolved(void) const;
+    bool fired(void) const;
     // get the control as a refcount, as if you are calling this method, the future is still alive.
     ck::ref<future_control<R>> get_control(void);
 
@@ -74,7 +82,6 @@ namespace ck {
 
 
 
-
 /// Implementation for the future
 
 template <typename R>
@@ -83,6 +90,22 @@ ck::future<R>::future() noexcept {}
 template <typename R>
 ck::future<R>::~future() {
   control.clear();
+}
+
+template <typename R>
+bool ck::future<R>::resolved() const {
+  auto ctrl = get_control();
+  auto l = ctrl.lock();
+
+  return ctrl->value.has_value() || fired();
+}
+
+template <typename R>
+bool ck::future<R>::fired() const {
+  auto ctrl = get_control();
+  auto l = ctrl.lock();
+
+  return ctrl->fired;
 }
 
 template <typename R>

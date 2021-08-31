@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <ck/option.h>
+#include "ck/eventloop.h"
 
 
 namespace ck {
@@ -40,6 +41,72 @@ namespace ck {
       }
     }
   };
+
+
+
+
+  // The base class for file-like objects. A handle is just a wrapper around
+  // a file descriptor in the kernel. This object does not support any async
+  // operations and will not be picked up by the event loop in any way.
+  class handle : public ck::refcounted<ck::handle> {
+   public:
+    using FileDescriptor = int;
+
+    enum Ownership {
+      // Do not close on dtor
+      Unowned,
+      // Close on dtor
+      Owned,
+    };
+
+    handle() {}
+    handle(FileDescriptor fd, ck::handle::Ownership ownership = Owned)
+        : m_fd(fd), m_ownership(ownership) {}
+
+    ~handle() {
+      if (m_ownership == Owned && m_fd != -1) {
+        close(m_fd);
+      }
+    }
+
+    int fileno(void) const { return m_fd; }
+    Ownership ownership(void) const { return m_ownership; }
+
+   private:
+    FileDescriptor m_fd = -1;  // -1 means not open
+    Ownership m_ownership = Unowned;
+  };
+
+
+
+
+  // a reactor is a
+  class reactor : public ck::handle {
+   public:
+    // various bit fields that this file handle is interestd in
+    static constexpr int READ = AWAITFS_READ;
+    static constexpr int WRITE = AWAITFS_WRITE;
+
+    reactor(void) {}
+
+    reactor(FileDescriptor fd, int interest = READ | WRITE, Ownership ownership = Owned)
+        : handle(fd, ownership) {
+      update_interest(interest);
+    }
+
+    bool can_read(void) const { return m_ready & READ; }
+    bool can_write(void) const { return m_ready & WRITE; }
+
+   protected:
+    friend class ck::eventloop;
+    void update_interest(int interest);
+    // a mask of events that this handle is interested in
+    int m_seeking = 0;
+    // is filled in by the event loop when the handle is readable or writable,
+    // then when futures are invesitgated.
+    int m_ready = 0;
+  };
+
 
 
 

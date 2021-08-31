@@ -36,17 +36,22 @@ extern "C" int vfctprintf(
     void (*out)(char character, void *arg), void *arg, const char *format, va_list va);
 
 
-static void ck_file_writef_callback(char c, void *arg) {
-  auto *f = (ck::stream *)arg;
-  f->write(&c, 1);
-}
+
+
+void ck::reactor::update_interest(int interest) {}
+
+
 
 
 int ck::stream::fmt(const char *format, ...) {
   va_list va;
   va_start(va, format);
-  const int ret =
-      vfctprintf(ck_file_writef_callback, (void *)static_cast<ck::stream *>(this), format, va);
+  const int ret = vfctprintf(
+      [](char c, void *arg) {
+        auto *f = (ck::stream *)arg;
+        f->write(&c, 1);
+      },
+      (void *)static_cast<ck::stream *>(this), format, va);
   va_end(va);
   return ret;
 }
