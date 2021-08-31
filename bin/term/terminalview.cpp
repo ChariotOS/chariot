@@ -58,7 +58,7 @@ terminalview::terminalview(void) {
     this->blink();
     schedule_draw();
   });
-  set_font("Source Code Pro");
+  set_font("Source Code Pro Bold");
   set_foreground(terminal_color_theme[term::FOREGROUND]);
   set_background(terminal_color_theme[term::BACKGROUND]);
   set_font_size(14);
