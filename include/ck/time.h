@@ -9,7 +9,7 @@ namespace ck {
     uint64_t us();
     inline uint64_t ms(void) { return ck::time::us() / 1000; }
     inline uint64_t sec(void) { return ck::time::ms() / 1000; }
-
+    uint64_t cycles(void);
 
     class tracker {
      public:
