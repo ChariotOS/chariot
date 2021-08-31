@@ -17,16 +17,11 @@
 #undef PRINT
 #define PRINT(...)
 
+#include "../../ck/utility.h"
+
+
+
 namespace ck {
-
-  // fwd decl
-  template <class T>
-  class weak_ref;
-
-
-  // fwd decl
-  template <class T>
-  class ref;
 
   // Takes in a default deleter. unique_ptr_deleters operator will be invoked by
   // default.
@@ -206,8 +201,6 @@ namespace ck {
 
   template <typename T>
   class refcounted {
-    friend ck::ref<T>;
-
    public:
     void ref_retain() {
       assert(m_ref_count);
@@ -226,7 +219,6 @@ namespace ck {
       }
     }
 
-   protected:
     refcounted() = default;
     ~refcounted() {}
 
@@ -243,8 +235,6 @@ namespace ck {
 
   template <typename T>
   class weakable {
-    friend ck::ref<T>;
-
    public:
     void ref_retain() {
       assert(m_ref_count);
@@ -274,8 +264,6 @@ namespace ck {
 
       return m_wcb;
     }
-
-   protected:
     weakable() = default;
     ~weakable() {
       if (m_wcb) {
@@ -295,6 +283,18 @@ namespace ck {
   };
 
 
+
+
+  // template <typename T>
+  // concept RefCountable = ck::is_base_of<ck::refcounted<T>, T>::value;
+
+
+
+
+  // template <typename T>
+  // concept Weakable = ck::is_base_of<ck::refcounted<T>, T>::value;
+
+
   template <typename T>
   inline void retain_if_not_null(T* ptr) {
     if (ptr) ptr->ref_retain();
@@ -305,10 +305,16 @@ namespace ck {
   }
 
 
+
   template <typename T>
+  concept ref_counted = requires(T t) {
+    t.ref_retain();
+    t.ref_release();
+  };
+
+  template <class T>
   class ref {
    public:
-    friend class weak_ref<T>;
     enum AdoptTag { Adopt };
 
     ref() {}
