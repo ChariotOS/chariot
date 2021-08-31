@@ -6,7 +6,7 @@
 
 echo '======================================================================'
 tools/sync.sh || exit 1
-tools/initrd.sh || exit 1
+# tools/initrd.sh || exit 1
 
 source .config
 
@@ -28,7 +28,7 @@ case $ARCH in
 		QEMU_FLAGS+="-enable-kvm -cpu host "
 		QEMU_FLAGS+="-global kvm-pit.lost_tick_policy=discard "
 		QEMU_FLAGS+="-m 4G "
-		QEMU_FLAGS+="-smp 2 "
+		QEMU_FLAGS+="-smp 4 "
 		QEMU_FLAGS+="-hda build/chariot.img "
 		# QEMU_FLAGS+="-soundhw pcspk "
 		# QEMU_FLAGS+="-device AC97 "
@@ -41,7 +41,7 @@ case $ARCH in
 	RISC-V)
 		QEMU_FLAGS+="-machine virt -smp 4 -m ${CONFIG_RISCV_RAM_MB}M "
 		QEMU_FLAGS+="-bios default "
-		QEMU_FLAGS+="-kernel build/chariot_initrd.elf "
+		QEMU_FLAGS+="-kernel build/chariot.elf "
 
 		QEMU_FLAGS+="-drive file=build/chariot.img,if=none,format=raw,id=x0 "
 		QEMU_FLAGS+="-device virtio-blk-device,drive=x0 "
