@@ -9,10 +9,11 @@
 
 using table_key_t = off_t;
 
-
 void poll_table::wait(wait_queue &wq, short events) {
-  wq.lock.lock_irqsave();
-  ents.push({&wq, events});
+  if (!locked) {
+    wq.lock.lock_irqsave();
+    ents.push({&wq, events});
+  }
 }
 
 

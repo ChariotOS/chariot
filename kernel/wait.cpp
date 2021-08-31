@@ -10,7 +10,6 @@
   })
 #endif
 
-spinlock exclusive_wakeup;
 
 wait_entry::wait_entry() {
   wq = NULL;
@@ -41,7 +40,6 @@ wait_result wait_entry::start(spinlock *held_lock) {
 wait_queue::wait_queue(void) { task_list.init(); }
 
 void wait_queue::wake_up_common(unsigned int mode, int nr_exclusive, int wake_flags, void *key) {
-  scoped_lock l(exclusive_wakeup);
   int pid = 0;
   if (curproc) pid = curproc->pid;
 
