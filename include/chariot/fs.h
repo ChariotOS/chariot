@@ -20,9 +20,7 @@ struct poll_table_entry {
 };
 struct poll_table {
   ck::vec<poll_table_entry> ents;
-
-
-
+  bool locked = false;
   void wait(wait_queue &wq, short events);
 };
 
