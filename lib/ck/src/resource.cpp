@@ -7,9 +7,7 @@
 extern "C" char __resources_start[];
 extern "C" char __resources_end[];
 
-static size_t rsize(void) {
-  return (off_t)__resources_end - (off_t)__resources_start;
-}
+static size_t rsize(void) { return (off_t)__resources_end - (off_t)__resources_start; }
 
 
 struct resource_ptr {
@@ -18,9 +16,8 @@ struct resource_ptr {
   size_t size;
 };
 
-void* ck::resource::get(const char* name, size_t& len) {
+ck::option<ck::pair<void*, size_t>> ck::resource::get(const char* name) {
   size_t res_size = rsize();
-  len = 0;
 
   if (res_size > 0) {
     size_t n = res_size / sizeof(struct resource_ptr);
@@ -28,11 +25,10 @@ void* ck::resource::get(const char* name, size_t& len) {
 
     for (int i = 0; i < n; i++) {
       if (!strcmp(name, res[i].name)) {
-        len = res[i].size;
-        return res[i].data;
+        return ck::pair(res[i].data, res[i].size);
       }
     }
   }
 
-  return NULL;
+  return None;
 }

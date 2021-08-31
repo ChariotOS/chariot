@@ -72,9 +72,7 @@ static ck::ref<T> load_png(ck::string path) {
 }
 
 
-ck::ref<gfx::bitmap> gfx::load_png(ck::string path) {
-  return ::load_png<gfx::bitmap>(path);
-}
+ck::ref<gfx::bitmap> gfx::load_png(ck::string path) { return ::load_png<gfx::bitmap>(path); }
 
 
 ck::ref<gfx::shared_bitmap> gfx::load_png_shared(ck::string path) {
@@ -83,8 +81,11 @@ ck::ref<gfx::shared_bitmap> gfx::load_png_shared(ck::string path) {
 
 
 ck::ref<gfx::bitmap> gfx::load_png_from_res(ck::string path) {
-  size_t sz = 0;
-  void *data = ck::resource::get(path.get(), sz);
+  auto opt = ck::resource::get(path.get());
+
+  if (!opt) return {};
+
+  auto [data, sz] = opt.unwrap();
   if (data != NULL) {
     return ::load_png<gfx::bitmap>(data, sz);
   }
