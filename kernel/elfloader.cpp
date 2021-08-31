@@ -202,13 +202,13 @@ int elf::load(
     auto &sec = phdr[i];
 
 
-    if (sec.p_type == PT_TLS) {
-      printk("Found a TLS template!\n");
-      p.tls_info.exists = true;
-      p.tls_info.fileoff = sec.p_offset;
-      p.tls_info.fsize = sec.p_filesz;
-      p.tls_info.memsz = sec.p_memsz;
-    }
+    // if (sec.p_type == PT_TLS) {
+    //   printk("Found a TLS template!\n");
+    //   p.tls_info.exists = true;
+    //   p.tls_info.fileoff = sec.p_offset;
+    //   p.tls_info.fsize = sec.p_filesz;
+    //   p.tls_info.memsz = sec.p_memsz;
+    // }
 
     if (sec.p_type == PT_LOAD) {
       auto start = sec.p_vaddr;

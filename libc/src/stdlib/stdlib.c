@@ -16,8 +16,8 @@
 extern char **environ;
 
 
-static void insertion_sort(void *bot, size_t nmemb, size_t size,
-                           int (*compar)(const void *, const void *)) {
+static void insertion_sort(
+    void *bot, size_t nmemb, size_t size, int (*compar)(const void *, const void *)) {
   int cnt;
   unsigned char ch;
   char *s1, *s2, *t1, *t2, *top;
@@ -38,7 +38,7 @@ static void insertion_sort(void *bot, size_t nmemb, size_t size,
 }
 
 static void insertion_sort_r(void *bot, size_t nmemb, size_t size,
-                             int (*compar)(const void *, const void *, void *), void *arg) {
+    int (*compar)(const void *, const void *, void *), void *arg) {
   int cnt;
   unsigned char ch;
   char *s1, *s2, *t1, *t2, *top;
@@ -65,7 +65,7 @@ void qsort(void *bot, size_t nmemb, size_t size, int (*compar)(const void *, con
 }
 
 void qsort_r(void *bot, size_t nmemb, size_t size,
-             int (*compar)(const void *, const void *, void *), void *arg) {
+    int (*compar)(const void *, const void *, void *), void *arg) {
   if (nmemb <= 1) return;
 
   insertion_sort_r(bot, nmemb, size, compar, arg);
@@ -218,9 +218,7 @@ char *path_join(char *a, char *b) {
 
 static uint64_t seed;
 
-void srand(unsigned s) {
-  seed = s - 1;
-}
+void srand(unsigned s) { seed = s - 1; }
 
 int rand(void) {
   seed = 6364136223846793005ULL * seed + 1;
@@ -319,12 +317,13 @@ void debug_hexdump_grouped(void *vbuf, size_t len, int grouping) {
 
       if (valid[c] == 0) {
         set_color(C_RED);
-        printf("?? ");
+        printf("??");
         continue;
       }
 
       if (i + c >= len) {
-        printf("   ");
+        set_color(C_GRAY);
+        printf("##");
       } else {
         set_color_for(line[c]);
         printf("%02X", line[c]);
@@ -358,9 +357,7 @@ void debug_hexdump_grouped(void *vbuf, size_t len, int grouping) {
   }
 }
 
-void debug_hexdump(void *vbuf, size_t len) {
-  return debug_hexdump_grouped(vbuf, len, 1);
-}
+void debug_hexdump(void *vbuf, size_t len) { return debug_hexdump_grouped(vbuf, len, 1); }
 
 
 
@@ -389,7 +386,7 @@ long long strtoll_l(const char *__restrict nptr, char **__restrict endptr, int b
   }
   if ((base == 0 || base == 16) && c == '0' && (*s == 'x' || *s == 'X') &&
       ((s[1] >= '0' && s[1] <= '9') || (s[1] >= 'A' && s[1] <= 'F') ||
-       (s[1] >= 'a' && s[1] <= 'f'))) {
+          (s[1] >= 'a' && s[1] <= 'f'))) {
     c = s[1];
     s += 2;
     base = 16;
@@ -449,9 +446,7 @@ long long strtoll_l(const char *__restrict nptr, char **__restrict endptr, int b
   return (acc);
 }
 
-long int strtol(const char *nptr, char **endptr, int base) {
-  return strtoll(nptr, endptr, base);
-}
+long int strtol(const char *nptr, char **endptr, int base) { return strtoll(nptr, endptr, base); }
 long long strtoll(const char *__restrict nptr, char **__restrict endptr, int base) {
   return strtoll_l(nptr, endptr, base);
 }
@@ -476,7 +471,7 @@ int posix_memalign(void **memptr, size_t alignment, size_t size) {
 
 
 void *bsearch(const void *key, const void *base, size_t nel, size_t width,
-              int (*cmp)(const void *, const void *)) {
+    int (*cmp)(const void *, const void *)) {
   void *try;
   int sign;
   while (nel > 0) {

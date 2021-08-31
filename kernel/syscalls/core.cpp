@@ -46,8 +46,8 @@ uint64_t do_syscall(
   }
 
 #if 0
-  printk(KERN_INFO "[pid=%d] syscall %s  0x%llx 0x%llx 0x%llx 0x%llx 0x%llx 0x%llx\n", curthd->pid,
-         syscall_table[num].name, a, b, c, d, e, f);
+  printk(KERN_INFO "[tid=%3d] % 25s  0x%016llx 0x%016llx 0x%016llx 0x%016llx 0x%016llx 0x%016llx\n",
+      curthd->tid, syscall_table[num].name, a, b, c, d, e, f);
 #endif
   curthd->stats.syscall_count++;
 

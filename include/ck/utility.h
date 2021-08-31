@@ -1,7 +1,10 @@
 #pragma once
 
+#ifdef KERNEL
+#include <types.h>
+#else
 #include <unistd.h>
-
+#endif
 
 /// much of this is stolen from gcc's libckc++
 
@@ -11,18 +14,14 @@ namespace ck {
 
 
   /// integral_constant
-  template <typename _Tp, _Tp __v>
+
+  template <typename T, T v>
   struct integral_constant {
-    static constexpr _Tp value = __v;
-    typedef _Tp value_type;
-    typedef integral_constant<_Tp, __v> type;
+    static constexpr T value = v;
+    using value_type = T;
+    using type = integral_constant;  // using injected-class-name
     constexpr operator value_type() const noexcept { return value; }
-#if __cplusplus > 201103L
-
-#define __cpp_lib_integral_constant_callable 201304
-
-    constexpr value_type operator()() const noexcept { return value; }
-#endif
+    constexpr value_type operator()() const noexcept { return value; }  // since c++14
   };
 
   template <typename _Tp, _Tp __v>
@@ -115,7 +114,7 @@ namespace ck {
 
   template <typename _TypeIdentity, typename _NestedType = typename _TypeIdentity::type>
   constexpr typename __or_<is_reference<_NestedType>, is_function<_NestedType>,
-                           is_void<_NestedType>, __is_array_unknown_bounds<_NestedType>>::type
+      is_void<_NestedType>, __is_array_unknown_bounds<_NestedType>>::type
   __is_complete_or_unbounded(_TypeIdentity) {
     return {};
   }
@@ -350,7 +349,7 @@ namespace ck {
   /// is_scalar
   template <typename _Tp>
   struct is_scalar : public __or_<is_arithmetic<_Tp>, is_enum<_Tp>, is_pointer<_Tp>,
-                                  is_member_pointer<_Tp>, is_null_pointer<_Tp>>::type {};
+                         is_member_pointer<_Tp>, is_null_pointer<_Tp>>::type {};
 
   /// is_compound
   template <typename _Tp>
@@ -405,21 +404,21 @@ namespace ck {
   template <typename _Tp>
   struct is_trivial : public integral_constant<bool, __is_trivial(_Tp)> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   // is_trivially_copyable
   template <typename _Tp>
   struct is_trivially_copyable : public integral_constant<bool, __is_trivially_copyable(_Tp)> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   /// is_standard_layout
   template <typename _Tp>
   struct is_standard_layout : public integral_constant<bool, __is_standard_layout(_Tp)> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
 
@@ -427,7 +426,7 @@ namespace ck {
   template <typename _Tp>
   struct is_literal_type : public integral_constant<bool, __is_literal_type(_Tp)> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
 
@@ -511,8 +510,8 @@ namespace ck {
   };
 
   template <typename _Tp,
-            bool = __or_<is_void<_Tp>, __is_array_unknown_bounds<_Tp>, is_function<_Tp>>::value,
-            bool = __or_<is_reference<_Tp>, is_scalar<_Tp>>::value>
+      bool = __or_<is_void<_Tp>, __is_array_unknown_bounds<_Tp>, is_function<_Tp>>::value,
+      bool = __or_<is_reference<_Tp>, is_scalar<_Tp>>::value>
   struct __is_destructible_safe;
 
   template <typename _Tp>
@@ -529,7 +528,7 @@ namespace ck {
   template <typename _Tp>
   struct is_destructible : public __is_destructible_safe<_Tp>::type {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
 
@@ -552,8 +551,8 @@ namespace ck {
   };
 
   template <typename _Tp,
-            bool = __or_<is_void<_Tp>, __is_array_unknown_bounds<_Tp>, is_function<_Tp>>::value,
-            bool = __or_<is_reference<_Tp>, is_scalar<_Tp>>::value>
+      bool = __or_<is_void<_Tp>, __is_array_unknown_bounds<_Tp>, is_function<_Tp>>::value,
+      bool = __or_<is_reference<_Tp>, is_scalar<_Tp>>::value>
   struct __is_nt_destructible_safe;
 
   template <typename _Tp>
@@ -570,7 +569,7 @@ namespace ck {
   template <typename _Tp>
   struct is_nothrow_destructible : public __is_nt_destructible_safe<_Tp>::type {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   template <typename _Tp, typename... _Args>
@@ -580,14 +579,14 @@ namespace ck {
   template <typename _Tp, typename... _Args>
   struct is_constructible : public __is_constructible_impl<_Tp, _Args...> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   /// is_default_constructible
   template <typename _Tp>
   struct is_default_constructible : public __is_constructible_impl<_Tp>::type {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   template <typename _Tp, bool = __is_referenceable<_Tp>::value>
@@ -604,7 +603,7 @@ namespace ck {
   template <typename _Tp>
   struct is_copy_constructible : public __is_copy_constructible_impl<_Tp> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   template <typename _Tp, bool = __is_referenceable<_Tp>::value>
@@ -620,7 +619,7 @@ namespace ck {
   template <typename _Tp>
   struct is_move_constructible : public __is_move_constructible_impl<_Tp> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   template <typename _Tp, typename... _Args>
@@ -631,7 +630,7 @@ namespace ck {
   template <typename _Tp, typename... _Args>
   struct is_nothrow_constructible : public __is_nothrow_constructible_impl<_Tp, _Args...>::type {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   /// is_nothrow_default_constructible
@@ -639,7 +638,7 @@ namespace ck {
   struct is_nothrow_default_constructible
       : public __bool_constant<__is_nothrow_constructible(_Tp)> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
 
@@ -657,7 +656,7 @@ namespace ck {
   template <typename _Tp>
   struct is_nothrow_copy_constructible : public __is_nothrow_copy_constructible_impl<_Tp>::type {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   template <typename _Tp, bool = __is_referenceable<_Tp>::value>
@@ -674,14 +673,14 @@ namespace ck {
   template <typename _Tp>
   struct is_nothrow_move_constructible : public __is_nothrow_move_constructible_impl<_Tp>::type {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   /// is_assignable
   template <typename _Tp, typename _Up>
   struct is_assignable : public __bool_constant<__is_assignable(_Tp, _Up)> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   template <typename _Tp, bool = __is_referenceable<_Tp>::value>
@@ -698,7 +697,7 @@ namespace ck {
   template <typename _Tp>
   struct is_copy_assignable : public __is_copy_assignable_impl<_Tp>::type {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   template <typename _Tp, bool = __is_referenceable<_Tp>::value>
@@ -715,7 +714,7 @@ namespace ck {
   template <typename _Tp>
   struct is_move_assignable : public __is_move_assignable_impl<_Tp>::type {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   template <typename _Tp, typename _Up>
@@ -725,7 +724,7 @@ namespace ck {
   template <typename _Tp, typename _Up>
   struct is_nothrow_assignable : public __is_nothrow_assignable_impl<_Tp, _Up> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   template <typename _Tp, bool = __is_referenceable<_Tp>::value>
@@ -742,7 +741,7 @@ namespace ck {
   template <typename _Tp>
   struct is_nothrow_copy_assignable : public __is_nt_copy_assignable_impl<_Tp> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   template <typename _Tp, bool = __is_referenceable<_Tp>::value>
@@ -759,7 +758,7 @@ namespace ck {
   template <typename _Tp>
   struct is_nothrow_move_assignable : public __is_nt_move_assignable_impl<_Tp> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   /// is_trivially_constructible
@@ -767,7 +766,7 @@ namespace ck {
   struct is_trivially_constructible
       : public __bool_constant<__is_trivially_constructible(_Tp, _Args...)> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   /// is_trivially_default_constructible
@@ -775,7 +774,7 @@ namespace ck {
   struct is_trivially_default_constructible
       : public __bool_constant<__is_trivially_constructible(_Tp)> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   struct __do_is_implicitly_default_constructible_impl {
@@ -801,7 +800,7 @@ namespace ck {
   template <typename _Tp>
   struct __is_implicitly_default_constructible
       : public __and_<__is_constructible_impl<_Tp>,
-                      __is_implicitly_default_constructible_safe<_Tp>> {};
+            __is_implicitly_default_constructible_safe<_Tp>> {};
 
   template <typename _Tp, bool = __is_referenceable<_Tp>::value>
   struct __is_trivially_copy_constructible_impl;
@@ -812,13 +811,13 @@ namespace ck {
   template <typename _Tp>
   struct __is_trivially_copy_constructible_impl<_Tp, true>
       : public __and_<__is_copy_constructible_impl<_Tp>,
-                      integral_constant<bool, __is_trivially_constructible(_Tp, const _Tp&)>> {};
+            integral_constant<bool, __is_trivially_constructible(_Tp, const _Tp&)>> {};
 
   /// is_trivially_copy_constructible
   template <typename _Tp>
   struct is_trivially_copy_constructible : public __is_trivially_copy_constructible_impl<_Tp> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   template <typename _Tp, bool = __is_referenceable<_Tp>::value>
@@ -830,20 +829,20 @@ namespace ck {
   template <typename _Tp>
   struct __is_trivially_move_constructible_impl<_Tp, true>
       : public __and_<__is_move_constructible_impl<_Tp>,
-                      integral_constant<bool, __is_trivially_constructible(_Tp, _Tp&&)>> {};
+            integral_constant<bool, __is_trivially_constructible(_Tp, _Tp&&)>> {};
 
   /// is_trivially_move_constructible
   template <typename _Tp>
   struct is_trivially_move_constructible : public __is_trivially_move_constructible_impl<_Tp> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   /// is_trivially_assignable
   template <typename _Tp, typename _Up>
   struct is_trivially_assignable : public __bool_constant<__is_trivially_assignable(_Tp, _Up)> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   template <typename _Tp, bool = __is_referenceable<_Tp>::value>
@@ -860,7 +859,7 @@ namespace ck {
   template <typename _Tp>
   struct is_trivially_copy_assignable : public __is_trivially_copy_assignable_impl<_Tp> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   template <typename _Tp, bool = __is_referenceable<_Tp>::value>
@@ -877,7 +876,7 @@ namespace ck {
   template <typename _Tp>
   struct is_trivially_move_assignable : public __is_trivially_move_assignable_impl<_Tp> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   /// is_trivially_destructible
@@ -885,7 +884,7 @@ namespace ck {
   struct is_trivially_destructible
       : public __and_<__is_destructible_safe<_Tp>, __bool_constant<__has_trivial_destructor(_Tp)>> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
 
@@ -893,7 +892,7 @@ namespace ck {
   template <typename _Tp>
   struct has_virtual_destructor : public integral_constant<bool, __has_virtual_destructor(_Tp)> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
 
@@ -905,7 +904,7 @@ namespace ck {
   template <typename _Tp>
   struct alignment_of : public integral_constant<size_t, alignof(_Tp)> {
     static_assert(ck::__is_complete_or_unbounded(__type_identity<_Tp>{}),
-                  "template argument must be a complete class or an unbounded array");
+        "template argument must be a complete class or an unbounded array");
   };
 
   /// rank
@@ -936,30 +935,42 @@ namespace ck {
 
   /// is_same
   template <typename _Tp, typename _Up>
-  struct is_same
-#ifdef _GLIBCXX_HAVE_BUILTIN_IS_SAME
-      : public integral_constant<bool, __is_same(_Tp, _Up)>
-#else
-      : public false_type
-#endif
-  {
-  };
+  struct is_same : public false_type {};
 
 #ifndef _GLIBCXX_HAVE_BUILTIN_IS_SAME
   template <typename _Tp>
   struct is_same<_Tp, _Tp> : public true_type {};
 #endif
 
-  /// is_base_of
-  template <typename _Base, typename _Derived>
-  struct is_base_of : public integral_constant<bool, __is_base_of(_Base, _Derived)> {};
 
   template <typename _From, typename _To,
-            bool = __or_<is_void<_From>, is_function<_To>, is_array<_To>>::value>
+      bool = __or_<is_void<_From>, is_function<_To>, is_array<_To>>::value>
   struct __is_convertible_helper {
     typedef typename is_void<_To>::type type;
   };
 
+
+  namespace details {
+    template <typename B>
+    true_type test_pre_ptr_convertible(const volatile B*);
+    template <typename>
+    false_type test_pre_ptr_convertible(const volatile void*);
+
+    template <typename, typename>
+    auto test_pre_is_base_of(...) -> true_type;
+    template <typename B, typename D>
+    auto test_pre_is_base_of(int)
+        -> decltype(test_pre_ptr_convertible<B>(static_cast<D*>(nullptr)));
+  }  // namespace details
+
+
+
+  template <typename Base, typename Derived>
+  struct is_base_of
+      : ck::integral_constant<bool,
+            ck::is_class<Base>::value &&
+                ck::is_class<Derived>::value&& decltype(details::test_pre_is_base_of<Base, Derived>(
+                    0))::value> {};
 
   // I got to line 1349 of
   // https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/include/std/type_traits. feel
@@ -1010,8 +1021,8 @@ namespace ck {
   template <typename T>
   constexpr T&& forward(typename ck::remove_reference<T>::type&& value) noexcept {
     static_assert(!ck::is_lvalue_reference<T>::value,
-                  "template argument"
-                  " substituting T must not be an lvalue reference type");
+        "template argument"
+        " substituting T must not be an lvalue reference type");
     return static_cast<T&&>(value);
   }
 

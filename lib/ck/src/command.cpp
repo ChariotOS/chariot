@@ -9,8 +9,7 @@
 
 extern char **environ;
 
-ck::command::command(ck::string exe) : m_exe(exe) {
-}
+ck::command::command(ck::string exe) : m_exe(exe) {}
 
 
 ck::command::~command(void) {
@@ -20,9 +19,7 @@ ck::command::~command(void) {
 }
 
 
-void ck::command::arg(ck::string arg) {
-  m_args.push(arg);
-}
+void ck::command::arg(ck::string arg) { m_args.push(arg); }
 
 
 
@@ -33,7 +30,6 @@ int ck::command::start(void) {
   if (pid == 0) {
     // build the argv list
     auto argv = new char *[m_args.size() + 2];
-    defer({ delete[] argv; });
 
     argv[0] = strdup(m_exe.get());
     for (int i = 0; i < m_args.size(); i++) {

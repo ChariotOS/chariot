@@ -473,7 +473,6 @@ void sched::run() {
     }
 
     mlfq::Behavior b = mlfq::Behavior::Unknown;
-
     auto start = cpu::get_ticks();
     switch_into(*thd);
     auto end = cpu::get_ticks();

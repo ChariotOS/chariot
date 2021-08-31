@@ -37,9 +37,7 @@
 #define C_GRAY "\x1b[90m"
 
 
-size_t current_us() {
-  return syscall(SYS_gettime_microsecond);
-}
+size_t current_us() { return syscall(SYS_gettime_microsecond); }
 
 extern char **environ;
 
@@ -243,21 +241,6 @@ int main(int argc, char **argv, char **envp) {
   close(hn);
 
 
-
-  volatile int x = 0;
-
-
-  while (0) {
-    int pid = fork();
-    if (pid == 0) {
-      x++;
-      exit(0);
-    }
-    printf("pid: %d\n", pid);
-    waitpid(pid, NULL, 0);
-  }
-
-
   uid_t uid = getuid();
   struct passwd *pwd = getpwuid(uid);
   strncpy(uname, pwd->pw_name, 32);
@@ -267,10 +250,9 @@ int main(int argc, char **argv, char **envp) {
   setenv("HOME", pwd->pw_dir, 1);
 
 
-	struct termios tios;
+  struct termios tios;
   while (1) {
-
-		tcgetattr(0, &tios);
+    tcgetattr(0, &tios);
     syscall(SYS_getcwd, cwd, 255);
     setenv("CWD", (const char *)cwd, 1);
 
@@ -281,7 +263,7 @@ int main(int argc, char **argv, char **envp) {
     }
 
     snprintf(prompt, 256, "[\x1b[33m%s\x1b[0m@\x1b[34m%s \x1b[35m%s\x1b[0m]%c ", uname, hostname,
-             disp_cwd, uid == 0 ? '#' : '$');
+        disp_cwd, uid == 0 ? '#' : '$');
     // snprintf(prompt, 256, "%s %c ", disp_cwd, uid == 0 ? '#' : '$');
 
 
@@ -290,7 +272,7 @@ int main(int argc, char **argv, char **envp) {
 
     // ck::hexdump((void *)line.get(), line.len());
     run_line(line);
-		tcsetattr(0, TCSANOW, &tios);
+    tcsetattr(0, TCSANOW, &tios);
     reset_pgid();
   }
 
