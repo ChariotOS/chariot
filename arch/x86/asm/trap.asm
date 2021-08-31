@@ -1,10 +1,10 @@
 ;; #include "mmu.h"
 
 %macro swapgs_if_needed 0
-		cmp QWORD [rsp + 16], 0x08
-		jne .1
-		swapgs
-	.1:
+		; cmp QWORD [rsp + 16], 0x08
+		; jne .1
+		; swapgs
+	; .1:
 %endmacro
 
 

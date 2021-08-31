@@ -12,3 +12,11 @@ __syscall:
 	;; syscall
 	int 0x80 ;; TODO: real syscall instruction
 	ret
+
+
+
+
+global __get_gs
+__get_gs:
+	mov gs:0, rax
+	ret

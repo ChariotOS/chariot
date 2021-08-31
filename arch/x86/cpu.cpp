@@ -131,6 +131,23 @@ void cpu::switch_vm(struct thread *thd) {
   auto stack_addr = (u64)stk.start + stk.size + 8;
   *(off_t *)c.local = stack_addr;
 
+
+
+
+  // When in the kernel, gs is set to one designated by the thread.
+  // This is swapped out for a user one (in KERNEL_GS_BASE), upon
+  // entering userspace, and swapped back when you enter the kernel
+  // on a trap or systemcall.
+
+  // TODO: a real gs thing :)
+  uint64_t kernel_gs = 0xFFFFFFFF'00000000 | thd->tid;
+  uint64_t user_gs = 0xBBBBBBBB'00000000 | thd->tid;
+
+  // asm ("swapgs");
+  // wrmsr(KERNEL_GS_BASE, user_gs);
+  // asm ("swapgs");
+  // wrmsr(KERNEL_GS_BASE, user_gs);
+  
   switch (thd->proc.ring) {
     case RING_KERN:
       tss_set_rsp(tss, 0, 0);
