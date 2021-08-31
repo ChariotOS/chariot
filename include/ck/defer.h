@@ -13,7 +13,7 @@
 #define UNIQUE_NAME(base) PP_CAT(base, __COUNTER__)
 
 
-#define defer(body) ck::__defer UNIQUE_NAME(_defer_)([&]() body)
+// #define defer(body) ck::__defer UNIQUE_NAME(_defer_)([&]() body)
 
 
 namespace ck {
@@ -23,11 +23,8 @@ namespace ck {
     ck::func<void(void)> cb;
 
    public:
-    inline __defer(ck::func<void(void)> cb) : cb(cb) {
-    }
+    inline __defer(ck::func<void(void)> cb) : cb(cb) {}
 
-    inline ~__defer(void) {
-      cb();
-    }
+    inline ~__defer(void) { cb(); }
   };
 }  // namespace ck
