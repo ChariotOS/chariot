@@ -81,6 +81,19 @@ ck::option<size_t> ck::file::read(void *buf, size_t sz) {
   return k;
 }
 
+async(ck::option<size_t>) ck::file::async_read(void *buf, size_t sz) {
+  ck::future<ck::option<size_t>> fut;
+  auto ctrl = fut.get_control();
+  this->on_read([this, ctrl, buf, sz]() mutable {
+    auto res = this->read(buf, sz);
+    if (res) ctrl->resolve(move(res));
+    this->clear_on_read();
+
+    return;
+  });
+  return fut;
+}
+
 ck::option<size_t> ck::file::write(const void *buf, size_t sz) {
   if (m_fd == -1) return {};
 

@@ -32,13 +32,15 @@ namespace ck {
 
     operator bool(void) { return m_callable_wrapper.get() != NULL; }
 
+    void clear(void) { m_callable_wrapper = nullptr; }
+
     using ReturnType = Out;
 
    private:
     class CallableWrapperBase {
      public:
       virtual ~CallableWrapperBase() {}
-      virtual Out call(In...) const = 0;
+      virtual Out call(In...) = 0;
     };
 
     template <typename CallableType>
@@ -49,7 +51,7 @@ namespace ck {
       CallableWrapper(const CallableWrapper&) = delete;
       CallableWrapper& operator=(const CallableWrapper&) = delete;
 
-      Out call(In... in) const final override { return m_callable(in...); }
+      Out call(In... in) final override { return m_callable(in...); }
 
      private:
       CallableType m_callable;

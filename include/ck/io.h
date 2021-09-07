@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <ck/option.h>
 #include "ck/eventloop.h"
+#include <ck/future.h>
 
 
 namespace ck {
@@ -193,6 +194,9 @@ namespace ck {
 
     ck::option<size_t> write(const void *buf, size_t) override;
     ck::option<size_t> read(void *buf, size_t) override;
+
+    async(ck::option<size_t>) async_read(void *buf, size_t);
+
     virtual ssize_t size(void) override;
     virtual ssize_t tell(void) override;
     virtual int seek(long offset, int whence) override;
@@ -244,6 +248,17 @@ namespace ck {
       m_on_write = move(cb);
       update_notifier();
     }
+
+
+    inline void clear_on_read(void) {
+      m_on_read.clear();
+      update_notifier();
+    }
+    inline void clear_on_write(void) {
+      m_on_write.clear();
+      update_notifier();
+    }
+
 
    protected:
     // callback functions for read/write

@@ -145,11 +145,6 @@ sudo mkdir -p $mnt/tmp
 sudo mkdir -p $mnt/proc
 sudo chown -R 0:0 $mnt
 
-
-pushd $mnt
-	du -d 1 -h
-popd
-
 if [ -n "$CONFIG_X86" ]; then
 	# install the bootloader (grub, in this case)
 	sudo mkdir -p $mnt/boot/grub

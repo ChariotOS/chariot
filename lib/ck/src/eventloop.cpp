@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <chariot.h>
 
 #include <chariot/awaitfs_types.h>
 #include <sys/sysbind.h>
@@ -64,8 +65,9 @@ ck::eventloop *active_eventloop = NULL;
 ck::eventloop::eventloop(void) {}
 ck::eventloop::~eventloop(void) {}
 
-void ck::eventloop::exit(void) {
+void ck::eventloop::exit(int ec) {
   if (active_eventloop == NULL) return;
+  active_eventloop->m_exit_code = ec;
   active_eventloop->m_finished = true;
 }
 
@@ -76,6 +78,7 @@ void ck::eventloop::start(void) {
   active_eventloop = this;
   for (;;) {
     if (m_finished) break;
+    run_fibers();
     pump();
     dispatch();
   }
@@ -83,6 +86,32 @@ void ck::eventloop::start(void) {
   active_eventloop = old;
 }
 
+
+
+
+void ck::eventloop::block_on(ck::func<void(void)> fn) {
+  // we only exit if all fibers are dead.
+  m_exit_on_no_fibers = true;
+  auto fiber = ck::make_ref<ck::fiber>([=](ck::fiber *fiber) mutable {
+    // fiber->on_exit = [](ck::fiber *f) {
+    //   assert(f->is_done());
+    //   ck::eventloop::current()->exit();
+    // };
+
+    fn();
+  });
+
+
+  fiber->set_ready();
+  add_fiber(fiber);
+
+  start();
+}
+
+void ck::eventloop::add_fiber(ck::ref<ck::fiber> f) {
+  // add the fiber to the pool
+  m_fibers.push(f);
+}
 
 int awaitfs(struct await_target *fds, int nfds, int flags, long long timeout_time) {
   int res = 0;
@@ -159,27 +188,29 @@ void ck::eventloop::pump(void) {
     swap(targs[i], targs[j]);
   }
 
-  // printf("<\n");
-  int index = awaitfs(targs.data(), targs.size(), 0, timeout);
-  // printf(">\n");
-  if (index >= 0) {
-    auto occ = targs[index].occurred;
-    if (occ & AWAITFS_READ) {
-      auto event = new ck::event();
-      event->type = CK_EVENT_READ;
-      post_event(*(ck::object *)targs[index].priv, event);
-    }
+  if (targs.size() > 0 || timeout != -1) {
+    // printf("<\n");
+    int index = awaitfs(targs.data(), targs.size(), 0, timeout);
+    // printf(">\n");
+    if (index >= 0) {
+      auto occ = targs[index].occurred;
+      if (occ & AWAITFS_READ) {
+        auto event = new ck::event();
+        event->type = CK_EVENT_READ;
+        post_event(*(ck::object *)targs[index].priv, event);
+      }
 
-    if (occ & AWAITFS_WRITE) {
-      auto event = new ck::event();
-      event->type = CK_EVENT_WRITE;
-      post_event(*(ck::object *)targs[index].priv, event);
-    }
+      if (occ & AWAITFS_WRITE) {
+        auto event = new ck::event();
+        event->type = CK_EVENT_WRITE;
+        post_event(*(ck::object *)targs[index].priv, event);
+      }
 
-  } else {
-    if (errno == ETIMEDOUT) {
-      if (nt != NULL) {
-        nt->trigger();
+    } else {
+      if (errno == ETIMEDOUT) {
+        if (nt != NULL) {
+          nt->trigger();
+        }
       }
     }
   }
@@ -193,6 +224,55 @@ void ck::eventloop::dispatch(void) {
     delete ev.ev;
   }
   m_pending.clear();
+}
+
+void ck::eventloop::run_fibers() {
+  ck::vec<ck::ref<ck::fiber>> finished_fibers;
+  ck::vec<ck::ref<ck::fiber>> to_run;
+
+
+
+  if (m_fibers.size() > 0) {
+    while (1) {
+      /* Shuffle the fiber order */
+      int n = m_fibers.size();
+      for (int i = 0; i < n; i++) {
+        int j = i + ::rand() / (RAND_MAX / (n - i) + 1);
+        if (j == i) continue;
+        swap(m_fibers[i], m_fibers[j]);
+      }
+
+      // runnable fibers
+      for (auto &fiber : m_fibers) {
+        if (fiber->state() == ck::FiberState::Ready) {
+          to_run.push(fiber);
+        }
+      }
+
+      if (to_run.size() == 0) break;
+
+      for (auto &fiber : to_run) {
+        if (!fiber->is_done() && fiber->state() == ck::FiberState::Ready) fiber->resume();
+        if (fiber->is_done()) {
+          finished_fibers.push(fiber);
+        }
+      }
+
+      to_run.clear();
+
+      for (auto &f : finished_fibers) {
+        m_fibers.remove_first_matching([&](auto other) {
+          return other == f;
+        });
+      }
+      finished_fibers.clear();
+    }
+  }
+
+
+  if (m_exit_on_no_fibers && m_fibers.size() == 0) {
+    this->exit();
+  }
 }
 
 

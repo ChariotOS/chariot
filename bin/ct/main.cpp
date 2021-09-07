@@ -23,6 +23,140 @@
 #include <ck/thread.h>
 #include <ck/ipc.h>
 #include <chariot/elf/exec_elf.h>
+#include <ck/resource.h>
+#include <fcntl.h>
+#include <ck/future.h>
+
+#include "test.h"
+
+void dump_symbols(int fd) {
+  Elf64_Ehdr ehdr;
+  lseek(fd, 0, SEEK_SET);
+  read(fd, &ehdr, sizeof(ehdr));
+  if (ehdr.e_shstrndx == SHN_UNDEF) return;
+
+  for (int i = 0; i < 100; i++) {
+    ck::time::logger l("thing");
+    Elf64_Phdr* phdr = new Elf64_Phdr[ehdr.e_phnum];
+    lseek(fd, ehdr.e_phoff, SEEK_SET);
+
+    size_t hdrs_size;
+    hdrs_size = ehdr.e_phnum * ehdr.e_phentsize;
+    read(fd, phdr, hdrs_size);
+
+    printf("phdr_size: %llu\n", hdrs_size);
+
+    for (int i = 0; i < ehdr.e_phnum; i++) {
+      auto& sec = phdr[i];
+      if (sec.p_type == PT_TLS) {
+        printf("Found a TLS template\n");
+        // printf("  file:%d, mem:%d!\n", sec.p_filesz, sec.p_memsz);
+        // printf("  off: %p, vaddr: %p\n", sec.p_offset, sec.p_vaddr);
+        // printf("  ali: %p, paddr: %p\n", sec.p_align, sec.p_paddr);
+
+        auto start = sec.p_vaddr;
+        int prot = 0;
+        if (sec.p_flags & PF_X) prot |= PROT_EXEC;
+        if (sec.p_flags & PF_W) prot |= PROT_WRITE;
+        if (sec.p_flags & PF_R) prot |= PROT_READ;
+
+        lseek(fd, start, SEEK_SET);
+        void* buf = malloc(sec.p_memsz);
+        read(fd, buf, sec.p_memsz);
+        ck::hexdump(buf, sec.p_memsz);
+
+        free(buf);
+      }
+    }
+
+    delete[] phdr;
+  }
+
+  return;
+
+  Elf64_Shdr* sec_hdrs = new Elf64_Shdr[ehdr.e_shnum];
+
+  // seek to and read the headers
+  lseek(fd, ehdr.e_shoff, SEEK_SET);
+  auto sec_expected = ehdr.e_shnum * sizeof(*sec_hdrs);
+  auto sec_read = read(fd, sec_hdrs, sec_expected);
+
+  if (sec_read != sec_expected) {
+    delete[] sec_hdrs;
+    printf("sec_read != sec_expected\n");
+    return;
+  }
+
+  Elf64_Sym* symtab = NULL;
+  int symcount = 0;
+  char* strtab = NULL;
+  size_t strtab_size = 0;
+
+  for (int i = 0; i < ehdr.e_shnum; i++) {
+    auto& sh = sec_hdrs[i];
+
+    if (sh.sh_type == SHT_SYMTAB) {
+      symtab = (Elf64_Sym*)malloc(sh.sh_size);
+
+      symcount = sh.sh_size / sizeof(*symtab);
+
+      lseek(fd, sh.sh_offset, SEEK_SET);
+      read(fd, symtab, sh.sh_size);
+      continue;
+    }
+
+    if (sh.sh_type == SHT_STRTAB && strtab == NULL) {
+      strtab = (char*)malloc(sh.sh_size);
+      lseek(fd, sh.sh_offset, SEEK_SET);
+      read(fd, strtab, sh.sh_size);
+      strtab_size = sh.sh_size;
+    }
+  }
+
+  delete[] sec_hdrs;
+
+  int err = 0;
+  if (symtab != NULL && symtab != NULL) {
+    for (int i = 0; i < symcount; i++) {
+      auto& sym = symtab[i];
+      if (sym.st_name > strtab_size - 2) {
+        err = -EINVAL;
+        break;
+      }
+
+      const char* tname = "unknown";
+      unsigned type = ELF32_ST_TYPE(sym.st_info);
+      switch (type) {
+        case STT_NOTYPE:
+          tname = "NOTYPE";
+          break;
+        case STT_OBJECT:
+          tname = "OBJECT";
+          break;
+        case STT_FUNC:
+          tname = "FUNC";
+          break;
+
+        default:
+          continue;
+          break;
+      }
+
+      const char* name = strtab + sym.st_name;
+      printf("%4d: 0x%08llx %2d %8s %08x %s\n", i, sym.st_value, type, tname, sym.st_size, name);
+    }
+
+    free(symtab);
+  }
+
+  if (symtab != NULL) free(symtab);
+  if (strtab != NULL) free(strtab);
+
+  return;
+}
+
+
+
 
 class ct_window : public ui::window {
  public:
@@ -66,135 +200,24 @@ class ct_window : public ui::window {
 
 
 
-void dump_symbols(int fd) {
-  Elf64_Ehdr ehdr;
-  lseek(fd, 0, SEEK_SET);
-  read(fd, &ehdr, sizeof(ehdr));
-
-  if (ehdr.e_shstrndx == SHN_UNDEF) return;
-
-  Elf64_Shdr* sec_hdrs = new Elf64_Shdr[ehdr.e_shnum];
-
-  // seek to and read the headers
-  lseek(fd, ehdr.e_shoff, SEEK_SET);
-  auto sec_expected = ehdr.e_shnum * sizeof(*sec_hdrs);
-  auto sec_read = read(fd, sec_hdrs, sec_expected);
-
-  if (sec_read != sec_expected) {
-    delete[] sec_hdrs;
-    printf("sec_read != sec_expected\n");
-    return;
-  }
-
-  Elf64_Sym* symtab = NULL;
-  int symcount = 0;
-
-  char* strtab = NULL;
-  size_t strtab_size = 0;
-
-  for (int i = 0; i < ehdr.e_shnum; i++) {
-    auto& sh = sec_hdrs[i];
-    if (sh.sh_type == SHT_SYMTAB) {
-      symtab = (Elf64_Sym*)malloc(sh.sh_size);
-
-      symcount = sh.sh_size / sizeof(*symtab);
-
-      lseek(fd, sh.sh_offset, SEEK_SET);
-      read(fd, symtab, sh.sh_size);
-      continue;
-    }
-
-    if (sh.sh_type == SHT_STRTAB && strtab == NULL) {
-      strtab = (char*)malloc(sh.sh_size);
-      lseek(fd, sh.sh_offset, SEEK_SET);
-      read(fd, strtab, sh.sh_size);
-      strtab_size = sh.sh_size;
-    }
-  }
-
-
-
-  delete[] sec_hdrs;
-
-
-  int err = 0;
-  if (symtab != NULL && symtab != NULL) {
-    for (int i = 0; i < symcount; i++) {
-      auto& sym = symtab[i];
-      if (sym.st_name > strtab_size - 2) {
-        err = -EINVAL;
-        break;
-      }
-
-      const char* tname = "unknown";
-      unsigned type = ELF32_ST_TYPE(sym.st_info);
-      switch (type) {
-        case STT_NOTYPE:
-          tname = "NOTYPE";
-          break;
-        case STT_OBJECT:
-          tname = "OBJECT";
-          break;
-        case STT_FUNC:
-          tname = "FUNC";
-          break;
-
-        default:
-          continue;
-          break;
-      }
-
-      const char* name = strtab + sym.st_name;
-      printf("%4d: 0x%08llx %2d %8s %08x %s\n", i, sym.st_value, type, tname, sym.st_size, name);
-    }
-
-    free(symtab);
-  }
-
-  if (symtab != NULL) free(symtab);
-  if (strtab != NULL) free(strtab);
-
-  return;
-}
-
-
-#include "test.h"
-
-
-
-inline auto tsc(void) {
-  uint32_t lo, hi;
-  /* TODO; */
-#ifdef CONFIG_X86
-  asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
-#endif
-  return lo | ((uint64_t)(hi) << 32);
-}
-
 class client_connection : public test::client_connection_stub {
  public:
   client_connection(ck::ref<ck::ipcsocket> s) : test::client_connection_stub(s) {}
-
+  virtual ~client_connection() {}
 
   ck::option<test::server_compute_response> on_compute(uint32_t val) override {
-    // printf("compute %d\n", val);
     return test::server_compute_response({val * 2});
   }
-  virtual ~client_connection() {}
 };
 
 class server_connection : public test::server_connection_stub {
  public:
   server_connection(ck::ref<ck::ipcsocket> s) : test::server_connection_stub(s) {}
-
   virtual ~server_connection() {}
-
 
   // handle these in your subclass
   ck::option<test::client_map_response> on_map(ck::vec<uint32_t> vec) override {
-    // printf("map over %zu values\n", vec.size());
     for (auto& val : vec) {
-      // printf("asking to compute on %d\n", val);
       auto r = compute(val);
       if (!r.has_value()) {
         return None;
@@ -210,12 +233,12 @@ void run_client(ck::string path) {
   ck::eventloop ev;
 
   ck::ref<ck::ipcsocket> sock = ck::make_ref<ck::ipcsocket>();
-  sock->connect(path);
-  if (!sock->connected()) panic("ouchie");
+  int res = sock->connect(path);
+  if (!sock->connected()) {
+    panic("ouchie");
+  }
 
   printf("connected!\n");
-
-
   client_connection c(sock);
   ck::vec<uint32_t> vec;
   for (int v = 0; v < 100; v++) {
@@ -249,26 +272,15 @@ void run_client(ck::string path) {
 
 void run_server() {
   ck::eventloop ev;
-
-  ck::ipcsocket server;
-  ck::vec<ck::ref<server_connection>> stubs;
   int client_pid = 0;
-
+  ck::ipc::server<server_connection> server;
   ck::string path = ck::string::format("/tmp/ct.%d.sock", rand());
-
-  system(ck::string::format("touch %s", path.get()).get());
-
-  server.listen(path, [&] {
-    printf("got a connection!\n");
-    auto sock = server.accept();
-
-    stubs.push(ck::make_ref<server_connection>(sock));
-  });
-
-  auto t = ck::timer::make_timeout(500, [&server] {
-    ck::eventloop::current()->exit();
-    // die!
-  });
+  {
+    int fd = open(path.get(), O_RDONLY | O_CREAT);
+    printf("fd = %d, errno = %d\n", fd, errno);
+    close(fd);
+  }
+  server.listen(path);
 
   client_pid = fork();
   if (client_pid == 0) {
@@ -280,70 +292,83 @@ void run_server() {
   ev.start();
 }
 
-#include <ck/future.h>
 
 
+async(ssize_t) async_read(ck::file& f, void* buf, size_t count) {
+  ck::future<ssize_t> fut;
+  auto ctrl = fut.get_control();
+  f.on_read([&f, ctrl, buf, count]() mutable {
+    auto res = f.read(buf, count);
+    if (res) ctrl->resolve(res.take());
+    f.clear_on_read();
+  });
+  return fut;
+}
+
+
+void wait(int ms) {
+  ck::future<int> fut;
+  auto ctrl = fut.get_control();
+
+  auto timer = ck::timer::make_timeout(ms, [ctrl]() mutable {
+    ctrl->resolve(0);
+  });
+
+  fut.await();
+}
 
 int main(int argc, char** argv) {
-  {
-    ck::future<float> y;
-    ck::future<long> x;
-
-    y = x.map([](auto x) -> float {
-      printf("the value is %d as an int\n", x);
-      return (float)x;
-    });
-
-    auto x_copy = x;
-    x_copy.resolve(42);
-    y.then([](float x) { printf("the value is %f as a float\n", x); });
-  }
-
-
-  return 0;
-
-  while (1) {
-    auto start = tsc();
-    sysbind_get_nproc();
-    // (void)ck::time::us();
-    auto end = tsc();
-    printf("%llu\n", (end - start));
-  }
-  int server_pid = fork();
-
-  if (server_pid == 0) {
-    run_server();
-  }
-  waitpid(server_pid, NULL, 0);
-  return 0;
-
-#if 0
-  auto start = malloc_allocated();
-  {
-    volatile int i = 0;
-    auto f = ck::make_ref<fiber>([&](auto* f) {
-      while (1) {
-        i++;
-        f->yield();
+  ASYNC_MAIN({
+    int res = ck::spawn<int>([] {
+      for (int i = 0; i < 10; i++) {
+        printf("%d\n", i);
+        wait(100);
       }
-    });
+      return 0;
+    }).await();
 
-    printf("memory allocated: %llu\n", malloc_allocated() - start);
 
-    for (int i = 0; i < 100; i++) {
-      f->resume();
-      printf("< %d\n", i);
+    while (true) {
+      printf("waiting on bytes\n");
+
+      char buf[512];
+      auto sz = ck::in.async_read(buf, sizeof(buf)).await().take();
+      printf("read %d bytes\n", sz);
+      ck::hexdump(buf, sz);
     }
-  }
+    return;
+  });
 
-  printf("memory leaked: %llu\n", malloc_allocated() - start);
-
+  // ev.start();
   return 0;
 
-#endif
+
+  // auto [cat, cat_size] = ck::resource::get("ct::resource").take();
+
+  // ck::hexdump(cat, cat_size);
+
+  // for (int i = 0; i < 20; i++) {
+  //   unsigned long start = ck::time::us();
+  //   ck::future<long> x;
+
+  //   ck::thread t([&] { x.resolve(42); });
+  //   printf("t\n");
+
+  //   x.then([&](auto x) {
+  //     auto dur = ck::time::us() - start;
+  //     printf("%llu\n", dur);
+  //   });
+
+  //   t.join();
+  // }
+
+  // return 0;
 
 
-  dump_symbols(MAGICFD_EXEC);
+  int server_pid = fork();
+  if (server_pid == 0) run_server();
+  waitpid(server_pid, NULL, 0);
+
 
   return 0;
 

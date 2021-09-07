@@ -12,6 +12,7 @@ AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: true
+AllowShortLambdasOnASingleLine: false
 AllowShortIfStatementsOnASingleLine: true
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakAfterDefinitionReturnType: None
@@ -34,9 +35,9 @@ BraceWrapping:
   BeforeCatch:     false
   BeforeElse:      false
   IndentBraces:    false
-  SplitEmptyFunction: true
-  SplitEmptyRecord: true
-  SplitEmptyNamespace: true
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
 BreakBeforeBinaryOperators: None
 BreakBeforeBraces: Attach
 BreakBeforeInheritanceComma: false

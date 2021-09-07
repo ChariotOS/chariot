@@ -27,7 +27,7 @@ namespace ck {
   // default.
   template <typename T>
   class unique_ptr {
-   private:
+   protected:
     T* m_ptr = nullptr;
 
    public:
@@ -458,7 +458,7 @@ namespace ck {
       return nullptr;
     }
 
-   private:
+
     T* m_ptr = nullptr;
   };
 
@@ -537,7 +537,7 @@ namespace ck {
 
     weak_ref& operator=(const ref<T>& r) {
       reset();
-      m_ptr = r.m_ptr;
+      m_ptr = const_cast<T*>(r.ptr());
       if (m_ptr) {
         swap_wcb(m_ptr->weak_ref_control_block());
       }
@@ -548,7 +548,7 @@ namespace ck {
     template <class Y>
     weak_ref& operator=(const ref<Y>& r) {
       reset();
-      m_ptr = r.m_ptr;
+      m_ptr = const_cast<T*>(r.ptr());
       if (m_ptr) {
         swap_wcb(m_ptr->weak_ref_control_block());
       }
@@ -630,7 +630,7 @@ namespace ck {
       return default_value;
     }
 
-   private:
+   protected:
     void swap_wcb(ck::impl::weak_ref_control_block* new_wcb) {
       auto* old = m_wcb;
       m_wcb = ck::impl::weak_ref_control_block::acquire(new_wcb);
@@ -690,5 +690,12 @@ bool operator>(const ck::ref<T>& l,
   return (l.get() > r.get());
 }
 
+
+template <typename V>
+struct Traits<ck::ref<V>> {
+  static constexpr bool is_trivial(void) { return false; }
+  static unsigned long hash(ck::ref<V> c) { return (unsigned long)c.get(); }
+  static bool equals(const ck::ref<V>& a, const ck::ref<V>& b) { return a == b; }
+};
 
 #undef PRINT
