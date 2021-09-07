@@ -241,7 +241,9 @@ static void gpf_handler(int i, reg_t *regs) {
   auto *tf = (struct x86_64regs *)regs;
   // TODO: die
   KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", curthd->pid, curthd->tid, tf->rip, tf->err);
+  // arch_dump_backtrace();
 
+  dump_backtrace(tf->rbp);
 
 
   curthd->send_signal(SIGSEGV);
