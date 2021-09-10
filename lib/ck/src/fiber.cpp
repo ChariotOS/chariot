@@ -25,7 +25,6 @@ ck::fiber& ck::fiber::current(void) {
 
 void ck::fiber::new_stack_callback(void* _c) {
   fiber* c = (fiber*)_c;
-  printf("c: %p\n", c);
   c->func(c);
   c->m_done = true;
   // switch back to the calling context
@@ -39,8 +38,6 @@ void ck::fiber::yield(ck::FiberState s) {
     longjmp(m_return_ctx, 1);
   }
 }
-
-#define ALIGN(x, a) (((x) + (a)-1) & ~((a)-1))
 
 
 
@@ -59,7 +56,6 @@ void ck::fiber::resume(void) {
       // calculate the new stack pointer
       size_t sp = (size_t)(stk);
       sp += STACK_SIZE;
-      sp = ALIGN(sp, 16);
       _call_with_new_stack((void*)((char*)sp - 16), (void*)new_stack_callback, (void*)this);
     } else {
       longjmp(ctx, 1);

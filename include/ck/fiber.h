@@ -57,7 +57,7 @@ namespace ck {
     char* stack_base = nullptr;
     bool m_initialized = false;
 
-    static constexpr long STACK_SIZE = 4096 * 4;
+    static constexpr long STACK_SIZE = 4096 * 4;  // 16kb of stack, which should be enough.
 
     static void new_stack_callback(void* _c);
   };

@@ -294,14 +294,14 @@ void ck::eventloop::deregister_notifier(ck::fsnotifier &n) {
 
 
 ck::ref<ck::timer> ck::timer::make_interval(int ms, ck::func<void()> cb) {
-  auto t = new ck::timer();
+  auto t = ck::make_ref<ck::timer>();
   t->on_tick = move(cb);
   t->start(ms, true);
   return t;
 }
 
 ck::ref<ck::timer> ck::timer::make_timeout(int ms, ck::func<void()> cb) {
-  auto t = new ck::timer();
+  auto t = ck::make_ref<ck::timer>();
   t->on_tick = move(cb);
   t->start(ms, false);
   return t;
@@ -336,8 +336,8 @@ ck::timer::~timer(void) {
 void ck::timer::stop(void) {
   if (active) {
     // TODO: take a lock
-    s_timers.remove(this);
     active = false;
+    s_timers.remove(this);
   }
 }
 
