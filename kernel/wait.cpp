@@ -112,6 +112,22 @@ void wait_queue::wait_noint(void) {
 }
 
 
+void wait_queue::add(struct wait_entry *ent) {
+  auto flags = lock.lock_irqsave();
+  ent->wq = this;
+  task_list.add_tail(&ent->item);
+  lock.unlock_irqrestore(flags);
+}
+
+
+void wait_queue::remove(struct wait_entry *ent) {
+  if (ent->wq == this) {
+    auto flags = lock.lock_irqsave();
+    ent->item.del_init();
+    lock.unlock_irqrestore(flags);
+  }
+}
+
 void wait_queue::finish(struct wait_entry *e) {
   if (e->wq == NULL) return;
   assert(e->wq == this);

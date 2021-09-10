@@ -13,14 +13,27 @@
 #include <wait.h>
 
 
-// poll_table is implemented in awaitfs.cpp
-struct poll_table_entry {
+struct poll_table_wait_entry {
+  struct wait_entry entry;
   wait_queue *wq;
+  struct poll_table *table;
   short events;
+  int index;
+  bool en; /* idk im trying my best. */
+  /* Was this the entry that was awoken? */
+  bool awoken = false;
 };
+
+
+// poll_table is implemented in awaitfs.cpp
+// struct poll_table_entry {
+//   wait_queue *wq;
+//   short events;
+// };
+
 struct poll_table {
-  ck::vec<poll_table_entry> ents;
-  bool locked = false;
+  ck::vec<poll_table_wait_entry *> ents;
+  int index;
   void wait(wait_queue &wq, short events);
 };
 

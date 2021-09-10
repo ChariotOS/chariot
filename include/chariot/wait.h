@@ -95,6 +95,9 @@ struct wait_queue {
   wait_result wait();
 
 
+  void add(struct wait_entry *);
+  void remove(struct wait_entry *);
+
   wait_result wait_timeout(long long us);
 
   void wait_noint();
