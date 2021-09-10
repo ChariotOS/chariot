@@ -127,6 +127,13 @@ ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 // STUB
 FILE *tmpfile(void);
 
+#define print_if(cond, str, ...)  \
+  do {                            \
+    if (cond) {                   \
+      printf(str, ##__VA_ARGS__); \
+    }                             \
+  } while (0)
+
 
 
 #ifdef __cplusplus

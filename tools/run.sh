@@ -36,6 +36,7 @@ case $ARCH in
 		QEMU_FLAGS+="-device VGA,vgamem_mb=64 "
 		# QEMU_FLAGS+="-netdev user,id=u1  -device e1000,netdev=u1 "
 		QEMU_FLAGS+="-rtc base=localtime "
+		QEMU_FLAGS+="-display sdl,gl=on "
 		;;
 
 	RISC-V)

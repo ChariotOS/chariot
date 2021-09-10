@@ -1,3 +1,4 @@
+#define CT_TEST
 #include <ui/application.h>
 #include <gfx/geom.h>
 #include <ui/boxlayout.h>
@@ -292,40 +293,54 @@ void run_server() {
   ev.start();
 }
 
+class waitfuture : public ck::future<void> {
+ public:
+  waitfuture(int ms) : ck::future<void>() {
+    auto ctrl = get_control();
+
+    timer = ck::timer::make_timeout(ms, [ctrl]() mutable {
+      ctrl->resolve();
+    });
+  }
+
+ private:
+  ck::ref<ck::timer> timer;
+};
 
 
-async(ssize_t) async_read(ck::file& f, void* buf, size_t count) {
-  ck::future<ssize_t> fut;
-  auto ctrl = fut.get_control();
-  f.on_read([&f, ctrl, buf, count]() mutable {
-    auto res = f.read(buf, count);
-    if (res) ctrl->resolve(res.take());
-    f.clear_on_read();
-  });
-  return fut;
+
+
+template <typename T>
+async(ck::vec<T>) wait_all(ck::vec<ck::future<T>>& futs) {
+  ck::vec<T> res;
+  for (auto& fut : futs) {
+    res.push(fut.await());
+  }
+  return res;
 }
 
 
-void wait(int ms) {
-  ck::future<int> fut;
-  auto ctrl = fut.get_control();
 
-  auto timer = ck::timer::make_timeout(ms, [ctrl]() mutable {
-    ctrl->resolve(0);
-  });
-
-  fut.await();
-}
 
 int main(int argc, char** argv) {
+  int server_pid = fork();
+  if (server_pid == 0) run_server();
+  waitpid(server_pid, NULL, 0);
+
+
+  return 0;
+
   ASYNC_MAIN({
-    int res = ck::spawn<int>([] {
-      for (int i = 0; i < 10; i++) {
-        printf("%d\n", i);
-        wait(100);
+    ck::future<void> v;
+
+
+    ck::spawn([] {
+      while (1) {
+        printf(
+            "Starting countdown. Malloc has %llx,%llx live\n", malloc_allocated(), malloc_total());
+        waitfuture(1000).await();
       }
-      return 0;
-    }).await();
+    });
 
 
     while (true) {
@@ -365,12 +380,6 @@ int main(int argc, char** argv) {
   // return 0;
 
 
-  int server_pid = fork();
-  if (server_pid == 0) run_server();
-  waitpid(server_pid, NULL, 0);
-
-
-  return 0;
 
 
   ui::application app;
