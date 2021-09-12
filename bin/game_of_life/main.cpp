@@ -3,8 +3,8 @@
 #include <ui/application.h>
 
 
-#define WIDTH 80
-#define HEIGHT 80
+#define WIDTH 100
+#define HEIGHT 100
 #define BOARDSIZE (WIDTH * HEIGHT)
 
 #define SCALE 8
@@ -23,7 +23,9 @@ class gol : public ui::view {
 
  public:
   gol() {
-    tick_timer = ck::timer::make_interval(1000 / TICKS, [this] { this->tick(); });
+    tick_timer = ck::timer::make_interval(1000 / TICKS, [this] {
+      this->tick();
+    });
     tick_timer->stop();
 
     memset(init, 0, sizeof(init));
@@ -79,7 +81,7 @@ class gol : public ui::view {
         for (int ox = 0; ox < SCALE; ox++) {
           for (int oy = 0; oy < SCALE; oy++) {
             int d = color;
-            if (!is_running && (ox == 0 || oy == 0)) d = 0x333333;
+            if (!is_running && (ox == 0 || oy == 0)) d = 0xdddddd;
             // int color = (x ^ y) | ((x ^ y) << 8) | ((x ^ y) << 16);
             s.draw_pixel(x * SCALE + ox, y * SCALE + oy, d);
           }
@@ -118,6 +120,16 @@ class gol : public ui::view {
     // reset lol
     if (ev.code == key_r) {
       memset(init, 0, sizeof(init));
+
+      if (ev.flags & LUMEN_KBD_MOD_SHIFT) {
+        for (int y = 0; y < HEIGHT; y++) {
+          for (int x = 0; x < WIDTH; x++) {
+            if ((rand() & 0xF) < 0x6) {
+              init[x][y] = 1;
+            }
+          }
+        }
+      }
       update();
     }
   }

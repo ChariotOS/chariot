@@ -137,15 +137,14 @@ class doomview : public ui::view {
     auto font = get_font();
     assert(font);
 
-    font->with_line_height(16, [&] {
+    font->with_line_height(12, [&] {
       unsigned long long nfree;
       unsigned long long total;
 
       gfx::scribe s = gfx::scribe(b);
 
       sysbind_getraminfo(&nfree, &total);
-      auto label = ck::string::format(
-          "Memory: %3.4f%% 0x%012x", ((float)nfree / (float)total) * 100.0f, nfree);
+      auto label = ck::string::format("Memory: %3.4f%%", ((float)nfree / (float)total) * 100.0f);
       gfx::rect r = rect();
       s.draw_text(*font, r, label, ui::TextAlign::TopLeft, 0xFFFFFF, true);
     });

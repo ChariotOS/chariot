@@ -1,3 +1,4 @@
+#include "ck/event.h"
 #define CT_TEST
 #include <ui/application.h>
 #include <gfx/geom.h>
@@ -231,49 +232,48 @@ class server_connection : public test::server_connection_stub {
 
 
 void run_client(ck::string path) {
-  ck::eventloop ev;
+  ASYNC_BODY({
+    ck::ref<ck::ipcsocket> sock = ck::make_ref<ck::ipcsocket>();
+    int res = sock->connect(path);
+    if (!sock->connected()) {
+      panic("ouchie");
+    }
 
-  ck::ref<ck::ipcsocket> sock = ck::make_ref<ck::ipcsocket>();
-  int res = sock->connect(path);
-  if (!sock->connected()) {
-    panic("ouchie");
-  }
+    printf("connected!\n");
+    client_connection c(sock);
+    ck::vec<uint32_t> vec;
+    for (int v = 0; v < rand() % 1000; v++) {
+      vec.push(v);
+    }
+    for (int trial = 0; true; trial++) {
+      // printf("trial %d, size: %d\n", trial, vec.size());
+      test::client_map_response r;
+      {
+        ck::time::logger l("ipc");
+        auto o = c.map(vec);
 
-  printf("connected!\n");
-  client_connection c(sock);
-  ck::vec<uint32_t> vec;
-  for (int v = 0; v < 100; v++) {
-    vec.push(v);
-  }
-  for (int trial = 0; true; trial++) {
-    printf("trial %d, size: %d\n", trial, vec.size());
-    test::client_map_response r;
-    {
-      ck::time::logger l("ipc");
-      auto o = c.map(vec);
+        if (!o.has_value()) {
+          assert(c.closed());
+          printf("server dead!\n");
+          exit(0);
+          break;
+        } else {
+          r = o.take();
+        }
+      }
 
-      if (!o.has_value()) {
-        assert(c.closed());
-        printf("server dead!\n");
-        exit(0);
-        break;
-      } else {
-        r = o.take();
+      for (int i = 0; i < vec.size(); i++) {
+        assert(vec[i] * 2 == r.vec[i]);
       }
     }
-
-    for (int i = 0; i < vec.size(); i++) {
-      assert(vec[i] * 2 == r.vec[i]);
-    }
-  }
-
-  ev.start();
+  });
 }
 
 
 void run_server() {
-  ck::eventloop ev;
   int client_pid = 0;
+
+  ck::eventloop ev;
   ck::ipc::server<server_connection> server;
   ck::string path = ck::string::format("/tmp/ct.%d.sock", rand());
   {
@@ -284,13 +284,11 @@ void run_server() {
   server.listen(path);
 
   client_pid = fork();
-  if (client_pid == 0) {
-    run_client(path);
-  }
+  if (client_pid == 0) run_client(path);
+  ev.start();
+
 
   printf("client pid = %d\n", client_pid);
-
-  ev.start();
 }
 
 class waitfuture : public ck::future<void> {
@@ -326,9 +324,9 @@ int main(int argc, char** argv) {
   int server_pid = fork();
   if (server_pid == 0) run_server();
   waitpid(server_pid, NULL, 0);
-
-
   return 0;
+
+
 
   ASYNC_MAIN({
     ck::future<void> v;

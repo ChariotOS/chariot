@@ -345,7 +345,7 @@ class fluidsim : public ui::view {
     }
 #endif
 
-    scribe.stackblur(SCALE, rect());
+    // scribe.stackblur(100, rect());
     // scribe.noise(0.05, rect());
 
 
