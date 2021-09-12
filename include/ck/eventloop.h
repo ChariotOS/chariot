@@ -16,6 +16,10 @@
   __EV.block_on([&] body); \
   return __EV.exit_code();
 
+#define ASYNC_BODY(body) \
+  ck::eventloop __EV;    \
+  __EV.block_on([&] body);
+
 namespace ck {
   class timer;
 

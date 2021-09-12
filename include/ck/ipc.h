@@ -312,11 +312,12 @@ namespace ck {
       server(void) = default;
 
 
-
       // start the server listening on a given path
       void listen(ck::string listen_path) {
         assert(!m_server.listening());
         m_server.listen(listen_path, [this] {
+          printf("SERVER GOT A CONNECTION!\n");
+
           ck::ipcsocket* sock = m_server.accept();
 
           this->handle_connection(ck::make_unique<Connection>(sock));
@@ -326,9 +327,9 @@ namespace ck {
 
      private:
       void handle_connection(ck::unique_ptr<Connection>&& s) {
-        printf("SERVER GOT A CONNECTION!\n");
         Connection* sp = s.get();
         sp->on_close = [this, sp] {
+          printf("CLOSED!\n");
           for (int i = 0; i < this->m_connections.size(); i++) {
             if (this->m_connections[i].get() == sp) {
               this->m_connections.remove(i);

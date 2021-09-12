@@ -963,8 +963,8 @@ void sched::proc::dump_table(void) {
       ST(UNINTERRUPTIBLE);
       ST(ZOMBIE);
 #undef ST
-      pprintk("  process %d, thread %d: %s, %llu\n", proc->pid, t->tid, state,
-          proc->mm->memory_usage());
+      pprintk("  '%s' p:%d,t:%d: %s, %llu %s\n", proc->name.get(), proc->pid, t->tid, state,
+          proc->mm->memory_usage(), t->in_awaitfs ? "AWAITFS" : "");
     }
   }
 

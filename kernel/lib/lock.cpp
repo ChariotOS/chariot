@@ -13,6 +13,7 @@
 
 #define ATOMIC_SET(thing) __atomic_test_and_set((thing), __ATOMIC_ACQUIRE)
 #define ATOMIC_CLEAR(thing) __atomic_clear((thing), __ATOMIC_RELEASE)
+#define ATOMIC_LOAD(thing) __atomic_load_n((thing), __ATOMIC_RELAXED)
 
 
 static inline void arch_atomic_store(volatile int* p, int x) {

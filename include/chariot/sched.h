@@ -3,7 +3,7 @@
 #pragma once
 
 
-#ifdef __cplusplus
+// #ifdef __cplusplus
 
 #include "ptr.h"
 
@@ -368,6 +368,8 @@ struct thread final {
     };
   };
 
+  bool in_awaitfs = false;
+
   void set_state(int st);
   int get_state(void);
   void setup_stack(reg_t *);
@@ -494,4 +496,4 @@ namespace sched {
 
 }  // namespace sched
 
-#endif
+// #endif
