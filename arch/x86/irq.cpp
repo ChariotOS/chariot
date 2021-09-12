@@ -307,7 +307,7 @@ static void pgfault_handle(int i, reg_t *regs) {
       if (tf->err & PGFLT_USER) printk("USER ");
       if (tf->err & PGFLT_INSTR) printk("INSTR ");
 
-      printk("\n");
+      printk(KERN_ERROR "\n");
 
 #define CHECK(reg)                                             \
   if ((tf->reg) == addr) {                                     \
@@ -351,7 +351,9 @@ hexdump(sse_data, 512, true);
       */
       KERR("==================================================================\n");
 
-      curthd->send_signal(SIGSEGV);
+      // curthd->send_signal(SIGSEGV);
+
+      curproc->terminate(SIGSEGV);
 
       // XXX: just block, cause its an easy way to get the proc to stop running
       // sched::block();
