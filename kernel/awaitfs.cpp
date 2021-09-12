@@ -12,9 +12,17 @@ using table_key_t = off_t;
 
 
 
+
+#define ATOMIC_SET(thing) __atomic_test_and_set((thing), __ATOMIC_ACQUIRE)
+#define ATOMIC_CLEAR(thing) __atomic_clear((thing), __ATOMIC_RELEASE)
+#define ATOMIC_LOAD(thing) __atomic_load_n((thing), __ATOMIC_RELAXED)
+
+
+
 bool poll_table_wake(struct wait_entry *entry, unsigned mode, int sync, void *key) {
   struct poll_table_wait_entry *e = container_of(entry, struct poll_table_wait_entry, entry);
-  e->awoken = true;
+
+  ATOMIC_SET(&e->awoken);
 
   return autoremove_wake_function(entry, mode, sync, key);
 }
@@ -64,7 +72,7 @@ bool check_awaitfs_entries(ck::vec<await_table_entry> &ents, int &index, short &
   events = 0;
   for (auto &e : ents) {
     for (auto &wait_ent : e.pt.ents) {
-      if (wait_ent->awoken) {
+      if (ATOMIC_LOAD(&wait_ent->awoken)) {
         wait_result res = wait_ent->entry.result;
 
         index = e.index;
@@ -79,8 +87,20 @@ bool check_awaitfs_entries(ck::vec<await_table_entry> &ents, int &index, short &
 }
 
 
+struct booltoggle {
+  bool &b;
+
+  booltoggle(bool &b) : b(b) { b = true; }
+
+  ~booltoggle() { b = false; }
+};
+
+
+
 static int do_awaitfs(struct await_target *targs, int nfds, int flags, long long timeout_time) {
   unsigned nqueues = 0;
+
+  booltoggle b(curthd->in_awaitfs);
 
   ck::vec<await_table_entry> entries;
 
@@ -165,8 +185,14 @@ static int do_awaitfs(struct await_target *targs, int nfds, int flags, long long
     }
   }
 
-  check_awaitfs_entries(entries, awoken_index, awoken_events);
+  __asm__ __volatile__("" : : : "memory");
 
+
+  /* Set the process state. This means we won't be interrupted */
+  sched::set_state(PS_INTERRUPTIBLE);
+
+  check_awaitfs_entries(entries, awoken_index, awoken_events);
+  __asm__ __volatile__("" : : : "memory");
 
   for (auto &e : entries) {
     for (auto &wait_ent : e.pt.ents) {
@@ -180,12 +206,12 @@ static int do_awaitfs(struct await_target *targs, int nfds, int flags, long long
   // reenable interrupts if we disabled them
   arch_enable_ints();
 
-  /* Set the process state. This means we won't be interrupted */
-  sched::set_state(PS_INTERRUPTIBLE);
+  __asm__ __volatile__("" : : : "memory");
 
   // if nobody has been awoken yet, we need to sleep and wait for that to happen
   if (awoken_index == -1) sched::yield();
 
+  __asm__ __volatile__("" : : : "memory");
 
   sched::set_state(PS_RUNNING);
   // now that we have been awoken, check who did it!
