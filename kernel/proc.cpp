@@ -498,6 +498,7 @@ struct waiter_entry {
 
 
 static bool can_reap(struct thread *reaper, process::ptr zombie, pid_t seeking, int reap_flags) {
+  if (zombie->parent == NULL) return false;
   // a process may not reap another process's children.
   if (zombie->parent->pid != reaper->proc.pid) return false;
 
@@ -512,10 +513,8 @@ static bool can_reap(struct thread *reaper, process::ptr zombie, pid_t seeking, 
 
 
   // if the pid is less than -1, you are actually waiting on a process group
-  if (seeking < -1) {
-    if (zombie->pgid == -seeking) {
-      return true;
-    }
+  if (seeking < -1 && zombie->pgid == -seeking) {
+    return true;
   }
 
   // all checks have failed
@@ -974,9 +973,9 @@ void sched::proc::dump_table(void) {
   struct zombie_entry *zent = NULL;
   list_for_each_entry(zent, &zombie_list, node) { pprintk("  process %d\n", zent->proc->pid); }
 
-  pprintk("Waiter List: \n");
-  struct waiter_entry *went = NULL;
-  list_for_each_entry(went, &waiter_list, node) {
-    pprintk("  process %d, seeking %d\n", went->thd->tid, went->seeking);
-  }
+  // pprintk("Waiter List: \n");
+  // struct waiter_entry *went = NULL;
+  // list_for_each_entry(went, &waiter_list, node) {
+  //   pprintk("  process %d, seeking %d\n", went->thd->tid, went->seeking);
+  // }
 }

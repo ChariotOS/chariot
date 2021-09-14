@@ -180,7 +180,7 @@ struct process final : public ck::refcounted<struct process> {
    * A process contains a ref counted pointer to the parent.
    * TODO: is this unsafe?
    */
-  struct process *parent;
+  ck::ref<process> parent;
 
   /**
    * Information about the user associated with this process. Inherited from
@@ -293,7 +293,9 @@ struct thread_waitqueue_info {
 };
 
 
-struct thread final {
+struct thread final : public ck::refcounted<thread> {
+  using ptr = ck::ref<thread>;
+
   pid_t tid;  // unique thread id
   pid_t pid;  // process id. If this thread is the main thread, tid == pid
 
