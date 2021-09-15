@@ -54,7 +54,7 @@ rv::pte_t *rv::page_walk(rv::pte_t *tbl, off_t va) {
 
 ck::ref<mm::pagetable> mm::pagetable::create() {
   auto p = (rv::xsize_t *)p2v(phys::alloc(1));
-  return make_ref<rv::pagetable>(p);
+  return ck::make_ref<rv::pagetable>(p);
 }
 
 
@@ -194,7 +194,7 @@ static mm::space *kspace;
 mm::space &mm::space::kernel_space(void) {
   if (kspace == NULL) {
     off_t table = read_csr(satp) << 12;
-    auto kptable = make_ref<rv::pagetable>((rv::xsize_t *)p2v(table));
+    auto kptable = ck::make_ref<rv::pagetable>((rv::xsize_t *)p2v(table));
     kspace = new mm::space(CONFIG_KERNEL_VIRTUAL_BASE, -1, kptable);
     kspace->is_kspace = 1;
   }
