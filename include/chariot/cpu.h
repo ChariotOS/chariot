@@ -65,8 +65,6 @@ namespace cpu {
   struct thread *thread(void);
   bool in_thread(void);
 
-  void calc_speed_khz(void);
-
   /**
    * These functions are all implemented in the arch directory
    */
