@@ -161,6 +161,13 @@ namespace mm {
     virtual int get_mapping(off_t va, struct pte &) = 0;
     virtual int del_mapping(off_t va) = 0;
 
+		void *translate(off_t);
+
+		template<typename T>
+			T *translate(off_t vaddr) {
+				return (T*)translate(vaddr);
+			}
+
     // implemented in arch, returns subclass
     static ck::ref<pagetable> create();
   };

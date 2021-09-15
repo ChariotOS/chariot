@@ -21,7 +21,7 @@ u64 *alloc_page_dir(void) {
   auto new_table = (u64 *)phys::alloc();
   INFO("new_table = %p\n", new_table);
 
-  auto va = (u64 *)p2v(new_table);
+  auto va = (uint64_t *)p2v(new_table);
 
   for (int i = 0; i < 512; i++)
     va[i] = 0;
@@ -100,8 +100,7 @@ u64 *paging::find_mapping(u64 *pml4, u64 va, pgsize size) {
 
   INFO("depth = %d\n", depth);
 
-  // KINFO("find_mapping: %p: %d %d %d %d\n", va, pti(va, 3), pti(va, 2),
-  // pti(va, 1), pti(va, 0));
+	// KINFO("find_mapping: %p: %d %d %d %d\n", va, pti(va, 3), pti(va, 2), pti(va, 1), pti(va, 0));
 
   u64 *table = conv(pml4);
 

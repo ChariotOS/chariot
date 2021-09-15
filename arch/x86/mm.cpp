@@ -101,6 +101,8 @@ int x86::pagetable::add_mapping(off_t va, struct mm::pte &p) {
 
   return 0;
 }
+
+
 int x86::pagetable::get_mapping(off_t va, struct mm::pte &r) {
   off_t pte = *paging::find_mapping(pml4, va, paging::pgsize::page);
 
@@ -112,9 +114,10 @@ int x86::pagetable::get_mapping(off_t va, struct mm::pte &r) {
 
   return 0;
 }
+
+
 int x86::pagetable::del_mapping(off_t va) {
   *paging::find_mapping(pml4, va, paging::pgsize::page) = 0;
-
   flush_tlb_single(va);
   return 0;
 }

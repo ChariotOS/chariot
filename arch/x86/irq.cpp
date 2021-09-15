@@ -95,6 +95,121 @@ const char *excp_codes[128][2] = {
 #define VIP_MASK 0x00100000
 #define ID_MASK 0x00200000
 
+
+#define PGFLT_PRESENT (1 << 0)
+#define PGFLT_WRITE (1 << 1)
+#define PGFLT_USER (1 << 2)
+#define PGFLT_RESERVED (1 << 3)
+#define PGFLT_INSTR (1 << 4)
+
+
+
+int generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz) {
+  mm::space *mm = curproc->mm;
+  auto &pt = *mm->pt;
+
+  off_t *phys_ebp;
+  off_t virt_return_storage;
+  off_t *phys_return_storage;
+  off_t ip;
+
+  int i = 0;
+  for (; i < bufsz; i++) {
+    // uh oh, you are doing something nefarious
+    if (virt_ebp > CONFIG_KERNEL_VIRTUAL_BASE) {
+      for (int j = 0; j < i; j++)
+        buf[j] = 0;
+      return 0;
+    }
+    phys_ebp = (off_t *)pt.translate(virt_ebp);
+    virt_return_storage = (virt_ebp + sizeof(off_t));
+    phys_return_storage = phys_ebp + 1;
+    if ((virt_return_storage & ~0xFFF) != (virt_ebp & ~0xFFF)) {
+      phys_return_storage = (off_t *)pt.translate(virt_return_storage);
+    }
+
+    if (phys_ebp == NULL) break;
+    if (phys_return_storage == NULL) break;
+
+    // if the instruction pointer is not mapped, we are done.
+    ip = *(off_t *)p2v(phys_return_storage);
+    if (pt.translate(ip) == NULL) break;
+
+    buf[i] = ip;
+
+    virt_ebp = *(off_t *)p2v(phys_ebp);
+  }
+  return i;
+}
+
+
+static ck::vec<off_t> generate_backtrace(off_t virt_ebp) {
+  ck::vec<off_t> backtrace;
+  off_t bt[64];
+  int count = generate_backtrace(virt_ebp, bt, 64);
+  for (int i = 0; i < count; i++)
+    backtrace.push(bt[i]);
+  return backtrace;
+}
+
+void dump_backtrace(off_t virt_ebp) {
+  int i = 0;
+  for (auto ip : generate_backtrace(virt_ebp)) {
+    printk("%d - %p\n", i++, ip);
+  }
+  // printk("Backtrace (ebp=%p):\n", ebp);
+}
+
+
+void arch_dump_backtrace(void) {
+  off_t rbp = 0;
+  asm volatile("mov %%rbp, %0\n\t" : "=r"(rbp));
+
+  ::dump_backtrace(rbp);
+}
+
+
+/* This exists so we don't have annoying interleaved trapframe dumping */
+// static spinlock trapframe_dump_lock;
+void dump_trapframe(reg_t *r) {
+  // scoped_lock l(trapframe_dump_lock);
+  auto *tf = (struct x86_64regs *)r;
+
+  unsigned int eflags = tf->rflags;
+#define GET(name) (tf->name)
+#define REGFMT "%016p"
+  printk_nolock("RAX=" REGFMT " RBX=" REGFMT " RCX=" REGFMT " RDX=" REGFMT
+                "\n"
+                "RSI=" REGFMT " RDI=" REGFMT " RBP=" REGFMT " RSP=" REGFMT
+                "\n"
+                "R8 =" REGFMT " R9 =" REGFMT " R10=" REGFMT " R11=" REGFMT
+                "\n"
+                "R12=" REGFMT " R13=" REGFMT " R14=" REGFMT " R15=" REGFMT
+                "\n"
+                "RIP=" REGFMT " RFL=%08x [%c%c%c%c%c%c%c]\n",
+
+      GET(rax), GET(rbx), GET(rcx), GET(rdx), GET(rsi), GET(rdi), GET(rbp), GET(rsp), GET(r8),
+      GET(r9), GET(r10), GET(r11), GET(r12), GET(r13), GET(r14), GET(r15), GET(rip), eflags,
+      eflags & DF_MASK ? 'D' : '-', eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-',
+      eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-', eflags & CC_P ? 'P' : '-',
+      eflags & CC_C ? 'C' : '-');
+  printk_nolock("Backtrace:\n");
+
+  auto bt = generate_backtrace(tf->rbp);
+
+  int i = 0;
+  for (auto ip : bt) {
+    printk_nolock("% 2d - %p\n", i++, ip);
+  }
+  printk_nolock("Pass this into addr2line for %s:\n", curproc->name.get());
+  for (auto ip : bt) {
+    printk_nolock("0x%p ", ip);
+  }
+  printk_nolock("\n");
+}
+
+
+
 void arch::irq::eoi(int i) {
   if (i >= 32) {
     int pic_irq = i;
@@ -131,7 +246,7 @@ static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
 
 // boot time tick handler
 // Will be replaced by the lapic
-static void tick_handle(int i, reg_t *tf, void *) {
+static void tick_handle(int i, reg_t *regs, void *) {
   auto &cpu = cpu::current();
 
   u64 now = arch_read_timestamp();
@@ -176,95 +291,49 @@ static void dbl_flt_handler(int i, reg_t *tf) {
   }
 }
 
-/*
-static void unknown_hardware(int i, reg_t *tf) {
-  printk("unknown! %d\n", i);
-}
-*/
-
 extern const char *ksym_find(off_t);
 
 
 
 
-void dump_backtrace(off_t ebp) {
-  printk("Backtrace (ebp=%p):\n", ebp);
+void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
+  auto *tf = (struct x86_64regs *)regs;
 
-  for (off_t *stack_ptr = (off_t *)ebp; VALIDATE_RD(stack_ptr, sizeof(off_t));
-       stack_ptr = (off_t *)*stack_ptr) {
-    if (!VALIDATE_RD(stack_ptr, 16)) break;
-    off_t retaddr = stack_ptr[1];
-    printk("0x%p\n", retaddr);
-  }
-  printk("\n");
+
+  arch_disable_ints();
+  printk_nolock("FATAL SIGNAL %d\n", fatal_signal);
+  printk_nolock("==================================================================\n");
+  // TODO:
+  printk_nolock("%s in pid %d, tid %d @ %p\n", name, curthd->pid, curthd->tid, tf->rip);
+  printk_nolock("bad address = %p\n", read_cr2());
+  // printk_nolock("              info = ");
+  // if (tf->err & PGFLT_PRESENT) printk_nolock("PRESENT ");
+  // if (tf->err & PGFLT_WRITE) printk_nolock("WRITE ");
+  // if (tf->err & PGFLT_USER) printk_nolock("USER ");
+  // if (tf->err & PGFLT_INSTR) printk_nolock("INSTR ");
+  // printk_nolock("\n");
+
+  printk_nolock("\n");
+
+  // arch_disable_ints();
+  dump_trapframe(regs);
+  // arch_enable_ints();
+  KERR("==================================================================\n");
+
+  arch_enable_ints();
+  curproc->terminate(fatal_signal);
 }
-
-/* This exists so we don't have annoying interleaved trapframe dumping */
-// static spinlock trapframe_dump_lock;
-void dump_trapframe(reg_t *r) {
-  // scoped_lock l(trapframe_dump_lock);
-  auto *tf = (struct x86_64regs *)r;
-  unsigned int eflags = tf->rflags;
-#define GET(name) (tf->name)
-#define REGFMT "%016p"
-  printk("RAX=" REGFMT " RBX=" REGFMT " RCX=" REGFMT " RDX=" REGFMT
-         "\n"
-         "RSI=" REGFMT " RDI=" REGFMT " RBP=" REGFMT " RSP=" REGFMT
-         "\n"
-         "R8 =" REGFMT " R9 =" REGFMT " R10=" REGFMT " R11=" REGFMT
-         "\n"
-         "R12=" REGFMT " R13=" REGFMT " R14=" REGFMT " R15=" REGFMT
-         "\n"
-         "RIP=" REGFMT " RFL=%08x [%c%c%c%c%c%c%c]\n",
-
-      GET(rax), GET(rbx), GET(rcx), GET(rdx), GET(rsi), GET(rdi), GET(rbp), GET(rsp), GET(r8),
-      GET(r9), GET(r10), GET(r11), GET(r12), GET(r13), GET(r14), GET(r15), GET(rip), eflags,
-      eflags & DF_MASK ? 'D' : '-', eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-',
-      eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-', eflags & CC_P ? 'P' : '-',
-      eflags & CC_C ? 'C' : '-');
-
-  // dump_backtrace(tf->rbp);
-}
-
-
-void arch_dump_backtrace(void) {
-  off_t rbp = 0;
-  asm volatile("mov %%rbp, %0\n\t" : "=r"(rbp));
-
-  ::dump_backtrace(rbp);
-}
-
-
-
 
 static void gpf_handler(int i, reg_t *regs) {
-  auto *tf = (struct x86_64regs *)regs;
-  // TODO: die
-  KERR("pid %d, tid %d died from GPF @ %p (err=%p)\n", curthd->pid, curthd->tid, tf->rip, tf->err);
-  // arch_dump_backtrace();
-
-  dump_backtrace(tf->rbp);
-
-
-  curthd->send_signal(SIGSEGV);
+  handle_fatal("General Protection Fault", SIGSEGV, regs);
 }
 
 static void illegal_instruction_handler(int i, reg_t *regs) {
-  auto *tf = (struct x86_64regs *)regs;
-
-  KERR("pid %d, tid %d died from illegal instruction @ %p\n", curthd->pid, curthd->tid, tf->rip);
-  KERR("  ESP=%p\n", tf->rsp);
-
-  sys::exit_proc(-1);
+  handle_fatal("Illegal Instruction", SIGILL, regs);
 }
 
 extern "C" void syscall_handle(int i, reg_t *tf, void *);
 
-#define PGFLT_PRESENT (1 << 0)
-#define PGFLT_WRITE (1 << 1)
-#define PGFLT_USER (1 << 2)
-#define PGFLT_RESERVED (1 << 3)
-#define PGFLT_INSTR (1 << 4)
 
 
 static void pgfault_handle(int i, reg_t *regs) {
@@ -278,9 +347,7 @@ static void pgfault_handle(int i, reg_t *regs) {
     // arch_dump_backtrace();
     // lookup the kernel proc if we aren't in one!
     proc = sched::proc::kproc();
-  }
-
-  // curthd->trap_frame = regs;
+  };
 
   if (proc) {
     int err = 0;
@@ -295,70 +362,7 @@ static void pgfault_handle(int i, reg_t *regs) {
     }
 
     int res = proc->mm->pagefault((off_t)page, err);
-    if (res == -1) {
-      KERR("==================================================================\n");
-      // TODO:
-      KERR("pid %d, tid %d segfaulted @ %p\n", curthd->pid, curthd->tid, tf->rip);
-      KERR("       bad address = %p\n", read_cr2());
-      KERR("              info = ");
-
-      if (tf->err & PGFLT_PRESENT) printk("PRESENT ");
-      if (tf->err & PGFLT_WRITE) printk("WRITE ");
-      if (tf->err & PGFLT_USER) printk("USER ");
-      if (tf->err & PGFLT_INSTR) printk("INSTR ");
-
-      printk(KERN_ERROR "\n");
-
-#define CHECK(reg)                                             \
-  if ((tf->reg) == addr) {                                     \
-    printk(KERN_ERROR "Could be a dereference of " #reg "\n"); \
-  }
-      CHECK(rax);
-      CHECK(rbx);
-      CHECK(rcx);
-      CHECK(rdx);
-      CHECK(rsi);
-      CHECK(rdi);
-      CHECK(rbp);
-      CHECK(rsp);
-      CHECK(r8);
-      CHECK(r9);
-      CHECK(r10);
-      CHECK(r11);
-      CHECK(r12);
-      CHECK(r13);
-      CHECK(r14);
-      CHECK(r15);
-      CHECK(rip);
-
-#undef CHECK
-
-      printk("\n");
-
-
-      // panic("DEAD!\n");
-
-      // dump_trapframe(regs);
-      // KERR("Address Space Dump:\n");
-      // proc->mm->dump();
-      /*
-KERR("FPU State:\n");
-alignas(16) char sse_data[512];
-
-asm volatile("fxsave64 (%0);" ::"r"(sse_data));
-
-hexdump(sse_data, 512, true);
-      */
-      KERR("==================================================================\n");
-
-      // curthd->send_signal(SIGSEGV);
-
-      curproc->terminate(SIGSEGV);
-
-      // XXX: just block, cause its an easy way to get the proc to stop running
-      // sched::block();
-    }
-
+    if (res == -1) handle_fatal("Segmentation Violation", SIGSEGV, regs);
   } else {
     panic("page fault in kernel code (no proc)\n");
   }
@@ -432,6 +436,13 @@ extern "C" void trap(reg_t *regs) {
 
   int nr = tf->trapno;
 
+  off_t bt[64];
+  int count = 0;
+
+  // TODO profiler??? :)
+  if (false && curproc && from_userspace) count = generate_backtrace(tf->rbp, bt, 64);
+
+
   if (nr == 0x80) {
     arch_enable_ints();
     syscall_handle(0x80, regs, NULL);
@@ -443,6 +454,17 @@ extern "C" void trap(reg_t *regs) {
       isr_functions[nr](nr, regs);
     }
   }
+
+
+  // if (count > 0) {
+  //   printk_nolock("%24s ", curproc->name.get());
+  //   for (int i = count - 1; i >= 0; i--) {
+  //     printk_nolock("%08llx ", bt[i]);
+  //   }
+  //   printk_nolock("\n");
+  // }
+
+
 
 
   irq::eoi(tf->trapno);
