@@ -21,7 +21,7 @@ extern "C" {
 class doomview;
 
 
-#define SCALE 2
+#define SCALE 3
 
 class doom_window : public ui::window {
  public:
