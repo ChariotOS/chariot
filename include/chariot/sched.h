@@ -293,8 +293,8 @@ struct thread_waitqueue_info {
 };
 
 
-struct thread final : public ck::refcounted<thread> {
-  using ptr = ck::ref<thread>;
+struct thread final /* : public ck::refcounted<thread> */ {
+  // using ptr = ck::ref<thread>;
 
   pid_t tid;  // unique thread id
   pid_t pid;  // process id. If this thread is the main thread, tid == pid
