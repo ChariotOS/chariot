@@ -1,3 +1,4 @@
+
 #include <ck/time.h>
 #include <sys/sysbind.h>
 #include <stdio.h>
@@ -15,4 +16,6 @@ uint64_t ck::time::cycles(void) {
 #endif
 
   panic("ck::time::cycles unimplemented for this arch.");
+
+  return 0;
 }

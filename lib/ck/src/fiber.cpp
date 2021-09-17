@@ -23,6 +23,8 @@ ck::fiber& ck::fiber::current(void) {
 }
 
 
+bool ck::fiber::in_fiber(void) { return s_current_fiber != nullptr; }
+
 void ck::fiber::new_stack_callback(void* _c) {
   fiber* c = (fiber*)_c;
   c->func(c);

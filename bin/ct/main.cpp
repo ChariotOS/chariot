@@ -217,6 +217,9 @@ class server_connection : public test::server_connection_stub {
   server_connection(ck::ref<ck::ipcsocket> s) : test::server_connection_stub(s) {}
   virtual ~server_connection() {}
 
+
+  ck::option<test::client_test_response> on_test(int x) override { return {x}; }
+
   // handle these in your subclass
   ck::option<test::client_map_response> on_map(ck::vec<uint32_t> vec) override {
     for (auto& val : vec) {
@@ -241,30 +244,13 @@ void run_client(ck::string path) {
 
     printf("connected!\n");
     client_connection c(sock);
-    ck::vec<uint32_t> vec;
-    for (int v = 0; v < rand() % 1000; v++) {
-      vec.push(v);
-    }
-    for (int trial = 0; true; trial++) {
-      // printf("trial %d, size: %d\n", trial, vec.size());
-      test::client_map_response r;
-      {
-        ck::time::logger l("ipc");
-        auto o = c.map(vec);
 
-        if (!o.has_value()) {
-          assert(c.closed());
-          printf("server dead!\n");
-          exit(0);
-          break;
-        } else {
-          r = o.take();
-        }
-      }
-
-      for (int i = 0; i < vec.size(); i++) {
-        assert(vec[i] * 2 == r.vec[i]);
-      }
+    for (int trial = 0; trial < 100; trial++) {
+      ck::time::logger l("ipc");
+      // auto start = ck::time::cycles();
+      c.test(0);
+      // auto end = ck::time::cycles();
+      // printf("trial %d: %lld cycles\n", trial, end - start);
     }
   });
 }

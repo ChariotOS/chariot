@@ -42,6 +42,7 @@ namespace ck {
     ck::func<void(ck::fiber*)> on_exit;
 
     static ck::fiber& current(void);
+    static bool in_fiber(void);
 
    private:
     jmp_buf ctx;

@@ -19,7 +19,7 @@ message: NAME "(" [ field ("," field)* ] ")" return_fields?
 
 splat: "splat" NAME
 
-return_fields: "return" "(" [ field ("," field)* ] ")"
+return_fields: "->" "(" [ field ("," field)* ] ")"
 
 include: "include" NAME
 
@@ -270,7 +270,6 @@ class IPCCompiler:
                out(f'    {f.type} {f.name};')
             out(f'  }};')
 
-         print(m)
 
       out(f'}};\n\n')
 
@@ -310,8 +309,11 @@ class IPCCompiler:
             for m in self.send_map[typename]:
                args = [f'{f.type} {f.name}{f.default_str()}' for f in m.fields]
 
-               
-               out(f'      inline ck::option<{m.return_type_string()}> {m.name}({", ".join(args)}) {{')
+               if m.is_sync():
+                  out(f'      inline ck::option<{m.return_type_string()}> {m.name}({", ".join(args)}) {{')
+               else:
+                  out(f'      inline {m.return_type_string()} {m.name}({", ".join(args)}) {{')
+
                out(f'        ck::ipc::encoder __e = begin_send();')
                out(f'        __e << (uint32_t){self.namespace}::Message::{m.enum_name()};')
                if m.is_sync():
@@ -351,7 +353,10 @@ class IPCCompiler:
             out(f'      // handle these in your subclass')
             for m in self.recv_map[typename]:
                args = [f'{f.type} {f.name}{f.default_str()}' for f in m.fields]
-               out(f'      virtual ck::option<{m.return_type_string()}> on_{m.name}({", ".join(args)}) {{')
+               if m.is_sync():
+                  out(f'      virtual ck::option<{m.return_type_string()}> on_{m.name}({", ".join(args)}) {{')
+               else:
+                  out(f'      virtual {m.return_type_string()} on_{m.name}({", ".join(args)}) {{')
                out(f'        fprintf(stderr, "Unimplemneted IPC handler \\"on_{m.name}\\" on {self.namespace} {typename}\\n");')
                if m.is_sync():
                   out(f'        return {{ }};')
@@ -404,7 +409,7 @@ class IPCCompiler:
                out(f'          }}')
 
             out(f'          default:')
-            out(f'            panic("Unhandled message type %d", msg_type);')
+            out(f'            panic("{typename}: Unhandled message type %d", msg_type);')
             out(f'            break;')
 
             out(f'        }}')

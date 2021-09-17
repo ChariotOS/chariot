@@ -7,12 +7,14 @@ header /bin/ct/test.h
 // messages sent from the client
 client {
     // the client can ask the server to map a vector
-    map(ck::vec<uint32_t> vec) return (ck::vec<uint32_t> vec)
+    map(ck::vec<uint32_t> vec) -> (ck::vec<uint32_t> vec)
+
+    test(int x) -> (int x)
 }
 
 server {
     // the server can ask the client to compute
-    compute(uint32_t val) return (uint32_t result)
+    compute(uint32_t val) -> (uint32_t result)
 }
 
 

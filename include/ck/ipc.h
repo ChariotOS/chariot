@@ -6,6 +6,7 @@
 #include <ck/ptr.h>
 #include <pthread.h>
 #include <ck/pair.h>
+#include <ck/future.h>
 
 #define IPC_USE_SHM
 
@@ -22,6 +23,11 @@ namespace ck {
     // handle it. Seeing as the overhead of each message in the kernel is AT
     // LEAST 64 bytes... you need alot of ram
     using nonce_t = uint32_t;
+
+    struct raw_msg {
+      void* data;
+      size_t sz;
+    };
 
     class encoder;
     class decoder;
@@ -237,13 +243,9 @@ namespace ck {
         // if no message is found. Any other messages are placed
         // in the stored_messages vector that needs to be dispatched
         // via dispatch_stored
-        ck::pair<void*, size_t> sync_wait(uint32_t msg_type, ck::ipc::nonce_t nonce);
+        ck::ipc::raw_msg sync_wait(uint32_t msg_type, ck::ipc::nonce_t nonce);
 
-        struct stored_message {
-          void* data;
-          size_t len;
-        };
-        ck::vec<struct stored_message> stored_messages;
+        ck::vec<ck::ipc::raw_msg> stored_messages;
 
 
 
@@ -302,6 +304,14 @@ namespace ck {
           return n;
         }
         nonce_t next_nonce = 0;
+
+
+        ck::map<nonce_t, ck::future<raw_msg>> sync_wait_futures;
+
+
+       private:
+        ck::mutex m_lock;
+        inline ck::scoped_lock lock(void) { return ck::scoped_lock(m_lock); }
       };
 
     }  // namespace impl

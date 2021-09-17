@@ -9,6 +9,10 @@
  *     ck::vec<uint32_t> vec
  *   )
  *
+ *   test (
+ *     int x
+ *   )
+ *
  *
  * Server messages:
  *
@@ -29,12 +33,18 @@ namespace test {
   enum class Message : uint32_t {
     CLIENT_MAP,
     CLIENT_MAP_RESPONSE,
+    CLIENT_TEST,
+    CLIENT_TEST_RESPONSE,
     SERVER_COMPUTE,
     SERVER_COMPUTE_RESPONSE
   };
   // return value for map sent from client
   struct client_map_response {
     ck::vec<uint32_t> vec;
+  };
+  // return value for test sent from client
+  struct client_test_response {
+    int x;
   };
   // return value for compute sent from client
   struct server_compute_response {
@@ -74,6 +84,28 @@ namespace test {
         return res;
       }
 
+      inline ck::option<struct client_test_response> test(int x) {
+        ck::ipc::encoder __e = begin_send();
+        __e << (uint32_t)test::Message::CLIENT_TEST;
+        ck::ipc::nonce_t __nonce = get_nonce();
+        __e << (ck::ipc::nonce_t)__nonce;
+        ck::ipc::encode(__e, x);
+        this->finish_send();
+        // wait for the return value from the server :^)
+        struct client_test_response res;
+        auto [data, len] = sync_wait((uint32_t)test::Message::CLIENT_TEST_RESPONSE, __nonce);
+        if (data == NULL && len == 0) return None;
+        ck::ipc::decoder __decoder(data, len);
+        auto __response_type = (test::Message)ck::ipc::decode<uint32_t>(__decoder);
+        auto __response_nonce = ck::ipc::decode<ck::ipc::nonce_t>(__decoder);
+        assert(__response_type == test::Message::CLIENT_TEST_RESPONSE);
+        assert(__response_nonce == __nonce);
+        ck::ipc::decode(__decoder, res.x);
+        free(data);
+        dispatch();
+        return res;
+      }
+
 
       // handle these in your subclass
       virtual ck::option<struct server_compute_response> on_compute(uint32_t val) {
@@ -103,7 +135,7 @@ namespace test {
             break;
           }
           default:
-            panic("Unhandled message type %d", msg_type);
+            panic("client: Unhandled message type %d", msg_type);
             break;
         }
       }
@@ -146,6 +178,10 @@ namespace test {
         fprintf(stderr, "Unimplemneted IPC handler \"on_map\" on test server\n");
         return { };
       }
+      virtual ck::option<struct client_test_response> on_test(int x) {
+        fprintf(stderr, "Unimplemneted IPC handler \"on_test\" on test server\n");
+        return { };
+      }
 
 
     protected:
@@ -168,8 +204,22 @@ namespace test {
             this->finish_send();
             break;
           }
+          case test::Message::CLIENT_TEST: {
+            auto __nonce = ck::ipc::decode<ck::ipc::nonce_t>(__decoder);
+            int x;
+            ck::ipc::decode(__decoder, x);
+            auto __res = on_test(x);
+            auto __out = __res.unwrap();
+            // now to send the response back
+            ck::ipc::encoder __e = begin_send();
+            __e << (uint32_t)test::Message::CLIENT_TEST_RESPONSE;
+            __e << (ck::ipc::nonce_t)__nonce;
+            ck::ipc::encode(__e, __out.x);
+            this->finish_send();
+            break;
+          }
           default:
-            panic("Unhandled message type %d", msg_type);
+            panic("server: Unhandled message type %d", msg_type);
             break;
         }
       }

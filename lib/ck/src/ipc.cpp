@@ -213,17 +213,34 @@ void ck::ipc::impl::socket_connection::drain_messages(void) {
 #endif
 }
 
+struct msg_header {
+  uint32_t type;
+  ck::ipc::nonce_t nonce;
+};
+
 void ck::ipc::impl::socket_connection::dispatch(void) {
   if (stored_messages.size() > 0) {
     auto v = stored_messages;
     stored_messages.clear();
 
+
     for (auto &m : v) {
       // was consumed by sync_wait
       if (m.data == NULL) continue;
-      // ck::hexdump(m.data, m.len);
-      dispatch_received_message(m.data, m.len);
-      free(m.data);
+
+      assert(m.sz >= sizeof(msg_header));
+
+      // real quick check if the message has a nonce we are looking for
+      auto *header = (struct msg_header *)m.data;
+
+
+      if (sync_wait_futures.contains(header->nonce)) {
+        auto f = sync_wait_futures.get(header->nonce);
+        f.resolve(move(m));
+      } else {
+        dispatch_received_message(m.data, m.sz);
+        free(m.data);
+      }
     }
   }
 }
@@ -237,11 +254,10 @@ static int awaitfs(struct await_target *fds, int nfds, int flags, long long time
   return errno_wrap(res);
 }
 
-ck::pair<void *, size_t> ck::ipc::impl::socket_connection::sync_wait(
+ck::ipc::raw_msg ck::ipc::impl::socket_connection::sync_wait(
     uint32_t msg_type, ck::ipc::nonce_t nonce) {
   // printf("%d sync wait on msg of type %d with a nonce of %d\n", is_server, msg_type, nonce);
-  ck::pair<void *, size_t> res = {nullptr, 0};
-  res.first = NULL;
+  ck::ipc::raw_msg res = {nullptr, 0};
   bool found = false;
 
   while (1) {
@@ -257,10 +273,11 @@ ck::pair<void *, size_t> ck::ipc::impl::socket_connection::sync_wait(
         // printf("%d nonce = %d, want %d\n", is_server, sent_nonce, nonce);
         // ck::hexdump(m.data, m.len);
         if (sent_nonce == nonce) {
-          res.first = m.data;
-          res.second = m.len;
+          res.data = m.data;
+          res.sz = m.sz;
           m.data = NULL;
           found = true;
+
           break;
         }
       }
@@ -268,30 +285,53 @@ ck::pair<void *, size_t> ck::ipc::impl::socket_connection::sync_wait(
 
     if (found) break;
 
-    // dispatch on the messages that we have but don't need right now
-    // (this ought to allow some kind of reentrancy)
-    dispatch();
 
+    // because the ipc mechanism might not be run in an environment with fibers (just in case),
+    // we need to check if we are in one before we do anything with futures.
+    if (ck::fiber::in_fiber()) {
+      m_lock.lock();
 
-    if (closed()) {
-      // returning NULL from here means we're dead :^)
-      res = {nullptr, 0};
+      ck::future<raw_msg> fut;
+      // add the future to the map of nonces
+      sync_wait_futures[nonce] = fut;
+      // release the lock once we inserted the future into the map
+      m_lock.unlock();
+
+      auto [data, sz] = fut.await();
+      res.data = data;
+      res.sz = sz;
+
+      // grab the lock and remove the future from the map
+      m_lock.lock();
+      sync_wait_futures.remove(nonce);
+      m_lock.unlock();
+
+      found = true;
       break;
+    } else {
+      // dispatch on the messages that we have but don't need right now
+      // (this ought to allow some kind of reentrancy)
+      dispatch();
+
+      if (closed()) {
+        // returning NULL from here means we're dead :^)
+        res = {nullptr, 0};
+        break;
+      }
+
+      // TODO: awaitfs is slow lol. we should be able to do this without it
+
+      int await_res = 1;
+
+      struct await_target targ;
+      // m_sock is alive, as we previously checked if we were dead :)
+      targ.fd = m_sock->fileno();
+      targ.awaiting = AWAITFS_READ;
+      await_res = awaitfs(&targ, 1, 0, -1);
+
+      drain_messages();
+      // m_lock.unlock();
     }
-
-
-
-    // TODO: awaitfs is slow lol. we should be able to do this without it
-
-    int await_res = 1;
-
-    struct await_target targ;
-    // m_sock is alive, as we previously checked if we were dead :)
-    targ.fd = m_sock->fileno();
-    targ.awaiting = AWAITFS_READ;
-    await_res = awaitfs(&targ, 1, 0, -1);
-
-    drain_messages();
   }
 
   return res;

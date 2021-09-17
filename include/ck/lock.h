@@ -22,14 +22,18 @@ namespace ck {
 
   class scoped_lock {
     ck::mutex &lck;
+    bool locked = false;
 
    public:
     inline scoped_lock(ck::mutex &lck) : lck(lck) {
+      locked = true;
       lck.lock();
     }
 
-    inline ~scoped_lock(void) {
-      lck.unlock();
+    inline ~scoped_lock(void) { unlock(); }
+
+    inline void unlock(void) {
+      if (locked) lck.unlock();
     }
   };
 }  // namespace ck
