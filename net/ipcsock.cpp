@@ -81,6 +81,8 @@ int net::ipcsock::disconnect(int flags) {
   auto &state = (flags & PFLAGS_CLIENT) ? for_server : for_client;
 
   state.lock.lock();
+  // printk("%3d - close %s!\n", curproc->pid, (flags & PFLAGS_CLIENT) ? "client" : "server");
+
   state.closed = true;
   state.wq.wake_up_all();
   state.lock.unlock();
@@ -108,8 +110,7 @@ printk(
 // #define IPCSOCK_DEBUG
 
 
-ssize_t net::ipcsock::sendto(
-    fs::file &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
+ssize_t net::ipcsock::sendto(fs::file &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
   auto &state = (fd.pflags & PFLAGS_SERVER) ? for_client : for_server;
 
   {
@@ -132,14 +133,13 @@ ssize_t net::ipcsock::sendto(
 
 
 
-ssize_t net::ipcsock::recvfrom(
-    fs::file &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
+ssize_t net::ipcsock::recvfrom(fs::file &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
   auto &state = (fd.pflags & PFLAGS_SERVER) ? for_server : for_client;
   bool block = (flags & MSG_DONTWAIT) == 0;
   while (1) {
     struct wait_entry ent;
     {
-      // printk("%3d - recv message, %d live\n", curproc->pid, state.msgs.size_slow());
+      // printk("%3d - recv message, %d live. block: %d\n", curproc->pid, state.msgs.size_slow(), block);
 
       scoped_lock l(state.lock);
 
@@ -160,9 +160,10 @@ ssize_t net::ipcsock::recvfrom(
 
         // the buffer needs to be big enough
         if (front.data.size() > len) return -EMSGSIZE;
-
-        memcpy(data, front.data.data(), front.data.size());
         size_t nread = front.data.size();
+        if (len < nread) nread = len;
+
+        memcpy(data, front.data.data(), nread);
         state.msgs.take_first();
 
 
@@ -170,6 +171,7 @@ ssize_t net::ipcsock::recvfrom(
       }
 
       if (state.closed) {
+        // printk("%3d - recv message, closed.\n", curproc->pid);
         return 0;
       }
       if (!block) return -EAGAIN;

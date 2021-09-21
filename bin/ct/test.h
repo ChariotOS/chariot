@@ -79,8 +79,6 @@ namespace test {
         assert(__response_type == test::Message::CLIENT_MAP_RESPONSE);
         assert(__response_nonce == __nonce);
         ck::ipc::decode(__decoder, res.vec);
-        free(data);
-        dispatch();
         return res;
       }
 
@@ -101,8 +99,6 @@ namespace test {
         assert(__response_type == test::Message::CLIENT_TEST_RESPONSE);
         assert(__response_nonce == __nonce);
         ck::ipc::decode(__decoder, res.x);
-        free(data);
-        dispatch();
         return res;
       }
 
@@ -167,8 +163,6 @@ namespace test {
         assert(__response_type == test::Message::SERVER_COMPUTE_RESPONSE);
         assert(__response_nonce == __nonce);
         ck::ipc::decode(__decoder, res.result);
-        free(data);
-        dispatch();
         return res;
       }
 

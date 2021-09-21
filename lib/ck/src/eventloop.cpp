@@ -81,6 +81,10 @@ void ck::eventloop::start(void) {
     run_fibers();
     pump();
     dispatch();
+
+    if (m_fibers.size() == 0 && s_notifiers.size() == 0 && s_defered.size() == 0) {
+      this->exit();
+    }
   }
   m_finished = false;
   active_eventloop = old;
@@ -91,7 +95,6 @@ void ck::eventloop::start(void) {
 
 void ck::eventloop::block_on(ck::func<void(void)> fn) {
   // we only exit if all fibers are dead.
-  m_exit_on_no_fibers = true;
   auto fiber = ck::make_ref<ck::fiber>([=](ck::fiber *fiber) mutable {
     // fiber->on_exit = [](ck::fiber *f) {
     //   assert(f->is_done());
@@ -109,6 +112,7 @@ void ck::eventloop::block_on(ck::func<void(void)> fn) {
 }
 
 void ck::eventloop::add_fiber(ck::ref<ck::fiber> f) {
+  f->set_ready();
   // add the fiber to the pool
   m_fibers.push(f);
 }
@@ -268,11 +272,6 @@ void ck::eventloop::run_fibers() {
       finished_fibers.clear();
     }
   }
-
-
-  if (m_exit_on_no_fibers && m_fibers.size() == 0) {
-    this->exit();
-  }
 }
 
 
@@ -347,9 +346,7 @@ void ck::timer::stop(void) {
 
 
 
-ck::fsnotifier::fsnotifier(int fd, int event_mask) : m_fd(fd), m_ev_mask(event_mask) {
-  set_active(true);
-}
+ck::fsnotifier::fsnotifier(int fd, int event_mask) : m_fd(fd), m_ev_mask(event_mask) { set_active(true); }
 
 
 ck::fsnotifier::~fsnotifier(void) { set_active(false); }

@@ -8,7 +8,7 @@
 #include <ck/pair.h>
 #include <ck/future.h>
 
-#define IPC_USE_SHM
+// #define IPC_USE_SHM
 
 
 namespace ck {
@@ -222,22 +222,35 @@ namespace ck {
       class socket_connection : public ck::refcounted<socket_connection> {
        public:
         socket_connection(ck::ref<ck::ipcsocket> s, const char* ns, bool is_server);
-        virtual ~socket_connection(void) { printf("ipc connection killed!\n"); }
+        virtual ~socket_connection(void) {
+          if (!closed()) close();
+          // wait on the recv fiber to finish... We really do not want to leak memory
+          m_recv_fiber_join.await();
+        }
 
         // a closed socket connection is just one without a socket :^)
-        void close(void) { m_sock = nullptr; }
-        bool closed(void) { return !m_sock; }
+        void close(void) {
+          m_closed = true;
+          // go through all 'sync' waiters and resolve their futures with NULL
+          for (auto& w : sync_wait_futures)
+            w.value.resolve({nullptr, 0});
+          // THIS IS VERY HACKY
+          m_sock->fire_on_read();
+          if (on_close) on_close();
+        }
+        bool closed(void) { return m_closed; }
 
         ck::func<void()> on_close;
 
        protected:
+        const char* side(void) { return is_server ? "server" : "client"; }
         // the encoder writes directly to the send_queue, finish-send just hits the doorbell
         ipc::encoder begin_send(void);
         void finish_send();
-        void dispatch(void);
-        void handshake(void);
-        void drain_messages(void);
+        void dispatch(void* data, size_t len);
         virtual void dispatch_received_message(void* data, size_t len) = 0;
+
+        void handshake(void);
         // wait for a message where the first uint32_t is the needle.
         // Return a copy of the message when found, blocking forever
         // if no message is found. Any other messages are placed
@@ -295,6 +308,7 @@ namespace ck {
 #ifdef IPC_USE_SHM
         ck::string shm_name;
 #else
+        static constexpr size_t max_message_size = 32 * 1024;
         void* msg_buffer = NULL;
         size_t msg_size = 0;
 #endif
@@ -308,54 +322,77 @@ namespace ck {
 
         ck::map<nonce_t, ck::future<raw_msg>> sync_wait_futures;
 
+        ck::future<void> m_recv_fiber_join;
 
        private:
         ck::mutex m_lock;
+        bool m_closed = false;
         inline ck::scoped_lock lock(void) { return ck::scoped_lock(m_lock); }
       };
 
     }  // namespace impl
 
     template <typename Connection>
-    class server {
+    class server : public ck::refcounted<server<Connection>> {
      public:
       server(void) = default;
+      virtual ~server(void) = default;
 
 
       // start the server listening on a given path
       void listen(ck::string listen_path) {
         assert(!m_server.listening());
         m_server.listen(listen_path, [this] {
-          printf("SERVER GOT A CONNECTION!\n");
+          // printf("SERVER GOT A CONNECTION!\n");
 
           ck::ipcsocket* sock = m_server.accept();
 
-          this->handle_connection(ck::make_unique<Connection>(sock));
+          this->handle_connection(ck::make_ref<Connection>(sock));
         });
         m_listen_path = listen_path;
       }
 
      private:
-      void handle_connection(ck::unique_ptr<Connection>&& s) {
+      virtual void on_connection(ck::ref<Connection> c) {}
+      virtual void on_disconnection(ck::ref<Connection> c) {}
+
+      void handle_connection(ck::ref<Connection> s) {
+        auto id = m_next_id++;
         Connection* sp = s.get();
-        sp->on_close = [this, sp] {
-          printf("CLOSED!\n");
-          for (int i = 0; i < this->m_connections.size(); i++) {
-            if (this->m_connections[i].get() == sp) {
-              this->m_connections.remove(i);
-              break;
-            }
-          }
+
+        on_connection(s);
+
+        if (sp->closed()) return;
+        sp->on_close = [this, sp, id] {
+          on_disconnection(sp);
+          // printf("CLOSED!\n");
+          m_connections.remove(id);
         };
 
-        m_connections.push(move(s));
+        m_connections[id] = s;
       }
 
-      ck::vec<ck::unique_ptr<Connection>> m_connections;
+
+
+      long m_next_id = 0;
+      ck::map<long, ck::ref<Connection>> m_connections;
       ck::string m_listen_path;
       ck::ipcsocket m_server;
     };
 
+
+
+    template <typename Connection>
+    ck::ref<Connection> connect(ck::string path) {
+      // construct the ipc socket for the client connection to the server
+      ck::ref<ck::ipcsocket> sock = ck::make_ref<ck::ipcsocket>();
+      int res = sock->connect(path);
+      if (!sock->connected()) {
+        return nullptr;
+      }
+
+      return ck::make_ref<Connection>(sock);
+    }
 
 
   }  // namespace ipc

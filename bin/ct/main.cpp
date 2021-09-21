@@ -28,8 +28,12 @@
 #include <ck/resource.h>
 #include <fcntl.h>
 #include <ck/future.h>
-
+#include <lumen/ipc.h>
 #include "test.h"
+
+
+#if 0
+
 
 void dump_symbols(int fd) {
   Elf64_Ehdr ehdr;
@@ -200,97 +204,7 @@ class ct_window : public ui::window {
 };
 
 
-
-
-class client_connection : public test::client_connection_stub {
- public:
-  client_connection(ck::ref<ck::ipcsocket> s) : test::client_connection_stub(s) {}
-  virtual ~client_connection() {}
-
-  ck::option<test::server_compute_response> on_compute(uint32_t val) override {
-    return test::server_compute_response({val * 2});
-  }
-};
-
-class server_connection : public test::server_connection_stub {
- public:
-  server_connection(ck::ref<ck::ipcsocket> s) : test::server_connection_stub(s) {}
-  virtual ~server_connection() {}
-
-
-  ck::option<test::client_test_response> on_test(int x) override { return {x}; }
-
-  // handle these in your subclass
-  ck::option<test::client_map_response> on_map(ck::vec<uint32_t> vec) override {
-    for (auto& val : vec) {
-      auto r = compute(val);
-      if (!r.has_value()) {
-        return None;
-      }
-      val = r.unwrap().result;
-    }
-    return test::client_map_response{vec};
-  }
-};
-
-
-void run_client(ck::string path) {
-  ASYNC_BODY({
-    ck::ref<ck::ipcsocket> sock = ck::make_ref<ck::ipcsocket>();
-    int res = sock->connect(path);
-    if (!sock->connected()) {
-      panic("ouchie");
-    }
-
-    printf("connected!\n");
-    client_connection c(sock);
-
-    for (int trial = 0; trial < 100; trial++) {
-      ck::time::logger l("ipc");
-      // auto start = ck::time::cycles();
-      c.test(0);
-      // auto end = ck::time::cycles();
-      // printf("trial %d: %lld cycles\n", trial, end - start);
-    }
-  });
-}
-
-
-void run_server() {
-  int client_pid = 0;
-
-  ck::eventloop ev;
-  ck::ipc::server<server_connection> server;
-  ck::string path = ck::string::format("/tmp/ct.%d.sock", rand());
-  {
-    int fd = open(path.get(), O_RDONLY | O_CREAT);
-    printf("fd = %d, errno = %d\n", fd, errno);
-    close(fd);
-  }
-  server.listen(path);
-
-  client_pid = fork();
-  if (client_pid == 0) run_client(path);
-  ev.start();
-
-
-  printf("client pid = %d\n", client_pid);
-}
-
-class waitfuture : public ck::future<void> {
- public:
-  waitfuture(int ms) : ck::future<void>() {
-    auto ctrl = get_control();
-
-    timer = ck::timer::make_timeout(ms, [ctrl]() mutable {
-      ctrl->resolve();
-    });
-  }
-
- private:
-  ck::ref<ck::timer> timer;
-};
-
+#endif
 
 
 
@@ -305,70 +219,11 @@ async(ck::vec<T>) wait_all(ck::vec<ck::future<T>>& futs) {
 
 
 
-
-int main(int argc, char** argv) {
-  int server_pid = fork();
-  if (server_pid == 0) run_server();
-  waitpid(server_pid, NULL, 0);
-  return 0;
-
-
-
-  ASYNC_MAIN({
-    ck::future<void> v;
-
-
-    ck::spawn([] {
-      while (1) {
-        printf(
-            "Starting countdown. Malloc has %llx,%llx live\n", malloc_allocated(), malloc_total());
-        waitfuture(1000).await();
-      }
-    });
-
-
-    while (true) {
-      printf("waiting on bytes\n");
-
-      char buf[512];
-      auto sz = ck::in.async_read(buf, sizeof(buf)).await().take();
-      printf("read %d bytes\n", sz);
-      ck::hexdump(buf, sz);
-    }
-    return;
-  });
-
-  // ev.start();
-  return 0;
-
-
-  // auto [cat, cat_size] = ck::resource::get("ct::resource").take();
-
-  // ck::hexdump(cat, cat_size);
-
-  // for (int i = 0; i < 20; i++) {
-  //   unsigned long start = ck::time::us();
-  //   ck::future<long> x;
-
-  //   ck::thread t([&] { x.resolve(42); });
-  //   printf("t\n");
-
-  //   x.then([&](auto x) {
-  //     auto dur = ck::time::us() - start;
-  //     printf("%llu\n", dur);
-  //   });
-
-  //   t.join();
-  // }
-
-  // return 0;
-
-
-
-
-  ui::application app;
-  ct_window* win = new ct_window;
-
-  app.start();
-  return 0;
-}
+int main(int argc, char** argv) async_main({
+  printf("Connecting...\n");
+  auto conn = ck::ipc::connect<lumen::Connection>("/usr/servers/lumen");
+  printf("Connected.\n");
+  auto [wid] = conn->create_window().unwrap();
+  printf("Window Created with wid %d\n", wid);
+  conn->set_window_name(wid, "my window name");
+})

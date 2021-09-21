@@ -24,6 +24,8 @@ popd
 
 
 FREETYPE_NAME=freetype-2.10.1
+GC_NAME=gc6.8
+
 
 mkdir -p src
 pushd src
@@ -37,6 +39,15 @@ pushd src
 			patch -p1 < ../../patches/freetype.patch
 		popd
 	fi
+
+	# if [ ! -d $GC_NAME ]; then
+	# 	wget "https://www.hboehm.info/gc/gc_source/$GC_NAME.tar.gz"
+	# 	tar -xzvf $GC_NAME.tar.gz
+	# 	rm $GC_NAME.tar.gz
+	# 	pushd $GC_NAME
+	# 		# patch -p1 < ../../patches/freetype.patch
+	# 	popd
+	# fi
 
 
 
@@ -53,7 +64,17 @@ do
 	mkdir -p build/$ARCH
 	pushd build/$ARCH
 
-
+		# mkdir -p gc
+		# pushd gc
+		# 	$ROOT/ports/src/$GC_NAME/configure                                            \
+		# 		--host=$ARCH-elf                                                          \
+		# 		--prefix=$ROOT/ports/out/$ARCH/                                           \
+		# 		"CFLAGS=-I$ROOT/include -fno-stack-protector -nostdlib -s "               \
+		# 		"CXXFLAGS=-I$ROOT/include -fno-stack-protector -DUSERLAND -nostdlib -s "
+		# 	make
+		# 	make check
+		# 	make install
+		# popd
 
 		if [ ! -d cairo ]; then
 			git clone git@github.com:freedesktop/cairo.git --depth 1 cairo

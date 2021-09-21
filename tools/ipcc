@@ -311,8 +311,11 @@ class IPCCompiler:
 
                if m.is_sync():
                   out(f'      inline ck::option<{m.return_type_string()}> {m.name}({", ".join(args)}) {{')
+                  out(f'        if (closed()) return None;')
+
                else:
                   out(f'      inline {m.return_type_string()} {m.name}({", ".join(args)}) {{')
+                  out(f'        if (closed()) return;')
 
                out(f'        ck::ipc::encoder __e = begin_send();')
                out(f'        __e << (uint32_t){self.namespace}::Message::{m.enum_name()};')
@@ -342,8 +345,8 @@ class IPCCompiler:
                   for field in m.return_fields:
                      out(f'        ck::ipc::decode(__decoder, res.{field.name});')
 
-                  out(f'        free(data);')
-                  out(f'        dispatch();')
+                  # out(f'        free(data);')
+                  # out(f'        dispatch();')
                   out(f'        return res;')
 
                out(f'      }}')

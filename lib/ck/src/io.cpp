@@ -32,8 +32,7 @@ ck::buffer::~buffer(void) {
 
 
 
-extern "C" int vfctprintf(
-    void (*out)(char character, void *arg), void *arg, const char *format, va_list va);
+extern "C" int vfctprintf(void (*out)(char character, void *arg), void *arg, const char *format, va_list va);
 
 
 
@@ -294,8 +293,7 @@ ck::socket::socket(int fd, int domain, int type, int protocol) : ck::file(fd) {
 }
 
 
-ck::socket::socket(int domain, int type, int protocol)
-    : ck::socket(::socket(domain, type, 0), domain, type, 0) {}
+ck::socket::socket(int domain, int type, int protocol) : ck::socket(::socket(domain, type, 0), domain, type, 0) {}
 
 
 ck::socket::~socket(void) {
@@ -332,6 +330,20 @@ ssize_t ck::socket::recv(void *buf, size_t sz, int flags) {
     set_eof(true);
   }
   return nread;
+}
+
+
+async(ssize_t) ck::socket::async_recv(void *buf, size_t sz, int flags) {
+  ck::future<ssize_t> fut;
+  auto ctrl = fut.get_control();
+  this->on_read([this, ctrl, buf, sz, flags]() mutable {
+    ssize_t res = this->recv(buf, sz, flags);
+    ctrl->resolve(move(res));
+    this->clear_on_read();
+
+    return;
+  });
+  return fut;
 }
 
 

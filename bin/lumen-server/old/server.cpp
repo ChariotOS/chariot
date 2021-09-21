@@ -69,8 +69,7 @@ lumen::server::server(void) : screen(CONFIG_FRAMEBUFFER_WIDTH, CONFIG_FRAMEBUFFE
     wallpaper = gfx::load_image("/usr/res/lumen/wallpaper.jpg");
     // wallpaper = gfx::load_png("/usr/res/lumen/wallpaper.png");
     if (wallpaper->width() != screen.width() || wallpaper->height() != screen.height()) {
-      wallpaper =
-          wallpaper->scale(screen.width(), screen.height(), gfx::bitmap::SampleMode::Nearest);
+      wallpaper = wallpaper->scale(screen.width(), screen.height(), gfx::bitmap::SampleMode::Nearest);
     }
   } else {
     wallpaper = new gfx::bitmap(screen.width(), screen.height());
@@ -94,9 +93,13 @@ lumen::server::server(void) : screen(CONFIG_FRAMEBUFFER_WIDTH, CONFIG_FRAMEBUFFE
 
 
 
-  ipc_server.listen("/usr/servers/lumen", [this] { accept_connection(); });
+  ipc_server.listen("/usr/servers/lumen", [this] {
+    accept_connection();
+  });
 
-  compose_timer = ck::timer::make_interval(COMPOSE_INTERVAL, [this] { this->compose(); });
+  compose_timer = ck::timer::make_interval(COMPOSE_INTERVAL, [this] {
+    this->compose();
+  });
   invalidate(screen.bounds());
 
   // spawn("ct");
@@ -153,8 +156,7 @@ void lumen::server::handle_mouse_input(struct mouse_packet &pkt) {
   }
 
   if (hovered_window != NULL) {
-    auto mrel = gfx::point(screen.mouse_pos.x() - hovered_window->rect.x,
-        screen.mouse_pos.y() - hovered_window->rect.y);
+    auto mrel = gfx::point(screen.mouse_pos.x() - hovered_window->rect.x, screen.mouse_pos.y() - hovered_window->rect.y);
 
 
     hovered_window->last_hover = mrel;
@@ -306,8 +308,7 @@ void lumen::server::guest_closed(long id) {
 }
 
 
-#define HANDLE_TYPE(t, data_type) \
-  if (auto arg = (data_type *)msg.data; msg.type == t && msg.len == sizeof(data_type))
+#define HANDLE_TYPE(t, data_type) if (auto arg = (data_type *)msg.data; msg.type == t && msg.len == sizeof(data_type))
 
 
 
@@ -670,8 +671,7 @@ void lumen::server::compose(void) {
     if (win->pending_invalidation_id != -1) {
       struct lumen::invalidated_msg m;
       m.id = win->id;
-      win->guest.send_raw(
-          LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m, sizeof(m));
+      win->guest.send_raw(LUMEN_MSG_WINDOW_INVALIDATED, win->pending_invalidation_id, &m, sizeof(m));
       win->pending_invalidation_id = -1;
     }
   }
@@ -680,9 +680,10 @@ void lumen::server::compose(void) {
 
 
 
-lumen::guest::guest(long id, struct server &ctx, ck::ipcsocket *conn)
-    : id(id), ctx(ctx), connection(conn) {
-  connection->on_read([this] { this->on_read(); });
+lumen::guest::guest(long id, struct server &ctx, ck::ipcsocket *conn) : id(id), ctx(ctx), connection(conn) {
+  connection->on_read([this] {
+    this->on_read();
+  });
 }
 
 lumen::guest::~guest(void) {

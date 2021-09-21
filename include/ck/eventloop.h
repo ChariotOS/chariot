@@ -11,14 +11,19 @@
 #include <ck/future.h>
 
 // TODO: exit codes!
-#define ASYNC_MAIN(body)   \
+#define __ASYNC_MAIN(body) \
   ck::eventloop __EV;      \
   __EV.block_on([&] body); \
   return __EV.exit_code();
 
-#define ASYNC_BODY(body) \
-  ck::eventloop __EV;    \
+#define __ASYNC_BODY(body) \
+  ck::eventloop __EV;      \
   __EV.block_on([&] body);
+
+
+
+#define async_main(body) \
+  { __ASYNC_MAIN(body); }
 
 namespace ck {
   class timer;
@@ -98,10 +103,17 @@ namespace ck {
   };
 
 
-  inline void spawn(ck::func<void(void)> f) {
-    ck::eventloop::current()->add_fiber(ck::make_ref<ck::fiber>([=](ck::fiber *fiber) mutable {
+  inline async(void) spawn(ck::func<void(void)> f) {
+    ck::future<void> fut;
+    auto ctrl = fut.get_control();
+    auto fiber = ck::make_ref<ck::fiber>([f, ctrl](ck::fiber *fiber) mutable {
       f();
-    }));
+      ctrl->resolve();
+    });
+
+    ck::eventloop::current()->add_fiber(fiber);
+
+    return fut;
   }
 
   template <typename T>

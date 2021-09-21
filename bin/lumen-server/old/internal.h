@@ -59,13 +59,11 @@ namespace lumen {
 
 
 
-    // ^ui::view
+    // ^ui::surface
     virtual gfx::bitmap *bmp(void);
     virtual void invalidate(const gfx::rect &r);
     // screen resize doesnt work
-    virtual ck::pair<int, int> resize(int width, int height) {
-      return {m_bounds.width(), m_bounds.height()};
-    }
+    virtual ck::pair<int, int> resize(int width, int height) { return {m_bounds.width(), m_bounds.height()}; }
     virtual ui::view *root_view(void);
     virtual void did_reflow(void);
     // ---------

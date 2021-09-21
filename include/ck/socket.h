@@ -33,6 +33,9 @@ namespace ck {
     ssize_t send(void *buf, size_t sz, int flags);
     ssize_t recv(void *buf, size_t sz, int flags);
 
+    async(ssize_t) async_recv(void *buf, size_t sz, int flags);
+
+
     bool connect(struct sockaddr *addr, size_t size);
 
     inline bool connected(void) { return m_connected; }

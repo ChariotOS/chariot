@@ -61,8 +61,7 @@ namespace ck {
     };
 
     handle() {}
-    handle(FileDescriptor fd, ck::handle::Ownership ownership = Owned)
-        : m_fd(fd), m_ownership(ownership) {}
+    handle(FileDescriptor fd, ck::handle::Ownership ownership = Owned) : m_fd(fd), m_ownership(ownership) {}
 
     ~handle() {
       if (m_ownership == Owned && m_fd != -1) {
@@ -90,8 +89,7 @@ namespace ck {
 
     reactor(void) {}
 
-    reactor(FileDescriptor fd, int interest = READ | WRITE, Ownership ownership = Owned)
-        : handle(fd, ownership) {
+    reactor(FileDescriptor fd, int interest = READ | WRITE, Ownership ownership = Owned) : handle(fd, ownership) {
       update_interest(interest);
     }
 
@@ -241,6 +239,10 @@ namespace ck {
     inline auto on_read(ck::func<void()> cb) {
       m_on_read = move(cb);
       update_notifier();
+    }
+
+    void fire_on_read(void) {
+      if (m_on_read) m_on_read();
     }
 
 

@@ -1,7 +1,7 @@
 
 namespace lumen
 
-header /include/lumen/ipc.h
+header /include/lumen/ipc_core.h
 
 include <gfx/rect.h>
 
@@ -10,30 +10,26 @@ splat gfx::rect
 
 // messages sent from the client
 client {
-    // a basic greet message :^)
-    greet(uint32_t number, uint64_t time)
 
-    invalidate(uint32_t wid, ck::ref<gfx::rect> rects)
+    // Just create the window. Do not show it yet (This means the window does not have a bitmap yet)
+    create_window() -> (uint32_t wid)
 
-    open_window(int width, int height, ck::string window_name)
 
-    show_window(uint32_t wid)
-    hide_window(uint32_t wid)
+    // set a window's title.
+    set_window_name(uint32_t wid, ck::string name) -> (int result)
+
+    // show_window(uint32_t wid)
+    // hide_window(uint32_t wid)
+
+
+    // invalidate(uint32_t wid, ck::vec<gfx::rect> rects)
+
 }
-
 
 
 // messages from the client
 server {
-    // notify that a window has been closed
-    window_closed(uint32_t wid)
-    // notify that a mouse event has occurred
-    mouse_event(uint32_t wid, uint8_t buttons, uint16_t dx, uint16_t dy, uint16_t hx, uint16_t hy)
-    // notify that a key event has occurred
-    keyboard_event(uint32_t wid, uint8_t keycode, uint8_t c, uint8_t flags)
 
-    // notify that a window has been resized
-    window_resized(uint32_t wid, int width, int height, ck::string new_bitmap) 
 }
 
 
