@@ -217,8 +217,6 @@ async(ck::vec<T>) wait_all(ck::vec<ck::future<T>>& futs) {
   return res;
 }
 
-
-
 int main(int argc, char** argv) async_main({
   printf("Connecting...\n");
   auto conn = ck::ipc::connect<lumen::Connection>("/usr/servers/lumen");

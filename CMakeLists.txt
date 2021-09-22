@@ -136,7 +136,7 @@ endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CONFIG_ADDITIONAL_USER_FLAGS}")
 
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} ${ARCH_USER_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -nostdinc++ -std=c++20 -fconcepts -fcoroutines ${ARCH_USER_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -nostdinc++ -std=c++20 ${ARCH_USER_CXX_FLAGS}")
 
 
 
@@ -240,18 +240,58 @@ endfunction()
 
 
 
+include_directories(kernel/include)
+
 add_subdirectory(kernel)
 
+
+include_directories(
+	# C++ stuff
+	toolchain/src/gcc-${CONFIG_GCC_VERSION}/libstdc++-v3/include/
+	toolchain/src/gcc-${CONFIG_GCC_VERSION}/libstdc++-v3/include/c
+	toolchain/src/gcc-${CONFIG_GCC_VERSION}/libstdc++-v3/include/c_std
+	toolchain/src/gcc-${CONFIG_GCC_VERSION}/libstdc++-v3/include/c_global
+	toolchain/src/gcc-${CONFIG_GCC_VERSION}/libstdc++-v3/include/std
+	toolchain/src/gcc-${CONFIG_GCC_VERSION}/libstdc++-v3/libsupc++
+
+	include
+	libc/include
+)
+
+
+
+MACRO(SUBDIRLIST result curdir)
+  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+  SET(dirlist "")
+  FOREACH(child ${children})
+    IF(IS_DIRECTORY ${curdir}/${child})
+      LIST(APPEND dirlist ${curdir}/${child})
+    ENDIF()
+  ENDFOREACH()
+  SET(${result} ${dirlist})
+ENDMACRO()
+
+
+SUBDIRLIST(USER_BINS ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+SUBDIRLIST(USER_LIBS ${CMAKE_CURRENT_SOURCE_DIR}/lib)
+
+
+add_link_options(LINKER:-T ${USER_LINKER_SCRIPT} -z max-page-size=0x1000)
+
+FOREACH(subdir ${USER_BINS} ${USER_LIBS})
+	include_directories(${subdir}/include)
+ENDFOREACH()
+
+
+FOREACH(subdir ${USER_BINS} ${USER_LIBS})
+	add_subdirectory(${subdir})
+ENDFOREACH()
+
 add_subdirectory(libc)
-add_subdirectory(lib)
-add_subdirectory(bin)
 
 
 chariot_external(libcpp ${CMAKE_SOURCE_DIR}/toolchain/build/${CMAKE_SYSTEM_PROCESSOR}/gcc/libcpp/libcpp.a)
 chariot_external(libgcc ${CMAKE_SOURCE_DIR}/toolchain/build/${CMAKE_SYSTEM_PROCESSOR}/gcc/gcc/libgcc.a)
-
-# chariot_external(libgl ${CMAKE_SOURCE_DIR}/ports/prebuilt/libOSMesa.a)
-# chariot_external(libglu ${CMAKE_SOURCE_DIR}/ports/prebuilt/libGLU.a)
 
 chariot_external(libfreetype ${CMAKE_SOURCE_DIR}/ports/out/${CMAKE_SYSTEM_PROCESSOR}/lib/libfreetype.a)
 # chariot_external(libcairo ${CMAKE_SOURCE_DIR}/ports/out/${CMAKE_SYSTEM_PROCESSOR}/lib/libcairo.a)

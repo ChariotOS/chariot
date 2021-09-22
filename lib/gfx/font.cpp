@@ -54,8 +54,7 @@ namespace gfx {
       freetype_initialized = true;
     }
 
-    if (FT_New_Memory_Face(library, (const FT_Byte *)data->data(), data->size(), 0, &face))
-      panic("Could not open font face\n");
+    if (FT_New_Memory_Face(library, (const FT_Byte *)data->data(), data->size(), 0, &face)) panic("Could not open font face\n");
 
     set_line_height(14 /* by default */);
   }

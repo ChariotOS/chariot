@@ -47,13 +47,6 @@ namespace gfx {
     };  // namespace impl
 
 
-    inline int color_clamp(int val) {
-      return val;
-      if (val < 0) return 0;
-      if (val > 255) return 255;
-      return val;
-    }
-
 
     // blend the alpha chanels of two colors
     inline __attribute__((always_inline)) color_t blend(color_t a, color_t b) {

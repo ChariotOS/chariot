@@ -13,7 +13,7 @@
 #include <stdint.h>
 #endif
 
-#include "../../std.h"
+#include "ilist.h"
 
 #include "../template_lib.h"
 
@@ -105,10 +105,7 @@ namespace ck {
         push(el);
       }
     }
-    vec(vec&& other)
-        : m_size(other.m_size),
-          m_capacity(other.m_capacity),
-          m_outline_buffer(other.m_outline_buffer) {
+    vec(vec&& other) : m_size(other.m_size), m_capacity(other.m_capacity), m_outline_buffer(other.m_outline_buffer) {
       if constexpr (inline_capacity > 0) {
         if (!m_outline_buffer) {
           for (int i = 0; i < m_size; ++i) {
@@ -186,13 +183,11 @@ namespace ck {
     int capacity() const { return m_capacity; }
 
     T* data() {
-      if constexpr (inline_capacity > 0)
-        return m_outline_buffer ? m_outline_buffer : inline_buffer();
+      if constexpr (inline_capacity > 0) return m_outline_buffer ? m_outline_buffer : inline_buffer();
       return m_outline_buffer;
     }
     const T* data() const {
-      if constexpr (inline_capacity > 0)
-        return m_outline_buffer ? m_outline_buffer : inline_buffer();
+      if constexpr (inline_capacity > 0) return m_outline_buffer ? m_outline_buffer : inline_buffer();
       return m_outline_buffer;
     }
 
@@ -441,11 +436,15 @@ namespace ck {
     }
 
     ConstIterator find(const T& value) const {
-      return find([&](auto& other) { return value == other; });
+      return find([&](auto& other) {
+        return value == other;
+      });
     }
 
     Iterator find(const T& value) {
-      return find([&](auto& other) { return value == other; });
+      return find([&](auto& other) {
+        return value == other;
+      });
     }
 
     void sort() { msort(0, size() - 1); }

@@ -53,7 +53,6 @@ int sys::get_core_usage(unsigned int core, struct chariot_core_usage *usage) {
   return 0;
 }
 
-
 int sys::get_nproc(void) { return cpu::nproc(); }
 
 extern "C" int get_errno(void) { return curthd->kerrno; }

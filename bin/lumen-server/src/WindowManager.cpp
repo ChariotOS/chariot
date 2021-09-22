@@ -2,7 +2,8 @@
 #include <gfx/scribe.h>
 #include "gfx/image.h"
 #include "sys/sysbind.h"
-
+#include <ck/time.h>
+#include <gfx/font.h>
 namespace server {
 
   WindowManager::WindowManager() : m_display(*this) {}
@@ -38,19 +39,22 @@ namespace server {
     }
 
 
+
+
+    // ck::time::logger l("mouse blit");
     static auto cursor = gfx::load_png("/usr/res/icons/pointer.png");
+    int mouse_x = m_mouse_pos.x() - (cursor->width() / 2);
+    int mouse_y = m_mouse_pos.y() - (cursor->height() / 2);
+
     gfx::bitmap bmp(m_display.width(), m_display.height(), m_display.get_front_buffer_unsafe());
     gfx::scribe s(bmp);
     s.clear(0xFFFFFFFF);
 
     // s.draw_quadratic_bezier(gfx::point(0, 0), old_pos, m_mouse_pos, 0xFFFFFF);
-    s.draw_line_antialias(old_pos, m_mouse_pos, 0);
-    int mouse_x = m_mouse_pos.x() - (cursor->width() / 2);
-    int mouse_y = m_mouse_pos.y() - (cursor->height() / 2);
-
+    // s.draw_line_antialias(old_pos, m_mouse_pos, 0);
 
     s.blit_alpha({mouse_x, mouse_y}, *cursor, cursor->rect());
-    // s.fill_rect(gfx::rect(m_mouse_pos.x(), m_mouse_pos.y(), 10, 10), rand());
+    // s.draw_rect(gfx::rect(m_mouse_pos.x(), m_mouse_pos.y(), 10, 10), rand());
 
     // m_display.flush_fb(FlushWithMemcpy::Yes);
 

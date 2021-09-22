@@ -498,7 +498,7 @@ struct waiter_entry {
 
 
 static bool can_reap(struct thread *reaper, process::ptr zombie, pid_t seeking, int reap_flags) {
-  if (zombie->parent == NULL) return false;
+  if (!zombie->parent) return false;
   // a process may not reap another process's children.
   if (zombie->parent->pid != reaper->proc.pid) return false;
 

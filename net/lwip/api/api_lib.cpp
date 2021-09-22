@@ -69,7 +69,7 @@
 #include "lwip/raw.h"
 #include "lwip/udp.h"
 
-#include <string.h>
+#include <asm.h>
 
 #define API_MSG_VAR_REF(name) API_VAR_REF(name)
 #define API_MSG_VAR_DECLARE(name) API_VAR_DECLARE(struct api_msg, name)
