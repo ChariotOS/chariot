@@ -13,7 +13,7 @@
 #include <stdint.h>
 #endif
 
-#include "ilist.h"
+#include <chariot/ilist.h>
 
 #include "../template_lib.h"
 

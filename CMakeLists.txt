@@ -256,6 +256,7 @@ include_directories(
 
 	include
 	libc/include
+	kernel/include
 )
 
 

@@ -1,7 +1,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-#include "../include/wren.h"
+#include <wren/wren.h>
 #include "wren_common.h"
 #include "wren_compiler.h"
 #include "wren_core.h"
@@ -170,9 +170,8 @@ void wrenCollectGarbage(WrenVM* vm) {
   double elapsed = ((double)clock() / CLOCKS_PER_SEC) - startTime;
   // Explicit cast because size_t has different sizes on 32-bit and 64-bit and
   // we need a consistent type for the format string.
-  printf("GC %lu before, %lu after (%lu collected), next at %lu. Took %.3fs.\n",
-         (unsigned long)before, (unsigned long)vm->bytesAllocated,
-         (unsigned long)(before - vm->bytesAllocated), (unsigned long)vm->nextGC, elapsed);
+  printf("GC %lu before, %lu after (%lu collected), next at %lu. Took %.3fs.\n", (unsigned long)before, (unsigned long)vm->bytesAllocated,
+      (unsigned long)(before - vm->bytesAllocated), (unsigned long)vm->nextGC, elapsed);
 #endif
 }
 
@@ -259,9 +258,8 @@ static void closeUpvalues(ObjFiber* fiber, Value* last) {
 //
 // This will try the host's foreign method binder first. If that fails, it
 // falls back to handling the built-in modules.
-static WrenForeignMethodFn findForeignMethod(WrenVM* vm, const char* moduleName,
-                                             const char* className, bool isStatic,
-                                             const char* signature) {
+static WrenForeignMethodFn findForeignMethod(
+    WrenVM* vm, const char* moduleName, const char* className, bool isStatic, const char* signature) {
   WrenForeignMethodFn method = NULL;
 
   if (vm->config.bindForeignMethodFn != NULL) {
@@ -292,8 +290,7 @@ static WrenForeignMethodFn findForeignMethod(WrenVM* vm, const char* moduleName,
 //
 // Aborts the current fiber if the method is a foreign method that could not be
 // found.
-static void bindMethod(WrenVM* vm, int methodType, int symbol, ObjModule* module,
-                       ObjClass* classObj, Value methodValue) {
+static void bindMethod(WrenVM* vm, int methodType, int symbol, ObjModule* module, ObjClass* classObj, Value methodValue) {
   const char* className = classObj->name->value;
   if (methodType == CODE_METHOD_STATIC) classObj = classObj->obj.classObj;
 
@@ -301,13 +298,11 @@ static void bindMethod(WrenVM* vm, int methodType, int symbol, ObjModule* module
   if (IS_STRING(methodValue)) {
     const char* name = AS_CSTRING(methodValue);
     method.type = METHOD_FOREIGN;
-    method.as.foreign = findForeignMethod(vm, module->name->value, className,
-                                          methodType == CODE_METHOD_STATIC, name);
+    method.as.foreign = findForeignMethod(vm, module->name->value, className, methodType == CODE_METHOD_STATIC, name);
 
     if (method.as.foreign == NULL) {
-      vm->fiber->error =
-          wrenStringFormat(vm, "Could not find foreign method '@' for class $ in module '$'.",
-                           methodValue, classObj->name->value, module->name->value);
+      vm->fiber->error = wrenStringFormat(
+          vm, "Could not find foreign method '@' for class $ in module '$'.", methodValue, classObj->name->value, module->name->value);
       return;
     }
   } else {
@@ -371,8 +366,7 @@ static void runtimeError(WrenVM* vm) {
 // Aborts the current fiber with an appropriate method not found error for a
 // method with [symbol] on [classObj].
 static void methodNotFound(WrenVM* vm, ObjClass* classObj, int symbol) {
-  vm->fiber->error = wrenStringFormat(vm, "@ does not implement '$'.", OBJ_VAL(classObj->name),
-                                      vm->methodNames.data[symbol]->value);
+  vm->fiber->error = wrenStringFormat(vm, "@ does not implement '$'.", OBJ_VAL(classObj->name), vm->methodNames.data[symbol]->value);
 }
 
 // Looks up the previously loaded module with [name].
@@ -383,8 +377,7 @@ static ObjModule* getModule(WrenVM* vm, Value name) {
   return !IS_UNDEFINED(moduleValue) ? AS_MODULE(moduleValue) : NULL;
 }
 
-static ObjClosure* compileInModule(WrenVM* vm, Value name, const char* source, bool isExpression,
-                                   bool printErrors) {
+static ObjClosure* compileInModule(WrenVM* vm, Value name, const char* source, bool isExpression, bool printErrors) {
   // See if the module has already been loaded.
   ObjModule* module = getModule(vm, name);
   if (module == NULL) {
@@ -397,9 +390,8 @@ static ObjClosure* compileInModule(WrenVM* vm, Value name, const char* source, b
     // Implicitly import the core module.
     ObjModule* coreModule = getModule(vm, NULL_VAL);
     for (int i = 0; i < coreModule->variables.count; i++) {
-      wrenDefineVariable(vm, module, coreModule->variableNames.data[i]->value,
-                         coreModule->variableNames.data[i]->length, coreModule->variables.data[i],
-                         NULL);
+      wrenDefineVariable(vm, module, coreModule->variableNames.data[i]->value, coreModule->variableNames.data[i]->length,
+          coreModule->variables.data[i], NULL);
     }
   }
 
@@ -435,29 +427,24 @@ static Value validateSuperclass(WrenVM* vm, Value name, Value superclassValue, i
   // on these classes assume the instance is one of the other Obj___ types and
   // will fail horribly if it's actually an ObjInstance.
   ObjClass* superclass = AS_CLASS(superclassValue);
-  if (superclass == vm->classClass || superclass == vm->fiberClass ||
-      superclass == vm->fnClass ||  // Includes OBJ_CLOSURE.
-      superclass == vm->listClass || superclass == vm->mapClass || superclass == vm->rangeClass ||
-      superclass == vm->stringClass) {
-    return wrenStringFormat(vm, "Class '@' cannot inherit from built-in class '@'.", name,
-                            OBJ_VAL(superclass->name));
+  if (superclass == vm->classClass || superclass == vm->fiberClass || superclass == vm->fnClass ||  // Includes OBJ_CLOSURE.
+      superclass == vm->listClass || superclass == vm->mapClass || superclass == vm->rangeClass || superclass == vm->stringClass) {
+    return wrenStringFormat(vm, "Class '@' cannot inherit from built-in class '@'.", name, OBJ_VAL(superclass->name));
   }
 
   if (superclass->numFields == -1) {
-    return wrenStringFormat(vm, "Class '@' cannot inherit from foreign class '@'.", name,
-                            OBJ_VAL(superclass->name));
+    return wrenStringFormat(vm, "Class '@' cannot inherit from foreign class '@'.", name, OBJ_VAL(superclass->name));
   }
 
   if (numFields == -1 && superclass->numFields > 0) {
-    return wrenStringFormat(vm, "Foreign class '@' may not inherit from a class with fields.",
-                            name);
+    return wrenStringFormat(vm, "Foreign class '@' may not inherit from a class with fields.", name);
   }
 
   if (superclass->numFields + numFields > MAX_FIELDS) {
     return wrenStringFormat(vm,
-                            "Class '@' may not have more than 255 fields, including inherited "
-                            "ones.",
-                            name);
+        "Class '@' may not have more than 255 fields, including inherited "
+        "ones.",
+        name);
   }
 
   return NULL_VAL;
@@ -581,8 +568,7 @@ static Value resolveModule(WrenVM* vm, Value name) {
 
   const char* resolved = vm->config.resolveModuleFn(vm, importer->value, AS_CSTRING(name));
   if (resolved == NULL) {
-    vm->fiber->error = wrenStringFormat(vm, "Could not resolve module '@' imported from '@'.", name,
-                                        OBJ_VAL(importer));
+    vm->fiber->error = wrenStringFormat(vm, "Could not resolve module '@' imported from '@'.", name, OBJ_VAL(importer));
     return NULL_VAL;
   }
 
@@ -654,16 +640,14 @@ static Value importModule(WrenVM* vm, Value name) {
 
 static Value getModuleVariable(WrenVM* vm, ObjModule* module, Value variableName) {
   ObjString* variable = AS_STRING(variableName);
-  uint32_t variableEntry =
-      wrenSymbolTableFind(&module->variableNames, variable->value, variable->length);
+  uint32_t variableEntry = wrenSymbolTableFind(&module->variableNames, variable->value, variable->length);
 
   // It's a runtime error if the imported variable does not exist.
   if (variableEntry != UINT32_MAX) {
     return module->variables.data[variableEntry];
   }
 
-  vm->fiber->error = wrenStringFormat(vm, "Could not find a variable named '@' in module '@'.",
-                                      variableName, OBJ_VAL(module->name));
+  vm->fiber->error = wrenStringFormat(vm, "Could not find a variable named '@' in module '@'.", variableName, OBJ_VAL(module->name));
   return NULL_VAL;
 }
 
@@ -770,9 +754,7 @@ static WrenInterpretResult runInterpreter(WrenVM* vm, register ObjFiber* fiber) 
         : CASE_CODE(LOAD_LOCAL_3)
         : CASE_CODE(LOAD_LOCAL_4)
         : CASE_CODE(LOAD_LOCAL_5)
-        : CASE_CODE(LOAD_LOCAL_6)
-        : CASE_CODE(LOAD_LOCAL_7)
-        : CASE_CODE(LOAD_LOCAL_8) : PUSH(stackStart[instruction - CODE_LOAD_LOCAL_0]);
+        : CASE_CODE(LOAD_LOCAL_6) : CASE_CODE(LOAD_LOCAL_7) : CASE_CODE(LOAD_LOCAL_8) : PUSH(stackStart[instruction - CODE_LOAD_LOCAL_0]);
     DISPATCH();
 
     CASE_CODE(LOAD_LOCAL) : PUSH(stackStart[READ_BYTE()]);
@@ -876,8 +858,7 @@ static WrenInterpretResult runInterpreter(WrenVM* vm, register ObjFiber* fiber) 
 
     completeCall:
       // If the class's method table doesn't include the symbol, bail.
-      if (symbol >= classObj->methods.count ||
-          (method = &classObj->methods.data[symbol])->type == METHOD_NONE) {
+      if (symbol >= classObj->methods.count || (method = &classObj->methods.data[symbol])->type == METHOD_NONE) {
         methodNotFound(vm, classObj, symbol);
         RUNTIME_ERROR();
       }
@@ -1221,8 +1202,7 @@ WrenInterpretResult wrenCall(WrenVM* vm, WrenHandle* method) {
 
   ObjClosure* closure = AS_CLOSURE(method->value);
 
-  ASSERT(vm->fiber->stackTop - vm->fiber->stack >= closure->fn->arity,
-         "Stack must have enough arguments for method.");
+  ASSERT(vm->fiber->stackTop - vm->fiber->stack >= closure->fn->arity, "Stack must have enough arguments for method.");
 
   // Clear the API stack. Now that wrenCall() has control, we no longer need
   // it. We use this being non-null to tell if re-entrant calls to foreign
@@ -1295,8 +1275,7 @@ WrenInterpretResult wrenInterpret(WrenVM* vm, const char* module, const char* so
   return result;
 }
 
-ObjClosure* wrenCompileSource(WrenVM* vm, const char* module, const char* source, bool isExpression,
-                              bool printErrors) {
+ObjClosure* wrenCompileSource(WrenVM* vm, const char* module, const char* source, bool isExpression, bool printErrors) {
   Value nameValue = NULL_VAL;
   if (module != NULL) {
     nameValue = wrenNewString(vm, module);
@@ -1334,8 +1313,7 @@ int wrenDeclareVariable(WrenVM* vm, ObjModule* module, const char* name, size_t 
   return wrenSymbolTableAdd(vm, &module->variableNames, name, length);
 }
 
-int wrenDefineVariable(WrenVM* vm, ObjModule* module, const char* name, size_t length, Value value,
-                       int* line) {
+int wrenDefineVariable(WrenVM* vm, ObjModule* module, const char* name, size_t length, Value value, int* line) {
   if (module->variables.count == MAX_MODULE_VARS) return -2;
 
   if (IS_OBJ(value)) wrenPushRoot(vm, AS_OBJ(value));
@@ -1470,18 +1448,14 @@ static void setSlot(WrenVM* vm, int slot, Value value) {
   vm->apiStack[slot] = value;
 }
 
-void wrenSetSlotBool(WrenVM* vm, int slot, bool value) {
-  setSlot(vm, slot, BOOL_VAL(value));
-}
+void wrenSetSlotBool(WrenVM* vm, int slot, bool value) { setSlot(vm, slot, BOOL_VAL(value)); }
 
 void wrenSetSlotBytes(WrenVM* vm, int slot, const char* bytes, size_t length) {
   ASSERT(bytes != NULL, "Byte array cannot be NULL.");
   setSlot(vm, slot, wrenNewStringLength(vm, bytes, length));
 }
 
-void wrenSetSlotDouble(WrenVM* vm, int slot, double value) {
-  setSlot(vm, slot, NUM_VAL(value));
-}
+void wrenSetSlotDouble(WrenVM* vm, int slot, double value) { setSlot(vm, slot, NUM_VAL(value)); }
 
 void* wrenSetSlotNewForeign(WrenVM* vm, int slot, int classSlot, size_t size) {
   validateApiSlot(vm, slot);
@@ -1497,17 +1471,11 @@ void* wrenSetSlotNewForeign(WrenVM* vm, int slot, int classSlot, size_t size) {
   return (void*)foreign->data;
 }
 
-void wrenSetSlotNewList(WrenVM* vm, int slot) {
-  setSlot(vm, slot, OBJ_VAL(wrenNewList(vm, 0)));
-}
+void wrenSetSlotNewList(WrenVM* vm, int slot) { setSlot(vm, slot, OBJ_VAL(wrenNewList(vm, 0))); }
 
-void wrenSetSlotNewMap(WrenVM* vm, int slot) {
-  setSlot(vm, slot, OBJ_VAL(wrenNewMap(vm)));
-}
+void wrenSetSlotNewMap(WrenVM* vm, int slot) { setSlot(vm, slot, OBJ_VAL(wrenNewMap(vm))); }
 
-void wrenSetSlotNull(WrenVM* vm, int slot) {
-  setSlot(vm, slot, NULL_VAL);
-}
+void wrenSetSlotNull(WrenVM* vm, int slot) { setSlot(vm, slot, NULL_VAL); }
 
 void wrenSetSlotString(WrenVM* vm, int slot, const char* text) {
   ASSERT(text != NULL, "String cannot be NULL.");
@@ -1645,10 +1613,6 @@ void wrenAbortFiber(WrenVM* vm, int slot) {
   vm->fiber->error = vm->apiStack[slot];
 }
 
-void* wrenGetUserData(WrenVM* vm) {
-  return vm->config.userData;
-}
+void* wrenGetUserData(WrenVM* vm) { return vm->config.userData; }
 
-void wrenSetUserData(WrenVM* vm, void* userData) {
-  vm->config.userData = userData;
-}
+void wrenSetUserData(WrenVM* vm, void* userData) { vm->config.userData = userData; }

@@ -15,7 +15,7 @@
 #include <ui/surface.h>
 #include <ui/layout.h>
 #include <ui/edges.h>
-#include <std.h>
+#include <chariot/ilist.h>
 
 // #include <ui/internal/flex.h>
 
@@ -158,9 +158,7 @@ namespace ui {
     inline auto relative(void) { return gfx::rect(left(), top(), width(), height()); }
 
     /* Is a point within the relative size */
-    inline bool within_self(const gfx::point &p) {
-      return gfx::rect(width(), height()).contains(p.x(), p.y());
-    }
+    inline bool within_self(const gfx::point &p) { return gfx::rect(width(), height()).contains(p.x(), p.y()); }
 
 
 
@@ -418,8 +416,7 @@ namespace ui {
   }
 
   template <typename Type, typename... Args>
-  inline ck::ref<Type> make(
-      ui::style style, std::initializer_list<ck::ref<ui::view>> children, Args &&...args) {
+  inline ck::ref<Type> make(ui::style style, std::initializer_list<ck::ref<ui::view>> children, Args &&...args) {
     auto v = ck::ref<Type>(new Type(::forward<Args>(args)...));
     return styled(ui::with_children(v, children), style);
   }

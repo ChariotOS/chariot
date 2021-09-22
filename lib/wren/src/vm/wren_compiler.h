@@ -1,7 +1,7 @@
 #ifndef wren_compiler_h
 #define wren_compiler_h
 
-#include "../include/wren.h"
+#include <wren/wren.h>
 #include "wren_value.h"
 
 typedef struct sCompiler Compiler;
@@ -32,8 +32,7 @@ typedef struct sCompiler Compiler;
 //
 // If [printErrors] is `true`, any compile errors are output to stderr.
 // Otherwise, they are silently discarded.
-ObjFn* wrenCompile(WrenVM* vm, ObjModule* module, const char* source, bool isExpression,
-                   bool printErrors);
+ObjFn* wrenCompile(WrenVM* vm, ObjModule* module, const char* source, bool isExpression, bool printErrors);
 
 // When a class is defined, its superclass is not known until runtime since
 // class definitions are just imperative statements. Most of the bytecode for a

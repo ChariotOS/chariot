@@ -1,13 +1,11 @@
 #include <stdio.h>
-#include <wren.h>
+#include <wren/wren.hpp>
+#if 0
 
-static void writefn(WrenVM*, const char* text) {
-  fputs(text, stdout);
-}
+static void writefn(WrenVM*, const char* text) { fputs(text, stdout); }
 
 
-static void reportError(WrenVM* vm, WrenErrorType type, const char* module, int line,
-                        const char* message) {
+static void reportError(WrenVM* vm, WrenErrorType type, const char* module, int line, const char* message) {
   switch (type) {
     case WREN_ERROR_COMPILE:
       fprintf(stderr, "[%s line %d] %s\n", module, line, message);
@@ -47,9 +45,7 @@ wren::vm::vm(void) {
   m_vm = wrenNewVM(&config);
 }
 
-wren::vm::~vm(void) {
-  wrenFreeVM(m_vm);
-}
+wren::vm::~vm(void) { wrenFreeVM(m_vm); }
 
 
 static char* read_file(const char* path) {
@@ -96,3 +92,4 @@ WrenInterpretResult wren::vm::run_expr(const char* code) {
   auto res = wrenInterpret(m_vm, "main", code);
   return res;
 }
+#endif

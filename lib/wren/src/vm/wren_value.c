@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../include/wren.h"
+#include <wren/wren.h>
 #include "wren_value.h"
 #include "wren_vm.h"
 
@@ -174,8 +174,7 @@ void wrenEnsureStack(WrenVM* vm, ObjFiber* fiber, int needed) {
   int capacity = wrenPowerOf2Ceil(needed);
 
   Value* oldStack = fiber->stack;
-  fiber->stack = (Value*)wrenReallocate(vm, fiber->stack, sizeof(Value) * fiber->stackCapacity,
-                                        sizeof(Value) * capacity);
+  fiber->stack = (Value*)wrenReallocate(vm, fiber->stack, sizeof(Value) * fiber->stackCapacity, sizeof(Value) * capacity);
   fiber->stackCapacity = capacity;
 
   // If the reallocation moves the stack, then we need to recalculate every
@@ -295,9 +294,8 @@ Value wrenListRemoveAt(WrenVM* vm, ObjList* list, uint32_t index) {
 
   // If we have too much excess capacity, shrink it.
   if (list->elements.capacity / GROW_FACTOR >= list->elements.count) {
-    list->elements.data =
-        (Value*)wrenReallocate(vm, list->elements.data, sizeof(Value) * list->elements.capacity,
-                               sizeof(Value) * (list->elements.capacity / GROW_FACTOR));
+    list->elements.data = (Value*)wrenReallocate(
+        vm, list->elements.data, sizeof(Value) * list->elements.capacity, sizeof(Value) * (list->elements.capacity / GROW_FACTOR));
     list->elements.capacity /= GROW_FACTOR;
   }
 
@@ -546,8 +544,7 @@ Value wrenMapRemoveKey(WrenVM* vm, ObjMap* map, Value key) {
   if (map->count == 0) {
     // Removed the last item, so free the array.
     wrenMapClear(vm, map);
-  } else if (map->capacity > MIN_CAPACITY &&
-             map->count < map->capacity / GROW_FACTOR * MAP_LOAD_PERCENT / 100) {
+  } else if (map->capacity > MIN_CAPACITY && map->count < map->capacity / GROW_FACTOR * MAP_LOAD_PERCENT / 100) {
     uint32_t capacity = map->capacity / GROW_FACTOR;
     if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
 
@@ -617,9 +614,7 @@ static void hashString(ObjString* string) {
   string->hash = hash;
 }
 
-Value wrenNewString(WrenVM* vm, const char* text) {
-  return wrenNewStringLength(vm, text, strlen(text));
-}
+Value wrenNewString(WrenVM* vm, const char* text) { return wrenNewStringLength(vm, text, strlen(text)); }
 
 Value wrenNewStringLength(WrenVM* vm, const char* text, size_t length) {
   // Allow NULL if the string is empty since byte buffers don't allocate any
@@ -1152,9 +1147,7 @@ void wrenFreeObj(WrenVM* vm, Obj* obj) {
   DEALLOCATE(vm, obj);
 }
 
-ObjClass* wrenGetClass(WrenVM* vm, Value value) {
-  return wrenGetClassInline(vm, value);
-}
+ObjClass* wrenGetClass(WrenVM* vm, Value value) { return wrenGetClassInline(vm, value); }
 
 bool wrenValuesEqual(Value a, Value b) {
   if (wrenValuesSame(a, b)) return true;
@@ -1173,15 +1166,13 @@ bool wrenValuesEqual(Value a, Value b) {
     case OBJ_RANGE: {
       ObjRange* aRange = (ObjRange*)aObj;
       ObjRange* bRange = (ObjRange*)bObj;
-      return aRange->from == bRange->from && aRange->to == bRange->to &&
-             aRange->isInclusive == bRange->isInclusive;
+      return aRange->from == bRange->from && aRange->to == bRange->to && aRange->isInclusive == bRange->isInclusive;
     }
 
     case OBJ_STRING: {
       ObjString* aString = (ObjString*)aObj;
       ObjString* bString = (ObjString*)bObj;
-      return aString->hash == bString->hash &&
-             wrenStringEqualsCString(aString, bString->value, bString->length);
+      return aString->hash == bString->hash && wrenStringEqualsCString(aString, bString->value, bString->length);
     }
 
     default:

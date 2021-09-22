@@ -5,7 +5,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "wren.h"
+#include <wren/wren.h>
 #include "wren_vm.h"
 
 #include "wren_opt_random.wren.inc"
@@ -91,12 +91,9 @@ static void randomInt0(WrenVM* vm) {
   wrenSetSlotDouble(vm, 0, (double)advanceState(well));
 }
 
-const char* wrenRandomSource() {
-  return randomModuleSource;
-}
+const char* wrenRandomSource() { return randomModuleSource; }
 
-WrenForeignClassMethods wrenRandomBindForeignClass(WrenVM* vm, const char* module,
-                                                   const char* className) {
+WrenForeignClassMethods wrenRandomBindForeignClass(WrenVM* vm, const char* module, const char* className) {
   ASSERT(strcmp(className, "Random") == 0, "Should be in Random class.");
   WrenForeignClassMethods methods;
   methods.allocate = randomAllocate;
@@ -104,8 +101,7 @@ WrenForeignClassMethods wrenRandomBindForeignClass(WrenVM* vm, const char* modul
   return methods;
 }
 
-WrenForeignMethodFn wrenRandomBindForeignMethod(WrenVM* vm, const char* className, bool isStatic,
-                                                const char* signature) {
+WrenForeignMethodFn wrenRandomBindForeignMethod(WrenVM* vm, const char* className, bool isStatic, const char* signature) {
   ASSERT(strcmp(className, "Random") == 0, "Should be in Random class.");
 
   if (strcmp(signature, "<allocate>") == 0) return randomAllocate;

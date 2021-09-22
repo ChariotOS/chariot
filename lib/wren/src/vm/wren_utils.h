@@ -1,7 +1,7 @@
 #ifndef wren_utils_h
 #define wren_utils_h
 
-#include "../include/wren.h"
+#include <wren/wren.h>
 #include "wren_common.h"
 
 // Reusable data structures and other utility functions.
@@ -25,34 +25,31 @@ typedef struct sObjString ObjString;
   void wren##name##BufferWrite(WrenVM* vm, name##Buffer* buffer, type data)
 
 // This should be used once for each type instantiation, somewhere in a .c file.
-#define DEFINE_BUFFER(name, type)                                                             \
-  void wren##name##BufferInit(name##Buffer* buffer) {                                         \
-    buffer->data = NULL;                                                                      \
-    buffer->capacity = 0;                                                                     \
-    buffer->count = 0;                                                                        \
-  }                                                                                           \
-                                                                                              \
-  void wren##name##BufferClear(WrenVM* vm, name##Buffer* buffer) {                            \
-    wrenReallocate(vm, buffer->data, 0, 0);                                                   \
-    wren##name##BufferInit(buffer);                                                           \
-  }                                                                                           \
-                                                                                              \
-  void wren##name##BufferFill(WrenVM* vm, name##Buffer* buffer, type data, int count) {       \
-    if (buffer->capacity < buffer->count + count) {                                           \
-      int capacity = wrenPowerOf2Ceil(buffer->count + count);                                 \
-      buffer->data = (type*)wrenReallocate(vm, buffer->data, buffer->capacity * sizeof(type), \
-                                           capacity * sizeof(type));                          \
-      buffer->capacity = capacity;                                                            \
-    }                                                                                         \
-                                                                                              \
-    for (int i = 0; i < count; i++) {                                                         \
-      buffer->data[buffer->count++] = data;                                                   \
-    }                                                                                         \
-  }                                                                                           \
-                                                                                              \
-  void wren##name##BufferWrite(WrenVM* vm, name##Buffer* buffer, type data) {                 \
-    wren##name##BufferFill(vm, buffer, data, 1);                                              \
-  }
+#define DEFINE_BUFFER(name, type)                                                                                       \
+  void wren##name##BufferInit(name##Buffer* buffer) {                                                                   \
+    buffer->data = NULL;                                                                                                \
+    buffer->capacity = 0;                                                                                               \
+    buffer->count = 0;                                                                                                  \
+  }                                                                                                                     \
+                                                                                                                        \
+  void wren##name##BufferClear(WrenVM* vm, name##Buffer* buffer) {                                                      \
+    wrenReallocate(vm, buffer->data, 0, 0);                                                                             \
+    wren##name##BufferInit(buffer);                                                                                     \
+  }                                                                                                                     \
+                                                                                                                        \
+  void wren##name##BufferFill(WrenVM* vm, name##Buffer* buffer, type data, int count) {                                 \
+    if (buffer->capacity < buffer->count + count) {                                                                     \
+      int capacity = wrenPowerOf2Ceil(buffer->count + count);                                                           \
+      buffer->data = (type*)wrenReallocate(vm, buffer->data, buffer->capacity * sizeof(type), capacity * sizeof(type)); \
+      buffer->capacity = capacity;                                                                                      \
+    }                                                                                                                   \
+                                                                                                                        \
+    for (int i = 0; i < count; i++) {                                                                                   \
+      buffer->data[buffer->count++] = data;                                                                             \
+    }                                                                                                                   \
+  }                                                                                                                     \
+                                                                                                                        \
+  void wren##name##BufferWrite(WrenVM* vm, name##Buffer* buffer, type data) { wren##name##BufferFill(vm, buffer, data, 1); }
 
 DECLARE_BUFFER(Byte, uint8_t);
 DECLARE_BUFFER(Int, int);

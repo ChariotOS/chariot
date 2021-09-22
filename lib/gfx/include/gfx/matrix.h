@@ -2,7 +2,7 @@
 #pragma once
 
 #include <stdlib.h>
-#include <std.h>
+#include <chariot/ilist.h>
 #include <assert.h>
 #include <gfx/vector3.h>
 #include <gfx/vector4.h>
@@ -28,9 +28,7 @@ namespace gfx {
     template <typename... Args>
     constexpr matrix(Args... args) : matrix({(T)args...}) {}
 
-    matrix(const matrix& other) {
-      __builtin_memcpy(m_elements, other.elements(), sizeof(T) * N * N);
-    }
+    matrix(const matrix& other) { __builtin_memcpy(m_elements, other.elements(), sizeof(T) * N * N); }
 
     constexpr auto elements() const { return m_elements; }
     constexpr auto elements() { return m_elements; }
@@ -42,17 +40,13 @@ namespace gfx {
           auto& element = product.m_elements[i][j];
 
           if constexpr (N == 4) {
-            element = m_elements[i][0] * other.m_elements[0][j] +
-                      m_elements[i][1] * other.m_elements[1][j] +
-                      m_elements[i][2] * other.m_elements[2][j] +
-                      m_elements[i][3] * other.m_elements[3][j];
+            element = m_elements[i][0] * other.m_elements[0][j] + m_elements[i][1] * other.m_elements[1][j] +
+                      m_elements[i][2] * other.m_elements[2][j] + m_elements[i][3] * other.m_elements[3][j];
           } else if constexpr (N == 3) {
-            element = m_elements[i][0] * other.m_elements[0][j] +
-                      m_elements[i][1] * other.m_elements[1][j] +
+            element = m_elements[i][0] * other.m_elements[0][j] + m_elements[i][1] * other.m_elements[1][j] +
                       m_elements[i][2] * other.m_elements[2][j];
           } else if constexpr (N == 2) {
-            element = m_elements[i][0] * other.m_elements[0][j] +
-                      m_elements[i][1] * other.m_elements[1][j];
+            element = m_elements[i][0] * other.m_elements[0][j] + m_elements[i][1] * other.m_elements[1][j];
           } else if constexpr (N == 1) {
             element = m_elements[i][0] * other.m_elements[0][j];
           } else {
@@ -168,21 +162,16 @@ namespace gfx {
   template <typename T>
   constexpr static vector4<T> operator*(const matrix4x4<T>& m, const vector4<T>& v) {
     auto const& elements = m.elements();
-    return vector4<T>(v.x() * elements[0][0] + v.y() * elements[0][1] + v.z() * elements[0][2] +
-                          v.w() * elements[0][3],
-        v.x() * elements[1][0] + v.y() * elements[1][1] + v.z() * elements[1][2] +
-            v.w() * elements[1][3],
-        v.x() * elements[2][0] + v.y() * elements[2][1] + v.z() * elements[2][2] +
-            v.w() * elements[2][3],
-        v.x() * elements[3][0] + v.y() * elements[3][1] + v.z() * elements[3][2] +
-            v.w() * elements[3][3]);
+    return vector4<T>(v.x() * elements[0][0] + v.y() * elements[0][1] + v.z() * elements[0][2] + v.w() * elements[0][3],
+        v.x() * elements[1][0] + v.y() * elements[1][1] + v.z() * elements[1][2] + v.w() * elements[1][3],
+        v.x() * elements[2][0] + v.y() * elements[2][1] + v.z() * elements[2][2] + v.w() * elements[2][3],
+        v.x() * elements[3][0] + v.y() * elements[3][1] + v.z() * elements[3][2] + v.w() * elements[3][3]);
   }
 
   template <typename T>
   constexpr static vector3<T> transform_point(const matrix4x4<T>& m, const vector3<T>& p) {
     auto const& elements = m.elements();
-    return vector3<T>(
-        p.x() * elements[0][0] + p.y() * elements[0][1] + p.z() * elements[0][2] + elements[0][3],
+    return vector3<T>(p.x() * elements[0][0] + p.y() * elements[0][1] + p.z() * elements[0][2] + elements[0][3],
         p.x() * elements[1][0] + p.y() * elements[1][1] + p.z() * elements[1][2] + elements[1][3],
         p.x() * elements[2][0] + p.y() * elements[2][1] + p.z() * elements[2][2] + elements[2][3]);
   }
@@ -214,9 +203,8 @@ namespace gfx {
     T y = axis.y();
     T z = axis.z();
 
-    return matrix4x4<T>(t * x * x + c, t * x * y - z * s, t * x * z + y * s, 0, t * x * y + z * s,
-        t * y * y + c, t * y * z - x * s, 0, t * x * z - y * s, t * y * z + x * s, t * z * z + c, 0,
-        0, 0, 0, 1);
+    return matrix4x4<T>(t * x * x + c, t * x * y - z * s, t * x * z + y * s, 0, t * x * y + z * s, t * y * y + c, t * y * z - x * s, 0,
+        t * x * z - y * s, t * y * z + x * s, t * z * z + c, 0, 0, 0, 0, 1);
   }
 
   typedef matrix4x4<float> float4x4;
