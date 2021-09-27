@@ -40,22 +40,11 @@ pushd src
 		popd
 	fi
 
-	# if [ ! -d $GC_NAME ]; then
-	# 	wget "https://www.hboehm.info/gc/gc_source/$GC_NAME.tar.gz"
-	# 	tar -xzvf $GC_NAME.tar.gz
-	# 	rm $GC_NAME.tar.gz
-	# 	pushd $GC_NAME
-	# 		# patch -p1 < ../../patches/freetype.patch
-	# 	popd
-	# fi
-
-
-
-	# if [ ! -d chariot-sdl ]; then
-	# 	git clone git@github.com:nickwanninger/chariot-sdl.git --depth 1
-	# fi
 popd
 
+
+
+INCLUDES="-I$ROOT/libc/include -I$ROOT/kernel/include -I$ROOT/include "
 
 for ARCH in "$@"
 do
@@ -76,46 +65,46 @@ do
 		# 	make install
 		# popd
 
-		if [ ! -d cairo ]; then
-			git clone git@github.com:freedesktop/cairo.git --depth 1 cairo
-			pushd cairo
-			popd
-		fi
+		# if [ ! -d cairo ]; then
+		# 	git clone git@github.com:freedesktop/cairo.git --depth 1 cairo
+		# 	pushd cairo
+		# 	popd
+		# fi
 
-		pushd cairo
-			./autogen.sh
+		# pushd cairo
+		# 	./autogen.sh
 
-			./configure                                                 \
-					--host=$ARCH-elf                                        \
-					--prefix=$ROOT/ports/out/$ARCH/                         \
-					--disable-shared                                        \
-					--enable-ps=no --enable-pdf=no --enable-win32-font=no   \
-					--enable-win32=no --enable-quartz-font=no               \
-					--enable-quartz=no --enable-xlib-xrender=no --enable-xlib=no \
-					--enable-ft-font=no                                                \
-					"CFLAGS=-I$ROOT/include -fno-stack-protector -nostdlib -s " \
-					"CXXFLAGS=-I$ROOT/include -fno-stack-protector -DUSERLAND -nostdlib -s "
-			
+		# 	./configure                                                 \
+		# 			--host=$ARCH-elf                                        \
+		# 			--prefix=$ROOT/ports/out/$ARCH/                         \
+		# 			--disable-shared                                        \
+		# 			--enable-ps=no --enable-pdf=no --enable-win32-font=no   \
+		# 			--enable-win32=no --enable-quartz-font=no               \
+		# 			--enable-quartz=no --enable-xlib-xrender=no --enable-xlib=no \
+		# 			--enable-ft-font=no                                                \
+		# 			"$CKARGS"
+		# 	
 
-			make -j
-			mkdir -p $ROOT/ports/out/$ARCH/lib/
-			cp src/.libs/libcairo.a $ROOT/ports/out/$ARCH/lib/
-		popd
+		# 	make -j
+		# 	mkdir -p $ROOT/ports/out/$ARCH/lib/
+		# 	cp src/.libs/libcairo.a $ROOT/ports/out/$ARCH/lib/
+		# popd
 
 		mkdir -p freetype
 		pushd freetype
 			$ARCH-elf-gcc -v
 
-			$ROOT/ports/src/$FREETYPE_NAME/configure                    \
-					--host=$ARCH-elf                                        \
-					--prefix=$ROOT/ports/out/$ARCH/                         \
-					--with-harfbuzz=no                                      \
-					--with-bzip2=no                                         \
-					--with-zlib=no                                          \
-					--with-png=no                                           \
-					--disable-shared                                        \
-					"CFLAGS=-I$ROOT/include -fno-stack-protector -DUSERLAND -nostdlib -s " \
-					"CXXFLAGS=-I$ROOT/include -fno-stack-protector -DUSERLAND -nostdlib -s "
+			$ROOT/ports/src/$FREETYPE_NAME/configure                               \
+					--host=$ARCH-elf                                                   \
+					--prefix=$ROOT/ports/out/$ARCH/                                    \
+					--with-harfbuzz=no                                                 \
+					--with-bzip2=no                                                    \
+					--with-zlib=no                                                     \
+					--with-png=no                                                      \
+					--disable-shared                                                   \
+					"CFLAGS=$INCLUDES -fno-stack-protector -DUSERLAND -nostdlib -s "   \
+					"CXXFLAGS=$INCLUDES -fno-stack-protector -DUSERLAND -nostdlib -s "
+
 
 			
 			make -j

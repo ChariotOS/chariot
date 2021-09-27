@@ -23,7 +23,11 @@ void arch_sigreturn(void *ucontext) {
   auto *uctx = (struct ucontext *)ucontext;
 
   memcpy(regs, ucontext, 32 * sizeof(rv::xsize_t));
+	/* Make sure writes are done. */
+	__sync_synchronize();
   __rv_load_fpu(uctx->fpu);
+	/* Make sure writes are done. */
+	__sync_synchronize();
   /* jump to returning to userspace :^) */
   rv_enter_userspace(regs);
 }

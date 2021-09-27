@@ -55,22 +55,18 @@ struct cpio_hdr {
 
 
 static uint16_t bswap_16(uint16_t __x) { return __x << 8 | __x >> 8; }
-static uint32_t bswap_32(uint32_t __x) {
-  return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24;
-}
+static uint32_t bswap_32(uint32_t __x) { return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24; }
 
 void initrd_dump(void *vbuf, size_t size) { hexdump(vbuf, size, true); }
 
-static unsigned long riscv_high_acc_time_func(void) {
-  return (read_csr(time) * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND;
-}
+static unsigned long riscv_high_acc_time_func(void) { return (read_csr(time) * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND; }
 
 static off_t dtb_ram_start = 0;
 static size_t dtb_ram_size = 0;
 
 extern "C" uint8_t secondary_core_startup_sbi[];
-extern "C" volatile uint64_t secondary_core_stack;
-static volatile bool second_done = false;
+extern "C" uint64_t secondary_core_stack;
+static bool second_done = false;
 
 extern "C" void secondary_entry(int hartid) {
   struct rv::hart_state sc;
@@ -119,6 +115,7 @@ int start_secondary(void) {
     }
 
     while (second_done != true) {
+      __sync_synchronize();
     }
     printk(KERN_INFO "HART #%d started\n", i);
   }
@@ -268,8 +265,7 @@ void main(int hartid, void *fdt) {
   cpus[rv::hartid()].timekeeper = true;
 
   assert(sched::init());
-  KINFO("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(),
-      phys::bytes_free());
+  KINFO("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
 
 
 

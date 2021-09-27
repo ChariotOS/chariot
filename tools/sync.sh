@@ -83,11 +83,11 @@ fi
 echo "Device: ${dev}, losetup: ${USING_LOOPBACK}, ${disk_exists}"
 
 
-if [ "$CONFIG_X86" != "" ]; then
-	if [ "$fsdev" == "" ]; then
-		fsdev="${dev}p1"
-	fi
+# if [ "$CONFIG_X86" != "" ]; then
+if [ "$fsdev" == "" ]; then
+	fsdev="${dev}p1"
 fi
+# fi
 
 
 cleanup() {
@@ -117,7 +117,7 @@ if [ $disk_exists -eq '0' ]; then
 	# sudo mkfs.ext2 -b 4096 "${fsdev}" || die "couldn't create filesystem"
 	printf "Done.\n"
 
-	printf "Running mke2fs..."
+	printf "Running mke2fs on ${fsdev}..."
 	sudo mke2fs -L "Chariot Root" -v -b 4096 -q -I 128 "${fsdev}" || die "couldn't create filesystem"
 	printf "Done.\n"
 

@@ -87,3 +87,14 @@ ENTRY (longjmp)
 
 END (longjmp)
 
+
+
+
+# a0 = sp
+# a1 = func
+# a2 = arg
+ENTRY(_call_with_new_stack)
+	move sp, a0
+	move a0, a2
+	jalr a1
+END(_call_with_new_stack)

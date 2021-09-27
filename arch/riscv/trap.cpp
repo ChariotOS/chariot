@@ -180,7 +180,8 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
 		pprintk("SEGFAULT!\n");
 		dump_tf(tf);
     /* send to the current thread and return (handle at the bottom of kernel_vec) */
-    curthd->send_signal(SIGSEGV);
+		curproc->terminate(SIGSEGV);
+    // curthd->send_signal(SIGSEGV);
     return;
   }
 
