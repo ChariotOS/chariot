@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <sleep.h>
 #include <time.h>
+#include <syscall.h>
 #include "printk.h"
 
 
@@ -60,6 +61,7 @@ int do_usleep(uint64_t us) {
 }
 
 
+int sys::usleep(unsigned long n) { return do_usleep(n); }
 
 bool check_wakeups_r(void) {
   auto now = time::now_us();

@@ -238,7 +238,7 @@ int dtb::parse(dtb::fdt_header *fdt) {
     }
   }
 
-  // dump_dtb(node, 0);
+  dump_dtb(node, 0);
   return next_device;
 }
 

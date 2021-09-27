@@ -659,12 +659,11 @@ void sched::before_iret(bool userspace) {
 
   if (time::stabilized()) curthd->last_start_utime_us = time::now_us();
 
-  if (curthd->sched.has_run >= curthd->sched.timeslice || cpu::current().next_thread != NULL
+	bool out_of_time = curthd->sched.has_run >= curthd->sched.timeslice;
+
+  if (out_of_time || cpu::current().next_thread != NULL
       /* || c.woke_someone_up */) {
     c.woke_someone_up = false;
     sched::yield();
   }
 }
-
-
-int sys::usleep(unsigned long n) { return do_usleep(n); }
