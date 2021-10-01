@@ -138,6 +138,8 @@ tools/sysroot.sh
 
 
 
+
+
 echo 'Copying filesystem data into the mounted image'
 sudo rsync -a $BUILD/root/. $mnt/
 sudo mkdir -p $mnt/dev
@@ -156,3 +158,7 @@ if [ -n "$CONFIG_X86" ]; then
 	fi
 fi
 
+
+
+USED=$(du -s -BM ${mnt} | awk '{ print $1 }')
+echo "Root filesystem usage: $USED/${CONFIG_DISK_SIZE_MB}M"
