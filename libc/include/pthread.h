@@ -23,6 +23,7 @@ extern "C" {
 #define __NEED_pthread_once_t
 #include <bits/alltypes.h>
 #include <time.h>
+// #include <stdint.h>
 // #include <sched.h>
 
 
@@ -94,7 +95,7 @@ int pthread_join(pthread_t, void **);
 
 
 
-typedef int volatile pthread_mutex_t;
+typedef int pthread_mutex_t;
 typedef int pthread_mutexattr_t;
 
 int pthread_mutex_lock(pthread_mutex_t *mutex);

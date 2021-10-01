@@ -3,11 +3,13 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <sys/sysbind.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
+#include <chariot/futex.h>
 
-#define PTHREAD_STACK_SIZE 4096
+#define PTHREAD_STACK_SIZE (1 * 1024L * 1024L)
 
 /**
  * posix thread bindings to the pctl create_thread and related functions
@@ -74,7 +76,7 @@ int pthread_create(pthread_t *thd, const pthread_attr_t *attr, void *(*fn)(void 
   struct __pthread *data = malloc(sizeof(*data));
 
   data->stack_size = PTHREAD_STACK_SIZE;
-  data->stack = malloc(data->stack_size);
+  data->stack = mmap(NULL, PTHREAD_STACK_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
   data->arg = arg;
   data->fn = fn;
 
@@ -114,7 +116,7 @@ int pthread_join(pthread_t t, void **retval) {
   pthread_mutex_lock(&t->runlock);
 
   if (retval != NULL) *retval = t->res;
-  free(t->stack);
+  munmap(t->stack, t->stack_size);
   free(t);
   return result;
 }
@@ -125,12 +127,71 @@ int pthread_join(pthread_t t, void **retval) {
 //  Mutex
 /////////////////////////////////////////////////////////////////
 
+
+inline static int _futex(int *uaddr, int futex_op, int val, uint32_t timeout, int *uaddr2, int val3) {
+  int r = 0;
+  do {
+    r = errno_wrap(sysbind_futex(uaddr, futex_op, val, 0, uaddr2, val3));
+  } while (errno == EINTR);
+  return r;
+}
+
+
+#ifdef CONFIG_X86
+static inline int cmpxchg(int *ptr, int old, int newval) {
+  // __atomic_compare_exchange_n(ptr, &old, newval, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+
+  int ret;
+  asm volatile(
+      "lock\n"
+      "cmpxchgl %2,%1\n"
+      : "=a"(ret), "+m"(*(int *)ptr)
+      : "r"(newval), "0"(old)
+      : "memory");
+
+  return ret;
+}
+
+static inline int xchg(int *ptr, int x) {
+  asm volatile(
+      "lock\n"
+      "xchgl %0,%1\n"
+      : "=r"(x), "+m"(*(int *)ptr)
+      : "0"(x)
+      : "memory");
+  return x;
+}
+#endif
+
+
+
+
+
 int pthread_mutex_lock(pthread_mutex_t *m) {
-  while (__sync_lock_test_and_set((volatile int *)m, 0x01)) {
-    // asm("pause");
-    sysbind_yield();
+#ifdef CONFIG_X86
+  int c, i;
+
+  for (i = 0; 1; i++) {
+    c = cmpxchg(m, 0, 1);
+    if (!c) return 0;
+    // cpu_relax();
   }
-  return 0;
+
+  if (c == 1) c = xchg(m, 2);
+
+  while (c) {
+    _futex(m, FUTEX_WAIT, 2, 0, NULL, 0);
+    c = xchg(m, 2);
+  }
+
+#else
+  // this is a hack to get other archs working w/o their own inline asm
+  while (ATOMIC_SET(m)) {  // MESI protocol optimization
+    while (__atomic_load_n(m, __ATOMIC_RELAXED) == 1) {
+    }
+  }
+#endif
+	return 0;
 }
 
 
@@ -141,9 +202,29 @@ int pthread_mutex_trylock(pthread_mutex_t *mutex) {
   return 0;
 }
 
-int pthread_mutex_unlock(pthread_mutex_t *mutex) {
-  __sync_lock_release(mutex);
-  return 0;
+int pthread_mutex_unlock(pthread_mutex_t *m) {
+#ifdef CONFIG_X86
+  int i;
+
+  if ((*m) == 2) {
+    (*m) = 0;
+  } else if (xchg(m, 0) == 1) {
+    return 0;
+  }
+
+  for (i = 0; 1; i++) {
+    if ((*m)) {
+      if (cmpxchg(m, 1, 2)) {
+        return 0;
+      }
+    }
+  }
+
+  _futex(m, FUTEX_WAKE, 1, 0, NULL, 0);
+#else
+  // this is a hack to get other archs working w/o their own inline asm
+  ATOMIC_CLEAR(m);
+#endif
 }
 
 
@@ -191,15 +272,11 @@ int pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr) { re
 int pthread_cond_destroy(pthread_cond_t *cond) { return 0; }
 
 
-static int cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime) {
-  return -1;
-}
+static int cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime) { return -1; }
 
 int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex) { return 0; }
 
 
-int pthread_cond_timedwait(pthread_cond_t *c, pthread_mutex_t *m, const struct timespec *ts) {
-  return -1;
-}
+int pthread_cond_timedwait(pthread_cond_t *c, pthread_mutex_t *m, const struct timespec *ts) { return -1; }
 int pthread_cond_broadcast(pthread_cond_t *c) { return -1; }
 int pthread_cond_signal(pthread_cond_t *c) { return -1; }
