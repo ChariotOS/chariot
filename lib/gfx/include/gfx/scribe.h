@@ -92,8 +92,7 @@ namespace gfx {
 
     void draw_generic_bezier(ck::vec<gfx::point> &points, uint32_t color, float stroke = 1);
 
-    void draw_quadratic_bezier(const gfx::point &start, const gfx::point &p1, const gfx::point &end,
-        uint32_t color, float stroke = 1);
+    void draw_quadratic_bezier(const gfx::point &start, const gfx::point &p1, const gfx::point &end, uint32_t color, float stroke = 1);
 
     // blend a pixel with a 0-1 alpha
     void blend_pixel(int x, int y, uint32_t color, float alpha);
@@ -130,10 +129,8 @@ namespace gfx {
       return 0;
     }
 
-    void draw_text(gfx::font &fnt, const gfx::rect &bounds, const ck::string &text, ui::TextAlign,
-        uint32_t color, bool elide = true);
-    void draw_text_line(gfx::font &fnt, const gfx::rect &bounds, const ck::string &text,
-        ui::TextAlign, uint32_t color, bool elide = true);
+    void draw_text(gfx::font &fnt, const gfx::rect &bounds, const ck::string &text, ui::TextAlign, uint32_t color, bool elide = true);
+    void draw_text_line(gfx::font &fnt, const gfx::rect &bounds, const ck::string &text, ui::TextAlign, uint32_t color, bool elide = true);
 
 
     // draw text, wrapping within
@@ -166,25 +163,18 @@ draw_text(thnk, fnt, str, color, flags);
     inline uint32_t height() { return bmp.height(); }
 
     // draw a line between two points
-    inline void draw_line(const gfx::point &p1, const gfx::point &p2, uint32_t color) {
-      draw_line(p1.x(), p1.y(), p2.x(), p2.y(), color);
-    }
+    inline void draw_line(const gfx::point &p1, const gfx::point &p2, uint32_t color) { draw_line(p1.x(), p1.y(), p2.x(), p2.y(), color); }
 
 
     void draw_line(int x0, int y0, int x1, int y1, uint32_t color);
 
 
-    inline void draw_line_antialias(
-        const gfx::point &p1, const gfx::point &p2, uint32_t color, float stroke = 1) {
+    inline void draw_line_antialias(const gfx::point &p1, const gfx::point &p2, uint32_t color, float stroke = 1) {
       draw_line_antialias(p1.x(), p1.y(), p2.x(), p2.y(), color, stroke);
     }
     void draw_line_antialias(int x0, int y0, int x1, int y1, uint32_t color, float stroke = 1);
-    inline void draw_vline(int x0, int y0, int h, uint32_t color) {
-      draw_line(x0, y0, x0, y0 + h, color);
-    }
-    inline void draw_hline(int x0, int y0, int w, uint32_t color) {
-      draw_line(x0, y0, x0 + w, y0, color);
-    }
+    inline void draw_vline(int x0, int y0, int h, uint32_t color) { draw_line(x0, y0, x0, y0 + h, color); }
+    inline void draw_hline(int x0, int y0, int w, uint32_t color) { draw_line(x0, y0, x0 + w, y0, color); }
 
 
     // just draw a bitmap to a position (no scaling)
@@ -195,8 +185,7 @@ draw_text(thnk, fnt, str, color, flags);
     void blit_fast(const gfx::point &at, gfx::bitmap &bmp, const gfx::rect &src);
 
 
-    void blit_scaled(gfx::bitmap &bmp, const gfx::rect &r,
-        gfx::bitmap::SampleMode mode = gfx::bitmap::SampleMode::Nearest);
+    void blit_scaled(gfx::bitmap &bmp, const gfx::rect &r, gfx::bitmap::SampleMode mode = gfx::bitmap::SampleMode::Nearest);
 
 
     // draw a "theme frame" that fits with the chariot design style
@@ -205,11 +194,13 @@ draw_text(thnk, fnt, str, color, flags);
     // draw a rectangle border
     void draw_rect(const gfx::rect &r, uint32_t color);
     void fill_rect(const gfx::rect &r, uint32_t color);
+    void fill_rect_alpha(const gfx::rect &r, uint32_t color, float alpha);
+
 
     void draw_rect_special(const gfx::rect &r, uint32_t top_left, uint32_t bottom_right);
 
-    void draw_rect(const gfx::rect &r, int radius, uint32_t color);
-    void fill_rect(const gfx::rect &r, int radius, uint32_t color);
+    void draw_rect_radius(const gfx::rect &r, int radius, uint32_t color);
+    void fill_rect_radius(const gfx::rect &r, int radius, uint32_t color);
 
     void draw_circle(int x, int y, int r, uint32_t color);
     void draw_circle_helper(int x, int y, int r, int cornername, uint32_t color);
@@ -219,8 +210,7 @@ draw_text(thnk, fnt, str, color, flags);
     void fill_circle_helper(int x, int y, int r, int corner, int delta, uint32_t color);
 
 
-    void draw_triangle(
-        const gfx::point &a, const gfx::point &b, const gfx::point &c, uint32_t color);
+    void draw_triangle(const gfx::point &a, const gfx::point &b, const gfx::point &c, uint32_t color);
   };
 
 

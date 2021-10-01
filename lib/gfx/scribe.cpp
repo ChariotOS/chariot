@@ -60,8 +60,7 @@ void gfx::scribe::clear(uint32_t color) {
   // }
 }
 
-void gfx::scribe::blit_fast(
-    const gfx::point &position, gfx::bitmap &source, const gfx::rect &_src_rect) {
+void gfx::scribe::blit_fast(const gfx::point &position, gfx::bitmap &source, const gfx::rect &_src_rect) {
   return;
   auto src_rect = _src_rect.intersect(source.rect());
   int dx = position.x() + translation().y();
@@ -114,8 +113,7 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source, const gf
   uint32_t *dst = bmp.scanline(clipped_rect.y) + clipped_rect.x;
   const size_t dst_skip = bmp.width();
 
-  const uint32_t *src =
-      source.scanline(src_rect.top() + first_row) + src_rect.left() + first_column;
+  const uint32_t *src = source.scanline(src_rect.top() + first_row) + src_rect.left() + first_column;
   const size_t src_skip = source.width();
 
   for (int row = first_row; row <= last_row; ++row) {
@@ -129,8 +127,7 @@ void gfx::scribe::blit(const gfx::point &position, gfx::bitmap &source, const gf
 
 
 
-void gfx::scribe::blit_alpha(
-    const gfx::point &position, gfx::bitmap &source, const gfx::rect &src_rect) {
+void gfx::scribe::blit_alpha(const gfx::point &position, gfx::bitmap &source, const gfx::rect &src_rect) {
   auto safe_src_rect = src_rect.intersect(source.rect());
 
   gfx::rect dst_rect;
@@ -148,8 +145,7 @@ void gfx::scribe::blit_alpha(
   uint32_t *dst = bmp.scanline(clipped_rect.y) + clipped_rect.x;
   const size_t dst_skip = bmp.width();
 
-  const uint32_t *src =
-      source.scanline(src_rect.top() + first_row) + src_rect.left() + first_column;
+  const uint32_t *src = source.scanline(src_rect.top() + first_row) + src_rect.left() + first_column;
   const size_t src_skip = source.width();
 
   for (int row = first_row; row <= last_row; ++row) {
@@ -162,8 +158,7 @@ void gfx::scribe::blit_alpha(
 }
 
 
-void gfx::scribe::blit_scaled(
-    gfx::bitmap &source, const gfx::rect &r, gfx::bitmap::SampleMode mode) {
+void gfx::scribe::blit_scaled(gfx::bitmap &source, const gfx::rect &r, gfx::bitmap::SampleMode mode) {
   // ck::time::tracker t;
   int ox = translation().x() + r.x;
   int oy = translation().y() + r.y;
@@ -239,8 +234,7 @@ void gfx::scribe::blend_pixel(int x, int y, uint32_t color, float alpha) {
     __y = __tmp;                 \
   })
 
-void gfx::scribe::draw_line_antialias(
-    int x0i, int y0i, int x1i, int y1i, uint32_t color, float wd) {
+void gfx::scribe::draw_line_antialias(int x0i, int y0i, int x1i, int y1i, uint32_t color, float wd) {
   double x0 = x0i;
   double y0 = y0i;
   double x1 = x1i;
@@ -393,8 +387,8 @@ draw_line_antialias(p1, p2, color, stroke);
 
 
 
-void gfx::scribe::draw_quadratic_bezier(const gfx::point &start, const gfx::point &p1,
-    const gfx::point &end, uint32_t color, float stroke) {
+void gfx::scribe::draw_quadratic_bezier(
+    const gfx::point &start, const gfx::point &p1, const gfx::point &end, uint32_t color, float stroke) {
   int lx = start.x();
   int ly = start.y();
 
@@ -502,14 +496,10 @@ void gfx::scribe::draw_rect_special(const gfx::rect &r, uint32_t top_left, uint3
   draw_vline(r.left(), r.top(), r.h, top_left);
 }
 
-void gfx::scribe::draw_rect(const gfx::rect &r, uint32_t color) {
-  return draw_rect_special(r, color, color);
-}
+void gfx::scribe::draw_rect(const gfx::rect &r, uint32_t color) { return draw_rect_special(r, color, color); }
 
 void gfx::scribe::fill_rect(const gfx::rect &d, uint32_t color) {
-  auto rect = gfx::rect(d.x + translation().x(), d.y + translation().y(), d.w, d.h)
-                  .intersect(bmp.rect())
-                  .intersect(state().clip);
+  auto rect = gfx::rect(d.x + translation().x(), d.y + translation().y(), d.w, d.h).intersect(bmp.rect()).intersect(state().clip);
   if (rect.is_empty()) return;
 
 
@@ -525,7 +515,25 @@ void gfx::scribe::fill_rect(const gfx::rect &d, uint32_t color) {
 
 
 
-void gfx::scribe::draw_rect(const gfx::rect &rect, int r, uint32_t color) {
+void gfx::scribe::fill_rect_alpha(const gfx::rect &d, uint32_t color, float alpha) {
+  auto rect = gfx::rect(d.x + translation().x(), d.y + translation().y(), d.w, d.h).intersect(bmp.rect()).intersect(state().clip);
+  if (rect.is_empty()) return;
+
+
+  color = gfx::color::alpha(color, alpha);
+
+  uint32_t *dst = bmp.scanline(rect.top()) + rect.left();
+  const size_t dst_skip = bmp.width();
+
+  for (int i = rect.h - 1; i >= 0; --i) {
+    for (int j = 0; j < rect.w; ++j)
+      dst[j] = gfx::color::blend(color, dst[j] | 0xFF'000000);
+    dst += dst_skip;
+  }
+}
+
+
+void gfx::scribe::fill_rect_radius(const gfx::rect &rect, int r, uint32_t color) {
   int x = rect.left();
   int y = rect.top();
   int h = rect.h;
@@ -546,7 +554,7 @@ void gfx::scribe::draw_rect(const gfx::rect &rect, int r, uint32_t color) {
 }
 
 
-void gfx::scribe::fill_rect(const gfx::rect &rect, int r, uint32_t color) {
+void gfx::scribe::draw_rect_radius(const gfx::rect &rect, int r, uint32_t color) {
   int x = rect.left();
   int y = rect.top();
   int h = rect.h;
@@ -734,8 +742,8 @@ void gfx::scribe::draw_frame(const gfx::rect &frame, uint32_t bg, uint32_t fg) {
   }
 }
 
-void gfx::scribe::draw_text(gfx::font &font, const gfx::rect &rect, const ck::string &text,
-    ui::TextAlign align, uint32_t color, bool elide) {
+void gfx::scribe::draw_text(
+    gfx::font &font, const gfx::rect &rect, const ck::string &text, ui::TextAlign align, uint32_t color, bool elide) {
   auto lines = text.split('\n', true);
 
   static const int line_spacing = 0;
@@ -768,8 +776,7 @@ void gfx::scribe::draw_text(gfx::font &font, const gfx::rect &rect, const ck::st
       bounding_rect.center_within(rect);
       break;
     case ui::TextAlign::BottomRight:
-      bounding_rect.set_location(
-          (rect.right() + 1) - bounding_rect.w, (rect.bottom() + 1) - bounding_rect.h);
+      bounding_rect.set_location((rect.right() + 1) - bounding_rect.w, (rect.bottom() + 1) - bounding_rect.h);
       break;
     case ui::TextAlign::BottomLeft:
       bounding_rect.set_location(rect.x, (rect.bottom() + 1) - bounding_rect.h);
@@ -791,8 +798,7 @@ void gfx::scribe::draw_text(gfx::font &font, const gfx::rect &rect, const ck::st
 
   for (size_t i = 0; i < lines.size(); ++i) {
     auto &line = lines[i];
-    gfx::rect line_rect(bounding_rect.x, bounding_rect.y + static_cast<int>(i) * line_height,
-        bounding_rect.w, line_height);
+    gfx::rect line_rect(bounding_rect.x, bounding_rect.y + static_cast<int>(i) * line_height, bounding_rect.w, line_height);
     line_rect.intersect(rect);
     draw_text_line(font, line_rect, line, align, color, elide);
   }
@@ -807,9 +813,8 @@ void gfx::scribe::stackblur(int radius, const gfx::rect &area) {
 }
 
 void gfx::scribe::noise(float opacity, const gfx::rect &area) {
-  auto rect = gfx::rect(area.x + translation().x(), area.y + translation().y(), area.w, area.h)
-                  .intersect(bmp.rect())
-                  .intersect(state().clip);
+  auto rect =
+      gfx::rect(area.x + translation().x(), area.y + translation().y(), area.w, area.h).intersect(bmp.rect()).intersect(state().clip);
   if (rect.is_empty()) return;
   ck::rand rng(0xDEADBEEF | ((rect.x << 16) & 0xFFFF) | (rect.y & 0xFFFF));
 
@@ -830,9 +835,8 @@ void gfx::scribe::noise(float opacity, const gfx::rect &area) {
 }
 
 void gfx::scribe::saturation(float value, const gfx::rect &area) {
-  auto rect = gfx::rect(area.x + translation().x(), area.y + translation().y(), area.w, area.h)
-                  .intersect(bmp.rect())
-                  .intersect(state().clip);
+  auto rect =
+      gfx::rect(area.x + translation().x(), area.y + translation().y(), area.w, area.h).intersect(bmp.rect()).intersect(state().clip);
   if (rect.is_empty()) return;
   ck::rand rng(0xDEADBEEF | ((rect.x << 16) & 0xFFFF) | (rect.y & 0xFFFF));
 
@@ -860,9 +864,8 @@ void gfx::scribe::saturation(float value, const gfx::rect &area) {
 
 
 void gfx::scribe::sepia(float value, const gfx::rect &area) {
-  auto rect = gfx::rect(area.x + translation().x(), area.y + translation().y(), area.w, area.h)
-                  .intersect(bmp.rect())
-                  .intersect(state().clip);
+  auto rect =
+      gfx::rect(area.x + translation().x(), area.y + translation().y(), area.w, area.h).intersect(bmp.rect()).intersect(state().clip);
   if (rect.is_empty()) return;
   ck::rand rng(0xDEADBEEF | ((rect.x << 16) & 0xFFFF) | (rect.y & 0xFFFF));
 
@@ -888,8 +891,8 @@ void gfx::scribe::sepia(float value, const gfx::rect &area) {
 }
 
 
-void gfx::scribe::draw_text_line(gfx::font &font, const gfx::rect &a_rect, const ck::string &text,
-    ui::TextAlign align, uint32_t color, bool elide) {
+void gfx::scribe::draw_text_line(
+    gfx::font &font, const gfx::rect &a_rect, const ck::string &text, ui::TextAlign align, uint32_t color, bool elide) {
   auto rect = a_rect;
   ck::string final_text = text;
 
@@ -955,8 +958,7 @@ void gfx::scribe::draw_text_line(gfx::font &font, const gfx::rect &a_rect, const
 }
 
 
-void gfx::scribe::draw_triangle(
-    const gfx::point &a, const gfx::point &b, const gfx::point &c, uint32_t rgba) {
+void gfx::scribe::draw_triangle(const gfx::point &a, const gfx::point &b, const gfx::point &c, uint32_t rgba) {
   int ox = state().offset.x();
   int oy = state().offset.y();
 
@@ -1035,8 +1037,7 @@ static void scribe_draw_text_callback(char c, void *arg) {
 }
 
 
-extern "C" int vfctprintf(
-    void (*out)(char character, void *arg), void *arg, const char *format, va_list va);
+extern "C" int vfctprintf(void (*out)(char character, void *arg), void *arg, const char *format, va_list va);
 
 void gfx::printer::printf(const char *fmt, ...) {
   va_list va;

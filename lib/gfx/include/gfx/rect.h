@@ -116,20 +116,16 @@ namespace gfx {
     inline bool is_empty() const { return w <= 0 || w <= 0; }
 
     inline bool intersects(const rect &other) const {
-      return left() <= other.right() && other.left() <= right() && top() <= other.bottom() &&
-             other.top() <= bottom();
+      return left() <= other.right() && other.left() <= right() && top() <= other.bottom() && other.top() <= bottom();
     }
 
 
     // is a rect fully within me?
-    inline bool contains(const gfx::rect &other) {
-      return left() <= other.left() && right() >= other.right() && top() <= other.top() &&
-             bottom() >= other.bottom();
+    inline bool contains(const gfx::rect &other) const {
+      return left() <= other.left() && right() >= other.right() && top() <= other.top() && bottom() >= other.bottom();
     }
 
-    inline bool contains(int x, int y) const {
-      return x >= left() && x <= right() && y >= top() && y <= bottom();
-    }
+    inline bool contains(int x, int y) const { return x >= left() && x <= right() && y >= top() && y <= bottom(); }
 
 
     void center_within(const rect &other) {

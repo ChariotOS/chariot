@@ -65,9 +65,8 @@ static void vga_char_scribe(int col, int row, struct vc_cell *, int flags);
 // manually create
 struct vc_cell static_cells[VC_COLS * VC_ROWS];
 struct vcons vga_console {
-  .state = 0, .cols = VC_COLS, .rows = VC_ROWS, .pos = 0, .x = 0, .y = 0, .saved_x = 0,
-  .saved_y = 0, .scribe = vga_char_scribe, .npar = 0, .ques = 0, .attr = 0x07,
-  .buf = (struct vc_cell *)&static_cells,
+  .state = 0, .cols = VC_COLS, .rows = VC_ROWS, .pos = 0, .x = 0, .y = 0, .saved_x = 0, .saved_y = 0, .scribe = vga_char_scribe, .npar = 0,
+  .ques = 0, .attr = 0x07, .buf = (struct vc_cell *)&static_cells,
 };
 
 static bool cons_enabled = false;
@@ -256,8 +255,7 @@ static ck::ref<mm::vmobject> vga_mmap(fs::file &f, size_t npages, int prot, int 
   }
 
   if (npages > NPAGES(64 * MB)) {
-    printk(KERN_WARN "vga: attempt to mmap too many pages (%d pixels)\n",
-        (npages * 4096) / sizeof(uint32_t));
+    printk(KERN_WARN "vga: attempt to mmap too many pages (%d pixels)\n", (npages * 4096) / sizeof(uint32_t));
     return nullptr;
   }
 
@@ -352,24 +350,23 @@ void vga::early_init(uint64_t mbd) {
   */
 
 
-  mb2::find<struct multiboot_tag_framebuffer_common>(
-      mbd, MULTIBOOT_TAG_TYPE_FRAMEBUFFER, [](auto *i) {
-        vga_fba = (uint32_t *)i->framebuffer_addr;
-        info.active = 0;
+  mb2::find<struct multiboot_tag_framebuffer_common>(mbd, MULTIBOOT_TAG_TYPE_FRAMEBUFFER, [](auto *i) {
+    vga_fba = (uint32_t *)i->framebuffer_addr;
+    info.active = 0;
 #ifdef CONFIG_FRAMEBUFFER_AUTODETECT
 
-        info.width = i->framebuffer_width;
-        info.height = i->framebuffer_height;
+    info.width = i->framebuffer_width;
+    info.height = i->framebuffer_height;
 #else
         info.height = CONFIG_FRAMEBUFFER_HEIGHT;
         info.width = CONFIG_FRAMEBUFFER_WIDTH;
 #endif
 
-        info.active = false;
+    info.active = false;
 
-        KINFO("width: %d, height: %d, addr: %p\n", info.width, info.height, i->framebuffer_addr);
-        vga::configure(info);
-      });
+    KINFO("width: %d, height: %d, addr: %p\n", info.width, info.height, i->framebuffer_addr);
+    vga::configure(info);
+  });
 
 
   if (vga_fba == NULL) vga_fba = (u32 *)get_framebuffer_address();
@@ -390,12 +387,11 @@ class vga_vdev : public dev::video_device {
 
 void vga_mod_init(void) {
   if (vga_fba != NULL) {
+    printk(KERN_INFO "Standard VGA Framebuffer found @ %p\n");
+
     auto *vdev = new vga_vdev;
     info.active = true;
     dev::video_device::register_device(vdev);
-    // printk(KERN_INFO "Standard VGA Framebuffer found!\n");
-    // dev::register_driver(generic_driver_info);
-    // dev::register_name(generic_driver_info, "fb", 0);
   }
 }
 
