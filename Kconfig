@@ -4,6 +4,12 @@ source "arch/Kconfig"
 
 
 menu "Build"
+
+
+	config CLANG
+		bool "Use Clang"
+		default n
+
 	config DEBUG_SYMBOLS
 		bool "Debug Symbols (-g)"
 		default n
@@ -25,6 +31,7 @@ menu "Build"
 
 	config OVERRIDE_TOOLCHAIN
 		bool "Override toolchain prefix"
+		depends on !CLANG
 		default n
 
 	config TOOLCHAIN_PREFIX
@@ -34,6 +41,7 @@ menu "Build"
 
 
 	config GCC_VERSION
+		depends on !CLANG
 		string "GCC Version"
 		default "11.1.0"
 

@@ -65,14 +65,35 @@ if(CONFIG_OVERRIDE_TOOLCHAIN)
 	set(TOOLCHAIN_PREFIX "${CONFIG_TOOLCHAIN_PREFIX}")
 endif()
 
-set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc)
-set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++)
-set(CMAKE_ASM_COMPILER ${TOOLCHAIN_PREFIX}gcc)
+
+if (CONFIG_CLANG)
+	set(CMAKE_C_COMPILER clang)
+	set(CMAKE_CXX_COMPILER clang++)
+	set(CMAKE_ASM_COMPILER clang)
+else()
+	set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc)
+	set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++)
+	set(CMAKE_ASM_COMPILER ${TOOLCHAIN_PREFIX}gcc)
+endif()
+
+
+
+
+
 
 set(CMAKE_LINKER ${TOOLCHAIN_PREFIX}ld)
 set(CMAKE_RANLIB ${TOOLCHAIN_PREFIX}ranlib)
 set(CMAKE_STRIP ${TOOLCHAIN_PREFIX}strip)
 set(CMAKE_AR ${TOOLCHAIN_PREFIX}ar)
+
+
+
+set(COMPILER_SPECIFIC_FLAGS "")
+if (CONFIG_CLANG)
+	set(COMPILER_SPECIFIC_FLAGS "${COMPILER_SPECIFIC_FLAGS} -Wno-initializer-overrides -Wno-c99-designator ")
+else()
+	set(COMPILER_SPECIFIC_FLAGS "${COMPILER_SPECIFIC_FLAGS} -Wno-initializer-override ")
+endif()
 
 
 
@@ -128,7 +149,7 @@ set(LIBRARY_OUTPUT_PATH "${CHARIOT_SYSROOT}/lib" CACHE PATH "Build directory" FO
 
 # warnings, etc.
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -fdiagnostics-color=always ")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -fdiagnostics-color=always ${COMPILER_SPECIFIC_FLAGS} ")
 if(CONFIG_DEBUG_SYMBOLS)
 	# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 endif()
@@ -289,13 +310,9 @@ FOREACH(subdir ${USER_BINS} ${USER_LIBS})
 ENDFOREACH()
 
 add_subdirectory(libc)
-
-
 chariot_external(libcpp ${CMAKE_SOURCE_DIR}/toolchain/build/${CMAKE_SYSTEM_PROCESSOR}/gcc/libcpp/libcpp.a)
 chariot_external(libgcc ${CMAKE_SOURCE_DIR}/toolchain/build/${CMAKE_SYSTEM_PROCESSOR}/gcc/gcc/libgcc.a)
-
 chariot_external(libfreetype ${CMAKE_SOURCE_DIR}/ports/out/${CMAKE_SYSTEM_PROCESSOR}/lib/libfreetype.a)
-# chariot_external(libcairo ${CMAKE_SOURCE_DIR}/ports/out/${CMAKE_SYSTEM_PROCESSOR}/lib/libcairo.a)
 
 
 

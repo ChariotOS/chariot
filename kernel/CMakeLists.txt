@@ -1,18 +1,22 @@
 include(CMakeParseArguments)
 
 
-set(CMAKE_C_FLAGS "-DKERNEL -ffreestanding -Wall -fno-common")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-initializer-override -Wstrict-overflow=5")
+set(CMAKE_C_FLAGS "-DKERNEL -ffreestanding -Wall -fno-common ${COMPILER_SPECIFIC_FLAGS} -Wstrict-overflow=5")
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused -Wno-address-of-packed-member -Wno-strict-overflow")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-pie -Wno-sign-compare")
 if(CONFIG_DEBUG_SYMBOLS)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3")
 endif()
-
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CONFIG_ADDITIONAL_KERNEL_FLAGS}")
-
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} ${ARCH_KERN_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++20 -fno-rtti -Wno-invalid-offsetof -fno-exceptions -Wno-literal-suffix -fpermissive ${ARCH_KERN_CXX_FLAGS}")
+
+if (CONFIG_CLANG)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-PIE ")
+endif()
+
+
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++20 -fno-rtti -Wno-invalid-offsetof -fno-exceptions -fpermissive ${ARCH_KERN_CXX_FLAGS}")
 
 
 # get the kernel sources
