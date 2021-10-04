@@ -458,8 +458,7 @@ static void kbd_handler(int i, reg_t* tf, void*) {
 
   for (;;) {
     u8 status = inb(I8042_STATUS);
-    if (!(((status & I8042_WHICH_BUFFER) == I8042_KEYBOARD_BUFFER) && (status & I8042_BUFFER_FULL)))
-      return;
+    if (!(((status & I8042_WHICH_BUFFER) == I8042_KEYBOARD_BUFFER) && (status & I8042_BUFFER_FULL))) return;
     u8 raw = inb(I8042_BUFFER);
     u8 ch = raw & 0x7f;
     bool pressed = !(raw & 0x80);

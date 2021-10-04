@@ -16,6 +16,7 @@ namespace ck {
     CK_OBJECT(ck::timer);
 
    public:
+    using ref = ck::ref<ck::timer>;
     ~timer();
     static ck::ref<ck::timer> make_interval(int ms, ck::func<void()>);
     static ck::ref<ck::timer> make_timeout(int ms, ck::func<void()>);

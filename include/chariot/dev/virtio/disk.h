@@ -12,7 +12,7 @@ class virtio_mmio_disk : public virtio_mmio_dev, public dev::disk {
   // indexed by first descriptor index of chain.
   struct {
     void *data;
-    char status;
+    uint8_t status;
     wait_queue wq;
   } info[VIO_NUM_DESC];
 
@@ -35,7 +35,5 @@ class virtio_mmio_disk : public virtio_mmio_dev, public dev::disk {
   virtual bool initialize(const struct virtio_config &config);
 
 
-  inline auto &config(void) {
-    return *(virtio::blk_config *)((off_t)this->regs + 0x100);
-  }
+  inline auto &config(void) { return *(virtio::blk_config *)((off_t)this->regs + 0x100); }
 };
