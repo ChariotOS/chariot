@@ -12,7 +12,7 @@ namespace ui {
 
   class application : public ck::object {
     // this is the connection to the windowserver
-    ck::IPCSocket sock;
+    ck::ipcsocket sock;
 
    public:
     application(void);

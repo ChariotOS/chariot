@@ -31,7 +31,7 @@ static void *mshare_acquire(const char *name, size_t size) {
 #endif
 
 
-ck::ipc::impl::socket_connection::socket_connection(ck::ref<ck::IPCSocket> s, const char *ns, bool is_server)
+ck::ipc::impl::socket_connection::socket_connection(ck::ref<ck::ipcsocket> s, const char *ns, bool is_server)
     : m_sock(move(s)), ns(ns), is_server(is_server) {
   assert(m_sock->connected());
 

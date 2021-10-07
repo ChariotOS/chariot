@@ -290,7 +290,7 @@ int main(int argc, char **argv) {
 
   ck::eventloop ev;
 
-  ck::IPCSocket server;
+  ck::ipcsocket server;
 
   system("touch /tmp/initd.sock");
   server.listen("/tmp/initd.sock", [] {

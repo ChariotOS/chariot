@@ -3,7 +3,7 @@
 
 
 
-ck::linereader::linereader(ck::Stream &s) : m_stream(s) {}
+ck::linereader::linereader(ck::stream &s) : m_stream(s) {}
 
 
 ck::option<ck::string> ck::linereader::next(void) {

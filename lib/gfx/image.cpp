@@ -14,7 +14,7 @@
 ck::ref<gfx::bitmap> gfx::load_image(ck::string path) {
   // printf("loading %s...\n", path.get());
   auto start = sysbind_gettime_microsecond();
-  ck::File f;
+  ck::file f;
   if (!f.open(path, "r")) return nullptr;
   int width, height, channels;
 

@@ -54,7 +54,7 @@ error:
 
 template <typename T>
 static ck::ref<T> load_png(ck::string path) {
-  auto stream = ck::File(path, "r+");
+  auto stream = ck::file(path, "r+");
   if (!stream) {
     fprintf(stderr, "gfx::load_png: Failed to open '%s'\n", path.get());
     return nullptr;

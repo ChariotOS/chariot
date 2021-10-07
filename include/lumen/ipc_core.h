@@ -64,7 +64,7 @@ inline bool ck::ipc::decode(ck::ipc::decoder& d, gfx::rect& v) {
 namespace lumen {
   class client_connection_stub : public ck::ipc::impl::socket_connection {
    public:
-    client_connection_stub(ck::ref<ck::IPCSocket> s) : ck::ipc::impl::socket_connection(s, "lumen", false) {}
+    client_connection_stub(ck::ref<ck::ipcsocket> s) : ck::ipc::impl::socket_connection(s, "lumen", false) {}
     virtual ~client_connection_stub(void) {}
 
     // methods to send messages
@@ -132,7 +132,7 @@ namespace lumen {
 namespace lumen {
   class server_connection_stub : public ck::ipc::impl::socket_connection {
    public:
-    server_connection_stub(ck::ref<ck::IPCSocket> s) : ck::ipc::impl::socket_connection(s, "lumen", true) {}
+    server_connection_stub(ck::ref<ck::ipcsocket> s) : ck::ipc::impl::socket_connection(s, "lumen", true) {}
     virtual ~server_connection_stub(void) {}
 
     // methods to send messages

@@ -7,7 +7,7 @@
 namespace ck {
   class linereader {
    public:
-    linereader(ck::Stream &);
+    linereader(ck::stream &);
 
 
     // run with no prompt
@@ -20,7 +20,7 @@ namespace ck {
    private:
     bool m_echo = false;
 
-    ck::Stream &m_stream;
+    ck::stream &m_stream;
     ck::vec<char> m_buf;
     // where in the buffer are we inserting?
     uint32_t m_cursor = 0;

@@ -33,7 +33,7 @@ struct tar_header {
 
 
 int main() {
-  ck::File file;
+  ck::file file;
 
   if (!file.open("/root/hello.tar", "r")) {
     ck::err.fmt("Failed to open file.\n");

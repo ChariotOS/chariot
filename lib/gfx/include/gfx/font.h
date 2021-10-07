@@ -18,8 +18,8 @@ namespace gfx {
 
   class font : public ck::refcounted<font> {
    protected:
-    font(ck::box<ck::File::Mapping> &&);
-    ck::box<ck::File::Mapping> data;
+    font(ck::box<ck::file::Mapping> &&);
+    ck::box<ck::file::Mapping> data;
 
     FT_Face face; /* handle to face object */
 

@@ -58,7 +58,7 @@ namespace test {
 namespace test {
   class client_connection_stub : public ck::ipc::impl::socket_connection {
    public:
-    client_connection_stub(ck::ref<ck::IPCSocket> s) : ck::ipc::impl::socket_connection(s, "test", false) {}
+    client_connection_stub(ck::ref<ck::ipcsocket> s) : ck::ipc::impl::socket_connection(s, "test", false) {}
     virtual ~client_connection_stub(void) {}
 
     // methods to send messages
@@ -142,7 +142,7 @@ namespace test {
 namespace test {
   class server_connection_stub : public ck::ipc::impl::socket_connection {
    public:
-    server_connection_stub(ck::ref<ck::IPCSocket> s) : ck::ipc::impl::socket_connection(s, "test", true) {}
+    server_connection_stub(ck::ref<ck::ipcsocket> s) : ck::ipc::impl::socket_connection(s, "test", true) {}
     virtual ~server_connection_stub(void) {}
 
     // methods to send messages

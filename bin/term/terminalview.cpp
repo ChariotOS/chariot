@@ -72,7 +72,7 @@ terminalview::terminalview(void) {
 
   shell_pid = fork();
   if (shell_pid == 0) {
-    ck::File pts;
+    ck::file pts;
     pts.open(ptsname(ptmx.fileno()), "r+");
     int fd = pts.fileno();
     int res = setpgid(0, 0);

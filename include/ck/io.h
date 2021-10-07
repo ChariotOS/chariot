@@ -123,11 +123,11 @@ namespace ck {
 
 
   // an abstract type which can be read from and written to
-  class Stream : public ck::object, public writer, public reader {
+  class stream : public ck::object, public writer, public reader {
     bool m_eof = false;
 
    public:
-    virtual ~Stream() {}
+    virtual ~stream() {}
     virtual ck::option<size_t> write(const void *buf, size_t) override { return {}; }
     virtual ck::option<size_t> read(void *buf, size_t) override { return {}; }
     virtual ssize_t size(void) { return 0; }
@@ -150,18 +150,18 @@ namespace ck {
     inline void set_eof(bool e) { m_eof = e; }
 
 
-    CK_OBJECT(ck::Stream);
+    CK_OBJECT(ck::stream);
   };
 
 
 
 
   // A file is an "abstract implementation" of
-  class File : public ck::Stream {
+  class file : public ck::stream {
    public:
     class Mapping {
      public:
-      friend class File;
+      friend class file;
 
       template <typename T>
       constexpr T *as(off_t loc = 0) {
@@ -182,13 +182,13 @@ namespace ck {
     };
 
     // construct without opening any file
-    File(void);
+    file(void);
     // construct by opening the file
-    File(ck::string path, const char *mode);
+    file(ck::string path, const char *mode);
     // give the file ownership of a file descriptor
-    File(int fd);
+    file(int fd);
 
-    virtual ~File(void);
+    virtual ~file(void);
 
     ck::option<size_t> write(const void *buf, size_t) override;
     ck::option<size_t> read(void *buf, size_t) override;
@@ -204,20 +204,20 @@ namespace ck {
 
 
     static inline auto unowned(int fd) {
-      auto f = ck::File::create(fd);
+      auto f = ck::file::create(fd);
       f->m_owns = false;
       return f;
     }
 
 
 
-    inline ck::box<ck::File::Mapping> mmap(/* Whole file */) { return mmap(0, size()); }
-    ck::box<ck::File::Mapping> mmap(off_t off, size_t len);
+    inline ck::box<ck::file::Mapping> mmap(/* Whole file */) { return mmap(0, size()); }
+    ck::box<ck::file::Mapping> mmap(off_t off, size_t len);
 
     int stat(struct stat &);
 
 
-    using Stream::read;
+    using stream::read;
 
     inline operator bool(void) const { return m_fd != -1; }
 
@@ -279,13 +279,13 @@ namespace ck {
     void init_notifier(void);
     void update_notifier(void);
 
-    CK_OBJECT(ck::File);
+    CK_OBJECT(ck::file);
   };
 
 
-  extern ck::File in;
-  extern ck::File out;
-  extern ck::File err;
+  extern ck::file in;
+  extern ck::file out;
+  extern ck::file err;
 
 
 
