@@ -4,7 +4,7 @@
 #include <lumen/msg.h>
 #include <unistd.h>
 
-ck::vec<lumen::msg *> lumen::drain_messages(ck::ipcsocket &sock, bool &failed) {
+ck::vec<lumen::msg *> lumen::drain_messages(ck::IPCSocket &sock, bool &failed) {
   failed = false;
   ck::vec<lumen::msg *> msgs;
 

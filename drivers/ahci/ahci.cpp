@@ -90,7 +90,7 @@ static void probe_port(ahci::hba_mem *abar) {
       int dt = check_type(port);
       if (dt == AHCI_DEV_SATA) {
         AHCI_INFO("SATA drive found at port %d\n", i);
-        ahci::init_sata(ck::make_unique<ahci::disk>(abar, port));
+        ahci::init_sata(ck::make_box<ahci::disk>(abar, port));
       } else if (dt == AHCI_DEV_SATAPI) {
         AHCI_INFO("SATAPI drive found at port %d\n", i);
       } else if (dt == AHCI_DEV_SEMB) {
@@ -124,12 +124,12 @@ static void init_device(pci::device *dev) {
 
 ahci::disk::disk(struct hba_mem *abar, struct hba_port *port) : abar(abar), port(port) {}
 
-volatile struct ahci::hba_cmd_hdr *ahci::disk::get_cmd_hdr(void) {
+struct ahci::hba_cmd_hdr *ahci::disk::get_cmd_hdr(void) {
   u64 clb = port->clb | ((u64)port->clbu << 32);
   auto cmd_hdr = (struct ahci::hba_cmd_hdr *)p2v(clb);
   return cmd_hdr;
 }
-volatile struct ahci::hba_cmd *ahci::disk::get_cmd_table(void) {
+struct ahci::hba_cmd *ahci::disk::get_cmd_table(void) {
   auto cmd_hdr = get_cmd_hdr();
   auto cmd_table = (struct ahci::hba_cmd *)p2v(cmd_hdr->ctba | ((u64)cmd_hdr->ctbau << 32));
   return cmd_table;

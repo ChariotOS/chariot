@@ -246,26 +246,21 @@ class virtio_mmio_gpu : public virtio_mmio_dev, public dev::video_device {
     return send_command_raw(&req, sizeof(Rq), (void **)&res, sizeof(Rs));
   }
 
-  int set_scanout(int pmode_id, uint32_t resource_id, uint32_t width, uint32_t height,
-      uint32_t x = 0, uint32_t y = 0);
+  int set_scanout(int pmode_id, uint32_t resource_id, uint32_t width, uint32_t height, uint32_t x = 0, uint32_t y = 0);
 
-  int transfer_to_host_2d(
-      int resource_id, uint32_t width, uint32_t height, uint32_t x = 0, uint32_t y = 0);
-  int flush_resource(
-      int resource_id, uint32_t width, uint32_t height, uint32_t x = 0, uint32_t y = 0);
+  int transfer_to_host_2d(int resource_id, uint32_t width, uint32_t height, uint32_t x = 0, uint32_t y = 0);
+  int flush_resource(int resource_id, uint32_t width, uint32_t height, uint32_t x = 0, uint32_t y = 0);
 
   /* CALLER HOLDS LOCK */
   struct virtio_gpu_resp_edid *get_edid();
 
 
-  ck::unique_ptr<virtio_gpu_resource> allocate_resource(uint32_t width, uint32_t height);
+  ck::box<virtio_gpu_resource> allocate_resource(uint32_t width, uint32_t height);
 
  public:
   virtio_mmio_gpu(volatile uint32_t *regs);
 
-  inline struct virtio_gpu_config *gpu_config(void) {
-    return (virtio_gpu_config *)((off_t)this->regs + 0x100);
-  }
+  inline struct virtio_gpu_config *gpu_config(void) { return (virtio_gpu_config *)((off_t)this->regs + 0x100); }
 
   virtual bool initialize(const struct virtio_config &config);
 

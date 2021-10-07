@@ -221,7 +221,7 @@ namespace ck {
 
       class socket_connection : public ck::refcounted<socket_connection> {
        public:
-        socket_connection(ck::ref<ck::ipcsocket> s, const char* ns, bool is_server);
+        socket_connection(ck::ref<ck::IPCSocket> s, const char* ns, bool is_server);
         virtual ~socket_connection(void) {
           if (!closed()) close();
           // wait on the recv fiber to finish... We really do not want to leak memory
@@ -291,7 +291,7 @@ namespace ck {
         }
 
 
-        ck::ref<ck::ipcsocket> m_sock;
+        ck::ref<ck::IPCSocket> m_sock;
         const char* ns;
         bool is_server;
 
@@ -345,7 +345,7 @@ namespace ck {
         m_server.listen(listen_path, [this] {
           // printf("SERVER GOT A CONNECTION!\n");
 
-          ck::ipcsocket* sock = m_server.accept();
+          ck::IPCSocket* sock = m_server.accept();
 
           this->handle_connection(ck::make_ref<Connection>(sock));
         });
@@ -377,7 +377,7 @@ namespace ck {
       long m_next_id = 0;
       ck::map<long, ck::ref<Connection>> m_connections;
       ck::string m_listen_path;
-      ck::ipcsocket m_server;
+      ck::IPCSocket m_server;
     };
 
 
@@ -385,7 +385,7 @@ namespace ck {
     template <typename Connection>
     ck::ref<Connection> connect(ck::string path) {
       // construct the ipc socket for the client connection to the server
-      ck::ref<ck::ipcsocket> sock = ck::make_ref<ck::ipcsocket>();
+      ck::ref<ck::IPCSocket> sock = ck::make_ref<ck::IPCSocket>();
       int res = sock->connect(path);
       if (!sock->connected()) {
         return nullptr;

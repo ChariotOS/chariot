@@ -230,7 +230,7 @@ struct process final : public ck::refcounted<struct process> {
 
   spinlock futex_lock;
   wait_queue &futex_queue(int *);
-  ck::map<off_t, ck::unique_ptr<wait_queue>> m_futex_queues;
+  ck::map<off_t, ck::box<wait_queue>> m_futex_queues;
 
   /**
    * exec() - execute a command (implementation for startpid())

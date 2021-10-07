@@ -132,9 +132,7 @@ namespace ck {
       return return_value;
     }
     // get the control as a refcount, as if you are calling this method, the future is still alive.
-    ck::ref<future_control<R>> get_control(void) {
-      return control = control ?: ck::make_ref<future_control<R>>();
-    }
+    ck::ref<future_control<R>> get_control(void) { return control = control ?: ck::make_ref<future_control<R>>(); }
 
     //  protected:
     ck::ref<future_control<R>> control;
@@ -142,7 +140,6 @@ namespace ck {
 
 
 
-#if 1
   // special case implementation for void
   template <>
   struct future_control<void> : public ck::refcounted<future_control<void>> {
@@ -251,15 +248,11 @@ namespace ck {
       f.yield(f.state());
     }
     // get the control as a refcount, as if you are calling this method, the future is still alive.
-    ck::ref<future_control<void>> get_control(void) {
-      return control = control ?: ck::make_ref<future_control<void>>();
-    }
+    ck::ref<future_control<void>> get_control(void) { return control = control ?: ck::make_ref<future_control<void>>(); }
 
     //  protected:
     ck::ref<future_control<void>> control;
   };
-
-#endif
 
 
   // template <typename R>

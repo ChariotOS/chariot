@@ -14,7 +14,7 @@ namespace ck {
    public:
     template <typename T>
     func& operator=(T t) {
-      m_callable_wrapper = make_unique<CallableWrapper<T>>(move(t));
+      m_callable_wrapper = make_box<CallableWrapper<T>>(move(t));
       return *this;
     }
 
@@ -57,6 +57,6 @@ namespace ck {
       CallableType m_callable;
     };
 
-    ck::unique_ptr<CallableWrapperBase> m_callable_wrapper;
+    ck::box<CallableWrapperBase> m_callable_wrapper;
   };
 }  // namespace ck

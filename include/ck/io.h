@@ -123,11 +123,11 @@ namespace ck {
 
 
   // an abstract type which can be read from and written to
-  class stream : public ck::object, public writer, public reader {
+  class Stream : public ck::object, public writer, public reader {
     bool m_eof = false;
 
    public:
-    virtual ~stream() {}
+    virtual ~Stream() {}
     virtual ck::option<size_t> write(const void *buf, size_t) override { return {}; }
     virtual ck::option<size_t> read(void *buf, size_t) override { return {}; }
     virtual ssize_t size(void) { return 0; }
@@ -150,18 +150,18 @@ namespace ck {
     inline void set_eof(bool e) { m_eof = e; }
 
 
-    CK_OBJECT(ck::stream);
+    CK_OBJECT(ck::Stream);
   };
 
 
 
 
   // A file is an "abstract implementation" of
-  class file : public ck::stream {
+  class File : public ck::Stream {
    public:
-    class mapping {
+    class Mapping {
      public:
-      friend class file;
+      friend class File;
 
       template <typename T>
       constexpr T *as(off_t loc = 0) {
@@ -173,22 +173,22 @@ namespace ck {
 
 
       inline auto size(void) { return len; }
-      ~mapping();
+      ~Mapping();
 
      protected:
-      mapping(void *mem, size_t len) : mem(mem), len(len) {}
+      Mapping(void *mem, size_t len) : mem(mem), len(len) {}
       void *mem;
       size_t len;
     };
 
     // construct without opening any file
-    file(void);
+    File(void);
     // construct by opening the file
-    file(ck::string path, const char *mode);
+    File(ck::string path, const char *mode);
     // give the file ownership of a file descriptor
-    file(int fd);
+    File(int fd);
 
-    virtual ~file(void);
+    virtual ~File(void);
 
     ck::option<size_t> write(const void *buf, size_t) override;
     ck::option<size_t> read(void *buf, size_t) override;
@@ -204,20 +204,20 @@ namespace ck {
 
 
     static inline auto unowned(int fd) {
-      auto f = ck::file::create(fd);
+      auto f = ck::File::create(fd);
       f->m_owns = false;
       return f;
     }
 
 
 
-    inline ck::unique_ptr<ck::file::mapping> mmap(/* Whole file */) { return mmap(0, size()); }
-    ck::unique_ptr<ck::file::mapping> mmap(off_t off, size_t len);
+    inline ck::box<ck::File::Mapping> mmap(/* Whole file */) { return mmap(0, size()); }
+    ck::box<ck::File::Mapping> mmap(off_t off, size_t len);
 
     int stat(struct stat &);
 
 
-    using stream::read;
+    using Stream::read;
 
     inline operator bool(void) const { return m_fd != -1; }
 
@@ -279,13 +279,13 @@ namespace ck {
     void init_notifier(void);
     void update_notifier(void);
 
-    CK_OBJECT(ck::file);
+    CK_OBJECT(ck::File);
   };
 
 
-  extern ck::file in;
-  extern ck::file out;
-  extern ck::file err;
+  extern ck::File in;
+  extern ck::File out;
+  extern ck::File err;
 
 
 

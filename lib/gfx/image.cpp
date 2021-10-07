@@ -12,21 +12,20 @@
 
 
 ck::ref<gfx::bitmap> gfx::load_image(ck::string path) {
-	// printf("loading %s...\n", path.get());
-	auto start = sysbind_gettime_microsecond();
-  ck::file f;
+  // printf("loading %s...\n", path.get());
+  auto start = sysbind_gettime_microsecond();
+  ck::File f;
   if (!f.open(path, "r")) return nullptr;
   int width, height, channels;
 
 
   auto m = f.mmap();
   uint32_t buf[4] = {0xFFFF0000, 0xFF00FF00, 0xFF0000FF, 0};
-  unsigned char *img =
-      stbi_load_from_memory((unsigned char *)m->data(), m->size(), &width, &height, &channels, 4);
+  unsigned char *img = stbi_load_from_memory((unsigned char *)m->data(), m->size(), &width, &height, &channels, 4);
   if (img == NULL) return nullptr;
   // printf("img: %p, width: %d, height: %d, channels: %d\n", img, width, height, channels);
 
-	auto end = sysbind_gettime_microsecond();
+  auto end = sysbind_gettime_microsecond();
 
 
   auto bmp = ck::make_ref<gfx::bitmap>(width, height);
@@ -48,9 +47,9 @@ ck::ref<gfx::bitmap> gfx::load_image(ck::string path) {
 
   stbi_image_free(img);
 
-	
 
-	printf("loading %s took %fms\n", path.get(), (end - start) / 1000.0f);
+
+  printf("loading %s took %fms\n", path.get(), (end - start) / 1000.0f);
 
   return bmp;
 }

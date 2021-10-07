@@ -25,19 +25,15 @@ struct tar_header {
   char typeflag[1];
 
 
-  unsigned int getsize() {
-    return ::getsize(size);
-  }
-  inline char *content(void) {
-    return (char *)this + 512;
-  }
+  unsigned int getsize() { return ::getsize(size); }
+  inline char *content(void) { return (char *)this + 512; }
 };
 
 
 
 
 int main() {
-  ck::file file;
+  ck::File file;
 
   if (!file.open("/root/hello.tar", "r")) {
     ck::err.fmt("Failed to open file.\n");

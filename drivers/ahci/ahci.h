@@ -115,7 +115,7 @@ namespace ahci {
     uint16_t prdtl;  // Physical region descriptor table length in entries
 
     // DW1
-    volatile uint32_t prdbc;  // Physical region descriptor byte count transferred
+    uint32_t prdbc;  // Physical region descriptor byte count transferred
 
     // DW2, 3
     uint32_t ctba;   // Command table descriptor base address
@@ -289,15 +289,15 @@ namespace ahci {
   /* hba_disk - Holds both port and ABAR */
   struct disk {
     // do not free either of these on dtor.
-    volatile struct hba_mem *abar;
-    volatile struct hba_port *port;
+    struct hba_mem *abar;
+    struct hba_port *port;
 
     spinlock drive_lock;
 
     inline disk(struct hba_mem *abar, struct hba_port *port);
 
-    volatile struct ahci::hba_cmd_hdr *get_cmd_hdr(void);
-    volatile struct ahci::hba_cmd *get_cmd_table(void);
+    struct ahci::hba_cmd_hdr *get_cmd_hdr(void);
+    struct ahci::hba_cmd *get_cmd_table(void);
 
     /* Allocate buffers and whatnot and reset the device */
     void rebase();
@@ -313,5 +313,5 @@ namespace ahci {
   struct ahci::disk *get_disk(int minor);
 
   /* Initialize a SATA disk. impl in sata.cpp */
-  int init_sata(ck::unique_ptr<struct ahci::disk>);
+  int init_sata(ck::box<struct ahci::disk>);
 };  // namespace ahci

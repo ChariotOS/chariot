@@ -47,7 +47,7 @@ struct xhci_op_regs {
 } __packed;
 
 
-static ck::vec<ck::unique_ptr<xhci>> xhci_devices;
+static ck::vec<ck::box<xhci>> xhci_devices;
 
 void xhci_init(void) {
   pci::walk_devices([&](pci::device *dev) {
@@ -55,7 +55,7 @@ void xhci_init(void) {
 
     // All xHCI controllers will have a Class ID of 0x0C and a Sublcass ID of 0x03
     if (dev->class_id == 0x0C && dev->subclass_id == 0x03) {
-      xhci_devices.push(ck::make_unique<xhci>(dev));
+      xhci_devices.push(ck::make_box<xhci>(dev));
       printk(KERN_DEBUG "\n");
       printk(KERN_DEBUG "\n");
     }
@@ -244,8 +244,7 @@ bool xhci::controller_halt(void) {
 }
 
 bool xhci::controller_reset(void) {
-  printk(XHCI_DEBUG "ControllerReset() cmd: 0x%08x sts: 0x%08x\n", read_op_reg32(XHCI_CMD),
-      read_op_reg32(XHCI_STS));
+  printk(XHCI_DEBUG "ControllerReset() cmd: 0x%08x sts: 0x%08x\n", read_op_reg32(XHCI_CMD), read_op_reg32(XHCI_STS));
   write_op_reg32(XHCI_CMD, read_op_reg32(XHCI_CMD) | CMD_HCRST);
 
   if (!wait_op_bits(XHCI_CMD, CMD_HCRST, 0)) {
@@ -270,8 +269,7 @@ bool xhci::wait_op_bits(uint32_t reg, uint32_t mask, uint32_t expected) {
     if (loops == 100) {
       printk(XHCI_DEBUG "delay waiting on reg 0x%08x match 0x%08x (0x%08x)\n", reg, expected, mask);
     } else if (loops > 250) {
-      printk(
-          XHCI_DEBUG "timeout waiting on reg 0x%08x match 0x%08x (0x%08x)\n", reg, expected, mask);
+      printk(XHCI_DEBUG "timeout waiting on reg 0x%08x match 0x%08x (0x%08x)\n", reg, expected, mask);
       return false;
     }
     loops++;

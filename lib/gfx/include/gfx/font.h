@@ -18,8 +18,8 @@ namespace gfx {
 
   class font : public ck::refcounted<font> {
    protected:
-    font(ck::unique_ptr<ck::file::mapping> &&);
-    ck::unique_ptr<ck::file::mapping> data;
+    font(ck::box<ck::File::Mapping> &&);
+    ck::box<ck::File::Mapping> data;
 
     FT_Face face; /* handle to face object */
 
@@ -41,7 +41,7 @@ namespace gfx {
      * We cache glyphs becasue asking freetype to re-render
      * each time is really inefficient
      */
-    ck::map<int, ck::map<uint32_t, ck::unique_ptr<font::glyph>>> gcache;
+    ck::map<int, ck::map<uint32_t, ck::box<font::glyph>>> gcache;
 
     /* Load a glyph for the current codepoint, returning null if it fails */
     font::glyph *load_glyph(uint32_t cp);

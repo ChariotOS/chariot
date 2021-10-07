@@ -7,7 +7,7 @@ static unsigned long view_id = 0;
 
 ui::view::view() {}
 
-// ui::view::view(ck::vec<ck::unique_ptr<ui::view>> children) {
+// ui::view::view(ck::vec<ck::box<ui::view>> children) {
 //   for (auto &c : children) {
 //     add(c.leak_ptr());
 //   }
@@ -73,8 +73,7 @@ static void indent(int depth) {
 
 void ui::view::dump_hierarchy(int depth) {
   indent(depth);
-  printf("%-4d %-4d %-4d %-4d\n", m_relative_rect.x, m_relative_rect.y, m_relative_rect.w,
-      m_relative_rect.h);
+  printf("%-4d %-4d %-4d %-4d\n", m_relative_rect.x, m_relative_rect.y, m_relative_rect.w, m_relative_rect.h);
 
   for (auto &child : m_children) {
     child->dump_hierarchy(depth + 1);
@@ -211,7 +210,9 @@ gfx::rect ui::view::absolute_rect(void) {
 
 static void recurse_mount(ui::view *v) {
   v->mounted();
-  v->each_child([](ui::view &other) { recurse_mount(&other); });
+  v->each_child([](ui::view &other) {
+    recurse_mount(&other);
+  });
 };
 
 

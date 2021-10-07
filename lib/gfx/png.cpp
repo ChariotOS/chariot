@@ -54,7 +54,7 @@ error:
 
 template <typename T>
 static ck::ref<T> load_png(ck::string path) {
-  auto stream = ck::file(path, "r+");
+  auto stream = ck::File(path, "r+");
   if (!stream) {
     fprintf(stderr, "gfx::load_png: Failed to open '%s'\n", path.get());
     return nullptr;
@@ -75,9 +75,7 @@ static ck::ref<T> load_png(ck::string path) {
 ck::ref<gfx::bitmap> gfx::load_png(ck::string path) { return ::load_png<gfx::bitmap>(path); }
 
 
-ck::ref<gfx::shared_bitmap> gfx::load_png_shared(ck::string path) {
-  return ::load_png<gfx::shared_bitmap>(path);
-}
+ck::ref<gfx::shared_bitmap> gfx::load_png_shared(ck::string path) { return ::load_png<gfx::shared_bitmap>(path); }
 
 
 ck::ref<gfx::bitmap> gfx::load_png_from_res(ck::string path) {

@@ -2,7 +2,7 @@
 #include <util.h>
 #include "ahci.h"
 
-int ahci::init_sata(ck::unique_ptr<struct ahci::disk> disk) {
+int ahci::init_sata(ck::box<struct ahci::disk> disk) {
   return -1;
   AHCI_INFO("disk: %p\n", disk.get());
 

@@ -48,7 +48,7 @@ namespace gfx {
   }
 
 
-  font::font(ck::unique_ptr<ck::file::mapping> &&d) : data(move(d)) {
+  font::font(ck::box<ck::File::Mapping> &&d) : data(move(d)) {
     if (!freetype_initialized) {
       FT_Init_FreeType(&library);
       freetype_initialized = true;
@@ -82,7 +82,7 @@ namespace gfx {
   }
 
 
-  static bool try_open(ck::file &f, const char *name, const char *ext) {
+  static bool try_open(ck::File &f, const char *name, const char *ext) {
     char path[100];
     snprintf(path, 100, "/sys/fonts/%s.%s", name, ext);
     return f.open(path, "r");
@@ -95,7 +95,7 @@ namespace gfx {
 
   //
   ck::ref<font> font::open_absolute(const char *path) {
-    ck::file f;
+    ck::File f;
     if (!f.open(path, "r")) {
       return nullptr;
     }
@@ -118,7 +118,7 @@ namespace gfx {
     if (font_cache.contains(name)) return font_cache.get(name);
     /* Because the font wasn't in the cache, we gotta look it up in our system folder */
 
-    ck::file f;
+    ck::File f;
     /* Try to open the font under some common extensions */
     for (auto *ext : exts) {
       if (try_open(f, name, ext)) {
@@ -163,7 +163,7 @@ namespace gfx {
       mode = FT_RENDER_MODE_MONO;
 #endif
       if (FT_Render_Glyph(face->glyph, mode)) return NULL;
-      for_size[cp] = ck::make_unique<font::glyph>(face->glyph, face);
+      for_size[cp] = ck::make_box<font::glyph>(face->glyph, face);
       for_size[cp]->mode = mode;
     }
     return for_size.get(cp).get();

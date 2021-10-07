@@ -290,10 +290,12 @@ int main(int argc, char **argv) {
 
   ck::eventloop ev;
 
-  ck::ipcsocket server;
+  ck::IPCSocket server;
 
   system("touch /tmp/initd.sock");
-  server.listen("/tmp/initd.sock", [] { printf("nice.\n"); });
+  server.listen("/tmp/initd.sock", [] {
+    printf("nice.\n");
+  });
 
   spawn("/bin/sh");
 

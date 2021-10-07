@@ -30,9 +30,7 @@ class interpreter {
     mem = (unsigned char *)malloc(memorysize);
   }
 
-  ~interpreter() {
-    free(mem);
-  }
+  ~interpreter() { free(mem); }
 
 
   int execute(void) {
@@ -139,7 +137,7 @@ int main(int argc, const char **argv) {
   }
 
   // open the file!
-  auto stream = ck::file(file, "r");
+  auto stream = ck::File(file, "r");
 
   if (!stream) {
     fprintf(stderr, "Failed to open '%s'\n", file);

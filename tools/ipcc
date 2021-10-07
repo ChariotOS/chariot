@@ -301,7 +301,7 @@ class IPCCompiler:
             out(f'namespace {self.namespace} {{')
             out(f'  class {typename}_connection_stub : public ck::ipc::impl::socket_connection {{')
             out(f'    public:')
-            out(f'      {typename}_connection_stub(ck::ref<ck::ipcsocket> s) : ck::ipc::impl::socket_connection(s, "{self.namespace}", {"true" if typename == "server" else "false"}) {{}}')
+            out(f'      {typename}_connection_stub(ck::ref<ck::IPCSocket> s) : ck::ipc::impl::socket_connection(s, "{self.namespace}", {"true" if typename == "server" else "false"}) {{}}')
             out(f'      virtual ~{typename}_connection_stub(void) {{}}')
             out('')
 

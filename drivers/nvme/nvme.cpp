@@ -43,7 +43,7 @@ namespace nvme {
     dataset_mgmt = 0x09,
     reservation_reg = 0x0D,
     reservation_rep = 0x0E,
-    reservation_acq = 0x11,
+    reservation_acq = 0x11, 
     reservation_rel = 0x15
   };
 
@@ -60,13 +60,13 @@ namespace nvme {
 
 
 
-static ck::vec<ck::unique_ptr<nvme::ctrl>> controllers;
+static ck::vec<ck::box<nvme::ctrl>> controllers;
 
 
 void nvme_init(void) {
   pci::walk_devices([](pci::device *dev) {
     if (dev->class_id == PCI_CLASS_STORAGE && dev->subclass_id == PCI_SUBCLASS_NVME) {
-      controllers.push(ck::make_unique<nvme::ctrl>(*dev));
+      controllers.push(ck::make_box<nvme::ctrl>(*dev));
     }
   });
   printk(KERN_INFO "That's all the NVMe nonsense!\n");

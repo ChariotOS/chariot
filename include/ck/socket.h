@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef __cplusplus
+// #ifdef __cplusplus
 
 #include <ck/fsnotifier.h>
 #include <ck/io.h>
@@ -16,7 +16,7 @@ namespace ck {
   /**
    * A generic `sys/socket` implementation
    */
-  class socket : public ck::file {
+  class Socket : public ck::File {
    protected:
     int m_domain = 0;
     int m_type = 0;
@@ -24,11 +24,11 @@ namespace ck {
     bool m_connected = false;
     bool m_listening = false;
 
-    socket(int fd, int domain, int type, int protocol = 0);
+    Socket(int fd, int domain, int type, int protocol = 0);
 
    public:
-    socket(int domain, int type, int protocol = 0);
-    virtual ~socket(void);
+    Socket(int domain, int type, int protocol = 0);
+    virtual ~Socket(void);
 
     ssize_t send(void *buf, size_t sz, int flags);
     ssize_t recv(void *buf, size_t sz, int flags);
@@ -44,22 +44,22 @@ namespace ck {
     void set_connected(bool to = true) { m_connected = to; }
 
 
-    CK_OBJECT(ck::socket);
+    CK_OBJECT(ck::Socket);
   };
 
-  class localsocket : public ck::socket {
-    inline localsocket(int fd) : socket(fd, AF_UNIX, SOCK_STREAM, 0) { m_connected = true; }
+  class LocalSocket : public ck::Socket {
+    inline LocalSocket(int fd) : Socket(fd, AF_UNIX, SOCK_STREAM, 0) { m_connected = true; }
 
    public:
-    inline localsocket(void) : socket(AF_UNIX, SOCK_STREAM) {}
-    inline virtual ~localsocket(void) {}
+    inline LocalSocket(void) : Socket(AF_UNIX, SOCK_STREAM) {}
+    inline virtual ~LocalSocket(void) {}
 
     bool connect(ck::string path);
     int listen(ck::string path, ck::func<void()> cb);
 
-    ck::localsocket *accept(void);
+    ck::LocalSocket *accept(void);
 
-    CK_OBJECT(ck::localsocket);
+    CK_OBJECT(ck::LocalSocket);
 
    private:
     struct sockaddr_un addr;
@@ -68,19 +68,19 @@ namespace ck {
 
 
 
-  class ipcsocket : public ck::socket {
-    inline ipcsocket(int fd) : socket(fd, AF_CKIPC, SOCK_DGRAM, 0) {}
+  class IPCSocket : public ck::Socket {
+    inline IPCSocket(int fd) : Socket(fd, AF_CKIPC, SOCK_DGRAM, 0) {}
 
    public:
-    inline ipcsocket(void) : socket(AF_CKIPC, SOCK_DGRAM) {}
-    inline virtual ~ipcsocket(void) {}
+    inline IPCSocket(void) : Socket(AF_CKIPC, SOCK_DGRAM) {}
+    inline virtual ~IPCSocket(void) {}
 
     bool connect(ck::string path);
     int listen(ck::string path, ck::func<void()> cb);
 
-    ck::ipcsocket *accept(void);
+    ck::IPCSocket *accept(void);
 
-    CK_OBJECT(ck::localsocket);
+    CK_OBJECT(ck::LocalSocket);
 
     /*
      */
@@ -119,4 +119,4 @@ namespace ck {
 
 };  // namespace ck
 
-#endif
+// #endif

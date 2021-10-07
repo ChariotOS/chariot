@@ -66,11 +66,13 @@ terminalview::terminalview(void) {
 
   ptmx.open("/dev/ptmx", O_RDWR | O_CLOEXEC);
   printf("tty: %s\n", ptsname(ptmx.fileno()));
-  ptmx.on_read([this] { handle_read(); });
+  ptmx.on_read([this] {
+    handle_read();
+  });
 
   shell_pid = fork();
   if (shell_pid == 0) {
-    ck::file pts;
+    ck::File pts;
     pts.open(ptsname(ptmx.fileno()), "r+");
     int fd = pts.fileno();
     int res = setpgid(0, 0);
@@ -126,8 +128,7 @@ void terminalview::draw_char(gfx::scribe &s, uint32_t cp, int x, int y, uint32_t
   auto font = get_font();
 
   font->with_line_height(get_font_size(), [&]() {
-    auto p = gfx::printer(
-        s, *font, x * charsz.width(), y * charsz.height() + font->ascent(), charsz.width());
+    auto p = gfx::printer(s, *font, x * charsz.width(), y * charsz.height() + font->ascent(), charsz.width());
     p.set_color(fg);
     p.write(cp);
   });
@@ -196,7 +197,9 @@ void terminalview::handle_read(void) {
 }
 
 void terminalview::on_keydown(ui::keydown_event &ev) {
-  auto send_sequence = [&](auto sequence) { ptmx.write(sequence, strlen(sequence)); };
+  auto send_sequence = [&](auto sequence) {
+    ptmx.write(sequence, strlen(sequence));
+  };
 
   switch (ev.code) {
     case key_delete:

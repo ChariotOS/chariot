@@ -326,8 +326,7 @@ int process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::strin
   // TODO: this size is arbitrary.
   auto stack_size = 1024 * 1024;
 
-  stack = new_addr_space->mmap(
-      "[stack]", 0, stack_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, nullptr, 0);
+  stack = new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, nullptr, 0);
 
   // TODO: push argv and arguments onto the stack
   this->args = argv;
@@ -725,7 +724,7 @@ void sys::exit_proc(int code) {
 wait_queue &process::futex_queue(int *uaddr) {
   futex_lock.lock();
   if (!m_futex_queues.contains((off_t)uaddr)) {
-    m_futex_queues.set((off_t)uaddr, ck::make_unique<wait_queue>());
+    m_futex_queues.set((off_t)uaddr, ck::make_box<wait_queue>());
   }
   auto &wq = *m_futex_queues.ensure((off_t)uaddr);
   futex_lock.unlock();
@@ -800,10 +799,7 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
 
 int sys::kill(int pid, int sig) { return sched::proc::send_signal(pid, sig); }
 
-int sys::prctl(int option, unsigned long a1, unsigned long a2, unsigned long a3, unsigned long a4,
-    unsigned long a5) {
-  return -ENOTIMPL;
-}
+int sys::prctl(int option, unsigned long a1, unsigned long a2, unsigned long a3, unsigned long a4, unsigned long a5) { return -ENOTIMPL; }
 
 #ifdef CONFIG_RISCV
 extern "C" void rv_enter_userspace(rv::regs *sp);
@@ -962,8 +958,8 @@ void sched::proc::dump_table(void) {
       ST(UNINTERRUPTIBLE);
       ST(ZOMBIE);
 #undef ST
-      pprintk("  '%s' p:%d,t:%d: %s, %llu %s\n", proc->name.get(), proc->pid, t->tid, state,
-          proc->mm->memory_usage(), t->in_awaitfs ? "AWAITFS" : "");
+      pprintk("  '%s' p:%d,t:%d: %s, %llu %s\n", proc->name.get(), proc->pid, t->tid, state, proc->mm->memory_usage(),
+          t->in_awaitfs ? "AWAITFS" : "");
     }
   }
 

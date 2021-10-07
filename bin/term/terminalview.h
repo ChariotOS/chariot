@@ -63,5 +63,5 @@ class terminalview : public ui::view {
 
   int shell_pid = -1;
 
-  ck::file ptmx;
+  ck::File ptmx;
 };

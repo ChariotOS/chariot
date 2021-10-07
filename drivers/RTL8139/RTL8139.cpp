@@ -59,8 +59,7 @@ rtl8139::rtl8139(pci::device &dev, u8 irq) : m_dev(dev) {
   read_mac_address();
 
   main_dev = this;
-  INFO("MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4],
-      mac[5]);
+  INFO("MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
 
   irq::install(m_interrupt_line, rtl_irq_handler, "RTL8139 Ethernet Card");
@@ -104,8 +103,7 @@ void rtl8139::reset(void) {
   // configure rx: accept physical (MAC) match, multicast, and broadcast,
   // use the optional contiguous packet feature, the maximum dma transfer
   // size, a 32k buffer, and no fifo threshold
-  out32(REG_RXCFG, RXCFG_APM | RXCFG_AM | RXCFG_AB | RXCFG_WRAP_INHIBIT | RXCFG_MAX_DMA_UNLIMITED |
-                       RXCFG_RBLN_32K | RXCFG_FTH_NONE);
+  out32(REG_RXCFG, RXCFG_APM | RXCFG_AM | RXCFG_AB | RXCFG_WRAP_INHIBIT | RXCFG_MAX_DMA_UNLIMITED | RXCFG_RBLN_32K | RXCFG_FTH_NONE);
   // configure tx: default retry count (16), max DMA burst size of 1024
   // bytes, interframe gap time of the only allowable value. the DMA burst
   // size is important - silent failures have been observed with 2048 bytes.
@@ -120,8 +118,8 @@ void rtl8139::reset(void) {
   out8(REG_COMMAND, COMMAND_RX_ENABLE | COMMAND_TX_ENABLE);
 
   // choose irqs, then clear any pending
-  out16(REG_IMR, INT_RXOK | INT_RXERR | INT_TXOK | INT_TXERR | INT_RX_BUFFER_OVERFLOW |
-                     INT_LINK_CHANGE | INT_RX_FIFO_OVERFLOW | INT_LENGTH_CHANGE | INT_SYSTEM_ERROR);
+  out16(REG_IMR, INT_RXOK | INT_RXERR | INT_TXOK | INT_TXERR | INT_RX_BUFFER_OVERFLOW | INT_LINK_CHANGE | INT_RX_FIFO_OVERFLOW |
+                     INT_LENGTH_CHANGE | INT_SYSTEM_ERROR);
   out16(REG_ISR, 0xffff);
 }
 
@@ -132,9 +130,8 @@ void rtl8139::handle_irq() {
 
     INFO(".handle_irq status=%#04x\n", status);
 
-    if ((status & (INT_RXOK | INT_RXERR | INT_TXOK | INT_TXERR | INT_RX_BUFFER_OVERFLOW |
-                      INT_LINK_CHANGE | INT_RX_FIFO_OVERFLOW | INT_LENGTH_CHANGE |
-                      INT_SYSTEM_ERROR)) == 0)
+    if ((status & (INT_RXOK | INT_RXERR | INT_TXOK | INT_TXERR | INT_RX_BUFFER_OVERFLOW | INT_LINK_CHANGE | INT_RX_FIFO_OVERFLOW |
+                      INT_LENGTH_CHANGE | INT_SYSTEM_ERROR)) == 0)
       break;
 
     if (status & INT_RXOK) {
@@ -184,9 +181,8 @@ void rtl8139::receive(void) {
   u16 length = *(const u16 *)(start_of_packet + 2);
 
   INFO(".receive status=%04x length=%d offset=%d\n", status, length, m_rx_buffer_offset);
-  if (!(status & RX_OK) ||
-      (status & (RX_INVALID_SYMBOL_ERROR | RX_CRC_ERROR | RX_FRAME_ALIGNMENT_ERROR)) ||
-      (length >= PACKET_SIZE_MAX) || (length < PACKET_SIZE_MIN)) {
+  if (!(status & RX_OK) || (status & (RX_INVALID_SYMBOL_ERROR | RX_CRC_ERROR | RX_FRAME_ALIGNMENT_ERROR)) || (length >= PACKET_SIZE_MAX) ||
+      (length < PACKET_SIZE_MIN)) {
     KERR("rtl8139::receive got bad packet status=%04x length=%d\n", status, length);
     reset();
     return;
@@ -245,7 +241,7 @@ void rtl8139::send_raw(const void *data, int length) {
   out32(REG_TXSTATUS0 + (hw_buffer * 4), length);
 }
 
-ck::unique_ptr<rtl8139> d;
+ck::box<rtl8139> d;
 void RTL8139_init(void) {
   pci::device *edev = nullptr;
   pci::walk_devices([&](pci::device *dev) {
@@ -258,7 +254,7 @@ void RTL8139_init(void) {
   if (edev != nullptr) {
     KINFO("found!\n");
 
-    d = make_unique<rtl8139>(*edev, 0);
+    d = make_box<rtl8139>(*edev, 0);
 
     char buf[512];
 

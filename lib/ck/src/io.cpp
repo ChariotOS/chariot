@@ -16,9 +16,9 @@
 #include <ck/socket.h>
 
 
-ck::file ck::in(0);
-ck::file ck::out(1);
-ck::file ck::err(2);
+ck::File ck::in(0);
+ck::File ck::out(1);
+ck::File ck::err(2);
 
 
 ck::buffer::buffer(size_t size) {
@@ -42,31 +42,31 @@ void ck::reactor::update_interest(int interest) {}
 
 
 
-int ck::stream::fmt(const char *format, ...) {
+int ck::Stream::fmt(const char *format, ...) {
   va_list va;
   va_start(va, format);
   const int ret = vfctprintf(
       [](char c, void *arg) {
-        auto *f = (ck::stream *)arg;
+        auto *f = (ck::Stream *)arg;
         f->write(&c, 1);
       },
-      (void *)static_cast<ck::stream *>(this), format, va);
+      (void *)static_cast<ck::Stream *>(this), format, va);
   va_end(va);
   return ret;
 }
 
 
 
-ck::unique_ptr<ck::file::mapping> ck::file::mmap(off_t off, size_t size) {
+ck::box<ck::File::Mapping> ck::File::mmap(off_t off, size_t size) {
   auto *mem = ::mmap(NULL, size, PROT_READ, MAP_PRIVATE, m_fd, off);
   if (mem == MAP_FAILED) return nullptr;
 
-  return ck::unique_ptr(new ck::file::mapping(mem, size));
+  return ck::box(new ck::File::Mapping(mem, size));
 }
 
-ck::file::mapping::~mapping(void) { ::munmap(mem, len); }
+ck::File::Mapping::~Mapping(void) { ::munmap(mem, len); }
 
-ck::option<size_t> ck::file::read(void *buf, size_t sz) {
+ck::option<size_t> ck::File::read(void *buf, size_t sz) {
   if (eof()) return {};
 
   if (m_fd == -1) return {};
@@ -80,7 +80,7 @@ ck::option<size_t> ck::file::read(void *buf, size_t sz) {
   return k;
 }
 
-async(ck::option<size_t>) ck::file::async_read(void *buf, size_t sz) {
+async(ck::option<size_t>) ck::File::async_read(void *buf, size_t sz) {
   ck::future<ck::option<size_t>> fut;
   auto ctrl = fut.get_control();
   this->on_read([this, ctrl, buf, sz]() mutable {
@@ -93,7 +93,7 @@ async(ck::option<size_t>) ck::file::async_read(void *buf, size_t sz) {
   return fut;
 }
 
-ck::option<size_t> ck::file::write(const void *buf, size_t sz) {
+ck::option<size_t> ck::File::write(const void *buf, size_t sz) {
   if (m_fd == -1) return {};
 
   auto *src = (const unsigned char *)buf;
@@ -121,7 +121,7 @@ ck::option<size_t> ck::file::write(const void *buf, size_t sz) {
   return k;
 }
 
-ssize_t ck::file::size(void) {
+ssize_t ck::File::size(void) {
   if (m_fd == -1) return -1;
 
   auto original = tell();
@@ -133,20 +133,20 @@ ssize_t ck::file::size(void) {
   return sz;
 }
 
-ssize_t ck::file::tell(void) {
+ssize_t ck::File::tell(void) {
   if (m_fd == -1) return -1;
   return lseek(m_fd, 0, SEEK_CUR);
 }
 
-int ck::file::seek(long offset, int whence) { return lseek(m_fd, offset, whence); }
+int ck::File::seek(long offset, int whence) { return lseek(m_fd, offset, whence); }
 
-int ck::file::stat(struct stat &s) {
+int ck::File::stat(struct stat &s) {
   if (m_fd == -1) return -1;
   return fstat(m_fd, &s);
 }
 
 
-bool ck::file::flush(void) {
+bool ck::File::flush(void) {
   if (buffered()) {
     errno_wrap(sysbind_write(m_fd, m_buffer, buf_len));
     // ck::hexdump(m_buffer, buf_len);
@@ -157,7 +157,7 @@ bool ck::file::flush(void) {
 }
 
 
-void ck::file::set_buffer(size_t size) {
+void ck::File::set_buffer(size_t size) {
   if (m_buffer != NULL) {
     flush();
     free(m_buffer);
@@ -198,16 +198,16 @@ static int string_to_mode(const char *mode) {
 }
 
 
-ck::file::file(void) { m_fd = -1; }
+ck::File::File(void) { m_fd = -1; }
 
-ck::file::file(ck::string path, const char *mode) {
+ck::File::File(ck::string path, const char *mode) {
   m_fd = -1;
   this->open(path, mode);
 }
 
 
 
-bool ck::file::open(ck::string path, const char *mode) {
+bool ck::File::open(ck::string path, const char *mode) {
   int fmode = string_to_mode(mode);
   if (fmode == -1) {
     fprintf(::stderr, "[ck::file::open] '%d' is an invalid mode\n", fmode);
@@ -217,7 +217,7 @@ bool ck::file::open(ck::string path, const char *mode) {
   return open(path, fmode);
 }
 
-bool ck::file::open(ck::string path, int fmode) {
+bool ck::File::open(ck::string path, int fmode) {
   int new_fd = ::open(path.get(), fmode);
 
   if (new_fd < 0) {
@@ -238,19 +238,19 @@ bool ck::file::open(ck::string path, int fmode) {
 
 
 
-ck::file::file(int fd) {
+ck::File::File(int fd) {
   m_fd = fd;
   init_notifier();
 }
 
-ck::file::~file(void) {
+ck::File::~File(void) {
   if (m_fd != -1 && m_owns) {
     flush();
     close(m_fd);
   }
 }
 
-void ck::file::init_notifier(void) {
+void ck::File::init_notifier(void) {
   notifier.init(m_fd, 0);
   notifier.on_event = [this](int event) {
     if (event == CK_EVENT_READ && this->m_on_read) this->m_on_read();
@@ -261,7 +261,7 @@ void ck::file::init_notifier(void) {
 }
 
 
-void ck::file::update_notifier(void) {
+void ck::File::update_notifier(void) {
   int mask = 0;
 
   if (this->m_on_read) mask |= AWAITFS_READ;
@@ -282,7 +282,7 @@ void ck::hexdump(const ck::buffer &buf) { debug_hexdump(buf.get(), buf.size()); 
 // Socket implementation
 
 
-ck::socket::socket(int fd, int domain, int type, int protocol) : ck::file(fd) {
+ck::Socket::Socket(int fd, int domain, int type, int protocol) : ck::File(fd) {
   m_domain = domain;
   m_type = type;
 
@@ -293,15 +293,15 @@ ck::socket::socket(int fd, int domain, int type, int protocol) : ck::file(fd) {
 }
 
 
-ck::socket::socket(int domain, int type, int protocol) : ck::socket(::socket(domain, type, 0), domain, type, 0) {}
+ck::Socket::Socket(int domain, int type, int protocol) : ck::Socket(::socket(domain, type, 0), domain, type, 0) {}
 
 
-ck::socket::~socket(void) {
+ck::Socket::~Socket(void) {
   // nothing for now.
 }
 
-bool ck::socket::connect(struct sockaddr *addr, size_t size) {
-  int connect_res = ::connect(ck::file::m_fd, addr, size);
+bool ck::Socket::connect(struct sockaddr *addr, size_t size) {
+  int connect_res = ::connect(ck::File::m_fd, addr, size);
 
   if (connect_res < 0) {
     // EOF is how we specify that a file is or is not readable.
@@ -315,14 +315,14 @@ bool ck::socket::connect(struct sockaddr *addr, size_t size) {
 }
 
 
-ssize_t ck::socket::send(void *buf, size_t sz, int flags) {
+ssize_t ck::Socket::send(void *buf, size_t sz, int flags) {
   if (eof()) return 0;
   if (m_fd == -1) return 0;
   return ::send(m_fd, buf, sz, flags);
 }
 
 
-ssize_t ck::socket::recv(void *buf, size_t sz, int flags) {
+ssize_t ck::Socket::recv(void *buf, size_t sz, int flags) {
   if (eof()) return 0;
   if (m_fd == -1) return 0;
   int nread = ::recv(m_fd, buf, sz, flags);
@@ -333,7 +333,7 @@ ssize_t ck::socket::recv(void *buf, size_t sz, int flags) {
 }
 
 
-async(ssize_t) ck::socket::async_recv(void *buf, size_t sz, int flags) {
+async(ssize_t) ck::Socket::async_recv(void *buf, size_t sz, int flags) {
   ck::future<ssize_t> fut;
   auto ctrl = fut.get_control();
   this->on_read([this, ctrl, buf, sz, flags]() mutable {
@@ -348,19 +348,19 @@ async(ssize_t) ck::socket::async_recv(void *buf, size_t sz, int flags) {
 
 
 
-bool ck::localsocket::connect(ck::string str) {
+bool ck::LocalSocket::connect(ck::string str) {
   struct sockaddr_un addr;
   memset(&addr, 0, sizeof(addr));
   addr.sun_family = AF_LOCAL;
 
   // bind the local socket to the windowserver
   strncpy(addr.sun_path, str.get(), sizeof(addr.sun_path) - 1);
-  return ck::socket::connect((struct sockaddr *)&addr, sizeof(addr));
+  return ck::Socket::connect((struct sockaddr *)&addr, sizeof(addr));
 }
 
 
 
-int ck::localsocket::listen(ck::string path, ck::func<void()> cb) {
+int ck::LocalSocket::listen(ck::string path, ck::func<void()> cb) {
   // are we already listening?
   if (m_listening) return false;
 
@@ -379,12 +379,12 @@ int ck::localsocket::listen(ck::string path, ck::func<void()> cb) {
 }
 
 
-ck::localsocket *ck::localsocket::accept(void) {
+ck::LocalSocket *ck::LocalSocket::accept(void) {
   int client = ::accept(m_fd, (struct sockaddr *)&addr, sizeof(addr));
 
   if (client < 0) return nullptr;
 
-  auto s = new ck::localsocket(client);
+  auto s = new ck::LocalSocket(client);
   s->set_connected(true);
   return s;
 }
@@ -395,19 +395,19 @@ ck::localsocket *ck::localsocket::accept(void) {
 /////////////////////////////////////////////
 
 
-bool ck::ipcsocket::connect(ck::string str) {
+bool ck::IPCSocket::connect(ck::string str) {
   struct sockaddr_un addr;
   memset(&addr, 0, sizeof(addr));
   addr.sun_family = AF_LOCAL;
 
   // bind the local socket to the windowserver
   strncpy(addr.sun_path, str.get(), sizeof(addr.sun_path) - 1);
-  return ck::socket::connect((struct sockaddr *)&addr, sizeof(addr));
+  return ck::Socket::connect((struct sockaddr *)&addr, sizeof(addr));
 }
 
 
 
-int ck::ipcsocket::listen(ck::string path, ck::func<void()> cb) {
+int ck::IPCSocket::listen(ck::string path, ck::func<void()> cb) {
   // are we already listening?
   if (m_listening) return false;
 
@@ -426,12 +426,12 @@ int ck::ipcsocket::listen(ck::string path, ck::func<void()> cb) {
 }
 
 
-ck::ipcsocket *ck::ipcsocket::accept(void) {
+ck::IPCSocket *ck::IPCSocket::accept(void) {
   int client = ::accept(m_fd, (struct sockaddr *)&addr, sizeof(addr));
 
   if (client < 0) return nullptr;
 
-  auto s = new ck::ipcsocket(client);
+  auto s = new ck::IPCSocket(client);
   s->set_connected(true);
   return s;
 }
