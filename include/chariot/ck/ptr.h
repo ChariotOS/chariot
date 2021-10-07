@@ -163,6 +163,9 @@ namespace ck {
     template <typename U>
     lazy_box& operator=(const ck::lazy_box<U>&) = delete;
 
+
+
+
    public:
     // Allows move-semantics. While the unique_ptr cannot be copied it can be
     // safely moved.
@@ -182,7 +185,24 @@ namespace ck {
     }
 
     template <typename U>
+    lazy_box(box<U>&& other) noexcept {
+      if (this != static_cast<void*>(&other)) {
+        if (m_ptr) delete m_ptr;
+        m_ptr = other.leak_ptr();
+      }
+    }
+
+    template <typename U>
     lazy_box& operator=(lazy_box<U>&& other) {
+      if (this != static_cast<void*>(&other)) {
+        if (m_ptr) delete m_ptr;
+        m_ptr = other.leak_ptr();
+      }
+      return *this;
+    }
+
+    template <typename U>
+    lazy_box& operator=(box<U>&& other) {
       if (this != static_cast<void*>(&other)) {
         if (m_ptr) delete m_ptr;
         m_ptr = other.leak_ptr();

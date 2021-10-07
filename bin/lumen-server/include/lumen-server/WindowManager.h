@@ -7,6 +7,7 @@
 #include <gfx/point.h>
 #include <chariot/mouse_packet.h>
 #include <chariot/keycode.h>
+#include <ck/timer.h>
 
 namespace server {
 
@@ -22,8 +23,8 @@ namespace server {
     void on_connection(ck::ref<ApplicationConnection> c) override;
     void on_disconnection(ck::ref<ApplicationConnection> c) override;
 
-    void feed_mouse_packet(mouse_packet &p);
-    void feed_keyboard_packet(keyboard_packet_t &p);
+    void feedMousePacket(mouse_packet &p);
+    void feedKeyboadPacket(keyboard_packet_t &p);
 
 
 
@@ -41,9 +42,19 @@ namespace server {
 
 
 
+    // add and remove windows from the internal window stack
+    void show(ck::ref<Window> w);
+    void hide(ck::ref<Window> w);
+
+
+    // run the compositor
+    void compose(void);
+
 
    protected:
     gfx::point m_mouse_pos;
+
+    ck::timer::ref m_compositor_timer;
 
     Display m_display;
     ck::vec<ck::ref<Window>> m_window_stack;

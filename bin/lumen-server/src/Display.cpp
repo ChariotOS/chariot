@@ -33,7 +33,7 @@ namespace server {
       back_buffer = (uint32_t*)mmap(NULL, bufsz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
     }
 
-		// Clear the display and flush it to get rid of the initial kernel logging
+    // Clear the display and flush it to get rid of the initial kernel logging
     clear(0x00000000);
     flush_fb(FlushWithMemcpy::Yes);
   }

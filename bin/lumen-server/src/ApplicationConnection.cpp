@@ -20,7 +20,7 @@ namespace server {
 
 
   ck::option<lumen::client_create_window_response> ApplicationConnection::on_create_window(void) {
-    auto window = ck::make_ref<Window>(*this);
+    auto window = ck::make_ref<AppWindow>(*this);
     m_windows.set(window->id(), window);
     return {window->id()};
   }
