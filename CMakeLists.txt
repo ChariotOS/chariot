@@ -281,38 +281,41 @@ include_directories(
 )
 
 
+if (CONFIG_ENABLE_USERSPACE)
 
-MACRO(SUBDIRLIST result curdir)
-  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
-  SET(dirlist "")
-  FOREACH(child ${children})
-    IF(IS_DIRECTORY ${curdir}/${child})
-      LIST(APPEND dirlist ${curdir}/${child})
-    ENDIF()
-  ENDFOREACH()
-  SET(${result} ${dirlist})
-ENDMACRO()
-
-
-SUBDIRLIST(USER_BINS ${CMAKE_CURRENT_SOURCE_DIR}/bin)
-SUBDIRLIST(USER_LIBS ${CMAKE_CURRENT_SOURCE_DIR}/lib)
+	MACRO(SUBDIRLIST result curdir)
+		FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+		SET(dirlist "")
+		FOREACH(child ${children})
+			IF(IS_DIRECTORY ${curdir}/${child})
+				LIST(APPEND dirlist ${curdir}/${child})
+			ENDIF()
+		ENDFOREACH()
+		SET(${result} ${dirlist})
+	ENDMACRO()
 
 
-add_link_options(LINKER:-T ${USER_LINKER_SCRIPT} -z max-page-size=0x1000)
-
-FOREACH(subdir ${USER_BINS} ${USER_LIBS})
-	include_directories(${subdir}/include)
-ENDFOREACH()
+	SUBDIRLIST(USER_BINS ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+	SUBDIRLIST(USER_LIBS ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 
 
-FOREACH(subdir ${USER_BINS} ${USER_LIBS})
-	add_subdirectory(${subdir})
-ENDFOREACH()
+	add_link_options(LINKER:-T ${USER_LINKER_SCRIPT} -z max-page-size=0x1000)
 
-add_subdirectory(libc)
-chariot_external(libcpp ${CMAKE_SOURCE_DIR}/toolchain/build/${CMAKE_SYSTEM_PROCESSOR}/gcc/libcpp/libcpp.a)
+	FOREACH(subdir ${USER_BINS} ${USER_LIBS})
+		include_directories(${subdir}/include)
+	ENDFOREACH()
+
+
+	FOREACH(subdir ${USER_BINS} ${USER_LIBS})
+		add_subdirectory(${subdir})
+	ENDFOREACH()
+
+	add_subdirectory(libc)
+	chariot_external(libcpp ${CMAKE_SOURCE_DIR}/toolchain/build/${CMAKE_SYSTEM_PROCESSOR}/gcc/libcpp/libcpp.a)
+	chariot_external(libfreetype ${CMAKE_SOURCE_DIR}/ports/out/${CMAKE_SYSTEM_PROCESSOR}/lib/libfreetype.a)
+
+
+endif(CONFIG_ENABLE_USERSPACE)
+
+# everyone needs this.
 chariot_external(libgcc ${CMAKE_SOURCE_DIR}/toolchain/build/${CMAKE_SYSTEM_PROCESSOR}/gcc/gcc/libgcc.a)
-chariot_external(libfreetype ${CMAKE_SOURCE_DIR}/ports/out/${CMAKE_SYSTEM_PROCESSOR}/lib/libfreetype.a)
-
-
-

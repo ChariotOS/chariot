@@ -208,7 +208,14 @@ menu "Networking"
 		default n
 endmenu
 
+
+
+config ENABLE_USERSPACE
+	bool "Enable Userspace"
+	default y
 menu "Userspace"
+
+	depends on ENABLE_USERSPACE
 	# depends on USERSPACE
 
 	
