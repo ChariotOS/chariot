@@ -202,11 +202,6 @@ void main(int hartid, void *fdt) {
   printk(KERN_DEBUG "Freeing bootup ram %llx:%llx\n", boot_free_start, boot_free_end);
 
 
-#if 0
-  auto initrd_size = (off_t)_initrd_end - (off_t)_initrd_start;
-  initrd_dump((void *)_initrd_start, initrd_size);
-  panic("Done.\n");
-#endif
 
   /* Tell the device tree to copy the device tree and parse it */
   dtb::parse((dtb::fdt_header *)p2v(rv::get_hstate().dtb));
@@ -293,6 +288,8 @@ void main(int hartid, void *fdt) {
 
     KINFO("Bootup complete. It is now safe to move about the cabin.\n");
 
+#ifdef CONFIG_ENABLE_USERSPACE
+
     auto kproc = sched::proc::kproc();
     kproc->root = fs::inode::acquire(vfs::get_root());
     kproc->cwd = fs::inode::acquire(vfs::get_root());
@@ -303,6 +300,8 @@ void main(int hartid, void *fdt) {
 
     sys::waitpid(init_pid, NULL, 0);
     panic("INIT DIED!\n");
+
+#endif
 
     return 0;
   });
