@@ -217,7 +217,44 @@ async(ck::vec<T>) wait_all(ck::vec<ck::future<T>>& futs) {
   return res;
 }
 
+
+async(int) make_fiber(int num, int size, int div) {
+  return ck::spawn<int>([num, size, div]() -> int {
+    if (size == 1) {
+      return num;
+    }
+
+    ck::vec<ck::future<int>> futs;
+    futs.resize(div);
+
+    int sum = 0;
+    for (int i = 0; i < div; i++) {
+      auto sub_num = num + (i * (size / div));
+      // sum += make_fiber(sub_num, size / div, div).await();
+      futs.push(make_fiber(sub_num, size / div, div));
+    }
+    return sum;
+    for (auto& fut : futs)
+      sum += fut.await();
+    return sum;
+  });
+}
+
 int main(int argc, char** argv) async_main({
+  auto start = sysbind_gettime_microsecond();
+  int result = make_fiber(0, 1000000, 10).await();
+  auto end = sysbind_gettime_microsecond();
+  printf("Skynet Result: %d in %fms\n", result, (end - start) / 1000.0f);
+
+
+  // auto start = sysbind_getramusage();
+  // // auto font = gfx::font::get("Arial");
+  // auto end = sysbind_getramusage();
+  // printf("used: %llu\n", end - start);
+  return;
+
+
+
   printf("Connecting...\n");
   auto conn = ck::ipc::connect<lumen::Connection>("/usr/servers/lumen");
   printf("Connected.\n");
