@@ -87,6 +87,7 @@ int sysbind_dnslookup(const char * name, unsigned int* ip4);
 int sysbind_shutdown();
 int sysbind_mount(struct mountopts * opts);
 int sysbind_getraminfo(unsigned long long * avail, unsigned long long * total);
+unsigned long sysbind_getramusage();
 int sysbind_get_core_usage(unsigned int core, struct chariot_core_usage * usage);
 int sysbind_get_nproc();
 #ifdef __cplusplus

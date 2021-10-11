@@ -437,6 +437,10 @@ args = [
 	'total: unsigned long long *'
 ]
 
+[sc.getramusage]
+ret = 'unsigned long'
+args = []
+
 
 
 [sc.get_core_usage]

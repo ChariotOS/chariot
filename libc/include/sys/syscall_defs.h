@@ -62,5 +62,6 @@
 #define SYS_shutdown                 (0x3d)
 #define SYS_mount                    (0x3e)
 #define SYS_getraminfo               (0x3f)
-#define SYS_get_core_usage           (0x40)
-#define SYS_get_nproc                (0x41)
+#define SYS_getramusage              (0x40)
+#define SYS_get_core_usage           (0x41)
+#define SYS_get_nproc                (0x42)

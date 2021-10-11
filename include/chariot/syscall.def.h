@@ -66,6 +66,7 @@ int dnslookup(const char * name, unsigned int* ip4);
 int shutdown();
 int mount(struct mountopts * opts);
 int getraminfo(unsigned long long * avail, unsigned long long * total);
+unsigned long getramusage();
 int get_core_usage(unsigned int core, struct chariot_core_usage * usage);
 int get_nproc();
 }

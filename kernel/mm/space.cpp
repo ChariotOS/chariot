@@ -3,7 +3,7 @@
 #include <lock.h>
 #include <mm.h>
 #include <phys.h>
-
+#include <syscall.h>
 
 mm::space::space(off_t lo, off_t hi, ck::ref<mm::pagetable> pt) : pt(pt), lo(lo), hi(hi) {}
 
@@ -194,9 +194,7 @@ ck::ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err
       if (old_page->users() > 1 || r.fd) {
         auto np = mm::page::alloc();
         // no need to take the new page's lock here, it's only referenced here.
-        if (display)
-          printk(KERN_WARN "[pid=%d] COW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(),
-              uaddr);
+        if (display) printk(KERN_WARN "[pid=%d] COW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(), uaddr);
         memcpy(p2v(np->pa()), p2v(old_page->pa()), PGSIZE);
         r.mappings[ind] = np;
       }
@@ -207,9 +205,7 @@ ck::ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err
 
 
   if (do_map) {
-    if (display)
-      printk(
-          KERN_WARN "[pid=%d] map %p to %p\n", curproc->pid, uaddr & ~0xFFF, r.mappings[ind]->pa());
+    if (display) printk(KERN_WARN "[pid=%d] map %p to %p\n", curproc->pid, uaddr & ~0xFFF, r.mappings[ind]->pa());
     pte.ppn = r.mappings[ind]->pa() >> 12;
     auto va = (r.va + (ind << 12));
     pt->add_mapping(va, pte);
@@ -240,6 +236,12 @@ size_t mm::space::memory_usage(void) {
 
   return s;
 }
+
+
+
+unsigned long sys::getramusage() { return curproc->mm->memory_usage(); }
+
+
 #define DO_COW
 
 mm::space *mm::space::fork(void) {
@@ -297,13 +299,11 @@ mm::space *mm::space::fork(void) {
   return n;
 }
 
-off_t mm::space::mmap(
-    off_t req, size_t size, int prot, int flags, ck::ref<fs::file> fd, off_t off) {
+off_t mm::space::mmap(off_t req, size_t size, int prot, int flags, ck::ref<fs::file> fd, off_t off) {
   return mmap("", req, size, prot, flags, move(fd), off);
 }
 
-off_t mm::space::mmap(ck::string name, off_t addr, size_t size, int prot, int flags,
-    ck::ref<fs::file> fd, off_t off) {
+off_t mm::space::mmap(ck::string name, off_t addr, size_t size, int prot, int flags, ck::ref<fs::file> fd, off_t off) {
   if (addr & 0xFFF) return -1;
 
   if ((flags & (MAP_PRIVATE | MAP_SHARED)) == 0) {
@@ -399,8 +399,7 @@ bool mm::space::validate_pointer(void *raw_va, size_t len, int mode) {
       return false;
     }
 
-    if ((mode & PROT_READ && !(r->prot & PROT_READ)) ||
-        (mode & PROT_WRITE && !(r->prot & PROT_WRITE)) ||
+    if ((mode & PROT_READ && !(r->prot & PROT_READ)) || (mode & PROT_WRITE && !(r->prot & PROT_WRITE)) ||
         (mode & PROT_EXEC && !(r->prot & PROT_EXEC))) {
       printk(KERN_WARN "validate_pointer(%p) - protection!\n", raw_va);
       return false;
