@@ -52,7 +52,7 @@
 .global _start
 _start:
 
-
+	# save the fdt pointer to a1
 	# Disable linker instruction relaxation for the `la` instruction below.
 	# This disallows the assembler from assuming that `gp` is already initialized.
 	# This causes the value stored in `gp` to be calculated from `pc`.
@@ -75,6 +75,7 @@ _start:
 	mul     t0, t0, t1 # t1 = SIZE * (mhartid + 1)
 	add     sp, sp, t0 # sp = stack_start + (SIZE * (mhartid + 1))
 
+
 	# zero out bss
 	lla     t0, _bss_start
 	lla     t1, _bss_end
@@ -86,12 +87,27 @@ _start:
 1:
 
 
-
 	# allocate space for the scratch pad
 	addi    sp, sp, -32 * SZREG
 
 
 	# supervisor mode expects 
+	addi sp, sp, -2 * SZREG
+
+	REG_S a0, ROFF(0, sp)
+	REG_S a1, ROFF(1, sp)
+
+	la      a0, kernel_page_table         # t1: current location in the page table
+	call    setup_pagetables
+
+
+	REG_L a0, ROFF(0, sp)
+	REG_L a1, ROFF(1, sp)
+
+	addi sp, sp, 2*SZREG
+
+	j       .skip_vm_setup
+
 
 	# setup the base high-half identity mapping
 	li      t0, PT_R | PT_W | PT_X | PT_V # t0: current physical address (PTE)
@@ -109,7 +125,7 @@ _start:
 	li      t3, VM_BIGGEST_PAGE           # t3: physical memory stride
 0:
 
-	# store the PTE at the location pointed to by t1
+	# store the PTE at the location pointed to by t1 (high half) and t4 (low half)
 	REG_S   t0, 0(t1)
 	REG_S   t0, 0(t4)
 	# move the PTE (t0) forward by the stride (t3)
@@ -120,21 +136,24 @@ _start:
 	# ensure it's written out
 	fence   w,w
 	bne     t1, t2, 0b                    # jump back if we aren't done
-
-
+	
+.skip_vm_setup:
 
 	# now, load the kernel page table into satp 
 	la      t0, kernel_page_table
 	srai    t0, t0, 12 # shift the page table to be just the PPN
+
+
 
 	# t1 is the eventual value of SATP
 	li      t1, SATP_FLAG      # t1 = SATP_FLAG
 	slli    t1, t1, SATP_SHIFT # t1 = t1 << SATP_SHIFT
 	add     t1, t1, t0         # t1 = t1 + kernel_page_table
 
+
 	csrw    satp, t1           # satp = t1
 
-	# flush tlb and whatnot
+	# flush the TLB and force the machine to load the new page table
 	sfence.vma  zero, zero
 
 
@@ -149,54 +168,13 @@ _start:
 	REG_L   t0, 0(t0)
 	add     sp, sp, t0
 
-
 	la      t0, main_ptr
 	REG_L   t0, 0(t0)
 
 
-	/* if SBI is disabled, we mret into supervisor mode */
-#ifndef CONFIG_SBI
-
-	# set M-mode trap handler
-	la      t0, timervec
-	csrw    mtvec, t0
-
-	# setup trap delegation
-	li      t0, 0xffffffff
-	csrw    medeleg, t0
-	csrw    mideleg, t0
-
-	# set M-mode previous priv mode to S-mode for mret
-	li      t0, MSTATUS_MPP_MASK
-	csrc    mstatus, t0 # mstatus.MPP = 0
-	li      t0, MSTATUS_MPP_S
-	csrs    mstatus, t0 # mstatus.MPP = S
-
-
-	# set mepc so we can return to the right place
-	la      t0, main_ptr
-	reg_l   t0, 0(t0)
-	csrw    mepc, t0
-
-	csrw    mscratch, sp
-	# ask C code to setup the local hart state, cause it's annoying to work with structs in asm
-	move    a2, sp # a0 = hartid, a1 = device tree, a2 = hart id
-	# a1 is still the pointer to the device tree binary
-	call    setup_mhart_state
-
-	# enable machine mode interrupts
-	li      t0, MSTATUS_MIE
-	csrs    mstatus, t0
-
-
-	# enable machine mode timer interrupts
-	li      t0, MIE_MTIE
-	csrs    mie, t0
-
-	mret
-#endif
-
 	jr      t0
+
+
 
 
 .global secondary_core_stack

@@ -5,6 +5,7 @@
 
 
 
+
 /* SBI Extension IDs */
 #define SBI_EXT_0_1_SET_TIMER 0x0
 #define SBI_EXT_0_1_CONSOLE_PUTCHAR 0x1
@@ -119,6 +120,9 @@ struct sbiret {
 
 #define SBI_EXT_CONSOLE_PUTCHAR 0x01
 
+
+#ifdef __cplusplus
+
 void sbi_early_init(void);
 void sbi_init(void);
 
@@ -131,6 +135,8 @@ bool sbi_probe_extension(unsigned long extension);
 
 struct sbiret sbi_generic_call_2(unsigned long extension, unsigned long function);
 struct sbiret sbi_generic_call_3(unsigned long extension, unsigned long function);
+
+#endif
 
 
 // make a SBI call according to the SBI spec at https://github.com/riscv/riscv-sbi-doc

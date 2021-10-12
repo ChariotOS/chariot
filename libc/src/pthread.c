@@ -9,6 +9,13 @@
 #include <sys/wait.h>
 #include <chariot/futex.h>
 
+
+
+#define ATOMIC_SET(thing) __atomic_test_and_set((thing), __ATOMIC_ACQUIRE)
+#define ATOMIC_CLEAR(thing) __atomic_clear((thing), __ATOMIC_RELEASE)
+#define ATOMIC_LOAD(thing) __atomic_load_n((thing), __ATOMIC_RELAXED)
+
+
 #define PTHREAD_STACK_SIZE (1 * 1024L * 1024L)
 
 /**

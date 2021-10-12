@@ -101,6 +101,10 @@ extern "C" void secondary_entry(int hartid) {
 int start_secondary(void) {
   // start secondary cpus
   for (int i = 0; i < CONFIG_MAX_CPUS; i++) {
+    auto &sc = rv::get_hstate();
+    if (i == sc.hartid) continue;
+
+		KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
     // allocate 2 pages for the secondary core
     secondary_core_stack = (uint64_t)malloc(CONFIG_RISCV_BOOTSTACK_SIZE * 4096);
     secondary_core_stack += CONFIG_RISCV_BOOTSTACK_SIZE * 4096;
@@ -108,6 +112,7 @@ int start_secondary(void) {
     second_done = false;
     __sync_synchronize();
 
+		KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
 
     auto ret = sbi_call(SBI_EXT_HSM, SBI_EXT_HSM_HART_START, i, secondary_core_startup_sbi, 0);
     if (ret.error != SBI_SUCCESS) {
@@ -171,6 +176,7 @@ auto get_lockable(void) {
 
 static int wakes = 0;
 void main(int hartid, void *fdt) {
+  printk("hart: %p, fdt: %p\n", hartid, fdt);
 #ifdef CONFIG_SBI
   // get the information from SBI right away so we can use it early on
   sbi_early_init();
@@ -192,8 +198,6 @@ void main(int hartid, void *fdt) {
 
   /* Set the supervisor trap vector location */
   write_csr(stvec, kernelvec);
-
-	sbi_call(SBI_CONSOLE_PUTCHAR, 'a');
 
   /* Initialize the platform level interrupt controller for this HART */
   rv::plic::hart_init();
@@ -282,7 +286,9 @@ void main(int hartid, void *fdt) {
       return true;
     });
 
+#ifdef CONFIG_SMP
     start_secondary();
+#endif
 
     int mnt_res = vfs::mount("/dev/disk0p1", "/", "ext2", 0, NULL);
     if (mnt_res != 0) {

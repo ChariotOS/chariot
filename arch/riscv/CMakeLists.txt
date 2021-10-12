@@ -7,6 +7,8 @@ file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 
+set_property(SOURCE lowlevel.c PROPERTY COMPILE_FLAGS -g0 -O0)
+
 
 add_kernel_module(
 	CORE

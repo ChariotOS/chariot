@@ -6,6 +6,12 @@
 #define PGROUNDDOWN(a) (((a)) & ~(PGSIZE - 1))
 
 
+#ifdef CONFIG_64BIT
+#define RTYPE uint64_t
+#else
+#define RTYPE uint32_t
+#endif
+
 
 /*
  * VM_BITS      - the overall bits (typically XX in SVXX)
@@ -51,7 +57,7 @@
 #define PT_D (1 << 7)
 
 // shift a physical address to the right place for a PTE.
-#define PA2PTE(pa) ((((rv::xsize_t)pa) >> 12) << 10)
+#define PA2PTE(pa) ((((RTYPE)pa) >> 12) << 10)
 
 #define PTE2PA(pte) (((pte) >> 10) << 12)
 
@@ -62,7 +68,7 @@
 // extract the three N-bit page table indices from a virtual address.
 #define PXMASK ((1llu << VM_PART_BITS) - 1)  // N bits
 #define PXSHIFT(level) (PGSHIFT + (VM_PART_BITS * (level)))
-#define PX(level, va) ((((rv::xsize_t)(va)) >> PXSHIFT(level)) & PXMASK)
+#define PX(level, va) ((((RTYPE)(va)) >> PXSHIFT(level)) & PXMASK)
 
 
 // one beyond the highest possible virtual address.
@@ -91,4 +97,4 @@
 #define SATP_MODE (1L << 30)
 #endif
 
-#define MAKE_SATP(page_table) (SATP_MODE | (((rv::xsize_t)page_table) >> 12))
+#define MAKE_SATP(page_table) (SATP_MODE | (((RTYPE)page_table) >> 12))
