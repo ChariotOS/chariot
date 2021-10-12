@@ -102,6 +102,7 @@ static void uart_irq(int irq, reg_t *r, void *data) {
 
 
 void rv::uart_init(void) {
+  return;
   uart_tx_w = uart_tx_r = 0;
   // disable interrupts.
   WriteReg(IER, 0x00);
@@ -167,24 +168,14 @@ int rv::uart_getc(void) {
 }
 
 
-void serial_install() {
-  rv::uart_init();
-}
+void serial_install() { rv::uart_init(); }
 
 
-int serial_rcvd(int device) {
-  return 0;
-}
-char serial_recv(int device) {
-  return 0;
-}
-char serial_recv_async(int device) {
-  return 0;
-}
+int serial_rcvd(int device) { return 0; }
+char serial_recv(int device) { return 0; }
+char serial_recv_async(int device) { return 0; }
 
-int serial_transmit_empty(int device) {
-  return 0;
-}
+int serial_transmit_empty(int device) { return 0; }
 
 void serial_send(int device, char out) {
   /* We only support uart 1 */

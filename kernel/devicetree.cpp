@@ -169,11 +169,60 @@ void dump_dtb(dtb::node *node, int depth = 0) {
 
 
 namespace dtb {
+
+
+  struct prop {
+    const char *name;
+    const char *value;
+  };
+
+  class prop_iter {
+   public:
+    prop_iter(be32p_t pos) : start(pos), pos(pos){};
+
+
+    prop_iter &operator++() {
+      // m_ptr++;
+      return *this;
+    }
+
+    prop operator*() const {
+      // if (*pos == )
+      return {NULL, NULL};
+    }
+
+
+   private:
+    be32p_t start;
+
+    be32p_t pos;
+  };
+
+  class Node {
+   public:
+    Node(const char *name, be32p_t pos, int depth) : pos(pos), m_name(name), m_depth(depth){};
+
+
+    auto name(void) const { return m_name; }
+    auto depth(void) const { return m_depth; }
+
+    prop_iter props(void) { return prop_iter(pos); }
+
+   private:
+    be32p_t pos;
+    const char *m_name;
+    uint32_t m_depth;
+  };
+
   class Visitor {
    public:
-
-		 
-    virtual void visit_node(void) {}
+    virtual void visit_node(dtb::Node &node) {
+      // for (auto prop : node.props()) {
+      // }
+      for (int i = 0; i < node.depth(); i++)
+        printk("   ");
+      printk("visit %s\n", node.name());
+    }
 
     void visit(dtb::fdt_header *fdt);
 
@@ -189,7 +238,7 @@ void dtb::Visitor::visit(dtb::fdt_header *fdt) {
   int depth = 0;
 
 
-	int continue_at = -1;
+  int continue_at = -1;
 
   while (*sp != FDT_END) {
     uint32_t op = *sp;
@@ -203,18 +252,21 @@ void dtb::Visitor::visit(dtb::fdt_header *fdt) {
     char value[256];
 
     switch (op) {
-      case FDT_BEGIN_NODE:
+      case FDT_BEGIN_NODE: {
         name = (const char *)sp.get();
 
         len = round_up(strlen(name) + 1, 4) / 4;
         for (int i = 0; i < len; i++)
           sp++;
-
-				printk("node name %s\n", name);
-
         depth++;
 
+        dtb::Node n(name, sp, depth);
+        this->visit_node(n);
+
+        // printk("node name %s\n", name);
+
         break;
+      }
       case FDT_END_NODE:
         depth--;
         break;
@@ -247,12 +299,12 @@ int dtb::parse(dtb::fdt_header *fdt) {
   global_fdt_header = fdt;
 
 
-	dtb::Visitor v;
-	v.visit(fdt);
+  // dtb::Visitor v;
+  // v.visit(fdt);
 
 
-	sys::shutdown();
-	return 0;
+  // sys::shutdown();
+  // return 0;
 
 
   assert(next_device == 0);
