@@ -31,15 +31,19 @@ typedef enum {
 
   // Soundblaster 16
   MAJOR_SB16,
-	// AC97 audio device
+  // AC97 audio device
   MAJOR_AC97,
 
   // Pseudoterminal
   MAJOR_PTMX,
   MAJOR_PTS,
 
-	// Generic Video Interface
-	MAJOR_VIDEO,
+  // Generic Video Interface
+  MAJOR_VIDEO,
+
+
+  MAJOR_SIFIVE_UART,
+
 
 } major_numbers;
 
