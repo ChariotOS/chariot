@@ -12,11 +12,7 @@ KERNEL_VMA = CONFIG_KERNEL_VIRTUAL_BASE;
  * ensure that entry.S / _entry is at 0x80000000,
  * where qemu's -kernel jumps.
  */
-#ifdef CONFIG_SBI
 . = 0x80100000;
-#else
-. = 0x80000000;
-#endif
 
 
 PHDRS

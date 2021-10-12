@@ -1,5 +1,6 @@
 #include <devicetree.h>
 #include <util.h>
+#include <syscall.h>
 #include <ck/vec.h>
 
 //! Byte swap int
@@ -165,9 +166,94 @@ void dump_dtb(dtb::node *node, int depth = 0) {
   }
 }
 
+
+
+namespace dtb {
+  class Visitor {
+   public:
+
+		 
+    virtual void visit_node(void) {}
+
+    void visit(dtb::fdt_header *fdt);
+
+   private:
+  };
+}  // namespace dtb
+
+
+
+void dtb::Visitor::visit(dtb::fdt_header *fdt) {
+  be32p_t sp = (uint32_t *)((off_t)fdt + b2l(fdt->off_dt_struct));
+  const char *strings = (const char *)((off_t)fdt + b2l(fdt->off_dt_strings));
+  int depth = 0;
+
+
+	int continue_at = -1;
+
+  while (*sp != FDT_END) {
+    uint32_t op = *sp;
+    /* sp points to the next word */
+    sp++;
+
+    uint32_t len;
+    uint32_t nameoff;
+    const char *name;
+    const char *valptr = NULL;
+    char value[256];
+
+    switch (op) {
+      case FDT_BEGIN_NODE:
+        name = (const char *)sp.get();
+
+        len = round_up(strlen(name) + 1, 4) / 4;
+        for (int i = 0; i < len; i++)
+          sp++;
+
+				printk("node name %s\n", name);
+
+        depth++;
+
+        break;
+      case FDT_END_NODE:
+        depth--;
+        break;
+
+      case FDT_PROP:
+        len = *sp;
+        sp++;
+        nameoff = *sp;
+        sp++;
+        valptr = (const char *)sp.get();
+        for (int i = 0; i < round_up(len, 4) / 4; i++)
+          sp++;
+
+        break;
+
+      case FDT_NOP:
+        // printk("nop\n");
+        break;
+
+      case FDT_END:
+        // printk("end\n");
+        break;
+    }
+  }
+}
+
+
 int dtb::parse(dtb::fdt_header *fdt) {
   printk(KERN_INFO "fdt at %p\n", fdt);
   global_fdt_header = fdt;
+
+
+	dtb::Visitor v;
+	v.visit(fdt);
+
+
+	sys::shutdown();
+	return 0;
+
 
   assert(next_device == 0);
   auto *root = alloc_device("");
@@ -189,7 +275,6 @@ int dtb::parse(dtb::fdt_header *fdt) {
     uint32_t nameoff;
     const char *name;
     const char *valptr = NULL;
-    char value[256];
 
     switch (op) {
       case FDT_BEGIN_NODE:
@@ -238,7 +323,7 @@ int dtb::parse(dtb::fdt_header *fdt) {
     }
   }
 
-  dump_dtb(node, 0);
+  // dump_dtb(node, 0);
   return next_device;
 }
 

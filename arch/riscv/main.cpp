@@ -176,6 +176,7 @@ void main(int hartid, void *fdt) {
   sbi_early_init();
 #endif
 
+
   /*
    * Machine mode passes us the scratch structure through
    * the thread pointer register. We need to then move it
@@ -188,13 +189,17 @@ void main(int hartid, void *fdt) {
 
   rv::get_hstate().kernel_sp = 0;
 
-  /* Initialize the platform level interrupt controller for this HART */
-  rv::plic::hart_init();
-
-  rv::uart_init();
 
   /* Set the supervisor trap vector location */
   write_csr(stvec, kernelvec);
+
+	sbi_call(SBI_CONSOLE_PUTCHAR, 'a');
+
+  /* Initialize the platform level interrupt controller for this HART */
+  rv::plic::hart_init();
+
+
+  // rv::uart_init();
 
 
   off_t boot_free_start = (off_t)v2p(_kernel_end);
