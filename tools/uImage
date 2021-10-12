@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -e
+
+
+COMPRESSION=none
+DST=build/uImage
+
+# make sure the kernel is built
+make
+
+# convert the kernel to a binary format
+tools/tc objcopy -O binary build/chariot.elf build/Image
+
+# create the uImage for U-Boot to use
+mkimage -A riscv -O linux -T kernel -C $COMPRESSION \
+	-a 0x80100000 -e 0x80100000 -n "Chariot" \
+	-d build/Image $DST
+
+
+
+echo "output to $DST"

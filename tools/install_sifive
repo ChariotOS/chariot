@@ -1,0 +1,28 @@
+#!/bin/bash
+
+
+set -e
+
+BOOT=$1
+
+echo $BOOT
+
+if [ "$BOOT" == "" ]; then
+	echo "Usage: tools/install_sifive [boot mount point]"
+fi
+
+
+# build the uImage
+tools/uImage
+# copy the image to the boot dir (overwriting linux)
+cp build/uImage $BOOT/uChariot
+
+
+cp arch/riscv/cfg/extlinux.conf $BOOT/extlinux/extlinux.conf
+cp arch/riscv/cfg/hifive-unmatched-a00.dtb $BOOT/
+
+# SD cards suck, make sure it wrote and isn't just sitting in memory
+sudo sync -f $BOOT
+
+# sanity check
+md5sum build/uImage $BOOT/uChariot
