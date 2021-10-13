@@ -8,6 +8,7 @@
 #include <time.h>
 #include <util.h>
 #include <x86/smp.h>
+#include <debug.h>
 
 // implementation of the x86 interrupt request handling system
 extern u32 idt_block[];
@@ -176,25 +177,38 @@ void dump_trapframe(reg_t *r) {
   auto *tf = (struct x86_64regs *)r;
 
   unsigned int eflags = tf->rflags;
-#define GET(name) (tf->name)
-#define REGFMT "%016p"
-  printk_nolock("RAX=" REGFMT " RBX=" REGFMT " RCX=" REGFMT " RDX=" REGFMT
-                "\n"
-                "RSI=" REGFMT " RDI=" REGFMT " RBP=" REGFMT " RSP=" REGFMT
-                "\n"
-                "R8 =" REGFMT " R9 =" REGFMT " R10=" REGFMT " R11=" REGFMT
-                "\n"
-                "R12=" REGFMT " R13=" REGFMT " R14=" REGFMT " R15=" REGFMT
-                "\n"
-                "RIP=" REGFMT " RFL=%08x [%c%c%c%c%c%c%c]\n",
 
-      GET(rax), GET(rbx), GET(rcx), GET(rdx), GET(rsi), GET(rdi), GET(rbp), GET(rsp), GET(r8),
-      GET(r9), GET(r10), GET(r11), GET(r12), GET(r13), GET(r14), GET(r15), GET(rip), eflags,
-      eflags & DF_MASK ? 'D' : '-', eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-',
-      eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-', eflags & CC_P ? 'P' : '-',
-      eflags & CC_C ? 'C' : '-');
+#define GET(name) (tf->name)
+#define dump(reg) debug::print_register(#reg, GET(reg))
+
+
+  dump(rax);
+  dump(rbx);
+  dump(rcx);
+  dump(rdx);
+  printk_nolock("\n");
+  dump(rsi);
+  dump(rdi);
+  dump(rbp);
+  dump(rsp);
+  printk_nolock("\n");
+  dump(r8);
+  dump(r9);
+  dump(r10);
+  dump(r11);
+  printk_nolock("\n");
+  dump(r12);
+  dump(r13);
+  dump(r14);
+  dump(r15);
+  printk_nolock("\n");
+  dump(rip);
+  debug::print_register("flg", eflags);
+  printk_nolock(" [%c%c%c%c%c%c%c]\n", eflags & DF_MASK ? 'D' : '-', eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-',
+      eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-', eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
   printk_nolock("Backtrace:\n");
 
+#undef dump
   auto bt = generate_backtrace(tf->rbp);
 
   int i = 0;
@@ -305,7 +319,8 @@ void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
   printk_nolock("==================================================================\n");
   // TODO:
   printk_nolock("%s in pid %d, tid %d @ %p\n", name, curthd->pid, curthd->tid, tf->rip);
-  printk_nolock("bad address = %p\n", read_cr2());
+
+	debug::print_register("Bad address", read_cr2());
   // printk_nolock("              info = ");
   // if (tf->err & PGFLT_PRESENT) printk_nolock("PRESENT ");
   // if (tf->err & PGFLT_WRITE) printk_nolock("WRITE ");
@@ -324,13 +339,9 @@ void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
   curproc->terminate(fatal_signal);
 }
 
-static void gpf_handler(int i, reg_t *regs) {
-  handle_fatal("General Protection Fault", SIGSEGV, regs);
-}
+static void gpf_handler(int i, reg_t *regs) { handle_fatal("General Protection Fault", SIGSEGV, regs); }
 
-static void illegal_instruction_handler(int i, reg_t *regs) {
-  handle_fatal("Illegal Instruction", SIGILL, regs);
-}
+static void illegal_instruction_handler(int i, reg_t *regs) { handle_fatal("Illegal Instruction", SIGILL, regs); }
 
 extern "C" void syscall_handle(int i, reg_t *tf, void *);
 
