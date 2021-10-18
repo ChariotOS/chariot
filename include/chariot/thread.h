@@ -1,9 +1,11 @@
 #pragma once
 
 #include <ck/ptr.h>
-#include <wait.h>
+#include <ck/vec.h>
+
 #include <lock.h>
 #include <arch.h>
+#include <wait.h>
 
 
 #ifdef CONFIG_RISCV
@@ -122,10 +124,17 @@ struct thread_waitqueue_info {
 };
 
 
+
+// forward declaration
 class process;
 
+struct kernel_stack {
+  void *start;
+  long size;
+};
 
-class thread final : public ck::refcounted<thread> {
+
+struct thread final : public ck::refcounted<struct thread> {
  public:
   long tid;
   long pid;
@@ -139,10 +148,7 @@ class thread final : public ck::refcounted<thread> {
   int kerrno = 0;
   bool preemptable = true;
 
-  struct kernel_stack {
-    void *start;
-    long size;
-  };
+
 
   off_t yield_from = 0;
 
@@ -152,6 +158,7 @@ class thread final : public ck::refcounted<thread> {
 
   /* Reference to the kernel stack */
   ck::vec<kernel_stack> stacks;
+
   // Masks are per-thread
   struct {
     unsigned long pending = 0;
@@ -176,7 +183,7 @@ class thread final : public ck::refcounted<thread> {
   struct thread_waitqueue_info wq;
 
   // Threads who are joining on this thread.
-  wait_queue joiners;
+  struct wait_queue joiners;
 
 
   /* This is simply a flag. Locked when someone is joining (tearing down) this thread.

@@ -1,10 +1,13 @@
 /**
  * This file implements all the thread:: functions and methods
  */
+
+#include <thread.h>
+
+
 #include <cpu.h>
 #include <mmap_flags.h>
 #include <phys.h>
-#include <thread.h>
 #include <syscall.h>
 #include <time.h>
 #include <util.h>
@@ -34,7 +37,7 @@ thread::thread(long tid, struct process &proc) : proc(proc) {
 
 
 
-  struct thread::kernel_stack s;
+  struct kernel_stack s;
   s.size = PGSIZE * 2;
   s.start = (void *)malloc(s.size);
   stacks.push(s);

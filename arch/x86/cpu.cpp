@@ -21,9 +21,7 @@ static inline void lgdt(void *data, int size) {
 
   asm volatile("lgdt %0" ::"m"(gdt));
 }
-static inline void ltr(u16 sel) {
-  asm volatile("ltr %0" : : "r"(sel));
-}
+static inline void ltr(u16 sel) { asm volatile("ltr %0" : : "r"(sel)); }
 
 /*
  * 386 processor status longword.
@@ -88,8 +86,7 @@ void cpu::seginit(void *local) {
   gdt[SEG_KDATA] = 0x000092000000FFFF;  // Data, DPL=0, W
   gdt[SEG_KCPU] = 0x000000000000FFFF;   // unused
   gdt[SEG_UDATA] = 0x0000F2000000FFFF;  // Data, DPL=3, W
-  gdt[SEG_TSS + 0] =
-      (0x0067) | ((addr & 0xFFFFFF) << 16) | (0x00E9LL << 40) | (((addr >> 24) & 0xFF) << 56);
+  gdt[SEG_TSS + 0] = (0x0067) | ((addr & 0xFFFFFF) << 16) | (0x00E9LL << 40) | (((addr >> 24) & 0xFF) << 56);
   gdt[SEG_TSS + 1] = (addr >> 32);
 
   lgdt((void *)gdt, 8 * sizeof(u64));
@@ -133,7 +130,6 @@ void cpu::switch_vm(struct thread *thd) {
 
 
 
-
   // When in the kernel, gs is set to one designated by the thread.
   // This is swapped out for a user one (in KERNEL_GS_BASE), upon
   // entering userspace, and swapped back when you enter the kernel
@@ -147,7 +143,7 @@ void cpu::switch_vm(struct thread *thd) {
   // wrmsr(KERNEL_GS_BASE, user_gs);
   // asm ("swapgs");
   // wrmsr(KERNEL_GS_BASE, user_gs);
-  
+
   switch (thd->proc.ring) {
     case RING_KERN:
       tss_set_rsp(tss, 0, 0);

@@ -11,9 +11,10 @@
 #else
 #include <stdlib.h>
 #include <stdint.h>
+#include <chariot/ilist.h>
+
 #endif
 
-#include <chariot/ilist.h>
 
 #include "../template_lib.h"
 
@@ -97,7 +98,7 @@ namespace ck {
 
     ~vec() { clear(); }
 
-
+#ifndef KERNEL
     vec(std::initializer_list<T> data) {
       ensure_capacity(data.size());
 
@@ -105,6 +106,7 @@ namespace ck {
         push(el);
       }
     }
+#endif
     vec(vec&& other) : m_size(other.m_size), m_capacity(other.m_capacity), m_outline_buffer(other.m_outline_buffer) {
       if constexpr (inline_capacity > 0) {
         if (!m_outline_buffer) {

@@ -8,7 +8,6 @@
 // use the host's headers as the information within should be header-only :)
 #include <arch.h>
 #include <asm.h>
-#include <dev/RTC.h>
 #include <stddef.h>
 
 
