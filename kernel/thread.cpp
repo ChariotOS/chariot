@@ -92,8 +92,7 @@ thread::thread(long tid, struct process &proc) : proc(proc) {
 
 
 thread::~thread(void) {
-  printk("Thread %d deallocated\n", tid);
-
+  printk("~thread %d\n", tid);
   assert(ref_count() == 0)
 
 
@@ -107,10 +106,10 @@ thread::~thread(void) {
   }
 
   // free all the kernel stacks
-  for (auto &s : stacks)
+  for (auto &s : stacks) {
     free(s.start);
-
-  // free(stack);
+  }
+  // free the FPU state page
   phys::free(fpu.state, 1);
 
   // free the architecture specific state for this thread.
@@ -124,7 +123,6 @@ bool thread::kickoff(void *rip, int initial_state) {
   arch_reg(REG_PC, trap_frame) = (unsigned long)rip;
 
   this->state = initial_state;
-
 
   sched::add_task(this);
   return true;
@@ -214,11 +212,12 @@ void thread::dump(void) {
   }
 }
 
-bool thread::teardown(ck::ref<thread> thd) {
+bool thread::teardown(ck::ref<thread> &&thd) {
 #ifdef CONFIG_VERBOSE_PROCESS
-  pprintk("thread ran for %llu cycles, %llu us\n", t->stats.cycles, t->ktime_us);
+  pprintk("thread ran for %llu cycles, %llu us\n", thd->stats.cycles, thd->ktime_us);
 #endif
 
+  printk("Teardown %d.  %d refs\n", thd->tid, thd->ref_count());
 
   sched::remove_task(thd);
   thd->proc.threads_lock.lock();
@@ -227,8 +226,6 @@ bool thread::teardown(ck::ref<thread> thd) {
   });
   thd->proc.threads_lock.unlock();
 
-
-  printk("Teardown %d w/ %d refs\n", thd->tid, thd->ref_count());
 
   return true;
 }
@@ -308,7 +305,7 @@ int sys::jointhread(int tid) {
 
     // take the run lock
     t->locks.run.lock();
-    thread::teardown(t);
+    thread::teardown(move(t));
     t = nullptr;
   }
   return 0;

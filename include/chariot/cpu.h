@@ -67,7 +67,7 @@ namespace cpu {
 
   struct process *proc(void);
 
-  struct thread *thread(void);
+  ck::ref<thread> thread(void);
   bool in_thread(void);
 
   /**

@@ -226,7 +226,7 @@ struct thread final : public ck::weakable<struct thread> {
 
 
   // remove the thread from all queues it is a member of
-  static bool teardown(ck::ref<thread> thd);
+  static bool teardown(ck::ref<thread> &&thd);
   // sends a signal to the thread and returns if it succeeded or not
   bool send_signal(int sig);
 

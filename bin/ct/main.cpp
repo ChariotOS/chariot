@@ -243,18 +243,16 @@ async(int) make_fiber(int num, int size, int div) {
 
 
 int main(int argc, char** argv) async_main({
-  while (1) {
+  printf("parent tid = %d\n", gettid());
+  for (int i = 0; i < 10; i++) {
     ck::thread t([]() {
-      printf("%d\n", gettid());
       return;
     });
 
     t.join();
   }
 
-  scm::Scheme s;
 
-  s.eval("(display 'hello')");
 
   return;
 

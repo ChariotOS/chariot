@@ -64,7 +64,6 @@ struct mlfq {
       if (back == nullptr) assert(front == nullptr);
       if (front == nullptr) assert(back == nullptr);
 
-
       tsk->sched.next = tsk->sched.prev = nullptr;
     }
 
@@ -144,7 +143,7 @@ struct mlfq {
   ck::ref<thread> get_next(void) {
     scoped_irqlock l(lock);
     for (int prio = 0; prio < MLFQ_NQUEUES; prio++) {
-      if (thread *cur = queues[prio].pick_next(); cur != NULL) return cur;
+      if (ck::ref<thread> cur = queues[prio].pick_next(); cur != nullptr) return cur;
     }
     return nullptr;
   }
@@ -170,7 +169,7 @@ struct mlfq {
     return nullptr;
   }
 
-  void remove(thread *thd) {
+  void remove(ck::ref<thread> thd) {
     scoped_irqlock l(lock);
     assert(thd->stats.current_cpu == core);
     thd->stats.current_cpu = -1;
@@ -182,7 +181,7 @@ struct mlfq {
 
     for (int prio = 1; prio < MLFQ_NQUEUES; prio++) {
       auto &q = queues[prio];
-      for (struct thread *thd = q.front; thd != NULL; thd = thd->sched.next) {
+      for (ck::ref<thread> thd = q.front; thd != nullptr; thd = thd->sched.next) {
         q.remove_task(thd);
         thd->sched.priority /= 2;  // get one better :)
         queues[thd->sched.priority].add_task(thd);
@@ -473,7 +472,7 @@ void sched::run() {
       continue;
     }
 
-    printk_nolock("%s %d %d\n", thd->proc.name.get(), thd->tid, thd->ref_count());
+    // printk_nolock("%s %d %d\n", thd->proc.name.get(), thd->tid, thd->ref_count());
     auto start = cpu::get_ticks();
     switch_into(thd);
     auto end = cpu::get_ticks();

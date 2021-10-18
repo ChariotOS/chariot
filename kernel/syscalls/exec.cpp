@@ -86,7 +86,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
     if (thd != nullptr && thd != curthd) {
       // take the runlock on the thread so nobody else runs it
       thd->locks.run.lock();
-      thread::teardown(thd);
+      thread::teardown(move(thd));
     }
   }
 

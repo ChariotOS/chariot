@@ -403,14 +403,19 @@ int sched::proc::reap(process::ptr p) {
 #endif
 
 
-  for (auto t : p->threads) {
-    assert(t->get_state() == PS_ZOMBIE);
-    /* make sure... */
-    t->locks.run.lock();
-    thread::teardown(t);
-  }
+  {
+    ck::vec<ck::ref<thread>> to_teardown = p->threads;
 
-  p->threads.clear();
+    for (auto t : to_teardown) {
+      assert(t->get_state() == PS_ZOMBIE);
+      /* make sure... */
+      t->locks.run.lock();
+      thread::teardown(move(t));
+    }
+  }
+  assert(p->threads.size() == 0);
+
+
   /* remove the child from our list */
   for (int i = 0; i < me->children.size(); i++) {
     if (me->children[i] == p) {

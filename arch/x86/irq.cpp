@@ -320,7 +320,7 @@ void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
   // TODO:
   printk_nolock("%s in pid %d, tid %d @ %p\n", name, curthd->pid, curthd->tid, tf->rip);
 
-	debug::print_register("Bad address", read_cr2());
+  debug::print_register("Bad address", read_cr2());
   // printk_nolock("              info = ");
   // if (tf->err & PGFLT_PRESENT) printk_nolock("PRESENT ");
   // if (tf->err & PGFLT_WRITE) printk_nolock("WRITE ");
@@ -440,7 +440,7 @@ extern "C" void trap(reg_t *regs) {
   bool from_userspace = tf->cs == 0x23;
   bool ts = time::stabilized();
   if (cpu::in_thread() && from_userspace) {
-    auto *thd = curthd;
+    auto thd = curthd;
     thd->utime_us += time::now_us() - thd->last_start_utime_us;
     thd->trap_frame = regs;
   }
