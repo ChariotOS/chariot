@@ -40,3 +40,5 @@ node_modules
 /ports/out
 
 .idea
+
+.vscode/
