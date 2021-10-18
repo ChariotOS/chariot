@@ -188,7 +188,6 @@ long sched::proc::spawn_init(ck::vec<ck::string> &paths) {
   for (auto &path : paths) {
     ck::vec<ck::string> argv;
     argv.push(path);
-
     int res = proc.exec(path, argv, envp);
     if (res == 0) return pid;
   }
@@ -216,10 +215,10 @@ struct process *sched::proc::kproc(void) {
 }
 
 
-struct thread *sched::proc::spawn_kthread(const char *name, int (*func)(void *), void *arg) {
+ck::ref<thread> sched::proc::spawn_kthread(const char *name, int (*func)(void *), void *arg) {
   auto proc = kproc();
   auto tid = get_next_pid();
-  auto thd = new thread(tid, *proc);
+  auto thd = ck::make_ref<thread>(tid, *proc);
   thd->trap_frame[1] = (unsigned long)arg;
 
 
@@ -282,8 +281,7 @@ process::~process(void) {
 }
 
 bool process::is_dead(void) {
-  for (auto tid : threads) {
-    auto t = thread::lookup(tid);
+  for (auto t : threads) {
     assert(t);
 
     if (t->get_state() != PS_ZOMBIE) {
@@ -334,13 +332,14 @@ int process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::strin
   delete this->mm;
   this->mm = new_addr_space;
 
-  struct thread *thd;
+  ck::ref<thread> thd;
   if (threads.size() != 0) {
     thd = thread::lookup(this->pid);
-    assert(thd != NULL);
   } else {
-    thd = new thread(pid, *this);
+    thd = ck::make_ref<thread>(pid, *this);
   }
+
+  printk("hello\n");
 
   // construct the thread
   arch_reg(REG_SP, thd->trap_frame) = stack + stack_size - 64;
@@ -376,9 +375,7 @@ int sched::proc::send_signal(long p, int sig) {
 
     if (targ) {
       // find a thread
-      for (auto &tid : targ->threads) {
-        auto *thd = thread::lookup(tid);
-        assert(thd != NULL);
+      for (auto thd : targ->threads) {
         if (thd->send_signal(sig)) {
           err = 0;
           break;
@@ -407,8 +404,7 @@ int sched::proc::reap(process::ptr p) {
 #endif
 
 
-  for (auto tid : p->threads) {
-    auto *t = thread::lookup(tid);
+  for (auto t : p->threads) {
     assert(t->get_state() == PS_ZOMBIE);
     /* make sure... */
     t->locks.run.lock();
@@ -679,8 +675,7 @@ void sys::exit_proc(int code) {
 
   {
     scoped_lock l(curproc->datalock);
-    for (auto tid : curproc->threads) {
-      auto t = thread::lookup(tid);
+    for (auto t : curproc->threads) {
       if (t && t != curthd) {
         t->should_die = 1;
         sched::unblock(*t, true);
@@ -690,9 +685,7 @@ void sys::exit_proc(int code) {
     while (1) {
       bool everyone_dead = true;
       /* all the threads should be rudely awoken now... */
-      for (auto tid : curproc->threads) {
-        // printk("checking %d\n", tid);
-        auto t = thread::lookup(tid);
+      for (auto t : curproc->threads) {
         if (t && t != curthd) {
           if (t->get_state() != PS_ZOMBIE) {
             everyone_dead = false;
@@ -898,57 +891,11 @@ int sys::sigwait() {
 
 
 void sched::proc::dump_table(void) {
-#if 0
-  printk("process dump:\n");
-
-
-  printk("-------------------------------------\n\n");
-  for (auto &p : proc_table) {
-    auto &proc = p.value;
-    if (proc->pid == 0) continue;
-    printk("Process %d %s\n", proc->pid, proc->name.get());
-
-    for (auto tid : proc->threads) {
-      auto t = thread::lookup(tid);
-      printk("  %3d.%-3d", proc->pid, tid);
-
-      const char *state = "UNKNOWN";
-#define ST(name) \
-  if (t->state == PS_##name) state = #name
-      ST(EMBRYO);
-      ST(RUNNING);
-      ST(INTERRUPTIBLE);
-      ST(UNINTERRUPTIBLE);
-      ST(ZOMBIE);
-#undef ST
-      printk(" %s\n", state);
-
-      printk("          Ticks:       %d\n", t->sched.ticks);
-      printk("          Syscalls:    %d\n", t->stats.syscall_count);
-      printk("          Run Count:   %d\n", t->stats.run_count);
-      printk("          Current CPU: %d\n", t->stats.current_cpu);
-      if (t->trap_frame != NULL) {
-        printk("          PC:          0x%p\n", arch_reg(REG_PC, t->trap_frame));
-      }
-      printk("          Yield From:  0x%p\n", t->yield_from);
-
-      printk("\n");
-      continue;
-
-
-      printk("\n");
-    }
-    printk("\n-------------------------------------\n\n");
-  }
-#endif
-
   pprintk("Process States: \n");
   for (auto &p : proc_table) {
     auto &proc = p.value;
 
-    for (auto tid : proc->threads) {
-      auto t = thread::lookup(tid);
-
+    for (auto t : proc->threads) {
       const char *state = "UNKNOWN";
 #define ST(name) \
   if (t->state == PS_##name) state = #name

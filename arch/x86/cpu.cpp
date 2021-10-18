@@ -1,6 +1,8 @@
+
 #include <cpu.h>
 #include <mem.h>
 #include <phys.h>
+#include <thread.h>
 
 #include <x86/msr.h>
 #include <x86/smp.h>
@@ -120,7 +122,7 @@ static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {
 #endif
 }
 
-void cpu::switch_vm(struct thread *thd) {
+void cpu::switch_vm(ck::ref<struct thread> thd) {
   auto c = current();
   auto tss = (u32 *)(((char *)c.local) + 1024);
 

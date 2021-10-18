@@ -79,7 +79,8 @@ struct process final : public ck::refcounted<struct process> {
    * array of tasks that are in this process. The order doesn't matter and is
    * probably random.
    */
-  ck::vec<long> threads;
+  spinlock threads_lock;
+  ck::vec<ck::ref<thread>> threads;
 
   /**
    * when a process spawns a new process, it is an embryo. A process can only
@@ -231,8 +232,8 @@ namespace sched {
   // force the process to exit, (yield with different state)
   void exit();
 
-  int remove_task(struct thread *t);
-  int add_task(struct thread *);
+  int remove_task(ck::ref<thread> t);
+  int add_task(ck::ref<thread> t);
 
   // called before dropping back into user space. This is needed
   // when a thread should not return to userspace because it must
@@ -255,7 +256,7 @@ namespace sched {
 
     long create_kthread(const char *name, int (*func)(void *), void *arg = NULL);
 
-    struct thread *spawn_kthread(const char *name, int (*func)(void *), void *arg = NULL);
+    ck::ref<struct thread> spawn_kthread(const char *name, int (*func)(void *), void *arg = NULL);
 
     void dump_table();
 

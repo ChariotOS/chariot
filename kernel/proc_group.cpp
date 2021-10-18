@@ -14,8 +14,8 @@ int sys::setpgid(int pid, int pgid) {
   } else {
     // if there is a process `pid`, the main thread must exist
     // with the same `tid`.
-    auto *thd = thread::lookup(pid);
-    if (thd == NULL) return -ESRCH;
+    auto thd = thread::lookup(pid);
+    if (thd == nullptr) return -ESRCH;
     // TODO: permissions?
     proc = &thd->proc;
   }
@@ -38,10 +38,10 @@ int sys::getpgid(int pid) {
     pid = curproc->pid;
     proc = curproc;  // optimization
   } else {
-    // if there is a process `pid`, the main thread must exist
+    // if tphere is a process `pid`, the main thread must exist
     // with the same `tid`.
-    auto *thd = thread::lookup(pid);
-    if (thd == NULL) return -ESRCH;
+    auto thd = thread::lookup(pid);
+    if (thd == nullptr) return -ESRCH;
     // TODO: permissions?
     proc = &thd->proc;
   }

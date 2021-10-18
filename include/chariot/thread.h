@@ -107,8 +107,8 @@ struct thread_sched_info {
 
   int good_streak = 0;
 
-  thread *next;
-  thread *prev;
+  ck::ref<thread> next;
+  ck::ref<thread> prev;
 };
 
 struct thread_locks {
@@ -134,7 +134,7 @@ struct kernel_stack {
 };
 
 
-struct thread final : public ck::refcounted<struct thread> {
+struct thread final : public ck::weakable<struct thread> {
  public:
   long tid;
   long pid;
@@ -222,8 +222,8 @@ struct thread final : public ck::refcounted<struct thread> {
   // tell the thread to start running at a certain address.
   bool kickoff(void *rip, int state);
   off_t setup_tls(void);
-  static thread *lookup(long);
-  static thread *lookup_r(long);
+  static ck::ref<thread> lookup(long);
+  static ck::ref<thread> lookup_r(long);
   static bool teardown(thread *);
   // sends a signal to the thread and returns if it succeeded or not
   bool send_signal(int sig);

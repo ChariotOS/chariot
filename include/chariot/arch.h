@@ -71,9 +71,7 @@ namespace irq {
   irq::handler uninstall(int irq);
 
   int init(void);
-  inline void eoi(int i) {
-    arch::irq::eoi(i);
-  }
+  inline void eoi(int i) { arch::irq::eoi(i); }
 
   // cause an interrupt to be handled by the kernel's interrupt dispatcher
   void dispatch(int irq, reg_t *);

@@ -33,19 +33,19 @@ struct mlfq {
   };
 
   struct queue {
-    struct thread *front = NULL;
-    struct thread *back = NULL;
+    ck::ref<thread> front = nullptr;
+    ck::ref<thread> back = nullptr;
     void add_task(struct thread *tsk) {
       if (front == nullptr) {
         // this is the only thing in the queue
         front = tsk;
         back = tsk;
-        tsk->sched.next = NULL;
-        tsk->sched.prev = NULL;
+        tsk->sched.next = nullptr;
+        tsk->sched.prev = nullptr;
       } else {
         // insert at the end of the list
         back->sched.next = tsk;
-        tsk->sched.next = NULL;
+        tsk->sched.next = nullptr;
         tsk->sched.prev = back;
         // the new task is the end
         back = tsk;
@@ -61,16 +61,16 @@ struct mlfq {
       }
       if (back == tsk) back = tsk->sched.prev;
       if (front == tsk) front = tsk->sched.next;
-      if (back == NULL) assert(front == NULL);
-      if (front == NULL) assert(back == NULL);
+      if (back == nullptr) assert(front == nullptr);
+      if (front == nullptr) assert(back == nullptr);
 
-      tsk->sched.next = tsk->sched.prev = NULL;
+      tsk->sched.next = tsk->sched.prev = nullptr;
     }
 
     thread *pick_next(void) {
-      struct thread *td = NULL;
+      ck::ref<thread> td = nullptr;
 
-      for (struct thread *thd = front; thd != NULL; thd = thd->sched.next) {
+      for (ck::ref<thread> thd = front; thd != nullptr; thd = thd->sched.next) {
         if (thd->get_state() == PS_RUNNING) {
           td = thd;
           remove_task(td);
@@ -268,16 +268,16 @@ static struct thread *get_next_thread(void) {
 }
 
 
-static thread *pick_next_thread(void) {
+ck::ref<thread> pick_next_thread(void) {
   auto &cpu = cpu::current();
-  if (cpu.next_thread == NULL) {
+  if (!cpu.next_thread) {
     cpu.next_thread = get_next_thread();
   }
   return cpu.next_thread;
 }
 
 
-int sched::add_task(struct thread *tsk) {
+int sched::add_task(ck::ref<thread> tsk) {
   auto b = mlfq::Behavior::Good;
   if (tsk->sched.has_run >= tsk->sched.timeslice) b = mlfq::Behavior::Bad;
 
@@ -285,7 +285,7 @@ int sched::add_task(struct thread *tsk) {
   return 0;
 }
 
-int sched::remove_task(struct thread *t) {
+int sched::remove_task(ck::ref<thread> t) {
   if (t->stats.current_cpu >= 0) {
     // assert(t->stats.current_cpu != -1);  // sanity check
     queues[t->stats.current_cpu].remove(t);
@@ -293,29 +293,29 @@ int sched::remove_task(struct thread *t) {
   return 0;
 }
 
-static void switch_into(struct thread &thd) {
-  if (thd.held_lock != NULL) {
-    if (!thd.held_lock->try_lock()) return;
+static void switch_into(ck::ref<thread> thd) {
+  if (thd->held_lock != NULL) {
+    if (!thd->held_lock->try_lock()) return;
   }
-  thd.locks.run.lock();
+  thd->locks.run.lock();
 
   // auto start = time::now_us();
 
-  cpu::current().current_thread = &thd;
-  thd.state = PS_RUNNING;
-  if (thd.proc.ring == RING_USER) arch_restore_fpu(thd);
+  cpu::current().current_thread = thd;
+  thd->state = PS_RUNNING;
+  if (thd->proc.ring == RING_USER) arch_restore_fpu(*thd);
 
 
   // update the statistics of the thread
-  thd.stats.run_count++;
-  thd.stats.current_cpu = cpu::current().cpunum;
+  thd->stats.run_count++;
+  thd->stats.current_cpu = cpu::current().cpunum;
 
-  thd.sched.has_run = 0;
+  thd->sched.has_run = 0;
 
   // load up the thread's address space
-  cpu::switch_vm(&thd);
+  cpu::switch_vm(thd);
 
-  thd.stats.last_start_cycle = arch_read_timestamp();
+  thd->stats.last_start_cycle = arch_read_timestamp();
   bool ts = time::stabilized();
   long start_us = 0;
   if (ts) {
@@ -323,20 +323,20 @@ static void switch_into(struct thread &thd) {
   }
 
   // Switch into the thread!
-  context_switch(&cpu::current().sched_ctx, thd.kern_context);
+  context_switch(&cpu::current().sched_ctx, thd->kern_context);
 
-  if (thd.proc.ring == RING_USER) arch_save_fpu(thd);
+  if (thd->proc.ring == RING_USER) arch_save_fpu(*thd);
 
   if (ts) {
-    thd.ktime_us += time::now_us() - start_us;
+    thd->ktime_us += time::now_us() - start_us;
   }
 
   // Update the stats afterwards
   cpu::current().current_thread = nullptr;
 
   // printk_nolock("took %llu us\n", time::now_us() - start);
-  thd.locks.run.unlock();
-  if (thd.held_lock != NULL) thd.held_lock->unlock();
+  thd->locks.run.unlock();
+  if (thd->held_lock != NULL) thd->held_lock->unlock();
 }
 
 
@@ -443,7 +443,7 @@ static int idle_task(void *arg) {
 void sched::run() {
   arch_disable_ints();
   // per-scheduler idle threads do not exist in the scheduler queue.
-  auto *idle_thread = sched::proc::spawn_kthread("idle task", idle_task, NULL);
+  auto idle_thread = sched::proc::spawn_kthread("idle task", idle_task, NULL);
   idle_thread->preemptable = true;
 
   cpu::current().in_sched = true;
@@ -456,8 +456,8 @@ void sched::run() {
       my_queue().boost();
     }
 
-    struct thread *thd = pick_next_thread();
-    cpu::current().next_thread = NULL;
+    ck::ref<thread> thd = pick_next_thread();
+    cpu::current().next_thread = nullptr;
 
     if (thd == nullptr) {
       // idle loop when there isn't a task
@@ -465,7 +465,7 @@ void sched::run() {
       idle_thread->sched.has_run = 0;
 
       auto start = cpu::get_ticks();
-      switch_into(*idle_thread);
+      switch_into(idle_thread);
       auto end = cpu::get_ticks();
 
       cpu::current().kstat.idle_ticks += end - start;
@@ -474,7 +474,7 @@ void sched::run() {
 
     mlfq::Behavior b = mlfq::Behavior::Unknown;
     auto start = cpu::get_ticks();
-    switch_into(*thd);
+    switch_into(thd);
     auto end = cpu::get_ticks();
 
     if (thd->proc.ring == RING_KERN) {

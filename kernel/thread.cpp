@@ -22,7 +22,7 @@ static void thread_create_callback(void *);
 extern "C" void trapret(void);
 
 static spinlock thread_table_lock;
-static ck::map<long, thread *> thread_table;
+static ck::map<long, ck::weak_ref<thread>> thread_table;
 
 thread::thread(long tid, struct process &proc) : proc(proc) {
   this->tid = tid;
@@ -33,7 +33,7 @@ thread::thread(long tid, struct process &proc) : proc(proc) {
   fpu.state = phys::kalloc(1);
 
   sched.priority = 0;
-  sched.next = sched.prev = NULL;
+  sched.next = sched.prev = nullptr;
 
 
 
@@ -72,12 +72,15 @@ thread::thread(long tid, struct process &proc) : proc(proc) {
     assert(!thread_table.contains(tid));
     // printk("inserting %d\n", tid);
     // thread_table.set(tid, unique_ptr(this));
-    thread_table.set(tid, this);
+    ck::ref<thread> t = this;
+    thread_table.set(tid, t);
   }
 
 
   // push the tid into the proc's tid list
-  proc.threads.push(tid);
+  proc.threads_lock.lock();
+  proc.threads.push(this);
+  proc.threads_lock.unlock();
 
 
 #if CONFIG_VERBOSE_PROCESS
@@ -124,15 +127,10 @@ thread::~thread(void) {
 
   sched::remove_task(this);
 
-  /* Remove this thread from the parent process */
-  this->proc.threads.remove_first_matching([this](int otid) {
-    /* If the thread id in the vector is the current tid, remove it */
-    return otid == this->tid;
-  });
-
   for (auto &s : stacks) {
     free(s.start);
   }
+
   // free(stack);
   phys::free(fpu.state, 1);
   if (sig.arch_priv != NULL) {
@@ -204,11 +202,9 @@ void thread::setup_stack(reg_t *tf) {
 
 static void thread_create_callback(void *) { arch_thread_create_callback(); }
 
-struct thread *thread::lookup_r(long tid) {
-  return thread_table.get(tid);
-}
+ck::ref<thread> thread::lookup_r(long tid) { return thread_table.get(tid).get(); }
 
-struct thread *thread::lookup(long tid) {
+ck::ref<thread> thread::lookup(long tid) {
   scoped_irqlock l(thread_table_lock);
   assert(thread_table.contains(tid));
   auto t = thread::lookup_r(tid);
@@ -277,7 +273,7 @@ extern int get_next_pid(void);
 // TODO: alot of verification, basically
 int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
   int tid = get_next_pid();
-  auto *thd = new thread(tid, *curproc);
+  auto thd = ck::make_ref<thread>(tid, *curproc);
 
   arch_reg(REG_SP, thd->trap_frame) = (unsigned long)stack;
   arch_reg(REG_PC, thd->trap_frame) = (unsigned long)fn;
@@ -289,9 +285,9 @@ int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
 }
 
 int sys::jointhread(int tid) {
-  auto *t = thread::lookup(tid);
+  auto t = thread::lookup(tid);
   /* If there isn't a thread, fail */
-  if (t == NULL) return -ENOENT;
+  if (t == nullptr) return -ENOENT;
   /* You can't join on other proc's threads */
   if (t->pid != curthd->pid) return -EPERM;
   /* If someone else is joining, it's invalid */

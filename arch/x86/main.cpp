@@ -120,6 +120,11 @@ static void kmain2(void) {
 }
 
 
+int fib(int n) {
+  if (n < 2) return n;
+  return fib(n - 1) + fib(n - 2);
+}
+
 #define ACPI_EBDA_PTR_LOCATION 0x0000040E /* Physical Address */
 #define ACPI_EBDA_PTR_LENGTH 2
 #define ACPI_EBDA_WINDOW_SIZE 1024
@@ -160,6 +165,7 @@ int kernel_init(void *) {
   auto kproc = sched::proc::kproc();
   kproc->root = fs::inode::acquire(vfs::get_root());
   kproc->cwd = fs::inode::acquire(vfs::get_root());
+
 
 
   ck::string init_paths = kargs::get("init", "/bin/init");
