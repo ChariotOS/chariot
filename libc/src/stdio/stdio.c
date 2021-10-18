@@ -105,6 +105,8 @@ FILE *falloc(void) {
   fp->fd = -1;
   fp->lock = -1;
 
+	fp->has_ungetc = 0;
+
   pthread_mutex_init(&fp->flock, NULL);
 
   return ofl_add(fp);
@@ -330,6 +332,11 @@ int fputc(int c, FILE *stream) {
 int putc(int c, FILE *stream) __attribute__((weak, alias("fputc")));
 
 int fgetc(FILE *stream) {
+
+	if (stream->has_ungetc) {
+		stream->has_ungetc = 0;
+		return stream->ungetc;
+	}
   char buf[1];
   int r;
   r = fread(buf, 1, 1, stream);
@@ -357,6 +364,9 @@ int getchar(void) {
 }
 
 int ungetc(int c, FILE *stream) {
+	if (stream->has_ungetc) fprintf(stderr, "File has ungetc already\n");
+	stream->has_ungetc = 1;
+	stream->ungetc = c;
   return EOF;
 }
 

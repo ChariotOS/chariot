@@ -94,29 +94,24 @@ namespace server {
     gfx::scribe s(bmp);
     s.clear(0xEEEEEE);
 
+    s.blit_alpha(gfx::point(mouse_x, mouse_y), *cursor, cursor->rect());
 
-    {
-      auto r = gfx::rect(mouse_x, mouse_y, 256, 256);
-      int dist = m_display.height() - mouse_y;
-      // float intensity = (1.0 - (dist / (float)m_display.height())) * 0.5;
 
-      int radius = MIN((m_display.height() - mouse_y) / 10, 150);
-      int ox = 0;
-      int oy = 64;
-      auto shadow = build_shadow_bitmap(r.w, r.h, 0x005fb8, radius, 0.15);
 
-      auto shadow_r = r;
-      shadow_r.grow(radius);
+    // {
+    //   auto r = gfx::rect(mouse_x, mouse_y, 256, 256);
+    //   int dist = m_display.height() - mouse_y;
+    //   int radius = MIN((m_display.height() - mouse_y) / 10, 150);
+    //   int ox = 0;
+    //   int oy = 64;
+    //   auto shadow = build_shadow_bitmap(r.w, r.h, 0x005fb8, radius, 0.15);
 
-      s.blit_alpha(gfx::point(shadow_r.x + ox, shadow_r.y + oy), *shadow, shadow->rect());
-      s.fill_rect(r, 0xFFFFFF);
-    }
+    //   auto shadow_r = r;
+    //   shadow_r.grow(radius);
 
-    // s.draw_rect(gfx::rect(m_mouse_pos.x(), m_mouse_pos.y(), 10, 10), rand());
-
-    // m_display.flush_fb(FlushWithMemcpy::Yes);
-
-    // mouse_moved = true;
+    //   s.blit_alpha(gfx::point(shadow_r.x + ox, shadow_r.y + oy), *shadow, shadow->rect());
+    //   s.fill_rect(r, 0xFFFFFF);
+    // }
   }
 
 

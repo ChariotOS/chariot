@@ -62,6 +62,10 @@ struct _FILE_IMPL {
   int bufbase;
 
 
+	int has_ungetc;
+	char ungetc;
+
+
   int buf_len, buf_cap;
   char default_buffer[BUFSIZ];
   char *buffer;

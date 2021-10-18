@@ -31,6 +31,7 @@
 #include <lumen/ipc.h>
 #include "test.h"
 
+#include <scm/scm.h>
 
 #if 0
 
@@ -241,6 +242,12 @@ async(int) make_fiber(int num, int size, int div) {
 }
 
 int main(int argc, char** argv) async_main({
+  scm::Scheme s;
+
+	s.eval("(display 'hello')");
+
+	return;
+
   auto start = sysbind_gettime_microsecond();
   int result = make_fiber(0, 1000000, 10).await();
   auto end = sysbind_gettime_microsecond();

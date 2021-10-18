@@ -20,7 +20,7 @@ menu "Build"
 
 	config ADDITIONAL_USER_FLAGS
 		string "[userspace] Additional GCC Flags"
-		default "-O3"
+		default "-O2"
 
 
 
