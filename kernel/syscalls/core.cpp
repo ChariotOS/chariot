@@ -13,9 +13,9 @@
 
 void sys::restart() {}
 
-pid_t sys::getpid(void) { return curthd->pid; }
+long sys::getpid(void) { return curthd->pid; }
 
-pid_t sys::gettid(void) { return curthd->tid; }
+long sys::gettid(void) { return curthd->tid; }
 
 // WARNING: HACK
 struct syscall {
@@ -32,11 +32,9 @@ void set_syscall(const char *name, int num, void *handler) {
 }
 
 
-uint64_t do_syscall(
-    long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f) {
+uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f) {
   if (num == 0xFF) {
-    printk(KERN_DEBUG "[pid %d] debug syscall: %llx %llx %llx %llx %llx %llx\n", curproc->pid, a, b,
-        c, d, e, f);
+    printk(KERN_DEBUG "[pid %d] debug syscall: %llx %llx %llx %llx %llx %llx\n", curproc->pid, a, b, c, d, e, f);
     return 0;
   }
   if (num & ~0xFF) return -1;
@@ -51,9 +49,7 @@ uint64_t do_syscall(
 #endif
   curthd->stats.syscall_count++;
 
-  auto *func =
-      (uint64_t(*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))syscall_table[num]
-          .handler;
+  auto *func = (uint64_t(*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))syscall_table[num].handler;
   auto res = func(a, b, c, d, e, f);
   return res;
 }

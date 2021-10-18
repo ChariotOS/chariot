@@ -4,7 +4,7 @@
 #include <cpu.h>
 #include <mmap_flags.h>
 #include <phys.h>
-#include <sched.h>
+#include <thread.h>
 #include <syscall.h>
 #include <time.h>
 #include <util.h>
@@ -19,9 +19,9 @@ static void thread_create_callback(void *);
 extern "C" void trapret(void);
 
 static spinlock thread_table_lock;
-static ck::map<pid_t, thread *> thread_table;
+static ck::map<long, thread *> thread_table;
 
-thread::thread(pid_t tid, struct process &proc) : proc(proc) {
+thread::thread(long tid, struct process &proc) : proc(proc) {
   this->tid = tid;
 
   this->pid = proc.pid;
@@ -201,11 +201,11 @@ void thread::setup_stack(reg_t *tf) {
 
 static void thread_create_callback(void *) { arch_thread_create_callback(); }
 
-struct thread *thread::lookup_r(pid_t tid) {
+struct thread *thread::lookup_r(long tid) {
   return thread_table.get(tid);
 }
 
-struct thread *thread::lookup(pid_t tid) {
+struct thread *thread::lookup(long tid) {
   scoped_irqlock l(thread_table_lock);
   assert(thread_table.contains(tid));
   auto t = thread::lookup_r(tid);

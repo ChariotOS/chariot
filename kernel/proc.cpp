@@ -24,13 +24,13 @@
 
 // start out at pid 2, so init is pid 1 regardless of if kernel threads are
 // created before init is spawned
-volatile pid_t next_pid = 2;
+volatile long next_pid = 2;
 
 // static rwlock ptable_lock;
 static spinlock ptable_lock;
-static ck::map<pid_t, process::ptr> proc_table;
+static ck::map<long, process::ptr> proc_table;
 
-pid_t get_next_pid(void) { return __atomic_add_fetch(&next_pid, 1, __ATOMIC_ACQUIRE); }
+long get_next_pid(void) { return __atomic_add_fetch(&next_pid, 1, __ATOMIC_ACQUIRE); }
 
 mm::space *alloc_user_vm(void) {
   unsigned long top = 0x7ff000000000;
@@ -42,7 +42,7 @@ mm::space *alloc_user_vm(void) {
   return new mm::space(0x1000, top, mm::pagetable::create());
 }
 
-static process::ptr pid_lookup(pid_t pid) {
+static process::ptr pid_lookup(long pid) {
   scoped_irqlock l(ptable_lock);
   process::ptr p = nullptr;
   if (proc_table.contains(pid)) {
@@ -54,7 +54,7 @@ static process::ptr pid_lookup(pid_t pid) {
 
 
 
-void sched::proc::in_pgrp(pid_t pgid, ck::func<bool(struct process &)> cb) {
+void sched::proc::in_pgrp(long pgid, ck::func<bool(struct process &)> cb) {
   scoped_irqlock l(ptable_lock);
   for (auto kv : proc_table) {
     auto proc = kv.value;
@@ -122,7 +122,7 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
 
 process::ptr sched::proc::spawn_process(struct process *parent, int flags) {
   // grab the next pid (will be the tid of the main thread when it is executed)
-  pid_t pid = get_next_pid();
+  long pid = get_next_pid();
 
 
   process::ptr proc;
@@ -144,7 +144,7 @@ process::ptr sched::proc::spawn_process(struct process *parent, int flags) {
   return do_spawn_proc(proc, flags);
 };
 
-bool sched::proc::ptable_remove(pid_t p) {
+bool sched::proc::ptable_remove(long p) {
   scoped_irqlock l(ptable_lock);
   bool succ = false;
 
@@ -156,8 +156,8 @@ bool sched::proc::ptable_remove(pid_t p) {
   return succ;
 }
 
-pid_t sched::proc::spawn_init(ck::vec<ck::string> &paths) {
-  pid_t pid = 1;
+long sched::proc::spawn_init(ck::vec<ck::string> &paths) {
+  long pid = 1;
 
   process::ptr proc_ptr;
   proc_ptr = ck::make_ref<process>();
@@ -231,7 +231,7 @@ struct thread *sched::proc::spawn_kthread(const char *name, int (*func)(void *),
 }
 
 
-pid_t sched::proc::create_kthread(const char *name, int (*func)(void *), void *arg) {
+long sched::proc::create_kthread(const char *name, int (*func)(void *), void *arg) {
   auto proc = kproc();
 
   auto tid = get_next_pid();
@@ -349,18 +349,18 @@ int process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::strin
   return 0;
 }
 
-int sched::proc::send_signal(pid_t p, int sig) {
+int sched::proc::send_signal(long p, int sig) {
   // TODO: handle process group signals
   if (p < 0) {
     int err = -ESRCH;
-    pid_t pgid = -p;
-    ck::vec<pid_t> targs;
+    long pgid = -p;
+    ck::vec<long> targs;
     sched::proc::in_pgrp(pgid, [&](struct process &p) -> bool {
       targs.push(p.pid);
       return true;
     });
 
-    for (pid_t pid : targs)
+    for (long pid : targs)
       sched::proc::send_signal(pid, sig);
 
     return 0;
@@ -482,7 +482,7 @@ struct zombie_entry {
 struct waiter_entry {
   // an entry in the waiter_list
   struct list_head node;
-  pid_t seeking;  // the pid that this waiter is interested in (waitpid systemcall semantics)
+  long seeking;  // the pid that this waiter is interested in (waitpid systemcall semantics)
   // systemcall wait flags
   int wait_flags = 0;
   // the process that we caught
@@ -496,7 +496,7 @@ struct waiter_entry {
 
 
 
-static bool can_reap(struct thread *reaper, process::ptr zombie, pid_t seeking, int reap_flags) {
+static bool can_reap(struct thread *reaper, process::ptr zombie, long seeking, int reap_flags) {
   if (!zombie->parent) return false;
   // a process may not reap another process's children.
   if (zombie->parent->pid != reaper->proc.pid) return false;
@@ -523,7 +523,7 @@ static bool can_reap(struct thread *reaper, process::ptr zombie, pid_t seeking, 
 
 
 
-int sched::proc::do_waitpid(pid_t pid, int &status, int wait_flags) {
+int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
   auto *me = curproc;
 
   if (!me) return -1;
@@ -612,7 +612,7 @@ int sched::proc::do_waitpid(pid_t pid, int &status, int wait_flags) {
       delete zomb;
     }
 
-    pid_t pid = found_process->pid;
+    long pid = found_process->pid;
     result = sched::proc::reap(found_process);
     break;
   }
@@ -832,7 +832,7 @@ static void fork_return(void) {
 extern "C" void trapreturn(void);
 #endif
 
-static pid_t do_fork(struct process &p) {
+static long do_fork(struct process &p) {
   auto np = sched::proc::spawn_process(&p, SPAWN_FORK);
 
   /* TLB Flush */
@@ -958,8 +958,7 @@ void sched::proc::dump_table(void) {
       ST(UNINTERRUPTIBLE);
       ST(ZOMBIE);
 #undef ST
-      pprintk("  '%s' p:%d,t:%d: %s, %llu %s\n", proc->name.get(), proc->pid, t->tid, state, proc->mm->memory_usage(),
-          t->in_awaitfs ? "AWAITFS" : "");
+      pprintk("  '%s' p:%d,t:%d: %s, %llu\n", proc->name.get(), proc->pid, t->tid, state, proc->mm->memory_usage());
     }
   }
 

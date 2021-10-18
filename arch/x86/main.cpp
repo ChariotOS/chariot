@@ -166,7 +166,7 @@ int kernel_init(void *) {
 
   auto paths = init_paths.split(',');
 
-  pid_t init_pid = sched::proc::spawn_init(paths);
+  auto init_pid = sched::proc::spawn_init(paths);
 
 
   sys::waitpid(init_pid, NULL, 0);
