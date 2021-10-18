@@ -256,7 +256,7 @@ namespace sched {
 
     long create_kthread(const char *name, int (*func)(void *), void *arg = NULL);
 
-    ck::ref<struct thread> spawn_kthread(const char *name, int (*func)(void *), void *arg = NULL);
+    ck::ref<thread> spawn_kthread(const char *name, int (*func)(void *), void *arg = NULL);
 
     void dump_table();
 

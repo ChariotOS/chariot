@@ -40,9 +40,9 @@ struct processor_state {
 
 
   u32 speed_khz;
-  ck::ref<struct thread> current_thread;
+  ck::ref<thread> current_thread;
   // filled in by "pick next thread" in the scheduler
-  ck::ref<struct thread> next_thread;
+  ck::ref<thread> next_thread;
 
   struct thread_context *sched_ctx;
 

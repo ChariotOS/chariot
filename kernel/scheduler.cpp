@@ -35,7 +35,7 @@ struct mlfq {
   struct queue {
     ck::ref<thread> front = nullptr;
     ck::ref<thread> back = nullptr;
-    void add_task(struct thread *tsk) {
+    void add_task(ck::ref<thread> tsk) {
       if (front == nullptr) {
         // this is the only thing in the queue
         front = tsk;
@@ -52,7 +52,7 @@ struct mlfq {
       }
     }
 
-    void remove_task(struct thread *tsk) {
+    void remove_task(ck::ref<thread> tsk) {
       if (tsk->sched.next) {
         tsk->sched.next->sched.prev = tsk->sched.prev;
       }
@@ -64,10 +64,11 @@ struct mlfq {
       if (back == nullptr) assert(front == nullptr);
       if (front == nullptr) assert(back == nullptr);
 
+
       tsk->sched.next = tsk->sched.prev = nullptr;
     }
 
-    thread *pick_next(void) {
+    ck::ref<thread> pick_next(void) {
       ck::ref<thread> td = nullptr;
 
       for (ck::ref<thread> thd = front; thd != nullptr; thd = thd->sched.next) {
@@ -93,7 +94,7 @@ struct mlfq {
   //    queues[MLFQ_NQUEUES-1] is the lowest priority, highest runtime
   mlfq::queue queues[MLFQ_NQUEUES];
 
-  void add(thread *thd, mlfq::Behavior b = mlfq::Behavior::Unknown) {
+  void add(ck::ref<thread> thd, mlfq::Behavior b = mlfq::Behavior::Unknown) {
     scoped_irqlock l(lock);
     thd->stats.current_cpu = core;
 
@@ -140,7 +141,7 @@ struct mlfq {
     }
   }
 
-  thread *get_next(void) {
+  ck::ref<thread> get_next(void) {
     scoped_irqlock l(lock);
     for (int prio = 0; prio < MLFQ_NQUEUES; prio++) {
       if (thread *cur = queues[prio].pick_next(); cur != NULL) return cur;
@@ -151,14 +152,14 @@ struct mlfq {
 
 
   // steal to another cpu, `thieff`
-  thread *steal(int thief) {
+  ck::ref<thread> steal(int thief) {
     bool locked = false;
     auto f = lock.try_lock_irqsave(locked);
 
     if (locked) {
       for (int prio = 0; prio < MLFQ_NQUEUES; prio++) {
         // TODO: make sure it can be taken by the thief
-        if (thread *cur = queues[prio].pick_next(); cur != NULL) {
+        if (ck::ref<thread> cur = queues[prio].pick_next(); cur != nullptr) {
           lock.unlock_irqrestore(f);
           // printk_nolock("cpu %d stealing thread %d\n", cpu::current().cpunum, cur->tid);
           return cur;
@@ -228,11 +229,11 @@ bool sched::init(void) {
 
 
 // work-steal from other cores if they have runnable threads
-static struct thread *worksteal(void) {
+static ck::ref<thread> worksteal(void) {
   int nproc = cpu::nproc();
   // printk_nolock("nproc: %d\n", nproc);
   // divide by zero and infinite loop safety
-  if (nproc <= 1) return NULL;
+  if (nproc <= 1) return nullptr;
 
   auto &q = my_queue();
   unsigned int target = q.core;
@@ -245,7 +246,7 @@ static struct thread *worksteal(void) {
   if (q.next_worksteal >= nproc) q.next_worksteal = 0;
   if (!queues[target].active) return nullptr;
 
-  auto *t = queues[target].steal(q.core);
+  ck::ref<thread> t = queues[target].steal(q.core);
 
   // printk_nolock("cpu %d stealing from cpu %d : %d\n", q.core, target, t);
 
@@ -257,9 +258,9 @@ static struct thread *worksteal(void) {
 
 
 static struct thread *get_next_thread(void) {
-  auto *t = my_queue().get_next();
+  ck::ref<thread> t = my_queue().get_next();
 
-  if (t == NULL) {
+  if (t == nullptr) {
     t = worksteal();
     // if (t != NULL) printk_nolock("nothing to do on cpu %d. stole %p\n", cpu::current().cpunum,
     // t);
@@ -472,7 +473,7 @@ void sched::run() {
       continue;
     }
 
-    mlfq::Behavior b = mlfq::Behavior::Unknown;
+    printk_nolock("%s %d %d\n", thd->proc.name.get(), thd->tid, thd->ref_count());
     auto start = cpu::get_ticks();
     switch_into(thd);
     auto end = cpu::get_ticks();

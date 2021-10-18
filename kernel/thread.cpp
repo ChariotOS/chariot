@@ -11,6 +11,7 @@
 #include <syscall.h>
 #include <time.h>
 #include <util.h>
+
 /**
  * A thread needs to bootstrap itself somehow, and it uses this function to do
  * so. Both kinds of threads (user and kernel) start by executing this function.
@@ -89,22 +90,34 @@ thread::thread(long tid, struct process &proc) : proc(proc) {
 }
 
 
-off_t thread::setup_tls(void) {
-  // Map in the TLS if there is one
-  // TODO maybe move TLS to userspace?
-  if (proc.tls_info.exists) {
-    tls_usize = proc.tls_info.memsz;
-    tls_uaddr = proc.mm->mmap(
-        ck::string::format("[tid %d TLS]", this->tid), 0, proc.tls_info.memsz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, nullptr, 0);
 
-    printk("============================== %p\n", tls_uaddr);
-    proc.mm->dump();
-  } else {
-    tls_uaddr = 0;
+thread::~thread(void) {
+  printk("Thread %d deallocated\n", tid);
+
+  assert(ref_count() == 0)
+
+
+  {
+    scoped_irqlock l(thread_table_lock);
+    assert(thread_table.contains(tid));
+    // important: we cannot free() something while in an irqlock. As such, we must leak the pointer
+    // from the table, then free it later.
+    // thread_table.get(t->tid).leak_ptr();
+    thread_table.remove(tid);
   }
 
-  return tls_uaddr;
+  // free all the kernel stacks
+  for (auto &s : stacks)
+    free(s.start);
+
+  // free(stack);
+  phys::free(fpu.state, 1);
+
+  // free the architecture specific state for this thread.
+  if (sig.arch_priv != NULL) free(sig.arch_priv);
 }
+
+
 
 
 bool thread::kickoff(void *rip, int initial_state) {
@@ -112,32 +125,12 @@ bool thread::kickoff(void *rip, int initial_state) {
 
   this->state = initial_state;
 
-  setup_tls();
 
   sched::add_task(this);
   return true;
 }
 
 
-thread::~thread(void) {
-  if (tls_uaddr != 0) {
-    proc.mm->dump();
-    proc.mm->unmap(tls_uaddr, tls_usize);
-  }
-
-  sched::remove_task(this);
-
-  for (auto &s : stacks) {
-    free(s.start);
-  }
-
-  // free(stack);
-  phys::free(fpu.state, 1);
-  if (sig.arch_priv != NULL) {
-    // assume it doesn't have a destructor, idk
-    free(sig.arch_priv);
-  }
-}
 
 
 void thread::setup_stack(reg_t *tf) {
@@ -211,22 +204,31 @@ ck::ref<thread> thread::lookup(long tid) {
   return t;
 }
 
-bool thread::teardown(thread *t) {
+
+
+void thread::dump(void) {
+  scoped_irqlock l(thread_table_lock);
+  for (auto &[tid, twr] : thread_table) {
+    auto thd = twr.get();
+    printk_nolock("Thread %d : %p\n", tid, thd.get());
+  }
+}
+
+bool thread::teardown(ck::ref<thread> thd) {
 #ifdef CONFIG_VERBOSE_PROCESS
   pprintk("thread ran for %llu cycles, %llu us\n", t->stats.cycles, t->ktime_us);
 #endif
 
 
-  {
-    scoped_irqlock l(thread_table_lock);
-    assert(thread_table.contains(t->tid));
-    // important: we cannot free() something while in an irqlock. As such, we must leak the pointer
-    // from the table, then free it later.
-    // thread_table.get(t->tid).leak_ptr();
-    thread_table.remove(t->tid);
-  }
+  sched::remove_task(thd);
+  thd->proc.threads_lock.lock();
+  thd->proc.threads.remove_first_matching([&](auto &o) {
+    return o->tid == thd->tid;
+  });
+  thd->proc.threads_lock.unlock();
 
-  delete t;
+
+  printk("Teardown %d w/ %d refs\n", thd->tid, thd->ref_count());
 
   return true;
 }
@@ -293,18 +295,21 @@ int sys::jointhread(int tid) {
   /* If someone else is joining, it's invalid */
   if (t->joinlock.is_locked()) return -EINVAL;
 
+
+
   /* take the join lock */
   {
     scoped_lock joinlock(t->joinlock);
-
     if (t->state != PS_ZOMBIE) {
       if (t->joiners.wait().interrupted()) {
         return -EINTR;
       }
     }
+
     // take the run lock
     t->locks.run.lock();
     thread::teardown(t);
+    t = nullptr;
   }
   return 0;
 }

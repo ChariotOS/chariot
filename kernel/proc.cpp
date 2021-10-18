@@ -224,7 +224,6 @@ ck::ref<thread> sched::proc::spawn_kthread(const char *name, int (*func)(void *)
 
   arch_reg(REG_PC, thd->trap_frame) = (unsigned long)func;
   thd->set_state(PS_RUNNING);
-  thd->setup_tls();
 
   return thd;
 }
@@ -915,6 +914,8 @@ void sched::proc::dump_table(void) {
   struct zombie_entry *zent = NULL;
   list_for_each_entry(zent, &zombie_list, node) { pprintk("  process %d\n", zent->proc->pid); }
 
+
+  thread::dump();
   // pprintk("Waiter List: \n");
   // struct waiter_entry *went = NULL;
   // list_for_each_entry(went, &waiter_list, node) {

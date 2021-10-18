@@ -103,7 +103,6 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
 
   cpu::switch_vm(curthd);
 
-  curthd->setup_tls();
   curthd->setup_stack(tf);
 
 

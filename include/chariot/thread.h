@@ -221,13 +221,18 @@ struct thread final : public ck::weakable<struct thread> {
   void interrupt(void);
   // tell the thread to start running at a certain address.
   bool kickoff(void *rip, int state);
-  off_t setup_tls(void);
   static ck::ref<thread> lookup(long);
   static ck::ref<thread> lookup_r(long);
-  static bool teardown(thread *);
+
+
+  // remove the thread from all queues it is a member of
+  static bool teardown(ck::ref<thread> thd);
   // sends a signal to the thread and returns if it succeeded or not
   bool send_signal(int sig);
 
+
+
+  static void dump(void);
   /**
    * Do not use this API, go through sched::proc::* to allocate and deallocate
    * processes and threads.
