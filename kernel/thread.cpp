@@ -97,10 +97,6 @@ thread::thread(long tid, struct process &proc) : proc(proc) {
 
 thread::~thread(void) {
   assert(ref_count() == 0);
-
-  dump_addr2line();
-
-
   {
     scoped_irqlock l(thread_table_lock);
     assert(thread_table.contains(tid));
