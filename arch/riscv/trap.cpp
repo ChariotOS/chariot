@@ -45,6 +45,7 @@ const char *regs_name[] = {"ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1",
 void arch_dump_backtrace(void) { /* Nothing here for now... */
 }
 
+int arch_generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz) { return 0; }
 
 
 

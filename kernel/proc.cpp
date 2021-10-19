@@ -235,7 +235,7 @@ long sched::proc::create_kthread(const char *name, int (*func)(void *), void *ar
   auto tid = get_next_pid();
 
   // construct the thread
-  auto thd = new thread(tid, *proc);
+  auto thd = ck::make_ref<thread>(tid, *proc);
   thd->trap_frame[1] = (unsigned long)arg;
 
   thd->kickoff((void *)func, PS_RUNNING);
@@ -407,16 +407,10 @@ int sched::proc::reap(process::ptr p) {
     ck::vec<ck::ref<thread>> to_teardown = p->threads;
     for (auto t : to_teardown) {
       /* make sure... */
-      // t->locks.run.lock();
-      printk("%d is dead %d\n", t->tid, t->should_die);
       assert(t->get_state() == PS_ZOMBIE);
 
-      // while (thread::join(t)) {
-      // }
-
-      t->locks.run.lock();
+      t->runlock.lock();
       thread::teardown(move(t));
-      // thread::teardown(move(t));
     }
   }
   assert(p->threads.size() == 0);
@@ -690,6 +684,17 @@ void sys::exit_proc(int code) {
   }
 
 
+  // ck::vec<ck::ref<thread>> threads;
+  // for (auto &t : curproc->threads) {
+  //   if (t && t != curthd) {
+  //     threads.push(t);
+  //   }
+  // }
+  // for (auto &t : threads) {
+  //   thread::teardown(move(t));
+  // }
+
+
 
   curproc->exit_code = code;
   curproc->exited = true;
@@ -844,7 +849,7 @@ static long do_fork(struct process &p) {
   p.children.push(np);
 
   auto old_td = curthd;
-  auto new_td = new thread(np->pid, *np);
+  auto new_td = ck::make_ref<thread>(np->pid, *np);
 
   // copy the trapframe
   memcpy(new_td->trap_frame, old_td->trap_frame, arch_trapframe_size());

@@ -243,10 +243,8 @@ async(int) make_fiber(int num, int size, int div) {
 
 
 int main(int argc, char** argv) async_main({
-  printf("parent tid = %d\n", gettid());
   for (int i = 0; true; i++) {
     ck::thread t([]() {
-      // sysbind_usleep(10000);
       return;
     });
 

@@ -37,3 +37,13 @@ void debug::print_register(const char *name, reg_t value) {
 
   set_color(C_RESET);
 }
+
+
+ck::vec<off_t> debug::generate_backtrace(off_t virt_ebp) {
+  ck::vec<off_t> backtrace;
+  off_t bt[64];
+  int count = arch_generate_backtrace(virt_ebp, bt, 64);
+  for (int i = 0; i < count; i++)
+    backtrace.push(bt[i]);
+  return backtrace;
+}

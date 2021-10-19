@@ -101,6 +101,9 @@ unsigned arch_trapframe_size(void);
 void arch_dump_backtrace(void);
 void arch_dispatch_signal(int sig, void *handler, void *ucontext);
 
+
+int arch_generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz);
+
 void arch_sigreturn(void *ucontext);
 void arch_flush_mmu(void);
 void arch_save_fpu(struct thread &);

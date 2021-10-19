@@ -85,7 +85,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   for (auto thd : curproc->threads) {
     if (thd != nullptr && thd != curthd) {
       // take the runlock on the thread so nobody else runs it
-      thd->locks.run.lock();
+      thd->runlock.lock();
       thread::teardown(move(thd));
     }
   }

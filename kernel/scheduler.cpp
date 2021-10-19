@@ -40,37 +40,37 @@ struct mlfq {
         // this is the only thing in the queue
         front = tsk;
         back = tsk;
-        tsk->sched.next = nullptr;
-        tsk->sched.prev = nullptr;
+        tsk->next = nullptr;
+        tsk->prev = nullptr;
       } else {
         // insert at the end of the list
-        back->sched.next = tsk;
-        tsk->sched.next = nullptr;
-        tsk->sched.prev = back;
+        back->next = tsk;
+        tsk->next = nullptr;
+        tsk->prev = back;
         // the new task is the end
         back = tsk;
       }
     }
 
     void remove_task(ck::ref<thread> tsk) {
-      if (tsk->sched.next) {
-        tsk->sched.next->sched.prev = tsk->sched.prev;
+      if (tsk->next) {
+        tsk->next->prev = tsk->prev;
       }
-      if (tsk->sched.prev) {
-        tsk->sched.prev->sched.next = tsk->sched.next;
+      if (tsk->prev) {
+        tsk->prev->next = tsk->next;
       }
-      if (back == tsk) back = tsk->sched.prev;
-      if (front == tsk) front = tsk->sched.next;
+      if (back == tsk) back = tsk->prev;
+      if (front == tsk) front = tsk->next;
       if (back == nullptr) assert(front == nullptr);
       if (front == nullptr) assert(back == nullptr);
 
-      tsk->sched.next = tsk->sched.prev = nullptr;
+      tsk->next = tsk->prev = nullptr;
     }
 
     ck::ref<thread> pick_next(void) {
       ck::ref<thread> td = nullptr;
 
-      for (ck::ref<thread> thd = front; thd != nullptr; thd = thd->sched.next) {
+      for (ck::ref<thread> thd = front; thd != nullptr; thd = thd->next) {
         if (thd->get_state() == PS_RUNNING) {
           td = thd;
           remove_task(td);
@@ -131,7 +131,7 @@ struct mlfq {
       for (int prio = 0; prio < MLFQ_NQUEUES; prio++) {
         auto &q = queues[prio];
         printk_nolock("prio %02d:", prio);
-        for (struct thread *thd = q.front; thd != NULL; thd = thd->sched.next) {
+        for (struct thread *thd = q.front; thd != NULL; thd = thd->next) {
           printk_nolock(" '%s(good: %d)'", thd->proc.name.get(), thd->sched.good_streak);
         }
         printk_nolock("\n");
@@ -181,7 +181,7 @@ struct mlfq {
 
     for (int prio = 1; prio < MLFQ_NQUEUES; prio++) {
       auto &q = queues[prio];
-      for (ck::ref<thread> thd = q.front; thd != nullptr; thd = thd->sched.next) {
+      for (ck::ref<thread> thd = q.front; thd != nullptr; thd = thd->next) {
         q.remove_task(thd);
         thd->sched.priority /= 2;  // get one better :)
         queues[thd->sched.priority].add_task(thd);
@@ -263,13 +263,11 @@ static struct thread *get_next_thread(void) {
 
   if (t == nullptr) {
     t = worksteal();
-    // if (t != NULL) printk_nolock("nothing to do on cpu %d. stole %p\n", cpu::current().cpunum,
-    // t);
   }
 
   if (t) {
-    t->sched.prev = nullptr;
-    t->sched.next = nullptr;
+    t->prev = nullptr;
+    t->next = nullptr;
   }
 
   return t;
@@ -305,11 +303,12 @@ static void switch_into(ck::ref<thread> thd) {
   if (thd->held_lock != NULL) {
     if (!thd->held_lock->try_lock()) return;
   }
-  thd->locks.run.lock();
+  thd->runlock.lock();
 
   // auto start = time::now_us();
 
   cpu::current().current_thread = thd;
+  cpu::current().next_thread = nullptr;
   thd->state = PS_RUNNING;
   if (thd->proc.ring == RING_USER) arch_restore_fpu(*thd);
 
@@ -335,15 +334,13 @@ static void switch_into(ck::ref<thread> thd) {
 
   if (thd->proc.ring == RING_USER) arch_save_fpu(*thd);
 
-  if (ts) {
-    thd->ktime_us += time::now_us() - start_us;
-  }
+  if (ts) thd->ktime_us += time::now_us() - start_us;
 
   // Update the stats afterwards
   cpu::current().current_thread = nullptr;
 
   // printk_nolock("took %llu us\n", time::now_us() - start);
-  thd->locks.run.unlock();
+  thd->runlock.unlock();
   if (thd->held_lock != NULL) thd->held_lock->unlock();
 }
 

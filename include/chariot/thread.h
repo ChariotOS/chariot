@@ -106,15 +106,8 @@ struct thread_sched_info {
   int priority = 0;  // highest priority to start out. Only gets worse :)
 
   int good_streak = 0;
-
-  ck::ref<thread> next;
-  ck::ref<thread> prev;
 };
 
-struct thread_locks {
-  spinlock generic;  // locked for data manipulation
-  spinlock run;      // locked while a thread is being run
-};
 
 struct thread_waitqueue_info {
   unsigned waiting_on = 0;
@@ -138,7 +131,9 @@ struct thread final : public ck::weakable<struct thread> {
  public:
   long tid;
   long pid;
-
+  // put these at the top for "cache" reasons idk
+  ck::ref<thread> next;
+  ck::ref<thread> prev;
 
   process &proc;
 
@@ -172,7 +167,7 @@ struct thread final : public ck::weakable<struct thread> {
   struct thread_fpu_info fpu;
   struct thread_statistics stats;
   // bundle locks into a single struct
-  struct thread_locks locks;
+  spinlock runlock;
 
 
 
