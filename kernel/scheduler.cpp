@@ -247,6 +247,8 @@ static ck::ref<thread> worksteal(void) {
 
   ck::ref<thread> t = queues[target].steal(q.core);
 
+
+
   // printk_nolock("cpu %d stealing from cpu %d : %d\n", q.core, target, t);
 
   // work steal!
@@ -264,6 +266,12 @@ static struct thread *get_next_thread(void) {
     // if (t != NULL) printk_nolock("nothing to do on cpu %d. stole %p\n", cpu::current().cpunum,
     // t);
   }
+
+  if (t) {
+    t->sched.prev = nullptr;
+    t->sched.next = nullptr;
+  }
+
   return t;
 }
 
@@ -482,10 +490,10 @@ void sched::run() {
     } else {
       cpu::current().kstat.user_ticks += end - start;
     }
-
-
-    // add the task back to the scheduler
-    sched::add_task(thd);
+    if (thd->get_state() != PS_ZOMBIE) {
+      // add the task back to the scheduler
+      sched::add_task(thd);
+    }
   }
   panic("scheduler should not have gotten back here\n");
 }
@@ -651,18 +659,26 @@ int sched::claim_next_signal(int &sig, void *&handler) {
 void sched::before_iret(bool userspace) {
   auto &c = cpu::current();
 
-  if (!cpu::in_thread()) return;
-  // exit via the scheduler if the task should die.
-  if (curthd->should_die) sched::exit();
 
-  if (time::stabilized()) curthd->last_start_utime_us = time::now_us();
+  if (!cpu::in_thread()) return;
+
+  auto thd = curthd;
+
+  // exit via the scheduler if the task should die.
+  if (thd->should_die) {
+    thd = nullptr;
+    sched::exit();
+  }
+
+  if (time::stabilized()) thd->last_start_utime_us = time::now_us();
 
   // if its not running,
-  if (curthd->state != PS_RUNNING) return;
+  if (thd->state != PS_RUNNING) return;
 
-  bool out_of_time = curthd->sched.has_run >= curthd->sched.timeslice;
+  bool out_of_time = thd->sched.has_run >= thd->sched.timeslice;
   if (out_of_time || cpu::current().next_thread != nullptr || c.woke_someone_up) {
     c.woke_someone_up = false;
+    thd = nullptr;
     sched::yield();
   }
 }

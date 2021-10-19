@@ -71,8 +71,6 @@ thread::thread(long tid, struct process &proc) : proc(proc) {
   {
     scoped_irqlock l(thread_table_lock);
     assert(!thread_table.contains(tid));
-    // printk("inserting %d\n", tid);
-    // thread_table.set(tid, unique_ptr(this));
     ck::ref<thread> t = this;
     thread_table.set(tid, t);
   }
@@ -81,20 +79,13 @@ thread::thread(long tid, struct process &proc) : proc(proc) {
     scoped_irqlock l(proc.threads_lock);
     proc.threads.push(this);
   }
-
-
-
-#if CONFIG_VERBOSE_PROCESS
-  printk("Thread %d:%d created\n", pid, tid);
-#endif
 }
 
 
 
 thread::~thread(void) {
   printk("~thread %d\n", tid);
-  assert(ref_count() == 0)
-
+  assert(ref_count() == 0);
 
   {
     scoped_irqlock l(thread_table_lock);
@@ -114,6 +105,8 @@ thread::~thread(void) {
 
   // free the architecture specific state for this thread.
   if (sig.arch_priv != NULL) free(sig.arch_priv);
+
+  // memset((void *)this, 0xFF, sizeof(*this));
 }
 
 
@@ -208,9 +201,18 @@ void thread::dump(void) {
   scoped_irqlock l(thread_table_lock);
   for (auto &[tid, twr] : thread_table) {
     auto thd = twr.get();
-    printk_nolock("Thread %d : %p\n", tid, thd.get());
+    printk_nolock("t:%d p:%d : %p %d refs\n", tid, thd->pid, thd.get(), thd->ref_count());
   }
 }
+
+static void scan_for_pointer(void *vdata, size_t sz, uint64_t ptr) {
+  uint64_t *data = (uint64_t *)vdata;
+  for (int i = 0; i < sz / sizeof(uint64_t); i++) {
+    if (ptr == data[i]) printk("it's got it at %p\n", &data[i]);
+  }
+}
+
+extern ck::vec<off_t> generate_backtrace(off_t virt_ebp);
 
 bool thread::teardown(ck::ref<thread> &&thd) {
 #ifdef CONFIG_VERBOSE_PROCESS
@@ -227,11 +229,39 @@ bool thread::teardown(ck::ref<thread> &&thd) {
   }
 
 
-
   sched::remove_task(thd);
 
-  // printk("after teardown %d.  %d refs\n", thd->tid, thd->ref_count());
+
+  auto bt = generate_backtrace(thd->kern_context->rbp);
+  printk("Thread Backtrace from %p:\n", thd->kern_context->rbp);
+  printk("%p\n", thd->kern_context->pc);
+
+  for (auto pc : bt) {
+    printk("%p\n", pc);
+  }
+
+  // printk("Scanning for thread %p\n", thd.get());
+
+  // for (auto &s : thd->stacks) {
+  //   auto stk_start = (off_t)s.start;
+  //   auto stk_end = stk_start + s.size;
+
+  //   stk_start = thd->kern_context->rbp;
+  //   auto sz = stk_end - stk_start;
+  //   printk("stack: %p\n", s.start);
+  //   scan_for_pointer((void *)stk_start, sz, (uint64_t)thd.get());
+  //   // free(s.start);
+  // }
+
+  printk("after teardown %d.  %d refs\n", thd->tid, thd->ref_count());
+  // for (int i = 0; i < thd->ref_count() - 1; i++) {
+  //   thd->ref_release();
+  // }
+
   thd = nullptr;
+  // for (int i = 0; i < thd->ref_count() - 1; i++) {
+  // delete thd.leak_ref();
+  // }
 
 
   return true;
@@ -290,6 +320,24 @@ int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
   return tid;
 }
 
+
+bool thread::join(ck::ref<thread> thd) {
+  {
+    /* take the join lock */
+    scoped_lock joinlock(thd->joinlock);
+    if (thd->state != PS_ZOMBIE) {
+      if (thd->joiners.wait().interrupted()) {
+        return false;
+      }
+    }
+  }
+
+  // take the run lock
+  thd->locks.run.lock();
+  thread::teardown(move(thd));
+  return true;
+}
+
 int sys::jointhread(int tid) {
   auto t = thread::lookup(tid);
   /* If there isn't a thread, fail */
@@ -299,22 +347,7 @@ int sys::jointhread(int tid) {
   /* If someone else is joining, it's invalid */
   if (t->joinlock.is_locked()) return -EINVAL;
 
-
-
-  /* take the join lock */
-  {
-    scoped_lock joinlock(t->joinlock);
-    if (t->state != PS_ZOMBIE) {
-      if (t->joiners.wait().interrupted()) {
-        return -EINTR;
-      }
-    }
-
-    // take the run lock
-    t->locks.run.lock();
-    thread::teardown(move(t));
-    t = nullptr;
-  }
+  thread::join(move(t));
   return 0;
 }
 

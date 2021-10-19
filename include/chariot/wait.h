@@ -29,7 +29,7 @@ struct wait_entry {
 #define WQ_FLAG_EXCLUSIVE 0x01
 #define WQ_FLAG_RUDELY 0x02
   /* what thread does this wait entry control */
-  struct thread *thd;
+  ck::ref<thread> thd;
   /* private data */
   void *_priv = NULL;
   template <typename T>
@@ -106,8 +106,7 @@ struct wait_queue {
 
 /* Wait for several wait queues, returning the index of the queue that woke first, or -EINTR */
 int multi_wait(wait_queue **queues, size_t nqueues, bool exclusive = false);
-int multi_wait_prelocked(
-    wait_queue **queues, size_t nqueues, bool irqs_enabled, bool exclusive = false);
+int multi_wait_prelocked(wait_queue **queues, size_t nqueues, bool irqs_enabled, bool exclusive = false);
 
 
 
@@ -125,7 +124,6 @@ int multi_wait_prelocked(
  * finish_wait();
  */
 void prepare_to_wait(struct wait_queue &wq, struct wait_entry &ent, bool interruptible = true);
-void prepare_to_wait_exclusive(
-    struct wait_queue &wq, struct wait_entry &ent, bool interruptible = true);
+void prepare_to_wait_exclusive(struct wait_queue &wq, struct wait_entry &ent, bool interruptible = true);
 wait_result do_wait(struct wait_entry &ent);
 void finish_wait(struct wait_queue &wq, struct wait_entry &ent);

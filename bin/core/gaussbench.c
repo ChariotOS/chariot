@@ -36,7 +36,7 @@ static void serialgauss(float **A, float *B, float *X) {
 
 
 void *do_gauss(void *arg) {
-	// return NULL;
+  // return NULL;
   float **A = malloc(N * sizeof(float *));
   float *B = malloc(N * sizeof(float));
   for (int i = 0; i < N; i++) {
@@ -61,8 +61,8 @@ void *do_gauss(void *arg) {
 }
 
 struct thread_info {
-	pthread_t thread;
-	unsigned long start;
+  pthread_t thread;
+  unsigned long start;
 };
 
 int main(int argc, char **argv) {
@@ -72,20 +72,19 @@ int main(int argc, char **argv) {
   struct thread_info *threads = malloc(nproc * sizeof(*threads));
 
   for (int i = 0; 1; i++) {
-
     for (int p = 0; p < nproc; p++) {
-    	threads[p].start = sysbind_gettime_microsecond();
+      threads[p].start = sysbind_gettime_microsecond();
       pthread_create(&threads[p].thread, NULL, do_gauss, NULL);
-		}
+    }
 
 
 
-		printf("%3d:", i);
+    printf("%3d:", i);
     for (int p = 0; p < nproc; p++) {
       pthread_join(threads[p].thread, NULL);
-			printf(" %8.2f", (sysbind_gettime_microsecond() - threads[p].start) / 1000.0);
-		}
-		printf("\n");
+      printf(" %8.2f", (sysbind_gettime_microsecond() - threads[p].start) / 1000.0);
+    }
+    printf("\n");
 
     // long long end = sysbind_gettime_microseconds();
     // printf("%3d: %lldms\n", i, end - start);

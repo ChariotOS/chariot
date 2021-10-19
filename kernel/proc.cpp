@@ -387,7 +387,7 @@ int sched::proc::send_signal(long p, int sig) {
 }
 
 int sched::proc::reap(process::ptr p) {
-  assert(p->is_dead());
+  // assert(p->is_dead());
   auto *me = curproc;
 
 
@@ -406,10 +406,17 @@ int sched::proc::reap(process::ptr p) {
   {
     ck::vec<ck::ref<thread>> to_teardown = p->threads;
     for (auto t : to_teardown) {
-      assert(t->get_state() == PS_ZOMBIE);
       /* make sure... */
       // t->locks.run.lock();
+      printk("%d is dead %d\n", t->tid, t->should_die);
+      assert(t->get_state() == PS_ZOMBIE);
+
+      // while (thread::join(t)) {
+      // }
+
+      t->locks.run.lock();
       thread::teardown(move(t));
+      // thread::teardown(move(t));
     }
   }
   assert(p->threads.size() == 0);
@@ -664,11 +671,15 @@ void sys::exit_proc(int code) {
 
     while (1) {
       bool everyone_dead = true;
-      /* all the threads should be rudely awoken now... */
-      for (auto t : curproc->threads) {
-        if (t && t != curthd) {
-          if (t->get_state() != PS_ZOMBIE) {
-            everyone_dead = false;
+
+      {
+        scoped_irqlock l(curproc->threads_lock);
+        /* all the threads should be rudely awoken now... */
+        for (auto t : curproc->threads) {
+          if (t && t != curthd) {
+            if (t->get_state() != PS_ZOMBIE) {
+              everyone_dead = false;
+            }
           }
         }
       }
@@ -678,9 +689,11 @@ void sys::exit_proc(int code) {
     }
   }
 
+
+
   curproc->exit_code = code;
   curproc->exited = true;
-
+  curthd->should_die = 1;
   curthd->set_state(PS_ZOMBIE);
 
 
@@ -690,9 +703,6 @@ void sys::exit_proc(int code) {
   // to be freed in zombify OR waitpid
   struct zombie_entry *zomb = new zombie_entry(curproc);
   zombify(zomb);
-
-  curthd->should_die = 1;
-
 
   // sched::exit();
 }
@@ -708,9 +718,7 @@ void sys::exit_thread(int code) {
 
   // defer to later!
   curthd->should_die = 1;
-
-  // let the trap handler handle the exit back to the scheduler
-  sched::set_state(PS_ZOMBIE);
+  curthd->set_state(PS_ZOMBIE);
 }
 
 

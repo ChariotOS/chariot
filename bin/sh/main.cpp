@@ -250,6 +250,23 @@ int main(int argc, char **argv, char **envp) {
   setenv("SHELL", pwd->pw_shell, 1);
   setenv("HOME", pwd->pw_dir, 1);
 
+  // const char *args[] = {
+  //     "/bin/echo",
+  //     "yes",
+  //     NULL,
+  // };
+  // while (1) {
+  //   printf("Fork\n");
+
+  //   int pid = fork();
+  //   if (pid == 0) {
+  //     execv(args[0], args);
+  //     exit(0);
+  //   }
+  //   printf("Waitpid\n");
+  //   waitpid(pid, NULL, 0);
+  //   printf("Done.\n");
+  // }
 
 
   struct termios tios;

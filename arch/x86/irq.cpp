@@ -144,7 +144,7 @@ int generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz) {
 }
 
 
-static ck::vec<off_t> generate_backtrace(off_t virt_ebp) {
+ck::vec<off_t> generate_backtrace(off_t virt_ebp) {
   ck::vec<off_t> backtrace;
   off_t bt[64];
   int count = generate_backtrace(virt_ebp, bt, 64);
@@ -438,31 +438,35 @@ extern "C" void x86_enter_userspace(x86_64regs *);
 extern "C" void trap(reg_t *regs) {
   auto *tf = (struct x86_64regs *)regs;
   bool from_userspace = tf->cs == 0x23;
-  bool ts = time::stabilized();
-  if (cpu::in_thread() && from_userspace) {
-    auto thd = curthd;
-    thd->utime_us += time::now_us() - thd->last_start_utime_us;
-    thd->trap_frame = regs;
-  }
-
-  int nr = tf->trapno;
-
-  off_t bt[64];
-  int count = 0;
-
-  // TODO profiler??? :)
-  if (false && curproc && from_userspace) count = generate_backtrace(tf->rbp, bt, 64);
 
 
-  if (nr == 0x80) {
-    arch_enable_ints();
-    syscall_handle(0x80, regs, NULL);
-  } else {
-    if (nr >= 32) {
-      irq::dispatch(nr - 32, regs);
-    } else {
+  {
+    bool ts = time::stabilized();
+    if (cpu::in_thread() && from_userspace) {
+      auto thd = curthd;
+      thd->utime_us += time::now_us() - thd->last_start_utime_us;
+      thd->trap_frame = regs;
+    }
+
+    int nr = tf->trapno;
+
+    off_t bt[64];
+    int count = 0;
+
+    // TODO profiler??? :)
+    if (false && curproc && from_userspace) count = generate_backtrace(tf->rbp, bt, 64);
+
+
+    if (nr == 0x80) {
       arch_enable_ints();
-      isr_functions[nr](nr, regs);
+      syscall_handle(0x80, regs, NULL);
+    } else {
+      if (nr >= 32) {
+        irq::dispatch(nr - 32, regs);
+      } else {
+        arch_enable_ints();
+        isr_functions[nr](nr, regs);
+      }
     }
   }
 
