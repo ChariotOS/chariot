@@ -651,17 +651,17 @@ int sched::claim_next_signal(int &sig, void *&handler) {
 void sched::before_iret(bool userspace) {
   auto &c = cpu::current();
 
-
   if (!cpu::in_thread()) return;
   // exit via the scheduler if the task should die.
   if (curthd->should_die) sched::exit();
 
-
   if (time::stabilized()) curthd->last_start_utime_us = time::now_us();
 
-  bool out_of_time = curthd->sched.has_run >= curthd->sched.timeslice;
+  // if its not running,
+  if (curthd->state != PS_RUNNING) return;
 
-  if (out_of_time || cpu::current().next_thread != NULL || c.woke_someone_up) {
+  bool out_of_time = curthd->sched.has_run >= curthd->sched.timeslice;
+  if (out_of_time || cpu::current().next_thread != nullptr || c.woke_someone_up) {
     c.woke_someone_up = false;
     sched::yield();
   }

@@ -77,11 +77,11 @@ thread::thread(long tid, struct process &proc) : proc(proc) {
     thread_table.set(tid, t);
   }
 
+  {
+    scoped_irqlock l(proc.threads_lock);
+    proc.threads.push(this);
+  }
 
-  // push the tid into the proc's tid list
-  proc.threads_lock.lock();
-  proc.threads.push(this);
-  proc.threads_lock.unlock();
 
 
 #if CONFIG_VERBOSE_PROCESS
@@ -217,14 +217,21 @@ bool thread::teardown(ck::ref<thread> &&thd) {
   pprintk("thread ran for %llu cycles, %llu us\n", thd->stats.cycles, thd->ktime_us);
 #endif
 
-  printk("Teardown %d.  %d refs\n", thd->tid, thd->ref_count());
+  // printk("before teardown %d.  %d refs\n", thd->tid, thd->ref_count());
+  {
+    scoped_irqlock l(thd->proc.threads_lock);
+
+    thd->proc.threads.remove_first_matching([&](auto &o) {
+      return o->tid == thd->tid;
+    });
+  }
+
+
 
   sched::remove_task(thd);
-  thd->proc.threads_lock.lock();
-  thd->proc.threads.remove_first_matching([&](auto &o) {
-    return o->tid == thd->tid;
-  });
-  thd->proc.threads_lock.unlock();
+
+  // printk("after teardown %d.  %d refs\n", thd->tid, thd->ref_count());
+  thd = nullptr;
 
 
   return true;

@@ -26,7 +26,7 @@ struct process *cpu::proc(void) {
 
 bool cpu::in_thread(void) { return (bool)thread(); }
 
-ck::ref<thread> cpu::thread() { return current().current_thread; }
+thread *cpu::thread() { return current().current_thread; }
 
 extern "C" u64 get_sp(void);
 

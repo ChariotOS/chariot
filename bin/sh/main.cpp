@@ -1,3 +1,4 @@
+#include "sys/wait.h"
 #define _CHARIOT_SRC
 #include <chariot.h>
 #include <chariot/ucontext.h>
@@ -250,6 +251,7 @@ int main(int argc, char **argv, char **envp) {
   setenv("HOME", pwd->pw_dir, 1);
 
 
+
   struct termios tios;
   while (1) {
     tcgetattr(0, &tios);
@@ -262,8 +264,7 @@ int main(int argc, char **argv, char **envp) {
       disp_cwd = "~";
     }
 
-    snprintf(prompt, 256, "[\x1b[33m%s\x1b[0m@\x1b[34m%s \x1b[35m%s\x1b[0m]%c ", uname, hostname,
-        disp_cwd, uid == 0 ? '#' : '$');
+    snprintf(prompt, 256, "[\x1b[33m%s\x1b[0m@\x1b[34m%s \x1b[35m%s\x1b[0m]%c ", uname, hostname, disp_cwd, uid == 0 ? '#' : '$');
     // snprintf(prompt, 256, "%s %c ", disp_cwd, uid == 0 ? '#' : '$');
 
 

@@ -405,11 +405,10 @@ int sched::proc::reap(process::ptr p) {
 
   {
     ck::vec<ck::ref<thread>> to_teardown = p->threads;
-
     for (auto t : to_teardown) {
       assert(t->get_state() == PS_ZOMBIE);
       /* make sure... */
-      t->locks.run.lock();
+      // t->locks.run.lock();
       thread::teardown(move(t));
     }
   }
@@ -546,7 +545,6 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
     struct zombie_entry *zomb = NULL;
     process::ptr found_process = nullptr;
 
-
     auto f = waitlist_lock.lock_irqsave();
 
     bool found = false;
@@ -575,7 +573,6 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
         waitlist_lock.unlock_irqrestore(f);
         break;
       }
-
       struct wait_entry ent;
 
       struct waiter_entry went;
@@ -589,7 +586,6 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
       waiter_list.add(&went.node);
 
       waitlist_lock.unlock_irqrestore(f);
-
 
       auto sres = ent.start();
       if (sres.interrupted()) {
@@ -624,25 +620,9 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
 
 
 
-void sys::exit_thread(int code) {
-  // if we are the main thread, exit the group instead.
-  if (curthd->pid == curthd->tid) {
-    sys::exit_proc(code);
-    return;
-  }
-
-  // pprintk("TODO: sys::exit_thread!\n");
-
-  // defer to later!
-  curthd->should_die = 1;
-
-
-  sched::exit();
-}
-
-
 static void zombify(struct zombie_entry *zomb) {
-  bool f = waitlist_lock.lock_irqsave();
+  scoped_irqlock l(waitlist_lock);
+
 
   // first, go over the list of waiters and look for a candidate
   struct waiter_entry *went = NULL;
@@ -654,24 +634,20 @@ static void zombify(struct zombie_entry *zomb) {
       went->proc = zomb->proc;
       // memory barrier. The above ought to be atomic, really
       __sync_synchronize();
-      // release the lock so we can wake up the waiter
-      waitlist_lock.unlock_irqrestore(f);
-
-
-      // free the zombie_entry here, now that we have no locks held
-      delete zomb;
 
       // wake up the waiter
       went->wq.wake_up_all();
 
+      // release the lock so we can wake up the waiter
+
+      // free the zombie_entry here, now that we have no locks held
+      delete zomb;
       return;
     }
   }
 
-
   // ... and add the zombie entry to the list. We didn't find any waiter >_<
   zombie_list.add_tail(&zomb->node);
-  waitlist_lock.unlock_irqrestore(f);
 }
 
 void sys::exit_proc(int code) {
@@ -707,6 +683,7 @@ void sys::exit_proc(int code) {
 
   curthd->set_state(PS_ZOMBIE);
 
+
   // send a signal that we died to the parent process
   // sched::proc::send_signal(curproc->parent->pid, SIGCHLD);
 
@@ -714,8 +691,28 @@ void sys::exit_proc(int code) {
   struct zombie_entry *zomb = new zombie_entry(curproc);
   zombify(zomb);
 
-  sched::exit();
+  curthd->should_die = 1;
+
+
+  // sched::exit();
 }
+
+void sys::exit_thread(int code) {
+  // if we are the main thread, exit the group instead.
+  if (curthd->pid == curthd->tid) {
+    sys::exit_proc(code);
+    return;
+  }
+
+  // pprintk("TODO: sys::exit_thread!\n");
+
+  // defer to later!
+  curthd->should_die = 1;
+
+  // let the trap handler handle the exit back to the scheduler
+  sched::set_state(PS_ZOMBIE);
+}
+
 
 
 wait_queue &process::futex_queue(int *uaddr) {

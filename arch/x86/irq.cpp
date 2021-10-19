@@ -467,16 +467,6 @@ extern "C" void trap(reg_t *regs) {
   }
 
 
-  // if (count > 0) {
-  //   printk_nolock("%24s ", curproc->name.get());
-  //   for (int i = count - 1; i >= 0; i--) {
-  //     printk_nolock("%08llx ", bt[i]);
-  //   }
-  //   printk_nolock("\n");
-  // }
-
-
-
 
   irq::eoi(tf->trapno);
 
