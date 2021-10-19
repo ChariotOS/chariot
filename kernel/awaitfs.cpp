@@ -100,7 +100,6 @@ struct booltoggle {
 static int do_awaitfs(struct await_target *targs, int nfds, int flags, long long timeout_time) {
   unsigned nqueues = 0;
 
-  booltoggle b(curthd->in_awaitfs);
 
   ck::vec<await_table_entry> entries;
 
@@ -230,8 +229,7 @@ static int do_awaitfs(struct await_target *targs, int nfds, int flags, long long
 
 int sys::awaitfs(struct await_target *targs, int nfds, int flags, long long timeout_time) {
   if (nfds == 0) return -EINVAL;
-  if (!curproc->mm->validate_pointer(targs, sizeof(*targs) * nfds, PROT_READ | PROT_WRITE))
-    return -1;
+  if (!curproc->mm->validate_pointer(targs, sizeof(*targs) * nfds, PROT_READ | PROT_WRITE)) return -1;
 
   return do_awaitfs(targs, nfds, flags, timeout_time);
 }

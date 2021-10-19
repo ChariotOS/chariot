@@ -4,7 +4,9 @@
 #include <sched.h>
 #include <sleep.h>
 #include <types.h>
+#include <ck/ptr.h>
 #include <cpu_usage.h>
+
 
 struct kstat_cpu {
   unsigned long ticks;         // total ticks
@@ -15,6 +17,8 @@ struct kstat_cpu {
   unsigned long last_tick_tsc = 0;
   unsigned long tsc_per_tick = 0;
 };
+
+struct thread;
 
 
 /* This state is a local state to each processor */
@@ -36,9 +40,9 @@ struct processor_state {
 
 
   u32 speed_khz;
-  struct thread *current_thread;
+  ck::ref<thread> current_thread;
   // filled in by "pick next thread" in the scheduler
-  struct thread *next_thread;
+  ck::ref<thread> next_thread;
 
   struct thread_context *sched_ctx;
 
@@ -56,13 +60,14 @@ extern struct processor_state cpus[CONFIG_MAX_CPUS];
 #define curthd cpu::thread()
 #define curproc cpu::proc()
 
+
 namespace cpu {
 
   struct processor_state *get(void);
 
   struct process *proc(void);
 
-  struct thread *thread(void);
+  thread *thread(void);
   bool in_thread(void);
 
   /**
@@ -71,7 +76,7 @@ namespace cpu {
   struct processor_state &current(void);
   // setup CPU segment descriptors, run once per cpu
   void seginit(void *local = nullptr);
-  void switch_vm(struct thread *);
+  void switch_vm(ck::ref<struct thread>);
   inline u64 get_ticks(void) { return current().kstat.ticks; }
 
 

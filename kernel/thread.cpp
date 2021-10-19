@@ -1,13 +1,18 @@
 /**
  * This file implements all the thread:: functions and methods
  */
+
+#include <thread.h>
+
+
 #include <cpu.h>
 #include <mmap_flags.h>
 #include <phys.h>
-#include <sched.h>
 #include <syscall.h>
 #include <time.h>
+#include <debug.h>
 #include <util.h>
+
 /**
  * A thread needs to bootstrap itself somehow, and it uses this function to do
  * so. Both kinds of threads (user and kernel) start by executing this function.
@@ -18,10 +23,24 @@ static void thread_create_callback(void *);
 // implemented in arch/$ARCH/trap.asm most likely
 extern "C" void trapret(void);
 
-static spinlock thread_table_lock;
-static ck::map<pid_t, thread *> thread_table;
 
-thread::thread(pid_t tid, struct process &proc) : proc(proc) {
+
+
+void dump_addr2line(void) {
+  off_t rbp = 0;
+  asm volatile("mov %%rbp, %0\n\t" : "=r"(rbp));
+  auto bt = debug::generate_backtrace(rbp);
+  printk_nolock("addr2line -e build/chariot.elf");
+  for (auto pc : bt) {
+    printk_nolock(" 0x%p", pc);
+  }
+  printk_nolock("\n");
+}
+
+static spinlock thread_table_lock;
+static ck::map<long, thread *> thread_table;
+
+thread::thread(long tid, struct process &proc) : proc(proc) {
   this->tid = tid;
 
   this->pid = proc.pid;
@@ -30,11 +49,11 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
   fpu.state = phys::kalloc(1);
 
   sched.priority = 0;
-  sched.next = sched.prev = NULL;
+  next = prev = nullptr;
 
 
 
-  struct thread::kernel_stack s;
+  struct kernel_stack s;
   s.size = PGSIZE * 2;
   s.start = (void *)malloc(s.size);
   stacks.push(s);
@@ -67,38 +86,40 @@ thread::thread(pid_t tid, struct process &proc) : proc(proc) {
   {
     scoped_irqlock l(thread_table_lock);
     assert(!thread_table.contains(tid));
-    // printk("inserting %d\n", tid);
-    // thread_table.set(tid, unique_ptr(this));
     thread_table.set(tid, this);
   }
 
-
-  // push the tid into the proc's tid list
-  proc.threads.push(tid);
-
-
-#if CONFIG_VERBOSE_PROCESS
-  printk("Thread %d:%d created\n", pid, tid);
-#endif
+  {
+    scoped_irqlock l(proc.threads_lock);
+    proc.threads.push(this);
+  }
 }
 
-
-off_t thread::setup_tls(void) {
-  // Map in the TLS if there is one
-  // TODO maybe move TLS to userspace?
-  if (proc.tls_info.exists) {
-    tls_usize = proc.tls_info.memsz;
-    tls_uaddr = proc.mm->mmap(
-        ck::string::format("[tid %d TLS]", this->tid), 0, proc.tls_info.memsz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, nullptr, 0);
-
-    printk("============================== %p\n", tls_uaddr);
-    proc.mm->dump();
-  } else {
-    tls_uaddr = 0;
+thread::~thread(void) {
+  assert(ref_count() == 0);
+  {
+    scoped_irqlock l(thread_table_lock);
+    assert(thread_table.contains(tid));
+    // important: we cannot free() something while in an irqlock. As such, we must leak the pointer
+    // from the table, then free it later.
+    // thread_table.get(t->tid).leak_ptr();
+    thread_table.remove(tid);
   }
 
-  return tls_uaddr;
+  // free all the kernel stacks
+  for (auto &s : stacks) {
+    free(s.start);
+  }
+  // free the FPU state page
+  phys::free(fpu.state, 1);
+
+  // free the architecture specific state for this thread.
+  if (sig.arch_priv != NULL) free(sig.arch_priv);
+
+  // memset((void *)this, 0xFF, sizeof(*this));
 }
+
+
 
 
 bool thread::kickoff(void *rip, int initial_state) {
@@ -106,37 +127,11 @@ bool thread::kickoff(void *rip, int initial_state) {
 
   this->state = initial_state;
 
-  setup_tls();
-
   sched::add_task(this);
   return true;
 }
 
 
-thread::~thread(void) {
-  if (tls_uaddr != 0) {
-    proc.mm->dump();
-    proc.mm->unmap(tls_uaddr, tls_usize);
-  }
-
-  sched::remove_task(this);
-
-  /* Remove this thread from the parent process */
-  this->proc.threads.remove_first_matching([this](int otid) {
-    /* If the thread id in the vector is the current tid, remove it */
-    return otid == this->tid;
-  });
-
-  for (auto &s : stacks) {
-    free(s.start);
-  }
-  // free(stack);
-  phys::free(fpu.state, 1);
-  if (sig.arch_priv != NULL) {
-    // assume it doesn't have a destructor, idk
-    free(sig.arch_priv);
-  }
-}
 
 
 void thread::setup_stack(reg_t *tf) {
@@ -201,33 +196,41 @@ void thread::setup_stack(reg_t *tf) {
 
 static void thread_create_callback(void *) { arch_thread_create_callback(); }
 
-struct thread *thread::lookup_r(pid_t tid) {
-  return thread_table.get(tid);
-}
+ck::ref<thread> thread::lookup_r(long tid) { return thread_table.get(tid); }
 
-struct thread *thread::lookup(pid_t tid) {
+ck::ref<thread> thread::lookup(long tid) {
   scoped_irqlock l(thread_table_lock);
   assert(thread_table.contains(tid));
   auto t = thread::lookup_r(tid);
   return t;
 }
 
-bool thread::teardown(thread *t) {
+
+
+void thread::dump(void) {
+  scoped_irqlock l(thread_table_lock);
+  for (auto &[tid, twr] : thread_table) {
+    ck::ref<thread> thd = twr;
+    printk_nolock("t:%d p:%d : %p %d refs\n", tid, thd->pid, thd.get(), thd->ref_count());
+  }
+}
+
+
+bool thread::teardown(ck::ref<thread> &&thd) {
 #ifdef CONFIG_VERBOSE_PROCESS
-  pprintk("thread ran for %llu cycles, %llu us\n", t->stats.cycles, t->ktime_us);
+  pprintk("thread ran for %llu cycles, %llu us\n", thd->stats.cycles, thd->ktime_us);
 #endif
 
-
   {
-    scoped_irqlock l(thread_table_lock);
-    assert(thread_table.contains(t->tid));
-    // important: we cannot free() something while in an irqlock. As such, we must leak the pointer
-    // from the table, then free it later.
-    // thread_table.get(t->tid).leak_ptr();
-    thread_table.remove(t->tid);
+    scoped_irqlock l(thd->proc.threads_lock);
+
+    thd->proc.threads.remove_first_matching([&](auto &o) {
+      return o->tid == thd->tid;
+    });
   }
 
-  delete t;
+  sched::remove_task(thd);
+  thd = nullptr;
 
   return true;
 }
@@ -274,7 +277,7 @@ extern int get_next_pid(void);
 // TODO: alot of verification, basically
 int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
   int tid = get_next_pid();
-  auto *thd = new thread(tid, *curproc);
+  auto thd = ck::make_ref<thread>(tid, *curproc);
 
   arch_reg(REG_SP, thd->trap_frame) = (unsigned long)stack;
   arch_reg(REG_PC, thd->trap_frame) = (unsigned long)fn;
@@ -285,28 +288,34 @@ int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
   return tid;
 }
 
+
+bool thread::join(ck::ref<thread> thd) {
+  {
+    /* take the join lock */
+    scoped_lock joinlock(thd->joinlock);
+    if (thd->state != PS_ZOMBIE) {
+      if (thd->joiners.wait().interrupted()) {
+        return false;
+      }
+    }
+  }
+
+  // take the run lock
+  thd->runlock.lock();
+  thread::teardown(move(thd));
+  return true;
+}
+
 int sys::jointhread(int tid) {
-  auto *t = thread::lookup(tid);
+  auto t = thread::lookup(tid);
   /* If there isn't a thread, fail */
-  if (t == NULL) return -ENOENT;
+  if (t == nullptr) return -ENOENT;
   /* You can't join on other proc's threads */
   if (t->pid != curthd->pid) return -EPERM;
   /* If someone else is joining, it's invalid */
   if (t->joinlock.is_locked()) return -EINVAL;
 
-  /* take the join lock */
-  {
-    scoped_lock joinlock(t->joinlock);
-
-    if (t->state != PS_ZOMBIE) {
-      if (t->joiners.wait().interrupted()) {
-        return -EINTR;
-      }
-    }
-    // take the run lock
-    t->locks.run.lock();
-    thread::teardown(t);
-  }
+  thread::join(move(t));
   return 0;
 }
 

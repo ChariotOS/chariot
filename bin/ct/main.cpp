@@ -241,12 +241,19 @@ async(int) make_fiber(int num, int size, int div) {
   });
 }
 
+
 int main(int argc, char** argv) async_main({
-  scm::Scheme s;
+  for (int i = 0; true; i++) {
+    ck::thread t([]() {
+      return;
+    });
 
-	s.eval("(display 'hello')");
+    t.join();
+  }
 
-	return;
+
+
+  return;
 
   auto start = sysbind_gettime_microsecond();
   int result = make_fiber(0, 1000000, 10).await();

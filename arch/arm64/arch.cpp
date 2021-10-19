@@ -105,9 +105,12 @@ mm::space &mm::space::kernel_space(void) {
  */
 int arch::irq::init(void) { return 0; /* TODO: */ }
 
-void arch::irq::eoi(int i) { /* TODO */ }
-void arch::irq::enable(int num) { /* TODO */ }
-void arch::irq::disable(int num) { /* TODO */ }
+void arch::irq::eoi(int i) { /* TODO */
+}
+void arch::irq::enable(int num) { /* TODO */
+}
+void arch::irq::disable(int num) { /* TODO */
+}
 
 
 
@@ -126,7 +129,7 @@ struct processor_state &cpu::current(void) {
 }
 
 
-void cpu::switch_vm(struct thread *thd) { /* TODO: nothin' */
+void cpu::switch_vm(ck::ref<thread> thd) { /* TODO: nothin' */
 }
 
 void cpu::seginit(void *local) {

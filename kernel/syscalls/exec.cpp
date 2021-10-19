@@ -79,16 +79,14 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   // allocate a 1mb stack
   // TODO: this size is arbitrary.
   auto stack_size = 1024 * 1024;
-  off_t stack = new_addr_space->mmap(
-      "[stack]", 0, stack_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, nullptr, 0);
+  off_t stack = new_addr_space->mmap("[stack]", 0, stack_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, nullptr, 0);
 
   // kill the other threads
-  for (auto tid : curproc->threads) {
-    auto *thd = thread::lookup(tid);
-    if (thd != NULL && thd != curthd) {
+  for (auto thd : curproc->threads) {
+    if (thd != nullptr && thd != curthd) {
       // take the runlock on the thread so nobody else runs it
-      thd->locks.run.lock();
-      thread::teardown(thd);
+      thd->runlock.lock();
+      thread::teardown(move(thd));
     }
   }
 
@@ -105,7 +103,6 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
 
   cpu::switch_vm(curthd);
 
-  curthd->setup_tls();
   curthd->setup_stack(tf);
 
 

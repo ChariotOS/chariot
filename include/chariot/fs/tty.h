@@ -16,9 +16,9 @@ struct tty : public ck::refcounted<tty> {
   struct winsize size;
 
   /* Controlling process */
-  pid_t ct_proc;
+  long ct_proc;
   /* Foreground process (can be the same as controller) */
-  pid_t fg_proc;
+  long fg_proc;
 
 
   bool controlled = false;

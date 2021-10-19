@@ -105,8 +105,10 @@ const char *excp_codes[128][2] = {
 
 
 
-int generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz) {
-  mm::space *mm = curproc->mm;
+int arch_generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz) {
+  if (!cpu::in_thread()) return 0;
+
+  mm::space *mm = curthd->proc.mm;
   auto &pt = *mm->pt;
 
   off_t *phys_ebp;
@@ -115,18 +117,28 @@ int generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz) {
   off_t ip;
 
   int i = 0;
+
+  auto translate = [&](off_t virt) -> off_t * {
+    if (virt > CONFIG_KERNEL_VIRTUAL_BASE) {
+      return (off_t *)virt;
+    }
+
+    return (off_t *)pt.translate(virt);
+  };
+
+
   for (; i < bufsz; i++) {
     // uh oh, you are doing something nefarious
     if (virt_ebp > CONFIG_KERNEL_VIRTUAL_BASE) {
-      for (int j = 0; j < i; j++)
-        buf[j] = 0;
-      return 0;
+      // for (int j = 0; j < i; j++)
+      //   buf[j] = 0;
+      // return 0;
     }
-    phys_ebp = (off_t *)pt.translate(virt_ebp);
+    phys_ebp = translate(virt_ebp);
     virt_return_storage = (virt_ebp + sizeof(off_t));
     phys_return_storage = phys_ebp + 1;
     if ((virt_return_storage & ~0xFFF) != (virt_ebp & ~0xFFF)) {
-      phys_return_storage = (off_t *)pt.translate(virt_return_storage);
+      phys_return_storage = translate(virt_return_storage);
     }
 
     if (phys_ebp == NULL) break;
@@ -134,7 +146,7 @@ int generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz) {
 
     // if the instruction pointer is not mapped, we are done.
     ip = *(off_t *)p2v(phys_return_storage);
-    if (pt.translate(ip) == NULL) break;
+    if (translate(ip) == NULL) break;
 
     buf[i] = ip;
 
@@ -144,18 +156,10 @@ int generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz) {
 }
 
 
-static ck::vec<off_t> generate_backtrace(off_t virt_ebp) {
-  ck::vec<off_t> backtrace;
-  off_t bt[64];
-  int count = generate_backtrace(virt_ebp, bt, 64);
-  for (int i = 0; i < count; i++)
-    backtrace.push(bt[i]);
-  return backtrace;
-}
 
 void dump_backtrace(off_t virt_ebp) {
   int i = 0;
-  for (auto ip : generate_backtrace(virt_ebp)) {
+  for (auto ip : debug::generate_backtrace(virt_ebp)) {
     printk("%d - %p\n", i++, ip);
   }
   // printk("Backtrace (ebp=%p):\n", ebp);
@@ -209,7 +213,7 @@ void dump_trapframe(reg_t *r) {
   printk_nolock("Backtrace:\n");
 
 #undef dump
-  auto bt = generate_backtrace(tf->rbp);
+  auto bt = debug::generate_backtrace(tf->rbp);
 
   int i = 0;
   for (auto ip : bt) {
@@ -320,7 +324,7 @@ void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
   // TODO:
   printk_nolock("%s in pid %d, tid %d @ %p\n", name, curthd->pid, curthd->tid, tf->rip);
 
-	debug::print_register("Bad address", read_cr2());
+  debug::print_register("Bad address", read_cr2());
   // printk_nolock("              info = ");
   // if (tf->err & PGFLT_PRESENT) printk_nolock("PRESENT ");
   // if (tf->err & PGFLT_WRITE) printk_nolock("WRITE ");
@@ -438,43 +442,37 @@ extern "C" void x86_enter_userspace(x86_64regs *);
 extern "C" void trap(reg_t *regs) {
   auto *tf = (struct x86_64regs *)regs;
   bool from_userspace = tf->cs == 0x23;
-  bool ts = time::stabilized();
-  if (cpu::in_thread() && from_userspace) {
-    auto *thd = curthd;
-    thd->utime_us += time::now_us() - thd->last_start_utime_us;
-    thd->trap_frame = regs;
-  }
-
-  int nr = tf->trapno;
-
-  off_t bt[64];
-  int count = 0;
-
-  // TODO profiler??? :)
-  if (false && curproc && from_userspace) count = generate_backtrace(tf->rbp, bt, 64);
 
 
-  if (nr == 0x80) {
-    arch_enable_ints();
-    syscall_handle(0x80, regs, NULL);
-  } else {
-    if (nr >= 32) {
-      irq::dispatch(nr - 32, regs);
-    } else {
+  {
+    bool ts = time::stabilized();
+    if (cpu::in_thread() && from_userspace) {
+      auto thd = curthd;
+      thd->utime_us += time::now_us() - thd->last_start_utime_us;
+      thd->trap_frame = regs;
+    }
+
+    int nr = tf->trapno;
+
+    off_t bt[64];
+    int count = 0;
+
+    // TODO profiler??? :)
+    if (false && curproc && from_userspace) count = arch_generate_backtrace(tf->rbp, bt, 64);
+
+
+    if (nr == 0x80) {
       arch_enable_ints();
-      isr_functions[nr](nr, regs);
+      syscall_handle(0x80, regs, NULL);
+    } else {
+      if (nr >= 32) {
+        irq::dispatch(nr - 32, regs);
+      } else {
+        arch_enable_ints();
+        isr_functions[nr](nr, regs);
+      }
     }
   }
-
-
-  // if (count > 0) {
-  //   printk_nolock("%24s ", curproc->name.get());
-  //   for (int i = count - 1; i >= 0; i--) {
-  //     printk_nolock("%08llx ", bt[i]);
-  //   }
-  //   printk_nolock("\n");
-  // }
-
 
 
 

@@ -190,10 +190,10 @@ args = ['fd: int', 'cmd: int', 'value: unsigned long' ]
 ret = 'int'
 
 [sc.getpid]
-ret = 'int'
+ret = 'long'
 
 [sc.gettid]
-ret = 'int'
+ret = 'long'
 
 [sc.getuid]
 ret = 'int'

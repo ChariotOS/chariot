@@ -71,9 +71,7 @@ namespace irq {
   irq::handler uninstall(int irq);
 
   int init(void);
-  inline void eoi(int i) {
-    arch::irq::eoi(i);
-  }
+  inline void eoi(int i) { arch::irq::eoi(i); }
 
   // cause an interrupt to be handled by the kernel's interrupt dispatcher
   void dispatch(int irq, reg_t *);
@@ -102,6 +100,9 @@ void arch_initialize_trapframe(bool userspace, reg_t *);
 unsigned arch_trapframe_size(void);
 void arch_dump_backtrace(void);
 void arch_dispatch_signal(int sig, void *handler, void *ucontext);
+
+
+int arch_generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz);
 
 void arch_sigreturn(void *ucontext);
 void arch_flush_mmu(void);

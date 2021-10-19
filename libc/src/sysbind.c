@@ -111,12 +111,12 @@ int sysbind_yield() {
     return (int)__syscall_eintr(26, 0, 0, 0, 0, 0, 0);
 }
 
-int sysbind_getpid() {
-    return (int)__syscall_eintr(27, 0, 0, 0, 0, 0, 0);
+long sysbind_getpid() {
+    return (long)__syscall_eintr(27, 0, 0, 0, 0, 0, 0);
 }
 
-int sysbind_gettid() {
-    return (int)__syscall_eintr(28, 0, 0, 0, 0, 0, 0);
+long sysbind_gettid() {
+    return (long)__syscall_eintr(28, 0, 0, 0, 0, 0, 0);
 }
 
 int sysbind_getuid() {

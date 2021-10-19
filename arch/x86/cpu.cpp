@@ -1,6 +1,8 @@
+
 #include <cpu.h>
 #include <mem.h>
 #include <phys.h>
+#include <thread.h>
 
 #include <x86/msr.h>
 #include <x86/smp.h>
@@ -21,9 +23,7 @@ static inline void lgdt(void *data, int size) {
 
   asm volatile("lgdt %0" ::"m"(gdt));
 }
-static inline void ltr(u16 sel) {
-  asm volatile("ltr %0" : : "r"(sel));
-}
+static inline void ltr(u16 sel) { asm volatile("ltr %0" : : "r"(sel)); }
 
 /*
  * 386 processor status longword.
@@ -88,8 +88,7 @@ void cpu::seginit(void *local) {
   gdt[SEG_KDATA] = 0x000092000000FFFF;  // Data, DPL=0, W
   gdt[SEG_KCPU] = 0x000000000000FFFF;   // unused
   gdt[SEG_UDATA] = 0x0000F2000000FFFF;  // Data, DPL=3, W
-  gdt[SEG_TSS + 0] =
-      (0x0067) | ((addr & 0xFFFFFF) << 16) | (0x00E9LL << 40) | (((addr >> 24) & 0xFF) << 56);
+  gdt[SEG_TSS + 0] = (0x0067) | ((addr & 0xFFFFFF) << 16) | (0x00E9LL << 40) | (((addr >> 24) & 0xFF) << 56);
   gdt[SEG_TSS + 1] = (addr >> 32);
 
   lgdt((void *)gdt, 8 * sizeof(u64));
@@ -123,14 +122,13 @@ static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {
 #endif
 }
 
-void cpu::switch_vm(struct thread *thd) {
+void cpu::switch_vm(ck::ref<struct thread> thd) {
   auto c = current();
   auto tss = (u32 *)(((char *)c.local) + 1024);
 
   auto &stk = thd->stacks.last();
   auto stack_addr = (u64)stk.start + stk.size + 8;
   *(off_t *)c.local = stack_addr;
-
 
 
 
@@ -147,7 +145,7 @@ void cpu::switch_vm(struct thread *thd) {
   // wrmsr(KERNEL_GS_BASE, user_gs);
   // asm ("swapgs");
   // wrmsr(KERNEL_GS_BASE, user_gs);
-  
+
   switch (thd->proc.ring) {
     case RING_KERN:
       tss_set_rsp(tss, 0, 0);

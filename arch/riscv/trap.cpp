@@ -38,14 +38,14 @@ reg_t &arch_reg(int ind, reg_t *r) {
   }
 }
 
-const char *regs_name[] = {"ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s1", "a0",  "a1",
-                           "a2", "a3", "a4", "a5",  "a6",  "a7", "s2", "s3", "s4", "s5",  "s6",
-                           "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6", "sepc"};
+const char *regs_name[] = {"ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "s2", "s3",
+    "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6", "sepc"};
 
 
 void arch_dump_backtrace(void) { /* Nothing here for now... */
 }
 
+int arch_generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz) { return 0; }
 
 
 
@@ -133,12 +133,12 @@ static void dump_tf(struct rv::regs &tf) {
   if (p != 0) printk("\n");
 
   if (cpu::in_thread()) {
-		/*
-    printk("\n");
-    printk("Address Space:\n");
-    auto proc = curproc;
-    proc->mm->dump();
-		*/
+    /*
+printk("\n");
+printk("Address Space:\n");
+auto proc = curproc;
+proc->mm->dump();
+    */
   }
 }
 
@@ -177,10 +177,10 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
   int res = proc->mm->pagefault(addr, err);
 
   if (res == -1) {
-		pprintk("SEGFAULT!\n");
-		dump_tf(tf);
+    pprintk("SEGFAULT!\n");
+    dump_tf(tf);
     /* send to the current thread and return (handle at the bottom of kernel_vec) */
-		curproc->terminate(SIGSEGV);
+    curproc->terminate(SIGSEGV);
     // curthd->send_signal(SIGSEGV);
     return;
   }
@@ -190,8 +190,7 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
 
 
 
-extern uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e,
-                           uint64_t f);
+extern uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f);
 
 void rv_handle_syscall(rv::regs &tf) {
   arch_enable_ints();
@@ -381,5 +380,4 @@ for (auto &stk : thd->stacks) {
   rv::get_hstate().kernel_sp = previous_kernel_stack;
 }
 
-extern "C" void machine_trap(struct rv::regs &tf) {
-}
+extern "C" void machine_trap(struct rv::regs &tf) {}

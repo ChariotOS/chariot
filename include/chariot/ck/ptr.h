@@ -554,8 +554,8 @@ namespace ck {
 
     operator bool() { return !!m_ptr; }
 
-    bool operator==(nullptr_t) const { return !m_ptr; }
-    bool operator!=(nullptr_t) const { return m_ptr; }
+    // bool operator==(nullptr_t) const { return !m_ptr; }
+    // bool operator!=(nullptr_t) const { return m_ptr; }
 
     bool operator==(const ref& other) const { return m_ptr == other.m_ptr; }
     bool operator!=(const ref& other) const { return m_ptr != other.m_ptr; }
