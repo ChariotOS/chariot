@@ -28,7 +28,7 @@ struct wait_entry {
   unsigned int flags = 0;
 #define WQ_FLAG_EXCLUSIVE 0x01
 #define WQ_FLAG_RUDELY 0x02
-  /* what thread does this wait entry control */
+  /* what thread does this wait entry control? */
   ck::ref<thread> thd;
   /* private data */
   void *_priv = NULL;
