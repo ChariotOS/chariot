@@ -2,6 +2,10 @@
 #include <errno.h>
 #include <wait.h>
 
+#include <sleep.h>
+#include <sched.h>
+#include <thread.h>
+
 #ifndef container_of
 #define container_of(ptr, type, member)                    \
   ({                                                       \

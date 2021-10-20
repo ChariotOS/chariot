@@ -2,6 +2,8 @@
 #include <fs/vfs.h>
 #include <cpu.h>
 
+#include <process.h>
+
 int vfs::getcwd(fs::inode &cwd, ck::string &dst) {
   int err = 0;
 

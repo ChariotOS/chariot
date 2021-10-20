@@ -123,8 +123,7 @@ int elf::each_symbol(fs::file &fd, ck::func<bool(const char *sym, off_t)> cb) {
   return err;
 }
 
-int elf::load(
-    const char *path, struct process &p, mm::space &mm, ck::ref<fs::file> fd, off_t &entry) {
+int elf::load(const char *path, struct Process &p, mm::space &mm, ck::ref<fs::file> fd, off_t &entry) {
   Elf64_Ehdr ehdr;
 
   off_t off = 0;
@@ -155,8 +154,7 @@ int elf::load(
 
       if (page_end > file_page_end) {
         size_t bss_size = page_end - file_page_end;
-        mm.mmap(path, off + file_page_end, bss_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE,
-            nullptr, 0);
+        mm.mmap(path, off + file_page_end, bss_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, nullptr, 0);
       }
     }
   };
@@ -227,11 +225,9 @@ int elf::load(
 
       if (sec.p_filesz == 0) {
         name += " .bss";
-        mm.mmap(name, off + start, round_up(sec.p_memsz, 4096), prot, MAP_ANON | MAP_PRIVATE,
-            nullptr, 0);
+        mm.mmap(name, off + start, round_up(sec.p_memsz, 4096), prot, MAP_ANON | MAP_PRIVATE, nullptr, 0);
       } else {
-        mm.mmap(
-            name, off + start, round_up(sec.p_filesz, 4096), prot, MAP_PRIVATE, fd, sec.p_offset);
+        mm.mmap(name, off + start, round_up(sec.p_filesz, 4096), prot, MAP_PRIVATE, fd, sec.p_offset);
         handle_bss(sec, prot);
       }
     }

@@ -242,14 +242,46 @@ async(int) make_fiber(int num, int size, int div) {
 }
 
 
+
+struct my_thing : public ck::refcounted<my_thing> {};
+
 int main(int argc, char** argv) async_main({
   for (int i = 0; true; i++) {
-    ck::thread t([]() {
-      return;
-    });
+    int pid = fork();
+    if (pid == 0) {
+      // ck::thread t([]() {
+      //   return;
+      // });
 
-    t.join();
+      // t.join();
+      exit(0);
+    }
+
+    waitpid(pid, NULL, 0);
+    printf("%d\n", i);
   }
+  // while (1) {
+  //   ck::ref<my_thing> thing = ck::make_ref<my_thing>();
+  //   my_thing* tmp = 0;
+  //   int count = 1000000;
+  //   auto start = ck::time::cycles();
+  //   for (int i = 0; i < count; i++) {
+  //     ck::ref<my_thing> other = thing;
+  //     tmp = thing.get();
+  //   }
+  //   auto end = ck::time::cycles();
+
+  //   printf("%p %llu cycles\n", tmp, (end - start) / count);
+  // }
+
+
+  // for (int i = 0; true; i++) {
+  //   ck::thread t([]() {
+  //     return;
+  //   });
+
+  //   t.join();
+  // }
 
 
 

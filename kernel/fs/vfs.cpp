@@ -37,8 +37,7 @@ int vfs::mount_root(const char *src, const char *type) {
   return vfs::mount(src, "/", type, 0, 0);
 }
 
-int vfs::mount(
-    const char *src, const char *targ, const char *type, unsigned long flags, const char *options) {
+int vfs::mount(const char *src, const char *targ, const char *type, unsigned long flags, const char *options) {
   // printk(KERN_INFO "mount %s with fs %s to %s\n", src, type, targ);
 
   if (get_root() == NULL && strcmp(targ, "/") != 0) {
@@ -98,7 +97,7 @@ int vfs::mount(
 
     // copy the last entry into the name of the guest root
     auto end = ck::string(targ).split('/').last();
-    auto name = malloc<char>(end.size() + 1);
+    auto name = calloc<char>(end.size() + 1);
     memcpy(name, end.get(), end.size() + 1);
     mp->sb->root->dir.name = name;
 
@@ -219,8 +218,7 @@ static const char *skipelem(const char *path, char *name, bool &last) {
   return path;
 }
 
-int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd, struct fs::inode *&res,
-    bool get_last) {
+int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd, struct fs::inode *&res, bool get_last) {
   assert(path != NULL);
   auto ino = cwd;
 

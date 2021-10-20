@@ -38,9 +38,9 @@ void dump_addr2line(void) {
 }
 
 static spinlock thread_table_lock;
-static ck::map<long, thread *> thread_table;
+static ck::map<long, Thread *> thread_table;
 
-thread::thread(long tid, struct process &proc) : proc(proc) {
+Thread::Thread(long tid, struct Process &proc) : proc(proc) {
   this->tid = tid;
 
   this->pid = proc.pid;
@@ -95,7 +95,7 @@ thread::thread(long tid, struct process &proc) : proc(proc) {
   }
 }
 
-thread::~thread(void) {
+Thread::~Thread(void) {
   assert(ref_count() == 0);
   {
     scoped_irqlock l(thread_table_lock);
@@ -122,7 +122,7 @@ thread::~thread(void) {
 
 
 
-bool thread::kickoff(void *rip, int initial_state) {
+bool Thread::kickoff(void *rip, int initial_state) {
   arch_reg(REG_PC, trap_frame) = (unsigned long)rip;
 
   this->state = initial_state;
@@ -134,7 +134,7 @@ bool thread::kickoff(void *rip, int initial_state) {
 
 
 
-void thread::setup_stack(reg_t *tf) {
+void Thread::setup_stack(reg_t *tf) {
   auto sp = arch_reg(REG_SP, tf);
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 #define STACK_ALLOC(T, n)               \
@@ -196,27 +196,27 @@ void thread::setup_stack(reg_t *tf) {
 
 static void thread_create_callback(void *) { arch_thread_create_callback(); }
 
-ck::ref<thread> thread::lookup_r(long tid) { return thread_table.get(tid); }
+ck::ref<Thread> Thread::lookup_r(long tid) { return thread_table.get(tid); }
 
-ck::ref<thread> thread::lookup(long tid) {
+ck::ref<Thread> Thread::lookup(long tid) {
   scoped_irqlock l(thread_table_lock);
   assert(thread_table.contains(tid));
-  auto t = thread::lookup_r(tid);
+  auto t = Thread::lookup_r(tid);
   return t;
 }
 
 
 
-void thread::dump(void) {
+void Thread::dump(void) {
   scoped_irqlock l(thread_table_lock);
   for (auto &[tid, twr] : thread_table) {
-    ck::ref<thread> thd = twr;
+    ck::ref<Thread> thd = twr;
     printk_nolock("t:%d p:%d : %p %d refs\n", tid, thd->pid, thd.get(), thd->ref_count());
   }
 }
 
 
-bool thread::teardown(ck::ref<thread> &&thd) {
+bool Thread::teardown(ck::ref<Thread> &&thd) {
 #ifdef CONFIG_VERBOSE_PROCESS
   pprintk("thread ran for %llu cycles, %llu us\n", thd->stats.cycles, thd->ktime_us);
 #endif
@@ -237,7 +237,7 @@ bool thread::teardown(ck::ref<thread> &&thd) {
 
 
 
-bool thread::send_signal(int sig) {
+bool Thread::send_signal(int sig) {
   bool is_self = curthd == this;
 
 #ifdef CONFIG_VERBOSE_PROCESS
@@ -256,7 +256,7 @@ bool thread::send_signal(int sig) {
 
 
 
-ck::vec<off_t> thread::backtrace(off_t rbp, off_t rip) {
+ck::vec<off_t> Thread::backtrace(off_t rbp, off_t rip) {
   ck::vec<off_t> bt;
   bt.push(rip);
 
@@ -269,7 +269,7 @@ ck::vec<off_t> thread::backtrace(off_t rbp, off_t rip) {
   return bt;
 }
 
-void thread::interrupt(void) { sched::unblock(*this, true); }
+void Thread::interrupt(void) { sched::unblock(*this, true); }
 
 
 extern int get_next_pid(void);
@@ -277,7 +277,7 @@ extern int get_next_pid(void);
 // TODO: alot of verification, basically
 int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
   int tid = get_next_pid();
-  auto thd = ck::make_ref<thread>(tid, *curproc);
+  auto thd = ck::make_ref<Thread>(tid, *curproc);
 
   arch_reg(REG_SP, thd->trap_frame) = (unsigned long)stack;
   arch_reg(REG_PC, thd->trap_frame) = (unsigned long)fn;
@@ -289,7 +289,7 @@ int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
 }
 
 
-bool thread::join(ck::ref<thread> thd) {
+bool Thread::join(ck::ref<Thread> thd) {
   {
     /* take the join lock */
     scoped_lock joinlock(thd->joinlock);
@@ -302,12 +302,12 @@ bool thread::join(ck::ref<thread> thd) {
 
   // take the run lock
   thd->runlock.lock();
-  thread::teardown(move(thd));
+  Thread::teardown(move(thd));
   return true;
 }
 
 int sys::jointhread(int tid) {
-  auto t = thread::lookup(tid);
+  auto t = Thread::lookup(tid);
   /* If there isn't a thread, fail */
   if (t == nullptr) return -ENOENT;
   /* You can't join on other proc's threads */
@@ -315,14 +315,14 @@ int sys::jointhread(int tid) {
   /* If someone else is joining, it's invalid */
   if (t->joinlock.is_locked()) return -EINVAL;
 
-  thread::join(move(t));
+  Thread::join(move(t));
   return 0;
 }
 
 
-void thread::set_state(int st) {
+void Thread::set_state(int st) {
   // store with sequential consistency
   __atomic_store(&this->state, &st, __ATOMIC_SEQ_CST);
 }
 
-int thread::get_state(void) { return __atomic_load_n(&this->state, __ATOMIC_ACQUIRE); }
+int Thread::get_state(void) { return __atomic_load_n(&this->state, __ATOMIC_ACQUIRE); }

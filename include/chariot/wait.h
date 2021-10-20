@@ -29,7 +29,7 @@ struct wait_entry {
 #define WQ_FLAG_EXCLUSIVE 0x01
 #define WQ_FLAG_RUDELY 0x02
   /* what thread does this wait entry control? */
-  ck::ref<thread> thd;
+  ck::ref<Thread> thd;
   /* private data */
   void *_priv = NULL;
   template <typename T>

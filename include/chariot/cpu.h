@@ -1,11 +1,15 @@
 #pragma once
 
 #include <lock.h>
-#include <sched.h>
-#include <sleep.h>
+// #include <sched.h>
+// #include <sleep.h>
 #include <types.h>
 #include <ck/ptr.h>
 #include <cpu_usage.h>
+
+
+struct Thread;
+struct Process;
 
 
 struct kstat_cpu {
@@ -14,11 +18,10 @@ struct kstat_cpu {
   unsigned long kernel_ticks;  // kernel tasks
   unsigned long idle_ticks;    // idle
 
-  unsigned long last_tick_tsc = 0;
-  unsigned long tsc_per_tick = 0;
+  unsigned long last_tick_tsc;
+  unsigned long tsc_per_tick;
 };
 
-struct thread;
 
 
 /* This state is a local state to each processor */
@@ -40,9 +43,9 @@ struct processor_state {
 
 
   u32 speed_khz;
-  ck::ref<thread> current_thread;
+  ck::ref<Thread> current_thread;
   // filled in by "pick next thread" in the scheduler
-  ck::ref<thread> next_thread;
+  ck::ref<Thread> next_thread;
 
   struct thread_context *sched_ctx;
 
@@ -56,18 +59,14 @@ struct processor_state {
 extern int cpunum;
 extern struct processor_state cpus[CONFIG_MAX_CPUS];
 
-// Nice macros to allow cleaner access to the current task and proc
-#define curthd cpu::thread()
-#define curproc cpu::proc()
-
 
 namespace cpu {
 
   struct processor_state *get(void);
 
-  struct process *proc(void);
+  struct Process *proc(void);
 
-  thread *thread(void);
+  Thread *thread(void);
   bool in_thread(void);
 
   /**
@@ -76,10 +75,16 @@ namespace cpu {
   struct processor_state &current(void);
   // setup CPU segment descriptors, run once per cpu
   void seginit(void *local = nullptr);
-  void switch_vm(ck::ref<struct thread>);
+  void switch_vm(ck::ref<Thread>);
   inline u64 get_ticks(void) { return current().kstat.ticks; }
 
 
   int nproc(void);
 
 }  // namespace cpu
+
+
+
+// Nice macros to allow cleaner access to the current task and proc
+#define curthd cpu::thread()
+#define curproc cpu::proc()

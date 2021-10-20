@@ -36,7 +36,7 @@ typedef uint32_t reg_t;
 
 
 struct regs;
-struct thread;
+struct Thread;
 
 // Architecture specific functionality. Implemented in arch/$ARCH/*
 namespace arch {
@@ -106,8 +106,8 @@ int arch_generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz);
 
 void arch_sigreturn(void *ucontext);
 void arch_flush_mmu(void);
-void arch_save_fpu(struct thread &);
-void arch_restore_fpu(struct thread &);
+void arch_save_fpu(struct Thread &);
+void arch_restore_fpu(struct Thread &);
 unsigned long arch_read_timestamp(void);
 
 /* get the current second since boot time */

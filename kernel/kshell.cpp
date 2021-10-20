@@ -3,6 +3,7 @@
 #include <ck/map.h>
 #include <syscall.h>
 #include <cpu.h>
+#include <process.h>
 
 static ck::map<ck::string, kshell::handler> commands;
 

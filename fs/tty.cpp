@@ -2,6 +2,7 @@
 #include <fs/tty.h>
 #include <errno.h>
 #include <termios.h>
+#include <mm.h>
 
 static int is_control(int c) { return c < ' ' || c == 0x7F; }
 
@@ -118,8 +119,7 @@ void tty::handle_input(char c) {
       if (fg_proc) {
         sched::proc::send_signal(-fg_proc, sig);
       } else {
-        printk("[tty %s] would send signal %d but has no group. Currently %d\n", name().get(), sig,
-            fg_proc);
+        printk("[tty %s] would send signal %d but has no group. Currently %d\n", name().get(), sig, fg_proc);
       }
       return;
     }

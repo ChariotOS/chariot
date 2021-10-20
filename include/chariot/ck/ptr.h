@@ -5,6 +5,7 @@
 #include "atom.h"
 #ifdef KERNEL
 #include <printk.h>
+#include <mem.h>
 #define PRINT(...) printk(__VA_ARGS__)
 #else
 #include <chariot.h>
@@ -350,7 +351,21 @@ namespace ck {
     }
 
 
+    void* operator new(size_t size) { return (T*)op_new_called(size); }
+    inline void* operator new(size_t, void* ptr) { return ptr; }
+
     unsigned int m_ref_count = 1;
+
+
+   private:
+    static void* op_new_called(size_t size) {
+#ifdef KERNEL
+      printk_nolock("ck::ref operator new called directly!\n");
+#else
+      printf("ck::ref operator new called directly!\n");
+#endif
+      return (T*)malloc(size);
+    }
   };
 
 
@@ -607,7 +622,7 @@ namespace ck {
 
   template <typename T, typename... Args>
   ck::ref<T> make_ref(Args&&... args) {
-    return ck::ref<T>(ck::ref<T>::AdoptTag::Adopt, *new T(::forward<Args>(args)...));
+    return ck::ref<T>(ck::ref<T>::AdoptTag::Adopt, *::new T(::forward<Args>(args)...));
   }
 
 
@@ -763,16 +778,24 @@ namespace ck {
   };
 
 
-};  // namespace ck
+  // a convenient `make` function which produces a ref
+  template <typename Type, typename... Args>
+  inline ck::ref<Type> mk(Args&&... args) {
+    return ck::make_ref<Type>(::forward<Args>(args)...);
+  }
 
+};  // namespace ck
 
 
 
 // a convenient `make` function which produces a ref
 template <typename Type, typename... Args>
 inline ck::ref<Type> make(Args&&... args) {
-  return ck::ref<Type>(new Type(::forward<Args>(args)...));
+  return ck::make_ref<Type>(::forward<Args>(args)...);
 }
+
+
+namespace ck {}  // namespace ck
 
 // comparaison operators
 template <class T, class U>

@@ -3,9 +3,13 @@
 #include <mem.h>
 #include <phys.h>
 #include <thread.h>
+#include <process.h>
+#include <mm.h>
+
 
 #include <x86/msr.h>
 #include <x86/smp.h>
+
 
 extern "C" struct processor_state *__get_cpu_struct(void);
 extern "C" void __set_cpu_struct(struct processor_state *);
@@ -122,7 +126,7 @@ static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {
 #endif
 }
 
-void cpu::switch_vm(ck::ref<struct thread> thd) {
+void cpu::switch_vm(ck::ref<struct Thread> thd) {
   auto c = current();
   auto tss = (u32 *)(((char *)c.local) + 1024);
 

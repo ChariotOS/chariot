@@ -33,9 +33,9 @@ struct mlfq {
   };
 
   struct queue {
-    ck::ref<thread> front = nullptr;
-    ck::ref<thread> back = nullptr;
-    void add_task(ck::ref<thread> tsk) {
+    ck::ref<Thread> front = nullptr;
+    ck::ref<Thread> back = nullptr;
+    void add_task(ck::ref<Thread> tsk) {
       if (front == nullptr) {
         // this is the only thing in the queue
         front = tsk;
@@ -52,7 +52,7 @@ struct mlfq {
       }
     }
 
-    void remove_task(ck::ref<thread> tsk) {
+    void remove_task(ck::ref<Thread> tsk) {
       if (tsk->next) {
         tsk->next->prev = tsk->prev;
       }
@@ -67,10 +67,10 @@ struct mlfq {
       tsk->next = tsk->prev = nullptr;
     }
 
-    ck::ref<thread> pick_next(void) {
-      ck::ref<thread> td = nullptr;
+    ck::ref<Thread> pick_next(void) {
+      ck::ref<Thread> td = nullptr;
 
-      for (ck::ref<thread> thd = front; thd != nullptr; thd = thd->next) {
+      for (ck::ref<Thread> thd = front; thd != nullptr; thd = thd->next) {
         if (thd->get_state() == PS_RUNNING) {
           td = thd;
           remove_task(td);
@@ -93,7 +93,7 @@ struct mlfq {
   //    queues[MLFQ_NQUEUES-1] is the lowest priority, highest runtime
   mlfq::queue queues[MLFQ_NQUEUES];
 
-  void add(ck::ref<thread> thd, mlfq::Behavior b = mlfq::Behavior::Unknown) {
+  void add(ck::ref<Thread> thd, mlfq::Behavior b = mlfq::Behavior::Unknown) {
     scoped_irqlock l(lock);
     thd->stats.current_cpu = core;
 
@@ -131,7 +131,7 @@ struct mlfq {
       for (int prio = 0; prio < MLFQ_NQUEUES; prio++) {
         auto &q = queues[prio];
         printk_nolock("prio %02d:", prio);
-        for (struct thread *thd = q.front; thd != NULL; thd = thd->next) {
+        for (struct Thread *thd = q.front; thd != NULL; thd = thd->next) {
           printk_nolock(" '%s(good: %d)'", thd->proc.name.get(), thd->sched.good_streak);
         }
         printk_nolock("\n");
@@ -140,10 +140,10 @@ struct mlfq {
     }
   }
 
-  ck::ref<thread> get_next(void) {
+  ck::ref<Thread> get_next(void) {
     scoped_irqlock l(lock);
     for (int prio = 0; prio < MLFQ_NQUEUES; prio++) {
-      if (ck::ref<thread> cur = queues[prio].pick_next(); cur != nullptr) return cur;
+      if (ck::ref<Thread> cur = queues[prio].pick_next(); cur != nullptr) return cur;
     }
     return nullptr;
   }
@@ -151,14 +151,14 @@ struct mlfq {
 
 
   // steal to another cpu, `thieff`
-  ck::ref<thread> steal(int thief) {
+  ck::ref<Thread> steal(int thief) {
     bool locked = false;
     auto f = lock.try_lock_irqsave(locked);
 
     if (locked) {
       for (int prio = 0; prio < MLFQ_NQUEUES; prio++) {
         // TODO: make sure it can be taken by the thief
-        if (ck::ref<thread> cur = queues[prio].pick_next(); cur != nullptr) {
+        if (ck::ref<Thread> cur = queues[prio].pick_next(); cur != nullptr) {
           lock.unlock_irqrestore(f);
           // printk_nolock("cpu %d stealing thread %d\n", cpu::current().cpunum, cur->tid);
           return cur;
@@ -169,7 +169,7 @@ struct mlfq {
     return nullptr;
   }
 
-  void remove(ck::ref<thread> thd) {
+  void remove(ck::ref<Thread> thd) {
     scoped_irqlock l(lock);
     assert(thd->stats.current_cpu == core);
     thd->stats.current_cpu = -1;
@@ -181,7 +181,7 @@ struct mlfq {
 
     for (int prio = 1; prio < MLFQ_NQUEUES; prio++) {
       auto &q = queues[prio];
-      for (ck::ref<thread> thd = q.front; thd != nullptr; thd = thd->next) {
+      for (ck::ref<Thread> thd = q.front; thd != nullptr; thd = thd->next) {
         q.remove_task(thd);
         thd->sched.priority /= 2;  // get one better :)
         queues[thd->sched.priority].add_task(thd);
@@ -228,7 +228,7 @@ bool sched::init(void) {
 
 
 // work-steal from other cores if they have runnable threads
-static ck::ref<thread> worksteal(void) {
+static ck::ref<Thread> worksteal(void) {
   int nproc = cpu::nproc();
   // printk_nolock("nproc: %d\n", nproc);
   // divide by zero and infinite loop safety
@@ -245,7 +245,7 @@ static ck::ref<thread> worksteal(void) {
   if (q.next_worksteal >= nproc) q.next_worksteal = 0;
   if (!queues[target].active) return nullptr;
 
-  ck::ref<thread> t = queues[target].steal(q.core);
+  ck::ref<Thread> t = queues[target].steal(q.core);
 
 
 
@@ -258,8 +258,8 @@ static ck::ref<thread> worksteal(void) {
 
 
 
-static struct thread *get_next_thread(void) {
-  ck::ref<thread> t = my_queue().get_next();
+static struct Thread *get_next_thread(void) {
+  ck::ref<Thread> t = my_queue().get_next();
 
   if (t == nullptr) {
     t = worksteal();
@@ -274,7 +274,7 @@ static struct thread *get_next_thread(void) {
 }
 
 
-ck::ref<thread> pick_next_thread(void) {
+ck::ref<Thread> pick_next_thread(void) {
   auto &cpu = cpu::current();
   if (!cpu.next_thread) {
     cpu.next_thread = get_next_thread();
@@ -283,7 +283,7 @@ ck::ref<thread> pick_next_thread(void) {
 }
 
 
-int sched::add_task(ck::ref<thread> tsk) {
+int sched::add_task(ck::ref<Thread> tsk) {
   auto b = mlfq::Behavior::Good;
   if (tsk->sched.has_run >= tsk->sched.timeslice) b = mlfq::Behavior::Bad;
 
@@ -291,7 +291,7 @@ int sched::add_task(ck::ref<thread> tsk) {
   return 0;
 }
 
-int sched::remove_task(ck::ref<thread> t) {
+int sched::remove_task(ck::ref<Thread> t) {
   if (t->stats.current_cpu >= 0) {
     // assert(t->stats.current_cpu != -1);  // sanity check
     queues[t->stats.current_cpu].remove(t);
@@ -299,7 +299,7 @@ int sched::remove_task(ck::ref<thread> t) {
   return 0;
 }
 
-static void switch_into(ck::ref<thread> thd) {
+static void switch_into(ck::ref<Thread> thd) {
   if (thd->held_lock != NULL) {
     if (!thd->held_lock->try_lock()) return;
   }
@@ -397,7 +397,7 @@ sched::yieldres sched::do_yield(int st) {
 // helpful functions wrapping different resulting task states
 void sched::block() { sched::do_yield(PS_INTERRUPTIBLE); }
 /* Unblock a thread */
-void sched::unblock(thread &thd, bool interrupt) {
+void sched::unblock(Thread &thd, bool interrupt) {
 #if 0
   if (thd.state != PS_INTERRUPTIBLE) {
     /* Hmm, not sure what to do here. */
@@ -461,7 +461,7 @@ void sched::run() {
       my_queue().boost();
     }
 
-    ck::ref<thread> thd = pick_next_thread();
+    ck::ref<Thread> thd = pick_next_thread();
     cpu::current().next_thread = nullptr;
 
     if (thd == nullptr) {

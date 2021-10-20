@@ -19,14 +19,14 @@ struct processor_state *cpu::get() {
   return &cpu::current();
 }
 
-struct process *cpu::proc(void) {
+Process *cpu::proc(void) {
   if (curthd == NULL) return NULL;
   return &curthd->proc;
 }
 
 bool cpu::in_thread(void) { return (bool)thread(); }
 
-thread *cpu::thread() { return current().current_thread; }
+Thread *cpu::thread() { return current().current_thread; }
 
 extern "C" u64 get_sp(void);
 

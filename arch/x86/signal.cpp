@@ -2,6 +2,8 @@
 #include <cpu.h>
 #include <phys.h>
 #include <util.h>
+#include <mm.h>
+#include <signals.h>
 #include <x86/setjmp.h>
 
 #define SIG_ERR ((void (*)(int)) - 1)

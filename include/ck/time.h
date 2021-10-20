@@ -3,13 +3,26 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <chariot.h>
+
 
 namespace ck {
   namespace time {
     uint64_t us();
     inline uint64_t ms(void) { return ck::time::us() / 1000; }
     inline uint64_t sec(void) { return ck::time::ms() / 1000; }
-    uint64_t cycles(void);
+    inline uint64_t cycles(void) {
+#ifdef CONFIG_X86
+      uint32_t lo, hi;
+      /* TODO; */
+      asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
+      return lo | ((uint64_t)(hi) << 32);
+#endif
+
+      panic("ck::time::cycles unimplemented for this arch.");
+
+      return 0;
+    }
 
     class tracker {
      public:

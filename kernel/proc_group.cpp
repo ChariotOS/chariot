@@ -1,5 +1,6 @@
 #include <sched.h>
 #include <syscall.h>
+#include <cpu.h>
 
 int sys::setpgid(int pid, int pgid) {
   /* TODO: EACCESS (has execve'd) */
@@ -7,14 +8,14 @@ int sys::setpgid(int pid, int pgid) {
 
   if (pgid == 0) pgid = curproc->pid;
 
-  process *proc = NULL;
+  Process *proc = NULL;
   if (pid == 0) {
     pid = curproc->pid;
     proc = curproc;  // optimization
   } else {
     // if there is a process `pid`, the main thread must exist
     // with the same `tid`.
-    auto thd = thread::lookup(pid);
+    auto thd = Thread::lookup(pid);
     if (thd == nullptr) return -ESRCH;
     // TODO: permissions?
     proc = &thd->proc;
@@ -33,14 +34,14 @@ int sys::setpgid(int pid, int pgid) {
 }
 
 int sys::getpgid(int pid) {
-  process *proc = NULL;
+  Process *proc = NULL;
   if (pid == 0) {
     pid = curproc->pid;
     proc = curproc;  // optimization
   } else {
     // if tphere is a process `pid`, the main thread must exist
     // with the same `tid`.
-    auto thd = thread::lookup(pid);
+    auto thd = Thread::lookup(pid);
     if (thd == nullptr) return -ESRCH;
     // TODO: permissions?
     proc = &thd->proc;

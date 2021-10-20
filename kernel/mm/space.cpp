@@ -242,8 +242,6 @@ size_t mm::space::memory_usage(void) {
 unsigned long sys::getramusage() { return curproc->mm->memory_usage(); }
 
 
-#define DO_COW
-
 mm::space *mm::space::fork(void) {
   auto npt = mm::pagetable::create();
   auto *n = new mm::space(lo, hi, npt);

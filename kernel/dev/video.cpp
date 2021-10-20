@@ -3,6 +3,7 @@
 #include <dev/driver.h>
 #include <errno.h>
 #include <phys.h>
+#include <mm.h>
 
 dev::video_device::~video_device() { /* TODO */
 }
@@ -60,8 +61,7 @@ static ck::ref<mm::vmobject> gvi_mmap(fs::file &fd, size_t npages, int prot, int
   }
 
   if (npages > NPAGES(size)) {
-    printk(KERN_WARN "gvi: attempt to mmap too many pages (%d pixels)\n",
-        (npages * 4096) / sizeof(uint32_t));
+    printk(KERN_WARN "gvi: attempt to mmap too many pages (%d pixels)\n", (npages * 4096) / sizeof(uint32_t));
     return nullptr;
   }
 
@@ -102,8 +102,7 @@ struct fs::file_operations generic_video_device_ops = {
 };
 
 static struct dev::driver_info gvi_driver_info {
-  .name = "Generic Video Interface", .type = DRIVER_CHAR, .major = MAJOR_VIDEO,
-  .char_ops = &generic_video_device_ops,
+  .name = "Generic Video Interface", .type = DRIVER_CHAR, .major = MAJOR_VIDEO, .char_ops = &generic_video_device_ops,
 };
 
 void dev::video_device::register_device(dev::video_device *vdev) {

@@ -2,9 +2,9 @@
 
 #ifdef KERNEL
 
-#ifdef __cplusplus
-#include <cpu.h>
-#endif
+// #ifdef __cplusplus
+// #include <cpu.h>
+// #endif
 
 #ifdef __cplusplus
 extern "C"

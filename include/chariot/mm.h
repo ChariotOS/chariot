@@ -8,7 +8,10 @@
 #include <ck/ptr.h>
 #include <rbtree.h>
 #include <ck/string.h>
+#include <cpu.h>
 #include <ck/vec.h>
+
+#include <process.h>
 
 #define VPROT_READ (1 << 0)
 #define VPROT_WRITE (1 << 1)
@@ -22,12 +25,8 @@
 #define FAULT_NOENT (1 << 4)
 
 #define VALIDATE_RD(ptr, size) curproc->mm->validate_pointer((void *)ptr, size, PROT_READ)
-
 #define VALIDATE_WR(ptr, size) curproc->mm->validate_pointer((void *)ptr, size, PROT_WRITE)
-
-#define VALIDATE_RDWR(ptr, size) \
-  curproc->mm->validate_pointer((void *)ptr, size, PROT_WRITE | PROT_READ)
-
+#define VALIDATE_RDWR(ptr, size) curproc->mm->validate_pointer((void *)ptr, size, PROT_WRITE | PROT_READ)
 #define VALIDATE_EXEC(ptr, size) curproc->mm->validate_pointer((void *)ptr, size, PROT_EXEC)
 
 
@@ -161,12 +160,12 @@ namespace mm {
     virtual int get_mapping(off_t va, struct pte &) = 0;
     virtual int del_mapping(off_t va) = 0;
 
-		void *translate(off_t);
+    void *translate(off_t);
 
-		template<typename T>
-			T *translate(off_t vaddr) {
-				return (T*)translate(vaddr);
-			}
+    template <typename T>
+    T *translate(off_t vaddr) {
+      return (T *)translate(vaddr);
+    }
 
     // implemented in arch, returns subclass
     static ck::ref<pagetable> create();
@@ -261,8 +260,7 @@ namespace mm {
     int pagefault(off_t va, int err);
     off_t mmap(off_t req, size_t size, int prot, int flags, ck::ref<fs::file>, off_t off);
 
-    off_t mmap(
-        ck::string name, off_t req, size_t size, int prot, int flags, ck::ref<fs::file>, off_t off);
+    off_t mmap(ck::string name, off_t req, size_t size, int prot, int flags, ck::ref<fs::file>, off_t off);
     int unmap(off_t addr, size_t sz);
 
 
@@ -327,8 +325,7 @@ namespace mm {
     // expects nothing to be locked
     ck::ref<mm::page> get_page(off_t uaddr);
     // expects the area, and space to be locked
-    ck::ref<mm::page> get_page_internal(
-        off_t uaddr, mm::area &area, int pagefault_err, bool do_map);
+    ck::ref<mm::page> get_page_internal(off_t uaddr, mm::area &area, int pagefault_err, bool do_map);
 
     spinlock lock;
     rb_root regions;

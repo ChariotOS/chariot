@@ -28,7 +28,7 @@ volatile long next_pid = 2;
 
 // static rwlock ptable_lock;
 static spinlock ptable_lock;
-static ck::map<long, process::ptr> proc_table;
+static ck::map<long, ck::ref<Process>> proc_table;
 
 long get_next_pid(void) { return __atomic_add_fetch(&next_pid, 1, __ATOMIC_ACQUIRE); }
 
@@ -42,9 +42,9 @@ mm::space *alloc_user_vm(void) {
   return new mm::space(0x1000, top, mm::pagetable::create());
 }
 
-static process::ptr pid_lookup(long pid) {
+static ck::ref<Process> pid_lookup(long pid) {
   scoped_irqlock l(ptable_lock);
-  process::ptr p = nullptr;
+  ck::ref<Process> p = nullptr;
   if (proc_table.contains(pid)) {
     p = proc_table.get(pid);
   }
@@ -54,7 +54,7 @@ static process::ptr pid_lookup(long pid) {
 
 
 
-void sched::proc::in_pgrp(long pgid, ck::func<bool(struct process &)> cb) {
+void sched::proc::in_pgrp(long pgid, ck::func<bool(struct Process &)> cb) {
   scoped_irqlock l(ptable_lock);
   for (auto kv : proc_table) {
     auto proc = kv.value;
@@ -64,7 +64,7 @@ void sched::proc::in_pgrp(long pgid, ck::func<bool(struct process &)> cb) {
   }
 }
 
-static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
+static ck::ref<Process> do_spawn_proc(ck::ref<Process> proc_ptr, int flags) {
   // get a reference, they are nicer to look at.
   // (and we spend less time in ck::ref<process>::{ref,deref}())
   auto &proc = *proc_ptr;
@@ -120,13 +120,13 @@ static process::ptr do_spawn_proc(process::ptr proc_ptr, int flags) {
   return proc_ptr;
 }
 
-process::ptr sched::proc::spawn_process(struct process *parent, int flags) {
+ck::ref<Process> sched::proc::spawn_process(struct Process *parent, int flags) {
   // grab the next pid (will be the tid of the main thread when it is executed)
   long pid = get_next_pid();
 
 
-  process::ptr proc;
-  proc = ck::make_ref<process>();
+  ck::ref<Process> proc;
+  proc = ck::mk<Process>();
   // allocate the process
   {
     scoped_irqlock l(ptable_lock);
@@ -159,8 +159,8 @@ bool sched::proc::ptable_remove(long p) {
 long sched::proc::spawn_init(ck::vec<ck::string> &paths) {
   long pid = 1;
 
-  process::ptr proc_ptr;
-  proc_ptr = ck::make_ref<process>();
+  ck::ref<Process> proc_ptr;
+  proc_ptr = ck::make_ref<Process>();
   if (proc_ptr.get() == NULL) {
     return -1;
   }
@@ -197,10 +197,10 @@ long sched::proc::spawn_init(ck::vec<ck::string> &paths) {
 
 
 
-static process::ptr kernel_process = nullptr;
+static ck::ref<Process> kernel_process = nullptr;
 
 
-struct process *sched::proc::kproc(void) {
+struct Process *sched::proc::kproc(void) {
   if (kernel_process.get() == nullptr) {
     // spawn the kernel process
     kernel_process = sched::proc::spawn_process(nullptr, SPAWN_KERN);
@@ -215,10 +215,10 @@ struct process *sched::proc::kproc(void) {
 }
 
 
-ck::ref<thread> sched::proc::spawn_kthread(const char *name, int (*func)(void *), void *arg) {
+ck::ref<Thread> sched::proc::spawn_kthread(const char *name, int (*func)(void *), void *arg) {
   auto proc = kproc();
   auto tid = get_next_pid();
-  auto thd = ck::make_ref<thread>(tid, *proc);
+  auto thd = ck::make_ref<Thread>(tid, *proc);
   thd->trap_frame[1] = (unsigned long)arg;
 
 
@@ -235,7 +235,7 @@ long sched::proc::create_kthread(const char *name, int (*func)(void *), void *ar
   auto tid = get_next_pid();
 
   // construct the thread
-  auto thd = ck::make_ref<thread>(tid, *proc);
+  auto thd = ck::make_ref<Thread>(tid, *proc);
   thd->trap_frame[1] = (unsigned long)arg;
 
   thd->kickoff((void *)func, PS_RUNNING);
@@ -245,7 +245,7 @@ long sched::proc::create_kthread(const char *name, int (*func)(void *), void *ar
   return tid;
 }
 
-ck::ref<fs::file> process::get_fd(int fd) {
+ck::ref<fs::file> Process::get_fd(int fd) {
   ck::ref<fs::file> file;
 
   scoped_lock l(file_lock);
@@ -257,7 +257,7 @@ ck::ref<fs::file> process::get_fd(int fd) {
   return file;
 }
 
-int process::add_fd(ck::ref<fs::file> file) {
+int Process::add_fd(ck::ref<fs::file> file) {
   int fd = 0;
   scoped_lock l(file_lock);
 
@@ -270,7 +270,7 @@ int process::add_fd(ck::ref<fs::file> file) {
   return fd;
 }
 
-process::~process(void) {
+Process::~Process(void) {
   if (threads.size() != 0) {
     KWARN("destruction of proc %d still has threads!\n", this->pid);
   }
@@ -279,7 +279,7 @@ process::~process(void) {
   delete mm;
 }
 
-bool process::is_dead(void) {
+bool Process::is_dead(void) {
   for (auto t : threads) {
     assert(t);
 
@@ -291,7 +291,7 @@ bool process::is_dead(void) {
   return true;
 }
 
-int process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::string> &envp) {
+int Process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::string> &envp) {
   scoped_lock lck(this->datalock);
 
 
@@ -331,11 +331,11 @@ int process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::strin
   delete this->mm;
   this->mm = new_addr_space;
 
-  ck::ref<thread> thd;
+  ck::ref<Thread> thd;
   if (threads.size() != 0) {
-    thd = thread::lookup(this->pid);
+    thd = Thread::lookup(this->pid);
   } else {
-    thd = ck::make_ref<thread>(pid, *this);
+    thd = ck::make_ref<Thread>(pid, *this);
   }
 
   printk("hello\n");
@@ -353,7 +353,7 @@ int sched::proc::send_signal(long p, int sig) {
     int err = -ESRCH;
     long pgid = -p;
     ck::vec<long> targs;
-    sched::proc::in_pgrp(pgid, [&](struct process &p) -> bool {
+    sched::proc::in_pgrp(pgid, [&](struct Process &p) -> bool {
       targs.push(p.pid);
       return true;
     });
@@ -386,7 +386,7 @@ int sched::proc::send_signal(long p, int sig) {
   return err;
 }
 
-int sched::proc::reap(process::ptr p) {
+int sched::proc::reap(ck::ref<Process> p) {
   // assert(p->is_dead());
   auto *me = curproc;
 
@@ -404,13 +404,13 @@ int sched::proc::reap(process::ptr p) {
 
 
   {
-    ck::vec<ck::ref<thread>> to_teardown = p->threads;
+    ck::vec<ck::ref<Thread>> to_teardown = p->threads;
     for (auto t : to_teardown) {
       /* make sure... */
       assert(t->get_state() == PS_ZOMBIE);
 
       t->runlock.lock();
-      thread::teardown(move(t));
+      Thread::teardown(move(t));
     }
   }
   assert(p->threads.size() == 0);
@@ -432,7 +432,7 @@ int sched::proc::reap(process::ptr p) {
   // If the process had children, we need to give them to init
   if (p->children.size() != 0) {
     // grab a pointer to init
-    process::ptr init = pid_lookup(1);
+    ck::ref<Process> init = pid_lookup(1);
     assert(init);
     init->datalock.lock();
     for (auto &c : p->children) {
@@ -448,7 +448,7 @@ int sched::proc::reap(process::ptr p) {
 }
 
 
-void process::terminate(int signal) {
+void Process::terminate(int signal) {
   pprintk("Terminate with signal %d\n", signal);
   signal &= 0x7F;
   /* top bit of the first byte means it was signalled. Everything else is the signal that killed it
@@ -474,8 +474,8 @@ struct zombie_entry {
   // an entry in the zombie_list
   struct list_head node;
   // the zombie process
-  process::ptr proc;
-  zombie_entry(process::ptr proc) : proc(proc) { node.init(); }
+  ck::ref<Process> proc;
+  zombie_entry(ck::ref<Process> proc) : proc(proc) { node.init(); }
   ~zombie_entry(void) {}
 };
 
@@ -486,9 +486,9 @@ struct waiter_entry {
   // systemcall wait flags
   int wait_flags = 0;
   // the process that we caught
-  process::ptr proc;
+  ck::ref<Process> proc;
   // the waiting thread
-  struct thread *thd;
+  struct Thread *thd;
   // the waitqueue that the process sits on
   wait_queue wq;
 };
@@ -496,7 +496,7 @@ struct waiter_entry {
 
 
 
-static bool can_reap(struct thread *reaper, process::ptr zombie, long seeking, int reap_flags) {
+static bool can_reap(struct Thread *reaper, ck::ref<Process> zombie, long seeking, int reap_flags) {
   if (!zombie->parent) return false;
   // a process may not reap another process's children.
   if (zombie->parent->pid != reaper->proc.pid) return false;
@@ -544,7 +544,7 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
 
   for (int loops = 0; 1; loops++) {
     struct zombie_entry *zomb = NULL;
-    process::ptr found_process = nullptr;
+    ck::ref<Process> found_process = nullptr;
 
     auto f = waitlist_lock.lock_irqsave();
 
@@ -728,7 +728,7 @@ void sys::exit_thread(int code) {
 
 
 
-wait_queue &process::futex_queue(int *uaddr) {
+wait_queue &Process::futex_queue(int *uaddr) {
   futex_lock.lock();
   if (!m_futex_queues.contains((off_t)uaddr)) {
     m_futex_queues.set((off_t)uaddr, ck::make_box<wait_queue>());
@@ -839,7 +839,7 @@ static void fork_return(void) {
 extern "C" void trapreturn(void);
 #endif
 
-static long do_fork(struct process &p) {
+static long do_fork(struct Process &p) {
   auto np = sched::proc::spawn_process(&p, SPAWN_FORK);
 
   /* TLB Flush */
@@ -849,7 +849,7 @@ static long do_fork(struct process &p) {
   p.children.push(np);
 
   auto old_td = curthd;
-  auto new_td = ck::make_ref<thread>(np->pid, *np);
+  auto new_td = ck::make_ref<Thread>(np->pid, *np);
 
   // copy the trapframe
   memcpy(new_td->trap_frame, old_td->trap_frame, arch_trapframe_size());
@@ -930,7 +930,7 @@ void sched::proc::dump_table(void) {
   list_for_each_entry(zent, &zombie_list, node) { pprintk("  process %d\n", zent->proc->pid); }
 
 
-  thread::dump();
+  Thread::dump();
   // pprintk("Waiter List: \n");
   // struct waiter_entry *went = NULL;
   // list_for_each_entry(went, &waiter_list, node) {

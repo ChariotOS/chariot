@@ -10,6 +10,7 @@
 #include <time.h>
 #include <util.h>
 #include <ck/vec.h>
+#include <sched.h>
 #include <x86/fpu.h>
 
 
@@ -170,8 +171,7 @@ void smp::lapic_init(void) {
   lapic_write(LAPIC_TDCR, LAPIC_X1);
 
   if (lapic_ticks_per_second == 0) {
-    KINFO(
-        "[LAPIC] freq info: base: %uMHz,  max: %uMHz, bus: %uMHz\n", freq.base, freq.max, freq.bus);
+    KINFO("[LAPIC] freq info: base: %uMHz,  max: %uMHz, bus: %uMHz\n", freq.base, freq.max, freq.bus);
     calibrate();
     KINFO("[LAPIC] counts per tick: %zu\t0x%08x\n", lapic_ticks_per_second, lapic_ticks_per_second);
   }
@@ -235,8 +235,7 @@ int smp::cpunum(void) {
   // often indirectly through acquire and release.
   if (readeflags() & FL_IF) {
     static int n;
-    if (n++ == 0)
-      printk("cpu called from %p with interrupts enabled\n", __builtin_return_address(0));
+    if (n++ == 0) printk("cpu called from %p with interrupts enabled\n", __builtin_return_address(0));
   }
 
   if (!lapic) return 0;

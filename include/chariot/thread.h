@@ -119,7 +119,7 @@ struct thread_waitqueue_info {
 
 
 // forward declaration
-class process;
+class Process;
 
 struct kernel_stack {
   void *start;
@@ -127,15 +127,15 @@ struct kernel_stack {
 };
 
 
-struct thread final : public ck::weakable<struct thread> {
+struct Thread final : public ck::weakable<struct Thread> {
  public:
   long tid;
   long pid;
   // put these at the top for "cache" reasons idk
-  ck::ref<thread> next;
-  ck::ref<thread> prev;
+  ck::ref<Thread> next;
+  ck::ref<Thread> prev;
 
-  process &proc;
+  Process &proc;
 
   volatile int state;
   int exit_code;
@@ -216,13 +216,13 @@ struct thread final : public ck::weakable<struct thread> {
   void interrupt(void);
   // tell the thread to start running at a certain address.
   bool kickoff(void *rip, int state);
-  static ck::ref<thread> lookup(long);
-  static ck::ref<thread> lookup_r(long);
+  static ck::ref<Thread> lookup(long);
+  static ck::ref<Thread> lookup_r(long);
 
 
   // remove the thread from all queues it is a member of
-  static bool teardown(ck::ref<thread> &&thd);
-  static bool join(ck::ref<thread> thd);
+  static bool teardown(ck::ref<Thread> &&thd);
+  static bool join(ck::ref<Thread> thd);
 
   // sends a signal to the thread and returns if it succeeded or not
   bool send_signal(int sig);
@@ -234,9 +234,9 @@ struct thread final : public ck::weakable<struct thread> {
    * Do not use this API, go through sched::proc::* to allocate and deallocate
    * processes and threads.
    */
-  thread(long tid, process &);
-  thread(const thread &) = delete;  // no copy
-  ~thread(void);
+  Thread(long tid, Process &);
+  Thread(const Thread &) = delete;  // no copy
+  ~Thread(void);
 
   // return a list of instruction pointers (recent -> older)
   ck::vec<off_t> backtrace(off_t rbp, off_t rip);
