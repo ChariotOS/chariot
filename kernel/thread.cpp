@@ -38,7 +38,7 @@ void dump_addr2line(void) {
 }
 
 static spinlock thread_table_lock;
-static ck::map<long, Thread *> thread_table;
+static ck::map<long, ck::weak_ref<Thread>> thread_table;
 
 Thread::Thread(long tid, struct Process &proc) : proc(proc) {
   this->tid = tid;
@@ -50,8 +50,6 @@ Thread::Thread(long tid, struct Process &proc) : proc(proc) {
 
   sched.priority = 0;
   next = prev = nullptr;
-
-
 
   struct kernel_stack s;
   s.size = PGSIZE * 2;
@@ -86,7 +84,8 @@ Thread::Thread(long tid, struct Process &proc) : proc(proc) {
   {
     scoped_irqlock l(thread_table_lock);
     assert(!thread_table.contains(tid));
-    thread_table.set(tid, this);
+    ck::ref<Thread> t = this;
+    thread_table.set(tid, t);
   }
 
   {
@@ -196,7 +195,7 @@ void Thread::setup_stack(reg_t *tf) {
 
 static void thread_create_callback(void *) { arch_thread_create_callback(); }
 
-ck::ref<Thread> Thread::lookup_r(long tid) { return thread_table.get(tid); }
+ck::ref<Thread> Thread::lookup_r(long tid) { return thread_table.get(tid).get(); }
 
 ck::ref<Thread> Thread::lookup(long tid) {
   scoped_irqlock l(thread_table_lock);
@@ -210,7 +209,7 @@ ck::ref<Thread> Thread::lookup(long tid) {
 void Thread::dump(void) {
   scoped_irqlock l(thread_table_lock);
   for (auto &[tid, twr] : thread_table) {
-    ck::ref<Thread> thd = twr;
+    ck::ref<Thread> thd = twr.get();
     printk_nolock("t:%d p:%d : %p %d refs\n", tid, thd->pid, thd.get(), thd->ref_count());
   }
 }

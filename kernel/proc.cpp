@@ -488,7 +488,7 @@ struct waiter_entry {
   // the process that we caught
   ck::ref<Process> proc;
   // the waiting thread
-  struct Thread *thd;
+  ck::ref<Thread> thd;
   // the waitqueue that the process sits on
   wait_queue wq;
 };
@@ -496,7 +496,7 @@ struct waiter_entry {
 
 
 
-static bool can_reap(struct Thread *reaper, ck::ref<Process> zombie, long seeking, int reap_flags) {
+static bool can_reap(Thread *reaper, ck::ref<Process> zombie, long seeking, int reap_flags) {
   if (!zombie->parent) return false;
   // a process may not reap another process's children.
   if (zombie->parent->pid != reaper->proc.pid) return false;
