@@ -129,9 +129,8 @@ namespace fs {
   struct fs::BlockDevice *bdev_from_path(const char *);
 
 
-  extern struct SuperBlock DUMMY_SB;
 
-  struct SuperBlock {
+  struct SuperBlock : public ck::refcounted<SuperBlock> {
     //
     dev_t dev;
     long block_size;
@@ -139,11 +138,10 @@ namespace fs {
 
     struct SuperBlockOperations *ops;
     struct SuperBlockInfo *info;
-    struct Node *root;
+    ck::ref<fs::Node> root;
     ck::string arguments;
 
     rwlock lock;
-    long count = 0;  // refcount
 
     // nice to have thing
     template <typename T>
@@ -151,46 +149,35 @@ namespace fs {
       return (T *&)priv;
     }
 
-    inline static void get(struct SuperBlock *s) {
-      s->lock.write_lock();
-      s->count++;
-      s->lock.write_unlock();
-    }
-
-    inline static void put(struct SuperBlock *s) {
-      s->lock.write_lock();
-      s->count--;
-      if (s->count == 0 && s != &DUMMY_SB) {
-        printk("s->count == 0 now. Must delete!\n");
-      }
-      s->lock.write_unlock();
-    }
 
    private:
     void *priv;
   };
 
+  extern ck::ref<fs::SuperBlock> DUMMY_SB;
+
+
 
   struct SuperBlockOperations {
     // initialize the superblock after it has been mounted. All of the
     // arguments
-    int (&init)(struct SuperBlock &);
-    int (&write_super)(struct SuperBlock &);
-    int (&sync)(struct SuperBlock &, int flags);
+    int (&init)(fs::SuperBlock &);
+    int (&write_super)(fs::SuperBlock &);
+    int (&sync)(fs::SuperBlock &, int flags);
   };
 
   struct SuperBlockInfo {
     const char *name;
 
     // return a superblock containing the root inode
-    struct fs::SuperBlock *(&mount)(struct SuperBlockInfo *, const char *args, int flags, const char *device);
+    ck::ref<fs::SuperBlock> (&mount)(fs::SuperBlockInfo *, const char *args, int flags, const char *device);
 
     struct SuperBlockOperations &ops;
   };
 
-  struct Node *bdev_mount(struct SuperBlockInfo *info, const char *args, int flags);
+  ck::ref<fs::Node> bdev_mount(fs::SuperBlockInfo *info, const char *args, int flags);
 
-  struct Node *open(const char *s, u32 flags, u32 opts = 0);
+  ck::ref<fs::Node> open(const char *s, u32 flags, u32 opts = 0);
 
   ck::ref<fs::File> bdev_to_file(fs::BlockDevice *);
 
@@ -206,12 +193,12 @@ namespace fs {
     int type = ENT_RES;
     ck::string name;
     int nr = -1;  // for unresolved
-    fs::Node *ino;
+    ck::ref<fs::Node> ino;
 
     // if this direntry is a mount, this inode will shadow it
-    fs::Node *mount_shadow = NULL;
+    ck::ref<fs::Node> mount_shadow = nullptr;
 
-    DirectoryEntry *next, *prev;
+    fs::DirectoryEntry *next, *prev;
   };
 
 #define T_INVA 0
@@ -280,7 +267,7 @@ namespace fs {
     // remove a file from a directory
     int (*unlink)(fs::Node &, const char *);
     // lookup an inode by name in a file
-    struct fs::Node *(*lookup)(fs::Node &, const char *);
+    ck::ref<fs::Node> (*lookup)(fs::Node &, const char *);
     // create a device node with a major and minor number
     int (*mknod)(fs::Node &, const char *name, struct fs::Ownership &, int major, int minor);
   };
@@ -294,7 +281,7 @@ namespace fs {
    *       this means you cannot have circular references - hardlinks to one
    * file in two different dirs must have different `struct inode`s
    */
-  struct Node {
+  struct Node : public ck::refcounted<Node> {
     /**
      * fields
      */
@@ -322,7 +309,7 @@ namespace fs {
     fs::FileOperations *fops = NULL;
     fs::DirectoryOperations *dops = NULL;
 
-    fs::SuperBlock &sb;
+    ck::ref<fs::SuperBlock> sb;
 
     void *_priv;
 
@@ -338,7 +325,7 @@ namespace fs {
       // T_DIR
       struct {
         // the parent directory, if this node is mounted
-        fs::Node *mountpoint;
+        ck::ref<fs::Node> mountpoint;
         struct DirectoryEntry *entries;
         // an "owned" string that represents the name
         const char *name;
@@ -362,13 +349,13 @@ namespace fs {
      * entry contains a NULL inode, it calls 'resolve_direntry' which returns
      * the backing inode.
      */
-    int register_direntry(ck::string name, int type, int nr, fs::Node * = NULL);
+    int register_direntry(ck::string name, int type, int nr, ck::ref<fs::Node> = nullptr);
     int remove_direntry(ck::string name);
-    fs::Node *get_direntry(const char *name);
+    ck::ref<fs::Node> get_direntry(const char *name);
     int get_direntry_r(const char *name);
-    void walk_direntries(ck::func<bool(const ck::string &, fs::Node *)>);
+    void walk_direntries(ck::func<bool(const ck::string &, ck::ref<fs::Node>)>);
     ck::vec<ck::string> direntries(void);
-    int add_mount(const char *name, fs::Node *other_root);
+    int add_mount(const char *name, ck::ref<fs::Node> other_root);
 
     struct DirectoryEntry *get_direntry_raw(const char *name);
 
@@ -377,32 +364,31 @@ namespace fs {
     // if the inode is a directory, set its name. NOP otherwise
     int set_name(const ck::string &);
 
-    Node(int type, fs::SuperBlock &sb);
+    Node(int type, ck::ref<fs::SuperBlock> sb);
     virtual ~Node();
 
     int stat(struct stat *);
-
-    static fs::Node *acquire(fs::Node *);
-    static int release(fs::Node *);
-
     spinlock lock;
 
    protected:
     int rc = 0;
 
    private:
-    fs::Node *get_direntry_nolock(const char *name);
-    fs::Node *get_direntry_ino(struct DirectoryEntry *);
+    ck::ref<fs::Node> get_direntry_nolock(const char *name);
+    ck::ref<fs::Node> get_direntry_ino(struct DirectoryEntry *);
   };
 
 
-  // A `File` is the kernel-side representation that is referenced by filedescriptors.
+  // A `File` is an abstraction of all file-like objects
+  // when they have been opened by a process. They are
+  // basically just the backing structure referenced by
+  // a filedescriptor from userspace.
   class File final : public ck::refcounted<File> {
     int m_error = 0;
 
    public:
     // must construct file descriptors via these factory funcs
-    static ck::ref<File> create(struct fs::Node *, ck::string open_path, int flags = FDIR_READ | FDIR_WRITE);
+    static ck::ref<File> create(ck::ref<fs::Node>, ck::string open_path, int flags = FDIR_READ | FDIR_WRITE);
 
     /*
      * seek - change the offset
@@ -425,12 +411,12 @@ namespace fs {
     ~File(void);
 
 
-    File(struct fs::Node *, int flags);
-    inline File() : File(NULL, 0) {}
+    File(ck::ref<fs::Node>, int flags);
+    inline File() : File(nullptr, 0) {}
 
-    inline operator bool() { return ino != NULL; }
+    inline operator bool() { return ino != nullptr; }
 
-    struct fs::Node *ino;
+    ck::ref<fs::Node> ino;
     ck::string path;
     off_t m_offset = 0;
 
@@ -441,10 +427,6 @@ namespace fs {
   };
 
 };  // namespace fs
-
-
-static inline fs::Node *geti(fs::Node *i) { return fs::Node::acquire(i); }
-
 
 
 // fwd decl

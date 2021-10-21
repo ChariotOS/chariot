@@ -123,8 +123,8 @@ struct Process final : public ck::refcounted<Process> {
 
   u64 create_tick = 0;
   // The current working directory of the process.
-  fs::Node *cwd = nullptr;
-  fs::Node *root = nullptr;
+  ck::ref<fs::Node> cwd = nullptr;
+  ck::ref<fs::Node> root = nullptr;
   ck::string cwd_string;
   spinlock datalock;
 

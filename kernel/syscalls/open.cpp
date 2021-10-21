@@ -8,19 +8,19 @@ int sys::open(const char *path, int flags, int mode) {
     return -1;
   }
 
-  struct fs::Node *ino = NULL;
+  ck::ref<fs::Node> ino = nullptr;
 
 
   int r = vfs::namei(path, flags, mode, vfs::cwd(), ino);
 
-  if (ino == NULL) return -ENOENT;
+  if (ino == nullptr) return -ENOENT;
 
   if (r < 0) {
     return r;
   }
 
   auto file = fs::File::create(ino, path, flags);
-  if (file->ino == NULL) {
+  if (file->ino == nullptr) {
     // the file was created for no reason, as it failed to open
     return file->errorcode();  // negative errno
   }

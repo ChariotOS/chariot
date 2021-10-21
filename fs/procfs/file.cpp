@@ -5,7 +5,7 @@
 fs::FileOperations procfs::fops;
 
 
-procfs::inode::~inode(void) { printk("procfs inode dtor\n"); }
+// procfs::inode::~inode(void) { printk("procfs inode dtor\n"); }
 
 
 // create a file in the directory
@@ -26,7 +26,7 @@ static int procfs_unlink(fs::Node &node, const char *entry) {
 }
 
 // lookup an inode by name in a file
-static struct fs::Node *procfs_lookup(fs::Node &node, const char *needle) {
+static ck::ref<fs::Node> procfs_lookup(fs::Node &node, const char *needle) {
   if (node.type != T_DIR) panic("procfs_lookup on non-dir\n");
 
   // walk the linked list to get the inode num
@@ -35,7 +35,7 @@ static struct fs::Node *procfs_lookup(fs::Node &node, const char *needle) {
       return it->ino;
     }
   }
-  return NULL;
+  return nullptr;
 }
 // create a device node with a major and minor number
 static int procfs_mknod(fs::Node &, const char *name, struct fs::Ownership &, int major, int minor) {

@@ -81,8 +81,8 @@ static ck::ref<Process> do_spawn_proc(ck::ref<Process> proc_ptr, int flags) {
     proc.ppid = proc.parent->pid;
     proc.pgid = proc.parent->pgid;  // inherit the group id of the parent
 
-    proc.root = geti(proc.parent->root);
-    proc.cwd = geti(proc.parent->cwd);
+    proc.root = proc.parent->root;
+    proc.cwd = proc.parent->cwd;
 
     /* copy the signal structure */
     proc.sig = proc.parent->sig;
@@ -105,11 +105,9 @@ static ck::ref<Process> do_spawn_proc(ck::ref<Process> proc_ptr, int flags) {
     }
   }
 
-  if (proc.cwd == NULL) {
+  if (proc.cwd == nullptr) {
     proc.cwd = vfs::get_root();
   }
-  // special case for kernel's init
-  if (proc.cwd != NULL) geti(proc.cwd);
 
 
   if (flags & SPAWN_FORK) {
@@ -180,8 +178,8 @@ long sched::proc::spawn_init(ck::vec<ck::string> &paths) {
   proc_ptr = do_spawn_proc(proc_ptr, 0);
 
   // init starts in the root directory
-  proc_ptr->root = geti(vfs::get_root());
-  proc_ptr->cwd = geti(vfs::get_root());
+  proc_ptr->root = vfs::get_root();
+  proc_ptr->cwd = vfs::get_root();
   auto &proc = *proc_ptr;
 
   ck::vec<ck::string> envp;
@@ -296,7 +294,7 @@ int Process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::strin
 
 
   // try to load the binary
-  fs::Node *exe = NULL;
+  ck::ref<fs::Node> exe = nullptr;
 
   // TODO: open permissions on the binary
   if (vfs::namei(path.get(), 0, 0, cwd, exe) != 0) {
@@ -425,8 +423,8 @@ int sched::proc::reap(ck::ref<Process> p) {
   }
 
   // release the CWD and root
-  fs::Node::release(p->cwd);
-  fs::Node::release(p->root);
+  p->cwd = nullptr;
+  p->root = nullptr;
 
 
   // If the process had children, we need to give them to init

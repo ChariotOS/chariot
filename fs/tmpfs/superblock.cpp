@@ -15,9 +15,9 @@ tmp::SuperBlock::SuperBlock(ck::string args, int flags) {
 
 
 
-fs::Node *tmp::SuperBlock::create_inode(int type) {
+ck::ref<fs::Node> tmp::SuperBlock::create_inode(int type) {
   scoped_lock l(lock);
-  auto ino = new fs::Node(type, *this);
+  auto ino = ck::make_ref<fs::Node>(type, this);
   ino->ino = next_inode++;
   ino->uid = 0;
   ino->gid = 0;
@@ -30,6 +30,6 @@ fs::Node *tmp::SuperBlock::create_inode(int type) {
 
   // allocate the private data
   ino->priv<tmp::priv>() = new tmp::priv();
-  return fs::Node::acquire(ino);
+  return ino;
   // return ino;
 }

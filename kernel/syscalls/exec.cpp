@@ -38,7 +38,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   }
 
   // try to load the binary
-  fs::Node *exe = NULL;
+  ck::ref<fs::Node> exe = nullptr;
 
   // TODO: open permissions on the binary
   if (vfs::namei(path, 0, 0, curproc->cwd, exe) != 0) {

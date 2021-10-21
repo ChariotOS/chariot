@@ -23,7 +23,7 @@ int sys::lstat(const char *pathname, struct stat *statbuf) {
   if (!curproc->mm->validate_pointer(statbuf, sizeof(*statbuf), PROT_READ)) return -1;
 
 
-  struct fs::Node *ino;
+  ck::ref<fs::Node> ino;
 
   int err = vfs::namei(pathname, 0, 0, curproc->cwd, ino);
   // TODO: flags!

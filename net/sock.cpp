@@ -65,7 +65,7 @@ static ssize_t sock_write(fs::File &f, const char *b, size_t s) {
 }
 
 static void sock_close(fs::File &fd) {
-  auto f = *fd.ino;
+  auto &f = *fd.ino;
   if (f.sk) {
     f.sk->disconnect(fd.pflags);
   }
@@ -75,7 +75,7 @@ static void sock_close(fs::File &fd) {
 
 
 static int sock_poll(fs::File &fd, int events, poll_table &pt) {
-  auto f = *fd.ino;
+  auto &f = *fd.ino;
   if (f.sk) {
     return f.sk->poll(fd, events, pt);
   }
@@ -115,13 +115,13 @@ void net::Socket::release(net::Socket *&sk) {
 }
 
 /* create an inode wrapper around a socket */
-fs::Node *net::Socket::createi(int domain, int type, int protocol, int &err) {
+ck::ref<fs::Node> net::Socket::createi(int domain, int type, int protocol, int &err) {
   // printk("domain=%3d, type=%3d, proto=%3d\n", domain, type, protocol);
   auto sk = net::Socket::create(domain, type, protocol, err);
   // printk("sk %p %d\n", sk, err);
   if (err != 0) return nullptr;
 
-  auto ino = new fs::Node(T_SOCK, fs::DUMMY_SB);
+  auto ino = ck::make_ref<fs::Node>(T_SOCK, fs::DUMMY_SB);
   ino->fops = &socket_fops;
   ino->dops = NULL;
 

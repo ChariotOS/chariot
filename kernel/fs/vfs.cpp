@@ -7,7 +7,7 @@
 
 #include <thread.h>
 
-struct fs::Node *vfs_root = NULL;
+ck::ref<fs::Node> vfs_root = nullptr;
 static ck::vec<struct fs::SuperBlockInfo *> filesystems;
 static ck::vec<struct vfs::mountpoint *> mountpoints;
 
@@ -18,11 +18,11 @@ void vfs::register_filesystem(struct fs::SuperBlockInfo &info) {
 
 void vfs::deregister_filesystem(struct fs::SuperBlockInfo &) {}
 
-struct fs::Node *vfs::cwd(void) {
+ck::ref<fs::Node> vfs::cwd(void) {
   if (cpu::in_thread()) {
     auto proc = cpu::proc();
 
-    if (proc->cwd != NULL) {
+    if (proc->cwd) {
       return proc->cwd;
     }
   }
@@ -30,9 +30,7 @@ struct fs::Node *vfs::cwd(void) {
   return vfs_root;
 }
 
-struct fs::Node *vfs::get_root(void) {
-  return vfs_root;
-}
+ck::ref<fs::Node> vfs::get_root(void) { return vfs_root; }
 
 int vfs::mount_root(const char *src, const char *type) {
   panic("mounting root %s with type %s\n", src, type);
@@ -42,14 +40,14 @@ int vfs::mount_root(const char *src, const char *type) {
 int vfs::mount(const char *src, const char *targ, const char *type, unsigned long flags, const char *options) {
   // printk(KERN_INFO "mount %s with fs %s to %s\n", src, type, targ);
 
-  if (get_root() == NULL && strcmp(targ, "/") != 0) {
+  if (get_root().is_null() && strcmp(targ, "/") != 0) {
     printk(KERN_WARN "Mounting non-root filesystem when there is no root is invalid");
     return -EINVAL;
   }
 
   if (type == NULL) return -EINVAL;
 
-  if (get_root() != NULL) {
+  if (get_root()) {
     // TODO: look up the target directory
   }
 
@@ -66,8 +64,8 @@ int vfs::mount(const char *src, const char *targ, const char *type, unsigned lon
     printk("failed to find the filesystem for that name\n");
     return -ENOENT;
   }
-  auto *sb = fs->mount(fs, options, flags, src);
-  if (sb == NULL) {
+  auto sb = fs->mount(fs, options, flags, src);
+  if (sb == nullptr) {
     printk("failed to mount filesystem\n");
     return -EINVAL;
   }
@@ -78,23 +76,23 @@ int vfs::mount(const char *src, const char *targ, const char *type, unsigned lon
   mp->devname = targ;
   mp->id = 0;
 
-  assert(sb->root != NULL);
+  assert(sb->root);
 
-  assert(&mp->sb->root->sb == sb);
+  assert(mp->sb->root->sb == sb);
 
-  if (get_root() == NULL && strcmp(targ, "/") == 0) {
+  if (get_root() == nullptr && strcmp(targ, "/") == 0) {
     // update the root
     // TODO: this needs to be smarter :)
-    vfs_root = fs::Node::acquire(mp->sb->root);
+    vfs_root = mp->sb->root;
   } else {
     // this is so gross...
     mp->host = vfs::open(targ, O_RDONLY, 0);
-    if (mp->host == NULL || mp->host->type != T_DIR || mp->host == vfs_root) {
+    if (mp->host == nullptr || mp->host->type != T_DIR || mp->host == vfs_root) {
       delete mp;
       return -EINVAL;
     }
     auto parent = mp->host->get_direntry("..");
-    assert(parent != NULL);
+    assert(parent != nullptr);
     mp->sb->root->add_mount("..", parent);
 
     // copy the last entry into the name of the guest root
@@ -138,17 +136,17 @@ int sys::mkdir(const char *upath, int mode) {
   // if there was a slash in the name, fix up the name and the path so it points after
   if (last_slash != -1) name = path + last_slash + 1;
 
-  struct fs::Node *dir = NULL;
+  ck::ref<fs::Node> dir = nullptr;
   // get the last directory in the name, (hence the true)
   int err = vfs::namei(path, 0, mode, vfs::cwd(), dir, true);
   if (err < 0) return err;
-  if (dir == NULL) return -ENOENT;
+  if (dir.is_null()) return -ENOENT;
   if (dir->type != T_DIR) return -ENOTDIR;
   if (dir->dops == NULL) return -ENOTIMPL;
 
   // check that the file doesn't exist first. This means we don't
   // have to check in the filesystem driver.
-  if (dir->get_direntry(name) != NULL) return -EEXIST;
+  if (dir->get_direntry(name)) return -EEXIST;
 
 
   fs::Ownership fown;
@@ -164,15 +162,15 @@ int sys::mkdir(const char *upath, int mode) {
 
 
 
-struct fs::Node *vfs::open(ck::string spath, int opts, int mode) {
-  struct fs::Node *ino = NULL;
+ck::ref<fs::Node> vfs::open(ck::string spath, int opts, int mode) {
+  ck::ref<fs::Node> ino = nullptr;
 
   if (!cpu::in_thread()) {
     printk("not in thread\n");
   }
 
   if (0 != vfs::namei(spath.get(), opts, mode, vfs::cwd(), ino)) {
-    return NULL;
+    return nullptr;
   }
   return ino;
 }
@@ -220,7 +218,7 @@ static const char *skipelem(const char *path, char *name, bool &last) {
   return path;
 }
 
-int vfs::namei(const char *path, int flags, int mode, struct fs::Node *cwd, struct fs::Node *&res, bool get_last) {
+int vfs::namei(const char *path, int flags, int mode, ck::ref<fs::Node> cwd, ck::ref<fs::Node> &res, bool get_last) {
   assert(path != NULL);
   auto ino = cwd;
 
@@ -230,7 +228,7 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::Node *cwd, stru
   if (path[0] == '/') {
     ino = uroot;
   } else {
-    assert(cwd != NULL);
+    assert(cwd != nullptr);
   }
 
   char name[256];
@@ -251,7 +249,7 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::Node *cwd, stru
 
     auto found = ino->get_direntry(name);
 
-    if (found == NULL) {
+    if (found.is_null()) {
       if (last && (flags & O_CREAT)) {
         if (ino->dops && ino->dops->create) {
           fs::Ownership own;
@@ -267,7 +265,7 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::Node *cwd, stru
         return -EINVAL;
       }
 
-      res = NULL;
+      res = nullptr;
       return -ENOENT;
     }
 
@@ -280,14 +278,14 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::Node *cwd, stru
 
 
 
-int vfs::unlink(const char *path, struct fs::Node *cwd) {
+int vfs::unlink(const char *path, ck::ref<fs::Node> cwd) {
   auto ino = cwd;
 
   auto uroot = curproc->root ?: vfs::get_root();
   if (path[0] == '/') {
     ino = uroot;
   } else {
-    assert(cwd != NULL);
+    assert(cwd != nullptr);
   }
 
   char name[256];
@@ -301,14 +299,14 @@ int vfs::unlink(const char *path, struct fs::Node *cwd) {
     }
 
     auto next = ino->get_direntry(name);
-    if (next == NULL) return -ENOENT;
+    if (next == nullptr) return -ENOENT;
 
     if (last) {
       if (next->type == T_DIR) {
         return -EISDIR;
       }
 
-      assert(ino != NULL);
+      assert(ino != nullptr);
       if (ino->type != T_DIR) {
         return -ENOTDIR;
       }
@@ -331,7 +329,7 @@ fs::File vfs::fdopen(ck::string path, int opts, int mode) {
   if (opts & O_WRONLY) fd_dirs |= FDIR_WRITE;
   if (opts & O_RDONLY) fd_dirs |= FDIR_READ;
 
-  auto *ino = vfs::open(move(path), opts, mode);
+  auto ino = vfs::open(move(path), opts, mode);
 
   fs::File fd(ino, fd_dirs);
 

@@ -15,7 +15,7 @@ namespace procfs {
     SuperBlock(ck::string args, int flags);
 
     /* create an inode and acquire it */
-    fs::Node *create_inode(int type);
+    ck::ref<fs::Node> create_inode(int type);
 
     spinlock lock;
 
@@ -24,9 +24,5 @@ namespace procfs {
   };
 
 
-  struct inode : public fs::Node {
-    using fs::Node::Node;
-    virtual ~inode();
-  };
 
 };  // namespace procfs

@@ -14,9 +14,9 @@ procfs::SuperBlock::SuperBlock(ck::string args, int flags) {
 }
 
 
-fs::Node *procfs::SuperBlock::create_inode(int type) {
+ck::ref<fs::Node> procfs::SuperBlock::create_inode(int type) {
   scoped_lock l(lock);
-  auto ino = new procfs::inode(type, *this);
+  auto ino = ck::make_ref<fs::Node>(type, this);
   ino->ino = next_inode++;
   ino->uid = 0;
   ino->gid = 0;
@@ -29,12 +29,12 @@ fs::Node *procfs::SuperBlock::create_inode(int type) {
 
   // allocate the private data
   ino->priv<procfs::priv>() = new procfs::priv();
-  return fs::Node::acquire(ino);
+  return ino;
 }
 
 
-static struct fs::SuperBlock *procfs_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
-  auto *sb = new procfs::SuperBlock(args, flags);
+static ck::ref<fs::SuperBlock> procfs_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
+  auto sb = ck::make_ref<procfs::SuperBlock>(args, flags);
 
   return sb;
 }

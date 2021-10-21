@@ -81,8 +81,8 @@ void dev::populate_inode_device(fs::Node &ino) {
   }
 }
 
-struct fs::Node *devicei(struct dev::DriverInfo &d, ck::string name, minor_t min) {
-  fs::Node *ino = new fs::Node(d.type == DRIVER_BLOCK ? T_BLK : T_CHAR, fs::DUMMY_SB);
+ck::ref<fs::Node> devicei(struct dev::DriverInfo &d, ck::string name, minor_t min) {
+  auto ino = ck::make_ref<fs::Node>(d.type == DRIVER_BLOCK ? T_BLK : T_CHAR, fs::DUMMY_SB);
 
   ino->major = d.major;
   ino->minor = min;
@@ -120,11 +120,11 @@ ck::string dev::next_disk_name(void) { return ck::string::format("disk%d", disk_
 /**
  * look up a device
  */
-struct fs::BlockDevice *fs::bdev_from_path(const char *n) {
+fs::BlockDevice *fs::bdev_from_path(const char *n) {
   struct fs::BlockDevice *bdev = nullptr;
 
   // if we don't have root yet, we need to emulate devfs
-  if (vfs::get_root() == NULL) {
+  if (vfs::get_root() == nullptr) {
     ck::string name = n;
 
     auto parts = name.split('/');

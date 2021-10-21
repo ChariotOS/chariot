@@ -25,7 +25,7 @@ namespace vfs {
     struct fs::SuperBlock *sb;
 
     // if this is null, it is the root node.
-    struct fs::Node *host;
+    ck::ref<fs::Node> host;
     int mountflags;
 
     ck::string devname;
@@ -46,7 +46,7 @@ namespace vfs {
    * open a a file, rooted at task_process::cwd() if the path is not rooted at
    * `/`, and return the inode pointer. NULL on failure to open
    */
-  fs::Node *open(ck::string path, int opts = 0, int mode = 0000);
+  ck::ref<fs::Node> open(ck::string path, int opts = 0, int mode = 0000);
 
   fs::File fdopen(ck::string path, int opts = 0, int mode = 0000);
 
@@ -58,10 +58,10 @@ namespace vfs {
    *
    * parent: stop at the parent directory of the last entry
    */
-  int namei(const char *path, int flags, int mode, struct fs::Node *cwd, struct fs::Node *&res, bool get_last = false);
+  int namei(const char *path, int flags, int mode, ck::ref<fs::Node> cwd, ck::ref<fs::Node> &res, bool get_last = false);
 
 
-  int unlink(const char *path, struct fs::Node *cwd);
+  int unlink(const char *path, ck::ref<fs::Node> cwd);
 
   /*
    * cwd()
@@ -69,10 +69,10 @@ namespace vfs {
    * return the current working directory for whatever task we are in. If
    * we are not in a task, use vfs_root (/)
    */
-  struct fs::Node *cwd(void);
+  ck::ref<fs::Node> cwd(void);
   int getcwd(fs::Node &, ck::string &dst);
 
-  struct fs::Node *get_root(void);
+  ck::ref<fs::Node> get_root(void);
 
   // register filesystems by name, therefore we can mount generically by name
   void register_filesystem(struct fs::SuperBlockInfo &);

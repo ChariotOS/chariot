@@ -32,7 +32,7 @@ namespace tmp {
 
 
     /* create an inode and acquire it */
-    fs::Node *create_inode(int type);
+    ck::ref<fs::Node> create_inode(int type);
   };
 
 

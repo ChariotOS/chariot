@@ -59,7 +59,7 @@ namespace net {
     size_t total_recv = 0;
 
     // the inode that contains this socket
-    struct fs::Node *ino = NULL;
+    ck::ref<fs::Node> ino = nullptr;
 
 
     Socket(int domain, int type, int proto);
@@ -73,7 +73,7 @@ namespace net {
     }
 
     static net::Socket *create(int domain, int type, int protocol, int &err);
-    static fs::Node *createi(int domain, int type, int protocol, int &err);
+    static ck::ref<fs::Node> createi(int domain, int type, int protocol, int &err);
 
     static net::Socket *acquire(net::Socket &);
     static void release(net::Socket *&);
@@ -116,7 +116,7 @@ namespace net {
     void dump_stats(void);
 
     // the inode this (server) socket is bound to
-    fs::Node *bindpoint = nullptr;
+    ck::ref<fs::Node> bindpoint = nullptr;
 
     struct LocalSocket *peer;
 
@@ -162,7 +162,7 @@ namespace net {
 
 
     // the inode this (server) socket is bound to
-    fs::Node *bindpoint = nullptr;
+    ck::ref<fs::Node> bindpoint = nullptr;
 
     struct IPCSock *peer;
 

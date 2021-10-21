@@ -10,22 +10,21 @@ int sys::chroot(const char *path) {
 
   scoped_lock l(proc->datalock);
 
-  fs::Node *new_root = NULL;
+  ck::ref<fs::Node> new_root = nullptr;
 
   if (0 != vfs::namei(path, 0, 0, proc->cwd, new_root)) return -1;
 
-  if (new_root == NULL) return -ENOENT;
+  if (new_root == nullptr) return -ENOENT;
 
   if (new_root->type != T_DIR) return -ENOTDIR;
 
-  fs::Node::release(proc->root);
-  proc->root = geti(new_root);
+  proc->root = new_root;
 
 
   ck::string cwd;
   if (vfs::getcwd(*new_root, cwd) != 0) return -EINVAL;
   proc->cwd_string = cwd;
-  proc->cwd = geti(new_root);
+  proc->cwd = new_root;
 
   return 0;
 }

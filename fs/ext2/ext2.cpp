@@ -53,14 +53,14 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-fs::ext2::ext2(void) { TRACE; }
+fs::Ext2SuperBlock::Ext2SuperBlock(void) { TRACE; }
 
-fs::ext2::~ext2(void) {
+fs::Ext2SuperBlock::~Ext2SuperBlock(void) {
   TRACE;
   if (sb != nullptr) delete sb;
 }
 
-bool fs::ext2::init(fs::BlockDevice *bdev) {
+bool fs::Ext2SuperBlock::init(fs::BlockDevice *bdev) {
   TRACE;
 
   fs::BlockDevice::acquire(bdev);
@@ -105,9 +105,7 @@ bool fs::ext2::init(fs::BlockDevice *bdev) {
 
   first_bgd = block_size == 1024 ? 2 : 1;
 
-
   root = get_inode(2);
-  fs::Node::acquire(root);
 
   if (!write_superblock()) {
     printk("failed to write superblock\n");
@@ -117,13 +115,13 @@ bool fs::ext2::init(fs::BlockDevice *bdev) {
   return true;
 }
 
-int fs::ext2::write_superblock(void) {
+int fs::Ext2SuperBlock::write_superblock(void) {
   // TODO: lock
   disk->seek(1024, SEEK_SET);
   return disk->write(sb, 1024);
 }
 
-bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {
+bool fs::Ext2SuperBlock::read_inode(ext2_inode_info &dst, u32 inode) {
   TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
   auto bgd_bb = bref::get(*bdev, first_bgd);
@@ -143,7 +141,7 @@ bool fs::ext2::read_inode(ext2_inode_info &dst, u32 inode) {
   return true;
 }
 
-bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
+bool fs::Ext2SuperBlock::write_inode(ext2_inode_info &src, u32 inode) {
   TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
 
@@ -170,7 +168,7 @@ bool fs::ext2::write_inode(ext2_inode_info &src, u32 inode) {
 #define BLOCKBYTE(bg_buffer, n) (bg_buffer[((n) >> 3)])
 #define BLOCKBIT(bg_buffer, n) (BLOCKBYTE(bg_buffer, n) & SETBIT(n))
 
-long fs::ext2::allocate_inode(void) {
+long fs::Ext2SuperBlock::allocate_inode(void) {
   scoped_lock l(bglock);
 
   int bgs = blockgroups;
@@ -213,7 +211,7 @@ long fs::ext2::allocate_inode(void) {
 
 
 
-uint32_t fs::ext2::balloc(void) {
+uint32_t fs::Ext2SuperBlock::balloc(void) {
   scoped_lock l(bglock);
 
   unsigned int block_no = 0;
@@ -275,31 +273,29 @@ uint32_t fs::ext2::balloc(void) {
 
 
 
-void fs::ext2::bfree(uint32_t block) {
+void fs::Ext2SuperBlock::bfree(uint32_t block) {
   scoped_lock l(m_lock);
 
   //
 }
 
-bool fs::ext2::read_block(u32 block, void *buf) {
+bool fs::Ext2SuperBlock::read_block(u32 block, void *buf) {
   bread(*bdev, (void *)buf, block_size, block * block_size);
   return true;
 }
 
-bool fs::ext2::write_block(u32 block, const void *buf) {
+bool fs::Ext2SuperBlock::write_block(u32 block, const void *buf) {
   bwrite(*bdev, (void *)buf, block_size, block * block_size);
   return true;
 }
 
-struct fs::Node *fs::ext2::get_root(void) {
-  return root;
-}
+ck::ref<fs::Node> fs::Ext2SuperBlock::get_root(void) { return root; }
 
-struct fs::Node *fs::ext2::get_inode(u32 index) {
+ck::ref<fs::Node> fs::Ext2SuperBlock::get_inode(u32 index) {
   TRACE;
   scoped_lock lck(m_lock);
-  if (inodes[index] == NULL) {
-    inodes[index] = fs::ext2::create_inode(this, index);
+  if (inodes[index] == nullptr) {
+    inodes[index] = fs::Ext2SuperBlock::create_inode(this, index);
   }
   return inodes[index];
 }
@@ -314,15 +310,14 @@ struct fs::SuperBlockOperations ext2_ops {
   .init = ext2_sb_init, .write_super = ext2_write_super, .sync = ext2_sync,
 };
 
-static struct fs::SuperBlock *ext2_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
+static ck::ref<fs::SuperBlock> ext2_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
   struct fs::BlockDevice *bdev = fs::bdev_from_path(device);
-  if (bdev == NULL) return NULL;
+  if (bdev == NULL) return nullptr;
 
-  auto *sb = new fs::ext2();
+  auto sb = ck::make_ref<fs::Ext2SuperBlock>();
 
   if (!sb->init(bdev)) {
-    delete sb;
-    return NULL;
+    return nullptr;
   }
 
   return sb;

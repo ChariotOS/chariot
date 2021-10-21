@@ -4,7 +4,7 @@
 #include <fs.h>
 
 ck::ref<fs::File> fs::bdev_to_file(fs::BlockDevice *bdev) {
-  fs::Node *ino = new fs::Node(T_BLK, fs::DUMMY_SB /* TODO */);
+  auto ino = ck::make_ref<fs::Node>(T_BLK, fs::DUMMY_SB /* TODO */);
 
   ino->major = bdev->dev.major();
   ino->minor = bdev->dev.minor();
@@ -20,7 +20,7 @@ ck::ref<fs::File> fs::bdev_to_file(fs::BlockDevice *bdev) {
   return fs::File::create(ino, name, FDIR_READ | FDIR_WRITE);
 }
 
-ck::ref<fs::File> fs::File::create(struct fs::Node *f, ck::string path, int flags) {
+ck::ref<fs::File> fs::File::create(ck::ref<fs::Node> f, ck::string path, int flags) {
   // fail if f is null
   if (!f) return nullptr;
   // otherwise construct
@@ -29,23 +29,21 @@ ck::ref<fs::File> fs::File::create(struct fs::Node *f, ck::string path, int flag
   return move(n);
 }
 
-fs::File::File(struct fs::Node *f, int flags) : ino(f) {
+fs::File::File(ck::ref<fs::Node> f, int flags) : ino(f) {
   m_offset = 0;
 
   // register that the fd has access to the inode
   if (ino != nullptr) {
-    geti(ino);
     auto ops = fops();
     int o_res = 0;
     if (ops && ops->open) o_res = ops->open(*this);
     if (o_res != 0) {
       m_error = o_res;
-      fs::Node::release(ino);
-      ino = NULL;
+      ino = nullptr;
     }
   }
 
-  if (ino != NULL) {
+  if (ino != nullptr) {
     if (flags & O_APPEND) {
       seek(0, SEEK_END);
     }
@@ -57,7 +55,6 @@ fs::File::~File(void) {
     // close the file
     auto ops = fops();
     if (ops && ops->close) ops->close(*this);
-    fs::Node::release(ino);
     ino = nullptr;
   }
 }

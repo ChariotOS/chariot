@@ -35,7 +35,6 @@ net::IPCSock::~IPCSock(void) {
   if (bindpoint != NULL) {
     // we don't need to
     bindpoint->bound_socket = NULL;
-    fs::Node::release(bindpoint);
   }
   all_ipcsocks_lock.write_unlock();
 }
@@ -61,9 +60,9 @@ int net::IPCSock::connect(struct sockaddr *addr, int len) {
   }
 
   auto in = vfs::open(path, O_RDWR);
-  if (in == NULL) return -ENOENT;
+  if (in == nullptr) return -ENOENT;
 
-  if (in->bound_socket == NULL) {
+  if (in->bound_socket == nullptr) {
     return -ENOENT;
   }
 
@@ -203,12 +202,12 @@ int net::IPCSock::bind(const struct sockaddr *addr, size_t len) {
   }
 
   auto in = vfs::open(path, O_RDWR);
-  if (in == NULL) return -ENOENT;
+  if (in == nullptr) return -ENOENT;
   // has someone already bound to this file?
-  if (in->bound_socket != NULL) return -EADDRINUSE;
+  if (in->bound_socket != nullptr) return -EADDRINUSE;
 
   // acquire the file and set the bound_socket to this
-  bindpoint = fs::Node::acquire(in);
+  bindpoint = in;
   bindpoint->bound_socket = net::Socket::acquire(*this);
   return 0;
 }

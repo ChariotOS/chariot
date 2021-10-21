@@ -36,7 +36,7 @@ inline constexpr T ceil_div(T a, U b) {
 namespace fs {
 
 
-  class ext2;
+  class Ext2SuperBlock;
 
   /**
    * represents the actual structure on-disk of an inode.
@@ -93,20 +93,20 @@ namespace fs {
    *
    * It implements the standard Second Extended Filesystem
    */
-  class ext2 final : public fs::SuperBlock {
+  class Ext2SuperBlock final : public fs::SuperBlock {
    public:
-    ext2(void);
+    Ext2SuperBlock(void);
 
-    ~ext2(void);
+    ~Ext2SuperBlock(void);
 
     bool init(fs::BlockDevice *);
 
 
     // implemented in ext2/inode.cpp
-    static struct fs::Node *create_inode(fs::ext2 *fs, u32 index);
+    static ck::ref<fs::Node> create_inode(fs::Ext2SuperBlock *fs, u32 index);
 
-    struct fs::Node *get_root(void);
-    struct fs::Node *get_inode(u32 index);
+    ck::ref<fs::Node> get_root(void);
+    ck::ref<fs::Node> get_inode(u32 index);
 
     friend class ext2_inode;
     bool read_block(u32 block, void *buf);
@@ -220,7 +220,7 @@ namespace fs {
     // the size of a single disk sector
     long sector_size;
 
-    ck::map<u32, struct fs::Node *> inodes;
+    ck::map<u32, ck::ref<fs::Node>> inodes;
 
     // how many entries in the disk cache
     int cache_size;

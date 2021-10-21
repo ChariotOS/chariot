@@ -8,8 +8,8 @@
 int vfs::getcwd(fs::Node &cwd, ck::string &dst) {
   int err = 0;
 
-  fs::Node *cur = &cwd;
-  fs::Node *next = NULL;
+  ck::ref<fs::Node> cur = &cwd;
+  ck::ref<fs::Node> next = nullptr;
 
 
   ck::string sep = "/";

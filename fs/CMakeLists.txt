@@ -28,4 +28,3 @@ add_kernel_module(
 add_kernel_module(NAME console SOURCES console.cpp)
 add_kernel_module(NAME tty SOURCES tty.cpp)
 add_kernel_module(NAME pty SOURCES pty.cpp)
-add_subdirectory(ext4)

@@ -3,7 +3,7 @@
 #include <fs/vfs.h>
 #include <errno.h>
 
-static struct fs::SuperBlock *tmpfs_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
+static ck::ref<fs::SuperBlock> tmpfs_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
   /*
 struct fs::blkdev *bdev = fs::bdev_from_path(device);
 if (bdev == NULL) return NULL;
@@ -18,7 +18,7 @@ return NULL;
 return sb;
   */
 
-  auto *sb = new tmp::SuperBlock(args, flags);
+  auto sb = ck::make_ref<tmp::SuperBlock>(args, flags);
 
 
   return sb;

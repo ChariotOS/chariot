@@ -5,7 +5,7 @@
 #include <module.h>
 #include <dev/driver.h>
 
-static struct fs::Node *devfs_lookup(fs::Node &node, const char *needle) {
+static ck::ref<fs::Node> devfs_lookup(fs::Node &node, const char *needle) {
   if (node.type != T_DIR) panic("devfs_lookup on non-dir\n");
 
   // walk the linked list to get the inode num
@@ -14,7 +14,7 @@ static struct fs::Node *devfs_lookup(fs::Node &node, const char *needle) {
       return it->ino;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 static int devfs_create(fs::Node &node, const char *name, struct fs::Ownership &) { return -EPERM; }
@@ -47,11 +47,12 @@ int devfs_sync(struct fs::SuperBlock &sb, int flags) {
   return 0;
 }
 
-struct fs::SuperBlock devfs_sb;
-static struct fs::Node *devfs_root = NULL;
+
+static auto devfs_sb = ck::make_ref<fs::SuperBlock>();
+static ck::ref<fs::Node> devfs_root = nullptr;
 static int next_inode_nr = 0;
-static auto *devfs_create_inode(int type) {
-  auto ino = new fs::Node(type, devfs_sb);
+static auto devfs_create_inode(int type) {
+  auto ino = ck::make_ref<fs::Node>(type, devfs_sb);
   ino->ino = next_inode_nr++;
   ino->uid = 0;
   ino->gid = 0;
@@ -59,11 +60,11 @@ static auto *devfs_create_inode(int type) {
   ino->mode = 07755;
   ino->link_count = 3;
   ino->dops = &devfs_dir_ops;
-  return fs::Node::acquire(ino);
+  return ino;
 }
 
-static struct fs::Node *devfs_get_root(void) {
-  if (devfs_root == NULL) {
+static ck::ref<fs::Node> devfs_get_root(void) {
+  if (devfs_root == nullptr) {
     devfs_root = devfs_create_inode(T_DIR);
     devfs_root->register_direntry(".", ENT_MEM, devfs_root->ino, devfs_root);
     devfs_root->register_direntry("..", ENT_MEM, devfs_root->ino, devfs_root);
@@ -86,11 +87,11 @@ struct fs::SuperBlockOperations devfs_sb_ops {
 };
 
 
-static struct fs::SuperBlock *devfs_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
-  devfs_sb.ops = &devfs_sb_ops;
-  devfs_sb.arguments = args;
-  devfs_sb.root = devfs_get_root();
-  return &devfs_sb;
+static ck::ref<fs::SuperBlock> devfs_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
+  devfs_sb->ops = &devfs_sb_ops;
+  devfs_sb->arguments = args;
+  devfs_sb->root = devfs_get_root();
+  return devfs_sb;
 }
 
 
