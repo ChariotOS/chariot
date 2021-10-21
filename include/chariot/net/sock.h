@@ -24,24 +24,6 @@ namespace net {
 
   struct Socket;
 
-  /* Network protcol blocks that get attached to sockets */
-  struct proto {
-    // required fields.
-    int (*connect)(net::Socket &sk, struct sockaddr *uaddr, int addr_len);
-    int (*disconnect)(net::Socket &sk, int flags);
-
-    net::Socket *(*accept)(net::Socket &sk, struct sockaddr *uaddr, int addr_len, int &err);
-
-    int (*init)(net::Socket &sk);
-    void (*destroy)(net::Socket &sk);  // called on ~net::sock()
-
-    ssize_t (*send)(net::Socket &sk, void *data, size_t len);
-    ssize_t (*recv)(net::Socket &sk, void *data, size_t len);
-
-    // optional fields
-    int (*ioctl)(net::Socket &sk, int cmd, unsigned long arg);
-  };
-
   /**
    * The representation of a network socket. Stored in fs::inode.sock when type
    * is T_SOCK
