@@ -13,10 +13,10 @@
 #endif
 
 static rwlock drivers_lock;
-static ck::map<major_t, struct dev::driver_info *> drivers;
+static ck::map<major_t, struct dev::DriverInfo *> drivers;
 static ck::map<ck::string, dev_t> device_names;
 
-int dev::register_driver(struct dev::driver_info &info) {
+int dev::register_driver(struct dev::DriverInfo &info) {
   assert(info.major != -1);
   assert(info.type == DRIVER_CHAR || info.type == DRIVER_BLOCK);
   assert(info.type == DRIVER_CHAR ? info.char_ops != NULL : info.block_ops != NULL);
@@ -31,7 +31,7 @@ int dev::register_driver(struct dev::driver_info &info) {
 }
 
 extern void devfs_register_device(ck::string name, int type, int major, int minor);
-int dev::register_name(struct dev::driver_info &info, ck::string name, minor_t min) {
+int dev::register_name(struct dev::DriverInfo &info, ck::string name, minor_t min) {
   // create the block device if it is one
   if (info.type == DRIVER_BLOCK) {
     auto bdev = new fs::BlockDevice(dev_t(info.major, min), name, *info.block_ops);
@@ -53,7 +53,7 @@ int dev::register_name(struct dev::driver_info &info, ck::string name, minor_t m
   return 0;
 }
 
-int dev::deregister_name(struct dev::driver_info &, ck::string name) {
+int dev::deregister_name(struct dev::DriverInfo &, ck::string name) {
   drivers_lock.write_lock();
   device_names.remove(name);
   drivers_lock.write_unlock();
@@ -81,7 +81,7 @@ void dev::populate_inode_device(fs::Node &ino) {
   }
 }
 
-struct fs::Node *devicei(struct dev::driver_info &d, ck::string name, minor_t min) {
+struct fs::Node *devicei(struct dev::DriverInfo &d, ck::string name, minor_t min) {
   fs::Node *ino = new fs::Node(d.type == DRIVER_BLOCK ? T_BLK : T_CHAR, fs::DUMMY_SB);
 
   ino->major = d.major;

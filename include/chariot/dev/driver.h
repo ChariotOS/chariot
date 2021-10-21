@@ -22,7 +22,7 @@ namespace dev {
    * defined statically in each driver, and will be passed to the register_driver
    * function. The driver subsystem will keep this information
    */
-  struct driver_info {
+  struct DriverInfo {
     // fill in all the information below as needed.
     const char *name = NULL;
     int type = DRIVER_INVALID;
@@ -49,11 +49,11 @@ namespace dev {
 
   void populate_inode_device(fs::Node &);
 
-  int register_driver(struct driver_info &);
-  int deregister_driver(struct driver_info &);
+  int register_driver(struct DriverInfo &);
+  int deregister_driver(struct DriverInfo &);
 
-  int register_name(struct driver_info &, ck::string name, minor_t minor);
-  int deregister_name(struct driver_info &, ck::string name);
+  int register_name(struct DriverInfo &, ck::string name, minor_t minor);
+  int deregister_name(struct DriverInfo &, ck::string name);
 
   /* return the next diskN where n is the next disk number
    * ie: disk1, disk2, disk3

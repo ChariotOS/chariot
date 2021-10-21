@@ -74,7 +74,7 @@ struct fs::BlockOperations generic_disk_blk_ops = {
     .rw_block = disk_rw_block,
 };
 
-static struct dev::driver_info disk_driver_info {
+static struct dev::DriverInfo disk_driver_info {
   .name = "generic disk", .type = DRIVER_BLOCK, .major = MAJOR_DISK,
 
   .block_ops = &generic_disk_blk_ops,

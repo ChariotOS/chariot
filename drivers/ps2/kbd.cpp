@@ -522,7 +522,7 @@ struct fs::FileOperations kbd_ops = {
     .poll = kbd_poll,
 };
 
-static struct dev::driver_info keyboard_driver_info {
+static struct dev::DriverInfo keyboard_driver_info {
   .name = "kdb", .type = DRIVER_CHAR, .major = MAJOR_KEYBOARD,
 
   .char_ops = &kbd_ops,

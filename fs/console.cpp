@@ -132,7 +132,7 @@ struct fs::FileOperations console_ops = {
     .poll = console_poll,
 };
 
-static struct dev::driver_info console_driver_info {
+static struct dev::DriverInfo console_driver_info {
   .name = "console", .type = DRIVER_CHAR, .major = MAJOR_CONSOLE,
 
   .char_ops = &console_ops,

@@ -53,7 +53,7 @@ static struct fs::FileOperations generic_ops = {
 };
 
 
-static struct dev::driver_info generic_driver_info {
+static struct dev::DriverInfo generic_driver_info {
   .name = "generic", .type = DRIVER_CHAR, .major = MAJOR_MEM,
 
   .char_ops = &generic_ops,

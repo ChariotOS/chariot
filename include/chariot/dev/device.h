@@ -24,6 +24,13 @@ struct dev_t {
   minor_t min;
 };
 
-namespace dev {};  // namespace dev
+namespace dev {
+
+
+  class PCIDevice {};
+
+  class MMIODevice {};
+
+};  // namespace dev
 
 #endif

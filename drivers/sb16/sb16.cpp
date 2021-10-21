@@ -186,7 +186,7 @@ struct fs::FileOperations sb_ops = {
 };
 
 
-static struct dev::driver_info sb16_driver {
+static struct dev::DriverInfo sb16_driver {
   .name = "sb16", .type = DRIVER_CHAR, .major = MAJOR_SB16,
 
   .char_ops = &sb_ops,

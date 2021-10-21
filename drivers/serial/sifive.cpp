@@ -133,7 +133,7 @@ struct fs::FileOperations sifive_uart_ops = {
     // .poll = sifive_uart_poll,
 };
 
-static struct dev::driver_info sifive_uart_driver_info {
+static struct dev::DriverInfo sifive_uart_driver_info {
   .name = SIFIVE_SERIAL_NAME, .type = DRIVER_CHAR, .major = MAJOR_SIFIVE_UART,
 
   .char_ops = &sifive_uart_ops,

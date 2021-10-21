@@ -124,7 +124,7 @@ static struct fs::FileOperations com_ops = {
 };
 
 
-static struct dev::driver_info com_driver { .name = "com", .type = DRIVER_CHAR, .major = MAJOR_COM, .char_ops = &com_ops, };
+static struct dev::DriverInfo com_driver { .name = "com", .type = DRIVER_CHAR, .major = MAJOR_COM, .char_ops = &com_ops, };
 
 
 

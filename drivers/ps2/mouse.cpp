@@ -345,7 +345,7 @@ struct fs::FileOperations mouse_ops = {
 };
 
 
-static struct dev::driver_info mouse_driver_info {
+static struct dev::DriverInfo mouse_driver_info {
   .name = "mouse", .type = DRIVER_CHAR, .major = MAJOR_MOUSE,
 
   .char_ops = &mouse_ops,

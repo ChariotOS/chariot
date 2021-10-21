@@ -101,7 +101,7 @@ struct fs::FileOperations generic_video_device_ops = {
     .mmap = gvi_mmap,
 };
 
-static struct dev::driver_info gvi_driver_info {
+static struct dev::DriverInfo gvi_driver_info {
   .name = "Generic Video Interface", .type = DRIVER_CHAR, .major = MAJOR_VIDEO, .char_ops = &generic_video_device_ops,
 };
 

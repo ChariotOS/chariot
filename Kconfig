@@ -193,6 +193,11 @@ menu "Devices"
 		bool "[WIP] AC97 Audio Driver"
 		default y
 		depends on X86
+
+
+	config VIRTIO
+		bool "Virtio Devices"
+		default y
 		
 endmenu
 

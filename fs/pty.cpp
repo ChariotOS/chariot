@@ -52,7 +52,7 @@ static struct fs::FileOperations pts_ops = {
 
 
 
-static struct dev::driver_info pts_driver { .name = "pts", .type = DRIVER_CHAR, .major = MAJOR_PTS, .char_ops = &pts_ops, };
+static struct dev::DriverInfo pts_driver { .name = "pts", .type = DRIVER_CHAR, .major = MAJOR_PTS, .char_ops = &pts_ops, };
 
 
 static auto getpts(int id) { return pts.get(id); }
@@ -175,7 +175,7 @@ static struct fs::FileOperations mx_ops = {
 };
 
 
-static struct dev::driver_info mx_driver { .name = "ptmx", .type = DRIVER_CHAR, .major = MAJOR_PTMX, .char_ops = &mx_ops, };
+static struct dev::DriverInfo mx_driver { .name = "ptmx", .type = DRIVER_CHAR, .major = MAJOR_PTMX, .char_ops = &mx_ops, };
 
 
 static void pty_init(void) {

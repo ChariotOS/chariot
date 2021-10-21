@@ -281,7 +281,7 @@ struct fs::FileOperations fb_ops = {
     .mmap = vga_mmap,
 };
 
-static struct dev::driver_info generic_driver_info {
+static struct dev::DriverInfo generic_driver_info {
   .name = "vga framebuffer", .type = DRIVER_CHAR, .major = MAJOR_FB,
 
   .char_ops = &fb_ops,
