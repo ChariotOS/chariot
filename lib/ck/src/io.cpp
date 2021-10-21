@@ -302,10 +302,10 @@ ck::socket::~socket(void) {
 
 bool ck::socket::connect(struct sockaddr *addr, size_t size) {
   int connect_res = ::connect(ck::file::m_fd, addr, size);
-
   if (connect_res < 0) {
     // EOF is how we specify that a file is or is not readable.
     set_eof(true);
+    m_connected = false;
     return false;
   }
 

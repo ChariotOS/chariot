@@ -105,7 +105,7 @@ namespace net {
 
     bool is_server = false;
 
-    chan<LocalSocket *> pending_connections;
+    chan<ck::ref<LocalSocket>> pending_connections;
 
     // intrusive linked list so we can store them all
     ck::ref<net::LocalSocket> next, prev;
@@ -155,7 +155,7 @@ namespace net {
     } for_server, for_client;
 
 
-    chan<IPCSock *> pending_connections;
+    chan<ck::ref<IPCSock>> pending_connections;
   };
 
 

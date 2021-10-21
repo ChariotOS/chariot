@@ -14,14 +14,17 @@
 #include <thread.h>
 
 void debug_die(void) {
-  // #if CONFIG_X86
-  //   off_t rbp = 0;
-  //   asm volatile("mov %%rbp, %0\n\t" : "=r"(rbp));
-  //   auto bt = debug::generate_backtrace(rbp);
-  //   for (auto pc : bt) {
-  //     printk("%p\n", pc);
-  //   }
-  // #endif
+#if CONFIG_X86
+  off_t rbp = 0;
+  asm volatile("mov %%rbp, %0\n\t" : "=r"(rbp));
+  auto bt = debug::generate_backtrace(rbp);
+
+  printk("addr2line -e build/chariot.elf ");
+  for (auto pc : bt) {
+    printk(" 0x%p", pc);
+  }
+  printk("\n");
+#endif
   // arch_dump_backtrace();
   while (1) {
     arch_halt();

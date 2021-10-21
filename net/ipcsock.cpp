@@ -22,7 +22,8 @@ net::IPCSock::~IPCSock(void) {
 
 ck::ref<net::Socket> net::IPCSock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
   // wait on a client
-  auto *client = pending_connections.recv();
+  ck::ref<net::Socket> client = pending_connections.recv();
+  printk("accept %p\n", client.get());
   return client;
 }
 
@@ -186,6 +187,8 @@ int net::IPCSock::bind(const struct sockaddr *addr, size_t len) {
   // has someone already bound to this file?
   if (in->bound_socket != nullptr) return -EADDRINUSE;
 
+
+  printk("bind %s\n", path.get());
   // acquire the file and set the bound_socket to this
   bindpoint = in;
   bindpoint->bound_socket = this;

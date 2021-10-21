@@ -246,61 +246,31 @@ async(int) make_fiber(int num, int size, int div) {
 struct my_thing : public ck::refcounted<my_thing> {};
 
 int main(int argc, char** argv) async_main({
+#if 0
   for (int i = 0; true; i++) {
     int pid = fork();
     if (pid == 0) {
-      // ck::thread t([]() {
-      //   return;
-      // });
 
-      // t.join();
       exit(0);
     }
 
     waitpid(pid, NULL, 0);
     printf("%d\n", i);
   }
-  // while (1) {
-  //   ck::ref<my_thing> thing = ck::make_ref<my_thing>();
-  //   my_thing* tmp = 0;
-  //   int count = 1000000;
-  //   auto start = ck::time::cycles();
-  //   for (int i = 0; i < count; i++) {
-  //     ck::ref<my_thing> other = thing;
-  //     tmp = thing.get();
-  //   }
-  //   auto end = ck::time::cycles();
-
-  //   printf("%p %llu cycles\n", tmp, (end - start) / count);
-  // }
-
-
-  // for (int i = 0; true; i++) {
-  //   ck::thread t([]() {
-  //     return;
-  //   });
-
-  //   t.join();
-  // }
-
-
-
   return;
 
+#endif
+
+
+#if 0
   auto start = sysbind_gettime_microsecond();
   int result = make_fiber(0, 1000000, 10).await();
   auto end = sysbind_gettime_microsecond();
   printf("Skynet Result: %d in %fms\n", result, (end - start) / 1000.0f);
 
-
-  // auto start = sysbind_getramusage();
-  // // auto font = gfx::font::get("Arial");
-  // auto end = sysbind_getramusage();
-  // printf("used: %llu\n", end - start);
   return;
 
-
-
+#endif
   printf("Connecting...\n");
   auto conn = ck::ipc::connect<lumen::Connection>("/usr/servers/lumen");
   printf("Connected.\n");

@@ -8,12 +8,9 @@
 #include <util.h>
 
 
-net::LocalSocket::LocalSocket(int type) : net::Socket(AF_LOCAL, type, 0) {
-
-}
+net::LocalSocket::LocalSocket(int type) : net::Socket(AF_LOCAL, type, 0) {}
 
 net::LocalSocket::~LocalSocket(void) {
-
   // if this socket is bound, release it
   if (bindpoint != nullptr) {
     // we don't need to
@@ -24,7 +21,7 @@ net::LocalSocket::~LocalSocket(void) {
 
 ck::ref<net::Socket> net::LocalSocket::accept(struct sockaddr *uaddr, int addr_len, int &err) {
   // wait on a client
-  auto *client = pending_connections.recv();
+  auto client = pending_connections.recv();
   return client;
 }
 
