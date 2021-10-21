@@ -7,39 +7,22 @@
 #include <syscall.h>
 #include <util.h>
 
-static rwlock all_localsocks_lock;
-static struct net::LocalSocket *all_localsocks = NULL;
 
 net::LocalSocket::LocalSocket(int type) : net::Socket(AF_LOCAL, type, 0) {
-  all_localsocks_lock.write_lock();
-  next = all_localsocks;
-  prev = nullptr;
-  all_localsocks = this;
-  if (next != NULL) {
-    next->prev = this;
-  }
-  all_localsocks_lock.write_unlock();
+
 }
 
 net::LocalSocket::~LocalSocket(void) {
-  all_localsocks_lock.write_lock();
-  if (all_localsocks == this) {
-    all_localsocks = next;
-  }
-
-  if (next) next->prev = prev;
-  if (prev) prev->next = next;
 
   // if this socket is bound, release it
-  if (bindpoint != NULL) {
+  if (bindpoint != nullptr) {
     // we don't need to
-    bindpoint->bound_socket = NULL;
+    bindpoint->bound_socket = nullptr;
   }
-  all_localsocks_lock.write_unlock();
 }
 
 
-net::Socket *net::LocalSocket::accept(struct sockaddr *uaddr, int addr_len, int &err) {
+ck::ref<net::Socket> net::LocalSocket::accept(struct sockaddr *uaddr, int addr_len, int &err) {
   // wait on a client
   auto *client = pending_connections.recv();
   return client;
@@ -61,11 +44,11 @@ int net::LocalSocket::connect(struct sockaddr *addr, int len) {
   auto in = vfs::open(path, O_RDWR);
   if (in == nullptr) return -ENOENT;
 
-  if (in->bound_socket == NULL) {
+  if (in->bound_socket == nullptr) {
     return -ENOENT;
   }
 
-  peer = (struct LocalSocket *)net::Socket::acquire(*in->bound_socket);
+  peer = in->bound_socket;
 
   // send, and wait. This will always succeed if we are here.
   this->peer->pending_connections.send(this, true);
@@ -124,7 +107,7 @@ ssize_t net::LocalSocket::recvfrom(fs::File &fd, void *data, size_t len, int fla
 
 int net::LocalSocket::bind(const struct sockaddr *addr, size_t len) {
   if (len != sizeof(struct sockaddr_un)) return -EINVAL;
-  if (bindpoint != NULL) return -EINVAL;
+  if (bindpoint != nullptr) return -EINVAL;
 
   auto un = (struct sockaddr_un *)addr;
 
@@ -138,11 +121,11 @@ int net::LocalSocket::bind(const struct sockaddr *addr, size_t len) {
   auto in = vfs::open(path, O_RDWR);
   if (in == nullptr) return -ENOENT;
   // has someone already bound to this file?
-  if (in->bound_socket != NULL) return -EADDRINUSE;
+  if (in->bound_socket != nullptr) return -EADDRINUSE;
 
   // acquire the file and set the bound_socket to this
   bindpoint = in;
-  bindpoint->bound_socket = net::Socket::acquire(*this);
+  bindpoint->bound_socket = this;
   return 0;
 }
 

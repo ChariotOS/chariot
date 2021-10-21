@@ -46,7 +46,7 @@ namespace net {
    * The representation of a network socket. Stored in fs::inode.sock when type
    * is T_SOCK
    */
-  struct Socket {
+  struct Socket : public ck::refcounted<Socket> {
     enum class role : uint8_t { none, accepting, listener, connected, connecting };
 
     net::Socket::role role = role::none;
@@ -72,16 +72,14 @@ namespace net {
       return (T *&)_private;
     }
 
-    static net::Socket *create(int domain, int type, int protocol, int &err);
+    static ck::ref<net::Socket> create(int domain, int type, int protocol, int &err);
     static ck::ref<fs::Node> createi(int domain, int type, int protocol, int &err);
 
-    static net::Socket *acquire(net::Socket &);
-    static void release(net::Socket *&);
 
     virtual int ioctl(int cmd, unsigned long arg);
 
     virtual int connect(struct sockaddr *uaddr, int addr_len);
-    virtual net::Socket *accept(struct sockaddr *uaddr, int addr_len, int &err);
+    virtual ck::ref<net::Socket> accept(struct sockaddr *uaddr, int addr_len, int &err);
     virtual int disconnect(int flags);
 
     // implemented by the network layer (OSI)
@@ -102,7 +100,7 @@ namespace net {
 
     virtual int connect(struct sockaddr *uaddr, int addr_len);
     virtual int disconnect(int flags);
-    virtual net::Socket *accept(struct sockaddr *uaddr, int addr_len, int &err);
+    virtual ck::ref<net::Socket> accept(struct sockaddr *uaddr, int addr_len, int &err);
 
     // implemented by the network layer (OSI)
     virtual ssize_t sendto(fs::File &, void *data, size_t len, int flags, const sockaddr *, size_t);
@@ -118,7 +116,7 @@ namespace net {
     // the inode this (server) socket is bound to
     ck::ref<fs::Node> bindpoint = nullptr;
 
-    struct LocalSocket *peer;
+    ck::ref<LocalSocket> peer;
 
     fifo_buf for_server;  // client writes, server reads
     fifo_buf for_client;  // server writes, client reads
@@ -128,7 +126,7 @@ namespace net {
     chan<LocalSocket *> pending_connections;
 
     // intrusive linked list so we can store them all
-    struct net::LocalSocket *next, *prev;
+    ck::ref<net::LocalSocket> next, prev;
   };
 
 
@@ -150,7 +148,7 @@ namespace net {
 
     virtual int connect(struct sockaddr *uaddr, int addr_len);
     virtual int disconnect(int flags);
-    virtual net::Socket *accept(struct sockaddr *uaddr, int addr_len, int &err);
+    virtual ck::ref<net::Socket> accept(struct sockaddr *uaddr, int addr_len, int &err);
 
     // implemented by the network layer (OSI)
     virtual ssize_t sendto(fs::File &, void *data, size_t len, int flags, const sockaddr *, size_t);
@@ -164,7 +162,7 @@ namespace net {
     // the inode this (server) socket is bound to
     ck::ref<fs::Node> bindpoint = nullptr;
 
-    struct IPCSock *peer;
+    ck::ref<IPCSock> peer;
 
 
     struct {
@@ -176,8 +174,6 @@ namespace net {
 
 
     chan<IPCSock *> pending_connections;
-    // intrusive linked list so we can store them all
-    struct net::IPCSock *next, *prev;
   };
 
 

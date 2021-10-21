@@ -339,8 +339,8 @@ namespace fs {
 
 
     // if this inode has a socket bound to it, it will be located here.
-    net::Socket *sk = NULL;
-    net::Socket *bound_socket = NULL;
+    ck::ref<net::Socket> sk;
+    ck::ref<net::Socket> bound_socket;
 
     /*
      * the directory entry list in this->as.dir is a linked list that must be

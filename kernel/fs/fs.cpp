@@ -5,6 +5,7 @@
 #include <mem.h>
 #include <module.h>
 #include <printk.h>
+#include <net/sock.h>
 
 
 // TODO: remove
@@ -17,6 +18,8 @@ using namespace fs;
 
 
 fs::Node::Node(int type, ck::ref<fs::SuperBlock> sb) : type(type), sb(sb) {
+  sk = nullptr;
+  bound_socket = nullptr;
   switch (type) {
     case T_DIR:
       // zero out the directory specific info

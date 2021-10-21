@@ -298,8 +298,8 @@ void main(int hartid, void *fdt) {
 #ifdef CONFIG_ENABLE_USERSPACE
 
     auto kproc = sched::proc::kproc();
-    kproc->root = fs::Node::acquire(vfs::get_root());
-    kproc->cwd = fs::Node::acquire(vfs::get_root());
+    kproc->root = vfs::get_root();
+    kproc->cwd = vfs::get_root();
 
     ck::string init_paths = "/bin/init,/init";
     auto paths = init_paths.split(',');

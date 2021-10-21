@@ -18,7 +18,7 @@ net::Socket::~Socket(void) {}
 
 extern net::Socket *udp_create(int domain, int type, int protocol, int &err);
 
-net::Socket *net::Socket::create(int domain, int type, int protocol, int &err) {
+ck::ref<net::Socket> net::Socket::create(int domain, int type, int protocol, int &err) {
 #ifdef CONFIG_LWIP
   // manually
   if (domain == PF_INET) {
@@ -30,7 +30,7 @@ net::Socket *net::Socket::create(int domain, int type, int protocol, int &err) {
   if (domain == PF_LOCAL) {
     if (type == SOCK_STREAM) {
       err = 0;
-      return new net::LocalSocket(type);
+      return ck::make_ref<net::LocalSocket>(type);
     }
   }
 
@@ -38,12 +38,12 @@ net::Socket *net::Socket::create(int domain, int type, int protocol, int &err) {
   if (domain == PF_CKIPC) {
     if (type == SOCK_DGRAM) {
       err = 0;
-      return new net::IPCSock(type);
+      return ck::make_ref<net::IPCSock>(type);
     }
   }
 
   err = -EINVAL;
-  return NULL;
+  return nullptr;
 }
 
 static int sock_seek(fs::File &, off_t old_off, off_t new_off) {
@@ -69,8 +69,7 @@ static void sock_close(fs::File &fd) {
   if (f.sk) {
     f.sk->disconnect(fd.pflags);
   }
-  net::Socket::release(f.sk);
-  f.sk = NULL;
+  f.sk = nullptr;
 }
 
 
@@ -93,26 +92,6 @@ fs::FileOperations socket_fops{
 };
 
 
-net::Socket *net::Socket::acquire(net::Socket &sk) {
-  sk.owners_lock.lock();
-  sk.owners += 1;
-  sk.owners_lock.unlock();
-  return &sk;
-}
-
-
-void net::Socket::release(net::Socket *&sk) {
-  if (sk == NULL) return;
-  sk->owners_lock.lock();
-  sk->owners--;
-  if (sk->owners == 0) {
-    delete sk;
-  } else {
-    sk->owners_lock.unlock();
-  }
-  // make sure the owner can't access their reference anymroe,
-  sk = NULL;
-}
 
 /* create an inode wrapper around a socket */
 ck::ref<fs::Node> net::Socket::createi(int domain, int type, int protocol, int &err) {
@@ -125,7 +104,7 @@ ck::ref<fs::Node> net::Socket::createi(int domain, int type, int protocol, int &
   ino->fops = &socket_fops;
   ino->dops = NULL;
 
-  ino->sk = net::Socket::acquire(*sk);
+  ino->sk = sk;
   sk->ino = ino;
   err = 0;
 
@@ -225,11 +204,11 @@ int sys::accept(int sockfd, struct sockaddr *addr, size_t addrlen) {
     if (file->ino->type == T_SOCK) {
       int err = 0;
       auto sk = file->ino->sk->accept((struct sockaddr *)addr, addrlen, err);
-      if (sk != NULL) {
+      if (sk != nullptr) {
         auto ino = new fs::Node(T_SOCK, fs::DUMMY_SB);
         ino->fops = &socket_fops;
         ino->dops = NULL;
-        ino->sk = net::Socket::acquire(*sk);
+        ino->sk = sk;
         sk->ino = ino;
         auto file = fs::File::create(ino, "[socket]", O_RDWR);
         file->pflags = PFLAGS_SERVER;
@@ -283,9 +262,9 @@ int net::Socket::connect(struct sockaddr *uaddr, int addr_len) { return -ENOTIMP
 
 int net::Socket::disconnect(int flags) { return -ENOTIMPL; }
 
-net::Socket *net::Socket::accept(struct sockaddr *uaddr, int addr_len, int &err) {
+ck::ref<net::Socket> net::Socket::accept(struct sockaddr *uaddr, int addr_len, int &err) {
   err = -ENOTIMPL;
-  return NULL;
+  return nullptr;
 }
 
 ssize_t net::Socket::sendto(fs::File &, void *data, size_t len, int flags, const sockaddr *, size_t) { return -ENOTIMPL; }

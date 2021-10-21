@@ -8,39 +8,19 @@
 #include <template_lib.h>
 #include <util.h>
 
-static rwlock all_ipcsocks_lock;
-static struct net::IPCSock *all_ipcsocks = NULL;
 
-net::IPCSock::IPCSock(int type) : net::Socket(AF_CKIPC, type, 0) {
-  all_ipcsocks_lock.write_lock();
-  next = all_ipcsocks;
-  prev = nullptr;
-  all_ipcsocks = this;
-  if (next != NULL) {
-    next->prev = this;
-  }
-  all_ipcsocks_lock.write_unlock();
-}
+net::IPCSock::IPCSock(int type) : net::Socket(AF_CKIPC, type, 0) {}
 
 net::IPCSock::~IPCSock(void) {
-  all_ipcsocks_lock.write_lock();
-  if (all_ipcsocks == this) {
-    all_ipcsocks = next;
-  }
-
-  if (next) next->prev = prev;
-  if (prev) prev->next = next;
-
   // if this socket is bound, release it
-  if (bindpoint != NULL) {
+  if (bindpoint != nullptr) {
     // we don't need to
-    bindpoint->bound_socket = NULL;
+    bindpoint->bound_socket = nullptr;
   }
-  all_ipcsocks_lock.write_unlock();
 }
 
 
-net::Socket *net::IPCSock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
+ck::ref<net::Socket> net::IPCSock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
   // wait on a client
   auto *client = pending_connections.recv();
   return client;
@@ -66,7 +46,7 @@ int net::IPCSock::connect(struct sockaddr *addr, int len) {
     return -ENOENT;
   }
 
-  peer = (struct IPCSock *)net::Socket::acquire(*in->bound_socket);
+  peer = in->bound_socket;
 
   // send, and wait. This will always succeed if we are here.
   this->peer->pending_connections.send(this, true);
@@ -190,7 +170,7 @@ ssize_t net::IPCSock::recvfrom(fs::File &fd, void *data, size_t len, int flags, 
 
 int net::IPCSock::bind(const struct sockaddr *addr, size_t len) {
   if (len != sizeof(struct sockaddr_un)) return -EINVAL;
-  if (bindpoint != NULL) return -EINVAL;
+  if (bindpoint != nullptr) return -EINVAL;
 
   auto un = (struct sockaddr_un *)addr;
 
@@ -208,7 +188,7 @@ int net::IPCSock::bind(const struct sockaddr *addr, size_t len) {
 
   // acquire the file and set the bound_socket to this
   bindpoint = in;
-  bindpoint->bound_socket = net::Socket::acquire(*this);
+  bindpoint->bound_socket = this;
   return 0;
 }
 
