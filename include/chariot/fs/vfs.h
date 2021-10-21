@@ -22,7 +22,7 @@ namespace vfs {
    * mountpoint - describes a single filesystem mounted on the system
    */
   struct mountpoint {
-    struct fs::SuperBlock *sb;
+    ck::ref<fs::SuperBlock> sb;
 
     // if this is null, it is the root node.
     ck::ref<fs::Node> host;

@@ -14,6 +14,8 @@ tmp::SuperBlock::SuperBlock(ck::string args, int flags) {
 }
 
 
+tmp::SuperBlock::~SuperBlock(void) { printk("tmpfs superblock dead\n"); }
+
 
 ck::ref<fs::Node> tmp::SuperBlock::create_inode(int type) {
   scoped_lock l(lock);

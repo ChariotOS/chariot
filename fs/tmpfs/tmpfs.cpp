@@ -4,24 +4,7 @@
 #include <errno.h>
 
 static ck::ref<fs::SuperBlock> tmpfs_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
-  /*
-struct fs::blkdev *bdev = fs::bdev_from_path(device);
-if (bdev == NULL) return NULL;
-
-auto *sb = new fs::tmpfs();
-
-if (!sb->init(bdev)) {
-delete sb;
-return NULL;
-}
-
-return sb;
-  */
-
-  auto sb = ck::make_ref<tmp::SuperBlock>(args, flags);
-
-
-  return sb;
+  return ck::make_ref<tmp::SuperBlock>(args, flags);
 }
 
 

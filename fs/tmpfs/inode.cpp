@@ -27,7 +27,10 @@ static int tfs_seek(fs::File &, off_t, off_t) {
 }
 
 
-static int tfs_open(fs::File &) { return 0; }
+static int tfs_open(fs::File &) {
+  printk("tfs open\n");
+  return 0;
+}
 static void tfs_close(fs::File &) {}
 
 

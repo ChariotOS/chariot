@@ -10,7 +10,6 @@ int sys::open(const char *path, int flags, int mode) {
 
   ck::ref<fs::Node> ino = nullptr;
 
-
   int r = vfs::namei(path, flags, mode, vfs::cwd(), ino);
 
   if (ino == nullptr) return -ENOENT;

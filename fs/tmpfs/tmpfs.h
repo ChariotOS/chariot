@@ -30,6 +30,7 @@ namespace tmp {
 
     SuperBlock(ck::string args, int flags);
 
+    virtual ~SuperBlock();
 
     /* create an inode and acquire it */
     ck::ref<fs::Node> create_inode(int type);
