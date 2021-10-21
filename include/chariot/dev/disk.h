@@ -24,14 +24,14 @@ namespace dev {
   };
 
 
-  class disk_part : public dev::Disk {
+  class DiskPartition : public dev::Disk {
     dev::Disk* parent;
 
     uint32_t start, len;
 
    public:
-    disk_part(dev::Disk* a, u32 start, u32 len);
-    virtual ~disk_part();
+    DiskPartition(dev::Disk* a, u32 start, u32 len);
+    virtual ~DiskPartition();
     virtual bool read_blocks(uint32_t sector, void* data, int n = 1);
     virtual bool write_blocks(uint32_t sector, const void* data, int n = 1);
     virtual size_t block_size(void);

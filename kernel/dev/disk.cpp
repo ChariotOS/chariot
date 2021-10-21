@@ -13,23 +13,23 @@ dev::Disk::Disk() {}
 dev::Disk::~Disk(void) {}
 
 
-dev::disk_part::disk_part(dev::Disk* parent, u32 start, u32 len) : start(start), len(len) { this->parent = parent; }
-dev::disk_part::~disk_part() {}
+dev::DiskPartition::DiskPartition(dev::Disk* parent, u32 start, u32 len) : start(start), len(len) { this->parent = parent; }
+dev::DiskPartition::~DiskPartition() {}
 
-bool dev::disk_part::read_blocks(uint32_t sector, void* data, int n) {
+bool dev::DiskPartition::read_blocks(uint32_t sector, void* data, int n) {
   if (sector > len) return false;
   // auto *d = (dev::ata*)parent;
   return parent->read_blocks(sector + start, data, n);
 }
 
-bool dev::disk_part::write_blocks(uint32_t sector, const void* data, int n) {
+bool dev::DiskPartition::write_blocks(uint32_t sector, const void* data, int n) {
   if (sector > len) return false;
   return parent->write_blocks(sector + start, data, n);
 }
 
-size_t dev::disk_part::block_size(void) { return parent->block_size(); }
+size_t dev::DiskPartition::block_size(void) { return parent->block_size(); }
 
-size_t dev::disk_part::block_count(void) { return len; }
+size_t dev::DiskPartition::block_count(void) { return len; }
 
 
 
@@ -113,7 +113,7 @@ int dev::register_disk(dev::Disk* disk) {
       auto part = mbr.partition(i);
       auto pname = ck::string::format("%sp%d", name.get(), i + 1);
 
-      auto part_disk = new dev::disk_part(disk, part.off, part.len);
+      auto part_disk = new dev::DiskPartition(disk, part.off, part.len);
 
       add_drive(pname, part_disk);
     }
