@@ -1,11 +1,10 @@
 #include <mm.h>
 
 
-mm::area::area(void) {
-}
+mm::MappedRegion::MappedRegion(void) {}
 
 
-mm::area::~area(void) {
+mm::MappedRegion::~MappedRegion(void) {
   for (int i = 0; i < mappings.size(); i++) {
     auto &m = mappings[i];
     if (m) {

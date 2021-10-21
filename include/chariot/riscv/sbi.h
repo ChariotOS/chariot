@@ -1,10 +1,6 @@
 #pragma once
 
 
-#ifdef CONFIG_SBI
-
-
-
 
 /* SBI Extension IDs */
 #define SBI_EXT_0_1_SET_TIMER 0x0
@@ -143,23 +139,18 @@ struct sbiret sbi_generic_call_3(unsigned long extension, unsigned long function
 // Note: it seems ambigious whether or not a2-a7 are trashed in the call, but the
 // OpenSBI and linux implementations seem to assume that all of the regs are restored
 // aside from a0 and a1 which are used for return values.
-#define _sbi_call(extension, function, arg0, arg1, arg2, arg3, arg4, arg5, ...) \
-  ({                                                                            \
-    register unsigned long a0 asm("a0") = (unsigned long)arg0;                  \
-    register unsigned long a1 asm("a1") = (unsigned long)arg1;                  \
-    register unsigned long a2 asm("a2") = (unsigned long)arg2;                  \
-    register unsigned long a3 asm("a3") = (unsigned long)arg3;                  \
-    register unsigned long a4 asm("a4") = (unsigned long)arg4;                  \
-    register unsigned long a5 asm("a5") = (unsigned long)arg5;                  \
-    register unsigned long a6 asm("a6") = (unsigned long)function;              \
-    register unsigned long a7 asm("a7") = (unsigned long)extension;             \
-    asm volatile("ecall"                                                        \
-                 : "+r"(a0), "+r"(a1)                                           \
-                 : "r"(a2), "r"(a3), "r"(a4), "r"(a5), "r"(a6), "r"(a7)         \
-                 : "memory");                                                   \
-    (struct sbiret){.error = a0, .value = a1};                                  \
+#define _sbi_call(extension, function, arg0, arg1, arg2, arg3, arg4, arg5, ...)                                   \
+  ({                                                                                                              \
+    register unsigned long a0 asm("a0") = (unsigned long)arg0;                                                    \
+    register unsigned long a1 asm("a1") = (unsigned long)arg1;                                                    \
+    register unsigned long a2 asm("a2") = (unsigned long)arg2;                                                    \
+    register unsigned long a3 asm("a3") = (unsigned long)arg3;                                                    \
+    register unsigned long a4 asm("a4") = (unsigned long)arg4;                                                    \
+    register unsigned long a5 asm("a5") = (unsigned long)arg5;                                                    \
+    register unsigned long a6 asm("a6") = (unsigned long)function;                                                \
+    register unsigned long a7 asm("a7") = (unsigned long)extension;                                               \
+    asm volatile("ecall" : "+r"(a0), "+r"(a1) : "r"(a2), "r"(a3), "r"(a4), "r"(a5), "r"(a6), "r"(a7) : "memory"); \
+    (struct sbiret){.error = a0, .value = a1};                                                                    \
   })
 
 #define sbi_call(...) _sbi_call(__VA_ARGS__, 0, 0, 0, 0, 0, 0, 0)
-
-#endif

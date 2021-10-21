@@ -2,8 +2,6 @@
 #include <printk.h>
 #include <riscv/sbi.h>
 
-#ifdef CONFIG_SBI
-
 
 // bitmap of locally detected SBI extensions
 enum sbi_extension {
@@ -19,17 +17,13 @@ static unsigned int sbi_ext;
 
 
 
-static inline bool sbi_ext_present(enum sbi_extension e) {
-  return sbi_ext & (1 << e);
-}
+static inline bool sbi_ext_present(enum sbi_extension e) { return sbi_ext & (1 << e); }
 
 struct sbiret sbi_generic_call_2(unsigned long extension, unsigned long function) {
   return sbi_call(extension, function);
 }
 
-bool sbi_probe_extension(unsigned long extension) {
-  return sbi_call(SBI_PROBE_EXTENSION, extension).value != 0;
-}
+bool sbi_probe_extension(unsigned long extension) { return sbi_call(SBI_PROBE_EXTENSION, extension).value != 0; }
 
 void sbi_set_timer(uint64_t stime_value) {
   // use the new IPI extension
@@ -50,9 +44,7 @@ void sbi_send_ipis(const unsigned long *hart_mask) {
   }
 }
 
-void sbi_clear_ipi(void) {
-  panic("TODO: clear sip.SSIP here!\n");
-}
+void sbi_clear_ipi(void) { panic("TODO: clear sip.SSIP here!\n"); }
 
 /*
 status_t sbi_boot_hart(uint hartid, paddr_t start_addr, ulong arg) {
@@ -79,10 +71,8 @@ void sbi_early_init(void) {
 }
 
 void sbi_init(void) {
-  printk(KERN_INFO "RISCV: SBI spec version %ld impl id %ld version %ld\n",
-         sbi_generic_call_2(SBI_GET_SBI_SPEC_VERSION).value,
-         sbi_generic_call_2(SBI_GET_SBI_IMPL_ID).value,
-         sbi_generic_call_2(SBI_GET_SBI_IMPL_VERSION).value);
+  printk(KERN_INFO "RISCV: SBI spec version %ld impl id %ld version %ld\n", sbi_generic_call_2(SBI_GET_SBI_SPEC_VERSION).value,
+      sbi_generic_call_2(SBI_GET_SBI_IMPL_ID).value, sbi_generic_call_2(SBI_GET_SBI_IMPL_VERSION).value);
 
   // print the extensions detected
   printk(KERN_INFO "RISCV: SBI extension TIMER %d\n", sbi_ext_present(SBI_EXTENSION_TIMER));
@@ -91,5 +81,3 @@ void sbi_init(void) {
   printk(KERN_INFO "RISCV: SBI extension HSM %d\n", sbi_ext_present(SBI_EXTENSION_HSM));
   printk(KERN_INFO "RISCV: SBI extension SRST %d\n", sbi_ext_present(SBI_EXTENSION_SRST));
 }
-
-#endif

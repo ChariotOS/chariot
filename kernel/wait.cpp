@@ -27,7 +27,6 @@ wait_entry::~wait_entry() {
 }
 
 wait_result wait_entry::start(spinlock *held_lock) {
-  curthd->yield_from = (off_t)__builtin_extract_return_addr(__builtin_return_address(0));
   /* Yield right away */
   auto res = sched::yield(held_lock);
 

@@ -352,8 +352,6 @@ sched::yieldres sched::yield(spinlock *held_lock) {
 
   thd.held_lock = held_lock;
 
-  // curthd->yield_from = (off_t)__builtin_extract_return_addr(__builtin_return_address(0));
-
   // if the old thread is now dead, notify joiners
   if (thd.get_state() == PS_ZOMBIE) {
     thd.joiners.wake_up();

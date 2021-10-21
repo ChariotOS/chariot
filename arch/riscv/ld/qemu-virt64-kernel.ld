@@ -33,14 +33,16 @@ SECTIONS
     *(.text.init)
     *(.boot.text* )
     PROVIDE(_boot_end = .);
+	. = ALIGN(PAGE_SIZE);
+	kernel_page_table = .;
+	. += 0x1000;
 	} :boot
 
 
 	.bootdata : {
     PROVIDE(_boot_data_start = .);
     *(.boot.data* )
-
-		PROVIDE(_boot_data_end = .);
+	PROVIDE(_boot_data_end = .);
 	} :boot
 
 

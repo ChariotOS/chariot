@@ -48,8 +48,8 @@ struct poll_table {
 
 // fwd decl
 namespace mm {
-  struct area;
-  struct vmobject;
+  struct MappedRegion;
+  struct VMObject;
 }  // namespace mm
 
 namespace net {
@@ -91,10 +91,7 @@ namespace fs {
     long count = 0;  // refcount
     spinlock lock;
 
-    inline blkdev(dev_t dev, ck::string name, struct block_operations &ops)
-        : dev(dev), name(move(name)), ops(ops) {
-      ops.init(*this);
-    }
+    inline blkdev(dev_t dev, ck::string name, struct block_operations &ops) : dev(dev), name(move(name)), ops(ops) { ops.init(*this); }
 
     // nice wrappers for filesystems and all that :)
     inline int read_block(void *data, int block) { return ops.rw_block(*this, data, block, false); }
@@ -186,8 +183,7 @@ namespace fs {
     const char *name;
 
     // return a superblock containing the root inode
-    struct fs::superblock *(&mount)(
-        struct sb_information *, const char *args, int flags, const char *device);
+    struct fs::superblock *(&mount)(struct sb_information *, const char *args, int flags, const char *device);
 
     struct sb_operations &ops;
   };
@@ -263,7 +259,7 @@ namespace fs {
     void (*close)(fs::file &) = NULL;
 
     /* map a file into a vm area */
-    ck::ref<mm::vmobject> (*mmap)(fs::file &, size_t npages, int prot, int flags, off_t off);
+    ck::ref<mm::VMObject> (*mmap)(fs::file &, size_t npages, int prot, int flags, off_t off);
     // resize a file. if size is zero, it is a truncate
     int (*resize)(fs::file &, size_t);
 
@@ -404,8 +400,7 @@ namespace fs {
 
    public:
     // must construct file descriptors via these factory funcs
-    static ck::ref<file> create(
-        struct fs::inode *, ck::string open_path, int flags = FDIR_READ | FDIR_WRITE);
+    static ck::ref<file> create(struct fs::inode *, ck::string open_path, int flags = FDIR_READ | FDIR_WRITE);
 
     /*
      * seek - change the offset
@@ -452,7 +447,7 @@ static inline fs::inode *geti(fs::inode *i) { return fs::inode::acquire(i); }
 
 // fwd decl
 namespace mm {
-  struct page;
+  struct Page;
 };
 
 /**
@@ -470,7 +465,7 @@ namespace block {
 
     void register_write(void);
 
-    ck::ref<mm::page> page(void);
+    ck::ref<mm::Page> page(void);
 
     // return the backing page data.
     void *data(void);
@@ -496,7 +491,7 @@ namespace block {
     uint64_t m_count = 0;
     off_t m_index;
     uint64_t m_last_used = 0;
-    ck::ref<mm::page> m_page;
+    ck::ref<mm::Page> m_page;
   };
 
 

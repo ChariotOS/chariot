@@ -131,9 +131,8 @@ void rv::uart_init(void) {
 void rv::uart_putc(char c) {
   /* If we have SBI, ask it to print things. This might be a little slower, but it should work okay
    */
-#ifdef CONFIG_SBI
   sbi_call(SBI_CONSOLE_PUTCHAR, c);
-#else
+  return;
   // wait for Transmit Holding Empty to be set in LSR.
   while ((ReadReg(LSR) & LSR_TX_IDLE) == 0)
     ;
@@ -155,7 +154,6 @@ void rv::uart_putc(char c) {
       break;
     }
   }
-#endif
 }
 
 int rv::uart_getc(void) {

@@ -123,7 +123,7 @@ int elf::each_symbol(fs::file &fd, ck::func<bool(const char *sym, off_t)> cb) {
   return err;
 }
 
-int elf::load(const char *path, struct Process &p, mm::space &mm, ck::ref<fs::file> fd, off_t &entry) {
+int elf::load(const char *path, struct Process &p, mm::AddressSpace &mm, ck::ref<fs::file> fd, off_t &entry) {
   Elf64_Ehdr ehdr;
 
   off_t off = 0;

@@ -256,9 +256,6 @@ for (auto &stk : thd->stacks) {
   if (interrupt) {
     /* Supervisor software interrupt (from machine mode) */
     if (nr == 1) {
-#ifndef CONFIG_SBI
-      /* TODO: move this to the  */
-#endif
     } else if (nr == 5) {
       auto &cpu = cpu::current();
       uint64_t now = arch_read_timestamp();

@@ -5,6 +5,8 @@
 #include <syscall.h>
 #include <util.h>
 
+#include <thread.h>
+
 struct fs::inode *vfs_root = NULL;
 static ck::vec<struct fs::sb_information *> filesystems;
 static ck::vec<struct vfs::mountpoint *> mountpoints;

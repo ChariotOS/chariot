@@ -26,23 +26,22 @@ extern "C" void trapret(void);
 
 
 
-void dump_addr2line(void) {
-  off_t rbp = 0;
-  asm volatile("mov %%rbp, %0\n\t" : "=r"(rbp));
-  auto bt = debug::generate_backtrace(rbp);
-  printk_nolock("addr2line -e build/chariot.elf");
-  for (auto pc : bt) {
-    printk_nolock(" 0x%p", pc);
-  }
-  printk_nolock("\n");
-}
+// void dump_addr2line(void) {
+//   off_t rbp = 0;
+//   asm volatile("mov %%rbp, %0\n\t" : "=r"(rbp));
+//   auto bt = debug::generate_backtrace(rbp);
+//   printk_nolock("addr2line -e build/chariot.elf");
+//   for (auto pc : bt) {
+//     printk_nolock(" 0x%p", pc);
+//   }
+//   printk_nolock("\n");
+// }
 
 static spinlock thread_table_lock;
 static ck::map<long, ck::weak_ref<Thread>> thread_table;
 
-Thread::Thread(long tid, struct Process &proc) : proc(proc) {
+Thread::Thread(long tid, Process &proc) : proc(proc) {
   this->tid = tid;
-
   this->pid = proc.pid;
 
   fpu.initialized = false;
@@ -51,7 +50,7 @@ Thread::Thread(long tid, struct Process &proc) : proc(proc) {
   sched.priority = 0;
   next = prev = nullptr;
 
-  struct kernel_stack s;
+  KernelStack s;
   s.size = PGSIZE * 2;
   s.start = (void *)malloc(s.size);
   stacks.push(s);

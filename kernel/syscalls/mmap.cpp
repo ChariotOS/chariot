@@ -112,7 +112,7 @@ int sys::mregions(struct mmap_region *dst, int nregions) {
   mm.lock.lock();
   int i = 0;
   for (struct rb_node *node = rb_first(&mm.regions); node; node = rb_next(node)) {
-    auto *r = rb_entry(node, struct mm::area, node);
+    auto *r = rb_entry(node, struct mm::MappedRegion, node);
     i++;
     if (i >= want) break;
     tmp[i].id = 0;

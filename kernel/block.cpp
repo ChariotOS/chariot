@@ -38,9 +38,7 @@ static ck::map<uint32_t, ck::map<off_t, block::buffer *>> buffer_cache;
 
 
 
-static uint32_t to_key(dev_t device) {
-  return ((uint32_t)device.major() << 16) | ((uint32_t)device.minor());
-}
+static uint32_t to_key(dev_t device) { return ((uint32_t)device.major() << 16) | ((uint32_t)device.minor()); }
 
 
 size_t block::reclaim_memory(void) {
@@ -193,7 +191,7 @@ namespace block {
     scoped_lock l(m_lock);
     if (!m_page) {
       // get the page if there isn't one and read the blocks
-      m_page = mm::page::alloc();
+      m_page = mm::Page::alloc();
       m_page->fset(PG_BCACHE);
 
       int blocks = PGSIZE / bdev.block_size;
@@ -211,7 +209,7 @@ namespace block {
   }
 
 
-  ck::ref<mm::page> buffer::page(void) {
+  ck::ref<mm::Page> buffer::page(void) {
     // ::data() asserts that the page is there.
     (void)this->data();
     assert(m_page);
@@ -260,14 +258,10 @@ static ssize_t block_rw(fs::blkdev &b, void *dst, size_t size, off_t byte_offset
 }
 
 
-int bread(fs::blkdev &b, void *dst, size_t size, off_t byte_offset) {
-  return block_rw(b, dst, size, byte_offset, false /* read */);
-}
+int bread(fs::blkdev &b, void *dst, size_t size, off_t byte_offset) { return block_rw(b, dst, size, byte_offset, false /* read */); }
 
 
-int bwrite(fs::blkdev &b, void *data, size_t size, off_t byte_offset) {
-  return block_rw(b, data, size, byte_offset, true /* write */);
-}
+int bwrite(fs::blkdev &b, void *data, size_t size, off_t byte_offset) { return block_rw(b, data, size, byte_offset, true /* write */); }
 
 
 
@@ -341,9 +335,7 @@ static ssize_t blk_rw(fs::file &f, char *data, size_t len, bool write) {
 
 static ssize_t blk_read(fs::file &f, char *data, size_t len) { return blk_rw(f, data, len, false); }
 
-static ssize_t blk_write(fs::file &f, const char *data, size_t len) {
-  return blk_rw(f, (char *)data, len, true);
-}
+static ssize_t blk_write(fs::file &f, const char *data, size_t len) { return blk_rw(f, (char *)data, len, true); }
 
 static int blk_ioctl(fs::file &f, unsigned int num, off_t val) {
   struct fs::blkdev *dev = f.ino->blk.dev;

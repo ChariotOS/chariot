@@ -10,9 +10,7 @@
 #define round_down(x, y) ((x) & ~((y)-1))
 
 
-static inline void flush_tlb_single(u64 addr) {
-  __asm__ volatile("invlpg (%0)" ::"r"(addr) : "memory");
-}
+static inline void flush_tlb_single(u64 addr) { __asm__ volatile("invlpg (%0)" ::"r"(addr) : "memory"); }
 
 
 extern u8 *kheap_start;
@@ -36,7 +34,7 @@ u64 *kernel_page_table = boot_p4;
 int kmem_revision = 0;
 
 namespace x86 {
-  class pagetable : public mm::pagetable {
+  class pagetable : public mm::PageTable {
     u64 *pml4;
 
    public:
@@ -76,7 +74,7 @@ bool x86::pagetable::switch_to(void) {
   return true;
 }
 
-ck::ref<mm::pagetable> mm::pagetable::create() {
+ck::ref<mm::PageTable> mm::PageTable::create() {
   u64 *pml4 = (u64 *)p2v(phys::alloc(1));
   return ck::make_ref<x86::pagetable>(pml4);
 }
@@ -165,10 +163,8 @@ void arch_mem_init(unsigned long mbd) {
   multiboot_memory_map_t *mmap;
 
 
-  for (mmap = ((struct multiboot_tag_mmap *)tag)->entries;
-       (multiboot_uint8_t *)mmap < (multiboot_uint8_t *)tag + tag->size;
-       mmap = (multiboot_memory_map_t *)((unsigned long)mmap +
-                                         ((struct multiboot_tag_mmap *)tag)->entry_size)) {
+  for (mmap = ((struct multiboot_tag_mmap *)tag)->entries; (multiboot_uint8_t *)mmap < (multiboot_uint8_t *)tag + tag->size;
+       mmap = (multiboot_memory_map_t *)((unsigned long)mmap + ((struct multiboot_tag_mmap *)tag)->entry_size)) {
     u64 start, end;
 
     start = round_up(mmap->addr, 4096);
@@ -242,13 +238,12 @@ void arch_mem_init(unsigned long mbd) {
   printk(KERN_INFO "Detected and mapped physical memory virtually.\n");
 }
 
-mm::space *kspace;
+mm::AddressSpace *kspace;
 
-mm::space &mm::space::kernel_space(void) {
+mm::AddressSpace &mm::AddressSpace::kernel_space(void) {
   if (kspace == NULL) {
     auto kptable = ck::make_ref<x86::pagetable>(kernel_page_table);
-    kspace = new mm::space(
-        CONFIG_KERNEL_VIRTUAL_BASE, CONFIG_KERNEL_VIRTUAL_BASE + 0x100000000, kptable);
+    kspace = new mm::AddressSpace(CONFIG_KERNEL_VIRTUAL_BASE, CONFIG_KERNEL_VIRTUAL_BASE + 0x100000000, kptable);
     kspace->is_kspace = 1;
   }
 

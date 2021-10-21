@@ -35,7 +35,7 @@ namespace mm {
 
   // every physical page in mm circulation is kept track of via a heap-allocated
   // `struct page`.
-  struct page : public ck::refcounted<mm::page> {
+  struct Page : public ck::refcounted<mm::Page> {
 #define PG_DIRTY (1ul << 0)
 #define PG_OWNED (1ul << 1)
 #define PG_WRTHRU (1ul << 2)
@@ -52,13 +52,13 @@ namespace mm {
     inline bool fcheck(int set) { return !((m_paf & set) == 0); }
 
 
-    page(void);
-    ~page(void);
+    Page(void);
+    ~Page(void);
 
-    static ck::ref<page> alloc(void);
+    static ck::ref<Page> alloc(void);
     // create a page mapping for some physical memory
     // note: this page isn't owned.
-    static ck::ref<page> create(unsigned long pa);
+    static ck::ref<Page> create(unsigned long pa);
 
     inline unsigned long pa(void) { return m_paf & ~0xFFF; }
 
@@ -98,14 +98,14 @@ namespace mm {
 
   class page_mapping {
    public:
-    inline page_mapping(ck::ref<mm::page> pg) { set_page(pg); }
+    inline page_mapping(ck::ref<mm::Page> pg) { set_page(pg); }
 
     inline page_mapping(void) { set_page(nullptr); }
 
     inline page_mapping(nullptr_t v) { set_page(v); }
 
     // expects pg's lock to be held
-    inline void set_page(ck::ref<mm::page> pg) {
+    inline void set_page(ck::ref<mm::Page> pg) {
       if (!is_null()) {
         // decrement users
         __atomic_sub_fetch(&page->m_users, 1, __ATOMIC_ACQ_REL);
@@ -126,17 +126,17 @@ namespace mm {
     inline auto get(void) { return page; }
 
 
-    inline page_mapping &operator=(ck::ref<mm::page> pg) {
+    inline page_mapping &operator=(ck::ref<mm::Page> pg) {
       // printk("operator= %p\n", pg.get());
       set_page(pg);
       return *this;
     }
 
    protected:
-    friend mm::page;
+    friend mm::Page;
 
     struct list_head mappings;
-    ck::ref<mm::page> page;
+    ck::ref<mm::Page> page;
   };
 
   struct pte {
@@ -150,10 +150,10 @@ namespace mm {
    * Page tables are created and implemented by the specific arch.
    * Implementations are found in arch/.../
    */
-  class pagetable : public ck::refcounted<pagetable> {
+  class PageTable : public ck::refcounted<PageTable> {
    public:
-    pagetable(void);
-    virtual ~pagetable(void);
+    PageTable(void);
+    virtual ~PageTable(void);
     virtual bool switch_to(void) = 0;
 
     virtual int add_mapping(off_t va, struct pte &) = 0;
@@ -168,16 +168,16 @@ namespace mm {
     }
 
     // implemented in arch, returns subclass
-    static ck::ref<pagetable> create();
+    static ck::ref<PageTable> create();
   };
 
-  class space;
+  class AddressSpace;
 
   // vm areas can optionally have a vmobject that represents them.
-  struct vmobject : public ck::refcounted<vmobject> {
-    inline vmobject(size_t npages) : n_pages(npages) {}
+  struct VMObject : public ck::refcounted<VMObject> {
+    inline VMObject(size_t npages) : n_pages(npages) {}
 
-    virtual ~vmobject(void){};
+    virtual ~VMObject(void){};
 
     // added and removed from spaces.
     inline void acquire(void) {
@@ -194,7 +194,7 @@ namespace mm {
     virtual void drop(void) {}
 
     // get a shared page (page #n in the mapping)
-    virtual ck::ref<mm::page> get_shared(off_t n) = 0;
+    virtual ck::ref<mm::Page> get_shared(off_t n) = 0;
     // tell the region to flush a page
     virtual void flush(off_t n) {}
 
@@ -207,7 +207,7 @@ namespace mm {
   };
 
 
-  struct area {
+  struct MappedRegion {
     ck::string name;
 
     off_t va;
@@ -227,34 +227,34 @@ namespace mm {
     // optional. If it exists, it is queried for each page
     // This is required if the region is not anonymous. If a region is mapped
     // and it isn't anon but has no obj field, it acts like an anon mapping
-    ck::ref<vmobject> obj = nullptr;
+    ck::ref<VMObject> obj = nullptr;
 
     /* The entry in the rbtree */
     rb_node node;
 
 
-    area(void);
-    ~area(void);
+    MappedRegion(void);
+    ~MappedRegion(void);
 
 
-    static inline int compare(area &a, area &b) { return a.va - a.va; }
+    static inline int compare(MappedRegion &a, MappedRegion &b) { return a.va - a.va; }
   };
 
-  class space {
+  class AddressSpace {
    public:
-    ck::ref<mm::pagetable> pt;
+    ck::ref<mm::PageTable> pt;
 
     off_t lo, hi;
 
-    space(off_t lo, off_t hi, ck::ref<mm::pagetable>);
-    ~space(void);
+    AddressSpace(off_t lo, off_t hi, ck::ref<mm::PageTable>);
+    ~AddressSpace(void);
 
 
     size_t copy_out(off_t addr, void *into, size_t len);
 
     inline auto get_pt(void) { return pt; }
     void switch_to();
-    mm::area *lookup(off_t va);
+    mm::MappedRegion *lookup(off_t va);
 
     int delete_region(off_t va);
     int pagefault(off_t va, int err);
@@ -265,12 +265,12 @@ namespace mm {
 
 
     /* Add a region to the appropriate location in the rbtree */
-    bool add_region(mm::area *region);
+    bool add_region(mm::MappedRegion *region);
 
     // returns the number of bytes resident
     size_t memory_usage(void);
 
-    mm::space *fork(void);
+    mm::AddressSpace *fork(void);
 
 #define VALIDATE_READ 1
 #define VALIDATE_WRITE 2
@@ -312,7 +312,7 @@ namespace mm {
     }
 
     // impl by arch::
-    static mm::space &kernel_space(void);
+    static mm::AddressSpace &kernel_space(void);
 
     void dump();
 
@@ -323,9 +323,9 @@ namespace mm {
 
 
     // expects nothing to be locked
-    ck::ref<mm::page> get_page(off_t uaddr);
+    ck::ref<mm::Page> get_page(off_t uaddr);
     // expects the area, and space to be locked
-    ck::ref<mm::page> get_page_internal(off_t uaddr, mm::area &area, int pagefault_err, bool do_map);
+    ck::ref<mm::Page> get_page_internal(off_t uaddr, mm::MappedRegion &area, int pagefault_err, bool do_map);
 
     spinlock lock;
     rb_root regions;

@@ -88,7 +88,7 @@ set(CMAKE_AR ${TOOLCHAIN_PREFIX}ar)
 
 
 
-set(COMPILER_SPECIFIC_FLAGS "-Werror -Wtrampolines -Wformat=2 -Wformat-security")
+set(COMPILER_SPECIFIC_FLAGS "-Werror -Wformat=2 -Wformat-security")
 if (CONFIG_CLANG)
 	set(COMPILER_SPECIFIC_FLAGS "${COMPILER_SPECIFIC_FLAGS} -Wno-initializer-overrides -Wno-c99-designator ")
 else()

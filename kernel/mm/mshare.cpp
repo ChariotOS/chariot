@@ -14,8 +14,8 @@ static spinlock mshare_lock;
 static ck::map<ck::string, struct mshare_vmobject *> mshare_regions;
 
 
-struct mshare_vmobject final : public mm::vmobject {
-  mshare_vmobject(ck::string name, size_t npages) : vmobject(npages) {
+struct mshare_vmobject final : public mm::VMObject {
+  mshare_vmobject(ck::string name, size_t npages) : VMObject(npages) {
     this->name = name;
     // printk("CREATE %s!\n", name.get());
     for (int i = 0; i < npages; i++) {
@@ -37,13 +37,13 @@ struct mshare_vmobject final : public mm::vmobject {
 
 
   // get a shared page (page #n in the mapping)
-  virtual ck::ref<mm::page> get_shared(off_t n) override {
+  virtual ck::ref<mm::Page> get_shared(off_t n) override {
     // printk("GET %s! (pid=%d, page=%d)\n", this->name.get(), curproc->pid, n);
     scoped_lock l(m_lock);
     while (n >= pages.size()) {
       pages.push(nullptr);
     }
-    if (!pages[n]) pages[n] = mm::page::alloc();
+    if (!pages[n]) pages[n] = mm::Page::alloc();
 
     return pages[n];
   }
@@ -54,7 +54,7 @@ struct mshare_vmobject final : public mm::vmobject {
  private:
   ck::string name;
   spinlock m_lock;
-  ck::vec<ck::ref<mm::page>> pages;
+  ck::vec<ck::ref<mm::Page>> pages;
 };
 
 
@@ -69,11 +69,11 @@ static void *msh_create(struct mshare_create *arg) {
   auto pages = NPAGES(arg->size);
 
   // this should automatically add it to the global list
-  ck::ref<mm::vmobject> obj = ck::make_ref<mshare_vmobject>(name, pages);
+  ck::ref<mm::VMObject> obj = ck::make_ref<mshare_vmobject>(name, pages);
 
 
-  auto addr = curproc->mm->mmap(ck::string::format("[msh '%s' (created)]", name.get()), 0,
-      pages * PGSIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
+  auto addr = curproc->mm->mmap(
+      ck::string::format("[msh '%s' (created)]", name.get()), 0, pages * PGSIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
 
   auto region = curproc->mm->lookup(addr);
   if (region == nullptr) return MAP_FAILED;
@@ -96,12 +96,12 @@ static void *msh_acquire(struct mshare_acquire *arg) {
 
 
   // grab the object
-  ck::ref<mm::vmobject> obj = mshare_regions.get(name);
+  ck::ref<mm::VMObject> obj = mshare_regions.get(name);
 
   obj->acquire();
 
-  auto addr = curproc->mm->mmap(ck::string::format("[msh '%s' (acquired)]", name.get()), 0,
-      arg->size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
+  auto addr = curproc->mm->mmap(
+      ck::string::format("[msh '%s' (acquired)]", name.get()), 0, arg->size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
   if (addr == -1) return MAP_FAILED;
 
   // printk("addr=%p\n", addr);

@@ -1,18 +1,15 @@
 #pragma once
 
-#include <thread.h>
 #include <ck/map.h>
 #include <ck/vec.h>
 #include <ck/string.h>
-
+#include <fwd.h>
 #include <fs.h>
+
+#include <thread.h>
 // #include <mm.h>
 
 
-
-namespace mm {
-  class space;
-}
 
 
 #define SIGBIT(n) (1llu << (n))
@@ -112,7 +109,7 @@ struct Process final : public ck::refcounted<Process> {
   uint8_t exit_code = 0;
   uint8_t exit_signal = 0;
 
-  mm::space *mm;
+  mm::AddressSpace *mm;
 
 
   ck::ref<fs::file> executable;

@@ -5,21 +5,21 @@
 #include <phys.h>
 #include <syscall.h>
 
-mm::space::space(off_t lo, off_t hi, ck::ref<mm::pagetable> pt) : pt(pt), lo(lo), hi(hi) {}
+mm::AddressSpace::AddressSpace(off_t lo, off_t hi, ck::ref<mm::PageTable> pt) : pt(pt), lo(lo), hi(hi) {}
 
 
-mm::space::~space(void) {
-  mm::area *n, *node;
+mm::AddressSpace::~AddressSpace(void) {
+  mm::MappedRegion *n, *node;
   rbtree_postorder_for_each_entry_safe(node, n, &regions, node) { delete node; }
 }
 
-void mm::space::switch_to() { pt->switch_to(); }
+void mm::AddressSpace::switch_to() { pt->switch_to(); }
 
 
 
-bool mm::space::add_region(mm::area *region) {
+bool mm::AddressSpace::add_region(mm::MappedRegion *region) {
   return rb_insert(regions, &region->node, [&](struct rb_node *other) {
-    auto *other_region = rb_entry(other, struct mm::area, node);
+    auto *other_region = rb_entry(other, struct mm::MappedRegion, node);
     long result = (long)region->va - (long)other_region->va;
 
     if (result < 0)
@@ -32,7 +32,7 @@ bool mm::space::add_region(mm::area *region) {
   });
 }
 
-size_t mm::space::copy_out(off_t byte_offset, void *dst, size_t size) {
+size_t mm::AddressSpace::copy_out(off_t byte_offset, void *dst, size_t size) {
   // how many more bytes are needed
   long to_access = size;
   // the offset within the current page
@@ -67,7 +67,7 @@ size_t mm::space::copy_out(off_t byte_offset, void *dst, size_t size) {
   return read;
 }
 
-mm::area *mm::space::lookup(off_t va) {
+mm::MappedRegion *mm::AddressSpace::lookup(off_t va) {
   struct rb_node **n = &(regions.rb_node);
   struct rb_node *parent = NULL;
 
@@ -75,7 +75,7 @@ mm::area *mm::space::lookup(off_t va) {
 
   /* Figure out where to put new node */
   while (*n != NULL) {
-    auto *r = rb_entry(*n, struct mm::area, node);
+    auto *r = rb_entry(*n, struct mm::MappedRegion, node);
 
     auto start = r->va;
     auto end = r->va + r->len;
@@ -97,9 +97,9 @@ mm::area *mm::space::lookup(off_t va) {
 }
 
 
-int mm::space::delete_region(off_t va) { return -1; }
+int mm::AddressSpace::delete_region(off_t va) { return -1; }
 
-int mm::space::pagefault(off_t va, int err) {
+int mm::AddressSpace::pagefault(off_t va, int err) {
   scoped_lock l(this->lock);
   auto r = lookup(va);
 
@@ -127,7 +127,7 @@ int mm::space::pagefault(off_t va, int err) {
 
 
 // return the page at an address (allocate if needed)
-ck::ref<mm::page> mm::space::get_page(off_t uaddr) {
+ck::ref<mm::Page> mm::AddressSpace::get_page(off_t uaddr) {
   scoped_lock l(this->lock);
   auto r = lookup(uaddr);
   if (!r) {
@@ -144,7 +144,7 @@ ck::ref<mm::page> mm::space::get_page(off_t uaddr) {
 
 
 
-ck::ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err, bool do_map) {
+ck::ref<mm::Page> mm::AddressSpace::get_page_internal(off_t uaddr, mm::MappedRegion &r, int err, bool do_map) {
   struct mm::pte pte;
   pte.prot = r.prot;
 
@@ -155,7 +155,7 @@ ck::ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err
 
   if (r.mappings[ind].is_null()) {
     bool got_from_vmobj = false;
-    ck::ref<mm::page> page = nullptr;
+    ck::ref<mm::Page> page = nullptr;
     if (r.obj) {
       page = r.obj->get_shared(ind);
       got_from_vmobj = true;
@@ -167,7 +167,7 @@ ck::ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err
     if (!page && got_from_vmobj) panic("failed!\n");
 
     // anonymous mapping
-    if (!page) page = mm::page::alloc();
+    if (!page) page = mm::Page::alloc();
 
     pte.nocache = page->fcheck(PG_NOCACHE);
     pte.writethrough = page->fcheck(PG_WRTHRU);
@@ -192,7 +192,7 @@ ck::ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err
       old_page->lock();
 
       if (old_page->users() > 1 || r.fd) {
-        auto np = mm::page::alloc();
+        auto np = mm::Page::alloc();
         // no need to take the new page's lock here, it's only referenced here.
         if (display) printk(KERN_WARN "[pid=%d] COW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(), uaddr);
         memcpy(p2v(np->pa()), p2v(old_page->pa()), PGSIZE);
@@ -215,24 +215,24 @@ ck::ref<mm::page> mm::space::get_page_internal(off_t uaddr, mm::area &r, int err
 }
 
 
-size_t mm::space::memory_usage(void) {
+size_t mm::AddressSpace::memory_usage(void) {
   scoped_lock l(lock);
 
   size_t s = 0;
 
   for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
-    auto *r = rb_entry(node, struct mm::area, node);
+    auto *r = rb_entry(node, struct mm::MappedRegion, node);
     r->lock.lock();
     for (auto &p : r->mappings)
       if (p) {
-        s += sizeof(mm::page);
+        s += sizeof(mm::Page);
         s += PGSIZE;
       }
 
-    s += sizeof(mm::page *) * r->mappings.size();
+    s += sizeof(mm::Page *) * r->mappings.size();
     r->lock.unlock();
   }
-  s += sizeof(mm::space);
+  s += sizeof(mm::AddressSpace);
 
   return s;
 }
@@ -242,17 +242,17 @@ size_t mm::space::memory_usage(void) {
 unsigned long sys::getramusage() { return curproc->mm->memory_usage(); }
 
 
-mm::space *mm::space::fork(void) {
-  auto npt = mm::pagetable::create();
-  auto *n = new mm::space(lo, hi, npt);
+mm::AddressSpace *mm::AddressSpace::fork(void) {
+  auto npt = mm::PageTable::create();
+  auto *n = new mm::AddressSpace(lo, hi, npt);
 
   scoped_lock self_lock(lock);
 
 
   for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
-    auto *r = rb_entry(node, struct mm::area, node);
+    auto *r = rb_entry(node, struct mm::MappedRegion, node);
     // printk(KERN_WARN "[pid=%d] fork %s\n", curproc->pid, r->name.get());
-    auto copy = new mm::area;
+    auto copy = new mm::MappedRegion;
     copy->name = r->name;
     copy->va = r->va;
     copy->len = r->len;
@@ -297,11 +297,11 @@ mm::space *mm::space::fork(void) {
   return n;
 }
 
-off_t mm::space::mmap(off_t req, size_t size, int prot, int flags, ck::ref<fs::file> fd, off_t off) {
+off_t mm::AddressSpace::mmap(off_t req, size_t size, int prot, int flags, ck::ref<fs::file> fd, off_t off) {
   return mmap("", req, size, prot, flags, move(fd), off);
 }
 
-off_t mm::space::mmap(ck::string name, off_t addr, size_t size, int prot, int flags, ck::ref<fs::file> fd, off_t off) {
+off_t mm::AddressSpace::mmap(ck::string name, off_t addr, size_t size, int prot, int flags, ck::ref<fs::file> fd, off_t off) {
   if (addr & 0xFFF) return -1;
 
   if ((flags & (MAP_PRIVATE | MAP_SHARED)) == 0) {
@@ -318,7 +318,7 @@ off_t mm::space::mmap(ck::string name, off_t addr, size_t size, int prot, int fl
 
   off_t pages = round_up(size, 4096) / 4096;
 
-  ck::ref<mm::vmobject> obj = nullptr;
+  ck::ref<mm::VMObject> obj = nullptr;
 
   // if there is a file descriptor, try to call it's mmap. Otherwise fail
   if (fd) {
@@ -333,7 +333,7 @@ off_t mm::space::mmap(ck::string name, off_t addr, size_t size, int prot, int fl
   }
 
 
-  auto r = new mm::area();
+  auto r = new mm::MappedRegion();
 
   r->name = name;
   r->va = addr;
@@ -354,7 +354,7 @@ off_t mm::space::mmap(ck::string name, off_t addr, size_t size, int prot, int fl
   return addr;
 }
 
-int mm::space::unmap(off_t ptr, size_t ulen) {
+int mm::AddressSpace::unmap(off_t ptr, size_t ulen) {
   off_t va = (off_t)ptr;
   if ((va & 0xFFF) != 0) return -1;
 
@@ -382,7 +382,7 @@ int mm::space::unmap(off_t ptr, size_t ulen) {
 }
 
 #define PGMASK (~(PGSIZE - 1))
-bool mm::space::validate_pointer(void *raw_va, size_t len, int mode) {
+bool mm::AddressSpace::validate_pointer(void *raw_va, size_t len, int mode) {
   scoped_lock l(this->lock);
   if (is_kspace) return true;
   off_t start = (off_t)raw_va & PGMASK;
@@ -407,17 +407,17 @@ bool mm::space::validate_pointer(void *raw_va, size_t len, int mode) {
   return true;
 }
 
-bool mm::space::validate_string(const char *str) { return validate_null_terminated(str); }
+bool mm::AddressSpace::validate_string(const char *str) { return validate_null_terminated(str); }
 
-int mm::space::schedule_mapping(off_t va, off_t pa, int prot) {
+int mm::AddressSpace::schedule_mapping(off_t va, off_t pa, int prot) {
   pending_mappings.push({.va = va, .pa = pa, .prot = prot});
   return 0;
 }
 
 
-void mm::space::dump(void) {
+void mm::AddressSpace::dump(void) {
   for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
-    auto *r = rb_entry(node, struct mm::area, node);
+    auto *r = rb_entry(node, struct mm::MappedRegion, node);
     printk("%p-%p ", r->va, r->va + r->len);
     printk("%6zupgs", r->mappings.size());
     int mapped = 0;
@@ -447,12 +447,12 @@ void mm::space::dump(void) {
   printk("\n");
 }
 
-off_t mm::space::find_hole(size_t size) {
+off_t mm::AddressSpace::find_hole(size_t size) {
   off_t va = hi - size;
   off_t lim = va + size;
 
   for (struct rb_node *node = rb_last(&regions); node; node = rb_prev(node)) {
-    auto *r = rb_entry(node, struct mm::area, node);
+    auto *r = rb_entry(node, struct mm::MappedRegion, node);
 
     auto rva = r->va;
     auto rlim = rva + r->len;

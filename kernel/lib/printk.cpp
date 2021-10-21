@@ -11,7 +11,7 @@
 #include <cpu.h>
 #include <vga.h>
 #include "debug.h"
-
+#include <thread.h>
 
 void debug_die(void) {
   // #if CONFIG_X86

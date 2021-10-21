@@ -3,6 +3,8 @@
 #include <printk.h>
 #include <sched.h>
 
+#include <thread.h>
+
 // #define LOCK_DEBUG
 
 #ifdef LOCK_DEBUG
@@ -16,9 +18,7 @@
 #define ATOMIC_LOAD(thing) __atomic_load_n((thing), __ATOMIC_RELAXED)
 
 
-static inline void arch_atomic_store(volatile int* p, int x) {
-  __atomic_store((int*)p, &x, __ATOMIC_SEQ_CST);
-}
+static inline void arch_atomic_store(volatile int* p, int x) { __atomic_store((int*)p, &x, __ATOMIC_SEQ_CST); }
 
 void spinlock::lock(void) {
   while (ATOMIC_SET(&locked)) {  // MESI protocol optimization

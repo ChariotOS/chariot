@@ -104,7 +104,7 @@ int start_secondary(void) {
     auto &sc = rv::get_hstate();
     if (i == sc.hartid) continue;
 
-		KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
+    // KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
     // allocate 2 pages for the secondary core
     secondary_core_stack = (uint64_t)malloc(CONFIG_RISCV_BOOTSTACK_SIZE * 4096);
     secondary_core_stack += CONFIG_RISCV_BOOTSTACK_SIZE * 4096;
@@ -112,7 +112,7 @@ int start_secondary(void) {
     second_done = false;
     __sync_synchronize();
 
-		KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
+    // KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
 
     auto ret = sbi_call(SBI_EXT_HSM, SBI_EXT_HSM_HART_START, i, secondary_core_startup_sbi, 0);
     if (ret.error != SBI_SUCCESS) {
@@ -177,10 +177,8 @@ auto get_lockable(void) {
 static int wakes = 0;
 void main(int hartid, void *fdt) {
   printk("hart: %p, fdt: %p\n", hartid, fdt);
-#ifdef CONFIG_SBI
   // get the information from SBI right away so we can use it early on
   sbi_early_init();
-#endif
 
 
   /*
@@ -254,11 +252,9 @@ void main(int hartid, void *fdt) {
 
   arch_enable_ints();
 
-#ifdef CONFIG_SBI
   sbi_init();
   /* set the timer with sbi :) */
   sbi_set_timer(rv::get_time() + TICK_INTERVAL);
-#endif
 
 
   time::set_cps(CONFIG_RISCV_CLOCKS_PER_SECOND);
@@ -307,7 +303,7 @@ void main(int hartid, void *fdt) {
 
     ck::string init_paths = "/bin/init,/init";
     auto paths = init_paths.split(',');
-    pid_t init_pid = sched::proc::spawn_init(paths);
+    auto init_pid = sched::proc::spawn_init(paths);
 
     sys::waitpid(init_pid, NULL, 0);
     panic("INIT DIED!\n");

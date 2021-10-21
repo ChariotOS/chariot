@@ -9,11 +9,11 @@ namespace rv {
   using pte_t = rv::xsize_t;
 
 
-  class pagetable : public mm::pagetable {
+  class PageTable : public mm::PageTable {
    public:
     rv::xsize_t *table;
-    pagetable(rv::xsize_t *table);
-    virtual ~pagetable();
+    PageTable(rv::xsize_t *table);
+    virtual ~PageTable();
 
     virtual bool switch_to(void) override;
 

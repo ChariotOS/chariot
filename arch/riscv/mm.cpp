@@ -52,13 +52,13 @@ rv::pte_t *rv::page_walk(rv::pte_t *tbl, off_t va) {
 
 
 
-ck::ref<mm::pagetable> mm::pagetable::create() {
+ck::ref<mm::PageTable> mm::PageTable::create() {
   auto p = (rv::xsize_t *)p2v(phys::alloc(1));
-  return ck::make_ref<rv::pagetable>(p);
+  return ck::make_ref<rv::PageTable>(p);
 }
 
 
-rv::pagetable::pagetable(rv::xsize_t *table) : table(table) {
+rv::PageTable::PageTable(rv::xsize_t *table) : table(table) {
   /* Copy the top half (global, one time map) from the current
    * page table. All tables have this mapping, so we can do this safely
    */
@@ -83,7 +83,7 @@ static void free_pd(rv::xsize_t *pd, int depth) {
   phys::free(v2p(pd), 1);
 }
 
-rv::pagetable::~pagetable(void) {
+rv::PageTable::~PageTable(void) {
   auto pptable = (rv::xsize_t *)p2v(table);
 
   int entries = 4096 / sizeof(rv::xsize_t);
@@ -104,13 +104,13 @@ rv::pagetable::~pagetable(void) {
 
 
 
-bool rv::pagetable::switch_to(void) {
+bool rv::PageTable::switch_to(void) {
   // printk_nolock("switch to %p\n", table);
   write_csr(satp, MAKE_SATP(v2p(table)));
   return true;
 }
 
-int rv::pagetable::add_mapping(off_t va, struct mm::pte &p) {
+int rv::PageTable::add_mapping(off_t va, struct mm::pte &p) {
   /* TODO: */
 
   volatile auto *pte = rv::page_walk(this->table, va);
@@ -160,7 +160,7 @@ int rv::pagetable::add_mapping(off_t va, struct mm::pte &p) {
 }
 
 
-int rv::pagetable::get_mapping(off_t va, struct mm::pte &r) {
+int rv::PageTable::get_mapping(off_t va, struct mm::pte &r) {
   auto *pte = rv::page_walk(this->table, va);
   if (pte == NULL) return -EINVAL;
 
@@ -178,7 +178,7 @@ int rv::pagetable::get_mapping(off_t va, struct mm::pte &r) {
 }
 
 
-int rv::pagetable::del_mapping(off_t va) {
+int rv::PageTable::del_mapping(off_t va) {
   /* TODO: */
   auto *pte = rv::page_walk(this->table, va);
   if (pte == NULL) return -EINVAL;
@@ -189,13 +189,13 @@ int rv::pagetable::del_mapping(off_t va) {
 }
 
 /* TODO: */
-static mm::space *kspace;
+static mm::AddressSpace *kspace;
 
-mm::space &mm::space::kernel_space(void) {
+mm::AddressSpace &mm::AddressSpace::kernel_space(void) {
   if (kspace == NULL) {
     off_t table = read_csr(satp) << 12;
-    auto kptable = ck::make_ref<rv::pagetable>((rv::xsize_t *)p2v(table));
-    kspace = new mm::space(CONFIG_KERNEL_VIRTUAL_BASE, -1, kptable);
+    auto kptable = ck::make_ref<rv::PageTable>((rv::xsize_t *)p2v(table));
+    kspace = new mm::AddressSpace(CONFIG_KERNEL_VIRTUAL_BASE, -1, kptable);
     kspace->is_kspace = 1;
   }
 

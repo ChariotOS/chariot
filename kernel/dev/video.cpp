@@ -28,16 +28,16 @@ static dev::video_device *get_vdev(int minor) {
   return nullptr;
 }
 
-struct gvi_vmobject final : public mm::vmobject {
+struct gvi_vmobject final : public mm::VMObject {
   dev::video_device &vdev;
-  gvi_vmobject(dev::video_device &vdev, size_t npages) : vmobject(npages), vdev(vdev) {}
+  gvi_vmobject(dev::video_device &vdev, size_t npages) : VMObject(npages), vdev(vdev) {}
 
   virtual ~gvi_vmobject(void){};
 
-  virtual ck::ref<mm::page> get_shared(off_t n) override {
+  virtual ck::ref<mm::Page> get_shared(off_t n) override {
     auto fb = (unsigned long)vdev.get_framebuffer();
     if (fb == 0) return nullptr;
-    auto p = mm::page::create(fb + (n * PGSIZE));
+    auto p = mm::Page::create(fb + (n * PGSIZE));
 
     // p->fset(PG_NOCACHE | PG_WRTHRU);
 
@@ -45,7 +45,7 @@ struct gvi_vmobject final : public mm::vmobject {
   }
 };
 
-static ck::ref<mm::vmobject> gvi_mmap(fs::file &fd, size_t npages, int prot, int flags, off_t off) {
+static ck::ref<mm::VMObject> gvi_mmap(fs::file &fd, size_t npages, int prot, int flags, off_t off) {
   auto *vdev = get_vdev(fd.ino->minor);
   if (vdev == NULL) return nullptr;
 

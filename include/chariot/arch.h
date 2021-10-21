@@ -14,6 +14,8 @@
 
 #include <types.h>
 
+#include <fwd.h>
+
 #ifdef CONFIG_RISCV
 /* not sure if we need this yet or not... */
 // #include <riscv/arch.h>
@@ -36,7 +38,6 @@ typedef uint32_t reg_t;
 
 
 struct regs;
-struct Thread;
 
 // Architecture specific functionality. Implemented in arch/$ARCH/*
 namespace arch {

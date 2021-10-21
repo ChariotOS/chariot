@@ -14,11 +14,7 @@
 #include <signals.h>
 #include <ck/string.h>
 #include <ck/vec.h>
-
-#include <process.h>
-#include <thread.h>
-
-
+#include <fwd.h>
 
 
 // #include <schedulers.h>

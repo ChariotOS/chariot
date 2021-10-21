@@ -82,8 +82,8 @@ void arch_flush_mmu(void) {}
 extern "C" void __rv_save_fpu(void *);
 extern "C" void __rv_load_fpu(void *);
 
-void arch_save_fpu(struct thread &thd) { __rv_save_fpu(thd.fpu.state); }
-void arch_restore_fpu(struct thread &thd) { __rv_load_fpu(thd.fpu.state); }
+void arch_save_fpu(Thread &thd) { __rv_save_fpu(thd.fpu.state); }
+void arch_restore_fpu(Thread &thd) { __rv_load_fpu(thd.fpu.state); }
 
 
 unsigned long arch_read_timestamp(void) {
@@ -108,7 +108,7 @@ struct processor_state &cpu::current(void) {
 }
 
 
-void cpu::switch_vm(ck::ref<thread> thd) {
+void cpu::switch_vm(ck::ref<Thread> thd) {
   thd->proc.mm->switch_to();
   rv::sfence_vma();
 }

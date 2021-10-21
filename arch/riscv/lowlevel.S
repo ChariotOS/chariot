@@ -61,12 +61,6 @@ _start:
 	# la		gp, _global_pointer
 .option pop
 
-# OpenSBI passes us the hartid through a0. If we don't have OpenSBI,
-# grab it for ourselves (we are in M-mode right now)
-#ifndef CONFIG_SBI
-	csrr    a0, mhartid
-#endif
-
 	# we calculate the starting stack by _stack_start + (2*4096 * (mhartid + 1))
 	# so each HART gets 2 pages of stack
 	la      sp, _stack_start
@@ -106,39 +100,6 @@ _start:
 
 	addi sp, sp, 2*SZREG
 
-	j       .skip_vm_setup
-
-
-	# setup the base high-half identity mapping
-	li      t0, PT_R | PT_W | PT_X | PT_V # t0: current physical address (PTE)
-	la      t1, kernel_page_table         # t1: current location in the page table
-
-	li      t3, 0x1000
-	add     t2, t1, t3                    # t2: address after the page table (the end)
-
-
-	# shift the current pointer to the halfway point
-	srai    t3, t3, 1                     # t3 /= 2
-	move    t4, t1                        # t4 is the pointer to the lower half
-	add     t1, t1, t3                    # t1 += 4096 / 2
-
-	li      t3, VM_BIGGEST_PAGE           # t3: physical memory stride
-0:
-
-	# store the PTE at the location pointed to by t1 (high half) and t4 (low half)
-	REG_S   t0, 0(t1)
-	REG_S   t0, 0(t4)
-	# move the PTE (t0) forward by the stride (t3)
-	add     t0, t0, t3
-	# step the pointer(s) forward
-	addi    t1, t1, SZREG
-	addi    t4, t4, SZREG
-	# ensure it's written out
-	fence   w,w
-	bne     t1, t2, 0b                    # jump back if we aren't done
-	
-.skip_vm_setup:
-
 	# now, load the kernel page table into satp 
 	la      t0, kernel_page_table
 	srai    t0, t0, 12 # shift the page table to be just the PPN
@@ -170,8 +131,6 @@ _start:
 
 	la      t0, main_ptr
 	REG_L   t0, 0(t0)
-
-
 	jr      t0
 
 
@@ -211,40 +170,6 @@ secondary_core_startup_sbi:
 
 second_entry_ptr:
 	.quad secondary_entry
-
-
-
-
-#ifndef CONFIG_SBI
-
-.global timervec
-timervec:
-	csrrw a0, mscratch, a0
-	sd a1, 0(a0)
-	sd a2, 8(a0)
-	sd a3, 16(a0)
-
-	# schedule the next timer interrupt
-	# by adding interval to mtimecmp.
-	ld a1, 24(a0) # CLINT_MTIMECMP(hart)
-	ld a2, 32(a0) # interval
-	ld a3, 0(a1)
-	add a3, a3, a2
-	sd a3, 0(a1)
-
-	# raise a supervisor software interrupt.
-	li a1, 2
-	csrw sip, a1
-
-	ld a3, 16(a0)
-	ld a2, 8(a0)
-	ld a1, 0(a0)
-	csrrw a0, mscratch, a0
-
-	mret
-
-#endif
-
 
 
 .section .boot.data

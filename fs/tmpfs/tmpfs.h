@@ -10,7 +10,7 @@ namespace tmp {
   // private data per inode
   struct priv {
     /* The data pages */
-    ck::vec<ck::ref<mm::page>> pages;
+    ck::vec<ck::ref<mm::Page>> pages;
   };
 
 

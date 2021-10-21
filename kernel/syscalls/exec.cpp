@@ -5,7 +5,7 @@
 
 
 // kernel/proc.cpp
-extern mm::space *alloc_user_vm(void);
+extern mm::AddressSpace *alloc_user_vm(void);
 
 
 int sys::execve(const char *path, const char **uargv, const char **uenvp) {
@@ -63,7 +63,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
 
   off_t entry = 0;
   auto fd = ck::make_ref<fs::file>(exe, FDIR_READ);
-  mm::space *new_addr_space = nullptr;
+  mm::AddressSpace *new_addr_space = nullptr;
 
   new_addr_space = alloc_user_vm();
 

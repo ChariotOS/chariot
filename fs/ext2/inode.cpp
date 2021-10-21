@@ -475,8 +475,7 @@ static void ext2_traverse_dir(fs::inode &ino, ck::func<void(u32 ino, const char 
   }
 
   char namebuf[255];
-  for (auto *entry = ents; (size_t)entry < (size_t)ents + ino.size;
-       entry = (ext2_dir *)((char *)entry + entry->size)) {
+  for (auto *entry = ents; (size_t)entry < (size_t)ents + ino.size; entry = (ext2_dir *)((char *)entry + entry->size)) {
     if (entry->inode != 0) {
       memcpy(namebuf, entry->name, entry->namelength);
       namebuf[entry->namelength] = 0;
@@ -539,8 +538,9 @@ static int injest_info(fs::inode &ino, fs::ext2_inode_info &info) {
 
   if (ino.type == T_DIR) {
     // TODO: clear out the dirents
-    ext2_traverse_dir(
-        ino, [&](u32 nr, const char *name) { ino.register_direntry(name, ENT_RES, nr); });
+    ext2_traverse_dir(ino, [&](u32 nr, const char *name) {
+      ino.register_direntry(name, ENT_RES, nr);
+    });
   } else if (ino.type == T_CHAR || ino.type == T_BLK) {
     // parse the major/minor
     unsigned dev = info.dbp[0];
@@ -586,8 +586,8 @@ static void ext2_close(fs::file &) {}
 
 
 
-struct ext2_vmobject final : public mm::vmobject {
-  ext2_vmobject(fs::inode *ino, size_t npages, off_t off) : vmobject(npages) {
+struct ext2_vmobject final : public mm::VMObject {
+  ext2_vmobject(fs::inode *ino, size_t npages, off_t off) : VMObject(npages) {
     m_ino = fs::inode::acquire(ino);
     m_off = off;
   }
@@ -621,7 +621,7 @@ struct ext2_vmobject final : public mm::vmobject {
   }
 
   // get a shared page (page #n in the mapping)
-  virtual ck::ref<mm::page> get_shared(off_t n) override {
+  virtual ck::ref<mm::Page> get_shared(off_t n) override {
     // printk("get_shared(%d)\n", n);
     auto blk = bget(n);
 
@@ -648,7 +648,7 @@ struct ext2_vmobject final : public mm::vmobject {
 
 
 
-static ck::ref<mm::vmobject> ext2_mmap(fs::file &f, size_t npages, int prot, int flags, off_t off) {
+static ck::ref<mm::VMObject> ext2_mmap(fs::file &f, size_t npages, int prot, int flags, off_t off) {
   // XXX: this is invalid, should be asserted before here :^)
   if (off & 0xFFF) return nullptr;
 
@@ -733,8 +733,7 @@ static struct fs::inode *ext2_lookup(fs::inode &node, const char *needle) {
   return NULL;
 }
 
-static int ext2_mknod(
-    fs::inode &, const char *name, struct fs::file_ownership &, int major, int minor) {
+static int ext2_mknod(fs::inode &, const char *name, struct fs::file_ownership &, int major, int minor) {
   UNIMPL();
   return -ENOTIMPL;
 }

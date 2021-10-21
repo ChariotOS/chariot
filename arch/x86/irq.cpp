@@ -108,7 +108,7 @@ const char *excp_codes[128][2] = {
 int arch_generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz) {
   if (!cpu::in_thread()) return 0;
 
-  mm::space *mm = curthd->proc.mm;
+  mm::AddressSpace *mm = curthd->proc.mm;
   auto &pt = *mm->pt;
 
   off_t *phys_ebp;

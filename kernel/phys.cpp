@@ -9,7 +9,7 @@
 #include <time.h>
 #include <types.h>
 #include <syscall.h>
-
+#include <thread.h>
 
 
 // #define PHYS_DEBUG

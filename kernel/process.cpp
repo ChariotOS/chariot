@@ -32,14 +32,14 @@ static ck::map<long, ck::ref<Process>> proc_table;
 
 long get_next_pid(void) { return __atomic_add_fetch(&next_pid, 1, __ATOMIC_ACQUIRE); }
 
-mm::space *alloc_user_vm(void) {
+mm::AddressSpace *alloc_user_vm(void) {
   unsigned long top = 0x7ff000000000;
 #ifdef CONFIG_SV39
   top = 0x3ff0000000;
 #endif
 
   top -= rand() & 0xFFFFF000;
-  return new mm::space(0x1000, top, mm::pagetable::create());
+  return new mm::AddressSpace(0x1000, top, mm::PageTable::create());
 }
 
 static ck::ref<Process> pid_lookup(long pid) {
@@ -200,7 +200,7 @@ long sched::proc::spawn_init(ck::vec<ck::string> &paths) {
 static ck::ref<Process> kernel_process = nullptr;
 
 
-struct Process *sched::proc::kproc(void) {
+Process *sched::proc::kproc(void) {
   if (kernel_process.get() == nullptr) {
     // spawn the kernel process
     kernel_process = sched::proc::spawn_process(nullptr, SPAWN_KERN);
@@ -208,7 +208,7 @@ struct Process *sched::proc::kproc(void) {
     kernel_process->name = "kernel";
     // auto &vm = kernel_process->mm;
     delete kernel_process->mm;
-    kernel_process->mm = &mm::space::kernel_space();
+    kernel_process->mm = &mm::AddressSpace::kernel_space();
   }
 
   return kernel_process.get();

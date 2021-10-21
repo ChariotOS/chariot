@@ -3,6 +3,7 @@
 #include <cpu.h>
 
 #include <process.h>
+#include <thread.h>
 
 int vfs::getcwd(fs::inode &cwd, ck::string &dst) {
   int err = 0;

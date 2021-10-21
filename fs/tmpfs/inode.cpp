@@ -33,7 +33,7 @@ static void tfs_close(fs::file &) {}
 
 
 
-static ck::ref<mm::vmobject> tfs_mmap(fs::file &f, size_t npages, int prot, int flags, off_t off) {
+static ck::ref<mm::VMObject> tfs_mmap(fs::file &f, size_t npages, int prot, int flags, off_t off) {
   UNIMPL();
   // XXX: this is invalid, should be asserted before here :^)
   if (off & 0xFFF) return nullptr;

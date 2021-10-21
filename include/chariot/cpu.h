@@ -6,10 +6,7 @@
 #include <types.h>
 #include <ck/ptr.h>
 #include <cpu_usage.h>
-
-
-struct Thread;
-struct Process;
+#include <fwd.h>
 
 
 struct kstat_cpu {
@@ -64,7 +61,7 @@ namespace cpu {
 
   struct processor_state *get(void);
 
-  struct Process *proc(void);
+  Process *proc(void);
 
   Thread *thread(void);
   bool in_thread(void);

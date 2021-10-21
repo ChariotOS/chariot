@@ -7,6 +7,8 @@
 #include <arch.h>
 #include <wait.h>
 
+#include <fwd.h>
+
 
 #ifdef CONFIG_RISCV
 #include <riscv/arch.h>
@@ -117,17 +119,13 @@ struct thread_waitqueue_info {
 };
 
 
-
-// forward declaration
-class Process;
-
-struct kernel_stack {
+struct KernelStack {
   void *start;
   long size;
 };
 
 
-struct Thread final : public ck::weakable<struct Thread> {
+struct Thread final : public ck::weakable<Thread> {
  public:
   long tid;
   long pid;
@@ -143,16 +141,12 @@ struct Thread final : public ck::weakable<struct Thread> {
   int kerrno = 0;
   bool preemptable = true;
 
-
-
-  off_t yield_from = 0;
-
   // If this lock is not null, it is released after the runlock is released.
   // If this is not null, it is acquired after the runlock is acquired
   spinlock *held_lock = nullptr;
 
   /* Reference to the kernel stack */
-  ck::vec<kernel_stack> stacks;
+  ck::vec<KernelStack> stacks;
 
   // Masks are per-thread
   struct {
