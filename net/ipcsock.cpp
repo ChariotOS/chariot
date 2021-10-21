@@ -23,7 +23,6 @@ net::IPCSock::~IPCSock(void) {
 ck::ref<net::Socket> net::IPCSock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
   // wait on a client
   ck::ref<net::Socket> client = pending_connections.recv();
-  printk("accept %p\n", client.get());
   return client;
 }
 
@@ -51,7 +50,6 @@ int net::IPCSock::connect(struct sockaddr *addr, int len) {
 
   // send, and wait. This will always succeed if we are here.
   this->peer->pending_connections.send(this, true);
-
   // assume the above succeeded
   return 0;
 }

@@ -205,7 +205,7 @@ int sys::accept(int sockfd, struct sockaddr *addr, size_t addrlen) {
       int err = 0;
       auto sk = file->ino->sk->accept((struct sockaddr *)addr, addrlen, err);
       if (sk != nullptr) {
-        auto ino = new fs::Node(T_SOCK, fs::DUMMY_SB);
+        auto ino = ck::make_ref<fs::Node>(T_SOCK, fs::DUMMY_SB);
         ino->fops = &socket_fops;
         ino->dops = NULL;
         ino->sk = sk;

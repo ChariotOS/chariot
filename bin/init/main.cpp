@@ -282,20 +282,23 @@ int main(int argc, char **argv) {
   }
 
 
-#ifndef CONFIG_SIMPLE_INIT
 
-  spawn("lumen-server");
-
-#endif
 
   ck::eventloop ev;
 
   ck::ipcsocket server;
 
-  system("touch /tmp/initd.sock");
-  server.listen("/tmp/initd.sock", [] {
-    printf("nice.\n");
-  });
+  // system("touch /tmp/initd.sock");
+  // server.listen("/tmp/initd.sock", [] {
+  //   printf("nice.\n");
+  // });
+
+
+#ifndef CONFIG_SIMPLE_INIT
+
+  spawn("lumen-server");
+
+#endif
 
   spawn("/bin/sh");
 

@@ -13,7 +13,8 @@
 #include "debug.h"
 #include <thread.h>
 
-void debug_die(void) {
+
+void debug_dump_addr2line() {
 #if CONFIG_X86
   off_t rbp = 0;
   asm volatile("mov %%rbp, %0\n\t" : "=r"(rbp));
@@ -25,6 +26,11 @@ void debug_die(void) {
   }
   printk("\n");
 #endif
+}
+
+void debug_die(void) {
+  debug_dump_addr2line();
+
   // arch_dump_backtrace();
   while (1) {
     arch_halt();

@@ -93,6 +93,9 @@ inline void do_panic(const char* fmt, T&&... args) {
   debug_die();
 }
 
+
+void debug_dump_addr2line();
+
 #define panic(fmt, args...)                   \
   do {                                        \
     KERR("PANIC: %s\n", __PRETTY_FUNCTION__); \

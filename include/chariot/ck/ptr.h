@@ -360,9 +360,10 @@ namespace ck {
    private:
     static void* op_new_called(size_t size) {
 #ifdef KERNEL
-      printk_nolock("ck::ref operator new called directly!\n");
-#else
-      printf("ck::ref operator new called directly!\n");
+      pprintk("ck::ref operator new called directly in the kernel!\n");
+      debug_dump_addr2line();
+// #else
+// printf("ck::ref operator new called directly in userspace!\n");
 #endif
       return (T*)malloc(size);
     }
