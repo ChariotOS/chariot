@@ -25,15 +25,19 @@ long atol(const char *);
 long long atoll(const char *);
 double atof(const char *);
 
-void *malloc(size_t sz);
+
+
 void free(void *);
+
+void *malloc(size_t sz) __attribute__((malloc));
+void *calloc(size_t nmemb, size_t size);
+void *realloc(void *ptr, size_t size);
+void *reallocarray(void *ptr, size_t nmemb, size_t size);
+
 
 unsigned long long malloc_total(void);
 unsigned long long malloc_allocated(void);
 
-void *calloc(size_t nmemb, size_t size);
-void *realloc(void *ptr, size_t size);
-void *reallocarray(void *ptr, size_t nmemb, size_t size);
 
 int system(const char *);
 
@@ -79,8 +83,7 @@ long long int strtoll(const char *nptr, char **endptr, int base);
 int posix_memalign(void **memptr, size_t alignment, size_t size);
 
 
-void *bsearch(const void *key, const void *base, size_t nel, size_t width,
-    int (*cmp)(const void *, const void *));
+void *bsearch(const void *key, const void *base, size_t nel, size_t width, int (*cmp)(const void *, const void *));
 
 
 #ifdef __cplusplus
