@@ -156,7 +156,7 @@ static void *get_framebuffer_address(void) {
 
 
 
-static ssize_t fb_write(fs::file &fd, const char *buf, size_t sz) {
+static ssize_t fb_write(fs::File &fd, const char *buf, size_t sz) {
   if (!fd) return -1;
   if (vga_fba == nullptr) return -1;
 
@@ -174,7 +174,7 @@ static ssize_t fb_write(fs::file &fd, const char *buf, size_t sz) {
   return sz;
 }
 
-static int fb_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
+static int fb_ioctl(fs::File &fd, unsigned int cmd, unsigned long arg) {
   scoped_lock l(fblock);
 
   switch (cmd) {
@@ -202,7 +202,7 @@ static int fb_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
   return -1;
 }
 
-static int fb_open(fs::file &f) {
+static int fb_open(fs::File &f) {
   if (!cons_enabled) return -EBUSY;
   cons_enabled = false;
   return 0;  // allow
@@ -221,7 +221,7 @@ static void reset_fb(
 }
 */
 
-static void fb_close(fs::file &f) {
+static void fb_close(fs::File &f) {
   cons_enabled = true;
   // reset_fb();
 }
@@ -248,7 +248,7 @@ struct vga_vmobject final : public mm::VMObject {
 
 
 
-static ck::ref<mm::VMObject> vga_mmap(fs::file &f, size_t npages, int prot, int flags, off_t off) {
+static ck::ref<mm::VMObject> vga_mmap(fs::File &f, size_t npages, int prot, int flags, off_t off) {
   // XXX: this is invalid, should be asserted before here :^)
   if (off != 0) {
     printk(KERN_WARN "vga: attempt to mmap at invalid offset (%d != 0)\n", off);
@@ -272,7 +272,7 @@ static ck::ref<mm::VMObject> vga_mmap(fs::file &f, size_t npages, int prot, int 
 
 
 // can only write to the framebuffer
-struct fs::file_operations fb_ops = {
+struct fs::FileOperations fb_ops = {
     .write = fb_write,
     .ioctl = fb_ioctl,
 

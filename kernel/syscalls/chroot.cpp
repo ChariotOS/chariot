@@ -10,7 +10,7 @@ int sys::chroot(const char *path) {
 
   scoped_lock l(proc->datalock);
 
-  fs::inode *new_root = NULL;
+  fs::Node *new_root = NULL;
 
   if (0 != vfs::namei(path, 0, 0, proc->cwd, new_root)) return -1;
 
@@ -18,7 +18,7 @@ int sys::chroot(const char *path) {
 
   if (new_root->type != T_DIR) return -ENOTDIR;
 
-  fs::inode::release(proc->root);
+  fs::Node::release(proc->root);
   proc->root = geti(new_root);
 
 

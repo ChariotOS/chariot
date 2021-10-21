@@ -6,7 +6,7 @@ ssize_t sys::write(int fd, void *data, size_t len) {
 
   if (!curproc->mm->validate_pointer(data, len, PROT_READ)) return -1;
 
-  ck::ref<fs::file> file = curproc->get_fd(fd);
+  ck::ref<fs::File> file = curproc->get_fd(fd);
 
   if (file) n = file->write(data, len);
   return n;

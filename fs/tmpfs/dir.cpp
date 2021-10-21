@@ -5,7 +5,7 @@
 
 
 // create a file in the directory
-static int tmpfs_create(fs::inode &ino, const char *name, struct fs::file_ownership &own) {
+static int tmpfs_create(fs::Node &ino, const char *name, struct fs::Ownership &own) {
   if (ino.type != T_DIR) panic("tmpfs_create on non-dir\n");
 
 
@@ -20,8 +20,8 @@ static int tmpfs_create(fs::inode &ino, const char *name, struct fs::file_owners
   return 0;
 }
 // create a directory in a dir
-static int tmpfs_mkdir(fs::inode &ino, const char *name, struct fs::file_ownership &own) {
-  fs::inode *dir = tmp::getsb(ino).create_inode(T_DIR);
+static int tmpfs_mkdir(fs::Node &ino, const char *name, struct fs::Ownership &own) {
+  fs::Node *dir = tmp::getsb(ino).create_inode(T_DIR);
   dir->gid = own.gid;
   dir->uid = own.uid;
   dir->mode = own.mode;
@@ -36,14 +36,14 @@ static int tmpfs_mkdir(fs::inode &ino, const char *name, struct fs::file_ownersh
   return 0;
 }
 // remove a file from a directory
-static int tmpfs_unlink(fs::inode &node, const char *entry) {
+static int tmpfs_unlink(fs::Node &node, const char *entry) {
   if (node.type != T_DIR) panic("tmpfs_unlink on non-dir\n");
 
   return node.remove_direntry(entry);
 }
 
 // lookup an inode by name in a file
-static struct fs::inode *tmpfs_lookup(fs::inode &node, const char *needle) {
+static struct fs::Node *tmpfs_lookup(fs::Node &node, const char *needle) {
   if (node.type != T_DIR) panic("tmpfs_lookup on non-dir\n");
 
   // walk the linked list to get the inode num
@@ -55,14 +55,13 @@ static struct fs::inode *tmpfs_lookup(fs::inode &node, const char *needle) {
   return NULL;
 }
 // create a device node with a major and minor number
-static int tmpfs_mknod(fs::inode &, const char *name, struct fs::file_ownership &, int major,
-                       int minor) {
+static int tmpfs_mknod(fs::Node &, const char *name, struct fs::Ownership &, int major, int minor) {
   UNIMPL();
   return -ENOTIMPL;
 }
 
 
-fs::dir_operations tmp::dops = {
+fs::DirectoryOperations tmp::dops = {
 
     .create = tmpfs_create,
     .mkdir = tmpfs_mkdir,

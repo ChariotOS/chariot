@@ -3,11 +3,9 @@
 #include <syscall.h>
 
 int sys::dirent(int fd, struct dirent *ents, int off, int count) {
-  if (ents != NULL &&
-      !curproc->mm->validate_pointer(ents, count * sizeof(struct dirent), VALIDATE_WRITE))
-    return -1;
+  if (ents != NULL && !curproc->mm->validate_pointer(ents, count * sizeof(struct dirent), VALIDATE_WRITE)) return -1;
 
-  ck::ref<fs::file> file = curproc->get_fd(fd);
+  ck::ref<fs::File> file = curproc->get_fd(fd);
 
   if (file) {
     if (file->ino->type != T_DIR) return -ENOTDIR;

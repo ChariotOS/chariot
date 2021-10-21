@@ -221,7 +221,7 @@ namespace mm {
     spinlock lock;
 
     // TODO: unify shared mappings in the fileriptor somehow
-    ck::ref<fs::file> fd;
+    ck::ref<fs::File> fd;
     ck::vec<mm::page_mapping> mappings;  // backing memory
 
     // optional. If it exists, it is queried for each page
@@ -258,9 +258,9 @@ namespace mm {
 
     int delete_region(off_t va);
     int pagefault(off_t va, int err);
-    off_t mmap(off_t req, size_t size, int prot, int flags, ck::ref<fs::file>, off_t off);
+    off_t mmap(off_t req, size_t size, int prot, int flags, ck::ref<fs::File>, off_t off);
 
-    off_t mmap(ck::string name, off_t req, size_t size, int prot, int flags, ck::ref<fs::file>, off_t off);
+    off_t mmap(ck::string name, off_t req, size_t size, int prot, int flags, ck::ref<fs::File>, off_t off);
     int unmap(off_t addr, size_t sz);
 
 

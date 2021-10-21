@@ -8,9 +8,9 @@
 #include <util.h>
 
 static rwlock all_localsocks_lock;
-static struct net::localsock *all_localsocks = NULL;
+static struct net::LocalSocket *all_localsocks = NULL;
 
-net::localsock::localsock(int type) : net::sock(AF_LOCAL, type, 0) {
+net::LocalSocket::LocalSocket(int type) : net::Socket(AF_LOCAL, type, 0) {
   all_localsocks_lock.write_lock();
   next = all_localsocks;
   prev = nullptr;
@@ -21,7 +21,7 @@ net::localsock::localsock(int type) : net::sock(AF_LOCAL, type, 0) {
   all_localsocks_lock.write_unlock();
 }
 
-net::localsock::~localsock(void) {
+net::LocalSocket::~LocalSocket(void) {
   all_localsocks_lock.write_lock();
   if (all_localsocks == this) {
     all_localsocks = next;
@@ -34,19 +34,19 @@ net::localsock::~localsock(void) {
   if (bindpoint != NULL) {
     // we don't need to
     bindpoint->bound_socket = NULL;
-    fs::inode::release(bindpoint);
+    fs::Node::release(bindpoint);
   }
   all_localsocks_lock.write_unlock();
 }
 
 
-net::sock *net::localsock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
+net::Socket *net::LocalSocket::accept(struct sockaddr *uaddr, int addr_len, int &err) {
   // wait on a client
   auto *client = pending_connections.recv();
   return client;
 }
 
-int net::localsock::connect(struct sockaddr *addr, int len) {
+int net::LocalSocket::connect(struct sockaddr *addr, int len) {
   if (len != sizeof(struct sockaddr_un)) {
     return -EINVAL;
   }
@@ -66,7 +66,7 @@ int net::localsock::connect(struct sockaddr *addr, int len) {
     return -ENOENT;
   }
 
-  peer = (struct localsock *)net::sock::acquire(*in->bound_socket);
+  peer = (struct LocalSocket *)net::Socket::acquire(*in->bound_socket);
 
   // send, and wait. This will always succeed if we are here.
   this->peer->pending_connections.send(this, true);
@@ -76,7 +76,7 @@ int net::localsock::connect(struct sockaddr *addr, int len) {
 }
 
 
-int net::localsock::disconnect(int flags) {
+int net::LocalSocket::disconnect(int flags) {
   if (flags & PFLAGS_CLIENT) {
     // printk("client disconnect\n");
     for_server.close();
@@ -94,7 +94,7 @@ int net::localsock::disconnect(int flags) {
 static spinlock localsocket_stat_lock;
 #endif
 
-void net::localsock::dump_stats(void) {
+void net::LocalSocket::dump_stats(void) {
 #ifdef LOCALSOCK_DUMP_STATS
   scoped_lock l(localsocket_stat_lock);
   size_t server_avail, server_unread;
@@ -102,30 +102,28 @@ void net::localsock::dump_stats(void) {
 
   for_server.stats(server_avail, server_unread);
   for_client.stats(client_avail, client_unread);
-  printk(KERN_DEBUG "stats: server: (a: %-4zu, u: %-4zu) client: (a: %-4zu, u: %-4zu)\n",
-      server_avail, server_unread, client_avail, client_unread);
+  printk(KERN_DEBUG "stats: server: (a: %-4zu, u: %-4zu) client: (a: %-4zu, u: %-4zu)\n", server_avail, server_unread, client_avail,
+      client_unread);
 #endif
 }
 
 
 
 
-ssize_t net::localsock::sendto(
-    fs::file &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
+ssize_t net::LocalSocket::sendto(fs::File &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
   auto &buf = (fd.pflags & PFLAGS_SERVER) ? for_client : for_server;
   auto n = buf.write(data, len, (flags & MSG_DONTWAIT) == 0);
   dump_stats();
   return n;
 }
-ssize_t net::localsock::recvfrom(
-    fs::file &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
+ssize_t net::LocalSocket::recvfrom(fs::File &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
   auto &buf = (fd.pflags & PFLAGS_SERVER) ? for_server : for_client;
   auto n = buf.read(data, len, (flags & MSG_DONTWAIT) == 0);
   dump_stats();
   return n;
 }
 
-int net::localsock::bind(const struct sockaddr *addr, size_t len) {
+int net::LocalSocket::bind(const struct sockaddr *addr, size_t len) {
   if (len != sizeof(struct sockaddr_un)) return -EINVAL;
   if (bindpoint != NULL) return -EINVAL;
 
@@ -144,13 +142,13 @@ int net::localsock::bind(const struct sockaddr *addr, size_t len) {
   if (in->bound_socket != NULL) return -EADDRINUSE;
 
   // acquire the file and set the bound_socket to this
-  bindpoint = fs::inode::acquire(in);
-  bindpoint->bound_socket = net::sock::acquire(*this);
+  bindpoint = fs::Node::acquire(in);
+  bindpoint->bound_socket = net::Socket::acquire(*this);
   return 0;
 }
 
 
-int net::localsock::poll(fs::file &f, int events, poll_table &pt) {
+int net::LocalSocket::poll(fs::File &f, int events, poll_table &pt) {
   int res = 0;
 
   if (f.pflags & PFLAGS_CLIENT) {

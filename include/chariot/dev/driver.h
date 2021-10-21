@@ -34,20 +34,20 @@ namespace dev {
     // one of these is REQUIRED, based on the type of the driver. (which is also
     // needed)
     union {
-      fs::block_operations *block_ops;
-      fs::file_operations *char_ops;
+      fs::BlockOperations *block_ops;
+      fs::FileOperations *char_ops;
     };
 
     // private to the driver subsystem, do not fiddle with (write to) stuff below here
     rwlock lock;
 
     // TODO: figure out char devices
-    ck::map<minor_t, fs::blkdev *> block_devices;
+    ck::map<minor_t, fs::BlockDevice *> block_devices;
 
     // ...
   };
 
-  void populate_inode_device(fs::inode &);
+  void populate_inode_device(fs::Node &);
 
   int register_driver(struct driver_info &);
   int deregister_driver(struct driver_info &);
@@ -61,6 +61,6 @@ namespace dev {
   ck::string next_disk_name(void);
 
   // useful functions for the kernel to access devices by name or maj/min
-  ck::ref<fs::file> open(ck::string name);
+  ck::ref<fs::File> open(ck::string name);
 
 };  // namespace dev

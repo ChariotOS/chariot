@@ -6,14 +6,14 @@
 #include <ck/ptr.h>
 
 namespace dev {
-  class disk {
+  class Disk {
    public:
     uint32_t magic = 0xFEEDD00D;
 
    public:
-    disk();
+    Disk();
 
-    virtual ~disk();
+    virtual ~Disk();
 
     virtual size_t block_size() = 0;
     virtual size_t block_count() = 0;
@@ -24,13 +24,13 @@ namespace dev {
   };
 
 
-  class disk_part : public dev::disk {
-    dev::disk* parent;
+  class disk_part : public dev::Disk {
+    dev::Disk* parent;
 
     uint32_t start, len;
 
    public:
-    disk_part(dev::disk* a, u32 start, u32 len);
+    disk_part(dev::Disk* a, u32 start, u32 len);
     virtual ~disk_part();
     virtual bool read_blocks(uint32_t sector, void* data, int n = 1);
     virtual bool write_blocks(uint32_t sector, const void* data, int n = 1);
@@ -39,7 +39,7 @@ namespace dev {
   };
 
   /* returns N in diskN on success. -ERRNO on error */
-  int register_disk(dev::disk* disk);
+  int register_disk(dev::Disk* disk);
 };  // namespace dev
 
 #endif

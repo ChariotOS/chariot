@@ -245,8 +245,8 @@ long sched::proc::create_kthread(const char *name, int (*func)(void *), void *ar
   return tid;
 }
 
-ck::ref<fs::file> Process::get_fd(int fd) {
-  ck::ref<fs::file> file;
+ck::ref<fs::File> Process::get_fd(int fd) {
+  ck::ref<fs::File> file;
 
   scoped_lock l(file_lock);
   auto it = open_files.find(fd);
@@ -257,7 +257,7 @@ ck::ref<fs::file> Process::get_fd(int fd) {
   return file;
 }
 
-int Process::add_fd(ck::ref<fs::file> file) {
+int Process::add_fd(ck::ref<fs::File> file) {
   int fd = 0;
   scoped_lock l(file_lock);
 
@@ -296,7 +296,7 @@ int Process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::strin
 
 
   // try to load the binary
-  fs::inode *exe = NULL;
+  fs::Node *exe = NULL;
 
   // TODO: open permissions on the binary
   if (vfs::namei(path.get(), 0, 0, cwd, exe) != 0) {
@@ -305,7 +305,7 @@ int Process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::strin
   // TODO check execution permissions
 
   off_t entry = 0;
-  auto fd = ck::make_ref<fs::file>(exe, FDIR_READ);
+  auto fd = ck::make_ref<fs::File>(exe, FDIR_READ);
 
   // allocate a new address space
   auto *new_addr_space = alloc_user_vm();
@@ -425,8 +425,8 @@ int sched::proc::reap(ck::ref<Process> p) {
   }
 
   // release the CWD and root
-  fs::inode::release(p->cwd);
-  fs::inode::release(p->root);
+  fs::Node::release(p->cwd);
+  fs::Node::release(p->root);
 
 
   // If the process had children, we need to give them to init

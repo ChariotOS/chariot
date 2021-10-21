@@ -16,9 +16,7 @@ extern "C" {
 
 
 extern "C" void *ext4_user_malloc(unsigned long size) { return malloc(size); }
-extern "C" void *ext4_user_calloc(unsigned long count, unsigned long size) {
-  return zalloc(size * count);
-}
+extern "C" void *ext4_user_calloc(unsigned long count, unsigned long size) { return zalloc(size * count); }
 extern "C" void *ext4_user_realloc(void *ptr, unsigned long size) { return realloc(ptr, size); }
 extern "C" void ext4_user_free(void *ptr) { free(ptr); }
 
@@ -31,11 +29,10 @@ static int blockdev_open(struct ext4_blockdev *bdev) {
 
 /******************************************************************************/
 
-static int blockdev_bread(
-    struct ext4_blockdev *bdev, void *buf, uint64_t blk_id, uint32_t blk_cnt) {
+static int blockdev_bread(struct ext4_blockdev *bdev, void *buf, uint64_t blk_id, uint32_t blk_cnt) {
   printk("blockdev_bread %d %d\n", blk_id, blk_cnt);
 
-  auto *dev = (fs::blkdev *)bdev->bdif->p_user;
+  auto *dev = (fs::BlockDevice *)bdev->bdif->p_user;
   for (int o = 0; o < blk_cnt; o++) {
     void *dst = (char *)buf + o * dev->block_size;
     dev->read_block(dst, blk_id + o);
@@ -46,10 +43,9 @@ static int blockdev_bread(
 
 
 /******************************************************************************/
-static int blockdev_bwrite(
-    struct ext4_blockdev *bdev, const void *buf, uint64_t blk_id, uint32_t blk_cnt) {
+static int blockdev_bwrite(struct ext4_blockdev *bdev, const void *buf, uint64_t blk_id, uint32_t blk_cnt) {
   printk("blockdev_bwrite %d %d\n", blk_id, blk_cnt);
-  auto *dev = (fs::blkdev *)bdev->bdif->p_user;
+  auto *dev = (fs::BlockDevice *)bdev->bdif->p_user;
   for (int o = 0; o < blk_cnt; o++) {
     void *dst = (char *)buf + o * dev->block_size;
     dev->write_block(dst, blk_id + o);
@@ -74,7 +70,7 @@ static int blockdev_unlock(struct ext4_blockdev *bdev) {
 
 
 
-struct ext4_blockdev *ext4_wrap_blockdev(fs::blkdev *bdev) {
+struct ext4_blockdev *ext4_wrap_blockdev(fs::BlockDevice *bdev) {
   auto *iface = new ext4_blockdev_iface;
   iface->open = blockdev_open;
   iface->bread = blockdev_bread;
@@ -98,11 +94,11 @@ struct ext4_blockdev *ext4_wrap_blockdev(fs::blkdev *bdev) {
 
 
 
-int ext4_sb_init(struct fs::superblock &sb) { return -ENOTIMPL; }
+int ext4_sb_init(struct fs::SuperBlock &sb) { return -ENOTIMPL; }
 
-int ext4_write_super(struct fs::superblock &sb) { return -ENOTIMPL; }
+int ext4_write_super(struct fs::SuperBlock &sb) { return -ENOTIMPL; }
 
-int ext4_sync(struct fs::superblock &sb, int flags) { return -ENOTIMPL; }
+int ext4_sync(struct fs::SuperBlock &sb, int flags) { return -ENOTIMPL; }
 
 
 
@@ -151,13 +147,13 @@ void dir_ls(const char *path) {
 
 
 
-class ext4_sb : public fs::superblock {
+class ext4_sb : public fs::SuperBlock {
  public:
   ext4_sb(void) {}
   ~ext4_sb(void) {}
 
-  bool init(fs::blkdev *bdev) {
-    fs::blkdev::acquire(bdev);
+  bool init(fs::BlockDevice *bdev) {
+    fs::BlockDevice::acquire(bdev);
     this->bdev = bdev;
     disk = fs::bdev_to_file(bdev);
     this->bdev = bdev;
@@ -211,22 +207,21 @@ class ext4_sb : public fs::superblock {
 
 
   spinlock m_lock;
-  ck::ref<fs::file> disk;
-  fs::blkdev *bdev;
+  ck::ref<fs::File> disk;
+  fs::BlockDevice *bdev;
   long sector_size;
-  ck::map<u32, struct fs::inode *> inodes;
+  ck::map<u32, struct fs::Node *> inodes;
 };
 
 
-struct fs::sb_operations ext4_ops {
+struct fs::SuperBlockOperations ext4_ops {
   .init = ext4_sb_init, .write_super = ext4_write_super, .sync = ext4_sync,
 };
 
 
 
-static struct fs::superblock *ext4_mount(
-    struct fs::sb_information *, const char *args, int flags, const char *device) {
-  struct fs::blkdev *bdev = fs::bdev_from_path(device);
+static struct fs::SuperBlock *ext4_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
+  struct fs::BlockDevice *bdev = fs::bdev_from_path(device);
   if (bdev == NULL) return NULL;
 
   auto *sb = new ext4_sb();
@@ -239,7 +234,7 @@ static struct fs::superblock *ext4_mount(
   return sb;
 }
 
-struct fs::sb_information ext4_info {
+struct fs::SuperBlockInfo ext4_info {
   .name = "ext4", .mount = ext4_mount, .ops = ext4_ops,
 };
 

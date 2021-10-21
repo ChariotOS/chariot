@@ -8,7 +8,7 @@
 
 
 // TODO: remove
-struct fs::superblock fs::DUMMY_SB;
+struct fs::SuperBlock fs::DUMMY_SB;
 
 using namespace fs;
 
@@ -16,8 +16,8 @@ using namespace fs;
 
 
 
-fs::inode::inode(int type, fs::superblock &sb) : type(type), sb(sb) {
-  fs::superblock::get(&sb);
+fs::Node::Node(int type, fs::SuperBlock &sb) : type(type), sb(sb) {
+  fs::SuperBlock::get(&sb);
   switch (type) {
     case T_DIR:
       // zero out the directory specific info
@@ -39,7 +39,7 @@ fs::inode::inode(int type, fs::superblock &sb) : type(type), sb(sb) {
   }
 }
 
-static void destruct_dir(struct inode *ino) {
+static void destruct_dir(struct Node *ino) {
   assert(ino->type == T_DIR);
 
   if (ino->dir.name) {
@@ -59,7 +59,7 @@ static void destruct_dir(struct inode *ino) {
   }
 }
 
-fs::inode::~inode() {
+fs::Node::~Node() {
   // printk("INODE DESTRUCT %d\n", ino);
   if (fops && fops->destroy) fops->destroy(*this);
 
@@ -79,11 +79,11 @@ fs::inode::~inode() {
       break;
   }
 
-  fs::superblock::put(&sb);
+  fs::SuperBlock::put(&sb);
 }
 
 
-struct inode *fs::inode::get_direntry_ino(struct direntry *ent) {
+struct Node *fs::Node::get_direntry_ino(struct DirectoryEntry *ent) {
   assert(type == T_DIR);
   // no lock, internal api
   // if it was shadowed by a mount, return that
@@ -97,12 +97,11 @@ struct inode *fs::inode::get_direntry_ino(struct direntry *ent) {
   }
 
   if (dops == NULL) panic("dir_ops null in get_direntry_ino despite being a directory\n");
-  if (dops->lookup == NULL)
-    panic("dir_ops->lookup null in get_direntry_ino despite being a directory\n");
+  if (dops->lookup == NULL) panic("dir_ops->lookup null in get_direntry_ino despite being a directory\n");
 
   // otherwise attempt to resolve that entry
   ent->ino = dops->lookup(*this, ent->name.get());
-  if (ent->ino != NULL) fs::inode::acquire(ent->ino);
+  if (ent->ino != NULL) fs::Node::acquire(ent->ino);
 
   if (ent->ino->type == T_DIR) {
     ent->ino->set_name(ent->name);
@@ -111,14 +110,14 @@ struct inode *fs::inode::get_direntry_ino(struct direntry *ent) {
   return ent->ino;
 }
 
-int fs::inode::poll(fs::file &f, int events, poll_table &pt) {
+int fs::Node::poll(fs::File &f, int events, poll_table &pt) {
   if (fops && fops->poll) {
     return fops->poll(f, events, pt);
   }
   return 0;
 }
 
-int fs::inode::add_mount(const char *name, struct fs::inode *guest) {
+int fs::Node::add_mount(const char *name, struct fs::Node *guest) {
   for_in_ll(ent, dir.entries) {
     if (ent->name == name) {
       if (ent->mount_shadow != NULL) {
@@ -131,7 +130,7 @@ int fs::inode::add_mount(const char *name, struct fs::inode *guest) {
   return -ENOENT;
 }
 
-struct inode *fs::inode::get_direntry_nolock(const char *name) {
+struct Node *fs::Node::get_direntry_nolock(const char *name) {
   assert(type == T_DIR);
   // special case ".." in the root of a mountpoint
   if (!strcmp(name, "..")) {
@@ -148,16 +147,16 @@ struct inode *fs::inode::get_direntry_nolock(const char *name) {
   return nullptr;
 }
 
-struct inode *fs::inode::get_direntry(const char *name) {
+struct Node *fs::Node::get_direntry(const char *name) {
   assert(type == T_DIR);
-  struct inode *ino = NULL;
+  struct Node *ino = NULL;
   // lock.lock();
   ino = get_direntry_nolock(name);
   // lock.unlock();
   return ino;  // nothing found!
 }
 
-int fs::inode::register_direntry(ck::string name, int enttype, int nr, struct inode *ino) {
+int fs::Node::register_direntry(ck::string name, int enttype, int nr, struct Node *ino) {
   assert(type == T_DIR);
   lock.lock();
 
@@ -169,7 +168,7 @@ int fs::inode::register_direntry(ck::string name, int enttype, int nr, struct in
       return -EEXIST;
     }
   }
-  auto ent = new fs::direntry;
+  auto ent = new fs::DirectoryEntry;
   ent->name = move(name);
   ent->nr = nr;
   ent->ino = ino;
@@ -183,12 +182,12 @@ int fs::inode::register_direntry(ck::string name, int enttype, int nr, struct in
 
   // do this after.
   if (ino != NULL && ino != this) {
-    fs::inode::acquire(ent->ino);
+    fs::Node::acquire(ent->ino);
   }
   return 0;
 }
 
-int fs::inode::remove_direntry(ck::string name) {
+int fs::Node::remove_direntry(ck::string name) {
   assert(type == T_DIR);
   lock.lock();
 
@@ -207,9 +206,9 @@ int fs::inode::remove_direntry(ck::string name) {
       if (ent->next != NULL) ent->next->prev = ent->prev;
       if (ent == dir.entries) dir.entries = ent->next;
 
-      if (ent->ino != NULL && ent->ino != this) fs::inode::release(ent->ino);
+      if (ent->ino != NULL && ent->ino != this) fs::Node::release(ent->ino);
       // TODO: notify the vfs that the mount was deleted?
-      if (ent->mount_shadow != NULL) fs::inode::release(ent->mount_shadow);
+      if (ent->mount_shadow != NULL) fs::Node::release(ent->mount_shadow);
       delete ent;
       lock.unlock();
       return 0;
@@ -220,7 +219,7 @@ int fs::inode::remove_direntry(ck::string name) {
   return -ENOENT;
 }
 
-int fs::inode::set_name(const ck::string &s) {
+int fs::Node::set_name(const ck::string &s) {
   if (type != T_DIR) {
     return -ENOTDIR;
   }
@@ -232,7 +231,7 @@ int fs::inode::set_name(const ck::string &s) {
   return 0;
 }
 
-void fs::inode::walk_direntries(ck::func<bool(const ck::string &, struct inode *)> func) {
+void fs::Node::walk_direntries(ck::func<bool(const ck::string &, struct Node *)> func) {
   assert(type == T_DIR);
 
   for_in_ll(ent, dir.entries) {
@@ -243,7 +242,7 @@ void fs::inode::walk_direntries(ck::func<bool(const ck::string &, struct inode *
   }
 }
 
-ck::vec<ck::string> fs::inode::direntries(void) {
+ck::vec<ck::string> fs::Node::direntries(void) {
   assert(type == T_DIR);
 
   ck::vec<ck::string> e;
@@ -251,7 +250,7 @@ ck::vec<ck::string> fs::inode::direntries(void) {
   return e;
 }
 
-struct fs::inode *fs::inode::acquire(struct inode *in) {
+struct fs::Node *fs::Node::acquire(struct Node *in) {
   assert(in != NULL);
   in->lock.lock();
   in->rc++;
@@ -260,7 +259,7 @@ struct fs::inode *fs::inode::acquire(struct inode *in) {
   return in;
 }
 
-int fs::inode::release(struct inode *in) {
+int fs::Node::release(struct Node *in) {
   assert(in != NULL);
   in->lock.lock();
   in->rc--;
@@ -274,7 +273,7 @@ int fs::inode::release(struct inode *in) {
 }
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
-int fs::inode::stat(struct stat *buf) {
+int fs::Node::stat(struct stat *buf) {
   if (buf != NULL) {
     buf->st_dev = -1;
     buf->st_ino = ino;

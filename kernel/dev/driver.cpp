@@ -34,15 +34,14 @@ extern void devfs_register_device(ck::string name, int type, int major, int mino
 int dev::register_name(struct dev::driver_info &info, ck::string name, minor_t min) {
   // create the block device if it is one
   if (info.type == DRIVER_BLOCK) {
-    auto bdev = new fs::blkdev(dev_t(info.major, min), name, *info.block_ops);
-    fs::blkdev::acquire(bdev);
+    auto bdev = new fs::BlockDevice(dev_t(info.major, min), name, *info.block_ops);
+    fs::BlockDevice::acquire(bdev);
     info.block_devices[min] = bdev;
   }
 
   drivers_lock.write_lock();
 
-  printk(KERN_INFO "register name %s [maj:%d, min:%d] (%d total)\n", name.get(), info.major, min,
-      device_names.size());
+  printk(KERN_INFO "register name %s [maj:%d, min:%d] (%d total)\n", name.get(), info.major, min, device_names.size());
 
   device_names.set(name, dev_t(info.major, min));
   drivers_lock.write_unlock();
@@ -61,7 +60,7 @@ int dev::deregister_name(struct dev::driver_info &, ck::string name) {
   return -ENOENT;
 }
 
-void dev::populate_inode_device(fs::inode &ino) {
+void dev::populate_inode_device(fs::Node &ino) {
   if (drivers.contains(ino.major)) {
     auto *d = drivers[ino.major];
     d->lock.read_lock();
@@ -70,7 +69,7 @@ void dev::populate_inode_device(fs::inode &ino) {
       ino.fops = &fs::block_file_ops;
 
       ino.blk.dev = d->block_devices[ino.minor];
-      fs::blkdev::acquire(ino.blk.dev);
+      fs::BlockDevice::acquire(ino.blk.dev);
     }
 
     if (d->type == DRIVER_CHAR) {
@@ -82,8 +81,8 @@ void dev::populate_inode_device(fs::inode &ino) {
   }
 }
 
-struct fs::inode *devicei(struct dev::driver_info &d, ck::string name, minor_t min) {
-  fs::inode *ino = new fs::inode(d.type == DRIVER_BLOCK ? T_BLK : T_CHAR, fs::DUMMY_SB);
+struct fs::Node *devicei(struct dev::driver_info &d, ck::string name, minor_t min) {
+  fs::Node *ino = new fs::Node(d.type == DRIVER_BLOCK ? T_BLK : T_CHAR, fs::DUMMY_SB);
 
   ino->major = d.major;
   ino->minor = min;
@@ -93,7 +92,7 @@ struct fs::inode *devicei(struct dev::driver_info &d, ck::string name, minor_t m
   return ino;
 }
 
-ck::ref<fs::file> dev::open(ck::string name) {
+ck::ref<fs::File> dev::open(ck::string name) {
   if (device_names.contains(name)) {
     auto dev = device_names.get(name);
     int maj = dev.major();
@@ -108,7 +107,7 @@ ck::ref<fs::file> dev::open(ck::string name) {
       ck::string path = ck::string::format("/dev/%s", name.get());
 
       auto ino = devicei(*d, name, min);
-      return fs::file::create(ino, path, FDIR_READ | FDIR_WRITE);
+      return fs::File::create(ino, path, FDIR_READ | FDIR_WRITE);
     }
   }
 
@@ -121,8 +120,8 @@ ck::string dev::next_disk_name(void) { return ck::string::format("disk%d", disk_
 /**
  * look up a device
  */
-struct fs::blkdev *fs::bdev_from_path(const char *n) {
-  struct fs::blkdev *bdev = nullptr;
+struct fs::BlockDevice *fs::bdev_from_path(const char *n) {
+  struct fs::BlockDevice *bdev = nullptr;
 
   // if we don't have root yet, we need to emulate devfs
   if (vfs::get_root() == NULL) {

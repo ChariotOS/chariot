@@ -8,7 +8,7 @@ int sys::open(const char *path, int flags, int mode) {
     return -1;
   }
 
-  struct fs::inode *ino = NULL;
+  struct fs::Node *ino = NULL;
 
 
   int r = vfs::namei(path, flags, mode, vfs::cwd(), ino);
@@ -19,7 +19,7 @@ int sys::open(const char *path, int flags, int mode) {
     return r;
   }
 
-  auto file = fs::file::create(ino, path, flags);
+  auto file = fs::File::create(ino, path, flags);
   if (file->ino == NULL) {
     // the file was created for no reason, as it failed to open
     return file->errorcode();  // negative errno

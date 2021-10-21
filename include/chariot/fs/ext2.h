@@ -93,20 +93,20 @@ namespace fs {
    *
    * It implements the standard Second Extended Filesystem
    */
-  class ext2 final : public fs::superblock {
+  class ext2 final : public fs::SuperBlock {
    public:
     ext2(void);
 
     ~ext2(void);
 
-    bool init(fs::blkdev *);
+    bool init(fs::BlockDevice *);
 
 
     // implemented in ext2/inode.cpp
-    static struct fs::inode *create_inode(fs::ext2 *fs, u32 index);
+    static struct fs::Node *create_inode(fs::ext2 *fs, u32 index);
 
-    struct fs::inode *get_root(void);
-    struct fs::inode *get_inode(u32 index);
+    struct fs::Node *get_root(void);
+    struct fs::Node *get_inode(u32 index);
 
     friend class ext2_inode;
     bool read_block(u32 block, void *buf);
@@ -116,7 +116,7 @@ namespace fs {
 
     bool write_inode(ext2_inode_info &dst, u32 inode);
 
-    inline struct block::buffer *bget(uint32_t block) { return ::bget(*bdev, block); }
+    inline struct block::Buffer *bget(uint32_t block) { return ::bget(*bdev, block); }
 
     uint32_t balloc(void);
     void bfree(uint32_t);
@@ -220,15 +220,15 @@ namespace fs {
     // the size of a single disk sector
     long sector_size;
 
-    ck::map<u32, struct fs::inode *> inodes;
+    ck::map<u32, struct fs::Node *> inodes;
 
     // how many entries in the disk cache
     int cache_size;
     int cache_time = 0;
     spinlock cache_lock;
 
-    ck::ref<fs::file> disk;
-    fs::blkdev *bdev;
+    ck::ref<fs::File> disk;
+    fs::BlockDevice *bdev;
 
     spinlock m_lock;
   };

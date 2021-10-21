@@ -10,7 +10,7 @@ int sys::chdir(const char *path) {
 
   scoped_lock l(proc->datalock);
 
-  fs::inode *ncwd = NULL;
+  fs::Node *ncwd = NULL;
 
   if (0 != vfs::namei(path, 0, 0, proc->cwd, ncwd)) return -1;
 
@@ -18,7 +18,7 @@ int sys::chdir(const char *path) {
   if (ncwd->type != T_DIR) return -ENOTDIR;
 
   geti(ncwd);
-  fs::inode::release(proc->cwd);
+  fs::Node::release(proc->cwd);
 
   ck::string cwd;
   if (vfs::getcwd(*ncwd, cwd) != 0) return -EINVAL;

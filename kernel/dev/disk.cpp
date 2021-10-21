@@ -9,13 +9,11 @@
 
 // #include "../../drivers/ata/ata.h"
 
-dev::disk::disk() {}
-dev::disk::~disk(void) {}
+dev::Disk::Disk() {}
+dev::Disk::~Disk(void) {}
 
 
-dev::disk_part::disk_part(dev::disk* parent, u32 start, u32 len) : start(start), len(len) {
-  this->parent = parent;
-}
+dev::disk_part::disk_part(dev::Disk* parent, u32 start, u32 len) : start(start), len(len) { this->parent = parent; }
 dev::disk_part::~disk_part() {}
 
 bool dev::disk_part::read_blocks(uint32_t sector, void* data, int n) {
@@ -35,11 +33,11 @@ size_t dev::disk_part::block_count(void) { return len; }
 
 
 
-static ck::vec<dev::disk*> m_disks;
+static ck::vec<dev::Disk*> m_disks;
 static bool initialized = false;
 
 
-static dev::disk* get_disk(int minor) {
+static dev::Disk* get_disk(int minor) {
   if (minor >= 0 && minor < m_disks.size()) {
     return m_disks[minor];
   }
@@ -48,7 +46,7 @@ static dev::disk* get_disk(int minor) {
 }
 
 
-static int disk_dev_init(fs::blkdev& d) {
+static int disk_dev_init(fs::BlockDevice& d) {
   auto disk = get_disk(d.dev.minor());
 
   d.block_count = disk->block_count();
@@ -58,7 +56,7 @@ static int disk_dev_init(fs::blkdev& d) {
 }
 
 
-static int disk_rw_block(fs::blkdev& b, void* data, int block, bool write) {
+static int disk_rw_block(fs::BlockDevice& b, void* data, int block, bool write) {
   auto d = get_disk(b.dev.minor());
   if (d == NULL) return -1;
 
@@ -71,7 +69,7 @@ static int disk_rw_block(fs::blkdev& b, void* data, int block, bool write) {
   return success ? 0 : -1;
 }
 
-struct fs::block_operations generic_disk_blk_ops = {
+struct fs::BlockOperations generic_disk_blk_ops = {
     .init = disk_dev_init,
     .rw_block = disk_rw_block,
 };
@@ -82,7 +80,7 @@ static struct dev::driver_info disk_driver_info {
   .block_ops = &generic_disk_blk_ops,
 };
 
-static int add_drive(const ck::string& name, dev::disk* drive) {
+static int add_drive(const ck::string& name, dev::Disk* drive) {
   printk(KERN_INFO "Add drive '%s'\n", name.get());
   int minor = m_disks.size();
   // KINFO("Detected ATA drive '%s'\n", name.get(), MAJOR_ATA);
@@ -92,7 +90,7 @@ static int add_drive(const ck::string& name, dev::disk* drive) {
   return minor;
 }
 
-int dev::register_disk(dev::disk* disk) {
+int dev::register_disk(dev::Disk* disk) {
   if (!initialized) {
     if (dev::register_driver(disk_driver_info) != 0) {
       panic("failed to register generic disk driver\n");

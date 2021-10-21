@@ -163,8 +163,8 @@ int kernel_init(void *) {
   }
 
   auto kproc = sched::proc::kproc();
-  kproc->root = fs::inode::acquire(vfs::get_root());
-  kproc->cwd = fs::inode::acquire(vfs::get_root());
+  kproc->root = fs::Node::acquire(vfs::get_root());
+  kproc->cwd = fs::Node::acquire(vfs::get_root());
 
 
 

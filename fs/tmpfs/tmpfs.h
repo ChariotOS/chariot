@@ -16,11 +16,11 @@ namespace tmp {
 
 
 
-  extern fs::file_operations fops;
-  extern fs::dir_operations dops;
+  extern fs::FileOperations fops;
+  extern fs::DirectoryOperations dops;
 
 
-  struct superblock : public fs::superblock {
+  struct SuperBlock : public fs::SuperBlock {
     /* memory statistics, to keep tmpfs from using too much memory */
     size_t allowed_pages;
     size_t used_pages;
@@ -28,15 +28,15 @@ namespace tmp {
     uint64_t next_inode = 0;
 
 
-    superblock(ck::string args, int flags);
+    SuperBlock(ck::string args, int flags);
 
 
     /* create an inode and acquire it */
-    fs::inode *create_inode(int type);
+    fs::Node *create_inode(int type);
   };
 
 
-  inline auto &getsb(fs::inode &i) { return *(tmp::superblock *)&i.sb; }
+  inline auto &getsb(fs::Node &i) { return *(tmp::SuperBlock *)&i.sb; }
 
 
   /*

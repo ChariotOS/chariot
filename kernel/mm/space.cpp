@@ -297,11 +297,11 @@ mm::AddressSpace *mm::AddressSpace::fork(void) {
   return n;
 }
 
-off_t mm::AddressSpace::mmap(off_t req, size_t size, int prot, int flags, ck::ref<fs::file> fd, off_t off) {
+off_t mm::AddressSpace::mmap(off_t req, size_t size, int prot, int flags, ck::ref<fs::File> fd, off_t off) {
   return mmap("", req, size, prot, flags, move(fd), off);
 }
 
-off_t mm::AddressSpace::mmap(ck::string name, off_t addr, size_t size, int prot, int flags, ck::ref<fs::file> fd, off_t off) {
+off_t mm::AddressSpace::mmap(ck::string name, off_t addr, size_t size, int prot, int flags, ck::ref<fs::File> fd, off_t off) {
   if (addr & 0xFFF) return -1;
 
   if ((flags & (MAP_PRIVATE | MAP_SHARED)) == 0) {

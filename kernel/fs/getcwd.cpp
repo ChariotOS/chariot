@@ -5,11 +5,11 @@
 #include <process.h>
 #include <thread.h>
 
-int vfs::getcwd(fs::inode &cwd, ck::string &dst) {
+int vfs::getcwd(fs::Node &cwd, ck::string &dst) {
   int err = 0;
 
-  fs::inode *cur = &cwd;
-  fs::inode *next = NULL;
+  fs::Node *cur = &cwd;
+  fs::Node *next = NULL;
 
 
   ck::string sep = "/";

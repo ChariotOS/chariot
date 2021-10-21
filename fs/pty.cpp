@@ -15,12 +15,12 @@
 #endif
 
 
-static ssize_t pts_read(fs::file &f, char *dst, size_t sz);
-static ssize_t pts_write(fs::file &f, const char *dst, size_t sz);
-static int pts_ioctl(fs::file &f, unsigned int cmd, off_t arg);
-static ssize_t mx_read(fs::file &f, char *dst, size_t sz);
-static ssize_t mx_write(fs::file &f, const char *dst, size_t sz);
-static int pts_poll(fs::file &f, int events, poll_table &pt);
+static ssize_t pts_read(fs::File &f, char *dst, size_t sz);
+static ssize_t pts_write(fs::File &f, const char *dst, size_t sz);
+static int pts_ioctl(fs::File &f, unsigned int cmd, off_t arg);
+static ssize_t mx_read(fs::File &f, char *dst, size_t sz);
+static ssize_t mx_write(fs::File &f, const char *dst, size_t sz);
+static int pts_poll(fs::File &f, int events, poll_table &pt);
 
 
 void pty::write_in(char c) {
@@ -43,7 +43,7 @@ static spinlock pts_lock;
 static ck::map<int, ck::ref<struct pty>> pts;
 
 
-static struct fs::file_operations pts_ops = {
+static struct fs::FileOperations pts_ops = {
     .read = pts_read,
     .write = pts_write,
     .ioctl = pts_ioctl,
@@ -52,9 +52,7 @@ static struct fs::file_operations pts_ops = {
 
 
 
-static struct dev::driver_info pts_driver {
-  .name = "pts", .type = DRIVER_CHAR, .major = MAJOR_PTS, .char_ops = &pts_ops,
-};
+static struct dev::driver_info pts_driver { .name = "pts", .type = DRIVER_CHAR, .major = MAJOR_PTS, .char_ops = &pts_ops, };
 
 
 static auto getpts(int id) { return pts.get(id); }
@@ -88,7 +86,7 @@ static int allocate_pts() {
 }
 
 
-static int pts_ioctl(fs::file &f, unsigned int cmd, off_t arg) { return 0; }
+static int pts_ioctl(fs::File &f, unsigned int cmd, off_t arg) { return 0; }
 
 static void close_pts(int ptsid) {
   pts_lock.lock();
@@ -103,13 +101,13 @@ static void close_pts(int ptsid) {
 }
 
 
-static ssize_t pts_read(fs::file &f, char *dst, size_t sz) {
+static ssize_t pts_read(fs::File &f, char *dst, size_t sz) {
   auto pts = getpts(f.ino->minor);
   DBG("pts_read %dB from %p\n", sz, pts.get());
   return pts->in.read(dst, sz, true /* block? */);
 }
 
-static ssize_t pts_write(fs::file &f, const char *dst, size_t sz) {
+static ssize_t pts_write(fs::File &f, const char *dst, size_t sz) {
   auto pts = getpts(f.ino->minor);
   DBG("pts_write %dB to %p\n", sz, pts.get());
   for (size_t s = 0; s < sz; s++)
@@ -118,13 +116,13 @@ static ssize_t pts_write(fs::file &f, const char *dst, size_t sz) {
 }
 
 
-static ssize_t mx_read(fs::file &f, char *dst, size_t sz) {
+static ssize_t mx_read(fs::File &f, char *dst, size_t sz) {
   auto pts = getpts(f.pflags);
   DBG("mx_read %dB from %p\n", sz, pts.get());
   return pts->out.read(dst, sz, false /* block? */);
 }
 
-static ssize_t mx_write(fs::file &f, const char *dst, size_t sz) {
+static ssize_t mx_write(fs::File &f, const char *dst, size_t sz) {
   auto pts = getpts(f.pflags);
   DBG("mx_write %dB to %p\n", sz, pts.get());
   for (size_t s = 0; s < sz; s++)
@@ -134,29 +132,29 @@ static ssize_t mx_write(fs::file &f, const char *dst, size_t sz) {
 
 
 
-static int pts_poll(fs::file &f, int events, poll_table &pt) {
+static int pts_poll(fs::File &f, int events, poll_table &pt) {
   auto pts = getpts(f.ino->minor);
   return pts->in.poll(pt) & events & AWAITFS_READ;
 }
 
 
-static int mx_poll(fs::file &f, int events, poll_table &pt) {
+static int mx_poll(fs::File &f, int events, poll_table &pt) {
   auto pts = getpts(f.pflags);
   return pts->out.poll(pt) & events & AWAITFS_READ;
 }
 
-static int mx_open(fs::file &f) {
+static int mx_open(fs::File &f) {
   DBG("mx open\n");
   f.pflags = allocate_pts();
   return 0;
 }
 
-static void mx_close(fs::file &f) {
+static void mx_close(fs::File &f) {
   DBG("mx close\n");
   close_pts(f.pflags);
 }
 
-static int mx_ioctl(fs::file &f, unsigned int cmd, off_t arg) {
+static int mx_ioctl(fs::File &f, unsigned int cmd, off_t arg) {
   DBG("mx ioctl\n");
   if (cmd == PTMX_GETPTSID) {
     return f.pflags;
@@ -167,7 +165,7 @@ static int mx_ioctl(fs::file &f, unsigned int cmd, off_t arg) {
 
 
 
-static struct fs::file_operations mx_ops = {
+static struct fs::FileOperations mx_ops = {
     .read = mx_read,
     .write = mx_write,
     .ioctl = mx_ioctl,
@@ -177,9 +175,7 @@ static struct fs::file_operations mx_ops = {
 };
 
 
-static struct dev::driver_info mx_driver {
-  .name = "ptmx", .type = DRIVER_CHAR, .major = MAJOR_PTMX, .char_ops = &mx_ops,
-};
+static struct dev::driver_info mx_driver { .name = "ptmx", .type = DRIVER_CHAR, .major = MAJOR_PTMX, .char_ops = &mx_ops, };
 
 
 static void pty_init(void) {

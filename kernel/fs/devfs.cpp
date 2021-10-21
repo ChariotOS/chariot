@@ -5,7 +5,7 @@
 #include <module.h>
 #include <dev/driver.h>
 
-static struct fs::inode *devfs_lookup(fs::inode &node, const char *needle) {
+static struct fs::Node *devfs_lookup(fs::Node &node, const char *needle) {
   if (node.type != T_DIR) panic("devfs_lookup on non-dir\n");
 
   // walk the linked list to get the inode num
@@ -17,22 +17,15 @@ static struct fs::inode *devfs_lookup(fs::inode &node, const char *needle) {
   return NULL;
 }
 
-static int devfs_create(fs::inode &node, const char *name, struct fs::file_ownership &) {
-  return -EPERM;
-}
+static int devfs_create(fs::Node &node, const char *name, struct fs::Ownership &) { return -EPERM; }
 
-static int devfs_mkdir(fs::inode &, const char *name, struct fs::file_ownership &) {
-  return -EPERM;
-}
+static int devfs_mkdir(fs::Node &, const char *name, struct fs::Ownership &) { return -EPERM; }
 
-static int devfs_unlink(fs::inode &, const char *) { return -EPERM; }
+static int devfs_unlink(fs::Node &, const char *) { return -EPERM; }
 
-static int devfs_mknod(
-    fs::inode &, const char *name, struct fs::file_ownership &, int major, int minor) {
-  return -EPERM;
-}
+static int devfs_mknod(fs::Node &, const char *name, struct fs::Ownership &, int major, int minor) { return -EPERM; }
 
-fs::dir_operations devfs_dir_ops{
+fs::DirectoryOperations devfs_dir_ops{
     .create = devfs_create,
     .mkdir = devfs_mkdir,
     .unlink = devfs_unlink,
@@ -40,25 +33,25 @@ fs::dir_operations devfs_dir_ops{
     .mknod = devfs_mknod,
 };
 
-int devfs_sb_init(struct fs::superblock &sb) {
+int devfs_sb_init(struct fs::SuperBlock &sb) {
   // construct the root node
   return -1;
 }
 
-int devfs_write_super(struct fs::superblock &sb) {
+int devfs_write_super(struct fs::SuperBlock &sb) {
   // doesn't make sense
   return 0;
 }
-int devfs_sync(struct fs::superblock &sb, int flags) {
+int devfs_sync(struct fs::SuperBlock &sb, int flags) {
   // no need to sync
   return 0;
 }
 
-struct fs::superblock devfs_sb;
-static struct fs::inode *devfs_root = NULL;
+struct fs::SuperBlock devfs_sb;
+static struct fs::Node *devfs_root = NULL;
 static int next_inode_nr = 0;
 static auto *devfs_create_inode(int type) {
-  auto ino = new fs::inode(type, devfs_sb);
+  auto ino = new fs::Node(type, devfs_sb);
   ino->ino = next_inode_nr++;
   ino->uid = 0;
   ino->gid = 0;
@@ -66,10 +59,10 @@ static auto *devfs_create_inode(int type) {
   ino->mode = 07755;
   ino->link_count = 3;
   ino->dops = &devfs_dir_ops;
-  return fs::inode::acquire(ino);
+  return fs::Node::acquire(ino);
 }
 
-static struct fs::inode *devfs_get_root(void) {
+static struct fs::Node *devfs_get_root(void) {
   if (devfs_root == NULL) {
     devfs_root = devfs_create_inode(T_DIR);
     devfs_root->register_direntry(".", ENT_MEM, devfs_root->ino, devfs_root);
@@ -88,13 +81,12 @@ void devfs_register_device(ck::string name, int type, int major, int minor) {
   root->register_direntry(name, ENT_MEM, node->ino, node);
 }
 
-struct fs::sb_operations devfs_sb_ops {
+struct fs::SuperBlockOperations devfs_sb_ops {
   .init = devfs_sb_init, .write_super = devfs_write_super, .sync = devfs_sync,
 };
 
 
-static struct fs::superblock *devfs_mount(
-    struct fs::sb_information *, const char *args, int flags, const char *device) {
+static struct fs::SuperBlock *devfs_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
   devfs_sb.ops = &devfs_sb_ops;
   devfs_sb.arguments = args;
   devfs_sb.root = devfs_get_root();
@@ -102,7 +94,7 @@ static struct fs::superblock *devfs_mount(
 }
 
 
-struct fs::sb_information devfs_info {
+struct fs::SuperBlockInfo devfs_info {
   .name = "devfs", .mount = devfs_mount, .ops = devfs_sb_ops,
 };
 

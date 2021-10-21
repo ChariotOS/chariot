@@ -7,18 +7,18 @@
 
 #include <thread.h>
 
-struct fs::inode *vfs_root = NULL;
-static ck::vec<struct fs::sb_information *> filesystems;
+struct fs::Node *vfs_root = NULL;
+static ck::vec<struct fs::SuperBlockInfo *> filesystems;
 static ck::vec<struct vfs::mountpoint *> mountpoints;
 
-void vfs::register_filesystem(struct fs::sb_information &info) {
+void vfs::register_filesystem(struct fs::SuperBlockInfo &info) {
   printk(KERN_INFO "filesystem '%s' registered\n", info.name);
   filesystems.push(&info);
 }
 
-void vfs::deregister_filesystem(struct fs::sb_information &) {}
+void vfs::deregister_filesystem(struct fs::SuperBlockInfo &) {}
 
-struct fs::inode *vfs::cwd(void) {
+struct fs::Node *vfs::cwd(void) {
   if (cpu::in_thread()) {
     auto proc = cpu::proc();
 
@@ -30,7 +30,7 @@ struct fs::inode *vfs::cwd(void) {
   return vfs_root;
 }
 
-struct fs::inode *vfs::get_root(void) {
+struct fs::Node *vfs::get_root(void) {
   return vfs_root;
 }
 
@@ -53,7 +53,7 @@ int vfs::mount(const char *src, const char *targ, const char *type, unsigned lon
     // TODO: look up the target directory
   }
 
-  struct fs::sb_information *fs = nullptr;
+  struct fs::SuperBlockInfo *fs = nullptr;
 
   for (int i = 0; i < filesystems.size(); i++) {
     if (strcmp(type, filesystems[i]->name) == 0) {
@@ -85,7 +85,7 @@ int vfs::mount(const char *src, const char *targ, const char *type, unsigned lon
   if (get_root() == NULL && strcmp(targ, "/") == 0) {
     // update the root
     // TODO: this needs to be smarter :)
-    vfs_root = fs::inode::acquire(mp->sb->root);
+    vfs_root = fs::Node::acquire(mp->sb->root);
   } else {
     // this is so gross...
     mp->host = vfs::open(targ, O_RDONLY, 0);
@@ -138,7 +138,7 @@ int sys::mkdir(const char *upath, int mode) {
   // if there was a slash in the name, fix up the name and the path so it points after
   if (last_slash != -1) name = path + last_slash + 1;
 
-  struct fs::inode *dir = NULL;
+  struct fs::Node *dir = NULL;
   // get the last directory in the name, (hence the true)
   int err = vfs::namei(path, 0, mode, vfs::cwd(), dir, true);
   if (err < 0) return err;
@@ -151,7 +151,7 @@ int sys::mkdir(const char *upath, int mode) {
   if (dir->get_direntry(name) != NULL) return -EEXIST;
 
 
-  fs::file_ownership fown;
+  fs::Ownership fown;
   // TODO: real permissions
   fown.uid = curproc->user.uid;
   fown.gid = curproc->user.gid;
@@ -164,8 +164,8 @@ int sys::mkdir(const char *upath, int mode) {
 
 
 
-struct fs::inode *vfs::open(ck::string spath, int opts, int mode) {
-  struct fs::inode *ino = NULL;
+struct fs::Node *vfs::open(ck::string spath, int opts, int mode) {
+  struct fs::Node *ino = NULL;
 
   if (!cpu::in_thread()) {
     printk("not in thread\n");
@@ -220,7 +220,7 @@ static const char *skipelem(const char *path, char *name, bool &last) {
   return path;
 }
 
-int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd, struct fs::inode *&res, bool get_last) {
+int vfs::namei(const char *path, int flags, int mode, struct fs::Node *cwd, struct fs::Node *&res, bool get_last) {
   assert(path != NULL);
   auto ino = cwd;
 
@@ -254,7 +254,7 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd, str
     if (found == NULL) {
       if (last && (flags & O_CREAT)) {
         if (ino->dops && ino->dops->create) {
-          fs::file_ownership own;
+          fs::Ownership own;
           own.uid = curproc->user.uid;
           own.gid = curproc->user.gid;
           own.mode = mode;
@@ -280,7 +280,7 @@ int vfs::namei(const char *path, int flags, int mode, struct fs::inode *cwd, str
 
 
 
-int vfs::unlink(const char *path, struct fs::inode *cwd) {
+int vfs::unlink(const char *path, struct fs::Node *cwd) {
   auto ino = cwd;
 
   auto uroot = curproc->root ?: vfs::get_root();
@@ -324,7 +324,7 @@ int vfs::unlink(const char *path, struct fs::inode *cwd) {
 }
 
 
-fs::file vfs::fdopen(ck::string path, int opts, int mode) {
+fs::File vfs::fdopen(ck::string path, int opts, int mode) {
   int fd_dirs = 0;
 
   if (opts & O_RDWR) fd_dirs |= FDIR_READ | FDIR_WRITE;
@@ -333,7 +333,7 @@ fs::file vfs::fdopen(ck::string path, int opts, int mode) {
 
   auto *ino = vfs::open(move(path), opts, mode);
 
-  fs::file fd(ino, fd_dirs);
+  fs::File fd(ino, fd_dirs);
 
   fd.path = move(path);
   return fd;

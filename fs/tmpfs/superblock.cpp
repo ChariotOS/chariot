@@ -2,7 +2,7 @@
 
 
 
-tmp::superblock::superblock(ck::string args, int flags) {
+tmp::SuperBlock::SuperBlock(ck::string args, int flags) {
   /* by default, use 256 mb of pages */
   allowed_pages = 256 * MB / PGSIZE;
   used_pages = 0;
@@ -15,9 +15,9 @@ tmp::superblock::superblock(ck::string args, int flags) {
 
 
 
-fs::inode *tmp::superblock::create_inode(int type) {
+fs::Node *tmp::SuperBlock::create_inode(int type) {
   scoped_lock l(lock);
-  auto ino = new fs::inode(type, *this);
+  auto ino = new fs::Node(type, *this);
   ino->ino = next_inode++;
   ino->uid = 0;
   ino->gid = 0;
@@ -30,6 +30,6 @@ fs::inode *tmp::superblock::create_inode(int type) {
 
   // allocate the private data
   ino->priv<tmp::priv>() = new tmp::priv();
-  return fs::inode::acquire(ino);
+  return fs::Node::acquire(ino);
   // return ino;
 }

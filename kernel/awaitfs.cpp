@@ -44,7 +44,7 @@ void poll_table::wait(wait_queue &wq, short events) {
 
 
 struct await_table_entry {
-  ck::ref<fs::file> file;
+  ck::ref<fs::File> file;
   // what are we waiting on?
   short awaiting;
 

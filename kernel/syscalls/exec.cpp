@@ -38,7 +38,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   }
 
   // try to load the binary
-  fs::inode *exe = NULL;
+  fs::Node *exe = NULL;
 
   // TODO: open permissions on the binary
   if (vfs::namei(path, 0, 0, curproc->cwd, exe) != 0) {
@@ -62,7 +62,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   }
 
   off_t entry = 0;
-  auto fd = ck::make_ref<fs::file>(exe, FDIR_READ);
+  auto fd = ck::make_ref<fs::File>(exe, FDIR_READ);
   mm::AddressSpace *new_addr_space = nullptr;
 
   new_addr_space = alloc_user_vm();

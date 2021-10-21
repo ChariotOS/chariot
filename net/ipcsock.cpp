@@ -9,9 +9,9 @@
 #include <util.h>
 
 static rwlock all_ipcsocks_lock;
-static struct net::ipcsock *all_ipcsocks = NULL;
+static struct net::IPCSock *all_ipcsocks = NULL;
 
-net::ipcsock::ipcsock(int type) : net::sock(AF_CKIPC, type, 0) {
+net::IPCSock::IPCSock(int type) : net::Socket(AF_CKIPC, type, 0) {
   all_ipcsocks_lock.write_lock();
   next = all_ipcsocks;
   prev = nullptr;
@@ -22,7 +22,7 @@ net::ipcsock::ipcsock(int type) : net::sock(AF_CKIPC, type, 0) {
   all_ipcsocks_lock.write_unlock();
 }
 
-net::ipcsock::~ipcsock(void) {
+net::IPCSock::~IPCSock(void) {
   all_ipcsocks_lock.write_lock();
   if (all_ipcsocks == this) {
     all_ipcsocks = next;
@@ -35,19 +35,19 @@ net::ipcsock::~ipcsock(void) {
   if (bindpoint != NULL) {
     // we don't need to
     bindpoint->bound_socket = NULL;
-    fs::inode::release(bindpoint);
+    fs::Node::release(bindpoint);
   }
   all_ipcsocks_lock.write_unlock();
 }
 
 
-net::sock *net::ipcsock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
+net::Socket *net::IPCSock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
   // wait on a client
   auto *client = pending_connections.recv();
   return client;
 }
 
-int net::ipcsock::connect(struct sockaddr *addr, int len) {
+int net::IPCSock::connect(struct sockaddr *addr, int len) {
   if (len != sizeof(struct sockaddr_un)) {
     return -EINVAL;
   }
@@ -67,7 +67,7 @@ int net::ipcsock::connect(struct sockaddr *addr, int len) {
     return -ENOENT;
   }
 
-  peer = (struct ipcsock *)net::sock::acquire(*in->bound_socket);
+  peer = (struct IPCSock *)net::Socket::acquire(*in->bound_socket);
 
   // send, and wait. This will always succeed if we are here.
   this->peer->pending_connections.send(this, true);
@@ -77,7 +77,7 @@ int net::ipcsock::connect(struct sockaddr *addr, int len) {
 }
 
 
-int net::ipcsock::disconnect(int flags) {
+int net::IPCSock::disconnect(int flags) {
   auto &state = (flags & PFLAGS_CLIENT) ? for_server : for_client;
 
   state.lock.lock();
@@ -110,7 +110,7 @@ printk(
 // #define IPCSOCK_DEBUG
 
 
-ssize_t net::ipcsock::sendto(fs::file &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
+ssize_t net::IPCSock::sendto(fs::File &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
   auto &state = (fd.pflags & PFLAGS_SERVER) ? for_client : for_server;
 
   {
@@ -133,7 +133,7 @@ ssize_t net::ipcsock::sendto(fs::file &fd, void *data, size_t len, int flags, co
 
 
 
-ssize_t net::ipcsock::recvfrom(fs::file &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
+ssize_t net::IPCSock::recvfrom(fs::File &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
   auto &state = (fd.pflags & PFLAGS_SERVER) ? for_server : for_client;
   bool block = (flags & MSG_DONTWAIT) == 0;
   while (1) {
@@ -189,7 +189,7 @@ ssize_t net::ipcsock::recvfrom(fs::file &fd, void *data, size_t len, int flags, 
 
 
 
-int net::ipcsock::bind(const struct sockaddr *addr, size_t len) {
+int net::IPCSock::bind(const struct sockaddr *addr, size_t len) {
   if (len != sizeof(struct sockaddr_un)) return -EINVAL;
   if (bindpoint != NULL) return -EINVAL;
 
@@ -208,13 +208,13 @@ int net::ipcsock::bind(const struct sockaddr *addr, size_t len) {
   if (in->bound_socket != NULL) return -EADDRINUSE;
 
   // acquire the file and set the bound_socket to this
-  bindpoint = fs::inode::acquire(in);
-  bindpoint->bound_socket = net::sock::acquire(*this);
+  bindpoint = fs::Node::acquire(in);
+  bindpoint->bound_socket = net::Socket::acquire(*this);
   return 0;
 }
 
 
-int net::ipcsock::poll(fs::file &f, int events, poll_table &pt) {
+int net::IPCSock::poll(fs::File &f, int events, poll_table &pt) {
   int res = 0;
 
 

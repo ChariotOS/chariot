@@ -6,7 +6,7 @@
 void *sys::mmap(void *addr, long length, int prot, int flags, int fd, long offset) {
   auto proc = cpu::proc();
   off_t va;
-  ck::ref<fs::file> f = nullptr;
+  ck::ref<fs::File> f = nullptr;
 
   // printk("mmap offset 0x%08x (fd:%d)\n", offset, fd);
   if ((offset & 0xFFF) != 0) {

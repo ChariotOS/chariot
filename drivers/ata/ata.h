@@ -11,39 +11,27 @@ class byte_port {
   u16 m_port;
 
  public:
-  inline byte_port(u16 port) : m_port(port) {
-  }
-  inline byte_port() : m_port(0) {
-  }
+  inline byte_port(u16 port) : m_port(port) {}
+  inline byte_port() : m_port(0) {}
 
-  inline void out(u8 val) {
-    ::outb(m_port, val);
-  }
+  inline void out(u8 val) { ::outb(m_port, val); }
 
-  inline u8 in(void) {
-    return ::inb(m_port);
-  }
+  inline u8 in(void) { return ::inb(m_port); }
 };
 
 class word_port {
  public:
   u16 m_port;
-  inline word_port(u16 port) : m_port(port) {
-  }
-  inline word_port() : m_port(0) {
-  }
+  inline word_port(u16 port) : m_port(port) {}
+  inline word_port() : m_port(0) {}
 
-  inline void out(u16 val) {
-    ::outw(m_port, val);
-  }
+  inline void out(u16 val) { ::outw(m_port, val); }
 
-  inline u16 in(void) {
-    return ::inw(m_port);
-  }
+  inline u16 in(void) { return ::inw(m_port); }
 };
 
 namespace dev {
-  class ata : public dev::disk {
+  class ata : public dev::Disk {
    public:
     word_port data_port;
     byte_port error_port;

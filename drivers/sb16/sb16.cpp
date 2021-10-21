@@ -133,14 +133,14 @@ static void dma_start(uint32_t length) {
 }
 
 
-static ssize_t sb16_write(fs::file &fd, const char *buf, size_t sz) {
+static ssize_t sb16_write(fs::File &fd, const char *buf, size_t sz) {
   // limit to single access
   scoped_lock l(sb16_lock);
   if (dma_page == NULL) {
     dma_page = phys::alloc(1);
   }
 
-	printk("dma_page: %p\n", dma_page);
+  printk("dma_page: %p\n", dma_page);
 
 
 
@@ -174,15 +174,13 @@ static ssize_t sb16_write(fs::file &fd, const char *buf, size_t sz) {
   dsp_write((sample_count >> 8) & 0xFF);
 
 
-	sb16_wq.wait_noint();
+  sb16_wq.wait_noint();
   return sz;
 }
 
-static int sb16_open(fs::file &fd) {
-  return 0;
-}
+static int sb16_open(fs::File &fd) { return 0; }
 
-struct fs::file_operations sb_ops = {
+struct fs::FileOperations sb_ops = {
     .write = sb16_write,
     .open = sb16_open,
 };

@@ -306,7 +306,7 @@ void mouse_install() {
   irq::install(MOUSE_IRQ, mouse_handler, "PS2 Mouse");
 }
 
-static ssize_t mouse_read(fs::file &fd, char *buf, size_t sz) {
+static ssize_t mouse_read(fs::File &fd, char *buf, size_t sz) {
   if (fd) {
     if (sz % sizeof(struct mouse_packet) != 0) {
       return -EINVAL;
@@ -318,7 +318,7 @@ static ssize_t mouse_read(fs::file &fd, char *buf, size_t sz) {
   return -1;
 }
 
-static int mouse_open(fs::file &fd) {
+static int mouse_open(fs::File &fd) {
   // only open if it isn't already opened
   if (open) return -1;
   open = true;
@@ -326,18 +326,16 @@ static int mouse_open(fs::file &fd) {
   return 0;
 }
 
-static void mouse_close(fs::file &fd) {
+static void mouse_close(fs::File &fd) {
   open = false;
   // KINFO("[mouse] close!\n");
 }
 
 
-static int mouse_poll(fs::file &fd, int events, poll_table &pt) {
-  return mouse_buffer.poll(pt) & events;
-}
+static int mouse_poll(fs::File &fd, int events, poll_table &pt) { return mouse_buffer.poll(pt) & events; }
 
 
-struct fs::file_operations mouse_ops = {
+struct fs::FileOperations mouse_ops = {
     .read = mouse_read,
 
     .open = mouse_open,

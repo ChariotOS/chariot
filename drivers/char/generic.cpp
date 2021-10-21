@@ -33,7 +33,7 @@ static size_t read_random(char *m, size_t len) {
   return len;
 }
 
-static ssize_t do_read(fs::file &fd, char *buf, size_t sz) {
+static ssize_t do_read(fs::File &fd, char *buf, size_t sz) {
   if (fd) {
     switch (fd.ino->minor) {
       case MINOR_RANDOM:
@@ -45,11 +45,9 @@ static ssize_t do_read(fs::file &fd, char *buf, size_t sz) {
   return -1;
 }
 
-static ssize_t do_write(fs::file &fd, const char *buf, size_t sz) {
-  return -1;
-}
+static ssize_t do_write(fs::File &fd, const char *buf, size_t sz) { return -1; }
 
-static struct fs::file_operations generic_ops = {
+static struct fs::FileOperations generic_ops = {
     .read = do_read,
     .write = do_write,
 };

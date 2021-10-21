@@ -91,23 +91,19 @@ typedef struct {
 
 static ac97_device_t _device;
 
-static ssize_t ac97_write(fs::file &fd, const char *buf, size_t sz) {
+static ssize_t ac97_write(fs::File &fd, const char *buf, size_t sz) {
   scoped_lock l(ac97_lock);
   return sz;
 }
 
-static int ac97_open(fs::file &fd) {
-  return 0;
-}
+static int ac97_open(fs::File &fd) { return 0; }
 
-static struct fs::file_operations ac97_ops = {
+static struct fs::FileOperations ac97_ops = {
     .write = ac97_write,
     .open = ac97_open,
 };
 
-static struct dev::driver_info ac97_driver {
-  .name = "ac97", .type = DRIVER_CHAR, .major = MAJOR_AC97, .char_ops = &ac97_ops,
-};
+static struct dev::driver_info ac97_driver { .name = "ac97", .type = DRIVER_CHAR, .major = MAJOR_AC97, .char_ops = &ac97_ops, };
 
 static void ac97_interrupt(int intr, reg_t *fr, void *) {
   printk(KERN_INFO "ac97 INTERRUPT\n");

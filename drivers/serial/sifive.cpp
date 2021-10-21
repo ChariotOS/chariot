@@ -124,7 +124,7 @@ class SifiveUart {
 };
 
 
-struct fs::file_operations sifive_uart_ops = {
+struct fs::FileOperations sifive_uart_ops = {
     // .read = sifive_uart_read,
     // .write = sifive_uart_write,
     // .ioctl = sifive_uart_ioctl,

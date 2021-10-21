@@ -112,7 +112,7 @@ struct Process final : public ck::refcounted<Process> {
   mm::AddressSpace *mm;
 
 
-  ck::ref<fs::file> executable;
+  ck::ref<fs::File> executable;
 
   struct {
     bool exists = false;
@@ -123,8 +123,8 @@ struct Process final : public ck::refcounted<Process> {
 
   u64 create_tick = 0;
   // The current working directory of the process.
-  fs::inode *cwd = nullptr;
-  fs::inode *root = nullptr;
+  fs::Node *cwd = nullptr;
+  fs::Node *root = nullptr;
   ck::string cwd_string;
   spinlock datalock;
 
@@ -134,7 +134,7 @@ struct Process final : public ck::refcounted<Process> {
   wait_queue child_wq;
 
   spinlock file_lock;
-  ck::map<int, ck::ref<fs::file>> open_files;
+  ck::map<int, ck::ref<fs::File>> open_files;
 
 
   spinlock futex_lock;
@@ -146,8 +146,8 @@ struct Process final : public ck::refcounted<Process> {
    */
   int exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::string> &envp);
 
-  ck::ref<fs::file> get_fd(int fd);
-  int add_fd(ck::ref<fs::file>);
+  ck::ref<fs::File> get_fd(int fd);
+  int add_fd(ck::ref<fs::File>);
 
   long create_thread(void *ip, int state);
 

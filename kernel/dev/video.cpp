@@ -45,7 +45,7 @@ struct gvi_vmobject final : public mm::VMObject {
   }
 };
 
-static ck::ref<mm::VMObject> gvi_mmap(fs::file &fd, size_t npages, int prot, int flags, off_t off) {
+static ck::ref<mm::VMObject> gvi_mmap(fs::File &fd, size_t npages, int prot, int flags, off_t off) {
   auto *vdev = get_vdev(fd.ino->minor);
   if (vdev == NULL) return nullptr;
 
@@ -73,7 +73,7 @@ static ck::ref<mm::VMObject> gvi_mmap(fs::file &fd, size_t npages, int prot, int
   return ck::make_ref<gvi_vmobject>(*vdev, npages);
 }
 
-static int gvi_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
+static int gvi_ioctl(fs::File &fd, unsigned int cmd, unsigned long arg) {
   auto *vdev = get_vdev(fd.ino->minor);
   if (vdev == NULL) return -EINVAL;
   if (cmd == GVI_IDENTIFY) {
@@ -96,7 +96,7 @@ static int gvi_ioctl(fs::file &fd, unsigned int cmd, unsigned long arg) {
   return -ENOTIMPL;
 }
 
-struct fs::file_operations generic_video_device_ops = {
+struct fs::FileOperations generic_video_device_ops = {
     .ioctl = gvi_ioctl,
     .mmap = gvi_mmap,
 };

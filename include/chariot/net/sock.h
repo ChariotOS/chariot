@@ -13,8 +13,8 @@
 
 // fwd decl
 namespace fs {
-  struct inode;
-  class file;
+  struct Node;
+  class File;
 }  // namespace fs
 
 #define PFLAGS_SERVER (0x1)
@@ -22,34 +22,34 @@ namespace fs {
 
 namespace net {
 
-  struct sock;
+  struct Socket;
 
   /* Network protcol blocks that get attached to sockets */
   struct proto {
     // required fields.
-    int (*connect)(net::sock &sk, struct sockaddr *uaddr, int addr_len);
-    int (*disconnect)(net::sock &sk, int flags);
+    int (*connect)(net::Socket &sk, struct sockaddr *uaddr, int addr_len);
+    int (*disconnect)(net::Socket &sk, int flags);
 
-    net::sock *(*accept)(net::sock &sk, struct sockaddr *uaddr, int addr_len, int &err);
+    net::Socket *(*accept)(net::Socket &sk, struct sockaddr *uaddr, int addr_len, int &err);
 
-    int (*init)(net::sock &sk);
-    void (*destroy)(net::sock &sk);  // called on ~net::sock()
+    int (*init)(net::Socket &sk);
+    void (*destroy)(net::Socket &sk);  // called on ~net::sock()
 
-    ssize_t (*send)(net::sock &sk, void *data, size_t len);
-    ssize_t (*recv)(net::sock &sk, void *data, size_t len);
+    ssize_t (*send)(net::Socket &sk, void *data, size_t len);
+    ssize_t (*recv)(net::Socket &sk, void *data, size_t len);
 
     // optional fields
-    int (*ioctl)(net::sock &sk, int cmd, unsigned long arg);
+    int (*ioctl)(net::Socket &sk, int cmd, unsigned long arg);
   };
 
   /**
    * The representation of a network socket. Stored in fs::inode.sock when type
    * is T_SOCK
    */
-  struct sock {
+  struct Socket {
     enum class role : uint8_t { none, accepting, listener, connected, connecting };
 
-    net::sock::role role = role::none;
+    net::Socket::role role = role::none;
 
     int domain;    // AF_*
     int type;      // SOCK_*
@@ -59,35 +59,34 @@ namespace net {
     size_t total_recv = 0;
 
     // the inode that contains this socket
-    struct fs::inode *ino = NULL;
+    struct fs::Node *ino = NULL;
 
 
-    sock(int domain, int type, int proto);
-    virtual ~sock(void);
+    Socket(int domain, int type, int proto);
+    virtual ~Socket(void);
 
-    inline virtual int poll(fs::file &f, int events, poll_table &pt) { return 0; }
+    inline virtual int poll(fs::File &f, int events, poll_table &pt) { return 0; }
 
     template <typename T>
     T *&priv(void) {
       return (T *&)_private;
     }
 
-    static net::sock *create(int domain, int type, int protocol, int &err);
-    static fs::inode *createi(int domain, int type, int protocol, int &err);
+    static net::Socket *create(int domain, int type, int protocol, int &err);
+    static fs::Node *createi(int domain, int type, int protocol, int &err);
 
-    static net::sock *acquire(net::sock &);
-    static void release(net::sock *&);
+    static net::Socket *acquire(net::Socket &);
+    static void release(net::Socket *&);
 
     virtual int ioctl(int cmd, unsigned long arg);
 
     virtual int connect(struct sockaddr *uaddr, int addr_len);
-    virtual net::sock *accept(struct sockaddr *uaddr, int addr_len, int &err);
+    virtual net::Socket *accept(struct sockaddr *uaddr, int addr_len, int &err);
     virtual int disconnect(int flags);
 
     // implemented by the network layer (OSI)
-    virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
-    virtual ssize_t recvfrom(
-        fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t sendto(fs::File &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t recvfrom(fs::File &, void *data, size_t len, int flags, const sockaddr *, size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
@@ -97,40 +96,39 @@ namespace net {
     void *_private;
   };
 
-  struct localsock : public net::sock {
-    localsock(int type);
-    virtual ~localsock(void);
+  struct LocalSocket : public net::Socket {
+    LocalSocket(int type);
+    virtual ~LocalSocket(void);
 
     virtual int connect(struct sockaddr *uaddr, int addr_len);
     virtual int disconnect(int flags);
-    virtual net::sock *accept(struct sockaddr *uaddr, int addr_len, int &err);
+    virtual net::Socket *accept(struct sockaddr *uaddr, int addr_len, int &err);
 
     // implemented by the network layer (OSI)
-    virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
-    virtual ssize_t recvfrom(
-        fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t sendto(fs::File &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t recvfrom(fs::File &, void *data, size_t len, int flags, const sockaddr *, size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
-    virtual int poll(fs::file &f, int events, poll_table &pt);
+    virtual int poll(fs::File &f, int events, poll_table &pt);
 
 
     void dump_stats(void);
 
     // the inode this (server) socket is bound to
-    fs::inode *bindpoint = nullptr;
+    fs::Node *bindpoint = nullptr;
 
-    struct localsock *peer;
+    struct LocalSocket *peer;
 
     fifo_buf for_server;  // client writes, server reads
     fifo_buf for_client;  // server writes, client reads
 
     bool is_server = false;
 
-    chan<localsock *> pending_connections;
+    chan<LocalSocket *> pending_connections;
 
     // intrusive linked list so we can store them all
-    struct net::localsock *next, *prev;
+    struct net::LocalSocket *next, *prev;
   };
 
 
@@ -146,28 +144,27 @@ namespace net {
     }
   };
 
-  struct ipcsock : public net::sock {
-    ipcsock(int type);
-    virtual ~ipcsock(void);
+  struct IPCSock : public net::Socket {
+    IPCSock(int type);
+    virtual ~IPCSock(void);
 
     virtual int connect(struct sockaddr *uaddr, int addr_len);
     virtual int disconnect(int flags);
-    virtual net::sock *accept(struct sockaddr *uaddr, int addr_len, int &err);
+    virtual net::Socket *accept(struct sockaddr *uaddr, int addr_len, int &err);
 
     // implemented by the network layer (OSI)
-    virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
-    virtual ssize_t recvfrom(
-        fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t sendto(fs::File &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t recvfrom(fs::File &, void *data, size_t len, int flags, const sockaddr *, size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
-    virtual int poll(fs::file &f, int events, poll_table &pt);
+    virtual int poll(fs::File &f, int events, poll_table &pt);
 
 
     // the inode this (server) socket is bound to
-    fs::inode *bindpoint = nullptr;
+    fs::Node *bindpoint = nullptr;
 
-    struct ipcsock *peer;
+    struct IPCSock *peer;
 
 
     struct {
@@ -178,9 +175,9 @@ namespace net {
     } for_server, for_client;
 
 
-    chan<ipcsock *> pending_connections;
+    chan<IPCSock *> pending_connections;
     // intrusive linked list so we can store them all
-    struct net::ipcsock *next, *prev;
+    struct net::IPCSock *next, *prev;
   };
 
 
@@ -205,8 +202,7 @@ namespace net {
 
     // implemented by the network layer (OSI)
     virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
-    virtual ssize_t recvfrom(
-        fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 

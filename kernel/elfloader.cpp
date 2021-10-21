@@ -9,12 +9,12 @@
 
 static const char elf_header[] = {0x7f, 0x45, 0x4c, 0x46};
 
-bool elf::validate(fs::file &fd) {
+bool elf::validate(fs::File &fd) {
   Elf64_Ehdr ehdr;
   return elf::validate(fd, ehdr);
 }
 
-bool elf::validate(fs::file &fd, Elf64_Ehdr &ehdr) {
+bool elf::validate(fs::File &fd, Elf64_Ehdr &ehdr) {
   fd.seek(0, SEEK_SET);
   int header_read = fd.read(&ehdr, sizeof(ehdr));
 
@@ -41,7 +41,7 @@ bool elf::validate(fs::file &fd, Elf64_Ehdr &ehdr) {
 }
 
 
-int elf::each_symbol(fs::file &fd, ck::func<bool(const char *sym, off_t)> cb) {
+int elf::each_symbol(fs::File &fd, ck::func<bool(const char *sym, off_t)> cb) {
   Elf64_Ehdr ehdr;
 
 
@@ -123,7 +123,7 @@ int elf::each_symbol(fs::file &fd, ck::func<bool(const char *sym, off_t)> cb) {
   return err;
 }
 
-int elf::load(const char *path, struct Process &p, mm::AddressSpace &mm, ck::ref<fs::file> fd, off_t &entry) {
+int elf::load(const char *path, struct Process &p, mm::AddressSpace &mm, ck::ref<fs::File> fd, off_t &entry) {
   Elf64_Ehdr ehdr;
 
   off_t off = 0;

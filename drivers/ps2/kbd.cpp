@@ -493,7 +493,7 @@ static void kbd_handler(int i, reg_t* tf, void*) {
 
 
 
-static ssize_t kbd_read(fs::file& fd, char* buf, size_t sz) {
+static ssize_t kbd_read(fs::File& fd, char* buf, size_t sz) {
   if (fd) {
     if (sz % sizeof(keyboard_packet_t) != 0) {
       return -EINVAL;
@@ -506,16 +506,16 @@ static ssize_t kbd_read(fs::file& fd, char* buf, size_t sz) {
 }
 
 
-static int kbd_open(fs::file& fd) {
+static int kbd_open(fs::File& fd) {
   owners++;
   return 0;
 }
-static void kbd_close(fs::file& fd) { owners--; }
+static void kbd_close(fs::File& fd) { owners--; }
 
-static int kbd_poll(fs::file& fd, int events, poll_table& pt) { return kbd_buf.poll(pt); }
+static int kbd_poll(fs::File& fd, int events, poll_table& pt) { return kbd_buf.poll(pt); }
 
 
-struct fs::file_operations kbd_ops = {
+struct fs::FileOperations kbd_ops = {
     .read = kbd_read,
     .open = kbd_open,
     .close = kbd_close,

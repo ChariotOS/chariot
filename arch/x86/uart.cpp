@@ -113,12 +113,12 @@ void serial_irq_handle(int i, reg_t *, void *) { serial_data_avail.wake_up(); }
 
 
 
-static ssize_t com_read(fs::file &f, char *dst, size_t sz) { return -ENOSYS; }
+static ssize_t com_read(fs::File &f, char *dst, size_t sz) { return -ENOSYS; }
 
-static ssize_t com_write(fs::file &f, const char *dst, size_t sz) { return -ENOSYS; }
+static ssize_t com_write(fs::File &f, const char *dst, size_t sz) { return -ENOSYS; }
 
 
-static struct fs::file_operations com_ops = {
+static struct fs::FileOperations com_ops = {
     .read = com_read,
     .write = com_write,
 };

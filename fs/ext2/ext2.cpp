@@ -31,8 +31,8 @@
 #define TRACE
 #endif
 
-extern fs::file_operations ext2_file_ops;
-extern fs::dir_operations ext2_dir_ops;
+extern fs::FileOperations ext2_file_ops;
+extern fs::DirectoryOperations ext2_dir_ops;
 
 struct [[gnu::packed]] block_group_desc {
   uint32_t block_bitmap;
@@ -60,10 +60,10 @@ fs::ext2::~ext2(void) {
   if (sb != nullptr) delete sb;
 }
 
-bool fs::ext2::init(fs::blkdev *bdev) {
+bool fs::ext2::init(fs::BlockDevice *bdev) {
   TRACE;
 
-  fs::blkdev::acquire(bdev);
+  fs::BlockDevice::acquire(bdev);
   this->bdev = bdev;
   disk = fs::bdev_to_file(bdev);
 
@@ -107,7 +107,7 @@ bool fs::ext2::init(fs::blkdev *bdev) {
 
 
   root = get_inode(2);
-  fs::inode::acquire(root);
+  fs::Node::acquire(root);
 
   if (!write_superblock()) {
     printk("failed to write superblock\n");
@@ -291,11 +291,11 @@ bool fs::ext2::write_block(u32 block, const void *buf) {
   return true;
 }
 
-struct fs::inode *fs::ext2::get_root(void) {
+struct fs::Node *fs::ext2::get_root(void) {
   return root;
 }
 
-struct fs::inode *fs::ext2::get_inode(u32 index) {
+struct fs::Node *fs::ext2::get_inode(u32 index) {
   TRACE;
   scoped_lock lck(m_lock);
   if (inodes[index] == NULL) {
@@ -304,19 +304,18 @@ struct fs::inode *fs::ext2::get_inode(u32 index) {
   return inodes[index];
 }
 
-int ext2_sb_init(struct fs::superblock &sb) { return -ENOTIMPL; }
+int ext2_sb_init(struct fs::SuperBlock &sb) { return -ENOTIMPL; }
 
-int ext2_write_super(struct fs::superblock &sb) { return -ENOTIMPL; }
+int ext2_write_super(struct fs::SuperBlock &sb) { return -ENOTIMPL; }
 
-int ext2_sync(struct fs::superblock &sb, int flags) { return -ENOTIMPL; }
+int ext2_sync(struct fs::SuperBlock &sb, int flags) { return -ENOTIMPL; }
 
-struct fs::sb_operations ext2_ops {
+struct fs::SuperBlockOperations ext2_ops {
   .init = ext2_sb_init, .write_super = ext2_write_super, .sync = ext2_sync,
 };
 
-static struct fs::superblock *ext2_mount(
-    struct fs::sb_information *, const char *args, int flags, const char *device) {
-  struct fs::blkdev *bdev = fs::bdev_from_path(device);
+static struct fs::SuperBlock *ext2_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
+  struct fs::BlockDevice *bdev = fs::bdev_from_path(device);
   if (bdev == NULL) return NULL;
 
   auto *sb = new fs::ext2();
@@ -329,7 +328,7 @@ static struct fs::superblock *ext2_mount(
   return sb;
 }
 
-struct fs::sb_information ext2_info {
+struct fs::SuperBlockInfo ext2_info {
   .name = "ext2", .mount = ext2_mount, .ops = ext2_ops,
 };
 

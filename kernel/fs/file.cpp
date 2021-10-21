@@ -3,8 +3,8 @@
 #include <fcntl.h>
 #include <fs.h>
 
-ck::ref<fs::file> fs::bdev_to_file(fs::blkdev *bdev) {
-  fs::inode *ino = new fs::inode(T_BLK, fs::DUMMY_SB /* TODO */);
+ck::ref<fs::File> fs::bdev_to_file(fs::BlockDevice *bdev) {
+  fs::Node *ino = new fs::Node(T_BLK, fs::DUMMY_SB /* TODO */);
 
   ino->major = bdev->dev.major();
   ino->minor = bdev->dev.minor();
@@ -17,19 +17,19 @@ ck::ref<fs::file> fs::bdev_to_file(fs::blkdev *bdev) {
   ck::string name = "/dev/";
   name += bdev->name;
 
-  return fs::file::create(ino, name, FDIR_READ | FDIR_WRITE);
+  return fs::File::create(ino, name, FDIR_READ | FDIR_WRITE);
 }
 
-ck::ref<fs::file> fs::file::create(struct fs::inode *f, ck::string path, int flags) {
+ck::ref<fs::File> fs::File::create(struct fs::Node *f, ck::string path, int flags) {
   // fail if f is null
   if (!f) return nullptr;
   // otherwise construct
-  auto n = ck::make_ref<fs::file>(f, flags);
+  auto n = ck::make_ref<fs::File>(f, flags);
   n->path = move(path);
   return move(n);
 }
 
-fs::file::file(struct fs::inode *f, int flags) : ino(f) {
+fs::File::File(struct fs::Node *f, int flags) : ino(f) {
   m_offset = 0;
 
   // register that the fd has access to the inode
@@ -40,7 +40,7 @@ fs::file::file(struct fs::inode *f, int flags) : ino(f) {
     if (ops && ops->open) o_res = ops->open(*this);
     if (o_res != 0) {
       m_error = o_res;
-      fs::inode::release(ino);
+      fs::Node::release(ino);
       ino = NULL;
     }
   }
@@ -52,22 +52,22 @@ fs::file::file(struct fs::inode *f, int flags) : ino(f) {
   }
 }
 
-fs::file::~file(void) {
+fs::File::~File(void) {
   if (ino != nullptr) {
     // close the file
     auto ops = fops();
     if (ops && ops->close) ops->close(*this);
-    fs::inode::release(ino);
+    fs::Node::release(ino);
     ino = nullptr;
   }
 }
 
-fs::file_operations *fs::file::fops(void) {
+fs::FileOperations *fs::File::fops(void) {
   if (!ino) return NULL;
   return ino->fops;
 }
 
-off_t fs::file::seek(off_t offset, int whence) {
+off_t fs::File::seek(off_t offset, int whence) {
   // TODO: check if the file is actually seekable
   //
   if (!ino) return -EINVAL;
@@ -91,7 +91,7 @@ off_t fs::file::seek(off_t offset, int whence) {
 
   if (new_off < 0) return -EINVAL;
 
-  fs::file_operations *ops = fops();
+  fs::FileOperations *ops = fops();
   if (ops && ops->seek) {
     int res = ops->seek(*this, m_offset, new_off);
     if (res != 0) return res;
@@ -101,23 +101,23 @@ off_t fs::file::seek(off_t offset, int whence) {
   return m_offset;
 }
 
-ssize_t fs::file::read(void *dst, ssize_t len) {
+ssize_t fs::File::read(void *dst, ssize_t len) {
   if (!ino) return -ENOENT;
-  fs::file_operations *ops = fops();
+  fs::FileOperations *ops = fops();
   if (ops && ops->read) return ops->read(*this, (char *)dst, len);
   return -EINVAL;
 }
 
-ssize_t fs::file::write(void *data, ssize_t len) {
+ssize_t fs::File::write(void *data, ssize_t len) {
   if (!ino) return -ENOENT;
-  fs::file_operations *ops = fops();
+  fs::FileOperations *ops = fops();
   if (ops && ops->write) return ops->write(*this, (char *)data, len);
   return -EINVAL;
 }
 
-int fs::file::ioctl(int cmd, unsigned long arg) {
+int fs::File::ioctl(int cmd, unsigned long arg) {
   if (!ino) return -ENOENT;
-  fs::file_operations *ops = fops();
+  fs::FileOperations *ops = fops();
   if (ops && ops->ioctl) return ops->ioctl(*this, cmd, arg);
   return -EINVAL;
 }

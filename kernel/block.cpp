@@ -19,7 +19,7 @@ static uint64_t next_block_lru(void) {
 }
 
 
-static chan<block::buffer *> dirty_buffers;
+static chan<block::Buffer *> dirty_buffers;
 static int block_flush_task(void *) {
   while (1) {
     auto buffer = dirty_buffers.recv();
@@ -34,7 +34,7 @@ static int block_flush_task(void *) {
 
 static spinlock buffer_cache_lock;
 static uint64_t total_blocks_in_cache = 0;
-static ck::map<uint32_t, ck::map<off_t, block::buffer *>> buffer_cache;
+static ck::map<uint32_t, ck::map<off_t, block::Buffer *>> buffer_cache;
 
 
 
@@ -100,7 +100,7 @@ struct block_cache_key {};
 
 namespace block {
 
-  buffer::buffer(fs::blkdev &bdev, off_t index) : bdev(bdev), m_index(index) {
+  Buffer::Buffer(fs::BlockDevice &bdev, off_t index) : bdev(bdev), m_index(index) {
     // we don't allocate the page here, only on calls to ::data().
 
     // start with 0 refs
@@ -108,17 +108,17 @@ namespace block {
   }
 
 
-  struct buffer *block::buffer::get(fs::blkdev &device, off_t page) {
+  struct Buffer *block::Buffer::get(fs::BlockDevice &device, off_t page) {
     scoped_lock l(buffer_cache_lock);
 
-    struct block::buffer *buf = NULL;
+    struct block::Buffer *buf = NULL;
 
     auto key = to_key(device.dev);
     auto &dev_map = buffer_cache[key];
     buf = dev_map[page];
 
     if (buf == NULL) {
-      buf = new block::buffer(device, page);
+      buf = new block::Buffer(device, page);
       buf->m_index = page;
       dev_map[page] = buf;
       total_blocks_in_cache += 1;
@@ -132,9 +132,9 @@ namespace block {
     return buf;
   }
 
-  void buffer::register_write(void) { m_dirty = true; }
+  void Buffer::register_write(void) { m_dirty = true; }
 
-  void buffer::release(struct buffer *b) {
+  void Buffer::release(struct Buffer *b) {
     b->m_lock.lock();
 
     if (b->m_dirty) {
@@ -157,7 +157,7 @@ namespace block {
     b->m_lock.unlock();
   }
 
-  int buffer::flush(void) {
+  int Buffer::flush(void) {
     scoped_lock l(m_lock);
 
     // flush even if we aren't dirty.
@@ -176,7 +176,7 @@ namespace block {
     return 0;
   }
 
-  size_t buffer::reclaim(void) {
+  size_t Buffer::reclaim(void) {
     scoped_lock l(m_lock);
     if (m_count == 0 && m_page && !m_dirty) {
       m_page = nullptr;  // release the page
@@ -187,7 +187,7 @@ namespace block {
 
 
 
-  void *buffer::data(void) {
+  void *Buffer::data(void) {
     scoped_lock l(m_lock);
     if (!m_page) {
       // get the page if there isn't one and read the blocks
@@ -209,7 +209,7 @@ namespace block {
   }
 
 
-  ck::ref<mm::Page> buffer::page(void) {
+  ck::ref<mm::Page> Buffer::page(void) {
     // ::data() asserts that the page is there.
     (void)this->data();
     assert(m_page);
@@ -219,7 +219,7 @@ namespace block {
 }  // namespace block
 
 
-static ssize_t block_rw(fs::blkdev &b, void *dst, size_t size, off_t byte_offset, bool write) {
+static ssize_t block_rw(fs::BlockDevice &b, void *dst, size_t size, off_t byte_offset, bool write) {
   // how many more bytes are needed
   long to_access = size;
   // the offset within the current page
@@ -258,10 +258,12 @@ static ssize_t block_rw(fs::blkdev &b, void *dst, size_t size, off_t byte_offset
 }
 
 
-int bread(fs::blkdev &b, void *dst, size_t size, off_t byte_offset) { return block_rw(b, dst, size, byte_offset, false /* read */); }
+int bread(fs::BlockDevice &b, void *dst, size_t size, off_t byte_offset) { return block_rw(b, dst, size, byte_offset, false /* read */); }
 
 
-int bwrite(fs::blkdev &b, void *data, size_t size, off_t byte_offset) { return block_rw(b, data, size, byte_offset, true /* write */); }
+int bwrite(fs::BlockDevice &b, void *data, size_t size, off_t byte_offset) {
+  return block_rw(b, data, size, byte_offset, true /* write */);
+}
 
 
 
@@ -305,8 +307,8 @@ module_init("block", block_init);
 
 // ideally, the seek operation would never go out of sync, so this just checks
 // that we only ever seek by blocksize amounts
-static int blk_seek(fs::file &f, off_t o, off_t) {
-  struct fs::blkdev *dev = f.ino->blk.dev;
+static int blk_seek(fs::File &f, off_t o, off_t) {
+  struct fs::BlockDevice *dev = f.ino->blk.dev;
   if (!dev) {
     return -EINVAL;
   }
@@ -317,9 +319,9 @@ static int blk_seek(fs::file &f, off_t o, off_t) {
   return 0;  // allow seek
 }
 
-static ssize_t blk_rw(fs::file &f, char *data, size_t len, bool write) {
+static ssize_t blk_rw(fs::File &f, char *data, size_t len, bool write) {
   off_t offset;
-  struct fs::blkdev *dev;
+  struct fs::BlockDevice *dev;
 
   if (f.ino->type != T_BLK || !f.ino->blk.dev) return -EINVAL;
 
@@ -333,16 +335,16 @@ static ssize_t blk_rw(fs::file &f, char *data, size_t len, bool write) {
   return n;
 }
 
-static ssize_t blk_read(fs::file &f, char *data, size_t len) { return blk_rw(f, data, len, false); }
+static ssize_t blk_read(fs::File &f, char *data, size_t len) { return blk_rw(f, data, len, false); }
 
-static ssize_t blk_write(fs::file &f, const char *data, size_t len) { return blk_rw(f, (char *)data, len, true); }
+static ssize_t blk_write(fs::File &f, const char *data, size_t len) { return blk_rw(f, (char *)data, len, true); }
 
-static int blk_ioctl(fs::file &f, unsigned int num, off_t val) {
-  struct fs::blkdev *dev = f.ino->blk.dev;
+static int blk_ioctl(fs::File &f, unsigned int num, off_t val) {
+  struct fs::BlockDevice *dev = f.ino->blk.dev;
   if (!dev || !dev->ops.ioctl) return -EINVAL;
   return dev->ops.ioctl(*dev, num, val);
 }
 
-struct fs::file_operations fs::block_file_ops {
+struct fs::FileOperations fs::block_file_ops {
   .seek = blk_seek, .read = blk_read, .write = blk_write, .ioctl = blk_ioctl,
 };

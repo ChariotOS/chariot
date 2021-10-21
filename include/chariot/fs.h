@@ -53,14 +53,14 @@ namespace mm {
 }  // namespace mm
 
 namespace net {
-  struct sock;
+  struct Socket;
 };
 
 namespace fs {
   // fwd decl
-  struct inode;
-  struct blkdev;
-  class file;
+  struct Node;
+  struct BlockDevice;
+  class File;
 
   using mode_t = u32;
 
@@ -69,41 +69,41 @@ namespace fs {
     ck::string name;
   };
 
-  struct block_operations {
+  struct BlockOperations {
     // used to populate block_count and block_size
-    int (&init)(fs::blkdev &);
-    int (*open)(fs::blkdev &, int mode);
-    int (*release)(fs::blkdev &);
+    int (&init)(fs::BlockDevice &);
+    int (*open)(fs::BlockDevice &, int mode);
+    int (*release)(fs::BlockDevice &);
     // 0 on success, -ERRNO on fail
-    int (&rw_block)(fs::blkdev &, void *data, int block, bool write);
-    int (*ioctl)(fs::blkdev &, unsigned int, off_t) = NULL;
+    int (&rw_block)(fs::BlockDevice &, void *data, int block, bool write);
+    int (*ioctl)(fs::BlockDevice &, unsigned int, off_t) = NULL;
   };
 
-  struct blkdev {
+  struct BlockDevice {
     dev_t dev;
     ck::string name;  // ex. hda or ata0
 
     size_t block_count;
     size_t block_size;
 
-    struct block_operations &ops;
+    struct BlockOperations &ops;
 
     long count = 0;  // refcount
     spinlock lock;
 
-    inline blkdev(dev_t dev, ck::string name, struct block_operations &ops) : dev(dev), name(move(name)), ops(ops) { ops.init(*this); }
+    inline BlockDevice(dev_t dev, ck::string name, struct BlockOperations &ops) : dev(dev), name(move(name)), ops(ops) { ops.init(*this); }
 
     // nice wrappers for filesystems and all that :)
     inline int read_block(void *data, int block) { return ops.rw_block(*this, data, block, false); }
 
     inline int write_block(void *data, int block) { return ops.rw_block(*this, data, block, true); }
 
-    inline static void acquire(struct blkdev *d) {
+    inline static void acquire(struct BlockDevice *d) {
       d->lock.lock();
       d->count++;
       d->lock.unlock();
     }
-    inline static void release(struct blkdev *d) {
+    inline static void release(struct BlockDevice *d) {
       d->lock.lock();
       d->count--;
       if (d->count == 0) {
@@ -126,20 +126,20 @@ namespace fs {
   // (and really, the kernel cannot rely on userspace filesystems in the end
   // either. implemented in kernel/dev/driver.cpp (where we have the driver name
   // info)
-  struct fs::blkdev *bdev_from_path(const char *);
+  struct fs::BlockDevice *bdev_from_path(const char *);
 
 
-  extern struct superblock DUMMY_SB;
+  extern struct SuperBlock DUMMY_SB;
 
-  struct superblock {
+  struct SuperBlock {
     //
     dev_t dev;
     long block_size;
     long max_filesize;
 
-    struct sb_operations *ops;
-    struct sb_information *info;
-    struct inode *root;
+    struct SuperBlockOperations *ops;
+    struct SuperBlockInfo *info;
+    struct Node *root;
     ck::string arguments;
 
     rwlock lock;
@@ -151,13 +151,13 @@ namespace fs {
       return (T *&)priv;
     }
 
-    inline static void get(struct superblock *s) {
+    inline static void get(struct SuperBlock *s) {
       s->lock.write_lock();
       s->count++;
       s->lock.write_unlock();
     }
 
-    inline static void put(struct superblock *s) {
+    inline static void put(struct SuperBlock *s) {
       s->lock.write_lock();
       s->count--;
       if (s->count == 0 && s != &DUMMY_SB) {
@@ -171,28 +171,28 @@ namespace fs {
   };
 
 
-  struct sb_operations {
+  struct SuperBlockOperations {
     // initialize the superblock after it has been mounted. All of the
     // arguments
-    int (&init)(struct superblock &);
-    int (&write_super)(struct superblock &);
-    int (&sync)(struct superblock &, int flags);
+    int (&init)(struct SuperBlock &);
+    int (&write_super)(struct SuperBlock &);
+    int (&sync)(struct SuperBlock &, int flags);
   };
 
-  struct sb_information {
+  struct SuperBlockInfo {
     const char *name;
 
     // return a superblock containing the root inode
-    struct fs::superblock *(&mount)(struct sb_information *, const char *args, int flags, const char *device);
+    struct fs::SuperBlock *(&mount)(struct SuperBlockInfo *, const char *args, int flags, const char *device);
 
-    struct sb_operations &ops;
+    struct SuperBlockOperations &ops;
   };
 
-  struct inode *bdev_mount(struct sb_information *info, const char *args, int flags);
+  struct Node *bdev_mount(struct SuperBlockInfo *info, const char *args, int flags);
 
-  struct inode *open(const char *s, u32 flags, u32 opts = 0);
+  struct Node *open(const char *s, u32 flags, u32 opts = 0);
 
-  ck::ref<fs::file> bdev_to_file(fs::blkdev *);
+  ck::ref<fs::File> bdev_to_file(fs::BlockDevice *);
 
 // memory only
 #define ENT_MEM 0
@@ -202,16 +202,16 @@ namespace fs {
 #define ENT_RES 1
 
   // directories have entries (linked list)
-  struct direntry {
+  struct DirectoryEntry {
     int type = ENT_RES;
     ck::string name;
     int nr = -1;  // for unresolved
-    struct inode *ino;
+    fs::Node *ino;
 
     // if this direntry is a mount, this inode will shadow it
-    struct inode *mount_shadow = NULL;
+    fs::Node *mount_shadow = NULL;
 
-    struct direntry *next, *prev;
+    DirectoryEntry *next, *prev;
   };
 
 #define T_INVA 0
@@ -228,7 +228,7 @@ namespace fs {
 // TTY file
 #define T_TTY 8
 
-  struct file_ownership {
+  struct Ownership {
     int uid;
     int gid;
     int mode;  // the octal part of a file :)
@@ -236,53 +236,53 @@ namespace fs {
 
 
 
-  struct file_operations {
+  struct FileOperations {
     // seek - used to notify of seeking. Doesn't actually seek
     //        returns -errno on failure (seek wasn't allowed)
-    int (*seek)(fs::file &, off_t old_off, off_t new_off) = NULL;
-    ssize_t (*read)(fs::file &, char *, size_t) = NULL;
-    ssize_t (*write)(fs::file &, const char *, size_t) = NULL;
-    int (*ioctl)(fs::file &, unsigned int, off_t) = NULL;
+    int (*seek)(fs::File &, off_t old_off, off_t new_off) = NULL;
+    ssize_t (*read)(fs::File &, char *, size_t) = NULL;
+    ssize_t (*write)(fs::File &, const char *, size_t) = NULL;
+    int (*ioctl)(fs::File &, unsigned int, off_t) = NULL;
 
     /**
      * open - notify the driver that a new descriptor has opened the file
      * if it returns a non-zero code, it will be propagated back to the
      * sys::open() call and be considered a fail
      */
-    int (*open)(fs::file &) = NULL;
+    int (*open)(fs::File &) = NULL;
 
     /**
      * close - notify the driver that a file descriptor is closing it
      *
      * no return value
      */
-    void (*close)(fs::file &) = NULL;
+    void (*close)(fs::File &) = NULL;
 
     /* map a file into a vm area */
-    ck::ref<mm::VMObject> (*mmap)(fs::file &, size_t npages, int prot, int flags, off_t off);
+    ck::ref<mm::VMObject> (*mmap)(fs::File &, size_t npages, int prot, int flags, off_t off);
     // resize a file. if size is zero, it is a truncate
-    int (*resize)(fs::file &, size_t);
+    int (*resize)(fs::File &, size_t);
 
-    void (*destroy)(fs::inode &);
+    void (*destroy)(fs::Node &);
 
     // *quickly* poll for a bitmap of events and return a bitmap of those that match
-    int (*poll)(fs::file &, int events, poll_table &pt);
+    int (*poll)(fs::File &, int events, poll_table &pt);
   };
 
   // wrapper functions for block devices
-  extern struct fs::file_operations block_file_ops;
+  extern struct fs::FileOperations block_file_ops;
 
-  struct dir_operations {
+  struct DirectoryOperations {
     // create a file in the directory
-    int (*create)(fs::inode &, const char *name, struct fs::file_ownership &);
+    int (*create)(fs::Node &, const char *name, struct fs::Ownership &);
     // create a directory in a dir
-    int (*mkdir)(fs::inode &, const char *, struct fs::file_ownership &);
+    int (*mkdir)(fs::Node &, const char *, struct fs::Ownership &);
     // remove a file from a directory
-    int (*unlink)(fs::inode &, const char *);
+    int (*unlink)(fs::Node &, const char *);
     // lookup an inode by name in a file
-    struct fs::inode *(*lookup)(fs::inode &, const char *);
+    struct fs::Node *(*lookup)(fs::Node &, const char *);
     // create a device node with a major and minor number
-    int (*mknod)(fs::inode &, const char *name, struct fs::file_ownership &, int major, int minor);
+    int (*mknod)(fs::Node &, const char *name, struct fs::Ownership &, int major, int minor);
   };
 
 
@@ -294,7 +294,7 @@ namespace fs {
    *       this means you cannot have circular references - hardlinks to one
    * file in two different dirs must have different `struct inode`s
    */
-  struct inode {
+  struct Node {
     /**
      * fields
      */
@@ -319,10 +319,10 @@ namespace fs {
     // for devices
     int major, minor;
 
-    fs::file_operations *fops = NULL;
-    fs::dir_operations *dops = NULL;
+    fs::FileOperations *fops = NULL;
+    fs::DirectoryOperations *dops = NULL;
 
-    fs::superblock &sb;
+    fs::SuperBlock &sb;
 
     void *_priv;
 
@@ -338,22 +338,22 @@ namespace fs {
       // T_DIR
       struct {
         // the parent directory, if this node is mounted
-        struct inode *mountpoint;
-        struct direntry *entries;
+        fs::Node *mountpoint;
+        struct DirectoryEntry *entries;
         // an "owned" string that represents the name
         const char *name;
       } dir;
 
       // T_BLK
       struct {
-        fs::blkdev *dev;
+        fs::BlockDevice *dev;
       } blk;
     };
 
 
     // if this inode has a socket bound to it, it will be located here.
-    struct net::sock *sk = NULL;
-    struct net::sock *bound_socket = NULL;
+    net::Socket *sk = NULL;
+    net::Socket *bound_socket = NULL;
 
     /*
      * the directory entry list in this->as.dir is a linked list that must be
@@ -362,28 +362,28 @@ namespace fs {
      * entry contains a NULL inode, it calls 'resolve_direntry' which returns
      * the backing inode.
      */
-    int register_direntry(ck::string name, int type, int nr, struct inode * = NULL);
+    int register_direntry(ck::string name, int type, int nr, fs::Node * = NULL);
     int remove_direntry(ck::string name);
-    struct inode *get_direntry(const char *name);
+    fs::Node *get_direntry(const char *name);
     int get_direntry_r(const char *name);
-    void walk_direntries(ck::func<bool(const ck::string &, struct inode *)>);
+    void walk_direntries(ck::func<bool(const ck::string &, fs::Node *)>);
     ck::vec<ck::string> direntries(void);
-    int add_mount(const char *name, struct inode *other_root);
+    int add_mount(const char *name, fs::Node *other_root);
 
-    struct direntry *get_direntry_raw(const char *name);
+    struct DirectoryEntry *get_direntry_raw(const char *name);
 
-    int poll(fs::file &, int events, poll_table &pt);
+    int poll(fs::File &, int events, poll_table &pt);
 
     // if the inode is a directory, set its name. NOP otherwise
     int set_name(const ck::string &);
 
-    inode(int type, fs::superblock &sb);
-    virtual ~inode();
+    Node(int type, fs::SuperBlock &sb);
+    virtual ~Node();
 
     int stat(struct stat *);
 
-    static fs::inode *acquire(struct inode *);
-    static int release(struct inode *);
+    static fs::Node *acquire(fs::Node *);
+    static int release(fs::Node *);
 
     spinlock lock;
 
@@ -391,16 +391,18 @@ namespace fs {
     int rc = 0;
 
    private:
-    struct inode *get_direntry_nolock(const char *name);
-    struct inode *get_direntry_ino(struct direntry *);
+    fs::Node *get_direntry_nolock(const char *name);
+    fs::Node *get_direntry_ino(struct DirectoryEntry *);
   };
 
-  class file : public ck::refcounted<file> {
+
+  // A `File` is the kernel-side representation that is referenced by filedescriptors.
+  class File final : public ck::refcounted<File> {
     int m_error = 0;
 
    public:
     // must construct file descriptors via these factory funcs
-    static ck::ref<file> create(struct fs::inode *, ck::string open_path, int flags = FDIR_READ | FDIR_WRITE);
+    static ck::ref<File> create(struct fs::Node *, ck::string open_path, int flags = FDIR_READ | FDIR_WRITE);
 
     /*
      * seek - change the offset
@@ -416,19 +418,19 @@ namespace fs {
 
     inline off_t offset(void) { return m_offset; }
 
-    fs::file_operations *fops(void);
+    fs::FileOperations *fops(void);
 
     inline int errorcode() { return m_error; };
 
-    ~file(void);
+    ~File(void);
 
 
-    file(struct fs::inode *, int flags);
-    inline file() : file(NULL, 0) {}
+    File(struct fs::Node *, int flags);
+    inline File() : File(NULL, 0) {}
 
     inline operator bool() { return ino != NULL; }
 
-    struct fs::inode *ino;
+    struct fs::Node *ino;
     ck::string path;
     off_t m_offset = 0;
 
@@ -441,7 +443,7 @@ namespace fs {
 };  // namespace fs
 
 
-static inline fs::inode *geti(fs::inode *i) { return fs::inode::acquire(i); }
+static inline fs::Node *geti(fs::Node *i) { return fs::Node::acquire(i); }
 
 
 
@@ -456,12 +458,12 @@ namespace mm {
 namespace block {
 
   // a buffer represents a page (4k) in a block device.
-  struct buffer {
-    fs::blkdev &bdev; /* the device this buffer belongs to */
+  struct Buffer {
+    fs::BlockDevice &bdev; /* the device this buffer belongs to */
 
-    static struct buffer *get(fs::blkdev &, off_t page);
+    static struct Buffer *get(fs::BlockDevice &, off_t page);
 
-    static void release(struct buffer *);
+    static void release(struct Buffer *);
 
     void register_write(void);
 
@@ -483,7 +485,7 @@ namespace block {
    protected:
     inline static void release(struct blkdev *d) {}
 
-    buffer(fs::blkdev &, off_t);
+    Buffer(fs::BlockDevice &, off_t);
 
     bool m_dirty = false;
     spinlock m_lock;
@@ -503,32 +505,32 @@ namespace block {
 
 // read data from blocks to from a byte offset. These can be somewhat wasteful,
 // but that gets amortized by the block flush daemon :^)
-int bread(fs::blkdev &, void *dst, size_t size, off_t byte_offset);
-int bwrite(fs::blkdev &, void *data, size_t size, off_t byte_offset);
+int bread(fs::BlockDevice &, void *dst, size_t size, off_t byte_offset);
+int bwrite(fs::BlockDevice &, void *data, size_t size, off_t byte_offset);
 
 // reclaim some memory
 
-inline auto bget(fs::blkdev &b, off_t page) { return block::buffer::get(b, page); }
+inline auto bget(fs::BlockDevice &b, off_t page) { return block::Buffer::get(b, page); }
 
 // release a block
-static inline auto bput(struct block::buffer *b) { return block::buffer::release(b); }
+static inline auto bput(struct block::Buffer *b) { return block::Buffer::release(b); }
 
 
 struct bref {
-  static inline bref get(fs::blkdev &b, off_t page) { return block::buffer::get(b, page); }
+  static inline bref get(fs::BlockDevice &b, off_t page) { return block::Buffer::get(b, page); }
 
-  inline bref(struct block::buffer *b) { buf = b; }
+  inline bref(struct block::Buffer *b) { buf = b; }
 
   inline ~bref(void) {
     if (buf) bput(buf);
   }
 
-  inline struct block::buffer *operator->(void) { return buf; }
-  inline struct block::buffer *get(void) { return buf; }
+  inline struct block::Buffer *operator->(void) { return buf; }
+  inline struct block::Buffer *get(void) { return buf; }
 
 
  private:
-  struct block::buffer *buf = NULL;
+  struct block::Buffer *buf = NULL;
 };
 
 #endif
