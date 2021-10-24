@@ -37,7 +37,7 @@ namespace tmp {
   };
 
 
-  inline auto &getsb(fs::Node &i) { return *(tmp::SuperBlock *)&i.sb; }
+  inline auto &getsb(fs::Node &i) { return *(tmp::SuperBlock *)(i.sb.get()); }
 
 
   /*
