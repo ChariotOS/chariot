@@ -221,7 +221,7 @@ void dump_trapframe(reg_t *r) {
   }
   printk_nolock("Pass this into addr2line for %s:\n", curproc->name.get());
   for (auto ip : bt) {
-    printk_nolock("0x%p ", ip);
+    printk_nolock("0x%llx ", ip);
   }
   printk_nolock("\n");
 }

@@ -101,8 +101,10 @@ static void flush_vga_console() {
 void *vga::get_fba(void) { return (void *)p2v(vga_fba); }
 
 void vga::putchar(char c) {
-  /* TODO(nick): move the virtual console stuff into the GVI interface */
-  vc_feed(&vga_console, c);
+  if (cons_enabled) {
+    /* TODO(nick): move the virtual console stuff into the GVI interface */
+    vc_feed(&vga_console, c);
+  }
 }
 
 static void set_register(u16 index, u16 data) {
@@ -138,19 +140,14 @@ void vga::configure(struct ck_fb_info &i) {
 }
 
 
+static ck::ref<dev::PCIDevice> vga_dev = nullptr;
 
-
-static pci::device *vga_dev = NULL;
+// static pci::device *vga_dev = NULL;
 
 static void *get_framebuffer_address(void) {
-  void *addr = nullptr;
-  pci::walk_devices([&](pci::device *dev) {
-    if (dev->is_device(0x1234, 0x1111) || dev->is_device(0x80ee, 0xbeef)) {
-      vga_dev = dev;
-      addr = (void *)(dev->get_bar(0).raw & 0xfffffff0l);
-    }
-  });
-  return addr;
+  if (vga_dev) return (void *)(vga_dev->get_bar(0).raw & 0xfffffff0l);
+
+  return NULL;
 }
 
 
@@ -179,7 +176,7 @@ static int fb_ioctl(fs::File &fd, unsigned int cmd, unsigned long arg) {
 
   switch (cmd) {
     case FB_SET_INFO:
-      if (vga_dev == NULL) return -1;
+      if (vga_dev == nullptr) return -1;
       if (!curproc->mm->validate_struct<struct ck_fb_info>(arg, VALIDATE_READ | VALIDATE_WRITE)) {
         return -1;
       }
@@ -201,92 +198,6 @@ static int fb_ioctl(fs::File &fd, unsigned int cmd, unsigned long arg) {
   }
   return -1;
 }
-
-static int fb_open(fs::File &f) {
-  if (!cons_enabled) return -EBUSY;
-  cons_enabled = false;
-  return 0;  // allow
-}
-
-
-/*
-static void reset_fb(
-    void) {  // disable the framebuffer (drop back to text mode)
-  auto i = info;
-  i.active = false;
-  i.width = VCONSOLE_WIDTH;
-  i.height = VCONSOLE_HEIGHT;
-        cons_enabled = true;
-  vga::configure(i);
-}
-*/
-
-static void fb_close(fs::File &f) {
-  cons_enabled = true;
-  // reset_fb();
-}
-
-
-
-
-struct vga_vmobject final : public mm::VMObject {
-  vga_vmobject(size_t npages) : VMObject(npages) {}
-
-  virtual ~vga_vmobject(void){};
-
-  // get a shared page (page #n in the mapping)
-  virtual ck::ref<mm::Page> get_shared(off_t n) override {
-    auto p = mm::Page::create((unsigned long)vga_fba + (n * PGSIZE));
-
-
-    // p->fset(PG_NOCACHE | PG_WRTHRU);
-
-    return p;
-  }
-};
-
-
-
-
-static ck::ref<mm::VMObject> vga_mmap(fs::File &f, size_t npages, int prot, int flags, off_t off) {
-  // XXX: this is invalid, should be asserted before here :^)
-  if (off != 0) {
-    printk(KERN_WARN "vga: attempt to mmap at invalid offset (%d != 0)\n", off);
-    return nullptr;
-  }
-
-  if (npages > NPAGES(64 * MB)) {
-    printk(KERN_WARN "vga: attempt to mmap too many pages (%d pixels)\n", (npages * 4096) / sizeof(uint32_t));
-    return nullptr;
-  }
-
-
-  if (flags & MAP_PRIVATE) {
-    printk(KERN_WARN "vga: attempt to mmap with MAP_PRIVATE doesn't make sense :^)\n");
-    return nullptr;
-  }
-
-  return ck::make_ref<vga_vmobject>(npages);
-}
-
-
-
-// can only write to the framebuffer
-struct fs::FileOperations fb_ops = {
-    .write = fb_write,
-    .ioctl = fb_ioctl,
-
-    .open = fb_open,
-    .close = fb_close,
-    .mmap = vga_mmap,
-};
-
-static struct dev::DriverInfo generic_driver_info {
-  .name = "vga framebuffer", .type = DRIVER_CHAR, .major = MAJOR_FB,
-
-  .char_ops = &fb_ops,
-};
-
 
 
 
@@ -316,7 +227,6 @@ static void vga_char_scribe(int x, int y, struct vc_cell *cell, int flags) {
   if (!cons_enabled) return;
   char c = cell->c;
   char attr = cell->attr;
-  if (info.active) return;
 
   auto ch = (uint16_t *)vga_font.data + (c * FONT_HEIGHT);
   x = EDGE_MARGIN + x * FONT_WIDTH;
@@ -346,14 +256,8 @@ static void vga_char_scribe(int x, int y, struct vc_cell *cell, int flags) {
 
 
 void vga::early_init(uint64_t mbd) {
-  /*
-
-  */
-
-
   mb2::find<struct multiboot_tag_framebuffer_common>(mbd, MULTIBOOT_TAG_TYPE_FRAMEBUFFER, [](auto *i) {
     vga_fba = (uint32_t *)i->framebuffer_addr;
-    info.active = 0;
 #ifdef CONFIG_FRAMEBUFFER_AUTODETECT
 
     info.width = i->framebuffer_width;
@@ -379,16 +283,54 @@ class vga_vdev : public dev::video_device {
   virtual int get_mode(gvi_video_mode &mode) {
     mode.width = info.width;
     mode.height = info.height;
+		mode.caps = 0;
     return 0;
   }
   // virtual int set_mode(const gvi_video_mode &mode);
-  virtual uint32_t *get_framebuffer(void) { return vga_fba; }
+  virtual uint32_t *get_framebuffer(void) {
+  	if (vga_fba == NULL) {
+			KINFO("Looking for VGA Framebuffer\n");
+			vga_fba = (u32 *)get_framebuffer_address();
+		}
+		// printk("get fba: %p\n", vga_fba);
+		return vga_fba;
+	}
+
+
+
+  virtual int on_open(void) {
+    if (!cons_enabled) return -EBUSY;
+    cons_enabled = false;
+    return 0;
+  }
+  virtual void on_close(void) { cons_enabled = true; }
+};
+
+
+class VGADriver : public dev::Driver {
+ public:
+  virtual ~VGADriver(void) {}
+  dev::ProbeResult probe(ck::ref<dev::Device> dev) override {
+    if (vga_dev.is_null()) {
+      if (auto pci = dev->cast<dev::PCIDevice>()) {
+        if (pci->is_device(0x1234, 0x1111) || pci->is_device(0x80ee, 0xbeef)) {
+          KINFO("Found VGA device: %s\n", pci->name().get());
+          vga_dev = dev;
+          return dev::ProbeResult::Attach;
+        }
+      }
+    }
+    return dev::ProbeResult::Ignore;
+  };
 };
 
 
 void vga_mod_init(void) {
+  auto driver = ck::make_ref<VGADriver>();
+  dev::Driver::add(driver);
+
   if (vga_fba != NULL) {
-    printk(KERN_INFO "Standard VGA Framebuffer found @ %p\n");
+    printk(KERN_INFO "Standard VGA Framebuffer found @ %p\n", vga_fba);
 
     auto *vdev = new vga_vdev;
     info.active = true;

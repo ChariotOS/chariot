@@ -49,10 +49,12 @@ namespace server {
 
 
   void Display::flush_fb(FlushWithMemcpy with_memcpy) {
-    if (hardware_double_buffered()) ioctl(fd, GVI_FLUSH_FB);
-
-    if (with_memcpy == FlushWithMemcpy::Yes) {
-      memcpy(front_buffer, back_buffer, bufsz);
+    if (hardware_double_buffered()) {
+      ioctl(fd, GVI_FLUSH_FB);
+    } else {
+      if (with_memcpy == FlushWithMemcpy::Yes && back_buffer != nullptr && back_buffer != nullptr) {
+        memcpy(front_buffer, back_buffer, bufsz);
+      }
     }
   }
 

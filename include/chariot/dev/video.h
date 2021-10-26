@@ -14,5 +14,8 @@ namespace dev {
 		virtual int flush_fb(void);
 
     static void register_device(video_device *vdev);
+
+		virtual int  on_open(void) { return 0; /* allow */ }
+		virtual void on_close(void) {}
   };
 }  // namespace dev

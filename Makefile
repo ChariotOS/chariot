@@ -17,7 +17,7 @@ kernel: .config
 	@tools/build_toolchain.sh
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); cmake -GNinja $(CMAKE_ROOT)
-	@cd $(BUILD); ninja install | cat
+	@cd $(BUILD); ninja install | c++filt
 	@cp $(BUILD)/compile_commands.json .
 
 default: kernel

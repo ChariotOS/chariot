@@ -167,7 +167,6 @@ int kernel_init(void *) {
   kproc->cwd = vfs::get_root();
 
 
-
   ck::string init_paths = kargs::get("init", "/bin/init");
 
   auto paths = init_paths.split(',');

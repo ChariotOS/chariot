@@ -78,7 +78,7 @@ struct thread_context {
   unsigned long r27;
   unsigned long r28;
   unsigned long r29;
-  unsigned long pc;  // technically, this register is lr (x30), but chariot expects
+  unsigned long pc;  // technically, this register is lr (x30), but chariot expects "pc"
 };
 #endif
 

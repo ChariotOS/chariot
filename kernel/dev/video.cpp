@@ -96,8 +96,26 @@ static int gvi_ioctl(fs::File &fd, unsigned int cmd, unsigned long arg) {
   return -ENOTIMPL;
 }
 
+
+static int gvi_open(fs::File &fd) {
+  auto *vdev = get_vdev(fd.ino->minor);
+  if (vdev == NULL) return -EINVAL;
+  return vdev->on_open();
+}
+
+static void gvi_close(fs::File &fd) {
+  auto *vdev = get_vdev(fd.ino->minor);
+  if (vdev == NULL) return;
+
+  vdev->on_close();
+  // reset_fb();
+}
+
+
 struct fs::FileOperations generic_video_device_ops = {
     .ioctl = gvi_ioctl,
+    .open = gvi_open,
+    .close = gvi_close,
     .mmap = gvi_mmap,
 };
 

@@ -4,6 +4,8 @@
 #include <pci.h>
 #include <printk.h>
 
+#include <dev/device.h>
+
 #define PCI_VENDOR_ID 0x00            // word
 #define PCI_DEVICE_ID 0x02            // word
 #define PCI_COMMAND 0x04              // word
@@ -36,6 +38,82 @@
 static uint32_t pci_cmd_port = 0xCF8;
 static uint32_t pci_data_port = 0xCFC;
 
+
+
+class X86PCIDevice : public dev::PCIDevice {
+  pci::device *desc;
+
+ public:
+  X86PCIDevice(pci::device *d) : desc(d) {
+    bus = d->bus;
+    dev = d->dev;
+    func = d->func;
+
+    port_base = d->port_base;
+    interrupt = d->interrupt;
+
+    vendor_id = d->vendor_id;
+    device_id = d->device_id;
+
+    class_id = d->class_id;
+    subclass_id = d->subclass_id;
+    interface_id = d->interface_id;
+    revision = d->revision;
+  }
+  ~X86PCIDevice(void) override {}
+
+  // ^dev::PCIDevice
+  auto read8(uint32_t field) -> uint8_t override { return desc->read<uint8_t>(field); }
+  auto read16(uint32_t field) -> uint16_t override { return desc->read<uint16_t>(field); }
+  auto read32(uint32_t field) -> uint32_t override { return desc->read<uint32_t>(field); }
+  auto read64(uint32_t field) -> uint64_t override { return desc->read<uint64_t>(field); }
+  void write8(uint32_t field, uint8_t val) override { return desc->write<uint8_t>(field, val); }
+  void write16(uint32_t field, uint16_t val) override { return desc->write<uint16_t>(field, val); }
+  void write32(uint32_t field, uint32_t val) override { return desc->write<uint32_t>(field, val); }
+  void write64(uint32_t field, uint64_t val) override { return desc->write<uint64_t>(field, val); }
+
+  dev::PCIBar get_bar(int barnum) override {
+    dev::PCIBar bar;
+    bar.valid = false;
+    bar.addr = NULL;
+
+    auto headertype = read32(0x0E) & 0x7F;
+
+    int max_bars = 6 - (4 * headertype);
+
+    if (barnum >= max_bars) {
+      return bar;
+    }
+
+    bar.valid = true;
+
+    u64 bar_val = read32(0x10 + 4 * barnum);
+    bar.raw = bar_val;
+
+    bar.type = (bar_val & 0x1) ? dev::PCIBarType::BAR_PIO : dev::PCIBarType::BAR_MMIO;
+
+    if (bar.type == dev::PCIBarType::BAR_MMIO) {
+      switch ((bar_val >> 1) & 0x3) {
+        case 0:  // 32 bit mode
+        case 1:  // 20 bit mode
+        case 3:  // 64 bit mode
+          break;
+      }
+
+      bar.prefetchable = ((bar_val >> 3) & 0x1) == 0x1;
+      bar.addr = (uint8_t *)(bar_val & ~0xF);
+      // dunno
+    } else {
+      bar.addr = (uint8_t *)(bar_val & ~0x3);
+      bar.prefetchable = false;
+    }
+
+    return bar;
+  }
+};
+
+
+
 static inline uint32_t get_pci_addr(uint8_t bus, uint8_t slot, uint8_t func, uint8_t off) {
   uint32_t lbus = (uint32_t)bus;
   uint32_t lslot = (uint32_t)slot;
@@ -49,8 +127,7 @@ uint32_t pci_cfg_readl(uint8_t bus, uint8_t slot, uint8_t fun, uint8_t off) {
   uint32_t lslot = (uint32_t)slot;
   uint32_t lfun = (uint32_t)fun;
 
-  addr = (lbus << PCI_BUS_SHIFT) | (lslot << PCI_SLOT_SHIFT) | (lfun << PCI_FUN_SHIFT) |
-         PCI_REG_MASK(off) | PCI_ENABLE_BIT;
+  addr = (lbus << PCI_BUS_SHIFT) | (lslot << PCI_SLOT_SHIFT) | (lfun << PCI_FUN_SHIFT) | PCI_REG_MASK(off) | PCI_ENABLE_BIT;
 
   outl(PCI_CFG_ADDR_PORT, addr);
   return inl(PCI_CFG_DATA_PORT);
@@ -71,9 +148,7 @@ void pci::write(uint8_t bus, uint16_t dev, uint16_t func, uint32_t off, uint32_t
   outl(pci_data_port, value);
 }
 
-bool pci_device_has_functions(uint8_t bus, uint16_t dev) {
-  return pci::read(bus, dev, 0x0, 0x0E) & (1 << 7);
-}
+bool pci_device_has_functions(uint8_t bus, uint16_t dev) { return pci::read(bus, dev, 0x0, 0x0E) & (1 << 7); }
 
 enum bar_type {
   bar_memory_mapping = 0,
@@ -193,15 +268,19 @@ static void scan_bus(int bus) {
       const char *class_name = pci_class_names[desc->class_id];
       if (desc->class_id > 0x14) class_name = "Unknown";
 
-      KINFO("pci: %03x.%02x.%1x: %04x:%04x  class=%02x,%02x '%s'\n", bus, dev, func,
-          desc->vendor_id, desc->device_id, desc->class_id, desc->subclass_id, class_name);
-
       for (int barnum = 0; barnum < 6; barnum++) {
         struct pci_bar bar = pci_get_bar(bus, dev, func, barnum);
         if (bar.addr && (bar.type == bar_in_out)) {
           desc->port_base = (uint32_t)(u64)bar.addr;
         }
       }
+
+
+      auto name = ck::string::format("%03x.%02x.%1x, %04x:%04x (%02x,%02x,%s)", bus, dev, func, desc->vendor_id, desc->device_id,
+          desc->class_id, desc->subclass_id, class_name);
+
+      auto dev = ck::make_ref<X86PCIDevice>(desc);
+      dev::Device::add(name, dev);
 
       pci_device_count++;
     }
@@ -222,8 +301,7 @@ void pci::init(void) {
     for (int bus = 0; bus < 32; bus++)
       scan_bus(bus);
   }
-  KINFO("discovered %d PCI devices in %llu cycles.\n", pci_device_count,
-      arch_read_timestamp() - start);
+  KINFO("discovered %d PCI devices in %llu cycles.\n", pci_device_count, arch_read_timestamp() - start);
 }
 
 void pci::walk_devices(ck::func<void(device *)> fn) {
@@ -258,8 +336,8 @@ void pci::device::adjust_ctrl_bits(int set, int clr) {
   write<uint16_t>(PCI_COMMAND, new_reg);
 }
 
-pci::bar pci::device::get_bar(int barnum) {
-  pci::bar bar;
+dev::PCIBar pci::device::get_bar(int barnum) {
+  dev::PCIBar bar;
   bar.valid = false;
   bar.addr = NULL;
 
@@ -276,9 +354,9 @@ pci::bar pci::device::get_bar(int barnum) {
   u64 bar_val = read<uint32_t>(0x10 + 4 * barnum);
   bar.raw = bar_val;
 
-  bar.type = (bar_val & 0x1) ? bar_type::BAR_PIO : bar_type::BAR_MMIO;
+  bar.type = (bar_val & 0x1) ? dev::PCIBarType::BAR_PIO : dev::PCIBarType::BAR_MMIO;
 
-  if (bar.type == bar_type::BAR_MMIO) {
+  if (bar.type == dev::PCIBarType::BAR_MMIO) {
     switch ((bar_val >> 1) & 0x3) {
       case 0:  // 32 bit mode
       case 1:  // 20 bit mode

@@ -515,6 +515,7 @@ static void ata_initialize(void) {}
 
 
 
+
 static void ata_init(void) {
   // TODO: make a new IRQ dispatch system to make this more general
   irq::install(ATA_IRQ0, ata_interrupt, "ATA Drive");

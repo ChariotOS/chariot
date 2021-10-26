@@ -1,5 +1,5 @@
 add_kernel_module(
 	NAME bus_pci
 	NEEDS X86
-	SOURCES pci/pci.cpp
+	SOURCES pci_x86/pci.cpp
 )

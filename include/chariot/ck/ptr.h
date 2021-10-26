@@ -351,22 +351,8 @@ namespace ck {
     }
 
 
-    void* operator new(size_t size) { return (T*)op_new_called(size); }
-    inline void* operator new(size_t, void* ptr) { return ptr; }
 
     unsigned int m_ref_count = 1;
-
-
-   private:
-    static void* op_new_called(size_t size) {
-#ifdef KERNEL
-      pprintk("ck::ref operator new called directly in the kernel!\n");
-      debug_dump_addr2line();
-// #else
-// printf("ck::ref operator new called directly in userspace!\n");
-#endif
-      return (T*)malloc(size);
-    }
   };
 
 

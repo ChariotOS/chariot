@@ -5,6 +5,8 @@
 #include <ck/func.h>
 #include <types.h>
 
+#include <dev/device.h>
+
 #define __packed __attribute__((packed))
 
 #define PCI_CFG_ADDR_PORT 0xcf8
@@ -281,13 +283,7 @@ struct pci_cfg_space {
 
 typedef enum { PCI_BAR_NONE = 0, PCI_BAR_MEM, PCI_BAR_IO } pci_bar_type_t;
 
-typedef enum {
-  PCI_MSI_NONE = 0,
-  PCI_MSI_32,
-  PCI_MSI_64,
-  PCI_MSI_32_PER_VEC,
-  PCI_MSI_64_PER_VEC
-} pci_msi_type_t;
+typedef enum { PCI_MSI_NONE = 0, PCI_MSI_32, PCI_MSI_64, PCI_MSI_32_PER_VEC, PCI_MSI_64_PER_VEC } pci_msi_type_t;
 
 struct pci_msi_info {
   int enabled;
@@ -341,18 +337,6 @@ struct pci_info {
 
 namespace pci {
 
-  enum class bar_type : char {
-    BAR_MMIO = 0,
-    BAR_PIO = 1,
-  };
-  struct bar {
-    bar_type type;
-    bool prefetchable;
-    bool valid;
-    uint8_t *addr;
-    uint32_t size;
-    uint32_t raw;
-  };
 
   class device {
    public:
@@ -375,7 +359,7 @@ namespace pci {
 
     struct pci_cfg_space cfg;  // snapshot at boot!
 
-    pci::bar get_bar(int barnum);
+    dev::PCIBar get_bar(int barnum);
 
     bool is_device(uint16_t vendor, uint16_t device);
 

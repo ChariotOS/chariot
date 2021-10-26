@@ -12,7 +12,13 @@
 
 
 int main(int argc, char **argv) async_main({
-  auto wm = ck::make_ref<server::WindowManager>();
+  auto buf = malloc(sizeof(server::WindowManager));
+	printf("buf: %p\n", buf);
+
+  auto wm = new server::WindowManager();
+
+  // auto wm = ck::make_ref<server::WindowManager>();
+  printf("wm: %p\n", wm);
 
   // tell the global window manager to listen
   wm->listen("/usr/servers/lumen");

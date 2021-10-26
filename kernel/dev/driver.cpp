@@ -151,3 +151,30 @@ fs::BlockDevice *fs::bdev_from_path(const char *n) {
 
   return bdev;
 }
+
+
+static spinlock all_drivers_lock;
+static ck::vec<ck::ref<dev::Driver>> all_drivers;
+
+auto dev::Driver::probe(ck::ref<dev::Device> device) -> dev::ProbeResult {
+  // By default, Ignore the device.
+  return dev::ProbeResult::Ignore;
+}
+
+
+
+void dev::Driver::add(ck::ref<dev::Driver> driver) {
+  scoped_lock l(all_drivers_lock);
+
+  all_drivers.push(driver);
+  for (auto dev : dev::Device::all()) {
+    driver->probe(dev);
+  }
+}
+
+void dev::Driver::probe_all(ck::ref<dev::Device> dev) {
+	scoped_lock l(all_drivers_lock);
+  for (auto drv : all_drivers) {
+		if (drv->probe(dev) == dev::ProbeResult::Attach) continue;
+	}
+}

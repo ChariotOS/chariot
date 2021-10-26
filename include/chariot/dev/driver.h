@@ -64,3 +64,21 @@ namespace dev {
   ck::ref<fs::File> open(ck::string name);
 
 };  // namespace dev
+
+
+namespace dev {
+  enum ProbeResult { Attach, Ignore };
+
+  class Driver : public ck::refcounted<Driver> {
+   public:
+    Driver() {}
+    virtual ~Driver(void) {}
+
+    virtual ProbeResult probe(ck::ref<dev::Device> dev);
+
+
+		static void add(ck::ref<dev::Driver>);
+		static void probe_all(ck::ref<dev::Device>);
+  };
+
+}  // namespace dev
