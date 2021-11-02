@@ -51,6 +51,9 @@ endmenu
 
 menu "Config"
 
+	config QEMU_CORES
+		int "Core count to use in QEMU"
+		default "4"
 
 	config MAX_CPUS
 		int "Maximum Number of CPUs"

@@ -24,11 +24,11 @@ QEMU_FLAGS="-serial mon:stdio "
 
 case $ARCH in 
 	X86-64)
-
 		QEMU_FLAGS+="-enable-kvm -cpu host "
 		QEMU_FLAGS+="-global kvm-pit.lost_tick_policy=discard "
 		QEMU_FLAGS+="-m 4G "
-		QEMU_FLAGS+="-smp 1 "
+		QEMU_FLAGS+="-smp ${CONFIG_QEMU_CORES} "
+		# QEMU_FLAGS+="-smp sockets=1,cores=4,threads=4 "
 		QEMU_FLAGS+="-hda build/chariot.img "
 		# QEMU_FLAGS+="-soundhw pcspk "
 		# QEMU_FLAGS+="-device AC97 "
