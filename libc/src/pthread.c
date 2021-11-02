@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/sysbind.h>
+#include <string.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <chariot/futex.h>
@@ -16,7 +17,6 @@
 #define ATOMIC_LOAD(thing) __atomic_load_n((thing), __ATOMIC_RELAXED)
 
 
-#define PTHREAD_STACK_SIZE (1 * 1024L * 1024L)
 
 /**
  * posix thread bindings to the pctl create_thread and related functions
@@ -54,7 +54,7 @@ struct __pthread {
 
 static int __pthread_died(struct __pthread *data) {
   // we are done!
-  pthread_mutex_unlock(&data->runlock);
+  // pthread_mutex_unlock(&data->runlock);
   while (1) {
     sysbind_exit_thread(0);
   }
@@ -79,17 +79,50 @@ static int __pthread_trampoline(void *arg) {
 
 pthread_t pthread_self(void) { return 0; }
 
+// #define MMAP_PTHREAD_STACK
+// #define PTHREAD_STACK_SIZE (1 * 1024L * 1024L)
+#define PTHREAD_STACK_SIZE (4 * 4096L)
+
+
+// a buffer of pthread stacks that are of size PTHREAD_STACK_SIZE
+static void *pthread_stacks[64] = {0};
+static pthread_mutex_t pthread_stacks_lock = PTHREAD_MUTEX_INITIALIZER;
+
+
+
+static void *get_stack(void) {
+#ifdef MMAP_PTHREAD_STACK
+  return mmap(NULL, PTHREAD_STACK_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+#else
+  return malloc(PTHREAD_STACK_SIZE);
+#endif
+}
+
+static void release_stack(void *stk) {
+#ifdef MMAP_PTHREAD_STACK
+  munmap(stk, PTHREAD_STACK_SIZE);
+#else
+  free(stk);
+#endif
+}
+
+
+
 int pthread_create(pthread_t *thd, const pthread_attr_t *attr, void *(*fn)(void *), void *arg) {
   struct __pthread *data = malloc(sizeof(*data));
 
   data->stack_size = PTHREAD_STACK_SIZE;
-  data->stack = mmap(NULL, PTHREAD_STACK_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+
+  data->stack = get_stack();
+  memset(data->stack, 0, PTHREAD_STACK_SIZE);
+
   data->arg = arg;
   data->fn = fn;
 
 
-  pthread_mutex_init(&data->runlock, NULL);
-  pthread_mutex_lock(&data->runlock);
+
+  // pthread_mutex_init(&data->runlock, NULL);
+  // pthread_mutex_lock(&data->runlock);
 
   // int res = pctl(0, PCTL_CREATE_THREAD, &data->pctl_args);
 
@@ -120,10 +153,11 @@ int pthread_join(pthread_t t, void **retval) {
     return -1;
   }
 
-  pthread_mutex_lock(&t->runlock);
+  // pthread_mutex_lock(&t->runlock);
 
   if (retval != NULL) *retval = t->res;
-  munmap(t->stack, t->stack_size);
+
+  release_stack(t->stack);
   free(t);
   return result;
 }
@@ -173,7 +207,6 @@ static inline int xchg(int *ptr, int x) {
 
 
 
-
 int pthread_mutex_lock(pthread_mutex_t *m) {
 #ifdef CONFIG_X86
   int c, i;
@@ -198,7 +231,7 @@ int pthread_mutex_lock(pthread_mutex_t *m) {
     }
   }
 #endif
-	return 0;
+  return 0;
 }
 
 

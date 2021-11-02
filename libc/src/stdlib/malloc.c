@@ -3,21 +3,20 @@
 #include <sys/mman.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <pthread.h>
 
-static int malloc_lock = 0;
 
-
+static pthread_mutex_t malloc_lock = PTHREAD_MUTEX_INITIALIZER;
 // bindings for liballoc
 
 int liballoc_lock() {
-  while (__sync_lock_test_and_set(&malloc_lock, 1)) {
-  }
+	pthread_mutex_lock(&malloc_lock);
   return 0;
 }
 
 
 int liballoc_unlock() {
-  malloc_lock = 0;
+	pthread_mutex_unlock(&malloc_lock);
   return 0;
 }
 
