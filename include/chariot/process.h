@@ -156,6 +156,9 @@ struct Process final : public ck::refcounted<Process> {
 
   void terminate(int signal);
 
+	// cause the process to exit.
+	void exit(int code);
+
   inline Process() {}
   Process(const Process &) = delete;
   ~Process(void);

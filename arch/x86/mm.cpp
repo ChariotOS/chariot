@@ -37,6 +37,8 @@ namespace x86 {
   class pagetable : public mm::PageTable {
     u64 *pml4;
 
+		spinlock lock;
+
    public:
     pagetable(u64 *pml4);
     virtual ~pagetable();
@@ -66,6 +68,7 @@ x86::pagetable::pagetable(u64 *pml4) : pml4(pml4) {
 x86::pagetable::~pagetable(void) { paging::free_table(pml4); }
 
 bool x86::pagetable::switch_to(void) {
+	// scoped_irqlock l(lock);
   auto kptable = (u64 *)p2v(kernel_page_table);
   auto pptable = (u64 *)p2v(pml4);
 
@@ -80,6 +83,7 @@ ck::ref<mm::PageTable> mm::PageTable::create() {
 }
 
 int x86::pagetable::add_mapping(off_t va, struct mm::pte &p) {
+	scoped_irqlock l(lock);
   int flags = PTE_P;
   // TOOD: if (p.prot | PROT_READ)
   if (va < CONFIG_KERNEL_VIRTUAL_BASE) flags |= PTE_U;
@@ -102,6 +106,7 @@ int x86::pagetable::add_mapping(off_t va, struct mm::pte &p) {
 
 
 int x86::pagetable::get_mapping(off_t va, struct mm::pte &r) {
+	scoped_irqlock l(lock);
   off_t pte = *paging::find_mapping(pml4, va, paging::pgsize::page);
 
   r.prot = PROT_READ;
@@ -115,6 +120,7 @@ int x86::pagetable::get_mapping(off_t va, struct mm::pte &r) {
 
 
 int x86::pagetable::del_mapping(off_t va) {
+	scoped_irqlock l(lock);
   *paging::find_mapping(pml4, va, paging::pgsize::page) = 0;
   flush_tlb_single(va);
   return 0;

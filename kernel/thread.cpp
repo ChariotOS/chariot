@@ -70,13 +70,14 @@ Thread::Thread(long tid, Process &proc) : proc(proc) {
   kern_context = (struct thread_context *)sp;
   memset(kern_context, 0, sizeof(struct thread_context));
 
-  set_state(PS_EMBRYO);
-
   arch_reg(REG_SP, trap_frame) = sp;
+  arch_reg(REG_BP, trap_frame) = sp;
   arch_reg(REG_PC, trap_frame) = -1;
 
   // set the initial context to the creation boostrap function
   kern_context->pc = (u64)thread_create_callback;
+	// return from interrupt will drop this to 0
+	irq_depth = 0;
 
 
   arch_initialize_trapframe(proc.ring == RING_USER, trap_frame);
@@ -97,10 +98,7 @@ Thread::~Thread(void) {
   assert(ref_count() == 0);
   {
     scoped_irqlock l(thread_table_lock);
-    assert(thread_table.contains(tid));
-    // important: we cannot free() something while in an irqlock. As such, we must leak the pointer
-    // from the table, then free it later.
-    // thread_table.get(t->tid).leak_ptr();
+    // assert(thread_table.contains(tid));
     thread_table.remove(tid);
   }
 
@@ -176,6 +174,7 @@ void Thread::setup_stack(reg_t *tf) {
   // align the stack to 16 bytes. (this is what intel wants, so it what I
   // will give them)
   arch_reg(REG_SP, tf) = sp & ~0xF;
+  arch_reg(REG_BP, tf) = sp & ~0xF;
 #ifdef CONFIG_X86
   tf[1] = argc;
   tf[2] = (unsigned long)argv;
@@ -213,6 +212,11 @@ void Thread::dump(void) {
   }
 }
 
+
+void Thread::exit(void) {
+  sched::unblock(*this, true);
+	should_die = 1;
+}
 
 bool Thread::teardown(ck::ref<Thread> &&thd) {
 #ifdef CONFIG_VERBOSE_PROCESS
@@ -273,11 +277,19 @@ void Thread::interrupt(void) { sched::unblock(*this, true); }
 extern int get_next_pid(void);
 
 // TODO: alot of verification, basically
-int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
+int sys::spawnthread(void *vstack, void *fn, void *arg, int flags) {
   int tid = get_next_pid();
   auto thd = ck::make_ref<Thread>(tid, *curproc);
 
-  arch_reg(REG_SP, thd->trap_frame) = (unsigned long)stack;
+
+  memset(thd->trap_frame, 0, arch_trapframe_size());
+  arch_initialize_trapframe(true, thd->trap_frame);
+
+  auto stack = (unsigned long)vstack;
+
+  stack -= 24;
+  arch_reg(REG_SP, thd->trap_frame) = stack;
+  arch_reg(REG_BP, thd->trap_frame) = stack;
   arch_reg(REG_PC, thd->trap_frame) = (unsigned long)fn;
   arch_reg(REG_ARG0, thd->trap_frame) = (unsigned long)arg;
 
@@ -288,19 +300,7 @@ int sys::spawnthread(void *stack, void *fn, void *arg, int flags) {
 
 
 bool Thread::join(ck::ref<Thread> thd) {
-  {
-    /* take the join lock */
-    scoped_lock joinlock(thd->joinlock);
-    if (thd->state != PS_ZOMBIE) {
-      if (thd->joiners.wait().interrupted()) {
-        return false;
-      }
-    }
-  }
-
-  // take the run lock
-  thd->runlock.lock();
-  Thread::teardown(move(thd));
+  panic("oh no\n");
   return true;
 }
 
@@ -313,8 +313,27 @@ int sys::jointhread(int tid) {
   /* If someone else is joining, it's invalid */
   if (t->joinlock.is_locked()) return -EINVAL;
 
-  Thread::join(move(t));
-  return 0;
+
+  // take the run lock
+  // thd->runlock.lock();
+  while (1) {
+    /* take the join lock */
+
+    auto f = t->joinlock.lock_irqsave();
+    if (t->get_state() == PS_ZOMBIE) {
+      t->joinlock.unlock_irqrestore(f);
+      t->runlock.lock();
+      Thread::teardown(move(t));
+      return 0;
+    }
+
+    // wait!
+    wait_entry ent;
+    prepare_to_wait(t->joiners, ent, true);
+    t->joinlock.unlock_irqrestore(f);
+    if (ent.start().interrupted()) return -EINTR;
+    // sched::yield();
+  }
 }
 
 

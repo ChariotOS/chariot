@@ -383,8 +383,8 @@ int mm::AddressSpace::unmap(off_t ptr, size_t ulen) {
 
 #define PGMASK (~(PGSIZE - 1))
 bool mm::AddressSpace::validate_pointer(void *raw_va, size_t len, int mode) {
-  scoped_lock l(this->lock);
   if (is_kspace) return true;
+  scoped_lock l(this->lock);
   off_t start = (off_t)raw_va & PGMASK;
   off_t end = ((off_t)raw_va + len) & PGMASK;
 
@@ -416,6 +416,7 @@ int mm::AddressSpace::schedule_mapping(off_t va, off_t pa, int prot) {
 
 
 void mm::AddressSpace::dump(void) {
+  scoped_lock l(this->lock);
   for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
     auto *r = rb_entry(node, struct mm::MappedRegion, node);
     printk("%p-%p ", r->va, r->va + r->len);

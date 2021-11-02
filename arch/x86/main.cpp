@@ -152,6 +152,19 @@ int kernel_init(void *) {
   KINFO("kernel modules initialized\n");
 
 
+
+
+  mb2::find<struct multiboot_tag_module>(::mbd, MULTIBOOT_TAG_TYPE_MODULE, [&](auto *module) {
+    auto size = module->mod_end - module->mod_start;
+
+		// auto addr = p2v(module->mod_start);
+		// hexdump(addr, size, true);
+    printk(KERN_INFO "Found a module %p-%p\n", p2v(module->mod_start), p2v(module->mod_end));
+  });
+
+
+
+
   KINFO("Bootup complete. It is now safe to move about the cabin.\n");
 
   auto root_name = kargs::get("root", "/dev/disk0p1");

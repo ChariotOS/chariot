@@ -138,6 +138,7 @@ struct Thread final : public ck::weakable<Thread> {
   volatile int state;
   int exit_code;
 
+	int irq_depth = 0;
   int kerrno = 0;
   bool preemptable = true;
 
@@ -196,7 +197,6 @@ struct Thread final : public ck::weakable<Thread> {
       unsigned should_die : 1;  // the thread needs to be torn down, must not
                                 // return to userspace
       unsigned kern_idle : 1;   // the thread is a kernel idle thread
-      unsigned exited : 1;      // the thread has exited, it's safe to delete when
                                 // reaped by the parent or another thread
     };
   };
@@ -220,6 +220,10 @@ struct Thread final : public ck::weakable<Thread> {
 
   // sends a signal to the thread and returns if it succeeded or not
   bool send_signal(int sig);
+
+
+	// tell the thread to exit. Wait on joiners to know when it finished exiting
+	void exit(void);
 
 
 

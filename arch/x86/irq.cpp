@@ -339,6 +339,8 @@ void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
   // arch_enable_ints();
   KERR("==================================================================\n");
 
+  curproc->mm->dump();
+
   arch_enable_ints();
   curproc->terminate(fatal_signal);
 }
@@ -443,6 +445,8 @@ extern "C" void trap(reg_t *regs) {
   auto *tf = (struct x86_64regs *)regs;
   bool from_userspace = tf->cs == 0x23;
 
+  if (cpu::in_thread()) curthd->irq_depth++;
+
 
   {
     bool ts = time::stabilized();
@@ -499,6 +503,8 @@ extern "C" void trap(reg_t *regs) {
       if (!VALIDATE_RDWR(uctx, frame_size)) {
         printk("not sure what to do here. uctx = %p\n", uctx);
         curproc->mm->dump();
+
+        if (cpu::in_thread()) curthd->irq_depth--;
         return;
       }
 
@@ -517,8 +523,13 @@ extern "C" void trap(reg_t *regs) {
 
       tf->cs = (SEG_UCODE << 3) | DPL_USER;
       tf->ds = (SEG_UDATA << 3) | DPL_USER;
-      x86_enter_userspace(tf);
+
+      // x86_enter_userspace(tf);
       // arch_enable_ints();
     }
   }
+
+
+  // return
+  if (cpu::in_thread()) curthd->irq_depth--;
 }

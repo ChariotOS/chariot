@@ -242,24 +242,63 @@ async(int) make_fiber(int num, int size, int div) {
 }
 
 
+unsigned long ms() { return sysbind_gettime_microsecond() / 1000; }
 
-struct my_thing : public ck::refcounted<my_thing> {};
+
+
+void* thread_throughput_test(void*) {
+  while (1) {
+  }
+  char buf[256];
+  int tid = gettid();
+  auto last = ms();
+  long count = 0;
+  float measure_fract = 0.1;
+  unsigned long interval = 1000 * measure_fract;
+  while (1) {
+    ck::thread t([] {
+    });
+    t.join();
+    count++;
+
+    auto now = ms();
+
+    if (now - last > interval) {
+      unsigned long long avail, total;
+      sysbind_getraminfo(&avail, &total);
+      // printf("created %ld threads/second\n", count);
+      snprintf(buf, 512, "%d created %ld threads/second. %llu\n", tid, (long)(count * (1 / measure_fract)), avail);
+      write(1, buf, strlen(buf));
+      last = now;
+      count = 0;
+    }
+  }
+  return nullptr;
+}
 
 int main(int argc, char** argv) async_main({
-#if 0
-  for (int i = 0; true; i++) {
+  // thread_throughput_test(nullptr);
+  auto nproc = sysbind_get_nproc();
+  printf("nproc: %d\n", nproc);
+
+
+
+  while (1) {
     int pid = fork();
+
     if (pid == 0) {
-
       exit(0);
+      pthread_t threads[nproc];
+      for (int i = 0; i < nproc; i++)
+        pthread_create(&threads[i], NULL, thread_throughput_test, NULL);
+
+      for (int i = 0; i < nproc; i++)
+        pthread_join(threads[i], NULL);
+    } else {
+      kill(pid, SIGKILL);
+      waitpid(pid, NULL, 0);
     }
-
-    waitpid(pid, NULL, 0);
-    printf("%d\n", i);
   }
-  return;
-
-#endif
 
 
 #if 0

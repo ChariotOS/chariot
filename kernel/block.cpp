@@ -109,7 +109,7 @@ namespace block {
 
 
   struct Buffer *block::Buffer::get(fs::BlockDevice &device, off_t page) {
-    scoped_lock l(buffer_cache_lock);
+    scoped_irqlock l(buffer_cache_lock);
 
     struct block::Buffer *buf = NULL;
 

@@ -14,7 +14,7 @@ int sys::chdir(const char *path) {
 
   if (0 != vfs::namei(path, 0, 0, proc->cwd, ncwd)) return -1;
 
-  if (ncwd == NULL) return -ENOENT;
+  if (ncwd == nullptr) return -ENOENT;
   if (ncwd->type != T_DIR) return -ENOTDIR;
 
 

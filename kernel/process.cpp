@@ -336,7 +336,6 @@ int Process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::strin
     thd = ck::make_ref<Thread>(pid, *this);
   }
 
-  printk("hello\n");
 
   // construct the thread
   arch_reg(REG_SP, thd->trap_frame) = stack + stack_size - 64;
@@ -387,6 +386,7 @@ int sched::proc::send_signal(long p, int sig) {
 int sched::proc::reap(ck::ref<Process> p) {
   // assert(p->is_dead());
   auto *me = curproc;
+  // printk_nolock("reap %d\n", p->pid);
 
 
   int f = 0;
@@ -404,14 +404,31 @@ int sched::proc::reap(ck::ref<Process> p) {
   {
     ck::vec<ck::ref<Thread>> to_teardown = p->threads;
     for (auto t : to_teardown) {
+      while (1) {
+        auto f = t->joinlock.lock_irqsave();
+        if (t->get_state() == PS_ZOMBIE) {
+          t->joinlock.unlock_irqrestore(f);
+          break;
+        }
+        wait_entry ent;
+        prepare_to_wait(t->joiners, ent);
+
+        // t->exit();
+        t->joinlock.unlock_irqrestore(f);
+
+        ent.start();
+      }
+
+
+
       /* make sure... */
-      assert(t->get_state() == PS_ZOMBIE);
 
       t->runlock.lock();
       Thread::teardown(move(t));
     }
   }
   assert(p->threads.size() == 0);
+
 
 
   /* remove the child from our list */
@@ -447,12 +464,13 @@ int sched::proc::reap(ck::ref<Process> p) {
 
 
 void Process::terminate(int signal) {
-  pprintk("Terminate with signal %d\n", signal);
+  // pprintk("Terminate with signal %d\n", signal);
   signal &= 0x7F;
   /* top bit of the first byte means it was signalled. Everything else is the signal that killed it
    */
   this->exit_signal = signal | 0x80;
-  sys::exit_proc(signal + 128);
+  this->exit(signal + 128);
+  // sys::exit_proc(signal + 128);
 }
 
 
@@ -524,6 +542,7 @@ static bool can_reap(Thread *reaper, ck::ref<Process> zombie, long seeking, int 
 int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
   auto *me = curproc;
 
+
   if (!me) return -1;
 
   if (pid > 0) {
@@ -555,10 +574,8 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
         break;
       }
     }
-    if (!found) {
-      zomb = NULL;
-    }
 
+    if (!found) zomb = NULL;
 
     if (zomb != NULL) {
       found_process = zomb->proc;
@@ -649,79 +666,36 @@ static void zombify(struct zombie_entry *zomb) {
   zombie_list.add_tail(&zomb->node);
 }
 
-void sys::exit_proc(int code) {
-  if (curproc->pid == 1) panic("INIT DIED!\n");
+void sys::exit_proc(int code) { curproc->exit(code); }
+
+
+void Process::exit(int code) {
+  bool exiting_self = this == curproc;
 
   {
-    scoped_lock l(curproc->datalock);
-    for (auto t : curproc->threads) {
-      if (t && t != curthd) {
-        t->should_die = 1;
-        sched::unblock(*t, true);
-      }
-    }
-
-    while (1) {
-      bool everyone_dead = true;
-
-      {
-        scoped_irqlock l(curproc->threads_lock);
-        /* all the threads should be rudely awoken now... */
-        for (auto t : curproc->threads) {
-          if (t && t != curthd) {
-            if (t->get_state() != PS_ZOMBIE) {
-              everyone_dead = false;
-            }
-          }
-        }
-      }
-
-      if (everyone_dead) break;
-      sched::yield();
+    scoped_lock l(datalock);
+    auto all = threads;
+    for (auto t : all) {
+      t->exit();
     }
   }
 
-
-  // ck::vec<ck::ref<thread>> threads;
-  // for (auto &t : curproc->threads) {
-  //   if (t && t != curthd) {
-  //     threads.push(t);
-  //   }
-  // }
-  // for (auto &t : threads) {
-  //   thread::teardown(move(t));
-  // }
-
-
-
-  curproc->exit_code = code;
-  curproc->exited = true;
-  curthd->should_die = 1;
-  curthd->set_state(PS_ZOMBIE);
-
-
-  // send a signal that we died to the parent process
-  // sched::proc::send_signal(curproc->parent->pid, SIGCHLD);
-
+  exit_code = code;
+  exited = true;
   // to be freed in zombify OR waitpid
-  struct zombie_entry *zomb = new zombie_entry(curproc);
+  struct zombie_entry *zomb = new zombie_entry(this);
   zombify(zomb);
 
-  // sched::exit();
+  // printk_nolock("here\n");
 }
 
 void sys::exit_thread(int code) {
   // if we are the main thread, exit the group instead.
   if (curthd->pid == curthd->tid) {
-    sys::exit_proc(code);
-    return;
+    return curproc->exit(code);
   }
 
-  // pprintk("TODO: sys::exit_thread!\n");
-
-  // defer to later!
-  curthd->should_die = 1;
-  curthd->set_state(PS_ZOMBIE);
+  curthd->exit();
 }
 
 

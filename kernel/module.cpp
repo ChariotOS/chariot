@@ -11,7 +11,7 @@ void initialize_builtin_modules(void) {
     int i = 0;
     while (mod != __stop__kernel_modules) {
 
-			printk(KERN_DEBUG "%p - %s\n", mod->initfn, mod->name);
+			// printk(KERN_DEBUG "%p - %s\n", mod->initfn, mod->name);
       mod = &(__start__kernel_modules[++i]);
     }
   }

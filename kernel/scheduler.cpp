@@ -309,13 +309,14 @@ static void switch_into(ck::ref<Thread> thd) {
 
   cpu::current().current_thread = thd;
   cpu::current().next_thread = nullptr;
-  thd->state = PS_RUNNING;
-  if (thd->proc.ring == RING_USER) arch_restore_fpu(*thd);
-
-
   // update the statistics of the thread
   thd->stats.run_count++;
   thd->stats.current_cpu = cpu::current().cpunum;
+  thd->state = PS_RUNNING;
+
+  if (thd->proc.ring == RING_USER) arch_restore_fpu(*thd);
+
+
 
   thd->sched.has_run = 0;
 
@@ -351,11 +352,6 @@ sched::yieldres sched::yield(spinlock *held_lock) {
   auto &thd = *curthd;
 
   thd.held_lock = held_lock;
-
-  // if the old thread is now dead, notify joiners
-  if (thd.get_state() == PS_ZOMBIE) {
-    thd.joiners.wake_up();
-  }
 
   arch_disable_ints();
 
@@ -408,7 +404,10 @@ void sched::unblock(Thread &thd, bool interrupt) {
   __sync_synchronize();
 }
 
-void sched::exit() { do_yield(PS_ZOMBIE); }
+void sched::exit() {
+  curthd->exit();
+  yield();
+}
 
 void sched::dumb_sleepticks(unsigned long t) {
   auto now = cpu::get_ticks();
@@ -480,12 +479,22 @@ void sched::run() {
     switch_into(thd);
     auto end = cpu::get_ticks();
 
+
+    // if the old thread is now dead, notify joiners
+
     if (thd->proc.ring == RING_KERN) {
       cpu::current().kstat.kernel_ticks += end - start;
     } else {
       cpu::current().kstat.user_ticks += end - start;
     }
-    if (thd->get_state() != PS_ZOMBIE) {
+
+    if (thd->should_die) {
+			scoped_irqlock l(thd->joinlock);
+			// printk_nolock("sc: killing %d from %d.\n", thd->tid, cpu::current().cpunum);
+      thd->set_state(PS_ZOMBIE);
+      thd->joiners.wake_up_all();
+    }
+    if (thd->get_state() != PS_ZOMBIE && !thd->should_die) {
       // add the task back to the scheduler
       sched::add_task(thd);
     }
@@ -659,10 +668,11 @@ void sched::before_iret(bool userspace) {
 
   auto thd = curthd;
 
-  // exit via the scheduler if the task should die.
-  if (thd->should_die) {
-    thd = nullptr;
-    sched::exit();
+  // exit via the scheduler if the task should die, and the irq
+  // depth is 1 (we would return back to the thread)
+  if (thd->should_die && thd->irq_depth == 1) {
+    c.woke_someone_up = false;
+    sched::yield();
   }
 
   if (time::stabilized()) thd->last_start_utime_us = time::now_us();

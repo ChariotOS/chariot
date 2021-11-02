@@ -88,7 +88,7 @@ set(CMAKE_AR ${TOOLCHAIN_PREFIX}ar)
 
 
 
-set(COMPILER_SPECIFIC_FLAGS "-fdevirtualize -Werror -Wformat=2 -Wformat-security")
+set(COMPILER_SPECIFIC_FLAGS "-Werror -Wformat=2 -Wformat-security")
 if (CONFIG_CLANG)
 	set(COMPILER_SPECIFIC_FLAGS "${COMPILER_SPECIFIC_FLAGS} -Wno-initializer-overrides -Wno-c99-designator ")
 else()
@@ -151,7 +151,7 @@ set(LIBRARY_OUTPUT_PATH "${CHARIOT_SYSROOT}/lib" CACHE PATH "Build directory" FO
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -fdiagnostics-color=always ${COMPILER_SPECIFIC_FLAGS} ")
 if(CONFIG_DEBUG_SYMBOLS)
-	# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+	# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g ")
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CONFIG_ADDITIONAL_USER_FLAGS}")
