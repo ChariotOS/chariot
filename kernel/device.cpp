@@ -2,11 +2,23 @@
 #include <dev/driver.h>
 #include <lock.h>
 #include <ck/vec.h>
+#include <module.h>
 
 static spinlock all_devices_lock;
 static ck::vec<ck::ref<dev::Device>> all_devices;
 
 dev::Device::Device(DeviceType t) : m_type(t) {}
+
+
+ksh_def("devices", "display all devices") {
+	
+  scoped_lock l(all_devices_lock);
+
+	for (auto & dev : all_devices) {
+		KINFO("%s\n", dev->name().get());
+	}
+	return 0;
+}
 
 
 // Register a device with the global device system

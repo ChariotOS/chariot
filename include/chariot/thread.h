@@ -2,6 +2,7 @@
 
 #include <ck/ptr.h>
 #include <ck/vec.h>
+#include <ck/string.h>
 
 #include <lock.h>
 #include <arch.h>
@@ -189,6 +190,8 @@ struct Thread final : public ck::weakable<Thread> {
 
   off_t tls_uaddr;
   size_t tls_usize;
+
+	ck::string name;
 
   union /* flags */ {
     u64 flags = 0;

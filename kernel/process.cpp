@@ -220,6 +220,7 @@ ck::ref<Thread> sched::proc::spawn_kthread(const char *name, int (*func)(void *)
   auto tid = get_next_pid();
   auto thd = ck::make_ref<Thread>(tid, *proc);
   thd->trap_frame[1] = (unsigned long)arg;
+	thd->name = name;
 
 
   arch_reg(REG_PC, thd->trap_frame) = (unsigned long)func;
@@ -237,6 +238,7 @@ long sched::proc::create_kthread(const char *name, int (*func)(void *), void *ar
   // construct the thread
   auto thd = ck::make_ref<Thread>(tid, *proc);
   thd->trap_frame[1] = (unsigned long)arg;
+	thd->name = name;
 
   thd->kickoff((void *)func, PS_RUNNING);
 

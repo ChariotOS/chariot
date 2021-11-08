@@ -3,6 +3,7 @@
 #include <ck/map.h>
 #include <printk.h>
 #include <fs/vfs.h>
+#include <module.h>
 
 #define DRIVER_DEBUG
 
@@ -173,8 +174,25 @@ void dev::Driver::add(ck::ref<dev::Driver> driver) {
 }
 
 void dev::Driver::probe_all(ck::ref<dev::Device> dev) {
-	scoped_lock l(all_drivers_lock);
+  scoped_lock l(all_drivers_lock);
   for (auto drv : all_drivers) {
-		if (drv->probe(dev) == dev::ProbeResult::Attach) continue;
-	}
+    if (drv->probe(dev) == dev::ProbeResult::Attach) continue;
+  }
+}
+
+
+ksh_def("drivers", "display all (old style) drivers") {
+  drivers_lock.read_lock();
+	printk("Names:\n");
+  for (auto &[name, dev] : device_names) {
+    printk(" - %s: %d,%d\n", name.get(), dev.major(), dev.minor());
+  }
+
+
+	printk("Drivers:\n");
+  for (auto &[major, drv] : drivers) {
+    printk(" - major: %d: %s\n", major, drv->name);
+  }
+  drivers_lock.read_unlock();
+  return 0;
 }

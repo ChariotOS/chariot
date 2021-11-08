@@ -11,6 +11,7 @@
 #include <syscall.h>
 #include <time.h>
 #include <debug.h>
+#include <module.h>
 #include <util.h>
 
 /**
@@ -208,8 +209,36 @@ void Thread::dump(void) {
   scoped_irqlock l(thread_table_lock);
   for (auto &[tid, twr] : thread_table) {
     ck::ref<Thread> thd = twr.get();
-    printk_nolock("t:%d p:%d : %p %d refs\n", tid, thd->pid, thd.get(), thd->ref_count());
+		auto pc = arch_reg(REG_PC, thd->trap_frame);
+		const char *state_string = "unknown";
+
+		switch (thd->state) {
+			case PS_RUNNING:
+				state_string = "running";
+				break;
+
+			case PS_INTERRUPTIBLE:
+				state_string = "blocked (int)";
+				break;
+
+			case PS_UNINTERRUPTIBLE:
+				state_string = "blocked (noint)";
+				break;
+
+			case PS_ZOMBIE:
+				state_string = "blocked (noint)";
+				break;
+		}
+		printk_nolock("t:%3d, p:%3d, %s, pc:%p, st:%s, e:%d, irqd:%d\n", tid, thd->pid, thd->name.get(), pc, state_string, thd->kerrno, thd->irq_depth);
+    // printk_nolock("t:%d p:%d : %p %d refs\n", tid, thd->pid, thd.get(), thd->ref_count());
   }
+}
+
+
+
+ksh_def("threads", "display all the threads in great detail") {
+	Thread::dump();
+	return 0;
 }
 
 

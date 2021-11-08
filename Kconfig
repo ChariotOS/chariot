@@ -178,7 +178,7 @@ menu "Devices"
 
 		config FRAMEBUFFER_HEIGHT
 			int "Height of the VGA framebuffer"
-			default 768
+			default 1024
 		config FRAMEBUFFER_AUTODETECT
 			bool "Autodetect framebuffer dimensions from BIOS/grub"
 			default y

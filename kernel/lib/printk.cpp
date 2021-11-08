@@ -44,7 +44,7 @@ void debug_die(void) {
   did_panic = true;
   if (cpu::in_thread()) {
   	arch_enable_ints();
-    kshell::run("(panic)");
+    kshell::run(RED "(panic)" RESET);
   }
 
   // arch_dump_backtrace();

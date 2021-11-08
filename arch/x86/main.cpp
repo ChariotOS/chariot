@@ -193,11 +193,7 @@ int kernel_init(void *) {
     printk("failed to mount root. Error=%d\n", -mnt_res);
   }
 
-	panic("dead\n");
-
-
 #ifndef CONFIG_ENABLE_USERSPACE
-
 	KINFO("Userspace disabled. Starting kernel shell\n");
 	kshell::run();
 #endif
@@ -212,7 +208,6 @@ int kernel_init(void *) {
   auto paths = init_paths.split(',');
 
   auto init_pid = sched::proc::spawn_init(paths);
-
 
   sys::waitpid(init_pid, NULL, 0);
   panic("init died!\n");
