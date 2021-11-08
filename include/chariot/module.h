@@ -33,5 +33,6 @@ void initialize_builtin_modules(void);
 
 // to make creating kernel shell functions easier.
 #define module_init_kshell(cmd, usage, func) \
-  void _MOD_VARNAME(kshell_init)(void) { kshell::add(cmd, usage, func); }
+  void _MOD_VARNAME(kshell_init)(void) { kshell::add(cmd, usage, func); } \
+	module_init(cmd, _MOD_VARNAME(kshell_init));
 #endif
