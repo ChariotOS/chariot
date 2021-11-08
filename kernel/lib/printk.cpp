@@ -12,7 +12,7 @@
 #include <vga.h>
 #include "debug.h"
 #include <thread.h>
-
+#include <kshell.h>
 
 void debug_dump_addr2line() {
 #if CONFIG_X86
@@ -28,8 +28,24 @@ void debug_dump_addr2line() {
 #endif
 }
 
+extern volatile bool did_panic;
+extern volatile long monitor_tid;
+
 void debug_die(void) {
-  debug_dump_addr2line();
+  // debug_dump_addr2line();
+
+
+  if (cpu::in_thread()) {
+    monitor_tid = curthd->tid;
+		printk("panic in %d\n", monitor_tid);
+  }
+
+  __sync_synchronize();
+  did_panic = true;
+  if (cpu::in_thread()) {
+  	arch_enable_ints();
+    kshell::run("(panic)");
+  }
 
   // arch_dump_backtrace();
   while (1) {

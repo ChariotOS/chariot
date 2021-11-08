@@ -193,6 +193,8 @@ int kernel_init(void *) {
     printk("failed to mount root. Error=%d\n", -mnt_res);
   }
 
+	panic("dead\n");
+
 
 #ifndef CONFIG_ENABLE_USERSPACE
 

@@ -77,17 +77,15 @@ const char* human_size(uint64_t bytes, char* buf);
 #define KWARN(fmt, args...) printk(KERN_WARN fmt, ##args)
 #define KINFO(fmt, args...) printk(KERN_INFO fmt, ##args)
 
-extern volatile bool did_panic;
 extern void debug_die(void);
 
 template <typename... T>
 inline void do_panic(const char* fmt, T&&... args) {
   // disable interrupts
-  arch_disable_ints();
+  // arch_disable_ints();
   printk(fmt, args...);
   printk("\n");
 
-  did_panic = true;
   // todo: notify everyone that we died
 
   debug_die();

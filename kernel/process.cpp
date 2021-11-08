@@ -18,6 +18,7 @@
 #include <syscall.h>
 #include <util.h>
 #include <wait_flags.h>
+#include <module.h>
 
 #ifdef CONFIG_RISCV
 #include <riscv/arch.h>
@@ -933,3 +934,10 @@ void sched::proc::dump_table(void) {
   //   pprintk("  process %d, seeking %d\n", went->thd->tid, went->seeking);
   // }
 }
+
+
+ksh_def("pdump", "dump the process table") {
+	sched::proc::dump_table();
+	return 0;
+}
+

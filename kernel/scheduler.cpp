@@ -14,6 +14,7 @@
 #define SIG_IGN ((void (*)(int))1)
 
 
+volatile long monitor_tid = 0;
 volatile bool did_panic = false;  // printk.h
 static bool s_enabled = true;
 
@@ -432,7 +433,7 @@ static int idle_task(void *arg) {
    * a big class of bugs in one go :^).
    */
   while (1) {
-    if (did_panic) debug_die();
+    // if (did_panic) debug_die();
     /*
      * The loop here is simple. Wait for an interrupt, handle it (implicitly) then
      * yield back to the scheduler if there is a task ready to run.
@@ -454,14 +455,24 @@ void sched::run() {
   unsigned long has_run = 0;
 
   while (1) {
-    if (did_panic) debug_die();
+    // if (did_panic) debug_die();
     if (has_run++ >= 100) {
       has_run = 0;
       my_queue().boost();
     }
 
     ck::ref<Thread> thd = pick_next_thread();
+
     cpu::current().next_thread = nullptr;
+
+
+    if (did_panic && thd != nullptr) {
+      // only run kernel threads, and the monitor thread.
+      if (thd->tid != monitor_tid && thd->proc.ring == RING_USER) {
+        sched::add_task(thd);
+        thd = nullptr;
+      }
+    }
 
     if (thd == nullptr) {
       // idle loop when there isn't a task
@@ -491,8 +502,8 @@ void sched::run() {
     }
 
     if (thd->should_die) {
-			scoped_irqlock l(thd->joinlock);
-			// printk_nolock("sc: killing %d from %d.\n", thd->tid, cpu::current().cpunum);
+      scoped_irqlock l(thd->joinlock);
+      // printk_nolock("sc: killing %d from %d.\n", thd->tid, cpu::current().cpunum);
       thd->set_state(PS_ZOMBIE);
       thd->joiners.wake_up_all();
     }

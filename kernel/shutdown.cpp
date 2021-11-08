@@ -2,6 +2,7 @@
 #include <fs.h>
 #include <syscall.h>
 #include <module.h>
+#include <kshell.h>
 #ifdef CONFIG_RISCV
 #include <riscv/sbi.h>
 #endif
@@ -38,3 +39,9 @@ int sys::shutdown(void) {
   return -ENOTIMPL;
 }
 
+
+
+ksh_def("shutdown", "turn off the machine") {
+	sys::shutdown();
+	return 0;
+}

@@ -1,6 +1,7 @@
 #pragma once
 #include <ck/vec.h>
 #include <ck/string.h>
+#include <module.h>
 
 // the kshell related function calls are for debugging the kernel from userspace.
 // (or somewhere else, if you want I guess). They arent meant to return anything,
@@ -15,7 +16,7 @@ namespace kshell {
 
 	// run the kshell on this kernel thread. This is basically a debug
 	// console in the kernel for when something breaks :)
-	void run(void);
+	void run(const char *prompt = "##>");
 
 
 	// if the kernel shell is currently being run on a thread.
@@ -25,3 +26,13 @@ namespace kshell {
 	void feed(size_t sz, char *buf);
 
 };  // namespace kshell
+
+
+
+// use like `ksh_def("test", "test") {}` in the
+// top level to define a ksh command nice and easy.
+// `args` is defined in the body of the function
+#define ksh_def(cmd, usage) \
+	static unsigned long _MOD_VARNAME(ksh_command)(ck::vec<ck::string> &args, void *data, int dlen); \
+	module_init_kshell(cmd, usage, _MOD_VARNAME(ksh_command)); \
+	static unsigned long _MOD_VARNAME(ksh_command)(ck::vec<ck::string> &args, void *data, int dlen)

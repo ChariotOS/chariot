@@ -93,12 +93,12 @@ void kshell::feed(size_t sz, char *buf) {
   }
 }
 
-void kshell::run(void) {
+void kshell::run(const char *prompt) {
   ::active = true;
 
   KINFO("Dropping into kernel shell. Enter 'help' for more information\n");
   while (kshell::active()) {
-    printk("##> ");
+    printk("%s ", prompt);
     ck::string input;
     while (1) {
       int c = kshell_pipe.recv();
