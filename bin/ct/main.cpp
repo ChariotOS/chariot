@@ -297,6 +297,7 @@ int main(int argc, char** argv) async_main({
     } else {
       kill(pid, SIGKILL);
       waitpid(pid, NULL, 0);
+			printf("killed %d\n", pid);
     }
   }
 

@@ -1,6 +1,7 @@
 #include <asm.h>
 #include <fs.h>
 #include <syscall.h>
+#include <module.h>
 #ifdef CONFIG_RISCV
 #include <riscv/sbi.h>
 #endif
@@ -36,3 +37,4 @@ int sys::shutdown(void) {
 
   return -ENOTIMPL;
 }
+

@@ -159,6 +159,11 @@ struct Process final : public ck::refcounted<Process> {
 	// cause the process to exit.
 	void exit(int code);
 
+	// Process reaper. Listens for exited processes, frees their
+	// resources, and marks them as a zombie. Other Processes can then
+	// wait on them.
+	static int reaper(void *);
+
   inline Process() {}
   Process(const Process &) = delete;
   ~Process(void);

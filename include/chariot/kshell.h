@@ -9,6 +9,19 @@
 // They all require root (uid=0) to run :)
 namespace kshell {
   using handler = unsigned long (*)(ck::vec<ck::string> &, void *data, int dlen);
-  void add(ck::string command, handler h);
+  void add(ck::string command, ck::string usage, handler h);
   unsigned long call(ck::string command, ck::vec<ck::string> args, void *data, size_t dlen);
+
+
+	// run the kshell on this kernel thread. This is basically a debug
+	// console in the kernel for when something breaks :)
+	void run(void);
+
+
+	// if the kernel shell is currently being run on a thread.
+	bool active(void);
+
+	// feed input (from the console, most likely)
+	void feed(size_t sz, char *buf);
+
 };  // namespace kshell

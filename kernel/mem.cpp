@@ -350,7 +350,7 @@ static unsigned long mem_kshell(ck::vec<ck::string> &args, void *data, int dlen)
   }
   return 0;
 }
-static void mem_init(void) { kshell::add("mem", mem_kshell); }
+static void mem_init(void) { kshell::add("mem", "mem [dump]", mem_kshell); }
 
 
 

@@ -283,6 +283,7 @@ static unsigned long blk_kshell(ck::vec<ck::string> &args, void *data, int dlen)
       for (auto &blk : buffer_cache) {
         for (auto &off : blk.value) {
           if (off.value) {
+						printk("off: %p\n", off.value);
           }
         }
       }
@@ -297,7 +298,7 @@ static unsigned long blk_kshell(ck::vec<ck::string> &args, void *data, int dlen)
 }
 static void block_init(void) {
   sched::proc::create_kthread("[block flush]", block_flush_task);
-  kshell::add("blk", blk_kshell);
+  kshell::add("blk", "blk [reclaim, dump]", blk_kshell);
 }
 
 module_init("block", block_init);
