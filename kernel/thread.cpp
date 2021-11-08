@@ -76,8 +76,8 @@ Thread::Thread(long tid, Process &proc) : proc(proc) {
 
   // set the initial context to the creation boostrap function
   kern_context->pc = (u64)thread_create_callback;
-	// return from interrupt will drop this to 0
-	irq_depth = 0;
+  // return from interrupt will drop this to 0
+  irq_depth = 0;
 
 
   arch_initialize_trapframe(proc.ring == RING_USER, trap_frame);
@@ -214,8 +214,8 @@ void Thread::dump(void) {
 
 
 void Thread::exit(void) {
+  should_die = 1;
   sched::unblock(*this, true);
-	should_die = 1;
 }
 
 bool Thread::teardown(ck::ref<Thread> &&thd) {
@@ -242,17 +242,19 @@ bool Thread::teardown(ck::ref<Thread> &&thd) {
 bool Thread::send_signal(int sig) {
   bool is_self = curthd == this;
 
+
+  bool f;
+  if (false && !is_self)f = runlock.lock_irqsave();
+
 #ifdef CONFIG_VERBOSE_PROCESS
   printk("sending signal %d to tid %d\n", sig, tid);
 #endif
 
-  bool f;
-
   unsigned long pend = (1 << sig);
   this->sig.pending |= pend;
+  if (get_state() == PS_INTERRUPTIBLE) this->interrupt();
 
-  if (state == PS_INTERRUPTIBLE) this->interrupt();
-
+  if (false && !is_self) runlock.unlock_irqrestore(f);
   return true;
 }
 

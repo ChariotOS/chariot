@@ -1,28 +1,27 @@
 extern kmain ;; c entry point
 [extern high_kern_end]
 
-
 section multiboot
-global mbheader
-mbheader:
-	dd 0xe85250d6                                ; multiboot magic
-	dd 0                                         ; architecture
-	dd .hdr_end - mbheader                       ; header length
-	dd -(0xe85250d6 + 0 + (.hdr_end - mbheader)) ; checksum
-
-
-	; framebuffer
-	dw 5
-	dw 0
-	dd 20 ; size
-	dd CONFIG_FRAMEBUFFER_WIDTH ; width
-	dd CONFIG_FRAMEBUFFER_HEIGHT ; height
-	dd 32 ; depth
-
-	; tags end
-	dd 0, 0
-	dq 8
-.hdr_end:
+;  global mbheader
+;  mbheader:
+;  	dd 0xe85250d6                                ; multiboot magic
+;  	dd 0                                         ; architecture
+;  	dd .hdr_end - mbheader                       ; header length
+;  	dd -(0xe85250d6 + 0 + (.hdr_end - mbheader)) ; checksum
+;  
+;  
+;  	; framebuffer
+;  	dw 5
+;  	dw 0
+;  	dd 20 ; size
+;  	dd CONFIG_FRAMEBUFFER_WIDTH ; width
+;  	dd CONFIG_FRAMEBUFFER_HEIGHT ; height
+;  	dd 32 ; depth
+;  
+;  	; tags end
+;  	dd 0, 0
+;  	dq 8
+;  .hdr_end:
 
 
 
@@ -115,104 +114,6 @@ gdt32:
 gdtr32:
 	dw 23
 	dd gdt32
-
-
-
-
-
-[bits 32] ALIGN 8
-section .init
-;; Kernel entrypoint, 32bit code
-global _start
-_start:
-
-	;; load up the boot stack
-	mov esp, boot_stack + BOOT_STACK_SIZE
-	mov ebp, esp
-
-	;; move the info that grub passes into the kernel into
-	;; arguments that we will use when calling kmain later
-	mov edi, ebx
-	mov esi, eax
-
-  ; enable PAE and PSE
-  mov eax, cr4
-  or eax, (CR4_PAE + CR4_PSE)
-  mov cr4, eax
-
-	; enable long mode and the NX bit
-  mov ecx, MSR_EFER
-  rdmsr
-  or eax, (EFER_LM | EFER_NX | EFER_SCE)
-  wrmsr
-
-  ; set cr3 to a pointer to pml4
-  mov eax, boot_p4
-  mov cr3, eax
-
-  ; enable paging
-  mov eax, cr0
-  or eax, CR0_PAGING
-  mov cr0, eax
-
-  ; leave compatibility mode and enter long mode
-  lgdt [gdtr]
-  mov ax, 0x10
-  mov ss, ax
-  mov ax, 0x0
-  mov ds, ax
-  mov es, ax
-  mov fs, ax
-  mov gs, ax
-
-  jmp 0x08:.trampoline
-
-; some 64-bit code in the lower half used to jump to the higher half
-[bits 64]
-.trampoline:
-  ; enter the higher half now that we loaded up that half (somewhat)
-  mov rax, qword .next
-  jmp rax
-
-; the higher-half code
-[bits 64]
-[section .init_high]
-.next:
-	; re-load the GDTR with a virtual base address
-	mov rax, [gdtr + 2]
-	mov rbx, KERNEL_VMA
-	add rax, rbx
-	mov [gdtr + 2], rax
-	mov rax, gdtr + KERNEL_VMA
-	lgdt [rax]
-
-  mov rbp, 0
-  mov rsp, qword stack + STACK_SIZE
-  push 0x0
-  popf
-
-  call kmain
-
-; memory reserved for the kernel's stck
-[section .bss align=STACK_ALIGN]
-stack:
-  resb STACK_SIZE
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

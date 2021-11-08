@@ -1,4 +1,5 @@
 #include "acpi/acpi.h"
+
 #include <multiboot2.h>
 #include <printk.h>
 #include <ck/string.h>
@@ -96,7 +97,11 @@ bool acpi::init(uint64_t mbd) {
       ck::string sig = ck::string(tbl->signature, ACPI_NAME_SIZE);
       ck::string oem = ck::string(tbl->oem_id, ACPI_OEM_ID_SIZE);
       debug("[ACPI] table[%d]: sig: '%s', oem: '%s'\n", i++, sig.get(), oem.get());
+      if (!memcmp(tbl->signature, "APIC", 4)) {
+				// auto *t = (struct acpi_table_apic *)tbl;
+				
 
+			}
 
       if (!memcmp(tbl->signature, "HPET", 4)) {
         auto *hpet_tbl = (struct acpi_table_hpet *)tbl;

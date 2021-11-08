@@ -72,6 +72,8 @@ static void uart_start(void) {
 
 
 static void uart_irq(int irq, reg_t *r, void *data) {
+
+	// printk_nolock("irq\n");
   uart_count++;
 
   size_t nread = 0;
@@ -102,7 +104,6 @@ static void uart_irq(int irq, reg_t *r, void *data) {
 
 
 void rv::uart_init(void) {
-  return;
   uart_tx_w = uart_tx_r = 0;
   // disable interrupts.
   WriteReg(IER, 0x00);

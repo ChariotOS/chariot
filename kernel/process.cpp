@@ -9,6 +9,7 @@
 #include <fs.h>
 #include <fs/vfs.h>
 #include <futex.h>
+#include <chan.h>
 #include <lock.h>
 #include <mem.h>
 #include <paging.h>
@@ -383,11 +384,11 @@ int sched::proc::send_signal(long p, int sig) {
   return err;
 }
 
+
+
 int sched::proc::reap(ck::ref<Process> p) {
   // assert(p->is_dead());
   auto *me = curproc;
-  // printk_nolock("reap %d\n", p->pid);
-
 
   int f = 0;
 
@@ -400,49 +401,22 @@ int sched::proc::reap(ck::ref<Process> p) {
   pprintk("  ram usage: %zu Kb (%zu b)\n", usage / KB, usage);
 #endif
 
-
-  {
-    ck::vec<ck::ref<Thread>> to_teardown = p->threads;
-    for (auto t : to_teardown) {
-      while (1) {
-        auto f = t->joinlock.lock_irqsave();
-        if (t->get_state() == PS_ZOMBIE) {
-          t->joinlock.unlock_irqrestore(f);
-          break;
-        }
-        wait_entry ent;
-        prepare_to_wait(t->joiners, ent);
-
-        // t->exit();
-        t->joinlock.unlock_irqrestore(f);
-
-        ent.start();
-      }
-
-
-
-      /* make sure... */
-
-      t->runlock.lock();
-      Thread::teardown(move(t));
-    }
-  }
   assert(p->threads.size() == 0);
 
-
-
   /* remove the child from our list */
-  for (int i = 0; i < me->children.size(); i++) {
-    if (me->children[i] == p) {
-      me->children.remove(i);
-      break;
+  {
+    scoped_irqlock l(me->datalock);
+    for (int i = 0; i < me->children.size(); i++) {
+      if (me->children[i] == p) {
+        me->children.remove(i);
+        break;
+      }
     }
   }
 
   // release the CWD and root
   p->cwd = nullptr;
   p->root = nullptr;
-
 
   // If the process had children, we need to give them to init
   if (p->children.size() != 0) {
@@ -451,8 +425,10 @@ int sched::proc::reap(ck::ref<Process> p) {
     assert(init);
     init->datalock.lock();
     for (auto &c : p->children) {
+			c->datalock.lock();
       init->children.push(c);
       c->parent = init;
+			c->datalock.unlock();
     }
     init->datalock.unlock();
   }
@@ -517,20 +493,13 @@ static bool can_reap(Thread *reaper, ck::ref<Process> zombie, long seeking, int 
   // a process may not reap another process's children.
   if (zombie->parent->pid != reaper->proc.pid) return false;
 
-  if (zombie->pid == seeking) {
-    return true;
-  }
+  if (zombie->pid == seeking) return true;
 
   // if you seek -1, and the process is your child, you can reap it
-  if (seeking == -1) {
-    return true;
-  }
-
+  if (seeking == -1) return true;
 
   // if the pid is less than -1, you are actually waiting on a process group
-  if (seeking < -1 && zombie->pgid == -seeking) {
-    return true;
-  }
+  if (seeking < -1 && zombie->pgid == -seeking) return true;
 
   // all checks have failed
   return false;
@@ -666,14 +635,70 @@ static void zombify(struct zombie_entry *zomb) {
   zombie_list.add_tail(&zomb->node);
 }
 
+
+
+
+static chan<long /* pid */> to_reap;
+/**
+ * Process reaper task.
+ *
+ * Listens on a pipe for dead processes and frees up their resources.
+ */
+int Process::reaper(void *) {
+  while (1) {
+    auto pid = to_reap.recv();
+
+    ck::ref<Process> p = ::pid_lookup(pid);
+
+    if (!p) panic("reaper: could not find pid %d\n", pid);
+
+
+    // teardown all the threads in the process
+    {
+      ck::vec<ck::ref<Thread>> to_teardown = p->threads;
+      for (auto t : to_teardown) {
+        while (1) {
+          auto f = t->joinlock.lock_irqsave();
+          if (t->get_state() == PS_ZOMBIE) {
+            t->joinlock.unlock_irqrestore(f);
+            break;
+          }
+          wait_entry ent;
+          prepare_to_wait(t->joiners, ent);
+
+          // t->exit();
+          t->joinlock.unlock_irqrestore(f);
+
+          ent.start();
+        }
+
+        /* make sure... */
+
+        t->runlock.lock();
+        Thread::teardown(move(t));
+      }
+    }
+
+    assert(p->threads.size() == 0);
+
+
+    // printk("proc: %d -> %p\n", pid, p.get());
+    struct zombie_entry *zomb = new zombie_entry(p);
+    zombify(zomb);
+  }
+
+  return 0;
+}
+
+
+
+
 void sys::exit_proc(int code) { curproc->exit(code); }
 
 
 void Process::exit(int code) {
-  bool exiting_self = this == curproc;
-
   {
-    scoped_lock l(datalock);
+    scoped_irqlock l(datalock);
     auto all = threads;
     for (auto t : all) {
       t->exit();
@@ -682,11 +707,8 @@ void Process::exit(int code) {
 
   exit_code = code;
   exited = true;
-  // to be freed in zombify OR waitpid
-  struct zombie_entry *zomb = new zombie_entry(this);
-  zombify(zomb);
 
-  // printk_nolock("here\n");
+  to_reap.send(move(this->pid), false);
 }
 
 void sys::exit_thread(int code) {
@@ -896,10 +918,12 @@ void sched::proc::dump_table(void) {
   }
 
 
-  scoped_irqlock l(waitlist_lock);
-  pprintk("Zombie list: \n");
-  struct zombie_entry *zent = NULL;
-  list_for_each_entry(zent, &zombie_list, node) { pprintk("  process %d\n", zent->proc->pid); }
+  {
+    scoped_irqlock l(waitlist_lock);
+    pprintk("Zombie list: \n");
+    struct zombie_entry *zent = NULL;
+    list_for_each_entry(zent, &zombie_list, node) { pprintk("  process %d\n", zent->proc->pid); }
+  }
 
 
   Thread::dump();

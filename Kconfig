@@ -47,21 +47,7 @@ menu "Build"
 
 endmenu
 
-
-
-menu "Config"
-
-	config QEMU_CORES
-		int "Core count to use in QEMU"
-		default "4"
-
-	config MAX_CPUS
-		int "Maximum Number of CPUs"
-		range 1 64
-		default "32"
-		help 
-			Specifies the maximum number of hardware CPUs supported by Chariot
-			For uniprocessor environments, set this to 1
+menu "Scheduler"
 
 	config SMP
 		bool "Symmetric multi-processing support"
@@ -77,6 +63,23 @@ menu "Config"
 		int "Timer wakeup ticks per second"
 		default 1000
 
+endmenu
+
+
+
+menu "Config"
+
+	config QEMU_CORES
+		int "Core count to use in QEMU"
+		default "4"
+
+	config MAX_CPUS
+		int "Maximum Number of CPUs"
+		range 1 64
+		default "32"
+		help 
+			Specifies the maximum number of hardware CPUs supported by Chariot
+			For uniprocessor environments, set this to 1
 
 	config EXT2
 		bool "Ext2 Filesystem"
@@ -125,6 +128,11 @@ menu "Devices"
 		bool "ATA/IDE"
 		default y
 		depends on X86
+
+	config ATA_DEBUG
+		bool "ATA Debug Logging"
+		default y
+		depends on ATA
 
 	
 	config XHCI

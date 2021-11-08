@@ -145,6 +145,7 @@ struct mlfq {
     for (int prio = 0; prio < MLFQ_NQUEUES; prio++) {
       if (ck::ref<Thread> cur = queues[prio].pick_next(); cur != nullptr) return cur;
     }
+
     return nullptr;
   }
 
@@ -222,6 +223,7 @@ bool sched::init(void) {
   auto &q = my_queue();
   q.core = cpu::current().cpunum;
   q.active = true;
+
   return true;
 }
 

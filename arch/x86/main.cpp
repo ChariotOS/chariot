@@ -75,6 +75,7 @@ extern "C" func_ptr __init_array_start[0], __init_array_end[0];
 int kernel_init(void *);
 
 
+
 // ms per tick
 #define TICK_FREQ 100
 
@@ -132,8 +133,11 @@ int fib(int n) {
 #define ACPI_HI_RSDP_WINDOW_SIZE 0x00020000
 #define ACPI_RSDP_SCAN_STEP 16
 
+
+
 int kernel_init(void *) {
   rtc_late_init();
+
 
   // at this point, the pit is being used for interrupts,
   // so we should go setup lapic for that
@@ -153,12 +157,14 @@ int kernel_init(void *) {
 
 
 
+  sched::proc::create_kthread("[reaper]", Process::reaper);
+
 
   mb2::find<struct multiboot_tag_module>(::mbd, MULTIBOOT_TAG_TYPE_MODULE, [&](auto *module) {
     auto size = module->mod_end - module->mod_start;
 
-		// auto addr = p2v(module->mod_start);
-		// hexdump(addr, size, true);
+    // auto addr = p2v(module->mod_start);
+    // hexdump(addr, size, true);
     printk(KERN_INFO "Found a module %p-%p\n", p2v(module->mod_start), p2v(module->mod_end));
   });
 
@@ -167,13 +173,32 @@ int kernel_init(void *) {
 
   KINFO("Bootup complete. It is now safe to move about the cabin.\n");
 
+
   auto root_name = kargs::get("root", "/dev/disk0p1");
+
+  if (!root_name) {
+    KERR("Failed to mount root...\n");
+
+    while (1) {
+      arch_halt();
+      sched::yield();
+    }
+  }
+
+
   assert(root_name);
 
   int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);
   if (mnt_res != 0) {
-    panic("failed to mount root. Error=%d\n", -mnt_res);
+    printk("failed to mount root. Error=%d\n", -mnt_res);
   }
+
+
+#ifndef CONFIG_ENABLE_USERSPACE
+
+	KINFO("Userspace disabled. Starting kernel shell\n");
+	kshell::run();
+#endif
 
   auto kproc = sched::proc::kproc();
   kproc->root = vfs::get_root();

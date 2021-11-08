@@ -110,11 +110,9 @@ static void lapic_tick_handler(int i, reg_t *tf, void *) {
   cpu.kstat.last_tick_tsc = now;
   cpu.kstat.ticks++;
 
+
   smp::lapic_eoi();
-
-
   sched::handle_tick(cpu.kstat.ticks);
-  return;
 }
 
 
@@ -197,7 +195,7 @@ void smp::lapic_init(void) {
   }
 
   // Map error interrupt to IRQ_ERROR.
-  lapic_write(LAPIC_ERROR, 19);
+  lapic_write(LAPIC_ERROR, IRQ_ERROR);
 
   // Clear error status register (requires back-to-back writes).
   lapic_write(LAPIC_ESR, 0);

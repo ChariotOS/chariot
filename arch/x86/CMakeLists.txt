@@ -14,6 +14,7 @@ add_kernel_module(
 		*.cpp
 		*.c
 		*.asm
+		*.S
 )
 
 # message(STATUS "-m32 ${ARCH_KERN_BASE_C_FLAGS}")

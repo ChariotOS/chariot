@@ -24,12 +24,17 @@ QEMU_FLAGS="-serial mon:stdio "
 
 case $ARCH in 
 	X86-64)
-		QEMU_FLAGS+="-enable-kvm -cpu host "
+		# QEMU_FLAGS+="-enable-kvm -cpu host "
 		QEMU_FLAGS+="-global kvm-pit.lost_tick_policy=discard "
 		QEMU_FLAGS+="-m 4G "
+		# QEMU_FLAGS+="-machine q35 "
 		QEMU_FLAGS+="-smp ${CONFIG_QEMU_CORES} "
-		# QEMU_FLAGS+="-smp sockets=1,cores=4,threads=4 "
 		QEMU_FLAGS+="-hda build/chariot.img "
+
+		# QEMU_FLAGS+="-drive id=disk,file=build/chariot.img,if=none "
+		# QEMU_FLAGS+="-device ahci,id=ahci "
+		# QEMU_FLAGS+="-device ide-hd,drive=disk,bus=ahci.0 "
+
 		# QEMU_FLAGS+="-soundhw pcspk "
 		# QEMU_FLAGS+="-device AC97 "
 		QEMU_FLAGS+="-device sb16 "

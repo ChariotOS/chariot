@@ -37,6 +37,7 @@ int serial_rcvd(int device) { return inb(device + 5) & 1; }
 
 char serial_recv(int device) {
   while (!serial_rcvd(device)) {
+		arch_relax();
   }
   return inb(device);
 }
