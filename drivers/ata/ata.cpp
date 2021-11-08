@@ -22,7 +22,7 @@
 // #define DEBUG
 // #define DO_TRACE
 
-#ifdef DEBUG
+#ifdef CONFIG_ATA_DEBUG
 #define INFO(fmt, args...) KINFO("ATA: " fmt, ##args)
 #else
 #define INFO(fmt, args...)
@@ -119,6 +119,8 @@ dev::ata::ata(u16 portbase, bool master) {
   drive_lock.unlock();
 }
 
+
+
 dev::ata::~ata() {
   drive_lock.lock();
   TRACE;
@@ -131,6 +133,8 @@ void dev::ata::select_device() {
   device_port.out(master ? 0xA0 : 0xB0);
 }
 
+
+
 bool dev::ata::identify() {
   scoped_lock l(drive_lock);
 
@@ -139,9 +143,12 @@ bool dev::ata::identify() {
   // clear the HOB bit, idk what that is.
   control_port.out(0);
 
+
   device_port.out(0xA0);
   uint8_t status = command_port.in();
 
+
+  INFO("Status: %x\n", status);
   // not valid, no device on that bus
   if (status == 0xFF) {
     return false;
@@ -180,6 +187,7 @@ bool dev::ata::identify() {
   uint8_t S = id_buf[6];
 
   n_sectors = (C * H) * S;
+
 
   m_pci_dev = pci::find_generic_device(PCI_CLASS_STORAGE, PCI_SUBCLASS_IDE);
 
@@ -504,9 +512,6 @@ static void query_and_add_drive(u16 addr, int id, bool master) {
   auto drive = new dev::ata(addr, master);
 
   if (drive->identify()) {
-    // auto name = dev::next_disk_name();
-    ck::string name = ck::string::format("ata%d", id);
-
     dev::register_disk(drive);
   }
 }
@@ -514,6 +519,8 @@ static void ata_initialize(void) {}
 
 
 
+
+extern void piix_init(void);
 
 
 static void ata_init(void) {
@@ -527,6 +534,9 @@ static void ata_init(void) {
   // register all the ata drives on the system
   query_and_add_drive(0x1F0, 0, true);
   query_and_add_drive(0x1F0, 1, false);
+
+
+  piix_init();
 }
 
 module_init("ata", ata_init);

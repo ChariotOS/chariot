@@ -52,6 +52,9 @@ class X86PCIDevice : public dev::PCIDevice {
     port_base = d->port_base;
     interrupt = d->interrupt;
 
+
+  	prog_if = pci::read(bus, dev, func, PCI_PROG_IF);
+
     vendor_id = d->vendor_id;
     device_id = d->device_id;
 
