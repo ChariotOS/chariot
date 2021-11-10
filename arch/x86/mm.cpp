@@ -6,6 +6,7 @@
 #include <phys.h>
 #include <types.h>
 #include <util.h>
+#include <module.h>
 
 #define round_down(x, y) ((x) & ~((y)-1))
 
@@ -16,7 +17,6 @@ static inline void flush_tlb_single(u64 addr) { __asm__ volatile("invlpg (%0)" :
 extern u8 *kheap_start;
 extern u64 kheap_size;
 
-#define MAX_MMAP_ENTRIES 64
 
 
 extern char low_kern_start;
@@ -26,8 +26,12 @@ extern char high_kern_end[];
 extern "C" uint64_t boot_p4[];
 
 // just 64 memory regions. Any more and idk what to do
-static struct mem_map_entry memory_map[MAX_MMAP_ENTRIES];
+#define MAX_MMAP_ENTRIES 64
+static int memory_map_count = 0;
+static struct mem_map_entry memory_map[MAX_MMAP_ENTRIES] = {{0}};
 static struct mmap_info mm_info;
+
+
 
 u64 *kernel_page_table = boot_p4;
 
@@ -37,7 +41,7 @@ namespace x86 {
   class pagetable : public mm::PageTable {
     u64 *pml4;
 
-		spinlock lock;
+    spinlock lock;
 
    public:
     pagetable(u64 *pml4);
@@ -68,7 +72,7 @@ x86::pagetable::pagetable(u64 *pml4) : pml4(pml4) {
 x86::pagetable::~pagetable(void) { paging::free_table(pml4); }
 
 bool x86::pagetable::switch_to(void) {
-	// scoped_irqlock l(lock);
+  // scoped_irqlock l(lock);
   auto kptable = (u64 *)p2v(kernel_page_table);
   auto pptable = (u64 *)p2v(pml4);
 
@@ -83,7 +87,7 @@ ck::ref<mm::PageTable> mm::PageTable::create() {
 }
 
 int x86::pagetable::add_mapping(off_t va, struct mm::pte &p) {
-	scoped_irqlock l(lock);
+  scoped_irqlock l(lock);
   int flags = PTE_P;
   // TOOD: if (p.prot | PROT_READ)
   if (va < CONFIG_KERNEL_VIRTUAL_BASE) flags |= PTE_U;
@@ -106,7 +110,7 @@ int x86::pagetable::add_mapping(off_t va, struct mm::pte &p) {
 
 
 int x86::pagetable::get_mapping(off_t va, struct mm::pte &r) {
-	scoped_irqlock l(lock);
+  scoped_irqlock l(lock);
   off_t pte = *paging::find_mapping(pml4, va, paging::pgsize::page);
 
   r.prot = PROT_READ;
@@ -120,7 +124,7 @@ int x86::pagetable::get_mapping(off_t va, struct mm::pte &r) {
 
 
 int x86::pagetable::del_mapping(off_t va) {
-	scoped_irqlock l(lock);
+  scoped_irqlock l(lock);
   *paging::find_mapping(pml4, va, paging::pgsize::page) = 0;
   flush_tlb_single(va);
   return 0;
@@ -200,6 +204,8 @@ void arch_mem_init(unsigned long mbd) {
     ++mm_info.num_regions;
     ++n;
   }
+  memory_map_count = n;
+
 
 
   /* Map whichever is larger, the physical memory or 32gb */
@@ -242,6 +248,15 @@ void arch_mem_init(unsigned long mbd) {
   }
 
   printk(KERN_INFO "Detected and mapped physical memory virtually.\n");
+}
+
+
+ksh_def("mmap", "display the physical memory map of the system (only includes usable ram)") {
+  for (int i = 0; i < memory_map_count; i++) {
+    KINFO("mem: [0x%p-0x%p] %s\n", memory_map[i].addr, memory_map[i].addr + memory_map[i].len, mem_region_types[memory_map[i].type]);
+  }
+
+  return 0;
 }
 
 mm::AddressSpace *kspace;

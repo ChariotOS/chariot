@@ -10,6 +10,7 @@
 #include <time.h>
 #include <util.h>
 #include <ck/vec.h>
+#include <module.h>
 #include <sched.h>
 #include <x86/fpu.h>
 
@@ -290,7 +291,7 @@ void parse_mp_cpu(smp::mp::mp_table_entry_cpu *ent) {
   apic_cpus[ent->lapic_id] = state;
   ncpus++;
 
-#if 0
+#if 1
 	INFO("CPU: %p\n", ent);
 	INFO("type: %02x\n", ent->type);
 	INFO("lapic_id: %02x\n", ent->lapic_id);
@@ -364,7 +365,6 @@ smp::cpu_state &smp::get_state(void) {
 }
 
 bool smp::init(void) {
-#ifdef CONFIG_SMP
   mp_floating_ptr = find_mp_floating_ptr();
   if (mp_floating_ptr == nullptr) {
     debug("MP floating pointer not found!\n");
@@ -380,8 +380,12 @@ bool smp::init(void) {
     debug("Unable to parse MP table\n");
     return false;
   }
-#endif
   return true;
+}
+
+ksh_def("smp-scan", "scan the smp tables") {
+	smp::init();
+	return 0;
 }
 
 static inline void io_delay(void) {
@@ -473,7 +477,6 @@ extern "C" void mpentry(int apic_id) {
 
 
 void smp::init_cores(void) {
-#ifdef CONFIG_SMP
 
   arch_disable_ints();
   // copy the code into the AP region
@@ -503,5 +506,11 @@ void smp::init_cores(void) {
   }
 
   arch_enable_ints();
-#endif
+}
+
+
+
+ksh_def("smp-start", "start the other cores on the system") {
+	smp::init_cores();
+	return 0;
 }

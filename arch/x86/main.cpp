@@ -91,7 +91,9 @@ static void kmain2(void) {
   }
 
   kargs::init(mbd);
+#ifdef CONFIG_SMP
   smp::init();
+#endif
 
 #ifdef CONFIG_ACPI
   if (!acpi::init(mbd)) panic("acpi init failed!\n");
@@ -144,7 +146,9 @@ int kernel_init(void *) {
   smp::lapic_init();
 
   // start up the extra cpu cores
+#ifdef CONFIG_SMP
   smp::init_cores();
+#endif
 
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
@@ -194,8 +198,8 @@ int kernel_init(void *) {
   }
 
 #ifndef CONFIG_ENABLE_USERSPACE
-	KINFO("Userspace disabled. Starting kernel shell\n");
-	kshell::run();
+  KINFO("Userspace disabled. Starting kernel shell\n");
+  kshell::run();
 #endif
 
   auto kproc = sched::proc::kproc();
