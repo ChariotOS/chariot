@@ -30,6 +30,8 @@ struct console_tty : public tty {
 } ctty;
 
 static void consputc(int c, bool debug = false) {
+
+#ifdef CONFIG_UART_CONSOLE
   if (unlikely(c == CONS_DEL)) {
     serial_send(1, '\b');
     serial_send(1, ' ');
@@ -37,6 +39,7 @@ static void consputc(int c, bool debug = false) {
   } else {
     serial_send(1, c);
   }
+#endif
   /* TODO: factor this somewhere else. Maybe a cool "console printers" subsystem? idk :^) */
 #ifdef CONFIG_X86
   vga::putchar(c);

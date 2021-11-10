@@ -124,6 +124,12 @@ endmenu
 
 menu "Devices"
 
+
+	config UART_CONSOLE
+		bool "Write console messages to the system UART"
+		default y
+
+
 	config ATA
 		bool "ATA/IDE"
 		default y
