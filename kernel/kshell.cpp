@@ -79,8 +79,8 @@ static void exec(const ck::string &raw) {
         printk("\n");
       }
     } else {
-			KERR("Command '%s' not found\n", cmd.get());
-		}
+      KERR("Command '%s' not found\n", cmd.get());
+    }
   }
 }
 
@@ -113,10 +113,10 @@ void kshell::run(const char *prompt) {
       }
 
       if (c == '\n' || c == '\r') {
-				console::putc('\n', true);
+        console::putc('\n', true);
         exec(input);
         input.clear();
-				// break from the input loop
+        // break from the input loop
         break;
       }
 
@@ -141,4 +141,48 @@ static unsigned long kshell_help(ck::vec<ck::string> &args, void *data, int dlen
   return 0;
 }
 module_init_kshell("help", "help", kshell_help);
+
+
+
+static bool parse_arg(ck::string &s, unsigned long *val) {
+  if (s.size() > 2) {
+    if (s[0] == '0' && s[1] == 'x') {
+      if (s.scan("0x%lx", val) == 1) {
+        return true;
+      }
+      return false;
+    }
+  }
+  if (s.scan("%ld", val) == 1) {
+    return true;
+  }
+  return false;
+}
+
+ksh_def("x", "x address length") {
+  unsigned long address = 0;
+  unsigned long size = 0;
+
+  if (args.size() != 2) {
+    printk("Usage: x <address> <length>\n");
+    return 1;
+  }
+
+
+  if (!parse_arg(args[0], &address)) {
+    printk("malformed address\n");
+    return 1;
+  }
+
+
+  if (!parse_arg(args[1], &size)) {
+    printk("malformed size\n");
+    return 1;
+  }
+
+
+  hexdump(p2v(address), size, true);
+  return 0;
+}
+
 
