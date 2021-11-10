@@ -4,6 +4,7 @@
 #include <device_majors.h>
 #include <errno.h>
 #include <printk.h>
+#include <module.h>
 #include <util.h>
 
 
@@ -124,4 +125,13 @@ int dev::register_disk(dev::Disk* disk) {
   free(first_sector);
 
   return minor;
+}
+
+
+ksh_def("disks", "display all disks") {
+	for (auto disk : m_disks) {
+
+		printk("sz: %zu, count: %zu\n", disk->block_size(), disk->block_count());
+	}
+	return 0;
 }
