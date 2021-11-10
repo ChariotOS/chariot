@@ -3,6 +3,7 @@
 #include <ck/map.h>
 #include <sleep.h>
 #include <ck/string.h>
+#include <module.h>
 #define NIRQS 130
 
 struct irq_registration {
@@ -57,4 +58,14 @@ void irq::dispatch(int irq, reg_t *regs) {
 
 
   if (cpu != NULL) cpu->interrupt_depth--;
+}
+
+ksh_def("irqs", "display the interrupt handlers") {
+  for (int i = 0; i < NIRQS; i++) {
+    auto &reg = irq_handlers[i];
+    if (reg.handler) {
+      printk("%s handler: %p, data: %p\n", reg.name, reg.handler, reg.data);
+    }
+  }
+  return 0;
 }
