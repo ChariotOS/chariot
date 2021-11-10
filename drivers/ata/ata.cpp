@@ -536,6 +536,8 @@ static void ata_init(void) {
   query_and_add_drive(0x1F0, 1, false);
 
 
+	return;
+	// TODO: get piix to not freeze on hardware
   piix_init();
 }
 
