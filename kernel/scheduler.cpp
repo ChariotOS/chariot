@@ -455,7 +455,6 @@ void sched::run() {
   unsigned long has_run = 0;
 
   while (1) {
-    // if (did_panic) debug_die();
     if (has_run++ >= 100) {
       has_run = 0;
       my_queue().boost();

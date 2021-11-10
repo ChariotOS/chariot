@@ -379,13 +379,7 @@ args = [
 
 [sc.kshell]
 ret = 'unsigned long'
-args = [
-	'cmd: char*',
-	'argc: int',
-	'argv: char **',
-	'data: void*',
-	'len: size_t'
-]
+args = []
 
 
 # implemented in kernel/proc.cpp

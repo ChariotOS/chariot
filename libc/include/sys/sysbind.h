@@ -80,7 +80,7 @@ int sysbind_sigreturn(void* ucontext);
 int sysbind_sigprocmask(int how, unsigned long set, unsigned long* old_set);
 int sysbind_kill(int pid, int sig);
 int sysbind_awaitfs(struct await_target * fds, int nfds, int flags, long long timeout_time);
-unsigned long sysbind_kshell(char* cmd, int argc, char ** argv, void* data, size_t len);
+unsigned long sysbind_kshell();
 int sysbind_futex(int* uaddr, int op, int val, int val2, int* uaddr2, int val3);
 int sysbind_sysinfo(struct sysinfo * info);
 int sysbind_dnslookup(const char * name, unsigned int* ip4);

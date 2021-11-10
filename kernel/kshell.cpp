@@ -29,33 +29,11 @@ unsigned long kshell::call(ck::string command, ck::vec<ck::string> args, void *d
 }
 
 
-unsigned long sys::kshell(char *cmd, int argc, char **argv, void *data, size_t dlen) {
-  // validate the arguments
-  if (!curproc->mm->validate_string(cmd)) {
-    return -1;
-  }
-  if (!curproc->mm->validate_pointer(argv, sizeof(char *) * argc, VALIDATE_READ)) {
-    return -1;
-  }
+unsigned long sys::kshell(void) {
 
-  for (int i = 0; i < argc; i++) {
-    if (!curproc->mm->validate_string(argv[i])) {
-      return -1;
-    }
-  }
-
-  if (data != NULL) {
-    if (!curproc->mm->validate_pointer(data, dlen, VALIDATE_READ | VALIDATE_WRITE)) {
-      return -1;
-    }
-  }
-
-  ck::vec<ck::string> args;
-  for (int i = 0; i < argc; i++) {
-    args.push(argv[i]);
-  }
-
-  return kshell::call(cmd, args, data, dlen);
+	// make this thread run the kshell :)
+	kshell::run("$>");
+	return 0;
 }
 
 
@@ -114,6 +92,11 @@ void kshell::run(const char *prompt) {
 
       if (c == '\n' || c == '\r') {
         console::putc('\n', true);
+				// :)
+				if (input == "exit") {
+					::active = false;
+					break;
+				}
         exec(input);
         input.clear();
         // break from the input loop

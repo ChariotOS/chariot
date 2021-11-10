@@ -231,8 +231,8 @@ int sysbind_awaitfs(struct await_target * fds, int nfds, int flags, long long ti
     return (int)__syscall_eintr(56, (unsigned long long)fds, (unsigned long long)nfds, (unsigned long long)flags, (unsigned long long)timeout_time, 0, 0);
 }
 
-unsigned long sysbind_kshell(char* cmd, int argc, char ** argv, void* data, size_t len) {
-    return (unsigned long)__syscall_eintr(57, (unsigned long long)cmd, (unsigned long long)argc, (unsigned long long)argv, (unsigned long long)data, (unsigned long long)len, 0);
+unsigned long sysbind_kshell() {
+    return (unsigned long)__syscall_eintr(57, 0, 0, 0, 0, 0, 0);
 }
 
 int sysbind_futex(int* uaddr, int op, int val, int val2, int* uaddr2, int val3) {
