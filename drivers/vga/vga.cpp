@@ -49,7 +49,7 @@ const auto &vga_font = (chariot_kernel_font &)*&build_font_ckf;
 
 #define VCONSOLE_HEIGHT CONFIG_FRAMEBUFFER_HEIGHT
 #define VCONSOLE_WIDTH CONFIG_FRAMEBUFFER_WIDTH
-
+#define FONT_SCALE (1)
 #define EDGE_MARGIN 0
 #define TOTAL_MARGIN (EDGE_MARGIN * 2)
 #define FONT_WIDTH (7)  // hardcoded :/
@@ -58,8 +58,8 @@ const auto &vga_font = (chariot_kernel_font &)*&build_font_ckf;
 #define CHAR_LINE_MARGIN (0)
 #define LINE_HEIGHT (FONT_HEIGHT + CHAR_LINE_MARGIN)
 
-#define VC_COLS ((VCONSOLE_WIDTH - TOTAL_MARGIN) / FONT_WIDTH)
-#define VC_ROWS ((VCONSOLE_HEIGHT - TOTAL_MARGIN) / LINE_HEIGHT)
+#define VC_COLS (((VCONSOLE_WIDTH - TOTAL_MARGIN) / FONT_WIDTH) / FONT_SCALE)
+#define VC_ROWS (((VCONSOLE_HEIGHT - TOTAL_MARGIN) / LINE_HEIGHT) / FONT_SCALE)
 
 static void vga_char_scribe(int col, int row, struct vc_cell *, int flags);
 
@@ -247,7 +247,9 @@ static void vga_char_scribe(int x, int y, struct vc_cell *cell, int flags) {
       if (r < FONT_HEIGHT) b = (ch[r] & (1 << (FONT_WIDTH - c))) != 0;
 
       int color = b ? fg : bg;
-      set_pixel(x + c, y + r, color);
+      for (int ox = 0; ox < FONT_SCALE; ox++)
+        for (int oy = 0; oy < FONT_SCALE; oy++)
+          set_pixel(x * FONT_SCALE + c * FONT_SCALE + ox, y * FONT_SCALE + r * FONT_SCALE + oy, color);
     }
   }
 }
@@ -283,18 +285,18 @@ class vga_vdev : public dev::video_device {
   virtual int get_mode(gvi_video_mode &mode) {
     mode.width = info.width;
     mode.height = info.height;
-		mode.caps = 0;
+    mode.caps = 0;
     return 0;
   }
   // virtual int set_mode(const gvi_video_mode &mode);
   virtual uint32_t *get_framebuffer(void) {
-  	if (vga_fba == NULL) {
-			KINFO("Looking for VGA Framebuffer\n");
-			vga_fba = (u32 *)get_framebuffer_address();
-		}
-		// printk("get fba: %p\n", vga_fba);
-		return vga_fba;
-	}
+    if (vga_fba == NULL) {
+      KINFO("Looking for VGA Framebuffer\n");
+      vga_fba = (u32 *)get_framebuffer_address();
+    }
+    // printk("get fba: %p\n", vga_fba);
+    return vga_fba;
+  }
 
 
 
