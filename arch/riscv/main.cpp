@@ -247,8 +247,9 @@ void main(int hartid, void *fdt) {
   for (func_ptr *func = __init_array_start; func != __init_array_end; func++)
     (*func)();
 
-
   cpu::current().primary = true;
+
+	dtb::promote();
 
   arch_enable_ints();
 
@@ -264,6 +265,7 @@ void main(int hartid, void *fdt) {
 
   cpus[rv::hartid()].timekeeper = true;
 
+
   assert(sched::init());
   KINFO("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
 
@@ -275,16 +277,18 @@ void main(int hartid, void *fdt) {
     KINFO("kernel modules initialized\n");
 
 
-    dtb::walk_devices([](dtb::node *node) -> bool {
-      for (int i = 0; i < node->ncompat; i++) {
-        if (!strcmp(node->compatible[i], "virtio,mmio")) {
-          virtio::check_mmio((void *)node->address, node->irq);
-        }
-        return true;
-      }
+    /*
+dtb::walk_devices([](dtb::node *node) -> bool {
+for (int i = 0; i < node->ncompat; i++) {
+if (!strcmp(node->compatible[i], "virtio,mmio")) {
+virtio::check_mmio((void *)node->address, node->irq);
+}
+return true;
+}
 
-			return false;
-    });
+            return false;
+});
+    */
 
 #ifdef CONFIG_SMP
     start_secondary();
@@ -294,8 +298,6 @@ void main(int hartid, void *fdt) {
     if (mnt_res != 0) {
       panic("failed to mount root. Error=%d\n", -mnt_res);
     }
-
-
 
     KINFO("Bootup complete. It is now safe to move about the cabin.\n");
 

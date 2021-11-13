@@ -1,6 +1,7 @@
 #include <devicetree.h>
 #include <util.h>
 #include <syscall.h>
+#include <dev/device.h>
 #include <ck/vec.h>
 
 //! Byte swap int
@@ -171,10 +172,10 @@ void dump_dtb(dtb::node *node, int depth = 0) {
   spaces(depth);
 
   printk("- compatible:");
-	for (int i = 0; i < node->ncompat; i++) {
-		printk(" \"%s\"", node->compatible[i]);
-	}
-	printk("\n");
+  for (int i = 0; i < node->ncompat; i++) {
+    printk(" \"%s\"", node->compatible[i]);
+  }
+  printk("\n");
 
 
   if (node->is_device) {
@@ -395,7 +396,7 @@ int dtb::parse(dtb::fdt_header *fdt) {
     }
   }
 
-  dump_dtb(node, 0);
+  // dump_dtb(node, 0);
   return next_device;
 }
 
@@ -539,3 +540,27 @@ void dtb::device_tree::node::dump(int depth) {
     printk("    ");
   printk("};\n\n");
 }
+
+
+
+class DTBDevice : public dev::MMIODevice {
+ public:
+  DTBDevice(dtb::node &node) : dev::MMIODevice(node.address, 0 /* dunno */) {
+    for (int i = 0; i < node.ncompat; i++) {
+      compat().empend(node.compatible[i]);
+    }
+  }
+  virtual ~DTBDevice(void) {}
+};
+
+
+
+void dtb::promote(void) {
+  dtb::walk_devices([](dtb::node *node) -> bool {
+    if (strlen(node->name) == 0) return true;
+    ck::string name = ck::string::format("%s@%08llx", node->name, node->reg.address);
+    dev::Device::add(name, ck::make_ref<DTBDevice>(*node));
+    return true;
+  });
+}
+

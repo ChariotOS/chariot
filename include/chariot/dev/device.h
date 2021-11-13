@@ -85,7 +85,7 @@ namespace dev {
     uint16_t vendor_id;
     uint16_t device_id;
 
-		uint8_t prog_if; // programming interface
+    uint8_t prog_if;  // programming interface
     uint8_t class_id;
     uint8_t subclass_id;
     uint8_t interface_id;
@@ -121,6 +121,20 @@ namespace dev {
     static constexpr DeviceType TYPE = DeviceType::MMIO;
     MMIODevice(off_t addr, size_t) : dev::Device(TYPE) {}
     ~MMIODevice(void) override {}
+
+
+    inline auto &compat() { return m_compat; }
+
+    bool is_compat(const char *driver) const {
+      for (auto &compat : m_compat) {
+        if (compat == driver) return true;
+      }
+      return false;
+    }
+
+   private:
+    off_t m_address;
+    ck::vec<ck::string> m_compat;
   };
 
 

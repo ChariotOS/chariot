@@ -36,7 +36,7 @@ namespace dtb {
     struct dtb::node *parent;
 
 
-		int ncompat = 0;
+		int ncompat;
 		char *compatible[DTB_MAX_COMPATIBLE];
 		// the local copy of the compatible buffer.
     char compat[128];
@@ -69,6 +69,10 @@ namespace dtb {
   int parse(dtb::fdt_header *hdr);
   /* Walk the devices with a callback. Continue if the callback returns true */
   void walk_devices(bool (*callback)(dtb::node *));
+
+
+	// promote the boot representation to the dev::Device representation
+	void promote();
 
   struct device_tree {
     struct node {

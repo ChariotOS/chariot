@@ -25,7 +25,13 @@ ksh_def("devices", "display all devices") {
 void dev::Device::add(ck::string name, ck::ref<Device> dev) {
   dev->set_name(name);
 
-  KINFO("Add Device %s\n", name.get());
+  KINFO("[dev]: add %s\n", name.get());
+
+	if (auto mmio = dev->cast<MMIODevice>()) {
+		for (auto &compat : mmio->compat()) {
+			KINFO("[dev]:   compatible: '%s'\n", compat.get()); 
+		}
+	}
 
   scoped_lock l(all_devices_lock);
   assert(all_devices.find(dev).is_end());
