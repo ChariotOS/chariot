@@ -27,12 +27,19 @@ namespace dtb {
     size_t length;
   };
 
+#define DTB_MAX_COMPATIBLE 8
+
   struct node {
     // name@address
     char name[32];
     off_t address;
     struct dtb::node *parent;
-    char compatible[32];
+
+
+		int ncompat = 0;
+		char *compatible[DTB_MAX_COMPATIBLE];
+		// the local copy of the compatible buffer.
+    char compat[128];
     bool is_device;
 
     short address_cells;

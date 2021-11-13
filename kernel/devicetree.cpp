@@ -119,8 +119,23 @@ static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *v
 
   if (STREQ(name, "compatible")) {
     node->is_device = true;
-    strncpy(node->compatible, (const char *)val, sizeof(node->compatible));
-    // printk("compatible: %s\n", val);
+    memcpy(node->compat, (const char *)val, len);
+
+
+    node->ncompat = 0;
+    char *cur = node->compat;
+    off_t off = 0;
+    while (off < len) {
+      if (cur[0] == '\0') break;
+      // grab a strlen
+      size_t current_len = strlen(cur);
+      node->compatible[node->ncompat] = cur;
+      node->ncompat += 1;
+
+      off += current_len + 1;
+      cur = node->compat + off;
+    }
+
 
     return;
   }
@@ -154,7 +169,12 @@ void dump_dtb(dtb::node *node, int depth = 0) {
   }
 
   spaces(depth);
-  printk("- compatible: %s\n", node->compatible);
+
+  printk("- compatible:");
+	for (int i = 0; i < node->ncompat; i++) {
+		printk(" \"%s\"", node->compatible[i]);
+	}
+	printk("\n");
 
 
   if (node->is_device) {

@@ -276,10 +276,14 @@ void main(int hartid, void *fdt) {
 
 
     dtb::walk_devices([](dtb::node *node) -> bool {
-      if (!strcmp(node->compatible, "virtio,mmio")) {
-        virtio::check_mmio((void *)node->address, node->irq);
+      for (int i = 0; i < node->ncompat; i++) {
+        if (!strcmp(node->compatible[i], "virtio,mmio")) {
+          virtio::check_mmio((void *)node->address, node->irq);
+        }
+        return true;
       }
-      return true;
+
+			return false;
     });
 
 #ifdef CONFIG_SMP

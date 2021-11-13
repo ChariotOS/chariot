@@ -164,8 +164,10 @@ void init_device(dtb::node *node) {
 void sifive_uart_init(void) {
   dtb::walk_devices([](dtb::node *node) -> bool {
     // printk("Compat: %s\n", node->compatible);
-    if (!strcmp(node->compatible, "sifive,uart0")) {
-      init_device(node);
+    for (int i = 0; i < node->ncompat; i++) {
+      if (!strcmp(node->compatible[i], "sifive,uart0")) {
+        init_device(node);
+      }
     }
 
     return true;
