@@ -8,7 +8,7 @@ int sys::setpgid(int pid, int pgid) {
 
   if (pgid == 0) pgid = curproc->pid;
 
-  Process *proc = NULL;
+  ck::ref<Process> proc = nullptr;
   if (pid == 0) {
     pid = curproc->pid;
     proc = curproc;  // optimization
@@ -20,11 +20,9 @@ int sys::setpgid(int pid, int pgid) {
     // TODO: permissions?
     proc = &thd->proc;
   }
-  if (proc == NULL) return -ESRCH;
+  if (proc == nullptr) return -ESRCH;
 
   /* TODO: EPERM (move proc to another session (?)) */
-
-
 
   proc->datalock.lock();
   proc->pgid = pgid;
@@ -34,7 +32,7 @@ int sys::setpgid(int pid, int pgid) {
 }
 
 int sys::getpgid(int pid) {
-  Process *proc = NULL;
+  ck::ref<Process> proc = nullptr;
   if (pid == 0) {
     pid = curproc->pid;
     proc = curproc;  // optimization
@@ -46,7 +44,7 @@ int sys::getpgid(int pid) {
     // TODO: permissions?
     proc = &thd->proc;
   }
-  if (proc == NULL) return -ESRCH;
+  if (proc == nullptr) return -ESRCH;
 
   /* TODO: probably lock the process data? */
   return proc->pgid;
