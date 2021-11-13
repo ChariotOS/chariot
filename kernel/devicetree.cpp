@@ -558,8 +558,7 @@ class DTBDevice : public dev::MMIODevice {
 void dtb::promote(void) {
   dtb::walk_devices([](dtb::node *node) -> bool {
     if (strlen(node->name) == 0) return true;
-    ck::string name = ck::string::format("%s@%08llx", node->name, node->reg.address);
-    dev::Device::add(name, ck::make_ref<DTBDevice>(*node));
+    dev::Device::add(node->name, ck::make_ref<DTBDevice>(*node));
     return true;
   });
 }

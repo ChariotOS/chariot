@@ -24,6 +24,9 @@
 #define PAGING_IMPL_BOOTCODE
 #include "paging_impl.h"
 
+
+#define LOG(...) PFXLOG(MAG "INIT", __VA_ARGS__)
+
 typedef void (*func_ptr)(void);
 extern "C" func_ptr __init_array_start[0], __init_array_end[0];
 extern "C" char _kernel_end[];
@@ -122,7 +125,7 @@ int start_secondary(void) {
     while (second_done != true) {
       __sync_synchronize();
     }
-    printk(KERN_INFO "HART #%d started\n", i);
+    LOG("HART #%d started\n", i);
   }
 
   return 0;
@@ -176,7 +179,7 @@ auto get_lockable(void) {
 
 static int wakes = 0;
 void main(int hartid, void *fdt) {
-  printk("hart: %p, fdt: %p\n", hartid, fdt);
+  LOG("hart: %p, fdt: %p\n", hartid, fdt);
   // get the information from SBI right away so we can use it early on
   sbi_early_init();
 
@@ -206,7 +209,7 @@ void main(int hartid, void *fdt) {
 
   off_t boot_free_start = (off_t)v2p(_kernel_end);
   off_t boot_free_end = boot_free_start + 1 * MB;
-  printk(KERN_DEBUG "Freeing bootup ram %llx:%llx\n", boot_free_start, boot_free_end);
+  LOG("Freeing bootup ram %llx:%llx\n", boot_free_start, boot_free_end);
 
 
 
@@ -229,7 +232,7 @@ void main(int hartid, void *fdt) {
 
 
   if (dtb_ram_start == 0) {
-    printk(KERN_ERROR "dtb didn't contain a memory segment, guessing 128mb :^)\n");
+    LOG("dtb didn't contain a memory segment, guessing 128mb :^)\n");
     dtb_ram_size = 128 * MB;
     dtb_ram_start = boot_free_start;
   }
@@ -239,7 +242,7 @@ void main(int hartid, void *fdt) {
   off_t dtb_ram_end = dtb_ram_start + dtb_ram_size;
   dtb_ram_start = max(dtb_ram_start, boot_free_end + 4096);
   if (dtb_ram_end - dtb_ram_start > 0) {
-    printk(KERN_DEBUG "Freeing discovered ram %llx:%llx\n", dtb_ram_start, dtb_ram_end);
+    LOG("Freeing discovered ram %llx:%llx\n", dtb_ram_start, dtb_ram_end);
     phys::free_range((void *)dtb_ram_start, (void *)dtb_ram_end);
   }
 
@@ -267,14 +270,14 @@ void main(int hartid, void *fdt) {
 
 
   assert(sched::init());
-  KINFO("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
+  LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
 
 
 
   sched::proc::create_kthread("main task", [](void *) -> int {
-    KINFO("Calling kernel module init functions\n");
+    LOG("Calling kernel module init functions\n");
     initialize_builtin_modules();
-    KINFO("kernel modules initialized\n");
+    LOG("kernel modules initialized\n");
 
 
     /*
@@ -299,7 +302,7 @@ return true;
       panic("failed to mount root. Error=%d\n", -mnt_res);
     }
 
-    KINFO("Bootup complete. It is now safe to move about the cabin.\n");
+    LOG("Bootup complete. It is now safe to move about the cabin.\n");
 
 #ifdef CONFIG_ENABLE_USERSPACE
 

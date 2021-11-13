@@ -56,12 +56,13 @@ const char* human_size(uint64_t bytes, char* buf);
 #define CYN "\e[0;36m"
 #define WHT "\e[0;37m"
 
+#define GRY "\e[0;90m"
+
 #define RESET "\e[0m"
 
-#define KLOG(PREFIX, fmt, args...)                              \
-  do {                                                          \
-    printk(PREFIX " %s:%s - " fmt, __FILE__, __LINE__, ##args); \
-  } while (0);
+#define KLOG(PREFIX, ...) KINFO(PREFIX RESET, __VA_ARGS__)
+#define PFXLOG(PREFIX, ...) KINFO(PREFIX RESET ": " __VA_ARGS__)
+
 
 
 

@@ -5,13 +5,7 @@
 #include <fs/vfs.h>
 #include <module.h>
 
-#define DRIVER_DEBUG
-
-#ifdef DRIVER_DEBUG
-#define INFO(fmt, args...) printk("[DRIVER] " fmt, ##args)
-#else
-#define INFO(fmt, args...)
-#endif
+#define LOG(...) PFXLOG(BLU "DRV", __VA_ARGS__)
 
 static rwlock drivers_lock;
 static ck::map<major_t, struct dev::DriverInfo *> drivers;
@@ -42,7 +36,7 @@ int dev::register_name(struct dev::DriverInfo &info, ck::string name, minor_t mi
 
   drivers_lock.write_lock();
 
-  printk(KERN_INFO "register name %s [maj:%d, min:%d] (%d total)\n", name.get(), info.major, min, device_names.size());
+  LOG("register name %s [maj:%d, min:%d] (%d total)\n", name.get(), info.major, min, device_names.size());
 
   device_names.set(name, dev_t(info.major, min));
   drivers_lock.write_unlock();

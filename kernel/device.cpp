@@ -4,6 +4,10 @@
 #include <ck/vec.h>
 #include <module.h>
 
+
+
+#define DEVLOG(...) PFXLOG(YEL "DEV", __VA_ARGS__)
+
 static spinlock all_devices_lock;
 static ck::vec<ck::ref<dev::Device>> all_devices;
 
@@ -11,7 +15,6 @@ dev::Device::Device(DeviceType t) : m_type(t) {}
 
 
 ksh_def("devices", "display all devices") {
-	
   scoped_lock l(all_devices_lock);
 
 	for (auto & dev : all_devices) {
@@ -25,12 +28,15 @@ ksh_def("devices", "display all devices") {
 void dev::Device::add(ck::string name, ck::ref<Device> dev) {
   dev->set_name(name);
 
-  KINFO("[dev]: add %s\n", name.get());
-
 	if (auto mmio = dev->cast<MMIODevice>()) {
+  	DEVLOG(GRN "%s", name.get());
+		printk(GRY "@" YEL "%08x", mmio->address());
 		for (auto &compat : mmio->compat()) {
-			KINFO("[dev]:   compatible: '%s'\n", compat.get()); 
+			printk(GRY " '%s'" RESET, compat.get()); 
 		}
+		printk("\n");
+	} else {
+  	DEVLOG("%s", name.get());
 	}
 
   scoped_lock l(all_devices_lock);

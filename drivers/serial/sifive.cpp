@@ -2,8 +2,12 @@
 #include <devicetree.h>
 #include <printk.h>
 #include <dev/driver.h>
+#include <dev/device.h>
 #include <device_majors.h>
 
+
+
+#define LOG(...) PFXLOG(BLU "sifive-uart", __VA_ARGS__)
 
 // UARTSifiveRegs.ie, ip
 enum {
@@ -160,17 +164,30 @@ void init_device(dtb::node *node) {
 
 
 
+class SifiveUartDriver : public dev::Driver {
+  ck::vec<ck::box<SifiveUart>> uarts;
 
-void sifive_uart_init(void) {
-  dtb::walk_devices([](dtb::node *node) -> bool {
-    // printk("Compat: %s\n", node->compatible);
-    for (int i = 0; i < node->ncompat; i++) {
-      if (!strcmp(node->compatible[i], "sifive,uart0")) {
-        init_device(node);
+ public:
+  virtual ~SifiveUartDriver(void) {
+
+	}
+
+  dev::ProbeResult probe(ck::ref<dev::Device> dev) override {
+    if (auto mmio = dev->cast<dev::MMIODevice>()) {
+      if (mmio->is_compat("sifive,uart0")) {
+        LOG("Found device @%08llx\n", mmio->address());
+				auto uart = ck::make_box<SifiveUart>(mmio->address(), 5);
+				uart->put_char('a');
+				uarts.push(move(uart));
       }
     }
+    return dev::ProbeResult::Ignore;
+  };
+};
 
-    return true;
-  });
+
+void sifive_uart_init(void) {
+  auto driver = ck::make_ref<SifiveUartDriver>();
+  dev::Driver::add(driver);
 }
 module_init("sifive,uart0", sifive_uart_init);

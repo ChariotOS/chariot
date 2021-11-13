@@ -119,7 +119,7 @@ namespace dev {
   class MMIODevice : public dev::Device {
    public:
     static constexpr DeviceType TYPE = DeviceType::MMIO;
-    MMIODevice(off_t addr, size_t) : dev::Device(TYPE) {}
+    MMIODevice(off_t addr, size_t) : dev::Device(TYPE) { m_address = addr; }
     ~MMIODevice(void) override {}
 
 
@@ -132,6 +132,8 @@ namespace dev {
       return false;
     }
 
+    off_t address(void) const { return m_address; }
+
    private:
     off_t m_address;
     ck::vec<ck::string> m_compat;
@@ -143,9 +145,6 @@ namespace dev {
     if (device_type() == T::TYPE) return (T *)this;
     return nullptr;
   }
-
-  // inline ck::ref<PCIDevice> Device::as_pci() { return is_mmio() ? (PCIDevice *)this : nullptr; }
-  // inline ck::ref<MMIODevice> Device::as_mmio() { return is_mmio() ? (MMIODevice *)this : nullptr; }
 
 };  // namespace dev
 
