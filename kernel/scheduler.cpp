@@ -448,11 +448,10 @@ static int idle_task(void *arg) {
 void sched::run() {
   arch_disable_ints();
   // per-scheduler idle threads do not exist in the scheduler queue.
-  auto idle_thread = sched::proc::spawn_kthread("idle task", idle_task, NULL);
-  idle_thread->preemptable = true;
-
-  cpu::current().in_sched = true;
   unsigned long has_run = 0;
+  ck::ref<Thread> idle_thread = sched::proc::spawn_kthread("idle task", idle_task, NULL);
+  idle_thread->preemptable = true;
+  cpu::current().in_sched = true;
 
   while (1) {
     if (has_run++ >= 100) {
@@ -461,7 +460,6 @@ void sched::run() {
     }
 
     ck::ref<Thread> thd = pick_next_thread();
-
     cpu::current().next_thread = nullptr;
 
 
@@ -490,16 +488,19 @@ void sched::run() {
     auto start = cpu::get_ticks();
     switch_into(thd);
     auto end = cpu::get_ticks();
+    auto ran = end - start;
 
+    switch (thd->proc.ring) {
+      case RING_KERN:
+        cpu::current().kstat.kernel_ticks += ran;
+        break;
 
-    // if the old thread is now dead, notify joiners
-
-    if (thd->proc.ring == RING_KERN) {
-      cpu::current().kstat.kernel_ticks += end - start;
-    } else {
-      cpu::current().kstat.user_ticks += end - start;
+      case RING_USER:
+        cpu::current().kstat.user_ticks += ran;
+        break;
     }
 
+    // if the old thread is now dead, notify joiners
     if (thd->should_die) {
       scoped_irqlock l(thd->joinlock);
       // printk_nolock("sc: killing %d from %d.\n", thd->tid, cpu::current().cpunum);
