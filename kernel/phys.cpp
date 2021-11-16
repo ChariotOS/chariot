@@ -11,6 +11,7 @@
 #include <syscall.h>
 #include <thread.h>
 
+#include <crypto.h>
 
 // #define PHYS_DEBUG
 
@@ -115,6 +116,8 @@ void phys::free(void *v, int len) {
   if ((u64)v % PGSIZE) {
     panic("phys::free requires page aligned address. Given %p", v);
   }
+
+
 
   scoped_irqlock l(phys_lck);
 

@@ -1,6 +1,7 @@
 #include <asm.h>
 #include <cpu.h>
 #include <dev/virtio/mmio.h>
+#include <dev/driver.h>
 #include <devicetree.h>
 #include <fs/vfs.h>
 #include <module.h>
@@ -72,6 +73,7 @@ extern "C" uint64_t secondary_core_stack;
 static bool second_done = false;
 
 extern "C" void secondary_entry(int hartid) {
+  printk("got into hart %d\n", hartid);
   struct rv::hart_state sc;
   sc.hartid = hartid;
   sc.kernel_sp = 0;
@@ -101,80 +103,55 @@ extern "C" void secondary_entry(int hartid) {
   }
 }
 
-int start_secondary(void) {
+bool start_secondary(int i) {
   // start secondary cpus
-  for (int i = 0; i < CONFIG_MAX_CPUS; i++) {
-    auto &sc = rv::get_hstate();
-    if (i == sc.hartid) continue;
+  auto &sc = rv::get_hstate();
+  if (i == sc.hartid) return false;
 
-    // KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
-    // allocate 2 pages for the secondary core
-    secondary_core_stack = (uint64_t)malloc(CONFIG_RISCV_BOOTSTACK_SIZE * 4096);
-    secondary_core_stack += CONFIG_RISCV_BOOTSTACK_SIZE * 4096;
+  // KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
+  // allocate 2 pages for the secondary core
+  secondary_core_stack = (uint64_t)malloc(CONFIG_RISCV_BOOTSTACK_SIZE * 4096);
+  secondary_core_stack += CONFIG_RISCV_BOOTSTACK_SIZE * 4096;
 
-    second_done = false;
+  second_done = false;
+  __sync_synchronize();
+
+
+  // KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
+
+  auto ret = sbi_call(SBI_EXT_HSM, SBI_EXT_HSM_HART_START, i, secondary_core_startup_sbi, 0);
+  if (ret.error != SBI_SUCCESS) {
+    return false;
+  }
+  while (second_done != true) {
     __sync_synchronize();
-
-    // KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
-
-    auto ret = sbi_call(SBI_EXT_HSM, SBI_EXT_HSM_HART_START, i, secondary_core_startup_sbi, 0);
-    if (ret.error != SBI_SUCCESS) {
-      continue;
-    }
-
-    while (second_done != true) {
-      __sync_synchronize();
-    }
-    LOG("HART #%d started\n", i);
   }
+  LOG("HART #%d started\n", i);
 
-  return 0;
+  return true;
 }
 
-
-#if 0
-template <typename T>
-struct lref {
+class RISCVHart : public dev::Driver {
  public:
-  lref(T &val) : val(val) {
-    val.lock();
-  }
-
-  ~lref(void) {
-    val.unlock();
-  }
-
-  T *operator->(void) {
-    return &val;
-  }
-
-  T *operator*(void) {
-    return &val;
-  }
-
- private:
-  T &val;
-};
-
-struct lockable {
-  void do_thing(void) {
-    printk("do thing\n");
-  }
-
-  void lock(void) {
-    printk("lock\n");
-  }
-  void unlock(void) {
-    printk("unlock\n");
-  }
-};
-
-static lockable *g_lockable = NULL;
-auto get_lockable(void) {
-  if (g_lockable == NULL) g_lockable = new lockable;
-  return lref(*g_lockable);
-}
+  virtual ~RISCVHart(void) {}
+  dev::ProbeResult probe(ck::ref<dev::Device> dev) override {
+    if (auto mmio = dev->cast<dev::MMIODevice>()) {
+      if (mmio->is_compat("riscv")) {
+        auto hartid = mmio->address();
+#ifdef CONFIG_SMP
+        if (hartid != rv::get_hstate().hartid) {
+          LOG("found hart %d\n", mmio->address());
+          LOG("Trying to start hart %d\n", hartid);
+          // start the other core.
+          start_secondary(hartid);
+        }
 #endif
+      }
+    }
+    return dev::ProbeResult::Ignore;
+  };
+};
+
 
 
 static int wakes = 0;
@@ -250,9 +227,10 @@ void main(int hartid, void *fdt) {
   for (func_ptr *func = __init_array_start; func != __init_array_end; func++)
     (*func)();
 
+	cpu::current().cpunum = rv::get_hstate().hartid;
   cpu::current().primary = true;
 
-	dtb::promote();
+  dtb::promote();
 
   arch_enable_ints();
 
@@ -273,29 +251,15 @@ void main(int hartid, void *fdt) {
   LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
 
 
+  // add the hart driver
+  dev::Driver::add(ck::make_ref<RISCVHart>());
+
 
   sched::proc::create_kthread("main task", [](void *) -> int {
     LOG("Calling kernel module init functions\n");
     initialize_builtin_modules();
     LOG("kernel modules initialized\n");
 
-
-    /*
-dtb::walk_devices([](dtb::node *node) -> bool {
-for (int i = 0; i < node->ncompat; i++) {
-if (!strcmp(node->compatible[i], "virtio,mmio")) {
-virtio::check_mmio((void *)node->address, node->irq);
-}
-return true;
-}
-
-            return false;
-});
-    */
-
-#ifdef CONFIG_SMP
-    start_secondary();
-#endif
 
     int mnt_res = vfs::mount("/dev/disk0p1", "/", "ext2", 0, NULL);
     if (mnt_res != 0) {

@@ -21,6 +21,7 @@
 #include <x86/cpuid.h>
 #include <x86/fpu.h>
 #include <x86/smp.h>
+#include <crypto.h>
 #include "acpi/acpi.h"
 
 // in src/arch/x86/sse.asm

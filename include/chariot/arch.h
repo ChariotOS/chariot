@@ -125,4 +125,11 @@ void serial_send(int device, char out);
 void serial_string(int device, char *out);
 
 
+
+
+// fire off a xcall, and do not wait. This is handled by the scheduler
+// if `core == -1`, call to all cores
+void arch_deliver_xcall(int core);
+
+
 #endif

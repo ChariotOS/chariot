@@ -4,6 +4,7 @@
 #include <phys.h>
 #include <printk.h>
 #include <types.h>
+#include <crypto.h>
 
 // #define PAGING_DEBUG
 

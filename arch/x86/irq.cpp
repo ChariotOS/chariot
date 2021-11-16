@@ -240,8 +240,9 @@ void arch::irq::eoi(int i) {
 }
 
 void arch::irq::enable(int num) {
+	printk("enable irq %02x\n", num);
 #ifdef CONFIG_SMP
-  smp::ioapicenable(num, /* TODO */ 0);
+  smp::ioapicenable(num, /* TODO */ cpu::current().cpunum);
 #endif
   pic_enable(num);
 }
@@ -318,11 +319,12 @@ void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
   auto *tf = (struct x86_64regs *)regs;
 
 
+
   arch_disable_ints();
-  printk_nolock("FATAL SIGNAL %d\n", fatal_signal);
+  printk_nolock("FATAL SIGNAL %d. trapno=%d\n", fatal_signal, tf->trapno);
   printk_nolock("==================================================================\n");
   // TODO:
-  printk_nolock("%s in pid %d, tid %d @ %p\n", name, curthd->pid, curthd->tid, tf->rip);
+  printk_nolock("%s in pid %d, tid %d, cpu %d @ %p\n", name, curthd->pid, curthd->tid, cpu::current().cpunum, tf->rip);
 
   debug::print_register("Bad address", read_cr2());
   // printk_nolock("              info = ");
@@ -341,6 +343,7 @@ void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
 
   curproc->mm->dump();
 
+	arch_halt();
   arch_enable_ints();
   curproc->terminate(fatal_signal);
 }
@@ -396,7 +399,7 @@ int arch::irq::init(void) {
   u32 *idt = (u32 *)&idt_block;
 
   // fill up the idt with the correct trap vectors.
-  for (int n = 0; n < 130; n++)
+  for (int n = 0; n < 256; n++)
     mkgate(idt, n, vectors[n], 0, 0);
 
   int i;

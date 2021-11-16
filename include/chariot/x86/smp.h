@@ -146,6 +146,9 @@ namespace smp {
   unsigned lapic_read(int ind);
   void lapic_eoi(void);
 
+
+	void ipi(int core, int vector);
+
   void init_cores(void);
 
   int cpunum(void);

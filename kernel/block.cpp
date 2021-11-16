@@ -8,6 +8,7 @@
 #include <sched.h>
 #include <template_lib.h>
 
+
 static spinlock g_next_block_lru_lock;
 static uint64_t g_next_block_lru = 0;
 
@@ -254,6 +255,8 @@ static ssize_t block_rw(fs::BlockDevice &b, void *dst, size_t size, off_t byte_o
   }
 
 
+
+
   return size;
 }
 
@@ -283,7 +286,7 @@ static unsigned long blk_kshell(ck::vec<ck::string> &args, void *data, int dlen)
       for (auto &blk : buffer_cache) {
         for (auto &off : blk.value) {
           if (off.value) {
-						printk("off: %p\n", off.value);
+            printk("off: %p\n", off.value);
           }
         }
       }

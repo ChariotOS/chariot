@@ -5,6 +5,7 @@
 // #include <sleep.h>
 #include <types.h>
 #include <ck/ptr.h>
+#include <ck/vec.h>
 #include <cpu_usage.h>
 #include <fwd.h>
 
@@ -19,6 +20,15 @@ struct kstat_cpu {
   unsigned long tsc_per_tick;
 };
 
+
+typedef void (*xcall_t)(void *);
+
+struct xcall_command {
+	// the function to be called on the cpu
+	xcall_t fn;
+	// the single argument to the function when called.
+	void *arg;
+};
 
 
 /* This state is a local state to each processor */
@@ -46,15 +56,30 @@ struct processor_state {
 
   struct thread_context *sched_ctx;
 
+	spinlock xcall_lock;
+	ck::vec<struct xcall_command> xcall_commands;
+
+
+#ifdef CONFIG_X86
+	// per cpu apic location
+	uint32_t *apic = NULL;
+#endif
+
   /* The depth of interrupts. If this is not zero, we aren't in an interrupt context */
   int interrupt_depth = 0;
 
   // set if the core woke up a thread in this irq context
   bool woke_someone_up = false;
+
+	void prep_xcall(xcall_t func, void *arg) {
+		scoped_irqlock l(xcall_lock);
+		xcall_commands.push({func, arg});
+	}
 };
 
 extern int cpunum;
 extern struct processor_state cpus[CONFIG_MAX_CPUS];
+
 
 
 namespace cpu {
@@ -78,6 +103,12 @@ namespace cpu {
 
   int nproc(void);
 
+
+
+  void xcall(int core, xcall_t func, void *arg, bool wait = true);
+  inline void xcall_all(xcall_t func, void *arg, bool wait = true) { return cpu::xcall(-1, func, arg, wait); }
+
+	void run_pending_xcalls(void);
 }  // namespace cpu
 
 

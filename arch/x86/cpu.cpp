@@ -5,7 +5,7 @@
 #include <thread.h>
 #include <process.h>
 #include <mm.h>
-
+#include <module.h>
 
 #include <x86/msr.h>
 #include <x86/smp.h>
@@ -120,10 +120,8 @@ void cpu::seginit(void *local) {
 }
 
 static void tss_set_rsp(u32 *tss, u32 n, u64 rsp) {
-#ifdef __x86_64__
   tss[n * 2 + 1] = rsp;
   tss[n * 2 + 2] = rsp >> 32;
-#endif
 }
 
 void cpu::switch_vm(ck::ref<struct Thread> thd) {
@@ -144,11 +142,6 @@ void cpu::switch_vm(ck::ref<struct Thread> thd) {
   // TODO: a real gs thing :)
   uint64_t kernel_gs = 0xFFFFFFFF'00000000 | thd->tid;
   uint64_t user_gs = 0xBBBBBBBB'00000000 | thd->tid;
-
-  // asm ("swapgs");
-  // wrmsr(KERNEL_GS_BASE, user_gs);
-  // asm ("swapgs");
-  // wrmsr(KERNEL_GS_BASE, user_gs);
 
   switch (thd->proc.ring) {
     case RING_KERN:
@@ -173,4 +166,14 @@ void cpu::switch_vm(ck::ref<struct Thread> thd) {
 struct processor_state &cpu::current() {
   struct processor_state *c = __get_cpu_struct();
   return *c;
+}
+
+static void test_xcall(void *arg) {
+	printk("test xcall from %d: %p\n", cpu::current().cpunum, arg);
+}
+
+ksh_def("xcall", "deliver an xcall") {
+	cpu::xcall_all(test_xcall, NULL);
+	// arch_deliver_xcall(-1);
+	return 0;
 }

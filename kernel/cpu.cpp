@@ -54,3 +54,40 @@ int sys::get_core_usage(unsigned int core, struct chariot_core_usage *usage) {
 int sys::get_nproc(void) { return cpu::nproc(); }
 
 extern "C" int get_errno(void) { return curthd->kerrno; }
+
+
+void cpu::run_pending_xcalls(void) {
+	auto &p = cpu::current();
+
+	auto f = p.xcall_lock.lock_irqsave();
+
+	auto todo = p.xcall_commands;
+	p.xcall_commands.clear();
+	p.xcall_lock.unlock_irqrestore(f);
+	for (auto call : todo) {
+		call.fn(call.arg);
+	}
+}
+
+
+void cpu::xcall(int core, xcall_t func, void *arg, bool wait) {
+	if (core == -1) {
+		// all the cores
+		for (int i = 0; i < cpunum; i++) {
+			cpus[i].prep_xcall(func, arg);
+		}
+	} else {
+
+		if (core < 0 || core > cpunum) {
+			KERR("invalid xcall target %d\n", core);
+			// hmm
+			return;
+		}
+		cpus[core].prep_xcall(func, arg);
+	}
+
+
+	arch_deliver_xcall(core);
+
+	// TODO: wait :^)
+}

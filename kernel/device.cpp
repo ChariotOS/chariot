@@ -36,7 +36,7 @@ void dev::Device::add(ck::string name, ck::ref<Device> dev) {
 		}
 		printk("\n");
 	} else {
-  	DEVLOG("%s", name.get());
+  	DEVLOG("%s\n", name.get());
 	}
 
   scoped_lock l(all_devices_lock);
