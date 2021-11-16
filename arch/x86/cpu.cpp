@@ -168,12 +168,21 @@ struct processor_state &cpu::current() {
   return *c;
 }
 
+static volatile int __glob;
 static void test_xcall(void *arg) {
-	printk("test xcall from %d: %p\n", cpu::current().cpunum, arg);
+	/*
+  for (int i = 0; i < 10000000; i++) {
+    __glob = __glob + 1;
+  }
+	*/
+	// printk("test xcall from %d: %p\n", cpu::current().cpunum, arg);
 }
 
+
 ksh_def("xcall", "deliver an xcall") {
-	cpu::xcall_all(test_xcall, NULL);
-	// arch_deliver_xcall(-1);
-	return 0;
+  cpu::xcall(1, test_xcall, NULL);
+
+
+  // arch_deliver_xcall(-1);
+  return 0;
 }

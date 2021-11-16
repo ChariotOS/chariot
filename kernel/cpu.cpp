@@ -57,37 +57,51 @@ extern "C" int get_errno(void) { return curthd->kerrno; }
 
 
 void cpu::run_pending_xcalls(void) {
-	auto &p = cpu::current();
+  auto &p = cpu::current();
+  auto f = p.xcall_lock.lock_irqsave();
+  auto todo = p.xcall_commands;
+  p.xcall_commands.clear();
+  p.xcall_lock.unlock_irqrestore(f);
+  for (auto call : todo) {
+    call.fn(call.arg);
 
-	auto f = p.xcall_lock.lock_irqsave();
-
-	auto todo = p.xcall_commands;
-	p.xcall_commands.clear();
-	p.xcall_lock.unlock_irqrestore(f);
-	for (auto call : todo) {
-		call.fn(call.arg);
-	}
+		if (call.count != NULL) {
+			printk("yep\n");
+			__atomic_fetch_sub(call.count, 1, __ATOMIC_ACQ_REL);
+		}
+  }
 }
 
 
 void cpu::xcall(int core, xcall_t func, void *arg, bool wait) {
-	if (core == -1) {
-		// all the cores
-		for (int i = 0; i < cpunum; i++) {
-			cpus[i].prep_xcall(func, arg);
-		}
-	} else {
-
-		if (core < 0 || core > cpunum) {
-			KERR("invalid xcall target %d\n", core);
-			// hmm
-			return;
-		}
-		cpus[core].prep_xcall(func, arg);
+	printk("make xcall, waiting\n");
+	int count = 1;
+  if (core == -1) {
+		count = cpunum;
+    // all the cores
+    for (int i = 0; i < cpunum; i++) {
+      cpus[i].prep_xcall(func, arg, wait ? &count : NULL);
+    }
+  } else {
+    if (core < 0 || core > cpunum) {
+      KERR("invalid xcall target %d\n", core);
+      // hmm
+      return;
+    }
+    cpus[core].prep_xcall(func, arg, wait ? &count : NULL);
 	}
 
+  arch_deliver_xcall(core);
 
-	arch_deliver_xcall(core);
+	if (wait) {
+		int iters = 0;
+		do {
+			int val = __atomic_load_n(&count, __ATOMIC_SEQ_CST);
+			if (val == 0) break;
+			// arch_relax();
+			iters++;
+		} while(1);
 
-	// TODO: wait :^)
+		printk("took %d iters\n", iters);
+	}
 }

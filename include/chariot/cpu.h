@@ -28,6 +28,8 @@ struct xcall_command {
 	xcall_t fn;
 	// the single argument to the function when called.
 	void *arg;
+	// decremented when an xcall is completed
+	int *count = nullptr;
 };
 
 
@@ -71,9 +73,9 @@ struct processor_state {
   // set if the core woke up a thread in this irq context
   bool woke_someone_up = false;
 
-	void prep_xcall(xcall_t func, void *arg) {
+	void prep_xcall(xcall_t func, void *arg, int *count) {
 		scoped_irqlock l(xcall_lock);
-		xcall_commands.push({func, arg});
+		xcall_commands.push({func, arg, count});
 	}
 };
 
