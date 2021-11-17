@@ -32,6 +32,7 @@ bool mm::AddressSpace::add_region(mm::MappedRegion *region) {
   });
 }
 
+
 size_t mm::AddressSpace::copy_out(off_t byte_offset, void *dst, size_t size) {
   // how many more bytes are needed
   long to_access = size;
@@ -99,6 +100,15 @@ mm::MappedRegion *mm::AddressSpace::lookup(off_t va) {
 
 int mm::AddressSpace::delete_region(off_t va) { return -1; }
 
+
+static void mm_xcall_flush_mmu(void *vspace) {
+  if (curproc) {
+    if (curproc->mm == (mm::AddressSpace *)vspace) {
+      arch_flush_mmu();
+    }
+  }
+}
+
 int mm::AddressSpace::pagefault(off_t va, int err) {
   scoped_lock l(this->lock);
   auto r = lookup(va);
@@ -121,6 +131,9 @@ int mm::AddressSpace::pagefault(off_t va, int err) {
     auto page = get_page_internal(va, *r, err, true);
     if (!page) return -1;
   }
+
+
+  cpu::xcall_all(mm_xcall_flush_mmu, this, true);
 
   return 0;
 }
@@ -350,6 +363,9 @@ off_t mm::AddressSpace::mmap(ck::string name, off_t addr, size_t size, int prot,
 
 
   add_region(r);
+
+
+	cpu::xcall_all(mm_xcall_flush_mmu, this, true);
 
   return addr;
 }

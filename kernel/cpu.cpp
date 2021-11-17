@@ -7,7 +7,7 @@
 #include <printk.h>
 #include <syscall.h>
 #include <types.h>
-
+#include <module.h>
 
 
 struct processor_state cpus[CONFIG_MAX_CPUS];
@@ -64,20 +64,17 @@ void cpu::run_pending_xcalls(void) {
   p.xcall_lock.unlock_irqrestore(f);
   for (auto call : todo) {
     call.fn(call.arg);
-
-		if (call.count != NULL) {
-			printk("yep\n");
-			__atomic_fetch_sub(call.count, 1, __ATOMIC_ACQ_REL);
-		}
+    if (call.count != NULL) {
+      __atomic_fetch_sub(call.count, 1, __ATOMIC_ACQ_REL);
+    }
   }
 }
 
 
 void cpu::xcall(int core, xcall_t func, void *arg, bool wait) {
-	printk("make xcall, waiting\n");
-	int count = 1;
+  int count = 1;
   if (core == -1) {
-		count = cpunum;
+    count = cpunum;
     // all the cores
     for (int i = 0; i < cpunum; i++) {
       cpus[i].prep_xcall(func, arg, wait ? &count : NULL);
@@ -89,19 +86,56 @@ void cpu::xcall(int core, xcall_t func, void *arg, bool wait) {
       return;
     }
     cpus[core].prep_xcall(func, arg, wait ? &count : NULL);
-	}
+  }
 
   arch_deliver_xcall(core);
 
-	if (wait) {
-		int iters = 0;
-		do {
-			int val = __atomic_load_n(&count, __ATOMIC_SEQ_CST);
-			if (val == 0) break;
-			// arch_relax();
-			iters++;
-		} while(1);
+  if (wait) {
+    int iters = 0;
+    do {
+      int val = __atomic_load_n(&count, __ATOMIC_SEQ_CST);
+      if (val == 0) break;
+      arch_relax();
+      iters++;
+    } while (1);
+  }
+}
 
-		printk("took %d iters\n", iters);
-	}
+
+ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
+  int count = 10000;
+  auto *measurements = new uint64_t[count];
+
+  printk("from %d\n", cpu::current().cpunum);
+
+  for (int i = 0; i < count; i++) {
+    auto start = arch_read_timestamp();
+    cpu::xcall(
+        1,  // send to all cores.
+        [](void *arg) {
+        },
+        NULL);
+
+    auto end = arch_read_timestamp();
+    measurements[i] = end - start;
+  }
+
+  uint64_t sum = 0;
+  uint64_t min = ~0;
+  uint64_t max = 0;
+
+  for (int i = 0; i < count; i++) {
+    auto m = measurements[i];
+    sum += m;
+    if (m < min) min = m;
+    if (m > max) max = m;
+  }
+
+  uint64_t avg = sum / count;
+
+  printk("avg: %lu\n", avg);
+  printk("min: %lu\n", min);
+  printk("max: %lu\n", max);
+
+  return 0;
 }
