@@ -101,13 +101,34 @@ mm::MappedRegion *mm::AddressSpace::lookup(off_t va) {
 int mm::AddressSpace::delete_region(off_t va) { return -1; }
 
 
-static void mm_xcall_flush_mmu(void *vspace) {
+struct xcall_flush {
+  mm::AddressSpace *space;
+  off_t va;      // the start virtual address
+  size_t pages;  // how many pages?
+};
+
+
+
+static void mm_xcall_flush_mmu(void *v) {
+	auto *arg = (struct xcall_flush*)v;
   if (curproc) {
-    if (curproc->mm == (mm::AddressSpace *)vspace) {
+    if (curproc->mm == arg->space) {
       arch_flush_mmu();
     }
   }
 }
+
+
+
+static void xcall_flush(mm::AddressSpace *space, off_t va, size_t pages) {
+  struct xcall_flush arg;
+  arg.space = space;
+  arg.va = va;
+  arg.pages = pages;
+  cpu::xcall_all(mm_xcall_flush_mmu, &arg, true);
+}
+
+
 
 int mm::AddressSpace::pagefault(off_t va, int err) {
   scoped_lock l(this->lock);
@@ -364,8 +385,7 @@ off_t mm::AddressSpace::mmap(ck::string name, off_t addr, size_t size, int prot,
 
   add_region(r);
 
-
-	cpu::xcall_all(mm_xcall_flush_mmu, this, true);
+  cpu::xcall_all(mm_xcall_flush_mmu, this, true);
 
   return addr;
 }
