@@ -1,6 +1,7 @@
 #include <arch.h>
 #include <cpu.h>
 #include <riscv/arch.h>
+#include <riscv/sbi.h>
 #include <riscv/dis.h>
 #include <riscv/plic.h>
 #include <syscall.h>
@@ -143,3 +144,17 @@ void arch::irq::eoi(int i) {
 }
 void arch::irq::enable(int num) { rv::plic::enable(num, 1); }
 void arch::irq::disable(int num) { rv::plic::disable(num); }
+
+
+void arch_deliver_xcall(int core) {
+	printk_nolock("deliver xcall: %d\n", core);
+
+	unsigned long mask = 0;
+	if (core == -1) {
+		mask = ~0;
+	} else {
+		mask = (1 << core);
+	}
+
+	sbi_send_ipis(&mask);
+}

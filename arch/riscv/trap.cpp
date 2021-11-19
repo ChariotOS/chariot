@@ -256,6 +256,10 @@ for (auto &stk : thd->stacks) {
   if (interrupt) {
     /* Supervisor software interrupt (from machine mode) */
     if (nr == 1) {
+			printk("IPI!\n");
+
+			// sip.SSIP = 0
+			write_csr(sip, read_csr(sip) & ~(1 << 1));
     } else if (nr == 5) {
       auto &cpu = cpu::current();
       uint64_t now = arch_read_timestamp();

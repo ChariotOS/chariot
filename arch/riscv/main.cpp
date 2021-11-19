@@ -246,6 +246,8 @@ void main(int hartid, void *fdt) {
 
   cpus[rv::hartid()].timekeeper = true;
 
+	arch_deliver_xcall(-1);
+
 
   assert(sched::init());
   LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
