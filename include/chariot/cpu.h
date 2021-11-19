@@ -37,7 +37,7 @@ struct xcall_command {
 /* This state is a local state to each processor */
 struct processor_state {
   void *local;
-  int cpunum;
+  int id;
 
   bool primary = false;
 	bool active = false; // filled out by the arch's initialization routine

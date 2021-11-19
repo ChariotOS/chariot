@@ -727,7 +727,7 @@ extern "C" void mpentry(int apic_id) {
 	struct processor_state cpu;
   // initialize the CPU
   cpu::seginit(&cpu, NULL);
-  cpu::current().cpunum = apic_id;
+  cpu::current().id = apic_id;
 
   // load the IDT
   lidt((uint32_t *)&idt_block, 4096);

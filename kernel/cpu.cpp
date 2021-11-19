@@ -18,7 +18,7 @@ struct list_head cpu::cores;
 void cpu::add(struct processor_state *cpu) {
   processor_count++;
   cpu->active = true;
-  printk("======= Found cpu %d\n", cpu->cpunum);
+  printk("======= Found cpu %d\n", cpu->id);
   cpu::cores.add(&cpu->cores);
 }
 
@@ -128,7 +128,7 @@ ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
   int count = 10000;
   auto *measurements = new uint64_t[count];
 
-  printk("from %d\n", cpu::current().cpunum);
+  printk("from %d\n", cpu::current().id);
 
   for (int i = 0; i < count; i++) {
     auto start = arch_read_timestamp();
@@ -165,7 +165,7 @@ ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
 
 ksh_def("cores", "dump cpu information") {
   cpu::each([](struct processor_state *cpu) {
-    printk("[core%d]:", cpu->cpunum);
+    printk("[core%d]:", cpu->id);
 
 
     uint64_t hz = cpu->kstat.tsc_per_tick * cpu->ticks_per_second;

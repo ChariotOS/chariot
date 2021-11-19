@@ -84,7 +84,7 @@ extern "C" void secondary_entry(int hartid) {
 	// its safe to store this on this stack.
 	struct processor_state cpu;
 	rv::get_hstate().cpu = &cpu;
-  cpu::seginit(NULL);
+  cpu::seginit(&cpu, NULL);
   cpu::current().primary = false;
 
   /* Initialize the platform level interrupt controller for this HART */
@@ -204,7 +204,7 @@ void main(int hartid, void *fdt) {
 	struct processor_state cpu;
 	rv::get_hstate().cpu = &cpu;
 
-  cpu::seginit(NULL);
+  cpu::seginit(&cpu, NULL);
 
   dtb::walk_devices([](dtb::node *node) -> bool {
     if (!strcmp(node->name, "memory")) {
@@ -236,7 +236,7 @@ void main(int hartid, void *fdt) {
   for (func_ptr *func = __init_array_start; func != __init_array_end; func++)
     (*func)();
 
-  cpu::current().cpunum = rv::get_hstate().hartid;
+  cpu::current().id = rv::get_hstate().hartid;
   cpu::current().primary = true;
 
   dtb::promote();

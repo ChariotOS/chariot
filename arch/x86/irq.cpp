@@ -241,7 +241,7 @@ void arch::irq::eoi(int i) {
 
 void arch::irq::enable(int num) {
 #ifdef CONFIG_SMP
-  smp::ioapicenable(num, /* TODO */ cpu::current().cpunum);
+  smp::ioapicenable(num, /* TODO */ cpu::current().id);
 #endif
   pic_enable(num);
 }
@@ -323,7 +323,7 @@ void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
   printk_nolock("FATAL SIGNAL %d. trapno=%d\n", fatal_signal, tf->trapno);
   printk_nolock("==================================================================\n");
   // TODO:
-  printk_nolock("%s in pid %d, tid %d, cpu %d @ %p\n", name, curthd->pid, curthd->tid, cpu::current().cpunum, tf->rip);
+  printk_nolock("%s in pid %d, tid %d, cpu %d @ %p\n", name, curthd->pid, curthd->tid, cpu::current().id, tf->rip);
 
   debug::print_register("Bad address", read_cr2());
   // printk_nolock("              info = ");

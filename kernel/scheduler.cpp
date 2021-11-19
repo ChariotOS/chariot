@@ -217,12 +217,12 @@ extern "C" void context_switch(struct thread_context **, struct thread_context *
 
 
 
-static auto &my_queue(void) { return queues[cpu::current().cpunum]; }
+static auto &my_queue(void) { return queues[cpu::current().id]; }
 
 
 bool sched::init(void) {
   auto &q = my_queue();
-  q.core = cpu::current().cpunum;
+  q.core = cpu::current().id;
   q.active = true;
 
   return true;
@@ -314,7 +314,7 @@ static void switch_into(ck::ref<Thread> thd) {
   cpu::current().next_thread = nullptr;
   // update the statistics of the thread
   thd->stats.run_count++;
-  thd->stats.current_cpu = cpu::current().cpunum;
+  thd->stats.current_cpu = cpu::current().id;
   thd->state = PS_RUNNING;
 
   if (thd->proc.ring == RING_USER) arch_restore_fpu(*thd);

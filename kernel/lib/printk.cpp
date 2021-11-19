@@ -1051,7 +1051,7 @@ int pprintk(const char *format, ...) {
   printk_lock.lock();
   if (cpu::in_thread()) {
     int color = curthd->tid % 5 + 31;
-    printk_nolock("\e[0;%dm(c:%d p:%d t:%d) %s:\e[0m ", color, cpu::current().cpunum, curthd->pid, curthd->tid, curproc->name.get());
+    printk_nolock("\e[0;%dm(c:%d p:%d t:%d) %s:\e[0m ", color, cpu::current().id, curthd->pid, curthd->tid, curproc->name.get());
   }
   va_list va;
   va_start(va, format);

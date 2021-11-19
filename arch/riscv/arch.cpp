@@ -115,16 +115,13 @@ void cpu::switch_vm(ck::ref<Thread> thd) {
 }
 
 
-void cpu::seginit(void *local) {
+void cpu::seginit(struct processor_state *cpu, void *local) {
   auto &sc = rv::get_hstate();
-  auto &cpu = cpu::current();
-  /* zero out the cpu structure. This might be bad idk... */
-  memset(&cpu, 0, sizeof(struct processor_state));
   /* Forward this so other code can read it */
-  cpu.cpunum = sc.hartid;
-	cpu.active = true;
+  cpu->id = sc.hartid;
+	cpu->active = true;
 	/* Register the CPU with the kernel */
-	cpu::add(&cpu);
+	cpu::add(cpu);
 }
 
 
