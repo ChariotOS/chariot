@@ -240,7 +240,6 @@ void arch::irq::eoi(int i) {
 }
 
 void arch::irq::enable(int num) {
-	printk("enable irq %02x\n", num);
 #ifdef CONFIG_SMP
   smp::ioapicenable(num, /* TODO */ cpu::current().cpunum);
 #endif

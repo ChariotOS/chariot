@@ -79,6 +79,11 @@ extern "C" void secondary_entry(int hartid) {
   sc.kernel_sp = 0;
 
   rv::set_tp((rv::xsize_t)&sc);
+
+
+	// its safe to store this on this stack.
+	struct processor_state cpu;
+	rv::get_hstate().cpu = &cpu;
   cpu::seginit(NULL);
   cpu::current().primary = false;
 
@@ -88,7 +93,8 @@ extern "C" void secondary_entry(int hartid) {
   write_csr(stvec, kernelvec);
   /* set SUM bit in sstatus so kernel can access userspace pages. Also enable floating point */
   write_csr(sstatus, read_csr(sstatus) | (1 << 18) | (1 << 13));
-  cpus[rv::hartid()].timekeeper = false;
+
+	cpu::current().timekeeper = false;
 
   /* set the timer with sbi :) */
   sbi_set_timer(rv::get_time() + TICK_INTERVAL);
@@ -195,6 +201,9 @@ void main(int hartid, void *fdt) {
 
   phys::free_range((void *)boot_free_start, (void *)boot_free_end);
 
+	struct processor_state cpu;
+	rv::get_hstate().cpu = &cpu;
+
   cpu::seginit(NULL);
 
   dtb::walk_devices([](dtb::node *node) -> bool {
@@ -227,7 +236,7 @@ void main(int hartid, void *fdt) {
   for (func_ptr *func = __init_array_start; func != __init_array_end; func++)
     (*func)();
 
-	cpu::current().cpunum = rv::get_hstate().hartid;
+  cpu::current().cpunum = rv::get_hstate().hartid;
   cpu::current().primary = true;
 
   dtb::promote();
@@ -244,10 +253,14 @@ void main(int hartid, void *fdt) {
   /* set SUM bit in sstatus so kernel can access userspace pages. Also enable floating point */
   write_csr(sstatus, read_csr(sstatus) | (1 << 18) | (1 << 13));
 
-  cpus[rv::hartid()].timekeeper = true;
+	cpu::current().timekeeper = true;
 
-	arch_deliver_xcall(-1);
 
+  cpu::xcall_all(
+      [](void *) {
+        printk("hello.\n");
+      },
+      NULL);
 
   assert(sched::init());
   LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());

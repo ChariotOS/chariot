@@ -62,7 +62,7 @@ extern "C" void ignore_sysret(void);
 
 
 
-void cpu::seginit(void *local) {
+void cpu::seginit(struct processor_state *c, void *local) {
   if (local == nullptr) local = p2v(phys::alloc());
 
   // make sure the local information segment is zeroed
@@ -74,16 +74,19 @@ void cpu::seginit(void *local) {
 
   tss[0x64] |= (0x64 * sizeof(u32)) << 16;
 
+
   wrmsr(GS_BASE_MSR, ((u64)local) + (PGSIZE / 2));
 
   // zero out the CPU
-  struct processor_state *c = &cpus[cpunum++];
+  // struct processor_state *c = &cpus[processor_count++];
+
   __set_cpu_struct(c);
 
-  memset(c, 0, sizeof(*c));
   c->local = local;
   c->cpunum = smp::cpunum();
   c->kstat.ticks = 0;
+  c->active = 1;
+	cpu::add(c);
 
   auto addr = (u64)tss;
   gdt[0] = 0x0000000000000000;

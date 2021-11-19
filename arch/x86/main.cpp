@@ -50,9 +50,13 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   serial_install();
   rtc_init();
 
+	struct processor_state cpu;
+
 
   extern u8 boot_cpu_local[];
-  cpu::seginit(boot_cpu_local);
+  cpu::seginit(&cpu, boot_cpu_local);
+
+	cpu.timekeeper = false;
 
 
   arch_mem_init(mbd);
@@ -113,8 +117,10 @@ static void kmain2(void) {
   // create the initialization thread.
   sched::proc::create_kthread("[kinit]", kernel_init);
 
-  // the first cpu is the timekeeper
-  cpus[0].timekeeper = true;
+
+	// i am the timekeeper
+	//
+	cpu::current().timekeeper = true;
 
   KINFO("starting scheduler\n");
   sched::run();

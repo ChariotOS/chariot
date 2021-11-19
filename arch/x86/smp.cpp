@@ -723,8 +723,10 @@ struct ap_args {
 extern "C" void mpentry(int apic_id) {
   volatile auto args = (struct ap_args *)p2v(0x6000);
 
+
+	struct processor_state cpu;
   // initialize the CPU
-  cpu::seginit(NULL);
+  cpu::seginit(&cpu, NULL);
   cpu::current().cpunum = apic_id;
 
   // load the IDT

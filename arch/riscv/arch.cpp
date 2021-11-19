@@ -105,7 +105,7 @@ struct rv::hart_state &rv::get_hstate(void) {
  * No need for bloated thread pointer bogus or nothin'
  */
 struct processor_state &cpu::current(void) {
-  return cpus[rv::get_hstate().hartid];
+  return *rv::get_hstate().cpu;
 }
 
 
@@ -114,14 +114,17 @@ void cpu::switch_vm(ck::ref<Thread> thd) {
   rv::sfence_vma();
 }
 
+
 void cpu::seginit(void *local) {
   auto &sc = rv::get_hstate();
-  // printk(KERN_DEBUG "initialize hart %d\n", sc.hartid);
   auto &cpu = cpu::current();
   /* zero out the cpu structure. This might be bad idk... */
   memset(&cpu, 0, sizeof(struct processor_state));
   /* Forward this so other code can read it */
   cpu.cpunum = sc.hartid;
+	cpu.active = true;
+	/* Register the CPU with the kernel */
+	cpu::add(&cpu);
 }
 
 
@@ -147,14 +150,7 @@ void arch::irq::disable(int num) { rv::plic::disable(num); }
 
 
 void arch_deliver_xcall(int core) {
-	printk_nolock("deliver xcall: %d\n", core);
-
-	unsigned long mask = 0;
-	if (core == -1) {
-		mask = ~0;
-	} else {
-		mask = (1 << core);
-	}
-
+	unsigned long mask = (core == -1) ? ~0 : (1 << core);
+	printk_nolock("deliver xcall: %d %p\n", core, mask);
 	sbi_send_ipis(&mask);
 }

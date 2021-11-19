@@ -9,14 +9,30 @@
 #include <types.h>
 #include <module.h>
 
+// struct processor_state cpus[CONFIG_MAX_CPUS];
+int processor_count = 0;
 
-struct processor_state cpus[CONFIG_MAX_CPUS];
-int cpunum = 0;
+struct list_head cpu::cores;
 
-int cpu::nproc(void) { return cpunum; }
+
+void cpu::add(struct processor_state *cpu) {
+  processor_count++;
+  cpu->active = true;
+  printk("======= Found cpu %d\n", cpu->cpunum);
+  cpu::cores.add(&cpu->cores);
+}
+
+
+int cpu::nproc(void) { return processor_count; }
 
 struct processor_state *cpu::get() {
   return &cpu::current();
+}
+
+struct processor_state *cpu::get(int core) {
+  struct processor_state *proc = NULL;
+
+  return proc;
 }
 
 Process *cpu::proc(void) {
@@ -36,17 +52,19 @@ int sys::get_core_usage(unsigned int core, struct chariot_core_usage *usage) {
   if (core > CONFIG_MAX_CPUS) return -1;
   if (core > cpu::nproc()) return -1;
 
-  auto &c = cpus[core];
+
+  auto *c = cpu::get(core);
+  if (c == NULL) return -EEXIST;
 
   if (!VALIDATE_WR(usage, sizeof(struct chariot_core_usage))) {
     return -EINVAL;
   }
 
 
-  usage->user_ticks = c.kstat.user_ticks;
-  usage->kernel_ticks = c.kstat.kernel_ticks;
-  usage->idle_ticks = c.kstat.idle_ticks;
-  usage->ticks_per_second = c.ticks_per_second;
+  usage->user_ticks = c->kstat.user_ticks;
+  usage->kernel_ticks = c->kstat.kernel_ticks;
+  usage->idle_ticks = c->kstat.idle_ticks;
+  usage->ticks_per_second = c->ticks_per_second;
 
   return 0;
 }
@@ -57,9 +75,11 @@ extern "C" int get_errno(void) { return curthd->kerrno; }
 
 
 void cpu::run_pending_xcalls(void) {
+  printk("running xcalls\n");
   auto &p = cpu::current();
   auto f = p.xcall_lock.lock_irqsave();
   auto todo = p.xcall_commands;
+  printk("there are %d\n", p.xcall_commands.size());
   p.xcall_commands.clear();
   p.xcall_lock.unlock_irqrestore(f);
   for (auto call : todo) {
@@ -72,20 +92,22 @@ void cpu::run_pending_xcalls(void) {
 
 
 void cpu::xcall(int core, xcall_t func, void *arg, bool wait) {
-  int count = 1;
+  int count = 0;
   if (core == -1) {
-    count = cpunum;
     // all the cores
-    for (int i = 0; i < cpunum; i++) {
-      cpus[i].prep_xcall(func, arg, wait ? &count : NULL);
-    }
+    cpu::each([&](auto *core) {
+      count++;
+      core->prep_xcall(func, arg, wait ? &count : NULL);
+    });
   } else {
-    if (core < 0 || core > cpunum) {
+    auto c = cpu::get(core);
+    if (c == NULL) {
       KERR("invalid xcall target %d\n", core);
       // hmm
       return;
     }
-    cpus[core].prep_xcall(func, arg, wait ? &count : NULL);
+    count++;
+    c->prep_xcall(func, arg, wait ? &count : NULL);
   }
 
   arch_deliver_xcall(core);
@@ -136,6 +158,28 @@ ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
   printk("avg: %lu\n", avg);
   printk("min: %lu\n", min);
   printk("max: %lu\n", max);
+
+  return 0;
+}
+
+
+ksh_def("cores", "dump cpu information") {
+  cpu::each([](struct processor_state *cpu) {
+    printk("[core%d]:", cpu->cpunum);
+
+
+    uint64_t hz = cpu->kstat.tsc_per_tick * cpu->ticks_per_second;
+    printk(" %llumhz", hz / 1000 / 1000);
+
+
+    printk(" sched:{u:%llu,k:%llu,i:%llu}", cpu->kstat.user_ticks, cpu->kstat.kernel_ticks, cpu->kstat.idle_ticks);
+    printk(" ticks:%llu", cpu->ticks_per_second);
+
+
+    printk(" t:%d", cpu->timekeeper);
+
+    printk("\n");
+  });
 
   return 0;
 }
