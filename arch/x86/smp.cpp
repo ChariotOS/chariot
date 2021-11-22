@@ -38,39 +38,6 @@ extern uint32_t idt_block[];
 #define INFO(fmt, args...)
 #endif
 
-// Local APIC registers, divided by 4 for use as uint[] indices.
-#define LAPIC_ID (0x0020 / 4)     // ID
-#define LAPIC_VER (0x0030 / 4)    // Version
-#define LAPIC_TPR (0x0080 / 4)    // Task Priority
-#define LAPIC_EOI (0x00B0 / 4)    // EOI
-#define LAPIC_SVR (0x00F0 / 4)    // Spurious Interrupt Vector
-#define LAPIC_ENABLE 0x00000100   // Unit Enable
-#define LAPIC_ESR (0x0280 / 4)    // Error Status
-#define LAPIC_ICRLO (0x0300 / 4)  // Interrupt Command
-#define LAPIC_INIT 0x00000500     // INIT/RESET
-#define LAPIC_STARTUP 0x00000600  // Startup IPI
-#define LAPIC_DELIVS 0x00001000   // Delivery status
-#define LAPIC_ASSERT 0x00004000   // Assert interrupt (vs deassert)
-#define LAPIC_DEASSERT 0x00000000
-#define LAPIC_LEVEL 0x00008000  // Level triggered
-#define LAPIC_BCAST 0x00080000  // Send to all APICs, including self.
-#define LAPIC_BUSY 0x00001000
-#define LAPIC_FIXED 0x00000000
-#define LAPIC_ICRHI (0x0310 / 4)   // Interrupt Command [63:32]
-#define LAPIC_TIMER (0x0320 / 4)   // Local Vector Table 0 (TIMER)
-#define LAPIC_X1 0x0000000B        // divide counts by 1
-#define LAPIC_PERIODIC 0x00020000  // Periodic
-#define LAPIC_PCINT (0x0340 / 4)   // Performance Counter LVT
-#define LAPIC_LINT0 (0x0350 / 4)   // Local Vector Table 1 (LINT0)
-#define LAPIC_LINT1 (0x0360 / 4)   // Local Vector Table 2 (LINT1)
-#define LAPIC_ERROR (0x0370 / 4)   // Local Vector Table 3 (ERROR)
-#define LAPIC_MASKED 0x00010000    // Interrupt masked
-#define LAPIC_TICR (0x0380 / 4)    // Timer Initial Count
-#define LAPIC_TCCR (0x0390 / 4)    // Timer Current Count
-#define LAPIC_TDCR (0x03E0 / 4)    // Timer Divide Configuration
-
-
-
 
 
 // ioapic is always at the same location
@@ -102,31 +69,7 @@ void smp::ioapicenable(int irq, int cpunum) {
 }
 
 static volatile uint32_t *global_lapic = NULL;
-// how fast does the lapic tick in the time of a kernel tick?
-static uint32_t lapic_ticks_per_second = 0;
 
-static void wait_for_tick_change(void) {
-  volatile uint64_t start = cpu::get_ticks();
-  while (cpu::get_ticks() == start) {
-  }
-}
-
-static void xcall_handler(int i, reg_t *tf, void *) {
-	cpu::run_pending_xcalls();
-  smp::lapic_eoi();
-}
-
-static void lapic_tick_handler(int i, reg_t *tf, void *) {
-  auto &cpu = cpu::current();
-  uint64_t now = arch_read_timestamp();
-  cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
-  cpu.kstat.last_tick_tsc = now;
-  cpu.kstat.ticks++;
-
-
-  smp::lapic_eoi();
-  sched::handle_tick(cpu.kstat.ticks);
-}
 
 
 
@@ -152,146 +95,6 @@ static void apic_print_lvt(uint32_t entry) {
   if (entry & APIC_LVT_DISABLED) printk(", MASKED");
 }
 
-static void dump_apic(void) {
-  printk("IVT0: ");
-  apic_print_lvt(smp::lapic_read(APIC_REG_LVT0));
-  printk("\n");
-
-  printk("IVT1: ");
-  apic_print_lvt(smp::lapic_read(APIC_REG_LVT1));
-  printk("\n");
-}
-
-// will screw up the PIT
-static void calibrate(void) {
-#define PIT_DIV 100
-#define DATASET_SIZE 10
-
-  set_pit_freq(PIT_DIV);
-
-
-
-  uint64_t total_ticks = 0;
-  for (int i = 1; i < DATASET_SIZE; i++) {
-    wait_for_tick_change();
-
-    // Set APIC init counter to -1
-    smp::lapic_write(LAPIC_TICR, 0xffffffff);
-
-    wait_for_tick_change();
-    // Stop the APIC timer
-    smp::lapic_write(LAPIC_TIMER, LAPIC_MASKED);
-
-    // Now we know how often the APIC timer has ticked in 10ms
-    auto ticks = 0xffffffff - smp::lapic_read(LAPIC_TCCR);
-    // printk("%d ticks\n", ticks);
-    total_ticks += ticks;
-  }
-
-  auto avg = (total_ticks / DATASET_SIZE);
-  printk(KERN_INFO "%d avg ticks\n", avg);
-
-
-  lapic_ticks_per_second = avg * PIT_DIV;
-
-  printk(KERN_INFO "%d ticks per second\n", lapic_ticks_per_second);
-}
-
-static void set_tickrate(uint32_t per_second) {
-  cpu::current().ticks_per_second = per_second;
-  smp::lapic_write(LAPIC_TICR,
-      lapic_ticks_per_second / per_second);  // set the tick rate
-}
-
-
-void smp::lapic_init(void) {
-  uint32_t *lapic = (uint32_t *)global_lapic;  // (uint32_t *)p2v(base_addr);
-  cpu::current().lapic = lapic;
-
-  struct cpuid_busfreq_info freq;
-
-  cpuid_busfreq(&freq);
-
-
-  lapic_write(LAPIC_TDCR, LAPIC_X1);
-
-  if (lapic_ticks_per_second == 0) {
-    KINFO("[LAPIC] freq info: base: %uMHz,  max: %uMHz, bus: %uMHz\n", freq.base, freq.max, freq.bus);
-    calibrate();
-    KINFO("[LAPIC] counts per tick: %zu\t0x%08x\n", lapic_ticks_per_second, lapic_ticks_per_second);
-  }
-
-
-
-  msr_write(APIC_BASE_MSR, msr_read(APIC_BASE_MSR) | APIC_GLOBAL_ENABLE);
-
-
-  // Enable local APIC; set spurious interrupt vector.
-  lapic_write(LAPIC_SVR, LAPIC_ENABLE | (31 /* spurious */));
-
-  // set the periodic interrupt timer to be IRQ 50
-  // This is so we can use the PIT for sleep related activities at IRQ 32
-  smp::lapic_write(LAPIC_TDCR, LAPIC_X1);
-  smp::lapic_write(LAPIC_TIMER, LAPIC_PERIODIC | (50 + 32));
-  set_tickrate(CONFIG_TICKS_PER_SECOND);  // tick every ms
-
-  // Disable logical interrupt lines.
-  lapic_write(LAPIC_LINT0, LAPIC_MASKED);
-  lapic_write(LAPIC_LINT1, LAPIC_MASKED);
-
-  // Disable performance counter overflow interrupts
-  // on machines that provide that interrupt entry.
-  if (((lapic[LAPIC_VER] >> 16) & 0xFF) >= 4) {
-    lapic_write(LAPIC_PCINT, LAPIC_MASKED);
-  }
-
-  // Map error interrupt to IRQ_ERROR.
-  lapic_write(LAPIC_ERROR, IRQ_ERROR);
-
-  // Clear error status register (requires back-to-back writes).
-  lapic_write(LAPIC_ESR, 0);
-  lapic_write(LAPIC_ESR, 0);
-
-  // Ack any outstanding interrupts.
-  lapic_write(LAPIC_EOI, 0);
-
-  // Send an Init Level De-Assert to synchronise arbitration ID's.
-  lapic_write(LAPIC_ICRHI, 0);
-  lapic_write(LAPIC_ICRLO, LAPIC_BCAST | LAPIC_INIT | LAPIC_LEVEL);
-  while (lapic[LAPIC_ICRLO] & LAPIC_DELIVS)
-    ;
-
-  // Enable interrupts on the APIC (but not on the processor).
-  lapic_write(LAPIC_TPR, 0);
-
-  irq::uninstall(0);
-  irq::install(50, lapic_tick_handler, "Local APIC Preemption Tick");
-  irq::install(IPI_IRQ, xcall_handler, "xcall handler");
-
-  dump_apic();
-
-  // smp::ioapicenable(IPI_IRQ,
-}
-
-void smp::lapic_write(int ind, int value) {
-  cpu::current().lapic[ind] = value;
-  (void)cpu::current().lapic[ind];  // wait for write to finish, by reading
-}
-unsigned smp::lapic_read(int ind) { return cpu::current().lapic[ind]; }
-
-int smp::cpunum(void) {
-  int id = 0;
-
-  if (!cpu::current().lapic) return 0;
-
-  id = cpu::current().lapic[LAPIC_ID] >> 24;
-
-  return id;
-}
-
-void smp::lapic_eoi(void) {
-  if (cpu::current().lapic) lapic_write(LAPIC_EOI, 0);
-}
 
 smp::mp::mp_table_entry_ioapic *ioapic_entry = NULL;
 
@@ -459,11 +262,11 @@ static void startap(int id, unsigned long code) {
   wrv[1] = code >> 4;
 
   // "Universal startup algorithm."
-  // Send INIT (level-triggered) interrupt to reset other CPU.
-  smp::lapic_write(LAPIC_ICRHI, id << 24);
-  smp::lapic_write(LAPIC_ICRLO, LAPIC_INIT | LAPIC_LEVEL | LAPIC_ASSERT);
+  // Send INIT (level-triggered) interrupt to reset other CPU
+	core().apic.write_icr(id, ICR_DEL_MODE_INIT | ICR_TRIG_MODE_LEVEL | ICR_LEVEL_ASSERT);
   microdelay(200);
-  smp::lapic_write(LAPIC_ICRLO, LAPIC_INIT | LAPIC_LEVEL);
+	// de-assert
+	core().apic.write_icr(id, ICR_DEL_MODE_INIT | ICR_TRIG_MODE_LEVEL);
   microdelay(100);  // should be 10ms, but too slow in Bochs!
 
   // Send startup IPI (twice!) to enter code.
@@ -472,8 +275,7 @@ static void startap(int id, unsigned long code) {
   // should be ignored, but it is part of the official Intel algorithm.
   // Bochs complains about the second one.  Too bad for Bochs.
   for (i = 0; i < 2; i++) {
-    smp::lapic_write(LAPIC_ICRHI, id << 24);
-    smp::lapic_write(LAPIC_ICRLO, LAPIC_STARTUP | (code >> 12));
+		core().apic.write_icr(id, ICR_DEL_MODE_STARTUP | (code >> 12));
     // TODO: on real hardware, we MUST actually wait here for 200us. But in qemu
     //       its fine because it is virtualized 'instantly'
     microdelay(200);
@@ -481,35 +283,6 @@ static void startap(int id, unsigned long code) {
 }
 
 
-void smp::ipi(int core, int vector) {
-  /**
-   * AMD Manual Volume 2 - System Programming.
-   * Section 16.5
-   *
-   * A local APIC can send interrupts to other local APICs (or itself)
-   * using software-initiated Interprocessor Interrupts (IPIs) using
-   * the Interrupt Command Register (ICR). Writing into the low order
-   * doubleword of the ICR causes the IPI to be sent.
-   */
-
-  uint32_t hi = 0;
-  uint32_t lo = 0;
-
-  // high quadword
-  hi |= (core << 24);  // DES = id
-  // low quadword
-  lo |= LAPIC_FIXED;  // MT = fixed
-  lo |= vector + 32;      // set the VEC field
-
-  smp::lapic_write(LAPIC_ICRHI, hi);
-  // writing the low order double word sends the IPI
-  smp::lapic_write(LAPIC_ICRLO, lo);
-}
-
-
-void arch_deliver_xcall(int id) {
-  smp::ipi(id, IPI_IRQ);
-}
 
 // just a named tuple of 8byte values
 struct ap_args {
@@ -539,9 +312,7 @@ extern "C" void mpentry(int apic_id) {
 
 
 	// initialize our apic
-	// core().apic.init();
-
-  smp::lapic_init();
+	core().apic.init();
 
   // we're fully booted now
   args->ready = 1;

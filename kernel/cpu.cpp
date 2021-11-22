@@ -130,7 +130,7 @@ ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
   for (int i = 0; i < count; i++) {
     auto start = arch_read_timestamp();
     cpu::xcall(
-        1,  // send to all cores.
+        -1,  // send to all cores.
         [](void *arg) {
         },
         NULL);

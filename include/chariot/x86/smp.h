@@ -140,13 +140,6 @@ namespace smp {
   // initialize SMP, but don't IPI to the other CPUs yet.
   bool init(void);
 
-
-  void lapic_init(void);
-  void lapic_write(int ind, int value);
-  unsigned lapic_read(int ind);
-  void lapic_eoi(void);
-
-
 	void ipi(int core, int vector);
 
   void init_cores(void);

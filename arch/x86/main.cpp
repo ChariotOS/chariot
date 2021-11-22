@@ -63,6 +63,8 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 
   cpu.timekeeper = false;
 
+	cpu.primary = true;
+
 
   arch_mem_init(mbd);
 
@@ -84,10 +86,8 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   }
 
   // initialize the bootstrap processor's IO-APIC
-  core().ioapic.init();
+  // core().ioapic.init();
 
-  // initialize the bootstrap processor's APIC
-  // core().apic.init();
 
   kargs::init(mbd);
 #ifdef CONFIG_SMP
@@ -101,9 +101,16 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   cpuid::detect_cpu();
 
 
+	/*
+	// initialize the PIT so we can later disable it after
+	// calibrating the local APIC of the boostrap processor.
   init_pit();
   set_pit_freq(TICK_FREQ);
   KINFO("Initialized PIT\n");
+	*/
+
+  // initialize the bootstrap processor's APIC
+  core().apic.init();
 
   // initialize the scheduler
   assert(sched::init());
@@ -126,11 +133,14 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 
 
 int kernel_init(void *) {
+
+
   rtc_late_init();
 
   // at this point, the pit is being used for interrupts,
   // so we should go setup lapic for that
-  smp::lapic_init();
+  // smp::lapic_init();
+
 
   // start up the extra cpu cores
 #ifdef CONFIG_SMP

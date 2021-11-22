@@ -4,9 +4,16 @@
 #include <cpu.h>
 #include <x86/msr.h>
 #include <x86/cpuid.h>
+#include <x86/smp.h>
+#include <pit.h>
+#include <sched.h>
 
 
+#define IPI_IRQ (0xF3 - 32)
 
+// how fast does the apic timer tick in
+// the same time as a kernel tick
+static uint32_t apic_ticks_per_second = 0;
 
 using namespace x86;
 
@@ -93,6 +100,22 @@ static char *lvt_stringify(uint32_t entry, char *buf) {
 
 
 
+static void xcall_handler(int i, reg_t *tf, void *) {
+  cpu::run_pending_xcalls();
+	core().apic.eoi();
+}
+
+static void apic_tick_handler(int i, reg_t *tf, void *) {
+  auto &cpu = cpu::current();
+  uint64_t now = arch_read_timestamp();
+  cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
+  cpu.kstat.last_tick_tsc = now;
+  cpu.kstat.ticks++;
+	core().apic.eoi();
+  sched::handle_tick(cpu.kstat.ticks);
+}
+
+
 // Initialize the current CPU's APIC
 void Apic::init(void) {
   uint32_t val;
@@ -163,7 +186,6 @@ void Apic::init(void) {
   // accept all interrupts
   write(APIC_REG_TPR, read(APIC_REG_TPR) & 0xffffff00);
 
-
   // disable imter interrupts initially
   write(APIC_REG_LVTT, APIC_DEL_MODE_FIXED | APIC_LVT_DISABLED);
   // disable perf cntr interrupts
@@ -171,8 +193,6 @@ void Apic::init(void) {
 
   // disable thermal interrupts
   write(APIC_REG_LVTTHMR, APIC_DEL_MODE_FIXED | APIC_LVT_DISABLED | APIC_THRML_INT_VEC);
-  // mask 8259a interrupts (PIC)
-  write(APIC_REG_LVT0, APIC_DEL_MODE_EXTINT | APIC_LVT_DISABLED);
 
 
 
@@ -182,33 +202,142 @@ void Apic::init(void) {
   // Global Enable
   msr_write(APIC_BASE_MSR, msr_read(APIC_BASE_MSR) | APIC_GLOBAL_ENABLE);
 
-
-  if (core().primary) {
-    // TODO: initialize APIC-based interrupt handlers here, as all cores
-    //       share the same IDT, we only need to set these up once.
-  }
-
-
   // assign spiv
   write(APIC_REG_SPIV, read(APIC_REG_SPIV) | APIC_SPUR_INT_VEC);
 
   // Turn it on.
   write(APIC_REG_SPIV, read(APIC_REG_SPIV) | APIC_SPIV_SW_ENABLE);
 
+
+
+  // TODO:
+  // mask 8259a interrupts (PIC)
+  // write(APIC_REG_LVT0, APIC_DEL_MODE_EXTINT | APIC_LVT_DISABLED);
+
+
+  if (core().primary) {
+    irq::install(50, apic_tick_handler, "Local APIC Preemption Tick");
+    irq::install(IPI_IRQ, xcall_handler, "xcall handler");
+  }
+
+
+  // setup the timer with the correct quantum
+  timer_setup(1000 / CONFIG_TICKS_PER_SECOND);
+
   dump();
 }
 
 
+void Apic::timer_setup(uint32_t quantum_ms) {
+  uint32_t busfreq;
+  uint32_t tmp;
+  cpuid::ret_t ret;
+  int x2apic, tscdeadline, arat;
+
+  APIC_DEBUG("Setting up Local APIC timer for APIC 0x%x\n", this->id);
+
+  cpuid::run(0x1, ret);
+
+  x2apic = (ret.c >> 21) & 0x1;
+  tscdeadline = (ret.c >> 24) & 0x1;
+  cpuid::run(0x6, ret);
+  arat = (ret.a >> 2) & 0x1;
+  APIC_DEBUG("APIC timer has:  x2apic=%d tscdeadline=%d arat=%d\n", x2apic, tscdeadline, arat);
+
+
+  struct cpuid_busfreq_info freq;
+  cpuid_busfreq(&freq);
+
+  // set the TiMer Divide CountR
+  write(APIC_REG_TMDCR, APIC_TIMER_DIVCODE);
+
+  if (apic_ticks_per_second == 0) {
+    APIC_DEBUG("freq info: base: %uMHz,  max: %uMHz, bus: %uMHz\n", freq.base, freq.max, freq.bus);
+    calibrate();
+    APIC_DEBUG("counts per tick: %zu\t0x%08x\n", apic_ticks_per_second, apic_ticks_per_second);
+  }
+
+
+	set_tickrate(CONFIG_TICKS_PER_SECOND);
+}
+
+
+
+void Apic::set_tickrate(uint32_t per_second) {
+	core().ticks_per_second = per_second;
+	// set the current timer count
+	this->write(APIC_REG_TMICT, apic_ticks_per_second / per_second);
+
+	// enable periodic ticks on irq 50
+	write(APIC_REG_LVTT, APIC_TIMER_PERIODIC | (50 + T_IRQ0));
+}
+
+
+static volatile int apic_calibrate_ticks = 0;
+
+static inline void wait_for_tick_change(void) {
+  volatile auto start = apic_calibrate_ticks;
+  while (apic_calibrate_ticks == start) {
+  }
+}
+static void pit_tick_handle(int i, reg_t *regs, void *) {
+  auto &cpu = cpu::current();
+  apic_calibrate_ticks = apic_calibrate_ticks + 1;
+  irq::eoi(32 /* PIT */);
+}
+
+// will ruin the PIT, which might be a good thing :)
+void Apic::calibrate(void) {
+#define PIT_DIV 100
+#define DATASET_SIZE 10
+
+  uint64_t dataset[DATASET_SIZE];
+  init_pit();
+  set_pit_freq(PIT_DIV);
+
+  irq::install(0, pit_tick_handle, "PIT Tick");
+
+  arch_enable_ints();
+
+
+  for (int i = 0; i < DATASET_SIZE; i++) {
+    wait_for_tick_change();
+
+    // Set APIC init counter to -1
+    write(APIC_REG_TMICT, 0xffffffff);
+
+    wait_for_tick_change();
+    // Stop the APIC timer
+    write(APIC_REG_LVTT, APIC_LVT_DISABLED);
+    // Now we know how often the APIC timer has ticked in 10ms
+    auto ticks = 0xffffffff - read(APIC_REG_TMCCT);
+
+    dataset[i] = ticks;
+  }
+
+
+  set_pit_freq(0);
+
+  arch_disable_ints();
+  irq::uninstall(0);
+
+
+  uint64_t total_ticks = 0;
+  for (int i = 0; i < DATASET_SIZE; i++) {
+    total_ticks += dataset[i];
+  }
+
+  auto avg = (total_ticks / DATASET_SIZE);
+  APIC_DEBUG("avg: %d, total: %d\n", avg, total_ticks);
+
+  apic_ticks_per_second = avg * PIT_DIV;
+
+  APIC_DEBUG("%d ticks per second\n", apic_ticks_per_second);
+}
+
 int Apic::set_mode(ApicMode newmode) {
   uint64_t val;
   ApicMode cur = get_mode();
-
-  /*
-if (newmode == cur) {
-this->mode = newmode;
-return 0;
-}
-  */
 
   if (newmode == ApicMode::Invalid) {
     return -1;
@@ -337,5 +466,9 @@ void Apic::dump(void) {
 
   APIC_DEBUG("      IRR %08x %08x %08x %08x\n", read(APIC_GET_ISR(0)), read(APIC_GET_ISR(1)), read(APIC_GET_ISR(2)), read(APIC_GET_ISR(3)));
   APIC_DEBUG("          %08x %08x %08x %08x\n", read(APIC_GET_ISR(4)), read(APIC_GET_ISR(5)), read(APIC_GET_ISR(6)), read(APIC_GET_ISR(7)));
-
 }
+
+
+
+
+void arch_deliver_xcall(int id) { core().apic.ipi(id, IPI_IRQ); }

@@ -45,21 +45,10 @@ int irq::init(void) {
 
 // cause an interrupt to be handled by the kernel's interrupt dispatcher
 void irq::dispatch(int irq, reg_t *regs) {
-  // store the current register state in the CPU for introspection
-  // if (cpu::in_thread()) cpu::thread()->trap_frame = regs;
-
-  auto *cpu = cpu::get();
-  if (cpu != NULL) cpu->interrupt_depth++;
-
   auto handler = irq_handlers[irq].handler;
-  if (handler != nullptr) {
+  if (handler) {
     handler(irq, regs, irq_handlers[irq].data);
-  } else {
-		// printk_nolock("unhandled irq %d %02x\n", irq, irq);
-	}
-
-
-  if (cpu != NULL) cpu->interrupt_depth--;
+  }
 }
 
 ksh_def("irqs", "display the interrupt handlers") {

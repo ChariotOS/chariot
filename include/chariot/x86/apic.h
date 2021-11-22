@@ -3,6 +3,7 @@
 #include <asm.h>
 #include <x86/apic_flags.h>
 #include <printk.h>
+#include <idt.h>
 
 
 
@@ -20,7 +21,7 @@
 #ifdef APIC_ULTRA_VERBOSE
 #define APIC_UDEBUG APIC_LOG
 #else
-#define APIC_UDEBUG(...) 
+#define APIC_UDEBUG(...)
 #endif
 
 namespace x86 {
@@ -47,10 +48,38 @@ namespace x86 {
 
     // initialize this Apic for the calling core.
     void init();
-		void dump();
+    void dump();
+    // setup the timer with a certain quantum in ms
+    void timer_setup(uint32_t quantum_ms);
+    void calibrate(void);
+
+    // send a core (or all cores, if `core == -1`), an irq of 'vec'
+    void ipi(int remote_id, int vec) {
+			// APIC_DEBUG("Sending ipi %02x to %d\n", vec, remote_id);
+			write_icr(remote_id, APIC_DEL_MODE_FIXED | (vec + T_IRQ0));
+		}
 
     int set_mode(ApicMode mode);
     inline bool is_x2(void) const { return mode == ApicMode::X2Apic; }
+
+
+		void set_tickrate(uint32_t per_second);
+
+
+		inline void eoi(void) {
+			// write the "End of Interrupt register"
+			write(APIC_REG_EOI, 0);
+		}
+
+    inline void write_icr(uint32_t dest, uint32_t lo) {
+      if (is_x2()) {
+        uint64_t val = (((uint64_t)dest)) << 32 | lo;
+        write64(APIC_REG_ICR, val);
+      } else {
+        write(APIC_REG_ICR2, dest << APIC_ICR2_DST_SHIFT);
+        write(APIC_REG_ICR, lo);
+      }
+    }
 
 
     inline void msr_write(uint32_t msr, uint64_t data) {
@@ -68,8 +97,8 @@ namespace x86 {
 
     inline void write(uint32_t reg, uint32_t val) {
       if (is_x2()) {
-				reg = X2APIC_MMIO_REG_OFFSET_TO_MSR(reg);
-				APIC_UDEBUG("wr %08x <- %08x\n", reg, val);
+        reg = X2APIC_MMIO_REG_OFFSET_TO_MSR(reg);
+        APIC_UDEBUG("wr %08x <- %08x\n", reg, val);
         msr_write(reg, (uint64_t)val);
       } else {
         *((volatile uint32_t *)(base_addr + reg)) = val;
@@ -78,9 +107,9 @@ namespace x86 {
 
     inline uint32_t read(uint32_t reg) const {
       if (is_x2()) {
-				reg = X2APIC_MMIO_REG_OFFSET_TO_MSR(reg);
-				uint32_t val = (uint32_t)msr_read(reg);
-				APIC_UDEBUG("rd %08x -> %08x\n", reg, val);
+        reg = X2APIC_MMIO_REG_OFFSET_TO_MSR(reg);
+        uint32_t val = (uint32_t)msr_read(reg);
+        APIC_UDEBUG("rd %08x -> %08x\n", reg, val);
         return val;
       } else {
         return *((volatile uint32_t *)(base_addr + reg));
@@ -91,7 +120,7 @@ namespace x86 {
 
 
     /// these 64 bit read/write functions are only valid IFF the apic is and X2APIC
-    inline void apic_write64(uint32_t reg, uint64_t val) {
+    inline void write64(uint32_t reg, uint64_t val) {
       if (is_x2()) {
         msr_write(X2APIC_MMIO_REG_OFFSET_TO_MSR(reg), val);
       } else {
@@ -99,13 +128,13 @@ namespace x86 {
       }
     }
 
-    inline uint32_t apic_read64(uint32_t reg) {
+    inline uint32_t read64(uint32_t reg) {
       if (is_x2()) {
         return msr_read(X2APIC_MMIO_REG_OFFSET_TO_MSR(reg));
       } else {
         panic("apic_read_64 attemped while not using X2APIC\n");
       }
-			return 0;
+      return 0;
     }
   };
 

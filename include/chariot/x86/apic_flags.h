@@ -72,7 +72,7 @@
 #define APIC_REG_TPR      0x80
 #define APIC_REG_APR      0x90
 #define APIC_REG_PPR      0xa0
-#define APIC_REG_EOR      0xb0
+#define APIC_REG_EOI      0xb0
 #define APIC_REG_RRR      0xc0
 #define APIC_REG_LDR      0xd0
 #define APIC_REG_DFR      0xe0

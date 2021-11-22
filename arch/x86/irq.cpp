@@ -236,7 +236,8 @@ void arch::irq::eoi(int i) {
     }
     outb(0x20, 0x20);
   }
-  smp::lapic_eoi();
+
+	core().apic.eoi();
 }
 
 void arch::irq::enable(int num) {
@@ -419,11 +420,11 @@ int arch::irq::init(void) {
 
 
 
-  pic_disable(34);
+  // pic_disable(34);
 
-  init_pit();
+  // init_pit();
 
-  ::irq::install(0, tick_handle, "Preemption Tick");
+  // ::irq::install(0, tick_handle, "Preemption Tick");
 
 
   // setup the ancient systemcall interface

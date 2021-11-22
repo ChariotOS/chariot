@@ -83,7 +83,6 @@ void cpu::seginit(struct processor_state *c, void *local) {
   __set_cpu_struct(c);
 
   c->local = local;
-  c->id = smp::cpunum();
   c->kstat.ticks = 0;
   c->active = 1;
 
