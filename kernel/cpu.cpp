@@ -18,7 +18,6 @@ struct list_head cpu::cores;
 void cpu::add(struct processor_state *cpu) {
   processor_count++;
   cpu->active = true;
-  printk("======= Found cpu %d\n", cpu->id);
   cpu::cores.add(&cpu->cores);
 }
 

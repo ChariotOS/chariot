@@ -40,7 +40,7 @@ mbheader:
 .section .init.data
 
 boot_stack:
-	.space 512
+	.space 4096
 .boot_stack_end:
 
 

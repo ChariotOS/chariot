@@ -86,6 +86,7 @@ void cpu::seginit(struct processor_state *c, void *local) {
   c->id = smp::cpunum();
   c->kstat.ticks = 0;
   c->active = 1;
+
 	cpu::add(c);
 
   auto addr = (u64)tss;
@@ -167,7 +168,6 @@ void cpu::switch_vm(ck::ref<struct Thread> thd) {
 }
 
 struct processor_state &cpu::current() {
-  struct processor_state *c = __get_cpu_struct();
-  return *c;
+  return *__get_cpu_struct();
 }
 

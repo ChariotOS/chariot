@@ -170,6 +170,12 @@ int strncmp(const char *s1, const char *s2, size_t limit);
 size_t strlen(const char *s);
 
 
+inline char *strcat(char *dest, const char *src) {
+  strcpy(dest + strlen(dest), src);
+  return dest;
+}
+
+
 // memmove is just copy but you clear it out
 static inline void *memmove(void *dst, const void *src, size_t n) {
   for (int i = 0; i < n; i++) {

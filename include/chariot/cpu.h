@@ -10,6 +10,11 @@
 #include <fwd.h>
 #include <list_head.h>
 
+#ifdef CONFIG_X86
+#include <x86/apic.h>
+#include <x86/ioapic.h>
+#endif
+
 
 struct kstat_cpu {
   unsigned long ticks;         // total ticks
@@ -65,8 +70,12 @@ struct processor_state {
 
 
 #ifdef CONFIG_X86
+	// The APIC and the IOApic for this core
+	x86::Apic apic;
+	x86::IOApic ioapic;
+
 	// per cpu apic location
-	uint32_t *apic = NULL;
+	uint32_t *lapic = NULL;
 #endif
 
   /* The depth of interrupts. If this is not zero, we aren't in an interrupt context */
@@ -82,6 +91,7 @@ struct processor_state {
 		xcall_commands.push({func, arg, count});
 	}
 };
+
 
 extern int processor_count;
 // extern struct processor_state cpus[CONFIG_MAX_CPUS];
@@ -132,3 +142,6 @@ namespace cpu {
 // Nice macros to allow cleaner access to the current task and proc
 #define curthd cpu::thread()
 #define curproc cpu::proc()
+
+static inline auto &core(void) { return cpu::current(); }
+static inline auto &core_id(void) { return core().id; }

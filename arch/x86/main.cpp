@@ -29,7 +29,14 @@ extern "C" void enable_sse();
 extern "C" void call_with_new_stack(void *, void *);
 
 
-static void kmain2(void);
+typedef void (*func_ptr)(void);
+extern "C" func_ptr __init_array_start[0], __init_array_end[0];
+int kernel_init(void *);
+
+// ms per tick
+#define TICK_FREQ 100
+
+
 
 #ifndef GIT_REVISION
 #define GIT_REVISION "NO-GIT"
@@ -50,11 +57,11 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   serial_install();
   rtc_init();
 
-	struct processor_state cpu;
+  struct processor_state cpu;
   extern u8 boot_cpu_local[];
   cpu::seginit(&cpu, boot_cpu_local);
 
-	cpu.timekeeper = false;
+  cpu.timekeeper = false;
 
 
   arch_mem_init(mbd);
@@ -64,26 +71,9 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   // initialize the video display
   vga::early_init(mbd);
 
-  void *new_stack = (void *)((u64)malloc(STKSIZE) + STKSIZE);
-  call_with_new_stack(new_stack, (void *)kmain2);
-  while (1)
-    panic("should not have gotten back here\n");
-}
-
-
-typedef void (*func_ptr)(void);
-extern "C" func_ptr __init_array_start[0], __init_array_end[0];
-
-// kernel/init.cpp
-int kernel_init(void *);
 
 
 
-// ms per tick
-#define TICK_FREQ 100
-
-
-static void kmain2(void) {
   irq::init();
   fpu::init();
 
@@ -92,6 +82,12 @@ static void kmain2(void) {
   for (func_ptr *func = __init_array_start; func != __init_array_end; func++) {
     (*func)();
   }
+
+  // initialize the bootstrap processor's IO-APIC
+  core().ioapic.init();
+
+  // initialize the bootstrap processor's APIC
+  // core().apic.init();
 
   kargs::init(mbd);
 #ifdef CONFIG_SMP
@@ -104,6 +100,7 @@ static void kmain2(void) {
 
   cpuid::detect_cpu();
 
+
   init_pit();
   set_pit_freq(TICK_FREQ);
   KINFO("Initialized PIT\n");
@@ -115,36 +112,21 @@ static void kmain2(void) {
   // create the initialization thread.
   sched::proc::create_kthread("[kinit]", kernel_init);
 
-
-	// i am the timekeeper
-	//
-	cpu::current().timekeeper = true;
+  // i am the timekeeper
+  cpu::current().timekeeper = true;
 
   KINFO("starting scheduler\n");
   sched::run();
 
   panic("sched::run() returned\n");
+
+	while (1) {}
   // [noreturn]
 }
 
 
-int fib(int n) {
-  if (n < 2) return n;
-  return fib(n - 1) + fib(n - 2);
-}
-
-#define ACPI_EBDA_PTR_LOCATION 0x0000040E /* Physical Address */
-#define ACPI_EBDA_PTR_LENGTH 2
-#define ACPI_EBDA_WINDOW_SIZE 1024
-#define ACPI_HI_RSDP_WINDOW_BASE 0x000E0000 /* Physical Address */
-#define ACPI_HI_RSDP_WINDOW_SIZE 0x00020000
-#define ACPI_RSDP_SCAN_STEP 16
-
-
-
 int kernel_init(void *) {
   rtc_late_init();
-
 
   // at this point, the pit is being used for interrupts,
   // so we should go setup lapic for that
