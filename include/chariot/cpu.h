@@ -27,6 +27,7 @@ struct kstat_cpu {
 };
 
 
+
 typedef void (*xcall_t)(void *);
 
 struct xcall_command {
@@ -41,29 +42,35 @@ struct xcall_command {
 
 /* This state is a local state to each processor */
 struct processor_state {
-  void *local;
+	// The processor ID
+	// on x86, this comes from the apic
+	// on RISC-V, this comes from mhartid after boot
   int id;
+  void *local;
 
-  bool primary = false;
+  // set if the core woke up a thread in this irq context
+  bool woke_someone_up = false;
+  bool primary = false; // this core was the bootstrap processor
 	bool active = false; // filled out by the arch's initialization routine
-  bool in_sched = false;
+  bool in_sched = false; // the CPU has reached the scheduler
+  bool timekeeper = false; // this CPU does timekeeping stuff.
+
+
+	// the intrusive linked list into the list of all cores
+	// Typically not locked, as they are only populated at boot.
+	struct list_head cores;
 
   struct kstat_cpu kstat;
 
-  // this cpu is the timekeeper
-  bool timekeeper = false;
   unsigned long ticks_per_second = 0;
 
   spinlock sleepers_lock;
   struct sleep_waiter *sleepers = NULL;
+  struct thread_context *sched_ctx;
 
-
-  u32 speed_khz;
   ck::ref<Thread> current_thread;
-  // filled in by "pick next thread" in the scheduler
   ck::ref<Thread> next_thread;
 
-  struct thread_context *sched_ctx;
 
 	spinlock xcall_lock;
 	ck::vec<struct xcall_command> xcall_commands;
@@ -73,17 +80,9 @@ struct processor_state {
 	// The APIC and the IOApic for this core
 	x86::Apic apic;
 	x86::IOApic ioapic;
-
-	// per cpu apic location
-	uint32_t *lapic = NULL;
 #endif
 
 
-  // set if the core woke up a thread in this irq context
-  bool woke_someone_up = false;
-
-
-	struct list_head cores;
 	void prep_xcall(xcall_t func, void *arg, int *count) {
 		scoped_irqlock l(xcall_lock);
 		xcall_commands.push({func, arg, count});
@@ -92,8 +91,6 @@ struct processor_state {
 
 
 extern int processor_count;
-// extern struct processor_state cpus[CONFIG_MAX_CPUS];
-
 
 
 namespace cpu {

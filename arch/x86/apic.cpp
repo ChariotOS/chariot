@@ -7,7 +7,7 @@
 #include <x86/smp.h>
 #include <pit.h>
 #include <sched.h>
-
+#include <module.h>
 
 #define IPI_IRQ (0xF3 - 32)
 
@@ -102,7 +102,7 @@ static char *lvt_stringify(uint32_t entry, char *buf) {
 
 static void xcall_handler(int i, reg_t *tf, void *) {
   cpu::run_pending_xcalls();
-	core().apic.eoi();
+  core().apic.eoi();
 }
 
 static void apic_tick_handler(int i, reg_t *tf, void *) {
@@ -111,7 +111,7 @@ static void apic_tick_handler(int i, reg_t *tf, void *) {
   cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
   cpu.kstat.last_tick_tsc = now;
   cpu.kstat.ticks++;
-	core().apic.eoi();
+  core().apic.eoi();
   sched::handle_tick(cpu.kstat.ticks);
 }
 
@@ -220,11 +220,8 @@ void Apic::init(void) {
     irq::install(IPI_IRQ, xcall_handler, "xcall handler");
   }
 
-
   // setup the timer with the correct quantum
   timer_setup(1000 / CONFIG_TICKS_PER_SECOND);
-
-  dump();
 }
 
 
@@ -258,18 +255,18 @@ void Apic::timer_setup(uint32_t quantum_ms) {
   }
 
 
-	set_tickrate(CONFIG_TICKS_PER_SECOND);
+  set_tickrate(CONFIG_TICKS_PER_SECOND);
 }
 
 
 
 void Apic::set_tickrate(uint32_t per_second) {
-	core().ticks_per_second = per_second;
-	// set the current timer count
-	this->write(APIC_REG_TMICT, apic_ticks_per_second / per_second);
+  core().ticks_per_second = per_second;
+  // set the current timer count
+  this->write(APIC_REG_TMICT, apic_ticks_per_second / per_second);
 
-	// enable periodic ticks on irq 50
-	write(APIC_REG_LVTT, APIC_TIMER_PERIODIC | (50 + T_IRQ0));
+  // enable periodic ticks on irq 50
+  write(APIC_REG_LVTT, APIC_TIMER_PERIODIC | (50 + T_IRQ0));
 }
 
 
@@ -412,7 +409,6 @@ void Apic::dump(void) {
   APIC_DEBUG("      LVT[4] LINT1 Pin: 0x%08x (%s)\n", read(APIC_REG_LVT1), lvt_stringify(read(APIC_REG_LVT1), buf));
   APIC_DEBUG("      LVT[5] Error:     0x%08x (%s)\n", read(APIC_REG_LVTERR), lvt_stringify(read(APIC_REG_LVTERR), buf));
 
-
   /*
    * APIC timer configuration registers
    */
@@ -420,7 +416,6 @@ void Apic::dump(void) {
   APIC_DEBUG("      DCR (Divide Config Reg): 0x%08x\n", read(APIC_REG_TMDCR));
   APIC_DEBUG("      ICT (Initial Count Reg): 0x%08x\n", read(APIC_REG_TMICT));
   APIC_DEBUG("      CCT (Current Count Reg): 0x%08x\n", read(APIC_REG_TMCCT));
-
 
   /*
    * Logical APIC addressing mode registers
@@ -436,7 +431,6 @@ void Apic::dump(void) {
     APIC_DEBUG(
         "      DFR (Dest Format Reg):   0x%08x (%s)\n", read(APIC_REG_DFR), (read(APIC_REG_DFR) == APIC_DFR_FLAT) ? "FLAT" : "CLUSTER");
   }
-
 
   /*
    * Task/processor/arbitration priority registers
@@ -460,11 +454,33 @@ void Apic::dump(void) {
    * ISR/IRR
    */
   APIC_DEBUG("  IRR/ISR:\n");
-  APIC_DEBUG("      IRR %08x %08x %08x %08x\n", read(APIC_GET_IRR(0)), read(APIC_GET_IRR(1)), read(APIC_GET_IRR(2)), read(APIC_GET_IRR(3)));
+  APIC_DEBUG("      IRR pending:");
+  for (int i = 0; i < 8; i++) {
+    for (int b = 0; b < 32; b++) {
+      int irq = b + (i * 8);
+      auto irr = read(APIC_GET_IRR(i));
+      int set = (irr >> b) & 1;
+
+      if (set) printk(" %d", irq);
+    }
+  }
+  printk("\n");
+  APIC_DEBUG("          %08x %08x %08x %08x\n", read(APIC_GET_IRR(0)), read(APIC_GET_IRR(1)), read(APIC_GET_IRR(2)), read(APIC_GET_IRR(3)));
   APIC_DEBUG("          %08x %08x %08x %08x\n", read(APIC_GET_IRR(4)), read(APIC_GET_IRR(5)), read(APIC_GET_IRR(6)), read(APIC_GET_IRR(7)));
 
 
-  APIC_DEBUG("      IRR %08x %08x %08x %08x\n", read(APIC_GET_ISR(0)), read(APIC_GET_ISR(1)), read(APIC_GET_ISR(2)), read(APIC_GET_ISR(3)));
+  APIC_DEBUG("      ISR pending:");
+  for (int i = 0; i < 8; i++) {
+    for (int b = 0; b < 32; b++) {
+      int irq = b + (i * 8);
+      auto irr = read(APIC_GET_ISR(i));
+      int set = (irr >> b) & 1;
+
+      if (set) printk(" %d", irq);
+    }
+  }
+  printk("\n");
+  APIC_DEBUG("          %08x %08x %08x %08x\n", read(APIC_GET_ISR(0)), read(APIC_GET_ISR(1)), read(APIC_GET_ISR(2)), read(APIC_GET_ISR(3)));
   APIC_DEBUG("          %08x %08x %08x %08x\n", read(APIC_GET_ISR(4)), read(APIC_GET_ISR(5)), read(APIC_GET_ISR(6)), read(APIC_GET_ISR(7)));
 }
 
@@ -472,3 +488,26 @@ void Apic::dump(void) {
 
 
 void arch_deliver_xcall(int id) { core().apic.ipi(id, IPI_IRQ); }
+
+// only one core can dump at a time.
+static spinlock apic_dump_lock;
+static void apic_dump_request(void *_arg) {
+  // :^)
+  scoped_irqlock l(apic_dump_lock);
+  core().apic.dump();
+}
+
+
+
+ksh_def("apic", "Dump the current core's APIC") {
+	apic_dump_request(NULL);
+  return 0;
+}
+
+
+ksh_def("apics", "Dump all cores' APIC") {
+	// we have to use IPI to do this, as a core can only read it's own APIC
+	// (at least with the implementation I have written :>)
+  cpu::xcall(-1, apic_dump_request, NULL, true);
+  return 0;
+}

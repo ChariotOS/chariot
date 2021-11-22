@@ -89,6 +89,7 @@ void cpu::run_pending_xcalls(void) {
 
 
 void cpu::xcall(int core, xcall_t func, void *arg, bool wait) {
+	// pprintk("xcall %d %p %p\n", core, func, arg);
   int count = 0;
   if (core == -1) {
     // all the cores

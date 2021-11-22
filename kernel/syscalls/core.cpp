@@ -32,6 +32,7 @@ void set_syscall(const char *name, int num, void *handler) {
 }
 
 
+
 uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f) {
   if (num == 0xFF) {
     printk(KERN_DEBUG "[pid %d] debug syscall: %llx %llx %llx %llx %llx %llx\n", curproc->pid, a, b, c, d, e, f);

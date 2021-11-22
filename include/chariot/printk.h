@@ -61,7 +61,7 @@ const char* human_size(uint64_t bytes, char* buf);
 #define RESET "\e[0m"
 
 #define KLOG(PREFIX, ...) KINFO(PREFIX RESET, __VA_ARGS__)
-#define PFXLOG(PREFIX, ...) KINFO(PREFIX RESET ": " __VA_ARGS__)
+#define PFXLOG(PREFIX, ...) printk(PREFIX RESET ": " __VA_ARGS__)
 
 
 

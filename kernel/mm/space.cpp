@@ -109,23 +109,24 @@ struct xcall_flush {
 
 
 
-static void mm_xcall_flush_mmu(void *v) {
-	auto *arg = (struct xcall_flush*)v;
-  if (curproc) {
-    if (curproc->mm == arg->space) {
-      arch_flush_mmu();
-    }
-  }
-}
-
-
 
 static void xcall_flush(mm::AddressSpace *space, off_t va, size_t pages) {
   struct xcall_flush arg;
   arg.space = space;
   arg.va = va;
   arg.pages = pages;
-  cpu::xcall_all(mm_xcall_flush_mmu, &arg, true);
+  cpu::xcall_all(
+      [](void *v) {
+        return;
+        arch_flush_mmu();
+        auto *arg = (struct xcall_flush *)v;
+        if (curproc) {
+          if (curproc->mm == arg->space) {
+            arch_flush_mmu();
+          }
+        }
+      },
+      &arg, true);
 }
 
 
@@ -136,7 +137,7 @@ int mm::AddressSpace::pagefault(off_t va, int err) {
 
   if (!r) return -1;
 
-
+  // pprintk("pagefault at %p\n", va);
   scoped_lock region_lock(r->lock);
 
   int fault_res = 0;
@@ -154,7 +155,9 @@ int mm::AddressSpace::pagefault(off_t va, int err) {
   }
 
 
-  cpu::xcall_all(mm_xcall_flush_mmu, this, true);
+
+  xcall_flush(this, va, 1);
+  // cpu::xcall_all(mm_xcall_flush_mmu, this, true);
 
   return 0;
 }
@@ -385,7 +388,7 @@ off_t mm::AddressSpace::mmap(ck::string name, off_t addr, size_t size, int prot,
 
   add_region(r);
 
-  cpu::xcall_all(mm_xcall_flush_mmu, this, true);
+  xcall_flush(this, addr, pages);
 
   return addr;
 }
