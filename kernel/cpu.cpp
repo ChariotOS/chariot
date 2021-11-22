@@ -75,11 +75,9 @@ extern "C" int get_errno(void) { return curthd->kerrno; }
 
 
 void cpu::run_pending_xcalls(void) {
-  printk("running xcalls\n");
   auto &p = cpu::current();
   auto f = p.xcall_lock.lock_irqsave();
   auto todo = p.xcall_commands;
-  printk("there are %d\n", p.xcall_commands.size());
   p.xcall_commands.clear();
   p.xcall_lock.unlock_irqrestore(f);
   for (auto call : todo) {

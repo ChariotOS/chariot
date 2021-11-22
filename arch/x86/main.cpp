@@ -51,8 +51,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   rtc_init();
 
 	struct processor_state cpu;
-
-
   extern u8 boot_cpu_local[];
   cpu::seginit(&cpu, boot_cpu_local);
 

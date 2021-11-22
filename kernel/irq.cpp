@@ -55,7 +55,7 @@ void irq::dispatch(int irq, reg_t *regs) {
   if (handler != nullptr) {
     handler(irq, regs, irq_handlers[irq].data);
   } else {
-		printk_nolock("unhandled irq %d %02x\n", irq, irq);
+		// printk_nolock("unhandled irq %d %02x\n", irq, irq);
 	}
 
 
