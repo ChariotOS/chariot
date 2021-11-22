@@ -104,7 +104,7 @@ struct rv::hart_state &rv::get_hstate(void) {
  * Just offset into the cpu array with mhartid :^). I love this arch.
  * No need for bloated thread pointer bogus or nothin'
  */
-struct processor_state &cpu::current(void) {
+cpu::Core &cpu::current(void) {
   return *rv::get_hstate().cpu;
 }
 
@@ -115,7 +115,7 @@ void cpu::switch_vm(ck::ref<Thread> thd) {
 }
 
 
-void cpu::seginit(struct processor_state *cpu, void *local) {
+void cpu::seginit(cpu::Core *cpu, void *local) {
   auto &sc = rv::get_hstate();
   /* Forward this so other code can read it */
   cpu->id = sc.hartid;

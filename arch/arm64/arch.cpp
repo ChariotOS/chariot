@@ -124,7 +124,7 @@ static inline int get_cpu_id(void) {
  * Just offset into the cpu array with mhartid :^). I love this arch.
  * No need for bloated thread pointer bogus or nothin'
  */
-struct processor_state &cpu::current(void) {
+cpu::Core &cpu::current(void) {
   return cpus[get_cpu_id()];
 }
 
@@ -136,7 +136,7 @@ void cpu::seginit(void *local) {
   // printk(KERN_DEBUG "initialize hart %d\n", sc.hartid);
   auto &cpu = cpu::current();
   /* zero out the cpu structure. This might be bad idk... */
-  memset(&cpu, 0, sizeof(struct processor_state));
+  memset(&cpu, 0, sizeof(cpu::Core));
 
   /* Forward this so other code can read it */
   cpu.cpunum = get_cpu_id();

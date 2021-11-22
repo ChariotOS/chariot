@@ -301,7 +301,7 @@ extern "C" void mpentry(int apic_id) {
   volatile auto args = (struct ap_args *)p2v(0x6000);
 
 
-	struct processor_state cpu;
+	cpu::Core cpu;
   // initialize the CPU
   cpu::seginit(&cpu, NULL);
   cpu::current().id = apic_id;

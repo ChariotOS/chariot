@@ -57,7 +57,7 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   serial_install();
   rtc_init();
 
-  struct processor_state cpu;
+  cpu::Core cpu;
   extern u8 boot_cpu_local[];
   cpu::seginit(&cpu, boot_cpu_local);
 

@@ -45,9 +45,9 @@ void sleep_waiter::remove(void) {
   cpu->sleepers_lock.unlock_irqrestore(flags);
 }
 
-void remove_sleep_waiter(struct processor_state &cpu, struct sleep_waiter *blk) {}
+void remove_sleep_waiter(cpu::Core &cpu, struct sleep_waiter *blk) {}
 
-void add_sleep_waiter(struct processor_state &cpu, struct sleep_waiter *blk) {}
+void add_sleep_waiter(cpu::Core &cpu, struct sleep_waiter *blk) {}
 
 int do_usleep(uint64_t us) {
   struct sleep_waiter blocker;

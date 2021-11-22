@@ -9,13 +9,13 @@
 #include <types.h>
 #include <module.h>
 
-// struct processor_state cpus[CONFIG_MAX_CPUS];
+// cpu::Core cpus[CONFIG_MAX_CPUS];
 int processor_count = 0;
 
 struct list_head cpu::cores;
 
 
-void cpu::add(struct processor_state *cpu) {
+void cpu::add(cpu::Core *cpu) {
   processor_count++;
   cpu->active = true;
   cpu::cores.add(&cpu->cores);
@@ -24,12 +24,12 @@ void cpu::add(struct processor_state *cpu) {
 
 int cpu::nproc(void) { return processor_count; }
 
-struct processor_state *cpu::get() {
+cpu::Core *cpu::get() {
   return &cpu::current();
 }
 
-struct processor_state *cpu::get(int core) {
-  struct processor_state *proc = NULL;
+cpu::Core *cpu::get(int core) {
+  cpu::Core *proc = NULL;
 
   return proc;
 }
@@ -162,7 +162,7 @@ ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
 
 
 ksh_def("cores", "dump cpu information") {
-  cpu::each([](struct processor_state *cpu) {
+  cpu::each([](cpu::Core *cpu) {
     printk("[core%d]:", cpu->id);
 
 

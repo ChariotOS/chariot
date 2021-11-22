@@ -74,7 +74,7 @@ namespace rv /* risc-v namespace */ {
     int hartid;
     struct dtb::fdt_header *dtb; /* Device tree binary */
 
-		struct processor_state *cpu;
+		cpu::Core *cpu;
     /* ... */
   };
 

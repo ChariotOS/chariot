@@ -4,10 +4,13 @@
 #include <types.h>
 #include <wait.h>
 
+// fwd decl
+namespace cpu { class Core; } 
+
 struct sleep_waiter {
   struct sleep_waiter *prev;
   struct sleep_waiter *next;
-  struct processor_state *cpu;
+  cpu::Core *cpu;
   uint64_t wakeup_us = 0;
   wait_queue wq;
 

@@ -11,8 +11,8 @@
 #include <x86/smp.h>
 
 
-extern "C" struct processor_state *__get_cpu_struct(void);
-extern "C" void __set_cpu_struct(struct processor_state *);
+extern "C" cpu::Core *__get_cpu_struct(void);
+extern "C" void __set_cpu_struct(cpu::Core *);
 
 extern "C" void wrmsr(u32 msr, u64 val);
 
@@ -62,7 +62,7 @@ extern "C" void ignore_sysret(void);
 
 
 
-void cpu::seginit(struct processor_state *c, void *local) {
+void cpu::seginit(cpu::Core *c, void *local) {
   if (local == nullptr) local = p2v(phys::alloc());
 
   // make sure the local information segment is zeroed
@@ -78,7 +78,7 @@ void cpu::seginit(struct processor_state *c, void *local) {
   wrmsr(GS_BASE_MSR, ((u64)local) + (PGSIZE / 2));
 
   // zero out the CPU
-  // struct processor_state *c = &cpus[processor_count++];
+  // cpu::Core *c = &cpus[processor_count++];
 
   __set_cpu_struct(c);
 
@@ -166,7 +166,7 @@ void cpu::switch_vm(ck::ref<struct Thread> thd) {
   if (thd->tls_uaddr != 0) wrmsr(FS_BASE_MSR, thd->tls_uaddr);
 }
 
-struct processor_state &cpu::current() {
+cpu::Core &cpu::current() {
   return *__get_cpu_struct();
 }
 

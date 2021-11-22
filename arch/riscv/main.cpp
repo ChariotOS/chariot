@@ -82,7 +82,7 @@ extern "C" void secondary_entry(int hartid) {
 
 
 	// its safe to store this on this stack.
-	struct processor_state cpu;
+	cpu::Core cpu;
 	rv::get_hstate().cpu = &cpu;
   cpu::seginit(&cpu, NULL);
   cpu::current().primary = false;
@@ -201,7 +201,7 @@ void main(int hartid, void *fdt) {
 
   phys::free_range((void *)boot_free_start, (void *)boot_free_end);
 
-	struct processor_state cpu;
+	cpu::Core cpu;
 	rv::get_hstate().cpu = &cpu;
 
   cpu::seginit(&cpu, NULL);
