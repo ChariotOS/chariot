@@ -422,7 +422,7 @@ int arch::irq::init(void) {
 
   // pic_disable(34);
 
-  // init_pit();
+  init_pit();
 
   // ::irq::install(0, tick_handle, "Preemption Tick");
 

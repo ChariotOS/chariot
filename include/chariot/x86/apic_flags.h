@@ -112,6 +112,12 @@
 /* Extended LVT entries */
 #define APIC_REG_EXTLVT(n) (0x500 + 0x10*(n))
 
+
+
+#define APIC_REG_IER 0x480
+#define     APIC_GET_IER(x)  (APIC_REG_IER + 0x10*(x))
+
+
 /* X2APIC support 
      - This is an Intel thing
      - CPUID 0x1, ECX.21 tells you if X2APIC is supported

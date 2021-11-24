@@ -6,6 +6,9 @@
 
 #include <types.h>
 
+
+namespace cpu { class Core; }
+
 #define read_csr(name)                         \
   ({                                           \
     rv::xsize_t x;                             \

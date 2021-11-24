@@ -56,7 +56,6 @@ static ApicMode get_max_mode() {
   cpuid::ret_t c;
   cpuid::run(0x1, c);
   if ((c.c >> 21) & 0x1) {
-    APIC_DEBUG("APIC with X2APIC support\n");
     return ApicMode::X2Apic;
   }
   return ApicMode::XApic;  // it must at least do this...
@@ -78,7 +77,7 @@ static off_t apic_get_base_addr(void) {
 /**
  * Converts an entry in a local APIC's Local Vector Table to a
  * human-readable string.
- * (NOTE: taken from Kitten)
+ * (NOTE: taken from Nautilus, which took it from Kitten)
  */
 static char *lvt_stringify(uint32_t entry, char *buf) {
   uint32_t delivery_mode = entry & 0x700;
@@ -116,8 +115,33 @@ static void apic_tick_handler(int i, reg_t *tf, void *) {
 }
 
 
+
 // Initialize the current CPU's APIC
 void Apic::init(void) {
+
+	init_pit();
+
+  irq::install(
+      0,
+      [](int i, reg_t *, void *) {
+        auto &cpu = cpu::current();
+        printk_nolock("pit\n");
+        irq::eoi(32 /* PIT */);
+      },
+      "PIT", NULL);
+
+	set_pit_freq(100);
+
+
+	while(1) {
+		arch_halt();
+	}
+
+
+	irq::uninstall(0);
+
+
+
   uint32_t val;
   ApicMode curmode, maxmode;
   // sanity check.
@@ -126,29 +150,24 @@ void Apic::init(void) {
   curmode = get_mode();
   maxmode = get_max_mode();
 
+#ifndef CONFIG_X2APIC
+  if (maxmode == ApicMode::X2Apic) {
+    APIC_DEBUG("The hardware supports X2APIC, but we have elected to use XAPIC instead\n");
+    maxmode = ApicMode::XApic;
+  }
+#endif
+
   APIC_DEBUG("APIC's initial mode is %s\n", apic_modes[curmode]);
-
-
 
   if (int res = set_mode(maxmode); res != 0) {
     panic("x86::Apic::set_mode() returned %d\n", res);
   }
 
   if (mode != ApicMode::X2Apic) {
+    /* Get the APIC base address, probably from the MSR */
     base_addr = apic_get_base_addr();
-
     /* idempotent when not compiled as HRT */
     this->base_addr = (off_t)p2v(base_addr);
-
-#if 0
-		// if the core is the bootstrap processor
-    if (core().primary) {
-      // map in the lapic as uncacheable
-      if (nk_map_page_nocache(apic->base_addr, PTE_PRESENT_BIT | PTE_WRITABLE_BIT, PS_4K) == -1) {
-        panic("Could not map APIC\n");
-      }
-    }
-#endif
   }
 
 
@@ -171,7 +190,6 @@ void Apic::init(void) {
     // the logical id from the physical id
     val = read(APIC_REG_LDR);
     APIC_DEBUG("X2APIC LDR=0x%x (cluster 0x%x, logical id 0x%x)\n", val, APIC_LDR_X2APIC_CLUSTER(val), APIC_LDR_X2APIC_LOGID(val));
-
   } else {
     val = read(APIC_REG_LDR) & ~APIC_LDR_MASK;
     // flat group 1 is for watchdog NMIs.
@@ -205,6 +223,11 @@ void Apic::init(void) {
   // assign spiv
   write(APIC_REG_SPIV, read(APIC_REG_SPIV) | APIC_SPUR_INT_VEC);
 
+  // enable IER
+  write(APIC_REG_EXFC, read(APIC_REG_EXFR) | 0b1);
+  // enable SEOI
+  write(APIC_REG_EXFC, read(APIC_REG_EXFR) | 0b10);
+
   // Turn it on.
   write(APIC_REG_SPIV, read(APIC_REG_SPIV) | APIC_SPIV_SW_ENABLE);
 
@@ -214,7 +237,7 @@ void Apic::init(void) {
   // mask 8259a interrupts (PIC)
   // write(APIC_REG_LVT0, APIC_DEL_MODE_EXTINT | APIC_LVT_DISABLED);
 
-
+  dump();
   if (core().primary) {
     irq::install(50, apic_tick_handler, "Local APIC Preemption Tick");
     irq::install(IPI_IRQ, xcall_handler, "xcall handler");
@@ -242,18 +265,17 @@ void Apic::timer_setup(uint32_t quantum_ms) {
   APIC_DEBUG("APIC timer has:  x2apic=%d tscdeadline=%d arat=%d\n", x2apic, tscdeadline, arat);
 
 
-  struct cpuid_busfreq_info freq;
-  cpuid_busfreq(&freq);
 
   // set the TiMer Divide CountR
   write(APIC_REG_TMDCR, APIC_TIMER_DIVCODE);
 
   if (apic_ticks_per_second == 0) {
+    struct cpuid_busfreq_info freq;
+    cpuid_busfreq(&freq);
     APIC_DEBUG("freq info: base: %uMHz,  max: %uMHz, bus: %uMHz\n", freq.base, freq.max, freq.bus);
     calibrate();
     APIC_DEBUG("counts per tick: %zu\t0x%08x\n", apic_ticks_per_second, apic_ticks_per_second);
   }
-
 
   set_tickrate(CONFIG_TICKS_PER_SECOND);
 }
@@ -274,9 +296,15 @@ static volatile int apic_calibrate_ticks = 0;
 
 static inline void wait_for_tick_change(void) {
   volatile auto start = apic_calibrate_ticks;
+  int iters = 0;
+  printk("irqs: %d\n", arch_irqs_enabled());
   while (apic_calibrate_ticks == start) {
+    printk("\riters: %08x", iters++);
   }
+  printk("\n");
 }
+
+
 static void pit_tick_handle(int i, reg_t *regs, void *) {
   auto &cpu = cpu::current();
   apic_calibrate_ticks = apic_calibrate_ticks + 1;
@@ -290,12 +318,13 @@ void Apic::calibrate(void) {
 
   uint64_t dataset[DATASET_SIZE];
   init_pit();
-  set_pit_freq(PIT_DIV);
 
   irq::install(0, pit_tick_handle, "PIT Tick");
-
   arch_enable_ints();
 
+
+
+  set_pit_freq(PIT_DIV);
 
   for (int i = 0; i < DATASET_SIZE; i++) {
     wait_for_tick_change();
@@ -308,7 +337,6 @@ void Apic::calibrate(void) {
     write(APIC_REG_LVTT, APIC_LVT_DISABLED);
     // Now we know how often the APIC timer has ticked in 10ms
     auto ticks = 0xffffffff - read(APIC_REG_TMCCT);
-
     dataset[i] = ticks;
   }
 
@@ -382,6 +410,8 @@ void Apic::dump(void) {
     APIC_DEBUG("  BASE ADDR: %p\n", this->base_addr);
   }
 
+  auto exfr = read(APIC_REG_EXFR);
+  APIC_DEBUG("  EXFR: 0x%08x\n", exfr);
   APIC_DEBUG("  ESR: 0x%08x (Error Status Reg, non-zero is bad)\n", read(APIC_REG_ESR));
   APIC_DEBUG("  SVR: 0x%08x (Spurious vector=%d, %s, %s)\n", read(APIC_REG_SPIV), read(APIC_REG_SPIV) & APIC_SPIV_VEC_MASK,
       (read(APIC_REG_SPIV) & APIC_SPIV_SW_ENABLE) ? "APIC IS ENABLED" : "APIC IS DISABLED",
@@ -469,6 +499,8 @@ void Apic::dump(void) {
   APIC_DEBUG("          %08x %08x %08x %08x\n", read(APIC_GET_IRR(4)), read(APIC_GET_IRR(5)), read(APIC_GET_IRR(6)), read(APIC_GET_IRR(7)));
 
 
+
+
   APIC_DEBUG("      ISR pending:");
   for (int i = 0; i < 8; i++) {
     for (int b = 0; b < 32; b++) {
@@ -482,6 +514,27 @@ void Apic::dump(void) {
   printk("\n");
   APIC_DEBUG("          %08x %08x %08x %08x\n", read(APIC_GET_ISR(0)), read(APIC_GET_ISR(1)), read(APIC_GET_ISR(2)), read(APIC_GET_ISR(3)));
   APIC_DEBUG("          %08x %08x %08x %08x\n", read(APIC_GET_ISR(4)), read(APIC_GET_ISR(5)), read(APIC_GET_ISR(6)), read(APIC_GET_ISR(7)));
+
+
+
+  if (exfr & 0b1) {
+    APIC_DEBUG("      IER pending:");
+    for (int i = 0; i < 8; i++) {
+      for (int b = 0; b < 32; b++) {
+        int irq = b + (i * 8);
+        auto irr = read(APIC_GET_IER(i));
+        int set = (irr >> b) & 1;
+
+        if (set) printk(" %d", irq);
+      }
+    }
+
+    printk("\n");
+    APIC_DEBUG(
+        "          %08x %08x %08x %08x\n", read(APIC_GET_IER(0)), read(APIC_GET_IER(1)), read(APIC_GET_IER(2)), read(APIC_GET_IER(3)));
+    APIC_DEBUG(
+        "          %08x %08x %08x %08x\n", read(APIC_GET_IER(4)), read(APIC_GET_IER(5)), read(APIC_GET_IER(6)), read(APIC_GET_IER(7)));
+  }
 }
 
 
@@ -500,14 +553,14 @@ static void apic_dump_request(void *_arg) {
 
 
 ksh_def("apic", "Dump the current core's APIC") {
-	apic_dump_request(NULL);
+  apic_dump_request(NULL);
   return 0;
 }
 
 
 ksh_def("apics", "Dump all cores' APIC") {
-	// we have to use IPI to do this, as a core can only read it's own APIC
-	// (at least with the implementation I have written :>)
-  cpu::xcall(-1, apic_dump_request, NULL, true);
+  // we have to use IPI to do this, as a core can only read it's own APIC
+  // (at least with the implementation I have written :>)
+  cpu::xcall(-1, apic_dump_request, NULL);
   return 0;
 }

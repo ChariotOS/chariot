@@ -119,10 +119,39 @@ int rv::PageTable::add_mapping(off_t va, struct mm::pte &p) {
   rv::pte_t ent = *pte;
 
   int prot = PT_V;
-  /* If not a super page, it's user */
+
+  /*
+   * due to interesting decisions by the spec, and a hard to track down
+   * bug on the HiFive unleashed, there are two schemes by which the processor
+   * is allowed to manage A and D bits:
+   *
+   * - When a virtual page is accessed and the A bit is clear, or is written and the D bit is clear,
+   *   the implementation sets the corresponding bit in the PTE. The PTE update must be atomic
+   *   with respect to other accesses to the PTE, and must atomically check that the PTE is valid
+   *   and grants sufficient permissions. The PTE update must be exact (i.e., not speculative), and
+   *   observed in program order by the local hart. The ordering on loads and stores provided by
+   *   FENCE instructions and the acquire/release bits on atomic instructions also orders the PTE
+   *   updates associated with those loads and stores as observed by remote harts
+   *
+   * - When a virtual page is accessed and the A bit is clear, or is written and the D bit is clear, a
+   *   page-fault exception is raised
+   *
+   * The second method here is arguably easier when developing hardware, but also acts as a "lower bound"
+   * on software implementation. We therefore set PT_A and PT_D here, as it doesn't result in any kind of
+   * negative side-effects in the case of the first method. This kernel, at the very least, doesn't use
+   * these bits, and depends on write-based page faults to determine how to manage copy on write.
+   *
+   * source: https://riscv.org/wp-content/uploads/2017/05/riscv-privileged-v1.10.pdf
+   *         page 61
+   *
+   * that said, we do this:
+   */
+  prot |= PT_A | PT_D;
+
   if (p.prot & VPROT_READ) prot |= PT_R;
   if (p.prot & VPROT_WRITE) prot |= PT_W;
   if (p.prot & VPROT_EXEC) prot |= PT_X;
+  /* If not a super page, it's user */
   if (!(p.prot & VPROT_SUPER)) prot |= PT_U;
 
   auto old_pa = PTE2PA(ent);

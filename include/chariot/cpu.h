@@ -84,7 +84,6 @@ namespace cpu {
     ck::ref<Thread> next_thread;
 
 
-    spinlock xcall_lock;
     ck::vec<struct xcall_command> xcall_commands;
 
 
@@ -96,7 +95,6 @@ namespace cpu {
 
 
     void prep_xcall(xcall_t func, void *arg, int *count) {
-      scoped_irqlock l(xcall_lock);
       xcall_commands.push({func, arg, count});
     }
   };
@@ -130,8 +128,8 @@ namespace cpu {
     list_for_each_entry(core, &cpu::cores, cores) { cb(core); }
   }
 
-  void xcall(int core, xcall_t func, void *arg, bool wait = true);
-  inline void xcall_all(xcall_t func, void *arg, bool wait = true) { return cpu::xcall(-1, func, arg, wait); }
+  void xcall(int core, xcall_t func, void *arg);
+  inline void xcall_all(xcall_t func, void *arg) { return cpu::xcall(-1, func, arg); }
 
   void run_pending_xcalls(void);
 }  // namespace cpu

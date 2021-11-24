@@ -48,7 +48,9 @@ void irq::dispatch(int irq, reg_t *regs) {
   auto handler = irq_handlers[irq].handler;
   if (handler) {
     handler(irq, regs, irq_handlers[irq].data);
-  }
+  } else {
+		printk("Unhandled irq %d\n", irq);
+	}
 }
 
 ksh_def("irqs", "display the interrupt handlers") {

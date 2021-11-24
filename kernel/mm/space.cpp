@@ -126,7 +126,7 @@ static void xcall_flush(mm::AddressSpace *space, off_t va, size_t pages) {
           }
         }
       },
-      &arg, true);
+      &arg);
 }
 
 

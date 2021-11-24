@@ -24,9 +24,7 @@ void cpu::add(cpu::Core *cpu) {
 
 int cpu::nproc(void) { return processor_count; }
 
-cpu::Core *cpu::get() {
-  return &cpu::current();
-}
+cpu::Core *cpu::get() { return &cpu::current(); }
 
 cpu::Core *cpu::get(int core) {
   cpu::Core *proc = NULL;
@@ -72,30 +70,29 @@ int sys::get_nproc(void) { return cpu::nproc(); }
 
 extern "C" int get_errno(void) { return curthd->kerrno; }
 
+static spinlock global_xcall_lock;
 
 void cpu::run_pending_xcalls(void) {
   auto &p = cpu::current();
-  auto f = p.xcall_lock.lock_irqsave();
-  auto todo = p.xcall_commands;
-  p.xcall_commands.clear();
-  p.xcall_lock.unlock_irqrestore(f);
-  for (auto call : todo) {
+  for (auto call : p.xcall_commands) {
     call.fn(call.arg);
     if (call.count != NULL) {
       __atomic_fetch_sub(call.count, 1, __ATOMIC_ACQ_REL);
     }
   }
+
+  p.xcall_commands.clear();
 }
 
-
-void cpu::xcall(int core, xcall_t func, void *arg, bool wait) {
-	// pprintk("xcall %d %p %p\n", core, func, arg);
+void cpu::xcall(int core, xcall_t func, void *arg) {
+  scoped_lock l(global_xcall_lock);
+  // pprintk("xcall %d %p %p\n", core, func, arg);
   int count = 0;
   if (core == -1) {
     // all the cores
-    cpu::each([&](auto *core) {
+    cpu::each([&](cpu::Core *core) {
       count++;
-      core->prep_xcall(func, arg, wait ? &count : NULL);
+      core->prep_xcall(func, arg, &count);
     });
   } else {
     auto c = cpu::get(core);
@@ -105,20 +102,18 @@ void cpu::xcall(int core, xcall_t func, void *arg, bool wait) {
       return;
     }
     count++;
-    c->prep_xcall(func, arg, wait ? &count : NULL);
+    c->prep_xcall(func, arg, &count);
   }
 
   arch_deliver_xcall(core);
 
-  if (wait) {
-    int iters = 0;
-    do {
-      int val = __atomic_load_n(&count, __ATOMIC_SEQ_CST);
-      if (val == 0) break;
-      arch_relax();
-      iters++;
-    } while (1);
-  }
+  int iters = 0;
+  do {
+    int val = __atomic_load_n(&count, __ATOMIC_SEQ_CST);
+    if (val == 0) break;
+    arch_relax();
+    iters++;
+  } while (1);
 }
 
 

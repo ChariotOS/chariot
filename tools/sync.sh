@@ -134,7 +134,10 @@ mkdir -p $mnt
 sudo mount ${fsdev} $mnt/
 
 # create the build/root sysroot directory
-tools/sysroot.sh
+
+if [ -n "$CONFIG_USERSPACE" ]; then
+	tools/sysroot.sh
+fi
 
 
 

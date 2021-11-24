@@ -62,7 +62,7 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   cpu::seginit(&cpu, boot_cpu_local);
 
   cpu.timekeeper = false;
-
+	core().timekeeper = true;
 	cpu.primary = true;
 
 
@@ -75,42 +75,29 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 
 
 
-
-  irq::init();
-  fpu::init();
-
-
   /* Call all the global constructors */
   for (func_ptr *func = __init_array_start; func != __init_array_end; func++) {
     (*func)();
   }
 
-  // initialize the bootstrap processor's IO-APIC
-  // core().ioapic.init();
 
-
+  irq::init();
+  fpu::init();
   kargs::init(mbd);
-#ifdef CONFIG_SMP
-  smp::init();
-#endif
+
 
 #ifdef CONFIG_ACPI
   if (!acpi::init(mbd)) panic("acpi init failed!\n");
 #endif
 
+#ifdef CONFIG_SMP
+  smp::init();
+#endif
   cpuid::detect_cpu();
-
-
-	/*
-	// initialize the PIT so we can later disable it after
-	// calibrating the local APIC of the boostrap processor.
-  init_pit();
-  set_pit_freq(TICK_FREQ);
-  KINFO("Initialized PIT\n");
-	*/
-
+	init_pit();
   // initialize the bootstrap processor's APIC
   core().apic.init();
+
 
   // initialize the scheduler
   assert(sched::init());
@@ -119,8 +106,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   // create the initialization thread.
   sched::proc::create_kthread("[kinit]", kernel_init);
 
-  // i am the timekeeper
-  cpu::current().timekeeper = true;
 
   KINFO("starting scheduler\n");
   sched::run();
@@ -128,19 +113,11 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   panic("sched::run() returned\n");
 
 	while (1) {}
-  // [noreturn]
 }
 
 
 int kernel_init(void *) {
-
-
   rtc_late_init();
-
-  // at this point, the pit is being used for interrupts,
-  // so we should go setup lapic for that
-  // smp::lapic_init();
-
 
   // start up the extra cpu cores
 #ifdef CONFIG_SMP
@@ -156,30 +133,19 @@ int kernel_init(void *) {
   initialize_builtin_modules();
   KINFO("kernel modules initialized\n");
 
-
-
   sched::proc::create_kthread("[reaper]", Process::reaper);
 
 
   mb2::find<struct multiboot_tag_module>(::mbd, MULTIBOOT_TAG_TYPE_MODULE, [&](auto *module) {
     auto size = module->mod_end - module->mod_start;
-
-    // auto addr = p2v(module->mod_start);
-    // hexdump(addr, size, true);
     printk(KERN_INFO "Found a module %p-%p\n", p2v(module->mod_start), p2v(module->mod_end));
   });
 
 
-
-
   KINFO("Bootup complete. It is now safe to move about the cabin.\n");
-
-
   auto root_name = kargs::get("root", "/dev/disk0p1");
-
   if (!root_name) {
     KERR("Failed to mount root...\n");
-
     while (1) {
       arch_halt();
       sched::yield();

@@ -125,7 +125,7 @@ bool start_secondary(int i) {
 
   // KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
 
-  auto ret = sbi_call(SBI_EXT_HSM, SBI_EXT_HSM_HART_START, i, secondary_core_startup_sbi, 0);
+  auto ret = sbi_call(SBI_EXT_HSM, SBI_EXT_HSM_HART_START, i, secondary_core_startup_sbi, 1);
   if (ret.error != SBI_SUCCESS) {
     return false;
   }
