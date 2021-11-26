@@ -32,7 +32,7 @@ extern "C" rvboot void setup_pagetables(rv::xsize_t *kpt) {
 
 
   for (int i = 0; i < half; i++) {
-    rv::xsize_t pte = MAKE_PTE(i * VM_BIGGEST_PAGE, PT_R | PT_W | PT_X | PT_V);
+    rv::xsize_t pte = MAKE_PTE(i * VM_BIGGEST_PAGE, PT_R | PT_W | PT_X | PT_V | PT_A | PT_D);
     kpt[i] = pte;
     kpt[i + half] = pte;
   }
