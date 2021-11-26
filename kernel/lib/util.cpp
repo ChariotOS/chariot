@@ -133,7 +133,8 @@ int atoi(const char *s) {
 
 
 
-uint64_t rand_seed;
+uint64_t rand_seed = 6364136223846793005ULL;
+
 void srand(unsigned s) {
   rand_seed = s - 1;
 }

@@ -23,15 +23,16 @@
 #include <x86/smp.h>
 #include <crypto.h>
 #include "acpi/acpi.h"
+#include <ck/iter.h>
 
 // in src/arch/x86/sse.asm
 extern "C" void enable_sse();
-extern "C" void call_with_new_stack(void *, void *);
+extern "C" void call_with_new_stack(void*, void*);
 
 
 typedef void (*func_ptr)(void);
 extern "C" func_ptr __init_array_start[0], __init_array_end[0];
-int kernel_init(void *);
+int kernel_init(void*);
 
 // ms per tick
 #define TICK_FREQ 100
@@ -53,17 +54,32 @@ extern void rtc_late_init(void);
 static uint64_t mbd;
 void serial_install(void);
 
+
+void test(void) {
+	size_t sz = 12;
+  int buf[sz];
+  for (int i = 0; i < sz; i++)
+    buf[i] = rand();
+
+  for (auto i : ck::buf_iter<int>(buf, sz)) {
+		printk("i: %08x\n", i);
+  }
+}
+
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   serial_install();
   rtc_init();
 
+	// allocate the CPU core for the bootstrap processor and
+	// register it with the kernel
   cpu::Core cpu;
   extern u8 boot_cpu_local[];
   cpu::seginit(&cpu, boot_cpu_local);
 
   cpu.timekeeper = false;
-	core().timekeeper = true;
-	cpu.primary = true;
+  core().timekeeper = true;
+  cpu.primary = true;
+
 
 
   arch_mem_init(mbd);
@@ -74,9 +90,8 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   vga::early_init(mbd);
 
 
-
   /* Call all the global constructors */
-  for (func_ptr *func = __init_array_start; func != __init_array_end; func++) {
+  for (func_ptr* func = __init_array_start; func != __init_array_end; func++) {
     (*func)();
   }
 
@@ -93,8 +108,10 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 #ifdef CONFIG_SMP
   smp::init();
 #endif
+
   cpuid::detect_cpu();
-	init_pit();
+  test();
+  init_pit();
   // initialize the bootstrap processor's APIC
   core().apic.init();
 
@@ -112,11 +129,12 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 
   panic("sched::run() returned\n");
 
-	while (1) {}
+  while (1) {
+  }
 }
 
 
-int kernel_init(void *) {
+int kernel_init(void*) {
   rtc_late_init();
 
   // start up the extra cpu cores
@@ -136,7 +154,7 @@ int kernel_init(void *) {
   sched::proc::create_kthread("[reaper]", Process::reaper);
 
 
-  mb2::find<struct multiboot_tag_module>(::mbd, MULTIBOOT_TAG_TYPE_MODULE, [&](auto *module) {
+  mb2::find<struct multiboot_tag_module>(::mbd, MULTIBOOT_TAG_TYPE_MODULE, [&](auto* module) {
     auto size = module->mod_end - module->mod_start;
     printk(KERN_INFO "Found a module %p-%p\n", p2v(module->mod_start), p2v(module->mod_end));
   });

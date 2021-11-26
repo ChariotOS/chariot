@@ -24,6 +24,9 @@ choice
 	config RISCV
 		bool "RISC-V"
 
+	config ARM64
+		bool "ARM64"
+
 endchoice
 
 
