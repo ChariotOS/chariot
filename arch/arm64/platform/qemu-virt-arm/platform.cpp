@@ -71,7 +71,7 @@ void setup_pl011(void) {
     UARTREG(base, UART_IMSC) = (1 << 4);  // rxim
 
     // enable receive
-    UARTREG(base, UART_CR) |= (1 << 9);  // rxen
+    UARTREG(base, UART_CR) = UARTREG(base, UART_CR) | (1 << 9);  // rxen
 
     // enable interrupt
     // irq::install(UART0_INT + i, uart_irq, "Primecell PL011 UART", (void *)i);

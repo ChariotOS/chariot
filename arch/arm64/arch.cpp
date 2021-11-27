@@ -1,8 +1,7 @@
 #include <arch.h>
 #include <cpu.h>
 #include <arm64/arch.h>
-
-
+#include <mm.h>
 
 reg_t &arch_reg(int ind, reg_t *r) {
   auto *tf = (struct arm64::regs *)r;
@@ -88,11 +87,12 @@ unsigned long arch_seconds_since_boot(void) {
 extern "C" void trapret(void) {}
 
 /* TODO */
-ck::ref<mm::pagetable> mm::pagetable::create() { return nullptr; }
+ck::ref<mm::PageTable> mm::PageTable::create() { return nullptr; }
 
 /* TODO: */
-static mm::space kspace(0, 0x1000, nullptr);
-mm::space &mm::space::kernel_space(void) {
+static mm::AddressSpace kspace(0, 0x1000, nullptr);
+mm::AddressSpace &mm::AddressSpace::kernel_space(void) {
+
   /* TODO: something real :) */
   return kspace;
 }
@@ -125,19 +125,19 @@ static inline int get_cpu_id(void) {
  * No need for bloated thread pointer bogus or nothin'
  */
 cpu::Core &cpu::current(void) {
-  return cpus[get_cpu_id()];
+	return *cpu::get(get_cpu_id());
 }
 
 
-void cpu::switch_vm(ck::ref<thread> thd) { /* TODO: nothin' */
+void cpu::switch_vm(ck::ref<Thread> thd) { /* TODO: nothin' */
 }
 
-void cpu::seginit(void *local) {
+void cpu::seginit(cpu::Core *c, void *local) {
   // printk(KERN_DEBUG "initialize hart %d\n", sc.hartid);
   auto &cpu = cpu::current();
   /* zero out the cpu structure. This might be bad idk... */
   memset(&cpu, 0, sizeof(cpu::Core));
 
   /* Forward this so other code can read it */
-  cpu.cpunum = get_cpu_id();
+  cpu.id = get_cpu_id();
 }
