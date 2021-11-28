@@ -1,14 +1,22 @@
-
 config BCM28XX
 	bool
 
-config BCM2837
-	bool "Broadcom 2837 Processors (Raspberry Pi 3)"
-	select BCM28XX
-	default n
-
-config QEMU_VIRT_ARM64
-	bool "Virtual ARM64 Processor used by QEMU"
-	default n
+depends on ARM64
 
 
+# select a platform for ARM64
+choice
+	prompt "Platform"
+	default BCM2711
+
+	config QEMU_VIRT_ARM64
+		bool "Virtual ARM64 Processor used by QEMU"
+
+	config BCM2837
+		bool "Broadcom 2837 Processors (Raspberry Pi 3)"
+		select BCM28XX
+
+	config BCM2711
+		bool "Broadcom 2711 (Raspberry Pi 4)"
+
+endchoice

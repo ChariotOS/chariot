@@ -1,6 +1,5 @@
 #pragma once
 
-#include <platform/bcm28xx.h>
 #include <types.h>
 
 #define VCORE_MAILBOX_PHYSICAL_ADDRESS (ARMCTRL_0_SBM_BASE + 0x80)

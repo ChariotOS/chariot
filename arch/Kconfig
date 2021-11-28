@@ -54,15 +54,15 @@ menu "RISC-V Configuration"
 endmenu
 
 
+menu "ARM64 Configuration"
+	depends on ARM64
+	source "arch/arm64/Kconfig"
+endmenu
+
+
 
 config 64BIT
 	# bool "64bit"
 	bool
 	default y
-
-
-menu "ARM64 Configuration"
-	depends on ARM64
-	source "arch/arm64/Kconfig"
-endmenu
 

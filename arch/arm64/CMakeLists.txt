@@ -14,6 +14,11 @@ add_kernel_module(
 	AUTOGLOB platform/bcm28xx/
 )
 
+add_kernel_module(
+	NAME BCM2711
+	NEEDS BCM2711
+	AUTOGLOB platform/bcm2711/
+)
 
 add_kernel_module(
 	NAME QEMU_VIRT_ARM64

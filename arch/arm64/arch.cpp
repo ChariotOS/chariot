@@ -92,7 +92,6 @@ ck::ref<mm::PageTable> mm::PageTable::create() { return nullptr; }
 /* TODO: */
 static mm::AddressSpace kspace(0, 0x1000, nullptr);
 mm::AddressSpace &mm::AddressSpace::kernel_space(void) {
-
   /* TODO: something real :) */
   return kspace;
 }
@@ -124,9 +123,7 @@ static inline int get_cpu_id(void) {
  * Just offset into the cpu array with mhartid :^). I love this arch.
  * No need for bloated thread pointer bogus or nothin'
  */
-cpu::Core &cpu::current(void) {
-	return *cpu::get(get_cpu_id());
-}
+cpu::Core &cpu::current(void) { return *cpu::get(get_cpu_id()); }
 
 
 void cpu::switch_vm(ck::ref<Thread> thd) { /* TODO: nothin' */
@@ -141,3 +138,16 @@ void cpu::seginit(cpu::Core *c, void *local) {
   /* Forward this so other code can read it */
   cpu.id = get_cpu_id();
 }
+
+
+void arch_sigreturn(void *ucontext) {}
+
+void arch_save_fpu(struct Thread &) {}
+void arch_restore_fpu(struct Thread &) {}
+
+void arch_thread_create_callback(void) {}
+
+int arch_generate_backtrace(off_t virt_bp, off_t *bt, off_t sz) { return 0; }
+
+void arch_deliver_xcall(int core) {}
+

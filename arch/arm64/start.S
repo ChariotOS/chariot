@@ -6,7 +6,7 @@
 # AArch64 mode
  
 # To keep this in the first portion of the binary.
-.section ".text.boot"
+.section .init.text
  
 # Make _start global.
 .globl _start
@@ -16,38 +16,38 @@
 # x2 -> 0
 # x3 -> 0
 # x4 -> 32 bit kernel entry point, _start location
+
 _start:
-		/* Disable all interrupts */
-		msr daifset, #2
+    # Check processor ID is zero (executing on main core), else hang
+    mrs     x1, mpidr_el1
+    and     x1, x1, #3
+    cbz     x1, 2f
+    # We're not on the main core, so hang in an infinite wait loop
+1:  wfe
+    b       1b
+2:  # We're on the main core!
 
-		/* Save the FDT pointer passed in x0 to x20 */
-		mov x20, x0
+    # Set stack to start below our code
+    ldr     x1, =boot_stack_end
+    mov     sp, x1
 
-		/* Disable the MMU */
-		dsb sy /* Data sync barrier */
-		mrs x2, sctlr_el1
-		bic x2, x2, #0x1
-		msr sctlr_el1, x2
-		isb /* Instruction sync barrier */
+    # Clean the BSS section
+    ldr     x1, =__bss_start
+    ldr     x2, =__bss_size
+3:  cbz     x2, 4f
+    str     xzr, [x1], #8
+    sub     x2, x2, #1
+    cbnz    x2, 3b
 
-
-
-
-    # set stack before our code
-    ldr     x5, =_start
-    mov     sp, x5
- 
-    # clear bss
-    ldr     x5, =__bss_start
-    ldr     w6, =__bss_size
-3:  cbz     w6, 4f
-    str     xzr, [x5], #8
-    sub     w6, w6, #1
-    cbnz    w6, 3b
- 
-    # jump to C code, should not return
+    # Jump to our kernel_main routine in C (make sure it doesn't return)
 4:  bl      kernel_main
+    # In case it does return, halt the master core too
+    b       1b
 
-.deadloop:
-    # for failsafe, halt this core too
-    b .deadloop
+
+.section .init.data
+
+.align 16
+boot_stack:
+	.space 4096
+boot_stack_end:

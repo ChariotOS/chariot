@@ -112,9 +112,6 @@ void arm64_platform_init(uint64_t dtb, uint64_t x1, uint64_t x2, uint64_t x3) {
   /* Initialize the interrupt controller */
   arm64::gic_init();
 
-
-
-
   setup_pl011();
 
   printk("It worked!\n");

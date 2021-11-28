@@ -47,4 +47,23 @@ namespace arm64 {
     arm64::reg_t r29;
     arm64::reg_t r30;  // user mode lr
   };
+
+
+
+
+	// mmio memory operations
+  inline void write(long reg, uint32_t val) { *(volatile uint32_t *)reg = val; }
+  inline uint32_t read(long reg) { return *(volatile uint32_t *)reg; }
+
+
+  struct MMURegion {
+    off_t start;
+    size_t size;
+    int flags;
+    const char *name;
+  };
+
+  extern MMURegion mmu_mappings[];
+
+  extern void platform_init(uint64_t dtb, uint64_t x1, uint64_t x2, uint64_t x3);
 };  // namespace arm64

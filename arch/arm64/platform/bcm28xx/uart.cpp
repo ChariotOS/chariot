@@ -1,5 +1,5 @@
 #include <arch.h>
-#include <platform/bcm28xx.h>
+#include <platform/bcm711.h>
 #include <reg.h>
 #include <types.h>
 
