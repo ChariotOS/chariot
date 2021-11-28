@@ -229,27 +229,27 @@ void dump_trapframe(reg_t *r) {
 
 
 void arch::irq::eoi(int i) {
-  if (i >= 32) {
-    int pic_irq = i;
-    if (pic_irq >= 8) {
-      outb(0xA0, 0x20);
-    }
-    outb(0x20, 0x20);
-  }
+  /*
+if (i >= 32) {
+int pic_irq = i;
+if (pic_irq >= 8) {
+outb(0xA0, 0x20);
+}
+outb(0x20, 0x20);
+}
+  */
 
-	core().apic.eoi();
+  core().apic.eoi();
 }
 
 void arch::irq::enable(int num) {
-#ifdef CONFIG_SMP
-  smp::ioapicenable(num, /* TODO */ cpu::current().id);
-#endif
-  pic_enable(num);
+  smp::ioapicenable(num, cpu::current().id);
+  // pic_enable(num);
 }
 
 void arch::irq::disable(int num) {
   // smp::ioapicdisable(num);
-  pic_disable(num);
+  // pic_disable(num);
 }
 
 static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
@@ -343,7 +343,7 @@ void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
 
   curproc->mm->dump();
 
-	arch_halt();
+  arch_halt();
   arch_enable_ints();
   curproc->terminate(fatal_signal);
 }

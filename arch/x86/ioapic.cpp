@@ -7,7 +7,5 @@
 
 
 using namespace x86;
-
-
 void IOApic::init(void) {
 }

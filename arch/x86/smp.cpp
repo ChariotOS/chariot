@@ -30,12 +30,12 @@ extern uint32_t idt_block[];
 #define BIOS_ROM_START 0xf0000
 #define BIOS_ROM_END 0xfffff
 
-#define SMP_DEBUG
+#define ENABLE_SMP_DEBUG
 
-#ifdef SMP_DEBUG
-#define INFO(fmt, args...) KINFO("[SMP] " fmt, ##args)
+#ifdef ENABLE_SMP_DEBUG
+#define SMP_DEBUG(...) PFXLOG(MAG "SMP", __VA_ARGS__)
 #else
-#define INFO(fmt, args...)
+#define SMP_DEBUG(fmt, args...)
 #endif
 
 
@@ -140,15 +140,15 @@ void parse_mp_cpu(smp::mp::mp_table_entry_cpu *ent) {
   ncpus++;
 
 #if 1
-  INFO("CPU: %p\n", ent);
-  INFO("type: %02x\n", ent->type);
-  INFO("lapic_id: %02x\n", ent->lapic_id);
-  INFO("lapic_version: %02x\n", ent->lapic_version);
-  INFO("enabled: %d\n", ent->enabled);
-  INFO("is_bsp: %d\n", ent->is_bsp);
-  INFO("sig: %08x\n", ent->sig);
-  INFO("features: %08x\n", ent->feat_flags);
-  INFO("\n");
+  SMP_DEBUG("CPU: %p\n", ent);
+  SMP_DEBUG("type: %02x\n", ent->type);
+  SMP_DEBUG("lapic_id: %02x\n", ent->lapic_id);
+  SMP_DEBUG("lapic_version: %02x\n", ent->lapic_version);
+  SMP_DEBUG("enabled: %d\n", ent->enabled);
+  SMP_DEBUG("is_bsp: %d\n", ent->is_bsp);
+  SMP_DEBUG("sig: %08x\n", ent->sig);
+  SMP_DEBUG("features: %08x\n", ent->feat_flags);
+  SMP_DEBUG("\n");
 #endif
 }
 
@@ -220,7 +220,7 @@ bool smp::init(void) {
   }
 
   // we found the mp floating table, now to parse it...
-  INFO("mp_floating_table @ %p\n", mp_floating_ptr);
+  SMP_DEBUG("mp_floating_table @ %p\n", mp_floating_ptr);
 
   uint64_t table_addr = mp_floating_ptr->mp_cfg_ptr;
 
@@ -317,7 +317,7 @@ extern "C" void mpentry(int apic_id) {
   // we're fully booted now
   args->ready = 1;
 
-  KINFO("starting scheduler on core %d. tsc: %llu\n", apic_id, arch_read_timestamp());
+  SMP_DEBUG("starting scheduler on core %d. tsc: %llu\n", apic_id, arch_read_timestamp());
   sched::init();
   arch_enable_ints();
   sched::run();

@@ -61,6 +61,7 @@ void init_pit(void) {
 }
 
 void pic_enable(uint8_t irq) {
+	return;
 	printk("pic_enable %d\n", irq);
   uint8_t mask;
   if (irq < 8) {

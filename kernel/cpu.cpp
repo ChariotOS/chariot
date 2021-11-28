@@ -158,8 +158,7 @@ ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
 
 ksh_def("cores", "dump cpu information") {
   cpu::each([](cpu::Core *cpu) {
-    printk("[core%d]:", cpu->id);
-
+    printk("core #%d:", cpu->id);
 
     uint64_t hz = cpu->kstat.tsc_per_tick * cpu->ticks_per_second;
     printk(" %llumhz", hz / 1000 / 1000);
@@ -167,9 +166,15 @@ ksh_def("cores", "dump cpu information") {
 
     printk(" sched:{u:%llu,k:%llu,i:%llu}", cpu->kstat.user_ticks, cpu->kstat.kernel_ticks, cpu->kstat.idle_ticks);
     printk(" ticks:%llu", cpu->ticks_per_second);
-
-
     printk(" t:%d", cpu->timekeeper);
+
+    printk("\n");
+
+		x86::Apic &apic = cpu->apic;
+    printk("        ");
+		printk(" bus:%lluhz", apic.bus_freq_hz);
+		printk(" %llucyc/us", apic.cycles_per_us);
+		printk(" %llucyc/tick", apic.cycles_per_tick);
 
     printk("\n");
   });

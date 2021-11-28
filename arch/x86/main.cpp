@@ -55,17 +55,6 @@ static uint64_t mbd;
 void serial_install(void);
 
 
-void test(void) {
-	size_t sz = 12;
-  int buf[sz];
-  for (int i = 0; i < sz; i++)
-    buf[i] = rand();
-
-  for (auto i : ck::buf_iter<int>(buf, sz)) {
-		printk("i: %08x\n", i);
-  }
-}
-
 extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   serial_install();
   rtc_init();
@@ -110,8 +99,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 #endif
 
   cpuid::detect_cpu();
-  test();
-  init_pit();
   // initialize the bootstrap processor's APIC
   core().apic.init();
 

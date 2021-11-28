@@ -9,7 +9,6 @@
 #define APIC_EXT_LVT_DUMMY_VEC 0xf5
 #define APIC_NULL_KICK_VEC     0xfc
     
-#define APIC_TIMER_DIV 16
 
 #define APIC_TIMER_DIV_1   0xb
 #define APIC_TIMER_DIV_2   0x0
@@ -20,6 +19,8 @@
 #define APIC_TIMER_DIV_64  0x9
 #define APIC_TIMER_DIV_128 0xa
 
+
+#define APIC_TIMER_DIV 16
 #define APIC_TIMER_DIVCODE APIC_TIMER_DIV_16
     
 #define APIC_BASE_MSR        0x0000001b

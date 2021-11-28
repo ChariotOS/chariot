@@ -451,7 +451,7 @@ void sched::run() {
   unsigned long has_run = 0;
   ck::ref<Thread> idle_thread = sched::proc::spawn_kthread("idle task", idle_task, NULL);
   idle_thread->preemptable = true;
-  cpu::current().in_sched = true;
+  core().in_sched = true;
 
   while (1) {
     if (has_run++ >= 100) {
@@ -518,8 +518,8 @@ void sched::run() {
 
 
 void sched::handle_tick(u64 ticks) {
-  // always check wakeups
 
+	if (!core().in_sched) return;
   if (!cpu::in_thread()) return;
 
   //

@@ -9,6 +9,8 @@
 
 #define ENABLE_APIC_DEBUG
 // #define APIC_ULTRA_VERBOSE
+
+
 #define APIC_LOG(...) PFXLOG(GRN "APIC", __VA_ARGS__)
 
 #ifdef ENABLE_APIC_DEBUG
@@ -55,21 +57,30 @@ namespace x86 {
 
     // send a core (or all cores, if `core == -1`), an irq of 'vec'
     void ipi(int remote_id, int vec) {
-			// APIC_DEBUG("Sending ipi %02x to %d\n", vec, remote_id);
-			write_icr(remote_id, APIC_DEL_MODE_FIXED | (vec + T_IRQ0));
-		}
+      // APIC_DEBUG("Sending ipi %02x to %d\n", vec, remote_id);
+      write_icr(remote_id, APIC_DEL_MODE_FIXED | (vec + T_IRQ0));
+    }
 
     int set_mode(ApicMode mode);
     inline bool is_x2(void) const { return mode == ApicMode::X2Apic; }
 
 
-		void set_tickrate(uint32_t per_second);
+    inline uint64_t realtime_to_ticks(uint64_t ns) const { return ((ns * 1000ULL) / ps_per_tick); }
+    inline uint64_t realtime_to_cycles(uint64_t ns) const { return (ns * cycles_per_us) / 1000ULL; }
+    inline uint64_t cycles_to_realtime(uint64_t cycles) const { return 1000ULL * (cycles / (cycles_per_us)); }
+
+    void set_tickrate(uint32_t per_second);
+
+    inline uint64_t ticks_per_second(void) { return bus_freq_hz; }
 
 
-		inline void eoi(void) {
-			// write the "End of Interrupt register"
-			write(APIC_REG_EOI, 0);
-		}
+    int calibrate_timer_using_pit(int mode);
+
+
+    inline void eoi(void) {
+      // write the "End of Interrupt register"
+      write(APIC_REG_EOI, 0);
+    }
 
     inline void write_icr(uint32_t dest, uint32_t lo) {
       if (is_x2()) {

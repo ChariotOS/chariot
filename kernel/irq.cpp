@@ -12,11 +12,16 @@ struct irq_registration {
   irq::handler handler;
 };
 
+
+
+#define IRQ_DEBUG(...) PFXLOG(BLU "IRQ", __VA_ARGS__)
+
+
 static struct irq_registration irq_handlers[NIRQS];
 
 // install and remove handlers
 int irq::install(int irq, irq::handler handler, const char *name, void *data) {
-  printk(KERN_DEBUG "[cpu %d] Register irq %d for '%s'. Data=%p\n", cpu::current().id, irq, name, data);
+  IRQ_DEBUG("[cpu %d] Register irq %d for '%s'. Data=%p\n", cpu::current().id, irq, name, data);
   if (irq < 0 || irq > NIRQS) return -1;
   irq_handlers[irq].name = name;
   irq_handlers[irq].data = data;
