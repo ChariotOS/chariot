@@ -1,6 +1,10 @@
 # ChariotOS
-## A simple unix-like kernel written in C++
 
+Chariot is a simple unix-like kernel and userspace designed to easily play
+around in if you are interested in kernel development. It currently supports
+x86 and RISC-V, and "compiles" for ARM (help wanted). It's written in C++
+and, with the exception of a few ports for my sanity, is entirely contained
+in this repo.
 
 ### How to build/run
 
