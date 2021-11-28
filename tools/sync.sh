@@ -135,8 +135,11 @@ sudo mount ${fsdev} $mnt/
 
 # create the build/root sysroot directory
 
-if [ -n "$CONFIG_USERSPACE" ]; then
+if [ -n "$CONFIG_ENABLE_USERSPACE" ]; then
+	echo A
 	tools/sysroot.sh
+else
+	echo B
 fi
 
 
