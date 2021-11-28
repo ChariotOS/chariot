@@ -14,6 +14,10 @@
 extern u32 idt_block[];
 extern void *vectors[];  // in vectors.S: array of 256 entry pointers
 
+
+void (*isr_functions[32])(int, reg_t *);
+
+
 // Processor-defined:
 #define TRAP_DIVIDE 0  // divide error
 #define TRAP_DEBUG 1   // debug exception
@@ -263,21 +267,6 @@ static void mkgate(u32 *idt, u32 n, void *kva, u32 pl, u32 trap) {
 }
 
 
-// boot time tick handler
-// Will be replaced by the lapic
-static void tick_handle(int i, reg_t *regs, void *) {
-  auto &cpu = cpu::current();
-
-  u64 now = arch_read_timestamp();
-  cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
-  cpu.kstat.last_tick_tsc = now;
-  cpu.kstat.ticks++;
-
-  irq::eoi(32 /* IRQ_TICK */);
-  sched::handle_tick(cpu.kstat.ticks);
-  return;
-}
-
 static void unknown_exception(int i, reg_t *regs) {
   auto *tf = (struct x86_64regs *)regs;
 
@@ -318,8 +307,6 @@ extern const char *ksym_find(off_t);
 void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
   auto *tf = (struct x86_64regs *)regs;
 
-
-
   arch_disable_ints();
   printk_nolock("FATAL SIGNAL %d. trapno=%d\n", fatal_signal, tf->trapno);
   printk_nolock("==================================================================\n");
@@ -327,13 +314,6 @@ void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
   printk_nolock("%s in pid %d, tid %d, cpu %d @ %p\n", name, curthd->pid, curthd->tid, cpu::current().id, tf->rip);
 
   debug::print_register("Bad address", read_cr2());
-  // printk_nolock("              info = ");
-  // if (tf->err & PGFLT_PRESENT) printk_nolock("PRESENT ");
-  // if (tf->err & PGFLT_WRITE) printk_nolock("WRITE ");
-  // if (tf->err & PGFLT_USER) printk_nolock("USER ");
-  // if (tf->err & PGFLT_INSTR) printk_nolock("INSTR ");
-  // printk_nolock("\n");
-
   printk_nolock("\n");
 
   // arch_disable_ints();
@@ -391,7 +371,6 @@ static void pgfault_handle(int i, reg_t *regs) {
 extern void pit_irq_handler(int i, reg_t *);
 
 
-void (*isr_functions[32])(int, reg_t *);
 
 
 int arch::irq::init(void) {

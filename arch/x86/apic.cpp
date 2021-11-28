@@ -505,19 +505,15 @@ try_once:
     goto try_once;
   }
 
-
+  // us are used here to also keep precision for cycle->ns and ns->cycles conversions
+  this->cycles_per_us = ((end - start) * TEST_TIME_SEC_RECIP) / 1000000;
   this->bus_freq_hz = APIC_TIMER_DIV * apic_timer_ticks * TEST_TIME_SEC_RECIP;
   this->ps_per_tick = (1000000000000ULL / this->bus_freq_hz) * APIC_TIMER_DIV;
 
+	uint64_t mhz = ((this->cycles_per_us * 1000000) / 1000000) * APIC_TIMER_DIV;
+
   APIC_DEBUG("Detected APIC 0x%x bus frequency as %lu Hz\n", this->id, this->bus_freq_hz);
   APIC_DEBUG("Detected APIC 0x%x real time per tick as %lu ps\n", this->id, this->ps_per_tick);
-
-  // us are used here to also keep precision for cycle->ns and ns->cycles
-  // conversions
-  this->cycles_per_us = ((end - start) * TEST_TIME_SEC_RECIP) / 1000000;
-
-	uint64_t hz = this->cycles_per_us * 1000000;
-	uint64_t mhz = (hz / 1000) / 1000;
   APIC_DEBUG("Detected APIC 0x%x as %lucyc/us (core at %lu.%03lu Ghz)\n", this->id, this->cycles_per_us, mhz / 1000, mhz % 1000);
 
   if (!this->bus_freq_hz || !this->ps_per_tick || !this->cycles_per_us) {
