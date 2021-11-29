@@ -10,11 +10,14 @@
 #include <module.h>
 
 #define IPI_IRQ (0xF3 - 32)
+#define APIC_BSP_DEBUG(...) if (core().primary) { APIC_DEBUG(__VA_ARGS__); }
+
+
 
 // how fast does the apic timer tick in
 // the same time as a kernel tick
 static uint32_t apic_ticks_per_second = 0;
-static x86::Apic *bsp_apic = NULL;
+static x86::Apic *bsp_apic;
 
 using namespace x86;
 
@@ -120,7 +123,7 @@ static void apic_tick_handler(int i, reg_t *tf, void *) {
 
 // Initialize the current CPU's APIC
 void Apic::init(void) {
-  if (bsp_apic == NULL) bsp_apic = this;
+  if (core().primary) bsp_apic = this;
 
   uint32_t val;
   ApicMode curmode, maxmode;
@@ -132,12 +135,11 @@ void Apic::init(void) {
 
 #ifndef CONFIG_X2APIC
   if (maxmode == ApicMode::X2Apic) {
-    APIC_DEBUG("The hardware supports X2APIC, but we have elected to use XAPIC instead\n");
+    APIC_BSP_DEBUG("The hardware supports X2APIC, but we have elected to use XAPIC instead\n");
     maxmode = ApicMode::XApic;
   }
 #endif
 
-  APIC_DEBUG("APIC's initial mode is %s\n", apic_modes[curmode]);
 
   if (int res = set_mode(maxmode); res != 0) {
     panic("x86::Apic::set_mode() returned %d\n", res);
@@ -151,7 +153,8 @@ void Apic::init(void) {
   }
 
 
-  APIC_DEBUG("base address: %p. %d\n", base_addr, is_x2());
+  APIC_BSP_DEBUG("APIC's initial mode is %s\n", apic_modes[curmode]);
+  APIC_BSP_DEBUG("base address: %p. %d\n", base_addr, is_x2());
 
   this->version = APIC_VERSION(read(APIC_REG_LVR));
   this->id = is_x2() ? (this->read(APIC_REG_ID)) : ((this->read(APIC_REG_ID) >> APIC_ID_SHIFT) & 0xff);
@@ -169,7 +172,7 @@ void Apic::init(void) {
     // see note in apic.h about how to derive
     // the logical id from the physical id
     val = read(APIC_REG_LDR);
-    APIC_DEBUG("X2APIC LDR=0x%x (cluster 0x%x, logical id 0x%x)\n", val, APIC_LDR_X2APIC_CLUSTER(val), APIC_LDR_X2APIC_LOGID(val));
+    APIC_BSP_DEBUG("X2APIC LDR=0x%x (cluster 0x%x, logical id 0x%x)\n", val, APIC_LDR_X2APIC_CLUSTER(val), APIC_LDR_X2APIC_LOGID(val));
   } else {
     val = read(APIC_REG_LDR) & ~APIC_LDR_MASK;
     // flat group 1 is for watchdog NMIs.
@@ -226,7 +229,7 @@ void Apic::init(void) {
   timer_setup(1000 / CONFIG_TICKS_PER_SECOND);
 
 
-  dump();
+  // dump();
 }
 
 
@@ -236,7 +239,7 @@ void Apic::timer_setup(uint32_t quantum_ms) {
   cpuid::ret_t ret;
   int x2apic, tscdeadline, arat;
 
-  APIC_DEBUG("Setting up Local APIC timer for APIC 0x%x\n", this->id);
+  APIC_BSP_DEBUG("Setting up Local APIC timer for APIC 0x%x\n", this->id);
 
   cpuid::run(0x1, ret);
 
@@ -244,22 +247,15 @@ void Apic::timer_setup(uint32_t quantum_ms) {
   tscdeadline = (ret.c >> 24) & 0x1;
   cpuid::run(0x6, ret);
   arat = (ret.a >> 2) & 0x1;
-  APIC_DEBUG("APIC timer has:  x2apic=%d tscdeadline=%d arat=%d\n", x2apic, tscdeadline, arat);
+  APIC_BSP_DEBUG("APIC timer has:  x2apic=%d tscdeadline=%d arat=%d\n", x2apic, tscdeadline, arat);
 
   // set the TiMer Divide CountR
   write(APIC_REG_TMDCR, APIC_TIMER_DIVCODE);
 
-  if (apic_ticks_per_second == 0) {
-    struct cpuid_busfreq_info freq;
-    cpuid_busfreq(&freq);
-    APIC_DEBUG("freq info: base: %uMHz,  max: %uMHz, bus: %uMHz\n", freq.base, freq.max, freq.bus);
-
-    calibrate();
-    apic_ticks_per_second = this->ticks_per_second();
-  }
+  calibrate();
+  apic_ticks_per_second = this->ticks_per_second();
 
   set_tickrate(CONFIG_TICKS_PER_SECOND);
-
 }
 
 
@@ -490,7 +486,7 @@ try_once:
 
 
   // a known amount of real-time has now finished and we have
-	// 1/TEST_TIME_SEC_RECIP seconds of real time in APIC timer ticks
+  // 1/TEST_TIME_SEC_RECIP seconds of real time in APIC timer ticks
   uint32_t apic_timer_ticks = 0xffffffff - read(APIC_REG_TMCCT) + 1;
 
   APIC_DEBUG(
@@ -510,7 +506,7 @@ try_once:
   this->bus_freq_hz = APIC_TIMER_DIV * apic_timer_ticks * TEST_TIME_SEC_RECIP;
   this->ps_per_tick = (1000000000000ULL / this->bus_freq_hz) * APIC_TIMER_DIV;
 
-	uint64_t mhz = ((this->cycles_per_us * 1000000) / 1000000) * APIC_TIMER_DIV;
+  uint64_t mhz = ((this->cycles_per_us * 1000000) / 1000000) * APIC_TIMER_DIV;
 
   APIC_DEBUG("Detected APIC 0x%x bus frequency as %lu Hz\n", this->id, this->bus_freq_hz);
   APIC_DEBUG("Detected APIC 0x%x real time per tick as %lu ps\n", this->id, this->ps_per_tick);
@@ -530,13 +526,10 @@ try_once:
 void Apic::set_tickrate(uint32_t per_second) {
   core().ticks_per_second = per_second;
   write(APIC_REG_TMDCR, APIC_TIMER_DIVCODE);
-
-	auto ms = 1000 / per_second;
-	auto ticks = realtime_to_ticks(ms * 1000000ULL);
-	APIC_DEBUG("ticks: %llu\n", ticks);
+  auto ms = 1000 / per_second;
+  auto ticks = realtime_to_ticks(ms * 1000000ULL);
   // set the current timer count
   this->write(APIC_REG_TMICT, ticks);
-
   // enable periodic ticks on irq 50
   write(APIC_REG_LVTT, APIC_TIMER_PERIODIC | (50 + T_IRQ0));
 }
@@ -551,13 +544,12 @@ void Apic::calibrate(void) {
     this->ps_per_tick = bsp_apic->ps_per_tick;
     this->cycles_per_us = bsp_apic->cycles_per_us;
     this->cycles_per_tick = bsp_apic->cycles_per_tick;
-    APIC_DEBUG("AP APIC id=0x%x cloned BSP APIC's timer configuration\n", this->id);
+    // APIC_DEBUG("AP APIC id=0x%x cloned BSP APIC's timer configuration\n", this->id);
     return;
   }
 
 
   APIC_DEBUG("APIC id=0x%x begining calibration\n", this->id);
-
   int mode;
 
   // We use PIT calibration, trying mode 0 first, which should work correctly
@@ -596,11 +588,11 @@ int Apic::set_mode(ApicMode newmode) {
   // now go to the relevant mode progressing "upwards"
   if (newmode != ApicMode::Disabled) {
     // switch to XAPIC first
-    APIC_DEBUG("Switching up to XAPIC\n");
+    APIC_BSP_DEBUG("Switching up to XAPIC\n");
     val |= 0x2 << 10;
     msr_write(APIC_BASE_MSR, val);
     if (newmode == ApicMode::X2Apic) {
-      APIC_DEBUG("Switching up to X2APIC\n");
+      APIC_BSP_DEBUG("Switching up to X2APIC\n");
       // now to X2APIC if requested
       val |= 0x3 << 10;
       msr_write(APIC_BASE_MSR, val);
@@ -616,7 +608,7 @@ void Apic::dump(void) {
   char buf[128];
   auto mode = get_mode();
 
-  APIC_DEBUG("DUMP (LOGICAL CPU #%u):\n", core_id());
+  APIC_DEBUG("---------- { LOGICAL CPU #%u } ----------\n", core_id());
 
   APIC_DEBUG("  ID:  0x%08x (id=%d) (mode=%s)\n", read(APIC_REG_ID), !is_x2() ? APIC_GET_ID(read(APIC_REG_ID)) : read(APIC_REG_ID),
       apic_modes[mode]);

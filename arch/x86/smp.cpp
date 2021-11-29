@@ -138,18 +138,7 @@ void parse_mp_cpu(smp::mp::mp_table_entry_cpu *ent) {
   state.index = ent->lapic_id;
   apic_cpus[ent->lapic_id] = state;
   ncpus++;
-
-#if 1
-  SMP_DEBUG("CPU: %p\n", ent);
-  SMP_DEBUG("type: %02x\n", ent->type);
-  SMP_DEBUG("lapic_id: %02x\n", ent->lapic_id);
-  SMP_DEBUG("lapic_version: %02x\n", ent->lapic_version);
-  SMP_DEBUG("enabled: %d\n", ent->enabled);
-  SMP_DEBUG("is_bsp: %d\n", ent->is_bsp);
-  SMP_DEBUG("sig: %08x\n", ent->sig);
-  SMP_DEBUG("features: %08x\n", ent->feat_flags);
-  SMP_DEBUG("\n");
-#endif
+  SMP_DEBUG("found CPU #%d, type:0x%02x, bsp:%d, features:0x%08x\n", ent->lapic_id, ent->type, ent->is_bsp, ent->feat_flags);
 }
 
 void parse_mp_bus(smp::mp::mp_table_entry_bus *ent) {}
