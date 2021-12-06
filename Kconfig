@@ -140,6 +140,12 @@ menu "Devices"
 		default y
 		depends on ATA
 
+
+	config ATA_DMA
+		bool "Enable ATA DMA access"
+		default y
+		depends on ATA
+
 	
 	config XHCI
 		bool "XHCI USB Host Controller"

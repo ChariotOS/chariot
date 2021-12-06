@@ -11,7 +11,6 @@
 #include <net/ipv4.h>
 #include <net/net.h>
 #include <pci.h>
-#include <pit.h>
 #include <ck/single_list.h>
 #include <syscall.h>
 #include <time.h>
@@ -89,6 +88,7 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   fpu::init();
   kargs::init(mbd);
 
+  rtc_late_init();
 
 #ifdef CONFIG_ACPI
   if (!acpi::init(mbd)) panic("acpi init failed!\n");
@@ -122,7 +122,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 
 
 int kernel_init(void*) {
-  rtc_late_init();
 
   // start up the extra cpu cores
 #ifdef CONFIG_SMP

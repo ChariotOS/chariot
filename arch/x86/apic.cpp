@@ -10,7 +10,10 @@
 #include <module.h>
 
 #define IPI_IRQ (0xF3 - 32)
-#define APIC_BSP_DEBUG(...) if (core().primary) { APIC_DEBUG(__VA_ARGS__); }
+#define APIC_BSP_DEBUG(...)  \
+  if (core().primary) {      \
+    APIC_DEBUG(__VA_ARGS__); \
+  }
 
 
 
@@ -435,11 +438,11 @@ try_once:
   // PIT channel 2 counter is now waiting for a count to start/restart
   // we do this LSB then MSB
 
-  outb(pit_count & 0xff, PIT_CHAN2_DATA);  // LSB
+  outb(PIT_CHAN2_DATA, pit_count & 0xff);  // LSB
 
   io_delay();
 
-  outb((uint8_t)(pit_count >> 8), PIT_CHAN2_DATA);  // MSB
+  outb(PIT_CHAN2_DATA, (uint8_t)(pit_count >> 8));  // MSB
 
   if (mode == 0) {
     // The PIT counter is now running
@@ -447,9 +450,9 @@ try_once:
     // pulse
     ctrl = inb(KB_CTRL_PORT_B);
     ctrl &= 0xfe;
-    outb(ctrl, KB_CTRL_PORT_B);  // force gate low if it's not alread
+    outb(KB_CTRL_PORT_B, ctrl);  // force gate low if it's not alread
     ctrl |= 0x1;
-    outb(ctrl, KB_CTRL_PORT_B);  // force gate high to give positive edge
+    outb(KB_CTRL_PORT_B, ctrl);  // force gate high to give positive edge
                                  // the PIT counter is now running
   }
 
@@ -551,6 +554,12 @@ void Apic::calibrate(void) {
 
   APIC_DEBUG("APIC id=0x%x begining calibration\n", this->id);
   int mode;
+
+
+  /* disable the PIT on setup */
+  outb(PIT_CMD_REG, 0x30);
+  outb(PIT_CHAN0_DATA, 0);
+  outb(PIT_CHAN0_DATA, 0);
 
   // We use PIT calibration, trying mode 0 first, which should work correctly
   // on all machines and on emulation (Phi, Qemu).

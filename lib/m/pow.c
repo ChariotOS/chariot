@@ -210,24 +210,16 @@ ulperr_exp: 0.509 ULP (ULP error of exp, 0.511 ULP without fma)
 #define N (1 << POW_LOG_TABLE_BITS)
 #define OFF 0x3fe6955500000000
 
-double __math_xflow(uint32_t sign, double y) {
-  return fp_barrier(sign ? -y : y) * y;
-}
+double __math_xflow(uint32_t sign, double y) { return fp_barrier(sign ? -y : y) * y; }
 
 
-double __math_uflow(uint32_t sign) {
-  return __math_xflow(sign, 0x1p-767);
-}
+double __math_uflow(uint32_t sign) { return __math_xflow(sign, 0x1p-767); }
 
-double __math_oflow(uint32_t sign) {
-  return __math_xflow(sign, 0x1p769);
-}
+double __math_oflow(uint32_t sign) { return __math_xflow(sign, 0x1p769); }
 
 
 /* Top 12 bits of a double (sign and exponent bits).  */
-static inline uint32_t top12(double x) {
-  return asuint64(x) >> 52;
-}
+static inline uint32_t top12(double x) { return asuint64(x) >> 52; }
 
 /* Compute y+TAIL = log(x) where the rounded result is y and TAIL has about
    additional 15 bits precision.  IX is the bit representation of x, but
@@ -433,9 +425,7 @@ static inline int checkint(uint64_t iy) {
 }
 
 /* Returns 1 if input is the bit representation of 0, infinity or nan.  */
-static inline int zeroinfnan(uint64_t i) {
-  return 2 * i - 1 >= 2 * asuint64(INFINITY) - 1;
-}
+static inline int zeroinfnan(uint64_t i) { return 2 * i - 1 >= 2 * asuint64(INFINITY) - 1; }
 
 double pow(double x, double y) {
   uint32_t sign_bias = 0;
@@ -456,8 +446,7 @@ double pow(double x, double y) {
       if (ix == asuint64(1.0)) return issignaling_inline(y) ? x + y : 1.0;
       if (2 * ix > 2 * asuint64(INFINITY) || 2 * iy > 2 * asuint64(INFINITY)) return x + y;
       if (2 * ix == 2 * asuint64(1.0)) return 1.0;
-      if ((2 * ix < 2 * asuint64(1.0)) == !(iy >> 63))
-        return 0.0; /* |x|<1 && y==inf or |x|>1 && y==-inf.  */
+      if ((2 * ix < 2 * asuint64(1.0)) == !(iy >> 63)) return 0.0; /* |x|<1 && y==inf or |x|>1 && y==-inf.  */
       return y * y;
     }
     if (predict_false(zeroinfnan(ix))) {

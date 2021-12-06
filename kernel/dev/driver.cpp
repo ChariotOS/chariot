@@ -177,13 +177,13 @@ void dev::Driver::probe_all(ck::ref<dev::Device> dev) {
 
 ksh_def("drivers", "display all (old style) drivers") {
   drivers_lock.read_lock();
-	printk("Names:\n");
+  printk("Names:\n");
   for (auto &[name, dev] : device_names) {
     printk(" - %s: %d,%d\n", name.get(), dev.major(), dev.minor());
   }
 
 
-	printk("Drivers:\n");
+  printk("Drivers:\n");
   for (auto &[major, drv] : drivers) {
     printk(" - major: %d: %s\n", major, drv->name);
   }

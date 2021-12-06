@@ -193,8 +193,10 @@ bool dev::ata::identify() {
 
   if (m_pci_dev != nullptr) {
     m_pci_dev->enable_bus_mastering();
-    use_dma = true;
 
+#ifdef CONFIG_ATA_DMA
+    use_dma = true;
+#endif
     // bar4 contains information for DMA
     bar4 = m_pci_dev->get_bar(4).raw;
     if (bar4 & 0x1) bar4 = bar4 & 0xfffffffc;
@@ -536,9 +538,9 @@ static void ata_init(void) {
   query_and_add_drive(0x1F0, 1, false);
 
 
-	return;
-	// TODO: get piix to not freeze on hardware
+  // TODO: get piix to not freeze on hardware
   piix_init();
+  return;
 }
 
 module_init("ata", ata_init);

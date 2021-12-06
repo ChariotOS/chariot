@@ -186,9 +186,7 @@ void rtc_late_init(void) {
   outb(0x70, 0x8A);                  // reset index to A
   outb(0x71, (prev & 0xF0) | rate);  // write only our rate to A. Note, rate is the bottom 4 bits.
 
-
   read_register_c();
-  arch_enable_ints();
 }
 
 // module_init("RTC", rtc_module_init);
