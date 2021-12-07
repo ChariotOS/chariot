@@ -530,7 +530,7 @@ void Apic::set_tickrate(uint32_t per_second) {
   core().ticks_per_second = per_second;
   write(APIC_REG_TMDCR, APIC_TIMER_DIVCODE);
   auto ms = 1000 / per_second;
-  auto ticks = realtime_to_ticks(ms * 1000000ULL);
+  auto ticks = ns_to_ticks(ms * 1000000ULL);
   // set the current timer count
   this->write(APIC_REG_TMICT, ticks);
   // enable periodic ticks on irq 50

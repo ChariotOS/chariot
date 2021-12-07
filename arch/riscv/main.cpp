@@ -63,7 +63,11 @@ static uint32_t bswap_32(uint32_t __x) { return __x >> 24 | (__x >> 8 & 0xff00) 
 
 void initrd_dump(void *vbuf, size_t size) { hexdump(vbuf, size, true); }
 
-static unsigned long riscv_high_acc_time_func(void) { return (read_csr(time) * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND; }
+static uint64_t ticks_to_ns(uint64_t ticks) {
+	return (ticks * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND;
+}
+
+static unsigned long riscv_high_acc_time_func(void) { return ticks_to_ns(read_csr(time)); }
 
 static off_t dtb_ram_start = 0;
 static size_t dtb_ram_size = 0;
@@ -81,9 +85,9 @@ extern "C" void secondary_entry(int hartid) {
   rv::set_tp((rv::xsize_t)&sc);
 
 
-	// its safe to store this on this stack.
-	cpu::Core cpu;
-	rv::get_hstate().cpu = &cpu;
+  // its safe to store this on this stack.
+  cpu::Core cpu;
+  rv::get_hstate().cpu = &cpu;
   cpu::seginit(&cpu, NULL);
   cpu::current().primary = false;
 
@@ -94,7 +98,7 @@ extern "C" void secondary_entry(int hartid) {
   /* set SUM bit in sstatus so kernel can access userspace pages. Also enable floating point */
   write_csr(sstatus, read_csr(sstatus) | (1 << 18) | (1 << 13));
 
-	cpu::current().timekeeper = false;
+  cpu::current().timekeeper = false;
 
   /* set the timer with sbi :) */
   sbi_set_timer(rv::get_time() + TICK_INTERVAL);
@@ -122,9 +126,6 @@ bool start_secondary(int i) {
   second_done = false;
   __sync_synchronize();
 
-
-  // KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
-
   auto ret = sbi_call(SBI_EXT_HSM, SBI_EXT_HSM_HART_START, i, secondary_core_startup_sbi, 1);
   if (ret.error != SBI_SUCCESS) {
     return false;
@@ -144,14 +145,16 @@ class RISCVHart : public dev::Driver {
     if (auto mmio = dev->cast<dev::MMIODevice>()) {
       if (mmio->is_compat("riscv")) {
         auto hartid = mmio->address();
-#ifdef CONFIG_SMP
         if (hartid != rv::get_hstate().hartid) {
           LOG("found hart %d\n", mmio->address());
           LOG("Trying to start hart %d\n", hartid);
+#ifdef CONFIG_SMP
           // start the other core.
           start_secondary(hartid);
-        }
+#else
+          LOG("SMP Disabled. not starting hart#%d\n", hartid);
 #endif
+        }
       }
     }
     return dev::ProbeResult::Ignore;
@@ -159,13 +162,30 @@ class RISCVHart : public dev::Driver {
 };
 
 
+extern "C" rv::xsize_t sip_bench();
+void bench(void) {
+	size_t trials = 1000;
+	auto measurements = new uint64_t[trials];
+  for (int i = 0; i < trials; i++) {
+		measurements[i] = ticks_to_ns(sip_bench());
+  }
+
+	uint64_t sum = 0;
+  for (int i = 0; i < trials; i++) {
+		sum += measurements[i];
+	}
+	printk("Average access latency to SIP CSR: %llu nanoseconds\n", sum / trials);
+
+
+	delete[] measurements;
+}
+
 
 static int wakes = 0;
 void main(int hartid, void *fdt) {
   LOG("hart: %p, fdt: %p\n", hartid, fdt);
   // get the information from SBI right away so we can use it early on
   sbi_early_init();
-
 
   /*
    * Machine mode passes us the scratch structure through
@@ -187,9 +207,6 @@ void main(int hartid, void *fdt) {
   rv::plic::hart_init();
 
 
-  // rv::uart_init();
-
-
   off_t boot_free_start = (off_t)v2p(_kernel_end);
   off_t boot_free_end = boot_free_start + 1 * MB;
   LOG("Freeing bootup ram %llx:%llx\n", boot_free_start, boot_free_end);
@@ -201,8 +218,8 @@ void main(int hartid, void *fdt) {
 
   phys::free_range((void *)boot_free_start, (void *)boot_free_end);
 
-	cpu::Core cpu;
-	rv::get_hstate().cpu = &cpu;
+  cpu::Core cpu;
+  rv::get_hstate().cpu = &cpu;
 
   cpu::seginit(&cpu, NULL);
 
@@ -240,6 +257,7 @@ void main(int hartid, void *fdt) {
   cpu::current().primary = true;
 
   dtb::promote();
+	bench();
 
   arch_enable_ints();
 
@@ -253,14 +271,15 @@ void main(int hartid, void *fdt) {
   /* set SUM bit in sstatus so kernel can access userspace pages. Also enable floating point */
   write_csr(sstatus, read_csr(sstatus) | (1 << 18) | (1 << 13));
 
-	cpu::current().timekeeper = true;
+  cpu::current().timekeeper = true;
+  /*
 
-
-  cpu::xcall_all(
-      [](void *) {
-        printk("hello.\n");
-      },
-      NULL);
+cpu::xcall_all(
+[](void *) {
+  printk("hello.\n");
+},
+NULL);
+                  */
 
   assert(sched::init());
   LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());

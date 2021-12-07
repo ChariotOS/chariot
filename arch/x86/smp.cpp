@@ -73,7 +73,6 @@ static volatile uint32_t *global_lapic = NULL;
 
 
 
-
 /**
  * Converts an entry in a local APIC's Local Vector Table to a
  * human-readable string.
@@ -252,10 +251,10 @@ static void startap(int id, unsigned long code) {
 
   // "Universal startup algorithm."
   // Send INIT (level-triggered) interrupt to reset other CPU
-	core().apic.write_icr(id, ICR_DEL_MODE_INIT | ICR_TRIG_MODE_LEVEL | ICR_LEVEL_ASSERT);
+  core().apic.write_icr(id, ICR_DEL_MODE_INIT | ICR_TRIG_MODE_LEVEL | ICR_LEVEL_ASSERT);
   microdelay(200);
-	// de-assert
-	core().apic.write_icr(id, ICR_DEL_MODE_INIT | ICR_TRIG_MODE_LEVEL);
+  // de-assert
+  core().apic.write_icr(id, ICR_DEL_MODE_INIT | ICR_TRIG_MODE_LEVEL);
   microdelay(100);  // should be 10ms, but too slow in Bochs!
 
   // Send startup IPI (twice!) to enter code.
@@ -264,7 +263,7 @@ static void startap(int id, unsigned long code) {
   // should be ignored, but it is part of the official Intel algorithm.
   // Bochs complains about the second one.  Too bad for Bochs.
   for (i = 0; i < 2; i++) {
-		core().apic.write_icr(id, ICR_DEL_MODE_STARTUP | (code >> 12));
+    core().apic.write_icr(id, ICR_DEL_MODE_STARTUP | (code >> 12));
     // TODO: on real hardware, we MUST actually wait here for 200us. But in qemu
     //       its fine because it is virtualized 'instantly'
     microdelay(200);
@@ -290,7 +289,7 @@ extern "C" void mpentry(int apic_id) {
   volatile auto args = (struct ap_args *)p2v(0x6000);
 
 
-	cpu::Core cpu;
+  cpu::Core cpu;
   // initialize the CPU
   cpu::seginit(&cpu, NULL);
   cpu::current().id = apic_id;
@@ -300,8 +299,8 @@ extern "C" void mpentry(int apic_id) {
   fpu::init();
 
 
-	// initialize our apic
-	core().apic.init();
+  // initialize our apic
+  core().apic.init();
 
   // we're fully booted now
   args->ready = 1;
@@ -335,7 +334,9 @@ void smp::init_cores(void) {
     // skip ourselves
     if (core.entry->lapic_id == core_id()) continue;
 
-    args->stack = (unsigned long)p2v(phys::alloc()) + 4096;
+
+    auto stack = phys::alloc();
+    args->stack = (unsigned long)p2v(stack) + 4096;
     args->ready = 0;
     args->apic_id = core.entry->lapic_id;
 

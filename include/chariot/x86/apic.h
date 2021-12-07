@@ -65,9 +65,9 @@ namespace x86 {
     inline bool is_x2(void) const { return mode == ApicMode::X2Apic; }
 
 
-    inline uint64_t realtime_to_ticks(uint64_t ns) const { return ((ns * 1000ULL) / ps_per_tick); }
-    inline uint64_t realtime_to_cycles(uint64_t ns) const { return (ns * cycles_per_us) / 1000ULL; }
-    inline uint64_t cycles_to_realtime(uint64_t cycles) const { return 1000ULL * (cycles / (cycles_per_us)); }
+    inline uint64_t ns_to_ticks(uint64_t ns) const { return ((ns * 1000ULL) / ps_per_tick); }
+    inline uint64_t ns_to_cycles(uint64_t ns) const { return (ns * cycles_per_us) / 1000ULL; }
+    inline uint64_t cycles_to_ns(uint64_t cycles) const { return ((cycles * 1000) / (cycles_per_us)); }
 
     void set_tickrate(uint32_t per_second);
 

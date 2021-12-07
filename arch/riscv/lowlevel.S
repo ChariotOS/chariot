@@ -425,6 +425,17 @@ ENTRY(context_switch)
 END(context_switch)
 
 
+# returns latency through a0
+ENTRY(sip_bench)
+	csrr a0, time
+	csrr a1, sip
+	csrr a1, time
+
+	sub a0, a1, a0
+	ret
+END(sip_bench)
+
+
 
 
 /* _setjmp functions */
@@ -456,7 +467,6 @@ ENTRY (__sigsetjmp)
 /* TODO: save signal mask? */
   li a0, 0
   ret
-
 
 END (__sigsetjmp)
 

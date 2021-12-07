@@ -77,14 +77,15 @@ namespace cpu {
     unsigned long ticks_per_second = 0;
 
     spinlock sleepers_lock;
-		struct sleep_waiter *sleepers = NULL;
-		struct thread_context *sched_ctx;
+    struct sleep_waiter *sleepers = NULL;
+    struct thread_context *sched_ctx;
 
     ck::ref<Thread> current_thread;
     ck::ref<Thread> next_thread;
 
-
-    ck::vec<struct xcall_command> xcall_commands;
+    // locked by the source core, unlocked by the target core
+    spinlock xcall_lock;
+		struct xcall_command xcall_command;
 
 
 #ifdef CONFIG_X86
@@ -95,8 +96,9 @@ namespace cpu {
 
 
     void prep_xcall(xcall_t func, void *arg, int *count) {
-      xcall_commands.push({func, arg, count});
-    }
+			xcall_lock.lock();
+			xcall_command = {func, arg, count};
+		}
   };
 
   extern struct list_head cores;

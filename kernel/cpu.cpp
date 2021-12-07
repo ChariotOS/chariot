@@ -9,7 +9,6 @@
 #include <types.h>
 #include <module.h>
 
-// cpu::Core cpus[CONFIG_MAX_CPUS];
 int processor_count = 0;
 
 struct list_head cpu::cores;
@@ -18,7 +17,7 @@ struct list_head cpu::cores;
 void cpu::add(cpu::Core *cpu) {
   processor_count++;
   cpu->active = true;
-  cpu::cores.add(&cpu->cores);
+  cpu::cores.add_tail(&cpu->cores);
 }
 
 
@@ -26,10 +25,13 @@ int cpu::nproc(void) { return processor_count; }
 
 cpu::Core *cpu::get() { return &cpu::current(); }
 
-cpu::Core *cpu::get(int core) {
-  cpu::Core *proc = NULL;
+cpu::Core *cpu::get(int id) {
+  cpu::Core *core;
+  list_for_each_entry(core, &cpu::cores, cores) {
+    if (id == core->id) return core;
+  }
 
-  return proc;
+  return nullptr;
 }
 
 Process *cpu::proc(void) {
@@ -74,20 +76,20 @@ static spinlock global_xcall_lock;
 
 void cpu::run_pending_xcalls(void) {
   auto &p = cpu::current();
-  for (auto call : p.xcall_commands) {
-    call.fn(call.arg);
-    if (call.count != NULL) {
-      __atomic_fetch_sub(call.count, 1, __ATOMIC_ACQ_REL);
-    }
-  }
+  struct xcall_command cmd = p.xcall_command;
+  memset(&p.xcall_command, 0, sizeof(p.xcall_command));
+  core().xcall_lock.unlock();
 
-  p.xcall_commands.clear();
+  if (cmd.fn == nullptr) panic("xcall null!\n");
+  cmd.fn(cmd.arg);
+  if (cmd.count != NULL) {
+    __atomic_fetch_sub(cmd.count, 1, __ATOMIC_ACQ_REL);
+  }
 }
 
 void cpu::xcall(int core, xcall_t func, void *arg) {
-  scoped_lock l(global_xcall_lock);
+  int count;
   // pprintk("xcall %d %p %p\n", core, func, arg);
-  int count = 0;
   if (core == -1) {
     // all the cores
     cpu::each([&](cpu::Core *core) {
@@ -95,11 +97,10 @@ void cpu::xcall(int core, xcall_t func, void *arg) {
       core->prep_xcall(func, arg, &count);
     });
   } else {
+    count = 0;
     auto c = cpu::get(core);
     if (c == NULL) {
-      KERR("invalid xcall target %d\n", core);
-      // hmm
-      return;
+      panic("invalid xcall target %d\n", core);
     }
     count++;
     c->prep_xcall(func, arg, &count);
@@ -107,50 +108,57 @@ void cpu::xcall(int core, xcall_t func, void *arg) {
 
   arch_deliver_xcall(core);
 
-  int iters = 0;
   do {
     int val = __atomic_load_n(&count, __ATOMIC_SEQ_CST);
     if (val == 0) break;
     arch_relax();
-    iters++;
   } while (1);
 }
 
 
 ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
-  int count = 10000;
+  int count = 100000;
   auto *measurements = new uint64_t[count];
+  printk("running xcall benchmark from %d\n", core_id());
 
-  printk("from %d\n", cpu::current().id);
 
-  for (int i = 0; i < count; i++) {
-    auto start = arch_read_timestamp();
-    cpu::xcall(
-        -1,  // send to all cores.
-        [](void *arg) {
-        },
-        NULL);
+    cpu::each([&](cpu::Core *c) {
+      int target_id = c->id;
+      for (int i = 0; i < count; i++) {
+        auto start = arch_read_timestamp();
+        cpu::xcall(
+            target_id,
+            [](void *arg) {
+            },
+            NULL);
 
-    auto end = arch_read_timestamp();
-    measurements[i] = end - start;
-  }
+        auto end = arch_read_timestamp();
+        // printk("%d -> %d %lu cycles\n", core_id(), target_id, end - start);
+        measurements[i] = end - start;
+      }
 
-  uint64_t sum = 0;
-  uint64_t min = ~0;
-  uint64_t max = 0;
+      uint64_t sum = 0;
+      uint64_t min = ~0;
+      uint64_t max = 0;
 
-  for (int i = 0; i < count; i++) {
-    auto m = measurements[i];
-    sum += m;
-    if (m < min) min = m;
-    if (m > max) max = m;
-  }
+      for (int i = 0; i < count; i++) {
+        auto m = measurements[i];
+        sum += m;
+        if (m < min) min = m;
+        if (m > max) max = m;
+      }
 
-  uint64_t avg = sum / count;
+      uint64_t avg = sum / count;
+      uint64_t ns = 0;
 
-  printk("avg: %lu\n", avg);
-  printk("min: %lu\n", min);
-  printk("max: %lu\n", max);
+#ifdef CONFIG_X86
+      ns = core().apic.cycles_to_ns(max);
+#endif
+
+      printk("%d -> %d avg/min/max: %lu/%lu/%lu (max %lu nanoseconds)\n", core_id(), target_id, avg, min, max, ns);
+    });
+
+  delete[] measurements;
 
   return 0;
 }
@@ -170,13 +178,15 @@ ksh_def("cores", "dump cpu information") {
 
     printk("\n");
 
-		x86::Apic &apic = cpu->apic;
+#ifdef CONFIG_X86
+    x86::Apic &apic = cpu->apic;
     printk("        ");
-		printk(" bus:%lluhz", apic.bus_freq_hz);
-		printk(" %llucyc/us", apic.cycles_per_us);
-		printk(" %llucyc/tick", apic.cycles_per_tick);
+    printk(" bus:%lluhz", apic.bus_freq_hz);
+    printk(" %llucyc/us", apic.cycles_per_us);
+    printk(" %llucyc/tick", apic.cycles_per_tick);
 
     printk("\n");
+#endif
   });
 
   return 0;
