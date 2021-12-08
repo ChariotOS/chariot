@@ -181,9 +181,23 @@ void bench(void) {
 }
 
 
+spinlock x;
+
 static int wakes = 0;
+extern uint64_t _bss_start[];
+extern uint64_t _bss_end[];
+
+
 void main(int hartid, void *fdt) {
+	for (size_t i = 0; i < sizeof(x); i++) {
+		printk_nolock("%02x ", ((uint8_t*)&x)[i]);
+	}
+	printk_nolock("\n");
+	// sbi_call(SBI_CONSOLE_PUTCHAR, 'a'); 
+	printk_nolock("yoyoyo\n");
+	printk("yoyoyo\n");
   LOG("hart: %p, fdt: %p\n", hartid, fdt);
+	sbi_call(SBI_CONSOLE_PUTCHAR, 'i'); 
   // get the information from SBI right away so we can use it early on
   sbi_early_init();
 

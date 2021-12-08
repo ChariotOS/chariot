@@ -179,7 +179,7 @@ int serial_transmit_empty(int device) { return 0; }
 void serial_send(int device, char out) {
   /* We only support uart 1 */
   if (device != 1 /* uart0, I guess */) {
-    return;
+    // return;
   }
   /* TODO: this needs to be efficient and wait on interrupts (real hardware lol) */
   rv::uart_putc(out);
