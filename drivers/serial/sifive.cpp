@@ -144,26 +144,6 @@ static struct dev::DriverInfo sifive_uart_driver_info {
 };
 
 
-void init_device(dtb::node *node) {
-  // create a uart device
-  SifiveUart uart(node->address, 5);
-
-  uart.put_char('a');
-
-  // while (1) {
-  //   int x = uart.get_char(false);
-  //   printk("%d\n", x);
-  //   if (x == -1) {
-  //     break;
-  //   }
-  //   printk("%02x: %c\n", x, x);
-  // }
-
-  KINFO("sifive,uart0 at %p\n", node->address);
-}
-
-
-
 class SifiveUartDriver : public dev::Driver {
   ck::vec<ck::box<SifiveUart>> uarts;
 
@@ -190,4 +170,4 @@ void sifive_uart_init(void) {
   auto driver = ck::make_ref<SifiveUartDriver>();
   dev::Driver::add(driver);
 }
-module_init("sifive,uart0", sifive_uart_init);
+// module_init("sifive,uart0", sifive_uart_init);

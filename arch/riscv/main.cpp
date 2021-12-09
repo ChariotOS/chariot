@@ -76,8 +76,11 @@ extern "C" uint8_t secondary_core_startup_sbi[];
 extern "C" uint64_t secondary_core_stack;
 static bool second_done = false;
 
+
+extern uint64_t _bss_start[];
+extern uint64_t _bss_end[];
+
 extern "C" void secondary_entry(int hartid) {
-  printk("got into hart %d\n", hartid);
   struct rv::hart_state sc;
   sc.hartid = hartid;
   sc.kernel_sp = 0;
@@ -167,14 +170,15 @@ void bench(void) {
 	size_t trials = 1000;
 	auto measurements = new uint64_t[trials];
   for (int i = 0; i < trials; i++) {
-		measurements[i] = ticks_to_ns(sip_bench());
+		measurements[i] = sip_bench();
   }
 
 	uint64_t sum = 0;
   for (int i = 0; i < trials; i++) {
 		sum += measurements[i];
 	}
-	printk("Average access latency to SIP CSR: %llu nanoseconds\n", sum / trials);
+	uint64_t avg = sum / trials;
+	printk("Average access latency to SIP CSR: %llu cycles, %lluns. 1000 trials took %llu, %lluns\n", avg, ticks_to_ns(avg), sum, ticks_to_ns(sum));
 
 
 	delete[] measurements;
@@ -189,15 +193,14 @@ extern uint64_t _bss_end[];
 
 
 void main(int hartid, void *fdt) {
-	for (size_t i = 0; i < sizeof(x); i++) {
-		printk_nolock("%02x ", ((uint8_t*)&x)[i]);
+
+	// zero the BSS
+	for (uint64_t *ptr = (uint64_t*)p2v(_bss_start); ptr < (uint64_t*)p2v(_bss_end); ptr++) {
+		*ptr = 0;
 	}
-	printk_nolock("\n");
-	// sbi_call(SBI_CONSOLE_PUTCHAR, 'a'); 
-	printk_nolock("yoyoyo\n");
-	printk("yoyoyo\n");
-  LOG("hart: %p, fdt: %p\n", hartid, fdt);
-	sbi_call(SBI_CONSOLE_PUTCHAR, 'i'); 
+
+	printk_nolock("Hello, friend!\n");
+
   // get the information from SBI right away so we can use it early on
   sbi_early_init();
 
@@ -227,10 +230,15 @@ void main(int hartid, void *fdt) {
 
 
 
+
+
   /* Tell the device tree to copy the device tree and parse it */
   dtb::parse((dtb::fdt_header *)p2v(rv::get_hstate().dtb));
 
   phys::free_range((void *)boot_free_start, (void *)boot_free_end);
+
+
+	bench();
 
   cpu::Core cpu;
   rv::get_hstate().cpu = &cpu;
@@ -271,7 +279,6 @@ void main(int hartid, void *fdt) {
   cpu::current().primary = true;
 
   dtb::promote();
-	bench();
 
   arch_enable_ints();
 
