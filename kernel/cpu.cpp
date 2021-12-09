@@ -88,16 +88,16 @@ void cpu::run_pending_xcalls(void) {
 }
 
 void cpu::xcall(int core, xcall_t func, void *arg) {
-  int count;
+  int count = 0;
   // pprintk("xcall %d %p %p\n", core, func, arg);
   if (core == -1) {
     // all the cores
     cpu::each([&](cpu::Core *core) {
+				printk("sending IPI to %d\n", core->id);
       count++;
       core->prep_xcall(func, arg, &count);
     });
   } else {
-    count = 0;
     auto c = cpu::get(core);
     if (c == NULL) {
       panic("invalid xcall target %d\n", core);
@@ -105,6 +105,8 @@ void cpu::xcall(int core, xcall_t func, void *arg) {
     count++;
     c->prep_xcall(func, arg, &count);
   }
+
+	printk("count=%d\n", count);
 
   arch_deliver_xcall(core);
 
