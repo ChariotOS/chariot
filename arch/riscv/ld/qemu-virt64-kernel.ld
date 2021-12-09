@@ -33,18 +33,14 @@ SECTIONS
     *(.text.init)
     *(.boot.text* )
     PROVIDE(_boot_end = .);
-	. = ALIGN(PAGE_SIZE);
-	kernel_page_table = .;
-	. += 0x1000;
-	} :boot
+		. = ALIGN(PAGE_SIZE);
+		kernel_page_table = .;
+		. += 0x1000;
 
-
-	.bootdata : {
     PROVIDE(_boot_data_start = .);
     *(.boot.data* )
-	PROVIDE(_boot_data_end = .);
+		PROVIDE(_boot_data_end = .);
 	} :boot
-
 
 	PROVIDE(_stack_start = .);
 	. += CONFIG_RISCV_BOOTSTACK_SIZE * CONFIG_MAX_CPUS * PAGE_SIZE;
@@ -90,6 +86,8 @@ SECTIONS
 
   .data : AT(ADDR(.data) - KERNEL_VMA) {
     PROVIDE(_data_start = . - KERNEL_VMA);
+
+		__global_pointer$ = . + 0x800;
     *(.sdata .sdata.*) *(.data .data.*)
 
 		_symtab_start = .;
