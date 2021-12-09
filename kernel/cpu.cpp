@@ -93,7 +93,6 @@ void cpu::xcall(int core, xcall_t func, void *arg) {
   if (core == -1) {
     // all the cores
     cpu::each([&](cpu::Core *core) {
-				printk("sending IPI to %d\n", core->id);
       count++;
       core->prep_xcall(func, arg, &count);
     });
@@ -106,7 +105,6 @@ void cpu::xcall(int core, xcall_t func, void *arg) {
     c->prep_xcall(func, arg, &count);
   }
 
-	printk("count=%d\n", count);
 
   arch_deliver_xcall(core);
 
