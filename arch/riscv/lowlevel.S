@@ -46,6 +46,19 @@
 .section .data
 
 
+.extern main
+
+
+.macro push x
+	addi sp, sp, -SZREG
+	REG_S \x, 0(sp)
+.endm
+
+
+.macro pop x
+	REG_L \x, 0(sp)
+	addi sp, sp, SZREG
+.endm
 
 .section .text.init
 
@@ -58,7 +71,7 @@ _start:
 	# This causes the value stored in `gp` to be calculated from `pc`.
 .option push
 .option norelax
-	# la		gp, _global_pointer
+	REG_L  gp, .gp_ptr
 .option pop
 
 	# we calculate the starting stack by _stack_start + (2*4096 * (mhartid + 1))
@@ -69,59 +82,51 @@ _start:
 	mul     t0, t0, t1 # t1 = SIZE * (mhartid + 1)
 	add     sp, sp, t0 # sp = stack_start + (SIZE * (mhartid + 1))
 
-
 	# zero out bss
 	lla     t0, _bss_start
 	lla     t1, _bss_end
-	beq     t0, t1, 1f
-0:
+	beq     t0, t1, .bss_done
+.bss_loop:
 	REG_S   zero, (t0)
 	add     t0, t0, SZREG
-	blt     t1, t0, 0b  # if t1 is less than t0 
-1:
-
+	blt     t1, t0, .bss_loop  # if t1 is less than t0 
+.bss_done:
 
 	# allocate space for the scratch pad
 	addi    sp, sp, -32 * SZREG
 
-
 	# supervisor mode expects 
-	addi sp, sp, -2 * SZREG
 
-	REG_S a0, ROFF(0, sp)
-	REG_S a1, ROFF(1, sp)
+	push a0
+	push a1
 
 	la      a0, kernel_page_table         # t1: current location in the page table
 	call    setup_pagetables
 
-
-	REG_L a0, ROFF(0, sp)
-	REG_L a1, ROFF(1, sp)
-
-	addi sp, sp, 2*SZREG
+	pop a1
+	pop a0
 
 	# now, load the kernel page table into satp 
 	la      t0, kernel_page_table
 	srai    t0, t0, 12 # shift the page table to be just the PPN
-
-
 
 	# t1 is the eventual value of SATP
 	li      t1, SATP_FLAG      # t1 = SATP_FLAG
 	slli    t1, t1, SATP_SHIFT # t1 = t1 << SATP_SHIFT
 	add     t1, t1, t0         # t1 = t1 + kernel_page_table
 
-
 	csrw    satp, t1           # satp = t1
+
+
 
 	# flush the TLB and force the machine to load the new page table
 	sfence.vma  zero, zero
 
-
-
 	#	enable supervisor interrupts
 	li      t0, SIE_SEIE | SIE_STIE | SIE_SSIE
 	csrs    sie, t0
+
+
 
 	# Load the virtual address for the stack pointer
 	mv      tp, sp
@@ -133,8 +138,10 @@ _start:
 	REG_L   t0, 0(t0)
 	jr      t0
 
+	
 
-
+.gp_ptr:
+	.quad __global_pointer$
 
 .global secondary_core_stack
 secondary_core_stack:
