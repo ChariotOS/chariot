@@ -1,5 +1,12 @@
 add_kernel_module(
-	NAME bus_pci
+	NAME pci-x86
 	NEEDS X86
-	SOURCES pci_x86/pci.cpp
+	SOURCES pci/pci-x86.cpp
+)
+
+
+add_kernel_module(
+	NAME pci-fu740
+	NEEDS RISCV
+	SOURCES pci/pci-fu740.cpp
 )

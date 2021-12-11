@@ -4,6 +4,8 @@
 #include <dev/device.h>
 #include <ck/vec.h>
 
+#define LOG(...) PFXLOG(YEL "FDT", __VA_ARGS__)
+
 //! Byte swap int
 static int32_t b2l(int32_t val) {
   val = ((val << 8) & 0xFF00FF00) | ((val >> 8) & 0xFF00FF);
@@ -316,7 +318,7 @@ void dtb::Visitor::visit(dtb::fdt_header *fdt) {
 
 
 int dtb::parse(dtb::fdt_header *fdt) {
-  printk(KERN_INFO "fdt at %p\n", fdt);
+  LOG("fdt at %p\n", fdt);
   global_fdt_header = fdt;
 
 
