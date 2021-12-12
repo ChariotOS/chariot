@@ -2,23 +2,80 @@
 #include <riscv/arch.h>
 #include <riscv/memlayout.h>
 #include <printk.h>
-
+#include <util.h>
 int boot_hart = -1;
+
+
+#define LOG(...) PFXLOG(BLU "riscv,plic", __VA_ARGS__)
+
+/*
+ * Each interrupt source has a priority register associated with it.
+ * We always hardwire it to one in Linux.
+ */
+#define PRIORITY_BASE 0
+#define PRIORITY_PER_ID 4
+
+/*
+ * Each hart context has a vector of interrupt enable bits associated with it.
+ * There's one bit for each interrupt source.
+ */
+#define ENABLE_BASE 0x2000
+#define ENABLE_PER_HART 0x100
+
+
+
+static void plic_toggle(int hart, int hwirq, int priority, bool enable) {
+  off_t enable_base = PLIC + ENABLE_BASE + hart * ENABLE_PER_HART;
+  uint32_t &reg = MREG(enable_base + (hwirq / 32) * 4);
+  uint32_t hwirq_mask = 1 << (hwirq % 32);
+
+	/*
+  printk("plic on %d base = %p\n", hart, enable_base);
+  printk("hart=%d\n", hart);
+  printk("irq=%p\n", hwirq);
+  printk("reg=%p\n", reg);
+  printk("mask=%08x\n", hwirq_mask);
+	*/
+
+  MREG(PLIC + 4 * hwirq) = 7;
+	PLIC_SPRIORITY(hart) = 0;
+
+  if (enable) {
+    reg = reg | hwirq_mask;
+  } else {
+    reg = reg & ~hwirq_mask;
+  }
+}
+
 
 void rv::plic::hart_init(void) {
   int hart = rv::hartid();
-  /* Clear the "supervisor enable" field. This is the register that enables or disables
-   * external interrupts (UART, DISK, ETC) */
-  PLIC_SENABLE(hart) = 0;
+  LOG("Initializing on hart#%d\n", hart);
 
-  /* set this hart's S-mode priority threshold to 0. */
-  PLIC_SPRIORITY(hart) = 0;
-
-  if (boot_hart == -1) {
-    boot_hart = hart;
-  } else {
-    PLIC_SENABLE(rv::hartid()) = PLIC_SENABLE(boot_hart);
+  for (int i = 0; i < 0x1000 / 4; i++) {
+    MREG(PLIC + i * 4) = 7;
   }
+
+
+  (&PLIC_SENABLE(hart))[0] = 0;
+  (&PLIC_SENABLE(hart))[1] = 0;
+  (&PLIC_SENABLE(hart))[2] = 0;
+}
+
+uint32_t rv::plic::pending(void) {
+	/*
+  off_t base = PLIC + 0x1000;
+  for (int i = 0; i < 3; i++) {
+    uint32_t &reg = MREG(base + i * 4);
+    for (int b = 0; b < 32; b++) {
+      printk("%d", (reg >> b) & 0b1);
+    }
+    printk(" ");
+  }
+  printk("\n");
+	*/
+
+  return PLIC_PENDING;
 }
 
 
@@ -33,14 +90,21 @@ void rv::plic::complete(int irq) {
   PLIC_SCLAIM(hart) = irq;
 }
 
-void rv::plic::enable(int irq, int priority) {
-  /* Set the priority register */
-  MREG(PLIC + irq * 4) = priority;
-  /* Enable the irq in the SENABLE register */
-  PLIC_SENABLE(rv::hartid()) |= (1 << irq);
+
+void rv::plic::enable(int hwirq, int priority) {
+  LOG("enable hwirq=%d, priority=%d\n", hwirq, priority);
+  plic_toggle(rv::hartid(), hwirq, priority, true);
+	return;
+
+  off_t enable_base = PLIC + ENABLE_BASE + rv::hartid() * ENABLE_PER_HART;
+  for (int i = 0; i < 3; i++) {
+    uint32_t &reg = MREG(enable_base + i * 4);
+    for (int b = 0; b < 32; b++) {
+      printk("%d", (reg >> b) & 0b1);
+    }
+    printk(" ");
+  }
+  printk("\n");
 }
 
-void rv::plic::disable(int irq) {
-  /* Disable the irq in the SENABLE register */
-  PLIC_SENABLE(rv::hartid()) &= ~(1 << irq);
-}
+void rv::plic::disable(int hwirq) { plic_toggle(rv::hartid(), hwirq, 0, false); }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <types.h>
+
 /*
  * PLIC - platform level interrupt controller
  *
@@ -21,6 +23,7 @@ namespace rv {
     /* Tell the PLIC we've served an IRQ */
     void complete(int irq);
 
+		uint32_t pending(void);
 
     void enable(int irq, int priority = 1);
     void disable(int irq);
