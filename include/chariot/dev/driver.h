@@ -85,5 +85,5 @@ namespace dev {
 
 
 #define driver_init(name, T)                                        \
-  void __driver_init_##T(void) { dev::Driver::add(ck::make_ref<T>()); } \
-  module_init(name, __driver_init_##T);
+  void _MOD_VARNAME(__driver_init)(void) { dev::Driver::add(ck::make_ref<T>()); } \
+  module_init(name, _MOD_VARNAME(__driver_init));

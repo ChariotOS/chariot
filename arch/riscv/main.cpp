@@ -63,9 +63,7 @@ static uint32_t bswap_32(uint32_t __x) { return __x >> 24 | (__x >> 8 & 0xff00) 
 
 void initrd_dump(void *vbuf, size_t size) { hexdump(vbuf, size, true); }
 
-static uint64_t ticks_to_ns(uint64_t ticks) {
-	return (ticks * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND;
-}
+static uint64_t ticks_to_ns(uint64_t ticks) { return (ticks * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND; }
 
 static unsigned long riscv_high_acc_time_func(void) { return ticks_to_ns(read_csr(time)); }
 
@@ -121,6 +119,7 @@ bool start_secondary(int i) {
   auto &sc = rv::get_hstate();
   if (i == sc.hartid) return false;
 
+  LOG("Allocating Stack\n");
   // KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
   // allocate 2 pages for the secondary core
   secondary_core_stack = (uint64_t)malloc(CONFIG_RISCV_BOOTSTACK_SIZE * 4096);
@@ -128,8 +127,11 @@ bool start_secondary(int i) {
 
   second_done = false;
   __sync_synchronize();
+  LOG("Did sync\n");
 
+  LOG("making sbi call...\n");
   auto ret = sbi_call(SBI_EXT_HSM, SBI_EXT_HSM_HART_START, i, secondary_core_startup_sbi, 1);
+  LOG("made\n");
   if (ret.error != SBI_SUCCESS) {
     return false;
   }
@@ -167,21 +169,22 @@ class RISCVHart : public dev::Driver {
 
 extern "C" rv::xsize_t sip_bench();
 void bench(void) {
-	size_t trials = 1000;
-	auto measurements = new uint64_t[trials];
+  size_t trials = 1000;
+  auto measurements = new uint64_t[trials];
   for (int i = 0; i < trials; i++) {
-		measurements[i] = sip_bench();
+    measurements[i] = sip_bench();
   }
 
-	uint64_t sum = 0;
+  uint64_t sum = 0;
   for (int i = 0; i < trials; i++) {
-		sum += measurements[i];
-	}
-	uint64_t avg = sum / trials;
-	printk("Average access latency to SIP CSR: %llu cycles, %lluns. 1000 trials took %llu, %lluns\n", avg, ticks_to_ns(avg), sum, ticks_to_ns(sum));
+    sum += measurements[i];
+  }
+  uint64_t avg = sum / trials;
+  printk("Average access latency to SIP CSR: %llu cycles, %lluns. 1000 trials took %llu, %lluns\n", avg, ticks_to_ns(avg), sum,
+      ticks_to_ns(sum));
 
 
-	delete[] measurements;
+  delete[] measurements;
 }
 
 
@@ -193,13 +196,12 @@ extern uint64_t _bss_end[];
 
 
 void main(int hartid, void *fdt) {
+  // zero the BSS
+  for (uint64_t *ptr = (uint64_t *)p2v(_bss_start); ptr < (uint64_t *)p2v(_bss_end); ptr++) {
+    *ptr = 0;
+  }
 
-	// zero the BSS
-	for (uint64_t *ptr = (uint64_t*)p2v(_bss_start); ptr < (uint64_t*)p2v(_bss_end); ptr++) {
-		*ptr = 0;
-	}
-
-	printk_nolock("Hello, friend!\n");
+  printk_nolock("Hello, friend!\n");
 
   // get the information from SBI right away so we can use it early on
   sbi_early_init();
@@ -229,16 +231,10 @@ void main(int hartid, void *fdt) {
   LOG("Freeing bootup ram %llx:%llx\n", boot_free_start, boot_free_end);
 
 
-
-
-
   /* Tell the device tree to copy the device tree and parse it */
   dtb::parse((dtb::fdt_header *)p2v(rv::get_hstate().dtb));
 
   phys::free_range((void *)boot_free_start, (void *)boot_free_end);
-
-
-	bench();
 
   cpu::Core cpu;
   rv::get_hstate().cpu = &cpu;
@@ -263,7 +259,6 @@ void main(int hartid, void *fdt) {
   }
 
 
-
   off_t dtb_ram_end = dtb_ram_start + dtb_ram_size;
   dtb_ram_start = max(dtb_ram_start, boot_free_end + 4096);
   if (dtb_ram_end - dtb_ram_start > 0) {
@@ -278,11 +273,11 @@ void main(int hartid, void *fdt) {
   cpu::current().id = rv::get_hstate().hartid;
   cpu::current().primary = true;
 
+  arch_enable_ints();
+  sbi_init();
+
   dtb::promote();
 
-  arch_enable_ints();
-
-  sbi_init();
   /* set the timer with sbi :) */
   sbi_set_timer(rv::get_time() + TICK_INTERVAL);
 
@@ -291,16 +286,7 @@ void main(int hartid, void *fdt) {
   time::set_high_accuracy_time_fn(riscv_high_acc_time_func);
   /* set SUM bit in sstatus so kernel can access userspace pages. Also enable floating point */
   write_csr(sstatus, read_csr(sstatus) | (1 << 18) | (1 << 13));
-
   cpu::current().timekeeper = true;
-  /*
-
-cpu::xcall_all(
-[](void *) {
-  printk("hello.\n");
-},
-NULL);
-                  */
 
   assert(sched::init());
   LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
@@ -315,6 +301,8 @@ NULL);
     initialize_builtin_modules();
     LOG("kernel modules initialized\n");
 
+
+    kshell::run();
 
     int mnt_res = vfs::mount("/dev/disk0p1", "/", "ext2", 0, NULL);
     if (mnt_res != 0) {

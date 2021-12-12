@@ -17,10 +17,12 @@
 #define PLIC_PENDING MREG(PLIC + 0x1000)
 #define PLIC_MENABLE(hart) MREG(PLIC + 0x2000 + (hart)*0x100)
 #define PLIC_SENABLE(hart) MREG(PLIC + 0x2080 + (hart)*0x100)
-#define PLIC_MPRIORITY(hart) MREG(PLIC + 0x200000 + (hart)*0x2000)
-#define PLIC_SPRIORITY(hart) MREG(PLIC + 0x201000 + (hart)*0x2000)
-#define PLIC_MCLAIM(hart) MREG(PLI + 0x200004 + (hart)*0x2000)
-#define PLIC_SCLAIM(hart) MREG(PLIC + 0x201004 + (hart)*0x2000)
+#define PLIC_MPRIORITY(hart) MREG(PLIC + 0x201000 + (hart)*0x2000)
+#define PLIC_SPRIORITY(hart) MREG(PLIC + 0x200000 + (hart)*0x2000)
+#define PLIC_MCLAIM(hart) MREG(PLI + 0x201004 + (hart)*0x2000)
+#define PLIC_SCLAIM(hart) MREG(PLIC + 0x200004 + (hart)*0x2000)
+
+
 
 // the kernel expects there to be RAM
 // for use by the kernel and user pages

@@ -548,6 +548,8 @@ void dtb::device_tree::node::dump(int depth) {
 class DTBDevice : public dev::MMIODevice {
  public:
   DTBDevice(dtb::node &node) : dev::MMIODevice(node.address, 0 /* dunno */) {
+		// printk("name: %s, irq: %d\n", node.name, node.irq);
+		interrupt = node.irq;
     for (int i = 0; i < node.ncompat; i++) {
       compat().empend(node.compatible[i]);
     }

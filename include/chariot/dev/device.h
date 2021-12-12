@@ -134,6 +134,9 @@ namespace dev {
 
     off_t address(void) const { return m_address; }
 
+		// if this is -1, we dont know what the interrupt is.
+		int interrupt = -1;
+
    private:
     off_t m_address;
     ck::vec<ck::string> m_compat;

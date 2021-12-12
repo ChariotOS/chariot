@@ -1,173 +1,161 @@
+// Much of this driver was adapted from u-boot
+
 #include <module.h>
 #include <devicetree.h>
 #include <printk.h>
 #include <dev/driver.h>
 #include <dev/device.h>
 #include <device_majors.h>
+#include <dev/sifive/uart.h>
+#include <console.h>
+#include <riscv/arch.h>
+#include <riscv/plic.h>
 
+
+#define UART_TXFIFO_FULL 0x80000000
+#define UART_RXFIFO_EMPTY 0x80000000
+#define UART_RXFIFO_DATA 0x000000ff
+#define UART_TXCTRL_TXEN 0x1
+#define UART_RXCTRL_RXEN 0x1
+
+/* IP register */
+#define UART_IP_RXWM 0x2
 
 
 #define LOG(...) PFXLOG(BLU "sifive-uart", __VA_ARGS__)
 
-// UARTSifiveRegs.ie, ip
-enum {
-  kUartSifiveTxwm = 1 << 0,
-  kUartSifiveRxwm = 1 << 1,
-};
 
-
-struct UARTSifiveRegs {
-  union Txdata {
-    struct {
-      uint32_t data : 8;
-      uint32_t reserved : 23;
-      uint32_t isFull : 1;
-    };
-    uint32_t val;
-  } txdata;
-
-  union Rxdata {
-    struct {
-      uint32_t data : 8;
-      uint32_t reserved : 23;
-      uint32_t isEmpty : 1;
-    };
-    uint32_t val;
-  } rxdata;
-
-  union Txctrl {
-    struct {
-      uint32_t enable : 1;
-      uint32_t nstop : 1;
-      uint32_t reserved1 : 14;
-      uint32_t cnt : 3;
-      uint32_t reserved2 : 13;
-    };
-    uint32_t val;
-  } txctrl;
-
-  union Rxctrl {
-    struct {
-      uint32_t enable : 1;
-      uint32_t reserved1 : 15;
-      uint32_t cnt : 3;
-      uint32_t reserved2 : 13;
-    };
-    uint32_t val;
-  } rxctrl;
-
-  uint32_t ie;  // interrupt enable
-  uint32_t ip;  // interrupt pending
-  uint32_t div;
-  uint32_t unused;
-};
-
-
-/*
- * Config macros
+/**
+ * Find minimum divisor divides in_freq to max_target_hz;
+ * Based on uart driver n SiFive FSBL.
+ *
+ * f_baud = f_in / (div + 1) => div = (f_in / f_baud) - 1
+ * The nearest integer solution requires rounding up as to not exceed
+ * max_target_hz.
+ * div  = ceil(f_in / f_baud) - 1
+ *	= floor((f_in - 1 + f_baud) / f_baud) - 1
+ * This should not overflow as long as (f_in - 1 + f_baud) does not exceed
+ * 2^32 - 1, which is unlikely since we represent frequencies in kHz.
  */
-
-/*
- * SIFIVE_SERIAL_MAX_PORTS: maximum number of UARTs on a device that can
- *                          host a serial console
- */
-#define SIFIVE_SERIAL_MAX_PORTS 8
-
-/*
- * SIFIVE_DEFAULT_BAUD_RATE: default baud rate that the driver should
- *                           configure itself to use
- */
-#define SIFIVE_DEFAULT_BAUD_RATE 115200
-
-/* SIFIVE_SERIAL_NAME: our driver's name that we pass to the operating system */
-#define SIFIVE_SERIAL_NAME "sifive-serial"
-
-/* SIFIVE_TTY_PREFIX: tty name prefix for SiFive serial ports */
-#define SIFIVE_TTY_PREFIX "ttySIF"
-
-/* SIFIVE_TX_FIFO_DEPTH: depth of the TX FIFO (in bytes) */
-#define SIFIVE_TX_FIFO_DEPTH 8
-
-/* SIFIVE_RX_FIFO_DEPTH: depth of the TX FIFO (in bytes) */
-#define SIFIVE_RX_FIFO_DEPTH 8
-
-
-class SifiveUart {
- public:
-  SifiveUart(addr_t base, int64_t clock) : base(base), clock(clock) {
-    uint32_t baud = 115200;
-    uint64_t quotient = (clock + baud - 1) / baud;
-
-    if (quotient == 0)
-      regs()->div = 0;
-    else
-      regs()->div = (uint32_t)(quotient - 1);
-  }
-
-  void put_char(char ch) {
-    while (regs()->txdata.isFull) {
-    }
-    regs()->txdata.val = ch;
-  }
-
-
-  int get_char(bool wait = true) {
-    UARTSifiveRegs::Rxdata data;
-    do {
-      data.val = regs()->rxdata.val;
-    } while (!wait || data.isEmpty);
-
-    return data.isEmpty ? -1 : data.data;
-  }
-
-  inline UARTSifiveRegs *regs() { return (UARTSifiveRegs *)base; }
-
- private:
-  addr_t base;
-  int64_t clock;
-};
-
-
-struct fs::FileOperations sifive_uart_ops = {
-    // .read = sifive_uart_read,
-    // .write = sifive_uart_write,
-    // .ioctl = sifive_uart_ioctl,
-    // .open = sifive_uart_open,
-    // .close = sifive_uart_close,
-    // .poll = sifive_uart_poll,
-};
-
-static struct dev::DriverInfo sifive_uart_driver_info {
-  .name = SIFIVE_SERIAL_NAME, .type = DRIVER_CHAR, .major = MAJOR_SIFIVE_UART,
-
-  .char_ops = &sifive_uart_ops,
-};
-
-
-class SifiveUartDriver : public dev::Driver {
-  ck::vec<ck::box<SifiveUart>> uarts;
-
- public:
-  virtual ~SifiveUartDriver(void) {
-
-	}
-
-  dev::ProbeResult probe(ck::ref<dev::Device> dev) override {
-    if (auto mmio = dev->cast<dev::MMIODevice>()) {
-      if (mmio->is_compat("sifive,uart0")) {
-        LOG("Found device @%08llx\n", mmio->address());
-				auto uart = ck::make_box<SifiveUart>(mmio->address(), 5);
-				uart->put_char('a');
-				uarts.push(move(uart));
-      }
-    }
-    return dev::ProbeResult::Ignore;
-  };
-};
-
-
-void sifive_uart_init(void) {
-  auto driver = ck::make_ref<SifiveUartDriver>();
-  dev::Driver::add(driver);
+static inline unsigned int uart_min_clk_divisor(unsigned long in_freq, unsigned long max_target_hz) {
+  unsigned long quotient = (in_freq + max_target_hz - 1) / (max_target_hz);
+  /* Avoid underflow */
+  if (quotient == 0)
+    return 0;
+  else
+    return quotient - 1;
 }
-// module_init("sifive,uart0", sifive_uart_init);
+
+
+void sifive_uart_interrupt_handle(int irq, reg_t *regs, void *uart) {
+  auto *u = (sifive::Uart *)uart;
+  // u->put_char('a');
+  u->handle_irq();
+}
+
+sifive::Uart::Uart(dev::MMIODevice &mmio) {
+  // the registers are simply at the base
+  regs = (Uart::Regs *)p2v(mmio.address());
+
+
+#define print_reg(name) printk("%7s: %08x\n", #name, regs->name)
+
+
+  // enable transmit and receive
+  regs->txctrl = UART_TXCTRL_TXEN;
+  regs->rxctrl = UART_RXCTRL_RXEN;
+
+  // enable rx interrupt
+  regs->ie = 0b10;
+
+  arch_flush_mmu();
+
+  print_reg(txfifo);
+  print_reg(rxfifo);
+  print_reg(txctrl);
+  print_reg(rxctrl);
+  print_reg(ie);
+  print_reg(ip);
+  print_reg(div);
+
+
+  irq::install(mmio.interrupt, sifive_uart_interrupt_handle, "sifive,uart0", (void *)this);
+
+  for (int i = 0; i < 10; i++) {
+    put_char('a' + i);
+  }
+  put_char('\n');
+
+  /*
+while (1) {
+arch_enable_ints();
+set_csr(sie, SIE_SEIE);
+
+auto sip = read_csr(sip);
+printk("s:%d, t:%d, e: %d ", !!(sip & SIE_SSIE), !!(sip & SIE_STIE), !!(sip & SIE_SEIE));
+rv::plic::pending();
+
+arch_halt();
+}
+  */
+}
+
+void sifive::Uart::put_char(char c) {
+  int iters = 0;
+  while (regs->txfifo & UART_TXFIFO_FULL) {
+  }
+
+  regs->txfifo = c;
+  // printk("iters = %d\n", iters);
+}
+
+
+int sifive::Uart::get_char(bool wait) {
+  while (1) {
+    uint32_t r = regs->rxfifo;
+
+    if (r & UART_RXFIFO_EMPTY) {
+      if (!wait) {
+        return -1;
+      }
+      continue;
+    }
+
+    return r & 0xFF;
+  }
+  return -1;
+}
+
+void sifive::Uart::setbrg(unsigned long clock, unsigned long baud) {
+  // set the divider for the clock
+  regs->div = uart_min_clk_divisor(clock, baud);
+}
+
+
+
+void sifive::Uart::handle_irq(void) {
+  while (1) {
+    uint32_t r = regs->rxfifo;
+    if (r & UART_RXFIFO_EMPTY) {
+      break;
+    }
+    char buf = r & 0xFF;
+    console::feed(1, &buf);
+  }
+}
+
+
+dev::ProbeResult sifive::UartDriver::probe(ck::ref<dev::Device> dev) {
+  if (auto mmio = dev->cast<dev::MMIODevice>()) {
+    if (mmio->is_compat("sifive,uart0")) {
+      LOG("Found device @%08llx. irq=%d\n", mmio->address(), mmio->interrupt);
+
+      auto uart = ck::make_box<sifive::Uart>(*mmio);
+
+      uarts.push(move(uart));
+    }
+  }
+  return dev::ProbeResult::Ignore;
+};
+
+driver_init("sifive,uart0", sifive::UartDriver);
