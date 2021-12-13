@@ -5,6 +5,8 @@
 #include <types.h>
 #include <ck/vec.h>
 
+
+
 namespace dtb {
 
 
@@ -36,15 +38,17 @@ namespace dtb {
     struct dtb::node *parent;
 
 
-		int ncompat;
-		char *compatible[DTB_MAX_COMPATIBLE];
-		// the local copy of the compatible buffer.
+    int ncompat;
+    char *compatible[DTB_MAX_COMPATIBLE];
+    // the local copy of the compatible buffer.
     char compat[128];
     bool is_device;
 
     short address_cells;
     short size_cells;
     short irq;
+
+    off_t fdt_offset;
 
     dtb::reg reg;
 
@@ -65,54 +69,14 @@ namespace dtb {
   };
 
 
+
   /* Return the number of devices nodes found */
   int parse(dtb::fdt_header *hdr);
   /* Walk the devices with a callback. Continue if the callback returns true */
   void walk_devices(bool (*callback)(dtb::node *));
 
 
-	// promote the boot representation to the dev::Device representation
-	void promote();
-
-  struct device_tree {
-    struct node {
-      ck::string name;
-      struct node *parent = NULL;
-
-      /*
-       * Some of the standard props
-       * source:
-       * https://devicetree-specification.readthedocs.io/en/v0.2/devicetree-basics.html#sect-property-values
-       */
-      ck::map<ck::string, ck::vec<uint8_t>> props;
-
-      ck::vec<struct node *> children;
-
-      inline void set_prop(ck::string name, int vlen, void *value) {
-        ck::vec<uint8_t> v;
-        for (int i = 0; i < vlen; i++)
-          v.push(((uint8_t *)value)[i]);
-        props[name] = move(v);
-      }
-
-      inline struct node *spawn(const char *name) {
-        auto n = new node;
-        n->name = name;
-        n->parent = this;
-        children.push(n);
-        return n;
-      }
-
-      void dump(int depth = 0);
-    };
-
-    device_tree(struct fdt_header *fdt);
-    ~device_tree(void);
-
-    inline void dump(void) { root.dump(); }
-
-    struct fdt_header *fdt = NULL;
-    struct node root;
-  };
+  // promote the boot representation to the dev::Device representation
+  void promote();
 
 };  // namespace dtb

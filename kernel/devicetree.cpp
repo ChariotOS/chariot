@@ -42,7 +42,7 @@ struct be32p_t {
 #define FDT_T_INT 2
 #define FDT_T_EMPTY 4
 
-#define FDT_NUM_NODES 64
+#define FDT_NUM_NODES 75
 
 static dtb::fdt_header *global_fdt_header = NULL;
 static dtb::node devices[FDT_NUM_NODES];
@@ -77,6 +77,53 @@ static dtb::node *alloc_device(const char *name) {
   return dev;
 }
 
+
+void dtb::walk_devices(bool (*callback)(dtb::node *)) {
+  for (int i = 0; i < next_device; i++) {
+    if (devices[i].is_device) {
+      if (!callback(&devices[i])) break;
+    }
+  }
+}
+
+static void spaces(int n) {
+  for (int i = 0; i < n; i++)
+    printk("  ");
+}
+
+void dump_dtb(dtb::node *node, int depth = 0) {
+  spaces(depth);
+  printk("%s@%llx\n", node->name, node->address);
+  if (node->address_cells != -1) {
+    spaces(depth);
+    printk("- #address-cells: %d\n", node->address_cells);
+  }
+  if (node->size_cells != -1) {
+    spaces(depth);
+    printk("- #size-cells: %d\n", node->size_cells);
+  }
+
+  spaces(depth);
+
+  printk("- compatible:");
+  for (int i = 0; i < node->ncompat; i++) {
+    printk(" \"%s\"", node->compatible[i]);
+  }
+  printk("\n");
+
+
+  if (node->is_device) {
+    spaces(depth);
+    printk("- reg: %p %zu\n", node->reg.address, node->reg.length);
+  }
+  for (auto *cur = node->children; cur != NULL; cur = cur->sibling) {
+    dump_dtb(cur, depth + 1);
+  }
+}
+
+
+
+
 #define STREQ(s1, s2) (!strcmp((s1), (s2)))
 
 static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *val) {
@@ -85,7 +132,6 @@ static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *v
     node->address_cells = *be32p_t((uint32_t *)val);
     return;
   }
-
   if (STREQ(name, "#size-cells")) {
     node->size_cells = *be32p_t((uint32_t *)val);
     return;
@@ -142,193 +188,14 @@ static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *v
 
     return;
   }
-  // printk("   %s@%llx\t%s = %p\n", node->name, node->address, name, val);
 }
 
 
-void dtb::walk_devices(bool (*callback)(dtb::node *)) {
-  for (int i = 0; i < next_device; i++) {
-    if (devices[i].is_device) {
-      if (!callback(&devices[i])) break;
-    }
-  }
-}
-
-static void spaces(int n) {
-  for (int i = 0; i < n; i++)
-    printk("  ");
-}
-
-void dump_dtb(dtb::node *node, int depth = 0) {
-  spaces(depth);
-  printk("%s@%llx\n", node->name, node->address);
-  if (node->address_cells != -1) {
-    spaces(depth);
-    printk("- #address-cells: %d\n", node->address_cells);
-  }
-  if (node->size_cells != -1) {
-    spaces(depth);
-    printk("- #size-cells: %d\n", node->size_cells);
-  }
-
-  spaces(depth);
-
-  printk("- compatible:");
-  for (int i = 0; i < node->ncompat; i++) {
-    printk(" \"%s\"", node->compatible[i]);
-  }
-  printk("\n");
-
-
-  if (node->is_device) {
-    spaces(depth);
-    printk("- reg: %p %zu\n", node->reg.address, node->reg.length);
-  }
-  for (auto *cur = node->children; cur != NULL; cur = cur->sibling) {
-    dump_dtb(cur, depth + 1);
-  }
-}
-
-
-
-namespace dtb {
-
-
-  struct prop {
-    const char *name;
-    const char *value;
-  };
-
-  class prop_iter {
-   public:
-    prop_iter(be32p_t pos) : start(pos), pos(pos){};
-
-
-    prop_iter &operator++() {
-      // m_ptr++;
-      return *this;
-    }
-
-    prop operator*() const {
-      // if (*pos == )
-      return {NULL, NULL};
-    }
-
-
-   private:
-    be32p_t start;
-
-    be32p_t pos;
-  };
-
-  class Node {
-   public:
-    Node(const char *name, be32p_t pos, int depth) : pos(pos), m_name(name), m_depth(depth){};
-
-
-    auto name(void) const { return m_name; }
-    auto depth(void) const { return m_depth; }
-
-    prop_iter props(void) { return prop_iter(pos); }
-
-   private:
-    be32p_t pos;
-    const char *m_name;
-    uint32_t m_depth;
-  };
-
-  class Visitor {
-   public:
-    virtual void visit_node(dtb::Node &node) {
-      // for (auto prop : node.props()) {
-      // }
-      for (int i = 0; i < node.depth(); i++)
-        printk("   ");
-      printk("visit %s\n", node.name());
-    }
-
-    void visit(dtb::fdt_header *fdt);
-
-   private:
-  };
-}  // namespace dtb
-
-
-
-void dtb::Visitor::visit(dtb::fdt_header *fdt) {
-  be32p_t sp = (uint32_t *)((off_t)fdt + b2l(fdt->off_dt_struct));
-  const char *strings = (const char *)((off_t)fdt + b2l(fdt->off_dt_strings));
-  int depth = 0;
-
-
-  int continue_at = -1;
-
-  while (*sp != FDT_END) {
-    uint32_t op = *sp;
-    /* sp points to the next word */
-    sp++;
-
-    uint32_t len;
-    uint32_t nameoff;
-    const char *name;
-    const char *valptr = NULL;
-    char value[256];
-
-    switch (op) {
-      case FDT_BEGIN_NODE: {
-        name = (const char *)sp.get();
-
-        len = round_up(strlen(name) + 1, 4) / 4;
-        for (int i = 0; i < len; i++)
-          sp++;
-        depth++;
-
-        dtb::Node n(name, sp, depth);
-        this->visit_node(n);
-
-        // printk("node name %s\n", name);
-
-        break;
-      }
-      case FDT_END_NODE:
-        depth--;
-        break;
-
-      case FDT_PROP:
-        len = *sp;
-        sp++;
-        nameoff = *sp;
-        sp++;
-        valptr = (const char *)sp.get();
-        for (int i = 0; i < round_up(len, 4) / 4; i++)
-          sp++;
-
-        break;
-
-      case FDT_NOP:
-        // printk("nop\n");
-        break;
-
-      case FDT_END:
-        // printk("end\n");
-        break;
-    }
-  }
-}
 
 
 int dtb::parse(dtb::fdt_header *fdt) {
-  LOG("fdt at %p\n", fdt);
+  LOG("Parsing device tree at %p, size: %zu\n", fdt, b2l(fdt->totalsize));
   global_fdt_header = fdt;
-
-
-  // dtb::Visitor v;
-  // v.visit(fdt);
-
-
-  // sys::shutdown();
-  // return 0;
-
 
   assert(next_device == 0);
   auto *root = alloc_device("");
@@ -339,9 +206,11 @@ int dtb::parse(dtb::fdt_header *fdt) {
 
   be32p_t sp = (uint32_t *)((off_t)fdt + b2l(fdt->off_dt_struct));
   const char *strings = (const char *)((off_t)fdt + b2l(fdt->off_dt_strings));
+
   int depth = 0;
 
   while (*sp != FDT_END) {
+    off_t off = ((off_t)sp.get() - (off_t)fdt);
     uint32_t op = *sp;
     /* sp points to the next word */
     sp++;
@@ -352,7 +221,7 @@ int dtb::parse(dtb::fdt_header *fdt) {
     const char *valptr = NULL;
 
     switch (op) {
-      case FDT_BEGIN_NODE:
+      case FDT_BEGIN_NODE: {
         name = (const char *)sp.get();
 
         len = round_up(strlen(name) + 1, 4) / 4;
@@ -361,6 +230,7 @@ int dtb::parse(dtb::fdt_header *fdt) {
         new_node = alloc_device(name);
 
         new_node->parent = node;
+        new_node->fdt_offset = off;
 
         new_node->sibling = node->children;
         node->children = new_node;
@@ -371,6 +241,7 @@ int dtb::parse(dtb::fdt_header *fdt) {
         depth++;
 
         break;
+      }
       case FDT_END_NODE:
         depth--;
         node = node->parent;
@@ -434,135 +305,165 @@ static int get_fdt_prop_type(const char *c) {
   return -1;
 }
 
-dtb::device_tree::device_tree(struct dtb::fdt_header *hdr) {
-  fdt = (struct fdt_header *)malloc(b2l(hdr->totalsize));
-  memcpy(fdt, hdr, b2l(hdr->totalsize));
-
-  be32p_t sp = (uint32_t *)((off_t)fdt + b2l(fdt->off_dt_struct));
-  const char *strings = (const char *)((off_t)fdt + b2l(fdt->off_dt_strings));
-  int depth = 0;
-
-  auto *node = &root;
-
-  while (*sp != FDT_END) {
-    uint32_t op = *sp;
-    /* sp points to the next word */
-    sp++;
-
-    uint32_t len;
-    uint32_t nameoff;
-    const char *name;
-    const char *valptr = NULL;
-    char value[256];
-
-    switch (op) {
-      case FDT_BEGIN_NODE:
-        name = (const char *)sp.get();
-
-        len = round_up(strlen(name) + 1, 4) / 4;
-        for (int i = 0; i < len; i++)
-          sp++;
-        node = node->spawn(name);
-        depth++;
-
-        break;
-      case FDT_END_NODE:
-        depth--;
-        node = node->parent;
-        break;
-
-      case FDT_PROP:
-        len = *sp;
-        sp++;
-        nameoff = *sp;
-        sp++;
-        valptr = (const char *)sp.get();
-        node->set_prop(strings + nameoff, len, (uint8_t *)valptr);
-
-        for (int i = 0; i < round_up(len, 4) / 4; i++)
-          sp++;
-
-        break;
-
-      case FDT_NOP:
-        // printk("nop\n");
-        break;
-
-      case FDT_END:
-        // printk("end\n");
-        break;
-    }
-  }
-}
-
-
-dtb::device_tree::~device_tree(void) { free((void *)fdt); }
-
-void dtb::device_tree::node::dump(int depth) {
-  for (int i = 0; i < depth; i++)
-    printk("    ");
-  printk("%s {\n", name.get());
-
-  for (auto &propkv : props) {
-    for (int i = 0; i < depth + 1; i++)
-      printk("    ");
-
-    void *raw = (void *)propkv.value.data();
-    auto len = propkv.value.size();
-
-    printk("%s", propkv.key.get());
-    switch (get_fdt_prop_type(propkv.key.get())) {
-      case FDT_T_STRING:
-        printk(" = '%s'", (const char *)raw);
-        break;
-
-      case FDT_T_INTARR:
-        for (int i = 0; i < len / 4; i++) {
-          printk(" = <0x%x>", b2l(*((uint32_t *)raw) + i));
-        }
-        break;
-      case FDT_T_INT:
-        printk(" = <0x%x>", b2l(*(uint32_t *)raw));
-        break;
-
-      case FDT_T_EMPTY:
-        break;
-      default:
-        printk(" = ?");
-        break;
-    }
-
-    printk("\n");
-  }
-
-
-  for (auto *c : children)
-    c->dump(depth + 1);
-  for (int i = 0; i < depth; i++)
-    printk("    ");
-  printk("};\n\n");
-}
-
-
 
 class DTBDevice : public dev::MMIODevice {
  public:
   DTBDevice(dtb::node &node) : dev::MMIODevice(node.address, 0 /* dunno */) {
-		// printk("name: %s, irq: %d\n", node.name, node.irq);
-		interrupt = node.irq;
+    // printk("=== name: %s, irq: %d, off: %d ===\n", node.name, node.irq, node.fdt_offset);
+    interrupt = node.irq;
     for (int i = 0; i < node.ncompat; i++) {
       compat().empend(node.compatible[i]);
     }
+
+
+    be32p_t sp = (uint32_t *)((off_t)global_fdt_header + node.fdt_offset);
+    const char *strings = (const char *)((off_t)global_fdt_header + b2l(global_fdt_header->off_dt_strings));
+    int depth = 0;
+    bool done = false;
+
+    while (!done && *sp != FDT_END) {
+      uint32_t op = *sp;
+      /* sp points to the next word */
+      sp++;
+
+      uint32_t len;
+      uint32_t nameoff;
+      const char *name;
+      const char *valptr = NULL;
+
+      switch (op) {
+        case FDT_BEGIN_NODE: {
+          name = (const char *)sp.get();
+          // spaces(depth);
+          // printk("%s {\n", name);
+          len = round_up(strlen(name) + 1, 4) / 4;
+          for (int i = 0; i < len; i++)
+            sp++;
+          depth++;
+          break;
+        }
+        case FDT_END_NODE:
+          depth--;
+
+          // spaces(depth);
+          // printk("}\n");
+          if (depth == 0) {
+            done = true;
+          }
+          break;
+
+        case FDT_PROP: {
+          len = *sp;
+          sp++;
+          nameoff = *sp;
+          sp++;
+          valptr = (const char *)sp.get();
+          if (depth == 1) {
+            // spaces(depth);
+            // printk("%s: %db\n", strings + nameoff, len);
+            parse_prop(strings + nameoff, len, (uint8_t *)valptr);
+          }
+          for (int i = 0; i < round_up(len, 4) / 4; i++)
+            sp++;
+
+          break;
+        }
+
+        case FDT_NOP:
+          break;
+
+        case FDT_END:
+          break;
+
+
+        default:
+          printk("unhandled op %08x\n", op);
+          break;
+      }
+    }
+    /*
+for (auto &[name, prop] : m_props) {
+printk("%s:\n", name.get());
+hexdump((void *)prop.data.data(), prop.data.size(), true);
+}
+printk("\n\n");
+    */
   }
+
   virtual ~DTBDevice(void) {}
+
+
+
+  void parse_prop(const char *name, int len, uint8_t *val) {
+    {
+      dev::DeviceProperty prop;
+      prop.type = dev::DeviceProperty::Unknown;
+      prop.data.push(val, len);
+      m_props.set(name, move(prop));
+    }
+
+    if (STREQ(name, "#address-cells")) {
+      addr_cells = *be32p_t((uint32_t *)val);
+      return;
+    }
+    if (STREQ(name, "#size-cells")) {
+      size_cells = *be32p_t((uint32_t *)val);
+      return;
+    }
+		/*
+    if (STREQ(name, "interrupts")) {
+      this->interrupt = __builtin_bswap32(*(uint32_t *)val);
+      return;
+    }
+		*/
+
+    if (STREQ(name, "reg")) {
+      /* TODO: It's unsafe to assume 64 bit here... But since we are 64bit only... (for now) */
+      auto *cells = (unsigned long *)val;
+
+      // printk("%s: addr %d, size %d\n", node->name, addr_cells, size_cells);
+      if (addr_cells > 0) {
+        if (addr_cells == 1) reg.address = __builtin_bswap32(*(uint32_t *)val);
+        if (addr_cells == 2) reg.address = __builtin_bswap64(*(uint64_t *)val);
+      }
+      val += addr_cells * 4;
+
+      if (size_cells > 0) {
+        if (size_cells == 1) reg.length = __builtin_bswap32(*(uint32_t *)val);
+        if (size_cells == 2) reg.length = __builtin_bswap64(*(uint64_t *)val);
+      }
+      val += size_cells * 4;
+
+      return;
+    }
+
+    if (STREQ(name, "compatible")) {
+      // we handle this elsewhere.
+      return;
+    }
+  }
+
+
+  short addr_cells;
+  short size_cells;
+  dtb::reg reg;
+  ck::ref<DTBDevice> parent;
 };
 
 
 
 void dtb::promote(void) {
+  // copy the device tree to a place that won't be stomped on by the memory allocator
+  auto fdt = (struct fdt_header *)malloc(b2l(global_fdt_header->totalsize));
+  memcpy(fdt, global_fdt_header, b2l(global_fdt_header->totalsize));
+  global_fdt_header = fdt;
+
+  // hexdump(fdt, b2l(fdt->totalsize), true);
+
   dtb::walk_devices([](dtb::node *node) -> bool {
     if (strlen(node->name) == 0) return true;
-    dev::Device::add(node->name, ck::make_ref<DTBDevice>(*node));
+    auto dev = ck::make_ref<DTBDevice>(*node);
+    dev::Device::add(node->name, dev);
     return true;
   });
 }
