@@ -8,6 +8,7 @@
 #include <syscall.h>
 #include <types.h>
 #include <module.h>
+#include <util.h>
 
 int processor_count = 0;
 
@@ -80,7 +81,10 @@ void cpu::run_pending_xcalls(void) {
   memset(&p.xcall_command, 0, sizeof(p.xcall_command));
   core().xcall_lock.unlock();
 
-  if (cmd.fn == nullptr) panic("xcall null!\n");
+  if (cmd.fn == nullptr) {
+		printk("xcall null!\n");
+		return;
+	}
   cmd.fn(cmd.arg);
   if (cmd.count != NULL) {
     __atomic_fetch_sub(cmd.count, 1, __ATOMIC_ACQ_REL);
@@ -105,7 +109,6 @@ void cpu::xcall(int core, xcall_t func, void *arg) {
     c->prep_xcall(func, arg, &count);
   }
 
-
   arch_deliver_xcall(core);
 
   do {
@@ -117,42 +120,42 @@ void cpu::xcall(int core, xcall_t func, void *arg) {
 
 
 ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
-  int count = 100000;
+  int count = 1000;
   auto *measurements = new uint64_t[count];
   printk("running xcall benchmark from %d\n", core_id());
 
 
-    cpu::each([&](cpu::Core *c) {
-      int target_id = c->id;
-      for (int i = 0; i < count; i++) {
-        auto start = arch_read_timestamp();
-        cpu::xcall(
-            target_id,
-            [](void *arg) {
-            },
-            NULL);
+  cpu::each([&](cpu::Core *c) {
+    int target_id = c->id;
+    for (int i = 0; i < count; i++) {
+      auto start = arch_read_timestamp();
+      cpu::xcall(
+          target_id,
+          [](void *arg) {
+          },
+          NULL);
 
-        auto end = arch_read_timestamp();
-        // printk("%d -> %d %lu cycles\n", core_id(), target_id, end - start);
-        measurements[i] = end - start;
-      }
+      auto end = arch_read_timestamp();
+      // printk("%d -> %d %lu cycles\n", core_id(), target_id, end - start);
+      measurements[i] = end - start;
+    }
 
-      uint64_t sum = 0;
-      uint64_t min = ~0;
-      uint64_t max = 0;
+    uint64_t sum = 0;
+    uint64_t min = ~0;
+    uint64_t max = 0;
 
-      for (int i = 0; i < count; i++) {
-        auto m = measurements[i];
-        sum += m;
-        if (m < min) min = m;
-        if (m > max) max = m;
-      }
+    for (int i = 0; i < count; i++) {
+      auto m = measurements[i];
+      sum += m;
+      if (m < min) min = m;
+      if (m > max) max = m;
+    }
 
-      uint64_t avg = sum / count;
-      uint64_t ns = arch_timestamp_to_ns(max);
+    uint64_t avg = sum / count;
+    uint64_t ns = arch_timestamp_to_ns(max);
 
-      printk("%d -> %d avg/min/max: %lu/%lu/%lu (max %lu nanoseconds)\n", core_id(), target_id, avg, min, max, ns);
-    });
+    printk("%d -> %d avg/min/max: %lu/%lu/%lu (max %lu nanoseconds)\n", core_id(), target_id, avg, min, max, ns);
+  });
 
   delete[] measurements;
 
@@ -167,8 +170,9 @@ ksh_def("cores", "dump cpu information") {
     uint64_t hz = cpu->kstat.tsc_per_tick * cpu->ticks_per_second;
     printk(" %llumhz", hz / 1000 / 1000);
 
+    unsigned long total_ticks = cpu->kstat.user_ticks + cpu->kstat.kernel_ticks + cpu->kstat.idle_ticks;
 
-    printk(" sched:{u:%llu,k:%llu,i:%llu}", cpu->kstat.user_ticks, cpu->kstat.kernel_ticks, cpu->kstat.idle_ticks);
+    printk(" sched:{u:%llu,k:%llu,i:%llu,total:%llu}", cpu->kstat.user_ticks, cpu->kstat.kernel_ticks, cpu->kstat.idle_ticks, total_ticks);
     printk(" ticks:%llu", cpu->ticks_per_second);
     printk(" t:%d", cpu->timekeeper);
 

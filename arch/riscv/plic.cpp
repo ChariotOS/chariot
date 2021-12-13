@@ -3,6 +3,7 @@
 #include <riscv/memlayout.h>
 #include <printk.h>
 #include <util.h>
+#include <cpu.h>
 int boot_hart = -1;
 
 
@@ -29,16 +30,16 @@ static void plic_toggle(int hart, int hwirq, int priority, bool enable) {
   uint32_t &reg = MREG(enable_base + (hwirq / 32) * 4);
   uint32_t hwirq_mask = 1 << (hwirq % 32);
 
-	/*
-  printk("plic on %d base = %p\n", hart, enable_base);
-  printk("hart=%d\n", hart);
-  printk("irq=%p\n", hwirq);
-  printk("reg=%p\n", reg);
-  printk("mask=%08x\n", hwirq_mask);
-	*/
+  /*
+printk("plic on %d base = %p\n", hart, enable_base);
+printk("hart=%d\n", hart);
+printk("irq=%p\n", hwirq);
+printk("reg=%p\n", reg);
+printk("mask=%08x\n", hwirq_mask);
+  */
 
   MREG(PLIC + 4 * hwirq) = 7;
-	PLIC_SPRIORITY(hart) = 0;
+  PLIC_SPRIORITY(hart) = 0;
 
   if (enable) {
     reg = reg | hwirq_mask;
@@ -52,10 +53,10 @@ void rv::plic::hart_init(void) {
   int hart = rv::hartid();
   LOG("Initializing on hart#%d\n", hart);
 
+
   for (int i = 0; i < 0x1000 / 4; i++) {
     MREG(PLIC + i * 4) = 7;
   }
-
 
   (&PLIC_SENABLE(hart))[0] = 0;
   (&PLIC_SENABLE(hart))[1] = 0;
@@ -63,17 +64,17 @@ void rv::plic::hart_init(void) {
 }
 
 uint32_t rv::plic::pending(void) {
-	/*
-  off_t base = PLIC + 0x1000;
-  for (int i = 0; i < 3; i++) {
-    uint32_t &reg = MREG(base + i * 4);
-    for (int b = 0; b < 32; b++) {
-      printk("%d", (reg >> b) & 0b1);
-    }
-    printk(" ");
-  }
-  printk("\n");
-	*/
+  /*
+off_t base = PLIC + 0x1000;
+for (int i = 0; i < 3; i++) {
+uint32_t &reg = MREG(base + i * 4);
+for (int b = 0; b < 32; b++) {
+printk("%d", (reg >> b) & 0b1);
+}
+printk(" ");
+}
+printk("\n");
+  */
 
   return PLIC_PENDING;
 }
@@ -94,7 +95,7 @@ void rv::plic::complete(int irq) {
 void rv::plic::enable(int hwirq, int priority) {
   LOG("enable hwirq=%d, priority=%d\n", hwirq, priority);
   plic_toggle(rv::hartid(), hwirq, priority, true);
-	return;
+  return;
 
   off_t enable_base = PLIC + ENABLE_BASE + rv::hartid() * ENABLE_PER_HART;
   for (int i = 0; i < 3; i++) {

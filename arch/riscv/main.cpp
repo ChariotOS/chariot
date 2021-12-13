@@ -91,6 +91,8 @@ extern "C" void secondary_entry(int hartid) {
   rv::get_hstate().cpu = &cpu;
   cpu::seginit(&cpu, NULL);
   cpu::current().primary = false;
+	
+
 
   /* Initialize the platform level interrupt controller for this HART */
   rv::plic::hart_init();
@@ -119,7 +121,6 @@ bool start_secondary(int i) {
   auto &sc = rv::get_hstate();
   if (i == sc.hartid) return false;
 
-  LOG("Allocating Stack\n");
   // KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
   // allocate 2 pages for the secondary core
   secondary_core_stack = (uint64_t)malloc(CONFIG_RISCV_BOOTSTACK_SIZE * 4096);
@@ -127,11 +128,8 @@ bool start_secondary(int i) {
 
   second_done = false;
   __sync_synchronize();
-  LOG("Did sync\n");
 
-  LOG("making sbi call...\n");
   auto ret = sbi_call(SBI_EXT_HSM, SBI_EXT_HSM_HART_START, i, secondary_core_startup_sbi, 1);
-  LOG("made\n");
   if (ret.error != SBI_SUCCESS) {
     return false;
   }
@@ -149,6 +147,12 @@ class RISCVHart : public dev::Driver {
   dev::ProbeResult probe(ck::ref<dev::Device> dev) override {
     if (auto mmio = dev->cast<dev::MMIODevice>()) {
       if (mmio->is_compat("riscv")) {
+        auto status = mmio->get_prop_string("status");
+
+        if (status.has_value()) {
+          if (status.unwrap() == "disabled") return dev::ProbeResult::Ignore;
+        }
+
         auto hartid = mmio->address();
         if (hartid != rv::get_hstate().hartid) {
           LOG("found hart %d\n", mmio->address());
@@ -206,6 +210,7 @@ void main(int hartid, void *fdt) {
   // get the information from SBI right away so we can use it early on
   sbi_early_init();
 
+
   /*
    * Machine mode passes us the scratch structure through
    * the thread pointer register. We need to then move it
@@ -240,6 +245,9 @@ void main(int hartid, void *fdt) {
   rv::get_hstate().cpu = &cpu;
 
   cpu::seginit(&cpu, NULL);
+
+
+	bench();
 
   dtb::walk_devices([](dtb::node *node) -> bool {
     if (!strcmp(node->name, "memory")) {
@@ -292,8 +300,6 @@ void main(int hartid, void *fdt) {
   LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
 
 
-  // add the hart driver
-  dev::Driver::add(ck::make_ref<RISCVHart>());
 
 
   sched::proc::create_kthread("main task", [](void *) -> int {
@@ -301,6 +307,8 @@ void main(int hartid, void *fdt) {
     initialize_builtin_modules();
     LOG("kernel modules initialized\n");
 
+    // add the hart driver to start other cores
+    dev::Driver::add(ck::make_ref<RISCVHart>());
 
     kshell::run();
 

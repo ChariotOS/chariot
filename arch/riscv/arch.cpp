@@ -9,6 +9,8 @@
 #include <util.h>
 #include <riscv/paging.h>
 
+static unsigned long riscv_timebase = CONFIG_RISCV_CLOCKS_PER_SECOND;
+
 extern "C" void rv_enter_userspace(rv::regs *sp);
 
 void arch_thread_create_callback() {
@@ -95,9 +97,9 @@ unsigned long arch_read_timestamp(void) {
 
 
 
-unsigned long arch_ns_to_timestamp(uint64_t ns) { return ((ns * core().cycles_per_second) / 1000000000ULL); }
+unsigned long arch_ns_to_timestamp(uint64_t ns) { return ((ns * riscv_timebase) / 1000000000ULL); }
 
-unsigned long arch_timestamp_to_ns(uint64_t cycles) { return (cycles * 1000000000ULL) / core().cycles_per_second; }
+unsigned long arch_timestamp_to_ns(uint64_t cycles) { return (cycles * 1000000000ULL) / riscv_timebase; }
 
 
 
@@ -154,6 +156,5 @@ void arch::irq::disable(int num) { rv::plic::disable(num); }
 
 void arch_deliver_xcall(int core) {
   unsigned long mask = (core == -1) ? ~0 : (1 << core);
-  // printk_nolock("deliver xcall: %d %p\n", core, mask);
   sbi_send_ipis(&mask);
 }

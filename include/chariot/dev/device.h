@@ -3,6 +3,8 @@
 
 #include <ck/ptr.h>
 #include <ck/string.h>
+#include <ck/option.h>
+#include <ck/map.h>
 #include <types.h>
 
 /**
@@ -30,6 +32,13 @@ namespace dev {
   enum DeviceType { PCI, MMIO, Unknown };
   enum RemovalReason { HotPlug, Magic /* idk lol */ };
 
+
+  struct DeviceProperty {
+    enum Type { Unknown, String, Integer };
+    Type type;
+    ck::vec<uint8_t> data;
+  };
+
   // An abstract Device. You need to cast it to another kind
   // of device (PCIDevice / MMIODevice)
   class Device : public ck::refcounted<Device> {
@@ -37,12 +46,20 @@ namespace dev {
     ck::string m_name;
     bool m_active = false;
 
+   protected:
+    ck::map<ck::string, DeviceProperty> m_props;
+
    public:
     Device(DeviceType t);
 
     static void add(ck::string name, ck::ref<Device>);
     static void remove(ck::ref<Device>, RemovalReason reason = HotPlug);
     static auto all(void) -> ck::vec<ck::ref<Device>>;
+
+
+    void add_property(ck::string name, DeviceProperty &&prop);
+    ck::option<ck::string> get_prop_string(const ck::string &name);
+    ck::option<uint64_t> get_prop_int(const ck::string &name);
 
     // only registered devices can have names. Register it before calling this.
     ck::string name(void) const { return m_name; }
@@ -134,8 +151,8 @@ namespace dev {
 
     off_t address(void) const { return m_address; }
 
-		// if this is -1, we dont know what the interrupt is.
-		int interrupt = -1;
+    // if this is -1, we dont know what the interrupt is.
+    int interrupt = -1;
 
    private:
     off_t m_address;

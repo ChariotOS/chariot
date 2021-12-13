@@ -25,25 +25,8 @@ struct sbiret sbi_generic_call_2(unsigned long extension, unsigned long function
 
 bool sbi_probe_extension(unsigned long extension) { return sbi_call(SBI_PROBE_EXTENSION, extension).value != 0; }
 
-void sbi_set_timer(uint64_t stime_value) {
-  // use the new IPI extension
-  if (likely(sbi_ext_present(SBI_EXTENSION_TIMER))) {
-    sbi_call(SBI_EXT_TIMER_SIG, 0, stime_value);
-  } else {
-    sbi_call(SBI_SET_TIMER, stime_value);
-  }
-}
-
-void sbi_send_ipis(const unsigned long *hart_mask) {
-  // use the new IPI extension
-  if (likely(sbi_ext_present(SBI_EXTENSION_IPI))) {
-    sbi_call(SBI_EXT_IPI_SIG, 0, *hart_mask, -1);
-  } else {
-    // legacy ipi call
-    sbi_call(SBI_SEND_IPI, hart_mask);
-  }
-}
-
+void sbi_set_timer(uint64_t stime_value) { sbi_call(SBI_SET_TIMER, stime_value); }
+void sbi_send_ipis(const unsigned long *hart_mask) { sbi_call(SBI_SEND_IPI, hart_mask); }
 void sbi_clear_ipi(void) { panic("TODO: clear sip.SSIP here!\n"); }
 
 /*
