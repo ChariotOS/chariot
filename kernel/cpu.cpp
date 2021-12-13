@@ -149,11 +149,7 @@ ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
       }
 
       uint64_t avg = sum / count;
-      uint64_t ns = 0;
-
-#ifdef CONFIG_X86
-      ns = core().apic.cycles_to_ns(max);
-#endif
+      uint64_t ns = arch_timestamp_to_ns(max);
 
       printk("%d -> %d avg/min/max: %lu/%lu/%lu (max %lu nanoseconds)\n", core_id(), target_id, avg, min, max, ns);
     });
