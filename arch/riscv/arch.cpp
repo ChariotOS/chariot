@@ -94,6 +94,14 @@ unsigned long arch_read_timestamp(void) {
 }
 
 
+
+unsigned long arch_ns_to_timestamp(uint64_t ns) { return ((ns * core().cycles_per_second) / 1000000000ULL); }
+
+unsigned long arch_timestamp_to_ns(uint64_t cycles) { return (cycles * 1000000000ULL) / core().cycles_per_second; }
+
+
+
+
 struct rv::hart_state &rv::get_hstate(void) {
   rv::xsize_t sscratch;
   // asm volatile("csrr %0, sscratch" : "=r"(sscratch));
@@ -104,9 +112,7 @@ struct rv::hart_state &rv::get_hstate(void) {
  * Just offset into the cpu array with mhartid :^). I love this arch.
  * No need for bloated thread pointer bogus or nothin'
  */
-cpu::Core &cpu::current(void) {
-  return *rv::get_hstate().cpu;
-}
+cpu::Core &cpu::current(void) { return *rv::get_hstate().cpu; }
 
 
 void cpu::switch_vm(ck::ref<Thread> thd) {
@@ -119,9 +125,9 @@ void cpu::seginit(cpu::Core *cpu, void *local) {
   auto &sc = rv::get_hstate();
   /* Forward this so other code can read it */
   cpu->id = sc.hartid;
-	cpu->active = true;
-	/* Register the CPU with the kernel */
-	cpu::add(cpu);
+  cpu->active = true;
+  /* Register the CPU with the kernel */
+  cpu::add(cpu);
 }
 
 
@@ -147,7 +153,7 @@ void arch::irq::disable(int num) { rv::plic::disable(num); }
 
 
 void arch_deliver_xcall(int core) {
-	unsigned long mask = (core == -1) ? ~0 : (1 << core);
-	printk_nolock("deliver xcall: %d %p\n", core, mask);
-	sbi_send_ipis(&mask);
+  unsigned long mask = (core == -1) ? ~0 : (1 << core);
+  // printk_nolock("deliver xcall: %d %p\n", core, mask);
+  sbi_send_ipis(&mask);
 }

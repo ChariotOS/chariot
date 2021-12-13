@@ -95,6 +95,12 @@ namespace cpu {
 #endif
 
 
+#ifdef CONFIG_RISCV
+		// Defined by the device tree, most likely
+		uint64_t cycles_per_second = CONFIG_RISCV_CLOCKS_PER_SECOND;
+#endif
+
+
     void prep_xcall(xcall_t func, void *arg, int *count) {
 			xcall_lock.lock();
 			xcall_command = {func, arg, count};

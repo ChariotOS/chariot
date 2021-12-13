@@ -111,6 +111,11 @@ void arch_save_fpu(struct Thread &);
 void arch_restore_fpu(struct Thread &);
 unsigned long arch_read_timestamp(void);
 
+
+// convert timestamp or nanoseconds to eachother
+unsigned long arch_timestamp_to_ns(unsigned long ts);
+unsigned long arch_ns_to_timestamp(unsigned long ns);
+
 /* get the current second since boot time */
 unsigned long arch_seconds_since_boot(void);
 
@@ -130,6 +135,8 @@ void serial_string(int device, char *out);
 // fire off a xcall, and do not wait. This is handled by the scheduler
 // if `core == -1`, call to all cores
 void arch_deliver_xcall(int core);
+
+
 
 
 #endif

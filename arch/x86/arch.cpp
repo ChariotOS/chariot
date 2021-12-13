@@ -72,6 +72,14 @@ unsigned long arch_read_timestamp(void) {
   return lo | ((uint64_t)(hi) << 32);
 }
 
+unsigned long arch_timestamp_to_ns(unsigned long ts) {
+	return core().apic.cycles_to_ns(ts);
+}
+
+unsigned long arch_ns_to_timestamp(unsigned long ns) {
+	return core().apic.ns_to_cycles(ns);
+}
+
 
 void arch_relax(void) {
   asm("pause");
