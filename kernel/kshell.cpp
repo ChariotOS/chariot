@@ -7,7 +7,7 @@
 #include <process.h>
 #include <console.h>
 #include <module.h>
-
+#include <util.h>
 
 struct command {
   kshell::handler handler;
@@ -39,12 +39,16 @@ unsigned long sys::kshell(void) {
 
 static bool active = false;
 static chan<char> kshell_pipe;
+static ck::string last_command;
 
-static void exec(const ck::string &raw) {
-  // printk("raw: '%s'\n", raw.get());
+
+
+static void exec(const ck::string &raw, bool reexec = true) {
   // split the command on spaces
   auto parts = raw.split(' ', false);
   if (parts.size() >= 1) {
+		last_command.clear();
+		last_command = raw;
     ck::string cmd = parts[0];
     parts.remove(0);
 
@@ -59,7 +63,12 @@ static void exec(const ck::string &raw) {
     } else {
       KERR("Command '%s' not found\n", cmd.get());
     }
-  }
+  } else if (reexec) {
+		ck::string cmd = last_command;
+		exec(cmd, false);
+		return;
+	}
+
 }
 
 bool kshell::active(void) { return ::active; }
