@@ -333,6 +333,13 @@ namespace rv /* risc-v namespace */ {
     return x;
   }
 
+
+  static inline rv::xsize_t get_cycle() {
+    rv::xsize_t x;
+    asm volatile("csrr %0, cycle" : "=r"(x));
+    return x;
+  }
+
   // enable device interrupts
   static inline void intget_on() {
     set_sstatus(get_sstatus() | SSTATUS_SIE);

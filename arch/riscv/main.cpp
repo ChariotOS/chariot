@@ -91,7 +91,7 @@ extern "C" void secondary_entry(int hartid) {
   rv::get_hstate().cpu = &cpu;
   cpu::seginit(&cpu, NULL);
   cpu::current().primary = false;
-	
+
 
 
   /* Initialize the platform level interrupt controller for this HART */
@@ -171,26 +171,6 @@ class RISCVHart : public dev::Driver {
 };
 
 
-extern "C" rv::xsize_t sip_bench();
-void bench(void) {
-  size_t trials = 1000;
-  auto measurements = new uint64_t[trials];
-  for (int i = 0; i < trials; i++) {
-    measurements[i] = sip_bench();
-  }
-
-  uint64_t sum = 0;
-  for (int i = 0; i < trials; i++) {
-    sum += measurements[i];
-  }
-  uint64_t avg = sum / trials;
-  printk("Average access latency to SIP CSR: %llu cycles, %lluns. 1000 trials took %llu, %lluns\n", avg, ticks_to_ns(avg), sum,
-      ticks_to_ns(sum));
-
-
-  delete[] measurements;
-}
-
 
 spinlock x;
 
@@ -245,9 +225,6 @@ void main(int hartid, void *fdt) {
   rv::get_hstate().cpu = &cpu;
 
   cpu::seginit(&cpu, NULL);
-
-
-	bench();
 
   dtb::walk_devices([](dtb::node *node) -> bool {
     if (!strcmp(node->name, "memory")) {
@@ -344,3 +321,37 @@ void main(int hartid, void *fdt) {
   while (1)
     arch_halt();
 }
+
+
+
+extern "C" rv::xsize_t sip_bench();
+ksh_def("sip-bench", "benchmark access to the sip register") {
+  size_t trials = 1000;
+  auto measurements = new uint64_t[trials];
+
+
+  // auto start = rv::get_cycle();
+  for (int i = 0; i < trials; i++) {
+    measurements[i] = sip_bench();
+  }
+  // auto end = rv::get_cycle();
+
+  uint64_t sum = 0;
+  for (int i = 0; i < trials; i++) {
+    sum += measurements[i];
+  }
+  uint64_t avg = sum / trials;
+
+  printk("total: %llu cycles\n", sum / trials);
+  printk("average access latency: %llu cycles\n", avg);
+  // printk("wrapped access latency: %llu cycles\n", (end - start) / trials);
+  /*
+printk("Average access latency to SIP CSR: %llu cycles, %lluns. 1000 trials took %llu, %lluns\n", avg, ticks_to_ns(avg), sum,
+    ticks_to_ns(sum));
+                                  */
+
+
+  delete[] measurements;
+  return 0;
+}
+

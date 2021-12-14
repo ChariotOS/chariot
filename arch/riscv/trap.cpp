@@ -257,12 +257,10 @@ for (auto &stk : thd->stacks) {
     /* Supervisor software interrupt (from machine mode) */
     if (nr == 1) {
 
+			write_csr(sip, read_csr(sip) & ~(1 << 1));
 			cpu::run_pending_xcalls();
-
-
 			// sip.SSIP = 0
 			//  turn off the "supervisor software interrupt pending" bit
-			write_csr(sip, read_csr(sip) & ~(1 << 1));
     } else if (nr == 5) {
       auto &cpu = cpu::current();
       uint64_t now = arch_read_timestamp();

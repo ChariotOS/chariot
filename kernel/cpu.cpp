@@ -82,9 +82,9 @@ void cpu::run_pending_xcalls(void) {
   core().xcall_lock.unlock();
 
   if (cmd.fn == nullptr) {
-		printk("xcall null!\n");
-		return;
-	}
+    printk("xcall null!\n");
+    return;
+  }
   cmd.fn(cmd.arg);
   if (cmd.count != NULL) {
     __atomic_fetch_sub(cmd.count, 1, __ATOMIC_ACQ_REL);
@@ -93,7 +93,7 @@ void cpu::run_pending_xcalls(void) {
 
 void cpu::xcall(int core, xcall_t func, void *arg) {
   int count = 0;
-  // pprintk("xcall %d %p %p\n", core, func, arg);
+  // pprintk("%d xcall %d %p %p\n", core_id(), core, func, arg);
   if (core == -1) {
     // all the cores
     cpu::each([&](cpu::Core *core) {
@@ -119,12 +119,12 @@ void cpu::xcall(int core, xcall_t func, void *arg) {
 }
 
 
-ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
+static void run_xcall_bench(void *arg) {
   int count = 1000;
-  auto *measurements = new uint64_t[count];
+
   printk("running xcall benchmark from %d\n", core_id());
 
-
+  auto *measurements = new uint64_t[count];
   cpu::each([&](cpu::Core *c) {
     int target_id = c->id;
     for (int i = 0; i < count; i++) {
@@ -136,7 +136,6 @@ ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
           NULL);
 
       auto end = arch_read_timestamp();
-      // printk("%d -> %d %lu cycles\n", core_id(), target_id, end - start);
       measurements[i] = end - start;
     }
 
@@ -156,8 +155,19 @@ ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
 
     printk("%d -> %d avg/min/max: %lu/%lu/%lu (max %lu nanoseconds)\n", core_id(), target_id, avg, min, max, ns);
   });
-
   delete[] measurements;
+}
+
+ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
+
+	run_xcall_bench(NULL);
+	return 0;
+  cpu::each([&](cpu::Core *c) {
+    int target_id = c->id;
+    printk("asking %d from %d\n", target_id, core_id());
+    cpu::xcall(target_id, run_xcall_bench, NULL);
+  });
+
 
   return 0;
 }
