@@ -58,7 +58,6 @@ sifive::Uart::Uart(dev::MMIODevice &mmio) {
   regs = (Uart::Regs *)p2v(mmio.address());
 
 
-#define print_reg(name) printk("%7s: %08x\n", #name, regs->name)
 
 
   // enable transmit and receive
@@ -68,36 +67,7 @@ sifive::Uart::Uart(dev::MMIODevice &mmio) {
   // enable rx interrupt
   regs->ie = 0b10;
 
-  arch_flush_mmu();
-
-  print_reg(txfifo);
-  print_reg(rxfifo);
-  print_reg(txctrl);
-  print_reg(rxctrl);
-  print_reg(ie);
-  print_reg(ip);
-  print_reg(div);
-
-
   irq::install(mmio.interrupt, sifive_uart_interrupt_handle, "sifive,uart0", (void *)this);
-
-  for (int i = 0; i < 10; i++) {
-    put_char('a' + i);
-  }
-  put_char('\n');
-
-  /*
-while (1) {
-arch_enable_ints();
-set_csr(sie, SIE_SEIE);
-
-auto sip = read_csr(sip);
-printk("s:%d, t:%d, e: %d ", !!(sip & SIE_SSIE), !!(sip & SIE_STIE), !!(sip & SIE_SEIE));
-rv::plic::pending();
-
-arch_halt();
-}
-  */
 }
 
 void sifive::Uart::put_char(char c) {
