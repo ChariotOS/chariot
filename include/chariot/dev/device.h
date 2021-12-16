@@ -45,8 +45,13 @@ namespace dev {
     DeviceType m_type;
     ck::string m_name;
     bool m_active = false;
+    ck::ref<dev::Device> m_parent = nullptr;
+    ck::vec<ck::ref<dev::Device>> m_children;
 
    protected:
+    // when added to the main device layer, a device is locked.
+    // Children cannot be added anymore.
+    bool m_locked = false;
     ck::map<ck::string, DeviceProperty> m_props;
 
    public:
@@ -55,6 +60,18 @@ namespace dev {
     static void add(ck::string name, ck::ref<Device>);
     static void remove(ck::ref<Device>, RemovalReason reason = HotPlug);
     static auto all(void) -> ck::vec<ck::ref<Device>>;
+
+
+		// lock the device. No more changes can occur (adopt, prop add, etc);
+		inline void lock(void) { m_locked = true; }
+
+    inline auto &children(void) const { return m_children; }
+    inline auto parent(void) const { return m_parent; }
+    inline void adopt(ck::ref<dev::Device> child) {
+      assert(!m_locked);
+      child->m_parent = this;
+      m_children.push(child);
+    }
 
 
     void add_property(ck::string name, DeviceProperty &&prop);

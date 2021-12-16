@@ -157,21 +157,38 @@ auto dev::Driver::probe(ck::ref<dev::Device> device) -> dev::ProbeResult {
 }
 
 
+static void probe_all_r(ck::ref<dev::Device> dev, ck::ref<dev::Driver> drv = nullptr) {
+  // printk("probe %s\n", dev->name().get());
+  if (drv == nullptr) {
+    for (auto drv : all_drivers) {
+      if (drv->probe(dev) == dev::ProbeResult::Attach) {
+        continue;
+      }
+    }
+
+  } else {
+    drv->probe(dev);
+  }
+
+  for (auto c : dev->children()) {
+    probe_all_r(c);
+  }
+}
 
 void dev::Driver::add(ck::ref<dev::Driver> driver) {
   scoped_lock l(all_drivers_lock);
 
   all_drivers.push(driver);
   for (auto dev : dev::Device::all()) {
-    driver->probe(dev);
+    probe_all_r(dev, driver);
   }
 }
 
+
+
 void dev::Driver::probe_all(ck::ref<dev::Device> dev) {
   scoped_lock l(all_drivers_lock);
-  for (auto drv : all_drivers) {
-    if (drv->probe(dev) == dev::ProbeResult::Attach) continue;
-  }
+  probe_all_r(dev, nullptr);
 }
 
 

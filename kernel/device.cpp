@@ -23,28 +23,54 @@ ksh_def("devices", "display all devices") {
   return 0;
 }
 
+static void recurse_print(ck::ref<dev::Device> dev, int depth = 0) {
+  auto spaces = [&] {
+    printk(YEL "DEV" RESET ":");
+    for (int i = 0; i < depth; i++)
+      printk("  ");
+  };
 
-// Register a device with the global device system
-void dev::Device::add(ck::string name, ck::ref<Device> dev) {
-  dev->set_name(name);
-
-  if (auto mmio = dev->cast<MMIODevice>()) {
-    DEVLOG(GRN "%s", name.get());
-    printk(GRY "@" YEL "%08x", mmio->address());
+	spaces();
+  if (auto mmio = dev->cast<dev::MMIODevice>()) {
+    printk(GRN "%s", dev->name().get());
+    printk(GRY "@" YEL "%08x" RESET " {", mmio->address());
     for (auto &compat : mmio->compat()) {
       printk(GRY " '%s'" RESET, compat.get());
     }
     printk("\n");
   } else {
-    DEVLOG("%s\n", name.get());
+    DEVLOG("%s\n", dev->name().get());
   }
+
+  for (auto &c : dev->children()) {
+    recurse_print(c, depth + 1);
+  }
+
+	spaces();
+	printk("}\n");
+}
+
+static void recurse_probe(ck::ref<dev::Device> dev, int depth = 0) {
+  dev->lock();
+
+
+  for (auto &c : dev->children()) {
+    recurse_probe(c, depth + 1);
+  }
+}
+
+// Register a device at the top level
+void dev::Device::add(ck::string name, ck::ref<Device> dev) {
+  dev->set_name(name);
+
+  recurse_print(dev);
+
 
   scoped_lock l(all_devices_lock);
   assert(all_devices.find(dev).is_end());
   all_devices.push(dev);
 
   dev::Driver::probe_all(dev);
-  // TODO: probe all drivers
 }
 
 
@@ -65,7 +91,10 @@ ck::vec<ck::ref<dev::Device>> dev::Device::all(void) {
 }
 
 
-void dev::Device::add_property(ck::string name, dev::DeviceProperty &&prop) { m_props.set(name, move(prop)); }
+void dev::Device::add_property(ck::string name, dev::DeviceProperty &&prop) {
+  assert(!m_locked);
+  m_props.set(name, move(prop));
+}
 
 
 ck::option<ck::string> dev::Device::get_prop_string(const ck::string &name) {

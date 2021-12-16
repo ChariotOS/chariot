@@ -86,43 +86,6 @@ void dtb::walk_devices(bool (*callback)(dtb::node *)) {
   }
 }
 
-static void spaces(int n) {
-  for (int i = 0; i < n; i++)
-    printk("  ");
-}
-
-void dump_dtb(dtb::node *node, int depth = 0) {
-  spaces(depth);
-  printk("%s@%llx\n", node->name, node->address);
-  if (node->address_cells != -1) {
-    spaces(depth);
-    printk("- #address-cells: %d\n", node->address_cells);
-  }
-  if (node->size_cells != -1) {
-    spaces(depth);
-    printk("- #size-cells: %d\n", node->size_cells);
-  }
-
-  spaces(depth);
-
-  printk("- compatible:");
-  for (int i = 0; i < node->ncompat; i++) {
-    printk(" \"%s\"", node->compatible[i]);
-  }
-  printk("\n");
-
-
-  if (node->is_device) {
-    spaces(depth);
-    printk("- reg: %p %zu\n", node->reg.address, node->reg.length);
-  }
-  for (auto *cur = node->children; cur != NULL; cur = cur->sibling) {
-    dump_dtb(cur, depth + 1);
-  }
-}
-
-
-
 
 #define STREQ(s1, s2) (!strcmp((s1), (s2)))
 
@@ -132,10 +95,12 @@ static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *v
     node->address_cells = *be32p_t((uint32_t *)val);
     return;
   }
+
   if (STREQ(name, "#size-cells")) {
     node->size_cells = *be32p_t((uint32_t *)val);
     return;
   }
+
   if (STREQ(name, "interrupts")) {
     int size_cells = node->get_size_cells();
     node->irq = __builtin_bswap32(*(uint32_t *)val);
@@ -203,7 +168,6 @@ int dtb::parse(dtb::fdt_header *fdt) {
   auto *node = root;
   dtb::node *new_node = NULL;
 
-
   be32p_t sp = (uint32_t *)((off_t)fdt + b2l(fdt->off_dt_struct));
   const char *strings = (const char *)((off_t)fdt + b2l(fdt->off_dt_strings));
 
@@ -228,25 +192,19 @@ int dtb::parse(dtb::fdt_header *fdt) {
         for (int i = 0; i < len; i++)
           sp++;
         new_node = alloc_device(name);
-
         new_node->parent = node;
         new_node->fdt_offset = off;
-
         new_node->sibling = node->children;
         node->children = new_node;
-
         node = new_node;
         new_node = NULL;
-
         depth++;
-
         break;
       }
       case FDT_END_NODE:
         depth--;
         node = node->parent;
         break;
-
       case FDT_PROP:
         len = *sp;
         sp++;
@@ -256,20 +214,13 @@ int dtb::parse(dtb::fdt_header *fdt) {
         node_set_prop(node, strings + nameoff, len, (uint8_t *)valptr);
         for (int i = 0; i < round_up(len, 4) / 4; i++)
           sp++;
-
         break;
-
       case FDT_NOP:
-        // printk("nop\n");
         break;
-
       case FDT_END:
-        // printk("end\n");
         break;
     }
   }
-
-  // dump_dtb(node, 0);
   return next_device;
 }
 
@@ -308,114 +259,76 @@ static int get_fdt_prop_type(const char *c) {
 
 class DTBDevice : public dev::MMIODevice {
  public:
-  DTBDevice(dtb::node &node) : dev::MMIODevice(node.address, 0 /* dunno */) {
-    // printk("=== name: %s, irq: %d, off: %d ===\n", node.name, node.irq, node.fdt_offset);
-    interrupt = node.irq;
-    for (int i = 0; i < node.ncompat; i++) {
-      compat().empend(node.compatible[i]);
-    }
+  DTBDevice(const char *name, off_t addr) : dev::MMIODevice(addr, 0) { this->set_name(name); }
 
 
-    be32p_t sp = (uint32_t *)((off_t)global_fdt_header + node.fdt_offset);
-    const char *strings = (const char *)((off_t)global_fdt_header + b2l(global_fdt_header->off_dt_strings));
-    int depth = 0;
-    bool done = false;
-
-    while (!done && *sp != FDT_END) {
-      uint32_t op = *sp;
-      /* sp points to the next word */
-      sp++;
-
-      uint32_t len;
-      uint32_t nameoff;
-      const char *name;
-      const char *valptr = NULL;
-
-      switch (op) {
-        case FDT_BEGIN_NODE: {
-          name = (const char *)sp.get();
-          // spaces(depth);
-          // printk("%s {\n", name);
-          len = round_up(strlen(name) + 1, 4) / 4;
-          for (int i = 0; i < len; i++)
-            sp++;
-          depth++;
-          break;
-        }
-        case FDT_END_NODE:
-          depth--;
-
-          // spaces(depth);
-          // printk("}\n");
-          if (depth == 0) {
-            done = true;
-          }
-          break;
-
-        case FDT_PROP: {
-          len = *sp;
-          sp++;
-          nameoff = *sp;
-          sp++;
-          valptr = (const char *)sp.get();
-          if (depth == 1) {
-            // spaces(depth);
-            // printk("%s: %db\n", strings + nameoff, len);
-            parse_prop(strings + nameoff, len, (uint8_t *)valptr);
-          }
-          for (int i = 0; i < round_up(len, 4) / 4; i++)
-            sp++;
-
-          break;
-        }
-
-        case FDT_NOP:
-          break;
-
-        case FDT_END:
-          break;
+  static ck::ref<DTBDevice> alloc(const char *name) {
+    char buf[64];
+    off_t addr = 0;
+    strncpy(buf, name, 64);
 
 
-        default:
-          printk("unhandled op %08x\n", op);
-          break;
+    int at_off = -1;
+    for (int i = 0; true; i++) {
+      if (name[i] == 0) {
+        /* reached the end, didn't find an @ */
+        break;
+      }
+
+      if (name[i] == '@') {
+        at_off = i;
+        break;
       }
     }
-    /*
-for (auto &[name, prop] : m_props) {
-printk("%s:\n", name.get());
-hexdump((void *)prop.data.data(), prop.data.size(), true);
-}
-printk("\n\n");
-    */
+
+
+    if (at_off != -1) {
+      if (sscanf(name + at_off + 1, "%x", &addr) != 1) {
+        // printk("INVALID NODE NAME: '%s'\n", name);
+      }
+      buf[at_off] = 0;
+    }
+
+    auto dev = ck::make_ref<DTBDevice>(buf, addr);
+    dev->addr_cells = dev->size_cells = -1;
+
+    return dev;
   }
+
 
   virtual ~DTBDevice(void) {}
 
 
 
+
   void parse_prop(const char *name, int len, uint8_t *val) {
+    auto addr_cells = get_addr_cells();
+    auto size_cells = get_size_cells();
     {
       dev::DeviceProperty prop;
       prop.type = dev::DeviceProperty::Unknown;
-      prop.data.push(val, len);
+
+      for (size_t i = 0; i < len; i++) {
+        prop.data.push(val[i]);
+      }
       m_props.set(name, move(prop));
     }
 
     if (STREQ(name, "#address-cells")) {
-      addr_cells = *be32p_t((uint32_t *)val);
+      this->addr_cells = *be32p_t((uint32_t *)val);
       return;
     }
     if (STREQ(name, "#size-cells")) {
-      size_cells = *be32p_t((uint32_t *)val);
+      this->size_cells = *be32p_t((uint32_t *)val);
       return;
     }
-		/*
+
+
+
     if (STREQ(name, "interrupts")) {
-      this->interrupt = __builtin_bswap32(*(uint32_t *)val);
+      interrupt = __builtin_bswap32(*(uint32_t *)val);
       return;
     }
-		*/
 
     if (STREQ(name, "reg")) {
       /* TODO: It's unsafe to assume 64 bit here... But since we are 64bit only... (for now) */
@@ -438,18 +351,50 @@ printk("\n\n");
     }
 
     if (STREQ(name, "compatible")) {
-      // we handle this elsewhere.
+      const char *allcompat = (const char *)val;
+      char buf[len];
+      memcpy(buf, val, len);
+      char *cur = buf;
+      off_t off = 0;
+      while (off < len) {
+        if (cur[0] == '\0') break;
+        // grab a strlen
+        size_t current_len = strlen(cur);
+
+        compat().push(ck::string(cur, current_len));
+
+        off += current_len + 1;
+        cur = buf + off;
+      }
       return;
     }
   }
 
 
-  short addr_cells;
-  short size_cells;
+  short get_addr_cells(void) const {
+    if (addr_cells == -1 && parent()) {
+      return ((DTBDevice *)parent().get())->get_addr_cells();
+    }
+    return addr_cells;
+  }
+
+
+  short get_size_cells(void) const {
+    if (size_cells == -1 && parent()) {
+      return ((DTBDevice *)parent().get())->get_size_cells();
+    }
+    return size_cells;
+  }
+
+
+  int addr_cells = -1;
+  int size_cells = -1;
   dtb::reg reg;
-  ck::ref<DTBDevice> parent;
 };
 
+
+
+auto alloc_device_late(const char *name) {}
 
 
 void dtb::promote(void) {
@@ -458,13 +403,78 @@ void dtb::promote(void) {
   memcpy(fdt, global_fdt_header, b2l(global_fdt_header->totalsize));
   global_fdt_header = fdt;
 
-  // hexdump(fdt, b2l(fdt->totalsize), true);
+  LOG("Parsing device tree at %p, size: %zu\n", fdt, b2l(fdt->totalsize));
+  global_fdt_header = fdt;
 
-  dtb::walk_devices([](dtb::node *node) -> bool {
-    if (strlen(node->name) == 0) return true;
-    auto dev = ck::make_ref<DTBDevice>(*node);
-    dev::Device::add(node->name, dev);
-    return true;
-  });
+  ck::ref<DTBDevice> root = nullptr;
+  auto node = root;
+  ck::ref<DTBDevice> new_node = nullptr;
+
+  be32p_t sp = (uint32_t *)((off_t)fdt + b2l(fdt->off_dt_struct));
+  const char *strings = (const char *)((off_t)fdt + b2l(fdt->off_dt_strings));
+
+  int depth = 0;
+
+  while (*sp != FDT_END) {
+    off_t off = ((off_t)sp.get() - (off_t)fdt);
+    uint32_t op = *sp;
+    /* sp points to the next word */
+    sp++;
+
+    uint32_t len;
+    uint32_t nameoff;
+    const char *name;
+    const char *valptr = NULL;
+
+    switch (op) {
+      case FDT_BEGIN_NODE: {
+        name = (const char *)sp.get();
+
+        len = round_up(strlen(name) + 1, 4) / 4;
+        for (int i = 0; i < len; i++)
+          sp++;
+        new_node = DTBDevice::alloc(name);
+
+        if (node != nullptr) {
+          node->adopt(new_node);
+        } else {
+          root = new_node;
+        }
+        node = new_node;
+        new_node = nullptr;
+
+        depth++;
+
+        break;
+      }
+      case FDT_END_NODE:
+        depth--;
+        node = node->parent();
+        break;
+
+      case FDT_PROP:
+        len = *sp;
+        sp++;
+        nameoff = *sp;
+        sp++;
+        valptr = (const char *)sp.get();
+        node->parse_prop(strings + nameoff, len, (uint8_t *)valptr);
+        for (int i = 0; i < round_up(len, 4) / 4; i++)
+          sp++;
+
+        break;
+
+      case FDT_NOP:
+        // printk("nop\n");
+        break;
+
+      case FDT_END:
+        // printk("end\n");
+        break;
+    }
+  }
+
+
+	dev::Device::add("dtb", root);
 }
 
