@@ -27,13 +27,13 @@ static void recurse_print(ck::ref<dev::Device> dev, int depth = 0) {
   auto spaces = [&] {
     printk(YEL "DEV" RESET ":");
     for (int i = 0; i < depth; i++)
-      printk("  ");
+      printk(".");
   };
 
 	spaces();
   if (auto mmio = dev->cast<dev::MMIODevice>()) {
     printk(GRN "%s", dev->name().get());
-    printk(GRY "@" YEL "%08x" RESET " {", mmio->address());
+    printk(GRY "@" YEL "%08x", mmio->address());
     for (auto &compat : mmio->compat()) {
       printk(GRY " '%s'" RESET, compat.get());
     }
@@ -45,9 +45,6 @@ static void recurse_print(ck::ref<dev::Device> dev, int depth = 0) {
   for (auto &c : dev->children()) {
     recurse_print(c, depth + 1);
   }
-
-	spaces();
-	printk("}\n");
 }
 
 static void recurse_probe(ck::ref<dev::Device> dev, int depth = 0) {

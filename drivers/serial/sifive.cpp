@@ -49,17 +49,12 @@ static inline unsigned int uart_min_clk_divisor(unsigned long in_freq, unsigned 
 
 void sifive_uart_interrupt_handle(int irq, reg_t *regs, void *uart) {
   auto *u = (sifive::Uart *)uart;
-  // u->put_char('a');
   u->handle_irq();
 }
 
 sifive::Uart::Uart(dev::MMIODevice &mmio) {
   // the registers are simply at the base
   regs = (Uart::Regs *)p2v(mmio.address());
-
-
-
-
   // enable transmit and receive
   regs->txctrl = UART_TXCTRL_TXEN;
   regs->rxctrl = UART_RXCTRL_RXEN;
