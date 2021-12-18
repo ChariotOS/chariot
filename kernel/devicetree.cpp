@@ -107,30 +107,6 @@ static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *v
     return;
   }
 
-  if (STREQ(name, "reg")) {
-    node->is_device = true;
-    /* TODO: It's unsafe to assume 64 bit here... But since we are 64bit only... (for now) */
-    auto *cells = (unsigned long *)val;
-
-    int addr_cells = node->get_addr_cells();
-    int size_cells = node->get_size_cells();
-
-    // printk("%s: addr %d, size %d\n", node->name, addr_cells, size_cells);
-    if (addr_cells > 0) {
-      if (addr_cells == 1) node->reg.address = __builtin_bswap32(*(uint32_t *)val);
-      if (addr_cells == 2) node->reg.address = __builtin_bswap64(*(uint64_t *)val);
-    }
-    val += addr_cells * 4;
-
-    if (size_cells > 0) {
-      if (size_cells == 1) node->reg.length = __builtin_bswap32(*(uint32_t *)val);
-      if (size_cells == 2) node->reg.length = __builtin_bswap64(*(uint64_t *)val);
-    }
-    val += size_cells * 4;
-
-    return;
-  }
-
   if (STREQ(name, "compatible")) {
     node->is_device = true;
     memcpy(node->compat, (const char *)val, len);
@@ -229,31 +205,33 @@ int dtb::parse(dtb::fdt_header *fdt) {
 
 static struct {
   const char *name;
-  int type;
+  dev::Prop::Type type;
 } fdt_types[] = {
-    {"compatible", FDT_T_STRING},
-    {"model", FDT_T_STRING},
-    {"phandle", FDT_T_INT},
-    {"status", FDT_T_STRING},
-    {"#address-cells", FDT_T_INT},
-    {"#size-cells", FDT_T_INT},
-    {"reg", FDT_T_INT},
-    {"virtual-reg", FDT_T_INT},
-    {"ranges", FDT_T_EMPTY},
-    {"dma-ranges", FDT_T_EMPTY}, /* TODO: <prop-encoded-array> */
-    {"name", FDT_T_STRING},
-    {"device_type", FDT_T_STRING},
-    {0, 0},
+    {"compatible", dev::Prop::Type::String},
+    {"model", dev::Prop::Type::String},
+    {"phandle", dev::Prop::Type::Integer},
+    {"status", dev::Prop::Type::String},
+    {"#address-cells", dev::Prop::Type::CellSize},
+    {"#size-cells", dev::Prop::Type::CellSize},
+    {"#interrupt-cells", dev::Prop::Type::CellSize},
+    {"reg", dev::Prop::Type::Register},
+    {"virtual-reg", dev::Prop::Type::Register},
+    {"ranges", dev::Prop::Type::Unknown},
+    {"dma-ranges", dev::Prop::Type::Unknown}, /* TODO: <prop-encoded-array> */
+    {"name", dev::Prop::Type::String},
+    {"device_type", dev::Prop::Type::String},
+    {"interrupts", dev::Prop::Type::Interrupts},
+    {0, dev::Prop::Unknown},
 };
 
-static int get_fdt_prop_type(const char *c) {
+static dev::Prop::Type get_fdt_prop_type(const char *c) {
   auto *m = &fdt_types[0];
 
   while (m->name != NULL) {
     if (!strcmp(c, m->name)) return m->type;
     m++;
   }
-  return -1;
+  return dev::Prop::Type::Unknown;
 }
 
 
@@ -300,13 +278,31 @@ class DTBDevice : public dev::MMIODevice {
 
 
 
+  void propegate_cell_sizes(void) {
+
+    for (auto &[name, prop] : m_props) {
+      prop.size_cells = get_size_cells();
+      prop.address_cells = get_addr_cells();
+      prop.irq_cells = get_irq_cells();
+    }
+
+    for (auto c : children()) {
+      ((DTBDevice *)c.get())->propegate_cell_sizes();
+    }
+  }
+
+
 
   void parse_prop(const char *name, int len, uint8_t *val) {
     auto addr_cells = get_addr_cells();
     auto size_cells = get_size_cells();
+    auto irq_cells = get_irq_cells();
     {
-      dev::DeviceProperty prop;
-      prop.type = dev::DeviceProperty::Unknown;
+      dev::Prop prop;
+      prop.type = get_fdt_prop_type(name);
+      prop.size_cells = size_cells;
+      prop.address_cells = addr_cells;
+      prop.irq_cells = irq_cells;
 
       for (size_t i = 0; i < len; i++) {
         prop.data.push(val[i]);
@@ -323,10 +319,17 @@ class DTBDevice : public dev::MMIODevice {
       return;
     }
 
+    if (STREQ(name, "#interrupt-cells")) {
+      this->irq_cells = *be32p_t((uint32_t *)val);
+      return;
+    }
 
 
     if (STREQ(name, "interrupts")) {
-      interrupt = __builtin_bswap32(*(uint32_t *)val);
+      printk("irq_cells = %d\n", irq_cells);
+      // just parse the first one
+      if (irq_cells == 1) interrupt = __builtin_bswap32(*(uint32_t *)val);
+      if (irq_cells == 2) interrupt = __builtin_bswap64(*(uint64_t *)val);
       return;
     }
 
@@ -372,23 +375,32 @@ class DTBDevice : public dev::MMIODevice {
 
 
   short get_addr_cells(void) const {
-    if (addr_cells == -1 && parent()) {
-      return ((DTBDevice *)parent().get())->get_addr_cells();
+    if (parent()) {
+      return ((DTBDevice *)parent().get())->addr_cells;
     }
-    return addr_cells;
+    return 1;
   }
 
 
   short get_size_cells(void) const {
-    if (size_cells == -1 && parent()) {
-      return ((DTBDevice *)parent().get())->get_size_cells();
+    if (parent()) {
+      return ((DTBDevice *)parent().get())->size_cells;
     }
-    return size_cells;
+    return 1;
   }
 
 
-  int addr_cells = -1;
-  int size_cells = -1;
+  short get_irq_cells(void) const {
+    if (parent()) {
+      return ((DTBDevice *)parent().get())->irq_cells;
+    }
+    return 1;
+  }
+
+
+  int addr_cells = 1;
+  int size_cells = 1;
+  int irq_cells = 1;
   dtb::reg reg;
 };
 
@@ -475,6 +487,7 @@ void dtb::promote(void) {
   }
 
 
-	dev::Device::add("dtb", root);
+	root->propegate_cell_sizes();
+  dev::Device::add("dtb", root);
 }
 

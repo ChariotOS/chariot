@@ -149,7 +149,9 @@ class RISCVHart : public dev::Driver {
       if (mmio->is_compat("riscv")) {
         auto status = mmio->get_prop_string("status");
 
+          LOG("found hart %d. %d\n", mmio->address(), rv::hartid());
         if (status.has_value()) {
+					printk("status: %s\n", status.unwrap().get());
           if (status.unwrap() == "disabled") return dev::ProbeResult::Ignore;
         }
 

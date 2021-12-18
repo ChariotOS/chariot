@@ -33,10 +33,37 @@ namespace dev {
   enum RemovalReason { HotPlug, Magic /* idk lol */ };
 
 
-  struct DeviceProperty {
-    enum Type { Unknown, String, Integer };
+
+  // to represent device tree registers
+  struct Reg {
+    uint64_t address, size;
+  };
+
+  struct Prop {
+    enum Type { Unknown, String, Integer, Register, List, Interrupts, CellSize };
     Type type;
     ck::vec<uint8_t> data;
+    // size of the cells from the device tree
+    short size_cells = 1;
+    short address_cells = 1;
+    short irq_cells = 1;
+
+    ck::string format(void) const;
+
+    // read an address or a size (from the devicetree size/address cell sizes)
+    bool read_address(uint64_t *dst, off_t &off) const { return read_cell(dst, address_cells, off); }
+    bool read_size(uint64_t *dst, off_t &off) const { return read_cell(dst, size_cells, off); }
+    bool read_irq(uint64_t *dst, off_t &off) const { return read_cell(dst, irq_cells, off); }
+
+		// read integers using a format string. s = size, a = addr, i = irq
+		// for example, reading a 'reg' type from the device tree uses the format "as"
+		bool read_ints(ck::vec<uint64_t> &dst, const char *fmt, off_t &off) const;
+		bool read_all_ints(ck::vec<uint64_t> &dst, const char *fmt) const;
+
+    bool read_cell(uint64_t *dst, int cell_size, off_t &off) const;
+
+
+		ck::vec<dev::Reg> read_registers(void) const;
   };
 
   // An abstract Device. You need to cast it to another kind
@@ -52,7 +79,7 @@ namespace dev {
     // when added to the main device layer, a device is locked.
     // Children cannot be added anymore.
     bool m_locked = false;
-    ck::map<ck::string, DeviceProperty> m_props;
+    ck::map<ck::string, Prop> m_props;
 
    public:
     Device(DeviceType t);
@@ -62,8 +89,8 @@ namespace dev {
     static auto all(void) -> ck::vec<ck::ref<Device>>;
 
 
-		// lock the device. No more changes can occur (adopt, prop add, etc);
-		inline void lock(void) { m_locked = true; }
+    // lock the device. No more changes can occur (adopt, prop add, etc);
+    inline void lock(void) { m_locked = true; }
 
     inline auto &children(void) const { return m_children; }
     inline auto parent(void) const { return m_parent; }
@@ -74,7 +101,8 @@ namespace dev {
     }
 
 
-    void add_property(ck::string name, DeviceProperty &&prop);
+    inline const auto &props(void) const { return m_props; }
+    void add_property(ck::string name, Prop &&prop);
     ck::option<ck::string> get_prop_string(const ck::string &name);
     ck::option<uint64_t> get_prop_int(const ck::string &name);
 
