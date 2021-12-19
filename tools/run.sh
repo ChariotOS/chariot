@@ -24,8 +24,8 @@ QEMU_FLAGS="-serial mon:stdio "
 
 case $ARCH in 
 	X86-64)
-		# QEMU_FLAGS+="-enable-kvm -cpu host "
-		# QEMU_FLAGS+="-global kvm-pit.lost_tick_policy=discard "
+		QEMU_FLAGS+="-enable-kvm -cpu host "
+		QEMU_FLAGS+="-global kvm-pit.lost_tick_policy=discard "
 		QEMU_FLAGS+="-m 4G "
 		QEMU_FLAGS+="-smp ${CONFIG_QEMU_CORES} "
 		QEMU_FLAGS+="-hda build/chariot.img "
@@ -34,7 +34,7 @@ case $ARCH in
 		QEMU_FLAGS+="-netdev user,id=u1  -device e1000,netdev=u1 "
 		QEMU_FLAGS+="-rtc base=localtime "
 		# QEMU_FLAGS+="-device sb16 "
-		# QEMU_FLAGS+="-display sdl "
+		QEMU_FLAGS+="-display sdl "
 		;;
 
 	RISC-V-sifive)
