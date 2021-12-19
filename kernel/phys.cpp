@@ -19,7 +19,6 @@
 #define PGROUNDUP(x) round_up(x, 4096)
 
 extern char high_kern_end[];
-extern char phys_mem_scratch[];
 
 struct frame {
   struct frame *next;

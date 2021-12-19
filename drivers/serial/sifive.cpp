@@ -116,8 +116,8 @@ dev::ProbeResult sifive::UartDriver::probe(ck::ref<dev::Device> dev) {
       LOG("Found device @%08llx. irq=%d\n", mmio->address(), mmio->interrupt);
 
       auto uart = ck::make_box<sifive::Uart>(*mmio);
-
       uarts.push(move(uart));
+      return dev::ProbeResult::Attach;
     }
   }
   return dev::ProbeResult::Ignore;

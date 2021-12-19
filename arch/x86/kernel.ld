@@ -17,16 +17,9 @@ SECTIONS
 
   .init : {
     *(.initl)
-
-		/*
-		 * the physical memory scratch page must live in the low memory,
-		 * so we can map it freely in the 4k granularity region of virtual
-		 * memory during initialization
-		 */
-		. = ALIGN(PAGE_SIZE);
-		phys_mem_scratch = .;
-		. += 0x1000;
+    *(.init.text)
   }
+
 
 
 

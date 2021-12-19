@@ -24,34 +24,27 @@ QEMU_FLAGS="-serial mon:stdio "
 
 case $ARCH in 
 	X86-64)
-		QEMU_FLAGS+="-enable-kvm -cpu host "
-		QEMU_FLAGS+="-global kvm-pit.lost_tick_policy=discard "
+		# QEMU_FLAGS+="-enable-kvm -cpu host "
+		# QEMU_FLAGS+="-global kvm-pit.lost_tick_policy=discard "
 		QEMU_FLAGS+="-m 4G "
-		# QEMU_FLAGS+="-machine q35 "
 		QEMU_FLAGS+="-smp ${CONFIG_QEMU_CORES} "
 		QEMU_FLAGS+="-hda build/chariot.img "
 
-		# QEMU_FLAGS+="-drive id=disk,file=build/chariot.img,if=none "
-		# QEMU_FLAGS+="-device ahci,id=ahci "
-		# QEMU_FLAGS+="-device ide-hd,drive=disk,bus=ahci.0 "
-
-		# QEMU_FLAGS+="-soundhw pcspk "
-		# QEMU_FLAGS+="-device AC97 "
-		QEMU_FLAGS+="-device sb16 "
 		QEMU_FLAGS+="-device VGA,vgamem_mb=64 "
 		QEMU_FLAGS+="-netdev user,id=u1  -device e1000,netdev=u1 "
 		QEMU_FLAGS+="-rtc base=localtime "
-		QEMU_FLAGS+="-display sdl "
+		# QEMU_FLAGS+="-device sb16 "
+		# QEMU_FLAGS+="-display sdl "
 		;;
 
-	RISC-V)
+	RISC-V-sifive)
 		QEMU_FLAGS+="-smp 4 "
 		QEMU_FLAGS+="-bios default "
 		QEMU_FLAGS+="-machine sifive_u "
 		QEMU_FLAGS+="-kernel build/chariot.elf "
 		;;
 
-	RISC-V-VIRT)
+	RISC-V)
 		QEMU_FLAGS+="-machine virt -smp 4 -m ${CONFIG_RISCV_RAM_MB}M "
 		QEMU_FLAGS+="-bios default "
 		QEMU_FLAGS+="-kernel build/chariot.elf "
@@ -62,7 +55,7 @@ case $ARCH in
 
 		QEMU_FLAGS+="-device virtio-keyboard-device "
 		QEMU_FLAGS+="-device virtio-mouse-device "
-		QEMU_FLAGS+="-display sdl "
+		# QEMU_FLAGS+="-display sdl "
 		;;
 
 

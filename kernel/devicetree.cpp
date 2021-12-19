@@ -326,7 +326,6 @@ class DTBDevice : public dev::MMIODevice {
 
 
     if (STREQ(name, "interrupts")) {
-      printk("irq_cells = %d\n", irq_cells);
       // just parse the first one
       if (irq_cells == 1) interrupt = __builtin_bswap32(*(uint32_t *)val);
       if (irq_cells == 2) interrupt = __builtin_bswap64(*(uint64_t *)val);

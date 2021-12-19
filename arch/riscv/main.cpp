@@ -149,9 +149,7 @@ class RISCVHart : public dev::Driver {
       if (mmio->is_compat("riscv")) {
         auto status = mmio->get_prop_string("status");
 
-          LOG("found hart %d. %d\n", mmio->address(), rv::hartid());
         if (status.has_value()) {
-					printk("status: %s\n", status.unwrap().get());
           if (status.unwrap() == "disabled") return dev::ProbeResult::Ignore;
         }
 
@@ -289,7 +287,11 @@ void main(int hartid, void *fdt) {
     // add the hart driver to start other cores
     dev::Driver::add(ck::make_ref<RISCVHart>());
 
-    kshell::run();
+    // kshell::run();
+
+
+#ifdef CONFIG_ENABLE_USERSPACE
+
 
     int mnt_res = vfs::mount("/dev/disk0p1", "/", "ext2", 0, NULL);
     if (mnt_res != 0) {
@@ -297,8 +299,6 @@ void main(int hartid, void *fdt) {
     }
 
     LOG("Bootup complete. It is now safe to move about the cabin.\n");
-
-#ifdef CONFIG_ENABLE_USERSPACE
 
     auto kproc = sched::proc::kproc();
     kproc->root = vfs::get_root();
@@ -310,6 +310,10 @@ void main(int hartid, void *fdt) {
 
     sys::waitpid(init_pid, NULL, 0);
     panic("INIT DIED!\n");
+
+#else
+
+		kshell::run();
 
 #endif
 

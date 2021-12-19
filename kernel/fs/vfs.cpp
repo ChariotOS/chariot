@@ -7,12 +7,15 @@
 
 #include <thread.h>
 
+
+#define LOG(...) PFXLOG(GRN "VFS", __VA_ARGS__)
+
 ck::ref<fs::Node> vfs_root = nullptr;
 static ck::vec<struct fs::SuperBlockInfo *> filesystems;
 static ck::vec<struct vfs::mountpoint *> mountpoints;
 
 void vfs::register_filesystem(struct fs::SuperBlockInfo &info) {
-  printk(KERN_INFO "filesystem '%s' registered\n", info.name);
+  LOG("filesystem '%s' registered\n", info.name);
   filesystems.push(&info);
 }
 
@@ -41,7 +44,7 @@ int vfs::mount(const char *src, const char *targ, const char *type, unsigned lon
   // printk(KERN_INFO "mount %s with fs %s to %s\n", src, type, targ);
 
   if (get_root().is_null() && strcmp(targ, "/") != 0) {
-    printk(KERN_WARN "Mounting non-root filesystem when there is no root is invalid");
+    LOG("[WARN] Mounting non-root filesystem when there is no root is invalid");
     return -EINVAL;
   }
 
@@ -61,12 +64,12 @@ int vfs::mount(const char *src, const char *targ, const char *type, unsigned lon
   }
 
   if (fs == nullptr) {
-    printk("failed to find the filesystem for that name\n");
+    LOG("failed to find the filesystem for that name\n");
     return -ENOENT;
   }
   auto sb = fs->mount(fs, options, flags, src);
   if (sb == nullptr) {
-    printk("failed to mount filesystem\n");
+    LOG("failed to mount filesystem\n");
     return -EINVAL;
   }
 
@@ -166,7 +169,7 @@ ck::ref<fs::Node> vfs::open(ck::string spath, int opts, int mode) {
   ck::ref<fs::Node> ino = nullptr;
 
   if (!cpu::in_thread()) {
-    printk("not in thread\n");
+    LOG("not in thread\n");
   }
 
   if (0 != vfs::namei(spath.get(), opts, mode, vfs::cwd(), ino)) {
