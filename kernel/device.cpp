@@ -323,7 +323,7 @@ bool dev::Prop::read_all_ints(ck::vec<uint64_t> &dst, const char *fmt) const {
 
 bool dev::Prop::read_ints(ck::vec<uint64_t> &dst, const char *fmt, off_t &off) const {
   for (off_t i = 0; fmt[i] != 0; i++) {
-    uint64_t val;
+    uint64_t val = 0;
     char c = fmt[i];
 
     switch (c) {
