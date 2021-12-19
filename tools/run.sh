@@ -22,8 +22,6 @@ QEMU_FLAGS="-serial mon:stdio "
 
 #  QEMU_FLAGS+="-d int -D ints.out "
 
-
-echo $ARCH
 case $ARCH in 
 	X86-64)
 		QEMU_FLAGS+="-enable-kvm -cpu host "
@@ -48,6 +46,7 @@ case $ARCH in
 
 	RISC-V)
 		QEMU_FLAGS+="-smp 4 "
+		QEMU_FLAGS+="-bios default "
 		QEMU_FLAGS+="-machine sifive_u "
 		QEMU_FLAGS+="-kernel build/chariot.elf "
 		;;

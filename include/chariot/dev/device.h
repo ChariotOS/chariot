@@ -44,9 +44,9 @@ namespace dev {
     Type type;
     ck::vec<uint8_t> data;
     // size of the cells from the device tree
-    short size_cells = 1;
-    short address_cells = 1;
-    short irq_cells = 1;
+    uint8_t size_cells = 1;
+    uint8_t address_cells = 1;
+    uint8_t irq_cells = 1;
 
     ck::string format(void) const;
 

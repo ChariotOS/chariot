@@ -17,7 +17,7 @@ dev::Device::Device(DeviceType t) : m_type(t) {}
 
 static void recurse_print(ck::ref<dev::Device> dev, bool props, int depth = 0) {
   auto spaces = [&] {
-    printk(YEL "DEV" RESET ":");
+    if (!props) printk(YEL "DEV" RESET ":");
     for (int i = 0; i < depth; i++)
       printk("  ");
   };
@@ -36,9 +36,23 @@ static void recurse_print(ck::ref<dev::Device> dev, bool props, int depth = 0) {
     if (props) {
       for (auto &[name, prop] : dev->props()) {
         spaces();
-        printk("  %s %d.%d= %s", name.get(), prop.size_cells, prop.address_cells, prop.format().get());
+        auto val = prop.format();
+        printk("  " BLU "%s = ", name.get());
 
-        printk("\n");
+        if (val.size() > 0) {
+          switch (val[0]) {
+            case '<':
+              printk(YEL);
+              break;
+            case '"':
+              printk(GRN);
+              break;
+            default:
+              printk(GRY);
+              break;
+          }
+        }
+        printk("%s" RESET "\n", val.get());
       }
     }
   } else {
@@ -175,17 +189,19 @@ ck::vec<dev::Reg> dev::Prop::read_registers(void) const {
 }
 
 ck::string dev::Prop::format(void) const {
-  ck::string r;
-  for (auto b : data) {
-    r += ck::string::format("%02x ", b);
-  }
   // return r;
 
   if (type == Prop::Type::String) {
     ck::string res;
+    res += "\"";
     for (int i = 0; i < data.size(); i++) {
-      res += data[i];
+      if (data[i] == '\0') {
+        res += "\\0";
+      } else {
+        res += data[i];
+      }
     }
+    res += "\"";
     return res;
   }
 
@@ -255,7 +271,13 @@ ck::string dev::Prop::format(void) const {
     return res;
   }
 
-  return "<unknown property format>";
+
+  ck::string r;
+  for (int i = 0; i < min(16, data.size()); i++) {
+    r += ck::string::format("%02x ", data[i]);
+  }
+  if (data.size() > 16) r += "...";
+  return r;
 }
 
 
@@ -263,12 +285,10 @@ template <typename T>
 static uint64_t bswap_cell(T *val, uint64_t *dst, int size_cell) {
   if (size_cell == 1) {
     *dst = __builtin_bswap32(*(uint32_t *)val);
-    // *dst = (*(uint32_t *)val);
     return 4;
   }
   if (size_cell == 2) {
     *dst = __builtin_bswap64(*(uint64_t *)val);
-    // *dst = (*(uint64_t *)val);
     return 8;
   }
 
@@ -295,8 +315,8 @@ bool dev::Prop::read_cell(uint64_t *dst, int cells, off_t &off) const {
 
 bool dev::Prop::read_all_ints(ck::vec<uint64_t> &dst, const char *fmt) const {
   off_t off = 0;
-  while (read_ints(dst, fmt, off))
-    ;
+  while (read_ints(dst, fmt, off)) {
+  }
 
   return true;
 }

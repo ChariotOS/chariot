@@ -40,7 +40,6 @@ mkdir -p $BUILD
 newdisk=0
 suffix="p1"
 while getopts "ps:" o; do
-	echo $o
 	case "${o}" in
 		# partition the disk before mounting.
 		p)
@@ -103,10 +102,7 @@ sudo mount ${fsdev} $mnt/
 # create the build/root sysroot directory
 
 if [ -n "$CONFIG_ENABLE_USERSPACE" ]; then
-	echo A
 	${DIR}/sysroot.sh
-else
-	echo B
 fi
 
 
