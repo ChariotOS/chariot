@@ -128,6 +128,7 @@ int kernel_init(void*) {
   smp::init_cores();
 #endif
 
+
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
   net::start();

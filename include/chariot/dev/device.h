@@ -108,6 +108,7 @@ namespace dev {
 
     // only registered devices can have names. Register it before calling this.
     ck::string name(void) const { return m_name; }
+    void set_name(ck::string name) { m_name = name; }
     virtual ~Device(void) {}
 
     template <typename T>
@@ -116,7 +117,6 @@ namespace dev {
 
    protected:
     void set_active(bool to) { m_active = to; }
-    void set_name(ck::string name) { m_name = name; }
   };
 
 

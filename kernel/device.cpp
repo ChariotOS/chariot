@@ -23,40 +23,44 @@ static void recurse_print(ck::ref<dev::Device> dev, bool props, int depth = 0) {
   };
 
   spaces();
+  printk(GRN "%s", dev->name().get());
+
   if (auto mmio = dev->cast<dev::MMIODevice>()) {
-    printk(GRN "%s", dev->name().get());
-    printk(GRY "@" YEL "%08x", mmio->address());
-
-    if (props) printk(RESET " {");
+    if (mmio->address() != 0) {
+      printk(GRY "@" YEL "%08x", mmio->address());
+    }
     for (auto &compat : mmio->compat()) {
-      printk(GRY " '%s'" RESET, compat.get());
+      printk(GRY " '%s'", compat.get());
     }
-    printk("\n");
 
-    if (props) {
-      for (auto &[name, prop] : dev->props()) {
-        spaces();
-        auto val = prop.format();
-        printk("  " BLU "%s = ", name.get());
+		printk(RESET);
+  }
 
-        if (val.size() > 0) {
-          switch (val[0]) {
-            case '<':
-              printk(YEL);
-              break;
-            case '"':
-              printk(GRN);
-              break;
-            default:
-              printk(GRY);
-              break;
-          }
+
+  if (props) printk(RESET " {");
+  printk("\n");
+
+  if (props) {
+    for (auto &[name, prop] : dev->props()) {
+      spaces();
+      auto val = prop.format();
+      printk("  " BLU "%s = ", name.get());
+
+      if (val.size() > 0) {
+        switch (val[0]) {
+          case '<':
+            printk(YEL);
+            break;
+          case '"':
+            printk(GRN);
+            break;
+          default:
+            printk(GRY);
+            break;
         }
-        printk("%s" RESET "\n", val.get());
       }
+      printk("%s" RESET "\n", val.get());
     }
-  } else {
-    DEVLOG("%s\n", dev->name().get());
   }
 
   for (auto &c : dev->children()) {

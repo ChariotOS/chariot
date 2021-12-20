@@ -53,7 +53,7 @@ class X86PCIDevice : public dev::PCIDevice {
     interrupt = d->interrupt;
 
 
-  	prog_if = pci::read(bus, dev, func, PCI_PROG_IF);
+    prog_if = pci::read(bus, dev, func, PCI_PROG_IF);
 
     vendor_id = d->vendor_id;
     device_id = d->device_id;
@@ -259,7 +259,7 @@ static const char *pci_class_names[] = {
     [0x14] = "(Reserved)",
 };
 
-static void scan_bus(int bus) {
+static void scan_bus(int bus, ck::ref<dev::MMIODevice> &root) {
   for (int dev = 0; dev < 32; dev++) {
     int nfuncs = 8; /* TODO: only scan functions if there are some */
 
@@ -279,32 +279,37 @@ static void scan_bus(int bus) {
       }
 
 
-      auto name = ck::string::format("%03x.%02x.%1x, %04x:%04x (%02x,%02x,%s)", bus, dev, func, desc->vendor_id, desc->device_id,
-          desc->class_id, desc->subclass_id, class_name);
-
+      auto name = ck::string::format("%03x.%02x.%1x, %04x:%04x (%s)", bus, dev, func, desc->vendor_id, desc->device_id, class_name);
       auto dev = ck::make_ref<X86PCIDevice>(desc);
-      dev::Device::add(name, dev);
-
+      dev->set_name(name);
+      root->adopt(move(dev));
       pci_device_count++;
     }
   }
 }
 
 void pci::init(void) {
+  auto root = ck::make_ref<dev::MMIODevice>(0, 0);
+
+	root->compat().push("x86-pci-bus");
+
+
   auto start = arch_read_timestamp();
   // enumerate PCI devices
   auto header_type = (pci_cfg_readl(0, 0, 0, 0xc) >> 16) & 0xff;
   if ((header_type & 0x80) == 0) {
     /* Single PCI host controller */
     KINFO("Single PCI host controller (quick scan)\n");
-    scan_bus(0);
+    scan_bus(0, root);
   } else {
     KINFO("Multiple PCI host controllers (slower scan)\n");
     /* Multiple PCI host controllers */
     for (int bus = 0; bus < 32; bus++)
-      scan_bus(bus);
+      scan_bus(bus, root);
   }
   KINFO("discovered %d PCI devices in %llu cycles.\n", pci_device_count, arch_read_timestamp() - start);
+
+  dev::Device::add("x86-pci", root);
 }
 
 void pci::walk_devices(ck::func<void(device *)> fn) {
