@@ -14,48 +14,71 @@ namespace ns16550a {
 
   class Uart {
    public:
+    struct Regs {
+      volatile uint8_t rbr;  /* 0 */
+      volatile uint8_t ier;  /* 1 */
+      volatile uint8_t fcr;  /* 2 */
+      volatile uint8_t lcr;  /* 3 */
+      volatile uint8_t mcr;  /* 4 */
+      volatile uint8_t lsr;  /* 5 */
+      volatile uint8_t msr;  /* 6 */
+      volatile uint8_t spr;  /* 7 */
+      volatile uint8_t mdr1; /* 8 */
+      volatile uint8_t reg9; /* 9 */
+      volatile uint8_t regA; /* A */
+      volatile uint8_t regB; /* B */
+      volatile uint8_t regC; /* C */
+      volatile uint8_t regD; /* D */
+      volatile uint8_t regE; /* E */
+      volatile uint8_t uasr; /* F */
+      volatile uint8_t scr;  /* 10*/
+      volatile uint8_t ssr;  /* 11*/
+    };
     Uart(dev::MMIODevice &mmio) {
-      address = mmio.address();
+      regs = (Uart::Regs *)p2v(mmio.address());
 
       irq::install(mmio.interrupt, uart_interrupt_handle, "ns16550a", (void *)this);
 
-      /* Master interrupt enable; also keep DTR/RTS asserted. */
-      write_reg(UART_MCR, UART_MCR_OUT2 | UART_MCR_DTR | UART_MCR_RTS);
+      // set DLAB so we can write the divisor
+      regs->lcr = 0x80;
+
+      regs->rbr = 1;
+      regs->ier = 0;
+      regs->lcr = 0x03;
 
       /* Enable receive interrupts. */
-      write_reg(UART_IER, UART_IER_ERDAI);
+      regs->ier = 0x01;
+      /* disable fifos, an irq will be raised for each incomming word */
+      regs->fcr = 0;
 
-			put_char('a');
+      (void)regs->rbr;
+
+      __sync_synchronize();
+
+      putc('a');
     }
 
-
-    void wait_for_xmitr(void) {
-      unsigned int status;
-      for (;;) {
-        status = read_reg(UART_LSR);
-        if ((status & BOTH_EMPTY) == BOTH_EMPTY) return;
-        arch_relax();
+    void putc(char c) {
+      while (!(regs->lsr & UART_LSR_THRE)) {
       }
+      regs->rbr = c;
     }
 
-    void put_char(char c) {
-			wait_for_xmitr();
-			write_reg(UART_THR, c);
-		}
-    int get_char(bool wait = true) { return -1; }
-
-    void handle_irq() {
-      //
-      printk("handle irq\n");
+    int get_char(bool wait = true) {
+      while ((regs->lsr & UART_LSR_DR) == 0) {
+        if (wait) {
+          arch_relax();
+        } else {
+          return -1;
+        }
+      }
+      return regs->rbr;
     }
 
-    void write_reg(uint32_t off, uint8_t val) {
-      *(volatile uint8_t *)p2v(address + off) = val;
-    }
+    void handle_irq() {}
 
-    uint32_t read_reg(uint8_t off) { return *(volatile uint8_t *)p2v(address + off); }
 
-    off_t address;
+    Uart::Regs *regs;
   };
 
 
@@ -91,5 +114,6 @@ void uart_interrupt_handle(int irq, reg_t *regs, void *uart) {
   auto *u = (ns16550a::Uart *)uart;
   u->handle_irq();
 }  // namespace ns16550a
+
 
 driver_init("ns16550a", ns16550a::UartDriver);

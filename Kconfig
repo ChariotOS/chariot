@@ -221,6 +221,16 @@ menu "Devices"
 	config VIRTIO
 		bool "Virtio Devices"
 		default y
+
+
+	config SIFIVE_UART
+		bool "Sifive uart drivers"
+		depends on RISCV
+		default y
+
+	config NS16550_UART
+		bool "ns16550 uart drivers"
+		default y
 		
 endmenu
 

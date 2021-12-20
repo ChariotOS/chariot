@@ -37,14 +37,14 @@ case $ARCH in
 		QEMU_FLAGS+="-display sdl "
 		;;
 
-	RISC-V-sifive)
+	RISC-V)
 		QEMU_FLAGS+="-smp 4 "
 		QEMU_FLAGS+="-bios default "
 		QEMU_FLAGS+="-machine sifive_u "
 		QEMU_FLAGS+="-kernel build/chariot.elf "
 		;;
 
-	RISC-V)
+	RISC-V-virt)
 		QEMU_FLAGS+="-machine virt -smp 4 -m ${CONFIG_RISCV_RAM_MB}M "
 		QEMU_FLAGS+="-bios default "
 		QEMU_FLAGS+="-kernel build/chariot.elf "

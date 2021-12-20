@@ -65,8 +65,8 @@
  * Note: The FIFO trigger levels are chip specific:
  *	RX:76 = 00  01  10  11	TX:54 = 00  01  10  11
  * PC16550D:	 1   4   8  14		xx  xx  xx  xx
- * TI16C550A:	 1   4   8  14          xx  xx  xx  xx
- * TI16C550C:	 1   4   8  14          xx  xx  xx  xx
+ * TI16C550A:	 1   4   8  14    xx  xx  xx  xx
+ * TI16C550C:	 1   4   8  14    xx  xx  xx  xx
  * ST16C550:	 1   4   8  14		xx  xx  xx  xx
  * ST16C650:	 8  16  24  28		16   8  24  30	PORT_16650V2
  * NS16C552:	 1   4   8  14		xx  xx  xx  xx
@@ -127,11 +127,3 @@
 
 #endif /* __XEN_8250_UART_H__ */
 
-/*
- * Local variables:
- * mode: C
- * c-file-style: "BSD"
- * c-basic-offset: 4
- * indent-tabs-mode: nil
- * End:
- */
