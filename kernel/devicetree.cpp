@@ -1,7 +1,7 @@
 #include <devicetree.h>
 #include <util.h>
 #include <syscall.h>
-#include <dev/device.h>
+#include <dev/hardware.h>
 #include <ck/vec.h>
 
 #define LOG(...) PFXLOG(YEL "FDT", __VA_ARGS__)

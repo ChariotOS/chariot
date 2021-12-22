@@ -1,4 +1,4 @@
-#include <dev/device.h>
+#include <dev/hardware.h>
 #include <dev/driver.h>
 #include <lock.h>
 #include <ck/vec.h>

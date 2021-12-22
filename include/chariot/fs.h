@@ -4,7 +4,7 @@
 #define __FS__H__
 
 #include <atom.h>
-#include <dev/device.h>
+#include <dev/hardware.h>
 #include <ck/func.h>
 #include <lock.h>
 #include <stat.h>

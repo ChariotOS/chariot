@@ -1,6 +1,6 @@
 #pragma once
 
-#include <dev/device.h>
+#include <dev/hardware.h>
 
 namespace spi {
 

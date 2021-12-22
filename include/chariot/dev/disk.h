@@ -1,7 +1,7 @@
 #ifndef __BLK_DEV_H__
 #define __BLK_DEV_H__
 
-#include <dev/device.h>
+#include <dev/hardware.h>
 #include <dev/driver.h>
 #include <ck/ptr.h>
 

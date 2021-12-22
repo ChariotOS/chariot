@@ -4,7 +4,7 @@
 #include <pci.h>
 #include <printk.h>
 
-#include <dev/device.h>
+#include <dev/hardware.h>
 
 #define PCI_VENDOR_ID 0x00            // word
 #define PCI_DEVICE_ID 0x02            // word

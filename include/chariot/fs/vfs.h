@@ -1,6 +1,6 @@
 #pragma once
 
-#include <dev/device.h>
+#include <dev/hardware.h>
 #include <fs.h>
 #include <ck/ptr.h>
 #include <ck/string.h>

@@ -4,7 +4,7 @@
 #include <devicetree.h>
 #include <printk.h>
 #include <dev/driver.h>
-#include <dev/device.h>
+#include <dev/hardware.h>
 #include <device_majors.h>
 #include <dev/sifive/uart.h>
 #include <console.h>

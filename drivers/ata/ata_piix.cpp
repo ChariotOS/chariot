@@ -2,7 +2,7 @@
 
 #include <module.h>
 #include <dev/driver.h>
-#include <dev/device.h>
+#include <dev/hardware.h>
 #include <util.h>
 #include <sleep.h>
 

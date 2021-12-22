@@ -5,7 +5,7 @@
 #include <ck/func.h>
 #include <types.h>
 
-#include <dev/device.h>
+#include <dev/hardware.h>
 
 #define __packed __attribute__((packed))
 
