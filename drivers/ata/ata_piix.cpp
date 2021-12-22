@@ -127,9 +127,9 @@ namespace piix {
 
   // this is a basic driver, not a block driver.
   // Disks are abstracted by dev::Disk.
-  class Driver : public dev::Driver {
+  class Driver : public dev::Device {
    public:
-    using dev::Driver::Driver;
+    using dev::Device::Device;
     virtual ~Driver(void) {}
     virtual void init(void);
   };
@@ -345,4 +345,3 @@ void piix::Driver::init(void) {
 }
 
 driver_init("ata-piix", piix::Driver, piix_probe);
-

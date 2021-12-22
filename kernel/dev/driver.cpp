@@ -7,6 +7,8 @@
 
 #define LOG(...) PFXLOG(BLU "DRV", __VA_ARGS__)
 
+
+static int next_major = 0;
 static rwlock drivers_lock;
 static ck::map<major_t, struct dev::DriverInfo *> drivers;
 static ck::map<ck::string, dev_t> device_names;
@@ -149,15 +151,20 @@ fs::BlockDevice *fs::bdev_from_path(const char *n) {
 
 
 static spinlock all_drivers_lock;
-static ck::vec<ck::ref<dev::Module>> all_drivers;
+static ck::vec<ck::ref<dev::Driver>> all_drivers;
 
-auto dev::Module::probe(ck::ref<hw::Device> device) -> dev::ProbeResult {
+
+dev::Driver::Driver(void) {
+	m_major = next_major++;
+}
+
+auto dev::Driver::probe(ck::ref<hw::Device> device) -> dev::ProbeResult {
   // By default, Ignore the device.
   return dev::ProbeResult::Ignore;
 }
 
 
-static void probe(ck::ref<hw::Device> dev, ck::ref<dev::Module> drv) {
+static void probe(ck::ref<hw::Device> dev, ck::ref<dev::Driver> drv) {
 	if (dev->driver() != nullptr) return;
   if (drv->probe(dev) == dev::ProbeResult::Attach) {
     drv->attach(dev);
@@ -165,7 +172,7 @@ static void probe(ck::ref<hw::Device> dev, ck::ref<dev::Module> drv) {
 }
 
 
-static void probe_all_r(ck::ref<hw::Device> dev, ck::ref<dev::Module> drv = nullptr) {
+static void probe_all_r(ck::ref<hw::Device> dev, ck::ref<dev::Driver> drv = nullptr) {
   if (drv == nullptr) {
     for (auto drv : all_drivers) {
       probe(dev, drv);
@@ -179,7 +186,7 @@ static void probe_all_r(ck::ref<hw::Device> dev, ck::ref<dev::Module> drv = null
   }
 }
 
-void dev::Module::add(ck::ref<dev::Module> driver) {
+void dev::Driver::add(ck::ref<dev::Driver> driver) {
   scoped_lock l(all_drivers_lock);
 
   all_drivers.push(driver);
@@ -190,7 +197,7 @@ void dev::Module::add(ck::ref<dev::Module> driver) {
 
 
 
-void dev::Module::probe_all(ck::ref<hw::Device> dev) {
+void dev::Driver::probe_all(ck::ref<hw::Device> dev) {
   scoped_lock l(all_drivers_lock);
   probe_all_r(dev, nullptr);
 }

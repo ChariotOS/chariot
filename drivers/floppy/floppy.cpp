@@ -694,7 +694,7 @@ void floppy_init(void) {
   uint8_t cmos = inb(0x71);
   parse_cmos((cmos & 0xf0) >> 4, cmos & 0x0f);
   if (primary_avail) {
-    irq::install(38, flpy_irq, NULL);
+    irq::install(38, flpy_irq, "floppy", NULL);
     fdc_reset();
   }
 }

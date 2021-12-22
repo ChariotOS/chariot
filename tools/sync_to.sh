@@ -68,7 +68,9 @@ if [ "$fsdev" == "" ]; then
 	fsdev=$(sudo fdisk -l "${dev}" | grep -A10 "Device" | sed 1,1d | awk '{print $1}')
 
 	echo "Making filesystem"
-	sudo mkfs.ext2 -b 4096 "${fsdev}" || die "couldn't create filesystem"
+
+	# sudo mke2fs -L "Chariot Root" -v -b 4096 -q -I 128 "${fsdev}" || die "couldn't create filesystem"
+	sudo mkfs.ext2 -L "Chariot Root" -v -b 4096 -q -I 128 "${fsdev}" || die "couldn't create filesystem"
 	echo "created."
 	newdisk=1
 fi

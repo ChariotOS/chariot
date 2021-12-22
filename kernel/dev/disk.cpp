@@ -129,9 +129,8 @@ int dev::register_disk(dev::Disk* disk) {
 
 
 ksh_def("disks", "display all disks") {
-	for (auto disk : m_disks) {
-
-		printk("sz: %zu, count: %zu\n", disk->block_size(), disk->block_count());
-	}
-	return 0;
+  for (auto disk : m_disks) {
+    printk("sz: %zu, count: %zu\n", disk->block_size(), disk->block_count());
+  }
+  return 0;
 }

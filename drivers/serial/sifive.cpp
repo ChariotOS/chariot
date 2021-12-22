@@ -123,4 +123,4 @@ static dev::ProbeResult probe(ck::ref<hw::Device> dev) {
 };
 
 
-driver_init("sifive,uart0", sifive::Uart, probe);
+driver_init("sifive-uart", sifive::Uart, probe);

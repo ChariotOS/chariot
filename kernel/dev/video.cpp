@@ -5,23 +5,23 @@
 #include <phys.h>
 #include <mm.h>
 
-dev::VideoDriver::~VideoDriver() { /* TODO */
+dev::VideoDevice::~VideoDevice() { /* TODO */
 }
 
 // default
-int dev::VideoDriver::get_mode(gvi_video_mode &) { return -ENOTIMPL; }
+int dev::VideoDevice::get_mode(gvi_video_mode &) { return -ENOTIMPL; }
 
-int dev::VideoDriver::flush_fb(void) { return -ENOTIMPL; }
+int dev::VideoDevice::flush_fb(void) { return -ENOTIMPL; }
 
 // default
-int dev::VideoDriver::set_mode(const gvi_video_mode &) { return -ENOTIMPL; }
+int dev::VideoDevice::set_mode(const gvi_video_mode &) { return -ENOTIMPL; }
 
-uint32_t *dev::VideoDriver::get_framebuffer(void) { return NULL; }
+uint32_t *dev::VideoDevice::get_framebuffer(void) { return NULL; }
 
 static bool initialized = false;
-static ck::vec<dev::VideoDriver *> m_VideoDrivers;
+static ck::vec<dev::VideoDevice *> m_VideoDrivers;
 
-static dev::VideoDriver *get_vdev(int minor) {
+static dev::VideoDevice *get_vdev(int minor) {
   if (minor >= 0 && minor < m_VideoDrivers.size()) {
     return m_VideoDrivers[minor];
   }
@@ -29,8 +29,8 @@ static dev::VideoDriver *get_vdev(int minor) {
 }
 
 struct gvi_vmobject final : public mm::VMObject {
-  dev::VideoDriver &vdev;
-  gvi_vmobject(dev::VideoDriver &vdev, size_t npages) : VMObject(npages), vdev(vdev) {}
+  dev::VideoDevice &vdev;
+  gvi_vmobject(dev::VideoDevice &vdev, size_t npages) : VMObject(npages), vdev(vdev) {}
 
   virtual ~gvi_vmobject(void){};
 
@@ -123,7 +123,7 @@ static struct dev::DriverInfo gvi_driver_info {
   .name = "Generic Video Interface", .type = DRIVER_CHAR, .major = MAJOR_VIDEO, .char_ops = &generic_VideoDriver_ops,
 };
 
-void dev::VideoDriver::register_driver(dev::VideoDriver *vdev) {
+void dev::VideoDevice::register_driver(dev::VideoDevice *vdev) {
   if (!initialized) {
     dev::register_driver(gvi_driver_info);
     initialized = true;

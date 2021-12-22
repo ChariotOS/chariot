@@ -161,7 +161,7 @@ static dev::ProbeResult riscv_hart_probe(ck::ref<hw::Device> dev) {
 
 class RISCVHart : public dev::Driver {
  public:
-  using dev::Driver::Driver;
+  using dev::Device::Device;
 
   virtual ~RISCVHart(void) {}
 

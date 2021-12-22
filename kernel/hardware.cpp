@@ -14,7 +14,7 @@ static ck::vec<ck::ref<hw::Device>> all_devices;
 hw::Device::Device(DeviceType t) : m_type(t) {}
 
 
-void hw::Device::attach_to(dev::Driver *drv) { this->m_driver = drv; }
+void hw::Device::attach_to(dev::Device *drv) { this->m_driver = drv; }
 
 
 
@@ -40,7 +40,7 @@ static void recurse_print(ck::ref<hw::Device> dev, bool props, int depth = 0) {
   }
 
   if (dev->driver()) {
-    printk(RED " driven by '%s'", dev->driver()->module->name().get());
+    printk(RED " driven by '%s'", dev->driver()->driver().name().get());
   }
 
   if (props) printk(RESET " {");
@@ -112,7 +112,7 @@ void hw::Device::add(ck::string name, ck::ref<Device> dev) {
   assert(all_devices.find(dev).is_end());
   all_devices.push(dev);
 
-  dev::Module::probe_all(dev);
+  dev::Driver::probe_all(dev);
 }
 
 

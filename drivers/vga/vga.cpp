@@ -281,9 +281,9 @@ void vga::early_init(uint64_t mbd) {
 
 
 
-class VGADriver : public dev::VideoDriver {
+class VGADriver : public dev::VideoDevice {
  public:
-  using dev::VideoDriver::VideoDriver;
+  using dev::VideoDevice::VideoDevice;
 
   virtual ~VGADriver(void) {}
 
@@ -296,7 +296,7 @@ class VGADriver : public dev::VideoDriver {
 
   virtual void init(void) {
     vga_dev = dev();
-    dev::VideoDriver::register_driver(this);
+    dev::VideoDevice::register_driver(this);
   }
 
 

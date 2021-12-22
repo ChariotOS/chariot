@@ -23,7 +23,7 @@ namespace sifive {
       volatile uint32_t div;
     };
 
-		using dev::Driver::Driver;
+		using dev::Device::Device;
 
 
     void put_char(char ch);

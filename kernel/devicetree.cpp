@@ -4,6 +4,20 @@
 #include <dev/hardware.h>
 #include <ck/vec.h>
 
+
+#define FDT_BEGIN_NODE 0x00000001
+#define FDT_END_NODE 0x00000002
+#define FDT_PROP 0x00000003
+#define FDT_NOP 0x00000004
+#define FDT_END 0x00000009
+
+#define FDT_T_STRING 0
+#define FDT_T_INTARR 1
+#define FDT_T_INT 2
+#define FDT_T_EMPTY 4
+
+#define FDT_NUM_NODES 75
+
 #define LOG(...) PFXLOG(YEL "FDT", __VA_ARGS__)
 
 //! Byte swap int
@@ -31,18 +45,6 @@ struct be32p_t {
 };
 
 
-#define FDT_BEGIN_NODE 0x00000001
-#define FDT_END_NODE 0x00000002
-#define FDT_PROP 0x00000003
-#define FDT_NOP 0x00000004
-#define FDT_END 0x00000009
-
-#define FDT_T_STRING 0
-#define FDT_T_INTARR 1
-#define FDT_T_INT 2
-#define FDT_T_EMPTY 4
-
-#define FDT_NUM_NODES 75
 
 static dtb::fdt_header *global_fdt_header = NULL;
 static dtb::node devices[FDT_NUM_NODES];
@@ -279,7 +281,6 @@ class DTBDevice : public hw::MMIODevice {
 
 
   void propegate_cell_sizes(void) {
-
     for (auto &[name, prop] : m_props) {
       prop.size_cells = get_size_cells();
       prop.address_cells = get_addr_cells();
@@ -476,17 +477,13 @@ void dtb::promote(void) {
         break;
 
       case FDT_NOP:
-        // printk("nop\n");
-        break;
-
       case FDT_END:
-        // printk("end\n");
         break;
     }
   }
 
 
-	root->propegate_cell_sizes();
+  root->propegate_cell_sizes();
   hw::Device::add("dtb", root);
 }
 

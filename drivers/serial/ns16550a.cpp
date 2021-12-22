@@ -12,7 +12,7 @@ static void uart_interrupt_handle(int irq, reg_t *regs, void *uart);
 namespace ns16550a {
 
 
-  class Uart : public dev::Driver {
+  class Uart : public dev::Device {
    public:
     struct Regs {
       volatile uint8_t rbr;  /* 0 */
@@ -35,7 +35,7 @@ namespace ns16550a {
       volatile uint8_t ssr;  /* 11*/
     };
 
-		using dev::Driver::Driver;
+		using dev::Device::Device;
 
     virtual void init() {
       auto mmio = dev()->cast<hw::MMIODevice>();

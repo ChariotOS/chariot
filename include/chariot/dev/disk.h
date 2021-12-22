@@ -8,9 +8,6 @@
 namespace dev {
   class Disk {
    public:
-    uint32_t magic = 0xFEEDD00D;
-
-   public:
     Disk();
 
     virtual ~Disk();
