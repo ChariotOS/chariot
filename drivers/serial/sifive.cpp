@@ -52,9 +52,11 @@ void sifive_uart_interrupt_handle(int irq, reg_t *regs, void *uart) {
   u->handle_irq();
 }
 
-sifive::Uart::Uart(dev::MMIODevice &mmio) {
+void sifive::Uart::init(void) {
+	auto mmio = dev()->cast<hw::MMIODevice>();
+
   // the registers are simply at the base
-  regs = (Uart::Regs *)p2v(mmio.address());
+  regs = (Uart::Regs *)p2v(mmio->address());
   // enable transmit and receive
   regs->txctrl = UART_TXCTRL_TXEN;
   regs->rxctrl = UART_RXCTRL_RXEN;
@@ -62,7 +64,7 @@ sifive::Uart::Uart(dev::MMIODevice &mmio) {
   // enable rx interrupt
   regs->ie = 0b10;
 
-  irq::install(mmio.interrupt, sifive_uart_interrupt_handle, "sifive,uart0", (void *)this);
+  irq::install(mmio->interrupt, sifive_uart_interrupt_handle, "sifive,uart0", (void *)this);
 }
 
 void sifive::Uart::put_char(char c) {
@@ -110,17 +112,15 @@ void sifive::Uart::handle_irq(void) {
 }
 
 
-dev::ProbeResult sifive::UartDriver::probe(ck::ref<dev::Device> dev) {
-  if (auto mmio = dev->cast<dev::MMIODevice>()) {
+static dev::ProbeResult probe(ck::ref<hw::Device> dev) {
+  if (auto mmio = dev->cast<hw::MMIODevice>()) {
     if (mmio->is_compat("sifive,uart0")) {
       LOG("Found device @%08llx. irq=%d\n", mmio->address(), mmio->interrupt);
-
-      auto uart = ck::make_box<sifive::Uart>(*mmio);
-      uarts.push(move(uart));
       return dev::ProbeResult::Attach;
     }
   }
   return dev::ProbeResult::Ignore;
 };
 
-driver_init("sifive,uart0", sifive::UartDriver);
+
+driver_init("sifive,uart0", sifive::Uart, probe);

@@ -536,11 +536,6 @@ static void ata_init(void) {
   // register all the ata drives on the system
   query_and_add_drive(0x1F0, 0, true);
   query_and_add_drive(0x1F0, 1, false);
-
-
-  // TODO: get piix to not freeze on hardware
-  piix_init();
-  return;
 }
 
 module_init("ata", ata_init);

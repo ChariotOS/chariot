@@ -140,7 +140,7 @@ void vga::configure(struct ck_fb_info &i) {
 }
 
 
-static ck::ref<dev::PCIDevice> vga_dev = nullptr;
+static ck::ref<hw::PCIDevice> vga_dev = nullptr;
 
 // static pci::device *vga_dev = NULL;
 
@@ -280,21 +280,31 @@ void vga::early_init(uint64_t mbd) {
 }
 
 
-class vga_vdev : public dev::video_device {
-  virtual ~vga_vdev() {}
+
+class VGADriver : public dev::VideoDriver {
+ public:
+  using dev::VideoDriver::VideoDriver;
+
+  virtual ~VGADriver(void) {}
+
   virtual int get_mode(gvi_video_mode &mode) {
     mode.width = info.width;
     mode.height = info.height;
     mode.caps = 0;
     return 0;
   }
-  // virtual int set_mode(const gvi_video_mode &mode);
+
+  virtual void init(void) {
+    vga_dev = dev();
+    dev::VideoDriver::register_driver(this);
+  }
+
+
   virtual uint32_t *get_framebuffer(void) {
     if (vga_fba == NULL) {
       KINFO("Looking for VGA Framebuffer\n");
       vga_fba = (u32 *)get_framebuffer_address();
     }
-    // printk("get fba: %p\n", vga_fba);
     return vga_fba;
   }
 
@@ -309,35 +319,17 @@ class vga_vdev : public dev::video_device {
 };
 
 
-class VGADriver : public dev::Driver {
- public:
-  virtual ~VGADriver(void) {}
-  dev::ProbeResult probe(ck::ref<dev::Device> dev) override {
-    if (vga_dev.is_null()) {
-      if (auto pci = dev->cast<dev::PCIDevice>()) {
-        if (pci->is_device(0x1234, 0x1111) || pci->is_device(0x80ee, 0xbeef)) {
-          KINFO("Found VGA device: %s\n", pci->name().get());
-          vga_dev = dev;
-          return dev::ProbeResult::Attach;
-        }
+
+static dev::ProbeResult vga_probe(ck::ref<hw::Device> dev) {
+  if (vga_dev.is_null()) {
+    if (auto pci = dev->cast<hw::PCIDevice>()) {
+      if (pci->is_device(0x1234, 0x1111) || pci->is_device(0x80ee, 0xbeef)) {
+        return dev::ProbeResult::Attach;
       }
     }
-    return dev::ProbeResult::Ignore;
-  };
+  }
+  return dev::ProbeResult::Ignore;
 };
 
 
-void vga_mod_init(void) {
-  auto driver = ck::make_ref<VGADriver>();
-  dev::Driver::add(driver);
-
-  if (vga_fba != NULL) {
-    printk(KERN_INFO "Standard VGA Framebuffer found @ %p\n", vga_fba);
-
-    auto *vdev = new vga_vdev;
-    info.active = true;
-    dev::video_device::register_device(vdev);
-  }
-}
-
-module_init("vga framebuffer", vga_mod_init);
+driver_init("x86-vga", VGADriver, vga_probe);

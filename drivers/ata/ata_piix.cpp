@@ -125,6 +125,15 @@ namespace piix {
 
 
 
+  // this is a basic driver, not a block driver.
+  // Disks are abstracted by dev::Disk.
+  class Driver : public dev::Driver {
+   public:
+    using dev::Driver::Driver;
+    virtual ~Driver(void) {}
+    virtual void init(void);
+  };
+
   // A piix disk is an instance of a PIIX PCI disk
   class Disk : public dev::Disk {
    public:
@@ -176,9 +185,9 @@ namespace piix {
     } __attribute__((packed));
 
 
-    ck::ref<dev::PCIDevice> dev;
+    ck::ref<hw::PCIDevice> dev;
 
-    Disk(ck::ref<dev::PCIDevice> dev, int bar0, int bar1, bool primary);
+    Disk(ck::ref<hw::PCIDevice> dev, int bar0, int bar1, bool primary);
     virtual ~Disk(void) {}
 
     virtual bool read_blocks(uint32_t sector, void* data, int n);
@@ -193,17 +202,11 @@ namespace piix {
     bool identify();
   };
 
-  class Driver : public dev::Driver {
-   public:
-    virtual ~Driver(void) {}
-    dev::ProbeResult probe(ck::ref<dev::Device> dev) override;
-  };
-
 }  // namespace piix
 
 
 
-piix::Disk::Disk(ck::ref<dev::PCIDevice> dev, int b0, int b1, bool primary) : dev(dev) {
+piix::Disk::Disk(ck::ref<hw::PCIDevice> dev, int b0, int b1, bool primary) : dev(dev) {
   scoped_lock l(drive_lock);
   auto bar0 = dev->get_bar(b0).raw;
   auto bar1 = dev->get_bar(b1).raw;
@@ -295,37 +298,11 @@ static void identify(piix::Disk* disk) {
   }
 }
 
-dev::ProbeResult piix::Driver::probe(ck::ref<dev::Device> dev) {
-  if (auto pci = dev->cast<dev::PCIDevice>()) {
+static dev::ProbeResult piix_probe(ck::ref<hw::Device> dev) {
+  if (auto pci = dev->cast<hw::PCIDevice>()) {
     if (pci->class_id == 0x01 && pci->subclass_id == 0x01) {
       PIIX_INFO("Found ATA piix device: %s\n", pci->name().get());
 
-      uint8_t pif = pci->read8(0x9);  // prog interface
-      PIIX_INFO("Programming interface: %x\n", pif);
-
-
-
-      if (pif & (1 << 0)) PIIX_INFO("Primary Channel in PCI Mode\n");
-      if (pif & (1 << 1)) PIIX_INFO("Primary Channel can be switched to PCI Mode\n");
-      if (pif & (1 << 2)) PIIX_INFO("Secondary Channel in PCI Mode\n");
-      if (pif & (1 << 3)) PIIX_INFO("Secondary Channel can be switched to PCI Mode\n");
-      if (pif & (1 << 7)) PIIX_INFO("Supports DMA\n");
-      PIIX_INFO("Interrupt: %d\n", pci->interrupt);
-      for (int i = 0; i < 5; i++) {
-        PIIX_INFO("BAR%d = %p\n", i, pci->get_bar(i).raw);
-      }
-
-      // Primary channel in PCI mode
-      if (pif & (1 << 0)) {
-        identify(new piix::Disk(dev, 0, 1, true));
-        identify(new piix::Disk(dev, 0, 1, false));
-      }
-
-      // secondary channel in PCI mode
-      if (pif & (1 << 2)) {
-        identify(new piix::Disk(dev, 2, 3, true));
-        identify(new piix::Disk(dev, 2, 3, false));
-      }
 
       return dev::ProbeResult::Attach;
     }
@@ -335,8 +312,37 @@ dev::ProbeResult piix::Driver::probe(ck::ref<dev::Device> dev) {
 }
 
 
-void piix_init(void) {
-  auto driver = ck::make_ref<piix::Driver>();
-  dev::Driver::add(driver);
+
+void piix::Driver::init(void) {
+  if (auto pci = dev()->cast<hw::PCIDevice>()) {
+    uint8_t pif = pci->read8(0x9);  // prog interface
+    PIIX_INFO("Programming interface: %x\n", pif);
+
+
+
+    if (pif & (1 << 0)) PIIX_INFO("Primary Channel in PCI Mode\n");
+    if (pif & (1 << 1)) PIIX_INFO("Primary Channel can be switched to PCI Mode\n");
+    if (pif & (1 << 2)) PIIX_INFO("Secondary Channel in PCI Mode\n");
+    if (pif & (1 << 3)) PIIX_INFO("Secondary Channel can be switched to PCI Mode\n");
+    if (pif & (1 << 7)) PIIX_INFO("Supports DMA\n");
+    PIIX_INFO("Interrupt: %d\n", pci->interrupt);
+    for (int i = 0; i < 5; i++) {
+      PIIX_INFO("BAR%d = %p\n", i, pci->get_bar(i).raw);
+    }
+
+    // Primary channel in PCI mode
+    if (pif & (1 << 0)) {
+      identify(new piix::Disk(pci, 0, 1, true));
+      identify(new piix::Disk(pci, 0, 1, false));
+    }
+
+    // secondary channel in PCI mode
+    if (pif & (1 << 2)) {
+      identify(new piix::Disk(pci, 2, 3, true));
+      identify(new piix::Disk(pci, 2, 3, false));
+    }
+  }
 }
+
+driver_init("ata-piix", piix::Driver, piix_probe);
 

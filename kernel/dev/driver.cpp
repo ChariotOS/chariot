@@ -149,25 +149,29 @@ fs::BlockDevice *fs::bdev_from_path(const char *n) {
 
 
 static spinlock all_drivers_lock;
-static ck::vec<ck::ref<dev::Driver>> all_drivers;
+static ck::vec<ck::ref<dev::Module>> all_drivers;
 
-auto dev::Driver::probe(ck::ref<dev::Device> device) -> dev::ProbeResult {
+auto dev::Module::probe(ck::ref<hw::Device> device) -> dev::ProbeResult {
   // By default, Ignore the device.
   return dev::ProbeResult::Ignore;
 }
 
 
-static void probe_all_r(ck::ref<dev::Device> dev, ck::ref<dev::Driver> drv = nullptr) {
-  // printk("probe %s\n", dev->name().get());
+static void probe(ck::ref<hw::Device> dev, ck::ref<dev::Module> drv) {
+	if (dev->driver() != nullptr) return;
+  if (drv->probe(dev) == dev::ProbeResult::Attach) {
+    drv->attach(dev);
+  }
+}
+
+
+static void probe_all_r(ck::ref<hw::Device> dev, ck::ref<dev::Module> drv = nullptr) {
   if (drv == nullptr) {
     for (auto drv : all_drivers) {
-      if (drv->probe(dev) == dev::ProbeResult::Attach) {
-        continue;
-      }
+      probe(dev, drv);
     }
-
   } else {
-    drv->probe(dev);
+    probe(dev, drv);
   }
 
   for (auto c : dev->children()) {
@@ -175,18 +179,18 @@ static void probe_all_r(ck::ref<dev::Device> dev, ck::ref<dev::Driver> drv = nul
   }
 }
 
-void dev::Driver::add(ck::ref<dev::Driver> driver) {
+void dev::Module::add(ck::ref<dev::Module> driver) {
   scoped_lock l(all_drivers_lock);
 
   all_drivers.push(driver);
-  for (auto dev : dev::Device::all()) {
+  for (auto dev : hw::Device::all()) {
     probe_all_r(dev, driver);
   }
 }
 
 
 
-void dev::Driver::probe_all(ck::ref<dev::Device> dev) {
+void dev::Module::probe_all(ck::ref<hw::Device> dev) {
   scoped_lock l(all_drivers_lock);
   probe_all_r(dev, nullptr);
 }
@@ -207,3 +211,4 @@ ksh_def("drivers", "display all (old style) drivers") {
   drivers_lock.read_unlock();
   return 0;
 }
+

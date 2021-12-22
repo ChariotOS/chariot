@@ -27,10 +27,17 @@ struct dev_t {
   minor_t min;
 };
 
+
 namespace dev {
+
+  class Driver;
+};
+
+namespace hw {
 
   enum DeviceType { PCI, MMIO, Unknown };
   enum RemovalReason { HotPlug, Magic /* idk lol */ };
+
 
 
 
@@ -55,15 +62,15 @@ namespace dev {
     bool read_size(uint64_t *dst, off_t &off) const { return read_cell(dst, size_cells, off); }
     bool read_irq(uint64_t *dst, off_t &off) const { return read_cell(dst, irq_cells, off); }
 
-		// read integers using a format string. s = size, a = addr, i = irq
-		// for example, reading a 'reg' type from the device tree uses the format "as"
-		bool read_ints(ck::vec<uint64_t> &dst, const char *fmt, off_t &off) const;
-		bool read_all_ints(ck::vec<uint64_t> &dst, const char *fmt) const;
+    // read integers using a format string. s = size, a = addr, i = irq
+    // for example, reading a 'reg' type from the device tree uses the format "as"
+    bool read_ints(ck::vec<uint64_t> &dst, const char *fmt, off_t &off) const;
+    bool read_all_ints(ck::vec<uint64_t> &dst, const char *fmt) const;
 
     bool read_cell(uint64_t *dst, int cell_size, off_t &off) const;
 
 
-		ck::vec<dev::Reg> read_registers(void) const;
+    ck::vec<hw::Reg> read_registers(void) const;
   };
 
   // An abstract Device. You need to cast it to another kind
@@ -72,8 +79,9 @@ namespace dev {
     DeviceType m_type;
     ck::string m_name;
     bool m_active = false;
-    ck::ref<dev::Device> m_parent = nullptr;
-    ck::vec<ck::ref<dev::Device>> m_children;
+    ck::ref<hw::Device> m_parent = nullptr;
+    dev::Driver *m_driver = nullptr;
+    ck::vec<ck::ref<hw::Device>> m_children;
 
    protected:
     // when added to the main device layer, a device is locked.
@@ -92,9 +100,13 @@ namespace dev {
     // lock the device. No more changes can occur (adopt, prop add, etc);
     inline void lock(void) { m_locked = true; }
 
+
+    void attach_to(dev::Driver *drv);
+    dev::Driver *driver(void) const { return m_driver; }
+
     inline auto &children(void) const { return m_children; }
     inline auto parent(void) const { return m_parent; }
-    inline void adopt(ck::ref<dev::Device> child) {
+    inline void adopt(ck::ref<hw::Device> child) {
       assert(!m_locked);
       child->m_parent = this;
       m_children.push(child);
@@ -135,7 +147,7 @@ namespace dev {
   };
 
   // A platform independent PCI device
-  class PCIDevice : public dev::Device {
+  class PCIDevice : public hw::Device {
    public:
     uint16_t bus;
     uint16_t dev;
@@ -154,7 +166,7 @@ namespace dev {
     uint8_t revision;
 
     static constexpr DeviceType TYPE = DeviceType::PCI;
-    PCIDevice() : dev::Device(TYPE) {}
+    PCIDevice() : hw::Device(TYPE) {}
     ~PCIDevice(void) override {}
 
     bool is_device(uint16_t vendor, uint16_t device) const;
@@ -162,7 +174,7 @@ namespace dev {
 
 
     // Implement these if you implement a PCIDevice
-    virtual auto get_bar(int barnum) -> dev::PCIBar { return {.valid = false}; };
+    virtual auto get_bar(int barnum) -> hw::PCIBar { return {.valid = false}; };
     // read fields
     virtual auto read8(uint32_t field) -> uint8_t { return 0; }
     virtual auto read16(uint32_t field) -> uint16_t { return 0; }
@@ -178,10 +190,10 @@ namespace dev {
 
   // a device which is just a region and a length. By virtue
   // of being MMIO, any more information is implementation defined.
-  class MMIODevice : public dev::Device {
+  class MMIODevice : public hw::Device {
    public:
     static constexpr DeviceType TYPE = DeviceType::MMIO;
-    MMIODevice(off_t addr, size_t) : dev::Device(TYPE) { m_address = addr; }
+    MMIODevice(off_t addr, size_t) : hw::Device(TYPE) { m_address = addr; }
     ~MMIODevice(void) override {}
 
 
@@ -211,6 +223,6 @@ namespace dev {
     return nullptr;
   }
 
-};  // namespace dev
+};  // namespace hw
 
 #endif

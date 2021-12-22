@@ -205,39 +205,39 @@ int dtb::parse(dtb::fdt_header *fdt) {
 
 static struct {
   const char *name;
-  dev::Prop::Type type;
+  hw::Prop::Type type;
 } fdt_types[] = {
-    {"compatible", dev::Prop::Type::String},
-    {"model", dev::Prop::Type::String},
-    {"phandle", dev::Prop::Type::Integer},
-    {"status", dev::Prop::Type::String},
-    {"#address-cells", dev::Prop::Type::CellSize},
-    {"#size-cells", dev::Prop::Type::CellSize},
-    {"#interrupt-cells", dev::Prop::Type::CellSize},
-    {"reg", dev::Prop::Type::Register},
-    {"virtual-reg", dev::Prop::Type::Register},
-    {"ranges", dev::Prop::Type::Unknown},
-    {"dma-ranges", dev::Prop::Type::Unknown}, /* TODO: <prop-encoded-array> */
-    {"name", dev::Prop::Type::String},
-    {"device_type", dev::Prop::Type::String},
-    {"interrupts", dev::Prop::Type::Interrupts},
-    {0, dev::Prop::Unknown},
+    {"compatible", hw::Prop::Type::String},
+    {"model", hw::Prop::Type::String},
+    {"phandle", hw::Prop::Type::Integer},
+    {"status", hw::Prop::Type::String},
+    {"#address-cells", hw::Prop::Type::CellSize},
+    {"#size-cells", hw::Prop::Type::CellSize},
+    {"#interrupt-cells", hw::Prop::Type::CellSize},
+    {"reg", hw::Prop::Type::Register},
+    {"virtual-reg", hw::Prop::Type::Register},
+    {"ranges", hw::Prop::Type::Unknown},
+    {"dma-ranges", hw::Prop::Type::Unknown}, /* TODO: <prop-encoded-array> */
+    {"name", hw::Prop::Type::String},
+    {"device_type", hw::Prop::Type::String},
+    {"interrupts", hw::Prop::Type::Interrupts},
+    {0, hw::Prop::Unknown},
 };
 
-static dev::Prop::Type get_fdt_prop_type(const char *c) {
+static hw::Prop::Type get_fdt_prop_type(const char *c) {
   auto *m = &fdt_types[0];
 
   while (m->name != NULL) {
     if (!strcmp(c, m->name)) return m->type;
     m++;
   }
-  return dev::Prop::Type::Unknown;
+  return hw::Prop::Type::Unknown;
 }
 
 
-class DTBDevice : public dev::MMIODevice {
+class DTBDevice : public hw::MMIODevice {
  public:
-  DTBDevice(const char *name, off_t addr) : dev::MMIODevice(addr, 0) { this->set_name(name); }
+  DTBDevice(const char *name, off_t addr) : hw::MMIODevice(addr, 0) { this->set_name(name); }
 
 
   static ck::ref<DTBDevice> alloc(const char *name) {
@@ -298,7 +298,7 @@ class DTBDevice : public dev::MMIODevice {
     auto size_cells = get_size_cells();
     auto irq_cells = get_irq_cells();
     {
-      dev::Prop prop;
+      hw::Prop prop;
       prop.type = get_fdt_prop_type(name);
       prop.size_cells = size_cells;
       prop.address_cells = addr_cells;
@@ -487,6 +487,6 @@ void dtb::promote(void) {
 
 
 	root->propegate_cell_sizes();
-  dev::Device::add("dtb", root);
+  hw::Device::add("dtb", root);
 }
 

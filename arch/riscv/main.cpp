@@ -141,16 +141,37 @@ bool start_secondary(int i) {
   return true;
 }
 
+
+static dev::ProbeResult riscv_hart_probe(ck::ref<hw::Device> dev) {
+  if (auto mmio = dev->cast<hw::MMIODevice>()) {
+    if (mmio->is_compat("riscv")) {
+      auto status = mmio->get_prop_string("status");
+      if (status.has_value()) {
+        if (status.unwrap() == "disabled") return dev::ProbeResult::Ignore;
+      }
+
+      return dev::ProbeResult::Attach;
+    }
+  }
+
+  return dev::ProbeResult::Ignore;
+};
+
+
+
 class RISCVHart : public dev::Driver {
  public:
+  using dev::Driver::Driver;
+
   virtual ~RISCVHart(void) {}
-  dev::ProbeResult probe(ck::ref<dev::Device> dev) override {
-    if (auto mmio = dev->cast<dev::MMIODevice>()) {
+
+  virtual void init(void) {
+    if (auto mmio = dev()->cast<hw::MMIODevice>()) {
       if (mmio->is_compat("riscv")) {
         auto status = mmio->get_prop_string("status");
 
         if (status.has_value()) {
-          if (status.unwrap() == "disabled") return dev::ProbeResult::Ignore;
+          if (status.unwrap() == "disabled") return;
         }
 
         auto hartid = mmio->address();
@@ -166,10 +187,11 @@ class RISCVHart : public dev::Driver {
         }
       }
     }
-    return dev::ProbeResult::Ignore;
-  };
+  }
 };
 
+
+driver_init("riscv,hart", RISCVHart, riscv_hart_probe);
 
 
 spinlock x;
@@ -283,10 +305,6 @@ void main(int hartid, void *fdt) {
     LOG("Calling kernel module init functions\n");
     initialize_builtin_modules();
     LOG("kernel modules initialized\n");
-
-    // add the hart driver to start other cores
-    dev::Driver::add(ck::make_ref<RISCVHart>());
-
     // kshell::run();
 
 

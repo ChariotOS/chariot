@@ -5,32 +5,32 @@
 #include <phys.h>
 #include <mm.h>
 
-dev::video_device::~video_device() { /* TODO */
+dev::VideoDriver::~VideoDriver() { /* TODO */
 }
 
 // default
-int dev::video_device::get_mode(gvi_video_mode &) { return -ENOTIMPL; }
+int dev::VideoDriver::get_mode(gvi_video_mode &) { return -ENOTIMPL; }
 
-int dev::video_device::flush_fb(void) { return -ENOTIMPL; }
+int dev::VideoDriver::flush_fb(void) { return -ENOTIMPL; }
 
 // default
-int dev::video_device::set_mode(const gvi_video_mode &) { return -ENOTIMPL; }
+int dev::VideoDriver::set_mode(const gvi_video_mode &) { return -ENOTIMPL; }
 
-uint32_t *dev::video_device::get_framebuffer(void) { return NULL; }
+uint32_t *dev::VideoDriver::get_framebuffer(void) { return NULL; }
 
 static bool initialized = false;
-static ck::vec<dev::video_device *> m_video_devices;
+static ck::vec<dev::VideoDriver *> m_VideoDrivers;
 
-static dev::video_device *get_vdev(int minor) {
-  if (minor >= 0 && minor < m_video_devices.size()) {
-    return m_video_devices[minor];
+static dev::VideoDriver *get_vdev(int minor) {
+  if (minor >= 0 && minor < m_VideoDrivers.size()) {
+    return m_VideoDrivers[minor];
   }
   return nullptr;
 }
 
 struct gvi_vmobject final : public mm::VMObject {
-  dev::video_device &vdev;
-  gvi_vmobject(dev::video_device &vdev, size_t npages) : VMObject(npages), vdev(vdev) {}
+  dev::VideoDriver &vdev;
+  gvi_vmobject(dev::VideoDriver &vdev, size_t npages) : VMObject(npages), vdev(vdev) {}
 
   virtual ~gvi_vmobject(void){};
 
@@ -112,7 +112,7 @@ static void gvi_close(fs::File &fd) {
 }
 
 
-struct fs::FileOperations generic_video_device_ops = {
+struct fs::FileOperations generic_VideoDriver_ops = {
     .ioctl = gvi_ioctl,
     .open = gvi_open,
     .close = gvi_close,
@@ -120,18 +120,18 @@ struct fs::FileOperations generic_video_device_ops = {
 };
 
 static struct dev::DriverInfo gvi_driver_info {
-  .name = "Generic Video Interface", .type = DRIVER_CHAR, .major = MAJOR_VIDEO, .char_ops = &generic_video_device_ops,
+  .name = "Generic Video Interface", .type = DRIVER_CHAR, .major = MAJOR_VIDEO, .char_ops = &generic_VideoDriver_ops,
 };
 
-void dev::video_device::register_device(dev::video_device *vdev) {
+void dev::VideoDriver::register_driver(dev::VideoDriver *vdev) {
   if (!initialized) {
     dev::register_driver(gvi_driver_info);
     initialized = true;
   }
 
 
-  int minor = m_video_devices.size();
+  int minor = m_VideoDrivers.size();
   ck::string name = ck::string::format("video%d", minor);
-  m_video_devices.push(vdev);
+  m_VideoDrivers.push(vdev);
   dev::register_name(gvi_driver_info, name, minor);
 }

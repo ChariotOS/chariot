@@ -76,7 +76,7 @@ namespace dtb {
   void walk_devices(bool (*callback)(dtb::node *));
 
 
-  // promote the boot representation to the dev::Device representation
+  // promote the boot representation to the hw::Device representation
   void promote();
 
 };  // namespace dtb

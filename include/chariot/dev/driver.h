@@ -69,21 +69,83 @@ namespace dev {
 namespace dev {
   enum ProbeResult { Attach, Ignore };
 
-  class Driver : public ck::refcounted<Driver> {
+  using Prober = dev::ProbeResult (*)(ck::ref<hw::Device>);
+
+
+  class Module : public ck::refcounted<Module> {
+    ck::string m_name;
+
    public:
-    Driver() {}
-    virtual ~Driver(void) {}
+    Module() {}
+    virtual ~Module(void) {}
 
-    virtual ProbeResult probe(ck::ref<dev::Device> dev);
+    virtual ProbeResult probe(ck::ref<hw::Device> dev);
+
+    // called when probe returns Attach
+    virtual void attach(ck::ref<hw::Device> dev) {}
 
 
-    static void add(ck::ref<dev::Driver>);
-    static void probe_all(ck::ref<dev::Device>);
+
+    inline void set_name(ck::string name) { m_name = move(name); }
+    inline auto name(void) const { return m_name; }
+
+    static void add(ck::ref<dev::Module>);
+    static void probe_all(ck::ref<hw::Device>);
   };
+
+
+  template <typename DriverT>
+  class ModuleAutoProbe final : public dev::Module {
+    unsigned next_id = 0;
+    ck::map<unsigned, ck::ref<DriverT>> m_drivers;
+
+    Prober m_prober;
+
+   public:
+    ModuleAutoProbe(const char *name, Prober prober) : m_prober(prober) { set_name(name); }
+    virtual void attach(ck::ref<hw::Device> dev) final {
+      auto id = next_id++;
+
+      auto drv = ck::make_ref<DriverT>(dev);
+      drv->module = this;
+      m_drivers.set(id, drv);
+      drv->init();
+    }
+
+    virtual ProbeResult probe(ck::ref<hw::Device> dev) final { return m_prober(dev); }
+  };
+
+
+
+  class Driver : public ck::refcounted<Driver> {
+   private:
+    ck::ref<hw::Device> m_dev;
+
+   public:
+    dev::Module *module = nullptr;
+
+    Driver(ck::ref<hw::Device> dev) : m_dev(dev) {
+      // attach this driver to the device
+      dev->attach_to(this);
+      init();
+    }
+    virtual ~Driver(void) {}
+    virtual void init(void) {}
+
+
+    inline auto dev(void) const { return m_dev; }
+  };
+
+
+  class BlockDriver : public Driver {
+   public:
+		 using dev::Driver::Driver;
+  };
+
 
 }  // namespace dev
 
 
-#define driver_init(name, T)                                        \
-  void _MOD_VARNAME(__driver_init)(void) { dev::Driver::add(ck::make_ref<T>()); } \
+#define driver_init(name, T, prober)                                                                                \
+  void _MOD_VARNAME(__driver_init)(void) { dev::Module::add(ck::make_ref<dev::ModuleAutoProbe<T>>(name, prober)); } \
   module_init(name, _MOD_VARNAME(__driver_init));

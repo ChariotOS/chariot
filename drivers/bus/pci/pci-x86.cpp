@@ -40,7 +40,7 @@ static uint32_t pci_data_port = 0xCFC;
 
 
 
-class X86PCIDevice : public dev::PCIDevice {
+class X86PCIDevice : public hw::PCIDevice {
   pci::device *desc;
 
  public:
@@ -65,7 +65,7 @@ class X86PCIDevice : public dev::PCIDevice {
   }
   ~X86PCIDevice(void) override {}
 
-  // ^dev::PCIDevice
+  // ^hw::PCIDevice
   auto read8(uint32_t field) -> uint8_t override { return desc->read<uint8_t>(field); }
   auto read16(uint32_t field) -> uint16_t override { return desc->read<uint16_t>(field); }
   auto read32(uint32_t field) -> uint32_t override { return desc->read<uint32_t>(field); }
@@ -75,8 +75,8 @@ class X86PCIDevice : public dev::PCIDevice {
   void write32(uint32_t field, uint32_t val) override { return desc->write<uint32_t>(field, val); }
   void write64(uint32_t field, uint64_t val) override { return desc->write<uint64_t>(field, val); }
 
-  dev::PCIBar get_bar(int barnum) override {
-    dev::PCIBar bar;
+  hw::PCIBar get_bar(int barnum) override {
+    hw::PCIBar bar;
     bar.valid = false;
     bar.addr = NULL;
 
@@ -93,9 +93,9 @@ class X86PCIDevice : public dev::PCIDevice {
     u64 bar_val = read32(0x10 + 4 * barnum);
     bar.raw = bar_val;
 
-    bar.type = (bar_val & 0x1) ? dev::PCIBarType::BAR_PIO : dev::PCIBarType::BAR_MMIO;
+    bar.type = (bar_val & 0x1) ? hw::PCIBarType::BAR_PIO : hw::PCIBarType::BAR_MMIO;
 
-    if (bar.type == dev::PCIBarType::BAR_MMIO) {
+    if (bar.type == hw::PCIBarType::BAR_MMIO) {
       switch ((bar_val >> 1) & 0x3) {
         case 0:  // 32 bit mode
         case 1:  // 20 bit mode
@@ -259,7 +259,7 @@ static const char *pci_class_names[] = {
     [0x14] = "(Reserved)",
 };
 
-static void scan_bus(int bus, ck::ref<dev::MMIODevice> &root) {
+static void scan_bus(int bus, ck::ref<hw::MMIODevice> &root) {
   for (int dev = 0; dev < 32; dev++) {
     int nfuncs = 8; /* TODO: only scan functions if there are some */
 
@@ -289,8 +289,7 @@ static void scan_bus(int bus, ck::ref<dev::MMIODevice> &root) {
 }
 
 void pci::init(void) {
-  auto root = ck::make_ref<dev::MMIODevice>(0, 0);
-
+  auto root = ck::make_ref<hw::MMIODevice>(0, 0);
 	root->compat().push("x86-pci-bus");
 
 
@@ -309,7 +308,7 @@ void pci::init(void) {
   }
   KINFO("discovered %d PCI devices in %llu cycles.\n", pci_device_count, arch_read_timestamp() - start);
 
-  dev::Device::add("x86-pci", root);
+  hw::Device::add("x86-pci", root);
 }
 
 void pci::walk_devices(ck::func<void(device *)> fn) {
@@ -344,8 +343,8 @@ void pci::device::adjust_ctrl_bits(int set, int clr) {
   write<uint16_t>(PCI_COMMAND, new_reg);
 }
 
-dev::PCIBar pci::device::get_bar(int barnum) {
-  dev::PCIBar bar;
+hw::PCIBar pci::device::get_bar(int barnum) {
+	hw::PCIBar bar;
   bar.valid = false;
   bar.addr = NULL;
 
@@ -362,9 +361,9 @@ dev::PCIBar pci::device::get_bar(int barnum) {
   u64 bar_val = read<uint32_t>(0x10 + 4 * barnum);
   bar.raw = bar_val;
 
-  bar.type = (bar_val & 0x1) ? dev::PCIBarType::BAR_PIO : dev::PCIBarType::BAR_MMIO;
+  bar.type = (bar_val & 0x1) ? hw::PCIBarType::BAR_PIO : hw::PCIBarType::BAR_MMIO;
 
-  if (bar.type == dev::PCIBarType::BAR_MMIO) {
+  if (bar.type == hw::PCIBarType::BAR_MMIO) {
     switch ((bar_val >> 1) & 0x3) {
       case 0:  // 32 bit mode
       case 1:  // 20 bit mode

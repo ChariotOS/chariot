@@ -359,7 +359,7 @@ namespace pci {
 
     struct pci_cfg_space cfg;  // snapshot at boot!
 
-    dev::PCIBar get_bar(int barnum);
+    hw::PCIBar get_bar(int barnum);
 
     bool is_device(uint16_t vendor, uint16_t device);
 

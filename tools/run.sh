@@ -38,10 +38,11 @@ case $ARCH in
 		;;
 
 	RISC-V)
-		QEMU_FLAGS+="-smp 4 "
+		QEMU_FLAGS+="-smp 5 "
 		QEMU_FLAGS+="-bios default "
 		QEMU_FLAGS+="-machine sifive_u "
 		QEMU_FLAGS+="-kernel build/chariot.elf "
+		QEMU_FLAGS+="-drive file=build/chariot.img,if=sd,format=raw "
 		;;
 
 	RISC-V-virt)

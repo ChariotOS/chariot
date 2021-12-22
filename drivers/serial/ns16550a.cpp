@@ -12,7 +12,7 @@ static void uart_interrupt_handle(int irq, reg_t *regs, void *uart);
 namespace ns16550a {
 
 
-  class Uart {
+  class Uart : public dev::Driver {
    public:
     struct Regs {
       volatile uint8_t rbr;  /* 0 */
@@ -34,10 +34,14 @@ namespace ns16550a {
       volatile uint8_t scr;  /* 10*/
       volatile uint8_t ssr;  /* 11*/
     };
-    Uart(dev::MMIODevice &mmio) {
-      regs = (Uart::Regs *)p2v(mmio.address());
 
-      irq::install(mmio.interrupt, uart_interrupt_handle, "ns16550a", (void *)this);
+		using dev::Driver::Driver;
+
+    virtual void init() {
+      auto mmio = dev()->cast<hw::MMIODevice>();
+      regs = (Uart::Regs *)p2v(mmio->address());
+
+      irq::install(mmio->interrupt, uart_interrupt_handle, "ns16550a", (void *)this);
 
       // set DLAB so we can write the divisor
       regs->lcr = 0x80;
@@ -81,33 +85,7 @@ namespace ns16550a {
     Uart::Regs *regs;
   };
 
-
-  class UartDriver : public dev::Driver {
-   public:
-    ck::vec<ck::box<ns16550a::Uart>> uarts;
-    ~UartDriver(void);
-    dev::ProbeResult probe(ck::ref<dev::Device> dev);
-  };
-
-  UartDriver::~UartDriver(void) {}
-
-
-  dev::ProbeResult UartDriver::probe(ck::ref<dev::Device> dev) {
-    if (auto mmio = dev->cast<dev::MMIODevice>()) {
-      if (mmio->is_compat("ns16550a")) {
-        LOG("Found device @%08llx. irq=%d\n", mmio->address(), mmio->interrupt);
-        auto uart = ck::make_box<ns16550a::Uart>(*mmio);
-        uarts.push(move(uart));
-        return dev::ProbeResult::Attach;
-      }
-    }
-
-    return dev::ProbeResult::Ignore;
-  };
-
 }  // namespace ns16550a
-
-
 
 
 void uart_interrupt_handle(int irq, reg_t *regs, void *uart) {
@@ -116,4 +94,15 @@ void uart_interrupt_handle(int irq, reg_t *regs, void *uart) {
 }  // namespace ns16550a
 
 
-driver_init("ns16550a", ns16550a::UartDriver);
+static dev::ProbeResult probe(ck::ref<hw::Device> dev) {
+  if (auto mmio = dev->cast<hw::MMIODevice>()) {
+    if (mmio->is_compat("ns16550a")) {
+      LOG("Found device @%08llx. irq=%d\n", mmio->address(), mmio->interrupt);
+      return dev::ProbeResult::Attach;
+    }
+  }
+
+  return dev::ProbeResult::Ignore;
+};
+
+driver_init("ns16550a", ns16550a::Uart, probe);

@@ -10,10 +10,10 @@
 namespace sifive {
 
 
-  class Uart {
+  class Uart : public dev::Driver {
    public:
     struct Regs {
-			// 
+      //
       volatile uint32_t txfifo;
       volatile uint32_t rxfifo;
       volatile uint32_t txctrl;
@@ -23,28 +23,30 @@ namespace sifive {
       volatile uint32_t div;
     };
 
+		using dev::Driver::Driver;
 
-    Uart(dev::MMIODevice &mmio);
+
     void put_char(char ch);
     int get_char(bool wait = true);
+
+		virtual void init(void);
 
     // set the baud rate in the gp struct
     void setbrg(unsigned long clock, unsigned long baud);
 
-		void handle_irq();
+    void handle_irq();
 
    private:
     Uart::Regs *regs = nullptr;
   };
 
-  class UartDriver : public dev::Driver {
-    ck::vec<ck::box<sifive::Uart>> uarts;
-
+	/*
+  class UartDriver : public dev::DriverModule<sifive::Uart> {
    public:
     virtual ~UartDriver(void) {}
-
-    dev::ProbeResult probe(ck::ref<dev::Device> dev) override;
+    dev::ProbeResult probe(ck::ref<hw::Device> dev);
   };
+	*/
 
 
 

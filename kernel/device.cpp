@@ -8,14 +8,17 @@
 #define DEVLOG(...) PFXLOG(YEL "DEV", __VA_ARGS__)
 
 static spinlock all_devices_lock;
-static ck::vec<ck::ref<dev::Device>> all_devices;
+static ck::vec<ck::ref<hw::Device>> all_devices;
 
 
-dev::Device::Device(DeviceType t) : m_type(t) {}
+hw::Device::Device(DeviceType t) : m_type(t) {}
+
+
+void hw::Device::attach_to(dev::Driver *drv) { this->m_driver = drv; }
 
 
 
-static void recurse_print(ck::ref<dev::Device> dev, bool props, int depth = 0) {
+static void recurse_print(ck::ref<hw::Device> dev, bool props, int depth = 0) {
   auto spaces = [&] {
     if (!props) printk(YEL "DEV" RESET ":");
     for (int i = 0; i < depth; i++)
@@ -25,7 +28,7 @@ static void recurse_print(ck::ref<dev::Device> dev, bool props, int depth = 0) {
   spaces();
   printk(GRN "%s", dev->name().get());
 
-  if (auto mmio = dev->cast<dev::MMIODevice>()) {
+  if (auto mmio = dev->cast<hw::MMIODevice>()) {
     if (mmio->address() != 0) {
       printk(GRY "@" YEL "%08x", mmio->address());
     }
@@ -33,9 +36,12 @@ static void recurse_print(ck::ref<dev::Device> dev, bool props, int depth = 0) {
       printk(GRY " '%s'", compat.get());
     }
 
-		printk(RESET);
+    printk(RESET);
   }
 
+  if (dev->driver()) {
+    printk(RED " driven by '%s'", dev->driver()->module->name().get());
+  }
 
   if (props) printk(RESET " {");
   printk("\n");
@@ -74,7 +80,7 @@ static void recurse_print(ck::ref<dev::Device> dev, bool props, int depth = 0) {
   }
 }
 
-static void recurse_probe(ck::ref<dev::Device> dev, int depth = 0) {
+static void recurse_probe(ck::ref<hw::Device> dev, int depth = 0) {
   dev->lock();
 
 
@@ -96,7 +102,7 @@ ksh_def("devices", "display all devices and their props") {
 
 
 // Register a device at the top level
-void dev::Device::add(ck::string name, ck::ref<Device> dev) {
+void hw::Device::add(ck::string name, ck::ref<Device> dev) {
   dev->set_name(name);
 
   recurse_print(dev, false);
@@ -106,12 +112,12 @@ void dev::Device::add(ck::string name, ck::ref<Device> dev) {
   assert(all_devices.find(dev).is_end());
   all_devices.push(dev);
 
-  dev::Driver::probe_all(dev);
+  dev::Module::probe_all(dev);
 }
 
 
 // Register a device with the global device system
-void dev::Device::remove(ck::ref<Device> dev, RemovalReason reason) {
+void hw::Device::remove(ck::ref<Device> dev, RemovalReason reason) {
   scoped_lock l(all_devices_lock);
   // TODO: Notify drivers that the device has been removed, and why
   all_devices.remove_first_matching([dev](auto other) {
@@ -119,21 +125,21 @@ void dev::Device::remove(ck::ref<Device> dev, RemovalReason reason) {
   });
 }
 
-ck::vec<ck::ref<dev::Device>> dev::Device::all(void) {
+ck::vec<ck::ref<hw::Device>> hw::Device::all(void) {
   scoped_lock l(all_devices_lock);
-  ck::vec<ck::ref<dev::Device>> all = all_devices;
+  ck::vec<ck::ref<hw::Device>> all = all_devices;
 
   return all;
 }
 
 
-void dev::Device::add_property(ck::string name, dev::Prop &&prop) {
+void hw::Device::add_property(ck::string name, hw::Prop &&prop) {
   assert(!m_locked);
   m_props.set(name, move(prop));
 }
 
 
-ck::option<ck::string> dev::Device::get_prop_string(const ck::string &name) {
+ck::option<ck::string> hw::Device::get_prop_string(const ck::string &name) {
   if (m_props.contains(name)) {
     auto &prop = m_props.get(name);
     ck::string val = ck::string((char *)prop.data.data(), prop.data.size());
@@ -143,7 +149,7 @@ ck::option<ck::string> dev::Device::get_prop_string(const ck::string &name) {
 }
 
 
-ck::option<uint64_t> dev::Device::get_prop_int(const ck::string &name) {
+ck::option<uint64_t> hw::Device::get_prop_int(const ck::string &name) {
   if (m_props.contains(name)) {
     auto &prop = m_props.get(name);
     uint64_t val = 0;
@@ -159,12 +165,12 @@ ck::option<uint64_t> dev::Device::get_prop_int(const ck::string &name) {
   return {};
 }
 
-bool dev::PCIDevice::is_device(uint16_t vendor, uint16_t device) const { return vendor_id == vendor && device_id == device; }
+bool hw::PCIDevice::is_device(uint16_t vendor, uint16_t device) const { return vendor_id == vendor && device_id == device; }
 
 
 
-ck::vec<dev::Reg> dev::Prop::read_registers(void) const {
-  ck::vec<dev::Reg> regs;
+ck::vec<hw::Reg> hw::Prop::read_registers(void) const {
+  ck::vec<hw::Reg> regs;
 
 
   ck::vec<uint64_t> vals;
@@ -173,17 +179,17 @@ ck::vec<dev::Reg> dev::Prop::read_registers(void) const {
   read_all_ints(vals, "as");
   if (address_cells == 0) {
     for (auto v : vals) {
-      regs.push(dev::Reg{.address = 0, .size = v});
+      regs.push(hw::Reg{.address = 0, .size = v});
     }
 
   } else if (size_cells == 0) {
     for (auto v : vals) {
-      regs.push(dev::Reg{.address = v, .size = 0});
+      regs.push(hw::Reg{.address = v, .size = 0});
     }
   } else {
     assert(vals.size() % 2 == 0);
     for (off_t i = 0; i < vals.size(); i += 2) {
-      regs.push(dev::Reg{.address = vals[i], .size = vals[i + 1]});
+      regs.push(hw::Reg{.address = vals[i], .size = vals[i + 1]});
     }
   }
 
@@ -192,13 +198,13 @@ ck::vec<dev::Reg> dev::Prop::read_registers(void) const {
   return regs;
 }
 
-ck::string dev::Prop::format(void) const {
+ck::string hw::Prop::format(void) const {
   // return r;
 
   if (type == Prop::Type::String) {
     ck::string res;
     res += "\"";
-    for (int i = 0; i < data.size(); i++) {
+    for (int i = 0; i < data.size() - 1; i++) {
       if (data[i] == '\0') {
         res += "\\0";
       } else {
@@ -301,7 +307,7 @@ static uint64_t bswap_cell(T *val, uint64_t *dst, int size_cell) {
 }
 
 
-bool dev::Prop::read_cell(uint64_t *dst, int cells, off_t &off) const {
+bool hw::Prop::read_cell(uint64_t *dst, int cells, off_t &off) const {
   if (cells == 0) {
     return true;
   }
@@ -317,7 +323,7 @@ bool dev::Prop::read_cell(uint64_t *dst, int cells, off_t &off) const {
   return true;
 }
 
-bool dev::Prop::read_all_ints(ck::vec<uint64_t> &dst, const char *fmt) const {
+bool hw::Prop::read_all_ints(ck::vec<uint64_t> &dst, const char *fmt) const {
   off_t off = 0;
   while (read_ints(dst, fmt, off)) {
   }
@@ -325,7 +331,7 @@ bool dev::Prop::read_all_ints(ck::vec<uint64_t> &dst, const char *fmt) const {
   return true;
 }
 
-bool dev::Prop::read_ints(ck::vec<uint64_t> &dst, const char *fmt, off_t &off) const {
+bool hw::Prop::read_ints(ck::vec<uint64_t> &dst, const char *fmt, off_t &off) const {
   for (off_t i = 0; fmt[i] != 0; i++) {
     uint64_t val = 0;
     char c = fmt[i];

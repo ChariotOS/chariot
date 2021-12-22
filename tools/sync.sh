@@ -56,7 +56,7 @@ if test -z "$dev"; then
 				hdiutil create -size ${CONFIG_DISK_SIZE_MB}m -volname Chariot $IMG
 			else
 				# create the disk image file of size DISK_SIZE_MB
-				dd if=/dev/zero of=$IMG bs=1000000 count=$CONFIG_DISK_SIZE_MB || die "can't create disk image"
+				dd if=/dev/zero of=$IMG bs=1048576 count=$CONFIG_DISK_SIZE_MB || die "can't create disk image"
 				chmod 666 $IMG
 		fi
 	fi
