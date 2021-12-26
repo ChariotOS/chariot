@@ -9,11 +9,6 @@ die() {
 
 
 
-
-# build the kernel and whatnot
-make --no-print-directory -j || die 'Failed to build the kernel'
-
-
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 source $DIR/../.config
