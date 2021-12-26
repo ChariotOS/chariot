@@ -126,6 +126,14 @@ namespace dev {
 
 
 
+
+  enum Type {
+    Basic,   // dev::Device
+    Char,    // dev::CharDevice
+    Block,   // dev::BlockDevice
+    Serial,  // dev::SerialDevice
+  };
+
   /*
    * dev::Device objects represent the `minor` part of a `major/minor` device driver.
    * A Device object can be bound to the filesystem in /dev/, for example.
@@ -138,6 +146,8 @@ namespace dev {
     // The hardware device being driven. This can be null for pseudo-devices
     ck::ref<hw::Device> m_dev = nullptr;
 
+
+    dev::Type m_type = dev::Type::Basic;
 
    public:
     int major, minor;
@@ -158,14 +168,60 @@ namespace dev {
 
     inline auto dev(void) const { return m_dev; }
     inline auto driver(void) const { return m_driver; }
+
+
+    template <typename T>
+    ck::ref<T> cast();
+    auto device_type(void) const { return m_type; }
+
+   protected:
+    void set_type(dev::Type t) { m_type = t; }
   };
 
 
-  class BlockDriver : public Device {
+  template <dev::Type t>
+  class TypedDevice : public dev::Device {
    public:
-    using dev::Device::Device;
+    static constexpr dev::Type TYPE = t;
+
+    TypedDevice(dev::Driver &driver, ck::ref<hw::Device> dev = nullptr) : dev::Device(driver, dev) {
+      set_type(t);
+    }
+    virtual ~TypedDevice(void) {}
   };
 
+
+
+  class BlockDevice : public dev::TypedDevice<dev::Type::Block> {
+   public:
+
+		using dev::TypedDevice<dev::Type::Block>::TypedDevice;
+    virtual ~BlockDevice() {}
+  };
+
+
+
+  class CharDevice : public dev::TypedDevice<dev::Type::Char> {
+   public:
+		using dev::TypedDevice<dev::Type::Char>::TypedDevice;
+    virtual ~CharDevice() {}
+  };
+
+
+
+  class SerialDevice : public dev::TypedDevice<dev::Type::Serial> {
+   public:
+		using dev::TypedDevice<dev::Type::Serial>::TypedDevice;
+    virtual ~SerialDevice() {}
+  };
+
+
+
+  template <typename T>
+  inline auto dev::Device::cast() -> ck::ref<T> {
+    if (device_type() == T::TYPE) return (T *)this;
+    return nullptr;
+  }
 
 }  // namespace dev
 

@@ -6,6 +6,7 @@
 #define COMPAT "sifive,fu740-pcie"
 #define LOG(...) PFXLOG(BLU COMPAT, __VA_ARGS__)
 
+/*
 class FU740PciDriver : public dev::Module {
  public:
   virtual ~FU740PciDriver(void) {}
@@ -20,6 +21,6 @@ class FU740PciDriver : public dev::Module {
     return dev::ProbeResult::Ignore;
   };
 };
-
+*/
 
 // driver_init(COMPAT, FU740PciDriver);

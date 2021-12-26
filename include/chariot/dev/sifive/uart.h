@@ -10,7 +10,7 @@
 namespace sifive {
 
 
-  class Uart : public dev::Driver {
+  class Uart : public dev::SerialDevice {
    public:
     struct Regs {
       //
@@ -23,7 +23,8 @@ namespace sifive {
       volatile uint32_t div;
     };
 
-		using dev::Device::Device;
+
+		using dev::SerialDevice::SerialDevice;
 
 
     void put_char(char ch);
