@@ -144,3 +144,8 @@ do
 	popd
 
 done
+
+
+echo "Done compiling. Stripping output"
+
+strip local/bin/*

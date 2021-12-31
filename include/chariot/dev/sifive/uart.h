@@ -24,32 +24,22 @@ namespace sifive {
     };
 
 
-		using dev::SerialDevice::SerialDevice;
+    using dev::SerialDevice::SerialDevice;
 
 
     void put_char(char ch);
     int get_char(bool wait = true);
 
-		virtual void init(void);
+    virtual void init(void);
+    virtual void irq(int num);
 
     // set the baud rate in the gp struct
     void setbrg(unsigned long clock, unsigned long baud);
 
-    void handle_irq();
 
    private:
     Uart::Regs *regs = nullptr;
   };
-
-	/*
-  class UartDriver : public dev::DriverModule<sifive::Uart> {
-   public:
-    virtual ~UartDriver(void) {}
-    dev::ProbeResult probe(ck::ref<hw::Device> dev);
-  };
-	*/
-
-
 
 };  // namespace sifive
 

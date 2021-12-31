@@ -150,13 +150,26 @@ fs::BlockDevice *fs::bdev_from_path(const char *n) {
 }
 
 
+
+
+void dev::Device::handle_irq(int num, const char *name) {
+ irq::install(
+      num,
+      [](int num, unsigned long *regs, void *data) {
+        dev::Device *self = (dev::Device *)data;
+        self->irq(num);
+      },
+      name, this);
+}
+
+
+
+
 static spinlock all_drivers_lock;
 static ck::vec<ck::ref<dev::Driver>> all_drivers;
 
 
-dev::Driver::Driver(void) {
-	m_major = next_major++;
-}
+dev::Driver::Driver(void) { m_major = next_major++; }
 
 auto dev::Driver::probe(ck::ref<hw::Device> device) -> dev::ProbeResult {
   // By default, Ignore the device.
@@ -165,7 +178,7 @@ auto dev::Driver::probe(ck::ref<hw::Device> device) -> dev::ProbeResult {
 
 
 static void probe(ck::ref<hw::Device> dev, ck::ref<dev::Driver> drv) {
-	if (dev->driver() != nullptr) return;
+  if (dev->driver() != nullptr) return;
   if (drv->probe(dev) == dev::ProbeResult::Attach) {
     drv->attach(dev);
   }

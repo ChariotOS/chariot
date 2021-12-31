@@ -96,6 +96,8 @@ namespace dev {
     virtual void attach(ck::ref<hw::Device> dev) {}
     virtual void detach(ck::ref<hw::Device> dev) {}
 
+
+
     // the major number for this device driver.
     inline int major(void) const { return m_major; }
     inline void set_name(ck::string name) { m_name = move(name); }
@@ -108,14 +110,14 @@ namespace dev {
   };
 
 
-  template <typename DriverT>
+  template <typename DeviceT>
   class ModuleDriver final : public dev::Driver {
     Prober m_prober;
 
    public:
     ModuleDriver(const char *name, Prober prober) : m_prober(prober) { set_name(name); }
     virtual void attach(ck::ref<hw::Device> dev) final {
-      auto drv = ck::make_ref<DriverT>(*this, dev);
+      auto drv = ck::make_ref<DeviceT>(*this, dev);
 
       m_devices.set(drv->minor, drv);
       drv->init();
@@ -126,7 +128,8 @@ namespace dev {
 
 
 
-
+  // This enum represents the type device that a dev::Device actually
+  // is... This is required because chariot doesn't support rtti
   enum Type {
     Basic,   // dev::Device
     Char,    // dev::CharDevice
@@ -153,21 +156,26 @@ namespace dev {
     int major, minor;
 
 
+    // Device drivers are not meant to reimplement the constructor.
+    // They are meant to ovewrride `init()` instead
     Device(dev::Driver &driver, ck::ref<hw::Device> dev = nullptr) : m_driver(driver), m_dev(dev) {
       major = driver.major();
       minor = driver.next_minor();
-
-      if (dev) {
-        // attach this driver to the device
-        dev->attach_to(this);
-      }
+      // attach this driver to the device
+      if (dev) dev->attach_to(this);
       init();
     }
     virtual ~Device(void) {}
+    // called once the device has been initialized
     virtual void init(void) {}
+    // called after register_irq(...)
+    virtual void irq(int num) {}
 
     inline auto dev(void) const { return m_dev; }
     inline auto driver(void) const { return m_driver; }
+
+
+    void handle_irq(int num, const char *name);
 
 
     template <typename T>
@@ -184,9 +192,7 @@ namespace dev {
    public:
     static constexpr dev::Type TYPE = t;
 
-    TypedDevice(dev::Driver &driver, ck::ref<hw::Device> dev = nullptr) : dev::Device(driver, dev) {
-      set_type(t);
-    }
+    TypedDevice(dev::Driver &driver, ck::ref<hw::Device> dev = nullptr) : dev::Device(driver, dev) { set_type(t); }
     virtual ~TypedDevice(void) {}
   };
 
@@ -194,8 +200,7 @@ namespace dev {
 
   class BlockDevice : public dev::TypedDevice<dev::Type::Block> {
    public:
-
-		using dev::TypedDevice<dev::Type::Block>::TypedDevice;
+    using dev::TypedDevice<dev::Type::Block>::TypedDevice;
     virtual ~BlockDevice() {}
   };
 
@@ -203,7 +208,7 @@ namespace dev {
 
   class CharDevice : public dev::TypedDevice<dev::Type::Char> {
    public:
-		using dev::TypedDevice<dev::Type::Char>::TypedDevice;
+    using dev::TypedDevice<dev::Type::Char>::TypedDevice;
     virtual ~CharDevice() {}
   };
 
@@ -211,7 +216,7 @@ namespace dev {
 
   class SerialDevice : public dev::TypedDevice<dev::Type::Serial> {
    public:
-		using dev::TypedDevice<dev::Type::Serial>::TypedDevice;
+    using dev::TypedDevice<dev::Type::Serial>::TypedDevice;
     virtual ~SerialDevice() {}
   };
 

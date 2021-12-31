@@ -7,8 +7,8 @@
 
 #define DEVLOG(...) PFXLOG(YEL "DEV", __VA_ARGS__)
 
-static spinlock all_devices_lock;
-static ck::vec<ck::ref<hw::Device>> all_devices;
+static spinlock all_hardware_lock;
+static ck::vec<ck::ref<hw::Device>> all_hardware;
 
 
 hw::Device::Device(DeviceType t) : m_type(t) {}
@@ -92,9 +92,9 @@ static void recurse_probe(ck::ref<hw::Device> dev, int depth = 0) {
 
 
 
-ksh_def("devices", "display all devices and their props") {
-  scoped_lock l(all_devices_lock);
-  for (auto &dev : all_devices) {
+ksh_def("hw", "display all hardware devices and their props") {
+  scoped_lock l(all_hardware_lock);
+  for (auto &dev : all_hardware) {
     recurse_print(dev, true);
   }
   return 0;
@@ -108,9 +108,9 @@ void hw::Device::add(ck::string name, ck::ref<Device> dev) {
   recurse_print(dev, false);
 
 
-  scoped_lock l(all_devices_lock);
-  assert(all_devices.find(dev).is_end());
-  all_devices.push(dev);
+  scoped_lock l(all_hardware_lock);
+  assert(all_hardware.find(dev).is_end());
+  all_hardware.push(dev);
 
   dev::Driver::probe_all(dev);
 }
@@ -118,16 +118,16 @@ void hw::Device::add(ck::string name, ck::ref<Device> dev) {
 
 // Register a device with the global device system
 void hw::Device::remove(ck::ref<Device> dev, RemovalReason reason) {
-  scoped_lock l(all_devices_lock);
+  scoped_lock l(all_hardware_lock);
   // TODO: Notify drivers that the device has been removed, and why
-  all_devices.remove_first_matching([dev](auto other) {
+  all_hardware.remove_first_matching([dev](auto other) {
     return other == dev;
   });
 }
 
 ck::vec<ck::ref<hw::Device>> hw::Device::all(void) {
-  scoped_lock l(all_devices_lock);
-  ck::vec<ck::ref<hw::Device>> all = all_devices;
+  scoped_lock l(all_hardware_lock);
+  ck::vec<ck::ref<hw::Device>> all = all_hardware;
 
   return all;
 }

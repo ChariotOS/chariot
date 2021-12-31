@@ -47,11 +47,6 @@ static inline unsigned int uart_min_clk_divisor(unsigned long in_freq, unsigned 
 }
 
 
-void sifive_uart_interrupt_handle(int irq, reg_t *regs, void *uart) {
-  auto *u = (sifive::Uart *)uart;
-  u->handle_irq();
-}
-
 void sifive::Uart::init(void) {
 	auto mmio = dev()->cast<hw::MMIODevice>();
 
@@ -64,7 +59,7 @@ void sifive::Uart::init(void) {
   // enable rx interrupt
   regs->ie = 0b10;
 
-  irq::install(mmio->interrupt, sifive_uart_interrupt_handle, "sifive,uart0", (void *)this);
+	handle_irq(mmio->interrupt, "sifive,uart0");
 }
 
 void sifive::Uart::put_char(char c) {
@@ -100,7 +95,7 @@ void sifive::Uart::setbrg(unsigned long clock, unsigned long baud) {
 
 
 
-void sifive::Uart::handle_irq(void) {
+void sifive::Uart::irq(int num) {
   while (1) {
     uint32_t r = regs->rxfifo;
     if (r & UART_RXFIFO_EMPTY) {
