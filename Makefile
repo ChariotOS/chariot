@@ -16,8 +16,8 @@ menuconfig:
 kernel: .config
 	@tools/build_toolchain.sh
 	@mkdir -p $(BUILD)
-	@cd $(BUILD); cmake -GNinja $(CMAKE_ROOT)
-	@cd $(BUILD); ninja install | c++filt
+	@cd $(BUILD); cmake -GNinja $(CMAKE_ROOT); ninja install
+	# @cd $(BUILD); cmake  $(CMAKE_ROOT); make -j $(NPROC) install
 	@cp $(BUILD)/compile_commands.json .
 
 default: kernel

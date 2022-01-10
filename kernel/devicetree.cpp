@@ -211,6 +211,9 @@ static struct {
 } fdt_types[] = {
     {"compatible", hw::Prop::Type::String},
     {"model", hw::Prop::Type::String},
+    {"stdout-path", hw::Prop::Type::String},
+    {"bootargs", hw::Prop::Type::String},
+    {"riscv,isa", hw::Prop::Type::String},
     {"phandle", hw::Prop::Type::Integer},
     {"status", hw::Prop::Type::String},
     {"#address-cells", hw::Prop::Type::CellSize},

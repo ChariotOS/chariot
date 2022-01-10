@@ -25,7 +25,7 @@ config SBI
 
 choice
 	prompt "Virtual memory system"
-	default SV48
+	default SV39
 
 
 	config SV32
