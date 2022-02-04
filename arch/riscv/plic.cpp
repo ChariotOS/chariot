@@ -69,17 +69,6 @@ void rv::plic::complete(int irq) {
 void rv::plic::enable(int hwirq, int priority) {
   LOG("enable hwirq=%d, priority=%d\n", hwirq, priority);
   plic_toggle(rv::hartid(), hwirq, priority, true);
-  return;
-
-  off_t enable_base = PLIC + ENABLE_BASE + rv::hartid() * ENABLE_PER_HART;
-  for (int i = 0; i < 3; i++) {
-    uint32_t &reg = MREG(enable_base + i * 4);
-    for (int b = 0; b < 32; b++) {
-      printk("%d", (reg >> b) & 0b1);
-    }
-    printk(" ");
-  }
-  printk("\n");
 }
 
 void rv::plic::disable(int hwirq) { plic_toggle(rv::hartid(), hwirq, 0, false); }
