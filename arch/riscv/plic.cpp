@@ -24,20 +24,10 @@ int boot_hart = -1;
 #define ENABLE_PER_HART 0x100
 
 
-
 static void plic_toggle(int hart, int hwirq, int priority, bool enable) {
   off_t enable_base = PLIC + ENABLE_BASE + hart * ENABLE_PER_HART;
   uint32_t &reg = MREG(enable_base + (hwirq / 32) * 4);
   uint32_t hwirq_mask = 1 << (hwirq % 32);
-
-  /*
-printk("plic on %d base = %p\n", hart, enable_base);
-printk("hart=%d\n", hart);
-printk("irq=%p\n", hwirq);
-printk("reg=%p\n", reg);
-printk("mask=%08x\n", hwirq_mask);
-  */
-
   MREG(PLIC + 4 * hwirq) = 7;
   PLIC_SPRIORITY(hart) = 0;
 
@@ -53,31 +43,15 @@ void rv::plic::hart_init(void) {
   int hart = rv::hartid();
   LOG("Initializing on hart#%d\n", hart);
 
-
-  for (int i = 0; i < 0x1000 / 4; i++) {
+  for (int i = 0; i < 0x1000 / 4; i++)
     MREG(PLIC + i * 4) = 7;
-  }
 
   (&PLIC_SENABLE(hart))[0] = 0;
   (&PLIC_SENABLE(hart))[1] = 0;
   (&PLIC_SENABLE(hart))[2] = 0;
 }
 
-uint32_t rv::plic::pending(void) {
-  /*
-off_t base = PLIC + 0x1000;
-for (int i = 0; i < 3; i++) {
-uint32_t &reg = MREG(base + i * 4);
-for (int b = 0; b < 32; b++) {
-printk("%d", (reg >> b) & 0b1);
-}
-printk(" ");
-}
-printk("\n");
-  */
-
-  return PLIC_PENDING;
-}
+uint32_t rv::plic::pending(void) { return PLIC_PENDING; }
 
 
 int rv::plic::claim(void) {
