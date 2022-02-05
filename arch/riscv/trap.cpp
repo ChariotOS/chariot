@@ -263,9 +263,10 @@ for (auto &stk : thd->stacks) {
 			//  turn off the "supervisor software interrupt pending" bit
     } else if (nr == 5) {
       auto &cpu = cpu::current();
-      uint64_t now = arch_read_timestamp();
+      uint64_t now = rv::get_cycle();
       cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
       cpu.kstat.last_tick_tsc = now;
+      cpu.ticks_per_second = 1000 / TICK_INTERVAL;
       cpu.kstat.ticks++;
       /* TODO: write the next time */
       sbi_set_timer(rv::get_time() + TICK_INTERVAL);
