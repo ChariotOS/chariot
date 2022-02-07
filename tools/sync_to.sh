@@ -9,9 +9,6 @@ die() {
 
 
 
-
-
-
 # build the kernel and whatnot
 make --no-print-directory -j || die 'Failed to build the kernel'
 
@@ -19,12 +16,6 @@ make --no-print-directory -j || die 'Failed to build the kernel'
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 source $DIR/../.config
-
-if [ "$(id -u)" != 0 ]; then
-    exec sudo -E -- "$0" "$@" || die "this script needs to run as root"
-else
-    : "${SUDO_UID:=0}" "${SUDO_GID:=0}"
-fi
 
 # x86_64 by default
 BUILD=build
@@ -126,5 +117,5 @@ if [ -n "$CONFIG_X86" ]; then
 	fi
 fi
 
-USED=$(du -s -BM ${mnt} | awk '{ print $1 }')
+USED=$(sudo du -s -BM ${mnt} | awk '{ print $1 }')
 echo "Root filesystem usage: $USED"

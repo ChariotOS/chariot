@@ -13,12 +13,6 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 source $DIR/../.config
 
-if [ "$(id -u)" != 0 ]; then
-    exec sudo -E -- "$0" "$@" || die "this script needs to run as root"
-else
-    : "${SUDO_UID:=0}" "${SUDO_GID:=0}"
-fi
-
 # x86_64 by default
 BUILD=build
 IMG=$BUILD/chariot.img
@@ -66,8 +60,8 @@ else
 fi
 
 
-${DIR}/sync_to.sh -p $dev
 
+${DIR}/sync_to.sh -p $dev
 
 if [ "${USING_LOOPBACK}" == "yes" ]; then
 	if [ "$(uname)" = "Darwin" ]; then
