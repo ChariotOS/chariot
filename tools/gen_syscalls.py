@@ -9,7 +9,7 @@ import sys
 import toml
 
 
-src = toml.load('meta/syscalls.toml')
+src = toml.load('kernel/syscalls.toml')
 
 
 next_syscall_num = 0
