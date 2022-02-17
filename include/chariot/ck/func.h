@@ -3,6 +3,7 @@
 
 #include "ptr.h"
 
+#define lambda(x, fx) [&](auto x) { return (fx); }
 
 namespace ck {
 

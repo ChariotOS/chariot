@@ -449,6 +449,28 @@ namespace ck {
       });
     }
 
+    template <typename Fn>
+    inline auto map(Fn f) {
+      vec<decltype(f(T{}))> res;
+
+      for (auto& val : *this) {
+        res.push(f(val));
+      }
+      return res;
+    }
+
+    template <typename Fn>
+    inline auto filter(Fn f) {
+      vec<T> res;
+
+      for (auto& val : *this) {
+        if (f(val)) res.push(val);
+      }
+      return res;
+    }
+
+
+
     void sort() { msort(0, size() - 1); }
 
    private:
