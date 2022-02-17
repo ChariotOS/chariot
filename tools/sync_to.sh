@@ -9,11 +9,17 @@ die() {
 
 
 
-# build the kernel and whatnot
-make --no-print-directory -j || die 'Failed to build the kernel'
 
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+echo $DIR
+echo $DIR/../
+
+# build the kernel and whatnot
+pushd $DIR/../
+	make --no-print-directory -j || die 'Failed to build the kernel'
+popd
 
 source $DIR/../.config
 
@@ -118,4 +124,5 @@ if [ -n "$CONFIG_X86" ]; then
 fi
 
 USED=$(sudo du -s -BM ${mnt} | awk '{ print $1 }')
+USED=$(sudo tree ${mnt})
 echo "Root filesystem usage: $USED"

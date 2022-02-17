@@ -58,8 +58,8 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   serial_install();
   rtc_init();
 
-	// allocate the CPU core for the bootstrap processor and
-	// register it with the kernel
+  // allocate the CPU core for the bootstrap processor and
+  // register it with the kernel
   cpu::Core cpu;
   extern u8 boot_cpu_local[];
   cpu::seginit(&cpu, boot_cpu_local);
@@ -122,7 +122,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 
 
 int kernel_init(void*) {
-
   // start up the extra cpu cores
 #ifdef CONFIG_SMP
   smp::init_cores();
@@ -157,7 +156,6 @@ int kernel_init(void*) {
     }
   }
 
-
   assert(root_name);
 
   int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);
@@ -180,6 +178,7 @@ int kernel_init(void*) {
   auto paths = init_paths.split(',');
 
   auto init_pid = sched::proc::spawn_init(paths);
+	printk("here %d\n", init_pid);
 
   sys::waitpid(init_pid, NULL, 0);
   panic("init died!\n");

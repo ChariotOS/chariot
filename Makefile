@@ -13,14 +13,13 @@ cfg: menuconfig
 menuconfig:
 	@python3 tools/menuconfig.py
 
-$(BUILD):
-	mkdir -p $(BUILD)
-	@cd $(BUILD); cmake -GNinja $(CMAKE_ROOT)
-
-kernel: .config $(BUILD)
-	@tools/build_toolchain.sh
+$(BUILD)/build.ninja:
 	@mkdir -p $(BUILD)
-	@cd $(BUILD); ninja
+	@cd $(BUILD); cmake -GNinja ../
+
+kernel: .config $(BUILD)/build.ninja
+	@tools/build_toolchain.sh
+	@cd $(BUILD); ninja install
 	@cp $(BUILD)/compile_commands.json .
 
 default: kernel

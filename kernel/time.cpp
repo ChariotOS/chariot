@@ -35,6 +35,8 @@ unsigned long long time::now_ns() {
 
   /* If the time is not stabilized yet, wait for it. */
   if (unlikely(!time::stabilized())) {
+		cycles_per_second = arch_ns_to_timestamp(NS_PER_SEC);
+#if 0
     // return 0;
     printk(
         KERN_WARN "The time has not been stabilized before access. Waiting for stabilization...\n");
@@ -42,6 +44,7 @@ unsigned long long time::now_ns() {
       arch_relax();
     }
     printk(KERN_WARN "Time stabilized at %llu cyc/s\n", cycles_per_second);
+#endif
   }
 
   auto cps = cycles_per_second;
