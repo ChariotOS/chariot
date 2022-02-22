@@ -3,6 +3,7 @@
 #ifndef __FS__H__
 #define __FS__H__
 
+#include <errno.h>
 #include <atom.h>
 #include <dev/hardware.h>
 #include <ck/func.h>
@@ -130,7 +131,7 @@ namespace fs {
 
 
 
-  struct SuperBlock : public ck::refcounted<SuperBlock> {
+  struct FileSystem : public ck::refcounted<FileSystem> {
     //
     dev_t dev;
     long block_size;
@@ -154,23 +155,23 @@ namespace fs {
     void *priv;
   };
 
-  extern ck::ref<fs::SuperBlock> DUMMY_SB;
+  extern ck::ref<fs::FileSystem> DUMMY_SB;
 
 
 
   struct SuperBlockOperations {
     // initialize the superblock after it has been mounted. All of the
     // arguments
-    int (&init)(fs::SuperBlock &);
-    int (&write_super)(fs::SuperBlock &);
-    int (&sync)(fs::SuperBlock &, int flags);
+    int (&init)(fs::FileSystem &);
+    int (&write_super)(fs::FileSystem &);
+    int (&sync)(fs::FileSystem &, int flags);
   };
 
   struct SuperBlockInfo {
     const char *name;
 
     // return a superblock containing the root inode
-    ck::ref<fs::SuperBlock> (&mount)(fs::SuperBlockInfo *, const char *args, int flags, const char *device);
+    ck::ref<fs::FileSystem> (&mount)(fs::SuperBlockInfo *, const char *args, int flags, const char *device);
 
     struct SuperBlockOperations &ops;
   };
@@ -274,12 +275,28 @@ namespace fs {
 
 
 
+  // DirectoryIterator: allows `for (auto node : *dir) {}`
+  class DirectoryIterator {
+   public:
+    ck::ref<fs::Node> operator*() {
+      if (m_cur->mount_shadow != nullptr) return m_cur->mount_shadow;
+      return m_cur->ino;
+    }
+    auto operator++() -> DirectoryIterator & {
+      m_cur = m_cur->next;
+      return *this;
+    }
+
+    friend bool operator==(const DirectoryIterator &a, const DirectoryIterator &b) { return a.m_cur == b.m_cur; };
+    friend bool operator!=(const DirectoryIterator &a, const DirectoryIterator &b) { return a.m_cur != b.m_cur; };
+    DirectoryIterator(DirectoryEntry *cur) : m_cur(cur) {}
+
+   private:
+    DirectoryEntry *m_cur = nullptr;
+  };
+
   /**
-   * struct inode - base point for all "file-like" objects
-   *
-   * RULE: if an inode has a pointer to another inode inside of it, it owns it.
-   *       this means you cannot have circular references - hardlinks to one
-   * file in two different dirs must have different `struct inode`s
+   * struct Node - base point for all "file-like" objects
    */
   struct Node : public ck::refcounted<Node> {
     /**
@@ -293,6 +310,7 @@ namespace fs {
     struct {
       uint16_t major, minor;
     } dev;
+
     uint32_t ino = 0;  // inode (in systems that support it)
     uint16_t uid = 0;
     uint16_t gid = 0;
@@ -309,7 +327,7 @@ namespace fs {
     fs::FileOperations *fops = NULL;
     fs::DirectoryOperations *dops = NULL;
 
-    ck::ref<fs::SuperBlock> sb;
+    ck::ref<fs::FileSystem> sb;
 
     void *_priv;
 
@@ -359,16 +377,47 @@ namespace fs {
 
     struct DirectoryEntry *get_direntry_raw(const char *name);
 
-    int poll(fs::File &, int events, poll_table &pt);
+    DirectoryIterator begin(void) {
+      assert(type == T_DIR);
+      return DirectoryIterator(dir.entries);
+    }
+    DirectoryIterator end(void) {
+      assert(type == T_DIR);
+      return DirectoryIterator(nullptr);
+    }
+    DirectoryIterator begin(void) const {
+      assert(type == T_DIR);
+      return DirectoryIterator(dir.entries);
+    }
+    DirectoryIterator end(void) const {
+      assert(type == T_DIR);
+      return DirectoryIterator(nullptr);
+    }
 
     // if the inode is a directory, set its name. NOP otherwise
     int set_name(const ck::string &);
 
-    Node(int type, ck::ref<fs::SuperBlock> sb);
+    Node(int type, ck::ref<fs::FileSystem> sb);
     virtual ~Node();
 
     int stat(struct stat *);
     spinlock lock;
+
+
+
+    virtual bool is_file(void) { return false; }
+    virtual bool is_dir(void) { return false; }
+
+    virtual int seek(fs::File &, off_t old_off, off_t new_off) { return -ENOTIMPL; }
+    virtual ssize_t read(fs::File &, char *dst, size_t count) { return -ENOTIMPL; }
+    virtual ssize_t write(fs::File &, const char *, size_t) { return -ENOTIMPL; }
+    virtual int ioctl(fs::File &, unsigned int, off_t) { return -ENOTIMPL; }
+    virtual int open(fs::File &) { return 0; }
+    virtual void close(fs::File &) {}
+    virtual ck::ref<mm::VMObject> mmap(fs::File &, size_t npages, int prot, int flags, off_t off);
+    virtual int resize(fs::File &, size_t) { return -ENOTIMPL; }
+    virtual int poll(fs::File &, int events, poll_table &pt);
+
 
    protected:
     int rc = 0;
@@ -376,6 +425,22 @@ namespace fs {
    private:
     ck::ref<fs::Node> get_direntry_nolock(const char *name);
     ck::ref<fs::Node> get_direntry_ino(struct DirectoryEntry *);
+  };
+
+  class FileNode : public fs::Node {
+   public:
+    virtual bool is_file(void) final { return true; }
+  };
+
+  class DirectoryNode : public fs::Node {
+   public:
+    virtual bool is_dir(void) final { return true; }
+
+    virtual int create(fs::Node &, const char *name, struct fs::Ownership &) { return -ENOTIMPL; }
+    virtual int mkdir(fs::Node &, const char *name, struct fs::Ownership &) { return -ENOTIMPL; }
+    virtual int unlink(fs::Node &, const char *name) { return -ENOTIMPL; }
+    virtual int mknod(fs::Node &, const char *name, struct fs::Ownership &, int major, int minor) { return -ENOTIMPL; }
+    virtual ck::ref<fs::Node> lookup(fs::Node &, const char *) { return nullptr; }
   };
 
 

@@ -11,8 +11,8 @@ namespace procfs {
   struct priv {};
 
 
-  struct SuperBlock : public fs::SuperBlock {
-    SuperBlock(ck::string args, int flags);
+  struct FileSystem : public fs::FileSystem {
+    FileSystem(ck::string args, int flags);
 
     /* create an inode and acquire it */
     ck::ref<fs::Node> create_inode(int type);

@@ -1,5 +1,6 @@
 #include <asm.h>
 #include <dev/driver.h>
+#include <mm.h>
 #include <errno.h>
 #include <fs.h>
 #include <mem.h>
@@ -9,7 +10,7 @@
 
 
 // TODO: remove
-ck::ref<fs::SuperBlock> fs::DUMMY_SB = ck::make_ref<fs::SuperBlock>();
+ck::ref<fs::FileSystem> fs::DUMMY_SB = ck::make_ref<fs::FileSystem>();
 
 using namespace fs;
 
@@ -17,7 +18,7 @@ using namespace fs;
 
 
 
-fs::Node::Node(int type, ck::ref<fs::SuperBlock> sb) : type(type), sb(sb) {
+fs::Node::Node(int type, ck::ref<fs::FileSystem> sb) : type(type), sb(sb) {
   sk = nullptr;
   bound_socket = nullptr;
   switch (type) {
@@ -105,6 +106,12 @@ ck::ref<fs::Node> fs::Node::get_direntry_ino(struct DirectoryEntry *ent) {
 
   return ent->ino;
 }
+
+ck::ref<mm::VMObject> fs::Node::mmap(fs::File &, size_t npages, int prot, int flags, off_t off) {
+	// Do nothing... This is up to the filesystem to manage
+	return nullptr;
+}
+
 
 int fs::Node::poll(fs::File &f, int events, poll_table &pt) {
   if (fops && fops->poll) {

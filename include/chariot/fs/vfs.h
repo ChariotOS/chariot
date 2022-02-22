@@ -7,7 +7,7 @@
 
 namespace fs {
   // fwd decl
-  struct SuperBlock;
+  struct FileSystem;
 };  // namespace fs
 
 /**
@@ -22,7 +22,7 @@ namespace vfs {
    * mountpoint - describes a single filesystem mounted on the system
    */
   struct mountpoint {
-    ck::ref<fs::SuperBlock> sb;
+    ck::ref<fs::FileSystem> sb;
 
     // if this is null, it is the root node.
     ck::ref<fs::Node> host;

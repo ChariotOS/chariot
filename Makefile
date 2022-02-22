@@ -19,7 +19,7 @@ $(BUILD)/build.ninja:
 
 kernel: .config $(BUILD)/build.ninja
 	@tools/build_toolchain.sh
-	@cd $(BUILD); ninja install
+	@cd $(BUILD); cmake --build .
 	@cp $(BUILD)/compile_commands.json .
 
 default: kernel

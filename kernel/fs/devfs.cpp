@@ -33,22 +33,22 @@ fs::DirectoryOperations devfs_dir_ops{
     .mknod = devfs_mknod,
 };
 
-int devfs_sb_init(struct fs::SuperBlock &sb) {
+int devfs_sb_init(struct fs::FileSystem &sb) {
   // construct the root node
   return -1;
 }
 
-int devfs_write_super(struct fs::SuperBlock &sb) {
+int devfs_write_super(struct fs::FileSystem &sb) {
   // doesn't make sense
   return 0;
 }
-int devfs_sync(struct fs::SuperBlock &sb, int flags) {
+int devfs_sync(struct fs::FileSystem &sb, int flags) {
   // no need to sync
   return 0;
 }
 
 
-static auto devfs_sb = ck::make_ref<fs::SuperBlock>();
+static auto devfs_sb = ck::make_ref<fs::FileSystem>();
 static ck::ref<fs::Node> devfs_root = nullptr;
 static int next_inode_nr = 0;
 static auto devfs_create_inode(int type) {
@@ -87,7 +87,7 @@ struct fs::SuperBlockOperations devfs_sb_ops {
 };
 
 
-static ck::ref<fs::SuperBlock> devfs_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
+static ck::ref<fs::FileSystem> devfs_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
   devfs_sb->ops = &devfs_sb_ops;
   devfs_sb->arguments = args;
   devfs_sb->root = devfs_get_root();

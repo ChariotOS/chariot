@@ -2,7 +2,7 @@
 
 
 
-tmp::SuperBlock::SuperBlock(ck::string args, int flags) {
+tmp::FileSystem::FileSystem(ck::string args, int flags) {
   /* by default, use 256 mb of pages */
   allowed_pages = 256 * MB / PGSIZE;
   used_pages = 0;
@@ -14,10 +14,10 @@ tmp::SuperBlock::SuperBlock(ck::string args, int flags) {
 }
 
 
-tmp::SuperBlock::~SuperBlock(void) { printk("tmpfs superblock dead\n"); }
+tmp::FileSystem::~FileSystem(void) { printk("tmpfs superblock dead\n"); }
 
 
-ck::ref<fs::Node> tmp::SuperBlock::create_inode(int type) {
+ck::ref<fs::Node> tmp::FileSystem::create_inode(int type) {
   scoped_lock l(lock);
   auto ino = ck::make_ref<fs::Node>(type, this);
   ino->ino = next_inode++;

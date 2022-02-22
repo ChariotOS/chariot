@@ -20,7 +20,7 @@ namespace tmp {
   extern fs::DirectoryOperations dops;
 
 
-  struct SuperBlock : public fs::SuperBlock {
+  struct FileSystem : public fs::FileSystem {
     /* memory statistics, to keep tmpfs from using too much memory */
     size_t allowed_pages;
     size_t used_pages;
@@ -28,16 +28,16 @@ namespace tmp {
     uint64_t next_inode = 0;
 
 
-    SuperBlock(ck::string args, int flags);
+    FileSystem(ck::string args, int flags);
 
-    virtual ~SuperBlock();
+    virtual ~FileSystem();
 
     /* create an inode and acquire it */
     ck::ref<fs::Node> create_inode(int type);
   };
 
 
-  inline auto &getsb(fs::Node &i) { return *(tmp::SuperBlock *)(i.sb.get()); }
+  inline auto &getsb(fs::Node &i) { return *(tmp::FileSystem *)(i.sb.get()); }
 
 
   /*

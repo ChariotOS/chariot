@@ -80,7 +80,7 @@ static int block_to_path(ck::ref<fs::Node> node, int i_block, int offsets[4], in
   return n;
 }
 
-static ck::ref<fs::Node> ext2_inode(int type, u32 index, fs::Ext2SuperBlock &fs) {
+static ck::ref<fs::Node> ext2_inode(int type, u32 index, fs::Ext2FileSystem &fs) {
   auto in = ck::make_ref<fs::Node>(type, &fs);
 
   in->ino = index;
@@ -89,7 +89,7 @@ static ck::ref<fs::Node> ext2_inode(int type, u32 index, fs::Ext2SuperBlock &fs)
 }
 
 int block_from_index(fs::Node &node, int i_block, int set_to = 0) {
-  fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(node.sb.get());
+  fs::Ext2FileSystem *efs = static_cast<fs::Ext2FileSystem *>(node.sb.get());
   auto bsize = efs->block_size;
 
   auto p = node.priv<fs::ext2_idata>();
@@ -212,7 +212,7 @@ static ck::vec<uint32_t> read_blocklist(fs::inode &ino,
 #endif
 
 static int access_block_path(fs::Node &ino, int n, int *path, ck::func<bool(uint32_t &)> cb) {
-  fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(ino.sb.get());
+  fs::Ext2FileSystem *efs = static_cast<fs::Ext2FileSystem *>(ino.sb.get());
 
   auto p = ino.priv<fs::ext2_idata>();
   auto &info = p->info;
@@ -322,7 +322,7 @@ static int append_block(fs::Node &ino, int dest) {
   int n = block_to_path(&ino, dest, path);
 
 
-  fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(ino.sb.get());
+  fs::Ext2FileSystem *efs = static_cast<fs::Ext2FileSystem *>(ino.sb.get());
 
   return access_block_path(ino, n, path, [&](uint32_t &dst) -> bool {
     int blk = efs->balloc();
@@ -344,7 +344,7 @@ static int truncate(fs::Node &ino, size_t new_size) {
   if (old_size == new_size) return 0;
 
 
-  fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(ino.sb.get());
+  fs::Ext2FileSystem *efs = static_cast<fs::Ext2FileSystem *>(ino.sb.get());
 
   auto block_size = efs->block_size;
   size_t bbefore = ceil_div(old_size, block_size);
@@ -387,7 +387,7 @@ static int truncate(fs::Node &ino, size_t new_size) {
 
 // returns the number of bytes read or negative values on failure
 static ssize_t ext2_raw_rw(fs::Node &ino, char *buf, size_t sz, off_t offset, bool write) {
-  fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(ino.sb.get());
+  fs::Ext2FileSystem *efs = static_cast<fs::Ext2FileSystem *>(ino.sb.get());
 
   if (write) {
     off_t total_needed = offset + sz;
@@ -487,7 +487,7 @@ static void ext2_traverse_dir(fs::Node &ino, ck::func<void(u32 ino, const char *
 }
 
 static int flush_info(fs::Node &ino) {
-  fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(ino.sb.get());
+  fs::Ext2FileSystem *efs = static_cast<fs::Ext2FileSystem *>(ino.sb.get());
   auto &info = ino.priv<fs::ext2_idata>()->info;
 
   info.size = ino.size;
@@ -517,7 +517,7 @@ static int flush_info(fs::Node &ino) {
 
 
 static int injest_info(fs::Node &ino, fs::ext2_inode_info &info) {
-  fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(ino.sb.get());
+  fs::Ext2FileSystem *efs = static_cast<fs::Ext2FileSystem *>(ino.sb.get());
   ino.size = info.size;
   ino.mode = info.type;
   ino.uid = info.uid;
@@ -605,7 +605,7 @@ struct ext2_vmobject final : public mm::VMObject {
     struct block::Buffer *buf = buffers[n];
 
     if (buf == NULL) {
-      fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(m_ino->sb.get());
+      fs::Ext2FileSystem *efs = static_cast<fs::Ext2FileSystem *>(m_ino->sb.get());
 
       auto i_block = (m_off / efs->block_size) + ((n * PGSIZE) / efs->block_size);
       int block = block_from_index(*m_ino, i_block);
@@ -710,7 +710,7 @@ static ck::ref<fs::Node> ext2_lookup(fs::Node &node, const char *needle) {
 
 
   bool found = false;
-  auto efs = static_cast<fs::Ext2SuperBlock *>(node.sb.get());
+  auto efs = static_cast<fs::Ext2FileSystem *>(node.sb.get());
   int nr = -1;
 
   // walk the linked list to get the inode num
@@ -746,7 +746,7 @@ fs::DirectoryOperations ext2_dir_ops{
     .mknod = ext2_mknod,
 };
 
-ck::ref<fs::Node> fs::Ext2SuperBlock::create_inode(Ext2SuperBlock *fs, u32 index) {
+ck::ref<fs::Node> fs::Ext2FileSystem::create_inode(Ext2FileSystem *fs, u32 index) {
   ck::ref<fs::Node> ino = nullptr;
 
   struct ext2_inode_info info;

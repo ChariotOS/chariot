@@ -53,14 +53,14 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-fs::Ext2SuperBlock::Ext2SuperBlock(void) { TRACE; }
+fs::Ext2FileSystem::Ext2FileSystem(void) { TRACE; }
 
-fs::Ext2SuperBlock::~Ext2SuperBlock(void) {
+fs::Ext2FileSystem::~Ext2FileSystem(void) {
   TRACE;
   if (sb != nullptr) delete sb;
 }
 
-bool fs::Ext2SuperBlock::init(fs::BlockDevice *bdev) {
+bool fs::Ext2FileSystem::init(fs::BlockDevice *bdev) {
   TRACE;
 
   fs::BlockDevice::acquire(bdev);
@@ -115,13 +115,13 @@ bool fs::Ext2SuperBlock::init(fs::BlockDevice *bdev) {
   return true;
 }
 
-int fs::Ext2SuperBlock::write_superblock(void) {
+int fs::Ext2FileSystem::write_superblock(void) {
   // TODO: lock
   disk->seek(1024, SEEK_SET);
   return disk->write(sb, 1024);
 }
 
-bool fs::Ext2SuperBlock::read_inode(ext2_inode_info &dst, u32 inode) {
+bool fs::Ext2FileSystem::read_inode(ext2_inode_info &dst, u32 inode) {
   TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
   auto bgd_bb = bref::get(*bdev, first_bgd);
@@ -141,7 +141,7 @@ bool fs::Ext2SuperBlock::read_inode(ext2_inode_info &dst, u32 inode) {
   return true;
 }
 
-bool fs::Ext2SuperBlock::write_inode(ext2_inode_info &src, u32 inode) {
+bool fs::Ext2FileSystem::write_inode(ext2_inode_info &src, u32 inode) {
   TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
 
@@ -168,7 +168,7 @@ bool fs::Ext2SuperBlock::write_inode(ext2_inode_info &src, u32 inode) {
 #define BLOCKBYTE(bg_buffer, n) (bg_buffer[((n) >> 3)])
 #define BLOCKBIT(bg_buffer, n) (BLOCKBYTE(bg_buffer, n) & SETBIT(n))
 
-long fs::Ext2SuperBlock::allocate_inode(void) {
+long fs::Ext2FileSystem::allocate_inode(void) {
   scoped_lock l(bglock);
 
   int bgs = blockgroups;
@@ -211,7 +211,7 @@ long fs::Ext2SuperBlock::allocate_inode(void) {
 
 
 
-uint32_t fs::Ext2SuperBlock::balloc(void) {
+uint32_t fs::Ext2FileSystem::balloc(void) {
   scoped_lock l(bglock);
 
   unsigned int block_no = 0;
@@ -273,48 +273,48 @@ uint32_t fs::Ext2SuperBlock::balloc(void) {
 
 
 
-void fs::Ext2SuperBlock::bfree(uint32_t block) {
+void fs::Ext2FileSystem::bfree(uint32_t block) {
   scoped_lock l(m_lock);
 
   //
 }
 
-bool fs::Ext2SuperBlock::read_block(u32 block, void *buf) {
+bool fs::Ext2FileSystem::read_block(u32 block, void *buf) {
   bread(*bdev, (void *)buf, block_size, block * block_size);
   return true;
 }
 
-bool fs::Ext2SuperBlock::write_block(u32 block, const void *buf) {
+bool fs::Ext2FileSystem::write_block(u32 block, const void *buf) {
   bwrite(*bdev, (void *)buf, block_size, block * block_size);
   return true;
 }
 
-ck::ref<fs::Node> fs::Ext2SuperBlock::get_root(void) { return root; }
+ck::ref<fs::Node> fs::Ext2FileSystem::get_root(void) { return root; }
 
-ck::ref<fs::Node> fs::Ext2SuperBlock::get_inode(u32 index) {
+ck::ref<fs::Node> fs::Ext2FileSystem::get_inode(u32 index) {
   TRACE;
   scoped_lock lck(m_lock);
   if (inodes[index] == nullptr) {
-    inodes[index] = fs::Ext2SuperBlock::create_inode(this, index);
+    inodes[index] = fs::Ext2FileSystem::create_inode(this, index);
   }
   return inodes[index];
 }
 
-int ext2_sb_init(struct fs::SuperBlock &sb) { return -ENOTIMPL; }
+int ext2_sb_init(struct fs::FileSystem &sb) { return -ENOTIMPL; }
 
-int ext2_write_super(struct fs::SuperBlock &sb) { return -ENOTIMPL; }
+int ext2_write_super(struct fs::FileSystem &sb) { return -ENOTIMPL; }
 
-int ext2_sync(struct fs::SuperBlock &sb, int flags) { return -ENOTIMPL; }
+int ext2_sync(struct fs::FileSystem &sb, int flags) { return -ENOTIMPL; }
 
 struct fs::SuperBlockOperations ext2_ops {
   .init = ext2_sb_init, .write_super = ext2_write_super, .sync = ext2_sync,
 };
 
-static ck::ref<fs::SuperBlock> ext2_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
+static ck::ref<fs::FileSystem> ext2_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
   struct fs::BlockDevice *bdev = fs::bdev_from_path(device);
   if (bdev == NULL) return nullptr;
 
-  auto sb = ck::make_ref<fs::Ext2SuperBlock>();
+  auto sb = ck::make_ref<fs::Ext2FileSystem>();
 
   if (!sb->init(bdev)) {
     return nullptr;

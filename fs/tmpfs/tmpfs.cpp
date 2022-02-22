@@ -3,16 +3,16 @@
 #include <fs/vfs.h>
 #include <errno.h>
 
-static ck::ref<fs::SuperBlock> tmpfs_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
-  return ck::make_ref<tmp::SuperBlock>(args, flags);
+static ck::ref<fs::FileSystem> tmpfs_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
+  return ck::make_ref<tmp::FileSystem>(args, flags);
 }
 
 
-int tmpfs_sb_init(struct fs::SuperBlock &sb) { return -ENOTIMPL; }
+int tmpfs_sb_init(struct fs::FileSystem &sb) { return -ENOTIMPL; }
 
-int tmpfs_write_super(struct fs::SuperBlock &sb) { return -ENOTIMPL; }
+int tmpfs_write_super(struct fs::FileSystem &sb) { return -ENOTIMPL; }
 
-int tmpfs_sync(struct fs::SuperBlock &sb, int flags) { return -ENOTIMPL; }
+int tmpfs_sync(struct fs::FileSystem &sb, int flags) { return -ENOTIMPL; }
 
 
 struct fs::SuperBlockOperations tmpfs_ops {
