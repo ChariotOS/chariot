@@ -70,110 +70,15 @@ namespace fs {
   struct BlockDevice;
   class File;
 
-  using mode_t = u32;
-
-  struct directory_entry {
-    u32 inode;
-    ck::string name;
-  };
-
-#if 0
-  struct BlockOperations {
-    // used to populate block_count and block_size
-    int (&init)(fs::BlockDevice &);
-    int (*open)(fs::BlockDevice &, int mode);
-    int (*release)(fs::BlockDevice &);
-    // 0 on success, -ERRNO on fail
-    int (&rw_block)(fs::BlockDevice &, void *data, int block, bool write);
-    int (*ioctl)(fs::BlockDevice &, unsigned int, off_t) = NULL;
-  };
-
-  struct BlockDevice {
-    dev_t dev;
-    ck::string name;  // ex. hda or ata0
-
-    size_t block_count;
-    size_t block_size;
-
-    struct BlockOperations &ops;
-
-    long count = 0;  // refcount
-    spinlock lock;
-
-    inline BlockDevice(dev_t dev, ck::string name, struct BlockOperations &ops) : dev(dev), name(move(name)), ops(ops) { ops.init(*this); }
-
-    // nice wrappers for filesystems and all that :)
-    inline int read_block(void *data, int block) { return ops.rw_block(*this, data, block, false); }
-
-    inline int write_block(void *data, int block) { return ops.rw_block(*this, data, block, true); }
-
-    inline static void acquire(struct BlockDevice *d) {
-      d->lock.lock();
-      d->count++;
-      d->lock.unlock();
-    }
-    inline static void release(struct BlockDevice *d) {
-      d->lock.lock();
-      d->count--;
-      if (d->count == 0) {
-        printk("delete blkdev [%d,%d]\n", d->dev.major(), d->dev.minor());
-      }
-      d->lock.unlock();
-    }
-
-    // nice to have thing
-    template <typename T>
-    T *&p(void) {
-      return (T *&)priv;
-    }
-
-   private:
-    void *priv;
-  };
-#endif
-
-
-
   struct FileSystem : public ck::refcounted<FileSystem> {
-    //
     dev_t dev;
     long block_size;
     long max_filesize;
     ck::ref<fs::Node> root;
     ck::string arguments;
     rwlock lock;
-
-    // nice to have thing
-    template <typename T>
-    T *&p(void) {
-      return (T *&)priv;
-    }
-
-
-   private:
-    void *priv;
   };
 
-  extern ck::ref<fs::FileSystem> DUMMY_SB;
-
-
-
-  struct SuperBlockOperations {
-    // initialize the superblock after it has been mounted. All of the
-    // arguments
-    int (&init)(fs::FileSystem &);
-    int (&write_super)(fs::FileSystem &);
-    int (&sync)(fs::FileSystem &, int flags);
-  };
-
-  struct SuperBlockInfo {
-    const char *name;
-
-    // return a superblock containing the root inode
-    ck::ref<fs::FileSystem> (&mount)(fs::SuperBlockInfo *, const char *args, int flags, const char *device);
-
-    struct SuperBlockOperations &ops;
-  };
 
 // memory only
 #define ENT_MEM 0
