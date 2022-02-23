@@ -16,6 +16,7 @@ namespace tmpfs {
     virtual ssize_t write(fs::File &, const char *, size_t);
     virtual int resize(fs::File &, size_t);
     virtual int stat(fs::File &, struct stat *);
+    virtual ssize_t size(void);
   };
 
   struct DirNode : public fs::DirectoryNode {
@@ -43,6 +44,8 @@ namespace tmpfs {
     FileSystem(ck::string args, int flags);
 
     virtual ~FileSystem();
+	
+		static ck::ref<fs::FileSystem> mount(ck::string options, int flags, ck::string device);
   };
 
 	void init(void);

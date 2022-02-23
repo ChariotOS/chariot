@@ -139,12 +139,8 @@ namespace fs {
     dev_t dev;
     long block_size;
     long max_filesize;
-
-    struct SuperBlockOperations *ops;
-    struct SuperBlockInfo *info;
     ck::ref<fs::Node> root;
     ck::string arguments;
-
     rwlock lock;
 
     // nice to have thing
@@ -292,6 +288,7 @@ namespace fs {
    public:
     using fs::Node::Node;
     virtual bool is_dir(void) final { return true; }
+    virtual ssize_t size(void) { return 0;} 
   };
 
   class SockNode : public fs::Node {
@@ -379,6 +376,7 @@ namespace fs {
     int ioctl(int cmd, unsigned long arg);
     int stat(struct stat *stat) { return ino->stat(*this, stat); }
     int close();
+
 
     inline off_t offset(void) { return m_offset; }
 

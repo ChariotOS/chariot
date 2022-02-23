@@ -59,25 +59,10 @@ devfs::FileSystem::FileSystem(ck::string args, int flags) {
 
 devfs::FileSystem::~FileSystem(void) {}
 
-static ck::ref<fs::FileSystem> devfs_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
+ck::ref<fs::FileSystem> devfs::FileSystem::mount(ck::string args, int flags, ck::string device) {
   return ck::make_ref<devfs::FileSystem>(args, flags);
 }
 
 
-int devfs_sb_init(struct fs::FileSystem &sb) { return -ENOTIMPL; }
 
-int devfs_write_super(struct fs::FileSystem &sb) { return -ENOTIMPL; }
-
-int devfs_sync(struct fs::FileSystem &sb, int flags) { return -ENOTIMPL; }
-
-
-struct fs::SuperBlockOperations devfs_ops {
-  .init = devfs_sb_init, .write_super = devfs_write_super, .sync = devfs_sync,
-};
-
-struct fs::SuperBlockInfo devfs_info {
-  .name = "devfs", .mount = devfs_mount, .ops = devfs_ops,
-};
-
-
-void devfs::init(void) { vfs::register_filesystem(devfs_info); }
+void devfs::init(void) { vfs::register_filesystem<devfs::FileSystem>("devfs"); }

@@ -19,16 +19,21 @@ int tmpfs::FileNode::stat(fs::File &, struct stat *s) {
   return -ENOTIMPL;
 }
 
+ssize_t tmpfs::FileNode::size(void) {
+  printk("tmpfs size\n");
+  return 0;
+}
+
 
 
 int tmpfs::DirNode::touch(ck::string name, fs::Ownership &) { return -ENOTIMPL; }
 
 int tmpfs::DirNode::mkdir(ck::string name, fs::Ownership &own) {
   auto node = ck::make_ref<tmpfs::DirNode>(sb);
-	node->set_name(name);
+  node->set_name(name);
   node->link(".", node);
   node->link("..", this);
-	return link(name, node);
+  return link(name, node);
 }
 
 int tmpfs::DirNode::unlink(ck::string name) { return -ENOTIMPL; }
@@ -44,9 +49,9 @@ ck::vec<fs::DirectoryEntry *> tmpfs::DirNode::dirents(void) {
 }
 
 fs::DirectoryEntry *tmpfs::DirNode::get_direntry(ck::string name) {
-	auto f = entries.find(name);
-	if (f == entries.end()) return nullptr;
-	return f->value.get();
+  auto f = entries.find(name);
+  if (f == entries.end()) return nullptr;
+  return f->value.get();
 }
 
 int tmpfs::DirNode::link(ck::string name, ck::ref<fs::Node> node) {
@@ -73,27 +78,13 @@ tmpfs::FileSystem::~FileSystem(void) { printk("tmpfs superblock dead\n"); }
 
 
 
-static ck::ref<fs::FileSystem> tmpfs_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
+ck::ref<fs::FileSystem> tmpfs::FileSystem::mount(ck::string args, int flags, ck::string device) {
   return ck::make_ref<tmpfs::FileSystem>(args, flags);
 }
 
 
-int tmpfs_sb_init(struct fs::FileSystem &sb) { return -ENOTIMPL; }
-
-int tmpfs_write_super(struct fs::FileSystem &sb) { return -ENOTIMPL; }
-
-int tmpfs_sync(struct fs::FileSystem &sb, int flags) { return -ENOTIMPL; }
 
 
-struct fs::SuperBlockOperations tmpfs_ops {
-  .init = tmpfs_sb_init, .write_super = tmpfs_write_super, .sync = tmpfs_sync,
-};
-
-struct fs::SuperBlockInfo tmpfs_info {
-  .name = "tmpfs", .mount = tmpfs_mount, .ops = tmpfs_ops,
-};
-
-
-void tmpfs::init(void) { vfs::register_filesystem(tmpfs_info); }
+void tmpfs::init(void) { vfs::register_filesystem<tmpfs::FileSystem>("tmpfs"); }
 
 // module_init("fs::tmpfs", tmpfs_init);

@@ -12,7 +12,7 @@ namespace devfs {
 
   /*
    */
-  struct DirectoryNode : public fs::DirectoryNode {
+  class DirectoryNode : public fs::DirectoryNode {
     using fs::DirectoryNode::DirectoryNode;
 
 		// Explicit entries. All device nodes are included as entries dynamically
@@ -34,6 +34,8 @@ namespace devfs {
     static ck::ref<fs::Node> get_root(void);
 
     virtual ~FileSystem();
+
+		static ck::ref<fs::FileSystem> mount(ck::string options, int flags, ck::string device);
   };
 
 

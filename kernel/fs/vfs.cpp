@@ -13,15 +13,15 @@
 #define LOG(...) PFXLOG(GRN "VFS", __VA_ARGS__)
 
 ck::ref<fs::Node> vfs_root = nullptr;
-static ck::vec<struct fs::SuperBlockInfo *> filesystems;
+// static ck::vec<struct fs::SuperBlockInfo *> filesystems;
 static ck::vec<struct vfs::mountpoint *> mountpoints;
 
-void vfs::register_filesystem(struct fs::SuperBlockInfo &info) {
-  LOG("filesystem '%s' registered\n", info.name);
-  filesystems.push(&info);
-}
+static ck::map<ck::string, vfs::Mounter> filesystem_mounters;
 
-void vfs::deregister_filesystem(struct fs::SuperBlockInfo &) {}
+void vfs::register_filesystem(ck::string name, vfs::Mounter mount) {
+	LOG("filesystem '%s' registered\n", name.get());
+	filesystem_mounters[name] = mount;
+}
 
 ck::ref<fs::Node> vfs::cwd(void) {
   if (cpu::in_thread()) {
@@ -55,35 +55,27 @@ int vfs::mount(const char *src, const char *targ, const char *type, unsigned lon
   if (get_root()) {
     // TODO: look up the target directory
   }
+	auto mounter = filesystem_mounters[type];
 
-  struct fs::SuperBlockInfo *fs = nullptr;
-
-  for (int i = 0; i < filesystems.size(); i++) {
-    if (strcmp(type, filesystems[i]->name) == 0) {
-      fs = filesystems[i];
-      break;
-    }
-  }
-
-  if (fs == nullptr) {
+  if (mounter == nullptr) {
     LOG("failed to find the filesystem for that name\n");
     return -ENOENT;
   }
-  auto sb = fs->mount(fs, options, flags, src);
-  if (sb == nullptr) {
+  auto fs = mounter(options, flags, src);
+  if (fs == nullptr) {
     LOG("failed to mount filesystem\n");
     return -EINVAL;
   }
 
   auto mp = new vfs::mountpoint();
-  mp->sb = sb;
+  mp->sb = fs;
   mp->mountflags = flags;
   mp->devname = targ;
   mp->id = 0;
 
-  assert(sb->root);
+  assert(fs->root);
 
-  assert(mp->sb->root->sb == sb);
+  assert(mp->sb->root->sb == fs);
 
   if (get_root() == nullptr && strcmp(targ, "/") == 0) {
     // update the root
@@ -369,10 +361,11 @@ void vfs::init_boot_filesystem(void) {
   mount_res = vfs::mount("", "/", "tmpfs", 0, NULL);
   if (mount_res != 0) panic("Failed to mount root tmpfs filesystem\n");
   sys::mkdir("/dev", 0755);
-  sys::mkdir("/dev2", 0755);
   mount_res = vfs::mount("", "/dev", "devfs", 0, NULL);
-  mount_res = vfs::mount("", "/dev2", "devfs", 0, NULL);
   if (mount_res != 0) panic("Failed to mount devfs to /dev\n");
+  // Once the kernel has a drive and a filesystem for the root filesystem, it
+  // is mounted into /uroot, and then chrooted into
+  sys::mkdir("/uroot", 0755);
 }
 
 
@@ -398,8 +391,8 @@ static void do_ls(const ck::string &dir) {
     auto ents = f->dirents();
 
     for (auto ent : ents) {
-			auto n = ent->get();
-      printk("%s %zu\n", ent->name.get(), n->size());
+      auto n = ent->get();
+      printk("%zu %s\n", n->size(), ent->name.get());
     }
   }
 }
@@ -440,11 +433,11 @@ ksh_def("dump", "hexdump the start of a file") {
     printk("usage: dump file\n");
     return 0;
   }
-	auto buf = (char*)malloc(4096);
+  auto buf = (char *)malloc(4096);
   auto f = vfs::open(args[0]);
   if (!f) {
     printk("file not found\n");
-		free(buf);
+    free(buf);
     return 0;
   }
 
@@ -452,12 +445,12 @@ ksh_def("dump", "hexdump the start of a file") {
   auto sz = file.read(buf, 4096);
   if (sz < 0) {
     printk("failed to read: %zd\n", sz);
-		free(buf);
+    free(buf);
     return 0;
   }
-	printk("read %zd bytes\n", sz);
+  printk("read %zd bytes\n", sz);
   hexdump(buf, sz, true);
-	free(buf);
+  free(buf);
   return 0;
 }
 

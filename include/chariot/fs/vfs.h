@@ -73,11 +73,14 @@ namespace vfs {
   int getcwd(fs::Node &, ck::string &dst);
 
   ck::ref<fs::Node> get_root(void);
+  using Mounter = ck::ref<fs::FileSystem> (*)(ck::string options, int flags, ck::string path);
+  void register_filesystem(ck::string name, Mounter mount);
+  template <typename FileSystem>
+  void register_filesystem(ck::string name) {
+    register_filesystem(name, FileSystem::mount);
+  }
 
-  // register filesystems by name, therefore we can mount generically by name
-  void register_filesystem(struct fs::SuperBlockInfo &);
-  void deregister_filesystem(struct fs::SuperBlockInfo &);
 
-	void init_boot_filesystem(void);
+  void init_boot_filesystem(void);
 
 };  // namespace vfs
