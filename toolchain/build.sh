@@ -14,11 +14,12 @@ export PATH="/usr/local/bin:/usr/bin:/bin"
 
 source $DIR/../.config
 
+MAKE=make
 
 ROOT=$DIR/..
 SYSROOT="$ROOT/build/root/"
 
-BINUTILS_VERSION="2.33.1"
+BINUTILS_VERSION="2.38"
 GCC_VERSION="$CONFIG_GCC_VERSION"
 
 
@@ -33,6 +34,14 @@ fi
 
 
 
+buildstep() {
+    NAME=$1
+    shift
+    "$@" 2>&1 | sed $'s|^|\x1b[34m['"${NAME}"$']\x1b[39m |'
+}
+
+
+
 # Download all the sources we need
 pushd src
 	if [ ! -f binutils.tar ]; then
@@ -41,7 +50,7 @@ pushd src
 
 	if [ ! -d binutils-${BINUTILS_VERSION} ]; then
 		echo "Unpacking binutils..."
-		tar -xf binutils.tar
+		buildstep "binutils/unpack" tar -xf binutils.tar
 	fi
 
 	#	# GCC
@@ -51,12 +60,12 @@ pushd src
 
 	if [ ! -d gcc-${GCC_VERSION} ]; then
 		echo "Unpacking gcc..."
-		tar -xf gcc-${GCC_VERSION}.tar
+		buildstep "gcc/unpack" tar -xf gcc-${GCC_VERSION}.tar
 	fi
 
   if [ "$(uname)" = "Darwin" ]; then
   	pushd "gcc-${GCC_VERSION}"
-    	./contrib/download_prerequisites
+    	buildstep "gcc/prereq" ./contrib/download_prerequisites
     popd
   fi
 popd
@@ -69,6 +78,18 @@ if [ "$(uname)" = "Darwin" ]; then
 	echo "MACOS"
 fi
 
+
+
+# we gotta do this casue libstdc++-v3 wants to check our header files out
+mkdir -p $SYSROOT
+mkdir -p $SYSROOT/usr/include/
+
+echo $ROOT
+FILES=$(find "$ROOT/libc/include/" "$ROOT/include/" -name '*.h' -print)
+for header in $FILES; do
+		target=$(echo "$header" | sed -e "s@$ROOT/libc/include@@"  -e "s@$ROOT/include@@")
+		buildstep "system_headers" install -D "$header" "$SYSROOT/usr/include/$target"
+done
 
 for ARCH in "$@"
 do
@@ -90,16 +111,13 @@ do
 		# build binutils
 		pushd binutils
 
-			$MESSAGE "BINUTILS CONFIGURE"
-
-			"$DIR"/src/binutils-${BINUTILS_VERSION}/configure --prefix="$PREFIX" \
+			buildstep "binutils/configure" "$DIR"/src/binutils-${BINUTILS_VERSION}/configure --prefix="$PREFIX" \
 																							--target="$TARGET" \
 																							--with-sysroot="$SYSROOT" \
 																							--enable-shared \
 																							--disable-nls || exit 1
-			$MESSAGE "BINUTILS MAKE"
-			make -j "$MAKEJOBS" || exit 1
-			make install || exit 1
+			buildstep "binutils/make" make -j "$MAKEJOBS" || exit 1
+			buildstep "binutils/install" make install || exit 1
 		popd
 
 		$MESSAGE "BINUTILS DONE"
@@ -108,9 +126,7 @@ do
 		# build gcc
 		pushd gcc
 
-			$MESSAGE "GCC CONFIGURE"
-
-			"$DIR"/src/gcc-${GCC_VERSION}/configure --prefix="$PREFIX" \
+			buildstep "gcc/configure" "$DIR"/src/gcc-${GCC_VERSION}/configure --prefix="$PREFIX" \
 																				 --target="$TARGET" \
 																				 --with-sysroot="$SYSROOT" \
 																				 --disable-bootstrap \
@@ -118,10 +134,6 @@ do
 																				 --with-newlib \
 																				 --enable-shared \
 																				 --enable-languages=c,c++ || exit 1
-
-			# we gotta do this casue libstdc++-v3 wants to check our header files out
-			mkdir -p $SYSROOT
-			$MESSAGE "GCC CONFIGURE DONE"
 
 			if [ "$(uname)" = "Darwin" ]; then
       	# under macOS generated makefiles are not resolving the "intl"
@@ -133,11 +145,15 @@ do
         popd
       fi
 
-			$MESSAGE "GCC MAKE"
 			echo "XXX build gcc and libgcc"
-			make -j "$MAKEJOBS" all-gcc all-target-libgcc || exit 1
+			buildstep "gcc/build" "$MAKE" -j "$MAKEJOBS" all-gcc || exit 1
+			buildstep "libgcc/build" "$MAKE" -j "$MAKEJOBS" all-target-libgcc || exit 1
 			echo "XXX install gcc and libgcc"
-			make install-gcc install-target-libgcc || exit 1
+			buildstep "gcc+libgcc/install" "$MAKE" install-gcc install-target-libgcc || exit 1
+
+			# buildstep "libstdc++/build" "$MAKE" -j "$MAKEJOBS" all-target-libstdc++-v3 || exit 1
+			# buildstep "libstdc++/install" "$MAKE" install-target-libstdc++-v3 || exit 1
+
 		popd
 
 		

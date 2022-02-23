@@ -31,12 +31,6 @@ namespace dev {
     // useful for things like when a device is unplugged, or is mounted
     int (*event_handler)(int minor, int ev, void *data);
 
-    // one of these is REQUIRED, based on the type of the driver. (which is also
-    // needed)
-    union {
-      fs::BlockOperations *block_ops;
-      fs::FileOperations *char_ops;
-    };
 
     // private to the driver subsystem, do not fiddle with (write to) stuff below here
     rwlock lock;

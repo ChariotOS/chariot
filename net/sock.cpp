@@ -81,20 +81,12 @@ static int sock_poll(fs::File &fd, int events, poll_table &pt) {
   return 0;
 }
 
-fs::FileOperations socket_fops{
-    .seek = sock_seek,
-    .read = sock_read,
-    .write = sock_write,
-
-    .close = sock_close,
-
-    .poll = sock_poll,
-};
-
-
-
 /* create an inode wrapper around a socket */
 ck::ref<fs::Node> net::Socket::createi(int domain, int type, int protocol, int &err) {
+  FS_REFACTOR();
+  return nullptr;
+
+#if 0
   // printk("domain=%3d, type=%3d, proto=%3d\n", domain, type, protocol);
   auto sk = net::Socket::create(domain, type, protocol, err);
   // printk("sk %p %d\n", sk, err);
@@ -109,6 +101,7 @@ ck::ref<fs::Node> net::Socket::createi(int domain, int type, int protocol, int &
   err = 0;
 
   return ino;
+#endif
 }
 
 int sys::socket(int d, int t, int p) {
@@ -139,7 +132,7 @@ ssize_t sys::sendto(int sockfd, const void *buf, size_t len, int flags, const st
 
   ssize_t res = -EINVAL;
   if (file) {
-    if (file->ino->type == T_SOCK) {
+    if (file->ino->is_sock()) {
       res = file->ino->sk->sendto(*file, (void *)buf, len, flags, dest_addr, addrlen);
     }
   }
@@ -166,7 +159,7 @@ ssize_t sys::recvfrom(int sockfd, void *buf, size_t len, int flags, const struct
 
   ssize_t res = -EINVAL;
   if (file) {
-    if (file->ino->type == T_SOCK) {
+    if (file->ino->is_sock()) {
       res = file->ino->sk->recvfrom(*file, (void *)buf, len, flags, dest_addr, addrlen);
     }
   }
@@ -182,7 +175,7 @@ int sys::bind(int sockfd, const struct sockaddr *addr, size_t len) {
   ck::ref<fs::File> file = curproc->get_fd(sockfd);
   ssize_t res = -EINVAL;
   if (file) {
-    if (file->ino->type == T_SOCK) {
+    if (file->ino->is_sock()) {
       res = file->ino->sk->bind(addr, len);
     } else {
       res = -ENOTSOCK;
@@ -194,6 +187,9 @@ int sys::bind(int sockfd, const struct sockaddr *addr, size_t len) {
 
 
 int sys::accept(int sockfd, struct sockaddr *addr, size_t addrlen) {
+  FS_REFACTOR();
+  return 0;
+#if 0
   if (!curproc->mm->validate_pointer((void *)addr, addrlen, VALIDATE_READ)) {
     return -EINVAL;
   }
@@ -201,7 +197,7 @@ int sys::accept(int sockfd, struct sockaddr *addr, size_t addrlen) {
   ck::ref<fs::File> file = curproc->get_fd(sockfd);
   ssize_t res = -EINVAL;
   if (file) {
-    if (file->ino->type == T_SOCK) {
+    if (file->ino->is_sock()) {
       int err = 0;
       auto sk = file->ino->sk->accept((struct sockaddr *)addr, addrlen, err);
       if (sk != nullptr) {
@@ -225,6 +221,7 @@ int sys::accept(int sockfd, struct sockaddr *addr, size_t addrlen) {
   }
 
   return res;
+#endif
 }
 
 
@@ -237,7 +234,7 @@ int sys::connect(int sockfd, const struct sockaddr *addr, size_t len) {
   ck::ref<fs::File> file = curproc->get_fd(sockfd);
   ssize_t res = -EINVAL;
   if (file) {
-    if (file->ino->type == T_SOCK) {
+    if (file->ino->is_sock()) {
       res = file->ino->sk->connect((struct sockaddr *)addr, len);
       if (res < 0) {
         file->ino->sk->connected = true;

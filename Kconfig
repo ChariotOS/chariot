@@ -89,6 +89,10 @@ menu "Config"
 		bool "Temp Filesystem"
 		default y
 
+	config PROCFS
+		bool "Proc Filesystem"
+		default y
+
 
 	config LOW_MEMORY
 		bool "Low memory mode (flush block cache when all refs are released, etc...)"

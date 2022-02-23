@@ -14,6 +14,9 @@
 #include <wait.h>
 
 
+#define FS_REFACTOR() panic("fs refactor: Function called, but has not been rewritten.\n")
+
+
 struct poll_table_wait_entry {
   struct wait_entry entry;
   wait_queue *wq;
@@ -176,12 +179,6 @@ namespace fs {
     struct SuperBlockOperations &ops;
   };
 
-  ck::ref<fs::Node> bdev_mount(fs::SuperBlockInfo *info, const char *args, int flags);
-
-  ck::ref<fs::Node> open(const char *s, u32 flags, u32 opts = 0);
-
-  ck::ref<fs::File> bdev_to_file(fs::BlockDevice *);
-
 // memory only
 #define ENT_MEM 0
 // resident on the backing storage
@@ -191,15 +188,11 @@ namespace fs {
 
   // directories have entries (linked list)
   struct DirectoryEntry {
-    int type = ENT_RES;
+    DirectoryEntry(ck::string &name, ck::ref<fs::Node> ino) : name(name), ino(ino) {}
     ck::string name;
-    int nr = -1;  // for unresolved
     ck::ref<fs::Node> ino;
-
     // if this direntry is a mount, this inode will shadow it
     ck::ref<fs::Node> mount_shadow = nullptr;
-
-    fs::DirectoryEntry *next, *prev;
   };
 
 #define T_INVA 0
@@ -222,225 +215,98 @@ namespace fs {
     int mode;  // the octal part of a file :)
   };
 
-
-
-  struct FileOperations {
-    // seek - used to notify of seeking. Doesn't actually seek
-    //        returns -errno on failure (seek wasn't allowed)
-    int (*seek)(fs::File &, off_t old_off, off_t new_off) = NULL;
-    ssize_t (*read)(fs::File &, char *, size_t) = NULL;
-    ssize_t (*write)(fs::File &, const char *, size_t) = NULL;
-    int (*ioctl)(fs::File &, unsigned int, off_t) = NULL;
-
-    /**
-     * open - notify the driver that a new descriptor has opened the file
-     * if it returns a non-zero code, it will be propagated back to the
-     * sys::open() call and be considered a fail
-     */
-    int (*open)(fs::File &) = NULL;
-
-    /**
-     * close - notify the driver that a file descriptor is closing it
-     *
-     * no return value
-     */
-    void (*close)(fs::File &) = NULL;
-
-    /* map a file into a vm area */
-    ck::ref<mm::VMObject> (*mmap)(fs::File &, size_t npages, int prot, int flags, off_t off);
-    // resize a file. if size is zero, it is a truncate
-    int (*resize)(fs::File &, size_t);
-
-    void (*destroy)(fs::Node &);
-
-    // *quickly* poll for a bitmap of events and return a bitmap of those that match
-    int (*poll)(fs::File &, int events, poll_table &pt);
-  };
-
-  // wrapper functions for block devices
-  extern struct fs::FileOperations block_file_ops;
-
-  struct DirectoryOperations {
-    // create a file in the directory
-    int (*create)(fs::Node &, const char *name, struct fs::Ownership &);
-    // create a directory in a dir
-    int (*mkdir)(fs::Node &, const char *, struct fs::Ownership &);
-    // remove a file from a directory
-    int (*unlink)(fs::Node &, const char *);
-    // lookup an inode by name in a file
-    ck::ref<fs::Node> (*lookup)(fs::Node &, const char *);
-    // create a device node with a major and minor number
-    int (*mknod)(fs::Node &, const char *name, struct fs::Ownership &, int major, int minor);
-  };
-
-
-
-  // DirectoryIterator: allows `for (auto node : *dir) {}`
-  class DirectoryIterator {
-   public:
-    ck::ref<fs::Node> operator*() {
-      if (m_cur->mount_shadow != nullptr) return m_cur->mount_shadow;
-      return m_cur->ino;
-    }
-    auto operator++() -> DirectoryIterator & {
-      m_cur = m_cur->next;
-      return *this;
-    }
-
-    friend bool operator==(const DirectoryIterator &a, const DirectoryIterator &b) { return a.m_cur == b.m_cur; };
-    friend bool operator!=(const DirectoryIterator &a, const DirectoryIterator &b) { return a.m_cur != b.m_cur; };
-    DirectoryIterator(DirectoryEntry *cur) : m_cur(cur) {}
-
-   private:
-    DirectoryEntry *m_cur = nullptr;
-  };
-
   /**
    * struct Node - base point for all "file-like" objects
    */
   struct Node : public ck::refcounted<Node> {
-    /**
-     * fields
-     */
-    off_t size = 0;
-    short type = T_INVA;  // from T_[...] above
-    short mode = 0;       // file mode. ex: o755
-
-    // the device that the file is located on
-    struct {
-      uint16_t major, minor;
-    } dev;
-
-    uint32_t ino = 0;  // inode (in systems that support it)
-    uint16_t uid = 0;
-    uint16_t gid = 0;
-    uint32_t link_count = 0;
-    uint32_t atime = 0;
-    uint32_t ctime = 0;
-    uint32_t mtime = 0;
-    uint32_t dtime = 0;
-    uint16_t block_size = 0;
-
-    // for devices
-    int major, minor;
-
-    fs::FileOperations *fops = NULL;
-    fs::DirectoryOperations *dops = NULL;
-
     ck::ref<fs::FileSystem> sb;
-
-    void *_priv;
-
-    bool fixed = false;
-
-    template <typename T>
-    T *&priv(void) {
-      return (T *&)_priv;
-    }
-
-    // different kinds of inodes need different kinds of data
-    union {
-      // T_DIR
-      struct {
-        // the parent directory, if this node is mounted
-        ck::ref<fs::Node> mountpoint;
-        struct DirectoryEntry *entries;
-        // an "owned" string that represents the name
-        const char *name;
-      } dir;
-
-      // T_BLK
-      struct {
-        fs::BlockDevice *dev;
-      } blk;
-    };
-
-
     // if this inode has a socket bound to it, it will be located here.
     ck::ref<net::Socket> sk;
     ck::ref<net::Socket> bound_socket;
 
-    /*
-     * the directory entry list in this->as.dir is a linked list that must be
-     * traversed to find the entry. When the subclass creates a directory, it
-     * must populate that list with at least the names of the entries. If an
-     * entry contains a NULL inode, it calls 'resolve_direntry' which returns
-     * the backing inode.
-     */
-    int register_direntry(ck::string name, int type, int nr, ck::ref<fs::Node> = nullptr);
-    int remove_direntry(ck::string name);
-    ck::ref<fs::Node> get_direntry(const char *name);
-    int get_direntry_r(const char *name);
-    void walk_direntries(ck::func<bool(const ck::string &, ck::ref<fs::Node>)>);
-    ck::vec<ck::string> direntries(void);
-    int add_mount(const char *name, ck::ref<fs::Node> other_root);
-
-    struct DirectoryEntry *get_direntry_raw(const char *name);
-
-    DirectoryIterator begin(void) {
-      assert(type == T_DIR);
-      return DirectoryIterator(dir.entries);
-    }
-    DirectoryIterator end(void) {
-      assert(type == T_DIR);
-      return DirectoryIterator(nullptr);
-    }
-    DirectoryIterator begin(void) const {
-      assert(type == T_DIR);
-      return DirectoryIterator(dir.entries);
-    }
-    DirectoryIterator end(void) const {
-      assert(type == T_DIR);
-      return DirectoryIterator(nullptr);
-    }
-
     // if the inode is a directory, set its name. NOP otherwise
-    int set_name(const ck::string &);
 
-    Node(int type, ck::ref<fs::FileSystem> sb);
+    Node(ck::ref<fs::FileSystem> sb);
     virtual ~Node();
 
-    int stat(struct stat *);
-    spinlock lock;
+    // Basic Node operations
+    virtual int seek(fs::File &, off_t old_off, off_t new_off);
+    virtual ssize_t read(fs::File &, char *dst, size_t count);
+    virtual ssize_t write(fs::File &, const char *, size_t);
+    virtual int ioctl(fs::File &, unsigned int, off_t);
+    virtual int open(fs::File &);
+    virtual void close(fs::File &);
+    virtual ck::ref<mm::VMObject> mmap(fs::File &, size_t npages, int prot, int flags, off_t off);
+    virtual int resize(fs::File &, size_t);
+    virtual int stat(fs::File &, struct stat *);
+    virtual int poll(fs::File &, int events, poll_table &pt);
 
+    // Directory Operations
+    // Create a FileNode in a directory
+    virtual int touch(ck::string name, fs::Ownership &) { return -EINVAL; }
+    // Create a DirectoryNode in a dir
+    virtual int mkdir(ck::string name, fs::Ownership &) { return -EINVAL; }
+    // Remove a file from a directory
+    virtual int unlink(ck::string name) { return -EINVAL; }
+    // Search a directory for a file
+    virtual ck::ref<fs::Node> lookup(ck::string name) { return nullptr; }
+    virtual int mknod(ck::string name, fs::Ownership &, int major, int minor) { return -EINVAL; }
+    // Get a list of the directory entires in this directory.
+    virtual ck::vec<DirectoryEntry *> dirents(void) { return {}; }
+    // get a dirent (return null if it doesn't exist). It is assumed `lock` is held
+    // while the parent holds the borrowed DirectoryEntry.
+    virtual DirectoryEntry *get_direntry(ck::string name) { return nullptr; }
+    // Link a Node as a DirectoryEntry (used for linking ".." and ".")
+    virtual int link(ck::string name, ck::ref<fs::Node> node) { return -EINVAL; }
 
 
     virtual bool is_file(void) { return false; }
     virtual bool is_dir(void) { return false; }
+    virtual bool is_block(void) { return false; }
+    virtual bool is_char(void) { return false; }
+    virtual bool is_sock(void) { return false; }
 
-    virtual int seek(fs::File &, off_t old_off, off_t new_off) { return -ENOTIMPL; }
-    virtual ssize_t read(fs::File &, char *dst, size_t count) { return -ENOTIMPL; }
-    virtual ssize_t write(fs::File &, const char *, size_t) { return -ENOTIMPL; }
-    virtual int ioctl(fs::File &, unsigned int, off_t) { return -ENOTIMPL; }
-    virtual int open(fs::File &) { return 0; }
-    virtual void close(fs::File &) {}
-    virtual ck::ref<mm::VMObject> mmap(fs::File &, size_t npages, int prot, int flags, off_t off);
-    virtual int resize(fs::File &, size_t) { return -ENOTIMPL; }
-    virtual int poll(fs::File &, int events, poll_table &pt);
 
+    scoped_lock lock(void) { return m_lock; }
+    scoped_irqlock irq_lock(void) { return m_lock; }
+    void set_name(const ck::string &s) { m_name = s; }
+    const ck::string &name(void) const { return m_name; }
 
    protected:
     int rc = 0;
-
-   private:
-    ck::ref<fs::Node> get_direntry_nolock(const char *name);
-    ck::ref<fs::Node> get_direntry_ino(struct DirectoryEntry *);
+    spinlock m_lock;
+    ck::string m_name;
   };
+
 
   class FileNode : public fs::Node {
    public:
+    using fs::Node::Node;
     virtual bool is_file(void) final { return true; }
   };
 
   class DirectoryNode : public fs::Node {
    public:
+    using fs::Node::Node;
     virtual bool is_dir(void) final { return true; }
+  };
 
-    virtual int create(fs::Node &, const char *name, struct fs::Ownership &) { return -ENOTIMPL; }
-    virtual int mkdir(fs::Node &, const char *name, struct fs::Ownership &) { return -ENOTIMPL; }
-    virtual int unlink(fs::Node &, const char *name) { return -ENOTIMPL; }
-    virtual int mknod(fs::Node &, const char *name, struct fs::Ownership &, int major, int minor) { return -ENOTIMPL; }
-    virtual ck::ref<fs::Node> lookup(fs::Node &, const char *) { return nullptr; }
+  class BlockNode : public fs::Node {
+   public:
+    using fs::Node::Node;
+    virtual bool is_block(void) final { return true; }
+  };
+
+  class CharNode : public fs::Node {
+   public:
+    using fs::Node::Node;
+    virtual bool is_char(void) final { return true; }
+  };
+
+  class SockNode : public fs::Node {
+   public:
+    using fs::Node::Node;
+    virtual bool is_sock(void) final { return true; }
   };
 
 
@@ -464,12 +330,12 @@ namespace fs {
     ssize_t read(void *, ssize_t);
     ssize_t write(void *data, ssize_t);
     int ioctl(int cmd, unsigned long arg);
-
+    int stat(struct stat *stat) { return ino->stat(*this, stat); }
     int close();
 
     inline off_t offset(void) { return m_offset; }
 
-    fs::FileOperations *fops(void);
+    // fs::FileOperations *fops(void);
 
     inline int errorcode() { return m_error; };
 

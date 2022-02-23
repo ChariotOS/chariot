@@ -3,6 +3,7 @@
 #include <fs/vfs.h>
 #include <ck/map.h>
 #include <syscall.h>
+#include <module.h>
 #include <util.h>
 
 #include <thread.h>
@@ -87,25 +88,42 @@ int vfs::mount(const char *src, const char *targ, const char *type, unsigned lon
     // update the root
     // TODO: this needs to be smarter :)
     vfs_root = mp->sb->root;
+    sched::proc::kproc()->cwd = vfs_root;
+    sched::proc::kproc()->root = vfs_root;
   } else {
     // this is so gross...
     mp->host = vfs::open(targ, O_RDONLY, 0);
-    if (mp->host == nullptr || mp->host->type != T_DIR || mp->host == vfs_root) {
+    if (mp->host == nullptr || !mp->host->is_dir() || mp->host == vfs_root) {
       delete mp;
       return -EINVAL;
     }
-    auto parent = mp->host->get_direntry("..");
+
+    auto parent_dirent = mp->host->get_direntry("..");
+    assert(parent_dirent != nullptr);
+    if (parent_dirent->mount_shadow != nullptr) {
+      delete mp;
+      return -EEXIST;
+    }
+
+    auto parent = parent_dirent->ino;
     assert(parent != nullptr);
-    mp->sb->root->add_mount("..", parent);
+
+    {
+      auto l = mp->sb->root->irq_lock();
+      auto ent = mp->sb->root->get_direntry("..");
+      ent->mount_shadow = parent;
+    }
 
     // copy the last entry into the name of the guest root
     auto end = ck::string(targ).split('/').last();
     auto name = calloc<char>(end.size() + 1);
     memcpy(name, end.get(), end.size() + 1);
-    mp->sb->root->dir.name = name;
+    mp->sb->root->set_name(name);
 
     // and mount it with a shadow node
-    parent->add_mount(end.get(), mp->sb->root);
+    auto mountpoint_dirent = parent->get_direntry(end.get());
+    assert(mountpoint_dirent->mount_shadow == nullptr);
+    mountpoint_dirent->mount_shadow = mp->sb->root;
   }
 
   mountpoints.push(mp);
@@ -144,12 +162,11 @@ int sys::mkdir(const char *upath, int mode) {
   int err = vfs::namei(path, 0, mode, vfs::cwd(), dir, true);
   if (err < 0) return err;
   if (dir.is_null()) return -ENOENT;
-  if (dir->type != T_DIR) return -ENOTDIR;
-  if (dir->dops == NULL) return -ENOTIMPL;
+  if (!dir->is_dir()) return -ENOTDIR;
 
   // check that the file doesn't exist first. This means we don't
   // have to check in the filesystem driver.
-  if (dir->get_direntry(name)) return -EEXIST;
+  if (dir->get_direntry(name) != nullptr) return -EEXIST;
 
 
   fs::Ownership fown;
@@ -157,7 +174,7 @@ int sys::mkdir(const char *upath, int mode) {
   fown.uid = curproc->user.uid;
   fown.gid = curproc->user.gid;
   fown.mode = mode;  // from the argument passed from the user
-  int res = dir->dops->mkdir(*dir, name, fown);
+  int res = dir->mkdir(name, fown);
 
   return res;
 }
@@ -252,27 +269,24 @@ int vfs::namei(const char *path, int flags, int mode, ck::ref<fs::Node> cwd, ck:
 
     auto found = ino->get_direntry(name);
 
-    if (found.is_null()) {
+    if (found == nullptr) {
       if (last && (flags & O_CREAT)) {
-        if (ino->dops && ino->dops->create) {
-          fs::Ownership own;
-          own.uid = curproc->user.uid;
-          own.gid = curproc->user.gid;
-          own.mode = mode;
-          int r = ino->dops->create(*ino, name, own);
-          if (r == 0) {
-            res = ino->get_direntry(name);
-          }
-          return r;
+        fs::Ownership own;
+        own.uid = curproc->user.uid;
+        own.gid = curproc->user.gid;
+        own.mode = mode;
+        int r = ino->touch(name, own);
+        if (r == 0) {
+          res = ino->get_direntry(name)->ino;
         }
-        return -EINVAL;
+        return r;
       }
 
       res = nullptr;
       return -ENOENT;
     }
 
-    ino = found;
+    ino = found->ino;
   }
 
   res = ino;
@@ -301,20 +315,22 @@ int vfs::unlink(const char *path, ck::ref<fs::Node> cwd) {
       continue;
     }
 
-    auto next = ino->get_direntry(name);
-    if (next == nullptr) return -ENOENT;
+    auto ent = ino->get_direntry(name);
+    if (ent == nullptr) return -ENOENT;
+    auto next = ent->ino;
+    assert(next != nullptr);
+
 
     if (last) {
-      if (next->type == T_DIR) {
+      if (next->is_dir()) {
         return -EISDIR;
       }
 
       assert(ino != nullptr);
-      if (ino->type != T_DIR) {
+      if (!ino->is_dir()) {
         return -ENOTDIR;
       }
-      if (ino->dops->unlink == NULL) return -EPERM;
-      return ino->dops->unlink(*ino, name);
+      return ino->unlink(name);
     }
 
 
@@ -338,4 +354,46 @@ fs::File vfs::fdopen(ck::string path, int opts, int mode) {
 
   fd.path = move(path);
   return fd;
+}
+
+ksh_def("pwd", "Print the working directory") {
+  ck::string cwd;
+
+  vfs::getcwd(*curproc->cwd, cwd);
+  printk("%s\n", cwd.get());
+
+  return 0;
+}
+
+ksh_def("ls", "List the files in the kernel's working directory") {
+  auto cwd = curproc->cwd;
+  {
+    auto l = cwd->lock();
+    auto ents = cwd->dirents();
+
+    for (auto ent : ents) {
+      printk("- %s\n", ent->name.get());
+    }
+  }
+
+  return 0;
+}
+
+extern int do_chdir(const char *path);
+
+ksh_def("cd", "Change directory") {
+	if (args.size() != 1) {
+		printk("usage: cd <dir>\n");
+		return 0;
+	}
+	return do_chdir(args[0].get());
+}
+
+ksh_def("mkdir", "Create a directory") {
+	if (args.size() != 1) {
+		printk("usage: mkdir <dir>\n");
+		return 0;
+	}
+	sys::mkdir(args[0].get(), 0755);
+  return 0;
 }

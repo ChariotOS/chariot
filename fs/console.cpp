@@ -30,7 +30,6 @@ struct console_tty : public tty {
 } ctty;
 
 static void consputc(int c, bool debug = false) {
-
 #ifdef CONFIG_UART_CONSOLE
   if (unlikely(c == CONS_DEL)) {
     serial_send(1, '\b');
@@ -66,11 +65,11 @@ static bool handle_special_input(char c) {
 #define MON_ENTRY_SIZE (sizeof(MONITOR_ENTRY) - 1)
 
 void console::feed(size_t sz, char* buf) {
-	// short curcuit if the kernel shell is running.
-	if (kshell::active()) {
-		kshell::feed(sz, buf);
-		return;
-	}
+  // short curcuit if the kernel shell is running.
+  if (kshell::active()) {
+    kshell::feed(sz, buf);
+    return;
+  }
   /*
 if (sz == MON_ENTRY_SIZE) {
 if (memcmp(MONITOR_ENTRY, buf, sz) == 0) {
@@ -96,7 +95,7 @@ return;
 
 void console::putc(char c, bool debug) { consputc(c, debug); }
 
-
+#if 0
 
 static ssize_t console_read(fs::File& fd, char* buf, size_t sz) {
   if (fd) {
@@ -122,6 +121,7 @@ static ssize_t console_write(fs::File& fd, const char* buf, size_t sz) {
 }
 
 
+
 static int console_open(fs::File& fd) { return 0; }
 static void console_close(fs::File& fd) { /* KINFO("[console] close!\n"); */
 }
@@ -132,19 +132,9 @@ static int console_poll(fs::File& fd, int events, poll_table& pt) { return conso
 static int console_ioctl(fs::File& fd, unsigned int cmd, off_t arg) { return ctty.ioctl(cmd, arg); }
 
 
-struct fs::FileOperations console_ops = {
-    .read = console_read,
-    .write = console_write,
-    .ioctl = console_ioctl,
-    .open = console_open,
-    .close = console_close,
-    .poll = console_poll,
-};
-
 static struct dev::DriverInfo console_driver_info {
   .name = "console", .type = DRIVER_CHAR, .major = MAJOR_CONSOLE,
 
-  .char_ops = &console_ops,
 };
 
 static void console_init(void) {
@@ -153,3 +143,4 @@ static void console_init(void) {
   dev::register_name(console_driver_info, "console", 0);
 }
 module_init("console", console_init);
+#endif

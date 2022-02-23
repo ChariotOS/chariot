@@ -8,10 +8,11 @@ int sys::dirent(int fd, struct dirent *ents, int off, int count) {
   ck::ref<fs::File> file = curproc->get_fd(fd);
 
   if (file) {
-    if (file->ino->type != T_DIR) return -ENOTDIR;
+    if (!file->ino->is_dir()) return -ENOTDIR;
+    scoped_lock l = file->ino->lock();
 
     // TODO: this allocation is overkill and wasteful
-    auto names = file->ino->direntries();
+    auto names = file->ino->dirents();
     if (ents == NULL) {
       return names.size();
     }
@@ -22,12 +23,12 @@ int sys::dirent(int fd, struct dirent *ents, int off, int count) {
     for (int i = off; i < count; i++) {
       // ents[i].ino = file->ino->ino;
       auto &n = names[i];
-      int len = n.size();
+      int len = n->name.size();
       if (len >= 256) len = 255;
 
 
       ents[i].d_ino = 0;
-      memcpy(ents[i].d_name, n.get(), len);
+      memcpy(ents[i].d_name, n->name.get(), len);
       c++;
     }
 

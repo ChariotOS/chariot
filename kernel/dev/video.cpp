@@ -44,6 +44,7 @@ struct gvi_vmobject final : public mm::VMObject {
     return p;
   }
 };
+#if 0
 
 static ck::ref<mm::VMObject> gvi_mmap(fs::File &fd, size_t npages, int prot, int flags, off_t off) {
   auto *vdev = get_vdev(fd.ino->minor);
@@ -72,6 +73,7 @@ static ck::ref<mm::VMObject> gvi_mmap(fs::File &fd, size_t npages, int prot, int
 
   return ck::make_ref<gvi_vmobject>(*vdev, npages);
 }
+
 
 static int gvi_ioctl(fs::File &fd, unsigned int cmd, unsigned long arg) {
   auto *vdev = get_vdev(fd.ino->minor);
@@ -110,18 +112,10 @@ static void gvi_close(fs::File &fd) {
   vdev->on_close();
   // reset_fb();
 }
+#endif
 
 
-struct fs::FileOperations generic_VideoDriver_ops = {
-    .ioctl = gvi_ioctl,
-    .open = gvi_open,
-    .close = gvi_close,
-    .mmap = gvi_mmap,
-};
-
-static struct dev::DriverInfo gvi_driver_info {
-  .name = "Generic Video Interface", .type = DRIVER_CHAR, .major = MAJOR_VIDEO, .char_ops = &generic_VideoDriver_ops,
-};
+static struct dev::DriverInfo gvi_driver_info { .name = "Generic Video Interface", .type = DRIVER_CHAR, .major = MAJOR_VIDEO, };
 
 void dev::VideoDevice::register_driver(dev::VideoDevice *vdev) {
   if (!initialized) {

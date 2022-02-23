@@ -75,11 +75,7 @@ struct fs::BlockOperations generic_disk_blk_ops = {
     .rw_block = disk_rw_block,
 };
 
-static struct dev::DriverInfo disk_driver_info {
-  .name = "generic disk", .type = DRIVER_BLOCK, .major = MAJOR_DISK,
-
-  .block_ops = &generic_disk_blk_ops,
-};
+static struct dev::DriverInfo disk_driver_info { .name = "generic disk", .type = DRIVER_BLOCK, .major = MAJOR_DISK, };
 
 static int add_drive(const ck::string& name, dev::Disk* drive) {
   printk(KERN_INFO "Add drive '%s'\n", name.get());

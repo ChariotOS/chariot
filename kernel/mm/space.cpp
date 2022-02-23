@@ -359,9 +359,7 @@ off_t mm::AddressSpace::mmap(ck::string name, off_t addr, size_t size, int prot,
 
   // if there is a file descriptor, try to call it's mmap. Otherwise fail
   if (fd) {
-    if (fd->ino && fd->ino->fops && fd->ino->fops->mmap) {
-      obj = fd->ino->fops->mmap(*fd, pages, prot, flags, off);
-    }
+    obj = fd->ino->mmap(*fd, pages, prot, flags, off);
 
     if (!obj) {
       return -1;
@@ -473,13 +471,14 @@ void mm::AddressSpace::dump(void) {
     int maj = 0;
     int min = 0;
     if (r->fd) {
-      maj = r->fd->ino->dev.major;
-      min = r->fd->ino->dev.minor;
+			FS_REFACTOR();
+      // maj = r->fd->ino->dev.major;
+      // min = r->fd->ino->dev.minor;
     }
 
 
     printk(" %02x:%02x", maj, min);
-    printk(" %-10d", r->fd ? r->fd->ino->ino : 0);
+    // printk(" %-10d", r->fd ? r->fd->ino->ino : 0);
     printk(" %s", r->name.get());
 
     printk("\n");

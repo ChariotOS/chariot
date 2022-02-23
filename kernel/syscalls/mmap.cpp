@@ -17,17 +17,6 @@ void *sys::mmap(void *addr, long length, int prot, int flags, int fd, long offse
   if ((flags & MAP_ANON) == 0) {
     f = proc->get_fd(fd);
     if (!f) return MAP_FAILED;
-
-    // you can only map FILE, BLK, and CHAR devices
-    switch (f->ino->type) {
-      case T_FILE:
-      case T_BLK:
-      case T_CHAR:
-        break;
-
-      default:
-        return MAP_FAILED;
-    }
   }
 
   va = proc->mm->mmap((off_t)addr, length, prot, flags, f, offset);

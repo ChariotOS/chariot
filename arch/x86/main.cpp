@@ -158,7 +158,7 @@ int kernel_init(void*) {
 
   assert(root_name);
 
-  int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);
+  int mnt_res = vfs::mount("", "/", "tmpfs", 0, NULL);
   if (mnt_res != 0) {
     printk("failed to mount root. Error=%d\n", -mnt_res);
   }

@@ -5,6 +5,7 @@
 #include <module.h>
 #include <dev/driver.h>
 
+#if 0
 static ck::ref<fs::Node> devfs_lookup(fs::Node &node, const char *needle) {
   if (node.type != T_DIR) panic("devfs_lookup on non-dir\n");
 
@@ -102,3 +103,4 @@ struct fs::SuperBlockInfo devfs_info {
 static void devfs_init(void) { vfs::register_filesystem(devfs_info); }
 
 module_init("fs::devfs", devfs_init);
+#endif

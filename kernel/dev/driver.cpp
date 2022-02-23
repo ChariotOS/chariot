@@ -4,6 +4,7 @@
 #include <printk.h>
 #include <fs/vfs.h>
 #include <module.h>
+#include "fs.h"
 
 #define LOG(...) PFXLOG(BLU "DRV", __VA_ARGS__)
 
@@ -16,7 +17,6 @@ static ck::map<ck::string, dev_t> device_names;
 int dev::register_driver(struct dev::DriverInfo &info) {
   assert(info.major != -1);
   assert(info.type == DRIVER_CHAR || info.type == DRIVER_BLOCK);
-  assert(info.type == DRIVER_CHAR ? info.char_ops != NULL : info.block_ops != NULL);
 
   drivers_lock.write_lock();
 
@@ -29,6 +29,9 @@ int dev::register_driver(struct dev::DriverInfo &info) {
 
 extern void devfs_register_device(ck::string name, int type, int major, int minor);
 int dev::register_name(struct dev::DriverInfo &info, ck::string name, minor_t min) {
+  // FS_REFACTOR();
+  return 0;
+#if 0
   // create the block device if it is one
   if (info.type == DRIVER_BLOCK) {
     auto bdev = new fs::BlockDevice(dev_t(info.major, min), name, *info.block_ops);
@@ -48,6 +51,7 @@ int dev::register_name(struct dev::DriverInfo &info, ck::string name, minor_t mi
   devfs_register_device(name, ftype, info.major, min);
 
   return 0;
+#endif
 }
 
 int dev::deregister_name(struct dev::DriverInfo &, ck::string name) {
@@ -58,6 +62,9 @@ int dev::deregister_name(struct dev::DriverInfo &, ck::string name) {
 }
 
 void dev::populate_inode_device(fs::Node &ino) {
+  FS_REFACTOR();
+  return;
+#if 0
   if (drivers.contains(ino.major)) {
     auto *d = drivers[ino.major];
     d->lock.read_lock();
@@ -76,9 +83,14 @@ void dev::populate_inode_device(fs::Node &ino) {
 
     d->lock.read_unlock();
   }
+#endif
 }
 
 ck::ref<fs::Node> devicei(struct dev::DriverInfo &d, ck::string name, minor_t min) {
+	FS_REFACTOR();
+	return nullptr;
+
+#if 0
   auto ino = ck::make_ref<fs::Node>(d.type == DRIVER_BLOCK ? T_BLK : T_CHAR, fs::DUMMY_SB);
 
   ino->major = d.major;
@@ -87,6 +99,7 @@ ck::ref<fs::Node> devicei(struct dev::DriverInfo &d, ck::string name, minor_t mi
   dev::populate_inode_device(*ino);
 
   return ino;
+#endif
 }
 
 ck::ref<fs::File> dev::open(ck::string name) {
@@ -153,7 +166,7 @@ fs::BlockDevice *fs::bdev_from_path(const char *n) {
 
 
 void dev::Device::handle_irq(int num, const char *name) {
- irq::install(
+  irq::install(
       num,
       [](int num, unsigned long *regs, void *data) {
         dev::Device *self = (dev::Device *)data;
@@ -231,4 +244,3 @@ ksh_def("drivers", "display all (old style) drivers") {
   drivers_lock.read_unlock();
   return 0;
 }
-

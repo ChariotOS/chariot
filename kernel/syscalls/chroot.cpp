@@ -16,7 +16,7 @@ int sys::chroot(const char *path) {
 
   if (new_root == nullptr) return -ENOENT;
 
-  if (new_root->type != T_DIR) return -ENOTDIR;
+  if (!new_root->is_dir()) return -ENOTDIR;
 
   proc->root = new_root;
 

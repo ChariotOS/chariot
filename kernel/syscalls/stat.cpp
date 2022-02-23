@@ -14,8 +14,7 @@ int sys::fstat(int fd, struct stat *statbuf) {
   if (!file) return -ENOENT;
 
   // defer to the file's inode
-  if (file->ino) return file->ino->stat(statbuf);
-  return -1;
+  return file->stat(statbuf);
 }
 
 int sys::lstat(const char *pathname, struct stat *statbuf) {
@@ -29,6 +28,9 @@ int sys::lstat(const char *pathname, struct stat *statbuf) {
   // TODO: flags!
   if (err != 0) return err;
 
-  if (ino) return ino->stat(statbuf);
+  if (ino) {
+    fs::File file(ino, O_RDONLY);
+    return file.stat(statbuf);
+  }
   return -1;
 }

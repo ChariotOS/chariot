@@ -43,16 +43,16 @@ static spinlock pts_lock;
 static ck::map<int, ck::ref<struct pty>> pts;
 
 
-static struct fs::FileOperations pts_ops = {
-    .read = pts_read,
-    .write = pts_write,
-    .ioctl = pts_ioctl,
-    .poll = pts_poll,
-};
+// static struct fs::FileOperations pts_ops = {
+//     .read = pts_read,
+//     .write = pts_write,
+//     .ioctl = pts_ioctl,
+//     .poll = pts_poll,
+// };
 
 
 
-static struct dev::DriverInfo pts_driver { .name = "pts", .type = DRIVER_CHAR, .major = MAJOR_PTS, .char_ops = &pts_ops, };
+static struct dev::DriverInfo pts_driver { .name = "pts", .type = DRIVER_CHAR, .major = MAJOR_PTS };
 
 
 static auto getpts(int id) { return pts.get(id); }
@@ -86,6 +86,7 @@ static int allocate_pts() {
 }
 
 
+#if 0
 static int pts_ioctl(fs::File &f, unsigned int cmd, off_t arg) { return 0; }
 
 static void close_pts(int ptsid) {
@@ -186,3 +187,4 @@ static void pty_init(void) {
 }
 
 module_init("pty", pty_init);
+#endif

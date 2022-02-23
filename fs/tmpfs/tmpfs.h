@@ -7,17 +7,29 @@
 
 namespace tmp {
 
-  // private data per inode
-  struct priv {
-    /* The data pages */
-    ck::vec<ck::ref<mm::Page>> pages;
+
+  struct FileNode : public fs::FileNode {
+    using fs::FileNode::FileNode;
+
+    virtual int seek(fs::File &, off_t old_off, off_t new_off);
+    virtual ssize_t read(fs::File &, char *dst, size_t count);
+    virtual ssize_t write(fs::File &, const char *, size_t);
+    virtual int resize(fs::File &, size_t);
+    virtual int stat(fs::File &, struct stat *);
   };
+  struct DirNode : public fs::DirectoryNode {
+    using fs::DirectoryNode::DirectoryNode;
 
+    ck::map<ck::string, ck::box<fs::DirectoryEntry>> entries;
 
-
-
-  extern fs::FileOperations fops;
-  extern fs::DirectoryOperations dops;
+    virtual int touch(ck::string name, fs::Ownership &);
+    virtual int mkdir(ck::string name, fs::Ownership &);
+    virtual int unlink(ck::string name);
+    virtual ck::ref<fs::Node> lookup(ck::string name);
+    virtual ck::vec<fs::DirectoryEntry *> dirents(void);
+    virtual fs::DirectoryEntry *get_direntry(ck::string name);
+    virtual int link(ck::string name, ck::ref<fs::Node> node);
+  };
 
 
   struct FileSystem : public fs::FileSystem {
@@ -31,19 +43,7 @@ namespace tmp {
     FileSystem(ck::string args, int flags);
 
     virtual ~FileSystem();
-
-    /* create an inode and acquire it */
-    ck::ref<fs::Node> create_inode(int type);
   };
-
-
-  inline auto &getsb(fs::Node &i) { return *(tmp::FileSystem *)(i.sb.get()); }
-
-
-  /*
-   * Directory Operations
-   */
-  namespace dop {}
 
 
 }  // namespace tmp

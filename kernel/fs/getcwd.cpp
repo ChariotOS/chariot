@@ -22,15 +22,16 @@ int vfs::getcwd(fs::Node &cwd, ck::string &dst) {
   } else {
     int depth = 50;  // lol idk
     while (cur != root) {
-      if (cur->type != T_DIR) return -ENOTDIR;
+      if (!cur->is_dir()) return -ENOTDIR;
 
-      next = cur->get_direntry("..");
-      if (cur->dir.name == NULL) {
+      next = cur->get_direntry("..")->ino;
+      if (cur->name() == "") {
+				KWARN("getcwd: node has empty name\n");
         return -EINVAL;
       }
 
       // this is terrible
-      ck::string s = sep + cur->dir.name + dst;
+      ck::string s = sep + cur->name() + dst;
       dst = s.get();
       cur = next;
       depth--;
