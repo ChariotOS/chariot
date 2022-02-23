@@ -26,7 +26,14 @@ ssize_t tmpfs::FileNode::size(void) {
 
 
 
-int tmpfs::DirNode::touch(ck::string name, fs::Ownership &) { return -ENOTIMPL; }
+int tmpfs::DirNode::touch(ck::string name, fs::Ownership &own) {
+  if (entries.contains(name)) return -EEXIST;
+  auto node = ck::make_ref<tmpfs::FileNode>(sb);
+	node->set_name(name);
+	node->set_ownership(own);
+	link(name, node);
+	return 0;
+}
 
 int tmpfs::DirNode::mkdir(ck::string name, fs::Ownership &own) {
   auto node = ck::make_ref<tmpfs::DirNode>(sb);

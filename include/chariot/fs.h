@@ -113,9 +113,9 @@ namespace fs {
 #define T_TTY 8
 
   struct Ownership {
-    int uid;
-    int gid;
-    int mode;  // the octal part of a file :)
+    int uid = 0; // user: root
+    int gid = 0; // group: root
+    int mode = 0755;  // default access mode
   };
 
   /**
@@ -175,8 +175,12 @@ namespace fs {
     scoped_irqlock irq_lock(void) { return m_lock; }
     void set_name(const ck::string &s) { m_name = s; }
     const ck::string &name(void) const { return m_name; }
+		fs::Ownership ownership(void) const { return m_ownership; }
+		void set_ownership(fs::Ownership o) { m_ownership = o; }
 
    protected:
+
+		fs::Ownership m_ownership;
     int rc = 0;
     spinlock m_lock;
     ck::string m_name;
