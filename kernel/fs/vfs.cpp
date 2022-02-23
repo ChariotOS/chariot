@@ -5,7 +5,8 @@
 #include <syscall.h>
 #include <module.h>
 #include <util.h>
-
+#include <fs/tmpfs.h>
+#include <fs/devfs.h>
 #include <thread.h>
 
 
@@ -285,8 +286,7 @@ int vfs::namei(const char *path, int flags, int mode, ck::ref<fs::Node> cwd, ck:
       res = nullptr;
       return -ENOENT;
     }
-
-    ino = found->ino;
+    ino = found->get();
   }
 
   res = ino;
@@ -356,6 +356,24 @@ fs::File vfs::fdopen(ck::string path, int opts, int mode) {
   return fd;
 }
 
+
+
+
+void vfs::init_boot_filesystem(void) {
+  // Initialize the tmpfs filesystem layer
+	tmpfs::init();
+	devfs::init();
+
+  int mount_res;
+  // Mount a tmpfs filesystem at "/"
+  mount_res = vfs::mount("", "/", "tmpfs", 0, NULL);
+  if (mount_res != 0) panic("Failed to mount root tmpfs filesystem\n");
+  sys::mkdir("/dev", 0755);
+  mount_res = vfs::mount("", "/dev", "devfs", 0, NULL);
+  if (mount_res != 0) panic("Failed to mount devfs to /dev\n");
+}
+
+
 ksh_def("pwd", "Print the working directory") {
   ck::string cwd;
 
@@ -382,18 +400,19 @@ ksh_def("ls", "List the files in the kernel's working directory") {
 extern int do_chdir(const char *path);
 
 ksh_def("cd", "Change directory") {
-	if (args.size() != 1) {
-		printk("usage: cd <dir>\n");
-		return 0;
-	}
-	return do_chdir(args[0].get());
+  if (args.size() != 1) {
+    printk("usage: cd <dir>\n");
+    return 0;
+  }
+  return do_chdir(args[0].get());
 }
 
 ksh_def("mkdir", "Create a directory") {
-	if (args.size() != 1) {
-		printk("usage: mkdir <dir>\n");
-		return 0;
-	}
-	sys::mkdir(args[0].get(), 0755);
+  if (args.size() != 1) {
+    printk("usage: mkdir <dir>\n");
+    return 0;
+  }
+  sys::mkdir(args[0].get(), 0755);
   return 0;
 }
+

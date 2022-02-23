@@ -42,6 +42,10 @@ struct poll_table {
 };
 
 
+namespace devfs {
+  class DirectoryNode;
+};
+
 
 #define FDIR_READ 1
 #define FDIR_WRITE 2
@@ -193,6 +197,8 @@ namespace fs {
     ck::ref<fs::Node> ino;
     // if this direntry is a mount, this inode will shadow it
     ck::ref<fs::Node> mount_shadow = nullptr;
+
+    ck::ref<fs::Node> get(void) const { return mount_shadow ? mount_shadow : ino; }
   };
 
 #define T_INVA 0
@@ -262,10 +268,10 @@ namespace fs {
 
     virtual bool is_file(void) { return false; }
     virtual bool is_dir(void) { return false; }
-    virtual bool is_block(void) { return false; }
-    virtual bool is_char(void) { return false; }
     virtual bool is_sock(void) { return false; }
-
+    virtual bool is_dev(void) { return false; }
+    virtual bool is_blockdev(void) { return false; }
+    virtual bool is_chardev(void) { return false; }
 
     scoped_lock lock(void) { return m_lock; }
     scoped_irqlock irq_lock(void) { return m_lock; }
@@ -291,23 +297,45 @@ namespace fs {
     virtual bool is_dir(void) final { return true; }
   };
 
-  class BlockNode : public fs::Node {
-   public:
-    using fs::Node::Node;
-    virtual bool is_block(void) final { return true; }
-  };
-
-  class CharNode : public fs::Node {
-   public:
-    using fs::Node::Node;
-    virtual bool is_char(void) final { return true; }
-  };
-
   class SockNode : public fs::Node {
    public:
     using fs::Node::Node;
     virtual bool is_sock(void) final { return true; }
   };
+
+
+
+  class DeviceNode : public fs::Node {
+   public:
+    DeviceNode();
+    virtual ~DeviceNode();
+    void bind(ck::string name);
+    void unbind(void);
+    const ck::string &get_name(void) const { return m_name; }
+
+
+    virtual bool is_dev(void) final { return true; }
+
+   protected:
+    friend class devfs::DirectoryNode;
+
+    static scoped_irqlock lock_names(void);
+    static ck::map<ck::string, ck::box<fs::DirectoryEntry>> &get_names(void);
+
+   private:
+    ck::string m_name;
+  };
+
+  class BlockDeviceNode : public fs::DeviceNode {
+   public:
+    virtual bool is_blockdev(void) final { return true; }
+  };
+
+  class CharDeviceNode : public fs::DeviceNode {
+   public:
+    virtual bool is_char(void) final { return true; }
+  };
+
 
 
   // A `File` is an abstraction of all file-like objects

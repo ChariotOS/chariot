@@ -5,7 +5,7 @@
 #include <mm.h>
 #include <ck/vec.h>
 
-namespace tmp {
+namespace tmpfs {
 
 
   struct FileNode : public fs::FileNode {
@@ -17,9 +17,9 @@ namespace tmp {
     virtual int resize(fs::File &, size_t);
     virtual int stat(fs::File &, struct stat *);
   };
+
   struct DirNode : public fs::DirectoryNode {
     using fs::DirectoryNode::DirectoryNode;
-
     ck::map<ck::string, ck::box<fs::DirectoryEntry>> entries;
 
     virtual int touch(ck::string name, fs::Ownership &);
@@ -44,6 +44,8 @@ namespace tmp {
 
     virtual ~FileSystem();
   };
+
+	void init(void);
 
 
 }  // namespace tmp

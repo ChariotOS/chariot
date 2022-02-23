@@ -78,4 +78,6 @@ namespace vfs {
   void register_filesystem(struct fs::SuperBlockInfo &);
   void deregister_filesystem(struct fs::SuperBlockInfo &);
 
+	void init_boot_filesystem(void);
+
 };  // namespace vfs

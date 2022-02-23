@@ -23,6 +23,8 @@
 #include <crypto.h>
 #include "acpi/acpi.h"
 #include <ck/iter.h>
+#include <fs/tmpfs.h>
+#include <fs/devfs.h>
 
 // in src/arch/x86/sse.asm
 extern "C" void enable_sse();
@@ -121,6 +123,10 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 }
 
 
+class MyDevice : public fs::CharDeviceNode {
+
+};
+
 int kernel_init(void*) {
   // start up the extra cpu cores
 #ifdef CONFIG_SMP
@@ -128,9 +134,17 @@ int kernel_init(void*) {
 #endif
 
 
+
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
   net::start();
+
+	// Init the virtual filesystem and mount a tmpfs and devfs to / and /dev
+	vfs::init_boot_filesystem();
+
+
+	MyDevice n;
+	n.bind("mydev");
 
   // walk the kernel modules and run their init function
   KINFO("Calling kernel module init functions\n");
@@ -158,10 +172,6 @@ int kernel_init(void*) {
 
   assert(root_name);
 
-  int mnt_res = vfs::mount("", "/", "tmpfs", 0, NULL);
-  if (mnt_res != 0) {
-    printk("failed to mount root. Error=%d\n", -mnt_res);
-  }
 
 #ifndef CONFIG_ENABLE_USERSPACE
   KINFO("Userspace disabled. Starting kernel shell\n");
@@ -178,7 +188,7 @@ int kernel_init(void*) {
   auto paths = init_paths.split(',');
 
   auto init_pid = sched::proc::spawn_init(paths);
-	printk("here %d\n", init_pid);
+  printk("here %d\n", init_pid);
 
   sys::waitpid(init_pid, NULL, 0);
   panic("init died!\n");

@@ -31,27 +31,6 @@ extern void devfs_register_device(ck::string name, int type, int major, int mino
 int dev::register_name(struct dev::DriverInfo &info, ck::string name, minor_t min) {
   // FS_REFACTOR();
   return 0;
-#if 0
-  // create the block device if it is one
-  if (info.type == DRIVER_BLOCK) {
-    auto bdev = new fs::BlockDevice(dev_t(info.major, min), name, *info.block_ops);
-    fs::BlockDevice::acquire(bdev);
-    info.block_devices[min] = bdev;
-  }
-
-  drivers_lock.write_lock();
-
-  LOG("register name %s [maj:%d, min:%d] (%d total)\n", name.get(), info.major, min, device_names.size());
-
-  device_names.set(name, dev_t(info.major, min));
-  drivers_lock.write_unlock();
-
-  int ftype = info.type == DRIVER_BLOCK ? T_BLK : T_CHAR;
-
-  devfs_register_device(name, ftype, info.major, min);
-
-  return 0;
-#endif
 }
 
 int dev::deregister_name(struct dev::DriverInfo &, ck::string name) {
@@ -61,68 +40,6 @@ int dev::deregister_name(struct dev::DriverInfo &, ck::string name) {
   return -ENOENT;
 }
 
-void dev::populate_inode_device(fs::Node &ino) {
-  FS_REFACTOR();
-  return;
-#if 0
-  if (drivers.contains(ino.major)) {
-    auto *d = drivers[ino.major];
-    d->lock.read_lock();
-
-    if (d->type == DRIVER_BLOCK) {
-      ino.fops = &fs::block_file_ops;
-
-      ino.blk.dev = d->block_devices[ino.minor];
-      fs::BlockDevice::acquire(ino.blk.dev);
-    }
-
-    if (d->type == DRIVER_CHAR) {
-      ino.fops = d->char_ops;
-    }
-
-
-    d->lock.read_unlock();
-  }
-#endif
-}
-
-ck::ref<fs::Node> devicei(struct dev::DriverInfo &d, ck::string name, minor_t min) {
-	FS_REFACTOR();
-	return nullptr;
-
-#if 0
-  auto ino = ck::make_ref<fs::Node>(d.type == DRIVER_BLOCK ? T_BLK : T_CHAR, fs::DUMMY_SB);
-
-  ino->major = d.major;
-  ino->minor = min;
-
-  dev::populate_inode_device(*ino);
-
-  return ino;
-#endif
-}
-
-ck::ref<fs::File> dev::open(ck::string name) {
-  if (device_names.contains(name)) {
-    auto dev = device_names.get(name);
-    int maj = dev.major();
-    int min = dev.minor();
-
-    drivers_lock.read_lock();
-
-    // TODO: take a lock!
-    if (drivers.contains(maj)) {
-      auto *d = drivers[maj];
-
-      ck::string path = ck::string::format("/dev/%s", name.get());
-
-      auto ino = devicei(*d, name, min);
-      return fs::File::create(ino, path, FDIR_READ | FDIR_WRITE);
-    }
-  }
-
-  return nullptr;
-}
 
 static int disk_count = 0;
 ck::string dev::next_disk_name(void) { return ck::string::format("disk%d", disk_count); }

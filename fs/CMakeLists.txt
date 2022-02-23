@@ -9,7 +9,6 @@ add_kernel_module(
 
 add_kernel_module(
 	NAME tmpfs
-	NEEDS TMPFS
 	SOURCES
 		tmpfs/tmpfs.cpp
 )
