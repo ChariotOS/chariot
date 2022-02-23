@@ -228,7 +228,7 @@ namespace fs {
     spinlock cache_lock;
 
     ck::ref<fs::File> disk;
-    fs::BlockDevice *bdev;
+    ck::ref<fs::BlockDeviceNode> bdev;
 
     spinlock m_lock;
   };

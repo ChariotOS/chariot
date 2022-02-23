@@ -77,6 +77,7 @@ namespace fs {
     ck::string name;
   };
 
+#if 0
   struct BlockOperations {
     // used to populate block_count and block_size
     int (&init)(fs::BlockDevice &);
@@ -129,12 +130,7 @@ namespace fs {
    private:
     void *priv;
   };
-
-  // used in the kernel to look up "/dev/*" block devices before we have /dev
-  // (and really, the kernel cannot rely on userspace filesystems in the end
-  // either. implemented in kernel/dev/driver.cpp (where we have the driver name
-  // info)
-  struct fs::BlockDevice *bdev_from_path(const char *);
+#endif
 
 
 
@@ -246,6 +242,7 @@ namespace fs {
     virtual int resize(fs::File &, size_t);
     virtual int stat(fs::File &, struct stat *);
     virtual int poll(fs::File &, int events, poll_table &pt);
+    virtual ssize_t size(void);
 
     // Directory Operations
     // Create a FileNode in a directory
@@ -326,9 +323,31 @@ namespace fs {
     ck::string m_name;
   };
 
+	enum Direction {
+		Read, Write
+	};
+
   class BlockDeviceNode : public fs::DeviceNode {
    public:
     virtual bool is_blockdev(void) final { return true; }
+
+		// ^fs::Node
+    virtual ssize_t read(fs::File &, char *dst, size_t count) final;
+    virtual ssize_t write(fs::File &, const char *, size_t) final;
+    virtual ssize_t size(void) final;
+
+
+    // nice wrappers for filesystems and all that :)
+    inline int read_block(void *data, int block) { return read_blocks(block, data, 1); }
+    inline int write_block(void *data, int block) { return write_blocks(block, data, 1); }
+
+    // int rw_block(void *data, int block, fs::Direction dir);
+
+
+    virtual ssize_t block_size(void) = 0;
+    virtual ssize_t block_count(void) = 0;
+    virtual int read_blocks(uint32_t sector, void* data, int n) = 0;
+    virtual int write_blocks(uint32_t sector, const void* data, int n) = 0;
   };
 
   class CharDeviceNode : public fs::DeviceNode {
@@ -400,9 +419,9 @@ namespace block {
 
   // a buffer represents a page (4k) in a block device.
   struct Buffer {
-    fs::BlockDevice &bdev; /* the device this buffer belongs to */
+    fs::BlockDeviceNode &bdev; /* the device this buffer belongs to */
 
-    static struct Buffer *get(fs::BlockDevice &, off_t page);
+    static struct Buffer *get(fs::BlockDeviceNode &, off_t page);
 
     static void release(struct Buffer *);
 
@@ -426,7 +445,7 @@ namespace block {
    protected:
     inline static void release(struct blkdev *d) {}
 
-    Buffer(fs::BlockDevice &, off_t);
+    Buffer(fs::BlockDeviceNode &, off_t);
 
     bool m_dirty = false;
     spinlock m_lock;
@@ -446,19 +465,19 @@ namespace block {
 
 // read data from blocks to from a byte offset. These can be somewhat wasteful,
 // but that gets amortized by the block flush daemon :^)
-int bread(fs::BlockDevice &, void *dst, size_t size, off_t byte_offset);
-int bwrite(fs::BlockDevice &, void *data, size_t size, off_t byte_offset);
+int bread(fs::BlockDeviceNode &, void *dst, size_t size, off_t byte_offset);
+int bwrite(fs::BlockDeviceNode &, void *data, size_t size, off_t byte_offset);
 
 // reclaim some memory
 
-inline auto bget(fs::BlockDevice &b, off_t page) { return block::Buffer::get(b, page); }
+inline auto bget(fs::BlockDeviceNode &b, off_t page) { return block::Buffer::get(b, page); }
 
 // release a block
 static inline auto bput(struct block::Buffer *b) { return block::Buffer::release(b); }
 
 
 struct bref {
-  static inline bref get(fs::BlockDevice &b, off_t page) { return block::Buffer::get(b, page); }
+  static inline bref get(fs::BlockDeviceNode &b, off_t page) { return block::Buffer::get(b, page); }
 
   inline bref(struct block::Buffer *b) { buf = b; }
 

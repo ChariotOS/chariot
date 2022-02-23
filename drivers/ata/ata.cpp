@@ -72,26 +72,11 @@
 // static int ata_rw_block(fs::blkdev& b, void* data, int block, bool write);
 struct wait_queue ata_wq;
 
-/*
-struct fs::block_operations ata_blk_ops = {
-    .init = ata_dev_init,
-    .rw_block = ata_rw_block,
-};
-
-static struct dev::driver_info ata_driver_info {
-  .name = "ata", .type = DRIVER_BLOCK, .major = MAJOR_ATA,
-
-  .block_ops = &ata_blk_ops,
-};
-*/
-
 /**
  * TODO: use per-channel ATA mutex locks. Right now every ata drive is locked
  * the same way
  */
 static spinlock drive_lock;
-
-
 
 
 // for the interrupts...
@@ -219,7 +204,7 @@ bool dev::ata::identify() {
   return true;
 }
 
-bool dev::ata::read_blocks(uint32_t sector, void* data, int n) {
+int dev::ata::read_blocks(uint32_t sector, void* data, int n) {
   TRACE;
 
   // TODO: also check for scheduler avail
@@ -232,7 +217,7 @@ bool dev::ata::read_blocks(uint32_t sector, void* data, int n) {
 
   // printk("read block %d\n", sector);
 
-  if (sector & 0xF0000000) return false;
+  if (sector & 0xF0000000) return -EINVAL;
 
   // select the correct device, and put bits of the address
   device_port.out((master ? 0xE0 : 0xF0) | ((sector & 0x0F000000) >> 24));
@@ -262,10 +247,10 @@ bool dev::ata::read_blocks(uint32_t sector, void* data, int n) {
     buf[i + 1] = (d >> 8) & 0xFF;
   }
 
-  return true;
+  return 0;
 }
 
-bool dev::ata::write_blocks(uint32_t sector, const void* vbuf, int n) {
+int dev::ata::write_blocks(uint32_t sector, const void* vbuf, int n) {
   TRACE;
 
   // TODO: also check for scheduler avail
@@ -279,7 +264,7 @@ bool dev::ata::write_blocks(uint32_t sector, const void* vbuf, int n) {
   scoped_lock lck(drive_lock);
 
 
-  if (sector & 0xF0000000) return false;
+  if (sector & 0xF0000000) return -EINVAL;
 
   // select the correct device, and put bits of the address
   device_port.out((master ? 0xE0 : 0xF0) | ((sector & 0x0F000000) >> 24));
@@ -302,7 +287,7 @@ bool dev::ata::write_blocks(uint32_t sector, const void* vbuf, int n) {
 
   flush();
 
-  return true;
+  return 0;
 }
 
 bool dev::ata::flush(void) {
@@ -346,12 +331,14 @@ u64 dev::ata::sector_count(void) {
   return n_sectors;
 }
 
-size_t dev::ata::block_size() {
+ssize_t dev::ata::block_size() {
   TRACE;
   return sector_size;
 }
+ssize_t dev::ata::block_count() { return n_sectors; }
 
-size_t dev::ata::block_count() { return n_sectors; }
+
+
 
 bool dev::ata::read_blocks_dma(uint32_t sector, void* data, int n) {
   TRACE;

@@ -6,18 +6,11 @@
 #include <ck/ptr.h>
 
 namespace dev {
-  class Disk {
+  class Disk : public fs::BlockDeviceNode {
    public:
     Disk();
 
     virtual ~Disk();
-
-    virtual size_t block_size() = 0;
-    virtual size_t block_count() = 0;
-
-    // all block devices must implement these functions
-    virtual bool read_blocks(uint32_t index, void* buf, int n = 1) = 0;
-    virtual bool write_blocks(uint32_t index, const void* buf, int n = 1) = 0;
   };
 
 
@@ -29,10 +22,11 @@ namespace dev {
    public:
     DiskPartition(dev::Disk* a, u32 start, u32 len);
     virtual ~DiskPartition();
-    virtual bool read_blocks(uint32_t sector, void* data, int n = 1);
-    virtual bool write_blocks(uint32_t sector, const void* data, int n = 1);
-    virtual size_t block_size(void);
-    virtual size_t block_count(void);
+    virtual ssize_t block_size(void);
+    virtual ssize_t block_count(void);
+    // virtual int rw_block(void *data, int block, fs::Direction dir);
+    virtual int read_blocks(uint32_t sector, void* data, int n);
+    virtual int write_blocks(uint32_t sector, const void* data, int n);
   };
 
   /* returns N in diskN on success. -ERRNO on error */

@@ -35,7 +35,7 @@ static int block_flush_task(void *) {
 
 static spinlock buffer_cache_lock;
 static uint64_t total_blocks_in_cache = 0;
-static ck::map<uint32_t, ck::map<off_t, block::Buffer *>> buffer_cache;
+static ck::map<fs::BlockDeviceNode *, ck::map<off_t, block::Buffer *>> buffer_cache;
 
 
 
@@ -72,50 +72,24 @@ void block::sync_all(void) {
 
   buffer_cache_lock.unlock();
 }
-#if 0
-static auto oldest_block_slow(void) {
-  struct block::buffer *oldest = nullptr;
-
-  scoped_lock l(buffer_cache_lock);
-  // this is so bad, but I don't really feel like writing a real LRU now :^)
-  for (auto &kv1 : buffer_cache) {
-    for (auto &kv2 : kv1.value) {
-      if (kv2.value == NULL) continue;
-      if (kv2.value->owners() != 0) continue;
-
-      if (oldest == nullptr) {
-        oldest = kv2.value;
-      } else {
-        if (oldest->last_used() > kv2.value->last_used()) {
-          oldest = kv2.value;
-        }
-      }
-    }
-  }
-
-  return oldest;
-}
-#endif
 
 struct block_cache_key {};
 
 namespace block {
 
-  Buffer::Buffer(fs::BlockDevice &bdev, off_t index) : bdev(bdev), m_index(index) {
+  Buffer::Buffer(fs::BlockDeviceNode &bdev, off_t index) : bdev(bdev), m_index(index) {
     // we don't allocate the page here, only on calls to ::data().
-
     // start with 0 refs
     m_count = 0;
   }
 
 
-  struct Buffer *block::Buffer::get(fs::BlockDevice &device, off_t page) {
+  struct Buffer *block::Buffer::get(fs::BlockDeviceNode &device, off_t page) {
     scoped_irqlock l(buffer_cache_lock);
 
     struct block::Buffer *buf = NULL;
 
-    auto key = to_key(device.dev);
-    auto &dev_map = buffer_cache[key];
+    auto &dev_map = buffer_cache[&device];
     buf = dev_map[page];
 
     if (buf == NULL) {
@@ -163,13 +137,14 @@ namespace block {
 
     // flush even if we aren't dirty.
     if (m_page) {
-      int blocks = PGSIZE / bdev.block_size;
+			auto bsize = bdev.block_size();
+      int blocks = PGSIZE / bsize;
       auto *buf = (char *)p2v(m_page->pa());
 
       for (int i = 0; i < blocks; i++) {
         // printk("write block %d\n", m_index * blocks + i);
         // hexdump(buf + (bdev.block_size * i), bdev.block_size, true);
-        bdev.write_block(buf + (bdev.block_size * i), m_index * blocks + i);
+        bdev.write_block(buf + (bsize * i), m_index * blocks + i);
       }
     }
     // we're no longer dirty!
@@ -195,11 +170,11 @@ namespace block {
       m_page = mm::Page::alloc();
       m_page->fset(PG_BCACHE);
 
-      int blocks = PGSIZE / bdev.block_size;
+      int blocks = PGSIZE / bdev.block_size();
       auto *buf = (char *)p2v(m_page->pa());
 
       for (int i = 0; i < blocks; i++) {
-        bdev.read_block(buf + (bdev.block_size * i), m_index * blocks + i);
+        bdev.read_block(buf + (bdev.block_size() * i), m_index * blocks + i);
       }
     }
 
@@ -220,7 +195,7 @@ namespace block {
 }  // namespace block
 
 
-static ssize_t block_rw(fs::BlockDevice &b, void *dst, size_t size, off_t byte_offset, bool write) {
+static ssize_t block_rw(fs::BlockDeviceNode &b, void *dst, size_t size, off_t byte_offset, bool write) {
   // how many more bytes are needed
   long to_access = size;
   // the offset within the current page
@@ -261,10 +236,10 @@ static ssize_t block_rw(fs::BlockDevice &b, void *dst, size_t size, off_t byte_o
 }
 
 
-int bread(fs::BlockDevice &b, void *dst, size_t size, off_t byte_offset) { return block_rw(b, dst, size, byte_offset, false /* read */); }
+int bread(fs::BlockDeviceNode &b, void *dst, size_t size, off_t byte_offset) { return block_rw(b, dst, size, byte_offset, false /* read */); }
 
 
-int bwrite(fs::BlockDevice &b, void *data, size_t size, off_t byte_offset) {
+int bwrite(fs::BlockDeviceNode &b, void *data, size_t size, off_t byte_offset) {
   return block_rw(b, data, size, byte_offset, true /* write */);
 }
 

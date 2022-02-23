@@ -142,16 +142,15 @@ int kernel_init(void*) {
 	// Init the virtual filesystem and mount a tmpfs and devfs to / and /dev
 	vfs::init_boot_filesystem();
 
-
-	MyDevice n;
-	n.bind("mydev");
-
   // walk the kernel modules and run their init function
   KINFO("Calling kernel module init functions\n");
   initialize_builtin_modules();
   KINFO("kernel modules initialized\n");
 
   sched::proc::create_kthread("[reaper]", Process::reaper);
+
+
+  kshell::run();
 
 
   mb2::find<struct multiboot_tag_module>(::mbd, MULTIBOOT_TAG_TYPE_MODULE, [&](auto* module) {

@@ -86,10 +86,11 @@ namespace dev {
 
     bool identify();
 
-    virtual bool read_blocks(uint32_t sector, void* data, int n);
-    virtual bool write_blocks(uint32_t sector, const void* data, int n);
-    virtual size_t block_size(void);
-    virtual size_t block_count(void);
+		// ^fs::BlockDeviceNode
+    virtual ssize_t block_size(void);
+    virtual ssize_t block_count(void);
+    virtual int read_blocks(uint32_t sector, void* data, int n);
+    virtual int write_blocks(uint32_t sector, const void* data, int n);
 
     bool read_blocks_dma(uint32_t sector, void* data, int n);
     bool write_blocks_dma(uint32_t sector, const void* data, int n);

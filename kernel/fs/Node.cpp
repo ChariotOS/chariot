@@ -23,3 +23,7 @@ ck::ref<mm::VMObject> fs::Node::mmap(fs::File &, size_t npages, int prot, int fl
 int fs::Node::resize(fs::File &, size_t) { return -ENOTIMPL; }
 int fs::Node::stat(fs::File &, struct stat *) { return -ENOTIMPL; }
 int fs::Node::poll(fs::File &, int events, poll_table &pt) { return 0; }
+ssize_t fs::Node::size(void) {
+  KWARN("fs::Node::size() called. Please implement it on the subclass\n");
+  return 0;
+}

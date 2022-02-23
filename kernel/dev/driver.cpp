@@ -47,6 +47,7 @@ ck::string dev::next_disk_name(void) { return ck::string::format("disk%d", disk_
 /**
  * look up a device
  */
+/*
 fs::BlockDevice *fs::bdev_from_path(const char *n) {
   struct fs::BlockDevice *bdev = nullptr;
 
@@ -78,6 +79,7 @@ fs::BlockDevice *fs::bdev_from_path(const char *n) {
 
   return bdev;
 }
+*/
 
 
 

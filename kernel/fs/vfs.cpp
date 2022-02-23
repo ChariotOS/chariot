@@ -361,15 +361,17 @@ fs::File vfs::fdopen(ck::string path, int opts, int mode) {
 
 void vfs::init_boot_filesystem(void) {
   // Initialize the tmpfs filesystem layer
-	tmpfs::init();
-	devfs::init();
+  tmpfs::init();
+  devfs::init();
 
   int mount_res;
   // Mount a tmpfs filesystem at "/"
   mount_res = vfs::mount("", "/", "tmpfs", 0, NULL);
   if (mount_res != 0) panic("Failed to mount root tmpfs filesystem\n");
   sys::mkdir("/dev", 0755);
+  sys::mkdir("/dev2", 0755);
   mount_res = vfs::mount("", "/dev", "devfs", 0, NULL);
+  mount_res = vfs::mount("", "/dev2", "devfs", 0, NULL);
   if (mount_res != 0) panic("Failed to mount devfs to /dev\n");
 }
 
@@ -383,17 +385,33 @@ ksh_def("pwd", "Print the working directory") {
   return 0;
 }
 
-ksh_def("ls", "List the files in the kernel's working directory") {
+static void do_ls(const ck::string &dir) {
   auto cwd = curproc->cwd;
-  {
-    auto l = cwd->lock();
-    auto ents = cwd->dirents();
-
-    for (auto ent : ents) {
-      printk("- %s\n", ent->name.get());
-    }
+  auto f = vfs::open(dir);
+  if (!f) {
+    printk("ls: '%s' not found\n", dir.get());
+    return;
   }
 
+  {
+    auto l = f->lock();
+    auto ents = f->dirents();
+
+    for (auto ent : ents) {
+			auto n = ent->get();
+      printk("%s %zu\n", ent->name.get(), n->size());
+    }
+  }
+}
+
+ksh_def("ls", "List the files in the kernel's working directory") {
+  if (args.size() == 0) {
+    do_ls(".");
+  } else {
+    for (auto &arg : args) {
+      do_ls(arg);
+    }
+  }
   return 0;
 }
 
@@ -413,6 +431,33 @@ ksh_def("mkdir", "Create a directory") {
     return 0;
   }
   sys::mkdir(args[0].get(), 0755);
+  return 0;
+}
+
+
+ksh_def("dump", "hexdump the start of a file") {
+  if (args.size() != 1) {
+    printk("usage: dump file\n");
+    return 0;
+  }
+	auto buf = (char*)malloc(4096);
+  auto f = vfs::open(args[0]);
+  if (!f) {
+    printk("file not found\n");
+		free(buf);
+    return 0;
+  }
+
+  fs::File file(f, 0);
+  auto sz = file.read(buf, 4096);
+  if (sz < 0) {
+    printk("failed to read: %zd\n", sz);
+		free(buf);
+    return 0;
+  }
+	printk("read %zd bytes\n", sz);
+  hexdump(buf, sz, true);
+	free(buf);
   return 0;
 }
 
