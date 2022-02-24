@@ -89,6 +89,7 @@ dev::ata::ata(u16 portbase, bool master) {
   m_io_base = portbase;
   TRACE;
   sector_size = 512;
+  set_block_size(sector_size);
   this->master = master;
 
   data_port = portbase;
@@ -172,6 +173,7 @@ bool dev::ata::identify() {
   uint8_t S = id_buf[6];
 
   n_sectors = (C * H) * S;
+  set_block_count(n_sectors);
 
 
   m_pci_dev = pci::find_generic_device(PCI_CLASS_STORAGE, PCI_SUBCLASS_IDE);
@@ -206,7 +208,6 @@ bool dev::ata::identify() {
 
 int dev::ata::read_blocks(uint32_t sector, void* data, int n) {
   TRACE;
-
   // TODO: also check for scheduler avail
   if (use_dma) {
     return read_blocks_dma(sector, data, n);
@@ -331,12 +332,6 @@ u64 dev::ata::sector_count(void) {
   return n_sectors;
 }
 
-ssize_t dev::ata::block_size() {
-  TRACE;
-  return sector_size;
-}
-ssize_t dev::ata::block_count() { return n_sectors; }
-
 
 
 
@@ -404,13 +399,8 @@ bool dev::ata::read_blocks_dma(uint32_t sector, void* data, int n) {
     }
   }
 
-  // wait_400ns(m_io_base);
-  // printk("loops: %d\n", i);
-
   memcpy(data, dma_dst, sector_size * n);
-
   phys::free(buffer, buffer_pages);
-
   return true;
 }
 bool dev::ata::write_blocks_dma(uint32_t sector, const void* data, int n) {

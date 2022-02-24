@@ -22,8 +22,6 @@ namespace dev {
    public:
     DiskPartition(dev::Disk* a, u32 start, u32 len);
     virtual ~DiskPartition();
-    virtual ssize_t block_size(void);
-    virtual ssize_t block_count(void);
     // virtual int rw_block(void *data, int block, fs::Direction dir);
     virtual int read_blocks(uint32_t sector, void* data, int n);
     virtual int write_blocks(uint32_t sector, const void* data, int n);

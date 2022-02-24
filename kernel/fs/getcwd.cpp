@@ -20,11 +20,11 @@ int vfs::getcwd(fs::Node &cwd, ck::string &dst) {
   if (cur == root) {
     dst = "/";
   } else {
-    int depth = 50;  // lol idk
+    int depth = 500;  // lol idk
     while (cur != root) {
       if (!cur->is_dir()) return -ENOTDIR;
 
-      next = cur->get_direntry("..")->ino;
+      next = cur->get_direntry("..")->get();
       if (cur->name() == "") {
 				KWARN("getcwd: node has empty name\n");
         return -EINVAL;

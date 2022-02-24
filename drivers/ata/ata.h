@@ -86,9 +86,7 @@ namespace dev {
 
     bool identify();
 
-		// ^fs::BlockDeviceNode
-    virtual ssize_t block_size(void);
-    virtual ssize_t block_count(void);
+    // ^fs::BlockDeviceNode
     virtual int read_blocks(uint32_t sector, void* data, int n);
     virtual int write_blocks(uint32_t sector, const void* data, int n);
 

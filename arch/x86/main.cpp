@@ -123,9 +123,7 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
 }
 
 
-class MyDevice : public fs::CharDeviceNode {
-
-};
+class MyDevice : public fs::CharDeviceNode {};
 
 int kernel_init(void*) {
   // start up the extra cpu cores
@@ -139,8 +137,8 @@ int kernel_init(void*) {
   KINFO("Initialized PCI\n");
   net::start();
 
-	// Init the virtual filesystem and mount a tmpfs and devfs to / and /dev
-	vfs::init_boot_filesystem();
+  // Init the virtual filesystem and mount a tmpfs and devfs to / and /dev
+  vfs::init_boot_filesystem();
 
   // walk the kernel modules and run their init function
   KINFO("Calling kernel module init functions\n");
@@ -150,7 +148,6 @@ int kernel_init(void*) {
   sched::proc::create_kthread("[reaper]", Process::reaper);
 
 
-  kshell::run();
 
 
   mb2::find<struct multiboot_tag_module>(::mbd, MULTIBOOT_TAG_TYPE_MODULE, [&](auto* module) {
@@ -170,6 +167,14 @@ int kernel_init(void*) {
   }
 
   assert(root_name);
+
+  int mnt_res = vfs::mount(root_name, "/uroot", "ext2", 0, NULL);
+  if (mnt_res != 0) {
+    panic("failed to mount root. Error=%d\n", -mnt_res);
+  }
+
+
+  kshell::run();
 
 
 #ifndef CONFIG_ENABLE_USERSPACE

@@ -61,7 +61,7 @@ fsdev=$(sudo fdisk -l "${dev}" | grep -A10 "Device" | sed 1,1d | awk '{print $1}
 if [ "$fsdev" == "" ]; then
 	echo "Running parted..."
 	# sudo parted -s "${dev}" mklabel msdos mkpart primary ext2 32k 100% -a minimal set 1 boot on || die "couldn't partition disk"
-	sudo parted -s "${dev}" mklabel msdos mkpart primary ext2 32k 100% -a minimal set 1 boot on || die "couldn't partition disk"
+	sudo parted -s "${dev}" mklabel msdos mkpart primary ext2 64k 100% -a minimal set 1 boot on || die "couldn't partition disk"
 	fsdev=$(sudo fdisk -l "${dev}" | grep -A10 "Device" | sed 1,1d | awk '{print $1}')
 
 	echo "Making filesystem"

@@ -19,8 +19,8 @@ static ck::vec<struct vfs::mountpoint *> mountpoints;
 static ck::map<ck::string, vfs::Mounter> filesystem_mounters;
 
 void vfs::register_filesystem(ck::string name, vfs::Mounter mount) {
-	LOG("filesystem '%s' registered\n", name.get());
-	filesystem_mounters[name] = mount;
+  LOG("filesystem '%s' registered\n", name.get());
+  filesystem_mounters[name] = mount;
 }
 
 ck::ref<fs::Node> vfs::cwd(void) {
@@ -55,7 +55,7 @@ int vfs::mount(const char *src, const char *targ, const char *type, unsigned lon
   if (get_root()) {
     // TODO: look up the target directory
   }
-	auto mounter = filesystem_mounters[type];
+  auto mounter = filesystem_mounters[type];
 
   if (mounter == nullptr) {
     LOG("failed to find the filesystem for that name\n");
@@ -390,9 +390,24 @@ static void do_ls(const ck::string &dir) {
     auto l = f->lock();
     auto ents = f->dirents();
 
+    printk("%8s | ", "iNode");
+    printk("%8s | ", "Links");
+    printk("%12s | ", "Size (bytes)");
+    printk("%12s | ", "Block Count");
+    printk("%12s | ", "Block Size");
+    printk("%s", "Name");
+    printk("\n");
+
     for (auto ent : ents) {
       auto n = ent->get();
-      printk("%zu %s\n", n->size(), ent->name.get());
+      printk("%8ld | ", n->inode());
+      printk("%8ld | ", n->nlink());
+      printk("%12ld | ", n->size());
+      printk("%12ld | ", n->block_count());
+      printk("%12ld | ", n->block_size());
+      printk("%s", ent->name.get());
+      printk("\n");
+      // printk("%zu %s\n", n->size(), ent->name.get());
     }
   }
 }
@@ -453,4 +468,3 @@ ksh_def("dump", "hexdump the start of a file") {
   free(buf);
   return 0;
 }
-

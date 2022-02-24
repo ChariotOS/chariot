@@ -113,15 +113,31 @@ namespace fs {
 #define T_TTY 8
 
   struct Ownership {
-    int uid = 0; // user: root
-    int gid = 0; // group: root
+    int uid = 0;      // user: root
+    int gid = 0;      // group: root
     int mode = 0755;  // default access mode
+  };
+
+  struct MetaData {
+    uint32_t inode = 0;
+    uint32_t nlink = 0;
+    // how many bytes there are in the file
+    uint64_t size = 0;
+    // How many blocks there are in this file
+    uint32_t block_count = 0;
+    // How big each block is
+    uint32_t block_size = 0;
+    // Various timing information (currently unused)
+    time_t accessed_time = 0;
+    time_t modified_time = 0;
+    time_t create_time = 0;
   };
 
   /**
    * struct Node - base point for all "file-like" objects
    */
   struct Node : public ck::refcounted<Node> {
+    uint32_t ino;
     ck::ref<fs::FileSystem> sb;
     // if this inode has a socket bound to it, it will be located here.
     ck::ref<net::Socket> sk;
@@ -143,7 +159,7 @@ namespace fs {
     virtual int resize(fs::File &, size_t);
     virtual int stat(fs::File &, struct stat *);
     virtual int poll(fs::File &, int events, poll_table &pt);
-    virtual ssize_t size(void);
+
 
     // Directory Operations
     // Create a FileNode in a directory
@@ -153,7 +169,7 @@ namespace fs {
     // Remove a file from a directory
     virtual int unlink(ck::string name) { return -EINVAL; }
     // Search a directory for a file
-    virtual ck::ref<fs::Node> lookup(ck::string name) { return nullptr; }
+    ck::ref<fs::Node> lookup(ck::string name);
     virtual int mknod(ck::string name, fs::Ownership &, int major, int minor) { return -EINVAL; }
     // Get a list of the directory entires in this directory.
     virtual ck::vec<DirectoryEntry *> dirents(void) { return {}; }
@@ -173,14 +189,31 @@ namespace fs {
 
     scoped_lock lock(void) { return m_lock; }
     scoped_irqlock irq_lock(void) { return m_lock; }
-    void set_name(const ck::string &s) { m_name = s; }
-    const ck::string &name(void) const { return m_name; }
-		fs::Ownership ownership(void) const { return m_ownership; }
-		void set_ownership(fs::Ownership o) { m_ownership = o; }
+
+
+    getset(name, m_name);
+    getset(ownership, m_ownership);
+    getset(metadata, m_metadata);
+
+    // Methods to access MetaData
+    getset(size, m_metadata.size);
+    getset(inode, m_metadata.inode);
+    getset(nlink, m_metadata.nlink);
+    getset(block_size, m_metadata.block_size);
+    getset(block_count, m_metadata.block_count);
+    getset(accessed_time, m_metadata.accessed_time);
+    getset(create_time, m_metadata.create_time);
+    getset(modified_time, m_metadata.modified_time);
+
+    // Methods to access Ownership
+    getset(gid, m_ownership.gid);
+    getset(uid, m_ownership.uid);
+    getset(mode, m_ownership.mode);
+
 
    protected:
-
-		fs::Ownership m_ownership;
+    fs::Ownership m_ownership;
+    fs::MetaData m_metadata;
     int rc = 0;
     spinlock m_lock;
     ck::string m_name;
@@ -197,7 +230,6 @@ namespace fs {
    public:
     using fs::Node::Node;
     virtual bool is_dir(void) final { return true; }
-    virtual ssize_t size(void) { return 0;} 
   };
 
   class SockNode : public fs::Node {
@@ -229,15 +261,13 @@ namespace fs {
     ck::string m_name;
   };
 
-	enum Direction {
-		Read, Write
-	};
+  enum Direction { Read, Write };
 
   class BlockDeviceNode : public fs::DeviceNode {
    public:
     virtual bool is_blockdev(void) final { return true; }
 
-		// ^fs::Node
+    // ^fs::Node
     virtual ssize_t read(fs::File &, char *dst, size_t count) final;
     virtual ssize_t write(fs::File &, const char *, size_t) final;
     virtual ssize_t size(void) final;
@@ -249,11 +279,8 @@ namespace fs {
 
     // int rw_block(void *data, int block, fs::Direction dir);
 
-
-    virtual ssize_t block_size(void) = 0;
-    virtual ssize_t block_count(void) = 0;
-    virtual int read_blocks(uint32_t sector, void* data, int n) = 0;
-    virtual int write_blocks(uint32_t sector, const void* data, int n) = 0;
+    virtual int read_blocks(uint32_t sector, void *data, int n) = 0;
+    virtual int write_blocks(uint32_t sector, const void *data, int n) = 0;
   };
 
   class CharDeviceNode : public fs::DeviceNode {

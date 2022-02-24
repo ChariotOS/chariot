@@ -14,14 +14,14 @@ dev::Disk::Disk() {}
 dev::Disk::~Disk(void) {}
 
 
-dev::DiskPartition::DiskPartition(dev::Disk* parent, u32 start, u32 len) : start(start), len(len) { this->parent = parent; }
+dev::DiskPartition::DiskPartition(dev::Disk* parent, u32 start, u32 len) : start(start), len(len) {
+  set_block_count(len);
+  set_block_size(parent->block_size());
+  this->parent = parent;
+}
 dev::DiskPartition::~DiskPartition() {}
 
-ssize_t dev::DiskPartition::block_size(void) { return parent->block_size(); }
-ssize_t dev::DiskPartition::block_count(void) { return len; }
-
 int dev::DiskPartition::read_blocks(uint32_t block, void* data, int n) {
-  printk("partition read %u, %d\n", block, n);
   if (block > len) return false;
   return parent->read_blocks(block + start, data, n);
 }

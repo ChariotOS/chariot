@@ -137,13 +137,11 @@ namespace block {
 
     // flush even if we aren't dirty.
     if (m_page) {
-			auto bsize = bdev.block_size();
+      auto bsize = bdev.block_size();
       int blocks = PGSIZE / bsize;
       auto *buf = (char *)p2v(m_page->pa());
 
       for (int i = 0; i < blocks; i++) {
-        // printk("write block %d\n", m_index * blocks + i);
-        // hexdump(buf + (bdev.block_size * i), bdev.block_size, true);
         bdev.write_block(buf + (bsize * i), m_index * blocks + i);
       }
     }
@@ -174,9 +172,10 @@ namespace block {
       auto *buf = (char *)p2v(m_page->pa());
 
       for (int i = 0; i < blocks; i++) {
-        bdev.read_block(buf + (bdev.block_size() * i), m_index * blocks + i);
+        auto res = bdev.read_block(buf + (bdev.block_size() * i), m_index * blocks + i);
       }
     }
+
 
     if (m_page && m_page->pa()) {
       return p2v(m_page->pa());
@@ -236,7 +235,9 @@ static ssize_t block_rw(fs::BlockDeviceNode &b, void *dst, size_t size, off_t by
 }
 
 
-int bread(fs::BlockDeviceNode &b, void *dst, size_t size, off_t byte_offset) { return block_rw(b, dst, size, byte_offset, false /* read */); }
+int bread(fs::BlockDeviceNode &b, void *dst, size_t size, off_t byte_offset) {
+  return block_rw(b, dst, size, byte_offset, false /* read */);
+}
 
 
 int bwrite(fs::BlockDeviceNode &b, void *data, size_t size, off_t byte_offset) {

@@ -25,7 +25,7 @@ int do_chdir(const char *path) {
 
   ck::string cwd;
   if (vfs::getcwd(*ncwd, cwd) != 0) {
-    printk("C\n");
+		KERR("getcwd failed. Does the filesystem populate names?\n");
     return -EINVAL;
   }
 

@@ -9,6 +9,7 @@
 #include <ck/string.h>
 #include <time.h>
 #include <util.h>
+#include "fs.h"
 
 
 // Standard information and structures for EXT2
@@ -31,8 +32,6 @@
 #define TRACE
 #endif
 
-extern fs::FileOperations ext2_file_ops;
-extern fs::DirectoryOperations ext2_dir_ops;
 
 struct [[gnu::packed]] block_group_desc {
   uint32_t block_bitmap;
@@ -53,26 +52,25 @@ typedef struct __ext2_dir_entry {
   /* name here */
 } __attribute__((packed)) ext2_dir;
 
-fs::Ext2FileSystem::Ext2FileSystem(void) { TRACE; }
+ext2::FileSystem::FileSystem(void) { TRACE; }
 
-fs::Ext2FileSystem::~Ext2FileSystem(void) {
+ext2::FileSystem::~FileSystem(void) {
   TRACE;
   if (sb != nullptr) delete sb;
 }
 
-bool fs::Ext2FileSystem::init(fs::BlockDevice *bdev) {
+bool ext2::FileSystem::probe(ck::ref<fs::BlockDeviceNode> bdev) {
   TRACE;
 
-  fs::BlockDevice::acquire(bdev);
   this->bdev = bdev;
-  disk = fs::bdev_to_file(bdev);
 
-  sector_size = bdev->block_size;
+  sector_size = bdev->block_size();
 
-  if (!disk) return false;
 
   sb = new superblock();
+	memset(sb, 0xFA, sizeof(*sb));
 
+  disk = ck::make_box<fs::File>(bdev, 0);
   // read the superblock
   disk->seek(1024, SEEK_SET);
   bool res = disk->read(sb, 1024);
@@ -115,13 +113,13 @@ bool fs::Ext2FileSystem::init(fs::BlockDevice *bdev) {
   return true;
 }
 
-int fs::Ext2FileSystem::write_superblock(void) {
+int ext2::FileSystem::write_superblock(void) {
   // TODO: lock
   disk->seek(1024, SEEK_SET);
   return disk->write(sb, 1024);
 }
 
-bool fs::Ext2FileSystem::read_inode(ext2_inode_info &dst, u32 inode) {
+bool ext2::FileSystem::read_inode(ext2_inode_info &dst, u32 inode) {
   TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
   auto bgd_bb = bref::get(*bdev, first_bgd);
@@ -141,7 +139,7 @@ bool fs::Ext2FileSystem::read_inode(ext2_inode_info &dst, u32 inode) {
   return true;
 }
 
-bool fs::Ext2FileSystem::write_inode(ext2_inode_info &src, u32 inode) {
+bool ext2::FileSystem::write_inode(ext2_inode_info &src, u32 inode) {
   TRACE;
   u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
 
@@ -168,7 +166,7 @@ bool fs::Ext2FileSystem::write_inode(ext2_inode_info &src, u32 inode) {
 #define BLOCKBYTE(bg_buffer, n) (bg_buffer[((n) >> 3)])
 #define BLOCKBIT(bg_buffer, n) (BLOCKBYTE(bg_buffer, n) & SETBIT(n))
 
-long fs::Ext2FileSystem::allocate_inode(void) {
+long ext2::FileSystem::allocate_inode(void) {
   scoped_lock l(bglock);
 
   int bgs = blockgroups;
@@ -211,7 +209,7 @@ long fs::Ext2FileSystem::allocate_inode(void) {
 
 
 
-uint32_t fs::Ext2FileSystem::balloc(void) {
+uint32_t ext2::FileSystem::balloc(void) {
   scoped_lock l(bglock);
 
   unsigned int block_no = 0;
@@ -273,60 +271,52 @@ uint32_t fs::Ext2FileSystem::balloc(void) {
 
 
 
-void fs::Ext2FileSystem::bfree(uint32_t block) {
+void ext2::FileSystem::bfree(uint32_t block) {
   scoped_lock l(m_lock);
 
   //
 }
 
-bool fs::Ext2FileSystem::read_block(u32 block, void *buf) {
+bool ext2::FileSystem::read_block(u32 block, void *buf) {
   bread(*bdev, (void *)buf, block_size, block * block_size);
   return true;
 }
 
-bool fs::Ext2FileSystem::write_block(u32 block, const void *buf) {
+bool ext2::FileSystem::write_block(u32 block, const void *buf) {
   bwrite(*bdev, (void *)buf, block_size, block * block_size);
   return true;
 }
 
-ck::ref<fs::Node> fs::Ext2FileSystem::get_root(void) { return root; }
+ck::ref<fs::Node> ext2::FileSystem::get_root(void) { return root; }
 
-ck::ref<fs::Node> fs::Ext2FileSystem::get_inode(u32 index) {
+ck::ref<fs::Node> ext2::FileSystem::get_inode(u32 index) {
   TRACE;
   scoped_lock lck(m_lock);
   if (inodes[index] == nullptr) {
-    inodes[index] = fs::Ext2FileSystem::create_inode(this, index);
+    inodes[index] = create_inode(index);
   }
   return inodes[index];
 }
 
-int ext2_sb_init(struct fs::FileSystem &sb) { return -ENOTIMPL; }
 
-int ext2_write_super(struct fs::FileSystem &sb) { return -ENOTIMPL; }
-
-int ext2_sync(struct fs::FileSystem &sb, int flags) { return -ENOTIMPL; }
-
-struct fs::SuperBlockOperations ext2_ops {
-  .init = ext2_sb_init, .write_super = ext2_write_super, .sync = ext2_sync,
-};
-
-static ck::ref<fs::FileSystem> ext2_mount(struct fs::SuperBlockInfo *, const char *args, int flags, const char *device) {
-  struct fs::BlockDevice *bdev = fs::bdev_from_path(device);
-  if (bdev == NULL) return nullptr;
-
-  auto sb = ck::make_ref<fs::Ext2FileSystem>();
-
-  if (!sb->init(bdev)) {
+static ck::ref<fs::FileSystem> ext2_mount(ck::string args, int flags, ck::string device) {
+  // open the device
+  auto file = vfs::open(device);
+  // if the device file is not a block file, we cannot mount it
+  if (!file->is_blockdev()) {
+    KWARN("EXT2: Cannot mount %s. Is not a block device\n", device.get());
     return nullptr;
   }
 
-  return sb;
+  ck::ref<fs::BlockDeviceNode> bdev = file;
+  auto filesystem = ck::make_ref<ext2::FileSystem>();
+  if (!filesystem->probe(bdev)) {
+    return nullptr;
+  }
+
+  return filesystem;
 }
 
-struct fs::SuperBlockInfo ext2_info {
-  .name = "ext2", .mount = ext2_mount, .ops = ext2_ops,
-};
-
-static void ext2_init(void) { vfs::register_filesystem(ext2_info); }
+static void ext2_init(void) { vfs::register_filesystem("ext2", ext2_mount); }
 
 module_init("fs::ext2", ext2_init);

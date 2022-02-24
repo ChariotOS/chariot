@@ -7,6 +7,7 @@
 #include <lock.h>
 #include <ck/map.h>
 #include <ck/vec.h>
+#include "types.h"
 
 /*
  * Ext2 directory file types.  Only the low 3 bits are used.  The
@@ -33,10 +34,10 @@ inline constexpr T ceil_div(T a, U b) {
 }
 
 
-namespace fs {
+namespace ext2 {
 
 
-  class Ext2FileSystem;
+  class FileSystem;
 
   /**
    * represents the actual structure on-disk of an inode.
@@ -73,59 +74,54 @@ namespace fs {
     uint8_t ossv2[12];
   };
 
-  // inode data. To be stored in the inode's private data.
-  // Freed on release
-  struct ext2_idata {
-    // block pointers
+
+
+  class Node : public fs::Node {
+   public:
+    using fs::Node::Node;
+    ext2::ext2_inode_info info;
     spinlock path_cache_lock;
-    ext2_inode_info info;
     int cached_path[4] = {0, 0, 0, 0};
     int *blk_bufs[4] = {NULL, NULL, NULL, NULL};
-    ~ext2_idata(void);
+    virtual ~Node(void);
   };
 
-  /**
-   * An ext2 implementation of the filesystem class
-   *
-   *
-   * Allows general read/write to the filesystem located on a block device
-   * provided in the constructor.
-   *
-   * It implements the standard Second Extended Filesystem
-   */
-  class Ext2FileSystem final : public fs::FileSystem {
+  class FileNode : public ext2::Node {
    public:
-    Ext2FileSystem(void);
+    using ext2::Node::Node;
+		virtual ~FileNode() {}
+    virtual bool is_file(void) final { return true; }
 
-    ~Ext2FileSystem(void);
+    virtual int seek(fs::File &, off_t old_off, off_t new_off);
+    virtual ssize_t read(fs::File &, char *dst, size_t count);
+    virtual ssize_t write(fs::File &, const char *, size_t);
+    virtual int resize(fs::File &, size_t);
+    virtual int stat(fs::File &, struct stat *);
+    virtual ssize_t size(void);
+  };
 
-    bool init(fs::BlockDevice *);
 
+  class DirectoryNode : public ext2::Node {
+   public:
+    using ext2::Node::Node;
+		virtual ~DirectoryNode() {}
+    virtual bool is_dir(void) final { return true; }
 
-    // implemented in ext2/inode.cpp
-    static ck::ref<fs::Node> create_inode(fs::Ext2FileSystem *fs, u32 index);
+    ck::map<ck::string, ck::box<fs::DirectoryEntry>> entries;
 
-    ck::ref<fs::Node> get_root(void);
-    ck::ref<fs::Node> get_inode(u32 index);
+		// Entries are loaded lazily. this method does that.
+		void ensure(void);
 
-    friend class ext2_inode;
-    bool read_block(u32 block, void *buf);
-    bool write_block(u32 block, const void *buf);
+    virtual int touch(ck::string name, fs::Ownership &);
+    virtual int mkdir(ck::string name, fs::Ownership &);
+    virtual int unlink(ck::string name);
+    virtual ck::vec<fs::DirectoryEntry *> dirents(void);
+    virtual fs::DirectoryEntry *get_direntry(ck::string name);
+    virtual int link(ck::string name, ck::ref<fs::Node> node);
+  };
 
-    bool read_inode(ext2_inode_info &dst, u32 inode);
-
-    bool write_inode(ext2_inode_info &dst, u32 inode);
-
-    inline struct block::Buffer *bget(uint32_t block) { return ::bget(*bdev, block); }
-
-    uint32_t balloc(void);
-    void bfree(uint32_t);
-
-    // update the disk copy of the superblock
-    int write_superblock(void);
-
-    long allocate_inode(void);
-
+  class FileSystem final : public fs::FileSystem {
+   public:
     struct [[gnu::packed]] superblock {
       uint32_t inodes;
       uint32_t blocks;
@@ -153,54 +149,82 @@ namespace fs {
       uint16_t uuid;
       uint16_t gid;
 
-      u32 s_first_ino;              /* First non-reserved inode */
-      u16 s_inode_size;             /* size of inode structure */
-      u16 s_block_group_nr;         /* block group # of this superblock */
-      u32 s_feature_compat;         /* compatible feature set */
-      u32 s_feature_incompat;       /* incompatible feature set */
-      u32 s_feature_ro_compat;      /* readonly-compatible feature set */
-      u8 s_uuid[16];                /* 128-bit uuid for volume */
-      char s_volume_name[16];       /* volume name */
-      char s_last_mounted[64];      /* directory where last mounted */
-      u32 s_algorithm_usage_bitmap; /* For compression */
+      uint32_t s_first_ino;              /* First non-reserved inode */
+      uint16_t s_inode_size;             /* size of inode structure */
+      uint16_t s_block_group_nr;         /* block group # of this superblock */
+      uint32_t s_feature_compat;         /* compatible feature set */
+      uint32_t s_feature_incompat;       /* incompatible feature set */
+      uint32_t s_feature_ro_compat;      /* readonly-compatible feature set */
+      uint8_t s_uuid[16];                /* 128-bit uuid for volume */
+      char s_volume_name[16];            /* volume name */
+      char s_last_mounted[64];           /* directory where last mounted */
+      uint32_t s_algorithm_usage_bitmap; /* For compression */
       /*
        * Performance hints.  Directory preallocation should only
        * happen if the EXT2_FEATURE_COMPAT_DIR_PREALLOC flag is on.
        */
-      u8 s_prealloc_blocks;      /* Nr of blocks to try to preallocate*/
-      u8 s_prealloc_dir_blocks;  /* Nr to preallocate for dirs */
-      u16 s_reserved_gdt_blocks; /* Per group table for online growth */
+      uint8_t s_prealloc_blocks;      /* Nr of blocks to try to preallocate*/
+      uint8_t s_prealloc_dir_blocks;  /* Nr to preallocate for dirs */
+      uint16_t s_reserved_gdt_blocks; /* Per group table for online growth */
       /*
        * Journaling support valid if EXT2_FEATURE_COMPAT_HAS_JOURNAL set.
        */
-      u8 s_journal_uuid[16]; /* uuid of journal superblock */
-      u32 s_journal_inum;    /* inode number of journal file */
-      u32 s_journal_dev;     /* device number of journal file */
-      u32 s_last_orphan;     /* start of list of inodes to delete */
-      u32 s_hash_seed[4];    /* HTREE hash seed */
-      u8 s_def_hash_version; /* Default hash version to use */
-      u8 s_jnl_backup_type;  /* Default type of journal backup */
-      u16 s_desc_size;       /* Group desc. size: INCOMPAT_64BIT */
-      u32 s_default_mount_opts;
-      u32 s_first_meta_bg;      /* First metablock group */
-      u32 s_mkfs_time;          /* When the filesystem was created */
-      u32 s_jnl_blocks[17];     /* Backup of the journal inode */
-      u32 s_blocks_count_hi;    /* Blocks count high 32bits */
-      u32 s_r_blocks_count_hi;  /* Reserved blocks count high 32 bits*/
-      u32 s_free_blocks_hi;     /* Free blocks count */
-      u16 s_min_extra_isize;    /* All inodes have at least # bytes */
-      u16 s_want_extra_isize;   /* New inodes should reserve # bytes */
-      u32 s_flags;              /* Miscellaneous flags */
-      u16 s_raid_stride;        /* RAID stride */
-      u16 s_mmp_interval;       /* # seconds to wait in MMP checking */
-      u64 s_mmp_block;          /* Block for multi-mount protection */
-      u32 s_raid_stripe_width;  /* blocks on all data disks (N*stride)*/
-      u8 s_log_groups_per_flex; /* FLEX_BG group size */
-      u8 s_reserved_char_pad;
-      u16 s_reserved_pad;  /* Padding to next 32bits */
-      u32 s_reserved[162]; /* Padding to the end of the block */
+      uint8_t s_journal_uuid[16]; /* uuid of journal superblock */
+      uint32_t s_journal_inum;    /* inode number of journal file */
+      uint32_t s_journal_dev;     /* device number of journal file */
+      uint32_t s_last_orphan;     /* start of list of inodes to delete */
+      uint32_t s_hash_seed[4];    /* HTREE hash seed */
+      uint8_t s_def_hash_version; /* Default hash version to use */
+      uint8_t s_jnl_backup_type;  /* Default type of journal backup */
+      uint16_t s_desc_size;       /* Group desc. size: INCOMPAT_64BIT */
+      uint32_t s_default_mount_opts;
+      uint32_t s_first_meta_bg;      /* First metablock group */
+      uint32_t s_mkfs_time;          /* When the filesystem was created */
+      uint32_t s_jnl_blocks[17];     /* Backup of the journal inode */
+      uint32_t s_blocks_count_hi;    /* Blocks count high 32bits */
+      uint32_t s_r_blocks_count_hi;  /* Reserved blocks count high 32 bits*/
+      uint32_t s_free_blocks_hi;     /* Free blocks count */
+      uint16_t s_min_extra_isize;    /* All inodes have at least # bytes */
+      uint16_t s_want_extra_isize;   /* New inodes should reserve # bytes */
+      uint32_t s_flags;              /* Miscellaneous flags */
+      uint16_t s_raid_stride;        /* RAID stride */
+      uint16_t s_mmp_interval;       /* # seconds to wait in MMP checking */
+      uint64_t s_mmp_block;          /* Block for multi-mount protection */
+      uint32_t s_raid_stripe_width;  /* blocks on all data disks (N*stride)*/
+      uint8_t s_log_groups_per_flex; /* FLEX_BG group size */
+      uint8_t s_reserved_char_pad;
+      uint16_t s_reserved_pad;  /* Padding to next 32bits */
+      uint32_t s_reserved[162]; /* Padding to the end of the block */
     };
 
+
+
+    FileSystem(void);
+    ~FileSystem(void);
+
+    bool probe(ck::ref<fs::BlockDeviceNode>);
+
+    // implemented in ext2/inode.cpp
+    ck::ref<fs::Node> create_inode(u32 index);
+    ck::ref<fs::Node> get_root(void);
+    ck::ref<fs::Node> get_inode(u32 index);
+
+    friend class ext2_inode;
+    bool read_block(u32 block, void *buf);
+    bool write_block(u32 block, const void *buf);
+
+    bool read_inode(ext2_inode_info &dst, u32 inode);
+    bool write_inode(ext2_inode_info &dst, u32 inode);
+
+    inline struct block::Buffer *bget(uint32_t block) { return ::bget(*bdev, block); }
+
+    uint32_t balloc(void);
+    void bfree(uint32_t);
+
+    // update the disk copy of the superblock
+    int write_superblock(void);
+
+    long allocate_inode(void);
 
     superblock *sb = nullptr;
 
@@ -209,10 +233,10 @@ namespace fs {
     spinlock bglock;
 
     // how many blockgroups are in the filesystem
-    u32 blockgroups = 0;
+    uint32_t blockgroups = 0;
 
     // the location of the first block group descriptor
-    u32 first_bgd = 0;
+    uint32_t first_bgd = 0;
 
     // blocks are read here for access. This is so the filesystem can cut down
     // on allocations when doing general maintainence
@@ -227,11 +251,11 @@ namespace fs {
     int cache_time = 0;
     spinlock cache_lock;
 
-    ck::ref<fs::File> disk;
+    ck::box<fs::File> disk;
     ck::ref<fs::BlockDeviceNode> bdev;
 
     spinlock m_lock;
   };
-}  // namespace fs
+}  // namespace ext2
 
 #endif
