@@ -26,7 +26,9 @@ int sys::lstat(const char *pathname, struct stat *statbuf) {
 
   int err = vfs::namei(pathname, 0, 0, curproc->cwd, ino);
   // TODO: flags!
-  if (err != 0) return err;
+  if (err != 0) {
+		return err;
+	}
 
   if (ino) {
     fs::File file(ino, O_RDONLY);

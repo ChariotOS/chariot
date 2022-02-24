@@ -72,6 +72,8 @@ namespace vfs {
   ck::ref<fs::Node> cwd(void);
   int getcwd(fs::Node &, ck::string &dst);
 
+	int chroot(ck::string path);
+
   ck::ref<fs::Node> get_root(void);
   using Mounter = ck::ref<fs::FileSystem> (*)(ck::string options, int flags, ck::string path);
   void register_filesystem(ck::string name, Mounter mount);

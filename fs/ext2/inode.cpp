@@ -513,10 +513,12 @@ struct ext2_vmobject final : public mm::VMObject {
 
 
 int ext2::FileNode::seek(fs::File &, off_t old_off, off_t new_off) {
+	EXT_DEBUG("seek, %zu %zu\n", old_off, new_off);
   return 0;  // allow seek
 }
 
 ssize_t ext2::FileNode::read(fs::File &f, char *buf, size_t count) {
+	EXT_DEBUG("read %p %zu\n", buf, count);
   ssize_t nread = ext2_raw_rw(*this, buf, count, f.offset(), false);
   if (nread >= 0) {
     f.seek(nread, SEEK_CUR);
@@ -524,6 +526,7 @@ ssize_t ext2::FileNode::read(fs::File &f, char *buf, size_t count) {
   return nread;
 }
 ssize_t ext2::FileNode::write(fs::File &f, const char *buf, size_t count) {
+	EXT_DEBUG("write %p %zu\n", buf, count);
   ssize_t nwrite = ext2_raw_rw(*this, (char *)buf, count, f.offset(), true);
   if (nwrite >= 0) {
     f.seek(nwrite, SEEK_CUR);
@@ -550,6 +553,7 @@ ext2::Node::~Node() {
 }
 
 ck::ref<mm::VMObject> ext2::FileNode::mmap(fs::File &f, size_t npages, int prot, int flags, off_t off) {
+	EXT_DEBUG("mmap\n");
   // XXX: this is invalid, should be asserted before here :^)
   if (off & 0xFFF) return nullptr;
 
@@ -563,13 +567,14 @@ ck::ref<mm::VMObject> ext2::FileNode::mmap(fs::File &f, size_t npages, int prot,
 
 
 void ext2::DirectoryNode::ensure(void) {
+	EXT_DEBUG("ensure\n");
   if (entries.size() == 0) {
     ext2::FileSystem *efs = static_cast<ext2::FileSystem *>(sb.get());
     ext2_traverse_dir(*this, [&](uint32_t ino, const char *name) {
       auto n = efs->get_inode(ino);
       n->set_name(name);
       link(name, n);
-      // printk("%d: %s\n", ino, name);
+      EXT_DEBUG(" - %d: %s\n", ino, name);
     });
   }
 }
@@ -594,6 +599,8 @@ int ext2::DirectoryNode::unlink(ck::string name) {
 }
 
 ck::vec<fs::DirectoryEntry *> ext2::DirectoryNode::dirents(void) {
+
+	EXT_DEBUG("dirents\n");
   ensure();
   ck::vec<fs::DirectoryEntry *> res;
   for (auto &[name, ent] : entries) {
@@ -603,6 +610,7 @@ ck::vec<fs::DirectoryEntry *> ext2::DirectoryNode::dirents(void) {
 }
 
 fs::DirectoryEntry *ext2::DirectoryNode::get_direntry(ck::string name) {
+	EXT_DEBUG("get_direntry %s\n", name.get());
   ensure();
   auto f = entries.find(name);
   if (f == entries.end()) return nullptr;
@@ -610,6 +618,7 @@ fs::DirectoryEntry *ext2::DirectoryNode::get_direntry(ck::string name) {
 }
 
 int ext2::DirectoryNode::link(ck::string name, ck::ref<fs::Node> node) {
+	EXT_DEBUG("link %s\n", name.get());
   if (entries.contains(name)) return -EEXIST;
   auto ent = ck::make_box<fs::DirectoryEntry>(name, node);
   entries[name] = move(ent);

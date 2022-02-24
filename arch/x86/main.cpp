@@ -157,6 +157,7 @@ int kernel_init(void*) {
 
 
   KINFO("Bootup complete. It is now safe to move about the cabin.\n");
+
   auto root_name = kargs::get("root", "/dev/disk0p1");
   if (!root_name) {
     KERR("Failed to mount root...\n");
@@ -166,15 +167,18 @@ int kernel_init(void*) {
     }
   }
 
-  assert(root_name);
 
   int mnt_res = vfs::mount(root_name, "/root", "ext2", 0, NULL);
   if (mnt_res != 0) {
     panic("failed to mount root. Error=%d\n", -mnt_res);
   }
 
+	int chroot_res = vfs::chroot("/root");
+	if (chroot_res != 0) {
 
-  kshell::run();
+    panic("Failed to chroot into /root. Error=%d\n", -mnt_res);
+	}
+  assert(root_name);
 
 
 #ifndef CONFIG_ENABLE_USERSPACE

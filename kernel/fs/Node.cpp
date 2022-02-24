@@ -53,7 +53,7 @@ int fs::Node::stat(struct stat *stat) {
 	stat->st_mtim = modified_time();
 	stat->st_ctim = create_time();
 
-	return -ENOTIMPL;
+	return 0;
 }
 
 ck::ref<fs::Node> fs::Node::lookup(ck::string name) {

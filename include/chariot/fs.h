@@ -185,6 +185,7 @@ namespace fs {
     virtual bool is_dev(void) { return false; }
     virtual bool is_blockdev(void) { return false; }
     virtual bool is_chardev(void) { return false; }
+    virtual bool is_tty(void) { return false; }
 
     scoped_lock lock(void) { return m_lock; }
     scoped_irqlock irq_lock(void) { return m_lock; }

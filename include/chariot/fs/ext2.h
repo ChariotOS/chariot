@@ -9,6 +9,15 @@
 #include <ck/vec.h>
 #include "types.h"
 
+
+// #define ENABLE_EXT2_DEBUG
+
+#ifdef ENABLE_EXT2_DEBUG
+#define EXT_DEBUG(...) PFXLOG(GRN "EXT2", __VA_ARGS__)
+#else
+#define EXT_DEBUG(fmt, args...)
+#endif
+
 /*
  * Ext2 directory file types.  Only the low 3 bits are used.  The
  * other bits are reserved for now.

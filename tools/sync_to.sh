@@ -124,5 +124,4 @@ if [ -n "$CONFIG_X86" ]; then
 fi
 
 USED=$(sudo du -s -BM ${mnt} | awk '{ print $1 }')
-USED=$(sudo tree ${mnt})
 echo "Root filesystem usage: $USED"

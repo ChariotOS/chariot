@@ -59,7 +59,7 @@ int vfs::mount(const char *src, const char *targ, const char *type, unsigned lon
   auto mounter = filesystem_mounters[type];
 
   if (mounter == nullptr) {
-    LOG("failed to find the filesystem for that name\n");
+    LOG("failed to find the filesystem, '%s'\n", type);
     return -ENOENT;
   }
   auto fs = mounter(options, flags, src);
@@ -260,7 +260,6 @@ int vfs::namei(const char *path, int flags, int mode, ck::ref<fs::Node> cwd, ck:
       res = ino;
       return 0;
     }
-
     auto found = ino->get_direntry(name);
 
     if (found == nullptr) {
@@ -333,6 +332,32 @@ int vfs::unlink(const char *path, ck::ref<fs::Node> cwd) {
   return 0;
 }
 
+
+int vfs::chroot(ck::string path) {
+  auto proc = curproc;
+  scoped_lock l(proc->datalock);
+
+  ck::ref<fs::Node> new_root = nullptr;
+
+  if (0 != vfs::namei(path.get(), 0, 0, proc->cwd, new_root)) return -1;
+
+  if (new_root == nullptr) return -ENOENT;
+
+  if (!new_root->is_dir()) return -ENOTDIR;
+
+  proc->root = new_root;
+
+  ck::string cwd;
+  if (vfs::getcwd(*new_root, cwd) != 0) return -EINVAL;
+  proc->cwd_string = cwd;
+  proc->cwd = new_root;
+
+  if (curproc->ring == RING_KERN) {
+    vfs_root = new_root;
+  }
+
+  return 0;
+}
 
 fs::File vfs::fdopen(ck::string path, int opts, int mode) {
   int fd_dirs = 0;
@@ -490,13 +515,13 @@ ksh_def("md5", "md5sum a file") {
 
   fs::File file(f, 0);
 
-	int size = 8192 * 4;
+  int size = 8192 * 4;
   auto buf = (char *)malloc(size);
   crypto::MD5 sum;
-	struct stat s;
-	file.stat(&s);
+  struct stat s;
+  file.stat(&s);
 
-	size_t read = 0;
+  size_t read = 0;
   while (true) {
     auto sz = file.read(buf, size);
     if (sz < 0) {
@@ -505,19 +530,19 @@ ksh_def("md5", "md5sum a file") {
       return 0;
     }
     if (sz == 0) {
-			printk("\n");
-			break;
-		}
+      printk("\n");
+      break;
+    }
 
-		read += sz;
-		printk("\r%zu", (read * 100) / s.st_size);
-		file.seek(sz, SEEK_CUR);
+    read += sz;
+    printk("\r%zu", (read * 100) / s.st_size);
+    file.seek(sz, SEEK_CUR);
 
-		// sum.update(buf, sz);
+    // sum.update(buf, sz);
   }
   free(buf);
-	auto digest = sum.finalize();
-	printk("%s\n", digest.get());
+  auto digest = sum.finalize();
+  printk("%s\n", digest.get());
   // hexdump(buf, sz, true);
   return 0;
 }
