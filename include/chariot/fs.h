@@ -157,7 +157,6 @@ namespace fs {
     virtual void close(fs::File &);
     virtual ck::ref<mm::VMObject> mmap(fs::File &, size_t npages, int prot, int flags, off_t off);
     virtual int resize(fs::File &, size_t);
-    virtual int stat(fs::File &, struct stat *);
     virtual int poll(fs::File &, int events, poll_table &pt);
 
 
@@ -210,6 +209,7 @@ namespace fs {
     getset(uid, m_ownership.uid);
     getset(mode, m_ownership.mode);
 
+    int stat(struct stat *);
 
    protected:
     fs::Ownership m_ownership;
@@ -310,7 +310,7 @@ namespace fs {
     ssize_t read(void *, ssize_t);
     ssize_t write(void *data, ssize_t);
     int ioctl(int cmd, unsigned long arg);
-    int stat(struct stat *stat) { return ino->stat(*this, stat); }
+    int stat(struct stat *stat) { return ino->stat(stat); }
     int close();
 
 

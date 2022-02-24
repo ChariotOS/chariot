@@ -450,40 +450,6 @@ static int injest_info(fs::Node &node, ext2::ext2_inode_info &info) {
   return 0;
 }
 
-/*
-static int ext2_seek(fs::File &, off_t, off_t) {
-  return 0;  // allow seek
-}
-
-static ssize_t ext2_do_read_write(fs::File &f, char *buf, size_t nbytes, bool is_write) {
-  ssize_t nread = ext2_raw_rw(*f.ino, buf, nbytes, f.offset(), is_write);
-  if (nread >= 0) {
-    f.seek(nread, SEEK_CUR);
-  }
-  return nread;
-}
-
-static ssize_t ext2_read(fs::File &f, char *dst, size_t sz) {
-  if (f.ino->type != T_FILE) return -EINVAL;
-  return ext2_do_read_write(f, dst, sz, false);
-}
-
-static ssize_t ext2_write(fs::File &f, const char *src, size_t sz) {
-  if (f.ino->type != T_FILE) return -EINVAL;
-  return ext2_do_read_write(f, (char *)src, sz, true);
-}
-
-static int ext2_ioctl(fs::File &, unsigned int cmd, off_t) {
-  // printk("cmd: %d\n", cmd);
-  UNIMPL();
-  return -ENOTIMPL;
-}
-
-static int ext2_open(fs::File &) { return 0; }
-static void ext2_close(fs::File &) {}
-
-*/
-
 
 struct ext2_vmobject final : public mm::VMObject {
   ext2_vmobject(ck::ref<fs::Node> ino, size_t npages, off_t off) : VMObject(npages) {
@@ -547,26 +513,26 @@ struct ext2_vmobject final : public mm::VMObject {
 
 
 int ext2::FileNode::seek(fs::File &, off_t old_off, off_t new_off) {
-  UNIMPL();
-  return -ENOTIMPL;
+  return 0;  // allow seek
 }
 
-ssize_t ext2::FileNode::read(fs::File &, char *buf, size_t count) {
-  UNIMPL();
-  return -ENOTIMPL;
+ssize_t ext2::FileNode::read(fs::File &f, char *buf, size_t count) {
+  ssize_t nread = ext2_raw_rw(*this, buf, count, f.offset(), false);
+  if (nread >= 0) {
+    f.seek(nread, SEEK_CUR);
+  }
+  return nread;
 }
-ssize_t ext2::FileNode::write(fs::File &, const char *buf, size_t count) {
-  UNIMPL();
-  return -ENOTIMPL;
+ssize_t ext2::FileNode::write(fs::File &f, const char *buf, size_t count) {
+  ssize_t nwrite = ext2_raw_rw(*this, (char *)buf, count, f.offset(), true);
+  if (nwrite >= 0) {
+    f.seek(nwrite, SEEK_CUR);
+  }
+  return nwrite;
 }
 
 int ext2::FileNode::resize(fs::File &, size_t) {
   UNIMPL();
-  return -ENOTIMPL;
-}
-int ext2::FileNode::stat(fs::File &, struct stat *s) {
-  UNIMPL();
-  // TODO:
   return -ENOTIMPL;
 }
 
@@ -583,7 +549,7 @@ ext2::Node::~Node() {
   }
 }
 
-static ck::ref<mm::VMObject> ext2_mmap(fs::File &f, size_t npages, int prot, int flags, off_t off) {
+ck::ref<mm::VMObject> ext2::FileNode::mmap(fs::File &f, size_t npages, int prot, int flags, off_t off) {
   // XXX: this is invalid, should be asserted before here :^)
   if (off & 0xFFF) return nullptr;
 
@@ -678,7 +644,6 @@ static ck::ref<fs::Node> ext2_inode(int type, u32 index, ext2::FileSystem &fs) {
 
 ck::ref<fs::Node> ext2::FileSystem::create_inode(u32 index) {
   ck::ref<fs::Node> ino = nullptr;
-  printk("create_inode %d\n", index);
 
   ext2::ext2_inode_info info;
   read_inode(info, index);

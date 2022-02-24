@@ -175,6 +175,8 @@ bool dev::ata::identify() {
   n_sectors = (C * H) * S;
   set_block_count(n_sectors);
 
+  set_size(block_count() * block_size());
+
 
   m_pci_dev = pci::find_generic_device(PCI_CLASS_STORAGE, PCI_SUBCLASS_IDE);
 
@@ -208,6 +210,7 @@ bool dev::ata::identify() {
 
 int dev::ata::read_blocks(uint32_t sector, void* data, int n) {
   TRACE;
+
   // TODO: also check for scheduler avail
   if (use_dma) {
     return read_blocks_dma(sector, data, n);
@@ -219,6 +222,7 @@ int dev::ata::read_blocks(uint32_t sector, void* data, int n) {
   // printk("read block %d\n", sector);
 
   if (sector & 0xF0000000) return -EINVAL;
+
 
   // select the correct device, and put bits of the address
   device_port.out((master ? 0xE0 : 0xF0) | ((sector & 0x0F000000) >> 24));

@@ -15,9 +15,11 @@ dev::Disk::~Disk(void) {}
 
 
 dev::DiskPartition::DiskPartition(dev::Disk* parent, u32 start, u32 len) : start(start), len(len) {
+  this->parent = parent;
+
   set_block_count(len);
   set_block_size(parent->block_size());
-  this->parent = parent;
+	set_size(block_count() * block_size());
 }
 dev::DiskPartition::~DiskPartition() {}
 

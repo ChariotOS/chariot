@@ -202,9 +202,12 @@ static ssize_t block_rw(fs::BlockDeviceNode &b, void *dst, size_t size, off_t by
 
   char *udata = (char *)dst;
 
+	if (b.size() <= byte_offset + size) return 0;
+
   for (off_t blk = byte_offset / PGSIZE; true; blk++) {
     // get the block we are looking at.
     auto block = bget(b, blk);
+		if (block == nullptr) break;
     auto data = (char *)block->data();
 
     size_t space_left = PGSIZE - offset;
@@ -231,7 +234,7 @@ static ssize_t block_rw(fs::BlockDeviceNode &b, void *dst, size_t size, off_t by
 
 
 
-  return size;
+  return size - to_access;
 }
 
 

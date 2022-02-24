@@ -9,6 +9,7 @@
 #include <fs/devfs.h>
 #include <thread.h>
 
+#include <crypto.h>
 
 #define LOG(...) PFXLOG(GRN "VFS", __VA_ARGS__)
 
@@ -365,7 +366,7 @@ void vfs::init_boot_filesystem(void) {
   if (mount_res != 0) panic("Failed to mount devfs to /dev\n");
   // Once the kernel has a drive and a filesystem for the root filesystem, it
   // is mounted into /uroot, and then chrooted into
-  sys::mkdir("/uroot", 0755);
+  sys::mkdir("/root", 0755);
 }
 
 
@@ -390,21 +391,26 @@ static void do_ls(const ck::string &dir) {
     auto l = f->lock();
     auto ents = f->dirents();
 
-    printk("%8s | ", "iNode");
-    printk("%8s | ", "Links");
-    printk("%12s | ", "Size (bytes)");
-    printk("%12s | ", "Block Count");
-    printk("%12s | ", "Block Size");
+    printk("%8s ", "iNode");
+    printk("%8s ", "Mode");
+    printk("%8s ", "Links");
+    printk("%12s ", "Bytes");
+    printk("%12s ", "Block Count");
+    printk("%12s ", "Block Size");
     printk("%s", "Name");
     printk("\n");
 
     for (auto ent : ents) {
       auto n = ent->get();
-      printk("%8ld | ", n->inode());
-      printk("%8ld | ", n->nlink());
-      printk("%12ld | ", n->size());
-      printk("%12ld | ", n->block_count());
-      printk("%12ld | ", n->block_size());
+      struct stat s;
+      n->stat(&s);
+
+      printk("%8ld ", s.st_ino);
+      printk("%8lo ", s.st_mode);
+      printk("%8ld ", s.st_nlink);
+      printk("%12ld ", s.st_size);
+      printk("%12ld ", s.st_blocks);
+      printk("%12ld ", s.st_blksize);
       printk("%s", ent->name.get());
       printk("\n");
       // printk("%zu %s\n", n->size(), ent->name.get());
@@ -466,5 +472,52 @@ ksh_def("dump", "hexdump the start of a file") {
   printk("read %zd bytes\n", sz);
   hexdump(buf, sz, true);
   free(buf);
+  return 0;
+}
+
+
+ksh_def("md5", "md5sum a file") {
+  if (args.size() != 1) {
+    printk("usage: md5 <file>\n");
+    return 0;
+  }
+
+  auto f = vfs::open(args[0]);
+  if (!f) {
+    printk("file not found\n");
+    return 0;
+  }
+
+  fs::File file(f, 0);
+
+	int size = 8192 * 4;
+  auto buf = (char *)malloc(size);
+  crypto::MD5 sum;
+	struct stat s;
+	file.stat(&s);
+
+	size_t read = 0;
+  while (true) {
+    auto sz = file.read(buf, size);
+    if (sz < 0) {
+      printk("failed to read: %zd\n", sz);
+      free(buf);
+      return 0;
+    }
+    if (sz == 0) {
+			printk("\n");
+			break;
+		}
+
+		read += sz;
+		printk("\r%zu", (read * 100) / s.st_size);
+		file.seek(sz, SEEK_CUR);
+
+		// sum.update(buf, sz);
+  }
+  free(buf);
+	auto digest = sum.finalize();
+	printk("%s\n", digest.get());
+  // hexdump(buf, sz, true);
   return 0;
 }

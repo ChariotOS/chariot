@@ -51,7 +51,7 @@ off_t fs::File::seek(off_t offset, int whence) {
       break;
     case SEEK_END: {
       struct stat s;
-      ino->stat(*this, &s);
+      ino->stat(&s);
       new_off = s.st_size;
       break;
     }

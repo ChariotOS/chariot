@@ -15,7 +15,6 @@ namespace tmpfs {
     virtual ssize_t read(fs::File &, char *dst, size_t count);
     virtual ssize_t write(fs::File &, const char *, size_t);
     virtual int resize(fs::File &, size_t);
-    virtual int stat(fs::File &, struct stat *);
     virtual ssize_t size(void);
   };
 

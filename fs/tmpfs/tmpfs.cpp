@@ -9,15 +9,9 @@
 
 
 int tmpfs::FileNode::seek(fs::File &, off_t old_off, off_t new_off) { return -ENOTIMPL; }
-
 ssize_t tmpfs::FileNode::read(fs::File &, char *buf, size_t count) { return -ENOTIMPL; }
 ssize_t tmpfs::FileNode::write(fs::File &, const char *buf, size_t count) { return -ENOTIMPL; }
-
 int tmpfs::FileNode::resize(fs::File &, size_t) { return -ENOTIMPL; }
-int tmpfs::FileNode::stat(fs::File &, struct stat *s) {
-  // TODO:
-  return -ENOTIMPL;
-}
 
 ssize_t tmpfs::FileNode::size(void) {
   printk("tmpfs size\n");
