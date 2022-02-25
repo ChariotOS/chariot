@@ -140,7 +140,7 @@ namespace fs {
     uint32_t ino;
     ck::ref<fs::FileSystem> sb;
     // if this inode has a socket bound to it, it will be located here.
-    ck::ref<net::Socket> sk;
+    // ck::ref<net::Socket> sk;
     ck::ref<net::Socket> bound_socket;
 
     // if the inode is a directory, set its name. NOP otherwise
@@ -269,10 +269,8 @@ namespace fs {
     virtual bool is_blockdev(void) final { return true; }
 
     // ^fs::Node
-    virtual ssize_t read(fs::File &, char *dst, size_t count) final;
-    virtual ssize_t write(fs::File &, const char *, size_t) final;
-    virtual ssize_t size(void) final;
-
+    virtual ssize_t read(fs::File &, char *dst, size_t count) override final;
+    virtual ssize_t write(fs::File &, const char *, size_t) override final;
 
     // nice wrappers for filesystems and all that :)
     inline int read_block(void *data, int block) { return read_blocks(block, data, 1); }
@@ -286,7 +284,9 @@ namespace fs {
 
   class CharDeviceNode : public fs::DeviceNode {
    public:
-    virtual bool is_char(void) final { return true; }
+    virtual bool is_chardev(void) override final {
+			return true;
+		}
   };
 
 

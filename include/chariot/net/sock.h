@@ -9,6 +9,7 @@
 #include <sem.h>
 #include <ck/single_list.h>
 #include <types.h>
+#include <fs.h>
 
 
 // fwd decl
@@ -28,7 +29,7 @@ namespace net {
    * The representation of a network socket. Stored in fs::inode.sock when type
    * is T_SOCK
    */
-  struct Socket : public ck::refcounted<Socket> {
+  struct Socket : public fs::Node {
     enum class role : uint8_t { none, accepting, listener, connected, connecting };
 
     net::Socket::role role = role::none;
@@ -47,7 +48,6 @@ namespace net {
     Socket(int domain, int type, int proto);
     virtual ~Socket(void);
 
-    inline virtual int poll(fs::File &f, int events, poll_table &pt) { return 0; }
 
     template <typename T>
     T *&priv(void) {
@@ -58,7 +58,14 @@ namespace net {
     static ck::ref<fs::Node> createi(int domain, int type, int protocol, int &err);
 
 
-    virtual int ioctl(int cmd, unsigned long arg);
+    // ^fs::Node
+    virtual int ioctl(fs::File &, unsigned int cmd, off_t arg);
+    virtual int seek(fs::File &, off_t old_off, off_t new_off) { return -EINVAL; }
+    virtual ssize_t read(fs::File &f, char *b, size_t s) { return recvfrom(f, (void *)b, s, 0, nullptr, 0); }
+    virtual ssize_t write(fs::File &f, const char *b, size_t s) { return sendto(f, (void *)b, s, 0, nullptr, 0); }
+    virtual void close(fs::File &);
+    virtual int poll(fs::File &, int events, poll_table &pt);
+
 
     virtual int connect(struct sockaddr *uaddr, int addr_len);
     virtual ck::ref<net::Socket> accept(struct sockaddr *uaddr, int addr_len, int &err);

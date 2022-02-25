@@ -9,7 +9,7 @@
 
 /**
  */
-struct TTYNode : public fs::DeviceNode {
+struct TTYNode : public fs::CharDeviceNode {
   int index;
 
   struct termios tios;
