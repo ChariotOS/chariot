@@ -308,10 +308,15 @@ void main(int hartid, void *fdt) {
     // kshell::run();
 
 
+    // Init the virtual filesystem and mount a tmpfs and devfs to / and /dev
+    vfs::init_boot_filesystem();
+
+
 #ifdef CONFIG_ENABLE_USERSPACE
 
 
-    int mnt_res = vfs::mount("/dev/disk0p1", "/", "ext2", 0, NULL);
+		LOG("Mounting root filesystem\n");
+    int mnt_res = vfs::mount("/dev/disk0p1", "/root", "ext2", 0, NULL);
     if (mnt_res != 0) {
       panic("failed to mount root. Error=%d\n", -mnt_res);
     }
