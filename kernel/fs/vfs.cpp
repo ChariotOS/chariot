@@ -53,11 +53,9 @@ int vfs::mount(const char *src, const char *targ, const char *type, unsigned lon
 
   if (type == NULL) return -EINVAL;
 
-  if (get_root()) {
-    // TODO: look up the target directory
-  }
-  auto mounter = filesystem_mounters[type];
 
+
+  auto mounter = filesystem_mounters[type];
   if (mounter == nullptr) {
     LOG("failed to find the filesystem, '%s'\n", type);
     return -ENOENT;
