@@ -68,7 +68,7 @@ bool ext2::FileSystem::probe(ck::ref<fs::BlockDeviceNode> bdev) {
 
 
   sb = new superblock();
-	memset(sb, 0xFA, sizeof(*sb));
+  memset(sb, 0xFA, sizeof(*sb));
 
   disk = ck::make_box<fs::File>(bdev, 0);
   // read the superblock
@@ -302,6 +302,11 @@ ck::ref<fs::Node> ext2::FileSystem::get_inode(u32 index) {
 static ck::ref<fs::FileSystem> ext2_mount(ck::string args, int flags, ck::string device) {
   // open the device
   auto file = vfs::open(device);
+  if (!file) {
+    KWARN("EXT2: Cannot mount %s. File not found\n", device.get());
+		return nullptr;
+  }
+
   // if the device file is not a block file, we cannot mount it
   if (!file->is_blockdev()) {
     KWARN("EXT2: Cannot mount %s. Is not a block device\n", device.get());
