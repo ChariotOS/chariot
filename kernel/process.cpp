@@ -304,7 +304,7 @@ int Process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::strin
 
   // TODO: open permissions on the binary
   if (vfs::namei(path.get(), 0, 0, cwd, exe) != 0) {
-		printk("File, '%s', does not exist\n", path.get());
+    printk("File, '%s', does not exist\n", path.get());
     return -ENOENT;
   }
   // TODO check execution permissions
@@ -496,6 +496,7 @@ struct waiter_entry {
 
 static bool can_reap(Thread *reaper, ck::ref<Process> zombie, long seeking, int reap_flags) {
   if (!zombie->parent) return false;
+  printk("reaper %p, zombie: %p\n", reaper, zombie.get());
   // a process may not reap another process's children.
   if (zombie->parent->pid != reaper->proc.pid) return false;
 
@@ -534,6 +535,8 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
   int result = -EINVAL;
 
 
+  auto self = curthd;
+  printk("wait thread %p\n", self);
   for (int loops = 0; 1; loops++) {
     struct zombie_entry *zomb = NULL;
     ck::ref<Process> found_process = nullptr;
@@ -542,7 +545,7 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
 
     bool found = false;
     list_for_each_entry(zomb, &zombie_list, node) {
-      if (can_reap(curthd, zomb->proc, pid, wait_flags)) {
+      if (can_reap(self, zomb->proc, pid, wait_flags)) {
         // simply remove the zombie from the zombie_list
         zomb->node.del_init();
         found = true;
@@ -567,7 +570,7 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
       struct wait_entry ent;
 
       struct waiter_entry went;
-      went.thd = curthd;
+      went.thd = self;
       went.wait_flags = wait_flags;
       went.seeking = pid;
       went.node.init();

@@ -76,6 +76,8 @@ extern "C" int get_errno(void) { return curthd->kerrno; }
 static spinlock global_xcall_lock;
 
 void cpu::run_pending_xcalls(void) {
+
+	arch_disable_ints();
   auto &p = cpu::current();
   struct xcall_command cmd = p.xcall_command;
   memset(&p.xcall_command, 0, sizeof(p.xcall_command));
@@ -93,7 +95,6 @@ void cpu::run_pending_xcalls(void) {
 
 void cpu::xcall(int core, xcall_t func, void *arg) {
   int count = 0;
-  // pprintk("%d xcall %d %p %p\n", core_id(), core, func, arg);
   if (core == -1) {
     // all the cores
     cpu::each([&](cpu::Core *core) {

@@ -117,8 +117,6 @@ static void xcall_flush(mm::AddressSpace *space, off_t va, size_t pages) {
   arg.pages = pages;
   cpu::xcall_all(
       [](void *v) {
-        return;
-        arch_flush_mmu();
         auto *arg = (struct xcall_flush *)v;
         if (curproc) {
           if (curproc->mm == arg->space) {
@@ -137,11 +135,11 @@ int mm::AddressSpace::pagefault(off_t va, int err) {
 
   if (!r) return -1;
 
-  // pprintk("pagefault at %p\n", va);
   scoped_lock region_lock(r->lock);
 
   int fault_res = 0;
 
+  auto start = arch_read_timestamp();
   // TODO:
   // if (err & PGFLT_USER && !(r->prot & VPROT_READ)) fault_res = -1;
   if (err & FAULT_WRITE && !(r->prot & VPROT_WRITE)) fault_res = -1;
@@ -155,10 +153,9 @@ int mm::AddressSpace::pagefault(off_t va, int err) {
   }
 
 
+  // xcall_flush(this, va, 1);
 
-  xcall_flush(this, va, 1);
-  // cpu::xcall_all(mm_xcall_flush_mmu, this, true);
-
+  // printk_nolock("pgfault: %d, %p, %llu, %llu\n", curthd->tid, va, start, arch_read_timestamp() - start);
   return 0;
 }
 
@@ -471,7 +468,7 @@ void mm::AddressSpace::dump(void) {
     int maj = 0;
     int min = 0;
     if (r->fd) {
-			FS_REFACTOR();
+      FS_REFACTOR();
       // maj = r->fd->ino->dev.major;
       // min = r->fd->ino->dev.minor;
     }

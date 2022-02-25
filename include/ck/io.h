@@ -199,8 +199,8 @@ namespace ck {
     virtual ssize_t tell(void) override;
     virtual int seek(long offset, int whence) override;
 
-    bool open(ck::string path, const char *mode);
-    bool open(ck::string path, int mode);
+    bool open(ck::string path, const char *flags, int mode = 0644);
+    bool open(ck::string path, int flags, int mode = 0644);
 
 
     static inline auto unowned(int fd) {

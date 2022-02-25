@@ -207,18 +207,18 @@ ck::file::file(ck::string path, const char *mode) {
 
 
 
-bool ck::file::open(ck::string path, const char *mode) {
-  int fmode = string_to_mode(mode);
+bool ck::file::open(ck::string path, const char *flags, int mode) {
+  int fmode = string_to_mode(flags);
   if (fmode == -1) {
     fprintf(::stderr, "[ck::file::open] '%d' is an invalid mode\n", fmode);
     notifier.set_active(false);
     return false;
   }
-  return open(path, fmode);
+  return open(path, fmode, mode);
 }
 
-bool ck::file::open(ck::string path, int fmode) {
-  int new_fd = ::open(path.get(), fmode);
+bool ck::file::open(ck::string path, int flags, int mode) {
+  int new_fd = ::open(path.get(), flags, mode);
 
   if (new_fd < 0) {
     notifier.set_active(false);
