@@ -496,7 +496,6 @@ struct waiter_entry {
 
 static bool can_reap(Thread *reaper, ck::ref<Process> zombie, long seeking, int reap_flags) {
   if (!zombie->parent) return false;
-  printk("reaper %p, zombie: %p\n", reaper, zombie.get());
   // a process may not reap another process's children.
   if (zombie->parent->pid != reaper->proc.pid) return false;
 
@@ -536,7 +535,6 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
 
 
   auto self = curthd;
-  printk("wait thread %p\n", self);
   for (int loops = 0; 1; loops++) {
     struct zombie_entry *zomb = NULL;
     ck::ref<Process> found_process = nullptr;
