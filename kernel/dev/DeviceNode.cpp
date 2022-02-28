@@ -2,12 +2,17 @@
 #include <printk.h>
 
 // dev::Device::Device(void) : fs::Node(nullptr) {}
-dev::Device::Device(dev::Driver &driver, ck::ref<hw::Device> dev) : fs::Node(nullptr), m_driver(driver), m_dev(dev) {}
+dev::Device::Device(dev::Driver &driver, ck::ref<hw::Device> dev) : fs::Node(nullptr), m_driver(driver), m_dev(dev) {
+  m_dev->attach_to(this);
+}
 static spinlock names_lock;
 static ck::map<ck::string, ck::box<fs::DirectoryEntry>> names;
 
 
-dev::Device::~Device(void) { unbind(); }
+dev::Device::~Device(void) {
+  if (m_dev != nullptr) m_dev->detach();
+  unbind();
+}
 
 void dev::Device::bind(ck::string name) {
   m_name = name;

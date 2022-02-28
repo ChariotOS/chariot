@@ -142,20 +142,6 @@ bool start_secondary(int i) {
 }
 
 
-static dev::ProbeResult riscv_hart_probe(ck::ref<hw::Device> dev) {
-  if (auto mmio = dev->cast<hw::MMIODevice>()) {
-    if (mmio->is_compat("riscv")) {
-      auto status = mmio->get_prop_string("status");
-      if (status.has_value()) {
-        if (status.unwrap() == "disabled") return dev::ProbeResult::Ignore;
-      }
-
-      return dev::ProbeResult::Attach;
-    }
-  }
-
-  return dev::ProbeResult::Ignore;
-};
 
 
 
@@ -176,6 +162,7 @@ class RISCVHart : public dev::CharDevice {
 
         auto hartid = mmio->address();
 				bind(ck::string::format("core%d", hartid));
+				printk("FOUND HART %d\n", hartid);
         if (hartid != rv::get_hstate().hartid) {
           LOG("Trying to start hart %d\n", hartid);
 #ifdef CONFIG_SMP
@@ -190,6 +177,21 @@ class RISCVHart : public dev::CharDevice {
   }
 };
 
+
+static dev::ProbeResult riscv_hart_probe(ck::ref<hw::Device> dev) {
+  if (auto mmio = dev->cast<hw::MMIODevice>()) {
+    if (mmio->is_compat("riscv")) {
+      auto status = mmio->get_prop_string("status");
+      if (status.has_value()) {
+        if (status.unwrap() == "disabled") return dev::ProbeResult::Ignore;
+      }
+
+      return dev::ProbeResult::Attach;
+    }
+  }
+
+  return dev::ProbeResult::Ignore;
+};
 
 driver_init("riscv,hart", RISCVHart, riscv_hart_probe);
 

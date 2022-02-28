@@ -80,7 +80,7 @@ namespace hw {
     ck::string m_name;
     bool m_active = false;
     ck::ref<hw::Device> m_parent = nullptr;
-    dev::Device *m_driver = nullptr;
+    dev::Device *m_device = nullptr;
     ck::vec<ck::ref<hw::Device>> m_children;
 
    protected:
@@ -101,8 +101,9 @@ namespace hw {
     inline void lock(void) { m_locked = true; }
 
 
-    void attach_to(dev::Device *drv);
-    dev::Device *driver(void) const { return m_driver; }
+    void attach_to(dev::Device *device);
+    void detach(void) { m_device = nullptr; }
+    dev::Device *attached_device(void) const { return m_device; }
 
     inline auto &children(void) const { return m_children; }
     inline auto parent(void) const { return m_parent; }

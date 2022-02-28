@@ -64,6 +64,7 @@ namespace dev {
       auto drv = ck::make_ref<DeviceT>(*this, dev);
 			drv->minor = next_minor++;
       drv->init();
+			dev->attach_to(drv);
       m_devices.set(drv->minor, drv);
     }
 

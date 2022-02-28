@@ -37,7 +37,7 @@ auto dev::Driver::probe(ck::ref<hw::Device> device) -> dev::ProbeResult {
 
 
 static void probe(ck::ref<hw::Device> dev, ck::ref<dev::Driver> drv) {
-  if (dev->driver() != nullptr) return;
+  if (dev->attached_device() != nullptr) return;
   if (drv->probe(dev) == dev::ProbeResult::Attach) {
     drv->attach(dev);
   }
