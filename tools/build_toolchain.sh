@@ -12,3 +12,12 @@ if [ ! -f toolchain/local/bin/${CONFIG_ARCH_NAME}-elf-gcc ]; then
 		./build.sh "${CONFIG_ARCH_NAME}"
 	popd
 fi
+
+
+if [ ! -f ports/out/${CONFIG_ARCH_NAME}/lib/libfreetype.a ]; then
+	echo "-- Ports for ${CONFIG_ARCH_NAME} do not exist. Building in 3 seconds..."
+	sleep 3
+	pushd ports
+		./build.sh "${CONFIG_ARCH_NAME}"
+	popd
+fi
