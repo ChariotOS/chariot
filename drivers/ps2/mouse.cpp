@@ -335,16 +335,6 @@ static void mouse_close(fs::File &fd) {
 static int mouse_poll(fs::File &fd, int events, poll_table &pt) { return mouse_buffer.poll(pt) & events; }
 
 
-struct fs::FileOperations mouse_ops = {
-    .read = mouse_read,
-
-    .open = mouse_open,
-    .close = mouse_close,
-
-    .poll = mouse_poll,
-};
-
-
 
 
 
