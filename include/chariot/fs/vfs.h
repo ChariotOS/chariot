@@ -4,12 +4,7 @@
 #include <fs.h>
 #include <ck/ptr.h>
 #include <ck/string.h>
-
-namespace fs {
-  // fwd decl
-  struct FileSystem;
-};  // namespace fs
-
+#include <fs/FileSystem.h>
 /**
  *
  * The virtual file system allows filesystems to be mounted recursively in the
@@ -72,7 +67,7 @@ namespace vfs {
   ck::ref<fs::Node> cwd(void);
   int getcwd(fs::Node &, ck::string &dst);
 
-	int chroot(ck::string path);
+  int chroot(ck::string path);
 
   ck::ref<fs::Node> get_root(void);
   using Mounter = ck::ref<fs::FileSystem> (*)(ck::string options, int flags, ck::string path);

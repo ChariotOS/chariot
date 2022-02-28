@@ -9,27 +9,21 @@
 #include <sem.h>
 #include <ck/single_list.h>
 #include <types.h>
+#include <wait.h>
 #include <fs.h>
 
-
-// fwd decl
-namespace fs {
-  struct Node;
-  class File;
-}  // namespace fs
 
 #define PFLAGS_SERVER (0x1)
 #define PFLAGS_CLIENT (0x2)
 
 namespace net {
 
-  struct Socket;
-
   /**
    * The representation of a network socket. Stored in fs::inode.sock when type
    * is T_SOCK
    */
-  struct Socket : public fs::Node {
+  class Socket : public fs::Node {
+   public:
     enum class role : uint8_t { none, accepting, listener, connected, connecting };
 
     net::Socket::role role = role::none;
@@ -59,12 +53,15 @@ namespace net {
 
 
     // ^fs::Node
-    virtual int ioctl(fs::File &, unsigned int cmd, off_t arg);
-    virtual int seek(fs::File &, off_t old_off, off_t new_off) { return -EINVAL; }
-    virtual ssize_t read(fs::File &f, char *b, size_t s) { return recvfrom(f, (void *)b, s, 0, nullptr, 0); }
-    virtual ssize_t write(fs::File &f, const char *b, size_t s) { return sendto(f, (void *)b, s, 0, nullptr, 0); }
-    virtual void close(fs::File &);
-    virtual int poll(fs::File &, int events, poll_table &pt);
+    int ioctl(fs::File &, unsigned int cmd, off_t arg) override final;
+    int seek_check(fs::File &, off_t old_off, off_t new_off) override final { return -EINVAL; }
+    ssize_t read(fs::File &f, char *b, size_t s) override final { return recvfrom(f, (void *)b, s, 0, nullptr, 0); }
+    ssize_t write(fs::File &f, const char *b, size_t s) override final { return sendto(f, (void *)b, s, 0, nullptr, 0); }
+    void close(fs::File &) override final;
+    bool is_sock(void) override final { return true; }
+
+    int poll(fs::File &, int events, poll_table &pt) override;
+
 
 
     virtual int connect(struct sockaddr *uaddr, int addr_len);

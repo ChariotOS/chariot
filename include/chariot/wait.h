@@ -6,6 +6,10 @@
 #include <types.h>
 #include <ck/vec.h>
 
+
+struct Thread;
+
+
 bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync, void *key);
 
 #define WAIT_RES_INTR 0b00000001

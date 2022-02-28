@@ -419,7 +419,7 @@ static int flush_info(fs::Node &node) {
   info.create_time = ino.metadata().create_time;
   info.delete_time = 0;  // ?
   // TODO: update all this stuff too
-  efs->write_inode(info, ino.ino);
+  efs->write_inode(info, ino.inode());
   return 0;
 }
 
@@ -512,7 +512,7 @@ struct ext2_vmobject final : public mm::VMObject {
 
 
 
-int ext2::FileNode::seek(fs::File &, off_t old_off, off_t new_off) {
+int ext2::FileNode::seek_check(fs::File &, off_t old_off, off_t new_off) {
   EXT_DEBUG("seek, %zu %zu\n", old_off, new_off);
   return 0;  // allow seek
 }
@@ -539,10 +539,6 @@ int ext2::FileNode::resize(fs::File &, size_t) {
   return -ENOTIMPL;
 }
 
-ssize_t ext2::FileNode::size(void) {
-  UNIMPL();
-  return 0;
-}
 
 ext2::Node::~Node() {
   for (int i = 0; i < 4; i++) {
@@ -572,7 +568,7 @@ void ext2::DirectoryNode::ensure(void) {
     ext2::FileSystem *efs = static_cast<ext2::FileSystem *>(sb.get());
     ext2_traverse_dir(*this, [&](uint32_t ino, const char *name) {
       auto n = efs->get_inode(ino);
-			ck::string newname = name;
+      ck::string newname = name;
       link(name, n);
       EXT_DEBUG(" - %d: %s\n", ino, name);
     });

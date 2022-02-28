@@ -62,7 +62,7 @@ off_t fs::File::seek(off_t offset, int whence) {
 
   if (new_off < 0) return -EINVAL;
 
-  int res = ino->seek(*this, m_offset, new_off);
+  int res = ino->seek_check(*this, m_offset, new_off);
   if (res != 0) return res;
 
   m_offset = new_off;

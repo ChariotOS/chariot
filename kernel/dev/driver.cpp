@@ -8,6 +8,7 @@
 
 #define LOG(...) PFXLOG(BLU "DRV", __VA_ARGS__)
 
+#define DRIVER_REFACTOR() KWARN("fs refactor: old driver function '%s' called.\n", __PRETTY_FUNCTION__)
 
 static int next_major = 0;
 static rwlock drivers_lock;
@@ -15,6 +16,7 @@ static ck::map<major_t, struct dev::DriverInfo *> drivers;
 static ck::map<ck::string, dev_t> device_names;
 
 int dev::register_driver(struct dev::DriverInfo &info) {
+  DRIVER_REFACTOR();
   assert(info.major != -1);
   assert(info.type == DRIVER_CHAR || info.type == DRIVER_BLOCK);
 
@@ -29,11 +31,13 @@ int dev::register_driver(struct dev::DriverInfo &info) {
 
 extern void devfs_register_device(ck::string name, int type, int major, int minor);
 int dev::register_name(struct dev::DriverInfo &info, ck::string name, minor_t min) {
-  // FS_REFACTOR();
+  DRIVER_REFACTOR();
   return 0;
 }
 
 int dev::deregister_name(struct dev::DriverInfo &, ck::string name) {
+  DRIVER_REFACTOR();
+
   drivers_lock.write_lock();
   device_names.remove(name);
   drivers_lock.write_unlock();
@@ -44,55 +48,13 @@ int dev::deregister_name(struct dev::DriverInfo &, ck::string name) {
 static int disk_count = 0;
 ck::string dev::next_disk_name(void) { return ck::string::format("disk%d", disk_count); }
 
-/**
- * look up a device
- */
-/*
-fs::BlockDevice *fs::bdev_from_path(const char *n) {
-  struct fs::BlockDevice *bdev = nullptr;
 
-  // if we don't have root yet, we need to emulate devfs
-  if (vfs::get_root() == nullptr) {
-    ck::string name = n;
-
-    auto parts = name.split('/');
-
-    if (parts.size() != 2 || parts[0] != "dev") {
-      panic("invalid blkdev path %s\n", n);
-    }
-
-
-    drivers_lock.read_lock();
-    if (device_names.contains(parts[1])) {
-      dev_t d = device_names.get(parts[1]);
-      // pretty sure the two maps should always be in sync
-      auto *driver = drivers.get(d.major());
-      if (driver != NULL) {
-        if (driver->type == DRIVER_BLOCK) {
-          bdev = driver->block_devices[d.minor()];
-        }
-      }
-    }
-    drivers_lock.read_unlock();
-  }
-
-
-  return bdev;
+static void device_irq_handler(int num, reg_t *regs, void *data) {
+  dev::Device *self = (dev::Device *)data;
+  self->irq(num);
 }
-*/
 
-
-
-
-void dev::Device::handle_irq(int num, const char *name) {
-  irq::install(
-      num,
-      [](int num, unsigned long *regs, void *data) {
-        dev::Device *self = (dev::Device *)data;
-        self->irq(num);
-      },
-      name, this);
-}
+void dev::Device::handle_irq(int num, const char *name) { irq::install(num, device_irq_handler, name, this); }
 
 
 

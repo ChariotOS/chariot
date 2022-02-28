@@ -1,6 +1,5 @@
 #include <fs.h>
-
-
+#include <printk.h>
 
 fs::DeviceNode::DeviceNode(void) : fs::Node(nullptr) {}
 
@@ -44,7 +43,5 @@ ck::map<ck::string, ck::box<fs::DirectoryEntry>> &fs::DeviceNode::get_names(void
 
 
 
-ssize_t fs::BlockDeviceNode::read(fs::File &f, char *dst, size_t bytes) {
-	return bread(*this, (void*)dst, bytes, f.offset());
-}
-ssize_t fs::BlockDeviceNode::write(fs::File &f, const char *dst, size_t bytes) { return bwrite(*this, (void*)dst, bytes, f.offset()); }
+ssize_t fs::BlockDeviceNode::read(fs::File &f, char *dst, size_t bytes) { return bread(*this, (void *)dst, bytes, f.offset()); }
+ssize_t fs::BlockDeviceNode::write(fs::File &f, const char *dst, size_t bytes) { return bwrite(*this, (void *)dst, bytes, f.offset()); }

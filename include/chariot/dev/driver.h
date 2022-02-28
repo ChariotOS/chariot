@@ -15,8 +15,6 @@ namespace dev {
 #define DRIVER_CHAR 1
 #define DRIVER_BLOCK 2
 
-#define EVENT_PCI_CHANGE 1
-
   /**
    * this struct is a general information source for the driver subsystem. Must be
    * defined statically in each driver, and will be passed to the register_driver
@@ -27,17 +25,10 @@ namespace dev {
     const char *name = NULL;
     int type = DRIVER_INVALID;
     int major = -1;
-
     // useful for things like when a device is unplugged, or is mounted
     int (*event_handler)(int minor, int ev, void *data);
-
-
     // private to the driver subsystem, do not fiddle with (write to) stuff below here
     rwlock lock;
-
-    // TODO: figure out char devices
-    ck::map<minor_t, fs::BlockDevice *> block_devices;
-
     // ...
   };
 

@@ -98,36 +98,37 @@ namespace ext2 {
   class FileNode : public ext2::Node {
    public:
     using ext2::Node::Node;
-		virtual ~FileNode() {}
+    virtual ~FileNode() {}
     virtual bool is_file(void) final { return true; }
 
-    virtual int seek(fs::File &, off_t old_off, off_t new_off);
-    virtual ssize_t read(fs::File &, char *dst, size_t count);
-    virtual ssize_t write(fs::File &, const char *, size_t);
-    virtual int resize(fs::File &, size_t);
-    virtual ssize_t size(void);
-
-    virtual ck::ref<mm::VMObject> mmap(fs::File &, size_t npages, int prot, int flags, off_t off);
+    // ^fs::Node
+    int seek_check(fs::File &, off_t old_off, off_t new_off) override;
+    ssize_t read(fs::File &, char *dst, size_t count) override;
+    ssize_t write(fs::File &, const char *, size_t) override;
+    int resize(fs::File &, size_t) override;
+    ck::ref<mm::VMObject> mmap(fs::File &, size_t npages, int prot, int flags, off_t off) override;
   };
 
 
   class DirectoryNode : public ext2::Node {
    public:
     using ext2::Node::Node;
-		virtual ~DirectoryNode() {}
+    virtual ~DirectoryNode() {}
     virtual bool is_dir(void) final { return true; }
 
     ck::map<ck::string, ck::box<fs::DirectoryEntry>> entries;
 
-		// Entries are loaded lazily. this method does that.
-		void ensure(void);
+    // Entries are loaded lazily. this method does that.
+    void ensure(void);
 
-    virtual int touch(ck::string name, fs::Ownership &);
-    virtual int mkdir(ck::string name, fs::Ownership &);
-    virtual int unlink(ck::string name);
-    virtual ck::vec<fs::DirectoryEntry *> dirents(void);
-    virtual fs::DirectoryEntry *get_direntry(ck::string name);
-    virtual int link(ck::string name, ck::ref<fs::Node> node);
+
+    // ^fs::Node
+    int touch(ck::string name, fs::Ownership &) override;
+    int mkdir(ck::string name, fs::Ownership &) override;
+    int unlink(ck::string name) override;
+    ck::vec<fs::DirectoryEntry *> dirents(void) override;
+    fs::DirectoryEntry *get_direntry(ck::string name) override;
+    int link(ck::string name, ck::ref<fs::Node> node) override;
   };
 
   class FileSystem final : public fs::FileSystem {

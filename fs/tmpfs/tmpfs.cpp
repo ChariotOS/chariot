@@ -8,25 +8,20 @@
 
 
 
-int tmpfs::FileNode::seek(fs::File &, off_t old_off, off_t new_off) { return -ENOTIMPL; }
+int tmpfs::FileNode::seek_check(fs::File &, off_t old_off, off_t new_off) { return -ENOTIMPL; }
 ssize_t tmpfs::FileNode::read(fs::File &, char *buf, size_t count) { return -ENOTIMPL; }
 ssize_t tmpfs::FileNode::write(fs::File &, const char *buf, size_t count) { return -ENOTIMPL; }
 int tmpfs::FileNode::resize(fs::File &, size_t) { return -ENOTIMPL; }
-
-ssize_t tmpfs::FileNode::size(void) {
-  printk("tmpfs size\n");
-  return 0;
-}
 
 
 
 int tmpfs::DirNode::touch(ck::string name, fs::Ownership &own) {
   if (entries.contains(name)) return -EEXIST;
   auto node = ck::make_ref<tmpfs::FileNode>(sb);
-	node->set_name(name);
-	node->set_ownership(own);
-	link(name, node);
-	return 0;
+  node->set_name(name);
+  node->set_ownership(own);
+  link(name, node);
+  return 0;
 }
 
 int tmpfs::DirNode::mkdir(ck::string name, fs::Ownership &own) {

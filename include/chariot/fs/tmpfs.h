@@ -11,11 +11,10 @@ namespace tmpfs {
   struct FileNode : public fs::FileNode {
     using fs::FileNode::FileNode;
 
-    virtual int seek(fs::File &, off_t old_off, off_t new_off);
-    virtual ssize_t read(fs::File &, char *dst, size_t count);
-    virtual ssize_t write(fs::File &, const char *, size_t);
-    virtual int resize(fs::File &, size_t);
-    virtual ssize_t size(void);
+    int seek_check(fs::File &, off_t old_off, off_t new_off) override;
+    ssize_t read(fs::File &, char *dst, size_t count) override;
+    ssize_t write(fs::File &, const char *, size_t) override;
+    int resize(fs::File &, size_t) override;
   };
 
   struct DirNode : public fs::DirectoryNode {
@@ -43,11 +42,11 @@ namespace tmpfs {
     FileSystem(ck::string args, int flags);
 
     virtual ~FileSystem();
-	
-		static ck::ref<fs::FileSystem> mount(ck::string options, int flags, ck::string device);
+
+    static ck::ref<fs::FileSystem> mount(ck::string options, int flags, ck::string device);
   };
 
-	void init(void);
+  void init(void);
 
 
-}  // namespace tmp
+}  // namespace tmpfs
