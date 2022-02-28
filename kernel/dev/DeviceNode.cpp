@@ -3,7 +3,7 @@
 
 // dev::Device::Device(void) : fs::Node(nullptr) {}
 dev::Device::Device(dev::Driver &driver, ck::ref<hw::Device> dev) : fs::Node(nullptr), m_driver(driver), m_dev(dev) {
-  m_dev->attach_to(this);
+  if (m_dev) m_dev->attach_to(this);
 }
 static spinlock names_lock;
 static ck::map<ck::string, ck::box<fs::DirectoryEntry>> names;
