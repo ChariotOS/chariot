@@ -7,8 +7,6 @@
 #include <fs/devfs.h>
 
 
-
-
 int devfs::DirectoryNode::touch(ck::string name, fs::Ownership &) { return -EINVAL; }
 int devfs::DirectoryNode::mkdir(ck::string name, fs::Ownership &own) { return -EINVAL; }
 
@@ -20,8 +18,8 @@ ck::vec<fs::DirectoryEntry *> devfs::DirectoryNode::dirents(void) {
   for (auto &[name, ent] : entries)
     res.push(ent.get());
 
-  auto l = fs::DeviceNode::lock_names();
-  const auto &names = fs::DeviceNode::get_names();
+  auto l = dev::Device::lock_names();
+  const auto &names = dev::Device::get_names();
   for (auto &[name, ent] : names)
     res.push(ent.get());
   return res;
@@ -34,8 +32,8 @@ fs::DirectoryEntry *devfs::DirectoryNode::get_direntry(ck::string name) {
   }
 
 
-  auto l = fs::DeviceNode::lock_names();
-  const auto &names = fs::DeviceNode::get_names();
+  auto l = dev::Device::lock_names();
+  const auto &names = dev::Device::get_names();
   auto df = names.find(name);
   if (df != names.end()) return df->value.get();
 

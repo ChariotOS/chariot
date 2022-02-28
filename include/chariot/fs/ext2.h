@@ -213,7 +213,7 @@ namespace ext2 {
     FileSystem(void);
     ~FileSystem(void);
 
-    bool probe(ck::ref<fs::BlockDeviceNode>);
+    bool probe(ck::ref<dev::BlockDevice>);
 
     // implemented in ext2/inode.cpp
     ck::ref<fs::Node> create_inode(u32 index);
@@ -263,7 +263,7 @@ namespace ext2 {
     spinlock cache_lock;
 
     ck::box<fs::File> disk;
-    ck::ref<fs::BlockDeviceNode> bdev;
+    ck::ref<dev::BlockDevice> bdev;
 
     spinlock m_lock;
   };

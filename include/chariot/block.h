@@ -5,6 +5,10 @@
 #include <mm.h>
 
 
+namespace dev {
+  class BlockDevice;
+}
+
 /**
  * functions to interact with a block devices and the block cache
  */
@@ -12,9 +16,9 @@ namespace block {
 
   // a buffer represents a page (4k) in a block device.
   struct Buffer {
-    fs::BlockDeviceNode &bdev; /* the device this buffer belongs to */
+    dev::BlockDevice &bdev; /* the device this buffer belongs to */
 
-    static struct Buffer *get(fs::BlockDeviceNode &, off_t page);
+    static struct Buffer *get(dev::BlockDevice &, off_t page);
 
     static void release(struct Buffer *);
 
@@ -38,7 +42,7 @@ namespace block {
    protected:
     inline static void release(struct blkdev *d) {}
 
-    Buffer(fs::BlockDeviceNode &, off_t);
+    Buffer(dev::BlockDevice &, off_t);
 
     bool m_dirty = false;
     spinlock m_lock;
@@ -58,19 +62,19 @@ namespace block {
 
 // read data from blocks to from a byte offset. These can be somewhat wasteful,
 // but that gets amortized by the block flush daemon :^)
-int bread(fs::BlockDeviceNode &, void *dst, size_t size, off_t byte_offset);
-int bwrite(fs::BlockDeviceNode &, void *data, size_t size, off_t byte_offset);
+int bread(dev::BlockDevice &, void *dst, size_t size, off_t byte_offset);
+int bwrite(dev::BlockDevice &, void *data, size_t size, off_t byte_offset);
 
 // reclaim some memory
 
-inline auto bget(fs::BlockDeviceNode &b, off_t page) { return block::Buffer::get(b, page); }
+inline auto bget(dev::BlockDevice &b, off_t page) { return block::Buffer::get(b, page); }
 
 // release a block
 static inline auto bput(struct block::Buffer *b) { return block::Buffer::release(b); }
 
 
 struct bref {
-  static inline bref get(fs::BlockDeviceNode &b, off_t page) { return block::Buffer::get(b, page); }
+  static inline bref get(dev::BlockDevice &b, off_t page) { return block::Buffer::get(b, page); }
 
   inline bref(struct block::Buffer *b) { buf = b; }
 

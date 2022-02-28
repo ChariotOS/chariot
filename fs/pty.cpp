@@ -22,25 +22,28 @@ static ssize_t mx_read(fs::File &f, char *dst, size_t sz);
 static ssize_t mx_write(fs::File &f, const char *dst, size_t sz);
 static int pts_poll(fs::File &f, int events, poll_table &pt);
 
+DECLARE_STUB_DRIVER("pty", pty_driver);
 
-void pty::write_in(char c) {
+
+PTYNode::PTYNode() : TTYNode(pty_driver) {}
+void PTYNode::write_in(char c) {
   // DBG("pts::write_in '%c'\n", c);
   //
   in.write(&c, 1, true);
 }
 
-void pty::write_out(char c, bool block) {
+void PTYNode::write_out(char c, bool block) {
   // DBG("pts::write_out '%c'\n", c);
   //
   out.write(&c, 1, block);
 }
 
-pty::~pty(void) {}
+PTYNode::~PTYNode(void) {}
 
 
 
 static spinlock pts_lock;
-static ck::map<int, ck::ref<struct pty>> pts;
+static ck::map<int, ck::ref<struct PTYNode>> pts;
 
 
 // static struct fs::FileOperations pts_ops = {
@@ -63,7 +66,7 @@ static int allocate_pts() {
   for (i = 0; true; i++) {
     // if there isn't a pts at this location, allocate one
     if (!pts.contains(i)) {
-      pts[i] = new pty();
+      pts[i] = new PTYNode();
       pts[i]->index = 0;
       dev::register_name(pts_driver, ck::string::format("vtty%d", i), i);
       break;

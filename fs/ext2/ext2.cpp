@@ -59,7 +59,7 @@ ext2::FileSystem::~FileSystem(void) {
   if (sb != nullptr) delete sb;
 }
 
-bool ext2::FileSystem::probe(ck::ref<fs::BlockDeviceNode> bdev) {
+bool ext2::FileSystem::probe(ck::ref<dev::BlockDevice> bdev) {
   TRACE;
 
   this->bdev = bdev;
@@ -304,7 +304,7 @@ static ck::ref<fs::FileSystem> ext2_mount(ck::string args, int flags, ck::string
   auto file = vfs::open(device);
   if (!file) {
     KWARN("EXT2: Cannot mount %s. File not found\n", device.get());
-		return nullptr;
+    return nullptr;
   }
 
   // if the device file is not a block file, we cannot mount it
@@ -313,7 +313,7 @@ static ck::ref<fs::FileSystem> ext2_mount(ck::string args, int flags, ck::string
     return nullptr;
   }
 
-  ck::ref<fs::BlockDeviceNode> bdev = file;
+  ck::ref<dev::BlockDevice> bdev = file;
   auto filesystem = ck::make_ref<ext2::FileSystem>();
   if (!filesystem->probe(bdev)) {
     return nullptr;

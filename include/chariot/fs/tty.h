@@ -9,7 +9,7 @@
 
 /**
  */
-struct TTYNode : public fs::CharDeviceNode {
+struct TTYNode : public dev::CharDevice {
   int index;
 
   struct termios tios;
@@ -31,7 +31,7 @@ struct TTYNode : public fs::CharDeviceNode {
 
 
 
-  TTYNode();
+  TTYNode(dev::Driver &drv);
   virtual ~TTYNode(void);
 
 

@@ -12,20 +12,9 @@
 
 static int next_major = 0;
 static rwlock drivers_lock;
-static ck::map<major_t, struct dev::DriverInfo *> drivers;
-static ck::map<ck::string, dev_t> device_names;
 
 int dev::register_driver(struct dev::DriverInfo &info) {
-  DRIVER_REFACTOR();
-  assert(info.major != -1);
-  assert(info.type == DRIVER_CHAR || info.type == DRIVER_BLOCK);
-
-  drivers_lock.write_lock();
-
-  drivers.set(info.major, &info);
-
-  drivers_lock.write_unlock();
-
+  KWARN("Driver %s registered. Please rewrite, as it will not be visible in the filesystem.\n", info.name);
   return 0;
 }
 
@@ -37,10 +26,6 @@ int dev::register_name(struct dev::DriverInfo &info, ck::string name, minor_t mi
 
 int dev::deregister_name(struct dev::DriverInfo &, ck::string name) {
   DRIVER_REFACTOR();
-
-  drivers_lock.write_lock();
-  device_names.remove(name);
-  drivers_lock.write_unlock();
   return -ENOENT;
 }
 
@@ -111,17 +96,10 @@ void dev::Driver::probe_all(ck::ref<hw::Device> dev) {
 
 
 ksh_def("drivers", "display all (old style) drivers") {
-  drivers_lock.read_lock();
-  printk("Names:\n");
-  for (auto &[name, dev] : device_names) {
-    printk(" - %s: %d,%d\n", name.get(), dev.major(), dev.minor());
-  }
+  scoped_lock l(all_drivers_lock);
 
-
-  printk("Drivers:\n");
-  for (auto &[major, drv] : drivers) {
-    printk(" - major: %d: %s\n", major, drv->name);
+  for (auto d : all_drivers) {
+    printk(" - %s\n", d->name().get());
   }
-  drivers_lock.read_unlock();
   return 0;
 }

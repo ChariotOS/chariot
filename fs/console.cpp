@@ -37,10 +37,12 @@ static void consputc(int c, bool debug = false) {
 #endif
 }
 
+DECLARE_STUB_DRIVER("console", console_driver);
 
 
 struct ConsoleNode : public TTYNode {
  public:
+  ConsoleNode(void) : TTYNode(console_driver) {}
   virtual ~ConsoleNode() {}
   // write to the global console fifo
   virtual void write_in(char c) { console_fifo.write(&c, 1, false); }

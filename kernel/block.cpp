@@ -7,6 +7,7 @@
 #include <module.h>
 #include <sched.h>
 #include <template_lib.h>
+#include <dev/driver.h>
 
 
 static spinlock g_next_block_lru_lock;
@@ -35,7 +36,7 @@ static int block_flush_task(void *) {
 
 static spinlock buffer_cache_lock;
 static uint64_t total_blocks_in_cache = 0;
-static ck::map<fs::BlockDeviceNode *, ck::map<off_t, block::Buffer *>> buffer_cache;
+static ck::map<dev::BlockDevice *, ck::map<off_t, block::Buffer *>> buffer_cache;
 
 
 
@@ -77,14 +78,14 @@ struct block_cache_key {};
 
 namespace block {
 
-  Buffer::Buffer(fs::BlockDeviceNode &bdev, off_t index) : bdev(bdev), m_index(index) {
+  Buffer::Buffer(dev::BlockDevice &bdev, off_t index) : bdev(bdev), m_index(index) {
     // we don't allocate the page here, only on calls to ::data().
     // start with 0 refs
     m_count = 0;
   }
 
 
-  struct Buffer *block::Buffer::get(fs::BlockDeviceNode &device, off_t page) {
+  struct Buffer *block::Buffer::get(dev::BlockDevice &device, off_t page) {
     scoped_irqlock l(buffer_cache_lock);
 
     struct block::Buffer *buf = NULL;
@@ -194,7 +195,7 @@ namespace block {
 }  // namespace block
 
 
-static ssize_t block_rw(fs::BlockDeviceNode &b, void *dst, size_t size, off_t byte_offset, bool write) {
+static ssize_t block_rw(dev::BlockDevice &b, void *dst, size_t size, off_t byte_offset, bool write) {
   // how many more bytes are needed
   long to_access = size;
   // the offset within the current page
@@ -202,12 +203,12 @@ static ssize_t block_rw(fs::BlockDeviceNode &b, void *dst, size_t size, off_t by
 
   char *udata = (char *)dst;
 
-	if (b.size() <= byte_offset + size) return 0;
+  if (b.size() <= byte_offset + size) return 0;
 
   for (off_t blk = byte_offset / PGSIZE; true; blk++) {
     // get the block we are looking at.
     auto block = bget(b, blk);
-		if (block == nullptr) break;
+    if (block == nullptr) break;
     auto data = (char *)block->data();
 
     size_t space_left = PGSIZE - offset;
@@ -238,12 +239,10 @@ static ssize_t block_rw(fs::BlockDeviceNode &b, void *dst, size_t size, off_t by
 }
 
 
-int bread(fs::BlockDeviceNode &b, void *dst, size_t size, off_t byte_offset) {
-  return block_rw(b, dst, size, byte_offset, false /* read */);
-}
+int bread(dev::BlockDevice &b, void *dst, size_t size, off_t byte_offset) { return block_rw(b, dst, size, byte_offset, false /* read */); }
 
 
-int bwrite(fs::BlockDeviceNode &b, void *data, size_t size, off_t byte_offset) {
+int bwrite(dev::BlockDevice &b, void *data, size_t size, off_t byte_offset) {
   return block_rw(b, data, size, byte_offset, true /* write */);
 }
 

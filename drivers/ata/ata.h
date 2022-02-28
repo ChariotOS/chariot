@@ -31,7 +31,7 @@ class word_port {
 };
 
 namespace dev {
-  class ata : public dev::Disk {
+  class ATADisk : public dev::Disk {
    public:
     word_port data_port;
     byte_port error_port;
@@ -81,12 +81,12 @@ namespace dev {
       uint16_t mark_end;
     } __attribute__((packed));
 
-    ata(u16 portbase, bool master);
-    virtual ~ata();
+    ATADisk(u16 portbase, bool master);
+    virtual ~ATADisk();
 
     bool identify();
 
-    // ^fs::BlockDeviceNode
+    // ^dev::BlockDevice
     virtual int read_blocks(uint32_t sector, void* data, int n);
     virtual int write_blocks(uint32_t sector, const void* data, int n);
 

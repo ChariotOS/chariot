@@ -82,7 +82,6 @@ namespace dev {
     virtual void detach(ck::ref<hw::Device> dev) {}
 
 
-
     // the major number for this device driver.
     inline int major(void) const { return m_major; }
     inline void set_name(ck::string name) { m_name = move(name); }
@@ -101,32 +100,21 @@ namespace dev {
 
    public:
     ModuleDriver(const char *name, Prober prober) : m_prober(prober) { set_name(name); }
-    virtual void attach(ck::ref<hw::Device> dev) final {
+    void attach(ck::ref<hw::Device> dev) override final {
       auto drv = ck::make_ref<DeviceT>(*this, dev);
-
       m_devices.set(drv->minor, drv);
       drv->init();
     }
 
-    virtual ProbeResult probe(ck::ref<hw::Device> dev) final { return m_prober(dev); }
+    ProbeResult probe(ck::ref<hw::Device> dev) override final { return m_prober(dev); }
   };
 
-
-
-  // This enum represents the type device that a dev::Device actually
-  // is... This is required because chariot doesn't support rtti
-  enum Type {
-    Basic,   // dev::Device
-    Char,    // dev::CharDevice
-    Block,   // dev::BlockDevice
-    Serial,  // dev::SerialDevice
-  };
 
   /*
    * dev::Device objects represent the `minor` part of a `major/minor` device driver.
    * A Device object can be bound to the filesystem in /dev/, for example.
    */
-  class Device : public ck::refcounted<Device> {
+  class Device : public fs::Node {
    private:
     // each driven device (minor number) must have a driver (major number),
     // this is a handle to that.
@@ -135,83 +123,63 @@ namespace dev {
     ck::ref<hw::Device> m_dev = nullptr;
 
 
-    dev::Type m_type = dev::Type::Basic;
-
    public:
     int major, minor;
 
 
     // Device drivers are not meant to reimplement the constructor.
     // They are meant to ovewrride `init()` instead
-    Device(dev::Driver &driver, ck::ref<hw::Device> dev = nullptr) : m_driver(driver), m_dev(dev) {
-      major = driver.major();
-      minor = driver.next_minor();
-      // attach this driver to the device
-      if (dev) dev->attach_to(this);
-      init();
-    }
-    virtual ~Device(void) {}
+    Device(dev::Driver &driver, ck::ref<hw::Device> dev = nullptr);
+    virtual ~Device(void);
+    void bind(ck::string name);
+    void unbind(void);
+    inline auto &dev(void) const { return m_dev; }
+    inline auto &driver(void) const { return m_driver; }
+    void handle_irq(int num, const char *name);
+
     // called once the device has been initialized
     virtual void init(void) {}
     // called after register_irq(...)
     virtual void irq(int num) {}
 
-    inline auto dev(void) const { return m_dev; }
-    inline auto driver(void) const { return m_driver; }
 
+    static scoped_irqlock lock_names(void);
+    static ck::map<ck::string, ck::box<fs::DirectoryEntry>> &get_names(void);
 
-    void handle_irq(int num, const char *name);
-
-
-    template <typename T>
-    ck::ref<T> cast();
-    auto device_type(void) const { return m_type; }
-
-   protected:
-    void set_type(dev::Type t) { m_type = t; }
+    // ^fs::Node
+    bool is_dev(void) override final { return true; }
   };
 
 
-  template <dev::Type t>
-  class TypedDevice : public dev::Device {
+  class BlockDevice : public dev::Device {
    public:
-    static constexpr dev::Type TYPE = t;
-
-    TypedDevice(dev::Driver &driver, ck::ref<hw::Device> dev = nullptr) : dev::Device(driver, dev) { set_type(t); }
-    virtual ~TypedDevice(void) {}
-  };
-
-
-
-  class BlockDevice : public dev::TypedDevice<dev::Type::Block> {
-   public:
-    using dev::TypedDevice<dev::Type::Block>::TypedDevice;
+    using dev::Device::Device;
     virtual ~BlockDevice() {}
+    // ^fs::Node
+    bool is_blockdev(void) override final { return true; }
+    ssize_t read(fs::File &, char *dst, size_t count) override final;
+    ssize_t write(fs::File &, const char *, size_t) override final;
+
+    // nice wrappers for filesystems and all that :)
+    inline int read_block(void *data, int block) { return read_blocks(block, data, 1); }
+    inline int write_block(void *data, int block) { return write_blocks(block, data, 1); }
+
+    virtual int read_blocks(uint32_t sector, void *data, int n) = 0;
+    virtual int write_blocks(uint32_t sector, const void *data, int n) = 0;
   };
 
 
 
-  class CharDevice : public dev::TypedDevice<dev::Type::Char> {
+  class CharDevice : public dev::Device {
    public:
-    using dev::TypedDevice<dev::Type::Char>::TypedDevice;
+    using dev::Device::Device;
+
     virtual ~CharDevice() {}
+
+    // ^dev::Device
+    bool is_chardev(void) override final { return true; }
   };
 
-
-
-  class SerialDevice : public dev::TypedDevice<dev::Type::Serial> {
-   public:
-    using dev::TypedDevice<dev::Type::Serial>::TypedDevice;
-    virtual ~SerialDevice() {}
-  };
-
-
-
-  template <typename T>
-  inline auto dev::Device::cast() -> ck::ref<T> {
-    if (device_type() == T::TYPE) return (T *)this;
-    return nullptr;
-  }
 
 }  // namespace dev
 
@@ -219,3 +187,13 @@ namespace dev {
 #define driver_init(name, T, prober)                                                                             \
   void _MOD_VARNAME(__driver_init)(void) { dev::Driver::add(ck::make_ref<dev::ModuleDriver<T>>(name, prober)); } \
   module_init(name, _MOD_VARNAME(__driver_init));
+
+
+#define DECLARE_STUB_DRIVER(name, varname)                 \
+  static class StubDriver_##varname : public dev::Driver { \
+   public:                                                 \
+    StubDriver_##varname(void) {                           \
+      set_name(name);                                      \
+      dev::Driver::add(this);                              \
+    }                                                      \
+  } varname;

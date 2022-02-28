@@ -122,9 +122,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   }
 }
 
-
-class MyDevice : public fs::CharDeviceNode {};
-
 int kernel_init(void*) {
   // start up the extra cpu cores
 #ifdef CONFIG_SMP
@@ -173,11 +170,10 @@ int kernel_init(void*) {
     panic("failed to mount root. Error=%d\n", -mnt_res);
   }
 
-	int chroot_res = vfs::chroot("/root");
-	if (chroot_res != 0) {
-
+  int chroot_res = vfs::chroot("/root");
+  if (chroot_res != 0) {
     panic("Failed to chroot into /root. Error=%d\n", -mnt_res);
-	}
+  }
   assert(root_name);
 
 

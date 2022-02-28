@@ -35,7 +35,7 @@ void TTYNode::reset(void) {
 
 
 
-TTYNode::TTYNode(void) { reset(); }
+TTYNode::TTYNode(dev::Driver &drv) : dev::CharDevice(drv) { reset(); }
 TTYNode::~TTYNode(void) {
   // TODO: remove from the storage
 }

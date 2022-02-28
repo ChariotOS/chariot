@@ -73,7 +73,7 @@ struct vcons vga_console {
 static bool cons_enabled = false;
 static spinlock fblock;
 
-u32 *vga_fba = 0;
+static u32 *vga_fba = 0;
 struct ck_fb_info info {
   .active = 0, .width = 0, .height = 0,
 };
@@ -281,11 +281,11 @@ void vga::early_init(uint64_t mbd) {
 
 
 
-class VGADriver : public dev::VideoDevice {
+class VGADevice : public dev::VideoDevice {
  public:
   using dev::VideoDevice::VideoDevice;
 
-  virtual ~VGADriver(void) {}
+  virtual ~VGADevice(void) {}
 
   virtual int get_mode(gvi_video_mode &mode) {
     mode.width = info.width;
@@ -332,4 +332,4 @@ static dev::ProbeResult vga_probe(ck::ref<hw::Device> dev) {
 };
 
 
-driver_init("x86-vga", VGADriver, vga_probe);
+driver_init("x86-vga", VGADevice, vga_probe);

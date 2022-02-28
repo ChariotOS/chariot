@@ -1,5 +1,7 @@
 #include "ata.h"
 
+#if 0
+
 #include <module.h>
 #include <dev/driver.h>
 #include <dev/hardware.h>
@@ -345,3 +347,4 @@ void piix::Driver::init(void) {
 }
 
 driver_init("ata-piix", piix::Driver, piix_probe);
+#endif

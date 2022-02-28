@@ -6,9 +6,9 @@
 #include <ck/ptr.h>
 
 namespace dev {
-  class Disk : public fs::BlockDeviceNode {
+  class Disk : public dev::BlockDevice {
    public:
-    Disk();
+    using dev::BlockDevice::BlockDevice;
 
     virtual ~Disk();
   };

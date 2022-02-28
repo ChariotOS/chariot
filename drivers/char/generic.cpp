@@ -11,8 +11,15 @@
 #define MINOR_RANDOM 2
 
 
-struct RandomNode : public fs::CharDeviceNode {
-	using fs::CharDeviceNode::CharDeviceNode;
+
+class GenericDriver : public dev::Driver {
+ public:
+  GenericDriver(void) { set_name("generic"); }
+};
+static GenericDriver gdev;
+
+struct RandomNode : public dev::CharDevice {
+  RandomNode(void) : dev::CharDevice(gdev) {}
   virtual ssize_t read(fs::File &, char *buf, size_t sz) override;
 };
 
@@ -47,8 +54,8 @@ static RandomNode urandom;
 
 
 static void dev_init(void) {
-	random.bind("urandom");
-	random.bind("random");
+  random.bind("urandom");
+  random.bind("random");
 }
 
 module_init("char", dev_init);
