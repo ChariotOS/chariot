@@ -11,28 +11,6 @@
 #define DRIVER_REFACTOR() KWARN("fs refactor: old driver function '%s' called.\n", __PRETTY_FUNCTION__)
 
 static int next_major = 0;
-static rwlock drivers_lock;
-
-int dev::register_driver(struct dev::DriverInfo &info) {
-  KWARN("Driver %s registered. Please rewrite, as it will not be visible in the filesystem.\n", info.name);
-  return 0;
-}
-
-extern void devfs_register_device(ck::string name, int type, int major, int minor);
-int dev::register_name(struct dev::DriverInfo &info, ck::string name, minor_t min) {
-  DRIVER_REFACTOR();
-  return 0;
-}
-
-int dev::deregister_name(struct dev::DriverInfo &, ck::string name) {
-  DRIVER_REFACTOR();
-  return -ENOENT;
-}
-
-
-static int disk_count = 0;
-ck::string dev::next_disk_name(void) { return ck::string::format("disk%d", disk_count); }
-
 
 static void device_irq_handler(int num, reg_t *regs, void *data) {
   dev::Device *self = (dev::Device *)data;
@@ -40,8 +18,6 @@ static void device_irq_handler(int num, reg_t *regs, void *data) {
 }
 
 void dev::Device::handle_irq(int num, const char *name) { irq::install(num, device_irq_handler, name, this); }
-
-
 
 
 static spinlock all_drivers_lock;

@@ -46,17 +46,6 @@ static spinlock pts_lock;
 static ck::map<int, ck::ref<struct PTYNode>> pts;
 
 
-// static struct fs::FileOperations pts_ops = {
-//     .read = pts_read,
-//     .write = pts_write,
-//     .ioctl = pts_ioctl,
-//     .poll = pts_poll,
-// };
-
-
-
-static struct dev::DriverInfo pts_driver { .name = "pts", .type = DRIVER_CHAR, .major = MAJOR_PTS };
-
 
 static auto getpts(int id) { return pts.get(id); }
 
@@ -68,7 +57,7 @@ static int allocate_pts() {
     if (!pts.contains(i)) {
       pts[i] = new PTYNode();
       pts[i]->index = 0;
-      dev::register_name(pts_driver, ck::string::format("vtty%d", i), i);
+      pts[i]->bind(ck::string::format("vtty%d", i));
       break;
     } else {
       // if nobody is controlling this pts, return it
@@ -167,7 +156,7 @@ static int mx_ioctl(fs::File &f, unsigned int cmd, off_t arg) {
 }
 
 
-
+// for "ptmx" driver
 
 static struct fs::FileOperations mx_ops = {
     .read = mx_read,
@@ -178,8 +167,6 @@ static struct fs::FileOperations mx_ops = {
     .poll = mx_poll,
 };
 
-
-static struct dev::DriverInfo mx_driver { .name = "ptmx", .type = DRIVER_CHAR, .major = MAJOR_PTMX, .char_ops = &mx_ops, };
 
 
 static void pty_init(void) {

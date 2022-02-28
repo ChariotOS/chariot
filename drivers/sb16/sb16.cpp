@@ -180,18 +180,6 @@ static ssize_t sb16_write(fs::File &fd, const char *buf, size_t sz) {
 
 static int sb16_open(fs::File &fd) { return 0; }
 
-struct fs::FileOperations sb_ops = {
-    .write = sb16_write,
-    .open = sb16_open,
-};
-
-
-static struct dev::DriverInfo sb16_driver {
-  .name = "sb16", .type = DRIVER_CHAR, .major = MAJOR_SB16,
-
-  .char_ops = &sb_ops,
-};
-
 
 static void sb16_interrupt(int intr, reg_t *fr, void *) {
   printk(KERN_INFO "SB16 INTERRUPT\n");
@@ -234,9 +222,9 @@ void sb16_init(void) {
 
   irq::install(get_irq_line(), sb16_interrupt, "Sound Blaster 16");
   // finally initialize
-  dev::register_driver(sb16_driver);
-
-  dev::register_name(sb16_driver, "sb16", 0);
+	// TODO:
+  // dev::register_driver(sb16_driver);
+  // dev::register_name(sb16_driver, "sb16", 0);
 }
 
 module_init("sb16", sb16_init);

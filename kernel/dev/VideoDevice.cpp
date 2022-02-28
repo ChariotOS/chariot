@@ -96,7 +96,3 @@ void dev::VideoDevice::register_instance(void) {
   m_VideoDrivers.push(this);
   this->bind(name);
 }
-
-
-
-// static struct dev::DriverInfo gvi_driver_info { .name = "Generic Video Interface", .type = DRIVER_CHAR, .major = MAJOR_VIDEO, };

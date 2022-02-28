@@ -112,24 +112,6 @@ int serial_worker(void *) {
 void serial_irq_handle(int i, reg_t *, void *) { serial_data_avail.wake_up(); }
 
 
-
-#if 0
-static ssize_t com_read(fs::File &f, char *dst, size_t sz) { return -ENOSYS; }
-
-static ssize_t com_write(fs::File &f, const char *dst, size_t sz) { return -ENOSYS; }
-
-
-static struct fs::FileOperations com_ops = {
-    .read = com_read,
-    .write = com_write,
-};
-#endif
-
-
-static struct dev::DriverInfo com_driver { .name = "com", .type = DRIVER_CHAR, .major = MAJOR_COM };
-
-
-
 static void serial_mod_init() {
   sched::proc::create_kthread("[COM Worker]", serial_worker);
 
@@ -141,10 +123,6 @@ static void serial_mod_init() {
   inb(COM1 + 2);
   inb(COM1 + 0);
 
-
-
-  // dev::register_driver(com_driver);
-  // dev::register_name(com_driver, "com1", 0);
 }
 
 module_init("serial", serial_mod_init);
