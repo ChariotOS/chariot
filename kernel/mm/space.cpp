@@ -468,7 +468,6 @@ void mm::AddressSpace::dump(void) {
     int maj = 0;
     int min = 0;
     if (r->fd) {
-      FS_REFACTOR();
       // maj = r->fd->ino->dev.major;
       // min = r->fd->ino->dev.minor;
     }
