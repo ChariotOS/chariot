@@ -159,9 +159,9 @@ static dev::ProbeResult riscv_hart_probe(ck::ref<hw::Device> dev) {
 
 
 
-class RISCVHart : public dev::Device {
+class RISCVHart : public dev::CharDevice {
  public:
-  using dev::Device::Device;
+  using dev::CharDevice::CharDevice;
 
   virtual ~RISCVHart(void) {}
 
@@ -175,8 +175,8 @@ class RISCVHart : public dev::Device {
         }
 
         auto hartid = mmio->address();
+				bind(ck::string::format("hart%d", hartid));
         if (hartid != rv::get_hstate().hartid) {
-          LOG("found hart %d\n", mmio->address());
           LOG("Trying to start hart %d\n", hartid);
 #ifdef CONFIG_SMP
           // start the other core.
@@ -302,14 +302,14 @@ void main(int hartid, void *fdt) {
 
 
   sched::proc::create_kthread("main task", [](void *) -> int {
-    LOG("Calling kernel module init functions\n");
-    initialize_builtin_modules();
-    LOG("kernel modules initialized\n");
-    // kshell::run();
-
 
     // Init the virtual filesystem and mount a tmpfs and devfs to / and /dev
     vfs::init_boot_filesystem();
+
+    LOG("Calling kernel module init functions\n");
+    initialize_builtin_modules();
+    LOG("kernel modules initialized\n");
+
 
 
 #ifdef CONFIG_ENABLE_USERSPACE
