@@ -195,5 +195,6 @@ namespace dev {
     StubDriver_##varname(void) {                           \
       set_name(name);                                      \
       dev::Driver::add(this);                              \
+      ref_retain(); /* hack */                             \
     }                                                      \
   } varname;

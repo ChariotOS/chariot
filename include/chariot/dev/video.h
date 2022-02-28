@@ -10,14 +10,18 @@ namespace dev {
    public:
     using dev::Device::Device;
     virtual ~VideoDevice();
+
+
+    // For children:
     virtual int get_mode(gvi_video_mode &mode);
     virtual int set_mode(const gvi_video_mode &mode);
     virtual uint32_t *get_framebuffer(void);
     virtual int flush_fb(void);
 
-    static void register_driver(VideoDevice *vdev);
+    void register_instance(void);
 
-    virtual int on_open(void) { return 0; /* allow */ }
-    virtual void on_close(void) {}
+    // ^fs::Node
+    ck::ref<mm::VMObject> mmap(fs::File &file, size_t npages, int prot, int flags, off_t off) override;
+    int ioctl(fs::File &file, unsigned int cmd, off_t arg) override;
   };
 }  // namespace dev

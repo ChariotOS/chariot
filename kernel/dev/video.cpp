@@ -1,7 +1,6 @@
 #include <dev/video.h>
 #include <errno.h>
 #include <dev/driver.h>
-#include <errno.h>
 #include <phys.h>
 #include <mm.h>
 
@@ -28,30 +27,24 @@ static dev::VideoDevice *get_vdev(int minor) {
   return nullptr;
 }
 
-struct gvi_vmobject final : public mm::VMObject {
+struct VideoVMObject final : public mm::VMObject {
   dev::VideoDevice &vdev;
-  gvi_vmobject(dev::VideoDevice &vdev, size_t npages) : VMObject(npages), vdev(vdev) {}
+  VideoVMObject(dev::VideoDevice &vdev, size_t npages) : VMObject(npages), vdev(vdev) {}
 
-  virtual ~gvi_vmobject(void){};
+  virtual ~VideoVMObject(void){};
 
   virtual ck::ref<mm::Page> get_shared(off_t n) override {
     auto fb = (unsigned long)vdev.get_framebuffer();
     if (fb == 0) return nullptr;
     auto p = mm::Page::create(fb + (n * PGSIZE));
 
-    // p->fset(PG_NOCACHE | PG_WRTHRU);
-
     return p;
   }
 };
-#if 0
 
-static ck::ref<mm::VMObject> gvi_mmap(fs::File &fd, size_t npages, int prot, int flags, off_t off) {
-  auto *vdev = get_vdev(fd.ino->minor);
-  if (vdev == NULL) return nullptr;
-
+ck::ref<mm::VMObject> dev::VideoDevice::mmap(fs::File &file, size_t npages, int prot, int flags, off_t off) {
   gvi_video_mode mode;
-  if (vdev->get_mode(mode) != 0) return nullptr;
+  if (this->get_mode(mode) != 0) return nullptr;
 
   uint64_t size = mode.width * mode.height * sizeof(uint32_t);
 
@@ -71,13 +64,12 @@ static ck::ref<mm::VMObject> gvi_mmap(fs::File &fd, size_t npages, int prot, int
     return nullptr;
   }
 
-  return ck::make_ref<gvi_vmobject>(*vdev, npages);
+  return ck::make_ref<VideoVMObject>(*this, npages);
 }
 
 
-static int gvi_ioctl(fs::File &fd, unsigned int cmd, unsigned long arg) {
-  auto *vdev = get_vdev(fd.ino->minor);
-  if (vdev == NULL) return -EINVAL;
+
+int dev::VideoDevice::ioctl(fs::File &file, unsigned int cmd, off_t arg) {
   if (cmd == GVI_IDENTIFY) {
     return GVI_IDENTIFY_MAGIC;
   }
@@ -86,46 +78,25 @@ static int gvi_ioctl(fs::File &fd, unsigned int cmd, unsigned long arg) {
   if (cmd == GVI_GET_MODE) {
     if (!VALIDATE_WR((void *)arg, sizeof(gvi_video_mode))) return -EINVAL;
     struct gvi_video_mode mode;
-    int ret = vdev->get_mode(mode);
+    int ret = this->get_mode(mode);
     *(gvi_video_mode *)arg = mode;
     return ret;
   }
 
   if (cmd == GVI_FLUSH_FB) {
-    return vdev->flush_fb();
+    return flush_fb();
   }
 
   return -ENOTIMPL;
 }
 
-
-static int gvi_open(fs::File &fd) {
-  auto *vdev = get_vdev(fd.ino->minor);
-  if (vdev == NULL) return -EINVAL;
-  return vdev->on_open();
-}
-
-static void gvi_close(fs::File &fd) {
-  auto *vdev = get_vdev(fd.ino->minor);
-  if (vdev == NULL) return;
-
-  vdev->on_close();
-  // reset_fb();
-}
-#endif
-
-
-static struct dev::DriverInfo gvi_driver_info { .name = "Generic Video Interface", .type = DRIVER_CHAR, .major = MAJOR_VIDEO, };
-
-void dev::VideoDevice::register_driver(dev::VideoDevice *vdev) {
-  if (!initialized) {
-    dev::register_driver(gvi_driver_info);
-    initialized = true;
-  }
-
-
+void dev::VideoDevice::register_instance(void) {
   int minor = m_VideoDrivers.size();
   ck::string name = ck::string::format("video%d", minor);
-  m_VideoDrivers.push(vdev);
-  dev::register_name(gvi_driver_info, name, minor);
+  m_VideoDrivers.push(this);
+  this->bind(name);
 }
+
+
+
+// static struct dev::DriverInfo gvi_driver_info { .name = "Generic Video Interface", .type = DRIVER_CHAR, .major = MAJOR_VIDEO, };

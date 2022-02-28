@@ -18,7 +18,13 @@ fs::File::File(ck::ref<fs::Node> f, int flags) : ino(f) {
 
   // register that the fd has access to the inode
   if (ino != nullptr) {
-    f->open(*this);
+    int err = f->open(*this);
+    printk("err: %d\n", err);
+    if (err != 0) {
+      m_error = err;
+      ino = nullptr;
+      return;
+    }
   }
 
   if (ino != nullptr) {
