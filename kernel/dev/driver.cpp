@@ -5,6 +5,7 @@
 #include <fs/vfs.h>
 #include <module.h>
 #include "fs.h"
+#include <util.h>
 
 #define LOG(...) PFXLOG(BLU "DRV", __VA_ARGS__)
 
@@ -13,11 +14,14 @@
 static int next_major = 0;
 
 static void device_irq_handler(int num, reg_t *regs, void *data) {
-  dev::Device *self = (dev::Device *)data;
+  dev::Device *self = static_cast<dev::Device *>(data);
   self->irq(num);
 }
 
-void dev::Device::handle_irq(int num, const char *name) { irq::install(num, device_irq_handler, name, this); }
+void dev::Device::handle_irq(int num, const char *name) {
+	irq::install(num, device_irq_handler, name, this);
+	irq(num);
+}
 
 
 static spinlock all_drivers_lock;
