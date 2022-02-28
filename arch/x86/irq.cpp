@@ -323,8 +323,8 @@ void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
 
   curproc->mm->dump();
 
-  arch_halt();
-  arch_enable_ints();
+	arch_enable_ints();
+
   curproc->terminate(fatal_signal);
 }
 
