@@ -5,12 +5,15 @@
 #include <mm.h>
 #include <util.h>
 
-#define EXT2_ADDR_PER_BLOCK(node) (node->block_size / sizeof(u32))
+#define EXT2_ADDR_PER_BLOCK(node) (node->block_size() / sizeof(u32))
 #define EXT2_NDIR_BLOCKS 12
 #define EXT2_IND_BLOCK EXT2_NDIR_BLOCKS
 #define EXT2_DIND_BLOCK (EXT2_IND_BLOCK + 1)
 #define EXT2_TIND_BLOCK (EXT2_DIND_BLOCK + 1)
 #define EXT2_N_BLOCKS (EXT2_TIND_BLOCK + 1)
+
+
+ext2::Node &downcast(fs::Node &n) { return *(ext2::Node *)(&n); }
 
 
 static int flush_info(fs::Node &ino);
@@ -80,142 +83,39 @@ static int block_to_path(ck::ref<fs::Node> node, int i_block, int offsets[4], in
   return n;
 }
 
-static ck::ref<fs::Node> ext2_inode(int type, u32 index, fs::Ext2SuperBlock &fs) {
-  auto in = ck::make_ref<fs::Node>(type, &fs);
 
-  in->ino = index;
 
-  return in;
-}
-
-int block_from_index(fs::Node &node, int i_block, int set_to = 0) {
-  fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(node.sb.get());
+int block_from_index(fs::Node &_n, int i_block, int set_to = 0) {
+  auto &node = downcast(_n);
+  ext2::FileSystem *efs = static_cast<ext2::FileSystem *>(node.sb.get());
   auto bsize = efs->block_size;
 
-  auto p = node.priv<fs::ext2_idata>();
+  // auto p = node.priv<ext2::ext2_idata>();
   // start the inodeS
-  auto table = (int *)p->info.block_pointers;
+  auto table = (int *)node.info.block_pointers;
   int path[4];
   int n = block_to_path(&node, i_block, path);
-
-  scoped_lock l(p->path_cache_lock);
+  scoped_lock l(node.path_cache_lock);
 
   for (int i = 0; i < n - 1; i++) {
     int off = path[i];
-    if (p->blk_bufs[i] == NULL || p->cached_path[i] != off) {
-      if (p->blk_bufs[i] == NULL) p->blk_bufs[i] = (int *)malloc(bsize);
-      if (!efs->read_block(table[off], p->blk_bufs[i])) {
+    if (node.blk_bufs[i] == NULL || node.cached_path[i] != off) {
+      if (node.blk_bufs[i] == NULL) node.blk_bufs[i] = (int *)malloc(bsize);
+      if (!efs->read_block(table[off], node.blk_bufs[i])) {
         return -EIO;
       }
-      p->cached_path[i] = off;
+      node.cached_path[i] = off;
     }
-    table = p->blk_bufs[i];
+    table = node.blk_bufs[i];
   }
 
   return table[path[n - 1]];
 }
 
-
-
-
-#if 0
-// I know, this is slow.
-static ck::vec<uint32_t> read_blocklist(fs::inode &ino,
-                                    bool include_block_list_blocks = true) {
-  fs::ext2 *efs = static_cast<fs::ext2 *>(ino.sb.get());
-
-  auto blocksize = efs->block_size;
-  auto entries_per_block = blocksize / sizeof(uint32_t);
-
-  auto block_count = ceil_div(ino.size, blocksize);
-  auto blocks_remaining = block_count;
-  ck::vec<uint32_t> list;
-  auto add_block = [&](uint32_t bi) {
-    if (blocks_remaining) {
-      list.push(bi);
-      --blocks_remaining;
-    }
-  };
-
-
-  if (include_block_list_blocks) {
-    // This seems like an excessive over-estimate but w/e.
-    list.ensure_capacity(blocks_remaining * 2);
-  } else {
-    list.ensure_capacity(blocks_remaining);
-  }
-
-
-
-#define LEVEL_PRINT(n, block) printk("%4d: %*d\n", block_count - blocks_remaining, n * 8, block)
-
-
-  auto &e2inode = ino.priv<fs::ext2_idata>()->info;
-  unsigned direct_count = min(block_count, (unsigned)EXT2_NDIR_BLOCKS);
-  for (unsigned i = 0; i < direct_count; ++i) {
-    auto block_index = e2inode.dbp[i];
-    LEVEL_PRINT(0, block_index);
-    add_block(block_index);
-  }
-
-  if (!blocks_remaining) return list;
-
-
-  auto process_block_array = [&](unsigned int level, unsigned array_block_index,
-                                 auto &&callback) {
-    if (include_block_list_blocks) callback(array_block_index);
-    auto array_block = new char[blocksize];
-    efs->read_block(array_block_index, array_block);
-
-    auto *array = reinterpret_cast<const uint32_t *>(array_block);
-    unsigned count = min(blocks_remaining, entries_per_block);
-
-    for (uint32_t i = 0; i < count; ++i) {
-      callback(array[i]);
-    }
-
-    delete[] array_block;
-  };
-
-
-  process_block_array(0, e2inode.singly_block, [&](unsigned block_index) {
-    LEVEL_PRINT(1, block_index);
-    add_block(block_index);
-  });
-
-
-  if (!blocks_remaining) return list;
-
-  process_block_array(0, e2inode.doubly_block, [&](unsigned block_index) {
-    LEVEL_PRINT(1, block_index);
-    process_block_array(1, block_index, [&](unsigned block_index2) {
-      LEVEL_PRINT(2, block_index2);
-      add_block(block_index2);
-    });
-  });
-
-  if (!blocks_remaining) return list;
-
-  process_block_array(0, e2inode.triply_block, [&](unsigned block_index) {
-    LEVEL_PRINT(1, block_index);
-    process_block_array(1, block_index, [&](unsigned block_index2) {
-      LEVEL_PRINT(2, block_index2);
-      process_block_array(2, block_index2, [&](unsigned block_index3) {
-        LEVEL_PRINT(3, block_index3);
-        add_block(block_index3);
-      });
-    });
-  });
-
-  return list;
-}
-#endif
-
 static int access_block_path(fs::Node &ino, int n, int *path, ck::func<bool(uint32_t &)> cb) {
-  fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(ino.sb.get());
-
-  auto p = ino.priv<fs::ext2_idata>();
-  auto &info = p->info;
+  ext2::FileSystem *efs = static_cast<ext2::FileSystem *>(ino.sb.get());
+  auto &node = downcast(ino);
+  auto &info = node.info;
   uint32_t blocksize = efs->block_size;
 
 
@@ -227,7 +127,7 @@ static int access_block_path(fs::Node &ino, int n, int *path, ck::func<bool(uint
   }
 
   // lock the path logic
-  scoped_lock l(p->path_cache_lock);
+  scoped_lock l(node.path_cache_lock);
 
   // make sure that the first index is valid as to avoid duplication of work
   if (info.block_pointers[path[0]] == 0) {
@@ -239,16 +139,16 @@ static int access_block_path(fs::Node &ino, int n, int *path, ck::func<bool(uint
   // make sure the path bits are setup right.
   for (int i = 0; i < n; i++) {
     int off = path[i];
-    if (p->blk_bufs[i] == NULL || p->cached_path[i] != off) {
-      if (p->blk_bufs[i] == NULL) p->blk_bufs[i] = (int *)malloc(blocksize);
-      p->cached_path[i] = off;
+    if (node.blk_bufs[i] == NULL || node.cached_path[i] != off) {
+      if (node.blk_bufs[i] == NULL) node.blk_bufs[i] = (int *)malloc(blocksize);
+      node.cached_path[i] = off;
     }
   }
 
   // buffers for each level of indirection
-  auto single_block = (uint32_t *)p->blk_bufs[0];
-  auto double_block = (uint32_t *)p->blk_bufs[1];
-  auto triple_block = (uint32_t *)p->blk_bufs[2];
+  auto single_block = (uint32_t *)node.blk_bufs[0];
+  auto double_block = (uint32_t *)node.blk_bufs[1];
+  auto triple_block = (uint32_t *)node.blk_bufs[2];
 
   // block numbers for each of the levels
   int singly = -1;
@@ -260,9 +160,9 @@ static int access_block_path(fs::Node &ino, int n, int *path, ck::func<bool(uint
   int triple_index = path[2];
 
   singly = info.block_pointers[path[0]];
-  if (p->cached_path[0] != single_index) {
+  if (node.cached_path[0] != single_index) {
     efs->read_block(singly, single_block);
-    p->cached_path[0] = single_index;
+    node.cached_path[0] = single_index;
   }
 
 
@@ -276,9 +176,9 @@ static int access_block_path(fs::Node &ino, int n, int *path, ck::func<bool(uint
 
   // now for double indirection
   doubly = single_block[double_index];
-  if (p->cached_path[1] != double_index) {
+  if (node.cached_path[1] != double_index) {
     efs->read_block(doubly, double_block);
-    p->cached_path[1] = double_index;
+    node.cached_path[1] = double_index;
   }
 
 
@@ -293,9 +193,9 @@ static int access_block_path(fs::Node &ino, int n, int *path, ck::func<bool(uint
 
   // now for triple indirection
   triply = double_block[triple_index];
-  if (p->cached_path[2] != triple_index) {
+  if (node.cached_path[2] != triple_index) {
     efs->read_block(triply, triple_block);
-    p->cached_path[2] = triple_index;
+    node.cached_path[2] = triple_index;
   }
 
 
@@ -322,7 +222,7 @@ static int append_block(fs::Node &ino, int dest) {
   int n = block_to_path(&ino, dest, path);
 
 
-  fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(ino.sb.get());
+  ext2::FileSystem *efs = static_cast<ext2::FileSystem *>(ino.sb.get());
 
   return access_block_path(ino, n, path, [&](uint32_t &dst) -> bool {
     int blk = efs->balloc();
@@ -339,18 +239,19 @@ static int append_block(fs::Node &ino, int dest) {
 // TODO: remove a block from the end of a file, used for shrinking
 static int pop_block(fs::Node &ino) { return 0; }
 
-static int truncate(fs::Node &ino, size_t new_size) {
-  auto old_size = ino.size;
+static int truncate(fs::Node &node, size_t new_size) {
+  auto &ino = downcast(node);
+  auto old_size = ino.size();
   if (old_size == new_size) return 0;
 
 
-  fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(ino.sb.get());
+  ext2::FileSystem *efs = static_cast<ext2::FileSystem *>(ino.sb.get());
 
   auto block_size = efs->block_size;
   size_t bbefore = ceil_div(old_size, block_size);
   size_t bafter = ceil_div(new_size, block_size);
 
-  if (new_size == ino.size) return 0;
+  if (new_size == ino.size()) return 0;
 
 
   if (bafter > bbefore) {
@@ -377,7 +278,7 @@ static int truncate(fs::Node &ino, size_t new_size) {
   }
 
   // :^)
-  ino.size = new_size;
+  ino.set_size(new_size);
   // printk("resize to %d\n", new_size);
   flush_info(ino);
 
@@ -386,12 +287,13 @@ static int truncate(fs::Node &ino, size_t new_size) {
 
 
 // returns the number of bytes read or negative values on failure
-static ssize_t ext2_raw_rw(fs::Node &ino, char *buf, size_t sz, off_t offset, bool write) {
-  fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(ino.sb.get());
+static ssize_t ext2_raw_rw(fs::Node &node, char *buf, size_t sz, off_t offset, bool write) {
+  auto &ino = downcast(node);
+  ext2::FileSystem *efs = static_cast<ext2::FileSystem *>(ino.sb.get());
 
   if (write) {
     off_t total_needed = offset + sz;
-    if (ino.size < total_needed) {
+    if (ino.size() < total_needed) {
       int tres = truncate(ino, total_needed);
       // propagate the error if there was one...
       if (tres < 0) return tres;
@@ -412,7 +314,7 @@ static ssize_t ext2_raw_rw(fs::Node &ino, char *buf, size_t sz, off_t offset, bo
   // TODO: lock the FS. We now want to own the efs.work_buf
   auto *given_buf = (u8 *)buf;
 
-  int remaining_count = min((off_t)sz, (off_t)ino.size - offset);
+  int remaining_count = min((off_t)sz, (off_t)ino.size() - offset);
 
   for (int bi = first_blk_ind; remaining_count && bi <= last_blk_ind; bi++) {
     u32 blk = block_from_index(ino, bi);
@@ -466,16 +368,16 @@ typedef struct __ext2_dir_entry {
 } __attribute__((packed)) ext2_dir;
 
 static void ext2_traverse_dir(fs::Node &ino, ck::func<void(u32 ino, const char *name)> fn) {
-  auto *ents = (ext2_dir *)malloc(ino.size);
+  auto *ents = (ext2_dir *)malloc(ino.size());
 
   // read the entire file into the buffer
-  int res = ext2_raw_rw(ino, (char *)ents, ino.size, 0, false);
+  int res = ext2_raw_rw(ino, (char *)ents, ino.size(), 0, false);
   if (res < 0) {
     panic("ext2: failed to read directory contents. Error code %d\n", res);
   }
 
   char namebuf[255];
-  for (auto *entry = ents; (size_t)entry < (size_t)ents + ino.size; entry = (ext2_dir *)((char *)entry + entry->size)) {
+  for (auto *entry = ents; (size_t)entry < (size_t)ents + ino.size(); entry = (ext2_dir *)((char *)entry + entry->size)) {
     if (entry->inode != 0) {
       memcpy(namebuf, entry->name, entry->namelength);
       namebuf[entry->namelength] = 0;
@@ -486,11 +388,12 @@ static void ext2_traverse_dir(fs::Node &ino, ck::func<void(u32 ino, const char *
   free(ents);
 }
 
-static int flush_info(fs::Node &ino) {
-  fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(ino.sb.get());
-  auto &info = ino.priv<fs::ext2_idata>()->info;
+static int flush_info(fs::Node &node) {
+  auto &ino = downcast(node);
+  ext2::FileSystem *efs = static_cast<ext2::FileSystem *>(ino.sb.get());
+  auto &info = ino.info;
 
-  info.size = ino.size;
+  info.size = ino.size();
 
   auto blocks = ceil_div((uint32_t)info.size, (uint32_t)efs->block_size);
   auto sectors_in_block = efs->block_size / 512;
@@ -500,90 +403,52 @@ static int flush_info(fs::Node &ino) {
   // info.disk_sectors);
 
   info.disk_sectors /= efs->sector_size;
-  info.type = ino.mode;
-  info.uid = ino.uid;
-  info.gid = ino.gid;
+  if (ino.is_dir()) {
+    info.type = EXT2_FT_DIR;
+  } else if (ino.is_file()) {
+    info.type = EXT2_FT_REG_FILE;
+  } else {
+    KWARN("ext2: unknown file type for node. Writing EXT2_FT_UNKNOWN.\n");
+    info.type = EXT2_FT_UNKNOWN;
+  }
+  info.uid = ino.uid();
+  info.gid = ino.gid();
 
-  info.hardlinks = ino.link_count;
-  info.last_access = ino.atime;
-  info.create_time = ino.ctime;
-  info.delete_time = ino.dtime;
+  info.hardlinks = ino.nlink();
+  info.last_access = ino.metadata().accessed_time;
+  info.create_time = ino.metadata().create_time;
+  info.delete_time = 0;  // ?
   // TODO: update all this stuff too
-  efs->write_inode(info, ino.ino);
+  efs->write_inode(info, ino.inode());
   return 0;
 }
 
 
 
 
-static int injest_info(fs::Node &ino, fs::ext2_inode_info &info) {
-  fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(ino.sb.get());
-  ino.size = info.size;
-  ino.mode = info.type;
-  ino.uid = info.uid;
-  ino.gid = info.gid;
-  ino.link_count = info.hardlinks;
-  ino.atime = info.last_access;
-  ino.ctime = info.create_time;
-  ino.mtime = info.last_modif;
-  ino.dtime = info.delete_time;
+static int injest_info(fs::Node &node, ext2::ext2_inode_info &info) {
+  auto &ino = downcast(node);
+  ext2::FileSystem *efs = static_cast<ext2::FileSystem *>(ino.sb.get());
 
-  ino.block_size = efs->block_size;
+  ino.set_size(info.size);
+  ino.set_mode(info.type);
+  ino.set_uid(info.uid);
+  ino.set_gid(info.gid);
+  ino.set_nlink(info.hardlinks);
+  ino.set_accessed_time(info.last_access);
+  ino.set_create_time(info.create_time);
+  ino.set_modified_time(info.last_modif);
+  // ino.set_dtime(info.delete_time);
+
+  ino.set_block_size(efs->block_size);
 
   auto table = (u32 *)info.dbp;
   // copy the block pointers
   for (int i = 0; i < 15; i++) {
-    ino.priv<fs::ext2_idata>()->info.block_pointers[i] = table[i];
-  }
-
-  if (ino.type == T_DIR) {
-    // TODO: clear out the dirents
-    ext2_traverse_dir(ino, [&](u32 nr, const char *name) {
-      ino.register_direntry(name, ENT_RES, nr);
-    });
-  } else if (ino.type == T_CHAR || ino.type == T_BLK) {
-    // parse the major/minor
-    unsigned dev = info.dbp[0];
-    if (!dev) dev = info.dbp[1];
-    ino.major = (dev & 0xfff00) >> 8;
-    ino.minor = (dev & 0xff) | ((dev >> 12) & 0xfff00);
+    ino.info.block_pointers[i] = table[i];
   }
   return 0;
 }
-
-
-static int ext2_seek(fs::File &, off_t, off_t) {
-  return 0;  // allow seek
-}
-
-static ssize_t ext2_do_read_write(fs::File &f, char *buf, size_t nbytes, bool is_write) {
-  ssize_t nread = ext2_raw_rw(*f.ino, buf, nbytes, f.offset(), is_write);
-  if (nread >= 0) {
-    f.seek(nread, SEEK_CUR);
-  }
-  return nread;
-}
-
-static ssize_t ext2_read(fs::File &f, char *dst, size_t sz) {
-  if (f.ino->type != T_FILE) return -EINVAL;
-  return ext2_do_read_write(f, dst, sz, false);
-}
-
-static ssize_t ext2_write(fs::File &f, const char *src, size_t sz) {
-  if (f.ino->type != T_FILE) return -EINVAL;
-  return ext2_do_read_write(f, (char *)src, sz, true);
-}
-
-static int ext2_ioctl(fs::File &, unsigned int cmd, off_t) {
-  // printk("cmd: %d\n", cmd);
-  UNIMPL();
-  return -ENOTIMPL;
-}
-
-static int ext2_open(fs::File &) { return 0; }
-static void ext2_close(fs::File &) {}
-
-
 
 
 struct ext2_vmobject final : public mm::VMObject {
@@ -605,7 +470,7 @@ struct ext2_vmobject final : public mm::VMObject {
     struct block::Buffer *buf = buffers[n];
 
     if (buf == NULL) {
-      fs::Ext2SuperBlock *efs = static_cast<fs::Ext2SuperBlock *>(m_ino->sb.get());
+      ext2::FileSystem *efs = static_cast<ext2::FileSystem *>(m_ino->sb.get());
 
       auto i_block = (m_off / efs->block_size) + ((n * PGSIZE) / efs->block_size);
       int block = block_from_index(*m_ino, i_block);
@@ -647,7 +512,44 @@ struct ext2_vmobject final : public mm::VMObject {
 
 
 
-static ck::ref<mm::VMObject> ext2_mmap(fs::File &f, size_t npages, int prot, int flags, off_t off) {
+int ext2::FileNode::seek_check(fs::File &, off_t old_off, off_t new_off) {
+  EXT_DEBUG("seek, %zu %zu\n", old_off, new_off);
+  return 0;  // allow seek
+}
+
+ssize_t ext2::FileNode::read(fs::File &f, char *buf, size_t count) {
+  EXT_DEBUG("read %p %zu\n", buf, count);
+  ssize_t nread = ext2_raw_rw(*this, buf, count, f.offset(), false);
+  if (nread >= 0) {
+    f.seek(nread, SEEK_CUR);
+  }
+  return nread;
+}
+ssize_t ext2::FileNode::write(fs::File &f, const char *buf, size_t count) {
+  EXT_DEBUG("write %p %zu\n", buf, count);
+  ssize_t nwrite = ext2_raw_rw(*this, (char *)buf, count, f.offset(), true);
+  if (nwrite >= 0) {
+    f.seek(nwrite, SEEK_CUR);
+  }
+  return nwrite;
+}
+
+int ext2::FileNode::resize(fs::File &, size_t) {
+  UNIMPL();
+  return -ENOTIMPL;
+}
+
+
+ext2::Node::~Node() {
+  for (int i = 0; i < 4; i++) {
+    if (blk_bufs[i] != nullptr) {
+      free(blk_bufs[i]);
+    }
+  }
+}
+
+ck::ref<mm::VMObject> ext2::FileNode::mmap(fs::File &f, size_t npages, int prot, int flags, off_t off) {
+  EXT_DEBUG("mmap\n");
   // XXX: this is invalid, should be asserted before here :^)
   if (off & 0xFFF) return nullptr;
 
@@ -659,78 +561,67 @@ static ck::ref<mm::VMObject> ext2_mmap(fs::File &f, size_t npages, int prot, int
 
 
 
-static int ext2_resize(fs::File &, size_t) {
+
+void ext2::DirectoryNode::ensure(void) {
+  EXT_DEBUG("ensure\n");
+  if (entries.size() == 0) {
+    ext2::FileSystem *efs = static_cast<ext2::FileSystem *>(sb.get());
+    ext2_traverse_dir(*this, [&](uint32_t ino, const char *name) {
+      auto n = efs->get_inode(ino);
+      ck::string newname = name;
+      link(name, n);
+      EXT_DEBUG(" - %d: %s\n", ino, name);
+    });
+  }
+}
+
+
+int ext2::DirectoryNode::touch(ck::string name, fs::Ownership &own) {
+  ensure();
   UNIMPL();
   return -ENOTIMPL;
 }
 
-fs::ext2_idata::~ext2_idata() {
-  for (int i = 0; i < 4; i++) {
-    if (blk_bufs[i] != nullptr) {
-      free(blk_bufs[i]);
-    }
-  }
-}
-
-static void ext2_destroy_priv(fs::Node &v) { delete v.priv<fs::ext2_idata>(); }
-
-fs::FileOperations ext2_file_ops{
-    .seek = ext2_seek,
-    .read = ext2_read,
-    .write = ext2_write,
-    .ioctl = ext2_ioctl,
-    .open = ext2_open,
-    .close = ext2_close,
-    .mmap = ext2_mmap,
-    .resize = ext2_resize,
-    .destroy = ext2_destroy_priv,
-};
-
-
-static int ext2_create(fs::Node &node, const char *name, struct fs::Ownership &) {
-  // fs::ext2 *efs = static_cast<fs::ext2 *>(&node.sb.get());
-  // int ino = efs->allocate_inode();
-  // printk("ino=%d\n", ino);
-
-  return -ENOTIMPL;
-}
-
-static int ext2_mkdir(fs::Node &, const char *name, struct fs::Ownership &) {
+int ext2::DirectoryNode::mkdir(ck::string name, fs::Ownership &own) {
+  ensure();
   UNIMPL();
   return -ENOTIMPL;
 }
 
-static int ext2_unlink(fs::Node &, const char *) {
+int ext2::DirectoryNode::unlink(ck::string name) {
+  ensure();
   UNIMPL();
   return -ENOTIMPL;
 }
 
-static ck::ref<fs::Node> ext2_lookup(fs::Node &node, const char *needle) {
-  if (node.type != T_DIR) panic("ext2_lookup on non-dir\n");
-
-
-  bool found = false;
-  auto efs = static_cast<fs::Ext2SuperBlock *>(node.sb.get());
-  int nr = -1;
-
-  // walk the linked list to get the inode num
-  for (auto *it = node.dir.entries; it != NULL; it = it->next) {
-    if (!strcmp(it->name.get(), needle)) {
-      if (it->mount_shadow != nullptr) {
-        // printk("here\n");
-        return it->mount_shadow;
-      }
-      nr = it->nr;
-      found = true;
-      break;
-    }
+ck::vec<fs::DirectoryEntry *> ext2::DirectoryNode::dirents(void) {
+  EXT_DEBUG("dirents\n");
+  ensure();
+  ck::vec<fs::DirectoryEntry *> res;
+  for (auto &[name, ent] : entries) {
+    res.push(ent.get());
   }
-
-  if (found) {
-    return efs->get_inode(nr);
-  }
-  return nullptr;
+  return res;
 }
+
+fs::DirectoryEntry *ext2::DirectoryNode::get_direntry(ck::string name) {
+  EXT_DEBUG("get_direntry %s\n", name.get());
+  ensure();
+  auto f = entries.find(name);
+  if (f == entries.end()) return nullptr;
+  return f->value.get();
+}
+
+int ext2::DirectoryNode::link(ck::string name, ck::ref<fs::Node> node) {
+  EXT_DEBUG("link %s\n", name.get());
+  if (entries.contains(name)) return -EEXIST;
+  auto ent = ck::make_box<fs::DirectoryEntry>(name, node);
+  entries[name] = move(ent);
+  return 0;
+}
+
+
+
 
 static int ext2_mknod(fs::Node &, const char *name, struct fs::Ownership &, int major, int minor) {
   UNIMPL();
@@ -738,20 +629,28 @@ static int ext2_mknod(fs::Node &, const char *name, struct fs::Ownership &, int 
 }
 
 
-fs::DirectoryOperations ext2_dir_ops{
-    .create = ext2_create,
-    .mkdir = ext2_mkdir,
-    .unlink = ext2_unlink,
-    .lookup = ext2_lookup,
-    .mknod = ext2_mknod,
-};
+static ck::ref<fs::Node> ext2_inode(int type, u32 index, ext2::FileSystem &fs) {
+  ck::ref<fs::Node> inode = nullptr;
+  switch (type) {
+    default:
+      KWARN("ext2: cannot handle non T_DIR or T_FILE. Got %d\n", type);
+    case T_FILE:
+      inode = ck::make_ref<ext2::FileNode>(&fs);
+      break;
+    case T_DIR:
+      inode = ck::make_ref<ext2::DirectoryNode>(&fs);
+      break;
+  }
 
-ck::ref<fs::Node> fs::Ext2SuperBlock::create_inode(Ext2SuperBlock *fs, u32 index) {
+  inode->set_inode(index);
+  return inode;
+}
+
+ck::ref<fs::Node> ext2::FileSystem::create_inode(u32 index) {
   ck::ref<fs::Node> ino = nullptr;
 
-  struct ext2_inode_info info;
-
-  fs->read_inode(info, index);
+  ext2::ext2_inode_info info;
+  read_inode(info, index);
 
   int ino_type = T_INVA;
 
@@ -765,19 +664,10 @@ ck::ref<fs::Node> fs::Ext2SuperBlock::create_inode(Ext2SuperBlock *fs, u32 index
   if (type == 0xA) ino_type = T_SYML;
   if (type == 0xC) ino_type = T_SOCK;
 
-  ino = ext2_inode(ino_type, index, *fs);
-  ino->priv<ext2_idata>() = new ext2_idata();
-
-  ino->dev.major = fs->disk->ino->major;
-  ino->dev.minor = fs->disk->ino->minor;
-  ino->fops = &ext2_file_ops;
-  ino->dops = &ext2_dir_ops;
+  ino = ext2_inode(ino_type, index, *this);
 
   injest_info(*ino, info);
-
-  if (ino_type == T_CHAR || ino_type == T_BLK) {
-    dev::populate_inode_device(*ino);
-  }
+  ino->set_inode(index);
 
   return ino;
 }

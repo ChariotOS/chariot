@@ -162,6 +162,7 @@ long sched::proc::spawn_init(ck::vec<ck::string> &paths) {
   ck::ref<Process> proc_ptr;
   proc_ptr = ck::make_ref<Process>();
   if (proc_ptr.get() == NULL) {
+    printk("Failed to allocate process\n");
     return -1;
   }
 
@@ -180,14 +181,15 @@ long sched::proc::spawn_init(ck::vec<ck::string> &paths) {
   proc_ptr = do_spawn_proc(proc_ptr, 0);
 
   // init starts in the root directory
-  proc_ptr->root = vfs::get_root();
-  proc_ptr->cwd = vfs::get_root();
+  proc_ptr->root = curproc->root;
+  proc_ptr->cwd = curproc->root;
   auto &proc = *proc_ptr;
 
   ck::vec<ck::string> envp;
   for (auto &path : paths) {
     ck::vec<ck::string> argv;
     argv.push(path);
+    printk("arg: %s\n", path.get());
     int res = proc.exec(path, argv, envp);
     if (res == 0) return pid;
   }
@@ -206,7 +208,6 @@ Process *sched::proc::kproc(void) {
     kernel_process = sched::proc::spawn_process(nullptr, SPAWN_KERN);
     kernel_process->pid = 0;  // just lower than init (pid 1)
     kernel_process->name = "kernel";
-    // auto &vm = kernel_process->mm;
     delete kernel_process->mm;
     kernel_process->mm = &mm::AddressSpace::kernel_space();
   }
@@ -220,7 +221,7 @@ ck::ref<Thread> sched::proc::spawn_kthread(const char *name, int (*func)(void *)
   auto tid = get_next_pid();
   auto thd = ck::make_ref<Thread>(tid, *proc);
   thd->trap_frame[1] = (unsigned long)arg;
-	thd->name = name;
+  thd->name = name;
 
 
   arch_reg(REG_PC, thd->trap_frame) = (unsigned long)func;
@@ -238,7 +239,7 @@ long sched::proc::create_kthread(const char *name, int (*func)(void *), void *ar
   // construct the thread
   auto thd = ck::make_ref<Thread>(tid, *proc);
   thd->trap_frame[1] = (unsigned long)arg;
-	thd->name = name;
+  thd->name = name;
 
   thd->kickoff((void *)func, PS_RUNNING);
 
@@ -293,6 +294,7 @@ bool Process::is_dead(void) {
   return true;
 }
 
+
 int Process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::string> &envp) {
   scoped_lock lck(this->datalock);
 
@@ -302,6 +304,7 @@ int Process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::strin
 
   // TODO: open permissions on the binary
   if (vfs::namei(path.get(), 0, 0, cwd, exe) != 0) {
+    printk("File, '%s', does not exist\n", path.get());
     return -ENOENT;
   }
   // TODO check execution permissions
@@ -428,10 +431,10 @@ int sched::proc::reap(ck::ref<Process> p) {
     assert(init);
     init->datalock.lock();
     for (auto &c : p->children) {
-			c->datalock.lock();
+      c->datalock.lock();
       init->children.push(c);
       c->parent = init;
-			c->datalock.unlock();
+      c->datalock.unlock();
     }
     init->datalock.unlock();
   }
@@ -531,6 +534,7 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
   int result = -EINVAL;
 
 
+  auto self = curthd;
   for (int loops = 0; 1; loops++) {
     struct zombie_entry *zomb = NULL;
     ck::ref<Process> found_process = nullptr;
@@ -539,7 +543,7 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
 
     bool found = false;
     list_for_each_entry(zomb, &zombie_list, node) {
-      if (can_reap(curthd, zomb->proc, pid, wait_flags)) {
+      if (can_reap(self, zomb->proc, pid, wait_flags)) {
         // simply remove the zombie from the zombie_list
         zomb->node.del_init();
         found = true;
@@ -564,7 +568,7 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
       struct wait_entry ent;
 
       struct waiter_entry went;
-      went.thd = curthd;
+      went.thd = self;
       went.wait_flags = wait_flags;
       went.seeking = pid;
       went.node.init();
@@ -939,7 +943,7 @@ void sched::proc::dump_table(void) {
 
 
 ksh_def("pdump", "dump the process table") {
-	sched::proc::dump_table();
-	return 0;
+  sched::proc::dump_table();
+  return 0;
 }
 

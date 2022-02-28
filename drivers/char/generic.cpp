@@ -10,6 +10,20 @@
 
 #define MINOR_RANDOM 2
 
+
+
+class GenericDriver : public dev::Driver {
+ public:
+  GenericDriver(void) { set_name("generic"); }
+};
+static GenericDriver gdev;
+
+struct RandomNode : public dev::CharDevice {
+  RandomNode(void) : dev::CharDevice(gdev) {}
+  virtual ssize_t read(fs::File &, char *buf, size_t sz) override;
+};
+
+
 static uint32_t seed;  // The state can be seeded with any value.
 // Call next() to get 32 pseudo-random bits, call it again to get more bits.
 // It may help to make this inline, but you should see if it benefits your
@@ -21,49 +35,27 @@ static inline uint64_t next_random(void) {
   return z ^ (z >> 14);
 }
 
-static size_t read_random(char *m, size_t len) {
+ssize_t RandomNode::read(fs::File &f, char *buf, size_t len) {
 #define DO_COPY(T)                            \
   for (; i < len - sizeof(T); i += sizeof(T)) \
-    *(T *)(m + i) = next_random();
+    *(T *)(buf + i) = next_random();
   int i = 0;
   DO_COPY(u64);
   for (; i < len; i++)
-    *(m + i) = next_random();
+    *(buf + i) = next_random();
 #undef DO_COPY
   return len;
 }
 
-static ssize_t do_read(fs::File &fd, char *buf, size_t sz) {
-  if (fd) {
-    switch (fd.ino->minor) {
-      case MINOR_RANDOM:
-        return read_random(buf, sz);
-      default:
-        return -1;
-    }
-  }
-  return -1;
-}
-
-static ssize_t do_write(fs::File &fd, const char *buf, size_t sz) { return -1; }
-
-static struct fs::FileOperations generic_ops = {
-    .read = do_read,
-    .write = do_write,
-};
 
 
-static struct dev::DriverInfo generic_driver_info {
-  .name = "generic", .type = DRIVER_CHAR, .major = MAJOR_MEM,
+static RandomNode random;
+static RandomNode urandom;
 
-  .char_ops = &generic_ops,
-};
 
 static void dev_init(void) {
-  dev::register_driver(generic_driver_info);
-
-  dev::register_name(generic_driver_info, "urandom", MINOR_RANDOM);
-  dev::register_name(generic_driver_info, "random", MINOR_RANDOM);
+  random.bind("urandom");
+  random.bind("random");
 }
 
 module_init("char", dev_init);

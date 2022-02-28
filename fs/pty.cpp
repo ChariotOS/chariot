@@ -22,37 +22,29 @@ static ssize_t mx_read(fs::File &f, char *dst, size_t sz);
 static ssize_t mx_write(fs::File &f, const char *dst, size_t sz);
 static int pts_poll(fs::File &f, int events, poll_table &pt);
 
+DECLARE_STUB_DRIVER("pty", pty_driver);
 
-void pty::write_in(char c) {
+
+PTYNode::PTYNode() : TTYNode(pty_driver) {}
+void PTYNode::write_in(char c) {
   // DBG("pts::write_in '%c'\n", c);
   //
   in.write(&c, 1, true);
 }
 
-void pty::write_out(char c, bool block) {
+void PTYNode::write_out(char c, bool block) {
   // DBG("pts::write_out '%c'\n", c);
   //
   out.write(&c, 1, block);
 }
 
-pty::~pty(void) {}
+PTYNode::~PTYNode(void) {}
 
 
 
 static spinlock pts_lock;
-static ck::map<int, ck::ref<struct pty>> pts;
+static ck::map<int, ck::ref<struct PTYNode>> pts;
 
-
-static struct fs::FileOperations pts_ops = {
-    .read = pts_read,
-    .write = pts_write,
-    .ioctl = pts_ioctl,
-    .poll = pts_poll,
-};
-
-
-
-static struct dev::DriverInfo pts_driver { .name = "pts", .type = DRIVER_CHAR, .major = MAJOR_PTS, .char_ops = &pts_ops, };
 
 
 static auto getpts(int id) { return pts.get(id); }
@@ -63,9 +55,9 @@ static int allocate_pts() {
   for (i = 0; true; i++) {
     // if there isn't a pts at this location, allocate one
     if (!pts.contains(i)) {
-      pts[i] = new pty();
+      pts[i] = new PTYNode();
       pts[i]->index = 0;
-      dev::register_name(pts_driver, ck::string::format("vtty%d", i), i);
+      pts[i]->bind(ck::string::format("vtty%d", i));
       break;
     } else {
       // if nobody is controlling this pts, return it
@@ -86,6 +78,7 @@ static int allocate_pts() {
 }
 
 
+#if 0
 static int pts_ioctl(fs::File &f, unsigned int cmd, off_t arg) { return 0; }
 
 static void close_pts(int ptsid) {
@@ -163,7 +156,7 @@ static int mx_ioctl(fs::File &f, unsigned int cmd, off_t arg) {
 }
 
 
-
+// for "ptmx" driver
 
 static struct fs::FileOperations mx_ops = {
     .read = mx_read,
@@ -175,8 +168,6 @@ static struct fs::FileOperations mx_ops = {
 };
 
 
-static struct dev::DriverInfo mx_driver { .name = "ptmx", .type = DRIVER_CHAR, .major = MAJOR_PTMX, .char_ops = &mx_ops, };
-
 
 static void pty_init(void) {
   dev::register_driver(mx_driver);
@@ -186,3 +177,4 @@ static void pty_init(void) {
 }
 
 module_init("pty", pty_init);
+#endif

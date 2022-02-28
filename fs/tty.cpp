@@ -7,7 +7,7 @@
 static int is_control(int c) { return c < ' ' || c == 0x7F; }
 
 
-void tty::reset(void) {
+void TTYNode::reset(void) {
   /* Controlling and foreground processes are set to 0 by default */
   ct_proc = 0;
   fg_proc = 0;
@@ -35,8 +35,8 @@ void tty::reset(void) {
 
 
 
-tty::tty(void) { reset(); }
-tty::~tty(void) {
+TTYNode::TTYNode(dev::Driver &drv) : dev::CharDevice(drv) { reset(); }
+TTYNode::~TTYNode(void) {
   // TODO: remove from the storage
 }
 
@@ -45,9 +45,9 @@ void tty::write_in(char c) { in.write(&c, 1, true); }
 void tty::write_out(char c, bool block) { out.write(&c, 1, block); }
 */
 
-ck::string tty::name(void) { return ck::string::format("/dev/pts%d", index); }
+ck::string TTYNode::name(void) { return ck::string::format("/dev/pts%d", index); }
 
-int tty::ioctl(unsigned int cmd, off_t arg) {
+int TTYNode::ioctl(fs::File &f, unsigned int cmd, off_t arg) {
   if (cmd == TIOCSPGRP) {
     fg_proc = arg;
     // printk(KERN_INFO "[tty %s] Setting PTY group to %d", name().get(), fg_proc);
@@ -85,7 +85,7 @@ int tty::ioctl(unsigned int cmd, off_t arg) {
   return -EINVAL;
 }
 
-void tty::handle_input(char c) {
+void TTYNode::handle_input(char c) {
   if (next_is_verbatim) {
     next_is_verbatim = 0;
     canonical_buf += c;
@@ -205,14 +205,14 @@ void tty::handle_input(char c) {
   write_in(c);
 }
 
-void tty::dump_input_buffer(void) {
+void TTYNode::dump_input_buffer(void) {
   for (char c : canonical_buf) {
     write_in(c);
   }
   canonical_buf.clear();
 }
 
-void tty::erase_one(int erase) {
+void TTYNode::erase_one(int erase) {
   if (canonical_buf.size() > 0) {
     /* How many do we backspace? */
     int vwidth = 1;
@@ -234,7 +234,7 @@ void tty::erase_one(int erase) {
   }
 }
 
-void tty::output(char c, bool block) {
+void TTYNode::output(char c, bool block) {
   if (c == '\n' && (tios.c_oflag & ONLCR)) {
     c = '\n';
     write_out(c, block);
@@ -254,4 +254,13 @@ void tty::output(char c, bool block) {
   }
 
   write_out(c, block);
+}
+
+
+
+ssize_t TTYNode::write(fs::File &, const char *buf, size_t sz) {
+  for (size_t i = 0; i < sz; i++) {
+    write_out(buf[i]);
+  }
+  return sz;
 }

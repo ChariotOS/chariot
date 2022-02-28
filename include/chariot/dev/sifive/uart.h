@@ -10,7 +10,7 @@
 namespace sifive {
 
 
-  class Uart : public dev::SerialDevice {
+  class Uart : public dev::CharDevice {
    public:
     struct Regs {
       //
@@ -24,14 +24,13 @@ namespace sifive {
     };
 
 
-    using dev::SerialDevice::SerialDevice;
-
-
+    using dev::CharDevice::CharDevice;
+    virtual ~Uart(void) {}
     void put_char(char ch);
     int get_char(bool wait = true);
 
-    virtual void init(void);
-    virtual void irq(int num);
+    void init(void) override;
+    void irq(int num) override;
 
     // set the baud rate in the gp struct
     void setbrg(unsigned long clock, unsigned long baud);

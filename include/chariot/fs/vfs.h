@@ -4,12 +4,7 @@
 #include <fs.h>
 #include <ck/ptr.h>
 #include <ck/string.h>
-
-namespace fs {
-  // fwd decl
-  struct SuperBlock;
-};  // namespace fs
-
+#include <fs/FileSystem.h>
 /**
  *
  * The virtual file system allows filesystems to be mounted recursively in the
@@ -22,7 +17,7 @@ namespace vfs {
    * mountpoint - describes a single filesystem mounted on the system
    */
   struct mountpoint {
-    ck::ref<fs::SuperBlock> sb;
+    ck::ref<fs::FileSystem> sb;
 
     // if this is null, it is the root node.
     ck::ref<fs::Node> host;
@@ -72,10 +67,17 @@ namespace vfs {
   ck::ref<fs::Node> cwd(void);
   int getcwd(fs::Node &, ck::string &dst);
 
-  ck::ref<fs::Node> get_root(void);
+  int chroot(ck::string path);
 
-  // register filesystems by name, therefore we can mount generically by name
-  void register_filesystem(struct fs::SuperBlockInfo &);
-  void deregister_filesystem(struct fs::SuperBlockInfo &);
+  ck::ref<fs::Node> get_root(void);
+  using Mounter = ck::ref<fs::FileSystem> (*)(ck::string options, int flags, ck::string path);
+  void register_filesystem(ck::string name, Mounter mount);
+  template <typename FileSystem>
+  void register_filesystem(ck::string name) {
+    register_filesystem(name, FileSystem::mount);
+  }
+
+
+  void init_boot_filesystem(void);
 
 };  // namespace vfs

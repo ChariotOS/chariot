@@ -345,12 +345,6 @@ struct fs::FileOperations mouse_ops = {
 };
 
 
-static struct dev::DriverInfo mouse_driver_info {
-  .name = "mouse", .type = DRIVER_CHAR, .major = MAJOR_MOUSE,
-
-  .char_ops = &mouse_ops,
-};
-
 
 
 
@@ -387,8 +381,9 @@ static void mouse_init(void) {
   mouse_install();
   mouse_absolute();
 
-  dev::register_driver(mouse_driver_info);
-  dev::register_name(mouse_driver_info, "mouse", 0);
+	// TODO:
+  // dev::register_driver(mouse_driver_info);
+  // dev::register_name(mouse_driver_info, "mouse", 0);
 }
 
 module_init("mouse", mouse_init);

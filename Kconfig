@@ -85,8 +85,8 @@ menu "Config"
 		bool "Ext2 Filesystem"
 		default y
 
-	config TMPFS
-		bool "Temp Filesystem"
+	config PROCFS
+		bool "Proc Filesystem"
 		default y
 
 

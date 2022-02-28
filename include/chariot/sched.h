@@ -49,8 +49,6 @@ namespace sched {
 #define PRIORITY_HIGH (SCHED_MLFQ_DEPTH - 1)
 #define PRIORITY_IDLE 0
 
-  Process &kernel_proc(void);
-
   void set_state(int state);
 
 

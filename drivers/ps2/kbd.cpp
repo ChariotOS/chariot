@@ -515,20 +515,6 @@ static void kbd_close(fs::File& fd) { owners--; }
 static int kbd_poll(fs::File& fd, int events, poll_table& pt) { return kbd_buf.poll(pt); }
 
 
-struct fs::FileOperations kbd_ops = {
-    .read = kbd_read,
-    .open = kbd_open,
-    .close = kbd_close,
-    .poll = kbd_poll,
-};
-
-static struct dev::DriverInfo keyboard_driver_info {
-  .name = "kdb", .type = DRIVER_CHAR, .major = MAJOR_KEYBOARD,
-
-  .char_ops = &kbd_ops,
-};
-
-
 static void kbd_init(void) {
   irq::install(IRQ_KEYBOARD, kbd_handler, "PS2 Keyboard");
 
@@ -537,8 +523,9 @@ static void kbd_init(void) {
     inb(I8042_BUFFER);
 
 
-  dev::register_driver(keyboard_driver_info);
-  dev::register_name(keyboard_driver_info, "keyboard", 0);
+	// TODO:
+  // dev::register_driver(keyboard_driver_info);
+  // dev::register_name(keyboard_driver_info, "keyboard", 0);
 }
 
 module_init("kbd", kbd_init);

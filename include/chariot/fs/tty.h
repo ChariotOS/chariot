@@ -9,7 +9,7 @@
 
 /**
  */
-struct tty : public ck::refcounted<tty> {
+struct TTYNode : public dev::CharDevice {
   int index;
 
   struct termios tios;
@@ -31,8 +31,8 @@ struct tty : public ck::refcounted<tty> {
 
 
 
-  tty();
-  virtual ~tty(void);
+  TTYNode(dev::Driver &drv);
+  virtual ~TTYNode(void);
 
 
   void reset();
@@ -45,9 +45,15 @@ struct tty : public ck::refcounted<tty> {
   inline void echo(char c) { output(c, false); }
   void dump_input_buffer(void);
 
-  int ioctl(unsigned int cmd, off_t arg);
 
   void erase_one(int erase);
+
+  // ^fs::Node
+  virtual ssize_t read(fs::File &, char *dst, size_t count) = 0;
+  virtual ssize_t write(fs::File &, const char *, size_t) final;
+  virtual bool is_tty(void) final { return true; }
+  virtual int ioctl(fs::File &, unsigned int cmd, off_t arg);
+
 
   ck::string name(void);
 };

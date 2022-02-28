@@ -19,6 +19,14 @@
 
 #include "../majors.h"
 
+
+class ATADriver : public dev::Driver {
+ public:
+  ATADriver() { set_name("ata"); }
+};
+
+static ck::ref<ATADriver> ata_driver = nullptr;
+
 // #define DEBUG
 // #define DO_TRACE
 
@@ -72,19 +80,6 @@
 // static int ata_rw_block(fs::blkdev& b, void* data, int block, bool write);
 struct wait_queue ata_wq;
 
-/*
-struct fs::block_operations ata_blk_ops = {
-    .init = ata_dev_init,
-    .rw_block = ata_rw_block,
-};
-
-static struct dev::driver_info ata_driver_info {
-  .name = "ata", .type = DRIVER_BLOCK, .major = MAJOR_ATA,
-
-  .block_ops = &ata_blk_ops,
-};
-*/
-
 /**
  * TODO: use per-channel ATA mutex locks. Right now every ata drive is locked
  * the same way
@@ -92,18 +87,17 @@ static struct dev::driver_info ata_driver_info {
 static spinlock drive_lock;
 
 
-
-
 // for the interrupts...
 u16 primary_master_status = 0;
 u16 primary_master_bmr_status = 0;
 u16 primary_master_bmr_command = 0;
 
-dev::ata::ata(u16 portbase, bool master) {
+dev::ATADisk::ATADisk(u16 portbase, bool master) : dev::Disk(*ata_driver) {
   drive_lock.lock();
   m_io_base = portbase;
   TRACE;
   sector_size = 512;
+  set_block_size(sector_size);
   this->master = master;
 
   data_port = portbase;
@@ -121,21 +115,21 @@ dev::ata::ata(u16 portbase, bool master) {
 
 
 
-dev::ata::~ata() {
+dev::ATADisk::~ATADisk() {
   drive_lock.lock();
   TRACE;
   free(id_buf);
   drive_lock.unlock();
 }
 
-void dev::ata::select_device() {
+void dev::ATADisk::select_device() {
   TRACE;
   device_port.out(master ? 0xA0 : 0xB0);
 }
 
 
 
-bool dev::ata::identify() {
+bool dev::ATADisk::identify() {
   scoped_lock l(drive_lock);
 
   // select the correct device
@@ -187,6 +181,9 @@ bool dev::ata::identify() {
   uint8_t S = id_buf[6];
 
   n_sectors = (C * H) * S;
+  set_block_count(n_sectors);
+
+  set_size(block_count() * block_size());
 
 
   m_pci_dev = pci::find_generic_device(PCI_CLASS_STORAGE, PCI_SUBCLASS_IDE);
@@ -219,7 +216,7 @@ bool dev::ata::identify() {
   return true;
 }
 
-bool dev::ata::read_blocks(uint32_t sector, void* data, int n) {
+int dev::ATADisk::read_blocks(uint32_t sector, void* data, int n) {
   TRACE;
 
   // TODO: also check for scheduler avail
@@ -232,7 +229,8 @@ bool dev::ata::read_blocks(uint32_t sector, void* data, int n) {
 
   // printk("read block %d\n", sector);
 
-  if (sector & 0xF0000000) return false;
+  if (sector & 0xF0000000) return -EINVAL;
+
 
   // select the correct device, and put bits of the address
   device_port.out((master ? 0xE0 : 0xF0) | ((sector & 0x0F000000) >> 24));
@@ -262,10 +260,10 @@ bool dev::ata::read_blocks(uint32_t sector, void* data, int n) {
     buf[i + 1] = (d >> 8) & 0xFF;
   }
 
-  return true;
+  return 0;
 }
 
-bool dev::ata::write_blocks(uint32_t sector, const void* vbuf, int n) {
+int dev::ATADisk::write_blocks(uint32_t sector, const void* vbuf, int n) {
   TRACE;
 
   // TODO: also check for scheduler avail
@@ -279,7 +277,7 @@ bool dev::ata::write_blocks(uint32_t sector, const void* vbuf, int n) {
   scoped_lock lck(drive_lock);
 
 
-  if (sector & 0xF0000000) return false;
+  if (sector & 0xF0000000) return -EINVAL;
 
   // select the correct device, and put bits of the address
   device_port.out((master ? 0xE0 : 0xF0) | ((sector & 0x0F000000) >> 24));
@@ -302,10 +300,10 @@ bool dev::ata::write_blocks(uint32_t sector, const void* vbuf, int n) {
 
   flush();
 
-  return true;
+  return 0;
 }
 
-bool dev::ata::flush(void) {
+bool dev::ATADisk::flush(void) {
   TRACE;
   device_port.out(master ? 0xE0 : 0xF0);
   command_port.out(0xE7);
@@ -322,7 +320,7 @@ bool dev::ata::flush(void) {
   return true;
 }
 
-uint8_t dev::ata::wait(void) {
+uint8_t dev::ATADisk::wait(void) {
   TRACE;
 
   if (cpu::in_thread() && false) {
@@ -341,19 +339,15 @@ uint8_t dev::ata::wait(void) {
   return -1;
 }
 
-u64 dev::ata::sector_count(void) {
+u64 dev::ATADisk::sector_count(void) {
   TRACE;
   return n_sectors;
 }
 
-size_t dev::ata::block_size() {
-  TRACE;
-  return sector_size;
-}
 
-size_t dev::ata::block_count() { return n_sectors; }
 
-bool dev::ata::read_blocks_dma(uint32_t sector, void* data, int n) {
+
+bool dev::ATADisk::read_blocks_dma(uint32_t sector, void* data, int n) {
   TRACE;
 
   if (sector & 0xF0000000) return false;
@@ -417,16 +411,11 @@ bool dev::ata::read_blocks_dma(uint32_t sector, void* data, int n) {
     }
   }
 
-  // wait_400ns(m_io_base);
-  // printk("loops: %d\n", i);
-
   memcpy(data, dma_dst, sector_size * n);
-
   phys::free(buffer, buffer_pages);
-
   return true;
 }
-bool dev::ata::write_blocks_dma(uint32_t sector, const void* data, int n) {
+bool dev::ATADisk::write_blocks_dma(uint32_t sector, const void* data, int n) {
   if (sector & 0xF0000000) return false;
   drive_lock.lock();
 
@@ -511,7 +500,7 @@ static void ata_interrupt(int intr, reg_t* fr, void*) {
 
 static void query_and_add_drive(u16 addr, int id, bool master) {
   printk(KERN_DEBUG "ATA Query %04x:%d\n", addr, id);
-  auto drive = new dev::ata(addr, master);
+  auto drive = new dev::ATADisk(addr, master);
 
   if (drive->identify()) {
     dev::register_disk(drive);
@@ -526,6 +515,8 @@ extern void piix_init(void);
 
 
 static void ata_init(void) {
+  ata_driver = ck::make_ref<ATADriver>();
+  dev::Driver::add(ata_driver);
   // TODO: make a new IRQ dispatch system to make this more general
   irq::install(ATA_IRQ0, ata_interrupt, "ATA Drive");
   // smp::ioapicenable(ATA_IRQ0, 0);

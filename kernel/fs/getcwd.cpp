@@ -11,32 +11,42 @@ int vfs::getcwd(fs::Node &cwd, ck::string &dst) {
   ck::ref<fs::Node> cur = &cwd;
   ck::ref<fs::Node> next = nullptr;
 
-
   ck::string sep = "/";
-
-  dst.clear();
+  ck::string path;
   auto root = curproc->root;
 
-  if (cur == root) {
-    dst = "/";
-  } else {
-    int depth = 50;  // lol idk
-    while (cur != root) {
-      if (cur->type != T_DIR) return -ENOTDIR;
+  ck::vec<ck::string> parts_rev;
 
-      next = cur->get_direntry("..");
-      if (cur->dir.name == NULL) {
-        return -EINVAL;
+  while (cur != root) {
+    if (!cur->is_dir()) {
+      return -ENOTDIR;
+    }
+
+    next = cur->get_direntry("..")->get();
+
+    auto dents = next->dirents();
+    ck::string curname;
+    for (auto dent : dents) {
+      if (dent->get() == cur) {
+        curname = dent->name;
       }
+    }
 
-      // this is terrible
-      ck::string s = sep + cur->dir.name + dst;
-      dst = s.get();
-      cur = next;
-      depth--;
-      if (depth == 0) break;
+    parts_rev.push(curname);
+    if (next == cur) break;
+    cur = next;
+  }
+
+
+  if (parts_rev.size() == 0) {
+    path = "/";
+  } else {
+    for (int i = parts_rev.size() - 1; i >= 0; i--) {
+      path += "/";
+      path += parts_rev[i];
     }
   }
 
+  dst = path;
   return err;
 }

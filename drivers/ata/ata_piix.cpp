@@ -1,5 +1,7 @@
 #include "ata.h"
 
+#if 0
+
 #include <module.h>
 #include <dev/driver.h>
 #include <dev/hardware.h>
@@ -190,10 +192,10 @@ namespace piix {
     Disk(ck::ref<hw::PCIDevice> dev, int bar0, int bar1, bool primary);
     virtual ~Disk(void) {}
 
-    virtual bool read_blocks(uint32_t sector, void* data, int n);
-    virtual bool write_blocks(uint32_t sector, const void* data, int n);
-    virtual size_t block_size(void);
-    virtual size_t block_count(void);
+    virtual int read_blocks(uint32_t sector, void* data, int n);
+    virtual int write_blocks(uint32_t sector, const void* data, int n);
+    virtual ssize_t block_size(void);
+    virtual ssize_t block_count(void);
 
 
     // wait on the status for a certain value
@@ -231,10 +233,10 @@ piix::Disk::Disk(ck::ref<hw::PCIDevice> dev, int b0, int b1, bool primary) : dev
 
 void piix::Disk::select_device() { device_port.out(master ? 0xA0 : 0xB0); }
 
-bool piix::Disk::read_blocks(uint32_t sector, void* data, int n) { return false; }
-bool piix::Disk::write_blocks(uint32_t sector, const void* data, int n) { return false; }
-size_t piix::Disk::block_size(void) { return 0; }
-size_t piix::Disk::block_count(void) { return 0; }
+int piix::Disk::read_blocks(uint32_t sector, void* data, int n) { return false; }
+int piix::Disk::write_blocks(uint32_t sector, const void* data, int n) { return false; }
+ssize_t piix::Disk::block_size(void) { return 0; }
+ssize_t piix::Disk::block_count(void) { return 0; }
 
 
 
@@ -345,3 +347,4 @@ void piix::Driver::init(void) {
 }
 
 driver_init("ata-piix", piix::Driver, piix_probe);
+#endif

@@ -142,6 +142,42 @@ bool start_secondary(int i) {
 }
 
 
+
+
+
+class RISCVHart : public dev::CharDevice {
+ public:
+  using dev::CharDevice::CharDevice;
+
+  virtual ~RISCVHart(void) {}
+
+  virtual void init(void) {
+    if (auto mmio = dev()->cast<hw::MMIODevice>()) {
+      if (mmio->is_compat("riscv")) {
+        auto status = mmio->get_prop_string("status");
+
+        if (status.has_value()) {
+          if (status.unwrap() == "disabled") return;
+        }
+
+        auto hartid = mmio->address();
+				bind(ck::string::format("core%d", hartid));
+				printk("FOUND HART %d\n", hartid);
+        if (hartid != rv::get_hstate().hartid) {
+          LOG("Trying to start hart %d\n", hartid);
+#ifdef CONFIG_SMP
+          // start the other core.
+          start_secondary(hartid);
+#else
+          LOG("SMP Disabled. not starting hart#%d\n", hartid);
+#endif
+        }
+      }
+    }
+  }
+};
+
+
 static dev::ProbeResult riscv_hart_probe(ck::ref<hw::Device> dev) {
   if (auto mmio = dev->cast<hw::MMIODevice>()) {
     if (mmio->is_compat("riscv")) {
@@ -156,40 +192,6 @@ static dev::ProbeResult riscv_hart_probe(ck::ref<hw::Device> dev) {
 
   return dev::ProbeResult::Ignore;
 };
-
-
-
-class RISCVHart : public dev::Device {
- public:
-  using dev::Device::Device;
-
-  virtual ~RISCVHart(void) {}
-
-  virtual void init(void) {
-    if (auto mmio = dev()->cast<hw::MMIODevice>()) {
-      if (mmio->is_compat("riscv")) {
-        auto status = mmio->get_prop_string("status");
-
-        if (status.has_value()) {
-          if (status.unwrap() == "disabled") return;
-        }
-
-        auto hartid = mmio->address();
-        if (hartid != rv::get_hstate().hartid) {
-          LOG("found hart %d\n", mmio->address());
-          LOG("Trying to start hart %d\n", hartid);
-#ifdef CONFIG_SMP
-          // start the other core.
-          start_secondary(hartid);
-#else
-          LOG("SMP Disabled. not starting hart#%d\n", hartid);
-#endif
-        }
-      }
-    }
-  }
-};
-
 
 driver_init("riscv,hart", RISCVHart, riscv_hart_probe);
 
@@ -302,16 +304,21 @@ void main(int hartid, void *fdt) {
 
 
   sched::proc::create_kthread("main task", [](void *) -> int {
+
+    // Init the virtual filesystem and mount a tmpfs and devfs to / and /dev
+    vfs::init_boot_filesystem();
+
     LOG("Calling kernel module init functions\n");
     initialize_builtin_modules();
     LOG("kernel modules initialized\n");
-    // kshell::run();
+
 
 
 #ifdef CONFIG_ENABLE_USERSPACE
 
 
-    int mnt_res = vfs::mount("/dev/disk0p1", "/", "ext2", 0, NULL);
+		LOG("Mounting root filesystem\n");
+    int mnt_res = vfs::mount("/dev/disk0p1", "/root", "ext2", 0, NULL);
     if (mnt_res != 0) {
       panic("failed to mount root. Error=%d\n", -mnt_res);
     }

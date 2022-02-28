@@ -3,23 +3,26 @@
 #include <fs/vfs.h>
 #include <ck/map.h>
 #include <syscall.h>
+#include <module.h>
 #include <util.h>
-
+#include <fs/tmpfs.h>
+#include <fs/devfs.h>
 #include <thread.h>
 
+#include <crypto.h>
 
 #define LOG(...) PFXLOG(GRN "VFS", __VA_ARGS__)
 
 ck::ref<fs::Node> vfs_root = nullptr;
-static ck::vec<struct fs::SuperBlockInfo *> filesystems;
+// static ck::vec<struct fs::SuperBlockInfo *> filesystems;
 static ck::vec<struct vfs::mountpoint *> mountpoints;
 
-void vfs::register_filesystem(struct fs::SuperBlockInfo &info) {
-  LOG("filesystem '%s' registered\n", info.name);
-  filesystems.push(&info);
-}
+static ck::map<ck::string, vfs::Mounter> filesystem_mounters;
 
-void vfs::deregister_filesystem(struct fs::SuperBlockInfo &) {}
+void vfs::register_filesystem(ck::string name, vfs::Mounter mount) {
+  LOG("filesystem '%s' registered\n", name.get());
+  filesystem_mounters[name] = mount;
+}
 
 ck::ref<fs::Node> vfs::cwd(void) {
   if (cpu::in_thread()) {
@@ -50,62 +53,69 @@ int vfs::mount(const char *src, const char *targ, const char *type, unsigned lon
 
   if (type == NULL) return -EINVAL;
 
-  if (get_root()) {
-    // TODO: look up the target directory
-  }
 
-  struct fs::SuperBlockInfo *fs = nullptr;
 
-  for (int i = 0; i < filesystems.size(); i++) {
-    if (strcmp(type, filesystems[i]->name) == 0) {
-      fs = filesystems[i];
-      break;
-    }
-  }
-
-  if (fs == nullptr) {
-    LOG("failed to find the filesystem for that name\n");
+  auto mounter = filesystem_mounters[type];
+  if (mounter == nullptr) {
+    LOG("failed to find the filesystem, '%s'\n", type);
     return -ENOENT;
   }
-  auto sb = fs->mount(fs, options, flags, src);
-  if (sb == nullptr) {
+  auto fs = mounter(options, flags, src);
+  if (fs == nullptr) {
     LOG("failed to mount filesystem\n");
     return -EINVAL;
   }
 
   auto mp = new vfs::mountpoint();
-  mp->sb = sb;
+  mp->sb = fs;
   mp->mountflags = flags;
   mp->devname = targ;
   mp->id = 0;
 
-  assert(sb->root);
+  assert(fs->root);
 
-  assert(mp->sb->root->sb == sb);
+  assert(mp->sb->root->sb == fs);
 
   if (get_root() == nullptr && strcmp(targ, "/") == 0) {
     // update the root
     // TODO: this needs to be smarter :)
     vfs_root = mp->sb->root;
+    sched::proc::kproc()->cwd = vfs_root;
+    sched::proc::kproc()->root = vfs_root;
   } else {
     // this is so gross...
     mp->host = vfs::open(targ, O_RDONLY, 0);
-    if (mp->host == nullptr || mp->host->type != T_DIR || mp->host == vfs_root) {
+    if (mp->host == nullptr || !mp->host->is_dir() || mp->host == vfs_root) {
       delete mp;
       return -EINVAL;
     }
-    auto parent = mp->host->get_direntry("..");
+
+    auto parent_dirent = mp->host->get_direntry("..");
+    assert(parent_dirent != nullptr);
+    if (parent_dirent->mount_shadow != nullptr) {
+      delete mp;
+      return -EEXIST;
+    }
+
+    auto parent = parent_dirent->ino;
     assert(parent != nullptr);
-    mp->sb->root->add_mount("..", parent);
+
+    {
+      auto l = mp->sb->root->irq_lock();
+      auto ent = mp->sb->root->get_direntry("..");
+      ent->mount_shadow = parent;
+    }
 
     // copy the last entry into the name of the guest root
     auto end = ck::string(targ).split('/').last();
     auto name = calloc<char>(end.size() + 1);
     memcpy(name, end.get(), end.size() + 1);
-    mp->sb->root->dir.name = name;
+    mp->sb->root->set_name(name);
 
     // and mount it with a shadow node
-    parent->add_mount(end.get(), mp->sb->root);
+    auto mountpoint_dirent = parent->get_direntry(end.get());
+    assert(mountpoint_dirent->mount_shadow == nullptr);
+    mountpoint_dirent->mount_shadow = mp->sb->root;
   }
 
   mountpoints.push(mp);
@@ -144,12 +154,11 @@ int sys::mkdir(const char *upath, int mode) {
   int err = vfs::namei(path, 0, mode, vfs::cwd(), dir, true);
   if (err < 0) return err;
   if (dir.is_null()) return -ENOENT;
-  if (dir->type != T_DIR) return -ENOTDIR;
-  if (dir->dops == NULL) return -ENOTIMPL;
+  if (!dir->is_dir()) return -ENOTDIR;
 
   // check that the file doesn't exist first. This means we don't
   // have to check in the filesystem driver.
-  if (dir->get_direntry(name)) return -EEXIST;
+  if (dir->get_direntry(name) != nullptr) return -EEXIST;
 
 
   fs::Ownership fown;
@@ -157,7 +166,7 @@ int sys::mkdir(const char *upath, int mode) {
   fown.uid = curproc->user.uid;
   fown.gid = curproc->user.gid;
   fown.mode = mode;  // from the argument passed from the user
-  int res = dir->dops->mkdir(*dir, name, fown);
+  int res = dir->mkdir(name, fown);
 
   return res;
 }
@@ -249,30 +258,25 @@ int vfs::namei(const char *path, int flags, int mode, ck::ref<fs::Node> cwd, ck:
       res = ino;
       return 0;
     }
-
     auto found = ino->get_direntry(name);
 
-    if (found.is_null()) {
+    if (found == nullptr) {
       if (last && (flags & O_CREAT)) {
-        if (ino->dops && ino->dops->create) {
-          fs::Ownership own;
-          own.uid = curproc->user.uid;
-          own.gid = curproc->user.gid;
-          own.mode = mode;
-          int r = ino->dops->create(*ino, name, own);
-          if (r == 0) {
-            res = ino->get_direntry(name);
-          }
-          return r;
+        fs::Ownership own;
+        own.uid = curproc->user.uid;
+        own.gid = curproc->user.gid;
+        own.mode = mode;
+        int r = ino->touch(name, own);
+        if (r == 0) {
+          res = ino->get_direntry(name)->ino;
         }
-        return -EINVAL;
+        return r;
       }
 
       res = nullptr;
       return -ENOENT;
     }
-
-    ino = found;
+    ino = found->get();
   }
 
   res = ino;
@@ -301,20 +305,22 @@ int vfs::unlink(const char *path, ck::ref<fs::Node> cwd) {
       continue;
     }
 
-    auto next = ino->get_direntry(name);
-    if (next == nullptr) return -ENOENT;
+    auto ent = ino->get_direntry(name);
+    if (ent == nullptr) return -ENOENT;
+    auto next = ent->ino;
+    assert(next != nullptr);
+
 
     if (last) {
-      if (next->type == T_DIR) {
+      if (next->is_dir()) {
         return -EISDIR;
       }
 
       assert(ino != nullptr);
-      if (ino->type != T_DIR) {
+      if (!ino->is_dir()) {
         return -ENOTDIR;
       }
-      if (ino->dops->unlink == NULL) return -EPERM;
-      return ino->dops->unlink(*ino, name);
+      return ino->unlink(name);
     }
 
 
@@ -324,6 +330,32 @@ int vfs::unlink(const char *path, ck::ref<fs::Node> cwd) {
   return 0;
 }
 
+
+int vfs::chroot(ck::string path) {
+  auto proc = curproc;
+  scoped_lock l(proc->datalock);
+
+  ck::ref<fs::Node> new_root = nullptr;
+
+  if (0 != vfs::namei(path.get(), 0, 0, proc->cwd, new_root)) return -1;
+
+  if (new_root == nullptr) return -ENOENT;
+
+  if (!new_root->is_dir()) return -ENOTDIR;
+
+  proc->root = new_root;
+
+  ck::string cwd;
+  if (vfs::getcwd(*new_root, cwd) != 0) return -EINVAL;
+  proc->cwd_string = cwd;
+  proc->cwd = new_root;
+
+  if (curproc->ring == RING_KERN) {
+    vfs_root = new_root;
+  }
+
+  return 0;
+}
 
 fs::File vfs::fdopen(ck::string path, int opts, int mode) {
   int fd_dirs = 0;
@@ -338,4 +370,177 @@ fs::File vfs::fdopen(ck::string path, int opts, int mode) {
 
   fd.path = move(path);
   return fd;
+}
+
+
+
+
+void vfs::init_boot_filesystem(void) {
+  // Initialize the tmpfs filesystem layer
+  tmpfs::init();
+  devfs::init();
+
+  int mount_res;
+  // Mount a tmpfs filesystem at "/"
+  mount_res = vfs::mount("", "/", "tmpfs", 0, NULL);
+  if (mount_res != 0) panic("Failed to mount root tmpfs filesystem\n");
+  sys::mkdir("/dev", 0755);
+  mount_res = vfs::mount("", "/dev", "devfs", 0, NULL);
+  if (mount_res != 0) panic("Failed to mount devfs to /dev\n");
+  // Once the kernel has a drive and a filesystem for the root filesystem, it
+  // is mounted into /uroot, and then chrooted into
+  sys::mkdir("/root", 0755);
+}
+
+
+ksh_def("pwd", "Print the working directory") {
+  ck::string cwd;
+
+  vfs::getcwd(*curproc->cwd, cwd);
+  printk("%s\n", cwd.get());
+
+  return 0;
+}
+
+static void do_ls(const ck::string &dir) {
+  auto cwd = curproc->cwd;
+  auto f = vfs::open(dir);
+  if (!f) {
+    printk("ls: '%s' not found\n", dir.get());
+    return;
+  }
+
+  {
+    auto l = f->lock();
+    auto ents = f->dirents();
+
+    printk("%8s ", "iNode");
+    printk("%8s ", "Mode");
+    printk("%8s ", "Links");
+    printk("%12s ", "Bytes");
+    printk("%12s ", "Block Count");
+    printk("%12s ", "Block Size");
+    printk("%s", "Name");
+    printk("\n");
+
+    for (auto ent : ents) {
+      auto n = ent->get();
+      struct stat s;
+      n->stat(&s);
+
+      printk("%8ld ", s.st_ino);
+      printk("%8lo ", s.st_mode);
+      printk("%8ld ", s.st_nlink);
+      printk("%12ld ", s.st_size);
+      printk("%12ld ", s.st_blocks);
+      printk("%12ld ", s.st_blksize);
+      printk("%s", ent->name.get());
+      printk("\n");
+      // printk("%zu %s\n", n->size(), ent->name.get());
+    }
+  }
+}
+
+ksh_def("ls", "List the files in the kernel's working directory") {
+  if (args.size() == 0) {
+    do_ls(".");
+  } else {
+    for (auto &arg : args) {
+      do_ls(arg);
+    }
+  }
+  return 0;
+}
+
+extern int do_chdir(const char *path);
+
+ksh_def("cd", "Change directory") {
+  if (args.size() != 1) {
+    printk("usage: cd <dir>\n");
+    return 0;
+  }
+  return do_chdir(args[0].get());
+}
+
+ksh_def("mkdir", "Create a directory") {
+  if (args.size() != 1) {
+    printk("usage: mkdir <dir>\n");
+    return 0;
+  }
+  sys::mkdir(args[0].get(), 0755);
+  return 0;
+}
+
+
+ksh_def("dump", "hexdump the start of a file") {
+  if (args.size() != 1) {
+    printk("usage: dump file\n");
+    return 0;
+  }
+  auto buf = (char *)malloc(4096);
+  auto f = vfs::open(args[0]);
+  if (!f) {
+    printk("file not found\n");
+    free(buf);
+    return 0;
+  }
+
+  fs::File file(f, 0);
+  auto sz = file.read(buf, 4096);
+  if (sz < 0) {
+    printk("failed to read: %zd\n", sz);
+    free(buf);
+    return 0;
+  }
+  printk("read %zd bytes\n", sz);
+  hexdump(buf, sz, true);
+  free(buf);
+  return 0;
+}
+
+
+ksh_def("md5", "md5sum a file") {
+  if (args.size() != 1) {
+    printk("usage: md5 <file>\n");
+    return 0;
+  }
+
+  auto f = vfs::open(args[0]);
+  if (!f) {
+    printk("file not found\n");
+    return 0;
+  }
+
+  fs::File file(f, 0);
+
+  int size = 8192 * 4;
+  auto buf = (char *)malloc(size);
+  crypto::MD5 sum;
+  struct stat s;
+  file.stat(&s);
+
+  size_t read = 0;
+  while (true) {
+    auto sz = file.read(buf, size);
+    if (sz < 0) {
+      printk("failed to read: %zd\n", sz);
+      free(buf);
+      return 0;
+    }
+    if (sz == 0) {
+      printk("\n");
+      break;
+    }
+
+    read += sz;
+    printk("\r%zu", (read * 100) / s.st_size);
+    file.seek(sz, SEEK_CUR);
+
+    // sum.update(buf, sz);
+  }
+  free(buf);
+  auto digest = sum.finalize();
+  printk("%s\n", digest.get());
+  // hexdump(buf, sz, true);
+  return 0;
 }

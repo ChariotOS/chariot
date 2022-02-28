@@ -73,3 +73,8 @@ typedef long intptr_t;
 #endif
 
 #define PGSIZE 4096
+
+
+#define getset(name, field)                             \
+  inline const auto &name(void) const { return field; } \
+  inline void set_##name(auto v) { field = v; }

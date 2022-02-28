@@ -23,6 +23,8 @@
 #include <crypto.h>
 #include "acpi/acpi.h"
 #include <ck/iter.h>
+#include <fs/tmpfs.h>
+#include <fs/devfs.h>
 
 // in src/arch/x86/sse.asm
 extern "C" void enable_sse();
@@ -120,7 +122,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   }
 }
 
-
 int kernel_init(void*) {
   // start up the extra cpu cores
 #ifdef CONFIG_SMP
@@ -128,9 +129,13 @@ int kernel_init(void*) {
 #endif
 
 
+
   pci::init(); /* initialize the PCI subsystem */
   KINFO("Initialized PCI\n");
   net::start();
+
+  // Init the virtual filesystem and mount a tmpfs and devfs to / and /dev
+  vfs::init_boot_filesystem();
 
   // walk the kernel modules and run their init function
   KINFO("Calling kernel module init functions\n");
@@ -140,6 +145,8 @@ int kernel_init(void*) {
   sched::proc::create_kthread("[reaper]", Process::reaper);
 
 
+
+
   mb2::find<struct multiboot_tag_module>(::mbd, MULTIBOOT_TAG_TYPE_MODULE, [&](auto* module) {
     auto size = module->mod_end - module->mod_start;
     printk(KERN_INFO "Found a module %p-%p\n", p2v(module->mod_start), p2v(module->mod_end));
@@ -147,6 +154,7 @@ int kernel_init(void*) {
 
 
   KINFO("Bootup complete. It is now safe to move about the cabin.\n");
+
   auto root_name = kargs::get("root", "/dev/disk0p1");
   if (!root_name) {
     KERR("Failed to mount root...\n");
@@ -156,12 +164,18 @@ int kernel_init(void*) {
     }
   }
 
+
+  int mnt_res = vfs::mount(root_name, "/root", "ext2", 0, NULL);
+  if (mnt_res != 0) {
+    panic("failed to mount root. Error=%d\n", -mnt_res);
+  }
+
+  int chroot_res = vfs::chroot("/root");
+  if (chroot_res != 0) {
+    panic("Failed to chroot into /root. Error=%d\n", -mnt_res);
+  }
   assert(root_name);
 
-  int mnt_res = vfs::mount(root_name, "/", "ext2", 0, NULL);
-  if (mnt_res != 0) {
-    printk("failed to mount root. Error=%d\n", -mnt_res);
-  }
 
 #ifndef CONFIG_ENABLE_USERSPACE
   KINFO("Userspace disabled. Starting kernel shell\n");
@@ -178,7 +192,7 @@ int kernel_init(void*) {
   auto paths = init_paths.split(',');
 
   auto init_pid = sched::proc::spawn_init(paths);
-	printk("here %d\n", init_pid);
+  printk("here %d\n", init_pid);
 
   sys::waitpid(init_pid, NULL, 0);
   panic("init died!\n");

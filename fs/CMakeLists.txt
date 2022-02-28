@@ -9,17 +9,14 @@ add_kernel_module(
 
 add_kernel_module(
 	NAME tmpfs
-	NEEDS TMPFS
 	SOURCES
-		tmpfs/dir.cpp
 		tmpfs/tmpfs.cpp
-		tmpfs/inode.cpp
-		tmpfs/superblock.cpp
 )
 
 
 add_kernel_module(
 	NAME procfs
+	NEEDS PROCFS
 	SOURCES
 		procfs/superblock.cpp
 		procfs/file.cpp

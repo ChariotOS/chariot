@@ -73,7 +73,7 @@ struct vcons vga_console {
 static bool cons_enabled = false;
 static spinlock fblock;
 
-u32 *vga_fba = 0;
+static u32 *vga_fba = 0;
 struct ck_fb_info info {
   .active = 0, .width = 0, .height = 0,
 };
@@ -281,41 +281,37 @@ void vga::early_init(uint64_t mbd) {
 
 
 
-class VGADriver : public dev::VideoDevice {
+class VGADevice : public dev::VideoDevice {
  public:
   using dev::VideoDevice::VideoDevice;
+  virtual ~VGADevice(void) {}
 
-  virtual ~VGADriver(void) {}
-
-  virtual int get_mode(gvi_video_mode &mode) {
+  int get_mode(gvi_video_mode &mode) override {
     mode.width = info.width;
     mode.height = info.height;
     mode.caps = 0;
     return 0;
   }
 
-  virtual void init(void) {
+  void init(void) override {
     vga_dev = dev();
-    dev::VideoDevice::register_driver(this);
+    register_instance();
   }
 
-
-  virtual uint32_t *get_framebuffer(void) {
+  uint32_t *get_framebuffer(void) override {
     if (vga_fba == NULL) {
       KINFO("Looking for VGA Framebuffer\n");
-      vga_fba = (u32 *)get_framebuffer_address();
+      vga_fba = (uint32_t *)get_framebuffer_address();
     }
     return vga_fba;
   }
 
-
-
-  virtual int on_open(void) {
+  int open(fs::File &file) override {
     if (!cons_enabled) return -EBUSY;
     cons_enabled = false;
     return 0;
   }
-  virtual void on_close(void) { cons_enabled = true; }
+  void close(fs::File &file) override { cons_enabled = true; }
 };
 
 
@@ -332,4 +328,4 @@ static dev::ProbeResult vga_probe(ck::ref<hw::Device> dev) {
 };
 
 
-driver_init("x86-vga", VGADriver, vga_probe);
+driver_init("x86-vga", VGADevice, vga_probe);

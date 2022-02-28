@@ -160,6 +160,7 @@ static bool parse_mp_table(smp::mp::mp_table *table) {
   global_lapic = (uint32_t *)p2v((uint64_t)table->lapic_addr);
 
   walk_mp_table(table, [&](u8 type, void *mp_entry) {
+			printk("type: %d\n", type);
     switch (type) {
       case MP_TAB_TYPE_CPU:
         parse_mp_cpu((smp::mp::mp_table_entry_cpu *)mp_entry);
