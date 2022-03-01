@@ -1,0 +1,56 @@
+<!--
+  ============================================================================
+  Buildfile for building Hawkbeans standard class libraries 
+  
+  use "clean" task to cleanup afterwards, if desired.
+  ============================================================================
+-->
+<project name="hawkbeans libraries" default="build" basedir=".">
+
+  <!-- Setting up the global properties for the build -->
+  <property environment="env"/>
+  <property name="hawkbeans.root" value="${basedir}"/>
+  <property name="lib" value="${hawkbeans.root}/lib"/>
+  <property name="src" value="${hawkbeans.root}/jvm"/>
+  <property name="javasrc" value="${hawkbeans.root}/javasrc"/>
+  <property name="build.tmp" value="${hawkbeans.root}/build"/>
+
+  <target name="build" depends ="classes.jar"/>
+
+  <!-- cleans up all generated suff, as preparation for the build -->
+  <target name="prepare">
+    <!-- delete generated files -->
+    <delete file="classes.jar"/>
+    <!-- delete compiled and generated artifacts -->
+    <delete>
+      <fileset dir="${src}">
+        <include name="**/*.o"/>
+        <include name="**/*.class"/>
+        <include name="**/*.prg"/>
+      </fileset>
+    </delete>
+    <!-- initializes (temp) build folder -->
+    <delete dir="${build.tmp}"/>
+    <mkdir dir="${build.tmp}" />
+  </target>
+
+  <!-- creates classes.jar -->
+  <target name="classes.jar" depends ="prepare">
+    <mkdir dir="${build.tmp}/classes"/>
+    <javac includeantruntime="false" srcdir="${javasrc}" destdir="${build.tmp}/classes" fork="yes" optimize="on" debug="lines,vars,source" source="1.8" target="1.8"/>
+    <jar destfile="classes.jar" basedir="${build.tmp}/classes" update="false"/>
+  </target>
+
+  <!-- cleans the mess afterwards (meant to be called from outside) -->
+  <target name="clean" description="clean up all generated files">
+    <!-- delete compiled and generated artifacts -->
+    <delete>
+      <fileset dir="${javasrc}">
+        <include name="**/*.o"/> <include name="**/*.class"/>
+        <include name="**/*.prg"/>
+      </fileset>
+    </delete>
+    <!-- delete (temp) build folder -->
+    <delete dir="${build.tmp}"/>
+  </target>
+</project>

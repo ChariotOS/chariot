@@ -39,6 +39,7 @@ char *strtok_r(char *str, const char *delim, char **saveptr);
 char *strtok(char *str, const char *delim);
 
 char *strdup(const char *s);
+inline char *strndup(const char *s, size_t size) { return strdup(s); }
 char *stpcpy(char *d, const char *s);
 char *strcpy(char *dest, const char *src);
 char *strchrnul(const char *s, int c);
