@@ -18,6 +18,7 @@
 #include <thread.h>
 #include <class.h>
 
+#define DEBUG_INTERP 1
 #if DEBUG_INTERP == 1
 #define BC_DEBUG(fmt, args...) HB_DEBUG(fmt, ##args)
 #else

@@ -53,6 +53,7 @@
 #define HB_SUGGEST(fmt, args...) fprintf(stderr, BOLD(fmt) "\n", ##args)
 
 #define HB_SUGGEST_NOBRK(fmt, args...) fprintf(stderr, BOLD(fmt), ##args)
+#define DEBUG_ENABLE 1
 
 #ifdef DEBUG_ENABLE
 #define HB_DEBUG(fmt, args...) fprintf(stderr, BOLD(YELLOW("[" __FILE__ ":%d] " fmt)) "\n", __LINE__, ##args)

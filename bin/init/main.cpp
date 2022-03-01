@@ -300,6 +300,8 @@ int main(int argc, char **argv) {
 
 #endif
 
+
+	// spawn("beans /usr/java/testcode/HelloWorld");
   spawn("/bin/sh");
 
   ev.start();

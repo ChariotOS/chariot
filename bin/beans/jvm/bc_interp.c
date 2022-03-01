@@ -1716,6 +1716,8 @@ handle_putfield (u1 * bc, java_class_t * cls) {
 	oval = pop_val(TAG_OBJ);
 	oref = oval.obj;
 
+	printf("val: %p, oval: %p, oref: %p\n", val, oval, oref);
+
 	if (!oref) {
 		hb_throw_and_create_excp(EXCP_NULL_PTR);
 		return -ESHOULD_BRANCH;
@@ -2246,7 +2248,6 @@ hb_exec_method (jthread_t * t)
 	BC_DEBUG("Executing method (%s) for class (%s)", method_nm, hb_get_class_name(cls));
 
 	while (1) {
-
 		int ret = hb_exec_one(t);
 
 		if (ret == -1) {

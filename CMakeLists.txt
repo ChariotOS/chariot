@@ -151,7 +151,7 @@ set(LIBRARY_OUTPUT_PATH "${CHARIOT_SYSROOT}/lib" CACHE PATH "Build directory" FO
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -fdiagnostics-color=always ${COMPILER_SPECIFIC_FLAGS} ")
 if(CONFIG_DEBUG_SYMBOLS)
-	# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g ")
+	# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3")
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CONFIG_ADDITIONAL_USER_FLAGS}")

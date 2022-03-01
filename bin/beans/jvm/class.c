@@ -570,6 +570,7 @@ field_info_t* hb_find_field(u2 const_idx, java_class_t* src_cls,
  */
 int hb_resolve_field(field_info_t* f, native_obj_t* obj, java_class_t* cls,
                      u2 const_idx) {
+	printf("resolve field %p, %p, %p, %d\n", f, obj, cls, const_idx);
   int i;
   u1 rslvd = 0;
   void* const_entry = NULL;
