@@ -23,17 +23,14 @@ class virtio_mmio_disk : public virtio_mmio_dev, public dev::Disk {
 
  public:
   virtio_mmio_disk(volatile uint32_t *regs);
-  virtual void irq(int ring_index, virtio::virtq_used_elem *);
+  void irq(int ring_index, virtio::virtq_used_elem *) override;
 
   void disk_rw(uint32_t sector, void *data, int n, int write);
 
-  virtual size_t block_size();
-  virtual size_t block_count();
-  virtual bool read_blocks(uint32_t sector, void *data, int nsec = 1);
-  virtual bool write_blocks(uint32_t sector, const void *data, int nsec = 1);
+  int read_blocks(uint32_t sector, void *data, int nsec = 1) override;
+  int write_blocks(uint32_t sector, const void *data, int nsec = 1) override;
 
-  virtual bool initialize(const struct virtio_config &config);
-
+  bool initialize(const struct virtio_config &config) override;
 
   inline auto &config(void) { return *(virtio::blk_config *)((off_t)this->regs + 0x100); }
 };

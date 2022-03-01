@@ -1,8 +1,14 @@
 #include <dev/virtio/mmio.h>
+#include "dev/driver.h"
 #include "internal.h"
 
 
-virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(regs) {
+DECLARE_STUB_DRIVER("virtio-mmio-disk", virtio_mmio_disk_driver)
+
+virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(regs), dev::Disk(virtio_mmio_disk_driver) {
+
+  set_block_count(config().blk_size);
+  set_block_count(config().capacity);
 }
 
 
@@ -198,10 +204,10 @@ bool virtio_mmio_disk::write_blocks(uint32_t sector, const void *data, int nsec)
   return true;
 }
 
-size_t virtio_mmio_disk::block_size(void) {
-  return config().blk_size;
-}
+// size_t virtio_mmio_disk::block_size(void) {
+//   return config().blk_size;
+// }
 
-size_t virtio_mmio_disk::block_count(void) {
-  return config().capacity;
-}
+// size_t virtio_mmio_disk::block_count(void) {
+//   return config().capacity;
+// }

@@ -205,7 +205,7 @@ class virtio_gpu_resource {
 };
 
 
-class virtio_mmio_gpu : public virtio_mmio_dev, public dev::video_device {
+class virtio_mmio_gpu : public virtio_mmio_dev, public dev::VideoDevice {
   friend class virtio_gpu_resource;
 
   spinlock lock;
