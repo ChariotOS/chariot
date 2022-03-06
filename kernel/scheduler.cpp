@@ -152,7 +152,7 @@ struct mlfq {
 
 
 
-  // steal to another cpu, `thieff`
+  // steal to another cpu, `thief`
   ck::ref<Thread> steal(int thief) {
     bool locked = false;
     auto f = lock.try_lock_irqsave(locked);
@@ -518,8 +518,7 @@ void sched::run() {
 
 
 void sched::handle_tick(u64 ticks) {
-
-	if (!core().in_sched) return;
+  if (!core().in_sched) return;
   if (!cpu::in_thread()) return;
 
   //

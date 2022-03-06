@@ -311,7 +311,6 @@ static ssize_t ext2_raw_rw(fs::Node &node, char *buf, size_t sz, off_t offset, b
   off_t last_blk_ind = (offset + sz) / bsize;
   off_t offset_into_first_block = offset % bsize;
 
-  // TODO: lock the FS. We now want to own the efs.work_buf
   auto *given_buf = (u8 *)buf;
 
   int remaining_count = min((off_t)sz, (off_t)ino.size() - offset);
@@ -671,3 +670,4 @@ ck::ref<fs::Node> ext2::FileSystem::create_inode(u32 index) {
 
   return ino;
 }
+

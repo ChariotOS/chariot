@@ -21,7 +21,7 @@ namespace dev {
     void register_instance(void);
 
     // ^fs::Node
-    ck::ref<mm::VMObject> mmap(fs::File &file, size_t npages, int prot, int flags, off_t off) override;
-    int ioctl(fs::File &file, unsigned int cmd, off_t arg) override;
+    ck::ref<mm::VMObject> mmap(fs::File &file, size_t npages, int prot, int flags, off_t off) override final;
+    int ioctl(fs::File &file, unsigned int cmd, off_t arg) override final;
   };
 }  // namespace dev

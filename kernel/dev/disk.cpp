@@ -6,10 +6,8 @@
 #include <printk.h>
 #include <module.h>
 #include <util.h>
+#include <time.h>
 
-
-
-// #include "../../drivers/ata/ata.h"
 
 dev::Disk::~Disk(void) {}
 
