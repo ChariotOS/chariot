@@ -122,7 +122,7 @@ menu "Config"
 endmenu
 
 
-menu "Devices"
+menu "Device Drivers"
 
 
 	config UART_CONSOLE
@@ -149,17 +149,17 @@ menu "Devices"
 	
 	config XHCI
 		bool "XHCI USB Host Controller"
-		default y
+		default n
 		depends on X86
 
 	config AHCI
 		bool "[WIP] Support for Advance Host Controller Interface drives"
-		default y
+		default n
 		depends on X86
 
 	config NVME
 		bool "[WIP] Support for NVMe Drives"
-		default y
+		default n
 		depends on X86
 
 	config GENERIC_CHAR
@@ -191,6 +191,7 @@ menu "Devices"
 		config FRAMEBUFFER_HEIGHT
 			int "Height of the VGA framebuffer"
 			default 1024
+
 		config FRAMEBUFFER_AUTODETECT
 			bool "Autodetect framebuffer dimensions from BIOS/grub"
 			default y
@@ -251,11 +252,10 @@ endmenu
 config ENABLE_USERSPACE
 	bool "Enable Userspace"
 	default y
+
 menu "Userspace"
 
 	depends on ENABLE_USERSPACE
-	# depends on USERSPACE
-
 	
 	config FANCY_WINDOWS
 		bool "Fancy Rounded windows"
