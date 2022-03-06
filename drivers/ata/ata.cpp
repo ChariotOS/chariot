@@ -187,13 +187,12 @@ bool dev::ATADisk::identify() {
 
 
   m_pci_dev = pci::find_generic_device(PCI_CLASS_STORAGE, PCI_SUBCLASS_IDE);
+#ifdef CONFIG_ATA_DMA
 
   if (m_pci_dev != nullptr) {
     m_pci_dev->enable_bus_mastering();
 
-#ifdef CONFIG_ATA_DMA
     use_dma = true;
-#endif
     // bar4 contains information for DMA
     bar4 = m_pci_dev->get_bar(4).raw;
     if (bar4 & 0x1) bar4 = bar4 & 0xfffffffc;
@@ -212,6 +211,8 @@ bool dev::ATADisk::identify() {
     printk("can't use ata without DMA\n");
     return false;
   }
+#endif
+
 
   return true;
 }
