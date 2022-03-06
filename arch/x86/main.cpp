@@ -3,7 +3,6 @@
 #include <cpu.h>
 #include <cpuid.h>
 #include <elf/loader.h>
-#include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <kargs.h>
 #include <kshell.h>
@@ -26,33 +25,20 @@
 #include <fs/tmpfs.h>
 #include <fs/devfs.h>
 
-// in src/arch/x86/sse.asm
-extern "C" void enable_sse();
-extern "C" void call_with_new_stack(void*, void*);
 
 
 typedef void (*func_ptr)(void);
 extern "C" func_ptr __init_array_start[0], __init_array_end[0];
 int kernel_init(void*);
 
-// ms per tick
-#define TICK_FREQ 100
-
-
-
-#ifndef GIT_REVISION
-#define GIT_REVISION "NO-GIT"
-#endif
-
 /**
  * the size of the (main cpu) scheduler stack
  */
 #define STKSIZE (4096 * 2)
+static uint64_t mbd;
 
 extern void rtc_init(void);
 extern void rtc_late_init(void);
-
-static uint64_t mbd;
 void serial_install(void);
 
 
@@ -69,8 +55,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   cpu.timekeeper = false;
   core().timekeeper = true;
   cpu.primary = true;
-
-
 
   arch_mem_init(mbd);
 
@@ -104,7 +88,6 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   // initialize the bootstrap processor's APIC
   core().apic.init();
 
-
   // initialize the scheduler
   assert(sched::init());
   KINFO("Initialized the scheduler\n");
@@ -122,12 +105,13 @@ extern "C" [[noreturn]] void kmain(u64 mbd, u64 magic) {
   }
 }
 
+
+
 int kernel_init(void*) {
   // start up the extra cpu cores
 #ifdef CONFIG_SMP
   smp::init_cores();
 #endif
-
 
 
   pci::init(); /* initialize the PCI subsystem */
@@ -165,10 +149,12 @@ int kernel_init(void*) {
   }
 
 
+
   int mnt_res = vfs::mount(root_name, "/root", "ext2", 0, NULL);
   if (mnt_res != 0) {
     panic("failed to mount root. Error=%d\n", -mnt_res);
   }
+
 
   int chroot_res = vfs::chroot("/root");
   if (chroot_res != 0) {
