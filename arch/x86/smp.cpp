@@ -140,8 +140,13 @@ void parse_mp_cpu(smp::mp::mp_table_entry_cpu *ent) {
   SMP_DEBUG("found CPU #%d, type:0x%02x, bsp:%d, features:0x%08x\n", ent->lapic_id, ent->type, ent->is_bsp, ent->feat_flags);
 }
 
-void parse_mp_bus(smp::mp::mp_table_entry_bus *ent) {}
-void parse_mp_ioapic(smp::mp::mp_table_entry_ioapic *ent) {}
+void parse_mp_bus(smp::mp::mp_table_entry_bus *ent) {
+  SMP_DEBUG("found BUS id:0x%02x, type:%02x/%s\n", ent->bus_id, ent->type, ent->bus_type_string);
+}
+void parse_mp_ioapic(smp::mp::mp_table_entry_ioapic *ent) {
+  SMP_DEBUG("found IOAPIC id:0x%02x, type:%02x, version:%02x, en:%d, unused:%d, addr:%p\n", ent->id, ent->type, ent->version, ent->enabled,
+      ent->unused, ent->addr);
+}
 void parse_mp_ioint(smp::mp::mp_table_entry_ioint *ent) {}
 void parse_mp_lint(smp::mp::mp_table_entry_lint *ent) {}
 
@@ -355,4 +360,3 @@ ksh_def("smp-start", "start the other cores on the system") {
   smp::init_cores();
   return 0;
 }
-
