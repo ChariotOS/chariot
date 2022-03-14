@@ -33,7 +33,7 @@ ssize_t tmpfs::FileNode::write(fs::File &f, const char *buf, size_t count) {
 
 
 ssize_t tmpfs::FileNode::access(fs::File &f, void *dst, size_t size, bool write) {
-	if (this->size() == 0) return 0;
+  if (this->size() == 0) return 0;
 
   size_t byte_offset = f.offset();
   long to_access = size;
@@ -41,16 +41,16 @@ ssize_t tmpfs::FileNode::access(fs::File &f, void *dst, size_t size, bool write)
   ssize_t offset = byte_offset % PGSIZE;
 
   char *udata = (char *)dst;
-	// write(13)
-	// read(4096) -> read(13)
+  // write(13)
+  // read(4096) -> read(13)
   if (this->size() <= byte_offset + size) {
-		size = this->size() - byte_offset; // ??
-	}
+    size = this->size() - byte_offset;  // ??
+  }
 
   for (off_t blk = byte_offset / PGSIZE; to_access > 0; blk++) {
-		if (m_pages.size() < blk) break;
+    if (m_pages.size() < blk) break;
     // get the block we are looking at.
-    auto page = m_pages[blk];
+    auto page = get_page(blk);
     if (!page) {
       break;
     }
@@ -75,7 +75,7 @@ ssize_t tmpfs::FileNode::access(fs::File &f, void *dst, size_t size, bool write)
   }
 
   auto did_access = size - to_access;
-  f.seek(did_access);
+  f.seek(did_access, SEEK_CUR);
 
   return did_access;
 }
@@ -114,6 +114,47 @@ int tmpfs::FileNode::resize_r(fs::File &file, size_t new_size) {
   set_size(new_size);
   return 0;
 }
+
+
+
+struct TmpfsVMObject final : public mm::VMObject {
+  TmpfsVMObject(ck::ref<tmpfs::FileNode> ino, size_t npages, off_t off) : VMObject(npages) {
+    m_ino = ino;
+    m_off = off;
+  }
+
+  virtual ~TmpfsVMObject(void){};
+
+
+  // get a shared page (page #n in the mapping)
+  virtual ck::ref<mm::Page> get_shared(off_t n) override {
+    // printk("get_shared(%d)\n", n);
+    return m_ino->get_page(m_off + n);
+  }
+
+  virtual void flush(off_t n) override {}
+
+
+ private:
+  // offset -> block
+  spinlock m_lock;
+  ck::ref<tmpfs::FileNode> m_ino;
+  off_t m_off = 0;
+};
+
+
+
+ck::ref<mm::VMObject> tmpfs::FileNode::mmap(fs::File &f, size_t npages, int prot, int flags, off_t off) {
+	printk("mmap!\n");
+  // XXX: this is invalid, should be asserted before here :^)
+  if (off & 0xFFF) return nullptr;
+
+  // if (flags & MAP_PRIVATE) printk("ext2 map private\n");
+  // if (flags & MAP_SHARED) printk("ext2 map shared\n");
+
+  return ck::make_ref<TmpfsVMObject>(f.ino, npages, off);
+}
+
 
 
 

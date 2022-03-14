@@ -16,6 +16,14 @@ namespace tmpfs {
     ssize_t read(fs::File &, char *dst, size_t count) override;
     ssize_t write(fs::File &, const char *, size_t) override;
     int resize(fs::File &, size_t) override;
+    ck::ref<mm::VMObject> mmap(fs::File &, size_t npages, int prot, int flags, off_t off) override;
+
+    ck::ref<mm::Page> get_page(off_t off) const {
+      if (off >= 0 && off < m_pages.size()) {
+      	return m_pages[off];
+			}
+      return nullptr;
+    }
 
    private:
     int resize_r(fs::File &, size_t);
