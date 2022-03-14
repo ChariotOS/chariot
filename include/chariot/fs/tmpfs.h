@@ -11,10 +11,18 @@ namespace tmpfs {
   struct FileNode : public fs::FileNode {
     using fs::FileNode::FileNode;
 
+
     int seek_check(fs::File &, off_t old_off, off_t new_off) override;
     ssize_t read(fs::File &, char *dst, size_t count) override;
     ssize_t write(fs::File &, const char *, size_t) override;
     int resize(fs::File &, size_t) override;
+
+   private:
+    int resize_r(fs::File &, size_t);
+
+    ssize_t access(fs::File &f, void *data, size_t count, bool write);
+    spinlock m_lock;
+    ck::vec<ck::ref<mm::Page>> m_pages;
   };
 
   struct DirNode : public fs::DirectoryNode {
