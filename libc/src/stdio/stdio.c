@@ -90,9 +90,7 @@ static void stdio_exit(void) {
     fflush(f);
 }
 
-void stdio_init(void) {
-  atexit(stdio_exit);
-}
+void stdio_init(void) { atexit(stdio_exit); }
 
 static FILE *falloc();
 static void ffree(FILE *);
@@ -105,7 +103,7 @@ FILE *falloc(void) {
   fp->fd = -1;
   fp->lock = -1;
 
-	fp->has_ungetc = 0;
+  fp->has_ungetc = 0;
 
   pthread_mutex_init(&fp->flock, NULL);
 
@@ -243,9 +241,7 @@ static size_t _stdio_write(FILE *fp, const unsigned char *src, size_t sz) {
   return k;
 }
 
-static off_t _stdio_seek(FILE *fp, off_t offset, int whence) {
-  return errno_wrap(sysbind_lseek(fp->fd, offset, whence));
-}
+static off_t _stdio_seek(FILE *fp, off_t offset, int whence) { return errno_wrap(sysbind_lseek(fp->fd, offset, whence)); }
 
 
 
@@ -332,11 +328,10 @@ int fputc(int c, FILE *stream) {
 int putc(int c, FILE *stream) __attribute__((weak, alias("fputc")));
 
 int fgetc(FILE *stream) {
-
-	if (stream->has_ungetc) {
-		stream->has_ungetc = 0;
-		return stream->ungetc;
-	}
+  if (stream->has_ungetc) {
+    stream->has_ungetc = 0;
+    return stream->ungetc;
+  }
   char buf[1];
   int r;
   r = fread(buf, 1, 1, stream);
@@ -347,26 +342,19 @@ int fgetc(FILE *stream) {
   return (unsigned char)buf[0];
 }
 
-int feof(FILE *stream) {
-  return stream->eof;
-}
+int feof(FILE *stream) { return stream->eof; }
 
-int ferror(FILE *s) {
-  return 0;
-}
-void clearerr(FILE *s) {
-}
+int ferror(FILE *s) { return 0; }
+void clearerr(FILE *s) {}
 
 int getc(FILE *stream) __attribute__((weak, alias("fgetc")));
 
-int getchar(void) {
-  return fgetc(stdin);
-}
+int getchar(void) { return fgetc(stdin); }
 
 int ungetc(int c, FILE *stream) {
-	if (stream->has_ungetc) fprintf(stderr, "File has ungetc already\n");
-	stream->has_ungetc = 1;
-	stream->ungetc = c;
+  if (stream->has_ungetc) fprintf(stderr, "File has ungetc already\n");
+  stream->has_ungetc = 1;
+  stream->ungetc = c;
   return EOF;
 }
 
@@ -395,21 +383,13 @@ char *fgets(char *s, int size, FILE *stream) {
   return NULL;
 }
 
-int putchar(int c) {
-  return fputc(c, stdout);
-}
+int putchar(int c) { return fputc(c, stdout); }
 
-int fseek(FILE *stream, long offset, int whence) {
-  return lseek(stream->fd, offset, whence);
-}
+int fseek(FILE *stream, long offset, int whence) { return lseek(stream->fd, offset, whence); }
 
-long ftell(FILE *stream) {
-  return lseek(stream->fd, 0, SEEK_CUR);
-}
+long ftell(FILE *stream) { return lseek(stream->fd, 0, SEEK_CUR); }
 
-void rewind(FILE *stream) {
-  fseek(stream, 0, SEEK_SET);
-}
+void rewind(FILE *stream) { fseek(stream, 0, SEEK_SET); }
 
 int fputs(const char *s, FILE *stream) {
   int len = strlen(s);
@@ -422,9 +402,7 @@ int puts(const char *s) {
   return r;
 }
 
-int remove(const char *pathname) {
-  return -1;
-}
+int remove(const char *pathname) { return -1; }
 
 void perror(const char *msg) {
   // store errno in case something else in this function fiddles with it
@@ -433,13 +411,9 @@ void perror(const char *msg) {
   printf("%s: %s\n", msg, strerror(e));
 }
 
-void setbuf(FILE *stream, char *buf) {
-  setvbuf(stream, buf, buf ? _IOFBF : _IONBF, BUFSIZ);
-}
-void setbuffer(FILE *stream, char *buf, size_t size) {
-}
-void setlinebuf(FILE *stream) {
-}
+void setbuf(FILE *stream, char *buf) { setvbuf(stream, buf, buf ? _IOFBF : _IONBF, BUFSIZ); }
+void setbuffer(FILE *stream, char *buf, size_t size) {}
+void setlinebuf(FILE *stream) {}
 
 int setvbuf(FILE *restrict f, char *restrict buf, int type, size_t size) {
   // f->lbf = EOF;
@@ -459,9 +433,7 @@ int setvbuf(FILE *restrict f, char *restrict buf, int type, size_t size) {
   return 0;
 }
 
-FILE *tmpfile(void) {
-  return NULL;
-}
+FILE *tmpfile(void) { return NULL; }
 
 
 
@@ -473,58 +445,89 @@ int rename(const char *old_filename, const char *new_filename) {
 
 
 // TODO:
-int fscanf(FILE *stream, const char *format, ...) {
-  return -1;
-}
+int fscanf(FILE *stream, const char *format, ...) { return -1; }
 
 
 
 
-ssize_t getdelim(char **lineptr, size_t *n, int delim, FILE *stream) {
-  if (!lineptr || !n) {
+#define MIN_LINE_SIZE 4
+#define DEFAULT_LINE_SIZE 128
+
+ssize_t __getdelim(char **bufptr, size_t *n, int delim, FILE *fp) {
+  char *buf;
+  char *ptr;
+  size_t newsize, numbytes;
+  int pos;
+  int ch;
+  int cont;
+
+  if (fp == NULL || bufptr == NULL || n == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  if (*lineptr == NULL || *n == 0) {
-    *n = BUFSIZ;
-    if ((*lineptr = (char *)(malloc(*n))) == NULL) {
+  buf = *bufptr;
+  if (buf == NULL || *n < MIN_LINE_SIZE) {
+    buf = (char *)realloc(*bufptr, DEFAULT_LINE_SIZE);
+    if (buf == NULL) {
       return -1;
     }
+    *bufptr = buf;
+    *n = DEFAULT_LINE_SIZE;
   }
 
-  char *ptr;
-  char *eptr;
-  for (ptr = *lineptr, eptr = *lineptr + *n;;) {
-    int c = fgetc(stream);
-    if (c == -1) {
-      if (feof(stream)) {
-        *ptr = '\0';
-        return ptr == *lineptr ? -1 : ptr - *lineptr;
+  // CHECK_INIT (_REENT, fp);
+
+  // _newlib_flockfile_start (fp);
+
+  numbytes = *n;
+  ptr = buf;
+
+  cont = 1;
+
+  while (cont) {
+    /* fill buffer - leaving room for nul-terminator */
+    while (--numbytes > 0) {
+      if ((ch = getc(fp)) == EOF) {
+        cont = 0;
+        break;
       } else {
-        return -1;
+        *ptr++ = ch;
+        if (ch == delim) {
+          cont = 0;
+          break;
+        }
       }
     }
-    *ptr++ = c;
-    if (c == delim) {
-      *ptr = '\0';
-      return ptr - *lineptr;
-    }
-    if (ptr + 2 >= eptr) {
-      char *nbuf;
-      size_t nbuf_sz = *n * 2;
-      ssize_t d = ptr - *lineptr;
-      if ((nbuf = (char *)(realloc(*lineptr, nbuf_sz))) == NULL) {
-        return -1;
+
+    if (cont) {
+      /* Buffer is too small so reallocate a larger buffer.  */
+      pos = ptr - buf;
+      newsize = (*n << 1);
+      buf = realloc(buf, newsize);
+      if (buf == NULL) {
+        cont = 0;
+        break;
       }
-      *lineptr = nbuf;
-      *n = nbuf_sz;
-      eptr = nbuf + nbuf_sz;
-      ptr = nbuf + d;
+
+      /* After reallocating, continue in new buffer */
+      *bufptr = buf;
+      *n = newsize;
+      ptr = buf + pos;
+      numbytes = newsize - pos;
     }
   }
+
+  // _newlib_flockfile_end (fp);
+
+  /* if no input data, return failure */
+  if (ptr == buf) return -1;
+
+  /* otherwise, nul-terminate and return number of bytes read */
+  *ptr = '\0';
+  return (ssize_t)(ptr - buf);
 }
 
-ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
-  return getdelim(lineptr, n, '\n', stream);
-}
+ssize_t getdelim(char **lineptr, size_t *n, int delim, FILE *stream) { return __getdelim(lineptr, n, delim, stream); }
+
+ssize_t getline(char **lineptr, size_t *n, FILE *stream) { return getdelim(lineptr, n, '\n', stream); }
