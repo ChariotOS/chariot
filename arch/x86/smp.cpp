@@ -1,6 +1,7 @@
 #include <x86/smp.h>
 
 #include <cpu.h>
+#include <ck/set.h>
 #include <ck/func.h>
 #include <idt.h>
 #include <mem.h>
@@ -14,6 +15,7 @@
 #include <sched.h>
 #include <x86/fpu.h>
 #include <x86/msr.h>
+#include <dev/driver.h>
 
 #define IPI_IRQ (0xF3 - 32)
 
@@ -119,9 +121,7 @@ static smp::mp::mp_float_ptr_struct *find_mp_floating_ptr(void) {
   return nullptr;
 }
 
-// global variable that stores the CPUs
-static smp::cpu_state apic_cpus[CONFIG_MAX_CPUS];
-static int ncpus = 0;
+static ck::set<int> found_lapics;
 
 static u8 mp_entry_lengths[5] = {
     MP_TAB_CPU_LEN,
@@ -131,12 +131,11 @@ static u8 mp_entry_lengths[5] = {
     MP_TAB_LINT_LEN,
 };
 
+
+void smp::add_cpu(int lapic_id) { found_lapics.add(lapic_id); }
+
 void parse_mp_cpu(smp::mp::mp_table_entry_cpu *ent) {
-  // Allocate a new smp::cpu_state and insert it into the cpus vec
-  auto state = smp::cpu_state{.entry = ent};
-  state.index = ent->lapic_id;
-  apic_cpus[ent->lapic_id] = state;
-  ncpus++;
+  smp::add_cpu(ent->lapic_id);
   SMP_DEBUG("found CPU #%d, type:0x%02x, bsp:%d, features:0x%08x\n", ent->lapic_id, ent->type, ent->is_bsp, ent->feat_flags);
 }
 
@@ -196,14 +195,6 @@ static bool parse_mp_table(smp::mp::mp_table *table) {
 }
 
 static smp::mp::mp_float_ptr_struct *mp_floating_ptr;
-
-smp::cpu_state &smp::get_state(void) {
-  // TODO: get the real cpu number
-  auto cpu_index = 0;
-
-  // return the cpu at that index, unchecked.
-  return apic_cpus[cpu_index];
-}
 
 bool smp::init(void) {
   mp_floating_ptr = find_mp_floating_ptr();
@@ -322,6 +313,55 @@ extern "C" void mpentry(int apic_id) {
 }
 
 
+class X86Core : public dev::CharDevice {
+ public:
+  using dev::CharDevice::CharDevice;
+
+  virtual ~X86Core(void) {}
+
+  virtual void init(void) {
+    if (auto mmio = dev()->cast<hw::MMIODevice>()) {
+      auto status = mmio->get_prop_string("status");
+
+      auto lapic_id = mmio->address();
+      bind(ck::string::format("core%d", lapic_id));
+      SMP_DEBUG("Found core %d\n", lapic_id);
+
+      // skip ourselves
+      if (lapic_id == core_id()) return;
+
+
+      auto stack = phys::alloc();
+
+      void *code = p2v(0x7000);
+      volatile auto args = (struct ap_args *)p2v(0x6000);
+      args->stack = (unsigned long)p2v(stack) + 4096;
+      args->ready = 0;
+      args->apic_id = lapic_id;
+
+      startap(lapic_id, (unsigned long)v2p(code));
+      while (args->ready == 0) {
+        arch_relax();
+      }
+    }
+  };
+};
+
+
+static dev::ProbeResult x86_core_probe(ck::ref<hw::Device> dev) {
+  if (auto mmio = dev->cast<hw::MMIODevice>()) {
+    if (mmio->name() == "x86,core") {
+      return dev::ProbeResult::Attach;
+    }
+  }
+
+  return dev::ProbeResult::Ignore;
+};
+
+driver_init("x86,core", X86Core, x86_core_probe);
+
+
+
 void smp::init_cores(void) {
   arch_disable_ints();
   // copy the code into the AP region
@@ -334,21 +374,25 @@ void smp::init_cores(void) {
   args->gdtr32 = (unsigned long)gdtr32;
   args->gdtr64 = (unsigned long)gdtr;
   args->boot_pt = (unsigned long)v2p(kernel_page_table);
-  for (int i = 0; i < ncpus; i++) {
-    auto &core = apic_cpus[i];
+  for (auto lapic_id : found_lapics) {
+    auto dev = ck::make_ref<hw::MMIODevice>(lapic_id, 0);
+    hw::Device::add("x86,core", dev);
+
+#if 0
     // skip ourselves
-    if (core.entry->lapic_id == core_id()) continue;
+    if (lapic_id == core_id()) continue;
 
 
     auto stack = phys::alloc();
     args->stack = (unsigned long)p2v(stack) + 4096;
     args->ready = 0;
-    args->apic_id = core.entry->lapic_id;
+    args->apic_id = lapic_id;
 
-    startap(core.entry->lapic_id, (unsigned long)v2p(code));
+    startap(lapic_id, (unsigned long)v2p(code));
     while (args->ready == 0) {
       arch_relax();
     }
+#endif
   }
 
   arch_enable_ints();

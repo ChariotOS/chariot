@@ -25,9 +25,10 @@ QEMU_FLAGS="-serial mon:stdio "
 
 case $ARCH in 
 	X86-64)
-		QEMU_FLAGS+="-smp ${CONFIG_QEMU_CORES} "
+		QEMU_FLAGS+="-smp cores=${CONFIG_QEMU_CORES},sockets=2 "
 		QEMU_FLAGS+="-enable-kvm -cpu host "
 		QEMU_FLAGS+="-global kvm-pit.lost_tick_policy=discard "
+		# QEMU_FLAGS+="-machine q35 "
 		QEMU_FLAGS+="-m 4G "
 		QEMU_FLAGS+="-hda $BUILD/chariot.img "
 

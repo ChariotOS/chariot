@@ -5,7 +5,10 @@
 #include <ck/string.h>
 #include <util.h>
 #include <ck/vec.h>
+#include <errno.h>
+#include <x86/smp.h>
 
+#define ACPI_LOG(...) PFXLOG(RED "ACPI", __VA_ARGS__)
 
 static ck::vec<acpi_table_header *> acpi_tables;
 
@@ -54,6 +57,40 @@ struct srat_mem_struct {
   uint8_t reserved3[8];  // Reserved
 } __attribute__((packed));
 
+
+
+template <typename Fn>
+int acpi_table_parse_entries(struct acpi_table_header *table_header, int table_size, int entry_id, Fn handler) {
+  ck::string id = ck::string(table_header->signature, 4);
+  struct acpi_subtable_header *entry;
+  unsigned int count = 0;
+  unsigned long table_end;
+  acpi_size tbl_size;
+  int max_entries = 255;
+
+  table_end = (unsigned long)table_header + table_header->length;
+
+  /* Parse all entries looking for a match. */
+
+  entry = (struct acpi_subtable_header *)((unsigned long)table_header + table_size);
+
+  while (((unsigned long)entry) + sizeof(struct acpi_subtable_header) < table_end) {
+    if (entry->type == entry_id && (!max_entries || count++ < max_entries))
+      if (handler(entry, table_end)) {
+        return -EINVAL;
+      }
+
+    entry = (struct acpi_subtable_header *)((unsigned long)entry + entry->length);
+  }
+  if (max_entries && count > max_entries) {
+    ACPI_LOG(
+        "[%4.4s:0x%02x] ignored %i entries of "
+        "%i found\n",
+        id.get(), entry_id, count - max_entries, count);
+  }
+  return count;
+}
+
 bool acpi::init(uint64_t mbd) {
   struct acpi_table_rsdp *rsdp = NULL;
   if (rsdp == NULL) {
@@ -96,30 +133,111 @@ bool acpi::init(uint64_t mbd) {
     for (auto *tbl : acpi_tables) {
       ck::string sig = ck::string(tbl->signature, ACPI_NAME_SIZE);
       ck::string oem = ck::string(tbl->oem_id, ACPI_OEM_ID_SIZE);
-      debug("[ACPI] table[%d]: sig: '%s', oem: '%s'\n", i++, sig.get(), oem.get());
-      if (!memcmp(tbl->signature, "APIC", 4)) {
-				// auto *t = (struct acpi_table_apic *)tbl;
-				
+      // ACPI_LOG("[ACPI] table[%d]: sig: '%s', oem: '%s'\n", i++, sig.get(), oem.get());
 
-			}
+      // MADT Structure
+      if (sig == "APIC") {
+        auto *p = (struct acpi_table_madt *)tbl;
+        ACPI_LOG("Parsing MADT...\n");
+        acpi_table_parse_entries(tbl, sizeof(*p), ACPI_MADT_TYPE_LOCAL_APIC, [](struct acpi_subtable_header *hdr, const long end) {
+          struct acpi_madt_local_apic *p = (struct acpi_madt_local_apic *)hdr;
+          smp::add_cpu(p->id);
+          ACPI_LOG("found cpu #%d,%d\n", p->id, p->processor_id);
+          return 0;
+        });
 
-      if (!memcmp(tbl->signature, "HPET", 4)) {
-        auto *hpet_tbl = (struct acpi_table_hpet *)tbl;
 
-        debug("[ACPI:HPET] Initializing HPET Device\n", (void *)hpet_tbl);
-        debug("[ACPI:HPET]\tID: 0x%x\n", hpet_tbl->id);
-        debug("[ACPI:HPET]\tBase Address: %p\n", (void *)hpet_tbl->address.address);
-        debug("[ACPI:HPET]\t\tAccess Width: %u\n", hpet_tbl->address.access_width);
-        debug("[ACPI:HPET]\t\tBit Width:    %u\n", hpet_tbl->address.bit_width);
-        debug("[ACPI:HPET]\t\tBit Offset:   %u\n", hpet_tbl->address.bit_offset);
-        debug("[ACPI:HPET]\t\tAspace ID:  0x%x\n", hpet_tbl->address.space_id);
-        debug("[ACPI:HPET]\tSeq Num: 0x%x\n", hpet_tbl->sequence);
-        debug("[ACPI:HPET]\tMinimum Tick Rate %u\n", hpet_tbl->minimum_tick);
-        debug("[ACPI:HPET]\tFlags: 0x%x\n", hpet_tbl->flags);
+
+        acpi_table_parse_entries(tbl, sizeof(*p), ACPI_MADT_TYPE_LOCAL_X2APIC, [](struct acpi_subtable_header *hdr, const long end) {
+          ACPI_LOG("found local x2apic\n");
+          return 0;
+        });
+
+
+        acpi_table_parse_entries(tbl, sizeof(*p), ACPI_MADT_TYPE_IO_APIC, [](struct acpi_subtable_header *hdr, const long end) {
+          ACPI_LOG("found io apic\n");
+          return 0;
+        });
+
+
+        acpi_table_parse_entries(tbl, sizeof(*p), ACPI_MADT_TYPE_INTERRUPT_SOURCE, [](struct acpi_subtable_header *hdr, const long end) {
+          ACPI_LOG("found interrupt source\n");
+          return 0;
+        });
+
+        acpi_table_parse_entries(tbl, sizeof(*p), ACPI_MADT_TYPE_INTERRUPT_OVERRIDE, [](struct acpi_subtable_header *hdr, const long end) {
+          ACPI_LOG("found interrupt source\n");
+          return 0;
+        });
+
+
+        acpi_table_parse_entries(tbl, sizeof(*p), ACPI_MADT_TYPE_NMI_SOURCE, [](struct acpi_subtable_header *hdr, const long end) {
+          ACPI_LOG("found an nmi source\n");
+          return 0;
+        });
+
+
+        acpi_table_parse_entries(tbl, sizeof(*p), ACPI_MADT_TYPE_LOCAL_APIC_NMI, [](struct acpi_subtable_header *hdr, const long end) {
+          ACPI_LOG("found a local apic NMI\n");
+          return 0;
+        });
+
+        acpi_table_parse_entries(tbl, sizeof(*p), ACPI_MADT_TYPE_LOCAL_APIC_OVERRIDE, [](struct acpi_subtable_header *hdr, const long end) {
+          ACPI_LOG("found a local apic override\n");
+          return 0;
+        });
+
+        acpi_table_parse_entries(tbl, sizeof(*p), ACPI_MADT_TYPE_IO_SAPIC, [](struct acpi_subtable_header *hdr, const long end) {
+          ACPI_LOG("found an IO SAPIC\n");
+          return 0;
+        });
+
+        acpi_table_parse_entries(tbl, sizeof(*p), ACPI_MADT_TYPE_LOCAL_SAPIC, [](struct acpi_subtable_header *hdr, const long end) {
+          ACPI_LOG("found a Local SAPIC\n");
+          return 0;
+        });
+
+        acpi_table_parse_entries(tbl, sizeof(*p), ACPI_MADT_TYPE_LOCAL_X2APIC_NMI, [](struct acpi_subtable_header *hdr, const long end) {
+          ACPI_LOG("found a local x2apic NMI\n");
+          return 0;
+        });
       }
 
 
-      if (!memcmp(tbl->signature, "SRAT", 4)) {
+      // FADT Structure... for some reason it has the signature of FACP...
+      if (sig == "FACP") {
+        auto *p = (struct acpi_table_fadt *)tbl;
+
+        ACPI_LOG("Parsing FADT...\n");
+        ACPI_LOG("system interrupt model: %x\n", p->model);
+        ACPI_LOG("boot_flags: %x\n", p->boot_flags);
+
+
+        int legacy = p->boot_flags & ACPI_FADT_LEGACY_DEVICES;
+        int i8042 = p->boot_flags & ACPI_FADT_8042;
+        int novga = p->boot_flags & ACPI_FADT_NO_VGA;
+        int nomsi = p->boot_flags & ACPI_FADT_NO_MSI;
+
+        ACPI_LOG("flags are: legacy=%d i8042=%d novga=%d nomsi=%d\n", legacy, i8042, novga, nomsi);
+      }
+
+      if (sig == "HPET") {
+        auto *hpet_tbl = (struct acpi_table_hpet *)tbl;
+
+        ACPI_LOG("[ACPI:HPET] Initializing HPET Device\n", (void *)hpet_tbl);
+        ACPI_LOG("[ACPI:HPET]\tID: 0x%x\n", hpet_tbl->id);
+        ACPI_LOG("[ACPI:HPET]\tBase Address: %p\n", (void *)hpet_tbl->address.address);
+        ACPI_LOG("[ACPI:HPET]\t\tAccess Width: %u\n", hpet_tbl->address.access_width);
+        ACPI_LOG("[ACPI:HPET]\t\tBit Width:    %u\n", hpet_tbl->address.bit_width);
+        ACPI_LOG("[ACPI:HPET]\t\tBit Offset:   %u\n", hpet_tbl->address.bit_offset);
+        ACPI_LOG("[ACPI:HPET]\t\tAspace ID:  0x%x\n", hpet_tbl->address.space_id);
+        ACPI_LOG("[ACPI:HPET]\tSeq Num: 0x%x\n", hpet_tbl->sequence);
+        ACPI_LOG("[ACPI:HPET]\tMinimum Tick Rate %u\n", hpet_tbl->minimum_tick);
+        ACPI_LOG("[ACPI:HPET]\tFlags: 0x%x\n", hpet_tbl->flags);
+      }
+
+
+      if (sig == "SRAT") {
         char *end = (char *)tbl + tbl->length;
 
         struct srat_table *srat = (struct srat_table *)tbl;
@@ -139,15 +257,14 @@ bool acpi::init(uint64_t mbd) {
                 proximity_domain |= p->proximity_domain_hi[1] << 16;
                 proximity_domain |= p->proximity_domain_hi[2] << 24;
               }
-              debug("[ACPI:SRAT] Processor (id[0x%02x] eid[0x%02x]) in proximity domain %d %s\n",
-                  p->apic_id, p->local_sapic_eid, proximity_domain,
-                  p->flags & ACPI_SRAT_CPU_ENABLED ? "enabled" : "disabled");
+              ACPI_LOG("[ACPI:SRAT] Processor (id[0x%02x] eid[0x%02x]) in proximity domain %d %s\n", p->apic_id, p->local_sapic_eid,
+                  proximity_domain, p->flags & ACPI_SRAT_CPU_ENABLED ? "enabled" : "disabled");
               break;
             }
 
             case ACPI_SRAT_TYPE_MEMORY_AFFINITY: {
               auto *p = (struct acpi_srat_mem_affinity *)stbl;
-              debug(
+              ACPI_LOG(
                   "[ACPI:SRAT] Memory (0x%llx length 0x%llx type 0x%x) in proximity domain %d "
                   "%s%s\n",
                   p->base_address, p->length, p->memory_type, p->proximity_domain,
@@ -158,10 +275,8 @@ bool acpi::init(uint64_t mbd) {
 
 
             case ACPI_SRAT_TYPE_X2APIC_CPU_AFFINITY: {
-              struct acpi_srat_x2apic_cpu_affinity *p =
-                  (struct acpi_srat_x2apic_cpu_affinity *)stbl;
-              debug("[ACPI:SRAT] Processor (x2apicid[0x%08x]) in proximity domain %d %s\n",
-                  p->apic_id, p->proximity_domain,
+              struct acpi_srat_x2apic_cpu_affinity *p = (struct acpi_srat_x2apic_cpu_affinity *)stbl;
+              ACPI_LOG("[ACPI:SRAT] Processor (x2apicid[0x%08x]) in proximity domain %d %s\n", p->apic_id, p->proximity_domain,
                   (p->flags & ACPI_SRAT_CPU_ENABLED) ? "enabled" : "disabled");
               break;
             }

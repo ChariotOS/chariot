@@ -124,18 +124,7 @@ namespace smp {
   }  // namespace mp
 
 
-
-  // every CPU has one of these. Stored globally and accessed by the
-  // smp::get_state function
-  struct cpu_state {
-    int index;
-    smp::mp::mp_table_entry_cpu *entry;
-  };
-
-  // return the current CPU's state.
-  cpu_state &get_state(void);
-  // and the state of another CPU
-  cpu_state &get_state(int apicid);
+	void add_cpu(int lapic_id);
 
   // initialize SMP, but don't IPI to the other CPUs yet.
   bool init(void);
