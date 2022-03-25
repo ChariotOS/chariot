@@ -80,6 +80,10 @@ long int strtol(const char *nptr, char **endptr, int base);
 long long int strtoll(const char *nptr, char **endptr, int base);
 
 
+unsigned long strtoul(const char *nptr, char **endptr, int base);
+unsigned long long strtoull(const char *nptr, char **endptr, int base);
+
+
 int posix_memalign(void **memptr, size_t alignment, size_t size);
 
 

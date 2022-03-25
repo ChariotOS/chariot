@@ -111,17 +111,23 @@ double erfc(double);
 
 
 double trunc(double d);
+float truncf(float f);
 
 double fmax(double a, double b);
 double fmin(double a, double b);
 int isinf(double d);
 int isnan(double d);
 
+float copysignf(float x, float y);
+double copysign(double x, double y);
 
 #define isfinite(d) (!isinf((d)))
 
 int abs(int);
 
+
+double rint(double x);
+float rintf(float x);
 
 #define FP_INFINITE 0x01
 #define FP_NAN 0x02

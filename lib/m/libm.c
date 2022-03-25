@@ -225,6 +225,13 @@ extern int __rem_pio2(double x, double* y);
     (hi) = (*(uint64_t*)&x) >> 32; \
   } while (0)
 
+#define SET_HIGH_WORD(d, v)          \
+  do {                               \
+    uint64_t* ptr = (uint64_t*)&(d); \
+    *ptr &= 0xFFFFFFFF;              \
+    *ptr |= ((uint64_t)(v) << 32);   \
+  } while (0)
+
 double sin(double x) {
   double y[2];
   uint32_t ix;
@@ -261,6 +268,18 @@ double sin(double x) {
   }
 }
 
+double copysign(double x, double y) {
+  uint32_t hx, hy;
+  GET_HIGH_WORD(hx, x);
+  GET_HIGH_WORD(hy, y);
+  SET_HIGH_WORD(x, (hx & 0x7fffffff) | (hy & 0x80000000));
+  return x;
+}
+float copysignf(float x, float y) { return copysign(x, y); }
+
+
+double rint(double x) { return round(x); }
+float rintf(float x) { return roundf(x); }
 
 double cos(double x) {
   double y[2];

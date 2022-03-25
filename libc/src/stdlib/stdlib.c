@@ -454,6 +454,9 @@ long int strtol(const char *nptr, char **endptr, int base) { return strtoll(nptr
 long long strtoll(const char *__restrict nptr, char **__restrict endptr, int base) { return strtoll_l(nptr, endptr, base); }
 
 
+unsigned long strtoul(const char *nptr, char **endptr, int base) { return strtol(nptr, endptr, base); }
+unsigned long long strtoull(const char *nptr, char **endptr, int base) { return strtoll(nptr, endptr, base); }
+
 static char ptsname_buf[32];
 char *ptsname(int fd) {
   int id = ioctl(fd, PTMX_GETPTSID);

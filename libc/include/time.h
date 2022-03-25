@@ -14,8 +14,7 @@ extern "C" {
 #define __NEED_clock_t
 #define __NEED_struct_timespec
 
-#if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) || defined(_XOPEN_SOURCE) || \
-    defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+#if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
 #define __NEED_clockid_t
 #define __NEED_timer_t
 #define __NEED_pid_t
@@ -46,8 +45,8 @@ struct tm* localtime(const time_t* timep);
 #define CLOCKS_PER_SEC (1000.0)
 clock_t clock(void);
 
-#define CLOCK_REALTIME 0
 int clock_gettime(int id, struct timespec* s);
+inline int clock_getres (int clock_id, struct timespec *res) { return -1; }
 
 
 time_t mktime(struct tm*);
@@ -56,6 +55,18 @@ struct tm* gmtime_r(const time_t* timep, struct tm* result);
 
 size_t strftime(char* s, size_t max, const char* format, const struct tm*);
 double difftime(time_t a, time_t b);
+
+
+#define CLOCK_REALTIME_COARSE	(0)
+#define CLOCK_REALTIME		(1)
+#define CLOCK_PROCESS_CPUTIME_ID (2)
+#define CLOCK_THREAD_CPUTIME_ID	 (3)
+#define CLOCK_MONOTONIC (5)
+#define CLOCK_MONOTONIC_RAW (5)
+#define CLOCK_MONOTONIC_COARSE (6)
+#define CLOCK_BOOTTIME (7)
+#define CLOCK_REALTIME_ALARM (8)
+#define CLOCK_BOOTTIME_ALARM (9)
 
 
 #ifdef __cplusplus
