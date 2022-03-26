@@ -301,7 +301,7 @@ void run_rust() {
   if (result) FATAL("m3_FindFunction: %s", result);
 
 
-  printf("Running Rust... %p\n", f);
+  printf("Running Rust through wasm...\n");
   result = m3_CallV(f);
   if (result) FATAL("m3_Call: %s", result);
 }
