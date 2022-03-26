@@ -92,4 +92,73 @@ int sysbind_get_core_usage(unsigned int core, struct chariot_core_usage * usage)
 int sysbind_get_nproc();
 #ifdef __cplusplus
 }
+namespace sys {
+   inline void restart() { return sysbind_restart(); }
+   inline void exit_thread(int code) { return sysbind_exit_thread(code); }
+   inline void exit_proc(int code) { return sysbind_exit_proc(code); }
+   inline int execve(const char* path, const char ** argv, const char ** envp) { return sysbind_execve(path, argv, envp); }
+   inline long waitpid(int pid, int* stat, int options) { return sysbind_waitpid(pid, stat, options); }
+   inline int fork() { return sysbind_fork(); }
+   inline int spawnthread(void * stack, void* func, void* arg, int flags) { return sysbind_spawnthread(stack, func, arg, flags); }
+   inline int jointhread(int tid) { return sysbind_jointhread(tid); }
+   inline int sigwait() { return sysbind_sigwait(); }
+   inline int prctl(int option, unsigned long arg1, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5) { return sysbind_prctl(option, arg1, arg2, arg3, arg4, arg5); }
+   inline int open(const char * path, int flags, int mode) { return sysbind_open(path, flags, mode); }
+   inline int close(int fd) { return sysbind_close(fd); }
+   inline long lseek(int fd, long offset, int whence) { return sysbind_lseek(fd, offset, whence); }
+   inline long read(int fd, void* buf, size_t len) { return sysbind_read(fd, buf, len); }
+   inline long write(int fd, void* buf, size_t len) { return sysbind_write(fd, buf, len); }
+   inline int stat(const char* pathname, struct stat* statbuf) { return sysbind_stat(pathname, statbuf); }
+   inline int fstat(int fd, struct stat* statbuf) { return sysbind_fstat(fd, statbuf); }
+   inline int lstat(const char* pathname, struct stat* statbuf) { return sysbind_lstat(pathname, statbuf); }
+   inline int dup(int fd) { return sysbind_dup(fd); }
+   inline int dup2(int old, int newfd) { return sysbind_dup2(old, newfd); }
+   inline int mkdir(const char* path, int mode) { return sysbind_mkdir(path, mode); }
+   inline int chdir(const char* path) { return sysbind_chdir(path); }
+   inline int getcwd(char * dst, int len) { return sysbind_getcwd(dst, len); }
+   inline int chroot(const char * path) { return sysbind_chroot(path); }
+   inline int unlink(const char * path) { return sysbind_unlink(path); }
+   inline int ioctl(int fd, int cmd, unsigned long value) { return sysbind_ioctl(fd, cmd, value); }
+   inline int yield() { return sysbind_yield(); }
+   inline long getpid() { return sysbind_getpid(); }
+   inline long gettid() { return sysbind_gettid(); }
+   inline int getuid() { return sysbind_getuid(); }
+   inline int geteuid() { return sysbind_geteuid(); }
+   inline int getgid() { return sysbind_getgid(); }
+   inline int getegid() { return sysbind_getegid(); }
+   inline int setpgid(int pid, int pgid) { return sysbind_setpgid(pid, pgid); }
+   inline int getpgid(int pid) { return sysbind_getpgid(pid); }
+   inline void* mmap(void * addr, long length, int prot, int flags, int fd, long offset) { return sysbind_mmap(addr, length, prot, flags, fd, offset); }
+   inline int munmap(void* addr, size_t length) { return sysbind_munmap(addr, length); }
+   inline int mrename(void * addr, char* name) { return sysbind_mrename(addr, name); }
+   inline int mgetname(void* addr, char* name, size_t sz) { return sysbind_mgetname(addr, name, sz); }
+   inline int mregions(struct mmap_region * regions, int nregions) { return sysbind_mregions(regions, nregions); }
+   inline unsigned long mshare(int action, void* arg) { return sysbind_mshare(action, arg); }
+   inline int dirent(int fd, struct dirent * ent, int offset, int count) { return sysbind_dirent(fd, ent, offset, count); }
+   inline time_t localtime(struct tm* tloc) { return sysbind_localtime(tloc); }
+   inline size_t gettime_microsecond() { return sysbind_gettime_microsecond(); }
+   inline int usleep(unsigned long usec) { return sysbind_usleep(usec); }
+   inline int socket(int domain, int type, int proto) { return sysbind_socket(domain, type, proto); }
+   inline ssize_t sendto(int sockfd, const void * buf, size_t len, int flags, const struct sockaddr* addr, size_t addrlen) { return sysbind_sendto(sockfd, buf, len, flags, addr, addrlen); }
+   inline ssize_t recvfrom(int sockfd, void * buf, size_t len, int flags, const struct sockaddr* addr, size_t addrlen) { return sysbind_recvfrom(sockfd, buf, len, flags, addr, addrlen); }
+   inline int bind(int sockfd, const struct sockaddr* addr, size_t addrlen) { return sysbind_bind(sockfd, addr, addrlen); }
+   inline int accept(int sockfd, struct sockaddr* addr, size_t addrlen) { return sysbind_accept(sockfd, addr, addrlen); }
+   inline int connect(int sockfd, const struct sockaddr* addr, size_t addrlen) { return sysbind_connect(sockfd, addr, addrlen); }
+   inline int signal_init(void * sigret) { return sysbind_signal_init(sigret); }
+   inline int sigaction(int sig, struct sigaction* new_action, struct sigaction* old) { return sysbind_sigaction(sig, new_action, old); }
+   inline int sigreturn(void* ucontext) { return sysbind_sigreturn(ucontext); }
+   inline int sigprocmask(int how, unsigned long set, unsigned long* old_set) { return sysbind_sigprocmask(how, set, old_set); }
+   inline int kill(int pid, int sig) { return sysbind_kill(pid, sig); }
+   inline int awaitfs(struct await_target * fds, int nfds, int flags, long long timeout_time) { return sysbind_awaitfs(fds, nfds, flags, timeout_time); }
+   inline unsigned long kshell() { return sysbind_kshell(); }
+   inline int futex(int* uaddr, int op, int val, int val2, int* uaddr2, int val3) { return sysbind_futex(uaddr, op, val, val2, uaddr2, val3); }
+   inline int sysinfo(struct sysinfo * info) { return sysbind_sysinfo(info); }
+   inline int dnslookup(const char * name, unsigned int* ip4) { return sysbind_dnslookup(name, ip4); }
+   inline int shutdown() { return sysbind_shutdown(); }
+   inline int mount(struct mountopts * opts) { return sysbind_mount(opts); }
+   inline int getraminfo(unsigned long long * avail, unsigned long long * total) { return sysbind_getraminfo(avail, total); }
+   inline unsigned long getramusage() { return sysbind_getramusage(); }
+   inline int get_core_usage(unsigned int core, struct chariot_core_usage * usage) { return sysbind_get_core_usage(core, usage); }
+   inline int get_nproc() { return sysbind_get_nproc(); }
+} // namespace sys
 #endif

@@ -108,13 +108,18 @@ with open('libc/include/sys/sysbind.h', 'w+') as f:
     for s in syscalls:
         f.write(s.cdecl('sysbind_') + ';\n')
 
-
-    for s in syscalls:
-       if s.data['ret'] == 'int' and False:
-           f.write(s.cdecl('errbind_') + ';\n')
-
     f.write('#ifdef __cplusplus\n')
     f.write('}\n')
+
+    f.write('namespace sys {\n')
+    for s in syscalls:
+        args = []
+        for i, arg in enumerate(s.args):
+            args.append(arg[0])
+        argstr = ', '.join(args)
+            
+        f.write(f'   inline {s.cdecl()} {{ return sysbind_{s.name}({argstr}); }}\n')
+    f.write('} // namespace sys\n')
 
     f.write('#endif\n')
 
@@ -142,8 +147,10 @@ extern long __syscall_eintr(int num, unsigned long long a, unsigned long long b,
             for i, arg in enumerate(sc.args):
                 args[i] = '(unsigned long long)' + arg[0]
             f.write(f'{decl} {{\n')
-
-            the_call = f'__syscall_eintr({sc.num}, {", ".join(args)})'
+            # prepend the SYS_x name
+            args = ['SYS_' + sc.name]+ args
+            arg_str = ',\n               '.join(args)
+            the_call = f'__syscall_eintr({arg_str})'
             f.write(f'    return ({ret}){pfx[1](the_call)};\n')
             f.write(f'}}\n')
             f.write(f'\n')
