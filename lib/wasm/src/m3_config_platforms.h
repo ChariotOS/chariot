@@ -1,3 +1,5 @@
+#pragma once
+
 //
 //  m3_config_platforms.h
 //
@@ -5,8 +7,6 @@
 //  Copyright © 2019 Volodymyr Shymanskyy. All rights reserved.
 //
 
-#ifndef m3_config_platforms_h
-#define m3_config_platforms_h
 
 #include "wasm3_defs.h"
 
@@ -150,7 +150,7 @@ typedef int8_t          i8;
 /*
  * Device-specific defaults
  */
-
+#if 0
 # ifndef d_m3MaxFunctionStackHeight
 #  if defined(ESP8266) || defined(ESP32) || defined(ARDUINO_AMEBA) || defined(TEENSYDUINO)
 #    define d_m3MaxFunctionStackHeight          128
@@ -198,5 +198,4 @@ typedef int8_t          i8;
 #    define d_m3Use32BitSlots                   0
 #  endif
 #endif
-
-#endif // m3_config_platforms_h
+#endif

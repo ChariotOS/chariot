@@ -46,7 +46,7 @@ struct tm* localtime(const time_t* timep);
 clock_t clock(void);
 
 int clock_gettime(int id, struct timespec* s);
-inline int clock_getres (int clock_id, struct timespec *res) { return -1; }
+int clock_getres (int clock_id, struct timespec *res);
 
 
 time_t mktime(struct tm*);

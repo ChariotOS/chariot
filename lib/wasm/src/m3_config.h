@@ -94,15 +94,15 @@
 // logging --------------------------------------------------------------------
 
 # ifndef d_m3LogParse
-#   define d_m3LogParse                         1       // .wasm binary decoding info
+#   define d_m3LogParse                         0       // .wasm binary decoding info
 # endif
 
 # ifndef d_m3LogModule
-#   define d_m3LogModule                        1       // wasm module info
+#   define d_m3LogModule                        0       // wasm module info
 # endif
 
 # ifndef d_m3LogCompile
-#   define d_m3LogCompile                       1       // wasm -> metacode generation phase
+#   define d_m3LogCompile                       0       // wasm -> metacode generation phase
 # endif
 
 # ifndef d_m3LogWasmStack
@@ -110,7 +110,7 @@
 # endif
 
 # ifndef d_m3LogEmit
-#   define d_m3LogEmit                          1       // metacode generation info
+#   define d_m3LogEmit                          0       // metacode generation info
 # endif
 
 # ifndef d_m3LogCodePages

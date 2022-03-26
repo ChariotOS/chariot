@@ -26,7 +26,7 @@ void *liballoc_alloc(size_t s) {
   char name[32];
   snprintf(name, 32, "[malloc #%d]", region_id++);
   mrename(p, name);
-  // memset(p, 0x0, s * 4096);
+  memset(p, 0x0, s * 4096);
   return p;
 }
 

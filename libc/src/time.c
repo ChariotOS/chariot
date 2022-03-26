@@ -22,6 +22,9 @@ time_t getlocaltime(struct tm *tloc) {
   return sysbind_localtime(tloc);
 }
 
+int clock_getres(int id, struct timespec *s) {
+	return -1;
+}
 
 int clock_gettime(int id, struct timespec *s) {
   long us = sysbind_gettime_microsecond();

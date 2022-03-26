@@ -6,15 +6,13 @@
 
 
 // TODO
-int creat(const char *pth, mode_t mod) {
-  return -1;
-}
+int creat(const char *pth, mode_t mod) { return -1; }
 
 
 // TODO
-int fcntl(int fd, int cmd, ...) {
-  return -1;
-}
+int fcntl(int fd, int cmd, ...) { return -1; }
+
+int openat(int dirfd, const char *name, int flags, ...) { return -ENOTIMPL; }
 
 int open(const char *filename, int flags, ...) {
   mode_t mode = 0;
