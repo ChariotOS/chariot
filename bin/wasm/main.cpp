@@ -14,16 +14,14 @@
   }
 
 int main(int argc, char** argv) {
-
-	const char *target = getenv("CHARIOT_CHAINLOAD_TARGET");
-	if (target == NULL) {
-
-		if (argc != 2) {
-			fprintf(stderr, "usage: wasm <program>\n");
-			exit(EXIT_FAILURE);
-		}
-		target = argv[1];
-	}
+  const char* target = getenv("CHARIOT_CHAINLOAD_TARGET");
+  if (target == NULL) {
+    if (argc != 2) {
+      fprintf(stderr, "usage: wasm <program>\n");
+      exit(EXIT_FAILURE);
+    }
+    target = argv[1];
+  }
 
   M3Result result = m3Err_none;
 
@@ -57,21 +55,21 @@ int main(int argc, char** argv) {
   result = m3_LinkLibC(module);
   if (result) FATAL("m3_LinkLibC: %s", result);
 
-	auto call_func = [&](const char *name) {
-		IM3Function f;
-		result = m3_FindFunction(&f, runtime, name);
-		if (result) FATAL("m3_FindFunction: %s", result);
-		if (f == NULL) FATAL("symbol '%s' not defined\n", name);
+  auto call_func = [&](const char* name) {
+    IM3Function f;
+    result = m3_FindFunction(&f, runtime, name);
+    if (result) FATAL("m3_FindFunction: %s", result);
+    if (f == NULL) FATAL("symbol '%s' not defined\n", name);
 
 
-		result = m3_CallV(f);
-		if (result) FATAL("m3_Call: %s", result);
-	};
+    result = m3_CallV(f);
+    if (result) FATAL("m3_Call: %s", result);
+  };
 
-	// initialize the `wasi-exec-model=reactor` stuff
-	call_func("_initialize");
-	call_func("main");
+  // initialize the `wasi-exec-model=reactor` stuff
+  call_func("_initialize");
+  call_func("main");
 
 
-	return 0;
+  return 0;
 }
