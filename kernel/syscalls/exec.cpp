@@ -47,6 +47,31 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
 
 
 
+
+  bool path_changed = false;
+  auto fd = ck::make_ref<fs::File>(exe, FDIR_READ);
+  uint8_t sig[4];
+
+  if (fd->read(sig, 4) != 4) {
+    return -ENOENT;
+  }
+  fd->seek(0, SEEK_SET);
+
+  if (memcmp(sig, "\0asm", 4) == 0) {
+    envp.push(ck::string::format("CHARIOT_CHAINLOAD_TARGET=%s", path));
+    path = "/bin/wasm";
+    path_changed = true;
+  }
+
+
+  if (path_changed) {
+    // TODO: open permissions on the binary
+    if (vfs::namei(path, 0, 0, curproc->cwd, exe) != 0) {
+      return -ENOENT;
+    }
+    fd = ck::make_ref<fs::File>(exe, FDIR_READ);
+  }
+
   {
     ck::vec<int> to_close;
     scoped_lock l(curproc->file_lock);
@@ -62,18 +87,18 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   }
 
   off_t entry = 0;
-  auto fd = ck::make_ref<fs::File>(exe, FDIR_READ);
   mm::AddressSpace *new_addr_space = nullptr;
 
   new_addr_space = alloc_user_vm();
+
+
+
 
   int loaded = elf::load(path, *curproc, *new_addr_space, fd, entry);
   if (loaded < 0) {
     delete new_addr_space;
     return loaded;
   }
-
-  // printk(KERN_DEBUG "pid %d exec '%s'\n", curproc->pid, path);
 
 
   // allocate a 1mb stack

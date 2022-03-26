@@ -30,6 +30,8 @@
 #include <stdio.h>
 #include <fcntl.h>
 
+#define APE 1
+
 #if defined(APE)
 // Actually Portable Executable
 // All functions are already included in cosmopolitan.h
@@ -84,7 +86,7 @@ Preopen preopen[PREOPEN_CNT] = {
     {0, "<stdin>", ""},
     {1, "<stdout>", ""},
     {2, "<stderr>", ""},
-    {-1, "/", "."},
+    {-1, "/", "/"},
     {-1, "./", "."},
 };
 
@@ -255,16 +257,20 @@ m3ApiRawFunction(m3_wasi_generic_args_sizes_get) {
 }
 
 m3ApiRawFunction(m3_wasi_generic_environ_get) {
-  m3ApiReturnType(uint32_t) m3ApiGetArgMem(uint32_t*, env) m3ApiGetArgMem(char*, env_buf)
+  m3ApiReturnType(uint32_t);
+  m3ApiGetArgMem(uint32_t*, env);
+  m3ApiGetArgMem(char*, env_buf);
 
-      // TODO
-      m3ApiReturn(__WASI_ERRNO_SUCCESS);
+  // TODO
+  m3ApiReturn(__WASI_ERRNO_SUCCESS);
 }
 
 m3ApiRawFunction(m3_wasi_generic_environ_sizes_get) {
-  m3ApiReturnType(uint32_t) m3ApiGetArgMem(__wasi_size_t*, env_count) m3ApiGetArgMem(__wasi_size_t*, env_buf_size)
+  m3ApiReturnType(uint32_t);
+  m3ApiGetArgMem(__wasi_size_t*, env_count);
+  m3ApiGetArgMem(__wasi_size_t*, env_buf_size);
 
-      m3ApiCheckMem(env_count, sizeof(__wasi_size_t));
+  m3ApiCheckMem(env_count, sizeof(__wasi_size_t));
   m3ApiCheckMem(env_buf_size, sizeof(__wasi_size_t));
 
   // TODO
@@ -275,9 +281,12 @@ m3ApiRawFunction(m3_wasi_generic_environ_sizes_get) {
 }
 
 m3ApiRawFunction(m3_wasi_generic_fd_prestat_dir_name) {
-  m3ApiReturnType(uint32_t) m3ApiGetArg(__wasi_fd_t, fd) m3ApiGetArgMem(char*, path) m3ApiGetArg(__wasi_size_t, path_len)
+  m3ApiReturnType(uint32_t);
+  m3ApiGetArg(__wasi_fd_t, fd);
+  m3ApiGetArgMem(char*, path);
+  m3ApiGetArg(__wasi_size_t, path_len);
 
-      m3ApiCheckMem(path, path_len);
+  m3ApiCheckMem(path, path_len);
 
   if (fd < 3 || fd >= PREOPEN_CNT) {
     m3ApiReturn(__WASI_ERRNO_BADF);
@@ -288,9 +297,11 @@ m3ApiRawFunction(m3_wasi_generic_fd_prestat_dir_name) {
 }
 
 m3ApiRawFunction(m3_wasi_generic_fd_prestat_get) {
-  m3ApiReturnType(uint32_t) m3ApiGetArg(__wasi_fd_t, fd) m3ApiGetArgMem(uint8_t*, buf)
+  m3ApiReturnType(uint32_t);
+  m3ApiGetArg(__wasi_fd_t, fd);
+  m3ApiGetArgMem(uint8_t*, buf);
 
-      m3ApiCheckMem(buf, 8);
+  m3ApiCheckMem(buf, 8);
 
   if (fd < 3 || fd >= PREOPEN_CNT) {
     m3ApiReturn(__WASI_ERRNO_BADF);
@@ -302,9 +313,11 @@ m3ApiRawFunction(m3_wasi_generic_fd_prestat_get) {
 }
 
 m3ApiRawFunction(m3_wasi_generic_fd_fdstat_get) {
-  m3ApiReturnType(uint32_t) m3ApiGetArg(__wasi_fd_t, fd) m3ApiGetArgMem(__wasi_fdstat_t*, fdstat)
+  m3ApiReturnType(uint32_t);
+  m3ApiGetArg(__wasi_fd_t, fd);
+  m3ApiGetArgMem(__wasi_fdstat_t*, fdstat);
 
-      m3ApiCheckMem(fdstat, sizeof(__wasi_fdstat_t));
+  m3ApiCheckMem(fdstat, sizeof(__wasi_fdstat_t));
 
 #ifdef _WIN32
 
@@ -434,11 +447,17 @@ m3ApiRawFunction(m3_wasi_snapshot_preview1_fd_seek) {
 
 
 m3ApiRawFunction(m3_wasi_generic_path_open) {
-  m3ApiReturnType(uint32_t) m3ApiGetArg(__wasi_fd_t, dirfd) m3ApiGetArg(__wasi_lookupflags_t, dirflags) m3ApiGetArgMem(const char*, path)
-      m3ApiGetArg(__wasi_size_t, path_len) m3ApiGetArg(__wasi_oflags_t, oflags) m3ApiGetArg(__wasi_rights_t, fs_rights_base)
-          m3ApiGetArg(__wasi_rights_t, fs_rights_inheriting) m3ApiGetArg(__wasi_fdflags_t, fs_flags) m3ApiGetArgMem(__wasi_fd_t*, fd)
+  m3ApiReturnType(uint32_t);
+  m3ApiGetArg(__wasi_fd_t, dirfd);
+  m3ApiGetArg(__wasi_lookupflags_t, dirflags);
+  m3ApiGetArgMem(const char*, path);
+  m3ApiGetArg(__wasi_size_t, path_len);
+  m3ApiGetArg(__wasi_oflags_t, oflags);
+  m3ApiGetArg(__wasi_rights_t, fs_rights_base);
+  m3ApiGetArg(__wasi_rights_t, fs_rights_inheriting);
+  m3ApiGetArg(__wasi_fdflags_t, fs_flags) m3ApiGetArgMem(__wasi_fd_t*, fd);
 
-              m3ApiCheckMem(path, path_len);
+  m3ApiCheckMem(path, path_len);
   m3ApiCheckMem(fd, sizeof(__wasi_fd_t));
 
   if (path_len >= 512) m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -515,7 +534,7 @@ m3ApiRawFunction(m3_wasi_generic_path_open) {
     flags |= O_RDONLY;  // no-op because O_RDONLY is 0
   }
   int mode = 0644;
-  int host_fd = openat(preopen[dirfd].fd, host_path, flags, mode);
+  int host_fd = open(host_path, flags, mode);
 
   if (host_fd < 0) {
     m3ApiReturn(errno_to_wasi(errno));
@@ -716,17 +735,10 @@ m3_wasi_context_t* m3_GetWasiContext() { return wasi_context; }
 M3Result m3_LinkWASI(IM3Module module) {
   M3Result result = m3Err_none;
 
-#ifdef _WIN32
-  setmode(fileno(stdin), O_BINARY);
-  setmode(fileno(stdout), O_BINARY);
-  setmode(fileno(stderr), O_BINARY);
-
-#else
   // Preopen dirs
   for (int i = 3; i < PREOPEN_CNT; i++) {
     preopen[i].fd = open(preopen[i].real_path, O_RDONLY);
   }
-#endif
 
   if (!wasi_context) {
     wasi_context = (m3_wasi_context_t*)malloc(sizeof(m3_wasi_context_t));

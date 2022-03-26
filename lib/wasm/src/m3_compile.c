@@ -605,9 +605,7 @@ static M3Result PushConst(IM3Compilation o, u64 i_word, u8 i_type) {
 
   if (!matchFound) {
     u16 slot = c_slotUnused;
-		// printf("slot = %04x\n", slot);
     result = AllocateConstantSlots(o, &slot, i_type);
-		// printf("slot = %04x <--\n", slot);
 
     if (result || slot == c_slotUnused)  // no more constant table space; use inline constants
     {
@@ -623,11 +621,7 @@ static M3Result PushConst(IM3Compilation o, u64 i_word, u8 i_type) {
 
       _(PushAllocatedSlotAndEmit(o, i_type));
     } else {
-			// debug_hexdump(o, sizeof(*o));
       u16 constTableIndex = slot - o->slotFirstConstIndex;
-			// printf("slot: %d\n", slot);
-			// printf("constTableIndex: %d\n", constTableIndex);
-			// printf("slotFirstConstIndex: %d\n", o->slotFirstConstIndex);
 
       d_m3Assert(constTableIndex < d_m3MaxConstantTableSize);
 
