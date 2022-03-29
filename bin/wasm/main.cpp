@@ -13,8 +13,8 @@
     exit(EXIT_FAILURE);                        \
   }
 
-int main(int argc, char** argv) {
-  const char* target = getenv("CHARIOT_CHAINLOAD_TARGET");
+int main(int argc, char **argv) {
+  const char *target = getenv("CHARIOT_CHAINLOAD_TARGET");
   if (target == NULL) {
     if (argc != 2) {
       fprintf(stderr, "usage: wasm <program>\n");
@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
 
   auto mapping = file.mmap();
 
-  uint8_t* wasm = (uint8_t*)mapping->data();
+  uint8_t *wasm = (uint8_t *)mapping->data();
   uint32_t fsize = mapping->size();
   // printf("wasm: %p, sz: %zu\n", wasm, fsize);
 
@@ -55,11 +55,14 @@ int main(int argc, char** argv) {
   result = m3_LinkLibC(module);
   if (result) FATAL("m3_LinkLibC: %s", result);
 
-  auto call_func = [&](const char* name) {
+  auto call_func = [&](const char *name) {
     IM3Function f;
     result = m3_FindFunction(&f, runtime, name);
     if (result) FATAL("m3_FindFunction: %s", result);
-    if (f == NULL) FATAL("symbol '%s' not defined\n", name);
+    if (f == NULL) {
+      printf("WARN: symbol '%s' not defined\n", name);
+      return;
+    }
 
 
     result = m3_CallV(f);
