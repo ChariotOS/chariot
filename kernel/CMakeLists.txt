@@ -4,7 +4,7 @@ include(CMakeParseArguments)
 set(CMAKE_C_FLAGS "-DKERNEL -ffreestanding -Wall -fno-common ${COMPILER_SPECIFIC_FLAGS} -Wstrict-overflow=5")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused -Wno-address-of-packed-member -Wno-strict-overflow")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-pie -Wno-sign-compare")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-pie -Wno-sign-compare -fsanitize=undefined ")
 if(CONFIG_DEBUG_SYMBOLS)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3")
 endif()
