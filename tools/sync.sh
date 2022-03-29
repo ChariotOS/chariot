@@ -2,6 +2,8 @@
 
 # sync the root filesystem into build/chariot.img
 
+set -e
+
 die() {
     echo "die: $*"
     exit 1
