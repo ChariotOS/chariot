@@ -1,5 +1,5 @@
 #include <dev/driver.h>
-#include <printk.h>
+#include <printf.h>
 
 // dev::Device::Device(void) : fs::Node(nullptr) {}
 dev::Device::Device(dev::Driver &driver, ck::ref<hw::Device> dev) : fs::Node(nullptr), m_driver(driver), m_dev(dev) {

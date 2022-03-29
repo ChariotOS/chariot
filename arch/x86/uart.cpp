@@ -4,7 +4,7 @@
 #include <dev/driver.h>
 #include <errno.h>
 #include <module.h>
-#include <printk.h>
+#include <printf.h>
 #include <sched.h>
 #include "device_majors.h"
 
@@ -122,7 +122,6 @@ static void serial_mod_init() {
   // enable interrupts.
   inb(COM1 + 2);
   inb(COM1 + 0);
-
 }
 
 module_init("serial", serial_mod_init);

@@ -133,7 +133,7 @@ int kernel_init(void*) {
 
   mb2::find<struct multiboot_tag_module>(::mbd, MULTIBOOT_TAG_TYPE_MODULE, [&](auto* module) {
     auto size = module->mod_end - module->mod_start;
-    printk(KERN_INFO "Found a module %p-%p\n", p2v(module->mod_start), p2v(module->mod_end));
+    printf(KERN_INFO "Found a module %p-%p\n", p2v(module->mod_start), p2v(module->mod_end));
   });
 
 
@@ -178,7 +178,7 @@ int kernel_init(void*) {
   auto paths = init_paths.split(',');
 
   auto init_pid = sched::proc::spawn_init(paths);
-  printk("here %d\n", init_pid);
+  printf("here %d\n", init_pid);
 
   sys::waitpid(init_pid, NULL, 0);
   panic("init died!\n");

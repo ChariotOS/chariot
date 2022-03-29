@@ -57,8 +57,8 @@ void arch_mem_init(unsigned long mbd) {}
 
 void arch_initialize_trapframe(bool userspace, reg_t *r) {
   // auto *regs = (rv::regs*)r;
-  // printk("pc: %p\n", regs->ra);
-  // printk("sp: %p\n", regs->sp);
+  // printf("pc: %p\n", regs->ra);
+  // printf("sp: %p\n", regs->sp);
 }
 
 
@@ -130,7 +130,7 @@ void cpu::switch_vm(ck::ref<Thread> thd) { /* TODO: nothin' */
 }
 
 void cpu::seginit(cpu::Core *c, void *local) {
-  // printk(KERN_DEBUG "initialize hart %d\n", sc.hartid);
+  // printf(KERN_DEBUG "initialize hart %d\n", sc.hartid);
   auto &cpu = cpu::current();
   /* zero out the cpu structure. This might be bad idk... */
   memset(&cpu, 0, sizeof(cpu::Core));
@@ -150,4 +150,3 @@ void arch_thread_create_callback(void) {}
 int arch_generate_backtrace(off_t virt_bp, off_t *bt, off_t sz) { return 0; }
 
 void arch_deliver_xcall(int core) {}
-

@@ -6,7 +6,6 @@
 DECLARE_STUB_DRIVER("virtio-mmio-disk", virtio_mmio_disk_driver)
 
 virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(regs), dev::Disk(virtio_mmio_disk_driver) {
-
   set_block_count(config().blk_size);
   set_block_count(config().capacity);
 }
@@ -156,9 +155,9 @@ void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
 
   if (!write) {
     memcpy(data, tmp_buf, block_size());
-    // printk("block %d\n", sector);
+    // printf("block %d\n", sector);
     // hexdump(data, block_size(), true);
-    // printk("\n\n");
+    // printf("\n\n");
   }
 
   ::free(tmp_buf);
@@ -168,7 +167,7 @@ void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
 
 
 void virtio_mmio_disk::irq(int ring_index, virtio::virtq_used_elem *e) {
-  // printk("dev %p, ring %u, e %p, id %u, len %u\n", this, ring_index, e, e->id, e->len);
+  // printf("dev %p, ring %u, e %p, id %u, len %u\n", this, ring_index, e, e->id, e->len);
 
   /* parse our descriptor chain, add back to the free queue */
   uint16_t i = e->id;

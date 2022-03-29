@@ -4,7 +4,7 @@
 #include <ck/func.h>
 
 #ifdef KERNEL
-#include <printk.h>
+#include <printf.h>
 #include <types.h>
 #else
 #include <chariot.h>

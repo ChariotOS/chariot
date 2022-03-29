@@ -4,7 +4,7 @@
 #include <idt.h>
 #include <mem.h>
 #include <phys.h>
-#include <printk.h>
+#include <printf.h>
 #include <syscall.h>
 #include <types.h>
 #include <module.h>
@@ -76,15 +76,14 @@ extern "C" int get_errno(void) { return curthd->kerrno; }
 static spinlock global_xcall_lock;
 
 void cpu::run_pending_xcalls(void) {
-
-	arch_disable_ints();
+  arch_disable_ints();
   auto &p = cpu::current();
   struct xcall_command cmd = p.xcall_command;
   memset(&p.xcall_command, 0, sizeof(p.xcall_command));
   core().xcall_lock.unlock();
 
   if (cmd.fn == nullptr) {
-    printk("xcall null!\n");
+    printf("xcall null!\n");
     return;
   }
   cmd.fn(cmd.arg);
@@ -123,7 +122,7 @@ void cpu::xcall(int core, xcall_t func, void *arg) {
 static void run_xcall_bench(void *arg) {
   int count = 1000;
 
-  printk("running xcall benchmark from %d\n", core_id());
+  printf("running xcall benchmark from %d\n", core_id());
 
   auto *measurements = new uint64_t[count];
   cpu::each([&](cpu::Core *c) {
@@ -154,18 +153,17 @@ static void run_xcall_bench(void *arg) {
     uint64_t avg = sum / count;
     uint64_t ns = arch_timestamp_to_ns(max);
 
-    printk("%d -> %d avg/min/max: %lu/%lu/%lu (max %lu nanoseconds)\n", core_id(), target_id, avg, min, max, ns);
+    printf("%d -> %d avg/min/max: %lu/%lu/%lu (max %lu nanoseconds)\n", core_id(), target_id, avg, min, max, ns);
   });
   delete[] measurements;
 }
 
 ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
-
-	run_xcall_bench(NULL);
-	return 0;
+  run_xcall_bench(NULL);
+  return 0;
   cpu::each([&](cpu::Core *c) {
     int target_id = c->id;
-    printk("asking %d from %d\n", target_id, core_id());
+    printf("asking %d from %d\n", target_id, core_id());
     cpu::xcall(target_id, run_xcall_bench, NULL);
   });
 
@@ -176,27 +174,27 @@ ksh_def("xcall", "deliver a bunch of xcalls, printing the average cycles") {
 
 ksh_def("cores", "dump cpu information") {
   cpu::each([](cpu::Core *cpu) {
-    printk("core #%d:", cpu->id);
+    printf("core #%d:", cpu->id);
 
     uint64_t hz = cpu->kstat.tsc_per_tick * cpu->ticks_per_second;
-    printk(" %llumhz", hz / 1000 / 1000);
+    printf(" %llumhz", hz / 1000 / 1000);
 
     unsigned long total_ticks = cpu->kstat.user_ticks + cpu->kstat.kernel_ticks + cpu->kstat.idle_ticks;
 
-    printk(" sched:{u:%llu,k:%llu,i:%llu,total:%llu}", cpu->kstat.user_ticks, cpu->kstat.kernel_ticks, cpu->kstat.idle_ticks, total_ticks);
-    printk(" ticks:%llu", cpu->ticks_per_second);
-    printk(" t:%d", cpu->timekeeper);
+    printf(" sched:{u:%llu,k:%llu,i:%llu,total:%llu}", cpu->kstat.user_ticks, cpu->kstat.kernel_ticks, cpu->kstat.idle_ticks, total_ticks);
+    printf(" ticks:%llu", cpu->ticks_per_second);
+    printf(" t:%d", cpu->timekeeper);
 
-    printk("\n");
+    printf("\n");
 
 #ifdef CONFIG_X86
     x86::Apic &apic = cpu->apic;
-    printk("        ");
-    printk(" bus:%lluhz", apic.bus_freq_hz);
-    printk(" %llucyc/us", apic.cycles_per_us);
-    printk(" %llucyc/tick", apic.cycles_per_tick);
+    printf("        ");
+    printf(" bus:%lluhz", apic.bus_freq_hz);
+    printf(" %llucyc/us", apic.cycles_per_us);
+    printf(" %llucyc/tick", apic.cycles_per_tick);
 
-    printk("\n");
+    printf("\n");
 #endif
   });
 

@@ -1,7 +1,7 @@
 #include "acpi/acpi.h"
 
 #include <multiboot2.h>
-#include <printk.h>
+#include <printf.h>
 #include <ck/string.h>
 #include <util.h>
 #include <ck/vec.h>

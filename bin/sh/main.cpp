@@ -89,7 +89,7 @@ auto read_line(int fd, char *prompt) {
   buf[strlen(buf) - 1] = '\0';
 
   ck::string s = (const char *)buf;
-  // ck::hexdump((void*)s.get(), s.len());
+
   free(buf);
   return s;
 }
@@ -99,9 +99,28 @@ auto read_line(int fd, char *prompt) {
 
 
 
+#define TOK_ARG 1
+#define TOK_PIPE 2
+
+struct ShellLexer : public ck::lexer {
+  virtual ~ShellLexer(void) {}
+
+  ck::token lex(void) override {
+		
+		return tok(TOK_ERR, "");
+	}
+};
+
+
+void parse_line(ck::string_view v) {
+	return;
+	printf("parse '%s'\n", v.get());
+}
+
 pid_t fg_pid = -1;
 
 int run_line(ck::string line, int flags = 0) {
+	parse_line(line);
   int err = 0;
   ck::vec<ck::string> parts = line.split(' ', false);
   ck::vec<const char *> args;
@@ -250,24 +269,9 @@ int main(int argc, char **argv, char **envp) {
   setenv("SHELL", pwd->pw_shell, 1);
   setenv("HOME", pwd->pw_dir, 1);
 
-  // const char *args[] = {
-  //     "/bin/echo",
-  //     "yes",
-  //     NULL,
-  // };
-  // while (1) {
-  //   printf("Fork\n");
-
-  //   int pid = fork();
-  //   if (pid == 0) {
-  //     execv(args[0], args);
-  //     exit(0);
-  //   }
-  //   printf("Waitpid\n");
-  //   waitpid(pid, NULL, 0);
-  //   printf("Done.\n");
-  // }
-
+	parse_line("ls -la");
+	parse_line("cat /cfg/motd | hex");
+	// sys::shutdown();
 
   struct termios tios;
   while (1) {
@@ -282,13 +286,10 @@ int main(int argc, char **argv, char **envp) {
     }
 
     snprintf(prompt, 256, "[\x1b[33m%s\x1b[0m@\x1b[34m%s \x1b[35m%s\x1b[0m]%c ", uname, hostname, disp_cwd, uid == 0 ? '#' : '$');
-    // snprintf(prompt, 256, "%s %c ", disp_cwd, uid == 0 ? '#' : '$');
-
 
     ck::string line = read_line(0, prompt);
     if (line.len() == 0) continue;
 
-    // ck::hexdump((void *)line.get(), line.len());
     run_line(line);
     tcsetattr(0, TCSANOW, &tios);
     reset_pgid();

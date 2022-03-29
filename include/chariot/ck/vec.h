@@ -6,7 +6,7 @@
 
 #include <asm.h>
 #include <mem.h>
-// #include <printk.h>
+// #include <printf.h>
 #include <types.h>
 #else
 #include <stdlib.h>

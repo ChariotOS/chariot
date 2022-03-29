@@ -50,17 +50,17 @@ ck::ref<mm::VMObject> dev::VideoDevice::mmap(fs::File &file, size_t npages, int 
 
   // XXX: this is invalid, should be asserted before here :^)
   if (off != 0) {
-    printk(KERN_WARN "gvi: attempt to mmap at invalid offset (%d != 0)\n", off);
+    printf(KERN_WARN "gvi: attempt to mmap at invalid offset (%d != 0)\n", off);
     return nullptr;
   }
 
   if (npages > NPAGES(size)) {
-    printk(KERN_WARN "gvi: attempt to mmap too many pages (%d pixels)\n", (npages * 4096) / sizeof(uint32_t));
+    printf(KERN_WARN "gvi: attempt to mmap too many pages (%d pixels)\n", (npages * 4096) / sizeof(uint32_t));
     return nullptr;
   }
 
   if (flags & MAP_PRIVATE) {
-    printk(KERN_WARN "gvi: attempt to mmap with MAP_PRIVATE doesn't make sense :^)\n");
+    printf(KERN_WARN "gvi: attempt to mmap with MAP_PRIVATE doesn't make sense :^)\n");
     return nullptr;
   }
 

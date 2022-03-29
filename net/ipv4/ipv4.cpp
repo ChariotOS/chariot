@@ -7,7 +7,7 @@
 #include <net/net.h>
 #include <net/pkt.h>
 #include <net/socket.h>
-#include <printk.h>
+#include <printf.h>
 #include <sched.h>
 #include <util.h>
 
@@ -23,7 +23,7 @@ uint32_t net::ipv4::parse_ip(const char *name) {
 void net::ipv4::format_ip(uint32_t ip, char *dst) {
   // we expect dst to be at least 17 bytes
   uint8_t *v = (uint8_t *)&ip;
-  sprintk(dst, "%d.%d.%d.%d", v[3], v[2], v[1], v[0]);
+  sprintf(dst, "%d.%d.%d.%d", v[3], v[2], v[1], v[0]);
 }
 
 uint16_t net::checksum(void *p, uint16_t nbytes) {

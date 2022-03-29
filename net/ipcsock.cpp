@@ -59,7 +59,7 @@ int net::IPCSock::disconnect(int flags) {
   auto &state = (flags & PFLAGS_CLIENT) ? for_server : for_client;
 
   state.lock.lock();
-  // printk("%3d - close %s!\n", curproc->pid, (flags & PFLAGS_CLIENT) ? "client" : "server");
+  // printf("%3d - close %s!\n", curproc->pid, (flags & PFLAGS_CLIENT) ? "client" : "server");
 
   state.closed = true;
   state.wq.wake_up_all();
@@ -72,13 +72,13 @@ int net::IPCSock::disconnect(int flags) {
 static spinlock loglock;
 void named_hexdump(const char *msg, void *buf, size_t sz) {
   loglock.lock();
-  printk(
+  printf(
       " %s "
       "===================================================================\n",
       msg);
   hexdump(buf, sz, true);
   /*
-printk(
+printf(
 " !!!! "
 "===================================================================\n");
                   */
@@ -96,8 +96,8 @@ ssize_t net::IPCSock::sendto(fs::File &fd, void *data, size_t len, int flags, co
     if (state.closed) {
       return 0;
     }
-    // printk_nolock("%d send\n", curproc->pid);
-    // printk("%3d - send message, %d live\n", curproc->pid, state.msgs.size_slow());
+    // printf_nolock("%d send\n", curproc->pid);
+    // printf("%3d - send message, %d live\n", curproc->pid, state.msgs.size_slow());
 
     state.msgs.append(ipcmsg(data, len));
   }
@@ -117,7 +117,7 @@ ssize_t net::IPCSock::recvfrom(fs::File &fd, void *data, size_t len, int flags, 
   while (1) {
     struct wait_entry ent;
     {
-      // printk("%3d - recv message, %d live. block: %d\n", curproc->pid, state.msgs.size_slow(), block);
+      // printf("%3d - recv message, %d live. block: %d\n", curproc->pid, state.msgs.size_slow(), block);
 
       scoped_lock l(state.lock);
 
@@ -129,7 +129,7 @@ ssize_t net::IPCSock::recvfrom(fs::File &fd, void *data, size_t len, int flags, 
       }
 
       if (!state.msgs.is_empty()) {
-        // pprintk("take data!\n");
+        // pprintf("take data!\n");
         auto &front = state.msgs.first();
         if (flags & MSG_IPC_QUERY) {
           return front.data.size();
@@ -149,7 +149,7 @@ ssize_t net::IPCSock::recvfrom(fs::File &fd, void *data, size_t len, int flags, 
       }
 
       if (state.closed) {
-        // printk("%3d - recv message, closed.\n", curproc->pid);
+        // printf("%3d - recv message, closed.\n", curproc->pid);
         return 0;
       }
       if (!block) return -EAGAIN;
@@ -159,7 +159,7 @@ ssize_t net::IPCSock::recvfrom(fs::File &fd, void *data, size_t len, int flags, 
 
 
     if (ent.start().interrupted()) {
-      printk("WAIT!\n");
+      printf("WAIT!\n");
       return -EINTR;
     }
   }
@@ -186,7 +186,7 @@ int net::IPCSock::bind(const struct sockaddr *addr, size_t len) {
   if (in->bound_socket != nullptr) return -EADDRINUSE;
 
 
-  printk("bind %s\n", path.get());
+  printf("bind %s\n", path.get());
   // acquire the file and set the bound_socket to this
   bindpoint = in;
   bindpoint->bound_socket = this;

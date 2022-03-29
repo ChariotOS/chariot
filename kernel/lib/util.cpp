@@ -1,11 +1,11 @@
 #include <asm.h>
-#include <printk.h>
+#include <printf.h>
 #include <util.h>
 
 static int current_color = 0;
 void set_color(int code) {
   if (code != current_color) {
-    printk("\x1b[%dm", code);
+    printf("\x1b[%dm", code);
     current_color = code;
   }
 }
@@ -46,68 +46,64 @@ void hexdump(void *vbuf, size_t len, bool use_colors) {
 
     if (use_colors) {
       set_color(C_RESET);
-      printk("|");
+      printf("|");
       set_color(C_GRAY);
 
-      printk("%.*llx", awidth, (off_t)vbuf + i);
+      printf("%.*llx", awidth, (off_t)vbuf + i);
 
       set_color(C_RESET);
-      printk("|");
+      printf("|");
     }
     for (int c = 0; c < w; c++) {
       if (c % 8 == 0) {
-        if (use_colors) printk(" ");
+        if (use_colors) printf(" ");
       }
       if (i + c >= len) {
-        printk("   ");
+        printf("   ");
       } else {
         if (use_colors) set_color_for(line[c]);
         if (use_binary) {
           for (int j = 7; j >= 0; j--) {
-            printk("%u", (line[c] >> j) & 1);
+            printf("%u", (line[c] >> j) & 1);
           }
-          printk(" ");
+          printf(" ");
         } else {
-          printk("%02X ", line[c]);
+          printf("%02X ", line[c]);
         }
       }
     }
 
     if (use_colors) {
       set_color(C_RESET);
-      printk("|");
+      printf("|");
       for (int c = 0; c < w; c++) {
         if (c != 0 && (c % 8 == 0)) {
           set_color(C_RESET);
-          printk(" ");
+          printf(" ");
         }
 
         if (i + c >= len) {
-          printk(" ");
+          printf(" ");
         } else {
           set_color_for(line[c]);
 
-          printk("%c", (line[c] < 0x20) || (line[c] > 0x7e) ? '.' : line[c]);
+          printf("%c", (line[c] < 0x20) || (line[c] > 0x7e) ? '.' : line[c]);
         }
       }
       set_color(C_RESET);
-      printk("|\n");
+      printf("|\n");
 
     } else {
-      printk("\n");
+      printf("\n");
     }
   }
 }
 
 
-int isspace(int c) {
-  return (c == '\f' || c == '\n' || c == '\r' || c == '\t' || c == '\v' || c == ' ');
-}
+int isspace(int c) { return (c == '\f' || c == '\n' || c == '\r' || c == '\t' || c == '\v' || c == ' '); }
 
 
-int isdigit(int c) {
-  return (c >= '0' && c <= '9');
-}
+int isdigit(int c) { return (c >= '0' && c <= '9'); }
 
 int atoi(const char *s) {
   int n = 0;
@@ -135,9 +131,7 @@ int atoi(const char *s) {
 
 uint64_t rand_seed = 6364136223846793005ULL;
 
-void srand(unsigned s) {
-  rand_seed = s - 1;
-}
+void srand(unsigned s) { rand_seed = s - 1; }
 
 int rand(void) {
   rand_seed = 6364136223846793005ULL * rand_seed + 1;

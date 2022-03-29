@@ -19,7 +19,7 @@ void *mm::PageTable::translate(off_t va) {
 
   int res = get_mapping(vpage, pte);
 
-  // printk("translate(%p) -> %d\n", vpage, res);
+  // printf("translate(%p) -> %d\n", vpage, res);
 
   off_t ppage = pte.ppn;
   if (ppage == 0) return NULL;

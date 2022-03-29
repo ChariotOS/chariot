@@ -14,18 +14,18 @@ int do_chdir(const char *path) {
   }
 
   if (ncwd == nullptr) {
-    printk("A\n");
+    printf("A\n");
     return -ENOENT;
   }
   if (!ncwd->is_dir()) {
-    printk("B\n");
+    printf("B\n");
     return -ENOTDIR;
   }
 
 
   ck::string cwd;
   if (vfs::getcwd(*ncwd, cwd) != 0) {
-		KERR("getcwd failed. Does the filesystem populate names?\n");
+    KERR("getcwd failed. Does the filesystem populate names?\n");
     return -EINVAL;
   }
 

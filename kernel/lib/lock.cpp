@@ -1,6 +1,6 @@
 #include <cpu.h>
 #include <lock.h>
-#include <printk.h>
+#include <printf.h>
 #include <sched.h>
 
 #include <thread.h>
@@ -8,7 +8,7 @@
 // #define LOCK_DEBUG
 
 #ifdef LOCK_DEBUG
-#define INFO(fmt, args...) printk("[MUTEX] " fmt, ##args)
+#define INFO(fmt, args...) printf("[MUTEX] " fmt, ##args)
 #else
 #define INFO(fmt, args...)
 #endif

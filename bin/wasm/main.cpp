@@ -55,24 +55,33 @@ int main(int argc, char **argv) {
   result = m3_LinkLibC(module);
   if (result) FATAL("m3_LinkLibC: %s", result);
 
-  auto call_func = [&](const char *name) {
+  auto call_func = [&](const char *name) -> bool {
     IM3Function f;
     result = m3_FindFunction(&f, runtime, name);
     if (result) FATAL("m3_FindFunction: %s", result);
     if (f == NULL) {
-      printf("WARN: symbol '%s' not defined\n", name);
-      return;
+      // printf("WARN: symbol '%s' not defined\n", name);
+      return false;
     }
 
-
     result = m3_CallV(f);
-    if (result) FATAL("m3_Call: %s", result);
+    if (result) {
+      FATAL("m3_Call: %s", result);
+      return false;
+    }
+    return true;
   };
 
   // initialize the `wasi-exec-model=reactor` stuff
-  call_func("_initialize");
-  call_func("main");
-
+  if (call_func("_initialize")) {
+  	call_func("main");
+		return 0;
+	} else if (call_func("_start")) {
+		return 0;
+	} else {
+		fprintf(stderr, "interface not understood.\n");
+		return EXIT_FAILURE;
+	}
 
   return 0;
 }

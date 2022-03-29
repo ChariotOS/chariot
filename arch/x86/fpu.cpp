@@ -1,6 +1,6 @@
 #include <x86/fpu.h>
 #include <arch.h>
-#include <printk.h>
+#include <printf.h>
 #include <sched.h>
 #include <x86/cpuid.h>
 #include <x86/msr.h>
@@ -12,8 +12,8 @@ struct fpu::fpu_caps fpu::caps;
 
 
 #ifdef FPU_DO_DEBUG
-#define FPU_DEBUG(fmt, args...) printk(KERN_INFO "[FPU] " fmt, ##args)
-#define FPU_WARN(fmt, args...) printk(KERN_WARN "[FPU] " fmt, ##args)
+#define FPU_DEBUG(fmt, args...) printf(KERN_INFO "[FPU] " fmt, ##args)
+#define FPU_WARN(fmt, args...) printf(KERN_WARN "[FPU] " fmt, ##args)
 #else
 #define FPU_DEBUG(fmt, args...)
 #define FPU_WARN(fmt, args...)
@@ -328,7 +328,7 @@ void arch_save_fpu(struct Thread &thd) {
 }
 
 void arch_restore_fpu(struct Thread &thd) {
-  // printk("cr4=%p\n", read_cr4());
+  // printf("cr4=%p\n", read_cr4());
 
   if (!thd.fpu.initialized) {
     asm volatile("fninit");

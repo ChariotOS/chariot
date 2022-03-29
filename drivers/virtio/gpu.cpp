@@ -6,10 +6,10 @@
 
 
 static void dump_gpu_config(const volatile struct virtio_gpu_config *config) {
-  printk(KERN_INFO "[gpu] events_read 0x%llx\n", config->events_read);
-  printk(KERN_INFO "[gpu] events_clear 0x%llx\n", config->events_clear);
-  printk(KERN_INFO "[gpu] num_scanouts 0x%llx\n", config->num_scanouts);
-  printk(KERN_INFO "[gpu] reserved 0x%llx\n", config->reserved);
+  printf(KERN_INFO "[gpu] events_read 0x%llx\n", config->events_read);
+  printf(KERN_INFO "[gpu] events_clear 0x%llx\n", config->events_clear);
+  printf(KERN_INFO "[gpu] num_scanouts 0x%llx\n", config->num_scanouts);
+  printf(KERN_INFO "[gpu] reserved 0x%llx\n", config->reserved);
 }
 
 virtio_mmio_gpu::virtio_mmio_gpu(volatile uint32_t *regs) : virtio_mmio_dev(regs) {}
@@ -29,7 +29,7 @@ bool virtio_mmio_gpu::initialize(const struct virtio_config &config) {
 
   uint64_t features = read_reg(VIRTIO_MMIO_DEVICE_FEATURES);
   /* TODO: actually negotiate features */
-  printk(KERN_INFO "[gpu] features: b%llb\n", features);
+  printf(KERN_INFO "[gpu] features: b%llb\n", features);
   write_reg(VIRTIO_MMIO_DRIVER_FEATURES, features);
 
   irq::install(config.irqnr, virtio_irq_handler, "virtio gpu", (void *)this);
@@ -157,13 +157,13 @@ int virtio_mmio_gpu::get_display_info(void) {
 
   if (info->hdr.type != VIRTIO_GPU_RESP_OK_DISPLAY_INFO) {
     hexdump(&info->hdr, sizeof(info->hdr), true);
-    printk("error: %04x\n", info->hdr.type);
+    printf("error: %04x\n", info->hdr.type);
     return -1;
   }
 
   for (int i = 0; i < VIRTIO_GPU_MAX_SCANOUTS; i++) {
     if (info->pmodes[i].enabled) {
-      printk("[virtio gpu] pmode[%u]: x %u y %u w %u h %u flags 0x%x\n", i, info->pmodes[i].r.x, info->pmodes[i].r.y,
+      printf("[virtio gpu] pmode[%u]: x %u y %u w %u h %u flags 0x%x\n", i, info->pmodes[i].r.x, info->pmodes[i].r.y,
           info->pmodes[i].r.width, info->pmodes[i].r.height, info->pmodes[i].flags);
       if (pmode_id < 0) {
         /* save the first valid pmode we see */
@@ -285,7 +285,7 @@ int virtio_mmio_gpu::allocate_2d_resource(uint32_t &id_out, uint32_t width, uint
     return err;
   }
 
-  // printk("response type 0x%x\n", res->type);
+  // printf("response type 0x%x\n", res->type);
   return (res->type == VIRTIO_GPU_RESP_OK_NODATA) ? 0 : -ENOMEM;
 }
 
@@ -370,7 +370,7 @@ int virtio_mmio_gpu::flush_fb(void) {
 
 // default
 int virtio_mmio_gpu::set_mode(const gvi_video_mode &) {
-  printk("set mode\n");
+  printf("set mode\n");
   return -ENOTIMPL;
 }
 

@@ -13,7 +13,7 @@
 #include <lwip/tcpip.h>
 #include <pci.h>
 #include <phys.h>
-#include <printk.h>
+#include <printf.h>
 #include <sched.h>
 #include <util.h>
 #include <wait.h>
@@ -47,20 +47,14 @@ static struct netif e1000_netif;
 
 static uint32_t mmio_read32(uintptr_t addr) {
   auto val = *((volatile uint32_t *)p2v(addr));
-  // printk("read32(0x%p) -> 0x%08x\n", addr, val);
+  // printf("read32(0x%p) -> 0x%08x\n", addr, val);
   return val;
 }
-static void mmio_write32(uintptr_t addr, uint32_t val) {
-  *((volatile uint32_t *)p2v(addr)) = val;
-}
+static void mmio_write32(uintptr_t addr, uint32_t val) { *((volatile uint32_t *)p2v(addr)) = val; }
 
-static void write_command(uint16_t addr, uint32_t val) {
-  mmio_write32(mem_base + addr, val);
-}
+static void write_command(uint16_t addr, uint32_t val) { mmio_write32(mem_base + addr, val); }
 
-static uint32_t read_command(uint16_t addr) {
-  return mmio_read32(mem_base + addr);
-}
+static uint32_t read_command(uint16_t addr) { return mmio_read32(mem_base + addr); }
 
 static int eeprom_detect(void) {
   write_command(E1000_REG_EEPROM, 1);
@@ -143,7 +137,7 @@ static void irq_handler(int i, reg_t *, void *) {
   irq::eoi(i);
 
   if (status & E1000_ICR_LSC) {
-    printk(KERN_INFO "[e1000]: status change\n");
+    printf(KERN_INFO "[e1000]: status change\n");
   }
 
   if (status & E1000_ICR_RXT0) {
@@ -178,8 +172,7 @@ static void irq_handler(int i, reg_t *, void *) {
   // e1000wait.notify_all();
 }
 
-#define htonl(l) \
-  ((((l)&0xFF) << 24) | (((l)&0xFF00) << 8) | (((l)&0xFF0000) >> 8) | (((l)&0xFF000000) >> 24))
+#define htonl(l) ((((l)&0xFF) << 24) | (((l)&0xFF00) << 8) | (((l)&0xFF0000) >> 8) | (((l)&0xFF000000) >> 24))
 #define htons(s) ((((s)&0xFF) << 8) | (((s)&0xFF00) >> 8))
 #define ntohl(l) htonl((l))
 #define ntohs(s) htons((s))
@@ -237,8 +230,7 @@ static err_t e1000_netif_init(struct netif *netif) {
   memcpy(netif->hwaddr, mac, 6);
 
   netif->mtu = 1500;
-  netif->flags =
-      NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP | NETIF_FLAG_ETHERNET;
+  netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP | NETIF_FLAG_ETHERNET;
 
 
   // dev->net.low_level_init(dev->net.internals, dev->net.address, NULL);
@@ -248,8 +240,7 @@ static err_t e1000_netif_init(struct netif *netif) {
 
 
 
-void send_data(void *data, size_t size) {
-}
+void send_data(void *data, size_t size) {}
 
 
 int e1000_init_thread(void *) {
@@ -271,11 +262,10 @@ int e1000_init_thread(void *) {
   mem_base = (unsigned long)device->get_bar(0).raw;
 
   eeprom_detect();
-  printk(KERN_INFO "[e1000]: has_eeprom = %d\n", has_eeprom);
+  printf(KERN_INFO "[e1000]: has_eeprom = %d\n", has_eeprom);
   read_mac();
 
-  printk(KERN_INFO "[e1000]: device mac %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2],
-         mac[3], mac[4], mac[5]);
+  printf(KERN_INFO "[e1000]: device mac %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
   rx = (struct rx_desc *)phys::kalloc(NPAGES(sizeof(struct rx_desc) * E1000_NUM_RX_DESC + 16));
 
@@ -355,8 +345,7 @@ int e1000_init_thread(void *) {
   write_command(E1000_CTL, read_command(E1000_CTL) | E1000_CTL_SLU);
 
   int link_is_up = (read_command(E1000_REG_STATUS) & (1 << 1));
-  printk(KERN_INFO "[e1000]: done. has_eeprom = %d, link is up = %d, irq=%d\n", has_eeprom,
-         link_is_up, e1000_irq);
+  printf(KERN_INFO "[e1000]: done. has_eeprom = %d, link is up = %d, irq=%d\n", has_eeprom, link_is_up, e1000_irq);
 
   ip4_addr_t ip; /* Ipv4 Address */
   ip4_addr_t nm; /* net mask */
@@ -383,7 +372,7 @@ int e1000_init_thread(void *) {
     arch_relax();
   }
 
-  printk("E1000 DONE!\n");
+  printf("E1000 DONE!\n");
   return 0;
 }
 

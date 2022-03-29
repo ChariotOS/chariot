@@ -31,11 +31,11 @@ extern "C" void trapret(void);
 //   off_t rbp = 0;
 //   asm volatile("mov %%rbp, %0\n\t" : "=r"(rbp));
 //   auto bt = debug::generate_backtrace(rbp);
-//   printk_nolock("addr2line -e build/chariot.elf");
+//   printf_nolock("addr2line -e build/chariot.elf");
 //   for (auto pc : bt) {
-//     printk_nolock(" 0x%p", pc);
+//     printf_nolock(" 0x%p", pc);
 //   }
-//   printk_nolock("\n");
+//   printf_nolock("\n");
 // }
 
 static spinlock thread_table_lock;
@@ -209,36 +209,37 @@ void Thread::dump(void) {
   scoped_irqlock l(thread_table_lock);
   for (auto &[tid, twr] : thread_table) {
     ck::ref<Thread> thd = twr.get();
-		auto pc = arch_reg(REG_PC, thd->trap_frame);
-		const char *state_string = "unknown";
+    auto pc = arch_reg(REG_PC, thd->trap_frame);
+    const char *state_string = "unknown";
 
-		switch (thd->state) {
-			case PS_RUNNING:
-				state_string = "running";
-				break;
+    switch (thd->state) {
+      case PS_RUNNING:
+        state_string = "running";
+        break;
 
-			case PS_INTERRUPTIBLE:
-				state_string = "blocked (int)";
-				break;
+      case PS_INTERRUPTIBLE:
+        state_string = "blocked (int)";
+        break;
 
-			case PS_UNINTERRUPTIBLE:
-				state_string = "blocked (noint)";
-				break;
+      case PS_UNINTERRUPTIBLE:
+        state_string = "blocked (noint)";
+        break;
 
-			case PS_ZOMBIE:
-				state_string = "blocked (noint)";
-				break;
-		}
-		printk_nolock("t:%3d, p:%3d, %s, pc:%p, st:%s, e:%d, irqd:%d\n", tid, thd->pid, thd->name.get(), pc, state_string, thd->kerrno, thd->irq_depth);
-    // printk_nolock("t:%d p:%d : %p %d refs\n", tid, thd->pid, thd.get(), thd->ref_count());
+      case PS_ZOMBIE:
+        state_string = "blocked (noint)";
+        break;
+    }
+    printf_nolock(
+        "t:%3d, p:%3d, %s, pc:%p, st:%s, e:%d, irqd:%d\n", tid, thd->pid, thd->name.get(), pc, state_string, thd->kerrno, thd->irq_depth);
+    // printf_nolock("t:%d p:%d : %p %d refs\n", tid, thd->pid, thd.get(), thd->ref_count());
   }
 }
 
 
 
 ksh_def("threads", "display all the threads in great detail") {
-	Thread::dump();
-	return 0;
+  Thread::dump();
+  return 0;
 }
 
 
@@ -249,7 +250,7 @@ void Thread::exit(void) {
 
 bool Thread::teardown(ck::ref<Thread> &&thd) {
 #ifdef CONFIG_VERBOSE_PROCESS
-  pprintk("thread ran for %llu cycles, %llu us\n", thd->stats.cycles, thd->ktime_us);
+  pprintf("thread ran for %llu cycles, %llu us\n", thd->stats.cycles, thd->ktime_us);
 #endif
 
   {
@@ -273,10 +274,10 @@ bool Thread::send_signal(int sig) {
 
 
   bool f;
-  if (false && !is_self)f = runlock.lock_irqsave();
+  if (false && !is_self) f = runlock.lock_irqsave();
 
 #ifdef CONFIG_VERBOSE_PROCESS
-  printk("sending signal %d to tid %d\n", sig, tid);
+  printf("sending signal %d to tid %d\n", sig, tid);
 #endif
 
   unsigned long pend = (1 << sig);

@@ -1,6 +1,6 @@
 #include <x86/cpuid.h>
 #include <asm.h>
-#include <printk.h>
+#include <printf.h>
 #include <util.h>
 
 int cpuid::run(uint32_t func, cpuid::ret_t &ret) {
@@ -98,7 +98,7 @@ static void get_vendor_string(char *buf) {
 void cpuid::detect_cpu(void) {
   char branding[17];
   get_vendor_string(branding);
-  printk(KERN_INFO "Detected %s Processor\n", branding);
+  printf(KERN_INFO "Detected %s Processor\n", branding);
 }
 
 

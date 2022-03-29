@@ -128,7 +128,7 @@ struct TmpfsVMObject final : public mm::VMObject {
 
   // get a shared page (page #n in the mapping)
   virtual ck::ref<mm::Page> get_shared(off_t n) override {
-    // printk("get_shared(%d)\n", n);
+    // printf("get_shared(%d)\n", n);
     return m_ino->get_page(m_off + n);
   }
 
@@ -145,12 +145,12 @@ struct TmpfsVMObject final : public mm::VMObject {
 
 
 ck::ref<mm::VMObject> tmpfs::FileNode::mmap(fs::File &f, size_t npages, int prot, int flags, off_t off) {
-	printk("mmap!\n");
+  printf("mmap!\n");
   // XXX: this is invalid, should be asserted before here :^)
   if (off & 0xFFF) return nullptr;
 
-  // if (flags & MAP_PRIVATE) printk("ext2 map private\n");
-  // if (flags & MAP_SHARED) printk("ext2 map shared\n");
+  // if (flags & MAP_PRIVATE) printf("ext2 map private\n");
+  // if (flags & MAP_SHARED) printf("ext2 map shared\n");
 
   return ck::make_ref<TmpfsVMObject>(f.ino, npages, off);
 }
@@ -213,7 +213,7 @@ tmpfs::FileSystem::FileSystem(ck::string args, int flags) {
 }
 
 
-tmpfs::FileSystem::~FileSystem(void) { printk("tmpfs superblock dead\n"); }
+tmpfs::FileSystem::~FileSystem(void) { printf("tmpfs superblock dead\n"); }
 
 
 

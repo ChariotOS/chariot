@@ -8,7 +8,7 @@ int sys::signal_init(void *sigret) {
   // (currently mapped, as to avoid segfaults)
   if (!curproc->mm->validate_pointer(sigret, 1, VALIDATE_READ)) return -EINVAL;
 
-  // printk("setting sigret for pid %d to %p\n", curproc->pid, sigret);
+  // printf("setting sigret for pid %d to %p\n", curproc->pid, sigret);
 
   curproc->sig.ret = (off_t)sigret;
 

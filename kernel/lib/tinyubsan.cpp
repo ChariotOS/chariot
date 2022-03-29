@@ -1,5 +1,5 @@
 #include <asm.h>
-#include <printk.h>
+#include <printf.h>
 struct tu_source_location {
   const char *file;
   uint32_t line;
@@ -69,7 +69,7 @@ void print(const char *fmt, ...);
 extern "C" {
 #endif
 static void tu_print_location(const char *message, struct tu_source_location loc) {
-  printk(RED "UBSAN: %s." RESET " %s, line %d, column %d\n", message, loc.file, loc.line, loc.column);
+  printf(RED "UBSAN: %s." RESET " %s, line %d, column %d\n", message, loc.file, loc.line, loc.column);
 }
 
 void __ubsan_handle_add_overflow(struct tu_overflow_data *data) { tu_print_location("addition overflow", data->location); }

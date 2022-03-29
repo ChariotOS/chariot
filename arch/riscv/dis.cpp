@@ -1,4 +1,4 @@
-#include <printk.h>
+#include <printf.h>
 #include <riscv/dis.h>
 
 enum format { R, I, S, B, U, J };
@@ -7,8 +7,17 @@ struct {
   u8 opcode; /* 7-bit */
   enum format fmt;
 } opcodefmt[] = {
-    {0x37, U}, {0x17, U}, {0x6f, J}, {0x67, I}, {0x63, B}, {0x03, I},
-    {0x23, S}, {0x13, I}, {0x33, R}, {0x0f, I}, {0x73, I},
+    {0x37, U},
+    {0x17, U},
+    {0x6f, J},
+    {0x67, I},
+    {0x63, B},
+    {0x03, I},
+    {0x23, S},
+    {0x13, I},
+    {0x33, R},
+    {0x0f, I},
+    {0x73, I},
 };
 
 union encoding {
@@ -205,10 +214,8 @@ const char *name(uint32_t insn) {
   return "???";
 }
 
-static const char *reg_names[] = {"ra", "sp",  "gp",  "tp", "t0", "t1", "t2", "s0",
-                                  "s1", "a0",  "a1",  "a2", "a3", "a4", "a5", "a6",
-                                  "a7", "s2",  "s3",  "s4", "s5", "s6", "s7", "s8",
-                                  "s9", "s10", "s11", "t3", "t4", "t5", "t6", "sepc"};
+static const char *reg_names[] = {"ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7",
+    "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6", "sepc"};
 
 
 void rv::disassembler::dis(uint32_t insn) {
@@ -226,17 +233,17 @@ void rv::disassembler::dis(uint32_t insn) {
   switch (format(e.opcode)) {
     case R:
     case I:
-      snprintk(m_op0, 32, "%s ", reg_names[e.rd]);
+      snprintf(m_op0, 32, "%s ", reg_names[e.rd]);
       break;
     case S:
-      snprintk(m_op0, 32, "x%d ", e.rs2);
+      snprintf(m_op0, 32, "x%d ", e.rs2);
       break;
     case B:
-      snprintk(m_op0, 32, "x%d ", e.rs1);
+      snprintf(m_op0, 32, "x%d ", e.rs1);
       break;
     case U:
     case J:
-      snprintk(m_op0, 32, "x%d ", e.rd);
+      snprintf(m_op0, 32, "x%d ", e.rd);
       break;
   }
 
@@ -246,17 +253,16 @@ void rv::disassembler::dis(uint32_t insn) {
     case R:
     case I:
     case S:
-      snprintk(m_op1, 32, "%s ", reg_names[e.rs1]);
+      snprintf(m_op1, 32, "%s ", reg_names[e.rs1]);
       break;
     case B:
-      snprintk(m_op1, 32, "x%d ", e.rs2);
+      snprintf(m_op1, 32, "x%d ", e.rs2);
       break;
     case U:
-      snprintk(m_op1, 32, "0x%x ", e.u.i31_12);
+      snprintf(m_op1, 32, "0x%x ", e.u.i31_12);
       break;
     case J:
-      snprintk(m_op1, 32, "%d ",
-               (e.j.i20 << 20) | (e.j.i19_12 << 12) | (e.j.i11 << 11) | (e.j.i10_1 << 1));
+      snprintf(m_op1, 32, "%d ", (e.j.i20 << 20) | (e.j.i19_12 << 12) | (e.j.i11 << 11) | (e.j.i10_1 << 1));
       break;
   }
 
@@ -264,17 +270,16 @@ void rv::disassembler::dis(uint32_t insn) {
   /* op 2 */
   switch (format(e.opcode)) {
     case R:
-      snprintk(m_op2, 32, "%s ", reg_names[e.rs2]);
+      snprintf(m_op2, 32, "%s ", reg_names[e.rs2]);
       break;
     case I:
-      snprintk(m_op2, 32, "%d ", e.i.i11_0);
+      snprintf(m_op2, 32, "%d ", e.i.i11_0);
       break;
     case S:
-      snprintk(m_op2, 32, "%d ", (e.s.i11_5 << 5) | e.s.i4_0);
+      snprintf(m_op2, 32, "%d ", (e.s.i11_5 << 5) | e.s.i4_0);
       break;
     case B:
-      snprintk(m_op2, 32, "%d ",
-               (e.b.i12 << 12) | (e.b.i11 << 11) | (e.b.i10_5 << 5) | (e.b.i4_1 << 1));
+      snprintf(m_op2, 32, "%d ", (e.b.i12 << 12) | (e.b.i11 << 11) | (e.b.i10_5 << 5) | (e.b.i4_1 << 1));
       break;
     case U:
       break;
@@ -286,5 +291,5 @@ void rv::disassembler::dis(uint32_t insn) {
 
 void rv::disassembler::dump(uint32_t insn) {
   dis(insn);
-  printk("%08x  %-8s %s%s%s\n", insn, name(insn), m_op0, m_op1, m_op2);
+  printf("%08x  %-8s %s%s%s\n", insn, name(insn), m_op0, m_op1, m_op2);
 }

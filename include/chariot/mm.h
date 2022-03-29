@@ -65,11 +65,11 @@ namespace mm {
     inline void set_pa(unsigned long pa) { m_paf = (pa & ~0xFFF) | flags(); }
 
     inline void lock(void) {
-      // printk("lock page %p\n", this);
+      // printf("lock page %p\n", this);
       spinlock::lock(m_lock);
     }
     inline void unlock(void) {
-      // printk("unlock page %p\n", this);
+      // printf("unlock page %p\n", this);
       spinlock::unlock(m_lock);
     }
 
@@ -127,7 +127,7 @@ namespace mm {
 
 
     inline page_mapping &operator=(ck::ref<mm::Page> pg) {
-      // printk("operator= %p\n", pg.get());
+      // printf("operator= %p\n", pg.get());
       set_page(pg);
       return *this;
     }

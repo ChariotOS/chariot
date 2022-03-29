@@ -162,7 +162,7 @@ long sched::proc::spawn_init(ck::vec<ck::string> &paths) {
   ck::ref<Process> proc_ptr;
   proc_ptr = ck::make_ref<Process>();
   if (proc_ptr.get() == NULL) {
-    printk("Failed to allocate process\n");
+    printf("Failed to allocate process\n");
     return -1;
   }
 
@@ -189,7 +189,7 @@ long sched::proc::spawn_init(ck::vec<ck::string> &paths) {
   for (auto &path : paths) {
     ck::vec<ck::string> argv;
     argv.push(path);
-    printk("arg: %s\n", path.get());
+    printf("arg: %s\n", path.get());
     int res = proc.exec(path, argv, envp);
     if (res == 0) return pid;
   }
@@ -304,7 +304,7 @@ int Process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::strin
 
   // TODO: open permissions on the binary
   if (vfs::namei(path.get(), 0, 0, cwd, exe) != 0) {
-    printk("File, '%s', does not exist\n", path.get());
+    printf("File, '%s', does not exist\n", path.get());
     return -ENOENT;
   }
   // TODO check execution permissions
@@ -402,9 +402,9 @@ int sched::proc::reap(ck::ref<Process> p) {
   f |= (p->exit_code & 0xFF) << 8;
 
 #ifdef CONFIG_VERBOSE_PROCESS
-  pprintk("reap (p:%d, pg:%d) on cpu %d\n", p->pid, p->pgid, cpu::current().cpunum);
+  pprintf("reap (p:%d, pg:%d) on cpu %d\n", p->pid, p->pgid, cpu::current().cpunum);
   auto usage = p->mm->memory_usage();
-  pprintk("  ram usage: %zu Kb (%zu b)\n", usage / KB, usage);
+  pprintf("  ram usage: %zu Kb (%zu b)\n", usage / KB, usage);
 #endif
 
   assert(p->threads.size() == 0);
@@ -446,7 +446,7 @@ int sched::proc::reap(ck::ref<Process> p) {
 
 
 void Process::terminate(int signal) {
-  // pprintk("Terminate with signal %d\n", signal);
+  // pprintf("Terminate with signal %d\n", signal);
   signal &= 0x7F;
   /* top bit of the first byte means it was signalled. Everything else is the signal that killed it
    */
@@ -689,7 +689,7 @@ int Process::reaper(void *) {
     assert(p->threads.size() == 0);
 
 
-    // printk("proc: %d -> %p\n", pid, p.get());
+    // printf("proc: %d -> %p\n", pid, p.get());
     struct zombie_entry *zomb = new zombie_entry(p);
     zombify(zomb);
   }
@@ -764,20 +764,20 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
                                                           */
   if (op == FUTEX_WAIT) {
     auto &wq = curproc->futex_queue(uaddr);
-    // printk("[%2d] FUTEX_WAIT - wq: %p\n", curthd->tid, &wq);
+    // printf("[%2d] FUTEX_WAIT - wq: %p\n", curthd->tid, &wq);
     /* Load the item atomically. (ATOMIC ACQUIRE makes sense here I think) */
     int current_value = __atomic_load_n(uaddr, __ATOMIC_ACQUIRE);
     /* If the value is not the expected value, return EAGAIN */
     if (current_value != val) return -EAGAIN;
 
-    // printk("WAIT BEGIN!\n");
-    // printk("wait at task list %p\n", &wq.task_list);
+    // printf("WAIT BEGIN!\n");
+    // printf("wait at task list %p\n", &wq.task_list);
 
     if (wq.wait_exclusive().interrupted()) {
-      // printk("FUTEX WAIT WAKEUP (RUDE)\n");
+      // printf("FUTEX WAIT WAKEUP (RUDE)\n");
       return -EINTR;
     }
-    // printk("FUTEX WAIT WAKEUP\n");
+    // printf("FUTEX WAIT WAKEUP\n");
 
     return 0;
   }
@@ -788,10 +788,10 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
     if (val == 0) return 0;
 
     if (wq.task_list.is_empty_careful()) {
-      // printk("task list empty!\n");
+      // printf("task list empty!\n");
       return 0;
     }
-    // printk("[%2d] FUTEX_WAKE - wq: %p\n", curthd->tid, &wq);
+    // printf("[%2d] FUTEX_WAKE - wq: %p\n", curthd->tid, &wq);
 
     wq.__wake_up(0, val, NULL);
     return 1; /* if someone was woken up, return one */
@@ -823,7 +823,7 @@ static void rv_fork_return(void) {
   regs->status = read_csr(sstatus) & ~SSTATUS_SPP;
 
   arch_enable_ints();
-  // printk(KERN_INFO "entering pid %d\n", thd->pid);
+  // printf(KERN_INFO "entering pid %d\n", thd->pid);
   rv_enter_userspace(regs);
 }
 #endif
@@ -906,7 +906,7 @@ int sys::sigwait() {
 
 
 void sched::proc::dump_table(void) {
-  pprintk("Process States: \n");
+  pprintf("Process States: \n");
   for (auto &p : proc_table) {
     auto &proc = p.value;
 
@@ -920,24 +920,24 @@ void sched::proc::dump_table(void) {
       ST(UNINTERRUPTIBLE);
       ST(ZOMBIE);
 #undef ST
-      pprintk("  '%s' p:%d,t:%d: %s, %llu\n", proc->name.get(), proc->pid, t->tid, state, proc->mm->memory_usage());
+      pprintf("  '%s' p:%d,t:%d: %s, %llu\n", proc->name.get(), proc->pid, t->tid, state, proc->mm->memory_usage());
     }
   }
 
 
   {
     scoped_irqlock l(waitlist_lock);
-    pprintk("Zombie list: \n");
+    pprintf("Zombie list: \n");
     struct zombie_entry *zent = NULL;
-    list_for_each_entry(zent, &zombie_list, node) { pprintk("  process %d\n", zent->proc->pid); }
+    list_for_each_entry(zent, &zombie_list, node) { pprintf("  process %d\n", zent->proc->pid); }
   }
 
 
   Thread::dump();
-  // pprintk("Waiter List: \n");
+  // pprintf("Waiter List: \n");
   // struct waiter_entry *went = NULL;
   // list_for_each_entry(went, &waiter_list, node) {
-  //   pprintk("  process %d, seeking %d\n", went->thd->tid, went->seeking);
+  //   pprintf("  process %d, seeking %d\n", went->thd->tid, went->seeking);
   // }
 }
 
@@ -946,4 +946,3 @@ ksh_def("pdump", "dump the process table") {
   sched::proc::dump_table();
   return 0;
 }
-

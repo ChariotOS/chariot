@@ -1,5 +1,5 @@
 #include <arch.h>
-#include <printk.h>
+#include <printf.h>
 #include <arm64/arch.h>
 #include <arm64/platform/bcm2711.h>
 #include <arm64/platform/mailbox.h>
@@ -89,9 +89,10 @@ void serial_install(void) {
 }
 
 void serial_send(int port, char ch) {
-	while (!(arm64::read(AUX_MU_LSR_REG) & 0x20)) {}
+  while (!(arm64::read(AUX_MU_LSR_REG) & 0x20)) {
+  }
 
-	arm64::write(AUX_MU_IO_REG, (unsigned int)ch);
+  arm64::write(AUX_MU_IO_REG, (unsigned int)ch);
 }
 
 
@@ -102,8 +103,8 @@ void arm64::platform_init(uint64_t dtb, uint64_t x1, uint64_t x2, uint64_t x3) {
   serial_install();
 
 
-	/* Do some printing */
-	printk("hello, world\n");
+  /* Do some printing */
+  printf("hello, world\n");
 
   while (1) {
   }

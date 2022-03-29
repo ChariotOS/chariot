@@ -95,11 +95,11 @@ int x86::pagetable::add_mapping(off_t va, struct mm::pte &p) {
   if ((p.prot & PROT_EXEC) == 0) flags |= PTE_NX;
 
   if (p.nocache) {
-    // printk("nocache\n");
+    // printf("nocache\n");
     flags |= PTE_D;
   }
   if (p.writethrough) {
-    // printk("writethrough\n");
+    // printf("writethrough\n");
     flags |= PTE_PWT;
   }
 
@@ -191,7 +191,7 @@ void arch_mem_init(unsigned long mbd) {
     if (mmap->type != MULTIBOOT_MEMORY_AVAILABLE) continue;
 
     if (n > MAX_MMAP_ENTRIES) {
-      printk("Reached memory region limit!\n");
+      printf("Reached memory region limit!\n");
       while (1)
         ;
     }
@@ -247,7 +247,7 @@ void arch_mem_init(unsigned long mbd) {
     phys::free_range(start, end);
   }
 
-  printk(KERN_INFO "Detected and mapped physical memory virtually.\n");
+  printf(KERN_INFO "Detected and mapped physical memory virtually.\n");
 }
 
 

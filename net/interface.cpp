@@ -10,7 +10,7 @@
 #include <net/ipv4.h>
 #include <net/net.h>
 #include <net/pkt.h>
-#include <printk.h>
+#include <printf.h>
 #include <sched.h>
 #include <ck/string.h>
 #include <util.h>
@@ -48,8 +48,8 @@ int net::register_interface(const char *name, net::interface *i) {
   }
 
   interfaces[name] = i;
-  printk(KERN_INFO "[net] registered new interface '%s': %02x:%02x:%02x:%02x:%02x:%02x\n", name,
-      i->hwaddr[0], i->hwaddr[1], i->hwaddr[2], i->hwaddr[3], i->hwaddr[4], i->hwaddr[5]);
+  printf(KERN_INFO "[net] registered new interface '%s': %02x:%02x:%02x:%02x:%02x:%02x\n", name, i->hwaddr[0], i->hwaddr[1], i->hwaddr[2],
+      i->hwaddr[3], i->hwaddr[4], i->hwaddr[5]);
 
   return 0;
 }
@@ -61,9 +61,7 @@ struct net::interface *net::get_interface(const char *name) {
 
 static __inline uint16_t __bswap_16(uint16_t __x) { return __x << 8 | __x >> 8; }
 
-static __inline uint32_t __bswap_32(uint32_t __x) {
-  return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24;
-}
+static __inline uint32_t __bswap_32(uint32_t __x) { return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24; }
 
 // static __inline uint64_t __bswap_64(uint64_t __x) { return (__bswap_32(__x) + 0ULL) << 32 |
 // __bswap_32(__x >> 32); }
@@ -111,14 +109,14 @@ static void print_packet(ck::ref<net::pkt_buff> &pbuf) {
   auto ip = pbuf->iph();
 
   total_bytes_recv += pbuf->size();
-  printk(KERN_INFO "Raw Packet (%d bytes, %d total):\n", pbuf->size(), total_bytes_recv);
+  printf(KERN_INFO "Raw Packet (%d bytes, %d total):\n", pbuf->size(), total_bytes_recv);
   hexdump(pbuf->get(), pbuf->size(), true);
 
-  printk("[eth] src: %A, dst: %A, type: %04x\n", eth->src.raw, eth->dst.raw, net::ntohs(eth->type));
+  printf("[eth] src: %A, dst: %A, type: %04x\n", eth->src.raw, eth->dst.raw, net::ntohs(eth->type));
 
   if (arp != NULL) {
     if (arp->ha_len != 6 || arp->pr_len != 4) {
-      printk("[arp] ignoring due to address sizes being wrong\n");
+      printf("[arp] ignoring due to address sizes being wrong\n");
       return;
     }
 
@@ -126,12 +124,12 @@ static void print_packet(ck::ref<net::pkt_buff> &pbuf) {
     auto spa = net::ntohl(arp->sender_ip);
     auto tpa = net::ntohl(arp->target_ip);
 
-    if (op == ARPOP_REQUEST) printk("[arp] 'Who has %I? Tell %I'\n", spa, tpa);
-    printk("\n");
+    if (op == ARPOP_REQUEST) printf("[arp] 'Who has %I? Tell %I'\n", spa, tpa);
+    printf("\n");
   }
 
   if (ip != NULL) {
-    printk("[ipv4]\n");
+    printf("[ipv4]\n");
   }
 }
 
@@ -171,11 +169,11 @@ int task(void *) {
     i.gateway = net::net_ord(net::ipv4::parse_ip("10.0.2.2"));
 
     /*
-printk(KERN_INFO "[network task] Setup interface '%s'\n", name.get());
-printk(KERN_INFO "               hardware: %A\n", i.hwaddr.raw);
-printk(KERN_INFO "               address:  %I\n", net::host_ord(i.address));
-printk(KERN_INFO "               netmask:  %I\n", net::host_ord(i.netmask));
-printk(KERN_INFO "               gateway:  %I\n", net::host_ord(i.gateway));
+printf(KERN_INFO "[network task] Setup interface '%s'\n", name.get());
+printf(KERN_INFO "               hardware: %A\n", i.hwaddr.raw);
+printf(KERN_INFO "               address:  %I\n", net::host_ord(i.address));
+printf(KERN_INFO "               netmask:  %I\n", net::host_ord(i.netmask));
+printf(KERN_INFO "               gateway:  %I\n", net::host_ord(i.gateway));
     */
 
     return true;
@@ -191,7 +189,7 @@ volatile static int done = 0;
 static semaphore tcpinit_sem(0);
 
 static void donefunc(void *foo) {
-  printk(KERN_DEBUG "Done!\n");
+  printf(KERN_DEBUG "Done!\n");
   done = 1;
   tcpinit_sem.post();
 }
@@ -214,7 +212,7 @@ void net::start(void) {
 // When packets are recv'd by adapters, they are sent here for internal parsing
 // and routing
 void net::packet_received(ck::ref<net::pkt_buff> pbuf) {
-  printk("recv!\n");
+  printf("recv!\n");
   // skip non-ethernet packets
   auto eth = pbuf->eth();
   if (eth == NULL) return;

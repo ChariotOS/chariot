@@ -3,7 +3,7 @@
 #include <cpu.h>
 #include <lock.h>
 #include <net/ipv4.h>
-#include <printk.h>
+#include <printf.h>
 #include <ck/string.h>
 #include <syscall.h>
 #include <time.h>
@@ -20,11 +20,11 @@ void debug_dump_addr2line() {
   asm volatile("mov %%rbp, %0\n\t" : "=r"(rbp));
   auto bt = debug::generate_backtrace(rbp);
 
-  printk("addr2line -e build/chariot.elf ");
+  printf("addr2line -e build/chariot.elf ");
   for (auto pc : bt) {
-    printk(" 0x%p", pc);
+    printf(" 0x%p", pc);
   }
-  printk("\n");
+  printf("\n");
 #endif
 }
 
@@ -37,13 +37,13 @@ void debug_die(void) {
 
   if (cpu::in_thread()) {
     monitor_tid = curthd->tid;
-		printk("panic in %d\n", monitor_tid);
+    printf("panic in %d\n", monitor_tid);
   }
 
   __sync_synchronize();
   did_panic = true;
   if (cpu::in_thread()) {
-  	arch_enable_ints();
+    arch_enable_ints();
     kshell::run(RED "(panic)" RESET);
   }
 
@@ -144,7 +144,7 @@ void debug_die(void) {
 static int current_color = 0;
 static void set_color(int code) {
   if (code != current_color) {
-    printk("\x1b[%dm", code);
+    printf("\x1b[%dm", code);
     current_color = code;
   }
 }
@@ -190,7 +190,7 @@ const char *human_size(uint64_t bytes, char *buf) {
       dblBytes = bytes / 1024.0;
   }
 
-  sprintk(buf, "%.03lf %s", dblBytes, suffix[i]);
+  sprintf(buf, "%.03lf %s", dblBytes, suffix[i]);
   return buf;
 }
 
@@ -976,7 +976,7 @@ idx = _ntoa_long(out, buffer, idx, maxlen, val & 0xFFF,
 
 // TODO
 static int loglevel = 100;
-static int do_printk(const char *format, va_list va) {
+static int do_printf(const char *format, va_list va) {
   bool valid_loglevel = true;
 
   if (format[0] == '\001') {
@@ -1011,7 +1011,7 @@ static int do_printk(const char *format, va_list va) {
           break;
       }
       if (prefix != NULL) {
-        printk_nolock("%s%s ", prefix, RESET);
+        printf_nolock("%s%s ", prefix, RESET);
       }
     } else {
       valid_loglevel = false;
@@ -1028,41 +1028,41 @@ static int do_printk(const char *format, va_list va) {
 }
 
 
-void printk_nolock(const char *format, ...) {
+void printf_nolock(const char *format, ...) {
   va_list va;
   va_start(va, format);
-  do_printk(format, va);
+  do_printf(format, va);
   va_end(va);
 }
 
 
 static spinlock printk_lock;
-int printk(const char *format, ...) {
+int printf(const char *format, ...) {
   printk_lock.lock();
   va_list va;
   va_start(va, format);
-  const int ret = do_printk(format, va);
+  const int ret = do_printf(format, va);
   va_end(va);
   printk_lock.unlock();
   return ret;
 }
 
-int pprintk(const char *format, ...) {
+int pprintf(const char *format, ...) {
   printk_lock.lock();
   if (cpu::in_thread()) {
     int color = curthd->tid % 5 + 31;
-    printk_nolock("\e[0;%dm(c:%d p:%d t:%d) %s:\e[0m ", color, cpu::current().id, curthd->pid, curthd->tid, curproc->name.get());
+    printf_nolock("\e[0;%dm(c:%d p:%d t:%d) %s:\e[0m ", color, cpu::current().id, curthd->pid, curthd->tid, curproc->name.get());
   }
   va_list va;
   va_start(va, format);
-  const int ret = do_printk(format, va);
+  const int ret = do_printf(format, va);
   va_end(va);
   printk_lock.unlock();
   return ret;
 }
 
 
-int sprintk(char *buffer, const char *format, ...) {
+int sprintf(char *buffer, const char *format, ...) {
   va_list va;
   va_start(va, format);
   const int ret = _vsnprintf(_out_buffer, buffer, (size_t)-1, format, va);
@@ -1070,7 +1070,7 @@ int sprintk(char *buffer, const char *format, ...) {
   return ret;
 }
 
-int snprintk(char *buffer, size_t count, const char *format, ...) {
+int snprintf(char *buffer, size_t count, const char *format, ...) {
   va_list va;
   va_start(va, format);
   const int ret = _vsnprintf(_out_buffer, buffer, count, format, va);
@@ -1078,7 +1078,7 @@ int snprintk(char *buffer, size_t count, const char *format, ...) {
   return ret;
 }
 
-int vprintk(const char *format, va_list va) {
+int vprintf(const char *format, va_list va) {
   char buffer[1];
   return _vsnprintf(_out_char, buffer, (size_t)-1, format, va);
 }
@@ -1421,7 +1421,3 @@ int ck::string::scan(const char *fmt, ...) {
   va_end(args);
   return i;
 }
-
-time_logger::time_logger(const char *const name) { start = cpu::get_ticks(); }
-
-time_logger::~time_logger(void) {}

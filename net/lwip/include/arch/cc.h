@@ -1,7 +1,7 @@
 #ifndef __ARCH_CC_H__
 #define __ARCH_CC_H__
 
-#include <printk.h>
+#include <printf.h>
 #include <types.h>
 #include <asm.h>
 

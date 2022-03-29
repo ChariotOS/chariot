@@ -57,32 +57,26 @@
  */
 
 #include <rbtree_augmented.h>
-#include <printk.h>
+#include <printf.h>
 
-static inline void rb_set_black(struct rb_node *rb) {
-  rb->__rb_parent_color |= RB_BLACK;
-}
+static inline void rb_set_black(struct rb_node *rb) { rb->__rb_parent_color |= RB_BLACK; }
 
-static inline struct rb_node *rb_red_parent(struct rb_node *red) {
-  return (struct rb_node *)red->__rb_parent_color;
-}
+static inline struct rb_node *rb_red_parent(struct rb_node *red) { return (struct rb_node *)red->__rb_parent_color; }
 
 /*
  * Helper function for rotations:
  * - old's parent and color get assigned to newnode
  * - old gets assigned newnode as a parent and 'color' as a color.
  */
-static inline void __rb_rotate_set_parents(struct rb_node *old, struct rb_node *newnode,
-                                           struct rb_root *root, int color) {
+static inline void __rb_rotate_set_parents(struct rb_node *old, struct rb_node *newnode, struct rb_root *root, int color) {
   struct rb_node *parent = rb_parent(old);
   newnode->__rb_parent_color = old->__rb_parent_color;
   rb_set_parent_color(old, newnode, color);
   __rb_change_child(old, newnode, parent, root);
 }
 
-static inline void __rb_insert(struct rb_node *node, struct rb_root *root,
-                               void (*augment_rotate)(struct rb_node *old,
-                                                      struct rb_node *newnode)) {
+static inline void __rb_insert(
+    struct rb_node *node, struct rb_root *root, void (*augment_rotate)(struct rb_node *old, struct rb_node *newnode)) {
   struct rb_node *parent = rb_red_parent(node), *gparent, *tmp;
 
   while (true) {
@@ -214,9 +208,8 @@ static inline void __rb_insert(struct rb_node *node, struct rb_root *root,
  * Inline version for rb_erase() use - we want to be able to inline
  * and eliminate the dummy_rotate callback there
  */
-static inline void ____rb_erase_color(struct rb_node *parent, struct rb_root *root,
-                                      void (*augment_rotate)(struct rb_node *old,
-                                                             struct rb_node *newnode)) {
+static inline void ____rb_erase_color(
+    struct rb_node *parent, struct rb_root *root, void (*augment_rotate)(struct rb_node *old, struct rb_node *newnode)) {
   struct rb_node *node = NULL, *sibling, *tmp1, *tmp2;
 
   while (true) {
@@ -383,8 +376,7 @@ static inline void ____rb_erase_color(struct rb_node *parent, struct rb_root *ro
 }
 
 /* Non-inline version for rb_erase_augmented() use */
-void __rb_erase_color(struct rb_node *parent, struct rb_root *root,
-                      void (*augment_rotate)(struct rb_node *old, struct rb_node *newnode)) {
+void __rb_erase_color(struct rb_node *parent, struct rb_root *root, void (*augment_rotate)(struct rb_node *old, struct rb_node *newnode)) {
   ____rb_erase_color(parent, root, augment_rotate);
 }
 
@@ -395,19 +387,13 @@ void __rb_erase_color(struct rb_node *parent, struct rb_root *root,
  * out of the rb_insert_color() and rb_erase() function definitions.
  */
 
-static inline void dummy_propagate(struct rb_node *node, struct rb_node *stop) {
-}
-static inline void dummy_copy(struct rb_node *old, struct rb_node *newnode) {
-}
-static inline void dummy_rotate(struct rb_node *old, struct rb_node *newnode) {
-}
+static inline void dummy_propagate(struct rb_node *node, struct rb_node *stop) {}
+static inline void dummy_copy(struct rb_node *old, struct rb_node *newnode) {}
+static inline void dummy_rotate(struct rb_node *old, struct rb_node *newnode) {}
 
-static const struct rb_augment_callbacks dummy_callbacks = {
-    .propagate = dummy_propagate, .copy = dummy_copy, .rotate = dummy_rotate};
+static const struct rb_augment_callbacks dummy_callbacks = {.propagate = dummy_propagate, .copy = dummy_copy, .rotate = dummy_rotate};
 
-void rb_insert_color(struct rb_node *node, struct rb_root *root) {
-  __rb_insert(node, root, dummy_rotate);
-}
+void rb_insert_color(struct rb_node *node, struct rb_root *root) { __rb_insert(node, root, dummy_rotate); }
 
 void rb_erase(struct rb_node *node, struct rb_root *root) {
   struct rb_node *rebalance;
@@ -422,8 +408,8 @@ void rb_erase(struct rb_node *node, struct rb_root *root) {
  * case, but this time with user-defined callbacks.
  */
 
-void __rb_insert_augmented(struct rb_node *node, struct rb_root *root,
-                           void (*augment_rotate)(struct rb_node *old, struct rb_node *newnode)) {
+void __rb_insert_augmented(
+    struct rb_node *node, struct rb_root *root, void (*augment_rotate)(struct rb_node *old, struct rb_node *newnode)) {
   __rb_insert(node, root, augment_rotate);
 }
 
@@ -443,7 +429,7 @@ struct rb_node *rb_first(const struct rb_root *root) {
 struct rb_node *rb_last(const struct rb_root *root) {
   struct rb_node *n;
 
-	// pprintk("root: %pr root->rb_node: %p\n", root, root->rb_node);
+  // pprintf("root: %pr root->rb_node: %p\n", root, root->rb_node);
   n = root->rb_node;
   if (!n) return NULL;
   while (n->rb_right)
@@ -462,7 +448,7 @@ struct rb_node *rb_next(const struct rb_node *node) {
    */
   if (node->rb_right) {
     node = node->rb_right;
-		// pprintk("node=%p\n", node);
+    // pprintf("node=%p\n", node);
     while (node->rb_left)
       node = node->rb_left;
     return (struct rb_node *)node;

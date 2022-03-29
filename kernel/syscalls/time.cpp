@@ -99,7 +99,7 @@ time_t sys::localtime(struct tm *tloc) {
     dev::RTC::localtime(*tloc);
 #else
     auto sec = time::now_ms() / 1000;
-		printk("sec %d\n", sec);
+    printf("sec %d\n", sec);
     __secs_to_tm(sec, tloc);
 #endif
   }
@@ -107,6 +107,4 @@ time_t sys::localtime(struct tm *tloc) {
   return t;
 }
 
-size_t sys::gettime_microsecond(void) {
-  return time::now_us();
-}
+size_t sys::gettime_microsecond(void) { return time::now_us(); }

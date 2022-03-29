@@ -1,6 +1,6 @@
 #include <cppglue.h>
 #include <mem.h>
-#include <printk.h>
+#include <printf.h>
 #include <types.h>
 
 void *__dso_handle;
@@ -8,15 +8,11 @@ unsigned __atexit_func_count = 0;
 atexit_func_entry_t __atexit_funcs[ATEXIT_MAX_FUNCS];
 
 
-extern "C" void abort(void) {
-  panic("ABORT");
-}
+extern "C" void abort(void) { panic("ABORT"); }
 #define BAD() panic("Undefined C++ function (%s)\n", __func__);
 
 // Called when a pure virtual function call is attempted
-void __cxa_pure_virtual(void) {
-  BAD();
-}
+void __cxa_pure_virtual(void) { BAD(); }
 
 int __cxa_atexit(void (*destructor)(void *), void *arg, void *dso_handle) {
   if (__atexit_func_count >= ATEXIT_MAX_FUNCS) {
@@ -114,13 +110,11 @@ extern "C" uint64_t _Unwind_GetDataRelBase(struct _Unwind_Context *context) {
 #endif
 
 void *operator new(size_t size) {
-  // printk("operator new %zu\n", size);
+  // printf("operator new %zu\n", size);
   return zalloc(size);
 }
 
-void *operator new[](size_t size) {
-  return zalloc(size);
-}
+void *operator new[](size_t size) { return zalloc(size); }
 
 template <typename T>
 void *operator new(size_t size, T *&dst) {
@@ -128,27 +122,17 @@ void *operator new(size_t size, T *&dst) {
   return dst;
 }
 
-void operator delete(void *ptr) {
-  free(ptr);
-}
+void operator delete(void *ptr) { free(ptr); }
 
-void operator delete[](void *ptr) {
-  free(ptr);
-}
+void operator delete[](void *ptr) { free(ptr); }
 
-void operator delete(void *ptr, size_t s) {
-  free(ptr);
-}
+void operator delete(void *ptr, size_t s) { free(ptr); }
 
-void operator delete[](void *ptr, size_t s) {
-  free(ptr);
-}
+void operator delete[](void *ptr, size_t s) { free(ptr); }
 
 
 
-extern "C" void __stack_chk_fail(void) {
-  panic("stack pointer smashed!\n");
-}
+extern "C" void __stack_chk_fail(void) { panic("stack pointer smashed!\n"); }
 /*
 namespace std {
 
@@ -164,9 +148,7 @@ namespace std {
 
 
 // helper functions for getting/setting flags in guard_object
-static bool initializerHasRun(uint64_t *guard_object) {
-  return (*((uint8_t *)guard_object) != 0);
-}
+static bool initializerHasRun(uint64_t *guard_object) { return (*((uint8_t *)guard_object) != 0); }
 
 /*
  * The chariot cxa guard api expects two ints as an array

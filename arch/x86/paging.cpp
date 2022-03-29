@@ -2,21 +2,19 @@
 #include <mem.h>
 #include <paging.h>
 #include <phys.h>
-#include <printk.h>
+#include <printf.h>
 #include <types.h>
 #include <crypto.h>
 
 // #define PAGING_DEBUG
 
 #ifdef PAGING_DEBUG
-#define INFO(fmt, args...) printk("[PAGING] " fmt, ##args)
+#define INFO(fmt, args...) printf("[PAGING] " fmt, ##args)
 #else
 #define INFO(fmt, args...)
 #endif
 
-static inline void flush_tlb_single(u64 addr) {
-  __asm__ volatile("invlpg (%0)" ::"r"(addr) : "memory");
-}
+static inline void flush_tlb_single(u64 addr) { __asm__ volatile("invlpg (%0)" ::"r"(addr) : "memory"); }
 
 u64 *alloc_page_dir(void) {
   auto new_table = (u64 *)phys::alloc();
@@ -70,7 +68,7 @@ static u64 size_flag(paging::pgsize size) {
 
 static inline u64 *paging_p2v(u64 *pa) {
   u64 *va = (u64 *)p2v(pa);
-  // printk("paging_p2v(%p) = %p\n", pa, va);
+  // printf("paging_p2v(%p) = %p\n", pa, va);
   return va;
 }
 // convert a page table address to a usable kernel address
@@ -101,7 +99,7 @@ u64 *paging::find_mapping(u64 *pml4, u64 va, pgsize size) {
 
   INFO("depth = %d\n", depth);
 
-	// KINFO("find_mapping: %p: %d %d %d %d\n", va, pti(va, 3), pti(va, 2), pti(va, 1), pti(va, 0));
+  // KINFO("find_mapping: %p: %d %d %d %d\n", va, pti(va, 3), pti(va, 2), pti(va, 1), pti(va, 0));
 
   u64 *table = conv(pml4);
 
@@ -136,7 +134,7 @@ void paging::dump_page_table(u64 *p4) {
   for_range(i, 0, 512) {
     u64 entry = p4[i];
     if (entry & PTE_P) {
-      printk("  %3d: %p\n", i, p4[i]);
+      printf("  %3d: %p\n", i, p4[i]);
     }
   }
 }
@@ -144,7 +142,7 @@ void paging::dump_page_table(u64 *p4) {
 void paging::map_into(u64 *p4, u64 va, u64 pa, pgsize size, u16 flags) {
   u64 *pte = find_mapping(p4, va, size);
   if (*pte & PTE_P) {
-    // printk("REMAP!\n");
+    // printf("REMAP!\n");
   }
 
   *pte = (pa & ~0xFFF) | flags | size_flag(size);
@@ -159,13 +157,11 @@ void paging::map_into(u64 *p4, u64 va, u64 pa, pgsize size, u16 flags) {
 
 void paging::map(u64 va, u64 pa, pgsize size, u16 flags) {
   auto p4 = (u64 *)p2v(read_cr3());
-  // printk("mapping %p %p (%d)\n", va, pa, size);
+  // printf("mapping %p %p (%d)\n", va, pa, size);
   return paging::map_into(p4, va, pa, size, flags);
 }
 
-u64 paging::get_physical(u64 va) {
-  return 0;
-}
+u64 paging::get_physical(u64 va) { return 0; }
 
 static void free_p2(off_t *p2_p) {
   off_t *p2 = (off_t *)p2v(p2_p);

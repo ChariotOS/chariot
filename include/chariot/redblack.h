@@ -1,7 +1,7 @@
 
 
 #ifdef KERNEL
-#include <printk.h>
+#include <printf.h>
 #include <ck/ptr.h>
 #include <types.h>
 

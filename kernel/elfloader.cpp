@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <util.h>
 #include <fs/magicfd.h>
-#include <printk.h>
+#include <printf.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 #define round_down(x, y) ((x) & ~((y)-1))
@@ -46,7 +46,7 @@ int elf::each_symbol(fs::File &fd, ck::func<bool(const char *sym, off_t)> cb) {
 
 
   if (!elf::validate(fd, ehdr)) {
-    // printk("[ELF LOADER] elf not valid\n");
+    // printf("[ELF LOADER] elf not valid\n");
     return -ENOEXEC;
   }
 
@@ -65,7 +65,7 @@ int elf::each_symbol(fs::File &fd, ck::func<bool(const char *sym, off_t)> cb) {
 
   if (sec_read != sec_expected) {
     delete[] sec_hdrs;
-    printk("sec_read != sec_expected\n");
+    printf("sec_read != sec_expected\n");
     return -1;
   }
 
@@ -167,7 +167,7 @@ int elf::load(const char *path, struct Process &p, mm::AddressSpace &mm, ck::ref
 
   if (hdrs_read != hdrs_size) {
     delete[] phdr;
-    printk("hdrs_read != hdrs_size\n");
+    printf("hdrs_read != hdrs_size\n");
     return -ENOEXEC;
   }
 
@@ -179,7 +179,7 @@ int elf::load(const char *path, struct Process &p, mm::AddressSpace &mm, ck::ref
 
   if (i == ehdr.e_phnum) {
     delete[] phdr;
-    printk("i == ehdr.e_phnum\n");
+    printf("i == ehdr.e_phnum\n");
     return -ENOEXEC;
   }
 
@@ -201,7 +201,7 @@ int elf::load(const char *path, struct Process &p, mm::AddressSpace &mm, ck::ref
 
 
     // if (sec.p_type == PT_TLS) {
-    //   printk("Found a TLS template!\n");
+    //   printf("Found a TLS template!\n");
     //   p.tls_info.exists = true;
     //   p.tls_info.fileoff = sec.p_offset;
     //   p.tls_info.fsize = sec.p_filesz;
@@ -210,7 +210,7 @@ int elf::load(const char *path, struct Process &p, mm::AddressSpace &mm, ck::ref
 
     if (sec.p_type == PT_LOAD) {
       auto start = sec.p_vaddr;
-      // printk("LOAD %p, mem: %llu, file: %llu\n", start, sec.p_memsz, sec.p_filesz);
+      // printf("LOAD %p, mem: %llu, file: %llu\n", start, sec.p_memsz, sec.p_filesz);
       auto prot = 0L;
       if (sec.p_flags & PF_X) prot |= PROT_EXEC;
       if (sec.p_flags & PF_W) prot |= PROT_WRITE;

@@ -58,9 +58,9 @@ int net::Socket::poll(fs::File &fd, int events, poll_table &pt) { return 0; }
 
 /* create an inode wrapper around a socket */
 ck::ref<fs::Node> net::Socket::createi(int domain, int type, int protocol, int &err) {
-  // printk("domain=%3d, type=%3d, proto=%3d\n", domain, type, protocol);
+  // printf("domain=%3d, type=%3d, proto=%3d\n", domain, type, protocol);
   auto sk = net::Socket::create(domain, type, protocol, err);
-  // printk("sk %p %d\n", sk, err);
+  // printf("sk %p %d\n", sk, err);
   if (err != 0) return nullptr;
 
   return sk;
@@ -69,7 +69,7 @@ ck::ref<fs::Node> net::Socket::createi(int domain, int type, int protocol, int &
 int sys::socket(int d, int t, int p) {
   int err = 0;
   auto f = net::Socket::createi(d, t, p, err);
-  // printk("in %p %d\n", f, err);
+  // printf("in %p %d\n", f, err);
   if (err != 0) return -1;
 
   ck::ref<fs::File> fd = fs::File::create(f, "socket", FDIR_READ | FDIR_WRITE);
@@ -89,7 +89,7 @@ ssize_t sys::sendto(int sockfd, const void *buf, size_t len, int flags, const st
   ck::ref<fs::File> file = curproc->get_fd(sockfd);
 
 
-  // printk("[%3d] sendto as '%s'\n", curproc->pid, file->pflags == PFLAGS_CLIENT ? "client" :
+  // printf("[%3d] sendto as '%s'\n", curproc->pid, file->pflags == PFLAGS_CLIENT ? "client" :
   // "server");
 
   ssize_t res = -EINVAL;
@@ -116,7 +116,7 @@ ssize_t sys::recvfrom(int sockfd, void *buf, size_t len, int flags, const struct
   ck::ref<fs::File> file = curproc->get_fd(sockfd);
 
 
-  // printk("[%3d] recvfrom as '%s'\n", curproc->pid,
+  // printf("[%3d] recvfrom as '%s'\n", curproc->pid,
   //     file->pflags == PFLAGS_CLIENT ? "client" : "server");
 
 

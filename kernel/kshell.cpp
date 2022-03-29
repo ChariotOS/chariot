@@ -30,10 +30,9 @@ unsigned long kshell::call(ck::string command, ck::vec<ck::string> args, void *d
 
 
 unsigned long sys::kshell(void) {
-
-	// make this thread run the kshell :)
-	kshell::run("$>");
-	return 0;
+  // make this thread run the kshell :)
+  kshell::run("$>");
+  return 0;
 }
 
 
@@ -47,8 +46,8 @@ static void exec(const ck::string &raw, bool reexec = true) {
   // split the command on spaces
   auto parts = raw.split(' ', false);
   if (parts.size() >= 1) {
-		last_command.clear();
-		last_command = raw;
+    last_command.clear();
+    last_command = raw;
     ck::string cmd = parts[0];
     parts.remove(0);
 
@@ -56,19 +55,18 @@ static void exec(const ck::string &raw, bool reexec = true) {
     if (commands.contains(cmd)) {
       auto res = kshell::call(cmd, parts, nullptr, 0);
       if (res) {
-        printk(" -> %lu\n", res);
+        printf(" -> %lu\n", res);
       } else {
-        printk("\n");
+        printf("\n");
       }
     } else {
       KERR("Command '%s' not found\n", cmd.get());
     }
   } else if (reexec) {
-		ck::string cmd = last_command;
-		exec(cmd, false);
-		return;
-	}
-
+    ck::string cmd = last_command;
+    exec(cmd, false);
+    return;
+  }
 }
 
 bool kshell::active(void) { return ::active; }
@@ -85,7 +83,7 @@ void kshell::run(const char *prompt) {
 
   KINFO("Dropping into kernel shell. Enter 'help' for more information\n");
   while (kshell::active()) {
-    printk("%s ", prompt);
+    printf("%s ", prompt);
     ck::string input;
     while (1) {
       int c = kshell_pipe.recv();
@@ -101,11 +99,11 @@ void kshell::run(const char *prompt) {
 
       if (c == '\n' || c == '\r') {
         console::putc('\n', true);
-				// :)
-				if (input == "exit") {
-					::active = false;
-					break;
-				}
+        // :)
+        if (input == "exit") {
+          ::active = false;
+          break;
+        }
         exec(input);
         input.clear();
         // break from the input loop
@@ -124,11 +122,11 @@ void kshell::run(const char *prompt) {
 
 
 static unsigned long kshell_help(ck::vec<ck::string> &args, void *data, int dlen) {
-  // printk("Kernel shell help:\n");
+  // printf("Kernel shell help:\n");
 
-  printk("Available Commands\n");
+  printf("Available Commands\n");
   for (auto cmd : commands) {
-    printk(" - %s: '%s'\n", cmd.key.get(), cmd.value.usage.get());
+    printf(" - %s: '%s'\n", cmd.key.get(), cmd.value.usage.get());
   }
   return 0;
 }
@@ -156,19 +154,19 @@ ksh_def("x", "x address length") {
   unsigned long size = 0;
 
   if (args.size() != 2) {
-    printk("Usage: x <address> <length>\n");
+    printf("Usage: x <address> <length>\n");
     return 1;
   }
 
 
   if (!parse_arg(args[0], &address)) {
-    printk("malformed address\n");
+    printf("malformed address\n");
     return 1;
   }
 
 
   if (!parse_arg(args[1], &size)) {
-    printk("malformed size\n");
+    printf("malformed size\n");
     return 1;
   }
 
@@ -176,5 +174,3 @@ ksh_def("x", "x address length") {
   hexdump(p2v(address), size, true);
   return 0;
 }
-
-

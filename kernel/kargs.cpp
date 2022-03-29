@@ -3,7 +3,7 @@
 
 
 #include <ck/map.h>
-#include <printk.h>
+#include <printf.h>
 #include <ck/vec.h>
 
 static ck::map<ck::string, ck::string> cmdline_map;

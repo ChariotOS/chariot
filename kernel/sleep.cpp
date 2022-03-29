@@ -3,7 +3,7 @@
 #include <sleep.h>
 #include <time.h>
 #include <syscall.h>
-#include "printk.h"
+#include <printf.h>
 
 
 sleep_waiter::~sleep_waiter() { this->remove(); }
@@ -86,7 +86,7 @@ bool check_wakeups_r(void) {
     /* Continue the loop */
     blk = next;
   }
-  // if (woke > 0) printk_nolock("woke up %d threads\n", woke);
+  // if (woke > 0) printf_nolock("woke up %d threads\n", woke);
 
   return found;
 }

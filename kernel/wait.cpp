@@ -258,7 +258,7 @@ int multi_wait_prelocked(wait_queue **queues, size_t nqueues, bool irqs_enabled,
   if (irqs_enabled) {
     arch_enable_ints();
   } else {
-    printk("interrupts were disabled at the start of multi_wait\n");
+    printf("interrupts were disabled at the start of multi_wait\n");
   }
 
   /* Yield (block) with the new process state. */

@@ -7,7 +7,7 @@
 #include <keycode.h>
 #include <mem.h>
 #include <module.h>
-#include <printk.h>
+#include <printf.h>
 #include <ck/single_list.h>
 #include <syscall.h>
 #include <vga.h>
@@ -523,7 +523,7 @@ static void kbd_init(void) {
     inb(I8042_BUFFER);
 
 
-	// TODO:
+  // TODO:
   // dev::register_driver(keyboard_driver_info);
   // dev::register_name(keyboard_driver_info, "keyboard", 0);
 }

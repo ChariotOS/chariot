@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <module.h>
 #include <phys.h>
-#include <printk.h>
+#include <printf.h>
 #include <util.h>
 
 #include "../majors.h"
@@ -103,7 +103,7 @@ static wait_queue sb16_wq;
 
 static void dma_start(uint32_t length) {
   const auto addr = (off_t)v2p(dma_page);
-  printk(KERN_INFO "DMA START %p %d. page=%04x\n", addr, length, addr >> 16);
+  printf(KERN_INFO "DMA START %p %d. page=%04x\n", addr, length, addr >> 16);
   const uint8_t channel = 5;  // 16-bit samples use DMA channel 5 (on the master DMA controller)
   const uint8_t mode = 0x48;
 
@@ -140,7 +140,7 @@ static ssize_t sb16_write(fs::File &fd, const char *buf, size_t sz) {
     dma_page = phys::alloc(1);
   }
 
-  printk("dma_page: %p\n", dma_page);
+  printf("dma_page: %p\n", dma_page);
 
 
 
@@ -161,7 +161,7 @@ static ssize_t sb16_write(fs::File &fd, const char *buf, size_t sz) {
   // if stereo, double the sample are used
   if (mode & (uint8_t)SampleFormat::Stereo) sample_count >>= 1;
 
-  printk(KERN_INFO "SB16: writing %d bytes! %d samples\n", sz, sample_count);
+  printf(KERN_INFO "SB16: writing %d bytes! %d samples\n", sz, sample_count);
 
   sample_count -= 1;
 
@@ -182,7 +182,7 @@ static int sb16_open(fs::File &fd) { return 0; }
 
 
 static void sb16_interrupt(int intr, reg_t *fr, void *) {
-  printk(KERN_INFO "SB16 INTERRUPT\n");
+  printf(KERN_INFO "SB16 INTERRUPT\n");
   // Stop sound output ready for the next block.
   dsp_write(0xd5);
 
@@ -216,13 +216,13 @@ void sb16_init(void) {
   auto vmin = dsp_read();
 
 
-  printk(KERN_INFO "SB16: found version %d.%d\n", m_major_version, vmin);
+  printf(KERN_INFO "SB16: found version %d.%d\n", m_major_version, vmin);
   set_irq_register(SB16_DEFAULT_IRQ);
-  printk(KERN_INFO "SB16: IRQ %d\n", get_irq_line());
+  printf(KERN_INFO "SB16: IRQ %d\n", get_irq_line());
 
   irq::install(get_irq_line(), sb16_interrupt, "Sound Blaster 16");
   // finally initialize
-	// TODO:
+  // TODO:
   // dev::register_driver(sb16_driver);
   // dev::register_name(sb16_driver, "sb16", 0);
 }

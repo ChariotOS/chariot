@@ -35,7 +35,7 @@ bool dev::mbr::parse(void *data) {
 
   memcpy(hdr, data, sizeof(*hdr));
   if (hdr->mbr_signature != MBR_SIGNATURE) {
-    // printk("dev::mbr::parse: bad mbr signature %04X\n", hdr->mbr_signature);
+    // printf("dev::mbr::parse: bad mbr signature %04X\n", hdr->mbr_signature);
     return false;
   }
 
@@ -52,9 +52,7 @@ bool dev::mbr::parse(void *data) {
   return true;
 }
 
-u32 dev::mbr::part_count(void) {
-  return m_partitions.size();
-}
+u32 dev::mbr::part_count(void) { return m_partitions.size(); }
 
 struct dev::part_info dev::mbr::partition(u32 index) {
   assert(index < part_count());

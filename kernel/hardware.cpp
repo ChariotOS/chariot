@@ -20,52 +20,52 @@ void hw::Device::attach_to(dev::Device *drv) { this->m_device = drv; }
 
 static void recurse_print(ck::ref<hw::Device> dev, bool props, int depth = 0) {
   auto spaces = [&] {
-    if (!props) printk(YEL "DEV" RESET ":");
+    if (!props) printf(YEL "DEV" RESET ":");
     for (int i = 0; i < depth; i++)
-      printk("  ");
+      printf("  ");
   };
 
   spaces();
-  printk(GRN "%s", dev->name().get());
+  printf(GRN "%s", dev->name().get());
 
   if (auto mmio = dev->cast<hw::MMIODevice>()) {
     if (mmio->address() != 0) {
-      printk(GRY "@" YEL "%08x", mmio->address());
+      printf(GRY "@" YEL "%08x", mmio->address());
     }
     for (auto &compat : mmio->compat()) {
-      printk(GRY " '%s'", compat.get());
+      printf(GRY " '%s'", compat.get());
     }
 
-    printk(RESET);
+    printf(RESET);
   }
 
   if (auto device = dev->attached_device()) {
-    printk(RED " driven by '%s'", device->driver().name().get());
+    printf(RED " driven by '%s'", device->driver().name().get());
   }
 
-  if (props) printk(RESET " {");
-  printk("\n");
+  if (props) printf(RESET " {");
+  printf("\n");
 
   if (props) {
     for (auto &[name, prop] : dev->props()) {
       spaces();
       auto val = prop.format();
-      printk("  " BLU "%s = ", name.get());
+      printf("  " BLU "%s = ", name.get());
 
       if (val.size() > 0) {
         switch (val[0]) {
           case '<':
-            printk(YEL);
+            printf(YEL);
             break;
           case '"':
-            printk(GRN);
+            printf(GRN);
             break;
           default:
-            printk(GRY);
+            printf(GRY);
             break;
         }
       }
-      printk("%s" RESET "\n", val.get());
+      printf("%s" RESET "\n", val.get());
     }
   }
 
@@ -76,7 +76,7 @@ static void recurse_print(ck::ref<hw::Device> dev, bool props, int depth = 0) {
   if (props) {
     spaces();
 
-    printk("}\n");
+    printf("}\n");
   }
 }
 
@@ -158,7 +158,7 @@ ck::option<uint64_t> hw::Device::get_prop_int(const ck::string &name) {
     } else if (prop.data.size() == 8) {
       val = *(uint64_t *)prop.data.data();
     } else {
-      printk(KERN_WARN "prop '%s' could not be converted to an int of size 4 or 8\n", name.get());
+      printf(KERN_WARN "prop '%s' could not be converted to an int of size 4 or 8\n", name.get());
     }
     return val;
   }

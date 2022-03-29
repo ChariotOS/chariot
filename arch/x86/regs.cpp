@@ -1,6 +1,6 @@
 #include <arch.h>
 #include <cpu.h>
-#include <printk.h>
+#include <printf.h>
 #include "arch.h"
 
 reg_t &arch_reg(int ind, reg_t *r) {

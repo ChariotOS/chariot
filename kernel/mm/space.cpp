@@ -89,7 +89,7 @@ mm::MappedRegion *mm::AddressSpace::lookup(off_t va) {
     } else if (va >= end) {
       n = &((*n)->rb_right);
     } else {
-      // printk("va: %p, found in %d steps\n", va, steps);
+      // printf("va: %p, found in %d steps\n", va, steps);
       return r;
     }
   }
@@ -155,7 +155,7 @@ int mm::AddressSpace::pagefault(off_t va, int err) {
 
   // xcall_flush(this, va, 1);
 
-  // printk_nolock("pgfault: %d, %p, %llu, %llu\n", curthd->tid, va, start, arch_read_timestamp() - start);
+  // printf_nolock("pgfault: %d, %p, %llu, %llu\n", curthd->tid, va, start, arch_read_timestamp() - start);
   return 0;
 }
 
@@ -228,7 +228,7 @@ ck::ref<mm::Page> mm::AddressSpace::get_page_internal(off_t uaddr, mm::MappedReg
       if (old_page->users() > 1 || r.fd) {
         auto np = mm::Page::alloc();
         // no need to take the new page's lock here, it's only referenced here.
-        if (display) printk(KERN_WARN "[pid=%d] COW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(), uaddr);
+        if (display) printf(KERN_WARN "[pid=%d] COW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(), uaddr);
         memcpy(p2v(np->pa()), p2v(old_page->pa()), PGSIZE);
         r.mappings[ind] = np;
       }
@@ -239,7 +239,7 @@ ck::ref<mm::Page> mm::AddressSpace::get_page_internal(off_t uaddr, mm::MappedReg
 
 
   if (do_map) {
-    if (display) printk(KERN_WARN "[pid=%d] map %p to %p\n", curproc->pid, uaddr & ~0xFFF, r.mappings[ind]->pa());
+    if (display) printf(KERN_WARN "[pid=%d] map %p to %p\n", curproc->pid, uaddr & ~0xFFF, r.mappings[ind]->pa());
     pte.ppn = r.mappings[ind]->pa() >> 12;
     auto va = (r.va + (ind << 12));
     pt->add_mapping(va, pte);
@@ -285,7 +285,7 @@ mm::AddressSpace *mm::AddressSpace::fork(void) {
 
   for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
     auto *r = rb_entry(node, struct mm::MappedRegion, node);
-    // printk(KERN_WARN "[pid=%d] fork %s\n", curproc->pid, r->name.get());
+    // printf(KERN_WARN "[pid=%d] fork %s\n", curproc->pid, r->name.get());
     auto copy = new mm::MappedRegion;
     copy->name = r->name;
     copy->va = r->va;
@@ -299,7 +299,7 @@ mm::AddressSpace *mm::AddressSpace::fork(void) {
       copy->obj = r->obj;
       r->obj->acquire();
     }
-    // printk("prot: %b, flags: %b\n", r->prot, r->flags);
+    // printf("prot: %b, flags: %b\n", r->prot, r->flags);
 
     int i = 0;
     for (auto &m : r->mappings) {
@@ -339,7 +339,7 @@ off_t mm::AddressSpace::mmap(ck::string name, off_t addr, size_t size, int prot,
   if (addr & 0xFFF) return -1;
 
   if ((flags & (MAP_PRIVATE | MAP_SHARED)) == 0) {
-    printk("map without private or shared\n");
+    printf("map without private or shared\n");
     return -1;
   }
 
@@ -426,14 +426,14 @@ bool mm::AddressSpace::validate_pointer(void *raw_va, size_t len, int mode) {
     // see if there is a region at the requested offset
     auto r = lookup(va);
     if (!r) {
-      // printk(KERN_WARN "validate_pointer(%p) - region not found!\n", raw_va);
+      // printf(KERN_WARN "validate_pointer(%p) - region not found!\n", raw_va);
       // this->dump();
       return false;
     }
 
     if ((mode & PROT_READ && !(r->prot & PROT_READ)) || (mode & PROT_WRITE && !(r->prot & PROT_WRITE)) ||
         (mode & PROT_EXEC && !(r->prot & PROT_EXEC))) {
-      printk(KERN_WARN "validate_pointer(%p) - protection!\n", raw_va);
+      printf(KERN_WARN "validate_pointer(%p) - protection!\n", raw_va);
       return false;
     }
     // TODO: check mode flags
@@ -453,18 +453,18 @@ void mm::AddressSpace::dump(void) {
   scoped_lock l(this->lock);
   for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
     auto *r = rb_entry(node, struct mm::MappedRegion, node);
-    printk("%p-%p ", r->va, r->va + r->len);
-    printk("%6zupgs", r->mappings.size());
+    printf("%p-%p ", r->va, r->va + r->len);
+    printf("%6zupgs", r->mappings.size());
     int mapped = 0;
     for (int i = 0; i < r->mappings.size(); i++)
       if (!r->mappings[i].is_null()) mapped++;
-    printk(" %3d%%", (mapped * 100) / r->mappings.size());
+    printf(" %3d%%", (mapped * 100) / r->mappings.size());
 
-    printk("");
-    printk("%c", r->prot & VPROT_READ ? 'r' : '-');
-    printk("%c", r->prot & VPROT_WRITE ? 'w' : '-');
-    printk("%c", r->prot & VPROT_EXEC ? 'x' : '-');
-    printk(" %08lx", r->off);
+    printf("");
+    printf("%c", r->prot & VPROT_READ ? 'r' : '-');
+    printf("%c", r->prot & VPROT_WRITE ? 'w' : '-');
+    printf("%c", r->prot & VPROT_EXEC ? 'x' : '-');
+    printf(" %08lx", r->off);
     int maj = 0;
     int min = 0;
     if (r->fd) {
@@ -473,13 +473,13 @@ void mm::AddressSpace::dump(void) {
     }
 
 
-    printk(" %02x:%02x", maj, min);
-    // printk(" %-10d", r->fd ? r->fd->ino->ino : 0);
-    printk(" %s", r->name.get());
+    printf(" %02x:%02x", maj, min);
+    // printf(" %-10d", r->fd ? r->fd->ino->ino : 0);
+    printf(" %s", r->name.get());
 
-    printk("\n");
+    printf("\n");
   }
-  printk("\n");
+  printf("\n");
 }
 
 off_t mm::AddressSpace::find_hole(size_t size) {

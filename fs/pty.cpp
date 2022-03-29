@@ -9,7 +9,7 @@
 // #define PTY_DEBUG
 
 #ifdef PTY_DEBUG
-#define DBG(fmt, args...) printk(KERN_DEBUG fmt, ##args);
+#define DBG(fmt, args...) printf(KERN_DEBUG fmt, ##args);
 #else
 #define DBG(fmt, args...)
 #endif

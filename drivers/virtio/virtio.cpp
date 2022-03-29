@@ -6,7 +6,7 @@
 #include <dev/mbr.h>
 #include <errno.h>
 #include <phys.h>
-#include <printk.h>
+#include <printf.h>
 #include <time.h>
 #include <util.h>
 
@@ -104,12 +104,10 @@ module_init("virtio", virtio_pci_init);
 #endif
 
 
-virtio_mmio_dev::virtio_mmio_dev(volatile uint32_t *regs) : regs((uint32_t *)p2v(regs)) {
-  /* Leave initialization up to the subclass */
+virtio_mmio_dev::virtio_mmio_dev(volatile uint32_t *regs) : regs((uint32_t *)p2v(regs)) { /* Leave initialization up to the subclass */
 }
 
-virtio_mmio_dev::~virtio_mmio_dev(void) {
-}
+virtio_mmio_dev::~virtio_mmio_dev(void) {}
 
 
 int virtio_mmio_dev::alloc_ring(int index, int len) {
@@ -173,7 +171,7 @@ void virtio_mmio_dev::submit_chain(int ring_index, int desc_index) {
 
 
 void virtio_mmio_dev::free_desc(int ring_index, int desc_index) {
-  // printk("ring %u index %u free_count %u\n", ring_index, desc_index,
+  // printf("ring %u index %u free_count %u\n", ring_index, desc_index,
   // ring[ring_index].free_count);
   ring[ring_index].desc[desc_index].next = ring[ring_index].free_list;
   ring[ring_index].free_list = desc_index;
@@ -234,8 +232,7 @@ void virtio_irq_handler(int i, reg_t *r, void *data) {
 
 
 
-virtio::virtq_desc *virtio_mmio_dev::alloc_desc_chain(int ring_index, int count,
-                                                      uint16_t *start_index) {
+virtio::virtq_desc *virtio_mmio_dev::alloc_desc_chain(int ring_index, int count, uint16_t *start_index) {
   if (ring[ring_index].free_count < count) return NULL;
 
   /* start popping entries off the chain */
@@ -273,7 +270,7 @@ int virtio::check_mmio(void *addr, int irq) {
 
   uint32_t magic = *REG(VIRTIO_MMIO_MAGIC_VALUE);
   if (memcmp(&magic, "virt", 4) != 0) {
-    printk(KERN_WARN "Wrong magic value 0x%08lx!\n", magic);
+    printf(KERN_WARN "Wrong magic value 0x%08lx!\n", magic);
     return -ENODEV;
   }
 
@@ -289,27 +286,27 @@ int virtio::check_mmio(void *addr, int irq) {
       return -ENODEV;
     /* virtio disk */
     case 2: {
-      printk(KERN_INFO "[VIRTIO] Disk Device at %p with irq %d\n", addr, irq);
+      printf(KERN_INFO "[VIRTIO] Disk Device at %p with irq %d\n", addr, irq);
       dev = new virtio_mmio_disk(regs);
       break;
     }
 
 
     case 16: {
-      printk(KERN_INFO "[VIRTIO] GPU Device at %p with irq %d\n", addr, irq);
+      printf(KERN_INFO "[VIRTIO] GPU Device at %p with irq %d\n", addr, irq);
       /* TODO: do something with this? */
       dev = new virtio_mmio_gpu(regs);
       break;
     }
 
     case 18: {
-      printk(KERN_INFO "[VIRTIO] Input Device at %p with irq %d\n", addr, irq);
+      printf(KERN_INFO "[VIRTIO] Input Device at %p with irq %d\n", addr, irq);
 
-			dev = new virtio_mmio_input(regs);
-			break;
+      dev = new virtio_mmio_input(regs);
+      break;
     }
     default:
-      printk(KERN_WARN "[VIRTIO] No handler for device id %d at %p\n", dev_id, addr);
+      printf(KERN_WARN "[VIRTIO] No handler for device id %d at %p\n", dev_id, addr);
       return -ENODEV;
   }
 
@@ -317,7 +314,7 @@ int virtio::check_mmio(void *addr, int irq) {
 
   if (!dev->initialize(config)) {
     delete dev;
-    printk(KERN_ERROR "virtio device at %p failed to initialize!\n", regs);
+    printf(KERN_ERROR "virtio device at %p failed to initialize!\n", regs);
     return -ENODEV;
   }
 

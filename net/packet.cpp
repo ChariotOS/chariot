@@ -2,11 +2,9 @@
 #include <net/net.h>
 #include <net/pkt.h>
 #include <phys.h>
-#include <printk.h>
+#include <printf.h>
 
-ck::ref<net::pkt_buff> net::pkt_buff::create(void *data, size_t size) {
-  return ck::make_ref<net::pkt_buff>(data, size);
-}
+ck::ref<net::pkt_buff> net::pkt_buff::create(void *data, size_t size) { return ck::make_ref<net::pkt_buff>(data, size); }
 
 net::pkt_buff::pkt_buff(void *data, size_t size) {
   // 1 page (much less than 1500 MTU)
@@ -40,7 +38,7 @@ net::pkt_builder::~pkt_builder(void) { phys::kfree(buffer, 1); }
 
 int net::pkt_builder::append(void *data, int len) {
   if (length + len > 4096) {
-    printk(KERN_WARN "pkt_builder::append() : E2BIG\n");
+    printf(KERN_WARN "pkt_builder::append() : E2BIG\n");
     return -E2BIG;
   }
 

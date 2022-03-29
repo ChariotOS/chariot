@@ -6,7 +6,7 @@
 #include <module.h>
 #include <util.h>
 #include <phys.h>
-#include <printk.h>
+#include <printf.h>
 #include <types.h>
 #include "lib/liballoc_1_1.h"
 
@@ -47,7 +47,7 @@ void *liballoc_alloc(unsigned long s) {
   if (p == NULL) panic("Can't find region for malloc");
   malloc_usage += s * PGSIZE;
 
-  // printk("alloc %4d  total: %12zu, free: %12zuB);\n", s, malloc_usage, phys::bytes_free());
+  // printf("alloc %4d  total: %12zu, free: %12zuB);\n", s, malloc_usage, phys::bytes_free());
   return p;
 }
 
@@ -56,7 +56,7 @@ int liballoc_free(void *buf, unsigned long sz) {
   phys::kfree(buf, sz);
   malloc_usage -= sz * PGSIZE;
 
-  // printk("free  %4d  (total: %zu, free: %zuB);\n", sz, malloc_usage, phys::bytes_free());
+  // printf("free  %4d  (total: %zu, free: %zuB);\n", sz, malloc_usage, phys::bytes_free());
   return 0;
 }
 
@@ -343,8 +343,8 @@ extern "C" void qsort_r(void *bot, size_t nmemb, size_t size, int (*compar)(cons
 static unsigned long mem_kshell(ck::vec<ck::string> &args, void *data, int dlen) {
   if (args.size() > 0) {
     if (args[0] == "dump") {
-      printk("malloc usage: %zu bytes\n", malloc_usage);
-      printk("physical free: %zu bytes\n", phys::bytes_free());
+      printf("malloc usage: %zu bytes\n", malloc_usage);
+      printf("physical free: %zu bytes\n", phys::bytes_free());
       return malloc_usage;
     }
   }

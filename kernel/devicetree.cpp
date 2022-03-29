@@ -72,7 +72,7 @@ static dtb::node *alloc_device(const char *name) {
 
   if (at_off != -1) {
     if (sscanf(name + at_off + 1, "%x", &dev->address) != 1) {
-      // printk("INVALID NODE NAME: '%s'\n", name);
+      // printf("INVALID NODE NAME: '%s'\n", name);
     }
     dev->name[at_off] = 0;
   }
@@ -92,7 +92,7 @@ void dtb::walk_devices(bool (*callback)(dtb::node *)) {
 #define STREQ(s1, s2) (!strcmp((s1), (s2)))
 
 static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *val) {
-  // printk("%s.%s\n", node->name, name);
+  // printf("%s.%s\n", node->name, name);
   if (STREQ(name, "#address-cells")) {
     node->address_cells = *be32p_t((uint32_t *)val);
     return;
@@ -267,7 +267,7 @@ class DTBDevice : public hw::MMIODevice {
 
     if (at_off != -1) {
       if (sscanf(name + at_off + 1, "%x", &addr) != 1) {
-        // printk("INVALID NODE NAME: '%s'\n", name);
+        // printf("INVALID NODE NAME: '%s'\n", name);
       }
       buf[at_off] = 0;
     }
@@ -340,7 +340,7 @@ class DTBDevice : public hw::MMIODevice {
       /* TODO: It's unsafe to assume 64 bit here... But since we are 64bit only... (for now) */
       auto *cells = (unsigned long *)val;
 
-      // printk("%s: addr %d, size %d\n", node->name, addr_cells, size_cells);
+      // printf("%s: addr %d, size %d\n", node->name, addr_cells, size_cells);
       if (addr_cells > 0) {
         if (addr_cells == 1) reg.address = __builtin_bswap32(*(uint32_t *)val);
         if (addr_cells == 2) reg.address = __builtin_bswap64(*(uint64_t *)val);
@@ -489,4 +489,3 @@ void dtb::promote(void) {
   root->propegate_cell_sizes();
   hw::Device::add("dtb", root);
 }
-

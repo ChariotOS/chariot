@@ -8,7 +8,7 @@
 #include <module.h>
 #include <pci.h>
 #include <phys.h>
-#include <printk.h>
+#include <printf.h>
 #include <util.h>
 #include <vconsole.h>
 #include <vga.h>

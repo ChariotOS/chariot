@@ -3,7 +3,7 @@
 #include <errno.h>
 #include <mem.h>
 #include <module.h>
-#include <printk.h>
+#include <printf.h>
 
 #include "../majors.h"
 

@@ -1,7 +1,7 @@
 #include <mem.h>
 #include <module.h>
 #include <pci.h>
-#include <printk.h>
+#include <printf.h>
 #include <ck/vec.h>
 #include <wait.h>
 #include "nvme.bits.h"
@@ -69,7 +69,7 @@ void nvme_init(void) {
       controllers.push(ck::make_box<nvme::ctrl>(*dev));
     }
   });
-  printk(KERN_INFO "That's all the NVMe nonsense!\n");
+  printf(KERN_INFO "That's all the NVMe nonsense!\n");
 }
 
 module_init("NVMe", nvme_init);

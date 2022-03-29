@@ -1,5 +1,5 @@
 #include <cpu.h>
-#include <printk.h>
+#include <printf.h>
 #include <riscv/arch.h>
 #include <riscv/paging.h>
 #include <riscv/plic.h>
@@ -50,10 +50,10 @@ int arch_generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz) { return 0
 
 
 static void print_readable_reg(const char *name, rv::xsize_t value) {
-  printk("%4s: ", name);
+  printf("%4s: ", name);
 
   char buf[sizeof(value) * 2 + 1];
-  snprintk(buf, sizeof(buf), "%p", value);
+  snprintf(buf, sizeof(buf), "%p", value);
 
   bool seen = false;
   for (int i = 0; i < sizeof(value) * 2; i++) {
@@ -77,7 +77,7 @@ static void print_readable_reg(const char *name, rv::xsize_t value) {
         set_color_for(c, C_RESET);
       }
     }
-    printk("%c", *p);
+    printf("%c", *p);
   }
 
   set_color(C_RESET);
@@ -89,53 +89,53 @@ static void print_readable_reg(const char *name, rv::xsize_t value) {
 static void dump_tf(struct rv::regs &tf) {
   rv::xsize_t bad_addr = tf.tval;
   print_readable_reg("SEPC", tf.sepc);
-  printk(", ");
+  printf(", ");
   print_readable_reg("Bad Address", bad_addr);
-  printk(", ");
+  printf(", ");
   print_readable_reg("satp", read_csr(satp));
-  printk("\n");
+  printf("\n");
 
 
   /* Print the VM walk of the address */
-  printk(" VM walk (b): ");
+  printf(" VM walk (b): ");
   int mask = (1LLU << VM_PART_BITS) - 1;
   int awidth = (VM_PART_BITS * VM_PART_NUM) + 12;
   for (int i = VM_PART_NUM - 1; i >= 0; i--) {
-    printk("%0*b ", VM_PART_BITS, (bad_addr >> (VM_PART_BITS * i + 12)) & mask);
+    printf("%0*b ", VM_PART_BITS, (bad_addr >> (VM_PART_BITS * i + 12)) & mask);
   }
-  printk("+ %012b", bad_addr & 0xFFF);
-  printk("\n");
+  printf("+ %012b", bad_addr & 0xFFF);
+  printf("\n");
 
-  printk("         (d): ");
+  printf("         (d): ");
   for (int i = VM_PART_NUM - 1; i >= 0; i--) {
-    printk("% *d ", VM_PART_BITS, (bad_addr >> (VM_PART_BITS * i + 12)) & mask);
+    printf("% *d ", VM_PART_BITS, (bad_addr >> (VM_PART_BITS * i + 12)) & mask);
   }
-  printk("+ %12d", bad_addr & 0xFFF);
-  printk("\n");
+  printf("+ %12d", bad_addr & 0xFFF);
+  printf("\n");
 
   print_readable_reg("val", tf.tval);
-  printk(", ");
+  printf(", ");
   print_readable_reg("scr", tf.scratch);
-  printk("\n");
+  printf("\n");
 
   int p = 0;
   for (int i = 0; i < 32; i++) {
     print_readable_reg(regs_name[i], ((rv::xsize_t *)&tf)[i]);
     p++;
     if (p >= 4) {
-      printk("\n");
+      printf("\n");
       p = 0;
     } else {
-      printk(" ");
+      printf(" ");
     }
   }
 
-  if (p != 0) printk("\n");
+  if (p != 0) printf("\n");
 
   if (cpu::in_thread()) {
     /*
-printk("\n");
-printk("Address Space:\n");
+printf("\n");
+printf("Address Space:\n");
 auto proc = curproc;
 proc->mm->dump();
     */
@@ -143,13 +143,13 @@ proc->mm->dump();
 }
 
 static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
-  printk(
+  printf(
       "==========================================================================================="
       "\n");
-  printk("Unhandled trap '%s' on HART#%d\n", type, rv::hartid());
+  printf("Unhandled trap '%s' on HART#%d\n", type, rv::hartid());
 
   dump_tf(tf);
-  printk(
+  printf(
       "==========================================================================================="
       "\n");
   panic("Halting hart!\n");
@@ -177,7 +177,7 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
   int res = proc->mm->pagefault(addr, err);
 
   if (res == -1) {
-    pprintk("SEGFAULT!\n");
+    pprintf("SEGFAULT!\n");
     dump_tf(tf);
     /* send to the current thread and return (handle at the bottom of kernel_vec) */
     curproc->terminate(SIGSEGV);
@@ -196,9 +196,9 @@ void rv_handle_syscall(rv::regs &tf) {
   arch_enable_ints();
   tf.sepc += 4;
 
-  // printk(KERN_INFO "do syscall: %d\n", tf.a0);
+  // printf(KERN_INFO "do syscall: %d\n", tf.a0);
   tf.a0 = do_syscall(tf.a0, tf.a1, tf.a2, tf.a3, tf.a4, tf.a5, tf.a6);
-  // printk(KERN_INFO " res = %p\n", tf.a0);
+  // printf(KERN_INFO " res = %p\n", tf.a0);
 }
 
 
@@ -213,7 +213,7 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
 
   if ((tf.status & SSTATUS_SPP) == 0) {
     from_userspace = true;
-    // printk("kerneltrap: not from supervisor mode: pc=%p", tf.sepc);
+    // printf("kerneltrap: not from supervisor mode: pc=%p", tf.sepc);
   }
 
   int which_dev = 0;
@@ -235,9 +235,9 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
   /*
 if (cpu::in_thread()) {
 if (thd->stacks.size() != 1) {
-printk_nolock(KERN_DEBUG "previous kernel stack: %p\n");
+printf_nolock(KERN_DEBUG "previous kernel stack: %p\n");
 for (auto &stk : thd->stacks) {
-  printk_nolock(KERN_DEBUG "   %d %p\n", stk.size, stk.start);
+  printf_nolock(KERN_DEBUG "   %d %p\n", stk.size, stk.start);
 }
 }
 }
@@ -256,11 +256,10 @@ for (auto &stk : thd->stacks) {
   if (interrupt) {
     /* Supervisor software interrupt (from machine mode) */
     if (nr == 1) {
-
-			write_csr(sip, read_csr(sip) & ~(1 << 1));
-			cpu::run_pending_xcalls();
-			// sip.SSIP = 0
-			//  turn off the "supervisor software interrupt pending" bit
+      write_csr(sip, read_csr(sip) & ~(1 << 1));
+      cpu::run_pending_xcalls();
+      // sip.SSIP = 0
+      //  turn off the "supervisor software interrupt pending" bit
     } else if (nr == 5) {
       auto &cpu = cpu::current();
       uint64_t now = rv::get_cycle();
@@ -359,7 +358,7 @@ for (auto &stk : thd->stacks) {
       auto *uctx = (struct ucontext *)sp;
       /* save the old context to the user stack */
       if (!VALIDATE_RDWR(uctx, sizeof(*uctx))) {
-        printk("not sure what to do here. uctx = %p\n", uctx);
+        printf("not sure what to do here. uctx = %p\n", uctx);
         curproc->mm->dump();
         return;
       }

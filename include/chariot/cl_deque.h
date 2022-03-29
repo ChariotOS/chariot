@@ -108,7 +108,7 @@ class cl_deque {
     buffer = new circular_array(1);
     top = 0;
     bottom = 0;
-    printk("init! buffer = %p\n", buffer);
+    printf("init! buffer = %p\n", buffer);
   }
 
 

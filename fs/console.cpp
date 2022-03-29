@@ -4,7 +4,7 @@
 #include <fs/tty.h>
 #include <lock.h>
 #include <module.h>
-#include <printk.h>
+#include <printf.h>
 #include <sched.h>
 #include <signals.h>
 #include <util.h>

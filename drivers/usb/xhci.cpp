@@ -56,8 +56,8 @@ void xhci_init(void) {
     // All xHCI controllers will have a Class ID of 0x0C and a Sublcass ID of 0x03
     if (dev->class_id == 0x0C && dev->subclass_id == 0x03) {
       xhci_devices.push(ck::make_box<xhci>(dev));
-      printk(KERN_DEBUG "\n");
-      printk(KERN_DEBUG "\n");
+      printf(KERN_DEBUG "\n");
+      printf(KERN_DEBUG "\n");
     }
   });
 
@@ -65,9 +65,9 @@ void xhci_init(void) {
   for (int i = 0; i < xhci_devices.size(); i++) {
     auto &xhci = xhci_devices[i];
     if (xhci->initialized) {
-      printk(XHCI_DEBUG "Device %d initialized.\n", i);
+      printf(XHCI_DEBUG "Device %d initialized.\n", i);
     } else {
-      printk(XHCI_WARN "Device %d not initialized.\n", i);
+      printf(XHCI_WARN "Device %d not initialized.\n", i);
     }
   }
 
@@ -76,7 +76,7 @@ void xhci_init(void) {
 
   uint32_t cparams = regs->hcc_params1;
   if (cparams == 0xffffffff) return;
-  printk(XHCI_DEBUG "capability parameters: 0x%08x\n", cparams);
+  printf(XHCI_DEBUG "capability parameters: 0x%08x\n", cparams);
 
 	int cap_register_offset = 0;
 	auto *caps = (volatile uint32_t*)((uint8_t*)regs + cap_register_offset);
@@ -89,7 +89,7 @@ void xhci_init(void) {
 	uint32_t eecp = HCS0_XECP(cparams) << 2;
 
 	for (; eecp != 0 && XECP_NEXT(eec); eecp += XECP_NEXT(eec) << 2) {
-		printk(XHCI_DEBUG "eecp register 0x%08x\n", eecp);
+		printf(XHCI_DEBUG "eecp register 0x%08x\n", eecp);
 
 	}
   // hexdump((void*)ops, sizeof(*ops), true);
@@ -107,18 +107,18 @@ xhci::xhci(pci::device *dev) : dev(dev), cmd_complete(0), finish_transfers(0), e
   dev->enable_bus_mastering();
 
   uint64_t addr = ((uint64_t)dev->get_bar(0).addr) | ((uint64_t)dev->get_bar(1).addr << 32);
-  printk(XHCI_DEBUG "registers at %p\n", addr);
+  printf(XHCI_DEBUG "registers at %p\n", addr);
 
   regs = (volatile struct xhci_regs *)p2v(addr);
   /*
-printk(XHCI_DEBUG "caplength: %x\n", regs->caplength);
-printk(XHCI_DEBUG "hci_version: %x\n", regs->hci_version);
-printk(XHCI_DEBUG "hcs_params1: %x\n", regs->hcs_params1);
-printk(XHCI_DEBUG "hcs_params2: %x\n", regs->hcs_params2);
-printk(XHCI_DEBUG "hcs_params3: %x\n", regs->hcs_params3);
-printk(XHCI_DEBUG "hcc_params1: %x\n", regs->hcc_params1);
-printk(XHCI_DEBUG "db_off:      %x\n", regs->db_off);
-printk(XHCI_DEBUG "rts_off:     %x\n", regs->rts_off);
+printf(XHCI_DEBUG "caplength: %x\n", regs->caplength);
+printf(XHCI_DEBUG "hci_version: %x\n", regs->hci_version);
+printf(XHCI_DEBUG "hcs_params1: %x\n", regs->hcs_params1);
+printf(XHCI_DEBUG "hcs_params2: %x\n", regs->hcs_params2);
+printf(XHCI_DEBUG "hcs_params3: %x\n", regs->hcs_params3);
+printf(XHCI_DEBUG "hcc_params1: %x\n", regs->hcc_params1);
+printf(XHCI_DEBUG "db_off:      %x\n", regs->db_off);
+printf(XHCI_DEBUG "rts_off:     %x\n", regs->rts_off);
   */
 
   cap_register_offset = 0;
@@ -127,7 +127,7 @@ printk(XHCI_DEBUG "rts_off:     %x\n", regs->rts_off);
   uint32_t cparams = read_cap_reg32(XHCI_HCCPARAMS);
   if (cparams == 0xffffffff) return;
 
-  printk(XHCI_DEBUG "Capability parameters: %08x\n", cparams);
+  printf(XHCI_DEBUG "Capability parameters: %08x\n", cparams);
 
   context_size_shift = HCC_CSZ(cparams);
 
@@ -135,12 +135,12 @@ printk(XHCI_DEBUG "rts_off:     %x\n", regs->rts_off);
   uint32_t eec = 0xFFFF'FFFF;
   uint32_t eecp = HCS0_XECP(cparams) << 2;
   for (; eecp != 0 && XECP_NEXT(eec); eecp += XECP_NEXT(eec) << 2) {
-    printk(XHCI_DEBUG "eecp register: 0x%08x\n", eecp);
+    printf(XHCI_DEBUG "eecp register: 0x%08x\n", eecp);
     eec = read_cap_reg32(eecp);
     if (XECP_ID(eec) != XHCI_LEGSUP_CAPID) continue;
 
     if (eec & XHCI_LEGSUP_BIOSOWNED) {
-      printk(XHCI_DEBUG "the host controller is bios owned, claiming ownership\n");
+      printf(XHCI_DEBUG "the host controller is bios owned, claiming ownership\n");
       write_cap_reg32(eecp, eec | XHCI_LEGSUP_OSOWNED);
 
       for (int32_t i = 0; i < 20; i++) {
@@ -148,16 +148,16 @@ printk(XHCI_DEBUG "rts_off:     %x\n", regs->rts_off);
 
         if ((eec & XHCI_LEGSUP_BIOSOWNED) == 0) break;
 
-        printk(XHCI_DEBUG "controller is still bios owned, waiting\n");
+        printf(XHCI_DEBUG "controller is still bios owned, waiting\n");
         do_usleep(50000);
       }
 
       if (eec & XHCI_LEGSUP_BIOSOWNED) {
-        printk(XHCI_DEBUG
+        printf(XHCI_DEBUG
             "bios won't give up control over the host "
             "controller (ignoring)\n");
       } else if (eec & XHCI_LEGSUP_OSOWNED) {
-        printk(XHCI_DEBUG
+        printf(XHCI_DEBUG
             "successfully took ownership of the host "
             "controller\n");
       }
@@ -184,7 +184,7 @@ printk(XHCI_DEBUG "rts_off:     %x\n", regs->rts_off);
       case PCI_DEVICE_INTEL_BAYTRAIL_XHCI:
       case PCI_DEVICE_INTEL_WILDCAT_POINT_XHCI:
       case PCI_DEVICE_INTEL_WILDCAT_POINT_LP_XHCI:
-        printk(XHCI_DEBUG "NEED TO IMPLEMENT SwitchIntelPorts()!\n");
+        printf(XHCI_DEBUG "NEED TO IMPLEMENT SwitchIntelPorts()!\n");
         // _SwitchIntelPorts();
         break;
     }
@@ -196,7 +196,7 @@ printk(XHCI_DEBUG "rts_off:     %x\n", regs->rts_off);
   }
 
   if (!controller_reset()) {
-    printk(XHCI_WARN "host controller failed to reset\n");
+    printf(XHCI_WARN "host controller failed to reset\n");
     return;
   }
 
@@ -206,12 +206,12 @@ printk(XHCI_DEBUG "rts_off:     %x\n", regs->rts_off);
 
   /* Find the right interrupt vector, using MSIs if avail */
   this->irq = dev->interrupt;
-  printk(XHCI_DEBUG "irq: %d\n", irq);
+  printf(XHCI_DEBUG "irq: %d\n", irq);
 
   initialized = true;
 }
 
-xhci::~xhci(void) { printk(XHCI_DEBUG "~xhci\n"); }
+xhci::~xhci(void) { printf(XHCI_DEBUG "~xhci\n"); }
 
 uint32_t xhci::read_cap_reg32(uint32_t reg) {
   /* Read the register */
@@ -237,23 +237,23 @@ bool xhci::controller_halt(void) {
 
   // wait for shutdown state
   if (!wait_op_bits(XHCI_STS, STS_HCH, STS_HCH)) {
-    printk(XHCI_WARN "HCH shutdown timeout\n");
+    printf(XHCI_WARN "HCH shutdown timeout\n");
     return false;
   }
   return true;
 }
 
 bool xhci::controller_reset(void) {
-  printk(XHCI_DEBUG "ControllerReset() cmd: 0x%08x sts: 0x%08x\n", read_op_reg32(XHCI_CMD), read_op_reg32(XHCI_STS));
+  printf(XHCI_DEBUG "ControllerReset() cmd: 0x%08x sts: 0x%08x\n", read_op_reg32(XHCI_CMD), read_op_reg32(XHCI_STS));
   write_op_reg32(XHCI_CMD, read_op_reg32(XHCI_CMD) | CMD_HCRST);
 
   if (!wait_op_bits(XHCI_CMD, CMD_HCRST, 0)) {
-    printk(XHCI_WARN "ControllerReset() failed CMD_HCRST\n");
+    printf(XHCI_WARN "ControllerReset() failed CMD_HCRST\n");
     return false;
   }
 
   if (!wait_op_bits(XHCI_STS, STS_CNR, 0)) {
-    printk(XHCI_WARN "ControllerReset() failed STS_CNR\n");
+    printf(XHCI_WARN "ControllerReset() failed STS_CNR\n");
     return false;
   }
 
@@ -267,9 +267,9 @@ bool xhci::wait_op_bits(uint32_t reg, uint32_t mask, uint32_t expected) {
     do_usleep(1000);
     value = read_op_reg32(reg);
     if (loops == 100) {
-      printk(XHCI_DEBUG "delay waiting on reg 0x%08x match 0x%08x (0x%08x)\n", reg, expected, mask);
+      printf(XHCI_DEBUG "delay waiting on reg 0x%08x match 0x%08x (0x%08x)\n", reg, expected, mask);
     } else if (loops > 250) {
-      printk(XHCI_DEBUG "timeout waiting on reg 0x%08x match 0x%08x (0x%08x)\n", reg, expected, mask);
+      printf(XHCI_DEBUG "timeout waiting on reg 0x%08x match 0x%08x (0x%08x)\n", reg, expected, mask);
       return false;
     }
     loops++;

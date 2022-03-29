@@ -5,7 +5,7 @@
 #include <mem.h>
 #include <paging.h>
 #include <phys.h>
-#include <printk.h>
+#include <printf.h>
 #include <time.h>
 #include <types.h>
 #include <syscall.h>
@@ -66,7 +66,7 @@ static void *late_phys_alloc(size_t npages) {
 
   if (v2p(c) == NULL) panic("OOM!\n");
 
-  // printk_nolock("phys::alloc - remaining = %lld\n", kmem.nfree);
+  // printf_nolock("phys::alloc - remaining = %lld\n", kmem.nfree);
 
 
   while (v2p(c) != NULL) {
@@ -102,7 +102,7 @@ static void *late_phys_alloc(size_t npages) {
 void *phys::alloc(int npages) {
   // reclaim block cache if the free pages drops below 32 pages
   if (kmem.nfree < 32) {
-    printk("gotta reclaim!\n");
+    printf("gotta reclaim!\n");
     block::reclaim_memory();
   }
 

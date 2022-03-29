@@ -35,15 +35,15 @@ unsigned long long time::now_ns() {
 
   /* If the time is not stabilized yet, wait for it. */
   if (unlikely(!time::stabilized())) {
-		cycles_per_second = arch_ns_to_timestamp(NS_PER_SEC);
+    cycles_per_second = arch_ns_to_timestamp(NS_PER_SEC);
 #if 0
     // return 0;
-    printk(
+    printf(
         KERN_WARN "The time has not been stabilized before access. Waiting for stabilization...\n");
     while (!time::stabilized()) {
       arch_relax();
     }
-    printk(KERN_WARN "Time stabilized at %llu cyc/s\n", cycles_per_second);
+    printf(KERN_WARN "Time stabilized at %llu cyc/s\n", cycles_per_second);
 #endif
   }
 

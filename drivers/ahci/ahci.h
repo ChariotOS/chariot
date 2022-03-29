@@ -2,7 +2,7 @@
 
 #include <lock.h>
 #include <types.h>
-#include <printk.h>
+#include <printf.h>
 #include <ck/ptr.h>
 
 

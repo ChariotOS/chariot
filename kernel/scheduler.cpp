@@ -7,7 +7,7 @@
 #include <syscall.h>
 #include <time.h>
 #include <wait.h>
-#include "printk.h"
+#include <printf.h>
 
 #define SIG_ERR ((void (*)(int)) - 1)
 #define SIG_DFL ((void (*)(int))0)
@@ -127,17 +127,17 @@ struct mlfq {
     queues[thd->sched.priority].add_task(thd);
 
     if (false && old != thd->sched.priority) {
-      printk_nolock("\e[2J");
+      printf_nolock("\e[2J");
 
       for (int prio = 0; prio < MLFQ_NQUEUES; prio++) {
         auto &q = queues[prio];
-        printk_nolock("prio %02d:", prio);
+        printf_nolock("prio %02d:", prio);
         for (struct Thread *thd = q.front; thd != NULL; thd = thd->next) {
-          printk_nolock(" '%s(good: %d)'", thd->proc.name.get(), thd->sched.good_streak);
+          printf_nolock(" '%s(good: %d)'", thd->proc.name.get(), thd->sched.good_streak);
         }
-        printk_nolock("\n");
+        printf_nolock("\n");
       }
-      printk_nolock("\n");
+      printf_nolock("\n");
     }
   }
 
@@ -162,7 +162,7 @@ struct mlfq {
         // TODO: make sure it can be taken by the thief
         if (ck::ref<Thread> cur = queues[prio].pick_next(); cur != nullptr) {
           lock.unlock_irqrestore(f);
-          // printk_nolock("cpu %d stealing thread %d\n", cpu::current().cpunum, cur->tid);
+          // printf_nolock("cpu %d stealing thread %d\n", cpu::current().cpunum, cur->tid);
           return cur;
         }
       }
@@ -208,7 +208,7 @@ static struct mlfq queues[CONFIG_MAX_CPUS];
 
 
 #ifdef SCHED_DEBUG
-#define INFO(fmt, args...) printk("[SCHED] " fmt, ##args)
+#define INFO(fmt, args...) printf("[SCHED] " fmt, ##args)
 #else
 #define INFO(fmt, args...)
 #endif
@@ -233,7 +233,7 @@ bool sched::init(void) {
 // work-steal from other cores if they have runnable threads
 static ck::ref<Thread> worksteal(void) {
   int nproc = cpu::nproc();
-  // printk_nolock("nproc: %d\n", nproc);
+  // printf_nolock("nproc: %d\n", nproc);
   // divide by zero and infinite loop safety
   if (nproc <= 1) return nullptr;
 
@@ -242,7 +242,7 @@ static ck::ref<Thread> worksteal(void) {
 
   do {
     target = (q.next_worksteal++) % nproc;
-    // printk_nolock("target: %d\n", target);
+    // printf_nolock("target: %d\n", target);
   } while (target == q.core);
 
   if (q.next_worksteal >= nproc) q.next_worksteal = 0;
@@ -252,7 +252,7 @@ static ck::ref<Thread> worksteal(void) {
 
 
 
-  // printk_nolock("cpu %d stealing from cpu %d : %d\n", q.core, target, t);
+  // printf_nolock("cpu %d stealing from cpu %d : %d\n", q.core, target, t);
 
   // work steal!
   return t;
@@ -343,7 +343,7 @@ static void switch_into(ck::ref<Thread> thd) {
   // Update the stats afterwards
   cpu::current().current_thread = nullptr;
 
-  // printk_nolock("took %llu us\n", time::now_us() - start);
+  // printf_nolock("took %llu us\n", time::now_us() - start);
   thd->runlock.unlock();
   if (thd->held_lock != NULL) thd->held_lock->unlock();
 }
@@ -384,7 +384,7 @@ void sched::set_state(int state) {
 }
 
 sched::yieldres sched::do_yield(int st) {
-  if (curthd == NULL) printk("NO THREAD!\n");
+  if (curthd == NULL) printf("NO THREAD!\n");
   sched::set_state(st);
   return sched::yield();
 }
@@ -398,7 +398,7 @@ void sched::unblock(Thread &thd, bool interrupt) {
 #if 0
   if (thd.state != PS_INTERRUPTIBLE) {
     /* Hmm, not sure what to do here. */
-    // printk(KERN_WARN "Attempt to wake up thread %d which is not PS_INTERRUPTIBLE\n", thd.tid);
+    // printf(KERN_WARN "Attempt to wake up thread %d which is not PS_INTERRUPTIBLE\n", thd.tid);
     return;
   }
 #endif
@@ -484,7 +484,7 @@ void sched::run() {
       continue;
     }
 
-    // printk_nolock("%s %d %d\n", thd->proc.name.get(), thd->tid, thd->ref_count());
+    // printf_nolock("%s %d %d\n", thd->proc.name.get(), thd->tid, thd->ref_count());
     auto start = cpu::get_ticks();
     switch_into(thd);
     auto end = cpu::get_ticks();
@@ -503,7 +503,7 @@ void sched::run() {
     // if the old thread is now dead, notify joiners
     if (thd->should_die) {
       scoped_irqlock l(thd->joinlock);
-      // printk_nolock("sc: killing %d from %d.\n", thd->tid, cpu::current().cpunum);
+      // printf_nolock("sc: killing %d from %d.\n", thd->tid, cpu::current().cpunum);
       thd->set_state(PS_ZOMBIE);
       thd->joiners.wake_up_all();
     }
@@ -630,12 +630,12 @@ int sched::claim_next_signal(int &sig, void *&handler) {
           auto &action = curproc->sig.handlers[sig];
 
           if (sig == SIGSTOP) {
-            printk("TODO: SIGSTOP\n");
+            printf("TODO: SIGSTOP\n");
             return -1;
           }
 
           if (sig == SIGCONT) {
-            printk("TODO: SIGCONT\n");
+            printf("TODO: SIGCONT\n");
             // resume_from_stopped();
           }
 
@@ -643,7 +643,7 @@ int sched::claim_next_signal(int &sig, void *&handler) {
             // handle the default action
             switch (default_signal_action(sig)) {
               case SIGACT_STOP:
-                printk("TODO: SIGACT_STOP!\n");
+                printf("TODO: SIGACT_STOP!\n");
                 return -1;
               case SIGACT_TERM:
                 curproc->terminate(sig);
@@ -651,7 +651,7 @@ int sched::claim_next_signal(int &sig, void *&handler) {
               case SIGACT_IGNO:
                 return -1;
               case SIGACT_CONT:
-                printk("TODO: SIGACT_CONT!\n");
+                printf("TODO: SIGACT_CONT!\n");
                 return -1;
             }
           }

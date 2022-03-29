@@ -144,7 +144,7 @@ void ahci::disk::rebase(void) {
 
 
   // auto clb = (u64)phys::alloc(1 /* TODO */);
-  // printk("clb=%p\n", clb);
+  // printf("clb=%p\n", clb);
 
   /* Start command engine back up. */
   start_cmd();
@@ -189,14 +189,14 @@ void ahci::disk::start_cmd(void) {
 
 void intel_ahci(pci::device *dev) {
   //
-  printk(KERN_INFO "intel ahci device %p\n", dev);
+  printf(KERN_INFO "intel ahci device %p\n", dev);
   init_device(dev);
 }
 
 
 void intel_ahci_mobile(pci::device *dev) {
   //
-  printk(KERN_INFO "intel ahci mobile device %p\n", dev);
+  printf(KERN_INFO "intel ahci mobile device %p\n", dev);
   init_device(dev);
 }
 

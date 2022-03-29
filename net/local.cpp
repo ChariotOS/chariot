@@ -57,11 +57,11 @@ int net::LocalSocket::connect(struct sockaddr *addr, int len) {
 
 int net::LocalSocket::disconnect(int flags) {
   if (flags & PFLAGS_CLIENT) {
-    // printk("client disconnect\n");
+    // printf("client disconnect\n");
     for_server.close();
   }
   if (flags & PFLAGS_SERVER) {
-    // printk("server disconnect\n");
+    // printf("server disconnect\n");
     for_client.close();
   }
   return 0;
@@ -81,7 +81,7 @@ void net::LocalSocket::dump_stats(void) {
 
   for_server.stats(server_avail, server_unread);
   for_client.stats(client_avail, client_unread);
-  printk(KERN_DEBUG "stats: server: (a: %-4zu, u: %-4zu) client: (a: %-4zu, u: %-4zu)\n", server_avail, server_unread, client_avail,
+  printf(KERN_DEBUG "stats: server: (a: %-4zu, u: %-4zu) client: (a: %-4zu, u: %-4zu)\n", server_avail, server_unread, client_avail,
       client_unread);
 #endif
 }

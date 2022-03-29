@@ -222,7 +222,7 @@ ck::string crypto::Sha1::finalize(void) {
 
   finalize(c);
   for (int i = 0; i < 20; i++) {
-    sprintk(buf, "%02x", c[i]);
+    sprintf(buf, "%02x", c[i]);
     s += buf;
   }
 

@@ -18,7 +18,7 @@
 static rtl8139 *main_dev = NULL;
 
 static void rtl_irq_handler(int i, reg_t *tf, void *) {
-  printk("here\n");
+  printf("here\n");
   if (main_dev != NULL) {
     main_dev->handle_irq();
   }

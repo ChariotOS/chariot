@@ -3,7 +3,7 @@
 #include <dev/mbr.h>
 #include <device_majors.h>
 #include <errno.h>
-#include <printk.h>
+#include <printf.h>
 #include <module.h>
 #include <util.h>
 #include <time.h>
@@ -36,7 +36,7 @@ int dev::DiskPartition::write_blocks(uint32_t block, const void* data, int n) {
 static bool initialized = false;
 
 static void add_drive(const ck::string& name, dev::Disk* drive) {
-  printk(KERN_INFO "Add drive '%s'. %zd, %zd byte, sectors\n", name.get(), drive->block_count(), drive->block_size());
+  printf(KERN_INFO "Add drive '%s'. %zd, %zd byte, sectors\n", name.get(), drive->block_count(), drive->block_size());
   drive->bind(name);
 }
 
@@ -55,7 +55,7 @@ int dev::register_disk(dev::Disk* disk) {
     for (int i = 0; i < mbr.part_count(); i++) {
       auto part = mbr.partition(i);
       auto pname = ck::string::format("%sp%d", name.get(), i + 1);
-      printk("Found partition %d, %d\n", part.off, part.len);
+      printf("Found partition %d, %d\n", part.off, part.len);
 
       auto part_disk = new dev::DiskPartition(disk, part.off, part.len);
       add_drive(pname, part_disk);
@@ -70,7 +70,7 @@ int dev::register_disk(dev::Disk* disk) {
 /*
 ksh_def("disks", "display all disks") {
   for (auto disk : m_disks) {
-    printk("sz: %zu, count: %zu\n", disk->block_size(), disk->block_count());
+    printf("sz: %zu, count: %zu\n", disk->block_size(), disk->block_count());
   }
   return 0;
 }

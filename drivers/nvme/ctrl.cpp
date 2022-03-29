@@ -26,16 +26,15 @@ nvme::ctrl::ctrl(pci::device &dev) : dev(dev) {
 
   /* Grab the mmio region from the bar0 of the pci device */
   mmio = (volatile nvme::mmio *)p2v(dev.get_bar(0).addr);
-  printk(KERN_INFO "Found NVMe Controller at version %d.%d.%d\n", mmio->vs.mjr, mmio->vs.mnr,
-      mmio->vs.ter);
-  printk(KERN_INFO "mqes:                      %d\n", mqes());
-  printk(KERN_INFO "timeout:                   %d\n", timeout());
-  printk(KERN_INFO "stride:                    %d\n", stride());
-  printk(KERN_INFO "command sets supported:    %d\n", css());
-  printk(KERN_INFO "Memory Page Size Minimum:  %d\n", mps_min());
-  printk(KERN_INFO "Memory Page Size Maximum:  %d\n", mps_max());
-  printk(KERN_INFO "Subsystem Reset Control:   %d\n", subsystem_reset_control());
-  printk(KERN_INFO "\n");
+  printf(KERN_INFO "Found NVMe Controller at version %d.%d.%d\n", mmio->vs.mjr, mmio->vs.mnr, mmio->vs.ter);
+  printf(KERN_INFO "mqes:                      %d\n", mqes());
+  printf(KERN_INFO "timeout:                   %d\n", timeout());
+  printf(KERN_INFO "stride:                    %d\n", stride());
+  printf(KERN_INFO "command sets supported:    %d\n", css());
+  printf(KERN_INFO "Memory Page Size Minimum:  %d\n", mps_min());
+  printf(KERN_INFO "Memory Page Size Maximum:  %d\n", mps_max());
+  printf(KERN_INFO "Subsystem Reset Control:   %d\n", subsystem_reset_control());
+  printf(KERN_INFO "\n");
 
 
 
@@ -88,8 +87,8 @@ nvme::ctrl::ctrl(pci::device &dev) : dev(dev) {
 
 
   // 7.6.1 4) The controller settings should be configured
-  uint32_t cc = NVME_CC_IOCQES_n(ilog2(sizeof(nvme::cmpl))) |
-                NVME_CC_IOSQES_n(ilog2(sizeof(nvme::cmd))) | NVME_CC_MPS_n(0) | NVME_CC_CCS_n(0);
+  uint32_t cc =
+      NVME_CC_IOCQES_n(ilog2(sizeof(nvme::cmpl))) | NVME_CC_IOSQES_n(ilog2(sizeof(nvme::cmd))) | NVME_CC_MPS_n(0) | NVME_CC_CCS_n(0);
 
 
   // Try to enable weighted round robin with urgent
@@ -109,7 +108,7 @@ nvme::ctrl::ctrl(pci::device &dev) : dev(dev) {
 
   if (ctrl_status & NVME_CSTS_CFS) {
     // Controller fatal status
-    printk("Controller fatal status!\n");
+    printf("Controller fatal status!\n");
     return;
   }
 

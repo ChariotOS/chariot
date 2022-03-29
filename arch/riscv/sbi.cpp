@@ -1,5 +1,5 @@
 #include <asm.h>
-#include <printk.h>
+#include <printf.h>
 #include <riscv/sbi.h>
 
 

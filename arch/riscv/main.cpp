@@ -6,7 +6,7 @@
 #include <fs/vfs.h>
 #include <module.h>
 #include <phys.h>
-#include <printk.h>
+#include <printf.h>
 #include <riscv/arch.h>
 #include <riscv/dis.h>
 #include <riscv/paging.h>
@@ -144,7 +144,6 @@ bool start_secondary(int i) {
 
 
 
-
 class RISCVHart : public dev::CharDevice {
  public:
   using dev::CharDevice::CharDevice;
@@ -161,8 +160,8 @@ class RISCVHart : public dev::CharDevice {
         }
 
         auto hartid = mmio->address();
-				bind(ck::string::format("core%d", hartid));
-				printk("FOUND HART %d\n", hartid);
+        bind(ck::string::format("core%d", hartid));
+        printf("FOUND HART %d\n", hartid);
         if (hartid != rv::get_hstate().hartid) {
           LOG("Trying to start hart %d\n", hartid);
 #ifdef CONFIG_SMP
@@ -209,7 +208,7 @@ void main(int hartid, void *fdt) {
     *ptr = 0;
   }
 
-  printk_nolock("Hello, friend!\n");
+  printf_nolock("Hello, friend!\n");
 
   // get the information from SBI right away so we can use it early on
   sbi_early_init();
@@ -304,7 +303,6 @@ void main(int hartid, void *fdt) {
 
 
   sched::proc::create_kthread("main task", [](void *) -> int {
-
     // Init the virtual filesystem and mount a tmpfs and devfs to / and /dev
     vfs::init_boot_filesystem();
 
@@ -317,7 +315,7 @@ void main(int hartid, void *fdt) {
 #ifdef CONFIG_ENABLE_USERSPACE
 
 
-		LOG("Mounting root filesystem\n");
+    LOG("Mounting root filesystem\n");
     int mnt_res = vfs::mount("/dev/disk0p1", "/root", "ext2", 0, NULL);
     if (mnt_res != 0) {
       panic("failed to mount root. Error=%d\n", -mnt_res);
@@ -373,11 +371,11 @@ ksh_def("sip-bench", "benchmark access to the sip register") {
   }
   uint64_t avg = sum / trials;
 
-  printk("total: %llu cycles\n", sum / trials);
-  printk("average access latency: %llu cycles\n", avg);
-  // printk("wrapped access latency: %llu cycles\n", (end - start) / trials);
+  printf("total: %llu cycles\n", sum / trials);
+  printf("average access latency: %llu cycles\n", avg);
+  // printf("wrapped access latency: %llu cycles\n", (end - start) / trials);
   /*
-printk("Average access latency to SIP CSR: %llu cycles, %lluns. 1000 trials took %llu, %lluns\n", avg, ticks_to_ns(avg), sum,
+printf("Average access latency to SIP CSR: %llu cycles, %lluns. 1000 trials took %llu, %lluns\n", avg, ticks_to_ns(avg), sum,
     ticks_to_ns(sum));
                                   */
 
@@ -385,4 +383,3 @@ printk("Average access latency to SIP CSR: %llu cycles, %lluns. 1000 trials took
   delete[] measurements;
   return 0;
 }
-

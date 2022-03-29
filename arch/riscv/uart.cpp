@@ -3,7 +3,7 @@
 #include <console.h>
 #include <lock.h>
 #include <mem.h>
-#include <printk.h>
+#include <printf.h>
 #include <riscv/uart.h>
 #include <riscv/sbi.h>
 
@@ -72,8 +72,7 @@ static void uart_start(void) {
 
 
 static void uart_irq(int irq, reg_t *r, void *data) {
-
-	// printk_nolock("irq\n");
+  // printf_nolock("irq\n");
   uart_count++;
 
   size_t nread = 0;

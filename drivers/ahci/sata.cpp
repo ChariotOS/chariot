@@ -18,9 +18,9 @@ int ahci::init_sata(ck::box<struct ahci::disk> disk) {
     auto &ent = cmd_table->prdt_entry[i];
     u64 dba = ent.dba | ((u64)ent.dbau << 32);
     void *buf = p2v(dba);
-    printk("%d: %p\n", i, dba);
+    printf("%d: %p\n", i, dba);
     hexdump(buf, ent.dbc, true);
-    printk("\n");
+    printf("\n");
   }
 
   // char buf[512];

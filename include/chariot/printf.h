@@ -27,20 +27,20 @@ typedef i64 acpi_native_int;
 extern "C" {
 void putchar(char);
 int puts(char*);
-void printk_nolock(const char* format, ...);
-int printk(const char* format, ...);
-int sprintk(char* buffer, const char* format, ...);
-int snprintk(char* buffer, size_t count, const char* format, ...);
-int vsnprintk(char* buffer, size_t count, const char* format, va_list va);
+void printf_nolock(const char* format, ...);
+int printf(const char* format, ...);
+int sprintf(char* buffer, const char* format, ...);
+int snprintf(char* buffer, size_t count, const char* format, ...);
+int vsnprintf(char* buffer, size_t count, const char* format, va_list va);
 
 int sscanf(const char* buf, const char* fmt, ...);
 
 
 // process printk, if you are running in the kernel context of a thread of /bin/sh
-// pprintk("hello, world\n") outputs:
+// pprintf("hello, world\n") outputs:
 // [/bin/sh %d] hello, world
 //
-int pprintk(const char* format, ...);
+int pprintf(const char* format, ...);
 
 const char* human_size(uint64_t bytes, char* buf);
 }
@@ -61,10 +61,7 @@ const char* human_size(uint64_t bytes, char* buf);
 #define RESET "\e[0m"
 
 #define KLOG(PREFIX, ...) KINFO(PREFIX RESET, __VA_ARGS__)
-#define PFXLOG(PREFIX, ...) printk(PREFIX RESET ": " __VA_ARGS__)
-
-
-
+#define PFXLOG(PREFIX, ...) printf(PREFIX RESET ": " __VA_ARGS__)
 
 #define KERN_ERROR "\0010"
 #define KERN_WARN "\0011"
@@ -72,23 +69,17 @@ const char* human_size(uint64_t bytes, char* buf);
 #define KERN_DEBUG "\0013"
 #define KERN_DISABLE "\0014"
 
-
-#define debug(fmt, args...) printk(KERN_DEBUG fmt, ##args)
-#define KERR(fmt, args...) printk(KERN_ERROR fmt, ##args)
-#define KWARN(fmt, args...) printk(KERN_WARN fmt, ##args)
-#define KINFO(fmt, args...) printk(KERN_INFO fmt, ##args)
+#define debug(fmt, args...) printf(KERN_DEBUG fmt, ##args)
+#define KERR(fmt, args...) printf(KERN_ERROR fmt, ##args)
+#define KWARN(fmt, args...) printf(KERN_WARN fmt, ##args)
+#define KINFO(fmt, args...) printf(KERN_INFO fmt, ##args)
 
 extern void debug_die(void);
 
 template <typename... T>
 inline void do_panic(const char* fmt, T&&... args) {
-  // disable interrupts
-  // arch_disable_ints();
-  printk(fmt, args...);
-  printk("\n");
-
-  // todo: notify everyone that we died
-
+  printf(fmt, args...);
+  printf("\n");
   debug_die();
 }
 
@@ -108,27 +99,6 @@ void debug_dump_addr2line();
     }                                        \
   } while (0);
 
-class scope_logger {
- public:
-  template <typename... T>
-  scope_logger(const char* fmt, T&&... args) {
-    printk(fmt, args...);
-    printk("...");
-  }
-
-  ~scope_logger() { printk("OK\n"); }
-};
-
-class time_logger {
-  // const char* const name;
-  uint64_t start;
-
- public:
-  time_logger(const char* const name);
-  ~time_logger(void);
-};
-
-
-#define UNIMPL() printk(KERN_WARN "'%s' NOT IMPLEMENTED\n", __PRETTY_FUNCTION__)
+#define UNIMPL() printf(KERN_WARN "'%s' NOT IMPLEMENTED\n", __PRETTY_FUNCTION__)
 
 #define LOG_TIME time_logger __TLOGGER(__PRETTY_FUNCTION__)

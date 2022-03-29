@@ -14,7 +14,7 @@ namespace {
   int use_color = 1;
 
   void set_color(int c) {
-    if (use_color) printk("\x1b[%dm", c);
+    if (use_color) printf("\x1b[%dm", c);
   }
 
   const char *month_names[12] = {
@@ -73,7 +73,7 @@ namespace {
   void print_month(int month, int year, struct tm *now) {
     auto header = ck::string::format("%s %d", month_names[month - 1], year);
     center(header.get(), 20, 0);
-    printk("\n");
+    printf("\n");
 
     if (now->tm_mon == month && now->tm_year == year) {
       int hour = now->tm_hour;
@@ -85,10 +85,10 @@ namespace {
 
       header = ck::string::format("%d:%02d:%02d %cM", hour, min, sec, ap);
       center(header.get(), 20, 0);
-      printk("\n");
+      printf("\n");
     }
 
-    printk("%s\n", DAY_HEADINGS_S);
+    printf("%s\n", DAY_HEADINGS_S);
 
     int start = day_in_week(1, month, year);
 
@@ -96,35 +96,35 @@ namespace {
 
     int d = 0;
     for (; d < start; d++) {
-      printk("   ");
+      printf("   ");
     }
     for (int i = 1; i <= days_in_mon; i++) {
       if (d > 6) {
-        printk("\n");
+        printf("\n");
         d = 0;
       }
 
       if (i == now->tm_mday && month == now->tm_mon) {
         set_color(C_REVERSE);
-        printk("%2d", i);
+        printf("%2d", i);
         set_color(C_UNINV);
-        printk("%c", use_color ? ' ' : '*');
+        printf("%c", use_color ? ' ' : '*');
       } else if (d == 0 || d == 6) {
         set_color(C_GRAY);
-        printk("%2d ", i);
+        printf("%2d ", i);
         set_color(C_RESET);
       } else {
-        printk("%2d ", i);
+        printf("%2d ", i);
       }
       d++;
     }
-    printk("\n");
+    printf("\n");
   }
 
 
   void center(const char *str, int len, int separate) {
     len -= strlen(str);
-    (void)printk("%*s%s%*s", len / 2, "", str, len / 2 + len % 2 + separate, "");
+    (void)printf("%*s%s%*s", len / 2, "", str, len / 2 + len % 2 + separate, "");
   }
 
   int day_in_week(int day, int month, int year) {
@@ -148,7 +148,7 @@ namespace {
 
   ksh_def("cal", "display a calendar") {
     struct tm local_time;
-		dev::RTC::localtime(local_time);
+    dev::RTC::localtime(local_time);
     print_month(local_time.tm_mon, local_time.tm_year, &local_time);
     return 0;
   }

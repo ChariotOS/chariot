@@ -2,7 +2,7 @@
 #include <module.h>
 #include <mem.h>
 #include <pci.h>
-#include <printk.h>
+#include <printf.h>
 
 #include <dev/hardware.h>
 
@@ -290,7 +290,7 @@ static void scan_bus(int bus, ck::ref<hw::MMIODevice> &root) {
 
 void pci::init(void) {
   auto root = ck::make_ref<hw::MMIODevice>(0, 0);
-	root->compat().push("x86-pci-bus");
+  root->compat().push("x86-pci-bus");
 
 
   auto start = arch_read_timestamp();
@@ -344,7 +344,7 @@ void pci::device::adjust_ctrl_bits(int set, int clr) {
 }
 
 hw::PCIBar pci::device::get_bar(int barnum) {
-	hw::PCIBar bar;
+  hw::PCIBar bar;
   bar.valid = false;
   bar.addr = NULL;
 

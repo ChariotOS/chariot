@@ -2,7 +2,7 @@
 
 #include <asm.h>
 #include <x86/apic_flags.h>
-#include <printk.h>
+#include <printf.h>
 #include <idt.h>
 
 

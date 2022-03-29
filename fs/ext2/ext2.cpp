@@ -21,7 +21,7 @@
 #define EXT2_CACHE_SIZE 128
 
 #ifdef EXT2_DEBUG
-#define INFO(fmt, args...) printk("[EXT2] " fmt, ##args)
+#define INFO(fmt, args...) printf("[EXT2] " fmt, ##args)
 #else
 #define INFO(fmt, args...)
 #endif
@@ -76,13 +76,13 @@ bool ext2::FileSystem::probe(ck::ref<dev::BlockDevice> bdev) {
   bool res = disk->read(sb, 1024);
 
   if (!res) {
-    printk("failed to read the superblock\n");
+    printf("failed to read the superblock\n");
     return false;
   }
 
   // first, we need to make 100% sure this is actually a disk with ext2 on it...
   if (sb->ext2_sig != 0xef53) {
-    printk("Block device does not contain the ext2 signature\n");
+    printf("Block device does not contain the ext2 signature\n");
     return false;
   }
 
@@ -92,7 +92,7 @@ bool ext2::FileSystem::probe(ck::ref<dev::BlockDevice> bdev) {
   block_size = 1024 << sb->blocksize_hint;
 
   if (block_size != 4096) {
-    printk(KERN_WARN "ext2: blocksize is not 4096\n");
+    printf(KERN_WARN "ext2: blocksize is not 4096\n");
     return false;
   }
 
@@ -106,7 +106,7 @@ bool ext2::FileSystem::probe(ck::ref<dev::BlockDevice> bdev) {
   root = get_inode(2);
 
   if (!write_superblock()) {
-    printk("failed to write superblock\n");
+    printf("failed to write superblock\n");
     return false;
   }
 
@@ -264,7 +264,7 @@ uint32_t ext2::FileSystem::balloc(void) {
   }
 
 
-  printk(KERN_WARN "No Space left on disk\n");
+  printf(KERN_WARN "No Space left on disk\n");
   return 0;
 }
 

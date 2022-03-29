@@ -6,7 +6,7 @@
 #include <mem.h>
 #include <module.h>
 #include <mouse_packet.h>
-#include <printk.h>
+#include <printf.h>
 #include <sched.h>
 #include <time.h>
 #include <vmware_backdoor.h>
@@ -96,7 +96,7 @@ void mouse_wait(uint8_t a_type) {
         return;
       }
     }
-    // printk("[MOUSE] mouse timeout\n");
+    // printf("[MOUSE] mouse timeout\n");
     return;
   } else {
     while (--timeout) {
@@ -104,7 +104,7 @@ void mouse_wait(uint8_t a_type) {
         return;
       }
     }
-    // printk("[MOUSE] mouse timeout\n");
+    // printf("[MOUSE] mouse timeout\n");
     return;
   }
 }
@@ -165,7 +165,7 @@ static void mouse_handler(int i, reg_t *, void *) {
 
     if (finalize) {
       if (vmware_backdoor_mouse_enabled) {
-        // printk("old - x: %d, y: %d\n", packet.x, packet.y);
+        // printf("old - x: %d, y: %d\n", packet.x, packet.y);
         struct mouse_packet packet;
         memset(&packet, 0, sizeof(packet));
         packet.magic = MOUSE_MAGIC;
@@ -337,7 +337,6 @@ static int mouse_poll(fs::File &fd, int events, poll_table &pt) { return mouse_b
 
 
 
-
 void mouse_absolute(void) {
   // if (vmware::supported()) {
   vmware::command cmd;
@@ -371,7 +370,7 @@ static void mouse_init(void) {
   mouse_install();
   mouse_absolute();
 
-	// TODO:
+  // TODO:
   // dev::register_driver(mouse_driver_info);
   // dev::register_name(mouse_driver_info, "mouse", 0);
 }

@@ -1,14 +1,14 @@
 #include <debug.h>
-#include <printk.h>
+#include <printf.h>
 #include <util.h>
 
 void debug::print_register(const char *name, reg_t value) {
   if (name != NULL) {
-    printk("%4s: ", name);
+    printf("%4s: ", name);
   }
 
   char buf[sizeof(value) * 2 + 1];
-  snprintk(buf, sizeof(buf), "%p", value);
+  snprintf(buf, sizeof(buf), "%p", value);
 
   bool seen = false;
   for (int i = 0; i < sizeof(value) * 2; i++) {
@@ -32,7 +32,7 @@ void debug::print_register(const char *name, reg_t value) {
         set_color_for(c, C_RESET);
       }
     }
-    printk("%c", *p);
+    printf("%c", *p);
   }
 
   set_color(C_RESET);

@@ -5,7 +5,7 @@
 #include <syscall.h>
 #include <types.h>
 #include <util.h>
-#include "printk.h"
+#include <printf.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
 
@@ -17,18 +17,18 @@ static ck::map<ck::string, struct mshare_vmobject *> mshare_regions;
 struct mshare_vmobject final : public mm::VMObject {
   mshare_vmobject(ck::string name, size_t npages) : VMObject(npages) {
     this->name = name;
-    // printk("CREATE %s!\n", name.get());
+    // printf("CREATE %s!\n", name.get());
     for (int i = 0; i < npages; i++) {
       pages.push(nullptr);
     }
     scoped_lock l(mshare_lock);
     mshare_regions[name] = this;
 
-    // printk("[mshare] new  '%s' %p\n", name.get(), this);
+    // printf("[mshare] new  '%s' %p\n", name.get(), this);
   }
 
   virtual ~mshare_vmobject(void) {
-    // printk("DROP %s! (pid=%d)\n", this->name.get(), curproc->pid);
+    // printf("DROP %s! (pid=%d)\n", this->name.get(), curproc->pid);
     scoped_lock l1(mshare_lock);
     scoped_lock l2(m_lock);
     assert(mshare_regions.contains(name));
@@ -38,7 +38,7 @@ struct mshare_vmobject final : public mm::VMObject {
 
   // get a shared page (page #n in the mapping)
   virtual ck::ref<mm::Page> get_shared(off_t n) override {
-    // printk("GET %s! (pid=%d, page=%d)\n", this->name.get(), curproc->pid, n);
+    // printf("GET %s! (pid=%d, page=%d)\n", this->name.get(), curproc->pid, n);
     scoped_lock l(m_lock);
     while (n >= pages.size()) {
       pages.push(nullptr);
@@ -104,7 +104,7 @@ static void *msh_acquire(struct mshare_acquire *arg) {
       ck::string::format("[msh '%s' (acquired)]", name.get()), 0, arg->size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, nullptr, 0);
   if (addr == -1) return MAP_FAILED;
 
-  // printk("addr=%p\n", addr);
+  // printf("addr=%p\n", addr);
 
   auto region = curproc->mm->lookup(addr);
   if (region == nullptr) {
@@ -113,7 +113,7 @@ static void *msh_acquire(struct mshare_acquire *arg) {
 
   region->obj = obj;
 
-  // printk("[mshare] get  '%s' %p\n", name.get(), obj.get());
+  // printf("[mshare] get  '%s' %p\n", name.get(), obj.get());
   // curproc->mm->dump();
 
   return (void *)addr;

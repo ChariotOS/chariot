@@ -9,9 +9,7 @@
 
 static time_t s_boot_time;
 
-inline bool is_leap_year(unsigned year) {
-  return ((year % 4 == 0) && ((year % 100 != 0) || (year % 400) == 0));
-}
+inline bool is_leap_year(unsigned year) { return ((year % 4 == 0) && ((year % 100 != 0) || (year % 400) == 0)); }
 
 static unsigned days_in_months_since_start_of_year(unsigned month, unsigned year) {
   // assert(month <= 11);
@@ -71,8 +69,7 @@ static bool update_in_progress() { return dev::CMOS::read(0x0a) & 0x80; }
 
 int dev::RTC::read_seconds(void) { return CMOS::read(0x00); }
 
-void dev::RTC::read_registers(
-    int& year, int& month, int& day, int& hour, int& minute, int& second) {
+void dev::RTC::read_registers(int& year, int& month, int& day, int& hour, int& minute, int& second) {
   while (update_in_progress())
     ;
 
@@ -91,15 +88,14 @@ time_t dev::RTC::now() {
   int year, month, day, hour, minute, second;
   read_registers(year, month, day, hour, minute, second);
 
-  // printk("%d:%d:%d\n", hour, minute, second);
+  // printf("%d:%d:%d\n", hour, minute, second);
 
-  // printk("year: %d, month: %d, day: %d\n", year, month, day);
+  // printf("year: %d, month: %d, day: %d\n", year, month, day);
 
   // assert(year >= 2019);
 
 
-  return days_in_years_since_epoch(year - 1) * 86400 +
-         days_in_months_since_start_of_year(month - 1, year) * 86400 + (day - 1) * 86400 +
+  return days_in_years_since_epoch(year - 1) * 86400 + days_in_months_since_start_of_year(month - 1, year) * 86400 + (day - 1) * 86400 +
          hour * 3600 + minute * 60 + second;
 }
 
@@ -108,9 +104,7 @@ time_t dev::RTC::boot_time() { return s_boot_time; }
 
 
 
-void dev::RTC::localtime(struct tm& t) {
-  read_registers(t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
-}
+void dev::RTC::localtime(struct tm& t) { read_registers(t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec); }
 
 
 

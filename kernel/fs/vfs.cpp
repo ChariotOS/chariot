@@ -44,7 +44,7 @@ int vfs::mount_root(const char *src, const char *type) {
 }
 
 int vfs::mount(const char *src, const char *targ, const char *type, unsigned long flags, const char *options) {
-  // printk(KERN_INFO "mount %s with fs %s to %s\n", src, type, targ);
+  // printf(KERN_INFO "mount %s with fs %s to %s\n", src, type, targ);
 
   if (get_root().is_null() && strcmp(targ, "/") != 0) {
     LOG("[WARN] Mounting non-root filesystem when there is no root is invalid");
@@ -299,7 +299,7 @@ int vfs::unlink(const char *path, ck::ref<fs::Node> cwd) {
   bool last = false;
 
   while ((path = skipelem((char *)path, name, last)) != 0) {
-    // printk("  %d: %s\n", i++, name);
+    // printf("  %d: %s\n", i++, name);
     // attempting to go above the current root is a nop
     if (!strcmp(name, "..") && ino == uroot) {
       continue;
@@ -397,7 +397,7 @@ ksh_def("pwd", "Print the working directory") {
   ck::string cwd;
 
   vfs::getcwd(*curproc->cwd, cwd);
-  printk("%s\n", cwd.get());
+  printf("%s\n", cwd.get());
 
   return 0;
 }
@@ -406,7 +406,7 @@ static void do_ls(const ck::string &dir) {
   auto cwd = curproc->cwd;
   auto f = vfs::open(dir);
   if (!f) {
-    printk("ls: '%s' not found\n", dir.get());
+    printf("ls: '%s' not found\n", dir.get());
     return;
   }
 
@@ -414,29 +414,29 @@ static void do_ls(const ck::string &dir) {
     auto l = f->lock();
     auto ents = f->dirents();
 
-    printk("%8s ", "iNode");
-    printk("%8s ", "Mode");
-    printk("%8s ", "Links");
-    printk("%12s ", "Bytes");
-    printk("%12s ", "Block Count");
-    printk("%12s ", "Block Size");
-    printk("%s", "Name");
-    printk("\n");
+    printf("%8s ", "iNode");
+    printf("%8s ", "Mode");
+    printf("%8s ", "Links");
+    printf("%12s ", "Bytes");
+    printf("%12s ", "Block Count");
+    printf("%12s ", "Block Size");
+    printf("%s", "Name");
+    printf("\n");
 
     for (auto ent : ents) {
       auto n = ent->get();
       struct stat s;
       n->stat(&s);
 
-      printk("%8ld ", s.st_ino);
-      printk("%8lo ", s.st_mode);
-      printk("%8ld ", s.st_nlink);
-      printk("%12ld ", s.st_size);
-      printk("%12ld ", s.st_blocks);
-      printk("%12ld ", s.st_blksize);
-      printk("%s", ent->name.get());
-      printk("\n");
-      // printk("%zu %s\n", n->size(), ent->name.get());
+      printf("%8ld ", s.st_ino);
+      printf("%8lo ", s.st_mode);
+      printf("%8ld ", s.st_nlink);
+      printf("%12ld ", s.st_size);
+      printf("%12ld ", s.st_blocks);
+      printf("%12ld ", s.st_blksize);
+      printf("%s", ent->name.get());
+      printf("\n");
+      // printf("%zu %s\n", n->size(), ent->name.get());
     }
   }
 }
@@ -456,7 +456,7 @@ extern int do_chdir(const char *path);
 
 ksh_def("cd", "Change directory") {
   if (args.size() != 1) {
-    printk("usage: cd <dir>\n");
+    printf("usage: cd <dir>\n");
     return 0;
   }
   return do_chdir(args[0].get());
@@ -464,7 +464,7 @@ ksh_def("cd", "Change directory") {
 
 ksh_def("mkdir", "Create a directory") {
   if (args.size() != 1) {
-    printk("usage: mkdir <dir>\n");
+    printf("usage: mkdir <dir>\n");
     return 0;
   }
   sys::mkdir(args[0].get(), 0755);
@@ -474,13 +474,13 @@ ksh_def("mkdir", "Create a directory") {
 
 ksh_def("dump", "hexdump the start of a file") {
   if (args.size() != 1) {
-    printk("usage: dump file\n");
+    printf("usage: dump file\n");
     return 0;
   }
   auto buf = (char *)malloc(4096);
   auto f = vfs::open(args[0]);
   if (!f) {
-    printk("file not found\n");
+    printf("file not found\n");
     free(buf);
     return 0;
   }
@@ -488,11 +488,11 @@ ksh_def("dump", "hexdump the start of a file") {
   fs::File file(f, 0);
   auto sz = file.read(buf, 4096);
   if (sz < 0) {
-    printk("failed to read: %zd\n", sz);
+    printf("failed to read: %zd\n", sz);
     free(buf);
     return 0;
   }
-  printk("read %zd bytes\n", sz);
+  printf("read %zd bytes\n", sz);
   hexdump(buf, sz, true);
   free(buf);
   return 0;
@@ -501,13 +501,13 @@ ksh_def("dump", "hexdump the start of a file") {
 
 ksh_def("md5", "md5sum a file") {
   if (args.size() != 1) {
-    printk("usage: md5 <file>\n");
+    printf("usage: md5 <file>\n");
     return 0;
   }
 
   auto f = vfs::open(args[0]);
   if (!f) {
-    printk("file not found\n");
+    printf("file not found\n");
     return 0;
   }
 
@@ -523,24 +523,24 @@ ksh_def("md5", "md5sum a file") {
   while (true) {
     auto sz = file.read(buf, size);
     if (sz < 0) {
-      printk("failed to read: %zd\n", sz);
+      printf("failed to read: %zd\n", sz);
       free(buf);
       return 0;
     }
     if (sz == 0) {
-      printk("\n");
+      printf("\n");
       break;
     }
 
     read += sz;
-    printk("\r%zu", (read * 100) / s.st_size);
+    printf("\r%zu", (read * 100) / s.st_size);
     file.seek(sz, SEEK_CUR);
 
     // sum.update(buf, sz);
   }
   free(buf);
   auto digest = sum.finalize();
-  printk("%s\n", digest.get());
+  printf("%s\n", digest.get());
   // hexdump(buf, sz, true);
   return 0;
 }

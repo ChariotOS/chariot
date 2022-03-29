@@ -9,7 +9,7 @@
 #include <module.h>
 #include <pci.h>
 #include <phys.h>
-#include <printk.h>
+#include <printf.h>
 #include <ck/ptr.h>
 #include <sched.h>
 #include <time.h>
@@ -37,7 +37,7 @@ static ck::ref<ATADriver> ata_driver = nullptr;
 #endif
 
 #ifdef DO_TRACE
-#define TRACE printk("[ATA]: (%d) %s\n", __LINE__, __PRETTY_FUNCTION__)
+#define TRACE printf("[ATA]: (%d) %s\n", __LINE__, __PRETTY_FUNCTION__)
 #else
 #define TRACE
 #endif
@@ -168,7 +168,7 @@ bool dev::ATADisk::identify() {
   }
 
   if (status & 0x01) {
-    printk(KERN_ERROR "error identifying ATA drive. status=%02x\n", status);
+    printf(KERN_ERROR "error identifying ATA drive. status=%02x\n", status);
     return false;
   }
 
@@ -202,13 +202,13 @@ bool dev::ATADisk::identify() {
     bmr_prdt = bar4 + 4;
 
     if (this->master && data_port.m_port == 0x1F0) {
-      // printk("PRIMARY MASTER\n");
+      // printf("PRIMARY MASTER\n");
       primary_master_status = m_io_base;
       primary_master_bmr_status = bmr_status;
       primary_master_bmr_command = bmr_command;
     }
   } else {
-    printk("can't use ata without DMA\n");
+    printf("can't use ata without DMA\n");
     return false;
   }
 #endif
@@ -228,7 +228,7 @@ int dev::ATADisk::read_blocks(uint32_t sector, void* data, int n) {
   // take a scoped lock
   scoped_lock lck(drive_lock);
 
-  // printk("read block %d\n", sector);
+  // printf("read block %d\n", sector);
 
   if (sector & 0xF0000000) return -EINVAL;
 
@@ -248,7 +248,7 @@ int dev::ATADisk::read_blocks(uint32_t sector, void* data, int n) {
 
   uint8_t status = wait();
   if (status & 0x1) {
-    printk(KERN_ERROR "error reading ATA drive\n");
+    printf(KERN_ERROR "error reading ATA drive\n");
     return false;
   }
 
@@ -315,7 +315,7 @@ bool dev::ATADisk::flush(void) {
     status = command_port.in();
   }
   if (status & 0x1) {
-    printk(KERN_ERROR "error flushing ATA drive\n");
+    printf(KERN_ERROR "error flushing ATA drive\n");
     return false;
   }
   return true;
@@ -500,7 +500,7 @@ static void ata_interrupt(int intr, reg_t* fr, void*) {
 
 
 static void query_and_add_drive(u16 addr, int id, bool master) {
-  printk(KERN_DEBUG "ATA Query %04x:%d\n", addr, id);
+  printf(KERN_DEBUG "ATA Query %04x:%d\n", addr, id);
   auto drive = new dev::ATADisk(addr, master);
 
   if (drive->identify()) {

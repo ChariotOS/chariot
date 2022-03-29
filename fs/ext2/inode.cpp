@@ -56,7 +56,7 @@ static int block_to_path(ck::ref<fs::Node> node, int i_block, int offsets[4], in
   int final = 0;
 
   if (i_block < 0) {
-    printk("[EXT2 WARN] %s: block < 0\n", __func__);
+    printf("[EXT2 WARN] %s: block < 0\n", __func__);
   } else if (i_block < direct_blocks) {
     offsets[n++] = i_block;
     final = direct_blocks;
@@ -76,7 +76,7 @@ static int block_to_path(ck::ref<fs::Node> node, int i_block, int offsets[4], in
     offsets[n++] = i_block & (ptrs - 1);
     final = ptrs;
   } else {
-    printk("[EXT2 WARN] %s: i_block is too big!\n", __func__);
+    printf("[EXT2 WARN] %s: i_block is too big!\n", __func__);
   }
 
   if (boundary) *boundary = final - 1 - (i_block & (ptrs - 1));
@@ -226,7 +226,7 @@ static int append_block(fs::Node &ino, int dest) {
 
   return access_block_path(ino, n, path, [&](uint32_t &dst) -> bool {
     int blk = efs->balloc();
-    if (dst) printk("%d becomes %d\n", dst, blk);
+    if (dst) printf("%d becomes %d\n", dst, blk);
     dst = blk;
     // we wrote
     return true;
@@ -272,14 +272,14 @@ static int truncate(fs::Node &node, size_t new_size) {
 
   } else if (bafter < bbefore) {
     // auto blocks_to_remove = bbefore - bafter;
-    // printk("need to remove %d\n", blocks_to_remove);
+    // printf("need to remove %d\n", blocks_to_remove);
     pop_block(ino);
     return -ENOTIMPL;
   }
 
   // :^)
   ino.set_size(new_size);
-  // printk("resize to %d\n", new_size);
+  // printf("resize to %d\n", new_size);
   flush_info(ino);
 
   return 0;
@@ -322,12 +322,12 @@ static ssize_t ext2_raw_rw(fs::Node &node, char *buf, size_t sz, off_t offset, b
       memset(path, 0, 4 * 4);
       int n = block_to_path(&ino, bi, path);
 
-      printk("path: [");
+      printf("path: [");
       for (int i = 0; i < n; i++) {
-        printk("%d", path[i]);
-        if (i != n - 1) printk(", ");
+        printf("%d", path[i]);
+        if (i != n - 1) printf(", ");
       }
-      printk("]\n");
+      printf("]\n");
       panic("ext2fs: invalid block allocated at lbi %u\n", bi);
       return -EIO;
     }
@@ -398,7 +398,7 @@ static int flush_info(fs::Node &node) {
   auto sectors_in_block = efs->block_size / 512;
   info.disk_sectors = blocks * sectors_in_block;
 
-  // printk("size: %d, blocks: %d, sectors: %d\n", info.size, blocks,
+  // printf("size: %d, blocks: %d, sectors: %d\n", info.size, blocks,
   // info.disk_sectors);
 
   info.disk_sectors /= efs->sector_size;
@@ -485,7 +485,7 @@ struct ext2_vmobject final : public mm::VMObject {
 
   // get a shared page (page #n in the mapping)
   virtual ck::ref<mm::Page> get_shared(off_t n) override {
-    // printk("get_shared(%d)\n", n);
+    // printf("get_shared(%d)\n", n);
     auto blk = bget(n);
 
     // hexdump(blk->data(), PGSIZE, true);
@@ -552,8 +552,8 @@ ck::ref<mm::VMObject> ext2::FileNode::mmap(fs::File &f, size_t npages, int prot,
   // XXX: this is invalid, should be asserted before here :^)
   if (off & 0xFFF) return nullptr;
 
-  // if (flags & MAP_PRIVATE) printk("ext2 map private\n");
-  // if (flags & MAP_SHARED) printk("ext2 map shared\n");
+  // if (flags & MAP_PRIVATE) printf("ext2 map private\n");
+  // if (flags & MAP_SHARED) printf("ext2 map shared\n");
 
   return ck::make_ref<ext2_vmobject>(f.ino, npages, off);
 }
@@ -670,4 +670,3 @@ ck::ref<fs::Node> ext2::FileSystem::create_inode(u32 index) {
 
   return ino;
 }
-

@@ -50,7 +50,7 @@ ck::string TTYNode::name(void) { return ck::string::format("/dev/pts%d", index);
 int TTYNode::ioctl(fs::File &f, unsigned int cmd, off_t arg) {
   if (cmd == TIOCSPGRP) {
     fg_proc = arg;
-    // printk(KERN_INFO "[tty %s] Setting PTY group to %d", name().get(), fg_proc);
+    // printf(KERN_INFO "[tty %s] Setting PTY group to %d", name().get(), fg_proc);
     return 0;
   }
 
@@ -119,7 +119,7 @@ void TTYNode::handle_input(char c) {
       if (fg_proc) {
         sched::proc::send_signal(-fg_proc, sig);
       } else {
-        printk("[tty %s] would send signal %d but has no group. Currently %d\n", name().get(), sig, fg_proc);
+        printf("[tty %s] would send signal %d but has no group. Currently %d\n", name().get(), sig, fg_proc);
       }
       return;
     }
@@ -174,7 +174,7 @@ void TTYNode::handle_input(char c) {
       if (canonical_buf.size() > 0) {
         dump_input_buffer();
       } else {
-        printk("[tty] TODO: interrupt input (^D)\n");
+        printf("[tty] TODO: interrupt input (^D)\n");
       }
       return;
     }

@@ -84,16 +84,16 @@ static void apic_print_lvt(uint32_t entry) {
   uint32_t delivery_mode = entry & 0x700;
 
   if (delivery_mode == APIC_DEL_MODE_FIXED) {
-    printk("FIXED -> IDT VECTOR %u", entry & APIC_LVT_VEC_MASK);
+    printf("FIXED -> IDT VECTOR %u", entry & APIC_LVT_VEC_MASK);
   } else if (delivery_mode == APIC_DEL_MODE_NMI) {
-    printk("NMI   -> IDT VECTOR 2");
+    printf("NMI   -> IDT VECTOR 2");
   } else if (delivery_mode == APIC_DEL_MODE_EXTINT) {
-    printk("ExtINT, hooked to old 8259A PIC");
+    printf("ExtINT, hooked to old 8259A PIC");
   } else {
-    printk("UNKNOWN");
+    printf("UNKNOWN");
   }
 
-  if (entry & APIC_LVT_DISABLED) printk(", MASKED");
+  if (entry & APIC_LVT_DISABLED) printf(", MASKED");
 }
 
 
@@ -187,7 +187,7 @@ static bool parse_mp_table(smp::mp::mp_table *table) {
         break;
 
       default:
-        printk("unhandled mp_entry of type %02x\n", type);
+        printf("unhandled mp_entry of type %02x\n", type);
     }
   });
 

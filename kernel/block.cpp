@@ -252,7 +252,7 @@ static unsigned long blk_kshell(ck::vec<ck::string> &args, void *data, int dlen)
   if (args.size() > 0) {
     if (args[0] == "reclaim") {
       auto reclaimed = block::reclaim_memory();
-      printk("reclaimed %zu bytes (%d pages)\n", reclaimed, reclaimed / PGSIZE);
+      printf("reclaimed %zu bytes (%d pages)\n", reclaimed, reclaimed / PGSIZE);
 
       return reclaimed;
     }
@@ -264,7 +264,7 @@ static unsigned long blk_kshell(ck::vec<ck::string> &args, void *data, int dlen)
       for (auto &blk : buffer_cache) {
         for (auto &off : blk.value) {
           if (off.value) {
-            printk("off: %p\n", off.value);
+            printf("off: %p\n", off.value);
           }
         }
       }

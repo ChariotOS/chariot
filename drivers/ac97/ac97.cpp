@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <module.h>
 #include <phys.h>
-#include <printk.h>
+#include <printf.h>
 #include <util.h>
 #include <pci.h>
 
@@ -99,7 +99,7 @@ static ssize_t ac97_write(fs::File &fd, const char *buf, size_t sz) {
 static int ac97_open(fs::File &fd) { return 0; }
 
 static void ac97_interrupt(int intr, reg_t *fr, void *) {
-  printk(KERN_INFO "ac97 INTERRUPT\n");
+  printf(KERN_INFO "ac97 INTERRUPT\n");
   /* TODO: wake waiters up! */
   irq::eoi(intr);
 }
@@ -112,7 +112,7 @@ void ac97_pci_init(pci::device *dev) {
 }
 
 void ac97_init(void) {
-  // printk("==================================\n");
+  // printf("==================================\n");
   pci::walk_devices([](pci::device *dev) {
     if (dev->vendor_id == 0x8086 && dev->device_id == 0x2415) {
       ac97_pci_init(dev);

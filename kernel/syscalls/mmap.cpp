@@ -8,9 +8,9 @@ void *sys::mmap(void *addr, long length, int prot, int flags, int fd, long offse
   off_t va;
   ck::ref<fs::File> f = nullptr;
 
-  // printk("mmap offset 0x%08x (fd:%d)\n", offset, fd);
+  // printf("mmap offset 0x%08x (fd:%d)\n", offset, fd);
   if ((offset & 0xFFF) != 0) {
-    // printk("invalid!\n");
+    // printf("invalid!\n");
     return MAP_FAILED;
   }
 

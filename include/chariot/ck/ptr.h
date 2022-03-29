@@ -4,9 +4,9 @@
 
 #include "atom.h"
 #ifdef KERNEL
-#include <printk.h>
+#include <printf.h>
 #include <mem.h>
-#define PRINT(...) printk(__VA_ARGS__)
+#define PRINT(...) printf(__VA_ARGS__)
 #else
 #include <chariot.h>
 

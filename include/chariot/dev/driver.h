@@ -103,7 +103,7 @@ namespace dev {
     virtual void init(void) {}
     // called after register_irq(...)
     virtual void irq(int num) {
-			printk("irq handler!\n");
+			printf("irq handler!\n");
 		}
 
 

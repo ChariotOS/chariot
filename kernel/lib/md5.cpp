@@ -44,8 +44,7 @@ crypto::MD5::MD5(void) {
 }
 
 void crypto::MD5::update(const void *vbuf, size_t len) {
-
-	uint8_t *data = (uint8_t*)vbuf;
+  uint8_t *data = (uint8_t *)vbuf;
   size_t i;
 
   for (i = 0; i < len; ++i) {
@@ -149,7 +148,6 @@ void crypto::MD5::transform(uint8_t *data) {
 
 
 void crypto::MD5::finalize(unsigned char *hash) {
-
   size_t i;
 
   i = datalen;
@@ -198,7 +196,7 @@ ck::string crypto::MD5::finalize(void) {
 
   finalize(c);
   for (int i = 0; i < 16; i++) {
-    sprintk(buf, "%02x", c[i]);
+    sprintf(buf, "%02x", c[i]);
     s += buf;
   }
 

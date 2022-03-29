@@ -1,6 +1,6 @@
 #include <asm.h>
 #include <cpu.h>
-#include <printk.h>
+#include <printf.h>
 #include <util.h>
 #include <vmware_backdoor.h>
 
@@ -24,15 +24,13 @@ inline void vmware_out(struct vmware::command& command) {
   command.si = 0;
   command.di = 0;
 
-  // printk("put in:\n");
+  // printf("put in:\n");
   // hexdump(&command, sizeof(command), true);
 
-  asm volatile("in %%dx, %0"
-               : "+a"(command.ax), "+b"(command.bx), "+c"(command.cx), "+d"(command.dx),
-               "+S"(command.si), "+D"(command.di));
+  asm volatile("in %%dx, %0" : "+a"(command.ax), "+b"(command.bx), "+c"(command.cx), "+d"(command.dx), "+S"(command.si), "+D"(command.di));
 
 
-  // printk("got out:\n");
+  // printf("got out:\n");
   // hexdump(&command, sizeof(command), true);
 }
 
@@ -41,16 +39,14 @@ inline void vmware_high_bandwidth_send(struct vmware::command& command) {
   command.port = VMWARE_PORT_HIGHBANDWIDTH;
 
   asm volatile("cld; rep; outsb"
-               : "+a"(command.ax), "+b"(command.bx), "+c"(command.cx), "+d"(command.dx),
-               "+S"(command.si), "+D"(command.di));
+               : "+a"(command.ax), "+b"(command.bx), "+c"(command.cx), "+d"(command.dx), "+S"(command.si), "+D"(command.di));
 }
 
 inline void vmware_high_bandwidth_get(struct vmware::command& command) {
   command.magic = VMWARE_MAGIC;
   command.port = VMWARE_PORT_HIGHBANDWIDTH;
   asm volatile("cld; rep; insb"
-               : "+a"(command.ax), "+b"(command.bx), "+c"(command.cx), "+d"(command.dx),
-               "+S"(command.si), "+D"(command.di));
+               : "+a"(command.ax), "+b"(command.bx), "+c"(command.cx), "+d"(command.dx), "+S"(command.si), "+D"(command.di));
 }
 
 
@@ -117,7 +113,7 @@ void vmware::enable_absolute_vmmouse(void) {
   command.cmd = VMMOUSE_STATUS;
   send(command);
   if (command.ax == 0xFFFF0000) {
-    printk("VMMouse retuned bad status.\n");
+    printf("VMMouse retuned bad status.\n");
     return;
   }
 

@@ -2,7 +2,7 @@
 #include <idt.h>
 #include <lock.h>
 #include <pit.h>
-#include <printk.h>
+#include <printf.h>
 
 #define PIT_A 0x40
 #define PIT_B 0x41
@@ -61,8 +61,8 @@ void init_pit(void) {
 }
 
 void pic_enable(uint8_t irq) {
-	return;
-	printk("pic_enable %d\n", irq);
+  return;
+  printf("pic_enable %d\n", irq);
   uint8_t mask;
   if (irq < 8) {
     mask = inb(pic_data[0]);
@@ -106,9 +106,7 @@ static spinlock pit_result_lock;
 
 int waiting_10ms_remaining = 0;
 
-void pit_irq_handler(int i, reg_t *, void *) {
-  pit_result_lock.unlock();
-}
+void pit_irq_handler(int i, reg_t *, void *) { pit_result_lock.unlock(); }
 
 void pit::dumb_sleep(unsigned ms) {
   pit_sleep_lock.lock();

@@ -1,6 +1,6 @@
 #include <arch.h>
 #include <types.h>
-#include <printk.h>
+#include <printf.h>
 #include <cpu.h>
 #include <syscall.h>
 #include <time.h>
@@ -40,21 +40,13 @@ bool arch_irqs_enabled(void) {
   return (rflags & RFLAGS_IF) != 0;
 }
 
-void arch_disable_ints(void) {
-  asm volatile("cli");
-}
+void arch_disable_ints(void) { asm volatile("cli"); }
 
-void arch_enable_ints(void) {
-  asm volatile("sti");
-}
+void arch_enable_ints(void) { asm volatile("sti"); }
 
-void arch_halt(void) {
-  asm volatile("hlt");
-}
+void arch_halt(void) { asm volatile("hlt"); }
 
-void arch::invalidate_page(unsigned long addr) {
-  asm volatile("invlpg (%0)" ::"r"(addr) : "memory");
-}
+void arch::invalidate_page(unsigned long addr) { asm volatile("invlpg (%0)" ::"r"(addr) : "memory"); }
 
 void arch_flush_mmu(void) {
   uint64_t tmpreg;
@@ -72,15 +64,9 @@ unsigned long arch_read_timestamp(void) {
   return lo | ((uint64_t)(hi) << 32);
 }
 
-unsigned long arch_timestamp_to_ns(unsigned long ts) {
-	return core().apic.cycles_to_ns(ts);
-}
+unsigned long arch_timestamp_to_ns(unsigned long ts) { return core().apic.cycles_to_ns(ts); }
 
-unsigned long arch_ns_to_timestamp(unsigned long ns) {
-	return core().apic.ns_to_cycles(ns);
-}
+unsigned long arch_ns_to_timestamp(unsigned long ns) { return core().apic.ns_to_cycles(ns); }
 
 
-void arch_relax(void) {
-  asm("pause");
-}
+void arch_relax(void) { asm("pause"); }

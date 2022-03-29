@@ -1,7 +1,7 @@
 #include <riscv/plic.h>
 #include <riscv/arch.h>
 #include <riscv/memlayout.h>
-#include <printk.h>
+#include <printf.h>
 #include <util.h>
 #include <cpu.h>
 int boot_hart = -1;

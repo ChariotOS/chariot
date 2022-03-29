@@ -37,28 +37,28 @@
 
 
 static void vmw_print_capabilities(uint32_t capabilities) {
-  printk(KERN_DEBUG "Capabilities:\n");
-  if (capabilities & SVGA_CAP_RECT_COPY) printk(KERN_DEBUG "  Rect copy.\n");
-  if (capabilities & SVGA_CAP_CURSOR) printk(KERN_DEBUG "  Cursor.\n");
-  if (capabilities & SVGA_CAP_CURSOR_BYPASS) printk(KERN_DEBUG "  Cursor bypass.\n");
-  if (capabilities & SVGA_CAP_CURSOR_BYPASS_2) printk(KERN_DEBUG "  Cursor bypass 2.\n");
-  if (capabilities & SVGA_CAP_8BIT_EMULATION) printk(KERN_DEBUG "  8bit emulation.\n");
-  if (capabilities & SVGA_CAP_ALPHA_CURSOR) printk(KERN_DEBUG "  Alpha cursor.\n");
-  if (capabilities & SVGA_CAP_3D) printk(KERN_DEBUG "  3D.\n");
-  if (capabilities & SVGA_CAP_EXTENDED_FIFO) printk(KERN_DEBUG "  Extended Fifo.\n");
-  if (capabilities & SVGA_CAP_MULTIMON) printk(KERN_DEBUG "  Multimon.\n");
-  if (capabilities & SVGA_CAP_PITCHLOCK) printk(KERN_DEBUG "  Pitchlock.\n");
-  if (capabilities & SVGA_CAP_IRQMASK) printk(KERN_DEBUG "  Irq mask.\n");
-  if (capabilities & SVGA_CAP_DISPLAY_TOPOLOGY) printk(KERN_DEBUG "  Display Topology.\n");
-  if (capabilities & SVGA_CAP_GMR) printk(KERN_DEBUG "  GMR.\n");
-  if (capabilities & SVGA_CAP_TRACES) printk(KERN_DEBUG "  Traces.\n");
-  if (capabilities & SVGA_CAP_GMR2) printk(KERN_DEBUG "  GMR2.\n");
-  if (capabilities & SVGA_CAP_SCREEN_OBJECT_2) printk(KERN_DEBUG "  Screen Object 2.\n");
-  if (capabilities & SVGA_CAP_COMMAND_BUFFERS) printk(KERN_DEBUG "  Command Buffers.\n");
-  if (capabilities & SVGA_CAP_CMD_BUFFERS_2) printk(KERN_DEBUG "  Command Buffers 2.\n");
-  if (capabilities & SVGA_CAP_GBOBJECTS) printk(KERN_DEBUG "  Guest Backed Resources.\n");
-  if (capabilities & SVGA_CAP_DX) printk(KERN_DEBUG "  DX Features.\n");
-  if (capabilities & SVGA_CAP_HP_CMD_QUEUE) printk(KERN_DEBUG "  HP Command Queue.\n");
+  printf(KERN_DEBUG "Capabilities:\n");
+  if (capabilities & SVGA_CAP_RECT_COPY) printf(KERN_DEBUG "  Rect copy.\n");
+  if (capabilities & SVGA_CAP_CURSOR) printf(KERN_DEBUG "  Cursor.\n");
+  if (capabilities & SVGA_CAP_CURSOR_BYPASS) printf(KERN_DEBUG "  Cursor bypass.\n");
+  if (capabilities & SVGA_CAP_CURSOR_BYPASS_2) printf(KERN_DEBUG "  Cursor bypass 2.\n");
+  if (capabilities & SVGA_CAP_8BIT_EMULATION) printf(KERN_DEBUG "  8bit emulation.\n");
+  if (capabilities & SVGA_CAP_ALPHA_CURSOR) printf(KERN_DEBUG "  Alpha cursor.\n");
+  if (capabilities & SVGA_CAP_3D) printf(KERN_DEBUG "  3D.\n");
+  if (capabilities & SVGA_CAP_EXTENDED_FIFO) printf(KERN_DEBUG "  Extended Fifo.\n");
+  if (capabilities & SVGA_CAP_MULTIMON) printf(KERN_DEBUG "  Multimon.\n");
+  if (capabilities & SVGA_CAP_PITCHLOCK) printf(KERN_DEBUG "  Pitchlock.\n");
+  if (capabilities & SVGA_CAP_IRQMASK) printf(KERN_DEBUG "  Irq mask.\n");
+  if (capabilities & SVGA_CAP_DISPLAY_TOPOLOGY) printf(KERN_DEBUG "  Display Topology.\n");
+  if (capabilities & SVGA_CAP_GMR) printf(KERN_DEBUG "  GMR.\n");
+  if (capabilities & SVGA_CAP_TRACES) printf(KERN_DEBUG "  Traces.\n");
+  if (capabilities & SVGA_CAP_GMR2) printf(KERN_DEBUG "  GMR2.\n");
+  if (capabilities & SVGA_CAP_SCREEN_OBJECT_2) printf(KERN_DEBUG "  Screen Object 2.\n");
+  if (capabilities & SVGA_CAP_COMMAND_BUFFERS) printf(KERN_DEBUG "  Command Buffers.\n");
+  if (capabilities & SVGA_CAP_CMD_BUFFERS_2) printf(KERN_DEBUG "  Command Buffers 2.\n");
+  if (capabilities & SVGA_CAP_GBOBJECTS) printf(KERN_DEBUG "  Guest Backed Resources.\n");
+  if (capabilities & SVGA_CAP_DX) printf(KERN_DEBUG "  DX Features.\n");
+  if (capabilities & SVGA_CAP_HP_CMD_QUEUE) printf(KERN_DEBUG "  HP Command Queue.\n");
 }
 
 
@@ -201,7 +201,7 @@ vmware_write(SVGA_REG_ENABLE, 1);
 
   uint32_t bpl = vmware_read(SVGA_REG_BYTES_PER_LINE);
 
-  printk(KERN_DEBUG "bpl: %d\n", bpl);
+  printf(KERN_DEBUG "bpl: %d\n", bpl);
 
   // lfb_resolution_x = w;
   // lfb_resolution_s = bpl;
@@ -217,7 +217,7 @@ void svga_mod_init(void) {
     if (dev->is_device(0x15ad, 0x0405)) {
       uint32_t t = dev->get_bar(0).raw;
       vmware_io = (t & 0xFFFFFFF0);
-      printk(KERN_DEBUG "vmware_io: 0x%x\n", vmware_io);
+      printf(KERN_DEBUG "vmware_io: 0x%x\n", vmware_io);
     }
   });
 

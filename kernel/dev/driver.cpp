@@ -1,7 +1,7 @@
 #include <dev/driver.h>
 #include <errno.h>
 #include <ck/map.h>
-#include <printk.h>
+#include <printf.h>
 #include <fs/vfs.h>
 #include <module.h>
 #include "fs.h"
@@ -19,8 +19,8 @@ static void device_irq_handler(int num, reg_t *regs, void *data) {
 }
 
 void dev::Device::handle_irq(int num, const char *name) {
-	irq::install(num, device_irq_handler, name, this);
-	irq(num);
+  irq::install(num, device_irq_handler, name, this);
+  irq(num);
 }
 
 
@@ -79,7 +79,7 @@ ksh_def("drivers", "display all (old style) drivers") {
   scoped_lock l(all_drivers_lock);
 
   for (auto d : all_drivers) {
-    printk(" - %s\n", d->name().get());
+    printf(" - %s\n", d->name().get());
   }
   return 0;
 }

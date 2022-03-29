@@ -138,22 +138,18 @@ add_rooted_subdir(net)
 add_rooted_subdir(drivers)
 
 
-# recompile libck for the kernel, as it needs some special macros to work correctly
-# add_kernel_module(
-# 	NAME ck-kernel
-# 	AUTOGLOB ../lib/ck/
-# )
-
-
-
 # add_executable(chariot ${KERNEL_SOURCES})
-add_library(chariot STATIC ${KERNEL_SOURCES})
-set_target_properties(chariot PROPERTIES OUTPUT_NAME "chariot")
+# add_library(chariot STATIC ${KERNEL_SOURCES})
+# set_target_properties(chariot PROPERTIES OUTPUT_NAME "chariot")
+# 
+# install(TARGETS chariot RUNTIME DESTINATION bin)
+# 
+# add_executable(chariot_exe $<TARGET_OBJECTS:chariot>)
+# set_target_properties(chariot_exe PROPERTIES OUTPUT_NAME "chariot.elf")
+# target_link_libraries(chariot_exe libgcc)
 
-install(TARGETS chariot RUNTIME DESTINATION bin)
 
-# Link (without) an initrd. See `tools/initrd.sh` to see how an initrd is linked
-add_executable(chariot_exe $<TARGET_OBJECTS:chariot>)
-set_target_properties(chariot_exe PROPERTIES OUTPUT_NAME "chariot.elf")
-target_link_libraries(chariot_exe libgcc)
 
+add_executable(chariot ${KERNEL_SOURCES})
+set_target_properties(chariot PROPERTIES OUTPUT_NAME "chariot.elf")
+target_link_libraries(chariot libgcc)

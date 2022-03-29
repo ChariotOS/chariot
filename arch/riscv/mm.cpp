@@ -28,7 +28,7 @@ rv::pte_t *rv::page_walk(rv::pte_t *tbl, off_t va) {
   /* Starting from the highest index in the VA, to zero */
   for (int i = VM_PART_NUM - 1; i >= 0; i--) {
     int index = PX(i, va);
-    // printk("[pwalk] %d: %d\n", i, index);
+    // printf("[pwalk] %d: %d\n", i, index);
     /* If we are at the end, return the entry :) */
     if (i == 0) return Tp2v(&tbl[index]);
     /* Grab the indirect mapping in the page table */
@@ -105,7 +105,7 @@ rv::PageTable::~PageTable(void) {
 
 
 bool rv::PageTable::switch_to(void) {
-  // printk_nolock("switch to %p\n", table);
+  // printf_nolock("switch to %p\n", table);
   write_csr(satp, MAKE_SATP(v2p(table)));
   return true;
 }
@@ -157,22 +157,22 @@ int rv::PageTable::add_mapping(off_t va, struct mm::pte &p) {
   auto old_pa = PTE2PA(ent);
 
 #if 0
-  printk("[pid=%d] add mapping 0x%p to 0x%p ", curproc->pid, va, p.ppn << 12);
+  printf("[pid=%d] add mapping 0x%p to 0x%p ", curproc->pid, va, p.ppn << 12);
   if (old_pa != 0) {
-    printk("old pa: 0x%llx  ", old_pa);
+    printf("old pa: 0x%llx  ", old_pa);
   }
-  if (ent & PT_R) printk("R");
-  if (ent & PT_W) printk("W");
-  if (ent & PT_X) printk("X");
-  if (ent & PT_U) printk("U");
-  if (ent & PT_G) printk("G");
-  printk(" -> ");
-  if (prot & PT_R) printk("R");
-  if (prot & PT_W) printk("W");
-  if (prot & PT_X) printk("X");
-  if (prot & PT_U) printk("U");
-  if (prot & PT_G) printk("G");
-  printk("\n");
+  if (ent & PT_R) printf("R");
+  if (ent & PT_W) printf("W");
+  if (ent & PT_X) printf("X");
+  if (ent & PT_U) printf("U");
+  if (ent & PT_G) printf("G");
+  printf(" -> ");
+  if (prot & PT_R) printf("R");
+  if (prot & PT_W) printf("W");
+  if (prot & PT_X) printf("X");
+  if (prot & PT_U) printf("U");
+  if (prot & PT_G) printf("G");
+  printf("\n");
 #endif
 
   /* Write the page table entry */

@@ -8,7 +8,7 @@
 
 #include <errno.h>
 #include <phys.h>
-#include <printk.h>
+#include <printf.h>
 #include <time.h>
 #include <util.h>
 
@@ -26,9 +26,8 @@ static inline unsigned log2_uint(unsigned val) {
 
 
 static inline unsigned vring_size(unsigned int num, unsigned long align) {
-  return ((sizeof(struct virtio::virtq_desc) * num + sizeof(uint16_t) * (3 + num) + align - 1) &
-          ~(align - 1)) +
-         sizeof(uint16_t) * 3 + sizeof(struct virtio::virtq_used_elem) * num;
+  return ((sizeof(struct virtio::virtq_desc) * num + sizeof(uint16_t) * (3 + num) + align - 1) & ~(align - 1)) + sizeof(uint16_t) * 3 +
+         sizeof(struct virtio::virtq_used_elem) * num;
 }
 
 
@@ -40,9 +39,7 @@ static inline void vring_init(struct vring *vr, unsigned int num, void *p, unsig
   vr->last_used = 0;
   vr->desc = (virtio::virtq_desc *)p;
   vr->avail = (virtio::virtq_avail *)((off_t)p + num * sizeof(virtio::virtq_desc));
-  vr->used =
-      (virtio::virtq_used *)(((unsigned long)&vr->avail->ring[num] + sizeof(uint16_t) + align - 1) &
-                             ~(align - 1));
+  vr->used = (virtio::virtq_used *)(((unsigned long)&vr->avail->ring[num] + sizeof(uint16_t) + align - 1) & ~(align - 1));
 }
 
 

@@ -90,13 +90,13 @@ static char *lvt_stringify(uint32_t entry, char *buf) {
   uint32_t delivery_mode = entry & 0x700;
 
   if (delivery_mode == APIC_DEL_MODE_FIXED) {
-    sprintk(buf, "FIXED -> IDT VECTOR %u", entry & APIC_LVT_VEC_MASK);
+    sprintf(buf, "FIXED -> IDT VECTOR %u", entry & APIC_LVT_VEC_MASK);
   } else if (delivery_mode == APIC_DEL_MODE_NMI) {
-    sprintk(buf, "NMI   -> IDT VECTOR 2");
+    sprintf(buf, "NMI   -> IDT VECTOR 2");
   } else if (delivery_mode == APIC_DEL_MODE_EXTINT) {
-    sprintk(buf, "ExtINT, hooked to old 8259A PIC");
+    sprintf(buf, "ExtINT, hooked to old 8259A PIC");
   } else {
-    sprintk(buf, "UNKNOWN");
+    sprintf(buf, "UNKNOWN");
   }
 
   if (entry & APIC_LVT_DISABLED) strcat(buf, ", MASKED");
@@ -712,10 +712,10 @@ APIC_DEBUG("  SVR: 0x%08x (Spurious vector=%d, %s, %s)\n", read(APIC_REG_SPIV), 
       auto irr = read(APIC_GET_IRR(i));
       int set = (irr >> b) & 1;
 
-      if (set) printk(" %d", irq);
+      if (set) printf(" %d", irq);
     }
   }
-  printk("\n");
+  printf("\n");
   APIC_DEBUG("          %08x %08x %08x %08x\n", read(APIC_GET_IRR(0)), read(APIC_GET_IRR(1)), read(APIC_GET_IRR(2)), read(APIC_GET_IRR(3)));
   APIC_DEBUG("          %08x %08x %08x %08x\n", read(APIC_GET_IRR(4)), read(APIC_GET_IRR(5)), read(APIC_GET_IRR(6)), read(APIC_GET_IRR(7)));
 
@@ -729,10 +729,10 @@ APIC_DEBUG("  SVR: 0x%08x (Spurious vector=%d, %s, %s)\n", read(APIC_REG_SPIV), 
       auto irr = read(APIC_GET_ISR(i));
       int set = (irr >> b) & 1;
 
-      if (set) printk(" %d", irq);
+      if (set) printf(" %d", irq);
     }
   }
-  printk("\n");
+  printf("\n");
   APIC_DEBUG("          %08x %08x %08x %08x\n", read(APIC_GET_ISR(0)), read(APIC_GET_ISR(1)), read(APIC_GET_ISR(2)), read(APIC_GET_ISR(3)));
   APIC_DEBUG("          %08x %08x %08x %08x\n", read(APIC_GET_ISR(4)), read(APIC_GET_ISR(5)), read(APIC_GET_ISR(6)), read(APIC_GET_ISR(7)));
 
@@ -747,11 +747,11 @@ for (int b = 0; b < 32; b++) {
   auto irr = read(APIC_GET_IER(i));
   int set = (irr >> b) & 1;
 
-  if (set) printk(" %d", irq);
+  if (set) printf(" %d", irq);
 }
 }
 
-printk("\n");
+printf("\n");
 APIC_DEBUG(
   "          %08x %08x %08x %08x\n", read(APIC_GET_IER(0)), read(APIC_GET_IER(1)), read(APIC_GET_IER(2)), read(APIC_GET_IER(3)));
 APIC_DEBUG(

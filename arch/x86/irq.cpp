@@ -2,7 +2,7 @@
 #include <cpu.h>
 #include <paging.h>
 #include <pit.h>
-#include <printk.h>
+#include <printf.h>
 #include <sched.h>
 #include <syscall.h>
 #include <time.h>
@@ -164,9 +164,9 @@ int arch_generate_backtrace(off_t virt_ebp, off_t *buf, size_t bufsz) {
 void dump_backtrace(off_t virt_ebp) {
   int i = 0;
   for (auto ip : debug::generate_backtrace(virt_ebp)) {
-    printk("%d - %p\n", i++, ip);
+    printf("%d - %p\n", i++, ip);
   }
-  // printk("Backtrace (ebp=%p):\n", ebp);
+  // printf("Backtrace (ebp=%p):\n", ebp);
 }
 
 
@@ -194,40 +194,40 @@ void dump_trapframe(reg_t *r) {
   dump(rbx);
   dump(rcx);
   dump(rdx);
-  printk_nolock("\n");
+  printf_nolock("\n");
   dump(rsi);
   dump(rdi);
   dump(rbp);
   dump(rsp);
-  printk_nolock("\n");
+  printf_nolock("\n");
   dump(r8);
   dump(r9);
   dump(r10);
   dump(r11);
-  printk_nolock("\n");
+  printf_nolock("\n");
   dump(r12);
   dump(r13);
   dump(r14);
   dump(r15);
-  printk_nolock("\n");
+  printf_nolock("\n");
   dump(rip);
   debug::print_register("flg", eflags);
-  printk_nolock(" [%c%c%c%c%c%c%c]\n", eflags & DF_MASK ? 'D' : '-', eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-',
+  printf_nolock(" [%c%c%c%c%c%c%c]\n", eflags & DF_MASK ? 'D' : '-', eflags & CC_O ? 'O' : '-', eflags & CC_S ? 'S' : '-',
       eflags & CC_Z ? 'Z' : '-', eflags & CC_A ? 'A' : '-', eflags & CC_P ? 'P' : '-', eflags & CC_C ? 'C' : '-');
-  printk_nolock("Backtrace:\n");
+  printf_nolock("Backtrace:\n");
 
 #undef dump
   auto bt = debug::generate_backtrace(tf->rbp);
 
   int i = 0;
   for (auto ip : bt) {
-    printk_nolock("% 2d - %p\n", i++, ip);
+    printf_nolock("% 2d - %p\n", i++, ip);
   }
-  printk_nolock("Pass this into addr2line for %s:\n", curproc->name.get());
+  printf_nolock("Pass this into addr2line for %s:\n", curproc->name.get());
   for (auto ip : bt) {
-    printk_nolock("0x%llx ", ip);
+    printf_nolock("0x%llx ", ip);
   }
-  printk_nolock("\n");
+  printf_nolock("\n");
 }
 
 
@@ -291,8 +291,8 @@ static void unknown_exception(int i, reg_t *regs) {
 }
 
 static void dbl_flt_handler(int i, reg_t *tf) {
-  printk("DOUBLE FAULT!\n");
-  printk("&i=%p\n", &i);
+  printf("DOUBLE FAULT!\n");
+  printf("&i=%p\n", &i);
 
   unknown_exception(i, tf);
   while (1) {
@@ -308,13 +308,13 @@ void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
   auto *tf = (struct x86_64regs *)regs;
 
   arch_disable_ints();
-  printk_nolock("FATAL SIGNAL %d. trapno=%d\n", fatal_signal, tf->trapno);
-  printk_nolock("==================================================================\n");
+  printf_nolock("FATAL SIGNAL %d. trapno=%d\n", fatal_signal, tf->trapno);
+  printf_nolock("==================================================================\n");
   // TODO:
-  printk_nolock("%s in pid %d, tid %d, cpu %d @ %p\n", name, curthd->pid, curthd->tid, cpu::current().id, tf->rip);
+  printf_nolock("%s in pid %d, tid %d, cpu %d @ %p\n", name, curthd->pid, curthd->tid, cpu::current().id, tf->rip);
 
   debug::print_register("Bad address", read_cr2());
-  printk_nolock("\n");
+  printf_nolock("\n");
 
   // arch_disable_ints();
   dump_trapframe(regs);
@@ -323,7 +323,7 @@ void handle_fatal(const char *name, int fatal_signal, reg_t *regs) {
 
   curproc->mm->dump();
 
-	arch_enable_ints();
+  arch_enable_ints();
 
   curproc->terminate(fatal_signal);
 }
@@ -483,7 +483,7 @@ extern "C" void trap(reg_t *regs) {
 
       /* save the old context to the user stack */
       if (!VALIDATE_RDWR(uctx, frame_size)) {
-        printk("not sure what to do here. uctx = %p\n", uctx);
+        printf("not sure what to do here. uctx = %p\n", uctx);
         curproc->mm->dump();
 
         if (cpu::in_thread()) curthd->irq_depth--;

@@ -5,7 +5,7 @@
 #include <fs.h>
 #include <mem.h>
 #include <module.h>
-#include <printk.h>
+#include <printf.h>
 #include <net/sock.h>
 
 

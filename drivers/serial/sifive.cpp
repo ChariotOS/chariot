@@ -2,7 +2,7 @@
 
 #include <module.h>
 #include <devicetree.h>
-#include <printk.h>
+#include <printf.h>
 #include <dev/driver.h>
 #include <dev/hardware.h>
 #include <device_majors.h>
@@ -68,7 +68,7 @@ void sifive::Uart::put_char(char c) {
   }
 
   regs->txfifo = c;
-  // printk("iters = %d\n", iters);
+  // printf("iters = %d\n", iters);
 }
 
 

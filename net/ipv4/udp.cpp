@@ -62,7 +62,7 @@ int net::udpsock::bind(const struct sockaddr *addr, size_t len) {
   if (len != sizeof(sockaddr_in)) return -EINVAL;
 
   auto *sin = (struct sockaddr_in *)addr;
-  // printk("udp bind to %I:%d\n", sin->sin_addr, net::host_ord(sin->sin_port));
+  // printf("udp bind to %I:%d\n", sin->sin_addr, net::host_ord(sin->sin_port));
 
   // TODO: check for permission
   active_socket_lock.write_lock();
