@@ -26,7 +26,7 @@ kernel: .config $(BUILD)/build.ninja
 default: kernel
 
 run:
-	@tools/run.sh
+	@tools/run.sh -nographic
 
 clean:
 	@rm -rf build

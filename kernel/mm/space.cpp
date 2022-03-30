@@ -91,8 +91,9 @@ ck::vec<mm::MappedRegion *> mm::AddressSpace::lookup_range(off_t va, size_t sz) 
 
     bool start_inside = start >= region_start && start < region_end;
     bool end_inside = end > region_start && end <= region_end;
+    bool region_inside = start <= region_start && region_end < end;
 
-    if (start_inside || end_inside) {
+    if (start_inside || end_inside || region_inside) {
       in_range.push(r);
     }
 
@@ -139,7 +140,7 @@ mm::MappedRegion *mm::AddressSpace::lookup(off_t va) {
     } else if (va >= end) {
       n = &((*n)->rb_right);
     } else {
-			assert(in_range.size() == 1);
+      assert(in_range.size() == 1);
       return r;
     }
   }
@@ -502,7 +503,6 @@ int mm::AddressSpace::schedule_mapping(off_t va, off_t pa, int prot) {
 
 
 void mm::AddressSpace::dump(void) {
-  scoped_lock l(this->lock);
   for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
     auto *r = rb_entry(node, struct mm::MappedRegion, node);
     printf("%p-%p ", r->va, r->va + r->len);
@@ -535,7 +535,8 @@ void mm::AddressSpace::dump(void) {
 }
 
 off_t mm::AddressSpace::find_hole(size_t size) {
-  off_t va = hi - size;
+#ifdef CONFIG_TOP_DOWN
+  off_t va = this->hi - size;
   off_t lim = va + size;
 
   for (struct rb_node *node = rb_last(&regions); node; node = rb_prev(node)) {
@@ -547,8 +548,31 @@ off_t mm::AddressSpace::find_hole(size_t size) {
     if (va <= rlim && rva < lim) {
       va = rva - size;
       lim = va + size;
+    } else {
+			break;
     }
+  }
+  return va;
+
+#else  // BOTTOM UP
+  
+	off_t va = this->lo;
+  off_t lim = va + size;
+
+  for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
+    auto *r = rb_entry(node, struct mm::MappedRegion, node);
+
+    auto rva = r->va;
+    auto rlim = rva + r->len;
+
+    if (va <= rlim && rva < lim) {
+      va = rlim;
+      lim = va + size;
+    } else {
+			break;
+		}
   }
 
   return va;
+#endif
 }

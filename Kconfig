@@ -90,6 +90,14 @@ menu "Config"
 		default y
 
 
+	config TOP_DOWN
+		bool "Allocate memory from the top of the address space down"
+		default y
+		help
+			Usually, kernels allocate memory from the top of the addr space down. For example,
+			the stack would be allocated at 0x7fff..... Setting this to `n` will make new regions
+			be allocated from the bottom up. The first region will be located at 0x1000.
+
 	config LOW_MEMORY
 		bool "Low memory mode (flush block cache when all refs are released, etc...)"
 		default n
