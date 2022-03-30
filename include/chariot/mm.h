@@ -29,6 +29,7 @@
 #define VALIDATE_RDWR(ptr, size) curproc->mm->validate_pointer((void *)ptr, size, PROT_WRITE | PROT_READ)
 #define VALIDATE_EXEC(ptr, size) curproc->mm->validate_pointer((void *)ptr, size, PROT_EXEC)
 
+#define MM_REGION_CACHE_SIZE 16
 
 namespace mm {
 
@@ -342,6 +343,16 @@ namespace mm {
     unsigned long revision;
     unsigned long kmem_revision;
     ck::vec<pending_mapping> pending_mappings;
+
+	 protected:
+		struct RegionCacheEntry {
+			mm::MappedRegion *region = NULL;
+			uint64_t last_used = 0;
+		};
+		uint64_t cache_tick = 0;
+		RegionCacheEntry region_cache[MM_REGION_CACHE_SIZE];
+		uint64_t cache_hits = 0;
+		uint64_t cache_misses = 0;
   };
 };  // namespace mm
 

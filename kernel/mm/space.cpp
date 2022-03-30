@@ -9,6 +9,7 @@ mm::AddressSpace::AddressSpace(off_t lo, off_t hi, ck::ref<mm::PageTable> pt) : 
 
 
 mm::AddressSpace::~AddressSpace(void) {
+  printf("mm: hits: %lu, misses: %lu\n", cache_hits, cache_misses);
   mm::MappedRegion *n, *node;
   rbtree_postorder_for_each_entry_safe(node, n, &regions, node) { delete node; }
 }
@@ -18,6 +19,20 @@ void mm::AddressSpace::switch_to() { pt->switch_to(); }
 
 
 bool mm::AddressSpace::add_region(mm::MappedRegion *region) {
+  RegionCacheEntry *lru_cache_entry = NULL;
+  // check the cache first...
+  for (int i = 0; i < MM_REGION_CACHE_SIZE; i++) {
+    auto &rce = region_cache[i];
+    if (lru_cache_entry == NULL || lru_cache_entry->last_used > rce.last_used) {
+      lru_cache_entry = &rce;
+    }
+  }
+
+  if (lru_cache_entry) {
+    lru_cache_entry->region = region;
+    lru_cache_entry->last_used = cache_tick++;
+  }
+
   return rb_insert(regions, &region->node, [&](struct rb_node *other) {
     auto *other_region = rb_entry(other, struct mm::MappedRegion, node);
     long result = (long)region->va - (long)other_region->va;
@@ -110,16 +125,25 @@ ck::vec<mm::MappedRegion *> mm::AddressSpace::lookup_range(off_t va, size_t sz) 
 }
 
 mm::MappedRegion *mm::AddressSpace::lookup(off_t va) {
-  auto in_range = lookup_range(va, 4096);
-  if (in_range.size() > 1) {
-    printf("Looking for %p, found:\n", va);
-    for (auto *range : in_range) {
-      printf(" - %p .. %p, off=%lx\n", range->va, range->va + range->len, va - range->va);
+  RegionCacheEntry *lru_cache_entry = NULL;
+  // check the cache first...
+  for (int i = 0; i < MM_REGION_CACHE_SIZE; i++) {
+    auto &rce = region_cache[i];
+    if (lru_cache_entry == NULL || lru_cache_entry->last_used > rce.last_used) {
+      lru_cache_entry = &rce;
+    }
+
+    if (rce.region) {
+      if (rce.region->va <= va && va < rce.region->va + rce.region->len) {
+        rce.last_used = cache_tick++;
+        cache_hits++;
+        return rce.region;
+      }
     }
   }
+  cache_misses++;
 
 
-  //
   struct rb_node **n = &(regions.rb_node);
   struct rb_node *parent = NULL;
 
@@ -140,7 +164,10 @@ mm::MappedRegion *mm::AddressSpace::lookup(off_t va) {
     } else if (va >= end) {
       n = &((*n)->rb_right);
     } else {
-      assert(in_range.size() == 1);
+      if (lru_cache_entry != nullptr) {
+        lru_cache_entry->region = r;
+        lru_cache_entry->last_used = cache_tick++;
+      }
       return r;
     }
   }
@@ -190,8 +217,7 @@ int mm::AddressSpace::pagefault(off_t va, int err) {
 
   int fault_res = 0;
 
-  auto start = arch_read_timestamp();
-  // TODO:
+  // TODO: USER access fault
   // if (err & PGFLT_USER && !(r->prot & VPROT_READ)) fault_res = -1;
   if (err & FAULT_WRITE && !(r->prot & VPROT_WRITE)) fault_res = -1;
   if (err & FAULT_READ && !(r->prot & VPROT_READ)) fault_res = -1;
@@ -202,7 +228,6 @@ int mm::AddressSpace::pagefault(off_t va, int err) {
     auto page = get_page_internal(va, *r, err, true);
     if (!page) return -1;
   }
-
 
   // xcall_flush(this, va, 1);
 
@@ -260,6 +285,8 @@ ck::ref<mm::Page> mm::AddressSpace::get_page_internal(off_t uaddr, mm::MappedReg
     r.mappings[ind].set_page(page);
   }
 
+	auto page = r.mappings[ind];
+
 
   // If the fault was due to a write, and this region
   // is writable, handle COW if needed
@@ -268,12 +295,12 @@ ck::ref<mm::Page> mm::AddressSpace::get_page_internal(off_t uaddr, mm::MappedReg
 
     // a shared mapping
     if (r.flags & MAP_SHARED) {
-      r.mappings[ind]->fset(PG_DIRTY);
+      page->fset(PG_DIRTY);
     }
 
     // a private mapping must be copied if there are two users
     if (r.flags & MAP_PRIVATE) {
-      auto old_page = r.mappings[ind].get();
+      auto old_page = page;
       old_page->lock();
 
       if (old_page->users() > 1 || r.fd) {
@@ -282,6 +309,7 @@ ck::ref<mm::Page> mm::AddressSpace::get_page_internal(off_t uaddr, mm::MappedReg
         if (display) printf(KERN_WARN "[pid=%d] COW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(), uaddr);
         memcpy(p2v(np->pa()), p2v(old_page->pa()), PGSIZE);
         r.mappings[ind] = np;
+				page = np;
       }
 
       old_page->unlock();
@@ -291,12 +319,12 @@ ck::ref<mm::Page> mm::AddressSpace::get_page_internal(off_t uaddr, mm::MappedReg
 
   if (do_map) {
     if (display) printf(KERN_WARN "[pid=%d] map %p to %p\n", curproc->pid, uaddr & ~0xFFF, r.mappings[ind]->pa());
-    pte.ppn = r.mappings[ind]->pa() >> 12;
+    pte.ppn = page->pa() >> 12;
     auto va = (r.va + (ind << 12));
     pt->add_mapping(va, pte);
   }
 
-  return r.mappings[ind].get();
+  return page.get();
 }
 
 
@@ -454,6 +482,13 @@ int mm::AddressSpace::unmap(off_t ptr, size_t ulen) {
 
   scoped_irqlock l2(region->lock);
 
+  for (int i = 0; i < MM_REGION_CACHE_SIZE; i++) {
+    if (region_cache[i].region == region) {
+      region_cache[i].region = nullptr;
+      region_cache[i].last_used = 0;
+    }
+  }
+
   rb_erase(&region->node, &regions);
 
   for (int i = 0; i < region->mappings.size(); i++) {
@@ -549,14 +584,14 @@ off_t mm::AddressSpace::find_hole(size_t size) {
       va = rva - size;
       lim = va + size;
     } else {
-			break;
+      break;
     }
   }
   return va;
 
 #else  // BOTTOM UP
-  
-	off_t va = this->lo;
+
+  off_t va = this->lo;
   off_t lim = va + size;
 
   for (struct rb_node *node = rb_first(&regions); node; node = rb_next(node)) {
@@ -569,8 +604,8 @@ off_t mm::AddressSpace::find_hole(size_t size) {
       va = rlim;
       lim = va + size;
     } else {
-			break;
-		}
+      break;
+    }
   }
 
   return va;

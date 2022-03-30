@@ -21,12 +21,12 @@ namespace ck {
    public:
     using Fn = ck::func<void(fiber*)>;
 
-    fiber(Fn fn) : func(move(fn)) {
-      stk = (char*)malloc(STACK_SIZE);
-      stack_base = stk;
-      stack_base += STACK_SIZE;
+    fiber(Fn fn) : func(move(fn)) {}
+    ~fiber(void) {
+      if (stk != nullptr) {
+        free(stk);
+      }
     }
-    ~fiber(void) { free(stk); }
 
     void yield(FiberState s = FiberState::Paused);
     void yield_ready(void) { yield(FiberState::Ready); }

@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/sysbind.h>
 #include <string.h>
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
@@ -21,18 +23,21 @@ int main(int argc, char **argv) {
 
   printf("Allocating %zuMB of ram and writing 1 byte per page...\n", mb);
 
+	uint64_t start = sysbind_gettime_microsecond();
+
   size_t size = round_up(mb * 1024 * 1024, 4096);
-  char *buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 
   for (off_t i = 0; i < size; i += 4096) {
-    buf[i] = 'a';
-    printf("\r%.2f%%", (float)i / size * 100.0);
+		char *p = malloc(4096);
+		p[0] = 0;
+
+    // printf("\r%.2f%%", (float)i / size * 100.0);
   }
 
-  printf("\nDone!\n");
+	uint64_t end = sysbind_gettime_microsecond();
 
+  printf("\nDone in %lu ms!\n", (end - start) / 1000);
 
-  munmap(buf, size);
 
 
   return 0;

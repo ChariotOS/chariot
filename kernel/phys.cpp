@@ -66,9 +66,6 @@ static void *late_phys_alloc(size_t npages) {
 
   if (v2p(c) == NULL) panic("OOM!\n");
 
-  // printf_nolock("phys::alloc - remaining = %lld\n", kmem.nfree);
-
-
   while (v2p(c) != NULL) {
     if (c->page_len >= npages) break;
     p = c;

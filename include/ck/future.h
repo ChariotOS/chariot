@@ -54,9 +54,12 @@ namespace ck {
     using ref = ck::ref<future<R>>;
 
 
+    future(R&& v) noexcept { resolve(move(v)); }
     future() noexcept {}
     future(future<R>& other) : control(other.get_control()) {}                           // copy
     future(future<R>&& other) : control(other.get_control()) { other.control.clear(); }  // move
+
+
     future<R>& operator=(future<R>& other) {
       control = other.get_control();
       return *this;
