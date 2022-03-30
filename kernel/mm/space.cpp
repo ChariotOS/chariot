@@ -67,8 +67,58 @@ size_t mm::AddressSpace::copy_out(off_t byte_offset, void *dst, size_t size) {
 
   return read;
 }
+ck::vec<mm::MappedRegion *> mm::AddressSpace::lookup_range(off_t va, size_t sz) {
+  ck::vec<mm::MappedRegion *> in_range;
+
+  //
+  struct rb_node **n = &(regions.rb_node);
+  struct rb_node *parent = NULL;
+
+  int steps = 0;
+
+  off_t start = va;
+  off_t end = va + sz;
+
+  /* Figure out where to put new node */
+  while (*n != NULL) {
+    auto *r = rb_entry(*n, struct mm::MappedRegion, node);
+
+    auto region_start = r->va;
+    auto region_end = r->va + r->len;
+    parent = *n;
+    steps++;
+
+
+    bool start_inside = start >= region_start && start < region_end;
+    bool end_inside = end > region_start && end <= region_end;
+
+    if (start_inside || end_inside) {
+      in_range.push(r);
+    }
+
+    if (va < region_start) {
+      n = &((*n)->rb_left);
+    } else if (va >= region_end) {
+      n = &((*n)->rb_right);
+    } else {
+      break;
+    }
+  }
+
+  return in_range;
+}
 
 mm::MappedRegion *mm::AddressSpace::lookup(off_t va) {
+  auto in_range = lookup_range(va, 4096);
+  if (in_range.size() > 1) {
+    printf("Looking for %p, found:\n", va);
+    for (auto *range : in_range) {
+      printf(" - %p .. %p, off=%lx\n", range->va, range->va + range->len, va - range->va);
+    }
+  }
+
+
+  //
   struct rb_node **n = &(regions.rb_node);
   struct rb_node *parent = NULL;
 
@@ -89,7 +139,7 @@ mm::MappedRegion *mm::AddressSpace::lookup(off_t va) {
     } else if (va >= end) {
       n = &((*n)->rb_right);
     } else {
-      // printf("va: %p, found in %d steps\n", va, steps);
+			assert(in_range.size() == 1);
       return r;
     }
   }
@@ -348,6 +398,8 @@ off_t mm::AddressSpace::mmap(ck::string name, off_t addr, size_t size, int prot,
 
   if (addr == 0) {
     addr = find_hole(round_up(size, 4096));
+  } else {
+    //
   }
 
   off_t pages = round_up(size, 4096) / 4096;

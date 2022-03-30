@@ -255,6 +255,8 @@ namespace mm {
     inline auto get_pt(void) { return pt; }
     void switch_to();
     mm::MappedRegion *lookup(off_t va);
+    // return all the regions that intersect a range of pages starting at `va`
+    ck::vec<mm::MappedRegion *> lookup_range(off_t va, size_t bytes);
 
     int delete_region(off_t va);
     int pagefault(off_t va, int err);
