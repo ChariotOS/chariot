@@ -155,11 +155,13 @@ namespace mm {
    public:
     PageTable(void);
     virtual ~PageTable(void);
-    virtual bool switch_to(void) = 0;
 
+    virtual bool switch_to(void) = 0;
     virtual int add_mapping(off_t va, struct pte &) = 0;
     virtual int get_mapping(off_t va, struct pte &) = 0;
     virtual int del_mapping(off_t va) = 0;
+		virtual void transaction_begin(const char *reason = "unknown") {}
+		virtual void transaction_commit() {}
 
     void *translate(off_t);
 
@@ -320,31 +322,31 @@ namespace mm {
     void dump();
 
     int is_kspace = 0;
-    int schedule_mapping(off_t va, off_t pa, int prot);
     off_t find_hole(size_t size);
 
 
+
+
+    spinlock lock;
+    rb_root regions;
+
+	 protected:
+
+		uint64_t pagefaults = 0;
+#ifdef CONFIG_MEMORY_PREFETCH
+		// predictive page faulting stuff
+		off_t predict_next = 0;
+		uint64_t predict_i = 0;
+#define PREDICT_I_MAX 9
+#endif
+		uint64_t predict_hits = 0;
+		uint64_t predict_misses = 0;
 
     // expects nothing to be locked
     ck::ref<mm::Page> get_page(off_t uaddr);
     // expects the area, and space to be locked
     ck::ref<mm::Page> get_page_internal(off_t uaddr, mm::MappedRegion &area, int pagefault_err, bool do_map);
 
-    spinlock lock;
-    rb_root regions;
-    // ck::vec<mm::area *> regions;
-
-    struct pending_mapping {
-      off_t va;
-      off_t pa;
-      int prot;
-    };
-
-    unsigned long revision;
-    unsigned long kmem_revision;
-    ck::vec<pending_mapping> pending_mappings;
-
-	 protected:
 		struct RegionCacheEntry {
 			mm::MappedRegion *region = NULL;
 			uint64_t last_used = 0;

@@ -1,6 +1,5 @@
 #include <arch.h>
 #include <cpu.h>
-#include <paging.h>
 #include <pit.h>
 #include <printf.h>
 #include <sched.h>
@@ -361,7 +360,11 @@ static void pgfault_handle(int i, reg_t *regs) {
       // TODO
     }
 
+    // auto start = arch_read_timestamp();
     int res = proc->mm->pagefault((off_t)page, err);
+    // auto end = arch_read_timestamp();
+    // printf("%lu cyc\n", end - start);
+
     if (res == -1) handle_fatal("Segmentation Violation", SIGSEGV, regs);
   } else {
     panic("page fault in kernel code (no proc)\n");

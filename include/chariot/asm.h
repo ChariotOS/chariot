@@ -134,7 +134,9 @@ extern "C" {
 #define TB (1024LL * GB)
 
 #define round_up(x, y) (((x) + (y)-1) & ~((y)-1))
-#define for_range(var, start, end) for (auto var = start; var < (end); var++)
+#define FR_CHK(var, start, end) ((start) < (end)) ? (var < (end)) : (var >= (end))
+#define FR_INC(var, start, end) var = ((start) < (end)) ? (var + 1) : (var - 1)
+#define for_range(var, start, end) for (auto __s = (start), __e = (end), var = __s; FR_CHK(var, __s, __e); FR_INC(var, __s, __e))
 
 
 /* Flag is set? */

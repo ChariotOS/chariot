@@ -2,11 +2,11 @@
 #include <mem.h>
 #include <mm.h>
 #include <multiboot2.h>
-#include <paging.h>
 #include <phys.h>
 #include <types.h>
 #include <util.h>
 #include <module.h>
+#include <x86/mm.h>
 
 #define round_down(x, y) ((x) & ~((y)-1))
 
@@ -37,28 +37,14 @@ u64 *kernel_page_table = boot_p4;
 
 int kmem_revision = 0;
 
-namespace x86 {
-  class pagetable : public mm::PageTable {
-    u64 *pml4;
-
-    spinlock lock;
-
-   public:
-    pagetable(u64 *pml4);
-    virtual ~pagetable();
-
-    virtual bool switch_to(void) override;
-
-    virtual int add_mapping(off_t va, struct mm::pte &) override;
-    virtual int get_mapping(off_t va, struct mm::pte &) override;
-    virtual int del_mapping(off_t va) override;
-  };
-}  // namespace x86
 
 
-x86::pagetable::pagetable(u64 *pml4) : pml4(pml4) {
+static ck::atom<uint64_t> next_ptid = 0;
+x86::PageTable::PageTable(u64 *pml4) : pml4(pml4) {
   auto kptable = (u64 *)p2v(kernel_page_table);
   auto pptable = (u64 *)p2v(pml4);
+
+  this->ptid = next_ptid++;
 
   // TODO: do this with pagefaults instead
   // TODO: maybe flush the tlb if it changes?
@@ -69,9 +55,9 @@ x86::pagetable::pagetable(u64 *pml4) : pml4(pml4) {
     }
   }
 }
-x86::pagetable::~pagetable(void) { paging::free_table(pml4); }
+x86::PageTable::~PageTable(void) { x86::free_table(pml4); }
 
-bool x86::pagetable::switch_to(void) {
+bool x86::PageTable::switch_to(void) {
   // scoped_irqlock l(lock);
   auto kptable = (u64 *)p2v(kernel_page_table);
   auto pptable = (u64 *)p2v(pml4);
@@ -83,35 +69,14 @@ bool x86::pagetable::switch_to(void) {
 
 ck::ref<mm::PageTable> mm::PageTable::create() {
   u64 *pml4 = (u64 *)p2v(phys::alloc(1));
-  return ck::make_ref<x86::pagetable>(pml4);
-}
-
-int x86::pagetable::add_mapping(off_t va, struct mm::pte &p) {
-  scoped_irqlock l(lock);
-  int flags = PTE_P;
-  // TOOD: if (p.prot | PROT_READ)
-  if (va < CONFIG_KERNEL_VIRTUAL_BASE) flags |= PTE_U;
-  if (p.prot & PROT_WRITE) flags |= PTE_W;
-  if ((p.prot & PROT_EXEC) == 0) flags |= PTE_NX;
-
-  if (p.nocache) {
-    // printf("nocache\n");
-    flags |= PTE_D;
-  }
-  if (p.writethrough) {
-    // printf("writethrough\n");
-    flags |= PTE_PWT;
-  }
-
-  map_into(pml4, va, p.ppn << 12, paging::pgsize::page, flags);
-
-  return 0;
+  return ck::make_ref<x86::PageTable>(pml4);
 }
 
 
-int x86::pagetable::get_mapping(off_t va, struct mm::pte &r) {
+
+int x86::PageTable::get_mapping(off_t va, struct mm::pte &r) {
   scoped_irqlock l(lock);
-  off_t pte = *paging::find_mapping(pml4, va, paging::pgsize::page);
+  off_t pte = *x86::find_mapping(pml4, va, x86::pgsize::page);
 
   r.prot = PROT_READ;
   if (pte & PTE_W) r.prot |= PROT_WRITE;
@@ -123,21 +88,76 @@ int x86::pagetable::get_mapping(off_t va, struct mm::pte &r) {
 }
 
 
-int x86::pagetable::del_mapping(off_t va) {
-  scoped_irqlock l(lock);
-  *paging::find_mapping(pml4, va, paging::pgsize::page) = 0;
+int x86::PageTable::del_mapping(off_t va) {
+  // scoped_irqlock l(lock);
+	assert(in_transaction);
+  *x86::find_mapping(pml4, va, x86::pgsize::page) = 0;
   flush_tlb_single(va);
   return 0;
 }
 
-const char *mem_region_types[] = {
-    [0] = "unknown",
-    [MULTIBOOT_MEMORY_AVAILABLE] = "usable RAM",
-    [MULTIBOOT_MEMORY_RESERVED] = "reserved",
-    [MULTIBOOT_MEMORY_ACPI_RECLAIMABLE] = "ACPI reclaimable",
-    [MULTIBOOT_MEMORY_NVS] = "non-volatile storage",
-    [MULTIBOOT_MEMORY_BADRAM] = "bad RAM",
-};
+
+int x86::PageTable::add_mapping(off_t va, struct mm::pte &p) {
+	assert(in_transaction);
+  pending_mappings.push({.va = va, .pte = p});
+  return 0;
+}
+
+void x86::PageTable::transaction_begin(const char *reason) {
+  lock.lock();
+	tx_reason = reason;
+	in_transaction = true;
+  // printf(">>> %d %s tx begin\n", ptid, tx_reason);
+}
+
+void x86::PageTable::transaction_commit() {
+  for (auto &pm : pending_mappings) {
+		auto va = pm.va;
+		auto &p = pm.pte;
+    uint64_t flags = PTE_P;
+    // TOOD: if (p.prot | PROT_READ)
+    if (va < CONFIG_KERNEL_VIRTUAL_BASE) flags |= PTE_U;
+    if (p.prot & PROT_WRITE) flags |= PTE_W;
+    if ((p.prot & PROT_EXEC) == 0) {
+      flags |= PTE_NX;
+    }
+
+    if (p.nocache) {
+      flags |= PTE_D;
+    }
+    if (p.writethrough) {
+      flags |= PTE_PWT;
+    }
+
+		// printf("... %d %s map %p\n", ptid, tx_reason, va);
+    map_into(pml4, va, p.ppn << 12, x86::pgsize::page, flags);
+  }
+  pending_mappings.clear();
+
+	in_transaction = false;
+  // printf("<<< %d %s tx commit\n\n", ptid, tx_reason);
+	tx_reason = NULL;
+  lock.unlock();
+}
+
+
+
+static const char *mem_region_types(int type) {
+  switch (type) {
+    case MULTIBOOT_MEMORY_AVAILABLE:
+      return "usable RAM";
+    case MULTIBOOT_MEMORY_RESERVED:
+      return "reserved";
+    case MULTIBOOT_MEMORY_ACPI_RECLAIMABLE:
+      return "ACPI reclaimable";
+    case MULTIBOOT_MEMORY_NVS:
+      return "non-volatile storage";
+    case MULTIBOOT_MEMORY_BADRAM:
+      return "bad RAM";
+    default:
+      return "UNKNOWN";
+  }
+}
 
 
 
@@ -184,7 +204,7 @@ void arch_mem_init(unsigned long mbd) {
     memory_map[n].len = end - start;
     memory_map[n].type = mmap->type;
 
-    KINFO("mem: [0x%p-0x%p] %s\n", start, end, mem_region_types[mmap->type]);
+    KINFO("mem: [0x%p-0x%p] %s\n", start, end, mem_region_types(mmap->type));
 
     total_mem += end - start;
 
@@ -253,7 +273,7 @@ void arch_mem_init(unsigned long mbd) {
 
 ksh_def("mmap", "display the physical memory map of the system (only includes usable ram)") {
   for (int i = 0; i < memory_map_count; i++) {
-    KINFO("mem: [0x%p-0x%p] %s\n", memory_map[i].addr, memory_map[i].addr + memory_map[i].len, mem_region_types[memory_map[i].type]);
+    KINFO("mem: [0x%p-0x%p] %s\n", memory_map[i].addr, memory_map[i].addr + memory_map[i].len, mem_region_types(memory_map[i].type));
   }
 
   return 0;
@@ -263,7 +283,7 @@ mm::AddressSpace *kspace;
 
 mm::AddressSpace &mm::AddressSpace::kernel_space(void) {
   if (kspace == NULL) {
-    auto kptable = ck::make_ref<x86::pagetable>(kernel_page_table);
+    auto kptable = ck::make_ref<x86::PageTable>(kernel_page_table);
     kspace = new mm::AddressSpace(CONFIG_KERNEL_VIRTUAL_BASE, CONFIG_KERNEL_VIRTUAL_BASE + 0x100000000, kptable);
     kspace->is_kspace = 1;
   }

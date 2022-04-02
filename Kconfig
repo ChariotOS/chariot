@@ -89,6 +89,9 @@ menu "Config"
 		bool "Proc Filesystem"
 		default y
 
+	config MEMORY_PREFETCH
+		bool "Predict access patterns and prefetch pages"
+		default y
 
 	config TOP_DOWN
 		bool "Allocate memory from the top of the address space down"

@@ -231,8 +231,8 @@ static void vga_char_scribe(int x, int y, struct vc_cell *cell, int flags) {
   auto ch = (uint16_t *)vga_font.data + (c * FONT_HEIGHT);
   x = EDGE_MARGIN + x * FONT_WIDTH;
   y = EDGE_MARGIN + y * LINE_HEIGHT;
-  int fg = fg_colors[attr & 0xF];
-  int bg = bg_colors[(attr >> 4) & 0xF];
+  int fg = fg_colors[attr & 0x7];
+  int bg = bg_colors[(attr >> 4) & 0x7];
 
   // flip around the colors for the block cursor
   if (flags & VC_SCRIBE_CURSOR) {

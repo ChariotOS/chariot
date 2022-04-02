@@ -5,7 +5,6 @@
 #include <ck/func.h>
 #include <idt.h>
 #include <mem.h>
-#include <paging.h>
 #include <phys.h>
 #include <pit.h>
 #include <time.h>
@@ -102,7 +101,7 @@ smp::mp::mp_table_entry_ioapic *ioapic_entry = NULL;
 static smp::mp::mp_float_ptr_struct *find_mp_floating_ptr(void) {
   auto *cursor = (uint32_t *)p2v(BASE_MEM_LAST_KILO);
 
-  while ((uint64_t)cursor < (uint64_t)p2v(BASE_MEM_LAST_KILO) + PAGE_SIZE) {
+  while ((uint64_t)cursor < (uint64_t)p2v(BASE_MEM_LAST_KILO) + PGSIZE) {
     if (*cursor == smp::mp::flt_signature) {
       return (smp::mp::mp_float_ptr_struct *)cursor;
     }

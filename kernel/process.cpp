@@ -12,7 +12,6 @@
 #include <chan.h>
 #include <lock.h>
 #include <mem.h>
-#include <paging.h>
 #include <phys.h>
 #include <sched.h>
 #include <syscall.h>

@@ -5,7 +5,7 @@
 #define rvboot __attribute__((section(".boot.text")))
 #define rvdata __attribute__((section(".boot.data")))
 
-
+#if 0
 
 extern "C" {
 extern rv::xsize_t kernel_page_table[4096 / sizeof(rv::xsize_t)];
@@ -36,3 +36,4 @@ extern "C" rvboot void setup_pagetables(rv::xsize_t *kpt) {
   }
   return;
 }
+#endif

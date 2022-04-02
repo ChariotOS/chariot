@@ -4,12 +4,13 @@
 #include <mm.h>
 #include <phys.h>
 #include <syscall.h>
+#include <time.h>
 
 mm::AddressSpace::AddressSpace(off_t lo, off_t hi, ck::ref<mm::PageTable> pt) : pt(pt), lo(lo), hi(hi) {}
 
 
 mm::AddressSpace::~AddressSpace(void) {
-  printf("mm: hits: %lu, misses: %lu\n", cache_hits, cache_misses);
+  printf("mm: faults: %lu, hits: %lu, misses: %lu\n", pagefaults, predict_hits, predict_misses);
   mm::MappedRegion *n, *node;
   rbtree_postorder_for_each_entry_safe(node, n, &regions, node) { delete node; }
 }
@@ -82,6 +83,8 @@ size_t mm::AddressSpace::copy_out(off_t byte_offset, void *dst, size_t size) {
 
   return read;
 }
+
+
 ck::vec<mm::MappedRegion *> mm::AddressSpace::lookup_range(off_t va, size_t sz) {
   ck::vec<mm::MappedRegion *> in_range;
 
@@ -209,6 +212,8 @@ static void xcall_flush(mm::AddressSpace *space, off_t va, size_t pages) {
 
 int mm::AddressSpace::pagefault(off_t va, int err) {
   scoped_lock l(this->lock);
+	pagefaults++;
+  va &= ~0xFFF;
   auto r = lookup(va);
 
   if (!r) return -1;
@@ -225,13 +230,38 @@ int mm::AddressSpace::pagefault(off_t va, int err) {
 
   if (fault_res == 0) {
     // handle the fault in the region
+    pt->transaction_begin("pflt");
     auto page = get_page_internal(va, *r, err, true);
+
+#if CONFIG_MEMORY_PREFETCH
+    predict_i = min(predict_i + 1, PREDICT_I_MAX);
+
+    if (va == 0 || va != predict_next) {
+      predict_i = 0;
+			predict_misses++;
+    } else {
+			predict_hits++;
+		}
+
+    off_t skip = (1 << predict_i) - 1;
+    if (page && skip > 0) {
+      for (int i = 0; i < skip; i++) {
+        off_t addr = va + (i + 1) * PGSIZE;
+        if (get_page_internal(addr, *r, FAULT_READ, true).is_null()) {
+          break;
+        }
+      }
+    }
+    // Predict that the next fault will be caused by predict_next
+    predict_next = va + ((1 << predict_i) * PGSIZE);
+#endif
+    pt->transaction_commit();
     if (!page) return -1;
   }
 
   // xcall_flush(this, va, 1);
 
-  // printf_nolock("pgfault: %d, %p, %llu, %llu\n", curthd->tid, va, start, arch_read_timestamp() - start);
+  // printf_nolock("pgfault: %dpfltu, %llu\n", curthd->tid, va, start, arch_read_timestamp() - start);
   return 0;
 }
 
@@ -246,7 +276,9 @@ ck::ref<mm::Page> mm::AddressSpace::get_page(off_t uaddr) {
 
 
   r->lock.lock();
-  auto pg = get_page_internal(uaddr, *r, 0, false);
+  pt->transaction_begin("get_page");
+  auto pg = get_page_internal(uaddr, *r, 0, true);
+  pt->transaction_commit();
   r->lock.unlock();
   return pg;
 }
@@ -258,10 +290,14 @@ ck::ref<mm::Page> mm::AddressSpace::get_page_internal(off_t uaddr, mm::MappedReg
   struct mm::pte pte;
   pte.prot = r.prot;
 
+
+  // if the page was allocated as a fresh anon page, don't cause a COW fault later
+  bool maybe_shared = true;
   bool display = false;
 
   // the page index within the region
   auto ind = (uaddr >> 12) - (r.va >> 12);
+  if (ind >= r.mappings.size()) return nullptr;
 
   if (r.mappings[ind].is_null()) {
     bool got_from_vmobj = false;
@@ -277,7 +313,10 @@ ck::ref<mm::Page> mm::AddressSpace::get_page_internal(off_t uaddr, mm::MappedReg
     if (!page && got_from_vmobj) panic("failed!\n");
 
     // anonymous mapping
-    if (!page) page = mm::Page::alloc();
+    if (!page) {
+      page = mm::Page::alloc();
+      maybe_shared = false;
+    }
 
     pte.nocache = page->fcheck(PG_NOCACHE);
     pte.writethrough = page->fcheck(PG_WRTHRU);
@@ -285,12 +324,12 @@ ck::ref<mm::Page> mm::AddressSpace::get_page_internal(off_t uaddr, mm::MappedReg
     r.mappings[ind].set_page(page);
   }
 
-	auto page = r.mappings[ind];
+  auto page = r.mappings[ind];
 
 
   // If the fault was due to a write, and this region
   // is writable, handle COW if needed
-  if ((err & FAULT_WRITE) && (r.prot & PROT_WRITE)) {
+  if (maybe_shared && (err & FAULT_WRITE) && (r.prot & PROT_WRITE)) {
     pte.prot |= PROT_WRITE;
 
     // a shared mapping
@@ -309,7 +348,7 @@ ck::ref<mm::Page> mm::AddressSpace::get_page_internal(off_t uaddr, mm::MappedReg
         if (display) printf(KERN_WARN "[pid=%d] COW [page %d in '%s'] %p\n", curthd->pid, ind, r.name.get(), uaddr);
         memcpy(p2v(np->pa()), p2v(old_page->pa()), PGSIZE);
         r.mappings[ind] = np;
-				page = np;
+        page = np;
       }
 
       old_page->unlock();
@@ -322,6 +361,8 @@ ck::ref<mm::Page> mm::AddressSpace::get_page_internal(off_t uaddr, mm::MappedReg
     pte.ppn = page->pa() >> 12;
     auto va = (r.va + (ind << 12));
     pt->add_mapping(va, pte);
+  } else {
+    printf("DONT MAP\n");
   }
 
   return page.get();
@@ -358,6 +399,9 @@ unsigned long sys::getramusage() { return curproc->mm->memory_usage(); }
 mm::AddressSpace *mm::AddressSpace::fork(void) {
   auto npt = mm::PageTable::create();
   auto *n = new mm::AddressSpace(lo, hi, npt);
+
+  pt->transaction_begin("fork source");
+  npt->transaction_begin("fork target");
 
   scoped_lock self_lock(lock);
 
@@ -405,6 +449,9 @@ mm::AddressSpace *mm::AddressSpace::fork(void) {
 
     n->add_region(copy);
   }
+
+  npt->transaction_commit();
+  pt->transaction_commit();
 
 
   return n;
@@ -490,13 +537,14 @@ int mm::AddressSpace::unmap(off_t ptr, size_t ulen) {
   }
 
   rb_erase(&region->node, &regions);
-
+  pt->transaction_begin();
   for (int i = 0; i < region->mappings.size(); i++) {
     off_t addr = va + (i * 4096);
     if (!region->mappings[i].is_null()) {
       pt->del_mapping(addr);
     }
   }
+  pt->transaction_commit();
 
   delete region;
 
@@ -530,11 +578,6 @@ bool mm::AddressSpace::validate_pointer(void *raw_va, size_t len, int mode) {
 }
 
 bool mm::AddressSpace::validate_string(const char *str) { return validate_null_terminated(str); }
-
-int mm::AddressSpace::schedule_mapping(off_t va, off_t pa, int prot) {
-  pending_mappings.push({.va = va, .pa = pa, .prot = prot});
-  return 0;
-}
 
 
 void mm::AddressSpace::dump(void) {

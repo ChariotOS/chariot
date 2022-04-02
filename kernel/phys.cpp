@@ -3,7 +3,6 @@
 #include <fs.h>
 #include <lock.h>
 #include <mem.h>
-#include <paging.h>
 #include <phys.h>
 #include <printf.h>
 #include <time.h>
@@ -61,6 +60,7 @@ static frame *working_addr(frame *fr) { return (frame *)p2v(fr); }
 
 
 static void *late_phys_alloc(size_t npages) {
+
   frame *p = NULL;
   frame *c = (frame *)p2v(kmem.freelist);
 
@@ -87,9 +87,11 @@ static void *late_phys_alloc(size_t npages) {
     c->page_len -= npages;
     a = (void *)((char *)c + c->page_len * PGSIZE);
   }
-
-  // zero out the page(s)
-  memset(p2v(a), 0x00, npages * PGSIZE);
+  // zero out the page(s). This is relatively expensive
+	uint64_t *buf = (uint64_t*)p2v(a);
+	for (off_t i = 0; i < npages * PGSIZE / sizeof(uint64_t); i++) {
+		buf[i] = 0;
+	}
   kmem.nfree -= npages;
 
   return v2p(a);

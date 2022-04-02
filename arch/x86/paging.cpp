@@ -1,6 +1,6 @@
 #include <asm.h>
 #include <mem.h>
-#include <paging.h>
+#include <x86/mm.h>
 #include <phys.h>
 #include <printf.h>
 #include <types.h>
@@ -8,41 +8,26 @@
 
 // #define PAGING_DEBUG
 
-#ifdef PAGING_DEBUG
-#define INFO(fmt, args...) printf("[PAGING] " fmt, ##args)
-#else
-#define INFO(fmt, args...)
-#endif
-
 static inline void flush_tlb_single(u64 addr) { __asm__ volatile("invlpg (%0)" ::"r"(addr) : "memory"); }
 
-u64 *alloc_page_dir(void) {
-  auto new_table = (u64 *)phys::alloc();
-  INFO("new_table = %p\n", new_table);
-
-  auto va = (uint64_t *)p2v(new_table);
-
-  for (int i = 0; i < 512; i++)
-    va[i] = 0;
-  return new_table;
-}
+u64 *alloc_page_dir(void) { return (u64 *)phys::alloc(); }
 
 static void assert_page_size_alignment(u64 addr, u64 psize, const char *str) {
   if ((addr & (psize - 1)) != 0) {
     panic("[PAGING] address %p is not aligned correctly for %s mapping\n", addr, str);
   }
 }
-static void assert_page_alignment(u64 addr, paging::pgsize size) {
+static void assert_page_alignment(u64 addr, x86::pgsize size) {
   switch (size) {
-    case paging::pgsize::page:
+    case x86::pgsize::page:
       assert_page_size_alignment(addr, PAGE_SIZE, "4kb");
       break;
 
-    case paging::pgsize::large:
+    case x86::pgsize::large:
       assert_page_size_alignment(addr, LARGE_PAGE_SIZE, "2mb");
       break;
 
-    case paging::pgsize::huge:
+    case x86::pgsize::huge:
       assert_page_size_alignment(addr, HUGE_PAGE_SIZE, "1gb");
       break;
     default:
@@ -50,12 +35,12 @@ static void assert_page_alignment(u64 addr, paging::pgsize size) {
   }
 }
 
-static u64 size_flag(paging::pgsize size) {
+static u64 size_flag(x86::pgsize size) {
   u64 flags = 0;
 
   switch (size) {
-    case paging::pgsize::large:
-    case paging::pgsize::huge:
+    case x86::pgsize::large:
+    case x86::pgsize::huge:
       flags |= PTE_PS;
       break;
 
@@ -77,18 +62,16 @@ static inline u64 *paging_p2v(u64 *pa) {
 // return the ith page table index for a virtual address
 #define pti(va, i) ((((u64)va >> 12) >> (9 * i)) & 0777)
 
-u64 *paging::find_mapping(u64 *pml4, u64 va, pgsize size) {
-  INFO("============================================\n");
+u64 *x86::find_mapping(u64 *pml4, u64 va, pgsize size) {
   assert_page_alignment(va, size);
-
   int depth;
 
   switch (size) {
-    case paging::pgsize::large:
+    case x86::pgsize::large:
       depth = 1;
       break;
 
-    case paging::pgsize::huge:
+    case x86::pgsize::huge:
       depth = 2;
       break;
 
@@ -97,19 +80,12 @@ u64 *paging::find_mapping(u64 *pml4, u64 va, pgsize size) {
       break;
   }
 
-  INFO("depth = %d\n", depth);
-
-  // KINFO("find_mapping: %p: %d %d %d %d\n", va, pti(va, 3), pti(va, 2), pti(va, 1), pti(va, 0));
-
   u64 *table = conv(pml4);
-
-  INFO("table[4] = %p\n", table);
 
   for (int i = 3; i > depth; i--) {
     int ind = pti(va, i);
     if (!(table[ind] & 1)) {
       u64 *new_table = alloc_page_dir();
-      INFO("new_table = %p\n", new_table);
 
       int pflags = PTE_P | PTE_W;
       if (va < CONFIG_KERNEL_VIRTUAL_BASE) {
@@ -118,19 +94,15 @@ u64 *paging::find_mapping(u64 *pml4, u64 va, pgsize size) {
       table[ind] = (u64)(new_table) | pflags;
     }
 
-    INFO("table(%p)[%d, ind=%d] = %p\n", table, i, ind, table[ind]);
-
     table = paging_p2v(conv(table[ind]));
   }
 
   u64 ind = pti(va, depth);
-  INFO("index: %llu\n", ind);
-  INFO("============================================\n");
 
   return &table[ind];
 }
 
-void paging::dump_page_table(u64 *p4) {
+void x86::dump_page_table(u64 *p4) {
   for_range(i, 0, 512) {
     u64 entry = p4[i];
     if (entry & PTE_P) {
@@ -139,29 +111,35 @@ void paging::dump_page_table(u64 *p4) {
   }
 }
 
-void paging::map_into(u64 *p4, u64 va, u64 pa, pgsize size, u16 flags) {
+#define NOISE_BITS 8
+#define BITS(N) ((1 << (N)) - 1)
+
+
+
+
+void x86::map_into(u64 *p4, u64 va, u64 pa, pgsize size, u64 flags) {
+  static uint64_t i = 0;
   u64 *pte = find_mapping(p4, va, size);
-  if (*pte & PTE_P) {
-    // printf("REMAP!\n");
-  }
 
-  *pte = (pa & ~0xFFF) | flags | size_flag(size);
+  uint64_t noise = (i++) & BITS(NOISE_BITS);
 
-  INFO("size_flag = %016x\n", size_flag(size));
+  *pte = (pa & ~0xFFF) | flags | size_flag(size) | (noise << (64 - 1 - NOISE_BITS));
+	/*
+	for_range(i, 63, 0) {
+		printf("%d", ((*pte) >> i) & 0b1);
+	}
+  printf(" %p -> %llp %*b\n", va, *pte, NOISE_BITS, noise);
+	*/
 
-  INFO("pte: %p = %p\n", pte, *pte);
-
-  INFO("\n\n");
   flush_tlb_single(va);
 }
 
-void paging::map(u64 va, u64 pa, pgsize size, u16 flags) {
+void x86::map(u64 va, u64 pa, pgsize size, u64 flags) {
   auto p4 = (u64 *)p2v(read_cr3());
-  // printf("mapping %p %p (%d)\n", va, pa, size);
-  return paging::map_into(p4, va, pa, size, flags);
+  return x86::map_into(p4, va, pa, size, flags);
 }
 
-u64 paging::get_physical(u64 va) { return 0; }
+u64 x86::get_physical(u64 va) { return 0; }
 
 static void free_p2(off_t *p2_p) {
   off_t *p2 = (off_t *)p2v(p2_p);
@@ -198,7 +176,7 @@ static void free_p3(off_t *p3_p) {
   phys::free(p3_p);
 }
 
-void paging::free_table(void *cr3) {
+void x86::free_table(void *cr3) {
   off_t *pml4 = (off_t *)p2v(cr3);
   // only loop over the lower half (userspace)
   for (int i = 0; i < 272; i++) {
