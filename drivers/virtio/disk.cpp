@@ -6,7 +6,7 @@
 DECLARE_STUB_DRIVER("virtio-mmio-disk", virtio_mmio_disk_driver)
 
 VirtioMMIODisk::VirtioMMIODisk(volatile uint32_t *regs) : virtio_mmio_dev(regs), dev::Disk(virtio_mmio_disk_driver) {
-  set_block_count(config().blk_size);
+  set_block_size(config().blk_size);
   set_block_count(config().capacity);
 }
 
@@ -53,7 +53,7 @@ void VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
    * that we know is physically contiguous. Just use malloc for this, as it's physically
    * contiguous (for now) TODO: be smart later :^)
    */
-	printf("read/write\n");
+	printf("read/write blk=%d\n", sector);
   void *tmp_buf = malloc(block_size());
 
   if (write) memcpy(tmp_buf, data, block_size());
@@ -149,6 +149,7 @@ void VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
     __sync_synchronize();
     loops++;
   }  // device writes 0 on success
+	printf("loops=%d\n", loops);
 
   info[first_index].data = NULL;
 
