@@ -5,13 +5,13 @@
 
 DECLARE_STUB_DRIVER("virtio-mmio-disk", virtio_mmio_disk_driver)
 
-virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(regs), dev::Disk(virtio_mmio_disk_driver) {
+VirtioMMIODisk::VirtioMMIODisk(volatile uint32_t *regs) : virtio_mmio_dev(regs), dev::Disk(virtio_mmio_disk_driver) {
   set_block_count(config().blk_size);
   set_block_count(config().capacity);
 }
 
 
-bool virtio_mmio_disk::initialize(const struct virtio_config &config) {
+bool VirtioMMIODisk::initialize(const struct virtio_config &config) {
   uint32_t status = 0;
 
   status |= VIRTIO_CONFIG_S_ACKNOWLEDGE;
@@ -46,13 +46,14 @@ bool virtio_mmio_disk::initialize(const struct virtio_config &config) {
   return true;
 }
 
-void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
+void VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
   /*
    * God knows where `data` points to. It could be a virtual address that can't be
    * easily converted to a physical one. For this reason, we need to allocate one
    * that we know is physically contiguous. Just use malloc for this, as it's physically
    * contiguous (for now) TODO: be smart later :^)
    */
+	printf("read/write\n");
   void *tmp_buf = malloc(block_size());
 
   if (write) memcpy(tmp_buf, data, block_size());
@@ -166,7 +167,7 @@ void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
 }
 
 
-void virtio_mmio_disk::irq(int ring_index, virtio::virtq_used_elem *e) {
+void VirtioMMIODisk::virtio_irq(int ring_index, virtio::virtq_used_elem *e) {
   // printf("dev %p, ring %u, e %p, id %u, len %u\n", this, ring_index, e, e->id, e->len);
 
   /* parse our descriptor chain, add back to the free queue */
@@ -193,20 +194,12 @@ void virtio_mmio_disk::irq(int ring_index, virtio::virtq_used_elem *e) {
 
 
 
-bool virtio_mmio_disk::read_blocks(uint32_t sector, void *data, int nsec) {
+int VirtioMMIODisk::read_blocks(uint32_t sector, void *data, int nsec) {
   disk_rw(sector, data, nsec, 0 /* read mode */);
   return true;
 }
 
-bool virtio_mmio_disk::write_blocks(uint32_t sector, const void *data, int nsec) {
+int VirtioMMIODisk::write_blocks(uint32_t sector, const void *data, int nsec) {
   disk_rw(sector, (uint8_t *)data, nsec, 1 /* read mode */);
   return true;
 }
-
-// size_t virtio_mmio_disk::block_size(void) {
-//   return config().blk_size;
-// }
-
-// size_t virtio_mmio_disk::block_count(void) {
-//   return config().capacity;
-// }

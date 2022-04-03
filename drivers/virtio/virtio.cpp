@@ -12,6 +12,9 @@
 
 #include "internal.h"
 
+
+#define VIRTIO_DEBUG(...) PFXLOG(GRN "VIRTIO", __VA_ARGS__)
+
 #ifdef X86
 void virtio_pci_init(void) {
   return;
@@ -208,7 +211,7 @@ void virtio_mmio_dev::irq(void) {
         // LTRACEF("id %u, len %u\n", used_elem->id, used_elem->len);
 
         // DEBUG_ASSERT(dev->irq_driver_callback);
-        this->irq(r, used_elem);
+        this->virtio_irq(r, used_elem);
         ring->last_used = (ring->last_used + 1) & ring->num_mask;
       }
     }
@@ -264,6 +267,15 @@ virtio::virtq_desc *virtio_mmio_dev::alloc_desc_chain(int ring_index, int count,
   return last;
 }
 
+class VirtioMMIODriver : public dev::Driver {
+ public:
+  VirtioMMIODriver() { set_name("virtio-mmio"); }
+
+  dev::ProbeResult probe(ck::ref<hw::Device> dev) override;
+};
+
+static ck::ref<VirtioMMIODriver> virtio_driver = nullptr;
+
 
 int virtio::check_mmio(void *addr, int irq) {
   auto *regs = (volatile uint32_t *)p2v(addr);
@@ -281,32 +293,33 @@ int virtio::check_mmio(void *addr, int irq) {
 
 
   uint32_t dev_id = *REG(VIRTIO_MMIO_DEVICE_ID);
+	VIRTIO_DEBUG("dev_id = %d\n", dev_id);
   switch (dev_id) {
     case 0:
       return -ENODEV;
     /* virtio disk */
     case 2: {
-      printf(KERN_INFO "[VIRTIO] Disk Device at %p with irq %d\n", addr, irq);
-      dev = new virtio_mmio_disk(regs);
+      VIRTIO_DEBUG("Disk Device at %p with irq %d\n", addr, irq);
+      dev = new VirtioMMIODisk(regs);
       break;
     }
 
 
     case 16: {
-      printf(KERN_INFO "[VIRTIO] GPU Device at %p with irq %d\n", addr, irq);
+      VIRTIO_DEBUG("GPU Device at %p with irq %d\n", addr, irq);
       /* TODO: do something with this? */
-      dev = new virtio_mmio_gpu(regs);
+      // dev = new virtio_mmio_gpu(regs);
       break;
     }
 
     case 18: {
-      printf(KERN_INFO "[VIRTIO] Input Device at %p with irq %d\n", addr, irq);
+      VIRTIO_DEBUG("[VIRTIO] Input Device at %p with irq %d\n", addr, irq);
 
       dev = new virtio_mmio_input(regs);
       break;
     }
     default:
-      printf(KERN_WARN "[VIRTIO] No handler for device id %d at %p\n", dev_id, addr);
+      VIRTIO_DEBUG("No handler for device id %d at %p\n", dev_id, addr);
       return -ENODEV;
   }
 
@@ -320,3 +333,22 @@ int virtio::check_mmio(void *addr, int irq) {
 
   return 0;
 }
+
+
+dev::ProbeResult VirtioMMIODriver::probe(ck::ref<hw::Device> dev) { 
+  if (auto mmio = dev->cast<hw::MMIODevice>()) {
+		if (mmio->is_compat("virtio,mmio")) {
+			if (virtio::check_mmio((void*)mmio->address(), mmio->interrupt) >= 0) {
+				return dev::ProbeResult::Attach;
+			}
+		}
+	}
+	return dev::ProbeResult::Ignore;
+}
+
+static void virtio_init(void) {
+  virtio_driver = ck::make_ref<VirtioMMIODriver>();
+  dev::Driver::add(virtio_driver);
+}
+
+module_init("virtio-mmio", virtio_init);

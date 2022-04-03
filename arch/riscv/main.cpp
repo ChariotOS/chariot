@@ -161,7 +161,6 @@ class RISCVHart : public dev::CharDevice {
 
         auto hartid = mmio->address();
         bind(ck::string::format("core%d", hartid));
-        printf("FOUND HART %d\n", hartid);
         if (hartid != rv::get_hstate().hartid) {
           LOG("Trying to start hart %d\n", hartid);
 #ifdef CONFIG_SMP

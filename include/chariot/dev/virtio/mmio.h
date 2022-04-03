@@ -409,7 +409,7 @@ class virtio_mmio_dev {
   virtual bool initialize(const struct virtio_config &config) { return false; }
 
   void irq(void);
-  virtual void irq(int ring_index, virtio::virtq_used_elem *) {}
+  virtual void virtio_irq(int ring_index, virtio::virtq_used_elem *) {}
 
   int alloc_ring(int index, int len);
 

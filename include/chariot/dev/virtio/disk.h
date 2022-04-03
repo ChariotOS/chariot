@@ -6,7 +6,7 @@
 #include <dev/virtio/mmio.h>
 
 
-class virtio_mmio_disk : public virtio_mmio_dev, public dev::Disk {
+class VirtioMMIODisk : public virtio_mmio_dev, public dev::Disk {
   // track info about in-flight operations,
   // for use when completion interrupt arrives.
   // indexed by first descriptor index of chain.
@@ -22,8 +22,8 @@ class virtio_mmio_disk : public virtio_mmio_dev, public dev::Disk {
   spinlock vdisk_lock;
 
  public:
-  virtio_mmio_disk(volatile uint32_t *regs);
-  void irq(int ring_index, virtio::virtq_used_elem *) override;
+  VirtioMMIODisk(volatile uint32_t *regs);
+  void virtio_irq(int ring_index, virtio::virtq_used_elem *) override;
 
   void disk_rw(uint32_t sector, void *data, int n, int write);
 
