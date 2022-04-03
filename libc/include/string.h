@@ -18,6 +18,7 @@ void *memchr(const void *, int, size_t);
 
 char *strcpy(char *__restrict, const char *__restrict);
 char *strncpy(char *__restrict, const char *__restrict, size_t);
+size_t strlcpy(char *dst, const char *src, size_t dsize);
 
 char *strcat(char *dest, const char *src);
 char *strncat(char *d, const char *s, size_t n);

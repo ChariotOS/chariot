@@ -3,6 +3,8 @@
 #ifndef _STDLIB_H
 #define _STDLIB_H
 
+#include <sys/cdefs.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -41,7 +43,7 @@ unsigned long long malloc_allocated(void);
 
 int system(const char *);
 
-void exit(int status);
+__dead void exit(int status);
 int atexit(void (*function)(void));
 
 
@@ -90,6 +92,8 @@ int posix_memalign(void **memptr, size_t alignment, size_t size);
 void *bsearch(const void *key, const void *base, size_t nel, size_t width, int (*cmp)(const void *, const void *));
 
 
+
+extern const char *__progname;
 #ifdef __cplusplus
 }
 #endif

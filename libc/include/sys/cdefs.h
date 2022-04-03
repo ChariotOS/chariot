@@ -139,4 +139,49 @@
 
 
 
+/*
+ * GCC1 and some versions of GCC2 declare dead (non-returning) and
+ * pure (no side effects) functions using "volatile" and "const";
+ * unfortunately, these then cause warnings under "-ansi -pedantic".
+ * GCC >= 2.5 uses the __attribute__((attrs)) style.  All of these
+ * work for GNU C++ (modulo a slight glitch in the C++ grammar in
+ * the distribution version of 2.5.5).
+ */
+#if !__GNUC_PREREQ__(2, 5) && !defined(__PCC__)
+#define	__attribute__(x)	/* delete __attribute__ if non-gcc or gcc1 */
+#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
+#define	__dead		__volatile
+#define	__pure		__const
+#endif
+#else
+#define __dead		__attribute__((__noreturn__))
+#define __pure		__attribute__((__const__))
+#endif
+
+#if __GNUC_PREREQ__(2, 7)
+#define	__unused	__attribute__((__unused__))
+#else
+#define	__unused	/* delete */
+#endif
+
+#if __GNUC_PREREQ__(3, 1)
+#define	__used		__attribute__((__used__))
+#else
+#define	__used		__unused	/* suppress -Wunused warnings */
+#endif
+
+#if __GNUC_PREREQ__(3,4)
+# define __warn_unused_result	__attribute__((__warn_unused_result__))
+#else
+# define __warn_unused_result	/* delete */
+#endif
+
+#if __GNUC_PREREQ__(3,3) && !defined(__clang__)
+# define __bounded(args)	__attribute__ ((__bounded__ args ))
+#else
+# define __bounded(args)	/* delete */
+#endif
+
+
+
 #endif /* !_SYS_CDEFS_H_ */
