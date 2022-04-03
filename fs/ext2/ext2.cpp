@@ -56,7 +56,6 @@ ext2::FileSystem::FileSystem(void) { TRACE; }
 
 ext2::FileSystem::~FileSystem(void) {
   TRACE;
-  if (sb != nullptr) delete sb;
 }
 
 bool ext2::FileSystem::probe(ck::ref<dev::BlockDevice> bdev) {
@@ -66,14 +65,11 @@ bool ext2::FileSystem::probe(ck::ref<dev::BlockDevice> bdev) {
 
   sector_size = bdev->block_size();
 
-
-  sb = new superblock();
-  memset(sb, 0xFA, sizeof(*sb));
-
   disk = ck::make_box<fs::File>(bdev, 0);
   // read the superblock
   disk->seek(1024, SEEK_SET);
-  bool res = disk->read(sb, 1024);
+  bool res = disk->read((void*)&sb, sizeof(sb));
+	hexdump(&sb,sizeof(sb), true);
 
   if (!res) {
     printf("failed to read the superblock\n");
@@ -81,15 +77,15 @@ bool ext2::FileSystem::probe(ck::ref<dev::BlockDevice> bdev) {
   }
 
   // first, we need to make 100% sure this is actually a disk with ext2 on it...
-  if (sb->ext2_sig != 0xef53) {
+  if (sb.ext2_sig != 0xef53) {
     printf("Block device does not contain the ext2 signature\n");
     return false;
   }
 
 
-  sb->last_mount = time::now_ms() / 1000;
+  sb.last_mount = time::now_ms() / 1000;
   // solve for the filesystems block size
-  block_size = 1024 << sb->blocksize_hint;
+  block_size = 1024 << sb.blocksize_hint;
 
   if (block_size != 4096) {
     printf(KERN_WARN "ext2: blocksize is not 4096\n");
@@ -98,7 +94,7 @@ bool ext2::FileSystem::probe(ck::ref<dev::BlockDevice> bdev) {
 
   // the number of block groups can be found by rounding up the
   // blocks/blocks_per_group
-  blockgroups = ceil_div((int)sb->blocks, (int)sb->blocks_in_blockgroup);
+  blockgroups = ceil_div((int)sb.blocks, (int)sb.blocks_in_blockgroup);
 
 
   first_bgd = block_size == 1024 ? 2 : 1;
@@ -116,23 +112,23 @@ bool ext2::FileSystem::probe(ck::ref<dev::BlockDevice> bdev) {
 int ext2::FileSystem::write_superblock(void) {
   // TODO: lock
   disk->seek(1024, SEEK_SET);
-  return disk->write(sb, 1024);
+  return disk->write(&sb, 1024);
 }
 
 bool ext2::FileSystem::read_inode(ext2_inode_info &dst, u32 inode) {
   TRACE;
-  u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
+  u32 bg = (inode - 1) / sb.inodes_in_blockgroup;
   auto bgd_bb = bref::get(*bdev, first_bgd);
   auto *bgd = (block_group_desc *)bgd_bb->data() + bg;
 
   // find the index and seek to the inode
-  u32 index = (inode - 1) % sb->inodes_in_blockgroup;
-  u32 block = (index * sb->s_inode_size) / block_size;
+  u32 index = (inode - 1) % sb.inodes_in_blockgroup;
+  u32 block = (index * sb.s_inode_size) / block_size;
 
 
   auto inode_bb = bref::get(*bdev, bgd->inode_table + block);
 
-  auto *_inode = (ext2_inode_info *)inode_bb->data() + (index % (block_size / sb->s_inode_size));
+  auto *_inode = (ext2_inode_info *)inode_bb->data() + (index % (block_size / sb.s_inode_size));
 
   memcpy(&dst, _inode, sizeof(ext2_inode_info));
 
@@ -141,18 +137,18 @@ bool ext2::FileSystem::read_inode(ext2_inode_info &dst, u32 inode) {
 
 bool ext2::FileSystem::write_inode(ext2_inode_info &src, u32 inode) {
   TRACE;
-  u32 bg = (inode - 1) / sb->inodes_in_blockgroup;
+  u32 bg = (inode - 1) / sb.inodes_in_blockgroup;
 
   auto bgd_bb = bref::get(*bdev, first_bgd);
   auto *bgd = (block_group_desc *)bgd_bb->data() + bg;
 
   // find the index and seek to the inode
-  u32 index = (inode - 1) % sb->inodes_in_blockgroup;
-  u32 block = (index * sb->s_inode_size) / block_size;
+  u32 index = (inode - 1) % sb.inodes_in_blockgroup;
+  u32 block = (index * sb.s_inode_size) / block_size;
 
   auto inode_bb = bref::get(*bdev, bgd->inode_table + block);
 
-  auto *_inode = (ext2_inode_info *)inode_bb->data() + (index % (block_size / sb->s_inode_size));
+  auto *_inode = (ext2_inode_info *)inode_bb->data() + (index % (block_size / sb.s_inode_size));
 
   memcpy(_inode, &src, sizeof(ext2_inode_info));
   inode_bb->register_write();
@@ -188,13 +184,13 @@ long ext2::FileSystem::allocate_inode(void) {
       auto bitmap = (char *)bitmap_bb->data();
 
       int j = 0;
-      for (; j < sb->inodes_in_blockgroup && BLOCKBIT(bitmap, j); j++) {
+      for (; j < sb.inodes_in_blockgroup && BLOCKBIT(bitmap, j); j++) {
       }
       // evaluate to the actual inode number
-      res = j + i * sb->inodes_in_blockgroup + 1;
+      res = j + i * sb.inodes_in_blockgroup + 1;
       bitmap[j / 8] |= static_cast<u8>((1u << (j % 8)));
       bitmap_bb->register_write();
-      sb->unallocatedinodes--;
+      sb.unallocatedinodes--;
       bgd->num_of_unalloc_inode--;
       first_bgd_bb->register_write();
       write_superblock();
@@ -217,7 +213,7 @@ uint32_t ext2::FileSystem::balloc(void) {
   auto first_bgd_bb = bref::get(*bdev, first_bgd);
   auto *bgd = (block_group_desc *)first_bgd_bb->data();
 
-  auto blocks_in_group = sb->blocks_in_blockgroup;
+  auto blocks_in_group = sb.blocks_in_blockgroup;
 
 
   for (uint32_t bg_idx = 0; bg_idx < blockgroups; bg_idx++) {
@@ -237,9 +233,9 @@ uint32_t ext2::FileSystem::balloc(void) {
         if (words[i] & (1 << bit)) continue;
 
         block_no = (bg_idx * blocks_in_group) + (i * 32) + bit;
-        block_no += sb->first_data_block;
+        block_no += sb.first_data_block;
         bgd[bg_idx].num_of_unalloc_block--;
-        sb->unallocatedblocks--;
+        sb.unallocatedblocks--;
 
         assert(block_no);
         words[i] |= static_cast<uint32_t>(1) << bit;
@@ -268,13 +264,7 @@ uint32_t ext2::FileSystem::balloc(void) {
   return 0;
 }
 
-
-
-
 void ext2::FileSystem::bfree(uint32_t block) {
-  scoped_lock l(m_lock);
-
-  //
 }
 
 bool ext2::FileSystem::read_block(u32 block, void *buf) {

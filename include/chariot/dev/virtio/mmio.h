@@ -3,7 +3,7 @@
 
 #include <asm.h>
 #include <types.h>
-
+#include <dev/driver.h>
 
 namespace virtio {
 
@@ -408,7 +408,8 @@ class virtio_mmio_dev {
 
   virtual bool initialize(const struct virtio_config &config) { return false; }
 
-  void irq(void);
+	void register_virtio_irq(int irq);
+  void dispatch_virtio_irq();
   virtual void virtio_irq(int ring_index, virtio::virtq_used_elem *) {}
 
   int alloc_ring(int index, int len);

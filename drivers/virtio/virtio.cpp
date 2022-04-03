@@ -184,7 +184,7 @@ void virtio_mmio_dev::free_desc(int ring_index, int desc_index) {
 
 
 
-void virtio_mmio_dev::irq(void) {
+void virtio_mmio_dev::dispatch_virtio_irq() {
   // the device won't raise another interrupt until we tell it
   // we've seen this interrupt, which the following line does.
   // this may race with the device writing new entries to
@@ -225,8 +225,14 @@ void virtio_mmio_dev::irq(void) {
 
 
 void virtio_irq_handler(int i, reg_t *r, void *data) {
+	printf("irq handler\n");
   auto *dev = (virtio_mmio_dev *)data;
-  dev->irq();
+  dev->dispatch_virtio_irq();
+}
+
+void virtio_mmio_dev::register_virtio_irq(int irq) {
+	printf("register irq %d\n", irq);
+	irq::install(irq, virtio_irq_handler, "Virtio IRQ", this);
 }
 
 
@@ -293,7 +299,6 @@ int virtio::check_mmio(void *addr, int irq) {
 
 
   uint32_t dev_id = *REG(VIRTIO_MMIO_DEVICE_ID);
-	VIRTIO_DEBUG("dev_id = %d\n", dev_id);
   switch (dev_id) {
     case 0:
       return -ENODEV;

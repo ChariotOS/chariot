@@ -1,6 +1,7 @@
 #include <dev/virtio/mmio.h>
 #include "dev/driver.h"
 #include "internal.h"
+#include <sched.h>
 
 
 DECLARE_STUB_DRIVER("virtio-mmio-disk", virtio_mmio_disk_driver)
@@ -30,8 +31,7 @@ bool VirtioMMIODisk::initialize(const struct virtio_config &config) {
   features &= ~(1 << VIRTIO_RING_F_EVENT_IDX);
   features &= ~(1 << VIRTIO_RING_F_INDIRECT_DESC);
   write_reg(VIRTIO_MMIO_DRIVER_FEATURES, features);
-
-  irq::install(config.irqnr, virtio_irq_handler, "virtio disk", (void *)this);
+  register_virtio_irq(config.irqnr);
 
   // tell device that feature negotiation is complete.
   status |= VIRTIO_CONFIG_S_FEATURES_OK;
@@ -47,19 +47,26 @@ bool VirtioMMIODisk::initialize(const struct virtio_config &config) {
 }
 
 void VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
+	size_t size = n * block_size();
   /*
    * God knows where `data` points to. It could be a virtual address that can't be
    * easily converted to a physical one. For this reason, we need to allocate one
    * that we know is physically contiguous. Just use malloc for this, as it's physically
    * contiguous (for now) TODO: be smart later :^)
    */
-	printf("read/write blk=%d\n", sector);
-  void *tmp_buf = malloc(block_size());
+  printf("read/write blk=%d to %p, %d %d\n", sector, data, n, size);
+  printf("           end=%p\n", (off_t)data + size);
+  void *tmp_buf = malloc(size);
+  printf("           tmp=%p\n", tmp_buf);
 
-  if (write) memcpy(tmp_buf, data, block_size());
+  if (write) {
+    memcpy(tmp_buf, data, size);
+  } else {
+    memset(data, 0xF0, size);
+  }
 
   if (!arch_irqs_enabled()) {
-    panic("wut\n");
+    panic("VirtioMMIODisk read/write requires irqs to be enabled\n");
   }
 
   vdisk_lock.lock();
@@ -102,7 +109,7 @@ void VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
   desc[0]->flags = VRING_DESC_F_NEXT;
 
   desc[1]->addr = (uint64_t)v2p(tmp_buf);
-  desc[1]->len = 512 * n;
+  desc[1]->len = size;
   if (write)
     desc[1]->flags = 0;  // device reads b->data
   else
@@ -148,18 +155,16 @@ void VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
   while (info[first_index].status == 0xff) {
     __sync_synchronize();
     loops++;
-  }  // device writes 0 on success
-	printf("loops=%d\n", loops);
+  }
+  printf("loops=%d\n", loops);
 
   info[first_index].data = NULL;
 
   vdisk_lock.unlock();
 
   if (!write) {
-    memcpy(data, tmp_buf, block_size());
-    // printf("block %d\n", sector);
-    // hexdump(data, block_size(), true);
-    // printf("\n\n");
+    memcpy(data, tmp_buf, size);
+		// hexdump(data, size, true);
   }
 
   ::free(tmp_buf);
@@ -169,7 +174,7 @@ void VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
 
 
 void VirtioMMIODisk::virtio_irq(int ring_index, virtio::virtq_used_elem *e) {
-  // printf("dev %p, ring %u, e %p, id %u, len %u\n", this, ring_index, e, e->id, e->len);
+  printf("dev %p, ring %u, e %p, id %u, len %u\n", this, ring_index, e, e->id, e->len);
 
   /* parse our descriptor chain, add back to the free queue */
   uint16_t i = e->id;

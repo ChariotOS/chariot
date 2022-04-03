@@ -237,7 +237,7 @@ namespace ext2 {
 
     long allocate_inode(void);
 
-    superblock *sb = nullptr;
+    superblock sb;
 
 
     // lock the block groups
