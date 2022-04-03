@@ -87,7 +87,7 @@ menu "Config"
 
 	config PROCFS
 		bool "Proc Filesystem"
-		default y
+		default n
 
 	config MEMORY_PREFETCH
 		bool "Predict access patterns and prefetch pages"
