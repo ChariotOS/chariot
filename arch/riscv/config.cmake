@@ -10,7 +10,8 @@ endif()
 # universal
 set(LDFLAGS -m elf_riscv64 -z max-page-size=0x1000 -nostdlib -pie)
 
-set(CMAKE_ASM_FLAGS "${RISCV_FLAGS} -mno-relax ")
+# set(CMAKE_ASM_FLAGS "${RISCV_FLAGS} -mno-relax ")
+set(CMAKE_ASM_FLAGS "${RISCV_FLAGS} ")
 
 
 # TODO: riscv userspace flags

@@ -64,8 +64,6 @@
 
 .global _start
 _start:
-
-	# save the fdt pointer to a1
 	# Disable linker instruction relaxation for the `la` instruction below.
 	# This disallows the assembler from assuming that `gp` is already initialized.
 	# This causes the value stored in `gp` to be calculated from `pc`.
@@ -97,46 +95,12 @@ _start:
 
 	# supervisor mode expects 
 
-	# push a0
-	# push a1
-	# la      a0, kernel_page_table         # t1: current location in the page table
-	# call    setup_pagetables
-	# pop a1
-	#pop a0
-
-	# setup the base high-half identity mapping
-	li      t0, PT_R | PT_W | PT_X | PT_V | PT_A | PT_D # t0: current physical address (PTE)
-	la      t1, kernel_page_table         # t1: current location in the page table
-
-	li      t3, 0x1000
-	add     t2, t1, t3                    # t2: address after the page table (the end)
-
-
-	# shift the current pointer to the halfway point
-	srai    t3, t3, 1                     # t3 /= 2
-	move    t4, t1                        # t4 is the pointer to the lower half
-	add     t1, t1, t3                    # t1 += 4096 / 2
-
-	li      t3, VM_BIGGEST_PAGE           # t3: physical memory stride
-
-# t3 = physical memory stride
-# t1 = address of lower half PTE
-# t4 = address of higher half PTE
-paging_loop:
-
-	# store the PTE at the location pointed to by t1
-	REG_S   t0, 0(t1)
-	REG_S   t0, 0(t4)
-	# move the PTE (t0) forward by the stride (t3)
-	add     t0, t0, t3
-	# step the pointer(s) forward
-	addi    t1, t1, SZREG
-	addi    t4, t4, SZREG
-	bne     t1, t2, paging_loop          # jump back if we aren't done
-
-
-.loop:
-	j .loop
+	push a0
+	push a1
+	la      a0, kernel_page_table         # t1: current location in the page table
+	call    setup_pagetables
+	pop a1
+	pop a0
 
 
 	# now, load the kernel page table into satp 
