@@ -320,6 +320,11 @@ void main(int hartid, void *fdt) {
       panic("failed to mount root. Error=%d\n", -mnt_res);
     }
 
+    int chroot_res = vfs::chroot("/root");
+    if (chroot_res != 0) {
+      panic("Failed to chroot into /root. Error=%d\n", -mnt_res);
+    }
+
     LOG("Bootup complete. It is now safe to move about the cabin.\n");
 
     auto kproc = sched::proc::kproc();

@@ -69,7 +69,6 @@ bool ext2::FileSystem::probe(ck::ref<dev::BlockDevice> bdev) {
   // read the superblock
   disk->seek(1024, SEEK_SET);
   bool res = disk->read((void*)&sb, sizeof(sb));
-	hexdump(&sb,sizeof(sb), true);
 
   if (!res) {
     printf("failed to read the superblock\n");

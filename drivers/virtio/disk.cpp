@@ -4,7 +4,14 @@
 #include <sched.h>
 
 
+// #define DO_LOG
+
+#ifdef DO_LOG
 #define LOG(...) PFXLOG(YEL "VIRTIO-BLK", __VA_ARGS__)
+#else
+#define LOG(...)
+#endif
+
 DECLARE_STUB_DRIVER("virtio-mmio-disk", virtio_mmio_disk_driver)
 
 VirtioMMIODisk::VirtioMMIODisk(virtio_config &cfg) : VirtioMMIO<dev::Disk>(cfg, virtio_mmio_disk_driver) {}
@@ -13,7 +20,7 @@ bool VirtioMMIODisk::initialize(void) {
   LOG("initialize\n");
   set_block_size(diskconfig().blk_size);
   set_block_count(diskconfig().capacity);
-	set_size(block_size() * block_count());
+  set_size(block_size() * block_count());
 
   uint32_t status = 0;
 
@@ -45,6 +52,9 @@ bool VirtioMMIODisk::initialize(void) {
   ops = new virtio::blk_req[ndesc];
 
   dev::register_disk(this);
+
+
+
   return true;
 }
 
@@ -62,128 +72,62 @@ int VirtioMMIODisk::write_blocks(uint32_t sector, const void *data, int nsec) {
 }
 
 
+struct virtio_blk_req {
+  uint32_t type;
+  uint32_t reserved;
+  uint64_t sector;
+  /* NO DATA INCLUDED HERE! */
+  uint8_t status;
+} __attribute__((packed));
+
+
 int VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
   size_t size = n * block_size();
-  /*
-   * God knows where `data` points to. It could be a virtual address that can't be
-   * easily converted to a physical one. For this reason, we need to allocate one
-   * that we know is physically contiguous. Just use malloc for this, as it's physically
-   * contiguous (for now) TODO: be smart later :^)
-   */
-  printf("read/write blk=%d to %p, %d %d\n", sector, data, n, size);
-  printf("           end=%p\n", (off_t)data + size);
-  void *tmp_buf = malloc(size);
-  printf("           tmp=%p\n", tmp_buf);
 
-  if (write) {
-    memcpy(tmp_buf, data, size);
-  } else {
-    memset(data, 0xF0, size);
-  }
-
-  if (!arch_irqs_enabled()) {
-    panic("VirtioMMIODisk read/write requires irqs to be enabled\n");
-  }
 
   vdisk_lock.lock();
 
+  {
+    assert(size == 512);
+    struct virtio_blk_req req;
+    req.sector = sector;
+		req.reserved = 0;
+    req.type = write ? VIRTIO_BLK_T_OUT : VIRTIO_BLK_T_IN;
+    req.status = 0xFF;
 
-  // the spec's Section 5.2 says that legacy block operations use
-  // three descriptors: one for type/reserved/sector, one for the
-  // data, one for a 1-byte status result.
+    uint16_t first_index;
+    alloc_desc_chain(0, 3, &first_index);
 
-  // allocate the three descriptors.
+    ck::vec<VirtioMMIOVring::Descriptor> descs;
 
-  uint16_t first_index;
+    descs.push({
+        .addr = (uint64_t)v2p(&req),
+        .len = sizeof(req),
+        .flags = VRING_DESC_F_NEXT,
+    });
 
+    descs.push({
+        .addr = (uint64_t)v2p(data),
+        .len = (uint32_t)size,
+        .flags = (uint16_t)((write ? 0 : VRING_DESC_F_WRITE) | VRING_DESC_F_NEXT),
+    });
 
-  virtio::virtq_desc *start = NULL;
+    descs.push({
+        .addr = (uint64_t)v2p(&req.status),
+        .len = 1,
+        .flags = VRING_DESC_F_WRITE,
+    });
 
-  start = alloc_desc_chain(0, 3, &first_index);
-  if (start == NULL) {
-    panic("start is null!\n");
+    submit(descs, first_index);
+
+    while (req.status == 0xFF) {
+      arch_relax();
+    }
+
+    free_desc_chain(0, first_index);
   }
-
-
-  virtio::virtq_desc *desc[3];
-  desc[0] = start;
-  desc[1] = index_to_desc(0, desc[0]->next);
-  desc[2] = index_to_desc(0, desc[1]->next);
-  assert(desc[2] != NULL);
-
-  struct virtio::blk_req *buf0 = &ops[first_index];
-
-  if (write) {
-    buf0->type = VIRTIO_BLK_T_OUT;  // write the disk
-  } else {
-    buf0->type = VIRTIO_BLK_T_IN;  // read the disk
-  }
-
-  buf0->reserved = 0;
-  buf0->sector = sector;
-  desc[0]->addr = (uint64_t)v2p(buf0);
-  desc[0]->len = sizeof(virtio::blk_req);
-  desc[0]->flags = VRING_DESC_F_NEXT;
-
-  desc[1]->addr = (uint64_t)v2p(tmp_buf);
-  desc[1]->len = size;
-  if (write)
-    desc[1]->flags = 0;  // device reads b->data
-  else
-    desc[1]->flags = VRING_DESC_F_WRITE;  // device writes b->data
-  desc[1]->flags |= VRING_DESC_F_NEXT;
-
-  info[first_index].status = 0xff;  // device writes 0 on success
-  desc[2]->addr = (uint64_t)v2p(&info[first_index].status);
-  desc[2]->len = 1;
-  desc[2]->flags = VRING_DESC_F_WRITE;  // device writes the status
-  desc[2]->next = 0;
-
-  submit_chain(0, first_index);
-
-  __sync_synchronize();
-
-// #define VIRTIO_BLK_WAITQUEUE
-#ifdef VIRTIO_BLK_WAITQUEUE
-
-  struct wait_entry ent;
-  ent.flags = 0;
-  ent.wq = &info[first_index].wq;
-
-  ent.wq->lock.lock();
-
-  sched::set_state(PS_UNINTERRUPTIBLE);
-  ent.wq->task_list.add(&ent.item);
-
-  ent.wq->lock.unlock();
-
-#endif
-
-
-  write_reg(VIRTIO_MMIO_QUEUE_NOTIFY, 0);
-
-  __sync_synchronize();
-
-#ifdef VIRTIO_BLK_WAITQUEUE
-  auto wres = ent.start();
-#endif
-
-  int loops = 0;
-  while (info[first_index].status == 0xff) {
-    __sync_synchronize();
-    loops++;
-  }
-  // printf("loops=%d\n", loops);
-
-  info[first_index].data = NULL;
 
   vdisk_lock.unlock();
-
-  if (!write) {
-    memcpy(data, tmp_buf, size);
-  }
-
-  ::free(tmp_buf);
 
   return true;
 }

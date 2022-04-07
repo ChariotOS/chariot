@@ -393,6 +393,7 @@ struct virtio_config {
 };
 
 
+
 class VirtioMMIOVring {
  protected:
   vring ring[VIO_MAX_RINGS];
@@ -401,6 +402,11 @@ class VirtioMMIOVring {
   inline VirtioMMIOVring(volatile uint32_t *regs) : regs(regs) {}
 
  public:
+  struct Descriptor {
+    uint64_t addr;
+    uint32_t len;
+    uint16_t flags;
+  };
   int alloc_ring(int index, int len);
 
   // find a free descriptor, mark it non-free, return its index.
@@ -408,7 +414,12 @@ class VirtioMMIOVring {
 
   // mark a descriptor as free.
   void free_desc(int ring_index, int i);
+  void free_desc_chain(int ring_index, int i);
   void submit_chain(int ring_index, int desc_index);
+
+  // abstract away allocating ring entries and desc entries.
+  // Return 0 on success. ERRNO on error
+  int submit(const ck::vec<Descriptor> &descs, uint16_t first_index);
 
 
   virtio::virtq_desc *alloc_desc_chain(int ring_index, int count, uint16_t *start_index);
@@ -421,6 +432,13 @@ class VirtioMMIOVring {
   inline auto &mmio_regs(void) { return *(virtio::mmio_regs *)regs; }
   inline uint32_t read_reg(int off) { return *(volatile uint32_t *)((off_t)regs + off); }
   inline void write_reg(int off, uint32_t val) { *(volatile uint32_t *)((off_t)regs + off) = val; }
+
+
+  inline void kick(int ring) {
+    __sync_synchronize();
+    write_reg(VIRTIO_MMIO_QUEUE_NOTIFY, ring);
+    __sync_synchronize();
+  }
 };
 
 
@@ -455,10 +473,9 @@ inline void VirtioMMIO<T>::register_virtio_irq(int nr) {
 
 template <typename T>
 inline void VirtioMMIO<T>::irq(int nr) {
-  printf("irq handler\n");
-
   int irq_status = read_reg(VIRTIO_MMIO_INTERRUPT_STATUS);
 
+  printf("irq handler. status = %02x\n", irq_status);
   if (irq_status & 0x1) { /* used ring update */
     // XXX is this safe?
     write_reg(VIRTIO_MMIO_INTERRUPT_ACK, 0x1);

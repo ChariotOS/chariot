@@ -12,9 +12,15 @@
 
 #include "internal.h"
 
+// #define DO_LOG
 
+#ifdef DO_LOG
 #define VIRTIO_DEBUG(...) PFXLOG(GRN "VIRTIO", __VA_ARGS__)
 #define VRING_LOG(...) PFXLOG(MAG "VRING", __VA_ARGS__)
+#else
+#define VIRTIO_DEBUG(...)
+#define VRING_LOG(...)
+#endif
 
 #ifdef X86
 void virtio_pci_init(void) {
@@ -186,6 +192,19 @@ void VirtioMMIOVring::free_desc(int ring_index, int desc_index) {
 }
 
 
+void VirtioMMIOVring::free_desc_chain(int ring_index, int desc_index) {
+
+	auto &desc = ring[ring_index].desc[desc_index];
+	int next = desc.next;
+
+	free_desc(ring_index, desc_index);
+
+	if (next != 0) {
+		free_desc_chain(ring_index, next);
+	}
+}
+
+
 void VirtioMMIOVring::submit_chain(int ring_index, int desc_index) {
   VRING_LOG("submit_chain - ring_index:%d, desc_index:%d\n", ring_index, desc_index);
   /* add the chain to the available list */
@@ -194,7 +213,9 @@ void VirtioMMIOVring::submit_chain(int ring_index, int desc_index) {
   avail->ring[avail->idx & ring[ring_index].num_mask] = desc_index;
   __sync_synchronize();
   // mb();
-  avail->idx++;
+  avail->idx += 1;
+  __sync_synchronize();
+	kick(ring_index);
 }
 
 
@@ -231,6 +252,41 @@ virtio::virtq_desc *VirtioMMIOVring::alloc_desc_chain(int ring_index, int count,
   return last;
 }
 
+
+int VirtioMMIOVring::submit(const ck::vec<VirtioMMIOVring::Descriptor> &descs, uint16_t first_index) {
+  // SPOOKY: vla.
+  virtio::virtq_desc *hwdescs[descs.size()];
+
+  hwdescs[0] = index_to_desc(0, first_index);
+  for_range(i, 1, descs.size()) {
+    // build out the descriptor chain
+    hwdescs[i] = index_to_desc(0, hwdescs[i - 1]->next);
+  }
+
+
+
+	// printf("start = %d\n", first_index);
+  for_range(i, 0, descs.size()) {
+    hwdescs[i]->addr = descs[i].addr;
+    hwdescs[i]->len = descs[i].len;
+    hwdescs[i]->flags = descs[i].flags;
+
+    // printf("vring desc[%d] = addr: %p, len: %d, flags: %04x, next: %d\n", i, hwdescs[i]->addr, hwdescs[i]->len, hwdescs[i]->flags, hwdescs[i]->next);
+
+    if (i != descs.size() - 1) {
+      hwdescs[i]->flags |= VRING_DESC_F_NEXT;
+    } else {
+			hwdescs[i]->next = 0;
+		}
+  }
+
+  submit_chain(0, first_index);
+
+  __sync_synchronize();
+
+  // success
+  return 0;
+}
 
 //////////////////////////////////////////////////////////////////////////
 

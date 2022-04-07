@@ -12,8 +12,8 @@ class VirtioMMIODisk : public VirtioMMIO<dev::Disk> {
   // for use when completion interrupt arrives.
   // indexed by first descriptor index of chain.
   struct {
-    void *data;
     uint8_t status;
+    void *data;
     wait_queue wq;
   } info[VIO_NUM_DESC];
 
