@@ -83,6 +83,19 @@ namespace ck {
       return {};
     }
 
+    T take() {
+      assert(m_has_value);
+
+      T released_value = move(unwrap());
+      unwrap().~T();
+      m_has_value = false;
+      return released_value;
+    }
+    ALWAYS_INLINE T or_default(const T fallback) {
+      if (m_has_value) return take();
+      return fallback;
+    }
+
     ALWAYS_INLINE T& unwrap() {
       assert(m_has_value);
       return *reinterpret_cast<T*>(&m_storage);
@@ -93,19 +106,13 @@ namespace ck {
       return value_without_consume_state();
     }
 
-    T take() {
-      assert(m_has_value);
-
-      T released_value = move(unwrap());
-      unwrap().~T();
-      m_has_value = false;
-      return released_value;
-    }
 
     ALWAYS_INLINE T& unwrap_or(const T& fallback) const {
       if (m_has_value) return unwrap();
       return fallback;
     }
+
+
 
    private:
     // Call when we don't want to alter the consume state

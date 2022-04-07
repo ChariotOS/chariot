@@ -4,15 +4,17 @@
 #include <sched.h>
 
 
+#define LOG(...) PFXLOG(YEL "VIRTIO-BLK", __VA_ARGS__)
 DECLARE_STUB_DRIVER("virtio-mmio-disk", virtio_mmio_disk_driver)
 
-VirtioMMIODisk::VirtioMMIODisk(volatile uint32_t *regs) : virtio_mmio_dev(regs), dev::Disk(virtio_mmio_disk_driver) {
-  set_block_size(config().blk_size);
-  set_block_count(config().capacity);
-}
+VirtioMMIODisk::VirtioMMIODisk(virtio_config &cfg) : VirtioMMIO<dev::Disk>(cfg, virtio_mmio_disk_driver) {}
 
+bool VirtioMMIODisk::initialize(void) {
+  LOG("initialize\n");
+  set_block_size(diskconfig().blk_size);
+  set_block_count(diskconfig().capacity);
+	set_size(block_size() * block_count());
 
-bool VirtioMMIODisk::initialize(const struct virtio_config &config) {
   uint32_t status = 0;
 
   status |= VIRTIO_CONFIG_S_ACKNOWLEDGE;
@@ -46,8 +48,22 @@ bool VirtioMMIODisk::initialize(const struct virtio_config &config) {
   return true;
 }
 
-void VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
-	size_t size = n * block_size();
+
+int VirtioMMIODisk::read_blocks(uint32_t sector, void *data, int nsec) {
+  LOG("read_blocks %d %p %d\n", sector, data, nsec);
+  disk_rw(sector, data, nsec, 0 /* read mode */);
+  return true;
+}
+
+int VirtioMMIODisk::write_blocks(uint32_t sector, const void *data, int nsec) {
+  LOG("write_blocks %d %p %d\n", sector, data, nsec);
+  disk_rw(sector, (uint8_t *)data, nsec, 1 /* read mode */);
+  return true;
+}
+
+
+int VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
+  size_t size = n * block_size();
   /*
    * God knows where `data` points to. It could be a virtual address that can't be
    * easily converted to a physical one. For this reason, we need to allocate one
@@ -95,13 +111,14 @@ void VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
   desc[2] = index_to_desc(0, desc[1]->next);
   assert(desc[2] != NULL);
 
-
   struct virtio::blk_req *buf0 = &ops[first_index];
 
-  if (write)
+  if (write) {
     buf0->type = VIRTIO_BLK_T_OUT;  // write the disk
-  else
+  } else {
     buf0->type = VIRTIO_BLK_T_IN;  // read the disk
+  }
+
   buf0->reserved = 0;
   buf0->sector = sector;
   desc[0]->addr = (uint64_t)v2p(buf0);
@@ -156,7 +173,7 @@ void VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
     __sync_synchronize();
     loops++;
   }
-  printf("loops=%d\n", loops);
+  // printf("loops=%d\n", loops);
 
   info[first_index].data = NULL;
 
@@ -164,17 +181,16 @@ void VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
 
   if (!write) {
     memcpy(data, tmp_buf, size);
-		// hexdump(data, size, true);
   }
 
   ::free(tmp_buf);
 
-  return;
+  return true;
 }
 
 
 void VirtioMMIODisk::virtio_irq(int ring_index, virtio::virtq_used_elem *e) {
-  printf("dev %p, ring %u, e %p, id %u, len %u\n", this, ring_index, e, e->id, e->len);
+  LOG("dev %p, ring %u, e %p, id %u, len %u\n", this, ring_index, e, e->id, e->len);
 
   /* parse our descriptor chain, add back to the free queue */
   uint16_t i = e->id;
@@ -196,16 +212,4 @@ void VirtioMMIODisk::virtio_irq(int ring_index, virtio::virtq_used_elem *e) {
     if (next < 0) break;
     i = next;
   }
-}
-
-
-
-int VirtioMMIODisk::read_blocks(uint32_t sector, void *data, int nsec) {
-  disk_rw(sector, data, nsec, 0 /* read mode */);
-  return true;
-}
-
-int VirtioMMIODisk::write_blocks(uint32_t sector, const void *data, int nsec) {
-  disk_rw(sector, (uint8_t *)data, nsec, 1 /* read mode */);
-  return true;
 }
