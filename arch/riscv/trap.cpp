@@ -179,6 +179,9 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
   if (res == -1) {
     pprintf("SEGFAULT!\n");
     dump_tf(tf);
+
+		panic("oof");
+
     /* send to the current thread and return (handle at the bottom of kernel_vec) */
     curproc->terminate(SIGSEGV);
     // curthd->send_signal(SIGSEGV);

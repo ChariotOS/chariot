@@ -56,8 +56,6 @@ int dev::register_disk(dev::Disk* disk) {
 	fs::File f(disk, 0);
   f.read((u8*)first_sector, disk->block_size());
 
-	hexdump(first_sector, disk->block_size(), true);
-
   if (dev::mbr mbr; mbr.parse(first_sector)) {
     for (int i = 0; i < mbr.part_count(); i++) {
       auto part = mbr.partition(i);

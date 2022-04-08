@@ -29,7 +29,6 @@ void virtio_pci_init(void) {
     //
     if (d->vendor_id == 0x1af4) {
       auto &cfg = d->cfg;
-      hexdump(&cfg, sizeof(cfg), true);
 
       debug("Virtio Device Found. Subsys: %04x.\n", cfg.dev_cfg.subsys_id);
       switch (cfg.dev_cfg.subsys_id) {

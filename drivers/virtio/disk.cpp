@@ -84,6 +84,7 @@ struct virtio_blk_req {
 int VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
   size_t size = n * block_size();
 
+	// printf("%s block %d\n", write ? "write": "read", sector);
 
   vdisk_lock.lock();
 

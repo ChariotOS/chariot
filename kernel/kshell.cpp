@@ -69,6 +69,10 @@ static void exec(const ck::string &raw, bool reexec = true) {
   }
 }
 
+void kshell::eval(const ck::string &raw) {
+	return exec(raw, false);
+}
+
 bool kshell::active(void) { return ::active; }
 
 void kshell::feed(size_t sz, char *buf) {

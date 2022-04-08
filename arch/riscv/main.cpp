@@ -21,6 +21,7 @@
 #include <rbtree.h>
 #include <rbtree_augmented.h>
 #include <ioctl.h>
+#include "sched.h"
 
 #define PAGING_IMPL_BOOTCODE
 #include "paging_impl.h"
@@ -310,6 +311,9 @@ void main(int hartid, void *fdt) {
     LOG("kernel modules initialized\n");
 
 
+    sched::proc::create_kthread("[reaper]", Process::reaper);
+
+
 
 #ifdef CONFIG_ENABLE_USERSPACE
 
@@ -334,6 +338,10 @@ void main(int hartid, void *fdt) {
     ck::string init_paths = "/bin/init,/init";
     auto paths = init_paths.split(',');
     auto init_pid = sched::proc::spawn_init(paths);
+
+    // sched::set_state(PS_UNINTERRUPTIBLE);
+
+    // sched::yield();
 
     sys::waitpid(init_pid, NULL, 0);
     panic("INIT DIED!\n");

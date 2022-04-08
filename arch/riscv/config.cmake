@@ -11,7 +11,7 @@ endif()
 set(LDFLAGS -m elf_riscv64 -z max-page-size=0x1000 -nostdlib -pie)
 
 # set(CMAKE_ASM_FLAGS "${RISCV_FLAGS} -mno-relax ")
-set(CMAKE_ASM_FLAGS "${RISCV_FLAGS} ")
+set(CMAKE_ASM_FLAGS "${RISCV_FLAGS} -mno-relax ")
 
 
 # TODO: riscv userspace flags
@@ -19,7 +19,7 @@ set(ARCH_USER_C_FLAGS "-march=${RISCV_MARCH} -mabi=${RISCV_MABI} -fno-omit-frame
 set(ARCH_USER_CXX_FLAGS "")
 
 # Kernelspace Flags
-set(ARCH_KERN_C_FLAGS "-march=${RISCV_MARCH} -mabi=${RISCV_MABI} -mcmodel=medany -fno-stack-protector -fno-omit-frame-pointer")
+set(ARCH_KERN_C_FLAGS "-mno-relax -march=${RISCV_MARCH} -mabi=${RISCV_MABI} -mcmodel=medany -fno-stack-protector -fno-omit-frame-pointer")
 set(ARCH_KERN_C_FLAGS "${ARCH_KERN_C_FLAGS} -fpic")
 set(ARCH_KERN_CXX_FLAGS "")
 

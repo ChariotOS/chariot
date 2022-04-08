@@ -12,6 +12,7 @@ namespace kshell {
   using handler = unsigned long (*)(ck::vec<ck::string> &, void *data, int dlen);
   void add(ck::string command, ck::string usage, handler h);
   unsigned long call(ck::string command, ck::vec<ck::string> args, void *data, size_t dlen);
+  void eval(const ck::string &command);
 
 
 	// run the kshell on this kernel thread. This is basically a debug
