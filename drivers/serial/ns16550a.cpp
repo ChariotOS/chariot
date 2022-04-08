@@ -35,13 +35,14 @@ namespace ns16550a {
       volatile uint8_t ssr;  /* 11*/
     };
 
-		using dev::Device::Device;
+    using dev::Device::Device;
 
     virtual void init() {
+      LOG("INIT\n");
       auto mmio = dev()->cast<hw::MMIODevice>();
       regs = (Uart::Regs *)p2v(mmio->address());
 
-      irq::install(mmio->interrupt, uart_interrupt_handle, "ns16550a", (void *)this);
+      handle_irq(mmio->interrupt, "ns16550a");
 
       // set DLAB so we can write the divisor
       regs->lcr = 0x80;
@@ -58,8 +59,6 @@ namespace ns16550a {
       (void)regs->rbr;
 
       __sync_synchronize();
-
-      putc('a');
     }
 
     void putc(char c) {
@@ -79,7 +78,7 @@ namespace ns16550a {
       return regs->rbr;
     }
 
-    void handle_irq() {}
+    void irq(int nr) { LOG("interrupt!\n"); }
 
 
     Uart::Regs *regs;
@@ -87,11 +86,6 @@ namespace ns16550a {
 
 }  // namespace ns16550a
 
-
-void uart_interrupt_handle(int irq, reg_t *regs, void *uart) {
-  auto *u = (ns16550a::Uart *)uart;
-  u->handle_irq();
-}  // namespace ns16550a
 
 
 static dev::ProbeResult probe(ck::ref<hw::Device> dev) {
