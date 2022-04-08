@@ -541,9 +541,7 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
     auto f = waitlist_lock.lock_irqsave();
 
     bool found = false;
-		pprintf("zombie_list: %p\n", &zombie_list);
     list_for_each_entry(zomb, &zombie_list, node) {
-			pprintf("zombie = %p\n", zomb);
       if (can_reap(self, zomb->proc, pid, wait_flags)) {
         // simply remove the zombie from the zombie_list
         zomb->node.del_init();
@@ -552,7 +550,6 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
       }
     }
 
-		pprintf("2\n");
     if (!found) zomb = NULL;
 
     if (zomb != NULL) {
@@ -560,8 +557,6 @@ int sched::proc::do_waitpid(long pid, int &status, int wait_flags) {
       zomb->proc = nullptr;
       // zomb->node.init();
     }
-
-		pprintf("3\n");
 
     if (found_process.is_null()) {
       if (wait_flags & WNOHANG) {
