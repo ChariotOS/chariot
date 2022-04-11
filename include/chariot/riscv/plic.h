@@ -15,6 +15,7 @@
 
 namespace rv {
   namespace plic {
+    void discover(void);
     void hart_init(void);
 
     /* As the PLIC what interrupt we should handle */

@@ -73,4 +73,4 @@ esac
 echo '======================================================================'
 
 echo ${QEMU_FLAGS} $@
-qemu-system-${QEMU_ARCH} ${QEMU_FLAGS} $@
+~/dev/qemu/build/qemu-system-${QEMU_ARCH} ${QEMU_FLAGS} $@

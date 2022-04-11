@@ -231,7 +231,7 @@ void main(int hartid, void *fdt) {
   write_csr(stvec, kernelvec);
 
   /* Initialize the platform level interrupt controller for this HART */
-  rv::plic::hart_init();
+  // rv::plic::hart_init();
 
 
   off_t boot_free_start = (off_t)v2p(_kernel_end);
@@ -296,6 +296,10 @@ void main(int hartid, void *fdt) {
   write_csr(sstatus, read_csr(sstatus) | (1 << 18) | (1 << 13));
   cpu::current().timekeeper = true;
 
+  // discover the plic on the system, and then initialize this hart's state on it
+  rv::plic::discover();
+  rv::plic::hart_init();
+
   assert(sched::init());
   LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
 
@@ -334,6 +338,8 @@ void main(int hartid, void *fdt) {
     auto kproc = sched::proc::kproc();
     kproc->root = vfs::get_root();
     kproc->cwd = vfs::get_root();
+
+    kshell::eval("hw");
 
     ck::string init_paths = "/bin/init,/init";
     auto paths = init_paths.split(',');
