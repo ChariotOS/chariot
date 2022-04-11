@@ -56,15 +56,15 @@ namespace dev {
   template <typename DeviceT>
   class ModuleDriver final : public dev::Driver {
     Prober m_prober;
-		int next_minor = 0;
+    int next_minor = 0;
 
    public:
     ModuleDriver(const char *name, Prober prober) : m_prober(prober) { set_name(name); }
     void attach(ck::ref<hw::Device> dev) override final {
       auto drv = ck::make_ref<DeviceT>(*this, dev);
-			drv->minor = next_minor++;
+      drv->minor = next_minor++;
       drv->init();
-			dev->attach_to(drv);
+      dev->attach_to(drv);
       m_devices.set(drv->minor, drv);
     }
 
@@ -102,9 +102,7 @@ namespace dev {
     // called once the device has been initialized
     virtual void init(void) {}
     // called after register_irq(...)
-    virtual void irq(int num) {
-			printf("irq handler!\n");
-		}
+    virtual void irq(int num) { printf("irq handler!\n"); }
 
 
     static scoped_irqlock lock_names(void);

@@ -11,9 +11,45 @@
 #include <vga.h>
 #include <kshell.h>
 #include "../drivers/majors.h"
+#include <dev/KernelLogger.h>
 
 // Control-x
 #define C(x) ((x) - '@')
+
+
+static rwlock klog_lock;
+static struct list_head klogs;
+
+KernelLogger::~KernelLogger(void) { deregister_logger(); }
+
+void KernelLogger::register_logger(void) {
+  klog_lock.write_lock();
+  klogs.add(&this->ent);
+  klog_lock.write_unlock();
+}
+
+void KernelLogger::deregister_logger(void) {
+  klog_lock.write_lock();
+  ent.del_init();
+  klog_lock.write_unlock();
+}
+
+void KernelLogger::dispatch(int c) {
+  klog_lock.read_lock();
+  KernelLogger *cur = NULL;
+  bool found_one = false;
+
+  list_for_each_entry(cur, &klogs, ent) {
+    found_one = true;
+    cur->putc(c);
+  }
+  if (!found_one) {
+    serial_send(1, c);
+  }
+
+  klog_lock.read_unlock();
+}
+
 
 static spinlock cons_input_lock;
 
@@ -22,15 +58,15 @@ static fifo_buf console_fifo;
 
 
 static void consputc(int c, bool debug = false) {
-#ifdef CONFIG_UART_CONSOLE
+  // #ifdef CONFIG_UART_CONSOLE
   if (unlikely(c == CONS_DEL)) {
-    serial_send(1, '\b');
-    serial_send(1, ' ');
-    serial_send(1, '\b');
+    KernelLogger::dispatch('\b');
+    KernelLogger::dispatch(' ');
+    KernelLogger::dispatch('\b');
   } else {
-    serial_send(1, c);
+    KernelLogger::dispatch(c);
   }
-#endif
+  // #endif
   /* TODO: factor this somewhere else. Maybe a cool "console printers" subsystem? idk :^) */
 #ifdef CONFIG_X86
   vga::putchar(c);
