@@ -154,9 +154,9 @@ ck::option<uint64_t> hw::Device::get_prop_int(const ck::string &name) {
     auto &prop = m_props.get(name);
     uint64_t val = 0;
     if (prop.data.size() == 4) {
-      val = *(uint32_t *)prop.data.data();
+      val = __builtin_bswap32(*(uint32_t *)prop.data.data());
     } else if (prop.data.size() == 8) {
-      val = *(uint64_t *)prop.data.data();
+      val = __builtin_bswap64(*(uint64_t *)prop.data.data());
     } else {
       printf(KERN_WARN "prop '%s' could not be converted to an int of size 4 or 8\n", name.get());
     }
@@ -283,6 +283,7 @@ ck::string hw::Prop::format(void) const {
 
 
   ck::string r;
+	r += ck::string::format("(%d bytes) ", data.size());
   for (int i = 0; i < min(16, data.size()); i++) {
     r += ck::string::format("%02x ", data[i]);
   }
