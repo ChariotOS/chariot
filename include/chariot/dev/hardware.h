@@ -114,7 +114,7 @@ namespace hw {
     }
 
 
-    inline const auto &props(void) const { return m_props; }
+    inline auto &props(void) { return m_props; }
     void add_property(ck::string name, Prop &&prop);
     ck::option<ck::string> get_prop_string(const ck::string &name);
     ck::option<uint64_t> get_prop_int(const ck::string &name);
@@ -133,6 +133,8 @@ namespace hw {
   };
 
 
+
+	ck::ref<hw::Device> find_phandle(int phandle);
 
   enum class PCIBarType : char {
     BAR_MMIO = 0,
