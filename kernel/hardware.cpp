@@ -11,6 +11,35 @@ static spinlock all_hardware_lock;
 static ck::vec<ck::ref<hw::Device>> all_hardware;
 
 
+static ck::ref<hw::Device> find_phandle_r(int phandle, ck::ref<hw::Device> dev) {
+  if (auto mmio = dev->cast<hw::MMIODevice>()) {
+    auto res = mmio->get_prop_int("phandle");
+    if (res.has_value()) {
+      auto found = res.take();
+      if (found == phandle) {
+        return dev;
+      }
+    }
+  }
+
+  for (auto &child : dev->children()) {
+    auto ph = find_phandle_r(phandle, child);
+    if (ph) return ph;
+  }
+  return nullptr;
+}
+
+ck::ref<hw::Device> hw::find_phandle(int phandle) {
+  scoped_lock l(all_hardware_lock);
+
+  for (auto &dev : all_hardware) {
+    auto ph = find_phandle_r(phandle, dev);
+    if (ph) return ph;
+  }
+
+  return nullptr;
+}
+
 hw::Device::Device(DeviceType t) : m_type(t) {}
 
 
@@ -154,9 +183,9 @@ ck::option<uint64_t> hw::Device::get_prop_int(const ck::string &name) {
     auto &prop = m_props.get(name);
     uint64_t val = 0;
     if (prop.data.size() == 4) {
-      val = *(uint32_t *)prop.data.data();
+      val = __builtin_bswap32(*(uint32_t *)prop.data.data());
     } else if (prop.data.size() == 8) {
-      val = *(uint64_t *)prop.data.data();
+      val = __builtin_bswap64(*(uint64_t *)prop.data.data());
     } else {
       printf(KERN_WARN "prop '%s' could not be converted to an int of size 4 or 8\n", name.get());
     }
@@ -283,6 +312,7 @@ ck::string hw::Prop::format(void) const {
 
 
   ck::string r;
+  r += ck::string::format("(%d bytes) ", data.size());
   for (int i = 0; i < min(16, data.size()); i++) {
     r += ck::string::format("%02x ", data[i]);
   }

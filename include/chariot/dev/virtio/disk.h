@@ -6,13 +6,14 @@
 #include <dev/virtio/mmio.h>
 
 
-class virtio_mmio_disk : public virtio_mmio_dev, public dev::Disk {
+class VirtioMMIODisk : public VirtioMMIO<dev::Disk> {
+ private:
   // track info about in-flight operations,
   // for use when completion interrupt arrives.
   // indexed by first descriptor index of chain.
   struct {
-    void *data;
     uint8_t status;
+    void *data;
     wait_queue wq;
   } info[VIO_NUM_DESC];
 
@@ -22,15 +23,20 @@ class virtio_mmio_disk : public virtio_mmio_dev, public dev::Disk {
   spinlock vdisk_lock;
 
  public:
-  virtio_mmio_disk(volatile uint32_t *regs);
-  void irq(int ring_index, virtio::virtq_used_elem *) override;
+  VirtioMMIODisk(virtio_config &cfg);
+  virtual ~VirtioMMIODisk() {}
 
-  void disk_rw(uint32_t sector, void *data, int n, int write);
+  // ^VirtioMMIO::
+  bool initialize(void) override;
+  void virtio_irq(int ring_index, virtio::virtq_used_elem *) override;
 
-  int read_blocks(uint32_t sector, void *data, int nsec = 1) override;
-  int write_blocks(uint32_t sector, const void *data, int nsec = 1) override;
+  // ^dev::BlockDevice::
+  int read_blocks(uint32_t sector, void *data, int nsec) override;
+  int write_blocks(uint32_t sector, const void *data, int nsec) override;
 
-  bool initialize(const struct virtio_config &config) override;
 
-  inline auto &config(void) { return *(virtio::blk_config *)((off_t)this->regs + 0x100); }
+
+ protected:
+  int disk_rw(uint32_t sector, void *data, int n, int write);
+  inline auto &diskconfig(void) { return *(virtio::blk_config *)((off_t)this->regs + 0x100); }
 };

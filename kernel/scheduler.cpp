@@ -680,17 +680,20 @@ void sched::before_iret(bool userspace) {
 
   auto thd = curthd;
 
-  // exit via the scheduler if the task should die, and the irq
-  // depth is 1 (we would return back to the thread)
-  if (thd->should_die && thd->irq_depth == 1) {
+	// exit via the scheduler if the task should die, and the irq depth is 1 (we
+	// would return back to the thread)
+  if (thd->should_die /* && thd->irq_depth == 1 */) {
     c.woke_someone_up = false;
     sched::yield();
   }
 
   if (time::stabilized()) thd->last_start_utime_us = time::now_us();
 
-  // if its not running,
-  if (thd->state != PS_RUNNING) return;
+	// if its not running, it is setting up a waitqueue or exiting, so we don't
+	// want to screw that up by prematurely yielding.
+  if (thd->state != PS_RUNNING) {
+    return;
+  }
 
   bool out_of_time = thd->sched.has_run >= thd->sched.timeslice;
   if (out_of_time || cpu::current().next_thread != nullptr || c.woke_someone_up) {

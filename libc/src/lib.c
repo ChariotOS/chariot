@@ -12,6 +12,7 @@
 
 int __argc;
 char **__argv;
+const char *__progname;
 
 // the normal libc environ variable
 char **environ;
@@ -27,6 +28,7 @@ extern void _init(void);
 extern void _fini(void);
 
 void libc_start(int argc, char **argv, char **envp) {
+	__progname = argv[0];
   __argc = argc;
   __argv = argv;
   environ = envp;

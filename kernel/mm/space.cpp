@@ -10,7 +10,7 @@ mm::AddressSpace::AddressSpace(off_t lo, off_t hi, ck::ref<mm::PageTable> pt) : 
 
 
 mm::AddressSpace::~AddressSpace(void) {
-  printf("mm: faults: %lu, hits: %lu, misses: %lu\n", pagefaults, predict_hits, predict_misses);
+  // printf("mm: faults: %lu, hits: %lu, misses: %lu\n", pagefaults, predict_hits, predict_misses);
   mm::MappedRegion *n, *node;
   rbtree_postorder_for_each_entry_safe(node, n, &regions, node) { delete node; }
 }

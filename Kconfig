@@ -14,6 +14,14 @@ menu "Build"
 		bool "Debug Symbols (-g)"
 		default n
 
+	config UBSAN
+		bool "Undefined Behavior sanitizer"
+		default y
+		# currently requires x86 due to linker problems in RISC-V
+		depends on X86
+		help
+			Enable UBSAN logging on architectures that support it.
+
 	config ADDITIONAL_KERNEL_FLAGS
 		string "[kernel] Additional GCC Flags"
 		default "-O2"
@@ -87,7 +95,7 @@ menu "Config"
 
 	config PROCFS
 		bool "Proc Filesystem"
-		default y
+		default n
 
 	config MEMORY_PREFETCH
 		bool "Predict access patterns and prefetch pages"

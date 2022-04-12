@@ -258,7 +258,7 @@ static int truncate(fs::Node &node, size_t new_size) {
     auto blocks_needed = bafter - bbefore;
 
     // check (with extra space) that there is enough space left on the disk
-    if ((efs->sb->unallocatedblocks - 32) < blocks_needed) return -ENOSPC;
+    if ((efs->sb.unallocatedblocks - 32) < blocks_needed) return -ENOSPC;
 
     for (int i = 0; i < blocks_needed; i++) {
       // push the blocks on the end :)

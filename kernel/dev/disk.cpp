@@ -46,16 +46,21 @@ int dev::register_disk(dev::Disk* disk) {
   ck::string name = ck::string::format("disk%d", next_disk_id++);
   add_drive(name, disk);
 
+	printf("name = %s\n", name.get());
+
 
   /* Try to get mbr partitions */
   void* first_sector = malloc(disk->block_size());
-  disk->read_block((u8*)first_sector, 0);
+
+	printf("===============================\n");
+	fs::File f(disk, 0);
+  f.read((u8*)first_sector, disk->block_size());
 
   if (dev::mbr mbr; mbr.parse(first_sector)) {
     for (int i = 0; i < mbr.part_count(); i++) {
       auto part = mbr.partition(i);
       auto pname = ck::string::format("%sp%d", name.get(), i + 1);
-      printf("Found partition %d, %d\n", part.off, part.len);
+      printf(KERN_INFO "Found partition %d, %d\n", part.off, part.len);
 
       auto part_disk = new dev::DiskPartition(disk, part.off, part.len);
       add_drive(pname, part_disk);

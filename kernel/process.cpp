@@ -401,7 +401,7 @@ int sched::proc::reap(ck::ref<Process> p) {
   f |= (p->exit_code & 0xFF) << 8;
 
 #ifdef CONFIG_VERBOSE_PROCESS
-  pprintf("reap (p:%d, pg:%d) on cpu %d\n", p->pid, p->pgid, cpu::current().cpunum);
+  pprintf("reap (p:%d, pg:%d) on cpu %d\n", p->pid, p->pgid, cpu::current().id);
   auto usage = p->mm->memory_usage();
   pprintf("  ram usage: %zu Kb (%zu b)\n", usage / KB, usage);
 #endif

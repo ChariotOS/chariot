@@ -38,7 +38,7 @@ case $ARCH in
 		QEMU_FLAGS+="-display sdl "
 		;;
 
-	RISC-V)
+	RISC-V-sifive)
 		QEMU_FLAGS+="-smp 5 "
 		QEMU_FLAGS+="-bios default "
 		QEMU_FLAGS+="-machine sifive_u "
@@ -46,17 +46,17 @@ case $ARCH in
 		QEMU_FLAGS+="-drive file=$BUILD/chariot.img,if=sd,format=raw "
 		;;
 
-	RISC-V-virt)
-		QEMU_FLAGS+="-machine virt -smp 4 -m ${CONFIG_RISCV_RAM_MB}M "
+	RISC-V)
+		QEMU_FLAGS+="-machine virt -smp ${CONFIG_QEMU_CORES} -m ${CONFIG_RISCV_RAM_MB}M "
 		QEMU_FLAGS+="-bios default "
 		QEMU_FLAGS+="-kernel $BUILD/chariot.elf "
 
 		QEMU_FLAGS+="-drive file=build/chariot.img,if=none,format=raw,id=x0 "
 		QEMU_FLAGS+="-device virtio-blk-device,drive=x0 "
-		QEMU_FLAGS+="-device virtio-gpu-device,xres=${CONFIG_FRAMEBUFFER_WIDTH},yres=${CONFIG_FRAMEBUFFER_HEIGHT} "
+		# QEMU_FLAGS+="-device virtio-gpu-device,xres=${CONFIG_FRAMEBUFFER_WIDTH},yres=${CONFIG_FRAMEBUFFER_HEIGHT} "
 
-		QEMU_FLAGS+="-device virtio-keyboard-device "
-		QEMU_FLAGS+="-device virtio-mouse-device "
+		# QEMU_FLAGS+="-device virtio-keyboard-device "
+		# QEMU_FLAGS+="-device virtio-mouse-device "
 		# QEMU_FLAGS+="-display sdl "
 		;;
 
@@ -73,4 +73,4 @@ esac
 echo '======================================================================'
 
 echo ${QEMU_FLAGS} $@
-qemu-system-${QEMU_ARCH} ${QEMU_FLAGS} $@
+~/dev/qemu/build/qemu-system-${QEMU_ARCH} ${QEMU_FLAGS} $@

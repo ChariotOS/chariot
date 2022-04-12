@@ -179,6 +179,9 @@ static void pgfault_trap(struct rv::regs &tf, const char *type_name, int err) {
   if (res == -1) {
     pprintf("SEGFAULT!\n");
     dump_tf(tf);
+
+    panic("oof");
+
     /* send to the current thread and return (handle at the bottom of kernel_vec) */
     curproc->terminate(SIGSEGV);
     // curthd->send_signal(SIGSEGV);
@@ -254,32 +257,44 @@ for (auto &stk : thd->stacks) {
 
 
   if (interrupt) {
-    /* Supervisor software interrupt (from machine mode) */
-    if (nr == 1) {
-      write_csr(sip, read_csr(sip) & ~(1 << 1));
-      cpu::run_pending_xcalls();
-      // sip.SSIP = 0
-      //  turn off the "supervisor software interrupt pending" bit
-    } else if (nr == 5) {
-      auto &cpu = cpu::current();
-      uint64_t now = rv::get_cycle();
-      cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
-      cpu.kstat.last_tick_tsc = now;
-      cpu.ticks_per_second = 1000 / CONFIG_TICKS_PER_SECOND;
-      cpu.kstat.ticks++;
-      /* TODO: write the next time */
-      sbi_set_timer(rv::get_time() + TICK_INTERVAL);
+    switch (nr) {
+        /* Supervisor software interrupt (from machine mode) */
+      case 1: {
+        write_csr(sip, read_csr(sip) & ~(1 << 1));
+        cpu::run_pending_xcalls();
+        // sip.SSIP = 0
+        //  turn off the "supervisor software interrupt pending" bit
+        break;
+      }
+      case 5: {
+        auto &cpu = cpu::current();
+        uint64_t now = rv::get_cycle();
+        cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
+        cpu.kstat.last_tick_tsc = now;
+        cpu.ticks_per_second = 1000 / CONFIG_TICKS_PER_SECOND;
+        cpu.kstat.ticks++;
+        /* TODO: write the next time */
+        sbi_set_timer(rv::get_time() + TICK_INTERVAL);
 
-      arch_enable_ints();
+        arch_enable_ints();
 
-      sched::handle_tick(cpu.kstat.ticks);
-      // arch_disable_ints();
-    } else if (nr == 9) {
-      /* Supervisor External Interrupt */
-      /* First, we claim the irq from the PLIC */
-      int irq = rv::plic::claim();
-      irq::dispatch(irq, NULL /* Hmm, not sure what to do with regs */);
-      rv::plic::complete(irq);
+        sched::handle_tick(cpu.kstat.ticks);
+        // arch_disable_ints();
+        break;
+      }
+
+      case 9: {
+        /* Supervisor External Interrupt */
+        /* First, we claim the irq from the PLIC */
+        int irq = rv::plic::claim();
+        irq::dispatch(irq, NULL /* Hmm, not sure what to do with regs */);
+        rv::plic::complete(irq);
+        break;
+      }
+      default: {
+				panic("[riscv] unhandled interrupt nr=%d\n", nr);
+        break;
+      }
     }
   } else {
     switch (nr) {

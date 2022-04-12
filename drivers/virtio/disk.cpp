@@ -1,17 +1,27 @@
 #include <dev/virtio/mmio.h>
 #include "dev/driver.h"
 #include "internal.h"
+#include <sched.h>
 
+
+// #define DO_LOG
+
+#ifdef DO_LOG
+#define LOG(...) PFXLOG(YEL "VIRTIO-BLK", __VA_ARGS__)
+#else
+#define LOG(...)
+#endif
 
 DECLARE_STUB_DRIVER("virtio-mmio-disk", virtio_mmio_disk_driver)
 
-virtio_mmio_disk::virtio_mmio_disk(volatile uint32_t *regs) : virtio_mmio_dev(regs), dev::Disk(virtio_mmio_disk_driver) {
-  set_block_count(config().blk_size);
-  set_block_count(config().capacity);
-}
+VirtioMMIODisk::VirtioMMIODisk(virtio_config &cfg) : VirtioMMIO<dev::Disk>(cfg, virtio_mmio_disk_driver) {}
 
+bool VirtioMMIODisk::initialize(void) {
+  LOG("initialize\n");
+  set_block_size(diskconfig().blk_size);
+  set_block_count(diskconfig().capacity);
+  set_size(block_size() * block_count());
 
-bool virtio_mmio_disk::initialize(const struct virtio_config &config) {
   uint32_t status = 0;
 
   status |= VIRTIO_CONFIG_S_ACKNOWLEDGE;
@@ -30,8 +40,7 @@ bool virtio_mmio_disk::initialize(const struct virtio_config &config) {
   features &= ~(1 << VIRTIO_RING_F_EVENT_IDX);
   features &= ~(1 << VIRTIO_RING_F_INDIRECT_DESC);
   write_reg(VIRTIO_MMIO_DRIVER_FEATURES, features);
-
-  irq::install(config.irqnr, virtio_irq_handler, "virtio disk", (void *)this);
+  // register_virtio_irq(config.irqnr);
 
   // tell device that feature negotiation is complete.
   status |= VIRTIO_CONFIG_S_FEATURES_OK;
@@ -43,131 +52,90 @@ bool virtio_mmio_disk::initialize(const struct virtio_config &config) {
   ops = new virtio::blk_req[ndesc];
 
   dev::register_disk(this);
+
+
+
   return true;
 }
 
-void virtio_mmio_disk::disk_rw(uint32_t sector, void *data, int n, int write) {
-  /*
-   * God knows where `data` points to. It could be a virtual address that can't be
-   * easily converted to a physical one. For this reason, we need to allocate one
-   * that we know is physically contiguous. Just use malloc for this, as it's physically
-   * contiguous (for now) TODO: be smart later :^)
-   */
-  void *tmp_buf = malloc(block_size());
 
-  if (write) memcpy(tmp_buf, data, block_size());
+int VirtioMMIODisk::read_blocks(uint32_t sector, void *data, int nsec) {
+  LOG("read_blocks %d %p %d\n", sector, data, nsec);
+  disk_rw(sector, data, nsec, 0 /* read mode */);
+  return true;
+}
 
-  if (!arch_irqs_enabled()) {
-    panic("wut\n");
-  }
-
-  vdisk_lock.lock();
-
-
-  // the spec's Section 5.2 says that legacy block operations use
-  // three descriptors: one for type/reserved/sector, one for the
-  // data, one for a 1-byte status result.
-
-  // allocate the three descriptors.
-
-  uint16_t first_index;
-
-
-  virtio::virtq_desc *start = NULL;
-
-  start = alloc_desc_chain(0, 3, &first_index);
-  if (start == NULL) {
-    panic("start is null!\n");
-  }
-
-
-  virtio::virtq_desc *desc[3];
-  desc[0] = start;
-  desc[1] = index_to_desc(0, desc[0]->next);
-  desc[2] = index_to_desc(0, desc[1]->next);
-  assert(desc[2] != NULL);
-
-
-  struct virtio::blk_req *buf0 = &ops[first_index];
-
-  if (write)
-    buf0->type = VIRTIO_BLK_T_OUT;  // write the disk
-  else
-    buf0->type = VIRTIO_BLK_T_IN;  // read the disk
-  buf0->reserved = 0;
-  buf0->sector = sector;
-  desc[0]->addr = (uint64_t)v2p(buf0);
-  desc[0]->len = sizeof(virtio::blk_req);
-  desc[0]->flags = VRING_DESC_F_NEXT;
-
-  desc[1]->addr = (uint64_t)v2p(tmp_buf);
-  desc[1]->len = 512 * n;
-  if (write)
-    desc[1]->flags = 0;  // device reads b->data
-  else
-    desc[1]->flags = VRING_DESC_F_WRITE;  // device writes b->data
-  desc[1]->flags |= VRING_DESC_F_NEXT;
-
-  info[first_index].status = 0xff;  // device writes 0 on success
-  desc[2]->addr = (uint64_t)v2p(&info[first_index].status);
-  desc[2]->len = 1;
-  desc[2]->flags = VRING_DESC_F_WRITE;  // device writes the status
-  desc[2]->next = 0;
-
-  submit_chain(0, first_index);
-
-  __sync_synchronize();
-
-// #define VIRTIO_BLK_WAITQUEUE
-#ifdef VIRTIO_BLK_WAITQUEUE
-
-  struct wait_entry ent;
-  ent.flags = 0;
-  ent.wq = &info[first_index].wq;
-
-  ent.wq->lock.lock();
-
-  sched::set_state(PS_UNINTERRUPTIBLE);
-  ent.wq->task_list.add(&ent.item);
-
-  ent.wq->lock.unlock();
-
-#endif
-
-
-  write_reg(VIRTIO_MMIO_QUEUE_NOTIFY, 0);
-
-  __sync_synchronize();
-
-#ifdef VIRTIO_BLK_WAITQUEUE
-  auto wres = ent.start();
-#endif
-
-  int loops = 0;
-  while (info[first_index].status == 0xff) {
-    __sync_synchronize();
-    loops++;
-  }  // device writes 0 on success
-
-  info[first_index].data = NULL;
-
-  vdisk_lock.unlock();
-
-  if (!write) {
-    memcpy(data, tmp_buf, block_size());
-    // printf("block %d\n", sector);
-    // hexdump(data, block_size(), true);
-    // printf("\n\n");
-  }
-
-  ::free(tmp_buf);
-
-  return;
+int VirtioMMIODisk::write_blocks(uint32_t sector, const void *data, int nsec) {
+  LOG("write_blocks %d %p %d\n", sector, data, nsec);
+  disk_rw(sector, (uint8_t *)data, nsec, 1 /* read mode */);
+  return true;
 }
 
 
-void virtio_mmio_disk::irq(int ring_index, virtio::virtq_used_elem *e) {
-  // printf("dev %p, ring %u, e %p, id %u, len %u\n", this, ring_index, e, e->id, e->len);
+struct virtio_blk_req {
+  uint32_t type;
+  uint32_t reserved;
+  uint64_t sector;
+  /* NO DATA INCLUDED HERE! */
+  uint8_t status;
+} __attribute__((packed));
+
+
+int VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
+  size_t size = n * block_size();
+
+	// printf("%s block %d\n", write ? "write": "read", sector);
+
+  vdisk_lock.lock();
+
+  {
+    assert(size == 512);
+    struct virtio_blk_req req;
+    req.sector = sector;
+		req.reserved = 0;
+    req.type = write ? VIRTIO_BLK_T_OUT : VIRTIO_BLK_T_IN;
+    req.status = 0xFF;
+
+    uint16_t first_index;
+    alloc_desc_chain(0, 3, &first_index);
+
+    ck::vec<VirtioMMIOVring::Descriptor> descs;
+
+    descs.push({
+        .addr = (uint64_t)v2p(&req),
+        .len = sizeof(req),
+        .flags = VRING_DESC_F_NEXT,
+    });
+
+    descs.push({
+        .addr = (uint64_t)v2p(data),
+        .len = (uint32_t)size,
+        .flags = (uint16_t)((write ? 0 : VRING_DESC_F_WRITE) | VRING_DESC_F_NEXT),
+    });
+
+    descs.push({
+        .addr = (uint64_t)v2p(&req.status),
+        .len = 1,
+        .flags = VRING_DESC_F_WRITE,
+    });
+
+    submit(descs, first_index);
+
+    while (req.status == 0xFF) {
+      arch_relax();
+    }
+
+    free_desc_chain(0, first_index);
+  }
+
+  vdisk_lock.unlock();
+
+  return true;
+}
+
+
+void VirtioMMIODisk::virtio_irq(int ring_index, virtio::virtq_used_elem *e) {
+  LOG("dev %p, ring %u, e %p, id %u, len %u\n", this, ring_index, e, e->id, e->len);
 
   /* parse our descriptor chain, add back to the free queue */
   uint16_t i = e->id;
@@ -190,23 +158,3 @@ void virtio_mmio_disk::irq(int ring_index, virtio::virtq_used_elem *e) {
     i = next;
   }
 }
-
-
-
-bool virtio_mmio_disk::read_blocks(uint32_t sector, void *data, int nsec) {
-  disk_rw(sector, data, nsec, 0 /* read mode */);
-  return true;
-}
-
-bool virtio_mmio_disk::write_blocks(uint32_t sector, const void *data, int nsec) {
-  disk_rw(sector, (uint8_t *)data, nsec, 1 /* read mode */);
-  return true;
-}
-
-// size_t virtio_mmio_disk::block_size(void) {
-//   return config().blk_size;
-// }
-
-// size_t virtio_mmio_disk::block_count(void) {
-//   return config().capacity;
-// }

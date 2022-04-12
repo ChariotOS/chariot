@@ -21,6 +21,7 @@
 #include <rbtree.h>
 #include <rbtree_augmented.h>
 #include <ioctl.h>
+#include "sched.h"
 
 #define PAGING_IMPL_BOOTCODE
 #include "paging_impl.h"
@@ -161,7 +162,6 @@ class RISCVHart : public dev::CharDevice {
 
         auto hartid = mmio->address();
         bind(ck::string::format("core%d", hartid));
-        printf("FOUND HART %d\n", hartid);
         if (hartid != rv::get_hstate().hartid) {
           LOG("Trying to start hart %d\n", hartid);
 #ifdef CONFIG_SMP
@@ -231,7 +231,7 @@ void main(int hartid, void *fdt) {
   write_csr(stvec, kernelvec);
 
   /* Initialize the platform level interrupt controller for this HART */
-  rv::plic::hart_init();
+  // rv::plic::hart_init();
 
 
   off_t boot_free_start = (off_t)v2p(_kernel_end);
@@ -296,6 +296,10 @@ void main(int hartid, void *fdt) {
   write_csr(sstatus, read_csr(sstatus) | (1 << 18) | (1 << 13));
   cpu::current().timekeeper = true;
 
+  // discover the plic on the system, and then initialize this hart's state on it
+  rv::plic::discover();
+  rv::plic::hart_init();
+
   assert(sched::init());
   LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
 
@@ -311,6 +315,9 @@ void main(int hartid, void *fdt) {
     LOG("kernel modules initialized\n");
 
 
+    sched::proc::create_kthread("[reaper]", Process::reaper);
+
+
 
 #ifdef CONFIG_ENABLE_USERSPACE
 
@@ -321,15 +328,26 @@ void main(int hartid, void *fdt) {
       panic("failed to mount root. Error=%d\n", -mnt_res);
     }
 
+    int chroot_res = vfs::chroot("/root");
+    if (chroot_res != 0) {
+      panic("Failed to chroot into /root. Error=%d\n", -mnt_res);
+    }
+
     LOG("Bootup complete. It is now safe to move about the cabin.\n");
 
     auto kproc = sched::proc::kproc();
     kproc->root = vfs::get_root();
     kproc->cwd = vfs::get_root();
 
+    kshell::eval("hw");
+
     ck::string init_paths = "/bin/init,/init";
     auto paths = init_paths.split(',');
     auto init_pid = sched::proc::spawn_init(paths);
+
+    // sched::set_state(PS_UNINTERRUPTIBLE);
+
+    // sched::yield();
 
     sys::waitpid(init_pid, NULL, 0);
     panic("INIT DIED!\n");
