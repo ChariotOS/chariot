@@ -40,7 +40,7 @@ bool VirtioMMIODisk::initialize(void) {
   features &= ~(1 << VIRTIO_RING_F_EVENT_IDX);
   features &= ~(1 << VIRTIO_RING_F_INDIRECT_DESC);
   write_reg(VIRTIO_MMIO_DRIVER_FEATURES, features);
-  register_virtio_irq(config.irqnr);
+  // register_virtio_irq(config.irqnr);
 
   // tell device that feature negotiation is complete.
   status |= VIRTIO_CONFIG_S_FEATURES_OK;
