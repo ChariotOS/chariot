@@ -12,7 +12,6 @@ tags
 __pycache__
 compile_commands.json
 
-base/bin
 base/lib
 base/boot
 
