@@ -13,32 +13,33 @@ int boot_hart = -1;
 #define LOG(...) PFXLOG(BLU "riscv,plic", __VA_ARGS__)
 
 
-// qemu puts platform-level interrupt controller (PLIC) here.
-#define PLIC ((rv::xsize_t)p2v(this->base))
-#define PLIC_PRIORITY MREG(PLIC + 0x0)
-#define PLIC_PENDING MREG(PLIC + 0x1000)
-#define PLIC_MENABLE(hart) MREG(PLIC + 0x2000 + (hart)*0x100)
-#define PLIC_SENABLE(hart) MREG(PLIC + 0x2080 + (hart)*0x100)
-#define PLIC_MPRIORITY(hart) MREG(PLIC + 0x201000 + (hart)*0x2000)
-#define PLIC_SPRIORITY(hart) MREG(PLIC + 0x200000 + (hart)*0x2000)
-#define PLIC_MCLAIM(hart) MREG(PLI + 0x201004 + (hart)*0x2000)
-#define PLIC_SCLAIM(hart) MREG(PLIC + 0x200004 + (hart)*0x2000)
+#define PLIC_MAX_IRQS 1024
 
-/*
- * Each interrupt source has a priority register associated with it.
- * We always hardwire it to one in Linux.
- */
-#define PRIORITY_BASE 0
+#define PLIC_PRIORITY_BASE 0x000000U
 
-/*
- * Each hart context has a vector of interrupt enable bits associated with it.
- * There's one bit for each interrupt source.
- */
-#define ENABLE_BASE 0x2000
-#define ENABLE_PER_HART (1024 / 4)
+#define PLIC_ENABLE_BASE 0x002000U
+#define PLIC_ENABLE_STRIDE 0x80U
+#define IRQ_ENABLE 1
+#define IRQ_DISABLE 0
+
+#define PLIC_CONTEXT_BASE 0x200000U
+#define PLIC_CONTEXT_STRIDE 0x1000U
+#define PLIC_CONTEXT_THRESHOLD 0x0U
+#define PLIC_CONTEXT_CLAIM 0x4U
 
 
 
+#define PLIC_PRIORITY(n) (PLIC_PRIORITY_BASE + (n) * sizeof(uint32_t))
+#define PLIC_ENABLE(n, h) (contexts[h].enable_offset + ((n) / 32) * sizeof(uint32_t))
+#define PLIC_THRESHOLD(h) (contexts[h].context_offset + PLIC_CONTEXT_THRESHOLD)
+#define PLIC_CLAIM(h) (contexts[h].context_offset + PLIC_CONTEXT_CLAIM)
+
+
+
+struct plic_context {
+  off_t enable_offset;
+  off_t context_offset;
+};
 
 class RISCVPlic : public dev::CharDevice {
  public:
@@ -54,15 +55,20 @@ class RISCVPlic : public dev::CharDevice {
 
   // initialize a hart after it boots
   void hart_init();
-  off_t base = 0;
-  spinlock lock;
-  int ndev = 0;
 
   void set_priority(int irq, int prio);
+  void set_threshold(int cpu, uint32_t threshold);
 
   inline void write_reg(off_t off, uint32_t value) { *(volatile uint32_t *)(base + off) = value; }
   inline uint32_t read_reg(off_t off) { return *(volatile uint32_t *)(base + off); }
+
+ private:
+  off_t base = 0;
+  spinlock lock;
+  int ndev = 0;
+  plic_context contexts[CONFIG_MAX_CPUS];
 };
+
 
 
 static RISCVPlic *the_plic = nullptr;
@@ -77,55 +83,119 @@ void RISCVPlic::init(void) {
   LOG("found a plic at %p with %d devices\n", base, ndev);
   for (int irq = 1; irq < ndev; irq++) {
     // mask every device
-    set_priority(irq, 0);
+    set_priority(irq, 7);
+  }
+
+  ck::vec<uint64_t> ints_extended;
+  if (mmio->props().contains("interrupts-extended")) {
+    auto &prop = mmio->props().get("interrupts-extended");
+    prop.read_all_ints(ints_extended, "i");
+  }
+
+  int context, i;
+
+
+  uint64_t *cells = ints_extended.data();
+  for (i = 0, context = 0; i < ints_extended.size(); i += 2, context++) {
+    // if this won't deliver irq nr 9 to the cpu core, skip it. This deals
+    // with the strange 0xFFFFFFFF values here for M-Mode interrupts
+    if (cells[i + 1] != 9) continue;
+
+
+    // search for interrupt controller that this context targets. If we find
+    // one, we can grab it's parent to get the core id that controls this
+    // particular context.
+    auto intc = hw::find_phandle(cells[i]);
+    if (intc) {
+      auto core = intc->parent();
+      assert(core != nullptr);
+      if (auto mmio = core->cast<hw::MMIODevice>()) {
+        auto hartid = mmio->address();
+
+
+        contexts[hartid].enable_offset = PLIC_ENABLE_BASE + context * PLIC_ENABLE_STRIDE;
+        contexts[hartid].context_offset = PLIC_CONTEXT_BASE + context * PLIC_CONTEXT_STRIDE;
+
+        LOG("CPU %d has context %d\n", hartid, context);
+      }
+    }
+
+    // printf("cpu %p at phandle %d has %d\n", dev.get(), cells[i], cells[i + 1]);
   }
 }
 
-void RISCVPlic::set_priority(int irq, int prio) {
-	write_reg(4 * irq + PRIORITY_BASE, prio);
+
+void RISCVPlic::set_threshold(int cpu, uint32_t threshold) {
+  uint32_t prival;
+
+  if (threshold < 4)  // enable everything (as far as plic is concerned)
+    prival = 0;
+  else if (threshold >= 12)  // invalid priority level ?
+    prival = 12 - 4;         // XXX Device-specific high threshold
+  else                       // everything else
+    prival = threshold - 4;  // XXX Device-specific threshold offset
+
+  write_reg(PLIC_THRESHOLD(cpu), prival);
+}
+
+void RISCVPlic::set_priority(int irq, int pri) {
+  uint32_t prival;
+
+  /*
+   * sifive plic only has 0 - 7 priority levels, yet OpenBSD defines
+   * 0 - 12 priority levels(level 1 - 4 are for SOFT*, level 12
+   * is for IPI. They should NEVER be passed to plic.
+   * So we calculate plic priority in the following way:
+   */
+  if (pri <= 4 || pri >= 12)  // invalid input
+    prival = 0;               // effectively disable this intr source
+  else
+    prival = pri - 4;
+
+  write_reg(PLIC_PRIORITY(irq), prival);
 }
 
 
 void RISCVPlic::hart_init(void) {
-	scoped_irqlock l(lock);
+  scoped_irqlock l(lock);
 
-	//
+  // set the thresh to the minimum
+  set_threshold(rv::hartid(), 0);
 }
 
 int RISCVPlic::pending(void) {
   scoped_irqlock l(lock);
-  return PLIC_PENDING;
+  return 0;
 }
 
 int RISCVPlic::claim(void) {
   scoped_irqlock l(lock);
   int hart = rv::hartid();
-  int irq = PLIC_SCLAIM(hart);
+  int irq = read_reg(PLIC_CLAIM(hart));
   return irq;
 }
 
 void RISCVPlic::complete(int irq) {
   scoped_irqlock l(lock);
   int hart = rv::hartid();
-  PLIC_SCLAIM(hart) = irq;
+  write_reg(PLIC_CLAIM(hart), irq);
 }
 
 
 
 void RISCVPlic::toggle(int hart, int hwirq, int priority, bool enable) {
-  off_t enable_base = PLIC + ENABLE_BASE + hart * ENABLE_PER_HART;
-  volatile uint32_t &reg = MREG(enable_base + (hwirq / 32) * 4);
-  uint32_t hwirq_mask = 1 << (hwirq % 32);
-  // MREG(PLIC + 4 * hwirq) = 7;
-  // PLIC_SPRIORITY(hart) = 0;
-	set_priority(hwirq, priority);
+  printf("toggle %d to %d\n", hwirq, enable);
+  if (hwirq == 0) return;
+  assert(hart < CONFIG_MAX_CPUS);
 
-  if (enable) {
-    reg = reg | hwirq_mask;
-  } else {
-    reg = reg & ~hwirq_mask;
-  }
+  uint32_t mask = (1 << (hwirq % 32));
+  uint32_t val = read_reg(PLIC_ENABLE(hwirq, hart));
+  if (enable == IRQ_ENABLE)
+    val |= mask;
+  else
+    val &= ~mask;
 
+  write_reg(PLIC_ENABLE(hwirq, hart), val);
 }
 
 
@@ -150,17 +220,6 @@ void rv::plic::hart_init(void) {
   assert(the_plic != NULL);
 
   the_plic->hart_init();
-  /*
-int hart = rv::hartid();
-LOG("Initializing on hart#%d\n", hart);
-
-for (int i = 0; i < 0x1000 / 4; i++)
-MREG(PLIC + i * 4) = 7;
-
-(&PLIC_SENABLE(hart))[0] = 0;
-(&PLIC_SENABLE(hart))[1] = 0;
-(&PLIC_SENABLE(hart))[2] = 0;
-  */
 }
 
 uint32_t rv::plic::pending(void) {
