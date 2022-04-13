@@ -10,3 +10,9 @@ add_kernel_module(
 	NEEDS RISCV
 	SOURCES pci/pci-fu740.cpp
 )
+
+
+add_kernel_module(
+	NAME pci-ecam
+	SOURCES pci/pci-ecam-generic.cpp
+)
