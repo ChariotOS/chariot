@@ -77,6 +77,9 @@ char *strdup(const char *s) {
   return memcpy(malloc(l + 1), s, l + 1);
 }
 
+
+char *strndup(const char *s, size_t size) { return strdup(s); }
+
 char *stpcpy(char *restrict d, const char *restrict s) {
   size_t *wd;
   const size_t *ws;
