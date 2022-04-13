@@ -150,3 +150,9 @@ void arch_thread_create_callback(void) {}
 int arch_generate_backtrace(off_t virt_bp, off_t *bt, off_t sz) { return 0; }
 
 void arch_deliver_xcall(int core) {}
+
+
+
+unsigned long arch_ns_to_timestamp(uint64_t ns) { return 0; }
+
+unsigned long arch_timestamp_to_ns(uint64_t cycles) { return 0; }

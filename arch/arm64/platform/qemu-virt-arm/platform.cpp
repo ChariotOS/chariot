@@ -98,7 +98,7 @@ void serial_send(int device, char c) {
 void serial_string(int device, char *out) {}
 
 
-void arm64_platform_init(uint64_t dtb, uint64_t x1, uint64_t x2, uint64_t x3) {
+void arm64::platform_init(uint64_t dtb, uint64_t x1, uint64_t x2, uint64_t x3) {
   /* Initialize the interrupt controller */
   arm64::gic_init();
 
