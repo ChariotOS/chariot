@@ -1,5 +1,8 @@
 #!/bin/bash
 
+set -e
+set -o pipefail
+
 
 if [ $# -eq 0 ]; then
 	echo "Usage build.sh [arch...]"
@@ -32,12 +35,12 @@ if which figlet >/dev/null 2>&1; then
 	MESSAGE="figlet"
 fi
 
-
+CURRENT="download"
 
 buildstep() {
     NAME=$1
     shift
-    "$@" 2>&1 | sed $'s|^|\x1b[34m['"${NAME}"$']\x1b[39m |'
+    "$@" 2>&1 | sed $'s|^|\x1b[34m['"${CURRENT}: ${NAME}"$']\x1b[39m |' || exit 1
 }
 
 
@@ -97,6 +100,7 @@ do
 	TARGET="$ARCH-elf"
 	PREFIX="$DIR/local"
 
+	CURRENT=$ARCH
 
 
 	BUILD=$DIR/build/$ARCH
@@ -116,7 +120,7 @@ do
 																							--with-sysroot="$SYSROOT" \
 																							--enable-shared \
 																							--disable-nls || exit 1
-			buildstep "binutils/make" make -j "$MAKEJOBS" || exit 1
+			buildstep "binutils/make"    make -j "$MAKEJOBS" || exit 1
 			buildstep "binutils/install" make install || exit 1
 		popd
 
@@ -145,11 +149,9 @@ do
         popd
       fi
 
-			echo "XXX build gcc and libgcc"
-			buildstep "gcc/build" "$MAKE" -j "$MAKEJOBS" all-gcc || exit 1
-			buildstep "libgcc/build" "$MAKE" -j "$MAKEJOBS" all-target-libgcc || exit 1
-			echo "XXX install gcc and libgcc"
-			buildstep "gcc+libgcc/install" "$MAKE" install-gcc install-target-libgcc || exit 1
+			buildstep "gcc/build"          make -j "$MAKEJOBS" all-gcc || exit 1
+			buildstep "libgcc/build"       make -j "$MAKEJOBS" all-target-libgcc || exit 1
+			buildstep "gcc+libgcc/install" make -j "$MAKEJOBS" install-gcc install-target-libgcc || exit 1
 
 			# buildstep "libstdc++/build" "$MAKE" -j "$MAKEJOBS" all-target-libstdc++-v3 || exit 1
 			# buildstep "libstdc++/install" "$MAKE" install-target-libstdc++-v3 || exit 1

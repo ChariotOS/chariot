@@ -62,9 +62,9 @@ case $ARCH in
 
 
 	AArch64)
-		# QEMU_FLAGS+="-M virt -smp 1 -cpu cortex-a53 -m 1024M "
-		QEMU_FLAGS+="-accel tcg "
-		QEMU_FLAGS+="-M type=raspi3 -m 1024 "
+		QEMU_FLAGS+="-M virt -smp 1 -cpu cortex-a53 -m 1024M "
+		# QEMU_FLAGS+="-accel tcg "
+		# QEMU_FLAGS+="-M type=raspi3 -m 1024 "
 		QEMU_FLAGS+="-kernel $BUILD/chariot.elf "
 		;;
 

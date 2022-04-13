@@ -92,7 +92,7 @@ do
 
 		mkdir -p freetype
 		pushd freetype
-			$ARCH-elf-gcc -v
+			echo $ARCH-elf-gcc -v
 
 			$ROOT/ports/src/$FREETYPE_NAME/configure                               \
 					--host=$ARCH-elf                                                   \
