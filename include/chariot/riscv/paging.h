@@ -9,22 +9,17 @@ namespace rv {
   using pte_t = rv::xsize_t;
 
 
-  class PageTable : public mm::PageTable {
+  class PageTable final : public mm::TransactionBasedPageTable {
    public:
     rv::xsize_t *table;
     PageTable(rv::xsize_t *table);
     virtual ~PageTable();
 
-    virtual bool switch_to(void) override;
+    bool switch_to(void) override;
 
-    virtual int add_mapping(off_t va, struct mm::pte &) override;
-    virtual int get_mapping(off_t va, struct mm::pte &) override;
-    virtual int del_mapping(off_t va) override;
+    int get_mapping(off_t va, struct mm::pte &) override;
+    void commit_mappings(ck::vec<mm::PendingMapping> &mappings) override;
 
-
-	 private:
-		// cores which have used this page table
-		uint64_t used = 0;
   };
 
 
