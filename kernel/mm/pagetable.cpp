@@ -26,3 +26,32 @@ void *mm::PageTable::translate(off_t va) {
 
   return (void *)((ppage << 12) + off);
 }
+
+
+int mm::TransactionBasedPageTable::add_mapping(off_t va, struct mm::pte &pte) {
+  assert(in_transaction);
+  pending_mappings.push({.cmd = mm::PendingMapping::Command::Map, .va = va, .pte = pte});
+  return 0;
+}
+
+
+int mm::TransactionBasedPageTable::del_mapping(off_t va) {
+  assert(in_transaction);
+  pending_mappings.push({.cmd = mm::PendingMapping::Command::Delete, .va = va});
+  return 0;
+}
+
+
+void mm::TransactionBasedPageTable::transaction_begin(const char *reason) {
+  lock.lock();
+  // tx_reason = reason;
+  in_transaction = true;
+}
+
+void mm::TransactionBasedPageTable::transaction_commit() {
+  commit_mappings(pending_mappings);
+  pending_mappings.clear();
+
+  in_transaction = false;
+  lock.unlock();
+}

@@ -160,8 +160,8 @@ namespace mm {
     virtual int add_mapping(off_t va, struct pte &) = 0;
     virtual int get_mapping(off_t va, struct pte &) = 0;
     virtual int del_mapping(off_t va) = 0;
-		virtual void transaction_begin(const char *reason = "unknown") {}
-		virtual void transaction_commit() {}
+    virtual void transaction_begin(const char *reason = "unknown") {}
+    virtual void transaction_commit() {}
 
     void *translate(off_t);
 
@@ -172,6 +172,37 @@ namespace mm {
 
     // implemented in arch, returns subclass
     static ck::ref<PageTable> create();
+  };
+
+
+
+  struct PendingMapping {
+    enum Command {
+      Map,
+      Delete,
+    };
+    Command cmd;
+    off_t va;
+    mm::pte pte;
+  };
+
+  class TransactionBasedPageTable : public mm::PageTable {
+   public:
+    virtual ~TransactionBasedPageTable(void) {}
+
+    int add_mapping(off_t va, struct mm::pte &) override final;
+    int del_mapping(off_t va) override final;
+
+    void transaction_begin(const char *reason = "unknown") override final;
+    void transaction_commit() override final;
+
+    // Implement this in your subclass
+    virtual void commit_mappings(ck::vec<mm::PendingMapping> &mappings) = 0;
+
+   private:
+    spinlock lock;
+    bool in_transaction = false;
+    ck::vec<mm::PendingMapping> pending_mappings;
   };
 
   class AddressSpace;
@@ -330,31 +361,30 @@ namespace mm {
     spinlock lock;
     rb_root regions;
 
-	 protected:
-
-		uint64_t pagefaults = 0;
+   protected:
+    uint64_t pagefaults = 0;
 #ifdef CONFIG_MEMORY_PREFETCH
-		// predictive page faulting stuff
-		off_t predict_next = 0;
-		uint64_t predict_i = 0;
+    // predictive page faulting stuff
+    off_t predict_next = 0;
+    uint64_t predict_i = 0;
 #define PREDICT_I_MAX 9
 #endif
-		uint64_t predict_hits = 0;
-		uint64_t predict_misses = 0;
+    uint64_t predict_hits = 0;
+    uint64_t predict_misses = 0;
 
     // expects nothing to be locked
     ck::ref<mm::Page> get_page(off_t uaddr);
     // expects the area, and space to be locked
     ck::ref<mm::Page> get_page_internal(off_t uaddr, mm::MappedRegion &area, int pagefault_err, bool do_map);
 
-		struct RegionCacheEntry {
-			mm::MappedRegion *region = NULL;
-			uint64_t last_used = 0;
-		};
-		uint64_t cache_tick = 0;
-		RegionCacheEntry region_cache[MM_REGION_CACHE_SIZE];
-		uint64_t cache_hits = 0;
-		uint64_t cache_misses = 0;
+    struct RegionCacheEntry {
+      mm::MappedRegion *region = NULL;
+      uint64_t last_used = 0;
+    };
+    uint64_t cache_tick = 0;
+    RegionCacheEntry region_cache[MM_REGION_CACHE_SIZE];
+    uint64_t cache_hits = 0;
+    uint64_t cache_misses = 0;
   };
 };  // namespace mm
 

@@ -107,88 +107,77 @@ rv::PageTable::~PageTable(void) {
 bool rv::PageTable::switch_to(void) {
   write_csr(satp, MAKE_SATP(v2p(table)));
 
-	used |= (1LU << cpu::current().id);
   return true;
 }
 
-int rv::PageTable::add_mapping(off_t va, struct mm::pte &p) {
-  /* TODO: */
+void rv::PageTable::commit_mappings(ck::vec<mm::PendingMapping> &mappings) {
+  for (auto &mapping : mappings) {
+    auto &p = mapping.pte;
+    auto va = mapping.va;
 
-  volatile auto *pte = rv::page_walk(this->table, va);
-  if (pte == NULL) return -EINVAL;
+    volatile auto *pte = rv::page_walk(this->table, va);
+    if (pte == NULL) {
+      panic("invalid mapping commit. pte = NULL\n");
+    }
 
-  rv::pte_t ent = *pte;
+    rv::pte_t ent = *pte;
 
-  int prot = PT_V;
+    int prot = PT_V;
 
-  /*
-   * due to interesting decisions by the spec, and a hard to track down
-   * bug on the HiFive unleashed, there are two schemes by which the processor
-   * is allowed to manage A and D bits:
-   *
-   * - When a virtual page is accessed and the A bit is clear, or is written and the D bit is clear,
-   *   the implementation sets the corresponding bit in the PTE. The PTE update must be atomic
-   *   with respect to other accesses to the PTE, and must atomically check that the PTE is valid
-   *   and grants sufficient permissions. The PTE update must be exact (i.e., not speculative), and
-   *   observed in program order by the local hart. The ordering on loads and stores provided by
-   *   FENCE instructions and the acquire/release bits on atomic instructions also orders the PTE
-   *   updates associated with those loads and stores as observed by remote harts
-   *
-   * - When a virtual page is accessed and the A bit is clear, or is written and the D bit is clear, a
-   *   page-fault exception is raised
-   *
-   * The second method here is arguably easier when developing hardware, but also acts as a "lower bound"
-   * on software implementation. We therefore set PT_A and PT_D here, as it doesn't result in any kind of
-   * negative side-effects in the case of the first method. This kernel, at the very least, doesn't use
-   * these bits, and depends on write-based page faults to determine how to manage copy on write.
-   *
-   * source: https://riscv.org/wp-content/uploads/2017/05/riscv-privileged-v1.10.pdf
-   *         page 61
-   *
-   * that said, we do this:
-   */
-  prot |= PT_A | PT_D;
+    if (mapping.cmd == mm::PendingMapping::Command::Map) {
+      /*
+       * due to interesting decisions by the spec, and a hard to track down
+       * bug on the HiFive unleashed, there are two schemes by which the processor
+       * is allowed to manage A and D bits:
+       *
+       * - When a virtual page is accessed and the A bit is clear, or is written and the D bit is clear,
+       *   the implementation sets the corresponding bit in the PTE. The PTE update must be atomic
+       *   with respect to other accesses to the PTE, and must atomically check that the PTE is valid
+       *   and grants sufficient permissions. The PTE update must be exact (i.e., not speculative), and
+       *   observed in program order by the local hart. The ordering on loads and stores provided by
+       *   FENCE instructions and the acquire/release bits on atomic instructions also orders the PTE
+       *   updates associated with those loads and stores as observed by remote harts
+       *
+       * - When a virtual page is accessed and the A bit is clear, or is written and the D bit is clear, a
+       *   page-fault exception is raised
+       *
+       * The second method here is arguably easier when developing hardware, but also acts as a "lower bound"
+       * on software implementation. We therefore set PT_A and PT_D here, as it doesn't result in any kind of
+       * negative side-effects in the case of the first method. This kernel, at the very least, doesn't use
+       * these bits, and depends on write-based page faults to determine how to manage copy on write.
+       *
+       * source: https://riscv.org/wp-content/uploads/2017/05/riscv-privileged-v1.10.pdf
+       *         page 61
+       *
+       * that said, we do this:
+       */
+      prot |= PT_A | PT_D;
 
-  if (p.prot & VPROT_READ) prot |= PT_R;
-  if (p.prot & VPROT_WRITE) prot |= PT_W;
-  if (p.prot & VPROT_EXEC) prot |= PT_X;
-  /* If not a super page, it's user */
-  if (!(p.prot & VPROT_SUPER)) prot |= PT_U;
+      if (p.prot & VPROT_READ) prot |= PT_R;
+      if (p.prot & VPROT_WRITE) prot |= PT_W;
+      if (p.prot & VPROT_EXEC) prot |= PT_X;
+      /* If not a super page, it's user */
+      if (!(p.prot & VPROT_SUPER)) prot |= PT_U;
 
-  auto old_pa = PTE2PA(ent);
+      auto old_pa = PTE2PA(ent);
 
-#if 0
-  printf("[pid=%d] add mapping 0x%p to 0x%p ", curproc->pid, va, p.ppn << 12);
-  if (old_pa != 0) {
-    printf("old pa: 0x%llx  ", old_pa);
+      /* Write the page table entry */
+      *pte = MAKE_PTE(p.ppn << 12, prot);
+
+
+      __sync_synchronize();
+
+      if (*pte != ent) {
+        /* Flush that bit in the TLB: TODO: tell other cpus? */
+        rv::sfence_vma(va);
+      }
+    } else if (mapping.cmd == mm::PendingMapping::Command::Delete) {
+      *pte = 0;
+      __sync_synchronize();
+      rv::sfence_vma(va);
+    }
   }
-  if (ent & PT_R) printf("R");
-  if (ent & PT_W) printf("W");
-  if (ent & PT_X) printf("X");
-  if (ent & PT_U) printf("U");
-  if (ent & PT_G) printf("G");
-  printf(" -> ");
-  if (prot & PT_R) printf("R");
-  if (prot & PT_W) printf("W");
-  if (prot & PT_X) printf("X");
-  if (prot & PT_U) printf("U");
-  if (prot & PT_G) printf("G");
-  printf("\n");
-#endif
-
-  /* Write the page table entry */
-  *pte = MAKE_PTE(p.ppn << 12, prot);
-
-
-  __sync_synchronize();
-
-  if (*pte != ent) {
-    /* Flush that bit in the TLB: TODO: tell other cpus? */
-    rv::sfence_vma(va);
-  }
-  return 0;
 }
-
 
 int rv::PageTable::get_mapping(off_t va, struct mm::pte &r) {
   auto *pte = rv::page_walk(this->table, va);
@@ -207,16 +196,6 @@ int rv::PageTable::get_mapping(off_t va, struct mm::pte &r) {
   return 0;
 }
 
-
-int rv::PageTable::del_mapping(off_t va) {
-  /* TODO: */
-  auto *pte = rv::page_walk(this->table, va);
-  if (pte == NULL) return -EINVAL;
-  *pte = 0;
-
-  rv::sfence_vma(va);
-  return 0;
-}
 
 /* TODO: */
 static mm::AddressSpace *kspace;
