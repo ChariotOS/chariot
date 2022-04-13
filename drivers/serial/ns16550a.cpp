@@ -140,7 +140,7 @@ namespace ns16550a {
         *(volatile uint8_t *)(regs + offset) = val;
       } else {
 #ifdef CONFIG_X86
-        outb(val, (uint16_t)(s->addr + offset));
+        outb(val, (uint16_t)((off_t)regs + offset));
 #endif
       }
     }
@@ -150,7 +150,7 @@ namespace ns16550a {
         return *(volatile uint8_t *)(regs + offset);
       } else {
 #ifdef CONFIG_X86
-        return inb((uint16_t)(regs + offset));
+        return inb((uint16_t)((off_t)regs + offset));
 #endif
       }
       return 0;
