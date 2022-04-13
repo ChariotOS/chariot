@@ -105,8 +105,9 @@ rv::PageTable::~PageTable(void) {
 
 
 bool rv::PageTable::switch_to(void) {
-  // printf_nolock("switch to %p\n", table);
   write_csr(satp, MAKE_SATP(v2p(table)));
+
+	used |= (1LU << cpu::current().id);
   return true;
 }
 

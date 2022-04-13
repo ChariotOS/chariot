@@ -20,6 +20,11 @@ namespace rv {
     virtual int add_mapping(off_t va, struct mm::pte &) override;
     virtual int get_mapping(off_t va, struct mm::pte &) override;
     virtual int del_mapping(off_t va) override;
+
+
+	 private:
+		// cores which have used this page table
+		uint64_t used = 0;
   };
 
 

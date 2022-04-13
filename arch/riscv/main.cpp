@@ -339,15 +339,9 @@ void main(int hartid, void *fdt) {
     kproc->root = vfs::get_root();
     kproc->cwd = vfs::get_root();
 
-    kshell::eval("hw");
-
     ck::string init_paths = "/bin/init,/init";
     auto paths = init_paths.split(',');
     auto init_pid = sched::proc::spawn_init(paths);
-
-    // sched::set_state(PS_UNINTERRUPTIBLE);
-
-    // sched::yield();
 
     sys::waitpid(init_pid, NULL, 0);
     panic("INIT DIED!\n");
@@ -391,12 +385,6 @@ ksh_def("sip-bench", "benchmark access to the sip register") {
 
   printf("total: %llu cycles\n", sum / trials);
   printf("average access latency: %llu cycles\n", avg);
-  // printf("wrapped access latency: %llu cycles\n", (end - start) / trials);
-  /*
-printf("Average access latency to SIP CSR: %llu cycles, %lluns. 1000 trials took %llu, %lluns\n", avg, ticks_to_ns(avg), sum,
-    ticks_to_ns(sum));
-                                  */
-
 
   delete[] measurements;
   return 0;
