@@ -8,19 +8,8 @@
 
 class VirtioMMIODisk : public VirtioMMIO<dev::Disk> {
  private:
-  // track info about in-flight operations,
-  // for use when completion interrupt arrives.
-  // indexed by first descriptor index of chain.
-  struct {
-    uint8_t status;
-    void *data;
-    wait_queue wq;
-  } info[VIO_NUM_DESC];
-
-  // disk command headers.
-  // one-for-one with descriptors, for convenience.
-  struct virtio::blk_req *ops = NULL;
   spinlock vdisk_lock;
+	wait_queue wq;
 
  public:
   VirtioMMIODisk(virtio_config &cfg);
@@ -28,7 +17,7 @@ class VirtioMMIODisk : public VirtioMMIO<dev::Disk> {
 
   // ^VirtioMMIO::
   bool initialize(void) override;
-  void virtio_irq(int ring_index, virtio::virtq_used_elem *) override;
+  void handle_used(int ring_index, virtio::virtq_used_elem *) override;
 
   // ^dev::BlockDevice::
   int read_blocks(uint32_t sector, void *data, int nsec) override;

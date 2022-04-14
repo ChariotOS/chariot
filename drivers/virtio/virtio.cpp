@@ -192,15 +192,14 @@ void VirtioMMIOVring::free_desc(int ring_index, int desc_index) {
 
 
 void VirtioMMIOVring::free_desc_chain(int ring_index, int desc_index) {
+  auto &desc = ring[ring_index].desc[desc_index];
+  int next = desc.next;
 
-	auto &desc = ring[ring_index].desc[desc_index];
-	int next = desc.next;
+  free_desc(ring_index, desc_index);
 
-	free_desc(ring_index, desc_index);
-
-	if (next != 0) {
-		free_desc_chain(ring_index, next);
-	}
+  if (next != 0) {
+    free_desc_chain(ring_index, next);
+  }
 }
 
 
@@ -214,7 +213,7 @@ void VirtioMMIOVring::submit_chain(int ring_index, int desc_index) {
   // mb();
   avail->idx += 1;
   __sync_synchronize();
-	kick(ring_index);
+  kick(ring_index);
 }
 
 
@@ -223,7 +222,7 @@ virtio::virtq_desc *VirtioMMIOVring::alloc_desc_chain(int ring_index, int count,
   if (ring[ring_index].free_count < count) return NULL;
 
   /* start popping entries off the chain */
-  virtio::virtq_desc *last = 0;
+  virtio::virtq_desc *last = nullptr;
   uint16_t last_index = 0;
   while (count > 0) {
     uint16_t i = ring[ring_index].free_list;
@@ -252,32 +251,34 @@ virtio::virtq_desc *VirtioMMIOVring::alloc_desc_chain(int ring_index, int count,
 }
 
 
-int VirtioMMIOVring::submit(const ck::vec<VirtioMMIOVring::Descriptor> &descs, uint16_t first_index) {
+int VirtioMMIOVring::submit(size_t count, const VirtioMMIOVring::Descriptor *descs, uint16_t first_index) {
   // SPOOKY: vla.
-  virtio::virtq_desc *hwdescs[descs.size()];
+  virtio::virtq_desc *hwdescs[count];
 
   hwdescs[0] = index_to_desc(0, first_index);
-  for_range(i, 1, descs.size()) {
+  for_range(i, 1LU, count) {
     // build out the descriptor chain
     hwdescs[i] = index_to_desc(0, hwdescs[i - 1]->next);
   }
 
 
-
-	// printf("start = %d\n", first_index);
-  for_range(i, 0, descs.size()) {
+  // printf("start = %d\n", first_index);
+  for_range(i, 0LU, count) {
     hwdescs[i]->addr = descs[i].addr;
     hwdescs[i]->len = descs[i].len;
     hwdescs[i]->flags = descs[i].flags;
 
-    // printf("vring desc[%d] = addr: %p, len: %d, flags: %04x, next: %d\n", i, hwdescs[i]->addr, hwdescs[i]->len, hwdescs[i]->flags, hwdescs[i]->next);
+    // printf("vring desc[%d] = addr: %p, len: %d, flags: %04x, next: %d\n", i, hwdescs[i]->addr, hwdescs[i]->len, hwdescs[i]->flags,
+    // hwdescs[i]->next);
 
-    if (i != descs.size() - 1) {
+    if (i != count - 1) {
       hwdescs[i]->flags |= VRING_DESC_F_NEXT;
     } else {
-			hwdescs[i]->next = 0;
-		}
+      hwdescs[i]->next = 0;
+    }
   }
+
+  __sync_synchronize();
 
   submit_chain(0, first_index);
 

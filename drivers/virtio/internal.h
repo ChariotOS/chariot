@@ -40,7 +40,6 @@ static inline void vring_init(struct vring *vr, unsigned int num, void *p, unsig
   vr->desc = (virtio::virtq_desc *)p;
   vr->avail = (virtio::virtq_avail *)((off_t)p + num * sizeof(virtio::virtq_desc));
   vr->used = (virtio::virtq_used *)(((unsigned long)&vr->avail->ring[num] + sizeof(uint16_t) + align - 1) & ~(align - 1));
-	printf("desc = %p, avail = %p, used = %p\n", vr->desc, vr->avail, vr->used);
 }
 
 

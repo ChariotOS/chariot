@@ -40,35 +40,31 @@ bool VirtioMMIODisk::initialize(void) {
   features &= ~(1 << VIRTIO_RING_F_EVENT_IDX);
   features &= ~(1 << VIRTIO_RING_F_INDIRECT_DESC);
   write_reg(VIRTIO_MMIO_DRIVER_FEATURES, features);
-  // register_virtio_irq(config.irqnr);
 
   // tell device that feature negotiation is complete.
   status |= VIRTIO_CONFIG_S_FEATURES_OK;
   write_reg(VIRTIO_MMIO_STATUS, status);
 
+
   int ndesc = 64;
 
   alloc_ring(0, ndesc);
-  ops = new virtio::blk_req[ndesc];
+
+  handle_irq(config.irqnr, "");
 
   dev::register_disk(this);
-
-
-
   return true;
 }
 
 
 int VirtioMMIODisk::read_blocks(uint32_t sector, void *data, int nsec) {
   LOG("read_blocks %d %p %d\n", sector, data, nsec);
-  disk_rw(sector, data, nsec, 0 /* read mode */);
-  return true;
+  return disk_rw(sector, data, nsec, 0 /* read mode */);
 }
 
 int VirtioMMIODisk::write_blocks(uint32_t sector, const void *data, int nsec) {
   LOG("write_blocks %d %p %d\n", sector, data, nsec);
-  disk_rw(sector, (uint8_t *)data, nsec, 1 /* read mode */);
-  return true;
+  return disk_rw(sector, (uint8_t *)data, nsec, 1 /* read mode */);
 }
 
 
@@ -77,66 +73,52 @@ struct virtio_blk_req {
   uint32_t reserved;
   uint64_t sector;
   /* NO DATA INCLUDED HERE! */
-  uint8_t status;
+  volatile uint8_t status;
 } __attribute__((packed));
 
 
 int VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
   size_t size = n * block_size();
 
-	// printf("%s block %d\n", write ? "write": "read", sector);
-
-  vdisk_lock.lock();
+  scoped_lock l(vdisk_lock);
 
   {
     assert(size == 512);
     struct virtio_blk_req req;
     req.sector = sector;
-		req.reserved = 0;
+    req.reserved = 0;
     req.type = write ? VIRTIO_BLK_T_OUT : VIRTIO_BLK_T_IN;
     req.status = 0xFF;
 
     uint16_t first_index;
-    alloc_desc_chain(0, 3, &first_index);
-
-    ck::vec<VirtioMMIOVring::Descriptor> descs;
-
-    descs.push({
-        .addr = (uint64_t)v2p(&req),
-        .len = sizeof(req),
-        .flags = VRING_DESC_F_NEXT,
-    });
-
-    descs.push({
-        .addr = (uint64_t)v2p(data),
-        .len = (uint32_t)size,
-        .flags = (uint16_t)((write ? 0 : VRING_DESC_F_WRITE) | VRING_DESC_F_NEXT),
-    });
-
-    descs.push({
-        .addr = (uint64_t)v2p(&req.status),
-        .len = 1,
-        .flags = VRING_DESC_F_WRITE,
-    });
-
-    submit(descs, first_index);
-
-    while (req.status == 0xFF) {
-      arch_relax();
+    if (alloc_desc_chain(0, 3, &first_index) == NULL) {
+      printf("failed to allocate chain!\n");
+      return false;
     }
 
-    free_desc_chain(0, first_index);
+    VirtioMMIOVring::Descriptor descs[] = {
+        VirtioMMIOVring::Descriptor(&req, sizeof(req)),
+        VirtioMMIOVring::Descriptor(data, size, (write ? 0 : VRING_DESC_F_WRITE) | 0),
+        VirtioMMIOVring::Descriptor(&req.status, 1, VRING_DESC_F_WRITE),
+    };
+
+    struct wait_entry ent;
+    prepare_to_wait(wq, ent, true);
+    submit(3, descs, first_index);
+    if (ent.start().interrupted()) {
+      // if we get interrupted, try again
+      while (req.status == 0xFF) {
+      }
+    }
   }
 
-  vdisk_lock.unlock();
 
   return true;
 }
 
 
-void VirtioMMIODisk::virtio_irq(int ring_index, virtio::virtq_used_elem *e) {
-  LOG("dev %p, ring %u, e %p, id %u, len %u\n", this, ring_index, e, e->id, e->len);
-
+void VirtioMMIODisk::handle_used(int ring_index, virtio::virtq_used_elem *e) {
+  // LOG("dev %p, ring %u, e %p, id %u, len %u\n", this, ring_index, e, e->id, e->len);
   /* parse our descriptor chain, add back to the free queue */
   uint16_t i = e->id;
   for (;;) {
@@ -157,4 +139,5 @@ void VirtioMMIODisk::virtio_irq(int ring_index, virtio::virtq_used_elem *e) {
     if (next < 0) break;
     i = next;
   }
+  wq.wake_up_all();
 }

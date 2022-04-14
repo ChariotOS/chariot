@@ -265,7 +265,7 @@ class virtio_mmio_gpu : public virtio_mmio_dev, public dev::VideoDevice {
   virtual bool initialize(const struct virtio_config &config);
 
 
-  virtual void irq(int ring_index, virtio::virtq_used_elem *);
+  // virtual void irq(int ring_index, virtio::virtq_used_elem *);
 
 
   // ^dev::video_device

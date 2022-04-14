@@ -393,7 +393,6 @@ struct virtio_config {
 };
 
 
-
 class VirtioMMIOVring {
  protected:
   vring ring[VIO_MAX_RINGS];
@@ -405,7 +404,10 @@ class VirtioMMIOVring {
   struct Descriptor {
     uint64_t addr;
     uint32_t len;
-    uint16_t flags;
+    uint16_t flags = 0;
+
+    template <typename T>
+    Descriptor(T *addr, size_t sz, uint16_t flags = 0) : addr((uint64_t)v2p(addr)), len(sz), flags(flags) {}
   };
   int alloc_ring(int index, int len);
 
@@ -419,7 +421,8 @@ class VirtioMMIOVring {
 
   // abstract away allocating ring entries and desc entries.
   // Return 0 on success. ERRNO on error
-  int submit(const ck::vec<Descriptor> &descs, uint16_t first_index);
+  int submit(size_t ndescs, const Descriptor *descs, uint16_t first_index);
+  int submit(const ck::vec<Descriptor> &descs, uint16_t first_index) { return submit(descs.size(), descs.data(), first_index); }
 
 
   virtio::virtq_desc *alloc_desc_chain(int ring_index, int count, uint16_t *start_index);
@@ -454,10 +457,8 @@ class VirtioMMIO : public BaseDeviceT, public VirtioMMIOVring {
   VirtioMMIO(virtio_config &cfg, As &...rest) : BaseDevice(rest...), VirtioMMIOVring(cfg.regs), config(cfg) {}
   virtual ~VirtioMMIO(void) {}
 
-  // corolary to BaseDevice::handle_irq
-  void register_virtio_irq(int irq);
 
-  virtual void virtio_irq(int ring_index, virtio::virtq_used_elem *) {}
+  virtual void handle_used(int ring_index, virtio::virtq_used_elem *) {}
   virtual bool initialize(void) = 0;
 
   // ^BaseDevice::
@@ -466,42 +467,26 @@ class VirtioMMIO : public BaseDeviceT, public VirtioMMIOVring {
 
 
 template <typename T>
-inline void VirtioMMIO<T>::register_virtio_irq(int nr) {
-  this->handle_irq(nr, "Virtio IRQ");
-}
-
-
-template <typename T>
 inline void VirtioMMIO<T>::irq(int nr) {
-  int irq_status = read_reg(VIRTIO_MMIO_INTERRUPT_STATUS);
-
-  printf("irq handler. status = %02x\n", irq_status);
-  if (irq_status & 0x1) { /* used ring update */
-    // XXX is this safe?
-    write_reg(VIRTIO_MMIO_INTERRUPT_ACK, 0x1);
-
-    /* cycle through all the active rings */
-    for (int r = 0; r < VIO_MAX_RINGS; r++) {
-      auto *ring = &this->ring[r];
-      if (!ring->active) continue;
+  write_reg(VIRTIO_MMIO_INTERRUPT_ACK, read_reg(VIRTIO_MMIO_INTERRUPT_STATUS));
 
 
-      int cur_idx = ring->used->idx;
-      for (int i = ring->last_used; i != (cur_idx & ring->num_mask); i = (i + 1) & ring->num_mask) {
-        // process chain
-        auto *used_elem = &ring->used->ring[i];
-        // LTRACEF("id %u, len %u\n", used_elem->id, used_elem->len);
+  /* cycle through all the active rings */
+  for (int r = 0; r < VIO_MAX_RINGS; r++) {
+    auto *ring = &this->ring[r];
+    if (!ring->active) continue;
 
-        // DEBUG_ASSERT(dev->irq_driver_callback);
-        virtio_irq(r, used_elem);
-        ring->last_used = (ring->last_used + 1) & ring->num_mask;
-      }
+    int cur_idx = ring->used->idx;
+    for (int i = ring->last_used; i != (cur_idx & ring->num_mask); i = (i + 1) & ring->num_mask) {
+      // process chain
+      auto *used_elem = &ring->used->ring[i];
+
+      handle_used(r, used_elem);
+      ring->last_used = (ring->last_used + 1) & ring->num_mask;
     }
   }
-  if (irq_status & 0x2) { /* config change */
-    write_reg(VIRTIO_MMIO_INTERRUPT_ACK, 0x2);
-    panic("virtio config change!\n");
-  }
+
+  // XXX is this safe?
 }
 
 
