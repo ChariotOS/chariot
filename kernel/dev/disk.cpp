@@ -46,9 +46,6 @@ int dev::register_disk(dev::Disk* disk) {
   ck::string name = ck::string::format("disk%d", next_disk_id++);
   add_drive(name, disk);
 
-	printf("name = %s\n", name.get());
-
-
   /* Try to get mbr partitions */
   void* first_sector = malloc(disk->block_size());
 
@@ -71,12 +68,3 @@ int dev::register_disk(dev::Disk* disk) {
   free(first_sector);
   return 0;
 }
-
-/*
-ksh_def("disks", "display all disks") {
-  for (auto disk : m_disks) {
-    printf("sz: %zu, count: %zu\n", disk->block_size(), disk->block_count());
-  }
-  return 0;
-}
-*/

@@ -5,6 +5,11 @@
 
 
 #ifdef CONFIG_RISCV
+
+#ifndef __riscv_xlen
+#define __riscv_xlen 64
+#endif
+
 /* Macros to handle different pointer/register sizes for 32/64-bit code.  */
 #if __riscv_xlen == 64
 #define PTRLOG 3
@@ -23,17 +28,9 @@
 #endif
 
 
-#if !defined __riscv_float_abi_soft
-/* For ABI uniformity, reserve 8 bytes for floats, even if double-precision
-   floating-point is not supported in hardware.  */
-#if defined __riscv_float_abi_double
 #define FREG_L fld
 #define FREG_S fsd
 #define SZFREG 8
-#else
-#error unsupported FLEN
-#endif
-#endif
 
 #define ROFF(N, R) N* SZREG(R)
 #endif

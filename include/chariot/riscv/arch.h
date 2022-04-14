@@ -7,7 +7,7 @@
 #include <types.h>
 
 
-namespace cpu { class Core; }
+namespace cpu { struct Core; }
 
 #define read_csr(name)                         \
   ({                                           \

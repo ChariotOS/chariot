@@ -29,8 +29,8 @@
 
 // Gross forward declarations
 namespace mm {
-  class VMObject;
-  class Page;
+  struct VMObject;
+  struct Page;
 }  // namespace mm
 namespace net {
   class Socket;

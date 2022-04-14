@@ -5,7 +5,7 @@
 #include <wait.h>
 
 // fwd decl
-namespace cpu { class Core; } 
+namespace cpu { struct Core; } 
 
 struct sleep_waiter {
   struct sleep_waiter *prev;
