@@ -184,7 +184,6 @@ void RISCVPlic::complete(int irq) {
 
 
 void RISCVPlic::toggle(int hart, int hwirq, int priority, bool enable) {
-  printf("toggle %d to %d\n", hwirq, enable);
   if (hwirq == 0) return;
   assert(hart < CONFIG_MAX_CPUS);
 
