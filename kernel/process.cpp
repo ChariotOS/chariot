@@ -751,18 +751,21 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
   /* the address must be word aligned (4 bytes) */
   if ((addr & 0x3) != 0) return -EINVAL;
 
-  /* This follows the general idea of Linux's:
-     This operation tests that the value at the futex word pointed to by the address uaddr still
-     contains the expected value val, and if so, then sleeps waiting for  a  FU‐ TEX_WAKE  operation
-     on  the futex word.  The load of the value of the futex word is an atomic memory access (i.e.,
-     using atomic machine instructions of the respective architecture).  This load, the comparison
-     with the expected value, and starting to sleep are performed atomically and totally ordered
-     with respect to other futex oper‐ ations  on  the  same  futex  word.  If the thread starts to
-     sleep, it is considered a waiter on this futex word.  If the futex value does not match val,
-     then the call fails immediately with the error EAGAIN.
-                                                          */
+  /* 
+	 * This follows the general idea of Linux's:
+   * This operation tests that the value at the futex word pointed to by the address uaddr still
+   * contains the expected value val, and if so, then sleeps waiting for  a  FU‐ TEX_WAKE  operation
+   * on  the futex word.  The load of the value of the futex word is an atomic memory access (i.e.,
+   * using atomic machine instructions of the respective architecture).  This load, the comparison
+   * with the expected value, and starting to sleep are performed atomically and totally ordered
+   * with respect to other futex oper‐ ations  on  the  same  futex  word.  If the thread starts to
+   * sleep, it is considered a waiter on this futex word.  If the futex value does not match val,
+   * then the call fails immediately with the error EAGAIN.
+   */
   if (op == FUTEX_WAIT) {
     auto &wq = curproc->futex_queue(uaddr);
+    wait_entry ent;
+    prepare_to_wait(wq, ent, true);
     // printf("[%2d] FUTEX_WAIT - wq: %p\n", curthd->tid, &wq);
     /* Load the item atomically. (ATOMIC ACQUIRE makes sense here I think) */
     int current_value = __atomic_load_n(uaddr, __ATOMIC_ACQUIRE);
@@ -772,7 +775,7 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
     // printf("WAIT BEGIN!\n");
     // printf("wait at task list %p\n", &wq.task_list);
 
-    if (wq.wait_exclusive().interrupted()) {
+    if (ent.start().interrupted()) {
       // printf("FUTEX WAIT WAKEUP (RUDE)\n");
       return -EINTR;
     }
@@ -787,7 +790,6 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
     if (val == 0) return 0;
 
     if (wq.task_list.is_empty_careful()) {
-      // printf("task list empty!\n");
       return 0;
     }
     // printf("[%2d] FUTEX_WAKE - wq: %p\n", curthd->tid, &wq);

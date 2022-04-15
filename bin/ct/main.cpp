@@ -117,15 +117,58 @@ async(int) make_fiber(int num, int size, int div) {
   });
 }
 
+int nproc = 0;
+ck::futex x;
+void* work(void* p) {
+  long me = (long)p;
+  printf("thread %d\n", me);
+
+  return NULL;
+  for (int i = 0; i < 100; i++) {
+    for (int p = 0; p < nproc; p++) {
+      if (p == me) {
+        printf("thread %d's turn\n", me);
+        x.set(p);
+      } else {
+        printf("thread %d is waiting on %d\n", me, p);
+        x.wait_on(p);
+      }
+      //
+    }
+  }
+  return NULL;
+}
+
+int main(int argc, char** argv) {
+  nproc = sysbind_get_nproc();
+  __sync_synchronize();
+  printf("nproc: %d\n", nproc);
+
+  pthread_t threads[nproc];
+
+  for (long i = 0; i < nproc; i++) {
+		printf("creating thread %d\n", i);
+    pthread_create(&threads[i], NULL, work, (void*)i);
+  }
+
+  for (long i = 0; i < nproc; i++) {
+    pthread_join(threads[i], NULL);
+  }
+
+  //
+  return 0;
+}
 
 
+/*
 
 int main(int argc, char** argv) async_main({
+
   uint64_t start = sys::gettime_microsecond();
   int result = make_fiber(0, 100000, 10).await();
   uint64_t end = sys::gettime_microsecond();
   printf("Skynet Result: %d in %fms\n", result, (end - start) / 1000.0f);
-  // return 0;
+  return;
 
 #if 0
 
@@ -139,3 +182,4 @@ int main(int argc, char** argv) async_main({
   conn->set_window_name(wid, "my window name");
 #endif
 })
+*/
