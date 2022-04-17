@@ -3,6 +3,7 @@
 #include <mm.h>
 #include <phys.h>
 #include <riscv/arch.h>
+#include <riscv/sbi.h>
 #include <riscv/paging.h>
 #include <util.h>
 
@@ -105,9 +106,20 @@ rv::PageTable::~PageTable(void) {
 
 
 bool rv::PageTable::switch_to(void) {
+  // Atoimically set this HART's bit in the pagetables hart mask so we know
+  // what cores to flush when we commiting mappings
+  __atomic_or_fetch(&hart_mask, (1LU << cpu::current().id), __ATOMIC_ACQ_REL);
+
+  //
   write_csr(satp, MAKE_SATP(v2p(table)));
+  //
 
   return true;
+}
+
+
+static __inline void sbi_remote_sfence_vma(const unsigned long *hart_mask, unsigned long start, unsigned long size) {
+  (void)sbi_call(SBI_REMOTE_SFENCE_VMA, (uint64_t)hart_mask, start, size);
 }
 
 void rv::PageTable::commit_mappings(ck::vec<mm::PendingMapping> &mappings) {
@@ -163,19 +175,17 @@ void rv::PageTable::commit_mappings(ck::vec<mm::PendingMapping> &mappings) {
 
       /* Write the page table entry */
       *pte = MAKE_PTE(p.ppn << 12, prot);
-
-
       __sync_synchronize();
-
-      if (*pte != ent) {
-        /* Flush that bit in the TLB: TODO: tell other cpus? */
-        rv::sfence_vma(va);
-      }
     } else if (mapping.cmd == mm::PendingMapping::Command::Delete) {
       *pte = 0;
-      __sync_synchronize();
-      rv::sfence_vma(va);
     }
+  }
+
+  // now invalidate the other cores' tlbs
+  for (auto &mapping : mappings) {
+    // printf("remap %p %b\n", mapping.va, hart_mask);
+    sbi_remote_sfence_vma(&hart_mask, mapping.va, 4096);
+    //
   }
 }
 

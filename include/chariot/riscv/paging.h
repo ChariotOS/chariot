@@ -20,6 +20,8 @@ namespace rv {
     int get_mapping(off_t va, struct mm::pte &) override;
     void commit_mappings(ck::vec<mm::PendingMapping> &mappings) override;
 
+		uint64_t hart_mask = 0;
+
   };
 
 
