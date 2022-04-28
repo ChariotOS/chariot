@@ -110,6 +110,7 @@ extern "C" void secondary_entry(int hartid) {
   second_done = true;
 
   arch_enable_ints();
+  assert(sched::init());
 
   sched::run();
 
