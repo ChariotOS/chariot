@@ -11,7 +11,6 @@ class spinlock {
  private:
   // compare and swap dest to spinlock on
   int locked = 0;
-  int held_by = 0;
 
  public:
   inline spinlock() {
