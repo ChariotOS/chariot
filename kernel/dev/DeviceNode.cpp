@@ -10,6 +10,7 @@ static ck::map<ck::string, ck::box<fs::DirectoryEntry>> names;
 
 
 dev::Device::~Device(void) {
+	printf("device node destructor!\n");
   if (m_dev != nullptr) m_dev->detach();
   unbind();
 }

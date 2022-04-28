@@ -21,6 +21,7 @@ namespace rv {
     void commit_mappings(ck::vec<mm::PendingMapping> &mappings) override;
 
 		uint64_t hart_mask = 0;
+		uint64_t remote_invalidations = 0;
 
   };
 

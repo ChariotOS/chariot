@@ -20,7 +20,7 @@ static bool s_enabled = true;
 
 
 // copied from
-#define MLFQ_NQUEUES 32
+#define MLFQ_NQUEUES 1
 // minimum timeslice
 #define MLFQ_MIN_RT 1
 // how many ticks get added to the timeslice for each priority
@@ -66,6 +66,7 @@ struct mlfq {
       if (front == nullptr) assert(back == nullptr);
 
       tsk->next = tsk->prev = nullptr;
+			barrier();
     }
 
     ck::ref<Thread> pick_next(void) {
@@ -78,6 +79,7 @@ struct mlfq {
           break;
         }
       }
+			barrier();
 
       return td;
     }
@@ -106,7 +108,7 @@ struct mlfq {
     }
 
     if (b == mlfq::Behavior::Good) {
-      // if the thread is not still running (blocked on I/O), imrove their priority
+      // if the thread is not still running (blocked on I/O), improve their priority
       if (false && thd->get_state() != PS_RUNNING) {
         thd->sched.priority--;
         thd->sched.good_streak = 0;
@@ -190,13 +192,6 @@ struct mlfq {
       }
     }
   }
-
-  // return the number of runnable threads in this scheduler (incremented and decremented on
-  // add/remove)
-  int num_runnable(void) { return __atomic_load_n(&m_running, __ATOMIC_ACQUIRE); }
-
- private:
-  int m_running = 0;
 };
 
 
@@ -312,6 +307,9 @@ static void switch_into(ck::ref<Thread> thd) {
 
   cpu::current().current_thread = thd;
   cpu::current().next_thread = nullptr;
+
+	barrier();
+
   // update the statistics of the thread
   thd->stats.run_count++;
   thd->stats.current_cpu = cpu::current().id;
@@ -319,12 +317,14 @@ static void switch_into(ck::ref<Thread> thd) {
 
   if (thd->proc.ring == RING_USER) arch_restore_fpu(*thd);
 
-
-
   thd->sched.has_run = 0;
+
+	barrier();
 
   // load up the thread's address space
   cpu::switch_vm(thd);
+
+	barrier();
 
   thd->stats.last_start_cycle = arch_read_timestamp();
   bool ts = time::stabilized();
@@ -333,8 +333,10 @@ static void switch_into(ck::ref<Thread> thd) {
     start_us = time::now_us();
   }
 
+	barrier();
   // Switch into the thread!
   context_switch(&cpu::current().sched_ctx, thd->kern_context);
+	barrier();
 
   if (thd->proc.ring == RING_USER) arch_save_fpu(*thd);
 
@@ -357,6 +359,7 @@ sched::yieldres sched::yield(spinlock *held_lock) {
   thd.held_lock = held_lock;
 
   arch_disable_ints();
+	barrier();
 
 
   thd.stats.cycles += arch_read_timestamp() - thd.stats.last_start_cycle;
@@ -366,6 +369,7 @@ sched::yieldres sched::yield(spinlock *held_lock) {
 
   if (thd.wq.rudely_awoken) r = sched::yieldres::Interrupt;
 
+	barrier();
   arch_enable_ints();
   return r;
 }
@@ -379,8 +383,8 @@ void sched::set_state(int state) {
   }
   auto &thd = *curthd;
   thd.set_state(state);
-  // memory barrier!
-  asm volatile("" : : : "memory");
+
+	barrier();
 }
 
 sched::yieldres sched::do_yield(int st) {
@@ -503,7 +507,6 @@ void sched::run() {
     // if the old thread is now dead, notify joiners
     if (thd->should_die) {
       scoped_irqlock l(thd->joinlock);
-      // printf_nolock("sc: killing %d from %d.\n", thd->tid, cpu::current().cpunum);
       thd->set_state(PS_ZOMBIE);
       thd->joiners.wake_up_all();
     }

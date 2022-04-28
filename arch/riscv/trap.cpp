@@ -142,10 +142,13 @@ proc->mm->dump();
   }
 }
 
+static spinlock unhandled_panic_lock;
+
 static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
   printf(
       "==========================================================================================="
       "\n");
+	unhandled_panic_lock.lock_irqsave();
   printf("Unhandled trap '%s' on HART#%d\n", type, rv::hartid());
 
   dump_tf(tf);

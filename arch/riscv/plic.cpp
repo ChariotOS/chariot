@@ -73,7 +73,7 @@ class RISCVPlic : public dev::CharDevice {
 
 static RISCVPlic *the_plic = nullptr;
 void RISCVPlic::init(void) {
-  scoped_irqlock l(lock);
+  // scoped_irqlock l(lock);
   the_plic = this;
 
   auto mmio = dev()->cast<hw::MMIODevice>();
@@ -157,26 +157,26 @@ void RISCVPlic::set_priority(int irq, int pri) {
 
 
 void RISCVPlic::hart_init(void) {
-  scoped_irqlock l(lock);
+  // scoped_irqlock l(lock);
 
   // set the thresh to the minimum
   set_threshold(rv::hartid(), 0);
 }
 
 int RISCVPlic::pending(void) {
-  scoped_irqlock l(lock);
+  // scoped_irqlock l(lock);
   return 0;
 }
 
 int RISCVPlic::claim(void) {
-  scoped_irqlock l(lock);
+  // scoped_irqlock l(lock);
   int hart = rv::hartid();
   int irq = read_reg(PLIC_CLAIM(hart));
   return irq;
 }
 
 void RISCVPlic::complete(int irq) {
-  scoped_irqlock l(lock);
+  // scoped_irqlock l(lock);
   int hart = rv::hartid();
   write_reg(PLIC_CLAIM(hart), irq);
 }

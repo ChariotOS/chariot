@@ -351,6 +351,7 @@ int Process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::strin
 }
 
 int sched::proc::send_signal(long p, int sig) {
+	printf("send signal %d to %d\n", sig, p);
   // TODO: handle process group signals
   if (p < 0) {
     int err = -ESRCH;
@@ -742,6 +743,7 @@ wait_queue &Process::futex_queue(int *uaddr) {
 
 
 int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
+  // printf("call futex %p %d\n", uaddr, op);
   /* If the user can't read the address, it's invalid. */
   if (!VALIDATE_RD(uaddr, 4)) return -EINVAL;
 
@@ -751,8 +753,8 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
   /* the address must be word aligned (4 bytes) */
   if ((addr & 0x3) != 0) return -EINVAL;
 
-  /* 
-	 * This follows the general idea of Linux's:
+  /*
+   * This follows the general idea of Linux's:
    * This operation tests that the value at the futex word pointed to by the address uaddr still
    * contains the expected value val, and if so, then sleeps waiting for  a  FU‐ TEX_WAKE  operation
    * on  the futex word.  The load of the value of the futex word is an atomic memory access (i.e.,
@@ -763,9 +765,12 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
    * then the call fails immediately with the error EAGAIN.
    */
   if (op == FUTEX_WAIT) {
+    // printf("futex_wait(%p, %d)\n", uaddr, val);
     auto &wq = curproc->futex_queue(uaddr);
+
     wait_entry ent;
-    prepare_to_wait(wq, ent, true);
+    prepare_to_wait_exclusive(wq, ent, true);
+    // prepare_to_wait(wq, ent, true);
     // printf("[%2d] FUTEX_WAIT - wq: %p\n", curthd->tid, &wq);
     /* Load the item atomically. (ATOMIC ACQUIRE makes sense here I think) */
     int current_value = __atomic_load_n(uaddr, __ATOMIC_ACQUIRE);
@@ -773,10 +778,9 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
     if (current_value != val) return -EAGAIN;
 
     // printf("WAIT BEGIN!\n");
-    // printf("wait at task list %p\n", &wq.task_list);
 
     if (ent.start().interrupted()) {
-      // printf("FUTEX WAIT WAKEUP (RUDE)\n");
+      printf("FUTEX WAIT WAKEUP (RUDE)\n");
       return -EINTR;
     }
     // printf("FUTEX WAIT WAKEUP\n");
@@ -785,6 +789,7 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
   }
 
   if (op == FUTEX_WAKE) {
+    // printf("futex_wake(%p, %d)\n", uaddr, val);
     auto &wq = curproc->futex_queue(uaddr);
 
     if (val == 0) return 0;

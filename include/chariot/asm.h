@@ -18,6 +18,8 @@ extern "C" {
   })
 #endif
 
+#define barrier() __sync_synchronize()
+
 
 
 #ifndef unlikely

@@ -118,24 +118,89 @@ async(int) make_fiber(int num, int size, int div) {
 }
 
 int nproc = 0;
-ck::futex x;
+
+
+
+
+#include <chariot/futex.h>
+
+
+
+static inline uint32_t cmpxchg32(void* m, uint32_t old, uint32_t newval) {
+  uint32_t ret;
+
+  ret = __atomic_compare_exchange_n((uint32_t*)m, &old, newval, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);  // ? newval : old;
+
+  /* asm volatile ("movl %[_old], %%eax\n\t" */
+  /*               "cmpxchgl %[_new], %[_m]\n\t" */
+  /*               "movl %%eax, %[_out]" */
+  /*               : [_out] "=r" (ret) */
+  /*               : [_old] "r" (old), */
+  /*                 [_new] "r" (new), */
+  /*                 [_m]   "m" (m) */
+  /*               : "rax", "memory"); */
+
+  return ret;
+}
+
+int futex_wait(int* ptr, int value) { return sys::futex(ptr, FUTEX_WAIT, value, 0, 0, 0); }
+
+int futex_wake(int* ptr, int value) { return sys::futex(ptr, FUTEX_WAKE, value, 0, 0, 0); }
+
+class FastMutex {
+ public:
+  FastMutex() : m_word(0) {}
+  void lock() {
+    // try to atimically swap 0 -> 1
+    if (cmpxchg32(&m_word, 0, 1)) return;  // success
+    // wasn't zero -- somebody held the lock
+    do {
+      // assume lock is still taken, try to make it 2 and wait
+      if (m_word == 2 || cmpxchg32(&m_word, 1, 2)) {
+        // let's wait, but only if the value is still 2
+        futex_wait(&m_word, 2);
+      }
+      // try (again) assuming the lock is free
+    } while (!cmpxchg32(&m_word, 0, 2));
+    // we are here only if transition 0 -> 2 succeeded
+  }
+  void unlock() {
+    int res = __atomic_fetch_sub(&m_word, 1, __ATOMIC_SEQ_CST);
+    // we own the lock, so it's either 1 or 2
+    if (res != 1) {
+      // it was 2
+      // important: we are still holding the lock!
+      m_word = 0;  // not any more
+      // wake up one thread (no fairness assumed)
+      futex_wake(&m_word, 1);
+    }
+  }
+
+ private:
+  int m_word;
+};
+
+
+
+
+volatile int val;
+FastMutex mut;
+
+// ck::futex x;
 void* work(void* p) {
   long me = (long)p;
   printf("thread %d\n", me);
 
-  return NULL;
-  for (int i = 0; i < 100; i++) {
-    for (int p = 0; p < nproc; p++) {
-      if (p == me) {
-        printf("thread %d's turn\n", me);
-        x.set(p);
-      } else {
-        printf("thread %d is waiting on %d\n", me, p);
-        x.wait_on(p);
-      }
-      //
-    }
+
+  for (int i = 0; 1; i++) {
+    int x = rand() % 100;
+    // mut.lock();
+    val = x * x;
+    // assert(val == x * x);
+    // mut.unlock();
   }
+
+
   return NULL;
 }
 
@@ -143,17 +208,19 @@ int main(int argc, char** argv) {
   nproc = sysbind_get_nproc();
   __sync_synchronize();
   printf("nproc: %d\n", nproc);
+  auto start = sys::gettime_microsecond();
 
   pthread_t threads[nproc];
 
   for (long i = 0; i < nproc; i++) {
-		printf("creating thread %d\n", i);
     pthread_create(&threads[i], NULL, work, (void*)i);
   }
 
   for (long i = 0; i < nproc; i++) {
     pthread_join(threads[i], NULL);
   }
+  auto end = sys::gettime_microsecond();
+  printf("%lu us\n", end - start);
 
   //
   return 0;

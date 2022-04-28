@@ -181,11 +181,24 @@ void rv::PageTable::commit_mappings(ck::vec<mm::PendingMapping> &mappings) {
     }
   }
 
+
   // now invalidate the other cores' tlbs
-  for (auto &mapping : mappings) {
-    // printf("remap %p %b\n", mapping.va, hart_mask);
-    sbi_remote_sfence_vma(&hart_mask, mapping.va, 4096);
-    //
+  for (int i = 0; i < mappings.size(); i++) {
+    off_t va = mappings[i].va;
+    size_t pages = 1;
+
+    for (int n = i + 1; n < mappings.size(); n++) {
+      auto &nva = mappings[n].va;
+      if (nva == va + (pages * 4096)) {
+				pages++;
+      } else {
+        break;
+      }
+    }
+
+		remote_invalidations++;
+
+    sbi_remote_sfence_vma(&hart_mask, va, pages * 4096);
   }
 }
 

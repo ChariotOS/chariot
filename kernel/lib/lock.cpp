@@ -21,13 +21,17 @@
 static inline void arch_atomic_store(volatile int* p, int x) { __atomic_store((int*)p, &x, __ATOMIC_SEQ_CST); }
 
 void spinlock::lock(void) {
-  while (ATOMIC_SET(&locked)) {  // MESI protocol optimization
-    while (__atomic_load_n(&locked, __ATOMIC_RELAXED) == 1) {
-    }
+  // while (ATOMIC_SET(&locked)) {  // MESI protocol optimization
+  while (__atomic_load_n(&locked, __ATOMIC_RELAXED) == 1) {
   }
+  // }
+  if (cpu::get()) held_by = cpu::current().id;
 }
 
-void spinlock::unlock(void) { ATOMIC_CLEAR(&locked); }
+void spinlock::unlock(void) {
+  held_by = -1;
+  ATOMIC_CLEAR(&locked);
+}
 
 
 bool spinlock::is_locked(void) { return locked; }
@@ -54,6 +58,8 @@ static inline void irq_enable_restore(bool enabled) {
 
 bool spinlock::try_lock(void) {
   if (ATOMIC_SET(&locked)) return false;
+
+  if (cpu::get()) held_by = cpu::current().id;
   return true;
 }
 
@@ -63,11 +69,12 @@ bool spinlock::lock_irqsave() {
     en = irq_disable_save();
     if (ATOMIC_SET(&locked) == 0) break;
     irq_enable_restore(en);
-
     // MESI protocol optimization
     while (__atomic_load_n(&locked, __ATOMIC_RELAXED) == 1) {
     }
   }
+
+  if (cpu::get()) held_by = cpu::current().id;
   return en;
 }
 
@@ -80,12 +87,13 @@ bool spinlock::try_lock_irqsave(bool& success) {
     success = false;
     return false;
   }
+  if (cpu::get()) held_by = cpu::current().id;
   success = true;
   return en;
 }
 
 void spinlock::unlock_irqrestore(bool flags) {
-  held_by = 0;
+  held_by = -1;
   unlock();
   irq_enable_restore(flags);
 }
@@ -97,11 +105,15 @@ void spinlock::lock(volatile int& l) {
   while (likely(__sync_lock_test_and_set(lock, 1))) {
     spin_wait(lock);
   }
+  // held_by = cpu::current().id;
 }
 
 
 
-void spinlock::unlock(volatile int& l) { ATOMIC_CLEAR(&l); }
+void spinlock::unlock(volatile int& l) {
+  // held_by = -1;
+  ATOMIC_CLEAR(&l);
+}
 
 int rwlock::read_lock(void) {
   m_lock.lock();
