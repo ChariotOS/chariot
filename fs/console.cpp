@@ -112,6 +112,23 @@ static bool handle_special_input(char c) {
 #define MONITOR_ENTRY ("\x1b\x5b\x32\x34\x7e")
 #define MON_ENTRY_SIZE (sizeof(MONITOR_ENTRY) - 1)
 
+
+static fifo_buf console_feed_buffer;
+static int console_feeder(void *) {
+  char buf[32];
+  while (1) {
+    ssize_t sz = console_feed_buffer.read(buf, 32, true);
+
+    for (int i = 0; i < sz; i++) {
+      auto c = buf[i];
+      if (!handle_special_input(c)) {
+        ctty.handle_input(c);
+      }
+    }
+  }
+  return 0;
+}
+
 void console::feed(size_t sz, char *buf) {
   // short curcuit if the kernel shell is running.
   if (kshell::active()) {
@@ -121,13 +138,8 @@ void console::feed(size_t sz, char *buf) {
 
   // lock the input
   cons_input_lock.lock();
+  console_feed_buffer.write(buf, sz, false);
 
-  for (int i = 0; i < sz; i++) {
-    auto c = buf[i];
-    if (!handle_special_input(c)) {
-      ctty.handle_input(c);
-    }
-  }
   cons_input_lock.unlock();
 }
 
@@ -163,5 +175,10 @@ static ssize_t console_write(fs::File& fd, const char* buf, size_t sz) {
 #endif
 
 
-static void console_init(void) { ctty.bind("console"); }
+
+static void console_init(void) {
+  ctty.bind("console");
+
+  sched::proc::create_kthread("console handler", console_feeder);
+}
 module_init("console", console_init);
