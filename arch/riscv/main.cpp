@@ -84,16 +84,14 @@ extern "C" void secondary_entry(int hartid) {
   sc.hartid = hartid;
   sc.kernel_sp = 0;
 
+	// Set the thread pointer for thread local access
   rv::set_tp((rv::xsize_t)&sc);
 
-
-  // its safe to store this on this stack.
+	// Register this core w/ the CPU subsystem
   cpu::Core cpu;
   rv::get_hstate().cpu = &cpu;
   cpu::seginit(&cpu, NULL);
   cpu::current().primary = false;
-
-
 
   /* Initialize the platform level interrupt controller for this HART */
   rv::plic::hart_init();
