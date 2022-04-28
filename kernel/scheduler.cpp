@@ -20,7 +20,7 @@ static bool s_enabled = true;
 
 
 // copied from
-#define MLFQ_NQUEUES 1
+#define MLFQ_NQUEUES 64
 // minimum timeslice
 #define MLFQ_MIN_RT 1
 // how many ticks get added to the timeslice for each priority
@@ -158,13 +158,13 @@ struct mlfq {
   ck::ref<Thread> steal(int thief) {
     bool locked = false;
     auto f = lock.try_lock_irqsave(locked);
+		// printf_nolock("%d tries to steal from %d\n", thief, core);
 
     if (locked) {
       for (int prio = 0; prio < MLFQ_NQUEUES; prio++) {
         // TODO: make sure it can be taken by the thief
         if (ck::ref<Thread> cur = queues[prio].pick_next(); cur != nullptr) {
           lock.unlock_irqrestore(f);
-          // printf_nolock("cpu %d stealing thread %d\n", cpu::current().cpunum, cur->tid);
           return cur;
         }
       }
@@ -237,7 +237,6 @@ static ck::ref<Thread> worksteal(void) {
 
   do {
     target = (q.next_worksteal++) % nproc;
-    // printf_nolock("target: %d\n", target);
   } while (target == q.core);
 
   if (q.next_worksteal >= nproc) q.next_worksteal = 0;
