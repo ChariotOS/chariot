@@ -123,7 +123,7 @@ int nproc = 0;
 
 
 #include <chariot/futex.h>
-
+#include <atomic.h>
 
 
 static inline uint32_t cmpxchg32(void* m, uint32_t old, uint32_t newval) {
@@ -143,61 +143,25 @@ static inline uint32_t cmpxchg32(void* m, uint32_t old, uint32_t newval) {
   return ret;
 }
 
-int futex_wait(int* ptr, int value) { return sys::futex(ptr, FUTEX_WAIT, value, 0, 0, 0); }
 
-int futex_wake(int* ptr, int value) { return sys::futex(ptr, FUTEX_WAKE, value, 0, 0, 0); }
-
-class FastMutex {
- public:
-  FastMutex() : m_word(0) {}
-  void lock() {
-    // try to atimically swap 0 -> 1
-    if (cmpxchg32(&m_word, 0, 1)) return;  // success
-    // wasn't zero -- somebody held the lock
-    do {
-      // assume lock is still taken, try to make it 2 and wait
-      if (m_word == 2 || cmpxchg32(&m_word, 1, 2)) {
-        // let's wait, but only if the value is still 2
-        futex_wait(&m_word, 2);
-      }
-      // try (again) assuming the lock is free
-    } while (!cmpxchg32(&m_word, 0, 2));
-    // we are here only if transition 0 -> 2 succeeded
-  }
-  void unlock() {
-    int res = __atomic_fetch_sub(&m_word, 1, __ATOMIC_SEQ_CST);
-    // we own the lock, so it's either 1 or 2
-    if (res != 1) {
-      // it was 2
-      // important: we are still holding the lock!
-      m_word = 0;  // not any more
-      // wake up one thread (no fairness assumed)
-      futex_wake(&m_word, 1);
-    }
-  }
-
- private:
-  int m_word;
-};
+/* Barrier data structure.  See pthread_barrier_wait for a description
+   of how these fields are used.  */
 
 
+volatile double val;
+pthread_barrier_t barrier;
+pthread_mutex_t mutex;
 
-
-volatile int val;
-FastMutex mut;
-
-// ck::futex x;
 void* work(void* p) {
   long me = (long)p;
-  printf("thread %d\n", me);
 
-
-  for (int i = 0; 1; i++) {
-    int x = rand() % 100;
-    // mut.lock();
-    val = x * x;
-    // assert(val == x * x);
-    // mut.unlock();
+  while (1) {
+    pthread_barrier_wait(&barrier);
+    for (int i = 0; i < 1000000; i++) {
+			pthread_mutex_lock(&mutex);
+      val = sqrt(sin(val + 1));
+			pthread_mutex_unlock(&mutex);
+    }
   }
 
 
@@ -206,7 +170,9 @@ void* work(void* p) {
 
 int main(int argc, char** argv) {
   nproc = sysbind_get_nproc();
-  __sync_synchronize();
+  pthread_barrier_init(&barrier, NULL, nproc / 2);
+	pthread_mutex_init(&mutex, NULL);
+
   printf("nproc: %d\n", nproc);
   auto start = sys::gettime_microsecond();
 

@@ -292,10 +292,12 @@ typedef unsigned pthread_condattr_t;
 #define __DEFINED_pthread_condattr_t
 #endif
 
+/*
 #if defined(__NEED_pthread_barrierattr_t) && !defined(__DEFINED_pthread_barrierattr_t)
 typedef unsigned pthread_barrierattr_t;
 #define __DEFINED_pthread_barrierattr_t
 #endif
+*/
 
 #if defined(__NEED_pthread_rwlockattr_t) && !defined(__DEFINED_pthread_rwlockattr_t)
 typedef struct {
@@ -331,6 +333,7 @@ typedef struct {
 #define __DEFINED_pthread_rwlock_t
 #endif
 
+/*
 #if defined(__NEED_pthread_barrier_t) && !defined(__DEFINED_pthread_barrier_t)
 typedef struct {
   union {
@@ -340,6 +343,7 @@ typedef struct {
 } pthread_barrier_t;
 #define __DEFINED_pthread_barrier_t
 #endif
+*/
 
 
 #if defined(__NEED_off_t) && !defined(__DEFINED_off_t)

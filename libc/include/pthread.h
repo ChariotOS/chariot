@@ -14,10 +14,8 @@ extern "C" {
 #define __NEED_pthread_attr_t
 #define __NEED_pthread_condattr_t
 #define __NEED_pthread_rwlockattr_t
-#define __NEED_pthread_barrierattr_t
 #define __NEED_pthread_cond_t
 #define __NEED_pthread_rwlock_t
-#define __NEED_pthread_barrier_t
 #define __NEED_pthread_spinlock_t
 #define __NEED_pthread_key_t
 #define __NEED_pthread_once_t
@@ -54,7 +52,7 @@ extern "C" {
 #define PTHREAD_PROCESS_SHARED 1
 
 
-#define PTHREAD_MUTEX_INITIALIZER (0)
+#define PTHREAD_MUTEX_INITIALIZER {0}
 #define PTHREAD_RWLOCK_INITIALIZER \
   {                                \
     {                              \
@@ -82,6 +80,22 @@ extern "C" {
 
 #define PTHREAD_BARRIER_SERIAL_THREAD (-1)
 
+
+
+typedef struct {
+  int in;
+  int current_round;
+  int count;
+  // int shared;
+  int out;
+} pthread_barrier_t;
+typedef unsigned pthread_barrierattr_t;
+
+int pthread_barrier_init(pthread_barrier_t *barrier, const pthread_barrierattr_t *attr, unsigned int count);
+int pthread_barrier_wait(pthread_barrier_t *barrier);
+int pthread_barrier_destroy(pthread_barrier_t *barrier);
+
+
 pthread_t pthread_self(void);
 
 
@@ -95,7 +109,9 @@ int pthread_join(pthread_t, void **);
 
 
 
-typedef int pthread_mutex_t;
+typedef struct {
+	int word;
+} pthread_mutex_t;
 typedef int pthread_mutexattr_t;
 
 int pthread_mutex_lock(pthread_mutex_t *mutex);
@@ -108,8 +124,7 @@ int pthread_mutex_destroy(pthread_mutex_t *mutex);
 int pthread_cond_init(pthread_cond_t *__restrict, const pthread_condattr_t *__restrict);
 int pthread_cond_destroy(pthread_cond_t *);
 int pthread_cond_wait(pthread_cond_t *__restrict, pthread_mutex_t *__restrict);
-int pthread_cond_timedwait(pthread_cond_t *__restrict, pthread_mutex_t *__restrict,
-                           const struct timespec *__restrict);
+int pthread_cond_timedwait(pthread_cond_t *__restrict, pthread_mutex_t *__restrict, const struct timespec *__restrict);
 int pthread_cond_broadcast(pthread_cond_t *);
 int pthread_cond_signal(pthread_cond_t *);
 
