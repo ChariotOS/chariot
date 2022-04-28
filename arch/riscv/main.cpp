@@ -200,7 +200,7 @@ spinlock x;
 static int wakes = 0;
 extern uint64_t _bss_start[];
 extern uint64_t _bss_end[];
-
+extern rv::xsize_t kernel_page_table[4096 / sizeof(rv::xsize_t)];
 
 void main(int hartid, void *fdt) {
   // zero the BSS
@@ -307,6 +307,7 @@ void main(int hartid, void *fdt) {
 
 
   sched::proc::create_kthread("main task", [](void *) -> int {
+
     // Init the virtual filesystem and mount a tmpfs and devfs to / and /dev
     vfs::init_boot_filesystem();
 
@@ -314,6 +315,16 @@ void main(int hartid, void *fdt) {
     initialize_builtin_modules();
     LOG("kernel modules initialized\n");
 
+
+
+    const rv::xsize_t nents = 4096 / sizeof(rv::xsize_t);
+    const rv::xsize_t half = nents / 2;
+    // Now that we are definitely in the high half and all cores have been
+    // booted, nuke the lower half of the kernel page table for sanity reasons
+    for (int i = 0; i < half; i++) {
+      kernel_page_table[i] = 0;
+    }
+    rv::sfence_vma();
 
     sched::proc::create_kthread("[reaper]", Process::reaper);
 
