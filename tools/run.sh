@@ -49,6 +49,7 @@ case $ARCH in
 	RISC-V)
 		QEMU_FLAGS+="-machine virt -smp ${CONFIG_QEMU_CORES} -m ${CONFIG_RISCV_RAM_MB}M "
 		QEMU_FLAGS+="-bios default "
+		QEMU_FLAGS+="--accel tcg,thread=single "
 		QEMU_FLAGS+="-kernel $BUILD/chariot.elf "
 
 		QEMU_FLAGS+="-drive file=build/chariot.img,if=none,format=raw,id=x0 "
@@ -73,4 +74,4 @@ esac
 echo '======================================================================'
 
 echo ${QEMU_FLAGS} $@
-~/dev/qemu/build/qemu-system-${QEMU_ARCH} ${QEMU_FLAGS} $@
+qemu-system-${QEMU_ARCH} ${QEMU_FLAGS} $@
