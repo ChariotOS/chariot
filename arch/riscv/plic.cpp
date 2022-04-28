@@ -77,7 +77,7 @@ void RISCVPlic::init(void) {
   the_plic = this;
 
   auto mmio = dev()->cast<hw::MMIODevice>();
-  base = mmio->address();
+  base = (off_t)p2v(mmio->address());
 
   ndev = mmio->get_prop_int("riscv,ndev").or_default(0);
   LOG("found a plic at %p with %d devices\n", base, ndev);
