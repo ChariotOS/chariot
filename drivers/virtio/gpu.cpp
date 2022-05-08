@@ -1,9 +1,12 @@
-nclude <dev/virtio/gpu.h>
+#include <dev/virtio/gpu.h>
 #include <dev/virtio/mmio.h>
 #include <sleep.h>
 #include <util.h>
 #include "internal.h"
 
+
+
+DECLARE_STUB_DRIVER("virtio-mmio-gpu", virtio_mmio_gpu_driver)
 
 static void dump_gpu_config(const volatile struct virtio_gpu_config *config) {
   printf(KERN_INFO "[gpu] events_read 0x%llx\n", config->events_read);
@@ -12,10 +15,10 @@ static void dump_gpu_config(const volatile struct virtio_gpu_config *config) {
   printf(KERN_INFO "[gpu] reserved 0x%llx\n", config->reserved);
 }
 
-virtio_mmio_gpu::virtio_mmio_gpu(volatile uint32_t *regs) : virtio_mmio_dev(regs) {}
+VirtioMMIOGpu::VirtioMMIOGpu(virtio_config &cfg) : VirtioMMIO<dev::VideoDevice>(cfg, virtio_mmio_gpu_driver) {}
 
 
-bool virtio_mmio_gpu::initialize(const struct virtio_config &config) {
+bool VirtioMMIOGpu::initialize(void) {
   uint32_t status = 0;
 
   pmode_id = -1;
@@ -32,7 +35,9 @@ bool virtio_mmio_gpu::initialize(const struct virtio_config &config) {
   printf(KERN_INFO "[gpu] features: b%llb\n", features);
   write_reg(VIRTIO_MMIO_DRIVER_FEATURES, features);
 
-  irq::install(config.irqnr, virtio_irq_handler, "virtio gpu", (void *)this);
+  // irq::install(config.irqnr, virtio_irq_handler, "virtio gpu", (void *)this);
+
+  handle_irq(config.irqnr, "");
 
   // dump_gpu_config(gpu_config());
 
@@ -76,7 +81,9 @@ bool virtio_mmio_gpu::initialize(const struct virtio_config &config) {
   transfer_to_host_2d(display_resource_id, pmode.r.width, pmode.r.height);
   flush_resource(display_resource_id, pmode.r.width, pmode.r.height);
 
-  dev::video_device::register_device(this);
+  // dev::VideoDevice::register_device(this);
+
+	register_instance();
 
 
   return true;
@@ -84,7 +91,7 @@ bool virtio_mmio_gpu::initialize(const struct virtio_config &config) {
 
 
 
-ck::box<virtio_gpu_resource> virtio_mmio_gpu::allocate_resource(uint32_t width, uint32_t height) {
+ck::box<virtio_gpu_resource> VirtioMMIOGpu::allocate_resource(uint32_t width, uint32_t height) {
   uint32_t res_id = 0;
   /* TODO: move all of this to a "set resolution" function :^) */
   if (int err = allocate_2d_resource(res_id, width, height); err != 0) {
@@ -95,7 +102,7 @@ ck::box<virtio_gpu_resource> virtio_mmio_gpu::allocate_resource(uint32_t width, 
 }
 
 
-int virtio_mmio_gpu::transfer_to_host_2d(int resource_id, uint32_t width, uint32_t height, uint32_t x, uint32_t y) {
+int VirtioMMIOGpu::transfer_to_host_2d(int resource_id, uint32_t width, uint32_t height, uint32_t x, uint32_t y) {
   int err = 0;
   scoped_lock l(lock);
 
@@ -119,7 +126,7 @@ int virtio_mmio_gpu::transfer_to_host_2d(int resource_id, uint32_t width, uint32
   return err;
 }
 
-int virtio_mmio_gpu::flush_resource(int resource_id, uint32_t width, uint32_t height, uint32_t x, uint32_t y) {
+int VirtioMMIOGpu::flush_resource(int resource_id, uint32_t width, uint32_t height, uint32_t x, uint32_t y) {
   int err = 0;
   scoped_lock l(lock);
 
@@ -143,7 +150,7 @@ int virtio_mmio_gpu::flush_resource(int resource_id, uint32_t width, uint32_t he
   return err;
 }
 
-int virtio_mmio_gpu::get_display_info(void) {
+int VirtioMMIOGpu::get_display_info(void) {
   scoped_lock l(lock);
 
   /* construct the get display info message */
@@ -178,7 +185,7 @@ int virtio_mmio_gpu::get_display_info(void) {
   return 0;
 }
 
-int virtio_mmio_gpu::set_scanout(int scanout_id, uint32_t resource_id, uint32_t width, uint32_t height, uint32_t x, uint32_t y) {
+int VirtioMMIOGpu::set_scanout(int scanout_id, uint32_t resource_id, uint32_t width, uint32_t height, uint32_t x, uint32_t y) {
   scoped_lock l(lock);
 
   struct virtio_gpu_set_scanout req;
@@ -197,7 +204,7 @@ int virtio_mmio_gpu::set_scanout(int scanout_id, uint32_t resource_id, uint32_t 
   return (res->type == VIRTIO_GPU_RESP_OK_NODATA) ? 0 : -ENOMEM;
 }
 
-int virtio_mmio_gpu::attach_backing(uint32_t resource_id, void *ptr, size_t buf_len) {
+int VirtioMMIOGpu::attach_backing(uint32_t resource_id, void *ptr, size_t buf_len) {
   scoped_lock l(lock);
 
   /* construct the request */
@@ -222,7 +229,7 @@ int virtio_mmio_gpu::attach_backing(uint32_t resource_id, void *ptr, size_t buf_
 }
 
 
-int virtio_mmio_gpu::send_command_raw(const void *cmd, size_t cmd_len, void **_res, size_t res_len) {
+int VirtioMMIOGpu::send_command_raw(const void *cmd, size_t cmd_len, void **_res, size_t res_len) {
   scoped_lock _iolock(iolock);
   assert(cmd);
   assert(_res);
@@ -267,7 +274,7 @@ int virtio_mmio_gpu::send_command_raw(const void *cmd, size_t cmd_len, void **_r
 }
 
 
-int virtio_mmio_gpu::allocate_2d_resource(uint32_t &id_out, uint32_t width, uint32_t height) {
+int VirtioMMIOGpu::allocate_2d_resource(uint32_t &id_out, uint32_t width, uint32_t height) {
   scoped_lock l(lock);
 
   struct virtio_gpu_resource_create_2d req;
@@ -289,7 +296,9 @@ int virtio_mmio_gpu::allocate_2d_resource(uint32_t &id_out, uint32_t width, uint
   return (res->type == VIRTIO_GPU_RESP_OK_NODATA) ? 0 : -ENOMEM;
 }
 
-void virtio_mmio_gpu::irq(int ring, virtio::virtq_used_elem *e) {
+
+
+void VirtioMMIOGpu::handle_used(int ring, virtio::virtq_used_elem *e) {
   /* parse our descriptor chain, add back to the free queue */
   uint16_t i = e->id;
   for (;;) {
@@ -312,7 +321,7 @@ void virtio_mmio_gpu::irq(int ring, virtio::virtq_used_elem *e) {
 }
 
 
-struct virtio_gpu_resp_edid *virtio_mmio_gpu::get_edid(void) {
+struct virtio_gpu_resp_edid *VirtioMMIOGpu::get_edid(void) {
   struct virtio_gpu_get_edid req;
   memset(&req, 0, sizeof(req));
 
@@ -331,7 +340,7 @@ struct virtio_gpu_resp_edid *virtio_mmio_gpu::get_edid(void) {
 
 
 
-virtio_gpu_resource::virtio_gpu_resource(virtio_mmio_gpu &gpu, uint32_t id, uint32_t width, uint32_t height)
+virtio_gpu_resource::virtio_gpu_resource(VirtioMMIOGpu &gpu, uint32_t id, uint32_t width, uint32_t height)
     : id(id), width(width), height(height), gpu(gpu) {
   x = 0;
   y = 0;
@@ -352,7 +361,7 @@ virtio_gpu_resource::~virtio_gpu_resource(void) { panic("ded"); }
 
 
 // default
-int virtio_mmio_gpu::get_mode(gvi_video_mode &m) {
+int VirtioMMIOGpu::get_mode(gvi_video_mode &m) {
   m.width = pmode.r.width;
   m.height = pmode.r.height;
 
@@ -361,7 +370,7 @@ int virtio_mmio_gpu::get_mode(gvi_video_mode &m) {
   return 0;
 }
 
-int virtio_mmio_gpu::flush_fb(void) {
+int VirtioMMIOGpu::flush_fb(void) {
   transfer_to_host_2d(display_resource_id, pmode.r.width, pmode.r.height);
   flush_resource(display_resource_id, pmode.r.width, pmode.r.height);
   return 0;
@@ -369,9 +378,9 @@ int virtio_mmio_gpu::flush_fb(void) {
 
 
 // default
-int virtio_mmio_gpu::set_mode(const gvi_video_mode &) {
+int VirtioMMIOGpu::set_mode(const gvi_video_mode &) {
   printf("set mode\n");
   return -ENOTIMPL;
 }
 
-uint32_t *virtio_mmio_gpu::get_framebuffer(void) { return fb; }
+uint32_t *VirtioMMIOGpu::get_framebuffer(void) { return fb; }

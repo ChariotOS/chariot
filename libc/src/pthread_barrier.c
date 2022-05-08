@@ -59,6 +59,7 @@ reset_restart:
     /* We're in a reset round.  Just wait for a reset to finish; do not
        help finishing previous rounds because this could happen
        concurrently with a reset.  */
+
     while (i > max_in_before_reset) {
       futex_wait(&bar->in, i);
       // futex_wait_simple(&bar->in, i, bar->shared);

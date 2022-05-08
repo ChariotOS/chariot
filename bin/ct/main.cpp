@@ -148,34 +148,54 @@ static inline uint32_t cmpxchg32(void* m, uint32_t old, uint32_t newval) {
    of how these fields are used.  */
 
 
-volatile double val;
 pthread_barrier_t barrier;
 pthread_mutex_t mutex;
 
 void* work(void* p) {
   long me = (long)p;
 
+  volatile double val;
+
+  uint64_t epoch_begin = ms();
+  uint64_t epoch_count = 0;
+
   while (1) {
-    pthread_barrier_wait(&barrier);
-    for (int i = 0; i < 1000000; i++) {
-			pthread_mutex_lock(&mutex);
-      val = sqrt(sin(val + 1));
-			pthread_mutex_unlock(&mutex);
+    // pthread_barrier_wait(&barrier);
+
+
+		for (int i = 0; i < 100000; i++) {
+			val = cos(sin(sqrt(val)));
+		}
+		continue;
+
+    if (me == 0) {
+      epoch_count++;
+
+      if (epoch_count > 100) {
+        uint64_t now = ms();
+        uint64_t dur = now - epoch_begin;
+        epoch_begin = now;
+
+        printf("%f/s\n", epoch_count / (dur / 1000.0));
+        fflush(stdout);
+
+        epoch_count = 0;
+      }
     }
   }
-
 
   return NULL;
 }
 
 int main(int argc, char** argv) {
-  nproc = sysbind_get_nproc();
-  pthread_barrier_init(&barrier, NULL, nproc / 2);
-	pthread_mutex_init(&mutex, NULL);
+  nproc = sysbind_get_nproc() * 4;
+  pthread_mutex_init(&mutex, NULL);
 
   printf("nproc: %d\n", nproc);
-  auto start = sys::gettime_microsecond();
 
+
+  pthread_barrier_init(&barrier, NULL, nproc);
+  auto start = sys::gettime_microsecond();
   pthread_t threads[nproc];
 
   for (long i = 0; i < nproc; i++) {
@@ -187,6 +207,7 @@ int main(int argc, char** argv) {
   }
   auto end = sys::gettime_microsecond();
   printf("%lu us\n", end - start);
+  pthread_barrier_destroy(&barrier);
 
   //
   return 0;

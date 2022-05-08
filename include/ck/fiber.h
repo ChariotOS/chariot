@@ -55,7 +55,6 @@ namespace ck {
     // static ck::weak_ref<fiber> spawn(Fn) {}
 
     char* stk = nullptr;
-    char* stack_base = nullptr;
     bool m_initialized = false;
 
     static constexpr long STACK_SIZE = 4096 * 4;  // 16kb of stack, which should be enough.

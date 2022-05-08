@@ -1,5 +1,5 @@
 add_kernel_module(
 	NAME virtio
-	SOURCES virtio.cpp disk.cpp # input.cpp
+	SOURCES virtio.cpp disk.cpp gpu.cpp
 	NEEDS VIRTIO
 )

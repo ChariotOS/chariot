@@ -188,6 +188,8 @@ namespace ck {
     // give the file ownership of a file descriptor
     file(int fd);
 
+		file(file &&other);
+
     virtual ~file(void);
 
     ck::option<size_t> write(const void *buf, size_t) override;
@@ -281,6 +283,18 @@ namespace ck {
 
     CK_OBJECT(ck::file);
   };
+
+
+	class OpenOptions  {
+
+		public:
+			OpenOptions(void);
+
+			ck::option<ck::file> open(const char *path);
+		private:
+			int flags = 0;
+			int mode = 0;
+	};
 
 
   extern ck::file in;

@@ -75,8 +75,8 @@ namespace ck {
     ALWAYS_INLINE operator bool(void) const { return m_has_value; }
 
 
-    template <typename R>
-    ALWAYS_INLINE auto map(ck::func<R(T&)> cb) -> ck::option<R> {
+    template <typename Fn>
+    ALWAYS_INLINE auto map(Fn cb) -> ck::option<decltype(cb(T{}))> {
       if (m_has_value) {
         return cb(unwrap());
       }

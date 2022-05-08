@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     }
 
     if (mode.caps & GVI_CAP_DOUBLE_BUFFER) ioctl(fd, GVI_FLUSH_FB);
-    usleep(1000 * 16);
+    // usleep(1000 * 16);
   }
 
   close(fd);

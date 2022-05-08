@@ -199,6 +199,10 @@ static int string_to_mode(const char *mode) {
 
 
 ck::file::file(void) { m_fd = -1; }
+ck::file::file(ck::file &&other) {
+  m_fd = other.m_fd;
+  other.m_fd = -1;
+}
 
 ck::file::file(ck::string path, const char *mode) {
   m_fd = -1;
@@ -434,4 +438,16 @@ ck::ipcsocket *ck::ipcsocket::accept(void) {
   auto s = new ck::ipcsocket(client);
   s->set_connected(true);
   return s;
+}
+
+
+
+ck::OpenOptions::OpenOptions(void) {}
+
+ck::option<ck::file> ck::OpenOptions::open(const char *path) {
+  ck::file file;
+  if (file.open(path, flags, mode)) {
+    return ck::option<ck::file>(move(file));
+  }
+  return None;
 }

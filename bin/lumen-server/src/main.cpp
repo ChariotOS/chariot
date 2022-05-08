@@ -12,9 +12,6 @@
 
 
 int main(int argc, char **argv) async_main({
-  auto buf = malloc(sizeof(server::WindowManager));
-	printf("buf: %p\n", buf);
-
   auto wm = new server::WindowManager();
 
   // auto wm = ck::make_ref<server::WindowManager>();
@@ -33,6 +30,8 @@ int main(int argc, char **argv) async_main({
         if (errno == EAGAIN) break;
         wm->feedMousePacket(pkt);
       }
+    } else {
+      printf("failed to open /dev/mouse\n");
     }
   });
 
@@ -45,6 +44,8 @@ int main(int argc, char **argv) async_main({
         if (errno == EAGAIN) break;
         wm->feedKeyboadPacket(pkt);
       }
+    } else {
+      printf("failed to open /dev/keyboard\n");
     }
   });
 })

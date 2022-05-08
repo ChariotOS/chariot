@@ -38,6 +38,7 @@ int net::IPCSock::connect(struct sockaddr *addr, int len) {
     if (c == '\0') break;
     path.push(c);
   }
+	printf("connect %s\n", path.get());
 
   auto in = vfs::open(path, O_RDWR);
   if (in == nullptr) return -ENOENT;
@@ -46,8 +47,7 @@ int net::IPCSock::connect(struct sockaddr *addr, int len) {
     return -ENOENT;
   }
 
-  peer = in->bound_socket;
-
+  this->peer = in->bound_socket;
   // send, and wait. This will always succeed if we are here.
   this->peer->pending_connections.send(this, true);
   // assume the above succeeded
@@ -91,6 +91,8 @@ printf(
 ssize_t net::IPCSock::sendto(fs::File &fd, void *data, size_t len, int flags, const sockaddr *, size_t) {
   auto &state = (fd.pflags & PFLAGS_SERVER) ? for_client : for_server;
 
+  printf("%3d - send message, %d live\n", curproc->pid, state.msgs.size_slow());
+	hexdump(data, len, true);
   {
     scoped_lock l(state.lock);
     if (state.closed) {

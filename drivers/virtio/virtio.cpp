@@ -12,7 +12,7 @@
 
 #include "internal.h"
 
-// #define DO_LOG
+#define DO_LOG
 
 #ifdef DO_LOG
 #define VIRTIO_DEBUG(...) PFXLOG(GRN "VIRTIO", __VA_ARGS__)
@@ -132,7 +132,7 @@ void virtio_mmio_dev::register_virtio_irq(int irq) {}
 
 
 int VirtioMMIOVring::alloc_ring(int index, int len) {
-  VRING_LOG("alloc_ring - index:%d, len:%d\n", index, len);
+  // VRING_LOG("alloc_ring - index:%d, len:%d\n", index, len);
   /* Some logical asserts */
   assert(index >= 0 && index < VIO_MAX_RINGS);
   assert(ring[index].active == false);
@@ -167,7 +167,7 @@ int VirtioMMIOVring::alloc_ring(int index, int len) {
 
 
 uint16_t VirtioMMIOVring::alloc_desc(int ring_index) {
-  VRING_LOG("alloc_desc - ring_index:%d\n", ring_index);
+  // VRING_LOG("alloc_desc - ring_index:%d\n", ring_index);
   if (ring[ring_index].free_count == 0) return 0xffff;
   assert(ring[ring_index].free_list != 0xffff);
 
@@ -204,7 +204,7 @@ void VirtioMMIOVring::free_desc_chain(int ring_index, int desc_index) {
 
 
 void VirtioMMIOVring::submit_chain(int ring_index, int desc_index) {
-  VRING_LOG("submit_chain - ring_index:%d, desc_index:%d\n", ring_index, desc_index);
+  // VRING_LOG("submit_chain - ring_index:%d, desc_index:%d\n", ring_index, desc_index);
   /* add the chain to the available list */
   auto *avail = ring[ring_index].avail;
 
@@ -218,7 +218,7 @@ void VirtioMMIOVring::submit_chain(int ring_index, int desc_index) {
 
 
 virtio::virtq_desc *VirtioMMIOVring::alloc_desc_chain(int ring_index, int count, uint16_t *start_index) {
-  VRING_LOG("alloc_desc_chain - ring_index:%d, count:%d\n", ring_index, count);
+  // VRING_LOG("alloc_desc_chain - ring_index:%d, count:%d\n", ring_index, count);
   if (ring[ring_index].free_count < count) return NULL;
 
   /* start popping entries off the chain */
@@ -331,6 +331,17 @@ int virtio::check_mmio(void *addr, int irq) {
     }
   }
 
+
+  if (dev_id == 16) {
+    VIRTIO_DEBUG("GPU Device at %p with irq %d\n", addr, irq);
+    auto dev = ck::make_ref<VirtioMMIOGpu>(config);
+    // Initialize the device
+    if (dev->initialize()) {
+      VIRTIO_DEBUG("GPU device initialized\n");
+    } else {
+      VIRTIO_DEBUG("GPU device failed to initialize\n");
+    }
+  }
   return -ENODEV;
 
   switch (dev_id) {

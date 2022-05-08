@@ -3,8 +3,7 @@
 
 static void* ck_fiber_setsp_unoptimisable;
 
-#define set_stack_pointer(x) \
-  ck_fiber_setsp_unoptimisable = alloca((char*)alloca(sizeof(size_t)) - (char*)(x));
+#define set_stack_pointer(x) ck_fiber_setsp_unoptimisable = alloca((char*)alloca(sizeof(size_t)) - (char*)(x));
 
 #pragma GCC push_options
 #pragma GCC optimize("O0")
@@ -55,6 +54,7 @@ void ck::fiber::resume(void) {
   if (setjmp(m_return_ctx) == 0) {
     if (!m_initialized) {
       m_initialized = true;
+      if (stk == nullptr) stk = (char*)malloc(STACK_SIZE);
       // calculate the new stack pointer
       size_t sp = (size_t)(stk);
       sp += STACK_SIZE;

@@ -20,6 +20,7 @@ namespace server {
 
 
   ck::option<lumen::client_create_window_response> ApplicationConnection::on_create_window(void) {
+		printf("create window!\n");
     auto window = ck::make_ref<AppWindow>(*this);
     m_windows.set(window->id(), window);
     return {window->id()};
@@ -39,7 +40,11 @@ namespace server {
 
 
 
-  void ApplicationConnection::set_window_manager(WindowManager *wm) { this->wm = wm; }
+  void ApplicationConnection::set_window_manager(WindowManager *wm) {
+
+		printf("set wm %p\n" ,wm);
+		this->wm = wm;
+	}
 
 
 }  // namespace server

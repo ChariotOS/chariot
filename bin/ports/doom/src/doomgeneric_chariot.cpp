@@ -188,6 +188,8 @@ extern "C" void DG_Init() {
   memset(s_KeyQueue, 0, KEYQUEUE_SIZE * sizeof(unsigned short));
 
   main_window = new doom_window();
+
+	exit(-1);
 }
 
 
