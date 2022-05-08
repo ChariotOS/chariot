@@ -182,7 +182,7 @@ enum virtio_gpu_formats {
   VIRTIO_GPU_FORMAT_R8G8B8X8_UNORM = 134,
 };
 
-class virtio_mmio_gpu;
+class VirtioMMIOGpu;
 
 class virtio_gpu_resource {
  public:
@@ -191,7 +191,7 @@ class virtio_gpu_resource {
   uint32_t x, y;
   uint32_t *fb = NULL;
 
-  virtio_mmio_gpu &gpu;
+  VirtioMMIOGpu &gpu;
 
   ~virtio_gpu_resource();
 
@@ -200,12 +200,12 @@ class virtio_gpu_resource {
   inline uint32_t npixels(void) { return width * height; }
 
  protected:
-  friend class virtio_mmio_gpu;
-  virtio_gpu_resource(virtio_mmio_gpu &gpu, uint32_t id, uint32_t width, uint32_t height);
+  friend class VirtioMMIOGpu;
+  virtio_gpu_resource(VirtioMMIOGpu &gpu, uint32_t id, uint32_t width, uint32_t height);
 };
 
 
-class virtio_mmio_gpu : public virtio_mmio_dev, public dev::VideoDevice {
+class VirtioMMIOGpu : public VirtioMMIO<dev::VideoDevice> {
   friend class virtio_gpu_resource;
 
   spinlock lock;
@@ -258,19 +258,21 @@ class virtio_mmio_gpu : public virtio_mmio_dev, public dev::VideoDevice {
   ck::box<virtio_gpu_resource> allocate_resource(uint32_t width, uint32_t height);
 
  public:
-  virtio_mmio_gpu(volatile uint32_t *regs);
+  VirtioMMIOGpu(virtio_config &cfg);
 
   inline struct virtio_gpu_config *gpu_config(void) { return (virtio_gpu_config *)((off_t)this->regs + 0x100); }
 
-  virtual bool initialize(const struct virtio_config &config);
 
+  // ^VirtioMMIO::
+  bool initialize(void) override;
+  void handle_used(int ring_index, virtio::virtq_used_elem *) override;
 
   // virtual void irq(int ring_index, virtio::virtq_used_elem *);
 
 
-  // ^dev::video_device
-  virtual int get_mode(gvi_video_mode &mode);
-  virtual int set_mode(const gvi_video_mode &mode);
-  virtual uint32_t *get_framebuffer(void);
-  virtual int flush_fb(void);
+  // ^dev::VideoDevice
+  int get_mode(gvi_video_mode &mode) override;
+  int set_mode(const gvi_video_mode &mode) override;
+  uint32_t *get_framebuffer(void) override;
+  int flush_fb(void) override;
 };

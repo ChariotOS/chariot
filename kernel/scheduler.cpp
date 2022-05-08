@@ -8,19 +8,218 @@
 #include <time.h>
 #include <wait.h>
 #include <printf.h>
+#include <realtime.h>
+
 
 #define SIG_ERR ((void (*)(int)) - 1)
 #define SIG_DFL ((void (*)(int))0)
 #define SIG_IGN ((void (*)(int))1)
-
 
 volatile long monitor_tid = 0;
 volatile bool did_panic = false;  // printk.h
 static bool s_enabled = true;
 
 
+
+int rt::Task::make_runnable(int cpu, bool admit) {
+  cpu::Core *target_core = nullptr;
+
+
+  // cpu of -1 means "self"
+  if (cpu == -1) {
+    target_core = &core();
+  } else {
+    target_core = cpu::get(cpu);
+    if (target_core == nullptr) {
+      printf(KERN_WARN "Could not find cpu %d during rt::make_runnable. Defaulting to self\n", cpu);
+      target_core = &core();
+    }
+  }
+
+  if (target_core == nullptr) {
+    return -ENOENT;
+  }
+
+
+  auto &s = target_core->local_scheduler;
+  // grab a scoped lock
+  auto lock = s.lock();
+
+  if (admit) {
+    if (s.admit(this, time::now_us())) {
+      printf(KERN_WARN "Failed to admit thread\n");
+      return -1;
+    } else {
+      // DEBUG("Admitted thread %p (tid=%d)\n", thread, task->tid);
+    }
+  }
+
+  if (constraint().type == APERIODIC) {
+    s.aperiodic.enqueue(this);
+
+    this->rt_status = ADMITTED;
+  } else {
+    printf(KERN_WARN "Cannot handle non-aperiodic tasks yet\n");
+    return -ENOTIMPL;
+  }
+
+  return 0;
+}
+
+
+rt::Task::Task(Constraints c) : m_constraint(c) {
+  // printf("Create Task\n");
+}
+rt::Task::~Task(void) {
+  // printf("Destroy task\n");
+}
+
+void rt::Task::reset_state(void) {
+  start_time = 0;
+  cur_run_time = 0;
+  run_time = 0;
+  deadline = 0;
+  exit_time = 0;
+}
+
+void rt::Task::reset_stats(void) {
+  if (m_constraint.type == APERIODIC) {
+    arrival_count = 1;
+  } else {
+    arrival_count = 0;
+  }
+
+  resched_count = 0;
+  resched_long_count = 0;
+  switch_in_count = 0;
+  miss_count = 0;
+  miss_time_sum = 0;
+  miss_time_sum2 = 0;
+}
+
+rt::Scheduler::Scheduler(cpu::Core &core) : m_core(core) {}
+
+
+bool rt::Scheduler::admit(rt::Task *task, uint64_t now) {
+  const auto &constraint = task->constraint();
+
+
+
+  if (constraint.type == ConstraintType::APERIODIC) {
+    // Always admit aperiodic tasks
+    task->reset_state();
+    task->reset_stats();
+
+    task->deadline = constraint.aperiodic.priority;
+
+    return true;
+  }
+
+  // runnable.enqueue(task);
+  return false;
+}
+
+rt::Task *rt::Scheduler::reschedule(void) { return runnable.dequeue(); }
+
+
+void rt::Scheduler::kick(void) {
+  // kicks must be from remote cores.
+  if (core_id() != this->core().id) {
+    cpu::xcall(
+        this->core().id,
+        [](void *arg) {
+          auto targ = static_cast<rt::Scheduler *>(arg);
+          targ->in_kick = true;
+        },
+        this);
+    // apic_ipi(per_cpu_get(apic), nk_get_nautilus_info()->sys.cpus[cpu]->lapic_id, APIC_NULL_KICK_VEC);
+  } else {
+    // we do not reschedule here since
+    // we do not know if it is safe to do so
+  }
+}
+
+
+scoped_irqlock rt::Scheduler::lock(void) { return m_lock; }
+
+scoped_irqlock rt::local_lock(void) { return core().local_scheduler.lock(); }
+
+
+void rt::PriorityQueue::enqueue(rt::Task *task) {
+  assert(task->queue_type == NO_QUEUE);
+  task->queue_type = this->type;
+  m_size++;
+  // place them in the queue
+  rb_insert(m_root, &task->prio_node, [&](struct rb_node *o) {
+    auto *other = rb_entry(o, rt::Task, prio_node);
+    long result = (long)task->deadline - (long)other->deadline;
+    if (result < 0) {
+      // if `task` has an earlier deadline, put it left
+      return RB_INSERT_GO_LEFT;
+    } else if (result >= 0) {
+      // if `task` has greater deadline, go right
+      // if `task` has equal deadline, don't jump in line
+      return RB_INSERT_GO_RIGHT;
+    }
+    return RB_INSERT_GO_HERE;
+  });
+}
+
+rt::Task *rt::PriorityQueue::peek(void) {
+  // save some time
+  if (m_size == 0) return nullptr;
+  // get the first in the tree (which is sorted by prio/deadline)
+  auto *first_node = rb_first(&m_root);
+  if (first_node == nullptr) return nullptr;
+  // grab the task and return it
+  rt::Task *task = rb_entry(first_node, rt::Task, prio_node);
+  assert(task->queue_type == this->type);
+  return task;
+}
+
+
+void rt::PriorityQueue::remove(rt::Task *task) {
+  if (task == nullptr) return;
+  // This task must be in this queue (we assume there is one type of queue per
+  // rt::Scheduler)
+  assert(task->queue_type == this->type);
+  rb_erase(&task->prio_node, &m_root);
+  m_size--;
+  task->queue_type = NO_QUEUE;
+}
+
+rt::Task *rt::PriorityQueue::dequeue(void) {
+  // save some time
+  if (m_size == 0) return nullptr;
+  // peek at the next node, remove it, then return it
+  rt::Task *task = peek();
+  if (task == nullptr) return nullptr;
+  remove(task);
+  return task;
+}
+
+
+
+void rt::Queue::enqueue(rt::Task *task) {
+  m_size++;
+  task->queue_type = this->type;
+  m_list.add_tail(&task->queue_node);
+}
+
+rt::Task *rt::Queue::dequeue(void) {
+  auto next = m_list.next;
+  if (next == &m_list) return nullptr;
+
+  next->del_init();
+  m_size--;
+  auto *task = list_entry(next, rt::Task, queue_node);
+  task->queue_type = NO_QUEUE;
+  return task;
+}
+
+
 // copied from
-#define MLFQ_NQUEUES 64
+#define MLFQ_NQUEUES 4
 // minimum timeslice
 #define MLFQ_MIN_RT 1
 // how many ticks get added to the timeslice for each priority
@@ -66,7 +265,7 @@ struct mlfq {
       if (front == nullptr) assert(back == nullptr);
 
       tsk->next = tsk->prev = nullptr;
-			barrier();
+      barrier();
     }
 
     ck::ref<Thread> pick_next(void) {
@@ -79,7 +278,7 @@ struct mlfq {
           break;
         }
       }
-			barrier();
+      barrier();
 
       return td;
     }
@@ -158,7 +357,7 @@ struct mlfq {
   ck::ref<Thread> steal(int thief) {
     bool locked = false;
     auto f = lock.try_lock_irqsave(locked);
-		// printf_nolock("%d tries to steal from %d\n", thief, core);
+    // printf_nolock("%d tries to steal from %d\n", thief, core);
 
     if (locked) {
       for (int prio = 0; prio < MLFQ_NQUEUES; prio++) {
@@ -178,6 +377,7 @@ struct mlfq {
     assert(thd->stats.current_cpu == core);
     thd->stats.current_cpu = -1;
     queues[thd->sched.priority].remove_task(thd);
+    barrier();
   }
 
   void boost(void) {
@@ -198,6 +398,27 @@ struct mlfq {
 // each cpu has their own MLFQ. If a core does not have any threads in it's queue, it can steal
 // runnable threads from other queues.
 static struct mlfq queues[CONFIG_MAX_CPUS];
+
+
+void sched::dump(void) {
+  printf("------ Scheduler Dump ------\n");
+  for (int i = 0; i < CONFIG_MAX_CPUS; i++) {
+    if (queues[i].active == false) continue;
+
+    auto &q = queues[i];
+    auto *core = cpu::get(q.core);
+    auto &current = core->current_thread;
+    printf("Core %d. current=%d\n", q.core, current ? current->tid : -1);
+    for (int d = 0; d < MLFQ_NQUEUES; d++) {
+      auto &m = q.queues[d];
+      printf("  - %2d: ", d);
+      for (auto cur = m.front; cur != nullptr; cur = cur->next) {
+        printf(" %4d", cur->tid);
+      }
+      printf("\n");
+    }
+  }
+}
 
 
 
@@ -227,8 +448,8 @@ bool sched::init(void) {
 
 // work-steal from other cores if they have runnable threads
 static ck::ref<Thread> worksteal(void) {
+  // Get the number of processors
   int nproc = cpu::nproc();
-  // printf_nolock("nproc: %d\n", nproc);
   // divide by zero and infinite loop safety
   if (nproc <= 1) return nullptr;
 
@@ -296,69 +517,16 @@ int sched::remove_task(ck::ref<Thread> t) {
   return 0;
 }
 
-static void switch_into(ck::ref<Thread> thd) {
-  if (thd->held_lock != NULL) {
-    if (!thd->held_lock->try_lock()) return;
-  }
-  thd->runlock.lock();
-
-  // auto start = time::now_us();
-
-  cpu::current().current_thread = thd;
-  cpu::current().next_thread = nullptr;
-
-	barrier();
-
-  // update the statistics of the thread
-  thd->stats.run_count++;
-  thd->stats.current_cpu = cpu::current().id;
-  thd->state = PS_RUNNING;
-
-  if (thd->proc.ring == RING_USER) arch_restore_fpu(*thd);
-
-  thd->sched.has_run = 0;
-
-	barrier();
-
-  // load up the thread's address space
-  cpu::switch_vm(thd);
-
-	barrier();
-
-  thd->stats.last_start_cycle = arch_read_timestamp();
-  bool ts = time::stabilized();
-  long start_us = 0;
-  if (ts) {
-    start_us = time::now_us();
-  }
-
-	barrier();
-  // Switch into the thread!
-  context_switch(&cpu::current().sched_ctx, thd->kern_context);
-	barrier();
-
-  if (thd->proc.ring == RING_USER) arch_save_fpu(*thd);
-
-  if (ts) thd->ktime_us += time::now_us() - start_us;
-
-  // Update the stats afterwards
-  cpu::current().current_thread = nullptr;
-
-  // printf_nolock("took %llu us\n", time::now_us() - start);
-  thd->runlock.unlock();
-  if (thd->held_lock != NULL) thd->held_lock->unlock();
-}
+static void switch_into(ck::ref<Thread> thd) { thd->run(); }
 
 
 
-sched::yieldres sched::yield(spinlock *held_lock) {
+sched::yieldres sched::yield() {
   sched::yieldres r = sched::yieldres::None;
   auto &thd = *curthd;
 
-  thd.held_lock = held_lock;
-
   arch_disable_ints();
-	barrier();
+  barrier();
 
 
   thd.stats.cycles += arch_read_timestamp() - thd.stats.last_start_cycle;
@@ -368,7 +536,7 @@ sched::yieldres sched::yield(spinlock *held_lock) {
 
   if (thd.wq.rudely_awoken) r = sched::yieldres::Interrupt;
 
-	barrier();
+  barrier();
   arch_enable_ints();
   return r;
 }
@@ -383,7 +551,7 @@ void sched::set_state(int state) {
   auto &thd = *curthd;
   thd.set_state(state);
 
-	barrier();
+  barrier();
 }
 
 sched::yieldres sched::do_yield(int st) {
@@ -448,13 +616,58 @@ static int idle_task(void *arg) {
 }
 
 
+
+static int active_cores = 0;
+static int barrier_waiters = 0;
+
+void sched_barrier() {
+  if (__atomic_add_fetch(&barrier_waiters, 1, __ATOMIC_ACQUIRE) == active_cores) {
+    __atomic_sub_fetch(&barrier_waiters, active_cores, __ATOMIC_RELEASE);
+    return;
+  }
+
+  while (__atomic_load_n(&barrier_waiters, __ATOMIC_RELAXED) != 0) {
+    arch_relax();
+  }
+}
+
+
 void sched::run() {
+  if (false && active_cores == 0) {
+    for (int c = 0; c < 1000; c++) {
+      auto &s = core().local_scheduler;
+      for (int i = 0; i < c; i++) {
+        auto now = arch_read_timestamp();
+        auto t = new rt::Task();
+        t->deadline = now + arch_ns_to_timestamp(3000 * 1000);  // 3us
+
+        s.admit(t, now);
+      }
+
+      auto start = arch_read_timestamp();
+
+      while (true) {
+        auto t = s.reschedule();
+        if (t == NULL) break;
+        delete t;
+        // printf("deadline: %lu\n", t->deadline);
+      }
+      auto end = arch_read_timestamp();
+      printf("%d, %llu\n", c, end - start);
+    }
+    sys::shutdown();
+  }
+
+  __atomic_fetch_add(&active_cores, 1, __ATOMIC_SEQ_CST);
   arch_disable_ints();
   // per-scheduler idle threads do not exist in the scheduler queue.
   unsigned long has_run = 0;
   ck::ref<Thread> idle_thread = sched::proc::spawn_kthread("idle task", idle_task, NULL);
   idle_thread->preemptable = true;
   core().in_sched = true;
+
+
+
 
   while (1) {
     if (has_run++ >= 100) {
@@ -682,8 +895,8 @@ void sched::before_iret(bool userspace) {
 
   auto thd = curthd;
 
-	// exit via the scheduler if the task should die, and the irq depth is 1 (we
-	// would return back to the thread)
+  // exit via the scheduler if the task should die, and the irq depth is 1 (we
+  // would return back to the thread)
   if (thd->should_die /* && thd->irq_depth == 1 */) {
     c.woke_someone_up = false;
     sched::yield();
@@ -691,8 +904,8 @@ void sched::before_iret(bool userspace) {
 
   if (time::stabilized()) thd->last_start_utime_us = time::now_us();
 
-	// if its not running, it is setting up a waitqueue or exiting, so we don't
-	// want to screw that up by prematurely yielding.
+  // if its not running, it is setting up a waitqueue or exiting, so we don't
+  // want to screw that up by prematurely yielding.
   if (thd->state != PS_RUNNING) {
     return;
   }
@@ -703,4 +916,86 @@ void sched::before_iret(bool userspace) {
     thd = nullptr;
     sched::yield();
   }
+}
+
+
+
+struct send_signal_arg {
+  long p;
+  int sig;
+};
+
+static void send_signal_xcall(void *arg) {
+  auto a = (struct send_signal_arg *)arg;
+  // printf("core %d running %d when signal t:%d p:%d is sent to %ld\n", core_id(), curthd->tid, curthd->pid, a->sig, a->p);
+  long target = a->p;
+
+  if (target < 0) {
+    long pgid = -target;
+    if (pgid == curproc->pgid) {
+      printf("core %d is running the target pgid\n", core_id());
+    }
+  } else if (target == curthd->pid) {
+    printf("core %d is running the target pid\n", core_id());
+  } else if (target == curthd->tid) {
+    printf("core %d is running the target tid\n", core_id());
+  }
+}
+
+// kernel/process.cpp
+extern ck::ref<Process> pid_lookup(long pid);
+
+int sched::proc::send_signal(long p, int sig) {
+  printf("send signal %d to %d\n", sig, p);
+
+
+  // handle self signal
+  if (curthd->tid == p) {
+    printf("early ret\n");
+    curthd->send_signal(sig);
+    return 0;
+  }
+
+  struct send_signal_arg arg;
+  arg.p = p;
+  arg.sig = sig;
+  cpu::xcall_all(send_signal_xcall, &arg);
+
+
+  // TODO: handle process group signals
+  if (p < 0) {
+    int err = -ESRCH;
+    long pgid = -p;
+    ck::vec<long> targs;
+    sched::proc::in_pgrp(pgid, [&](struct Process &p) -> bool {
+      targs.push(p.pid);
+      return true;
+    });
+
+    for (long pid : targs)
+      sched::proc::send_signal(pid, sig);
+
+    return 0;
+  }
+
+  if (sig < 0 || sig >= 64) {
+    return -EINVAL;
+  }
+
+  int err = -ESRCH;
+  {
+    auto targ = pid_lookup(p);
+
+    if (targ) {
+      // find a thread
+      for (auto thd : targ->threads) {
+        if (thd->send_signal(sig)) {
+          err = 0;
+          break;
+        }
+      }
+    }
+  }
+
+  return err;
 }

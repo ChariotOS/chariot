@@ -43,7 +43,7 @@ mm::AddressSpace *alloc_user_vm(void) {
   return new mm::AddressSpace(0x1000, top, mm::PageTable::create());
 }
 
-static ck::ref<Process> pid_lookup(long pid) {
+ck::ref<Process> pid_lookup(long pid) {
   scoped_irqlock l(ptable_lock);
   ck::ref<Process> p = nullptr;
   if (proc_table.contains(pid)) {
@@ -348,46 +348,6 @@ int Process::exec(ck::string &path, ck::vec<ck::string> &argv, ck::vec<ck::strin
   thd->kickoff((void *)entry, PS_RUNNING);
 
   return 0;
-}
-
-int sched::proc::send_signal(long p, int sig) {
-	printf("send signal %d to %d\n", sig, p);
-  // TODO: handle process group signals
-  if (p < 0) {
-    int err = -ESRCH;
-    long pgid = -p;
-    ck::vec<long> targs;
-    sched::proc::in_pgrp(pgid, [&](struct Process &p) -> bool {
-      targs.push(p.pid);
-      return true;
-    });
-
-    for (long pid : targs)
-      sched::proc::send_signal(pid, sig);
-
-    return 0;
-  }
-
-  if (sig < 0 || sig >= 64) {
-    return -EINVAL;
-  }
-
-  int err = -ESRCH;
-  {
-    auto targ = pid_lookup(p);
-
-    if (targ) {
-      // find a thread
-      for (auto thd : targ->threads) {
-        if (thd->send_signal(sig)) {
-          err = 0;
-          break;
-        }
-      }
-    }
-  }
-
-  return err;
 }
 
 
@@ -780,7 +740,7 @@ int sys::futex(int *uaddr, int op, int val, int val2, int *uaddr2, int val3) {
     // printf("WAIT BEGIN!\n");
 
     if (ent.start().interrupted()) {
-      printf("FUTEX WAIT WAKEUP (RUDE)\n");
+      // printf("FUTEX WAIT WAKEUP (RUDE)\n");
       return -EINTR;
     }
     // printf("FUTEX WAIT WAKEUP\n");
@@ -910,41 +870,63 @@ int sys::sigwait() {
   return 0;
 }
 
+extern void sched_barrier();
+
+extern ck::map<long, ck::weak_ref<Thread>> thread_table;
+
+static void dump_thread(Thread &t) {
+  const char *state = "UNKNOWN";
+#define ST(name) \
+  if (t.state == PS_##name) state = #name
+  ST(EMBRYO);
+  ST(RUNNING);
+  ST(INTERRUPTIBLE);
+  ST(UNINTERRUPTIBLE);
+  ST(ZOMBIE);
+#undef ST
+  printf("p%-4d t%-4d | %20s %16s\n", t.pid, t.tid, t.name.get(), state);
+}
 
 void sched::proc::dump_table(void) {
-  pprintf("Process States: \n");
-  for (auto &p : proc_table) {
-    auto &proc = p.value;
+  // call everyone (and barrier at the end) to make sure that the scheduler
+  // doesn't decide to change this state out from under us on some other core
+  cpu::xcall_all(
+      [](void *) {
+        if (core_id() == 0) {
+          // tid -> pid mappings for debug. This allows this routine to
+          // print threads that no longer have processes but are still
+          // sitting around somewhere.
+          ck::map<int, int> associated_threads;
 
-    for (auto t : proc->threads) {
-      const char *state = "UNKNOWN";
-#define ST(name) \
-  if (t->state == PS_##name) state = #name
-      ST(EMBRYO);
-      ST(RUNNING);
-      ST(INTERRUPTIBLE);
-      ST(UNINTERRUPTIBLE);
-      ST(ZOMBIE);
-#undef ST
-      pprintf("  '%s' p:%d,t:%d: %s, %llu\n", proc->name.get(), proc->pid, t->tid, state, proc->mm->memory_usage());
-    }
-  }
+          printf("------ Process Dump ------\n");
+          for (auto &[pid, proc] : proc_table) {
+            for (auto t : proc->threads) {
+              associated_threads[t->tid] = pid;
+              dump_thread(*t);
+            }
+          }
+
+          printf("------ Leaked ------\n");
+          for (auto &[tid, thd] : thread_table) {
+            if (associated_threads[tid] == false) {
+              auto t = thd.get();
+              if (t) dump_thread(*t);
+            }
+          }
 
 
-  {
-    scoped_irqlock l(waitlist_lock);
-    pprintf("Zombie list: \n");
-    struct zombie_entry *zent = NULL;
-    list_for_each_entry(zent, &zombie_list, node) { pprintf("  process %d\n", zent->proc->pid); }
-  }
+          printf("------ Zombies ------\n");
+          struct zombie_entry *zent = NULL;
+          list_for_each_entry(zent, &zombie_list, node) { printf("  process %d\n", zent->proc->pid); }
 
+          sched::dump();
+        }
 
-  Thread::dump();
-  // pprintf("Waiter List: \n");
-  // struct waiter_entry *went = NULL;
-  // list_for_each_entry(went, &waiter_list, node) {
-  //   pprintf("  process %d, seeking %d\n", went->thd->tid, went->seeking);
-  // }
+        // Make sure the printing core is done before letting any core
+        // go back to their business.
+        sched_barrier();
+      },
+      NULL);
 }
 
 

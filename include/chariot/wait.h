@@ -53,7 +53,7 @@ struct wait_entry {
   // this removes the entry from a waitqueue if there is one
   ~wait_entry();
 
-  wait_result start(spinlock *held_lock = nullptr);
+  wait_result start(void);
 };
 
 

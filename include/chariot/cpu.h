@@ -9,6 +9,7 @@
 #include <cpu_usage.h>
 #include <fwd.h>
 #include <list_head.h>
+#include <realtime.h>
 
 #ifdef CONFIG_X86
 #include <x86/apic.h>
@@ -67,6 +68,7 @@ namespace cpu {
     bool in_sched = false;    // the CPU has reached the scheduler
     bool timekeeper = false;  // this CPU does timekeeping stuff.
 
+    rt::Scheduler local_scheduler;
 
     // the intrusive linked list into the list of all cores
     // Typically not locked, as they are only populated at boot.
@@ -85,7 +87,7 @@ namespace cpu {
 
     // locked by the source core, unlocked by the target core
     spinlock xcall_lock;
-		struct xcall_command xcall_command;
+    struct xcall_command xcall_command;
 
 
 #ifdef CONFIG_X86
@@ -94,10 +96,12 @@ namespace cpu {
     x86::IOApic ioapic;
 #endif
 
+		Core(void);
+
     void prep_xcall(xcall_t func, void *arg, int *count) {
-			xcall_lock.lock();
-			xcall_command = {func, arg, count};
-		}
+      xcall_lock.lock();
+      xcall_command = {func, arg, count};
+    }
   };
 
   extern struct list_head cores;

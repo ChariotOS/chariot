@@ -14,6 +14,8 @@ int processor_count = 0;
 
 struct list_head cpu::cores;
 
+cpu::Core::Core(void) : local_scheduler(*this) {}
+
 
 void cpu::add(cpu::Core *cpu) {
   processor_count++;
@@ -83,7 +85,7 @@ void cpu::run_pending_xcalls(void) {
   core().xcall_lock.unlock();
 
   if (cmd.fn == nullptr) {
-    printf("xcall null!\n");
+    // printf("xcall null!\n");
     return;
   }
   cmd.fn(cmd.arg);
@@ -108,6 +110,7 @@ void cpu::xcall(int core, xcall_t func, void *arg) {
     count++;
     c->prep_xcall(func, arg, &count);
   }
+  // printf("xcall count %d\n", count);
 
   arch_deliver_xcall(core);
 

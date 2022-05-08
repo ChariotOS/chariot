@@ -9,7 +9,7 @@
 #include <wait.h>
 
 #include <fwd.h>
-
+#include <realtime.h>
 
 #ifdef CONFIG_RISCV
 #include <riscv/arch.h>
@@ -126,7 +126,7 @@ struct KernelStack {
 };
 
 
-struct Thread final : public ck::weakable<Thread> {
+struct Thread final : public rt::Task {
  public:
   long tid;
   long pid;
@@ -139,7 +139,7 @@ struct Thread final : public ck::weakable<Thread> {
   volatile int state;
   int exit_code;
 
-	int irq_depth = 0;
+  int irq_depth = 0;
   int kerrno = 0;
   bool preemptable = true;
 
@@ -191,7 +191,7 @@ struct Thread final : public ck::weakable<Thread> {
   off_t tls_uaddr;
   size_t tls_usize;
 
-	ck::string name;
+  ck::string name;
 
   union /* flags */ {
     u64 flags = 0;
@@ -225,8 +225,8 @@ struct Thread final : public ck::weakable<Thread> {
   bool send_signal(int sig);
 
 
-	// tell the thread to exit. Wait on joiners to know when it finished exiting
-	void exit(void);
+  // tell the thread to exit. Wait on joiners to know when it finished exiting
+  void exit(void);
 
 
 
@@ -238,6 +238,12 @@ struct Thread final : public ck::weakable<Thread> {
   Thread(long tid, Process &);
   Thread(const Thread &) = delete;  // no copy
   ~Thread(void);
+
+
+  // ^rt::Task
+  // context switch into this thread until it yields
+  void run(void) override;
+  bool rt_is_preemptable(void) override;
 
   // return a list of instruction pointers (recent -> older)
   ck::vec<off_t> backtrace(off_t rbp, off_t rip);

@@ -49,12 +49,13 @@ case $ARCH in
 	RISC-V)
 		QEMU_FLAGS+="-machine virt -smp ${CONFIG_QEMU_CORES} -m ${CONFIG_RISCV_RAM_MB}M "
 		QEMU_FLAGS+="-bios default "
-		QEMU_FLAGS+="--accel tcg,thread=single "
+		# QEMU_FLAGS+="--accel tcg,thread=single "
+		QEMU_FLAGS+="--accel tcg,thread=multi "
 		QEMU_FLAGS+="-kernel $BUILD/chariot.elf "
 
 		QEMU_FLAGS+="-drive file=build/chariot.img,if=none,format=raw,id=x0 "
 		QEMU_FLAGS+="-device virtio-blk-device,drive=x0 "
-		# QEMU_FLAGS+="-device virtio-gpu-device,xres=${CONFIG_FRAMEBUFFER_WIDTH},yres=${CONFIG_FRAMEBUFFER_HEIGHT} "
+		QEMU_FLAGS+="-device virtio-gpu-device,xres=${CONFIG_FRAMEBUFFER_WIDTH},yres=${CONFIG_FRAMEBUFFER_HEIGHT} "
 
 		# QEMU_FLAGS+="-device virtio-keyboard-device "
 		# QEMU_FLAGS+="-device virtio-mouse-device "

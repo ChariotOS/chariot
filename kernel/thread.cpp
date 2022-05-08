@@ -39,7 +39,7 @@ extern "C" void trapret(void);
 // }
 
 static spinlock thread_table_lock;
-static ck::map<long, ck::weak_ref<Thread>> thread_table;
+ck::map<long, ck::weak_ref<Thread>> thread_table;
 
 Thread::Thread(long tid, Process &proc) : proc(proc) {
   this->tid = tid;
@@ -55,6 +55,8 @@ Thread::Thread(long tid, Process &proc) : proc(proc) {
   s.size = PGSIZE * 2;
   s.start = (void *)malloc(s.size);
   stacks.push(s);
+
+  name = proc.name;
 
   auto sp = (off_t)s.start + s.size;
 
@@ -274,7 +276,7 @@ bool Thread::send_signal(int sig) {
 
 
   bool f;
-  if (false && !is_self) f = runlock.lock_irqsave();
+  if (!is_self) f = runlock.lock_irqsave();
 
 #ifdef CONFIG_VERBOSE_PROCESS
   printf("sending signal %d to tid %d\n", sig, tid);
@@ -284,7 +286,7 @@ bool Thread::send_signal(int sig) {
   this->sig.pending |= pend;
   if (get_state() == PS_INTERRUPTIBLE) this->interrupt();
 
-  if (false && !is_self) runlock.unlock_irqrestore(f);
+  if (!is_self) runlock.unlock_irqrestore(f);
   return true;
 }
 
@@ -375,3 +377,68 @@ void Thread::set_state(int st) {
 }
 
 int Thread::get_state(void) { return __atomic_load_n(&this->state, __ATOMIC_ACQUIRE); }
+
+
+
+
+// Threads are assumed preemptable
+bool Thread::rt_is_preemptable(void) { return this->preemptable; }
+
+
+
+// code to switch into a thread
+extern "C" void context_switch(struct thread_context **, struct thread_context *);
+void Thread::run(void) {
+  if (held_lock != NULL) {
+    if (!held_lock->try_lock()) return;
+  }
+  runlock.lock();
+
+  // auto start = time::now_us();
+
+  cpu::current().current_thread = this;
+  cpu::current().next_thread = nullptr;
+
+  barrier();
+
+  // update the statistics of the thread
+  stats.run_count++;
+  stats.current_cpu = cpu::current().id;
+  state = PS_RUNNING;
+
+  if (proc.ring == RING_USER) arch_restore_fpu(*this);
+
+  sched.has_run = 0;
+
+  barrier();
+
+  // load up the thread's address space
+  cpu::switch_vm(this);
+
+  barrier();
+
+  stats.last_start_cycle = arch_read_timestamp();
+  bool ts = time::stabilized();
+  long start_us = 0;
+  if (ts) {
+    start_us = time::now_us();
+  }
+
+  barrier();
+  // Switch into the thread!
+  context_switch(&cpu::current().sched_ctx, kern_context);
+  barrier();
+
+  if (proc.ring == RING_USER) arch_save_fpu(*this);
+
+  if (ts) this->ktime_us += time::now_us() - start_us;
+
+  // Update the stats afterwards
+  cpu::current().current_thread = nullptr;
+
+  // printf_nolock("took %llu us\n", time::now_us() - start);
+  this->runlock.unlock();
+  if (this->held_lock != NULL) this->held_lock->unlock();
+
+  // TODO: do realtime config
+}

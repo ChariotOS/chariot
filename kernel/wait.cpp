@@ -26,9 +26,9 @@ wait_entry::~wait_entry() {
   }
 }
 
-wait_result wait_entry::start(spinlock *held_lock) {
+wait_result wait_entry::start() {
   /* Yield right away */
-  auto res = sched::yield(held_lock);
+  auto res = sched::yield();
 
   if (res == sched::yieldres::Interrupt) {
     this->result |= WAIT_RES_INTR;

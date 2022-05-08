@@ -15,6 +15,7 @@
 #include <ck/string.h>
 #include <ck/vec.h>
 #include <fwd.h>
+#include <realtime.h>
 
 
 
@@ -22,6 +23,12 @@
 // #include <schedulers.h>
 
 namespace sched {
+
+  // Only call when schedulers are waiting on a barrier
+  // (Basically, don't call this, it's designed for sched::proc::dump_table);
+  void dump();
+
+
   void block();
   void unblock(Thread &, bool interrupt = false);
 
@@ -55,7 +62,7 @@ namespace sched {
 
   enum yieldres { None, Interrupt };
 
-  yieldres yield(spinlock *held_lock = nullptr);
+  yieldres yield(void);
   yieldres do_yield(int status);
 
 
