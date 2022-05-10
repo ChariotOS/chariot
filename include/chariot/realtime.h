@@ -9,6 +9,8 @@ namespace cpu {
 #define RT_MAX_QUEUE
 
 
+struct Thread;
+
 // All of this interface is implemented in kernel/scheduler.cpp
 namespace rt {
 
@@ -84,6 +86,25 @@ namespace rt {
   class PriorityQueue;
   class Queue;
 
+  class TaskQueue {
+   public:
+    TaskQueue(QueueType t) : m_type(t) {}
+    virtual void enqueue(Thread *) = 0;
+    virtual Thread *peek(void) = 0;
+    // remove a task from the queue
+    virtual void remove(Thread *tsk) = 0;
+    // how many entries are there
+    virtual size_t size(void) = 0;
+
+
+    // Return the next task, removing it from the queue
+    Thread *dequeue(void);
+    inline rt::QueueType type(void) const { return m_type; }
+
+   public:
+    const QueueType m_type;
+  };
+
   enum TaskStatus {
     ARRIVED = 0,  // no admission control done
     ADMITTED,     // admitted
@@ -96,104 +117,31 @@ namespace rt {
     DENIED,       // not admitted
     REAPABLE,     // it's OK for the reaper to destroy the thread
   };
-  // `Task` is a schedulable entity in the system. It is meant to be
-  // overwritten by different subsystems in the kernel. For example, context
-  // switching into a thread occurs by overwriting ::run with context switch
-  // code
-  // TODO: document more
-  class Task : public ck::weakable<Task> {
-   public:
-    Task(Constraints c = AperiodicConstraint{});
-    virtual ~Task();
-    virtual void run(void) {}
-    virtual bool rt_is_preemptable(void) { return false; }
-
-    // get access to the constraint for this rt::Task
-    const auto &constraint(void) const { return m_constraint; }
-    rt::Scheduler *current_scheduler(void) const { return m_scheduler; }
-    int make_runnable(int cpu = -1, bool admit = true);
 
 
-    // When the task got last started
-    uint64_t start_time = 0;
-    // How long it has run so far without being preempted.
-    uint64_t cur_run_time = 0;
-    // ...
-    uint64_t run_time = 0;
-
-    // Current deadline / time of next arrival if pending for an aperiodic
-    // task. This is also it's dynamic priority
-    uint64_t deadline = 0;
-    // Time of completion after being run.
-    uint64_t exit_time = 0;
+  // argument to Thread::make_runnable
+#define RT_CORE_SELF -1
+#define RT_CORE_ANY -2
 
 
-    // Statistics are reset when the constraints are changed
-    uint64_t arrival_count = 0;       // how many times it has arrived (1 for aperiodic/sporadic)
-    uint64_t resched_count = 0;       // how many times resched was invoked on this thread
-    uint64_t resched_long_count = 0;  // how many times the long path was taken for the thread
-    uint64_t switch_in_count = 0;     // number of times switched to
-    uint64_t miss_count = 0;          // number of deadline misses
-    uint64_t miss_time_sum = 0;       // sum of missed time
-    uint64_t miss_time_sum2 = 0;      // sum of squares of missed time
-
-    // The status of this realtime task. This is different from thread state
-    // (RUNNABLE, ZOMBIE, etc...).
-    rt::TaskStatus rt_status;
-
-   protected:
-    void reset_state();
-    void reset_stats();
-    friend rt::Scheduler;
-    friend rt::PriorityQueue;
-    friend rt::Queue;
-    // intrusive placement structure into an `rt::PriorityQueue`
-    struct rb_node prio_node;
-    // intrusive placement structure into an `rt::Queue`
-    struct list_head queue_node;
-
-    // Track if this task is queued somewhere, and if it is, which one?
-    rt::QueueType queue_type = NO_QUEUE;
-    Constraints m_constraint;
-    // What scheduler currently controls this Task
-    rt::Scheduler *m_scheduler;
-  };
-
-
-  struct Queue {
-    QueueType type;
-    Queue(QueueType t) : type(t) { m_list.init(); }
-    // Add a task to the end of the queue
-    void enqueue(rt::Task *);
-    // Pop a task from the front of the queue
-    rt::Task *dequeue(void);
-    // Return the overall size of the queue. This size is maintained
-    // at enqueue/dequeue time
-    size_t size(void) const { return m_size; }
+  struct Queue : public TaskQueue {
+    using TaskQueue::TaskQueue;
+    void enqueue(Thread *) override;
+    void remove(Thread *task) override;
+    Thread *peek(void) override;
+    size_t size(void) override { return m_size; }
 
    private:
     size_t m_size = 0;
     struct list_head m_list;
   };
 
-  struct PriorityQueue {
-    QueueType type;
-    PriorityQueue(QueueType t) : type(t) {}
-    // Add a task to the queue, sorting by soonest deadline
-    void enqueue(rt::Task *);
-    // Peek at the task with the highest prio
-    rt::Task *peek(void);
-    // remove a task from the queue
-    void remove(rt::Task *tsk);
-
-
-    // get the task with the highest prio (soonest deadline) This is basically
-    // a smart wrapper around `this->remove(this->peek())`
-    rt::Task *dequeue(void);
-
-    // Return the overall size of the queue. This size is maintained
-    // at enqueue/dequeue time
-    size_t size(void) const { return m_size; }
+  struct PriorityQueue : public TaskQueue {
+    using TaskQueue::TaskQueue;
+    void enqueue(Thread *) override;
+    void remove(Thread *task) override;
+    Thread *peek(void) override;
+    size_t size(void) override { return m_size; }
 
    private:
     size_t m_size = 0;
@@ -206,10 +154,13 @@ namespace rt {
    public:
     Scheduler(cpu::Core &core);
 
-    bool admit(rt::Task *task, uint64_t now);
+    bool admit(Thread *task, uint64_t now);
 
-    rt::Task *reschedule(void);
+    Thread *reschedule(void);
     void kick(void);
+
+    // take the task off any queue. Assumes the lock is not held
+    int dequeue(Thread *task);
 
     cpu::Core &core(void) { return m_core; }
 

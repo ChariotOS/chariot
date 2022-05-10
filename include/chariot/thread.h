@@ -103,13 +103,6 @@ struct thread_statistics {
   u64 last_start_cycle = 0;
 };
 
-struct thread_sched_info {
-  int has_run = 0;
-  int timeslice = 1;
-  int priority = 0;  // highest priority to start out. Only gets worse :)
-
-  int good_streak = 0;
-};
 
 
 struct thread_waitqueue_info {
@@ -126,13 +119,15 @@ struct KernelStack {
 };
 
 
-struct Thread final : public rt::Task {
+struct Thread final : public ck::weakable<Thread> {
  public:
+  friend rt::Scheduler;
+  friend rt::PriorityQueue;
+  friend rt::Queue;
+
+
   long tid;
   long pid;
-  // put these at the top for "cache" reasons idk
-  ck::ref<Thread> next;
-  ck::ref<Thread> prev;
 
   Process &proc;
 
@@ -158,8 +153,6 @@ struct Thread final : public rt::Task {
     void *arch_priv = nullptr;
   } sig;
 
-  // sched::impl::thread_state sched_state;
-  struct thread_sched_info sched;
   struct thread_fpu_info fpu;
   struct thread_statistics stats;
   // bundle locks into a single struct
@@ -205,6 +198,38 @@ struct Thread final : public rt::Task {
   };
 
 
+
+  int make_runnable(int cpu = RT_CORE_SELF, bool admit = true);
+
+
+  // When the task got last started
+  uint64_t start_time = 0;
+  // How long it has run so far without being preempted.
+  uint64_t cur_run_time = 0;
+  // ...
+  uint64_t run_time = 0;
+
+  // Current deadline / time of next arrival if pending for an aperiodic
+  // task. This is also it's dynamic priority
+  uint64_t deadline = 0;
+  // Time of completion after being run.
+  uint64_t exit_time = 0;
+
+
+  // Statistics are reset when the constraints are changed
+  uint64_t arrival_count = 0;       // how many times it has arrived (1 for aperiodic/sporadic)
+  uint64_t resched_count = 0;       // how many times resched was invoked on this thread
+  uint64_t resched_long_count = 0;  // how many times the long path was taken for the thread
+  uint64_t switch_in_count = 0;     // number of times switched to
+  uint64_t miss_count = 0;          // number of deadline misses
+  uint64_t miss_time_sum = 0;       // sum of missed time
+  uint64_t miss_time_sum2 = 0;      // sum of squares of missed time
+
+  // The status of this realtime task. This is different from thread state
+  // (RUNNABLE, ZOMBIE, etc...).
+  rt::TaskStatus rt_status;
+
+
   void set_state(int st);
   int get_state(void);
   void setup_stack(reg_t *);
@@ -240,11 +265,32 @@ struct Thread final : public rt::Task {
   ~Thread(void);
 
 
-  // ^rt::Task
   // context switch into this thread until it yields
-  void run(void) override;
-  bool rt_is_preemptable(void) override;
+  void run(void);
 
   // return a list of instruction pointers (recent -> older)
   ck::vec<off_t> backtrace(off_t rbp, off_t rip);
+
+
+  // get access to the constraint for this Thread
+  auto &constraint(void) { return m_constraint; }
+  void set_constraint(rt::Constraints &c) { m_constraint = c; }
+  rt::Scheduler *current_scheduler(void) const { return scheduler; }
+	void remove_from_scheduler();
+
+
+ protected:
+  void reset_state();
+  void reset_stats();
+  // intrusive placement structure into an `rt::PriorityQueue`
+  struct rb_node prio_node;
+  // intrusive placement structure into an `rt::Queue`
+  struct list_head queue_node;
+
+  // Track if this task is queued somewhere, and if it is, which one?
+  rt::QueueType queue_type = rt::QueueType::NO_QUEUE;
+  rt::TaskQueue *current_queue = NULL;
+  rt::Constraints m_constraint;
+  // What scheduler currently controls this Task
+  rt::Scheduler *scheduler = NULL;
 };

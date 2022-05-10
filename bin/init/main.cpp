@@ -256,7 +256,7 @@ int main(int argc, char **argv) {
   sigprocmask(SIG_SETMASK, &set, NULL);
 
   printf("[init] hello, friend\n");
-  // system("cat /cfg/motd");
+  system("cat /cfg/motd");
 
   /* Handle SIGCHLD in the  */
   signal(SIGCHLD, sigchld_handler);
@@ -288,20 +288,12 @@ int main(int argc, char **argv) {
 
   ck::ipcsocket server;
 
-  // system("touch /tmp/initd.sock");
-  // server.listen("/tmp/initd.sock", [] {
-  //   printf("nice.\n");
-  // });
-
-
 #ifndef CONFIG_SIMPLE_INIT
 
   spawn("lumen-server");
 
 #endif
 
-
-	// spawn("beans /usr/java/testcode/HelloWorld");
   spawn("/bin/sh");
 
   ev.start();

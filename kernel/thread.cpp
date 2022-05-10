@@ -41,15 +41,13 @@ extern "C" void trapret(void);
 static spinlock thread_table_lock;
 ck::map<long, ck::weak_ref<Thread>> thread_table;
 
-Thread::Thread(long tid, Process &proc) : proc(proc) {
+Thread::Thread(long tid, Process &proc) : proc(proc), m_constraint(rt::AperiodicConstraint{}) {
   this->tid = tid;
   this->pid = proc.pid;
 
   fpu.initialized = false;
   fpu.state = phys::kalloc(1);
 
-  sched.priority = 0;
-  next = prev = nullptr;
 
   KernelStack s;
   s.size = PGSIZE * 2;
@@ -98,6 +96,10 @@ Thread::Thread(long tid, Process &proc) : proc(proc) {
 }
 
 Thread::~Thread(void) {
+  // If this thread is attached to a scheduler, dequeue it.
+  remove_from_scheduler();
+
+
   assert(ref_count() == 0);
   {
     scoped_irqlock l(thread_table_lock);
@@ -118,6 +120,38 @@ Thread::~Thread(void) {
   // memset((void *)this, 0xFF, sizeof(*this));
 }
 
+
+
+void Thread::remove_from_scheduler() {
+  if (scheduler) {
+    auto l = scheduler->lock();
+    scheduler->dequeue(this);
+  }
+  scheduler = NULL;
+}
+
+void Thread::reset_state(void) {
+  start_time = 0;
+  cur_run_time = 0;
+  run_time = 0;
+  deadline = 0;
+  exit_time = 0;
+}
+
+void Thread::reset_stats(void) {
+  if (m_constraint.type == rt::APERIODIC) {
+    arrival_count = 1;
+  } else {
+    arrival_count = 0;
+  }
+
+  resched_count = 0;
+  resched_long_count = 0;
+  switch_in_count = 0;
+  miss_count = 0;
+  miss_time_sum = 0;
+  miss_time_sum2 = 0;
+}
 
 
 
@@ -379,13 +413,6 @@ void Thread::set_state(int st) {
 int Thread::get_state(void) { return __atomic_load_n(&this->state, __ATOMIC_ACQUIRE); }
 
 
-
-
-// Threads are assumed preemptable
-bool Thread::rt_is_preemptable(void) { return this->preemptable; }
-
-
-
 // code to switch into a thread
 extern "C" void context_switch(struct thread_context **, struct thread_context *);
 void Thread::run(void) {
@@ -407,8 +434,6 @@ void Thread::run(void) {
   state = PS_RUNNING;
 
   if (proc.ring == RING_USER) arch_restore_fpu(*this);
-
-  sched.has_run = 0;
 
   barrier();
 
