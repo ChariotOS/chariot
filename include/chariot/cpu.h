@@ -48,7 +48,7 @@ extern int processor_count;
 
 
 struct sleep_waiter;
-struct thread_context;
+struct ThreadContext;
 
 
 namespace cpu {
@@ -80,10 +80,9 @@ namespace cpu {
 
     spinlock sleepers_lock;
     struct sleep_waiter *sleepers = NULL;
-    struct thread_context *sched_ctx;
+    struct ThreadContext *sched_ctx;
 
     ck::ref<Thread> current_thread;
-    ck::ref<Thread> next_thread;
 
     // locked by the source core, unlocked by the target core
     spinlock xcall_lock;

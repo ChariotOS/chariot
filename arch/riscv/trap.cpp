@@ -148,7 +148,7 @@ static void kernel_unhandled_trap(struct rv::regs &tf, const char *type) {
   printf(
       "==========================================================================================="
       "\n");
-	unhandled_panic_lock.lock_irqsave();
+  unhandled_panic_lock.lock_irqsave();
   printf("Unhandled trap '%s' on HART#%d\n", type, rv::hartid());
 
   dump_tf(tf);
@@ -226,9 +226,6 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
   if (cpu::in_thread()) {
     old_trapframe = thd->trap_frame;
     thd->trap_frame = (reg_t *)&tf;
-    if (from_userspace) {
-      thd->userspace_sp = tf.sp;
-    }
   }
 
 
@@ -293,7 +290,7 @@ for (auto &stk : thd->stacks) {
         break;
       }
       default: {
-				panic("[riscv] unhandled interrupt nr=%d\n", nr);
+        panic("[riscv] unhandled interrupt nr=%d\n", nr);
         break;
       }
     }
@@ -361,15 +358,15 @@ for (auto &stk : thd->stacks) {
     }
   }
 
-
   sched::before_iret(from_userspace);
   /* Only try to handle a signal if we are returning to userspace */
   if (from_userspace) {
     int sig = 0;
     void *handler = NULL;
+    // Try to claim a signal
     if (sched::claim_next_signal(sig, handler) != -1) {
+      // If we found a signal, allocate a ucontext on the stack to deliver it with
       uint64_t sp = tf.sp;
-
       sp -= sizeof(struct ucontext);
       auto *uctx = (struct ucontext *)sp;
       /* save the old context to the user stack */
@@ -379,11 +376,12 @@ for (auto &stk : thd->stacks) {
         return;
       }
 
-      /* Copy the old user context */
+      // Save the userspace thread context
       memcpy(uctx, &tf, sizeof(tf));
-      /* Save the fpu */
+      // Save the floating point unit into the ucontext
       __rv_save_fpu(uctx->fpu);
-
+			// Reconfigure arguments and stack locations for the
+			// jump back to userspace
       tf.sp = sp;
       tf.a0 = sig;
       tf.a1 = 0;

@@ -1,8 +1,8 @@
 include(CMakeParseArguments)
 
 
-set(CMAKE_C_FLAGS "-DKERNEL -ffreestanding -Wall -fno-common ${COMPILER_SPECIFIC_FLAGS} -Wstrict-overflow=5")
-
+set(CMAKE_C_FLAGS "-DKERNEL -ffreestanding -fno-common ${COMPILER_SPECIFIC_FLAGS} -Wstrict-overflow=5")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror ")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused -Wno-address-of-packed-member -Wno-strict-overflow")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-pie -Wno-sign-compare ")
 

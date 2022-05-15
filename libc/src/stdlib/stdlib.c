@@ -192,7 +192,7 @@ int unsetenv(const char *name) {
 
 
 void abort(void) {
-  fprintf(stderr, "abort() called!\n");
+  fprintf(stderr, "pid=%d. abort() called!\n", getpid());
   exit(EXIT_FAILURE);
 }
 

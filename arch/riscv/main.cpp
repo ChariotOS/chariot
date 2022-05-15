@@ -84,10 +84,10 @@ extern "C" void secondary_entry(int hartid) {
   sc.hartid = hartid;
   sc.kernel_sp = 0;
 
-	// Set the thread pointer for thread local access
+  // Set the thread pointer for thread local access
   rv::set_tp((rv::xsize_t)&sc);
 
-	// Register this core w/ the CPU subsystem
+  // Register this core w/ the CPU subsystem
   cpu::Core cpu;
   rv::get_hstate().cpu = &cpu;
   cpu::seginit(&cpu, NULL);
@@ -194,12 +194,96 @@ static dev::ProbeResult riscv_hart_probe(ck::ref<hw::Device> dev) {
 driver_init("riscv,hart", RISCVHart, riscv_hart_probe);
 
 
+static void reverse_string(char *begin, char *end) {
+  do {
+    char a = *begin, b = *end;
+    *end = a;
+    *begin = b;
+    begin++;
+    end--;
+  } while (begin < end);
+}
+
+unsigned convert_utf8(unsigned int c, char *utf8) {
+  int bytes = 1;
+
+  *utf8 = c;
+  if (c > 0x7f) {
+    int prefix = 0x40;
+    char *p = utf8;
+    do {
+      *p++ = 0x80 + (c & 0x3f);
+      bytes++;
+      prefix >>= 1;
+      c >>= 6;
+    } while (c > prefix);
+    *p = c - 2 * prefix;
+    reverse_string(utf8, p);
+  }
+  return bytes;
+}
+
+void print_utf16(uint16_t c) {
+  char buf[16];
+  unsigned len = convert_utf8(c, buf);
+  buf[len + 1] = 0;
+  printf("%s", buf);
+}
+
+
 spinlock x;
 
 static int wakes = 0;
 extern uint64_t _bss_start[];
 extern uint64_t _bss_end[];
 extern rv::xsize_t kernel_page_table[4096 / sizeof(rv::xsize_t)];
+
+
+
+template <typename Fn>
+void display_braile_bitmap(int width, int height, Fn cb) {
+  static const wchar_t *chars =
+      L"⠀⠁⠂⠃⠄⠅⠆⠇⡀⡁⡂⡃⡄⡅⡆⡇⠈⠉⠊⠋⠌⠍⠎⠏⡈⡉⡊⡋⡌⡍⡎⡏⠐⠑⠒⠓⠔⠕⠖⠗⡐⡑⡒⡓⡔⡕⡖⡗⠘⠙⠚⠛⠜⠝⠞⠟⡘⡙⡚⡛⡜⡝⡞⡟⠠⠡⠢⠣⠤⠥⠦⠧⡠⡡⡢⡣⡤⡥⡦⡧⠨⠩⠪⠫⠬⠭⠮⠯⡨⡩⡪⡫⡬⡭⡮⡯⠰⠱⠲⠳⠴⠵⠶⠷⡰⡱⡲⡳⡴⡵⡶⡷⠸⠹⠺⠻⠼⠽⠾⠿⡸⡹⡺⡻⡼⡽⡾⡿⢀⢁⢂"
+      L"⢃⢄⢅⢆⢇⣀⣁⣂⣃⣄⣅⣆⣇⢈⢉⢊⢋⢌⢍⢎⢏⣈⣉⣊⣋⣌⣍⣎⣏⢐⢑⢒⢓⢔⢕⢖⢗⣐⣑⣒⣓⣔⣕⣖⣗⢘⢙⢚⢛⢜⢝⢞⢟⣘⣙⣚⣛⣜⣝⣞⣟⢠⢡⢢⢣⢤⢥⢦⢧⣠⣡⣢⣣⣤⣥⣦⣧⢨⢩⢪⢫⢬⢭⢮⢯⣨⣩⣪⣫⣬⣭⣮⣯⢰⢱⢲⢳⢴⢵⢶⢷⣰⣱⣲⣳⣴⣵⣶⣷⢸⢹⢺⢻⢼⢽⢾⢿⣸⣹⣺⣻⣼⣽⣾⣿";
+
+  constexpr int CHAR_WIDTH = 2;
+  constexpr int CHAR_HEIGHT = 4;
+  const int height_chars = height / CHAR_HEIGHT;
+  const int width_chars = width / CHAR_WIDTH;
+  for (int y = 0; y < height_chars; y++) {
+    for (int x = 0; x < width_chars; x++) {
+      int baseX = x * CHAR_WIDTH;
+      int baseY = y * CHAR_HEIGHT;
+      int charIndex = 0;
+      int value = 1;
+      for (int charX = 0; charX < CHAR_WIDTH; charX++) {
+        for (int charY = 0; charY < CHAR_HEIGHT; charY++) {
+          const int bitmapX = baseX + charX;
+          const int bitmapY = baseY + charY;
+          const bool pixelExists = bitmapX < width && bitmapY < height;
+          if (pixelExists && cb(bitmapX, bitmapY)) {
+            charIndex += value;
+          }
+          value *= 2;
+        }
+      }
+      print_utf16(chars[charIndex]);
+    }
+    printf("\n");
+  }
+}
+
+static spinlock logger_lock;
+static long logger_count = 0;
+static const char *last_logger = NULL;
+static int logger(void *arg) {
+  // const char *s = (const char *)curthd->name.get();
+  while (1) {
+    sched::yield();
+  }
+  return 0;
+}
+
 
 void main(int hartid, void *fdt) {
   // zero the BSS
@@ -303,6 +387,21 @@ void main(int hartid, void *fdt) {
   LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
 
 
+
+	/*
+  for (int i = 0; i < 20; i++) {
+    char name[20];
+    sprintf(name, "%d", i);
+    sched::proc::create_kthread(name, [](void *) -> int {
+      while (1) {
+        sched::yield();
+      }
+      return 0;
+    });
+  }
+	*/
+  // while(1) {}
+  // sched::run();
 
 
   sched::proc::create_kthread("main task", [](void *) -> int {

@@ -71,8 +71,6 @@ namespace sched {
   // does not return
   void run(void);
 
-  void dumb_sleepticks(unsigned long);
-
   void handle_tick(u64 tick);
 
   // force the process to exit, (yield with different state)

@@ -67,9 +67,9 @@ Thread::Thread(long tid, Process &proc) : proc(proc), m_constraint(rt::Aperiodic
   *(void **)sp = (void *)trapret;
 
   // initial kernel context
-  sp -= sizeof(struct thread_context);
-  kern_context = (struct thread_context *)sp;
-  memset(kern_context, 0, sizeof(struct thread_context));
+  sp -= sizeof(struct ThreadContext);
+  kern_context = (struct ThreadContext *)sp;
+  memset(kern_context, 0, sizeof(struct ThreadContext));
 
   arch_reg(REG_SP, trap_frame) = sp;
   arch_reg(REG_BP, trap_frame) = sp;
@@ -77,9 +77,6 @@ Thread::Thread(long tid, Process &proc) : proc(proc), m_constraint(rt::Aperiodic
 
   // set the initial context to the creation boostrap function
   kern_context->pc = (u64)thread_create_callback;
-  // return from interrupt will drop this to 0
-  irq_depth = 0;
-
 
   arch_initialize_trapframe(proc.ring == RING_USER, trap_frame);
   {
@@ -98,7 +95,6 @@ Thread::Thread(long tid, Process &proc) : proc(proc), m_constraint(rt::Aperiodic
 Thread::~Thread(void) {
   // If this thread is attached to a scheduler, dequeue it.
   remove_from_scheduler();
-
 
   assert(ref_count() == 0);
   {
@@ -124,6 +120,7 @@ Thread::~Thread(void) {
 
 void Thread::remove_from_scheduler() {
   if (scheduler) {
+		printf("remove %d from scheduler\n", tid);
     auto l = scheduler->lock();
     scheduler->dequeue(this);
   }
@@ -266,7 +263,7 @@ void Thread::dump(void) {
         break;
     }
     printf_nolock(
-        "t:%3d, p:%3d, %s, pc:%p, st:%s, e:%d, irqd:%d\n", tid, thd->pid, thd->name.get(), pc, state_string, thd->kerrno, thd->irq_depth);
+        "t:%3d, p:%3d, %s, pc:%p, st:%s, e:%d\n", tid, thd->pid, thd->name.get(), pc, state_string, thd->kerrno);
     // printf_nolock("t:%d p:%d : %p %d refs\n", tid, thd->pid, thd.get(), thd->ref_count());
   }
 }
@@ -414,17 +411,13 @@ int Thread::get_state(void) { return __atomic_load_n(&this->state, __ATOMIC_ACQU
 
 
 // code to switch into a thread
-extern "C" void context_switch(struct thread_context **, struct thread_context *);
+extern "C" void context_switch(struct ThreadContext **, struct ThreadContext *);
 void Thread::run(void) {
-  if (held_lock != NULL) {
-    if (!held_lock->try_lock()) return;
-  }
-  runlock.lock();
+  this->runlock.lock();
 
   // auto start = time::now_us();
 
   cpu::current().current_thread = this;
-  cpu::current().next_thread = nullptr;
 
   barrier();
 
@@ -434,6 +427,12 @@ void Thread::run(void) {
   state = PS_RUNNING;
 
   if (proc.ring == RING_USER) arch_restore_fpu(*this);
+
+	// printf_nolock("switching back to %p\n", this->kern_context->pc);
+
+	// we are context switching into a thread. This run has lasted for zero
+	// ticks. Reset it
+	this->ticks_ran = 0;
 
   barrier();
 
@@ -450,8 +449,9 @@ void Thread::run(void) {
   }
 
   barrier();
+	
   // Switch into the thread!
-  context_switch(&cpu::current().sched_ctx, kern_context);
+  context_switch(&cpu::current().sched_ctx, this->kern_context);
   barrier();
 
   if (proc.ring == RING_USER) arch_save_fpu(*this);
@@ -463,7 +463,4 @@ void Thread::run(void) {
 
   // printf_nolock("took %llu us\n", time::now_us() - start);
   this->runlock.unlock();
-  if (this->held_lock != NULL) this->held_lock->unlock();
-
-  // TODO: do realtime config
 }

@@ -182,7 +182,7 @@ inline char *strcat(char *dest, const char *src) {
 
 // memmove is just copy but you clear it out
 static inline void *memmove(void *dst, const void *src, size_t n) {
-  for (int i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++) {
     ((char *)dst)[i] = ((char *)src)[i];
     ((char *)src)[i] = '\0';
   }

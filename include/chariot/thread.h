@@ -30,7 +30,7 @@ struct thread_context {
 
 
 #ifdef CONFIG_RISCV
-struct thread_context {
+struct ThreadContext {
   rv::xsize_t pc;  // 0
   // callee-saved
   rv::xsize_t s0;   // 8
@@ -86,13 +86,13 @@ struct thread_context {
 
 
 
-struct thread_fpu_info {
+struct ThreadFPUState {
   bool initialized = false;
   void *state;
 };
 
 
-struct thread_statistics {
+struct ThreadStats {
   u64 syscall_count = 0;
   u64 run_count = 0;
 
@@ -104,18 +104,16 @@ struct thread_statistics {
 };
 
 
-
-struct thread_waitqueue_info {
-  unsigned waiting_on = 0;
-  int flags = 0;
-  bool rudely_awoken = false;
-  // intrusive list for the waitqueue. It's the first if wq_prev == NULL
-};
-
-
 struct KernelStack {
   void *start;
   long size;
+};
+
+struct SignalConfig {
+  unsigned long pending = 0;
+  unsigned long mask = 0;
+  long handling = -1;
+  void *arch_priv = nullptr;
 };
 
 
@@ -125,172 +123,98 @@ struct Thread final : public ck::weakable<Thread> {
   friend rt::PriorityQueue;
   friend rt::Queue;
 
+  long tid;                      // The thread ID of this thread
+  long pid;                      // The process ID of the process this thread belongs to
+  Process &proc;                 // A reference to the process this thread belongs to
+  volatile int state;            // The thread state (RUNNING, INTERRUPTABLE, etc..)
+  int exit_code;                 // The value passed to exit_thread()
+  int kerrno = 0;                // A per-thread errno value
+  bool preemptable = true;       // If the thread can be preempted
+  ThreadFPUState fpu;            // Floating point state
+  ThreadStats stats;             // Thread statistics
+  spinlock runlock;              // Held while the thread is running. This is a dumb sanity check
+  ThreadContext *kern_context;   // The register state to switch to
+  reg_t *trap_frame;             // The current trap frame
+  bool rudely_awoken = false;    // if this thread was woken rudely for a signal or something
+  ck::vec<KernelStack> stacks;   // A stack of kernel stacks
+  SignalConfig sig;              // Thread signal configuration
+  wait_queue joiners;            // Threads who are joining on this thread
+  spinlock joinlock;             // Held when someone is joining (tearing this thread down).
+  long ktime_us = 0;             // Time attributed to kernelspace
+  long utime_us = 0;             // Time attributed to userspace
+  long last_start_utime_us = 0;  // the last time that this thread
+  off_t tls_uaddr = 0;           // the location of the thread local storage for this thread
+  size_t tls_usize = 0;          // how big the thread local storage is
+  ck::string name;               // The name of this thread
+  bool should_die = false;       // the thread needs to be torn down. Must not return to userspace
+  bool kern_idle = false;        // the thread is a kernel idle thread
 
-  long tid;
-  long pid;
+  uint64_t timeslice = 1;
+  uint64_t ticks_ran = 0;  // how many ticks this thread has run for
 
-  Process &proc;
-
-  volatile int state;
-  int exit_code;
-
-  int irq_depth = 0;
-  int kerrno = 0;
-  bool preemptable = true;
-
-  // If this lock is not null, it is released after the runlock is released.
-  // If this is not null, it is acquired after the runlock is acquired
-  spinlock *held_lock = nullptr;
-
-  /* Reference to the kernel stack */
-  ck::vec<KernelStack> stacks;
-
-  // Masks are per-thread
-  struct {
-    unsigned long pending = 0;
-    unsigned long mask = 0;
-    long handling = -1;
-    void *arch_priv = nullptr;
-  } sig;
-
-  struct thread_fpu_info fpu;
-  struct thread_statistics stats;
-  // bundle locks into a single struct
-  spinlock runlock;
-
-
-
-  // register contexts
-  struct thread_context *kern_context;
-  reg_t *trap_frame;
-  off_t userspace_sp = 0;
-  struct thread_waitqueue_info wq;
-
-  // Threads who are joining on this thread.
-  struct wait_queue joiners;
+  uint64_t start_time = 0;    // when the task got last started
+  uint64_t cur_run_time = 0;  // how long it has run so far without being preempted
+  uint64_t run_time = 0;      // How long this thread has ran (not sure how its different)
+  uint64_t deadline = 0;      // current deadline / time of next arrival if pending
+  uint64_t exit_time = 0;     // Time of competion after being run
 
 
-  /* This is simply a flag. Locked when someone is joining (tearing down) this thread.
-   * Other threads attempt to lock it. If the lock is already held, fail "successfully"
-   */
-  spinlock joinlock;
-  /* Time spent in kernelspace */
-  long ktime_us = 0;
-  /* Time spent in userspace */
-  long utime_us = 0;
-  /* The last time that the kernel entered userspace */
-  long last_start_utime_us = 0;
+  // Statistics that are reset when the constraints are changed
+  uint64_t arrival_count = 0;           // how many times it has arrived (1 for aperiodic/sporadic)
+  uint64_t resched_count = 0;           // how many times resched was invoked on this thread
+  uint64_t resched_long_count = 0;      // how many times the long path was taken for the thread
+  uint64_t switch_in_count = 0;         // number of times switched to
+  uint64_t miss_count = 0;              // number of deadline misses
+  uint64_t miss_time_sum = 0;           // sum of missed time
+  uint64_t miss_time_sum2 = 0;          // sum of squares of missed time
+  rt::TaskStatus rt_status;             // Status of this task in the realtime system (Different from state)
+  struct rb_node prio_node;             // Intrusive placement int oa `rt::PriorityQueue`
+  struct list_head queue_node;          // intrusive placement structure into an `rt::Queue`
+  rt::TaskQueue *current_queue = NULL;  // Track if this task is queued somewhere, and if it is, which one?
+  rt::Constraints m_constraint;         // The realtime constraints of this task
+  rt::Scheduler *scheduler = NULL;      // What scheduler currently controls this Task
 
-  off_t tls_uaddr;
-  size_t tls_usize;
+  void set_state(int st);                       // change the thread state (this->state)
+  int get_state(void);                          // get the thread state (this->state) in a "safe" way
+  void setup_stack(reg_t *);                    // Setup the the stack given some register state
+  void interrupt(void);                         // Notify a thread that a signal is avail, interrupting it from a waitqueue if avail
+  bool kickoff(void *rip, int state);           // Tell a thread to start running at some RIP
+  static ck::ref<Thread> lookup(long);          // Lookup thread by TID
+  static ck::ref<Thread> lookup_r(long);        // ^ (but unlocked)
+  static bool teardown(ck::ref<Thread> &&thd);  // Teardown this thread
+  static bool join(ck::ref<Thread> thd);        // Join on some thread. (Wait for it to exit)
+  static void dump(void);                       // Dump the thread table state
 
-  ck::string name;
-
-  union /* flags */ {
-    u64 flags = 0;
-    struct /* bitmask */ {
-      unsigned kthread : 1;
-      unsigned should_die : 1;  // the thread needs to be torn down, must not
-                                // return to userspace
-      unsigned kern_idle : 1;   // the thread is a kernel idle thread
-                                // reaped by the parent or another thread
-    };
-  };
-
-
-
+  // Add this thread to a scheduler queue. Optionally admitting it. If the scheduler
+  // cannot admit or cannot add the task for any reason, this function will return
+  // a non-zero value.
   int make_runnable(int cpu = RT_CORE_SELF, bool admit = true);
-
-
-  // When the task got last started
-  uint64_t start_time = 0;
-  // How long it has run so far without being preempted.
-  uint64_t cur_run_time = 0;
-  // ...
-  uint64_t run_time = 0;
-
-  // Current deadline / time of next arrival if pending for an aperiodic
-  // task. This is also it's dynamic priority
-  uint64_t deadline = 0;
-  // Time of completion after being run.
-  uint64_t exit_time = 0;
-
-
-  // Statistics are reset when the constraints are changed
-  uint64_t arrival_count = 0;       // how many times it has arrived (1 for aperiodic/sporadic)
-  uint64_t resched_count = 0;       // how many times resched was invoked on this thread
-  uint64_t resched_long_count = 0;  // how many times the long path was taken for the thread
-  uint64_t switch_in_count = 0;     // number of times switched to
-  uint64_t miss_count = 0;          // number of deadline misses
-  uint64_t miss_time_sum = 0;       // sum of missed time
-  uint64_t miss_time_sum2 = 0;      // sum of squares of missed time
-
-  // The status of this realtime task. This is different from thread state
-  // (RUNNABLE, ZOMBIE, etc...).
-  rt::TaskStatus rt_status;
-
-
-  void set_state(int st);
-  int get_state(void);
-  void setup_stack(reg_t *);
-  // Notify a thread that a signal is available, interrupting it from a
-  // waitqueue if there is one
-  void interrupt(void);
-  // tell the thread to start running at a certain address.
-  bool kickoff(void *rip, int state);
-  static ck::ref<Thread> lookup(long);
-  static ck::ref<Thread> lookup_r(long);
-
-
-  // remove the thread from all queues it is a member of
-  static bool teardown(ck::ref<Thread> &&thd);
-  static bool join(ck::ref<Thread> thd);
 
   // sends a signal to the thread and returns if it succeeded or not
   bool send_signal(int sig);
 
-
   // tell the thread to exit. Wait on joiners to know when it finished exiting
   void exit(void);
-
-
-
-  static void dump(void);
-  /**
-   * Do not use this API, go through sched::proc::* to allocate and deallocate
-   * processes and threads.
-   */
-  Thread(long tid, Process &);
-  Thread(const Thread &) = delete;  // no copy
-  ~Thread(void);
-
-
   // context switch into this thread until it yields
   void run(void);
-
   // return a list of instruction pointers (recent -> older)
   ck::vec<off_t> backtrace(off_t rbp, off_t rip);
-
 
   // get access to the constraint for this Thread
   auto &constraint(void) { return m_constraint; }
   void set_constraint(rt::Constraints &c) { m_constraint = c; }
   rt::Scheduler *current_scheduler(void) const { return scheduler; }
-	void remove_from_scheduler();
+  void remove_from_scheduler();
+  void reset_state();
+  void reset_stats();
+
+  // Do not use this API, go through sched::proc::* to allocate and deallocate
+  // processes and threads.
+  Thread(long tid, Process &);
+  Thread(const Thread &) = delete;  // no copy
+  ~Thread(void);
+
 
 
  protected:
-  void reset_state();
-  void reset_stats();
-  // intrusive placement structure into an `rt::PriorityQueue`
-  struct rb_node prio_node;
-  // intrusive placement structure into an `rt::Queue`
-  struct list_head queue_node;
-
-  // Track if this task is queued somewhere, and if it is, which one?
-  rt::QueueType queue_type = rt::QueueType::NO_QUEUE;
-  rt::TaskQueue *current_queue = NULL;
-  rt::Constraints m_constraint;
-  // What scheduler currently controls this Task
-  rt::Scheduler *scheduler = NULL;
 };

@@ -430,7 +430,6 @@ extern "C" void trap(reg_t *regs) {
   auto *tf = (struct x86_64regs *)regs;
   bool from_userspace = tf->cs == 0x23;
 
-  if (cpu::in_thread()) curthd->irq_depth++;
 
 
   {
@@ -488,8 +487,6 @@ extern "C" void trap(reg_t *regs) {
       if (!VALIDATE_RDWR(uctx, frame_size)) {
         printf("not sure what to do here. uctx = %p\n", uctx);
         curproc->mm->dump();
-
-        if (cpu::in_thread()) curthd->irq_depth--;
         return;
       }
 
@@ -514,7 +511,6 @@ extern "C" void trap(reg_t *regs) {
     }
   }
 
-
-  // return
-  if (cpu::in_thread()) curthd->irq_depth--;
+  // drop back to the context before the trap
+  return;
 }

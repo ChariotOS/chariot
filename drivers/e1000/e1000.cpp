@@ -303,9 +303,10 @@ int e1000_init_thread(void *) {
   /* initialize */
   write_command(E1000_REG_CTRL, ctrl | (1 << 26));
 
-  sched::dumb_sleepticks(1);
 
-  uint32_t status = read_command(E1000_REG_CTRL);
+	// SLEEPTICKS
+
+	uint32_t status = read_command(E1000_REG_CTRL);
   status |= (1 << 5);       /* set auto speed detection */
   status |= (1 << 6);       /* set link up */
   status &= ~(1 << 3);      /* unset link reset */

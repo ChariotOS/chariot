@@ -175,7 +175,7 @@ bool autoremove_wake_function(struct wait_entry *entry, unsigned mode, int sync,
   entry->result = 0;
 
 
-  if (entry->thd->wq.rudely_awoken) {
+  if (entry->thd->rudely_awoken) {
     entry->result |= WAIT_RES_INTR;
   }
 

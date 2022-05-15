@@ -340,6 +340,14 @@ namespace rv /* risc-v namespace */ {
     return x;
   }
 
+#define READ_INSTRET(dst) asm volatile("csrr %0, instret" : "=r"(dst));
+
+  static inline rv::xsize_t get_instret() {
+    rv::xsize_t x;
+		READ_INSTRET(x);
+    return x;
+  }
+
   // enable device interrupts
   static inline void intget_on() {
     set_sstatus(get_sstatus() | SSTATUS_SIE);

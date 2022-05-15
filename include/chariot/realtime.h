@@ -131,6 +131,8 @@ namespace rt {
     Thread *peek(void) override;
     size_t size(void) override { return m_size; }
 
+    void dump(const char *msg);
+
    private:
     size_t m_size = 0;
     struct list_head m_list;
@@ -142,6 +144,8 @@ namespace rt {
     void remove(Thread *task) override;
     Thread *peek(void) override;
     size_t size(void) override { return m_size; }
+
+    void dump(const char *msg);
 
    private:
     size_t m_size = 0;
@@ -156,7 +160,10 @@ namespace rt {
 
     bool admit(Thread *task, uint64_t now);
 
-    Thread *reschedule(void);
+    // populate next_thread and return if a new task is ready to run
+    bool reschedule(void);
+    // Get next_thread if it exists, clear it.
+    ck::ref<Thread> claim(void);
     void kick(void);
 
     // take the task off any queue. Assumes the lock is not held
@@ -175,6 +182,7 @@ namespace rt {
 
     uint64_t slack = 0;       // allowed slop for scheduler execution itself
     uint64_t num_thefts = 0;  // how many threads I've successfully stolen
+    Thread *next_thread = nullptr;
 
    protected:
     cpu::Core &m_core;
