@@ -16,7 +16,7 @@
 #endif
 
 #ifdef CONFIG_X86
-struct thread_context {
+struct ThreadContext {
   unsigned long r15;
   unsigned long r14;
   unsigned long r13;
@@ -51,7 +51,7 @@ struct ThreadContext {
 
 
 #ifdef CONFIG_ARM64
-struct thread_context {
+struct ThreadContext {
   // svc mode registers
   unsigned long r4;
   unsigned long r5;
