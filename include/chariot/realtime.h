@@ -162,9 +162,11 @@ namespace rt {
 
     // populate next_thread and return if a new task is ready to run
     bool reschedule(void);
+    void pump_sized_tasks(Thread *next);
     // Get next_thread if it exists, clear it.
     ck::ref<Thread> claim(void);
     void kick(void);
+
 
     // take the task off any queue. Assumes the lock is not held
     int dequeue(Thread *task);

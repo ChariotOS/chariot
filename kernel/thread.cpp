@@ -120,7 +120,7 @@ Thread::~Thread(void) {
 
 void Thread::remove_from_scheduler() {
   if (scheduler) {
-		printf("remove %d from scheduler\n", tid);
+    printf("remove %d from scheduler\n", tid);
     auto l = scheduler->lock();
     scheduler->dequeue(this);
   }
@@ -262,8 +262,7 @@ void Thread::dump(void) {
         state_string = "blocked (noint)";
         break;
     }
-    printf_nolock(
-        "t:%3d, p:%3d, %s, pc:%p, st:%s, e:%d\n", tid, thd->pid, thd->name.get(), pc, state_string, thd->kerrno);
+    printf_nolock("t:%3d, p:%3d, %s, pc:%p, st:%s, e:%d\n", tid, thd->pid, thd->name.get(), pc, state_string, thd->kerrno);
     // printf_nolock("t:%d p:%d : %p %d refs\n", tid, thd->pid, thd.get(), thd->ref_count());
   }
 }
@@ -336,7 +335,10 @@ ck::vec<off_t> Thread::backtrace(off_t rbp, off_t rip) {
   return bt;
 }
 
-void Thread::interrupt(void) { sched::unblock(*this, true); }
+void Thread::interrupt(void) {
+  // TODO: not super thread safe
+  sched::unblock(*this, true);
+}
 
 
 extern int get_next_pid(void);
@@ -428,11 +430,11 @@ void Thread::run(void) {
 
   if (proc.ring == RING_USER) arch_restore_fpu(*this);
 
-	// printf_nolock("switching back to %p\n", this->kern_context->pc);
+  // printf_nolock("switching back to %p\n", this->kern_context->pc);
 
-	// we are context switching into a thread. This run has lasted for zero
-	// ticks. Reset it
-	this->ticks_ran = 0;
+  // we are context switching into a thread. This run has lasted for zero
+  // ticks. Reset it
+  this->ticks_ran = 0;
 
   barrier();
 
@@ -449,7 +451,7 @@ void Thread::run(void) {
   }
 
   barrier();
-	
+
   // Switch into the thread!
   context_switch(&cpu::current().sched_ctx, this->kern_context);
   barrier();

@@ -126,16 +126,14 @@ int rt::Scheduler::dequeue(Thread *task) {
 }
 
 bool rt::Scheduler::reschedule(void) {
+  // TODO: do other stuff
   Thread *res = NULL;
 
   auto l = lock();
   if (next_thread) return true;
 
-  // TODO: do other stuff
-  // SCHED_DEBUG(" -- Reschedule --\n");
-  // runnable.dump("Runnable before resched");
-  // aperiodic.dump("Aperiodic before resched");
 
+  // Go through all the queues, looking for a task to run
   if (res == NULL) {
     res = runnable.dequeue();
   }
@@ -156,6 +154,11 @@ bool rt::Scheduler::reschedule(void) {
     return true;
   }
   return false;
+}
+
+
+void rt::Scheduler::pump_sized_tasks(Thread *next) {
+  //
 }
 
 ck::ref<Thread> rt::Scheduler::claim(void) {
@@ -404,6 +407,8 @@ void sched::unblock(Thread &thd, bool interrupt) {
   }
 #endif
 
+	// if () {}
+
   // assert(thd.current_scheduler() == NULL);
   thd.rudely_awoken = interrupt;
   thd.set_state(PS_RUNNING);
@@ -471,7 +476,7 @@ void sched::run() {
   rt::Scheduler &sched = core().local_scheduler;
 
   while (1) {
-		sched.reschedule();
+    sched.reschedule();
     ck::ref<Thread> thd = sched.claim();
 
     if (did_panic && thd != nullptr) {
@@ -550,7 +555,7 @@ void sched::handle_tick(u64 ticks) {
   if (thd->get_state() != PS_RUNNING) return;
   if (thd->preemptable == false) return;
 
-	// ask the scheduler if there's anything to switch to
+  // ask the scheduler if there's anything to switch to
   if (core().local_scheduler.reschedule()) {
     // !
   }

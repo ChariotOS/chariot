@@ -173,6 +173,7 @@ struct Thread final : public ck::weakable<Thread> {
   rt::TaskQueue *current_queue = NULL;  // Track if this task is queued somewhere, and if it is, which one?
   rt::Constraints m_constraint;         // The realtime constraints of this task
   rt::Scheduler *scheduler = NULL;      // What scheduler currently controls this Task
+  spinlock queuelock;                   // held while moving a thread to a different queue (wait or scheduler)
 
   void set_state(int st);                       // change the thread state (this->state)
   int get_state(void);                          // get the thread state (this->state) in a "safe" way
