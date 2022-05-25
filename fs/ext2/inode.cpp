@@ -450,13 +450,13 @@ static int injest_info(fs::Node &node, ext2::ext2_inode_info &info) {
 }
 
 
-struct ext2_vmobject final : public mm::VMObject {
-  ext2_vmobject(ck::ref<fs::Node> ino, size_t npages, off_t off) : VMObject(npages) {
+struct Ext2VMObject final : public mm::VMObject {
+  Ext2VMObject(ck::ref<fs::Node> ino, size_t npages, off_t off) : VMObject(npages) {
     m_ino = ino;
     m_off = off;
   }
 
-  virtual ~ext2_vmobject(void) {
+  virtual ~Ext2VMObject(void) {
     for (auto &kv : buffers) {
       bput(kv.value);
     }
@@ -555,7 +555,7 @@ ck::ref<mm::VMObject> ext2::FileNode::mmap(fs::File &f, size_t npages, int prot,
   // if (flags & MAP_PRIVATE) printf("ext2 map private\n");
   // if (flags & MAP_SHARED) printf("ext2 map shared\n");
 
-  return ck::make_ref<ext2_vmobject>(f.ino, npages, off);
+  return ck::make_ref<Ext2VMObject>(f.ino, npages, off);
 }
 
 
