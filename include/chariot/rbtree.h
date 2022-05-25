@@ -24,27 +24,13 @@
 #endif
 
 #include "list_head.h"
+// #include <rcu.h>
 
-#define rcu_check_sparse(p, space)
 // #include <linux/kernel.h>
 // #include <linux/rcupdate.h>
 // #include <linux/stddef.h>
 
-#define READ_ONCE(x) (*(volatile __decltype(x) *)&(x))
-#define WRITE_ONCE(x, val) ((*(volatile __decltype(x) *)&(x)) = (val))
 
-
-
-#define rcu_assign_pointer(p, v)                                                          \
-  do {                                                                                    \
-    uintptr_t _r_a_p__v = (uintptr_t)(v);                                                 \
-    rcu_check_sparse(p, __rcu);                                                           \
-                                                                                          \
-    if (__builtin_constant_p(v) && (_r_a_p__v) == (uintptr_t)NULL)                        \
-      WRITE_ONCE((p), (__decltype(p))(_r_a_p__v));                                        \
-    else                                                                                  \
-      __atomic_store((unsigned long *)&p, (unsigned long *)&_r_a_p__v, __ATOMIC_RELEASE); \
-  } while (0)
 
 struct rb_node {
   unsigned long __rb_parent_color;
@@ -100,12 +86,13 @@ static inline void rb_link_node(
   *rb_link = node;
 }
 
+#define rb_tree_rcu_assign_pointer(p, v) ({ __atomic_store_n(&(p), (v), __ATOMIC_RELEASE); })
 static inline void rb_link_node_rcu(
     struct rb_node *node, struct rb_node *parent, struct rb_node **rb_link) {
   node->__rb_parent_color = (unsigned long)parent;
   node->rb_left = node->rb_right = NULL;
 
-  rcu_assign_pointer(*rb_link, node);
+  rb_tree_rcu_assign_pointer(*rb_link, node);
 }
 
 #define rb_entry_safe(ptr, type, member)              \

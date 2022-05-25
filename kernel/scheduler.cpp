@@ -407,7 +407,7 @@ void sched::unblock(Thread &thd, bool interrupt) {
   }
 #endif
 
-	// if () {}
+  // if () {}
 
   // assert(thd.current_scheduler() == NULL);
   thd.rudely_awoken = interrupt;
@@ -421,7 +421,7 @@ void sched::exit() {
   yield();
 }
 
-
+#include <rcu.h>
 
 static int idle_task(void *arg) {
   (void)arg;
@@ -553,7 +553,9 @@ void sched::handle_tick(u64 ticks) {
 
   /* We don't get preempted if we aren't currently runnable. See wait.cpp for why */
   if (thd->get_state() != PS_RUNNING) return;
-  if (thd->preemptable == false) return;
+	// if the current thread is not preemptable, or we are in an RCU reader
+	// section, don't reschedule
+  if (thd->preemptable == false || core().preempt_count != 0) return;
 
   // ask the scheduler if there's anything to switch to
   if (core().local_scheduler.reschedule()) {

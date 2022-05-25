@@ -1,7 +1,7 @@
 #include <asm.h>
 #include <cpu.h>
-#include <dev/virtio/mmio.h>
 #include <dev/driver.h>
+#include <dev/virtio/mmio.h>
 #include <devicetree.h>
 #include <fs/vfs.h>
 #include <module.h>
@@ -18,14 +18,13 @@
 #include <time.h>
 #include <util.h>
 
+#include "sched.h"
+#include <ioctl.h>
 #include <rbtree.h>
 #include <rbtree_augmented.h>
-#include <ioctl.h>
-#include "sched.h"
 
 #define PAGING_IMPL_BOOTCODE
 #include "paging_impl.h"
-
 
 #define LOG(...) PFXLOG(MAG "INIT", __VA_ARGS__)
 
@@ -33,14 +32,11 @@ typedef void (*func_ptr)(void);
 extern "C" func_ptr __init_array_start[0], __init_array_end[0];
 extern "C" char _kernel_end[];
 
-
 extern "C" char _initrd_start[];
 extern "C" char _initrd_end[];
 
-
 /* lowlevel.S, calls kerneltrap() */
 extern "C" void kernelvec(void);
-
 
 struct cpio_hdr {
   unsigned short magic;
@@ -57,16 +53,20 @@ struct cpio_hdr {
   char name[0];
 } __attribute__((packed));
 
-
-
 static uint16_t bswap_16(uint16_t __x) { return __x << 8 | __x >> 8; }
-static uint32_t bswap_32(uint32_t __x) { return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24; }
+static uint32_t bswap_32(uint32_t __x) {
+  return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24;
+}
 
 void initrd_dump(void *vbuf, size_t size) { hexdump(vbuf, size, true); }
 
-static uint64_t ticks_to_ns(uint64_t ticks) { return (ticks * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND; }
+static uint64_t ticks_to_ns(uint64_t ticks) {
+  return (ticks * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND;
+}
 
-static unsigned long riscv_high_acc_time_func(void) { return ticks_to_ns(read_csr(time)); }
+static unsigned long riscv_high_acc_time_func(void) {
+  return ticks_to_ns(read_csr(time));
+}
 
 static off_t dtb_ram_start = 0;
 static size_t dtb_ram_size = 0;
@@ -74,7 +74,6 @@ static size_t dtb_ram_size = 0;
 extern "C" uint8_t secondary_core_startup_sbi[];
 extern "C" uint64_t secondary_core_stack;
 static bool second_done = false;
-
 
 extern uint64_t _bss_start[];
 extern uint64_t _bss_end[];
@@ -97,7 +96,8 @@ extern "C" void secondary_entry(int hartid) {
   rv::plic::hart_init();
   /* Set the supervisor trap vector location */
   write_csr(stvec, kernelvec);
-  /* set SUM bit in sstatus so kernel can access userspace pages. Also enable floating point */
+  /* set SUM bit in sstatus so kernel can access userspace pages. Also enable
+   * floating point */
   write_csr(sstatus, read_csr(sstatus) | (1 << 18) | (1 << 13));
 
   cpu::current().timekeeper = false;
@@ -119,7 +119,8 @@ extern "C" void secondary_entry(int hartid) {
 bool start_secondary(int i) {
   // start secondary cpus
   auto &sc = rv::get_hstate();
-  if (i == sc.hartid) return false;
+  if (i == sc.hartid)
+    return false;
 
   // KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
   // allocate 2 pages for the secondary core
@@ -129,7 +130,8 @@ bool start_secondary(int i) {
   second_done = false;
   __sync_synchronize();
 
-  auto ret = sbi_call(SBI_EXT_HSM, SBI_EXT_HSM_HART_START, i, secondary_core_startup_sbi, 1);
+  auto ret = sbi_call(SBI_EXT_HSM, SBI_EXT_HSM_HART_START, i,
+                      secondary_core_startup_sbi, 1);
   if (ret.error != SBI_SUCCESS) {
     return false;
   }
@@ -141,11 +143,8 @@ bool start_secondary(int i) {
   return true;
 }
 
-
-
-
 class RISCVHart : public dev::CharDevice {
- public:
+public:
   using dev::CharDevice::CharDevice;
 
   virtual ~RISCVHart(void) {}
@@ -156,7 +155,8 @@ class RISCVHart : public dev::CharDevice {
         auto status = mmio->get_prop_string("status");
 
         if (status.has_value()) {
-          if (status.unwrap() == "disabled") return;
+          if (status.unwrap() == "disabled")
+            return;
         }
 
         auto hartid = mmio->address();
@@ -175,13 +175,13 @@ class RISCVHart : public dev::CharDevice {
   }
 };
 
-
 static dev::ProbeResult riscv_hart_probe(ck::ref<hw::Device> dev) {
   if (auto mmio = dev->cast<hw::MMIODevice>()) {
     if (mmio->is_compat("riscv")) {
       auto status = mmio->get_prop_string("status");
       if (status.has_value()) {
-        if (status.unwrap() == "disabled") return dev::ProbeResult::Ignore;
+        if (status.unwrap() == "disabled")
+          return dev::ProbeResult::Ignore;
       }
 
       return dev::ProbeResult::Attach;
@@ -192,7 +192,6 @@ static dev::ProbeResult riscv_hart_probe(ck::ref<hw::Device> dev) {
 };
 
 driver_init("riscv,hart", RISCVHart, riscv_hart_probe);
-
 
 static void reverse_string(char *begin, char *end) {
   do {
@@ -230,7 +229,6 @@ void print_utf16(uint16_t c) {
   printf("%s", buf);
 }
 
-
 spinlock x;
 
 static int wakes = 0;
@@ -238,13 +236,13 @@ extern uint64_t _bss_start[];
 extern uint64_t _bss_end[];
 extern rv::xsize_t kernel_page_table[4096 / sizeof(rv::xsize_t)];
 
-
-
 template <typename Fn>
 void display_braile_bitmap(int width, int height, Fn cb) {
   static const wchar_t *chars =
-      L"⠀⠁⠂⠃⠄⠅⠆⠇⡀⡁⡂⡃⡄⡅⡆⡇⠈⠉⠊⠋⠌⠍⠎⠏⡈⡉⡊⡋⡌⡍⡎⡏⠐⠑⠒⠓⠔⠕⠖⠗⡐⡑⡒⡓⡔⡕⡖⡗⠘⠙⠚⠛⠜⠝⠞⠟⡘⡙⡚⡛⡜⡝⡞⡟⠠⠡⠢⠣⠤⠥⠦⠧⡠⡡⡢⡣⡤⡥⡦⡧⠨⠩⠪⠫⠬⠭⠮⠯⡨⡩⡪⡫⡬⡭⡮⡯⠰⠱⠲⠳⠴⠵⠶⠷⡰⡱⡲⡳⡴⡵⡶⡷⠸⠹⠺⠻⠼⠽⠾⠿⡸⡹⡺⡻⡼⡽⡾⡿⢀⢁⢂"
-      L"⢃⢄⢅⢆⢇⣀⣁⣂⣃⣄⣅⣆⣇⢈⢉⢊⢋⢌⢍⢎⢏⣈⣉⣊⣋⣌⣍⣎⣏⢐⢑⢒⢓⢔⢕⢖⢗⣐⣑⣒⣓⣔⣕⣖⣗⢘⢙⢚⢛⢜⢝⢞⢟⣘⣙⣚⣛⣜⣝⣞⣟⢠⢡⢢⢣⢤⢥⢦⢧⣠⣡⣢⣣⣤⣥⣦⣧⢨⢩⢪⢫⢬⢭⢮⢯⣨⣩⣪⣫⣬⣭⣮⣯⢰⢱⢲⢳⢴⢵⢶⢷⣰⣱⣲⣳⣴⣵⣶⣷⢸⢹⢺⢻⢼⢽⢾⢿⣸⣹⣺⣻⣼⣽⣾⣿";
+      L"⠀⠁⠂⠃⠄⠅⠆⠇⡀⡁⡂⡃⡄⡅⡆⡇⠈⠉⠊⠋⠌⠍⠎⠏⡈⡉⡊⡋⡌⡍⡎⡏⠐⠑⠒⠓⠔⠕⠖⠗⡐⡑⡒⡓⡔⡕⡖⡗⠘⠙⠚⠛⠜⠝⠞⠟⡘⡙⡚⡛⡜⡝⡞⡟⠠⠡⠢⠣⠤⠥⠦"
+      L"⠧⡠⡡⡢⡣⡤⡥⡦⡧⠨⠩⠪⠫⠬⠭⠮⠯⡨⡩⡪⡫⡬⡭⡮⡯⠰⠱⠲⠳⠴⠵⠶⠷⡰⡱⡲⡳⡴⡵⡶⡷⠸⠹⠺⠻⠼⠽⠾⠿⡸⡹⡺⡻⡼⡽⡾⡿⢀⢁⢂"
+      L"⢃⢄⢅⢆⢇⣀⣁⣂⣃⣄⣅⣆⣇⢈⢉⢊⢋⢌⢍⢎⢏⣈⣉⣊⣋⣌⣍⣎⣏⢐⢑⢒⢓⢔⢕⢖⢗⣐⣑⣒⣓⣔⣕⣖⣗⢘⢙⢚⢛⢜⢝⢞⢟⣘⣙⣚⣛⣜⣝⣞⣟⢠⢡⢢⢣⢤⢥⢦⢧⣠⣡"
+      L"⣢⣣⣤⣥⣦⣧⢨⢩⢪⢫⢬⢭⢮⢯⣨⣩⣪⣫⣬⣭⣮⣯⢰⢱⢲⢳⢴⢵⢶⢷⣰⣱⣲⣳⣴⣵⣶⣷⢸⢹⢺⢻⢼⢽⢾⢿⣸⣹⣺⣻⣼⣽⣾⣿";
 
   constexpr int CHAR_WIDTH = 2;
   constexpr int CHAR_HEIGHT = 4;
@@ -284,10 +282,10 @@ static int logger(void *arg) {
   return 0;
 }
 
-
 void main(int hartid, void *fdt) {
   // zero the BSS
-  for (uint64_t *ptr = (uint64_t *)p2v(_bss_start); ptr < (uint64_t *)p2v(_bss_end); ptr++) {
+  for (uint64_t *ptr = (uint64_t *)p2v(_bss_start);
+       ptr < (uint64_t *)p2v(_bss_end); ptr++) {
     *ptr = 0;
   }
 
@@ -295,7 +293,6 @@ void main(int hartid, void *fdt) {
 
   // get the information from SBI right away so we can use it early on
   sbi_early_init();
-
 
   /*
    * Machine mode passes us the scratch structure through
@@ -309,18 +306,15 @@ void main(int hartid, void *fdt) {
 
   rv::get_hstate().kernel_sp = 0;
 
-
   /* Set the supervisor trap vector location */
   write_csr(stvec, kernelvec);
 
   /* Initialize the platform level interrupt controller for this HART */
   // rv::plic::hart_init();
 
-
   off_t boot_free_start = (off_t)v2p(_kernel_end);
   off_t boot_free_end = boot_free_start + 1 * MB;
   LOG("Freeing bootup ram %llx:%llx\n", boot_free_start, boot_free_end);
-
 
   /* Tell the device tree to copy the device tree and parse it */
   dtb::parse((dtb::fdt_header *)p2v(rv::get_hstate().dtb));
@@ -342,13 +336,11 @@ void main(int hartid, void *fdt) {
     return true;
   });
 
-
   if (dtb_ram_start == 0) {
     LOG("dtb didn't contain a memory segment, guessing 128mb :^)\n");
     dtb_ram_size = 128 * MB;
     dtb_ram_start = boot_free_start;
   }
-
 
   off_t dtb_ram_end = dtb_ram_start + dtb_ram_size;
   dtb_ram_start = max(dtb_ram_start, boot_free_end + 4096);
@@ -372,37 +364,36 @@ void main(int hartid, void *fdt) {
   /* set the timer with sbi :) */
   sbi_set_timer(rv::get_time() + TICK_INTERVAL);
 
-
   time::set_cps(CONFIG_RISCV_CLOCKS_PER_SECOND);
   time::set_high_accuracy_time_fn(riscv_high_acc_time_func);
-  /* set SUM bit in sstatus so kernel can access userspace pages. Also enable floating point */
+  /* set SUM bit in sstatus so kernel can access userspace pages. Also enable
+   * floating point */
   write_csr(sstatus, read_csr(sstatus) | (1 << 18) | (1 << 13));
   cpu::current().timekeeper = true;
 
-  // discover the plic on the system, and then initialize this hart's state on it
+  // discover the plic on the system, and then initialize this hart's state on
+  // it
   rv::plic::discover();
   rv::plic::hart_init();
 
   assert(sched::init());
-  LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
+  LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n",
+      phys::nfree(), phys::bytes_free());
 
-
-
-	/*
-  for (int i = 0; i < 20; i++) {
-    char name[20];
-    sprintf(name, "%d", i);
-    sched::proc::create_kthread(name, [](void *) -> int {
-      while (1) {
-        sched::yield();
-      }
-      return 0;
-    });
-  }
-	*/
+  /*
+for (int i = 0; i < 20; i++) {
+char name[20];
+sprintf(name, "%d", i);
+sched::proc::create_kthread(name, [](void *) -> int {
+while (1) {
+  sched::yield();
+}
+return 0;
+});
+}
+  */
   // while(1) {}
   // sched::run();
-
 
   sched::proc::create_kthread("main task", [](void *) -> int {
     // Init the virtual filesystem and mount a tmpfs and devfs to / and /dev
@@ -411,8 +402,6 @@ void main(int hartid, void *fdt) {
     LOG("Calling kernel module init functions\n");
     initialize_builtin_modules();
     LOG("kernel modules initialized\n");
-
-
 
     // Now that we are definitely in the high half and all cores have been
     // booted, nuke the lower half of the kernel page table for sanity reasons
@@ -425,10 +414,7 @@ void main(int hartid, void *fdt) {
 
     sched::proc::create_kthread("[reaper]", Process::reaper);
 
-
-
 #ifdef CONFIG_ENABLE_USERSPACE
-
 
     LOG("Mounting root filesystem\n");
     int mnt_res = vfs::mount("/dev/disk0p1", "/root", "ext2", 0, NULL);
@@ -463,7 +449,6 @@ void main(int hartid, void *fdt) {
     return 0;
   });
 
-
   KINFO("starting scheduler\n");
   sched::run();
 
@@ -471,13 +456,10 @@ void main(int hartid, void *fdt) {
     arch_halt();
 }
 
-
-
 extern "C" rv::xsize_t sip_bench();
 ksh_def("sip-bench", "benchmark access to the sip register") {
   size_t trials = 1000;
   auto measurements = new uint64_t[trials];
-
 
   // auto start = rv::get_cycle();
   for (int i = 0; i < trials; i++) {

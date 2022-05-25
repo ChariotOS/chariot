@@ -21,6 +21,10 @@ extern "C" {
 #define barrier() __sync_synchronize()
 
 
+#define READ_ONCE(x) (*(volatile __decltype(x) *)&(x))
+#define WRITE_ONCE(x, val) ((*(volatile __decltype(x) *)&(x)) = (val))
+
+
 
 #ifndef unlikely
 #define unlikely(c) __builtin_expect((c), 0)

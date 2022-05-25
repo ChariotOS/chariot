@@ -67,7 +67,7 @@ namespace cpu {
     bool active = false;      // filled out by the arch's initialization routine
     bool in_sched = false;    // the CPU has reached the scheduler
     bool timekeeper = false;  // this CPU does timekeeping stuff.
-
+		uint64_t preempt_count = 0;
     rt::Scheduler local_scheduler;
 
     // the intrusive linked list into the list of all cores

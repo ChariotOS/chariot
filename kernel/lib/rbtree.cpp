@@ -58,6 +58,7 @@
 
 #include <rbtree_augmented.h>
 #include <printf.h>
+#include <rcu.h>
 
 static inline void rb_set_black(struct rb_node *rb) { rb->__rb_parent_color |= RB_BLACK; }
 
