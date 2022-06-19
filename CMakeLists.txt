@@ -145,7 +145,7 @@ add_link_options(--sysroot ${CHARIOT_SYSROOT})
 
 
 set(EXECUTABLE_OUTPUT_PATH "${CHARIOT_SYSROOT}/bin" CACHE PATH "Build directory" FORCE)
-set(LIBRARY_OUTPUT_PATH "${CHARIOT_SYSROOT}/lib" CACHE PATH "Build directory" FORCE)
+set(LIBRARY_OUTPUT_PATH "${CHARIOT_SYSROOT}/usr/lib" CACHE PATH "Build directory" FORCE)
 
 # warnings, etc.
 
