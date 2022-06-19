@@ -18,7 +18,6 @@
 #define RING_USER 3
 
 
-#define PS_EMBRYO (-1)
 /* The task is either actively running or is able to be run */
 #define PS_RUNNING (0)
 #define PS_INTERRUPTIBLE (1)
@@ -60,12 +59,6 @@ struct Process final : public ck::refcounted<Process> {
    */
   spinlock threads_lock;
   ck::vec<ck::ref<Thread>> threads;
-
-  /**
-   * when a process spawns a new process, it is an embryo. A process can only
-   * pctl() a pid that is in this list. When a task startpid()'s a pid, it will
-   * be moved from this list to the children list.
-   */
   ck::vec<ck::ref<Process>> children;
 
   unsigned ring = RING_USER;

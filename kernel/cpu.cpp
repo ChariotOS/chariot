@@ -10,7 +10,7 @@
 #include <module.h>
 #include <util.h>
 
-int processor_count = 0;
+static int processor_count = 0;
 
 struct list_head cpu::cores;
 
@@ -18,7 +18,7 @@ cpu::Core::Core(void) : local_scheduler(*this) {}
 
 
 void cpu::add(cpu::Core *cpu) {
-  processor_count++;
+  processor_count += 1;
   cpu->active = true;
   cpu::cores.add_tail(&cpu->cores);
 }

@@ -18,6 +18,7 @@
 #include <util.h>
 #include <wait_flags.h>
 #include <module.h>
+#include "asm.h"
 
 #ifdef CONFIG_RISCV
 #include <riscv/arch.h>
@@ -874,17 +875,108 @@ extern void sched_barrier();
 
 extern ck::map<long, ck::weak_ref<Thread>> thread_table;
 
-static void dump_thread(Thread &t) {
-  const char *state = "UNKNOWN";
-#define ST(name) \
-  if (t.state == PS_##name) state = #name
-  ST(EMBRYO);
-  ST(RUNNING);
-  ST(INTERRUPTIBLE);
-  ST(UNINTERRUPTIBLE);
-  ST(ZOMBIE);
+
+
+size_t utf8_strlen(const char *s) {
+  size_t count = 0;
+  while (*s)
+    count += (*s++ & 0xC0) != 0x80;
+  return count;
+}
+
+
+struct TableLogger {
+  using Columns = ck::vec<ck::string>;
+  using Row = ck::map<ck::string, ck::string>;
+
+  TableLogger(Columns columns) : columns(columns) {}
+
+  void add_row(Row &row) { rows.push(row); }
+  void display(void) {
+    ck::map<ck::string, int> widths;
+    for (auto &col : columns)
+      widths[col] = col.len();
+    for (auto &row : rows) {
+      for (auto &[c, v] : row) {
+        widths[c] = max(widths[c], utf8_strlen(v.get()));
+      }
+    }
+    constexpr const char *entry_format = "| %-*s ";
+    for (auto &c : columns) {
+      printf(entry_format, widths[c], c.get());
+    }
+    printf("\n");
+
+    ck::string val;
+    for (auto &row : rows) {
+      for (auto &c : columns) {
+        val = "";
+        if (row.contains(c)) {
+          val = row[c].get();
+        }
+
+        int to_add = widths[c] - utf8_strlen(val.get());
+        for (int i = 0; i < to_add; i++)
+          val += " ";
+
+        printf(entry_format, widths[c], val.get());
+      }
+      printf("|\n");
+    }
+  }
+
+ private:
+  Columns columns;
+  ck::vec<Row> rows;
+};
+
+static TableLogger::Row dump_thread(Thread &t) {
+  TableLogger::Row r;
+  ck::string state = "UNK";
+#define ST(name, s) \
+  if (t.state == PS_##name) state = s
+  ST(RUNNING, "R");
+  ST(INTERRUPTIBLE, "S");
+  ST(UNINTERRUPTIBLE, "D");
+  ST(ZOMBIE, "Z");
 #undef ST
-  printf("p%-4d t%-4d | %20s %16s\n", t.pid, t.tid, t.name.get(), state);
+
+  if (t.proc.ring == RING_KERN) state += "k";  // *k*ernel
+
+  r["STAT"] = state;
+  r["PID"] = ck::string::format("%d", t.pid);
+  r["TID"] = ck::string::format("%d", t.tid);
+  r["NAME"] = t.name;
+
+
+  // printf("%3dp %3dt ", t.pid, t.tid);
+
+  {
+    scoped_irqlock l(t.schedlock);
+    if (t.scheduler) {
+      r["CORE"] = ck::string::format("%d", t.scheduler->core().id);
+    }
+
+    // r["UTIME"] = ck::string::format("%luus", t.utime_us);
+    r["TIME"] = ck::string::format("%lu.%lums", t.ktime_us / 1000, t.ktime_us % 1000);
+
+    auto c = t.constraint();
+    switch (c.type) {
+      case rt::APERIODIC:
+        r["REALTIME"] = ck::string::format("A μ:%d", c.aperiodic.priority);
+        break;
+      case rt::PERIODIC:
+        r["REALTIME"] = ck::string::format("P φ:%d τ:%d σ:%d", c.periodic.phase, c.periodic.period, c.periodic.slice);
+        break;
+      case rt::SPORADIC:
+        r["REALTIME"] = ck::string::format(
+            "S φ:%d ω:%d δ:%d μ:%d", c.sporadic.phase, c.sporadic.size, c.sporadic.deadline, c.sporadic.aperiodic_priority);
+        break;
+    }
+  }
+  // printf("  %s\n", t.name.get());
+  // printf("p%-3d t%-3d c%2d %3s %s\n", t.pid, t.tid, core, state, t.name.get());
+  return r;
 }
 
 void sched::proc::dump_table(void) {
@@ -897,29 +989,39 @@ void sched::proc::dump_table(void) {
           // print threads that no longer have processes but are still
           // sitting around somewhere.
           ck::map<int, int> associated_threads;
+          TableLogger::Columns cols;
+          cols.push("PID");
+          cols.push("TID");
+          cols.push("CORE");
+          cols.push("STAT");
+          cols.push("REALTIME");
+          cols.push("TIME");
+          cols.push("NAME");
+          TableLogger logger(cols);
+
 
           printf("------ Process Dump ------\n");
           for (auto &[pid, proc] : proc_table) {
             for (auto t : proc->threads) {
               associated_threads[t->tid] = pid;
-              dump_thread(*t);
+              auto row = dump_thread(*t);
+              logger.add_row(row);
             }
           }
 
-          printf("------ Leaked ------\n");
-          for (auto &[tid, thd] : thread_table) {
-            if (associated_threads[tid] == false) {
-              auto t = thd.get();
-              if (t) dump_thread(*t);
-            }
-          }
+          logger.display();
 
-
-          printf("------ Zombies ------\n");
-          struct zombie_entry *zent = NULL;
-          list_for_each_entry(zent, &zombie_list, node) { printf("  process %d\n", zent->proc->pid); }
-
-          sched::dump();
+          // printf("------ Leaked ------\n");
+          // for (auto &[tid, thd] : thread_table) {
+          //   if (associated_threads[tid] == false) {
+          //     auto t = thd.get();
+          //     if (t) dump_thread(*t);
+          //   }
+          // }
+          // printf("------ Zombies ------\n");
+          // struct zombie_entry *zent = NULL;
+          // list_for_each_entry(zent, &zombie_list, node) { printf("  process %d\n", zent->proc->pid); }
+          // sched::dump();
         }
 
         // Make sure the printing core is done before letting any core

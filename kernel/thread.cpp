@@ -25,19 +25,6 @@ static void thread_create_callback(void *);
 extern "C" void trapret(void);
 
 
-
-
-// void dump_addr2line(void) {
-//   off_t rbp = 0;
-//   asm volatile("mov %%rbp, %0\n\t" : "=r"(rbp));
-//   auto bt = debug::generate_backtrace(rbp);
-//   printf_nolock("addr2line -e build/chariot.elf");
-//   for (auto pc : bt) {
-//     printf_nolock(" 0x%p", pc);
-//   }
-//   printf_nolock("\n");
-// }
-
 static spinlock thread_table_lock;
 ck::map<long, ck::weak_ref<Thread>> thread_table;
 
@@ -110,9 +97,6 @@ Thread::~Thread(void) {
   // free the FPU state page
   phys::free(fpu.state, 1);
 
-  // free the architecture specific state for this thread.
-  if (sig.arch_priv != NULL) free(sig.arch_priv);
-
   // memset((void *)this, 0xFF, sizeof(*this));
 }
 
@@ -120,7 +104,7 @@ Thread::~Thread(void) {
 
 void Thread::remove_from_scheduler() {
   if (scheduler) {
-    printf("remove %d from scheduler\n", tid);
+    // printf("remove %d from scheduler\n", tid);
     auto l = scheduler->lock();
     scheduler->dequeue(this);
   }

@@ -9,10 +9,14 @@
 #include <wait.h>
 #include <printf.h>
 #include <realtime.h>
+#include "arch.h"
 
 #ifdef CONFIG_RISCV
 #include <riscv/arch.h>
 #endif
+
+#define log(...) PFXLOG(YEL "SCH", __VA_ARGS__)
+
 
 #define SIG_ERR ((void (*)(int)) - 1)
 #define SIG_DFL ((void (*)(int))0)
@@ -39,7 +43,9 @@ int Thread::make_runnable(int cpu, bool admit) {
     target_core = &core();
     cpu = target_core->id;
   } else if (cpu == RT_CORE_ANY) {
-    // Pick a random core. If that core doesn't allow the task,
+    // Starting at a random core, loop through all the cores and try to
+    // admit the thread to them. Return success if it occurs, or failure
+    // if no cores admit the thread.
     int nprocs = cpu::nproc();
     unsigned start = rand() % nprocs;
     for (int i = 0; i < nprocs; i++) {
@@ -81,6 +87,10 @@ int Thread::make_runnable(int cpu, bool admit) {
     }
   }
 
+  if (this->scheduler != &s) {
+    printf(KERN_ERROR "Thread has no scheduler despite being previously admitted\n");
+    return -1;
+  }
 
   if (constraint().type == rt::APERIODIC) {
     s.aperiodic.enqueue(this);
@@ -99,6 +109,15 @@ rt::Scheduler::Scheduler(cpu::Core &core) : m_core(core) {}
 
 
 bool rt::Scheduler::admit(Thread *task, uint64_t now) {
+  scoped_irqlock l(task->schedlock);
+
+  // if it was admitted previously, don't admit!
+  if (task->scheduler != NULL) {
+    // If the task was already admitted, return that it was successfully admitted.
+    if (task->scheduler == this) return true;
+    printf_nolock("Scheduler::admit: already in " RED "another" RESET " scheduler\n");
+    return false;
+  }
   const auto &constraint = task->constraint();
 
   if (constraint.type == ConstraintType::APERIODIC) {
@@ -116,10 +135,11 @@ bool rt::Scheduler::admit(Thread *task, uint64_t now) {
 }
 
 int rt::Scheduler::dequeue(Thread *task) {
-  printf_nolock("DEQUEUE %d\n", task->tid);
+  scoped_irqlock l(task->schedlock);
   assert(task->scheduler == this);
   if (task->current_queue != NULL) {
     task->current_queue->remove(task);
+    // task->current_queue = NULL;
   }
 
   return 0;
@@ -139,11 +159,7 @@ bool rt::Scheduler::reschedule(void) {
   }
 
   if (res == NULL) {
-    // printf("---------------------\n");
-    // aperiodic.dump("before");
     res = aperiodic.dequeue();
-    // aperiodic.dump(" after");
-    // printf("\n");
   }
 
 
@@ -164,10 +180,13 @@ void rt::Scheduler::pump_sized_tasks(Thread *next) {
 ck::ref<Thread> rt::Scheduler::claim(void) {
   auto l = lock();
   auto t = next_thread;
+
   if (t) {
+    // scoped_irqlock thread_schedule_lock(t->schedlock);
     next_thread = nullptr;
+
     // now that we've claimed it, it no longer sits on a queue anywhere
-    t->scheduler = nullptr;
+    // t->scheduler = nullptr;
   }
   return t;
 }
@@ -397,6 +416,8 @@ sched::yieldres sched::do_yield(int st) {
 
 // helpful functions wrapping different resulting task states
 void sched::block() { sched::do_yield(PS_INTERRUPTIBLE); }
+
+
 /* Unblock a thread */
 void sched::unblock(Thread &thd, bool interrupt) {
 #if 0
@@ -407,7 +428,9 @@ void sched::unblock(Thread &thd, bool interrupt) {
   }
 #endif
 
-  // if () {}
+
+  // scoped_irqlock l(thd.schedlock);
+  // now we can poke around in the thread's info
 
   // assert(thd.current_scheduler() == NULL);
   thd.rudely_awoken = interrupt;
@@ -463,19 +486,53 @@ void sched_barrier() {
 }
 
 
+
+static uint64_t test_slack(ck::ref<Thread> test_thread) {
+  const uint64_t trials = 10000;
+  uint64_t total = 0;
+  for (uint64_t i = 0; i < trials; i++) {
+    const auto start = arch_read_timestamp();
+    test_thread->run();
+    const auto end = arch_read_timestamp();
+    total += end - start;
+  }
+  return total / trials;
+}
+
+
 void sched::run() {
   __atomic_fetch_add(&active_cores, 1, __ATOMIC_SEQ_CST);
   arch_disable_ints();
   // per-scheduler idle threads do not exist in the scheduler queue.
-  ck::ref<Thread> idle_thread = sched::proc::spawn_kthread("idle task", idle_task, NULL);
+  ck::ref<Thread> idle_thread = sched::proc::spawn_kthread("[idle]", idle_task, NULL);
   idle_thread->preemptable = true;
   core().in_sched = true;
-
-
+  ck::ref<Thread> slack_thread = sched::proc::spawn_kthread(
+      "[slacker]",
+      [](void *) -> int {
+        while (1)
+          sched::yield();
+        return 0;
+      },
+      NULL);
 
   rt::Scheduler &sched = core().local_scheduler;
+  sched.slack = test_slack(slack_thread);
 
+
+  const uint64_t slack_test_interval = 100;
+  uint64_t slack_test_count = 0;
+
+  barrier();
   while (1) {
+    if (slack_test_count == 0) {
+      // sched.slack = test_slack(slack_thread);
+      // printf_nolock("%lu\n", sched.slack);
+    }
+
+    slack_test_count++;
+    if (slack_test_count == slack_test_interval) slack_test_count = 0;
+
     sched.reschedule();
     ck::ref<Thread> thd = sched.claim();
 
@@ -528,8 +585,8 @@ void sched::run() {
         thd->set_state(PS_ZOMBIE);
         thd->joiners.wake_up_all();
       } else if (state_after == PS_RUNNING) {
-        // SCHED_DEBUG("Still runnable\n");
-        thd->make_runnable(RT_CORE_SELF, true);
+        // The thread was already in the scheduler queue. No need to make it runnable
+        thd->make_runnable(RT_CORE_SELF, false);
       } else {
         SCHED_DEBUG("Was blocked.\n");
       }
@@ -553,8 +610,8 @@ void sched::handle_tick(u64 ticks) {
 
   /* We don't get preempted if we aren't currently runnable. See wait.cpp for why */
   if (thd->get_state() != PS_RUNNING) return;
-	// if the current thread is not preemptable, or we are in an RCU reader
-	// section, don't reschedule
+  // if the current thread is not preemptable, or we are in an RCU reader
+  // section, don't reschedule
   if (thd->preemptable == false || core().preempt_count != 0) return;
 
   // ask the scheduler if there's anything to switch to
@@ -710,7 +767,7 @@ void sched::before_iret(bool userspace) {
     sched::yield();
   }
 
-  // if (time::stabilized()) thd->last_start_utime_us = time::now_us();
+  if (time::stabilized()) thd->last_start_utime_us = time::now_us();
 
   // if its not running, it is setting up a waitqueue or exiting, so we don't
   // want to screw that up by prematurely yielding.
@@ -735,7 +792,13 @@ struct send_signal_arg {
 
 static void send_signal_xcall(void *arg) {
   auto a = (struct send_signal_arg *)arg;
-  // printf("core %d running %d when signal t:%d p:%d is sent to %ld\n", core_id(), curthd->tid, curthd->pid, a->sig, a->p);
+
+	if (curthd) {
+  	printf("core %d running %d when signal t:%d p:%d is sent to %ld\n", core_id(), curthd->tid, curthd->pid, a->sig, a->p);
+	} else {
+		printf("core %d not running a thread.\n", core_id());
+	}
+
   long target = a->p;
 
   if (target < 0) {

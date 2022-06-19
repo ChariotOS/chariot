@@ -113,7 +113,6 @@ struct SignalConfig {
   unsigned long pending = 0;
   unsigned long mask = 0;
   long handling = -1;
-  void *arch_priv = nullptr;
 };
 
 
@@ -123,33 +122,34 @@ struct Thread final : public ck::weakable<Thread> {
   friend rt::PriorityQueue;
   friend rt::Queue;
 
-  long tid;                      // The thread ID of this thread
-  long pid;                      // The process ID of the process this thread belongs to
-  Process &proc;                 // A reference to the process this thread belongs to
-  volatile int state;            // The thread state (RUNNING, INTERRUPTABLE, etc..)
-  int exit_code;                 // The value passed to exit_thread()
-  int kerrno = 0;                // A per-thread errno value
-  bool preemptable = true;       // If the thread can be preempted
-  ThreadFPUState fpu;            // Floating point state
-  ThreadStats stats;             // Thread statistics
-  spinlock runlock;              // Held while the thread is running. This is a dumb sanity check
-  ThreadContext *kern_context;   // The register state to switch to
-  reg_t *trap_frame;             // The current trap frame
-  bool rudely_awoken = false;    // if this thread was woken rudely for a signal or something
-  ck::vec<KernelStack> stacks;   // A stack of kernel stacks
-  SignalConfig sig;              // Thread signal configuration
-  wait_queue joiners;            // Threads who are joining on this thread
-  spinlock joinlock;             // Held when someone is joining (tearing this thread down).
-  long ktime_us = 0;             // Time attributed to kernelspace
-  long utime_us = 0;             // Time attributed to userspace
-  long last_start_utime_us = 0;  // the last time that this thread
-  off_t tls_uaddr = 0;           // the location of the thread local storage for this thread
-  size_t tls_usize = 0;          // how big the thread local storage is
-  ck::string name;               // The name of this thread
-  bool should_die = false;       // the thread needs to be torn down. Must not return to userspace
-  bool kern_idle = false;        // the thread is a kernel idle thread
+  uint64_t tid;                      // The thread ID of this thread
+  uint64_t pid;                      // The process ID of the process this thread belongs to
+  Process &proc;                     // A reference to the process this thread belongs to
+  volatile int state;                // The thread state (RUNNING, INTERRUPTABLE, etc..)
+  int exit_code;                     // The value passed to exit_thread()
+  int kerrno = 0;                    // A per-thread errno value
+  ThreadFPUState fpu;                // Floating point state
+  ThreadStats stats;                 // Thread statistics
+  spinlock runlock;                  // Held while the thread is running. This is a dumb sanity check
+  ThreadContext *kern_context;       // The register state to switch to
+  reg_t *trap_frame;                 // The current trap frame
+  ck::vec<KernelStack> stacks;       // A stack of kernel stacks
+  SignalConfig sig;                  // Thread signal configuration
+  wait_queue joiners;                // Threads who are joining on this thread
+  spinlock joinlock;                 // Held when someone is joining (tearing this thread down).
+  uint64_t ktime_us = 0;             // Time attributed to kernelspace
+  uint64_t utime_us = 0;             // Time attributed to userspace
+  uint64_t last_start_utime_us = 0;  // the last time that this thread
+  uint64_t tls_uaddr = 0;            // the location of the thread local storage for this thread
+  uint64_t tls_usize = 0;            // how big the thread local storage is
+  ck::string name;                   // The name of this thread
+  bool preemptable = true;           // If the thread can be preempted
+  bool should_die = false;           // the thread needs to be torn down. Must not return to userspace
+  bool rudely_awoken = false;        // if this thread was woken rudely for a signal or something
+  bool kern_idle = false;            // the thread is a kernel idle thread
 
-  uint64_t timeslice = 1;
+  // TODO: remove these in favor of real-time scheduler constraints!
+  uint64_t timeslice = 1;  // how many ticks this thread can run at a time before yielding
   uint64_t ticks_ran = 0;  // how many ticks this thread has run for
 
   uint64_t start_time = 0;    // when the task got last started
@@ -159,7 +159,7 @@ struct Thread final : public ck::weakable<Thread> {
   uint64_t exit_time = 0;     // Time of competion after being run
 
 
-  // Statistics that are reset when the constraints are changed
+  // Real-time statistics that are reset when the constraints are changed
   uint64_t arrival_count = 0;           // how many times it has arrived (1 for aperiodic/sporadic)
   uint64_t resched_count = 0;           // how many times resched was invoked on this thread
   uint64_t resched_long_count = 0;      // how many times the long path was taken for the thread
@@ -173,7 +173,7 @@ struct Thread final : public ck::weakable<Thread> {
   rt::TaskQueue *current_queue = NULL;  // Track if this task is queued somewhere, and if it is, which one?
   rt::Constraints m_constraint;         // The realtime constraints of this task
   rt::Scheduler *scheduler = NULL;      // What scheduler currently controls this Task
-  spinlock queuelock;                   // held while moving a thread to a different queue (wait or scheduler)
+  spinlock schedlock;                   // held while moving a thread to a different queue (wait or scheduler)
 
   void set_state(int st);                       // change the thread state (this->state)
   int get_state(void);                          // get the thread state (this->state) in a "safe" way
