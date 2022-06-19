@@ -1,5 +1,6 @@
-#include "sys/wait.h"
 #define _CHARIOT_SRC
+
+#include "sys/wait.h"
 #include <chariot.h>
 #include <chariot/ucontext.h>
 #include <ck/command.h>
@@ -105,22 +106,19 @@ auto read_line(int fd, char *prompt) {
 struct ShellLexer : public ck::lexer {
   virtual ~ShellLexer(void) {}
 
-  ck::token lex(void) override {
-		
-		return tok(TOK_ERR, "");
-	}
+  ck::token lex(void) override { return tok(TOK_ERR, ""); }
 };
 
 
 void parse_line(ck::string_view v) {
-	return;
-	printf("parse '%s'\n", v.get());
+  return;
+  printf("parse '%s'\n", v.get());
 }
 
 pid_t fg_pid = -1;
 
 int run_line(ck::string line, int flags = 0) {
-	parse_line(line);
+  parse_line(line);
   int err = 0;
   ck::vec<ck::string> parts = line.split(' ', false);
   ck::vec<const char *> args;
@@ -269,9 +267,9 @@ int main(int argc, char **argv, char **envp) {
   setenv("SHELL", pwd->pw_shell, 1);
   setenv("HOME", pwd->pw_dir, 1);
 
-	parse_line("ls -la");
-	parse_line("cat /cfg/motd | hex");
-	// sys::shutdown();
+  parse_line("ls -la");
+  parse_line("cat /cfg/motd | hex");
+  // sys::shutdown();
 
   struct termios tios;
   while (1) {

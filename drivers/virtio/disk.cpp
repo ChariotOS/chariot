@@ -83,7 +83,7 @@ int VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
   scoped_irqlock l(vdisk_lock);
 
   {
-		// int flags = vdisk_lock.lock_irqsave();
+    // int flags = vdisk_lock.lock_irqsave();
     assert(size == 512);
     struct virtio_blk_req req;
     req.sector = sector;
@@ -106,16 +106,16 @@ int VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
     // struct wait_entry ent;
     // prepare_to_wait(wq, ent, true);
     submit(3, descs, first_index);
-		// vdisk_lock.unlock_irqrestore(flags);
+    // vdisk_lock.unlock_irqrestore(flags);
 
-		barrier();
-		// virtio is fast enough on qemu that we don't *really* have to wait
-		// on interrupts...
+    barrier();
+    // virtio is fast enough on qemu that we don't *really* have to wait
+    // on interrupts...
     while (req.status == 0xFF) {
-			arch_relax();
+      arch_relax();
     }
-		barrier();
-		free_desc_chain(0, first_index);
+    barrier();
+    free_desc_chain(0, first_index);
 #if 0
     if (ent.start().interrupted()) {
       // if we get interrupted, try again

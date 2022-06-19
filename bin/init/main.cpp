@@ -289,9 +289,7 @@ int main(int argc, char **argv) {
   ck::ipcsocket server;
 
 #ifndef CONFIG_SIMPLE_INIT
-
   spawn("lumen-server");
-
 #endif
 
   spawn("/bin/sh");

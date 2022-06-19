@@ -115,6 +115,9 @@ static bool handle_special_input(char c) {
 
 static fifo_buf console_feed_buffer;
 static int console_feeder(void *) {
+	// setup high prio on this thread so it preempts non-realtime threads to
+	// improve responsiveness.
+	// curthd->set_constraint(rt::AperiodicConstraint{ .priority = 0});
   char buf[32];
   while (1) {
     ssize_t sz = console_feed_buffer.read(buf, 32, true);
@@ -131,16 +134,14 @@ static int console_feeder(void *) {
 
 void console::feed(size_t sz, char *buf) {
   // short curcuit if the kernel shell is running.
-  if (kshell::active()) {
+  if (unlikely(kshell::active())) {
     kshell::feed(sz, buf);
     return;
   }
 
-  // lock the input
-  cons_input_lock.lock();
+  // cons_input_lock.lock();
   console_feed_buffer.write(buf, sz, false);
-
-  cons_input_lock.unlock();
+  // cons_input_lock.unlock();
 }
 
 
@@ -178,7 +179,6 @@ static ssize_t console_write(fs::File& fd, const char* buf, size_t sz) {
 
 static void console_init(void) {
   ctty.bind("console");
-
-  sched::proc::create_kthread("console handler", console_feeder);
+  auto t = sched::proc::create_kthread("[console]", console_feeder);
 }
 module_init("console", console_init);

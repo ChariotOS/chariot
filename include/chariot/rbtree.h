@@ -13,9 +13,7 @@
 
   See Documentation/core-api/rbtree.rst for documentation and samples.
 */
-
-#ifndef _LINUX_RBTREE_H
-#define _LINUX_RBTREE_H
+#pragma once
 
 #ifdef KERNEL
 #include <asm.h>
@@ -29,6 +27,7 @@
 // #include <linux/kernel.h>
 // #include <linux/rcupdate.h>
 // #include <linux/stddef.h>
+
 
 
 
@@ -78,8 +77,7 @@ extern struct rb_node *rb_next_postorder(const struct rb_node *);
 extern void rb_replace_node(struct rb_node *victim, struct rb_node *node, struct rb_root *root);
 extern void rb_replace_node_rcu(struct rb_node *victim, struct rb_node *node, struct rb_root *root);
 
-static inline void rb_link_node(
-    struct rb_node *node, struct rb_node *parent, struct rb_node **rb_link) {
+static inline void rb_link_node(struct rb_node *node, struct rb_node *parent, struct rb_node **rb_link) {
   node->__rb_parent_color = (unsigned long)parent;
   node->rb_left = node->rb_right = NULL;
 
@@ -87,8 +85,7 @@ static inline void rb_link_node(
 }
 
 #define rb_tree_rcu_assign_pointer(p, v) ({ __atomic_store_n(&(p), (v), __ATOMIC_RELEASE); })
-static inline void rb_link_node_rcu(
-    struct rb_node *node, struct rb_node *parent, struct rb_node **rb_link) {
+static inline void rb_link_node_rcu(struct rb_node *node, struct rb_node *parent, struct rb_node **rb_link) {
   node->__rb_parent_color = (unsigned long)parent;
   node->rb_left = node->rb_right = NULL;
 
@@ -151,8 +148,7 @@ struct rb_root_cached {
 /* Same as rb_first(), but O(1) */
 #define rb_first_cached(root) (root)->rb_leftmost
 
-static inline void rb_insert_color_cached(
-    struct rb_node *node, struct rb_root_cached *root, bool leftmost) {
+static inline void rb_insert_color_cached(struct rb_node *node, struct rb_root_cached *root, bool leftmost) {
   if (leftmost) root->rb_leftmost = node;
   rb_insert_color(node, &root->rb_root);
 }
@@ -162,8 +158,7 @@ static inline void rb_erase_cached(struct rb_node *node, struct rb_root_cached *
   rb_erase(node, &root->rb_root);
 }
 
-static inline void rb_replace_node_cached(
-    struct rb_node *victim, struct rb_node *newnode, struct rb_root_cached *root) {
+static inline void rb_replace_node_cached(struct rb_node *victim, struct rb_node *newnode, struct rb_root_cached *root) {
   if (root->rb_leftmost == victim) root->rb_leftmost = newnode;
   rb_replace_node(victim, newnode, &root->rb_root);
 }
@@ -197,6 +192,3 @@ inline bool rb_insert(struct rb_root &root, struct rb_node *node, Fn callback) {
   rb_insert_color(node, &root);
   return true;
 }
-
-
-#endif /* _LINUX_RBTREE_H */

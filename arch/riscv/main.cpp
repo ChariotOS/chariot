@@ -54,19 +54,13 @@ struct cpio_hdr {
 } __attribute__((packed));
 
 static uint16_t bswap_16(uint16_t __x) { return __x << 8 | __x >> 8; }
-static uint32_t bswap_32(uint32_t __x) {
-  return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24;
-}
+static uint32_t bswap_32(uint32_t __x) { return __x >> 24 | (__x >> 8 & 0xff00) | (__x << 8 & 0xff0000) | __x << 24; }
 
 void initrd_dump(void *vbuf, size_t size) { hexdump(vbuf, size, true); }
 
-static uint64_t ticks_to_ns(uint64_t ticks) {
-  return (ticks * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND;
-}
+static uint64_t ticks_to_ns(uint64_t ticks) { return (ticks * NS_PER_SEC) / CONFIG_RISCV_CLOCKS_PER_SECOND; }
 
-static unsigned long riscv_high_acc_time_func(void) {
-  return ticks_to_ns(read_csr(time));
-}
+static unsigned long riscv_high_acc_time_func(void) { return ticks_to_ns(read_csr(time)); }
 
 static off_t dtb_ram_start = 0;
 static size_t dtb_ram_size = 0;
@@ -119,8 +113,7 @@ extern "C" void secondary_entry(int hartid) {
 bool start_secondary(int i) {
   // start secondary cpus
   auto &sc = rv::get_hstate();
-  if (i == sc.hartid)
-    return false;
+  if (i == sc.hartid) return false;
 
   // KINFO("[hart %d] Trying to start hart %d\n", sc.hartid, i);
   // allocate 2 pages for the secondary core
@@ -130,8 +123,7 @@ bool start_secondary(int i) {
   second_done = false;
   __sync_synchronize();
 
-  auto ret = sbi_call(SBI_EXT_HSM, SBI_EXT_HSM_HART_START, i,
-                      secondary_core_startup_sbi, 1);
+  auto ret = sbi_call(SBI_EXT_HSM, SBI_EXT_HSM_HART_START, i, secondary_core_startup_sbi, 1);
   if (ret.error != SBI_SUCCESS) {
     return false;
   }
@@ -144,7 +136,7 @@ bool start_secondary(int i) {
 }
 
 class RISCVHart : public dev::CharDevice {
-public:
+ public:
   using dev::CharDevice::CharDevice;
 
   virtual ~RISCVHart(void) {}
@@ -155,8 +147,7 @@ public:
         auto status = mmio->get_prop_string("status");
 
         if (status.has_value()) {
-          if (status.unwrap() == "disabled")
-            return;
+          if (status.unwrap() == "disabled") return;
         }
 
         auto hartid = mmio->address();
@@ -180,8 +171,7 @@ static dev::ProbeResult riscv_hart_probe(ck::ref<hw::Device> dev) {
     if (mmio->is_compat("riscv")) {
       auto status = mmio->get_prop_string("status");
       if (status.has_value()) {
-        if (status.unwrap() == "disabled")
-          return dev::ProbeResult::Ignore;
+        if (status.unwrap() == "disabled") return dev::ProbeResult::Ignore;
       }
 
       return dev::ProbeResult::Attach;
@@ -284,8 +274,7 @@ static int logger(void *arg) {
 
 void main(int hartid, void *fdt) {
   // zero the BSS
-  for (uint64_t *ptr = (uint64_t *)p2v(_bss_start);
-       ptr < (uint64_t *)p2v(_bss_end); ptr++) {
+  for (uint64_t *ptr = (uint64_t *)p2v(_bss_start); ptr < (uint64_t *)p2v(_bss_end); ptr++) {
     *ptr = 0;
   }
 
@@ -377,8 +366,7 @@ void main(int hartid, void *fdt) {
   rv::plic::hart_init();
 
   assert(sched::init());
-  LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n",
-      phys::nfree(), phys::bytes_free());
+  LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
 
   /*
 for (int i = 0; i < 20; i++) {
@@ -395,7 +383,7 @@ return 0;
   // while(1) {}
   // sched::run();
 
-  sched::proc::create_kthread("main task", [](void *) -> int {
+  sched::proc::create_kthread("[kmain]", [](void *) -> int {
     // Init the virtual filesystem and mount a tmpfs and devfs to / and /dev
     vfs::init_boot_filesystem();
 

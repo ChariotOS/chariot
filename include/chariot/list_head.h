@@ -4,7 +4,8 @@
 #define LIST_POISON2 ((void *)0x00200200)
 
 
-#define LIST_HEAD_INIT(name) { &(name), &(name) }
+#define LIST_HEAD_INIT(name) \
+  { &(name), &(name) }
 
 /*
  * a list_head is a concept I blatently stole from the linux kernel. These are meant
@@ -15,9 +16,7 @@ struct list_head {
   struct list_head *next = this;
 
 
-  inline void init(void) {
-    prev = next = this;
-  }
+  inline void init(void) { prev = next = this; }
 
   /*
    * Insert a new entry between two known consecutive entries.
@@ -40,9 +39,7 @@ struct list_head {
    * Insert a new entry after the specified head.
    * This is good for implementing stacks.
    */
-  inline void add(struct list_head *n) {
-    __add(n, this, this->next);
-  }
+  inline void add(struct list_head *n) { __add(n, this, this->next); }
 
   /**
    * add_tail - add a new entry
@@ -52,9 +49,7 @@ struct list_head {
    * Insert a new entry before the specified head.
    * This is useful for implementing queues.
    */
-  inline void add_tail(struct list_head *n) {
-    __add(n, this->prev, this);
-  }
+  inline void add_tail(struct list_head *n) { __add(n, this->prev, this); }
 
 
 
@@ -130,17 +125,13 @@ struct list_head {
    * is_last - tests whether @entry is the last entry in list @this
    * @entry: the entry to test
    */
-  inline bool is_last(struct list_head *entry) {
-    return entry->next == this;
-  }
+  inline bool is_last(struct list_head *entry) { return entry->next == this; }
 
 
   /**
    * is_empty - test whether the list is empty
    */
-  inline bool is_empty() {
-    return prev == next;
-  }
+  inline bool is_empty() { return prev == next; }
   /**
    * list_empty_careful - tests whether a list is empty and not being modified
    *
@@ -160,8 +151,7 @@ struct list_head {
 
 
 
-  static inline void __splice(const struct list_head *list, struct list_head *prev,
-                              struct list_head *next) {
+  static inline void __splice(const struct list_head *list, struct list_head *prev, struct list_head *next) {
     struct list_head *first = list->next;
     struct list_head *last = list->prev;
 
@@ -224,12 +214,8 @@ struct list_head {
     }
 
 
-    bool operator==(const iter &other) const {
-      return item == other.item;
-    }
-    bool operator!=(const iter &other) const {
-      return item != other.item;
-    }
+    bool operator==(const iter &other) const { return item == other.item; }
+    bool operator!=(const iter &other) const { return item != other.item; }
   };
 
 
@@ -278,16 +264,14 @@ struct __remove_reference<T &&> {
  *
  * Note, that list is expected to be not empty.
  */
-#define list_first_entry(ptr, type, member) \
-	list_entry((ptr)->next, type, member)
+#define list_first_entry(ptr, type, member) list_entry((ptr)->next, type, member)
 
 /**
  * list_next_entry - get the next element in list
  * @pos:	the type * to cursor
  * @member:	the name of the list_head within the struct.
  */
-#define list_next_entry(pos, member) \
-	list_entry((pos)->member.next, __decltype(*(pos)), member)
+#define list_next_entry(pos, member) list_entry((pos)->member.next, __decltype(*(pos)), member)
 
 /**
  * list_entry_is_head - test if the entry points to the head of the list
@@ -295,8 +279,7 @@ struct __remove_reference<T &&> {
  * @head:	the head for your list.
  * @member:	the name of the list_head within the struct.
  */
-#define list_entry_is_head(pos, head, member)				\
-	(&pos->member == (head))
+#define list_entry_is_head(pos, head, member) (&pos->member == (head))
 
 
 /**
@@ -305,10 +288,8 @@ struct __remove_reference<T &&> {
  * @head:	the head for your list.
  * @member:	the name of the list_head within the struct.
  */
-#define list_for_each_entry(pos, head, member)				\
-	for (pos = list_first_entry(head, __decltype(*pos), member);	\
-	     !list_entry_is_head(pos, head, member);			\
-	     pos = list_next_entry(pos, member))
+#define list_for_each_entry(pos, head, member) \
+  for (pos = list_first_entry(head, __decltype(*pos), member); !list_entry_is_head(pos, head, member); pos = list_next_entry(pos, member))
 
 
 /**
@@ -318,7 +299,6 @@ struct __remove_reference<T &&> {
  * @head:	the head for your list.
  * @member:	the name of the list_struct within the struct.
  */
-#define list_for_each_entry_safe(pos, n, head, member)            \
-  for (pos = list_entry((head)->next, __decltype(*pos), member),  \
-      n = list_entry(pos->member.next, __decltype(*pos), member); \
+#define list_for_each_entry_safe(pos, n, head, member)                                                                       \
+  for (pos = list_entry((head)->next, __decltype(*pos), member), n = list_entry(pos->member.next, __decltype(*pos), member); \
        &pos->member != (head); pos = n, n = list_entry(n->member.next, __decltype(*n), member))

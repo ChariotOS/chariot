@@ -41,12 +41,6 @@ struct xcall_command {
 };
 
 
-
-
-extern int processor_count;
-
-
-
 struct sleep_waiter;
 struct ThreadContext;
 
@@ -67,7 +61,7 @@ namespace cpu {
     bool active = false;      // filled out by the arch's initialization routine
     bool in_sched = false;    // the CPU has reached the scheduler
     bool timekeeper = false;  // this CPU does timekeeping stuff.
-		uint64_t preempt_count = 0;
+    uint64_t preempt_count = 0;
     rt::Scheduler local_scheduler;
 
     // the intrusive linked list into the list of all cores
@@ -95,7 +89,7 @@ namespace cpu {
     x86::IOApic ioapic;
 #endif
 
-		Core(void);
+    Core(void);
 
     void prep_xcall(xcall_t func, void *arg, int *count) {
       xcall_lock.lock();
