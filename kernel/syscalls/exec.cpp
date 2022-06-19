@@ -12,6 +12,7 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   // TODO: this isn't super smart imo, we are relying on not getting an irq
   auto *tf = curthd->trap_frame;
 
+
   if (path == NULL) return -EINVAL;
   if (uargv == NULL) return -EINVAL;
 
@@ -44,6 +45,8 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
   if (vfs::namei(path, 0, 0, curproc->cwd, exe) != 0) {
     return -ENOENT;
   }
+
+  const char *new_name = path;
 
 
 
@@ -115,7 +118,8 @@ int sys::execve(const char *path, const char **uargv, const char **uenvp) {
     }
   }
 
-  curproc->name = path;
+  curproc->name = new_name;
+  curthd->name = new_name;
   curproc->args = argv;
   curproc->env = envp;
   new_addr_space->switch_to();
