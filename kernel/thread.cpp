@@ -159,7 +159,7 @@ void Thread::setup_stack(reg_t *tf) {
   auto argc = (u64)proc.args.size();
 
   size_t sz = 0;
-  sz += proc.args.size() * sizeof(char *);
+  sz += (proc.args.size() + 1) * sizeof(char *);
   for (auto &a : proc.args)
     sz += a.size() + 1;
 
@@ -167,7 +167,7 @@ void Thread::setup_stack(reg_t *tf) {
 
   auto argv = (char **)region;
 
-  auto *arg = (char *)((char **)argv + argc);
+  auto *arg = (char *)((char **)argv + argc + 1);
 
   int i = 0;
   for (auto &a : proc.args) {
@@ -176,6 +176,8 @@ void Thread::setup_stack(reg_t *tf) {
     argv[i++] = arg;
     arg += len;
   }
+	// null terminate the argv list
+  argv[argc] = 0;
 
   auto envc = proc.env.size();
   auto envp = STACK_ALLOC(char *, envc + 1);
@@ -185,7 +187,7 @@ void Thread::setup_stack(reg_t *tf) {
     envp[i] = STACK_ALLOC(char, e.len() + 1);
     memcpy(envp[i], e.get(), e.len() + 1);
   }
-
+	// Null terminate the environment list
   envp[envc] = NULL;
 
 
