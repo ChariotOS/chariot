@@ -6,7 +6,9 @@
 int main() {
   // TODO: actually login lol
   system("cat /cfg/motd");
-  system("/bin/sh");
-  // printf("[login] Restarting shell...\n");
+  while (1) {
+		system("/bin/sh");
+  	printf("[login] Restarting shell...\n");
+	}
   return 0;
 }

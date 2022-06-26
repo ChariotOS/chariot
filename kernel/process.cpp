@@ -979,49 +979,52 @@ static TableLogger::Row dump_thread(Thread &t) {
   return r;
 }
 
+void dump_process_table_internal(void) {
+  // tid -> pid mappings for debug. This allows this routine to
+  // print threads that no longer have processes but are still
+  // sitting around somewhere.
+  ck::map<int, int> associated_threads;
+  TableLogger::Columns cols;
+  cols.push("PID");
+  cols.push("TID");
+  cols.push("CORE");
+  cols.push("STAT");
+  cols.push("REALTIME");
+  cols.push("TIME");
+  cols.push("NAME");
+  TableLogger logger(cols);
+
+
+  printf("------ Process Dump ------\n");
+  for (auto &[pid, proc] : proc_table) {
+    for (auto t : proc->threads) {
+      associated_threads[t->tid] = pid;
+      auto row = dump_thread(*t);
+      logger.add_row(row);
+    }
+  }
+
+  logger.display();
+
+  // printf("------ Leaked ------\n");
+  // for (auto &[tid, thd] : thread_table) {
+  //   if (associated_threads[tid] == false) {
+  //     auto t = thd.get();
+  //     if (t) dump_thread(*t);
+  //   }
+  // }
+  // printf("------ Zombies ------\n");
+  // struct zombie_entry *zent = NULL;
+  // list_for_each_entry(zent, &zombie_list, node) { printf("  process %d\n", zent->proc->pid); }
+  // sched::dump();
+}
 void sched::proc::dump_table(void) {
   // call everyone (and barrier at the end) to make sure that the scheduler
   // doesn't decide to change this state out from under us on some other core
   cpu::xcall_all(
       [](void *) {
         if (core_id() == 0) {
-          // tid -> pid mappings for debug. This allows this routine to
-          // print threads that no longer have processes but are still
-          // sitting around somewhere.
-          ck::map<int, int> associated_threads;
-          TableLogger::Columns cols;
-          cols.push("PID");
-          cols.push("TID");
-          cols.push("CORE");
-          cols.push("STAT");
-          cols.push("REALTIME");
-          cols.push("TIME");
-          cols.push("NAME");
-          TableLogger logger(cols);
-
-
-          printf("------ Process Dump ------\n");
-          for (auto &[pid, proc] : proc_table) {
-            for (auto t : proc->threads) {
-              associated_threads[t->tid] = pid;
-              auto row = dump_thread(*t);
-              logger.add_row(row);
-            }
-          }
-
-          logger.display();
-
-          // printf("------ Leaked ------\n");
-          // for (auto &[tid, thd] : thread_table) {
-          //   if (associated_threads[tid] == false) {
-          //     auto t = thd.get();
-          //     if (t) dump_thread(*t);
-          //   }
-          // }
-          // printf("------ Zombies ------\n");
-          // struct zombie_entry *zent = NULL;
-          // list_for_each_entry(zent, &zombie_list, node) { printf("  process %d\n", zent->proc->pid); }
-          // sched::dump();
+					dump_process_table_internal();
         }
 
         // Make sure the printing core is done before letting any core

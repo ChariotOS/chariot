@@ -107,7 +107,6 @@ int Thread::make_runnable(int cpu, bool admit) {
 
 rt::Scheduler::Scheduler(cpu::Core &core) : m_core(core) {}
 
-
 bool rt::Scheduler::admit(Thread *task, uint64_t now) {
   scoped_irqlock l(task->schedlock);
 
@@ -284,7 +283,13 @@ size_t size_slow(struct list_head *head) {
 }
 
 
+extern void dump_process_table_internal(void); // TODO: globalize
 void rt::Queue::enqueue(Thread *task) {
+	if (task->current_queue != NULL) {
+		printf("task %s had a queue!\n", task->name.get());
+		// task->current_queue->dump();
+		dump_process_table_internal();
+	}
   assert(task->current_queue == NULL);
   task->current_queue = this;
   m_list.add_tail(&task->queue_node);
@@ -420,23 +425,15 @@ void sched::block() { sched::do_yield(PS_INTERRUPTIBLE); }
 
 /* Unblock a thread */
 void sched::unblock(Thread &thd, bool interrupt) {
-#if 0
-  if (thd.state != PS_INTERRUPTIBLE) {
-    /* Hmm, not sure what to do here. */
-    // printf(KERN_WARN "Attempt to wake up thread %d which is not PS_INTERRUPTIBLE\n", thd.tid);
-    return;
-  }
-#endif
 
 
-  // scoped_irqlock l(thd.schedlock);
-  // now we can poke around in the thread's info
-
-  // assert(thd.current_scheduler() == NULL);
-  thd.rudely_awoken = interrupt;
-  thd.set_state(PS_RUNNING);
-  __sync_synchronize();
-  sched::add_task(&thd);
+	// TODO: not super thread safe, I'm sure.
+  if (thd.current_queue == NULL) {
+		thd.rudely_awoken = interrupt;
+		thd.set_state(PS_RUNNING);
+		__sync_synchronize();
+		sched::add_task(&thd);
+	}
 }
 
 void sched::exit() {
@@ -444,7 +441,6 @@ void sched::exit() {
   yield();
 }
 
-#include <rcu.h>
 
 static int idle_task(void *arg) {
   (void)arg;
@@ -827,10 +823,10 @@ int sched::proc::send_signal(long p, int sig) {
     return 0;
   }
 
-  struct send_signal_arg arg;
-  arg.p = p;
-  arg.sig = sig;
-  cpu::xcall_all(send_signal_xcall, &arg);
+	// struct send_signal_arg arg;
+	// arg.p = p;
+	// arg.sig = sig;
+	// cpu::xcall_all(send_signal_xcall, &arg);
 
 
   // TODO: handle process group signals
