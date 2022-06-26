@@ -256,7 +256,7 @@ int main(int argc, char **argv) {
   sigprocmask(SIG_SETMASK, &set, NULL);
 
   printf("[init] hello, friend\n");
-  system("cat /cfg/motd");
+  // system("cat /cfg/motd");
 
   /* Handle SIGCHLD in the  */
   signal(SIGCHLD, sigchld_handler);
@@ -292,7 +292,7 @@ int main(int argc, char **argv) {
   spawn("lumen-server");
 #endif
 
-  spawn("/bin/sh");
+  spawn("/bin/login");
 
   ev.start();
 

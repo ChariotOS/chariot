@@ -81,7 +81,7 @@ struct readline_context {
   struct readline_history_entry *history;
 };
 
-auto read_line(int fd, char *prompt) {
+auto read_line(char *prompt) {
   printf("%s", prompt);
   fflush(stdout);
   char *buf = (char *)malloc(4096);
@@ -201,6 +201,7 @@ char uname[128];
 char cwd[255];
 
 void sigint_handler(int sig, void *, void *uc) {
+  printf("SIGINT!\n");
 #if 0
   // printf("SIGINT!\n");
   auto *ctx = (struct ucontext *)uc;
@@ -228,7 +229,6 @@ int main(int argc, char **argv, char **envp) {
         exit(EXIT_SUCCESS);
         break;
       }
-
       case '?':
         puts("sh: invalid option\n");
         return -1;
@@ -267,10 +267,6 @@ int main(int argc, char **argv, char **envp) {
   setenv("SHELL", pwd->pw_shell, 1);
   setenv("HOME", pwd->pw_dir, 1);
 
-  parse_line("ls -la");
-  parse_line("cat /cfg/motd | hex");
-  // sys::shutdown();
-
   struct termios tios;
   while (1) {
     tcgetattr(0, &tios);
@@ -285,7 +281,7 @@ int main(int argc, char **argv, char **envp) {
 
     snprintf(prompt, 256, "[\x1b[33m%s\x1b[0m@\x1b[34m%s \x1b[35m%s\x1b[0m]%c ", uname, hostname, disp_cwd, uid == 0 ? '#' : '$');
 
-    ck::string line = read_line(0, prompt);
+    ck::string line = read_line(prompt);
     if (line.len() == 0) continue;
 
     run_line(line);
