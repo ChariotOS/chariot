@@ -36,9 +36,6 @@
 #endif
 
 
-
-static long labs(long x) { return ((x) < 0 ? -(x) : (x)); }
-
 /* Used for documentation purposes, to signal functions in 'interface' */
 #define INTERFACE
 

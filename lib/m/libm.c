@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
 #define MATH
 
 #include "internal.h"
@@ -317,14 +318,6 @@ double cos(double x) {
 }
 
 
-
-int abs(int a) {
-  MATH;
-  if (a < 0) {
-    return -a;
-  }
-  return a;
-}
 
 double fabs(double a) {
   MATH;

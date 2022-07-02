@@ -31,6 +31,8 @@
 #include <lumen/ipc.h>
 #include "test.h"
 
+#include <vterm.h>
+
 unsigned long ms() { return sysbind_gettime_microsecond() / 1000; }
 
 #if 0
@@ -79,9 +81,9 @@ class ct_window : public ui::window {
 
 
 template <typename T>
-async(ck::vec<T>) wait_all(ck::vec<ck::future<T>>& futs) {
+async(ck::vec<T>) wait_all(ck::vec<ck::future<T>> &futs) {
   ck::vec<T> res;
-  for (auto& fut : futs) {
+  for (auto &fut : futs) {
     res.push(fut.await());
   }
   return res;
@@ -106,7 +108,7 @@ async(int) make_fiber(int num, int size, int div) {
       futs.push(make_fiber(sub_num, size / div, div));
     }
     // return sum;
-    for (auto& fut : futs) {
+    for (auto &fut : futs) {
       sum += fut.await();
       if (nalive % 1000 == 0) {
         printf("%lld\n", nalive);
@@ -120,96 +122,84 @@ async(int) make_fiber(int num, int size, int div) {
 int nproc = 0;
 
 
-
-
 #include <chariot/futex.h>
 #include <atomic.h>
 
+int main(int argc, char **argv) {
+  int rows = 10;
+  int cols = 20;
+  VTerm *vt = vterm_new(rows, cols);
+  vterm_set_utf8(vt, 1);
+  VTermScreen *screen = vterm_obtain_screen(vt);
+	/*
+  VTermScreenCallbacks cbs{0};
+  cbs.damage = [](VTermRect rect, void *user) -> int {
+    printf("damage\n");
+    return 0;
+  };
 
-static inline uint32_t cmpxchg32(void* m, uint32_t old, uint32_t newval) {
-  uint32_t ret;
+  cbs.moverect = [](VTermRect dest, VTermRect src, void *user) -> int {
+    printf("moverect\n");
+    return 0;
+  };
 
-  ret = __atomic_compare_exchange_n((uint32_t*)m, &old, newval, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);  // ? newval : old;
+  cbs.movecursor = [](VTermPos pos, VTermPos oldpos, int visible, void *user) -> int {
+    printf("movecursor\n");
+    return 0;
+  };
 
-  /* asm volatile ("movl %[_old], %%eax\n\t" */
-  /*               "cmpxchgl %[_new], %[_m]\n\t" */
-  /*               "movl %%eax, %[_out]" */
-  /*               : [_out] "=r" (ret) */
-  /*               : [_old] "r" (old), */
-  /*                 [_new] "r" (new), */
-  /*                 [_m]   "m" (m) */
-  /*               : "rax", "memory"); */
+  cbs.settermprop = [](VTermProp prop, VTermValue *val, void *user) -> int {
+    printf("settermprop\n");
+    return 0;
+  };
 
-  return ret;
-}
+  cbs.bell = [](void *user) -> int {
+    printf("bell\n");
+    return 0;
+  };
 
+  cbs.resize = [](int rows, int cols, void *user) -> int {
+    printf("resize\n");
+    return 0;
+  };
 
-/* Barrier data structure.  See pthread_barrier_wait for a description
-   of how these fields are used.  */
+  cbs.sb_pushline = [](int cols, const VTermScreenCell *cells, void *user) -> int {
+    printf("pushline\n");
+    return 0;
+  };
 
-
-pthread_barrier_t barrier;
-pthread_mutex_t mutex;
-
-void* work(void* p) {
-  long me = (long)p;
-
-  volatile double val;
-
-  uint64_t epoch_begin = ms();
-  uint64_t epoch_count = 0;
-
-  while (1) {
-    // pthread_barrier_wait(&barrier);
+  cbs.sb_popline = [](int cols, VTermScreenCell *cells, void *user) -> int {
+    printf("popline\n");
+    return 0;
+  };
+  vterm_screen_set_callbacks(screen, &cbs, NULL);
+	*/
 
 
-		for (int i = 0; i < 100000; i++) {
-			val = cos(sin(sqrt(val)));
-		}
-		continue;
+  char buf[] = "Hello friend\n";
+  vterm_input_write(vt, buf, strlen(buf));
 
-    if (me == 0) {
-      epoch_count++;
-
-      if (epoch_count > 100) {
-        uint64_t now = ms();
-        uint64_t dur = now - epoch_begin;
-        epoch_begin = now;
-
-        printf("%f/s\n", epoch_count / (dur / 1000.0));
-        fflush(stdout);
-
-        epoch_count = 0;
+  for (int row = 0; row < rows; row++) {
+    for (int col = 0; col < cols; col++) {
+      VTermPos pos;
+      pos.col = col;
+      pos.row = row;
+      VTermScreenCell cell{0};
+      // vterm_screen_get_cell(screen, pos, &cell);
+      if (cell.width > 0) {
+        for (int i = 0; i < cell.width; i++) {
+          printf("%02x ", cell.chars[i]);
+        }
+      } else {
+        printf(" ");
       }
     }
+    printf("\n");
   }
 
-  return NULL;
-}
-
-int main(int argc, char** argv) {
-  nproc = sysbind_get_nproc() * 4;
-  pthread_mutex_init(&mutex, NULL);
-
-  printf("nproc: %d\n", nproc);
 
 
-  pthread_barrier_init(&barrier, NULL, nproc);
-  auto start = sys::gettime_microsecond();
-  pthread_t threads[nproc];
-
-  for (long i = 0; i < nproc; i++) {
-    pthread_create(&threads[i], NULL, work, (void*)i);
-  }
-
-  for (long i = 0; i < nproc; i++) {
-    pthread_join(threads[i], NULL);
-  }
-  auto end = sys::gettime_microsecond();
-  printf("%lu us\n", end - start);
-  pthread_barrier_destroy(&barrier);
-
-  //
+  vterm_free(vt);
   return 0;
 }
 

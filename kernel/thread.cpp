@@ -135,6 +135,8 @@ void Thread::reset_stats(void) {
 }
 
 
+uint64_t Thread::epoch(void) { return 10 * 1000 * 1000; }
+
 
 bool Thread::kickoff(void *rip, int initial_state) {
   arch_reg(REG_PC, trap_frame) = (unsigned long)rip;
@@ -176,7 +178,7 @@ void Thread::setup_stack(reg_t *tf) {
     argv[i++] = arg;
     arg += len;
   }
-	// null terminate the argv list
+  // null terminate the argv list
   argv[argc] = 0;
 
   auto envc = proc.env.size();
@@ -187,7 +189,7 @@ void Thread::setup_stack(reg_t *tf) {
     envp[i] = STACK_ALLOC(char, e.len() + 1);
     memcpy(envp[i], e.get(), e.len() + 1);
   }
-	// Null terminate the environment list
+  // Null terminate the environment list
   envp[envc] = NULL;
 
 
@@ -403,9 +405,9 @@ extern "C" void context_switch(struct ThreadContext **, struct ThreadContext *);
 void Thread::run(void) {
   this->runlock.lock();
 
-  // auto start = time::now_us();
-
   cpu::current().current_thread = this;
+  // load up the thread's address space
+  cpu::switch_vm(this);
 
   barrier();
 
@@ -416,18 +418,9 @@ void Thread::run(void) {
 
   if (proc.ring == RING_USER) arch_restore_fpu(*this);
 
-  // printf_nolock("switching back to %p\n", this->kern_context->pc);
-
   // we are context switching into a thread. This run has lasted for zero
   // ticks. Reset it
   this->ticks_ran = 0;
-
-  barrier();
-
-  // load up the thread's address space
-  cpu::switch_vm(this);
-
-  barrier();
 
   stats.last_start_cycle = arch_read_timestamp();
   bool ts = time::stabilized();
@@ -436,8 +429,10 @@ void Thread::run(void) {
     start_us = time::now_us();
   }
 
-  barrier();
 
+  barrier();
+  // Before entering the thread, configure the timer which will take us out of it
+  arch_set_timer(epoch());
   // Switch into the thread!
   context_switch(&cpu::current().sched_ctx, this->kern_context);
   barrier();

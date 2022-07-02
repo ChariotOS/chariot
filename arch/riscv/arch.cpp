@@ -102,6 +102,15 @@ unsigned long arch_ns_to_timestamp(uint64_t ns) { return ((ns * riscv_timebase) 
 unsigned long arch_timestamp_to_ns(uint64_t cycles) { return (cycles * 1000000000ULL) / riscv_timebase; }
 
 
+int arch_set_timer(uint64_t nanos) {
+  sbi_set_timer(rv::get_time() + arch_ns_to_timestamp(nanos));
+	return 0;
+}
+int arch_stop_timer() {
+	//
+sbi_set_timer((uint64_t)-1);
+	return 0;
+}
 
 
 struct rv::hart_state &rv::get_hstate(void) {

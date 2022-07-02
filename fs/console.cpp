@@ -179,6 +179,6 @@ static ssize_t console_write(fs::File& fd, const char* buf, size_t sz) {
 
 static void console_init(void) {
   ctty.bind("console");
-  auto t = sched::proc::create_kthread("[console]", console_feeder);
+  sched::proc::create_kthread("[console]", console_feeder);
 }
 module_init("console", console_init);

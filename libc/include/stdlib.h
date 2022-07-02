@@ -93,6 +93,11 @@ void *bsearch(const void *key, const void *base, size_t nel, size_t width, int (
 
 
 
+int abs(int j);
+long int labs(long int j);
+long long int llabs(long long int j);
+
+
 extern const char *__progname;
 #ifdef __cplusplus
 }

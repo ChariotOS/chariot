@@ -27,7 +27,7 @@ volatile bool did_panic = false;  // printk.h
 static bool s_enabled = true;
 
 
-// #define SCHED_DO_DEBUG
+#define SCHED_DO_DEBUG
 #ifdef SCHED_DO_DEBUG
 #define SCHED_DEBUG printf_nolock
 #else
@@ -35,8 +35,14 @@ static bool s_enabled = true;
 #endif
 
 int Thread::make_runnable(int cpu, bool admit) {
+  // printf("make %s runnable %d\n", name.get(), cpu);
   // Which core do we want to run on
   cpu::Core *target_core = nullptr;
+  // Is it already runnable?
+  if (current_queue != NULL) {
+    printf_nolock(KERN_WARN "%d:%s already in a queue\n", tid, name.get());
+    return 0;
+  }
 
   // cpu of -1 means "self"
   if (cpu == RT_CORE_SELF) {
@@ -100,6 +106,7 @@ int Thread::make_runnable(int cpu, bool admit) {
     return -ENOTIMPL;
   }
 
+  // core().woke_someone_up = true;
   return 0;
 }
 
@@ -148,6 +155,8 @@ bool rt::Scheduler::reschedule(void) {
   // TODO: do other stuff
   Thread *res = NULL;
 
+  // aperiodic.dump("resched");
+
   auto l = lock();
   if (next_thread) return true;
 
@@ -161,11 +170,12 @@ bool rt::Scheduler::reschedule(void) {
     res = aperiodic.dequeue();
   }
 
-
   // We've decided on res to run next. It no longer sits in a queue, but we will place
   // it on next_thread for ::claim to eventually pop
   if (res != NULL) {
     this->next_thread = res;
+    dequeue(res);
+    // printf("reschedule to %d:%s\n", res->tid, res->name.get());
     return true;
   }
   return false;
@@ -183,9 +193,6 @@ ck::ref<Thread> rt::Scheduler::claim(void) {
   if (t) {
     // scoped_irqlock thread_schedule_lock(t->schedlock);
     next_thread = nullptr;
-
-    // now that we've claimed it, it no longer sits on a queue anywhere
-    // t->scheduler = nullptr;
   }
   return t;
 }
@@ -262,6 +269,7 @@ void rt::PriorityQueue::dump(const char *msg) {
 
   rbtree_postorder_for_each_entry_safe(node, n, &m_root, prio_node) {
     // just log the tid
+    // SCHED_DEBUG(" '%s'", node->name.get());
     SCHED_DEBUG(" %d", node->tid);
   }
   SCHED_DEBUG("\n");
@@ -283,13 +291,13 @@ size_t size_slow(struct list_head *head) {
 }
 
 
-extern void dump_process_table_internal(void); // TODO: globalize
+extern void dump_process_table_internal(void);  // TODO: globalize
 void rt::Queue::enqueue(Thread *task) {
-	if (task->current_queue != NULL) {
-		printf("task %s had a queue!\n", task->name.get());
-		// task->current_queue->dump();
-		dump_process_table_internal();
-	}
+  if (task->current_queue != NULL) {
+    printf("task %s had a queue!\n", task->name.get());
+    // task->current_queue->dump();
+    dump_process_table_internal();
+  }
   assert(task->current_queue == NULL);
   task->current_queue = this;
   m_list.add_tail(&task->queue_node);
@@ -318,7 +326,11 @@ void rt::Queue::dump(const char *msg) {
   // return;
   SCHED_DEBUG("%s: ");
   Thread *pos = NULL;
-  list_for_each_entry(pos, &m_list, queue_node) { SCHED_DEBUG(" %d", pos->tid); }
+  list_for_each_entry(pos, &m_list, queue_node) {
+    //
+    // SCHED_DEBUG(" '%s'", pos->name.get());
+    SCHED_DEBUG(" %d", pos->tid);
+  }
   SCHED_DEBUG("\n");
 }
 
@@ -357,11 +369,7 @@ extern "C" void context_switch(struct ThreadContext **, struct ThreadContext *);
 bool sched::init(void) { return true; }
 
 
-int sched::add_task(ck::ref<Thread> tsk) {
-  int res = tsk->make_runnable(RT_CORE_SELF, true);
-  SCHED_DEBUG("add task %d = %d\n", tsk->tid, res);
-  return res;
-}
+int sched::add_task(ck::ref<Thread> tsk) { return tsk->make_runnable(RT_CORE_SELF, true); }
 
 int sched::remove_task(ck::ref<Thread> t) {
   t->remove_from_scheduler();
@@ -373,7 +381,10 @@ static void switch_into(ck::ref<Thread> thd) { thd->run(); }
 
 
 sched::yieldres sched::yield() {
-  if (!arch_irqs_enabled()) return sched::yieldres::None;
+  // TODO: should this be here or not. This function is often
+  //       called from interrupt contexts after we get a timer
+  //       interrupt, so interrupts ought to be off. IDK
+  // if (!arch_irqs_enabled()) return sched::yieldres::None;
   sched::yieldres r = sched::yieldres::None;
   auto &thd = *curthd;
 
@@ -425,15 +436,13 @@ void sched::block() { sched::do_yield(PS_INTERRUPTIBLE); }
 
 /* Unblock a thread */
 void sched::unblock(Thread &thd, bool interrupt) {
-
-
-	// TODO: not super thread safe, I'm sure.
+  thd.rudely_awoken = interrupt;
+  thd.set_state(PS_RUNNING);
+  __sync_synchronize();
+  // TODO: not super thread safe, I'm sure.
   if (thd.current_queue == NULL) {
-		thd.rudely_awoken = interrupt;
-		thd.set_state(PS_RUNNING);
-		__sync_synchronize();
-		sched::add_task(&thd);
-	}
+    sched::add_task(&thd);
+  }
 }
 
 void sched::exit() {
@@ -450,11 +459,11 @@ static int idle_task(void *arg) {
    * itself does a halt wait, it will have to handle an irq in scheduler context
    * which is not allowed to take locks that are shared with other threads. By
    * having a "real thread", though, we pay more cycles per idle loop. This is
-   * easier than having to think about being in the scheduler context and fixes
+   * eamsier than having to think about being in the scheduler context and fixes
    * a big class of bugs in one go :^).
    */
   while (1) {
-    // if (did_panic) debug_die();
+    // arch_set_timer(10 * 1000 * 1000);  // 10ms minimum
     /*
      * The loop here is simple. Wait for an interrupt, handle it (implicitly) then
      * yield back to the scheduler if there is a task ready to run.
@@ -496,12 +505,15 @@ static uint64_t test_slack(ck::ref<Thread> test_thread) {
 }
 
 
+
+
 void sched::run() {
   __atomic_fetch_add(&active_cores, 1, __ATOMIC_SEQ_CST);
   arch_disable_ints();
   // per-scheduler idle threads do not exist in the scheduler queue.
   ck::ref<Thread> idle_thread = sched::proc::spawn_kthread("[idle]", idle_task, NULL);
   idle_thread->preemptable = true;
+  idle_thread->kern_idle = true;
   core().in_sched = true;
   ck::ref<Thread> slack_thread = sched::proc::spawn_kthread(
       "[slacker]",
@@ -512,8 +524,10 @@ void sched::run() {
       },
       NULL);
 
+  slack_thread->kern_idle = true;
+
   rt::Scheduler &sched = core().local_scheduler;
-  sched.slack = test_slack(slack_thread);
+  // sched.slack = test_slack(slack_thread);
 
 
   const uint64_t slack_test_interval = 100;
@@ -534,8 +548,10 @@ void sched::run() {
 
     if (did_panic && thd != nullptr) {
       // only run kernel threads, and the monitor thread.
-      if (thd->tid != monitor_tid && thd->proc.ring == RING_USER) {
-        sched::add_task(thd);
+      if
+			(thd->tid != monitor_tid && thd->proc.ring == RING_USER) {
+      
+				sched::add_task(thd);
         thd = nullptr;
       }
     }
@@ -555,37 +571,33 @@ void sched::run() {
     auto state_before = thd->get_state();
     if (state_before == PS_RUNNING) {
       thd->run();
-    } else {
-      SCHED_DEBUG("State was not running! Was %d\n", state_before);
     }
 
     auto state_after = thd->get_state();
 
     auto end = cpu::get_ticks();
     auto ran = end - start;
-    if (thd) {
-      switch (thd->proc.ring) {
-        case RING_KERN:
-          cpu::current().kstat.kernel_ticks += ran;
-          break;
+    switch (thd->proc.ring) {
+      case RING_KERN:
+        cpu::current().kstat.kernel_ticks += ran;
+        break;
 
-        case RING_USER:
-          cpu::current().kstat.user_ticks += ran;
-          break;
-      }
+      case RING_USER:
+        cpu::current().kstat.user_ticks += ran;
+        break;
+    }
 
-      // if the old thread is now dead, notify joiners
-      if (thd->should_die) {
-        SCHED_DEBUG("Should die.\n");
-        scoped_irqlock l(thd->joinlock);
-        thd->set_state(PS_ZOMBIE);
-        thd->joiners.wake_up_all();
-      } else if (state_after == PS_RUNNING) {
-        // The thread was already in the scheduler queue. No need to make it runnable
-        thd->make_runnable(RT_CORE_SELF, false);
-      } else {
-        SCHED_DEBUG("Was blocked.\n");
-      }
+    // if the old thread is now dead, notify joiners
+    if (thd->should_die) {
+      // printf_nolock("Should die.\n");
+      scoped_irqlock l(thd->joinlock);
+      thd->set_state(PS_ZOMBIE);
+      thd->joiners.wake_up_all();
+    } else if (state_after == PS_RUNNING) {
+      // The thread was already in the scheduler queue. No need to admit it
+      thd->make_runnable(RT_CORE_SELF, false);
+    } else {
+      // SCHED_DEBUG("Was blocked.\n");
     }
   }
   panic("scheduler should not have gotten back here\n");
@@ -597,22 +609,23 @@ void sched::handle_tick(u64 ticks) {
   if (!core().in_sched) return;
   if (!cpu::in_thread()) return;
 
-  //
   check_wakeups();
 
   // grab the current thread
   auto thd = cpu::thread();
   thd->ticks_ran++;
 
-  /* We don't get preempted if we aren't currently runnable. See wait.cpp for why */
-  if (thd->get_state() != PS_RUNNING) return;
-  // if the current thread is not preemptable, or we are in an RCU reader
-  // section, don't reschedule
-  if (thd->preemptable == false || core().preempt_count != 0) return;
+	// We don't get preempted if we aren't currently runnable. See wait.cpp for
+	// why. Or, if the current thread is not preemptable, or we are in an RCU reader
+	// section, don't reschedule
+  if (thd->get_state() != PS_RUNNING || thd->preemptable == false || core().preempt_count != 0) {
+    return;
+  }
 
   // ask the scheduler if there's anything to switch to
-  if (core().local_scheduler.reschedule()) {
-    // !
+  if (!core().local_scheduler.reschedule()) {
+    // There wasn't!
+    arch_set_timer(thd->epoch());
   }
 }
 
@@ -748,35 +761,33 @@ int sched::claim_next_signal(int &sig, void *&handler) {
 }
 
 
-void sched::before_iret(bool userspace) {
+bool sched::before_iret(bool userspace) {
   auto &c = cpu::current();
-
-
-  if (!cpu::in_thread()) return;
-
+  if (!cpu::in_thread()) return false;
   auto thd = curthd;
 
   // exit via the scheduler if the task should die, and the irq depth is 1 (we
   // would return back to the thread)
   if (thd->should_die) {
-    c.woke_someone_up = false;
+    // c.woke_someone_up = false;
     sched::yield();
+    return true;
   }
 
   if (time::stabilized()) thd->last_start_utime_us = time::now_us();
 
   // if its not running, it is setting up a waitqueue or exiting, so we don't
   // want to screw that up by prematurely yielding.
-  if (thd->state != PS_RUNNING) {
-    return;
-  }
+  if (thd->state != PS_RUNNING) return false;
 
-  bool out_of_time = thd->ticks_ran >= thd->timeslice;
-  if (out_of_time || c.local_scheduler.next_thread != nullptr || c.woke_someone_up) {
+  if (c.local_scheduler.next_thread != nullptr || c.woke_someone_up) {
     c.woke_someone_up = false;
     thd = nullptr;
+    barrier();
     sched::yield();
+    return true;
   }
+  return false;
 }
 
 
@@ -789,11 +800,11 @@ struct send_signal_arg {
 static void send_signal_xcall(void *arg) {
   auto a = (struct send_signal_arg *)arg;
 
-	if (curthd) {
-  	printf("core %d running %d when signal t:%d p:%d is sent to %ld\n", core_id(), curthd->tid, curthd->pid, a->sig, a->p);
-	} else {
-		printf("core %d not running a thread.\n", core_id());
-	}
+  if (curthd) {
+    printf("core %d running %d when signal t:%d p:%d is sent to %ld\n", core_id(), curthd->tid, curthd->pid, a->sig, a->p);
+  } else {
+    printf("core %d not running a thread.\n", core_id());
+  }
 
   long target = a->p;
 
@@ -813,21 +824,16 @@ static void send_signal_xcall(void *arg) {
 extern ck::ref<Process> pid_lookup(long pid);
 
 int sched::proc::send_signal(long p, int sig) {
-  printf("send signal %d to %d\n", sig, p);
-
-
   // handle self signal
   if (curthd->tid == p) {
-    printf("early ret\n");
+    // printf("early ret\n");
     curthd->send_signal(sig);
     return 0;
   }
-
-	// struct send_signal_arg arg;
-	// arg.p = p;
-	// arg.sig = sig;
-	// cpu::xcall_all(send_signal_xcall, &arg);
-
+  // struct send_signal_arg arg;
+  // arg.p = p;
+  // arg.sig = sig;
+  // cpu::xcall_all(send_signal_xcall, &arg);
 
   // TODO: handle process group signals
   if (p < 0) {
@@ -863,6 +869,5 @@ int sched::proc::send_signal(long p, int sig) {
       }
     }
   }
-
   return err;
 }

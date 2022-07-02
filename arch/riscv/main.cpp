@@ -345,13 +345,9 @@ void main(int hartid, void *fdt) {
   cpu::current().id = rv::get_hstate().hartid;
   cpu::current().primary = true;
 
-  arch_enable_ints();
   sbi_init();
 
   dtb::promote();
-
-  /* set the timer with sbi :) */
-  sbi_set_timer(rv::get_time() + TICK_INTERVAL);
 
   time::set_cps(CONFIG_RISCV_CLOCKS_PER_SECOND);
   time::set_high_accuracy_time_fn(riscv_high_acc_time_func);
@@ -367,21 +363,6 @@ void main(int hartid, void *fdt) {
 
   assert(sched::init());
   LOG("Initialized the scheduler with %llu pages of ram (%llu bytes)\n", phys::nfree(), phys::bytes_free());
-
-  /*
-for (int i = 0; i < 20; i++) {
-char name[20];
-sprintf(name, "%d", i);
-sched::proc::create_kthread(name, [](void *) -> int {
-while (1) {
-  sched::yield();
-}
-return 0;
-});
-}
-  */
-  // while(1) {}
-  // sched::run();
 
   sched::proc::create_kthread("[kmain]", [](void *) -> int {
     // Init the virtual filesystem and mount a tmpfs and devfs to / and /dev

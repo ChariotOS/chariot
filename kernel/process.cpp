@@ -189,7 +189,6 @@ long sched::proc::spawn_init(ck::vec<ck::string> &paths) {
   for (auto &path : paths) {
     ck::vec<ck::string> argv;
     argv.push(path);
-    printf("arg: %s\n", path.get());
     int res = proc.exec(path, argv, envp);
     if (res == 0) return pid;
   }
@@ -957,7 +956,6 @@ static TableLogger::Row dump_thread(Thread &t) {
       r["CORE"] = ck::string::format("%d", t.scheduler->core().id);
     }
 
-    // r["UTIME"] = ck::string::format("%luus", t.utime_us);
     r["TIME"] = ck::string::format("%lu.%lums", t.ktime_us / 1000, t.ktime_us % 1000);
 
     auto c = t.constraint();
@@ -998,12 +996,15 @@ void dump_process_table_internal(void) {
   printf("------ Process Dump ------\n");
   for (auto &[pid, proc] : proc_table) {
     for (auto t : proc->threads) {
+			if (t->kern_idle) continue;
       associated_threads[t->tid] = pid;
       auto row = dump_thread(*t);
       logger.add_row(row);
     }
   }
 
+
+	printf("ticks: %llu\n", core().kstat.ticks);
   logger.display();
 
   // printf("------ Leaked ------\n");

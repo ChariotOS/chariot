@@ -158,7 +158,6 @@ struct Thread final : public ck::weakable<Thread> {
   uint64_t deadline = 0;      // current deadline / time of next arrival if pending
   uint64_t exit_time = 0;     // Time of competion after being run
 
-
   // Real-time statistics that are reset when the constraints are changed
   uint64_t arrival_count = 0;           // how many times it has arrived (1 for aperiodic/sporadic)
   uint64_t resched_count = 0;           // how many times resched was invoked on this thread
@@ -208,6 +207,9 @@ struct Thread final : public ck::weakable<Thread> {
   void remove_from_scheduler();
   void reset_state();
   void reset_stats();
+
+	// Return the epoch that this thread should run for in nanoseconds
+	uint64_t epoch(void);
 
   // Do not use this API, go through sched::proc::* to allocate and deallocate
   // processes and threads.

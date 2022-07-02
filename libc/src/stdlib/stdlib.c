@@ -191,7 +191,11 @@ int unsetenv(const char *name) {
 }
 
 
+
+static volatile int __aborted = 0;
 void abort(void) {
+	if (__aborted) return;
+	__aborted = 1;
   fprintf(stderr, "pid=%d. abort() called!\n", getpid());
   exit(EXIT_FAILURE);
 }
@@ -491,4 +495,18 @@ void *bsearch(const void *key, const void *base, size_t nel, size_t width, int (
     }
   }
   return NULL;
+}
+
+
+int abs(int j) {
+  if (j < 0) return -j;
+  return j;
+}
+long int labs(long int j) {
+  if (j < 0) return -j;
+  return j;
+}
+long long int llabs(long long int j) {
+  if (j < 0) return -j;
+  return j;
 }

@@ -20,7 +20,6 @@ int main(int argc, char **argv) {
   char *p;
   int ch;
 
-#if 0
   while ((ch = getopt(argc, argv, "i-")) != -1) {
     switch (ch) {
       case '-': /* obsolete */
@@ -31,7 +30,6 @@ int main(int argc, char **argv) {
         usage();
     }
   }
-#endif
 
 
   argc -= optind;

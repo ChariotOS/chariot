@@ -123,9 +123,6 @@ double copysign(double x, double y);
 
 #define isfinite(d) (!isinf((d)))
 
-int abs(int);
-
-
 double rint(double x);
 float rintf(float x);
 

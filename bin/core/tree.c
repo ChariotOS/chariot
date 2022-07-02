@@ -78,7 +78,7 @@ static int display_info(const char *fpath, const struct stat *sb, int tflag, str
     if (ftwbuf->level != 0) {
       for (int i = 1; i < ftwbuf->level; i++)
         printf("|   ");
-      printf("+-- ");
+      printf("|-- ");
     }
 
     if (display_filesize) {

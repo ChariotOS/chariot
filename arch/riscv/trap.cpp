@@ -205,6 +205,56 @@ void rv_handle_syscall(rv::regs &tf) {
   // printf(KERN_INFO " res = %p\n", tf.a0);
 }
 
+void dispatch_trap(i32 nr, struct rv::regs &tf) {
+  switch (nr) {
+    case 0:
+      kernel_unhandled_trap(tf, "Instruction address misaligned");
+      break;
+    case 1:
+      kernel_unhandled_trap(tf, "Instruction Access Fault");
+      break;
+    case 2:
+      kernel_unhandled_trap(tf, "Illegal Instruction");
+      break;
+    case 3:
+      kernel_unhandled_trap(tf, "Breakpoint");
+      break;
+    case 4:
+      kernel_unhandled_trap(tf, "Load Address Misaligned");
+      break;
+    case 5:
+      kernel_unhandled_trap(tf, "Load Access Fault");
+      break;
+    case 6:
+      kernel_unhandled_trap(tf, "Store/AMO Address Misaligned");
+      break;
+    case 7:
+      kernel_unhandled_trap(tf, "Store/AMO Access Fault");
+      break;
+    case 8:
+      rv_handle_syscall(tf);
+      break;
+    case 9:
+      kernel_unhandled_trap(tf, "Environment Call from S-Mode");
+      break;
+    case 11:
+      kernel_unhandled_trap(tf, "Environment Call from M-Mode");
+      break;
+    case 12:
+      pgfault_trap(tf, "Instruction Page Fault", FAULT_EXEC);
+      break;
+    case 13:
+      pgfault_trap(tf, "Load Page Fault", FAULT_READ);
+      break;
+    case 15:
+      pgfault_trap(tf, "Store/AMO Page Fault", FAULT_WRITE);
+      break;
+    default:
+      kernel_unhandled_trap(tf, "Reserved");
+      break;
+  }
+}
+
 
 extern "C" void __rv_save_fpu(void *);
 extern "C" void __rv_load_fpu(void *);
@@ -217,7 +267,6 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
 
   if ((tf.status & SSTATUS_SPP) == 0) {
     from_userspace = true;
-    // printf("kerneltrap: not from supervisor mode: pc=%p", tf.sepc);
   }
 
   int which_dev = 0;
@@ -228,21 +277,8 @@ extern "C" void kernel_trap(struct rv::regs &tf) {
     thd->trap_frame = (reg_t *)&tf;
   }
 
-
   /* The previous stack pointer located in the scratch */
   rv::xsize_t previous_kernel_stack = rv::get_hstate().kernel_sp;
-
-
-  /*
-if (cpu::in_thread()) {
-if (thd->stacks.size() != 1) {
-printf_nolock(KERN_DEBUG "previous kernel stack: %p\n");
-for (auto &stk : thd->stacks) {
-  printf_nolock(KERN_DEBUG "   %d %p\n", stk.size, stk.start);
-}
-}
-}
-  */
 
   if (rv::intr_enabled() != 0) panic("kerneltrap: interrupts enabled");
 
@@ -260,8 +296,6 @@ for (auto &stk : thd->stacks) {
       case 1: {
         write_csr(sip, read_csr(sip) & ~(1 << 1));
         cpu::run_pending_xcalls();
-        // sip.SSIP = 0
-        //  turn off the "supervisor software interrupt pending" bit
         break;
       }
       case 5: {
@@ -269,96 +303,40 @@ for (auto &stk : thd->stacks) {
         uint64_t now = rv::get_cycle();
         cpu.kstat.tsc_per_tick = now - cpu.kstat.last_tick_tsc;
         cpu.kstat.last_tick_tsc = now;
-        cpu.ticks_per_second = 1000 / CONFIG_TICKS_PER_SECOND;
+        cpu.ticks_per_second = CONFIG_TICKS_PER_SECOND;
         cpu.kstat.ticks++;
-        /* TODO: write the next time */
-        sbi_set_timer(rv::get_time() + TICK_INTERVAL);
 
-        arch_enable_ints();
+        // printf_nolock("tick %lu %d:%s %lu\n", cpu.kstat.ticks, curthd->tid, curthd->name.get(), time::now_ms() / 1000);
+        // Make sure the timer won't interrupt us immediately when we return
+        arch_stop_timer();
 
         sched::handle_tick(cpu.kstat.ticks);
-        // arch_disable_ints();
         break;
       }
 
       case 9: {
-        /* Supervisor External Interrupt */
-        /* First, we claim the irq from the PLIC */
+        // Supervisor External Interrupt
+        // First, we claim the irq from the PLIC
         int irq = rv::plic::claim();
         irq::dispatch(irq, NULL /* Hmm, not sure what to do with regs */);
         rv::plic::complete(irq);
         break;
       }
       default: {
-        panic("[riscv] unhandled interrupt nr=%d\n", nr);
+        printf_nolock(KERN_WARN "unhandled interrupt nr=%d\n", nr);
         break;
       }
     }
   } else {
-    switch (nr) {
-      case 0:
-        kernel_unhandled_trap(tf, "Instruction address misaligned");
-        break;
-
-      case 1:
-        kernel_unhandled_trap(tf, "Instruction Access Fault");
-        break;
-
-      case 2:
-        kernel_unhandled_trap(tf, "Illegal Instruction");
-        break;
-
-      case 3:
-        kernel_unhandled_trap(tf, "Breakpoint");
-        break;
-
-      case 4:
-        kernel_unhandled_trap(tf, "Load Address Misaligned");
-        break;
-
-      case 5:
-        kernel_unhandled_trap(tf, "Load Access Fault");
-        break;
-
-      case 6:
-        kernel_unhandled_trap(tf, "Store/AMO Address Misaligned");
-        break;
-
-      case 7:
-        kernel_unhandled_trap(tf, "Store/AMO Access Fault");
-        break;
-
-      case 8:
-        rv_handle_syscall(tf);
-        break;
-
-      case 9:
-        kernel_unhandled_trap(tf, "Environment Call from S-Mode");
-        break;
-
-      case 11:
-        kernel_unhandled_trap(tf, "Environment Call from M-Mode");
-        break;
-
-      case 12:
-        pgfault_trap(tf, "Instruction Page Fault", FAULT_EXEC);
-        break;
-
-      case 13:
-        pgfault_trap(tf, "Load Page Fault", FAULT_READ);
-        break;
-
-      case 15:
-        pgfault_trap(tf, "Store/AMO Page Fault", FAULT_WRITE);
-        break;
-
-      default:
-        kernel_unhandled_trap(tf, "Reserved");
-        break;
-    }
+    dispatch_trap(nr, tf);
   }
 
-  sched::before_iret(from_userspace);
+  // auto trap_start = arch_read_timestamp();
+  bool yielded = sched::before_iret(from_userspace);
+  (void)yielded;
+  // auto trap_end = arch_read_timestamp();
+  // printf_nolock("%d %d.%s: %lluus\n", yielded, curthd->tid, curthd->name.get(), arch_timestamp_to_ns(trap_end - trap_start) / 1000);
+
   /* Only try to handle a signal if we are returning to userspace */
   if (from_userspace) {
     int sig = 0;
@@ -380,8 +358,8 @@ for (auto &stk : thd->stacks) {
       memcpy(uctx, &tf, sizeof(tf));
       // Save the floating point unit into the ucontext
       __rv_save_fpu(uctx->fpu);
-			// Reconfigure arguments and stack locations for the
-			// jump back to userspace
+      // Reconfigure arguments and stack locations for the
+      // jump back to userspace
       tf.sp = sp;
       tf.a0 = sig;
       tf.a1 = 0;

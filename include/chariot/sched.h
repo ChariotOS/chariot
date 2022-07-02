@@ -82,7 +82,7 @@ namespace sched {
   // called before dropping back into user space. This is needed
   // when a thread should not return to userspace because it must
   // die or something else
-  void before_iret(bool userspace);
+  bool before_iret(bool userspace);
 
   namespace proc {
     struct spawn_options {

@@ -111,13 +111,13 @@ namespace ns16550a {
       arch::irq::enable(mmio->interrupt);
 
 
-			// Now that we have initialized, register with the KernelLogger subsystem so
-			// this device is used whenever the kernel wants to print something (/dev/console)
+      // Now that we have initialized, register with the KernelLogger subsystem so
+      // this device is used whenever the kernel wants to print something (/dev/console)
       register_logger();
     }
 
     int putc(int c) override {
-			nputc++;
+      nputc++;
       while (!(read_reg(LSR) & UART_LSR_THRE)) {
       }
       write_reg(RBR, c);
@@ -268,7 +268,7 @@ namespace ns16550a {
     spinlock inputlock;
     spinlock outputlock;
     uint8_t *regs;
-		uint64_t nputc = 0;
+    uint64_t nputc = 0;
   };
 
 }  // namespace ns16550a

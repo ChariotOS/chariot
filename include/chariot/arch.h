@@ -121,6 +121,10 @@ unsigned long arch_seconds_since_boot(void);
 
 void arch_thread_create_callback();
 
+// Set a timer interrupt for `nanos` nanoseconds in the future
+int arch_set_timer(uint64_t nanos);
+int arch_stop_timer();
+
 void serial_install();
 int serial_rcvd(int device);
 char serial_recv(int device);
