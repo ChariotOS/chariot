@@ -82,40 +82,38 @@ int VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
 
   scoped_irqlock l(vdisk_lock);
 
-  {
-    // int flags = vdisk_lock.lock_irqsave();
-    assert(size == 512);
-    struct virtio_blk_req req;
-    req.sector = sector;
-    req.reserved = 0;
-    req.type = write ? VIRTIO_BLK_T_OUT : VIRTIO_BLK_T_IN;
-    req.status = 0xFF;
+  assert(size == 512);
+  struct virtio_blk_req req;
+  req.sector = sector;
+  req.reserved = 0;
+  req.type = write ? VIRTIO_BLK_T_OUT : VIRTIO_BLK_T_IN;
+  req.status = 0xFF;
 
-    uint16_t first_index;
-    if (alloc_desc_chain(0, 3, &first_index) == NULL) {
-      printf("failed to allocate chain!\n");
-      return false;
-    }
+  uint16_t first_index;
+  if (alloc_desc_chain(0, 3, &first_index) == NULL) {
+    printf("failed to allocate chain!\n");
+    return false;
+  }
 
-    VirtioMMIOVring::Descriptor descs[] = {
-        VirtioMMIOVring::Descriptor(&req, sizeof(req)),
-        VirtioMMIOVring::Descriptor(data, size, (write ? 0 : VRING_DESC_F_WRITE) | 0),
-        VirtioMMIOVring::Descriptor(&req.status, 1, VRING_DESC_F_WRITE),
-    };
+  VirtioMMIOVring::Descriptor descs[] = {
+      VirtioMMIOVring::Descriptor(&req, sizeof(req)),
+      VirtioMMIOVring::Descriptor(data, size, (write ? 0 : VRING_DESC_F_WRITE) | 0),
+      VirtioMMIOVring::Descriptor(&req.status, 1, VRING_DESC_F_WRITE),
+  };
 
-    // struct wait_entry ent;
-    // prepare_to_wait(wq, ent, true);
-    submit(3, descs, first_index);
-    // vdisk_lock.unlock_irqrestore(flags);
+  // struct wait_entry ent;
+  // prepare_to_wait(wq, ent, true);
+  submit(3, descs, first_index);
+  // vdisk_lock.unlock_irqrestore(flags);
 
-    barrier();
-    // virtio is fast enough on qemu that we don't *really* have to wait
-    // on interrupts...
-    while (req.status == 0xFF) {
-      arch_relax();
-    }
-    barrier();
-    free_desc_chain(0, first_index);
+  barrier();
+  // virtio is fast enough on qemu that we don't *really* have to wait
+  // on interrupts...
+  while (req.status == 0xFF) {
+    arch_relax();
+  }
+  barrier();
+  free_desc_chain(0, first_index);
 #if 0
     if (ent.start().interrupted()) {
       // if we get interrupted, try again
@@ -123,7 +121,6 @@ int VirtioMMIODisk::disk_rw(uint32_t sector, void *data, int n, int write) {
       }
     }
 #endif
-  }
 
 
   return true;

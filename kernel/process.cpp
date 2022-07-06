@@ -900,7 +900,7 @@ struct TableLogger {
         widths[c] = max(widths[c], utf8_strlen(v.get()));
       }
     }
-    constexpr const char *entry_format = "| %-*s ";
+    constexpr const char *entry_format = "  %-*s ";
     for (auto &c : columns) {
       printf(entry_format, widths[c], c.get());
     }
@@ -920,7 +920,7 @@ struct TableLogger {
 
         printf(entry_format, widths[c], val.get());
       }
-      printf("|\n");
+      printf("\n");
     }
   }
 

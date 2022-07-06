@@ -201,17 +201,6 @@ char uname[128];
 char cwd[255];
 
 void sigint_handler(int sig, void *, void *uc) {
-  printf("SIGINT!\n");
-#if 0
-  // printf("SIGINT!\n");
-  auto *ctx = (struct ucontext *)uc;
-#ifdef CONFIG_X86
-	printf("SIGINT from rip=%p\n", ctx->rip);
-	ctx->resv3 = 0;
-	ctx->resv4 = 0;
-#endif
-#endif
-
   if (fg_pid != -1) {
     kill(-fg_pid, sig);
   }
@@ -279,7 +268,9 @@ int main(int argc, char **argv, char **envp) {
       disp_cwd = "~";
     }
 
-    snprintf(prompt, 256, "[\x1b[33m%s\x1b[0m@\x1b[34m%s \x1b[35m%s\x1b[0m]%c ", uname, hostname, disp_cwd, uid == 0 ? '#' : '$');
+    snprintf(prompt, 256, "\x1b[33m%s:%s\x1b[0m%c ", uname, disp_cwd, uid == 0 ? '#' : '$');
+
+    // snprintf(prompt, 256, "[\x1b[33m%s\x1b[0m@\x1b[34m%s \x1b[35m%s\x1b[0m]%c ", uname, hostname, disp_cwd, uid == 0 ? '#' : '$');
 
     ck::string line = read_line(prompt);
     if (line.len() == 0) continue;
