@@ -11,7 +11,7 @@ const SPECIAL_CHARACTERS = [
 ];
 
 module.exports = grammar({
-  name: 'bash',
+  name: 'shell', // stolen from bash
 
   inline: $ => [
     $._statement,

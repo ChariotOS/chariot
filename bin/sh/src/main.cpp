@@ -383,28 +383,28 @@ namespace {
 
 extern "C" {
 
-void *tree_sitter_bash_external_scanner_create() { return new Scanner(); }
+void *tree_sitter_shell_external_scanner_create() { return new Scanner(); }
 
-bool tree_sitter_bash_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
+bool tree_sitter_shell_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
   Scanner *scanner = static_cast<Scanner *>(payload);
   return scanner->scan(lexer, valid_symbols);
 }
 
-unsigned tree_sitter_bash_external_scanner_serialize(void *payload, char *state) {
+unsigned tree_sitter_shell_external_scanner_serialize(void *payload, char *state) {
   Scanner *scanner = static_cast<Scanner *>(payload);
   return scanner->serialize(state);
 }
 
-void tree_sitter_bash_external_scanner_deserialize(void *payload, const char *state, unsigned length) {
+void tree_sitter_shell_external_scanner_deserialize(void *payload, const char *state, unsigned length) {
   Scanner *scanner = static_cast<Scanner *>(payload);
   scanner->deserialize(state, length);
 }
 
-void tree_sitter_bash_external_scanner_destroy(void *payload) {
+void tree_sitter_shell_external_scanner_destroy(void *payload) {
   Scanner *scanner = static_cast<Scanner *>(payload);
   delete scanner;
 }
-TSLanguage *tree_sitter_bash();
+TSLanguage *tree_sitter_shell();
 }
 
 size_t current_us() { return syscall(SYS_gettime_microsecond); }
@@ -459,182 +459,233 @@ auto read_line(char *prompt) {
 
 pid_t fg_pid = -1;
 
-namespace sh {
+class Expression {
+ public:
+  Expression(const ck::string &source, TSNode node) : m_source(source), m_node(node) { m_value = node_str(node); }
 
-  struct Evaluation {
-    int status;
-    ck::string stdout;
-    ck::string stderr;
-  };
+  virtual ~Expression(void) = default;
+  virtual const char *type(void) const { return ts_node_type(m_node); }
 
-  class Expression {
-   public:
-    Expression(const ck::string &source, TSNode node) : m_source(source), m_node(node) {
-      auto start = ts_node_start_byte(node);
-      auto end = ts_node_end_byte(node);
-      for (auto i = start; i < end; i++)
-        m_value += source[i];
-    }
+  virtual ck::string format(void) { return "<expr>"; }
+  const ck::string &value(void) const { return m_value; }
+  static ck::box<Expression> convert(const ck::string &source, TSNode node);
+  inline auto len(void) const { return m_children.size(); }
+  inline Expression *child(off_t ind) const { return m_children[ind].get(); }
+  void dump(int depth = 0);
 
-    virtual ~Expression(void) = default;
-    virtual const char *expr_type(void) const { return type(); }
+  inline bool is(const char *type) const { return strcmp(type, this->type()) == 0; }
 
-    const char *type(void) const { return ts_node_type(m_node); }
-    const ck::string &value(void) const { return m_value; }
-    static ck::box<Expression> convert(const ck::string &source, TSNode node);
-    inline auto len(void) const { return m_children.size(); }
-    inline Expression *child(off_t ind) const { return m_children[ind].get(); }
-    void dump(int depth = 0);
-
-    virtual int evaluate(ck::string &output) { return 0; }
-
-   private:
-    ck::vec<ck::box<Expression>> m_children;
-    ck::string m_value;
-    TSNode m_node;
-    const ck::string &m_source;
-
-    void add_child(ck::box<Expression> &&child) { m_children.push(move(child)); }
-  };
-
-#define EXPR_TYPE(T)            \
-  using Expression::Expression; \
-  const char *expr_type(void) const override { return "sh::" #T; }
-
-  class Program : public Expression {
-   public:
-    EXPR_TYPE(Program);
-  };
-  class Command : public Expression {
-   public:
-    EXPR_TYPE(Command);
-  };
-  class Word : public Expression {
-   public:
-    EXPR_TYPE(Word);
-  };
-
-  ck::box<Expression> Expression::convert(const ck::string &source, TSNode node) {
-    if (ts_node_has_error(node)) {
-			return nullptr;
-    }
-    ck::box<sh::Expression> e;
-
-    ck::string type = ts_node_type(node);
-    if (!e && type == "program") e = ck::make_box<Program>(source, node);
-    if (!e && type == "command") e = ck::make_box<Command>(source, node);
-    if (!e && type == "word") e = ck::make_box<Word>(source, node);
-    if (!e) e = ck::make_box<Expression>(source, node);
-
-    for (int i = 0; i < ts_node_child_count(node); i++) {
-      e->add_child(convert(source, ts_node_child(node, i)));
-    }
-    return e;
-  }
-
-
-  void Expression::dump(int depth) {
-    auto indent = [&] {
-      for (int i = 0; i < depth; i++)
-        printf("  ");
-    };
-
-    indent();
-    printf("%s: %s \n", expr_type(), value().get());
-
-    for (int i = 0; i < len(); i++) {
-      child(i)->dump(depth + 1);
-    }
-  }
-}  // namespace sh
-
-
-int run_line(ck::string line, int flags = 0) {
-  // auto ts = tree_sitter_bash();
-  TSParser *parser = ts_parser_new();
-  ts_parser_set_language(parser, tree_sitter_bash());
-
-  TSTree *tree = ts_parser_parse_string(parser, NULL, line.get(), line.size());
-  TSNode root_node = ts_tree_root_node(tree);
-  auto program = sh::Expression::convert(line, root_node);
-	if (program) {
-  	program->dump();
-	} else {
-		printf("Syntax error\n");
-	}
-
-
-  int err = 0;
-  ck::vec<ck::string> parts = line.split(' ', false);
-  ck::vec<const char *> args;
-
-  if (parts.size() == 0) return -1;
-
-  // convert it to a format that is usable by execvpe
-  for (auto &p : parts)
-    args.push(p.get());
-  args.push(nullptr);
-
-  if (parts[0] == "cd") {
-    const char *path = args[1];
-    if (path == NULL) {
-      uid_t uid = getuid();
-      struct passwd *pwd = getpwuid(uid);
-      // TODO: get user $HOME and go there instead
-      path = pwd->pw_dir;
-    }
-    int res = chdir(path);
-    if (res != 0) {
-      printf("cd: '%s' could not be entered\n", args[1]);
-    }
-    return err;
-  }
-
-  if (parts[0] == "exit") {
-    exit(0);
-  }
-
-
-
-  pid_t pid = 0;
-  if ((flags & RUN_NOFORK) == 0) {
-    pid = fork();
-  }
-
-  if (pid == 0) {
-    setpgid(0, 0);  // TODO: is this right?
-
-    execvpe(args[0], args.data(), (const char **)environ);
-    int err = errno;  // grab errno now (curse you globals)
-
-    const char *serr = strerror(err);
-    if (errno == ENOENT) {
-      serr = "command not found";
-    }
-    printf("%s: \x1b[31m%s\x1b[0m\n", args[0], serr);
-    exit(EXIT_FAILURE);
+  virtual void exec(void) {
+    fprintf(stderr, "error: unable to evaluate %s yet.\n", type());
     exit(-1);
   }
 
-  fg_pid = pid;
 
-  int res = 0;
-  /* wait for the subproc */
-  do
-    waitpid(pid, &res, 0);
-  while (errno == EINTR);
+ protected:
+  // Parse the node before adding it to the expression list
+  virtual void parse(Expression &node) {}
 
-  fg_pid = -1;
-
-  if (WIFSIGNALED(res)) {
-    printf("%s: \x1b[31mterminated with signal %d\x1b[0m\n", args[0], WTERMSIG(res));
-  } else if (WIFEXITED(res) && WEXITSTATUS(res) != 0) {
-    printf("%s: \x1b[31mexited with code %d\x1b[0m\n", args[0], WEXITSTATUS(res));
+  inline ck::string node_str(TSNode &node) {
+    ck::string str;
+    auto start = ts_node_start_byte(node);
+    auto end = ts_node_end_byte(node);
+    for (auto i = start; i < end; i++)
+      str += m_source[i];
+    return str;
   }
 
+ private:
+  ck::vec<ck::box<Expression>> m_children;
+  ck::string m_value;
+  TSNode m_node;
+  const ck::string &m_source;
 
-  return err;
+  void add_child(ck::box<Expression> &&child) {
+    parse(*child);
+    m_children.push(move(child));
+  }
+};
+
+#define EXPR_TYPE(T)            \
+  using Expression::Expression; \
+  const char *type(void) const override { return "" #T; }
+
+
+
+
+class Program : public Expression {
+ public:
+  EXPR_TYPE(Program);
+
+  void exec(void) override {
+    for (int i = 0; i < len(); i++) {
+      child(i)->exec();
+    }
+  }
+};
+
+
+
+
+class Command : public Expression {
+ public:
+  EXPR_TYPE(Command);
+
+  void parse(Expression &expr) override {
+    if (expr.is("command_name")) {
+      command = expr.value();
+      return;
+    }
+
+    if (expr.is("word")) {
+      args.push(expr.value());
+      return;
+    }
+
+    if (expr.is("string") || expr.is("raw_string")) {
+      // trim the "" from the outside
+      // This is a really bad way to do this
+      ck::string s = expr.value().get() + 1;
+      s.pop();
+      args.push(s);
+      return;
+    }
+  }
+
+  void exec(void) override {
+    // printf("exec %s\n", format().get());
+    if (command == "cd") {
+      const char *path = nullptr;
+      if (args.size() == 0) {
+        uid_t uid = getuid();
+        struct passwd *pwd = getpwuid(uid);
+        // TODO: get user $HOME and go there instead
+        path = pwd->pw_dir;
+      } else {
+        path = args[0].get();
+      }
+      int res = chdir(path);
+      if (res != 0) {
+        printf("cd: '%s' could not be entered\n", path);
+      }
+      return;
+    }
+
+    if (command == "exit") {
+      exit(0);
+    }
+
+
+    ck::vec<const char *> argv;
+    // push the command, then the arguments
+    argv.push(command.get());
+    for (auto &arg : args)
+      argv.push(arg.get());
+    // Null terminate the list
+    argv.push(nullptr);
+
+
+    pid_t pid = fork();
+    /*
+    if ((flags & RUN_NOFORK) == 0) {
+      pid = fork();
+    }
+    */
+
+    if (pid == 0) {
+      setpgid(0, 0);  // TODO: is this right?
+
+      execvpe(argv[0], argv.data(), (const char **)environ);
+      int err = errno;  // grab errno now (curse you globals)
+
+      const char *serr = strerror(err);
+      if (errno == ENOENT) {
+        serr = "command not found";
+      }
+      printf("%s: \x1b[31m%s\x1b[0m\n", argv[0], serr);
+      exit(EXIT_FAILURE);
+      exit(-1);
+    }
+
+    fg_pid = pid;
+
+    int res = 0;
+    /* wait for the subproc */
+    do
+      waitpid(pid, &res, 0);
+    while (errno == EINTR);
+
+    fg_pid = -1;
+
+    if (WIFSIGNALED(res)) {
+      printf("%s: \x1b[31mterminated with signal %d\x1b[0m\n", argv[0], WTERMSIG(res));
+    } else if (WIFEXITED(res) && WEXITSTATUS(res) != 0) {
+      printf("%s: \x1b[31mexited with code %d\x1b[0m\n", argv[0], WEXITSTATUS(res));
+    }
+  }
+  ck::string format(void) override {
+    ck::string res = command;
+    for (auto &arg : args) {
+      res.appendf(" \"%s\"", arg.get());
+    }
+    return res;
+  }
+
+  ck::string command;
+  ck::vec<ck::string> args;
+};
+
+
+
+
+ck::box<Expression> Expression::convert(const ck::string &source, TSNode node) {
+  if (ts_node_has_error(node)) {
+    return nullptr;
+  }
+  ck::box<Expression> e;
+
+  ck::string type = ts_node_type(node);
+  if (!e && type == "program") e = ck::make_box<Program>(source, node);
+  if (!e && type == "command") e = ck::make_box<Command>(source, node);
+  if (!e) e = ck::make_box<Expression>(source, node);
+
+  for (int i = 0; i < ts_node_named_child_count(node); i++) {
+    // Ask the expression to parse the sub-nodes
+    e->add_child(Expression::convert(source, (ts_node_named_child(node, i))));
+  }
+  return e;
 }
+
+
+void Expression::dump(int depth) {
+  auto indent = [&] {
+    for (int i = 0; i < depth; i++)
+      printf("  ");
+  };
+  indent();
+  printf("%s: \x1b[31m%s\x1b[0m \x1b[33m%s\x1b[0m\n", type(), value().get(), format().get());
+  for (int i = 0; i < len(); i++) {
+    child(i)->dump(depth + 1);
+  }
+}
+
+
+void run_source(ck::string source) {
+  TSParser *parser = ts_parser_new();
+  ts_parser_set_language(parser, tree_sitter_shell());
+  TSTree *tree = ts_parser_parse_string(parser, NULL, source.get(), source.size());
+  TSNode root_node = ts_tree_root_node(tree);
+  auto program = Expression::convert(source, root_node);
+  if (program) {
+    // program->dump();
+    program->exec();
+  } else {
+    printf("Syntax error\n");
+  }
+  ts_tree_delete(tree);
+  ts_parser_delete(parser);
+}
+
 
 
 
@@ -657,7 +708,7 @@ int main(int argc, char **argv, char **envp) {
   while ((ch = getopt(argc, argv, flags)) != -1) {
     switch (ch) {
       case 'c': {
-        run_line(optarg, RUN_NOFORK);
+        run_source(optarg);
         exit(EXIT_SUCCESS);
         break;
       }
@@ -711,14 +762,14 @@ int main(int argc, char **argv, char **envp) {
       disp_cwd = "~";
     }
 
-    snprintf(prompt, 256, "\x1b[33m%s:%s\x1b[0m%c ", uname, disp_cwd, uid == 0 ? '#' : '$');
-
-    // snprintf(prompt, 256, "[\x1b[33m%s\x1b[0m@\x1b[34m%s \x1b[35m%s\x1b[0m]%c ", uname, hostname, disp_cwd, uid == 0 ? '#' : '$');
+    // snprintf(prompt, 256, "\x1b[33m%s:%s\x1b[0m%c ", uname, disp_cwd, uid == 0 ? '#' : '$');
+    snprintf(prompt, 256, "[\x1b[33m%s\x1b[0m@\x1b[34m%s \x1b[35m%s\x1b[0m]%c ", uname, hostname, disp_cwd, uid == 0 ? '#' : '$');
 
     ck::string line = read_line(prompt);
     if (line.len() == 0) continue;
 
-    run_line(line);
+    // run_line(line);
+    run_source(line);
     tcsetattr(0, TCSANOW, &tios);
     reset_pgid();
   }
