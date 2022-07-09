@@ -39,15 +39,14 @@ namespace ck {
     // no destructor, since we don't own anything
     const char* get(void) const { return m_start; }
     inline size_t len(void) const { return m_len; }
+    inline bool empty(void) const { return m_len == 0; }
 
     operator T*(void) { return m_start; }
 
     inline T operator[](unsigned int index) const { return m_start[index]; }
 
 
-    inline basic_string_view<T> substring_view(off_t start, size_t len) const {
-      return basic_string_view<T>(m_start + start, len);
-    }
+    inline basic_string_view<T> substring_view(off_t start, size_t len) const { return basic_string_view<T>(m_start + start, len); }
   };
 
 
@@ -189,9 +188,7 @@ namespace ck {
     }
 
 
-    inline basic_string_view<T> substring_view(off_t start, size_t len) const {
-      return basic_string_view<T>(m_buf + start, len);
-    }
+    inline basic_string_view<T> substring_view(off_t start, size_t len) const { return basic_string_view<T>(m_buf + start, len); }
 
 
     operator basic_string_view<T>(void) { return substring_view(0, len()); }
@@ -305,6 +302,7 @@ namespace ck {
       m_buf[m_len] = 0;
     }
 
+    inline bool empty(void) const { return m_len == 0; }
 
 
 
@@ -316,8 +314,7 @@ namespace ck {
 
 
 
-    friend ck::basic_string<T> operator+(
-        const ck::basic_string<T>& lhs, const ck::basic_string<T>& rhs) {
+    friend ck::basic_string<T> operator+(const ck::basic_string<T>& lhs, const ck::basic_string<T>& rhs) {
       return basic_string(lhs) += rhs;
     }
 
@@ -376,9 +373,7 @@ namespace ck {
 
 
 
-    friend bool operator!=(const ck::basic_string<T>& lhs, const ck::basic_string<T>& rhs) {
-      return !(lhs == rhs);
-    }
+    friend bool operator!=(const ck::basic_string<T>& lhs, const ck::basic_string<T>& rhs) { return !(lhs == rhs); }
 
 
     friend bool operator>(const ck::basic_string<T>& lhs, const ck::basic_string<T>& rhs) {
@@ -398,19 +393,13 @@ namespace ck {
     }
 
 
-    friend bool operator<(const ck::basic_string<T>& lhs, const ck::basic_string<T>& rhs) {
-      return !(lhs == rhs) && !(lhs > rhs);
-    }
+    friend bool operator<(const ck::basic_string<T>& lhs, const ck::basic_string<T>& rhs) { return !(lhs == rhs) && !(lhs > rhs); }
 
 
-    friend bool operator<=(const ck::basic_string<T>& lhs, const ck::basic_string<T>& rhs) {
-      return !(lhs > rhs);
-    }
+    friend bool operator<=(const ck::basic_string<T>& lhs, const ck::basic_string<T>& rhs) { return !(lhs > rhs); }
 
 
-    friend bool operator>=(const ck::basic_string<T>& lhs, const ck::basic_string<T>& rhs) {
-      return (lhs == rhs) || (lhs > rhs);
-    }
+    friend bool operator>=(const ck::basic_string<T>& lhs, const ck::basic_string<T>& rhs) { return (lhs == rhs) || (lhs > rhs); }
 #undef INIT_STRING
   };
 

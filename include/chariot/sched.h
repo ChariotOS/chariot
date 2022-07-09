@@ -24,10 +24,6 @@
 
 namespace sched {
 
-  // Only call when schedulers are waiting on a barrier
-  // (Basically, don't call this, it's designed for sched::proc::dump_table);
-  void dump();
-
 
   void block();
   void unblock(Thread &, bool interrupt = false);
@@ -47,23 +43,13 @@ namespace sched {
    * is to kill the process.
    */
   int claim_next_signal(int &sig, void *&handler);
-
   bool init(void);
-
   bool enabled();
-
-#define SCHED_MLFQ_DEPTH 10
-#define PRIORITY_HIGH (SCHED_MLFQ_DEPTH - 1)
-#define PRIORITY_IDLE 0
-
   void set_state(int state);
 
-
-
-  enum yieldres { None, Interrupt };
-
-  yieldres yield(void);
-  yieldres do_yield(int status);
+  enum YieldResult { None, Interrupt };
+  YieldResult yield(void);
+  YieldResult do_yield(int status);
 
 
 

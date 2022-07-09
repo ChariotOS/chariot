@@ -30,7 +30,7 @@ wait_result wait_entry::start() {
   /* Yield right away */
   auto res = sched::yield();
 
-  if (res == sched::yieldres::Interrupt) {
+  if (res == sched::YieldResult::Interrupt) {
     this->result |= WAIT_RES_INTR;
   }
 

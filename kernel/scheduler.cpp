@@ -88,8 +88,6 @@ int Thread::make_runnable(int cpu, bool admit) {
       // TODO: remove this
       SCHED_DEBUG(KERN_WARN "Failed to admit thread\n");
       return -1;
-    } else {
-      // SCHED_DEBUG("%d admit %d\n", cpu, this->tid);
     }
   }
 
@@ -106,7 +104,6 @@ int Thread::make_runnable(int cpu, bool admit) {
     return -ENOTIMPL;
   }
 
-  // core().woke_someone_up = true;
   return 0;
 }
 
@@ -155,45 +152,27 @@ bool rt::Scheduler::reschedule(void) {
   // TODO: do other stuff
   Thread *res = NULL;
 
-  // aperiodic.dump("resched");
-
   auto l = lock();
   if (next_thread) return true;
-
-
   // Go through all the queues, looking for a task to run
-  if (res == NULL) {
-    res = runnable.dequeue();
-  }
-
-  if (res == NULL) {
-    res = aperiodic.dequeue();
-  }
-
+  if (res == NULL) res = runnable.dequeue();
+  if (res == NULL) res = aperiodic.dequeue();
+  // We didn't find anything
+  if (res == NULL) return false;
   // We've decided on res to run next. It no longer sits in a queue, but we will place
   // it on next_thread for ::claim to eventually pop
-  if (res != NULL) {
-    this->next_thread = res;
-    dequeue(res);
-    // printf("reschedule to %d:%s\n", res->tid, res->name.get());
-    return true;
-  }
-  return false;
+  this->next_thread = res;
+  dequeue(res);
+  return true;
 }
 
 
-void rt::Scheduler::pump_sized_tasks(Thread *next) {
-  //
-}
+void rt::Scheduler::pump_sized_tasks(Thread *next) {}
 
 ck::ref<Thread> rt::Scheduler::claim(void) {
   auto l = lock();
   auto t = next_thread;
-
-  if (t) {
-    // scoped_irqlock thread_schedule_lock(t->schedlock);
-    next_thread = nullptr;
-  }
+  if (t) next_thread = nullptr;
   return t;
 }
 
@@ -208,7 +187,6 @@ void rt::Scheduler::kick(void) {
           targ->in_kick = true;
         },
         this);
-    // apic_ipi(per_cpu_get(apic), nk_get_nautilus_info()->sys.cpus[cpu]->lapic_id, APIC_NULL_KICK_VEC);
   } else {
     // we do not reschedule here since
     // we do not know if it is safe to do so
@@ -220,6 +198,8 @@ scoped_irqlock rt::Scheduler::lock(void) { return m_lock; }
 
 scoped_irqlock rt::local_lock(void) { return core().local_scheduler.lock(); }
 
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 void rt::PriorityQueue::enqueue(Thread *task) {
   assert(task->current_queue == NULL);
@@ -252,7 +232,6 @@ Thread *rt::PriorityQueue::peek(void) {
   return task;
 }
 
-
 void rt::PriorityQueue::remove(Thread *task) {
   if (task == nullptr) return;
   assert(task->current_queue == this);
@@ -266,12 +245,7 @@ void rt::PriorityQueue::remove(Thread *task) {
 void rt::PriorityQueue::dump(const char *msg) {
   SCHED_DEBUG("%s: ");
   Thread *n, *node;
-
-  rbtree_postorder_for_each_entry_safe(node, n, &m_root, prio_node) {
-    // just log the tid
-    // SCHED_DEBUG(" '%s'", node->name.get());
-    SCHED_DEBUG(" %d", node->tid);
-  }
+  rbtree_postorder_for_each_entry_safe(node, n, &m_root, prio_node) { SCHED_DEBUG(" %d", node->tid); }
   SCHED_DEBUG("\n");
 }
 
@@ -281,13 +255,6 @@ Thread *rt::TaskQueue::dequeue(void) {
     remove(next);
   }
   return next;
-}
-
-size_t size_slow(struct list_head *head) {
-  size_t c = 0;
-  Thread *ent;
-  list_for_each_entry(ent, head, queue_node) { c++; }
-  return c;
 }
 
 
@@ -302,7 +269,6 @@ void rt::Queue::enqueue(Thread *task) {
   task->current_queue = this;
   m_list.add_tail(&task->queue_node);
   m_size++;
-  // assert(m_size == size_slow(&m_list));
 }
 
 Thread *rt::Queue::peek(void) {
@@ -318,7 +284,6 @@ void rt::Queue::remove(Thread *task) {
   task->queue_node.del_init();
   task->current_queue = NULL;
   m_size--;
-  // assert(m_size == size_slow(&m_list));
 }
 
 
@@ -326,43 +291,11 @@ void rt::Queue::dump(const char *msg) {
   // return;
   SCHED_DEBUG("%s: ");
   Thread *pos = NULL;
-  list_for_each_entry(pos, &m_list, queue_node) {
-    //
-    // SCHED_DEBUG(" '%s'", pos->name.get());
-    SCHED_DEBUG(" %d", pos->tid);
-  }
+  list_for_each_entry(pos, &m_list, queue_node) { SCHED_DEBUG(" %d", pos->tid); }
   SCHED_DEBUG("\n");
 }
 
-
-void sched::dump(void) {
-  // return;
-  printf("------ Scheduler Dump ------\n");
-  /*
-for (int i = 0; i < CONFIG_MAX_CPUS; i++) {
-if (queues[i].active == false) continue;
-
-auto &q = queues[i];
-auto *core = cpu::get(q.core);
-auto &current = core->current_thread;
-// printf("Core %d. current=%d\n", q.core, current ? current->tid : -1);
-for (int d = 0; d < MLFQ_NQUEUES; d++) {
-auto &m = q.queues[d];
-printf("  - %2d: ", d);
-for (auto cur = m.front; cur != nullptr; cur = cur->next) {
-  printf(" %4d", cur->tid);
-}
-printf("\n");
-}
-}
-  */
-}
-
-
-
-
-extern "C" void context_switch(struct ThreadContext **, struct ThreadContext *);
-
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 
@@ -380,12 +313,13 @@ static void switch_into(ck::ref<Thread> thd) { thd->run(); }
 
 
 
-sched::yieldres sched::yield() {
+extern "C" void context_switch(struct ThreadContext **, struct ThreadContext *);
+sched::YieldResult sched::yield() {
   // TODO: should this be here or not. This function is often
   //       called from interrupt contexts after we get a timer
   //       interrupt, so interrupts ought to be off. IDK
   // if (!arch_irqs_enabled()) return sched::yieldres::None;
-  sched::yieldres r = sched::yieldres::None;
+  sched::YieldResult r = sched::YieldResult::None;
   auto &thd = *curthd;
 
   arch_disable_ints();
@@ -400,7 +334,7 @@ sched::yieldres sched::yield() {
   barrier();
 
   if (thd.rudely_awoken) {
-    r = sched::yieldres::Interrupt;
+    r = sched::YieldResult::Interrupt;
   }
   thd.rudely_awoken = false;
 
@@ -422,7 +356,7 @@ void sched::set_state(int state) {
   barrier();
 }
 
-sched::yieldres sched::do_yield(int st) {
+sched::YieldResult sched::do_yield(int st) {
   if (curthd == NULL) printf("NO THREAD!\n");
   sched::set_state(st);
   return sched::yield();
@@ -548,10 +482,8 @@ void sched::run() {
 
     if (did_panic && thd != nullptr) {
       // only run kernel threads, and the monitor thread.
-      if
-			(thd->tid != monitor_tid && thd->proc.ring == RING_USER) {
-      
-				sched::add_task(thd);
+      if (thd->tid != monitor_tid && thd->proc.ring == RING_USER) {
+        sched::add_task(thd);
         thd = nullptr;
       }
     }
@@ -615,9 +547,9 @@ void sched::handle_tick(u64 ticks) {
   auto thd = cpu::thread();
   thd->ticks_ran++;
 
-	// We don't get preempted if we aren't currently runnable. See wait.cpp for
-	// why. Or, if the current thread is not preemptable, or we are in an RCU reader
-	// section, don't reschedule
+  // We don't get preempted if we aren't currently runnable. See wait.cpp for
+  // why. Or, if the current thread is not preemptable, or we are in an RCU reader
+  // section, don't reschedule
   if (thd->get_state() != PS_RUNNING || thd->preemptable == false || core().preempt_count != 0) {
     return;
   }
