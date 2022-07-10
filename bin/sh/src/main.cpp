@@ -28,7 +28,6 @@
 #include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
-
 #define C_RED "\x1b[31m"
 #define C_GREEN "\x1b[32m"
 #define C_YELLOW "\x1b[33m"
@@ -39,6 +38,7 @@
 #define C_GRAY "\x1b[90m"
 
 
+#include <linenoise.h>
 #include <tree_sitter/api.h>
 #include <tree_sitter/parser.h>
 #include <wctype.h>
@@ -700,6 +700,54 @@ void sigint_handler(int sig, void *, void *uc) {
   }
 }
 
+#include <ck/dir.h>
+
+ck::vec<ck::string> possible_files(ck::string partial_path) {
+  ck::vec<ck::string> files;
+  return files;
+}
+
+
+void completion(const char *buf, linenoiseCompletions *lc) {
+  printf("completion\n");
+
+  ck::string input = buf;
+  auto parts = input.split(' ');
+  for (auto &part : parts) {
+    printf("part: %s\n", part.get());
+  }
+
+
+  const char *partial_path = "./";
+
+  if (parts.size() > 0) {
+    partial_path = parts[parts.size() - 1].get();
+  }
+  printf("partial path: %s\n", partial_path);
+
+
+  auto files = possible_files(partial_path);
+
+  ck::string c;
+  for (int i = 0; i < parts.size(); i++) {
+    if (i != 0) c += " ";
+    c += parts[i];
+  }
+
+  linenoiseAddCompletion(lc, c.get());
+}
+
+
+
+
+char *hints(const char *buf, int *color, int *bold) {
+  if (!strcasecmp(buf, "hello")) {
+    *color = 2;
+    *bold = 1;
+    return (char *)" World";
+  }
+  return NULL;
+}
 
 
 int main(int argc, char **argv, char **envp) {
@@ -750,6 +798,12 @@ int main(int argc, char **argv, char **envp) {
   setenv("SHELL", pwd->pw_shell, 1);
   setenv("HOME", pwd->pw_dir, 1);
 
+  /* Set the completion callback. This will be called every time the
+   * user uses the <tab> key. */
+  linenoiseSetCompletionCallback(completion);
+  linenoiseSetHintsCallback(hints);
+  linenoiseSetMultiLine(1);
+
   struct termios tios;
   while (1) {
     tcgetattr(0, &tios);
@@ -765,13 +819,20 @@ int main(int argc, char **argv, char **envp) {
     // snprintf(prompt, 256, "\x1b[33m%s:%s\x1b[0m%c ", uname, disp_cwd, uid == 0 ? '#' : '$');
     snprintf(prompt, 256, "[\x1b[33m%s\x1b[0m@\x1b[34m%s \x1b[35m%s\x1b[0m]%c ", uname, hostname, disp_cwd, uid == 0 ? '#' : '$');
 
-    ck::string line = read_line(prompt);
-    if (line.len() == 0) continue;
 
-    // run_line(line);
-    run_source(line);
-    tcsetattr(0, TCSANOW, &tios);
-    reset_pgid();
+    const char *raw_line = linenoise(prompt);
+    if (raw_line != NULL) {
+      ck::string line = raw_line;
+      if (line.len() == 0) continue;
+
+      // run_line(line);
+      run_source(line);
+      linenoiseHistoryAdd(raw_line);
+      linenoiseHistorySave("/tmp/.readline");
+      linenoiseFree((void *)raw_line);
+      tcsetattr(0, TCSANOW, &tios);
+      reset_pgid();
+    }
   }
 
   return 0;

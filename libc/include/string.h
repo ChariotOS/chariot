@@ -29,6 +29,8 @@ size_t strnlen(const char *str, size_t maxsize);
 char *strchr(const char *s, int c);
 int strcmp(const char *l, const char *r);
 int strncmp(const char *s1, const char *s2, size_t n);
+int strcasecmp(const char *_l, const char *_r);
+int strncasecmp(const char *s1, const char *s2, size_t n);
 
 // I dont have locales
 int strcoll(const char *s1, const char *s2);
@@ -52,6 +54,7 @@ char *strstr(const char *h, const char *n);
 double strtod(const char *nptr, char **endptr);
 float strtof(const char *nptr, char **endptr);
 long double strtold(const char *nptr, char **endptr);
+
 
 
 char *strerror(int errnum);

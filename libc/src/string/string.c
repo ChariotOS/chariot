@@ -241,6 +241,15 @@ int strncmp(const char *_l, const char *_r, size_t n) {
 }
 
 
+int strcasecmp(const char *_l, const char *_r) {
+  const unsigned char *l = (void *)_l, *r = (void *)_r;
+  for (; *l && *r && (*l == *r || tolower(*l) == tolower(*r)); l++, r++)
+    ;
+  return tolower(*l) - tolower(*r);
+}
+
+
+
 int strcoll(const char *s1, const char *s2) { return strcmp(s1, s2); }
 
 #define BITOP(A, B, OP) ((A)[(size_t)(B) / (8 * sizeof *(A))] OP(size_t) 1 << ((size_t)(B) % (8 * sizeof *(A))))
@@ -599,13 +608,6 @@ char *strerror(int e) {
 static char foldcase(char ch) {
   if (isalpha(ch)) return tolower(ch);
   return ch;
-}
-
-int strcasecmp(const char *s1, const char *s2) {
-  for (; foldcase(*s1) == foldcase(*s2); ++s1, ++s2) {
-    if (*s1 == 0) return 0;
-  }
-  return foldcase(*(const unsigned char *)s1) < foldcase(*(const unsigned char *)s2) ? -1 : 1;
 }
 
 int strncasecmp(const char *s1, const char *s2, size_t n) {
