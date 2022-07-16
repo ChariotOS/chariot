@@ -447,3 +447,18 @@ args = [
 [sc.get_nproc]
 ret = 'int'
 args = []
+
+
+# Query or change kenrnel state (much like sysctl in bsd, but slightly
+# differnet in operation, thus the new name). There won't be an api exposed
+# directly, you must use `ck::kctl` or `sysbind_kctl` directly
+[sc.kctl]
+ret = 'int'
+args = [
+  'name: off_t*',      # the name as integers (defined in <sys/kctl.h>
+  'namelen: unsigned', # how many parts to the name
+  'oval: char *',      # the old value as a string (NULL returns what the length would be in `olen`)
+  'olen: size_t*',     # ptr to the length of the old value
+  'nval: char *',      # the new value, if you are setting
+  'nlen: size_t',      # the length of the new value
+]

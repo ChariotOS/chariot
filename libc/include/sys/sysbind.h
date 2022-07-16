@@ -90,6 +90,7 @@ int sysbind_getraminfo(unsigned long long * avail, unsigned long long * total);
 unsigned long sysbind_getramusage();
 int sysbind_get_core_usage(unsigned int core, struct chariot_core_usage * usage);
 int sysbind_get_nproc();
+int sysbind_kctl(off_t* name, unsigned namelen, char * oval, size_t* olen, char * nval, size_t nlen);
 #ifdef __cplusplus
 }
 namespace sys {
@@ -160,5 +161,6 @@ namespace sys {
    inline unsigned long getramusage() { return sysbind_getramusage(); }
    inline int get_core_usage(unsigned int core, struct chariot_core_usage * usage) { return sysbind_get_core_usage(core, usage); }
    inline int get_nproc() { return sysbind_get_nproc(); }
+   inline int kctl(off_t* name, unsigned namelen, char * oval, size_t* olen, char * nval, size_t nlen) { return sysbind_kctl(name, namelen, oval, olen, nval, nlen); }
 } // namespace sys
 #endif

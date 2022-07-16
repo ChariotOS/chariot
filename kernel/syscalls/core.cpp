@@ -38,9 +38,8 @@ uint64_t do_syscall(long num, uint64_t a, uint64_t b, uint64_t c, uint64_t d, ui
     printf(KERN_DEBUG "[pid %d] debug syscall: %llx %llx %llx %llx %llx %llx\n", curproc->pid, a, b, c, d, e, f);
     return 0;
   }
-  if (num & ~0xFF) return -1;
 
-  if (syscall_table[num].handler == NULL) {
+  if ((num & ~0xFF) || syscall_table[num].handler == NULL) {
     return -1;
   }
 

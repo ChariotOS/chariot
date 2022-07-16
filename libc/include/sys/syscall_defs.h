@@ -65,3 +65,4 @@
 #define SYS_getramusage              (0x40)
 #define SYS_get_core_usage           (0x41)
 #define SYS_get_nproc                (0x42)
+#define SYS_kctl                     (0x43)

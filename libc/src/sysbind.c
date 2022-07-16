@@ -673,3 +673,13 @@ int sysbind_get_nproc() {
                0);
 }
 
+int sysbind_kctl(off_t* name, unsigned namelen, char * oval, size_t* olen, char * nval, size_t nlen) {
+    return (int)__syscall_eintr(SYS_kctl,
+               (unsigned long long)name,
+               (unsigned long long)namelen,
+               (unsigned long long)oval,
+               (unsigned long long)olen,
+               (unsigned long long)nval,
+               (unsigned long long)nlen);
+}
+

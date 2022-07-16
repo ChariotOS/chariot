@@ -618,74 +618,67 @@ static int default_signal_action(int signal) {
 
 
 int sched::claim_next_signal(int &sig, void *&handler) {
-  if (cpu::in_thread()) {
-    int sig_to_handle = -1;
+  int sig_to_handle = -1;
 
-    if (curthd->sig.handling == -1) {
-      while (1) {
-        sig_to_handle = -1;
-        if (curthd->sig.pending != 0) {
-          for (int i = 0; i < 63; i++) {
-            if ((curthd->sig.pending & SIGBIT(i)) != 0) {
-              if (curthd->sig.mask & SIGBIT(i)) {
-                // Mark this signal as handled.
-                curthd->sig.pending &= ~SIGBIT(i);
-                sig_to_handle = i;
-                break;
-              } else if (default_signal_action(i) == SIGACT_TERM) {
-                curproc->terminate(i);
-              }
+  if (curthd->sig.handling == -1) {
+    while (1) {
+      sig_to_handle = -1;
+      if (curthd->sig.pending != 0) {
+        for (int i = 0; i < 63; i++) {
+          if ((curthd->sig.pending & SIGBIT(i)) != 0) {
+            if (curthd->sig.mask & SIGBIT(i)) {
+              // Mark this signal as handled.
+              curthd->sig.pending &= ~SIGBIT(i);
+              sig_to_handle = i;
+              break;
+            } else if (default_signal_action(i) == SIGACT_TERM) {
+              curproc->terminate(i);
             }
           }
         }
+      }
 
 
-        if (sig_to_handle != -1) {
-          if (!cpu::in_thread()) {
-            panic("not in cpu when getting signal %d\n", sig);
-          }
+      if (sig_to_handle != -1) {
+        assert(curthd->sig.handling == -1);
 
-          assert(curthd->sig.handling == -1);
+        auto &action = curproc->sig.handlers[sig];
 
-
-          auto &action = curproc->sig.handlers[sig];
-
-          if (sig == SIGSTOP) {
-            printf("TODO: SIGSTOP\n");
-            return -1;
-          }
-
-          if (sig == SIGCONT) {
-            printf("TODO: SIGCONT\n");
-            // resume_from_stopped();
-          }
-
-          if (action.sa_handler == SIG_DFL) {
-            // handle the default action
-            switch (default_signal_action(sig)) {
-              case SIGACT_STOP:
-                printf("TODO: SIGACT_STOP!\n");
-                return -1;
-              case SIGACT_TERM:
-                curproc->terminate(sig);
-                return -1;
-              case SIGACT_IGNO:
-                return -1;
-              case SIGACT_CONT:
-                printf("TODO: SIGACT_CONT!\n");
-                return -1;
-            }
-          }
-
-          sig = sig_to_handle;
-          curthd->sig.handling = sig; /* TODO this might need some more signal-speicifc logic */
-          handler = (void *)action.sa_handler;
-
-
-          return 0;
-        } else {
-          break;
+        if (sig == SIGSTOP) {
+          printf("TODO: SIGSTOP\n");
+          return -1;
         }
+
+        if (sig == SIGCONT) {
+          printf("TODO: SIGCONT\n");
+          // resume_from_stopped();
+        }
+
+        if (action.sa_handler == SIG_DFL) {
+          // handle the default action
+          switch (default_signal_action(sig)) {
+            case SIGACT_STOP:
+              printf("TODO: SIGACT_STOP!\n");
+              return -1;
+            case SIGACT_TERM:
+              curproc->terminate(sig);
+              return -1;
+            case SIGACT_IGNO:
+              return -1;
+            case SIGACT_CONT:
+              printf("TODO: SIGACT_CONT!\n");
+              return -1;
+          }
+        }
+
+        sig = sig_to_handle;
+        curthd->sig.handling = sig; /* TODO this might need some more signal-speicifc logic */
+        handler = (void *)action.sa_handler;
+
+
+        return 0;
+      } else {
+        break;
       }
     }
   }

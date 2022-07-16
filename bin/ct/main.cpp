@@ -30,6 +30,7 @@
 #include <ck/future.h>
 #include <lumen/ipc.h>
 #include "test.h"
+#include <chariot/kctl.h>
 
 #include <vterm.h>
 
@@ -125,55 +126,101 @@ int nproc = 0;
 #include <chariot/futex.h>
 #include <atomic.h>
 
+
+ck::option<off_t> kctl_parse_part(const char *str) {
+#define __KCTL(number, _name, uppername) \
+  if (strcmp(str, #_name) == 0) return number;
+  ENUMERATE_KCTL_NAMES
+#undef __KCTL
+
+  // Fall back to trying to parse the part as an integer
+  off_t value = 0;
+  if (sscanf(str, "%lu", &value)) {
+    return value;
+  }
+  return None;
+}
+
+
+// Read a kctl field
+ck::option<ck::string> kctl(ck::string path) {
+  // TODO: don't split (it allocates memory)
+  auto parts = path.split('.');
+  ck::vec<off_t> name;
+  for (auto &part : parts) {
+    auto p = kctl_parse_part(part.get());
+    if (!p) return None;
+    name.push(p.unwrap());
+  }
+
+  size_t olen;
+  int res = sysbind_kctl(name.data(), name.size(), NULL, &olen, NULL, 0);
+
+  return "";
+}
+
 int main(int argc, char **argv) {
+
+  for (int i = 1; i < argc; i++) {
+    kctl(argv[i]);
+  }
+  return 0;
+
+  // sysbind_shutdown();
+
+
+
+  ck::option<int> x = 4;
+  x.map(lambda(x, x * 2)).map(lambda(x, printf("%d\n", x)));
+  return 0;
   int rows = 10;
   int cols = 20;
   VTerm *vt = vterm_new(rows, cols);
   vterm_set_utf8(vt, 1);
   VTermScreen *screen = vterm_obtain_screen(vt);
-	/*
-  VTermScreenCallbacks cbs{0};
-  cbs.damage = [](VTermRect rect, void *user) -> int {
-    printf("damage\n");
-    return 0;
-  };
+  /*
+VTermScreenCallbacks cbs{0};
+cbs.damage = [](VTermRect rect, void *user) -> int {
+printf("damage\n");
+return 0;
+};
 
-  cbs.moverect = [](VTermRect dest, VTermRect src, void *user) -> int {
-    printf("moverect\n");
-    return 0;
-  };
+cbs.moverect = [](VTermRect dest, VTermRect src, void *user) -> int {
+printf("moverect\n");
+return 0;
+};
 
-  cbs.movecursor = [](VTermPos pos, VTermPos oldpos, int visible, void *user) -> int {
-    printf("movecursor\n");
-    return 0;
-  };
+cbs.movecursor = [](VTermPos pos, VTermPos oldpos, int visible, void *user) -> int {
+printf("movecursor\n");
+return 0;
+};
 
-  cbs.settermprop = [](VTermProp prop, VTermValue *val, void *user) -> int {
-    printf("settermprop\n");
-    return 0;
-  };
+cbs.settermprop = [](VTermProp prop, VTermValue *val, void *user) -> int {
+printf("settermprop\n");
+return 0;
+};
 
-  cbs.bell = [](void *user) -> int {
-    printf("bell\n");
-    return 0;
-  };
+cbs.bell = [](void *user) -> int {
+printf("bell\n");
+return 0;
+};
 
-  cbs.resize = [](int rows, int cols, void *user) -> int {
-    printf("resize\n");
-    return 0;
-  };
+cbs.resize = [](int rows, int cols, void *user) -> int {
+printf("resize\n");
+return 0;
+};
 
-  cbs.sb_pushline = [](int cols, const VTermScreenCell *cells, void *user) -> int {
-    printf("pushline\n");
-    return 0;
-  };
+cbs.sb_pushline = [](int cols, const VTermScreenCell *cells, void *user) -> int {
+printf("pushline\n");
+return 0;
+};
 
-  cbs.sb_popline = [](int cols, VTermScreenCell *cells, void *user) -> int {
-    printf("popline\n");
-    return 0;
-  };
-  vterm_screen_set_callbacks(screen, &cbs, NULL);
-	*/
+cbs.sb_popline = [](int cols, VTermScreenCell *cells, void *user) -> int {
+printf("popline\n");
+return 0;
+};
+vterm_screen_set_callbacks(screen, &cbs, NULL);
+  */
 
 
   char buf[] = "Hello friend\n";

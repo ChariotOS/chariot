@@ -19,6 +19,7 @@
 #include <wait_flags.h>
 #include <module.h>
 #include "asm.h"
+#include <kctl_node.h>
 
 #ifdef CONFIG_RISCV
 #include <riscv/arch.h>
@@ -996,7 +997,7 @@ void dump_process_table_internal(void) {
   printf("------ Process Dump ------\n");
   for (auto &[pid, proc] : proc_table) {
     for (auto t : proc->threads) {
-			if (t->kern_idle) continue;
+      if (t->kern_idle) continue;
       associated_threads[t->tid] = pid;
       auto row = dump_thread(*t);
       logger.add_row(row);
@@ -1004,7 +1005,7 @@ void dump_process_table_internal(void) {
   }
 
 
-	printf("ticks: %llu\n", core().kstat.ticks);
+  printf("ticks: %llu\n", core().kstat.ticks);
   logger.display();
 
   // printf("------ Leaked ------\n");
@@ -1025,7 +1026,7 @@ void sched::proc::dump_table(void) {
   cpu::xcall_all(
       [](void *) {
         if (core_id() == 0) {
-					dump_process_table_internal();
+          dump_process_table_internal();
         }
 
         // Make sure the printing core is done before letting any core
@@ -1039,4 +1040,38 @@ void sched::proc::dump_table(void) {
 ksh_def("pdump", "dump the process table") {
   sched::proc::dump_table();
   return 0;
+}
+
+
+extern bool hacky_proc_kctl_read(kctl::Path path, ck::string &out) {
+  // If they are looking for this as a directory...
+  if (!path) {
+    scoped_irqlock l(ptable_lock);
+    int count = 0;
+    for (auto &kv : proc_table) {
+      if (count++ != 0) out.appendf(",");
+      out.appendf("%d", kv.key);
+    }
+    return true;
+  }
+
+
+  if (KCTL_IS_NAME(path[0])) {
+    return false;
+  }
+
+  auto pid = path[0];
+
+  ck::ref<Process> p = ::pid_lookup(pid);
+  if (path.is_leaf() || !p) {
+    return false;
+  }
+
+  switch (path[1]) {
+    case KCTL_NAME:
+      out = p->name;
+      return true;
+  }
+
+  return false;
 }

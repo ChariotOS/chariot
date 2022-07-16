@@ -65,3 +65,4 @@ __SYSCALL(0x3f, getraminfo, unsigned long long * avail, unsigned long long * tot
 __SYSCALL(0x40, getramusage)
 __SYSCALL(0x41, get_core_usage, unsigned int core, struct chariot_core_usage * usage)
 __SYSCALL(0x42, get_nproc)
+__SYSCALL(0x43, kctl, off_t* name, unsigned namelen, char * oval, size_t* olen, char * nval, size_t nlen)

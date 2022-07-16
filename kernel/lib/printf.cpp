@@ -1421,3 +1421,23 @@ int ck::string::scan(const char *fmt, ...) {
   va_end(args);
   return i;
 }
+
+
+
+
+extern "C" int vfctprintf(void (*out)(char character, void *arg), void *arg, const char *format, va_list va);
+
+
+static inline void scribe_draw_text_callback(char c, void *arg, size_t idx, size_t maxlen) {
+  auto &f = *(ck::string *)arg;
+  f += c;
+}
+
+
+template <>
+void ck::basic_string<char>::appendf(const char *fmt, ...) {
+  va_list va;
+  va_start(va, fmt);
+  _vsnprintf(scribe_draw_text_callback, (char *)this, (size_t)-1, fmt, va);
+  va_end(va);
+}

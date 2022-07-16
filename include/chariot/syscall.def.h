@@ -69,4 +69,5 @@ int getraminfo(unsigned long long * avail, unsigned long long * total);
 unsigned long getramusage();
 int get_core_usage(unsigned int core, struct chariot_core_usage * usage);
 int get_nproc();
+int kctl(off_t* name, unsigned namelen, char * oval, size_t* olen, char * nval, size_t nlen);
 }

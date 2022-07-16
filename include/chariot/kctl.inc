@@ -1,0 +1,13 @@
+#define KCTL_NAME_MASK 0x80000000000000
+#define KCTL_HW (KCTL_NAME_MASK | 0x7768LLU) // "hw"
+#define KCTL_NCPUS (KCTL_NAME_MASK | 0x737570636eLLU) // "ncpus"
+#define KCTL_PROC (KCTL_NAME_MASK | 0x636f7270LLU) // "proc"
+#define KCTL_NAME (KCTL_NAME_MASK | 0x656d616eLLU) // "name"
+
+
+#define ENUMERATE_KCTL_NAMES \
+   __KCTL(KCTL_HW, hw, HW) \
+   __KCTL(KCTL_NCPUS, ncpus, NCPUS) \
+   __KCTL(KCTL_PROC, proc, PROC) \
+   __KCTL(KCTL_NAME, name, NAME) \
+
