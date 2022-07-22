@@ -21,7 +21,7 @@ $(BUILD)/build.ninja:
 	@mkdir -p $(BUILD)
 	@cd $(BUILD); cmake -GNinja ../
 
-kernel: .config $(BUILD)/Makefile
+kernel: .config $(BUILD)/build.ninja
 	@tools/build_toolchain.sh
 	@cd $(BUILD); cmake --build .
 	@cd $(BUILD); cmake --install . &2>1 >/dev/null

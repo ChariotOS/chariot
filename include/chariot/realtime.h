@@ -83,8 +83,8 @@ namespace rt {
 
   // Forward Declaration
   class Scheduler;
-  class PriorityQueue;
-  class Queue;
+  struct PriorityQueue;
+  struct Queue;
 
   class TaskQueue {
    public:

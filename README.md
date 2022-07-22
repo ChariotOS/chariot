@@ -23,6 +23,25 @@ nasm
 grub2
 ```
 
+
+On ubuntu, you can install the prereqs using:
+
+```bash
+sudo apt install -y
+build-essential manpages-dev
+cmake ninja-build
+libtool-bin
+gettext
+python3
+python3-pip
+python3-venv
+makeinfo
+texinfo
+libgmp-dev
+libmpfr-dev
+libmpc-dev
+```
+
 Once you have those, building the kernel from scratch takes a few
 steps (subsequent builds are little more than `make`).
 
