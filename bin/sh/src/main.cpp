@@ -436,20 +436,6 @@ pid_t shell_fork() {
   return pid;
 }
 
-auto read_line(char *prompt) {
-  printf("%s", prompt);
-  fflush(stdout);
-  char *buf = (char *)malloc(4096);
-  memset(buf, 0, 4096);
-  fgets(buf, 4096, stdin);
-  buf[strlen(buf) - 1] = '\0';
-
-  ck::string s = (const char *)buf;
-
-  free(buf);
-  return s;
-}
-
 
 #define RUN_NOFORK 1
 
@@ -690,7 +676,6 @@ void run_source(ck::string source) {
 
 
 char hostname[256];
-char prompt[256];
 char uname[128];
 char cwd[255];
 
@@ -708,46 +693,6 @@ ck::vec<ck::string> possible_files(ck::string partial_path) {
 }
 
 
-void completion(const char *buf, linenoiseCompletions *lc) {
-  printf("completion\n");
-
-  ck::string input = buf;
-  auto parts = input.split(' ');
-  for (auto &part : parts) {
-    printf("part: %s\n", part.get());
-  }
-
-
-  const char *partial_path = "./";
-
-  if (parts.size() > 0) {
-    partial_path = parts[parts.size() - 1].get();
-  }
-  printf("partial path: %s\n", partial_path);
-
-
-  auto files = possible_files(partial_path);
-
-  ck::string c;
-  for (int i = 0; i < parts.size(); i++) {
-    if (i != 0) c += " ";
-    c += parts[i];
-  }
-
-  linenoiseAddCompletion(lc, c.get());
-}
-
-
-
-
-char *hints(const char *buf, int *color, int *bold) {
-  if (!strcasecmp(buf, "hello")) {
-    *color = 2;
-    *bold = 1;
-    return (char *)" World";
-  }
-  return NULL;
-}
 
 
 int main(int argc, char **argv, char **envp) {
@@ -792,7 +737,8 @@ int main(int argc, char **argv, char **envp) {
 
   uid_t uid = getuid();
   struct passwd *pwd = getpwuid(uid);
-  strncpy(uname, pwd->pw_name, 32);
+
+  ck::string uname = pwd->pw_name;
 
   setenv("USER", pwd->pw_name, 1);
   setenv("SHELL", pwd->pw_shell, 1);
@@ -800,8 +746,6 @@ int main(int argc, char **argv, char **envp) {
 
   /* Set the completion callback. This will be called every time the
    * user uses the <tab> key. */
-  linenoiseSetCompletionCallback(completion);
-  linenoiseSetHintsCallback(hints);
   linenoiseSetMultiLine(1);
 
   struct termios tios;
@@ -816,11 +760,11 @@ int main(int argc, char **argv, char **envp) {
       disp_cwd = "~";
     }
 
-    // snprintf(prompt, 256, "\x1b[33m%s:%s\x1b[0m%c ", uname, disp_cwd, uid == 0 ? '#' : '$');
-    snprintf(prompt, 256, "[\x1b[33m%s\x1b[0m@\x1b[34m%s \x1b[35m%s\x1b[0m]%c ", uname, hostname, disp_cwd, uid == 0 ? '#' : '$');
+    auto prompt =
+        ck::string::format("[\x1b[33m%s\x1b[0m@\x1b[34m%s \x1b[35m%s\x1b[0m]%c ", uname.get(), hostname, disp_cwd, uid == 0 ? '#' : '$');
 
 
-    const char *raw_line = linenoise(prompt);
+    const char *raw_line = linenoise(prompt.get());
     if (raw_line != NULL) {
       ck::string line = raw_line;
       if (line.len() == 0) continue;

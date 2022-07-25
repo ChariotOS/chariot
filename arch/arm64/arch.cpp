@@ -113,6 +113,12 @@ void arch::irq::disable(int num) { /* TODO */
 
 
 
+int arch_set_timer(uint64_t nanos) {
+	return 0;
+}
+int arch_stop_timer() {
+	return 0;
+}
 
 static inline int get_cpu_id(void) {
   /* TODO */

@@ -68,11 +68,5 @@ unsigned long arch_timestamp_to_ns(unsigned long ts) { return core().apic.cycles
 
 unsigned long arch_ns_to_timestamp(unsigned long ns) { return core().apic.ns_to_cycles(ns); }
 
-int arch_set_timer(uint64_t nanos) {
-	return 0;
-}
-int arch_stop_timer() {
-	return 0;
-}
 
 void arch_relax(void) { asm("pause"); }

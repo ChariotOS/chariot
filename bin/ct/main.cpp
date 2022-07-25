@@ -31,8 +31,9 @@
 #include <lumen/ipc.h>
 #include "test.h"
 #include <chariot/kctl.h>
-
+#include <ck/path.h>
 #include <vterm.h>
+#include <ck/format.h>
 
 unsigned long ms() { return sysbind_gettime_microsecond() / 1000; }
 
@@ -159,7 +160,21 @@ ck::option<ck::string> kctl(ck::string path) {
   return "";
 }
 
+void test_path(const char *path) {
+	printf("=============================================\n");
+	auto p = ck::Path(path);
+
+	struct stat st;
+	int res = p.stat(&st);
+	printf("stat res=%d\n", res);
+
+}
+
 int main(int argc, char **argv) {
+	test_path("/home/anon/foo.txt");
+	test_path("anon/foo.txt");
+	test_path("/home/./anon/foo.txt");
+	test_path("anon/../../foo.txt");
 
   for (int i = 1; i < argc; i++) {
     kctl(argv[i]);
