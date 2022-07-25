@@ -203,8 +203,16 @@ namespace ck {
     }
 
 
+		bool ends_with(T val) const {
+			if (is_empty()) return false;
+			return (*this)[m_len - 1] == val;
+		}
+
+
     size_t len() const { return m_len; }
     size_t size() const { return m_len; }
+
+		bool is_empty() const { return m_len == 0; }
 
     T pop() {
       T c = -1;
@@ -238,6 +246,10 @@ namespace ck {
       if (m_buf != NULL) m_buf[len()] = 0;  // null terminate
       return m_buf;
     }
+
+		bool contains(const basic_string &other) const {
+			return strstr(get(), other.get()) != NULL;
+		}
 
 
     basic_string& operator=(const basic_string& s) {
