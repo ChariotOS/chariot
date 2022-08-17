@@ -47,7 +47,7 @@ case $ARCH in
 		;;
 
 	RISC-V)
-		QEMU_FLAGS+="-machine virt -smp ${CONFIG_QEMU_CORES} -m ${CONFIG_RISCV_RAM_MB}M "
+		QEMU_FLAGS+="-machine virt -smp ${CONFIG_QEMU_CORES} -m 256M "
 		QEMU_FLAGS+="-bios default "
 		# QEMU_FLAGS+="--accel tcg,thread=single "
 		QEMU_FLAGS+="--accel tcg,thread=multi "
@@ -64,7 +64,7 @@ case $ARCH in
 
 
 	AArch64)
-		QEMU_FLAGS+="-M virt -smp 1 -cpu cortex-a53 -m 1024M "
+		QEMU_FLAGS+="-cpu cortex-a53 -smp ${CONFIG_QEMU_CORES} -m 1024M -machine virt "
 		# QEMU_FLAGS+="-accel tcg "
 		# QEMU_FLAGS+="-M type=raspi3 -m 1024 "
 		QEMU_FLAGS+="-kernel $BUILD/chariot.elf "

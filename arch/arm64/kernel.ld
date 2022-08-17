@@ -10,7 +10,9 @@ KERNEL_VMA = 0; /* CONFIG_KERNEL_VIRTUAL_BASE; */
 SECTIONS
 {
 	/** . = 0x40000000;**/
-	. = 0x80000;
+	/* . = 0x80000000; */
+
+	. = 0x40000000;
 
   .init : {
 		KEEP(*(.init.text))
@@ -78,4 +80,8 @@ SECTIONS
 
 	. = ALIGN(4096);
 	high_kern_end = . - KERNEL_VMA;
+	
+	/* This should be aligned, but you can't be too safe */
+	. = ALIGN(PAGE_SIZE);
+  PROVIDE(_kernel_end = .); 
 }

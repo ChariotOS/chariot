@@ -15,7 +15,7 @@ set(ARCH_USER_C_FLAGS "-ffreestanding -fno-omit-frame-pointer -fdiagnostics-colo
 set(ARCH_USER_CXX_FLAGS "-nostdinc++ -std=c++20")
 
 # Kernelspace Flags
-set(ARCH_KERN_C_FLAGS "-nostdlib")
+set(ARCH_KERN_C_FLAGS "-nostdlib -mgeneral-regs-only ")
 set(ARCH_KERN_C_FLAGS "${ARCH_KERN_C_FLAGS} -fno-stack-protector -fno-pie -Wno-sign-compare")
 set(ARCH_KERN_C_FLAGS "${ARCH_KERN_C_FLAGS} -ffreestanding -Wall -fno-common")
 set(ARCH_KERN_C_FLAGS "${ARCH_KERN_C_FLAGS} -Wno-initializer-overrides -Wstrict-overflow=5")

@@ -178,6 +178,7 @@ int puts(char *s) {
   return i;
 }
 
+/*
 const char *human_size(uint64_t bytes, char *buf) {
   const char *suffix[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB"};
   char length = sizeof(suffix) / sizeof(suffix[0]);
@@ -193,6 +194,7 @@ const char *human_size(uint64_t bytes, char *buf) {
   sprintf(buf, "%.03lf %s", dblBytes, suffix[i]);
   return buf;
 }
+*/
 
 // output function type
 typedef void (*out_fct_type)(char character, void *buffer, size_t idx, size_t maxlen);

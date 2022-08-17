@@ -2,6 +2,8 @@
 #include <printf.h>
 #include <reg.h>
 #include <types.h>
+#include <devicetree.h>
+#include <util.h>
 
 /* TODO: parse this from the DTB that arm gives us */
 #define UART_BASE (0x9000000)
@@ -98,14 +100,10 @@ void serial_send(int device, char c) {
 void serial_string(int device, char *out) {}
 
 
+
 void arm64::platform_init(uint64_t dtb, uint64_t x1, uint64_t x2, uint64_t x3) {
   /* Initialize the interrupt controller */
   arm64::gic_init();
 
   setup_pl011();
-
-  printf("It worked!\n");
-
-  while (1) {
-  }
 }

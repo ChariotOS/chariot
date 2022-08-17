@@ -7,7 +7,7 @@ depends on ARM64
 # select a platform for ARM64
 choice
 	prompt "Platform"
-	default BCM2711
+	default QEMU_VIRT_ARM64
 
 	config QEMU_VIRT_ARM64
 		bool "Virtual ARM64 Processor used by QEMU"

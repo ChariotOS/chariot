@@ -3,7 +3,8 @@
 #include <syscall.h>
 #include <dev/hardware.h>
 #include <ck/vec.h>
-
+#include <dev/driver.h>
+#include <module.h>
 
 #define FDT_BEGIN_NODE 0x00000001
 #define FDT_END_NODE 0x00000002
@@ -57,6 +58,7 @@ static dtb::node *alloc_device(const char *name) {
   dev->is_device = false;
   dev->address_cells = dev->size_cells = -1;
 
+
   int at_off = -1;
   for (int i = 0; true; i++) {
     if (name[i] == 0) {
@@ -72,7 +74,7 @@ static dtb::node *alloc_device(const char *name) {
 
   if (at_off != -1) {
     if (sscanf(name + at_off + 1, "%x", &dev->address) != 1) {
-      // printf("INVALID NODE NAME: '%s'\n", name);
+      printf("INVALID NODE NAME: '%s'\n", name);
     }
     dev->name[at_off] = 0;
   }
@@ -80,9 +82,9 @@ static dtb::node *alloc_device(const char *name) {
 }
 
 
-void dtb::walk_devices(bool (*callback)(dtb::node *)) {
+void dtb::walk_devices(bool (*callback)(dtb::node *), bool all_devices) {
   for (int i = 0; i < next_device; i++) {
-    if (devices[i].is_device) {
+    if (devices[i].is_device || all_devices) {
       if (!callback(&devices[i])) break;
     }
   }
@@ -131,6 +133,7 @@ static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *v
 
     return;
   }
+
 }
 
 
@@ -489,3 +492,27 @@ void dtb::promote(void) {
   root->propegate_cell_sizes();
   hw::Device::add("dtb", root);
 }
+
+
+
+class DeviceTreeMemory : public dev::CharDevice {
+ public:
+  using dev::CharDevice::CharDevice;
+
+  virtual ~DeviceTreeMemory(void) {}
+
+  virtual void init(void) {
+  }
+};
+
+
+
+static dev::ProbeResult device_tree_memory_probe(ck::ref<hw::Device> dev) {
+	if (dev->name() == "memory") {
+		printf("MEMORY\n");
+  	return dev::ProbeResult::Attach;
+	}
+  return dev::ProbeResult::Ignore;
+};
+
+driver_init("dtb,memory", DeviceTreeMemory, device_tree_memory_probe);

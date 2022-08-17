@@ -161,6 +161,7 @@ void phys::free(void *v, int len) {
   if (kmem.nfree > kmem.max_free) {
     kmem.max_free = kmem.nfree;
   }
+	// printf_nolock("%llu/%lluMB\n", (kmem.nfree * 4096) / 1024 / 1024, kmem.max_free * 4096 / 1024 / 1024);
 }
 
 // add page frames to the allocator
@@ -186,14 +187,14 @@ void phys::free_range(void *vstart, void *vend) {
     df->next = kmem.freelist;
     kmem.freelist = (frame *)v2p(fr);
   } else {
-#ifdef CONFIG_RISCV
-    auto fl = (frame *)p2v(kmem.freelist);
-    df->next = fl->next;
-    fl->next = fr;
-#else
+// #ifdef CONFIG_RISCV
+//     auto fl = (frame *)p2v(kmem.freelist);
+//     df->next = fl->next;
+//     fl->next = fr;
+// #else
     df->next = kmem.freelist->next;
     kmem.freelist->next = fr;
-#endif
+// #endif
   }
   kmem.nfree += df->page_len;
   if (kmem.nfree > kmem.max_free) {

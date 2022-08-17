@@ -73,7 +73,7 @@ namespace dtb {
   /* Return the number of devices nodes found */
   int parse(dtb::fdt_header *hdr);
   /* Walk the devices with a callback. Continue if the callback returns true */
-  void walk_devices(bool (*callback)(dtb::node *));
+  void walk_devices(bool (*callback)(dtb::node *), bool all_devices = false);
 
 
   // promote the boot representation to the hw::Device representation
