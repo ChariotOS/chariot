@@ -23,7 +23,7 @@ $(BUILD)/build.ninja:
 
 kernel: .config $(BUILD)/build.ninja
 	@tools/build_toolchain.sh
-	@ninja -C build
+	@ninja -C build install
 	@# ninja -C build install
 	@#cd $(BUILD); cmake --install . &2>1 >/dev/null
 	@cp $(BUILD)/compile_commands.json .
