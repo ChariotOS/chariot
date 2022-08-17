@@ -111,6 +111,28 @@ static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *v
     return;
   }
 
+  if (STREQ(name, "reg")) {
+    /* TODO: It's unsafe to assume 64 bit here... But since we are 64bit only... (for now) */
+    auto *cells = (unsigned long *)val;
+		auto addr_cells = node->get_addr_cells();
+		auto size_cells = node->get_size_cells();
+
+    // printf("%s: addr %d, size %d\n", node->name, addr_cells, size_cells);
+    if (addr_cells > 0) {
+      if (addr_cells == 1) node->reg.address = __builtin_bswap32(*(uint32_t *)val);
+      if (addr_cells == 2) node->reg.address = __builtin_bswap64(*(uint64_t *)val);
+    }
+    val += addr_cells * 4;
+
+    if (size_cells > 0) {
+      if (size_cells == 1) node->reg.length = __builtin_bswap32(*(uint32_t *)val);
+      if (size_cells == 2) node->reg.length = __builtin_bswap64(*(uint64_t *)val);
+    }
+    val += size_cells * 4;
+
+    return;
+  }
+
   if (STREQ(name, "compatible")) {
     node->is_device = true;
     memcpy(node->compat, (const char *)val, len);
@@ -133,7 +155,6 @@ static void node_set_prop(dtb::node *node, const char *name, int len, uint8_t *v
 
     return;
   }
-
 }
 
 
@@ -492,27 +513,3 @@ void dtb::promote(void) {
   root->propegate_cell_sizes();
   hw::Device::add("dtb", root);
 }
-
-
-
-class DeviceTreeMemory : public dev::CharDevice {
- public:
-  using dev::CharDevice::CharDevice;
-
-  virtual ~DeviceTreeMemory(void) {}
-
-  virtual void init(void) {
-  }
-};
-
-
-
-static dev::ProbeResult device_tree_memory_probe(ck::ref<hw::Device> dev) {
-	if (dev->name() == "memory") {
-		printf("MEMORY\n");
-  	return dev::ProbeResult::Attach;
-	}
-  return dev::ProbeResult::Ignore;
-};
-
-driver_init("dtb,memory", DeviceTreeMemory, device_tree_memory_probe);

@@ -166,6 +166,8 @@ class RISCVHart : public dev::CharDevice {
   }
 };
 
+
+
 static dev::ProbeResult riscv_hart_probe(ck::ref<hw::Device> dev) {
   if (auto mmio = dev->cast<hw::MMIODevice>()) {
     if (mmio->is_compat("riscv")) {
@@ -304,30 +306,33 @@ void main(int hartid, void *fdt) {
   off_t boot_free_start = (off_t)v2p(_kernel_end);
   off_t boot_free_end = boot_free_start + 1 * MB;
   LOG("Freeing bootup ram %llx:%llx\n", boot_free_start, boot_free_end);
+  phys::free_range((void *)boot_free_start, (void *)boot_free_end);
 
   /* Tell the device tree to copy the device tree and parse it */
   dtb::parse((dtb::fdt_header *)p2v(rv::get_hstate().dtb));
 
-  phys::free_range((void *)boot_free_start, (void *)boot_free_end);
 
   cpu::Core cpu;
   rv::get_hstate().cpu = &cpu;
 
   cpu::seginit(&cpu, NULL);
 
-  dtb::walk_devices([](dtb::node *node) -> bool {
-    if (!strcmp(node->name, "memory")) {
-      /* We found the ram (there might be more, but idk for now) */
-      dtb_ram_size = node->reg.length;
-      dtb_ram_start = node->reg.address;
-      return false;
-    }
-    return true;
-  });
+  dtb::walk_devices(
+      [](dtb::node *node) -> bool {
+        if (!strcmp(node->name, "memory")) {
+          /* We found the ram (there might be more, but idk for now) */
+          dtb_ram_size = node->reg.length;
+          dtb_ram_start = node->reg.address;
+          LOG("FOUND %lu %lu\n", dtb_ram_size);
+          return false;
+        }
+        return true;
+      },
+      true);
 
   if (dtb_ram_start == 0) {
-    LOG("dtb didn't contain a memory segment, guessing 128mb :^)\n");
-    dtb_ram_size = 128 * MB;
+    LOG("dtb didn't contain a memory segment, guessing there is at least 4mb :^)\n");
+    dtb_ram_size = 4 * MB;
     dtb_ram_start = boot_free_start;
   }
 
@@ -342,12 +347,13 @@ void main(int hartid, void *fdt) {
   for (func_ptr *func = __init_array_start; func != __init_array_end; func++)
     (*func)();
 
+  dtb::promote();
+
+
   cpu::current().id = rv::get_hstate().hartid;
   cpu::current().primary = true;
 
   sbi_init();
-
-  dtb::promote();
 
   time::set_cps(CONFIG_RISCV_CLOCKS_PER_SECOND);
   time::set_high_accuracy_time_fn(riscv_high_acc_time_func);

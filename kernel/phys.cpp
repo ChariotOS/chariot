@@ -161,7 +161,7 @@ void phys::free(void *v, int len) {
   if (kmem.nfree > kmem.max_free) {
     kmem.max_free = kmem.nfree;
   }
-	// printf_nolock("%llu/%lluMB\n", (kmem.nfree * 4096) / 1024 / 1024, kmem.max_free * 4096 / 1024 / 1024);
+	printf_nolock("%llu/%lluMB\n", (kmem.nfree * 4096) / 1024 / 1024, kmem.max_free * 4096 / 1024 / 1024);
 }
 
 // add page frames to the allocator
