@@ -49,7 +49,7 @@
 
 #if 0 /* UNUSED */
 #include <stdio.h>
-#include <string.h>
+#include <ck/string.h>
 #include <stdlib.h>
 #include <netdb.h>
 #include <sys/param.h>

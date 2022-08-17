@@ -45,7 +45,7 @@
 #include "lwip/mem.h"
 #include "lwip/debug.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 struct stats_ lwip_stats;
 

@@ -93,7 +93,7 @@
 #include "lwip/dns.h"
 #include "lwip/prot/dns.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 /** Random generator function to create random TXIDs and source ports for queries */
 #ifndef DNS_RAND_TXID

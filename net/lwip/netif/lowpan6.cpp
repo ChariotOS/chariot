@@ -60,7 +60,7 @@
 #include "lwip/tcpip.h"
 #include "lwip/snmp.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 struct ieee_802154_addr {
   u8_t addr_len;

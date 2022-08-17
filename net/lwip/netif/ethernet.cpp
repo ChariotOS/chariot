@@ -49,7 +49,7 @@
 #include "lwip/stats.h"
 #include "netif/ethernet.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 #include "netif/ppp/ppp_opts.h"
 #if PPPOE_SUPPORT

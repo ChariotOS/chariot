@@ -64,7 +64,7 @@
 #endif
 
 #include <ck/map.h>
-#include <string.h>
+#include <ck/string.h>
 
 /* If the netconn API is not required publicly, then we include the necessary
    files here to get the implementation */
@@ -2752,7 +2752,7 @@ static void lwip_socket_drop_registered_memberships(int s) {
 
 #include <net/sock.h>
 
-net::ip4sock::ip4sock(int type) : net::sock(AF_INET, type, 0) {
+net::ip4sock::ip4sock(int type) : net::Socket(AF_INET, type, 0) {
   sock = lwip_socket(AF_INET, type, 0);
   // printf("type: %d, sock: %d\n", type, sock);
 }
@@ -2781,17 +2781,17 @@ int net::ip4sock::disconnect(int flags) {
   return -ENOTIMPL;
 }
 
-net::sock *net::ip4sock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
+ck::ref<net::Socket> net::ip4sock::accept(struct sockaddr *uaddr, int addr_len, int &err) {
   err = -ENOTIMPL;
-  return NULL;
+  return nullptr;
 }
 
 // implemented by the network layer (OSI)
-ssize_t net::ip4sock::sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *to, size_t tolen) {
+ssize_t net::ip4sock::sendto(fs::File &, void *data, size_t len, int flags, const sockaddr *to, size_t tolen) {
   scoped_lock l(lock);
   return translate_errno(lwip_sendto(sock, data, len, flags, to, tolen));
 }
-ssize_t net::ip4sock::recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *from, size_t fromlen) {
+ssize_t net::ip4sock::recvfrom(fs::File &, void *data, size_t len, int flags, const sockaddr *from, size_t fromlen) {
   scoped_lock l(lock);
   return translate_errno(lwip_recvfrom(sock, data, len, flags, (struct sockaddr *)from, &fromlen));
 }
@@ -2801,4 +2801,4 @@ int net::ip4sock::bind(const struct sockaddr *addr, size_t len) {
   return translate_errno(lwip_bind(sock, addr, len));
 }
 
-int net::ip4sock::poll(fs::file &f, int events, poll_table &pt) { return 0; }
+int net::ip4sock::poll(fs::File &f, int events, poll_table &pt) { return 0; }

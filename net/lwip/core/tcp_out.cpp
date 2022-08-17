@@ -56,7 +56,7 @@
 #include "lwip/sys.h"
 #endif
 
-#include <string.h>
+#include <ck/string.h>
 
 /* Define some copy-macros for checksum-on-copy so that the code looks
    nicer by preventing too many ifdef's. */

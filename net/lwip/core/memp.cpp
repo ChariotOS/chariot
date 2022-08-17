@@ -49,7 +49,7 @@
 #include "lwip/sys.h"
 #include "lwip/stats.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 /* Make sure we include everything we need for size calculation required by memp_std.h */
 #include "lwip/pbuf.h"

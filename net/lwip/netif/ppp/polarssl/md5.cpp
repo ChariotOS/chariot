@@ -43,7 +43,7 @@
 
 #include "netif/ppp/polarssl/md5.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 /*
  * 32-bit integer manipulation macros (little endian)

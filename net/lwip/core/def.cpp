@@ -61,7 +61,7 @@
 #include "lwip/opt.h"
 #include "lwip/def.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 

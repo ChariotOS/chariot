@@ -51,7 +51,7 @@
 
 #if 0 /* UNUSED */
 #include <stdio.h>
-#include <string.h>
+#include <ck/string.h>
 #include <sys/types.h>
 #endif /* UNUSED */
 

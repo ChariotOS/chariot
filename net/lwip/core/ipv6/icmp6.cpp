@@ -55,7 +55,7 @@
 #include "lwip/ip.h"
 #include "lwip/stats.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 #ifndef LWIP_ICMP6_DATASIZE
 #define LWIP_ICMP6_DATASIZE 8

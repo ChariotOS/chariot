@@ -79,7 +79,7 @@
 #include <errno.h>
 #include <pwd.h>
 #include <grp.h>
-#include <string.h>
+#include <ck/string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>

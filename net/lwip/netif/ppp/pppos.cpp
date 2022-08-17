@@ -34,7 +34,7 @@
 #include "netif/ppp/ppp_opts.h"
 #if PPP_SUPPORT && PPPOS_SUPPORT /* don't build if not configured for use in lwipopts.h */
 
-#include <string.h>
+#include <ck/string.h>
 
 #include "lwip/arch.h"
 #include "lwip/err.h"

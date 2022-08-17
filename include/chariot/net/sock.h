@@ -167,7 +167,7 @@ namespace net {
 #ifdef CONFIG_LWIP
   /* A generic LWIP socket binding. This ties into the socket api. The implementation is in
    * /net/lwip/api/sockets.cpp */
-  struct ip4sock : public net::sock {
+  struct ip4sock : public net::Socket {
    private:
     /* The socket binding */
     int sock;
@@ -180,15 +180,15 @@ namespace net {
 
     virtual int connect(struct sockaddr *uaddr, int addr_len);
     virtual int disconnect(int flags);
-    virtual net::sock *accept(struct sockaddr *uaddr, int addr_len, int &err);
+    virtual ck::ref<net::Socket> accept(struct sockaddr *uaddr, int addr_len, int &err);
 
     // implemented by the network layer (OSI)
-    virtual ssize_t sendto(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
-    virtual ssize_t recvfrom(fs::file &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t sendto(fs::File &, void *data, size_t len, int flags, const sockaddr *, size_t);
+    virtual ssize_t recvfrom(fs::File &, void *data, size_t len, int flags, const sockaddr *, size_t);
 
     virtual int bind(const struct sockaddr *addr, size_t len);
 
-    virtual int poll(fs::file &f, int events, poll_table &pt);
+    virtual int poll(fs::File &f, int events, poll_table &pt);
 
     int translate_errno(int);
   };

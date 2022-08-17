@@ -51,7 +51,7 @@
 #include "lwip/inet_chksum.h"
 #include "lwip/ip_addr.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 // #define LWIP_CHKSUM my_checksum
 

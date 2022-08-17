@@ -60,7 +60,7 @@
 #include "lwip/stats.h"
 #include "lwip/err.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 #include <mem.h>
 

@@ -49,7 +49,7 @@
 #include "lwip/def.h"
 #include "lwip/stats.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 /** Small optimization: set to 0 if incoming PBUF_POOL pbuf always can be
  * used to modify and send a response packet (and to 1 if this is not the case,

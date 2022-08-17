@@ -63,7 +63,7 @@
 #include "lwip/stats.h"
 #include "lwip/udp.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 #ifndef UDP_LOCAL_PORT_RANGE_START
 /* From http://www.iana.org/assignments/port-numbers:

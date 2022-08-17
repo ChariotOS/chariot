@@ -76,7 +76,7 @@
 #include "lwip/etharp.h"
 #include "lwip/prot/dhcp.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 /** DHCP_CREATE_RAND_XID: if this is set to 1, the xid is created using
  * LWIP_RAND() (this overrides DHCP_GLOBAL_XID)

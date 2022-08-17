@@ -36,7 +36,7 @@
 
 #include "netif/ppp/vj.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 #if LINK_STATS
 #define INCR(counter) ++comp->stats.counter

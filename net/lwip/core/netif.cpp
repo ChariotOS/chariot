@@ -50,7 +50,7 @@
 
 #include "lwip/opt.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 #include "lwip/def.h"
 #include "lwip/etharp.h"

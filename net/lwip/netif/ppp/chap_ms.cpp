@@ -80,7 +80,7 @@
 #if 0 /* UNUSED */
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <ck/string.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/time.h>

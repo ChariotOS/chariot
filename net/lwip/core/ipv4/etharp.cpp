@@ -54,7 +54,7 @@
 #include "lwip/autoip.h"
 #include "netif/ethernet.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 #if LWIP_IPV4 && LWIP_ARP /* don't build if not configured for use in lwipopts.h */
 

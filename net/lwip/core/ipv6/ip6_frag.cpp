@@ -50,7 +50,7 @@
 #include "lwip/memp.h"
 #include "lwip/stats.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 #if LWIP_IPV6 && LWIP_IPV6_REASS /* don't build if not configured for use in lwipopts.h */
 

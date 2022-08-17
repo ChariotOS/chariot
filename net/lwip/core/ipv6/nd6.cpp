@@ -62,7 +62,7 @@
 #include "lwip/stats.h"
 #include "lwip/dns.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 #if LWIP_IPV6_DUP_DETECT_ATTEMPTS > IP6_ADDR_TENTATIVE_COUNT_MASK
 #error LWIP_IPV6_DUP_DETECT_ATTEMPTS > IP6_ADDR_TENTATIVE_COUNT_MASK

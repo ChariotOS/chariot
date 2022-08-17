@@ -43,7 +43,7 @@
 
 #include <stdio.h> /* formats */
 #include <stdarg.h>
-#include <string.h>
+#include <ck/string.h>
 #include <stdlib.h> /* strtol() */
 
 #include "lwip/netif.h"

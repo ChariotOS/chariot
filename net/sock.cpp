@@ -244,7 +244,7 @@ int sys::dnslookup(const char *name, unsigned int *ip4) {
   }
   /* we need a copy of the name in the kernel because the LWIP thread doesn't have access to
    * userspace */
-  string s = name;
+	ck::string s = name;
 
   scoped_lock l(dnslookup_lock);
 

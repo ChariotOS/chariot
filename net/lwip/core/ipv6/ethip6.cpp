@@ -54,7 +54,7 @@
 #include "lwip/prot/ethernet.h"
 #include "netif/ethernet.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 /**
  * Resolve and fill-in Ethernet address header for outgoing IPv6 packet.

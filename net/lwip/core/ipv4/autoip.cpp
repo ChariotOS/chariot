@@ -68,7 +68,7 @@
 #include "lwip/etharp.h"
 #include "lwip/prot/autoip.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 /** Pseudo random macro based on netif informations.
  * You could use "rand()" from the C Library if you define LWIP_AUTOIP_RAND in lwipopts.h */

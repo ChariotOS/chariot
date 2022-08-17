@@ -49,7 +49,7 @@
 #include "lwip/stats.h"
 #include "lwip/icmp.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 #if IP_REASSEMBLY
 /**

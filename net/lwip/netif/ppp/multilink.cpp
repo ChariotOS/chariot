@@ -41,7 +41,7 @@
  * or dropping multilink support at all.
  */
 
-#include <string.h>
+#include <ck/string.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <netdb.h>

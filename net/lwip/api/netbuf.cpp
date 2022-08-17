@@ -49,7 +49,7 @@
 #include "lwip/netbuf.h"
 #include "lwip/memp.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 /**
  * @ingroup netbuf

@@ -72,7 +72,7 @@
 #if PPP_SUPPORT && PPPOE_SUPPORT /* don't build if not configured for use in lwipopts.h */
 
 #if 0 /* UNUSED */
-#include <string.h>
+#include <ck/string.h>
 #include <stdio.h>
 #endif /* UNUSED */
 

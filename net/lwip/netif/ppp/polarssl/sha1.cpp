@@ -43,7 +43,7 @@
 
 #include "netif/ppp/polarssl/sha1.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 /*
  * 32-bit integer manipulation macros (big endian)

@@ -9,8 +9,8 @@
 #ifdef __cplusplus
 extern "C"
 #endif
-    int
-    get_errno(void);
+
+int& get_errno(void);
 
 #define errno (get_errno())
 #endif

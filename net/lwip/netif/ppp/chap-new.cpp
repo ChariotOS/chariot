@@ -33,7 +33,7 @@
 
 #if 0 /* UNUSED */
 #include <stdlib.h>
-#include <string.h>
+#include <ck/string.h>
 #endif /* UNUSED */
 
 #include "netif/ppp/ppp_impl.h"

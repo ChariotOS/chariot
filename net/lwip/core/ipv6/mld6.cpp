@@ -62,7 +62,7 @@
 #include "lwip/memp.h"
 #include "lwip/stats.h"
 
-#include <string.h>
+#include <ck/string.h>
 
 
 /*
