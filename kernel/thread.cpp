@@ -329,11 +329,11 @@ void Thread::interrupt(void) {
 }
 
 
-extern int get_next_pid(void);
+extern long get_next_pid(void);
 
 // TODO: alot of verification, basically
 int sys::spawnthread(void *vstack, void *fn, void *arg, int flags) {
-  int tid = get_next_pid();
+  auto tid = get_next_pid();
   auto thd = ck::make_ref<Thread>(tid, *curproc);
 
 
