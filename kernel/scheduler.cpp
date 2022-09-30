@@ -208,11 +208,11 @@ void rt::PriorityQueue::enqueue(Thread *task) {
   // place them in the queue
   rb_insert(m_root, &task->prio_node, [&](struct rb_node *o) {
     auto *other = rb_entry(o, Thread, prio_node);
-    long result = (long)task->deadline - (long)other->deadline;
-    if (result < 0) {
+    long delta = (long)task->deadline - (long)other->deadline;
+    if (delta < 0) {
       // if `task` has an earlier deadline, put it left
       return RB_INSERT_GO_LEFT;
-    } else if (result >= 0) {
+    } else if (delta >= 0) {
       // if `task` has greater deadline, go right
       // if `task` has equal deadline, don't jump in line
       return RB_INSERT_GO_RIGHT;
@@ -329,9 +329,9 @@ sched::YieldResult sched::yield() {
   thd.stats.cycles += arch_read_timestamp() - thd.stats.last_start_cycle;
   thd.stats.last_cpu = thd.stats.current_cpu;
   thd.stats.current_cpu = -1;
-  barrier();
+  // barrier();
   context_switch(&thd.kern_context, cpu::current().sched_ctx);
-  barrier();
+  // barrier();
 
   if (thd.rudely_awoken) {
     r = sched::YieldResult::Interrupt;
