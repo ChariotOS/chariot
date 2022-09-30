@@ -16,6 +16,8 @@ extern "C" void rv_enter_userspace(rv::regs *sp);
 void arch_thread_create_callback() {
   auto thd = curthd;
 
+	assert(thd != NULL);
+
   auto tf = thd->trap_frame;
 
   if (thd->proc.ring == RING_KERN) {
