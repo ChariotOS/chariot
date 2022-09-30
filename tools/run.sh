@@ -47,7 +47,7 @@ case $ARCH in
 		;;
 
 	RISC-V)
-		QEMU_FLAGS+="-machine virt -smp ${CONFIG_QEMU_CORES} -m 256M "
+		QEMU_FLAGS+="-machine virt -smp ${CONFIG_QEMU_CORES} -m 512M "
 		QEMU_FLAGS+="-bios default "
 		# QEMU_FLAGS+="--accel tcg,thread=single "
 		QEMU_FLAGS+="--accel tcg,thread=multi "
@@ -74,5 +74,4 @@ esac
 
 echo '======================================================================'
 
-echo ${QEMU_FLAGS} $@
 qemu-system-${QEMU_ARCH} ${QEMU_FLAGS} $@
