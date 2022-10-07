@@ -257,19 +257,17 @@ ksh_def("plic-bench", "benchmark access to the plic claim register") {
 
   for (int intc = 0; intc < 100; intc++) {
     while (1) {
-			auto start = read_csr(cycle);
+      auto start = read_csr(cycle);
       int irq = rv::plic::claim();
-			auto end = read_csr(cycle);
+      auto end = read_csr(cycle);
       if (irq != 0) {
         irq::dispatch(irq, NULL);
         rv::plic::complete(irq);
-				printf("irq %d: %llu cycles\n", irq, end - start);
+        printf("irq %d: %llu cycles\n", irq, end - start);
         break;
       }
     }
   }
-
-
 
   arch_enable_ints();
   return 0;
