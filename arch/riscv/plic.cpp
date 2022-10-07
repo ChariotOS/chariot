@@ -4,9 +4,10 @@
 #include <printf.h>
 #include <util.h>
 #include <cpu.h>
-
+#include <kshell.h>
 #include <dev/hardware.h>
 #include <dev/driver.h>
+
 int boot_hart = -1;
 
 
@@ -247,4 +248,29 @@ void rv::plic::enable(int hwirq, int priority) {
 void rv::plic::disable(int hwirq) {
   assert(the_plic != NULL);
   the_plic->toggle(rv::hartid(), hwirq, 7, false);
+}
+
+
+ksh_def("plic-bench", "benchmark access to the plic claim register") {
+  printf("running for 100 interrupts\n");
+  arch_disable_ints();
+
+  for (int intc = 0; intc < 100; intc++) {
+    while (1) {
+			auto start = read_csr(cycle);
+      int irq = rv::plic::claim();
+			auto end = read_csr(cycle);
+      if (irq != 0) {
+        irq::dispatch(irq, NULL);
+        rv::plic::complete(irq);
+				printf("irq %d: %llu cycles\n", irq, end - start);
+        break;
+      }
+    }
+  }
+
+
+
+  arch_enable_ints();
+  return 0;
 }
