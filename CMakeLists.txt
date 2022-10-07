@@ -164,7 +164,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -nostdinc++ -std=c++20 ${ARCH_USER_CXX_FLA
 function(chariot_libc target_name fs_name)
     add_library(${target_name} ${SOURCES})
     set_target_properties(${target_name} PROPERTIES OUTPUT_NAME ${fs_name})
-		# install(TARGETS ${target_name} ARCHIVE DESTINATION lib)
+		install(TARGETS ${target_name} ARCHIVE DESTINATION lib)
 		target_link_directories(${target_name} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 endfunction()
 
@@ -174,7 +174,7 @@ endfunction()
 # A library is just a normal library. They cannot have resources
 function(chariot_lib target_name fs_name)
 		add_library(${target_name} STATIC ${SOURCES} ${GENERATED_SOURCES})
-		# install(TARGETS ${target_name} RUNTIME DESTINATION lib)
+		install(TARGETS ${target_name} RUNTIME DESTINATION lib)
 
 		target_link_libraries(${target_name} PUBLIC libc)
 		set_target_properties(${target_name} PROPERTIES OUTPUT_NAME ${fs_name})
