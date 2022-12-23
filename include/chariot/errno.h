@@ -10,9 +10,9 @@
 extern "C"
 #endif
 
-int& get_errno(void);
+int* get_errno(void);
 
-#define errno (get_errno())
+#define errno (*get_errno())
 #endif
 
 // taken from the c std

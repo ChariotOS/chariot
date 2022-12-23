@@ -728,7 +728,7 @@ void *mem_malloc(mem_size_t size) {
 
 #if MEM_LIBC_MALLOC && (!LWIP_STATS || !MEM_STATS)
 void* mem_calloc(mem_size_t count, mem_size_t size) {
-  return mem_clib_calloc(count, size);
+  return malloc(count * size);
 }
 
 #else  /* MEM_LIBC_MALLOC && (!LWIP_STATS || !MEM_STATS) */

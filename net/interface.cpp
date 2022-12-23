@@ -198,8 +198,7 @@ static void donefunc(void *foo) {
 void net::start(void) {
 #ifdef CONFIG_LWIP
   tcpip_init(donefunc, 0);
-  if (tcpinit_sem.wait(false).interrupted()) {
-    panic("unexpected interrupt");
+  while (!done) {
   }
 
   // setup google dns for now, 8.8.8.8
