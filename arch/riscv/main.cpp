@@ -22,6 +22,7 @@
 #include <ioctl.h>
 #include <rbtree.h>
 #include <rbtree_augmented.h>
+#include <net/net.h>
 
 #define PAGING_IMPL_BOOTCODE
 #include "paging_impl.h"
@@ -378,6 +379,9 @@ void main(int hartid, void *fdt) {
     initialize_builtin_modules();
     LOG("kernel modules initialized\n");
 
+
+		net::start();
+
     // Now that we are definitely in the high half and all cores have been
     // booted, nuke the lower half of the kernel page table for sanity reasons
     const rv::xsize_t nents = 4096 / sizeof(rv::xsize_t);
@@ -388,6 +392,7 @@ void main(int hartid, void *fdt) {
     rv::sfence_vma();
 
     sched::proc::create_kthread("[reaper]", Process::reaper);
+
 
 #ifdef CONFIG_ENABLE_USERSPACE
 
